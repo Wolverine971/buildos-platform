@@ -95,7 +95,7 @@
 	function getLevelColor(level: LogLevel): string {
 		switch (level) {
 			case 'debug':
-				return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+				return 'bg-muted text-foreground dark:text-muted-foreground';
 			case 'info':
 				return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
 			case 'warn':
@@ -105,14 +105,14 @@
 			case 'fatal':
 				return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
 			default:
-				return 'bg-gray-100 text-gray-800';
+				return 'bg-muted text-foreground';
 		}
 	}
 
 	function getLevelTextColor(level: LogLevel): string {
 		switch (level) {
 			case 'debug':
-				return 'text-gray-600 dark:text-gray-400';
+				return 'text-muted-foreground';
 			case 'info':
 				return 'text-blue-600 dark:text-blue-400';
 			case 'warn':
@@ -122,7 +122,7 @@
 			case 'fatal':
 				return 'text-purple-600 dark:text-purple-400';
 			default:
-				return 'text-gray-600';
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -136,62 +136,62 @@
 	}
 </script>
 
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+<div class="bg-card rounded-lg shadow overflow-hidden">
 	{#if loading}
 		<div class="p-6 space-y-3">
 			{#each Array(10) as _}
 				<div class="animate-pulse">
-					<div class="h-12 bg-gray-200 dark:bg-gray-700 rounded"></div>
+					<div class="h-12 bg-muted rounded"></div>
 				</div>
 			{/each}
 		</div>
 	{:else if logs.length === 0}
-		<div class="p-6 text-center text-gray-500 dark:text-gray-400">No system logs found</div>
+		<div class="p-6 text-center text-muted-foreground">No system logs found</div>
 	{:else}
 		<div class="overflow-x-auto">
 			<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-				<thead class="bg-gray-50 dark:bg-gray-900">
+				<thead class="bg-muted">
 					<tr>
 						<th class="px-4 py-3 w-8"></th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Time
 						</th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Level
 						</th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Namespace
 						</th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Message
 						</th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Correlation ID
 						</th>
 						<th
-							class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Actions
 						</th>
 					</tr>
 				</thead>
 				<tbody
-					class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+					class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
 				>
 					{#each logs as log}
 						{@const Level = getLevelIcon(log.level)}
 						<tr
-							class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors {log.level ===
+							class="hover:bg-muted transition-colors {log.level ===
 								'error' || log.level === 'fatal'
 								? 'bg-red-50 dark:bg-red-950'
 								: ''}"
@@ -199,7 +199,7 @@
 							<td class="px-4 py-3">
 								<button
 									onclick={() => toggleRow(log.id)}
-									class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+									class="text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
 								>
 									{#if expandedRows.has(log.id)}
 										<ChevronDown class="w-4 h-4" />
@@ -209,7 +209,7 @@
 								</button>
 							</td>
 							<td
-								class="px-4 py-3 whitespace-nowrap text-xs text-gray-500 dark:text-gray-400"
+								class="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground"
 								title={formatDate(log.created_at)}
 							>
 								{formatShortDate(log.created_at)}
@@ -227,11 +227,11 @@
 								</div>
 							</td>
 							<td
-								class="px-4 py-3 text-xs font-mono text-gray-600 dark:text-gray-400"
+								class="px-4 py-3 text-xs font-mono text-muted-foreground"
 							>
 								{log.namespace || 'N/A'}
 							</td>
-							<td class="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-md">
+							<td class="px-4 py-3 text-sm text-foreground max-w-md">
 								<div class="truncate" title={log.message}>
 									{log.message}
 								</div>
@@ -276,17 +276,17 @@
 
 						<!-- Expanded Row - Full Context -->
 						{#if expandedRows.has(log.id)}
-							<tr class="bg-gray-50 dark:bg-gray-900">
+							<tr class="bg-muted">
 								<td colspan="7" class="px-4 py-4">
 									<div class="space-y-3">
 										<!-- Full Message -->
 										<div>
 											<div
-												class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+												class="text-xs font-medium text-foreground mb-1"
 											>
 												Message:
 											</div>
-											<div class="text-sm text-gray-900 dark:text-white">
+											<div class="text-sm text-foreground">
 												{log.message}
 											</div>
 										</div>
@@ -295,24 +295,24 @@
 										<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
 											<div>
 												<div
-													class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+													class="text-xs font-medium text-foreground mb-1"
 												>
 													User:
 												</div>
 												<div
-													class="text-xs text-gray-600 dark:text-gray-400"
+													class="text-xs text-muted-foreground"
 												>
 													{log.users?.name || log.users?.email || 'N/A'}
 												</div>
 											</div>
 											<div>
 												<div
-													class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+													class="text-xs font-medium text-foreground mb-1"
 												>
 													Event ID:
 												</div>
 												<div
-													class="text-xs font-mono text-gray-600 dark:text-gray-400"
+													class="text-xs font-mono text-muted-foreground"
 												>
 													{log.notification_event_id
 														? truncateCorrelationId(
@@ -323,12 +323,12 @@
 											</div>
 											<div>
 												<div
-													class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+													class="text-xs font-medium text-foreground mb-1"
 												>
 													Delivery ID:
 												</div>
 												<div
-													class="text-xs font-mono text-gray-600 dark:text-gray-400"
+													class="text-xs font-mono text-muted-foreground"
 												>
 													{log.notification_delivery_id
 														? truncateCorrelationId(
@@ -339,12 +339,12 @@
 											</div>
 											<div>
 												<div
-													class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+													class="text-xs font-medium text-foreground mb-1"
 												>
 													Request ID:
 												</div>
 												<div
-													class="text-xs font-mono text-gray-600 dark:text-gray-400"
+													class="text-xs font-mono text-muted-foreground"
 												>
 													{log.request_id || 'N/A'}
 												</div>
@@ -355,12 +355,12 @@
 										{#if log.metadata && Object.keys(log.metadata).length > 0}
 											<div>
 												<div
-													class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+													class="text-xs font-medium text-foreground mb-1"
 												>
 													Metadata:
 												</div>
 												<pre
-													class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-3 text-xs overflow-x-auto">{JSON.stringify(
+													class="bg-card border border-border rounded p-3 text-xs overflow-x-auto">{JSON.stringify(
 														log.metadata,
 														null,
 														2

@@ -27,14 +27,14 @@
 				<Smartphone class="w-6 h-6 text-green-600 dark:text-green-400" />
 			</div>
 			<div class="flex-1">
-				<h3 class="font-semibold text-gray-900 dark:text-white mb-1">
+				<h3 class="font-semibold text-foreground mb-1">
 					SMS Notifications Require Verification
 				</h3>
-				<p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+				<p class="text-sm text-muted-foreground mb-3">
 					To receive SMS notifications, you need to verify your phone number first. We'll
 					send you a verification code to confirm your number.
 				</p>
-				<p class="text-xs text-gray-500 dark:text-gray-500 italic">
+				<p class="text-xs text-muted-foreground italic">
 					By verifying, you consent to receive SMS reminders about your BuildOS schedule.
 					Message & data rates may apply. Reply STOP to unsubscribe at any time.
 				</p>

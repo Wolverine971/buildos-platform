@@ -102,9 +102,9 @@
 	<AdminCard padding="none" class="overflow-hidden">
 		<div class="overflow-x-auto">
 			<table class="min-w-full divide-y divide-slate-200/70 text-sm dark:divide-slate-800/70">
-				<thead class="bg-slate-50/80 dark:bg-slate-900/60">
+				<thead class="bg-slate-50/80/60">
 					<tr
-						class="text-left text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-400"
+						class="text-left text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground"
 					>
 						<th class="px-5 py-3">User</th>
 						<th class="px-5 py-3">Email</th>
@@ -121,7 +121,7 @@
 							<td class="px-5 py-4 align-middle">
 								<div class="flex flex-col gap-1.5">
 									<span
-										class="text-sm font-semibold text-slate-900 dark:text-slate-100"
+										class="text-sm font-semibold text-foreground"
 									>
 										{user.name ?? 'No name'}
 									</span>
@@ -132,7 +132,7 @@
 									{/if}
 								</div>
 							</td>
-							<td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-300">
+							<td class="px-5 py-4 text-sm text-muted-foreground">
 								{user.email}
 							</td>
 							{#each featureColumns as column}
@@ -146,18 +146,18 @@
 												<Badge
 													size="sm"
 													variant="info"
-													class="bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+													class="bg-slate-100 text-muted-foreground border-border dark:text-muted-foreground"
 												>
 													Disabled
 												</Badge>
 											{/if}
 										</div>
 										<p
-											class="text-xs text-slate-500 dark:text-slate-400 leading-snug"
+											class="text-xs text-muted-foreground leading-snug"
 										>
 											{column.description}
 										</p>
-										<div class="text-xs text-slate-500 dark:text-slate-400">
+										<div class="text-xs text-muted-foreground">
 											{#if flag?.updated_at}
 												<time datetime={flag.updated_at}>
 													Last updated {new Date(

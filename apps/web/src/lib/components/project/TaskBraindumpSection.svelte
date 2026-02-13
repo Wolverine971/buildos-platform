@@ -126,7 +126,7 @@
 				};
 			default:
 				return {
-					color: 'text-gray-600 dark:text-gray-400',
+					color: 'text-muted-foreground',
 					icon: Brain,
 					label: status || 'Draft'
 				};
@@ -139,19 +139,19 @@
 	let canExpand = $derived(!loading || hasBraindumps);
 </script>
 
-<div class="border-t border-gray-200/50 dark:border-gray-700/50 pt-3">
+<div class="border-t border-border/50/50 pt-3">
 	<!-- Section Header (non-clickable label) -->
 	<div class="flex items-center justify-between p-3">
 		<div class="flex items-center space-x-2">
 			<span class="w-2 h-2 bg-indigo-500 rounded-full"></span>
 			<span
-				class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider"
+				class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
 			>
 				Braindumps
 			</span>
 
 			{#if loading && !loaded}
-				<span class="text-xs text-gray-500 flex items-center">
+				<span class="text-xs text-muted-foreground flex items-center">
 					<LoaderCircle class="w-3 h-3 mr-1 animate-spin" />
 					Loading...
 				</span>
@@ -161,7 +161,7 @@
 					Error
 				</span>
 			{:else if loaded}
-				<span class="text-xs text-gray-500">
+				<span class="text-xs text-muted-foreground">
 					{displayCount}
 					{displayCount === 1 ? 'braindump' : 'braindumps'}
 				</span>
@@ -173,7 +173,7 @@
 	<div>
 		<!-- Loading State -->
 		{#if loading && !loaded}
-			<div class="mt-2 px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+			<div class="mt-2 px-3 py-4 text-center text-sm text-muted-foreground">
 				<LoaderCircle class="w-5 h-5 mx-auto mb-2 animate-spin" />
 				Loading braindumps...
 			</div>
@@ -198,7 +198,7 @@
 
 		<!-- Empty State -->
 		{#if loaded && !hasBraindumps && !loadError}
-			<div class="mt-2 px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+			<div class="mt-2 px-3 py-4 text-center text-sm text-muted-foreground">
 				<Brain class="w-5 h-5 mx-auto mb-2 opacity-50" />
 				No braindumps associated with this task
 			</div>
@@ -219,9 +219,9 @@
 					{@const Icon = statusInfo.icon}
 
 					<div
-						class="rounded-lg border border-gray-200 dark:border-gray-700
+						class="rounded-lg border border-border
 								bg-gradient-to-br from-white to-gray-50/30 dark:from-gray-800 dark:to-gray-900/30
-								hover:shadow-sm transition-all duration-200"
+								hover:shadow-ink transition-all duration-200"
 					>
 						<!-- Card Header (clickable to expand) -->
 						<button
@@ -236,20 +236,20 @@
 										class="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0"
 									/>
 									<span
-										class="text-sm font-medium text-gray-900 dark:text-white truncate flex-1"
+										class="text-sm font-medium text-foreground truncate flex-1"
 									>
 										{braindump.title || 'Untitled braindump'}
 									</span>
 
 									<IsExpandedChevronDownChevronRight
-										class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0"
+										class="w-4 h-4 text-muted-foreground group-hover:text-muted-foreground dark:group-hover:text-muted-foreground flex-shrink-0"
 									/>
 								</div>
 
 								<!-- Content Preview (when collapsed) -->
 								{#if !isExpanded && contentPreview}
 									<p
-										class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2"
+										class="text-xs text-muted-foreground line-clamp-2"
 									>
 										{contentPreview}
 									</p>
@@ -258,7 +258,7 @@
 								<!-- Metadata Footer -->
 								<div class="flex items-center justify-between text-xs">
 									<span
-										class="text-gray-500 dark:text-gray-400 flex items-center"
+										class="text-muted-foreground flex items-center"
 									>
 										<Clock class="w-3 h-3 mr-1" />
 										{timeDisplay}
@@ -276,11 +276,11 @@
 						{#if isExpanded}
 							<div
 								transition:slide={{ duration: 200, easing: quintOut }}
-								class="px-3 pb-3 space-y-3 border-t border-gray-200/50 dark:border-gray-700/50 pt-3"
+								class="px-3 pb-3 space-y-3 border-t border-border/50/50 pt-3"
 							>
 								<!-- Full Content -->
 								<div
-									class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto"
+									class="text-sm text-foreground whitespace-pre-wrap leading-relaxed max-h-60 overflow-y-auto"
 								>
 									{fullContent}
 								</div>

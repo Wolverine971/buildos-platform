@@ -88,7 +88,7 @@
 
 	// Format status badge with BuildOS styling
 	function getStatusBadgeClass(status: string, isCompleted: boolean, isDeleted: boolean): string {
-		if (isDeleted) return 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400';
+		if (isDeleted) return 'bg-muted text-muted-foreground dark:text-muted-foreground';
 		if (isCompleted)
 			return 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 dark:from-emerald-900/30 dark:to-green-900/30 dark:text-emerald-300';
 
@@ -99,9 +99,9 @@
 			case 'paused':
 				return 'bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 dark:from-amber-900/30 dark:to-yellow-900/30 dark:text-amber-300';
 			case 'archived':
-				return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+				return 'bg-muted text-muted-foreground dark:text-muted-foreground';
 			default:
-				return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
+				return 'bg-muted text-muted-foreground dark:text-muted-foreground';
 		}
 	}
 </script>
@@ -118,12 +118,12 @@
 		</button>
 	</div>
 
-	<h1 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+	<h1 class="text-2xl font-bold mb-4 text-foreground">
 		{searchType === 'braindump' ? 'Brain Dump' : searchType === 'project' ? 'Project' : 'Task'} Results
 	</h1>
 
-	<p class="text-gray-600 dark:text-gray-400 mb-4">
-		Showing results for: <span class="font-semibold text-gray-900 dark:text-gray-100"
+	<p class="text-muted-foreground mb-4">
+		Showing results for: <span class="font-semibold text-foreground"
 			>"{searchQuery}"</span
 		>
 	</p>
@@ -132,25 +132,25 @@
 		{#each results as result}
 			<button
 				onclick={() => navigateToItem(result)}
-				class="w-full p-4 bg-white dark:bg-gray-800
-				       border-2 border-gray-200 dark:border-gray-700 rounded-lg
-				       hover:shadow-lg dark:hover:shadow-2xl
+				class="w-full p-4 bg-card
+				       border-2 border-border rounded-lg
+				       hover:shadow-ink-strong dark:hover:shadow-ink-strong
 				       hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-purple-50/30
 				       dark:hover:from-blue-900/10 dark:hover:to-purple-900/10
 				       transition-all duration-200 text-left"
 			>
 				<div class="flex items-start justify-between">
 					<div class="flex-1">
-						<h3 class="font-semibold text-lg mb-1 text-gray-900 dark:text-gray-100">
+						<h3 class="font-semibold text-lg mb-1 text-foreground">
 							{@html highlightText(result.title || 'Untitled', searchQuery)}
 						</h3>
 						{#if result.description}
-							<p class="text-gray-600 dark:text-gray-400 mb-2">
+							<p class="text-muted-foreground mb-2">
 								{@html highlightText(result.description, searchQuery)}
 							</p>
 						{/if}
 						<div
-							class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400"
+							class="flex items-center gap-4 text-sm text-muted-foreground"
 						>
 							<span>Created: {new Date(result.created_at).toLocaleDateString()}</span>
 							<span>Updated: {new Date(result.updated_at).toLocaleDateString()}</span>
@@ -163,7 +163,7 @@
 								result.is_completed || false,
 								result.is_deleted || false
 							)}
-						             px-3 py-1 text-xs font-medium rounded-full shadow-sm"
+						             px-3 py-1 text-xs font-medium rounded-full shadow-ink"
 						>
 							{result.status}
 						</span>
@@ -188,7 +188,7 @@
 	{/if}
 
 	{#if results.length === 0 && !isLoading}
-		<div class="text-center py-12 text-gray-500 dark:text-gray-400">No results found</div>
+		<div class="text-center py-12 text-muted-foreground">No results found</div>
 	{/if}
 </div>
 

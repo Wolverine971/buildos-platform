@@ -54,14 +54,14 @@
 		if (streakDays >= 30) return 'text-green-600 dark:text-green-400';
 		if (streakDays >= 14) return 'text-blue-600 dark:text-blue-400';
 		if (streakDays >= 7) return 'text-yellow-600 dark:text-yellow-400';
-		return 'text-gray-600 dark:text-gray-400';
+		return 'text-muted-foreground';
 	}
 
 	function getStreakBg(streakDays: number): string {
 		if (streakDays >= 30) return 'bg-green-100 dark:bg-green-900/20';
 		if (streakDays >= 14) return 'bg-blue-100 dark:bg-blue-900/20';
 		if (streakDays >= 7) return 'bg-yellow-100 dark:bg-yellow-900/20';
-		return 'bg-gray-100 dark:bg-gray-800';
+		return 'bg-muted';
 	}
 
 	function formatNumber(num: number): string {
@@ -130,8 +130,8 @@
 				<div class="flex items-center">
 					<BarChart3 class="mr-3 h-6 w-6 text-blue-600 dark:text-blue-400" />
 					<div>
-						<h2 class="text-xl font-bold text-gray-900 dark:text-white">Analytics</h2>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
+						<h2 class="text-xl font-bold text-foreground">Analytics</h2>
+						<p class="text-sm text-muted-foreground">
 							Track your brief generation patterns
 						</p>
 					</div>
@@ -177,11 +177,11 @@
 				<Card variant="default">
 					<CardBody
 						padding="sm"
-						class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4 animate-pulse border border-gray-200 dark:border-gray-700"
+						class="bg-card rounded-lg shadow-ink p-4 animate-pulse border border-border"
 					>
-						<div class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-						<div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-						<div class="h-2 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
+						<div class="h-3 bg-muted rounded w-3/4 mb-2"></div>
+						<div class="h-6 bg-muted rounded w-1/2 mb-2"></div>
+						<div class="h-2 bg-muted rounded w-2/3"></div>
 					</CardBody>
 				</Card>
 			{/each}
@@ -197,17 +197,17 @@
 							<Calendar class="h-4 w-4 text-blue-600 dark:text-blue-400" />
 						</div>
 						<div class="text-right">
-							<p class="text-xl font-bold text-gray-900 dark:text-white">
+							<p class="text-xl font-bold text-foreground">
 								{formatNumber(analytics.generation_frequency.total_briefs)}
 							</p>
-							<p class="text-xs text-gray-600 dark:text-gray-400">Total Briefs</p>
+							<p class="text-xs text-muted-foreground">Total Briefs</p>
 						</div>
 					</div>
 					<div class="flex items-center text-xs">
 						<span class="text-green-600 dark:text-green-400 font-medium">
 							+{analytics.generation_frequency.briefs_this_month}
 						</span>
-						<span class="text-gray-500 dark:text-gray-400 ml-1">this month</span>
+						<span class="text-muted-foreground ml-1">this month</span>
 					</div>
 				</CardBody>
 			</Card>
@@ -235,10 +235,10 @@
 							>
 								{analytics.generation_frequency.streak_days}
 							</p>
-							<p class="text-xs text-gray-600 dark:text-gray-400">Day Streak</p>
+							<p class="text-xs text-muted-foreground">Day Streak</p>
 						</div>
 					</div>
-					<div class="text-xs text-gray-500 dark:text-gray-400">
+					<div class="text-xs text-muted-foreground">
 						{analytics.generation_frequency.streak_days > 0
 							? 'Keep it up!'
 							: 'Start today'}
@@ -254,13 +254,13 @@
 							<Activity class="h-4 w-4 text-green-600 dark:text-green-400" />
 						</div>
 						<div class="text-right">
-							<p class="text-xl font-bold text-gray-900 dark:text-white">
+							<p class="text-xl font-bold text-foreground">
 								{Math.round(analytics.engagement_metrics.avg_brief_length)}
 							</p>
-							<p class="text-xs text-gray-600 dark:text-gray-400">Avg Words</p>
+							<p class="text-xs text-muted-foreground">Avg Words</p>
 						</div>
 					</div>
-					<div class="text-xs text-gray-500 dark:text-gray-400">per brief</div>
+					<div class="text-xs text-muted-foreground">per brief</div>
 				</CardBody>
 			</Card>
 
@@ -272,13 +272,13 @@
 							<Target class="h-4 w-4 text-purple-600 dark:text-purple-400" />
 						</div>
 						<div class="text-right">
-							<p class="text-xl font-bold text-gray-900 dark:text-white">
+							<p class="text-xl font-bold text-foreground">
 								{Math.round(analytics.engagement_metrics.avg_priority_actions)}
 							</p>
-							<p class="text-xs text-gray-600 dark:text-gray-400">Priority Actions</p>
+							<p class="text-xs text-muted-foreground">Priority Actions</p>
 						</div>
 					</div>
-					<div class="text-xs text-gray-500 dark:text-gray-400">average per brief</div>
+					<div class="text-xs text-muted-foreground">average per brief</div>
 				</CardBody>
 			</Card>
 		</div>
@@ -289,7 +289,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3
-						class="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center"
+						class="text-base font-semibold text-foreground mb-4 flex items-center"
 					>
 						<FolderOpen class="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
 						Most Active Projects
@@ -310,12 +310,12 @@
 									</div>
 									<div class="flex-1 min-w-0">
 										<p
-											class="text-sm font-medium text-gray-900 dark:text-white truncate"
+											class="text-sm font-medium text-foreground truncate"
 										>
 											{project.project_name}
 										</p>
 										<div
-											class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1"
+											class="w-full bg-muted rounded-full h-1.5 mt-1"
 										>
 											<div
 												class="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
@@ -328,7 +328,7 @@
 										</div>
 									</div>
 									<span
-										class="text-xs font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded flex-shrink-0"
+										class="text-xs font-semibold text-foreground bg-muted px-2 py-1 rounded flex-shrink-0"
 									>
 										{project.brief_count}
 									</span>
@@ -337,8 +337,8 @@
 						</div>
 					{:else}
 						<div class="text-center py-6">
-							<FolderOpen class="h-8 w-8 text-gray-400 mx-auto mb-2" />
-							<p class="text-sm text-gray-500 dark:text-gray-400">
+							<FolderOpen class="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+							<p class="text-sm text-muted-foreground">
 								No project data available
 							</p>
 						</div>
@@ -350,7 +350,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3
-						class="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center"
+						class="text-base font-semibold text-foreground mb-4 flex items-center"
 					>
 						<Target class="mr-2 h-4 w-4 text-purple-600 dark:text-purple-400" />
 						Most Active Goals
@@ -371,12 +371,12 @@
 									</div>
 									<div class="flex-1 min-w-0">
 										<p
-											class="text-sm font-medium text-gray-900 dark:text-white truncate"
+											class="text-sm font-medium text-foreground truncate"
 										>
 											{goal.goal_name}
 										</p>
 										<div
-											class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-1"
+											class="w-full bg-muted rounded-full h-1.5 mt-1"
 										>
 											<div
 												class="bg-purple-600 h-1.5 rounded-full transition-all duration-500"
@@ -389,7 +389,7 @@
 										</div>
 									</div>
 									<span
-										class="text-xs font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded flex-shrink-0"
+										class="text-xs font-semibold text-foreground bg-muted px-2 py-1 rounded flex-shrink-0"
 									>
 										{goal.brief_count}
 									</span>
@@ -398,8 +398,8 @@
 						</div>
 					{:else}
 						<div class="text-center py-6">
-							<Target class="h-8 w-8 text-gray-400 mx-auto mb-2" />
-							<p class="text-sm text-gray-500 dark:text-gray-400">
+							<Target class="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+							<p class="text-sm text-muted-foreground">
 								No goal data available
 							</p>
 						</div>
@@ -414,7 +414,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3
-						class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
+						class="text-sm font-semibold text-foreground mb-3 flex items-center"
 					>
 						<PieChart class="mr-2 h-4 w-4 text-green-600 dark:text-green-400" />
 						Template Usage
@@ -422,36 +422,36 @@
 
 					<div class="space-y-2">
 						<div
-							class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/50 rounded"
+							class="flex items-center justify-between p-2 bg-muted/50 rounded"
 						>
-							<span class="text-xs font-medium text-gray-700 dark:text-gray-300"
+							<span class="text-xs font-medium text-foreground"
 								>Project</span
 							>
 							<span
-								class="text-xs font-semibold text-gray-900 dark:text-white truncate ml-2"
+								class="text-xs font-semibold text-foreground truncate ml-2"
 							>
 								{analytics.template_usage.most_used_project_template || 'Default'}
 							</span>
 						</div>
 						<div
-							class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/50 rounded"
+							class="flex items-center justify-between p-2 bg-muted/50 rounded"
 						>
-							<span class="text-xs font-medium text-gray-700 dark:text-gray-300"
+							<span class="text-xs font-medium text-foreground"
 								>Goal</span
 							>
 							<span
-								class="text-xs font-semibold text-gray-900 dark:text-white truncate ml-2"
+								class="text-xs font-semibold text-foreground truncate ml-2"
 							>
 								{analytics.template_usage.most_used_goal_template || 'Default'}
 							</span>
 						</div>
 						<div
-							class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/50 rounded"
+							class="flex items-center justify-between p-2 bg-muted/50 rounded"
 						>
-							<span class="text-xs font-medium text-gray-700 dark:text-gray-300"
+							<span class="text-xs font-medium text-foreground"
 								>Custom</span
 							>
-							<span class="text-xs font-semibold text-gray-900 dark:text-white">
+							<span class="text-xs font-semibold text-foreground">
 								{analytics.template_usage.custom_template_count}
 							</span>
 						</div>
@@ -463,7 +463,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3
-						class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
+						class="text-sm font-semibold text-foreground mb-3 flex items-center"
 					>
 						<Clock class="mr-2 h-4 w-4 text-orange-600 dark:text-orange-400" />
 						Weekly Activity
@@ -471,18 +471,18 @@
 
 					<div class="space-y-3">
 						<div class="flex items-center justify-between">
-							<span class="text-xs font-medium text-gray-700 dark:text-gray-300"
+							<span class="text-xs font-medium text-foreground"
 								>This Week</span
 							>
-							<span class="text-sm font-bold text-gray-900 dark:text-white">
+							<span class="text-sm font-bold text-foreground">
 								{analytics.generation_frequency.briefs_this_week}
 							</span>
 						</div>
 						<div class="flex items-center justify-between">
-							<span class="text-xs font-medium text-gray-700 dark:text-gray-300"
+							<span class="text-xs font-medium text-foreground"
 								>Daily Avg</span
 							>
-							<span class="text-sm font-bold text-gray-900 dark:text-white">
+							<span class="text-sm font-bold text-foreground">
 								{Math.round(
 									(analytics.generation_frequency.briefs_this_week / 7) * 10
 								) / 10}
@@ -495,7 +495,7 @@
 										class="flex-1 h-3 rounded-sm transition-colors {i <
 										analytics.generation_frequency.briefs_this_week
 											? 'bg-orange-500'
-											: 'bg-gray-200 dark:bg-gray-700'}"
+											: 'bg-muted'}"
 										title="Day {i + 1}"
 									></div>
 								{/each}
@@ -509,7 +509,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3
-						class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center"
+						class="text-sm font-semibold text-foreground mb-3 flex items-center"
 					>
 						<Award class="mr-2 h-4 w-4 text-yellow-600 dark:text-yellow-400" />
 						Achievements
@@ -520,7 +520,7 @@
 							{#each achievements as achievement}
 								{@const Icon = achievement.icon}
 								<div
-									class="flex items-center space-x-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded"
+									class="flex items-center space-x-2 p-2 bg-muted/50 rounded"
 								>
 									<div
 										class="w-6 h-6 bg-{achievement.color}-100 dark:bg-{achievement.color}-900/20 rounded-full flex items-center justify-center flex-shrink-0"
@@ -531,11 +531,11 @@
 									</div>
 									<div class="min-w-0">
 										<p
-											class="text-xs font-medium text-gray-900 dark:text-white"
+											class="text-xs font-medium text-foreground"
 										>
 											{achievement.title}
 										</p>
-										<p class="text-xs text-gray-600 dark:text-gray-400">
+										<p class="text-xs text-muted-foreground">
 											{achievement.description}
 										</p>
 									</div>
@@ -543,8 +543,8 @@
 							{/each}
 						{:else}
 							<div class="text-center py-3">
-								<Award class="h-6 w-6 text-gray-400 mx-auto mb-1" />
-								<p class="text-xs text-gray-500 dark:text-gray-400">
+								<Award class="h-6 w-6 text-muted-foreground mx-auto mb-1" />
+								<p class="text-xs text-muted-foreground">
 									Start generating briefs!
 								</p>
 							</div>
@@ -561,7 +561,7 @@
 				class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800/50"
 			>
 				<h3
-					class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center"
+					class="text-lg font-semibold text-foreground mb-4 flex items-center"
 				>
 					<TrendingUp class="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
 					Insights & Recommendations
@@ -570,7 +570,7 @@
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
 						<h4
-							class="font-medium text-gray-800 dark:text-gray-200 mb-2 flex items-center text-sm"
+							class="font-medium text-foreground mb-2 flex items-center text-sm"
 						>
 							<CheckCircle
 								class="w-4 h-4 mr-1.5 text-green-600 dark:text-green-400"
@@ -583,7 +583,7 @@
 									<div
 										class="w-1 h-1 bg-green-500 rounded-full mt-1.5 flex-shrink-0"
 									></div>
-									<span class="text-xs text-gray-700 dark:text-gray-300">
+									<span class="text-xs text-foreground">
 										{analytics.generation_frequency.streak_days}-day streak! 🔥
 									</span>
 								</li>
@@ -593,7 +593,7 @@
 									<div
 										class="w-1 h-1 bg-purple-500 rounded-full mt-1.5 flex-shrink-0"
 									></div>
-									<span class="text-xs text-gray-700 dark:text-gray-300">
+									<span class="text-xs text-foreground">
 										High action generation ({Math.round(
 											analytics.engagement_metrics.avg_priority_actions
 										)} per brief) 🎯
@@ -605,7 +605,7 @@
 									<div
 										class="w-1 h-1 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"
 									></div>
-									<span class="text-xs text-gray-700 dark:text-gray-300">
+									<span class="text-xs text-foreground">
 										Most active: {analytics.engagement_metrics
 											.most_active_projects[0].project_name} 🚀
 									</span>
@@ -616,7 +616,7 @@
 
 					<div>
 						<h4
-							class="font-medium text-gray-800 dark:text-gray-200 mb-2 flex items-center text-sm"
+							class="font-medium text-foreground mb-2 flex items-center text-sm"
 						>
 							<Target class="w-4 h-4 mr-1.5 text-blue-600 dark:text-blue-400" />
 							Suggestions
@@ -627,7 +627,7 @@
 									<div
 										class="w-1 h-1 bg-orange-500 rounded-full mt-1.5 flex-shrink-0"
 									></div>
-									<span class="text-xs text-gray-700 dark:text-gray-300">
+									<span class="text-xs text-foreground">
 										Try more consistent daily generation ⏰
 									</span>
 								</li>
@@ -637,7 +637,7 @@
 									<div
 										class="w-1 h-1 bg-indigo-500 rounded-full mt-1.5 flex-shrink-0"
 									></div>
-									<span class="text-xs text-gray-700 dark:text-gray-300">
+									<span class="text-xs text-foreground">
 										Create custom templates ✨
 									</span>
 								</li>
@@ -647,7 +647,7 @@
 									<div
 										class="w-1 h-1 bg-green-500 rounded-full mt-1.5 flex-shrink-0"
 									></div>
-									<span class="text-xs text-gray-700 dark:text-gray-300">
+									<span class="text-xs text-foreground">
 										Add more context for richer briefs 📝
 									</span>
 								</li>
@@ -661,11 +661,11 @@
 		<div class="text-center py-12">
 			<Card variant="default">
 				<CardBody padding="md" class="max-w-md mx-auto">
-					<BarChart3 class="h-12 w-12 text-gray-400 mx-auto mb-3" />
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<BarChart3 class="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+					<h3 class="text-lg font-semibold text-foreground mb-2">
 						No Analytics Data
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground">
 						Generate some daily briefs to see your analytics.
 					</p>
 				</CardBody>

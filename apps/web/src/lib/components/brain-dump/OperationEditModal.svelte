@@ -303,19 +303,19 @@
 <Modal {isOpen} {onClose} title="Edit Operation" size="lg">
 	{#snippet header()}
 		<!-- Compact Header -->
-		<div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+		<div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-3">
 					<Database class="w-5 h-5 text-primary-600 dark:text-primary-400" />
 					<div>
-						<h3 class="text-base font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-base font-semibold text-foreground">
 							Edit Operation
 						</h3>
 						<div
-							class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5"
+							class="flex items-center gap-2 text-xs text-muted-foreground mt-0.5"
 						>
 							<span
-								class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs"
+								class="px-1.5 py-0.5 bg-muted rounded text-xs"
 							>
 								{operation?.operation}
 							</span>
@@ -408,11 +408,11 @@
 				{#if fieldsToDisplay.length === 0}
 					<div class="text-center py-8">
 						<div
-							class="mx-auto w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-3"
+							class="mx-auto w-10 h-10 bg-muted rounded-full flex items-center justify-center mb-3"
 						>
-							<Database class="w-5 h-5 text-gray-400" />
+							<Database class="w-5 h-5 text-muted-foreground" />
 						</div>
-						<p class="text-gray-500 dark:text-gray-400 text-sm">
+						<p class="text-muted-foreground text-sm">
 							No data fields to display
 						</p>
 					</div>
@@ -427,7 +427,7 @@
 								<div>
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+										class="block text-xs font-medium text-foreground mb-1"
 									>
 										{config.label}
 										{#if config.required}
@@ -458,7 +458,7 @@
 								<fieldset>
 									<div class="flex items-center justify-between mb-1">
 										<legend
-											class="text-xs font-medium text-gray-700 dark:text-gray-300"
+											class="text-xs font-medium text-foreground"
 										>
 											{config.label}
 											{#if config.required}
@@ -470,7 +470,7 @@
 											onclick={() => toggleJsonView(field)}
 											variant="ghost"
 											size="sm"
-											class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 !p-1"
+											class="text-xs text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground !p-1"
 										>
 											{#if jsonViewMode[field]}
 												<span class="flex items-center space-x-1">
@@ -488,13 +488,13 @@
 									{#if jsonViewMode[field]}
 										<!-- Compact JSON Editor -->
 										<div
-											class="bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700"
+											class="bg-muted rounded-md border border-border"
 										>
 											<div
-												class="px-2 py-1.5 border-b border-gray-200 dark:border-gray-700"
+												class="px-2 py-1.5 border-b border-border"
 											>
 												<div
-													class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+													class="flex items-center gap-1 text-xs text-muted-foreground"
 												>
 													<Code class="w-3 h-3" />
 													<span>JSON</span>
@@ -513,7 +513,7 @@
 									{:else}
 										<!-- Compact Form View -->
 										<div
-											class="bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700 p-2 space-y-2"
+											class="bg-muted rounded-md border border-border p-2 space-y-2"
 										>
 											{#if editedData[field] && typeof editedData[field] === 'object'}
 												{#each Object.entries(editedData[field]) as [key, value], index}
@@ -579,7 +579,7 @@
 								<div>
 									<label
 										for={fieldId}
-										class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
+										class="block text-xs font-medium text-foreground mb-1"
 									>
 										{config.label}
 										{#if config.required}
@@ -639,18 +639,18 @@
 										/>
 									{:else if config.type === 'boolean'}
 										<div
-											class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-md border border-gray-200 dark:border-gray-700"
+											class="flex items-center gap-2 p-2 bg-muted rounded-md border border-border"
 										>
 											<input
 												id={fieldId}
 												type="checkbox"
 												checked={editedData[field] || false}
 												onchange={(e) => handleBooleanInput(field, e)}
-												class="h-3.5 w-3.5 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded dark:bg-gray-700"
+												class="h-3.5 w-3.5 text-primary-600 focus:ring-primary-500 border-border rounded"
 											/>
 											<label
 												for={fieldId}
-												class="text-xs text-gray-700 dark:text-gray-300 cursor-pointer"
+												class="text-xs text-foreground cursor-pointer"
 											>
 												{config.placeholder || `Enable ${config.label}`}
 											</label>
@@ -669,7 +669,7 @@
 												class="text-sm"
 											/>
 											<p
-												class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+												class="text-xs text-muted-foreground mt-1"
 											>
 												Separate tags with commas
 											</p>
@@ -694,7 +694,7 @@
 	{#snippet footer()}
 		<!-- Compact Footer -->
 		<div
-			class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700"
+			class="flex items-center justify-between px-4 py-3 bg-muted border-t border-border"
 		>
 			<Button onclick={onClose} variant="outline" size="sm" class="min-w-[80px]">
 				Cancel

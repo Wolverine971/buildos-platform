@@ -132,7 +132,7 @@
 			<div class="space-y-2">
 				<label
 					for="security-event-type-filter"
-					class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"
+					class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 				>
 					Event Type
 				</label>
@@ -153,7 +153,7 @@
 			<div class="space-y-2">
 				<label
 					for="security-status-filter"
-					class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"
+					class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 				>
 					Status
 				</label>
@@ -172,7 +172,7 @@
 			<div class="space-y-2">
 				<label
 					for="security-date-filter"
-					class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500"
+					class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 				>
 					Time Period
 				</label>
@@ -205,7 +205,7 @@
 	{/if}
 
 	{#if loading}
-		<AdminCard padding="md" class="flex items-center gap-3 text-sm text-slate-500">
+		<AdminCard padding="md" class="flex items-center gap-3 text-sm text-muted-foreground">
 			<RefreshCw class="h-4 w-4 animate-spin" />
 			<span>Loading security logs...</span>
 		</AdminCard>
@@ -213,9 +213,9 @@
 		<AdminCard padding="none" class="overflow-hidden">
 			<div class="overflow-x-auto">
 				<table class="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-800">
-					<thead class="bg-slate-50/80 dark:bg-slate-900/40">
+					<thead class="bg-slate-50/80/40">
 						<tr
-							class="text-left text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-slate-500"
+							class="text-left text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-muted-foreground"
 						>
 							<th class="px-5 py-3">Time</th>
 							<th class="px-5 py-3">User ID</th>
@@ -230,12 +230,12 @@
 						{#each securityLogs as log}
 							<tr class="hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
 								<td
-									class="whitespace-nowrap px-5 py-3 text-sm text-slate-600 dark:text-slate-300"
+									class="whitespace-nowrap px-5 py-3 text-sm text-muted-foreground"
 								>
 									{formatDate(log.created_at)}
 								</td>
 								<td
-									class="px-5 py-3 font-mono text-xs text-slate-500 dark:text-slate-400"
+									class="px-5 py-3 font-mono text-xs text-muted-foreground"
 								>
 									{log.user_id.slice(0, 8)}...
 								</td>
@@ -270,7 +270,7 @@
 											{/if}
 										</div>
 									{:else}
-										<span class="text-slate-400">—</span>
+										<span class="text-muted-foreground">—</span>
 									{/if}
 								</td>
 								<td class="px-5 py-3">
@@ -284,7 +284,7 @@
 											{log.llm_validation.confidence}
 										</Badge>
 									{:else}
-										<span class="text-slate-400">N/A</span>
+										<span class="text-muted-foreground">N/A</span>
 									{/if}
 								</td>
 								<td class="px-5 py-3 text-right">
@@ -303,7 +303,7 @@
 			</div>
 		</AdminCard>
 	{:else}
-		<AdminCard padding="lg" class="text-center text-sm text-slate-500">
+		<AdminCard padding="lg" class="text-center text-sm text-muted-foreground">
 			<p>No security logs found for the selected filters.</p>
 		</AdminCard>
 	{/if}
@@ -315,10 +315,10 @@
 			<div class="admin-panel w-full max-w-4xl overflow-y-auto p-6">
 				<div class="flex items-start justify-between gap-4">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
 							Log Detail
 						</p>
-						<h3 class="text-lg font-semibold text-slate-900 dark:text-white">
+						<h3 class="text-lg font-semibold text-foreground">
 							{formatEventType(selectedLog.event_type)}
 						</h3>
 					</div>
@@ -327,22 +327,22 @@
 
 				<div class="mt-6 space-y-5 text-sm">
 					<div
-						class="grid gap-4 rounded-lg bg-slate-100/60 p-4 dark:bg-slate-900/40 sm:grid-cols-2"
+						class="grid gap-4 rounded-lg bg-slate-100/60 p-4/40 sm:grid-cols-2"
 					>
 						<div>
-							<p class="text-xs uppercase text-slate-500">Time</p>
-							<p class="font-semibold text-slate-900 dark:text-white">
+							<p class="text-xs uppercase text-muted-foreground">Time</p>
+							<p class="font-semibold text-foreground">
 								{formatDate(selectedLog.created_at)}
 							</p>
 						</div>
 						<div>
-							<p class="text-xs uppercase text-slate-500">User ID</p>
-							<p class="font-mono text-xs text-slate-600 dark:text-slate-300">
+							<p class="text-xs uppercase text-muted-foreground">User ID</p>
+							<p class="font-mono text-xs text-muted-foreground">
 								{selectedLog.user_id}
 							</p>
 						</div>
 						<div>
-							<p class="text-xs uppercase text-slate-500">Status</p>
+							<p class="text-xs uppercase text-muted-foreground">Status</p>
 							<Badge
 								size="sm"
 								variant={selectedLog.was_blocked ? 'error' : 'success'}
@@ -352,7 +352,7 @@
 						</div>
 						{#if selectedLog.regex_patterns?.length}
 							<div>
-								<p class="text-xs uppercase text-slate-500">Patterns</p>
+								<p class="text-xs uppercase text-muted-foreground">Patterns</p>
 								<div class="mt-1 flex flex-wrap gap-1.5">
 									{#each selectedLog.regex_patterns as pattern}
 										<Badge
@@ -368,9 +368,9 @@
 					</div>
 
 					<div class="space-y-2">
-						<p class="text-xs uppercase text-slate-500">Flagged Content</p>
+						<p class="text-xs uppercase text-muted-foreground">Flagged Content</p>
 						<div
-							class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono dark:bg-slate-100/5"
+							class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono/5"
 						>
 							<pre class="whitespace-pre-wrap">{selectedLog.content}</pre>
 						</div>
@@ -378,9 +378,9 @@
 
 					{#if selectedLog.llm_validation}
 						<div class="space-y-2">
-							<p class="text-xs uppercase text-slate-500">LLM Validation</p>
+							<p class="text-xs uppercase text-muted-foreground">LLM Validation</p>
 							<div
-								class="space-y-2 rounded-lg bg-slate-100/60 p-4 dark:bg-slate-900/40"
+								class="space-y-2 rounded-lg bg-slate-100/60 p-4/40"
 							>
 								<div class="flex items-center gap-2">
 									<span class="font-medium">Is Malicious:</span>
@@ -407,7 +407,7 @@
 								<div>
 									<span class="font-medium">Reason:</span>
 									<p
-										class="mt-1 leading-relaxed text-slate-600 dark:text-slate-300"
+										class="mt-1 leading-relaxed text-muted-foreground"
 									>
 										{selectedLog.llm_validation.reason}
 									</p>
@@ -416,7 +416,7 @@
 									<div>
 										<span class="font-medium">Matched Patterns:</span>
 										<ul
-											class="mt-1 list-disc pl-5 text-slate-600 dark:text-slate-300"
+											class="mt-1 list-disc pl-5 text-muted-foreground"
 										>
 											{#each selectedLog.llm_validation.matchedPatterns as pattern}
 												<li>{pattern}</li>
@@ -430,9 +430,9 @@
 
 					{#if selectedLog.metadata}
 						<div class="space-y-2">
-							<p class="text-xs uppercase text-slate-500">Metadata</p>
+							<p class="text-xs uppercase text-muted-foreground">Metadata</p>
 							<div
-								class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono dark:bg-slate-100/5"
+								class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono/5"
 							>
 								<pre class="whitespace-pre-wrap">{JSON.stringify(
 										selectedLog.metadata,

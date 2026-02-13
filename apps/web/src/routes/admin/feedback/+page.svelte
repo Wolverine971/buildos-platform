@@ -161,7 +161,7 @@
 			reviewed: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
 			in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
 			resolved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-			closed: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+			closed: 'bg-muted text-foreground dark:text-muted-foreground'
 		};
 		return colors[status as keyof typeof colors] || colors.new;
 	}
@@ -182,9 +182,9 @@
 			feature: 'text-blue-600',
 			bug: 'text-red-600',
 			improvement: 'text-green-600',
-			general: 'text-gray-600'
+			general: 'text-muted-foreground'
 		};
-		return colors[category as keyof typeof colors] || 'text-gray-600';
+		return colors[category as keyof typeof colors] || 'text-muted-foreground';
 	}
 
 	function nextPage() {
@@ -217,7 +217,7 @@
 		backLabel="Dashboard"
 	>
 		<div slot="actions" class="flex items-center space-x-4">
-			<div class="text-sm text-gray-600 dark:text-gray-400">
+			<div class="text-sm text-muted-foreground">
 				{totalItems} total submissions
 			</div>
 			<Button
@@ -241,7 +241,7 @@
 				onclick={() => (showMobileFilters = !showMobileFilters)}
 				variant="ghost"
 				size="md"
-				class="w-full justify-between bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+				class="w-full justify-between bg-muted text-foreground"
 				icon={Filter}
 				iconPosition={'right'}
 			>
@@ -380,16 +380,16 @@
 	<div class="admin-panel overflow-hidden">
 		{#if isLoading}
 			<div class="p-6 sm:p-8 text-center">
-				<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-				<p class="text-gray-600 dark:text-gray-400">Loading feedback...</p>
+				<RefreshCw class="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+				<p class="text-muted-foreground">Loading feedback...</p>
 			</div>
 		{:else if feedback.length === 0}
 			<div class="p-6 sm:p-8 text-center">
-				<MessageSquare class="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+				<MessageSquare class="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
+				<h3 class="text-lg font-semibold text-foreground mb-2">
 					No Feedback Found
 				</h3>
-				<p class="text-gray-600 dark:text-gray-400">
+				<p class="text-muted-foreground">
 					{searchQuery
 						? 'Try adjusting your search criteria.'
 						: 'No feedback submissions yet.'}
@@ -399,13 +399,13 @@
 			<!-- Mobile Cards View -->
 			<div class="sm:hidden">
 				{#each feedback as item}
-					<div class="p-4 border-b border-gray-200 dark:border-gray-700">
+					<div class="p-4 border-b border-border">
 						<div class="flex items-start justify-between mb-2">
 							<div class="flex-1 min-w-0">
-								<p class="text-sm text-gray-900 dark:text-white line-clamp-2 mb-1">
+								<p class="text-sm text-foreground line-clamp-2 mb-1">
 									{item.feedback_text}
 								</p>
-								<p class="text-xs text-gray-500">
+								<p class="text-xs text-muted-foreground">
 									{item.user_email || 'Anonymous'}
 								</p>
 							</div>
@@ -463,7 +463,7 @@
 										<span>{item.rating}/5</span>
 									</div>
 								{/if}
-								<span class="text-gray-500">
+								<span class="text-muted-foreground">
 									{formatDate(item.created_at)}
 								</span>
 							</div>
@@ -501,53 +501,53 @@
 			<!-- Desktop Table View -->
 			<div class="hidden sm:block overflow-x-auto">
 				<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-					<thead class="bg-gray-50 dark:bg-gray-900">
+					<thead class="bg-muted">
 						<tr>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 							>
 								Feedback
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 							>
 								Category
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 							>
 								Rating
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 							>
 								Status
 							</th>
 							<th
-								class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 							>
 								Date
 							</th>
 							<th
-								class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 							>
 								Actions
 							</th>
 						</tr>
 					</thead>
 					<tbody
-						class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+						class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
 					>
 						{#each feedback as item}
-							<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+							<tr class="hover:bg-muted">
 								<td class="px-6 py-4">
 									<div class="max-w-xs">
 										<p
-											class="text-sm text-gray-900 dark:text-white line-clamp-2"
+											class="text-sm text-foreground line-clamp-2"
 										>
 											{item.feedback_text}
 										</p>
-										<p class="text-xs text-gray-500 mt-1">
+										<p class="text-xs text-muted-foreground mt-1">
 											{item.user_email || 'Anonymous'}
 										</p>
 									</div>
@@ -565,12 +565,12 @@
 									{#if item.rating}
 										<div class="flex items-center">
 											<Star class="h-4 w-4 text-yellow-500 mr-1" />
-											<span class="text-sm text-gray-900 dark:text-white">
+											<span class="text-sm text-foreground">
 												{item.rating}/5
 											</span>
 										</div>
 									{:else}
-										<span class="text-sm text-gray-500">No rating</span>
+										<span class="text-sm text-muted-foreground">No rating</span>
 									{/if}
 								</td>
 								<td class="px-6 py-4 whitespace-nowrap">
@@ -585,7 +585,7 @@
 									</div>
 								</td>
 								<td
-									class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+									class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
 								>
 									{formatDate(item.created_at)}
 								</td>
@@ -659,7 +659,7 @@
 			<!-- Pagination - Mobile Responsive -->
 			{#if totalPages > 1}
 				<div
-					class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700"
+					class="bg-card px-4 py-3 flex items-center justify-between border-t border-border"
 				>
 					<div class="flex-1 flex justify-between sm:hidden">
 						<Button
@@ -670,7 +670,7 @@
 						>
 							Previous
 						</Button>
-						<span class="flex items-center text-sm text-gray-700 dark:text-gray-300">
+						<span class="flex items-center text-sm text-foreground">
 							{currentPage} of {totalPages}
 						</span>
 						<Button
@@ -684,13 +684,13 @@
 					</div>
 					<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
 						<div>
-							<p class="text-sm text-gray-700 dark:text-gray-300">
+							<p class="text-sm text-foreground">
 								Showing page <span class="font-medium">{currentPage}</span> of
 								<span class="font-medium">{totalPages}</span>
 							</p>
 						</div>
 						<div>
-							<nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+							<nav class="relative z-0 inline-flex rounded-md shadow-ink -space-x-px">
 								<Button
 									onclick={prevPage}
 									disabled={currentPage === 1}
@@ -722,7 +722,7 @@
 		<div class="admin-panel-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 			<div class="p-4 sm:p-6">
 				<div class="flex items-center justify-between mb-4">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+					<h3 class="text-lg font-semibold text-foreground">
 						Feedback Details
 					</h3>
 					<Button
@@ -739,7 +739,7 @@
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
 							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Category
 							</div>
@@ -753,7 +753,7 @@
 						</div>
 						<div>
 							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Rating
 							</div>
@@ -763,15 +763,15 @@
 										<Star
 											class="h-4 w-4 {i < selectedFeedback.rating
 												? 'text-yellow-500'
-												: 'text-gray-300'}"
+												: 'text-muted-foreground'}"
 										/>
 									{/each}
-									<span class="ml-2 text-sm text-gray-600 dark:text-gray-400">
+									<span class="ml-2 text-sm text-muted-foreground">
 										({selectedFeedback.rating}/5)
 									</span>
 								</div>
 							{:else}
-								<span class="text-sm text-gray-500">No rating provided</span>
+								<span class="text-sm text-muted-foreground">No rating provided</span>
 							{/if}
 						</div>
 					</div>
@@ -779,11 +779,11 @@
 					<!-- User Info -->
 					<div>
 						<div
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							class="block text-sm font-medium text-foreground mb-1"
 						>
 							User
 						</div>
-						<p class="text-sm text-gray-900 dark:text-white">
+						<p class="text-sm text-foreground">
 							{selectedFeedback.user_email || 'Anonymous'}
 						</p>
 					</div>
@@ -791,12 +791,12 @@
 					<!-- Feedback Text -->
 					<div>
 						<div
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							class="block text-sm font-medium text-foreground mb-1"
 						>
 							Feedback
 						</div>
-						<div class="mt-1 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-							<p class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+						<div class="mt-1 p-3 bg-muted rounded-lg">
+							<p class="text-sm text-foreground whitespace-pre-wrap">
 								{selectedFeedback.feedback_text}
 							</p>
 						</div>
@@ -805,7 +805,7 @@
 					<!-- Status -->
 					<div>
 						<div
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							class="block text-sm font-medium text-foreground mb-1"
 						>
 							Current Status
 						</div>
@@ -822,22 +822,22 @@
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
 							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Created
 							</div>
-							<p class="text-sm text-gray-900 dark:text-white">
+							<p class="text-sm text-foreground">
 								{formatDate(selectedFeedback.created_at)}
 							</p>
 						</div>
 						{#if selectedFeedback.updated_at !== selectedFeedback.created_at}
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Updated
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{formatDate(selectedFeedback.updated_at)}
 								</p>
 							</div>
@@ -848,11 +848,11 @@
 					{#if selectedFeedback.user_agent || selectedFeedback.user_ip}
 						<div>
 							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Technical Info
 							</div>
-							<div class="text-xs text-gray-500 space-y-1">
+							<div class="text-xs text-muted-foreground space-y-1">
 								{#if selectedFeedback.user_agent}
 									<p class="break-all">
 										User Agent: {selectedFeedback.user_agent}

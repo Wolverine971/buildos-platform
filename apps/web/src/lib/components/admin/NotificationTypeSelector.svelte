@@ -122,7 +122,7 @@
 	<div>
 		<label
 			for="event-type"
-			class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+			class="block text-sm font-medium text-foreground mb-2"
 		>
 			Notification Event Type
 		</label>
@@ -130,8 +130,8 @@
 			id="event-type"
 			bind:value
 			onchange={handleChange}
-			class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-				   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+			class="w-full px-3 py-2 border border-border rounded-lg
+				   bg-card text-foreground
 				   focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 		>
 			<optgroup label="Admin Events" class="text-red-600 dark:text-red-400">
@@ -153,13 +153,13 @@
 
 	{#if selectedEvent}
 		<div
-			class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+			class="p-4 bg-muted rounded-lg border border-border"
 		>
 			<!-- Event Info -->
 			<div class="flex items-start justify-between mb-3">
 				<div class="flex-1">
 					<div class="flex items-center space-x-2 mb-1">
-						<h4 class="text-sm font-semibold text-gray-900 dark:text-white">
+						<h4 class="text-sm font-semibold text-foreground">
 							{selectedEvent.label}
 						</h4>
 						{#if selectedEvent.adminOnly}
@@ -178,7 +178,7 @@
 							</span>
 						{/if}
 					</div>
-					<p class="text-sm text-gray-600 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground">
 						{selectedEvent.description}
 					</p>
 				</div>
@@ -187,9 +187,9 @@
 			<!-- Event Type Details -->
 			<div class="space-y-2 text-xs">
 				<div class="flex items-center space-x-2">
-					<span class="text-gray-600 dark:text-gray-400">Event Type:</span>
+					<span class="text-muted-foreground">Event Type:</span>
 					<code
-						class="px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-900 dark:text-white"
+						class="px-2 py-0.5 bg-muted rounded text-foreground"
 					>
 						{selectedEvent.value}
 					</code>
@@ -198,8 +198,8 @@
 				<!-- User subscription status (if applicable for user events) -->
 				{#if !selectedEvent.adminOnly}
 					<div class="flex items-center space-x-2">
-						<Info class="w-4 h-4 text-gray-500" />
-						<span class="text-gray-600 dark:text-gray-400">
+						<Info class="w-4 h-4 text-muted-foreground" />
+						<span class="text-muted-foreground">
 							Selected user is
 							{#if userIsSubscribed}
 								<span class="text-green-600 dark:text-green-400 font-medium"

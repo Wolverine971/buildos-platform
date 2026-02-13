@@ -100,9 +100,9 @@
 	const channels: NotificationChannel[] = ['push', 'email', 'sms', 'in_app'];
 </script>
 
-<div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+<div class="bg-card rounded-lg border border-border p-4">
 	<div class="flex items-center justify-between mb-4">
-		<div class="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
+		<div class="flex items-center space-x-2 text-foreground">
 			<Filter class="w-4 h-4" />
 			<h3 class="text-sm font-medium">Filters</h3>
 		</div>
@@ -117,13 +117,13 @@
 			<div class="lg:col-span-2">
 				<label
 					for="log-filter-search"
-					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+					class="block text-sm font-medium text-foreground mb-1"
 				>
 					Search
 				</label>
 				<div class="relative">
 					<Search
-						class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+						class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
 					/>
 					<input
 						id="log-filter-search"
@@ -131,7 +131,7 @@
 						value={filters.search || ''}
 						oninput={(e) => updateFilter('search', e.currentTarget.value)}
 						placeholder="Search messages, namespaces..."
-						class="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+						class="w-full pl-10 pr-3 py-2 border border-border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
 					/>
 				</div>
 			</div>
@@ -142,7 +142,7 @@
 			<div>
 				<label
 					for="log-filter-event-type"
-					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+					class="block text-sm font-medium text-foreground mb-1"
 				>
 					Event Type
 				</label>
@@ -170,7 +170,7 @@
 			<div>
 				<label
 					for="log-filter-channel"
-					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+					class="block text-sm font-medium text-foreground mb-1"
 				>
 					Channel
 				</label>
@@ -194,7 +194,7 @@
 			<div>
 				<label
 					for="log-filter-status"
-					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+					class="block text-sm font-medium text-foreground mb-1"
 				>
 					Status
 				</label>
@@ -222,7 +222,7 @@
 			<div>
 				<label
 					for="log-filter-level"
-					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+					class="block text-sm font-medium text-foreground mb-1"
 				>
 					Log Level
 				</label>
@@ -246,7 +246,7 @@
 			<div>
 				<label
 					for="log-filter-namespace"
-					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+					class="block text-sm font-medium text-foreground mb-1"
 				>
 					Namespace
 				</label>
@@ -256,7 +256,7 @@
 					value={filters.namespace || ''}
 					oninput={(e) => updateFilter('namespace', e.currentTarget.value)}
 					placeholder="e.g. web:api:emit"
-					class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+					class="w-full px-3 py-2 border border-border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
 				/>
 			</div>
 		{/if}
@@ -266,20 +266,20 @@
 			<div>
 				<label
 					for="log-filter-from"
-					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+					class="block text-sm font-medium text-foreground mb-1"
 				>
 					From Date
 				</label>
 				<div class="relative">
 					<Calendar
-						class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+						class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
 					/>
 					<input
 						id="log-filter-from"
 						type="datetime-local"
 						value={filters.from || ''}
 						oninput={(e) => updateFilter('from', e.currentTarget.value)}
-						class="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+						class="w-full pl-10 pr-3 py-2 border border-border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
 					/>
 				</div>
 			</div>
@@ -287,20 +287,20 @@
 			<div>
 				<label
 					for="log-filter-to"
-					class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+					class="block text-sm font-medium text-foreground mb-1"
 				>
 					To Date
 				</label>
 				<div class="relative">
 					<Calendar
-						class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+						class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
 					/>
 					<input
 						id="log-filter-to"
 						type="datetime-local"
 						value={filters.to || ''}
 						oninput={(e) => updateFilter('to', e.currentTarget.value)}
-						class="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+						class="w-full pl-10 pr-3 py-2 border border-border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
 					/>
 				</div>
 			</div>

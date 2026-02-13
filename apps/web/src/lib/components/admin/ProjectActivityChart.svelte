@@ -46,15 +46,15 @@
 			<div class="flex justify-center space-x-6 mb-4">
 				<div class="flex items-center">
 					<div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
-					<span class="text-sm text-gray-600 dark:text-gray-400">Tasks</span>
+					<span class="text-sm text-muted-foreground">Tasks</span>
 				</div>
 				<div class="flex items-center">
 					<div class="w-4 h-4 bg-green-500 rounded mr-2"></div>
-					<span class="text-sm text-gray-600 dark:text-gray-400">Notes</span>
+					<span class="text-sm text-muted-foreground">Notes</span>
 				</div>
 				<div class="flex items-center">
 					<div class="w-4 h-4 bg-purple-500 rounded mr-2"></div>
-					<span class="text-sm text-gray-600 dark:text-gray-400">Completed</span>
+					<span class="text-sm text-muted-foreground">Completed</span>
 				</div>
 			</div>
 
@@ -184,13 +184,13 @@
 				<!-- Tooltip -->
 				{#if hoveredBar}
 					<div
-						class="absolute bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 pointer-events-none z-10"
+						class="absolute bg-card border border-border rounded-lg shadow-ink-strong p-3 pointer-events-none z-10"
 						style="top: 10px; left: 10px;"
 					>
-						<p class="font-medium text-gray-900 dark:text-white">
+						<p class="font-medium text-foreground">
 							{hoveredBar.project.fullName}
 						</p>
-						<p class="text-sm text-gray-600 dark:text-gray-400 capitalize">
+						<p class="text-sm text-muted-foreground capitalize">
 							Status: {hoveredBar.project.status}
 						</p>
 						<p class="text-sm font-medium capitalize">
@@ -206,19 +206,19 @@
 					<div class="text-lg font-bold text-blue-600">
 						{chartData.reduce((sum, p) => sum + p.tasks, 0)}
 					</div>
-					<div class="text-xs text-gray-600 dark:text-gray-400">Total Tasks</div>
+					<div class="text-xs text-muted-foreground">Total Tasks</div>
 				</div>
 				<div class="text-center">
 					<div class="text-lg font-bold text-green-600">
 						{chartData.reduce((sum, p) => sum + p.notes, 0)}
 					</div>
-					<div class="text-xs text-gray-600 dark:text-gray-400">Total Notes</div>
+					<div class="text-xs text-muted-foreground">Total Notes</div>
 				</div>
 				<div class="text-center">
 					<div class="text-lg font-bold text-purple-600">
 						{chartData.reduce((sum, p) => sum + p.completed_tasks, 0)}
 					</div>
-					<div class="text-xs text-gray-600 dark:text-gray-400">Completed</div>
+					<div class="text-xs text-muted-foreground">Completed</div>
 				</div>
 			</div>
 		</CardBody>
@@ -227,7 +227,7 @@
 	<Card variant="default">
 		<CardBody
 			padding="md"
-			class="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400"
+			class="flex flex-col items-center justify-center h-64 text-muted-foreground"
 		>
 			<svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path

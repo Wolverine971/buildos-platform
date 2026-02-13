@@ -95,9 +95,9 @@
 			case 'calendar':
 				return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
 			case 'utility':
-				return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+				return 'bg-muted text-foreground dark:text-muted-foreground';
 			default:
-				return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+				return 'bg-muted text-foreground dark:text-muted-foreground';
 		}
 	}
 </script>

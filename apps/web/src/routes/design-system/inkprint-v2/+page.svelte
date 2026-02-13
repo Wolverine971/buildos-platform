@@ -213,7 +213,7 @@
 				{#each semanticTextures as tex}
 					<div class="flex flex-col items-center gap-1">
 						<div
-							class="w-16 h-16 border border-border rounded overflow-hidden bg-white"
+							class="w-16 h-16 border border-border rounded overflow-hidden bg-card"
 						>
 							<img
 								src="/textures/{tex.file}"
@@ -232,7 +232,7 @@
 				{#each materialTextures as mat}
 					<div class="flex flex-col items-center gap-1">
 						<div
-							class="w-16 h-16 border border-border rounded overflow-hidden bg-white"
+							class="w-16 h-16 border border-border rounded overflow-hidden bg-card"
 						>
 							<img
 								src="/textures/{mat.file}"
@@ -434,7 +434,7 @@
 
 				<!-- Active Task: grain + paper -->
 				<div
-					class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+					class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-ink"
 				>
 					<div
 						class="absolute inset-0 pointer-events-none"
@@ -470,7 +470,7 @@
 
 				<!-- Urgent Deadline: pulse + card -->
 				<div
-					class="relative overflow-hidden rounded-lg border-[1.5px] border-border bg-card p-4 shadow-md"
+					class="relative overflow-hidden rounded-lg border-[1.5px] border-border bg-card p-4 shadow-ink"
 				>
 					<div
 						class="absolute inset-0 pointer-events-none"
@@ -540,7 +540,7 @@
 
 				<!-- Dependency: thread + paper -->
 				<div
-					class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+					class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-ink"
 				>
 					<div
 						class="absolute inset-0 pointer-events-none"
@@ -576,7 +576,7 @@
 
 				<!-- System Modal: frame + plate -->
 				<div
-					class="relative overflow-hidden rounded-md border-2 border-border bg-card p-4 shadow-lg"
+					class="relative overflow-hidden rounded-md border-2 border-border bg-card p-4 shadow-ink-strong"
 				>
 					<div
 						class="absolute inset-0 pointer-events-none"
@@ -685,7 +685,7 @@
 					</h3>
 
 					<div
-						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-ink"
 					>
 						<div
 							class="absolute inset-0 pointer-events-none"
@@ -706,7 +706,7 @@
 					</div>
 
 					<div
-						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-ink"
 					>
 						<div
 							class="absolute inset-0 pointer-events-none"
@@ -727,7 +727,7 @@
 					</div>
 
 					<div
-						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm"
+						class="relative overflow-hidden rounded-lg border border-border bg-card p-4 shadow-ink"
 					>
 						<div
 							class="absolute inset-0 pointer-events-none"

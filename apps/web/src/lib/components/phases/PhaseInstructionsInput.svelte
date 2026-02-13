@@ -232,14 +232,14 @@
 <div class="w-full">
 	<!-- Header -->
 	<div class="flex items-center justify-between mb-2">
-		<p class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+		<p class="flex items-center gap-2 text-sm font-medium text-foreground">
 			<MessageSquare class="w-4 h-4" />
 			Phase Scheduling Instructions
-			<span class="text-xs text-gray-500 dark:text-gray-400">(optional)</span>
+			<span class="text-xs text-muted-foreground">(optional)</span>
 		</p>
 
 		{#if instructions.length > 0}
-			<span class="text-xs text-gray-500 dark:text-gray-400">
+			<span class="text-xs text-muted-foreground">
 				{instructions.length} / {maxLength}
 			</span>
 		{/if}
@@ -253,7 +253,7 @@
 			{placeholder}
 			{disabled}
 			maxlength={maxLength}
-			class="w-full min-h-[100px] p-3 pr-14 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg outline-none resize-y text-gray-900 dark:text-gray-100 text-sm leading-relaxed placeholder:text-gray-500 dark:placeholder:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/50"
+			class="w-full min-h-[100px] p-3 pr-14 bg-card border border-border rounded-lg outline-none resize-y text-foreground text-sm leading-relaxed placeholder:text-muted-foreground dark:placeholder:text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/50"
 			spellcheck="true"
 		></textarea>
 
@@ -264,8 +264,8 @@
 					onclick={handleVoiceToggle}
 					disabled={voiceButtonState.disabled}
 					class="w-9 h-9 p-0 rounded-full flex items-center justify-center transition-all duration-200 {isCurrentlyRecording
-						? 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white scale-110 animate-recording-pulse shadow-lg'
-						: 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 hover:scale-105'} disabled:opacity-50 disabled:cursor-not-allowed"
+						? 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-white scale-110 animate-recording-pulse shadow-ink-strong'
+						: 'bg-muted hover:bg-muted text-foreground hover:scale-105'} disabled:opacity-50 disabled:cursor-not-allowed"
 					aria-label={voiceButtonState.tooltip}
 					title={voiceButtonState.tooltip}
 				>
@@ -293,7 +293,7 @@
 			<Circle class="w-3 h-3 fill-current animate-pulse" />
 			<span>Recording... {formatDuration(recordingDuration)}</span>
 			{#if isIOS() && !accumulatedTranscript}
-				<span class="text-xs text-gray-500 dark:text-gray-400">
+				<span class="text-xs text-muted-foreground">
 					• Will transcribe when stopped
 				</span>
 			{/if}
@@ -321,7 +321,7 @@
 	{/if}
 
 	<!-- Help Text -->
-	<div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+	<div class="mt-2 text-xs text-muted-foreground">
 		<p>Provide guidance for how phases should be organized, such as:</p>
 		<ul class="list-disc list-inside mt-1 space-y-0.5">
 			<li>Preferred phase duration or number of phases</li>

@@ -165,20 +165,20 @@
 				<!-- Tooltip -->
 				{#if hoveredPoint}
 					<div
-						class="absolute bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 pointer-events-none z-10"
+						class="absolute bg-card border border-border rounded-lg shadow-ink-strong p-3 pointer-events-none z-10"
 						style="top: {hoveredPoint.y - 80}px; left: {Math.min(
 							hoveredPoint.x - 50,
 							300
 						)}px;"
 					>
-						<p class="font-medium text-gray-900 dark:text-white">
+						<p class="font-medium text-foreground">
 							{hoveredPoint.point.month}
 						</p>
 						<p class="text-sm text-purple-600 font-medium">
 							{hoveredPoint.point.count} brain dumps
 						</p>
 						{#if hoveredPoint.point.dumps?.length}
-							<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+							<p class="text-xs text-muted-foreground mt-1">
 								Latest: {hoveredPoint.point.dumps[
 									hoveredPoint.point.dumps.length - 1
 								].title || 'Untitled'}
@@ -192,7 +192,7 @@
 			<div class="grid grid-cols-3 gap-4 mt-4">
 				<div class="text-center">
 					<div class="text-lg font-bold text-purple-600">{brainDumps.length}</div>
-					<div class="text-xs text-gray-600 dark:text-gray-400">Total Dumps</div>
+					<div class="text-xs text-muted-foreground">Total Dumps</div>
 				</div>
 				<div class="text-center">
 					<div class="text-lg font-bold text-purple-600">
@@ -200,20 +200,20 @@
 							? Math.round((brainDumps.length / processedData.length) * 10) / 10
 							: 0}
 					</div>
-					<div class="text-xs text-gray-600 dark:text-gray-400">Avg/Month</div>
+					<div class="text-xs text-muted-foreground">Avg/Month</div>
 				</div>
 				<div class="text-center">
 					<div class="text-lg font-bold text-purple-600">
 						{processedData?.length ? Math.max(...processedData.map((d) => d.count)) : 0}
 					</div>
-					<div class="text-xs text-gray-600 dark:text-gray-400">Peak Month</div>
+					<div class="text-xs text-muted-foreground">Peak Month</div>
 				</div>
 			</div>
 
 			<!-- Recent Brain Dumps -->
 			{#if brainDumps?.length}
 				<div class="mt-4">
-					<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+					<h4 class="text-sm font-medium text-foreground mb-2">
 						Recent Brain Dumps
 					</h4>
 					<div class="space-y-2 max-h-32 overflow-y-auto">
@@ -223,15 +223,15 @@
 							>
 								<div class="flex-1 min-w-0">
 									<p
-										class="text-sm font-medium text-gray-900 dark:text-white truncate"
+										class="text-sm font-medium text-foreground truncate"
 									>
 										{dump.title || 'Untitled'}
 									</p>
-									<p class="text-xs text-gray-600 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										{dump.status || 'pending'}
 									</p>
 								</div>
-								<span class="text-xs text-gray-500 ml-2">
+								<span class="text-xs text-muted-foreground ml-2">
 									{new Date(dump.created_at).toLocaleDateString()}
 								</span>
 							</div>
@@ -245,7 +245,7 @@
 	<Card variant="default">
 		<CardBody
 			padding="md"
-			class="flex flex-col items-center justify-center h-60 text-gray-500 dark:text-gray-400"
+			class="flex flex-col items-center justify-center h-60 text-muted-foreground"
 		>
 			<svg class="w-16 h-16 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path

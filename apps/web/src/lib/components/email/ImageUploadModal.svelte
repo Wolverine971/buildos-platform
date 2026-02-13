@@ -241,7 +241,7 @@
 			{/if}
 
 			<!-- Tabs -->
-			<div class="border-b border-gray-200 dark:border-gray-700">
+			<div class="border-b border-border">
 				<nav class="-mb-px flex space-x-6 sm:space-x-8">
 					<Button
 						onclick={() => (activeTab = 'upload')}
@@ -249,7 +249,7 @@
 						size="md"
 						class="border-b-2 font-medium {activeTab === 'upload'
 							? 'border-primary-500 text-primary-600 dark:text-primary-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						<Upload class="h-4 w-4 inline mr-2" />
 						Upload New
@@ -260,7 +260,7 @@
 						size="md"
 						class="border-b-2 font-medium {activeTab === 'gallery'
 							? 'border-primary-500 text-primary-600 dark:text-primary-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						<ImageIcon class="h-4 w-4 inline mr-2" />
 						Gallery ({images.length})
@@ -275,7 +275,7 @@
 					<div
 						class="border-2 border-dashed rounded-lg p-8 text-center {dragActive
 							? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-							: 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}"
+							: 'border-border hover:border-border'}"
 						role="button"
 						tabindex="0"
 						aria-label="Drag and drop image upload area"
@@ -297,10 +297,10 @@
 									<img
 										src={uploadPreview}
 										alt="Upload preview"
-										class="max-w-full max-h-48 rounded-lg shadow-md"
+										class="max-w-full max-h-48 rounded-lg shadow-ink"
 									/>
 								</div>
-								<div class="text-sm text-gray-600 dark:text-gray-400">
+								<div class="text-sm text-muted-foreground">
 									<p class="font-medium">{uploadedFile?.name}</p>
 									<p>{formatFileSize(uploadedFile?.size || 0)}</p>
 								</div>
@@ -331,18 +331,18 @@
 						{:else}
 							<!-- Upload Prompt -->
 							<div class="space-y-4">
-								<div class="mx-auto h-12 w-12 text-gray-400">
+								<div class="mx-auto h-12 w-12 text-muted-foreground">
 									<Upload class="h-12 w-12" />
 								</div>
 								<div>
-									<p class="text-lg font-medium text-gray-900 dark:text-white">
+									<p class="text-lg font-medium text-foreground">
 										Upload an image
 									</p>
-									<p class="text-sm text-gray-500 dark:text-gray-400">
+									<p class="text-sm text-muted-foreground">
 										Drag and drop or click to select
 									</p>
 								</div>
-								<div class="text-xs text-gray-500 dark:text-gray-400">
+								<div class="text-xs text-muted-foreground">
 									Supports: JPG, PNG, GIF, WebP (Max 10MB)
 								</div>
 								<Button
@@ -377,7 +377,7 @@
 						<!-- Search -->
 						<div class="relative flex-1 sm:max-w-sm">
 							<Search
-								class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10"
+								class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10"
 							/>
 							<TextInput
 								bind:value={searchQuery}
@@ -389,7 +389,7 @@
 
 						<!-- Filter -->
 						<div class="flex items-center space-x-2">
-							<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+							<div class="text-sm font-medium text-foreground">
 								Filter:
 							</div>
 							<Select
@@ -414,8 +414,8 @@
 						</div>
 					{:else if filteredImages.length === 0}
 						<div class="text-center py-8">
-							<ImageIcon class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-							<p class="text-gray-500 dark:text-gray-400">
+							<ImageIcon class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+							<p class="text-muted-foreground">
 								{searchQuery
 									? 'No images match your search'
 									: 'No images uploaded yet'}
@@ -427,10 +427,10 @@
 						>
 							{#each filteredImages as image}
 								<div
-									class="group relative border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+									class="group relative border border-border rounded-lg overflow-hidden hover:shadow-ink transition-shadow"
 								>
 									<!-- Image -->
-									<div class="aspect-square bg-gray-100 dark:bg-gray-800">
+									<div class="aspect-square bg-muted">
 										<img
 											src={image.url}
 											alt={image.original_filename}
@@ -467,13 +467,13 @@
 									</div>
 
 									<!-- Info -->
-									<div class="p-2 bg-white dark:bg-gray-700">
+									<div class="p-2 bg-card">
 										<p
-											class="text-xs font-medium text-gray-900 dark:text-white truncate"
+											class="text-xs font-medium text-foreground truncate"
 										>
 											{image.original_filename}
 										</p>
-										<p class="text-xs text-gray-500 dark:text-gray-400">
+										<p class="text-xs text-muted-foreground">
 											{formatFileSize(image.file_size)}
 										</p>
 										{#if image.storage_path.includes('shared')}
@@ -496,7 +496,7 @@
 	{/snippet}
 	{#snippet header()}
 		<div
-			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700"
+			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border"
 		>
 			<Button onclick={close} variant="outline" size="md" class="w-full sm:w-auto"
 				>Cancel</Button

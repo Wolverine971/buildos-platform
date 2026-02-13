@@ -48,7 +48,7 @@
 			sms: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
 			in_app: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
 		};
-		return colors[channel] || 'bg-gray-100 text-gray-800';
+		return colors[channel] || 'bg-muted text-foreground';
 	}
 </script>
 
@@ -71,7 +71,7 @@
 			{/each}
 		</div>
 	{:else if data.length === 0}
-		<div class="p-6 text-center text-gray-500">No failed deliveries</div>
+		<div class="p-6 text-center text-muted-foreground">No failed deliveries</div>
 	{:else}
 		<div class="overflow-x-auto">
 			<table class="min-w-full divide-y divide-red-200 dark:divide-red-800">
@@ -115,17 +115,17 @@
 					</tr>
 				</thead>
 				<tbody
-					class="bg-white dark:bg-gray-800 divide-y divide-red-200 dark:divide-red-800"
+					class="bg-card divide-y divide-red-200 dark:divide-red-800"
 				>
 					{#each data as delivery}
 						<tr class="hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 							>
 								{formatDate(delivery.created_at)}
 							</td>
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 							>
 								{delivery.event_type}
 							</td>
@@ -139,7 +139,7 @@
 								</span>
 							</td>
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 							>
 								{delivery.recipient_email}
 							</td>
@@ -154,7 +154,7 @@
 								</button>
 							</td>
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 							>
 								{delivery.attempts}/{delivery.max_attempts}
 							</td>
@@ -190,16 +190,16 @@
 		{@const delivery = selectedError}
 		<div class="p-6 space-y-4">
 			<!-- Delivery Information -->
-			<div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 space-y-3">
-				<h4 class="font-semibold text-gray-900 dark:text-white">Delivery Information</h4>
+			<div class="bg-muted/50 rounded-lg p-4 space-y-3">
+				<h4 class="font-semibold text-foreground">Delivery Information</h4>
 				<div class="grid grid-cols-2 gap-4 text-sm">
 					<div>
-						<span class="text-gray-500 dark:text-gray-400">Event Type:</span>
-						<span class="ml-2 text-gray-900 dark:text-white">{delivery.event_type}</span
+						<span class="text-muted-foreground">Event Type:</span>
+						<span class="ml-2 text-foreground">{delivery.event_type}</span
 						>
 					</div>
 					<div>
-						<span class="text-gray-500 dark:text-gray-400">Channel:</span>
+						<span class="text-muted-foreground">Channel:</span>
 						<span
 							class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getChannelBadgeColor(
 								delivery.channel
@@ -209,26 +209,26 @@
 						</span>
 					</div>
 					<div>
-						<span class="text-gray-500 dark:text-gray-400">Recipient:</span>
-						<span class="ml-2 text-gray-900 dark:text-white"
+						<span class="text-muted-foreground">Recipient:</span>
+						<span class="ml-2 text-foreground"
 							>{delivery.recipient_email}</span
 						>
 					</div>
 					<div>
-						<span class="text-gray-500 dark:text-gray-400">Time:</span>
-						<span class="ml-2 text-gray-900 dark:text-white"
+						<span class="text-muted-foreground">Time:</span>
+						<span class="ml-2 text-foreground"
 							>{formatDate(delivery.created_at)}</span
 						>
 					</div>
 					<div>
-						<span class="text-gray-500 dark:text-gray-400">Attempts:</span>
-						<span class="ml-2 text-gray-900 dark:text-white"
+						<span class="text-muted-foreground">Attempts:</span>
+						<span class="ml-2 text-foreground"
 							>{delivery.attempts}/{delivery.max_attempts}</span
 						>
 					</div>
 					<div>
-						<span class="text-gray-500 dark:text-gray-400">Delivery ID:</span>
-						<span class="ml-2 text-gray-900 dark:text-white font-mono text-xs"
+						<span class="text-muted-foreground">Delivery ID:</span>
+						<span class="ml-2 text-foreground font-mono text-xs"
 							>{delivery.delivery_id}</span
 						>
 					</div>
@@ -249,7 +249,7 @@
 
 			<!-- Action Buttons -->
 			<div
-				class="flex justify-end space-x-2 pt-4 border-t border-gray-200 dark:border-gray-700"
+				class="flex justify-end space-x-2 pt-4 border-t border-border"
 			>
 				{#if delivery.attempts < delivery.max_attempts}
 					<Button

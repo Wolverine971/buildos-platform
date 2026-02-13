@@ -58,60 +58,60 @@
 			case 'clicked':
 				return 'text-blue-600 dark:text-blue-400';
 			default:
-				return 'text-gray-600 dark:text-gray-400';
+				return 'text-muted-foreground';
 		}
 	}
 </script>
 
-<div class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+<div class="border border-border rounded-lg overflow-hidden">
 	<!-- Header -->
 	<button
 		type="button"
 		onclick={() => (expanded = !expanded)}
-		class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+		class="w-full px-4 py-3 bg-muted flex items-center justify-between hover:bg-muted transition-colors"
 	>
 		<div class="flex items-center space-x-2">
 			<Bell class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-			<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+			<h3 class="text-sm font-semibold text-foreground">
 				User Notification Context
 			</h3>
 		</div>
 		{#if expanded}
-			<ChevronUp class="w-5 h-5 text-gray-500" />
+			<ChevronUp class="w-5 h-5 text-muted-foreground" />
 		{:else}
-			<ChevronDown class="w-5 h-5 text-gray-500" />
+			<ChevronDown class="w-5 h-5 text-muted-foreground" />
 		{/if}
 	</button>
 
 	<!-- Content -->
 	{#if expanded}
-		<div class="p-4 space-y-4 bg-white dark:bg-gray-900">
+		<div class="p-4 space-y-4 bg-card">
 			<!-- Basic Info -->
 			<div>
-				<h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2">
+				<h4 class="text-xs font-semibold text-foreground uppercase mb-2">
 					Basic Information
 				</h4>
 				<div class="grid grid-cols-2 gap-2 text-sm">
 					<div>
-						<span class="text-gray-600 dark:text-gray-400">Name:</span>
-						<span class="ml-1 text-gray-900 dark:text-white"
+						<span class="text-muted-foreground">Name:</span>
+						<span class="ml-1 text-foreground"
 							>{context.basic.name || 'Not provided'}</span
 						>
 					</div>
 					<div>
-						<span class="text-gray-600 dark:text-gray-400">Email:</span>
-						<span class="ml-1 text-gray-900 dark:text-white">{context.basic.email}</span
+						<span class="text-muted-foreground">Email:</span>
+						<span class="ml-1 text-foreground">{context.basic.email}</span
 						>
 					</div>
 					<div>
-						<span class="text-gray-600 dark:text-gray-400">Member since:</span>
-						<span class="ml-1 text-gray-900 dark:text-white"
+						<span class="text-muted-foreground">Member since:</span>
+						<span class="ml-1 text-foreground"
 							>{formatDate(context.basic.created_at)}</span
 						>
 					</div>
 					<div>
-						<span class="text-gray-600 dark:text-gray-400">Last active:</span>
-						<span class="ml-1 text-gray-900 dark:text-white"
+						<span class="text-muted-foreground">Last active:</span>
+						<span class="ml-1 text-foreground"
 							>{formatDate(context.basic.last_visit)}</span
 						>
 					</div>
@@ -120,7 +120,7 @@
 
 			<!-- Channel Capabilities -->
 			<div>
-				<h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2">
+				<h4 class="text-xs font-semibold text-foreground uppercase mb-2">
 					Channel Availability
 				</h4>
 				<div class="grid grid-cols-2 gap-2">
@@ -130,20 +130,20 @@
 							{#if capability.available}
 								<CheckCircle class="w-4 h-4 text-green-500" />
 							{:else}
-								<XCircle class="w-4 h-4 text-gray-400" />
+								<XCircle class="w-4 h-4 text-muted-foreground" />
 							{/if}
 							<Icon
 								class="w-4 h-4 {capability.available
 									? 'text-blue-600'
-									: 'text-gray-400'}"
+									: 'text-muted-foreground'}"
 							/>
 							<div class="flex-1">
 								<div
-									class="text-sm font-medium text-gray-900 dark:text-white capitalize"
+									class="text-sm font-medium text-foreground capitalize"
 								>
 									{capability.channel}
 								</div>
-								<div class="text-xs text-gray-500 dark:text-gray-400">
+								<div class="text-xs text-muted-foreground">
 									{capability.details}
 								</div>
 							</div>
@@ -156,44 +156,44 @@
 			{#if context.preferences.length > 0}
 				<div>
 					<h4
-						class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2"
+						class="text-xs font-semibold text-foreground uppercase mb-2"
 					>
 						Notification Preferences ({context.preferences.length} event types)
 					</h4>
 					<div class="overflow-x-auto">
 						<table class="min-w-full text-xs">
-							<thead class="bg-gray-50 dark:bg-gray-800">
+							<thead class="bg-muted">
 								<tr>
 									<th
-										class="px-2 py-1 text-left font-medium text-gray-700 dark:text-gray-300"
+										class="px-2 py-1 text-left font-medium text-foreground"
 										>Event Type</th
 									>
 									<th
-										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										class="px-2 py-1 text-center font-medium text-foreground"
 										>Push</th
 									>
 									<th
-										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										class="px-2 py-1 text-center font-medium text-foreground"
 										>Email</th
 									>
 									<th
-										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										class="px-2 py-1 text-center font-medium text-foreground"
 										>SMS</th
 									>
 									<th
-										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										class="px-2 py-1 text-center font-medium text-foreground"
 										>In-App</th
 									>
 									<th
-										class="px-2 py-1 text-center font-medium text-gray-700 dark:text-gray-300"
+										class="px-2 py-1 text-center font-medium text-foreground"
 										>Subscribed</th
 									>
 								</tr>
 							</thead>
 							<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 								{#each context.preferences as pref}
-									<tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-										<td class="px-2 py-1 text-gray-900 dark:text-white"
+									<tr class="hover:bg-muted">
+										<td class="px-2 py-1 text-foreground"
 											>{pref.event_type}</td
 										>
 										<td class="px-2 py-1 text-center">
@@ -202,7 +202,7 @@
 													class="w-4 h-4 text-green-500 mx-auto"
 												/>
 											{:else}
-												<XCircle class="w-4 h-4 text-gray-400 mx-auto" />
+												<XCircle class="w-4 h-4 text-muted-foreground mx-auto" />
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
@@ -211,7 +211,7 @@
 													class="w-4 h-4 text-green-500 mx-auto"
 												/>
 											{:else}
-												<XCircle class="w-4 h-4 text-gray-400 mx-auto" />
+												<XCircle class="w-4 h-4 text-muted-foreground mx-auto" />
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
@@ -220,7 +220,7 @@
 													class="w-4 h-4 text-green-500 mx-auto"
 												/>
 											{:else}
-												<XCircle class="w-4 h-4 text-gray-400 mx-auto" />
+												<XCircle class="w-4 h-4 text-muted-foreground mx-auto" />
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
@@ -229,7 +229,7 @@
 													class="w-4 h-4 text-green-500 mx-auto"
 												/>
 											{:else}
-												<XCircle class="w-4 h-4 text-gray-400 mx-auto" />
+												<XCircle class="w-4 h-4 text-muted-foreground mx-auto" />
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
@@ -239,7 +239,7 @@
 													>Yes</span
 												>
 											{:else}
-												<span class="text-gray-500">No</span>
+												<span class="text-muted-foreground">No</span>
 											{/if}
 										</td>
 									</tr>
@@ -252,24 +252,24 @@
 
 			<!-- Activity Summary -->
 			<div>
-				<h4 class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2">
+				<h4 class="text-xs font-semibold text-foreground uppercase mb-2">
 					Activity Summary
 				</h4>
 				<div class="grid grid-cols-3 gap-2 text-sm">
 					<div>
-						<div class="text-gray-600 dark:text-gray-400">Projects</div>
+						<div class="text-muted-foreground">Projects</div>
 						<div class="text-lg font-semibold text-purple-600">
 							{context.activity.project_count}
 						</div>
 					</div>
 					<div>
-						<div class="text-gray-600 dark:text-gray-400">Brain Dumps</div>
+						<div class="text-muted-foreground">Brain Dumps</div>
 						<div class="text-lg font-semibold text-indigo-600">
 							{context.activity.brain_dump_count}
 						</div>
 					</div>
 					<div>
-						<div class="text-gray-600 dark:text-gray-400">Briefs</div>
+						<div class="text-muted-foreground">Briefs</div>
 						<div class="text-lg font-semibold text-blue-600">
 							{context.activity.brief_count}
 						</div>
@@ -281,7 +281,7 @@
 			{#if context.recent_notifications.length > 0}
 				<div>
 					<h4
-						class="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase mb-2"
+						class="text-xs font-semibold text-foreground uppercase mb-2"
 					>
 						Recent Notifications ({context.recent_notifications.length})
 					</h4>
@@ -289,20 +289,20 @@
 						{#each context.recent_notifications as notification}
 							{@const Icon = getChannelIcon(notification.channel)}
 							<div
-								class="flex items-center justify-between text-xs p-2 bg-gray-50 dark:bg-gray-800 rounded"
+								class="flex items-center justify-between text-xs p-2 bg-muted rounded"
 							>
 								<div class="flex items-center space-x-2 flex-1">
-									<Icon class="w-4 h-4 text-gray-500" />
-									<span class="text-gray-900 dark:text-white font-medium">
+									<Icon class="w-4 h-4 text-muted-foreground" />
+									<span class="text-foreground font-medium">
 										{notification.event_type}
 									</span>
-									<span class="text-gray-500">via {notification.channel}</span>
+									<span class="text-muted-foreground">via {notification.channel}</span>
 								</div>
 								<div class="flex items-center space-x-2">
 									<span class={getStatusColor(notification.status)}>
 										{notification.status}
 									</span>
-									<span class="text-gray-500">
+									<span class="text-muted-foreground">
 										{formatDate(notification.created_at)}
 									</span>
 								</div>
@@ -311,7 +311,7 @@
 					</div>
 				</div>
 			{:else}
-				<div class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+				<div class="text-sm text-muted-foreground text-center py-4">
 					No recent notifications
 				</div>
 			{/if}

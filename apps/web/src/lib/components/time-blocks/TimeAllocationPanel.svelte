@@ -149,9 +149,9 @@
 		</div>
 	{:else if !hasData}
 		<div
-			class="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center dark:border-gray-600 dark:bg-gray-800"
+			class="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted p-8 text-center"
 		>
-			<p class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+			<p class="text-sm font-semibold text-foreground">
 				No focus blocks scheduled in this range yet.
 			</p>
 			<p class="text-xs text-muted-foreground">

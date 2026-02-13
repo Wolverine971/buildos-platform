@@ -82,35 +82,35 @@
 		<!-- Header -->
 		<div class="flex items-center gap-2 mb-1">
 			<Sparkles class="w-4 h-4 text-purple-500 dark:text-purple-400" />
-			<h4 class="font-medium text-sm truncate text-gray-900 dark:text-white">
+			<h4 class="font-medium text-sm truncate text-foreground">
 				{notification.status === 'success' ? 'Synthesis Complete' : 'Project Synthesis'}
-				<span class="text-gray-400 dark:text-gray-500">—</span>
-				<span class="text-gray-700 dark:text-gray-300">{notification.data.projectName}</span
+				<span class="text-muted-foreground">—</span>
+				<span class="text-foreground">{notification.data.projectName}</span
 				>
 			</h4>
 		</div>
 
 		<!-- Processing state -->
 		{#if notification.status === 'processing'}
-			<p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+			<p class="text-xs text-muted-foreground mb-2">
 				{currentStepName} • Step {stepsProgress?.currentStep + 1} of {stepsProgress?.totalSteps}
 			</p>
 
 			<!-- Progress bar -->
-			<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mb-2">
+			<div class="w-full bg-muted rounded-full h-1.5 mb-2">
 				<div
 					class="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all duration-300"
 					style="width: {progressPercentage}%"
 				></div>
 			</div>
 
-			<p class="text-xs text-gray-500 dark:text-gray-400">
+			<p class="text-xs text-muted-foreground">
 				Modules: {moduleLabels}
 			</p>
 
 			<!-- Success state -->
 		{:else if notification.status === 'success' && result}
-			<p class="text-xs text-gray-600 dark:text-gray-400 mb-2">
+			<p class="text-xs text-muted-foreground mb-2">
 				Found {result.operationsCount} optimization{result.operationsCount === 1 ? '' : 's'}
 				across {notification.data.taskCount} tasks
 			</p>
@@ -146,7 +146,7 @@
 					<Lightbulb
 						class="w-3.5 h-3.5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5"
 					/>
-					<p class="text-xs text-gray-600 dark:text-gray-400 italic line-clamp-2">
+					<p class="text-xs text-muted-foreground italic line-clamp-2">
 						{result.insights.substring(0, 100)}{result.insights.length > 100
 							? '...'
 							: ''}

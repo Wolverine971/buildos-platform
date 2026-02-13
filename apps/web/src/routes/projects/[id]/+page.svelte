@@ -821,7 +821,7 @@
 			case 'plans':
 				return 'bg-indigo-500/10 text-indigo-500';
 			case 'tasks':
-				return 'bg-slate-500/10 text-slate-500';
+				return 'bg-slate-500/10 text-muted-foreground';
 			case 'risks':
 				return 'bg-red-500/10 text-red-500';
 			case 'events':

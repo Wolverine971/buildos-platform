@@ -143,7 +143,7 @@
 	}
 
 	.skeleton-avatar {
-		@apply w-10 h-10 rounded-full bg-white/30 flex-shrink-0;
+		@apply w-10 h-10 rounded-full bg-card/30 flex-shrink-0;
 	}
 
 	.skeleton-avatar-sm {
@@ -151,7 +151,7 @@
 	}
 
 	.dark .skeleton-avatar {
-		@apply bg-white/10;
+		@apply bg-card/10;
 	}
 
 	.skeleton-lines {
@@ -159,11 +159,11 @@
 	}
 
 	.skeleton-line {
-		@apply h-3 rounded-md bg-white/40;
+		@apply h-3 rounded-md bg-card/40;
 	}
 
 	.dark .skeleton-line {
-		@apply bg-white/20;
+		@apply bg-card/20;
 	}
 
 	.skeleton-line-xs {
@@ -191,7 +191,7 @@
 	}
 
 	.skeleton-button {
-		@apply h-8 w-20 rounded-md bg-white/30;
+		@apply h-8 w-20 rounded-md bg-card/30;
 	}
 
 	.skeleton-button-sm {
@@ -199,7 +199,7 @@
 	}
 
 	.dark .skeleton-button {
-		@apply bg-white/10;
+		@apply bg-card/10;
 	}
 
 	/* Text Skeleton */

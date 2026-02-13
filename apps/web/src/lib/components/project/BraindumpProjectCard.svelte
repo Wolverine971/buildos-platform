@@ -79,7 +79,7 @@
 				};
 			default:
 				return {
-					color: 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700',
+					color: 'text-muted-foreground bg-muted',
 					icon: Brain,
 					label: 'Draft'
 				};
@@ -91,10 +91,10 @@
 </script>
 
 <div
-	class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border-2
+	class="bg-card rounded-lg shadow-ink border-2
          border-purple-200 dark:border-purple-800
          hover:border-purple-300 dark:hover:border-purple-700
-         transition-all duration-200 cursor-pointer group hover:shadow-md"
+         transition-all duration-200 cursor-pointer group hover:shadow-ink"
 	onclick={onClick}
 	onkeydown={handleKeyDown}
 	role="button"
@@ -102,12 +102,12 @@
 	aria-label="Brain dump: {braindump.title || 'Untitled'}"
 >
 	<!-- Header: Title + Time + Actions -->
-	<div class="px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-200 dark:border-gray-700">
+	<div class="px-3 py-2 sm:px-4 sm:py-3 border-b border-border">
 		<div class="flex items-start justify-between gap-2">
 			<!-- Title -->
 			<div class="flex-1 min-w-0">
 				<h3
-					class="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100 truncate"
+					class="text-sm sm:text-base font-medium text-foreground truncate"
 				>
 					{braindump.title || 'Untitled Brain Dump'}
 				</h3>
@@ -116,7 +116,7 @@
 			<!-- Time + Actions -->
 			<div class="flex items-center gap-2 flex-shrink-0">
 				<!-- Creation date -->
-				<span class="text-xs text-gray-500 dark:text-gray-400">
+				<span class="text-xs text-muted-foreground">
 					{timeDisplay}
 				</span>
 
@@ -126,7 +126,7 @@
 					variant="ghost"
 					size="sm"
 					btnType="container"
-					class="p-1.5 min-h-0 min-w-0 text-gray-400 hover:text-red-600 dark:hover:text-red-400
+					class="p-1.5 min-h-0 min-w-0 text-muted-foreground hover:text-red-600 dark:hover:text-red-400
                          hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all duration-200
                          opacity-0 group-hover:opacity-100"
 					aria-label="Delete braindump"
@@ -142,7 +142,7 @@
 	<div class="px-3 py-2 sm:px-4 sm:py-3">
 		<!-- Content preview -->
 		<div class="mb-3">
-			<div class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+			<div class="text-sm text-muted-foreground line-clamp-2">
 				{truncateContent(braindump.content)}
 			</div>
 		</div>
@@ -154,7 +154,7 @@
 				{#if braindump.linked_tasks.length > 0}
 					<div class="flex flex-wrap items-center gap-1.5">
 						<div
-							class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400"
+							class="flex items-center gap-1 text-xs text-muted-foreground"
 						>
 							<CheckSquare class="w-3 h-3" />
 							<span class="font-medium">
@@ -181,7 +181,7 @@
 						{/each}
 
 						{#if braindump.linked_tasks.length > 3}
-							<span class="text-xs text-gray-500 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								+{braindump.linked_tasks.length - 3} more
 							</span>
 						{/if}
@@ -189,7 +189,7 @@
 				{/if}
 
 				{#if braindump.linked_notes.length > 0}
-					<div class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+					<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
 						<FileText class="w-3 h-3" />
 						<span>
 							{braindump.linked_notes.length} note{braindump.linked_notes.length > 1
@@ -200,7 +200,7 @@
 				{/if}
 
 				{#if braindump.linked_tasks.length === 0 && braindump.linked_notes.length === 0}
-					<div class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+					<div class="flex items-center gap-1 text-xs text-muted-foreground">
 						<Brain class="w-3 h-3" />
 						<span>No linked items</span>
 					</div>

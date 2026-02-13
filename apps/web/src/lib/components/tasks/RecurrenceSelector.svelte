@@ -75,7 +75,7 @@
 	<div>
 		<label
 			for="recurrence-pattern"
-			class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+			class="block text-sm font-medium text-foreground mb-1"
 		>
 			Repeats
 		</label>
@@ -92,10 +92,10 @@
 
 	<!-- End Options -->
 	<fieldset class="space-y-2">
-		<legend class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+		<legend class="block text-sm font-medium text-foreground mb-2">
 			Ends
 			{#if projectEndDate && endOption === 'never'}
-				<span class="text-xs text-gray-500 dark:text-gray-400 ml-2">
+				<span class="text-xs text-muted-foreground ml-2">
 					(Will use project end: {new Date(projectEndDate).toLocaleDateString('en-US', {
 						month: 'short',
 						day: 'numeric',
@@ -105,7 +105,7 @@
 			{/if}
 		</legend>
 		<label
-			class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+			class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-muted"
 		>
 			<input
 				type="radio"
@@ -113,14 +113,14 @@
 				value="never"
 				checked={endOption === 'never'}
 				onchange={() => (endOption = 'never')}
-				class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+				class="w-4 h-4 text-blue-600 border-border focus:ring-blue-500"
 			/>
-			<span class="text-sm text-gray-900 dark:text-gray-100">Never</span>
+			<span class="text-sm text-foreground">Never</span>
 		</label>
 
 		<div class="space-y-2">
 			<label
-				class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-gray-50 dark:hover:bg-gray-800"
+				class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-muted"
 			>
 				<input
 					type="radio"
@@ -128,9 +128,9 @@
 					value="date"
 					checked={endOption === 'date'}
 					onchange={() => (endOption = 'date')}
-					class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+					class="w-4 h-4 text-blue-600 border-border focus:ring-blue-500"
 				/>
-				<span class="text-sm text-gray-900 dark:text-gray-100">On date</span>
+				<span class="text-sm text-foreground">On date</span>
 			</label>
 
 			{#if endOption === 'date'}
@@ -153,25 +153,25 @@
 	<!-- Preview -->
 	{#if nextOccurrences.length > 0}
 		<div
-			class="mt-4 p-3 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
+			class="mt-4 p-3 bg-card rounded-md border border-border"
 		>
-			<h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+			<h4 class="text-sm font-medium text-foreground mb-2">
 				Next occurrences:
 			</h4>
-			<ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+			<ul class="text-sm text-muted-foreground space-y-1">
 				{#each nextOccurrences as date}
 					<li class="flex items-center space-x-2">
-						<Calendar class="w-3 h-3 text-gray-400 dark:text-gray-500" />
+						<Calendar class="w-3 h-3 text-muted-foreground" />
 						<span>{formatDate(date)}</span>
 					</li>
 				{/each}
 			</ul>
 			{#if !endDate}
-				<p class="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+				<p class="text-xs text-muted-foreground mt-2 italic">
 					Continues indefinitely
 				</p>
 			{:else}
-				<p class="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+				<p class="text-xs text-muted-foreground mt-2 italic">
 					Ends on {formatDate(new Date(endDate))}
 				</p>
 			{/if}

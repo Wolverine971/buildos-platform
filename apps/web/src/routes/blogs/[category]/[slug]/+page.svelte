@@ -202,10 +202,10 @@
 		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 			<div
 				class="prose prose-gray dark:prose-invert max-w-none
-				prose-headings:text-gray-900 prose-p:text-gray-700 prose-li:text-gray-700
-				prose-strong:text-gray-900 prose-a:text-blue-600 prose-blockquote:text-gray-700
-				dark:prose-headings:text-white dark:prose-p:text-gray-300 dark:prose-li:text-gray-300
-				dark:prose-strong:text-white dark:prose-a:text-blue-400 dark:prose-blockquote:text-gray-300
+				prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
+				prose-strong:text-foreground prose-a:text-blue-600 prose-blockquote:text-foreground
+				dark:prose-headings:text-white dark:prose-p:text-muted-foreground dark:prose-li:text-muted-foreground
+				dark:prose-strong:text-white dark:prose-a:text-blue-400 dark:prose-blockquote:text-muted-foreground
 				dark:prose-hr:border-gray-700"
 			>
 				{#if loading}

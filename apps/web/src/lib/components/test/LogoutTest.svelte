@@ -147,24 +147,24 @@
 	<h3 class="font-bold mb-4 text-lg">Logout Debug Panel</h3>
 
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-		<div class="bg-white dark:bg-gray-800 p-3 rounded">
+		<div class="bg-card p-3 rounded">
 			<p class="text-sm font-semibold">Page Data (Server)</p>
 			<p class="text-sm">{user?.email || 'Not logged in'}</p>
-			<p class="text-xs text-gray-500">{user?.id || 'No ID'}</p>
+			<p class="text-xs text-muted-foreground">{user?.id || 'No ID'}</p>
 		</div>
 
-		<div class="bg-white dark:bg-gray-800 p-3 rounded">
+		<div class="bg-card p-3 rounded">
 			<p class="text-sm font-semibold">Client Session</p>
 			<p class="text-sm">{clientSession?.user?.email || 'Not checked'}</p>
-			<p class="text-xs text-gray-500">{clientSession?.user?.id || 'No ID'}</p>
+			<p class="text-xs text-muted-foreground">{clientSession?.user?.id || 'No ID'}</p>
 		</div>
 
-		<div class="bg-white dark:bg-gray-800 p-3 rounded">
+		<div class="bg-card p-3 rounded">
 			<p class="text-sm font-semibold">Server API</p>
 			<p class="text-sm">
 				{serverAuthState?.authenticated ? 'Authenticated' : 'Not checked'}
 			</p>
-			<p class="text-xs text-gray-500">{serverAuthState?.userId || 'No ID'}</p>
+			<p class="text-xs text-muted-foreground">{serverAuthState?.userId || 'No ID'}</p>
 		</div>
 	</div>
 

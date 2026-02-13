@@ -239,14 +239,14 @@
 					{#if phaseActionsDropdownOpen}
 						<div
 							bind:this={phaseActionsDropdownElement}
-							class="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
+							class="absolute right-0 mt-2 w-56 bg-card rounded-lg shadow-ink-strong border border-border py-1 z-50"
 							role="menu"
 							aria-orientation="vertical"
 						>
 							<!-- Add/Generate Phase Section -->
 							<button
 								onclick={() => handleAction('addPhase')}
-								class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+								class="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2"
 								role="menuitem"
 							>
 								<Plus class="w-4 h-4" />
@@ -257,9 +257,9 @@
 								<button
 									onclick={() => handleAction('regeneratePhases')}
 									disabled={!canGenerate}
-									class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 {!canGenerate
-										? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-										: 'text-gray-700 dark:text-gray-300'}"
+									class="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2 {!canGenerate
+										? 'text-muted-foreground cursor-not-allowed'
+										: 'text-foreground'}"
 									role="menuitem"
 								>
 									<RefreshCw class="w-4 h-4 {generating ? 'animate-spin' : ''}" />
@@ -269,8 +269,8 @@
 								<button
 									onclick={() => handleAction('generatePhases')}
 									disabled={!canGenerate}
-									class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 {!canGenerate
-										? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+									class="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2 {!canGenerate
+										? 'text-muted-foreground cursor-not-allowed'
 										: 'text-blue-600 dark:text-blue-400 font-medium'}"
 									role="menuitem"
 								>
@@ -282,7 +282,7 @@
 							<!-- Divider if there are more actions -->
 							{#if hasBacklogTasks || (canSchedule && hasUnscheduledTasks) || hasTasksInPhases || hasOverdueTasks}
 								<div
-									class="border-t border-gray-200 dark:border-gray-700 my-1"
+									class="border-t border-border my-1"
 								></div>
 							{/if}
 
@@ -290,7 +290,7 @@
 							{#if hasBacklogTasks}
 								<button
 									onclick={handleAssignBacklogTasks}
-									class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+									class="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2"
 									role="menuitem"
 								>
 									<Inbox class="w-4 h-4" />
@@ -301,7 +301,7 @@
 							{#if canSchedule && hasUnscheduledTasks}
 								<button
 									onclick={handleScheduleAllPhases}
-									class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+									class="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2"
 									role="menuitem"
 								>
 									<Calendar class="w-4 h-4" />
@@ -358,13 +358,13 @@
 				{#if dropdownOpen}
 					<div
 						bind:this={dropdownElement}
-						class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
+						class="absolute right-0 mt-2 w-48 bg-card rounded-lg shadow-ink-strong border border-border py-1 z-50"
 						role="menu"
 						aria-orientation="vertical"
 					>
 						<Button
 							onclick={() => handleAction('addTask')}
-							class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+							class="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2"
 							role="menuitem"
 						>
 							<Plus class="w-4 h-4" />
@@ -373,7 +373,7 @@
 
 						<Button
 							onclick={() => handleAction('addPhase')}
-							class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+							class="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2"
 							role="menuitem"
 						>
 							<Plus class="w-4 h-4" />
@@ -381,12 +381,12 @@
 						</Button>
 
 						{#if hasBacklogTasks || hasTasksInPhases || hasOverdueTasks || (canSchedule && hasUnscheduledTasks)}
-							<div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+							<div class="border-t border-border my-1"></div>
 
 							{#if hasBacklogTasks}
 								<button
 									onclick={handleAssignBacklogTasks}
-									class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+									class="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2"
 									role="menuitem"
 								>
 									<Inbox class="w-4 h-4" />
@@ -397,7 +397,7 @@
 							{#if canSchedule && hasUnscheduledTasks}
 								<button
 									onclick={handleScheduleAllPhases}
-									class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+									class="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted flex items-center gap-2"
 									role="menuitem"
 								>
 									<Calendar class="w-4 h-4" />
@@ -434,15 +434,15 @@
 							{/if}
 						{/if}
 
-						<div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+						<div class="border-t border-border my-1"></div>
 
 						{#if hasPhases}
 							<button
 								onclick={() => handleAction('regeneratePhases')}
 								disabled={!canGenerate}
-								class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 {!canGenerate
-									? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-									: 'text-gray-700 dark:text-gray-300'}"
+								class="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2 {!canGenerate
+									? 'text-muted-foreground cursor-not-allowed'
+									: 'text-foreground'}"
 								role="menuitem"
 							>
 								<RefreshCw class="w-4 h-4" />
@@ -452,8 +452,8 @@
 							<button
 								onclick={() => handleAction('generatePhases')}
 								disabled={!canGenerate}
-								class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 {!canGenerate
-									? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+								class="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2 {!canGenerate
+									? 'text-muted-foreground cursor-not-allowed'
 									: 'text-blue-600 dark:text-blue-400 font-medium'}"
 								role="menuitem"
 							>
@@ -463,8 +463,8 @@
 						{/if}
 
 						{#if !calendarConnected && hasPhases}
-							<div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
-							<div class="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
+							<div class="border-t border-border my-1"></div>
+							<div class="px-4 py-2 text-xs text-muted-foreground">
 								Connect calendar to enable scheduling
 							</div>
 						{/if}

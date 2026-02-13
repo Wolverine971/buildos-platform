@@ -420,7 +420,7 @@
 		const colors = {
 			founder: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
 			early: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-			standard: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300'
+			standard: 'bg-muted text-foreground dark:text-muted-foreground'
 		};
 		return colors[tier as keyof typeof colors] || colors.standard;
 	}
@@ -511,7 +511,7 @@
 		backLabel="Dashboard"
 	>
 		<div slot="actions" class="flex items-center space-x-4">
-			<div class="text-sm text-gray-600 dark:text-gray-400">
+			<div class="text-sm text-muted-foreground">
 				{totalItems} total {activeTab === 'emails'
 					? 'emails'
 					: activeTab === 'dataview'
@@ -548,7 +548,7 @@
 	</AdminPageHeader>
 
 	<!-- Tabs - Mobile Responsive -->
-	<div class="border-b border-gray-200 dark:border-gray-700 mb-4">
+	<div class="border-b border-border mb-4">
 		<nav class="-mb-px flex overflow-x-auto">
 			<Button
 				onclick={() => (activeTab = 'signups')}
@@ -557,7 +557,7 @@
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
 				'signups'
 					? 'border-blue-500 text-blue-600'
-					: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={UserPlus}
 			>
 				<span class="hidden xs:inline">Signups</span>
@@ -569,7 +569,7 @@
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
 				'dataview'
 					? 'border-blue-500 text-blue-600'
-					: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={Table}
 			>
 				<span class="hidden xs:inline">Data View</span>
@@ -581,7 +581,7 @@
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
 				'members'
 					? 'border-blue-500 text-blue-600'
-					: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={Users}
 			>
 				<span class="hidden xs:inline">Members</span>
@@ -593,7 +593,7 @@
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
 				'emails'
 					? 'border-blue-500 text-blue-600'
-					: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}"
+					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={Mail}
 			>
 				<span class="hidden xs:inline">Emails</span>
@@ -612,15 +612,15 @@
 		<!-- Filters for Data View -->
 		<div class="admin-panel p-4 sm:p-6">
 			<div class="flex items-center justify-between mb-4">
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+				<h3 class="text-lg font-semibold text-foreground">
 					Comprehensive Signup Data
 				</h3>
 				<div class="flex items-center space-x-2">
-					<div class="flex items-center text-sm text-gray-600 dark:text-gray-400">
+					<div class="flex items-center text-sm text-muted-foreground">
 						<input
 							type="checkbox"
 							bind:checked={dataViewFilters.showAllColumns}
-							class="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+							class="mr-2 rounded border-border text-blue-600 focus:ring-blue-500"
 						/>
 						Show all columns
 					</div>
@@ -685,16 +685,16 @@
 		<div class="admin-panel overflow-hidden">
 			{#if isLoading}
 				<div class="p-6 sm:p-8 text-center">
-					<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-					<p class="text-gray-600 dark:text-gray-400">Loading signup data...</p>
+					<RefreshCw class="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+					<p class="text-muted-foreground">Loading signup data...</p>
 				</div>
 			{:else if signups.length === 0}
 				<div class="p-6 sm:p-8 text-center">
-					<Table class="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<Table class="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
+					<h3 class="text-lg font-semibold text-foreground mb-2">
 						No Signup Data Found
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-muted-foreground">
 						{searchQuery
 							? 'Try adjusting your search criteria.'
 							: 'No beta signups yet.'}
@@ -704,18 +704,18 @@
 				<!-- Responsive Data Table with Clickable Headers -->
 				<div class="overflow-x-auto">
 					<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-						<thead class="bg-gray-50 dark:bg-gray-900">
+						<thead class="bg-muted">
 							<tr>
 								<!-- Contact Info - Sticky Column (Non-sortable for UX) -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-900 z-10"
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider sticky left-0 bg-muted z-10"
 								>
 									Contact Info
 								</th>
 
 								<!-- Sortable Status Header -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 									onclick={() => handleSort('signup_status')}
 									title="Click to sort by status"
 								>
@@ -729,7 +729,7 @@
 											{/if}
 										{:else}
 											<span
-												class="h-4 w-4 flex items-center justify-center text-gray-300"
+												class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 											>
 												<svg
 													class="h-3 w-3"
@@ -746,7 +746,7 @@
 
 								<!-- Sortable Referral Source Header -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 									onclick={() => handleSort('referral_source')}
 									title="Click to sort by referral source"
 								>
@@ -760,7 +760,7 @@
 											{/if}
 										{:else}
 											<span
-												class="h-4 w-4 flex items-center justify-center text-gray-300"
+												class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 											>
 												<svg
 													class="h-3 w-3"
@@ -777,21 +777,21 @@
 
 								<!-- Why Interested (Non-sortable due to text length) -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Why Interested
 								</th>
 
 								<!-- Biggest Challenge (Non-sortable due to text length) -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Biggest Challenge
 								</th>
 
 								<!-- Tools Used (Non-sortable due to array type) -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Tools Used
 								</th>
@@ -799,7 +799,7 @@
 								{#if dataViewFilters.showAllColumns}
 									<!-- Sortable Job Title -->
 									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleSort('job_title')}
 										title="Click to sort by job title"
 									>
@@ -813,7 +813,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -830,7 +830,7 @@
 
 									<!-- Sortable Company -->
 									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleSort('company_name')}
 										title="Click to sort by company"
 									>
@@ -844,7 +844,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -861,14 +861,14 @@
 
 									<!-- Preferences (Non-sortable) -->
 									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 									>
 										Preferences
 									</th>
 
 									<!-- Sortable Timezone -->
 									<th
-										class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleSort('user_timezone')}
 										title="Click to sort by timezone"
 									>
@@ -882,7 +882,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -900,7 +900,7 @@
 
 								<!-- Sortable Applied Date -->
 								<th
-									class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+									class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 									onclick={() => handleSort('created_at')}
 									title="Click to sort by application date"
 								>
@@ -914,7 +914,7 @@
 											{/if}
 										{:else}
 											<span
-												class="h-4 w-4 flex items-center justify-center text-gray-300"
+												class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 											>
 												<svg
 													class="h-3 w-3"
@@ -931,26 +931,26 @@
 
 								<!-- Actions (Non-sortable) -->
 								<th
-									class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Actions
 								</th>
 							</tr>
 						</thead>
 						<tbody
-							class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+							class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
 						>
 							{#each signups as signup}
-								<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+								<tr class="hover:bg-muted">
 									<!-- Contact Info - Sticky Column -->
 									<td
-										class="px-4 py-4 text-sm sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700"
+										class="px-4 py-4 text-sm sticky left-0 bg-card z-10 border-r border-border"
 									>
 										<div class="min-w-48">
-											<div class="font-medium text-gray-900 dark:text-white">
+											<div class="font-medium text-foreground">
 												{signup.full_name}
 											</div>
-											<div class="text-gray-500 dark:text-gray-400 break-all">
+											<div class="text-muted-foreground break-all">
 												{signup.email}
 											</div>
 										</div>
@@ -968,7 +968,7 @@
 									</td>
 
 									<!-- Referral Source -->
-									<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+									<td class="px-4 py-4 text-sm text-foreground">
 										<div class="max-w-32">
 											{#if signup.referral_source}
 												<span
@@ -978,7 +978,7 @@
 												</span>
 											{:else}
 												<span
-													class="text-gray-500 dark:text-gray-400 text-xs"
+													class="text-muted-foreground text-xs"
 													>Not specified</span
 												>
 											{/if}
@@ -986,12 +986,12 @@
 									</td>
 
 									<!-- Why Interested -->
-									<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+									<td class="px-4 py-4 text-sm text-foreground">
 										<div class="max-w-md">
 											{#if signup.why_interested && signup.why_interested.length > 100}
 												<button
 													type="button"
-													class="text-sm leading-relaxed cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded text-left w-full"
+													class="text-sm leading-relaxed cursor-pointer hover:bg-muted p-2 rounded text-left w-full"
 													title={signup.why_interested}
 													aria-label="Click to view full text"
 													onclick={() => {
@@ -1015,12 +1015,12 @@
 									</td>
 
 									<!-- Biggest Challenge -->
-									<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+									<td class="px-4 py-4 text-sm text-foreground">
 										<div class="max-w-md">
 											{#if signup.biggest_challenge && signup.biggest_challenge.length > 100}
 												<button
 													type="button"
-													class="text-sm leading-relaxed cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded text-left w-full"
+													class="text-sm leading-relaxed cursor-pointer hover:bg-muted p-2 rounded text-left w-full"
 													title={signup.biggest_challenge}
 													aria-label="Click to view full text"
 													onclick={() => {
@@ -1054,21 +1054,21 @@
 												<div class="flex flex-wrap gap-1">
 													{#each signup.productivity_tools.slice(0, 3) as tool}
 														<span
-															class="inline-flex px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded dark:bg-gray-700 dark:text-gray-300"
+															class="inline-flex px-2 py-1 text-xs bg-muted text-foreground rounded dark:text-muted-foreground"
 														>
 															{tool}
 														</span>
 													{/each}
 													{#if signup.productivity_tools.length > 3}
 														<span
-															class="inline-flex px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded dark:bg-gray-600 dark:text-gray-400"
+															class="inline-flex px-2 py-1 text-xs bg-muted text-muted-foreground rounded dark:text-muted-foreground"
 														>
 															+{signup.productivity_tools.length - 3} more
 														</span>
 													{/if}
 												</div>
 											{:else}
-												<span class="text-gray-500 dark:text-gray-400"
+												<span class="text-muted-foreground"
 													>None specified</span
 												>
 											{/if}
@@ -1077,12 +1077,12 @@
 
 									{#if dataViewFilters.showAllColumns}
 										<!-- Job Title -->
-										<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+										<td class="px-4 py-4 text-sm text-foreground">
 											{signup.job_title || 'Not provided'}
 										</td>
 
 										<!-- Company -->
-										<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+										<td class="px-4 py-4 text-sm text-foreground">
 											{signup.company_name || 'Not provided'}
 										</td>
 
@@ -1105,7 +1105,7 @@
 												{/if}
 												{#if !signup.wants_weekly_calls && !signup.wants_community_access}
 													<div
-														class="text-gray-500 dark:text-gray-400 text-xs"
+														class="text-muted-foreground text-xs"
 													>
 														No preferences
 													</div>
@@ -1114,14 +1114,14 @@
 										</td>
 
 										<!-- Timezone -->
-										<td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+										<td class="px-4 py-4 text-sm text-foreground">
 											{signup.user_timezone || 'Not provided'}
 										</td>
 									{/if}
 
 									<!-- Applied Date -->
 									<td
-										class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+										class="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground"
 									>
 										{formatDate(signup.created_at)}
 									</td>
@@ -1140,7 +1140,7 @@
 												variant="ghost"
 												size="sm"
 												icon={Eye}
-												class="p-2 text-gray-400 hover:text-blue-600"
+												class="p-2 text-muted-foreground hover:text-blue-600"
 												title="View full details"
 											></Button>
 
@@ -1155,7 +1155,7 @@
 												variant="ghost"
 												size="sm"
 												icon={Mail}
-												class="p-2 text-gray-400 hover:text-indigo-600"
+												class="p-2 text-muted-foreground hover:text-indigo-600"
 												title="Send email"
 											></Button>
 
@@ -1172,7 +1172,7 @@
 													variant="ghost"
 													size="sm"
 													icon={CheckCircle}
-													class="p-2 text-gray-400 hover:text-green-600"
+													class="p-2 text-muted-foreground hover:text-green-600"
 													title="Approve and create member"
 												></Button>
 												<Button
@@ -1182,7 +1182,7 @@
 													variant="ghost"
 													size="sm"
 													icon={XCircle}
-													class="p-2 text-gray-400 hover:text-red-600"
+													class="p-2 text-muted-foreground hover:text-red-600"
 													title="Decline"
 												></Button>
 											{/if}
@@ -1197,7 +1197,7 @@
 				<!-- Pagination for Data View -->
 				{#if totalPages > 1}
 					<div
-						class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700"
+						class="bg-card px-4 py-3 flex items-center justify-between border-t border-border"
 					>
 						<div class="flex-1 flex justify-between sm:hidden">
 							<Button
@@ -1209,7 +1209,7 @@
 								Previous
 							</Button>
 							<span
-								class="flex items-center text-sm text-gray-700 dark:text-gray-300"
+								class="flex items-center text-sm text-foreground"
 							>
 								{currentPage} of {totalPages}
 							</span>
@@ -1224,7 +1224,7 @@
 						</div>
 						<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
 							<div>
-								<p class="text-sm text-gray-700 dark:text-gray-300">
+								<p class="text-sm text-foreground">
 									Showing page <span class="font-medium">{currentPage}</span>
 									of <span class="font-medium">{totalPages}</span>
 									({totalItems} total signups)
@@ -1232,7 +1232,7 @@
 							</div>
 							<div>
 								<nav
-									class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+									class="relative z-0 inline-flex rounded-md shadow-ink -space-x-px"
 								>
 									<Button
 										onclick={prevPage}
@@ -1293,7 +1293,7 @@
 					<!-- Signup Status Filter -->
 					<div>
 						<div
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							class="block text-sm font-medium text-foreground mb-1"
 						>
 							Status
 						</div>
@@ -1313,7 +1313,7 @@
 					<!-- Sort -->
 					<div>
 						<div
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							class="block text-sm font-medium text-foreground mb-1"
 						>
 							Sort By
 						</div>
@@ -1331,7 +1331,7 @@
 					<!-- Member Tier Filter -->
 					<div>
 						<div
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							class="block text-sm font-medium text-foreground mb-1"
 						>
 							Tier
 						</div>
@@ -1353,9 +1353,9 @@
 							<input
 								type="checkbox"
 								bind:checked={memberFilters.activeOnly}
-								class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								class="rounded border-border text-blue-600 focus:ring-blue-500"
 							/>
-							<span class="text-sm text-gray-700 dark:text-gray-300">Active Only</span
+							<span class="text-sm text-foreground">Active Only</span
 							>
 						</div>
 					</div>
@@ -1423,9 +1423,9 @@
 							<input
 								type="checkbox"
 								bind:checked={memberFilters.activeOnly}
-								class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								class="rounded border-border text-blue-600 focus:ring-blue-500"
 							/>
-							<span class="text-sm text-gray-600 dark:text-gray-400">Active Only</span
+							<span class="text-sm text-muted-foreground">Active Only</span
 							>
 						</div>
 					</div>
@@ -1445,16 +1445,16 @@
 		<div class="admin-panel overflow-hidden">
 			{#if isLoading}
 				<div class="p-6 sm:p-8 text-center">
-					<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-					<p class="text-gray-600 dark:text-gray-400">Loading {activeTab}...</p>
+					<RefreshCw class="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+					<p class="text-muted-foreground">Loading {activeTab}...</p>
 				</div>
 			{:else if (activeTab === 'signups' && signups.length === 0) || (activeTab === 'members' && members.length === 0)}
 				<div class="p-6 sm:p-8 text-center">
-					<UserCheck class="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<UserCheck class="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
+					<h3 class="text-lg font-semibold text-foreground mb-2">
 						No {activeTab === 'signups' ? 'Signups' : 'Members'} Found
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400">
+					<p class="text-muted-foreground">
 						{searchQuery
 							? 'Try adjusting your search criteria.'
 							: activeTab === 'signups'
@@ -1467,7 +1467,7 @@
 				<div class="sm:hidden">
 					{#if activeTab === 'signups'}
 						{#each signups as signup}
-							<div class="p-4 border-b border-gray-200 dark:border-gray-700">
+							<div class="p-4 border-b border-border">
 								<div class="flex items-start justify-between mb-2">
 									<div class="flex items-center flex-1 min-w-0">
 										<div class="flex-shrink-0 h-8 w-8">
@@ -1483,12 +1483,12 @@
 										</div>
 										<div class="ml-3 flex-1 min-w-0">
 											<p
-												class="text-sm font-medium text-gray-900 dark:text-white truncate"
+												class="text-sm font-medium text-foreground truncate"
 											>
 												{signup.full_name}
 											</p>
 											<p
-												class="text-xs text-gray-500 dark:text-gray-400 truncate"
+												class="text-xs text-muted-foreground truncate"
 											>
 												{signup.email}
 											</p>
@@ -1502,7 +1502,7 @@
 										variant="ghost"
 										size="sm"
 										icon={Eye}
-										class="ml-2 p-2 text-gray-400 hover:text-blue-600"
+										class="ml-2 p-2 text-muted-foreground hover:text-blue-600"
 										title="View details"
 									></Button>
 								</div>
@@ -1515,13 +1515,13 @@
 									>
 										{signup.signup_status}
 									</span>
-									<span class="text-gray-500">
+									<span class="text-muted-foreground">
 										{formatDate(signup.created_at)}
 									</span>
 								</div>
 
 								{#if signup.company_name}
-									<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+									<p class="text-xs text-muted-foreground mb-3">
 										{signup.company_name}
 									</p>
 								{/if}
@@ -1556,7 +1556,7 @@
 						{/each}
 					{:else}
 						{#each members as member}
-							<div class="p-4 border-b border-gray-200 dark:border-gray-700">
+							<div class="p-4 border-b border-border">
 								<div class="flex items-start justify-between mb-2">
 									<div class="flex items-center flex-1 min-w-0">
 										<div class="flex-shrink-0 h-8 w-8">
@@ -1573,7 +1573,7 @@
 										<div class="ml-3 flex-1 min-w-0">
 											<div class="flex items-center">
 												<p
-													class="text-sm font-medium text-gray-900 dark:text-white truncate"
+													class="text-sm font-medium text-foreground truncate"
 												>
 													{member.full_name}
 												</p>
@@ -1584,7 +1584,7 @@
 												{/if}
 											</div>
 											<p
-												class="text-xs text-gray-500 dark:text-gray-400 truncate"
+												class="text-xs text-muted-foreground truncate"
 											>
 												{member.email}
 											</p>
@@ -1599,7 +1599,7 @@
 										size="sm"
 										icon={Eye}
 										iconPosition="left"
-										class="ml-2 p-2 text-gray-400 hover:text-blue-600"
+										class="ml-2 p-2 text-muted-foreground hover:text-blue-600"
 										title="View details"
 									/>
 								</div>
@@ -1612,13 +1612,13 @@
 									>
 										{member.beta_tier}
 									</span>
-									<span class="text-gray-500">
+									<span class="text-muted-foreground">
 										{formatDate(member.joined_at)}
 									</span>
 								</div>
 
 								{#if member.company_name}
-									<p class="text-xs text-gray-600 dark:text-gray-400 mb-3">
+									<p class="text-xs text-muted-foreground mb-3">
 										{member.company_name}
 									</p>
 								{/if}
@@ -1649,12 +1649,12 @@
 				<!-- Desktop Table View -->
 				<div class="hidden sm:block overflow-x-auto">
 					<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-						<thead class="bg-gray-50 dark:bg-gray-900">
+						<thead class="bg-muted">
 							<tr>
 								{#if activeTab === 'signups'}
 									<!-- Signups table headers -->
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleSignupSort('full_name')}
 										title="Click to sort by name"
 									>
@@ -1668,7 +1668,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -1683,7 +1683,7 @@
 										</div>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleSignupSort('company_name')}
 										title="Click to sort by company"
 									>
@@ -1697,7 +1697,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -1712,7 +1712,7 @@
 										</div>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleSignupSort('signup_status')}
 										title="Click to sort by status"
 									>
@@ -1726,7 +1726,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -1741,7 +1741,7 @@
 										</div>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleSignupSort('created_at')}
 										title="Click to sort by date"
 									>
@@ -1755,7 +1755,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -1772,7 +1772,7 @@
 								{:else}
 									<!-- Members table headers -->
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleMemberSort('full_name')}
 										title="Click to sort by name"
 									>
@@ -1786,7 +1786,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -1801,7 +1801,7 @@
 										</div>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleMemberSort('company_name')}
 										title="Click to sort by company"
 									>
@@ -1815,7 +1815,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -1830,7 +1830,7 @@
 										</div>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleMemberSort('beta_tier')}
 										title="Click to sort by tier"
 									>
@@ -1844,7 +1844,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -1859,7 +1859,7 @@
 										</div>
 									</th>
 									<th
-										class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 select-none"
+										class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
 										onclick={() => handleMemberSort('joined_at')}
 										title="Click to sort by date"
 									>
@@ -1873,7 +1873,7 @@
 												{/if}
 											{:else}
 												<span
-													class="h-4 w-4 flex items-center justify-center text-gray-300"
+													class="h-4 w-4 flex items-center justify-center text-muted-foreground"
 												>
 													<svg
 														class="h-3 w-3"
@@ -1889,18 +1889,18 @@
 									</th>
 								{/if}
 								<th
-									class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Actions
 								</th>
 							</tr>
 						</thead>
 						<tbody
-							class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+							class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
 						>
 							{#if activeTab === 'signups'}
 								{#each signups as signup}
-									<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+									<tr class="hover:bg-muted">
 										<td class="px-6 py-4 whitespace-nowrap">
 											<div class="flex items-center">
 												<div class="flex-shrink-0 h-10 w-10">
@@ -1918,17 +1918,17 @@
 												</div>
 												<div class="ml-4">
 													<div
-														class="text-sm font-medium text-gray-900 dark:text-white"
+														class="text-sm font-medium text-foreground"
 													>
 														{signup.full_name}
 													</div>
 													<div
-														class="text-sm text-gray-500 dark:text-gray-400"
+														class="text-sm text-muted-foreground"
 													>
 														{signup.email}
 													</div>
 													{#if signup.job_title}
-														<div class="text-xs text-gray-400">
+														<div class="text-xs text-muted-foreground">
 															{signup.job_title}
 														</div>
 													{/if}
@@ -1936,7 +1936,7 @@
 											</div>
 										</td>
 										<td
-											class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+											class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 										>
 											{signup.company_name || 'Not specified'}
 										</td>
@@ -1950,7 +1950,7 @@
 											</span>
 										</td>
 										<td
-											class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+											class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
 										>
 											{formatDate(signup.created_at)}
 										</td>
@@ -1968,7 +1968,7 @@
 													size="sm"
 													icon={Eye}
 													iconPosition="left"
-													class="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-blue-600 transition-colors"
 													title="View details"
 												/>
 
@@ -1984,7 +1984,7 @@
 													size="sm"
 													icon={Mail}
 													iconPosition="left"
-													class="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-indigo-600 transition-colors"
 													title="Send email"
 												/>
 
@@ -1998,7 +1998,7 @@
 														size="sm"
 														icon={CheckCircle}
 														iconPosition="left"
-														class="p-2 text-gray-400 hover:text-green-600 transition-colors"
+														class="p-2 text-muted-foreground hover:text-green-600 transition-colors"
 														title="Approve and send email"
 													/>
 													<Button
@@ -2012,7 +2012,7 @@
 														size="sm"
 														icon={XCircle}
 														iconPosition="left"
-														class="p-2 text-gray-400 hover:text-red-600 transition-colors"
+														class="p-2 text-muted-foreground hover:text-red-600 transition-colors"
 														title="Decline"
 													/>
 												{/if}
@@ -2022,7 +2022,7 @@
 								{/each}
 							{:else}
 								{#each members as member}
-									<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+									<tr class="hover:bg-muted">
 										<td class="px-6 py-4 whitespace-nowrap">
 											<div class="flex items-center">
 												<div class="flex-shrink-0 h-10 w-10">
@@ -2040,7 +2040,7 @@
 												</div>
 												<div class="ml-4">
 													<div
-														class="text-sm font-medium text-gray-900 dark:text-white flex items-center"
+														class="text-sm font-medium text-foreground flex items-center"
 													>
 														{member.full_name}
 														{#if !member.is_active}
@@ -2050,12 +2050,12 @@
 														{/if}
 													</div>
 													<div
-														class="text-sm text-gray-500 dark:text-gray-400"
+														class="text-sm text-muted-foreground"
 													>
 														{member.email}
 													</div>
 													{#if member.job_title}
-														<div class="text-xs text-gray-400">
+														<div class="text-xs text-muted-foreground">
 															{member.job_title}
 														</div>
 													{/if}
@@ -2063,7 +2063,7 @@
 											</div>
 										</td>
 										<td
-											class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+											class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 										>
 											{member.company_name || 'Not specified'}
 										</td>
@@ -2077,7 +2077,7 @@
 											</span>
 										</td>
 										<td
-											class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+											class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
 										>
 											{formatDate(member.joined_at)}
 										</td>
@@ -2097,7 +2097,7 @@
 													size="sm"
 													icon={Mail}
 													iconPosition="left"
-													class="p-2 text-gray-400 hover:text-indigo-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-indigo-600 transition-colors"
 													title="Send email"
 												/>
 												<!-- View Details -->
@@ -2110,7 +2110,7 @@
 													size="sm"
 													icon={Eye}
 													iconPosition="left"
-													class="p-2 text-gray-400 hover:text-blue-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-blue-600 transition-colors"
 													title="View details"
 												/>
 
@@ -2125,7 +2125,7 @@
 													size="sm"
 													icon={member.is_active ? ShieldOff : Shield}
 													iconPosition="left"
-													class="p-2 text-gray-400 hover:text-yellow-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-yellow-600 transition-colors"
 													title={member.is_active
 														? 'Deactivate'
 														: 'Activate'}
@@ -2142,7 +2142,7 @@
 				<!-- Pagination - Mobile Responsive -->
 				{#if totalPages > 1}
 					<div
-						class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700"
+						class="bg-card px-4 py-3 flex items-center justify-between border-t border-border"
 					>
 						<div class="flex-1 flex justify-between sm:hidden">
 							<Button
@@ -2154,7 +2154,7 @@
 								Previous
 							</Button>
 							<span
-								class="flex items-center text-sm text-gray-700 dark:text-gray-300"
+								class="flex items-center text-sm text-foreground"
 							>
 								{currentPage} of {totalPages}
 							</span>
@@ -2169,7 +2169,7 @@
 						</div>
 						<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
 							<div>
-								<p class="text-sm text-gray-700 dark:text-gray-300">
+								<p class="text-sm text-foreground">
 									Showing page <span class="font-medium">{currentPage}</span>
 									of
 									<span class="font-medium">{totalPages}</span>
@@ -2177,7 +2177,7 @@
 							</div>
 							<div>
 								<nav
-									class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+									class="relative z-0 inline-flex rounded-md shadow-ink -space-x-px"
 								>
 									<Button
 										onclick={prevPage}
@@ -2221,14 +2221,14 @@
 	{#snippet content()}
 		{#if pendingApprovalSignup}
 			<div class="space-y-4">
-				<p class="text-sm text-gray-600 dark:text-gray-400">
+				<p class="text-sm text-muted-foreground">
 					You're about to approve <strong>{pendingApprovalSignup.full_name}</strong> for the
 					beta program.
 				</p>
 
-				<div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
-					<h4 class="font-medium text-gray-900 dark:text-white mb-2">This will:</h4>
-					<ul class="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+				<div class="bg-muted p-4 rounded-lg">
+					<h4 class="font-medium text-foreground mb-2">This will:</h4>
+					<ul class="text-sm text-muted-foreground space-y-1">
 						<li>• Create a beta member account</li>
 						<li>• Send welcome email with login instructions</li>
 						<li>• Grant founder tier access with 20% discount</li>
@@ -2253,7 +2253,7 @@
 		<div class="admin-panel-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
 			<div class="p-4 sm:p-6">
 				<div class="flex items-center justify-between mb-4">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+					<h3 class="text-lg font-semibold text-foreground">
 						{activeTab === 'signups' || activeTab === 'dataview'
 							? 'Signup Details'
 							: 'Member Details'}
@@ -2264,7 +2264,7 @@
 						size="sm"
 						icon={X}
 						iconPosition="left"
-						class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1"
+						class="text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground p-1"
 						title="Close"
 					/>
 				</div>
@@ -2274,21 +2274,21 @@
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
 							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Name
 							</div>
-							<p class="text-sm text-gray-900 dark:text-white">
+							<p class="text-sm text-foreground">
 								{selectedItem.full_name}
 							</p>
 						</div>
 						<div>
 							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Email
 							</div>
-							<p class="text-sm text-gray-900 dark:text-white break-all">
+							<p class="text-sm text-foreground break-all">
 								{selectedItem.email}
 							</p>
 						</div>
@@ -2297,21 +2297,21 @@
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
 							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Job Title
 							</div>
-							<p class="text-sm text-gray-900 dark:text-white">
+							<p class="text-sm text-foreground">
 								{selectedItem.job_title || 'Not provided'}
 							</p>
 						</div>
 						<div>
 							<div
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Company
 							</div>
-							<p class="text-sm text-gray-900 dark:text-white">
+							<p class="text-sm text-foreground">
 								{selectedItem.company_name || 'Not provided'}
 							</p>
 						</div>
@@ -2322,13 +2322,13 @@
 						{#if selectedItem.why_interested}
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+									class="block text-sm font-medium text-foreground mb-2"
 								>
 									Why Interested
 								</div>
-								<div class="mt-1 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border">
+								<div class="mt-1 p-4 bg-muted rounded-lg border">
 									<p
-										class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed"
+										class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
 									>
 										{selectedItem.why_interested}
 									</p>
@@ -2339,13 +2339,13 @@
 						{#if selectedItem.biggest_challenge}
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+									class="block text-sm font-medium text-foreground mb-2"
 								>
 									Biggest Challenge
 								</div>
-								<div class="mt-1 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border">
+								<div class="mt-1 p-4 bg-muted rounded-lg border">
 									<p
-										class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed"
+										class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
 									>
 										{selectedItem.biggest_challenge}
 									</p>
@@ -2356,7 +2356,7 @@
 						{#if selectedItem.productivity_tools && selectedItem.productivity_tools.length > 0}
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+									class="block text-sm font-medium text-foreground mb-2"
 								>
 									Current Tools
 								</div>
@@ -2375,7 +2375,7 @@
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Status
 								</div>
@@ -2389,11 +2389,11 @@
 							</div>
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Applied
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{formatDate(selectedItem.created_at)}
 								</p>
 							</div>
@@ -2402,11 +2402,11 @@
 						{#if selectedItem.referral_source}
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									How they heard about us
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{selectedItem.referral_source}
 								</p>
 							</div>
@@ -2415,21 +2415,21 @@
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Wants Weekly Calls
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{selectedItem.wants_weekly_calls ? 'Yes' : 'No'}
 								</p>
 							</div>
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Wants Community Access
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{selectedItem.wants_community_access ? 'Yes' : 'No'}
 								</p>
 							</div>
@@ -2438,11 +2438,11 @@
 						{#if selectedItem.user_timezone}
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Timezone
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{selectedItem.user_timezone}
 								</p>
 							</div>
@@ -2452,7 +2452,7 @@
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Beta Tier
 								</div>
@@ -2466,17 +2466,17 @@
 							</div>
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Access Level
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white capitalize">
+								<p class="text-sm text-foreground capitalize">
 									{selectedItem.access_level}
 								</p>
 							</div>
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Status
 								</div>
@@ -2493,22 +2493,22 @@
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Joined
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{formatDate(selectedItem.joined_at)}
 								</p>
 							</div>
 							{#if selectedItem.last_active_at}
 								<div>
 									<div
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+										class="block text-sm font-medium text-foreground mb-1"
 									>
 										Last Active
 									</div>
-									<p class="text-sm text-gray-900 dark:text-white">
+									<p class="text-sm text-foreground">
 										{formatDate(selectedItem.last_active_at)}
 									</p>
 								</div>
@@ -2518,31 +2518,31 @@
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Feedback Submitted
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{selectedItem.total_feedback_submitted || 0}
 								</p>
 							</div>
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Features Requested
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{selectedItem.total_features_requested || 0}
 								</p>
 							</div>
 							<div>
 								<div
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Calls Attended
 								</div>
-								<p class="text-sm text-gray-900 dark:text-white">
+								<p class="text-sm text-foreground">
 									{selectedItem.total_calls_attended || 0}
 								</p>
 							</div>
@@ -2552,7 +2552,7 @@
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div>
 									<div
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+										class="block text-sm font-medium text-foreground mb-1"
 									>
 										Lifetime Pricing
 									</div>
@@ -2564,11 +2564,11 @@
 								</div>
 								<div>
 									<div
-										class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+										class="block text-sm font-medium text-foreground mb-1"
 									>
 										Discount
 									</div>
-									<p class="text-sm text-gray-900 dark:text-white">
+									<p class="text-sm text-foreground">
 										{selectedItem.discount_percentage}%
 									</p>
 								</div>
@@ -2577,9 +2577,9 @@
 
 						<!-- Original Beta Application Responses -->
 						{#if selectedItem.beta_signups}
-							<div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+							<div class="pt-4 mt-4 border-t border-border">
 								<h4
-									class="text-sm font-semibold text-gray-900 dark:text-white mb-4"
+									class="text-sm font-semibold text-foreground mb-4"
 								>
 									Original Beta Application
 								</h4>
@@ -2587,15 +2587,15 @@
 								{#if selectedItem.beta_signups.why_interested}
 									<div class="mb-4">
 										<div
-											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+											class="block text-sm font-medium text-foreground mb-2"
 										>
 											Why They're Interested
 										</div>
 										<div
-											class="mt-1 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border"
+											class="mt-1 p-4 bg-muted rounded-lg border"
 										>
 											<p
-												class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed"
+												class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
 											>
 												{selectedItem.beta_signups.why_interested}
 											</p>
@@ -2606,15 +2606,15 @@
 								{#if selectedItem.beta_signups.biggest_challenge}
 									<div class="mb-4">
 										<div
-											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+											class="block text-sm font-medium text-foreground mb-2"
 										>
 											Biggest Challenge
 										</div>
 										<div
-											class="mt-1 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border"
+											class="mt-1 p-4 bg-muted rounded-lg border"
 										>
 											<p
-												class="text-sm text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed"
+												class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
 											>
 												{selectedItem.beta_signups.biggest_challenge}
 											</p>
@@ -2625,7 +2625,7 @@
 								{#if selectedItem.beta_signups.productivity_tools && selectedItem.beta_signups.productivity_tools.length > 0}
 									<div class="mb-4">
 										<div
-											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+											class="block text-sm font-medium text-foreground mb-2"
 										>
 											Current Tools
 										</div>
@@ -2644,11 +2644,11 @@
 								{#if selectedItem.beta_signups.referral_source}
 									<div class="mb-4">
 										<div
-											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+											class="block text-sm font-medium text-foreground mb-1"
 										>
 											How they heard about us
 										</div>
-										<p class="text-sm text-gray-900 dark:text-white">
+										<p class="text-sm text-foreground">
 											{selectedItem.beta_signups.referral_source}
 										</p>
 									</div>
@@ -2657,11 +2657,11 @@
 								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
 										<div
-											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+											class="block text-sm font-medium text-foreground mb-1"
 										>
 											Wants Weekly Calls
 										</div>
-										<p class="text-sm text-gray-900 dark:text-white">
+										<p class="text-sm text-foreground">
 											{selectedItem.beta_signups.wants_weekly_calls
 												? 'Yes'
 												: 'No'}
@@ -2669,11 +2669,11 @@
 									</div>
 									<div>
 										<div
-											class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+											class="block text-sm font-medium text-foreground mb-1"
 										>
 											Wants Community Access
 										</div>
-										<p class="text-sm text-gray-900 dark:text-white">
+										<p class="text-sm text-foreground">
 											{selectedItem.beta_signups.wants_community_access
 												? 'Yes'
 												: 'No'}

@@ -7,7 +7,7 @@
 <div class="phases-skeleton">
 	<!-- Project dates skeleton -->
 	<div
-		class="mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+		class="mb-6 p-4 bg-card rounded-lg border border-border"
 	>
 		<div class="flex items-center justify-between mb-3">
 			<div class="skeleton skeleton-text w-32"></div>
@@ -34,7 +34,7 @@
 	<div class="space-y-4">
 		{#each Array(count) as _, i}
 			<div
-				class="phase-skeleton bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+				class="phase-skeleton bg-card rounded-lg border border-border p-6"
 			>
 				<!-- Phase header -->
 				<div class="flex items-start justify-between mb-4">
@@ -56,7 +56,7 @@
 				<!-- Task cards skeleton -->
 				<div class="grid gap-3">
 					{#each Array(2 + Math.floor(Math.random() * 2)) as _}
-						<div class="task-skeleton bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+						<div class="task-skeleton bg-muted/50 rounded-lg p-4">
 							<div class="flex items-start gap-3">
 								<div class="skeleton w-5 h-5 rounded-full flex-shrink-0"></div>
 								<div class="flex-1">
@@ -77,7 +77,7 @@
 		{#if showBacklog}
 			<!-- Backlog skeleton -->
 			<div
-				class="phase-skeleton bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6"
+				class="phase-skeleton bg-muted rounded-lg border border-border p-6"
 			>
 				<div class="flex items-center justify-between mb-4">
 					<div>
@@ -90,7 +90,7 @@
 				<!-- Backlog tasks -->
 				<div class="grid gap-3">
 					{#each Array(3) as _}
-						<div class="task-skeleton bg-white dark:bg-gray-700 rounded-lg p-4">
+						<div class="task-skeleton bg-card rounded-lg p-4">
 							<div class="skeleton skeleton-text w-3/4 mb-2"></div>
 							<div class="flex items-center gap-3">
 								<div class="skeleton skeleton-text w-20"></div>

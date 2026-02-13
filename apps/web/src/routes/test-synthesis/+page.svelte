@@ -170,18 +170,18 @@
 	<title>Synthesis Test - BuildOS (Internal)</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
+<div class="min-h-screen bg-muted p-8">
 	<div class="max-w-7xl mx-auto">
 		<div class="mb-8">
-			<h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+			<h1 class="text-3xl font-bold text-foreground mb-2">
 				Task Synthesis Test Page
 			</h1>
-			<p class="text-gray-600 dark:text-gray-400">
+			<p class="text-muted-foreground">
 				Testing the new TaskMappingView component with sample data
 			</p>
 		</div>
 
-		<div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+		<div class="bg-card rounded-2xl shadow-ink-strong p-8">
 			<TaskMappingView
 				{operations}
 				{tasks}
@@ -190,9 +190,9 @@
 			/>
 		</div>
 
-		<div class="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-			<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Debug Info</h3>
-			<pre class="text-xs text-gray-600 dark:text-gray-400 overflow-auto">
+		<div class="mt-8 p-4 bg-muted rounded-lg">
+			<h3 class="text-sm font-semibold text-foreground mb-2">Debug Info</h3>
+			<pre class="text-xs text-muted-foreground overflow-auto">
 Operations: {operations.length}
 Tasks: {tasks.length}
 Comparisons: {comparison.length}

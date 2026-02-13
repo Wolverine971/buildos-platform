@@ -108,25 +108,25 @@
 		</div>
 
 		<!-- Title -->
-		<h3 class="mb-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
+		<h3 class="mb-2 text-lg font-semibold text-foreground">
 			{title}
 		</h3>
 
 		<!-- Message -->
-		<p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+		<p class="mb-4 text-sm text-muted-foreground">
 			{message}
 		</p>
 
 		<!-- Details -->
 		{#if details && details.length > 0}
 			<div
-				class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800"
+				class="mb-4 rounded-lg border border-border bg-muted p-3"
 			>
 				<div class="space-y-2 text-left">
 					{#each details as detail}
 						<div class="flex justify-between text-sm">
-							<span class="text-gray-600 dark:text-gray-400">{detail.label}</span>
-							<span class="font-medium text-gray-900 dark:text-gray-100">
+							<span class="text-muted-foreground">{detail.label}</span>
+							<span class="font-medium text-foreground">
 								{typeof detail.value === 'number'
 									? detail.value.toLocaleString()
 									: detail.value}
@@ -194,12 +194,12 @@
 		<!-- Confirmation Input -->
 		{#if confirmText}
 			<div class="mb-4">
-				<p class="mb-2 text-sm text-gray-600 dark:text-gray-400">
-					Type <strong class="text-gray-900 dark:text-gray-100">{confirmText}</strong> to confirm:
+				<p class="mb-2 text-sm text-muted-foreground">
+					Type <strong class="text-foreground">{confirmText}</strong> to confirm:
 				</p>
 				<input
 					type="text"
-					class="w-full rounded-lg border border-gray-300 px-3 py-2 text-center text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:border-gray-600 dark:bg-gray-800 dark:focus:ring-purple-800"
+					class="w-full rounded-lg border border-border px-3 py-2 text-center text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800"
 					placeholder={confirmText}
 					bind:value={inputValue}
 					onkeydown={(e) => e.key === 'Enter' && handleConfirm()}

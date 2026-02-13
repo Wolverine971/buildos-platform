@@ -313,13 +313,13 @@
 	{#snippet children()}
 		<!-- Header -->
 		{#snippet header()}
-			<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+			<div class="px-6 py-4 border-b border-border">
 				<div class="flex items-center justify-between mb-3">
 					<div>
-						<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+						<h2 class="text-xl font-semibold text-foreground">
 							Schedule All Tasks
 						</h2>
-						<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+						<p class="text-sm text-muted-foreground mt-1">
 							Schedule all unscheduled tasks across multiple phases
 						</p>
 					</div>
@@ -336,31 +336,31 @@
 
 				<!-- Summary Stats -->
 				<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-					<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-						<div class="text-xs text-gray-500 dark:text-gray-400">Phases</div>
-						<div class="text-lg font-semibold text-gray-900 dark:text-white">
+					<div class="bg-muted rounded-lg p-3">
+						<div class="text-xs text-muted-foreground">Phases</div>
+						<div class="text-lg font-semibold text-foreground">
 							{phasesWithUnscheduledTasks.length}
 						</div>
 					</div>
-					<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-						<div class="text-xs text-gray-500 dark:text-gray-400">
+					<div class="bg-muted rounded-lg p-3">
+						<div class="text-xs text-muted-foreground">
 							Tasks to Schedule
 						</div>
 						<div class="text-lg font-semibold text-primary-600 dark:text-primary-400">
 							{totalTasksToSchedule}
 						</div>
 					</div>
-					<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-						<div class="text-xs text-gray-500 dark:text-gray-400">
+					<div class="bg-muted rounded-lg p-3">
+						<div class="text-xs text-muted-foreground">
 							Already Scheduled
 						</div>
-						<div class="text-lg font-semibold text-gray-900 dark:text-white">
+						<div class="text-lg font-semibold text-foreground">
 							{totalScheduledTasks}
 						</div>
 					</div>
-					<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-						<div class="text-xs text-gray-500 dark:text-gray-400">Calendar Events</div>
-						<div class="text-lg font-semibold text-gray-900 dark:text-white">
+					<div class="bg-muted rounded-lg p-3">
+						<div class="text-xs text-muted-foreground">Calendar Events</div>
+						<div class="text-lg font-semibold text-foreground">
 							{calendarEvents.length}
 						</div>
 					</div>
@@ -382,8 +382,8 @@
 		<div class="flex-1 overflow-y-auto px-6 py-4 max-h-[60vh]">
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
-					<LoaderCircle class="w-8 h-8 animate-spin text-gray-400" />
-					<span class="ml-3 text-gray-500 dark:text-gray-400"
+					<LoaderCircle class="w-8 h-8 animate-spin text-muted-foreground" />
+					<span class="ml-3 text-muted-foreground"
 						>Loading scheduling data...</span
 					>
 				</div>
@@ -404,10 +404,10 @@
 			{:else if phasesWithUnscheduledTasks.length === 0}
 				<div class="text-center py-12">
 					<CheckCircle2 class="w-12 h-12 text-green-500 mx-auto mb-4" />
-					<h3 class="text-lg font-medium text-gray-900 dark:text-white">
+					<h3 class="text-lg font-medium text-foreground">
 						All tasks are scheduled!
 					</h3>
-					<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+					<p class="text-sm text-muted-foreground mt-2">
 						There are no unscheduled tasks in any phase.
 					</p>
 				</div>
@@ -441,10 +441,10 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+			class="px-6 py-4 border-t border-border bg-muted"
 		>
 			<div class="flex items-center justify-between">
-				<div class="text-sm text-gray-500 dark:text-gray-400">
+				<div class="text-sm text-muted-foreground">
 					{#if totalTasksToSchedule > 0}
 						<Info class="w-4 h-4 inline mr-1" />
 						{totalTasksToSchedule} tasks will be scheduled across {phasesWithUnscheduledTasks.length}

@@ -253,30 +253,30 @@
 		<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
 					<Bell class="h-8 w-8 text-blue-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-lg font-semibold text-foreground">
 							Analytics
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">View dashboard</p>
+						<p class="text-sm text-muted-foreground">View dashboard</p>
 					</div>
 				</div>
 			</a>
 
 			<a
 				href="/admin/notifications/test-bed"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
 					<Send class="h-8 w-8 text-green-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-lg font-semibold text-foreground">
 							Test Bed
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
+						<p class="text-sm text-muted-foreground">
 							Send test notifications
 						</p>
 					</div>
@@ -285,13 +285,13 @@
 
 			<a
 				href="/admin/notifications/nlogs"
-				class="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-lg p-6 hover:shadow-lg transition-shadow"
+				class="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-lg p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
 					<Eye class="h-8 w-8 text-purple-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Logs</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">Current page</p>
+						<h3 class="text-lg font-semibold text-foreground">Logs</h3>
+						<p class="text-sm text-muted-foreground">Current page</p>
 					</div>
 				</div>
 			</a>
@@ -305,9 +305,9 @@
 						type="checkbox"
 						bind:checked={autoRefresh}
 						onchange={toggleAutoRefresh}
-						class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700"
+						class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
 					/>
-					<span class="text-sm text-gray-600 dark:text-gray-400">Auto Refresh (30s)</span>
+					<span class="text-sm text-muted-foreground">Auto Refresh (30s)</span>
 				</label>
 			</div>
 			<Button
@@ -324,7 +324,7 @@
 
 		<!-- Tabs -->
 		<div class="admin-panel">
-			<div class="border-b border-gray-200 dark:border-gray-700">
+			<div class="border-b border-border">
 				<nav class="flex space-x-8 px-6" aria-label="Tabs">
 					<button
 						type="button"
@@ -332,7 +332,7 @@
 						class="py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
 						'events'
 							? 'border-blue-500 text-blue-600 dark:text-blue-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						Event Log
 					</button>
@@ -342,7 +342,7 @@
 						class="py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
 						'deliveries'
 							? 'border-blue-500 text-blue-600 dark:text-blue-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						Delivery Log
 					</button>
@@ -352,7 +352,7 @@
 						class="py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
 						'system'
 							? 'border-blue-500 text-blue-600 dark:text-blue-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						System Logs
 					</button>
@@ -415,7 +415,7 @@
 				<!-- Pagination -->
 				{#if activeTab === 'events' && eventPagination.total_pages > 1}
 					<div class="flex items-center justify-between">
-						<div class="text-sm text-gray-600 dark:text-gray-400">
+						<div class="text-sm text-muted-foreground">
 							Showing page {eventPagination.page} of {eventPagination.total_pages} ({eventPagination.total}
 							total)
 						</div>
@@ -446,7 +446,7 @@
 					</div>
 				{:else if activeTab === 'deliveries' && deliveryPagination.total_pages > 1}
 					<div class="flex items-center justify-between">
-						<div class="text-sm text-gray-600 dark:text-gray-400">
+						<div class="text-sm text-muted-foreground">
 							Showing page {deliveryPagination.page} of {deliveryPagination.total_pages}
 							({deliveryPagination.total} total)
 						</div>
@@ -477,7 +477,7 @@
 					</div>
 				{:else if activeTab === 'system' && systemPagination.total_pages > 1}
 					<div class="flex items-center justify-between">
-						<div class="text-sm text-gray-600 dark:text-gray-400">
+						<div class="text-sm text-muted-foreground">
 							Showing page {systemPagination.page} of {systemPagination.total_pages} ({systemPagination.total}
 							total)
 						</div>

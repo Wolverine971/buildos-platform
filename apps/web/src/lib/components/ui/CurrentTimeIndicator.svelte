@@ -61,7 +61,7 @@
 
 	<!-- Center badge -->
 	<div
-		class="relative z-1 flex items-center gap-2 px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-full shadow-sm"
+		class="relative z-1 flex items-center gap-2 px-3 py-1 bg-red-500 text-white text-xs font-medium rounded-full shadow-ink"
 	>
 		{#if label}
 			<span>{label}</span>

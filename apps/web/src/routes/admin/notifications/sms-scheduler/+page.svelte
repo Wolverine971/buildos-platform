@@ -365,14 +365,14 @@
 		</div>
 
 		<!-- Tabs -->
-		<div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+		<div class="border-b border-border mb-6">
 			<nav class="-mb-px flex space-x-8">
 				<button
 					onclick={() => (activeTab = 'trigger')}
 					class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
 						{activeTab === 'trigger'
 						? 'border-blue-500 text-blue-600 dark:text-blue-400'
-						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
 				>
 					<div class="flex items-center">
 						<Send class="h-4 w-4 mr-2" />
@@ -384,7 +384,7 @@
 					class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
 						{activeTab === 'results'
 						? 'border-blue-500 text-blue-600 dark:text-blue-400'
-						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
 				>
 					<div class="flex items-center">
 						<CheckCircle class="h-4 w-4 mr-2" />
@@ -396,7 +396,7 @@
 					class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
 						{activeTab === 'monitor'
 						? 'border-blue-500 text-blue-600 dark:text-blue-400'
-						: 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'}"
+						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
 				>
 					<div class="flex items-center">
 						<Eye class="h-4 w-4 mr-2" />
@@ -412,7 +412,7 @@
 				<!-- User Selection -->
 				<div class="admin-panel p-6">
 					<h3
-						class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center"
+						class="text-lg font-semibold text-foreground mb-4 flex items-center"
 					>
 						<Users class="h-5 w-5 mr-2" />
 						User Selection
@@ -425,8 +425,8 @@
 							placeholder="Search users by email or name..."
 							bind:value={userSearch}
 							onkeydown={(e) => e.key === 'Enter' && searchUsers()}
-							class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-								focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+							class="flex-1 px-4 py-2 border border-border rounded-lg
+								focus:ring-2 focus:ring-blue-500"
 						/>
 						<Button onclick={searchUsers} disabled={isSearching} variant="ghost">
 							{#if isSearching}
@@ -443,10 +443,10 @@
 					<!-- Results -->
 					{#if searchResults.length > 0}
 						<div
-							class="border dark:border-gray-700 rounded-lg p-4 max-h-64 overflow-y-auto"
+							class="border rounded-lg p-4 max-h-64 overflow-y-auto"
 						>
 							<div class="flex items-center justify-between mb-2">
-								<div class="text-sm text-gray-600 dark:text-gray-400">
+								<div class="text-sm text-muted-foreground">
 									{selectedUsers.length} of {searchResults.length} users selected
 								</div>
 								<div class="flex gap-2">
@@ -460,28 +460,28 @@
 							</div>
 							{#each searchResults as user}
 								<label
-									class="flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer"
+									class="flex items-center gap-3 p-2 hover:bg-muted rounded cursor-pointer"
 								>
 									<input
 										type="checkbox"
 										checked={selectedUsers.includes(user.id)}
 										onchange={() => toggleUser(user.id)}
-										class="h-4 w-4 rounded border-gray-300 text-blue-600"
+										class="h-4 w-4 rounded border-border text-blue-600"
 									/>
 									<div class="flex-1">
 										<div
-											class="font-medium text-sm text-gray-900 dark:text-white"
+											class="font-medium text-sm text-foreground"
 										>
 											{user.email}
 										</div>
-										<div class="text-xs text-gray-500">
+										<div class="text-xs text-muted-foreground">
 											{user.name || user.full_name || 'No name'} · {user.timezone ||
 												'UTC'}
 										</div>
 									</div>
 									{#if user.sms_preferences}
 										<div
-											class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded"
+											class="text-xs px-2 py-1 bg-muted rounded"
 										>
 											{user.sms_preferences.daily_sms_count || 0}/{user
 												.sms_preferences.daily_sms_limit || 10} today
@@ -507,7 +507,7 @@
 				<!-- Trigger Options -->
 				<div class="admin-panel p-6">
 					<h3
-						class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center"
+						class="text-lg font-semibold text-foreground mb-4 flex items-center"
 					>
 						<Clock class="h-5 w-5 mr-2" />
 						Trigger Options
@@ -519,11 +519,11 @@
 							<input
 								type="checkbox"
 								bind:checked={dryRun}
-								class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+								class="mt-1 h-4 w-4 rounded border-border text-blue-600"
 							/>
 							<div>
-								<div class="font-medium text-gray-900 dark:text-white">Dry Run</div>
-								<div class="text-sm text-gray-500">
+								<div class="font-medium text-foreground">Dry Run</div>
+								<div class="text-sm text-muted-foreground">
 									Preview what would happen without actually queueing jobs
 								</div>
 							</div>
@@ -533,7 +533,7 @@
 						<div>
 							<label
 								for="override-date"
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Override Date
 							</label>
@@ -541,10 +541,10 @@
 								id="override-date"
 								type="date"
 								bind:value={overrideDate}
-								class="w-64 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-									focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-64 px-4 py-2 border border-border rounded-lg
+									focus:ring-2 focus:ring-blue-500"
 							/>
-							<p class="text-sm text-gray-500 mt-1">
+							<p class="text-sm text-muted-foreground mt-1">
 								Process calendar events for this date (user's timezone)
 							</p>
 						</div>
@@ -554,13 +554,13 @@
 							<input
 								type="checkbox"
 								bind:checked={skipQuietHours}
-								class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+								class="mt-1 h-4 w-4 rounded border-border text-blue-600"
 							/>
 							<div>
-								<div class="font-medium text-gray-900 dark:text-white">
+								<div class="font-medium text-foreground">
 									Skip Quiet Hours Check
 								</div>
-								<div class="text-sm text-gray-500">
+								<div class="text-sm text-muted-foreground">
 									Send messages even during user's quiet hours (testing only)
 								</div>
 							</div>
@@ -571,20 +571,20 @@
 							<input
 								type="checkbox"
 								bind:checked={skipDailyLimit}
-								class="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+								class="mt-1 h-4 w-4 rounded border-border text-blue-600"
 							/>
 							<div>
-								<div class="font-medium text-gray-900 dark:text-white">
+								<div class="font-medium text-foreground">
 									Skip Daily SMS Limit
 								</div>
-								<div class="text-sm text-gray-500">
+								<div class="text-sm text-muted-foreground">
 									Ignore user's daily SMS limit (testing only)
 								</div>
 							</div>
 						</label>
 
 						<!-- Calendar Preview Button -->
-						<div class="pt-4 border-t dark:border-gray-700">
+						<div class="pt-4 border-t">
 							<Button
 								onclick={fetchCalendarPreview}
 								disabled={isLoadingCalendarPreview || selectedUsers.length === 0}
@@ -601,7 +601,7 @@
 							</Button>
 							{#if selectedUsers.length === 0}
 								<p
-									class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center"
+									class="text-xs text-muted-foreground mt-2 text-center"
 								>
 									Select users above to check their calendar info
 								</p>
@@ -614,12 +614,12 @@
 				{#if showCalendarPreview && calendarPreviewResults.length > 0}
 					<div class="admin-panel p-6">
 						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+							<h3 class="text-lg font-semibold text-foreground">
 								Calendar Preview Results
 							</h3>
 							<button
 								onclick={() => (showCalendarPreview = false)}
-								class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+								class="text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
 							>
 								<XCircle class="h-5 w-5" />
 							</button>
@@ -628,23 +628,23 @@
 						<div class="space-y-4">
 							{#each calendarPreviewResults as result}
 								<div
-									class="border dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+									class="border rounded-lg p-4 hover:bg-muted/50"
 								>
 									<!-- User Header -->
 									<div class="flex items-start justify-between mb-3">
 										<div>
-											<div class="font-medium text-gray-900 dark:text-white">
+											<div class="font-medium text-foreground">
 												{result.user_email}
 											</div>
 											{#if result.user_name}
 												<div
-													class="text-sm text-gray-500 dark:text-gray-400"
+													class="text-sm text-muted-foreground"
 												>
 													{result.user_name}
 												</div>
 											{/if}
 											<div
-												class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+												class="text-xs text-muted-foreground mt-1"
 											>
 												Timezone: {result.timezone}
 											</div>
@@ -671,26 +671,26 @@
 									<!-- Stats Grid -->
 									{#if result.calendar_connected}
 										<div class="grid grid-cols-4 gap-3 mb-3">
-											<div class="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+											<div class="bg-muted p-3 rounded">
 												<div
-													class="text-xs text-gray-600 dark:text-gray-400"
+													class="text-xs text-muted-foreground"
 												>
 													Total Events
 												</div>
 												<div
-													class="text-lg font-semibold text-gray-900 dark:text-white"
+													class="text-lg font-semibold text-foreground"
 												>
 													{result.total_events}
 												</div>
 											</div>
-											<div class="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+											<div class="bg-muted p-3 rounded">
 												<div
-													class="text-xs text-gray-600 dark:text-gray-400"
+													class="text-xs text-muted-foreground"
 												>
 													Synced Events
 												</div>
 												<div
-													class="text-lg font-semibold text-gray-900 dark:text-white"
+													class="text-lg font-semibold text-foreground"
 												>
 													{result.synced_events}
 												</div>
@@ -709,14 +709,14 @@
 													{result.events_that_would_trigger_sms}
 												</div>
 											</div>
-											<div class="bg-gray-50 dark:bg-gray-800 p-3 rounded">
+											<div class="bg-muted p-3 rounded">
 												<div
-													class="text-xs text-gray-600 dark:text-gray-400"
+													class="text-xs text-muted-foreground"
 												>
 													SMS Usage
 												</div>
 												<div
-													class="text-lg font-semibold text-gray-900 dark:text-white"
+													class="text-lg font-semibold text-foreground"
 												>
 													{result.sms_preferences?.daily_sms_count ||
 														0}/{result.sms_preferences
@@ -729,14 +729,14 @@
 										{#if result.events_skipped.past_reminder_time > 0 || result.events_skipped.all_day > 0 || result.events_skipped.quiet_hours > 0 || result.events_skipped.no_start_time > 0}
 											<div class="mb-3">
 												<div
-													class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+													class="text-sm font-medium text-foreground mb-2"
 												>
 													Events Skipped:
 												</div>
 												<div class="flex flex-wrap gap-2">
 													{#if result.events_skipped.past_reminder_time > 0}
 														<span
-															class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded"
+															class="text-xs px-2 py-1 bg-muted rounded"
 														>
 															Past time: {result.events_skipped
 																.past_reminder_time}
@@ -744,14 +744,14 @@
 													{/if}
 													{#if result.events_skipped.all_day > 0}
 														<span
-															class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded"
+															class="text-xs px-2 py-1 bg-muted rounded"
 														>
 															All-day: {result.events_skipped.all_day}
 														</span>
 													{/if}
 													{#if result.events_skipped.quiet_hours > 0}
 														<span
-															class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded"
+															class="text-xs px-2 py-1 bg-muted rounded"
 														>
 															Quiet hours: {result.events_skipped
 																.quiet_hours}
@@ -759,7 +759,7 @@
 													{/if}
 													{#if result.events_skipped.no_start_time > 0}
 														<span
-															class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded"
+															class="text-xs px-2 py-1 bg-muted rounded"
 														>
 															No start time: {result.events_skipped
 																.no_start_time}
@@ -784,19 +784,19 @@
 														<div
 															class="text-sm p-2 rounded {event.would_trigger_sms
 																? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
-																: 'bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700'}"
+																: 'bg-muted border border-border'}"
 														>
 															<div
 																class="flex items-start justify-between gap-2"
 															>
 																<div class="flex-1">
 																	<div
-																		class="font-medium text-gray-900 dark:text-white"
+																		class="font-medium text-foreground"
 																	>
 																		{event.event_title}
 																	</div>
 																	<div
-																		class="text-xs text-gray-500 dark:text-gray-400"
+																		class="text-xs text-muted-foreground"
 																	>
 																		{format(
 																			new Date(
@@ -825,7 +825,7 @@
 																		/>
 																	{:else}
 																		<span
-																			class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded"
+																			class="text-xs px-2 py-1 bg-muted rounded"
 																		>
 																			{event.skip_reason}
 																		</span>
@@ -881,29 +881,29 @@
 			<!-- Results Tab -->
 			{#if lastTriggerResult}
 				<div class="admin-panel p-6">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+					<h3 class="text-lg font-semibold text-foreground mb-4">
 						Trigger Results
 					</h3>
 
 					<!-- Summary -->
 					<div class="grid grid-cols-3 gap-4 mb-6">
-						<div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-							<div class="text-sm text-gray-600 dark:text-gray-400">Mode</div>
-							<div class="text-lg font-semibold text-gray-900 dark:text-white">
+						<div class="p-4 bg-muted rounded-lg">
+							<div class="text-sm text-muted-foreground">Mode</div>
+							<div class="text-lg font-semibold text-foreground">
 								{lastTriggerResult.dry_run ? 'Dry Run' : 'Executed'}
 							</div>
 						</div>
-						<div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-							<div class="text-sm text-gray-600 dark:text-gray-400">
+						<div class="p-4 bg-muted rounded-lg">
+							<div class="text-sm text-muted-foreground">
 								Users Processed
 							</div>
-							<div class="text-lg font-semibold text-gray-900 dark:text-white">
+							<div class="text-lg font-semibold text-foreground">
 								{lastTriggerResult.users_processed}
 							</div>
 						</div>
-						<div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-							<div class="text-sm text-gray-600 dark:text-gray-400">Jobs Queued</div>
-							<div class="text-lg font-semibold text-gray-900 dark:text-white">
+						<div class="p-4 bg-muted rounded-lg">
+							<div class="text-sm text-muted-foreground">Jobs Queued</div>
+							<div class="text-lg font-semibold text-foreground">
 								{lastTriggerResult.jobs_queued || 0}
 							</div>
 						</div>
@@ -912,30 +912,30 @@
 					<!-- Details -->
 					{#if lastTriggerResult.details?.length > 0}
 						<div>
-							<h4 class="font-medium text-gray-900 dark:text-white mb-2">
+							<h4 class="font-medium text-foreground mb-2">
 								User Details
 							</h4>
-							<div class="border dark:border-gray-700 rounded-lg overflow-hidden">
+							<div class="border rounded-lg overflow-hidden">
 								<table class="w-full text-sm">
-									<thead class="bg-gray-50 dark:bg-gray-700">
+									<thead class="bg-muted">
 										<tr>
 											<th
-												class="text-left p-3 font-medium text-gray-700 dark:text-gray-300"
+												class="text-left p-3 font-medium text-foreground"
 											>
 												User ID
 											</th>
 											<th
-												class="text-left p-3 font-medium text-gray-700 dark:text-gray-300"
+												class="text-left p-3 font-medium text-foreground"
 											>
 												Timezone
 											</th>
 											<th
-												class="text-left p-3 font-medium text-gray-700 dark:text-gray-300"
+												class="text-left p-3 font-medium text-foreground"
 											>
 												Lead Time
 											</th>
 											<th
-												class="text-left p-3 font-medium text-gray-700 dark:text-gray-300"
+												class="text-left p-3 font-medium text-foreground"
 											>
 												Status
 											</th>
@@ -943,16 +943,16 @@
 									</thead>
 									<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 										{#each lastTriggerResult.details as detail}
-											<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+											<tr class="hover:bg-muted/50">
 												<td
-													class="p-3 font-mono text-xs text-gray-900 dark:text-white"
+													class="p-3 font-mono text-xs text-foreground"
 												>
 													{detail.user_id.slice(0, 8)}...
 												</td>
-												<td class="p-3 text-gray-900 dark:text-white">
+												<td class="p-3 text-foreground">
 													{detail.timezone}
 												</td>
-												<td class="p-3 text-gray-900 dark:text-white">
+												<td class="p-3 text-foreground">
 													{detail.lead_time_minutes} min
 												</td>
 												<td class="p-3">
@@ -965,7 +965,7 @@
 														</span>
 													{:else if detail.would_queue}
 														<span
-															class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400"
+															class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-foreground dark:text-muted-foreground"
 														>
 															Would Queue
 														</span>
@@ -987,9 +987,9 @@
 					{/if}
 				</div>
 			{:else}
-				<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-8 text-center">
-					<AlertCircle class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-					<p class="text-gray-600 dark:text-gray-400">
+				<div class="bg-muted rounded-lg p-8 text-center">
+					<AlertCircle class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+					<p class="text-muted-foreground">
 						No trigger results yet. Run a trigger to see results here.
 					</p>
 				</div>
@@ -1002,10 +1002,10 @@
 						<div class="admin-panel p-4">
 							<div class="flex items-start justify-between mb-3">
 								<div>
-									<div class="font-mono text-xs text-gray-500 dark:text-gray-400">
+									<div class="font-mono text-xs text-muted-foreground">
 										User: {userId.slice(0, 8)}...
 									</div>
-									<div class="text-sm font-medium text-gray-900 dark:text-white">
+									<div class="text-sm font-medium text-foreground">
 										{status.message_count} message{status.message_count !== 1
 											? 's'
 											: ''} scheduled
@@ -1022,9 +1022,9 @@
 							</div>
 
 							{#if status.messages && status.messages.length > 0}
-								<div class="border dark:border-gray-700 rounded-lg overflow-hidden">
+								<div class="border rounded-lg overflow-hidden">
 									<table class="w-full text-xs">
-										<thead class="bg-gray-50 dark:bg-gray-700">
+										<thead class="bg-muted">
 											<tr>
 												<th class="text-left p-2 font-medium">Time</th>
 												<th class="text-left p-2 font-medium">Event</th>
@@ -1057,7 +1057,7 @@
 																: msg.status === 'failed'
 																	? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
 																	: msg.status === 'cancelled'
-																		? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+																		? 'bg-muted text-foreground dark:text-muted-foreground'
 																		: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'}"
 														>
 															{msg.status}
@@ -1079,9 +1079,9 @@
 					</div>
 				{/if}
 			{:else}
-				<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-8 text-center">
-					<Eye class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-					<p class="text-gray-600 dark:text-gray-400">
+				<div class="bg-muted rounded-lg p-8 text-center">
+					<Eye class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+					<p class="text-muted-foreground">
 						No jobs being monitored. Execute a trigger (not dry run) to see live job
 						status.
 					</p>

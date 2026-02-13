@@ -438,7 +438,7 @@
 											></div>
 											<div class="relative flex gap-3">
 												<div
-													class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white shadow-lg"
+													class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white shadow-ink-strong"
 												>
 													{index + 1}
 												</div>

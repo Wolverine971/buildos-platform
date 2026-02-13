@@ -93,7 +93,7 @@
 	<!-- No context update needed -->
 	<div class="no-update-needed" transition:fade={{ duration: 200 }}>
 		<div class="no-update-icon">
-			<Folder class="w-8 h-8 text-gray-400" />
+			<Folder class="w-8 h-8 text-muted-foreground" />
 		</div>
 		<h4 class="no-update-title">No Context Update Needed</h4>
 		<p class="no-update-message">

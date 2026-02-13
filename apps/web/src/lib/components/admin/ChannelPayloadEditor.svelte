@@ -69,13 +69,13 @@
 
 <div class="space-y-6">
 	{#if selectedChannels.length === 0}
-		<p class="text-sm text-gray-500 dark:text-gray-400">
+		<p class="text-sm text-muted-foreground">
 			Select at least one channel to configure payloads
 		</p>
 	{:else}
 		{#each selectedChannels as channel}
-			<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 capitalize">
+			<div class="border border-border rounded-lg p-4">
+				<h3 class="text-lg font-semibold text-foreground mb-4 capitalize">
 					{channel} Notification
 				</h3>
 
@@ -85,7 +85,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'title')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Title *
 							</label>
@@ -93,7 +93,7 @@
 								id={fieldId(channel, 'title')}
 								type="text"
 								bind:value={channelPayloads.push.title}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="BuildOS Notification"
 							/>
 						</div>
@@ -101,7 +101,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'body')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Body *
 							</label>
@@ -109,7 +109,7 @@
 								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.push.body}
 								rows="3"
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="Notification message"
 							></textarea>
 						</div>
@@ -118,14 +118,14 @@
 							<div>
 								<label
 									for={fieldId(channel, 'priority')}
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Priority
 								</label>
 								<select
 									id={fieldId(channel, 'priority')}
 									bind:value={channelPayloads.push.priority}
-									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+									class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								>
 									{#each priorityOptions as priority}
 										<option value={priority}>{priority}</option>
@@ -136,7 +136,7 @@
 							<div>
 								<label
 									for={fieldId(channel, 'tag')}
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Tag
 								</label>
@@ -144,7 +144,7 @@
 									id={fieldId(channel, 'tag')}
 									type="text"
 									bind:value={channelPayloads.push.tag}
-									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+									class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 									placeholder="notification"
 								/>
 							</div>
@@ -153,7 +153,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'action-url')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Action URL
 							</label>
@@ -161,7 +161,7 @@
 								id={fieldId(channel, 'action-url')}
 								type="url"
 								bind:value={channelPayloads.push.action_url}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="https://build-os.com/..."
 							/>
 						</div>
@@ -169,7 +169,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'icon-url')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Icon URL
 							</label>
@@ -177,7 +177,7 @@
 								id={fieldId(channel, 'icon-url')}
 								type="url"
 								bind:value={channelPayloads.push.icon_url}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="/AppImages/android/android-launchericon-192-192.png"
 							/>
 						</div>
@@ -185,7 +185,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'event-type')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Event Type
 							</label>
@@ -193,7 +193,7 @@
 								id={fieldId(channel, 'event-type')}
 								type="text"
 								bind:value={channelPayloads.push.event_type}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="brief.completed"
 							/>
 						</div>
@@ -205,14 +205,14 @@
 							<div>
 								<label
 									for={fieldId(channel, 'type')}
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Type
 								</label>
 								<select
 									id={fieldId(channel, 'type')}
 									bind:value={channelPayloads.in_app.type}
-									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+									class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								>
 									{#each inAppTypeOptions as type}
 										<option value={type}>{type}</option>
@@ -223,14 +223,14 @@
 							<div>
 								<label
 									for={fieldId(channel, 'priority')}
-									class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+									class="block text-sm font-medium text-foreground mb-1"
 								>
 									Priority
 								</label>
 								<select
 									id={fieldId(channel, 'priority')}
 									bind:value={channelPayloads.in_app.priority}
-									class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+									class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								>
 									{#each priorityOptions as priority}
 										<option value={priority}>{priority}</option>
@@ -242,7 +242,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'title')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Title *
 							</label>
@@ -250,7 +250,7 @@
 								id={fieldId(channel, 'title')}
 								type="text"
 								bind:value={channelPayloads.in_app.title}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="Notification"
 							/>
 						</div>
@@ -258,7 +258,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'body')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Body *
 							</label>
@@ -266,7 +266,7 @@
 								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.in_app.body}
 								rows="3"
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="Notification message"
 							></textarea>
 						</div>
@@ -274,7 +274,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'action-url')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Action URL
 							</label>
@@ -282,7 +282,7 @@
 								id={fieldId(channel, 'action-url')}
 								type="url"
 								bind:value={channelPayloads.in_app.action_url}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="https://build-os.com/..."
 							/>
 						</div>
@@ -290,7 +290,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'expires-at')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Expires At
 							</label>
@@ -298,7 +298,7 @@
 								id={fieldId(channel, 'expires-at')}
 								type="datetime-local"
 								bind:value={channelPayloads.in_app.expires_at}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 							/>
 						</div>
 					</div>
@@ -308,7 +308,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'subject')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Subject *
 							</label>
@@ -316,7 +316,7 @@
 								id={fieldId(channel, 'subject')}
 								type="text"
 								bind:value={channelPayloads.email.title}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="BuildOS Notification"
 							/>
 						</div>
@@ -324,7 +324,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'body')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Body *
 							</label>
@@ -332,10 +332,10 @@
 								id={fieldId(channel, 'body')}
 								bind:value={channelPayloads.email.body}
 								rows="5"
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="Email content (HTML supported)"
 							></textarea>
-							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+							<p class="text-xs text-muted-foreground mt-1">
 								HTML tags are supported
 							</p>
 						</div>
@@ -343,7 +343,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'action-url')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Action URL (CTA Button)
 							</label>
@@ -351,7 +351,7 @@
 								id={fieldId(channel, 'action-url')}
 								type="url"
 								bind:value={channelPayloads.email.action_url}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="https://build-os.com/..."
 							/>
 						</div>
@@ -359,7 +359,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'image-url')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Image URL
 							</label>
@@ -367,7 +367,7 @@
 								id={fieldId(channel, 'image-url')}
 								type="url"
 								bind:value={channelPayloads.email.image_url}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="https://..."
 							/>
 						</div>
@@ -375,7 +375,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'event-type')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Event Type
 							</label>
@@ -383,7 +383,7 @@
 								id={fieldId(channel, 'event-type')}
 								type="text"
 								bind:value={channelPayloads.email.event_type}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="brief.completed"
 							/>
 						</div>
@@ -394,7 +394,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'title')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Title
 							</label>
@@ -402,7 +402,7 @@
 								id={fieldId(channel, 'title')}
 								type="text"
 								bind:value={channelPayloads.sms.title}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="BuildOS Notification"
 							/>
 						</div>
@@ -410,7 +410,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'body')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Message *
 							</label>
@@ -419,10 +419,10 @@
 								bind:value={channelPayloads.sms.body}
 								rows="3"
 								maxlength="160"
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="SMS message (max 160 characters)"
 							></textarea>
-							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+							<p class="text-xs text-muted-foreground mt-1">
 								{channelPayloads.sms.body?.length || 0}/160 characters
 							</p>
 						</div>
@@ -430,14 +430,14 @@
 						<div>
 							<label
 								for={fieldId(channel, 'priority')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Priority
 							</label>
 							<select
 								id={fieldId(channel, 'priority')}
 								bind:value={channelPayloads.sms.priority}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 							>
 								{#each priorityOptions as priority}
 									<option value={priority}>{priority}</option>
@@ -448,7 +448,7 @@
 						<div>
 							<label
 								for={fieldId(channel, 'event-type')}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								Event Type
 							</label>
@@ -456,7 +456,7 @@
 								id={fieldId(channel, 'event-type')}
 								type="text"
 								bind:value={channelPayloads.sms.event_type}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 								placeholder="brief.completed"
 							/>
 						</div>

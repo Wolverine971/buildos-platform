@@ -108,7 +108,7 @@
 							variant="ghost"
 							size="sm"
 							icon={X}
-							class="text-gray-400 hover:text-gray-500 p-1 min-h-0"
+							class="text-muted-foreground hover:text-muted-foreground p-1 min-h-0"
 							aria-label="Dismiss"
 						></Button>
 					</div>

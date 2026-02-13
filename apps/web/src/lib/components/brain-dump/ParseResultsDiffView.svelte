@@ -481,16 +481,16 @@
 <div class="h-full flex flex-col">
 	<!-- Header -->
 	<div
-		class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20 flex-shrink-0"
+		class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20 flex-shrink-0"
 	>
 		<div>
 			<div class="flex items-center gap-2">
 				<Sparkles class="w-5 h-5 text-purple-500" />
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+				<h3 class="text-lg font-semibold text-foreground">
 					Brain Dump Results
 				</h3>
 			</div>
-			<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+			<p class="text-sm text-muted-foreground mt-1">
 				{parseResults.operations.length} operations extracted • Review changes before applying
 			</p>
 		</div>
@@ -559,7 +559,7 @@
 					<div
 						class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-3"
 					></div>
-					<p class="text-sm text-gray-600 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground">
 						Loading existing data for comparison...
 					</p>
 				</div>
@@ -569,7 +569,7 @@
 			{#if updateOperations.length > 0}
 				<div class="mb-4">
 					<h3
-						class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2 mb-3"
+						class="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2 mb-3"
 					>
 						<Edit3 class="w-4 h-4 text-blue-500" />
 						Updates ({updateOperations.length})
@@ -587,14 +587,14 @@
 							{@const color = getOperationColor(operation.table)}
 
 							<div
-								class="group relative bg-white dark:bg-gray-800 rounded-xl border transition-colors duration-200
+								class="group relative bg-card rounded-xl border transition-colors duration-200
 									{isDisabled
-									? 'border-gray-200 dark:border-gray-700 opacity-60'
-									: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}"
+									? 'border-border opacity-60'
+									: 'border-border hover:border-border'}"
 							>
 								<!-- Header -->
 								<div
-									class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-blue-50/50 dark:bg-blue-900/10 rounded-t-xl"
+									class="px-4 py-3 border-b border-border bg-blue-50/50 dark:bg-blue-900/10 rounded-t-xl"
 								>
 									<div class="flex items-center justify-between">
 										<div class="flex items-center gap-2 flex-1 min-w-0">
@@ -609,7 +609,7 @@
 												{operation.table}
 											</span>
 											<h4
-												class="text-sm font-medium text-gray-900 dark:text-white truncate"
+												class="text-sm font-medium text-foreground truncate"
 											>
 												Update: {operation.data.title ||
 													operation.data.name ||
@@ -628,7 +628,7 @@
 													e.stopPropagation();
 													toggleOperationExpansion(operation.id, e);
 												}}
-												class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+												class="p-1.5 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground hover:bg-muted rounded-lg transition-all duration-200"
 												title={isExpanded ? 'Collapse' : 'Expand'}
 											>
 												<Eye class="w-3.5 h-3.5" />
@@ -640,7 +640,7 @@
 												}}
 												disabled={isProcessing ||
 													isActionLoading(operation.id, 'edit')}
-												class="p-1.5 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+												class="p-1.5 text-muted-foreground hover:text-blue-600 dark:text-muted-foreground dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
 												title="Edit operation"
 											>
 												{#if isActionLoading(operation.id, 'edit')}
@@ -658,7 +658,7 @@
 												}}
 												disabled={isProcessing ||
 													isActionLoading(operation.id, 'remove')}
-												class="p-1.5 text-gray-500 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+												class="p-1.5 text-muted-foreground hover:text-rose-600 dark:text-muted-foreground dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
 												title="Remove operation"
 											>
 												{#if isActionLoading(operation.id, 'remove')}
@@ -678,7 +678,7 @@
 													e.stopPropagation();
 													handleToggleOperation(operation.id, e);
 												}}
-												class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 ml-2"
+												class="w-4 h-4 text-primary-600 border-border rounded focus:ring-primary-500 ml-2"
 											/>
 										</div>
 									</div>
@@ -695,7 +695,7 @@
 														class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"
 													></div>
 													<span
-														class="text-sm text-gray-600 dark:text-gray-400"
+														class="text-sm text-muted-foreground"
 														>Loading original data...</span
 													>
 												</div>
@@ -708,15 +708,15 @@
 												<div class="flex-1 w-full">
 													{#if existing}
 														<div
-															class="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+															class="p-2.5 bg-muted/50 rounded-lg"
 														>
 															<p
-																class="text-xs text-gray-500 dark:text-gray-400 mb-1"
+																class="text-xs text-muted-foreground mb-1"
 															>
 																Current
 															</p>
 															<h5
-																class="text-sm font-medium text-gray-700 dark:text-gray-300 truncate"
+																class="text-sm font-medium text-foreground truncate"
 															>
 																{existing.title ||
 																	existing.name ||
@@ -741,7 +741,7 @@
 																						  existing.status ===
 																								'paused'
 																						? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
-																						: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'}"
+																						: 'bg-muted text-foreground/30 dark:text-muted-foreground'}"
 																		>
 																			{existing.status}
 																		</span>
@@ -774,10 +774,10 @@
 														</div>
 													{:else}
 														<div
-															class="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+															class="p-2.5 bg-muted/50 rounded-lg"
 														>
 															<p
-																class="text-sm text-gray-500 dark:text-gray-400 italic"
+																class="text-sm text-muted-foreground italic"
 															>
 																Original data not found
 															</p>
@@ -787,7 +787,7 @@
 
 												<!-- Arrow -->
 												<div class="flex-shrink-0 self-center">
-													<ArrowRight class="w-4 h-4 text-gray-400" />
+													<ArrowRight class="w-4 h-4 text-muted-foreground" />
 												</div>
 
 												<!-- Updated -->
@@ -801,7 +801,7 @@
 															Updated
 														</p>
 														<h5
-															class="text-sm font-medium text-gray-900 dark:text-white truncate"
+															class="text-sm font-medium text-foreground truncate"
 														>
 															{operation.data.title ||
 																operation.data.name ||
@@ -832,7 +832,7 @@
 																							.status ===
 																							'paused'
 																					? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
-																					: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'}"
+																					: 'bg-muted text-foreground/30 dark:text-muted-foreground'}"
 																	>
 																		{operation.data.status}
 																	</span>
@@ -859,7 +859,7 @@
 
 											{#if existing && !isExpanded}
 												<p
-													class="text-xs text-gray-500 dark:text-gray-400 mt-2"
+													class="text-xs text-muted-foreground mt-2"
 												>
 													Click to view changes
 												</p>
@@ -878,7 +878,7 @@
 														class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"
 													></div>
 													<span
-														class="text-sm text-gray-600 dark:text-gray-400"
+														class="text-sm text-muted-foreground"
 														>Loading original data for comparison...</span
 													>
 												</div>
@@ -892,13 +892,13 @@
 											/>
 										{:else if existing}
 											<div
-												class="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+												class="text-center py-8 bg-muted/50 rounded-lg"
 											>
-												<p class="text-sm text-gray-500 dark:text-gray-400">
+												<p class="text-sm text-muted-foreground">
 													No changes detected for this item
 												</p>
 												<p
-													class="text-xs text-gray-400 dark:text-gray-500 mt-2"
+													class="text-xs text-muted-foreground mt-2"
 												>
 													The update contains the same values as the
 													current version
@@ -924,13 +924,13 @@
 											</div>
 										{:else}
 											<div
-												class="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+												class="text-center py-8 bg-muted/50 rounded-lg"
 											>
-												<p class="text-sm text-gray-500 dark:text-gray-400">
+												<p class="text-sm text-muted-foreground">
 													Original data not available
 												</p>
 												<p
-													class="text-xs text-gray-400 dark:text-gray-500 mt-2"
+													class="text-xs text-muted-foreground mt-2"
 												>
 													The item may have been deleted or does not exist
 													yet
@@ -949,7 +949,7 @@
 			{#if createOperations.length > 0}
 				<div class="mb-4">
 					<h3
-						class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2 mb-3"
+						class="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2 mb-3"
 					>
 						<Plus class="w-4 h-4 text-emerald-500" />
 						New Items ({createOperations.length})
@@ -963,14 +963,14 @@
 							{@const color = getOperationColor(operation.table)}
 
 							<div
-								class="group relative bg-white dark:bg-gray-800 rounded-xl border transition-colors duration-200
+								class="group relative bg-card rounded-xl border transition-colors duration-200
 									{isDisabled
-									? 'border-gray-200 dark:border-gray-700 opacity-60'
-									: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}"
+									? 'border-border opacity-60'
+									: 'border-border hover:border-border'}"
 							>
 								<!-- Header -->
 								<div
-									class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-t-xl"
+									class="px-4 py-3 border-b border-border bg-emerald-50/50 dark:bg-emerald-900/10 rounded-t-xl"
 								>
 									<div class="flex items-center justify-between">
 										<div class="flex items-center gap-2 flex-1 min-w-0">
@@ -985,7 +985,7 @@
 												{operation.table}
 											</span>
 											<h4
-												class="text-sm font-medium text-gray-900 dark:text-white truncate"
+												class="text-sm font-medium text-foreground truncate"
 											>
 												Create New {operation.table === 'projects'
 													? 'Project'
@@ -1000,7 +1000,7 @@
 													e.stopPropagation();
 													toggleOperationExpansion(operation.id, e);
 												}}
-												class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+												class="p-1.5 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground hover:bg-muted rounded-lg transition-all duration-200"
 												title={isExpanded ? 'Collapse' : 'Expand'}
 											>
 												<Eye class="w-3.5 h-3.5" />
@@ -1012,7 +1012,7 @@
 												}}
 												disabled={isProcessing ||
 													isActionLoading(operation.id, 'edit')}
-												class="p-1.5 text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+												class="p-1.5 text-muted-foreground hover:text-emerald-600 dark:text-muted-foreground dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
 												title="Edit operation"
 											>
 												{#if isActionLoading(operation.id, 'edit')}
@@ -1030,7 +1030,7 @@
 												}}
 												disabled={isProcessing ||
 													isActionLoading(operation.id, 'remove')}
-												class="p-1.5 text-gray-500 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+												class="p-1.5 text-muted-foreground hover:text-rose-600 dark:text-muted-foreground dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
 												title="Remove operation"
 											>
 												{#if isActionLoading(operation.id, 'remove')}
@@ -1050,7 +1050,7 @@
 													e.stopPropagation();
 													handleToggleOperation(operation.id, e);
 												}}
-												class="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 ml-2"
+												class="w-4 h-4 text-primary-600 border-border rounded focus:ring-primary-500 ml-2"
 											/>
 										</div>
 									</div>
@@ -1061,12 +1061,12 @@
 									<div
 										class="p-3 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-lg border border-emerald-200 dark:border-emerald-700"
 									>
-										<h5 class="font-medium text-gray-900 dark:text-white mb-2">
+										<h5 class="font-medium text-foreground mb-2">
 											{operation.data.title || operation.data.name}
 										</h5>
 										{#if operation.data.description}
 											<p
-												class="text-sm text-gray-600 dark:text-gray-400 mb-3"
+												class="text-sm text-muted-foreground mb-3"
 											>
 												{operation.data.description}
 											</p>
@@ -1079,14 +1079,14 @@
 												{#if operation.data.details || operation.data.content}
 													<div>
 														<p
-															class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+															class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
 														>
 															{operation.table === 'notes'
 																? 'Content'
 																: 'Details'}
 														</p>
 														<div
-															class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
+															class="text-sm text-foreground whitespace-pre-wrap"
 														>
 															{operation.data.details ||
 																operation.data.content ||
@@ -1102,7 +1102,7 @@
 														{#if operation.data.priority}
 															<div>
 																<p
-																	class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+																	class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
 																>
 																	Priority
 																</p>
@@ -1124,12 +1124,12 @@
 														{#if operation.data.status}
 															<div>
 																<p
-																	class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+																	class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
 																>
 																	Status
 																</p>
 																<span
-																	class="text-sm text-gray-700 dark:text-gray-300"
+																	class="text-sm text-foreground"
 																>
 																	{operation.data.status}
 																</span>
@@ -1139,12 +1139,12 @@
 														{#if operation.data.duration_minutes}
 															<div>
 																<p
-																	class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+																	class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
 																>
 																	Duration
 																</p>
 																<div
-																	class="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300"
+																	class="flex items-center gap-1 text-sm text-foreground"
 																>
 																	<Clock class="w-3 h-3" />
 																	<span
@@ -1158,12 +1158,12 @@
 														{#if operation.data.start_date}
 															<div>
 																<p
-																	class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+																	class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
 																>
 																	Start Date
 																</p>
 																<div
-																	class="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300"
+																	class="flex items-center gap-1 text-sm text-foreground"
 																>
 																	<Calendar class="w-3 h-3" />
 																	<span
@@ -1181,7 +1181,7 @@
 												{#if operation.table === 'projects' && operation.data.tags && operation.data.tags.length > 0}
 													<div>
 														<p
-															class="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1"
+															class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
 														>
 															Tags
 														</p>
@@ -1211,7 +1211,7 @@
 			{#if errorOperations.length > 0}
 				<div class="mb-4">
 					<h3
-						class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2 mb-3"
+						class="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2 mb-3"
 					>
 						<AlertTriangle class="w-4 h-4 text-amber-500" />
 						Operations with Issues ({errorOperations.length})
@@ -1233,14 +1233,14 @@
 												{operation.table}
 											</span>
 											<span
-												class="text-sm font-medium text-gray-700 dark:text-gray-300"
+												class="text-sm font-medium text-foreground"
 											>
 												{operation.operation}
 											</span>
 										</div>
 										{#if operation.data?.title || operation.data?.name}
 											<p
-												class="text-sm font-medium text-gray-900 dark:text-white mb-1"
+												class="text-sm font-medium text-foreground mb-1"
 											>
 												{operation.data.title || operation.data.name}
 											</p>
@@ -1267,13 +1267,13 @@
 
 	<!-- Footer -->
 	<div
-		class="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+		class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/50"
 	>
 		<div class="flex flex-col gap-4">
 			<!-- Operation Summary -->
 			<div class="flex items-center gap-4">
-				<div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-					<span class="font-medium text-gray-900 dark:text-white">
+				<div class="text-xs sm:text-sm text-muted-foreground">
+					<span class="font-medium text-foreground">
 						{enabledValidOperations.length}
 					</span>
 					of {parseResults.operations.length} selected
@@ -1300,11 +1300,11 @@
 						/>
 						<label
 							for="auto-accept-next-time"
-							class="text-sm text-gray-700 dark:text-gray-300 select-none"
+							class="text-sm text-foreground select-none"
 						>
 							Auto-accept similar changes next time
 							{#if !canAutoAcceptCurrent && autoAcceptEnabled}
-								<span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+								<span class="block text-xs text-muted-foreground mt-0.5">
 									(Auto-accept disabled: too many operations or has errors)
 								</span>
 							{/if}
@@ -1382,7 +1382,7 @@
 	}
 
 	.operation-badge-gray {
-		@apply bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300;
+		@apply bg-muted text-foreground dark:text-muted-foreground;
 	}
 
 	/* Line clamp utilities */

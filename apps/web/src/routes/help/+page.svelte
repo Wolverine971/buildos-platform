@@ -72,7 +72,7 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 				<a
 					href="/blogs/getting-started/effective-brain-dumping"
-					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
+					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-ink-strong transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
 				>
 					<div
 						class="flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-4 group-hover:scale-110 transition-transform"
@@ -87,7 +87,7 @@
 
 				<a
 					href="/blogs/getting-started/first-project-setup"
-					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
+					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-ink-strong transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
 				>
 					<div
 						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4 group-hover:scale-110 transition-transform"
@@ -102,7 +102,7 @@
 
 				<a
 					href="/blogs/getting-started/understanding-life-goals"
-					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
+					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-ink-strong transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
 				>
 					<div
 						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4 group-hover:scale-110 transition-transform"
@@ -117,7 +117,7 @@
 
 				<a
 					href="/blogs/getting-started/daily-brief-guide"
-					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-xl transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
+					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-ink-strong transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
 				>
 					<div
 						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mb-4 group-hover:scale-110 transition-transform"

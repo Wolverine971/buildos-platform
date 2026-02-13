@@ -241,35 +241,35 @@
 					</div>
 				{/if}
 				<div>
-					<h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
+					<h2 class="text-xl font-semibold text-foreground">
 						{data.user.name ?? data.user.email}
 					</h2>
 					{#if data.user.name}
-						<p class="text-sm text-gray-500 dark:text-gray-400">{data.user.email}</p>
+						<p class="text-sm text-muted-foreground">{data.user.email}</p>
 					{/if}
-					<p class="mt-1 text-xs text-gray-400 dark:text-gray-500 font-mono">
+					<p class="mt-1 text-xs text-muted-foreground font-mono">
 						{data.user.id}
 					</p>
 				</div>
 			</div>
 			<div class="grid grid-cols-3 gap-4 text-center">
 				<div>
-					<p class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+					<p class="text-2xl font-bold text-foreground">
 						{data.summary.totalProjects}
 					</p>
-					<p class="text-xs text-gray-500 dark:text-gray-400">Projects</p>
+					<p class="text-xs text-muted-foreground">Projects</p>
 				</div>
 				<div>
 					<p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
 						{data.summary.migratedProjects}
 					</p>
-					<p class="text-xs text-gray-500 dark:text-gray-400">Migrated</p>
+					<p class="text-xs text-muted-foreground">Migrated</p>
 				</div>
 				<div>
 					<p class="text-2xl font-bold text-amber-600 dark:text-amber-400">
 						{data.summary.pendingProjects}
 					</p>
-					<p class="text-xs text-gray-500 dark:text-gray-400">Pending</p>
+					<p class="text-xs text-muted-foreground">Pending</p>
 				</div>
 			</div>
 		</div>
@@ -293,28 +293,28 @@
 		<AdminCard padding="md">
 			<div class="text-center">
 				<FolderGit2 class="mx-auto h-6 w-6 text-purple-500" />
-				<p class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+				<p class="mt-2 text-2xl font-bold text-foreground">
 					{data.summary.migratedProjects}/{data.summary.totalProjects}
 				</p>
-				<p class="text-xs text-gray-500 dark:text-gray-400">Projects</p>
+				<p class="text-xs text-muted-foreground">Projects</p>
 			</div>
 		</AdminCard>
 		<AdminCard padding="md">
 			<div class="text-center">
 				<CheckSquare class="mx-auto h-6 w-6 text-blue-500" />
-				<p class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+				<p class="mt-2 text-2xl font-bold text-foreground">
 					{data.summary.migratedTasks}/{data.summary.totalTasks}
 				</p>
-				<p class="text-xs text-gray-500 dark:text-gray-400">Tasks</p>
+				<p class="text-xs text-muted-foreground">Tasks</p>
 			</div>
 		</AdminCard>
 		<AdminCard padding="md">
 			<div class="text-center">
 				<FolderGit2 class="mx-auto h-6 w-6 text-emerald-500" />
-				<p class="mt-2 text-2xl font-bold text-gray-900 dark:text-gray-100">
+				<p class="mt-2 text-2xl font-bold text-foreground">
 					{data.summary.migratedPhases}/{data.summary.totalPhases}
 				</p>
-				<p class="text-xs text-gray-500 dark:text-gray-400">Phases</p>
+				<p class="text-xs text-muted-foreground">Phases</p>
 			</div>
 		</AdminCard>
 		<AdminCard padding="md">
@@ -322,26 +322,26 @@
 				<AlertTriangle
 					class="mx-auto h-6 w-6 {data.errors.length > 0
 						? 'text-rose-500'
-						: 'text-gray-400'}"
+						: 'text-muted-foreground'}"
 				/>
 				<p
 					class="mt-2 text-2xl font-bold {data.errors.length > 0
 						? 'text-rose-600 dark:text-rose-400'
-						: 'text-gray-900 dark:text-gray-100'}"
+						: 'text-foreground'}"
 				>
 					{data.errors.length}
 				</p>
-				<p class="text-xs text-gray-500 dark:text-gray-400">Errors</p>
+				<p class="text-xs text-muted-foreground">Errors</p>
 			</div>
 		</AdminCard>
 	</div>
 
 	<!-- Projects List -->
 	<AdminCard padding="lg">
-		<h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Projects</h3>
+		<h3 class="mb-4 text-lg font-semibold text-foreground">Projects</h3>
 
 		{#if data.projects.length === 0}
-			<p class="py-8 text-center text-gray-500 dark:text-gray-400">
+			<p class="py-8 text-center text-muted-foreground">
 				This user has no projects.
 			</p>
 		{:else}
@@ -350,14 +350,14 @@
 				{#each data.projects as project}
 					{@const status = getStatusBadge(project)}
 					<div
-						class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900"
+						class="rounded-lg border border-border bg-card p-4"
 					>
 						<div class="flex items-start justify-between">
 							<div>
-								<p class="font-medium text-gray-900 dark:text-gray-100">
+								<p class="font-medium text-foreground">
 									{project.name}
 								</p>
-								<p class="text-xs text-gray-500 dark:text-gray-400">
+								<p class="text-xs text-muted-foreground">
 									{project.migratedTaskCount}/{project.taskCount} tasks
 								</p>
 							</div>
@@ -398,12 +398,12 @@
 
 			<!-- Desktop Table View -->
 			<div
-				class="hidden overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 lg:block"
+				class="hidden overflow-hidden rounded-lg border border-border lg:block"
 			>
 				<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
-					<thead class="bg-gray-50 dark:bg-gray-900/50">
+					<thead class="bg-muted/50">
 						<tr
-							class="text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400"
+							class="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
 						>
 							<th class="px-4 py-3">Project</th>
 							<th class="px-4 py-3">Status</th>
@@ -413,33 +413,33 @@
 						</tr>
 					</thead>
 					<tbody
-						class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-950"
+						class="divide-y divide-gray-200 bg-card dark:divide-gray-700"
 					>
 						{#each data.projects as project}
 							{@const status = getStatusBadge(project)}
 							{@const StatusIcon = getStatusIcon(project)}
 							<tr
-								class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/30"
+								class="transition-colors hover:bg-muted/30"
 							>
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-3">
 										<div
 											class="flex h-8 w-8 items-center justify-center rounded-lg {project.isMigrated
 												? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
-												: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}"
+												: 'bg-muted text-muted-foreground dark:text-muted-foreground'}"
 										>
 											<StatusIcon class="h-4 w-4" />
 										</div>
 										<div>
-											<p class="font-medium text-gray-900 dark:text-gray-100">
+											<p class="font-medium text-foreground">
 												{project.name}
 											</p>
-											<p class="text-xs text-gray-500 dark:text-gray-400">
+											<p class="text-xs text-muted-foreground">
 												{project.status === 'archived'
 													? 'Archived'
 													: 'Active'}
 												{#if project.ontoId}
-													<span class="text-gray-400">•</span>
+													<span class="text-muted-foreground">•</span>
 													<span class="font-mono"
 														>{project.ontoId.slice(0, 8)}...</span
 													>
@@ -454,7 +454,7 @@
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-2">
 										<div
-											class="h-2 w-16 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+											class="h-2 w-16 overflow-hidden rounded-full bg-muted"
 										>
 											<div
 												class="h-full bg-emerald-500 transition-all"
@@ -465,12 +465,12 @@
 													: 0}%"
 											></div>
 										</div>
-										<span class="text-xs text-gray-700 dark:text-gray-300">
+										<span class="text-xs text-foreground">
 											{project.migratedTaskCount}/{project.taskCount}
 										</span>
 									</div>
 								</td>
-								<td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+								<td class="px-4 py-3 text-foreground">
 									{project.migratedPhaseCount}/{project.phaseCount}
 								</td>
 								<td class="px-4 py-3 text-right">
@@ -520,7 +520,7 @@
 	{#if data.errors.length > 0}
 		<AdminCard padding="lg">
 			<div class="flex items-center justify-between mb-4">
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+				<h3 class="text-lg font-semibold text-foreground">
 					Recent Errors ({data.errors.length})
 				</h3>
 				<a
@@ -535,16 +535,16 @@
 			<div class="space-y-2">
 				{#each data.errors.slice(0, 5) as error}
 					<div
-						class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800"
+						class="rounded-lg border border-border bg-muted p-3"
 					>
 						<div class="flex items-start justify-between">
 							<div>
-								<p class="font-medium text-gray-900 dark:text-gray-100">
+								<p class="font-medium text-foreground">
 									{error.entityName}
 								</p>
-								<p class="text-xs text-gray-500 dark:text-gray-400">
+								<p class="text-xs text-muted-foreground">
 									<span class="capitalize">{error.entityType}</span>
-									<span class="text-gray-400">•</span>
+									<span class="text-muted-foreground">•</span>
 									{error.projectName}
 								</p>
 							</div>
@@ -595,13 +595,13 @@
 	<div class="p-4">
 		{#if previewData}
 			<pre
-				class="max-h-96 overflow-auto rounded-lg bg-gray-900 p-4 text-xs text-gray-100">{JSON.stringify(
+				class="max-h-96 overflow-auto rounded-lg bg-gray-900 p-4 text-xs text-foreground">{JSON.stringify(
 					previewData,
 					null,
 					2
 				)}</pre>
 		{:else}
-			<p class="text-gray-500 dark:text-gray-400">No preview data available.</p>
+			<p class="text-muted-foreground">No preview data available.</p>
 		{/if}
 		<div class="mt-4 flex justify-end gap-2">
 			<Button variant="outline" onclick={() => (showProjectPreview = false)}>Close</Button>

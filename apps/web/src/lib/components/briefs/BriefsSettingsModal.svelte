@@ -269,12 +269,12 @@
 					<div
 						class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"
 					></div>
-					<p class="text-gray-500 dark:text-gray-400 mt-4">Loading preferences...</p>
+					<p class="text-muted-foreground mt-4">Loading preferences...</p>
 				</div>
 			{:else if briefPreferencesState.error && !briefPreferences}
 				<div class="text-center py-8">
 					<AlertCircle class="w-12 h-12 text-rose-400 mx-auto mb-4" />
-					<p class="text-gray-500 dark:text-gray-400 mb-4">
+					<p class="text-muted-foreground mb-4">
 						Failed to load brief preferences
 					</p>
 					<Button onclick={loadBriefPreferences} variant="primary" size="sm">
@@ -286,10 +286,10 @@
 				<!-- Display Mode -->
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
 					<div>
-						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<p class="block text-sm font-medium text-foreground mb-2">
 							Frequency
 						</p>
-						<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+						<div class="px-3 py-2 bg-muted rounded-lg">
 							{briefPreferences.frequency === 'daily' ? 'Daily' : 'Weekly'}
 						</div>
 					</div>
@@ -297,11 +297,11 @@
 					{#if briefPreferences.frequency === 'weekly'}
 						<div>
 							<p
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+								class="block text-sm font-medium text-foreground mb-2"
 							>
 								Day of Week
 							</p>
-							<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+							<div class="px-3 py-2 bg-muted rounded-lg">
 								{DAY_OPTIONS.find((d) => d.value === briefPreferences?.day_of_week)
 									?.label || 'Monday'}
 							</div>
@@ -309,37 +309,37 @@
 					{/if}
 
 					<div>
-						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<p class="block text-sm font-medium text-foreground mb-2">
 							Time
 						</p>
-						<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+						<div class="px-3 py-2 bg-muted rounded-lg">
 							{convertTimeToHHMM(briefPreferences?.time_of_day)}
 						</div>
 					</div>
 
 					<div>
-						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<p class="block text-sm font-medium text-foreground mb-2">
 							Timezone
 						</p>
-						<div class="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+						<div class="px-3 py-2 bg-muted rounded-lg">
 							{TIMEZONE_OPTIONS.find((tz) => tz.value === briefPreferences?.timezone)
 								?.label || briefPreferences?.timezone}
 						</div>
 					</div>
 
 					<div class="md:col-span-2">
-						<p class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<p class="block text-sm font-medium text-foreground mb-2">
 							Status
 						</p>
 						<div class="space-y-3">
 							<div class="flex items-center space-x-2">
 								<div
-									class={`px-3 py-1 rounded-full text-sm font-medium ${briefPreferences.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'}`}
+									class={`px-3 py-1 rounded-full text-sm font-medium ${briefPreferences.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-muted text-foreground dark:text-muted-foreground'}`}
 								>
 									{briefPreferences.is_active ? 'Active' : 'Inactive'}
 								</div>
 								{#if briefPreferencesState.nextScheduledBrief}
-									<span class="text-sm text-gray-500 dark:text-gray-400">
+									<span class="text-sm text-muted-foreground">
 										Next: {formatDateTime(
 											briefPreferencesState.nextScheduledBrief.toISOString()
 										)}
@@ -350,19 +350,19 @@
 							{#if briefPreferences.is_active}
 								<!-- Show notification settings -->
 								<div
-									class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3"
+									class="bg-muted border border-border rounded-lg p-3"
 								>
 									<h4
-										class="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2"
+										class="text-xs font-semibold text-foreground mb-2"
 									>
 										Notification Settings
 									</h4>
 									<div class="flex flex-col gap-1.5">
 										<div class="flex items-center gap-2 text-sm">
 											<Mail
-												class={`w-4 h-4 ${dailyBriefEmailEnabled ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}
+												class={`w-4 h-4 ${dailyBriefEmailEnabled ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`}
 											/>
-											<span class="text-gray-700 dark:text-gray-300">
+											<span class="text-foreground">
 												Email: {dailyBriefEmailEnabled
 													? 'Enabled'
 													: 'Disabled'}
@@ -370,12 +370,12 @@
 										</div>
 										<div class="flex items-center gap-2 text-sm">
 											<MessageSquare
-												class={`w-4 h-4 ${dailyBriefSmsEnabled ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400'}`}
+												class={`w-4 h-4 ${dailyBriefSmsEnabled ? 'text-orange-600 dark:text-orange-400' : 'text-muted-foreground'}`}
 											/>
-											<span class="text-gray-700 dark:text-gray-300">
+											<span class="text-foreground">
 												SMS: {dailyBriefSmsEnabled ? 'Enabled' : 'Disabled'}
 												{#if dailyBriefSmsEnabled && phoneNumber}
-													<span class="text-xs text-gray-500"
+													<span class="text-xs text-muted-foreground"
 														>({phoneNumber})</span
 													>
 												{/if}
@@ -445,9 +445,9 @@
 								<input
 									type="checkbox"
 									bind:checked={briefPreferencesForm.is_active}
-									class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-primary-600"
+									class="h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500 cursor-pointer dark:checked:bg-primary-600"
 								/>
-								<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+								<span class="text-sm font-medium text-foreground">
 									Enable daily brief generation
 								</span>
 							</label>
@@ -455,15 +455,15 @@
 							{#if briefPreferencesForm.is_active}
 								<!-- Notification Settings Section -->
 								<div
-									class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3"
+									class="border-t border-border pt-4 space-y-3"
 								>
 									<h4
-										class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2"
+										class="text-sm font-semibold text-foreground flex items-center gap-2"
 									>
 										<Bell class="w-4 h-4" />
 										Notification Settings
 									</h4>
-									<p class="text-xs text-gray-600 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										Choose how you want to be notified when your brief is ready
 									</p>
 
@@ -473,7 +473,7 @@
 											<input
 												type="checkbox"
 												bind:checked={dailyBriefEmailEnabled}
-												class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
+												class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer dark:checked:bg-blue-600"
 											/>
 										</div>
 										<div class="flex-1">
@@ -482,13 +482,13 @@
 													class="w-4 h-4 text-blue-600 dark:text-blue-400"
 												/>
 												<span
-													class="text-sm font-medium text-gray-700 dark:text-gray-300"
+													class="text-sm font-medium text-foreground"
 												>
 													Email Notifications
 												</span>
 											</div>
 											<p
-												class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
+												class="text-xs text-muted-foreground mt-0.5"
 											>
 												Get your daily brief via email
 											</p>
@@ -503,7 +503,7 @@
 												checked={dailyBriefSmsEnabled}
 												onchange={(e) =>
 													handleSmsToggle(e.currentTarget.checked)}
-												class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-orange-600 focus:ring-orange-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-orange-600"
+												class="h-4 w-4 rounded border-border text-orange-600 focus:ring-orange-500 cursor-pointer dark:checked:bg-orange-600"
 											/>
 										</div>
 										<div class="flex-1">
@@ -512,13 +512,13 @@
 													class="w-4 h-4 text-orange-600 dark:text-orange-400"
 												/>
 												<span
-													class="text-sm font-medium text-gray-700 dark:text-gray-300"
+													class="text-sm font-medium text-foreground"
 												>
 													SMS Notifications
 												</span>
 											</div>
 											<p
-												class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
+												class="text-xs text-muted-foreground mt-0.5"
 											>
 												Receive text messages when your brief is ready
 											</p>
@@ -574,7 +574,7 @@
 
 	{#snippet footer()}
 		<div
-			class="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+			class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/50"
 		>
 			<div class="flex justify-end space-x-2">
 				{#if !isEditing}

@@ -145,7 +145,7 @@
 	function getChangeColor(current: number, previous: number): string {
 		if (current > previous) return 'text-green-600';
 		if (current < previous) return 'text-red-600';
-		return 'text-gray-600';
+		return 'text-muted-foreground';
 	}
 
 	function calculateChange(current: number, previous: number): number {
@@ -255,7 +255,7 @@
 						<div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
 							<DollarSign class="h-6 w-6 text-green-600 dark:text-green-400" />
 						</div>
-						<span class="text-sm text-gray-500 dark:text-gray-400">
+						<span class="text-sm text-muted-foreground">
 							{selectedPeriod === 'month'
 								? 'This Month'
 								: selectedPeriod === 'quarter'
@@ -263,10 +263,10 @@
 									: 'This Year'}
 						</span>
 					</div>
-					<h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+					<h3 class="text-2xl font-bold text-foreground">
 						{formatCurrency(revenueData.recognized.current_period)}
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Recognized Revenue</p>
+					<p class="text-sm text-muted-foreground mt-1">Recognized Revenue</p>
 
 					<div class="mt-2 flex items-center text-sm">
 						{#if change > 0}
@@ -276,9 +276,9 @@
 							<ArrowDownRight class="w-4 h-4 text-red-500 mr-1" />
 							<span class="text-red-600">{change.toFixed(1)}%</span>
 						{:else}
-							<span class="text-gray-500">No change</span>
+							<span class="text-muted-foreground">No change</span>
 						{/if}
-						<span class="text-gray-500 ml-2">vs previous period</span>
+						<span class="text-muted-foreground ml-2">vs previous period</span>
 					</div>
 				</div>
 
@@ -288,13 +288,13 @@
 						<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
 							<Calendar class="h-6 w-6 text-blue-600 dark:text-blue-400" />
 						</div>
-						<span class="text-sm text-gray-500 dark:text-gray-400">Total</span>
+						<span class="text-sm text-muted-foreground">Total</span>
 					</div>
-					<h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+					<h3 class="text-2xl font-bold text-foreground">
 						{formatCurrency(revenueData.deferred.total)}
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Deferred Revenue</p>
-					<div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground mt-1">Deferred Revenue</p>
+					<div class="mt-2 text-xs text-muted-foreground">
 						Next month: {formatCurrency(revenueData.deferred.next_month)}
 					</div>
 				</div>
@@ -305,13 +305,13 @@
 						<div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
 							<TrendingDown class="h-6 w-6 text-red-600 dark:text-red-400" />
 						</div>
-						<span class="text-sm text-gray-500 dark:text-gray-400">This Period</span>
+						<span class="text-sm text-muted-foreground">This Period</span>
 					</div>
-					<h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+					<h3 class="text-2xl font-bold text-foreground">
 						{formatCurrency(revenueData.refunds.current_period)}
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Refunds</p>
-					<div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground mt-1">Refunds</p>
+					<div class="mt-2 text-xs text-muted-foreground">
 						{revenueData.refunds.total_count} refunds processed
 					</div>
 				</div>
@@ -322,17 +322,17 @@
 						<div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
 							<BarChart class="h-6 w-6 text-purple-600 dark:text-purple-400" />
 						</div>
-						<span class="text-sm text-gray-500 dark:text-gray-400">Net</span>
+						<span class="text-sm text-muted-foreground">Net</span>
 					</div>
-					<h3 class="text-2xl font-bold text-gray-900 dark:text-white">
+					<h3 class="text-2xl font-bold text-foreground">
 						{formatCurrency(
 							revenueData.recognized.current_period -
 								revenueData.refunds.current_period -
 								revenueData.chargebacks.current_period
 						)}
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Net Revenue</p>
-					<div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground mt-1">Net Revenue</p>
+					<div class="mt-2 text-xs text-muted-foreground">
 						After refunds & chargebacks
 					</div>
 				</div>
@@ -342,16 +342,16 @@
 			<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				<!-- Prorations & Adjustments -->
 				<div class="admin-panel p-6">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+					<h3 class="text-lg font-semibold text-foreground mb-4">
 						Prorations & Adjustments
 					</h3>
 					<div class="space-y-4">
 						<div
-							class="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700"
+							class="flex items-center justify-between py-3 border-b border-border"
 						>
 							<div>
-								<p class="font-medium text-gray-900 dark:text-white">Upgrades</p>
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="font-medium text-foreground">Upgrades</p>
+								<p class="text-sm text-muted-foreground">
 									Additional revenue from plan upgrades
 								</p>
 							</div>
@@ -360,11 +360,11 @@
 							</p>
 						</div>
 						<div
-							class="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700"
+							class="flex items-center justify-between py-3 border-b border-border"
 						>
 							<div>
-								<p class="font-medium text-gray-900 dark:text-white">Downgrades</p>
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="font-medium text-foreground">Downgrades</p>
+								<p class="text-sm text-muted-foreground">
 									Credits from plan downgrades
 								</p>
 							</div>
@@ -374,10 +374,10 @@
 						</div>
 						<div class="flex items-center justify-between py-3">
 							<div>
-								<p class="font-medium text-gray-900 dark:text-white">
+								<p class="font-medium text-foreground">
 									Net Prorations
 								</p>
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="text-sm text-muted-foreground">
 									Total impact on revenue
 								</p>
 							</div>
@@ -396,51 +396,51 @@
 
 				<!-- Key Metrics -->
 				<div class="admin-panel p-6">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+					<h3 class="text-lg font-semibold text-foreground mb-4">
 						Financial Metrics
 					</h3>
 					<div class="space-y-4">
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="font-medium text-gray-900 dark:text-white">MRR</p>
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="font-medium text-foreground">MRR</p>
+								<p class="text-sm text-muted-foreground">
 									Monthly Recurring Revenue
 								</p>
 							</div>
-							<p class="text-lg font-semibold text-gray-900 dark:text-white">
+							<p class="text-lg font-semibold text-foreground">
 								{formatCurrency(revenueData.metrics.mrr)}
 							</p>
 						</div>
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="font-medium text-gray-900 dark:text-white">ARR</p>
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="font-medium text-foreground">ARR</p>
+								<p class="text-sm text-muted-foreground">
 									Annual Recurring Revenue
 								</p>
 							</div>
-							<p class="text-lg font-semibold text-gray-900 dark:text-white">
+							<p class="text-lg font-semibold text-foreground">
 								{formatCurrency(revenueData.metrics.arr)}
 							</p>
 						</div>
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="font-medium text-gray-900 dark:text-white">ARPU</p>
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="font-medium text-foreground">ARPU</p>
+								<p class="text-sm text-muted-foreground">
 									Average Revenue Per User
 								</p>
 							</div>
-							<p class="text-lg font-semibold text-gray-900 dark:text-white">
+							<p class="text-lg font-semibold text-foreground">
 								{formatCurrency(revenueData.metrics.average_revenue_per_user)}
 							</p>
 						</div>
 						<div class="flex items-center justify-between">
 							<div>
-								<p class="font-medium text-gray-900 dark:text-white">LTV</p>
-								<p class="text-sm text-gray-600 dark:text-gray-400">
+								<p class="font-medium text-foreground">LTV</p>
+								<p class="text-sm text-muted-foreground">
 									Customer Lifetime Value
 								</p>
 							</div>
-							<p class="text-lg font-semibold text-gray-900 dark:text-white">
+							<p class="text-lg font-semibold text-foreground">
 								{formatCurrency(revenueData.metrics.lifetime_value)}
 							</p>
 						</div>
@@ -450,7 +450,7 @@
 				<!-- Deferred Revenue Breakdown -->
 				{#if revenueData.deferred.breakdown.length > 0}
 					<div class="admin-panel p-6 lg:col-span-2">
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+						<h3 class="text-lg font-semibold text-foreground mb-4">
 							Deferred Revenue Schedule
 						</h3>
 						<div class="overflow-x-auto">
@@ -458,17 +458,17 @@
 								<thead>
 									<tr>
 										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+											class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 										>
 											Period
 										</th>
 										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+											class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 										>
 											Amount
 										</th>
 										<th
-											class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+											class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 										>
 											Subscriptions
 										</th>
@@ -478,17 +478,17 @@
 									{#each revenueData.deferred.breakdown as item}
 										<tr>
 											<td
-												class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+												class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 											>
 												{item.period}
 											</td>
 											<td
-												class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+												class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 											>
 												{formatCurrency(item.amount)}
 											</td>
 											<td
-												class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400"
+												class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
 											>
 												{item.count} subscriptions
 											</td>

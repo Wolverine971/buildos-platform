@@ -189,7 +189,7 @@
 
 					<!-- Content Stats -->
 					<div
-						class="text-sm text-gray-500 dark:text-gray-400 flex justify-between items-center"
+						class="text-sm text-muted-foreground flex justify-between items-center"
 					>
 						<span>
 							{#if contentValue.length > 0}
@@ -206,10 +206,10 @@
 
 				<!-- Metadata Sidebar -->
 				<div
-					class="lg:col-span-1 bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4 border border-gray-200 dark:border-gray-700 order-first lg:order-last"
+					class="lg:col-span-1 bg-muted/50 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4 border border-border order-first lg:order-last"
 				>
 					<h3
-						class="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide"
+						class="text-sm font-semibold text-foreground uppercase tracking-wide"
 					>
 						Metadata
 					</h3>
@@ -272,8 +272,8 @@
 
 					<!-- Creation/Update Info (if editing) -->
 					{#if isEditing && note}
-						<hr class="border-gray-200 dark:border-gray-700" />
-						<div class="space-y-2 text-xs text-gray-600 dark:text-gray-400">
+						<hr class="border-border" />
+						<div class="space-y-2 text-xs text-muted-foreground">
 							{#if note.created_at}
 								<div>
 									<span class="font-medium">Created:</span>
@@ -294,12 +294,12 @@
 					<!-- Content Preview -->
 					<div class="space-y-2">
 						<h4
-							class="text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide"
+							class="text-xs font-medium text-foreground uppercase tracking-wide"
 						>
 							Preview
 						</h4>
 						<div
-							class="text-xs p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-gray-600 dark:text-gray-400 max-h-32 overflow-y-auto"
+							class="text-xs p-2 bg-card border border-border rounded text-muted-foreground max-h-32 overflow-y-auto"
 						>
 							{#if contentValue.trim()}
 								{contentValue.slice(0, 150)}{contentValue.length > 150 ? '...' : ''}

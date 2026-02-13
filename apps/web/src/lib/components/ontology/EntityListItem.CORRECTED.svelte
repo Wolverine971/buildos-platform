@@ -100,7 +100,7 @@
 		},
 		task: {
 			icon: ListChecks,
-			iconColor: 'text-slate-500',
+			iconColor: 'text-muted-foreground',
 			texture: 'tx tx-grain tx-weak', // Work, execution
 			weight: 'wt-ghost', // Default to ghost, varies by state
 			borderOverride: '',
@@ -173,7 +173,7 @@
 			default:
 				return {
 					icon: Circle,
-					iconColor: 'text-slate-400',
+					iconColor: 'text-muted-foreground',
 					weight: 'wt-ghost', // Todo = ephemeral
 					borderOverride: '',
 					bgOverride: '',

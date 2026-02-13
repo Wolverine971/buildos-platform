@@ -43,19 +43,19 @@
 <div class="p-8">
 	<h1 class="text-2xl font-bold mb-4">Real-time Test Page</h1>
 
-	<div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+	<div class="bg-muted p-4 rounded-lg">
 		<h2 class="font-semibold mb-2">Connection Status: {status}</h2>
 
 		<div class="mt-4">
 			<h3 class="font-semibold mb-2">Real-time Messages:</h3>
 			<div class="space-y-2 max-h-96 overflow-y-auto">
 				{#each messages as message}
-					<div class="p-2 bg-white dark:bg-gray-700 rounded text-sm">
+					<div class="p-2 bg-card rounded text-sm">
 						{message}
 					</div>
 				{/each}
 				{#if messages.length === 0}
-					<p class="text-gray-500">No messages yet. Try creating/updating a task!</p>
+					<p class="text-muted-foreground">No messages yet. Try creating/updating a task!</p>
 				{/if}
 			</div>
 		</div>

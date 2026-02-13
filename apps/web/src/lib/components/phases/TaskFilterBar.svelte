@@ -41,7 +41,7 @@
 			id: 'active',
 			label: 'Active',
 			icon: Circle,
-			color: 'text-gray-600 dark:text-gray-400',
+			color: 'text-muted-foreground',
 			activeVariant: 'primary'
 		},
 		{
@@ -118,14 +118,14 @@
 			return {
 				icon: size === 'sm' ? 'text-current' : '',
 				text: size === 'sm' ? 'text-current' : '',
-				count: size === 'sm' ? 'bg-white/20 text-current' : 'bg-white/20 '
+				count: size === 'sm' ? 'bg-card/20 text-current' : 'bg-card/20 '
 			};
 		} else {
 			// Inactive state - use custom colors with improved contrast
 			return {
 				icon: color,
-				text: 'text-gray-700 dark:text-gray-300',
-				count: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
+				text: 'text-foreground',
+				count: 'bg-muted text-foreground'
 			};
 		}
 	}

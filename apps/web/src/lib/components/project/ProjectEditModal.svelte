@@ -343,7 +343,7 @@
 			<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-5 min-h-[50vh] flex-1">
 				<!-- Content Section (Takes most space) -->
 				<div
-					class="lg:col-span-3 flex flex-col space-y-3 h-full min-h-0 bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-200"
+					class="lg:col-span-3 flex flex-col space-y-3 h-full min-h-0 bg-card rounded-xl border border-border shadow-ink hover:shadow-ink-strong transition-all duration-200"
 				>
 					<!-- Project Name Header -->
 					<div class="bg-accent/10 p-4 sm:p-5 rounded-t-xl border-b border-border">
@@ -421,7 +421,7 @@
 										onclick={copyContext}
 										variant="ghost"
 										size="sm"
-										class="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+										class="flex items-center gap-1.5 text-muted-foreground hover:text-foreground dark:hover:text-foreground"
 									>
 										<Copy class="w-3.5 h-3.5" />
 										<span class="hidden sm:inline">Copy</span>
@@ -485,7 +485,7 @@
 								</span>
 							{/if}
 							{#if !contextValue && !executiveSummaryValue}
-								<span class="text-gray-400 dark:text-gray-500 italic">
+								<span class="text-muted-foreground italic">
 									Add project details to enable AI assistance
 								</span>
 							{/if}
@@ -586,7 +586,7 @@
 								</div>
 								<div class="w-full bg-muted rounded-full h-2">
 									<div
-										class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 shadow-sm"
+										class="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full transition-all duration-500 shadow-ink"
 										style="width: {projectDuration.progress}%"
 									></div>
 								</div>

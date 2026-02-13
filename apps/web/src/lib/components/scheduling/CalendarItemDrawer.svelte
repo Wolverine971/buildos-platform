@@ -27,7 +27,7 @@
 	<div class="fixed inset-0 z-50">
 		<button class="absolute inset-0 bg-black/30" aria-label="Close drawer" onclick={onClose} />
 		<aside
-			class="absolute right-0 top-0 h-full w-full max-w-lg border-l border-border bg-background shadow-xl"
+			class="absolute right-0 top-0 h-full w-full max-w-lg border-l border-border bg-background shadow-ink-strong"
 			in:fly={{ x: 400, duration: 180 }}
 			out:fly={{ x: 400, duration: 160 }}
 		>

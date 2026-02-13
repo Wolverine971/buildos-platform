@@ -123,9 +123,9 @@
 			>
 				<!-- Twilio Consent Language -->
 				<div
-					class="mb-4 p-3 bg-white dark:bg-gray-900 rounded-md border border-blue-300 dark:border-blue-700"
+					class="mb-4 p-3 bg-card rounded-md border border-blue-300 dark:border-blue-700"
 				>
-					<p class="text-sm text-gray-700 dark:text-gray-300">
+					<p class="text-sm text-foreground">
 						By providing your phone number, you agree to receive SMS reminders and
 						notifications from BuildOS. Message & data rates may apply. Reply <strong
 							>STOP</strong
@@ -198,7 +198,7 @@
 			<div class="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
 				<button
 					onclick={resetVerification}
-					class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+					class="text-sm text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground transition-colors"
 					type="button"
 				>
 					← Use a different number

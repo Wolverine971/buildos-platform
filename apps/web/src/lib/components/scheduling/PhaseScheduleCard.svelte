@@ -48,7 +48,7 @@
 	<!-- Phase Header (Always Visible) -->
 	<button
 		onclick={toggleExpanded}
-		class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700
+		class="w-full px-4 py-3 bg-muted hover:bg-muted
 			   transition-colors flex items-center justify-between"
 		disabled={loading}
 	>
@@ -56,18 +56,18 @@
 			<!-- Expand/Collapse Icon -->
 			<div class="flex items-center">
 				{#if isExpanded}
-					<ChevronUp class="w-5 h-5 text-gray-400" />
+					<ChevronUp class="w-5 h-5 text-muted-foreground" />
 				{:else}
-					<ChevronDown class="w-5 h-5 text-gray-400" />
+					<ChevronDown class="w-5 h-5 text-muted-foreground" />
 				{/if}
 			</div>
 
 			<!-- Phase Info -->
 			<div class="text-left">
-				<h3 class="font-medium text-gray-900 dark:text-white">
+				<h3 class="font-medium text-foreground">
 					{phase.name}
 				</h3>
-				<p class="text-xs text-gray-500 dark:text-gray-400">
+				<p class="text-xs text-muted-foreground">
 					{phase.start_date ? formatDate(parseLocalDate(phase.start_date)) : 'No start'} -
 					{phase.end_date ? formatDate(parseLocalDate(phase.end_date)) : 'No end'}
 				</p>
@@ -108,7 +108,7 @@
 				{/if}
 				{#if alreadyScheduled > 0}
 					<span
-						class="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full"
+						class="px-2 py-1 bg-muted text-foreground text-xs rounded-full"
 					>
 						{alreadyScheduled} scheduled
 					</span>
@@ -126,7 +126,7 @@
 
 	<!-- Phase Content (Expanded) -->
 	{#if isExpanded && scheduleData}
-		<CardBody padding="md" class="space-y-4 bg-white dark:bg-gray-900">
+		<CardBody padding="md" class="space-y-4 bg-card">
 			<!-- Phase Conflicts/Warnings -->
 			{#if scheduleData.conflicts.length > 0}
 				<ScheduleConflictAlert conflicts={scheduleData.conflicts} compact={true} />
@@ -165,21 +165,21 @@
 			<!-- Proposed Schedule -->
 			{#if scheduleData.proposedSchedule.length > 0}
 				<div>
-					<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+					<h4 class="text-sm font-medium text-foreground mb-2">
 						Proposed Schedule:
 					</h4>
 					<div class="space-y-2 max-h-64 overflow-y-auto">
 						{#each scheduleData.proposedSchedule as item}
 							<div
-								class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800
+								class="flex items-center justify-between p-3 bg-muted
 										border rounded-lg {item.hasConflict
 									? 'border-amber-300 dark:border-amber-700'
-									: 'border-gray-200 dark:border-gray-700'}"
+									: 'border-border'}"
 							>
 								<div class="flex-1">
 									<div class="flex items-center gap-2">
 										<span
-											class="font-medium text-sm text-gray-900 dark:text-white"
+											class="font-medium text-sm text-foreground"
 										>
 											{item.task.title}
 										</span>
@@ -190,20 +190,20 @@
 													? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
 													: item.task.priority === 'medium'
 														? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
-														: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}"
+														: 'bg-muted text-foreground'}"
 											>
 												{item.task.priority}
 											</span>
 										{/if}
 									</div>
 									<div class="flex items-center gap-4 mt-1">
-										<span class="text-xs text-gray-500 dark:text-gray-400">
+										<span class="text-xs text-muted-foreground">
 											<Clock class="w-3 h-3 inline mr-1" />
 											{formatTaskTime(item.proposedStart)} - {formatTaskTime(
 												item.proposedEnd
 											)}
 										</span>
-										<span class="text-xs text-gray-500 dark:text-gray-400">
+										<span class="text-xs text-muted-foreground">
 											{item.duration_minutes} min
 										</span>
 									</div>
@@ -218,20 +218,20 @@
 					</div>
 				</div>
 			{:else if tasksToSchedule === 0}
-				<div class="text-center py-4 text-gray-500 dark:text-gray-400">
+				<div class="text-center py-4 text-muted-foreground">
 					<p class="text-sm">All tasks in this phase are already scheduled</p>
 				</div>
 			{:else}
-				<div class="text-center py-4 text-gray-500 dark:text-gray-400">
+				<div class="text-center py-4 text-muted-foreground">
 					<p class="text-sm">No schedule generated for this phase</p>
 				</div>
 			{/if}
 
 			<!-- Phase Summary -->
 			{#if scheduleData.proposedSchedule.length > 0}
-				<div class="pt-3 border-t border-gray-200 dark:border-gray-700">
+				<div class="pt-3 border-t border-border">
 					<div
-						class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400"
+						class="flex items-center justify-between text-xs text-muted-foreground"
 					>
 						<span>
 							<Info class="w-3 h-3 inline mr-1" />
@@ -250,7 +250,7 @@
 			{/if}
 		</CardBody>
 	{:else if isExpanded && loading}
-		<CardBody padding="md" class="text-center text-gray-500 dark:text-gray-400">
+		<CardBody padding="md" class="text-center text-muted-foreground">
 			<Clock class="w-6 h-6 animate-spin mx-auto mb-2" />
 			<p class="text-sm">Loading schedule data...</p>
 		</CardBody>

@@ -1004,7 +1004,7 @@
 				<AdminCard tone="danger" padding="md" class="mb-4">
 					<div class="flex items-start gap-4">
 						<span
-							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/40 text-rose-600 dark:bg-slate-900/30 dark:text-rose-200"
+							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-card/40 text-rose-600/30 dark:text-rose-200"
 						>
 							<AlertTriangle class="h-5 w-5" />
 						</span>

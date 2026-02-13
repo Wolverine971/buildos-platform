@@ -162,7 +162,7 @@
 
 <div
 	bind:this={chartContainer}
-	class="relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-6"
+	class="relative bg-card rounded-lg shadow-ink border border-border p-4 sm:p-6"
 >
 	{#if isLoading}
 		<div class="flex items-center justify-center py-20">
@@ -170,7 +170,7 @@
 				{#each Array(53) as _, i}
 					<div class="flex flex-col space-y-1">
 						{#each Array(7) as _, j}
-							<div class="w-3 h-3 bg-gray-200 dark:bg-gray-700 rounded-sm"></div>
+							<div class="w-3 h-3 bg-muted rounded-sm"></div>
 						{/each}
 					</div>
 				{/each}
@@ -178,8 +178,8 @@
 		</div>
 	{:else if weeks.length === 0}
 		<div class="text-center py-20">
-			<div class="text-gray-400 mb-2">No activity data</div>
-			<div class="text-sm text-gray-500 dark:text-gray-400">
+			<div class="text-muted-foreground mb-2">No activity data</div>
+			<div class="text-sm text-muted-foreground">
 				Contribution chart will appear once you start creating braindumps
 			</div>
 		</div>
@@ -187,11 +187,11 @@
 		<!-- Chart header with months -->
 		<div class="mb-4">
 			<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3">
-				<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+				<h4 class="text-sm font-medium text-foreground">
 					Braindump Activity
 				</h4>
 				<div
-					class="flex items-center justify-center sm:justify-end space-x-2 text-xs text-gray-500 dark:text-gray-400"
+					class="flex items-center justify-center sm:justify-end space-x-2 text-xs text-muted-foreground"
 				>
 					<span class="hidden sm:inline">Less</span>
 					<div class="flex space-x-1">
@@ -218,7 +218,7 @@
 							{#each monthLabels as month}
 								{#if month.weekIndex === weekIndex}
 									<div
-										class="absolute -top-1 left-0 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap"
+										class="absolute -top-1 left-0 text-xs text-muted-foreground whitespace-nowrap"
 									>
 										{month.name}
 									</div>
@@ -239,7 +239,7 @@
 			>
 				<!-- Day labels -->
 				<div
-					class="flex flex-col justify-between items-center text-xs text-gray-500 dark:text-gray-400 mr-2 sm:mr-3 flex-shrink-0"
+					class="flex flex-col justify-between items-center text-xs text-muted-foreground mr-2 sm:mr-3 flex-shrink-0"
 				>
 					{#each dayLabels as label, index}
 						<!-- Only show Mon, Wed, Fri for space -->
@@ -289,7 +289,7 @@
 
 		<!-- Legend - responsive -->
 		<div
-			class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-gray-500 dark:text-gray-400"
+			class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-muted-foreground"
 		>
 			<div class="flex items-center justify-center sm:justify-start space-x-4">
 				{#if searchMatchDates.length > 0}
@@ -305,7 +305,7 @@
 					</div>
 				{/if}
 			</div>
-			<div class="text-center sm:text-right text-xs text-gray-400">
+			<div class="text-center sm:text-right text-xs text-muted-foreground">
 				Tip: Tap any square to view that day's braindumps
 			</div>
 		</div>
@@ -315,11 +315,11 @@
 	{#if hoveredDay}
 		<div
 			bind:this={tooltipElement}
-			class="contribution-tooltip absolute z-10 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			class="contribution-tooltip absolute z-10 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-ink-strong pointer-events-none transform -translate-x-1/2 -translate-y-full"
 			style="left: {hoveredDay.x}px; top: {hoveredDay.y}px;"
 		>
 			<div class="font-medium">{formatTooltipDate(hoveredDay.date)}</div>
-			<div class="text-gray-300">
+			<div class="text-muted-foreground">
 				{hoveredDay.count} braindump{hoveredDay.count !== 1 ? 's' : ''}
 			</div>
 

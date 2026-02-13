@@ -361,7 +361,7 @@
 				{#each getEventsForDay(internalDate) as event}
 					<Button
 						onclick={() => handleEventClick(event)}
-						class="w-full text-left p-4 rounded-lg border transition-colors hover:shadow-md {event.type ===
+						class="w-full text-left p-4 rounded-lg border transition-colors hover:shadow-ink {event.type ===
 						'proposed'
 							? 'border-primary-200 dark:border-primary-800'
 							: 'border-border'} {event.color}"

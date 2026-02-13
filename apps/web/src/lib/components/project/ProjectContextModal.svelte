@@ -28,9 +28,9 @@
 			case 'completed':
 				return 'bg-primary-100 dark:bg-primary-900/50 text-primary-800 dark:text-primary-200';
 			case 'archived':
-				return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+				return 'bg-muted text-foreground';
 			default:
-				return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200';
+				return 'bg-muted text-foreground';
 		}
 	}
 </script>
@@ -45,10 +45,10 @@
 					/>
 				</div>
 				<div class="min-w-0">
-					<h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+					<h2 class="text-lg sm:text-xl font-semibold text-foreground">
 						Project Context
 					</h2>
-					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+					<p class="text-xs sm:text-sm text-muted-foreground mt-1">
 						{project.name}
 					</p>
 				</div>
@@ -58,12 +58,12 @@
 		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 space-y-4 sm:space-y-6">
 			<!-- Project Overview Section -->
 			<div
-				class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700"
+				class="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border"
 			>
 				<h3
-					class="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-3 flex items-center"
+					class="text-sm sm:text-base font-medium text-foreground mb-3 flex items-center"
 				>
-					<Info class="w-4 h-4 mr-2 text-gray-500 dark:text-gray-400" />
+					<Info class="w-4 h-4 mr-2 text-muted-foreground" />
 					Project Overview
 				</h3>
 
@@ -72,7 +72,7 @@
 					{#if project.status}
 						<div class="flex items-center space-x-2">
 							<span
-								class="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400"
+								class="text-xs sm:text-sm font-medium text-muted-foreground"
 							>
 								Status:
 							</span>
@@ -88,11 +88,11 @@
 
 					{#if project.start_date}
 						<div class="flex items-center space-x-2">
-							<Calendar class="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
-							<span class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+							<Calendar class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
+							<span class="text-xs sm:text-sm text-muted-foreground">
 								Started:
 							</span>
-							<span class="text-xs sm:text-sm text-gray-900 dark:text-white">
+							<span class="text-xs sm:text-sm text-foreground">
 								{formatDateForDisplay(project.start_date)}
 							</span>
 						</div>
@@ -100,11 +100,11 @@
 
 					{#if project.end_date}
 						<div class="flex items-center space-x-2">
-							<Calendar class="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
-							<span class="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+							<Calendar class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
+							<span class="text-xs sm:text-sm text-muted-foreground">
 								Due:
 							</span>
-							<span class="text-xs sm:text-sm text-gray-900 dark:text-white">
+							<span class="text-xs sm:text-sm text-foreground">
 								{formatDateForDisplay(project.end_date)}
 							</span>
 						</div>
@@ -115,14 +115,14 @@
 				{#if project.description}
 					<div class="mb-4">
 						<div
-							class="prose prose-sm max-w-none text-gray-700 dark:text-gray-300
-						prose-headings:text-gray-900 dark:prose-headings:text-white
-						prose-p:text-gray-700 dark:prose-p:text-gray-300
-						prose-strong:text-gray-900 dark:prose-strong:text-white
+							class="prose prose-sm max-w-none text-foreground
+						prose-headings:text-foreground dark:prose-headings:text-white
+						prose-p:text-foreground dark:prose-p:text-muted-foreground
+						prose-strong:text-foreground dark:prose-strong:text-white
 						prose-a:text-blue-600 dark:prose-a:text-blue-400
-						prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300
-						prose-code:text-gray-800 dark:prose-code:text-gray-200
-						prose-pre:bg-gray-100 dark:prose-pre:bg-gray-800"
+						prose-blockquote:text-foreground dark:prose-blockquote:text-muted-foreground
+						prose-code:text-foreground dark:prose-code:text-muted-foreground
+						prose-pre:bg-muted dark:prose-pre:bg-gray-800"
 						>
 							{@html renderMarkdown(project.description)}
 						</div>
@@ -132,11 +132,11 @@
 				<!-- Tags -->
 				{#if project.tags && project.tags.length > 0}
 					<div class="flex items-start space-x-2">
-						<Tag class="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+						<Tag class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
 						<div class="flex flex-wrap gap-1">
 							{#each project.tags as tag}
 								<span
-									class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
+									class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-foreground"
 								>
 									{tag}
 								</span>
@@ -152,20 +152,20 @@
 					class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 sm:p-4 border border-blue-200 dark:border-blue-800"
 				>
 					<h3
-						class="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-3 flex items-center"
+						class="text-sm sm:text-base font-medium text-foreground mb-3 flex items-center"
 					>
 						<Briefcase class="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
 						Executive Summary
 					</h3>
 					<div
-						class="prose prose-sm max-w-none text-gray-700 dark:text-gray-300
-					prose-headings:text-gray-900 dark:prose-headings:text-white
-					prose-p:text-gray-700 dark:prose-p:text-gray-300
-					prose-strong:text-gray-900 dark:prose-strong:text-white
+						class="prose prose-sm max-w-none text-foreground
+					prose-headings:text-foreground dark:prose-headings:text-white
+					prose-p:text-foreground dark:prose-p:text-muted-foreground
+					prose-strong:text-foreground dark:prose-strong:text-white
 					prose-a:text-blue-600 dark:prose-a:text-blue-400
-					prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300
-					prose-code:text-gray-800 dark:prose-code:text-gray-200
-					prose-pre:bg-gray-100 dark:prose-pre:bg-gray-800"
+					prose-blockquote:text-foreground dark:prose-blockquote:text-muted-foreground
+					prose-code:text-foreground dark:prose-code:text-muted-foreground
+					prose-pre:bg-muted dark:prose-pre:bg-gray-800"
 					>
 						{@html renderMarkdown(project.executive_summary)}
 					</div>
@@ -175,36 +175,36 @@
 			<!-- Full Context -->
 			{#if project.context}
 				<div
-					class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700"
+					class="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border"
 				>
 					<h3
-						class="text-sm sm:text-base font-medium text-gray-900 dark:text-white mb-3 flex items-center"
+						class="text-sm sm:text-base font-medium text-foreground mb-3 flex items-center"
 					>
-						<Target class="w-4 h-4 mr-2 text-gray-500 dark:text-gray-400" />
+						<Target class="w-4 h-4 mr-2 text-muted-foreground" />
 						Detailed Project Context
 					</h3>
 					<div
-						class="prose prose-sm max-w-none text-gray-700 dark:text-gray-300
-					prose-headings:text-gray-900 dark:prose-headings:text-white
-					prose-p:text-gray-700 dark:prose-p:text-gray-300
-					prose-strong:text-gray-900 dark:prose-strong:text-white
+						class="prose prose-sm max-w-none text-foreground
+					prose-headings:text-foreground dark:prose-headings:text-white
+					prose-p:text-foreground dark:prose-p:text-muted-foreground
+					prose-strong:text-foreground dark:prose-strong:text-white
 					prose-a:text-blue-600 dark:prose-a:text-blue-400
-					prose-blockquote:text-gray-700 dark:prose-blockquote:text-gray-300
-					prose-code:text-gray-800 dark:prose-code:text-gray-200
-					prose-pre:bg-gray-100 dark:prose-pre:bg-gray-800
-					prose-ul:text-gray-700 dark:prose-ul:text-gray-300
-					prose-ol:text-gray-700 dark:prose-ol:text-gray-300
-					prose-li:text-gray-700 dark:prose-li:text-gray-300"
+					prose-blockquote:text-foreground dark:prose-blockquote:text-muted-foreground
+					prose-code:text-foreground dark:prose-code:text-muted-foreground
+					prose-pre:bg-muted dark:prose-pre:bg-gray-800
+					prose-ul:text-foreground dark:prose-ul:text-muted-foreground
+					prose-ol:text-foreground dark:prose-ol:text-muted-foreground
+					prose-li:text-foreground dark:prose-li:text-muted-foreground"
 					>
 						{@html renderMarkdown(project.context)}
 					</div>
 				</div>
 			{:else}
 				<div
-					class="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-6 text-center border border-gray-200 dark:border-gray-700"
+					class="bg-muted/50 rounded-lg p-6 text-center border border-border"
 				>
-					<FileText class="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-3" />
-					<p class="text-sm text-gray-500 dark:text-gray-400">
+					<FileText class="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3" />
+					<p class="text-sm text-muted-foreground">
 						No detailed context available for this project yet.
 					</p>
 				</div>
@@ -213,7 +213,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700"
+			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border"
 		>
 			<Button onclick={closeModal} variant="outline" size="md">Close</Button>
 		</div>

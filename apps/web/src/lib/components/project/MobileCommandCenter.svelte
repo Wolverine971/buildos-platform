@@ -305,7 +305,7 @@
 			panelKey="tasks"
 			label="Tasks"
 			icon={ListChecks}
-			iconColor="text-slate-500"
+			iconColor="text-muted-foreground"
 			count={tasks.length}
 			expanded={expandedPanel === 'tasks'}
 			partnerExpanded={isPartnerExpanded('tasks')}

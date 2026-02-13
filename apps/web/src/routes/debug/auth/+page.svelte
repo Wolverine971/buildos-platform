@@ -80,7 +80,7 @@
 
 	<div class="space-y-6 mt-8">
 		<!-- URL Parameters -->
-		<div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+		<div class="bg-muted p-4 rounded-lg">
 			<h2 class="font-semibold mb-2">URL Parameters:</h2>
 			<!-- <pre class="text-sm">{JSON.stringify(urlParams, null, 2)}</pre> -->
 		</div>
@@ -117,10 +117,10 @@
 		{/if}
 
 		<!-- Auth Events Log -->
-		<div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
+		<div class="bg-muted p-4 rounded-lg">
 			<h2 class="font-semibold mb-2">Auth Events:</h2>
 			{#if authStates.length === 0}
-				<p class="text-gray-500">No auth events yet</p>
+				<p class="text-muted-foreground">No auth events yet</p>
 			{:else}
 				<ul class="space-y-1">
 					{#each authStates as state}
@@ -142,7 +142,7 @@
 		</div>
 
 		<!-- Raw Data -->
-		<details class="bg-gray-100 dark:bg-gray-800 p-4 rounded">
+		<details class="bg-muted p-4 rounded">
 			<summary class="cursor-pointer font-semibold">Raw Page Data</summary>
 			<!-- <pre class="text-xs mt-2 overflow-auto">{JSON.stringify(data, null, 2)}</pre> -->
 		</details>

@@ -224,28 +224,28 @@
 	});
 </script>
 
-<div class="relative min-h-[calc(100vh-4rem)] bg-white dark:bg-gray-900">
+<div class="relative min-h-[calc(100vh-4rem)] bg-card">
 	<section
 		class="relative mx-auto flex max-w-7xl flex-col gap-2 sm:gap-4 px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4 md:py-6 lg:gap-5"
 	>
 		<header class="space-y-1">
 			<h1
-				class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2 tracking-tight"
+				class="text-2xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2 tracking-tight"
 			>
 				Time Blocks
 			</h1>
-			<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+			<p class="text-sm sm:text-base text-muted-foreground">
 				Focus sessions synced to your calendar
 			</p>
 		</header>
 
 		<!-- Compact action bar -->
 		<div
-			class="flex flex-col gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 dark:border-gray-700 dark:bg-gray-800 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+			class="flex flex-col gap-2 rounded-lg border border-border bg-card px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
 		>
 			<!-- View mode toggle - Compact segmented control -->
 			<div
-				class="inline-flex rounded-md bg-gray-100 p-0.5 dark:bg-gray-800"
+				class="inline-flex rounded-md bg-muted p-0.5"
 				role="group"
 				aria-label="View mode"
 			>
@@ -253,8 +253,8 @@
 					type="button"
 					class={`relative rounded px-3 py-1.5 text-xs font-medium transition-all ${
 						displayMode === 'calendar'
-							? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
-							: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+							? 'bg-card text-foreground shadow-ink'
+							: 'text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground'
 					}`}
 					onclick={() => displayMode === 'calendar'}
 					aria-pressed={displayMode === 'calendar'}
@@ -265,8 +265,8 @@
 					type="button"
 					class={`relative rounded px-3 py-1.5 text-xs font-medium transition-all ${
 						displayMode === 'list'
-							? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
-							: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+							? 'bg-card text-foreground shadow-ink'
+							: 'text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground'
 					}`}
 					onclick={() => (displayMode = 'list')}
 					aria-pressed={displayMode === 'list'}
@@ -295,7 +295,7 @@
 
 		<!-- Time Range Selector Card -->
 		<div
-			class="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+			class="overflow-hidden rounded-lg border border-border bg-card"
 		>
 			<TimeRangeSelector
 				dateRange={$timeBlocksStore.selectedDateRange}
@@ -319,7 +319,7 @@
 
 		<!-- Time Allocation Summary -->
 		<div
-			class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+			class="rounded-lg border border-border bg-card"
 		>
 			<TimeAllocationPanel
 				allocation={$timeBlocksStore.allocation}
@@ -330,14 +330,14 @@
 
 		<!-- Calendar/List View (full width) -->
 		<div
-			class="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800"
+			class="rounded-lg border border-border bg-card"
 		>
 			{#if $timeBlocksStore.isLoading}
 				<div class="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center">
 					<div
-						class="h-12 w-12 animate-spin rounded-full border-[3px] border-gray-300 border-t-blue-600 dark:border-gray-600 dark:border-t-blue-400"
+						class="h-12 w-12 animate-spin rounded-full border-[3px] border-border border-t-blue-600 dark:border-t-blue-400"
 					></div>
-					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
+					<p class="text-sm font-medium text-muted-foreground">
 						Loading your upcoming time blocks…
 					</p>
 				</div>

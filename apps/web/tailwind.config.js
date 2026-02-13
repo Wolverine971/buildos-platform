@@ -69,10 +69,6 @@ export default {
 				},
 
 				// Status colors (paired with textures per design bible)
-				danger: {
-					DEFAULT: hslVar('--danger'),
-					foreground: hslVar('--danger-foreground')
-				},
 				info: {
 					DEFAULT: hslVar('--info'),
 					foreground: hslVar('--info-foreground')

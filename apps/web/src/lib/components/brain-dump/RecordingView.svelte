@@ -338,7 +338,7 @@
 		<!-- Error Message (positioned absolutely to avoid layout shift) -->
 		{#if voiceError}
 			<div
-				class="absolute top-0 left-0 right-0 z-10 flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm border-b border-red-200 dark:border-red-800 shadow-sm"
+				class="absolute top-0 left-0 right-0 z-10 flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm border-b border-red-200 dark:border-red-800 shadow-ink"
 				transition:fade={{ duration: 200 }}
 			>
 				<TriangleAlert class="w-4 h-4 flex-shrink-0" />
@@ -453,7 +453,7 @@
 						transition:scale={{ duration: 300, easing: cubicOut, start: 0.8 }}
 					>
 						<div
-							class="inline-flex items-center gap-2 px-3.5 py-2 bg-red-50/80 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200/60 dark:border-red-700/60 rounded-full text-sm font-medium backdrop-blur-md shadow-sm"
+							class="inline-flex items-center gap-2 px-3.5 py-2 bg-red-50/80 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-200/60 dark:border-red-700/60 rounded-full text-sm font-medium backdrop-blur-md shadow-ink"
 						>
 							<span>Recording</span>
 							<span class="tabular-nums opacity-90">
@@ -480,7 +480,7 @@
 							checked={!!autoAcceptEnabled}
 							onchange={() => brainDumpAutoAccept.toggle()}
 							disabled={isProcessing || currentPhase !== 'idle'}
-							class="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 disabled:opacity-50"
+							class="w-4 h-4 text-purple-600 border-border rounded focus:ring-purple-500 disabled:opacity-50"
 						/>
 						<span class="text-sm text-foreground select-none"> Auto-accept </span>
 					</label>
@@ -491,11 +491,11 @@
 						<button
 							onclick={handleVoiceToggle}
 							disabled={voiceButtonState.disabled}
-							class="ml-auto w-11 h-11 sm:w-12 sm:h-12 p-0 rounded-full flex-shrink-0 transition-all duration-200 relative overflow-visible flex items-center justify-center shadow-sm {voiceButtonState.isLoading
-								? 'bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-muted-foreground'
+							class="ml-auto w-11 h-11 sm:w-12 sm:h-12 p-0 rounded-full flex-shrink-0 transition-all duration-200 relative overflow-visible flex items-center justify-center shadow-ink {voiceButtonState.isLoading
+								? 'bg-muted border border-border text-muted-foreground'
 								: isCurrentlyRecording
-									? 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 border-red-600 dark:border-red-500 text-white scale-110 animate-recording-pulse shadow-lg'
-									: 'bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600 text-foreground hover:scale-105 hover:shadow-md'} disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+									? 'bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 border-red-600 dark:border-red-500 text-white scale-110 animate-recording-pulse shadow-ink-strong'
+									: 'bg-card hover:bg-muted border border-border text-foreground hover:scale-105 hover:shadow-ink'} disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
 							aria-label={voiceButtonState.text ||
 								(isCurrentlyRecording ? 'Stop recording' : 'Start recording')}
 							title={voiceButtonState.text}
@@ -519,7 +519,7 @@
 								class="absolute -top-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap animate-fade-in"
 							>
 								<div
-									class="bg-gray-900 dark:bg-gray-700 text-white text-xs px-2 py-1 rounded-md"
+									class="bg-gray-900 text-white text-xs px-2 py-1 rounded-md"
 								>
 									<span class="opacity-90">Click to stop</span>
 									<div
@@ -563,7 +563,7 @@
 					size="lg"
 					icon={currentPhase !== 'parsing' ? Send : undefined}
 					iconPosition="right"
-					class="min-w-[100px] sm:min-w-[120px] transition-all duration-200 shadow-sm hover:shadow-md active:scale-95"
+					class="min-w-[100px] sm:min-w-[120px] transition-all duration-200 shadow-ink hover:shadow-ink-strong active:scale-95"
 				>
 					{currentPhase === 'parsing'
 						? 'Processing'

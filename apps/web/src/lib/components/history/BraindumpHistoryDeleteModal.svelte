@@ -52,11 +52,11 @@
 	{#snippet content()}
 		<div class="space-y-4">
 			<!-- Braindump info -->
-			<div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-				<h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+			<div class="p-3 bg-muted/50 rounded-lg">
+				<h4 class="text-sm font-medium text-foreground mb-1">
 					{braindump?.title || 'Untitled Braindump'}
 				</h4>
-				<p class="text-xs text-gray-500 dark:text-gray-400">
+				<p class="text-xs text-muted-foreground">
 					Created {braindump ? new Date(braindump.created_at).toLocaleDateString() : ''}
 				</p>
 			</div>

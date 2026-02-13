@@ -36,7 +36,7 @@
 </script>
 
 <div
-	class="project-node px-3 py-2 rounded-lg border-2 shadow-md min-w-[140px] max-w-[200px] transition-all duration-200
+	class="project-node px-3 py-2 rounded-lg border-2 shadow-ink min-w-[140px] max-w-[200px] transition-all duration-200
 		{selected ? 'ring-2 ring-amber-400 ring-offset-2' : ''}
 		{style.bg} {style.border}"
 >

@@ -9,7 +9,7 @@
 </script>
 
 <div
-	class="goal-node px-3 py-2.5 rounded-lg border-2 shadow-lg min-w-[130px] max-w-[200px] transition-all duration-200
+	class="goal-node px-3 py-2.5 rounded-lg border-2 shadow-ink-strong min-w-[130px] max-w-[200px] transition-all duration-200
 		bg-amber-50 dark:bg-amber-900/30 border-amber-500
 		{selected ? 'ring-2 ring-amber-400 ring-offset-2' : ''}"
 >

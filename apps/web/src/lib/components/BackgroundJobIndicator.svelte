@@ -113,7 +113,7 @@
 		<!-- Collapsed View -->
 		{#if !isExpanded}
 			<div
-				class="group bg-white dark:bg-gray-800 shadow-2xl rounded-xl border border-gray-200 dark:border-gray-700 backdrop-blur-sm hover:shadow-3xl hover:scale-105 hover:border-gray-300 dark:hover:border-gray-600 transition-all duration-200 cursor-pointer"
+				class="group bg-card shadow-ink-strong rounded-xl border border-border backdrop-blur-sm hover:shadow-3xl hover:scale-105 hover:border-border transition-all duration-200 cursor-pointer"
 				transition:scale={{ duration: 200, start: 0.95 }}
 			>
 				<Button
@@ -137,11 +137,11 @@
 							</div>
 							<div>
 								<span
-									class="text-sm font-semibold text-gray-900 dark:text-gray-100"
+									class="text-sm font-semibold text-foreground"
 								>
 									Processing brain dump
 								</span>
-								<span class="block text-xs text-gray-500 dark:text-gray-400">
+								<span class="block text-xs text-muted-foreground">
 									Analyzing content...
 								</span>
 							</div>
@@ -154,7 +154,7 @@
 							</div>
 							<div>
 								<span
-									class="text-sm font-semibold text-gray-900 dark:text-gray-100"
+									class="text-sm font-semibold text-foreground"
 								>
 									Brain dump completed
 								</span>
@@ -178,7 +178,7 @@
 							</div>
 							<div>
 								<span
-									class="text-sm font-semibold text-gray-900 dark:text-gray-100"
+									class="text-sm font-semibold text-foreground"
 								>
 									Processing failed
 								</span>
@@ -200,10 +200,10 @@
 							</span>
 						{/if}
 						<div
-							class="p-1 rounded-lg bg-gray-100 dark:bg-gray-700 group-hover:bg-gray-200 dark:group-hover:bg-gray-600 transition-colors"
+							class="p-1 rounded-lg bg-muted group-hover:bg-muted dark:group-hover:bg-gray-600 transition-colors"
 						>
 							<ChevronUp
-								class="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:text-gray-800 dark:group-hover:text-gray-200 transition-colors"
+								class="w-4 h-4 text-muted-foreground group-hover:text-foreground dark:group-hover:text-muted-foreground transition-colors"
 							/>
 						</div>
 					</div>
@@ -214,16 +214,16 @@
 		<!-- Expanded View -->
 		{#if isExpanded}
 			<div
-				class="bg-white dark:bg-gray-800 shadow-2xl rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden backdrop-blur-sm"
+				class="bg-card shadow-ink-strong rounded-xl border border-border overflow-hidden backdrop-blur-sm"
 				transition:scale={{ duration: 200, start: 0.95 }}
 			>
 				<!-- Header -->
 				<div
-					class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900"
+					class="p-4 border-b border-border bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900"
 				>
 					<div class="flex items-center justify-between">
 						<h3
-							class="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2"
+							class="text-sm font-semibold text-foreground flex items-center gap-2"
 						>
 							<span
 								class="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-pulse"
@@ -233,26 +233,26 @@
 						<div class="flex items-center gap-1">
 							<Button
 								onclick={hideIndicator}
-								class="p-1.5 min-h-0 min-w-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 hover:shadow-sm"
+								class="p-1.5 min-h-0 min-w-0 hover:bg-muted rounded-lg transition-all duration-200 hover:shadow-ink"
 								variant="ghost"
 								size="sm"
 								btnType="container"
 								aria-label="Hide indicator"
 							>
 								<X
-									class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+									class="w-4 h-4 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
 								/>
 							</Button>
 							<Button
 								onclick={toggleExpanded}
-								class="p-1.5 min-h-0 min-w-0 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 hover:shadow-sm"
+								class="p-1.5 min-h-0 min-w-0 hover:bg-muted rounded-lg transition-all duration-200 hover:shadow-ink"
 								variant="ghost"
 								size="sm"
 								btnType="container"
 								aria-label="Collapse"
 							>
 								<ChevronDown
-									class="w-4 h-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+									class="w-4 h-4 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
 								/>
 							</Button>
 						</div>
@@ -266,7 +266,7 @@
 					<!-- Active Jobs -->
 					{#each $activeBackgroundJobs as job (job.id)}
 						<div
-							class="p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
+							class="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
 						>
 							<div class="flex items-start gap-3">
 								<div class="relative">
@@ -275,22 +275,22 @@
 									/>
 								</div>
 								<div class="flex-1 min-w-0">
-									<p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+									<p class="text-sm font-medium text-foreground">
 										{job.status === 'processing' ? 'Processing' : 'Queued'}
 									</p>
 									<p
-										class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate"
+										class="text-xs text-muted-foreground mt-1 truncate"
 									>
 										{job.projectId
 											? 'Updating existing project'
 											: 'Creating new project'}
 									</p>
 									<div class="flex items-center gap-2 mt-1">
-										<span class="text-xs text-gray-400 dark:text-gray-500">
+										<span class="text-xs text-muted-foreground">
 											{formatDuration(job.startTime)}
 										</span>
 										<div
-											class="flex-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
+											class="flex-1 h-1 bg-muted rounded-full overflow-hidden"
 										>
 											<div
 												class="h-full bg-purple-600 dark:bg-purple-400 animate-pulse"
@@ -306,7 +306,7 @@
 					<!-- Recent Completed Jobs -->
 					{#each recentCompletedJobs as job (job.id)}
 						<div
-							class="p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors bg-green-50/50 dark:bg-green-900/10"
+							class="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors bg-green-50/50 dark:bg-green-900/10"
 						>
 							<div class="flex items-start gap-3">
 								<div class="relative">
@@ -315,11 +315,11 @@
 									/>
 								</div>
 								<div class="flex-1 min-w-0">
-									<p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+									<p class="text-sm font-medium text-foreground">
 										Completed successfully
 									</p>
 									{#if job.result?.operationCount}
-										<p class="text-xs text-gray-500 dark:text-gray-300 mt-1">
+										<p class="text-xs text-muted-foreground mt-1">
 											{job.result.operationCount} operations applied
 										</p>
 									{/if}
@@ -345,7 +345,7 @@
 					<!-- Recent Failed Jobs -->
 					{#each recentFailedJobs as job (job.id)}
 						<div
-							class="p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors bg-red-50/50 dark:bg-red-900/10"
+							class="p-4 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors bg-red-50/50 dark:bg-red-900/10"
 						>
 							<div class="flex items-start gap-3">
 								<div class="relative">
@@ -354,7 +354,7 @@
 									/>
 								</div>
 								<div class="flex-1 min-w-0">
-									<p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+									<p class="text-sm font-medium text-foreground">
 										Processing failed
 									</p>
 									<p
@@ -381,7 +381,7 @@
 					<!-- Empty state -->
 					{#if $activeBackgroundJobs.length === 0 && recentCompletedJobs.length === 0 && recentFailedJobs.length === 0}
 						<div class="p-8 text-center">
-							<p class="text-sm text-gray-500 dark:text-gray-300">
+							<p class="text-sm text-muted-foreground">
 								No background jobs at the moment
 							</p>
 						</div>

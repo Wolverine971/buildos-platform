@@ -230,7 +230,7 @@
 	function getPriorityColor(priority: string) {
 		if (priority === 'high') return 'text-red-500';
 		if (priority === 'medium') return 'text-amber-500';
-		return 'text-slate-400';
+		return 'text-muted-foreground';
 	}
 
 	// Compute project status in script area
@@ -608,27 +608,27 @@
 					</div>
 
 					<div
-						class="bg-slate-900 dark:bg-slate-950 border border-slate-700 rounded-lg shadow-ink overflow-hidden"
+						class="bg-slate-900 border border-slate-700 rounded-lg shadow-ink overflow-hidden"
 					>
 						<div
-							class="px-4 py-2 bg-slate-800 dark:bg-slate-900 border-b border-slate-700 flex items-center gap-3"
+							class="px-4 py-2 bg-slate-800 border-b border-slate-700 flex items-center gap-3"
 						>
 							<div class="flex items-center gap-1.5">
 								<div class="w-3 h-3 rounded-full bg-red-500"></div>
 								<div class="w-3 h-3 rounded-full bg-amber-500"></div>
 								<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
 							</div>
-							<Terminal class="w-4 h-4 text-slate-400" />
-							<span class="font-mono text-xs text-slate-400">activity.log</span>
+							<Terminal class="w-4 h-4 text-muted-foreground" />
+							<span class="font-mono text-xs text-muted-foreground">activity.log</span>
 						</div>
 
 						<div class="p-4 font-mono text-xs space-y-1.5 max-h-48 overflow-y-auto">
 							{#each activityLog as entry}
-								<div class="text-slate-300">
-									<span class="text-slate-500">[{entry.timestamp}]</span>
+								<div class="text-muted-foreground">
+									<span class="text-muted-foreground">[{entry.timestamp}]</span>
 									<span class="text-emerald-400 ml-2">{entry.action}</span>
 									<span class="text-cyan-400 ml-2">{entry.entity}</span>
-									<span class="text-slate-500 ml-2">by</span>
+									<span class="text-muted-foreground ml-2">by</span>
 									<span class="text-amber-400 ml-1">@{entry.user}</span>
 								</div>
 							{/each}
@@ -825,7 +825,7 @@
 													? 'text-blue-500'
 													: status.color === 'bg-red-500'
 														? 'text-red-500'
-														: 'text-slate-400'}"
+														: 'text-muted-foreground'}"
 										/>
 										<div class="min-w-0 flex-1">
 											<div class="flex items-center gap-2">

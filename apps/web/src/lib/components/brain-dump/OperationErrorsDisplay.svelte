@@ -135,9 +135,9 @@
 			<div class="mt-4 space-y-3" transition:slide={{ duration: 200 }}>
 				{#each Object.entries(errorsByTable) as [table, tableErrors]}
 					<div
-						class="bg-white dark:bg-gray-800 rounded-md p-3 border border-amber-100 dark:border-amber-900"
+						class="bg-card rounded-md p-3 border border-amber-100 dark:border-amber-900"
 					>
-						<h4 class="font-medium text-sm text-gray-900 dark:text-gray-100 mb-2">
+						<h4 class="font-medium text-sm text-foreground mb-2">
 							{getTableDisplayName(table)}
 						</h4>
 						<div class="space-y-2">
@@ -149,13 +149,13 @@
 										>
 											{getOperationDisplayName(error.operation)}
 										</span>
-										<p class="text-gray-700 dark:text-gray-300 flex-1">
+										<p class="text-foreground flex-1">
 											{getErrorMessage(error.error)}
 										</p>
 									</div>
 									{#if error.error !== getErrorMessage(error.error)}
 										<p
-											class="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-2"
+											class="text-xs text-muted-foreground mt-1 ml-2"
 										>
 											Technical: {error.error}
 										</p>

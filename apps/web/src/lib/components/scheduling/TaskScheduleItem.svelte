@@ -69,7 +69,7 @@
 			case 'medium':
 				return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300';
 			case 'low':
-				return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300';
+				return 'bg-muted text-foreground';
 			default:
 				return '';
 		}
@@ -138,7 +138,7 @@
 		? 'border-primary-500 ring-2 ring-primary-500 ring-opacity-50 bg-primary-50 dark:bg-primary-900/20'
 		: schedule.hasConflict
 			? 'border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10'
-			: 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}"
+			: 'border-border bg-muted'}"
 >
 	{#if isEditing}
 		{@const baseId = schedule.task?.id ?? schedule.id ?? 'task'}
@@ -148,7 +148,7 @@
 		<!-- Editing Mode (Expanded) -->
 		<div class="p-4 space-y-4">
 			<div class="flex items-center justify-between">
-				<h4 class="font-medium text-gray-900 dark:text-white">
+				<h4 class="font-medium text-foreground">
 					{schedule.task?.title || 'Untitled Task'}
 				</h4>
 				{#if schedule.task?.priority}
@@ -163,7 +163,7 @@
 				<div>
 					<label
 						for={startInputId}
-						class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+						class="block text-xs font-medium text-foreground mb-1.5"
 					>
 						Start Date & Time
 					</label>
@@ -180,7 +180,7 @@
 				<div>
 					<label
 						for={durationInputId}
-						class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+						class="block text-xs font-medium text-foreground mb-1.5"
 					>
 						Duration (minutes)
 					</label>
@@ -195,7 +195,7 @@
 						size="sm"
 						error={editError && (!tempDuration || tempDuration <= 0)}
 					/>
-					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+					<p class="mt-1 text-xs text-muted-foreground">
 						End: {calculateEndTime(tempStart, tempDuration)}
 					</p>
 				</div>
@@ -210,7 +210,7 @@
 
 			<!-- Action Buttons -->
 			<div
-				class="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700"
+				class="flex items-center justify-between pt-2 border-t border-border"
 			>
 				<div class="flex items-center gap-2">
 					<Button
@@ -244,7 +244,7 @@
 		<!-- Collapsed Mode (Clickable) -->
 		<button
 			onclick={startEditing}
-			class="w-full text-left p-3 sm:p-4 hover:bg-gray-100 dark:hover:bg-gray-700
+			class="w-full text-left p-3 sm:p-4 hover:bg-muted
              transition-colors rounded-lg focus:outline-none focus:ring-2
              focus:ring-primary-500 focus:ring-offset-2"
 			aria-label="Edit schedule for {schedule.task?.title || 'Untitled Task'}"
@@ -254,7 +254,7 @@
 			<div class="flex items-start justify-between">
 				<div class="flex-1 min-w-0">
 					<div class="flex items-center gap-2">
-						<h4 class="font-medium text-gray-900 dark:text-white truncate">
+						<h4 class="font-medium text-foreground truncate">
 							{schedule.task?.title || 'Untitled Task'}
 						</h4>
 						{#if schedule.task?.priority}
@@ -265,7 +265,7 @@
 					</div>
 
 					<div
-						class="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400 mt-1.5"
+						class="flex items-center gap-3 text-xs text-muted-foreground mt-1.5"
 					>
 						<span class="flex items-center gap-1">
 							<Calendar class="w-3 h-3" />
@@ -289,7 +289,7 @@
 
 				<!-- Expand indicator -->
 				<div class="ml-3 flex-shrink-0">
-					<ChevronRight class="w-5 h-5 text-gray-400" />
+					<ChevronRight class="w-5 h-5 text-muted-foreground" />
 				</div>
 			</div>
 		</button>

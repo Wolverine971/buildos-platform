@@ -171,7 +171,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 	>
 		<!-- Backdrop -->
 		<div
-			class="fixed inset-0 bg-gray-900/50 dark:bg-gray-900/70 backdrop-blur-sm"
+			class="fixed inset-0 bg-gray-900/50/70 backdrop-blur-sm"
 			onclick={onClose}
 			onkeydown={(e) => e.key === 'Escape' && onClose()}
 			role="button"
@@ -182,11 +182,11 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 		<!-- Modal -->
 		<div class="relative min-h-screen flex items-center justify-center p-4">
 			<div
-				class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+				class="relative bg-card rounded-xl shadow-ink-strong w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
 				transition:fade={{ duration: 200, delay: 50 }}
 			>
 				<!-- Header -->
-				<div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+				<div class="px-6 py-4 border-b border-border">
 					<div class="flex items-center justify-between">
 						<div class="flex items-center space-x-3">
 							<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
@@ -195,11 +195,11 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 							<div>
 								<h2
 									id="synthesis-modal-title"
-									class="text-xl font-semibold text-gray-900 dark:text-white"
+									class="text-xl font-semibold text-foreground"
 								>
 									Select Synthesis Options
 								</h2>
-								<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+								<p class="text-sm text-muted-foreground mt-0.5">
 									Choose which analyses to run on your project
 								</p>
 							</div>
@@ -220,7 +220,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 				<div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
 					{#each options as option (option.id)}
 						<div
-							class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden transition-all duration-200"
+							class="border border-border rounded-lg overflow-hidden transition-all duration-200"
 							class:opacity-50={!option.available}
 							class:cursor-not-allowed={!option.available}
 						>
@@ -228,8 +228,8 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 							<div
 								class="p-4 {option.enabled && option.available
 									? 'bg-blue-50 dark:bg-blue-900/20'
-									: 'bg-white dark:bg-gray-800'}"
-								class:hover:bg-gray-50={option.available && !option.enabled}
+									: 'bg-card'}"
+								class:hover:bg-muted={option.available && !option.enabled}
 								class:dark:hover:bg-gray-700={option.available && !option.enabled}
 							>
 								<div class="flex items-start space-x-3">
@@ -241,7 +241,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 											class="w-5 h-5 rounded border-2 flex items-center justify-center transition-all
 												{option.enabled && option.available
 												? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-												: 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'}"
+												: 'border-border hover:border-border'}"
 											aria-label={`Toggle ${option.name}`}
 										>
 											{#if option.enabled && option.available}
@@ -255,19 +255,19 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 										<div class="flex items-center justify-between">
 											<div>
 												<h3
-													class="font-medium text-gray-900 dark:text-white flex items-center space-x-2"
+													class="font-medium text-foreground flex items-center space-x-2"
 												>
 													<span>{option.name}</span>
 													{#if !option.available}
 														<span
-															class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded-full"
+															class="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full"
 														>
 															Coming Soon
 														</span>
 													{/if}
 												</h3>
 												<p
-													class="text-sm text-gray-600 dark:text-gray-400 mt-1"
+													class="text-sm text-muted-foreground mt-1"
 												>
 													{option.description}
 												</p>
@@ -297,14 +297,14 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 										<!-- Detailed Description -->
 										{#if option.available && option.detailedDescription}
 											<div
-												class="mt-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+												class="mt-3 p-3 bg-muted/50 rounded-lg"
 											>
 												<div class="flex items-start space-x-2">
 													<Info
-														class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-0.5 flex-shrink-0"
+														class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0"
 													/>
 													<div
-														class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-line"
+														class="text-xs text-muted-foreground whitespace-pre-line"
 													>
 														{option.detailedDescription}
 													</div>
@@ -318,7 +318,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 							<!-- Configuration Section -->
 							{#if option.available && option.enabled && option.id === 'task_synthesis' && expandedConfigs.has(option.id)}
 								<div
-									class="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/30"
+									class="border-t border-border p-4 bg-muted/30"
 									transition:slide={{ duration: 200 }}
 								>
 									<TaskSynthesisConfig
@@ -333,10 +333,10 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 
 				<!-- Footer -->
 				<div
-					class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+					class="px-6 py-4 border-t border-border bg-muted/50"
 				>
 					<div class="flex items-center justify-between">
-						<div class="text-sm text-gray-500 dark:text-gray-400">
+						<div class="text-sm text-muted-foreground">
 							{#if selectedCount > 0}
 								{selectedCount}
 								{selectedCount === 1 ? 'analysis' : 'analyses'} selected

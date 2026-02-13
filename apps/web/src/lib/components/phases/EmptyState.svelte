@@ -11,11 +11,11 @@
 </script>
 
 <div
-	class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg"
+	class="text-center py-12 border-2 border-dashed border-border rounded-lg"
 >
-	<Calendar class="w-12 h-12 text-gray-400 mx-auto mb-4" />
-	<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No phases yet</h3>
-	<p class="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+	<Calendar class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+	<h3 class="text-lg font-medium text-foreground mb-2">No phases yet</h3>
+	<p class="text-muted-foreground mb-6 max-w-md mx-auto">
 		Generate phases to organize your tasks into logical project stages, or create phases
 		manually.
 	</p>

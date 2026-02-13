@@ -289,19 +289,19 @@
 			<!-- Regenerating state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
 				<RefreshCw class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
-				<p class="text-gray-900 dark:text-white font-medium mb-2">Regenerating Brief</p>
-				<p class="text-gray-600 dark:text-gray-400 text-sm mb-4">
+				<p class="text-foreground font-medium mb-2">Regenerating Brief</p>
+				<p class="text-muted-foreground text-sm mb-4">
 					{regenerateProgress.message}
 				</p>
 				{#if regenerateProgress.percentage > 0}
 					<div class="w-full max-w-md">
-						<div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+						<div class="w-full bg-muted rounded-full h-2">
 							<div
 								class="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
 								style="width: {regenerateProgress.percentage}%"
 							></div>
 						</div>
-						<p class="text-center text-sm text-gray-600 dark:text-gray-400 mt-2">
+						<p class="text-center text-sm text-muted-foreground mt-2">
 							{regenerateProgress.percentage}%
 						</p>
 					</div>
@@ -313,14 +313,14 @@
 				<LoaderCircle
 					class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4"
 				/>
-				<p class="text-gray-600 dark:text-gray-400">Loading brief...</p>
+				<p class="text-muted-foreground">Loading brief...</p>
 			</div>
 		{:else if error}
 			<!-- Error state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
 				<AlertCircle class="h-12 w-12 text-red-500 dark:text-red-400 mb-4" />
-				<p class="text-gray-900 dark:text-white font-medium mb-2">Failed to load brief</p>
-				<p class="text-gray-600 dark:text-gray-400 text-sm mb-4">{error}</p>
+				<p class="text-foreground font-medium mb-2">Failed to load brief</p>
+				<p class="text-muted-foreground text-sm mb-4">{error}</p>
 				<Button
 					onclick={() => briefDate && loadBriefByDate(briefDate)}
 					variant="primary"
@@ -336,15 +336,15 @@
 			<div class="px-4 sm:px-6 py-6">
 				<div
 					class="prose prose-sm dark:prose-invert max-w-none
-				prose-headings:font-semibold prose-headings:text-gray-900 dark:prose-headings:text-white
-				prose-p:text-gray-600 dark:prose-p:text-gray-400
-				prose-li:text-gray-600 dark:prose-li:text-gray-400
-				prose-strong:text-gray-700 dark:prose-strong:text-gray-300
-				prose-blockquote:text-gray-600 dark:prose-blockquote:text-gray-400
-				prose-blockquote:border-gray-300 dark:prose-blockquote:border-gray-600
-				prose-code:bg-gray-100 dark:prose-code:bg-gray-800
-				prose-code:text-gray-800 dark:prose-code:text-gray-200
-				prose-pre:bg-gray-100 dark:prose-pre:bg-gray-800"
+				prose-headings:font-semibold prose-headings:text-foreground dark:prose-headings:text-white
+				prose-p:text-muted-foreground dark:prose-p:text-muted-foreground
+				prose-li:text-muted-foreground dark:prose-li:text-muted-foreground
+				prose-strong:text-foreground dark:prose-strong:text-muted-foreground
+				prose-blockquote:text-muted-foreground dark:prose-blockquote:text-muted-foreground
+				prose-blockquote:border-border dark:prose-blockquote:border-gray-600
+				prose-code:bg-muted dark:prose-code:bg-gray-800
+				prose-code:text-foreground dark:prose-code:text-muted-foreground
+				prose-pre:bg-muted dark:prose-pre:bg-gray-800"
 				>
 					{@html renderMarkdown(displayBrief.summary_content)}
 				</div>
@@ -352,7 +352,7 @@
 		{:else}
 			<!-- No brief available -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
-				<p class="text-gray-600 dark:text-gray-400">No brief available</p>
+				<p class="text-muted-foreground">No brief available</p>
 			</div>
 		{/if}
 	{/snippet}
@@ -360,7 +360,7 @@
 	{#snippet footer()}
 		<!-- Footer Actions -->
 		<div
-			class="px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50"
+			class="px-4 sm:px-6 py-4 border-t border-border bg-muted/50"
 		>
 			<!-- Email opt-in banner if not opted in -->
 			{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}

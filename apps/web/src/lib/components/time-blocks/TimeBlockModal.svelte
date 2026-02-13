@@ -325,7 +325,7 @@
 		<div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-5 min-h-[38vh]">
 			<section class="lg:col-span-3 flex flex-col gap-4 lg:pr-1">
 				<div
-					class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
+					class="rounded-2xl border border-border bg-card shadow-ink backdrop-blur-sm transition-all hover:shadow-ink"
 				>
 					<div
 						class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 sm:px-6 py-4"
@@ -530,7 +530,7 @@
 				</div>
 
 				<div
-					class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm transition-all hover:shadow-md"
+					class="rounded-2xl border border-border bg-card shadow-ink backdrop-blur-sm transition-all hover:shadow-ink"
 				>
 					<div
 						class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 sm:px-6 py-4"
@@ -573,7 +573,7 @@
 										></div>
 										<div class="relative flex gap-3">
 											<div
-												class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white shadow-lg"
+												class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white shadow-ink-strong"
 											>
 												{index + 1}
 											</div>
@@ -595,7 +595,7 @@
 															{/if}
 															{#if suggestion.estimated_minutes}
 																{#if suggestion.project_name}
-																	<span class="text-slate-400"
+																	<span class="text-muted-foreground"
 																		>/</span
 																	>
 																{/if}
@@ -605,7 +605,7 @@
 															{/if}
 															{#if suggestion.priority}
 																{#if suggestion.project_name || suggestion.estimated_minutes}
-																	<span class="text-slate-400"
+																	<span class="text-muted-foreground"
 																		>/</span
 																	>
 																{/if}
@@ -655,7 +655,7 @@
 
 			<aside class="lg:col-span-1 flex flex-col gap-4">
 				<div
-					class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+					class="rounded-2xl border border-border bg-card shadow-ink backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
 				>
 					<div class="flex items-center justify-between">
 						<h3
@@ -712,7 +712,7 @@
 
 				{#if isEditing && block}
 					<div
-						class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
+						class="rounded-2xl border border-border bg-card shadow-ink backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
 					>
 						<h4
 							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"
@@ -746,7 +746,7 @@
 				{/if}
 
 				<div
-					class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
+					class="rounded-2xl border border-border bg-card shadow-ink backdrop-blur-sm px-4 sm:px-5 py-5 space-y-4"
 				>
 					<div class="space-y-3 text-xs text-foreground">
 						<div class="flex items-center justify-between gap-3">
@@ -819,7 +819,7 @@
 
 				{#if isEditing && block}
 					<div
-						class="rounded-2xl border border-border bg-card shadow-sm backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
+						class="rounded-2xl border border-border bg-card shadow-ink backdrop-blur-sm px-4 sm:px-5 py-5 space-y-3"
 					>
 						<h4
 							class="text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground"

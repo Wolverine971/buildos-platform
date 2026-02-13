@@ -254,15 +254,15 @@
 		<header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
 			<div class="flex items-center gap-3">
 				<div class="flex items-center gap-2">
-					<LayoutGrid class="w-5 h-5 text-gray-500" aria-hidden="true" />
-					<h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+					<LayoutGrid class="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+					<h2 class="text-lg font-semibold text-foreground">
 						Kanban Board
 					</h2>
 				</div>
 
 				<!-- Stats -->
 				<div
-					class="hidden sm:flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400"
+					class="hidden sm:flex items-center gap-4 text-sm text-muted-foreground"
 				>
 					<span>{phases.length} phases</span>
 					<span>•</span>
@@ -275,7 +275,7 @@
 
 		<!-- Mobile stats -->
 		<div
-			class="sm:hidden flex items-center justify-center gap-4 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg py-2"
+			class="sm:hidden flex items-center justify-center gap-4 text-sm text-muted-foreground bg-muted rounded-lg py-2"
 		>
 			<span>{phases.length} phases</span>
 			<span>•</span>
@@ -292,7 +292,7 @@
 				<div
 					class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"
 				></div>
-				<p class="text-sm text-gray-500 dark:text-gray-400">Loading phases...</p>
+				<p class="text-sm text-muted-foreground">Loading phases...</p>
 			</div>
 		</div>
 	{:else}
@@ -335,7 +335,7 @@
 								out:fade={{ duration: 200 }}
 								class="kanban-column transition-all duration-200 {dragOverPhaseId ===
 								phase.id
-									? 'ring-2 ring-purple-500 ring-opacity-50 scale-[1.02] shadow-lg'
+									? 'ring-2 ring-purple-500 ring-opacity-50 scale-[1.02] shadow-ink-strong'
 									: ''}"
 								role="article"
 								aria-labelledby="phase-{phase.id}-title"
@@ -373,13 +373,13 @@
 		{:else}
 			<!-- Empty state -->
 			<div class="text-center py-12" role="status">
-				<div class="text-gray-400 dark:text-gray-500 mb-4">
+				<div class="text-muted-foreground mb-4">
 					<LayoutGrid class="w-12 h-12 mx-auto opacity-50" aria-hidden="true" />
 				</div>
-				<h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
+				<h3 class="text-lg font-medium text-foreground mb-2">
 					No phases to display
 				</h3>
-				<p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
+				<p class="text-sm text-muted-foreground mb-6">
 					Create your first phase to start organizing your project tasks.
 				</p>
 			</div>

@@ -226,11 +226,11 @@
 
 <Modal {isOpen} onClose={handleCancel} size="lg">
 	{#snippet header()}
-		<div class="p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700">
-			<h3 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+		<div class="p-4 sm:p-5 md:p-6 border-b border-border">
+			<h3 class="text-base sm:text-lg font-semibold text-foreground">
 				{isRegeneration ? 'Regenerate Project Phases' : 'Generate Project Phases'}
 			</h3>
-			<p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+			<p class="text-sm text-muted-foreground mt-2">
 				{isRegeneration
 					? 'Configure how to regenerate phases and schedule tasks'
 					: 'Configure how to generate phases and schedule tasks'}
@@ -267,7 +267,7 @@
 										type="radio"
 										bind:group={preserveHistoricalPhases}
 										value={true}
-										class="mt-1 w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+										class="mt-1 w-4 h-4 text-primary-600 border-border focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 									/>
 									<div>
 										<span
@@ -289,7 +289,7 @@
 										type="radio"
 										bind:group={preserveHistoricalPhases}
 										value={false}
-										class="mt-1 w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+										class="mt-1 w-4 h-4 text-primary-600 border-border focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 									/>
 									<div>
 										<span
@@ -313,7 +313,7 @@
 
 			<!-- Scheduling Method Selection -->
 			<div class="mb-6">
-				<h4 class="font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+				<h4 class="font-medium text-foreground mb-4 flex items-center gap-2">
 					<Target class="w-4 h-4" />
 					Scheduling Method
 				</h4>
@@ -321,7 +321,7 @@
 					{#each schedulingMethods as method}
 						{@const MethodIcon = method.icon}
 						<div
-							class="relative border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 transition-colors {selectedSchedulingMethod ===
+							class="relative border border-border rounded-lg p-4 cursor-pointer hover:border-border transition-colors {selectedSchedulingMethod ===
 							method.value
 								? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
 								: ''} {method.disabled ? 'opacity-50 cursor-not-allowed' : ''}"
@@ -346,29 +346,29 @@
 										value={method.value}
 										bind:group={selectedSchedulingMethod}
 										disabled={method.disabled}
-										class="w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+										class="w-4 h-4 text-primary-600 border-border focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 									/>
 								</div>
 
 								<!-- Icon -->
 
-								<MethodIcon class="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" />
+								<MethodIcon class="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
 
 								<!-- Content -->
 								<div class="flex-1">
 									<div class="flex items-center gap-2">
-										<h5 class="font-medium text-gray-900 dark:text-white">
+										<h5 class="font-medium text-foreground">
 											{method.label}
 										</h5>
 										{#if method.disabled}
 											<span
-												class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-1 rounded"
+												class="text-xs bg-muted text-muted-foreground px-2 py-1 rounded"
 											>
 												Calendar required
 											</span>
 										{/if}
 									</div>
-									<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+									<p class="text-sm text-muted-foreground mt-1">
 										{method.description}
 									</p>
 
@@ -397,7 +397,7 @@
 
 			<!-- Project Dates Section -->
 			<div class="mb-6">
-				<h4 class="font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+				<h4 class="font-medium text-foreground mb-4 flex items-center gap-2">
 					<Calendar class="w-4 h-4" />
 					Project Timeline
 					{#if selectedSchedulingMethod === 'phases_only'}
@@ -462,24 +462,24 @@
 			{#if selectedSchedulingMethod !== 'phases_only'}
 				<div class="mb-6">
 					<h4
-						class="font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"
+						class="font-medium text-foreground mb-4 flex items-center gap-2"
 					>
 						<Clock class="w-4 h-4" />
 						Task Date Handling
 					</h4>
-					<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+					<div class="border border-border rounded-lg p-4">
 						<label class="flex items-start gap-2 cursor-pointer">
 							<input
 								type="checkbox"
 								bind:checked={preserveExistingDates}
 								onchange={loadPreviewData}
-								class="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+								class="mt-1 w-4 h-4 text-primary-600 border-border rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 							/>
 							<div>
-								<span class="text-sm font-medium text-gray-900 dark:text-white">
+								<span class="text-sm font-medium text-foreground">
 									Preserve existing task dates
 								</span>
-								<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+								<p class="text-xs text-muted-foreground mt-1">
 									When checked, tasks with existing dates will keep their current
 									scheduling. When unchecked (default), all tasks will be
 									rescheduled optimally within phases.
@@ -525,27 +525,27 @@
 				{#if calendarConnected}
 					<div class="mb-6">
 						<h4
-							class="font-medium text-gray-900 dark:text-white mb-4 flex items-center gap-2"
+							class="font-medium text-foreground mb-4 flex items-center gap-2"
 						>
 							<CalendarDays class="w-4 h-4" />
 							Calendar Event Handling
 						</h4>
-						<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+						<div class="border border-border rounded-lg p-4">
 							<div class="space-y-3">
 								<label class="flex items-start gap-2">
 									<input
 										type="radio"
 										bind:group={calendarHandling}
 										value="update"
-										class="mt-1 w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+										class="mt-1 w-4 h-4 text-primary-600 border-border focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 									/>
 									<div>
 										<span
-											class="text-sm font-medium text-gray-900 dark:text-white"
+											class="text-sm font-medium text-foreground"
 										>
 											Update existing events
 										</span>
-										<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+										<p class="text-xs text-muted-foreground mt-1">
 											Keep existing calendar events and update their times to
 											match new phase schedules
 										</p>
@@ -557,15 +557,15 @@
 										type="radio"
 										bind:group={calendarHandling}
 										value="clear_and_reschedule"
-										class="mt-1 w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+										class="mt-1 w-4 h-4 text-primary-600 border-border focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 									/>
 									<div>
 										<span
-											class="text-sm font-medium text-gray-900 dark:text-white"
+											class="text-sm font-medium text-foreground"
 										>
 											Clear and recreate events
 										</span>
-										<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+										<p class="text-xs text-muted-foreground mt-1">
 											Delete existing calendar events and create fresh ones
 											with new schedules
 										</p>
@@ -577,15 +577,15 @@
 										type="radio"
 										bind:group={calendarHandling}
 										value="preserve"
-										class="mt-1 w-4 h-4 text-primary-600 border-gray-300 focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+										class="mt-1 w-4 h-4 text-primary-600 border-border focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 									/>
 									<div>
 										<span
-											class="text-sm font-medium text-gray-900 dark:text-white"
+											class="text-sm font-medium text-foreground"
 										>
 											Don't modify calendar events
 										</span>
-										<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+										<p class="text-xs text-muted-foreground mt-1">
 											Leave existing calendar events unchanged during phase
 											regeneration
 										</p>
@@ -615,7 +615,7 @@
 													<input
 														type="checkbox"
 														bind:checked={preserveRecurringEvents}
-														class="mt-0.5 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+														class="mt-0.5 w-4 h-4 text-primary-600 border-border rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 													/>
 													<span
 														class="text-xs text-amber-700 dark:text-amber-300"
@@ -635,7 +635,7 @@
 
 			<!-- Task Status Selection -->
 			<div class="mb-6">
-				<h4 class="font-medium text-gray-900 dark:text-white mb-4">
+				<h4 class="font-medium text-foreground mb-4">
 					Include Tasks by Status
 				</h4>
 				<div class="flex flex-wrap gap-2">
@@ -660,15 +660,15 @@
 			<!-- Recurring Tasks Section -->
 			{#if hasRecurringTasks}
 				<div class="mb-6">
-					<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+					<div class="border border-border rounded-lg p-4">
 						<div class="flex items-start gap-2">
 							<RefreshCw
 								class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
 							/>
 							<div class="flex-1">
-								<h4 class="font-medium text-gray-900 dark:text-white">
+								<h4 class="font-medium text-foreground">
 									Recurring Tasks
-									<span class="text-sm text-gray-500 dark:text-gray-400">
+									<span class="text-sm text-muted-foreground">
 										({previewData?.recurring_task_info?.count || 0} found)
 									</span>
 								</h4>
@@ -679,16 +679,16 @@
 											type="checkbox"
 											bind:checked={includeRecurringTasks}
 											onchange={loadPreviewData}
-											class="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+											class="mt-1 w-4 h-4 text-primary-600 border-border rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 										/>
 										<div>
 											<span
-												class="text-sm font-medium text-gray-900 dark:text-white"
+												class="text-sm font-medium text-foreground"
 											>
 												Include recurring tasks in phase planning
 											</span>
 											<p
-												class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+												class="text-xs text-muted-foreground mt-1"
 											>
 												Consider weekly meetings, reviews, and other
 												recurring tasks when organizing phases
@@ -698,24 +698,24 @@
 
 									{#if includeRecurringTasks}
 										<div
-											class="ml-6 pl-2 border-l-2 border-gray-200 dark:border-gray-700"
+											class="ml-6 pl-2 border-l-2 border-border"
 										>
 											<label class="flex items-start gap-2 cursor-pointer">
 												<input
 													type="checkbox"
 													bind:checked={allowRecurringReschedule}
 													onchange={loadPreviewData}
-													class="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+													class="mt-1 w-4 h-4 text-primary-600 border-border rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 												/>
 												<div>
 													<span
-														class="text-sm font-medium text-gray-900 dark:text-white"
+														class="text-sm font-medium text-foreground"
 													>
 														Allow AI to suggest rescheduling recurring
 														tasks
 													</span>
 													<p
-														class="text-xs text-gray-500 dark:text-gray-400 mt-1"
+														class="text-xs text-muted-foreground mt-1"
 													>
 														The AI may suggest changes to align
 														recurring tasks with phase boundaries
@@ -759,12 +759,12 @@
 											<div class="mt-2 space-y-1 max-h-32 overflow-y-auto">
 												{#each previewData.recurring_task_info.tasks as task}
 													<div
-														class="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2"
+														class="text-xs text-muted-foreground flex items-center gap-2"
 													>
 														<span class="font-medium"
 															>{task.title || 'Untitled'}</span
 														>
-														<span class="text-gray-400">•</span>
+														<span class="text-muted-foreground">•</span>
 														<span>{task.recurrence_pattern}</span>
 													</div>
 												{/each}
@@ -792,7 +792,7 @@
 					<LoaderCircle
 						class="w-6 h-6 animate-spin text-primary-600 dark:text-primary-400"
 					/>
-					<span class="ml-2 text-gray-600 dark:text-gray-400">Loading preview...</span>
+					<span class="ml-2 text-muted-foreground">Loading preview...</span>
 				</div>
 			{:else if error}
 				<div
@@ -802,11 +802,11 @@
 				</div>
 			{:else if previewData}
 				<!-- Summary -->
-				<div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-					<h4 class="font-medium text-gray-900 dark:text-white mb-2">
+				<div class="mb-6 p-4 bg-muted rounded-lg">
+					<h4 class="font-medium text-foreground mb-2">
 						Generation Summary
 					</h4>
-					<div class="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+					<div class="space-y-1 text-sm text-muted-foreground">
 						<p><strong>{totalSelectedTasks}</strong> tasks will be processed</p>
 						<p>
 							Method: <strong>{selectedMethod?.label}</strong>
@@ -853,16 +853,16 @@
 
 						{#if showTaskConflicts}
 							<div
-								class="mt-2 p-3 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg"
+								class="mt-2 p-3 bg-card border border-red-200 dark:border-red-800 rounded-lg"
 							>
 								<!-- Past Incomplete Tasks -->
 								{#if previewData.conflicts.past_incomplete_tasks?.length > 0}
 									<div class="mb-4">
-										<h5 class="font-medium text-gray-900 dark:text-white mb-2">
+										<h5 class="font-medium text-foreground mb-2">
 											Past Due Tasks ({previewData.conflicts
 												.past_incomplete_tasks.length})
 										</h5>
-										<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+										<p class="text-sm text-muted-foreground mb-2">
 											{#if selectedSchedulingMethod === 'phases_only'}
 												These tasks have past dates and will be moved to
 												phases without dates:
@@ -873,10 +873,10 @@
 										<div class="space-y-1 max-h-32 overflow-y-auto">
 											{#each previewData.conflicts.past_incomplete_tasks as task}
 												<div
-													class="text-xs p-2 bg-gray-50 dark:bg-gray-700 rounded"
+													class="text-xs p-2 bg-muted rounded"
 												>
 													<div class="font-medium">{task.title}</div>
-													<div class="text-gray-500 dark:text-gray-400">
+													<div class="text-muted-foreground">
 														Status: {task.status} • Scheduled: {formatTaskDate(
 															task.start_date
 														)}
@@ -890,11 +890,11 @@
 								<!-- Outside Timeline Tasks -->
 								{#if previewData.conflicts.outside_timeline_tasks?.length > 0}
 									<div>
-										<h5 class="font-medium text-gray-900 dark:text-white mb-2">
+										<h5 class="font-medium text-foreground mb-2">
 											Outside Timeline ({previewData.conflicts
 												.outside_timeline_tasks.length})
 										</h5>
-										<p class="text-sm text-gray-600 dark:text-gray-400 mb-2">
+										<p class="text-sm text-muted-foreground mb-2">
 											{#if selectedSchedulingMethod === 'phases_only'}
 												These tasks have dates outside the project timeline
 												and will be moved to phases without dates:
@@ -906,10 +906,10 @@
 										<div class="space-y-1 max-h-32 overflow-y-auto">
 											{#each previewData.conflicts.outside_timeline_tasks as task}
 												<div
-													class="text-xs p-2 bg-gray-50 dark:bg-gray-700 rounded"
+													class="text-xs p-2 bg-muted rounded"
 												>
 													<div class="font-medium">{task.title}</div>
-													<div class="text-gray-500 dark:text-gray-400">
+													<div class="text-muted-foreground">
 														Status: {task.status} • Scheduled: {formatTaskDate(
 															task.start_date
 														)}
@@ -949,15 +949,15 @@
 
 						{#if showRescheduledTasks}
 							<div
-								class="mt-2 p-3 bg-white dark:bg-gray-800 border border-yellow-200 dark:border-yellow-800 rounded-lg"
+								class="mt-2 p-3 bg-card border border-yellow-200 dark:border-yellow-800 rounded-lg"
 							>
 								<div class="space-y-1 max-h-32 overflow-y-auto">
 									{#each previewData.rescheduled_tasks as task}
 										<div
-											class="text-xs p-2 bg-gray-50 dark:bg-gray-700 rounded"
+											class="text-xs p-2 bg-muted rounded"
 										>
 											<div class="font-medium">{task.title}</div>
-											<div class="text-gray-500 dark:text-gray-400">
+											<div class="text-muted-foreground">
 												Current: {formatTaskDate(task.current_date)} → New:
 												{formatTaskDate(task.suggested_date)}
 											</div>
@@ -996,27 +996,27 @@
 
 						{#if showTaskBreakdown && previewData.task_breakdown}
 							<div
-								class="mt-2 p-3 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded-lg"
+								class="mt-2 p-3 bg-card border border-blue-200 dark:border-blue-800 rounded-lg"
 							>
 								{#each Object.entries(previewData.task_breakdown) as [status, tasks]}
 									{#if tasks.length > 0}
 										<div class="mb-4 last:mb-0">
 											<h5
-												class="font-medium text-gray-900 dark:text-white mb-1 capitalize"
+												class="font-medium text-foreground mb-1 capitalize"
 											>
 												{status.replace('_', ' ')} ({tasks.length})
 											</h5>
 											<div class="space-y-1 max-h-24 overflow-y-auto">
 												{#each tasks as task}
 													<div
-														class="text-xs p-1.5 bg-gray-50 dark:bg-gray-700 rounded"
+														class="text-xs p-1.5 bg-muted rounded"
 													>
 														<div class="font-medium">
 															{task.title}
 														</div>
 														{#if task.start_date && selectedSchedulingMethod !== 'phases_only'}
 															<div
-																class="text-gray-500 dark:text-gray-400"
+																class="text-muted-foreground"
 															>
 																{formatTaskDate(task.start_date)}
 															</div>
@@ -1037,7 +1037,7 @@
 
 	{#snippet footer()}
 		<div
-			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4"
+			class="p-4 sm:p-5 md:p-6 border-t border-border flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-4"
 		>
 			<Button onclick={handleCancel} variant="secondary" size="md" class="w-full sm:w-auto"
 				>Cancel</Button

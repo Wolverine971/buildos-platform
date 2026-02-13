@@ -609,7 +609,7 @@
 		<div
 			class="{currentView === 'parseResults'
 				? 'hidden'
-				: ''} text-center py-4 sm:py-6 px-4 sm:px-6 border-b border-gray-200 dark:border-gray-700"
+				: ''} text-center py-4 sm:py-6 px-4 sm:px-6 border-b border-border"
 		>
 			<div class="flex justify-between items-start mb-4">
 				<div class="flex items-center gap-3">
@@ -625,11 +625,11 @@
 						{/if}
 					</div>
 					<div class="text-left">
-						<h2 class="text-xl font-bold text-gray-900 dark:text-white">
+						<h2 class="text-xl font-bold text-foreground">
 							{statusInfo.title}
 						</h2>
 						{#if statusInfo.subtitle}
-							<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+							<p class="text-sm text-muted-foreground mt-0.5">
 								{statusInfo.subtitle}
 							</p>
 						{/if}
@@ -731,7 +731,7 @@
 							/>
 						</div>
 						<div>
-							<p class="text-sm text-gray-600 dark:text-gray-300">
+							<p class="text-sm text-muted-foreground">
 								{notification.data.processingType === 'dual'
 									? 'Analyzing content for context and tasks...'
 									: notification.data.processingType === 'short'
@@ -744,7 +744,7 @@
 			{:else}
 				<!-- Empty/Idle state -->
 				<div class="text-center py-8">
-					<p class="text-gray-500 dark:text-gray-400">No content to display</p>
+					<p class="text-muted-foreground">No content to display</p>
 				</div>
 			{/if}
 		</div>
@@ -778,10 +778,10 @@
 		{#snippet children()}
 			<div class="p-6 text-center">
 				<CheckCircle class="w-12 h-12 mx-auto mb-4 text-green-600 dark:text-green-400" />
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+				<h3 class="text-lg font-semibold text-foreground mb-2">
 					{pendingProjectUpdate.projectName} has been updated
 				</h3>
-				<p class="text-gray-600 dark:text-gray-400 mb-6">
+				<p class="text-muted-foreground mb-6">
 					Your changes have been applied. Refresh the page to see the latest updates.
 				</p>
 				<div class="flex gap-3 justify-center">

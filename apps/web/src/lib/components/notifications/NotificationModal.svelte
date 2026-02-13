@@ -169,7 +169,7 @@
 		showCloseButton={true}
 	>
 		{#snippet header()}
-			<div class="flex items-center gap-3 px-6 py-4 border-b dark:border-gray-700">
+			<div class="flex items-center gap-3 px-6 py-4 border-b">
 				<!-- Status Icon -->
 				{#if notification.status === 'processing'}
 					<LoaderCircle class="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
@@ -178,16 +178,16 @@
 				{:else if notification.status === 'error'}
 					<AlertCircle class="w-6 h-6 text-red-600 dark:text-red-400" />
 				{:else if notification.status === 'cancelled'}
-					<XCircle class="w-6 h-6 text-gray-600 dark:text-gray-400" />
+					<XCircle class="w-6 h-6 text-muted-foreground" />
 				{/if}
 
 				<!-- Title -->
 				<div class="flex-1">
-					<h2 class="text-xl font-bold text-gray-900 dark:text-white">
+					<h2 class="text-xl font-bold text-foreground">
 						{modalTitle}
 					</h2>
 					{#if notification.progress?.message}
-						<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+						<p class="text-sm text-muted-foreground mt-0.5">
 							{notification.progress.message}
 						</p>
 					{/if}
@@ -204,7 +204,7 @@
 						<LoaderCircle
 							class="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-4"
 						/>
-						<p class="text-gray-600 dark:text-gray-400">
+						<p class="text-muted-foreground">
 							{notification.progress?.message || 'Processing...'}
 						</p>
 
@@ -212,14 +212,14 @@
 						{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
 							<div class="mt-4 max-w-md mx-auto">
 								<div
-									class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden"
+									class="h-2 bg-muted rounded-full overflow-hidden"
 								>
 									<div
 										class="h-full bg-blue-600 dark:bg-blue-400 transition-all duration-300"
 										style="width: {notification.progress.percentage}%"
 									></div>
 								</div>
-								<p class="text-sm text-gray-500 mt-2">
+								<p class="text-sm text-muted-foreground mt-2">
 									{notification.progress.percentage}%
 								</p>
 							</div>
@@ -238,7 +238,7 @@
 													? 'bg-blue-100 dark:bg-blue-900'
 													: step.status === 'error'
 														? 'bg-red-100 dark:bg-red-900'
-														: 'bg-gray-100 dark:bg-gray-800'}"
+														: 'bg-muted'}"
 										>
 											{#if step.status === 'completed'}
 												<CheckCircle
@@ -259,8 +259,8 @@
 										<span
 											class="text-sm
                          {step.status === 'processing'
-												? 'text-gray-900 dark:text-white font-medium'
-												: 'text-gray-600 dark:text-gray-400'}"
+												? 'text-foreground font-medium'
+												: 'text-muted-foreground'}"
 										>
 											{step.name}
 										</span>
@@ -274,10 +274,10 @@
 						<CheckCircle
 							class="w-16 h-16 text-green-600 dark:text-green-400 mx-auto mb-4"
 						/>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+						<h3 class="text-lg font-semibold text-foreground mb-2">
 							Success!
 						</h3>
-						<p class="text-gray-600 dark:text-gray-400">
+						<p class="text-muted-foreground">
 							{notification.type === 'brain-dump'
 								? 'Brain dump processed successfully'
 								: notification.type === 'phase-generation'
@@ -301,7 +301,7 @@
 							{/if}
 							<button
 								onclick={handleDismiss}
-								class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+								class="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted transition-colors"
 							>
 								Dismiss
 							</button>
@@ -312,7 +312,7 @@
 						<AlertCircle
 							class="w-16 h-16 text-red-600 dark:text-red-400 mx-auto mb-4"
 						/>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+						<h3 class="text-lg font-semibold text-foreground mb-2">
 							Error
 						</h3>
 						<p class="text-red-600 dark:text-red-400">
@@ -339,7 +339,7 @@
 							{/if}
 							<button
 								onclick={handleDismiss}
-								class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+								class="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted transition-colors"
 							>
 								Dismiss
 							</button>

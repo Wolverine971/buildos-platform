@@ -72,9 +72,9 @@
 			push: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
 			email: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
 			sms: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-			in_app: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+			in_app: 'bg-muted text-foreground dark:text-muted-foreground'
 		};
-		return colors[channel] || 'bg-gray-100 text-gray-800';
+		return colors[channel] || 'bg-muted text-foreground';
 	}
 
 	function getStatusBadgeColor(status: string): string {
@@ -87,7 +87,7 @@
 			opened: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
 			clicked: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
 		};
-		return colors[status] || 'bg-gray-100 text-gray-800';
+		return colors[status] || 'bg-muted text-foreground';
 	}
 
 	function getTimelineIcon(stage: string) {
@@ -106,7 +106,7 @@
 	}
 
 	function getTimelineColor(stage: string, completed: boolean) {
-		if (!completed) return 'text-gray-300 dark:text-gray-600';
+		if (!completed) return 'text-muted-foreground';
 		switch (stage) {
 			case 'created':
 				return 'text-blue-500';
@@ -117,71 +117,71 @@
 			case 'failed':
 				return 'text-red-500';
 			default:
-				return 'text-gray-500';
+				return 'text-muted-foreground';
 		}
 	}
 </script>
 
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+<div class="bg-card rounded-lg shadow overflow-hidden">
 	{#if loading}
 		<div class="p-6 space-y-3">
 			{#each Array(5) as _}
 				<div class="animate-pulse">
-					<div class="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+					<div class="h-20 bg-muted rounded"></div>
 				</div>
 			{/each}
 		</div>
 	{:else if deliveries.length === 0}
-		<div class="p-6 text-center text-gray-500 dark:text-gray-400">No deliveries found</div>
+		<div class="p-6 text-center text-muted-foreground">No deliveries found</div>
 	{:else}
 		<div class="overflow-x-auto">
 			<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-				<thead class="bg-gray-50 dark:bg-gray-900">
+				<thead class="bg-muted">
 					<tr>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Event Type
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Channel
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Recipient
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Status
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Timeline
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Performance
 						</th>
 						<th
-							class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Actions
 						</th>
 					</tr>
 				</thead>
 				<tbody
-					class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+					class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
 				>
 					{#each deliveries as delivery}
-						<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+						<tr class="hover:bg-muted transition-colors">
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 							>
 								{#if delivery.notification_events}
 									{delivery.notification_events.event_type
@@ -201,19 +201,19 @@
 								</span>
 							</td>
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 							>
 								{#if delivery.users}
 									<div>
 										<div class="font-medium">
 											{delivery.users.name || 'N/A'}
 										</div>
-										<div class="text-xs text-gray-500">
+										<div class="text-xs text-muted-foreground">
 											{delivery.users.email}
 										</div>
 									</div>
 								{:else}
-									<span class="text-gray-400">N/A</span>
+									<span class="text-muted-foreground">N/A</span>
 								{/if}
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap">
@@ -247,7 +247,7 @@
 														!!timestamp
 													)}"
 												/>
-												<span class="text-xs text-gray-400 mt-0.5"
+												<span class="text-xs text-muted-foreground mt-0.5"
 													>{stage}</span
 												>
 											</div>
@@ -256,7 +256,7 @@
 								</div>
 							</td>
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+								class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
 							>
 								<div class="text-xs space-y-1">
 									<div>Send: {formatDuration(delivery.durations.to_send)}</div>

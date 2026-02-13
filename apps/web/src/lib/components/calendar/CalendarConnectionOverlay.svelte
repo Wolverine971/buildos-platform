@@ -58,14 +58,14 @@
 >
 	<!-- Backdrop with elegant blur -->
 	<div
-		class="fixed inset-0 bg-white/60 dark:bg-black/60 backdrop-blur-xl z-[100]"
+		class="fixed inset-0 bg-card/60 dark:bg-black/60 backdrop-blur-xl z-[100]"
 		aria-hidden="true"
 	></div>
 
 	<!-- Content Container -->
 	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
 		<div
-			class="relative w-full max-w-md bg-card rounded-2xl shadow-2xl border border-border overflow-hidden"
+			class="relative w-full max-w-md bg-card rounded-2xl shadow-ink-strong border border-border overflow-hidden"
 			transition:fade={{ duration: 300, delay: 100 }}
 		>
 			<!-- Decorative gradient top bar -->
@@ -154,7 +154,7 @@
 					disabled={isConnecting}
 					variant="primary"
 					size="lg"
-					class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transform transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+					class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium px-6 py-3 rounded-lg shadow-ink-strong hover:shadow-ink-strong transform transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
 				>
 					{#if isConnecting}
 						<div class="flex items-center justify-center gap-2">

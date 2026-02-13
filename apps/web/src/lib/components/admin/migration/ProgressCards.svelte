@@ -54,12 +54,12 @@
 			<span class="text-emerald-600 dark:text-emerald-400">
 				{formatNumber(stats.projects.migrated)} done
 			</span>
-			<span class="text-gray-400">|</span>
+			<span class="text-muted-foreground">|</span>
 			<span class="text-amber-600 dark:text-amber-400">
 				{formatNumber(stats.projects.pending)} pending
 			</span>
 			{#if stats.projects.failed > 0}
-				<span class="text-gray-400">|</span>
+				<span class="text-muted-foreground">|</span>
 				<span class="text-rose-600 dark:text-rose-400">
 					{formatNumber(stats.projects.failed)} failed
 				</span>
@@ -81,7 +81,7 @@
 			<span class="text-emerald-600 dark:text-emerald-400">
 				{formatNumber(stats.tasks.migrated)} done
 			</span>
-			<span class="text-gray-400">|</span>
+			<span class="text-muted-foreground">|</span>
 			<span class="text-amber-600 dark:text-amber-400">
 				{formatNumber(stats.tasks.pending)} pending
 			</span>
@@ -102,12 +102,12 @@
 			<span class="text-emerald-600 dark:text-emerald-400">
 				{formatNumber(stats.users.fullyMigrated)} complete
 			</span>
-			<span class="text-gray-400">|</span>
+			<span class="text-muted-foreground">|</span>
 			<span class="text-amber-600 dark:text-amber-400">
 				{formatNumber(stats.users.partiallyMigrated)} partial
 			</span>
-			<span class="text-gray-400">|</span>
-			<span class="text-gray-500 dark:text-gray-400">
+			<span class="text-muted-foreground">|</span>
+			<span class="text-muted-foreground">
 				{formatNumber(stats.users.notStarted)} not started
 			</span>
 		</div>
@@ -130,11 +130,11 @@
 				<span class="text-amber-600 dark:text-amber-400">
 					{formatNumber(stats.errors.recoverable)} recoverable
 				</span>
-				<span class="text-gray-400">|</span>
+				<span class="text-muted-foreground">|</span>
 				<span class="text-orange-600 dark:text-orange-400">
 					{formatNumber(stats.errors.dataErrors)} data
 				</span>
-				<span class="text-gray-400">|</span>
+				<span class="text-muted-foreground">|</span>
 				<span class="text-rose-600 dark:text-rose-400">
 					{formatNumber(stats.errors.fatal)} fatal
 				</span>

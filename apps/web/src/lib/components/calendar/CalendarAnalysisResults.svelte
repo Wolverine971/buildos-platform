@@ -423,7 +423,7 @@
 	<div
 		class="space-y-6 px-4 sm:px-6 py-3 sm:py-4 {embedded
 			? ''
-			: 'border-b border-border bg-gray-50 dark:bg-gray-900/50 flex-shrink-0'}"
+			: 'border-b border-border bg-muted/50 flex-shrink-0'}"
 	>
 		{#if errorMessage}
 			<div
@@ -434,7 +434,7 @@
 		{/if}
 		{#if !analyzing && !analysisId && suggestions.length === 0 && !autoStart}
 			<!-- Date Range Selection (only show if not autoStart) -->
-			<div class="bg-accent/10 rounded p-6 border border-accent/20 shadow-sm mx-1">
+			<div class="bg-accent/10 rounded p-6 border border-accent/20 shadow-ink mx-1">
 				<h3 class="text-lg font-semibold text-foreground mb-4">Select Analysis Period</h3>
 				<p class="text-sm text-muted-foreground mb-6">
 					Choose how far back and forward to analyze your calendar
@@ -502,7 +502,7 @@
 						class="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-600 dark:from-blue-500 dark:to-purple-500 rounded-full blur-xl opacity-20 animate-pulse"
 					></div>
 					<div
-						class="relative bg-accent/10 p-5 rounded-full border border-accent/20 shadow-lg"
+						class="relative bg-accent/10 p-5 rounded-full border border-accent/20 shadow-ink-strong"
 					>
 						<LoaderCircle
 							class="w-12 h-12 text-purple-600 dark:text-purple-400 animate-spin"
@@ -535,7 +535,7 @@
 		{:else if suggestions.length > 0}
 			<!-- Summary -->
 			<div
-				class="clarity-zone bg-accent/10 rounded p-6 border border-accent/20 shadow-sm mx-1"
+				class="clarity-zone bg-accent/10 rounded p-6 border border-accent/20 shadow-ink mx-1"
 			>
 				<div class="flex items-center justify-between">
 					<div>
@@ -548,7 +548,7 @@
 							Review and select the projects you'd like to create
 						</p>
 					</div>
-					<div class="bg-card p-3 rounded shadow-sm">
+					<div class="bg-card p-3 rounded shadow-ink">
 						<Calendar class="w-8 h-8 text-purple-600 dark:text-purple-400" />
 					</div>
 				</div>
@@ -566,7 +566,7 @@
 					{@const patterns = suggestion.event_patterns as EventPatternsData | null}
 
 					<div
-						class="border-2 rounded p-6 transition-all duration-300 hover:shadow-md {isSelected
+						class="border-2 rounded p-6 transition-all duration-300 hover:shadow-ink {isSelected
 							? 'border-purple-500 dark:border-purple-400 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20'
 							: 'clarity-zone border-border'}"
 					>
@@ -583,7 +583,7 @@
 									/>
 								{:else}
 									<Circle
-										class="w-6 h-6 text-gray-400 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-500"
+										class="w-6 h-6 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
 									/>
 								{/if}
 							</button>
@@ -602,7 +602,7 @@
 											<textarea
 												bind:value={modifications.description}
 												placeholder={suggestion.suggested_description}
-												class="w-full rounded border border-border px-4 py-2.5 text-sm text-gray-600 dark:text-gray-300 bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+												class="w-full rounded border border-border px-4 py-2.5 text-sm text-muted-foreground bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
 												rows="2"
 											></textarea>
 										{:else}
@@ -639,7 +639,7 @@
 
 									<!-- Confidence Badge -->
 									<span
-										class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full shadow-sm border border-border {getConfidenceColorClass(
+										class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full shadow-ink border border-border {getConfidenceColorClass(
 											confidence
 										)}"
 									>
@@ -718,7 +718,7 @@
 												<div
 													class="p-3 rounded transition-all duration-200 {isPastTask
 														? 'bg-amber-50 dark:bg-amber-900/20'
-														: 'bg-gray-50 dark:bg-gray-800/50'}"
+														: 'bg-muted/50'}"
 												>
 													<!-- Task Header -->
 													<div class="flex items-start gap-3">
@@ -726,7 +726,7 @@
 															type="checkbox"
 															bind:checked={enabledTasks[taskKey]}
 															disabled={processing}
-															class="mt-1 w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+															class="mt-1 w-4 h-4 text-purple-600 border-border rounded focus:ring-purple-500"
 														/>
 														<div class="flex-1 min-w-0">
 															<!-- Enhanced Task Display - All Fields -->
@@ -754,7 +754,7 @@
 																						: task.status ===
 																							  'blocked'
 																							? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-																							: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'}"
+																							: 'bg-muted text-foreground/30 dark:text-muted-foreground'}"
 																			>
 																				{task.status.replace(
 																					'_',
@@ -889,7 +889,7 @@
 																		>
 																			{#each task.tags as tag}
 																				<span
-																					class="inline-flex px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-foreground rounded-full"
+																					class="inline-flex px-2 py-0.5 text-xs font-medium bg-muted text-foreground rounded-full"
 																				>
 																					{tag}
 																				</span>
@@ -900,7 +900,7 @@
 																	<!-- Linked Event (if present) -->
 																	{#if task.event_id}
 																		<div
-																			class="text-xs text-gray-400 dark:text-gray-500 mt-2 flex items-center gap-1"
+																			class="text-xs text-muted-foreground mt-2 flex items-center gap-1"
 																		>
 																			<Calendar
 																				class="w-3 h-3"
@@ -1002,12 +1002,12 @@
 											{#if suggestion.detected_keywords?.length}
 												<div class="mt-3 flex flex-wrap gap-2">
 													<span
-														class="text-xs text-gray-500 dark:text-gray-500"
+														class="text-xs text-muted-foreground"
 														>Keywords detected:
 													</span>
 													{#each suggestion.detected_keywords as keyword}
 														<span
-															class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-foreground rounded-full"
+															class="inline-flex px-2 py-1 text-xs font-medium bg-muted text-foreground rounded-full"
 														>
 															{keyword}
 														</span>
@@ -1018,7 +1018,7 @@
 											{#if patterns && patterns?.tags?.length}
 												<div class="mt-3 flex flex-wrap gap-2">
 													<span
-														class="text-xs text-gray-500 dark:text-gray-500"
+														class="text-xs text-muted-foreground"
 														>Project tags:
 													</span>
 													{#each patterns.tags as tag}
@@ -1036,7 +1036,7 @@
 
 								<!-- Actions -->
 								<div
-									class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700"
+									class="flex items-center gap-3 mt-4 pt-4 border-t border-border"
 								>
 									{#if isEditing}
 										<Button
@@ -1084,12 +1084,12 @@
 				<div
 					class="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-800/30 dark:to-slate-800/30 p-4 rounded-full inline-block mb-4"
 				>
-					<Calendar class="w-12 h-12 text-gray-400 dark:text-gray-600" />
+					<Calendar class="w-12 h-12 text-muted-foreground" />
 				</div>
 				<p class="text-lg font-medium text-foreground">
 					No project patterns found in your calendar
 				</p>
-				<p class="text-sm text-gray-500 dark:text-gray-500 mt-2 max-w-md mx-auto">
+				<p class="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
 					This might be because your events are mostly one-off meetings or personal
 					appointments
 				</p>
@@ -1102,7 +1102,7 @@
 	<div
 		class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 {embedded
 			? ''
-			: 'border-t border-border bg-gray-50 dark:bg-gray-900/50'}"
+			: 'border-t border-border bg-muted/50'}"
 	>
 		{#if !analyzing}
 			<div class="text-sm text-muted-foreground font-medium">

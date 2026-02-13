@@ -801,7 +801,7 @@
 		synced: 'text-emerald-600 dark:text-emerald-400',
 		error: 'text-rose-600 dark:text-rose-400',
 		pending: 'text-amber-600 dark:text-amber-400',
-		default: 'text-gray-600 dark:text-gray-400'
+		default: 'text-muted-foreground'
 	};
 
 	const STATUS_MESSAGES = {
@@ -851,7 +851,7 @@
 		if (!startDateValue) return null;
 
 		const baseCardClasses =
-			'border-slate-200/60 dark:border-slate-700/60 bg-white/85 dark:bg-slate-900/60';
+			'border-border/60/60 bg-card/85/60';
 		const sharedButtonClass = 'w-full sm:w-auto';
 		const badges: CalendarPanelBadge[] = [];
 
@@ -866,7 +866,7 @@
 				titleClasses: 'text-primary-900 dark:text-primary-100',
 				description:
 					'Link your calendar so this scheduled task can stay in sync automatically.',
-				descriptionClasses: 'text-gray-600 dark:text-gray-400',
+				descriptionClasses: 'text-muted-foreground',
 				actions: [
 					{
 						type: 'button',
@@ -892,13 +892,13 @@
 				title: 'Refreshing connection',
 				titleClasses: 'text-primary-900 dark:text-primary-100',
 				description: "We're refreshing your Google Calendar access. Hang tight.",
-				descriptionClasses: 'text-gray-600 dark:text-gray-400',
+				descriptionClasses: 'text-muted-foreground',
 				actions: [
 					{
 						type: 'message',
 						message: 'This usually only takes a moment.',
 						className:
-							'block w-full text-xs text-gray-500 dark:text-gray-400 sm:text-right'
+							'block w-full text-xs text-muted-foreground sm:text-right'
 					}
 				]
 			} satisfies CalendarPanelConfig;
@@ -961,7 +961,7 @@
 				badges.push({
 					icon: Calendar,
 					text: 'Multiple linked events',
-					classes: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
+					classes: 'bg-muted text-muted-foreground'
 				});
 			}
 			if (pendingEventCount > 0) {
@@ -1060,7 +1060,7 @@
 				{
 					type: 'message',
 					message: 'Once saved, you can add it to Google Calendar.',
-					className: 'block w-full text-xs text-gray-500 dark:text-gray-400 sm:text-right'
+					className: 'block w-full text-xs text-muted-foreground sm:text-right'
 				}
 			]
 		} satisfies CalendarPanelConfig;
@@ -1085,18 +1085,18 @@
 				<div class="modal-grab-handle"></div>
 			</div>
 			<div
-				class="relative border-b border-slate-200/60 dark:border-slate-700/60 bg-white/85 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-5 dark:bg-slate-900/80"
+				class="relative border-b border-border/60/60 bg-card/85 px-4 py-4 backdrop-blur-sm sm:px-6 sm:py-5/80"
 			>
 				<!-- Mobile Layout -->
 				<div class="sm:hidden">
 					<div class="flex items-center justify-between mb-2">
 						<div class="flex-1 pr-2 space-y-1.5">
 							<p
-								class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+								class="text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 							>
 								Task Detail
 							</p>
-							<h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+							<h2 class="text-lg font-semibold text-foreground">
 								{modalTitle}
 							</h2>
 						</div>
@@ -1106,7 +1106,7 @@
 							onclick={onClose}
 							variant="ghost"
 							size="sm"
-							class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
+							class="!p-1.5 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
 							aria-label="Close modal"
 						>
 							<svg
@@ -1130,11 +1130,11 @@
 				<div class="hidden sm:flex sm:items-start sm:justify-between">
 					<div class="flex-1 space-y-1.5">
 						<p
-							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 						>
 							Task Detail
 						</p>
-						<h2 class="text-2xl font-semibold text-slate-900 dark:text-white">
+						<h2 class="text-2xl font-semibold text-foreground">
 							{modalTitle}
 						</h2>
 					</div>
@@ -1145,7 +1145,7 @@
 							onclick={onClose}
 							variant="ghost"
 							size="sm"
-							class="!p-1.5 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-200"
+							class="!p-1.5 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
 							aria-label="Close modal"
 						>
 							<svg
@@ -1226,19 +1226,19 @@
 			>
 				<!-- Content Section (Takes most space) -->
 				<div
-					class="lg:col-span-3 flex flex-col space-y-5 h-full min-h-0 rounded-2xl border border-slate-200/60 bg-white/85 p-4 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70 sm:p-5 lg:p-6"
+					class="lg:col-span-3 flex flex-col space-y-5 h-full min-h-0 rounded-2xl border border-border/60 bg-card/85 p-4 shadow-ink backdrop-blur-sm transition-shadow hover:shadow-ink/60/70 sm:p-5 lg:p-6"
 				>
 					<!-- Title -->
-					<div class="border-b border-slate-200/60 pb-5 sm:pb-6 dark:border-slate-700/60">
+					<div class="border-b border-border/60 pb-5 sm:pb-6/60">
 						<p
-							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 						>
 							Task Overview
 						</p>
 						<div class="mt-4 space-y-2">
 							<label
 								for="task-title"
-								class="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+								class="flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 							>
 								<span>Title</span>
 								<span class="text-rose-500">*</span>
@@ -1248,7 +1248,7 @@
 								bind:value={titleValue}
 								placeholder="What needs to be done?"
 								size="lg"
-								class="font-semibold border-slate-200/60 bg-white/85 text-slate-900 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-white"
+								class="font-semibold border-border/60 bg-card/85 text-foreground backdrop-blur-sm/60/60"
 							/>
 						</div>
 					</div>
@@ -1257,7 +1257,7 @@
 					<div class="space-y-2">
 						<label
 							for="task-description"
-							class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 						>
 							Summary
 						</label>
@@ -1266,7 +1266,7 @@
 							bind:value={descriptionValue}
 							placeholder="Brief overview of the task..."
 							rows={2}
-							class="border-slate-200/60 bg-white/80 text-slate-700 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
+							class="border-border/60 bg-card/80 text-foreground backdrop-blur-sm/60/60 dark:text-muted-foreground"
 						/>
 					</div>
 
@@ -1274,7 +1274,7 @@
 					<div class="flex flex-1 flex-col space-y-2">
 						<label
 							for="task-details"
-							class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 						>
 							Full Details
 						</label>
@@ -1285,13 +1285,13 @@
 							autoResize={true}
 							rows={8}
 							maxRows={20}
-							class="flex-1 border-slate-200/60 bg-white/80 leading-relaxed text-slate-700 backdrop-blur-sm dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
+							class="flex-1 border-border/60 bg-card/80 leading-relaxed text-foreground backdrop-blur-sm/60/60 dark:text-muted-foreground"
 						/>
 					</div>
 
 					<!-- Content Stats -->
 					<div
-						class="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400"
+						class="flex items-center justify-between text-sm text-muted-foreground"
 					>
 						<span>
 							{#if detailsValue.length > 0}
@@ -1308,13 +1308,13 @@
 
 				<!-- Metadata Sidebar -->
 				<div
-					class="lg:col-span-1 rounded-2xl border border-slate-200/60 bg-white/85 p-3 shadow-sm backdrop-blur-sm transition-shadow hover:shadow-md dark:border-slate-700/60 dark:bg-slate-900/70 sm:p-4 lg:max-h-full lg:overflow-y-auto"
+					class="lg:col-span-1 rounded-2xl border border-border/60 bg-card/85 p-3 shadow-ink backdrop-blur-sm transition-shadow hover:shadow-ink/60/70 sm:p-4 lg:max-h-full lg:overflow-y-auto"
 				>
 					<div
-						class="-m-3 -mb-0 border-b border-slate-200/60 px-3 pb-4 pt-3 dark:border-slate-700/60 sm:-m-4 sm:px-4 sm:pt-4"
+						class="-m-3 -mb-0 border-b border-border/60 px-3 pb-4 pt-3/60 sm:-m-4 sm:px-4 sm:pt-4"
 					>
 						<h3
-							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-400 dark:text-slate-500"
+							class="text-[11px] font-semibold uppercase tracking-[0.32em] text-muted-foreground"
 						>
 							Task Metadata
 						</h3>
@@ -1324,14 +1324,14 @@
 					<div class="mt-4 space-y-2">
 						<label
 							for="task-status"
-							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 							>Status
 						</label>
 						<Select
 							id="task-status"
 							bind:value={statusValue}
 							size="sm"
-							class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
+							class="border-border/60 bg-card/85/60/60"
 						>
 							{#each statusOptions as option}
 								<option value={option.value}>{option.label}</option>
@@ -1343,14 +1343,14 @@
 					<div class="space-y-2">
 						<label
 							for="task-priority"
-							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 							>Priority
 						</label>
 						<Select
 							id="task-priority"
 							bind:value={priorityValue}
 							size="sm"
-							class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
+							class="border-border/60 bg-card/85/60/60"
 						>
 							{#each priorityOptions as option}
 								<option value={option.value}>{option.label}</option>
@@ -1362,7 +1362,7 @@
 					<div class="space-y-2">
 						<label
 							for="task-start-date"
-							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 							>Schedule
 						</label>
 						<TextInput
@@ -1373,7 +1373,7 @@
 								? formatDateTimeForInput(project.end_date)
 								: undefined}
 							size="sm"
-							class={`border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60 ${
+							class={`border-border/60 bg-card/85/60/60 ${
 								dateOutsidePhaseWarning
 									? 'border-amber-500 dark:border-amber-400'
 									: ''
@@ -1397,7 +1397,7 @@
 					<div class="space-y-2">
 						<label
 							for="task-duration"
-							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 							>Duration
 						</label>
 						<TextInput
@@ -1407,7 +1407,7 @@
 							min="1"
 							size="sm"
 							placeholder="Minutes"
-							class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
+							class="border-border/60 bg-card/85/60/60"
 						/>
 					</div>
 
@@ -1416,7 +1416,7 @@
 						<div class="space-y-2">
 							<label
 								for="task-type"
-								class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+								class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 							>
 								Task Type
 							</label>
@@ -1424,7 +1424,7 @@
 								id="task-type"
 								bind:value={taskTypeValue}
 								size="sm"
-								class="border-slate-200/60 bg-white/85 dark:border-slate-600/60 dark:bg-slate-900/60"
+								class="border-border/60 bg-card/85/60/60"
 							>
 								{#each taskTypeOptions as option}
 									<option value={option.value}>{option.label}</option>
@@ -1464,7 +1464,7 @@
 						{#if calendarPanel}
 							{@const PanelIcon = calendarPanel.icon}
 							<div
-								class={`mt-3 rounded-xl border p-4 sm:p-5 shadow-sm transition-colors ${calendarPanel.cardClasses}`}
+								class={`mt-3 rounded-xl border p-4 sm:p-5 shadow-ink transition-colors ${calendarPanel.cardClasses}`}
 							>
 								<div
 									class="flex flex-col gap-4 sm:items-start sm:justify-between sm:gap-6"
@@ -1542,7 +1542,7 @@
 					<div class="space-y-2">
 						<label
 							for="task-steps"
-							class="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+							class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 						>
 							Task Steps
 						</label>
@@ -1552,7 +1552,7 @@
 							placeholder="Step-by-step instructions..."
 							rows={3}
 							size="sm"
-							class="border-slate-200/60 bg-white/85 text-slate-700 dark:border-slate-600/60 dark:bg-slate-900/60 dark:text-slate-200"
+							class="border-border/60 bg-card/85 text-foreground/60/60 dark:text-muted-foreground"
 						/>
 					</div>
 
@@ -1576,14 +1576,14 @@
 
 					<!-- Creation/Update Info (if editing) -->
 					{#if isEditing && task}
-						<hr class="border-slate-200/60 dark:border-slate-700/60" />
+						<hr class="border-border/60/60" />
 						<div
-							class="rounded-xl border border-slate-200/60 bg-white/85 p-3 space-y-3 dark:border-slate-700/60 dark:bg-slate-900/70"
+							class="rounded-xl border border-border/60 bg-card/85 p-3 space-y-3/60/70"
 						>
 							<!-- Activity Indicator -->
 							<div class="flex items-center justify-between">
 								<span
-									class="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400"
+									class="text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground"
 									>Activity</span
 								>
 								<RecentActivityIndicator
@@ -1597,10 +1597,10 @@
 								{#if task.created_at}
 									<div class="space-y-1">
 										<span
-											class="block font-medium text-slate-500 dark:text-slate-400"
+											class="block font-medium text-muted-foreground"
 											>Created</span
 										>
-										<span class="text-slate-700 dark:text-slate-300">
+										<span class="text-foreground">
 											{format(new Date(task.created_at), 'MMM d, yyyy')}
 											<span class="hidden sm:inline">
 												• {format(
@@ -1614,10 +1614,10 @@
 								{#if task.updated_at}
 									<div class="space-y-1">
 										<span
-											class="block font-medium text-slate-500 dark:text-slate-400"
+											class="block font-medium text-muted-foreground"
 											>Updated</span
 										>
-										<span class="text-slate-700 dark:text-slate-300">
+										<span class="text-foreground">
 											{format(new Date(task.updated_at), 'MMM d, yyyy')}
 											<span class="hidden sm:inline">
 												• {format(
@@ -1631,10 +1631,10 @@
 								{#if task.completed_at}
 									<div class="col-span-2 sm:col-span-1 space-y-1">
 										<span
-											class="block font-medium text-slate-500 dark:text-slate-400"
+											class="block font-medium text-muted-foreground"
 											>Completed</span
 										>
-										<span class="text-slate-700 dark:text-slate-300">
+										<span class="text-foreground">
 											{format(new Date(task.completed_at), 'MMM d, yyyy')}
 											<span class="hidden sm:inline">
 												• {format(
@@ -1653,16 +1653,16 @@
 
 			<!-- Dashboard Context - Navigation Links -->
 			{#if isDashboardContext && task?.projects}
-				<div class="mt-auto pt-2 border-gray-200 dark:border-gray-700">
+				<div class="mt-auto pt-2 border-border">
 					<div class="space-y-3">
 						<!-- Quick Navigation Header -->
 						<div class="flex items-center space-x-2">
 							<span
-								class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+								class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
 							>
 								Quick Navigation
 							</span>
-							<div class="flex-1 h-px bg-gray-200 dark:bg-gray-700"></div>
+							<div class="flex-1 h-px bg-muted"></div>
 						</div>
 
 						<!-- Navigation Buttons - Stack on mobile, inline on desktop -->
@@ -1671,7 +1671,7 @@
 								href="/projects/{task.projects.id}"
 								target="_blank"
 								rel="noopener noreferrer"
-								class="flex items-center justify-center px-3 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm hover:shadow"
+								class="flex items-center justify-center px-3 py-2.5 text-xs font-semibold text-foreground bg-card border border-border rounded-lg hover:bg-muted hover:border-border transition-all duration-200 shadow-ink hover:shadow"
 							>
 								<FolderOpen class="w-4 h-4 mr-1.5" />
 								View Project
@@ -1683,7 +1683,7 @@
 										''}/tasks/{task.id}"
 									target="_blank"
 									rel="noopener noreferrer"
-									class="flex items-center justify-center px-3 py-2.5 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-750 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm hover:shadow"
+									class="flex items-center justify-center px-3 py-2.5 text-xs font-semibold text-foreground bg-card border border-border rounded-lg hover:bg-muted hover:border-border transition-all duration-200 shadow-ink hover:shadow"
 								>
 									<ArrowUpRight class="w-4 h-4 mr-1.5" />
 									View Task

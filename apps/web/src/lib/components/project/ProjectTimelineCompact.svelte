@@ -493,13 +493,13 @@
 							d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
 						/>
 					</svg>
-					<span class="text-xs font-medium text-gray-600 dark:text-gray-400"
+					<span class="text-xs font-medium text-muted-foreground"
 						>{issue.message}</span
 					>
 				</div>
-				<p class="text-xs text-gray-500 dark:text-gray-500 mt-1">{issue.suggestion}</p>
+				<p class="text-xs text-muted-foreground mt-1">{issue.suggestion}</p>
 			{:else}
-				<span class="text-xs text-gray-400">Timeline unavailable</span>
+				<span class="text-xs text-muted-foreground">Timeline unavailable</span>
 			{/if}
 		</div>
 	</div>

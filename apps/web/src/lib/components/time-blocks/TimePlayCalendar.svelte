@@ -1843,7 +1843,7 @@
 
 	/* Hover expansion tooltip */
 	.month-event-hover-detail {
-		@apply absolute left-0 right-0 bottom-full mb-2 rounded-lg shadow-2xl;
+		@apply absolute left-0 right-0 bottom-full mb-2 rounded-lg shadow-ink-strong;
 		padding: 0.75rem 1rem;
 		background: rgb(15 23 42);
 		border: 1px solid rgb(51 65 85);
@@ -2012,7 +2012,7 @@
 
 	/* Slot tooltip (hidden by default, shown on hover) */
 	.slot-tooltip {
-		@apply absolute left-0 right-0 bottom-full mb-2 rounded-lg shadow-2xl;
+		@apply absolute left-0 right-0 bottom-full mb-2 rounded-lg shadow-ink-strong;
 		padding: 0.625rem 0.875rem;
 		background: rgb(15 23 42);
 		border: 1px solid rgb(51 65 85);

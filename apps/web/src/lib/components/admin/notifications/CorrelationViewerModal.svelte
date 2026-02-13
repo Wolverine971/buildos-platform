@@ -68,7 +68,7 @@
 	function getLevelColor(level: LogLevel): string {
 		switch (level) {
 			case 'debug':
-				return 'text-gray-600 dark:text-gray-400';
+				return 'text-muted-foreground';
 			case 'info':
 				return 'text-blue-600 dark:text-blue-400';
 			case 'warn':
@@ -78,14 +78,14 @@
 			case 'fatal':
 				return 'text-purple-600 dark:text-purple-400';
 			default:
-				return 'text-gray-600';
+				return 'text-muted-foreground';
 		}
 	}
 
 	function getLevelBgColor(level: LogLevel): string {
 		switch (level) {
 			case 'debug':
-				return 'bg-gray-100 dark:bg-gray-900';
+				return 'bg-muted';
 			case 'info':
 				return 'bg-blue-50 dark:bg-blue-950';
 			case 'warn':
@@ -95,7 +95,7 @@
 			case 'fatal':
 				return 'bg-purple-50 dark:bg-purple-950';
 			default:
-				return 'bg-gray-100';
+				return 'bg-muted';
 		}
 	}
 
@@ -110,18 +110,18 @@
 			delivered: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
 			failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
 		};
-		return colors[status] || 'bg-gray-100 text-gray-800';
+		return colors[status] || 'bg-muted text-foreground';
 	}
 </script>
 
 <Modal {isOpen} onClose={onClose || (() => {})} size="xl">
 	{#snippet header()}
-		<div class="p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700">
-			<h2 class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+		<div class="p-4 sm:p-5 md:p-6 border-b border-border">
+			<h2 class="text-lg sm:text-xl font-semibold text-foreground">
 				Correlation Tracking
 			</h2>
 			<div class="flex items-center gap-2 mt-2">
-				<span class="text-sm text-gray-500 dark:text-gray-400 font-mono truncate">
+				<span class="text-sm text-muted-foreground font-mono truncate">
 					{correlationId}
 				</span>
 				<button
@@ -143,7 +143,7 @@
 					></div>
 				</div>
 			{:else if !data}
-				<div class="text-center text-gray-500 dark:text-gray-400 py-12">
+				<div class="text-center text-muted-foreground py-12">
 					No correlation data available
 				</div>
 			{:else}
@@ -153,31 +153,31 @@
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2">
 								<Clock class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-								<span class="font-medium text-gray-900 dark:text-white"
+								<span class="font-medium text-foreground"
 									>Timeline</span
 								>
 							</div>
-							<div class="text-sm text-gray-700 dark:text-gray-300">
+							<div class="text-sm text-foreground">
 								Duration: {formatDuration(data.timeline.duration)}
 							</div>
 						</div>
 						<div class="grid grid-cols-3 gap-4 mt-4">
 							<div>
-								<div class="text-xs text-gray-600 dark:text-gray-400">
+								<div class="text-xs text-muted-foreground">
 									Total Logs
 								</div>
-								<div class="text-lg font-semibold text-gray-900 dark:text-white">
+								<div class="text-lg font-semibold text-foreground">
 									{data.timeline.log_count}
 								</div>
 							</div>
 							<div>
-								<div class="text-xs text-gray-600 dark:text-gray-400">Errors</div>
+								<div class="text-xs text-muted-foreground">Errors</div>
 								<div class="text-lg font-semibold text-red-600 dark:text-red-400">
 									{data.timeline.error_count}
 								</div>
 							</div>
 							<div>
-								<div class="text-xs text-gray-600 dark:text-gray-400">Warnings</div>
+								<div class="text-xs text-muted-foreground">Warnings</div>
 								<div
 									class="text-lg font-semibold text-yellow-600 dark:text-yellow-400"
 								>
@@ -190,28 +190,28 @@
 					<!-- Notification Event -->
 					{#if data.notification_event}
 						<div
-							class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+							class="bg-card border border-border rounded-lg p-4"
 						>
 							<div class="flex items-center gap-2 mb-4">
 								<Info class="w-5 h-5 text-purple-600 dark:text-purple-400" />
-								<span class="font-medium text-gray-900 dark:text-white"
+								<span class="font-medium text-foreground"
 									>Notification Event</span
 								>
 							</div>
 							<div class="space-y-2">
 								<div class="flex justify-between gap-4">
-									<span class="text-sm text-gray-700 dark:text-gray-300"
+									<span class="text-sm text-foreground"
 										>Type:</span
 									>
-									<span class="text-sm font-medium text-gray-900 dark:text-white">
+									<span class="text-sm font-medium text-foreground">
 										{data.notification_event.event_type}
 									</span>
 								</div>
 								<div class="flex justify-between gap-4">
-									<span class="text-sm text-gray-700 dark:text-gray-300"
+									<span class="text-sm text-foreground"
 										>Source:</span
 									>
-									<span class="text-sm font-medium text-gray-900 dark:text-white">
+									<span class="text-sm font-medium text-foreground">
 										{data.notification_event.event_source}
 									</span>
 								</div>
@@ -222,22 +222,22 @@
 					<!-- Deliveries -->
 					{#if data.deliveries && data.deliveries.length > 0}
 						<div
-							class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+							class="bg-card border border-border rounded-lg p-4"
 						>
 							<div class="flex items-center gap-2 mb-4">
 								<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
-								<span class="font-medium text-gray-900 dark:text-white">
+								<span class="font-medium text-foreground">
 									Deliveries ({data.deliveries.length})
 								</span>
 							</div>
 							<div class="space-y-2">
 								{#each data.deliveries as delivery}
 									<div
-										class="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0"
+										class="flex items-center justify-between py-2 border-b border-border last:border-0"
 									>
 										<div class="flex items-center gap-3">
 											<span
-												class="text-sm font-medium text-gray-900 dark:text-white"
+												class="text-sm font-medium text-foreground"
 											>
 												{delivery.channel.toUpperCase()}
 											</span>
@@ -258,8 +258,8 @@
 					<!-- Logs by Namespace -->
 					<div class="space-y-4">
 						<div class="flex items-center gap-2">
-							<AlertCircle class="w-5 h-5 text-gray-600 dark:text-gray-400" />
-							<span class="font-medium text-gray-900 dark:text-white"
+							<AlertCircle class="w-5 h-5 text-muted-foreground" />
+							<span class="font-medium text-foreground"
 								>Log Timeline</span
 							>
 						</div>
@@ -267,13 +267,13 @@
 						{#each data.namespaces as namespace}
 							{#if data.logs_by_namespace[namespace]}
 								<div
-									class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+									class="bg-card border border-border rounded-lg overflow-hidden"
 								>
 									<div
-										class="px-4 py-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+										class="px-4 py-2 bg-muted border-b border-border"
 									>
 										<span
-											class="text-sm font-mono text-gray-700 dark:text-gray-300"
+											class="text-sm font-mono text-foreground"
 										>
 											{namespace}
 										</span>
@@ -289,7 +289,7 @@
 													<div class="flex-1">
 														<div class="flex items-center gap-2 mb-1">
 															<span
-																class="text-xs text-gray-500 dark:text-gray-400 font-mono"
+																class="text-xs text-muted-foreground font-mono"
 															>
 																{formatDate(log.created_at)}
 															</span>
@@ -302,13 +302,13 @@
 															</span>
 														</div>
 														<p
-															class="text-sm text-gray-900 dark:text-white"
+															class="text-sm text-foreground"
 														>
 															{log.message}
 														</p>
 														{#if log.metadata && Object.keys(log.metadata).length > 0}
 															<pre
-																class="mt-2 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-2 overflow-x-auto">{JSON.stringify(
+																class="mt-2 text-xs bg-card border border-border rounded p-2 overflow-x-auto">{JSON.stringify(
 																	log.metadata,
 																	null,
 																	2
@@ -333,7 +333,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end"
+			class="p-4 sm:p-5 md:p-6 border-t border-border flex justify-end"
 		>
 			<Button onclick={onClose} variant="secondary">Close</Button>
 		</div>

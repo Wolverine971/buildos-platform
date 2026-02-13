@@ -310,11 +310,11 @@
 
 			<!-- Header with Selection Count -->
 			<div
-				class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-4"
+				class="flex items-center justify-between bg-muted rounded-lg p-4"
 			>
 				<div class="flex items-center space-x-3">
 					<Users class="h-5 w-5 text-blue-600 dark:text-blue-400" />
-					<span class="font-medium text-gray-900 dark:text-white">
+					<span class="font-medium text-foreground">
 						{totalSelected} recipient{totalSelected !== 1 ? 's' : ''} selected
 					</span>
 				</div>
@@ -322,7 +322,7 @@
 				<!-- Search -->
 				<div class="relative max-w-sm">
 					<Search
-						class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+						class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
 					/>
 					<TextInput
 						bind:value={searchQuery}
@@ -334,7 +334,7 @@
 			</div>
 
 			<!-- Tabs -->
-			<div class="border-b border-gray-200 dark:border-gray-700">
+			<div class="border-b border-border">
 				<nav class="-mb-px flex space-x-8">
 					<Button
 						onclick={() => (activeTab = 'beta_users')}
@@ -342,7 +342,7 @@
 						size="sm"
 						class="py-2 px-1 border-b-2 font-medium {activeTab === 'beta_users'
 							? 'border-blue-500 text-blue-600 dark:text-blue-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						<User class="h-4 w-4 mr-2" />
 						Beta Users ({betaUsers.length})
@@ -353,7 +353,7 @@
 						size="sm"
 						class="py-2 px-1 border-b-2 font-medium {activeTab === 'beta_members'
 							? 'border-blue-500 text-blue-600 dark:text-blue-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						<Shield class="h-4 w-4 mr-2" />
 						Beta Members ({betaMembers.length})
@@ -364,7 +364,7 @@
 						size="sm"
 						class="py-2 px-1 border-b-2 font-medium {activeTab === 'custom'
 							? 'border-blue-500 text-blue-600 dark:text-blue-400'
-							: 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'}"
+							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						<Plus class="h-4 w-4 mr-2" />
 						Custom ({customRecipients.length})
@@ -385,8 +385,8 @@
 					{#if activeTab === 'beta_users'}
 						{#if filteredBetaUsers.length === 0}
 							<div class="text-center py-8">
-								<User class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-								<p class="text-gray-500 dark:text-gray-400">
+								<User class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+								<p class="text-muted-foreground">
 									{searchQuery
 										? 'No beta users match your search'
 										: 'No beta users found'}
@@ -409,14 +409,14 @@
 							<div class="space-y-2">
 								{#each filteredBetaUsers as user}
 									<div
-										class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+										class="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted"
 									>
 										<div class="flex items-center space-x-3">
 											<input
 												type="checkbox"
 												checked={selectedUserIds.has(user.id)}
 												onchange={() => toggleUserSelection(user.id)}
-												class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
+												class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer dark:checked:bg-blue-600"
 											/>
 											<div class="flex-shrink-0">
 												<div
@@ -431,19 +431,19 @@
 											</div>
 											<div class="min-w-0 flex-1">
 												<p
-													class="text-sm font-medium text-gray-900 dark:text-white truncate"
+													class="text-sm font-medium text-foreground truncate"
 												>
 													{user.name}
 												</p>
 												<div
-													class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400"
+													class="flex items-center space-x-2 text-sm text-muted-foreground"
 												>
 													<Mail class="h-3 w-3" />
 													<span class="truncate">{user.email}</span>
 												</div>
 												{#if user.company}
 													<div
-														class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400"
+														class="flex items-center space-x-2 text-sm text-muted-foreground"
 													>
 														<Building class="h-3 w-3" />
 														<span class="truncate">{user.company}</span>
@@ -468,8 +468,8 @@
 					{#if activeTab === 'beta_members'}
 						{#if filteredBetaMembers.length === 0}
 							<div class="text-center py-8">
-								<Shield class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-								<p class="text-gray-500 dark:text-gray-400">
+								<Shield class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+								<p class="text-muted-foreground">
 									{searchQuery
 										? 'No beta members match your search'
 										: 'No beta members found'}
@@ -479,14 +479,14 @@
 							<div class="space-y-2">
 								{#each filteredBetaMembers as member}
 									<div
-										class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+										class="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted"
 									>
 										<div class="flex items-center space-x-3">
 											<input
 												type="checkbox"
 												checked={selectedMemberIds.has(member.id)}
 												onchange={() => toggleMemberSelection(member.id)}
-												class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
+												class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer dark:checked:bg-blue-600"
 											/>
 											<div class="flex-shrink-0">
 												<div
@@ -501,19 +501,19 @@
 											</div>
 											<div class="min-w-0 flex-1">
 												<p
-													class="text-sm font-medium text-gray-900 dark:text-white truncate"
+													class="text-sm font-medium text-foreground truncate"
 												>
 													{member.name}
 												</p>
 												<div
-													class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400"
+													class="flex items-center space-x-2 text-sm text-muted-foreground"
 												>
 													<Mail class="h-3 w-3" />
 													<span class="truncate">{member.email}</span>
 												</div>
 												{#if member.company}
 													<div
-														class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400"
+														class="flex items-center space-x-2 text-sm text-muted-foreground"
 													>
 														<Building class="h-3 w-3" />
 														<span class="truncate"
@@ -547,7 +547,7 @@
 					{#if activeTab === 'custom'}
 						<div class="space-y-4">
 							<!-- Add Custom Recipient Form -->
-							<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+							<div class="bg-muted rounded-lg p-4">
 								{#if showCustomForm}
 									<div class="space-y-3">
 										<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -591,7 +591,7 @@
 										onclick={() => (showCustomForm = true)}
 										variant="outline"
 										size="md"
-										class="w-full border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+										class="w-full border-2 border-dashed border-border hover:border-border"
 									>
 										<Plus class="h-4 w-4 mr-2" />
 										Add Custom Recipient
@@ -602,8 +602,8 @@
 							<!-- Custom Recipients List -->
 							{#if filteredCustomRecipients.length === 0}
 								<div class="text-center py-8">
-									<Plus class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-									<p class="text-gray-500 dark:text-gray-400">
+									<Plus class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+									<p class="text-muted-foreground">
 										{searchQuery
 											? 'No custom recipients match your search'
 											: 'No custom recipients added yet'}
@@ -613,7 +613,7 @@
 								<div class="space-y-2">
 									{#each filteredCustomRecipients as custom}
 										<div
-											class="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+											class="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted"
 										>
 											<div class="flex items-center space-x-3">
 												<input
@@ -621,14 +621,14 @@
 													checked={selectedCustomIds.has(custom.email)}
 													onchange={() =>
 														toggleCustomSelection(custom.email)}
-													class="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-blue-600"
+													class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer dark:checked:bg-blue-600"
 												/>
 												<div class="flex-shrink-0">
 													<div
-														class="h-10 w-10 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center"
+														class="h-10 w-10 rounded-full bg-muted flex items-center justify-center"
 													>
 														<span
-															class="text-sm font-medium text-gray-800 dark:text-gray-200"
+															class="text-sm font-medium text-foreground"
 														>
 															{custom.name.charAt(0).toUpperCase()}
 														</span>
@@ -636,12 +636,12 @@
 												</div>
 												<div class="min-w-0 flex-1">
 													<p
-														class="text-sm font-medium text-gray-900 dark:text-white truncate"
+														class="text-sm font-medium text-foreground truncate"
 													>
 														{custom.name}
 													</p>
 													<div
-														class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400"
+														class="flex items-center space-x-2 text-sm text-muted-foreground"
 													>
 														<Mail class="h-3 w-3" />
 														<span class="truncate">{custom.email}</span>
@@ -650,7 +650,7 @@
 											</div>
 											<div class="flex items-center space-x-2">
 												<span
-													class="inline-flex px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-300 rounded-full"
+													class="inline-flex px-2 py-1 text-xs font-medium bg-muted text-foreground dark:text-muted-foreground rounded-full"
 												>
 													Custom
 												</span>
@@ -678,7 +678,7 @@
 	{#snippet footer()}
 		<!-- Footer -->
 		<div class="flex justify-between items-center pt-4 p-4">
-			<span class="text-sm text-gray-500 dark:text-gray-400">
+			<span class="text-sm text-muted-foreground">
 				{totalSelected} recipient{totalSelected !== 1 ? 's' : ''} selected
 			</span>
 			<div class="flex space-x-3">

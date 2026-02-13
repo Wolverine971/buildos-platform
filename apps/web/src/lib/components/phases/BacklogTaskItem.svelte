@@ -63,11 +63,11 @@
 			case 'overdue':
 				return 'text-red-600';
 			case 'deleted':
-				return 'text-gray-400';
+				return 'text-muted-foreground';
 			case 'scheduled':
 				return 'text-blue-500';
 			default:
-				return 'text-gray-400';
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -109,7 +109,7 @@
 			case 'cancelled':
 				return 'text-red-500';
 			default:
-				return 'text-gray-400';
+				return 'text-muted-foreground';
 		}
 	})();
 
@@ -159,7 +159,7 @@
 <div
 	draggable="true"
 	ondragstart={(e) => handleDragStart(e)}
-	class="backlog-task-item group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg cursor-move hover:shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 p-3"
+	class="backlog-task-item group bg-card border border-border rounded-lg cursor-move hover:shadow-ink hover:bg-muted transition-all duration-200 p-3"
 	role="listitem"
 	aria-label="Task: {task.title}"
 	in:fade={{ duration: 200, delay: index * 20 }}
@@ -177,8 +177,8 @@
 			<button
 				onclick={handleEditTask}
 				class="w-full text-left {task.status === 'done'
-					? 'line-through text-gray-500 dark:text-gray-400'
-					: 'text-gray-900 dark:text-white'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none"
+					? 'line-through text-muted-foreground'
+					: 'text-foreground'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none"
 				aria-label="Edit task: {task.title}"
 				type="button"
 				title={task.title}
@@ -208,7 +208,7 @@
 
 					<!-- Date -->
 					{#if task.start_date}
-						<span class="text-xs text-gray-500 dark:text-gray-400">
+						<span class="text-xs text-muted-foreground">
 							{formatDate(task.start_date)}
 						</span>
 					{/if}
@@ -223,7 +223,7 @@
 				variant="ghost"
 				size="sm"
 				icon={Trash2}
-				class="opacity-0 group-hover:opacity-100 !p-1 !text-gray-400 hover:!text-red-600 dark:hover:!text-red-400 transition-opacity"
+				class="opacity-0 group-hover:opacity-100 !p-1 !text-muted-foreground hover:!text-red-600 dark:hover:!text-red-400 transition-opacity"
 				aria-label="Delete task: {task.title}"
 			/>
 		</div>

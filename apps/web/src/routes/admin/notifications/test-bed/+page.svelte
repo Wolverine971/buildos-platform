@@ -175,58 +175,58 @@
 		<div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
 			<a
 				href="/admin/notifications"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
 					<Bell class="h-8 w-8 text-blue-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-lg font-semibold text-foreground">
 							Analytics
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">View dashboard</p>
+						<p class="text-sm text-muted-foreground">View dashboard</p>
 					</div>
 				</div>
 			</a>
 
 			<a
 				href="/admin/notifications/test-bed"
-				class="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-lg p-6 hover:shadow-lg transition-shadow"
+				class="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-lg p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
 					<Send class="h-8 w-8 text-green-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-lg font-semibold text-foreground">
 							Test Bed
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">Current page</p>
+						<p class="text-sm text-muted-foreground">Current page</p>
 					</div>
 				</div>
 			</a>
 
 			<a
 				href="/admin/notifications/sms-scheduler"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
 					<Calendar class="h-8 w-8 text-orange-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+						<h3 class="text-lg font-semibold text-foreground">
 							SMS Scheduler
 						</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">Manual trigger</p>
+						<p class="text-sm text-muted-foreground">Manual trigger</p>
 					</div>
 				</div>
 			</a>
 
 			<a
 				href="/admin/notifications/nlogs"
-				class="admin-panel p-6 hover:shadow-lg transition-shadow"
+				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
 					<Eye class="h-8 w-8 text-purple-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-gray-900 dark:text-white">Logs</h3>
-						<p class="text-sm text-gray-600 dark:text-gray-400">
+						<h3 class="text-lg font-semibold text-foreground">Logs</h3>
+						<p class="text-sm text-muted-foreground">
 							Event & delivery logs
 						</p>
 					</div>
@@ -253,7 +253,7 @@
 		<div class="space-y-6">
 			<!-- Step 1: User Search & Selection -->
 			<div class="admin-panel p-6">
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+				<h2 class="text-xl font-semibold text-foreground mb-4">
 					Step 1: Select User
 				</h2>
 
@@ -262,13 +262,13 @@
 					<div class="relative">
 						<div class="relative">
 							<Search
-								class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+								class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted-foreground"
 							/>
 							<input
 								type="text"
 								bind:value={recipientSearch}
 								placeholder="Search users by email or name..."
-								class="w-full pl-10 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+								class="w-full pl-10 pr-10 py-3 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
 							/>
 							{#if isSearching}
 								<div class="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -280,23 +280,23 @@
 						<!-- Search Results Dropdown -->
 						{#if searchResults.length > 0}
 							<div
-								class="absolute z-10 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+								class="absolute z-10 w-full mt-2 bg-card border border-border rounded-lg shadow-ink-strong max-h-60 overflow-y-auto"
 							>
 								{#each searchResults as result}
 									<button
 										type="button"
 										onclick={() => selectUser(result)}
-										class="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-0"
+										class="w-full px-4 py-3 text-left hover:bg-muted transition-colors border-b border-border last:border-0"
 									>
 										<div
-											class="text-sm font-medium text-gray-900 dark:text-white"
+											class="text-sm font-medium text-foreground"
 										>
 											{result.email}
 										</div>
 										{#if result.name}
-											<div class="text-xs text-gray-500">{result.name}</div>
+											<div class="text-xs text-muted-foreground">{result.name}</div>
 										{/if}
-										<div class="text-xs text-gray-500 mt-1">
+										<div class="text-xs text-muted-foreground mt-1">
 											{result.has_push_subscription ? '📱 Push' : ''}
 											{result.has_phone ? '📞 SMS' : ''}
 										</div>
@@ -311,11 +311,11 @@
 						class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
 					>
 						<div>
-							<div class="text-sm font-medium text-gray-900 dark:text-white">
+							<div class="text-sm font-medium text-foreground">
 								{selectedUser.email}
 							</div>
 							{#if selectedUser.name}
-								<div class="text-xs text-gray-500">{selectedUser.name}</div>
+								<div class="text-xs text-muted-foreground">{selectedUser.name}</div>
 							{/if}
 						</div>
 						<Button variant="ghost" size="sm" onclick={clearUserSelection}>
@@ -330,7 +330,7 @@
 				{#if contextLoading}
 					<div class="admin-panel p-8 text-center">
 						<LoaderCircle class="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-						<p class="text-gray-600 dark:text-gray-400">
+						<p class="text-muted-foreground">
 							Loading user notification context...
 						</p>
 					</div>
@@ -340,7 +340,7 @@
 
 				<!-- Step 2: Select Notification Type -->
 				<div class="admin-panel p-6">
-					<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+					<h2 class="text-xl font-semibold text-foreground mb-4">
 						Step 2: Select Notification Type
 					</h2>
 					<NotificationTypeSelector
@@ -352,7 +352,7 @@
 
 				<!-- Step 3: Select Channels -->
 				<div class="admin-panel p-6">
-					<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+					<h2 class="text-xl font-semibold text-foreground mb-4">
 						Step 3: Select Channels
 					</h2>
 
@@ -365,12 +365,12 @@
 										value={capability.channel}
 										bind:group={selectedChannels}
 										disabled={!capability.available}
-										class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+										class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 disabled:opacity-50"
 									/>
 									<div class="flex-1">
 										<div class="flex items-center space-x-2">
 											<div
-												class="font-medium text-gray-900 dark:text-white capitalize"
+												class="font-medium text-foreground capitalize"
 											>
 												{capability.channel}
 											</div>
@@ -380,19 +380,19 @@
 													>✓ Available</span
 												>
 											{:else}
-												<span class="text-xs text-gray-400"
+												<span class="text-xs text-muted-foreground"
 													>✗ Not available</span
 												>
 											{/if}
 										</div>
-										<p class="text-sm text-gray-500">
+										<p class="text-sm text-muted-foreground">
 											{capability.details}
 										</p>
 									</div>
 								</label>
 							{/each}
 						{:else}
-							<p class="text-sm text-gray-500">
+							<p class="text-sm text-muted-foreground">
 								Select a user to see available channels
 							</p>
 						{/if}
@@ -401,7 +401,7 @@
 
 				<!-- Step 4: Configure Payload -->
 				<div class="admin-panel p-6">
-					<h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+					<h2 class="text-xl font-semibold text-foreground mb-4">
 						Step 4: Configure Channel Payloads
 					</h2>
 					<ChannelPayloadEditor {selectedChannels} bind:channelPayloads />

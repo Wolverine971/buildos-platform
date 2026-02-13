@@ -40,10 +40,6 @@
 	--success: 160 84% 39%; /* emerald-600 equivalent */
 	--success-foreground: 0 0% 100%;
 
-	/* Danger (status indicator - error/blocked states) */
-	--danger: 0 72% 51%; /* red-600 equivalent */
-	--danger-foreground: 0 0% 100%;
-
 	/* Info (status indicator - informational/neutral states) */
 	--info: 217 91% 60%; /* blue-600 equivalent */
 	--info-foreground: 0 0% 100%;
@@ -59,24 +55,24 @@
 }
 
 .dark {
-	/* Ink room (dark mode) - lifted from void-black to visible dark surface */
-	--background: 240 8% 11%;
+	/* Ink room (dark mode) - warm charcoal to match light mode's warm paper */
+	--background: 30 6% 11%;
 	--foreground: 40 10% 92%; /* off-white */
 
 	/* Card surfaces */
-	--card: 240 8% 15%;
+	--card: 30 6% 15%;
 	--card-foreground: 40 10% 92%;
 
 	/* Muted surfaces */
-	--muted: 240 8% 19%;
+	--muted: 30 6% 19%;
 	--muted-foreground: 40 5% 58%;
 
 	/* Border */
-	--border: 240 8% 24%;
+	--border: 30 6% 24%;
 
 	/* Accent (glows slightly in dark) */
 	--accent: 24 85% 58%;
-	--accent-foreground: 240 8% 11%;
+	--accent-foreground: 30 6% 11%;
 
 	/* Ring */
 	--ring: 24 85% 58%;
@@ -87,15 +83,11 @@
 
 	/* Warning (brighter in dark mode) */
 	--warning: 38 92% 55%;
-	--warning-foreground: 240 8% 11%;
+	--warning-foreground: 30 6% 11%;
 
 	/* Success (brighter in dark mode) */
 	--success: 160 84% 45%;
 	--success-foreground: 0 0% 100%;
-
-	/* Danger (brighter in dark mode) */
-	--danger: 0 72% 55%;
-	--danger-foreground: 0 0% 100%;
 
 	/* Info (brighter in dark mode) */
 	--info: 217 91% 65%;

@@ -42,11 +42,11 @@
 	<div class="space-y-4">
 		{#if showTitle}
 			<div class="flex items-center justify-between">
-				<h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+				<h3 class="text-lg font-semibold text-foreground flex items-center">
 					<FolderOpen class="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
 					{title}
 				</h3>
-				<span class="text-sm text-gray-500 dark:text-gray-400"
+				<span class="text-sm text-muted-foreground"
 					>{briefs.length} projects</span
 				>
 			</div>
@@ -63,13 +63,13 @@
 {:else}
 	<div class="text-center py-8">
 		<div
-			class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700"
+			class="bg-card rounded-lg p-6 border border-border"
 		>
-			<FolderOpen class="h-12 w-12 text-gray-400 mx-auto mb-3" />
-			<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+			<FolderOpen class="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+			<h3 class="text-lg font-semibold text-foreground mb-2">
 				No Project Briefs
 			</h3>
-			<p class="text-sm text-gray-500 dark:text-gray-400">
+			<p class="text-sm text-muted-foreground">
 				Project briefs will appear here when available
 			</p>
 		</div>

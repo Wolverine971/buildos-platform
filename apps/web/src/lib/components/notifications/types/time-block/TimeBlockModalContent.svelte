@@ -73,7 +73,7 @@
 		}
 		return {
 			icon: Clock,
-			iconClass: 'w-6 h-6 text-gray-500 dark:text-gray-400',
+			iconClass: 'w-6 h-6 text-muted-foreground',
 			message: ''
 		};
 	});
@@ -113,18 +113,18 @@
 >
 	{#snippet header()}
 		{@const StatusIcon = statusCopy.icon}
-		<div class="flex items-center gap-3 px-6 py-4 border-b dark:border-gray-700">
+		<div class="flex items-center gap-3 px-6 py-4 border-b">
 			{#if StatusIcon}
 				<StatusIcon class={statusCopy.iconClass} />
 			{/if}
 			<div class="flex-1">
-				<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+				<h2 class="text-xl font-semibold text-foreground">
 					{notification.data.blockType === 'project'
 						? 'Project Time Block'
 						: 'Build Block'}
 				</h2>
 				{#if statusCopy.message}
-					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					<p class="text-sm text-muted-foreground mt-1">
 						{statusCopy.message}
 					</p>
 				{/if}
@@ -144,16 +144,16 @@
 		<div class="px-6 py-5 space-y-6">
 			<div class="space-y-2">
 				{#if formattedDate}
-					<p class="text-sm text-gray-500 dark:text-gray-400">{formattedDate}</p>
+					<p class="text-sm text-muted-foreground">{formattedDate}</p>
 				{/if}
 
-				<div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg space-y-2">
+				<div class="p-4 bg-muted rounded-lg space-y-2">
 					{#if formattedTime}
-						<div class="flex items-center text-sm text-gray-700 dark:text-gray-300">
+						<div class="flex items-center text-sm text-foreground">
 							<Clock class="w-4 h-4 mr-2" />
 							{formattedTime}
 							{#if durationText}
-								<span class="ml-2 text-gray-500 dark:text-gray-400"
+								<span class="ml-2 text-muted-foreground"
 									>({durationText})</span
 								>
 							{/if}
@@ -161,7 +161,7 @@
 					{/if}
 
 					{#if notification.data.projectName}
-						<div class="text-sm text-gray-700 dark:text-gray-300">
+						<div class="text-sm text-foreground">
 							<span class="font-medium">Project:</span>
 							{notification.data.projectName}
 						</div>
@@ -172,34 +172,34 @@
 			{#if status === 'success' && notification.data.suggestions?.length}
 				<div class="space-y-4">
 					<div>
-						<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+						<h4 class="text-sm font-medium text-foreground mb-3">
 							AI Suggested Tasks
 						</h4>
 
 						<div class="space-y-3">
 							{#each notification.data.suggestions as suggestion, index}
 								<div
-									class="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded"
+									class="p-3 bg-card border border-border rounded"
 								>
 									<div
-										class="text-sm font-medium text-gray-900 dark:text-gray-100"
+										class="text-sm font-medium text-foreground"
 									>
 										{index + 1}. {suggestion.title}
 									</div>
 									{#if suggestion.reason}
-										<div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+										<div class="text-xs text-muted-foreground mt-1">
 											{suggestion.reason}
 										</div>
 									{/if}
 									<div
-										class="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400"
+										class="flex items-center gap-3 mt-2 text-xs text-muted-foreground"
 									>
 										{#if suggestion.estimated_minutes}
 											<span>{suggestion.estimated_minutes} min</span>
 										{/if}
 										{#if suggestion.priority}
 											<span
-												class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded"
+												class="px-2 py-0.5 bg-muted rounded"
 											>
 												{suggestion.priority}
 											</span>

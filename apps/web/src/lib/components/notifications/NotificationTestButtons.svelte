@@ -244,8 +244,8 @@
 	}
 </script>
 
-<div class="fixed bottom-20 left-4 z-40 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border">
-	<h3 class="text-sm font-bold mb-3 text-gray-900 dark:text-white">Notification Tests</h3>
+<div class="fixed bottom-20 left-4 z-40 bg-card p-4 rounded-lg shadow-ink-strong border">
+	<h3 class="text-sm font-bold mb-3 text-foreground">Notification Tests</h3>
 	<div class="flex flex-col gap-2">
 		<button
 			onclick={createBrainDumpNotification}

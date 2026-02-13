@@ -289,7 +289,7 @@
 					<div class="flex flex-col space-y-1">
 						{#each Array(7) as _, j}
 							<div
-								class="w-2 h-2 sm:w-3 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded-sm"
+								class="w-2 h-2 sm:w-3 sm:h-3 bg-muted rounded-sm"
 							></div>
 						{/each}
 					</div>
@@ -305,7 +305,7 @@
 				<div class="flex-1">
 					<div class="flex flex-col sm:flex-row sm:items-center">
 						<h4
-							class="text-base sm:text-lg font-semibold text-gray-900 dark:!text-white flex items-center mb-2 sm:mb-0"
+							class="text-base sm:text-lg font-semibold text-foreground dark:!text-white flex items-center mb-2 sm:mb-0"
 						>
 							<svg
 								class="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-blue-600"
@@ -325,7 +325,7 @@
 						</h4>
 						<!-- View Toggle -->
 						<div
-							class="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1 sm:ml-4"
+							class="flex items-center bg-muted rounded-lg p-1 sm:ml-4"
 						>
 							<Button
 								variant={viewMode === 'graph' ? 'primary' : 'ghost'}
@@ -371,14 +371,14 @@
 							</Button>
 						</div>
 					</div>
-					<p class="text-xs sm:text-sm text-gray-600 dark:!text-gray-400 mt-1">
+					<p class="text-xs sm:text-sm text-muted-foreground dark:!text-muted-foreground mt-1">
 						{totalVisitors} total visitors • {averageDaily} avg per day • {totalSignups}
 						signups
 					</p>
 				</div>
 				{#if viewMode === 'chart'}
 					<div
-						class="flex items-center space-x-1 sm:space-x-2 text-xs text-gray-500 dark:!text-gray-400"
+						class="flex items-center space-x-1 sm:space-x-2 text-xs text-muted-foreground dark:!text-muted-foreground"
 					>
 						<span class="hidden sm:inline">Less</span>
 						<div class="flex space-x-1">
@@ -397,8 +397,8 @@
 
 		{#if visitors.length === 0}
 			<div class="text-center py-8 sm:py-12">
-				<div class="text-gray-400 mb-2">No visitor data</div>
-				<div class="text-xs sm:text-sm text-gray-500 dark:!text-gray-400">
+				<div class="text-muted-foreground mb-2">No visitor data</div>
+				<div class="text-xs sm:text-sm text-muted-foreground dark:!text-muted-foreground">
 					Visitor activity will appear here once tracking begins
 				</div>
 			</div>
@@ -412,7 +412,7 @@
 								{#each monthLabels as month}
 									{#if month.weekIndex === weekIndex}
 										<div
-											class="absolute -top-1 left-0 text-xs text-gray-500 dark:!text-gray-400 whitespace-nowrap"
+											class="absolute -top-1 left-0 text-xs text-muted-foreground dark:!text-muted-foreground whitespace-nowrap"
 										>
 											{month.name}
 										</div>
@@ -428,7 +428,7 @@
 			<div class="flex overflow-x-auto">
 				<!-- Day labels -->
 				<div
-					class="flex flex-col justify-between text-xs text-gray-500 dark:!text-gray-400 mr-2 sm:mr-3 py-0.5 flex-shrink-0"
+					class="flex flex-col justify-between text-xs text-muted-foreground dark:!text-muted-foreground mr-2 sm:mr-3 py-0.5 flex-shrink-0"
 				>
 					{#each dayLabels as label, index}
 						{#if index % 2 === 1}
@@ -488,11 +488,11 @@
 				<div class="flex items-center space-x-4 mb-4 text-xs sm:text-sm">
 					<div class="flex items-center">
 						<div class="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-						<span class="text-gray-600 dark:text-gray-400">Visitors (Line)</span>
+						<span class="text-muted-foreground">Visitors (Line)</span>
 					</div>
 					<div class="flex items-center">
 						<div class="w-3 h-3 bg-green-500 rounded-sm mr-2 opacity-60"></div>
-						<span class="text-gray-600 dark:text-gray-400">Signups (Bars)</span>
+						<span class="text-muted-foreground">Signups (Bars)</span>
 					</div>
 				</div>
 
@@ -633,12 +633,12 @@
 		{/if}
 
 		<!-- Summary stats - Mobile Responsive -->
-		<div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+		<div class="mt-4 pt-4 border-t border-border">
 			<div
 				class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-xs sm:text-sm space-y-2 sm:space-y-0"
 			>
 				<div
-					class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-gray-600 dark:!text-gray-400"
+					class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-1 sm:space-y-0 text-muted-foreground dark:!text-muted-foreground"
 				>
 					<span
 						>📈 Peak day: {Math.max(...visitors.map((v) => v.visitor_count))} visitors</span
@@ -656,13 +656,13 @@
 	<!-- Note: !absolute needed to override AdminShell's `.admin-panel > *` rule which sets position:relative -->
 	{#if hoveredDay}
 		<div
-			class="!absolute z-50 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			class="!absolute z-50 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 text-white text-xs rounded-lg shadow-ink-strong pointer-events-none transform -translate-x-1/2 -translate-y-full"
 			style="left: {hoveredDay.x}px; top: {hoveredDay.y}px;"
 		>
 			<div class="font-medium text-xs sm:text-sm">
 				{formatTooltipDate(hoveredDay.date)}
 			</div>
-			<div class="text-gray-300 text-xs">
+			<div class="text-muted-foreground text-xs">
 				{hoveredDay.count} visitor{hoveredDay.count !== 1 ? 's' : ''}
 			</div>
 
@@ -678,13 +678,13 @@
 	<!-- Graph view tooltip - Mobile Responsive -->
 	{#if hoveredPoint}
 		<div
-			class="!absolute z-50 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			class="!absolute z-50 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 text-white text-xs rounded-lg shadow-ink-strong pointer-events-none transform -translate-x-1/2 -translate-y-full"
 			style="left: {hoveredPoint.x}px; top: {hoveredPoint.y}px;"
 		>
 			<div class="font-medium text-xs sm:text-sm">
 				{formatTooltipDate(hoveredPoint.date)}
 			</div>
-			<div class="text-gray-300 text-xs">
+			<div class="text-muted-foreground text-xs">
 				{hoveredPoint.count} visitor{hoveredPoint.count !== 1 ? 's' : ''}
 			</div>
 
@@ -700,13 +700,13 @@
 	<!-- Signup tooltip - Mobile Responsive -->
 	{#if hoveredSignup}
 		<div
-			class="!absolute z-50 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded-lg shadow-lg pointer-events-none transform -translate-x-1/2 -translate-y-full"
+			class="!absolute z-50 px-2 sm:px-3 py-1 sm:py-2 bg-gray-900 text-white text-xs rounded-lg shadow-ink-strong pointer-events-none transform -translate-x-1/2 -translate-y-full"
 			style="left: {hoveredSignup.x}px; top: {hoveredSignup.y}px;"
 		>
 			<div class="font-medium text-xs sm:text-sm">
 				{formatTooltipDate(hoveredSignup.date)}
 			</div>
-			<div class="text-gray-300 text-xs">
+			<div class="text-muted-foreground text-xs">
 				{hoveredSignup.count} signup{hoveredSignup.count !== 1 ? 's' : ''}
 			</div>
 

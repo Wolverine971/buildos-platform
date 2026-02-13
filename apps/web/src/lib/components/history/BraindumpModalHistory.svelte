@@ -111,7 +111,7 @@
 				};
 			default:
 				return {
-					color: 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700',
+					color: 'text-muted-foreground bg-muted',
 					icon: Brain
 				};
 		}
@@ -138,7 +138,7 @@
 					color: 'text-amber-600 dark:text-amber-400'
 				};
 			default:
-				return { label: type, icon: FileText, color: 'text-gray-600 dark:text-gray-400' };
+				return { label: type, icon: FileText, color: 'text-muted-foreground' };
 		}
 	}
 
@@ -173,7 +173,7 @@
 	<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
 		<!-- Info Header -->
 		<div
-			class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 -mx-3 sm:-mx-4 lg:-mx-6 -mt-3 sm:-mt-4 mb-4"
+			class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4 bg-muted/50 border-b border-border -mx-3 sm:-mx-4 lg:-mx-6 -mt-3 sm:-mt-4 mb-4"
 		>
 			<div class="flex items-center space-x-2 min-w-0 flex-1">
 				<!-- Type indicator -->
@@ -243,7 +243,7 @@
 					size="sm"
 					icon={Trash2}
 					title="Delete braindump"
-					class="p-3 min-w-[44px] text-gray-500 hover:text-red-600 dark:hover:text-red-400"
+					class="p-3 min-w-[44px] text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
 				></Button>
 
 				{#if linkedProject?.id && !isUnlinked}
@@ -263,7 +263,7 @@
 			<!-- Loading state -->
 			<div class="flex items-center justify-center py-8">
 				<LoaderCircle class="w-6 h-6 animate-spin text-violet-600 dark:text-violet-400" />
-				<span class="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading...</span>
+				<span class="ml-2 text-sm text-muted-foreground">Loading...</span>
 			</div>
 		{:else if error}
 			<!-- Error state -->
@@ -285,12 +285,12 @@
 				<div>
 					{#if braindump?.title}
 						<h2
-							class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-1"
+							class="text-base sm:text-lg font-semibold text-foreground mb-1"
 						>
 							{braindump.title}
 						</h2>
 					{/if}
-					<p class="text-sm text-gray-500 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground">
 						{timeDisplay}
 					</p>
 				</div>
@@ -301,7 +301,7 @@
 						{#each linkedTypes as type}
 							{@const typeInfo = getLinkedTypeInfo(type)}
 							<div
-								class="inline-flex items-center px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs {typeInfo.color}"
+								class="inline-flex items-center px-2 py-1 bg-muted rounded text-xs {typeInfo.color}"
 							>
 								{#if typeInfo.icon}
 									{@const Icon = typeInfo.icon}
@@ -317,12 +317,12 @@
 				{#if braindumpDetails.braindump.content}
 					<div>
 						<h3
-							class="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center"
+							class="text-sm font-semibold text-foreground mb-2 flex items-center"
 						>
 							<FileText class="w-4 h-4 mr-2" />
 							Content
 						</h3>
-						<div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 overflow-x-auto">
+						<div class="bg-muted/50 rounded-lg p-3 overflow-x-auto">
 							<div class={getProseClasses('sm')}>
 								{@html renderMarkdown(braindumpDetails.braindump.content)}
 							</div>
@@ -334,7 +334,7 @@
 				{#if braindumpDetails.braindump.ai_summary}
 					<div>
 						<h3
-							class="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center"
+							class="text-sm font-semibold text-foreground mb-2 flex items-center"
 						>
 							<Zap class="w-4 h-4 mr-2 text-violet-600 dark:text-violet-400" />
 							AI Summary
@@ -355,7 +355,7 @@
 					{#if braindumpDetails.linkedData.tasks?.length > 0}
 						<div>
 							<h3
-								class="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center"
+								class="text-sm font-semibold text-foreground mb-2 flex items-center"
 							>
 								<CheckCircle2
 									class="w-4 h-4 mr-2 text-emerald-600 dark:text-emerald-400"
@@ -383,13 +383,13 @@
 											{/if}
 											<div class="min-w-0 flex-1">
 												<h4
-													class="font-medium text-gray-900 dark:text-white text-xs"
+													class="font-medium text-foreground text-xs"
 												>
 													{task.title}
 												</h4>
 												{#if task.description}
 													<p
-														class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-2"
+														class="text-xs text-muted-foreground mt-0.5 line-clamp-2"
 													>
 														{task.description}
 													</p>
@@ -406,7 +406,7 @@
 					{#if braindumpDetails.linkedData.notes?.length > 0}
 						<div>
 							<h3
-								class="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center"
+								class="text-sm font-semibold text-foreground mb-2 flex items-center"
 							>
 								<MessageSquare
 									class="w-4 h-4 mr-2 text-violet-600 dark:text-violet-400"
@@ -419,13 +419,13 @@
 										class="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-2 border border-violet-200 dark:border-violet-800"
 									>
 										<h4
-											class="font-medium text-gray-900 dark:text-white text-xs mb-1"
+											class="font-medium text-foreground text-xs mb-1"
 										>
 											{note.title || 'Untitled Note'}
 										</h4>
 										{#if note.content}
 											<p
-												class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2"
+												class="text-xs text-muted-foreground line-clamp-2"
 											>
 												{note.content.substring(0, 100)}{note.content
 													.length > 100
@@ -444,39 +444,39 @@
 			<!-- Footer with metadata -->
 			{#if braindumpDetails.metadata}
 				<div
-					class="border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800/50 -mx-3 sm:-mx-4 lg:-mx-6 -mb-3 sm:-mb-4 mt-6"
+					class="border-t border-border p-3 sm:p-4 bg-muted/50 -mx-3 sm:-mx-4 lg:-mx-6 -mb-3 sm:-mb-4 mt-6"
 				>
 					<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-center">
 						<div>
 							<div
-								class="text-xs sm:text-sm font-medium text-gray-900 dark:text-white"
+								class="text-xs sm:text-sm font-medium text-foreground"
 							>
 								{braindumpDetails.metadata.linkCount || 0}
 							</div>
-							<div class="text-xs text-gray-600 dark:text-gray-400">Links</div>
+							<div class="text-xs text-muted-foreground">Links</div>
 						</div>
 
 						<div>
-							<div class="text-sm font-medium text-gray-900 dark:text-white">
+							<div class="text-sm font-medium text-foreground">
 								{braindumpDetails.metadata.wordCount || 0}
 							</div>
-							<div class="text-xs text-gray-600 dark:text-gray-400">Words</div>
+							<div class="text-xs text-muted-foreground">Words</div>
 						</div>
 
 						<div>
-							<div class="text-sm font-medium text-gray-900 dark:text-white">
+							<div class="text-sm font-medium text-foreground">
 								{Math.round(
 									(braindumpDetails.metadata.characterCount || 0) / 1024
 								)}KB
 							</div>
-							<div class="text-xs text-gray-600 dark:text-gray-400">Size</div>
+							<div class="text-xs text-muted-foreground">Size</div>
 						</div>
 
 						<div>
-							<div class="text-sm font-medium text-gray-900 dark:text-white">
+							<div class="text-sm font-medium text-foreground">
 								{format(new Date(braindumpDetails.braindump.updated_at), 'MMM d')}
 							</div>
-							<div class="text-xs text-gray-600 dark:text-gray-400">Created</div>
+							<div class="text-xs text-muted-foreground">Created</div>
 						</div>
 					</div>
 				</div>

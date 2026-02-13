@@ -63,7 +63,7 @@
 
 <div class="relative">
 	{#if showProgressBar}
-		<div class="h-1 bg-gray-200 dark:bg-gray-700 rounded-t-lg">
+		<div class="h-1 bg-muted rounded-t-lg">
 			<div
 				class="h-full bg-purple-600 transition-all duration-300"
 				style="width: {notification.progress?.percentage ?? 0}%"
@@ -80,16 +80,16 @@
 			{:else if statusInfo.icon === 'warning'}
 				<AlertCircle class="w-5 h-5 text-amber-600" />
 			{:else}
-				<Clock class="w-5 h-5 text-gray-400" />
+				<Clock class="w-5 h-5 text-muted-foreground" />
 			{/if}
 		</div>
 
 		<div class="flex-1">
-			<div class="text-sm font-medium text-gray-900 dark:text-gray-100">
+			<div class="text-sm font-medium text-foreground">
 				{statusInfo.title}
 			</div>
 			{#if statusInfo.subtitle}
-				<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+				<div class="text-xs text-muted-foreground mt-0.5">
 					{statusInfo.subtitle}
 				</div>
 			{/if}

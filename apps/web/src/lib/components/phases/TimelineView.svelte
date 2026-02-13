@@ -381,7 +381,7 @@
 			</div>
 		{:else}
 			<!-- Empty state -->
-			<div class="text-center py-12 text-gray-500 dark:text-gray-400">
+			<div class="text-center py-12 text-muted-foreground">
 				<p class="text-lg mb-2">No phases to display</p>
 				<p class="text-sm">Create phases to see the timeline view.</p>
 			</div>

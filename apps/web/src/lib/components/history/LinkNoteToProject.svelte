@@ -121,14 +121,14 @@
 		<div class="flex items-center gap-2">
 			{#if isLoading}
 				<div
-					class="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md"
+					class="flex items-center gap-2 px-3 py-2 bg-muted rounded-md"
 				>
-					<LoaderCircle class="w-4 h-4 animate-spin text-gray-500" />
-					<span class="text-sm text-gray-500">Loading projects...</span>
+					<LoaderCircle class="w-4 h-4 animate-spin text-muted-foreground" />
+					<span class="text-sm text-muted-foreground">Loading projects...</span>
 				</div>
 			{:else if projects.length === 0}
-				<div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md">
-					<span class="text-sm text-gray-500">No projects available</span>
+				<div class="px-3 py-2 bg-muted rounded-md">
+					<span class="text-sm text-muted-foreground">No projects available</span>
 				</div>
 			{:else}
 				<Select

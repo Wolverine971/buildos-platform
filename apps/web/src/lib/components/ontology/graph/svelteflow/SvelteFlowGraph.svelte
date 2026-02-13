@@ -195,7 +195,7 @@
 			position="bottom-right"
 			nodeColor={getMinimapNodeColor}
 			maskColor="rgba(0,0,0,0.1)"
-			class="!bg-white dark:!bg-gray-800"
+			class="!bg-card dark:!bg-gray-800"
 		/>
 	</SvelteFlow>
 </div>

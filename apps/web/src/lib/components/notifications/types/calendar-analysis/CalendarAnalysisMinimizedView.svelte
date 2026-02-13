@@ -116,11 +116,11 @@
 	</div>
 
 	<div class="flex-1 min-w-0">
-		<div class="text-sm font-medium text-gray-900 dark:text-white truncate">
+		<div class="text-sm font-medium text-foreground truncate">
 			{statusInfo.title}
 		</div>
 		{#if statusInfo.subtitle}
-			<div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+			<div class="text-xs text-muted-foreground truncate">
 				{statusInfo.subtitle}
 			</div>
 		{/if}

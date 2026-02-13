@@ -108,7 +108,7 @@
 				</p>
 			</div>
 
-			<p class="text-sm text-gray-500 dark:text-gray-400 italic">
+			<p class="text-sm text-muted-foreground italic">
 				You'll be able to review and approve any suggestions before creating projects. This
 				typically takes 10-30 seconds.
 			</p>

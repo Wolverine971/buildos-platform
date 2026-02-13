@@ -470,13 +470,13 @@
 	function getPhaseStatusColor(status: string): string {
 		switch (status) {
 			case 'upcoming':
-				return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+				return 'bg-muted text-foreground dark:text-muted-foreground';
 			case 'active':
 				return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
 			case 'completed':
 				return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
 			default:
-				return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+				return 'bg-muted text-foreground dark:text-muted-foreground';
 		}
 	}
 
@@ -608,8 +608,8 @@
 
 <article
 	id="phase-card-{phase.id}"
-	class="phase-card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:shadow-md
-	{isDragOver ? 'ring-2 ring-purple-500 ring-opacity-50 shadow-lg' : ''}
+	class="phase-card bg-card border border-border rounded-lg overflow-hidden hover:shadow-ink
+	{isDragOver ? 'ring-2 ring-purple-500 ring-opacity-50 shadow-ink-strong' : ''}
 	{isComplete && viewMode === 'timeline' ? 'bg-green-50/50 dark:bg-green-900/10' : ''}"
 	role="region"
 	aria-labelledby="phase-heading-{phase.id}"
@@ -618,7 +618,7 @@
 	{#if viewMode === 'timeline'}
 		<!-- Timeline View Header -->
 		<div
-			class="w-full bg-gray-50 dark:bg-gray-800/50 {isDragOver
+			class="w-full bg-muted/50 {isDragOver
 				? 'bg-purple-50 dark:bg-purple-900/20'
 				: ''} rounded-t-lg transition-colors relative"
 			ondragover={handleTaskDragOver}
@@ -641,7 +641,7 @@
 				onclick={handleToggleCollapse}
 				aria-expanded={!isCollapsed}
 				aria-controls="phase-content-{phase.id}"
-				class="w-full px-3 pt-3 sm:px-4 text-left rounded-t-lg hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation justify-start font-normal rounded-b-none {maxTracks >
+				class="w-full px-3 pt-3 sm:px-4 text-left rounded-t-lg hover:bg-muted touch-manipulation justify-start font-normal rounded-b-none {maxTracks >
 				1
 					? 'pl-6'
 					: ''}"
@@ -652,12 +652,12 @@
 						<div class="flex items-center gap-2 flex-1 min-w-0">
 							{#if isCollapsed}
 								<ChevronRight
-									class="w-4 h-4 text-gray-500 transition-transform flex-shrink-0"
+									class="w-4 h-4 text-muted-foreground transition-transform flex-shrink-0"
 									aria-hidden="true"
 								/>
 							{:else}
 								<ChevronDown
-									class="w-4 h-4 text-gray-500 transition-transform flex-shrink-0"
+									class="w-4 h-4 text-muted-foreground transition-transform flex-shrink-0"
 									aria-hidden="true"
 								/>
 							{/if}
@@ -674,18 +674,18 @@
 								/>
 							{:else}
 								<Clock
-									class="w-4 h-4 text-gray-400 flex-shrink-0"
+									class="w-4 h-4 text-muted-foreground flex-shrink-0"
 									aria-hidden="true"
 								/>
 							{/if}
 
 							<h3
 								id="phase-heading-{phase.id}"
-								class="font-medium text-base text-gray-900 dark:text-white truncate"
+								class="font-medium text-base text-foreground truncate"
 							>
 								{phase.name}
 								{#if maxTracks > 1}
-									<span class="text-xs text-gray-500 ml-1"
+									<span class="text-xs text-muted-foreground ml-1"
 										>(T{trackIndex + 1})</span
 									>
 								{/if}
@@ -698,7 +698,7 @@
 									? 'text-green-600'
 									: status === 'active'
 										? 'text-blue-600'
-										: 'text-gray-600'}"
+										: 'text-muted-foreground'}"
 							>
 								{progress}%
 							</div>
@@ -711,7 +711,7 @@
 						>
 							{status.charAt(0).toUpperCase() + status.slice(1)}
 						</span>
-						<span class="text-gray-500 dark:text-gray-400">
+						<span class="text-muted-foreground">
 							{phase.task_count} tasks
 						</span>
 					</div>
@@ -722,12 +722,12 @@
 					<div class="flex items-center gap-2 flex-1 min-w-0">
 						{#if isCollapsed}
 							<ChevronRight
-								class="w-4 h-4 text-gray-500 transition-transform"
+								class="w-4 h-4 text-muted-foreground transition-transform"
 								aria-hidden="true"
 							/>
 						{:else}
 							<ChevronDown
-								class="w-4 h-4 text-gray-500 transition-transform"
+								class="w-4 h-4 text-muted-foreground transition-transform"
 								aria-hidden="true"
 							/>
 						{/if}
@@ -737,15 +737,15 @@
 						{:else if status === 'active'}
 							<Clock class="w-5 h-5 text-blue-600" aria-hidden="true" />
 						{:else}
-							<Clock class="w-5 h-5 text-gray-400" aria-hidden="true" />
+							<Clock class="w-5 h-5 text-muted-foreground" aria-hidden="true" />
 						{/if}
 
 						<h3
-							class="font-medium text-base sm:text-lg text-gray-900 dark:text-white truncate"
+							class="font-medium text-base sm:text-lg text-foreground truncate"
 						>
 							{phase.name}
 							{#if maxTracks > 1}
-								<span class="text-sm text-gray-500 ml-2"
+								<span class="text-sm text-muted-foreground ml-2"
 									>Track {trackIndex + 1}</span
 								>
 							{/if}
@@ -764,11 +764,11 @@
 								? 'text-green-600 dark:text-green-400'
 								: status === 'active'
 									? 'text-blue-600 dark:text-blue-400'
-									: 'text-gray-600 dark:text-gray-400'}"
+									: 'text-muted-foreground'}"
 						>
 							{progress}%
 						</div>
-						<div class="text-xs text-gray-500 dark:text-gray-400">
+						<div class="text-xs text-muted-foreground">
 							{phase.task_count} tasks
 						</div>
 					</div>
@@ -777,14 +777,14 @@
 		</div>
 	{:else}
 		<!-- Kanban View Header -->
-		<header class="phase-header p-4 bg-gray-50 dark:bg-gray-800/50">
+		<header class="phase-header p-4 bg-muted/50">
 			<!-- Mobile layout: Title on top, actions below -->
 			<div class="flex flex-col sm:items-start sm:justify-between gap-2 sm:gap-2 mb-3">
 				<!-- Title and status row -->
 				<div class="flex items-center justify-between gap-2 w-full sm:flex-1">
 					<h3
 						id="phase-heading-{phase.id}"
-						class="font-semibold text-lg sm:text-lg text-gray-900 dark:text-white flex-1 min-w-0"
+						class="font-semibold text-lg sm:text-lg text-foreground flex-1 min-w-0"
 					>
 						{#if isEditing}
 							<FormField label="Phase name" error={validationErrors.name}>
@@ -868,14 +868,14 @@
 				{#if phase.description}
 					<p
 						id="phase-description-{phase.id}"
-						class="text-sm text-gray-600 dark:text-gray-400 mb-3"
+						class="text-sm text-muted-foreground mb-3"
 					>
 						{phase.description}
 					</p>
 				{/if}
 
 				<div
-					class="flex items-center text-xs sm:text-xs text-gray-500 dark:text-gray-400 mb-3"
+					class="flex items-center text-xs sm:text-xs text-muted-foreground mb-3"
 					aria-label="Phase duration"
 				>
 					<Clock class="w-4 h-4 sm:w-3 sm:h-3 mr-1 flex-shrink-0" aria-hidden="true" />
@@ -892,17 +892,17 @@
 			<!-- Progress (only for Kanban view) -->
 			<div class="space-y-2">
 				<div class="flex items-center justify-between text-sm">
-					<span class="text-gray-600 dark:text-gray-400">
+					<span class="text-muted-foreground">
 						{phase.completed_tasks}/{phase.task_count} tasks
 					</span>
 					<span
-						class="font-medium text-gray-900 dark:text-white"
+						class="font-medium text-foreground"
 						aria-label="{progress} percent complete"
 					>
 						{progress || 0}%
 					</span>
 				</div>
-				<div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+				<div class="w-full bg-muted rounded-full h-2">
 					<div
 						class="bg-blue-600 dark:bg-blue-500 h-2 rounded-full"
 						style="width: {progress}%"
@@ -967,7 +967,7 @@
 						<!-- Project timeline info -->
 						{#if project && (project.start_date || project.end_date)}
 							<div
-								class="text-xs text-gray-600 dark:text-gray-400 mb-3 p-2 bg-gray-50 dark:bg-gray-700 rounded"
+								class="text-xs text-muted-foreground mb-3 p-2 bg-muted rounded"
 							>
 								Project timeline:
 								{#if project.start_date}{formatDateForDisplay(
@@ -1079,7 +1079,7 @@
 				{:else}
 					<!-- Phase details -->
 					{#if phase.description}
-						<p class="text-sm text-gray-600 dark:text-gray-400 mb-2 break-words">
+						<p class="text-sm text-muted-foreground mb-2 break-words">
 							{phase.description}
 						</p>
 					{/if}
@@ -1087,7 +1087,7 @@
 					<!-- Mobile: Stack date and task info -->
 					<div class="block sm:hidden space-y-2 text-sm mb-3">
 						<div
-							class="flex items-center text-gray-500 dark:text-gray-400"
+							class="flex items-center text-muted-foreground"
 							aria-label="Phase duration"
 						>
 							<Clock class="w-4 h-4 mr-1 flex-shrink-0" aria-hidden="true" />
@@ -1102,7 +1102,7 @@
 							</span>
 						</div>
 						<div
-							class="flex items-center text-gray-700 dark:text-gray-300"
+							class="flex items-center text-foreground"
 							aria-label="Task completion status"
 						>
 							<CircleCheck class="w-4 h-4 mr-1 flex-shrink-0" aria-hidden="true" />
@@ -1118,7 +1118,7 @@
 					>
 						<div class="flex gap-2">
 							<div
-								class="flex items-center text-gray-500 dark:text-gray-400 min-w-0"
+								class="flex items-center text-muted-foreground min-w-0"
 								aria-label="Phase duration"
 							>
 								<Clock class="w-4 h-4 mr-1 flex-shrink-0" aria-hidden="true" />
@@ -1133,7 +1133,7 @@
 								</span>
 							</div>
 							<div
-								class="flex items-center text-gray-700 dark:text-gray-300"
+								class="flex items-center text-foreground"
 								aria-label="Task completion status"
 							>
 								<CircleCheck
@@ -1194,7 +1194,7 @@
 						<div class="mb-2 space-y-2" transition:fade|local={{ duration: 200 }}>
 							<!-- Filter header with reset button -->
 							<div class="flex items-center justify-between">
-								<span class="text-xs font-medium text-gray-600 dark:text-gray-400">
+								<span class="text-xs font-medium text-muted-foreground">
 									{hasCustomFilters
 										? 'Custom filters (overriding global)'
 										: 'Using global filters'}
@@ -1264,8 +1264,8 @@
 									new Date(b.start_date || 0).getTime()
 							)}
 							<div
-								class="space-y-1 min-h-[40px] p-2 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 {isDragOver
-									? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg transform scale-[1.01]'
+								class="space-y-1 min-h-[40px] p-2 rounded border border-border bg-muted/50 {isDragOver
+									? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-ink-strong transform scale-[1.01]'
 									: ''}"
 								ondragover={handleTaskDragOver}
 								ondragleave={handleTaskDragLeave}
@@ -1342,8 +1342,8 @@
 							<!-- Empty state with drop zone -->
 							<div
 								class="empty-state p-3 sm:p-4 rounded border-2 border-dashed text-center {isDragOver
-									? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 border-solid transform scale-[1.01] shadow-lg'
-									: 'border-gray-300 dark:border-gray-600'}"
+									? 'border-blue-400 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20 border-solid transform scale-[1.01] shadow-ink-strong'
+									: 'border-border'}"
 								ondragover={handleTaskDragOver}
 								ondragleave={handleTaskDragLeave}
 								ondrop={handleTaskDrop}
@@ -1355,7 +1355,7 @@
 							>
 								<p
 									id="empty-drop-instructions-{phase.id}"
-									class="text-sm text-gray-500 dark:text-gray-400 italic"
+									class="text-sm text-muted-foreground italic"
 								>
 									{#if phase.tasks?.length}
 										No tasks match current filters
@@ -1380,7 +1380,7 @@
 	{#if viewMode === 'kanban'}
 		<!-- Kanban View Header with Collapse -->
 		<div
-			class="w-full bg-gray-50 dark:bg-gray-800/50 {isDragOver
+			class="w-full bg-muted/50 {isDragOver
 				? 'bg-purple-50 dark:bg-purple-900/20'
 				: ''} rounded-t-lg transition-colors"
 		>
@@ -1392,36 +1392,36 @@
 				onclick={handleToggleCollapse}
 				aria-expanded={!isCollapsed}
 				aria-controls="kanban-phase-content-{phase.id}"
-				class="w-full px-3 py-2 text-left rounded-t-lg hover:bg-gray-100 dark:hover:bg-gray-700 touch-manipulation justify-start font-normal"
+				class="w-full px-3 py-2 text-left rounded-t-lg hover:bg-muted touch-manipulation justify-start font-normal"
 			>
 				<div class="flex items-center justify-between w-full">
 					<div class="flex items-center gap-2 flex-1 min-w-0">
 						{#if isCollapsed}
 							<ChevronRight
-								class="w-4 h-4 text-gray-500 transition-transform"
+								class="w-4 h-4 text-muted-foreground transition-transform"
 								aria-hidden="true"
 							/>
 						{:else}
 							<ChevronDown
-								class="w-4 h-4 text-gray-500 transition-transform"
+								class="w-4 h-4 text-muted-foreground transition-transform"
 								aria-hidden="true"
 							/>
 						{/if}
 
-						<h3 class="font-medium text-sm text-gray-900 dark:text-white truncate">
+						<h3 class="font-medium text-sm text-foreground truncate">
 							{phase.name}
 						</h3>
 					</div>
 
 					<div class="flex items-center gap-2">
-						<span class="text-xs text-gray-500 dark:text-gray-400">
+						<span class="text-xs text-muted-foreground">
 							{phase.task_count} tasks
 						</span>
 						{#if phase.task_count > 0}
 							<div
 								class="text-sm font-bold {isComplete
 									? 'text-green-600'
-									: 'text-gray-600'}"
+									: 'text-muted-foreground'}"
 							>
 								{progress}%
 							</div>
@@ -1473,7 +1473,7 @@
 						<!-- Project timeline info -->
 						{#if project && (project.start_date || project.end_date)}
 							<div
-								class="text-xs text-gray-600 dark:text-gray-400 mb-3 p-2 bg-gray-50 dark:bg-gray-700 rounded"
+								class="text-xs text-muted-foreground mb-3 p-2 bg-muted rounded"
 							>
 								Project timeline:
 								{#if project.start_date}{formatDateForDisplay(
@@ -1571,7 +1571,7 @@
 
 				<!-- Task List (Kanban View Only) -->
 				<div
-					class="phase-tasks p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700"
+					class="phase-tasks p-3 sm:p-4 border-t border-border"
 					class:has-custom-filters={hasCustomFilters}
 					class:filter-transitioning={isFilterTransition}
 					style="max-height: 16rem; overflow-y: auto;"
@@ -1599,11 +1599,11 @@
 					<!-- Phase Filters (Kanban View) -->
 					{#if phase.tasks?.length}
 						<div
-							class="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700"
+							class="mb-3 pb-3 border-b border-border"
 							transition:fade|local={{ duration: 200 }}
 						>
 							<div class="flex items-center justify-between mb-2">
-								<span class="text-xs font-medium text-gray-600 dark:text-gray-400">
+								<span class="text-xs font-medium text-muted-foreground">
 									{hasCustomFilters
 										? 'Custom filters (overriding global)'
 										: 'Using global filters'}
@@ -1670,7 +1670,7 @@
 							</div>
 						{:else}
 							<p
-								class="empty-state text-sm text-gray-500 dark:text-gray-400 italic text-center py-4"
+								class="empty-state text-sm text-muted-foreground italic text-center py-4"
 								role="status"
 								aria-live="polite"
 								in:fade|local={{ duration: hasCustomFilters ? 400 : 200 }}

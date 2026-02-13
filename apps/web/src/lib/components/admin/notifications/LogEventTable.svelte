@@ -61,7 +61,7 @@
 		if (eventType.includes('project'))
 			return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
 		if (eventType.includes('system'))
-			return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+			return 'bg-muted text-foreground dark:text-muted-foreground';
 		return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
 	}
 
@@ -75,68 +75,68 @@
 			opened: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
 			clicked: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
 		};
-		return statusColors[status] || 'bg-gray-100 text-gray-800';
+		return statusColors[status] || 'bg-muted text-foreground';
 	}
 </script>
 
-<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+<div class="bg-card rounded-lg shadow overflow-hidden">
 	{#if loading}
 		<div class="p-6 space-y-3">
 			{#each Array(5) as _}
 				<div class="animate-pulse">
-					<div class="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
+					<div class="h-16 bg-muted rounded"></div>
 				</div>
 			{/each}
 		</div>
 	{:else if events.length === 0}
-		<div class="p-6 text-center text-gray-500 dark:text-gray-400">No events found</div>
+		<div class="p-6 text-center text-muted-foreground">No events found</div>
 	{:else}
 		<div class="overflow-x-auto">
 			<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-				<thead class="bg-gray-50 dark:bg-gray-900">
+				<thead class="bg-muted">
 					<tr>
 						<th class="px-6 py-3 w-8"></th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Event Type
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							User
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Deliveries
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Status Breakdown
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Created At
 						</th>
 						<th
-							class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+							class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Actions
 						</th>
 					</tr>
 				</thead>
 				<tbody
-					class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+					class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
 				>
 					{#each events as event}
-						<tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+						<tr class="hover:bg-muted transition-colors">
 							<td class="px-6 py-4">
 								<button
 									onclick={() => toggleRow(event.id)}
-									class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+									class="text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
 								>
 									{#if expandedRows.has(event.id)}
 										<ChevronDown class="w-4 h-4" />
@@ -155,21 +155,21 @@
 								</span>
 							</td>
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 							>
 								{#if event.users}
 									<div>
 										<div class="font-medium">
 											{event.users.name || 'N/A'}
 										</div>
-										<div class="text-xs text-gray-500">{event.users.email}</div>
+										<div class="text-xs text-muted-foreground">{event.users.email}</div>
 									</div>
 								{:else}
-									<span class="text-gray-400">N/A</span>
+									<span class="text-muted-foreground">N/A</span>
 								{/if}
 							</td>
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white"
+								class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground"
 							>
 								{event.delivery_count}
 							</td>
@@ -187,7 +187,7 @@
 								</div>
 							</td>
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+								class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
 							>
 								{formatDate(event.created_at)}
 							</td>
@@ -219,28 +219,28 @@
 
 						<!-- Expanded Row - Payload Details -->
 						{#if expandedRows.has(event.id)}
-							<tr class="bg-gray-50 dark:bg-gray-900">
+							<tr class="bg-muted">
 								<td colspan="7" class="px-6 py-4">
 									<div class="space-y-2">
 										<div
-											class="text-sm font-medium text-gray-700 dark:text-gray-300"
+											class="text-sm font-medium text-foreground"
 										>
 											Payload:
 										</div>
 										<pre
-											class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-3 text-xs overflow-x-auto">{JSON.stringify(
+											class="bg-card border border-border rounded p-3 text-xs overflow-x-auto">{JSON.stringify(
 												event.payload,
 												null,
 												2
 											)}</pre>
 										{#if event.metadata && Object.keys(event.metadata).length > 0}
 											<div
-												class="text-sm font-medium text-gray-700 dark:text-gray-300"
+												class="text-sm font-medium text-foreground"
 											>
 												Metadata:
 											</div>
 											<pre
-												class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-3 text-xs overflow-x-auto">{JSON.stringify(
+												class="bg-card border border-border rounded p-3 text-xs overflow-x-auto">{JSON.stringify(
 													event.metadata,
 													null,
 													2

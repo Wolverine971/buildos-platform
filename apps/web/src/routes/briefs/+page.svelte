@@ -762,7 +762,7 @@
 					<div class="sm:hidden mt-4 space-y-2">
 						<!-- Mobile Next Scheduled Brief Display -->
 						{#if isLoadingNextBrief}
-							<div class="bg-card rounded-lg p-3 shadow-sm border border-border">
+							<div class="bg-card rounded-lg p-3 shadow-ink border border-border">
 								<div class="flex items-center text-sm text-muted-foreground">
 									<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
 									<span>Loading next brief...</span>
@@ -770,7 +770,7 @@
 							</div>
 						{:else if nextScheduledBrief}
 							<div
-								class="bg-accent/10 rounded-lg p-3 shadow-sm border border-accent/30"
+								class="bg-accent/10 rounded-lg p-3 shadow-ink border border-accent/30"
 							>
 								<div class="flex items-center text-sm text-muted-foreground">
 									<Clock class="w-4 h-4 mr-2 text-accent" />
@@ -786,7 +786,7 @@
 						{/if}
 
 						<div
-							class="flex flex-col space-y-2 bg-card rounded-lg p-2 shadow-sm border border-border"
+							class="flex flex-col space-y-2 bg-card rounded-lg p-2 shadow-ink border border-border"
 						>
 							{#each viewConfigs as view}
 								<Button
@@ -795,7 +795,7 @@
 									variant={selectedView === view.id ? 'primary' : 'ghost'}
 									size="md"
 									class={selectedView === view.id
-										? 'bg-accent text-white shadow-sm justify-start'
+										? 'bg-accent text-white shadow-ink justify-start'
 										: 'justify-start'}
 									icon={view.icon}
 								>
@@ -810,7 +810,7 @@
 				{#if selectedView === 'single'}
 					<div class="sm:hidden mt-4">
 						<div
-							class="flex items-center justify-between bg-card rounded-lg shadow-sm border border-border p-2"
+							class="flex items-center justify-between bg-card rounded-lg shadow-ink border border-border p-2"
 						>
 							<Button
 								type="button"
@@ -858,7 +858,7 @@
 			<!-- Mobile-Optimized Streaming Progress -->
 			{#if currentStreamingStatus?.isGenerating}
 				<div
-					class="bg-card border border-accent/30 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 shadow-sm"
+					class="bg-card border border-accent/30 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 shadow-ink"
 				>
 					<div class="flex items-center justify-between mb-3">
 						<div class="flex items-center flex-1">
@@ -937,7 +937,7 @@
 				<!-- Mobile-Optimized Filters Panel -->
 				{#if showFilters}
 					<div
-						class="bg-card rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 border border-border"
+						class="bg-card rounded-lg shadow-ink p-3 sm:p-4 mb-4 sm:mb-6 border border-border"
 					>
 						<div class="space-y-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:space-y-0">
 							<div class="sm:col-span-3 md:col-span-1">
@@ -989,7 +989,7 @@
 				{#if isLoading}
 					<div class="space-y-3 sm:space-y-4">
 						{#each Array(3) as _}
-							<div class="bg-card rounded-lg shadow-sm p-3 sm:p-4 animate-pulse">
+							<div class="bg-card rounded-lg shadow-ink p-3 sm:p-4 animate-pulse">
 								<div class="h-3 bg-muted rounded w-1/4 mb-2"></div>
 								<div class="h-4 bg-muted rounded w-3/4 mb-3"></div>
 								<div class="space-y-2">
@@ -1003,7 +1003,7 @@
 					<div class="space-y-3 sm:space-y-4">
 						{#each filteredBriefs as brief}
 							<div
-								class="bg-card rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border border-border"
+								class="bg-card rounded-lg shadow-ink hover:shadow-ink-strong transition-all duration-200 border border-border"
 							>
 								<div class="p-3 sm:p-4">
 									<div
@@ -1150,7 +1150,7 @@
 										currentStreamingStatus?.isGenerating}
 									variant="primary"
 									size="md"
-									class="shadow-sm w-full sm:w-auto"
+									class="shadow-ink w-full sm:w-auto"
 									btnType="container"
 								>
 									{#if checkingExistingGeneration}
@@ -1168,7 +1168,7 @@
 				{:else if displayDailyBrief}
 					<!-- Mobile-Optimized Main Brief Card -->
 					<div
-						class="bg-card rounded-lg shadow-sm p-4 sm:p-6 mb-4 sm:mb-6 border border-border"
+						class="bg-card rounded-lg shadow-ink p-4 sm:p-6 mb-4 sm:mb-6 border border-border"
 					>
 						<div
 							class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4"

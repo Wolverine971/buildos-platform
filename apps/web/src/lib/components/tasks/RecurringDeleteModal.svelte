@@ -173,8 +173,8 @@
 	<div class="px-4 sm:px-6 py-4">
 		<!-- Task Info -->
 		{#if task}
-			<div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mb-6">
-				<div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+			<div class="bg-muted rounded-lg p-4 mb-6">
+				<div class="flex items-center gap-2 text-sm text-muted-foreground">
 					<RefreshCw class="w-4 h-4" />
 					<span>
 						{getPatternLabel(task.recurrence_pattern || 'recurring')} task
@@ -188,20 +188,20 @@
 
 				{#if upcomingInstances.length > 0}
 					<div class="mt-3">
-						<p class="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+						<p class="text-xs font-medium text-foreground mb-2">
 							Upcoming occurrences:
 						</p>
 						<div class="space-y-1">
 							{#each upcomingInstances.slice(0, 3) as date}
 								<div
-									class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400"
+									class="flex items-center gap-2 text-xs text-muted-foreground"
 								>
 									<Calendar class="w-3 h-3" />
 									<span>{formatDate(date)}</span>
 								</div>
 							{/each}
 							{#if upcomingInstances.length > 3}
-								<p class="text-xs text-gray-500 dark:text-gray-500 italic">
+								<p class="text-xs text-muted-foreground italic">
 									...and {upcomingInstances.length - 3} more
 								</p>
 							{/if}

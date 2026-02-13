@@ -212,11 +212,11 @@
 	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div class="flex flex-1 items-center gap-2">
 			<div class="relative flex-1 max-w-md">
-				<Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+				<Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 				<input
 					type="text"
 					placeholder="Search error messages..."
-					class="w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500"
+					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:text-foreground dark:placeholder:text-muted-foreground"
 					bind:value={searchQuery}
 					onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 				/>
@@ -235,7 +235,7 @@
 		<!-- Bulk Actions -->
 		{#if totalSelected > 0}
 			<div class="flex items-center gap-2">
-				<span class="text-sm text-gray-600 dark:text-gray-400">
+				<span class="text-sm text-muted-foreground">
 					{totalSelected} selected
 				</span>
 				<Button
@@ -265,13 +265,13 @@
 
 	<!-- Category Filter Pills -->
 	<div class="flex flex-wrap items-center gap-2">
-		<span class="text-xs font-medium text-gray-500 dark:text-gray-400">Category:</span>
+		<span class="text-xs font-medium text-muted-foreground">Category:</span>
 		{#each categoryOptions as option}
 			<button
 				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory ===
 				option.value
 					? 'bg-purple-600 text-white'
-					: 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'}"
+					: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
 				onclick={() => handleCategoryFilter(option.value)}
 			>
 				{option.label}
@@ -279,11 +279,11 @@
 			</button>
 		{/each}
 
-		<span class="mx-2 text-gray-300 dark:text-gray-600">|</span>
+		<span class="mx-2 text-muted-foreground">|</span>
 
-		<span class="text-xs font-medium text-gray-500 dark:text-gray-400">Type:</span>
+		<span class="text-xs font-medium text-muted-foreground">Type:</span>
 		<select
-			class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-700 dark:bg-gray-900"
+			class="rounded-lg border border-border bg-card px-2 py-1 text-xs"
 			bind:value={selectedEntityType}
 			onchange={() => handleEntityTypeFilter(selectedEntityType)}
 		>
@@ -302,24 +302,24 @@
 		</div>
 	{:else if errors.length === 0}
 		<div
-			class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-900"
+			class="rounded-lg border border-border bg-muted p-8 text-center"
 		>
-			<CircleAlert class="mx-auto h-12 w-12 text-gray-400" />
-			<p class="mt-2 text-gray-500 dark:text-gray-400">
+			<CircleAlert class="mx-auto h-12 w-12 text-muted-foreground" />
+			<p class="mt-2 text-muted-foreground">
 				No errors found matching your criteria.
 			</p>
 		</div>
 	{:else}
-		<div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+		<div class="overflow-hidden rounded-lg border border-border">
 			<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
-				<thead class="bg-gray-50 dark:bg-gray-900/50">
+				<thead class="bg-muted/50">
 					<tr
-						class="text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400"
+						class="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
 					>
 						<th class="px-3 py-3">
 							<input
 								type="checkbox"
-								class="rounded border-gray-300 dark:border-gray-600"
+								class="rounded border-border"
 								checked={localSelectedIds.size === errors.length &&
 									errors.length > 0}
 								onchange={selectAll}
@@ -334,27 +334,27 @@
 					</tr>
 				</thead>
 				<tbody
-					class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-950"
+					class="divide-y divide-gray-200 bg-card dark:divide-gray-700"
 				>
 					{#each errors as error}
 						{@const CategoryIcon = getCategoryIcon(error.errorCategory)}
-						<tr class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/30">
+						<tr class="transition-colors hover:bg-muted/30">
 							<td class="px-3 py-3">
 								<input
 									type="checkbox"
-									class="rounded border-gray-300 dark:border-gray-600"
+									class="rounded border-border"
 									checked={localSelectedIds.has(error.id)}
 									onchange={() => toggleSelection(error.id)}
 								/>
 							</td>
 							<td class="px-3 py-3">
 								<div>
-									<p class="font-medium text-gray-900 dark:text-gray-100">
+									<p class="font-medium text-foreground">
 										{error.entityName}
 									</p>
-									<p class="text-xs text-gray-500 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										<span class="capitalize">{error.entityType}</span>
-										<span class="text-gray-400">•</span>
+										<span class="text-muted-foreground">•</span>
 										{error.projectName}
 									</p>
 								</div>
@@ -370,22 +370,22 @@
 							</td>
 							<td class="px-3 py-3 hidden lg:table-cell max-w-xs">
 								<p
-									class="truncate text-gray-700 dark:text-gray-300"
+									class="truncate text-foreground"
 									title={error.errorMessage}
 								>
 									{error.errorMessage}
 								</p>
-								<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+								<p class="mt-1 text-xs text-muted-foreground">
 									{error.suggestedActionDescription}
 								</p>
 							</td>
 							<td class="px-3 py-3 hidden md:table-cell">
-								<p class="text-gray-700 dark:text-gray-300">
+								<p class="text-foreground">
 									{error.userName ?? error.userEmail}
 								</p>
 							</td>
 							<td class="px-3 py-3">
-								<span class="text-gray-700 dark:text-gray-300">
+								<span class="text-foreground">
 									{error.retryCount}/3
 								</span>
 							</td>
@@ -430,9 +430,9 @@
 	<!-- Pagination -->
 	{#if pagination.total > pagination.limit}
 		<div
-			class="flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700"
+			class="flex items-center justify-between border-t border-border pt-4"
 		>
-			<p class="text-sm text-gray-500 dark:text-gray-400">
+			<p class="text-sm text-muted-foreground">
 				Showing {pagination.offset + 1} to {Math.min(
 					pagination.offset + pagination.limit,
 					pagination.total
@@ -447,7 +447,7 @@
 				>
 					<ChevronLeft class="h-4 w-4" />
 				</Button>
-				<span class="px-2 text-sm text-gray-700 dark:text-gray-300">
+				<span class="px-2 text-sm text-foreground">
 					{currentPage} / {totalPages}
 				</span>
 				<Button

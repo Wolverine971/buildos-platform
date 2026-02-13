@@ -159,19 +159,19 @@
 <Modal {isOpen} onClose={handleClose} size="md">
 	{#snippet header()}
 		<div
-			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
+			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-border"
 		>
 			<div class="flex items-center gap-2 sm:gap-2">
 				<div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg flex-shrink-0">
 					<CalendarX class="w-5 h-5 text-red-600 dark:text-red-400" />
 				</div>
 				<div class="min-w-0">
-					<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+					<h2 class="text-base sm:text-lg font-semibold text-foreground">
 						{totalTasksInPhases === 0 && hasTasksWithDates
 							? 'Clear All Dates'
 							: 'Unschedule All Tasks'}
 					</h2>
-					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					<p class="text-sm text-muted-foreground mt-1">
 						{#if clearDates && !moveToBacklog}
 							{affectedTasks.length} task{affectedTasks.length !== 1 ? 's' : ''} will have
 							dates cleared
@@ -223,23 +223,23 @@
 
 			<!-- Options -->
 			<div class="space-y-3">
-				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+				<h3 class="text-sm font-medium text-foreground">
 					Unschedule Options
 				</h3>
 
 				<label
-					class="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors"
+					class="flex items-start gap-2 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted/70 transition-colors"
 				>
 					<input
 						type="checkbox"
 						bind:checked={clearDates}
-						class="mt-1 w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
+						class="mt-1 w-4 h-4 text-blue-600 bg-card border-border rounded focus:ring-blue-500"
 					/>
 					<div class="flex-1">
-						<p class="text-sm font-medium text-gray-900 dark:text-white">
+						<p class="text-sm font-medium text-foreground">
 							Clear task dates
 						</p>
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+						<p class="text-xs text-muted-foreground mt-1">
 							Remove start and due dates from tasks (tasks will become unscheduled)
 						</p>
 					</div>
@@ -249,25 +249,25 @@
 					<label
 						class="flex items-start gap-2 p-3 rounded-lg cursor-pointer transition-colors {moveToBacklog
 							? 'bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40'
-							: 'bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700/70'}"
+							: 'bg-muted/50 hover:bg-muted/70'}"
 					>
 						<input
 							type="checkbox"
 							bind:checked={moveToBacklog}
-							class="mt-1 w-4 h-4 text-orange-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-orange-500"
+							class="mt-1 w-4 h-4 text-orange-600 bg-card border-border rounded focus:ring-orange-500"
 						/>
 						<div class="flex-1">
 							<p
 								class="text-sm font-medium {moveToBacklog
 									? 'text-orange-900 dark:text-orange-100'
-									: 'text-gray-900 dark:text-white'}"
+									: 'text-foreground'}"
 							>
 								Move all tasks to backlog
 							</p>
 							<p
 								class="text-xs {moveToBacklog
 									? 'text-orange-700 dark:text-orange-300'
-									: 'text-gray-500 dark:text-gray-400'} mt-1"
+									: 'text-muted-foreground'} mt-1"
 							>
 								Remove ALL tasks from their phases and move them to the project
 								backlog. This will clear all phase assignments.
@@ -276,19 +276,19 @@
 					</label>
 				{/if}
 
-				<div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg opacity-60">
+				<div class="p-3 bg-muted/50 rounded-lg opacity-60">
 					<div class="flex items-start gap-2">
 						<input
 							type="checkbox"
 							checked={removeCalendarEvents}
 							disabled
-							class="mt-1 w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded"
+							class="mt-1 w-4 h-4 text-blue-600 bg-card border-border rounded"
 						/>
 						<div class="flex-1">
-							<p class="text-sm font-medium text-gray-900 dark:text-white">
+							<p class="text-sm font-medium text-foreground">
 								Remove calendar events
 							</p>
-							<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+							<p class="text-xs text-muted-foreground mt-1">
 								Calendar events will always be removed (required)
 							</p>
 						</div>
@@ -325,24 +325,24 @@
 			<!-- Affected Tasks Preview -->
 			{#if affectedTasks.length > 0}
 				<div class="space-y-2">
-					<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<h3 class="text-sm font-medium text-foreground">
 						{moveToBacklog
 							? `Tasks to be moved to backlog (${affectedTasks.length})`
 							: `Tasks to be unscheduled (${affectedTasks.length})`}
 					</h3>
 					<div
-						class="max-h-32 overflow-y-auto space-y-1 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+						class="max-h-32 overflow-y-auto space-y-1 p-2 bg-muted/50 rounded-lg"
 					>
 						{#each affectedTasks.slice(0, 10) as task}
 							<div class="flex items-center gap-2 text-xs">
-								<Calendar class="w-3 h-3 text-gray-400" />
-								<span class="text-gray-600 dark:text-gray-400 truncate">
+								<Calendar class="w-3 h-3 text-muted-foreground" />
+								<span class="text-muted-foreground truncate">
 									{task.title}
 								</span>
 							</div>
 						{/each}
 						{#if affectedTasks.length > 10}
-							<p class="text-xs text-gray-500 dark:text-gray-400 pl-5">
+							<p class="text-xs text-muted-foreground pl-5">
 								...and {affectedTasks.length - 10} more
 							</p>
 						{/if}
@@ -354,7 +354,7 @@
 
 	{#snippet footer()}
 		<div
-			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+			class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50"
 		>
 			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
 				<Button

@@ -119,11 +119,11 @@
 	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div class="flex flex-1 items-center gap-2">
 			<div class="relative flex-1 max-w-md">
-				<Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+				<Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 				<input
 					type="text"
 					placeholder="Search users by email or name..."
-					class="w-full rounded-lg border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 dark:focus:border-purple-500 dark:focus:ring-purple-900"
+					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:text-foreground dark:placeholder:text-muted-foreground dark:focus:border-purple-500 dark:focus:ring-purple-900"
 					bind:value={searchQuery}
 					onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 				/>
@@ -146,7 +146,7 @@
 					class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedStatus ===
 					option.value
 						? 'bg-purple-600 text-white'
-						: 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'}"
+						: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
 					onclick={() => handleStatusFilter(option.value)}
 				>
 					{option.label}
@@ -164,7 +164,7 @@
 					class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedStatus ===
 					option.value
 						? 'bg-purple-600 text-white'
-						: 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'}"
+						: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
 					onclick={() => handleStatusFilter(option.value)}
 				>
 					{option.label} ({option.count})
@@ -182,16 +182,16 @@
 		</div>
 	{:else if users.length === 0}
 		<div
-			class="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-900"
+			class="rounded-lg border border-border bg-muted p-8 text-center"
 		>
-			<p class="text-gray-500 dark:text-gray-400">No users found matching your criteria.</p>
+			<p class="text-muted-foreground">No users found matching your criteria.</p>
 		</div>
 	{:else}
 		<!-- Mobile Card View -->
 		<div class="block max-h-[60vh] space-y-3 overflow-y-auto sm:hidden">
 			{#each users as user}
 				<button
-					class="w-full rounded-lg border border-gray-200 bg-white p-4 text-left transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+					class="w-full rounded-lg border border-border bg-card p-4 text-left transition-colors hover:bg-muted"
 					onclick={() => onUserClick(user.userId)}
 				>
 					<div class="flex items-start justify-between">
@@ -206,11 +206,11 @@
 								</div>
 							{/if}
 							<div>
-								<p class="font-medium text-gray-900 dark:text-gray-100">
+								<p class="font-medium text-foreground">
 									{user.name ?? user.email}
 								</p>
 								{#if user.name}
-									<p class="text-xs text-gray-500 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										{user.email}
 									</p>
 								{/if}
@@ -222,20 +222,20 @@
 					</div>
 					<div class="mt-3 grid grid-cols-3 gap-2 text-xs">
 						<div>
-							<p class="text-gray-500 dark:text-gray-400">Projects</p>
-							<p class="font-medium text-gray-900 dark:text-gray-100">
+							<p class="text-muted-foreground">Projects</p>
+							<p class="font-medium text-foreground">
 								{user.stats.migratedProjects}/{user.stats.totalProjects}
 							</p>
 						</div>
 						<div>
-							<p class="text-gray-500 dark:text-gray-400">Progress</p>
-							<p class="font-medium text-gray-900 dark:text-gray-100">
+							<p class="text-muted-foreground">Progress</p>
+							<p class="font-medium text-foreground">
 								{user.stats.percentComplete.toFixed(0)}%
 							</p>
 						</div>
 						<div>
-							<p class="text-gray-500 dark:text-gray-400">Last Run</p>
-							<p class="font-medium text-gray-900 dark:text-gray-100">
+							<p class="text-muted-foreground">Last Run</p>
+							<p class="font-medium text-foreground">
 								{formatDate(user.stats.lastMigrationAt)}
 							</p>
 						</div>
@@ -246,12 +246,12 @@
 
 		<!-- Desktop Table View -->
 		<div
-			class="hidden max-h-[60vh] overflow-auto rounded-lg border border-gray-200 dark:border-gray-700 sm:block"
+			class="hidden max-h-[60vh] overflow-auto rounded-lg border border-border sm:block"
 		>
 			<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
-				<thead class="sticky top-0 bg-gray-50 dark:bg-gray-900/50">
+				<thead class="sticky top-0 bg-muted/50">
 					<tr
-						class="text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400"
+						class="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
 					>
 						<th class="px-4 py-3">User</th>
 						<th class="px-4 py-3">Status</th>
@@ -263,10 +263,10 @@
 					</tr>
 				</thead>
 				<tbody
-					class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-950"
+					class="divide-y divide-gray-200 bg-card dark:divide-gray-700"
 				>
 					{#each users as user}
-						<tr class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/30">
+						<tr class="transition-colors hover:bg-muted/30">
 							<td class="px-4 py-3">
 								<div class="flex items-center gap-3">
 									{#if user.avatarUrl}
@@ -283,11 +283,11 @@
 										</div>
 									{/if}
 									<div>
-										<p class="font-medium text-gray-900 dark:text-gray-100">
+										<p class="font-medium text-foreground">
 											{user.name ?? user.email}
 										</p>
 										{#if user.name}
-											<p class="text-xs text-gray-500 dark:text-gray-400">
+											<p class="text-xs text-muted-foreground">
 												{user.email}
 											</p>
 										{/if}
@@ -302,11 +302,11 @@
 									{user.migrationStatus.replace('_', ' ')}
 								</Badge>
 							</td>
-							<td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+							<td class="px-4 py-3 text-foreground">
 								<span class="text-emerald-600 dark:text-emerald-400">
 									{user.stats.migratedProjects}
 								</span>
-								<span class="text-gray-400"> / </span>
+								<span class="text-muted-foreground"> / </span>
 								{user.stats.totalProjects}
 								{#if user.stats.failedProjects > 0}
 									<span class="text-rose-600 dark:text-rose-400">
@@ -314,17 +314,17 @@
 									</span>
 								{/if}
 							</td>
-							<td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+							<td class="px-4 py-3 text-foreground">
 								<span class="text-emerald-600 dark:text-emerald-400">
 									{user.stats.migratedTasks}
 								</span>
-								<span class="text-gray-400"> / </span>
+								<span class="text-muted-foreground"> / </span>
 								{user.stats.totalTasks}
 							</td>
 							<td class="px-4 py-3">
 								<div class="flex items-center gap-2">
 									<div
-										class="h-2 w-16 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700"
+										class="h-2 w-16 overflow-hidden rounded-full bg-muted"
 									>
 										<div
 											class="h-full bg-emerald-500 transition-all"
@@ -332,13 +332,13 @@
 										></div>
 									</div>
 									<span
-										class="text-xs font-medium text-gray-700 dark:text-gray-300"
+										class="text-xs font-medium text-foreground"
 									>
 										{user.stats.percentComplete.toFixed(0)}%
 									</span>
 								</div>
 							</td>
-							<td class="px-4 py-3 text-gray-500 dark:text-gray-400">
+							<td class="px-4 py-3 text-muted-foreground">
 								{formatDate(user.stats.lastMigrationAt)}
 							</td>
 							<td class="px-4 py-3 text-right">
@@ -361,9 +361,9 @@
 	<!-- Pagination -->
 	{#if pagination.total > pagination.limit}
 		<div
-			class="flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700"
+			class="flex items-center justify-between border-t border-border pt-4"
 		>
-			<p class="text-sm text-gray-500 dark:text-gray-400">
+			<p class="text-sm text-muted-foreground">
 				Showing {pagination.offset + 1} to {Math.min(
 					pagination.offset + pagination.limit,
 					pagination.total
@@ -379,7 +379,7 @@
 					<ChevronLeft class="h-4 w-4" />
 					Previous
 				</Button>
-				<span class="px-2 text-sm text-gray-700 dark:text-gray-300">
+				<span class="px-2 text-sm text-foreground">
 					Page {currentPage} of {totalPages}
 				</span>
 				<Button

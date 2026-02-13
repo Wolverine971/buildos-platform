@@ -116,12 +116,12 @@
 
 {#if isCreating}
 	<div
-		class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800"
+		class="border border-border rounded-lg p-4 bg-card"
 	>
 		<div class="mb-3">
-			<h3 class="text-sm font-medium text-gray-900 dark:text-white">Create New Phase</h3>
+			<h3 class="text-sm font-medium text-foreground">Create New Phase</h3>
 			{#if project.start_date || project.end_date}
-				<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+				<p class="text-xs text-muted-foreground mt-1">
 					Project timeline:
 					{#if project.start_date}{formatDateForDisplay(project.start_date)}{:else}No
 						start{/if}

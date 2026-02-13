@@ -234,7 +234,7 @@
 			case 'blocked':
 				return 'text-rose-600 dark:text-rose-400';
 			default:
-				return 'text-gray-600 dark:text-gray-400';
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -245,9 +245,9 @@
 			case 'medium':
 				return 'text-amber-600 dark:text-amber-400';
 			case 'low':
-				return 'text-gray-500 dark:text-gray-400';
+				return 'text-muted-foreground';
 			default:
-				return 'text-gray-400';
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -271,7 +271,7 @@
 			</h2>
 			<Sparkles class="w-4 h-4 text-purple-500" />
 		</div>
-		<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+		<p class="text-xs sm:text-sm text-muted-foreground">
 			Review and edit transformations
 		</p>
 	</div>
@@ -280,7 +280,7 @@
 	<div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
 		{#if consolidations.length > 0}
 			<div
-				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 border border-indigo-200 dark:border-indigo-800 p-3 hover:shadow-lg transition-all duration-300 dither-soft"
+				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 border border-indigo-200 dark:border-indigo-800 p-3 hover:shadow-ink-strong transition-all duration-300 dither-soft"
 			>
 				<div class="relative z-10">
 					<div class="flex items-center justify-between mb-1">
@@ -298,7 +298,7 @@
 
 		{#if updates.length > 0}
 			<div
-				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 p-3 hover:shadow-lg transition-all duration-300 dither-soft"
+				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 p-3 hover:shadow-ink-strong transition-all duration-300 dither-soft"
 			>
 				<div class="relative z-10">
 					<div class="flex items-center justify-between mb-1">
@@ -314,7 +314,7 @@
 
 		{#if creations.length > 0}
 			<div
-				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200 dark:border-emerald-800 p-3 hover:shadow-lg transition-all duration-300 dither-soft"
+				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border border-emerald-200 dark:border-emerald-800 p-3 hover:shadow-ink-strong transition-all duration-300 dither-soft"
 			>
 				<div class="relative z-10">
 					<div class="flex items-center justify-between mb-1">
@@ -332,7 +332,7 @@
 
 		{#if deletedOps.length > 0}
 			<div
-				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-800 p-3 hover:shadow-lg transition-all duration-300 dither-soft"
+				class="group relative overflow-hidden rounded-xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-800 p-3 hover:shadow-ink-strong transition-all duration-300 dither-soft"
 			>
 				<div class="relative z-10">
 					<div class="flex items-center justify-between mb-1">
@@ -351,7 +351,7 @@
 	{#if consolidations.length > 0}
 		<div class="space-y-4" in:fade={{ duration: 300, delay: 100 }}>
 			<h3
-				class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2"
+				class="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2"
 			>
 				<GitMerge class="w-4 h-4 text-indigo-500" />
 				Task Consolidations
@@ -359,12 +359,12 @@
 
 			{#each consolidations as consolidation, i}
 				<div
-					class="group relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300"
+					class="group relative bg-card rounded-xl border border-border shadow-ink hover:shadow-ink-strong transition-all duration-300"
 					in:fly={{ y: 20, duration: 300, delay: i * 50, easing: cubicOut }}
 				>
 					<!-- Compact Operation Header -->
 					<div
-						class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/10 dark:to-purple-900/10 rounded-t-xl relative overflow-hidden dither-soft"
+						class="px-4 py-3 border-b border-border bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/10 dark:to-purple-900/10 rounded-t-xl relative overflow-hidden dither-soft"
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2 flex-1 min-w-0">
@@ -377,13 +377,13 @@
 								</div>
 								<div class="min-w-0 flex-1">
 									<h4
-										class="text-sm font-medium text-gray-900 dark:text-white truncate"
+										class="text-sm font-medium text-foreground truncate"
 									>
 										Consolidate {consolidation.originalTasks.length} → 1
 									</h4>
 									{#if !expandedOperations.has(consolidation.operation.id) && consolidation.reasoning}
 										<p
-											class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1"
+											class="text-xs text-muted-foreground mt-0.5 line-clamp-1"
 										>
 											{consolidation.reasoning}
 										</p>
@@ -393,7 +393,7 @@
 							<div class="flex items-center gap-1 flex-shrink-0">
 								<Button
 									onclick={() => toggleExpanded(consolidation.operation.id)}
-									class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+									class="p-1.5 min-h-0 min-w-0 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground hover:bg-muted rounded-lg transition-all duration-200"
 									variant="ghost"
 									size="sm"
 									btnType="container"
@@ -406,7 +406,7 @@
 								{#if onOperationEdit}
 									<Button
 										onclick={() => handleEditClick(consolidation.operation)}
-										class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all duration-200"
+										class="p-1.5 min-h-0 min-w-0 text-muted-foreground hover:text-indigo-600 dark:text-muted-foreground dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-all duration-200"
 										variant="ghost"
 										size="sm"
 										btnType="container"
@@ -433,10 +433,10 @@
 												class="flex items-center gap-1.5 text-xs sm:text-sm"
 											>
 												<ChevronRight
-													class="w-3 h-3 text-gray-400 flex-shrink-0"
+													class="w-3 h-3 text-muted-foreground flex-shrink-0"
 												/>
 												<span
-													class="text-gray-600 dark:text-gray-400 line-through truncate"
+													class="text-muted-foreground line-through truncate"
 												>
 													{task.title}
 												</span>
@@ -462,7 +462,7 @@
 										class="p-2.5 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700 relative overflow-hidden dither-soft"
 									>
 										<h5
-											class="text-sm font-medium text-gray-900 dark:text-white truncate"
+											class="text-sm font-medium text-foreground truncate"
 										>
 											{consolidation.operation.data.title}
 										</h5>
@@ -487,7 +487,7 @@
 												{consolidation.operation.data.priority}
 											</span>
 											{#if consolidation.operation.data.duration_minutes}
-												<span class="text-gray-500 dark:text-gray-400">
+												<span class="text-muted-foreground">
 													{consolidation.operation.data.duration_minutes}m
 												</span>
 											{/if}
@@ -531,7 +531,7 @@
 	{#if updates.length > 0}
 		<div class="space-y-4" in:fade={{ duration: 300, delay: 150 }}>
 			<h3
-				class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2"
+				class="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2"
 			>
 				<Edit3 class="w-4 h-4 text-blue-500" />
 				Task Updates
@@ -539,12 +539,12 @@
 
 			{#each updates as update, i}
 				<div
-					class="group relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300"
+					class="group relative bg-card rounded-xl border border-border shadow-ink hover:shadow-ink-strong transition-all duration-300"
 					in:fly={{ y: 20, duration: 300, delay: i * 50, easing: cubicOut }}
 				>
 					<!-- Compact Operation Header -->
 					<div
-						class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50/50 to-sky-50/50 dark:from-blue-900/10 dark:to-sky-900/10 rounded-t-xl relative overflow-hidden dither-soft"
+						class="px-4 py-3 border-b border-border bg-gradient-to-r from-blue-50/50 to-sky-50/50 dark:from-blue-900/10 dark:to-sky-900/10 rounded-t-xl relative overflow-hidden dither-soft"
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2 flex-1 min-w-0">
@@ -554,12 +554,12 @@
 									<Edit3 class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
 								</div>
 								<div class="min-w-0 flex-1">
-									<h4 class="text-sm font-medium text-gray-900 dark:text-white">
+									<h4 class="text-sm font-medium text-foreground">
 										Update Task
 									</h4>
 									{#if !expandedOperations.has(update.operation.id) && update.operation.reasoning}
 										<p
-											class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1"
+											class="text-xs text-muted-foreground mt-0.5 line-clamp-1"
 										>
 											{update.operation.reasoning}
 										</p>
@@ -569,7 +569,7 @@
 							<div class="flex items-center gap-1 flex-shrink-0">
 								<Button
 									onclick={() => toggleExpanded(update.operation.id)}
-									class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+									class="p-1.5 min-h-0 min-w-0 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground hover:bg-muted rounded-lg transition-all duration-200"
 									variant="ghost"
 									size="sm"
 									btnType="container"
@@ -582,7 +582,7 @@
 								{#if onOperationEdit}
 									<Button
 										onclick={() => handleEditClick(update.operation)}
-										class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all duration-200"
+										class="p-1.5 min-h-0 min-w-0 text-muted-foreground hover:text-blue-600 dark:text-muted-foreground dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all duration-200"
 										variant="ghost"
 										size="sm"
 										btnType="container"
@@ -605,15 +605,15 @@
 								<div class="flex-1 w-full">
 									{#if update.originalTask}
 										<div
-											class="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+											class="p-2.5 bg-muted/50 rounded-lg"
 										>
 											<h5
-												class="text-sm font-medium text-gray-700 dark:text-gray-300 line-through truncate"
+												class="text-sm font-medium text-foreground line-through truncate"
 											>
 												{update.originalTask.title}
 											</h5>
 											<div
-												class="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-gray-500"
+												class="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-muted-foreground"
 											>
 												<span
 													>{update.originalTask.status?.replace(
@@ -644,7 +644,7 @@
 										class="p-2.5 bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 rounded-lg border border-blue-200 dark:border-blue-700 relative overflow-hidden dither-soft"
 									>
 										<h5
-											class="text-sm font-medium text-gray-900 dark:text-white truncate"
+											class="text-sm font-medium text-foreground truncate"
 										>
 											{update.operation.data.title}
 										</h5>
@@ -664,7 +664,7 @@
 												{update.operation.data.priority}
 											</span>
 											{#if update.operation.data.duration_minutes}
-												<span class="text-gray-500 dark:text-gray-400">
+												<span class="text-muted-foreground">
 													{update.operation.data.duration_minutes}m
 												</span>
 											{/if}
@@ -705,7 +705,7 @@
 	{#if creations.length > 0}
 		<div class="space-y-4" in:fade={{ duration: 300, delay: 200 }}>
 			<h3
-				class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2"
+				class="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2"
 			>
 				<Plus class="w-4 h-4 text-emerald-500" />
 				New Tasks
@@ -713,11 +713,11 @@
 
 			{#each creations as creation, i}
 				<div
-					class="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300"
+					class="group relative bg-card rounded-2xl border border-border shadow-ink hover:shadow-ink-strong transition-all duration-300"
 					in:fly={{ y: 20, duration: 300, delay: i * 50, easing: cubicOut }}
 				>
 					<div
-						class="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-emerald-50/50 to-green-50/50 dark:from-emerald-900/10 dark:to-green-900/10 rounded-t-2xl relative overflow-hidden dither-soft"
+						class="px-6 py-4 border-b border-border bg-gradient-to-r from-emerald-50/50 to-green-50/50 dark:from-emerald-900/10 dark:to-green-900/10 rounded-t-2xl relative overflow-hidden dither-soft"
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-3">
@@ -725,11 +725,11 @@
 									<Plus class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
 								</div>
 								<div>
-									<h4 class="font-medium text-gray-900 dark:text-white">
+									<h4 class="font-medium text-foreground">
 										Create New Task
 									</h4>
 									{#if creation.reasoning}
-										<p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+										<p class="text-xs text-muted-foreground mt-0.5">
 											{creation.reasoning}
 										</p>
 									{/if}
@@ -738,7 +738,7 @@
 							{#if onOperationEdit}
 								<Button
 									onclick={() => handleEditClick(creation)}
-									class="p-2 text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-all duration-200"
+									class="p-2 text-muted-foreground hover:text-emerald-600 dark:text-muted-foreground dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-all duration-200"
 									variant="ghost"
 									size="sm"
 									btnType="container"
@@ -754,11 +754,11 @@
 						<div
 							class="p-4 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20 rounded-xl border border-emerald-200 dark:border-emerald-700 relative overflow-hidden dither-soft"
 						>
-							<h5 class="font-medium text-gray-900 dark:text-white mb-2">
+							<h5 class="font-medium text-foreground mb-2">
 								{creation.data.title}
 							</h5>
 							{#if creation.data.description}
-								<p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+								<p class="text-sm text-muted-foreground mb-3">
 									{creation.data.description}
 								</p>
 							{/if}
@@ -770,7 +770,7 @@
 									{creation.data.priority} priority
 								</span>
 								{#if creation.data.duration_minutes}
-									<span class="text-gray-500 dark:text-gray-400">
+									<span class="text-muted-foreground">
 										{creation.data.duration_minutes} min
 									</span>
 								{/if}
@@ -786,7 +786,7 @@
 	{#if deletedOps.length > 0}
 		<div class="space-y-4" in:fade={{ duration: 300, delay: 250 }}>
 			<h3
-				class="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2"
+				class="text-sm font-semibold text-foreground uppercase tracking-wider flex items-center gap-2"
 			>
 				<Archive class="w-4 h-4 text-red-500" />
 				Tasks to Delete
@@ -795,11 +795,11 @@
 			{#each deletedOps as deleted, i}
 				{@const task = getTaskById(deleted.data.id)}
 				<div
-					class="group relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300"
+					class="group relative bg-card rounded-xl border border-border shadow-ink hover:shadow-ink-strong transition-all duration-300"
 					in:fly={{ y: 20, duration: 300, delay: i * 50, easing: cubicOut }}
 				>
 					<div
-						class="px-4 py-3 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-red-50/50 to-red-100/50 dark:from-red-900/10 dark:to-red-900/10 rounded-t-xl relative overflow-hidden dither-soft"
+						class="px-4 py-3 border-b border-border bg-gradient-to-r from-red-50/50 to-red-100/50 dark:from-red-900/10 dark:to-red-900/10 rounded-t-xl relative overflow-hidden dither-soft"
 					>
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2 flex-1 min-w-0">
@@ -811,12 +811,12 @@
 									/>
 								</div>
 								<div class="min-w-0 flex-1">
-									<h4 class="text-sm font-medium text-gray-900 dark:text-white">
+									<h4 class="text-sm font-medium text-foreground">
 										Delete Task
 									</h4>
 									{#if deleted.reasoning}
 										<p
-											class="text-xs text-gray-600 dark:text-gray-400 mt-0.5 line-clamp-1"
+											class="text-xs text-muted-foreground mt-0.5 line-clamp-1"
 										>
 											{deleted.reasoning}
 										</p>
@@ -826,7 +826,7 @@
 							{#if onOperationEdit}
 								<Button
 									onclick={() => handleEditClick(deleted)}
-									class="p-1.5 min-h-0 min-w-0 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200"
+									class="p-1.5 min-h-0 min-w-0 text-muted-foreground hover:text-red-600 dark:text-muted-foreground dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all duration-200"
 									variant="ghost"
 									size="sm"
 									btnType="container"
@@ -840,15 +840,15 @@
 
 					<div class="p-4">
 						{#if task}
-							<div class="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg opacity-60">
+							<div class="p-3 bg-muted/50 rounded-lg opacity-60">
 								<h5
-									class="text-sm font-medium text-gray-700 dark:text-gray-300 line-through mb-1 truncate"
+									class="text-sm font-medium text-foreground line-through mb-1 truncate"
 								>
 									{task.title}
 								</h5>
 								{#if task.description}
 									<p
-										class="text-xs text-gray-500 dark:text-gray-400 line-through line-clamp-2"
+										class="text-xs text-muted-foreground line-through line-clamp-2"
 									>
 										{task.description}
 									</p>
@@ -865,14 +865,14 @@
 	{#if operations.length === 0}
 		<div class="text-center py-16">
 			<div
-				class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4"
+				class="inline-flex items-center justify-center w-16 h-16 bg-muted rounded-2xl mb-4"
 			>
-				<AlertTriangle class="w-8 h-8 text-gray-400" />
+				<AlertTriangle class="w-8 h-8 text-muted-foreground" />
 			</div>
-			<p class="text-gray-600 dark:text-gray-400 font-medium">
+			<p class="text-muted-foreground font-medium">
 				No task transformations found
 			</p>
-			<p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
+			<p class="text-sm text-muted-foreground mt-2">
 				The synthesis didn't identify any changes needed for your tasks
 			</p>
 		</div>

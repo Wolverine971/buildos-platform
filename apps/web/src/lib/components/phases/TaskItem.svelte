@@ -208,7 +208,7 @@
 			case 'scheduled':
 				return 'text-blue-600';
 			default:
-				return 'text-gray-400';
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -240,7 +240,7 @@
 			case 'scheduled_on_calendar':
 				return 'text-green-500';
 			default:
-				return 'text-gray-400';
+				return 'text-muted-foreground';
 		}
 	}
 
@@ -409,7 +409,7 @@
 	draggable="true"
 	ondragstart={handleDragStart}
 	ondragend={handleDragEnd}
-	class="task-item group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg cursor-move hover:shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 {isDragging
+	class="task-item group bg-card border border-border rounded-lg cursor-move hover:shadow-ink hover:bg-muted {isDragging
 		? 'dragging opacity-50'
 		: ''}"
 	role="listitem"
@@ -431,8 +431,8 @@
 				<button
 					onclick={handleEditTask}
 					class="w-full text-left {task.status === 'done'
-						? 'line-through text-gray-500 dark:text-gray-400'
-						: 'text-gray-900 dark:text-white'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none"
+						? 'line-through text-muted-foreground'
+						: 'text-foreground'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none"
 					aria-label="Edit task: {task.title}"
 					type="button"
 				>
@@ -472,7 +472,7 @@
 					<!-- Date -->
 					{#if task.start_date}
 						<div
-							class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+							class="flex items-center gap-1 text-xs text-muted-foreground"
 						>
 							{#if isTaskOutsidePhase(task, phase)}
 								<TriangleAlert
@@ -558,7 +558,7 @@
 						variant="ghost"
 						size="sm"
 						icon={Trash2}
-						class="!p-1 !text-gray-400 hover:!text-red-600 dark:hover:!text-red-400 !min-h-0 ml-auto"
+						class="!p-1 !text-muted-foreground hover:!text-red-600 dark:hover:!text-red-400 !min-h-0 ml-auto"
 						aria-label="Delete task: {task.title}"
 					/>
 				</div>
@@ -575,7 +575,7 @@
 				<div class="flex flex-col items-center gap-1 flex-shrink-0">
 					{#if showGrip}
 						<GripVertical
-							class="w-4 h-4 text-gray-400 drag-handle"
+							class="w-4 h-4 text-muted-foreground drag-handle"
 							aria-hidden="true"
 						/>
 					{/if}
@@ -589,8 +589,8 @@
 						<Button
 							onclick={handleEditTask}
 							class="flex-1 text-left {task.status === 'done'
-								? 'line-through text-gray-500 dark:text-gray-400'
-								: 'text-gray-900 dark:text-white'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none"
+								? 'line-through text-muted-foreground'
+								: 'text-foreground'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none"
 							aria-label="Edit task: {task.title}"
 							type="button"
 						>
@@ -618,7 +618,7 @@
 							variant="ghost"
 							size="sm"
 							icon={Trash2}
-							class="opacity-0 group-hover:opacity-100 !p-1 !text-gray-400 hover:!text-red-600 dark:hover:!text-red-400 transition-opacity flex-shrink-0"
+							class="opacity-0 group-hover:opacity-100 !p-1 !text-muted-foreground hover:!text-red-600 dark:hover:!text-red-400 transition-opacity flex-shrink-0"
 							aria-label="Delete task: {task.title}"
 						/>
 					</div>
@@ -649,7 +649,7 @@
 						<!-- Date -->
 						{#if task.start_date}
 							<div
-								class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+								class="flex items-center gap-1 text-xs text-muted-foreground"
 							>
 								{#if isTaskOutsidePhase(task, phase)}
 									<TriangleAlert
@@ -731,7 +731,7 @@
 			<!-- Drag Handle -->
 			{#if showGrip}
 				<GripVertical
-					class="w-4 h-4 text-gray-400 flex-shrink-0 drag-handle"
+					class="w-4 h-4 text-muted-foreground flex-shrink-0 drag-handle"
 					aria-hidden="true"
 				/>
 			{/if}
@@ -745,8 +745,8 @@
 			<button
 				onclick={handleEditTask}
 				class="flex-1 text-left {task.status === 'done'
-					? 'line-through text-gray-500 dark:text-gray-400'
-					: 'text-gray-900 dark:text-white'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none truncate"
+					? 'line-through text-muted-foreground'
+					: 'text-foreground'} hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-150 focus:outline-none truncate"
 				aria-label="Edit task: {task.title}"
 				type="button"
 			>
@@ -782,7 +782,7 @@
 			<!-- Date -->
 			{#if task.start_date}
 				<div
-					class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0"
+					class="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0"
 				>
 					{#if isTaskOutsidePhase(task, phase)}
 						<TriangleAlert
@@ -857,7 +857,7 @@
 				variant="ghost"
 				size="sm"
 				icon={Trash2}
-				class="opacity-0 group-hover:opacity-100 !p-1.5 !text-gray-400 hover:!text-red-600 dark:hover:!text-red-400 transition-opacity flex-shrink-0"
+				class="opacity-0 group-hover:opacity-100 !p-1.5 !text-muted-foreground hover:!text-red-600 dark:hover:!text-red-400 transition-opacity flex-shrink-0"
 				aria-label="Delete task: {task.title}"
 			/>
 		</div>

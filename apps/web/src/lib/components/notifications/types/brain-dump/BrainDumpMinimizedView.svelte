@@ -140,7 +140,7 @@
 <div class="relative">
 	{#if showProgressBar}
 		<!-- Progress bar for processing state -->
-		<div class="absolute top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 rounded-t-lg">
+		<div class="absolute top-0 left-0 right-0 h-1 bg-muted rounded-t-lg">
 			<div
 				class="h-full bg-primary-600 dark:bg-primary-400 rounded-tl-lg transition-all duration-300"
 				style="width: {notification.progress.percentage || 50}%"
@@ -163,17 +163,17 @@
 				{:else if statusInfo.icon === 'warning'}
 					<AlertCircle class="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
 				{:else if statusInfo.icon === 'cancelled'}
-					<XCircle class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+					<XCircle class="w-5 h-5 text-muted-foreground" />
 				{/if}
 			</div>
 
 			<!-- Title and Subtitle -->
 			<div class="flex-1 min-w-0">
-				<div class="text-sm font-medium text-gray-900 dark:text-white truncate">
+				<div class="text-sm font-medium text-foreground truncate">
 					{statusInfo.title}
 				</div>
 				{#if statusInfo.subtitle}
-					<div class="text-xs text-gray-500 dark:text-gray-400 truncate">
+					<div class="text-xs text-muted-foreground truncate">
 						{statusInfo.subtitle}
 					</div>
 				{/if}
@@ -184,14 +184,14 @@
 		<div class="flex items-center gap-1 flex-shrink-0 ml-2">
 			{#if showSettings}
 				<button
-					class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+					class="p-1 rounded hover:bg-muted transition-colors"
 					title="Settings"
 					onclick={(e) => {
 						e.stopPropagation();
 						// TODO: Open settings or expand to show options
 					}}
 				>
-					<Settings class="w-4 h-4 text-gray-600 dark:text-gray-400" />
+					<Settings class="w-4 h-4 text-muted-foreground" />
 				</button>
 			{/if}
 		</div>

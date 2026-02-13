@@ -29,7 +29,7 @@
 	}
 
 	function getRateColor(rate: number | null | undefined): string {
-		if (rate == null) return 'text-gray-500';
+		if (rate == null) return 'text-muted-foreground';
 		if (rate >= 90) return 'text-green-600';
 		if (rate >= 70) return 'text-yellow-600';
 		return 'text-red-600';
@@ -40,7 +40,7 @@
 	<CardHeader variant="accent">
 		<div class="flex items-center">
 			<Smartphone class="h-6 w-6 text-purple-600 dark:text-purple-400 mr-2" />
-			<h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+			<h3 class="text-lg font-semibold text-foreground">
 				SMS Notification Insights
 			</h3>
 		</div>
@@ -51,36 +51,36 @@
 			<div class="space-y-4">
 				{#each Array(3) as _}
 					<div class="animate-pulse">
-						<div class="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+						<div class="h-20 bg-muted rounded"></div>
 					</div>
 				{/each}
 			</div>
 		{:else if !data}
-			<div class="text-center text-gray-500">No SMS data available</div>
+			<div class="text-center text-muted-foreground">No SMS data available</div>
 		{:else}
 			<div class="space-y-6">
 				<!-- Phone Verification Stats -->
 				<div>
-					<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+					<h4 class="text-sm font-medium text-foreground mb-3">
 						Phone Verification
 					</h4>
 					<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 						<!-- Total with Phone -->
 						<div
-							class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
+							class="bg-muted rounded-lg p-4 border border-border"
 						>
 							<div class="flex items-center justify-between">
 								<div>
-									<p class="text-xs text-gray-500 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										Users with Phone
 									</p>
 									<p
-										class="text-2xl font-bold text-gray-900 dark:text-white mt-1"
+										class="text-2xl font-bold text-foreground mt-1"
 									>
 										{formatNumber(data.total_users_with_phone)}
 									</p>
 								</div>
-								<Smartphone class="h-8 w-8 text-gray-400" />
+								<Smartphone class="h-8 w-8 text-muted-foreground" />
 							</div>
 						</div>
 
@@ -90,7 +90,7 @@
 						>
 							<div class="flex items-center justify-between">
 								<div>
-									<p class="text-xs text-gray-500 dark:text-gray-400">Verified</p>
+									<p class="text-xs text-muted-foreground">Verified</p>
 									<p
 										class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1"
 									>
@@ -110,7 +110,7 @@
 						>
 							<div class="flex items-center justify-between">
 								<div>
-									<p class="text-xs text-gray-500 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										Opted Out
 									</p>
 									<p
@@ -130,7 +130,7 @@
 
 				<!-- SMS Adoption -->
 				<div>
-					<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+					<h4 class="text-sm font-medium text-foreground mb-3">
 						SMS Notifications
 					</h4>
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -140,7 +140,7 @@
 						>
 							<div class="flex items-center justify-between">
 								<div class="flex-1">
-									<p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+									<p class="text-xs text-muted-foreground mb-2">
 										SMS Notifications Enabled
 									</p>
 									<div class="flex items-baseline gap-2">
@@ -149,13 +149,13 @@
 										>
 											{formatNumber(data.users_sms_enabled)}
 										</p>
-										<p class="text-sm text-gray-600 dark:text-gray-400">
+										<p class="text-sm text-muted-foreground">
 											users
 										</p>
 									</div>
 									<div class="mt-2">
 										<div class="flex items-center justify-between text-xs mb-1">
-											<span class="text-gray-600 dark:text-gray-400"
+											<span class="text-muted-foreground"
 												>Adoption Rate</span
 											>
 											<span
@@ -164,13 +164,13 @@
 												)}">{formatPercentage(data.sms_adoption_rate)}</span
 											>
 										</div>
-										<div class="w-full bg-gray-200 rounded-full h-2">
+										<div class="w-full bg-muted rounded-full h-2">
 											<div
 												class="bg-blue-600 h-2 rounded-full transition-all"
 												style="width: {data.sms_adoption_rate ?? 0}%"
 											></div>
 										</div>
-										<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+										<p class="text-xs text-muted-foreground mt-1">
 											of {formatNumber(data.users_phone_verified)} verified users
 										</p>
 									</div>
@@ -185,7 +185,7 @@
 						>
 							<div class="flex items-center justify-between">
 								<div class="flex-1">
-									<p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+									<p class="text-xs text-muted-foreground mb-2">
 										Last 24 Hours
 									</p>
 									<div class="flex items-baseline gap-2 mb-3">
@@ -194,11 +194,11 @@
 										>
 											{formatNumber(data.total_sms_sent_24h)}
 										</p>
-										<p class="text-sm text-gray-600 dark:text-gray-400">sent</p>
+										<p class="text-sm text-muted-foreground">sent</p>
 									</div>
 									<div class="space-y-2">
 										<div class="flex items-center justify-between text-xs">
-											<span class="text-gray-600 dark:text-gray-400"
+											<span class="text-muted-foreground"
 												>Delivery Rate</span
 											>
 											<span
@@ -211,10 +211,10 @@
 											>
 										</div>
 										<div class="flex items-center justify-between text-xs">
-											<span class="text-gray-600 dark:text-gray-400"
+											<span class="text-muted-foreground"
 												>Avg Delivery Time</span
 											>
-											<span class="font-medium text-gray-900 dark:text-white"
+											<span class="font-medium text-foreground"
 												>{formatTime(
 													data.avg_sms_delivery_time_seconds
 												)}</span
@@ -233,10 +233,10 @@
 					<div
 						class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800"
 					>
-						<h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+						<h4 class="text-sm font-semibold text-foreground mb-2">
 							Key Insights
 						</h4>
-						<ul class="space-y-1 text-sm text-gray-700 dark:text-gray-300">
+						<ul class="space-y-1 text-sm text-foreground">
 							{#if data.sms_adoption_rate < 50}
 								<li class="flex items-start">
 									<span class="mr-2">•</span>

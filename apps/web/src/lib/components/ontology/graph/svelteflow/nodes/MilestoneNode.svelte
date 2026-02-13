@@ -23,7 +23,7 @@
 </script>
 
 <div
-	class="milestone-node px-3 py-2 border-2 shadow-md min-w-[110px] max-w-[170px] transition-all duration-200
+	class="milestone-node px-3 py-2 border-2 shadow-ink min-w-[110px] max-w-[170px] transition-all duration-200
 		bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500
 		{selected ? 'ring-2 ring-amber-400 ring-offset-2' : ''}"
 	style="clip-path: polygon(0 0, 100% 0, 100% 75%, 50% 100%, 0 75%);"

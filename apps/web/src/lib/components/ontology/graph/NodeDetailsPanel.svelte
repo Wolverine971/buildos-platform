@@ -209,8 +209,8 @@
 			label: 'Occurred'
 		},
 		closed: {
-			color: 'text-slate-700 dark:text-slate-300',
-			bgColor: 'bg-slate-100 dark:bg-slate-800',
+			color: 'text-foreground',
+			bgColor: 'bg-slate-100',
 			label: 'Closed'
 		},
 		// Document states

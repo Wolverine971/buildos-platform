@@ -374,7 +374,7 @@
 	function getPriorityIndicator(priority: string) {
 		if (priority === 'high') return { color: 'bg-red-500', text: 'text-red-500' };
 		if (priority === 'medium') return { color: 'bg-amber-500', text: 'text-amber-500' };
-		return { color: 'bg-slate-400', text: 'text-slate-400' };
+		return { color: 'bg-slate-400', text: 'text-muted-foreground' };
 	}
 
 	function getEntityTypeIcon(type: string) {
@@ -1020,11 +1020,11 @@
 					</div>
 
 					<div
-						class="bg-slate-900 dark:bg-slate-950 border border-slate-700 rounded-lg shadow-ink overflow-hidden"
+						class="bg-slate-900 border border-slate-700 rounded-lg shadow-ink overflow-hidden"
 					>
 						<!-- Terminal Header -->
 						<div
-							class="px-3 py-1.5 bg-slate-800 dark:bg-slate-900 border-b border-slate-700 flex items-center justify-between"
+							class="px-3 py-1.5 bg-slate-800 border-b border-slate-700 flex items-center justify-between"
 						>
 							<div class="flex items-center gap-2">
 								<div class="flex items-center gap-1">
@@ -1032,8 +1032,8 @@
 									<div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
 									<div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
 								</div>
-								<Terminal class="w-3.5 h-3.5 text-slate-400" />
-								<span class="font-mono text-[0.6rem] text-slate-400"
+								<Terminal class="w-3.5 h-3.5 text-muted-foreground" />
+								<span class="font-mono text-[0.6rem] text-muted-foreground"
 									>activity.log</span
 								>
 							</div>
@@ -1042,7 +1042,7 @@
 								class="p-1 rounded hover:bg-slate-700 transition-colors"
 							>
 								<ChevronDown
-									class="w-3.5 h-3.5 text-slate-400 transition-transform {expandedPanels.activity
+									class="w-3.5 h-3.5 text-muted-foreground transition-transform {expandedPanels.activity
 										? 'rotate-180'
 										: ''}"
 								/>
@@ -1057,17 +1057,17 @@
 								{#each activityLog as entry}
 									{@const EntryIcon = getEntityTypeIcon(entry.entityType)}
 									<div
-										class="flex items-start gap-2 text-slate-300 hover:bg-slate-800/50 rounded px-1 py-0.5 -mx-1 transition-colors"
+										class="flex items-start gap-2 text-muted-foreground hover:bg-slate-800/50 rounded px-1 py-0.5 -mx-1 transition-colors"
 									>
-										<span class="text-slate-500 shrink-0"
+										<span class="text-muted-foreground shrink-0"
 											>[{entry.timestamp}]</span
 										>
 										<span class="text-emerald-400 shrink-0">{entry.action}</span
 										>
 										<span class="text-cyan-400 shrink-0">{entry.entity}</span>
-										<span class="text-slate-600">·</span>
-										<span class="text-slate-400 truncate">{entry.detail}</span>
-										<span class="text-slate-500 ml-auto shrink-0"
+										<span class="text-muted-foreground">·</span>
+										<span class="text-muted-foreground truncate">{entry.detail}</span>
+										<span class="text-muted-foreground ml-auto shrink-0"
 											>@{entry.user}</span
 										>
 									</div>

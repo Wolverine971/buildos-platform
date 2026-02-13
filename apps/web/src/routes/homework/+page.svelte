@@ -218,9 +218,9 @@
 						<span
 							class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.65rem] uppercase tracking-wider font-medium"
 							class:bg-slate-100={run.scope === 'global'}
-							class:text-slate-600={run.scope === 'global'}
+							class:text-muted-foreground={run.scope === 'global'}
 							class:dark:bg-slate-800={run.scope === 'global'}
-							class:dark:text-slate-400={run.scope === 'global'}
+							class:dark:text-muted-foreground={run.scope === 'global'}
 							class:bg-indigo-100={run.scope !== 'global'}
 							class:text-indigo-700={run.scope !== 'global'}
 							class:dark:bg-indigo-950={run.scope !== 'global'}

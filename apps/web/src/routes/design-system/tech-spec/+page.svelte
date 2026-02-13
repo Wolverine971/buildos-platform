@@ -422,7 +422,7 @@
 									{:else if entity.type === 'Goal'}
 										<Target class="w-4 h-4 text-amber-500" />
 									{:else if entity.type === 'Task'}
-										<ListChecks class="w-4 h-4 text-slate-500" />
+										<ListChecks class="w-4 h-4 text-muted-foreground" />
 									{:else if entity.type === 'Risk'}
 										<AlertTriangle class="w-4 h-4 text-red-500" />
 									{/if}
@@ -494,7 +494,7 @@
 									{:else if entity.type === 'Goal'}
 										<Target class="w-4 h-4 text-amber-500 shrink-0" />
 									{:else if entity.type === 'Task'}
-										<ListChecks class="w-4 h-4 text-slate-500 shrink-0" />
+										<ListChecks class="w-4 h-4 text-muted-foreground shrink-0" />
 									{:else if entity.type === 'Risk'}
 										<AlertTriangle class="w-4 h-4 text-red-500 shrink-0" />
 									{/if}
@@ -958,11 +958,11 @@
 			</h2>
 
 			<div
-				class="bg-slate-900 dark:bg-slate-950 border border-slate-700 rounded-lg shadow-ink overflow-hidden"
+				class="bg-slate-900 border border-slate-700 rounded-lg shadow-ink overflow-hidden"
 			>
 				<!-- Terminal header -->
 				<div
-					class="px-4 py-2 bg-slate-800 dark:bg-slate-900 border-b border-slate-700 flex items-center gap-3"
+					class="px-4 py-2 bg-slate-800 border-b border-slate-700 flex items-center gap-3"
 				>
 					<div class="flex items-center gap-1.5">
 						<div class="w-3 h-3 rounded-full bg-red-500"></div>
@@ -970,26 +970,26 @@
 						<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
 					</div>
 					<div class="flex items-center gap-2">
-						<Terminal class="w-4 h-4 text-slate-400" />
-						<span class="font-mono text-xs text-slate-400">buildos-platform</span>
+						<Terminal class="w-4 h-4 text-muted-foreground" />
+						<span class="font-mono text-xs text-muted-foreground">buildos-platform</span>
 					</div>
 				</div>
 
 				<!-- Terminal content -->
 				<div class="p-4 font-mono text-xs sm:text-sm overflow-x-auto">
-					<div class="space-y-1 text-slate-300">
+					<div class="space-y-1 text-muted-foreground">
 						<p><span class="text-emerald-400">$</span> pnpm run build</p>
-						<p class="text-slate-500">
-							<span class="text-slate-400">info</span> - Loaded env from .env.local
+						<p class="text-muted-foreground">
+							<span class="text-muted-foreground">info</span> - Loaded env from .env.local
 						</p>
-						<p class="text-slate-500">
+						<p class="text-muted-foreground">
 							<span class="text-blue-400">vite</span> - Building for production...
 						</p>
 						<p class="text-emerald-400">
 							<span class="text-emerald-500">✓</span> 847 modules transformed.
 						</p>
-						<p class="text-slate-500">
-							<span class="text-slate-400">dist/</span>
+						<p class="text-muted-foreground">
+							<span class="text-muted-foreground">dist/</span>
 							<span class="text-cyan-400">_app/immutable/</span>
 						</p>
 						<p class="text-emerald-400">

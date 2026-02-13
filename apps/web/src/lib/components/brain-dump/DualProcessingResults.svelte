@@ -110,7 +110,7 @@
 		processing: 'text-blue-600 dark:text-blue-300',
 		completed: 'text-emerald-600 dark:text-emerald-300',
 		failed: 'text-rose-600 dark:text-rose-300',
-		not_needed: 'text-slate-600 dark:text-slate-300'
+		not_needed: 'text-muted-foreground'
 	};
 
 	const PROGRESS_GRADIENTS = {
@@ -142,7 +142,7 @@
 		},
 		unrelated: {
 			label: 'Unrelated',
-			classes: 'bg-slate-100/80 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200'
+			classes: 'bg-slate-100/80 text-foreground/60 dark:text-muted-foreground'
 		}
 	};
 
@@ -165,7 +165,7 @@
 		if (!classification) {
 			return {
 				label: 'Uncategorized',
-				classes: 'bg-white/70 text-slate-700 dark:bg-white/10 dark:text-slate-200'
+				classes: 'bg-card/70 text-foreground dark:bg-card/10 dark:text-muted-foreground'
 			};
 		}
 
@@ -177,7 +177,7 @@
 		return {
 			label: formatLabel(classification),
 			classes:
-				'bg-gradient-to-r from-slate-100/80 to-slate-200/80 text-slate-700 dark:from-slate-800/40 dark:to-slate-700/40 dark:text-slate-200'
+				'bg-gradient-to-r from-slate-100/80 to-slate-200/80 text-foreground dark:from-slate-800/40 dark:to-slate-700/40 dark:text-muted-foreground'
 		};
 	}
 
@@ -383,7 +383,7 @@
 			<Card
 				variant="elevated"
 				padding="lg"
-				class="relative overflow-hidden border border-blue-100/60 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 shadow-xl dark:border-blue-900/40 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
+				class="relative overflow-hidden border border-blue-100/60 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 shadow-ink-strong dark:border-blue-900/40 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
 			>
 				<div class="absolute inset-0 opacity-60">
 					<div
@@ -397,22 +397,22 @@
 					<div class="space-y-5">
 						<div class="flex items-center gap-4">
 							<div
-								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/80 text-blue-600 shadow-lg ring-1 ring-white/80 dark:bg-white/10 dark:text-blue-200 dark:ring-white/10"
+								class="flex h-12 w-12 items-center justify-center rounded-2xl bg-card/80 text-blue-600 shadow-ink-strong ring-1 ring-white/80 dark:bg-card/10 dark:text-blue-200 dark:ring-white/10"
 							>
 								<Sparkles class="h-6 w-6" />
 							</div>
 							<div class="space-y-1">
 								<h2
-									class="text-2xl font-semibold text-slate-900 dark:text-slate-50"
+									class="text-2xl font-semibold text-foreground"
 								>
 									Analyzing your braindump
 								</h2>
-								<p class="text-sm text-slate-600 dark:text-slate-300">
+								<p class="text-sm text-muted-foreground">
 									We are calibrating context and extracting tasks in parallel.
 								</p>
 							</div>
 						</div>
-						<p class="text-base font-medium text-slate-700 dark:text-slate-100">
+						<p class="text-base font-medium text-foreground">
 							{analysisPhaseMessage}
 						</p>
 						<div class="grid gap-3 sm:grid-cols-3">
@@ -516,7 +516,7 @@
 							<span class="progress-text">{Math.round($analysisProgress)}%</span>
 						</div>
 						<p
-							class="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-300"
+							class="text-xs uppercase tracking-wide text-muted-foreground"
 						>
 							Optimizing insights…
 						</p>
@@ -533,7 +533,7 @@
 				<Card
 					variant="elevated"
 					padding="lg"
-					class="relative overflow-hidden border border-blue-100/60 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 shadow-md dark:border-blue-900/40 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
+					class="relative overflow-hidden border border-blue-100/60 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 shadow-ink dark:border-blue-900/40 dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-purple-950/40"
 				>
 					<div class="absolute inset-0 opacity-50">
 						<div
@@ -554,7 +554,7 @@
 								{/if}
 							</div>
 							<div class="space-y-2">
-								<h3 class="text-xl font-semibold text-slate-900 dark:text-slate-50">
+								<h3 class="text-xl font-semibold text-foreground">
 									{analysisStatus === 'completed'
 										? 'Analysis complete'
 										: 'Analysis needs attention'}
@@ -564,13 +564,13 @@
 								</p>
 								{#if analysisStatus === 'completed' && analysisResult}
 									<p
-										class="text-sm leading-relaxed text-slate-700 dark:text-slate-200"
+										class="text-sm leading-relaxed text-foreground"
 									>
 										{analysisResult.analysis_summary}
 									</p>
 								{:else if analysisStatus === 'failed'}
 									<p
-										class="text-sm leading-relaxed text-slate-700 dark:text-slate-200"
+										class="text-sm leading-relaxed text-foreground"
 									>
 										Analysis couldn't complete, but we'll continue with your
 										data.
@@ -588,7 +588,7 @@
 									</span>
 								{/if}
 								{#if analysisResult.relevant_task_ids.length > 0}
-									<Badge variant="info" size="sm" class="shadow-sm">
+									<Badge variant="info" size="sm" class="shadow-ink">
 										{analysisResult.relevant_task_ids.length} relevant task{analysisResult
 											.relevant_task_ids.length === 1
 											? ''
@@ -596,7 +596,7 @@
 									</Badge>
 								{/if}
 								{#if analysisResult.new_tasks_detected}
-									<Badge variant="success" size="sm" class="shadow-sm">
+									<Badge variant="success" size="sm" class="shadow-ink">
 										New tasks spotted
 									</Badge>
 								{/if}
@@ -616,7 +616,7 @@
 				<Card
 					variant="elevated"
 					padding="none"
-					class="flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70"
+					class="flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/80 backdrop-blur-sm/60/70"
 				>
 					<CardHeader
 						variant="gradient"
@@ -624,17 +624,17 @@
 					>
 						<div class="flex items-center gap-3">
 							<div
-								class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-lg ring-1 ring-white/80 dark:ring-white/20"
+								class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-ink-strong ring-1 ring-white/80 dark:ring-white/20"
 							>
 								<Brain class="h-5 w-5" />
 							</div>
 							<div class="space-y-1">
 								<h3
-									class="text-base font-semibold text-slate-900 dark:text-slate-100"
+									class="text-base font-semibold text-foreground"
 								>
 									Project Context
 								</h3>
-								<p class="text-xs font-medium text-slate-600 dark:text-slate-300">
+								<p class="text-xs font-medium text-muted-foreground">
 									{#if isShortBraindump && contextStatus === 'pending'}
 										Update required based on tasks
 									{:else}
@@ -648,7 +648,7 @@
 						</Badge>
 					</CardHeader>
 					<div class="px-4 pt-3">
-						<div class="h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/70">
+						<div class="h-1.5 rounded-full bg-slate-200/80/70">
 							<div
 								class={`h-full rounded-full ${PROGRESS_GRADIENTS.context}`}
 								style={`width: ${$contextProgress}%; transition: width 0.45s ease;`}
@@ -657,11 +657,11 @@
 					</div>
 					<CardBody
 						padding="lg"
-						class="flex flex-1 flex-col gap-4 bg-white/80 text-slate-700 dark:bg-slate-950/50 dark:text-slate-200"
+						class="flex flex-1 flex-col gap-4 bg-card/80 text-foreground/50 dark:text-muted-foreground"
 					>
 						{#if contextStatus === 'pending'}
 							<div
-								class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400"
+								class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
 							>
 								<div class="flex items-center gap-2">
 									<span
@@ -674,23 +674,23 @@
 							{#if !contextResult}
 								<div class="space-y-3">
 									<div
-										class="h-4 w-2/3 animate-pulse rounded-md bg-slate-200/80 dark:bg-slate-800/60"
+										class="h-4 w-2/3 animate-pulse rounded-md bg-slate-200/80/60"
 									></div>
 									<div
-										class="h-3 w-full animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/60"
+										class="h-3 w-full animate-pulse rounded-md bg-slate-200/70/60"
 									></div>
 									<div
-										class="h-3 w-5/6 animate-pulse rounded-md bg-slate-200/70 dark:bg-slate-800/60"
+										class="h-3 w-5/6 animate-pulse rounded-md bg-slate-200/70/60"
 									></div>
 									<div class="flex gap-2 pt-2">
 										<div
-											class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
+											class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70/60"
 										></div>
 										<div
-											class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
+											class="h-6 w-16 animate-pulse rounded-full bg-slate-200/70/60"
 										></div>
 										<div
-											class="h-6 w-12 animate-pulse rounded-full bg-slate-200/70 dark:bg-slate-800/60"
+											class="h-6 w-12 animate-pulse rounded-full bg-slate-200/70/60"
 										></div>
 									</div>
 								</div>
@@ -711,7 +711,7 @@
 							</div>
 						{:else if contextStatus === 'not_needed'}
 							<div
-								class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-300"
+								class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
 							>
 								Context was already up to date — nothing to do.
 							</div>
@@ -724,7 +724,7 @@
 			<Card
 				variant="elevated"
 				padding="none"
-				class={`flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/70 ${showContextPanel ? '' : 'sm:col-span-full w-full max-w-2xl mx-auto'}`}
+				class={`flex h-full min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/80 backdrop-blur-sm/60/70 ${showContextPanel ? '' : 'sm:col-span-full w-full max-w-2xl mx-auto'}`}
 			>
 				<CardHeader
 					variant="gradient"
@@ -732,15 +732,15 @@
 				>
 					<div class="flex items-center gap-3">
 						<div
-							class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg ring-1 ring-white/80 dark:ring-white/20"
+							class="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-ink-strong ring-1 ring-white/80 dark:ring-white/20"
 						>
 							<FileText class="h-5 w-5" />
 						</div>
 						<div class="space-y-1">
-							<h3 class="text-base font-semibold text-slate-900 dark:text-slate-100">
+							<h3 class="text-base font-semibold text-foreground">
 								Tasks &amp; Notes
 							</h3>
-							<p class="text-xs font-medium text-slate-600 dark:text-slate-300">
+							<p class="text-xs font-medium text-muted-foreground">
 								{getStatusMeta(tasksStatus).description}
 							</p>
 						</div>
@@ -750,7 +750,7 @@
 					</Badge>
 				</CardHeader>
 				<div class="px-4 pt-3">
-					<div class="h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/70">
+					<div class="h-1.5 rounded-full bg-slate-200/80/70">
 						<div
 							class={`h-full rounded-full ${PROGRESS_GRADIENTS.tasks}`}
 							style={`width: ${$tasksProgress}%; transition: width 0.45s ease;`}
@@ -759,11 +759,11 @@
 				</div>
 				<CardBody
 					padding="lg"
-					class="flex flex-1 flex-col gap-4 bg-white/80 text-slate-700 dark:bg-slate-950/50 dark:text-slate-200"
+					class="flex flex-1 flex-col gap-4 bg-card/80 text-foreground/50 dark:text-muted-foreground"
 				>
 					{#if tasksStatus === 'pending'}
 						<div
-							class="flex flex-1 items-center justify-center text-sm text-slate-500 dark:text-slate-400"
+							class="flex flex-1 items-center justify-center text-sm text-muted-foreground"
 						>
 							<div class="flex items-center gap-2">
 								<span

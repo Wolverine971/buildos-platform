@@ -88,7 +88,7 @@
 </script>
 
 <section
-	class="backlog-section border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900"
+	class="backlog-section border border-border rounded-lg overflow-hidden bg-card"
 	aria-labelledby="backlog-heading"
 	aria-describedby="backlog-description"
 >
@@ -101,31 +101,31 @@
 		onclick={toggleCollapsed}
 		aria-expanded={!isCollapsed}
 		aria-controls="backlog-content"
-		class="p-4 bg-gray-50 dark:bg-gray-800 text-left hover:bg-gray-100 dark:hover:bg-gray-700 min-h-[56px] rounded-none rounded-t-lg justify-start font-normal border-none"
+		class="p-4 bg-muted text-left hover:bg-muted min-h-[56px] rounded-none rounded-t-lg justify-start font-normal border-none"
 	>
 		<div class="flex items-center justify-between gap-3 w-full">
 			<div class="flex items-center min-w-0 flex-1 gap-3">
 				{#if isCollapsed}
 					<ChevronRight
-						class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400 transition-colors"
+						class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground transition-colors"
 						aria-hidden="true"
 					/>
 				{:else}
 					<ChevronDown
-						class="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400 transition-colors"
+						class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground transition-colors"
 						aria-hidden="true"
 					/>
 				{/if}
 
 				<Inbox
-					class="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-400"
+					class="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground"
 					aria-hidden="true"
 				/>
 
 				<div class="flex-1 min-w-0">
 					<h3
 						id="backlog-heading"
-						class="font-semibold text-base sm:text-lg text-gray-900 dark:text-white truncate"
+						class="font-semibold text-base sm:text-lg text-foreground truncate"
 					>
 						Backlog
 					</h3>
@@ -135,13 +135,13 @@
 			<div class="flex items-center gap-2 flex-shrink-0">
 				<span
 					id="backlog-description"
-					class="text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 px-3 py-1.5 rounded-full"
+					class="text-sm font-medium text-foreground bg-muted px-3 py-1.5 rounded-full"
 					aria-label="{backlogTasks.length} tasks in backlog"
 				>
 					{backlogTasks.length}
 				</span>
 
-				<span class="hidden sm:inline text-xs text-gray-400 dark:text-gray-500 ml-1">
+				<span class="hidden sm:inline text-xs text-muted-foreground ml-1">
 					{isCollapsed ? 'Click to expand' : 'Click to collapse'}
 				</span>
 			</div>
@@ -162,7 +162,7 @@
 		aria-describedby="backlog-drop-instructions"
 	>
 		<div
-			class="content-inner border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+			class="content-inner border-t border-border bg-card"
 		>
 			<div class="sr-only" id="backlog-drop-instructions">
 				Drop tasks here to move them to the backlog
@@ -196,7 +196,7 @@
 							</div>
 						{:else}
 							<div
-								class="empty-state text-center py-8 text-gray-500 dark:text-gray-400"
+								class="empty-state text-center py-8 text-muted-foreground"
 							>
 								<p class="text-sm">No tasks in backlog</p>
 							</div>

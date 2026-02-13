@@ -44,13 +44,13 @@
 	<CardBody padding="lg">
 		{#if loading}
 			<div class="animate-pulse">
-				<div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-				<div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+				<div class="h-4 bg-muted rounded w-3/4 mb-2"></div>
+				<div class="h-8 bg-muted rounded w-1/2"></div>
 			</div>
 		{:else}
 			<div class="flex items-center justify-between">
 				<div class="flex-1">
-					<p class="text-sm font-medium text-gray-600 dark:text-gray-400">
+					<p class="text-sm font-medium text-muted-foreground">
 						{title}
 					</p>
 					<p class="text-3xl font-bold {colorClasses} mt-1">
@@ -72,9 +72,9 @@
 						<TrendingDown class="w-4 h-4 text-red-500 mr-1" />
 						<span class="text-red-600">{trend.toFixed(1)}%</span>
 					{:else}
-						<span class="text-gray-500">No change</span>
+						<span class="text-muted-foreground">No change</span>
 					{/if}
-					<span class="text-gray-500 ml-2">vs previous period</span>
+					<span class="text-muted-foreground ml-2">vs previous period</span>
 				</div>
 			{/if}
 		{/if}

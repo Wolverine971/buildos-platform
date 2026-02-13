@@ -50,7 +50,7 @@
 		color: string;
 		icon: any;
 	}> = [
-		{ id: 'active', label: 'Active', color: 'text-gray-600 dark:text-gray-400', icon: Circle },
+		{ id: 'active', label: 'Active', color: 'text-muted-foreground', icon: Circle },
 		{
 			id: 'scheduled',
 			label: 'Scheduled',
@@ -221,14 +221,14 @@
 			variant="outline"
 			{size}
 			icon={Filter}
-			class="transition-all duration-100 {isOpen ? 'ring-2 ring-blue-500 shadow-md' : ''}"
+			class="transition-all duration-100 {isOpen ? 'ring-2 ring-blue-500 shadow-ink' : ''}"
 			aria-expanded={isOpen}
 			aria-controls="filter-dropdown-menu"
 			aria-label="{label} - {totalActiveTasks} of {totalTasks} tasks shown"
 		>
 			{label}
 			{#if showCounts && totalTasks > 0}
-				<span class="ml-1.5 text-xs font-normal text-gray-500 dark:text-gray-400">
+				<span class="ml-1.5 text-xs font-normal text-muted-foreground">
 					({totalActiveTasks}/{totalTasks})
 				</span>
 			{/if}
@@ -242,7 +242,7 @@
 				id="filter-dropdown-menu"
 				class="z-50 {size === 'sm'
 					? 'w-64'
-					: 'w-72'} bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg overflow-hidden
+					: 'w-72'} bg-card border border-border rounded-lg shadow-ink-strong overflow-hidden
 				{isMobile ? 'fixed left-4 right-4 w-auto' : 'absolute mt-1 right-0 sm:right-auto sm:left-0'}"
 				style="max-height: {$dropdownHeight}px; opacity: {$dropdownHeight > 0 ? 1 : 0}; 
 				{isMobile
@@ -256,9 +256,9 @@
 				transition:scale={{ duration: 100, easing: quintOut, start: 0.75 }}
 			>
 				<!-- Header -->
-				<div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+				<div class="px-3 py-2 border-b border-border">
 					<div class="flex items-center justify-between">
-						<h3 class="text-sm font-medium text-gray-900 dark:text-white">
+						<h3 class="text-sm font-medium text-foreground">
 							Filter Tasks
 						</h3>
 						<div class="flex items-center gap-2">
@@ -291,7 +291,7 @@
 
 						<Button
 							variant="ghost"
-							class="w-full px-3 py-2.5 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-100 group"
+							class="w-full px-3 py-2.5 flex items-center justify-between hover:bg-muted transition-all duration-100 group"
 							onclick={() => toggleFilter(option.id)}
 							role="menuitemcheckbox"
 							aria-checked={isChecked}
@@ -303,7 +303,7 @@
 									class="w-4 h-4 rounded border-2 flex items-center justify-center transition-all duration-100 flex-shrink-0
 									{isChecked
 										? 'bg-blue-600 border-blue-600 dark:bg-blue-500 dark:border-blue-500'
-										: 'border-gray-300 dark:border-gray-600 group-hover:border-blue-400'}"
+										: 'border-border group-hover:border-blue-400'}"
 								>
 									{#if isChecked}
 										<Check
@@ -316,7 +316,7 @@
 										class="w-4 h-4 {option.color} flex-shrink-0 transition-all duration-100"
 									/>
 									<span
-										class="text-sm font-medium text-gray-900 dark:text-gray-100 transition-colors duration-100"
+										class="text-sm font-medium text-foreground transition-colors duration-100"
 									>
 										{option.label}
 									</span>
@@ -325,7 +325,7 @@
 
 							{#if showCounts}
 								<span
-									class="text-sm text-gray-500 dark:text-gray-400 ml-2 transition-colors duration-100
+									class="text-sm text-muted-foreground ml-2 transition-colors duration-100
 									{isChecked ? 'font-medium' : ''}"
 								>
 									{count}
@@ -337,9 +337,9 @@
 
 				<!-- Footer -->
 				<div
-					class="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2"
+					class="px-3 py-2 border-t border-border flex items-center justify-between gap-2"
 				>
-					<span class="text-xs text-gray-500 dark:text-gray-400">
+					<span class="text-xs text-muted-foreground">
 						{localFilters.length} selected
 					</span>
 					<div class="flex items-center gap-2">

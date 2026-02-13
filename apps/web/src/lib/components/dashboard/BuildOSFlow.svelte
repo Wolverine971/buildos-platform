@@ -34,12 +34,12 @@
 		<!-- Title - Responsive sizing -->
 		<div class="text-center mb-8 sm:mb-12">
 			<h2
-				class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4"
+				class="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4"
 			>
 				How BuildOS Works
 			</h2>
 			<p
-				class="text-base sm:text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto px-4 sm:px-0"
+				class="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto px-4 sm:px-0"
 			>
 				Watch your scattered thoughts transform into organized projects, scheduled tasks,
 				and daily action plans
@@ -74,7 +74,7 @@
 								</div>
 							</div>
 							<h3
-								class="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-white"
+								class="text-xl sm:text-2xl font-bold text-center text-foreground"
 							>
 								1. Brain Dump About Your Project
 							</h3>
@@ -83,12 +83,12 @@
 
 					<div class="max-w-2xl mx-auto">
 						<div
-							class="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-lg border border-gray-200 dark:border-gray-700"
+							class="bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-ink-strong border border-border"
 						>
-							<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2">
+							<p class="text-xs sm:text-sm text-muted-foreground mb-2">
 								Thinking about: Marketing Site Launch
 							</p>
-							<p class="italic text-sm sm:text-base text-gray-700 dark:text-gray-300">
+							<p class="italic text-sm sm:text-base text-foreground">
 								"Need to launch the marketing site by month end. Hero design needs
 								Sarah's approval tomorrow. Copy should focus on benefits not
 								features. Add pricing calculator and analytics before launch. Design
@@ -96,7 +96,7 @@
 							</p>
 						</div>
 						<p
-							class="text-center mt-3 sm:mt-4 text-sm sm:text-base text-gray-600 dark:text-gray-400"
+							class="text-center mt-3 sm:mt-4 text-sm sm:text-base text-muted-foreground"
 						>
 							Voice, text, or paste—just get it out of your head
 						</p>
@@ -106,7 +106,7 @@
 				<!-- Arrow - Smaller on mobile -->
 				<div class="flex justify-center my-4 sm:my-6">
 					<ArrowDown
-						class="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 animate-bounce"
+						class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground animate-bounce"
 					/>
 				</div>
 			</div>
@@ -127,7 +127,7 @@
 								/>
 							</div>
 							<h3
-								class="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-white"
+								class="text-xl sm:text-2xl font-bold text-center text-foreground"
 							>
 								2. AI Builds Your Complete Project System
 							</h3>
@@ -143,7 +143,7 @@
 							<span class="font-medium">New Project Created</span>
 						</div>
 						<div
-							class="bg-white dark:bg-gray-800 rounded-b-lg sm:rounded-b-xl p-4 sm:p-6 shadow-xl border border-gray-200 dark:border-gray-700"
+							class="bg-card rounded-b-lg sm:rounded-b-xl p-4 sm:p-6 shadow-ink-strong border border-border"
 						>
 							<!-- Project Header -->
 							<div class="flex items-center gap-3 mb-4">
@@ -156,11 +156,11 @@
 								</div>
 								<div class="min-w-0">
 									<h4
-										class="font-bold text-base sm:text-lg text-gray-900 dark:text-white truncate"
+										class="font-bold text-base sm:text-lg text-foreground truncate"
 									>
 										Marketing Site Launch
 									</h4>
-									<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+									<p class="text-xs sm:text-sm text-muted-foreground">
 										Created from your brain dump
 									</p>
 								</div>
@@ -177,21 +177,21 @@
 											class="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 dark:text-primary-400"
 										/>
 										<span
-											class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white"
+											class="font-semibold text-sm sm:text-base text-foreground"
 											>Project Knowledge Base</span
 										>
 									</div>
 									<div
-										class="bg-white/70 dark:bg-gray-800/70 rounded-lg p-3 space-y-2"
+										class="bg-card/70/70 rounded-lg p-3 space-y-2"
 									>
 										{#each [{ title: 'Objectives', content: 'Convert visitors, establish brand' }, { title: 'Success Metrics', content: '5% conversion, 2min on site' }, { title: 'Key Decisions', content: 'Benefits copy, pricing calc' }, { title: 'Timeline', content: 'Design Friday, launch month end' }] as section}
 											<div>
 												<p
-													class="font-medium text-xs sm:text-sm text-gray-700 dark:text-gray-300"
+													class="font-medium text-xs sm:text-sm text-foreground"
 												>
 													## {section.title}
 												</p>
-												<p class="text-xs text-gray-600 dark:text-gray-400">
+												<p class="text-xs text-muted-foreground">
 													{section.content}
 												</p>
 											</div>
@@ -203,14 +203,14 @@
 								<div class="space-y-3 sm:space-y-4">
 									<!-- Phases -->
 									<div
-										class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 sm:p-4"
+										class="bg-muted/50 rounded-lg p-3 sm:p-4"
 									>
 										<div class="flex items-center gap-2 mb-2 sm:mb-3">
 											<Layers
 												class="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400"
 											/>
 											<span
-												class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white"
+												class="font-semibold text-sm sm:text-base text-foreground"
 												>3 Phases</span
 											>
 										</div>
@@ -221,7 +221,7 @@
 														class="w-1.5 h-1.5 sm:w-2 sm:h-2 {phase.color} rounded-full mt-1 sm:mt-0 flex-shrink-0"
 													></span>
 													<span
-														class="text-xs sm:text-sm text-gray-700 dark:text-gray-300 break-words"
+														class="text-xs sm:text-sm text-foreground break-words"
 													>
 														{phase.text}
 													</span>
@@ -239,14 +239,14 @@
 												class="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400"
 											/>
 											<span
-												class="font-semibold text-sm sm:text-base text-gray-900 dark:text-white"
+												class="font-semibold text-sm sm:text-base text-foreground"
 												>8 Tasks Generated</span
 											>
 										</div>
 										<ul class="space-y-1">
 											{#each [{ priority: 'High', color: 'text-red-600', task: 'Review hero design with Sarah' }, { priority: 'High', color: 'text-red-600', task: 'Rewrite copy for benefits' }, { priority: 'Med', color: 'text-orange-600', task: 'Build pricing calculator' }, { priority: 'Low', color: 'text-yellow-600', task: 'Set up analytics' }] as item}
 												<li
-													class="flex items-start gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300"
+													class="flex items-start gap-2 text-xs sm:text-sm text-foreground"
 												>
 													<span
 														class="text-xs {item.color} font-medium min-w-[30px]"
@@ -264,7 +264,7 @@
 						<!-- Existing Projects - Horizontal scroll on mobile -->
 						<div class="mt-6 sm:mt-8">
 							<p
-								class="text-center text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-3 sm:mb-4"
+								class="text-center text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4"
 							>
 								Lives alongside your existing projects:
 							</p>
@@ -274,7 +274,7 @@
 								<div class="flex gap-3" style="width: max-content;">
 									{#each [{ color: 'purple', name: 'Mobile App v2', phase: '2 of 4', tasks: 15 }, { color: 'orange', name: 'Q1 Fundraising', phase: '1 of 3', tasks: 22 }, { color: 'blue', name: 'Team Expansion', phase: '3 of 3', tasks: 8 }] as project}
 										<div
-											class="bg-white/60 dark:bg-gray-800/60 rounded-lg p-3 border border-gray-200 dark:border-gray-600 opacity-70"
+											class="bg-card/60/60 rounded-lg p-3 border border-border opacity-70"
 											style="min-width: 140px;"
 										>
 											<div class="flex items-center gap-2 mb-2">
@@ -286,12 +286,12 @@
 													/>
 												</div>
 												<h5
-													class="text-xs font-medium text-gray-700 dark:text-gray-300 truncate"
+													class="text-xs font-medium text-foreground truncate"
 												>
 													{project.name}
 												</h5>
 											</div>
-											<p class="text-xs text-gray-500 dark:text-gray-400">
+											<p class="text-xs text-muted-foreground">
 												Phase {project.phase} • {project.tasks} tasks
 											</p>
 										</div>
@@ -303,7 +303,7 @@
 							<div class="hidden sm:grid sm:grid-cols-3 gap-4">
 								{#each [{ color: 'purple', name: 'Mobile App v2', phase: '2 of 4', tasks: 15 }, { color: 'orange', name: 'Q1 Fundraising', phase: '1 of 3', tasks: 22 }, { color: 'blue', name: 'Team Expansion', phase: '3 of 3', tasks: 8 }] as project}
 									<div
-										class="bg-white/60 dark:bg-gray-800/60 rounded-lg p-4 border border-gray-200 dark:border-gray-600 opacity-70"
+										class="bg-card/60/60 rounded-lg p-4 border border-border opacity-70"
 									>
 										<div class="flex items-center gap-2 mb-2">
 											<div
@@ -314,12 +314,12 @@
 												/>
 											</div>
 											<h5
-												class="text-sm font-medium text-gray-700 dark:text-gray-300"
+												class="text-sm font-medium text-foreground"
 											>
 												{project.name}
 											</h5>
 										</div>
-										<p class="text-xs text-gray-500 dark:text-gray-400">
+										<p class="text-xs text-muted-foreground">
 											Phase {project.phase} • {project.tasks} tasks
 										</p>
 									</div>
@@ -332,7 +332,7 @@
 				<!-- Arrow -->
 				<div class="flex justify-center my-4 sm:my-6">
 					<ArrowDown
-						class="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 animate-bounce"
+						class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground animate-bounce"
 					/>
 				</div>
 			</div>
@@ -353,7 +353,7 @@
 								/>
 							</div>
 							<h3
-								class="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-white"
+								class="text-xl sm:text-2xl font-bold text-center text-foreground"
 							>
 								3. AI Finds Perfect Time Slots in Your Calendar
 							</h3>
@@ -370,8 +370,8 @@
 									<Button
 										class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium min-w-0
 										{i === 1
-											? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-md'
-											: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}"
+											? 'bg-card text-foreground shadow-ink'
+											: 'bg-muted text-muted-foreground'}"
 										variant="ghost"
 										size="sm"
 										btnType="container"
@@ -383,12 +383,12 @@
 
 							<!-- Today's tasks (shown by default on mobile) -->
 							<div
-								class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700"
+								class="bg-card rounded-xl shadow-ink-strong p-4 border border-border"
 							>
 								<div class="flex items-center gap-2 mb-3">
 									<Clock class="h-4 w-4 text-blue-600" />
 									<h3
-										class="text-base font-semibold text-gray-900 dark:text-white"
+										class="text-base font-semibold text-foreground"
 									>
 										Today
 									</h3>
@@ -397,7 +397,7 @@
 								<div class="space-y-2">
 									{#each [{ isNew: true, priority: 'high', time: '9:00 AM', title: 'Review hero design with Sarah', subtitle: 'Finalize before dev starts', project: 'Marketing Site' }, { isNew: true, priority: 'high', time: '10:00 AM', title: 'Rewrite benefits-focused copy', project: 'Marketing Site' }, { isNew: false, priority: 'medium', time: '2:00 PM', title: 'User interviews', project: 'Mobile App v2' }] as task}
 										<div
-											class="relative bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 border-l-3 {task.priority ===
+											class="relative bg-muted/50 rounded-lg p-3 border-l-3 {task.priority ===
 											'high'
 												? 'border-l-red-500'
 												: 'border-l-orange-500'}"
@@ -412,13 +412,13 @@
 											<div class="flex items-start justify-between gap-2">
 												<div class="flex-1 min-w-0">
 													<h4
-														class="font-medium text-sm text-gray-900 dark:text-white"
+														class="font-medium text-sm text-foreground"
 													>
 														{task.title}
 													</h4>
 													{#if task.subtitle}
 														<p
-															class="text-xs text-gray-600 dark:text-gray-400 mt-0.5"
+															class="text-xs text-muted-foreground mt-0.5"
 														>
 															{task.subtitle}
 														</p>
@@ -427,11 +427,11 @@
 														class="flex flex-wrap items-center gap-2 mt-2"
 													>
 														<span
-															class="text-xs text-gray-500 dark:text-gray-400"
+															class="text-xs text-muted-foreground"
 															>{task.time}</span
 														>
 														<span
-															class="text-xs text-gray-500 dark:text-gray-400"
+															class="text-xs text-muted-foreground"
 															>• {task.project}</span
 														>
 														{#if task.priority === 'high'}
@@ -463,11 +463,11 @@
 						<div class="hidden sm:grid sm:grid-cols-3 gap-4">
 							<!-- Past Due Column -->
 							<div
-								class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700"
+								class="bg-card rounded-xl shadow-ink-strong p-4 border border-border"
 							>
 								<div class="flex items-center justify-between mb-3">
 									<h3
-										class="text-base font-semibold text-gray-900 dark:text-white flex items-center"
+										class="text-base font-semibold text-foreground flex items-center"
 									>
 										<AlertTriangle class="mr-2 h-5 w-5 text-red-600" />
 										<span>Past Due</span>
@@ -485,13 +485,13 @@
 											class="p-3 rounded-lg border-l-4 border-l-red-500 bg-red-50/50 dark:bg-red-900/5"
 										>
 											<h4
-												class="font-medium text-sm text-gray-900 dark:text-white"
+												class="font-medium text-sm text-foreground"
 											>
 												{task.title}
 											</h4>
 											{#if task.subtitle}
 												<p
-													class="text-xs text-gray-600 dark:text-gray-400 mt-0.5"
+													class="text-xs text-muted-foreground mt-0.5"
 												>
 													{task.subtitle}
 												</p>
@@ -501,7 +501,7 @@
 													<span class="text-red-600 dark:text-red-400"
 														>{task.date}</span
 													>
-													<span class="text-gray-500 dark:text-gray-400"
+													<span class="text-muted-foreground"
 														>{task.project}</span
 													>
 													{#if task.priority}
@@ -512,7 +512,7 @@
 														</span>
 													{/if}
 												</div>
-												<Calendar class="h-3 w-3 text-gray-400" />
+												<Calendar class="h-3 w-3 text-muted-foreground" />
 											</div>
 										</div>
 									{/each}
@@ -521,17 +521,17 @@
 
 							<!-- Today Column -->
 							<div
-								class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700"
+								class="bg-card rounded-xl shadow-ink-strong p-4 border border-border"
 							>
 								<div class="flex items-center justify-between mb-3">
 									<h3
-										class="text-base font-semibold text-gray-900 dark:text-white flex items-center"
+										class="text-base font-semibold text-foreground flex items-center"
 									>
 										<Clock class="mr-2 h-5 w-5 text-blue-600" />
 										<span>Today</span>
 									</h3>
 									<span
-										class="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full font-medium"
+										class="text-sm bg-muted px-2 py-1 rounded-full font-medium"
 									>
 										3
 									</span>
@@ -553,23 +553,23 @@
 												</span>
 											{/if}
 											<h4
-												class="font-medium text-sm text-gray-900 dark:text-white"
+												class="font-medium text-sm text-foreground"
 											>
 												{task.title}
 											</h4>
 											{#if task.subtitle}
 												<p
-													class="text-xs text-gray-600 dark:text-gray-400 mt-0.5"
+													class="text-xs text-muted-foreground mt-0.5"
 												>
 													{task.subtitle}
 												</p>
 											{/if}
 											<div class="flex items-center justify-between mt-1.5">
 												<div class="flex items-center gap-2 text-xs">
-													<span class="text-gray-500 dark:text-gray-400"
+													<span class="text-muted-foreground"
 														>{task.time}</span
 													>
-													<span class="text-gray-500 dark:text-gray-400"
+													<span class="text-muted-foreground"
 														>{task.project}</span
 													>
 													{#if task.priority === 'high'}
@@ -597,17 +597,17 @@
 
 							<!-- Tomorrow Column -->
 							<div
-								class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700"
+								class="bg-card rounded-xl shadow-ink-strong p-4 border border-border"
 							>
 								<div class="flex items-center justify-between mb-3">
 									<h3
-										class="text-base font-semibold text-gray-900 dark:text-white flex items-center"
+										class="text-base font-semibold text-foreground flex items-center"
 									>
 										<Calendar class="mr-2 h-5 w-5 text-green-600" />
 										<span>Tomorrow</span>
 									</h3>
 									<span
-										class="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full font-medium"
+										class="text-sm bg-muted px-2 py-1 rounded-full font-medium"
 									>
 										2
 									</span>
@@ -629,23 +629,23 @@
 												</span>
 											{/if}
 											<h4
-												class="font-medium text-sm text-gray-900 dark:text-white"
+												class="font-medium text-sm text-foreground"
 											>
 												{task.title}
 											</h4>
 											{#if task.subtitle}
 												<p
-													class="text-xs text-gray-600 dark:text-gray-400 mt-0.5"
+													class="text-xs text-muted-foreground mt-0.5"
 												>
 													{task.subtitle}
 												</p>
 											{/if}
 											<div class="flex items-center justify-between mt-1.5">
 												<div class="flex items-center gap-2 text-xs">
-													<span class="text-gray-500 dark:text-gray-400"
+													<span class="text-muted-foreground"
 														>{task.date}</span
 													>
-													<span class="text-gray-500 dark:text-gray-400"
+													<span class="text-muted-foreground"
 														>{task.project}</span
 													>
 													{#if task.priority}
@@ -657,7 +657,7 @@
 													{/if}
 												</div>
 												{#if task.isNew}
-													<Calendar class="h-3 w-3 text-gray-400" />
+													<Calendar class="h-3 w-3 text-muted-foreground" />
 												{:else}
 													<CheckCircle
 														class="h-3 w-3 text-green-600 dark:text-green-400"
@@ -671,7 +671,7 @@
 						</div>
 
 						<p
-							class="text-center mt-4 sm:mt-6 text-xs sm:text-sm text-gray-600 dark:text-gray-400"
+							class="text-center mt-4 sm:mt-6 text-xs sm:text-sm text-muted-foreground"
 						>
 							AI analyzed your calendar and found the best times • Green ✓ = synced to
 							Google Calendar
@@ -682,7 +682,7 @@
 				<!-- Arrow -->
 				<div class="flex justify-center my-4 sm:my-6">
 					<ArrowDown
-						class="w-6 h-6 sm:w-8 sm:h-8 text-gray-400 dark:text-gray-500 animate-bounce"
+						class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground animate-bounce"
 					/>
 				</div>
 			</div>
@@ -703,7 +703,7 @@
 								/>
 							</div>
 							<h3
-								class="text-xl sm:text-2xl font-bold text-center text-gray-900 dark:text-white"
+								class="text-xl sm:text-2xl font-bold text-center text-foreground"
 							>
 								4. Wake Up to Your Personalized Action Plan
 							</h3>
@@ -712,10 +712,10 @@
 
 					<!-- Daily Brief Preview -->
 					<div
-						class="max-w-3xl mx-auto bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-lg border border-gray-200 dark:border-gray-700"
+						class="max-w-3xl mx-auto bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-ink-strong border border-border"
 					>
 						<h4
-							class="font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-gray-900 dark:text-white"
+							class="font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-foreground"
 						>
 							Good morning! Here's your focus across all projects:
 						</h4>
@@ -724,14 +724,14 @@
 							<!-- Priority Tasks -->
 							<div>
 								<h5
-									class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-2"
+									class="font-medium text-sm sm:text-base text-foreground mb-2"
 								>
 									🎯 Today's Priorities
 								</h5>
 								<ul class="space-y-2">
 									{#each [{ priority: 'high', time: '9:00 AM', task: 'Review hero design with Sarah', project: 'Marketing Site' }, { priority: 'high', time: '10:00 AM', task: 'Rewrite benefits-focused copy', project: 'Marketing Site' }, { priority: 'medium', time: '2:00 PM', task: 'User interviews', project: 'Mobile App' }, { priority: 'low', task: 'Update investor deck', project: 'Fundraising' }] as item}
 										<li
-											class="flex items-start sm:items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400"
+											class="flex items-start sm:items-center gap-2 text-xs sm:text-sm text-muted-foreground"
 										>
 											<span
 												class="w-1.5 h-1.5 sm:w-2 sm:h-2 {item.priority ===
@@ -744,7 +744,7 @@
 											<span class="flex-1">
 												{item.task}
 												{#if item.time}
-													<span class="text-gray-500 dark:text-gray-400"
+													<span class="text-muted-foreground"
 														>({item.time})</span
 													>
 												{/if}
@@ -767,7 +767,7 @@
 							<!-- All Projects Status - Horizontal scroll on mobile -->
 							<div>
 								<h5
-									class="font-medium text-sm sm:text-base text-gray-700 dark:text-gray-300 mb-2"
+									class="font-medium text-sm sm:text-base text-foreground mb-2"
 								>
 									📊 All Projects Status
 								</h5>
@@ -782,16 +782,16 @@
 												: ''}"
 										>
 											<p
-												class="font-medium text-xs text-gray-900 dark:text-white truncate"
+												class="font-medium text-xs text-foreground truncate"
 											>
 												{project.name}
 											</p>
-											<p class="text-xs text-gray-600 dark:text-gray-400">
+											<p class="text-xs text-muted-foreground">
 												{project.phase.split(' ').slice(-3).join(' ')}
 											</p>
 											<p
 												class="text-xs {project.statusColor ||
-													'text-gray-500'} font-medium"
+													'text-muted-foreground'} font-medium"
 											>
 												{project.status}
 											</p>
@@ -808,15 +808,15 @@
 												? 'border border-primary-200 dark:border-primary-700'
 												: ''}"
 										>
-											<p class="font-medium text-gray-900 dark:text-white">
+											<p class="font-medium text-foreground">
 												{project.name}
 											</p>
-											<p class="text-xs text-gray-600 dark:text-gray-400">
+											<p class="text-xs text-muted-foreground">
 												{project.phase}
 											</p>
 											<p
 												class="text-xs {project.statusColor ||
-													'text-gray-500'} font-medium"
+													'text-muted-foreground'} font-medium"
 											>
 												{project.status}
 											</p>
@@ -845,11 +845,11 @@
 				>
 					<div class="text-center">
 						<p
-							class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2"
+							class="text-base sm:text-lg font-semibold text-foreground mb-2"
 						>
 							The More You Use It, The Smarter It Gets
 						</p>
-						<p class="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+						<p class="text-sm sm:text-base text-muted-foreground">
 							Every brain dump makes BuildOS smarter about your work style. Projects
 							that used to take months now ship in weeks
 							<span class="animate-ship-pulse inline-block">🚢</span>

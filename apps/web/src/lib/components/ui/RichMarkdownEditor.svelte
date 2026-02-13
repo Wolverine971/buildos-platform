@@ -1182,7 +1182,7 @@
 						aria-selected={mode === 'edit'}
 						class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
 						'edit'
-							? 'bg-card text-foreground shadow-sm'
+							? 'bg-card text-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground'}"
 						onclick={() => toggleMode('edit')}
 					>
@@ -1195,7 +1195,7 @@
 						aria-selected={mode === 'preview'}
 						class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
 						'preview'
-							? 'bg-card text-foreground shadow-sm'
+							? 'bg-card text-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground'}"
 						onclick={() => toggleMode('preview')}
 					>

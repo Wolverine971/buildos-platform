@@ -41,8 +41,8 @@
 <div class={twMerge('space-y-2', className)}>
 	{#if showLabels}
 		<div class="flex items-center justify-between text-sm">
-			<span class="font-medium text-gray-900 dark:text-gray-100"> Migration Progress </span>
-			<span class="text-gray-600 dark:text-gray-400">
+			<span class="font-medium text-foreground"> Migration Progress </span>
+			<span class="text-muted-foreground">
 				{progress.percentComplete.toFixed(1)}% complete
 			</span>
 		</div>
@@ -50,7 +50,7 @@
 
 	<div
 		class={twMerge(
-			'relative w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800',
+			'relative w-full overflow-hidden rounded-full bg-muted',
 			sizeClasses[size]
 		)}
 	>
@@ -72,7 +72,7 @@
 	</div>
 
 	{#if showLabels}
-		<div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+		<div class="flex justify-between text-xs text-muted-foreground">
 			<div class="flex items-center gap-3">
 				<span class="flex items-center gap-1">
 					<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
@@ -85,7 +85,7 @@
 					</span>
 				{/if}
 				<span class="flex items-center gap-1">
-					<span class="h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+					<span class="h-2 w-2 rounded-full bg-muted"></span>
 					{progress.pending.toLocaleString()} pending
 				</span>
 			</div>

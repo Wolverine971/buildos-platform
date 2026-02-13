@@ -269,7 +269,7 @@
 		<AdminCard padding="md">
 			<div class="flex items-center justify-between">
 				<div>
-					<p class="text-sm text-gray-500 dark:text-gray-400">Recoverable</p>
+					<p class="text-sm text-muted-foreground">Recoverable</p>
 					<p class="text-2xl font-bold text-amber-600 dark:text-amber-400">
 						{data.categoryCounts.recoverable}
 					</p>
@@ -284,7 +284,7 @@
 		<AdminCard padding="md">
 			<div class="flex items-center justify-between">
 				<div>
-					<p class="text-sm text-gray-500 dark:text-gray-400">Data Issues</p>
+					<p class="text-sm text-muted-foreground">Data Issues</p>
 					<p class="text-2xl font-bold text-orange-600 dark:text-orange-400">
 						{data.categoryCounts.data}
 					</p>
@@ -299,7 +299,7 @@
 		<AdminCard padding="md">
 			<div class="flex items-center justify-between">
 				<div>
-					<p class="text-sm text-gray-500 dark:text-gray-400">Fatal</p>
+					<p class="text-sm text-muted-foreground">Fatal</p>
 					<p class="text-2xl font-bold text-rose-600 dark:text-rose-400">
 						{data.categoryCounts.fatal}
 					</p>
@@ -344,56 +344,56 @@
 			<!-- Entity Info -->
 			<div class="grid grid-cols-2 gap-4">
 				<div>
-					<p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+					<p class="text-xs font-medium uppercase text-muted-foreground">
 						Entity
 					</p>
-					<p class="font-medium text-gray-900 dark:text-gray-100">
+					<p class="font-medium text-foreground">
 						{selectedError.entityName}
 					</p>
 				</div>
 				<div>
-					<p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+					<p class="text-xs font-medium uppercase text-muted-foreground">
 						Type
 					</p>
-					<p class="font-medium capitalize text-gray-900 dark:text-gray-100">
+					<p class="font-medium capitalize text-foreground">
 						{selectedError.entityType}
 					</p>
 				</div>
 				<div>
-					<p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+					<p class="text-xs font-medium uppercase text-muted-foreground">
 						Project
 					</p>
-					<p class="font-medium text-gray-900 dark:text-gray-100">
+					<p class="font-medium text-foreground">
 						{selectedError.projectName}
 					</p>
 				</div>
 				<div>
-					<p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+					<p class="text-xs font-medium uppercase text-muted-foreground">
 						User
 					</p>
-					<p class="font-medium text-gray-900 dark:text-gray-100">
+					<p class="font-medium text-foreground">
 						{selectedError.userName ?? selectedError.userEmail}
 					</p>
 				</div>
 			</div>
 
 			<!-- IDs -->
-			<div class="grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-3 text-xs dark:bg-gray-800">
+			<div class="grid grid-cols-2 gap-4 rounded-lg bg-muted p-3 text-xs">
 				<div>
-					<p class="text-gray-500 dark:text-gray-400">Legacy ID</p>
-					<p class="font-mono text-gray-900 dark:text-gray-100">
+					<p class="text-muted-foreground">Legacy ID</p>
+					<p class="font-mono text-foreground">
 						{selectedError.legacyId}
 					</p>
 				</div>
 				<div>
-					<p class="text-gray-500 dark:text-gray-400">Run ID</p>
-					<p class="font-mono text-gray-900 dark:text-gray-100">{selectedError.runId}</p>
+					<p class="text-muted-foreground">Run ID</p>
+					<p class="font-mono text-foreground">{selectedError.runId}</p>
 				</div>
 			</div>
 
 			<!-- Error Details -->
 			<div>
-				<p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+				<p class="text-xs font-medium uppercase text-muted-foreground">
 					Error Message
 				</p>
 				<div
@@ -407,7 +407,7 @@
 
 			<!-- Suggested Action -->
 			<div>
-				<p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+				<p class="text-xs font-medium uppercase text-muted-foreground">
 					Suggested Action
 				</p>
 				<div
@@ -424,18 +424,18 @@
 
 			<!-- Retry Info -->
 			<div
-				class="flex items-center justify-between rounded-lg bg-gray-50 p-3 dark:bg-gray-800"
+				class="flex items-center justify-between rounded-lg bg-muted p-3"
 			>
 				<div class="text-sm">
-					<span class="text-gray-500 dark:text-gray-400">Retry Count:</span>
-					<span class="ml-2 font-medium text-gray-900 dark:text-gray-100"
+					<span class="text-muted-foreground">Retry Count:</span>
+					<span class="ml-2 font-medium text-foreground"
 						>{selectedError.retryCount} / 3</span
 					>
 				</div>
 				{#if selectedError.lastRetryAt}
 					<div class="text-sm">
-						<span class="text-gray-500 dark:text-gray-400">Last Retry:</span>
-						<span class="ml-2 font-medium text-gray-900 dark:text-gray-100">
+						<span class="text-muted-foreground">Last Retry:</span>
+						<span class="ml-2 font-medium text-foreground">
 							{new Date(selectedError.lastRetryAt).toLocaleString()}
 						</span>
 					</div>
@@ -445,11 +445,11 @@
 			<!-- Metadata -->
 			{#if Object.keys(selectedError.metadata).length > 0}
 				<div>
-					<p class="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
+					<p class="text-xs font-medium uppercase text-muted-foreground">
 						Metadata
 					</p>
 					<pre
-						class="mt-1 max-h-48 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100 dark:bg-gray-950">{JSON.stringify(
+						class="mt-1 max-h-48 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-foreground">{JSON.stringify(
 							selectedError.metadata,
 							null,
 							2
@@ -458,7 +458,7 @@
 			{/if}
 
 			<!-- Actions -->
-			<div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-gray-700">
+			<div class="flex justify-end gap-2 border-t border-border pt-4">
 				<Button
 					variant="danger"
 					onclick={() => {
@@ -507,17 +507,17 @@
 				<Trash2 class="h-5 w-5 text-rose-600 dark:text-rose-400" />
 			</div>
 			<div>
-				<p class="font-medium text-gray-900 dark:text-gray-100">
+				<p class="font-medium text-foreground">
 					Delete {pendingDeleteIds.length} error{pendingDeleteIds.length === 1
 						? ''
 						: 's'}?
 				</p>
-				<p class="text-sm text-gray-500 dark:text-gray-400">
+				<p class="text-sm text-muted-foreground">
 					This action cannot be undone.
 				</p>
 			</div>
 		</div>
-		<div class="flex justify-end gap-2 border-t border-gray-200 pt-4 dark:border-gray-700">
+		<div class="flex justify-end gap-2 border-t border-border pt-4">
 			<Button variant="outline" onclick={cancelDelete} disabled={deleteLoading}>
 				Cancel
 			</Button>

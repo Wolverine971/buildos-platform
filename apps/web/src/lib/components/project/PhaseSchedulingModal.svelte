@@ -241,7 +241,7 @@
 	{#snippet header()}
 		<!-- Custom Header -->
 		<div
-			class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 gap-3"
+			class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-6 border-b border-border gap-3"
 		>
 			<div class="flex items-center space-x-3 flex-1">
 				<div class="p-2 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex-shrink-0">
@@ -251,17 +251,17 @@
 				</div>
 				<div class="min-w-0 flex-1">
 					<h2
-						class="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white truncate"
+						class="text-lg sm:text-xl font-semibold text-foreground truncate"
 					>
 						Schedule Tasks for {phase.name}
 					</h2>
-					<p class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+					<p class="text-xs sm:text-sm text-muted-foreground mt-1">
 						{formatDate(parseLocalDate(phase.start_date))} - {formatDate(
 							parseLocalDate(phase.end_date)
 						)}
 					</p>
 					{#if project && (project.start_date || project.end_date)}
-						<p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+						<p class="text-xs text-muted-foreground mt-1">
 							Project:
 							{project.start_date
 								? formatDate(parseLocalDate(project.start_date))
@@ -316,8 +316,8 @@
 		<div class="flex flex-col h-full max-h-[70vh]">
 			{#if status === 'loading'}
 				<div class="flex items-center justify-center py-12">
-					<LoaderCircle class="w-8 h-8 animate-spin text-gray-400 mr-3" />
-					<span class="text-gray-500 dark:text-gray-400">Loading scheduling data...</span>
+					<LoaderCircle class="w-8 h-8 animate-spin text-muted-foreground mr-3" />
+					<span class="text-muted-foreground">Loading scheduling data...</span>
 				</div>
 			{:else if status === 'error' && !proposedSchedules.length}
 				<div class="p-6 text-center">
@@ -337,14 +337,14 @@
 				<!-- Desktop: Two-column layout -->
 				<div class="hidden lg:grid lg:grid-cols-[2fr_3fr] gap-0 h-full">
 					<!-- Left: Task List Panel -->
-					<div class="border-r border-gray-200 dark:border-gray-700 flex flex-col">
+					<div class="border-r border-border flex flex-col">
 						<div
-							class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+							class="p-4 border-b border-border bg-muted/50"
 						>
-							<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+							<h3 class="text-sm font-semibold text-foreground">
 								Tasks to Schedule
 							</h3>
-							<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+							<p class="text-xs text-muted-foreground mt-1">
 								Click a task to edit its schedule
 							</p>
 						</div>
@@ -374,9 +374,9 @@
 						</div>
 
 						<div
-							class="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+							class="p-3 border-t border-border bg-muted/50"
 						>
-							<div class="text-xs text-gray-600 dark:text-gray-400">
+							<div class="text-xs text-muted-foreground">
 								{proposedSchedules.length} task{proposedSchedules.length === 1
 									? ''
 									: 's'}
@@ -391,7 +391,7 @@
 					</div>
 
 					<!-- Right: Calendar Panel -->
-					<div class="flex flex-col bg-white dark:bg-gray-900">
+					<div class="flex flex-col bg-card">
 						<CalendarView
 							{viewMode}
 							{currentDate}
@@ -414,12 +414,12 @@
 				<!-- Mobile: Vertical stack -->
 				<div class="lg:hidden flex flex-col h-full">
 					<!-- Collapsible Calendar -->
-					<div class="border-b border-gray-200 dark:border-gray-700">
+					<div class="border-b border-border">
 						<button
 							onclick={() => (calendarExpanded = !calendarExpanded)}
-							class="w-full p-4 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+							class="w-full p-4 flex items-center justify-between bg-muted/50 hover:bg-muted/50 transition-colors"
 						>
-							<span class="text-sm font-semibold text-gray-900 dark:text-white">
+							<span class="text-sm font-semibold text-foreground">
 								<Calendar class="w-4 h-4 inline mr-2" />
 								Calendar View
 							</span>
@@ -455,10 +455,10 @@
 					<!-- Task List (always visible on mobile) -->
 					<div class="flex-1 overflow-y-auto p-4">
 						<div class="mb-3">
-							<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+							<h3 class="text-sm font-semibold text-foreground">
 								Tasks to Schedule
 							</h3>
-							<p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+							<p class="text-xs text-muted-foreground mt-1">
 								{proposedSchedules.length} task{proposedSchedules.length === 1
 									? ''
 									: 's'}
@@ -494,9 +494,9 @@
 	{#snippet footer()}
 		<!-- Footer -->
 		<div
-			class="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 gap-3"
+			class="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border-t border-border bg-muted/50 gap-3"
 		>
-			<div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+			<div class="text-xs sm:text-sm text-muted-foreground">
 				{#if proposedSchedules.length > 0}
 					<span class="font-medium">{proposedSchedules.length}</span> tasks ready
 					{#if conflictCount > 0}

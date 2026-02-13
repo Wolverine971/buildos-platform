@@ -184,23 +184,23 @@
 					</div>
 
 					<div
-						class="rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2.5 text-xs shadow-sm dark:border-slate-700/70 dark:bg-slate-900/40 dark:text-slate-200"
+						class="rounded-lg border border-border/80 bg-slate-50/80 px-3 py-2.5 text-xs shadow-ink/70/40 dark:text-muted-foreground"
 					>
 						{#if getSuggestions(block).length > 0}
 							<div class="space-y-2">
-								<p class="text-xs font-semibold text-slate-800 dark:text-slate-100">
+								<p class="text-xs font-semibold text-foreground">
 									Focus suggestions
 								</p>
 								<ul class="space-y-2">
 									{#each getSuggestions(block) as suggestion, index (block.id + ':' + index)}
 										<li class="space-y-0.5">
 											<div
-												class="flex flex-wrap items-center gap-1.5 text-xs font-medium text-slate-800 dark:text-slate-100"
+												class="flex flex-wrap items-center gap-1.5 text-xs font-medium text-foreground"
 											>
 												<span>{index + 1}. {suggestion.title}</span>
 												{#if suggestionMeta(block, suggestion)}
 													<span
-														class="rounded-full bg-white/70 px-1.5 py-0.5 text-xs font-medium text-slate-600 shadow-sm dark:bg-slate-800/60 dark:text-slate-300"
+														class="rounded-full bg-card/70 px-1.5 py-0.5 text-xs font-medium text-muted-foreground shadow-ink/60 dark:text-muted-foreground"
 													>
 														{suggestionMeta(block, suggestion)}
 													</span>

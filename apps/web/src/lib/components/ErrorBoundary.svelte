@@ -53,17 +53,17 @@
 {#if hasError && error}
 	<div class="error-boundary min-h-[200px] flex items-center justify-center p-4">
 		<div
-			class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-red-200 dark:border-red-800 p-6"
+			class="max-w-md w-full bg-card rounded-lg shadow-ink-strong border border-red-200 dark:border-red-800 p-6"
 		>
 			<div class="flex items-start gap-4">
 				<div class="flex-shrink-0">
 					<AlertTriangle class="w-6 h-6 text-red-600 dark:text-red-400" />
 				</div>
 				<div class="flex-1">
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+					<h3 class="text-lg font-semibold text-foreground mb-2">
 						{name} Error
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+					<p class="text-sm text-muted-foreground mb-4">
 						Something went wrong while loading this component. You can try refreshing or
 						contact support if the problem persists.
 					</p>
@@ -71,12 +71,12 @@
 					{#if showDetails && error}
 						<details class="mb-4">
 							<summary
-								class="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:text-gray-900 dark:hover:text-gray-100"
+								class="text-sm font-medium text-foreground cursor-pointer hover:text-foreground dark:hover:text-foreground"
 							>
 								Error Details
 							</summary>
 							<div
-								class="mt-2 p-3 bg-gray-50 dark:bg-gray-900 rounded text-xs font-mono text-gray-600 dark:text-gray-400 overflow-auto"
+								class="mt-2 p-3 bg-muted rounded text-xs font-mono text-muted-foreground overflow-auto"
 							>
 								<p class="font-semibold">{error.name}:</p>
 								<p>{error.message}</p>

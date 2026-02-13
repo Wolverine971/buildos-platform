@@ -216,7 +216,7 @@
 				flex items-center justify-center
 				rounded-lg
 				{config.textClass}
-				hover:bg-black/5 dark:hover:bg-white/10
+				hover:bg-black/5 dark:hover:bg-card/10
 				focus:outline-none focus:ring-2 focus:ring-ring
 				transition-colors
 				pressable
@@ -232,7 +232,7 @@
 		<div
 			class="
 				absolute bottom-0 left-0 right-0 h-1
-				bg-black/5 dark:bg-white/5
+				bg-black/5 dark:bg-card/5
 			"
 		>
 			<div
@@ -251,7 +251,7 @@
 		class="
 			absolute right-1 top-1/2 -translate-y-1/2
 			w-1 h-8 rounded-full
-			bg-black/10 dark:bg-white/10
+			bg-black/10 dark:bg-card/10
 			sm:hidden
 			{translateX > 0 ? 'opacity-0' : 'opacity-100'}
 			transition-opacity

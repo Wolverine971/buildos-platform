@@ -56,7 +56,7 @@
 </script>
 
 <div
-	class="h-full flex flex-col bg-gray-50 dark:bg-gray-900 {inModal
+	class="h-full flex flex-col bg-muted {inModal
 		? 'min-h-[400px]'
 		: ''} rounded-lg"
 >
@@ -74,14 +74,14 @@
 
 			<!-- Success Message - Tighter spacing -->
 			<h1
-				class="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white text-center mb-1.5 sm:mb-2"
+				class="text-lg sm:text-xl md:text-2xl font-bold text-foreground text-center mb-1.5 sm:mb-2"
 			>
 				Brain Dump Complete!
 			</h1>
 
 			<!-- Details Card -->
 			<div
-				class="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl border border-gray-200 dark:border-gray-700 p-3 sm:p-4 mb-4 sm:mb-6"
+				class="bg-card rounded-lg sm:rounded-xl border border-border p-3 sm:p-4 mb-4 sm:mb-6"
 			>
 				<div class="space-y-2">
 					<!-- Project Info -->
@@ -89,7 +89,7 @@
 						<div class="flex-1 w-full">
 							<div class="flex items-start justify-between">
 								<p
-									class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-0.5 w-full"
+									class="text-xs sm:text-sm text-muted-foreground mb-0.5 w-full"
 								>
 									{successData.isNewProject
 										? 'New Project Created'
@@ -104,7 +104,7 @@
 								{/if}
 							</div>
 							<p
-								class="text-sm sm:text-base font-medium text-gray-900 dark:text-white truncate"
+								class="text-sm sm:text-base font-medium text-foreground truncate"
 							>
 								{successData.projectName || 'Untitled Project'}
 							</p>
@@ -113,11 +113,11 @@
 
 					<!-- Stats -->
 					{#if successData.operationsCount}
-						<div class="pt-2 border-t border-gray-100 dark:border-gray-700">
+						<div class="pt-2 border-t border-border">
 							<div class="flex items-center justify-between text-xs sm:text-sm">
-								<span class="text-gray-500 dark:text-gray-400">Items processed</span
+								<span class="text-muted-foreground">Items processed</span
 								>
-								<span class="font-semibold text-gray-900 dark:text-white">
+								<span class="font-semibold text-foreground">
 									{successData.operationsCount}
 									{#if successData.failedOperations && successData.failedOperations > 0}
 										<span
@@ -165,8 +165,8 @@
 				{:else if showNavigationOnSuccess}
 					<!-- Show placeholder when project slug is missing -->
 					<div
-						class="w-full py-2.5 sm:py-3 bg-gray-300 dark:bg-gray-700
-						text-gray-500 dark:text-gray-400 font-medium rounded-lg sm:rounded-xl text-sm sm:text-base
+						class="w-full py-2.5 sm:py-3 bg-muted
+						text-muted-foreground font-medium rounded-lg sm:rounded-xl text-sm sm:text-base
 						flex items-center justify-center cursor-not-allowed"
 						title="Project information not available"
 					>
@@ -195,9 +195,9 @@
 
 			<!-- Divider -->
 			<div class="flex items-center my-4 sm:my-6">
-				<div class="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
-				<span class="px-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400">or</span>
-				<div class="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
+				<div class="flex-1 border-t border-border"></div>
+				<span class="px-3 text-xs sm:text-sm text-muted-foreground">or</span>
+				<div class="flex-1 border-t border-border"></div>
 			</div>
 
 			<!-- Secondary Actions -->

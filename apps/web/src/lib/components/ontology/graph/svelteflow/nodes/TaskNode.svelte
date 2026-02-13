@@ -49,7 +49,7 @@
 </script>
 
 <div
-	class="task-node px-2.5 py-1.5 rounded-full border-2 shadow-sm min-w-[100px] max-w-[160px] transition-all duration-200
+	class="task-node px-2.5 py-1.5 rounded-full border-2 shadow-ink min-w-[100px] max-w-[160px] transition-all duration-200
 		{selected ? 'ring-2 ring-amber-400 ring-offset-2' : ''}
 		{style.bg} {style.border}"
 >

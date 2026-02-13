@@ -300,7 +300,7 @@
 												result.is_completed,
 												result.is_deleted
 											)}
-											px-2.5 py-1 text-xs font-medium rounded-full shadow-sm"
+											px-2.5 py-1 text-xs font-medium rounded-full shadow-ink"
 										>
 											{getStatusDisplay(result.status, result.is_deleted)}
 										</span>
@@ -377,7 +377,7 @@
 												result.is_completed,
 												result.is_deleted
 											)}
-											px-2.5 py-1 text-xs font-medium rounded-full shadow-sm"
+											px-2.5 py-1 text-xs font-medium rounded-full shadow-ink"
 										>
 											{getStatusDisplay(result.status, result.is_deleted)}
 										</span>
@@ -447,7 +447,7 @@
 												result.is_completed,
 												result.is_deleted
 											)}
-											px-2.5 py-1 text-xs font-medium rounded-full shadow-sm"
+											px-2.5 py-1 text-xs font-medium rounded-full shadow-ink"
 										>
 											{getStatusDisplay(result.status, result.is_deleted)}
 										</span>

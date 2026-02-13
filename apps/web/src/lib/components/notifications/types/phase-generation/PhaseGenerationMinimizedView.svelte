@@ -96,7 +96,7 @@
 
 		<div class="flex-1 min-w-0 space-y-1">
 			<div class="flex items-center gap-2">
-				<p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+				<p class="text-sm font-medium text-foreground truncate">
 					{notification.data.projectName}
 				</p>
 				{#if notification.data.isRegeneration}
@@ -111,7 +111,7 @@
 
 			{#if strategyMeta}
 				<p
-					class="text-xs text-gray-500 dark:text-gray-400 truncate flex items-center gap-1"
+					class="text-xs text-muted-foreground truncate flex items-center gap-1"
 				>
 					<Sparkles class="h-3 w-3 text-amber-500" />
 					{strategyMeta.label}
@@ -123,7 +123,7 @@
 					{notification.data.error}
 				</p>
 			{:else if activeStep}
-				<p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
+				<p class="text-xs text-muted-foreground line-clamp-2">
 					{activeStep.message || activeStep.name}
 				</p>
 			{/if}
@@ -133,7 +133,7 @@
 	{#if stepsProgress && totalSteps > 0}
 		<div class="space-y-1">
 			<div
-				class="flex items-center justify-between text-[11px] uppercase tracking-wide text-gray-400"
+				class="flex items-center justify-between text-[11px] uppercase tracking-wide text-muted-foreground"
 			>
 				<span>
 					Step {Math.min(stepsProgress.currentStep + 1, totalSteps)} of {totalSteps}
@@ -143,12 +143,12 @@
 				{:else if notification.status === 'error'}
 					<span class="text-red-500">Needs attention</span>
 				{:else}
-					<span class="text-gray-400">
+					<span class="text-muted-foreground">
 						{Math.max(progressPercent ?? 0, 5)}%
 					</span>
 				{/if}
 			</div>
-			<div class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+			<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
 				<div
 					class="h-full rounded-full transition-all duration-500 {notification.status ===
 					'error'
@@ -160,7 +160,7 @@
 		</div>
 	{/if}
 
-	<div class="flex items-center justify-between text-[11px] text-gray-400">
+	<div class="flex items-center justify-between text-[11px] text-muted-foreground">
 		<span>
 			{notification.data.taskCount}
 			&nbsp;task{notification.data.taskCount === 1 ? '' : 's'} selected

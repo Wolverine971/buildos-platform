@@ -612,7 +612,7 @@
 						variant="primary"
 						size="lg"
 						{loading}
-						class="w-full font-semibold shadow-sm"
+						class="w-full font-semibold shadow-ink"
 					>
 						{loading ? loadingText : submitText}
 					</Button>

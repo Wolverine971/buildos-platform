@@ -153,23 +153,23 @@
 	>
 		<!-- Modal Content -->
 		<div
-			class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+			class="bg-card rounded-lg shadow-ink-strong max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col"
 		>
 			<!-- Header -->
 			<div
-				class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700"
+				class="flex items-center justify-between p-6 border-b border-border"
 			>
 				<div class="flex-1">
 					{#if isLoading}
 						<div
-							class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-1/2 animate-pulse"
+							class="h-6 bg-muted rounded w-1/2 animate-pulse"
 						></div>
 					{:else if sessionData}
-						<h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+						<h2 class="text-xl font-semibold text-foreground">
 							{sessionData.session.title}
 						</h2>
 						<div
-							class="flex items-center space-x-3 mt-1 text-sm text-gray-600 dark:text-gray-400"
+							class="flex items-center space-x-3 mt-1 text-sm text-muted-foreground"
 						>
 							<span>{sessionData.session.user.email}</span>
 							<span>•</span>
@@ -196,7 +196,7 @@
 					<div class="space-y-4">
 						{#each Array(3) as _}
 							<div
-								class="h-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
+								class="h-20 bg-muted rounded animate-pulse"
 							></div>
 						{/each}
 					</div>
@@ -209,27 +209,27 @@
 				{:else if sessionData}
 					<!-- Session Metrics -->
 					<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-						<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-							<div class="text-xs text-gray-500 dark:text-gray-400">Messages</div>
-							<div class="text-xl font-semibold text-gray-900 dark:text-white">
+						<div class="bg-muted rounded-lg p-4">
+							<div class="text-xs text-muted-foreground">Messages</div>
+							<div class="text-xl font-semibold text-foreground">
 								{formatNumber(sessionData.session.message_count)}
 							</div>
 						</div>
-						<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-							<div class="text-xs text-gray-500 dark:text-gray-400">Tokens</div>
-							<div class="text-xl font-semibold text-gray-900 dark:text-white">
+						<div class="bg-muted rounded-lg p-4">
+							<div class="text-xs text-muted-foreground">Tokens</div>
+							<div class="text-xl font-semibold text-foreground">
 								{formatNumber(sessionData.session.total_tokens)}
 							</div>
 						</div>
-						<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-							<div class="text-xs text-gray-500 dark:text-gray-400">Tool Calls</div>
-							<div class="text-xl font-semibold text-gray-900 dark:text-white">
+						<div class="bg-muted rounded-lg p-4">
+							<div class="text-xs text-muted-foreground">Tool Calls</div>
+							<div class="text-xl font-semibold text-foreground">
 								{formatNumber(sessionData.session.tool_call_count)}
 							</div>
 						</div>
-						<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-							<div class="text-xs text-gray-500 dark:text-gray-400">Cost</div>
-							<div class="text-xl font-semibold text-gray-900 dark:text-white">
+						<div class="bg-muted rounded-lg p-4">
+							<div class="text-xs text-muted-foreground">Cost</div>
+							<div class="text-xl font-semibold text-foreground">
 								{formatCurrency(sessionData.session.cost_estimate)}
 							</div>
 						</div>
@@ -237,14 +237,14 @@
 
 					<!-- Timing Metrics -->
 					{#if sessionData.timing_metrics}
-						<div class="border border-gray-200 dark:border-gray-700 rounded-lg">
+						<div class="border border-border rounded-lg">
 							<button
 								onclick={() => (showTiming = !showTiming)}
-								class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+								class="w-full flex items-center justify-between p-4 hover:bg-muted transition-colors"
 							>
 								<div class="flex items-center space-x-2">
 									<Timer class="h-5 w-5 text-cyan-600" />
-									<span class="font-semibold text-gray-900 dark:text-white"
+									<span class="font-semibold text-foreground"
 										>Timing Metrics</span
 									>
 									{#if sessionData.timing_metrics.breakdown.ttfr_ms && sessionData.timing_metrics.breakdown.ttfr_ms > 5000}
@@ -259,20 +259,20 @@
 									{/if}
 								</div>
 								{#if showTiming}
-									<ChevronUp class="h-5 w-5 text-gray-500" />
+									<ChevronUp class="h-5 w-5 text-muted-foreground" />
 								{:else}
-									<ChevronDown class="h-5 w-5 text-gray-500" />
+									<ChevronDown class="h-5 w-5 text-muted-foreground" />
 								{/if}
 							</button>
 
 							{#if showTiming}
 								<div
-									class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-4"
+									class="p-4 border-t border-border space-y-4"
 								>
 									<!-- Timeline Visualization -->
 									<div>
 										<h4
-											class="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2"
+											class="font-medium text-foreground mb-3 flex items-center gap-2"
 										>
 											<Activity class="h-4 w-4" />
 											Timeline
@@ -280,7 +280,7 @@
 										<div class="relative">
 											<!-- Timeline bar -->
 											<div
-												class="h-2 bg-gray-200 dark:bg-gray-700 rounded-full mb-4"
+												class="h-2 bg-muted rounded-full mb-4"
 											></div>
 
 											<!-- Timeline markers -->
@@ -365,15 +365,15 @@
 
 									<!-- Breakdown Panel -->
 									<div>
-										<h4 class="font-medium text-gray-900 dark:text-white mb-3">
+										<h4 class="font-medium text-foreground mb-3">
 											Breakdown
 										</h4>
 										<div
 											class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3"
 										>
-											<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+											<div class="bg-muted rounded-lg p-3">
 												<div
-													class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1"
+													class="text-xs text-muted-foreground flex items-center gap-1"
 												>
 													<Clock class="h-3 w-3" /> TTFR
 												</div>
@@ -388,28 +388,28 @@
 													)}
 												</div>
 											</div>
-											<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+											<div class="bg-muted rounded-lg p-3">
 												<div
-													class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1"
+													class="text-xs text-muted-foreground flex items-center gap-1"
 												>
 													<Zap class="h-3 w-3" /> TTFE
 												</div>
 												<div
-													class="text-lg font-semibold text-gray-900 dark:text-white"
+													class="text-lg font-semibold text-foreground"
 												>
 													{formatMs(
 														sessionData.timing_metrics.breakdown.ttfe_ms
 													)}
 												</div>
 											</div>
-											<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+											<div class="bg-muted rounded-lg p-3">
 												<div
-													class="text-xs text-gray-500 dark:text-gray-400"
+													class="text-xs text-muted-foreground"
 												>
 													Context Build
 												</div>
 												<div
-													class="text-lg font-semibold text-gray-900 dark:text-white"
+													class="text-lg font-semibold text-foreground"
 												>
 													{formatMs(
 														sessionData.timing_metrics.breakdown
@@ -417,9 +417,9 @@
 													)}
 												</div>
 											</div>
-											<div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+											<div class="bg-muted rounded-lg p-3">
 												<div
-													class="text-xs text-gray-500 dark:text-gray-400"
+													class="text-xs text-muted-foreground"
 												>
 													Tool Selection
 												</div>
@@ -438,15 +438,15 @@
 											</div>
 											{#if sessionData.timing_metrics.breakdown.clarification_ms}
 												<div
-													class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+													class="bg-muted rounded-lg p-3"
 												>
 													<div
-														class="text-xs text-gray-500 dark:text-gray-400"
+														class="text-xs text-muted-foreground"
 													>
 														Clarification
 													</div>
 													<div
-														class="text-lg font-semibold text-gray-900 dark:text-white"
+														class="text-lg font-semibold text-foreground"
 													>
 														{formatMs(
 															sessionData.timing_metrics.breakdown
@@ -457,15 +457,15 @@
 											{/if}
 											{#if sessionData.timing_metrics.breakdown.plan_creation_ms}
 												<div
-													class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+													class="bg-muted rounded-lg p-3"
 												>
 													<div
-														class="text-xs text-gray-500 dark:text-gray-400"
+														class="text-xs text-muted-foreground"
 													>
 														Plan Creation
 													</div>
 													<div
-														class="text-lg font-semibold text-gray-900 dark:text-white"
+														class="text-lg font-semibold text-foreground"
 													>
 														{formatMs(
 															sessionData.timing_metrics.breakdown
@@ -476,10 +476,10 @@
 											{/if}
 											{#if sessionData.timing_metrics.breakdown.plan_execution_ms}
 												<div
-													class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+													class="bg-muted rounded-lg p-3"
 												>
 													<div
-														class="text-xs text-gray-500 dark:text-gray-400"
+														class="text-xs text-muted-foreground"
 													>
 														Plan Execution
 													</div>
@@ -499,15 +499,15 @@
 											{/if}
 											{#if sessionData.timing_metrics.breakdown.planning_overhead_ms}
 												<div
-													class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3"
+													class="bg-muted rounded-lg p-3"
 												>
 													<div
-														class="text-xs text-gray-500 dark:text-gray-400"
+														class="text-xs text-muted-foreground"
 													>
 														Planning Overhead
 													</div>
 													<div
-														class="text-lg font-semibold text-gray-900 dark:text-white"
+														class="text-lg font-semibold text-foreground"
 													>
 														{formatMs(
 															sessionData.timing_metrics.breakdown
@@ -521,7 +521,7 @@
 										<!-- Plan Summary -->
 										{#if sessionData.timing_metrics.breakdown.plan_status}
 											<div class="mt-3 flex items-center gap-3 text-sm">
-												<span class="text-gray-500 dark:text-gray-400"
+												<span class="text-muted-foreground"
 													>Plan:</span
 												>
 												<span
@@ -532,19 +532,19 @@
 														: sessionData.timing_metrics.breakdown
 																	.plan_status === 'failed'
 															? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-															: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'}"
+															: 'bg-muted text-foreground dark:text-muted-foreground'}"
 												>
 													{sessionData.timing_metrics.breakdown
 														.plan_status}
 												</span>
 												{#if sessionData.timing_metrics.breakdown.plan_step_count}
-													<span class="text-gray-500 dark:text-gray-400">
+													<span class="text-muted-foreground">
 														{sessionData.timing_metrics.breakdown
 															.plan_step_count} steps
 													</span>
 												{/if}
 												{#if sessionData.timing_metrics.breakdown.plan_latency_share}
-													<span class="text-gray-500 dark:text-gray-400">
+													<span class="text-muted-foreground">
 														({sessionData.timing_metrics.breakdown.plan_latency_share.toFixed(
 															0
 														)}% of TTFR)
@@ -560,14 +560,14 @@
 
 					<!-- Agent Plan -->
 					{#if sessionData.agent_plan}
-						<div class="border border-gray-200 dark:border-gray-700 rounded-lg">
+						<div class="border border-border rounded-lg">
 							<button
 								onclick={() => (showAgentPlan = !showAgentPlan)}
-								class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+								class="w-full flex items-center justify-between p-4 hover:bg-muted transition-colors"
 							>
 								<div class="flex items-center space-x-2">
 									<Bot class="h-5 w-5 text-purple-600" />
-									<span class="font-semibold text-gray-900 dark:text-white"
+									<span class="font-semibold text-foreground"
 										>Agent Plan</span
 									>
 									<span
@@ -577,15 +577,15 @@
 									</span>
 								</div>
 								{#if showAgentPlan}
-									<ChevronUp class="h-5 w-5 text-gray-500" />
+									<ChevronUp class="h-5 w-5 text-muted-foreground" />
 								{:else}
-									<ChevronDown class="h-5 w-5 text-gray-500" />
+									<ChevronDown class="h-5 w-5 text-muted-foreground" />
 								{/if}
 							</button>
 
 							{#if showAgentPlan}
-								<div class="p-4 border-t border-gray-200 dark:border-gray-700">
-									<h4 class="font-medium text-gray-900 dark:text-white mb-2">
+								<div class="p-4 border-t border-border">
+									<h4 class="font-medium text-foreground mb-2">
 										Execution Steps
 									</h4>
 									<ol class="space-y-2">
@@ -597,7 +597,7 @@
 													{index + 1}
 												</span>
 												<span
-													class="flex-1 text-sm text-gray-700 dark:text-gray-300"
+													class="flex-1 text-sm text-foreground"
 													>{step}</span
 												>
 											</li>
@@ -610,14 +610,14 @@
 
 					<!-- Agent Executions (Agent-to-Agent Conversations) -->
 					{#if sessionData.agent_executions?.length > 0}
-						<div class="border border-gray-200 dark:border-gray-700 rounded-lg">
+						<div class="border border-border rounded-lg">
 							<button
 								onclick={() => (showExecutions = !showExecutions)}
-								class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+								class="w-full flex items-center justify-between p-4 hover:bg-muted transition-colors"
 							>
 								<div class="flex items-center space-x-2">
 									<Zap class="h-5 w-5 text-blue-600" />
-									<span class="font-semibold text-gray-900 dark:text-white"
+									<span class="font-semibold text-foreground"
 										>Executor Conversations</span
 									>
 									<span
@@ -627,21 +627,21 @@
 									</span>
 								</div>
 								{#if showExecutions}
-									<ChevronUp class="h-5 w-5 text-gray-500" />
+									<ChevronUp class="h-5 w-5 text-muted-foreground" />
 								{:else}
-									<ChevronDown class="h-5 w-5 text-gray-500" />
+									<ChevronDown class="h-5 w-5 text-muted-foreground" />
 								{/if}
 							</button>
 
 							{#if showExecutions}
-								<div class="border-t border-gray-200 dark:border-gray-700">
+								<div class="border-t border-border">
 									{#each sessionData.agent_executions as execution, index}
 										<div
-											class="border-b border-gray-200 dark:border-gray-700 last:border-b-0"
+											class="border-b border-border last:border-b-0"
 										>
 											<button
 												onclick={() => toggleExecution(execution.id)}
-												class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+												class="w-full flex items-center justify-between p-4 hover:bg-muted transition-colors"
 											>
 												<div class="flex items-center space-x-3">
 													<span
@@ -651,28 +651,28 @@
 													</span>
 													<div class="text-left">
 														<div
-															class="font-medium text-gray-900 dark:text-white"
+															class="font-medium text-foreground"
 														>
 															Step {execution.step_number ||
 																index + 1}
 														</div>
 														<div
-															class="text-xs text-gray-500 dark:text-gray-400"
+															class="text-xs text-muted-foreground"
 														>
 															{execution.messages?.length || 0} messages
 														</div>
 													</div>
 												</div>
 												{#if expandedExecutions.has(execution.id)}
-													<ChevronUp class="h-5 w-5 text-gray-500" />
+													<ChevronUp class="h-5 w-5 text-muted-foreground" />
 												{:else}
-													<ChevronDown class="h-5 w-5 text-gray-500" />
+													<ChevronDown class="h-5 w-5 text-muted-foreground" />
 												{/if}
 											</button>
 
 											{#if expandedExecutions.has(execution.id)}
 												<div
-													class="p-4 space-y-3 bg-gray-50 dark:bg-gray-900"
+													class="p-4 space-y-3 bg-muted"
 												>
 													{#each execution.messages as message}
 														<div
@@ -685,7 +685,7 @@
 																class="flex items-center space-x-2 mb-1"
 															>
 																<span
-																	class="text-xs font-medium text-gray-500 dark:text-gray-400"
+																	class="text-xs font-medium text-muted-foreground"
 																>
 																	{message.role === 'user'
 																		? 'Planner → Executor'
@@ -693,7 +693,7 @@
 																</span>
 																{#if message.tokens_used}
 																	<span
-																		class="text-xs text-gray-400 dark:text-gray-500"
+																		class="text-xs text-muted-foreground"
 																	>
 																		{formatNumber(
 																			message.tokens_used
@@ -721,14 +721,14 @@
 
 					<!-- Tool Executions -->
 					{#if sessionData.tool_executions?.length > 0}
-						<div class="border border-gray-200 dark:border-gray-700 rounded-lg">
+						<div class="border border-border rounded-lg">
 							<button
 								onclick={() => (showTools = !showTools)}
-								class="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+								class="w-full flex items-center justify-between p-4 hover:bg-muted transition-colors"
 							>
 								<div class="flex items-center space-x-2">
 									<Wrench class="h-5 w-5 text-orange-600" />
-									<span class="font-semibold text-gray-900 dark:text-white"
+									<span class="font-semibold text-foreground"
 										>Tool Executions</span
 									>
 									<span
@@ -738,19 +738,19 @@
 									</span>
 								</div>
 								{#if showTools}
-									<ChevronUp class="h-5 w-5 text-gray-500" />
+									<ChevronUp class="h-5 w-5 text-muted-foreground" />
 								{:else}
-									<ChevronDown class="h-5 w-5 text-gray-500" />
+									<ChevronDown class="h-5 w-5 text-muted-foreground" />
 								{/if}
 							</button>
 
 							{#if showTools}
 								<div
-									class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2"
+									class="p-4 border-t border-border space-y-2"
 								>
 									{#each sessionData.tool_executions as tool}
 										<div
-											class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded"
+											class="flex items-center justify-between p-3 bg-muted rounded"
 										>
 											<div class="flex items-center space-x-3">
 												{#if tool.success}
@@ -760,12 +760,12 @@
 												{/if}
 												<div>
 													<div
-														class="font-medium text-sm text-gray-900 dark:text-white"
+														class="font-medium text-sm text-foreground"
 													>
 														{tool.tool_name}
 													</div>
 													<div
-														class="text-xs text-gray-500 dark:text-gray-400"
+														class="text-xs text-muted-foreground"
 													>
 														{formatDate(tool.created_at)}
 													</div>
@@ -773,7 +773,7 @@
 											</div>
 											{#if tool.execution_time_ms}
 												<span
-													class="text-xs text-gray-500 dark:text-gray-400"
+													class="text-xs text-muted-foreground"
 												>
 													{tool.execution_time_ms}ms
 												</span>
@@ -787,20 +787,20 @@
 
 					<!-- Compressions -->
 					{#if sessionData.compressions?.length > 0}
-						<div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+						<div class="border border-border rounded-lg p-4">
 							<div class="flex items-center space-x-2 mb-3">
 								<Sparkles class="h-5 w-5 text-green-600" />
-								<span class="font-semibold text-gray-900 dark:text-white"
+								<span class="font-semibold text-foreground"
 									>Compressions</span
 								>
 							</div>
 							<div class="space-y-2">
 								{#each sessionData.compressions as compression}
 									<div class="flex items-center justify-between text-sm">
-										<span class="text-gray-600 dark:text-gray-400">
+										<span class="text-muted-foreground">
 											{formatDate(compression.created_at)}
 										</span>
-										<span class="text-gray-900 dark:text-white">
+										<span class="text-foreground">
 											{formatNumber(compression.original_tokens)} → {formatNumber(
 												compression.compressed_tokens
 											)} tokens
@@ -820,11 +820,11 @@
 					{/if}
 
 					<!-- Conversation Thread -->
-					<div class="border border-gray-200 dark:border-gray-700 rounded-lg">
-						<div class="p-4 border-b border-gray-200 dark:border-gray-700">
+					<div class="border border-border rounded-lg">
+						<div class="p-4 border-b border-border">
 							<div class="flex items-center space-x-2">
 								<MessageSquare class="h-5 w-5 text-cyan-600" />
-								<span class="font-semibold text-gray-900 dark:text-white"
+								<span class="font-semibold text-foreground"
 									>Conversation</span
 								>
 								<span
@@ -845,16 +845,16 @@
 									<div class="flex-1">
 										<div class="flex items-center space-x-2 mb-1">
 											<span
-												class="text-xs font-medium text-gray-500 dark:text-gray-400"
+												class="text-xs font-medium text-muted-foreground"
 											>
 												{message.role === 'user' ? 'User' : 'Assistant'}
 											</span>
-											<span class="text-xs text-gray-400 dark:text-gray-500">
+											<span class="text-xs text-muted-foreground">
 												{formatDate(message.created_at)}
 											</span>
 											{#if message.total_tokens}
 												<span
-													class="text-xs text-gray-400 dark:text-gray-500"
+													class="text-xs text-muted-foreground"
 												>
 													{formatNumber(message.total_tokens)} tokens
 												</span>
@@ -868,7 +868,7 @@
 										{#if message.role === 'assistant' && message.tool_calls && message.tool_calls.length > 0}
 											<div class="mt-3 space-y-2">
 												<div
-													class="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-2"
+													class="text-xs font-medium text-muted-foreground flex items-center gap-2"
 												>
 													<Wrench class="h-3 w-3" />
 													Tool Calls ({message.tool_calls.length})
@@ -890,12 +890,12 @@
 														<div class="mt-3 space-y-2">
 															<div>
 																<div
-																	class="font-medium text-gray-600 dark:text-gray-400 mb-1"
+																	class="font-medium text-muted-foreground mb-1"
 																>
 																	Arguments:
 																</div>
 																<pre
-																	class="bg-white dark:bg-gray-900 p-2 rounded overflow-x-auto text-[10px] text-gray-700 dark:text-gray-300">{JSON.stringify(
+																	class="bg-card p-2 rounded overflow-x-auto text-[10px] text-foreground">{JSON.stringify(
 																		JSON.parse(
 																			toolCall.function
 																				?.arguments || '{}'
@@ -906,7 +906,7 @@
 															</div>
 															{#if toolCall.id}
 																<div
-																	class="text-[10px] text-gray-500 dark:text-gray-400"
+																	class="text-[10px] text-muted-foreground"
 																>
 																	ID: {toolCall.id}
 																</div>
@@ -935,7 +935,7 @@
 														View result
 													</summary>
 													<pre
-														class="mt-2 bg-white dark:bg-gray-900 p-2 rounded overflow-x-auto text-[10px] text-gray-700 dark:text-gray-300">{JSON.stringify(
+														class="mt-2 bg-card p-2 rounded overflow-x-auto text-[10px] text-foreground">{JSON.stringify(
 															message.tool_result,
 															null,
 															2
@@ -943,7 +943,7 @@
 												</details>
 												{#if message.tool_call_id}
 													<div
-														class="mt-2 text-[10px] text-gray-500 dark:text-gray-400"
+														class="mt-2 text-[10px] text-muted-foreground"
 													>
 														Call ID: {message.tool_call_id}
 													</div>

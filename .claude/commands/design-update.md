@@ -15,8 +15,7 @@ Your job is to audit the given component, apply Inkprint semantics (texture + we
 When invoked, respond with:
 
 ```
-
-🖨️ BuildOS Inkprint Design System Ready
+BuildOS Inkprint Design System Ready
 
 I'll systematically analyze and enhance your component following:
 
@@ -28,9 +27,8 @@ I'll systematically analyze and enhance your component following:
 * Mobile-first responsive design
 * WCAG AA accessibility
 
-Let me examine the current implementation...
-
-````
+Running pre-flight violation scan...
+```
 
 ---
 
@@ -152,15 +150,28 @@ tx tx-bloom  tx-weak  /* Creation, new items, drafts, ideation */
 tx tx-static tx-weak  /* Errors, warnings, blockers, risk */
 tx tx-thread tx-weak  /* Dependencies, relationships, links */
 tx tx-pulse  tx-weak  /* Urgency, deadlines, momentum */
+tx tx-grid   tx-weak  /* Input fields, editable/writable surfaces */
+tx tx-strip  tx-weak  /* Header bands, separators, printed labels */
 ```
 
-### Weights (HOW IMPORTANT — affects border/shadow/motion)
+### Weights (HOW IMPORTANT — affects border/shadow/motion/background)
 
 ```css
-wt-ghost   /* Ephemeral, uncommitted, suggestions (100ms, dashed) */
-wt-paper   /* Standard UI, working state - DEFAULT (150ms) */
-wt-card    /* Important, elevated, committed (200ms) */
-wt-plate   /* System-critical, immutable, modal-level (280ms) */
+wt-ghost   /* Ephemeral, uncommitted, suggestions (100ms, dashed, transparent bg) */
+wt-paper   /* Standard UI, working state - DEFAULT (150ms, bg-card) */
+wt-card    /* Important, elevated, committed (200ms, bg-card) */
+wt-plate   /* System-critical, immutable, modal-level (280ms, bg-card) */
+```
+
+Weight classes provide default `background-color` (via `@layer components`).
+Any Tailwind `bg-*` utility will naturally override the weight background:
+
+```svelte
+<!-- Weight provides bg-card by default -->
+<div class="wt-paper tx tx-grain tx-weak">...</div>
+
+<!-- Explicit bg-* overrides the weight default -->
+<div class="wt-paper bg-muted/50 tx tx-grain tx-weak">...</div>
 ```
 
 Texture × Weight Examples:
@@ -184,7 +195,7 @@ pressable
 
 ---
 
-## NEW: Spatial Emphasis (How much layout freedom it may command)
+## Spatial Emphasis (How much layout freedom it may command)
 
 Spatial emphasis is permissioning, not decoration. It complements:
 
@@ -192,22 +203,36 @@ Spatial emphasis is permissioning, not decoration. It complements:
 * Weight = how IMPORTANT it is
 * Spatial = how much LAYOUT emphasis it may take
 
-Classes:
+Classes and their concrete effects (defined in `inkprint.css`):
 
 ```css
-sp-inline  /* Dense list-level, no grid breaks */
-sp-block   /* Normal card/section */
-sp-focus   /* Rare: allowed to break grid / overlap / breathe (Mode B only) */
+sp-inline  /* Dense list-level: compact padding (px-3 py-2), no grid breaks */
+sp-block   /* Normal card/section: standard padding (p-4 sm:p-6), contained */
+sp-focus   /* Rare: extra breathing room, allowed to break grid (Mode B only) */
+```
+
+Usage examples:
+
+```svelte
+<!-- List item: dense, inline-level -->
+<li class="tx tx-grain tx-weak wt-paper sp-inline">...</li>
+
+<!-- Dashboard card: block-level section -->
+<div class="tx tx-frame tx-weak wt-card sp-block">...</div>
+
+<!-- Hero onboarding panel: focus-level (Mode B only, max 1 per view) -->
+<section class="tx tx-bloom tx-weak wt-card sp-focus atmo atmo-med">...</section>
 ```
 
 Rules:
 
-* Mode A: default to `sp-inline` / `sp-block`
-* Mode B: `sp-focus` allowed for ONE primary orientation element per view
+* Mode A: default to `sp-inline` / `sp-block`. Never use `sp-focus`.
+* Mode B: `sp-focus` allowed for ONE primary orientation element per view.
+* When in doubt, use `sp-inline`. Dense is the default.
 
 ---
 
-## NEW: Atmosphere Layer (Mode B only)
+## Atmosphere Layer (Mode B only)
 
 Atmosphere creates depth without sacrificing readability.
 Use opt-in classes:
@@ -231,7 +256,40 @@ DON’T:
 
 ---
 
+## Protected Files (DO NOT MODIFY)
+
+**Never edit files in `src/lib/components/ui/`** — these are base UI primitives (`Card.svelte`, `Modal.svelte`, `FormModal.svelte`, `TextInput.svelte`, `Textarea.svelte`, etc.). They already implement Inkprint semantics correctly. If you think a base component needs changes, flag it and discuss — do not modify directly.
+
+**Never create new CSS files.** All styles go through existing files:
+- `src/lib/styles/inkprint.css` — CSS variables, textures, weights, spatial emphasis
+- `src/lib/styles/containment.css` — opt-in CSS containment utilities
+- `src/lib/styles/performance-optimizations.css` — skeleton loaders, perf utilities
+- `src/lib/styles/animation-utils.css` — animation helpers
+- `src/app.css` — Tailwind layers, base styles, line-clamp utilities
+- `tailwind.config.js` — Inkprint color tokens, shadows, typography, animations
+
+Route-specific CSS (e.g. `dashboard.css`) is acceptable for page-specific animations or layouts.
+
+---
+
 ## Investigation Workflow
+
+### Phase 0: Pre-Flight Violation Scan
+
+Before touching the component, scan for violations:
+
+```bash
+# Check for hardcoded colors (should be 0 in the target file)
+grep -E '(gray|slate|zinc|neutral|stone)-[0-9]' path/to/Component.svelte
+
+# Check for manual dark: overrides (minimize these)
+grep -c 'dark:' path/to/Component.svelte
+
+# Check for old shadow patterns
+grep -E 'shadow-(sm|md|lg|xl|2xl)' path/to/Component.svelte
+```
+
+Report the violation count before making changes. This establishes a baseline.
 
 ### Phase 1: Audit (Read the code first)
 
@@ -307,16 +365,21 @@ Ask:
 ```svelte
 <div class="space-y-1 sp-block">
   <label class="text-xs font-medium text-muted-foreground">{label}</label>
-  <input class="
-    w-full px-2 py-1.5 text-sm
-    bg-background border border-border rounded-md
-    shadow-ink-inner
-    focus:border-accent focus:ring-1 focus:ring-ring
-    text-foreground placeholder:text-muted-foreground
-    tx tx-frame tx-weak wt-paper
-  " />
+  <div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+    <input class="
+      w-full px-2 py-1.5 text-sm relative z-[2]
+      bg-background border border-border rounded-md
+      shadow-ink-inner
+      focus:border-accent focus:ring-1 focus:ring-ring
+      text-foreground placeholder:text-muted-foreground
+    " />
+  </div>
 </div>
 ```
+
+Note: `tx-grid` is the semantic texture for editable/writable surfaces. Wrap the
+input in a `tx tx-grid tx-weak` container with `rounded-lg overflow-hidden`.
+The `TextInput.svelte` and `Textarea.svelte` base components already do this.
 
 ### Micro-Label (Metadata)
 
@@ -372,7 +435,8 @@ Ask:
 
 ### ✅ Texture (What KIND)
 
-* [ ] Texture matches semantic meaning (bloom/grain/pulse/static/thread/frame)
+* [ ] Texture matches semantic meaning (bloom/grain/pulse/static/thread/frame/grid/strip)
+* [ ] `tx-grid` used for input/editable surfaces (not `tx-frame`)
 * [ ] Intensity appropriate (`tx-weak` default; `tx-med` sparingly)
 * [ ] No decorative textures without semantic purpose
 

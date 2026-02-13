@@ -97,9 +97,9 @@
 			case 'past_due':
 				return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
 			case 'unpaid':
-				return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+				return 'bg-muted text-foreground dark:text-muted-foreground';
 			default:
-				return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
+				return 'bg-muted text-foreground dark:text-muted-foreground';
 		}
 	}
 
@@ -259,40 +259,40 @@
 			{#if isLoading}
 				<div class="p-8 text-center">
 					<RefreshCw class="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-					<p class="text-gray-500 dark:text-gray-400">Loading users...</p>
+					<p class="text-muted-foreground">Loading users...</p>
 				</div>
 			{:else if users.length === 0}
 				<div class="p-8 text-center">
-					<User class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-					<p class="text-gray-500 dark:text-gray-400">No users found</p>
+					<User class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+					<p class="text-muted-foreground">No users found</p>
 				</div>
 			{:else}
 				<div class="overflow-x-auto">
 					<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-						<thead class="bg-gray-50 dark:bg-gray-700">
+						<thead class="bg-muted">
 							<tr>
 								<th
-									class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+									class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									User
 								</th>
 								<th
-									class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+									class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Subscription
 								</th>
 								<th
-									class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+									class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Status
 								</th>
 								<th
-									class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+									class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Revenue
 								</th>
 								<th
-									class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+									class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Next Billing
 								</th>
@@ -302,21 +302,21 @@
 							</tr>
 						</thead>
 						<tbody
-							class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+							class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
 						>
 							{#each users as user}
 								{@const subscription = user.customer_subscriptions?.[0]}
-								<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+								<tr class="hover:bg-muted/50">
 									<td class="px-6 py-4 whitespace-nowrap">
 										<div class="flex items-center">
 											<div>
 												<div
-													class="text-sm font-medium text-gray-900 dark:text-white"
+													class="text-sm font-medium text-foreground"
 												>
 													{user.name || 'Unnamed User'}
 												</div>
 												<div
-													class="text-sm text-gray-500 dark:text-gray-400"
+													class="text-sm text-muted-foreground"
 												>
 													{user.email}
 												</div>
@@ -325,18 +325,18 @@
 									</td>
 									<td class="px-6 py-4 whitespace-nowrap">
 										{#if subscription}
-											<div class="text-sm text-gray-900 dark:text-white">
+											<div class="text-sm text-foreground">
 												{subscription.subscription_plans?.name ||
 													'Unknown Plan'}
 											</div>
-											<div class="text-sm text-gray-500 dark:text-gray-400">
+											<div class="text-sm text-muted-foreground">
 												${(
 													subscription.subscription_plans?.price / 100
 												).toFixed(2)}/{subscription.subscription_plans
 													?.interval}
 											</div>
 										{:else}
-											<span class="text-sm text-gray-500 dark:text-gray-400">
+											<span class="text-sm text-muted-foreground">
 												No subscription
 											</span>
 										{/if}
@@ -354,14 +354,14 @@
 											</span>
 										{:else}
 											<span
-												class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+												class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-muted text-foreground dark:text-muted-foreground"
 											>
 												None
 											</span>
 										{/if}
 									</td>
 									<td
-										class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white"
+										class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
 									>
 										{#if subscription}
 											${(
@@ -372,7 +372,7 @@
 										{/if}
 									</td>
 									<td
-										class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+										class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
 									>
 										{#if subscription?.current_period_end}
 											{new Date(
@@ -401,7 +401,7 @@
 
 												{#if showActionMenu === user.id}
 													<div
-														class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg z-10 border border-gray-200 dark:border-gray-600"
+														class="absolute right-0 mt-2 w-48 bg-card rounded-md shadow-ink-strong z-10 border border-border"
 													>
 														<div class="py-1">
 															{#if subscription.status === 'active'}
@@ -471,7 +471,7 @@
 
 															<a
 																href="/admin/users/{user.id}"
-																class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+																class="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted"
 															>
 																<User class="w-4 h-4 mr-2" />
 																View User Details
@@ -490,7 +490,7 @@
 
 				<!-- Pagination -->
 				<div
-					class="bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-600 sm:px-6"
+					class="bg-muted px-4 py-3 flex items-center justify-between border-t border-border sm:px-6"
 				>
 					<div class="flex-1 flex justify-between sm:hidden">
 						<Button
@@ -512,14 +512,14 @@
 					</div>
 					<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
 						<div>
-							<p class="text-sm text-gray-700 dark:text-gray-300">
+							<p class="text-sm text-foreground">
 								Showing page <span class="font-medium">{currentPage}</span> of
 								<span class="font-medium">{totalPages}</span>
 								({totalUsers} total users)
 							</p>
 						</div>
 						<div>
-							<nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+							<nav class="relative z-0 inline-flex rounded-md shadow-ink -space-x-px">
 								<Button
 									onclick={() => (currentPage = Math.max(1, currentPage - 1))}
 									disabled={currentPage === 1}

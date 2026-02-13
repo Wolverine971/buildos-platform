@@ -124,10 +124,10 @@
 		<div class="flex items-center space-x-2">
 			{#if mode === 'form'}
 				<FileText class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-				<span class="text-sm font-medium text-gray-700 dark:text-gray-300">Form Mode</span>
+				<span class="text-sm font-medium text-foreground">Form Mode</span>
 			{:else}
 				<Code class="w-5 h-5 text-purple-600 dark:text-purple-400" />
-				<span class="text-sm font-medium text-gray-700 dark:text-gray-300">JSON Mode</span>
+				<span class="text-sm font-medium text-foreground">JSON Mode</span>
 			{/if}
 		</div>
 		<Button variant="outline" size="sm" onclick={toggleMode}>
@@ -145,7 +145,7 @@
 	{#if mode === 'form'}
 		<div class="space-y-4">
 			{#if Object.keys(payload).length === 0}
-				<p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+				<p class="text-sm text-muted-foreground text-center py-4">
 					No payload fields. Select an event type to load sample data.
 				</p>
 			{:else}
@@ -154,7 +154,7 @@
 					<div>
 						<label
 							for={key}
-							class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+							class="block text-sm font-medium text-foreground mb-1"
 						>
 							{formatFieldLabel(key)}
 						</label>
@@ -164,8 +164,8 @@
 								value={getFieldValue(payload[key])}
 								oninput={(e) => handleFormFieldChange(key, e.currentTarget.value)}
 								rows="3"
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-									   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+								class="w-full px-3 py-2 border border-border rounded-lg
+									   bg-card text-foreground
 									   focus:ring-2 focus:ring-blue-500 focus:border-transparent
 									   resize-y"
 							/>
@@ -179,8 +179,8 @@
 										key,
 										parseFieldValue(e.currentTarget.value, payload[key])
 									)}
-								class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-									   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+								class="w-full px-3 py-2 border border-border rounded-lg
+									   bg-card text-foreground
 									   focus:ring-2 focus:ring-blue-500 focus:border-transparent"
 							/>
 						{/if}
@@ -194,7 +194,7 @@
 	{#if mode === 'json'}
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
-				<span class="text-xs text-gray-500 dark:text-gray-400">
+				<span class="text-xs text-muted-foreground">
 					Edit raw JSON payload
 				</span>
 				<Button variant="ghost" size="sm" onclick={formatJson} class="text-xs">
@@ -205,8 +205,8 @@
 				bind:value={jsonString}
 				oninput={handleJsonChange}
 				rows="12"
-				class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-					   bg-white dark:bg-gray-800 text-gray-900 dark:text-white
+				class="w-full px-3 py-2 border border-border rounded-lg
+					   bg-card text-foreground
 					   font-mono text-xs
 					   focus:ring-2 focus:ring-blue-500 focus:border-transparent
 					   resize-y"
@@ -227,7 +227,7 @@
 					</div>
 				</div>
 			{/if}
-			<div class="text-xs text-gray-500 dark:text-gray-400">
+			<div class="text-xs text-muted-foreground">
 				{jsonString.length} characters
 			</div>
 		</div>

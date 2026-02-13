@@ -110,7 +110,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			}),
 			supabase
 				.from('onto_project_members')
-				.select('id', { head: true })
+				.select('id', { head: true, count: 'exact' })
 				.eq('project_id', id)
 				.eq('actor_id', actorId)
 				.is('removed_at', null),
@@ -137,8 +137,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 		canEdit = Boolean(writeResult.data);
 		canAdmin = Boolean(adminResult.data);
+		const isMember = (memberResult.count ?? 0) > 0;
 		canInvite = canEdit;
-		canViewLogs = canAdmin || Boolean(memberResult.data);
+		canViewLogs = canAdmin || isMember;
 		isOwner = (ownerResult.count ?? 0) > 0;
 	}
 

@@ -657,7 +657,7 @@
 						loading={isSaving}
 						variant={isOnLastStep && canComplete ? 'primary' : 'outline'}
 						size="lg"
-						class="flex-1 max-w-xs shadow-md hover:shadow-lg transition-all duration-200"
+						class="flex-1 max-w-xs shadow-ink hover:shadow-ink-strong transition-all duration-200"
 					>
 						{#if isSaving}
 							Saving...

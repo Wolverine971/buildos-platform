@@ -10,17 +10,15 @@
 		Lightbulb,
 		Calendar,
 		Clock,
-		Tag,
 		ArrowRight,
 		Search
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import Button from '$lib/components/ui/Button.svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	const categoryIcons = {
+	const categoryIcons: Record<string, typeof Brain> = {
 		'getting-started': Brain,
 		'productivity-tips': TrendingUp,
 		'product-updates': FolderOpen,
@@ -29,9 +27,7 @@
 		philosophy: Lightbulb
 	};
 
-	// Using semantic classes that Tailwind can compile statically
 	function getCategoryColorClasses(category: string) {
-		// Primary category (getting-started) gets accent color, others get muted
 		const isPrimary = category === 'getting-started';
 		return {
 			bg: isPrimary ? 'bg-accent/10' : 'bg-muted',
@@ -42,7 +38,6 @@
 		};
 	}
 
-	// Function to generate JSON-LD structured data
 	function generateBlogJsonLd(categorizedPosts: any) {
 		if (!categorizedPosts) return '';
 
@@ -90,7 +85,6 @@
 	let searchQuery = $state('');
 	let showSearch = $state(false);
 
-	// Get all posts for direct display when < 10 total
 	let allPosts = $derived(
 		data.totalPosts < 10
 			? Object.values(data.categorizedPosts)
@@ -101,7 +95,6 @@
 
 	let showDirectPosts = $derived(data.totalPosts < 10);
 
-	// Generate JSON-LD string reactively
 	let jsonLdString = $derived(generateBlogJsonLd(data.categorizedPosts));
 </script>
 
@@ -149,27 +142,20 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<!-- Header -->
-	<div class="bg-card py-20">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-6">BuildOS Blog</h1>
-			<p class="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-				{#if showDirectPosts}
-					Master your personal operating system with practical guides, productivity
-					insights, and the latest updates from our team.
-				{:else}
-					Master your personal operating system with practical guides, productivity
-					insights, and the latest updates from our team.
-				{/if}
+	<!-- Hero -->
+	<header class="border-b border-border bg-card tx tx-bloom tx-weak">
+		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 text-center">
+			<h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight">
+				BuildOS Blog
+			</h1>
+			<p class="mt-3 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
+				Practical guides, productivity insights, and the latest from the BuildOS team.
 			</p>
 
-			<!-- Search Bar - show for both cases -->
 			{#if !showDirectPosts || data.totalPosts > 5}
-				<div class="relative max-w-2xl mx-auto">
-					<div
-						class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-					>
-						<Search class="h-5 w-5 text-muted-foreground" />
+				<div class="relative max-w-lg mx-auto mt-6">
+					<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+						<Search class="h-4 w-4 text-muted-foreground" />
 					</div>
 					<TextInput
 						type="text"
@@ -183,81 +169,81 @@
 				</div>
 			{/if}
 		</div>
-	</div>
+	</header>
 
 	{#if showDirectPosts}
 		<!-- Direct Posts Display (< 10 total posts) -->
-		<section class="py-16">
-			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+		<section class="py-8 sm:py-12">
+			<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 				{#if allPosts.length > 0}
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
 						{#each allPosts as post}
 							{@const colors = getCategoryColorClasses(post.category)}
 							{@const categoryName = data.categories[post.category].name}
 
-							<article
-								class="bg-card rounded-lg overflow-hidden shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105 border border-border tx tx-frame tx-weak"
-							>
-								<div class="p-6">
-									<div
-										class="flex items-center space-x-2 text-sm text-muted-foreground mb-4"
-									>
-										<span
-											class="px-2.5 py-0.5 {colors.bg} {colors.text} rounded-full font-medium text-xs text-center"
-										>
-											{categoryName}
-										</span>
-										<div class="flex items-center">
-											<Calendar class="w-4 h-4 mr-1" />
-											{format(new Date(post.date), 'MMM dd, yyyy')}
+							<article class="group">
+								<a
+									href="/blogs/{post.category}/{post.slug}"
+									class="block bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
+								>
+									<div class="p-4 sm:p-5">
+										<div class="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+											<span
+												class="px-2 py-0.5 {colors.bg} {colors.text} rounded-full font-medium"
+											>
+												{categoryName}
+											</span>
+											<span class="flex items-center gap-1">
+												<Calendar class="w-3 h-3" />
+												{format(new Date(post.date), 'MMM dd, yyyy')}
+											</span>
 										</div>
-										<div class="flex items-center">
-											<Clock class="w-4 h-4 mr-1" />
-											{post.readingTime} min read
+
+										<h3
+											class="text-base font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-accent transition-colors"
+										>
+											{post.title}
+										</h3>
+
+										<p class="text-sm text-muted-foreground mb-3 line-clamp-3">
+											{post.description}
+										</p>
+
+										<div class="flex items-center justify-between">
+											{#if post.tags.length > 0}
+												<div class="flex flex-wrap gap-1">
+													{#each post.tags.slice(0, 2) as tag}
+														<span
+															class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground"
+														>
+															{tag}
+														</span>
+													{/each}
+												</div>
+											{:else}
+												<div></div>
+											{/if}
+											<span
+												class="flex items-center gap-1 text-xs text-muted-foreground"
+											>
+												<Clock class="w-3 h-3" />
+												{post.readingTime} min
+											</span>
 										</div>
 									</div>
-
-									<h3 class="text-xl font-bold text-foreground mb-3 line-clamp-2">
-										{post.title}
-									</h3>
-
-									<p class="text-muted-foreground mb-6 line-clamp-3">
-										{post.description}
-									</p>
-
-									{#if post.tags.length > 0}
-										<div class="flex flex-wrap gap-2 mb-6">
-											{#each post.tags.slice(0, 3) as tag}
-												<span
-													class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-background text-muted-foreground"
-												>
-													<Tag class="w-3 h-3 mr-1" />
-													{tag}
-												</span>
-											{/each}
-										</div>
-									{/if}
-
-									<a
-										href="/blogs/{post.category}/{post.slug}"
-										class="inline-flex items-center {colors.linkText} font-medium hover:underline"
-									>
-										Read article <ArrowRight class="w-4 h-4 ml-1" />
-									</a>
-								</div>
+								</a>
 							</article>
 						{/each}
 					</div>
 				{:else}
-					<!-- Empty State -->
-					<div class="text-center py-16">
+					<div class="text-center py-12">
 						<div
-							class="flex items-center justify-center w-16 h-16 bg-card rounded-lg mx-auto mb-6"
+							class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mx-auto mb-4"
 						>
-							<Brain class="w-8 h-8 text-muted-foreground" />
+							<Brain class="w-6 h-6 text-muted-foreground" />
 						</div>
-						<h3 class="text-xl font-semibold text-foreground mb-2">No articles yet</h3>
-						<p class="text-muted-foreground">
+						<h3 class="text-lg font-semibold text-foreground mb-1">No articles yet</h3>
+						<p class="text-sm text-muted-foreground">
 							We're working on creating valuable content. Check back soon!
 						</p>
 					</div>
@@ -266,16 +252,16 @@
 		</section>
 	{:else}
 		<!-- Categories Overview (>= 10 total posts) -->
-		<section class="py-20">
-			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-				<div class="text-center mb-16">
-					<h2 class="text-3xl font-bold text-foreground mb-4">Explore by Category</h2>
-					<p class="text-lg text-muted-foreground">
+		<section class="py-8 sm:py-12">
+			<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+				<div class="text-center mb-8">
+					<h2 class="text-2xl font-bold text-foreground mb-2">Explore by Category</h2>
+					<p class="text-sm text-muted-foreground">
 						Find exactly what you need to level up your productivity
 					</p>
 				</div>
 
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 					{#each Object.entries(data.categorizedPosts) as [categoryKey, posts]}
 						{@const category = data.categories[categoryKey]}
 						{@const IconComponent = categoryIcons[categoryKey]}
@@ -284,29 +270,29 @@
 						{#if posts?.length}
 							<a
 								href="/blogs/{categoryKey}"
-								class="group bg-card rounded-lg p-8 shadow-ink hover:shadow-xl transition-all duration-300 hover:scale-105 border border-border tx tx-frame tx-weak pressable"
+								class="group bg-card border border-border rounded-lg p-5 shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper pressable"
 							>
 								<div
-									class="flex items-center justify-center w-12 h-12 {colors.iconBg} rounded-xl mb-6 group-hover:scale-110 transition-transform"
+									class="flex items-center justify-center w-10 h-10 {colors.iconBg} rounded-lg mb-3 group-hover:scale-105 transition-transform"
 								>
-									<IconComponent class="w-6 h-6 {colors.iconText}" />
+									<IconComponent class="w-5 h-5 {colors.iconText}" />
 								</div>
 
-								<h3 class="text-xl font-bold text-foreground mb-3">
+								<h3 class="text-base font-semibold text-foreground mb-1">
 									{category.name}
 								</h3>
 
-								<p class="text-muted-foreground mb-4">
+								<p class="text-sm text-muted-foreground mb-3 line-clamp-2">
 									{category.description}
 								</p>
 
-								<div class="flex items-center justify-between">
-									<span class="text-sm text-muted-foreground">
+								<div class="flex items-center justify-between text-xs">
+									<span class="text-muted-foreground">
 										{posts.length} article{posts.length !== 1 ? 's' : ''}
 									</span>
-									<div class="flex items-center {colors.linkText} font-medium">
-										View all <ArrowRight class="w-4 h-4 ml-1" />
-									</div>
+									<span class="flex items-center gap-1 text-accent font-medium">
+										View all <ArrowRight class="w-3 h-3" />
+									</span>
 								</div>
 							</a>
 						{/if}
@@ -316,89 +302,78 @@
 		</section>
 
 		<!-- Recent Posts by Category -->
-		<section class="py-20 bg-card">
-			<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+		<section class="py-8 sm:py-12 bg-muted/30 border-t border-border">
+			<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 				{#each Object.entries(data.categorizedPosts) as [categoryKey, posts]}
 					{@const category = data.categories[categoryKey]}
 					{@const colors = getCategoryColorClasses(categoryKey)}
 
 					{#if posts.length > 0}
-						<div class="mb-16 last:mb-0">
-							<div class="flex items-center justify-between mb-8">
-								<h2 class="text-2xl font-bold text-foreground">
+						<div class="mb-10 last:mb-0">
+							<div class="flex items-center justify-between mb-4">
+								<h2 class="text-lg font-bold text-foreground">
 									Latest from {category.name}
 								</h2>
 								{#if posts.length > 5}
 									<a
 										href="/blogs/{categoryKey}"
-										class="flex items-center {colors.linkText} font-medium hover:underline"
+										class="flex items-center gap-1 text-accent text-sm font-medium hover:underline"
 									>
-										View all <ArrowRight class="w-4 h-4 ml-1" />
+										View all <ArrowRight class="w-3 h-3" />
 									</a>
 								{/if}
 							</div>
 
-							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+							<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 								{#each posts.slice(0, 5) as post}
-									<article
-										class="bg-background rounded-lg overflow-hidden hover:shadow-ink transition-shadow border border-border"
-									>
-										<div class="p-6">
-											<div
-												class="flex items-center space-x-2 text-sm text-muted-foreground mb-3"
-											>
-												<span
-													class="px-2.5 py-0.5 {colors.bg} {colors.text} rounded-full font-medium text-xs text-center"
-												>
-													{category.name}
-												</span>
-												<div class="flex items-center">
-													<Calendar class="w-3 h-3 mr-1" />
-													{format(new Date(post.date), 'MMM dd, yyyy')}
-												</div>
-											</div>
-
-											<h3
-												class="font-semibold text-foreground mb-3 line-clamp-2"
-											>
-												{post.title}
-											</h3>
-
-											<p
-												class="text-muted-foreground text-sm mb-4 line-clamp-3"
-											>
-												{post.description}
-											</p>
-
-											<div class="flex items-center justify-between">
+									<article class="group">
+										<a
+											href="/blogs/{post.category}/{post.slug}"
+											class="block bg-card border border-border rounded-lg overflow-hidden hover:shadow-ink hover:border-accent/40 transition-all duration-200"
+										>
+											<div class="p-4">
 												<div
-													class="flex items-center text-xs text-muted-foreground"
+													class="flex items-center gap-2 text-xs text-muted-foreground mb-2"
 												>
-													<Clock class="w-3 h-3 mr-1" />
-													{post.readingTime} min read
+													<span
+														class="px-2 py-0.5 {colors.bg} {colors.text} rounded-full font-medium"
+													>
+														{category.name}
+													</span>
+													<span class="flex items-center gap-1">
+														<Calendar class="w-3 h-3" />
+														{format(new Date(post.date), 'MMM dd, yyyy')}
+													</span>
 												</div>
 
-												<a
-													href="/blogs/{post.category}/{post.slug}"
-													class="flex items-center {colors.linkText} text-sm font-medium hover:underline"
+												<h3
+													class="text-sm font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-accent transition-colors"
 												>
-													Read more <ArrowRight class="w-3 h-3 ml-1" />
-												</a>
+													{post.title}
+												</h3>
+
+												<p
+													class="text-xs text-muted-foreground mb-3 line-clamp-2"
+												>
+													{post.description}
+												</p>
+
+												<div class="flex items-center justify-between">
+													<span
+														class="flex items-center gap-1 text-xs text-muted-foreground"
+													>
+														<Clock class="w-3 h-3" />
+														{post.readingTime} min
+													</span>
+
+													<span
+														class="text-xs text-accent font-medium flex items-center gap-1"
+													>
+														Read <ArrowRight class="w-3 h-3" />
+													</span>
+												</div>
 											</div>
-
-											{#if post.tags.length > 0}
-												<div class="flex flex-wrap gap-1 mt-3">
-													{#each post.tags.slice(0, 3) as tag}
-														<span
-															class="inline-flex items-center px-2 py-1 rounded text-xs bg-card text-muted-foreground"
-														>
-															<Tag class="w-2 h-2 mr-1" />
-															{tag}
-														</span>
-													{/each}
-												</div>
-											{/if}
-										</div>
+										</a>
 									</article>
 								{/each}
 							</div>
@@ -408,31 +383,4 @@
 			</div>
 		</section>
 	{/if}
-
-	<!-- Newsletter CTA -->
-	<!-- <section class="py-16 bg-gradient-to-r from-blue-600 to-purple-600">
-		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-			<div class="bg-white bg-opacity-10 rounded-2xl p-8">
-				<h3 class="text-2xl font-bold text-white mb-4">Stay Updated with BuildOS</h3>
-				<p class="text-blue-100 mb-6">
-					Get the latest productivity tips, product updates, and exclusive insights
-					delivered to your inbox.
-				</p>
-				<div class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
-					<input
-						type="email"
-						placeholder="Enter your email"
-						class="flex-1 px-4 py-3 rounded-lg border-0 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white"
-					/>
-					<Button
-						variant="primary"
-						size="md"
-						class="px-6 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors"
-					>
-						Subscribe
-					</Button>
-				</div>
-			</div>
-		</div>
-	</section> -->
 </div>

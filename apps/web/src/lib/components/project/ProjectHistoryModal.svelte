@@ -252,7 +252,7 @@
 					<div
 						class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-4"
 					></div>
-					<p class="text-gray-600 dark:text-gray-400 text-sm">
+					<p class="text-muted-foreground text-sm">
 						Loading project history...
 					</p>
 				</div>
@@ -261,12 +261,12 @@
 			<div class="flex items-center justify-center h-full">
 				<div class="text-center max-w-md px-6">
 					<AlertCircle class="w-12 h-12 text-rose-500 mx-auto mb-4 opacity-80" />
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<h3 class="text-lg font-semibold text-foreground mb-2">
 						{error === 'No changes found between versions'
 							? 'No Changes Found'
 							: 'Error Loading History'}
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground">
 						{error === 'No changes found between versions'
 							? "This project hasn't been modified since it was created."
 							: error}
@@ -276,11 +276,11 @@
 		{:else if comparisons.length === 0}
 			<div class="flex items-center justify-center h-full">
 				<div class="text-center max-w-md px-6">
-					<Clock class="w-12 h-12 text-gray-400 mx-auto mb-4 opacity-60" />
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<Clock class="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-60" />
+					<h3 class="text-lg font-semibold text-foreground mb-2">
 						No History Available
 					</h3>
-					<p class="text-sm text-gray-600 dark:text-gray-400">
+					<p class="text-sm text-muted-foreground">
 						This project doesn't have any recorded changes yet.
 					</p>
 				</div>
@@ -288,17 +288,17 @@
 		{:else}
 			<!-- Navigation Header - Sticky at top -->
 			<div
-				class="sticky top-0 z-0 px-6 py-4 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50"
+				class="sticky top-0 z-0 px-6 py-4 bg-card/80/80 backdrop-blur-xl border-b border-border/50/50"
 			>
 				<div class="space-y-3">
 					<!-- Version info and controls -->
 					<div class="flex items-center justify-between gap-4">
 						<div>
-							<div class="text-sm font-semibold text-gray-900 dark:text-white">
+							<div class="text-sm font-semibold text-foreground">
 								Version {currentComparison.fromVersion.version_number} → Version
 								{currentComparison.toVersion.version_number}
 							</div>
-							<div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+							<div class="text-xs text-muted-foreground mt-0.5">
 								{comparisons.length} total comparison{comparisons.length !== 1
 									? 's'
 									: ''}
@@ -307,7 +307,7 @@
 
 						<!-- Navigation Controls -->
 						<div class="flex items-center space-x-3">
-							<span class="text-xs font-medium text-gray-500 dark:text-gray-400">
+							<span class="text-xs font-medium text-muted-foreground">
 								{currentComparisonIndex + 1} of {comparisons.length}
 							</span>
 							<div class="flex items-center space-x-2">
@@ -316,7 +316,7 @@
 									disabled={currentComparisonIndex === 0}
 									variant="outline"
 									size="md"
-									class="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+									class="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-muted transition-colors"
 									aria-label="Previous comparison"
 								>
 									<ChevronLeft class="w-4 h-4" />
@@ -326,7 +326,7 @@
 									disabled={currentComparisonIndex === comparisons.length - 1}
 									variant="outline"
 									size="md"
-									class="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+									class="p-2.5 min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg hover:bg-muted transition-colors"
 									aria-label="Next comparison"
 								>
 									<ChevronRight class="w-4 h-4" />
@@ -337,13 +337,13 @@
 
 					<!-- Date info -->
 					<div
-						class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 font-medium"
+						class="flex items-center gap-3 text-xs text-muted-foreground font-medium"
 					>
 						<div class="flex items-center space-x-1.5">
 							<Clock class="w-3.5 h-3.5 opacity-60" />
 							<span>{formatDate(currentComparison.fromVersion.created_at)}</span>
 						</div>
-						<div class="text-gray-300 dark:text-gray-600">→</div>
+						<div class="text-muted-foreground">→</div>
 						<div class="flex items-center space-x-1.5">
 							<Clock class="w-3.5 h-3.5 opacity-60" />
 							<span>{formatDate(currentComparison.toVersion.created_at)}</span>
@@ -357,7 +357,7 @@
 				<div class="flex flex-col lg:flex-row min-h-full">
 					<!-- Diff Content - Scrolls independently -->
 					<div
-						class="flex-1 lg:w-2/3 p-6 lg:border-r border-gray-200/50 dark:border-gray-700/50"
+						class="flex-1 lg:w-2/3 p-6 lg:border-r border-border/50/50"
 					>
 						<DiffView
 							diffs={currentComparison.diffs}
@@ -370,27 +370,27 @@
 
 					<!-- Braindump Section - Scrolls with content -->
 					<div
-						class="w-full lg:w-1/3 p-6 bg-gray-50/50 dark:bg-gray-900/30 border-t lg:border-t-0 border-gray-200/50 dark:border-gray-700/50"
+						class="w-full lg:w-1/3 p-6 bg-muted/50/30 border-t lg:border-t-0 border-border/50/50"
 					>
 						<h3
-							class="text-base font-semibold text-gray-900 dark:text-white mb-4 tracking-tight"
+							class="text-base font-semibold text-foreground mb-4 tracking-tight"
 						>
 							Related Braindump
 						</h3>
 
 						{#if currentBraindump}
 							<div
-								class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200/60 dark:border-gray-700/60 overflow-hidden shadow-sm"
+								class="bg-card rounded-xl border border-border/60/60 overflow-hidden shadow-ink"
 							>
 								<!-- Braindump Header -->
-								<div class="p-4 border-b border-gray-100 dark:border-gray-700/50">
+								<div class="p-4 border-b border-border/50">
 									<h4
-										class="font-semibold text-gray-900 dark:text-white mb-2.5 text-sm"
+										class="font-semibold text-foreground mb-2.5 text-sm"
 									>
 										{currentBraindump.title || 'Untitled Braindump'}
 									</h4>
 									<div
-										class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400"
+										class="flex items-center justify-between text-xs text-muted-foreground"
 									>
 										<div class="flex items-center space-x-1.5">
 											<Clock class="w-3 h-3 opacity-60" />
@@ -412,7 +412,7 @@
 								<div class="p-4">
 									{#if currentBraindump.preview}
 										<div
-											class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
+											class="text-sm text-foreground leading-relaxed"
 										>
 											{#if expandedBraindump}
 												<p class="whitespace-pre-wrap">
@@ -443,7 +443,7 @@
 											{/if}
 										</div>
 									{:else}
-										<p class="text-sm text-gray-500 dark:text-gray-400 italic">
+										<p class="text-sm text-muted-foreground italic">
 											No content preview available.
 										</p>
 									{/if}
@@ -451,7 +451,7 @@
 							</div>
 						{:else}
 							<div class="text-center py-12">
-								<p class="text-gray-500 dark:text-gray-400 text-sm">
+								<p class="text-muted-foreground text-sm">
 									No braindump found for this version.
 								</p>
 							</div>

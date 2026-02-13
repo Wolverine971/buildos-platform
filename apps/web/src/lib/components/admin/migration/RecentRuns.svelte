@@ -159,10 +159,10 @@
 
 	<!-- Recent Runs List -->
 	<div class="space-y-2">
-		<h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Recent Runs</h3>
+		<h3 class="text-sm font-semibold text-foreground">Recent Runs</h3>
 
 		{#if recentRuns.length === 0}
-			<p class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+			<p class="py-4 text-center text-sm text-muted-foreground">
 				No migration runs recorded yet.
 			</p>
 		{:else}
@@ -170,7 +170,7 @@
 				{#each recentRuns as run}
 					{@const StatusIcon = getStatusIcon(run.status)}
 					<div
-						class="rounded-lg border border-gray-200 bg-white p-3 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+						class="rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted"
 					>
 						<div
 							class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
@@ -187,7 +187,7 @@
 									<StatusIcon class="h-4 w-4" />
 								</div>
 								<div>
-									<p class="font-medium text-gray-900 dark:text-gray-100">
+									<p class="font-medium text-foreground">
 										{run.projectsProcessed} projects
 										{#if run.projectsFailed > 0}
 											<span class="text-rose-600 dark:text-rose-400">
@@ -195,10 +195,10 @@
 											</span>
 										{/if}
 									</p>
-									<p class="text-xs text-gray-500 dark:text-gray-400">
+									<p class="text-xs text-muted-foreground">
 										{formatDate(run.startedAt)}
 										{#if run.completedAt}
-											<span class="text-gray-400">•</span>
+											<span class="text-muted-foreground">•</span>
 											Duration: {formatDuration(
 												run.startedAt,
 												run.completedAt
@@ -236,7 +236,7 @@
 
 						{#if run.initiatedByEmail}
 							<p
-								class="mt-2 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400"
+								class="mt-2 flex items-center gap-1 text-xs text-muted-foreground"
 							>
 								<User class="h-3 w-3" />
 								{run.initiatedByEmail}

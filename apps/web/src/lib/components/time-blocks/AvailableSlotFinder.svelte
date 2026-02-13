@@ -117,7 +117,7 @@
 			onclick={toggleEnabled}
 		>
 			<span
-				class={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-150 ease-in-out ${
+				class={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-card shadow-ink ring-0 transition duration-150 ease-in-out ${
 					config.enabled ? 'translate-x-5' : 'translate-x-0'
 				}`}
 			></span>
@@ -176,10 +176,10 @@
 							class="flex-1 h-1.5 bg-muted-foreground rounded-lg appearance-none cursor-pointer
 								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
 								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-ink
 								[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full
 								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
-								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-sm"
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-ink"
 						/>
 					</div>
 					<!-- Max Duration Slider -->
@@ -195,10 +195,10 @@
 							class="flex-1 h-1.5 bg-muted-foreground rounded-lg appearance-none cursor-pointer
 								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
 								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-ink
 								[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full
 								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
-								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-sm"
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-ink"
 						/>
 					</div>
 				</div>
@@ -238,10 +238,10 @@
 							class="flex-1 h-1.5 bg-muted-foreground rounded-lg appearance-none cursor-pointer
 								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
 								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-ink
 								[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full
 								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
-								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-sm"
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-ink"
 						/>
 					</div>
 					<!-- Latest End Slider -->
@@ -257,10 +257,10 @@
 							class="flex-1 h-1.5 bg-muted-foreground rounded-lg appearance-none cursor-pointer
 								[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
 								[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm
+								[&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-ink
 								[&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full
 								[&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:cursor-pointer
-								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-sm"
+								[&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-ink"
 						/>
 					</div>
 				</div>

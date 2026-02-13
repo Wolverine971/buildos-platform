@@ -171,7 +171,7 @@
 </script>
 
 <section
-	class="recurring-section border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900"
+	class="recurring-section border border-border rounded-lg overflow-hidden bg-card"
 	aria-labelledby="recurring-heading"
 	aria-describedby="recurring-description"
 >
@@ -208,7 +208,7 @@
 				<div class="flex-1 min-w-0">
 					<h3
 						id="recurring-heading"
-						class="font-semibold text-base sm:text-lg text-gray-900 dark:text-white truncate"
+						class="font-semibold text-base sm:text-lg text-foreground truncate"
 					>
 						Recurring Tasks
 					</h3>
@@ -224,7 +224,7 @@
 					{recurringTasks.length}
 				</span>
 
-				<span class="hidden sm:inline text-xs text-gray-400 dark:text-gray-500 ml-1">
+				<span class="hidden sm:inline text-xs text-muted-foreground ml-1">
 					{isCollapsed ? 'Click to expand' : 'Click to collapse'}
 				</span>
 			</div>
@@ -239,7 +239,7 @@
 		aria-label="Recurring tasks list"
 	>
 		<div
-			class="content-inner border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+			class="content-inner border-t border-border bg-card"
 		>
 			<div class="p-4">
 				{#if recurringTasks.length > 0}
@@ -251,7 +251,7 @@
 						{#each recurringTasks as task, index (task.id)}
 							<div
 								role="listitem"
-								class="recurring-task-item bg-gray-50 dark:bg-gray-800 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+								class="recurring-task-item bg-muted rounded-lg p-4 hover:bg-muted transition-colors cursor-pointer"
 								animate:flip={{ duration: 300, easing: cubicOut }}
 								onclick={() => dispatch('editTask', { task })}
 								onkeydown={(e) => {
@@ -268,7 +268,7 @@
 										<!-- Title with today indicator -->
 										<div class="flex items-center gap-2 mb-1">
 											<h4
-												class="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate"
+												class="font-medium text-sm sm:text-base text-foreground truncate"
 											>
 												{task.title}
 											</h4>
@@ -281,7 +281,7 @@
 											{/if}
 											{#if task.status && task.status !== 'backlog' && task.status !== 'in_progress'}
 												<span
-													class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+													class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground dark:text-muted-foreground"
 												>
 													{task.status}
 												</span>
@@ -291,7 +291,7 @@
 										<!-- Task description -->
 										{#if task.description}
 											<p
-												class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 line-clamp-1 mb-2"
+												class="text-xs sm:text-sm text-muted-foreground line-clamp-1 mb-2"
 											>
 												{task.description}
 											</p>
@@ -312,7 +312,7 @@
 											<!-- Start date -->
 											{#if task.start_date}
 												<span
-													class="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400"
+													class="inline-flex items-center gap-1 text-muted-foreground"
 												>
 													<Calendar class="w-3 h-3" />
 													Started: {format(
@@ -332,7 +332,7 @@
 											<!-- Next occurrence -->
 											{#if task.start_date}
 												<span
-													class="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400"
+													class="inline-flex items-center gap-1 text-muted-foreground"
 												>
 													<Clock class="w-3 h-3" />
 													Next: {getNextOccurrence(task)}
@@ -369,7 +369,7 @@
 											<!-- Duration if exists -->
 											{#if task.duration_minutes}
 												<span
-													class="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400"
+													class="inline-flex items-center gap-1 text-muted-foreground"
 												>
 													⏱️ {task.duration_minutes} min
 												</span>
@@ -387,7 +387,7 @@
 												dispatch('editTask', { task });
 											}}
 											aria-label="Edit {task.title}"
-											class="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+											class="p-1.5 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
 										>
 											<svg
 												class="w-4 h-4"
@@ -409,12 +409,12 @@
 						{/each}
 					</div>
 				{:else}
-					<div class="empty-state text-center py-8 text-gray-500 dark:text-gray-400">
+					<div class="empty-state text-center py-8 text-muted-foreground">
 						<RefreshCw
-							class="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600"
+							class="w-12 h-12 mx-auto mb-3 text-muted-foreground"
 						/>
 						<p class="text-sm">No recurring tasks in this project</p>
-						<p class="text-xs mt-1 text-gray-400 dark:text-gray-500">
+						<p class="text-xs mt-1 text-muted-foreground">
 							Create recurring tasks to see them here
 						</p>
 					</div>

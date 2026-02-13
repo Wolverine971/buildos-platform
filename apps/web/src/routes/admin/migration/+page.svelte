@@ -331,11 +331,11 @@
 	{/if}
 
 	<!-- Tab Navigation -->
-	<div class="flex border-b border-gray-200 dark:border-gray-700">
+	<div class="flex border-b border-border">
 		<button
 			class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'overview'
 				? 'border-b-2 border-purple-500 text-purple-600 dark:text-purple-400'
-				: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}"
+				: 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'}"
 			onclick={() => switchTab('overview')}
 		>
 			<Globe class="mr-2 inline h-4 w-4" />
@@ -344,7 +344,7 @@
 		<button
 			class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'users'
 				? 'border-b-2 border-purple-500 text-purple-600 dark:text-purple-400'
-				: 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}"
+				: 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'}"
 			onclick={() => switchTab('users')}
 		>
 			<Users class="mr-2 inline h-4 w-4" />
@@ -352,7 +352,7 @@
 		</button>
 		<a
 			href="/admin/migration/errors"
-			class="px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+			class="px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground dark:hover:text-foreground"
 		>
 			<AlertTriangle class="mr-2 inline h-4 w-4" />
 			Errors
@@ -384,7 +384,7 @@
 			<!-- Recent Runs -->
 			<div class="grid gap-6 lg:grid-cols-2">
 				<AdminCard>
-					<h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
+					<h3 class="mb-4 text-lg font-semibold text-foreground">
 						Migration Runs
 					</h3>
 					<RecentRuns
@@ -398,25 +398,25 @@
 				</AdminCard>
 
 				<AdminCard>
-					<h3 class="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
+					<h3 class="mb-4 text-lg font-semibold text-foreground">
 						Quick Stats
 					</h3>
 					<div class="space-y-4">
 						<div class="flex items-center justify-between">
-							<span class="text-gray-600 dark:text-gray-400">Total Users</span>
-							<span class="font-semibold text-gray-900 dark:text-gray-100">
+							<span class="text-muted-foreground">Total Users</span>
+							<span class="font-semibold text-foreground">
 								{progressStats.users.total.toLocaleString()}
 							</span>
 						</div>
 						<div class="flex items-center justify-between">
-							<span class="text-gray-600 dark:text-gray-400">Users with Projects</span
+							<span class="text-muted-foreground">Users with Projects</span
 							>
-							<span class="font-semibold text-gray-900 dark:text-gray-100">
+							<span class="font-semibold text-foreground">
 								{progressStats.users.withProjects.toLocaleString()}
 							</span>
 						</div>
 						<div class="flex items-center justify-between">
-							<span class="text-gray-600 dark:text-gray-400"
+							<span class="text-muted-foreground"
 								>Fully Migrated Users</span
 							>
 							<span class="font-semibold text-emerald-600 dark:text-emerald-400">
@@ -424,18 +424,18 @@
 							</span>
 						</div>
 						<div class="flex items-center justify-between">
-							<span class="text-gray-600 dark:text-gray-400">Errors Pending</span>
+							<span class="text-muted-foreground">Errors Pending</span>
 							<span
 								class="font-semibold {progressStats.errors.total > 0
 									? 'text-rose-600 dark:text-rose-400'
-									: 'text-gray-900 dark:text-gray-100'}"
+									: 'text-foreground'}"
 							>
 								{progressStats.errors.total.toLocaleString()}
 							</span>
 						</div>
 						{#if data.globalProgress?.lastRefreshed}
-							<div class="border-t border-gray-200 pt-4 dark:border-gray-700">
-								<p class="text-xs text-gray-500 dark:text-gray-400">
+							<div class="border-t border-border pt-4">
+								<p class="text-xs text-muted-foreground">
 									Last updated: {new Date(
 										data.globalProgress.lastRefreshed
 									).toLocaleString()}
@@ -469,7 +469,7 @@
 					></div>
 				</div>
 			{:else}
-				<p class="py-8 text-center text-gray-500 dark:text-gray-400">
+				<p class="py-8 text-center text-muted-foreground">
 					Click to load user list...
 				</p>
 			{/if}

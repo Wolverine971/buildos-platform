@@ -24,7 +24,7 @@
 </script>
 
 <div class="space-y-4">
-	<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center space-x-2">
+	<h4 class="text-sm font-medium text-foreground flex items-center space-x-2">
 		<Settings class="w-4 h-4" />
 		<span>Configure Task Synthesis</span>
 	</h4>
@@ -32,10 +32,10 @@
 	<!-- Consolidation Settings -->
 	<div class="space-y-3">
 		<div class="flex items-start space-x-3">
-			<GitMerge class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
+			<GitMerge class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-foreground">
 						Task Consolidation
 					</div>
 					<input
@@ -49,7 +49,7 @@
 				{#if config.consolidation.enabled}
 					<div class="pl-4 space-y-2">
 						<div>
-							<div class="text-xs text-gray-600 dark:text-gray-400">
+							<div class="text-xs text-muted-foreground">
 								Consolidation Aggressiveness
 							</div>
 							<select
@@ -60,8 +60,8 @@
 										'aggressiveness',
 										e.currentTarget.value
 									)}
-								class="mt-1 block w-full text-sm border-gray-300 dark:border-gray-600 rounded-md
-									bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+								class="mt-1 block w-full text-sm border-border rounded-md
+									bg-card text-foreground
 									focus:ring-blue-500 focus:border-blue-500"
 							>
 								<option value="conservative"
@@ -81,7 +81,7 @@
 								onchange={() => toggleFeature('consolidation', 'preserveDetails')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
-							<span class="text-xs text-gray-600 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								Preserve all task details when consolidating
 							</span>
 						</label>
@@ -94,10 +94,10 @@
 	<!-- Sequencing Settings -->
 	<div class="space-y-3">
 		<div class="flex items-start space-x-3">
-			<Layers class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
+			<Layers class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-foreground">
 						Task Sequencing
 					</div>
 					<input
@@ -117,7 +117,7 @@
 								onchange={() => toggleFeature('sequencing', 'considerDependencies')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
-							<span class="text-xs text-gray-600 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								Consider task dependencies
 							</span>
 						</label>
@@ -129,7 +129,7 @@
 								onchange={() => toggleFeature('sequencing', 'optimizeForParallel')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
-							<span class="text-xs text-gray-600 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								Optimize for parallel execution
 							</span>
 						</label>
@@ -142,10 +142,10 @@
 	<!-- Time Estimation Settings -->
 	<div class="space-y-3">
 		<div class="flex items-start space-x-3">
-			<Clock class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
+			<Clock class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-foreground">
 						Time Estimation
 					</div>
 					<input
@@ -159,7 +159,7 @@
 				{#if config.timeEstimation.enabled}
 					<div class="pl-4 space-y-2">
 						<div>
-							<div class="text-xs text-gray-600 dark:text-gray-400">
+							<div class="text-xs text-muted-foreground">
 								Confidence Level
 							</div>
 							<select
@@ -170,8 +170,8 @@
 										'confidenceLevel',
 										e.currentTarget.value
 									)}
-								class="mt-1 block w-full text-sm border-gray-300 dark:border-gray-600 rounded-md
-									bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+								class="mt-1 block w-full text-sm border-border rounded-md
+									bg-card text-foreground
 									focus:ring-blue-500 focus:border-blue-500"
 							>
 								<option value="optimistic">Optimistic - Best case scenario</option>
@@ -190,7 +190,7 @@
 									toggleFeature('timeEstimation', 'includeBufferTime')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
-							<span class="text-xs text-gray-600 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								Include buffer time between tasks
 							</span>
 						</label>
@@ -203,10 +203,10 @@
 	<!-- Gap Analysis Settings -->
 	<div class="space-y-3">
 		<div class="flex items-start space-x-3">
-			<Search class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
+			<Search class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-foreground">
 						Gap Analysis
 					</div>
 					<input
@@ -228,7 +228,7 @@
 									toggleFeature('gapAnalysis', 'includePrerequisites')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
-							<span class="text-xs text-gray-600 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								Identify missing prerequisites
 							</span>
 						</label>
@@ -240,7 +240,7 @@
 								onchange={() => toggleFeature('gapAnalysis', 'includeFollowUps')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
-							<span class="text-xs text-gray-600 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								Suggest follow-up tasks
 							</span>
 						</label>
@@ -252,7 +252,7 @@
 								onchange={() => toggleFeature('gapAnalysis', 'suggestMilestones')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
-							<span class="text-xs text-gray-600 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								Suggest project milestones
 							</span>
 						</label>
@@ -265,10 +265,10 @@
 	<!-- Dependencies Settings -->
 	<div class="space-y-3">
 		<div class="flex items-start space-x-3">
-			<Link class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
+			<Link class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-foreground">
 						Task Dependencies
 					</div>
 					<input
@@ -288,7 +288,7 @@
 								onchange={() => toggleFeature('dependencies', 'autoDetect')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
-							<span class="text-xs text-gray-600 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								Auto-detect dependencies from task descriptions
 							</span>
 						</label>
@@ -300,7 +300,7 @@
 								onchange={() => toggleFeature('dependencies', 'strictMode')}
 								class="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
 							/>
-							<span class="text-xs text-gray-600 dark:text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								Enforce strict dependency chains
 							</span>
 						</label>
@@ -313,10 +313,10 @@
 	<!-- Grouping Settings -->
 	<div class="space-y-3">
 		<div class="flex items-start space-x-3">
-			<Layers class="w-4 h-4 text-gray-400 dark:text-gray-500 mt-1" />
+			<Layers class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<div class="text-sm font-medium text-foreground">
 						Task Grouping
 					</div>
 					<input
@@ -330,15 +330,15 @@
 				{#if config.grouping.enabled}
 					<div class="pl-4 space-y-2">
 						<div>
-							<div class="text-xs text-gray-600 dark:text-gray-400">
+							<div class="text-xs text-muted-foreground">
 								Grouping Strategy
 							</div>
 							<select
 								value={config.grouping.strategy}
 								onchange={(e) =>
 									updateSetting('grouping', 'strategy', e.currentTarget.value)}
-								class="mt-1 block w-full text-sm border-gray-300 dark:border-gray-600 rounded-md
-									bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+								class="mt-1 block w-full text-sm border-border rounded-md
+									bg-card text-foreground
 									focus:ring-blue-500 focus:border-blue-500"
 							>
 								<option value="automatic"
@@ -351,7 +351,7 @@
 						</div>
 
 						<div>
-							<div class="text-xs text-gray-600 dark:text-gray-400">
+							<div class="text-xs text-muted-foreground">
 								Maximum Group Size: {config.grouping.maxGroupSize}
 							</div>
 							<input

@@ -136,7 +136,7 @@
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
 			<Sparkles class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-			<h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+			<h3 class="text-sm font-semibold text-foreground">
 				Core Project Dimensions
 			</h3>
 		</div>
@@ -149,7 +149,7 @@
 		{/if}
 	</div>
 
-	<p class="text-xs text-gray-600 dark:text-gray-400">
+	<p class="text-xs text-muted-foreground">
 		Strategic dimensions automatically extracted from brain dumps. Expand to view or edit each
 		dimension.
 	</p>
@@ -158,7 +158,7 @@
 	<div class="space-y-2">
 		{#each dimensions as dimension (dimension.key)}
 			<div
-				class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden transition-all duration-200 hover:shadow-md"
+				class="border border-border rounded-lg overflow-hidden transition-all duration-200 hover:shadow-ink"
 			>
 				<!-- Dimension Header -->
 				<button
@@ -170,23 +170,23 @@
 						<span class="text-lg">{dimension.icon}</span>
 						<div class="text-left">
 							<div
-								class="font-medium text-sm text-gray-900 dark:text-white flex items-center gap-2"
+								class="font-medium text-sm text-foreground flex items-center gap-2"
 							>
 								{dimension.label}
 								{#if getDimensionValue(dimension.key) && getDimensionValue(dimension.key).trim().length > 0}
 									<span class="w-2 h-2 bg-green-500 rounded-full"></span>
 								{/if}
 							</div>
-							<div class="text-xs text-gray-500 dark:text-gray-400">
+							<div class="text-xs text-muted-foreground">
 								{dimension.description}
 							</div>
 						</div>
 					</div>
 					<div class="ml-2">
 						{#if expandedSection === dimension.key}
-							<ChevronDown class="w-5 h-5 text-gray-400" />
+							<ChevronDown class="w-5 h-5 text-muted-foreground" />
 						{:else}
-							<ChevronRight class="w-5 h-5 text-gray-400" />
+							<ChevronRight class="w-5 h-5 text-muted-foreground" />
 						{/if}
 					</div>
 				</button>
@@ -194,17 +194,17 @@
 				<!-- Expanded Content -->
 				{#if expandedSection === dimension.key}
 					<div
-						class="px-4 py-3 bg-white dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700"
+						class="px-4 py-3 bg-card/50 border-t border-border"
 					>
 						<Textarea
 							value={getDimensionValue(dimension.key) || ''}
 							oninput={(e) => onUpdate(dimension.key, e.currentTarget.value || null)}
 							placeholder={dimension.placeholder}
 							rows={4}
-							class="w-full text-sm bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
+							class="w-full text-sm bg-muted/50 border-border focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
 						/>
 						{#if getDimensionValue(dimension.key) && getDimensionValue(dimension.key).trim().length > 0}
-							<div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+							<div class="mt-2 text-xs text-muted-foreground">
 								{getDimensionValue(dimension.key).length} characters
 							</div>
 						{/if}

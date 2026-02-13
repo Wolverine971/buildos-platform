@@ -39,7 +39,7 @@
 		<!-- Hidden notifications count badge -->
 		{#if hiddenCount > 0}
 			<div
-				class="bg-gray-800 dark:bg-gray-700 text-white px-3 py-1 rounded-md text-sm font-medium shadow-lg pointer-events-auto"
+				class="bg-gray-800 text-white px-3 py-1 rounded-md text-sm font-medium shadow-ink-strong pointer-events-auto"
 				transition:fly={{ y: 20, duration: 200 }}
 			>
 				+{hiddenCount} more

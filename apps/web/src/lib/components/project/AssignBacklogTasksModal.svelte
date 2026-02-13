@@ -221,17 +221,17 @@
 <Modal {isOpen} onClose={handleClose} size="lg">
 	{#snippet header()}
 		<div
-			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
+			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-border"
 		>
 			<div class="flex items-center gap-2 sm:gap-3">
 				<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
 					<Inbox class="w-5 h-5 text-blue-600 dark:text-blue-400" />
 				</div>
 				<div class="min-w-0">
-					<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+					<h2 class="text-base sm:text-lg font-semibold text-foreground">
 						Assign Backlog Tasks
 					</h2>
-					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					<p class="text-sm text-muted-foreground mt-1">
 						{backlogTasks.length} task{backlogTasks.length !== 1 ? 's' : ''} to assign
 					</p>
 				</div>
@@ -251,7 +251,7 @@
 
 			<!-- Assignment Method Selection -->
 			<div class="space-y-3">
-				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+				<h3 class="text-sm font-medium text-foreground">
 					How would you like to assign these tasks?
 				</h3>
 				<div class="space-y-2">
@@ -263,26 +263,26 @@
 							class="w-full p-3 sm:p-4 rounded-lg border-2 transition-all text-left
 									{selectedMethod === method.value
 								? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-								: 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
+								: 'border-border hover:border-border'}
 									{method.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}"
 						>
 							<div class="flex items-start gap-3">
 								<div
 									class="p-2 rounded-lg {selectedMethod === method.value
 										? 'bg-blue-100 dark:bg-blue-900/50'
-										: 'bg-gray-100 dark:bg-gray-700'}"
+										: 'bg-muted'}"
 								>
 									<MethodIcon
 										class="w-4 h-4 {selectedMethod === method.value
 											? 'text-blue-600 dark:text-blue-400'
-											: 'text-gray-600 dark:text-gray-400'}"
+											: 'text-muted-foreground'}"
 									/>
 								</div>
 								<div class="flex-1">
-									<p class="font-medium text-gray-900 dark:text-white">
+									<p class="font-medium text-foreground">
 										{method.label}
 									</p>
-									<p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+									<p class="text-sm text-muted-foreground mt-0.5">
 										{method.description}
 									</p>
 									{#if method.disabled && method.value === 'with_calendar'}
@@ -302,10 +302,10 @@
 			<!-- Auto-assign Toggle -->
 			<div class="space-y-3">
 				<div
-					class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+					class="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
 				>
 					<label for="auto-assign" class="flex items-center cursor-pointer">
-						<span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+						<span class="text-sm font-medium text-foreground">
 							Automatically assign tasks to phases
 						</span>
 					</label>
@@ -314,11 +314,11 @@
 						type="checkbox"
 						bind:checked={autoAssign}
 						onchange={(e) => handleAutoAssignChange(e.currentTarget.checked)}
-						class="h-5 w-5 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500"
+						class="h-5 w-5 text-blue-600 rounded border-border focus:ring-blue-500"
 					/>
 				</div>
 				{#if autoAssign}
-					<p class="text-sm text-gray-500 dark:text-gray-400 pl-3">
+					<p class="text-sm text-muted-foreground pl-3">
 						Tasks will be intelligently distributed across phases based on their
 						dependencies and complexity.
 					</p>
@@ -328,17 +328,17 @@
 			<!-- Phase Assignment (only shown when manual mode) -->
 			{#if !autoAssign}
 				<div class="space-y-3">
-					<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+					<h3 class="text-sm font-medium text-foreground">
 						Manually assign tasks to phases
 					</h3>
 					<div class="space-y-2 max-h-64 overflow-y-auto">
 						{#each backlogTasks as task}
 							<div
-								class="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+								class="flex items-center gap-3 p-2 bg-muted/50 rounded-lg"
 							>
 								<div class="flex-1 min-w-0">
 									<p
-										class="text-sm font-medium text-gray-900 dark:text-white truncate"
+										class="text-sm font-medium text-foreground truncate"
 									>
 										{task.title}
 									</p>
@@ -347,7 +347,7 @@
 									bind:value={taskPhaseAssignments[task.id]}
 									onchange={(e) =>
 										handlePhaseChange(task.id, e.currentTarget.value)}
-									class="px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+									class="px-3 py-1.5 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 								>
 									{#each sortedPhases as phase}
 										{@const isPastPhase =
@@ -355,11 +355,11 @@
 										<option
 											value={phase.id}
 											disabled={isPastPhase}
-											class={isPastPhase ? 'text-gray-400' : ''}
+											class={isPastPhase ? 'text-muted-foreground' : ''}
 										>
 											{phase.name}
 											{#if phase.start_date}
-												<span class="text-xs text-gray-500">
+												<span class="text-xs text-muted-foreground">
 													({new Date(phase.start_date).toLocaleDateString(
 														'en-US',
 														{
@@ -403,7 +403,7 @@
 
 	{#snippet footer()}
 		<div
-			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+			class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50"
 		>
 			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
 				<Button

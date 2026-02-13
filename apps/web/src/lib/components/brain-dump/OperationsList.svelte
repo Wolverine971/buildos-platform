@@ -241,15 +241,15 @@
 			insight: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:!text-yellow-400',
 			research: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/20 dark:!text-indigo-400',
 			idea: 'bg-teal-100 text-teal-700 dark:bg-teal-900/20 dark:!text-teal-400',
-			observation: 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:!text-gray-400',
+			observation: 'bg-muted text-foreground/20 dark:!text-muted-foreground',
 			question: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:!text-red-400'
 		};
-		return colors[category] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:!text-gray-400';
+		return colors[category] || 'bg-muted text-foreground dark:!text-muted-foreground';
 	}
 </script>
 
 {#if operations.length === 0}
-	<div class="text-center py-8 text-gray-500 dark:!text-gray-400">
+	<div class="text-center py-8 text-muted-foreground dark:!text-muted-foreground">
 		<Lightbulb class="w-12 h-12 mx-auto mb-3 opacity-30" />
 		<p>No operations parsed from the brain dump</p>
 		<p class="text-sm mt-1">Try adding projects, tasks, or notes to your brain dump</p>
@@ -257,13 +257,13 @@
 {:else}
 	<div class="space-y-4">
 		<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-			<h3 class="text-base sm:text-lg font-medium text-gray-900 dark:!text-white">
+			<h3 class="text-base sm:text-lg font-medium text-foreground dark:!text-white">
 				Review Operations ({operations.filter((op) => !disabledOperations.has(op.id))
 					.length} of
 				{operations.length}
 				enabled)
 			</h3>
-			<div class="text-xs sm:text-sm text-gray-500 dark:!text-gray-400">
+			<div class="text-xs sm:text-sm text-muted-foreground dark:!text-muted-foreground">
 				<span class="sm:hidden">Tap to edit • Uncheck to skip</span>
 				<span class="hidden sm:inline">Click to edit, uncheck to skip</span>
 			</div>
@@ -279,8 +279,8 @@
 					class="border rounded-lg p-3 sm:p-4 transition-all {disabledOperations.has(
 						operation.id
 					)
-						? 'opacity-50 bg-gray-50 dark:bg-gray-800'
-						: 'bg-white dark:bg-gray-900'} {operationColors[operation.operation]}"
+						? 'opacity-50 bg-muted'
+						: 'bg-card'} {operationColors[operation.operation]}"
 					style="content-visibility: auto; contain-intrinsic-size: 0 160px;"
 				>
 					<div class="flex flex-col sm:flex-row sm:items-start gap-3">
@@ -292,7 +292,7 @@
 									checked={!disabledOperations.has(operation.id)}
 									onchange={() => onToggleOperation(operation.id)}
 									style="min-width: 24px !important; min-height: 24px !important;"
-									class="w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:checked:bg-blue-600 cursor-pointer"
+									class="w-4 h-4 text-blue-600 bg-card border-border rounded focus:ring-blue-500 dark:checked:bg-blue-600 cursor-pointer"
 								/>
 							</div>
 							<div class="flex items-center gap-1">
@@ -309,7 +309,7 @@
 									onclick={() => onRemoveOperation(operation.id)}
 									variant="ghost"
 									size="sm"
-									class="p-2 !text-gray-400 hover:!text-red-600 dark:hover:!text-red-400"
+									class="p-2 !text-muted-foreground hover:!text-red-600 dark:hover:!text-red-400"
 									title="Remove operation"
 									icon={Trash2}
 								></Button>
@@ -322,7 +322,7 @@
 								type="checkbox"
 								checked={!disabledOperations.has(operation.id)}
 								onchange={() => onToggleOperation(operation.id)}
-								class="w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:checked:bg-blue-600 cursor-pointer"
+								class="w-4 h-4 text-blue-600 bg-card border-border rounded focus:ring-blue-500 dark:checked:bg-blue-600 cursor-pointer"
 							/>
 						</div>
 
@@ -330,7 +330,7 @@
 						<div class="flex-1 min-w-0">
 							<div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
 								<span class="text-xl sm:text-2xl">{iconData.emoji}</span>
-								<Icon class="w-4 h-4 text-gray-400 hidden sm:inline-block" />
+								<Icon class="w-4 h-4 text-muted-foreground hidden sm:inline-block" />
 								<span class="font-medium text-sm flex-1 min-w-0">
 									{getOperationDescription(operation)}
 								</span>
@@ -345,7 +345,7 @@
 							</div>
 
 							<div
-								class="text-sm text-gray-700 dark:!text-gray-300 mb-3 prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0"
+								class="text-sm text-foreground dark:!text-muted-foreground mb-3 prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0"
 							>
 								<div class="line-clamp-2 sm:line-clamp-3">
 									{@html fieldValue.html}
@@ -364,7 +364,7 @@
 										value === 'operations' ||
 										value === 'coordination'
 											? getCategoryColor(value)
-											: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:!text-gray-400'}"
+											: 'bg-muted text-muted-foreground dark:!text-muted-foreground'}"
 									>
 										<span class="font-medium">{key}:</span>
 										<span class="ml-1">
@@ -380,7 +380,7 @@
 								{/each}
 
 								{#if Object.keys(operation.data).length > 5}
-									<span class="text-gray-500 dark:!text-gray-400">
+									<span class="text-muted-foreground dark:!text-muted-foreground">
 										+{Object.keys(operation.data).length - 5}
 									</span>
 								{/if}

@@ -225,7 +225,7 @@
 
 	function getStatusColor(status: string): string {
 		const colors = {
-			draft: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+			draft: 'bg-muted text-foreground dark:text-muted-foreground',
 			scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
 			sent: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
 			delivered: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
@@ -256,13 +256,13 @@
 					variant="ghost"
 					size="sm"
 					icon={ChevronLeft}
-					class="!text-gray-500 hover:!text-gray-700 dark:!text-gray-400 dark:hover:!text-gray-300 !mb-2"
+					class="!text-muted-foreground hover:!text-foreground dark:!text-muted-foreground dark:hover:!text-muted-foreground !mb-2"
 				>
 					Back to Emails
 				</Button>
 			{/if}
 			<div class="flex items-center">
-				<h2 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+				<h2 class="text-2xl font-bold text-foreground flex items-center">
 					<Mail class="mr-3 h-6 w-6 text-blue-600 dark:text-blue-400" />
 					{activeView === 'list'
 						? 'Email Management'
@@ -274,7 +274,7 @@
 				</h2>
 			</div>
 			{#if activeView === 'list'}
-				<p class="text-gray-600 dark:text-gray-400 mt-1">
+				<p class="text-muted-foreground mt-1">
 					Manage and send emails to beta users
 				</p>
 			{/if}
@@ -282,7 +282,7 @@
 
 		{#if activeView === 'list'}
 			<div class="flex items-center space-x-3">
-				<div class="text-sm text-gray-600 dark:text-gray-400">
+				<div class="text-sm text-muted-foreground">
 					{totalItems} total emails
 				</div>
 				<Button
@@ -314,7 +314,7 @@
 	<!-- Main Content -->
 	{#if activeView === 'list'}
 		<!-- Filters and Search -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6">
+		<div class="bg-card rounded-lg shadow p-4 sm:p-6">
 			<!-- Mobile Filter Toggle -->
 			<div class="sm:hidden mb-4">
 				<Button
@@ -323,7 +323,7 @@
 					size="md"
 					icon={Filter}
 					iconPosition="right"
-					class="!w-full !justify-between !p-3 !bg-gray-50 dark:!bg-gray-700"
+					class="!w-full !justify-between !p-3 !bg-muted dark:!bg-gray-700"
 				>
 					Filters & Search
 				</Button>
@@ -335,7 +335,7 @@
 				<FormField label="Search" labelFor="mobile-search">
 					<div class="relative">
 						<Search
-							class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+							class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
 						/>
 						<TextInput
 							id="mobile-search"
@@ -388,7 +388,7 @@
 				<div class="col-span-2">
 					<div class="relative">
 						<Search
-							class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"
+							class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
 						/>
 						<TextInput
 							bind:value={searchQuery}
@@ -434,19 +434,19 @@
 		</div>
 
 		<!-- Email List -->
-		<div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+		<div class="bg-card rounded-lg shadow overflow-hidden">
 			{#if isLoading}
 				<div class="p-8 text-center">
-					<RefreshCw class="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-					<p class="text-gray-600 dark:text-gray-400">Loading emails...</p>
+					<RefreshCw class="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-4" />
+					<p class="text-muted-foreground">Loading emails...</p>
 				</div>
 			{:else if emails.length === 0}
 				<div class="p-8 text-center">
-					<Mail class="h-12 w-12 text-gray-400 mx-auto mb-4" />
-					<h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+					<Mail class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+					<h3 class="text-lg font-semibold text-foreground mb-2">
 						No Emails Found
 					</h3>
-					<p class="text-gray-600 dark:text-gray-400 mb-4">
+					<p class="text-muted-foreground mb-4">
 						{searchQuery
 							? 'Try adjusting your search criteria.'
 							: 'Start by creating your first email.'}
@@ -459,15 +459,15 @@
 				<!-- Mobile Cards View -->
 				<div class="sm:hidden">
 					{#each emails as email}
-						<div class="p-4 border-b border-gray-200 dark:border-gray-700">
+						<div class="p-4 border-b border-border">
 							<div class="flex items-start justify-between mb-2">
 								<div class="flex-1 min-w-0">
 									<h3
-										class="text-sm font-medium text-gray-900 dark:text-white truncate"
+										class="text-sm font-medium text-foreground truncate"
 									>
 										{email.subject}
 									</h3>
-									<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+									<p class="text-xs text-muted-foreground mt-1">
 										{formatDate(email.created_at)}
 									</p>
 								</div>
@@ -477,7 +477,7 @@
 										variant="ghost"
 										size="sm"
 										icon={Eye}
-										class="!p-2 !text-gray-400 hover:!text-blue-600"
+										class="!p-2 !text-muted-foreground hover:!text-blue-600"
 										title="View email"
 									/>
 									{#if email.status === 'draft' || email.status === 'scheduled'}
@@ -486,7 +486,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Edit}
-											class="!p-2 !text-gray-400 hover:!text-yellow-600"
+											class="!p-2 !text-muted-foreground hover:!text-yellow-600"
 											title="Edit email"
 										/>
 									{/if}
@@ -496,7 +496,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Trash2}
-											class="!p-2 !text-gray-400 hover:!text-red-600"
+											class="!p-2 !text-muted-foreground hover:!text-red-600"
 											title="Delete email"
 										/>
 									{/if}
@@ -512,7 +512,7 @@
 									{email.status}
 								</span>
 								<div
-									class="flex items-center space-x-3 text-gray-500 dark:text-gray-400"
+									class="flex items-center space-x-3 text-muted-foreground"
 								>
 									<span class="flex items-center">
 										<Users class="h-3 w-3 mr-1" />
@@ -527,7 +527,7 @@
 								</div>
 							</div>
 
-							<p class="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+							<p class="text-xs text-muted-foreground line-clamp-2">
 								From: {email.from_name} &lt;{email.from_email}&gt;
 							</p>
 						</div>
@@ -537,40 +537,40 @@
 				<!-- Desktop Table View -->
 				<div class="hidden sm:block overflow-x-auto">
 					<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-						<thead class="bg-gray-50 dark:bg-gray-900">
+						<thead class="bg-muted">
 							<tr>
 								<th
-									class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Email
 								</th>
 								<th
-									class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Status
 								</th>
 								<th
-									class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Recipients
 								</th>
 								<th
-									class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Created
 								</th>
 								<th
-									class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+									class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 								>
 									Actions
 								</th>
 							</tr>
 						</thead>
 						<tbody
-							class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700"
+							class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
 						>
 							{#each emails as email}
-								<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+								<tr class="hover:bg-muted">
 									<td class="px-6 py-4">
 										<div class="flex items-center">
 											<div class="flex-shrink-0 h-10 w-10">
@@ -584,12 +584,12 @@
 											</div>
 											<div class="ml-4">
 												<div
-													class="text-sm font-medium text-gray-900 dark:text-white"
+													class="text-sm font-medium text-foreground"
 												>
 													{email.subject}
 												</div>
 												<div
-													class="text-sm text-gray-500 dark:text-gray-400"
+													class="text-sm text-muted-foreground"
 												>
 													From: {email.from_name} &lt;{email.from_email}&gt;
 												</div>
@@ -607,12 +607,12 @@
 									</td>
 									<td class="px-6 py-4 whitespace-nowrap">
 										<div
-											class="flex items-center text-sm text-gray-900 dark:text-white"
+											class="flex items-center text-sm text-foreground"
 										>
-											<Users class="h-4 w-4 mr-1 text-gray-400" />
+											<Users class="h-4 w-4 mr-1 text-muted-foreground" />
 											{getRecipientCount(email)}
 											{#if email.status === 'sent' || email.status === 'delivered'}
-												<span class="ml-2 text-gray-500 dark:text-gray-400">
+												<span class="ml-2 text-muted-foreground">
 													(<Eye
 														class="h-3 w-3 inline mr-1"
 													/>{getOpenCount(email)} opened)
@@ -621,7 +621,7 @@
 										</div>
 									</td>
 									<td
-										class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
+										class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
 									>
 										{formatDate(email.created_at)}
 									</td>
@@ -634,7 +634,7 @@
 												variant="ghost"
 												size="sm"
 												icon={Eye}
-												class="!p-2 !text-gray-400 hover:!text-blue-600 !transition-colors"
+												class="!p-2 !text-muted-foreground hover:!text-blue-600 !transition-colors"
 												title="View email"
 											/>
 											{#if email.status === 'draft' || email.status === 'scheduled'}
@@ -643,7 +643,7 @@
 													variant="ghost"
 													size="sm"
 													icon={Edit}
-													class="!p-2 !text-gray-400 hover:!text-yellow-600 !transition-colors"
+													class="!p-2 !text-muted-foreground hover:!text-yellow-600 !transition-colors"
 													title="Edit email"
 												/>
 											{/if}
@@ -653,7 +653,7 @@
 													variant="ghost"
 													size="sm"
 													icon={Trash2}
-													class="!p-2 !text-gray-400 hover:!text-red-600 !transition-colors"
+													class="!p-2 !text-muted-foreground hover:!text-red-600 !transition-colors"
 													title="Delete email"
 												/>
 											{/if}
@@ -668,7 +668,7 @@
 				<!-- Pagination -->
 				{#if totalPages > 1}
 					<div
-						class="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700"
+						class="bg-card px-4 py-3 flex items-center justify-between border-t border-border"
 					>
 						<div class="flex-1 flex justify-between sm:hidden">
 							<Button
@@ -680,7 +680,7 @@
 								Previous
 							</Button>
 							<span
-								class="flex items-center text-sm text-gray-700 dark:text-gray-300"
+								class="flex items-center text-sm text-foreground"
 							>
 								{currentPage} of {totalPages}
 							</span>
@@ -695,14 +695,14 @@
 						</div>
 						<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
 							<div>
-								<p class="text-sm text-gray-700 dark:text-gray-300">
+								<p class="text-sm text-foreground">
 									Showing page <span class="font-medium">{currentPage}</span> of
 									<span class="font-medium">{totalPages}</span>
 								</p>
 							</div>
 							<div>
 								<nav
-									class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
+									class="relative z-0 inline-flex rounded-md shadow-ink -space-x-px"
 								>
 									<Button
 										onclick={prevPage}

@@ -131,7 +131,7 @@
 			<div class="space-y-6">
 				<!-- Overview -->
 				<section
-					class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900/70"
+					class="rounded-xl border border-border bg-card p-6 shadow-ink/70"
 				>
 					<div class="flex flex-wrap items-center gap-3">
 						<div
@@ -146,12 +146,12 @@
 							{/if}
 						</div>
 						<div class="flex-1 min-w-[200px] space-y-1">
-							<h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+							<h2 class="text-lg font-semibold text-foreground">
 								{notification.status === 'success'
 									? 'Synthesis Complete'
 									: 'Analyzing Tasks'}
 							</h2>
-							<p class="text-sm text-gray-500 dark:text-gray-400">
+							<p class="text-sm text-muted-foreground">
 								{notification.data.taskCount} task{notification.data.taskCount === 1
 									? ''
 									: 's'}
@@ -160,7 +160,7 @@
 						</div>
 
 						<div
-							class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400"
+							class="flex items-center gap-4 text-sm text-muted-foreground"
 						>
 							{#if duration}
 								<div class="flex items-center gap-2">
@@ -182,10 +182,10 @@
 
 				<!-- Configuration Summary -->
 				<section
-					class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50"
+					class="rounded-xl border border-border bg-muted p-4/50"
 				>
 					<h3
-						class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300 mb-3"
+						class="text-sm font-semibold uppercase tracking-wide text-foreground mb-3"
 					>
 						Configuration
 					</h3>
@@ -209,16 +209,16 @@
 
 				<!-- Progress timeline -->
 				<section
-					class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900/70"
+					class="rounded-xl border border-border bg-card p-6 shadow-ink/70"
 				>
 					<header class="mb-4 flex items-center justify-between">
 						<h3
-							class="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+							class="text-sm font-semibold uppercase tracking-wide text-muted-foreground"
 						>
 							Progress
 						</h3>
 						{#if stepsProgress}
-							<span class="text-xs text-gray-400">
+							<span class="text-xs text-muted-foreground">
 								{completedSteps}/{totalSteps} steps complete
 							</span>
 						{/if}
@@ -236,7 +236,7 @@
 													? 'border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300'
 													: step.status === 'error'
 														? 'border-red-200 bg-red-50 text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'
-														: 'border-gray-200 bg-white text-gray-400 dark:border-gray-800 dark:bg-gray-900'
+														: 'border-border bg-card text-muted-foreground'
 										}`}
 									>
 										{#if step.status === 'completed'}
@@ -253,19 +253,19 @@
 										<p
 											class={`text-sm font-medium ${
 												step.status === 'processing'
-													? 'text-gray-900 dark:text-white'
-													: 'text-gray-600 dark:text-gray-300'
+													? 'text-foreground'
+													: 'text-muted-foreground'
 											}`}
 										>
 											{step.name}
 										</p>
 										{#if step.message}
-											<p class="text-xs text-gray-500 dark:text-gray-400">
+											<p class="text-xs text-muted-foreground">
 												{step.message}
 											</p>
 										{/if}
 										{#if step.etaSeconds}
-											<p class="text-xs text-gray-400">
+											<p class="text-xs text-muted-foreground">
 												ETA ~{step.etaSeconds}s
 											</p>
 										{/if}
@@ -274,7 +274,7 @@
 							{/each}
 						</ol>
 					{:else}
-						<p class="text-sm text-gray-500 dark:text-gray-400">Tracking progress…</p>
+						<p class="text-sm text-muted-foreground">Tracking progress…</p>
 					{/if}
 				</section>
 
@@ -282,7 +282,7 @@
 				{#if notification.status === 'success' && result}
 					<!-- Insights Card -->
 					<section
-						class="rounded-xl border border-green-200 bg-green-50 p-6 shadow-sm dark:border-green-800 dark:bg-green-900/20"
+						class="rounded-xl border border-green-200 bg-green-50 p-6 shadow-ink dark:border-green-800 dark:bg-green-900/20"
 					>
 						<header
 							class="mb-4 flex items-center gap-3 text-green-700 dark:text-green-200"
@@ -300,10 +300,10 @@
 
 					<!-- Operations Summary -->
 					<section
-						class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900/70"
+						class="rounded-xl border border-border bg-card p-6 shadow-ink/70"
 					>
 						<h3
-							class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300 mb-4"
+							class="text-sm font-semibold uppercase tracking-wide text-foreground mb-4"
 						>
 							Operations Summary
 						</h3>
@@ -317,7 +317,7 @@
 										{result.consolidationCount}
 									</div>
 								</div>
-								<div class="text-xs text-gray-600 dark:text-gray-400">
+								<div class="text-xs text-muted-foreground">
 									Consolidations
 								</div>
 							</div>
@@ -334,7 +334,7 @@
 										{result.newTasksCount}
 									</div>
 								</div>
-								<div class="text-xs text-gray-600 dark:text-gray-400">
+								<div class="text-xs text-muted-foreground">
 									New Tasks
 								</div>
 							</div>
@@ -345,7 +345,7 @@
 										{result.deletionsCount}
 									</div>
 								</div>
-								<div class="text-xs text-gray-600 dark:text-gray-400">
+								<div class="text-xs text-muted-foreground">
 									Deletions
 								</div>
 							</div>
@@ -355,13 +355,13 @@
 					<!-- Task Comparison Preview -->
 					{#if result.comparison && result.comparison.length > 0}
 						<section
-							class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900/70"
+							class="rounded-xl border border-border bg-card p-6 shadow-ink/70"
 						>
 							<h3
-								class="text-sm font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300 mb-4"
+								class="text-sm font-semibold uppercase tracking-wide text-foreground mb-4"
 							>
 								Task Comparisons
-								<span class="text-gray-400 font-normal text-xs">
+								<span class="text-muted-foreground font-normal text-xs">
 									(Showing first {Math.min(3, result.comparison.length)} of {result
 										.comparison.length})
 								</span>
@@ -370,7 +370,7 @@
 							<div class="space-y-3">
 								{#each result.comparison.slice(0, 3) as item}
 									<div
-										class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700"
+										class="p-3 bg-muted/50 rounded-lg border border-border"
 									>
 										<div class="flex items-start gap-2 mb-2">
 											<span
@@ -389,7 +389,7 @@
 														: 'Deleted'}
 											</span>
 										</div>
-										<p class="text-xs text-gray-600 dark:text-gray-400 italic">
+										<p class="text-xs text-muted-foreground italic">
 											{item.reasoning}
 										</p>
 									</div>
@@ -409,9 +409,9 @@
 	{#snippet footer()}
 		<!-- Footer actions -->
 		<div
-			class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40"
+			class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-border bg-muted/40"
 		>
-			<div class="text-xs text-gray-500 dark:text-gray-400">
+			<div class="text-xs text-muted-foreground">
 				{#if duration}
 					Completed in {duration}
 				{/if}

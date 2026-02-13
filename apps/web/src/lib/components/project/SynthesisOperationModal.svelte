@@ -170,7 +170,7 @@
 		}
 
 		return {
-			color: 'text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/30 border-gray-200 dark:border-gray-800',
+			color: 'text-foreground bg-muted/30 border-border',
 			label: `${type} ${table}`
 		};
 	}
@@ -226,8 +226,8 @@
 			</FormField>
 
 			<!-- Data Fields -->
-			<div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-				<h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+			<div class="border-t border-border pt-4">
+				<h4 class="text-sm font-medium text-foreground mb-3">
 					{operation.operation === 'create' ? 'New' : 'Updated'} Data
 				</h4>
 
@@ -243,7 +243,7 @@
 						<div>
 							<p
 								id={`${fieldId}-label`}
-								class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+								class="block text-sm font-medium text-foreground mb-1"
 							>
 								{config.label}
 								{#if config.required}
@@ -276,15 +276,15 @@
 
 									{#if previewMode[field]}
 										<div
-											class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm
-											       bg-gray-50 dark:bg-gray-900/50 min-h-[100px]
+											class="w-full px-3 py-2 border border-border rounded-md shadow-ink
+											       bg-muted/50 min-h-[100px]
 											       prose prose-sm dark:prose-invert max-w-none overflow-auto"
 										>
 											{#if editedData[field]}
 												{@html renderMarkdown(editedData[field])}
 											{:else}
 												<span
-													class="text-gray-400 dark:text-gray-500 italic"
+													class="text-muted-foreground italic"
 													>No content</span
 												>
 											{/if}
@@ -347,10 +347,10 @@
 										id={fieldId}
 										type="checkbox"
 										bind:checked={editedData[field]}
-										class="h-5 w-5 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500 cursor-pointer dark:bg-gray-700 dark:checked:bg-primary-600"
+										class="h-5 w-5 text-primary-600 border-border rounded focus:ring-primary-500 cursor-pointer dark:checked:bg-primary-600"
 										aria-labelledby={`${fieldId}-label`}
 									/>
-									<span class="ml-2 text-sm text-gray-600 dark:text-gray-400"
+									<span class="ml-2 text-sm text-muted-foreground"
 										>{config.label}</span
 									>
 								</label>
@@ -370,7 +370,7 @@
 
 			<!-- Actions -->
 			<div
-				class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700"
+				class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4 border-t border-border"
 			>
 				<Button onclick={onClose} variant="outline" size="md" class="w-full sm:w-auto">
 					Cancel

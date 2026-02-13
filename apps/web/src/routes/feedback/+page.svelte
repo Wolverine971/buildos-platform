@@ -414,7 +414,7 @@
 								disabled={!feedbackText.trim() || !selectedCategory || isSubmitting}
 								variant="primary"
 								size="xl"
-								class="shadow-ink hover:shadow-xl transform hover:scale-105 disabled:transform-none transition-all duration-200"
+								class="shadow-ink hover:shadow-ink-strong transform hover:scale-105 disabled:transform-none transition-all duration-200"
 								loading={isSubmitting}
 								icon={Send}
 							>

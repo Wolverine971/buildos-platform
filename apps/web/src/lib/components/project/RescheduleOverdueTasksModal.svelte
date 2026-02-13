@@ -159,17 +159,17 @@
 <Modal {isOpen} onClose={handleClose} size="lg">
 	{#snippet header()}
 		<div
-			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-gray-200 dark:border-gray-700"
+			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-border"
 		>
 			<div class="flex items-center gap-2 sm:gap-2">
 				<div class="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex-shrink-0">
 					<Clock class="w-5 h-5 text-orange-600 dark:text-orange-400" />
 				</div>
 				<div class="min-w-0">
-					<h2 class="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">
+					<h2 class="text-base sm:text-lg font-semibold text-foreground">
 						Reschedule Overdue Tasks
 					</h2>
-					<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+					<p class="text-sm text-muted-foreground mt-1">
 						{overdueTasks.length} overdue task{overdueTasks.length !== 1 ? 's' : ''} to reschedule
 					</p>
 				</div>
@@ -189,7 +189,7 @@
 
 			<!-- Overdue Tasks Summary -->
 			<div class="space-y-3">
-				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+				<h3 class="text-sm font-medium text-foreground">
 					Overdue Tasks Summary
 				</h3>
 
@@ -229,13 +229,13 @@
 
 			<!-- Rescheduling Options -->
 			<div class="space-y-3">
-				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+				<h3 class="text-sm font-medium text-foreground">
 					Rescheduling Options
 				</h3>
 
 				<!-- Target Start Date -->
 				<div class="space-y-2">
-					<label for="target-date" class="text-sm text-gray-600 dark:text-gray-400">
+					<label for="target-date" class="text-sm text-muted-foreground">
 						Start rescheduling from
 					</label>
 					<input
@@ -243,27 +243,27 @@
 						type="date"
 						bind:value={targetStartDate}
 						min={new Date().toISOString().split('T')[0]}
-						class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+						class="w-full px-3 py-2 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 					/>
 				</div>
 
 				<!-- Shift Existing Tasks Option -->
 				<label
-					class="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors"
+					class="flex items-start gap-2 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted/70 transition-colors"
 				>
 					<input
 						type="checkbox"
 						bind:checked={shiftExisting}
-						class="mt-1 w-4 h-4 text-blue-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
+						class="mt-1 w-4 h-4 text-blue-600 bg-card border-border rounded focus:ring-blue-500"
 					/>
 					<div class="flex-1">
 						<div class="flex items-center gap-2">
-							<Shuffle class="w-4 h-4 text-gray-600 dark:text-gray-400" />
-							<p class="text-sm font-medium text-gray-900 dark:text-white">
+							<Shuffle class="w-4 h-4 text-muted-foreground" />
+							<p class="text-sm font-medium text-foreground">
 								Shift existing tasks
 							</p>
 						</div>
-						<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+						<p class="text-xs text-muted-foreground mt-1">
 							{#if shiftExisting}
 								Existing scheduled tasks will be pushed forward to make room for
 								overdue tasks
@@ -277,29 +277,29 @@
 
 			<!-- Task List Preview -->
 			<div class="space-y-2">
-				<h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">
+				<h3 class="text-sm font-medium text-foreground">
 					Tasks to reschedule
 				</h3>
 				<div
-					class="max-h-40 overflow-y-auto space-y-1 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+					class="max-h-40 overflow-y-auto space-y-1 p-3 bg-muted/50 rounded-lg"
 				>
 					{#each overdueTasks.slice(0, 10) as task}
 						<div class="flex items-center justify-between py-1">
 							<div class="flex items-center gap-2 flex-1 min-w-0">
 								<Clock class="w-3 h-3 text-orange-500 flex-shrink-0" />
-								<span class="text-sm text-gray-700 dark:text-gray-300 truncate">
+								<span class="text-sm text-foreground truncate">
 									{task.title}
 								</span>
 							</div>
 							<span
-								class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0 ml-2"
+								class="text-xs text-muted-foreground flex-shrink-0 ml-2"
 							>
 								{getDaysOverdue(task)}d overdue
 							</span>
 						</div>
 					{/each}
 					{#if overdueTasks.length > 10}
-						<p class="text-xs text-gray-500 dark:text-gray-400 pt-1">
+						<p class="text-xs text-muted-foreground pt-1">
 							...and {overdueTasks.length - 10} more
 						</p>
 					{/if}
@@ -328,7 +328,7 @@
 
 	{#snippet footer()}
 		<div
-			class="p-4 sm:p-5 md:p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+			class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50"
 		>
 			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
 				<Button

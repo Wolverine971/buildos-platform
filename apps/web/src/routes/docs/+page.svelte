@@ -514,7 +514,7 @@
 
 								<div class="relative mb-6">
 									<div
-										class="bg-muted border border-border rounded-lg p-4 shadow-lg"
+										class="bg-muted border border-border rounded-lg p-4 shadow-ink-strong"
 									>
 										<div class="relative overflow-hidden rounded-lg bg-card">
 											<img
@@ -804,7 +804,7 @@
 								<!-- Placeholder for context editing screenshot -->
 								<div class="relative mb-6">
 									<div
-										class="bg-muted border border-border rounded-lg p-4 shadow-lg"
+										class="bg-muted border border-border rounded-lg p-4 shadow-ink-strong"
 									>
 										<div class="relative overflow-hidden rounded-lg bg-card">
 											<img

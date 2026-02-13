@@ -216,8 +216,8 @@
 </script>
 
 <div
-	class="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700
-         cursor-pointer hover:shadow-xl transition-all duration-200 min-w-[320px] max-w-[400px]
+	class="bg-card rounded-lg shadow-ink-strong border border-border
+         cursor-pointer hover:shadow-ink-strong transition-all duration-200 min-w-[320px] max-w-[400px]
          pointer-events-auto
          {notification.status === 'success'
 		? 'ring-2 ring-green-500/50'
@@ -250,17 +250,17 @@
 					{:else if notification.status === 'error'}
 						<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400" />
 					{:else if notification.status === 'cancelled'}
-						<XCircle class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+						<XCircle class="w-5 h-5 text-muted-foreground" />
 					{/if}
 				</div>
 
 				<!-- Content -->
 				<div class="flex-1 min-w-0">
-					<div class="text-sm font-medium text-gray-900 dark:text-white truncate">
+					<div class="text-sm font-medium text-foreground truncate">
 						{title}
 					</div>
 					{#if subtitle}
-						<div class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+						<div class="text-xs text-muted-foreground truncate mt-0.5">
 							{subtitle}
 						</div>
 					{/if}
@@ -268,13 +268,13 @@
 
 				<!-- Expand Icon -->
 				<div class="flex-shrink-0">
-					<ChevronUp class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+					<ChevronUp class="w-4 h-4 text-muted-foreground" />
 				</div>
 			</div>
 
 			<!-- Progress bar (if percentage-based) -->
 			{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
-				<div class="mt-3 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+				<div class="mt-3 h-1 bg-muted rounded-full overflow-hidden">
 					<div
 						class="h-full bg-blue-600 dark:bg-blue-400 transition-all duration-300"
 						style="width: {notification.progress.percentage}%"
