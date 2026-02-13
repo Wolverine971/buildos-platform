@@ -258,9 +258,7 @@
 				<div class="flex items-center">
 					<Bell class="h-8 w-8 text-blue-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-foreground">
-							Analytics
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Analytics</h3>
 						<p class="text-sm text-muted-foreground">View dashboard</p>
 					</div>
 				</div>
@@ -273,12 +271,8 @@
 				<div class="flex items-center">
 					<Send class="h-8 w-8 text-green-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-foreground">
-							Test Bed
-						</h3>
-						<p class="text-sm text-muted-foreground">
-							Send test notifications
-						</p>
+						<h3 class="text-lg font-semibold text-foreground">Test Bed</h3>
+						<p class="text-sm text-muted-foreground">Send test notifications</p>
 					</div>
 				</div>
 			</a>

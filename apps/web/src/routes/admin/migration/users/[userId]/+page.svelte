@@ -341,17 +341,13 @@
 		<h3 class="mb-4 text-lg font-semibold text-foreground">Projects</h3>
 
 		{#if data.projects.length === 0}
-			<p class="py-8 text-center text-muted-foreground">
-				This user has no projects.
-			</p>
+			<p class="py-8 text-center text-muted-foreground">This user has no projects.</p>
 		{:else}
 			<!-- Mobile Card View -->
 			<div class="block space-y-3 lg:hidden">
 				{#each data.projects as project}
 					{@const status = getStatusBadge(project)}
-					<div
-						class="rounded-lg border border-border bg-card p-4"
-					>
+					<div class="rounded-lg border border-border bg-card p-4">
 						<div class="flex items-start justify-between">
 							<div>
 								<p class="font-medium text-foreground">
@@ -397,9 +393,7 @@
 			</div>
 
 			<!-- Desktop Table View -->
-			<div
-				class="hidden overflow-hidden rounded-lg border border-border lg:block"
-			>
+			<div class="hidden overflow-hidden rounded-lg border border-border lg:block">
 				<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
 					<thead class="bg-muted/50">
 						<tr
@@ -412,15 +406,11 @@
 							<th class="px-4 py-3 text-right">Actions</th>
 						</tr>
 					</thead>
-					<tbody
-						class="divide-y divide-gray-200 bg-card dark:divide-gray-700"
-					>
+					<tbody class="divide-y divide-gray-200 bg-card dark:divide-gray-700">
 						{#each data.projects as project}
 							{@const status = getStatusBadge(project)}
 							{@const StatusIcon = getStatusIcon(project)}
-							<tr
-								class="transition-colors hover:bg-muted/30"
-							>
+							<tr class="transition-colors hover:bg-muted/30">
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-3">
 										<div
@@ -453,9 +443,7 @@
 								</td>
 								<td class="px-4 py-3">
 									<div class="flex items-center gap-2">
-										<div
-											class="h-2 w-16 overflow-hidden rounded-full bg-muted"
-										>
+										<div class="h-2 w-16 overflow-hidden rounded-full bg-muted">
 											<div
 												class="h-full bg-emerald-500 transition-all"
 												style="width: {project.taskCount > 0
@@ -534,9 +522,7 @@
 
 			<div class="space-y-2">
 				{#each data.errors.slice(0, 5) as error}
-					<div
-						class="rounded-lg border border-border bg-muted p-3"
-					>
+					<div class="rounded-lg border border-border bg-muted p-3">
 						<div class="flex items-start justify-between">
 							<div>
 								<p class="font-medium text-foreground">

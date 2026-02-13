@@ -212,9 +212,7 @@
 			<div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
 				{#each semanticTextures as tex}
 					<div class="flex flex-col items-center gap-1">
-						<div
-							class="w-16 h-16 border border-border rounded overflow-hidden bg-card"
-						>
+						<div class="w-16 h-16 border border-border rounded overflow-hidden bg-card">
 							<img
 								src="/textures/{tex.file}"
 								alt={tex.id}
@@ -231,9 +229,7 @@
 			<div class="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-border">
 				{#each materialTextures as mat}
 					<div class="flex flex-col items-center gap-1">
-						<div
-							class="w-16 h-16 border border-border rounded overflow-hidden bg-card"
-						>
+						<div class="w-16 h-16 border border-border rounded overflow-hidden bg-card">
 							<img
 								src="/textures/{mat.file}"
 								alt={mat.weight}

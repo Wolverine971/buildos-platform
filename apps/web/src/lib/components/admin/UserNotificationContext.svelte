@@ -72,9 +72,7 @@
 	>
 		<div class="flex items-center space-x-2">
 			<Bell class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-			<h3 class="text-sm font-semibold text-foreground">
-				User Notification Context
-			</h3>
+			<h3 class="text-sm font-semibold text-foreground">User Notification Context</h3>
 		</div>
 		{#if expanded}
 			<ChevronUp class="w-5 h-5 text-muted-foreground" />
@@ -100,8 +98,7 @@
 					</div>
 					<div>
 						<span class="text-muted-foreground">Email:</span>
-						<span class="ml-1 text-foreground">{context.basic.email}</span
-						>
+						<span class="ml-1 text-foreground">{context.basic.email}</span>
 					</div>
 					<div>
 						<span class="text-muted-foreground">Member since:</span>
@@ -138,9 +135,7 @@
 									: 'text-muted-foreground'}"
 							/>
 							<div class="flex-1">
-								<div
-									class="text-sm font-medium text-foreground capitalize"
-								>
+								<div class="text-sm font-medium text-foreground capitalize">
 									{capability.channel}
 								</div>
 								<div class="text-xs text-muted-foreground">
@@ -155,37 +150,29 @@
 			<!-- Notification Preferences -->
 			{#if context.preferences.length > 0}
 				<div>
-					<h4
-						class="text-xs font-semibold text-foreground uppercase mb-2"
-					>
+					<h4 class="text-xs font-semibold text-foreground uppercase mb-2">
 						Notification Preferences ({context.preferences.length} event types)
 					</h4>
 					<div class="overflow-x-auto">
 						<table class="min-w-full text-xs">
 							<thead class="bg-muted">
 								<tr>
-									<th
-										class="px-2 py-1 text-left font-medium text-foreground"
+									<th class="px-2 py-1 text-left font-medium text-foreground"
 										>Event Type</th
 									>
-									<th
-										class="px-2 py-1 text-center font-medium text-foreground"
+									<th class="px-2 py-1 text-center font-medium text-foreground"
 										>Push</th
 									>
-									<th
-										class="px-2 py-1 text-center font-medium text-foreground"
+									<th class="px-2 py-1 text-center font-medium text-foreground"
 										>Email</th
 									>
-									<th
-										class="px-2 py-1 text-center font-medium text-foreground"
+									<th class="px-2 py-1 text-center font-medium text-foreground"
 										>SMS</th
 									>
-									<th
-										class="px-2 py-1 text-center font-medium text-foreground"
+									<th class="px-2 py-1 text-center font-medium text-foreground"
 										>In-App</th
 									>
-									<th
-										class="px-2 py-1 text-center font-medium text-foreground"
+									<th class="px-2 py-1 text-center font-medium text-foreground"
 										>Subscribed</th
 									>
 								</tr>
@@ -193,16 +180,16 @@
 							<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 								{#each context.preferences as pref}
 									<tr class="hover:bg-muted">
-										<td class="px-2 py-1 text-foreground"
-											>{pref.event_type}</td
-										>
+										<td class="px-2 py-1 text-foreground">{pref.event_type}</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.push_enabled}
 												<CheckCircle
 													class="w-4 h-4 text-green-500 mx-auto"
 												/>
 											{:else}
-												<XCircle class="w-4 h-4 text-muted-foreground mx-auto" />
+												<XCircle
+													class="w-4 h-4 text-muted-foreground mx-auto"
+												/>
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
@@ -211,7 +198,9 @@
 													class="w-4 h-4 text-green-500 mx-auto"
 												/>
 											{:else}
-												<XCircle class="w-4 h-4 text-muted-foreground mx-auto" />
+												<XCircle
+													class="w-4 h-4 text-muted-foreground mx-auto"
+												/>
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
@@ -220,7 +209,9 @@
 													class="w-4 h-4 text-green-500 mx-auto"
 												/>
 											{:else}
-												<XCircle class="w-4 h-4 text-muted-foreground mx-auto" />
+												<XCircle
+													class="w-4 h-4 text-muted-foreground mx-auto"
+												/>
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
@@ -229,7 +220,9 @@
 													class="w-4 h-4 text-green-500 mx-auto"
 												/>
 											{:else}
-												<XCircle class="w-4 h-4 text-muted-foreground mx-auto" />
+												<XCircle
+													class="w-4 h-4 text-muted-foreground mx-auto"
+												/>
 											{/if}
 										</td>
 										<td class="px-2 py-1 text-center">
@@ -280,9 +273,7 @@
 			<!-- Recent Notifications -->
 			{#if context.recent_notifications.length > 0}
 				<div>
-					<h4
-						class="text-xs font-semibold text-foreground uppercase mb-2"
-					>
+					<h4 class="text-xs font-semibold text-foreground uppercase mb-2">
 						Recent Notifications ({context.recent_notifications.length})
 					</h4>
 					<div class="space-y-2">
@@ -296,7 +287,9 @@
 									<span class="text-foreground font-medium">
 										{notification.event_type}
 									</span>
-									<span class="text-muted-foreground">via {notification.channel}</span>
+									<span class="text-muted-foreground"
+										>via {notification.channel}</span
+									>
 								</div>
 								<div class="flex items-center space-x-2">
 									<span class={getStatusColor(notification.status)}>

@@ -359,9 +359,7 @@
 
 	{#snippet footer()}
 		<!-- Footer Actions -->
-		<div
-			class="px-4 sm:px-6 py-4 border-t border-border bg-muted/50"
-		>
+		<div class="px-4 sm:px-6 py-4 border-t border-border bg-muted/50">
 			<!-- Email opt-in banner if not opted in -->
 			{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
 				<div

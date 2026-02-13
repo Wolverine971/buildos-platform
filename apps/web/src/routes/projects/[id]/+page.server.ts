@@ -30,6 +30,7 @@ import { error } from '@sveltejs/kit';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
+import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -228,6 +229,9 @@ async function loadFullData(
 	}
 
 	const data = rawData as Record<string, any>;
+	if (data.project && typeof data.project === 'object') {
+		data.project = sanitizeProjectForClient(data.project as Record<string, unknown>);
+	}
 	const goals = (data.goals || []) as GoalRow[];
 	const milestones = (data.milestones || []) as MilestoneRow[];
 	const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(

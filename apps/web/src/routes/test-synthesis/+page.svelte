@@ -173,9 +173,7 @@
 <div class="min-h-screen bg-muted p-8">
 	<div class="max-w-7xl mx-auto">
 		<div class="mb-8">
-			<h1 class="text-3xl font-bold text-foreground mb-2">
-				Task Synthesis Test Page
-			</h1>
+			<h1 class="text-3xl font-bold text-foreground mb-2">Task Synthesis Test Page</h1>
 			<p class="text-muted-foreground">
 				Testing the new TaskMappingView component with sample data
 			</p>

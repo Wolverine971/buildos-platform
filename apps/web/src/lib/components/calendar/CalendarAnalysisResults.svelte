@@ -1001,8 +1001,7 @@
 
 											{#if suggestion.detected_keywords?.length}
 												<div class="mt-3 flex flex-wrap gap-2">
-													<span
-														class="text-xs text-muted-foreground"
+													<span class="text-xs text-muted-foreground"
 														>Keywords detected:
 													</span>
 													{#each suggestion.detected_keywords as keyword}
@@ -1017,8 +1016,7 @@
 
 											{#if patterns && patterns?.tags?.length}
 												<div class="mt-3 flex flex-wrap gap-2">
-													<span
-														class="text-xs text-muted-foreground"
+													<span class="text-xs text-muted-foreground"
 														>Project tags:
 													</span>
 													{#each patterns.tags as tag}

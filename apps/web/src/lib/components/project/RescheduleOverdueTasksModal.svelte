@@ -158,9 +158,7 @@
 
 <Modal {isOpen} onClose={handleClose} size="lg">
 	{#snippet header()}
-		<div
-			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-border"
-		>
+		<div class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-border">
 			<div class="flex items-center gap-2 sm:gap-2">
 				<div class="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex-shrink-0">
 					<Clock class="w-5 h-5 text-orange-600 dark:text-orange-400" />
@@ -189,9 +187,7 @@
 
 			<!-- Overdue Tasks Summary -->
 			<div class="space-y-3">
-				<h3 class="text-sm font-medium text-foreground">
-					Overdue Tasks Summary
-				</h3>
+				<h3 class="text-sm font-medium text-foreground">Overdue Tasks Summary</h3>
 
 				<div class="grid grid-cols-3 gap-2">
 					{#if overdueGroups.recent.length > 0}
@@ -229,9 +225,7 @@
 
 			<!-- Rescheduling Options -->
 			<div class="space-y-3">
-				<h3 class="text-sm font-medium text-foreground">
-					Rescheduling Options
-				</h3>
+				<h3 class="text-sm font-medium text-foreground">Rescheduling Options</h3>
 
 				<!-- Target Start Date -->
 				<div class="space-y-2">
@@ -259,9 +253,7 @@
 					<div class="flex-1">
 						<div class="flex items-center gap-2">
 							<Shuffle class="w-4 h-4 text-muted-foreground" />
-							<p class="text-sm font-medium text-foreground">
-								Shift existing tasks
-							</p>
+							<p class="text-sm font-medium text-foreground">Shift existing tasks</p>
 						</div>
 						<p class="text-xs text-muted-foreground mt-1">
 							{#if shiftExisting}
@@ -277,12 +269,8 @@
 
 			<!-- Task List Preview -->
 			<div class="space-y-2">
-				<h3 class="text-sm font-medium text-foreground">
-					Tasks to reschedule
-				</h3>
-				<div
-					class="max-h-40 overflow-y-auto space-y-1 p-3 bg-muted/50 rounded-lg"
-				>
+				<h3 class="text-sm font-medium text-foreground">Tasks to reschedule</h3>
+				<div class="max-h-40 overflow-y-auto space-y-1 p-3 bg-muted/50 rounded-lg">
 					{#each overdueTasks.slice(0, 10) as task}
 						<div class="flex items-center justify-between py-1">
 							<div class="flex items-center gap-2 flex-1 min-w-0">
@@ -291,9 +279,7 @@
 									{task.title}
 								</span>
 							</div>
-							<span
-								class="text-xs text-muted-foreground flex-shrink-0 ml-2"
-							>
+							<span class="text-xs text-muted-foreground flex-shrink-0 ml-2">
 								{getDaysOverdue(task)}d overdue
 							</span>
 						</div>
@@ -327,9 +313,7 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div
-			class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50"
-		>
+		<div class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50">
 			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
 				<Button
 					onclick={handleClose}

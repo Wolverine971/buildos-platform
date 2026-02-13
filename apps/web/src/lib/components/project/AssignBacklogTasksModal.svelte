@@ -220,9 +220,7 @@
 
 <Modal {isOpen} onClose={handleClose} size="lg">
 	{#snippet header()}
-		<div
-			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-border"
-		>
+		<div class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-border">
 			<div class="flex items-center gap-2 sm:gap-3">
 				<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-shrink-0">
 					<Inbox class="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -301,9 +299,7 @@
 
 			<!-- Auto-assign Toggle -->
 			<div class="space-y-3">
-				<div
-					class="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-				>
+				<div class="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
 					<label for="auto-assign" class="flex items-center cursor-pointer">
 						<span class="text-sm font-medium text-foreground">
 							Automatically assign tasks to phases
@@ -333,13 +329,9 @@
 					</h3>
 					<div class="space-y-2 max-h-64 overflow-y-auto">
 						{#each backlogTasks as task}
-							<div
-								class="flex items-center gap-3 p-2 bg-muted/50 rounded-lg"
-							>
+							<div class="flex items-center gap-3 p-2 bg-muted/50 rounded-lg">
 								<div class="flex-1 min-w-0">
-									<p
-										class="text-sm font-medium text-foreground truncate"
-									>
+									<p class="text-sm font-medium text-foreground truncate">
 										{task.title}
 									</p>
 								</div>
@@ -402,9 +394,7 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div
-			class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50"
-		>
+		<div class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50">
 			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
 				<Button
 					onclick={handleClose}

@@ -65,12 +65,12 @@
 		none: null
 	};
 
-	// Icon colors
+	// Icon colors - semantic Inkprint tokens (no dark: overrides needed)
 	const iconColors = {
-		warning: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30',
-		danger: 'text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/30',
-		info: 'text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-900/30',
-		success: 'text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30',
+		warning: 'text-warning bg-warning/15',
+		danger: 'text-destructive bg-destructive/15',
+		info: 'text-info bg-info/15',
+		success: 'text-success bg-success/15',
 		none: ''
 	};
 

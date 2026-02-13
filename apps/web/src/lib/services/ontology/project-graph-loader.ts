@@ -32,6 +32,7 @@ import type {
 	OntoSource,
 	OntoEdge
 } from '$lib/types/onto-api';
+import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 
 /**
  * Load all ontology data for a single project in parallel.
@@ -186,7 +187,7 @@ export async function loadProjectGraphData(
 			: ((edgesResult.data ?? []) as OntoEdge[]);
 
 	return {
-		project: projectResult.data as OntoProject,
+		project: sanitizeProjectForClient(projectResult.data as OntoProject),
 		plans: (plansResult.data ?? []) as OntoPlan[],
 		tasks: filteredTasks,
 		goals: (goalsResult.data ?? []) as OntoGoal[],
@@ -310,7 +311,7 @@ export async function loadMultipleProjectGraphs(
 	// Group entities by project_id
 	const projectsById = new Map<string, OntoProject>();
 	for (const project of (projectsResult.data ?? []) as OntoProject[]) {
-		projectsById.set(project.id, project);
+		projectsById.set(project.id, sanitizeProjectForClient(project));
 	}
 
 	const groupByProjectId = <T extends { project_id: string }>(items: T[]): Map<string, T[]> => {

@@ -612,9 +612,7 @@
 		<!-- Filters for Data View -->
 		<div class="admin-panel p-4 sm:p-6">
 			<div class="flex items-center justify-between mb-4">
-				<h3 class="text-lg font-semibold text-foreground">
-					Comprehensive Signup Data
-				</h3>
+				<h3 class="text-lg font-semibold text-foreground">Comprehensive Signup Data</h3>
 				<div class="flex items-center space-x-2">
 					<div class="flex items-center text-sm text-muted-foreground">
 						<input
@@ -691,9 +689,7 @@
 			{:else if signups.length === 0}
 				<div class="p-6 sm:p-8 text-center">
 					<Table class="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
-					<h3 class="text-lg font-semibold text-foreground mb-2">
-						No Signup Data Found
-					</h3>
+					<h3 class="text-lg font-semibold text-foreground mb-2">No Signup Data Found</h3>
 					<p class="text-muted-foreground">
 						{searchQuery
 							? 'Try adjusting your search criteria.'
@@ -937,9 +933,7 @@
 								</th>
 							</tr>
 						</thead>
-						<tbody
-							class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-						>
+						<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 							{#each signups as signup}
 								<tr class="hover:bg-muted">
 									<!-- Contact Info - Sticky Column -->
@@ -977,8 +971,7 @@
 													{signup.referral_source}
 												</span>
 											{:else}
-												<span
-													class="text-muted-foreground text-xs"
+												<span class="text-muted-foreground text-xs"
 													>Not specified</span
 												>
 											{/if}
@@ -1104,9 +1097,7 @@
 													</div>
 												{/if}
 												{#if !signup.wants_weekly_calls && !signup.wants_community_access}
-													<div
-														class="text-muted-foreground text-xs"
-													>
+													<div class="text-muted-foreground text-xs">
 														No preferences
 													</div>
 												{/if}
@@ -1208,9 +1199,7 @@
 							>
 								Previous
 							</Button>
-							<span
-								class="flex items-center text-sm text-foreground"
-							>
+							<span class="flex items-center text-sm text-foreground">
 								{currentPage} of {totalPages}
 							</span>
 							<Button
@@ -1292,11 +1281,7 @@
 				{#if activeTab === 'signups'}
 					<!-- Signup Status Filter -->
 					<div>
-						<div
-							class="block text-sm font-medium text-foreground mb-1"
-						>
-							Status
-						</div>
+						<div class="block text-sm font-medium text-foreground mb-1">Status</div>
 						<Select
 							bind:value={signupFilters.status}
 							onchange={(e) => (signupFilters.status = e.detail)}
@@ -1312,11 +1297,7 @@
 
 					<!-- Sort -->
 					<div>
-						<div
-							class="block text-sm font-medium text-foreground mb-1"
-						>
-							Sort By
-						</div>
+						<div class="block text-sm font-medium text-foreground mb-1">Sort By</div>
 						<Select
 							bind:value={signupFilters.sortBy}
 							onchange={(e) => (signupFilters.sortBy = e.detail)}
@@ -1330,11 +1311,7 @@
 				{:else}
 					<!-- Member Tier Filter -->
 					<div>
-						<div
-							class="block text-sm font-medium text-foreground mb-1"
-						>
-							Tier
-						</div>
+						<div class="block text-sm font-medium text-foreground mb-1">Tier</div>
 						<Select
 							bind:value={memberFilters.tier}
 							onchange={(e) => (memberFilters.tier = e)}
@@ -1355,8 +1332,7 @@
 								bind:checked={memberFilters.activeOnly}
 								class="rounded border-border text-blue-600 focus:ring-blue-500"
 							/>
-							<span class="text-sm text-foreground">Active Only</span
-							>
+							<span class="text-sm text-foreground">Active Only</span>
 						</div>
 					</div>
 				{/if}
@@ -1425,8 +1401,7 @@
 								bind:checked={memberFilters.activeOnly}
 								class="rounded border-border text-blue-600 focus:ring-blue-500"
 							/>
-							<span class="text-sm text-muted-foreground">Active Only</span
-							>
+							<span class="text-sm text-muted-foreground">Active Only</span>
 						</div>
 					</div>
 				{/if}
@@ -1450,7 +1425,9 @@
 				</div>
 			{:else if (activeTab === 'signups' && signups.length === 0) || (activeTab === 'members' && members.length === 0)}
 				<div class="p-6 sm:p-8 text-center">
-					<UserCheck class="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
+					<UserCheck
+						class="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4"
+					/>
 					<h3 class="text-lg font-semibold text-foreground mb-2">
 						No {activeTab === 'signups' ? 'Signups' : 'Members'} Found
 					</h3>
@@ -1482,14 +1459,10 @@
 											</div>
 										</div>
 										<div class="ml-3 flex-1 min-w-0">
-											<p
-												class="text-sm font-medium text-foreground truncate"
-											>
+											<p class="text-sm font-medium text-foreground truncate">
 												{signup.full_name}
 											</p>
-											<p
-												class="text-xs text-muted-foreground truncate"
-											>
+											<p class="text-xs text-muted-foreground truncate">
 												{signup.email}
 											</p>
 										</div>
@@ -1583,9 +1556,7 @@
 													>
 												{/if}
 											</div>
-											<p
-												class="text-xs text-muted-foreground truncate"
-											>
+											<p class="text-xs text-muted-foreground truncate">
 												{member.email}
 											</p>
 										</div>
@@ -1895,9 +1866,7 @@
 								</th>
 							</tr>
 						</thead>
-						<tbody
-							class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-						>
+						<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 							{#if activeTab === 'signups'}
 								{#each signups as signup}
 									<tr class="hover:bg-muted">
@@ -1922,9 +1891,7 @@
 													>
 														{signup.full_name}
 													</div>
-													<div
-														class="text-sm text-muted-foreground"
-													>
+													<div class="text-sm text-muted-foreground">
 														{signup.email}
 													</div>
 													{#if signup.job_title}
@@ -2049,9 +2016,7 @@
 															>
 														{/if}
 													</div>
-													<div
-														class="text-sm text-muted-foreground"
-													>
+													<div class="text-sm text-muted-foreground">
 														{member.email}
 													</div>
 													{#if member.job_title}
@@ -2153,9 +2118,7 @@
 							>
 								Previous
 							</Button>
-							<span
-								class="flex items-center text-sm text-foreground"
-							>
+							<span class="flex items-center text-sm text-foreground">
 								{currentPage} of {totalPages}
 							</span>
 							<Button
@@ -2273,21 +2236,13 @@
 					<!-- Basic Info -->
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
-							<div
-								class="block text-sm font-medium text-foreground mb-1"
-							>
-								Name
-							</div>
+							<div class="block text-sm font-medium text-foreground mb-1">Name</div>
 							<p class="text-sm text-foreground">
 								{selectedItem.full_name}
 							</p>
 						</div>
 						<div>
-							<div
-								class="block text-sm font-medium text-foreground mb-1"
-							>
-								Email
-							</div>
+							<div class="block text-sm font-medium text-foreground mb-1">Email</div>
 							<p class="text-sm text-foreground break-all">
 								{selectedItem.email}
 							</p>
@@ -2296,9 +2251,7 @@
 
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
-							<div
-								class="block text-sm font-medium text-foreground mb-1"
-							>
+							<div class="block text-sm font-medium text-foreground mb-1">
 								Job Title
 							</div>
 							<p class="text-sm text-foreground">
@@ -2306,9 +2259,7 @@
 							</p>
 						</div>
 						<div>
-							<div
-								class="block text-sm font-medium text-foreground mb-1"
-							>
+							<div class="block text-sm font-medium text-foreground mb-1">
 								Company
 							</div>
 							<p class="text-sm text-foreground">
@@ -2321,9 +2272,7 @@
 						<!-- Signup specific fields -->
 						{#if selectedItem.why_interested}
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-2"
-								>
+								<div class="block text-sm font-medium text-foreground mb-2">
 									Why Interested
 								</div>
 								<div class="mt-1 p-4 bg-muted rounded-lg border">
@@ -2338,9 +2287,7 @@
 
 						{#if selectedItem.biggest_challenge}
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-2"
-								>
+								<div class="block text-sm font-medium text-foreground mb-2">
 									Biggest Challenge
 								</div>
 								<div class="mt-1 p-4 bg-muted rounded-lg border">
@@ -2355,9 +2302,7 @@
 
 						{#if selectedItem.productivity_tools && selectedItem.productivity_tools.length > 0}
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-2"
-								>
+								<div class="block text-sm font-medium text-foreground mb-2">
 									Current Tools
 								</div>
 								<div class="mt-1 flex flex-wrap gap-2">
@@ -2374,9 +2319,7 @@
 
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Status
 								</div>
 								<span
@@ -2388,9 +2331,7 @@
 								</span>
 							</div>
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Applied
 								</div>
 								<p class="text-sm text-foreground">
@@ -2401,9 +2342,7 @@
 
 						{#if selectedItem.referral_source}
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									How they heard about us
 								</div>
 								<p class="text-sm text-foreground">
@@ -2414,9 +2353,7 @@
 
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Wants Weekly Calls
 								</div>
 								<p class="text-sm text-foreground">
@@ -2424,9 +2361,7 @@
 								</p>
 							</div>
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Wants Community Access
 								</div>
 								<p class="text-sm text-foreground">
@@ -2437,9 +2372,7 @@
 
 						{#if selectedItem.user_timezone}
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Timezone
 								</div>
 								<p class="text-sm text-foreground">
@@ -2451,9 +2384,7 @@
 						<!-- Member specific fields (keep existing member modal content) -->
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Beta Tier
 								</div>
 								<span
@@ -2465,9 +2396,7 @@
 								</span>
 							</div>
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Access Level
 								</div>
 								<p class="text-sm text-foreground capitalize">
@@ -2475,9 +2404,7 @@
 								</p>
 							</div>
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Status
 								</div>
 								<span
@@ -2492,9 +2419,7 @@
 
 						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Joined
 								</div>
 								<p class="text-sm text-foreground">
@@ -2503,9 +2428,7 @@
 							</div>
 							{#if selectedItem.last_active_at}
 								<div>
-									<div
-										class="block text-sm font-medium text-foreground mb-1"
-									>
+									<div class="block text-sm font-medium text-foreground mb-1">
 										Last Active
 									</div>
 									<p class="text-sm text-foreground">
@@ -2517,9 +2440,7 @@
 
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Feedback Submitted
 								</div>
 								<p class="text-sm text-foreground">
@@ -2527,9 +2448,7 @@
 								</p>
 							</div>
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Features Requested
 								</div>
 								<p class="text-sm text-foreground">
@@ -2537,9 +2456,7 @@
 								</p>
 							</div>
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Calls Attended
 								</div>
 								<p class="text-sm text-foreground">
@@ -2551,9 +2468,7 @@
 						{#if selectedItem.has_lifetime_pricing}
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 								<div>
-									<div
-										class="block text-sm font-medium text-foreground mb-1"
-									>
+									<div class="block text-sm font-medium text-foreground mb-1">
 										Lifetime Pricing
 									</div>
 									<span
@@ -2563,9 +2478,7 @@
 									</span>
 								</div>
 								<div>
-									<div
-										class="block text-sm font-medium text-foreground mb-1"
-									>
+									<div class="block text-sm font-medium text-foreground mb-1">
 										Discount
 									</div>
 									<p class="text-sm text-foreground">
@@ -2578,22 +2491,16 @@
 						<!-- Original Beta Application Responses -->
 						{#if selectedItem.beta_signups}
 							<div class="pt-4 mt-4 border-t border-border">
-								<h4
-									class="text-sm font-semibold text-foreground mb-4"
-								>
+								<h4 class="text-sm font-semibold text-foreground mb-4">
 									Original Beta Application
 								</h4>
 
 								{#if selectedItem.beta_signups.why_interested}
 									<div class="mb-4">
-										<div
-											class="block text-sm font-medium text-foreground mb-2"
-										>
+										<div class="block text-sm font-medium text-foreground mb-2">
 											Why They're Interested
 										</div>
-										<div
-											class="mt-1 p-4 bg-muted rounded-lg border"
-										>
+										<div class="mt-1 p-4 bg-muted rounded-lg border">
 											<p
 												class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
 											>
@@ -2605,14 +2512,10 @@
 
 								{#if selectedItem.beta_signups.biggest_challenge}
 									<div class="mb-4">
-										<div
-											class="block text-sm font-medium text-foreground mb-2"
-										>
+										<div class="block text-sm font-medium text-foreground mb-2">
 											Biggest Challenge
 										</div>
-										<div
-											class="mt-1 p-4 bg-muted rounded-lg border"
-										>
+										<div class="mt-1 p-4 bg-muted rounded-lg border">
 											<p
 												class="text-sm text-foreground whitespace-pre-wrap leading-relaxed"
 											>
@@ -2624,9 +2527,7 @@
 
 								{#if selectedItem.beta_signups.productivity_tools && selectedItem.beta_signups.productivity_tools.length > 0}
 									<div class="mb-4">
-										<div
-											class="block text-sm font-medium text-foreground mb-2"
-										>
+										<div class="block text-sm font-medium text-foreground mb-2">
 											Current Tools
 										</div>
 										<div class="mt-1 flex flex-wrap gap-2">
@@ -2643,9 +2544,7 @@
 
 								{#if selectedItem.beta_signups.referral_source}
 									<div class="mb-4">
-										<div
-											class="block text-sm font-medium text-foreground mb-1"
-										>
+										<div class="block text-sm font-medium text-foreground mb-1">
 											How they heard about us
 										</div>
 										<p class="text-sm text-foreground">
@@ -2656,9 +2555,7 @@
 
 								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 									<div>
-										<div
-											class="block text-sm font-medium text-foreground mb-1"
-										>
+										<div class="block text-sm font-medium text-foreground mb-1">
 											Wants Weekly Calls
 										</div>
 										<p class="text-sm text-foreground">
@@ -2668,9 +2565,7 @@
 										</p>
 									</div>
 									<div>
-										<div
-											class="block text-sm font-medium text-foreground mb-1"
-										>
+										<div class="block text-sm font-medium text-foreground mb-1">
 											Wants Community Access
 										</div>
 										<p class="text-sm text-foreground">

@@ -308,15 +308,9 @@
 				<div class="flex items-center gap-3">
 					<Database class="w-5 h-5 text-primary-600 dark:text-primary-400" />
 					<div>
-						<h3 class="text-base font-semibold text-foreground">
-							Edit Operation
-						</h3>
-						<div
-							class="flex items-center gap-2 text-xs text-muted-foreground mt-0.5"
-						>
-							<span
-								class="px-1.5 py-0.5 bg-muted rounded text-xs"
-							>
+						<h3 class="text-base font-semibold text-foreground">Edit Operation</h3>
+						<div class="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+							<span class="px-1.5 py-0.5 bg-muted rounded text-xs">
 								{operation?.operation}
 							</span>
 							<span>•</span>
@@ -412,9 +406,7 @@
 						>
 							<Database class="w-5 h-5 text-muted-foreground" />
 						</div>
-						<p class="text-muted-foreground text-sm">
-							No data fields to display
-						</p>
+						<p class="text-muted-foreground text-sm">No data fields to display</p>
 					</div>
 				{:else}
 					{#each fieldsToDisplay as field}
@@ -457,9 +449,7 @@
 								<!-- Compact JSONB field -->
 								<fieldset>
 									<div class="flex items-center justify-between mb-1">
-										<legend
-											class="text-xs font-medium text-foreground"
-										>
+										<legend class="text-xs font-medium text-foreground">
 											{config.label}
 											{#if config.required}
 												<span class="text-rose-500 ml-0.5">*</span>
@@ -487,12 +477,8 @@
 
 									{#if jsonViewMode[field]}
 										<!-- Compact JSON Editor -->
-										<div
-											class="bg-muted rounded-md border border-border"
-										>
-											<div
-												class="px-2 py-1.5 border-b border-border"
-											>
+										<div class="bg-muted rounded-md border border-border">
+											<div class="px-2 py-1.5 border-b border-border">
 												<div
 													class="flex items-center gap-1 text-xs text-muted-foreground"
 												>
@@ -668,9 +654,7 @@
 												size="sm"
 												class="text-sm"
 											/>
-											<p
-												class="text-xs text-muted-foreground mt-1"
-											>
+											<p class="text-xs text-muted-foreground mt-1">
 												Separate tags with commas
 											</p>
 										</div>
@@ -693,9 +677,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<!-- Compact Footer -->
-		<div
-			class="flex items-center justify-between px-4 py-3 bg-muted border-t border-border"
-		>
+		<div class="flex items-center justify-between px-4 py-3 bg-muted border-t border-border">
 			<Button onclick={onClose} variant="outline" size="sm" class="min-w-[80px]">
 				Cancel
 			</Button>

@@ -119,9 +119,7 @@
 
 		<!-- Details -->
 		{#if details && details.length > 0}
-			<div
-				class="mb-4 rounded-lg border border-border bg-muted p-3"
-			>
+			<div class="mb-4 rounded-lg border border-border bg-muted p-3">
 				<div class="space-y-2 text-left">
 					{#each details as detail}
 						<div class="flex justify-between text-sm">

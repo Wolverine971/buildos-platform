@@ -95,9 +95,7 @@
 				{/if}
 				{#if brief.metadata.completion_rate !== undefined}
 					<span class="flex items-center">
-						<div
-							class="w-3 h-3 mr-1 rounded-full bg-muted relative overflow-hidden"
-						>
+						<div class="w-3 h-3 mr-1 rounded-full bg-muted relative overflow-hidden">
 							<div
 								class="absolute inset-0 bg-green-500"
 								style="width: {brief.metadata.completion_rate}%"

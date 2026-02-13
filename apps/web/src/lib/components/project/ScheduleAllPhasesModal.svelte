@@ -316,9 +316,7 @@
 			<div class="px-6 py-4 border-b border-border">
 				<div class="flex items-center justify-between mb-3">
 					<div>
-						<h2 class="text-xl font-semibold text-foreground">
-							Schedule All Tasks
-						</h2>
+						<h2 class="text-xl font-semibold text-foreground">Schedule All Tasks</h2>
 						<p class="text-sm text-muted-foreground mt-1">
 							Schedule all unscheduled tasks across multiple phases
 						</p>
@@ -343,17 +341,13 @@
 						</div>
 					</div>
 					<div class="bg-muted rounded-lg p-3">
-						<div class="text-xs text-muted-foreground">
-							Tasks to Schedule
-						</div>
+						<div class="text-xs text-muted-foreground">Tasks to Schedule</div>
 						<div class="text-lg font-semibold text-primary-600 dark:text-primary-400">
 							{totalTasksToSchedule}
 						</div>
 					</div>
 					<div class="bg-muted rounded-lg p-3">
-						<div class="text-xs text-muted-foreground">
-							Already Scheduled
-						</div>
+						<div class="text-xs text-muted-foreground">Already Scheduled</div>
 						<div class="text-lg font-semibold text-foreground">
 							{totalScheduledTasks}
 						</div>
@@ -383,9 +377,7 @@
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
 					<LoaderCircle class="w-8 h-8 animate-spin text-muted-foreground" />
-					<span class="ml-3 text-muted-foreground"
-						>Loading scheduling data...</span
-					>
+					<span class="ml-3 text-muted-foreground">Loading scheduling data...</span>
 				</div>
 			{:else if error}
 				<div
@@ -404,9 +396,7 @@
 			{:else if phasesWithUnscheduledTasks.length === 0}
 				<div class="text-center py-12">
 					<CheckCircle2 class="w-12 h-12 text-green-500 mx-auto mb-4" />
-					<h3 class="text-lg font-medium text-foreground">
-						All tasks are scheduled!
-					</h3>
+					<h3 class="text-lg font-medium text-foreground">All tasks are scheduled!</h3>
 					<p class="text-sm text-muted-foreground mt-2">
 						There are no unscheduled tasks in any phase.
 					</p>
@@ -440,9 +430,7 @@
 		<!-- Footer -->
 	{/snippet}
 	{#snippet footer()}
-		<div
-			class="px-6 py-4 border-t border-border bg-muted"
-		>
+		<div class="px-6 py-4 border-t border-border bg-muted">
 			<div class="flex items-center justify-between">
 				<div class="text-sm text-muted-foreground">
 					{#if totalTasksToSchedule > 0}

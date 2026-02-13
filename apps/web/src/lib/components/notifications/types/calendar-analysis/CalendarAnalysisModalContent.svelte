@@ -104,9 +104,7 @@
 			<div
 				class="flex justify-between items-center px-6 py-4 border-b border-border bg-muted/50"
 			>
-				<h2 class="text-xl font-bold text-foreground">
-					Calendar Analysis Results
-				</h2>
+				<h2 class="text-xl font-bold text-foreground">Calendar Analysis Results</h2>
 				<div class="flex items-center gap-2">
 					<Button
 						variant="ghost"

@@ -115,9 +115,7 @@
 </script>
 
 {#if isCreating}
-	<div
-		class="border border-border rounded-lg p-4 bg-card"
-	>
+	<div class="border border-border rounded-lg p-4 bg-card">
 		<div class="mb-3">
 			<h3 class="text-sm font-medium text-foreground">Create New Phase</h3>
 			{#if project.start_date || project.end_date}

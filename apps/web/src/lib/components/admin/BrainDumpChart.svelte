@@ -213,18 +213,14 @@
 			<!-- Recent Brain Dumps -->
 			{#if brainDumps?.length}
 				<div class="mt-4">
-					<h4 class="text-sm font-medium text-foreground mb-2">
-						Recent Brain Dumps
-					</h4>
+					<h4 class="text-sm font-medium text-foreground mb-2">Recent Brain Dumps</h4>
 					<div class="space-y-2 max-h-32 overflow-y-auto">
 						{#each brainDumps.slice(0, 5) as dump}
 							<div
 								class="flex items-center justify-between p-2 bg-purple-50 dark:bg-purple-900/20 rounded"
 							>
 								<div class="flex-1 min-w-0">
-									<p
-										class="text-sm font-medium text-foreground truncate"
-									>
+									<p class="text-sm font-medium text-foreground truncate">
 										{dump.title || 'Untitled'}
 									</p>
 									<p class="text-xs text-muted-foreground">

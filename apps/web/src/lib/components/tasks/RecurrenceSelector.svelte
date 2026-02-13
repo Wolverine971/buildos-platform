@@ -73,10 +73,7 @@
 
 	<!-- Pattern Selection -->
 	<div>
-		<label
-			for="recurrence-pattern"
-			class="block text-sm font-medium text-foreground mb-1"
-		>
+		<label for="recurrence-pattern" class="block text-sm font-medium text-foreground mb-1">
 			Repeats
 		</label>
 		<Select id="recurrence-pattern" bind:value={pattern} size="sm">
@@ -104,9 +101,7 @@
 				</span>
 			{/if}
 		</legend>
-		<label
-			class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-muted"
-		>
+		<label class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-muted">
 			<input
 				type="radio"
 				name="recurrence-end"
@@ -119,9 +114,7 @@
 		</label>
 
 		<div class="space-y-2">
-			<label
-				class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-muted"
-			>
+			<label class="flex items-center space-x-2 cursor-pointer p-2 rounded hover:bg-muted">
 				<input
 					type="radio"
 					name="recurrence-end"
@@ -152,12 +145,8 @@
 
 	<!-- Preview -->
 	{#if nextOccurrences.length > 0}
-		<div
-			class="mt-4 p-3 bg-card rounded-md border border-border"
-		>
-			<h4 class="text-sm font-medium text-foreground mb-2">
-				Next occurrences:
-			</h4>
+		<div class="mt-4 p-3 bg-card rounded-md border border-border">
+			<h4 class="text-sm font-medium text-foreground mb-2">Next occurrences:</h4>
 			<ul class="text-sm text-muted-foreground space-y-1">
 				{#each nextOccurrences as date}
 					<li class="flex items-center space-x-2">
@@ -167,9 +156,7 @@
 				{/each}
 			</ul>
 			{#if !endDate}
-				<p class="text-xs text-muted-foreground mt-2 italic">
-					Continues indefinitely
-				</p>
+				<p class="text-xs text-muted-foreground mt-2 italic">Continues indefinitely</p>
 			{:else}
 				<p class="text-xs text-muted-foreground mt-2 italic">
 					Ends on {formatDate(new Date(endDate))}

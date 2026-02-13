@@ -136,9 +136,7 @@
 								></div>
 							</div>
 							<div>
-								<span
-									class="text-sm font-semibold text-foreground"
-								>
+								<span class="text-sm font-semibold text-foreground">
 									Processing brain dump
 								</span>
 								<span class="block text-xs text-muted-foreground">
@@ -153,9 +151,7 @@
 								></div>
 							</div>
 							<div>
-								<span
-									class="text-sm font-semibold text-foreground"
-								>
+								<span class="text-sm font-semibold text-foreground">
 									Brain dump completed
 								</span>
 								{#if recentCompletedJobs[0]?.result?.projectId}
@@ -177,9 +173,7 @@
 								></div>
 							</div>
 							<div>
-								<span
-									class="text-sm font-semibold text-foreground"
-								>
+								<span class="text-sm font-semibold text-foreground">
 									Processing failed
 								</span>
 								<span
@@ -222,9 +216,7 @@
 					class="p-4 border-b border-border bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900"
 				>
 					<div class="flex items-center justify-between">
-						<h3
-							class="text-sm font-semibold text-foreground flex items-center gap-2"
-						>
+						<h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
 							<span
 								class="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-pulse"
 							></span>
@@ -278,9 +270,7 @@
 									<p class="text-sm font-medium text-foreground">
 										{job.status === 'processing' ? 'Processing' : 'Queued'}
 									</p>
-									<p
-										class="text-xs text-muted-foreground mt-1 truncate"
-									>
+									<p class="text-xs text-muted-foreground mt-1 truncate">
 										{job.projectId
 											? 'Updating existing project'
 											: 'Creating new project'}

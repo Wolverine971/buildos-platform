@@ -158,9 +158,7 @@
 
 <Modal {isOpen} onClose={handleClose} size="md">
 	{#snippet header()}
-		<div
-			class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-border"
-		>
+		<div class="flex items-center justify-between p-4 sm:p-5 md:p-6 border-b border-border">
 			<div class="flex items-center gap-2 sm:gap-2">
 				<div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg flex-shrink-0">
 					<CalendarX class="w-5 h-5 text-red-600 dark:text-red-400" />
@@ -223,9 +221,7 @@
 
 			<!-- Options -->
 			<div class="space-y-3">
-				<h3 class="text-sm font-medium text-foreground">
-					Unschedule Options
-				</h3>
+				<h3 class="text-sm font-medium text-foreground">Unschedule Options</h3>
 
 				<label
 					class="flex items-start gap-2 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted/70 transition-colors"
@@ -236,9 +232,7 @@
 						class="mt-1 w-4 h-4 text-blue-600 bg-card border-border rounded focus:ring-blue-500"
 					/>
 					<div class="flex-1">
-						<p class="text-sm font-medium text-foreground">
-							Clear task dates
-						</p>
+						<p class="text-sm font-medium text-foreground">Clear task dates</p>
 						<p class="text-xs text-muted-foreground mt-1">
 							Remove start and due dates from tasks (tasks will become unscheduled)
 						</p>
@@ -330,9 +324,7 @@
 							? `Tasks to be moved to backlog (${affectedTasks.length})`
 							: `Tasks to be unscheduled (${affectedTasks.length})`}
 					</h3>
-					<div
-						class="max-h-32 overflow-y-auto space-y-1 p-2 bg-muted/50 rounded-lg"
-					>
+					<div class="max-h-32 overflow-y-auto space-y-1 p-2 bg-muted/50 rounded-lg">
 						{#each affectedTasks.slice(0, 10) as task}
 							<div class="flex items-center gap-2 text-xs">
 								<Calendar class="w-3 h-3 text-muted-foreground" />
@@ -353,9 +345,7 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div
-			class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50"
-		>
+		<div class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50">
 			<div class="flex flex-col-reverse sm:flex-row gap-2 sm:gap-4 sm:justify-end">
 				<Button
 					onclick={handleClose}

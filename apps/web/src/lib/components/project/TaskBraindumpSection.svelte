@@ -144,9 +144,7 @@
 	<div class="flex items-center justify-between p-3">
 		<div class="flex items-center space-x-2">
 			<span class="w-2 h-2 bg-indigo-500 rounded-full"></span>
-			<span
-				class="text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-			>
+			<span class="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
 				Braindumps
 			</span>
 
@@ -248,18 +246,14 @@
 
 								<!-- Content Preview (when collapsed) -->
 								{#if !isExpanded && contentPreview}
-									<p
-										class="text-xs text-muted-foreground line-clamp-2"
-									>
+									<p class="text-xs text-muted-foreground line-clamp-2">
 										{contentPreview}
 									</p>
 								{/if}
 
 								<!-- Metadata Footer -->
 								<div class="flex items-center justify-between text-xs">
-									<span
-										class="text-muted-foreground flex items-center"
-									>
+									<span class="text-muted-foreground flex items-center">
 										<Clock class="w-3 h-3 mr-1" />
 										{timeDisplay}
 									</span>

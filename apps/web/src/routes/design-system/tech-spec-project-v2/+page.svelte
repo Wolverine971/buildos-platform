@@ -1066,7 +1066,9 @@
 										>
 										<span class="text-cyan-400 shrink-0">{entry.entity}</span>
 										<span class="text-muted-foreground">·</span>
-										<span class="text-muted-foreground truncate">{entry.detail}</span>
+										<span class="text-muted-foreground truncate"
+											>{entry.detail}</span
+										>
 										<span class="text-muted-foreground ml-auto shrink-0"
 											>@{entry.user}</span
 										>

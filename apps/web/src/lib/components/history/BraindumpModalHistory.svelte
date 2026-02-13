@@ -284,9 +284,7 @@
 				<!-- Title and time -->
 				<div>
 					{#if braindump?.title}
-						<h2
-							class="text-base sm:text-lg font-semibold text-foreground mb-1"
-						>
+						<h2 class="text-base sm:text-lg font-semibold text-foreground mb-1">
 							{braindump.title}
 						</h2>
 					{/if}
@@ -316,9 +314,7 @@
 				<!-- Main content -->
 				{#if braindumpDetails.braindump.content}
 					<div>
-						<h3
-							class="text-sm font-semibold text-foreground mb-2 flex items-center"
-						>
+						<h3 class="text-sm font-semibold text-foreground mb-2 flex items-center">
 							<FileText class="w-4 h-4 mr-2" />
 							Content
 						</h3>
@@ -333,9 +329,7 @@
 				<!-- AI Summary -->
 				{#if braindumpDetails.braindump.ai_summary}
 					<div>
-						<h3
-							class="text-sm font-semibold text-foreground mb-2 flex items-center"
-						>
+						<h3 class="text-sm font-semibold text-foreground mb-2 flex items-center">
 							<Zap class="w-4 h-4 mr-2 text-violet-600 dark:text-violet-400" />
 							AI Summary
 						</h3>
@@ -382,9 +376,7 @@
 												></div>
 											{/if}
 											<div class="min-w-0 flex-1">
-												<h4
-													class="font-medium text-foreground text-xs"
-												>
+												<h4 class="font-medium text-foreground text-xs">
 													{task.title}
 												</h4>
 												{#if task.description}
@@ -418,15 +410,11 @@
 									<div
 										class="bg-violet-50 dark:bg-violet-900/20 rounded-lg p-2 border border-violet-200 dark:border-violet-800"
 									>
-										<h4
-											class="font-medium text-foreground text-xs mb-1"
-										>
+										<h4 class="font-medium text-foreground text-xs mb-1">
 											{note.title || 'Untitled Note'}
 										</h4>
 										{#if note.content}
-											<p
-												class="text-xs text-muted-foreground line-clamp-2"
-											>
+											<p class="text-xs text-muted-foreground line-clamp-2">
 												{note.content.substring(0, 100)}{note.content
 													.length > 100
 													? '...'
@@ -448,9 +436,7 @@
 				>
 					<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 text-center">
 						<div>
-							<div
-								class="text-xs sm:text-sm font-medium text-foreground"
-							>
+							<div class="text-xs sm:text-sm font-medium text-foreground">
 								{braindumpDetails.metadata.linkCount || 0}
 							</div>
 							<div class="text-xs text-muted-foreground">Links</div>

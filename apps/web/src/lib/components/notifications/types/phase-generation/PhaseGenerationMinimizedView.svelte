@@ -110,9 +110,7 @@
 			</div>
 
 			{#if strategyMeta}
-				<p
-					class="text-xs text-muted-foreground truncate flex items-center gap-1"
-				>
+				<p class="text-xs text-muted-foreground truncate flex items-center gap-1">
 					<Sparkles class="h-3 w-3 text-amber-500" />
 					{strategyMeta.label}
 				</p>

@@ -258,9 +258,7 @@
 				<!-- Header -->
 				<div class="px-3 py-2 border-b border-border">
 					<div class="flex items-center justify-between">
-						<h3 class="text-sm font-medium text-foreground">
-							Filter Tasks
-						</h3>
+						<h3 class="text-sm font-medium text-foreground">Filter Tasks</h3>
 						<div class="flex items-center gap-2">
 							<Button
 								onclick={selectAll}

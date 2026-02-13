@@ -40,16 +40,12 @@
 	</div>
 
 	<!-- Operations List Skeleton -->
-	<div
-		class="bg-card border border-border rounded-lg p-6"
-	>
+	<div class="bg-card border border-border rounded-lg p-6">
 		<!-- Header with sparkles effect -->
 		<div class="text-center mb-6">
 			<div class="inline-flex items-center justify-center space-x-2">
 				<Sparkles class="w-6 h-6 text-purple-400 animate-pulse" />
-				<div class="text-lg font-semibold text-muted-foreground">
-					Analyzing your tasks
-				</div>
+				<div class="text-lg font-semibold text-muted-foreground">Analyzing your tasks</div>
 				<Sparkles
 					class="w-6 h-6 text-purple-400 animate-pulse"
 					style="animation-delay: 0.5s;"
@@ -57,26 +53,20 @@
 			</div>
 			<div class="flex items-center justify-center mt-2">
 				<LoaderCircle class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin mr-2" />
-				<span class="text-sm text-muted-foreground">
-					Finding optimizations...
-				</span>
+				<span class="text-sm text-muted-foreground"> Finding optimizations... </span>
 			</div>
 		</div>
 
 		<!-- Task operation cards skeleton -->
 		<div class="space-y-4">
 			{#each [1, 2, 3] as item}
-				<div
-					class="border border-border rounded-lg p-4 animate-pulse"
-				>
+				<div class="border border-border rounded-lg p-4 animate-pulse">
 					<!-- Operation header -->
 					<div class="flex items-start justify-between mb-3">
 						<div class="flex items-center space-x-3">
 							<div class="w-10 h-10 bg-muted rounded"></div>
 							<div>
-								<div
-									class="h-4 bg-muted rounded w-24 mb-2"
-								></div>
+								<div class="h-4 bg-muted rounded w-24 mb-2"></div>
 								<div class="h-3 bg-muted rounded w-48"></div>
 							</div>
 						</div>
@@ -94,12 +84,8 @@
 							<div class="space-y-2">
 								<div class="h-3 bg-muted rounded w-full"></div>
 								<div class="flex space-x-2">
-									<div
-										class="h-6 bg-muted rounded w-20"
-									></div>
-									<div
-										class="h-6 bg-muted rounded w-16"
-									></div>
+									<div class="h-6 bg-muted rounded w-20"></div>
+									<div class="h-6 bg-muted rounded w-16"></div>
 								</div>
 							</div>
 						</div>
@@ -108,9 +94,7 @@
 						<div
 							class="hidden md:flex items-center justify-center absolute left-1/2 -translate-x-1/2"
 						>
-							<div
-								class="w-8 h-8 bg-muted rounded-full animate-pulse"
-							></div>
+							<div class="w-8 h-8 bg-muted rounded-full animate-pulse"></div>
 						</div>
 
 						<!-- Updated task -->

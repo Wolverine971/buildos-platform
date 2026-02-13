@@ -212,7 +212,9 @@
 	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div class="flex flex-1 items-center gap-2">
 			<div class="relative flex-1 max-w-md">
-				<Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+				<Search
+					class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+				/>
 				<input
 					type="text"
 					placeholder="Search error messages..."
@@ -301,13 +303,9 @@
 			></div>
 		</div>
 	{:else if errors.length === 0}
-		<div
-			class="rounded-lg border border-border bg-muted p-8 text-center"
-		>
+		<div class="rounded-lg border border-border bg-muted p-8 text-center">
 			<CircleAlert class="mx-auto h-12 w-12 text-muted-foreground" />
-			<p class="mt-2 text-muted-foreground">
-				No errors found matching your criteria.
-			</p>
+			<p class="mt-2 text-muted-foreground">No errors found matching your criteria.</p>
 		</div>
 	{:else}
 		<div class="overflow-hidden rounded-lg border border-border">
@@ -333,9 +331,7 @@
 						<th class="px-3 py-3 text-right">Action</th>
 					</tr>
 				</thead>
-				<tbody
-					class="divide-y divide-gray-200 bg-card dark:divide-gray-700"
-				>
+				<tbody class="divide-y divide-gray-200 bg-card dark:divide-gray-700">
 					{#each errors as error}
 						{@const CategoryIcon = getCategoryIcon(error.errorCategory)}
 						<tr class="transition-colors hover:bg-muted/30">
@@ -369,10 +365,7 @@
 								</Badge>
 							</td>
 							<td class="px-3 py-3 hidden lg:table-cell max-w-xs">
-								<p
-									class="truncate text-foreground"
-									title={error.errorMessage}
-								>
+								<p class="truncate text-foreground" title={error.errorMessage}>
 									{error.errorMessage}
 								</p>
 								<p class="mt-1 text-xs text-muted-foreground">
@@ -429,9 +422,7 @@
 
 	<!-- Pagination -->
 	{#if pagination.total > pagination.limit}
-		<div
-			class="flex items-center justify-between border-t border-border pt-4"
-		>
+		<div class="flex items-center justify-between border-t border-border pt-4">
 			<p class="text-sm text-muted-foreground">
 				Showing {pagination.offset + 1} to {Math.min(
 					pagination.offset + pagination.limit,

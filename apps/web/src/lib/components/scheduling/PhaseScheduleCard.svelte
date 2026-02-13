@@ -107,9 +107,7 @@
 					</span>
 				{/if}
 				{#if alreadyScheduled > 0}
-					<span
-						class="px-2 py-1 bg-muted text-foreground text-xs rounded-full"
-					>
+					<span class="px-2 py-1 bg-muted text-foreground text-xs rounded-full">
 						{alreadyScheduled} scheduled
 					</span>
 				{/if}
@@ -165,22 +163,16 @@
 			<!-- Proposed Schedule -->
 			{#if scheduleData.proposedSchedule.length > 0}
 				<div>
-					<h4 class="text-sm font-medium text-foreground mb-2">
-						Proposed Schedule:
-					</h4>
+					<h4 class="text-sm font-medium text-foreground mb-2">Proposed Schedule:</h4>
 					<div class="space-y-2 max-h-64 overflow-y-auto">
 						{#each scheduleData.proposedSchedule as item}
 							<div
 								class="flex items-center justify-between p-3 bg-muted
-										border rounded-lg {item.hasConflict
-									? 'border-amber-300 dark:border-amber-700'
-									: 'border-border'}"
+										border rounded-lg {item.hasConflict ? 'border-amber-300 dark:border-amber-700' : 'border-border'}"
 							>
 								<div class="flex-1">
 									<div class="flex items-center gap-2">
-										<span
-											class="font-medium text-sm text-foreground"
-										>
+										<span class="font-medium text-sm text-foreground">
 											{item.task.title}
 										</span>
 										{#if item.task.priority}
@@ -230,9 +222,7 @@
 			<!-- Phase Summary -->
 			{#if scheduleData.proposedSchedule.length > 0}
 				<div class="pt-3 border-t border-border">
-					<div
-						class="flex items-center justify-between text-xs text-muted-foreground"
-					>
+					<div class="flex items-center justify-between text-xs text-muted-foreground">
 						<span>
 							<Info class="w-3 h-3 inline mr-1" />
 							{scheduleData.proposedSchedule.length} task{scheduleData

@@ -120,9 +120,7 @@
 	{:else}
 		<div class="flex items-center gap-2">
 			{#if isLoading}
-				<div
-					class="flex items-center gap-2 px-3 py-2 bg-muted rounded-md"
-				>
+				<div class="flex items-center gap-2 px-3 py-2 bg-muted rounded-md">
 					<LoaderCircle class="w-4 h-4 animate-spin text-muted-foreground" />
 					<span class="text-sm text-muted-foreground">Loading projects...</span>
 				</div>

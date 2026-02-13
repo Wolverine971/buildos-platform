@@ -301,23 +301,17 @@
 								</th>
 							</tr>
 						</thead>
-						<tbody
-							class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-						>
+						<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 							{#each users as user}
 								{@const subscription = user.customer_subscriptions?.[0]}
 								<tr class="hover:bg-muted/50">
 									<td class="px-6 py-4 whitespace-nowrap">
 										<div class="flex items-center">
 											<div>
-												<div
-													class="text-sm font-medium text-foreground"
-												>
+												<div class="text-sm font-medium text-foreground">
 													{user.name || 'Unnamed User'}
 												</div>
-												<div
-													class="text-sm text-muted-foreground"
-												>
+												<div class="text-sm text-muted-foreground">
 													{user.email}
 												</div>
 											</div>
@@ -360,9 +354,7 @@
 											</span>
 										{/if}
 									</td>
-									<td
-										class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-									>
+									<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 										{#if subscription}
 											${(
 												(subscription.subscription_plans?.price || 0) / 100

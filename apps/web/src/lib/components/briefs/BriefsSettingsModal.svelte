@@ -274,9 +274,7 @@
 			{:else if briefPreferencesState.error && !briefPreferences}
 				<div class="text-center py-8">
 					<AlertCircle class="w-12 h-12 text-rose-400 mx-auto mb-4" />
-					<p class="text-muted-foreground mb-4">
-						Failed to load brief preferences
-					</p>
+					<p class="text-muted-foreground mb-4">Failed to load brief preferences</p>
 					<Button onclick={loadBriefPreferences} variant="primary" size="sm">
 						<RefreshCw class="w-4 h-4 mr-2" />
 						Retry
@@ -286,9 +284,7 @@
 				<!-- Display Mode -->
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
 					<div>
-						<p class="block text-sm font-medium text-foreground mb-2">
-							Frequency
-						</p>
+						<p class="block text-sm font-medium text-foreground mb-2">Frequency</p>
 						<div class="px-3 py-2 bg-muted rounded-lg">
 							{briefPreferences.frequency === 'daily' ? 'Daily' : 'Weekly'}
 						</div>
@@ -296,9 +292,7 @@
 
 					{#if briefPreferences.frequency === 'weekly'}
 						<div>
-							<p
-								class="block text-sm font-medium text-foreground mb-2"
-							>
+							<p class="block text-sm font-medium text-foreground mb-2">
 								Day of Week
 							</p>
 							<div class="px-3 py-2 bg-muted rounded-lg">
@@ -309,18 +303,14 @@
 					{/if}
 
 					<div>
-						<p class="block text-sm font-medium text-foreground mb-2">
-							Time
-						</p>
+						<p class="block text-sm font-medium text-foreground mb-2">Time</p>
 						<div class="px-3 py-2 bg-muted rounded-lg">
 							{convertTimeToHHMM(briefPreferences?.time_of_day)}
 						</div>
 					</div>
 
 					<div>
-						<p class="block text-sm font-medium text-foreground mb-2">
-							Timezone
-						</p>
+						<p class="block text-sm font-medium text-foreground mb-2">Timezone</p>
 						<div class="px-3 py-2 bg-muted rounded-lg">
 							{TIMEZONE_OPTIONS.find((tz) => tz.value === briefPreferences?.timezone)
 								?.label || briefPreferences?.timezone}
@@ -328,9 +318,7 @@
 					</div>
 
 					<div class="md:col-span-2">
-						<p class="block text-sm font-medium text-foreground mb-2">
-							Status
-						</p>
+						<p class="block text-sm font-medium text-foreground mb-2">Status</p>
 						<div class="space-y-3">
 							<div class="flex items-center space-x-2">
 								<div
@@ -349,12 +337,8 @@
 
 							{#if briefPreferences.is_active}
 								<!-- Show notification settings -->
-								<div
-									class="bg-muted border border-border rounded-lg p-3"
-								>
-									<h4
-										class="text-xs font-semibold text-foreground mb-2"
-									>
+								<div class="bg-muted border border-border rounded-lg p-3">
+									<h4 class="text-xs font-semibold text-foreground mb-2">
 										Notification Settings
 									</h4>
 									<div class="flex flex-col gap-1.5">
@@ -454,9 +438,7 @@
 
 							{#if briefPreferencesForm.is_active}
 								<!-- Notification Settings Section -->
-								<div
-									class="border-t border-border pt-4 space-y-3"
-								>
+								<div class="border-t border-border pt-4 space-y-3">
 									<h4
 										class="text-sm font-semibold text-foreground flex items-center gap-2"
 									>
@@ -481,15 +463,11 @@
 												<Mail
 													class="w-4 h-4 text-blue-600 dark:text-blue-400"
 												/>
-												<span
-													class="text-sm font-medium text-foreground"
-												>
+												<span class="text-sm font-medium text-foreground">
 													Email Notifications
 												</span>
 											</div>
-											<p
-												class="text-xs text-muted-foreground mt-0.5"
-											>
+											<p class="text-xs text-muted-foreground mt-0.5">
 												Get your daily brief via email
 											</p>
 										</div>
@@ -511,15 +489,11 @@
 												<MessageSquare
 													class="w-4 h-4 text-orange-600 dark:text-orange-400"
 												/>
-												<span
-													class="text-sm font-medium text-foreground"
-												>
+												<span class="text-sm font-medium text-foreground">
 													SMS Notifications
 												</span>
 											</div>
-											<p
-												class="text-xs text-muted-foreground mt-0.5"
-											>
+											<p class="text-xs text-muted-foreground mt-0.5">
 												Receive text messages when your brief is ready
 											</p>
 											{#if !phoneVerified}
@@ -573,9 +547,7 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div
-			class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/50"
-		>
+		<div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/50">
 			<div class="flex justify-end space-x-2">
 				{#if !isEditing}
 					<Button onclick={onClose} variant="ghost" size="md">Close</Button>

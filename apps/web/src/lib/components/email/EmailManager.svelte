@@ -274,9 +274,7 @@
 				</h2>
 			</div>
 			{#if activeView === 'list'}
-				<p class="text-muted-foreground mt-1">
-					Manage and send emails to beta users
-				</p>
+				<p class="text-muted-foreground mt-1">Manage and send emails to beta users</p>
 			{/if}
 		</div>
 
@@ -443,9 +441,7 @@
 			{:else if emails.length === 0}
 				<div class="p-8 text-center">
 					<Mail class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-					<h3 class="text-lg font-semibold text-foreground mb-2">
-						No Emails Found
-					</h3>
+					<h3 class="text-lg font-semibold text-foreground mb-2">No Emails Found</h3>
 					<p class="text-muted-foreground mb-4">
 						{searchQuery
 							? 'Try adjusting your search criteria.'
@@ -462,9 +458,7 @@
 						<div class="p-4 border-b border-border">
 							<div class="flex items-start justify-between mb-2">
 								<div class="flex-1 min-w-0">
-									<h3
-										class="text-sm font-medium text-foreground truncate"
-									>
+									<h3 class="text-sm font-medium text-foreground truncate">
 										{email.subject}
 									</h3>
 									<p class="text-xs text-muted-foreground mt-1">
@@ -511,9 +505,7 @@
 								>
 									{email.status}
 								</span>
-								<div
-									class="flex items-center space-x-3 text-muted-foreground"
-								>
+								<div class="flex items-center space-x-3 text-muted-foreground">
 									<span class="flex items-center">
 										<Users class="h-3 w-3 mr-1" />
 										{getRecipientCount(email)}
@@ -566,9 +558,7 @@
 								</th>
 							</tr>
 						</thead>
-						<tbody
-							class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-						>
+						<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 							{#each emails as email}
 								<tr class="hover:bg-muted">
 									<td class="px-6 py-4">
@@ -583,14 +573,10 @@
 												</div>
 											</div>
 											<div class="ml-4">
-												<div
-													class="text-sm font-medium text-foreground"
-												>
+												<div class="text-sm font-medium text-foreground">
 													{email.subject}
 												</div>
-												<div
-													class="text-sm text-muted-foreground"
-												>
+												<div class="text-sm text-muted-foreground">
 													From: {email.from_name} &lt;{email.from_email}&gt;
 												</div>
 											</div>
@@ -606,9 +592,7 @@
 										</span>
 									</td>
 									<td class="px-6 py-4 whitespace-nowrap">
-										<div
-											class="flex items-center text-sm text-foreground"
-										>
+										<div class="flex items-center text-sm text-foreground">
 											<Users class="h-4 w-4 mr-1 text-muted-foreground" />
 											{getRecipientCount(email)}
 											{#if email.status === 'sent' || email.status === 'delivered'}
@@ -679,9 +663,7 @@
 							>
 								Previous
 							</Button>
-							<span
-								class="flex items-center text-sm text-foreground"
-							>
+							<span class="flex items-center text-sm text-foreground">
 								{currentPage} of {totalPages}
 							</span>
 							<Button

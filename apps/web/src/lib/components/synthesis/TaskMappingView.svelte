@@ -271,9 +271,7 @@
 			</h2>
 			<Sparkles class="w-4 h-4 text-purple-500" />
 		</div>
-		<p class="text-xs sm:text-sm text-muted-foreground">
-			Review and edit transformations
-		</p>
+		<p class="text-xs sm:text-sm text-muted-foreground">Review and edit transformations</p>
 	</div>
 
 	<!-- Compact Summary Cards -->
@@ -376,9 +374,7 @@
 									/>
 								</div>
 								<div class="min-w-0 flex-1">
-									<h4
-										class="text-sm font-medium text-foreground truncate"
-									>
+									<h4 class="text-sm font-medium text-foreground truncate">
 										Consolidate {consolidation.originalTasks.length} → 1
 									</h4>
 									{#if !expandedOperations.has(consolidation.operation.id) && consolidation.reasoning}
@@ -461,9 +457,7 @@
 									<div
 										class="p-2.5 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-lg border border-indigo-200 dark:border-indigo-700 relative overflow-hidden dither-soft"
 									>
-										<h5
-											class="text-sm font-medium text-foreground truncate"
-										>
+										<h5 class="text-sm font-medium text-foreground truncate">
 											{consolidation.operation.data.title}
 										</h5>
 										<div
@@ -554,9 +548,7 @@
 									<Edit3 class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
 								</div>
 								<div class="min-w-0 flex-1">
-									<h4 class="text-sm font-medium text-foreground">
-										Update Task
-									</h4>
+									<h4 class="text-sm font-medium text-foreground">Update Task</h4>
 									{#if !expandedOperations.has(update.operation.id) && update.operation.reasoning}
 										<p
 											class="text-xs text-muted-foreground mt-0.5 line-clamp-1"
@@ -604,9 +596,7 @@
 								<!-- Original Task -->
 								<div class="flex-1 w-full">
 									{#if update.originalTask}
-										<div
-											class="p-2.5 bg-muted/50 rounded-lg"
-										>
+										<div class="p-2.5 bg-muted/50 rounded-lg">
 											<h5
 												class="text-sm font-medium text-foreground line-through truncate"
 											>
@@ -643,9 +633,7 @@
 									<div
 										class="p-2.5 bg-gradient-to-br from-blue-50 to-sky-50 dark:from-blue-900/20 dark:to-sky-900/20 rounded-lg border border-blue-200 dark:border-blue-700 relative overflow-hidden dither-soft"
 									>
-										<h5
-											class="text-sm font-medium text-foreground truncate"
-										>
+										<h5 class="text-sm font-medium text-foreground truncate">
 											{update.operation.data.title}
 										</h5>
 										<div
@@ -725,9 +713,7 @@
 									<Plus class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
 								</div>
 								<div>
-									<h4 class="font-medium text-foreground">
-										Create New Task
-									</h4>
+									<h4 class="font-medium text-foreground">Create New Task</h4>
 									{#if creation.reasoning}
 										<p class="text-xs text-muted-foreground mt-0.5">
 											{creation.reasoning}
@@ -811,9 +797,7 @@
 									/>
 								</div>
 								<div class="min-w-0 flex-1">
-									<h4 class="text-sm font-medium text-foreground">
-										Delete Task
-									</h4>
+									<h4 class="text-sm font-medium text-foreground">Delete Task</h4>
 									{#if deleted.reasoning}
 										<p
 											class="text-xs text-muted-foreground mt-0.5 line-clamp-1"
@@ -869,9 +853,7 @@
 			>
 				<AlertTriangle class="w-8 h-8 text-muted-foreground" />
 			</div>
-			<p class="text-muted-foreground font-medium">
-				No task transformations found
-			</p>
+			<p class="text-muted-foreground font-medium">No task transformations found</p>
 			<p class="text-sm text-muted-foreground mt-2">
 				The synthesis didn't identify any changes needed for your tasks
 			</p>

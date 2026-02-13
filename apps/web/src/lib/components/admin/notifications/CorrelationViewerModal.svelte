@@ -117,9 +117,7 @@
 <Modal {isOpen} onClose={onClose || (() => {})} size="xl">
 	{#snippet header()}
 		<div class="p-4 sm:p-5 md:p-6 border-b border-border">
-			<h2 class="text-lg sm:text-xl font-semibold text-foreground">
-				Correlation Tracking
-			</h2>
+			<h2 class="text-lg sm:text-xl font-semibold text-foreground">Correlation Tracking</h2>
 			<div class="flex items-center gap-2 mt-2">
 				<span class="text-sm text-muted-foreground font-mono truncate">
 					{correlationId}
@@ -153,9 +151,7 @@
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2">
 								<Clock class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-								<span class="font-medium text-foreground"
-									>Timeline</span
-								>
+								<span class="font-medium text-foreground">Timeline</span>
 							</div>
 							<div class="text-sm text-foreground">
 								Duration: {formatDuration(data.timeline.duration)}
@@ -163,9 +159,7 @@
 						</div>
 						<div class="grid grid-cols-3 gap-4 mt-4">
 							<div>
-								<div class="text-xs text-muted-foreground">
-									Total Logs
-								</div>
+								<div class="text-xs text-muted-foreground">Total Logs</div>
 								<div class="text-lg font-semibold text-foreground">
 									{data.timeline.log_count}
 								</div>
@@ -189,28 +183,20 @@
 
 					<!-- Notification Event -->
 					{#if data.notification_event}
-						<div
-							class="bg-card border border-border rounded-lg p-4"
-						>
+						<div class="bg-card border border-border rounded-lg p-4">
 							<div class="flex items-center gap-2 mb-4">
 								<Info class="w-5 h-5 text-purple-600 dark:text-purple-400" />
-								<span class="font-medium text-foreground"
-									>Notification Event</span
-								>
+								<span class="font-medium text-foreground">Notification Event</span>
 							</div>
 							<div class="space-y-2">
 								<div class="flex justify-between gap-4">
-									<span class="text-sm text-foreground"
-										>Type:</span
-									>
+									<span class="text-sm text-foreground">Type:</span>
 									<span class="text-sm font-medium text-foreground">
 										{data.notification_event.event_type}
 									</span>
 								</div>
 								<div class="flex justify-between gap-4">
-									<span class="text-sm text-foreground"
-										>Source:</span
-									>
+									<span class="text-sm text-foreground">Source:</span>
 									<span class="text-sm font-medium text-foreground">
 										{data.notification_event.event_source}
 									</span>
@@ -221,9 +207,7 @@
 
 					<!-- Deliveries -->
 					{#if data.deliveries && data.deliveries.length > 0}
-						<div
-							class="bg-card border border-border rounded-lg p-4"
-						>
+						<div class="bg-card border border-border rounded-lg p-4">
 							<div class="flex items-center gap-2 mb-4">
 								<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
 								<span class="font-medium text-foreground">
@@ -236,9 +220,7 @@
 										class="flex items-center justify-between py-2 border-b border-border last:border-0"
 									>
 										<div class="flex items-center gap-3">
-											<span
-												class="text-sm font-medium text-foreground"
-											>
+											<span class="text-sm font-medium text-foreground">
 												{delivery.channel.toUpperCase()}
 											</span>
 											<span
@@ -259,9 +241,7 @@
 					<div class="space-y-4">
 						<div class="flex items-center gap-2">
 							<AlertCircle class="w-5 h-5 text-muted-foreground" />
-							<span class="font-medium text-foreground"
-								>Log Timeline</span
-							>
+							<span class="font-medium text-foreground">Log Timeline</span>
 						</div>
 
 						{#each data.namespaces as namespace}
@@ -269,12 +249,8 @@
 								<div
 									class="bg-card border border-border rounded-lg overflow-hidden"
 								>
-									<div
-										class="px-4 py-2 bg-muted border-b border-border"
-									>
-										<span
-											class="text-sm font-mono text-foreground"
-										>
+									<div class="px-4 py-2 bg-muted border-b border-border">
+										<span class="text-sm font-mono text-foreground">
 											{namespace}
 										</span>
 									</div>
@@ -301,9 +277,7 @@
 																{log.level.toUpperCase()}
 															</span>
 														</div>
-														<p
-															class="text-sm text-foreground"
-														>
+														<p class="text-sm text-foreground">
 															{log.message}
 														</p>
 														{#if log.metadata && Object.keys(log.metadata).length > 0}
@@ -332,9 +306,7 @@
 		</div>
 	{/snippet}
 	{#snippet footer()}
-		<div
-			class="p-4 sm:p-5 md:p-6 border-t border-border flex justify-end"
-		>
+		<div class="p-4 sm:p-5 md:p-6 border-t border-border flex justify-end">
 			<Button onclick={onClose} variant="secondary">Close</Button>
 		</div>
 	{/snippet}

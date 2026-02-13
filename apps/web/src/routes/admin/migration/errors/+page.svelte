@@ -344,33 +344,25 @@
 			<!-- Entity Info -->
 			<div class="grid grid-cols-2 gap-4">
 				<div>
-					<p class="text-xs font-medium uppercase text-muted-foreground">
-						Entity
-					</p>
+					<p class="text-xs font-medium uppercase text-muted-foreground">Entity</p>
 					<p class="font-medium text-foreground">
 						{selectedError.entityName}
 					</p>
 				</div>
 				<div>
-					<p class="text-xs font-medium uppercase text-muted-foreground">
-						Type
-					</p>
+					<p class="text-xs font-medium uppercase text-muted-foreground">Type</p>
 					<p class="font-medium capitalize text-foreground">
 						{selectedError.entityType}
 					</p>
 				</div>
 				<div>
-					<p class="text-xs font-medium uppercase text-muted-foreground">
-						Project
-					</p>
+					<p class="text-xs font-medium uppercase text-muted-foreground">Project</p>
 					<p class="font-medium text-foreground">
 						{selectedError.projectName}
 					</p>
 				</div>
 				<div>
-					<p class="text-xs font-medium uppercase text-muted-foreground">
-						User
-					</p>
+					<p class="text-xs font-medium uppercase text-muted-foreground">User</p>
 					<p class="font-medium text-foreground">
 						{selectedError.userName ?? selectedError.userEmail}
 					</p>
@@ -393,9 +385,7 @@
 
 			<!-- Error Details -->
 			<div>
-				<p class="text-xs font-medium uppercase text-muted-foreground">
-					Error Message
-				</p>
+				<p class="text-xs font-medium uppercase text-muted-foreground">Error Message</p>
 				<div
 					class="mt-1 rounded-lg border border-rose-200 bg-rose-50 p-3 dark:border-rose-800 dark:bg-rose-900/20"
 				>
@@ -407,9 +397,7 @@
 
 			<!-- Suggested Action -->
 			<div>
-				<p class="text-xs font-medium uppercase text-muted-foreground">
-					Suggested Action
-				</p>
+				<p class="text-xs font-medium uppercase text-muted-foreground">Suggested Action</p>
 				<div
 					class="mt-1 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20"
 				>
@@ -423,9 +411,7 @@
 			</div>
 
 			<!-- Retry Info -->
-			<div
-				class="flex items-center justify-between rounded-lg bg-muted p-3"
-			>
+			<div class="flex items-center justify-between rounded-lg bg-muted p-3">
 				<div class="text-sm">
 					<span class="text-muted-foreground">Retry Count:</span>
 					<span class="ml-2 font-medium text-foreground"
@@ -445,9 +431,7 @@
 			<!-- Metadata -->
 			{#if Object.keys(selectedError.metadata).length > 0}
 				<div>
-					<p class="text-xs font-medium uppercase text-muted-foreground">
-						Metadata
-					</p>
+					<p class="text-xs font-medium uppercase text-muted-foreground">Metadata</p>
 					<pre
 						class="mt-1 max-h-48 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-foreground">{JSON.stringify(
 							selectedError.metadata,
@@ -512,9 +496,7 @@
 						? ''
 						: 's'}?
 				</p>
-				<p class="text-sm text-muted-foreground">
-					This action cannot be undone.
-				</p>
+				<p class="text-sm text-muted-foreground">This action cannot be undone.</p>
 			</div>
 		</div>
 		<div class="flex justify-end gap-2 border-t border-border pt-4">

@@ -216,21 +216,23 @@
 		backHref="/admin"
 		backLabel="Dashboard"
 	>
-		<div slot="actions" class="flex items-center space-x-4">
-			<div class="text-sm text-muted-foreground">
-				{totalItems} total submissions
+		{#snippet actions()}
+			<div class="flex items-center space-x-4">
+				<div class="text-sm text-muted-foreground">
+					{totalItems} total submissions
+				</div>
+				<Button
+					onclick={loadFeedback}
+					disabled={isLoading}
+					variant="primary"
+					size="sm"
+					icon={RefreshCw}
+					loading={isLoading}
+				>
+					<span class="hidden lg:inline">Refresh</span>
+				</Button>
 			</div>
-			<Button
-				onclick={loadFeedback}
-				disabled={isLoading}
-				variant="primary"
-				size="sm"
-				icon={RefreshCw}
-				loading={isLoading}
-			>
-				<span class="hidden lg:inline">Refresh</span>
-			</Button>
-		</div>
+		{/snippet}
 	</AdminPageHeader>
 
 	<!-- Filters and Search -->
@@ -264,12 +266,7 @@
 
 			<!-- Status Filter -->
 			<FormField label="Status" labelFor="mobile-status">
-				<Select
-					id="mobile-status"
-					bind:value={filterByStatus}
-					onchange={(e) => (filterByStatus = e.detail)}
-					size="md"
-				>
+				<Select id="mobile-status" bind:value={filterByStatus} size="md">
 					<option value="all">All Status</option>
 					<option value="new">New</option>
 					<option value="reviewed">Reviewed</option>
@@ -281,12 +278,7 @@
 
 			<!-- Category Filter -->
 			<FormField label="Category" labelFor="mobile-category">
-				<Select
-					id="mobile-category"
-					bind:value={filterByCategory}
-					onchange={(e) => (filterByCategory = e.detail)}
-					size="md"
-				>
+				<Select id="mobile-category" bind:value={filterByCategory} size="md">
 					<option value="all">All Categories</option>
 					<option value="feature">Feature Request</option>
 					<option value="bug">Bug Report</option>
@@ -297,12 +289,7 @@
 
 			<!-- Sort -->
 			<FormField label="Sort By" labelFor="mobile-sort">
-				<Select
-					id="mobile-sort"
-					bind:value={sortBy}
-					onchange={(e) => (sortBy = e.detail)}
-					size="md"
-				>
+				<Select id="mobile-sort" bind:value={sortBy} size="md">
 					<option value="created_at">Date Created</option>
 					<option value="rating">Rating</option>
 					<option value="status">Status</option>
@@ -325,11 +312,7 @@
 
 			<!-- Status Filter -->
 			<div class="py-2">
-				<Select
-					bind:value={filterByStatus}
-					onchange={(e) => (filterByStatus = e.detail)}
-					size="md"
-				>
+				<Select bind:value={filterByStatus} size="md">
 					<option value="all">All Status</option>
 					<option value="new">New</option>
 					<option value="reviewed">Reviewed</option>
@@ -341,11 +324,7 @@
 
 			<!-- Category Filter -->
 			<div class="py-2">
-				<Select
-					bind:value={filterByCategory}
-					onchange={(e) => (filterByCategory = e.detail)}
-					size="md"
-				>
+				<Select bind:value={filterByCategory} size="md">
 					<option value="all">All Categories</option>
 					<option value="feature">Feature Request</option>
 					<option value="bug">Bug Report</option>
@@ -356,7 +335,7 @@
 
 			<!-- Sort -->
 			<div class="py-2">
-				<Select bind:value={sortBy} onchange={(e) => (sortBy = e.detail)} size="md">
+				<Select bind:value={sortBy} size="md">
 					<option value="created_at">Date Created</option>
 					<option value="rating">Rating</option>
 					<option value="status">Status</option>
@@ -385,10 +364,10 @@
 			</div>
 		{:else if feedback.length === 0}
 			<div class="p-6 sm:p-8 text-center">
-				<MessageSquare class="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4" />
-				<h3 class="text-lg font-semibold text-foreground mb-2">
-					No Feedback Found
-				</h3>
+				<MessageSquare
+					class="h-12 w-12 sm:h-16 sm:w-16 text-muted-foreground mx-auto mb-4"
+				/>
+				<h3 class="text-lg font-semibold text-foreground mb-2">No Feedback Found</h3>
 				<p class="text-muted-foreground">
 					{searchQuery
 						? 'Try adjusting your search criteria.'
@@ -535,16 +514,12 @@
 							</th>
 						</tr>
 					</thead>
-					<tbody
-						class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-					>
+					<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 						{#each feedback as item}
 							<tr class="hover:bg-muted">
 								<td class="px-6 py-4">
 									<div class="max-w-xs">
-										<p
-											class="text-sm text-foreground line-clamp-2"
-										>
+										<p class="text-sm text-foreground line-clamp-2">
 											{item.feedback_text}
 										</p>
 										<p class="text-xs text-muted-foreground mt-1">
@@ -722,9 +697,7 @@
 		<div class="admin-panel-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 			<div class="p-4 sm:p-6">
 				<div class="flex items-center justify-between mb-4">
-					<h3 class="text-lg font-semibold text-foreground">
-						Feedback Details
-					</h3>
+					<h3 class="text-lg font-semibold text-foreground">Feedback Details</h3>
 					<Button
 						onclick={() => (showFeedbackModal = false)}
 						variant="ghost"
@@ -738,9 +711,7 @@
 					<!-- Category and Rating -->
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
-							<div
-								class="block text-sm font-medium text-foreground mb-1"
-							>
+							<div class="block text-sm font-medium text-foreground mb-1">
 								Category
 							</div>
 							<span
@@ -752,11 +723,7 @@
 							</span>
 						</div>
 						<div>
-							<div
-								class="block text-sm font-medium text-foreground mb-1"
-							>
-								Rating
-							</div>
+							<div class="block text-sm font-medium text-foreground mb-1">Rating</div>
 							{#if selectedFeedback.rating}
 								<div class="flex items-center">
 									{#each Array(5) as _, i}
@@ -771,18 +738,15 @@
 									</span>
 								</div>
 							{:else}
-								<span class="text-sm text-muted-foreground">No rating provided</span>
+								<span class="text-sm text-muted-foreground">No rating provided</span
+								>
 							{/if}
 						</div>
 					</div>
 
 					<!-- User Info -->
 					<div>
-						<div
-							class="block text-sm font-medium text-foreground mb-1"
-						>
-							User
-						</div>
+						<div class="block text-sm font-medium text-foreground mb-1">User</div>
 						<p class="text-sm text-foreground">
 							{selectedFeedback.user_email || 'Anonymous'}
 						</p>
@@ -790,11 +754,7 @@
 
 					<!-- Feedback Text -->
 					<div>
-						<div
-							class="block text-sm font-medium text-foreground mb-1"
-						>
-							Feedback
-						</div>
+						<div class="block text-sm font-medium text-foreground mb-1">Feedback</div>
 						<div class="mt-1 p-3 bg-muted rounded-lg">
 							<p class="text-sm text-foreground whitespace-pre-wrap">
 								{selectedFeedback.feedback_text}
@@ -804,9 +764,7 @@
 
 					<!-- Status -->
 					<div>
-						<div
-							class="block text-sm font-medium text-foreground mb-1"
-						>
+						<div class="block text-sm font-medium text-foreground mb-1">
 							Current Status
 						</div>
 						<span
@@ -821,9 +779,7 @@
 					<!-- Timestamps -->
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<div>
-							<div
-								class="block text-sm font-medium text-foreground mb-1"
-							>
+							<div class="block text-sm font-medium text-foreground mb-1">
 								Created
 							</div>
 							<p class="text-sm text-foreground">
@@ -832,9 +788,7 @@
 						</div>
 						{#if selectedFeedback.updated_at !== selectedFeedback.created_at}
 							<div>
-								<div
-									class="block text-sm font-medium text-foreground mb-1"
-								>
+								<div class="block text-sm font-medium text-foreground mb-1">
 									Updated
 								</div>
 								<p class="text-sm text-foreground">
@@ -847,9 +801,7 @@
 					<!-- Technical Info -->
 					{#if selectedFeedback.user_agent || selectedFeedback.user_ip}
 						<div>
-							<div
-								class="block text-sm font-medium text-foreground mb-1"
-							>
+							<div class="block text-sm font-medium text-foreground mb-1">
 								Technical Info
 							</div>
 							<div class="text-xs text-muted-foreground space-y-1">
@@ -946,7 +898,7 @@
 	userId={emailUserId}
 	userName={emailUserName}
 	userEmail={emailUserEmail}
-	on:emailSent={() => {
+	onEmailSent={() => {
 		showEmailModal = false;
 	}}
 />

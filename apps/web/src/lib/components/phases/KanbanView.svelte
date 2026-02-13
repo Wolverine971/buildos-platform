@@ -255,15 +255,11 @@
 			<div class="flex items-center gap-3">
 				<div class="flex items-center gap-2">
 					<LayoutGrid class="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-					<h2 class="text-lg font-semibold text-foreground">
-						Kanban Board
-					</h2>
+					<h2 class="text-lg font-semibold text-foreground">Kanban Board</h2>
 				</div>
 
 				<!-- Stats -->
-				<div
-					class="hidden sm:flex items-center gap-4 text-sm text-muted-foreground"
-				>
+				<div class="hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
 					<span>{phases.length} phases</span>
 					<span>•</span>
 					<span>{completedTasks}/{totalTasks} tasks</span>
@@ -376,9 +372,7 @@
 				<div class="text-muted-foreground mb-4">
 					<LayoutGrid class="w-12 h-12 mx-auto opacity-50" aria-hidden="true" />
 				</div>
-				<h3 class="text-lg font-medium text-foreground mb-2">
-					No phases to display
-				</h3>
+				<h3 class="text-lg font-medium text-foreground mb-2">No phases to display</h3>
 				<p class="text-sm text-muted-foreground mb-6">
 					Create your first phase to start organizing your project tasks.
 				</p>

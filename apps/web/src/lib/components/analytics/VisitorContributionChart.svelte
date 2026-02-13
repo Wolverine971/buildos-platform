@@ -288,9 +288,7 @@
 				{#each Array(5) as _, i}
 					<div class="flex flex-col space-y-1">
 						{#each Array(7) as _, j}
-							<div
-								class="w-2 h-2 sm:w-3 sm:h-3 bg-muted rounded-sm"
-							></div>
+							<div class="w-2 h-2 sm:w-3 sm:h-3 bg-muted rounded-sm"></div>
 						{/each}
 					</div>
 				{/each}
@@ -324,9 +322,7 @@
 							<span class="sm:hidden">Daily Visitors</span>
 						</h4>
 						<!-- View Toggle -->
-						<div
-							class="flex items-center bg-muted rounded-lg p-1 sm:ml-4"
-						>
+						<div class="flex items-center bg-muted rounded-lg p-1 sm:ml-4">
 							<Button
 								variant={viewMode === 'graph' ? 'primary' : 'ghost'}
 								size="sm"
@@ -371,7 +367,9 @@
 							</Button>
 						</div>
 					</div>
-					<p class="text-xs sm:text-sm text-muted-foreground dark:!text-muted-foreground mt-1">
+					<p
+						class="text-xs sm:text-sm text-muted-foreground dark:!text-muted-foreground mt-1"
+					>
 						{totalVisitors} total visitors • {averageDaily} avg per day • {totalSignups}
 						signups
 					</p>

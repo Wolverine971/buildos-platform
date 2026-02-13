@@ -56,6 +56,11 @@
 		canManageMembers?: boolean;
 	}
 
+	const ROLE_NAME_MIN = 2;
+	const ROLE_NAME_MAX = 80;
+	const ROLE_DESCRIPTION_MIN = 8;
+	const ROLE_DESCRIPTION_MAX = 600;
+
 	let {
 		isOpen = $bindable(false),
 		onClose,
@@ -79,7 +84,10 @@
 	let memberActionId = $state<string | null>(null);
 	let memberActionType = $state<'role' | 'remove' | null>(null);
 	let roleContextInput = $state('');
-	let roleProfileActionType = $state<'generate' | null>(null);
+	let roleNameInput = $state('');
+	let roleDescriptionInput = $state('');
+	let isEditingRoleProfile = $state(false);
+	let roleProfileActionType = $state<'generate' | 'save' | null>(null);
 	let roleProfileError = $state<string | null>(null);
 	let notificationSettings = $state<NotificationSettingsRow | null>(null);
 	let settingsError = $state<string | null>(null);
@@ -101,6 +109,9 @@
 			memberActionId = null;
 			memberActionType = null;
 			roleContextInput = '';
+			roleNameInput = '';
+			roleDescriptionInput = '';
+			isEditingRoleProfile = false;
 			roleProfileActionType = null;
 			roleProfileError = null;
 			notificationSettings = null;
@@ -239,8 +250,106 @@
 	);
 	const canLeaveProject = $derived(Boolean(currentMember && currentMember.role_key !== 'owner'));
 
+	$effect(() => {
+		if (!isOpen || !currentMember) return;
+		if (isEditingRoleProfile || roleProfileActionType === 'save') return;
+		roleNameInput = currentMember.role_name ?? '';
+		roleDescriptionInput = currentMember.role_description ?? '';
+	});
+
+	function handleStartRoleProfileEdit() {
+		if (!currentMember || roleProfileActionType !== null) return;
+		roleProfileError = null;
+		roleNameInput = currentMember.role_name ?? '';
+		roleDescriptionInput = currentMember.role_description ?? '';
+		isEditingRoleProfile = true;
+	}
+
+	function handleCancelRoleProfileEdit() {
+		if (!currentMember || roleProfileActionType !== null) return;
+		roleProfileError = null;
+		roleNameInput = currentMember.role_name ?? '';
+		roleDescriptionInput = currentMember.role_description ?? '';
+		isEditingRoleProfile = false;
+	}
+
+	async function handleSaveRoleProfile(event: Event) {
+		event.preventDefault();
+		if (!currentMember) return;
+
+		roleProfileError = null;
+
+		const roleName = roleNameInput.trim();
+		const roleDescription = roleDescriptionInput.trim();
+		const roleNameValue = roleName.length > 0 ? roleName : null;
+		const roleDescriptionValue = roleDescription.length > 0 ? roleDescription : null;
+
+		if (
+			roleNameValue !== null &&
+			(roleNameValue.length < ROLE_NAME_MIN || roleNameValue.length > ROLE_NAME_MAX)
+		) {
+			roleProfileError = `Role name must be ${ROLE_NAME_MIN}-${ROLE_NAME_MAX} characters`;
+			return;
+		}
+
+		if (
+			roleDescriptionValue !== null &&
+			(roleDescriptionValue.length < ROLE_DESCRIPTION_MIN ||
+				roleDescriptionValue.length > ROLE_DESCRIPTION_MAX)
+		) {
+			roleProfileError = `Role description must be ${ROLE_DESCRIPTION_MIN}-${ROLE_DESCRIPTION_MAX} characters`;
+			return;
+		}
+
+		roleProfileActionType = 'save';
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(
+				`/api/onto/projects/${projectId}/members/me/role-profile`,
+				{
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						role_name: roleNameValue,
+						role_description: roleDescriptionValue
+					})
+				}
+			);
+
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to update role profile');
+			}
+
+			toastService.success('Role profile updated');
+			isEditingRoleProfile = false;
+			await loadShareData();
+		} catch (err) {
+			console.error('[ProjectShareModal] Failed to update role profile:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/members/me/role-profile`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'project_member',
+				operation: 'project_member_role_profile_update',
+				metadata: {
+					source: 'project_share_modal',
+					status: responseStatus
+				}
+			});
+			roleProfileError = err instanceof Error ? err.message : 'Failed to update role profile';
+			toastService.error(roleProfileError);
+		} finally {
+			roleProfileActionType = null;
+		}
+	}
+
 	async function handleGenerateRoleProfile(event: Event) {
 		event.preventDefault();
+		if (isEditingRoleProfile) return;
 		roleProfileError = null;
 
 		const roleContext = roleContextInput.trim();
@@ -758,9 +867,21 @@
 
 			{#if currentMember}
 				<div class="rounded-md border border-border bg-muted/20 p-3 space-y-1">
-					<p class="text-xs uppercase tracking-wide text-muted-foreground">
-						Current role profile
-					</p>
+					<div class="flex items-center justify-between gap-2">
+						<p class="text-xs uppercase tracking-wide text-muted-foreground">
+							Current role profile
+						</p>
+						<Button
+							variant="ghost"
+							size="sm"
+							disabled={roleProfileActionType !== null}
+							onclick={isEditingRoleProfile
+								? handleCancelRoleProfileEdit
+								: handleStartRoleProfileEdit}
+						>
+							{isEditingRoleProfile ? 'Cancel' : 'Edit manually'}
+						</Button>
+					</div>
 					<p class="text-sm text-foreground">
 						{currentMember.role_name || formatRole(currentMember.role_key)}
 					</p>
@@ -770,6 +891,56 @@
 						</p>
 					{/if}
 				</div>
+			{/if}
+
+			{#if isEditingRoleProfile}
+				<form class="space-y-2" onsubmit={handleSaveRoleProfile}>
+					<div class="space-y-1">
+						<label
+							for="role-title-input"
+							class="text-xs font-medium text-muted-foreground">Role title</label
+						>
+						<TextInput
+							id="role-title-input"
+							bind:value={roleNameInput}
+							placeholder="Content Lead"
+							maxlength={ROLE_NAME_MAX}
+							disabled={roleProfileActionType !== null}
+						/>
+					</div>
+
+					<div class="space-y-1">
+						<label
+							for="role-description-input"
+							class="text-xs font-medium text-muted-foreground"
+						>
+							Role description
+						</label>
+						<Textarea
+							id="role-description-input"
+							bind:value={roleDescriptionInput}
+							rows={3}
+							autoResize
+							maxRows={8}
+							placeholder="What outcomes and responsibilities do you own?"
+							maxlength={ROLE_DESCRIPTION_MAX}
+							disabled={roleProfileActionType !== null}
+						/>
+					</div>
+
+					{#if roleProfileError}
+						<p class="text-xs text-destructive">{roleProfileError}</p>
+					{/if}
+
+					<Button
+						type="submit"
+						variant="secondary"
+						size="sm"
+						disabled={roleProfileActionType !== null}
+					>
+						{roleProfileActionType === 'save' ? 'Saving...' : 'Save Role Profile'}
+					</Button>
+				</form>
 			{/if}
 
 			<form class="space-y-2" onsubmit={handleGenerateRoleProfile}>
@@ -790,6 +961,7 @@
 					variant="secondary"
 					size="sm"
 					disabled={roleProfileActionType !== null ||
+						isEditingRoleProfile ||
 						roleContextInput.trim().length === 0}
 				>
 					{roleProfileActionType === 'generate'

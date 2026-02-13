@@ -175,14 +175,10 @@
 						</th>
 					</tr>
 				</thead>
-				<tbody
-					class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-				>
+				<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 					{#each deliveries as delivery}
 						<tr class="hover:bg-muted transition-colors">
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{#if delivery.notification_events}
 									{delivery.notification_events.event_type
 										.replace(/_/g, ' ')
@@ -200,9 +196,7 @@
 									{delivery.channel.toUpperCase()}
 								</span>
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{#if delivery.users}
 									<div>
 										<div class="font-medium">
@@ -255,9 +249,7 @@
 									{/each}
 								</div>
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
 								<div class="text-xs space-y-1">
 									<div>Send: {formatDuration(delivery.durations.to_send)}</div>
 									<div>

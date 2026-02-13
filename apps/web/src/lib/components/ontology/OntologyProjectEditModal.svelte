@@ -5,13 +5,9 @@
 	Full-featured modal for editing ontology projects. Includes:
 	- Basic info (name, description, status, dates)
 	- Context document editing
-	- AI Preferences section (lines 1006-1114) for project-specific preferences:
-	  - Planning depth, update frequency, collaboration mode
-	  - Risk tolerance, deadline flexibility
 	- Calendar integration
 	- AI-powered context regeneration
 
-	@see /apps/web/docs/features/preferences/README.md - Preferences system (project preferences section)
 	@see /apps/web/docs/features/ontology/README.md - Ontology system overview
 	@see /apps/web/docs/technical/components/modals/README.md - Modal component patterns
 -->
@@ -88,11 +84,6 @@
 		'maintenance',
 		'complete'
 	];
-	const PLANNING_DEPTH_OPTIONS = ['lightweight', 'detailed', 'rigorous'];
-	const UPDATE_FREQUENCY_OPTIONS = ['daily', 'weekly', 'as_needed'];
-	const COLLABORATION_MODE_OPTIONS = ['solo', 'async_team', 'realtime'];
-	const RISK_TOLERANCE_OPTIONS = ['cautious', 'balanced', 'aggressive'];
-	const DEADLINE_FLEXIBILITY_OPTIONS = ['strict', 'flexible', 'aspirational'];
 
 	let {
 		isOpen = $bindable(false),
@@ -112,11 +103,6 @@
 	let facetStage = $state('');
 	let startDate = $state('');
 	let endDate = $state('');
-	let planningDepth = $state('');
-	let updateFrequency = $state('');
-	let collaborationMode = $state('');
-	let riskTolerance = $state('');
-	let deadlineFlexibility = $state('');
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
 	let showDeleteConfirm = $state(false);
@@ -190,8 +176,6 @@
 		return date.toLocaleDateString();
 	});
 
-	const modalTitle = $derived(project ? `Edit ${project.name}` : 'Edit Ontology Project');
-
 	$effect(() => {
 		if (!project || !isOpen) return;
 
@@ -203,12 +187,6 @@
 		facetStage = project.facet_stage ?? '';
 		startDate = toDateInput(project.start_at);
 		endDate = toDateInput(project.end_at);
-		const projectPreferences = extractProjectPreferences(project);
-		planningDepth = projectPreferences.planning_depth ?? '';
-		updateFrequency = projectPreferences.update_frequency ?? '';
-		collaborationMode = projectPreferences.collaboration_mode ?? '';
-		riskTolerance = projectPreferences.risk_tolerance ?? '';
-		deadlineFlexibility = projectPreferences.deadline_flexibility ?? '';
 		contextDocumentBody = initialContextBody;
 		nextStepShort = initialNextStepShort;
 		nextStepLong = initialNextStepLong;
@@ -229,61 +207,6 @@
 			return null;
 		}
 		return date.toISOString();
-	}
-
-	function extractProjectPreferences(source: Project | null): Record<string, string> {
-		if (!source?.props || typeof source.props !== 'object' || Array.isArray(source.props)) {
-			return {};
-		}
-		const raw = (source.props as Record<string, unknown>).preferences;
-		if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-			return {};
-		}
-		const prefs = raw as Record<string, unknown>;
-		const extracted: Record<string, string> = {};
-
-		if (typeof prefs.planning_depth === 'string') {
-			extracted.planning_depth = prefs.planning_depth;
-		}
-		if (typeof prefs.update_frequency === 'string') {
-			extracted.update_frequency = prefs.update_frequency;
-		}
-		if (typeof prefs.collaboration_mode === 'string') {
-			extracted.collaboration_mode = prefs.collaboration_mode;
-		}
-		if (typeof prefs.risk_tolerance === 'string') {
-			extracted.risk_tolerance = prefs.risk_tolerance;
-		}
-		if (typeof prefs.deadline_flexibility === 'string') {
-			extracted.deadline_flexibility = prefs.deadline_flexibility;
-		}
-
-		return extracted;
-	}
-
-	function buildProjectPreferences(): Record<string, string> {
-		const prefs: Record<string, string> = {};
-
-		if (planningDepth) prefs.planning_depth = planningDepth;
-		if (updateFrequency) prefs.update_frequency = updateFrequency;
-		if (collaborationMode) prefs.collaboration_mode = collaborationMode;
-		if (riskTolerance) prefs.risk_tolerance = riskTolerance;
-		if (deadlineFlexibility) prefs.deadline_flexibility = deadlineFlexibility;
-
-		return prefs;
-	}
-
-	function preferencesEqual(
-		current: Record<string, string>,
-		next: Record<string, string>
-	): boolean {
-		const keys = new Set([...Object.keys(current), ...Object.keys(next)]);
-		for (const key of keys) {
-			if ((current[key] ?? '') !== (next[key] ?? '')) {
-				return false;
-			}
-		}
-		return true;
 	}
 
 	function handleClose() {
@@ -345,7 +268,7 @@
 				type: 'success',
 				message: 'Context copied to clipboard'
 			});
-		} catch (error) {
+		} catch (_error) {
 			toastService.add({
 				type: 'error',
 				message: 'Failed to copy context'
@@ -394,16 +317,6 @@
 
 		if (parsedEnd !== (project.end_at ?? null)) {
 			payload.end_at = parsedEnd;
-		}
-
-		const currentPreferences = extractProjectPreferences(project);
-		const nextPreferences = buildProjectPreferences();
-		const preferencesChanged = !preferencesEqual(currentPreferences, nextPreferences);
-
-		if (preferencesChanged) {
-			payload.props = {
-				preferences: Object.keys(nextPreferences).length > 0 ? nextPreferences : null
-			};
 		}
 
 		// Check if next step changed
@@ -1059,116 +972,6 @@
 										size="sm"
 										disabled={isSaving}
 									/>
-								</div>
-							</div>
-
-							<!-- Project Preferences -->
-							<div class="pt-3 border-t border-border space-y-3">
-								<div
-									class="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-								>
-									<Sparkles class="w-3.5 h-3.5 text-accent" />
-									AI Preferences
-								</div>
-
-								<div>
-									<label
-										for="planning-depth"
-										class="text-xs text-muted-foreground mb-1 block"
-									>
-										Planning depth
-									</label>
-									<Select
-										id="planning-depth"
-										bind:value={planningDepth}
-										size="sm"
-										disabled={isSaving}
-									>
-										<option value="">Not set</option>
-										{#each PLANNING_DEPTH_OPTIONS as option}
-											<option value={option}>{facetLabel(option)}</option>
-										{/each}
-									</Select>
-								</div>
-
-								<div>
-									<label
-										for="update-frequency"
-										class="text-xs text-muted-foreground mb-1 block"
-									>
-										Update frequency
-									</label>
-									<Select
-										id="update-frequency"
-										bind:value={updateFrequency}
-										size="sm"
-										disabled={isSaving}
-									>
-										<option value="">Not set</option>
-										{#each UPDATE_FREQUENCY_OPTIONS as option}
-											<option value={option}>{facetLabel(option)}</option>
-										{/each}
-									</Select>
-								</div>
-
-								<div>
-									<label
-										for="collaboration-mode"
-										class="text-xs text-muted-foreground mb-1 block"
-									>
-										Collaboration mode
-									</label>
-									<Select
-										id="collaboration-mode"
-										bind:value={collaborationMode}
-										size="sm"
-										disabled={isSaving}
-									>
-										<option value="">Not set</option>
-										{#each COLLABORATION_MODE_OPTIONS as option}
-											<option value={option}>{facetLabel(option)}</option>
-										{/each}
-									</Select>
-								</div>
-
-								<div>
-									<label
-										for="risk-tolerance"
-										class="text-xs text-muted-foreground mb-1 block"
-									>
-										Risk tolerance
-									</label>
-									<Select
-										id="risk-tolerance"
-										bind:value={riskTolerance}
-										size="sm"
-										disabled={isSaving}
-									>
-										<option value="">Not set</option>
-										{#each RISK_TOLERANCE_OPTIONS as option}
-											<option value={option}>{facetLabel(option)}</option>
-										{/each}
-									</Select>
-								</div>
-
-								<div>
-									<label
-										for="deadline-flexibility"
-										class="text-xs text-muted-foreground mb-1 block"
-									>
-										Deadline flexibility
-									</label>
-									<Select
-										id="deadline-flexibility"
-										bind:value={deadlineFlexibility}
-										size="sm"
-										disabled={isSaving}
-									>
-										<option value="">Not set</option>
-										{#each DEADLINE_FLEXIBILITY_OPTIONS as option}
-											<option value={option}>{facetLabel(option)}</option>
-										{/each}
-									</Select>
 								</div>
 							</div>
 

@@ -283,8 +283,7 @@
 											{#if editedData[field]}
 												{@html renderMarkdown(editedData[field])}
 											{:else}
-												<span
-													class="text-muted-foreground italic"
+												<span class="text-muted-foreground italic"
 													>No content</span
 												>
 											{/if}

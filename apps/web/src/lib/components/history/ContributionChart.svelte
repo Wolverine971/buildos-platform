@@ -187,9 +187,7 @@
 		<!-- Chart header with months -->
 		<div class="mb-4">
 			<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3">
-				<h4 class="text-sm font-medium text-foreground">
-					Braindump Activity
-				</h4>
+				<h4 class="text-sm font-medium text-foreground">Braindump Activity</h4>
 				<div
 					class="flex items-center justify-center sm:justify-end space-x-2 text-xs text-muted-foreground"
 				>

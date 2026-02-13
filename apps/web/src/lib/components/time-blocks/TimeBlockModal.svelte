@@ -595,7 +595,8 @@
 															{/if}
 															{#if suggestion.estimated_minutes}
 																{#if suggestion.project_name}
-																	<span class="text-muted-foreground"
+																	<span
+																		class="text-muted-foreground"
 																		>/</span
 																	>
 																{/if}
@@ -605,7 +606,8 @@
 															{/if}
 															{#if suggestion.priority}
 																{#if suggestion.project_name || suggestion.estimated_minutes}
-																	<span class="text-muted-foreground"
+																	<span
+																		class="text-muted-foreground"
 																		>/</span
 																	>
 																{/if}

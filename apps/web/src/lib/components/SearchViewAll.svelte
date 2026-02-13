@@ -123,9 +123,7 @@
 	</h1>
 
 	<p class="text-muted-foreground mb-4">
-		Showing results for: <span class="font-semibold text-foreground"
-			>"{searchQuery}"</span
-		>
+		Showing results for: <span class="font-semibold text-foreground">"{searchQuery}"</span>
 	</p>
 
 	<div class="space-y-4">
@@ -149,9 +147,7 @@
 								{@html highlightText(result.description, searchQuery)}
 							</p>
 						{/if}
-						<div
-							class="flex items-center gap-4 text-sm text-muted-foreground"
-						>
+						<div class="flex items-center gap-4 text-sm text-muted-foreground">
 							<span>Created: {new Date(result.created_at).toLocaleDateString()}</span>
 							<span>Updated: {new Date(result.updated_at).toLocaleDateString()}</span>
 						</div>

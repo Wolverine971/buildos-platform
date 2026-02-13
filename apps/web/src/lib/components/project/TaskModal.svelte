@@ -850,8 +850,7 @@
 	$: calendarPanel = (() => {
 		if (!startDateValue) return null;
 
-		const baseCardClasses =
-			'border-border/60/60 bg-card/85/60';
+		const baseCardClasses = 'border-border/60/60 bg-card/85/60';
 		const sharedButtonClass = 'w-full sm:w-auto';
 		const badges: CalendarPanelBadge[] = [];
 
@@ -897,8 +896,7 @@
 					{
 						type: 'message',
 						message: 'This usually only takes a moment.',
-						className:
-							'block w-full text-xs text-muted-foreground sm:text-right'
+						className: 'block w-full text-xs text-muted-foreground sm:text-right'
 					}
 				]
 			} satisfies CalendarPanelConfig;
@@ -1290,9 +1288,7 @@
 					</div>
 
 					<!-- Content Stats -->
-					<div
-						class="flex items-center justify-between text-sm text-muted-foreground"
-					>
+					<div class="flex items-center justify-between text-sm text-muted-foreground">
 						<span>
 							{#if detailsValue.length > 0}
 								{detailsValue.length} characters in details
@@ -1596,8 +1592,7 @@
 							<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
 								{#if task.created_at}
 									<div class="space-y-1">
-										<span
-											class="block font-medium text-muted-foreground"
+										<span class="block font-medium text-muted-foreground"
 											>Created</span
 										>
 										<span class="text-foreground">
@@ -1613,8 +1608,7 @@
 								{/if}
 								{#if task.updated_at}
 									<div class="space-y-1">
-										<span
-											class="block font-medium text-muted-foreground"
+										<span class="block font-medium text-muted-foreground"
 											>Updated</span
 										>
 										<span class="text-foreground">
@@ -1630,8 +1624,7 @@
 								{/if}
 								{#if task.completed_at}
 									<div class="col-span-2 sm:col-span-1 space-y-1">
-										<span
-											class="block font-medium text-muted-foreground"
+										<span class="block font-medium text-muted-foreground"
 											>Completed</span
 										>
 										<span class="text-foreground">

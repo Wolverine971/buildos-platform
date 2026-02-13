@@ -85,8 +85,7 @@
 			<h4 class="font-medium text-sm truncate text-foreground">
 				{notification.status === 'success' ? 'Synthesis Complete' : 'Project Synthesis'}
 				<span class="text-muted-foreground">—</span>
-				<span class="text-foreground">{notification.data.projectName}</span
-				>
+				<span class="text-foreground">{notification.data.projectName}</span>
 			</h4>
 		</div>
 

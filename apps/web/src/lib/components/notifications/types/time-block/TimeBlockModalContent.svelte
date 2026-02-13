@@ -153,9 +153,7 @@
 							<Clock class="w-4 h-4 mr-2" />
 							{formattedTime}
 							{#if durationText}
-								<span class="ml-2 text-muted-foreground"
-									>({durationText})</span
-								>
+								<span class="ml-2 text-muted-foreground">({durationText})</span>
 							{/if}
 						</div>
 					{/if}
@@ -172,18 +170,12 @@
 			{#if status === 'success' && notification.data.suggestions?.length}
 				<div class="space-y-4">
 					<div>
-						<h4 class="text-sm font-medium text-foreground mb-3">
-							AI Suggested Tasks
-						</h4>
+						<h4 class="text-sm font-medium text-foreground mb-3">AI Suggested Tasks</h4>
 
 						<div class="space-y-3">
 							{#each notification.data.suggestions as suggestion, index}
-								<div
-									class="p-3 bg-card border border-border rounded"
-								>
-									<div
-										class="text-sm font-medium text-foreground"
-									>
+								<div class="p-3 bg-card border border-border rounded">
+									<div class="text-sm font-medium text-foreground">
 										{index + 1}. {suggestion.title}
 									</div>
 									{#if suggestion.reason}
@@ -198,9 +190,7 @@
 											<span>{suggestion.estimated_minutes} min</span>
 										{/if}
 										{#if suggestion.priority}
-											<span
-												class="px-2 py-0.5 bg-muted rounded"
-											>
+											<span class="px-2 py-0.5 bg-muted rounded">
 												{suggestion.priority}
 											</span>
 										{/if}

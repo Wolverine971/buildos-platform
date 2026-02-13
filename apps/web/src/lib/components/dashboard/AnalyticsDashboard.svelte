@@ -348,8 +348,8 @@
 					<div>
 						<p class="text-sm font-semibold text-foreground">Welcome to BuildOS!</p>
 						<p class="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-							Create your first project and BuildOS will help you organize goals,
-							tasks, and milestones.
+							Create your first project and BuildOS will help you shape goals, tasks,
+							and milestones.
 						</p>
 					</div>
 					<Button variant="primary" size="sm" onclick={() => goto('/projects/create')}>

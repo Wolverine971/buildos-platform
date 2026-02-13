@@ -9,6 +9,23 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
+type MemberWithRole = {
+	role_key: string | null;
+	created_at: string | null;
+};
+
+function sortMembersByRoleAndCreatedAt<T extends MemberWithRole>(rows: T[]): T[] {
+	const roleOrder: Record<string, number> = { owner: 0, editor: 1, viewer: 2 };
+	return [...rows].sort((a, b) => {
+		const roleDelta = (roleOrder[a.role_key ?? ''] ?? 99) - (roleOrder[b.role_key ?? ''] ?? 99);
+		if (roleDelta !== 0) return roleDelta;
+
+		const aTime = a.created_at ? Date.parse(a.created_at) : Number.POSITIVE_INFINITY;
+		const bTime = b.created_at ? Date.parse(b.created_at) : Number.POSITIVE_INFINITY;
+		return aTime - bTime;
+	});
+}
+
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
 		const { user } = await locals.safeGetSession();
@@ -74,7 +91,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.databaseError(error);
 		}
 
-		return ApiResponse.success({ members: members ?? [], actorId });
+		const sortedMembers = sortMembersByRoleAndCreatedAt((members ?? []) as MemberWithRole[]);
+
+		return ApiResponse.success({ members: sortedMembers, actorId });
 	} catch (error) {
 		console.error('[Project Members API] Failed to load members:', error);
 		return ApiResponse.internalError(error, 'Failed to load members');

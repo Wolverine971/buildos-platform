@@ -26,9 +26,7 @@
 
 <div class="min-h-screen bg-slate-50 p-8">
 	<div class="mx-auto max-w-4xl space-y-8">
-		<h1 class="text-3xl font-bold text-foreground">
-			Plan Visualization Test Page
-		</h1>
+		<h1 class="text-3xl font-bold text-foreground">Plan Visualization Test Page</h1>
 
 		<div class="space-y-6">
 			<!-- Complex Plan with Dependencies -->
@@ -46,9 +44,7 @@
 
 			<!-- Plan with Error -->
 			<section>
-				<h2 class="mb-3 text-xl font-semibold text-foreground">
-					Plan with Failed Step
-				</h2>
+				<h2 class="mb-3 text-xl font-semibold text-foreground">Plan with Failed Step</h2>
 				<PlanVisualization
 					plan={samplePlanWithError}
 					currentStep={3}
@@ -71,9 +67,7 @@
 		</div>
 
 		<!-- Test Controls -->
-		<div
-			class="rounded-lg border border-border bg-card p-4"
-		>
+		<div class="rounded-lg border border-border bg-card p-4">
 			<h3 class="mb-2 font-semibold text-foreground">Test Controls</h3>
 			<div class="space-y-2 text-sm text-muted-foreground">
 				<p>✅ Progress bar shows completion percentage</p>

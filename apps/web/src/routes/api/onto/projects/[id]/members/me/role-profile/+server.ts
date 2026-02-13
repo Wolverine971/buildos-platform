@@ -265,6 +265,21 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest('Provide role_name and/or role_description');
 		}
 
+		const payload = (body ?? {}) as Record<string, unknown>;
+		if (hasRoleName) {
+			const roleNameValue = payload.role_name;
+			if (roleNameValue !== null && typeof roleNameValue !== 'string') {
+				return ApiResponse.badRequest('role_name must be a string or null');
+			}
+		}
+
+		if (hasRoleDescription) {
+			const roleDescriptionValue = payload.role_description;
+			if (roleDescriptionValue !== null && typeof roleDescriptionValue !== 'string') {
+				return ApiResponse.badRequest('role_description must be a string or null');
+			}
+		}
+
 		const ctx = await resolveMemberContext({
 			supabase,
 			userId: user.id,
@@ -275,10 +290,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (!ctx.success) return ctx.response;
 
 		const roleNameRaw = hasRoleName
-			? normalizeNullableString((body as Record<string, unknown>).role_name)
+			? normalizeNullableString(payload.role_name)
 			: ctx.member.role_name;
 		const roleDescriptionRaw = hasRoleDescription
-			? normalizeNullableString((body as Record<string, unknown>).role_description)
+			? normalizeNullableString(payload.role_description)
 			: ctx.member.role_description;
 
 		const roleName = validateRoleName(roleNameRaw);

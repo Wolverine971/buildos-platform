@@ -384,9 +384,7 @@
 			<!-- Recent Runs -->
 			<div class="grid gap-6 lg:grid-cols-2">
 				<AdminCard>
-					<h3 class="mb-4 text-lg font-semibold text-foreground">
-						Migration Runs
-					</h3>
+					<h3 class="mb-4 text-lg font-semibold text-foreground">Migration Runs</h3>
 					<RecentRuns
 						{activeRun}
 						{recentRuns}
@@ -398,9 +396,7 @@
 				</AdminCard>
 
 				<AdminCard>
-					<h3 class="mb-4 text-lg font-semibold text-foreground">
-						Quick Stats
-					</h3>
+					<h3 class="mb-4 text-lg font-semibold text-foreground">Quick Stats</h3>
 					<div class="space-y-4">
 						<div class="flex items-center justify-between">
 							<span class="text-muted-foreground">Total Users</span>
@@ -409,16 +405,13 @@
 							</span>
 						</div>
 						<div class="flex items-center justify-between">
-							<span class="text-muted-foreground">Users with Projects</span
-							>
+							<span class="text-muted-foreground">Users with Projects</span>
 							<span class="font-semibold text-foreground">
 								{progressStats.users.withProjects.toLocaleString()}
 							</span>
 						</div>
 						<div class="flex items-center justify-between">
-							<span class="text-muted-foreground"
-								>Fully Migrated Users</span
-							>
+							<span class="text-muted-foreground">Fully Migrated Users</span>
 							<span class="font-semibold text-emerald-600 dark:text-emerald-400">
 								{progressStats.users.fullyMigrated.toLocaleString()}
 							</span>
@@ -469,9 +462,7 @@
 					></div>
 				</div>
 			{:else}
-				<p class="py-8 text-center text-muted-foreground">
-					Click to load user list...
-				</p>
+				<p class="py-8 text-center text-muted-foreground">Click to load user list...</p>
 			{/if}
 		</AdminCard>
 	{/if}

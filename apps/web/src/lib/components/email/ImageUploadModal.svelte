@@ -389,9 +389,7 @@
 
 						<!-- Filter -->
 						<div class="flex items-center space-x-2">
-							<div class="text-sm font-medium text-foreground">
-								Filter:
-							</div>
+							<div class="text-sm font-medium text-foreground">Filter:</div>
 							<Select
 								bind:value={selectedFilter}
 								size="md"
@@ -468,9 +466,7 @@
 
 									<!-- Info -->
 									<div class="p-2 bg-card">
-										<p
-											class="text-xs font-medium text-foreground truncate"
-										>
+										<p class="text-xs font-medium text-foreground truncate">
 											{image.original_filename}
 										</p>
 										<p class="text-xs text-muted-foreground">
@@ -495,9 +491,7 @@
 		<!-- Footer -->
 	{/snippet}
 	{#snippet header()}
-		<div
-			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border"
-		>
+		<div class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border">
 			<Button onclick={close} variant="outline" size="md" class="w-full sm:w-auto"
 				>Cancel</Button
 			>

@@ -44,9 +44,7 @@
 				<div class="flex items-center gap-2 sm:gap-3 min-w-0">
 					<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
 					<div class="min-w-0">
-						<h2
-							class="text-base sm:text-lg font-semibold text-foreground truncate"
-						>
+						<h2 class="text-base sm:text-lg font-semibold text-foreground truncate">
 							{email.subject || 'Email'}
 						</h2>
 						{#if email.to}
@@ -60,9 +58,7 @@
 		{/snippet}
 		{#snippet children()}
 			<!-- Email Info -->
-			<div
-				class="px-4 sm:px-5 md:px-6 py-4 bg-muted/50 border-b border-border"
-			>
+			<div class="px-4 sm:px-5 md:px-6 py-4 bg-muted/50 border-b border-border">
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
 					{#if email.to}
 						<div class="flex items-center gap-2 text-foreground">
@@ -98,17 +94,13 @@
 							{email.body}
 						</div>
 					{:else}
-						<div class="text-muted-foreground italic">
-							No email content available
-						</div>
+						<div class="text-muted-foreground italic">No email content available</div>
 					{/if}
 				</div>
 			</div>
 		{/snippet}
 		{#snippet footer()}
-			<div
-				class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50"
-			>
+			<div class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50">
 				<Button variant="outline" onclick={closeViewer} class="w-full sm:w-auto"
 					>Close</Button
 				>

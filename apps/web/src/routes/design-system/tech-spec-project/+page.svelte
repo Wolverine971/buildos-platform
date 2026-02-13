@@ -619,7 +619,8 @@
 								<div class="w-3 h-3 rounded-full bg-emerald-500"></div>
 							</div>
 							<Terminal class="w-4 h-4 text-muted-foreground" />
-							<span class="font-mono text-xs text-muted-foreground">activity.log</span>
+							<span class="font-mono text-xs text-muted-foreground">activity.log</span
+							>
 						</div>
 
 						<div class="p-4 font-mono text-xs space-y-1.5 max-h-48 overflow-y-auto">

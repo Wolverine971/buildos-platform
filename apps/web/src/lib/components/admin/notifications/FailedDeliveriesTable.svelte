@@ -114,19 +114,13 @@
 						</th>
 					</tr>
 				</thead>
-				<tbody
-					class="bg-card divide-y divide-red-200 dark:divide-red-800"
-				>
+				<tbody class="bg-card divide-y divide-red-200 dark:divide-red-800">
 					{#each data as delivery}
 						<tr class="hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{formatDate(delivery.created_at)}
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{delivery.event_type}
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap">
@@ -138,9 +132,7 @@
 									{delivery.channel}
 								</span>
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{delivery.recipient_email}
 							</td>
 							<td class="px-6 py-4 text-sm max-w-xs">
@@ -153,9 +145,7 @@
 									{delivery.last_error}
 								</button>
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{delivery.attempts}/{delivery.max_attempts}
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
@@ -195,8 +185,7 @@
 				<div class="grid grid-cols-2 gap-4 text-sm">
 					<div>
 						<span class="text-muted-foreground">Event Type:</span>
-						<span class="ml-2 text-foreground">{delivery.event_type}</span
-						>
+						<span class="ml-2 text-foreground">{delivery.event_type}</span>
 					</div>
 					<div>
 						<span class="text-muted-foreground">Channel:</span>
@@ -210,15 +199,11 @@
 					</div>
 					<div>
 						<span class="text-muted-foreground">Recipient:</span>
-						<span class="ml-2 text-foreground"
-							>{delivery.recipient_email}</span
-						>
+						<span class="ml-2 text-foreground">{delivery.recipient_email}</span>
 					</div>
 					<div>
 						<span class="text-muted-foreground">Time:</span>
-						<span class="ml-2 text-foreground"
-							>{formatDate(delivery.created_at)}</span
-						>
+						<span class="ml-2 text-foreground">{formatDate(delivery.created_at)}</span>
 					</div>
 					<div>
 						<span class="text-muted-foreground">Attempts:</span>
@@ -248,9 +233,7 @@
 			</div>
 
 			<!-- Action Buttons -->
-			<div
-				class="flex justify-end space-x-2 pt-4 border-t border-border"
-			>
+			<div class="flex justify-end space-x-2 pt-4 border-t border-border">
 				{#if delivery.attempts < delivery.max_attempts}
 					<Button
 						variant="secondary"

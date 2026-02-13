@@ -18,6 +18,7 @@ import { logOntologyApiError } from '../../../shared/error-logging';
 import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -157,8 +158,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				projectRow.doc_structure ?? null;
 		}
 
+		const sanitizedProject = sanitizeProjectForClient(data.project as Record<string, unknown>);
+
 		return ApiResponse.success({
-			project: data.project,
+			project: sanitizedProject,
 			goals,
 			requirements: data.requirements || [],
 			plans: data.plans || [],

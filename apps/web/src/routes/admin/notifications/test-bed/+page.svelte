@@ -180,9 +180,7 @@
 				<div class="flex items-center">
 					<Bell class="h-8 w-8 text-blue-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-foreground">
-							Analytics
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Analytics</h3>
 						<p class="text-sm text-muted-foreground">View dashboard</p>
 					</div>
 				</div>
@@ -195,9 +193,7 @@
 				<div class="flex items-center">
 					<Send class="h-8 w-8 text-green-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-foreground">
-							Test Bed
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">Test Bed</h3>
 						<p class="text-sm text-muted-foreground">Current page</p>
 					</div>
 				</div>
@@ -210,9 +206,7 @@
 				<div class="flex items-center">
 					<Calendar class="h-8 w-8 text-orange-600 mr-3" />
 					<div>
-						<h3 class="text-lg font-semibold text-foreground">
-							SMS Scheduler
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground">SMS Scheduler</h3>
 						<p class="text-sm text-muted-foreground">Manual trigger</p>
 					</div>
 				</div>
@@ -226,9 +220,7 @@
 					<Eye class="h-8 w-8 text-purple-600 mr-3" />
 					<div>
 						<h3 class="text-lg font-semibold text-foreground">Logs</h3>
-						<p class="text-sm text-muted-foreground">
-							Event & delivery logs
-						</p>
+						<p class="text-sm text-muted-foreground">Event & delivery logs</p>
 					</div>
 				</div>
 			</a>
@@ -253,9 +245,7 @@
 		<div class="space-y-6">
 			<!-- Step 1: User Search & Selection -->
 			<div class="admin-panel p-6">
-				<h2 class="text-xl font-semibold text-foreground mb-4">
-					Step 1: Select User
-				</h2>
+				<h2 class="text-xl font-semibold text-foreground mb-4">Step 1: Select User</h2>
 
 				{#if !selectedUser}
 					<!-- Search Input -->
@@ -288,13 +278,13 @@
 										onclick={() => selectUser(result)}
 										class="w-full px-4 py-3 text-left hover:bg-muted transition-colors border-b border-border last:border-0"
 									>
-										<div
-											class="text-sm font-medium text-foreground"
-										>
+										<div class="text-sm font-medium text-foreground">
 											{result.email}
 										</div>
 										{#if result.name}
-											<div class="text-xs text-muted-foreground">{result.name}</div>
+											<div class="text-xs text-muted-foreground">
+												{result.name}
+											</div>
 										{/if}
 										<div class="text-xs text-muted-foreground mt-1">
 											{result.has_push_subscription ? '📱 Push' : ''}
@@ -330,9 +320,7 @@
 				{#if contextLoading}
 					<div class="admin-panel p-8 text-center">
 						<LoaderCircle class="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-						<p class="text-muted-foreground">
-							Loading user notification context...
-						</p>
+						<p class="text-muted-foreground">Loading user notification context...</p>
 					</div>
 				{:else if userContext}
 					<UserNotificationContext context={userContext} />
@@ -369,9 +357,7 @@
 									/>
 									<div class="flex-1">
 										<div class="flex items-center space-x-2">
-											<div
-												class="font-medium text-foreground capitalize"
-											>
+											<div class="font-medium text-foreground capitalize">
 												{capability.channel}
 											</div>
 											{#if capability.available}

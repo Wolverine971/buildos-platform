@@ -188,9 +188,7 @@
 					</div>
 
 					<!-- Content Stats -->
-					<div
-						class="text-sm text-muted-foreground flex justify-between items-center"
-					>
+					<div class="text-sm text-muted-foreground flex justify-between items-center">
 						<span>
 							{#if contentValue.length > 0}
 								{contentValue.length} characters
@@ -208,9 +206,7 @@
 				<div
 					class="lg:col-span-1 bg-muted/50 rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4 border border-border order-first lg:order-last"
 				>
-					<h3
-						class="text-sm font-semibold text-foreground uppercase tracking-wide"
-					>
+					<h3 class="text-sm font-semibold text-foreground uppercase tracking-wide">
 						Metadata
 					</h3>
 
@@ -293,9 +289,7 @@
 
 					<!-- Content Preview -->
 					<div class="space-y-2">
-						<h4
-							class="text-xs font-medium text-foreground uppercase tracking-wide"
-						>
+						<h4 class="text-xs font-medium text-foreground uppercase tracking-wide">
 							Preview
 						</h4>
 						<div

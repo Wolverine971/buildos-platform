@@ -266,9 +266,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 														</span>
 													{/if}
 												</h3>
-												<p
-													class="text-sm text-muted-foreground mt-1"
-												>
+												<p class="text-sm text-muted-foreground mt-1">
 													{option.description}
 												</p>
 											</div>
@@ -296,9 +294,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 
 										<!-- Detailed Description -->
 										{#if option.available && option.detailedDescription}
-											<div
-												class="mt-3 p-3 bg-muted/50 rounded-lg"
-											>
+											<div class="mt-3 p-3 bg-muted/50 rounded-lg">
 												<div class="flex items-start space-x-2">
 													<Info
 														class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0"
@@ -332,9 +328,7 @@ This analysis helps streamline your project by reducing redundancy, improving wo
 				</div>
 
 				<!-- Footer -->
-				<div
-					class="px-6 py-4 border-t border-border bg-muted/50"
-				>
+				<div class="px-6 py-4 border-t border-border bg-muted/50">
 					<div class="flex items-center justify-between">
 						<div class="text-sm text-muted-foreground">
 							{#if selectedCount > 0}

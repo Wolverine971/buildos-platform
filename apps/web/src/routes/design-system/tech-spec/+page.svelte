@@ -494,7 +494,9 @@
 									{:else if entity.type === 'Goal'}
 										<Target class="w-4 h-4 text-amber-500 shrink-0" />
 									{:else if entity.type === 'Task'}
-										<ListChecks class="w-4 h-4 text-muted-foreground shrink-0" />
+										<ListChecks
+											class="w-4 h-4 text-muted-foreground shrink-0"
+										/>
 									{:else if entity.type === 'Risk'}
 										<AlertTriangle class="w-4 h-4 text-red-500 shrink-0" />
 									{/if}
@@ -957,9 +959,7 @@
 				Terminal Output
 			</h2>
 
-			<div
-				class="bg-slate-900 border border-slate-700 rounded-lg shadow-ink overflow-hidden"
-			>
+			<div class="bg-slate-900 border border-slate-700 rounded-lg shadow-ink overflow-hidden">
 				<!-- Terminal header -->
 				<div
 					class="px-4 py-2 bg-slate-800 border-b border-slate-700 flex items-center gap-3"
@@ -971,7 +971,8 @@
 					</div>
 					<div class="flex items-center gap-2">
 						<Terminal class="w-4 h-4 text-muted-foreground" />
-						<span class="font-mono text-xs text-muted-foreground">buildos-platform</span>
+						<span class="font-mono text-xs text-muted-foreground">buildos-platform</span
+						>
 					</div>
 				</div>
 

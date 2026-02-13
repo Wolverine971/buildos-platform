@@ -264,10 +264,7 @@
 		<!-- Date Range -->
 		{#if config.showDateRange}
 			<div>
-				<label
-					for="log-filter-from"
-					class="block text-sm font-medium text-foreground mb-1"
-				>
+				<label for="log-filter-from" class="block text-sm font-medium text-foreground mb-1">
 					From Date
 				</label>
 				<div class="relative">
@@ -285,10 +282,7 @@
 			</div>
 
 			<div>
-				<label
-					for="log-filter-to"
-					class="block text-sm font-medium text-foreground mb-1"
-				>
+				<label for="log-filter-to" class="block text-sm font-medium text-foreground mb-1">
 					To Date
 				</label>
 				<div class="relative">

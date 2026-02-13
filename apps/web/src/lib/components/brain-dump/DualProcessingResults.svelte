@@ -402,9 +402,7 @@
 								<Sparkles class="h-6 w-6" />
 							</div>
 							<div class="space-y-1">
-								<h2
-									class="text-2xl font-semibold text-foreground"
-								>
+								<h2 class="text-2xl font-semibold text-foreground">
 									Analyzing your braindump
 								</h2>
 								<p class="text-sm text-muted-foreground">
@@ -515,9 +513,7 @@
 							</svg>
 							<span class="progress-text">{Math.round($analysisProgress)}%</span>
 						</div>
-						<p
-							class="text-xs uppercase tracking-wide text-muted-foreground"
-						>
+						<p class="text-xs uppercase tracking-wide text-muted-foreground">
 							Optimizing insights…
 						</p>
 						<div class="loading-dots">
@@ -563,15 +559,11 @@
 									{getStatusMeta(analysisStatus).description}
 								</p>
 								{#if analysisStatus === 'completed' && analysisResult}
-									<p
-										class="text-sm leading-relaxed text-foreground"
-									>
+									<p class="text-sm leading-relaxed text-foreground">
 										{analysisResult.analysis_summary}
 									</p>
 								{:else if analysisStatus === 'failed'}
-									<p
-										class="text-sm leading-relaxed text-foreground"
-									>
+									<p class="text-sm leading-relaxed text-foreground">
 										Analysis couldn't complete, but we'll continue with your
 										data.
 									</p>
@@ -629,9 +621,7 @@
 								<Brain class="h-5 w-5" />
 							</div>
 							<div class="space-y-1">
-								<h3
-									class="text-base font-semibold text-foreground"
-								>
+								<h3 class="text-base font-semibold text-foreground">
 									Project Context
 								</h3>
 								<p class="text-xs font-medium text-muted-foreground">

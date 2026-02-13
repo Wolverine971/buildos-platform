@@ -17,6 +17,10 @@ import {
 import { logOntologyApiError } from '../../shared/error-logging';
 import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
+import {
+	sanitizeProjectForClient,
+	sanitizeProjectPropsPatchInput
+} from '$lib/utils/project-props-sanitizer';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -212,7 +216,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		);
 
 		return ApiResponse.success({
-			project,
+			project: sanitizeProjectForClient(project),
 			goals: goalsResult.data || [],
 			requirements: requirementsResult.data || [],
 			plans: plansResult.data || [],
@@ -437,8 +441,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			const currentProps = (existingProject.props as Record<string, unknown>) ?? {};
 			const mergedProps: Record<string, unknown> = { ...currentProps };
 
-			if (props && typeof props === 'object' && !Array.isArray(props)) {
-				Object.assign(mergedProps, props);
+			const sanitizedProps = sanitizeProjectPropsPatchInput(props);
+			if (sanitizedProps) {
+				Object.assign(mergedProps, sanitizedProps);
 			}
 
 			if (shouldUpdateFacets) {
@@ -542,7 +547,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		return ApiResponse.success({ project: updatedProject });
+		return ApiResponse.success({ project: sanitizeProjectForClient(updatedProject) });
 	} catch (err) {
 		console.error('[Project PATCH] Unexpected error:', err);
 		await logOntologyApiError({

@@ -740,9 +740,7 @@
 							<Clock class="w-5 h-5 text-muted-foreground" aria-hidden="true" />
 						{/if}
 
-						<h3
-							class="font-medium text-base sm:text-lg text-foreground truncate"
-						>
+						<h3 class="font-medium text-base sm:text-lg text-foreground truncate">
 							{phase.name}
 							{#if maxTracks > 1}
 								<span class="text-sm text-muted-foreground ml-2"
@@ -866,10 +864,7 @@
 
 			{#if !isEditing}
 				{#if phase.description}
-					<p
-						id="phase-description-{phase.id}"
-						class="text-sm text-muted-foreground mb-3"
-					>
+					<p id="phase-description-{phase.id}" class="text-sm text-muted-foreground mb-3">
 						{phase.description}
 					</p>
 				{/if}
@@ -966,9 +961,7 @@
 
 						<!-- Project timeline info -->
 						{#if project && (project.start_date || project.end_date)}
-							<div
-								class="text-xs text-muted-foreground mb-3 p-2 bg-muted rounded"
-							>
+							<div class="text-xs text-muted-foreground mb-3 p-2 bg-muted rounded">
 								Project timeline:
 								{#if project.start_date}{formatDateForDisplay(
 										project.start_date
@@ -1472,9 +1465,7 @@
 
 						<!-- Project timeline info -->
 						{#if project && (project.start_date || project.end_date)}
-							<div
-								class="text-xs text-muted-foreground mb-3 p-2 bg-muted rounded"
-							>
+							<div class="text-xs text-muted-foreground mb-3 p-2 bg-muted rounded">
 								Project timeline:
 								{#if project.start_date}{formatDateForDisplay(
 										project.start_date

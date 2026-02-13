@@ -154,9 +154,7 @@
 										</p>
 									</div>
 									{#if error.error !== getErrorMessage(error.error)}
-										<p
-											class="text-xs text-muted-foreground mt-1 ml-2"
-										>
+										<p class="text-xs text-muted-foreground mt-1 ml-2">
 											Technical: {error.error}
 										</p>
 									{/if}

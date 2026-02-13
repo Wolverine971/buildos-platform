@@ -143,7 +143,9 @@
 				href="/blogs"
 				class="inline-flex items-center text-sm text-accent hover:underline mb-6 group"
 			>
-				<ArrowLeft class="w-3.5 h-3.5 mr-1.5 group-hover:-translate-x-0.5 transition-transform" />
+				<ArrowLeft
+					class="w-3.5 h-3.5 mr-1.5 group-hover:-translate-x-0.5 transition-transform"
+				/>
 				All Articles
 			</a>
 
@@ -154,7 +156,9 @@
 					<IconComponent class="w-6 h-6 {colors.iconText}" />
 				</div>
 				<div class="min-w-0">
-					<h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight">
+					<h1
+						class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight"
+					>
 						{data.category.name}
 					</h1>
 					<p class="mt-1 text-sm sm:text-base text-muted-foreground">
@@ -180,7 +184,9 @@
 								class="block bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 							>
 								<div class="p-4 sm:p-5">
-									<div class="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+									<div
+										class="flex items-center gap-2 text-xs text-muted-foreground mb-3"
+									>
 										<span class="flex items-center gap-1">
 											<Calendar class="w-3 h-3" />
 											{format(new Date(post.date), 'MMM dd, yyyy')}

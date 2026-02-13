@@ -153,7 +153,9 @@
 
 			{#if !showDirectPosts || data.totalPosts > 5}
 				<div class="relative max-w-lg mx-auto mt-6">
-					<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+					<div
+						class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+					>
 						<Search class="h-4 w-4 text-muted-foreground" />
 					</div>
 					<TextInput
@@ -184,7 +186,9 @@
 									class="block bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 								>
 									<div class="p-4 sm:p-5">
-										<div class="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+										<div
+											class="flex items-center gap-2 text-xs text-muted-foreground mb-3"
+										>
 											<span
 												class="px-2 py-0.5 {colors.bg} {colors.text} rounded-full font-medium"
 											>
@@ -339,7 +343,10 @@
 													</span>
 													<span class="flex items-center gap-1">
 														<Calendar class="w-3 h-3" />
-														{format(new Date(post.date), 'MMM dd, yyyy')}
+														{format(
+															new Date(post.date),
+															'MMM dd, yyyy'
+														)}
 													</span>
 												</div>
 

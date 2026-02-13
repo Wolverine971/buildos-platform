@@ -119,7 +119,9 @@
 	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 		<div class="flex flex-1 items-center gap-2">
 			<div class="relative flex-1 max-w-md">
-				<Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+				<Search
+					class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+				/>
 				<input
 					type="text"
 					placeholder="Search users by email or name..."
@@ -181,9 +183,7 @@
 			></div>
 		</div>
 	{:else if users.length === 0}
-		<div
-			class="rounded-lg border border-border bg-muted p-8 text-center"
-		>
+		<div class="rounded-lg border border-border bg-muted p-8 text-center">
 			<p class="text-muted-foreground">No users found matching your criteria.</p>
 		</div>
 	{:else}
@@ -245,9 +245,7 @@
 		</div>
 
 		<!-- Desktop Table View -->
-		<div
-			class="hidden max-h-[60vh] overflow-auto rounded-lg border border-border sm:block"
-		>
+		<div class="hidden max-h-[60vh] overflow-auto rounded-lg border border-border sm:block">
 			<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
 				<thead class="sticky top-0 bg-muted/50">
 					<tr
@@ -262,9 +260,7 @@
 						<th class="px-4 py-3 text-right">Action</th>
 					</tr>
 				</thead>
-				<tbody
-					class="divide-y divide-gray-200 bg-card dark:divide-gray-700"
-				>
+				<tbody class="divide-y divide-gray-200 bg-card dark:divide-gray-700">
 					{#each users as user}
 						<tr class="transition-colors hover:bg-muted/30">
 							<td class="px-4 py-3">
@@ -323,17 +319,13 @@
 							</td>
 							<td class="px-4 py-3">
 								<div class="flex items-center gap-2">
-									<div
-										class="h-2 w-16 overflow-hidden rounded-full bg-muted"
-									>
+									<div class="h-2 w-16 overflow-hidden rounded-full bg-muted">
 										<div
 											class="h-full bg-emerald-500 transition-all"
 											style="width: {user.stats.percentComplete}%"
 										></div>
 									</div>
-									<span
-										class="text-xs font-medium text-foreground"
-									>
+									<span class="text-xs font-medium text-foreground">
 										{user.stats.percentComplete.toFixed(0)}%
 									</span>
 								</div>
@@ -360,9 +352,7 @@
 
 	<!-- Pagination -->
 	{#if pagination.total > pagination.limit}
-		<div
-			class="flex items-center justify-between border-t border-border pt-4"
-		>
+		<div class="flex items-center justify-between border-t border-border pt-4">
 			<p class="text-sm text-muted-foreground">
 				Showing {pagination.offset + 1} to {Math.min(
 					pagination.offset + pagination.limit,

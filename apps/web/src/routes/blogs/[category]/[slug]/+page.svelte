@@ -127,7 +127,9 @@
 <div class="min-h-screen bg-background">
 	<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Breadcrumb -->
-		<nav class="flex items-center gap-1.5 text-xs text-muted-foreground py-4 border-b border-border">
+		<nav
+			class="flex items-center gap-1.5 text-xs text-muted-foreground py-4 border-b border-border"
+		>
 			<a href="/blogs" class="hover:text-accent transition-colors">Blog</a>
 			<span>/</span>
 			<a href="/blogs/{data.post.category}" class="hover:text-accent transition-colors">
@@ -153,7 +155,9 @@
 				</span>
 			</div>
 
-			<h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight">
+			<h1
+				class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight"
+			>
 				{data.post.title}
 			</h1>
 
@@ -163,7 +167,9 @@
 
 			<div class="mt-4 flex items-center justify-between">
 				<span class="text-xs text-muted-foreground">
-					By <span class="font-medium text-foreground">{data.post.author || 'BuildOS Team'}</span>
+					By <span class="font-medium text-foreground"
+						>{data.post.author || 'BuildOS Team'}</span
+					>
 				</span>
 
 				{#if data.post.tags.length > 0}
@@ -211,7 +217,9 @@
 				{:else if error}
 					<div class="text-center py-12">
 						<p class="text-sm text-destructive">{error}</p>
-						<p class="text-xs text-muted-foreground mt-1">Please try refreshing the page.</p>
+						<p class="text-xs text-muted-foreground mt-1">
+							Please try refreshing the page.
+						</p>
 					</div>
 				{:else if contentComponent}
 					{@const MarkdownContent = contentComponent}
@@ -257,12 +265,16 @@
 							href="/blogs/{relatedPost.category}/{relatedPost.slug}"
 							class="group block bg-card border border-border rounded-lg p-4 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
 						>
-							<span class="flex items-center gap-1 text-[10px] text-muted-foreground mb-2">
+							<span
+								class="flex items-center gap-1 text-[10px] text-muted-foreground mb-2"
+							>
 								<Calendar class="w-2.5 h-2.5" />
 								{format(new Date(relatedPost.date), 'MMM dd, yyyy')}
 							</span>
 
-							<h3 class="text-sm font-medium text-foreground mb-1.5 line-clamp-2 group-hover:text-accent transition-colors">
+							<h3
+								class="text-sm font-medium text-foreground mb-1.5 line-clamp-2 group-hover:text-accent transition-colors"
+							>
 								{relatedPost.title}
 							</h3>
 

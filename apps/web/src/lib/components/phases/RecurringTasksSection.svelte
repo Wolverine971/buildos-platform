@@ -238,9 +238,7 @@
 		role="region"
 		aria-label="Recurring tasks list"
 	>
-		<div
-			class="content-inner border-t border-border bg-card"
-		>
+		<div class="content-inner border-t border-border bg-card">
 			<div class="p-4">
 				{#if recurringTasks.length > 0}
 					<div
@@ -410,9 +408,7 @@
 					</div>
 				{:else}
 					<div class="empty-state text-center py-8 text-muted-foreground">
-						<RefreshCw
-							class="w-12 h-12 mx-auto mb-3 text-muted-foreground"
-						/>
+						<RefreshCw class="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
 						<p class="text-sm">No recurring tasks in this project</p>
 						<p class="text-xs mt-1 text-muted-foreground">
 							Create recurring tasks to see them here

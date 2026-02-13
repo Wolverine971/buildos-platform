@@ -55,7 +55,9 @@
 					</div>
 				{/each}
 				{#if messages.length === 0}
-					<p class="text-muted-foreground">No messages yet. Try creating/updating a task!</p>
+					<p class="text-muted-foreground">
+						No messages yet. Try creating/updating a task!
+					</p>
 				{/if}
 			</div>
 		</div>

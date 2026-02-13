@@ -56,6 +56,7 @@
 	let previousPath = $state('');
 	let isDark = $state(false);
 	let showChatModal = $state(false);
+	let chatOpenedWithContext = $state<ChatContextType | null>(null);
 
 	// Hide-on-scroll: hide nav when scrolling down on mobile, show on scroll up
 	let lastScrollY = $state(0);
@@ -225,19 +226,26 @@
 		detailOrEvent?: { projectId: string; chatType: string } | MouseEvent | CustomEvent
 	) {
 		closeAllMenus();
+		chatOpenedWithContext = chatContextType;
 		showChatModal = true;
 		// TODO: Pass projectId and chatType to AgentChatModal when needed
 		// If detailOrEvent has projectId, it's the detail object we need
 	}
 
 	function handleChatClose(summary?: DataMutationSummary) {
+		const wasProjectCreate = chatOpenedWithContext === 'project_create';
 		showChatModal = false;
+		chatOpenedWithContext = null;
 
 		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
-			toastService.success(
-				'Project created! Head to Projects to explore it.',
-				TOAST_DURATION.LONG
-			);
+			if (wasProjectCreate) {
+				toastService.success(
+					'Project created! Head to Projects to explore it.',
+					TOAST_DURATION.LONG
+				);
+			} else {
+				toastService.success('Changes saved.', TOAST_DURATION.NORMAL);
+			}
 		}
 	}
 
@@ -469,8 +477,8 @@
 								</div>
 							{/if}
 						</div>
-						<!-- New user hint: pulsing dot when onboarding incomplete -->
-						{#if needsOnboarding && !showChatModal}
+						<!-- New user hint: pulsing dot only for users who haven't completed onboarding at all -->
+						{#if user && !completedOnboarding && !showChatModal}
 							<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
 								<span
 									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75"

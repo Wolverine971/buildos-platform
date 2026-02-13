@@ -49,8 +49,7 @@
 			</div>
 			<div>
 				<span class="font-medium text-foreground">Recipients:</span>
-				<span class="text-foreground ml-2">{emailData.recipients.length}</span
-				>
+				<span class="text-foreground ml-2">{emailData.recipients.length}</span>
 			</div>
 			<div>
 				<span class="font-medium text-foreground">Status:</span>
@@ -109,13 +108,9 @@
 
 	<!-- Email Preview -->
 	<div class="border border-border rounded-lg overflow-hidden">
-		<div
-			class="bg-muted px-4 py-2 border-b border-border"
-		>
+		<div class="bg-muted px-4 py-2 border-b border-border">
 			<div class="flex items-center justify-between">
-				<span class="text-sm font-medium text-foreground"
-					>Email Preview</span
-				>
+				<span class="text-sm font-medium text-foreground">Email Preview</span>
 				<div class="flex items-center space-x-2">
 					<Button
 						onclick={() => {
@@ -136,9 +131,7 @@
 		<!-- Preview Container -->
 		<div class="bg-card relative">
 			<!-- Mobile Preview Toggle -->
-			<div
-				class="p-4 border-b border-border bg-muted"
-			>
+			<div class="p-4 border-b border-border bg-muted">
 				<div class="flex items-center justify-center space-x-4">
 					<span class="text-sm text-muted-foreground">Preview:</span>
 					<Button
@@ -165,9 +158,7 @@
 
 	<!-- Recipients List -->
 	{#if emailData?.recipients?.length > 0}
-		<div
-			class="bg-card rounded-lg border border-border overflow-hidden"
-		>
+		<div class="bg-card rounded-lg border border-border overflow-hidden">
 			<div class="px-4 py-3 border-b border-border">
 				<h3 class="font-medium text-foreground flex items-center">
 					<Users class="h-4 w-4 mr-2" />
@@ -193,9 +184,7 @@
 									</div>
 								</div>
 								<div class="min-w-0 flex-1">
-									<p
-										class="text-sm font-medium text-foreground truncate"
-									>
+									<p class="text-sm font-medium text-foreground truncate">
 										{recipient.recipient_name || 'Unknown'}
 									</p>
 									<p class="text-sm text-muted-foreground truncate">

@@ -211,9 +211,7 @@
 						<!-- Progress bar for percentage-based progress -->
 						{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
 							<div class="mt-4 max-w-md mx-auto">
-								<div
-									class="h-2 bg-muted rounded-full overflow-hidden"
-								>
+								<div class="h-2 bg-muted rounded-full overflow-hidden">
 									<div
 										class="h-full bg-blue-600 dark:bg-blue-400 transition-all duration-300"
 										style="width: {notification.progress.percentage}%"
@@ -274,9 +272,7 @@
 						<CheckCircle
 							class="w-16 h-16 text-green-600 dark:text-green-400 mx-auto mb-4"
 						/>
-						<h3 class="text-lg font-semibold text-foreground mb-2">
-							Success!
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground mb-2">Success!</h3>
 						<p class="text-muted-foreground">
 							{notification.type === 'brain-dump'
 								? 'Brain dump processed successfully'
@@ -312,9 +308,7 @@
 						<AlertCircle
 							class="w-16 h-16 text-red-600 dark:text-red-400 mx-auto mb-4"
 						/>
-						<h3 class="text-lg font-semibold text-foreground mb-2">
-							Error
-						</h3>
+						<h3 class="text-lg font-semibold text-foreground mb-2">Error</h3>
 						<p class="text-red-600 dark:text-red-400">
 							{notification.type === 'brain-dump'
 								? notification.data?.error || 'Brain dump processing failed'

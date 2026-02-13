@@ -6,9 +6,7 @@
 
 <div class="phases-skeleton">
 	<!-- Project dates skeleton -->
-	<div
-		class="mb-6 p-4 bg-card rounded-lg border border-border"
-	>
+	<div class="mb-6 p-4 bg-card rounded-lg border border-border">
 		<div class="flex items-center justify-between mb-3">
 			<div class="skeleton skeleton-text w-32"></div>
 			<div class="skeleton skeleton-text w-24"></div>
@@ -33,9 +31,7 @@
 	<!-- Phases skeleton -->
 	<div class="space-y-4">
 		{#each Array(count) as _, i}
-			<div
-				class="phase-skeleton bg-card rounded-lg border border-border p-6"
-			>
+			<div class="phase-skeleton bg-card rounded-lg border border-border p-6">
 				<!-- Phase header -->
 				<div class="flex items-start justify-between mb-4">
 					<div class="flex-1">
@@ -76,9 +72,7 @@
 
 		{#if showBacklog}
 			<!-- Backlog skeleton -->
-			<div
-				class="phase-skeleton bg-muted rounded-lg border border-border p-6"
-			>
+			<div class="phase-skeleton bg-muted rounded-lg border border-border p-6">
 				<div class="flex items-center justify-between mb-4">
 					<div>
 						<div class="skeleton skeleton-title w-32"></div>

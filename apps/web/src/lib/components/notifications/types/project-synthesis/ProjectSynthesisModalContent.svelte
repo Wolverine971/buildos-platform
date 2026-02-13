@@ -130,9 +130,7 @@
 		<div class="px-4 sm:px-6 py-6">
 			<div class="space-y-6">
 				<!-- Overview -->
-				<section
-					class="rounded-xl border border-border bg-card p-6 shadow-ink/70"
-				>
+				<section class="rounded-xl border border-border bg-card p-6 shadow-ink/70">
 					<div class="flex flex-wrap items-center gap-3">
 						<div
 							class="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/40"
@@ -159,9 +157,7 @@
 							</p>
 						</div>
 
-						<div
-							class="flex items-center gap-4 text-sm text-muted-foreground"
-						>
+						<div class="flex items-center gap-4 text-sm text-muted-foreground">
 							{#if duration}
 								<div class="flex items-center gap-2">
 									<Clock class="h-4 w-4" />
@@ -181,12 +177,8 @@
 				</section>
 
 				<!-- Configuration Summary -->
-				<section
-					class="rounded-xl border border-border bg-muted p-4/50"
-				>
-					<h3
-						class="text-sm font-semibold uppercase tracking-wide text-foreground mb-3"
-					>
+				<section class="rounded-xl border border-border bg-muted p-4/50">
+					<h3 class="text-sm font-semibold uppercase tracking-wide text-foreground mb-3">
 						Configuration
 					</h3>
 					<div class="flex flex-wrap gap-2">
@@ -208,9 +200,7 @@
 				</section>
 
 				<!-- Progress timeline -->
-				<section
-					class="rounded-xl border border-border bg-card p-6 shadow-ink/70"
-				>
+				<section class="rounded-xl border border-border bg-card p-6 shadow-ink/70">
 					<header class="mb-4 flex items-center justify-between">
 						<h3
 							class="text-sm font-semibold uppercase tracking-wide text-muted-foreground"
@@ -299,9 +289,7 @@
 					</section>
 
 					<!-- Operations Summary -->
-					<section
-						class="rounded-xl border border-border bg-card p-6 shadow-ink/70"
-					>
+					<section class="rounded-xl border border-border bg-card p-6 shadow-ink/70">
 						<h3
 							class="text-sm font-semibold uppercase tracking-wide text-foreground mb-4"
 						>
@@ -317,9 +305,7 @@
 										{result.consolidationCount}
 									</div>
 								</div>
-								<div class="text-xs text-muted-foreground">
-									Consolidations
-								</div>
+								<div class="text-xs text-muted-foreground">Consolidations</div>
 							</div>
 							<div
 								class="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg"
@@ -334,9 +320,7 @@
 										{result.newTasksCount}
 									</div>
 								</div>
-								<div class="text-xs text-muted-foreground">
-									New Tasks
-								</div>
+								<div class="text-xs text-muted-foreground">New Tasks</div>
 							</div>
 							<div class="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
 								<div class="flex items-center justify-center gap-2 mb-2">
@@ -345,18 +329,14 @@
 										{result.deletionsCount}
 									</div>
 								</div>
-								<div class="text-xs text-muted-foreground">
-									Deletions
-								</div>
+								<div class="text-xs text-muted-foreground">Deletions</div>
 							</div>
 						</div>
 					</section>
 
 					<!-- Task Comparison Preview -->
 					{#if result.comparison && result.comparison.length > 0}
-						<section
-							class="rounded-xl border border-border bg-card p-6 shadow-ink/70"
-						>
+						<section class="rounded-xl border border-border bg-card p-6 shadow-ink/70">
 							<h3
 								class="text-sm font-semibold uppercase tracking-wide text-foreground mb-4"
 							>
@@ -369,9 +349,7 @@
 
 							<div class="space-y-3">
 								{#each result.comparison.slice(0, 3) as item}
-									<div
-										class="p-3 bg-muted/50 rounded-lg border border-border"
-									>
+									<div class="p-3 bg-muted/50 rounded-lg border border-border">
 										<div class="flex items-start gap-2 mb-2">
 											<span
 												class={`px-2 py-0.5 rounded text-xs font-medium ${

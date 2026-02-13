@@ -16,11 +16,7 @@ export default defineConfig(({ mode }) => {
 	return {
 		plugins: [
 			mdsvex(mdsvexConfig),
-			sveltekit({
-				typescript: {
-					typecheck: !isDev
-				}
-			}),
+			sveltekit(),
 			// Gzip compression for production (fallback for older browsers)
 			isProd &&
 				viteCompression({

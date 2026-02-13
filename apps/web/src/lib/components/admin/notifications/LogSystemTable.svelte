@@ -185,14 +185,12 @@
 						</th>
 					</tr>
 				</thead>
-				<tbody
-					class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-				>
+				<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 					{#each logs as log}
 						{@const Level = getLevelIcon(log.level)}
 						<tr
-							class="hover:bg-muted transition-colors {log.level ===
-								'error' || log.level === 'fatal'
+							class="hover:bg-muted transition-colors {log.level === 'error' ||
+							log.level === 'fatal'
 								? 'bg-red-50 dark:bg-red-950'
 								: ''}"
 						>
@@ -226,9 +224,7 @@
 									</span>
 								</div>
 							</td>
-							<td
-								class="px-4 py-3 text-xs font-mono text-muted-foreground"
-							>
+							<td class="px-4 py-3 text-xs font-mono text-muted-foreground">
 								{log.namespace || 'N/A'}
 							</td>
 							<td class="px-4 py-3 text-sm text-foreground max-w-md">
@@ -281,9 +277,7 @@
 									<div class="space-y-3">
 										<!-- Full Message -->
 										<div>
-											<div
-												class="text-xs font-medium text-foreground mb-1"
-											>
+											<div class="text-xs font-medium text-foreground mb-1">
 												Message:
 											</div>
 											<div class="text-sm text-foreground">
@@ -299,9 +293,7 @@
 												>
 													User:
 												</div>
-												<div
-													class="text-xs text-muted-foreground"
-												>
+												<div class="text-xs text-muted-foreground">
 													{log.users?.name || log.users?.email || 'N/A'}
 												</div>
 											</div>

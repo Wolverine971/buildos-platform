@@ -120,9 +120,7 @@
 						>
 							<td class="px-5 py-4 align-middle">
 								<div class="flex flex-col gap-1.5">
-									<span
-										class="text-sm font-semibold text-foreground"
-									>
+									<span class="text-sm font-semibold text-foreground">
 										{user.name ?? 'No name'}
 									</span>
 									{#if user.id === pendingUserId}
@@ -152,9 +150,7 @@
 												</Badge>
 											{/if}
 										</div>
-										<p
-											class="text-xs text-muted-foreground leading-snug"
-										>
+										<p class="text-xs text-muted-foreground leading-snug">
 											{column.description}
 										</p>
 										<div class="text-xs text-muted-foreground">

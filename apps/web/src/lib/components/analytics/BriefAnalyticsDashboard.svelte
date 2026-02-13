@@ -288,9 +288,7 @@
 			<!-- Most Active Projects -->
 			<Card variant="default">
 				<CardBody padding="md">
-					<h3
-						class="text-base font-semibold text-foreground mb-4 flex items-center"
-					>
+					<h3 class="text-base font-semibold text-foreground mb-4 flex items-center">
 						<FolderOpen class="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
 						Most Active Projects
 					</h3>
@@ -309,14 +307,10 @@
 										</span>
 									</div>
 									<div class="flex-1 min-w-0">
-										<p
-											class="text-sm font-medium text-foreground truncate"
-										>
+										<p class="text-sm font-medium text-foreground truncate">
 											{project.project_name}
 										</p>
-										<div
-											class="w-full bg-muted rounded-full h-1.5 mt-1"
-										>
+										<div class="w-full bg-muted rounded-full h-1.5 mt-1">
 											<div
 												class="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
 												style="width: {getProgressBarWidth(
@@ -338,9 +332,7 @@
 					{:else}
 						<div class="text-center py-6">
 							<FolderOpen class="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-							<p class="text-sm text-muted-foreground">
-								No project data available
-							</p>
+							<p class="text-sm text-muted-foreground">No project data available</p>
 						</div>
 					{/if}
 				</CardBody>
@@ -349,9 +341,7 @@
 			<!-- Most Active Goals -->
 			<Card variant="default">
 				<CardBody padding="md">
-					<h3
-						class="text-base font-semibold text-foreground mb-4 flex items-center"
-					>
+					<h3 class="text-base font-semibold text-foreground mb-4 flex items-center">
 						<Target class="mr-2 h-4 w-4 text-purple-600 dark:text-purple-400" />
 						Most Active Goals
 					</h3>
@@ -370,14 +360,10 @@
 										</span>
 									</div>
 									<div class="flex-1 min-w-0">
-										<p
-											class="text-sm font-medium text-foreground truncate"
-										>
+										<p class="text-sm font-medium text-foreground truncate">
 											{goal.goal_name}
 										</p>
-										<div
-											class="w-full bg-muted rounded-full h-1.5 mt-1"
-										>
+										<div class="w-full bg-muted rounded-full h-1.5 mt-1">
 											<div
 												class="bg-purple-600 h-1.5 rounded-full transition-all duration-500"
 												style="width: {getProgressBarWidth(
@@ -399,9 +385,7 @@
 					{:else}
 						<div class="text-center py-6">
 							<Target class="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-							<p class="text-sm text-muted-foreground">
-								No goal data available
-							</p>
+							<p class="text-sm text-muted-foreground">No goal data available</p>
 						</div>
 					{/if}
 				</CardBody>
@@ -413,44 +397,26 @@
 			<!-- Template Usage -->
 			<Card variant="default">
 				<CardBody padding="md">
-					<h3
-						class="text-sm font-semibold text-foreground mb-3 flex items-center"
-					>
+					<h3 class="text-sm font-semibold text-foreground mb-3 flex items-center">
 						<PieChart class="mr-2 h-4 w-4 text-green-600 dark:text-green-400" />
 						Template Usage
 					</h3>
 
 					<div class="space-y-2">
-						<div
-							class="flex items-center justify-between p-2 bg-muted/50 rounded"
-						>
-							<span class="text-xs font-medium text-foreground"
-								>Project</span
-							>
-							<span
-								class="text-xs font-semibold text-foreground truncate ml-2"
-							>
+						<div class="flex items-center justify-between p-2 bg-muted/50 rounded">
+							<span class="text-xs font-medium text-foreground">Project</span>
+							<span class="text-xs font-semibold text-foreground truncate ml-2">
 								{analytics.template_usage.most_used_project_template || 'Default'}
 							</span>
 						</div>
-						<div
-							class="flex items-center justify-between p-2 bg-muted/50 rounded"
-						>
-							<span class="text-xs font-medium text-foreground"
-								>Goal</span
-							>
-							<span
-								class="text-xs font-semibold text-foreground truncate ml-2"
-							>
+						<div class="flex items-center justify-between p-2 bg-muted/50 rounded">
+							<span class="text-xs font-medium text-foreground">Goal</span>
+							<span class="text-xs font-semibold text-foreground truncate ml-2">
 								{analytics.template_usage.most_used_goal_template || 'Default'}
 							</span>
 						</div>
-						<div
-							class="flex items-center justify-between p-2 bg-muted/50 rounded"
-						>
-							<span class="text-xs font-medium text-foreground"
-								>Custom</span
-							>
+						<div class="flex items-center justify-between p-2 bg-muted/50 rounded">
+							<span class="text-xs font-medium text-foreground">Custom</span>
 							<span class="text-xs font-semibold text-foreground">
 								{analytics.template_usage.custom_template_count}
 							</span>
@@ -462,26 +428,20 @@
 			<!-- Weekly Activity -->
 			<Card variant="default">
 				<CardBody padding="md">
-					<h3
-						class="text-sm font-semibold text-foreground mb-3 flex items-center"
-					>
+					<h3 class="text-sm font-semibold text-foreground mb-3 flex items-center">
 						<Clock class="mr-2 h-4 w-4 text-orange-600 dark:text-orange-400" />
 						Weekly Activity
 					</h3>
 
 					<div class="space-y-3">
 						<div class="flex items-center justify-between">
-							<span class="text-xs font-medium text-foreground"
-								>This Week</span
-							>
+							<span class="text-xs font-medium text-foreground">This Week</span>
 							<span class="text-sm font-bold text-foreground">
 								{analytics.generation_frequency.briefs_this_week}
 							</span>
 						</div>
 						<div class="flex items-center justify-between">
-							<span class="text-xs font-medium text-foreground"
-								>Daily Avg</span
-							>
+							<span class="text-xs font-medium text-foreground">Daily Avg</span>
 							<span class="text-sm font-bold text-foreground">
 								{Math.round(
 									(analytics.generation_frequency.briefs_this_week / 7) * 10
@@ -508,9 +468,7 @@
 			<!-- Achievements -->
 			<Card variant="default">
 				<CardBody padding="md">
-					<h3
-						class="text-sm font-semibold text-foreground mb-3 flex items-center"
-					>
+					<h3 class="text-sm font-semibold text-foreground mb-3 flex items-center">
 						<Award class="mr-2 h-4 w-4 text-yellow-600 dark:text-yellow-400" />
 						Achievements
 					</h3>
@@ -519,9 +477,7 @@
 						{#if achievements?.length}
 							{#each achievements as achievement}
 								{@const Icon = achievement.icon}
-								<div
-									class="flex items-center space-x-2 p-2 bg-muted/50 rounded"
-								>
+								<div class="flex items-center space-x-2 p-2 bg-muted/50 rounded">
 									<div
 										class="w-6 h-6 bg-{achievement.color}-100 dark:bg-{achievement.color}-900/20 rounded-full flex items-center justify-center flex-shrink-0"
 									>
@@ -530,9 +486,7 @@
 										/>
 									</div>
 									<div class="min-w-0">
-										<p
-											class="text-xs font-medium text-foreground"
-										>
+										<p class="text-xs font-medium text-foreground">
 											{achievement.title}
 										</p>
 										<p class="text-xs text-muted-foreground">
@@ -560,18 +514,14 @@
 				padding="md"
 				class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800/50"
 			>
-				<h3
-					class="text-lg font-semibold text-foreground mb-4 flex items-center"
-				>
+				<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
 					<TrendingUp class="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
 					Insights & Recommendations
 				</h3>
 
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
-						<h4
-							class="font-medium text-foreground mb-2 flex items-center text-sm"
-						>
+						<h4 class="font-medium text-foreground mb-2 flex items-center text-sm">
 							<CheckCircle
 								class="w-4 h-4 mr-1.5 text-green-600 dark:text-green-400"
 							/>
@@ -615,9 +565,7 @@
 					</div>
 
 					<div>
-						<h4
-							class="font-medium text-foreground mb-2 flex items-center text-sm"
-						>
+						<h4 class="font-medium text-foreground mb-2 flex items-center text-sm">
 							<Target class="w-4 h-4 mr-1.5 text-blue-600 dark:text-blue-400" />
 							Suggestions
 						</h4>
@@ -662,9 +610,7 @@
 			<Card variant="default">
 				<CardBody padding="md" class="max-w-md mx-auto">
 					<BarChart3 class="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-					<h3 class="text-lg font-semibold text-foreground mb-2">
-						No Analytics Data
-					</h3>
+					<h3 class="text-lg font-semibold text-foreground mb-2">No Analytics Data</h3>
 					<p class="text-sm text-muted-foreground">
 						Generate some daily briefs to see your analytics.
 					</p>

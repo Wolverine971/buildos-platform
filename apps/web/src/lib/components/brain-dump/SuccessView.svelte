@@ -55,11 +55,7 @@
 	}
 </script>
 
-<div
-	class="h-full flex flex-col bg-muted {inModal
-		? 'min-h-[400px]'
-		: ''} rounded-lg"
->
+<div class="h-full flex flex-col bg-muted {inModal ? 'min-h-[400px]' : ''} rounded-lg">
 	<!-- Content positioned at top with responsive padding -->
 	<div class="px-4 sm:px-6 md:px-8 pt-4 sm:pt-6 md:pt-8">
 		<div class="max-w-md mx-auto">
@@ -88,9 +84,7 @@
 					<div class="flex items-start justify-between">
 						<div class="flex-1 w-full">
 							<div class="flex items-start justify-between">
-								<p
-									class="text-xs sm:text-sm text-muted-foreground mb-0.5 w-full"
-								>
+								<p class="text-xs sm:text-sm text-muted-foreground mb-0.5 w-full">
 									{successData.isNewProject
 										? 'New Project Created'
 										: 'Project Updated'}
@@ -103,9 +97,7 @@
 									</span>
 								{/if}
 							</div>
-							<p
-								class="text-sm sm:text-base font-medium text-foreground truncate"
-							>
+							<p class="text-sm sm:text-base font-medium text-foreground truncate">
 								{successData.projectName || 'Untitled Project'}
 							</p>
 						</div>
@@ -115,8 +107,7 @@
 					{#if successData.operationsCount}
 						<div class="pt-2 border-t border-border">
 							<div class="flex items-center justify-between text-xs sm:text-sm">
-								<span class="text-muted-foreground">Items processed</span
-								>
+								<span class="text-muted-foreground">Items processed</span>
 								<span class="font-semibold text-foreground">
 									{successData.operationsCount}
 									{#if successData.failedOperations && successData.failedOperations > 0}

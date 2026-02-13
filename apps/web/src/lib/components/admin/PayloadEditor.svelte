@@ -152,10 +152,7 @@
 				{#each Object.keys(payload) as key}
 					{@const fieldType = getFieldType(payload[key])}
 					<div>
-						<label
-							for={key}
-							class="block text-sm font-medium text-foreground mb-1"
-						>
+						<label for={key} class="block text-sm font-medium text-foreground mb-1">
 							{formatFieldLabel(key)}
 						</label>
 						{#if fieldType === 'textarea'}
@@ -194,9 +191,7 @@
 	{#if mode === 'json'}
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
-				<span class="text-xs text-muted-foreground">
-					Edit raw JSON payload
-				</span>
+				<span class="text-xs text-muted-foreground"> Edit raw JSON payload </span>
 				<Button variant="ghost" size="sm" onclick={formatJson} class="text-xs">
 					Format JSON
 				</Button>

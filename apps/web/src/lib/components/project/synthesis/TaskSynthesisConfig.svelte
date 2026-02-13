@@ -35,9 +35,7 @@
 			<GitMerge class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-foreground">
-						Task Consolidation
-					</div>
+					<div class="text-sm font-medium text-foreground">Task Consolidation</div>
 					<input
 						type="checkbox"
 						checked={config.consolidation.enabled}
@@ -97,9 +95,7 @@
 			<Layers class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-foreground">
-						Task Sequencing
-					</div>
+					<div class="text-sm font-medium text-foreground">Task Sequencing</div>
 					<input
 						type="checkbox"
 						checked={config.sequencing.enabled}
@@ -145,9 +141,7 @@
 			<Clock class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-foreground">
-						Time Estimation
-					</div>
+					<div class="text-sm font-medium text-foreground">Time Estimation</div>
 					<input
 						type="checkbox"
 						checked={config.timeEstimation.enabled}
@@ -159,9 +153,7 @@
 				{#if config.timeEstimation.enabled}
 					<div class="pl-4 space-y-2">
 						<div>
-							<div class="text-xs text-muted-foreground">
-								Confidence Level
-							</div>
+							<div class="text-xs text-muted-foreground">Confidence Level</div>
 							<select
 								value={config.timeEstimation.confidenceLevel}
 								onchange={(e) =>
@@ -206,9 +198,7 @@
 			<Search class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-foreground">
-						Gap Analysis
-					</div>
+					<div class="text-sm font-medium text-foreground">Gap Analysis</div>
 					<input
 						id="gap-analysis-enabled"
 						type="checkbox"
@@ -268,9 +258,7 @@
 			<Link class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-foreground">
-						Task Dependencies
-					</div>
+					<div class="text-sm font-medium text-foreground">Task Dependencies</div>
 					<input
 						type="checkbox"
 						checked={config.dependencies.enabled}
@@ -316,9 +304,7 @@
 			<Layers class="w-4 h-4 text-muted-foreground mt-1" />
 			<div class="flex-1 space-y-2">
 				<div class="flex items-center justify-between">
-					<div class="text-sm font-medium text-foreground">
-						Task Grouping
-					</div>
+					<div class="text-sm font-medium text-foreground">Task Grouping</div>
 					<input
 						type="checkbox"
 						checked={config.grouping.enabled}
@@ -330,9 +316,7 @@
 				{#if config.grouping.enabled}
 					<div class="pl-4 space-y-2">
 						<div>
-							<div class="text-xs text-muted-foreground">
-								Grouping Strategy
-							</div>
+							<div class="text-xs text-muted-foreground">Grouping Strategy</div>
 							<select
 								value={config.grouping.strategy}
 								onchange={(e) =>

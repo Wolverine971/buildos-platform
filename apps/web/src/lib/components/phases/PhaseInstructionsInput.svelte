@@ -293,9 +293,7 @@
 			<Circle class="w-3 h-3 fill-current animate-pulse" />
 			<span>Recording... {formatDuration(recordingDuration)}</span>
 			{#if isIOS() && !accumulatedTranscript}
-				<span class="text-xs text-muted-foreground">
-					• Will transcribe when stopped
-				</span>
+				<span class="text-xs text-muted-foreground"> • Will transcribe when stopped </span>
 			{/if}
 		</div>
 	{/if}

@@ -123,9 +123,7 @@
 						</th>
 					</tr>
 				</thead>
-				<tbody
-					class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-				>
+				<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 					{#each data as channel}
 						<tr class="hover:bg-muted transition-colors">
 							<!-- Channel -->
@@ -139,9 +137,7 @@
 								</span>
 							</td>
 							<!-- Total (all notifications) -->
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								<div>
 									<div class="font-medium">
 										{formatNumber(channel.total_sent)}
@@ -152,17 +148,13 @@
 								</div>
 							</td>
 							<!-- Sent (status='sent') -->
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								<div class="font-medium">
 									{formatNumber(channel.sent)}
 								</div>
 							</td>
 							<!-- Delivered (status='delivered') -->
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								<div>
 									<div class="font-medium">
 										{formatNumber(channel.delivered)}
@@ -211,9 +203,7 @@
 								</div>
 							</td>
 							<!-- Open Rate -->
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								<div>
 									<div>{formatPercentage(channel.open_rate)}</div>
 									<div class="text-xs text-muted-foreground">
@@ -222,9 +212,7 @@
 								</div>
 							</td>
 							<!-- Click Rate -->
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								<div>
 									<div>{formatPercentage(channel.click_rate)}</div>
 									<div class="text-xs text-muted-foreground">
@@ -233,9 +221,7 @@
 								</div>
 							</td>
 							<!-- Avg Delivery Time -->
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{formatTime(channel.avg_delivery_time_ms)}
 							</td>
 						</tr>

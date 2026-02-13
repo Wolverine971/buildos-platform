@@ -281,9 +281,7 @@
 
 							<!-- Divider if there are more actions -->
 							{#if hasBacklogTasks || (canSchedule && hasUnscheduledTasks) || hasTasksInPhases || hasOverdueTasks}
-								<div
-									class="border-t border-border my-1"
-								></div>
+								<div class="border-t border-border my-1"></div>
 							{/if}
 
 							<!-- Task Management Section -->

@@ -93,9 +93,7 @@
 						</th>
 					</tr>
 				</thead>
-				<tbody
-					class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-				>
+				<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 					{#each data as event}
 						<tr class="hover:bg-muted transition-colors">
 							<td class="px-6 py-4 whitespace-nowrap">
@@ -112,31 +110,21 @@
 							>
 								{formatNumber(event.total_events)}
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{formatNumber(event.total_deliveries)}
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{formatNumber(event.unique_subscribers)}
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{event.avg_delivery_time_seconds != null
 									? `${event.avg_delivery_time_seconds.toFixed(2)}s`
 									: 'N/A'}
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{formatPercentage(event.open_rate)}
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{formatPercentage(event.click_rate)}
 							</td>
 						</tr>

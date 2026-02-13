@@ -46,9 +46,7 @@
 					<FolderOpen class="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
 					{title}
 				</h3>
-				<span class="text-sm text-muted-foreground"
-					>{briefs.length} projects</span
-				>
+				<span class="text-sm text-muted-foreground">{briefs.length} projects</span>
 			</div>
 		{/if}
 
@@ -62,13 +60,9 @@
 	<ProjectBriefModal brief={selectedBrief} isOpen={isModalOpen} on:close={handleCloseModal} />
 {:else}
 	<div class="text-center py-8">
-		<div
-			class="bg-card rounded-lg p-6 border border-border"
-		>
+		<div class="bg-card rounded-lg p-6 border border-border">
 			<FolderOpen class="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-			<h3 class="text-lg font-semibold text-foreground mb-2">
-				No Project Briefs
-			</h3>
+			<h3 class="text-lg font-semibold text-foreground mb-2">No Project Briefs</h3>
 			<p class="text-sm text-muted-foreground">
 				Project briefs will appear here when available
 			</p>

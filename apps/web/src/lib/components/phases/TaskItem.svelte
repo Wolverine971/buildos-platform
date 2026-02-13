@@ -471,9 +471,7 @@
 
 					<!-- Date -->
 					{#if task.start_date}
-						<div
-							class="flex items-center gap-1 text-xs text-muted-foreground"
-						>
+						<div class="flex items-center gap-1 text-xs text-muted-foreground">
 							{#if isTaskOutsidePhase(task, phase)}
 								<TriangleAlert
 									class="w-3.5 h-3.5 text-yellow-500"
@@ -648,9 +646,7 @@
 
 						<!-- Date -->
 						{#if task.start_date}
-							<div
-								class="flex items-center gap-1 text-xs text-muted-foreground"
-							>
+							<div class="flex items-center gap-1 text-xs text-muted-foreground">
 								{#if isTaskOutsidePhase(task, phase)}
 									<TriangleAlert
 										class="w-3.5 h-3.5 text-yellow-500"
@@ -781,9 +777,7 @@
 
 			<!-- Date -->
 			{#if task.start_date}
-				<div
-					class="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0"
-				>
+				<div class="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
 					{#if isTaskOutsidePhase(task, phase)}
 						<TriangleAlert
 							class="w-4 h-4 text-yellow-500"

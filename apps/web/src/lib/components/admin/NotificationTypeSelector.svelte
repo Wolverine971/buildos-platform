@@ -120,10 +120,7 @@
 
 <div class="space-y-3">
 	<div>
-		<label
-			for="event-type"
-			class="block text-sm font-medium text-foreground mb-2"
-		>
+		<label for="event-type" class="block text-sm font-medium text-foreground mb-2">
 			Notification Event Type
 		</label>
 		<select
@@ -152,9 +149,7 @@
 	</div>
 
 	{#if selectedEvent}
-		<div
-			class="p-4 bg-muted rounded-lg border border-border"
-		>
+		<div class="p-4 bg-muted rounded-lg border border-border">
 			<!-- Event Info -->
 			<div class="flex items-start justify-between mb-3">
 				<div class="flex-1">
@@ -188,9 +183,7 @@
 			<div class="space-y-2 text-xs">
 				<div class="flex items-center space-x-2">
 					<span class="text-muted-foreground">Event Type:</span>
-					<code
-						class="px-2 py-0.5 bg-muted rounded text-foreground"
-					>
+					<code class="px-2 py-0.5 bg-muted rounded text-foreground">
 						{selectedEvent.value}
 					</code>
 				</div>

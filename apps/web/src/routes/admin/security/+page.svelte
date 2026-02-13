@@ -234,9 +234,7 @@
 								>
 									{formatDate(log.created_at)}
 								</td>
-								<td
-									class="px-5 py-3 font-mono text-xs text-muted-foreground"
-								>
+								<td class="px-5 py-3 font-mono text-xs text-muted-foreground">
 									{log.user_id.slice(0, 8)}...
 								</td>
 								<td class="px-5 py-3">
@@ -315,7 +313,9 @@
 			<div class="admin-panel w-full max-w-4xl overflow-y-auto p-6">
 				<div class="flex items-start justify-between gap-4">
 					<div>
-						<p class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+						<p
+							class="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground"
+						>
 							Log Detail
 						</p>
 						<h3 class="text-lg font-semibold text-foreground">
@@ -326,9 +326,7 @@
 				</div>
 
 				<div class="mt-6 space-y-5 text-sm">
-					<div
-						class="grid gap-4 rounded-lg bg-slate-100/60 p-4/40 sm:grid-cols-2"
-					>
+					<div class="grid gap-4 rounded-lg bg-slate-100/60 p-4/40 sm:grid-cols-2">
 						<div>
 							<p class="text-xs uppercase text-muted-foreground">Time</p>
 							<p class="font-semibold text-foreground">
@@ -369,9 +367,7 @@
 
 					<div class="space-y-2">
 						<p class="text-xs uppercase text-muted-foreground">Flagged Content</p>
-						<div
-							class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono/5"
-						>
+						<div class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono/5">
 							<pre class="whitespace-pre-wrap">{selectedLog.content}</pre>
 						</div>
 					</div>
@@ -379,9 +375,7 @@
 					{#if selectedLog.llm_validation}
 						<div class="space-y-2">
 							<p class="text-xs uppercase text-muted-foreground">LLM Validation</p>
-							<div
-								class="space-y-2 rounded-lg bg-slate-100/60 p-4/40"
-							>
+							<div class="space-y-2 rounded-lg bg-slate-100/60 p-4/40">
 								<div class="flex items-center gap-2">
 									<span class="font-medium">Is Malicious:</span>
 									<Badge
@@ -406,18 +400,14 @@
 								</div>
 								<div>
 									<span class="font-medium">Reason:</span>
-									<p
-										class="mt-1 leading-relaxed text-muted-foreground"
-									>
+									<p class="mt-1 leading-relaxed text-muted-foreground">
 										{selectedLog.llm_validation.reason}
 									</p>
 								</div>
 								{#if selectedLog.llm_validation.matchedPatterns?.length}
 									<div>
 										<span class="font-medium">Matched Patterns:</span>
-										<ul
-											class="mt-1 list-disc pl-5 text-muted-foreground"
-										>
+										<ul class="mt-1 list-disc pl-5 text-muted-foreground">
 											{#each selectedLog.llm_validation.matchedPatterns as pattern}
 												<li>{pattern}</li>
 											{/each}
@@ -431,9 +421,7 @@
 					{#if selectedLog.metadata}
 						<div class="space-y-2">
 							<p class="text-xs uppercase text-muted-foreground">Metadata</p>
-							<div
-								class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono/5"
-							>
+							<div class="rounded-lg bg-slate-900/5 p-4 text-xs font-mono/5">
 								<pre class="whitespace-pre-wrap">{JSON.stringify(
 										selectedLog.metadata,
 										null,

@@ -518,9 +518,7 @@
 							<div
 								class="absolute -top-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap animate-fade-in"
 							>
-								<div
-									class="bg-gray-900 text-white text-xs px-2 py-1 rounded-md"
-								>
+								<div class="bg-gray-900 text-white text-xs px-2 py-1 rounded-md">
 									<span class="opacity-90">Click to stop</span>
 									<div
 										class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1"

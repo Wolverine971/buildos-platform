@@ -209,9 +209,7 @@
 			{/if}
 
 			<!-- Action Buttons -->
-			<div
-				class="flex items-center justify-between pt-2 border-t border-border"
-			>
+			<div class="flex items-center justify-between pt-2 border-t border-border">
 				<div class="flex items-center gap-2">
 					<Button
 						onclick={saveEdit}
@@ -264,9 +262,7 @@
 						{/if}
 					</div>
 
-					<div
-						class="flex items-center gap-3 text-xs text-muted-foreground mt-1.5"
-					>
+					<div class="flex items-center gap-3 text-xs text-muted-foreground mt-1.5">
 						<span class="flex items-center gap-1">
 							<Calendar class="w-3 h-3" />
 							{formatDateTime(schedule.proposedStart)}

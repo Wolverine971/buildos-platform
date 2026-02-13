@@ -250,9 +250,7 @@
 					/>
 				</div>
 				<div class="min-w-0 flex-1">
-					<h2
-						class="text-lg sm:text-xl font-semibold text-foreground truncate"
-					>
+					<h2 class="text-lg sm:text-xl font-semibold text-foreground truncate">
 						Schedule Tasks for {phase.name}
 					</h2>
 					<p class="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -338,12 +336,8 @@
 				<div class="hidden lg:grid lg:grid-cols-[2fr_3fr] gap-0 h-full">
 					<!-- Left: Task List Panel -->
 					<div class="border-r border-border flex flex-col">
-						<div
-							class="p-4 border-b border-border bg-muted/50"
-						>
-							<h3 class="text-sm font-semibold text-foreground">
-								Tasks to Schedule
-							</h3>
+						<div class="p-4 border-b border-border bg-muted/50">
+							<h3 class="text-sm font-semibold text-foreground">Tasks to Schedule</h3>
 							<p class="text-xs text-muted-foreground mt-1">
 								Click a task to edit its schedule
 							</p>
@@ -373,9 +367,7 @@
 							</div>
 						</div>
 
-						<div
-							class="p-3 border-t border-border bg-muted/50"
-						>
+						<div class="p-3 border-t border-border bg-muted/50">
 							<div class="text-xs text-muted-foreground">
 								{proposedSchedules.length} task{proposedSchedules.length === 1
 									? ''
@@ -455,9 +447,7 @@
 					<!-- Task List (always visible on mobile) -->
 					<div class="flex-1 overflow-y-auto p-4">
 						<div class="mb-3">
-							<h3 class="text-sm font-semibold text-foreground">
-								Tasks to Schedule
-							</h3>
+							<h3 class="text-sm font-semibold text-foreground">Tasks to Schedule</h3>
 							<p class="text-xs text-muted-foreground mt-1">
 								{proposedSchedules.length} task{proposedSchedules.length === 1
 									? ''

@@ -193,9 +193,7 @@
 						</p>
 						<div class="space-y-1">
 							{#each upcomingInstances.slice(0, 3) as date}
-								<div
-									class="flex items-center gap-2 text-xs text-muted-foreground"
-								>
+								<div class="flex items-center gap-2 text-xs text-muted-foreground">
 									<Calendar class="w-3 h-3" />
 									<span>{formatDate(date)}</span>
 								</div>

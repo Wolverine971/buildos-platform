@@ -235,9 +235,7 @@
 						</div>
 
 						{#if run.initiatedByEmail}
-							<p
-								class="mt-2 flex items-center gap-1 text-xs text-muted-foreground"
-							>
+							<p class="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
 								<User class="h-3 w-3" />
 								{run.initiatedByEmail}
 							</p>

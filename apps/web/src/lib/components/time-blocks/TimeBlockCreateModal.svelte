@@ -170,9 +170,7 @@
 	{#snippet beforeForm()}
 		<div class="px-6 pt-6 pb-0 space-y-5">
 			<fieldset class="space-y-3">
-				<legend class="text-sm font-semibold text-foreground"
-					>Block type</legend
-				>
+				<legend class="text-sm font-semibold text-foreground">Block type</legend>
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 					<button
 						type="button"

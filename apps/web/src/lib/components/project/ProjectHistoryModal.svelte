@@ -252,9 +252,7 @@
 					<div
 						class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600 mx-auto mb-4"
 					></div>
-					<p class="text-muted-foreground text-sm">
-						Loading project history...
-					</p>
+					<p class="text-muted-foreground text-sm">Loading project history...</p>
 				</div>
 			</div>
 		{:else if error}
@@ -277,9 +275,7 @@
 			<div class="flex items-center justify-center h-full">
 				<div class="text-center max-w-md px-6">
 					<Clock class="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-60" />
-					<h3 class="text-lg font-semibold text-foreground mb-2">
-						No History Available
-					</h3>
+					<h3 class="text-lg font-semibold text-foreground mb-2">No History Available</h3>
 					<p class="text-sm text-muted-foreground">
 						This project doesn't have any recorded changes yet.
 					</p>
@@ -336,9 +332,7 @@
 					</div>
 
 					<!-- Date info -->
-					<div
-						class="flex items-center gap-3 text-xs text-muted-foreground font-medium"
-					>
+					<div class="flex items-center gap-3 text-xs text-muted-foreground font-medium">
 						<div class="flex items-center space-x-1.5">
 							<Clock class="w-3.5 h-3.5 opacity-60" />
 							<span>{formatDate(currentComparison.fromVersion.created_at)}</span>
@@ -356,9 +350,7 @@
 			<div class="flex-1">
 				<div class="flex flex-col lg:flex-row min-h-full">
 					<!-- Diff Content - Scrolls independently -->
-					<div
-						class="flex-1 lg:w-2/3 p-6 lg:border-r border-border/50/50"
-					>
+					<div class="flex-1 lg:w-2/3 p-6 lg:border-r border-border/50/50">
 						<DiffView
 							diffs={currentComparison.diffs}
 							fromVersionLabel="Version {currentComparison.fromVersion
@@ -372,9 +364,7 @@
 					<div
 						class="w-full lg:w-1/3 p-6 bg-muted/50/30 border-t lg:border-t-0 border-border/50/50"
 					>
-						<h3
-							class="text-base font-semibold text-foreground mb-4 tracking-tight"
-						>
+						<h3 class="text-base font-semibold text-foreground mb-4 tracking-tight">
 							Related Braindump
 						</h3>
 
@@ -384,9 +374,7 @@
 							>
 								<!-- Braindump Header -->
 								<div class="p-4 border-b border-border/50">
-									<h4
-										class="font-semibold text-foreground mb-2.5 text-sm"
-									>
+									<h4 class="font-semibold text-foreground mb-2.5 text-sm">
 										{currentBraindump.title || 'Untitled Braindump'}
 									</h4>
 									<div
@@ -411,9 +399,7 @@
 								<!-- Braindump Content -->
 								<div class="p-4">
 									{#if currentBraindump.preview}
-										<div
-											class="text-sm text-foreground leading-relaxed"
-										>
+										<div class="text-sm text-foreground leading-relaxed">
 											{#if expandedBraindump}
 												<p class="whitespace-pre-wrap">
 													{currentBraindump.content || ''}

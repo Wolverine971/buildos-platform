@@ -9,6 +9,8 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import LoadingSkeleton from '$lib/components/ui/LoadingSkeleton.svelte';
+	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 
 	let AgentChatModal = $state<any>(null);
 	let showChatModal = $state(false);
@@ -25,9 +27,14 @@
 		}
 	});
 
-	function handleClose() {
+	function handleClose(summary?: DataMutationSummary) {
 		showChatModal = false;
-		// Navigate back to projects list
+		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
+			toastService.success(
+				'Project created! Head to Projects to explore it.',
+				TOAST_DURATION.LONG
+			);
+		}
 		goto('/projects');
 	}
 </script>

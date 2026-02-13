@@ -229,9 +229,7 @@
 		class="relative mx-auto flex max-w-7xl flex-col gap-2 sm:gap-4 px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4 md:py-6 lg:gap-5"
 	>
 		<header class="space-y-1">
-			<h1
-				class="text-2xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2 tracking-tight"
-			>
+			<h1 class="text-2xl sm:text-3xl font-bold text-foreground mb-1 sm:mb-2 tracking-tight">
 				Time Blocks
 			</h1>
 			<p class="text-sm sm:text-base text-muted-foreground">
@@ -244,11 +242,7 @@
 			class="flex flex-col gap-2 rounded-lg border border-border bg-card px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
 		>
 			<!-- View mode toggle - Compact segmented control -->
-			<div
-				class="inline-flex rounded-md bg-muted p-0.5"
-				role="group"
-				aria-label="View mode"
-			>
+			<div class="inline-flex rounded-md bg-muted p-0.5" role="group" aria-label="View mode">
 				<button
 					type="button"
 					class={`relative rounded px-3 py-1.5 text-xs font-medium transition-all ${
@@ -294,9 +288,7 @@
 		</div>
 
 		<!-- Time Range Selector Card -->
-		<div
-			class="overflow-hidden rounded-lg border border-border bg-card"
-		>
+		<div class="overflow-hidden rounded-lg border border-border bg-card">
 			<TimeRangeSelector
 				dateRange={$timeBlocksStore.selectedDateRange}
 				onDateRangeChange={(range) => timeBlocksStore.setDateRange(range.start, range.end)}
@@ -318,9 +310,7 @@
 		{/if}
 
 		<!-- Time Allocation Summary -->
-		<div
-			class="rounded-lg border border-border bg-card"
-		>
+		<div class="rounded-lg border border-border bg-card">
 			<TimeAllocationPanel
 				allocation={$timeBlocksStore.allocation}
 				isLoading={$timeBlocksStore.isAllocationLoading}
@@ -329,9 +319,7 @@
 		</div>
 
 		<!-- Calendar/List View (full width) -->
-		<div
-			class="rounded-lg border border-border bg-card"
-		>
+		<div class="rounded-lg border border-border bg-card">
 			{#if $timeBlocksStore.isLoading}
 				<div class="flex flex-col items-center justify-center gap-3 px-8 py-16 text-center">
 					<div

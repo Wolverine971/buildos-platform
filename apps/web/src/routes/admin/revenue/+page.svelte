@@ -346,9 +346,7 @@
 						Prorations & Adjustments
 					</h3>
 					<div class="space-y-4">
-						<div
-							class="flex items-center justify-between py-3 border-b border-border"
-						>
+						<div class="flex items-center justify-between py-3 border-b border-border">
 							<div>
 								<p class="font-medium text-foreground">Upgrades</p>
 								<p class="text-sm text-muted-foreground">
@@ -359,9 +357,7 @@
 								+{formatCurrency(revenueData.prorations.upgrades)}
 							</p>
 						</div>
-						<div
-							class="flex items-center justify-between py-3 border-b border-border"
-						>
+						<div class="flex items-center justify-between py-3 border-b border-border">
 							<div>
 								<p class="font-medium text-foreground">Downgrades</p>
 								<p class="text-sm text-muted-foreground">
@@ -374,12 +370,8 @@
 						</div>
 						<div class="flex items-center justify-between py-3">
 							<div>
-								<p class="font-medium text-foreground">
-									Net Prorations
-								</p>
-								<p class="text-sm text-muted-foreground">
-									Total impact on revenue
-								</p>
+								<p class="font-medium text-foreground">Net Prorations</p>
+								<p class="text-sm text-muted-foreground">Total impact on revenue</p>
 							</div>
 							<p
 								class="text-lg font-semibold {revenueData.prorations.net >= 0
@@ -396,9 +388,7 @@
 
 				<!-- Key Metrics -->
 				<div class="admin-panel p-6">
-					<h3 class="text-lg font-semibold text-foreground mb-4">
-						Financial Metrics
-					</h3>
+					<h3 class="text-lg font-semibold text-foreground mb-4">Financial Metrics</h3>
 					<div class="space-y-4">
 						<div class="flex items-center justify-between">
 							<div>
@@ -436,9 +426,7 @@
 						<div class="flex items-center justify-between">
 							<div>
 								<p class="font-medium text-foreground">LTV</p>
-								<p class="text-sm text-muted-foreground">
-									Customer Lifetime Value
-								</p>
+								<p class="text-sm text-muted-foreground">Customer Lifetime Value</p>
 							</div>
 							<p class="text-lg font-semibold text-foreground">
 								{formatCurrency(revenueData.metrics.lifetime_value)}

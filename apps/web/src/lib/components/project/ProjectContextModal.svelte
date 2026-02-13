@@ -57,12 +57,8 @@
 
 		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 space-y-4 sm:space-y-6">
 			<!-- Project Overview Section -->
-			<div
-				class="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border"
-			>
-				<h3
-					class="text-sm sm:text-base font-medium text-foreground mb-3 flex items-center"
-				>
+			<div class="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border">
+				<h3 class="text-sm sm:text-base font-medium text-foreground mb-3 flex items-center">
 					<Info class="w-4 h-4 mr-2 text-muted-foreground" />
 					Project Overview
 				</h3>
@@ -71,9 +67,7 @@
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
 					{#if project.status}
 						<div class="flex items-center space-x-2">
-							<span
-								class="text-xs sm:text-sm font-medium text-muted-foreground"
-							>
+							<span class="text-xs sm:text-sm font-medium text-muted-foreground">
 								Status:
 							</span>
 							<span
@@ -88,10 +82,10 @@
 
 					{#if project.start_date}
 						<div class="flex items-center space-x-2">
-							<Calendar class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
-							<span class="text-xs sm:text-sm text-muted-foreground">
-								Started:
-							</span>
+							<Calendar
+								class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0"
+							/>
+							<span class="text-xs sm:text-sm text-muted-foreground"> Started: </span>
 							<span class="text-xs sm:text-sm text-foreground">
 								{formatDateForDisplay(project.start_date)}
 							</span>
@@ -100,10 +94,10 @@
 
 					{#if project.end_date}
 						<div class="flex items-center space-x-2">
-							<Calendar class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
-							<span class="text-xs sm:text-sm text-muted-foreground">
-								Due:
-							</span>
+							<Calendar
+								class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0"
+							/>
+							<span class="text-xs sm:text-sm text-muted-foreground"> Due: </span>
 							<span class="text-xs sm:text-sm text-foreground">
 								{formatDateForDisplay(project.end_date)}
 							</span>
@@ -132,7 +126,9 @@
 				<!-- Tags -->
 				{#if project.tags && project.tags.length > 0}
 					<div class="flex items-start space-x-2">
-						<Tag class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+						<Tag
+							class="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground mt-0.5 flex-shrink-0"
+						/>
 						<div class="flex flex-wrap gap-1">
 							{#each project.tags as tag}
 								<span
@@ -174,9 +170,7 @@
 
 			<!-- Full Context -->
 			{#if project.context}
-				<div
-					class="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border"
-				>
+				<div class="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border">
 					<h3
 						class="text-sm sm:text-base font-medium text-foreground mb-3 flex items-center"
 					>
@@ -200,10 +194,10 @@
 					</div>
 				</div>
 			{:else}
-				<div
-					class="bg-muted/50 rounded-lg p-6 text-center border border-border"
-				>
-					<FileText class="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3" />
+				<div class="bg-muted/50 rounded-lg p-6 text-center border border-border">
+					<FileText
+						class="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3"
+					/>
 					<p class="text-sm text-muted-foreground">
 						No detailed context available for this project yet.
 					</p>
@@ -212,9 +206,7 @@
 		</div>
 	{/snippet}
 	{#snippet footer()}
-		<div
-			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border"
-		>
+		<div class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border">
 			<Button onclick={closeModal} variant="outline" size="md">Close</Button>
 		</div>
 	{/snippet}

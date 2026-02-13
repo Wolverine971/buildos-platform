@@ -486,9 +486,7 @@
 		<div>
 			<div class="flex items-center gap-2">
 				<Sparkles class="w-5 h-5 text-purple-500" />
-				<h3 class="text-lg font-semibold text-foreground">
-					Brain Dump Results
-				</h3>
+				<h3 class="text-lg font-semibold text-foreground">Brain Dump Results</h3>
 			</div>
 			<p class="text-sm text-muted-foreground mt-1">
 				{parseResults.operations.length} operations extracted • Review changes before applying
@@ -588,9 +586,7 @@
 
 							<div
 								class="group relative bg-card rounded-xl border transition-colors duration-200
-									{isDisabled
-									? 'border-border opacity-60'
-									: 'border-border hover:border-border'}"
+									{isDisabled ? 'border-border opacity-60' : 'border-border hover:border-border'}"
 							>
 								<!-- Header -->
 								<div
@@ -694,8 +690,7 @@
 													<div
 														class="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"
 													></div>
-													<span
-														class="text-sm text-muted-foreground"
+													<span class="text-sm text-muted-foreground"
 														>Loading original data...</span
 													>
 												</div>
@@ -707,9 +702,7 @@
 												<!-- Original -->
 												<div class="flex-1 w-full">
 													{#if existing}
-														<div
-															class="p-2.5 bg-muted/50 rounded-lg"
-														>
+														<div class="p-2.5 bg-muted/50 rounded-lg">
 															<p
 																class="text-xs text-muted-foreground mb-1"
 															>
@@ -773,9 +766,7 @@
 															</p>
 														</div>
 													{:else}
-														<div
-															class="p-2.5 bg-muted/50 rounded-lg"
-														>
+														<div class="p-2.5 bg-muted/50 rounded-lg">
 															<p
 																class="text-sm text-muted-foreground italic"
 															>
@@ -787,7 +778,9 @@
 
 												<!-- Arrow -->
 												<div class="flex-shrink-0 self-center">
-													<ArrowRight class="w-4 h-4 text-muted-foreground" />
+													<ArrowRight
+														class="w-4 h-4 text-muted-foreground"
+													/>
 												</div>
 
 												<!-- Updated -->
@@ -858,9 +851,7 @@
 											</div>
 
 											{#if existing && !isExpanded}
-												<p
-													class="text-xs text-muted-foreground mt-2"
-												>
+												<p class="text-xs text-muted-foreground mt-2">
 													Click to view changes
 												</p>
 											{/if}
@@ -877,8 +868,7 @@
 													<div
 														class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"
 													></div>
-													<span
-														class="text-sm text-muted-foreground"
+													<span class="text-sm text-muted-foreground"
 														>Loading original data for comparison...</span
 													>
 												</div>
@@ -891,15 +881,11 @@
 												showFieldPriority={operation.table === 'projects'}
 											/>
 										{:else if existing}
-											<div
-												class="text-center py-8 bg-muted/50 rounded-lg"
-											>
+											<div class="text-center py-8 bg-muted/50 rounded-lg">
 												<p class="text-sm text-muted-foreground">
 													No changes detected for this item
 												</p>
-												<p
-													class="text-xs text-muted-foreground mt-2"
-												>
+												<p class="text-xs text-muted-foreground mt-2">
 													The update contains the same values as the
 													current version
 												</p>
@@ -923,15 +909,11 @@
 												</p>
 											</div>
 										{:else}
-											<div
-												class="text-center py-8 bg-muted/50 rounded-lg"
-											>
+											<div class="text-center py-8 bg-muted/50 rounded-lg">
 												<p class="text-sm text-muted-foreground">
 													Original data not available
 												</p>
-												<p
-													class="text-xs text-muted-foreground mt-2"
-												>
+												<p class="text-xs text-muted-foreground mt-2">
 													The item may have been deleted or does not exist
 													yet
 												</p>
@@ -964,9 +946,7 @@
 
 							<div
 								class="group relative bg-card rounded-xl border transition-colors duration-200
-									{isDisabled
-									? 'border-border opacity-60'
-									: 'border-border hover:border-border'}"
+									{isDisabled ? 'border-border opacity-60' : 'border-border hover:border-border'}"
 							>
 								<!-- Header -->
 								<div
@@ -1065,9 +1045,7 @@
 											{operation.data.title || operation.data.name}
 										</h5>
 										{#if operation.data.description}
-											<p
-												class="text-sm text-muted-foreground mb-3"
-											>
+											<p class="text-sm text-muted-foreground mb-3">
 												{operation.data.description}
 											</p>
 										{/if}
@@ -1232,16 +1210,12 @@
 											>
 												{operation.table}
 											</span>
-											<span
-												class="text-sm font-medium text-foreground"
-											>
+											<span class="text-sm font-medium text-foreground">
 												{operation.operation}
 											</span>
 										</div>
 										{#if operation.data?.title || operation.data?.name}
-											<p
-												class="text-sm font-medium text-foreground mb-1"
-											>
+											<p class="text-sm font-medium text-foreground mb-1">
 												{operation.data.title || operation.data.name}
 											</p>
 										{/if}
@@ -1266,9 +1240,7 @@
 	</div>
 
 	<!-- Footer -->
-	<div
-		class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/50"
-	>
+	<div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/50">
 		<div class="flex flex-col gap-4">
 			<!-- Operation Summary -->
 			<div class="flex items-center gap-4">

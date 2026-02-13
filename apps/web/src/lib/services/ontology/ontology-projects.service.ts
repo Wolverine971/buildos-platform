@@ -6,6 +6,7 @@
 import { Json } from '@buildos/shared-types';
 import type { ServerTiming } from '$lib/server/server-timing';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import { sanitizeProjectPropsForClient } from '$lib/utils/project-props-sanitizer';
 
 export interface OntologyProjectSummary {
 	id: string;
@@ -221,7 +222,7 @@ export async function fetchProjectSummaries(
 		description: project.description ?? null,
 		type_key: project.type_key,
 		state_key: project.state_key,
-		props: project.props as Json,
+		props: sanitizeProjectPropsForClient(project.props) as Json,
 		facet_context: project.facet_context ?? null,
 		facet_scale: project.facet_scale ?? null,
 		facet_stage: project.facet_stage ?? null,

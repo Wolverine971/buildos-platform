@@ -117,10 +117,7 @@
 					/>
 				{/if}
 
-				<Inbox
-					class="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground"
-					aria-hidden="true"
-				/>
+				<Inbox class="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" aria-hidden="true" />
 
 				<div class="flex-1 min-w-0">
 					<h3
@@ -161,9 +158,7 @@
 		aria-label="Backlog task drop zone"
 		aria-describedby="backlog-drop-instructions"
 	>
-		<div
-			class="content-inner border-t border-border bg-card"
-		>
+		<div class="content-inner border-t border-border bg-card">
 			<div class="sr-only" id="backlog-drop-instructions">
 				Drop tasks here to move them to the backlog
 			</div>
@@ -195,9 +190,7 @@
 								<p class="text-sm font-medium">Drop task here to move to backlog</p>
 							</div>
 						{:else}
-							<div
-								class="empty-state text-center py-8 text-muted-foreground"
-							>
+							<div class="empty-state text-center py-8 text-muted-foreground">
 								<p class="text-sm">No tasks in backlog</p>
 							</div>
 						{/if}

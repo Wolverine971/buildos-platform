@@ -136,9 +136,7 @@
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
 			<Sparkles class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-			<h3 class="text-sm font-semibold text-foreground">
-				Core Project Dimensions
-			</h3>
+			<h3 class="text-sm font-semibold text-foreground">Core Project Dimensions</h3>
 		</div>
 		{#if populatedCount > 0}
 			<span
@@ -193,9 +191,7 @@
 
 				<!-- Expanded Content -->
 				{#if expandedSection === dimension.key}
-					<div
-						class="px-4 py-3 bg-card/50 border-t border-border"
-					>
+					<div class="px-4 py-3 bg-card/50 border-t border-border">
 						<Textarea
 							value={getDimensionValue(dimension.key) || ''}
 							oninput={(e) => onUpdate(dimension.key, e.currentTarget.value || null)}

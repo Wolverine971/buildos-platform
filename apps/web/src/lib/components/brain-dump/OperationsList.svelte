@@ -330,7 +330,9 @@
 						<div class="flex-1 min-w-0">
 							<div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2">
 								<span class="text-xl sm:text-2xl">{iconData.emoji}</span>
-								<Icon class="w-4 h-4 text-muted-foreground hidden sm:inline-block" />
+								<Icon
+									class="w-4 h-4 text-muted-foreground hidden sm:inline-block"
+								/>
 								<span class="font-medium text-sm flex-1 min-w-0">
 									{getOperationDescription(operation)}
 								</span>

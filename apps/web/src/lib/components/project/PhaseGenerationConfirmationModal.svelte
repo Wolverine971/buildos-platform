@@ -352,7 +352,9 @@
 
 								<!-- Icon -->
 
-								<MethodIcon class="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+								<MethodIcon
+									class="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5"
+								/>
 
 								<!-- Content -->
 								<div class="flex-1">
@@ -461,9 +463,7 @@
 			<!-- Task Date Handling (only show for scheduling methods) -->
 			{#if selectedSchedulingMethod !== 'phases_only'}
 				<div class="mb-6">
-					<h4
-						class="font-medium text-foreground mb-4 flex items-center gap-2"
-					>
+					<h4 class="font-medium text-foreground mb-4 flex items-center gap-2">
 						<Clock class="w-4 h-4" />
 						Task Date Handling
 					</h4>
@@ -524,9 +524,7 @@
 				<!-- Calendar Event Handling (only show if calendar is connected and scheduling) -->
 				{#if calendarConnected}
 					<div class="mb-6">
-						<h4
-							class="font-medium text-foreground mb-4 flex items-center gap-2"
-						>
+						<h4 class="font-medium text-foreground mb-4 flex items-center gap-2">
 							<CalendarDays class="w-4 h-4" />
 							Calendar Event Handling
 						</h4>
@@ -540,9 +538,7 @@
 										class="mt-1 w-4 h-4 text-primary-600 border-border focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 									/>
 									<div>
-										<span
-											class="text-sm font-medium text-foreground"
-										>
+										<span class="text-sm font-medium text-foreground">
 											Update existing events
 										</span>
 										<p class="text-xs text-muted-foreground mt-1">
@@ -560,9 +556,7 @@
 										class="mt-1 w-4 h-4 text-primary-600 border-border focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 									/>
 									<div>
-										<span
-											class="text-sm font-medium text-foreground"
-										>
+										<span class="text-sm font-medium text-foreground">
 											Clear and recreate events
 										</span>
 										<p class="text-xs text-muted-foreground mt-1">
@@ -580,9 +574,7 @@
 										class="mt-1 w-4 h-4 text-primary-600 border-border focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 									/>
 									<div>
-										<span
-											class="text-sm font-medium text-foreground"
-										>
+										<span class="text-sm font-medium text-foreground">
 											Don't modify calendar events
 										</span>
 										<p class="text-xs text-muted-foreground mt-1">
@@ -635,9 +627,7 @@
 
 			<!-- Task Status Selection -->
 			<div class="mb-6">
-				<h4 class="font-medium text-foreground mb-4">
-					Include Tasks by Status
-				</h4>
+				<h4 class="font-medium text-foreground mb-4">Include Tasks by Status</h4>
 				<div class="flex flex-wrap gap-2">
 					{#each statusOptions as option}
 						<Button
@@ -682,14 +672,10 @@
 											class="mt-1 w-4 h-4 text-primary-600 border-border rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2"
 										/>
 										<div>
-											<span
-												class="text-sm font-medium text-foreground"
-											>
+											<span class="text-sm font-medium text-foreground">
 												Include recurring tasks in phase planning
 											</span>
-											<p
-												class="text-xs text-muted-foreground mt-1"
-											>
+											<p class="text-xs text-muted-foreground mt-1">
 												Consider weekly meetings, reviews, and other
 												recurring tasks when organizing phases
 											</p>
@@ -697,9 +683,7 @@
 									</label>
 
 									{#if includeRecurringTasks}
-										<div
-											class="ml-6 pl-2 border-l-2 border-border"
-										>
+										<div class="ml-6 pl-2 border-l-2 border-border">
 											<label class="flex items-start gap-2 cursor-pointer">
 												<input
 													type="checkbox"
@@ -714,9 +698,7 @@
 														Allow AI to suggest rescheduling recurring
 														tasks
 													</span>
-													<p
-														class="text-xs text-muted-foreground mt-1"
-													>
+													<p class="text-xs text-muted-foreground mt-1">
 														The AI may suggest changes to align
 														recurring tasks with phase boundaries
 													</p>
@@ -803,9 +785,7 @@
 			{:else if previewData}
 				<!-- Summary -->
 				<div class="mb-6 p-4 bg-muted rounded-lg">
-					<h4 class="font-medium text-foreground mb-2">
-						Generation Summary
-					</h4>
+					<h4 class="font-medium text-foreground mb-2">Generation Summary</h4>
 					<div class="space-y-1 text-sm text-muted-foreground">
 						<p><strong>{totalSelectedTasks}</strong> tasks will be processed</p>
 						<p>
@@ -872,9 +852,7 @@
 										</p>
 										<div class="space-y-1 max-h-32 overflow-y-auto">
 											{#each previewData.conflicts.past_incomplete_tasks as task}
-												<div
-													class="text-xs p-2 bg-muted rounded"
-												>
+												<div class="text-xs p-2 bg-muted rounded">
 													<div class="font-medium">{task.title}</div>
 													<div class="text-muted-foreground">
 														Status: {task.status} • Scheduled: {formatTaskDate(
@@ -905,9 +883,7 @@
 										</p>
 										<div class="space-y-1 max-h-32 overflow-y-auto">
 											{#each previewData.conflicts.outside_timeline_tasks as task}
-												<div
-													class="text-xs p-2 bg-muted rounded"
-												>
+												<div class="text-xs p-2 bg-muted rounded">
 													<div class="font-medium">{task.title}</div>
 													<div class="text-muted-foreground">
 														Status: {task.status} • Scheduled: {formatTaskDate(
@@ -953,9 +929,7 @@
 							>
 								<div class="space-y-1 max-h-32 overflow-y-auto">
 									{#each previewData.rescheduled_tasks as task}
-										<div
-											class="text-xs p-2 bg-muted rounded"
-										>
+										<div class="text-xs p-2 bg-muted rounded">
 											<div class="font-medium">{task.title}</div>
 											<div class="text-muted-foreground">
 												Current: {formatTaskDate(task.current_date)} → New:
@@ -1001,23 +975,17 @@
 								{#each Object.entries(previewData.task_breakdown) as [status, tasks]}
 									{#if tasks.length > 0}
 										<div class="mb-4 last:mb-0">
-											<h5
-												class="font-medium text-foreground mb-1 capitalize"
-											>
+											<h5 class="font-medium text-foreground mb-1 capitalize">
 												{status.replace('_', ' ')} ({tasks.length})
 											</h5>
 											<div class="space-y-1 max-h-24 overflow-y-auto">
 												{#each tasks as task}
-													<div
-														class="text-xs p-1.5 bg-muted rounded"
-													>
+													<div class="text-xs p-1.5 bg-muted rounded">
 														<div class="font-medium">
 															{task.title}
 														</div>
 														{#if task.start_date && selectedSchedulingMethod !== 'phases_only'}
-															<div
-																class="text-muted-foreground"
-															>
+															<div class="text-muted-foreground">
 																{formatTaskDate(task.start_date)}
 															</div>
 														{/if}

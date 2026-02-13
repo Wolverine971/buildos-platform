@@ -411,9 +411,7 @@
 			<div class="space-y-6">
 				<!-- User Selection -->
 				<div class="admin-panel p-6">
-					<h3
-						class="text-lg font-semibold text-foreground mb-4 flex items-center"
-					>
+					<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
 						<Users class="h-5 w-5 mr-2" />
 						User Selection
 					</h3>
@@ -442,9 +440,7 @@
 
 					<!-- Results -->
 					{#if searchResults.length > 0}
-						<div
-							class="border rounded-lg p-4 max-h-64 overflow-y-auto"
-						>
+						<div class="border rounded-lg p-4 max-h-64 overflow-y-auto">
 							<div class="flex items-center justify-between mb-2">
 								<div class="text-sm text-muted-foreground">
 									{selectedUsers.length} of {searchResults.length} users selected
@@ -469,9 +465,7 @@
 										class="h-4 w-4 rounded border-border text-blue-600"
 									/>
 									<div class="flex-1">
-										<div
-											class="font-medium text-sm text-foreground"
-										>
+										<div class="font-medium text-sm text-foreground">
 											{user.email}
 										</div>
 										<div class="text-xs text-muted-foreground">
@@ -480,9 +474,7 @@
 										</div>
 									</div>
 									{#if user.sms_preferences}
-										<div
-											class="text-xs px-2 py-1 bg-muted rounded"
-										>
+										<div class="text-xs px-2 py-1 bg-muted rounded">
 											{user.sms_preferences.daily_sms_count || 0}/{user
 												.sms_preferences.daily_sms_limit || 10} today
 										</div>
@@ -506,9 +498,7 @@
 
 				<!-- Trigger Options -->
 				<div class="admin-panel p-6">
-					<h3
-						class="text-lg font-semibold text-foreground mb-4 flex items-center"
-					>
+					<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
 						<Clock class="h-5 w-5 mr-2" />
 						Trigger Options
 					</h3>
@@ -574,9 +564,7 @@
 								class="mt-1 h-4 w-4 rounded border-border text-blue-600"
 							/>
 							<div>
-								<div class="font-medium text-foreground">
-									Skip Daily SMS Limit
-								</div>
+								<div class="font-medium text-foreground">Skip Daily SMS Limit</div>
 								<div class="text-sm text-muted-foreground">
 									Ignore user's daily SMS limit (testing only)
 								</div>
@@ -600,9 +588,7 @@
 								{/if}
 							</Button>
 							{#if selectedUsers.length === 0}
-								<p
-									class="text-xs text-muted-foreground mt-2 text-center"
-								>
+								<p class="text-xs text-muted-foreground mt-2 text-center">
 									Select users above to check their calendar info
 								</p>
 							{/if}
@@ -627,9 +613,7 @@
 
 						<div class="space-y-4">
 							{#each calendarPreviewResults as result}
-								<div
-									class="border rounded-lg p-4 hover:bg-muted/50"
-								>
+								<div class="border rounded-lg p-4 hover:bg-muted/50">
 									<!-- User Header -->
 									<div class="flex items-start justify-between mb-3">
 										<div>
@@ -637,15 +621,11 @@
 												{result.user_email}
 											</div>
 											{#if result.user_name}
-												<div
-													class="text-sm text-muted-foreground"
-												>
+												<div class="text-sm text-muted-foreground">
 													{result.user_name}
 												</div>
 											{/if}
-											<div
-												class="text-xs text-muted-foreground mt-1"
-											>
+											<div class="text-xs text-muted-foreground mt-1">
 												Timezone: {result.timezone}
 											</div>
 										</div>
@@ -672,26 +652,18 @@
 									{#if result.calendar_connected}
 										<div class="grid grid-cols-4 gap-3 mb-3">
 											<div class="bg-muted p-3 rounded">
-												<div
-													class="text-xs text-muted-foreground"
-												>
+												<div class="text-xs text-muted-foreground">
 													Total Events
 												</div>
-												<div
-													class="text-lg font-semibold text-foreground"
-												>
+												<div class="text-lg font-semibold text-foreground">
 													{result.total_events}
 												</div>
 											</div>
 											<div class="bg-muted p-3 rounded">
-												<div
-													class="text-xs text-muted-foreground"
-												>
+												<div class="text-xs text-muted-foreground">
 													Synced Events
 												</div>
-												<div
-													class="text-lg font-semibold text-foreground"
-												>
+												<div class="text-lg font-semibold text-foreground">
 													{result.synced_events}
 												</div>
 											</div>
@@ -710,14 +682,10 @@
 												</div>
 											</div>
 											<div class="bg-muted p-3 rounded">
-												<div
-													class="text-xs text-muted-foreground"
-												>
+												<div class="text-xs text-muted-foreground">
 													SMS Usage
 												</div>
-												<div
-													class="text-lg font-semibold text-foreground"
-												>
+												<div class="text-lg font-semibold text-foreground">
 													{result.sms_preferences?.daily_sms_count ||
 														0}/{result.sms_preferences
 														?.daily_sms_limit || 10}
@@ -881,9 +849,7 @@
 			<!-- Results Tab -->
 			{#if lastTriggerResult}
 				<div class="admin-panel p-6">
-					<h3 class="text-lg font-semibold text-foreground mb-4">
-						Trigger Results
-					</h3>
+					<h3 class="text-lg font-semibold text-foreground mb-4">Trigger Results</h3>
 
 					<!-- Summary -->
 					<div class="grid grid-cols-3 gap-4 mb-6">
@@ -894,9 +860,7 @@
 							</div>
 						</div>
 						<div class="p-4 bg-muted rounded-lg">
-							<div class="text-sm text-muted-foreground">
-								Users Processed
-							</div>
+							<div class="text-sm text-muted-foreground">Users Processed</div>
 							<div class="text-lg font-semibold text-foreground">
 								{lastTriggerResult.users_processed}
 							</div>
@@ -912,31 +876,21 @@
 					<!-- Details -->
 					{#if lastTriggerResult.details?.length > 0}
 						<div>
-							<h4 class="font-medium text-foreground mb-2">
-								User Details
-							</h4>
+							<h4 class="font-medium text-foreground mb-2">User Details</h4>
 							<div class="border rounded-lg overflow-hidden">
 								<table class="w-full text-sm">
 									<thead class="bg-muted">
 										<tr>
-											<th
-												class="text-left p-3 font-medium text-foreground"
-											>
+											<th class="text-left p-3 font-medium text-foreground">
 												User ID
 											</th>
-											<th
-												class="text-left p-3 font-medium text-foreground"
-											>
+											<th class="text-left p-3 font-medium text-foreground">
 												Timezone
 											</th>
-											<th
-												class="text-left p-3 font-medium text-foreground"
-											>
+											<th class="text-left p-3 font-medium text-foreground">
 												Lead Time
 											</th>
-											<th
-												class="text-left p-3 font-medium text-foreground"
-											>
+											<th class="text-left p-3 font-medium text-foreground">
 												Status
 											</th>
 										</tr>
@@ -944,9 +898,7 @@
 									<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
 										{#each lastTriggerResult.details as detail}
 											<tr class="hover:bg-muted/50">
-												<td
-													class="p-3 font-mono text-xs text-foreground"
-												>
+												<td class="p-3 font-mono text-xs text-foreground">
 													{detail.user_id.slice(0, 8)}...
 												</td>
 												<td class="p-3 text-foreground">

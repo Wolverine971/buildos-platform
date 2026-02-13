@@ -7,8 +7,10 @@
 -->
 <script lang="ts">
 	import { get } from 'svelte/store';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import Button from '$lib/components/ui/Button.svelte';
 	import LoadingSkeleton from '$lib/components/ui/LoadingSkeleton.svelte';
 	import ProjectListSkeleton from '$lib/components/projects/ProjectListSkeleton.svelte';
@@ -46,11 +48,15 @@
 		showChatModal = true;
 	}
 
-	function handleChatClose() {
+	function handleChatClose(summary?: DataMutationSummary) {
 		showChatModal = false;
-		// Refresh the page to show new project if created
-		// Using invalidateAll would be better but for simplicity we reload
-		window.location.reload();
+		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
+			toastService.success(
+				'Project created! Head to Projects to explore it.',
+				TOAST_DURATION.LONG
+			);
+			invalidateAll();
+		}
 	}
 
 	/**
@@ -783,7 +789,7 @@
 				<h2 class="text-xl font-bold text-foreground">No projects yet</h2>
 				<p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
 					{projects.length === 0
-						? 'Start your first project and BuildOS will help you shape goals, plans, and tasks.'
+						? 'Create your first project and BuildOS will help you shape goals, tasks, and milestones.'
 						: 'No projects match the current filters. Adjust your search or clear filters to explore more.'}
 				</p>
 				<div class="mt-6 flex justify-center gap-3">

@@ -128,9 +128,7 @@
 						</th>
 					</tr>
 				</thead>
-				<tbody
-					class="bg-card divide-y divide-gray-200 dark:divide-gray-700"
-				>
+				<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
 					{#each events as event}
 						<tr class="hover:bg-muted transition-colors">
 							<td class="px-6 py-4">
@@ -154,15 +152,15 @@
 									{formatEventType(event.event_type)}
 								</span>
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
 								{#if event.users}
 									<div>
 										<div class="font-medium">
 											{event.users.name || 'N/A'}
 										</div>
-										<div class="text-xs text-muted-foreground">{event.users.email}</div>
+										<div class="text-xs text-muted-foreground">
+											{event.users.email}
+										</div>
 									</div>
 								{:else}
 									<span class="text-muted-foreground">N/A</span>
@@ -186,9 +184,7 @@
 									{/each}
 								</div>
 							</td>
-							<td
-								class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground"
-							>
+							<td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
 								{formatDate(event.created_at)}
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -222,9 +218,7 @@
 							<tr class="bg-muted">
 								<td colspan="7" class="px-6 py-4">
 									<div class="space-y-2">
-										<div
-											class="text-sm font-medium text-foreground"
-										>
+										<div class="text-sm font-medium text-foreground">
 											Payload:
 										</div>
 										<pre
@@ -234,9 +228,7 @@
 												2
 											)}</pre>
 										{#if event.metadata && Object.keys(event.metadata).length > 0}
-											<div
-												class="text-sm font-medium text-foreground"
-											>
+											<div class="text-sm font-medium text-foreground">
 												Metadata:
 											</div>
 											<pre

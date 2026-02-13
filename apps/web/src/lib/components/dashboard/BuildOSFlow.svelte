@@ -33,14 +33,10 @@
 	<div class="max-w-7xl mx-auto">
 		<!-- Title - Responsive sizing -->
 		<div class="text-center mb-8 sm:mb-12">
-			<h2
-				class="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4"
-			>
+			<h2 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-3 sm:mb-4">
 				How BuildOS Works
 			</h2>
-			<p
-				class="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto px-4 sm:px-0"
-			>
+			<p class="text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto px-4 sm:px-0">
 				Watch your scattered thoughts transform into organized projects, scheduled tasks,
 				and daily action plans
 			</p>
@@ -73,9 +69,7 @@
 									</div>
 								</div>
 							</div>
-							<h3
-								class="text-xl sm:text-2xl font-bold text-center text-foreground"
-							>
+							<h3 class="text-xl sm:text-2xl font-bold text-center text-foreground">
 								1. Brain Dump About Your Project
 							</h3>
 						</div>
@@ -105,9 +99,7 @@
 
 				<!-- Arrow - Smaller on mobile -->
 				<div class="flex justify-center my-4 sm:my-6">
-					<ArrowDown
-						class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground animate-bounce"
-					/>
+					<ArrowDown class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground animate-bounce" />
 				</div>
 			</div>
 
@@ -126,9 +118,7 @@
 									class="w-8 h-8 sm:w-10 sm:h-10 text-purple-600 dark:text-purple-400"
 								/>
 							</div>
-							<h3
-								class="text-xl sm:text-2xl font-bold text-center text-foreground"
-							>
+							<h3 class="text-xl sm:text-2xl font-bold text-center text-foreground">
 								2. AI Builds Your Complete Project System
 							</h3>
 						</div>
@@ -181,9 +171,7 @@
 											>Project Knowledge Base</span
 										>
 									</div>
-									<div
-										class="bg-card/70/70 rounded-lg p-3 space-y-2"
-									>
+									<div class="bg-card/70/70 rounded-lg p-3 space-y-2">
 										{#each [{ title: 'Objectives', content: 'Convert visitors, establish brand' }, { title: 'Success Metrics', content: '5% conversion, 2min on site' }, { title: 'Key Decisions', content: 'Benefits copy, pricing calc' }, { title: 'Timeline', content: 'Design Friday, launch month end' }] as section}
 											<div>
 												<p
@@ -202,9 +190,7 @@
 								<!-- Right: Phases and Tasks -->
 								<div class="space-y-3 sm:space-y-4">
 									<!-- Phases -->
-									<div
-										class="bg-muted/50 rounded-lg p-3 sm:p-4"
-									>
+									<div class="bg-muted/50 rounded-lg p-3 sm:p-4">
 										<div class="flex items-center gap-2 mb-2 sm:mb-3">
 											<Layers
 												class="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400"
@@ -313,9 +299,7 @@
 													class="w-4 h-4 text-{project.color}-600 dark:text-{project.color}-400"
 												/>
 											</div>
-											<h5
-												class="text-sm font-medium text-foreground"
-											>
+											<h5 class="text-sm font-medium text-foreground">
 												{project.name}
 											</h5>
 										</div>
@@ -331,9 +315,7 @@
 
 				<!-- Arrow -->
 				<div class="flex justify-center my-4 sm:my-6">
-					<ArrowDown
-						class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground animate-bounce"
-					/>
+					<ArrowDown class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground animate-bounce" />
 				</div>
 			</div>
 
@@ -352,9 +334,7 @@
 									class="w-8 h-8 sm:w-10 sm:h-10 text-orange-500 dark:text-orange-400"
 								/>
 							</div>
-							<h3
-								class="text-xl sm:text-2xl font-bold text-center text-foreground"
-							>
+							<h3 class="text-xl sm:text-2xl font-bold text-center text-foreground">
 								3. AI Finds Perfect Time Slots in Your Calendar
 							</h3>
 						</div>
@@ -369,9 +349,7 @@
 								{#each ['Past Due', 'Today', 'Tomorrow'] as tab, i}
 									<Button
 										class="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium min-w-0
-										{i === 1
-											? 'bg-card text-foreground shadow-ink'
-											: 'bg-muted text-muted-foreground'}"
+										{i === 1 ? 'bg-card text-foreground shadow-ink' : 'bg-muted text-muted-foreground'}"
 										variant="ghost"
 										size="sm"
 										btnType="container"
@@ -387,11 +365,7 @@
 							>
 								<div class="flex items-center gap-2 mb-3">
 									<Clock class="h-4 w-4 text-blue-600" />
-									<h3
-										class="text-base font-semibold text-foreground"
-									>
-										Today
-									</h3>
+									<h3 class="text-base font-semibold text-foreground">Today</h3>
 								</div>
 
 								<div class="space-y-2">
@@ -411,9 +385,7 @@
 											{/if}
 											<div class="flex items-start justify-between gap-2">
 												<div class="flex-1 min-w-0">
-													<h4
-														class="font-medium text-sm text-foreground"
-													>
+													<h4 class="font-medium text-sm text-foreground">
 														{task.title}
 													</h4>
 													{#if task.subtitle}
@@ -426,12 +398,10 @@
 													<div
 														class="flex flex-wrap items-center gap-2 mt-2"
 													>
-														<span
-															class="text-xs text-muted-foreground"
+														<span class="text-xs text-muted-foreground"
 															>{task.time}</span
 														>
-														<span
-															class="text-xs text-muted-foreground"
+														<span class="text-xs text-muted-foreground"
 															>• {task.project}</span
 														>
 														{#if task.priority === 'high'}
@@ -484,15 +454,11 @@
 										<div
 											class="p-3 rounded-lg border-l-4 border-l-red-500 bg-red-50/50 dark:bg-red-900/5"
 										>
-											<h4
-												class="font-medium text-sm text-foreground"
-											>
+											<h4 class="font-medium text-sm text-foreground">
 												{task.title}
 											</h4>
 											{#if task.subtitle}
-												<p
-													class="text-xs text-muted-foreground mt-0.5"
-												>
+												<p class="text-xs text-muted-foreground mt-0.5">
 													{task.subtitle}
 												</p>
 											{/if}
@@ -552,15 +518,11 @@
 													New
 												</span>
 											{/if}
-											<h4
-												class="font-medium text-sm text-foreground"
-											>
+											<h4 class="font-medium text-sm text-foreground">
 												{task.title}
 											</h4>
 											{#if task.subtitle}
-												<p
-													class="text-xs text-muted-foreground mt-0.5"
-												>
+												<p class="text-xs text-muted-foreground mt-0.5">
 													{task.subtitle}
 												</p>
 											{/if}
@@ -628,15 +590,11 @@
 													New
 												</span>
 											{/if}
-											<h4
-												class="font-medium text-sm text-foreground"
-											>
+											<h4 class="font-medium text-sm text-foreground">
 												{task.title}
 											</h4>
 											{#if task.subtitle}
-												<p
-													class="text-xs text-muted-foreground mt-0.5"
-												>
+												<p class="text-xs text-muted-foreground mt-0.5">
 													{task.subtitle}
 												</p>
 											{/if}
@@ -657,7 +615,9 @@
 													{/if}
 												</div>
 												{#if task.isNew}
-													<Calendar class="h-3 w-3 text-muted-foreground" />
+													<Calendar
+														class="h-3 w-3 text-muted-foreground"
+													/>
 												{:else}
 													<CheckCircle
 														class="h-3 w-3 text-green-600 dark:text-green-400"
@@ -681,9 +641,7 @@
 
 				<!-- Arrow -->
 				<div class="flex justify-center my-4 sm:my-6">
-					<ArrowDown
-						class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground animate-bounce"
-					/>
+					<ArrowDown class="w-6 h-6 sm:w-8 sm:h-8 text-muted-foreground animate-bounce" />
 				</div>
 			</div>
 
@@ -702,9 +660,7 @@
 									class="w-8 h-8 sm:w-10 sm:h-10 text-green-500 dark:text-green-400"
 								/>
 							</div>
-							<h3
-								class="text-xl sm:text-2xl font-bold text-center text-foreground"
-							>
+							<h3 class="text-xl sm:text-2xl font-bold text-center text-foreground">
 								4. Wake Up to Your Personalized Action Plan
 							</h3>
 						</div>
@@ -714,18 +670,14 @@
 					<div
 						class="max-w-3xl mx-auto bg-card rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-ink-strong border border-border"
 					>
-						<h4
-							class="font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-foreground"
-						>
+						<h4 class="font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-foreground">
 							Good morning! Here's your focus across all projects:
 						</h4>
 
 						<div class="space-y-4">
 							<!-- Priority Tasks -->
 							<div>
-								<h5
-									class="font-medium text-sm sm:text-base text-foreground mb-2"
-								>
+								<h5 class="font-medium text-sm sm:text-base text-foreground mb-2">
 									🎯 Today's Priorities
 								</h5>
 								<ul class="space-y-2">
@@ -766,9 +718,7 @@
 
 							<!-- All Projects Status - Horizontal scroll on mobile -->
 							<div>
-								<h5
-									class="font-medium text-sm sm:text-base text-foreground mb-2"
-								>
+								<h5 class="font-medium text-sm sm:text-base text-foreground mb-2">
 									📊 All Projects Status
 								</h5>
 
@@ -781,9 +731,7 @@
 												? 'border border-primary-200 dark:border-primary-700'
 												: ''}"
 										>
-											<p
-												class="font-medium text-xs text-foreground truncate"
-											>
+											<p class="font-medium text-xs text-foreground truncate">
 												{project.name}
 											</p>
 											<p class="text-xs text-muted-foreground">
@@ -844,9 +792,7 @@
 					class="dither-soft bg-gradient-to-r from-primary-100 to-purple-100 dark:from-primary-900/20 dark:to-purple-900/20 rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 border-dashed border-primary-300 dark:border-primary-700"
 				>
 					<div class="text-center">
-						<p
-							class="text-base sm:text-lg font-semibold text-foreground mb-2"
-						>
+						<p class="text-base sm:text-lg font-semibold text-foreground mb-2">
 							The More You Use It, The Smarter It Gets
 						</p>
 						<p class="text-sm sm:text-base text-muted-foreground">

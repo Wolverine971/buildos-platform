@@ -309,9 +309,7 @@
 			{/if}
 
 			<!-- Header with Selection Count -->
-			<div
-				class="flex items-center justify-between bg-muted rounded-lg p-4"
-			>
+			<div class="flex items-center justify-between bg-muted rounded-lg p-4">
 				<div class="flex items-center space-x-3">
 					<Users class="h-5 w-5 text-blue-600 dark:text-blue-400" />
 					<span class="font-medium text-foreground">

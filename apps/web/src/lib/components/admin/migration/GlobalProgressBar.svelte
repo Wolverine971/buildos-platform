@@ -49,10 +49,7 @@
 	{/if}
 
 	<div
-		class={twMerge(
-			'relative w-full overflow-hidden rounded-full bg-muted',
-			sizeClasses[size]
-		)}
+		class={twMerge('relative w-full overflow-hidden rounded-full bg-muted', sizeClasses[size])}
 	>
 		<!-- Migrated (green) -->
 		<div

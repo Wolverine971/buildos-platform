@@ -52,6 +52,11 @@ const RELATIONSHIP_RULES = `Relationship guide (flexible, aspirational):
   - Plans contain tasks
   - Projects can also have events`;
 
+const MEMBER_ROLE_RULES = `When project context includes members, use member role profiles while planning:
+- Prefer assigning work to members whose role_name/role_description aligns with the responsibility.
+- Treat permission role and access as hard constraints (for example, do not route admin actions to viewers).
+- If multiple members overlap responsibilities, ask one concise clarification before assigning ownership.`;
+
 const DOC_STRUCTURE_RULES = `Documents are organized by onto_projects.doc_structure (JSON tree).
 - Do not create edges between documents.
 - Do not use reorganize_onto_project_graph to reorganize documents.
@@ -87,6 +92,7 @@ export function buildMasterPrompt(context: MasterPromptContext): string {
 		wrapTag('error_handling', ERROR_HANDLING),
 		wrapTag('proactive_intelligence', PROACTIVE_INTELLIGENCE),
 		wrapTag('relationship_rules', RELATIONSHIP_RULES),
+		wrapTag('member_role_rules', MEMBER_ROLE_RULES),
 		wrapTag('doc_structure_rules', DOC_STRUCTURE_RULES)
 	].join('\n');
 
