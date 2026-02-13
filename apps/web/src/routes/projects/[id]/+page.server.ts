@@ -45,6 +45,7 @@ export interface ProjectSkeletonData {
 		canAdmin: boolean;
 		canInvite: boolean;
 		canViewLogs: boolean;
+		isOwner: boolean;
 		isAuthenticated: boolean;
 	};
 	project: {
@@ -95,9 +96,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	let canAdmin = false;
 	let canInvite = false;
 	let canViewLogs = false;
+	let isOwner = false;
 
 	if (user && actorId) {
-		const [writeResult, adminResult, memberResult] = await Promise.all([
+		const [writeResult, adminResult, memberResult, ownerResult] = await Promise.all([
 			supabase.rpc('current_actor_has_project_access', {
 				p_project_id: id,
 				p_required_access: 'write'
@@ -111,7 +113,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 				.select('id', { head: true })
 				.eq('project_id', id)
 				.eq('actor_id', actorId)
-				.is('removed_at', null)
+				.is('removed_at', null),
+			supabase
+				.from('onto_projects')
+				.select('id', { head: true, count: 'exact' })
+				.eq('id', id)
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
 		]);
 
 		if (writeResult.error) {
@@ -123,11 +131,15 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		if (memberResult.error) {
 			console.warn('[Project Page] Failed to check membership:', memberResult.error);
 		}
+		if (ownerResult.error) {
+			console.warn('[Project Page] Failed to check ownership:', ownerResult.error);
+		}
 
 		canEdit = Boolean(writeResult.data);
 		canAdmin = Boolean(adminResult.data);
 		canInvite = canEdit;
 		canViewLogs = canAdmin || Boolean(memberResult.data);
+		isOwner = (ownerResult.count ?? 0) > 0;
 	}
 
 	const access = {
@@ -135,6 +147,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		canAdmin,
 		canInvite,
 		canViewLogs,
+		isOwner,
 		isAuthenticated: Boolean(user)
 	};
 

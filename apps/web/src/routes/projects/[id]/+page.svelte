@@ -161,6 +161,7 @@
 			canAdmin: false,
 			canInvite: false,
 			canViewLogs: false,
+			isOwner: false,
 			isAuthenticated: false
 		}
 	);
@@ -168,6 +169,7 @@
 	const canAdmin = $derived(access.canAdmin);
 	const canViewLogs = $derived(access.canViewLogs);
 	const canOpenShareModal = $derived(canViewLogs);
+	const canDeleteProject = $derived(access.isOwner);
 
 	// Skeleton loading state
 	// When data.skeleton is true, we're in skeleton mode and need to hydrate
@@ -1682,7 +1684,7 @@
 							<Pencil class="w-5 h-5 text-muted-foreground" />
 						</button>
 					{/if}
-					{#if canAdmin}
+					{#if canDeleteProject}
 						<button
 							onclick={() => (showDeleteProjectModal = true)}
 							class="p-2 rounded-lg hover:bg-destructive/10 transition-colors pressable"
@@ -2115,29 +2117,27 @@
 														panelStates.tasks.sort.field,
 														'tasks'
 													)}
-													<li>
-														<div class="flex items-center min-w-0">
-															<EntityListItem
-																type="task"
-																title={task.title}
-																metadata="{formatState(
-																	task.state_key
-																)} · {sortDisplay.value}"
-																state={task.state_key}
-																onclick={() =>
-																	(editingTaskId = task.id)}
-																class="flex-1"
+													<li class="flex items-center gap-1 min-w-0">
+														<EntityListItem
+															type="task"
+															title={task.title}
+															metadata="{formatState(
+																task.state_key
+															)} · {sortDisplay.value}"
+															state={task.state_key}
+															onclick={() =>
+																(editingTaskId = task.id)}
+															class="flex-1 min-w-0 !w-auto"
+														/>
+														<a
+															href="/projects/{project.id}/tasks/{task.id}"
+															class="shrink-0 p-2 mr-1 rounded-lg hover:bg-accent/10 transition-colors pressable"
+															title="Open task focus page"
+														>
+															<ExternalLink
+																class="w-4 h-4 text-muted-foreground hover:text-accent"
 															/>
-															<a
-																href="/projects/{project.id}/tasks/{task.id}"
-																class="flex-shrink-0 p-2 mr-2 rounded-lg hover:bg-accent/10 transition-colors pressable"
-																title="Open task focus page"
-															>
-																<ExternalLink
-																	class="w-4 h-4 text-muted-foreground hover:text-accent"
-																/>
-															</a>
-														</div>
+														</a>
 													</li>
 												{/each}
 											</ul>
@@ -2589,6 +2589,7 @@
 			bind:isOpen={showProjectEditModal}
 			{project}
 			{contextDocument}
+			{canDeleteProject}
 			onClose={() => (showProjectEditModal = false)}
 			onSaved={async () => {
 				await refreshData();
@@ -2605,6 +2606,7 @@
 		projectId={project.id}
 		projectName={project.name || 'Project'}
 		canManageMembers={canAdmin}
+		onLeftProject={() => goto('/projects')}
 		onClose={() => (showShareModal = false)}
 	/>
 {/if}
@@ -2719,7 +2721,7 @@
 				Calendar settings
 			</button>
 		{/if}
-		{#if canAdmin}
+		{#if canDeleteProject}
 			<hr class="my-1 border-border" />
 			<button
 				onclick={() => {

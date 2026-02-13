@@ -55,16 +55,16 @@
 					case 'published':
 					case 'closed':
 					case 'mitigated':
-						return 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-900/25 dark:text-emerald-400';
+						return 'bg-success/15 text-success';
 					case 'blocked':
 					case 'missed':
 					case 'occurred':
 					case 'abandoned':
 					case 'cancelled':
-						return 'bg-red-100/80 text-red-700 dark:bg-red-900/25 dark:text-red-400';
+						return 'bg-destructive/15 text-destructive';
 					case 'review':
 					case 'in_review':
-						return 'bg-amber-100/80 text-amber-700 dark:bg-amber-900/25 dark:text-amber-400';
+						return 'bg-warning/15 text-warning';
 					case 'archived':
 						return 'bg-muted text-muted-foreground';
 					default:

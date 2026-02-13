@@ -783,7 +783,7 @@
 				<h2 class="text-xl font-bold text-foreground">No projects yet</h2>
 				<p class="mx-auto mt-2 max-w-md text-sm text-muted-foreground sm:text-base">
 					{projects.length === 0
-						? 'Create your first ontology project using typed templates and FSM workflows.'
+						? 'Start your first project and BuildOS will help you shape goals, plans, and tasks.'
 						: 'No projects match the current filters. Adjust your search or clear filters to explore more.'}
 				</p>
 				<div class="mt-6 flex justify-center gap-3">

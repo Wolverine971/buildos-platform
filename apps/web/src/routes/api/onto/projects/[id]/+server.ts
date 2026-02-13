@@ -618,42 +618,21 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
-			{
-				p_project_id: id,
-				p_required_access: 'admin'
-			}
-		);
-
-		if (accessError) {
-			console.error('[Project DELETE] Failed to check access:', accessError);
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/projects/${id}`,
-				method: 'DELETE',
-				userId: session.user.id,
-				projectId: id,
-				entityType: 'project',
-				operation: 'project_access_check'
-			});
-			return ApiResponse.error('Failed to check project access', 500);
-		}
-
-		if (!hasAccess) {
-			return ApiResponse.forbidden('You do not have permission to delete this project');
-		}
+		const actorId = actorResult.data;
 
 		const { data: project, error: fetchError } = await supabase
 			.from('onto_projects')
-			.select('id, name, type_key')
+			.select('id, name, type_key, created_by')
 			.eq('id', id)
 			.is('deleted_at', null)
 			.single();
 
 		if (fetchError || !project) {
 			return ApiResponse.notFound('Project not found');
+		}
+
+		if (project.created_by !== actorId) {
+			return ApiResponse.forbidden('Only the project owner can delete this project');
 		}
 
 		const projectDataForLog = { name: project.name, type_key: project.type_key };

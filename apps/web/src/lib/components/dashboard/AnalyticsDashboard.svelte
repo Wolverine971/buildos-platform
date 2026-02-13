@@ -348,12 +348,12 @@
 					<div>
 						<p class="text-sm font-semibold text-foreground">Welcome to BuildOS!</p>
 						<p class="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-							Tap the <strong>Brain Dump & Chat</strong> button in the top navigation to
-							start a conversation with BuildOS and create your first project.
+							Create your first project and BuildOS will help you organize goals,
+							tasks, and milestones.
 						</p>
 					</div>
 					<Button variant="primary" size="sm" onclick={() => goto('/projects/create')}>
-						Or create a project manually
+						Create your first project
 					</Button>
 				</div>
 			{:else if activeProjects.length === 0}

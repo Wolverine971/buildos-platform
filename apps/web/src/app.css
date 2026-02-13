@@ -1,10 +1,11 @@
 /* apps/web/src/app.css */
 /* BuildOS "Inkprint" Design System */
 
+/* Inkprint first: defines CSS variables used by other files */
+@import './lib/styles/inkprint.css';
 @import './lib/styles/performance-optimizations.css';
 @import './lib/styles/animation-utils.css';
 @import './lib/styles/containment.css';
-@import './lib/styles/inkprint.css';
 
 @tailwind base;
 @tailwind components;
@@ -100,6 +101,14 @@
 			scroll-behavior: auto !important;
 		}
 	}
+}
+
+/* Dark mode: subtle texture breaks the flat void, adds material feel */
+.dark body {
+	background-image: url('/textures/noise-lines.png');
+	background-size: 200px;
+	background-repeat: repeat;
+	background-blend-mode: overlay;
 }
 
 @layer components {

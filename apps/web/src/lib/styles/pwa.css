@@ -72,13 +72,13 @@
 	-webkit-overflow-scrolling: touch;
 }
 
-/* Loading states optimized for PWA */
+/* Loading states optimized for PWA - uses Inkprint semantic tokens */
 .pwa-installed .loading-skeleton {
 	background: linear-gradient(
 		90deg,
-		rgba(59, 130, 246, 0.05) 25%,
-		rgba(59, 130, 246, 0.1) 50%,
-		rgba(59, 130, 246, 0.05) 75%
+		hsl(var(--muted)) 25%,
+		hsl(var(--border)) 50%,
+		hsl(var(--muted)) 75%
 	);
 	background-size: 400% 100%;
 	animation: pwa-skeleton-loading 1.5s ease-in-out infinite;
@@ -93,16 +93,7 @@
 	}
 }
 
-/* Dark mode loading skeleton */
-.dark .pwa-installed .loading-skeleton {
-	background: linear-gradient(
-		90deg,
-		rgba(30, 64, 175, 0.1) 25%,
-		rgba(30, 64, 175, 0.2) 50%,
-		rgba(30, 64, 175, 0.1) 75%
-	);
-	background-size: 400% 100%;
-}
+/* Dark mode handled automatically by CSS variables */
 
 /* Pull to refresh indicator styling */
 .pwa-pull-to-refresh {
@@ -113,8 +104,8 @@
 	transition: transform 0.3s ease;
 	z-index: 9999;
 	padding: 0.5rem 1rem;
-	background: #3b82f6;
-	color: white;
+	background: hsl(var(--accent));
+	color: hsl(var(--accent-foreground));
 	border-radius: 0 0 0.5rem 0.5rem;
 	font-size: 0.875rem;
 }

@@ -73,13 +73,25 @@
 	// Base classes that apply to all cards
 	const baseClasses = 'overflow-hidden';
 
+	// Background per weight - weight classes handle border/shadow/radius/motion,
+	// background is set separately so Tailwind bg-* utilities aren't overridden
+	const weightBgClasses: Record<CardWeight, string> = {
+		ghost: 'bg-transparent',
+		paper: 'bg-card',
+		card: 'bg-card',
+		plate: 'bg-card'
+	};
+
 	// Svelte 5 runes: Derived card classes
 	let cardClasses = $derived(
 		twMerge(
 			baseClasses,
 
-			// Weight (provides bg, border, shadow, radius, motion)
+			// Weight (provides border, shadow, radius, motion)
 			weightClasses[resolvedWeight],
+
+			// Background (separate from weight so bg-* can override)
+			weightBgClasses[resolvedWeight],
 
 			// Padding
 			paddingClasses[padding],

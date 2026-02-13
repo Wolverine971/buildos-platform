@@ -28,6 +28,7 @@
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import { browser, dev } from '$app/environment';
 	import type { ChatContextType } from '@buildos/shared-types';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 
 	type Props = {
 		user: any | null;
@@ -229,8 +230,15 @@
 		// If detailOrEvent has projectId, it's the detail object we need
 	}
 
-	function handleChatClose() {
+	function handleChatClose(summary?: DataMutationSummary) {
 		showChatModal = false;
+
+		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
+			toastService.success(
+				'Project created! Head to Projects to explore it.',
+				TOAST_DURATION.LONG
+			);
+		}
 	}
 
 	function handleScroll() {
@@ -461,6 +469,17 @@
 								</div>
 							{/if}
 						</div>
+						<!-- New user hint: pulsing dot when onboarding incomplete -->
+						{#if needsOnboarding && !showChatModal}
+							<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+								<span
+									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75"
+								></span>
+								<span
+									class="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent"
+								></span>
+							</span>
+						{/if}
 						<!-- Text - Hidden on smaller screens, shown on larger -->
 						<span class="hidden xl:inline-block leading-none">Brain Dump & Chat</span>
 					</Button>

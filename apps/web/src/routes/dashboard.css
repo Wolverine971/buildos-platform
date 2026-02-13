@@ -1,21 +1,5 @@
 /* apps/web/src/routes/dashboard.css */
-
-/* Line clamp utilities for text truncation */
-.line-clamp-2 {
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-}
-
-.line-clamp-3 {
-	display: -webkit-box;
-	-webkit-line-clamp: 3;
-	line-clamp: 3;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-}
+/* Dashboard-specific styles - uses Inkprint semantic tokens */
 
 /* Touch target for mobile accessibility */
 .touch-target {
@@ -23,14 +7,12 @@
 	min-width: 44px;
 }
 
-/* ==================== GPU-Optimized Animation Utilities ==================== */
+/* ==================== Dashboard Animations ==================== */
 
 .animate-pulse-slow {
-	position: relative; /* z-index only works on positioned elements */
+	position: relative;
 	z-index: 0;
 	animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-
-	/* GPU acceleration for infinite animations */
 	will-change: opacity;
 }
 
@@ -46,15 +28,11 @@
 
 .animate-pulse {
 	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-
-	/* GPU acceleration */
 	will-change: opacity;
 }
 
 .float-animation {
 	animation: float 3s ease-in-out infinite;
-
-	/* GPU acceleration - critical for smooth floating */
 	will-change: transform;
 	transform: translateZ(0);
 	backface-visibility: hidden;
@@ -68,7 +46,6 @@
 	animation-delay: 1s;
 }
 
-/* GPU-optimized float animation */
 @keyframes float {
 	0%,
 	100% {
@@ -79,11 +56,9 @@
 	}
 }
 
-/* Fade in animation for dashboard sections (GPU-optimized) */
+/* Fade in animation for dashboard sections */
 .fade-in {
 	animation: fadeIn 0.5s ease-out;
-
-	/* Pre-warm GPU */
 	will-change: transform, opacity;
 	transform: translateZ(0);
 	backface-visibility: hidden;
@@ -101,12 +76,10 @@
 	animation-fill-mode: forwards;
 }
 
-/* Cleanup will-change after animation completes */
 .fade-in.animation-complete {
 	will-change: auto;
 }
 
-/* GPU-accelerated fade-in */
 @keyframes fadeIn {
 	from {
 		opacity: 0;
@@ -118,9 +91,9 @@
 	}
 }
 
-/* Note: .tasks-grid and .mobile-stack removed - unused dead code */
+/* ==================== Task Styling ==================== */
 
-/* Past due task styling - using Inkprint semantic tokens */
+/* Past due task styling */
 .past-due-task {
 	position: relative;
 }
@@ -141,9 +114,8 @@
 	border: 1px solid hsl(var(--warning) / 0.3);
 }
 
-/* Dark mode handled automatically by CSS variables */
+/* ==================== Calendar ==================== */
 
-/* Calendar specific styles - using Inkprint semantic tokens */
 .calendar-grid {
 	display: grid;
 	grid-template-columns: 60px repeat(7, 1fr);
@@ -151,11 +123,8 @@
 	background-color: hsl(var(--border));
 }
 
-/* Dark mode handled automatically by CSS variables */
+/* ==================== Skeleton Loading ==================== */
 
-/* Phase calendar specific styles */
-
-/* Skeleton loading animation (GPU-optimized) */
 @keyframes skeleton {
 	0% {
 		background-position: -200px 0;
@@ -174,31 +143,16 @@
 	);
 	background-size: 200px 100%;
 	animation: skeleton 1.5s infinite;
-
-	/* GPU acceleration for infinite animations */
 	will-change: background-position;
 	transform: translateZ(0);
 }
 
-/* Improved scrollbar styles for task lists */
-.scrollbar-thin {
-	scrollbar-width: thin;
-}
+/* ==================== Scrollbars ==================== */
 
-.scrollbar-thumb-gray-400 {
-	scrollbar-color: rgb(156, 163, 175) rgb(229, 231, 235);
-}
-
-@media (prefers-color-scheme: dark) {
-	.scrollbar-thumb-gray-600 {
-		scrollbar-color: rgb(75, 85, 99) rgb(55, 65, 81);
-	}
-}
-
-/* Custom scrollbar for webkit browsers - using Inkprint semantic tokens */
+/* Custom scrollbar for task lists - uses Inkprint tokens */
 .task-list {
 	scrollbar-width: thin;
-	scrollbar-color: hsl(var(--muted-foreground)) hsl(var(--muted));
+	scrollbar-color: hsl(var(--muted-foreground) / 0.4) hsl(var(--muted));
 }
 
 .task-list::-webkit-scrollbar {
@@ -221,11 +175,9 @@
 	background: hsl(var(--muted-foreground) / 0.7);
 }
 
-/* Dark mode handled automatically by CSS variables */
+/* ==================== Mobile ==================== */
 
-/* Mobile responsiveness improvements */
 @media (max-width: 768px) {
-	/* Reduce padding on mobile for more content space */
 	.mobile-compact {
 		padding: 1rem;
 	}

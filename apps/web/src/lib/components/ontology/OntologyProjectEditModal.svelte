@@ -61,6 +61,7 @@
 		isOpen?: boolean;
 		project: Project | null;
 		contextDocument?: Document | null;
+		canDeleteProject?: boolean;
 		onClose?: () => void;
 		onSaved?: (project: Project) => void;
 		onDeleted?: () => void;
@@ -97,6 +98,7 @@
 		isOpen = $bindable(false),
 		project,
 		contextDocument = null,
+		canDeleteProject = false,
 		onClose,
 		onSaved,
 		onDeleted
@@ -290,7 +292,7 @@
 	}
 
 	async function handleDelete() {
-		if (!project) return;
+		if (!project || !canDeleteProject) return;
 
 		isDeleting = true;
 		error = null;
@@ -1206,18 +1208,20 @@
 				>
 					<!-- Delete button on left -->
 					<div class="flex items-center gap-1.5 sm:gap-2">
-						<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
-						<Button
-							type="button"
-							variant="danger"
-							size="sm"
-							onclick={() => (showDeleteConfirm = true)}
-							disabled={isDeleting || isSaving}
-							class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
-						>
-							<span class="hidden sm:inline">Delete</span>
-							<span class="sm:hidden">Del</span>
-						</Button>
+						{#if canDeleteProject}
+							<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
+							<Button
+								type="button"
+								variant="danger"
+								size="sm"
+								onclick={() => (showDeleteConfirm = true)}
+								disabled={isDeleting || isSaving}
+								class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+							>
+								<span class="hidden sm:inline">Delete</span>
+								<span class="sm:hidden">Del</span>
+							</Button>
+						{/if}
 					</div>
 
 					<!-- Cancel and Save on right -->
@@ -1250,7 +1254,7 @@
 	{/snippet}
 </Modal>
 
-{#if showDeleteConfirm}
+{#if canDeleteProject && showDeleteConfirm}
 	<ConfirmationModal
 		isOpen={showDeleteConfirm}
 		title="Delete Project"

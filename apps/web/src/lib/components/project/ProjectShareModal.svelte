@@ -50,6 +50,7 @@
 	interface Props {
 		isOpen?: boolean;
 		onClose?: () => void;
+		onLeftProject?: () => void;
 		projectId: string;
 		projectName: string;
 		canManageMembers?: boolean;
@@ -58,6 +59,7 @@
 	let {
 		isOpen = $bindable(false),
 		onClose,
+		onLeftProject,
 		projectId,
 		projectName,
 		canManageMembers = false
@@ -82,6 +84,7 @@
 	let notificationSettings = $state<NotificationSettingsRow | null>(null);
 	let settingsError = $state<string | null>(null);
 	let settingsActionType = $state<'member' | 'project' | null>(null);
+	let isLeavingProject = $state(false);
 
 	$effect(() => {
 		if (!isOpen) {
@@ -103,6 +106,7 @@
 			notificationSettings = null;
 			settingsError = null;
 			settingsActionType = null;
+			isLeavingProject = false;
 			return;
 		}
 		void loadShareData();
@@ -233,6 +237,7 @@
 			? (members.find((member) => member.actor_id === currentActorId) ?? null)
 			: null
 	);
+	const canLeaveProject = $derived(Boolean(currentMember && currentMember.role_key !== 'owner'));
 
 	async function handleGenerateRoleProfile(event: Event) {
 		event.preventDefault();
@@ -615,6 +620,57 @@
 		}
 	}
 
+	async function handleLeaveProject() {
+		if (!canLeaveProject || isLeavingProject) {
+			return;
+		}
+
+		const confirmLeave = confirm(
+			`Leave ${projectName || 'this project'}? You will lose access until invited again.`
+		);
+		if (!confirmLeave) {
+			return;
+		}
+
+		isLeavingProject = true;
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${projectId}/members/me`, {
+				method: 'DELETE',
+				credentials: 'same-origin'
+			});
+
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to leave project');
+			}
+
+			toastService.success('You left this project');
+			isOpen = false;
+			onClose?.();
+			onLeftProject?.();
+		} catch (err) {
+			console.error('[ProjectShareModal] Failed to leave project:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/members/me`,
+				method: 'DELETE',
+				projectId,
+				entityType: 'project_member',
+				operation: 'project_member_leave',
+				metadata: {
+					source: 'project_share_modal',
+					status: responseStatus
+				}
+			});
+			const message = err instanceof Error ? err.message : 'Failed to leave project';
+			toastService.error(message);
+		} finally {
+			isLeavingProject = false;
+		}
+	}
+
 	function formatRole(roleKey: string) {
 		switch (roleKey) {
 			case 'viewer':
@@ -900,6 +956,24 @@
 							</div>
 						</div>
 					{/each}
+				</div>
+			{/if}
+
+			{#if canLeaveProject}
+				<div class="mt-3 border-t border-border pt-3">
+					<Button
+						variant="ghost"
+						size="sm"
+						class="text-destructive hover:bg-destructive/10"
+						loading={isLeavingProject}
+						disabled={isLeavingProject || memberActionId !== null}
+						onclick={handleLeaveProject}
+					>
+						Leave project
+					</Button>
+					<p class="mt-1 text-xs text-muted-foreground">
+						You can rejoin only if someone invites you again.
+					</p>
 				</div>
 			{/if}
 		</div>

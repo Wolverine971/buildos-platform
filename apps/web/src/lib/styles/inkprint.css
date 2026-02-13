@@ -40,6 +40,14 @@
 	--success: 160 84% 39%; /* emerald-600 equivalent */
 	--success-foreground: 0 0% 100%;
 
+	/* Danger (status indicator - error/blocked states) */
+	--danger: 0 72% 51%; /* red-600 equivalent */
+	--danger-foreground: 0 0% 100%;
+
+	/* Info (status indicator - informational/neutral states) */
+	--info: 217 91% 60%; /* blue-600 equivalent */
+	--info-foreground: 0 0% 100%;
+
 	/* Inkprint texture base color */
 	--tx-ink: 240 10% 10%;
 	--tx-ink-rgb: 24, 24, 27;
@@ -51,24 +59,24 @@
 }
 
 .dark {
-	/* Ink room (dark mode) */
-	--background: 240 10% 6%; /* near-black */
+	/* Ink room (dark mode) - lifted from void-black to visible dark surface */
+	--background: 240 8% 11%;
 	--foreground: 40 10% 92%; /* off-white */
 
 	/* Card surfaces */
-	--card: 240 10% 10%;
+	--card: 240 8% 15%;
 	--card-foreground: 40 10% 92%;
 
 	/* Muted surfaces */
-	--muted: 240 10% 14%;
-	--muted-foreground: 40 5% 55%;
+	--muted: 240 8% 19%;
+	--muted-foreground: 40 5% 58%;
 
 	/* Border */
-	--border: 240 10% 18%;
+	--border: 240 8% 24%;
 
 	/* Accent (glows slightly in dark) */
 	--accent: 24 85% 58%;
-	--accent-foreground: 240 10% 6%;
+	--accent-foreground: 240 8% 11%;
 
 	/* Ring */
 	--ring: 24 85% 58%;
@@ -79,11 +87,19 @@
 
 	/* Warning (brighter in dark mode) */
 	--warning: 38 92% 55%;
-	--warning-foreground: 240 10% 6%;
+	--warning-foreground: 240 8% 11%;
 
 	/* Success (brighter in dark mode) */
 	--success: 160 84% 45%;
 	--success-foreground: 0 0% 100%;
+
+	/* Danger (brighter in dark mode) */
+	--danger: 0 72% 55%;
+	--danger-foreground: 0 0% 100%;
+
+	/* Info (brighter in dark mode) */
+	--info: 217 91% 65%;
+	--info-foreground: 0 0% 100%;
 
 	/* Dark mode texture ink */
 	--tx-ink: 40 10% 92%;
@@ -129,6 +145,7 @@
    Thread - relationships, collaboration, dependencies
    Frame  - canon, structure, decisions, officialness
    Strip  - header band, separator, printed label strip
+   Grid   - input, editable, writable (form fields)
 */
 
 /* Bloom - radial halftone pattern */
@@ -213,6 +230,22 @@
 		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 1px,
 		rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.04)) 2px
 	);
+}
+
+/* Grid - graph-paper pattern (writable, editable surface) */
+.tx-grid::before {
+	background-image:
+		linear-gradient(
+			to right,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.035)) 1px,
+			transparent 1px
+		),
+		linear-gradient(
+			to bottom,
+			rgba(var(--tx-ink-rgb), var(--tx-opacity, 0.035)) 1px,
+			transparent 1px
+		);
+	background-size: 20px 20px;
 }
 
 /* ============================================
@@ -569,7 +602,6 @@
 	--wt-ghost-border-width: 1px;
 	--wt-ghost-border-style: dashed;
 	--wt-ghost-border-color: hsl(var(--border));
-	--wt-ghost-bg: transparent;
 	--wt-ghost-radius: 0.75rem;
 	--wt-ghost-duration: 100ms;
 	--wt-ghost-easing: ease-out;
@@ -579,7 +611,6 @@
 	--wt-paper-border-width: 1px;
 	--wt-paper-border-style: solid;
 	--wt-paper-border-color: hsl(var(--border));
-	--wt-paper-bg: hsl(var(--card));
 	--wt-paper-radius: 0.5rem;
 	--wt-paper-duration: 150ms;
 	--wt-paper-easing: ease;
@@ -589,7 +620,6 @@
 	--wt-card-border-width: 1.5px;
 	--wt-card-border-style: solid;
 	--wt-card-border-color: hsl(var(--border));
-	--wt-card-bg: hsl(var(--card));
 	--wt-card-radius: 0.5rem;
 	--wt-card-duration: 200ms;
 	--wt-card-easing: ease-in-out;
@@ -599,7 +629,6 @@
 	--wt-plate-border-width: 2px;
 	--wt-plate-border-style: solid;
 	--wt-plate-border-color: hsl(var(--border));
-	--wt-plate-bg: hsl(var(--card));
 	--wt-plate-radius: 0.375rem;
 	--wt-plate-duration: 280ms;
 	--wt-plate-easing: cubic-bezier(0.4, 0, 0.2, 1);
@@ -630,7 +659,6 @@
 	border-width: var(--wt-ghost-border-width);
 	border-style: var(--wt-ghost-border-style);
 	border-color: var(--wt-ghost-border-color);
-	background: var(--wt-ghost-bg);
 	border-radius: var(--wt-ghost-radius);
 	transition-duration: var(--wt-ghost-duration);
 	transition-timing-function: var(--wt-ghost-easing);
@@ -642,7 +670,6 @@
 	border-width: var(--wt-paper-border-width);
 	border-style: var(--wt-paper-border-style);
 	border-color: var(--wt-paper-border-color);
-	background: var(--wt-paper-bg);
 	border-radius: var(--wt-paper-radius);
 	transition-duration: var(--wt-paper-duration);
 	transition-timing-function: var(--wt-paper-easing);
@@ -654,7 +681,6 @@
 	border-width: var(--wt-card-border-width);
 	border-style: var(--wt-card-border-style);
 	border-color: var(--wt-card-border-color);
-	background: var(--wt-card-bg);
 	border-radius: var(--wt-card-radius);
 	transition-duration: var(--wt-card-duration);
 	transition-timing-function: var(--wt-card-easing);
@@ -666,7 +692,6 @@
 	border-width: var(--wt-plate-border-width);
 	border-style: var(--wt-plate-border-style);
 	border-color: var(--wt-plate-border-color);
-	background: var(--wt-plate-bg);
 	border-radius: var(--wt-plate-radius);
 	transition-duration: var(--wt-plate-duration);
 	transition-timing-function: var(--wt-plate-easing);
@@ -679,6 +704,25 @@
 .wt-card,
 .wt-plate {
 	transition-property: box-shadow, border-color, background-color, transform, opacity;
+}
+
+/* --- Weight Default Backgrounds ---
+   In @layer components so Tailwind bg-* utilities can override.
+   Weight classes provide surface color as a sensible default;
+   components can override with any bg-* class. */
+@layer components {
+	.wt-ghost {
+		background-color: transparent;
+	}
+	.wt-paper {
+		background-color: hsl(var(--card));
+	}
+	.wt-card {
+		background-color: hsl(var(--card));
+	}
+	.wt-plate {
+		background-color: hsl(var(--card));
+	}
 }
 
 /* --- Reduced Motion --- */

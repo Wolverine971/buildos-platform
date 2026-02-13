@@ -3632,7 +3632,7 @@
 				return 'What would you like to know about your projects? I can help you explore tasks, check timelines, or answer questions across your workspace.';
 
 			case 'project_create':
-				return "Tell me about the project you want to create. What are your goals, key milestones, and tasks you're thinking about?";
+				return "What are you working on? Tell me anything — even half-formed ideas — and I'll help you shape it into a project with clear goals, milestones, and next steps.";
 
 			case 'project':
 				return `What would you like to do with ${name}? I can help you explore goals, update tasks, or answer questions about the project.`;

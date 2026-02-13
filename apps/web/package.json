@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"dev:fast": "vite dev --mode development",
+		"dev:reset": "rm -rf .svelte-kit node_modules/.vite && vite dev",
 		"dev:host": "vite dev --host",
 		"dev:https": "vite dev --https",
 		"dev:debug": "DEBUG=vite:* vite dev",

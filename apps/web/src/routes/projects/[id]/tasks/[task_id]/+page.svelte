@@ -288,13 +288,13 @@
 	function getTaskVisuals(state: string) {
 		const normalized = state?.toLowerCase() || '';
 		if (normalized === 'done' || normalized === 'completed' || normalized === 'complete') {
-			return { icon: CheckCircle2, color: 'text-emerald-500' };
+			return { icon: CheckCircle2, color: 'text-success' };
 		}
 		if (normalized === 'in_progress' || normalized === 'active') {
 			return { icon: Clock, color: 'text-accent' };
 		}
 		if (normalized === 'blocked') {
-			return { icon: AlertTriangle, color: 'text-red-500' };
+			return { icon: AlertTriangle, color: 'text-destructive' };
 		}
 		return { icon: Circle, color: 'text-muted-foreground' };
 	}
@@ -997,9 +997,9 @@
 							>
 								<div class="flex items-center gap-2">
 									<div
-										class="w-6 h-6 rounded-md bg-sky-500/10 flex items-center justify-center"
+										class="w-6 h-6 rounded-md bg-accent/10 flex items-center justify-center"
 									>
-										<FileText class="w-3 h-3 text-sky-500" />
+										<FileText class="w-3 h-3 text-accent" />
 									</div>
 									<span class="text-xs sm:text-sm font-semibold text-foreground"
 										>Docs</span
@@ -1051,7 +1051,7 @@
 														class="w-full flex items-center gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 text-left hover:bg-accent/5 transition-colors pressable"
 													>
 														<FileText
-															class="w-3 h-3 text-sky-500 shrink-0"
+															class="w-3 h-3 text-accent shrink-0"
 														/>
 														<span
 															class="text-xs text-foreground truncate flex-1"
@@ -1095,9 +1095,9 @@
 							>
 								<div class="flex items-center gap-2">
 									<div
-										class="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center"
+										class="w-6 h-6 rounded-md bg-info/10 flex items-center justify-center"
 									>
-										<Layers class="w-3 h-3 text-purple-500" />
+										<Layers class="w-3 h-3 text-info" />
 									</div>
 									<span class="text-xs sm:text-sm font-semibold text-foreground"
 										>Links</span
@@ -1209,10 +1209,10 @@
 										<!-- Unsaved changes indicator -->
 										{#if hasUnsavedChanges}
 											<span
-												class="flex items-center gap-1 text-[10px] text-amber-500"
+												class="flex items-center gap-1 text-[10px] text-warning"
 											>
 												<span
-													class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"
+													class="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"
 												></span>
 												<span class="hidden sm:inline">Unsaved</span>
 											</span>
@@ -1347,9 +1347,9 @@
 						>
 							<div class="flex items-center gap-2">
 								<div
-									class="w-6 h-6 rounded-md bg-amber-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-warning/10 flex items-center justify-center"
 								>
-									<Target class="w-3 h-3 text-amber-500" />
+									<Target class="w-3 h-3 text-warning" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Goals</span>
 								<span class="text-[10px] text-muted-foreground"
@@ -1372,7 +1372,7 @@
 												onclick={() => openGoalModal(goal.id)}
 												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<Target class="w-3 h-3 text-amber-500 shrink-0" />
+												<Target class="w-3 h-3 text-warning shrink-0" />
 												<span class="text-xs text-foreground truncate"
 													>{goal.name}</span
 												>
@@ -1396,9 +1396,9 @@
 						>
 							<div class="flex items-center gap-2">
 								<div
-									class="w-6 h-6 rounded-md bg-indigo-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-info/10 flex items-center justify-center"
 								>
-									<Calendar class="w-3 h-3 text-indigo-500" />
+									<Calendar class="w-3 h-3 text-info" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Plans</span>
 								<span class="text-[10px] text-muted-foreground"
@@ -1422,7 +1422,7 @@
 												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
 												<Calendar
-													class="w-3 h-3 text-indigo-500 shrink-0"
+													class="w-3 h-3 text-info shrink-0"
 												/>
 												<span class="text-xs text-foreground truncate"
 													>{plan.name}</span
@@ -1447,9 +1447,9 @@
 						>
 							<div class="flex items-center gap-2">
 								<div
-									class="w-6 h-6 rounded-md bg-sky-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-accent/10 flex items-center justify-center"
 								>
-									<FileText class="w-3 h-3 text-sky-500" />
+									<FileText class="w-3 h-3 text-accent" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Docs</span>
 								<span class="text-[10px] text-muted-foreground"
@@ -1472,7 +1472,7 @@
 												onclick={() => openDocumentModal(doc.id)}
 												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<FileText class="w-3 h-3 text-sky-500 shrink-0" />
+												<FileText class="w-3 h-3 text-accent shrink-0" />
 												<span class="text-xs text-foreground truncate"
 													>{doc.title}</span
 												>
@@ -1503,9 +1503,9 @@
 						>
 							<div class="flex items-center gap-2">
 								<div
-									class="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-success/10 flex items-center justify-center"
 								>
-									<Flag class="w-3 h-3 text-emerald-500" />
+									<Flag class="w-3 h-3 text-success" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Milestones</span
 								>
@@ -1529,7 +1529,7 @@
 												onclick={() => openMilestoneModal(milestone.id)}
 												class="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
 											>
-												<Flag class="w-3 h-3 text-emerald-500 shrink-0" />
+												<Flag class="w-3 h-3 text-success shrink-0" />
 												<div class="min-w-0 flex-1">
 													<span
 														class="text-xs text-foreground truncate block"
@@ -1562,9 +1562,9 @@
 						>
 							<div class="flex items-center gap-2">
 								<div
-									class="w-6 h-6 rounded-md bg-slate-500/10 flex items-center justify-center"
+									class="w-6 h-6 rounded-md bg-muted flex items-center justify-center"
 								>
-									<ListChecks class="w-3 h-3 text-slate-500" />
+									<ListChecks class="w-3 h-3 text-muted-foreground" />
 								</div>
 								<span class="text-xs font-semibold text-foreground">Tasks</span>
 								<span class="text-[10px] text-muted-foreground"
@@ -1761,9 +1761,9 @@
 				>
 					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
 						<div
-							class="w-6 h-6 rounded-md bg-amber-500/10 flex items-center justify-center"
+							class="w-6 h-6 rounded-md bg-warning/10 flex items-center justify-center"
 						>
-							<Target class="w-3 h-3 text-amber-500" />
+							<Target class="w-3 h-3 text-warning" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Goals</span>
 						<span class="text-[10px] text-muted-foreground">({goals.length})</span>
@@ -1779,7 +1779,7 @@
 									}}
 									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
 								>
-									<Target class="w-3 h-3 text-amber-500 shrink-0" />
+									<Target class="w-3 h-3 text-warning shrink-0" />
 									<span class="text-xs text-foreground truncate">{goal.name}</span
 									>
 								</button>
@@ -1796,9 +1796,9 @@
 				>
 					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
 						<div
-							class="w-6 h-6 rounded-md bg-indigo-500/10 flex items-center justify-center"
+							class="w-6 h-6 rounded-md bg-info/10 flex items-center justify-center"
 						>
-							<Calendar class="w-3 h-3 text-indigo-500" />
+							<Calendar class="w-3 h-3 text-info" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Plans</span>
 						<span class="text-[10px] text-muted-foreground">({plans.length})</span>
@@ -1814,7 +1814,7 @@
 									}}
 									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
 								>
-									<Calendar class="w-3 h-3 text-indigo-500 shrink-0" />
+									<Calendar class="w-3 h-3 text-info shrink-0" />
 									<span class="text-xs text-foreground truncate">{plan.name}</span
 									>
 								</button>
@@ -1831,9 +1831,9 @@
 				>
 					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
 						<div
-							class="w-6 h-6 rounded-md bg-sky-500/10 flex items-center justify-center"
+							class="w-6 h-6 rounded-md bg-accent/10 flex items-center justify-center"
 						>
-							<FileText class="w-3 h-3 text-sky-500" />
+							<FileText class="w-3 h-3 text-accent" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Documents</span>
 						<span class="text-[10px] text-muted-foreground">({documents.length})</span>
@@ -1849,7 +1849,7 @@
 									}}
 									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
 								>
-									<FileText class="w-3 h-3 text-sky-500 shrink-0" />
+									<FileText class="w-3 h-3 text-accent shrink-0" />
 									<span class="text-xs text-foreground truncate">{doc.title}</span
 									>
 								</button>
@@ -1873,9 +1873,9 @@
 				>
 					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
 						<div
-							class="w-6 h-6 rounded-md bg-slate-500/10 flex items-center justify-center"
+							class="w-6 h-6 rounded-md bg-muted flex items-center justify-center"
 						>
-							<ListChecks class="w-3 h-3 text-slate-500" />
+							<ListChecks class="w-3 h-3 text-muted-foreground" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Other Tasks</span>
 						<span class="text-[10px] text-muted-foreground">({otherTasks.length})</span>
@@ -1915,9 +1915,9 @@
 				>
 					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
 						<div
-							class="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center"
+							class="w-6 h-6 rounded-md bg-success/10 flex items-center justify-center"
 						>
-							<Flag class="w-3 h-3 text-emerald-500" />
+							<Flag class="w-3 h-3 text-success" />
 						</div>
 						<span class="text-xs font-semibold text-foreground">Milestones</span>
 						<span class="text-[10px] text-muted-foreground">({milestones.length})</span>
@@ -1933,7 +1933,7 @@
 									}}
 									class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
 								>
-									<Flag class="w-3 h-3 text-emerald-500 shrink-0" />
+									<Flag class="w-3 h-3 text-success shrink-0" />
 									<div class="min-w-0 flex-1">
 										<span class="text-xs text-foreground truncate block"
 											>{milestone.title}</span

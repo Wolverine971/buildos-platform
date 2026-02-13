@@ -1,215 +1,21 @@
 /* apps/web/src/lib/styles/performance-optimizations.css */
+/* Rendering performance utilities - uses Inkprint semantic tokens */
 
-/* CSS Containment for better rendering performance */
-.project-card,
-.brain-dump-section,
-.task-item,
-.note-item {
-	contain: layout style paint;
-	transform: translateZ(0); /* Force hardware acceleration */
-	will-change: auto; /* Reset will-change when not animating */
-}
+/* ==================== Skeleton Loading ==================== */
 
-/* Optimize cards that animate */
-.project-card.loading,
-.task-item.dragging,
-.modal.animating {
-	will-change: transform, opacity;
-}
-
-/* Optimize grid containers */
-.project-grid,
-.task-grid {
-	contain: layout;
-	/* Use CSS Grid with auto-fit for responsive behavior */
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-	gap: 1.5rem;
-}
-
-/* Optimize list containers */
-.task-list,
-.note-list,
-.brain-dump-list {
-	contain: layout style;
-	/* Use flexbox for better performance with dynamic content */
-	display: flex;
-	flex-direction: column;
-	gap: 0.75rem;
-}
-
-/* Animation optimizations */
-.fade-transition {
-	transition: opacity 200ms ease-out;
-	will-change: opacity;
-}
-
-.slide-transition {
-	transition: transform 300ms ease-out;
-	will-change: transform;
-}
-
-/* Reset will-change after animations */
-.fade-transition:not(.transitioning),
-.slide-transition:not(.transitioning) {
-	will-change: auto;
-}
-
-/* Optimize scrollable areas */
-.scrollable-area {
-	contain: layout style paint;
-	/* Use momentum scrolling on iOS */
-	-webkit-overflow-scrolling: touch;
-	/* Optimize scrollbar rendering */
-	scrollbar-width: thin;
-	overscroll-behavior: contain;
-}
-
-/* Hide scrollbars during interactions for better UX */
-.scrollable-area::-webkit-scrollbar {
-	width: 6px;
-	opacity: 0;
-	transition: opacity 200ms ease;
-}
-
-.scrollable-area:hover::-webkit-scrollbar {
-	opacity: 1;
-}
-
-/* Optimize text rendering */
-.optimized-text {
-	text-rendering: optimizeSpeed;
-	font-smooth: auto;
-	-webkit-font-smoothing: auto;
-	-moz-osx-font-smoothing: auto;
-}
-
-/* For headings and important text, use better rendering */
-.heading-text {
-	text-rendering: optimizeLegibility;
-	font-smooth: always;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-}
-
-/* Optimize images */
-.optimized-image {
-	contain: layout style paint;
-	/* Prevent layout shift */
-	aspect-ratio: attr(width) / attr(height);
-	object-fit: cover;
-	/* Optimize decoding */
-	decoding: async;
-	/* Add loading optimization */
-	loading: lazy;
-}
-
-/* Optimize buttons and interactive elements */
-.btn-optimized {
-	contain: layout style;
-	/* Use touch-action for better mobile performance */
-	touch-action: manipulation;
-	/* Prevent zoom on double-tap */
-	user-select: none;
-	/* Optimize button rendering */
-	backface-visibility: hidden;
-}
-
-/* Optimize modals and overlays */
-.modal-overlay {
-	contain: layout style paint;
-	/* Use backdrop-filter efficiently */
-	backdrop-filter: blur(4px);
-	/* Optimize compositing */
-	isolation: isolate;
-}
-
-/* Optimize tables/data displays */
-.data-table {
-	contain: layout style;
-	/* Use table-layout: fixed for better performance */
-	table-layout: fixed;
-	/* Optimize text in tables */
-	text-rendering: optimizeSpeed;
-}
-
-/* Mobile-specific optimizations */
-@media (max-width: 768px) {
-	/* Reduce animations on mobile for battery life */
-	.project-card,
-	.task-item {
-		transition-duration: 150ms;
-	}
-
-	/* Optimize touch interactions */
-	.btn-optimized {
-		min-height: 44px; /* Apple recommended minimum touch target */
-		min-width: 44px;
-	}
-
-	/* Optimize scrolling on mobile */
-	.scrollable-area {
-		scroll-snap-type: y proximity;
-		overscroll-behavior-y: contain;
-	}
-}
-
-/* High contrast and reduced motion support */
-@media (prefers-reduced-motion: reduce) {
-	.fade-transition,
-	.slide-transition,
-	.project-card,
-	.task-item {
-		transition: none !important;
-		animation: none !important;
-	}
-
-	/* Reset will-change for reduced motion */
-	* {
-		will-change: auto !important;
-	}
-}
-
-/* High refresh rate display optimizations */
-@media (min-resolution: 120dpi) {
-	.optimized-text {
-		font-smooth: always;
-		-webkit-font-smoothing: antialiased;
-	}
-}
-
-/* Print optimizations */
-@media print {
-	.project-card,
-	.task-item,
-	.brain-dump-section {
-		contain: none;
-		transform: none;
-		will-change: auto;
-		/* Optimize for print rendering */
-		break-inside: avoid;
-	}
-}
-
-/* Focus optimizations for accessibility */
-.focus-optimized:focus-visible {
-	outline: 2px solid #3b82f6;
-	outline-offset: 2px;
-	/* Ensure focus is visible without layout shifts */
-	box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-}
-
-/* Loading state optimizations */
+/* Canonical skeleton implementation - use this one everywhere */
 .skeleton-loader {
 	contain: layout style paint;
-	background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-	background-size: 200% 100%;
+	background: linear-gradient(
+		90deg,
+		hsl(var(--muted)) 25%,
+		hsl(var(--border)) 50%,
+		hsl(var(--muted)) 75%
+	);
+	background-size: 200px 100%;
 	animation: skeleton-loading 1.5s infinite;
-}
-
-.dark .skeleton-loader {
-	background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
-	background-size: 200% 100%;
+	will-change: background-position;
+	transform: translateZ(0);
 }
 
 @keyframes skeleton-loading {
@@ -221,35 +27,89 @@
 	}
 }
 
-/* Content-visibility optimization — skip rendering off-screen list items */
+/* ==================== Scrollable Areas ==================== */
+
+.scrollable-area {
+	contain: layout style paint;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+	overscroll-behavior: contain;
+}
+
+.scrollable-area::-webkit-scrollbar {
+	width: 6px;
+	opacity: 0;
+	transition: opacity 200ms ease;
+}
+
+.scrollable-area:hover::-webkit-scrollbar {
+	opacity: 1;
+}
+
+/* ==================== Content Visibility ==================== */
+
+/* Skip rendering off-screen list items */
 .cv-auto {
 	content-visibility: auto;
 }
 
-/* GPU acceleration hints for smooth scrolling */
-.smooth-scroll {
-	transform: translateZ(0);
-	-webkit-transform: translateZ(0);
-	/* Use CSS scroll-behavior for smooth scrolling */
-	scroll-behavior: smooth;
+/* ==================== Text Rendering ==================== */
+
+/* Optimized for body text in dense views */
+.optimized-text {
+	text-rendering: optimizeSpeed;
+	-webkit-font-smoothing: auto;
+	-moz-osx-font-smoothing: auto;
 }
 
-/* Optimize transitions with cubic-bezier for natural feel */
-.natural-transition {
-	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+/* For headings and important text */
+.heading-text {
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
-/* Memory-efficient animations */
-.memory-efficient-pulse {
-	animation: efficient-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* ==================== Optimized Images ==================== */
+
+.optimized-image {
+	contain: layout style paint;
+	object-fit: cover;
+	decoding: async;
 }
 
-@keyframes efficient-pulse {
-	0%,
-	100% {
-		opacity: 1;
+/* ==================== Focus States ==================== */
+
+.focus-optimized:focus-visible {
+	outline: 2px solid hsl(var(--ring));
+	outline-offset: 2px;
+	box-shadow: 0 0 0 2px hsl(var(--ring) / 0.1);
+}
+
+/* ==================== Mobile Optimizations ==================== */
+
+@media (max-width: 768px) {
+	.scrollable-area {
+		scroll-snap-type: y proximity;
+		overscroll-behavior-y: contain;
 	}
-	50% {
-		opacity: 0.5;
+}
+
+/* ==================== Reduced Motion ==================== */
+
+@media (prefers-reduced-motion: reduce) {
+	.skeleton-loader {
+		animation: none;
+	}
+
+	* {
+		will-change: auto !important;
+	}
+}
+
+/* ==================== Print ==================== */
+
+@media print {
+	.skeleton-loader {
+		display: none;
 	}
 }

@@ -4,13 +4,11 @@
 import forms from '@tailwindcss/forms';
 import typography from '@tailwindcss/typography';
 
-/** Helper: lets Tailwind's opacity API work with CSS variables */
-const withOpacity = (varName) => {
-	return ({ opacityValue }) =>
-		opacityValue === undefined
-			? `hsl(var(${varName}))`
-			: `hsl(var(${varName}) / ${opacityValue})`;
-};
+/**
+ * Modern color helper: uses Tailwind's <alpha-value> placeholder
+ * so opacity modifiers (e.g. bg-accent/50) work with CSS variables.
+ */
+const hslVar = (varName) => `hsl(var(${varName}) / <alpha-value>)`;
 
 export default {
 	future: {
@@ -29,56 +27,55 @@ export default {
 			// ============================================
 			colors: {
 				// Core semantic tokens (paper + ink + accent)
-				background: withOpacity('--background'),
-				foreground: withOpacity('--foreground'),
-				border: withOpacity('--border'),
-				ring: withOpacity('--ring'),
+				background: hslVar('--background'),
+				foreground: hslVar('--foreground'),
+				border: hslVar('--border'),
+				ring: hslVar('--ring'),
 
 				// Card surfaces
 				card: {
-					DEFAULT: withOpacity('--card'),
-					foreground: withOpacity('--card-foreground')
+					DEFAULT: hslVar('--card'),
+					foreground: hslVar('--card-foreground')
 				},
 
 				// Muted surfaces
 				muted: {
-					DEFAULT: withOpacity('--muted'),
-					foreground: withOpacity('--muted-foreground')
+					DEFAULT: hslVar('--muted'),
+					foreground: hslVar('--muted-foreground')
 				},
 
 				// Accent (BuildOS signal color)
 				accent: {
-					DEFAULT: withOpacity('--accent'),
-					foreground: withOpacity('--accent-foreground')
+					DEFAULT: hslVar('--accent'),
+					foreground: hslVar('--accent-foreground')
 				},
 
 				// Destructive (danger/error actions)
 				destructive: {
-					DEFAULT: withOpacity('--destructive'),
-					foreground: withOpacity('--destructive-foreground')
+					DEFAULT: hslVar('--destructive'),
+					foreground: hslVar('--destructive-foreground')
 				},
 
-				// Warning (attention states - uses CSS variable for dark mode support)
+				// Warning (attention states)
 				warning: {
-					DEFAULT: withOpacity('--warning'),
-					foreground: withOpacity('--warning-foreground')
+					DEFAULT: hslVar('--warning'),
+					foreground: hslVar('--warning-foreground')
+				},
+
+				// Success (positive/completed states)
+				success: {
+					DEFAULT: hslVar('--success'),
+					foreground: hslVar('--success-foreground')
 				},
 
 				// Status colors (paired with textures per design bible)
-				success: {
-					DEFAULT: '#059669', // emerald-600
-					light: '#10b981',
-					dark: '#047857'
-				},
 				danger: {
-					DEFAULT: '#dc2626', // red-600
-					light: '#ef4444',
-					dark: '#b91c1c'
+					DEFAULT: hslVar('--danger'),
+					foreground: hslVar('--danger-foreground')
 				},
 				info: {
-					DEFAULT: '#2563eb', // blue-600
-					light: '#3b82f6',
-					dark: '#1d4ed8'
+					DEFAULT: hslVar('--info'),
+					foreground: hslVar('--info-foreground')
 				}
 			},
 
@@ -86,14 +83,9 @@ export default {
 			// Inkprint Shadows
 			// ============================================
 			boxShadow: {
-				// Inkprint shadows (defined in inkprint.css)
 				ink: 'var(--shadow-ink)',
 				'ink-strong': 'var(--shadow-ink-strong)',
-				'ink-inner': 'var(--shadow-ink-inner)',
-
-				// Utility shadows
-				soft: '0 2px 8px -2px rgba(0, 0, 0, 0.1)',
-				card: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)'
+				'ink-inner': 'var(--shadow-ink-inner)'
 			},
 
 			// ============================================
@@ -103,10 +95,7 @@ export default {
 				// Primary font for UI/Action items
 				ui: ['Inter', 'Söhne', 'GT America', 'system-ui', '-apple-system', 'sans-serif'],
 				// Secondary font for notes/scratch areas
-				notes: ['IBM Plex Serif', 'Literata', 'serif'],
-				// Compatibility aliases
-				display: ['Inter', 'SF Pro Display', 'system-ui', '-apple-system', 'sans-serif'],
-				body: ['Inter', 'SF Pro Text', 'system-ui', '-apple-system', 'sans-serif']
+				notes: ['IBM Plex Serif', 'Literata', 'serif']
 			},
 
 			// ============================================

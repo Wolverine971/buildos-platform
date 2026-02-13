@@ -10,6 +10,8 @@ export default defineConfig(({ mode }) => {
 	const isDev = mode === 'development';
 	const isProd = mode === 'production';
 	const isAnalyze = process.env.ANALYZE === 'true';
+	// Keep dep pre-bundles stable in local dev unless explicitly forced.
+	const forceOptimizeDeps = process.env.VITE_FORCE_OPTIMIZE_DEPS === 'true';
 
 	return {
 		plugins: [
@@ -97,7 +99,7 @@ export default defineConfig(({ mode }) => {
 				'sharp' // Binary dependency
 			],
 			// Don't force re-optimization - causes "Outdated Optimize Dep" errors
-			force: false
+			force: forceOptimizeDeps
 		},
 
 		// Environment variable handling

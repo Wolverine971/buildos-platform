@@ -17,7 +17,7 @@
 	- Texture classes for states
 -->
 <script lang="ts">
-	import { ChevronRight, FileText, Folder, FolderOpen } from 'lucide-svelte';
+	import { ChevronRight, FileText, Folder, FolderOpen, GripVertical } from 'lucide-svelte';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 	import DocTreeNode from './DocTreeNode.svelte';
 	import type { DragState, DropZone } from './useDragDrop.svelte';
@@ -117,11 +117,10 @@
 		onContextMenu(e, node);
 	}
 
-	// Drag handlers
-	function handleMouseDown(e: MouseEvent) {
+	// Drag handlers - only from the drag handle
+	function handleDragHandleMouseDown(e: MouseEvent) {
 		if (!canDrag || !onDragStart || e.button !== 0) return;
-		// Don't start drag from chevron
-		if ((e.target as HTMLElement).closest('.doc-tree-chevron')) return;
+		e.stopPropagation();
 		if (nodeElement) {
 			onDragStart(e, node, nodeElement);
 		}
@@ -137,7 +136,7 @@
 		onDragOver(e, node, nodeElement);
 	}
 
-	function handleTouchStartEvent(e: TouchEvent) {
+	function handleDragHandleTouchStart(e: TouchEvent) {
 		if (!canDrag || !onTouchStart) return;
 		if (nodeElement) {
 			onTouchStart(e, node, nodeElement);
@@ -159,87 +158,107 @@
 	{/if}
 
 	<!-- Node row -->
-	<button
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
 		bind:this={nodeElement}
-		type="button"
 		data-node-id={node.id}
-		onclick={handleClick}
+		role="treeitem"
 		oncontextmenu={handleContextMenu}
-		onmousedown={handleMouseDown}
 		onmouseenter={handleMouseEnter}
 		onmousemove={handleMouseMove}
-		ontouchstart={handleTouchStartEvent}
-		onfocus={() => onFocus?.(node.id)}
-		class="doc-tree-node-button w-full flex items-center gap-1.5 px-2 py-1.5 text-left rounded-md transition-colors
+		class="doc-tree-node-row w-full flex items-center rounded-md transition-colors
 			{isSelected ? 'bg-accent/15 text-foreground' : 'hover:bg-accent/5 text-foreground'}
 			{isDragging ? 'opacity-40' : ''}
 			{isCut ? 'opacity-50 border border-dashed border-muted-foreground' : ''}
 			{isValidDropTarget ? 'bg-accent/10 outline outline-2 outline-dashed outline-accent' : ''}
-			{isConverting ? 'bg-accent/20 outline-solid' : ''}
-			{canDrag && !dragState?.isDragging ? 'cursor-grab pressable' : ''}
-			{dragState?.isDragging ? 'cursor-grabbing' : ''}"
-		style="padding-left: {indent + 8}px"
-		draggable="false"
+			{isConverting ? 'bg-accent/20 outline-solid' : ''}"
+		style="padding-left: {indent + 4}px"
 	>
-		<!-- Expand/collapse chevron (only for folders) -->
-		{#if isFolder}
+		<!-- Drag handle (left side only) -->
+		{#if canDrag}
 			<div
 				role="button"
-				tabindex="0"
-				onclick={handleChevronClick}
-				onkeydown={(e) => {
-					if (e.key === 'Enter' || e.key === ' ') {
-						e.preventDefault();
-						handleChevronClick(e);
-					}
-				}}
-				class="doc-tree-chevron w-4 h-4 flex items-center justify-center rounded hover:bg-accent/10 transition-colors flex-shrink-0 cursor-pointer"
-				aria-label={isExpanded ? 'Collapse' : 'Expand'}
+				tabindex="-1"
+				onmousedown={handleDragHandleMouseDown}
+				ontouchstart={handleDragHandleTouchStart}
+				class="doc-tree-drag-handle flex-shrink-0 flex items-center justify-center w-5 h-7 rounded-sm transition-colors
+					{dragState?.isDragging ? 'cursor-grabbing' : 'cursor-grab'}
+					hover:bg-accent/10"
+				aria-label="Drag to reorder"
+				draggable="false"
 			>
-				<ChevronRight
-					class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 {isExpanded
-						? 'rotate-90'
-						: ''}"
-				/>
+				<GripVertical class="w-3.5 h-3.5 text-muted-foreground/50" />
 			</div>
-		{:else}
-			<!-- Spacer for alignment when not a folder -->
-			<span class="w-4 h-4 flex-shrink-0"></span>
 		{/if}
 
-		<!-- Icon -->
-		<span class="w-4 h-4 flex items-center justify-center flex-shrink-0">
+		<!-- Clickable content area -->
+		<button
+			type="button"
+			onclick={handleClick}
+			onfocus={() => onFocus?.(node.id)}
+			class="doc-tree-node-button flex-1 min-w-0 flex items-center gap-1.5 py-1.5 pr-2 text-left cursor-pointer pressable"
+			draggable="false"
+		>
+			<!-- Expand/collapse chevron (only for folders) -->
 			{#if isFolder}
-				{#if isExpanded}
-					<FolderOpen class="w-4 h-4 text-accent" />
-				{:else}
-					<Folder class="w-4 h-4 text-accent" />
-				{/if}
+				<div
+					role="button"
+					tabindex="0"
+					onclick={handleChevronClick}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ' ') {
+							e.preventDefault();
+							handleChevronClick(e);
+						}
+					}}
+					class="doc-tree-chevron w-4 h-4 flex items-center justify-center rounded hover:bg-accent/10 transition-colors flex-shrink-0 cursor-pointer"
+					aria-label={isExpanded ? 'Collapse' : 'Expand'}
+				>
+					<ChevronRight
+						class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-150 {isExpanded
+							? 'rotate-90'
+							: ''}"
+					/>
+				</div>
 			{:else}
-				<FileText class="w-4 h-4 text-muted-foreground" />
+				<!-- Spacer for alignment when not a folder -->
+				<span class="w-4 h-4 flex-shrink-0"></span>
 			{/if}
-		</span>
 
-		<!-- Title -->
-		<span class="truncate text-sm flex-1 min-w-0">
-			{node.title}
-		</span>
-
-		<!-- Content indicator - more visible -->
-		{#if !isFolder && node.has_content}
-			<span
-				class="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-accent/10 text-accent flex-shrink-0"
-				title="Has content"
-			>
-				<span class="w-1 h-1 rounded-full bg-accent"></span>
+			<!-- Icon -->
+			<span class="w-4 h-4 flex items-center justify-center flex-shrink-0">
+				{#if isFolder}
+					{#if isExpanded}
+						<FolderOpen class="w-4 h-4 text-accent" />
+					{:else}
+						<Folder class="w-4 h-4 text-accent" />
+					{/if}
+				{:else}
+					<FileText class="w-4 h-4 text-muted-foreground" />
+				{/if}
 			</span>
-		{/if}
 
-		<!-- Converting indicator -->
-		{#if isConverting}
-			<span class="text-xs text-accent font-medium flex-shrink-0">Drop here</span>
-		{/if}
-	</button>
+			<!-- Title -->
+			<span class="truncate text-sm flex-1 min-w-0">
+				{node.title}
+			</span>
+
+			<!-- Content indicator - more visible -->
+			{#if !isFolder && node.has_content}
+				<span
+					class="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-accent/10 text-accent flex-shrink-0"
+					title="Has content"
+				>
+					<span class="w-1 h-1 rounded-full bg-accent"></span>
+				</span>
+			{/if}
+
+			<!-- Converting indicator -->
+			{#if isConverting}
+				<span class="text-xs text-accent font-medium flex-shrink-0">Drop here</span>
+			{/if}
+		</button>
+	</div>
 
 	<!-- Insertion line (after) -->
 	{#if isDropAfter}
@@ -291,13 +310,28 @@
 		opacity: 0.5;
 	}
 
-	.doc-tree-node--cut .doc-tree-node-button {
+	.doc-tree-node--cut .doc-tree-node-row {
 		border: 1px dashed hsl(var(--muted-foreground));
 		background: hsl(var(--muted) / 0.3);
 	}
 
-	.doc-tree-node-button {
+	.doc-tree-node-row {
 		touch-action: none; /* Prevent scroll during touch drag */
+	}
+
+	.doc-tree-drag-handle {
+		touch-action: none;
+		opacity: 0;
+		transition: opacity 0.15s ease;
+	}
+
+	.doc-tree-node-row:hover .doc-tree-drag-handle {
+		opacity: 1;
+	}
+
+	/* Always show handle when dragging */
+	:global(.doc-tree-dragging) .doc-tree-drag-handle {
+		opacity: 1;
 	}
 
 	.doc-tree-insertion-line {
