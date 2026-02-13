@@ -17,7 +17,6 @@
 		.replace('-', ' ')
 		.replace(/\b\w/g, (l) => l.toUpperCase());
 
-	// Build JSON-LD structured data as a proper object
 	const jsonLd = {
 		'@context': 'https://schema.org',
 		'@type': 'BlogPosting',
@@ -56,14 +55,12 @@
 
 	onMount(async () => {
 		try {
-			// Dynamically import the content component
 			const module = await import(
 				`../../../../content/blogs/${data.post.category}/${data.post.slug}.md`
 			);
 			contentComponent = module.default;
 		} catch (err) {
 			error = 'Failed to load blog content';
-			// Error loading blog content
 		} finally {
 			loading = false;
 		}
@@ -128,165 +125,154 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<!-- Header -->
-	<div class="bg-card py-8 rounded-lg mb-4 shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="flex items-center space-x-4 mb-8">
-				<a
-					href="/blogs"
-					class="inline-flex items-center text-accent hover:text-accent/80 group transition-colors"
-				>
-					<ArrowLeft
-						class="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform"
-					/>
-					Blog
-				</a>
-				<span class="text-muted-foreground">/</span>
-				<a
-					href="/blogs/{data.post.category}"
-					class="text-accent hover:text-accent/80 transition-colors"
+	<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+		<!-- Breadcrumb -->
+		<nav class="flex items-center gap-1.5 text-xs text-muted-foreground py-4 border-b border-border">
+			<a href="/blogs" class="hover:text-accent transition-colors">Blog</a>
+			<span>/</span>
+			<a href="/blogs/{data.post.category}" class="hover:text-accent transition-colors">
+				{categoryDisplayName}
+			</a>
+		</nav>
+
+		<!-- Article Header -->
+		<header class="pt-8 sm:pt-12 pb-6 sm:pb-8">
+			<div class="flex items-center gap-3 text-xs text-muted-foreground mb-4">
+				<span
+					class="px-2 py-0.5 bg-accent/10 text-accent rounded-full font-medium border border-accent/20"
 				>
 					{categoryDisplayName}
-				</a>
+				</span>
+				<span class="flex items-center gap-1">
+					<Calendar class="w-3 h-3" />
+					{formattedDate}
+				</span>
+				<span class="flex items-center gap-1">
+					<Clock class="w-3 h-3" />
+					{data.post.readingTime} min read
+				</span>
 			</div>
 
-			<div class="mb-6">
-				<div class="flex items-center space-x-4 text-sm text-muted-foreground mb-4">
-					<span
-						class="bg-accent/10 text-accent px-3 py-1 rounded-full font-medium border border-accent/20"
-					>
-						{categoryDisplayName}
-					</span>
-					<div class="flex items-center">
-						<Calendar class="w-4 h-4 mr-1" />
-						{formattedDate}
-					</div>
-					<div class="flex items-center">
-						<Clock class="w-4 h-4 mr-1" />
-						{data.post.readingTime} min read
-					</div>
-				</div>
+			<h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight">
+				{data.post.title}
+			</h1>
 
-				<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-4">
-					{data.post.title}
-				</h1>
+			<p class="mt-3 text-base sm:text-lg text-muted-foreground leading-relaxed">
+				{data.post.description}
+			</p>
 
-				<p class="text-xl text-muted-foreground mb-6">
-					{data.post.description}
-				</p>
+			<div class="mt-4 flex items-center justify-between">
+				<span class="text-xs text-muted-foreground">
+					By <span class="font-medium text-foreground">{data.post.author || 'BuildOS Team'}</span>
+				</span>
 
 				{#if data.post.tags.length > 0}
-					<div class="flex flex-wrap gap-2">
+					<div class="flex flex-wrap gap-1.5">
 						{#each data.post.tags as tag}
 							<span
-								class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs text-center font-medium bg-background text-muted-foreground border border-border"
+								class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground"
 							>
-								<Tag class="w-3 h-3 mr-1" />
+								<Tag class="w-2.5 h-2.5 mr-0.5" />
 								{tag}
 							</span>
 						{/each}
 					</div>
 				{/if}
 			</div>
+		</header>
 
-			<div class="text-sm text-muted-foreground">
-				By <span class="font-medium text-foreground"
-					>{data.post.author || 'BuildOS Team'}</span
-				>
-			</div>
-		</div>
-	</div>
+		<!-- Divider -->
+		<hr class="border-border" />
 
-	<!-- Content -->
-	<article class="">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+		<!-- Content -->
+		<article class="py-8 sm:py-10">
 			<div
-				class="prose prose-gray dark:prose-invert max-w-none
-				prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
-				prose-strong:text-foreground prose-a:text-blue-600 prose-blockquote:text-foreground
-				dark:prose-headings:text-white dark:prose-p:text-muted-foreground dark:prose-li:text-muted-foreground
-				dark:prose-strong:text-white dark:prose-a:text-blue-400 dark:prose-blockquote:text-muted-foreground
-				dark:prose-hr:border-gray-700"
+				class="prose prose-neutral max-w-none
+				prose-headings:text-foreground prose-headings:tracking-tight
+				prose-p:text-foreground/90 prose-p:leading-relaxed
+				prose-li:text-foreground/90
+				prose-strong:text-foreground prose-strong:font-semibold
+				prose-a:text-accent prose-a:no-underline hover:prose-a:underline
+				prose-blockquote:text-muted-foreground prose-blockquote:border-accent/30 prose-blockquote:not-italic
+				prose-code:text-foreground prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:before:content-none prose-code:after:content-none
+				prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-pre:rounded-lg
+				prose-hr:border-border
+				prose-img:rounded-lg prose-img:shadow-ink
+				prose-th:text-foreground prose-td:text-foreground/90
+				prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg"
 			>
 				{#if loading}
 					<div class="flex items-center justify-center py-12">
 						<div
-							class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"
+							class="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent"
 						></div>
-						<span class="ml-3 text-muted-foreground">Loading content...</span>
+						<span class="ml-3 text-sm text-muted-foreground">Loading...</span>
 					</div>
 				{:else if error}
 					<div class="text-center py-12">
-						<p class="text-destructive">{error}</p>
-						<p class="text-muted-foreground mt-2">Please try refreshing the page.</p>
+						<p class="text-sm text-destructive">{error}</p>
+						<p class="text-xs text-muted-foreground mt-1">Please try refreshing the page.</p>
 					</div>
 				{:else if contentComponent}
 					{@const MarkdownContent = contentComponent}
 					<MarkdownContent />
 				{:else}
 					<div class="text-center py-12">
-						<p class="text-muted-foreground">Content not available.</p>
+						<p class="text-sm text-muted-foreground">Content not available.</p>
 					</div>
 				{/if}
 			</div>
+		</article>
+
+		<!-- Divider -->
+		<hr class="border-border" />
+
+		<!-- Footer Navigation -->
+		<div class="py-6 flex flex-col sm:flex-row gap-3">
+			<a
+				href="/blogs/{data.post.category}"
+				class="flex-1 inline-flex items-center justify-center gap-2 bg-muted text-foreground text-sm font-medium px-4 py-2.5 rounded-lg border border-border hover:border-accent/40 transition-colors shadow-ink pressable"
+			>
+				<ArrowLeft class="w-3.5 h-3.5" />
+				More {categoryDisplayName}
+			</a>
+			<a
+				href="/blogs"
+				class="flex-1 inline-flex items-center justify-center gap-2 bg-accent text-accent-foreground text-sm font-medium px-4 py-2.5 rounded-lg hover:bg-accent/90 transition-colors shadow-ink pressable"
+			>
+				All Articles
+			</a>
 		</div>
-	</article>
+	</div>
 
 	<!-- Related Articles -->
 	{#if data.relatedPosts && data.relatedPosts.length > 0}
-		<section class="py-8 bg-card rounded-lg mt-8 shadow-ink border border-border">
-			<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-				<h2 class="text-2xl font-bold text-foreground mb-8">Related Articles</h2>
+		<section class="border-t border-border bg-muted/30 py-8 sm:py-10">
+			<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+				<h2 class="text-base font-semibold text-foreground mb-4">Related Articles</h2>
 
-				<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 					{#each data.relatedPosts as relatedPost}
-						<article
-							class="bg-muted rounded-lg p-6 shadow-ink border border-border hover:border-accent transition-all tx tx-frame tx-weak pressable"
+						<a
+							href="/blogs/{relatedPost.category}/{relatedPost.slug}"
+							class="group block bg-card border border-border rounded-lg p-4 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
 						>
-							<div class="flex items-center text-xs text-muted-foreground mb-3">
-								<Calendar class="w-3 h-3 mr-1" />
+							<span class="flex items-center gap-1 text-[10px] text-muted-foreground mb-2">
+								<Calendar class="w-2.5 h-2.5" />
 								{format(new Date(relatedPost.date), 'MMM dd, yyyy')}
-							</div>
+							</span>
 
-							<h3 class="font-semibold text-foreground mb-2 line-clamp-2">
+							<h3 class="text-sm font-medium text-foreground mb-1.5 line-clamp-2 group-hover:text-accent transition-colors">
 								{relatedPost.title}
 							</h3>
 
-							<p class="text-muted-foreground text-sm mb-4 line-clamp-2">
+							<p class="text-xs text-muted-foreground line-clamp-2">
 								{relatedPost.description}
 							</p>
-
-							<a
-								href="/blogs/{relatedPost.category}/{relatedPost.slug}"
-								class="inline-flex items-center text-accent text-sm font-medium hover:text-accent/80 transition-colors"
-							>
-								Read more <ArrowRight class="w-3 h-3 ml-1" />
-							</a>
-						</article>
+						</a>
 					{/each}
 				</div>
 			</div>
 		</section>
 	{/if}
-
-	<!-- Footer Navigation -->
-	<div class="bg-card py-8 rounded-lg mt-2 border border-border shadow-ink">
-		<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-			<div class="flex flex-col sm:flex-row gap-4">
-				<a
-					href="/blogs/{data.post.category}"
-					class="flex-1 inline-flex items-center justify-center bg-muted text-foreground px-6 py-3 rounded-lg hover:bg-muted/80 border border-border hover:border-accent transition-colors shadow-ink pressable"
-				>
-					<ArrowLeft class="w-4 h-4 mr-2" />
-					More {categoryDisplayName}
-				</a>
-				<a
-					href="/blogs"
-					class="flex-1 inline-flex items-center justify-center bg-accent text-accent-foreground px-6 py-3 rounded-lg hover:bg-accent/90 transition-colors shadow-ink pressable"
-				>
-					Explore All Articles
-				</a>
-			</div>
-		</div>
-	</div>
 </div>

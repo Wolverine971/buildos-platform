@@ -83,7 +83,6 @@
 	}
 
 	let searchQuery = $state('');
-	let showSearch = $state(false);
 
 	let allPosts = $derived(
 		data.totalPosts < 10
@@ -160,8 +159,6 @@
 					<TextInput
 						type="text"
 						bind:value={searchQuery}
-						onfocus={() => (showSearch = true)}
-						onblur={() => setTimeout(() => (showSearch = false), 200)}
 						placeholder="Search articles..."
 						size="md"
 						class="pl-10"
