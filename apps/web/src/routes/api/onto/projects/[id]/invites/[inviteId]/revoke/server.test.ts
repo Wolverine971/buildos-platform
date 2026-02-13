@@ -30,7 +30,7 @@ const createEvent = (): RequestEvent => {
 };
 
 describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
-	it('returns forbidden when admin access is missing', async () => {
+	it('returns forbidden when write access is missing', async () => {
 		const event = createEvent();
 		const supabase = event.locals.supabase as any;
 
@@ -38,6 +38,10 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/revoke', () => {
 
 		const response = await POST(event);
 		expect(response.status).toBe(403);
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+			p_project_id: 'project-1',
+			p_required_access: 'write'
+		});
 	});
 
 	it('revokes a pending invite', async () => {

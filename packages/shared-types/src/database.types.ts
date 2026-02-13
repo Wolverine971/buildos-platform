@@ -5350,7 +5350,9 @@ export type Database = {
           project_id: string
           removed_at: string | null
           removed_by_actor_id: string | null
+          role_description: string | null
           role_key: string
+          role_name: string | null
         }
         Insert: {
           access: string
@@ -5361,7 +5363,9 @@ export type Database = {
           project_id: string
           removed_at?: string | null
           removed_by_actor_id?: string | null
+          role_description?: string | null
           role_key: string
+          role_name?: string | null
         }
         Update: {
           access?: string
@@ -5372,7 +5376,9 @@ export type Database = {
           project_id?: string
           removed_at?: string | null
           removed_by_actor_id?: string | null
+          role_description?: string | null
           role_key?: string
+          role_name?: string | null
         }
         Relationships: [
           {

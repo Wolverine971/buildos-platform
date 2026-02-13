@@ -38,6 +38,15 @@ type StreamFastChatParams = {
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
 	maxToolRounds?: number;
 	maxToolCalls?: number;
+	debugContext?: {
+		gatewayEnabled?: boolean;
+		historyStrategy?: string;
+		historyCompressed?: boolean;
+		rawHistoryCount?: number;
+		historyForModelCount?: number;
+		tailMessagesKept?: number;
+		continuityHintUsed?: boolean;
+	};
 };
 
 type ToolValidationIssue = {
@@ -89,6 +98,20 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				`Project:   ${params.projectId ?? 'none'}`,
 				`Tools (${toolNames.length}): ${toolNames.join(', ') || 'none'}`,
 				`History messages: ${history.length}`,
+				`Gateway mode: ${params.debugContext?.gatewayEnabled ? 'enabled' : 'disabled'}`,
+				`History strategy: ${params.debugContext?.historyStrategy ?? 'raw_history'}`,
+				`History compressed: ${params.debugContext?.historyCompressed ? 'yes' : 'no'}`,
+				`History raw/model counts: ${
+					typeof params.debugContext?.rawHistoryCount === 'number'
+						? params.debugContext.rawHistoryCount
+						: history.length
+				}/${typeof params.debugContext?.historyForModelCount === 'number' ? params.debugContext.historyForModelCount : history.length}`,
+				`History tail kept: ${
+					typeof params.debugContext?.tailMessagesKept === 'number'
+						? params.debugContext.tailMessagesKept
+						: history.length
+				}`,
+				`Continuity hint used: ${params.debugContext?.continuityHintUsed ? 'yes' : 'no'}`,
 				`User message length: ${message.length} chars`,
 				`System prompt length: ${systemPrompt.length} chars (~${Math.ceil(systemPrompt.length / 4)} tokens)`,
 				`========================================`,

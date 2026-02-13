@@ -201,13 +201,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			);
 		}
 
-		const hasDocumentId = typeof document_id === 'string' && document_id.trim().length > 0;
-		if (!hasDocumentId) {
-			if (!description || typeof description !== 'string' || !description.trim()) {
-				return ApiResponse.badRequest('description is required');
-			}
-		}
-
 		if (document_id) {
 			const { data: existingDoc, error: existingError } = await supabase
 				.from('onto_documents')

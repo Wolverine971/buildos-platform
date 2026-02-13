@@ -17,6 +17,13 @@
 
 	let { block, onToggleCollapse }: Props = $props();
 
+	// Expanded state: false = compact (half height), true = full height
+	let isExpanded = $state(false);
+
+	function toggleExpand() {
+		isExpanded = !isExpanded;
+	}
+
 	// Track collapse state for individual plans
 	let planCollapseStates = $state<Map<string, boolean>>(new Map());
 
@@ -175,7 +182,8 @@
 	{#if !block.isCollapsed}
 		<div class="p-2 sm:p-3">
 			<div
-				class="thinking-log max-h-48 space-y-0.5 overflow-y-auto rounded-lg bg-background/50 font-mono text-[0.65rem] shadow-ink-inner p-1.5 sm:max-h-64 sm:text-[11px]"
+				class="thinking-log thinking-log-height space-y-0.5 overflow-y-auto rounded-lg bg-background/50 font-mono text-[0.65rem] shadow-ink-inner p-1.5 sm:text-[11px]"
+				class:thinking-log-expanded={isExpanded}
 				role="log"
 				aria-label="BuildOS thinking log"
 			>
@@ -242,11 +250,42 @@
 					{/each}
 				{/if}
 			</div>
+			<!-- Expand/collapse toggle for the log height -->
+			{#if block.activities.length > 3}
+				<button
+					type="button"
+					onclick={toggleExpand}
+					class="mt-1 w-full text-center text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground transition-colors hover:text-foreground"
+					aria-label={isExpanded ? 'Show less activity' : 'Show more activity'}
+				>
+					{isExpanded ? '▲ Show less' : '▼ Show more'}
+				</button>
+			{/if}
 		</div>
 	{/if}
 </div>
 
 <style>
+	/* Graduated height: starts compact, smooth transition on expand */
+	.thinking-log-height {
+		max-height: 6rem; /* ~96px - compact default, ~4 lines */
+		transition: max-height 0.35s ease-in-out;
+	}
+
+	.thinking-log-expanded {
+		max-height: 16rem; /* 256px - full expanded */
+	}
+
+	@media (min-width: 640px) {
+		.thinking-log-height {
+			max-height: 7.5rem; /* ~120px on desktop - slightly taller default */
+		}
+
+		.thinking-log-expanded {
+			max-height: 20rem; /* 320px on desktop */
+		}
+	}
+
 	/* INKPRINT Scrollbar Styling - Terminal aesthetic */
 	.thinking-log {
 		scrollbar-width: thin;

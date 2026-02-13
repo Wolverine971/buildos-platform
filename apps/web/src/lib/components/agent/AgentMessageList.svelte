@@ -122,7 +122,7 @@
 						OS
 					</div>
 					<div
-						class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:max-w-[85%] sm:p-4"
+						class="agent-resp-div clarity-zone min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:p-4"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div

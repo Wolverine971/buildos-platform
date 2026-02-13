@@ -35,7 +35,15 @@ BEGIN
   SET status = 'expired'
   WHERE i.status = 'pending'
     AND i.expires_at < now()
-    AND lower(i.invitee_email) = lower(trim(v_user_email));
+    AND lower(trim(i.invitee_email)) = lower(trim(v_user_email));
+
+  UPDATE onto_project_invites AS i
+  SET status = 'revoked'
+  FROM onto_projects p
+  WHERE p.id = i.project_id
+    AND p.deleted_at IS NOT NULL
+    AND i.status = 'pending'
+    AND lower(trim(i.invitee_email)) = lower(trim(v_user_email));
 
   RETURN QUERY
   SELECT
@@ -54,7 +62,7 @@ BEGIN
   JOIN onto_projects p ON p.id = i.project_id
   LEFT JOIN onto_actors a ON a.id = i.invited_by_actor_id
   LEFT JOIN public.users u ON u.id = a.user_id
-  WHERE lower(i.invitee_email) = lower(trim(v_user_email))
+  WHERE lower(trim(i.invitee_email)) = lower(trim(v_user_email))
     AND i.status = 'pending'
     AND i.expires_at >= now()
     AND p.deleted_at IS NULL

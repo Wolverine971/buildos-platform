@@ -58,21 +58,37 @@ BEGIN
     RAISE EXCEPTION 'Invite has expired';
   END IF;
 
-  IF lower(v_invite.invitee_email) <> lower(trim(v_user_email)) THEN
+  IF lower(trim(v_invite.invitee_email)) <> lower(trim(v_user_email)) THEN
     RAISE EXCEPTION 'Invite email mismatch';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM onto_projects p
+    WHERE p.id = v_invite.project_id
+      AND p.deleted_at IS NULL
+  ) THEN
+    UPDATE onto_project_invites
+    SET status = 'revoked'
+    WHERE id = v_invite.id
+      AND status = 'pending';
+    RAISE EXCEPTION 'Invite is no longer valid';
+  END IF;
+
+  -- Reactivate removed memberships only. Active memberships keep their current role/access.
   UPDATE onto_project_members AS m
   SET role_key = v_invite.role_key,
       access = v_invite.access,
       removed_at = NULL,
       removed_by_actor_id = NULL
   WHERE m.project_id = v_invite.project_id
-    AND m.actor_id = v_actor_id;
+    AND m.actor_id = v_actor_id
+    AND m.removed_at IS NOT NULL;
 
   IF NOT FOUND THEN
     INSERT INTO onto_project_members (project_id, actor_id, role_key, access, added_by_actor_id)
-    VALUES (v_invite.project_id, v_actor_id, v_invite.role_key, v_invite.access, v_invite.invited_by_actor_id);
+    VALUES (v_invite.project_id, v_actor_id, v_invite.role_key, v_invite.access, v_invite.invited_by_actor_id)
+    ON CONFLICT ON CONSTRAINT unique_project_member DO NOTHING;
   END IF;
 
   UPDATE onto_project_invites

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-12T23:09:24.967Z
+// Generated on: 2026-02-13T04:24:47.526Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1288,7 +1288,9 @@ export type DatabaseSchema = {
 		project_id: string;
 		removed_at: string | null;
 		removed_by_actor_id: string | null;
+		role_description: string | null;
 		role_key: string;
+		role_name: string | null;
 	};
 	onto_project_structure_history: {
 		change_type: string;

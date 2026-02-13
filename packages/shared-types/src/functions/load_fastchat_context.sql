@@ -15,6 +15,7 @@ DECLARE
   v_plans jsonb;
   v_tasks jsonb;
   v_events jsonb;
+  v_members jsonb;
   v_logs jsonb;
   v_focus_entity jsonb;
   v_linked_edges jsonb;
@@ -179,6 +180,33 @@ BEGIN
       AND deleted_at IS NULL
   ) e;
 
+  SELECT COALESCE(jsonb_agg(to_jsonb(m)), '[]'::jsonb)
+  INTO v_members
+  FROM (
+    SELECT
+      pm.id,
+      pm.project_id,
+      pm.actor_id,
+      pm.role_key,
+      pm.access,
+      pm.role_name,
+      pm.role_description,
+      pm.created_at,
+      a.name AS actor_name,
+      a.email AS actor_email
+    FROM onto_project_members pm
+    LEFT JOIN onto_actors a ON a.id = pm.actor_id
+    WHERE pm.project_id = p_project_id
+      AND pm.removed_at IS NULL
+    ORDER BY
+      CASE pm.role_key
+        WHEN 'owner' THEN 0
+        WHEN 'editor' THEN 1
+        ELSE 2
+      END,
+      pm.created_at ASC
+  ) m;
+
   IF p_focus_type IS NOT NULL AND p_focus_entity_id IS NOT NULL THEN
     CASE p_focus_type
       WHEN 'task' THEN
@@ -334,6 +362,7 @@ BEGIN
     'plans', v_plans,
     'tasks', v_tasks,
     'events', v_events,
+    'members', v_members,
     'focus_entity_full', v_focus_entity,
     'focus_entity_type', p_focus_type,
     'focus_entity_id', p_focus_entity_id,

@@ -26,6 +26,22 @@ BEGIN
     UPDATE onto_project_invites
     SET status = 'expired'
     WHERE id = v_invite.id;
+    v_invite.status := 'expired';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM onto_projects p
+    WHERE p.id = v_invite.project_id
+      AND p.deleted_at IS NULL
+  ) THEN
+    IF v_invite.status = 'pending' THEN
+      UPDATE onto_project_invites
+      SET status = 'revoked'
+      WHERE id = v_invite.id
+        AND status = 'pending';
+    END IF;
+    RAISE EXCEPTION 'Invite is no longer valid';
   END IF;
 
   RETURN QUERY
@@ -38,12 +54,17 @@ BEGIN
     i.status,
     i.expires_at,
     i.created_at,
-    i.invitee_email,
+    CASE
+      WHEN auth.role() = 'anon' THEN NULL::text
+      ELSE i.invitee_email
+    END,
     i.invited_by_actor_id,
     COALESCE(u.name, a.name, u.email, a.email) AS invited_by_name,
     COALESCE(u.email, a.email) AS invited_by_email
   FROM onto_project_invites i
-  JOIN onto_projects p ON p.id = i.project_id
+  JOIN onto_projects p
+    ON p.id = i.project_id
+    AND p.deleted_at IS NULL
   LEFT JOIN onto_actors a ON a.id = i.invited_by_actor_id
   LEFT JOIN public.users u ON u.id = a.user_id
   WHERE i.id = v_invite.id;

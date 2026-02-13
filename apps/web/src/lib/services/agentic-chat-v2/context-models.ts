@@ -87,6 +87,18 @@ export type LightEvent = {
 	updated_at: string;
 };
 
+export type LightProjectMember = {
+	id: string;
+	actor_id: string;
+	actor_name: string | null;
+	actor_email: string | null;
+	role_key: string;
+	access: string;
+	role_name: string | null;
+	role_description: string | null;
+	created_at: string | null;
+};
+
 export type LightRecentActivity = {
 	entity_type: string;
 	entity_id: string;
@@ -119,6 +131,7 @@ export type ProjectContextData = {
 	plans: LightPlan[];
 	tasks: LightTask[];
 	events: LightEvent[];
+	members: LightProjectMember[];
 };
 
 export type EntityContextData = ProjectContextData & {

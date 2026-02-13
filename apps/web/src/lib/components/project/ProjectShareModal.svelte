@@ -2,6 +2,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -16,6 +17,8 @@
 		actor_id: string;
 		role_key: MemberRole;
 		access: string;
+		role_name?: string | null;
+		role_description?: string | null;
 		actor?: {
 			id: string;
 			name: string | null;
@@ -49,22 +52,33 @@
 		onClose?: () => void;
 		projectId: string;
 		projectName: string;
+		canManageMembers?: boolean;
 	}
 
-	let { isOpen = $bindable(false), onClose, projectId, projectName }: Props = $props();
+	let {
+		isOpen = $bindable(false),
+		onClose,
+		projectId,
+		projectName,
+		canManageMembers = false
+	}: Props = $props();
 
 	let email = $state('');
 	let role = $state<InviteRole>('editor');
 	let isSending = $state(false);
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
-	let canInvite = $state(true);
+	let canManageInvites = $state(true);
 	let members = $state<MemberRow[]>([]);
 	let invites = $state<InviteRow[]>([]);
+	let currentActorId = $state<string | null>(null);
 	let inviteActionId = $state<string | null>(null);
 	let inviteActionType = $state<'resend' | 'revoke' | null>(null);
 	let memberActionId = $state<string | null>(null);
 	let memberActionType = $state<'role' | 'remove' | null>(null);
+	let roleContextInput = $state('');
+	let roleProfileActionType = $state<'generate' | null>(null);
+	let roleProfileError = $state<string | null>(null);
 	let notificationSettings = $state<NotificationSettingsRow | null>(null);
 	let settingsError = $state<string | null>(null);
 	let settingsActionType = $state<'member' | 'project' | null>(null);
@@ -75,13 +89,17 @@
 			role = 'editor';
 			error = null;
 			isLoading = false;
-			canInvite = true;
+			canManageInvites = true;
 			members = [];
 			invites = [];
+			currentActorId = null;
 			inviteActionId = null;
 			inviteActionType = null;
 			memberActionId = null;
 			memberActionType = null;
+			roleContextInput = '';
+			roleProfileActionType = null;
+			roleProfileError = null;
 			notificationSettings = null;
 			settingsError = null;
 			settingsActionType = null;
@@ -94,9 +112,11 @@
 		if (!projectId) return;
 		members = [];
 		invites = [];
+		currentActorId = null;
+		roleProfileError = null;
 		notificationSettings = null;
 		settingsError = null;
-		canInvite = true;
+		canManageInvites = true;
 		isLoading = true;
 		error = null;
 		let membersStatus: number | null = null;
@@ -126,6 +146,7 @@
 			if (membersRes.ok) {
 				const payload = await membersRes.json();
 				members = payload?.data?.members ?? [];
+				currentActorId = payload?.data?.actorId ?? null;
 			} else {
 				const payload = await membersRes.json().catch(() => null);
 				void logOntologyClientError(
@@ -145,7 +166,7 @@
 			}
 
 			if (invitesRes.status === 403) {
-				canInvite = false;
+				canManageInvites = false;
 			} else if (invitesRes.ok) {
 				const payload = await invitesRes.json();
 				invites = payload?.data?.invites ?? [];
@@ -204,6 +225,69 @@
 			error = err instanceof Error ? err.message : 'Failed to load sharing data';
 		} finally {
 			isLoading = false;
+		}
+	}
+
+	const currentMember = $derived(
+		currentActorId
+			? (members.find((member) => member.actor_id === currentActorId) ?? null)
+			: null
+	);
+
+	async function handleGenerateRoleProfile(event: Event) {
+		event.preventDefault();
+		roleProfileError = null;
+
+		const roleContext = roleContextInput.trim();
+		if (!roleContext) {
+			roleProfileError = 'Describe your role first';
+			return;
+		}
+
+		roleProfileActionType = 'generate';
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(
+				`/api/onto/projects/${projectId}/members/me/role-profile`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						role_context: roleContext,
+						save: true
+					})
+				}
+			);
+
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to generate role profile');
+			}
+
+			toastService.success('Role profile generated');
+			roleContextInput = '';
+			await loadShareData();
+		} catch (err) {
+			console.error('[ProjectShareModal] Failed to generate role profile:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/members/me/role-profile`,
+				method: 'POST',
+				projectId,
+				entityType: 'project_member',
+				operation: 'project_member_role_profile_generate',
+				metadata: {
+					source: 'project_share_modal',
+					status: responseStatus
+				}
+			});
+			roleProfileError =
+				err instanceof Error ? err.message : 'Failed to generate role profile';
+			toastService.error(roleProfileError);
+		} finally {
+			roleProfileActionType = null;
 		}
 	}
 
@@ -286,7 +370,7 @@
 	async function handleInvite(event: Event) {
 		event.preventDefault();
 
-		if (!canInvite) {
+		if (!canManageInvites) {
 			return;
 		}
 
@@ -340,7 +424,7 @@
 	}
 
 	async function handleInviteResend(invite: InviteRow) {
-		if (!canInvite || inviteActionId) {
+		if (!canManageInvites || inviteActionId) {
 			return;
 		}
 
@@ -389,7 +473,7 @@
 	}
 
 	async function handleInviteRevoke(invite: InviteRow) {
-		if (!canInvite || inviteActionId) {
+		if (!canManageInvites || inviteActionId) {
 			return;
 		}
 
@@ -443,7 +527,7 @@
 	}
 
 	async function handleMemberRoleChange(member: MemberRow, nextRole: MemberRole) {
-		if (!canInvite || memberActionId) {
+		if (!canManageMembers || memberActionId) {
 			return;
 		}
 
@@ -490,7 +574,7 @@
 	}
 
 	async function handleMemberRemove(member: MemberRow) {
-		if (!canInvite || memberActionId) {
+		if (!canManageMembers || memberActionId) {
 			return;
 		}
 
@@ -568,7 +652,7 @@
 						type="email"
 						placeholder="name@example.com"
 						icon={Mail}
-						disabled={!canInvite}
+						disabled={!canManageInvites}
 					/>
 				</div>
 
@@ -576,15 +660,20 @@
 					<label for="invite-role" class="text-xs font-medium text-muted-foreground"
 						>Role</label
 					>
-					<Select id="invite-role" bind:value={role} size="md" disabled={!canInvite}>
+					<Select
+						id="invite-role"
+						bind:value={role}
+						size="md"
+						disabled={!canManageInvites}
+					>
 						<option value="editor">Editor (can edit)</option>
 						<option value="viewer">Viewer (read-only)</option>
 					</Select>
 				</div>
 
-				{#if !canInvite}
+				{#if !canManageInvites}
 					<p class="text-xs text-muted-foreground">
-						You need admin access to invite collaborators.
+						You need editor access to invite collaborators.
 					</p>
 				{:else if error}
 					<p class="text-xs text-destructive">{error}</p>
@@ -594,9 +683,62 @@
 					type="submit"
 					variant="primary"
 					size="sm"
-					disabled={isSending || !canInvite}
+					disabled={isSending || !canManageInvites}
 				>
 					{isSending ? 'Sending...' : 'Send Invite'}
+				</Button>
+			</form>
+		</div>
+
+		<!-- Role Profile Section -->
+		<div class="border-t border-border pt-3 space-y-2">
+			<div>
+				<h3 class="text-sm font-semibold text-foreground">Describe your role</h3>
+				<p class="text-xs text-muted-foreground mt-0.5">
+					Share what you do in this project and AI will generate a role title and
+					description for team context.
+				</p>
+			</div>
+
+			{#if currentMember}
+				<div class="rounded-md border border-border bg-muted/20 p-3 space-y-1">
+					<p class="text-xs uppercase tracking-wide text-muted-foreground">
+						Current role profile
+					</p>
+					<p class="text-sm text-foreground">
+						{currentMember.role_name || formatRole(currentMember.role_key)}
+					</p>
+					{#if currentMember.role_description}
+						<p class="text-xs text-muted-foreground">
+							{currentMember.role_description}
+						</p>
+					{/if}
+				</div>
+			{/if}
+
+			<form class="space-y-2" onsubmit={handleGenerateRoleProfile}>
+				<Textarea
+					bind:value={roleContextInput}
+					rows={3}
+					autoResize
+					maxRows={8}
+					placeholder="Example: I run content strategy, define weekly priorities, and coordinate publishing across channels."
+				/>
+
+				{#if roleProfileError}
+					<p class="text-xs text-destructive">{roleProfileError}</p>
+				{/if}
+
+				<Button
+					type="submit"
+					variant="secondary"
+					size="sm"
+					disabled={roleProfileActionType !== null ||
+						roleContextInput.trim().length === 0}
+				>
+					{roleProfileActionType === 'generate'
+						? 'Generating...'
+						: 'Generate Role Profile'}
 				</Button>
 			</form>
 		</div>
@@ -688,7 +830,7 @@
 				<h3 class="text-sm font-semibold">Members</h3>
 			</div>
 
-			{#if !canInvite}
+			{#if !canManageMembers}
 				<p class="text-xs text-muted-foreground">
 					Admin access is required to manage members.
 				</p>
@@ -714,9 +856,17 @@
 										{member.actor.email}
 									</p>
 								{/if}
+								{#if member.role_name || member.role_description}
+									<p class="text-xs text-muted-foreground truncate">
+										{member.role_name || formatRole(member.role_key)}
+										{member.role_description
+											? ` - ${member.role_description}`
+											: ''}
+									</p>
+								{/if}
 							</div>
 							<div class="flex items-center gap-1.5 shrink-0">
-								{#if member.role_key === 'owner' || !canInvite}
+								{#if member.role_key === 'owner' || !canManageMembers}
 									<span
 										class="text-xs font-medium text-muted-foreground px-2 py-0.5 bg-muted rounded"
 									>
@@ -780,7 +930,7 @@
 								>
 									{formatRole(invite.role_key)}
 								</span>
-								{#if canInvite}
+								{#if canManageInvites}
 									<Button
 										variant="ghost"
 										size="sm"

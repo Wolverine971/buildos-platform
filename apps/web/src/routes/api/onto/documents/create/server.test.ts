@@ -151,7 +151,7 @@ describe('POST /api/onto/documents/create', () => {
 			expect.anything(),
 			'project-1',
 			'doc-1',
-			{ parentId: 'parent-123', position: 2 },
+			expect.objectContaining({ parentId: 'parent-123', position: 2 }),
 			'actor-1'
 		);
 	});

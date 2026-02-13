@@ -43,16 +43,43 @@ import {
 	buildFastContextUsageSnapshot,
 	loadFastChatPromptContext,
 	normalizeFastContextType,
+	composeFastChatHistory,
 	selectFastChatTools,
 	streamFastChat,
-	type FastAgentStreamRequest,
-	type FastChatHistoryMessage
+	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
 
 const logger = createLogger('API:AgentStreamV2');
 
 const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
 const FASTCHAT_CONTEXT_CACHE_VERSION = 1;
+const FASTCHAT_HISTORY_LOOKBACK_MESSAGES = parsePositiveInt(
+	process.env.FASTCHAT_HISTORY_LOOKBACK_MESSAGES,
+	10
+);
+const FASTCHAT_HISTORY_COMPRESSION_THRESHOLD_MESSAGES = parsePositiveInt(
+	process.env.FASTCHAT_HISTORY_COMPRESSION_THRESHOLD_MESSAGES,
+	8
+);
+const FASTCHAT_HISTORY_TAIL_MESSAGES = parsePositiveInt(
+	process.env.FASTCHAT_HISTORY_TAIL_MESSAGES,
+	4
+);
+const FASTCHAT_HISTORY_MAX_SUMMARY_CHARS = parsePositiveInt(
+	process.env.FASTCHAT_HISTORY_MAX_SUMMARY_CHARS,
+	420
+);
+const FASTCHAT_HISTORY_MAX_MESSAGE_CHARS = parsePositiveInt(
+	process.env.FASTCHAT_HISTORY_MAX_MESSAGE_CHARS,
+	1200
+);
+
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+	if (!value) return fallback;
+	const parsed = Number.parseInt(value, 10);
+	if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+	return parsed;
+}
 
 async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
 	const body = (await request.json()) as FastAgentStreamRequest;
@@ -1065,12 +1092,25 @@ export const POST: RequestHandler = async ({
 
 			const requestLastTurnContext =
 				streamRequest.lastTurnContext ?? streamRequest.last_turn_context ?? null;
-			const history = await sessionService.loadRecentMessages(session.id, 10);
+			const history = await sessionService.loadRecentMessages(
+				session.id,
+				FASTCHAT_HISTORY_LOOKBACK_MESSAGES
+			);
 			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
-			const continuityMessage: FastChatHistoryMessage | null = continuityHint
-				? { role: 'system', content: continuityHint }
-				: null;
-			const historyForModel = continuityMessage ? [...history, continuityMessage] : history;
+			const conversationSummary =
+				typeof session.summary === 'string' ? session.summary : null;
+			const historyComposition = composeFastChatHistory({
+				history,
+				continuityHint,
+				sessionSummary: conversationSummary,
+				settings: {
+					compressionThresholdMessages: FASTCHAT_HISTORY_COMPRESSION_THRESHOLD_MESSAGES,
+					tailMessagesWhenCompressed: FASTCHAT_HISTORY_TAIL_MESSAGES,
+					maxSummaryChars: FASTCHAT_HISTORY_MAX_SUMMARY_CHARS,
+					maxMessageChars: FASTCHAT_HISTORY_MAX_MESSAGE_CHARS
+				}
+			});
+			const historyForModel = historyComposition.historyForModel;
 			const sessionMetadata = (session.agent_metadata ?? {}) as Record<string, any>;
 			const cacheKey = buildContextCacheKey({ contextType, entityId, projectFocus });
 			const cachedContext = sessionMetadata.fastchat_context_cache as
@@ -1228,8 +1268,6 @@ export const POST: RequestHandler = async ({
 					(sessionMetadata.agent_state as AgentState | undefined) ??
 					buildEmptyAgentState(session.id);
 				const agentState = sanitizeAgentStateForPrompt(rawAgentState);
-				const conversationSummary =
-					typeof session.summary === 'string' ? session.summary : null;
 
 				promptContext.agentState = JSON.stringify(agentState);
 				promptContext.conversationSummary = conversationSummary;
@@ -1268,6 +1306,15 @@ export const POST: RequestHandler = async ({
 				signal: request.signal,
 				systemPrompt,
 				tools,
+				debugContext: {
+					gatewayEnabled,
+					historyStrategy: historyComposition.strategy,
+					historyCompressed: historyComposition.compressed,
+					rawHistoryCount: historyComposition.rawHistoryCount,
+					historyForModelCount: historyForModel.length,
+					tailMessagesKept: historyComposition.tailMessagesKept,
+					continuityHintUsed: historyComposition.continuityHintUsed
+				},
 				toolExecutor: toolExecutionService
 					? async (toolCall) => {
 							const contextScope = effectiveProjectIdForTools

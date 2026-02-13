@@ -11,6 +11,7 @@ import type {
 	LightGoal,
 	LightMilestone,
 	LightPlan,
+	LightProjectMember,
 	LightProject,
 	LightRecentActivity,
 	LightTask,
@@ -47,8 +48,25 @@ type PlanRow = Database['public']['Tables']['onto_plans']['Row'];
 type TaskRow = Database['public']['Tables']['onto_tasks']['Row'];
 type DocumentRow = Database['public']['Tables']['onto_documents']['Row'];
 type EventRow = Database['public']['Tables']['onto_events']['Row'];
+type ActorRow = Database['public']['Tables']['onto_actors']['Row'];
 type ProjectLogRow = Database['public']['Tables']['onto_project_logs']['Row'];
 type EdgeRow = Database['public']['Tables']['onto_edges']['Row'];
+type ProjectMemberBaseRow = Pick<
+	Database['public']['Tables']['onto_project_members']['Row'],
+	| 'id'
+	| 'project_id'
+	| 'actor_id'
+	| 'role_key'
+	| 'access'
+	| 'role_name'
+	| 'role_description'
+	| 'created_at'
+>;
+type ProjectMemberRow = ProjectMemberBaseRow & {
+	actor_name?: string | null;
+	actor_email?: string | null;
+	actor?: Pick<ActorRow, 'id' | 'name' | 'email'> | null;
+};
 
 type LoadContextParams = {
 	supabase: SupabaseClient<Database>;
@@ -66,6 +84,7 @@ type FastChatContextRpcResponse = {
 	plans?: Array<PlanRow & { project_id?: string }>;
 	tasks?: Array<TaskRow & { project_id?: string }>;
 	events?: Array<EventRow & { project_id?: string }>;
+	members?: ProjectMemberRow[];
 	project_logs?: ProjectLogRow[];
 	focus_entity_full?: Record<string, unknown> | null;
 	focus_entity_type?: string | null;
@@ -196,6 +215,22 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 		})
 	}
 };
+
+const DEFAULT_MEMBER_ROLE_PROFILE = {
+	owner: {
+		role_name: 'Project Owner',
+		role_description: 'Owns project direction, decision-making, and final approval.'
+	},
+	editor: {
+		role_name: 'Collaborator',
+		role_description:
+			'Contributes actively by creating, editing, and coordinating project work.'
+	},
+	viewer: {
+		role_name: 'Observer',
+		role_description: 'Tracks progress and context, with read-only access to project work.'
+	}
+} as const;
 
 function isProjectContext(contextType: ChatContextType): boolean {
 	return PROJECT_CONTEXTS.has(contextType);
@@ -349,6 +384,59 @@ function mapEvent(row: EventRow): LightEvent {
 	};
 }
 
+function normalizeOptionalText(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function getDefaultRoleProfile(roleKey: string | null | undefined): {
+	role_name: string;
+	role_description: string;
+} {
+	const normalized = normalizeOptionalText(roleKey)?.toLowerCase();
+	if (normalized === 'owner') return DEFAULT_MEMBER_ROLE_PROFILE.owner;
+	if (normalized === 'editor') return DEFAULT_MEMBER_ROLE_PROFILE.editor;
+	return DEFAULT_MEMBER_ROLE_PROFILE.viewer;
+}
+
+function mapProjectMember(row: ProjectMemberRow): LightProjectMember {
+	const roleKey = normalizeOptionalText(row.role_key) ?? 'viewer';
+	const defaults = getDefaultRoleProfile(roleKey);
+	const actorName =
+		normalizeOptionalText(row.actor_name) ?? normalizeOptionalText(row.actor?.name);
+	const actorEmail =
+		normalizeOptionalText(row.actor_email) ?? normalizeOptionalText(row.actor?.email);
+	const roleName = normalizeOptionalText(row.role_name) ?? defaults.role_name;
+	const roleDescription =
+		normalizeOptionalText(row.role_description) ?? defaults.role_description;
+
+	return {
+		id: row.id,
+		actor_id: row.actor_id,
+		actor_name: actorName,
+		actor_email: actorEmail,
+		role_key: roleKey,
+		access: row.access,
+		role_name: roleName,
+		role_description: roleDescription,
+		created_at: row.created_at ?? null
+	};
+}
+
+function sortProjectMembers(members: LightProjectMember[]): LightProjectMember[] {
+	const roleOrder: Record<string, number> = { owner: 0, editor: 1, viewer: 2 };
+
+	return [...members].sort((a, b) => {
+		const roleDelta = (roleOrder[a.role_key] ?? 99) - (roleOrder[b.role_key] ?? 99);
+		if (roleDelta !== 0) return roleDelta;
+
+		const aTime = a.created_at ? Date.parse(a.created_at) : Number.POSITIVE_INFINITY;
+		const bTime = b.created_at ? Date.parse(b.created_at) : Number.POSITIVE_INFINITY;
+		return aTime - bTime;
+	});
+}
+
 function extractTitle(payload: unknown): string | null {
 	if (!payload || typeof payload !== 'object') return null;
 	const record = payload as Record<string, unknown>;
@@ -445,7 +533,10 @@ function buildProjectContextFromRpc(
 		milestones: asArray<MilestoneRow>(payload.milestones).map(mapMilestone),
 		plans: asArray<PlanRow>(payload.plans).map(mapPlan),
 		tasks: asArray<TaskRow>(payload.tasks).map(mapTask),
-		events: asArray<EventRow>(payload.events).map(mapEvent)
+		events: asArray<EventRow>(payload.events).map(mapEvent),
+		members: sortProjectMembers(
+			asArray<ProjectMemberRow>(payload.members).map(mapProjectMember)
+		)
 	};
 }
 
@@ -642,7 +733,7 @@ async function loadProjectContextData(
 
 	const project = mapProject(projectRow, { includeDocStructure: false });
 
-	const [goalsRes, milestonesRes, plansRes, tasksRes, eventsRes] = await Promise.all([
+	const [goalsRes, milestonesRes, plansRes, tasksRes, eventsRes, membersRes] = await Promise.all([
 		supabase
 			.from('onto_goals')
 			.select('id, name, description, state_key, target_date, completed_at, updated_at')
@@ -671,7 +762,14 @@ async function loadProjectContextData(
 				'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
 			)
 			.eq('project_id', projectId)
-			.is('deleted_at', null)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_project_members')
+			.select(
+				'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, name, email)'
+			)
+			.eq('project_id', projectId)
+			.is('removed_at', null)
 	]);
 
 	if (goalsRes.error) logger.warn('Failed to load project goals', { error: goalsRes.error });
@@ -680,6 +778,8 @@ async function loadProjectContextData(
 	if (plansRes.error) logger.warn('Failed to load project plans', { error: plansRes.error });
 	if (tasksRes.error) logger.warn('Failed to load project tasks', { error: tasksRes.error });
 	if (eventsRes.error) logger.warn('Failed to load project events', { error: eventsRes.error });
+	if (membersRes.error)
+		logger.warn('Failed to load project members for fast context', { error: membersRes.error });
 
 	const doc_structure = buildDocStructureSummary(
 		projectRow.doc_structure as DocStructure | null | undefined
@@ -692,7 +792,10 @@ async function loadProjectContextData(
 		milestones: ((milestonesRes.data ?? []) as MilestoneRow[]).map(mapMilestone),
 		plans: ((plansRes.data ?? []) as PlanRow[]).map(mapPlan),
 		tasks: ((tasksRes.data ?? []) as TaskRow[]).map(mapTask),
-		events: ((eventsRes.data ?? []) as EventRow[]).map(mapEvent)
+		events: ((eventsRes.data ?? []) as EventRow[]).map(mapEvent),
+		members: sortProjectMembers(
+			((membersRes.data ?? []) as ProjectMemberRow[]).map(mapProjectMember)
+		)
 	};
 }
 

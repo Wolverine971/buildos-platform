@@ -296,57 +296,122 @@
 			{:else}
 				<!-- Mobile: compact stacked list | Desktop: grid -->
 				<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-				<!-- Global conversation -->
-				<button
-					onclick={selectGlobal}
-					class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
-				>
-					<!-- Mobile: Icon + Title + Chevron in one row -->
-					<div class="flex items-center gap-2 sm:gap-3">
-						<div
-							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-lg"
-						>
-							<Globe class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-						</div>
-						<h3 class="flex-1 text-sm font-semibold text-foreground">
-							Global conversation
-						</h3>
-						<ChevronRight
-							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:hidden"
-						/>
-					</div>
-					<!-- Description underneath -->
-					<p
-						class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-					>
-						Talk across projects, calendar, and knowledge with no preset scope.
-					</p>
-					<!-- Desktop footer -->
-					<div
-						class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-accent sm:flex"
-					>
-						<span>Open conversation</span>
-						<ChevronRight
-							class="h-4 w-4 transition-transform group-hover:translate-x-1"
-						/>
-					</div>
-				</button>
-
-				<!-- Agent to BuildOS chat (dev only) -->
-				{#if dev}
+					<!-- Global conversation -->
 					<button
-						onclick={selectAgentToAgent}
+						onclick={selectGlobal}
 						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
+					>
+						<!-- Mobile: Icon + Title + Chevron in one row -->
+						<div class="flex items-center gap-2 sm:gap-3">
+							<div
+								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-lg"
+							>
+								<Globe class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+							</div>
+							<h3 class="flex-1 text-sm font-semibold text-foreground">
+								Global conversation
+							</h3>
+							<ChevronRight
+								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:hidden"
+							/>
+						</div>
+						<!-- Description underneath -->
+						<p
+							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+						>
+							Talk across projects, calendar, and knowledge with no preset scope.
+						</p>
+						<!-- Desktop footer -->
+						<div
+							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-accent sm:flex"
+						>
+							<span>Open conversation</span>
+							<ChevronRight
+								class="h-4 w-4 transition-transform group-hover:translate-x-1"
+							/>
+						</div>
+					</button>
+
+					<!-- Agent to BuildOS chat (dev only) -->
+					{#if dev}
+						<button
+							onclick={selectAgentToAgent}
+							class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
+						>
+							<div class="flex items-center gap-2 sm:gap-3">
+								<div
+									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:h-10 sm:w-10 sm:rounded-lg"
+								>
+									<Sparkles class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+								</div>
+								<h3 class="flex-1 text-sm font-semibold text-foreground">
+									Agent to BuildOS chat
+								</h3>
+								<ChevronRight
+									class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
+								/>
+							</div>
+							<p
+								class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+							>
+								Hand the BuildOS chat to another AI agent with a clear goal.
+							</p>
+							<div
+								class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-violet-600 dark:text-violet-400 sm:flex"
+							>
+								<span>Agent-to-BuildOS</span>
+								<ChevronRight
+									class="h-4 w-4 transition-transform group-hover:translate-x-1"
+								/>
+							</div>
+						</button>
+					{/if}
+
+					<!-- Projects workspace -->
+					<button
+						onclick={goToProjectHub}
+						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-emerald-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
+					>
+						<div class="flex items-center gap-2 sm:gap-3">
+							<div
+								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
+							>
+								<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+							</div>
+							<h3 class="flex-1 text-sm font-semibold text-foreground">
+								Projects workspace
+							</h3>
+							<ChevronRight
+								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
+							/>
+						</div>
+						<p
+							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+						>
+							Start something new or dive into an existing project with focused tools.
+						</p>
+						<div
+							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
+						>
+							<span>Project flows</span>
+							<ChevronRight
+								class="h-4 w-4 transition-transform group-hover:translate-x-1"
+							/>
+						</div>
+					</button>
+
+					<!-- Braindump -->
+					<button
+						onclick={selectBraindump}
+						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-violet-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
 					>
 						<div class="flex items-center gap-2 sm:gap-3">
 							<div
 								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:h-10 sm:w-10 sm:rounded-lg"
 							>
-								<Sparkles class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+								<Lightbulb class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 							</div>
-							<h3 class="flex-1 text-sm font-semibold text-foreground">
-								Agent to BuildOS chat
-							</h3>
+							<h3 class="flex-1 text-sm font-semibold text-foreground">Braindump</h3>
 							<ChevronRight
 								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
 							/>
@@ -354,95 +419,30 @@
 						<p
 							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
 						>
-							Hand the BuildOS chat to another AI agent with a clear goal.
+							Capture raw thoughts, then save them or explore with AI as a thought
+							partner.
 						</p>
 						<div
 							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-violet-600 dark:text-violet-400 sm:flex"
 						>
-							<span>Agent-to-BuildOS</span>
+							<span>Capture thoughts</span>
 							<ChevronRight
 								class="h-4 w-4 transition-transform group-hover:translate-x-1"
 							/>
 						</div>
 					</button>
-				{/if}
-
-				<!-- Projects workspace -->
-				<button
-					onclick={goToProjectHub}
-					class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-emerald-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
-				>
-					<div class="flex items-center gap-2 sm:gap-3">
-						<div
-							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
-						>
-							<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-						</div>
-						<h3 class="flex-1 text-sm font-semibold text-foreground">
-							Projects workspace
-						</h3>
-						<ChevronRight
-							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
-						/>
-					</div>
-					<p
-						class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-					>
-						Start something new or dive into an existing project with focused tools.
-					</p>
-					<div
-						class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
-					>
-						<span>Project flows</span>
-						<ChevronRight
-							class="h-4 w-4 transition-transform group-hover:translate-x-1"
-						/>
-					</div>
-				</button>
-
-				<!-- Braindump -->
-				<button
-					onclick={selectBraindump}
-					class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-violet-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
-				>
-					<div class="flex items-center gap-2 sm:gap-3">
-						<div
-							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:h-10 sm:w-10 sm:rounded-lg"
-						>
-							<Lightbulb class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-						</div>
-						<h3 class="flex-1 text-sm font-semibold text-foreground">Braindump</h3>
-						<ChevronRight
-							class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
-						/>
-					</div>
-					<p
-						class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-					>
-						Capture raw thoughts, then save them or explore with AI as a thought
-						partner.
-					</p>
-					<div
-						class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-violet-600 dark:text-violet-400 sm:flex"
-					>
-						<span>Capture thoughts</span>
-						<ChevronRight
-							class="h-4 w-4 transition-transform group-hover:translate-x-1"
-						/>
-					</div>
-				</button>
-			</div>
-
-			{#if hasProjects}
-				<div
-					class="mt-4 flex items-center justify-center gap-4 text-xs text-muted-foreground sm:mt-6"
-				>
-					<div class="flex items-center gap-2">
-						<div class="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-						<span>{activeProjects.length} projects ready for deep work</span>
-					</div>
 				</div>
-			{/if}
+
+				{#if hasProjects}
+					<div
+						class="mt-4 flex items-center justify-center gap-4 text-xs text-muted-foreground sm:mt-6"
+					>
+						<div class="flex items-center gap-2">
+							<div class="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
+							<span>{activeProjects.length} projects ready for deep work</span>
+						</div>
+					</div>
+				{/if}
 			{/if}
 		</div>
 	{/if}

@@ -1802,11 +1802,7 @@
 					onAddTask={() => canEdit && (showTaskCreateModal = true)}
 					onAddPlan={() => canEdit && (showPlanCreateModal = true)}
 					onAddRisk={() => canEdit && (showRiskCreateModal = true)}
-					onAddDocument={() => {
-						if (!canEdit) return;
-						activeDocumentId = null;
-						showDocumentModal = true;
-					}}
+					onAddDocument={(parentId) => canEdit && handleCreateDocument(parentId)}
 					onAddEvent={() => canEdit && (showEventCreateModal = true)}
 					onEditGoal={(id) => (editingGoalId = id)}
 					onEditMilestone={(id) => (editingMilestoneId = id)}
@@ -2608,6 +2604,7 @@
 		bind:isOpen={showShareModal}
 		projectId={project.id}
 		projectName={project.name || 'Project'}
+		canManageMembers={canAdmin}
 		onClose={() => (showShareModal = false)}
 	/>
 {/if}

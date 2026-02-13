@@ -59,7 +59,7 @@
 		onAddTask: () => void;
 		onAddPlan: () => void;
 		onAddRisk: () => void;
-		onAddDocument: () => void;
+		onAddDocument: (parentId?: string | null) => void;
 		onAddEvent: () => void;
 
 		// Entity action callbacks - Edit
@@ -441,7 +441,7 @@
 			expanded={expandedPanel === 'documents'}
 			partnerExpanded={isPartnerExpanded('documents')}
 			onToggle={() => togglePanel('documents')}
-			onAddDocument={(_parentId) => onAddDocument()}
+			{onAddDocument}
 			{onEditDocument}
 			{canEdit}
 		/>

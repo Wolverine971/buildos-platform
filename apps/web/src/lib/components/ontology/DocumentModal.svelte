@@ -245,12 +245,9 @@
 	const isEditing = $derived(Boolean(activeDocumentId));
 	const documentFormId = $derived(`document-modal-${documentId ?? 'new'}`);
 	const titleFieldError = $derived(formError === 'Title is required' ? formError : '');
-	const descriptionFieldError = $derived(
-		formError === 'Description is required' ? formError : ''
-	);
 	const globalFormError = $derived.by(() => {
 		if (!formError) return null;
-		if (formError === 'Title is required' || formError === 'Description is required') {
+		if (formError === 'Title is required') {
 			return null;
 		}
 		return formError;
@@ -445,10 +442,6 @@
 	function validateForm(): boolean {
 		if (!title.trim()) {
 			formError = 'Title is required';
-			return false;
-		}
-		if (!isEditing && !description.trim()) {
-			formError = 'Description is required';
 			return false;
 		}
 		return true;
@@ -1076,8 +1069,6 @@
 									<FormField
 										label="Description"
 										labelFor="document-description"
-										required={!isEditing}
-										error={descriptionFieldError}
 										uppercase={false}
 									>
 										<Textarea
@@ -1086,8 +1077,6 @@
 											placeholder="Short summary"
 											rows={2}
 											disabled={saving}
-											required={!isEditing}
-											error={Boolean(descriptionFieldError)}
 											size="sm"
 										/>
 									</FormField>
@@ -1369,8 +1358,6 @@
 										<FormField
 											label="Description"
 											labelFor="document-description-mobile"
-											required={!isEditing}
-											error={descriptionFieldError}
 											uppercase={false}
 										>
 											<Textarea
@@ -1379,8 +1366,6 @@
 												placeholder="Short summary"
 												rows={2}
 												disabled={saving}
-												required={!isEditing}
-												error={Boolean(descriptionFieldError)}
 												size="sm"
 											/>
 										</FormField>

@@ -69,10 +69,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('title is required');
 		}
 
-		if (!description || typeof description !== 'string' || !description.trim()) {
-			return ApiResponse.badRequest('description is required');
-		}
-
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeDocumentStateInput(state_key);
 
