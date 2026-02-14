@@ -186,6 +186,11 @@ export interface ProjectContextSnapshotJobMetadata {
 	force?: boolean;
 }
 
+export interface ProjectActivityBatchFlushJobMetadata {
+	batch_id?: string;
+	batchId?: string;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
 	generate_daily_brief: DailyBriefJobMetadata;
@@ -206,6 +211,7 @@ export interface JobMetadataMap {
 	buildos_homework: HomeworkJobMetadata;
 	buildos_tree_agent: TreeAgentJobMetadata;
 	build_project_context_snapshot: ProjectContextSnapshotJobMetadata;
+	project_activity_batch_flush: ProjectActivityBatchFlushJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -269,6 +275,13 @@ export interface ProjectContextSnapshotResult {
 	error?: string;
 }
 
+export interface ProjectActivityBatchFlushResult {
+	batch_id: string | null;
+	status: 'flushed' | 'already_flushed' | 'missing' | 'failed' | 'invalid';
+	event_id: string | null;
+	message: string | null;
+}
+
 // Job result types
 export interface JobResultMap {
 	// Allow indexing by queue job types that are not explicitly listed yet.
@@ -290,6 +303,7 @@ export interface JobResultMap {
 	transcribe_voice_note: VoiceNoteTranscriptionResult;
 	buildos_homework: HomeworkJobResult;
 	build_project_context_snapshot: ProjectContextSnapshotResult;
+	project_activity_batch_flush: ProjectActivityBatchFlushResult;
 	other: unknown;
 }
 
@@ -437,6 +451,8 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isClassifyChatSessionMetadata(metadata);
 		case 'process_onto_braindump':
 			return isOntoBraindumpProcessingMetadata(metadata);
+		case 'project_activity_batch_flush':
+			return isProjectActivityBatchFlushMetadata(metadata);
 		default:
 			return true;
 	}
@@ -553,6 +569,16 @@ function isOntoBraindumpProcessingMetadata(
 	if (!obj || typeof obj !== 'object') return false;
 	const meta = obj as Record<string, unknown>;
 	return typeof meta.braindumpId === 'string' && typeof meta.userId === 'string';
+}
+
+function isProjectActivityBatchFlushMetadata(
+	obj: unknown
+): obj is ProjectActivityBatchFlushJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	const snake = meta.batch_id;
+	const camel = meta.batchId;
+	return typeof snake === 'string' || typeof camel === 'string';
 }
 
 // Helper function to create a typed queue job

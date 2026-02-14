@@ -386,6 +386,7 @@ export class ChatSessionService {
 			global: 'Agent Session',
 			project: 'Project Assistant',
 			calendar: 'Calendar Assistant',
+			daily_brief: 'Brief Chat',
 			general: 'General Assistant',
 			project_create: 'New Project Creation',
 			project_audit: 'Project Audit',

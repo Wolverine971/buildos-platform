@@ -3,7 +3,7 @@
 	import { Search, X, Calendar, Filter } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import type { NotificationChannel } from '@buildos/shared-types';
+	import type { EventType, NotificationChannel } from '@buildos/shared-types';
 
 	type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
@@ -72,14 +72,20 @@
 	}
 
 	// Event type options
-	const eventTypes = [
-		'daily_brief_ready',
-		'task_reminder',
-		'task_assigned',
-		'task_completed',
-		'project_created',
-		'project_updated',
-		'system_notification'
+	const eventTypes: EventType[] = [
+		'user.signup',
+		'user.trial_expired',
+		'payment.failed',
+		'error.critical',
+		'brief.completed',
+		'brief.failed',
+		'brain_dump.processed',
+		'task.due_soon',
+		'project.activity.changed',
+		'project.activity.batched',
+		'project.invite.accepted',
+		'project.phase_scheduled',
+		'calendar.sync_failed'
 	];
 
 	// Status options
@@ -149,7 +155,7 @@
 				<Select
 					id="log-filter-event-type"
 					value={filters.event_type || ''}
-					onchange={(e) => updateFilter('event_type', e.detail)}
+					onchange={(value) => updateFilter('event_type', String(value))}
 					size="md"
 					placeholder="All events"
 				>
@@ -177,7 +183,7 @@
 				<Select
 					id="log-filter-channel"
 					value={filters.channel || ''}
-					onchange={(e) => updateFilter('channel', e.detail)}
+					onchange={(value) => updateFilter('channel', String(value))}
 					size="md"
 					placeholder="All channels"
 				>
@@ -201,7 +207,7 @@
 				<Select
 					id="log-filter-status"
 					value={filters.status || ''}
-					onchange={(e) => updateFilter('status', e.detail)}
+					onchange={(value) => updateFilter('status', String(value))}
 					size="md"
 					placeholder="All statuses"
 				>
@@ -229,7 +235,7 @@
 				<Select
 					id="log-filter-level"
 					value={filters.level || ''}
-					onchange={(e) => updateFilter('level', e.detail)}
+					onchange={(value) => updateFilter('level', String(value))}
 					size="md"
 					placeholder="All levels"
 				>

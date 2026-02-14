@@ -19,6 +19,17 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 
 		// Fetch real data based on event type
 		let payload: Record<string, any> = {};
+		const normalizeCountMap = (value: unknown): Record<string, number> => {
+			if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+			const result: Record<string, number> = {};
+			for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+				const numeric = typeof raw === 'number' ? raw : Number(raw);
+				if (Number.isFinite(numeric) && numeric > 0) {
+					result[key] = numeric;
+				}
+			}
+			return result;
+		};
 
 		switch (eventType as EventType) {
 			case 'brief.completed': {
@@ -29,6 +40,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 					.eq('user_id', userId)
 					.eq('generation_status', 'completed')
 					.order('brief_date', { ascending: false })
+					.order('created_at', { ascending: false })
 					.limit(1)
 					.single();
 
@@ -158,6 +170,79 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 						project_name: (task.onto_projects as any)?.name || 'Unnamed Project',
 						due_date: task.due_at,
 						hours_until_due: Math.max(0, hoursUntilDue)
+					};
+				}
+				break;
+			}
+
+			case 'project.activity.changed': {
+				// Fetch the user's most recent activity change log
+				const { data: activityLog } = await supabase
+					.from('onto_project_logs')
+					.select(
+						'id, project_id, entity_id, entity_type, action, changed_by, created_at'
+					)
+					.eq('changed_by', userId)
+					.order('created_at', { ascending: false })
+					.limit(1)
+					.single();
+
+				if (activityLog) {
+					const { data: project } = await supabase
+						.from('onto_projects')
+						.select('name')
+						.eq('id', activityLog.project_id)
+						.single();
+
+					const { data: actor } = await supabase
+						.from('users')
+						.select('name, email')
+						.eq('id', activityLog.changed_by)
+						.single();
+
+					payload = {
+						project_id: activityLog.project_id,
+						project_name: project?.name || 'Unnamed Project',
+						actor_user_id: activityLog.changed_by,
+						actor_name: actor?.name || actor?.email || 'A teammate',
+						action_type: `${activityLog.entity_type || 'project'}.${activityLog.action || 'updated'}`,
+						entity_id: activityLog.entity_id,
+						entity_type: activityLog.entity_type,
+						occurred_at: activityLog.created_at || new Date().toISOString()
+					};
+				}
+				break;
+			}
+
+			case 'project.activity.batched': {
+				// Fetch the user's most recent project activity batch
+				const { data: batch } = await (supabase as any)
+					.from('project_notification_batches')
+					.select(
+						'id, project_id, recipient_user_id, window_start, window_end, event_count, action_counts, actor_counts, created_at'
+					)
+					.eq('recipient_user_id', userId)
+					.order('window_start', { ascending: false })
+					.order('created_at', { ascending: false })
+					.limit(1)
+					.single();
+
+				if (batch) {
+					const { data: project } = await supabase
+						.from('onto_projects')
+						.select('name')
+						.eq('id', batch.project_id)
+						.single();
+
+					payload = {
+						project_id: batch.project_id,
+						project_name: project?.name || 'Unnamed Project',
+						recipient_user_id: batch.recipient_user_id,
+						event_count: batch.event_count || 0,
+						window_start: batch.window_start || new Date().toISOString(),
+						window_end: batch.window_end || new Date().toISOString(),
+						action_counts: normalizeCountMap(batch.action_counts),
+						actor_counts: normalizeCountMap(batch.actor_counts)
 					};
 				}
 				break;

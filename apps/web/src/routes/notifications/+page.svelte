@@ -67,6 +67,14 @@
 			'task.assigned': { action: 'Task Assigned', past: 'A task was assigned to you' },
 			'task.completed': { action: 'Task Completed', past: 'A task was marked complete' },
 			'task.due_soon': { action: 'Task Due Soon', past: 'A task is due soon' },
+			'project.activity.changed': {
+				action: 'Project Activity',
+				past: 'A teammate made a project update'
+			},
+			'project.activity.batched': {
+				action: 'Team Updates',
+				past: 'Multiple teammate updates were grouped'
+			},
 			'comment.added': { action: 'New Comment', past: 'Someone commented' },
 			'document.shared': { action: 'Document Shared', past: 'A document was shared' },
 			'brief.completed': { action: 'Daily Brief Ready', past: 'Your daily brief is ready' },
@@ -97,6 +105,7 @@
 	// Get icon for event type
 	const getEventIcon = (eventType?: string | null) => {
 		if (!eventType) return Bell;
+		if (eventType.startsWith('project.activity')) return Users;
 		if (eventType.includes('invite') || eventType.includes('shared')) return Share2;
 		if (eventType === 'brief.completed') return Coffee;
 		if (eventType === 'brief.failed') return AlertTriangle;
@@ -251,6 +260,49 @@
 			if (projectName && taskTitle !== projectName) {
 				stats.push({ label: 'Project', value: projectName });
 			}
+		} else if (eventType === 'project.activity.changed') {
+			const actorName = ep.actor_name as string | undefined;
+			const actionType = ep.action_type as string | undefined;
+			const projectName = ep.project_name as string | undefined;
+
+			if (actorName) stats.push({ label: 'Actor', value: actorName });
+			if (actionType) {
+				const [entityRaw = 'project', actionRaw = 'updated'] = actionType.split('.');
+				stats.push({
+					label: 'Action',
+					value: `${entityRaw.replace(/_/g, ' ')} ${actionRaw.replace(/_/g, ' ')}`
+				});
+				if (actorName) {
+					summary = `${actorName} ${actionRaw.replace(/_/g, ' ')} ${entityRaw.replace(/_/g, ' ')}`;
+				}
+			}
+			if (projectName) stats.push({ label: 'Project', value: projectName });
+		} else if (eventType === 'project.activity.batched') {
+			const eventCount = ep.event_count as number | undefined;
+			const actionCounts = ep.action_counts as Record<string, number> | undefined;
+			const actorCounts = ep.actor_counts as Record<string, number> | undefined;
+			const projectName = ep.project_name as string | undefined;
+
+			if (eventCount !== undefined) stats.push({ label: 'Updates', value: eventCount });
+			if (actorCounts) {
+				stats.push({ label: 'Teammates', value: Object.keys(actorCounts).length });
+			}
+			if (actionCounts) {
+				const topAction = Object.entries(actionCounts)
+					.filter(([, count]) => Number.isFinite(count))
+					.sort((a, b) => b[1] - a[1])[0];
+				if (topAction) {
+					const [actionKey, count] = topAction;
+					const [entityRaw = 'project', actionRaw = 'updated'] = actionKey.split('.');
+					stats.push({
+						label: 'Top action',
+						value: `${entityRaw.replace(/_/g, ' ')} ${actionRaw.replace(/_/g, ' ')} (${count})`
+					});
+				}
+			}
+			if (eventCount !== undefined) {
+				summary = `${eventCount} teammate update${eventCount === 1 ? '' : 's'}${projectName ? ` in ${projectName}` : ''}`;
+			}
 		} else if (eventType === 'project.phase_scheduled') {
 			const phaseName = ep.phase_name as string | undefined;
 			const taskCount = ep.task_count as number | undefined;
@@ -311,8 +363,11 @@
 
 		// Extract additional details
 		if (typeof ep.inviter_name === 'string') details.push(`from ${ep.inviter_name}`);
+		if (typeof ep.actor_name === 'string') details.push(`by ${ep.actor_name}`);
 		if (typeof ep.project_name === 'string' && title !== ep.project_name)
 			details.push(ep.project_name);
+		if (eventType === 'project.activity.batched' && typeof ep.event_count === 'number')
+			details.push(`${ep.event_count} updates`);
 		if (typeof ep.task_name === 'string' && title !== ep.task_name) details.push(ep.task_name);
 
 		return { title, body, details };

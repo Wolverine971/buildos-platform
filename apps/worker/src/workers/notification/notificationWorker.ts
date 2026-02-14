@@ -326,7 +326,7 @@ async function sendPushNotification(
 			icon:
 				delivery.payload.icon_url || '/AppImages/android/android-launchericon-192-192.png',
 			badge: '/AppImages/android/android-launchericon-96-96.png',
-			tag: delivery.payload.event_type || 'notification',
+			tag: delivery.payload.tag || delivery.payload.event_type || 'notification',
 			requireInteraction: delivery.payload.priority === 'urgent',
 			data: {
 				url: delivery.payload.action_url,

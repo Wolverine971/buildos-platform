@@ -105,25 +105,44 @@ export class OntologyBriefRepository {
 	}
 
 	/**
-	 * Get an ontology daily brief by user and date
+	 * Get the latest ontology daily brief snapshot by user and date.
 	 */
 	async getBriefByUserAndDate(
 		userId: string,
 		briefDate: string
 	): Promise<OntologyDailyBrief | null> {
-		const { data, error } = await this.supabase
+		return this.getLatestBriefByUserAndDate(userId, briefDate);
+	}
+
+	/**
+	 * Get the latest ontology brief snapshot by user/date with optional status filtering.
+	 */
+	private async getLatestBriefByUserAndDate(
+		userId: string,
+		briefDate: string,
+		statuses?: string[]
+	): Promise<OntologyDailyBrief | null> {
+		let query = this.supabase
 			.from('ontology_daily_briefs')
 			.select('*')
 			.eq('user_id', userId)
-			.eq('brief_date', briefDate)
-			.single();
+			.eq('brief_date', briefDate);
+
+		if (Array.isArray(statuses) && statuses.length > 0) {
+			query = query.in('generation_status', statuses);
+		}
+
+		const { data, error } = await query
+			.order('created_at', { ascending: false })
+			.order('id', { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
 		if (error) {
-			if (error.code === 'PGRST116') return null;
 			throw error;
 		}
 
-		return data as unknown as OntologyDailyBrief;
+		return (data as unknown as OntologyDailyBrief | null) ?? null;
 	}
 
 	/**
@@ -156,6 +175,7 @@ export class OntologyBriefRepository {
 			.eq('user_id', userId)
 			.eq('generation_status', 'completed')
 			.order('brief_date', { ascending: false })
+			.order('created_at', { ascending: false })
 			.limit(limit);
 
 		if (error) throw error;
@@ -171,12 +191,16 @@ export class OntologyBriefRepository {
 		message: string;
 		existingBrief?: OntologyDailyBrief;
 	}> {
-		const { data: activeGenerations } = await this.supabase
+		const { data: activeGenerations, error } = await this.supabase
 			.from('ontology_daily_briefs')
 			.select('*')
 			.eq('user_id', userId)
 			.eq('generation_status', 'processing')
-			.single();
+			.order('generation_started_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (error) throw error;
 
 		if (activeGenerations) {
 			// Check if it's stale (> 10 minutes)
@@ -220,49 +244,35 @@ export class OntologyBriefRepository {
 		briefId: string | null;
 		message: string;
 	}> {
-		// Check for existing brief
-		const existing = await this.getBriefByUserAndDate(userId, briefDate);
+		const latest = await this.getLatestBriefByUserAndDate(userId, briefDate);
+		const activeForDate = await this.getLatestBriefByUserAndDate(userId, briefDate, [
+			'processing'
+		]);
 
-		if (existing) {
-			if (existing.generation_status === 'processing') {
-				return {
-					started: false,
-					briefId: existing.id,
-					message: 'Brief generation already in progress'
-				};
-			}
-
-			if (existing.generation_status === 'completed' && !forceRegenerate) {
-				return {
-					started: false,
-					briefId: existing.id,
-					message: 'Brief already exists for this date'
-				};
-			}
-
-			// Update existing brief to processing
-			const { data: updated, error } = await this.supabase
-				.from('ontology_daily_briefs')
-				.update({
-					generation_status: 'processing',
-					generation_started_at: new Date().toISOString(),
-					generation_error: null,
-					generation_completed_at: null
-				})
-				.eq('id', existing.id)
-				.select()
-				.single();
-
-			if (error) throw error;
-
+		if (activeForDate) {
 			return {
-				started: true,
-				briefId: updated.id,
-				message: 'Brief regeneration started'
+				started: false,
+				briefId: activeForDate.id,
+				message: 'Brief generation already in progress'
 			};
 		}
 
-		// Create new brief
+		if (latest?.generation_status === 'completed' && !forceRegenerate) {
+			return {
+				started: false,
+				briefId: latest.id,
+				message: 'Brief already exists for this date'
+			};
+		}
+
+		// Create new snapshot row for each generation attempt.
+		const metadata: Record<string, unknown> = {
+			generatedVia: 'ontology_v1'
+		};
+		if (forceRegenerate && latest?.id) {
+			metadata.regeneratedFromBriefId = latest.id;
+		}
+
 		const { data: newBrief, error } = await this.supabase
 			.from('ontology_daily_briefs')
 			.insert({
@@ -272,17 +282,32 @@ export class OntologyBriefRepository {
 				executive_summary: '',
 				generation_status: 'processing',
 				generation_started_at: new Date().toISOString(),
-				metadata: { generatedVia: 'ontology_v1' }
+				metadata: metadata as unknown as Json
 			})
 			.select()
 			.single();
 
-		if (error) throw error;
+		if (error) {
+			// Guard against race conditions when a processing-lock unique index exists.
+			if (error.code === '23505') {
+				const processing = await this.getLatestBriefByUserAndDate(userId, briefDate, [
+					'processing'
+				]);
+				return {
+					started: false,
+					briefId: processing?.id ?? null,
+					message: 'Brief generation already in progress'
+				};
+			}
+			throw error;
+		}
 
 		return {
 			started: true,
 			briefId: newBrief.id,
-			message: 'Brief generation started'
+			message: forceRegenerate
+				? 'Brief regeneration started (new snapshot)'
+				: 'Brief generation started'
 		};
 	}
 

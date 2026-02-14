@@ -57,7 +57,9 @@
 		if (['active', 'in_progress'].includes(s))
 			return 'bg-accent/10 text-accent border-accent/20';
 		if (
-			['completed', 'done', 'achieved', 'ready', 'published', 'mitigated', 'closed'].includes(s)
+			['completed', 'done', 'achieved', 'ready', 'published', 'mitigated', 'closed'].includes(
+				s
+			)
 		)
 			return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
 		if (['blocked', 'occurred', 'missed'].includes(s))
@@ -289,9 +291,7 @@
 		</div>
 
 		<!-- Entity type tabs -->
-		<div
-			class="mb-3 flex flex-wrap gap-1.5 sm:gap-2"
-		>
+		<div class="mb-3 flex flex-wrap gap-1.5 sm:gap-2">
 			{#each focusTypes as type}
 				{@const IconComponent = type.icon}
 				{@const isSelected = selectedType === type.value}
@@ -378,9 +378,7 @@
 		{:else if filteredEntities.length === 0}
 			<div class="flex flex-col items-center justify-center py-8 text-center">
 				<Search class="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
-				<p class="text-sm font-semibold text-foreground">
-					No matches
-				</p>
+				<p class="text-sm font-semibold text-foreground">No matches</p>
 				<p class="mt-1 text-xs text-muted-foreground">
 					No {selectedType}s match "{searchTerm.trim()}"
 				</p>
@@ -457,8 +455,12 @@
 
 										<!-- Due date (tasks, milestones, goals) -->
 										{#if entity.metadata?.due_at}
-											<span class="text-[10px] font-medium text-muted-foreground">
-												Due {new Date(entity.metadata.due_at).toLocaleDateString('en-US', {
+											<span
+												class="text-[10px] font-medium text-muted-foreground"
+											>
+												Due {new Date(
+													entity.metadata.due_at
+												).toLocaleDateString('en-US', {
 													month: 'short',
 													day: 'numeric'
 												})}

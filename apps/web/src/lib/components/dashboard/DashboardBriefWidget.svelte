@@ -152,6 +152,9 @@
 				.eq('user_id', user.id)
 				.eq('brief_date', todayDate)
 				.eq('generation_status', 'completed')
+				.order('created_at', { ascending: false })
+				.order('id', { ascending: false })
+				.limit(1)
 				.maybeSingle();
 
 			if (ontologyBrief) {

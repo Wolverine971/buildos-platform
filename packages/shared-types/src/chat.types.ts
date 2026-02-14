@@ -39,6 +39,7 @@ export type ChatContextType =
 	| 'global'
 	| 'project'
 	| 'calendar'
+	| 'daily_brief'
 	// Agent proactive modes
 	| 'general' // General agent assistant
 	| 'project_create' // Creating new project with guided questions

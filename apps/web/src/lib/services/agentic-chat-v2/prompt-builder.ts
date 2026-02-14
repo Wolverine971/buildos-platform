@@ -13,6 +13,7 @@ const SCOPE_HINTS: Partial<Record<ChatContextType, string>> = {
 	project: 'Project-focused assistant. Ask for specific project details when needed.',
 	ontology: 'Ontology-focused assistant. Ask for specific entity details when needed.',
 	calendar: 'Calendar-focused assistant. Ask for dates or time constraints when needed.',
+	daily_brief: 'Daily-brief assistant. Prefer entities explicitly mentioned in the loaded brief.',
 	project_create: 'Project creation assistant. Keep questions minimal and focused.'
 };
 

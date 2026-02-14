@@ -21,6 +21,8 @@ export type EventType =
   | "brief.failed"
   | "brain_dump.processed"
   | "task.due_soon"
+  | "project.activity.changed"
+  | "project.activity.batched"
   | "project.invite.accepted"
   | "project.phase_scheduled"
   | "calendar.sync_failed";
@@ -199,6 +201,28 @@ export interface TaskDueSoonEventPayload {
   hours_until_due: number;
 }
 
+export interface ProjectActivityChangedEventPayload {
+  project_id: string;
+  project_name?: string;
+  actor_user_id?: string;
+  actor_name?: string;
+  action_type: string;
+  entity_id?: string;
+  entity_type?: string;
+  occurred_at: string;
+}
+
+export interface ProjectActivityBatchedEventPayload {
+  project_id: string;
+  project_name?: string;
+  event_count: number;
+  window_start: string;
+  window_end: string;
+  recipient_user_id?: string;
+  action_counts?: Record<string, number>;
+  actor_counts?: Record<string, number>;
+}
+
 export interface ProjectPhaseScheduledEventPayload {
   project_id: string;
   project_name: string;
@@ -223,6 +247,8 @@ export interface NotificationPayload {
   title: string;
   body: string;
   event_type?: string; // Preserve event type for preference checking
+  tag?: string; // Push/browser collapse key
+  priority?: NotificationPriority;
   action_url?: string;
   icon_url?: string;
   image_url?: string;

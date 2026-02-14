@@ -14,6 +14,10 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 		title: 'Calendar planning',
 		subtitle: 'Coordinate schedules, availability, and time blocks.'
 	},
+	daily_brief: {
+		title: 'Brief chat',
+		subtitle: 'Act on your generated brief with context-aware updates.'
+	},
 	general: {
 		title: 'Global conversation',
 		subtitle: 'Legacy mode - use global instead.'
@@ -53,6 +57,7 @@ export const CONTEXT_BADGE_CLASSES: Partial<Record<ChatContextType, string>> = {
 	project_audit: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300',
 	project_forecast: 'bg-teal-500/10 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300',
 	daily_brief_update: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',
+	daily_brief: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',
 	calendar: 'bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300'
 };
 

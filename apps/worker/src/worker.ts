@@ -6,6 +6,7 @@ import { processPhasesJob } from './workers/phases/phasesWorker';
 import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWorker';
 import { processSMSJob } from './workers/smsWorker';
 import { processNotification } from './workers/notification/notificationWorker';
+import { processProjectActivityBatchFlushJob } from './workers/notification/projectActivityBatchWorker';
 import { processDailySMS } from './workers/dailySmsWorker';
 import { processChatClassificationJob } from './workers/chat/chatSessionClassifier';
 import { processBraindumpProcessingJob } from './workers/braindump/braindumpProcessor';
@@ -163,6 +164,25 @@ async function processNotificationWrapper(job: ProcessingJob) {
 		return { success: true };
 	} catch (error: any) {
 		await job.log(`❌ ${channel} notification failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
+ * Project activity batch flush processor
+ */
+async function processProjectActivityBatchFlush(job: ProcessingJob) {
+	const batchId = job.data.batch_id || job.data.batchId || 'unknown';
+	await job.log(`🧩 Flushing project activity batch ${batchId}`);
+
+	try {
+		const result = await processProjectActivityBatchFlushJob(job);
+		await job.log(
+			`✅ Project activity batch ${batchId} flush result: ${result.status}${result.event_id ? ` (event ${result.event_id})` : ''}`
+		);
+		return result;
+	} catch (error: any) {
+		await job.log(`❌ Project activity batch flush failed: ${error.message}`);
 		throw error;
 	}
 }
@@ -330,6 +350,7 @@ export async function startWorker() {
 
 	// Register notification processor (multi-channel: push, email, in-app, SMS)
 	queue.process('send_notification', processNotificationWrapper);
+	queue.process('project_activity_batch_flush' as any, processProjectActivityBatchFlush);
 
 	// Register SMS processors
 	queue.process('schedule_daily_sms', processScheduleDailySMS); // Daily calendar event SMS scheduling
@@ -424,6 +445,7 @@ export async function startWorker() {
 		'generate_phases',
 		'onboarding_analysis',
 		'send_notification',
+		'project_activity_batch_flush',
 		'classify_chat_session',
 		'process_onto_braindump',
 		'buildos_tree_agent'

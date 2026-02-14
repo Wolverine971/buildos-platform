@@ -227,6 +227,7 @@
 		'Agent Session',
 		'Project Assistant',
 		'Calendar Assistant',
+		'Brief Chat',
 		'General Assistant',
 		'New Project Creation',
 		'Project Audit',
@@ -3629,6 +3630,9 @@
 
 			case 'calendar':
 				return 'What would you like to plan or review on your calendar?';
+
+			case 'daily_brief':
+				return 'I have your brief context ready. What would you like to update first?';
 
 			case 'daily_brief_update':
 				return 'What would you like to adjust in your daily brief settings?';

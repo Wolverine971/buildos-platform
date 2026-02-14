@@ -6543,6 +6543,88 @@ export type Database = {
           },
         ]
       }
+      project_notification_batches: {
+        Row: {
+          action_counts: Json
+          actor_counts: Json
+          attempts: number
+          created_at: string
+          event_count: number
+          flush_after: string
+          flushed_at: string | null
+          flushed_event_id: string | null
+          id: string
+          last_error: string | null
+          latest_event_at: string
+          project_id: string
+          recipient_user_id: string
+          status: string
+          updated_at: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          action_counts?: Json
+          actor_counts?: Json
+          attempts?: number
+          created_at?: string
+          event_count?: number
+          flush_after: string
+          flushed_at?: string | null
+          flushed_event_id?: string | null
+          id?: string
+          last_error?: string | null
+          latest_event_at?: string
+          project_id: string
+          recipient_user_id: string
+          status?: string
+          updated_at?: string
+          window_end: string
+          window_start: string
+        }
+        Update: {
+          action_counts?: Json
+          actor_counts?: Json
+          attempts?: number
+          created_at?: string
+          event_count?: number
+          flush_after?: string
+          flushed_at?: string | null
+          flushed_event_id?: string | null
+          id?: string
+          last_error?: string | null
+          latest_event_at?: string
+          project_id?: string
+          recipient_user_id?: string
+          status?: string
+          updated_at?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_notification_batches_flushed_event_id_fkey"
+            columns: ["flushed_event_id"]
+            isOneToOne: false
+            referencedRelation: "notification_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notification_batches_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_notification_batches_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_questions: {
         Row: {
           answer_brain_dump_id: string | null
@@ -10107,6 +10189,16 @@ export type Database = {
         }
         Returns: string
       }
+      emit_project_activity_batched_event: {
+        Args: {
+          p_actor_user_id?: string
+          p_metadata?: Json
+          p_payload: Json
+          p_project_id: string
+          p_recipient_user_id: string
+        }
+        Returns: string
+      }
       ensure_actor_for_user: { Args: { p_user_id: string }; Returns: string }
       fail_queue_job: {
         Args: { p_error_message: string; p_job_id: string; p_retry?: boolean }
@@ -10115,6 +10207,15 @@ export type Database = {
       finalize_draft_project: {
         Args: { p_draft_id: string; p_user_id: string }
         Returns: string
+      }
+      flush_project_activity_notification_batch: {
+        Args: { p_batch_id: string }
+        Returns: {
+          batch_id: string
+          event_id: string
+          message: string
+          status: string
+        }[]
       }
       generate_recurring_instances: {
         Args: { p_end_date: string; p_start_date: string; p_task_id: string }
@@ -10514,6 +10615,10 @@ export type Database = {
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_id: string }; Returns: boolean }
+      jsonb_increment_counter: {
+        Args: { p_counts: Json; p_increment?: number; p_key: string }
+        Returns: Json
+      }
       list_calendar_items: {
         Args: {
           p_end: string
@@ -10632,6 +10737,17 @@ export type Database = {
           title: string
           type: string
         }[]
+      }
+      queue_project_activity_notification_batch: {
+        Args: {
+          p_action?: string
+          p_actor_actor_id?: string
+          p_actor_user_id?: string
+          p_entity_type?: string
+          p_occurred_at?: string
+          p_project_id: string
+        }
+        Returns: undefined
       }
       queue_sms_message: {
         Args: {
@@ -10936,6 +11052,7 @@ export type Database = {
         | "buildos_homework"
         | "buildos_tree_agent"
         | "build_project_context_snapshot"
+        | "project_activity_batch_flush"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -11208,6 +11325,7 @@ export const Constants = {
         "buildos_homework",
         "buildos_tree_agent",
         "build_project_context_snapshot",
+        "project_activity_batch_flush",
       ],
       recurrence_end_reason: [
         "indefinite",

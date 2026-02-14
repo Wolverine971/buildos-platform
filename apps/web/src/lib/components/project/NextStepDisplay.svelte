@@ -226,9 +226,7 @@
 					toggleExpand();
 				}
 			}}
-			class="flex items-start gap-1.5 {hasLongVersion
-				? 'cursor-pointer'
-				: 'cursor-default'}"
+			class="flex items-start gap-1.5 {hasLongVersion ? 'cursor-pointer' : 'cursor-default'}"
 			aria-expanded={hasLongVersion ? isExpanded : undefined}
 		>
 			<p class="text-sm font-medium text-foreground leading-snug flex-1 min-w-0">

@@ -16,7 +16,8 @@ import type {
 	BriefGenerationStep,
 	ScheduleDailySMSJobMetadata,
 	ClassifyChatSessionJobMetadata,
-	VoiceNoteTranscriptionJobMetadata
+	VoiceNoteTranscriptionJobMetadata,
+	ProjectActivityBatchFlushJobMetadata
 } from './queue-types';
 import type { NotificationJobMetadata } from './notification.types';
 
@@ -532,6 +533,23 @@ export function validateVoiceNoteTranscriptionMetadata(
 	return meta as unknown as VoiceNoteTranscriptionJobMetadata;
 }
 
+export function validateProjectActivityBatchFlushMetadata(
+	metadata: unknown
+): ProjectActivityBatchFlushJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+
+	const meta = metadata as Record<string, unknown>;
+	const batchId = meta.batch_id ?? meta.batchId;
+
+	if (typeof batchId !== 'string' || batchId.trim().length === 0) {
+		throw new ValidationError('batch_id', batchId, 'non-empty string');
+	}
+
+	return meta as unknown as ProjectActivityBatchFlushJobMetadata;
+}
+
 // Main validation function
 export function validateJobMetadata<T extends QueueJobType>(
 	jobType: T,
@@ -566,6 +584,8 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateClassifyChatSessionMetadata(metadata) as JobMetadataMap[T];
 		case 'transcribe_voice_note':
 			return validateVoiceNoteTranscriptionMetadata(metadata) as JobMetadataMap[T];
+		case 'project_activity_batch_flush':
+			return validateProjectActivityBatchFlushMetadata(metadata) as JobMetadataMap[T];
 		case 'other':
 			return metadata as JobMetadataMap[T];
 		default:

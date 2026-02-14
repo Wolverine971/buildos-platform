@@ -1177,7 +1177,9 @@
 												{/if}
 											</span>
 											{#if showLinkedEntities}
-												<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+												<ChevronUp
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+												/>
 											{:else}
 												<ChevronDown
 													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
@@ -1210,7 +1212,9 @@
 												>VERSION HISTORY</span
 											>
 											{#if showVersionHistory}
-												<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+												<ChevronUp
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+												/>
 											{:else}
 												<ChevronDown
 													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
@@ -1242,7 +1246,9 @@
 												>VOICE NOTES</span
 											>
 											{#if showVoiceNotes}
-												<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+												<ChevronUp
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+												/>
 											{:else}
 												<ChevronDown
 													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
@@ -1272,7 +1278,9 @@
 												>ACTIVITY LOG</span
 											>
 											{#if showActivityLog}
-												<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+												<ChevronUp
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+												/>
 											{:else}
 												<ChevronDown
 													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
@@ -1337,7 +1345,8 @@
 													<LoaderCircle
 														class="w-2.5 h-2.5 animate-spin text-muted-foreground"
 													/>
-													<span class="text-muted-foreground">SAVING</span>
+													<span class="text-muted-foreground">SAVING</span
+													>
 												{:else if saveStatus === 'saved'}
 													<Check
 														class="w-2.5 h-2.5 text-green-600 dark:text-green-400"
@@ -1400,7 +1409,9 @@
 									class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
 								>
 									<span class="flex items-center gap-2">
-										<Settings2 class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+										<Settings2
+											class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+										/>
 										<span class="micro-label text-foreground">SETTINGS</span>
 										{#if linkedCount > 0 || tagCount > 0}
 											<span
@@ -1411,9 +1422,13 @@
 										{/if}
 									</span>
 									{#if showMobileMetadata}
-										<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+										<ChevronUp
+											class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+										/>
 									{:else}
-										<ChevronDown class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+										<ChevronDown
+											class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+										/>
 									{/if}
 								</button>
 

@@ -64,6 +64,11 @@ const DOC_STRUCTURE_RULES = `Documents are organized by onto_projects.doc_struct
 - Keep document hierarchy derived from doc_structure.
 - To nest or rehome existing docs (including unlinked docs), use move_document_in_tree with new_parent_id (null for root) and new_position.
 - To identify unlinked docs, call get_document_tree with include_documents=true.`;
+const DAILY_BRIEF_GUARDRAILS = `When daily-brief context data is present:
+- Prefer acting on entities explicitly mentioned in the brief context.
+- If the user references an out-of-brief entity, proceed only when target identity is clear.
+- If target identity is ambiguous (multiple possible tasks/plans/docs), ask one concise clarification before writing.
+- For delete/reassign/delegate actions, use extra caution and confirm when intent or target is not crystal clear.`;
 
 function wrapTag(tag: string, content: string): string {
 	return `<${tag}>\n${content}\n</${tag}>`;
@@ -80,7 +85,22 @@ function serializeData(data?: Record<string, unknown> | string | null): string {
 	return JSON.stringify(data, null, 2);
 }
 
+function shouldApplyDailyBriefGuardrails(data?: Record<string, unknown> | string | null): boolean {
+	if (!data || typeof data !== 'object') return false;
+	const record = data as Record<string, unknown>;
+	return (
+		'briefId' in record ||
+		'brief_id' in record ||
+		'briefDate' in record ||
+		'brief_date' in record ||
+		'mentionedEntities' in record ||
+		'mentioned_entities' in record
+	);
+}
+
 export function buildMasterPrompt(context: MasterPromptContext): string {
+	const includeDailyBriefGuardrails =
+		context.contextType === 'daily_brief' || shouldApplyDailyBriefGuardrails(context.data);
 	const instructions = [
 		wrapTag('identity', CORE_IDENTITY),
 		wrapTag('response_pattern', RESPONSE_PATTERN),
@@ -93,7 +113,10 @@ export function buildMasterPrompt(context: MasterPromptContext): string {
 		wrapTag('proactive_intelligence', PROACTIVE_INTELLIGENCE),
 		wrapTag('relationship_rules', RELATIONSHIP_RULES),
 		wrapTag('member_role_rules', MEMBER_ROLE_RULES),
-		wrapTag('doc_structure_rules', DOC_STRUCTURE_RULES)
+		wrapTag('doc_structure_rules', DOC_STRUCTURE_RULES),
+		...(includeDailyBriefGuardrails
+			? [wrapTag('daily_brief_guardrails', DAILY_BRIEF_GUARDRAILS)]
+			: [])
 	].join('\n');
 
 	const contextBlock = [

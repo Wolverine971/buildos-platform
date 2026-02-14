@@ -79,6 +79,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 				created_at,
 				daily_brief:ontology_daily_briefs!inner(
 					id,
+					user_id,
 					brief_date,
 					executive_summary,
 					priority_actions
@@ -87,6 +88,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 				{ count: 'exact' }
 			)
 			.eq('project_id', projectId)
+			.eq('daily_brief.user_id', user.id)
 			.order('created_at', { ascending: false })
 			.range(offset, offset + limit - 1);
 

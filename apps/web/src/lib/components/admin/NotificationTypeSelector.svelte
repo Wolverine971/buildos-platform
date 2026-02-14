@@ -83,6 +83,20 @@
 			category: 'user'
 		},
 		{
+			value: 'project.activity.changed',
+			label: 'Project Activity (Raw)',
+			description: 'Raw project activity event emitted per action',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'project.activity.batched',
+			label: 'Project Activity (Batched)',
+			description: 'Batched teammate activity summary for shared projects',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
 			value: 'project.invite.accepted',
 			label: 'Invite Accepted',
 			description: 'Triggered when a teammate accepts a project invite',

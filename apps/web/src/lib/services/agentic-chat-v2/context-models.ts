@@ -142,6 +142,38 @@ export type EntityContextData = ProjectContextData & {
 	linked_edges?: LinkedEdge[];
 };
 
+export type DailyBriefMentionedEntity = {
+	id?: string;
+	entity_kind: string;
+	entity_id: string;
+	project_id?: string | null;
+	project_name?: string | null;
+	role?: string | null;
+	source: 'ontology_brief_entities' | 'markdown_link_fallback';
+};
+
+export type DailyBriefProjectBrief = {
+	id: string;
+	project_id: string;
+	project_name: string | null;
+	brief_content: string;
+	metadata?: Record<string, unknown> | null;
+	created_at?: string;
+};
+
+export type DailyBriefContextData = {
+	brief_id: string;
+	brief_date: string;
+	executive_summary: string;
+	priority_actions: string[];
+	generation_status: string;
+	llm_analysis?: string | null;
+	metadata?: Record<string, unknown> | null;
+	project_briefs: DailyBriefProjectBrief[];
+	mentioned_entities: DailyBriefMentionedEntity[];
+	mentioned_entity_counts: Record<string, number>;
+};
+
 export function collectDocStructureIds(
 	structure: DocStructure | null | undefined,
 	maxDepth?: number

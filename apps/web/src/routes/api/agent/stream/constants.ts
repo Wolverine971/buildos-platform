@@ -77,6 +77,7 @@ export const VALID_CONTEXT_TYPES = [
 	'global',
 	'project',
 	'calendar',
+	'daily_brief',
 	'project_create',
 	'project_audit',
 	'project_forecast',

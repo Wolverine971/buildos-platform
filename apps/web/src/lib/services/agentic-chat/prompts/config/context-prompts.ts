@@ -46,6 +46,8 @@ export const CONTEXT_TYPE_GUIDANCE: Record<ChatContextType, string> = {
 
 	project_forecast: `Scenario planning mode for a project. Explore timelines, dependencies, risks, and what-if outcomes.`,
 
+	daily_brief: `Daily brief execution mode. Focus on entities surfaced in the brief, act decisively on in-brief items, and ask one concise clarification when out-of-brief targets are ambiguous.`,
+
 	daily_brief_update: `Daily brief preferences mode. Help configure what surfaces in summaries and notification settings.`,
 
 	brain_dump: `Exploratory mode for unstructured thoughts. Be a sounding board, ask gentle questions, and avoid forcing structure; detailed guidance follows.`,
@@ -338,6 +340,7 @@ export const CONTEXT_DISPLAY_NAMES: ContextDisplayNames = {
 	project_create: 'Project Creation Mode',
 	project_audit: 'Project Audit Mode',
 	project_forecast: 'Project Forecast Mode',
+	daily_brief: 'Daily Brief Chat Mode',
 	daily_brief_update: 'Daily Brief Update Mode',
 	brain_dump: 'Braindump Exploration Mode',
 	ontology: 'Ontology Mode'
@@ -376,6 +379,9 @@ Project ID: {{entityId}}
 Generate scenario forecasts for the project.`,
 
 	project_forecast_no_id: 'Project forecast mode requires a project ID.',
+
+	daily_brief: `## Daily Brief Chat
+The conversation is scoped to a generated brief snapshot. Prefer entities explicitly mentioned in the brief context and ask one concise clarification when target identity is ambiguous.`,
 
 	daily_brief_update: `## Daily Brief Settings
 Help user configure their daily brief preferences.`,

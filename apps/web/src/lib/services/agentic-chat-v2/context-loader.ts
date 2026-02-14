@@ -5,6 +5,9 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { createLogger } from '$lib/utils/logger';
 import type { DocStructure } from '$lib/types/onto-api';
 import type {
+	DailyBriefContextData,
+	DailyBriefMentionedEntity,
+	DailyBriefProjectBrief,
 	EntityContextData,
 	GlobalContextData,
 	LightEvent,
@@ -51,6 +54,9 @@ type EventRow = Database['public']['Tables']['onto_events']['Row'];
 type ActorRow = Database['public']['Tables']['onto_actors']['Row'];
 type ProjectLogRow = Database['public']['Tables']['onto_project_logs']['Row'];
 type EdgeRow = Database['public']['Tables']['onto_edges']['Row'];
+type OntologyDailyBriefRow = Database['public']['Tables']['ontology_daily_briefs']['Row'];
+type OntologyProjectBriefRow = Database['public']['Tables']['ontology_project_briefs']['Row'];
+type OntologyBriefEntityRow = Database['public']['Tables']['ontology_brief_entities']['Row'];
 type ProjectMemberBaseRow = Pick<
 	Database['public']['Tables']['onto_project_members']['Row'],
 	| 'id'
@@ -74,6 +80,11 @@ type LoadContextParams = {
 	contextType: ChatContextType;
 	entityId?: string | null;
 	projectFocus?: ProjectFocus | null;
+	onError?: (event: {
+		stage: string;
+		error: unknown;
+		metadata?: Record<string, unknown>;
+	}) => void;
 };
 
 type FastChatContextRpcResponse = {
@@ -98,6 +109,23 @@ type LinkedEntityConfig = {
 	select: string;
 	map: (row: any) => Record<string, unknown>;
 };
+
+function reportContextLoadError(
+	onError: LoadContextParams['onError'],
+	stage: string,
+	error: unknown,
+	metadata?: Record<string, unknown>
+): void {
+	if (!onError) return;
+	try {
+		onError({ stage, error, metadata });
+	} catch (callbackError) {
+		logger.warn('FastChat context error callback failed', {
+			stage,
+			callbackError
+		});
+	}
+}
 
 const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 	project: {
@@ -215,6 +243,135 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 		})
 	}
 };
+
+const BRIEF_ENTITY_KIND_BY_PATH_SEGMENT: Record<string, string> = {
+	project: 'project',
+	projects: 'project',
+	task: 'task',
+	tasks: 'task',
+	goal: 'goal',
+	goals: 'goal',
+	plan: 'plan',
+	plans: 'plan',
+	document: 'document',
+	documents: 'document',
+	milestone: 'milestone',
+	milestones: 'milestone',
+	risk: 'risk',
+	risks: 'risk',
+	requirement: 'requirement',
+	requirements: 'requirement',
+	event: 'event',
+	events: 'event'
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return null;
+	}
+	return value as Record<string, unknown>;
+}
+
+function parseBriefEntityFromHref(
+	href: string,
+	projectNameById: Map<string, string | null>
+): DailyBriefMentionedEntity | null {
+	if (!href || !href.startsWith('/')) return null;
+
+	const normalizedHref = href.split('#')[0]?.split('?')[0] ?? href;
+	const pathSegments = normalizedHref.split('/').filter(Boolean);
+	if (pathSegments.length < 2) return null;
+
+	let root = pathSegments[0];
+	let offset = 0;
+	if (root === 'onto' && pathSegments[1] === 'projects') {
+		root = 'projects';
+		offset = 1;
+	}
+
+	if (root !== 'projects') return null;
+
+	const projectId = pathSegments[offset + 1];
+	if (!projectId) return null;
+
+	const typeSegment = pathSegments[offset + 2];
+	const entitySegment = pathSegments[offset + 3];
+
+	if (!typeSegment) {
+		return {
+			entity_kind: 'project',
+			entity_id: projectId,
+			project_id: projectId,
+			project_name: projectNameById.get(projectId) ?? null,
+			role: 'mentioned',
+			source: 'markdown_link_fallback'
+		};
+	}
+
+	const entityKind = BRIEF_ENTITY_KIND_BY_PATH_SEGMENT[typeSegment];
+	if (!entityKind) return null;
+
+	const entityId = entitySegment ?? projectId;
+	return {
+		entity_kind: entityKind,
+		entity_id: entityId,
+		project_id: projectId,
+		project_name: projectNameById.get(projectId) ?? null,
+		role: 'mentioned',
+		source: 'markdown_link_fallback'
+	};
+}
+
+function extractFallbackBriefEntities(params: {
+	executiveSummary: string;
+	projectBriefs: DailyBriefProjectBrief[];
+}): DailyBriefMentionedEntity[] {
+	const projectNameById = new Map<string, string | null>();
+	for (const projectBrief of params.projectBriefs) {
+		projectNameById.set(projectBrief.project_id, projectBrief.project_name ?? null);
+	}
+
+	const combinedMarkdown = [
+		params.executiveSummary,
+		...params.projectBriefs.map((projectBrief) => projectBrief.brief_content)
+	].join('\n\n');
+
+	const linkPattern = /\[[^\]]+\]\((\/[^)\s]+)\)/g;
+	const unique = new Map<string, DailyBriefMentionedEntity>();
+	let match: RegExpExecArray | null = linkPattern.exec(combinedMarkdown);
+
+	while (match) {
+		const href = match[1];
+		if (!href) {
+			match = linkPattern.exec(combinedMarkdown);
+			continue;
+		}
+		const parsed = parseBriefEntityFromHref(href, projectNameById);
+		if (parsed) {
+			const key = [
+				parsed.entity_kind,
+				parsed.entity_id,
+				parsed.project_id ?? 'none',
+				parsed.source
+			].join('|');
+			if (!unique.has(key)) {
+				unique.set(key, parsed);
+			}
+		}
+		match = linkPattern.exec(combinedMarkdown);
+	}
+
+	return Array.from(unique.values());
+}
+
+function buildMentionedEntityCounts(entities: DailyBriefMentionedEntity[]): Record<string, number> {
+	const counts: Record<string, number> = {};
+	for (const entity of entities) {
+		const key = entity.entity_kind;
+		counts[key] = (counts[key] ?? 0) + 1;
+	}
+	return counts;
+}
 
 const DEFAULT_MEMBER_ROLE_PROFILE = {
 	owner: {
@@ -603,6 +760,12 @@ async function loadFastChatContextViaRpc(
 			projectId,
 			focusType
 		});
+		reportContextLoadError(params.onError, 'rpc.load_fastchat_context', error, {
+			contextType,
+			projectId,
+			focusType,
+			focusEntityId
+		});
 		return null;
 	}
 
@@ -613,7 +776,8 @@ async function loadFastChatContextViaRpc(
 
 async function loadGlobalContextData(
 	supabase: SupabaseClient<Database>,
-	userId: string
+	userId: string,
+	onError?: LoadContextParams['onError']
 ): Promise<GlobalContextData> {
 	const { data: projects, error } = await supabase
 		.from('onto_projects')
@@ -626,6 +790,7 @@ async function loadGlobalContextData(
 
 	if (error) {
 		logger.warn('Failed to load global projects', { error });
+		reportContextLoadError(onError, 'query.global.projects', error, { userId });
 		return {
 			projects: [],
 			project_recent_activity: {},
@@ -684,12 +849,32 @@ async function loadGlobalContextData(
 			.limit(projectIds.length * RECENT_ACTIVITY_PER_PROJECT)
 	]);
 
-	if (goalsRes.error) logger.warn('Failed to load global goals', { error: goalsRes.error });
+	if (goalsRes.error) {
+		logger.warn('Failed to load global goals', { error: goalsRes.error });
+		reportContextLoadError(onError, 'query.global.goals', goalsRes.error, {
+			projectCount: projectIds.length
+		});
+	}
 	if (milestonesRes.error)
 		logger.warn('Failed to load global milestones', { error: milestonesRes.error });
-	if (plansRes.error) logger.warn('Failed to load global plans', { error: plansRes.error });
+	if (milestonesRes.error) {
+		reportContextLoadError(onError, 'query.global.milestones', milestonesRes.error, {
+			projectCount: projectIds.length
+		});
+	}
+	if (plansRes.error) {
+		logger.warn('Failed to load global plans', { error: plansRes.error });
+		reportContextLoadError(onError, 'query.global.plans', plansRes.error, {
+			projectCount: projectIds.length
+		});
+	}
 	if (logsRes.error)
 		logger.warn('Failed to load global project activity', { error: logsRes.error });
+	if (logsRes.error) {
+		reportContextLoadError(onError, 'query.global.activity', logsRes.error, {
+			projectCount: projectIds.length
+		});
+	}
 
 	const project_goals = groupByProject(
 		(goalsRes.data ?? []) as Array<GoalRow & { project_id: string }>,
@@ -716,7 +901,8 @@ async function loadGlobalContextData(
 
 async function loadProjectContextData(
 	supabase: SupabaseClient<Database>,
-	projectId: string
+	projectId: string,
+	onError?: LoadContextParams['onError']
 ): Promise<ProjectContextData | null> {
 	const { data: projectRow, error } = await supabase
 		.from('onto_projects')
@@ -728,6 +914,14 @@ async function loadProjectContextData(
 
 	if (error || !projectRow) {
 		logger.warn('Failed to load project context project', { error, projectId });
+		reportContextLoadError(
+			onError,
+			'query.project.root',
+			error ?? new Error('Project not found'),
+			{
+				projectId
+			}
+		);
 		return null;
 	}
 
@@ -772,14 +966,34 @@ async function loadProjectContextData(
 			.is('removed_at', null)
 	]);
 
-	if (goalsRes.error) logger.warn('Failed to load project goals', { error: goalsRes.error });
+	if (goalsRes.error) {
+		logger.warn('Failed to load project goals', { error: goalsRes.error });
+		reportContextLoadError(onError, 'query.project.goals', goalsRes.error, { projectId });
+	}
 	if (milestonesRes.error)
 		logger.warn('Failed to load project milestones', { error: milestonesRes.error });
-	if (plansRes.error) logger.warn('Failed to load project plans', { error: plansRes.error });
-	if (tasksRes.error) logger.warn('Failed to load project tasks', { error: tasksRes.error });
-	if (eventsRes.error) logger.warn('Failed to load project events', { error: eventsRes.error });
+	if (milestonesRes.error) {
+		reportContextLoadError(onError, 'query.project.milestones', milestonesRes.error, {
+			projectId
+		});
+	}
+	if (plansRes.error) {
+		logger.warn('Failed to load project plans', { error: plansRes.error });
+		reportContextLoadError(onError, 'query.project.plans', plansRes.error, { projectId });
+	}
+	if (tasksRes.error) {
+		logger.warn('Failed to load project tasks', { error: tasksRes.error });
+		reportContextLoadError(onError, 'query.project.tasks', tasksRes.error, { projectId });
+	}
+	if (eventsRes.error) {
+		logger.warn('Failed to load project events', { error: eventsRes.error });
+		reportContextLoadError(onError, 'query.project.events', eventsRes.error, { projectId });
+	}
 	if (membersRes.error)
 		logger.warn('Failed to load project members for fast context', { error: membersRes.error });
+	if (membersRes.error) {
+		reportContextLoadError(onError, 'query.project.members', membersRes.error, { projectId });
+	}
 
 	const doc_structure = buildDocStructureSummary(
 		projectRow.doc_structure as DocStructure | null | undefined
@@ -802,7 +1016,8 @@ async function loadProjectContextData(
 async function loadLinkedEntities(
 	supabase: SupabaseClient<Database>,
 	projectId: string,
-	focusEntityId: string
+	focusEntityId: string,
+	onError?: LoadContextParams['onError']
 ): Promise<{
 	linked_entities: Record<string, Array<Record<string, unknown>>>;
 	linked_edges: LinkedEdge[];
@@ -815,6 +1030,10 @@ async function loadLinkedEntities(
 
 	if (error) {
 		logger.warn('Failed to load linked entity edges', { error, projectId, focusEntityId });
+		reportContextLoadError(onError, 'query.project.linked_edges', error, {
+			projectId,
+			focusEntityId
+		});
 		return { linked_entities: {}, linked_edges: [] };
 	}
 
@@ -836,7 +1055,7 @@ async function loadLinkedEntities(
 		}
 	}
 
-	const entries = Object.entries(linkedIdsByKind).filter(([kind, ids]) => ids.size > 0);
+	const entries = Object.entries(linkedIdsByKind).filter(([_kind, ids]) => ids.size > 0);
 	if (entries.length === 0) {
 		return { linked_entities: {}, linked_edges: linkedEdges };
 	}
@@ -852,6 +1071,11 @@ async function loadLinkedEntities(
 				.is('deleted_at', null) as any);
 			if (error) {
 				logger.warn('Failed to load linked entities', { error, kind });
+				reportContextLoadError(onError, `query.project.linked_entities.${kind}`, error, {
+					projectId,
+					focusEntityId,
+					kind
+				});
 				return [kind, []] as const;
 			}
 			return [kind, ((data ?? []) as any[]).map(config.map)] as const;
@@ -872,9 +1096,10 @@ async function loadEntityContextData(params: {
 	projectId: string;
 	focusType: ProjectFocus['focusType'];
 	focusEntityId: string;
+	onError?: LoadContextParams['onError'];
 }): Promise<{ data: EntityContextData | null; focusEntityName?: string | null }> {
-	const { supabase, projectId, focusType, focusEntityId } = params;
-	const projectContext = await loadProjectContextData(supabase, projectId);
+	const { supabase, projectId, focusType, focusEntityId, onError } = params;
+	const projectContext = await loadProjectContextData(supabase, projectId, onError);
 	if (!projectContext) return { data: null };
 
 	const focusConfig = LINKED_ENTITY_CONFIG[focusType];
@@ -889,6 +1114,11 @@ async function loadEntityContextData(params: {
 			.maybeSingle() as any);
 		if (error) {
 			logger.warn('Failed to load focus entity', { error, focusType, focusEntityId });
+			reportContextLoadError(onError, 'query.project.focus_entity', error, {
+				projectId,
+				focusType,
+				focusEntityId
+			});
 		} else if (data) {
 			focusEntityFull = stripEntityFields(data as Record<string, unknown>);
 			focusEntityName = resolveEntityName(focusEntityFull);
@@ -898,7 +1128,8 @@ async function loadEntityContextData(params: {
 	const { linked_entities, linked_edges } = await loadLinkedEntities(
 		supabase,
 		projectId,
-		focusEntityId
+		focusEntityId,
+		onError
 	);
 
 	return {
@@ -911,6 +1142,130 @@ async function loadEntityContextData(params: {
 			linked_edges
 		},
 		focusEntityName
+	};
+}
+
+async function loadDailyBriefContextData(params: {
+	supabase: SupabaseClient<Database>;
+	userId: string;
+	briefId: string;
+	onError?: LoadContextParams['onError'];
+}): Promise<DailyBriefContextData | null> {
+	const { supabase, userId, briefId, onError } = params;
+
+	const { data: briefRow, error: briefError } = await supabase
+		.from('ontology_daily_briefs')
+		.select(
+			'id, brief_date, executive_summary, priority_actions, generation_status, llm_analysis, metadata'
+		)
+		.eq('id', briefId)
+		.eq('user_id', userId)
+		.maybeSingle();
+
+	if (briefError || !briefRow) {
+		if (briefError) {
+			logger.warn('Failed to load daily brief context', { error: briefError, briefId });
+			reportContextLoadError(onError, 'query.daily_brief.root', briefError, {
+				userId,
+				briefId
+			});
+		}
+		return null;
+	}
+
+	const [projectBriefsRes, entitiesRes] = await Promise.all([
+		supabase
+			.from('ontology_project_briefs')
+			.select(
+				'id, project_id, brief_content, metadata, created_at, project:onto_projects(name)'
+			)
+			.eq('daily_brief_id', briefId)
+			.order('created_at', { ascending: true }),
+		supabase
+			.from('ontology_brief_entities')
+			.select(
+				'id, entity_kind, entity_id, project_id, role, created_at, project:onto_projects(name)'
+			)
+			.eq('daily_brief_id', briefId)
+			.order('created_at', { ascending: true })
+	]);
+
+	if (projectBriefsRes.error) {
+		logger.warn('Failed to load daily brief project briefs', {
+			error: projectBriefsRes.error,
+			briefId
+		});
+		reportContextLoadError(
+			onError,
+			'query.daily_brief.project_briefs',
+			projectBriefsRes.error,
+			{
+				briefId
+			}
+		);
+	}
+
+	if (entitiesRes.error) {
+		logger.warn('Failed to load daily brief mentioned entities', {
+			error: entitiesRes.error,
+			briefId
+		});
+		reportContextLoadError(onError, 'query.daily_brief.entities', entitiesRes.error, {
+			briefId
+		});
+	}
+
+	const projectBriefs: DailyBriefProjectBrief[] = (projectBriefsRes.data ?? []).map((row) => {
+		const projectBrief = row as OntologyProjectBriefRow & {
+			project?: { name?: string | null } | null;
+		};
+
+		return {
+			id: projectBrief.id,
+			project_id: projectBrief.project_id,
+			project_name: normalizeOptionalText(projectBrief.project?.name) ?? null,
+			brief_content: projectBrief.brief_content ?? '',
+			metadata: asRecord(projectBrief.metadata) ?? null,
+			created_at: projectBrief.created_at
+		};
+	});
+
+	const mentionedEntitiesFromTable: DailyBriefMentionedEntity[] = (entitiesRes.data ?? []).map(
+		(row) => {
+			const entityRow = row as OntologyBriefEntityRow & {
+				project?: { name?: string | null } | null;
+			};
+			return {
+				id: entityRow.id,
+				entity_kind: entityRow.entity_kind,
+				entity_id: entityRow.entity_id,
+				project_id: entityRow.project_id,
+				project_name: normalizeOptionalText(entityRow.project?.name) ?? null,
+				role: entityRow.role,
+				source: 'ontology_brief_entities'
+			};
+		}
+	);
+
+	const executiveSummary = briefRow.executive_summary ?? '';
+	const fallbackEntities = extractFallbackBriefEntities({
+		executiveSummary,
+		projectBriefs
+	});
+	const mentionedEntities =
+		mentionedEntitiesFromTable.length > 0 ? mentionedEntitiesFromTable : fallbackEntities;
+
+	return {
+		brief_id: briefRow.id,
+		brief_date: briefRow.brief_date,
+		executive_summary: executiveSummary,
+		priority_actions: briefRow.priority_actions ?? [],
+		generation_status: briefRow.generation_status,
+		llm_analysis: briefRow.llm_analysis,
+		metadata: asRecord((briefRow as OntologyDailyBriefRow).metadata) ?? null,
+		project_briefs: projectBriefs,
+		mentioned_entities: mentionedEntities,
+		mentioned_entity_counts: buildMentionedEntityCounts(mentionedEntities)
 	};
 }
 
@@ -936,6 +1291,24 @@ export async function loadFastChatPromptContext(
 		focusEntityId,
 		focusEntityName
 	};
+
+	if (contextType === 'daily_brief') {
+		if (!entityId) {
+			return { ...baseContext, data: null };
+		}
+
+		const data = await loadDailyBriefContextData({
+			supabase,
+			userId,
+			briefId: entityId,
+			onError: params.onError
+		});
+		return {
+			...baseContext,
+			entityId,
+			data
+		};
+	}
 
 	const rpcContextType = resolveRpcContextType(contextType, projectFocus);
 	if (rpcContextType) {
@@ -977,7 +1350,7 @@ export async function loadFastChatPromptContext(
 	}
 
 	if (contextType === 'global') {
-		const data = await loadGlobalContextData(supabase, userId);
+		const data = await loadGlobalContextData(supabase, userId, params.onError);
 		return { ...baseContext, data };
 	}
 
@@ -991,7 +1364,8 @@ export async function loadFastChatPromptContext(
 				supabase,
 				projectId,
 				focusType,
-				focusEntityId
+				focusEntityId,
+				onError: params.onError
 			});
 			return {
 				...baseContext,
@@ -1002,7 +1376,7 @@ export async function loadFastChatPromptContext(
 			};
 		}
 
-		const data = await loadProjectContextData(supabase, projectId);
+		const data = await loadProjectContextData(supabase, projectId, params.onError);
 		const projectName = data?.project.name ?? baseContext.projectName ?? null;
 		return {
 			...baseContext,
@@ -1014,7 +1388,7 @@ export async function loadFastChatPromptContext(
 
 	if (contextType === 'ontology' && projectFocus?.projectId) {
 		const resolvedProjectId = projectFocus.projectId;
-		const data = await loadProjectContextData(supabase, resolvedProjectId);
+		const data = await loadProjectContextData(supabase, resolvedProjectId, params.onError);
 		return {
 			...baseContext,
 			projectId: resolvedProjectId,

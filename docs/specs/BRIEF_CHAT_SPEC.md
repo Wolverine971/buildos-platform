@@ -6,6 +6,7 @@
 **Author:** DJ + Claude
 **Date:** 2026-02-12
 **Scope:** Web App (`/apps/web/`)
+**Execution Tracker:** `docs/specs/BRIEF_CHAT_EXECUTION_PLAN.md`
 
 ---
 
@@ -158,7 +159,7 @@ A floating badge on the Brief tab shows unread agent messages. A floating badge 
 
 ### 3.3 Brief Pane Behavior
 
-The brief pane renders the existing `executive_summary` (ontology) or `summary_content` (legacy) as styled markdown, with enhancements:
+The brief pane renders `executive_summary` from `ontology_daily_briefs` as styled markdown, with enhancements:
 
 #### Interactive Elements
 
@@ -175,7 +176,7 @@ When the agent modifies an entity mentioned in the brief (marks a task done, res
 - Delegated tasks show assignee
 - A subtle highlight animation draws attention to the changed element
 
-This requires the brief pane to maintain a mapping between rendered elements and entity IDs (parsed from the markdown links that already exist in brief content, e.g., `[Task Name](/projects/abc/tasks/xyz)`).
+This requires the brief pane to maintain a mapping between rendered elements and entity IDs (source `ontology_brief_entities` first; markdown links like `[Task Name](/projects/abc/tasks/xyz)` as fallback only).
 
 #### Brief Generation State
 
@@ -237,6 +238,7 @@ These are compact, scannable, and appear between message bubbles.
 - Each generated brief snapshot gets one Brief Chat session (keyed by `brief_id`)
 - Reopening Brief Chat for the same `brief_id` resumes the conversation
 - Regenerating a brief creates a new `brief_id`, which starts a fresh chat session
+- Previously generated brief sessions remain available in history/background (no auto-archive on regenerate)
 - The session persists in `chat_sessions` with `context_type: 'daily_brief'` and `entity_id` set to `ontology_daily_briefs.id`
 - Previous days' brief chats are accessible from the briefs history page
 
@@ -306,7 +308,7 @@ interface DailyBriefContext {
 
 The `mentionedEntities` index is critical — it lets the agent resolve "the auth bug" to a specific task ID without making a search query first. Build it from `ontology_brief_entities` first (authoritative), then fall back to parsing markdown links for any missed entities, and enrich with current status from the database.
 
-**Implementation location:** Add a `loadDailyBriefContext()` function in the context loader (`/apps/web/src/lib/services/agentic-chat-v2/context-loader.ts` or `/apps/web/src/lib/services/agentic-chat/agent-context-service.ts`).
+**Implementation location:** Add a `loadDailyBriefContext()` path in `/apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`.
 
 ### 4.3 System Prompt
 
@@ -336,10 +338,10 @@ Help the user process their daily brief efficiently. They want to:
 - Reference items by their names from the brief, not IDs.
 - When the user references something ambiguously ("that task", "the first one"),
   resolve it from the brief context.
-- If the user asks to modify an entity that is not in the brief's mentioned entity set,
-  ask for confirmation before editing it.
-- Always require explicit confirmation before destructive or ownership-changing writes
-  (delete, reassign/delegate ownership/assignee changes).
+- Be more action-forward when the referenced entities are in the brief and unambiguous.
+- For entities not mentioned in the brief, raise your confidence threshold:
+  if there is any ambiguity about target identity, ask a concise confirmation question first.
+- For delete/reassign/delegate changes, use best judgment and ask for confirmation when target or intent is not crystal clear.
 
 ## Today's Brief
 {executiveSummary}
@@ -379,9 +381,10 @@ This gives the agent access to:
 
 **Write guardrails for `daily_brief`:**
 
-- Writes to entities already mentioned in the brief can proceed directly (except destructive/ownership-changing actions).
-- If a requested write targets an entity not mentioned in the brief, the agent must ask for explicit confirmation first.
-- Delete/reassign/delegate actions always require explicit confirmation before execution.
+- Writes to entities already mentioned in the brief can proceed directly when target and intent are clear.
+- For writes targeting entities not mentioned in the brief, require higher certainty:
+  ask a brief clarification/confirmation whenever there is target ambiguity.
+- For delete/reassign/delegate actions, prefer a quick confirmation when there is any ambiguity or potential for unintended impact.
 
 ### 4.5 Live Brief Updates
 
@@ -438,7 +441,9 @@ User opens Brief Chat for Feb 12
        │                    │                       │
        │  mount             │  mount                │
        │ ◄──────────────────┤                       │
-       │  parse entities    │                       │
+       │  load ontology_    │                       │
+       │  brief_entities    │                       │
+       │  markdown fallback │                       │
        │  build entity map  │                       │
        │                    │                       │
        │                    │  POST /api/agent/v2/stream
@@ -468,6 +473,15 @@ User opens Brief Chat for Feb 12
        │  through + ✓)      │                       │
        │                    │                       │
 ```
+
+### 4.8 Multi-User Brief Ownership (Collaboration-Safe)
+
+With project collaboration enabled, multiple users can have briefs that reference the same project. Brief data must stay user-scoped:
+
+- `ontology_daily_briefs` is user-owned (`user_id`).
+- `ontology_project_briefs` is scoped through `daily_brief_id`; expected uniqueness is one row per (`daily_brief_id`, `project_id`).
+- Reads of project briefs must always be filtered by current user via the joined daily brief owner (`ontology_daily_briefs.user_id = auth user`), not just project membership.
+- This keeps each collaborator's generated interpretation private while still allowing shared underlying project data.
 
 ---
 
@@ -604,12 +618,12 @@ export const load: PageLoad = async ({ url, parent }) => {
 
 **Changes:**
 
-1. **Add `daily_brief` context type**
+1. **Add `daily_brief` context type (V2 path only)**
     - `/packages/shared-types/src/chat.types.ts` — add to union
     - `/apps/web/src/lib/components/agent/agent-chat.constants.ts` — add descriptor and badge
-    - `/apps/web/src/lib/services/agentic-chat/prompts/config/context-prompts.ts` — add guidance and fallback
-    - `/apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts` — add tool groups
-    - `/apps/web/src/lib/services/agentic-chat-v2/prompt-builder.ts` — add scope hint
+    - `/apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts` — add tool groups (full workspace write-capable)
+    - `/apps/web/src/lib/services/agentic-chat-v2/prompt-builder.ts` — add context normalization/scope hint
+    - `/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts` — add daily brief behavior + confirmation guardrails
 
 2. **Build context loader**
     - Load brief data (executive_summary, llm_analysis, priority_actions)
@@ -651,14 +665,19 @@ export const load: PageLoad = async ({ url, parent }) => {
     - Show assignee for delegated tasks
     - Highlight animation on changed elements
 
-3. **Quick action chips**
+3. **Operation event wiring in V2 stream**
+    - Forward tool `streamEvents` of type `operation` as SSE `operation` events
+    - Ensure `operation.entity_id` is present for write operations where possible
+    - Keep `tool_result` payload parsing as fallback
+
+4. **Quick action chips**
     - Build `BriefQuickActions.svelte` component
     - "Update tasks" — structured walkthrough of today's tasks
     - "Triage overdue" — one-by-one overdue task review
     - "Plan my day" — time-blocking suggestion
     - "Brain dump" — free-form capture mode
 
-4. **Interactive entity chips in brief**
+5. **Interactive entity chips in brief**
     - Task names become tappable
     - Popover with quick actions (done, snooze, delegate, open)
 
@@ -725,6 +744,10 @@ User opens Brief Chat in the afternoon — tasks may have been completed since t
 
 User reads brief on phone, then opens Brief Chat on desktop. The session should resume seamlessly since it's stored in `chat_sessions`.
 
+### Multiple Collaborators on the Same Project
+
+Different collaborators can receive different briefs for the same project. Brief Chat must only load the current user's brief/project-brief records (user-scoped), even when project access is shared.
+
 ### Empty Brief
 
 User has no projects or tasks. The brief is essentially empty.
@@ -773,20 +796,24 @@ Brief Chat is ontology-only for this implementation. Load from `ontology_daily_b
 
 ### Modified Files
 
-| File                                                                        | Change                             |
-| --------------------------------------------------------------------------- | ---------------------------------- |
-| `/packages/shared-types/src/chat.types.ts`                                  | Add `'daily_brief'` to union       |
-| `/apps/web/src/lib/components/agent/agent-chat.constants.ts`                | Add descriptor + badge             |
-| `/apps/web/src/lib/services/agentic-chat/prompts/config/context-prompts.ts` | Add guidance + fallback            |
-| `/apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts`        | Add tool groups                    |
-| `/apps/web/src/lib/services/agentic-chat-v2/prompt-builder.ts`              | Add scope hint                     |
-| `/apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`              | Add brief context loading          |
-| `/apps/web/src/routes/briefs/+page.svelte`                                  | Add "Chat about this brief" button |
-| `/apps/web/src/lib/components/dashboard/AnalyticsDashboard.svelte`          | Add "Read & Respond" to widget     |
+| File                                                                  | Change                                  |
+| --------------------------------------------------------------------- | --------------------------------------- |
+| `/packages/shared-types/src/chat.types.ts`                            | Add `'daily_brief'` to union            |
+| `/apps/web/src/lib/components/agent/agent-chat.constants.ts`          | Add descriptor + badge                  |
+| `/apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts`  | Add tool groups                         |
+| `/apps/web/src/lib/services/agentic-chat-v2/prompt-builder.ts`        | Add scope hint                          |
+| `/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts` | Add brief behavior + confirmations      |
+| `/apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`        | Add brief context loading               |
+| `/apps/web/src/routes/api/agent/v2/stream/+server.ts`                 | Emit/forward `operation` events         |
+| `/apps/web/src/routes/briefs/+page.svelte`                            | Add "Chat about this brief" button      |
+| `/apps/web/src/routes/api/onto/projects/[id]/briefs/+server.ts`       | Enforce user-scoped project-brief reads |
+| `/apps/web/src/lib/components/dashboard/AnalyticsDashboard.svelte`    | Add "Read & Respond" to widget          |
 
-### No Database Migrations Required
+### Database Check Before Build
 
-The `chat_sessions` table already supports arbitrary `context_type` strings and `entity_id` references. No schema changes needed.
+- Verify a unique constraint/index exists for `ontology_project_briefs (daily_brief_id, project_id)` since upsert logic depends on it.
+- Verify daily brief generation semantics (single row per date vs snapshot rows) match the product decision for "Generate New Brief creates a new `brief_id`".
+- `chat_sessions` already supports `context_type` strings and `entity_id` references.
 
 ---
 

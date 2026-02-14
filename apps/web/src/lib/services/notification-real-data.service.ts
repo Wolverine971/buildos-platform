@@ -40,6 +40,8 @@ export class NotificationRealDataService {
 			'brief.failed',
 			'brain_dump.processed',
 			'task.due_soon',
+			'project.activity.changed',
+			'project.activity.batched',
 			'project.phase_scheduled',
 			'calendar.sync_failed',
 			'user.signup',
@@ -61,6 +63,10 @@ export class NotificationRealDataService {
 				return "Loads data from user's most recent processed brain dump";
 			case 'task.due_soon':
 				return "Loads user's next upcoming task";
+			case 'project.activity.changed':
+				return "Loads the user's most recent project activity log entry";
+			case 'project.activity.batched':
+				return "Loads the user's most recent project activity batch summary";
 			case 'project.phase_scheduled':
 				return "Loads data from user's most recent scheduled phase plan";
 			case 'calendar.sync_failed':

@@ -14,6 +14,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import type {
@@ -50,6 +51,8 @@ import {
 } from '$lib/services/agentic-chat-v2';
 
 const logger = createLogger('API:AgentStreamV2');
+const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
+const FASTCHAT_STREAM_METHOD = 'POST';
 
 const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
 const FASTCHAT_CONTEXT_CACHE_VERSION = 1;
@@ -89,7 +92,12 @@ async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
 async function checkProjectAccess(
 	supabase: any,
 	projectId: string,
-	errorLogger?: ErrorLoggerService
+	errorLogger?: ErrorLoggerService,
+	context?: {
+		userId?: string;
+		endpoint?: string;
+		httpMethod?: string;
+	}
 ): Promise<{ allowed: boolean; reason?: string }> {
 	try {
 		const { data, error } = await supabase.rpc('current_actor_has_project_access', {
@@ -101,6 +109,9 @@ async function checkProjectAccess(
 			logger.warn('Project access RPC failed; allowing fast path', { error, projectId });
 			if (errorLogger) {
 				void errorLogger.logError(error, {
+					userId: context?.userId,
+					endpoint: context?.endpoint ?? FASTCHAT_STREAM_ENDPOINT,
+					httpMethod: context?.httpMethod ?? FASTCHAT_STREAM_METHOD,
 					operationType: 'fastchat_project_access',
 					metadata: { projectId, reason: 'rpc_failed' }
 				});
@@ -113,11 +124,62 @@ async function checkProjectAccess(
 		logger.warn('Project access check failed; allowing fast path', { error, projectId });
 		if (errorLogger) {
 			void errorLogger.logError(error, {
+				userId: context?.userId,
+				endpoint: context?.endpoint ?? FASTCHAT_STREAM_ENDPOINT,
+				httpMethod: context?.httpMethod ?? FASTCHAT_STREAM_METHOD,
 				operationType: 'fastchat_project_access',
 				metadata: { projectId, reason: 'exception' }
 			});
 		}
 		return { allowed: true, reason: 'exception' };
+	}
+}
+
+async function checkDailyBriefAccess(
+	supabase: any,
+	briefId: string,
+	userId: string,
+	errorLogger?: ErrorLoggerService,
+	context?: {
+		endpoint?: string;
+		httpMethod?: string;
+	}
+): Promise<{ allowed: boolean; reason?: string }> {
+	try {
+		const { data, error } = await supabase
+			.from('ontology_daily_briefs')
+			.select('id')
+			.eq('id', briefId)
+			.eq('user_id', userId)
+			.maybeSingle();
+
+		if (error) {
+			logger.warn('Daily brief access check failed', { error, briefId, userId });
+			if (errorLogger) {
+				void errorLogger.logError(error, {
+					userId,
+					endpoint: context?.endpoint ?? FASTCHAT_STREAM_ENDPOINT,
+					httpMethod: context?.httpMethod ?? FASTCHAT_STREAM_METHOD,
+					operationType: 'fastchat_daily_brief_access',
+					metadata: { briefId, reason: 'query_failed' }
+				});
+			}
+			return { allowed: false, reason: 'query_failed' };
+		}
+
+		return { allowed: Boolean(data), reason: data ? 'ok' : 'not_found' };
+	} catch (error) {
+		logger.warn('Daily brief access check exception', { error, briefId, userId });
+		if (errorLogger) {
+			void errorLogger.logError(error, {
+				userId,
+				endpoint: context?.endpoint ?? FASTCHAT_STREAM_ENDPOINT,
+				httpMethod: context?.httpMethod ?? FASTCHAT_STREAM_METHOD,
+				operationType: 'fastchat_daily_brief_access',
+				metadata: { briefId, reason: 'exception' }
+			});
+		}
+		return { allowed: false, reason: 'exception' };
 	}
 }
 
@@ -344,6 +406,112 @@ function buildContextToolSummary(params: {
 		}
 	};
 
+	if (isDailyBriefContext(contextType)) {
+		const briefId =
+			typeof record.brief_id === 'string'
+				? record.brief_id
+				: typeof record.briefId === 'string'
+					? record.briefId
+					: undefined;
+		const briefDate =
+			typeof record.brief_date === 'string'
+				? record.brief_date
+				: typeof record.briefDate === 'string'
+					? record.briefDate
+					: undefined;
+		const mentionedEntities = Array.isArray(record.mentioned_entities)
+			? (record.mentioned_entities as Array<Record<string, unknown>>)
+			: Array.isArray(record.mentionedEntities)
+				? (record.mentionedEntities as Array<Record<string, unknown>>)
+				: [];
+		const mentionedEntityCountsRaw =
+			record.mentioned_entity_counts && typeof record.mentioned_entity_counts === 'object'
+				? (record.mentioned_entity_counts as Record<string, unknown>)
+				: record.mentionedEntityCounts && typeof record.mentionedEntityCounts === 'object'
+					? (record.mentionedEntityCounts as Record<string, unknown>)
+					: {};
+
+		for (const [kind, value] of Object.entries(mentionedEntityCountsRaw)) {
+			if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) continue;
+			entity_counts[kind] = value;
+		}
+
+		if (entity_counts.project === undefined && Array.isArray(record.project_briefs)) {
+			entity_counts.project = record.project_briefs.length;
+		}
+
+		for (const entity of mentionedEntities.slice(0, 12)) {
+			const entityKind =
+				typeof entity.entity_kind === 'string'
+					? entity.entity_kind
+					: typeof entity.entityKind === 'string'
+						? entity.entityKind
+						: undefined;
+			const entityId =
+				typeof entity.entity_id === 'string'
+					? entity.entity_id
+					: typeof entity.entityId === 'string'
+						? entity.entityId
+						: undefined;
+			if (!entityKind || !entityId) continue;
+
+			if (entity_counts[entityKind] === undefined) {
+				entity_counts[entityKind] = 0;
+			}
+			if (entity_counts[entityKind] === 0) {
+				entity_counts[entityKind] = mentionedEntities.filter((candidate) => {
+					const candidateKind =
+						typeof candidate.entity_kind === 'string'
+							? candidate.entity_kind
+							: typeof candidate.entityKind === 'string'
+								? candidate.entityKind
+								: undefined;
+					return candidateKind === entityKind;
+				}).length;
+			}
+
+			entity_updates.push({
+				id: entityId,
+				kind: entityKind,
+				name:
+					extractEntityLabel(entity as Record<string, any>) ??
+					(typeof entity.role === 'string' ? entity.role : undefined)
+			});
+		}
+
+		if (briefId) {
+			entity_updates.push({
+				id: briefId,
+				kind: 'daily_brief',
+				name: briefDate ? `Brief ${briefDate}` : 'Daily Brief'
+			});
+		}
+
+		const summary = briefDate
+			? `Loaded daily brief snapshot for ${briefDate}.`
+			: 'Loaded daily brief snapshot.';
+
+		if (!entity_updates.length && !Object.keys(entity_counts).length) {
+			return [
+				{
+					tool_name: 'context_snapshot',
+					success: true,
+					summary
+				}
+			];
+		}
+
+		return [
+			{
+				tool_name: 'context_snapshot',
+				success: true,
+				entity_counts,
+				entity_updates,
+				summary
+			}
+		];
+	}
+
 	if (record.project) {
 		const projectRecord = record.project as Record<string, any>;
 		const projectId = typeof projectRecord.id === 'string' ? projectRecord.id : undefined;
@@ -405,8 +573,14 @@ async function updateAgentMetadata(
 	supabase: any,
 	sessionId: string,
 	patch: Record<string, unknown>,
-	errorLogger?: ErrorLoggerService
+	options?: {
+		errorLogger?: ErrorLoggerService;
+		userId?: string;
+		projectId?: string;
+	}
 ): Promise<void> {
+	const errorLogger = options?.errorLogger;
+
 	const { data, error } = await supabase
 		.from('chat_sessions')
 		.select('agent_metadata')
@@ -416,8 +590,18 @@ async function updateAgentMetadata(
 	if (error) {
 		logger.warn('Failed to load agent metadata for update', { error, sessionId });
 		if (errorLogger) {
-			void errorLogger.logDatabaseError(error, 'SELECT', 'chat_sessions', sessionId, {
-				operation: 'fastchat_update_agent_metadata'
+			void errorLogger.logError(error, {
+				userId: options?.userId,
+				projectId: options?.projectId,
+				endpoint: FASTCHAT_STREAM_ENDPOINT,
+				httpMethod: FASTCHAT_STREAM_METHOD,
+				operationType: 'fastchat_update_agent_metadata',
+				tableName: 'chat_sessions',
+				recordId: sessionId,
+				metadata: {
+					stage: 'select',
+					patch: sanitizeLogData(patch)
+				}
 			});
 		}
 		return;
@@ -437,8 +621,18 @@ async function updateAgentMetadata(
 	if (updateError) {
 		logger.warn('Failed to update agent metadata', { updateError, sessionId });
 		if (errorLogger) {
-			void errorLogger.logDatabaseError(updateError, 'UPDATE', 'chat_sessions', sessionId, {
-				operation: 'fastchat_update_agent_metadata'
+			void errorLogger.logError(updateError, {
+				userId: options?.userId,
+				projectId: options?.projectId,
+				endpoint: FASTCHAT_STREAM_ENDPOINT,
+				httpMethod: FASTCHAT_STREAM_METHOD,
+				operationType: 'fastchat_update_agent_metadata',
+				tableName: 'chat_sessions',
+				recordId: sessionId,
+				metadata: {
+					stage: 'update',
+					patch: sanitizeLogData(patch)
+				}
 			});
 		}
 	}
@@ -446,29 +640,35 @@ async function updateAgentMetadata(
 
 function emitOperation(
 	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
-	operation: OperationEventPayload
+	operation: OperationEventPayload,
+	onError?: (error: unknown) => void
 ): void {
-	void agentStream
-		.sendMessage({ type: 'operation', operation })
-		.catch((error) => logger.warn('Failed to emit operation event', { error, operation }));
+	void agentStream.sendMessage({ type: 'operation', operation }).catch((error) => {
+		logger.warn('Failed to emit operation event', { error, operation });
+		onError?.(error);
+	});
 }
 
 function emitContextUsage(
 	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
-	usage: ContextUsageSnapshot
+	usage: ContextUsageSnapshot,
+	onError?: (error: unknown) => void
 ): void {
-	void agentStream
-		.sendMessage({ type: 'context_usage', usage })
-		.catch((error) => logger.warn('Failed to emit context usage', { error }));
+	void agentStream.sendMessage({ type: 'context_usage', usage }).catch((error) => {
+		logger.warn('Failed to emit context usage', { error });
+		onError?.(error);
+	});
 }
 
 function emitToolCall(
 	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
-	toolCall: ChatToolCall
+	toolCall: ChatToolCall,
+	onError?: (error: unknown) => void
 ): void {
-	void agentStream
-		.sendMessage({ type: 'tool_call', tool_call: toolCall })
-		.catch((error) => logger.warn('Failed to emit tool_call', { error, toolCall }));
+	void agentStream.sendMessage({ type: 'tool_call', tool_call: toolCall }).catch((error) => {
+		logger.warn('Failed to emit tool_call', { error, toolCall });
+		onError?.(error);
+	});
 }
 
 function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolResult) {
@@ -486,12 +686,14 @@ function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolRes
 function emitToolResult(
 	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
 	toolCall: ChatToolCall,
-	result: ChatToolResult
+	result: ChatToolResult,
+	onError?: (error: unknown) => void
 ): void {
 	const payload = buildToolResultEventPayload(toolCall, result);
-	void agentStream
-		.sendMessage({ type: 'tool_result', result: payload })
-		.catch((error) => logger.warn('Failed to emit tool_result', { error, toolCall }));
+	void agentStream.sendMessage({ type: 'tool_result', result: payload }).catch((error) => {
+		logger.warn('Failed to emit tool_result', { error, toolCall });
+		onError?.(error);
+	});
 }
 
 const CONTEXT_SHIFT_ENTITY_TYPES: ContextShiftPayload['entity_type'][] = [
@@ -569,12 +771,14 @@ function extractContextShiftPayload(result: ChatToolResult): ContextShiftPayload
 
 async function emitContextShift(
 	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
-	contextShift: ContextShiftPayload
+	contextShift: ContextShiftPayload,
+	onError?: (error: unknown) => void
 ): Promise<void> {
 	try {
 		await agentStream.sendMessage({ type: 'context_shift', context_shift: contextShift });
 	} catch (error) {
 		logger.warn('Failed to emit context_shift', { error, contextShift });
+		onError?.(error);
 	}
 }
 
@@ -597,6 +801,10 @@ function isProjectScopedContext(contextType: ChatContextType): boolean {
 		contextType === 'project_audit' ||
 		contextType === 'project_forecast'
 	);
+}
+
+function isDailyBriefContext(value: unknown): boolean {
+	return typeof value === 'string' && value === 'daily_brief';
 }
 
 function appendUniqueId(values: string[] | undefined, value: string): string[] {
@@ -930,7 +1138,7 @@ function buildToolResultSummaries(
 	});
 }
 
-function emitContextOperations(
+function _emitContextOperations(
 	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
 	params: {
 		contextType: string;
@@ -950,6 +1158,40 @@ function emitContextOperations(
 			entity_name: `All projects (${count})`,
 			status: 'success'
 		});
+		return;
+	}
+
+	if (isDailyBriefContext(contextType)) {
+		const briefDate =
+			typeof data?.brief_date === 'string'
+				? data.brief_date
+				: typeof data?.briefDate === 'string'
+					? data.briefDate
+					: null;
+		emitOperation(agentStream, {
+			action: 'read',
+			entity_type: 'project',
+			entity_name: briefDate ? `Daily brief ${briefDate}` : 'Daily brief',
+			status: 'success'
+		});
+
+		const countsRecord =
+			data?.mentioned_entity_counts && typeof data.mentioned_entity_counts === 'object'
+				? (data.mentioned_entity_counts as Record<string, unknown>)
+				: data?.mentionedEntityCounts && typeof data.mentionedEntityCounts === 'object'
+					? (data.mentionedEntityCounts as Record<string, unknown>)
+					: null;
+		if (!countsRecord) return;
+		for (const [kind, rawCount] of Object.entries(countsRecord)) {
+			if (!isOperationEntityType(kind)) continue;
+			if (typeof rawCount !== 'number' || rawCount <= 0) continue;
+			emitOperation(agentStream, {
+				action: 'list',
+				entity_type: kind,
+				entity_name: `${kind}s (${rawCount})`,
+				status: 'success'
+			});
+		}
 		return;
 	}
 
@@ -1021,11 +1263,51 @@ export const POST: RequestHandler = async ({
 		return ApiResponse.unauthorized();
 	}
 
+	const errorLogger = ErrorLoggerService.getInstance(supabase);
+	const userId = user.id;
+
+	const logFastChatError = (params: {
+		error: unknown;
+		operationType: string;
+		projectId?: string;
+		tableName?: string;
+		recordId?: string;
+		metadata?: Record<string, unknown>;
+	}): void => {
+		const sanitizedMetadata = params.metadata ? sanitizeLogData(params.metadata) : undefined;
+		const metadata =
+			sanitizedMetadata &&
+			typeof sanitizedMetadata === 'object' &&
+			!Array.isArray(sanitizedMetadata)
+				? (sanitizedMetadata as Record<string, unknown>)
+				: sanitizedMetadata !== undefined
+					? { value: sanitizedMetadata }
+					: undefined;
+
+		void errorLogger.logError(params.error, {
+			userId,
+			projectId: params.projectId,
+			endpoint: FASTCHAT_STREAM_ENDPOINT,
+			httpMethod: FASTCHAT_STREAM_METHOD,
+			operationType: params.operationType,
+			tableName: params.tableName,
+			recordId: params.recordId,
+			metadata
+		});
+	};
+
 	let streamRequest: FastAgentStreamRequest;
 	try {
 		streamRequest = await parseRequest(request);
 	} catch (error) {
 		logger.warn('Failed to parse V2 stream request', { error });
+		logFastChatError({
+			error,
+			operationType: 'fastchat_stream_parse',
+			metadata: {
+				parseStage: 'request_json'
+			}
+		});
 		return ApiResponse.badRequest('Invalid request body');
 	}
 
@@ -1034,8 +1316,15 @@ export const POST: RequestHandler = async ({
 		return ApiResponse.badRequest('Message is required');
 	}
 
+	const initialContextType = normalizeFastContextType(streamRequest.context_type);
+	if (isDailyBriefContext(initialContextType)) {
+		const briefEntityId = streamRequest.entity_id?.trim();
+		if (!briefEntityId) {
+			return ApiResponse.badRequest('daily_brief context requires a brief entity_id');
+		}
+	}
+
 	const agentStream = SSEResponse.createChatStream();
-	const errorLogger = ErrorLoggerService.getInstance(supabase);
 
 	void agentStream
 		.sendMessage({
@@ -1043,13 +1332,32 @@ export const POST: RequestHandler = async ({
 			state: 'thinking',
 			details: 'BuildOS is processing your request...'
 		})
-		.catch((error) => logger.warn('Failed to emit initial agent state', { error }));
+		.catch((error) => {
+			logger.warn('Failed to emit initial agent state', { error });
+			logFastChatError({
+				error,
+				operationType: 'fastchat_stream_emit_agent_state',
+				metadata: { streamStage: 'initial_thinking_state' }
+			});
+		});
 
 	void (async () => {
-		const sessionService = createFastChatSessionService(supabase);
 		const contextType = normalizeFastContextType(streamRequest.context_type);
 		const projectFocus = streamRequest.projectFocus ?? undefined;
-		const entityId = streamRequest.entity_id ?? projectFocus?.projectId ?? undefined;
+		const entityId = streamRequest.entity_id?.trim() || projectFocus?.projectId || undefined;
+		const projectIdForLogs =
+			projectFocus?.projectId ??
+			((contextType === 'project' ||
+				contextType === 'project_audit' ||
+				contextType === 'project_forecast') &&
+			typeof entityId === 'string'
+				? entityId
+				: undefined);
+		const sessionService = createFastChatSessionService(supabase, {
+			errorLogger,
+			endpoint: FASTCHAT_STREAM_ENDPOINT,
+			httpMethod: FASTCHAT_STREAM_METHOD
+		});
 		const voiceGroupId =
 			typeof streamRequest.voiceNoteGroupId === 'string'
 				? streamRequest.voiceNoteGroupId
@@ -1058,14 +1366,84 @@ export const POST: RequestHandler = async ({
 					: undefined;
 
 		try {
+			if (isDailyBriefContext(contextType)) {
+				if (!entityId) {
+					logFastChatError({
+						error: new Error('FastChat daily brief id missing'),
+						operationType: 'fastchat_daily_brief_missing_entity',
+						metadata: {
+							contextType
+						}
+					});
+					await agentStream.sendMessage({
+						type: 'error',
+						error: 'Brief context requires a brief ID.'
+					});
+					await agentStream.sendMessage({
+						type: 'done',
+						usage: { total_tokens: 0 },
+						finished_reason: 'error'
+					});
+					await agentStream.close();
+					return;
+				}
+
+				const briefAccess = await checkDailyBriefAccess(
+					supabase,
+					entityId,
+					userId,
+					errorLogger,
+					{
+						endpoint: FASTCHAT_STREAM_ENDPOINT,
+						httpMethod: FASTCHAT_STREAM_METHOD
+					}
+				);
+				if (!briefAccess.allowed) {
+					logFastChatError({
+						error: new Error('FastChat daily brief access denied'),
+						operationType: 'fastchat_daily_brief_access_denied',
+						metadata: {
+							contextType,
+							entityId,
+							reason: briefAccess.reason ?? 'denied'
+						}
+					});
+					await agentStream.sendMessage({
+						type: 'error',
+						error: 'Access denied for the selected brief.'
+					});
+					await agentStream.sendMessage({
+						type: 'done',
+						usage: { total_tokens: 0 },
+						finished_reason: 'error'
+					});
+					await agentStream.close();
+					return;
+				}
+			}
+
 			if (
 				(contextType === 'project' ||
 					contextType === 'project_audit' ||
 					contextType === 'project_forecast') &&
 				entityId
 			) {
-				const accessResult = await checkProjectAccess(supabase, entityId, errorLogger);
+				const accessResult = await checkProjectAccess(supabase, entityId, errorLogger, {
+					userId,
+					endpoint: FASTCHAT_STREAM_ENDPOINT,
+					httpMethod: FASTCHAT_STREAM_METHOD
+				});
 				if (!accessResult.allowed) {
+					logFastChatError({
+						error: new Error('FastChat project access denied'),
+						operationType: 'fastchat_project_access_denied',
+						projectId: entityId,
+						metadata: {
+							contextType,
+							entityId,
+							reason: accessResult.reason ?? 'denied'
+						}
+					});
 					await agentStream.sendMessage({
 						type: 'error',
 						error: 'Access denied for the selected project.'
@@ -1082,7 +1460,7 @@ export const POST: RequestHandler = async ({
 
 			const { session } = await sessionService.resolveSession({
 				sessionId: streamRequest.session_id,
-				userId: user.id,
+				userId,
 				contextType,
 				entityId,
 				projectFocus
@@ -1119,7 +1497,7 @@ export const POST: RequestHandler = async ({
 
 			const userMessagePromise = sessionService.persistMessage({
 				sessionId: session.id,
-				userId: user.id,
+				userId,
 				role: 'user',
 				content: message,
 				metadata: voiceGroupId ? { voice_note_group_id: voiceGroupId } : undefined
@@ -1146,7 +1524,7 @@ export const POST: RequestHandler = async ({
 					: undefined);
 			const toolExecutorInstance =
 				tools.length > 0
-					? new ChatToolExecutor(supabase, user.id, session.id, fetch, llm)
+					? new ChatToolExecutor(supabase, userId, session.id, fetch, llm)
 					: undefined;
 			const sharedToolExecutor =
 				toolExecutorInstance &&
@@ -1196,11 +1574,7 @@ export const POST: RequestHandler = async ({
 					? new ToolExecutionService(sharedToolExecutor, undefined, errorLogger)
 					: undefined;
 			const patchToolCall = (toolCall: ChatToolCall) => {
-				if (toolCall.function.name === 'update_onto_document') {
-					console.log(toolCall.function);
-				}
-
-				let resp = maybeInjectProjectId(
+				const resp = maybeInjectProjectId(
 					toolCall,
 					effectiveProjectIdForTools,
 					toolsRequiringProjectId
@@ -1234,10 +1608,24 @@ export const POST: RequestHandler = async ({
 				} else {
 					promptContext = await loadFastChatPromptContext({
 						supabase,
-						userId: user.id,
+						userId,
 						contextType,
 						entityId,
-						projectFocus
+						projectFocus,
+						onError: ({ stage, error, metadata }) => {
+							logFastChatError({
+								error,
+								operationType: 'fastchat_context_load',
+								projectId: projectIdForLogs,
+								metadata: {
+									stage,
+									contextType,
+									entityId,
+									projectFocus,
+									...(metadata ?? {})
+								}
+							});
+						}
 					});
 
 					void updateAgentMetadata(
@@ -1260,7 +1648,11 @@ export const POST: RequestHandler = async ({
 								}
 							}
 						},
-						errorLogger
+						{
+							errorLogger,
+							userId,
+							projectId: projectIdForLogs
+						}
 					);
 				}
 
@@ -1279,13 +1671,20 @@ export const POST: RequestHandler = async ({
 					history: historyForModel,
 					userMessage: message
 				});
-				emitContextUsage(agentStream, usageSnapshot);
+				emitContextUsage(agentStream, usageSnapshot, (error) => {
+					logFastChatError({
+						error,
+						operationType: 'fastchat_stream_emit_context_usage',
+						projectId: projectIdForLogs,
+						metadata: { sessionId: session.id, contextType }
+					});
+				});
 			} catch (error) {
 				logger.warn('Failed to build fast chat prompt context', { error });
-				void errorLogger.logError(error, {
-					userId: user.id,
-					projectId: projectFocus?.projectId ?? undefined,
+				logFastChatError({
+					error,
 					operationType: 'fastchat_context_build',
+					projectId: projectIdForLogs,
 					metadata: {
 						contextType,
 						entityId,
@@ -1296,11 +1695,13 @@ export const POST: RequestHandler = async ({
 
 			const { assistantText, usage, finishedReason, toolExecutions } = await streamFastChat({
 				llm,
-				userId: user.id,
+				userId,
 				sessionId: session.id,
 				contextType,
 				entityId,
-				projectId: projectFocus?.projectId ?? (contextType === 'project' ? entityId : null),
+				projectId:
+					projectFocus?.projectId ??
+					(contextType === 'project' ? (entityId ?? null) : null),
 				history: historyForModel,
 				message,
 				signal: request.signal,
@@ -1325,7 +1726,7 @@ export const POST: RequestHandler = async ({
 								: undefined;
 							const serviceContext: ServiceContext = {
 								sessionId: session.id,
-								userId: user.id,
+								userId,
 								contextType: effectiveContextType,
 								entityId: effectiveEntityId ?? undefined,
 								conversationHistory: [],
@@ -1351,11 +1752,51 @@ export const POST: RequestHandler = async ({
 						? (toolCall) => toolExecutorInstance.execute(patchToolCall(toolCall))
 						: undefined,
 				onToolCall: async (toolCall) => {
-					emitToolCall(agentStream, patchToolCall(toolCall));
+					const patchedCall = patchToolCall(toolCall);
+					emitToolCall(agentStream, patchedCall, (error) => {
+						logFastChatError({
+							error,
+							operationType: 'fastchat_stream_emit_tool_call',
+							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								contextType: effectiveContextType,
+								toolName: patchedCall.function.name,
+								toolCallId: patchedCall.id
+							}
+						});
+					});
 				},
 				onToolResult: async ({ toolCall, result }) => {
 					const patchedCall = patchToolCall(toolCall);
-					emitToolResult(agentStream, patchedCall, result);
+					emitToolResult(agentStream, patchedCall, result, (error) => {
+						logFastChatError({
+							error,
+							operationType: 'fastchat_stream_emit_tool_result',
+							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								contextType: effectiveContextType,
+								toolName: patchedCall.function.name,
+								toolCallId: patchedCall.id
+							}
+						});
+					});
+					if (!result.success) {
+						logFastChatError({
+							error: new Error(result.error ?? 'FastChat tool execution failed'),
+							operationType: 'fastchat_tool_result_failure',
+							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								contextType: effectiveContextType,
+								entityId: effectiveEntityId,
+								toolName: patchedCall.function.name,
+								toolCallId: patchedCall.id,
+								toolError: result.error
+							}
+						});
+					}
 
 					const contextShift = extractContextShiftPayload(result);
 					if (contextShift) {
@@ -1365,21 +1806,45 @@ export const POST: RequestHandler = async ({
 						if (isProjectScopedContext(contextShift.new_context)) {
 							effectiveProjectIdForTools = contextShift.entity_id;
 						}
-						await emitContextShift(agentStream, contextShift);
+						await emitContextShift(agentStream, contextShift, (error) => {
+							logFastChatError({
+								error,
+								operationType: 'fastchat_stream_emit_context_shift',
+								projectId: contextShift.entity_id,
+								metadata: {
+									sessionId: session.id,
+									contextType: contextShift.new_context,
+									entityId: contextShift.entity_id
+								}
+							});
+						});
 					}
 				},
 				onDelta: async (delta) => {
-					await agentStream.sendMessage({ type: 'text_delta', content: delta });
+					try {
+						await agentStream.sendMessage({ type: 'text_delta', content: delta });
+					} catch (error) {
+						logFastChatError({
+							error,
+							operationType: 'fastchat_stream_emit_delta',
+							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								contextType: effectiveContextType
+							}
+						});
+						throw error;
+					}
 				}
 			});
 
 			const [userMessage] = await Promise.all([
 				userMessagePromise.catch((error) => {
 					logger.warn('Failed to persist user message', { error, sessionId: session.id });
-					void errorLogger.logError(error, {
-						userId: user.id,
-						projectId: projectFocus?.projectId ?? undefined,
+					logFastChatError({
+						error,
 						operationType: 'fastchat_persist_message',
+						projectId: projectIdForLogs,
 						metadata: { role: 'user', sessionId: session.id }
 					});
 					return null;
@@ -1389,7 +1854,7 @@ export const POST: RequestHandler = async ({
 			if (voiceGroupId && userMessage?.id) {
 				await sessionService.attachVoiceNoteGroup({
 					groupId: voiceGroupId,
-					userId: user.id,
+					userId,
 					sessionId: session.id,
 					messageId: userMessage.id
 				});
@@ -1397,17 +1862,17 @@ export const POST: RequestHandler = async ({
 
 			const assistantMessage = await sessionService.persistMessage({
 				sessionId: session.id,
-				userId: user.id,
+				userId,
 				role: 'assistant',
 				content: assistantText.trim(),
 				usage
 			});
 
 			if (!assistantMessage) {
-				void errorLogger.logError(new Error('Failed to persist assistant message'), {
-					userId: user.id,
-					projectId: projectFocus?.projectId ?? undefined,
+				logFastChatError({
+					error: new Error('Failed to persist assistant message'),
 					operationType: 'fastchat_persist_message',
+					projectId: projectIdForLogs,
 					metadata: { role: 'assistant', sessionId: session.id }
 				});
 			}
@@ -1436,6 +1901,12 @@ export const POST: RequestHandler = async ({
 				});
 			} catch (error) {
 				logger.warn('Failed to emit last_turn_context', { error, sessionId: session.id });
+				logFastChatError({
+					error,
+					operationType: 'fastchat_stream_emit_last_turn_context',
+					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+					metadata: { sessionId: session.id, contextType: effectiveContextType }
+				});
 			}
 
 			await agentStream.sendMessage({
@@ -1471,7 +1942,7 @@ export const POST: RequestHandler = async ({
 				);
 				const updated = await reconciliation.reconcile({
 					sessionId: session.id,
-					userId: user.id,
+					userId,
 					contextType: effectiveContextType,
 					messages: summarizerMessages,
 					toolResults: toolSummaries,
@@ -1487,37 +1958,80 @@ export const POST: RequestHandler = async ({
 						{
 							agent_state: sanitizedUpdated
 						},
-						errorLogger
+						{
+							errorLogger,
+							userId,
+							projectId: effectiveProjectIdForTools ?? projectIdForLogs
+						}
 					);
 				}
 			})().catch((error) => {
 				logger.warn('FastChat agent_state reconciliation failed', { error });
-				void errorLogger.logError(error, {
-					userId: user.id,
-					projectId: projectFocus?.projectId ?? undefined,
+				logFastChatError({
+					error,
 					operationType: 'fastchat_agent_state_reconciliation',
+					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 					metadata: { sessionId: session.id, contextType: effectiveContextType }
 				});
 			});
 		} catch (error) {
 			logger.error('Agent V2 stream error', { error });
-			void errorLogger.logError(error, {
-				userId: user.id,
-				projectId: projectFocus?.projectId ?? undefined,
+			logFastChatError({
+				error,
 				operationType: 'fastchat_stream',
+				projectId: projectIdForLogs,
 				metadata: { contextType, entityId, sessionId: streamRequest.session_id }
 			});
-			await agentStream.sendMessage({
-				type: 'error',
-				error: 'An error occurred while streaming.'
-			});
-			await agentStream.sendMessage({
-				type: 'done',
-				usage: { total_tokens: 0 },
-				finished_reason: 'error'
-			});
+			try {
+				await agentStream.sendMessage({
+					type: 'error',
+					error: 'An error occurred while streaming.'
+				});
+			} catch (sendError) {
+				logFastChatError({
+					error: sendError,
+					operationType: 'fastchat_stream_emit_error',
+					projectId: projectIdForLogs,
+					metadata: {
+						contextType,
+						entityId,
+						sessionId: streamRequest.session_id
+					}
+				});
+			}
+			try {
+				await agentStream.sendMessage({
+					type: 'done',
+					usage: { total_tokens: 0 },
+					finished_reason: 'error'
+				});
+			} catch (sendError) {
+				logFastChatError({
+					error: sendError,
+					operationType: 'fastchat_stream_emit_done',
+					projectId: projectIdForLogs,
+					metadata: {
+						contextType,
+						entityId,
+						sessionId: streamRequest.session_id
+					}
+				});
+			}
 		} finally {
-			await agentStream.close();
+			try {
+				await agentStream.close();
+			} catch (error) {
+				logFastChatError({
+					error,
+					operationType: 'fastchat_stream_close',
+					projectId: projectIdForLogs,
+					metadata: {
+						contextType,
+						entityId,
+						sessionId: streamRequest.session_id
+					}
+				});
+			}
 		}
 	})();
 

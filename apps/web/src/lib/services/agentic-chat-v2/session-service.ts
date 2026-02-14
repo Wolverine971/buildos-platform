@@ -10,6 +10,8 @@ import type {
 	Database
 } from '@buildos/shared-types';
 import { createLogger } from '$lib/utils/logger';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import type { FastChatHistoryMessage, FastAgentStreamUsage } from './types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 
@@ -47,7 +49,51 @@ type AttachVoiceNoteParams = {
 	messageId: string;
 };
 
-export function createFastChatSessionService(supabase: SupabaseClient<Database>) {
+type FastChatSessionServiceOptions = {
+	errorLogger?: ErrorLoggerService;
+	endpoint?: string;
+	httpMethod?: string;
+};
+
+function sanitizeMetadata(metadata?: Record<string, unknown>): Record<string, unknown> | undefined {
+	if (!metadata) return undefined;
+	const sanitized = sanitizeLogData(metadata);
+	if (sanitized && typeof sanitized === 'object' && !Array.isArray(sanitized)) {
+		return sanitized as Record<string, unknown>;
+	}
+	return { value: sanitized };
+}
+
+export function createFastChatSessionService(
+	supabase: SupabaseClient<Database>,
+	options: FastChatSessionServiceOptions = {}
+) {
+	const errorLogger = options.errorLogger;
+	const endpoint = options.endpoint ?? '/api/agent/v2/stream';
+	const httpMethod = options.httpMethod ?? 'POST';
+
+	function logFastChatSessionError(params: {
+		error: unknown;
+		operationType: string;
+		userId?: string;
+		projectId?: string;
+		tableName?: string;
+		recordId?: string;
+		metadata?: Record<string, unknown>;
+	}): void {
+		if (!errorLogger) return;
+		void errorLogger.logError(params.error, {
+			userId: params.userId,
+			projectId: params.projectId,
+			endpoint,
+			httpMethod,
+			operationType: params.operationType,
+			tableName: params.tableName,
+			recordId: params.recordId,
+			metadata: sanitizeMetadata(params.metadata)
+		});
+	}
+
 	async function resolveSession(params: ResolveSessionParams): Promise<{
 		session: ChatSession;
 		created: boolean;
@@ -65,6 +111,19 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 
 			if (error) {
 				logger.warn('Failed to load chat session', { error, sessionId, userId });
+				logFastChatSessionError({
+					error,
+					operationType: 'fastchat_session_load',
+					userId,
+					projectId: projectFocus?.projectId ?? undefined,
+					tableName: 'chat_sessions',
+					recordId: sessionId,
+					metadata: {
+						sessionId,
+						contextType,
+						entityId
+					}
+				});
 			} else if (data) {
 				session = data;
 			}
@@ -96,12 +155,60 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 
 				if (error) {
 					logger.warn('Failed to update chat session context', { error, sessionId });
+					logFastChatSessionError({
+						error,
+						operationType: 'fastchat_session_update_context',
+						userId,
+						projectId: projectFocus?.projectId ?? undefined,
+						tableName: 'chat_sessions',
+						recordId: session.id,
+						metadata: {
+							sessionId: session.id,
+							contextType,
+							entityId,
+							updates
+						}
+					});
 				} else if (data) {
 					session = data;
 				}
 			}
 
 			return { session, created: false };
+		}
+
+		// Canonical brief session key: one active session per (user, daily_brief_id).
+		if (contextType === 'daily_brief' && entityId) {
+			const { data, error } = await supabase
+				.from('chat_sessions')
+				.select('*')
+				.eq('user_id', userId)
+				.eq('context_type', contextType)
+				.eq('entity_id', entityId)
+				.eq('status', 'active')
+				.order('updated_at', { ascending: false })
+				.limit(1)
+				.maybeSingle();
+
+			if (error) {
+				logger.warn('Failed to resolve canonical daily brief session', {
+					error,
+					userId,
+					entityId
+				});
+				logFastChatSessionError({
+					error,
+					operationType: 'fastchat_daily_brief_session_lookup',
+					userId,
+					tableName: 'chat_sessions',
+					metadata: {
+						contextType,
+						entityId
+					}
+				});
+			} else if (data) {
+				return { session: data, created: false };
+			}
 		}
 
 		const insert: ChatSessionInsert = {
@@ -122,7 +229,19 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 
 		if (error || !data) {
 			logger.error('Failed to create chat session', { error, userId });
-			throw new Error('Failed to create chat session');
+			logFastChatSessionError({
+				error: error ?? new Error('No session returned from insert'),
+				operationType: 'fastchat_session_create',
+				userId,
+				projectId: projectFocus?.projectId ?? undefined,
+				tableName: 'chat_sessions',
+				metadata: {
+					contextType,
+					entityId,
+					hasProjectFocus: Boolean(projectFocus)
+				}
+			});
+			throw new Error(`Failed to create chat session: ${error?.message ?? 'unknown error'}`);
 		}
 
 		return { session: data, created: true };
@@ -141,6 +260,16 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 
 		if (error || !data) {
 			logger.warn('Failed to load chat history', { error, sessionId });
+			logFastChatSessionError({
+				error: error ?? new Error('No chat history rows returned'),
+				operationType: 'fastchat_history_load',
+				tableName: 'chat_messages',
+				recordId: sessionId,
+				metadata: {
+					sessionId,
+					limit
+				}
+			});
 			return [];
 		}
 
@@ -177,6 +306,19 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 
 		if (error) {
 			logger.warn('Failed to persist chat message', { error, sessionId, role });
+			logFastChatSessionError({
+				error,
+				operationType: 'fastchat_message_persist',
+				userId,
+				tableName: 'chat_messages',
+				recordId: sessionId,
+				metadata: {
+					sessionId,
+					role,
+					hasMetadata: Boolean(metadata),
+					usage: usage ?? null
+				}
+			});
 			return null;
 		}
 
@@ -212,6 +354,20 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 
 		if (error) {
 			logger.warn('Failed to update session stats', { error, sessionId: session.id });
+			logFastChatSessionError({
+				error,
+				operationType: 'fastchat_session_stats_update',
+				userId: session.user_id,
+				tableName: 'chat_sessions',
+				recordId: session.id,
+				metadata: {
+					sessionId: session.id,
+					messageCountDelta,
+					totalTokensDelta,
+					contextType,
+					entityId
+				}
+			});
 			return session;
 		}
 
@@ -237,6 +393,25 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 			.select('id');
 
 		if (!error && data && data.length > 0) return;
+		if (error) {
+			logger.warn('Failed to update voice note group link, falling back to insert', {
+				error,
+				groupId,
+				userId
+			});
+			logFastChatSessionError({
+				error,
+				operationType: 'fastchat_voice_note_attach',
+				userId,
+				tableName: 'voice_note_groups',
+				recordId: groupId,
+				metadata: {
+					sessionId,
+					messageId,
+					fallback: 'insert'
+				}
+			});
+		}
 
 		const { error: insertError } = await supabase.from('voice_note_groups').insert({
 			id: groupId,
@@ -247,6 +422,18 @@ export function createFastChatSessionService(supabase: SupabaseClient<Database>)
 
 		if (insertError) {
 			logger.warn('Failed to attach voice note group', { insertError, groupId, userId });
+			logFastChatSessionError({
+				error: insertError,
+				operationType: 'fastchat_voice_note_attach',
+				userId,
+				tableName: 'voice_note_groups',
+				recordId: groupId,
+				metadata: {
+					sessionId,
+					messageId,
+					insertAttempted: true
+				}
+			});
 		}
 	}
 

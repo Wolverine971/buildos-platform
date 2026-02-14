@@ -510,6 +510,14 @@ Always mention when more data is available via tools and confirm before modifyin
 You're in calendar mode. Focus on scheduling, time management, and calendar events.
 Use calendar tools to help with scheduling tasks and finding available time slots.`,
 
+			daily_brief: `
+
+## Current Context: Daily Brief Chat
+This conversation is tied to a generated daily brief snapshot.
+- Prefer acting on entities explicitly mentioned in the brief context.
+- If the user references an out-of-brief item and identity is ambiguous, ask one concise clarification before writing.
+- Be decisive when intent and target are clear.`,
+
 			// =====================================================
 			// PROACTIVE MODES (Agent System)
 			// =====================================================
@@ -758,6 +766,8 @@ You are an ontology system assistant helping users work with the BuildOS knowled
 			case 'project_forecast':
 				return 'project';
 			case 'general':
+				return 'global';
+			case 'daily_brief':
 				return 'global';
 			default:
 				return contextType;
@@ -2148,6 +2158,22 @@ Use this when users ask questions like:
 					UTILITY_TOOLS.get_field_info
 				];
 
+			case 'daily_brief':
+				// Brief chat can execute updates, but should stay brief-focused.
+				return [
+					PROACTIVE_TOOLS.update_task,
+					PROACTIVE_TOOLS.schedule_task,
+					REACTIVE_TOOLS.list_tasks,
+					REACTIVE_TOOLS.get_task_details,
+					REACTIVE_TOOLS.search_projects,
+					REACTIVE_TOOLS.get_project_details,
+					REACTIVE_TOOLS.search_notes,
+					REACTIVE_TOOLS.get_note_details,
+					REACTIVE_TOOLS.get_calendar_events,
+					REACTIVE_TOOLS.find_available_slots,
+					UTILITY_TOOLS.get_field_info
+				];
+
 			case 'general':
 				// General mode - mostly informational
 				return [
@@ -2195,7 +2221,7 @@ Use this when users ask questions like:
 	 */
 	public shouldAutoExecute(contextType: ChatContextType): boolean {
 		// Reactive modes always execute immediately
-		const reactiveModes: ChatContextType[] = ['global', 'project', 'calendar'];
+		const reactiveModes: ChatContextType[] = ['global', 'project', 'calendar', 'daily_brief'];
 		return reactiveModes.includes(contextType);
 	}
 

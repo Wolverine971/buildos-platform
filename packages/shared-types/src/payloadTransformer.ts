@@ -16,6 +16,8 @@ import type {
 	BriefFailedEventPayload,
 	BrainDumpProcessedEventPayload,
 	TaskDueSoonEventPayload,
+	ProjectActivityChangedEventPayload,
+	ProjectActivityBatchedEventPayload,
 	ProjectPhaseScheduledEventPayload,
 	CalendarSyncFailedEventPayload,
 	UserSignupEventPayload
@@ -30,6 +32,8 @@ export type EventPayload =
 	| BriefFailedEventPayload
 	| BrainDumpProcessedEventPayload
 	| TaskDueSoonEventPayload
+	| ProjectActivityChangedEventPayload
+	| ProjectActivityBatchedEventPayload
 	| ProjectPhaseScheduledEventPayload
 	| CalendarSyncFailedEventPayload
 	| UserSignupEventPayload
@@ -159,6 +163,93 @@ function transformTaskDueSoon(payload: TaskDueSoonEventPayload): NotificationPay
 	};
 }
 
+function parseActivityActionType(actionType: string | undefined): {
+	entityLabel: string;
+	actionLabel: string;
+} {
+	const normalized = typeof actionType === 'string' ? actionType.trim() : '';
+	const [entityRaw = 'project', actionRaw = 'updated'] = normalized.split('.');
+	return {
+		entityLabel: entityRaw.replace(/_/g, ' '),
+		actionLabel: actionRaw.replace(/_/g, ' ')
+	};
+}
+
+function transformProjectActivityChanged(
+	payload: ProjectActivityChangedEventPayload
+): NotificationPayload {
+	const projectName = payload.project_name || 'your shared project';
+	const actorName = payload.actor_name || 'A teammate';
+	const { entityLabel, actionLabel } = parseActivityActionType(payload.action_type);
+	const targetText = entityLabel === 'project' ? projectName : `a ${entityLabel}`;
+	const locationSuffix = entityLabel === 'project' ? '' : ` in ${projectName}`;
+
+	return {
+		title: `${actorName} activity in ${projectName}`,
+		body: `${actorName} ${actionLabel} ${targetText}${locationSuffix}`,
+		action_url: `/projects/${payload.project_id}`,
+		icon_url: '/AppImages/android/android-launchericon-192-192.png',
+		tag: `project:${payload.project_id}:activity`,
+		data: {
+			project_id: payload.project_id,
+			project_name: payload.project_name,
+			actor_user_id: payload.actor_user_id,
+			actor_name: payload.actor_name,
+			action_type: payload.action_type,
+			entity_id: payload.entity_id,
+			entity_type: payload.entity_type,
+			occurred_at: payload.occurred_at
+		}
+	};
+}
+
+function transformProjectActivityBatched(
+	payload: ProjectActivityBatchedEventPayload
+): NotificationPayload {
+	const projectName = payload.project_name || 'your shared project';
+	const eventCount = Number.isFinite(payload.event_count) ? Math.max(payload.event_count, 0) : 0;
+	const actorCount = payload.actor_counts ? Object.keys(payload.actor_counts).length : 0;
+
+	let topAction: string | null = null;
+	if (payload.action_counts) {
+		const entries = Object.entries(payload.action_counts)
+			.filter(([, count]) => Number.isFinite(count))
+			.sort((a, b) => b[1] - a[1]);
+		if (entries.length > 0) {
+			const [actionKey, count] = entries[0];
+			const { entityLabel, actionLabel } = parseActivityActionType(actionKey);
+			topAction = `${entityLabel} ${actionLabel} (${count})`;
+		}
+	}
+
+	const title =
+		actorCount > 0
+			? `${actorCount} teammate${actorCount === 1 ? '' : 's'} active in ${projectName}`
+			: `Updates in ${projectName}`;
+	const updateText = `${eventCount} update${eventCount === 1 ? '' : 's'}`;
+	const body = topAction
+		? `${updateText} in ${projectName} • Top: ${topAction}`
+		: `${updateText} in ${projectName}`;
+
+	return {
+		title,
+		body,
+		action_url: `/projects/${payload.project_id}`,
+		icon_url: '/AppImages/android/android-launchericon-192-192.png',
+		tag: `project:${payload.project_id}:activity`,
+		data: {
+			url: `/projects/${payload.project_id}`,
+			project_id: payload.project_id,
+			project_name: payload.project_name,
+			event_count: eventCount,
+			window_start: payload.window_start,
+			window_end: payload.window_end,
+			action_counts: payload.action_counts,
+			actor_counts: payload.actor_counts
+		}
+	};
+}
+
 /**
  * Transform project.phase_scheduled event payload
  */
@@ -284,6 +375,16 @@ export function transformEventPayload(
 
 			case 'task.due_soon':
 				return transformTaskDueSoon(eventPayload as TaskDueSoonEventPayload);
+
+			case 'project.activity.changed':
+				return transformProjectActivityChanged(
+					eventPayload as ProjectActivityChangedEventPayload
+				);
+
+			case 'project.activity.batched':
+				return transformProjectActivityBatched(
+					eventPayload as ProjectActivityBatchedEventPayload
+				);
 
 			case 'project.phase_scheduled':
 				return transformProjectPhaseScheduled(
