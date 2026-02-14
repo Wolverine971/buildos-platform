@@ -966,9 +966,9 @@
 							</Badge>
 						{/if}
 					</div>
-					<!-- Use micro-label pattern for metadata + save status -->
+					<!-- Use micro-label pattern for metadata + save status (desktop only, mobile shows in content area) -->
 					<p
-						class="micro-label text-muted-foreground/70 mt-0.5 flex items-center gap-1.5 flex-wrap"
+						class="micro-label text-muted-foreground/70 mt-0.5 hidden lg:flex items-center gap-1.5 flex-wrap"
 					>
 						<span>
 							{#if createdAt}CREATED {new Date(createdAt).toLocaleDateString(
@@ -1052,7 +1052,7 @@
 					<div class="flex flex-col lg:flex-row h-full">
 						<!-- Left sidebar (metadata + history + activity) - Desktop only, hidden on mobile -->
 						<div
-							class="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 flex-shrink-0 lg:border-r border-border bg-muted overflow-y-auto"
+							class="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 flex-shrink-0 lg:border-r border-border bg-muted overflow-y-auto tx tx-frame tx-weak"
 						>
 							<div class="p-3 space-y-2">
 								<!-- Settings Section - Always expanded -->
@@ -1162,7 +1162,7 @@
 											type="button"
 											onclick={() =>
 												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
+											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
 										>
 											<span class="flex items-center gap-2">
 												<span class="micro-label text-foreground"
@@ -1177,10 +1177,10 @@
 												{/if}
 											</span>
 											{#if showLinkedEntities}
-												<ChevronUp class="w-4 h-4 text-muted-foreground" />
+												<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
 											{:else}
 												<ChevronDown
-													class="w-4 h-4 text-muted-foreground"
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
 												/>
 											{/if}
 										</button>
@@ -1204,16 +1204,16 @@
 											type="button"
 											onclick={() =>
 												(showVersionHistory = !showVersionHistory)}
-											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
+											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
 										>
 											<span class="micro-label text-foreground"
 												>VERSION HISTORY</span
 											>
 											{#if showVersionHistory}
-												<ChevronUp class="w-4 h-4 text-muted-foreground" />
+												<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
 											{:else}
 												<ChevronDown
-													class="w-4 h-4 text-muted-foreground"
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
 												/>
 											{/if}
 										</button>
@@ -1236,16 +1236,16 @@
 										<button
 											type="button"
 											onclick={() => (showVoiceNotes = !showVoiceNotes)}
-											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
+											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
 										>
 											<span class="micro-label text-foreground"
 												>VOICE NOTES</span
 											>
 											{#if showVoiceNotes}
-												<ChevronUp class="w-4 h-4 text-muted-foreground" />
+												<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
 											{:else}
 												<ChevronDown
-													class="w-4 h-4 text-muted-foreground"
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
 												/>
 											{/if}
 										</button>
@@ -1266,16 +1266,16 @@
 										<button
 											type="button"
 											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full flex items-center justify-between py-1.5 text-left hover:bg-background/50 rounded transition-colors pressable"
+											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
 										>
 											<span class="micro-label text-foreground"
 												>ACTIVITY LOG</span
 											>
 											{#if showActivityLog}
-												<ChevronUp class="w-4 h-4 text-muted-foreground" />
+												<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
 											{:else}
 												<ChevronDown
-													class="w-4 h-4 text-muted-foreground"
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
 												/>
 											{/if}
 										</button>
@@ -1312,8 +1312,63 @@
 							<div class="p-3 flex-1 flex flex-col min-h-0">
 								<div class="flex items-center justify-between gap-2 mb-2 shrink-0">
 									<h4 class="micro-label text-foreground">CONTENT</h4>
+									<!-- Mobile/tablet: date + save status next to content label -->
+									<p
+										class="micro-label text-muted-foreground/70 lg:hidden flex items-center gap-1.5"
+									>
+										{#if updatedAt && updatedAt !== createdAt}
+											<span
+												>UPDATED {new Date(updatedAt).toLocaleDateString(
+													undefined,
+													{ month: 'short', day: 'numeric' }
+												)}</span
+											>
+										{:else if createdAt}
+											<span
+												>CREATED {new Date(createdAt).toLocaleDateString(
+													undefined,
+													{ month: 'short', day: 'numeric' }
+												)}</span
+											>
+										{/if}
+										{#if isEditing}
+											<span class="inline-flex items-center gap-1">
+												{#if saveStatus === 'saving'}
+													<LoaderCircle
+														class="w-2.5 h-2.5 animate-spin text-muted-foreground"
+													/>
+													<span class="text-muted-foreground">SAVING</span>
+												{:else if saveStatus === 'saved'}
+													<Check
+														class="w-2.5 h-2.5 text-green-600 dark:text-green-400"
+													/>
+													<span class="text-green-600 dark:text-green-400"
+														>SAVED</span
+													>
+												{:else if saveStatus === 'error'}
+													<AlertTriangle
+														class="w-2.5 h-2.5 text-destructive"
+													/>
+													<span class="text-destructive">FAILED</span>
+												{:else if saveStatus === 'conflict'}
+													<AlertTriangle
+														class="w-2.5 h-2.5 text-amber-500"
+													/>
+													<span class="text-amber-500">CONFLICT</span>
+												{:else if saveStatus === 'dirty'}
+													<span
+														class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+													></span>
+													<span class="text-muted-foreground/50"
+														>UNSAVED</span
+													>
+												{/if}
+											</span>
+										{/if}
+									</p>
+									<!-- Desktop: MARKDOWN label -->
 									<span
-										class="micro-label text-muted-foreground/70 hidden sm:inline"
+										class="micro-label text-muted-foreground/70 hidden lg:inline"
 										>MARKDOWN</span
 									>
 								</div>
@@ -1342,10 +1397,10 @@
 								<button
 									type="button"
 									onclick={() => (showMobileMetadata = !showMobileMetadata)}
-									class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted/80 transition-colors pressable"
+									class="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium text-foreground rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
 								>
 									<span class="flex items-center gap-2">
-										<Settings2 class="w-4 h-4 text-muted-foreground" />
+										<Settings2 class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
 										<span class="micro-label text-foreground">SETTINGS</span>
 										{#if linkedCount > 0 || tagCount > 0}
 											<span
@@ -1356,9 +1411,9 @@
 										{/if}
 									</span>
 									{#if showMobileMetadata}
-										<ChevronUp class="w-4 h-4 text-muted-foreground" />
+										<ChevronUp class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
 									{:else}
-										<ChevronDown class="w-4 h-4 text-muted-foreground" />
+										<ChevronDown class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
 									{/if}
 								</button>
 

@@ -148,7 +148,8 @@
       "Bash(# Kill everything and start clean kill -9 60384 61401 sleep 2 # Also kill the HMR websocket port lsof -ti :24678)",
       "Bash(# Clean everything and start fresh rm -rf /Users/djwayne/buildos-platform/apps/web/node_modules/.vite /Users/djwayne/buildos-platform/apps/web/.svelte-kit /Users/djwayne/buildos-platform/node_modules/.vite pnpm dev:fast 2>&1 & sleep 6 lsof -i :5173)",
       "Bash(npx tailwindcss --help:*)",
-      "Bash(npx tailwindcss:*)"
+      "Bash(npx tailwindcss:*)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm --filter=web exec svelte-check:*)"
     ],
     "deny": [],
     "ask": []

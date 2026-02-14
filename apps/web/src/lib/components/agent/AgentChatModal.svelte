@@ -58,7 +58,7 @@
 	import { createProjectInvalidation } from '$lib/utils/invalidation';
 	import type { VoiceNote } from '$lib/types/voice-notes';
 
-	type ProjectAction = 'workspace' | 'audit' | 'forecast';
+	type ProjectAction = 'workspace';
 
 	interface AutoInitProjectConfig {
 		projectId: string;
@@ -757,25 +757,15 @@
 		logFocusActivity('Focus reset', defaultProjectFocus);
 	}
 
-	function mapActionToContextType(action: ProjectAction): ChatContextType {
-		switch (action) {
-			case 'audit':
-				return 'project_audit';
-			case 'forecast':
-				return 'project_forecast';
-			default:
-				return 'project';
-		}
+	function mapActionToContextType(_action: ProjectAction): ChatContextType {
+		return 'project';
 	}
 
 	function buildContextLabelForAction(
-		action: ProjectAction,
+		_action: ProjectAction,
 		projectName?: string | null
 	): string {
-		const name = projectName?.trim() || 'Project';
-		if (action === 'audit') return `${name} (Audit)`;
-		if (action === 'forecast') return `${name} (Forecast)`;
-		return name;
+		return projectName?.trim() || 'Project';
 	}
 
 	function applyProjectAction(
@@ -3637,12 +3627,6 @@
 			case 'project':
 				return `What would you like to do with ${name}? I can help you explore goals, update tasks, or answer questions about the project.`;
 
-			case 'project_audit':
-				return `Let's audit ${name}. I'll help you identify gaps, risks, and areas that need attention.`;
-
-			case 'project_forecast':
-				return `Let's explore timelines and scenarios for ${name}. What aspects would you like to forecast?`;
-
 			case 'calendar':
 				return 'What would you like to plan or review on your calendar?';
 
@@ -3776,7 +3760,7 @@
 						projectId={selectedEntityId || ''}
 						projectName={projectFocus?.projectName ?? selectedContextLabel ?? 'Project'}
 						onSelectAction={(action) => handleProjectActionSelect(action)}
-						onOpenFocusSelector={openFocusSelector}
+						onSelectFocus={handleFocusSelection}
 					/>
 				{:else if agentToAgentMode && agentToAgentStep !== 'chat'}
 					<AgentAutomationWizard

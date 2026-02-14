@@ -12,37 +12,37 @@ const ENTITY_CONFIG: Record<
 > = {
 	task: {
 		table: 'onto_tasks',
-		select: 'id, title, state_key, priority, due_at, created_at, props',
+		select: 'id, title, state_key, priority, due_at, updated_at, created_at, props',
 		searchField: 'title'
 	},
 	goal: {
 		table: 'onto_goals',
-		select: 'id, name, type_key, created_at, props',
+		select: 'id, name, type_key, state_key, target_date, updated_at, created_at, props',
 		searchField: 'name'
 	},
 	plan: {
 		table: 'onto_plans',
-		select: 'id, name, state_key, created_at, props',
+		select: 'id, name, type_key, state_key, updated_at, created_at, props',
 		searchField: 'name'
 	},
 	document: {
 		table: 'onto_documents',
-		select: 'id, title, state_key, created_at, props',
+		select: 'id, title, state_key, updated_at, created_at, props',
 		searchField: 'title'
 	},
 	milestone: {
 		table: 'onto_milestones',
-		select: 'id, title, due_at, state_key, created_at, props',
+		select: 'id, title, due_at, state_key, updated_at, created_at, props',
 		searchField: 'title'
 	},
 	risk: {
 		table: 'onto_risks',
-		select: 'id, title, state_key, impact, probability, created_at, props',
+		select: 'id, title, state_key, impact, probability, updated_at, created_at, props',
 		searchField: 'title'
 	},
 	requirement: {
 		table: 'onto_requirements',
-		select: 'id, text, priority, type_key, created_at, props',
+		select: 'id, text, priority, type_key, updated_at, created_at, props',
 		searchField: 'text'
 	}
 };
@@ -90,16 +90,25 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			}
 		}
 
+		// Sorting matches insight panel defaults (see insight-panel-config.ts)
 		if (typeParam === 'task') {
+			// High priority first (lower number = higher priority), then recently updated
 			query = query
-				.order('priority', { ascending: false, nullsFirst: false })
-				.order('created_at', { ascending: false });
+				.order('priority', { ascending: true, nullsFirst: false })
+				.order('updated_at', { ascending: false });
 		} else if (typeParam === 'milestone') {
+			// Soonest due date first, then recently updated
 			query = query
-				.order('due_at', { ascending: true, nullsFirst: true })
-				.order('created_at', { ascending: false });
+				.order('due_at', { ascending: true, nullsFirst: false })
+				.order('updated_at', { ascending: false });
+		} else if (typeParam === 'requirement') {
+			// High priority first, then recently updated
+			query = query
+				.order('priority', { ascending: true, nullsFirst: false })
+				.order('updated_at', { ascending: false });
 		} else {
-			query = query.order('created_at', { ascending: false });
+			// Default: most recently updated first (goals, plans, documents, risks)
+			query = query.order('updated_at', { ascending: false });
 		}
 
 		const { data, error } = await query;
@@ -110,16 +119,19 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
 		const entities: FocusEntitySummary[] = (data || []).map((item: any) => {
 			const resolvedName = item.title ?? item.name ?? item.text ?? 'Untitled';
-			const dueAt = item.due_at ?? null;
+			const dueAt = item.due_at ?? item.target_date ?? null;
 
 			return {
 				id: item.id,
 				name: resolvedName,
 				type: typeParam,
 				metadata: {
-					state_key: item.state_key ?? item.type_key ?? null,
+					state_key: item.state_key ?? null,
+					type_key: item.type_key ?? null,
 					priority: 'priority' in item ? item.priority : null,
-					due_at: dueAt
+					due_at: dueAt,
+					impact: 'impact' in item ? item.impact : null,
+					probability: 'probability' in item ? item.probability : null
 				}
 			};
 		});

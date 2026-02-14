@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/onboarding/+page.svelte -->
 <script lang="ts">
-	import { onMount, onDestroy, tick } from 'svelte';
+	import { onMount, onDestroy, tick, untrack } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { fade, scale } from 'svelte/transition';
@@ -219,9 +219,11 @@
 
 	// Sync currentStepInputValue with stepInputs array (bidirectional)
 	// Effect 1: Load from array when step changes
+	// Uses untrack for currentStepInputValue so this effect only runs when
+	// stepInputs or currentStep change — NOT when the user types.
 	$effect(() => {
 		const arrayValue = stepInputs[currentStep] ?? '';
-		if (currentStepInputValue !== arrayValue) {
+		if (untrack(() => currentStepInputValue) !== arrayValue) {
 			currentStepInputValue = arrayValue;
 		}
 	});
@@ -229,7 +231,7 @@
 	// Effect 2: Save to array when value changes (from typing or voice)
 	$effect(() => {
 		const value = currentStepInputValue;
-		if (value !== stepInputs[currentStep]) {
+		if (value !== untrack(() => stepInputs)[currentStep]) {
 			const nextInputs = [...stepInputs];
 			nextInputs[currentStep] = value;
 			stepInputs = nextInputs;

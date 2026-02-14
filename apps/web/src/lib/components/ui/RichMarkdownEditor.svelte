@@ -1167,20 +1167,19 @@
 			? 'flex-1 flex flex-col min-h-0'
 			: ''}"
 	>
-		<!-- Header: Mode Toggle (Mobile-First Design) -->
+		<!-- Header: Unified toolbar row -->
 		<div class="border-b border-border bg-muted/30">
-			<!-- Top row: Mode toggle + character count (visible on mobile) -->
-			<div class="flex items-center justify-between px-2 py-1.5 sm:px-3">
+			<div class="flex items-center px-2 py-1.5 sm:px-3">
 				<!-- Segmented Control for Edit/Preview -->
 				<div
-					class="inline-flex rounded-lg bg-muted/60 p-0.5 border border-border/50"
+					class="inline-flex rounded-lg bg-muted/60 p-0.5 border border-border/50 shrink-0"
 					role="tablist"
 				>
 					<button
 						type="button"
 						role="tab"
 						aria-selected={mode === 'edit'}
-						class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
+						class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
 						'edit'
 							? 'bg-card text-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground'}"
@@ -1193,7 +1192,7 @@
 						type="button"
 						role="tab"
 						aria-selected={mode === 'preview'}
-						class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
+						class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-150 {mode ===
 						'preview'
 							? 'bg-card text-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground'}"
@@ -1204,8 +1203,70 @@
 					</button>
 				</div>
 
-				<!-- Stats (compact on mobile) -->
-				<div class="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground">
+				<!-- Formatting toolbar inline (edit mode only) -->
+				{#if mode === 'edit'}
+					<div class="w-px h-5 bg-border/50 mx-1.5 shrink-0"></div>
+					<div
+						class="flex items-center gap-0.5 overflow-x-auto scrollbar-hide flex-1 min-w-0"
+					>
+						{#each primaryToolbarButtons as action}
+							{@const ActionIcon = action.icon}
+							<button
+								type="button"
+								onmousedown={(e) => e.preventDefault()}
+								onclick={() => handleToolbar(action.id)}
+								class="flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 shrink-0"
+								title={action.label}
+								aria-label={action.label}
+								{disabled}
+							>
+								<ActionIcon class="w-4 h-4" />
+							</button>
+						{/each}
+
+						<div class="w-px h-5 bg-border/50 mx-0.5 hidden sm:block shrink-0"></div>
+
+						{#each secondaryToolbarButtons as action}
+							{@const ActionIcon = action.icon}
+							<button
+								type="button"
+								onmousedown={(e) => e.preventDefault()}
+								onclick={() => handleToolbar(action.id)}
+								class="hidden sm:flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95 shrink-0"
+								title={action.label}
+								aria-label={action.label}
+								{disabled}
+							>
+								<ActionIcon class="w-4 h-4" />
+							</button>
+						{/each}
+
+						<!-- More button (mobile only) -->
+						<button
+							type="button"
+							onclick={() => (showMoreTools = !showMoreTools)}
+							class="sm:hidden flex items-center justify-center w-8 h-8 rounded-md transition-colors active:scale-95 shrink-0 {showMoreTools
+								? 'bg-accent/20 text-accent'
+								: 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'}"
+							title="More formatting"
+							aria-label="More formatting options"
+							aria-expanded={showMoreTools}
+						>
+							{#if showMoreTools}
+								<ChevronUp class="w-4 h-4" />
+							{:else}
+								<MoreHorizontal class="w-4 h-4" />
+							{/if}
+						</button>
+					</div>
+				{/if}
+
+				<!-- Stats (hidden on mobile in edit mode to save space) -->
+				<div
+					class="{mode === 'edit'
+						? 'hidden sm:flex'
+						: 'flex'} items-center gap-2 text-[10px] sm:text-xs text-muted-foreground ml-auto pl-2 shrink-0"
+				>
 					<span class="tabular-nums">{stats.words}w</span>
 					<span class="hidden sm:inline text-border">·</span>
 					<span class="hidden sm:inline tabular-nums">{stats.chars}c</span>
@@ -1218,90 +1279,30 @@
 				</div>
 			</div>
 
-			<!-- Formatting Toolbar (only in edit mode) -->
-			{#if mode === 'edit'}
+			<!-- Expanded tools (mobile only, edit mode) -->
+			{#if mode === 'edit' && showMoreTools}
 				<div
-					class="flex items-center gap-0.5 px-1.5 py-1 border-t border-border/50 bg-muted/20 overflow-x-auto scrollbar-hide"
+					class="sm:hidden flex items-center gap-0.5 px-1.5 py-1.5 border-t border-border/30 bg-muted/10"
 				>
-					<!-- Primary buttons (always visible) -->
-					{#each primaryToolbarButtons as action}
-						{@const ActionIcon = action.icon}
-						<button
-							type="button"
-							onmousedown={(e) => e.preventDefault()}
-							onclick={() => handleToolbar(action.id)}
-							class="flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
-							title={action.label}
-							aria-label={action.label}
-							{disabled}
-						>
-							<ActionIcon class="w-4 h-4" />
-						</button>
-					{/each}
-
-					<!-- Divider before secondary buttons -->
-					<div class="w-px h-5 bg-border/50 mx-0.5 hidden sm:block"></div>
-
-					<!-- Secondary buttons (visible on sm+, hidden on mobile) -->
 					{#each secondaryToolbarButtons as action}
 						{@const ActionIcon = action.icon}
 						<button
 							type="button"
 							onmousedown={(e) => e.preventDefault()}
-							onclick={() => handleToolbar(action.id)}
-							class="hidden sm:flex items-center justify-center w-7 h-7 rounded-md text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:cursor-not-allowed transition-colors active:scale-95"
+							onclick={() => {
+								handleToolbar(action.id);
+								showMoreTools = false;
+							}}
+							class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 transition-colors active:scale-95"
 							title={action.label}
 							aria-label={action.label}
 							{disabled}
 						>
-							<ActionIcon class="w-4 h-4" />
+							<ActionIcon class="w-3.5 h-3.5" />
+							<span>{action.label}</span>
 						</button>
 					{/each}
-
-					<!-- More button (mobile only) -->
-					<button
-						type="button"
-						onclick={() => (showMoreTools = !showMoreTools)}
-						class="sm:hidden flex items-center justify-center w-8 h-8 rounded-md transition-colors active:scale-95 {showMoreTools
-							? 'bg-accent/20 text-accent'
-							: 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'}"
-						title="More formatting"
-						aria-label="More formatting options"
-						aria-expanded={showMoreTools}
-					>
-						{#if showMoreTools}
-							<ChevronUp class="w-4 h-4" />
-						{:else}
-							<MoreHorizontal class="w-4 h-4" />
-						{/if}
-					</button>
 				</div>
-
-				<!-- Expanded tools (mobile only) -->
-				{#if showMoreTools}
-					<div
-						class="sm:hidden flex items-center gap-0.5 px-1.5 py-1.5 border-t border-border/30 bg-muted/10"
-					>
-						{#each secondaryToolbarButtons as action}
-							{@const ActionIcon = action.icon}
-							<button
-								type="button"
-								onmousedown={(e) => e.preventDefault()}
-								onclick={() => {
-									handleToolbar(action.id);
-									showMoreTools = false;
-								}}
-								class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:bg-accent/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 transition-colors active:scale-95"
-								title={action.label}
-								aria-label={action.label}
-								{disabled}
-							>
-								<ActionIcon class="w-3.5 h-3.5" />
-								<span>{action.label}</span>
-							</button>
-						{/each}
-					</div>
-				{/if}
 			{/if}
 		</div>
 
