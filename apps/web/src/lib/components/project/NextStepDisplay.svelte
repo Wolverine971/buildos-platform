@@ -16,7 +16,7 @@
 -->
 <script lang="ts">
 	import { slide } from 'svelte/transition';
-	import { ChevronDown, Sparkles, Zap, RefreshCw, LoaderCircle } from 'lucide-svelte';
+	import { ChevronDown, Zap, RefreshCw, LoaderCircle } from 'lucide-svelte';
 	import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
 	import type { EntityReference } from '@buildos/shared-types';
 	import { toastService } from '$lib/stores/toast.store';
@@ -180,13 +180,44 @@
 
 {#if hasNextStep}
 	<div
-		class="group rounded-lg border border-border border-l-2 border-l-accent/40 bg-card shadow-ink tx tx-grain tx-weak {className}"
+		class="group border-t border-border/60 pt-2 {className}"
 		role="region"
-		aria-label="Next step"
+		aria-label="Suggested next move"
 	>
-		<!-- Main clickable area -->
+		<!-- Label row -->
+		<div class="flex items-center gap-1.5 mb-1">
+			<Zap class="w-3 h-3 text-accent shrink-0" />
+			<span class="text-[10px] font-semibold uppercase tracking-wider text-accent">
+				Suggested Next Move
+			</span>
+			{#if updatedTimeAgo}
+				<span class="text-[10px] text-muted-foreground hidden sm:inline">
+					· {updatedTimeAgo}
+				</span>
+			{/if}
+			<!-- Regenerate button -->
+			<button
+				type="button"
+				onclick={(e) => {
+					e.stopPropagation();
+					handleGenerateNextStep();
+				}}
+				disabled={isGenerating}
+				class="ml-auto p-1 rounded-md sm:opacity-0 sm:group-hover:opacity-100 hover:bg-accent/15 active:bg-accent/25 transition-all disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring pressable"
+				title="Regenerate next step"
+				aria-label="Regenerate next step"
+			>
+				{#if isGenerating}
+					<LoaderCircle class="w-3 h-3 text-muted-foreground animate-spin" />
+				{:else}
+					<RefreshCw class="w-3 h-3 text-muted-foreground" />
+				{/if}
+			</button>
+		</div>
+
+		<!-- Next step text (clickable to expand if long version exists) -->
 		<div
-			role="button"
+			role={hasLongVersion ? 'button' : undefined}
 			tabindex={hasLongVersion ? 0 : -1}
 			onclick={toggleExpand}
 			onkeydown={(e) => {
@@ -195,86 +226,35 @@
 					toggleExpand();
 				}
 			}}
-			class="w-full text-left px-3 py-2 sm:py-2.5 {hasLongVersion
-				? 'cursor-pointer hover:bg-accent/5 transition-colors'
+			class="flex items-start gap-1.5 {hasLongVersion
+				? 'cursor-pointer'
 				: 'cursor-default'}"
-			aria-expanded={isExpanded}
+			aria-expanded={hasLongVersion ? isExpanded : undefined}
 		>
-			<!-- Layout: Icon + Content + Actions -->
-			<div class="flex items-start gap-2 sm:gap-3">
-				<!-- Icon (always visible) -->
+			<p class="text-sm font-medium text-foreground leading-snug flex-1 min-w-0">
+				{nextStepShort}
+			</p>
+			{#if hasLongVersion}
 				<div
-					class="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-accent/15 flex items-center justify-center mt-0.5"
+					class="shrink-0 mt-0.5 text-muted-foreground transition-transform duration-[120ms]"
+					class:rotate-180={isExpanded}
 				>
-					<Zap class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
+					<ChevronDown class="w-3.5 h-3.5" />
 				</div>
-
-				<!-- Content area -->
-				<div class="flex-1 min-w-0">
-					<!-- Label row with actions -->
-					<div class="flex items-center gap-2 mb-0.5">
-						<span
-							class="text-[10px] font-semibold uppercase tracking-wider text-accent"
-						>
-							Next Move
-						</span>
-						{#if updatedTimeAgo}
-							<span class="text-[10px] text-muted-foreground hidden sm:inline">
-								{updatedTimeAgo}
-							</span>
-						{/if}
-						<!-- Regenerate button -->
-						<button
-							type="button"
-							onclick={(e) => {
-								e.stopPropagation();
-								handleGenerateNextStep();
-							}}
-							disabled={isGenerating}
-							class="ml-auto p-1.5 rounded-md sm:opacity-0 sm:group-hover:opacity-100 hover:bg-accent/15 active:bg-accent/25 transition-all disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-ring pressable"
-							title="Regenerate next step"
-							aria-label="Regenerate next step"
-						>
-							{#if isGenerating}
-								<LoaderCircle
-									class="w-3.5 h-3.5 text-muted-foreground animate-spin"
-								/>
-							{:else}
-								<RefreshCw class="w-3.5 h-3.5 text-muted-foreground" />
-							{/if}
-						</button>
-						<!-- Chevron -->
-						{#if hasLongVersion}
-							<div
-								class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-muted-foreground transition-transform duration-[120ms]"
-								class:rotate-180={isExpanded}
-							>
-								<ChevronDown class="w-4 h-4" />
-							</div>
-						{/if}
-					</div>
-					<!-- Next step text -->
-					<p class="text-sm font-medium text-foreground leading-snug pr-6">
-						{nextStepShort}
-					</p>
-				</div>
-			</div>
+			{/if}
 		</div>
 
 		<!-- Expanded content -->
 		{#if isExpanded && hasLongVersion}
-			<div class="px-3 pb-3 pt-0" transition:slide={{ duration: 120 }}>
-				<!-- No indent on mobile, indent on desktop to align under label -->
-				<div class="sm:pl-10">
-					<div class="h-px bg-border mb-2"></div>
-					<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-					<div
-						class="text-sm text-muted-foreground leading-relaxed prose prose-sm prose-neutral dark:prose-invert max-w-none"
-						onclick={handleLongContentClick}
-						role="presentation"
-					>
-						{@html renderLongContent()}
-					</div>
+			<div class="pt-1.5" transition:slide={{ duration: 120 }}>
+				<div class="h-px bg-border/50 mb-1.5"></div>
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+				<div
+					class="text-xs text-muted-foreground leading-relaxed prose prose-sm prose-neutral dark:prose-invert max-w-none"
+					onclick={handleLongContentClick}
+					role="presentation"
+				>
+					{@html renderLongContent()}
 				</div>
 			</div>
 		{/if}
@@ -282,7 +262,7 @@
 {:else}
 	<!-- Empty state with generate button -->
 	<div
-		class="rounded-lg border border-dashed border-border bg-muted/30 tx tx-bloom tx-weak {className}"
+		class="border-t border-border/60 pt-2 {className}"
 		role="region"
 		aria-label="Generate next step"
 	>
@@ -290,45 +270,22 @@
 			type="button"
 			onclick={handleGenerateNextStep}
 			disabled={isGenerating}
-			class="w-full px-3 py-2.5 flex items-center gap-2.5 sm:gap-3 hover:bg-muted/50 active:bg-muted/70 transition-colors rounded-lg disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-inset pressable"
+			class="w-full flex items-center gap-1.5 hover:bg-muted/30 active:bg-muted/50 -mx-1 px-1 py-1 rounded transition-colors disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-ring pressable"
 		>
-			<!-- Icon -->
-			<div
-				class="flex-shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center"
-			>
+			<Zap class="w-3 h-3 text-muted-foreground shrink-0" />
+			<span class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+				Suggested Next Move
+			</span>
+			<span class="text-xs text-muted-foreground">
 				{#if isGenerating}
-					<LoaderCircle class="w-4 h-4 text-muted-foreground animate-spin" />
+					<span class="inline-flex items-center gap-1">
+						<LoaderCircle class="w-3 h-3 animate-spin" />
+						Generating…
+					</span>
 				{:else}
-					<Sparkles class="w-4 h-4 text-muted-foreground" />
+					— Tap to generate
 				{/if}
-			</div>
-
-			<!-- Content -->
-			<div class="flex-1 min-w-0 text-left">
-				<span
-					class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
-				>
-					Next Move
-				</span>
-				<p class="text-sm text-muted-foreground">
-					{#if isGenerating}
-						<span class="hidden sm:inline"
-							>Analyzing project and generating next step...</span
-						>
-						<span class="sm:hidden">Generating...</span>
-					{:else}
-						<span class="hidden sm:inline">Click to generate your next step</span>
-						<span class="sm:hidden">Tap to generate</span>
-					{/if}
-				</p>
-			</div>
-
-			<!-- Arrow/indicator -->
-			{#if !isGenerating}
-				<div class="flex-shrink-0 text-accent">
-					<Zap class="w-4 h-4" />
-				</div>
-			{/if}
+			</span>
 		</button>
 	</div>
 {/if}
