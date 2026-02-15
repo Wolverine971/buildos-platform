@@ -23,7 +23,8 @@
 		TrendingUp,
 		FileText,
 		Plus,
-		Menu
+		Menu,
+		MessageCircle
 	} from 'lucide-svelte';
 	import {
 		BriefClientService,
@@ -47,6 +48,8 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import BriefsSettingsModal from '$lib/components/briefs/BriefsSettingsModal.svelte';
 	import { Settings } from 'lucide-svelte';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
 
 	let { data } = $props<{ data: PageData }>();
 
@@ -91,6 +94,12 @@
 	let showDeleteConfirmation = $state(false);
 	let briefToDelete = $state<DailyBrief | null>(null);
 	let showSettingsModal = $state(false);
+
+	// Brief chat state
+	let showBriefChatModal = $state(false);
+	let briefChatBrief = $state<DailyBrief | null>(null);
+	let briefChatSessionId = $state<string | null>(null);
+	let AgentChatModal = $state<any>(null);
 
 	// Reactive streaming data
 	let currentStreamingStatus = $state<StreamingStatus | null>(null);
@@ -552,6 +561,40 @@
 				)
 			: 0
 	);
+
+	// Brief chat handlers
+	async function handleBriefChat(brief: DailyBrief) {
+		if (!AgentChatModal) {
+			try {
+				const module = await import('$lib/components/agent/AgentChatModal.svelte');
+				AgentChatModal = module.default;
+			} catch (err) {
+				console.error('Failed to load AgentChatModal:', err);
+				return;
+			}
+		}
+
+		briefChatSessionId = briefChatSessionStore.get(brief.id);
+		briefChatBrief = brief;
+		showBriefChatModal = true;
+	}
+
+	function handleBriefChatClose(summary?: DataMutationSummary) {
+		// Record session for future resumption
+		if (briefChatBrief && summary?.sessionId) {
+			briefChatSessionStore.set(briefChatBrief.id, summary.sessionId);
+		}
+
+		showBriefChatModal = false;
+
+		// If mutations happened during chat, refresh brief data
+		if (summary?.hasChanges) {
+			fetchBriefData();
+		}
+
+		briefChatBrief = null;
+		briefChatSessionId = null;
+	}
 
 	// View configurations
 	const viewConfigs = [
@@ -1219,6 +1262,15 @@
 											? LoaderCircle
 											: RefreshCw}
 									></Button>
+									<Button
+										type="button"
+										onclick={() => handleBriefChat(displayDailyBrief)}
+										variant="ghost"
+										size="sm"
+										class="p-1.5 text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+										title="Chat about Brief"
+										icon={MessageCircle}
+									></Button>
 								</div>
 							</div>
 						</div>
@@ -1316,6 +1368,17 @@
 		showSettingsModal = false;
 	}}
 />
+
+<!-- Brief Chat Modal -->
+{#if AgentChatModal && showBriefChatModal && briefChatBrief}
+	<AgentChatModal
+		isOpen={showBriefChatModal}
+		contextType="daily_brief"
+		entityId={briefChatBrief.id}
+		initialChatSessionId={briefChatSessionId}
+		onClose={handleBriefChatClose}
+	/>
+{/if}
 
 <style>
 	.line-clamp-2 {

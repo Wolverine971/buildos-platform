@@ -327,6 +327,7 @@ export class ToolExecutionService implements BaseService {
 
 		args = this.applySchemaDefaults(toolName, args, availableTools);
 		args = this.applyContextDefaults(toolName, args, context, availableTools);
+		args = this.applyArgumentAliases(toolName, args, availableTools);
 		args = this.normalizeIdFields(args);
 
 		if (toolName === 'create_onto_document') {
@@ -739,6 +740,11 @@ export class ToolExecutionService implements BaseService {
 			entry.tool_name,
 			normalizedArgs,
 			context,
+			CHAT_TOOL_DEFINITIONS
+		);
+		normalizedArgs = this.applyArgumentAliases(
+			entry.tool_name,
+			normalizedArgs,
 			CHAT_TOOL_DEFINITIONS
 		);
 		normalizedArgs = this.normalizeIdFields(normalizedArgs);
@@ -1979,6 +1985,54 @@ export class ToolExecutionService implements BaseService {
 			if (trimmedDescription) {
 				resolved.description = trimmedDescription;
 			}
+		}
+
+		return resolved;
+	}
+
+	private applyArgumentAliases(
+		toolName: string,
+		args: Record<string, any>,
+		availableTools: ChatToolDefinition[]
+	): Record<string, any> {
+		const toolDef = this.getToolDefinition(toolName, availableTools);
+		const paramSchema = (toolDef as any)?.function?.parameters || (toolDef as any)?.parameters;
+		if (!paramSchema || typeof paramSchema !== 'object') {
+			return args;
+		}
+
+		const properties = paramSchema.properties ?? {};
+		const supportsSearch = properties.search && typeof properties.search === 'object';
+		const supportsQuery = properties.query && typeof properties.query === 'object';
+		if (!supportsSearch && !supportsQuery) {
+			return args;
+		}
+
+		const resolved = { ...args };
+		let mutated = false;
+		const normalizedSearch = typeof resolved.search === 'string' ? resolved.search.trim() : '';
+		const normalizedQuery = typeof resolved.query === 'string' ? resolved.query.trim() : '';
+
+		if (supportsSearch && !normalizedSearch && normalizedQuery) {
+			resolved.search = normalizedQuery;
+			mutated = true;
+		}
+
+		if (supportsQuery && !normalizedQuery && normalizedSearch) {
+			resolved.query = normalizedSearch;
+			mutated = true;
+		}
+
+		if (!mutated) {
+			return args;
+		}
+
+		if (dev) {
+			logger.debug('Applied argument aliases for tool', {
+				toolName,
+				addedSearch: supportsSearch && !normalizedSearch && normalizedQuery.length > 0,
+				addedQuery: supportsQuery && !normalizedQuery && normalizedSearch.length > 0
+			});
 		}
 
 		return resolved;

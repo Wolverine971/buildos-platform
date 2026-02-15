@@ -162,9 +162,12 @@ export class PromptGenerationService {
 			sections.push(
 				`## Tool Discovery Mode\n\n` +
 					`- You only have access to tool_help and tool_exec (and optional tool_batch).\n` +
-					`- Use tool_help to discover available ops and required args before calling tool_exec.\n` +
-					`- Use tool_help(\"root\") to list groups, then drill down (e.g., tool_help(\"onto.task\"), tool_help(\"onto.task.update\")).\n` +
-					`- When a tool_exec error includes help_path, call tool_help(help_path) and retry.\n` +
+					`- Use tool_help when the op or arg schema is uncertain; avoid repeated calls for the same help path in one turn.\n` +
+					`- Reuse discovered schemas in the same turn, and only re-check help after a validation error.\n` +
+					`- Prefer tool_batch for first-time discovery + execution to reduce round trips.\n` +
+					`- Use tool_help(\"root\") to list groups, then drill down only when needed (e.g., tool_help(\"onto.task\"), tool_help(\"onto.task.update\")).\n` +
+					`- For onto.* search ops, prefer args.search (not args.query).\n` +
+					`- When a tool_exec error includes help_path, call tool_help(help_path) once and retry once.\n` +
 					`- Do not guess IDs or required fields; use list/search/get ops via tool_exec to look them up.`
 			);
 		}

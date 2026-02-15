@@ -10,7 +10,8 @@
 		Mail,
 		LoaderCircle,
 		AlertCircle,
-		RefreshCw
+		RefreshCw,
+		MessageCircle
 	} from 'lucide-svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -32,12 +33,14 @@
 		isOpen = false,
 		brief = null,
 		briefDate = null,
-		onClose
+		onClose,
+		onchat
 	}: {
 		isOpen?: boolean;
 		brief?: DailyBrief | null;
 		briefDate?: string | null;
 		onClose: () => void;
+		onchat?: (brief: DailyBrief) => void;
 	} = $props();
 
 	// Internal state for fetched brief
@@ -388,6 +391,18 @@
 			{#if displayBrief}
 				<div class="flex flex-col sm:flex-row gap-3 sm:justify-between">
 					<div class="flex flex-col sm:flex-row gap-2 w-full">
+						{#if onchat}
+							<Button
+								onclick={() => onchat(displayBrief)}
+								variant="primary"
+								size="sm"
+								icon={MessageCircle}
+								disabled={isRegenerating}
+								class="w-full sm:w-auto"
+							>
+								Chat about Brief
+							</Button>
+						{/if}
 						<Button
 							onclick={copyToClipboard}
 							variant="outline"
@@ -410,7 +425,7 @@
 						</Button>
 						<Button
 							onclick={regenerateBrief}
-							variant="primary"
+							variant={onchat ? 'outline' : 'primary'}
 							size="sm"
 							icon={RefreshCw}
 							class="w-full sm:w-auto ml-auto"

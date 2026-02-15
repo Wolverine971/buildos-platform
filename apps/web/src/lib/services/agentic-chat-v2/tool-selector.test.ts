@@ -1,21 +1,21 @@
 // apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const mockEnv = vi.hoisted(() => ({}) as Record<string, string | undefined>);
+
+vi.mock('$env/dynamic/private', () => ({
+	env: mockEnv
+}));
+
 import { selectFastChatTools } from './tool-selector';
 
-const TOOL_GATEWAY_ENV = 'AGENTIC_CHAT_TOOL_GATEWAY';
-const previousGatewayEnv = process.env[TOOL_GATEWAY_ENV];
-
 afterEach(() => {
-	if (previousGatewayEnv === undefined) {
-		delete process.env[TOOL_GATEWAY_ENV];
-		return;
-	}
-	process.env[TOOL_GATEWAY_ENV] = previousGatewayEnv;
+	delete mockEnv['AGENTIC_CHAT_TOOL_GATEWAY'];
 });
 
 describe('selectFastChatTools', () => {
 	it('returns only gateway tools when gateway flag is enabled', () => {
-		process.env[TOOL_GATEWAY_ENV] = 'true';
+		mockEnv['AGENTIC_CHAT_TOOL_GATEWAY'] = 'true';
 
 		const tools = selectFastChatTools({
 			contextType: 'global',
@@ -27,7 +27,7 @@ describe('selectFastChatTools', () => {
 	});
 
 	it('returns legacy tools when gateway flag is disabled', () => {
-		process.env[TOOL_GATEWAY_ENV] = 'false';
+		mockEnv['AGENTIC_CHAT_TOOL_GATEWAY'] = 'false';
 
 		const tools = selectFastChatTools({
 			contextType: 'global',

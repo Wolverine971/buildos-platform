@@ -45,6 +45,7 @@ import {
 	loadFastChatPromptContext,
 	normalizeFastContextType,
 	composeFastChatHistory,
+	FASTCHAT_LIMITS,
 	selectFastChatTools,
 	streamFastChat,
 	type FastAgentStreamRequest
@@ -75,6 +76,10 @@ const FASTCHAT_HISTORY_MAX_SUMMARY_CHARS = parsePositiveInt(
 const FASTCHAT_HISTORY_MAX_MESSAGE_CHARS = parsePositiveInt(
 	process.env.FASTCHAT_HISTORY_MAX_MESSAGE_CHARS,
 	1200
+);
+const FASTCHAT_GATEWAY_MIN_TOOL_ROUNDS = parsePositiveInt(
+	process.env.FASTCHAT_GATEWAY_MIN_TOOL_ROUNDS,
+	12
 );
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -1706,6 +1711,9 @@ export const POST: RequestHandler = async ({
 				message,
 				signal: request.signal,
 				systemPrompt,
+				maxToolRounds: gatewayEnabled
+					? Math.max(FASTCHAT_LIMITS.MAX_TOOL_ROUNDS, FASTCHAT_GATEWAY_MIN_TOOL_ROUNDS)
+					: undefined,
 				tools,
 				debugContext: {
 					gatewayEnabled,

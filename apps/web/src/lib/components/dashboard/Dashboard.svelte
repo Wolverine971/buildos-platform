@@ -27,6 +27,8 @@
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import type { DailyBrief } from '$lib/types/daily-brief';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
 
 	// Types
 	interface OntologyProjectSummary {
@@ -90,6 +92,11 @@
 	let showBriefModal = $state(false);
 	let selectedBrief = $state<DailyBrief | null>(null);
 	let DailyBriefModal = $state<any>(null);
+
+	// Brief chat modal state
+	let showBriefChatModal = $state(false);
+	let briefChatBrief = $state<DailyBrief | null>(null);
+	let briefChatSessionId = $state<string | null>(null);
 
 	// Local projects state for refresh functionality
 	let localProjects = $state<OntologyProjectSummary[] | null>(null);
@@ -277,6 +284,44 @@
 	function handleBriefModalClose() {
 		showBriefModal = false;
 		selectedBrief = null;
+	}
+
+	async function handleBriefChat(brief: DailyBrief) {
+		// Close the brief modal first to avoid stacking
+		showBriefModal = false;
+
+		// Lazy load AgentChatModal if not already loaded
+		if (!AgentChatModal) {
+			try {
+				const module = await import('$lib/components/agent/AgentChatModal.svelte');
+				AgentChatModal = module.default;
+			} catch (err) {
+				console.error('Failed to load AgentChatModal:', err);
+				return;
+			}
+		}
+
+		// Look up any existing session for this brief
+		briefChatSessionId = briefChatSessionStore.get(brief.id);
+		briefChatBrief = brief;
+		showBriefChatModal = true;
+	}
+
+	function handleBriefChatClose(summary?: DataMutationSummary) {
+		// Record session for future resumption
+		if (briefChatBrief && summary?.sessionId) {
+			briefChatSessionStore.set(briefChatBrief.id, summary.sessionId);
+		}
+
+		showBriefChatModal = false;
+
+		// If mutations happened during chat, refresh dashboard data
+		if (summary?.hasChanges) {
+			refreshProjects();
+		}
+
+		briefChatBrief = null;
+		briefChatSessionId = null;
 	}
 </script>
 
@@ -759,6 +804,18 @@
 		brief={selectedBrief}
 		briefDate={selectedBrief?.brief_date}
 		onClose={handleBriefModalClose}
+		onchat={handleBriefChat}
+	/>
+{/if}
+
+<!-- Brief Chat Modal -->
+{#if AgentChatModal && showBriefChatModal && briefChatBrief}
+	<AgentChatModal
+		isOpen={showBriefChatModal}
+		contextType="daily_brief"
+		entityId={briefChatBrief.id}
+		initialChatSessionId={briefChatSessionId}
+		onClose={handleBriefChatClose}
 	/>
 {/if}
 

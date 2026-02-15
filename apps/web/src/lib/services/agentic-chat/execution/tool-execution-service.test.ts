@@ -165,6 +165,67 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('should alias query to search when tool schema requires search', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_search_alias',
+				name: 'search_onto_tasks',
+				arguments: { query: 'launch checklist' }
+			};
+			const searchToolDefinition: ChatToolDefinition = {
+				name: 'search_onto_tasks',
+				description: 'Search ontology tasks',
+				parameters: {
+					type: 'object',
+					properties: {
+						search: { type: 'string' },
+						project_id: { type: 'string' }
+					},
+					required: ['search']
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ tasks: [] });
+
+			const result = await service.executeTool(toolCall, mockContext, [searchToolDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'search_onto_tasks',
+				{ query: 'launch checklist', search: 'launch checklist' },
+				mockContext
+			);
+		});
+
+		it('should alias search to query when tool schema requires query', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_query_alias',
+				name: 'web_search',
+				arguments: { search: 'buildos docs' }
+			};
+			const webSearchDefinition: ChatToolDefinition = {
+				name: 'web_search',
+				description: 'Web search',
+				parameters: {
+					type: 'object',
+					properties: {
+						query: { type: 'string' }
+					},
+					required: ['query']
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ results: [] });
+
+			const result = await service.executeTool(toolCall, mockContext, [webSearchDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'web_search',
+				{ search: 'buildos docs', query: 'buildos docs' },
+				mockContext
+			);
+		});
+
 		it('should trim whitespace in tool names', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_trim',

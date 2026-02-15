@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/limits.ts
 const DEFAULT_FASTCHAT_MAX_TOOL_CALLS = 40;
-const DEFAULT_FASTCHAT_MAX_TOOL_ROUNDS = 8;
+const DEFAULT_FASTCHAT_MAX_TOOL_ROUNDS = 12;
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
 	if (!value) return fallback;

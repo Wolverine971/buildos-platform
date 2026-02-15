@@ -299,6 +299,7 @@
 		string,
 		{ status: 'completed' | 'failed'; errorMessage?: string }
 	>(); // Tool results that arrive before tool_call
+	const hiddenToolCallIds = new Set<string>();
 
 	// Track setTimeout IDs for cleanup to prevent memory leaks
 	const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
@@ -1713,6 +1714,127 @@
 		return resolveEntityName(kind, id, name);
 	}
 
+	const HIDDEN_THINKING_TOOLS = new Set(['tool_help']);
+	const GATEWAY_OP_TOOL_OVERRIDES: Record<string, string> = {
+		'onto.search': 'search_ontology',
+		'onto.document.tree.get': 'get_document_tree',
+		'onto.document.tree.move': 'move_document_in_tree',
+		'onto.document.path.get': 'get_document_path',
+		'onto.entity.relationships.get': 'get_entity_relationships',
+		'onto.entity.links.get': 'get_linked_entities',
+		'onto.task.docs.list': 'list_task_documents',
+		'onto.task.docs.create_or_attach': 'create_task_document',
+		'onto.edge.link': 'link_onto_entities',
+		'onto.edge.unlink': 'unlink_onto_edge',
+		'onto.project.graph.reorganize': 'reorganize_onto_project_graph',
+		'onto.project.graph.get': 'get_onto_project_graph',
+		'util.schema.field_info': 'get_field_info',
+		'util.web.search': 'web_search',
+		'util.web.visit': 'web_visit',
+		'util.buildos.overview': 'get_buildos_overview',
+		'util.buildos.usage_guide': 'get_buildos_usage_guide',
+		'cal.event.list': 'list_calendar_events',
+		'cal.event.get': 'get_calendar_event_details',
+		'cal.event.create': 'create_calendar_event',
+		'cal.event.update': 'update_calendar_event',
+		'cal.event.delete': 'delete_calendar_event',
+		'cal.project.get': 'get_project_calendar',
+		'cal.project.set': 'set_project_calendar'
+	};
+	const ONTO_ENTITY_PLURALS: Record<string, string> = {
+		project: 'projects',
+		task: 'tasks',
+		goal: 'goals',
+		plan: 'plans',
+		document: 'documents',
+		milestone: 'milestones',
+		risk: 'risks',
+		requirement: 'requirements',
+		event: 'events'
+	};
+
+	function toOntologyPlural(entity: string): string {
+		return ONTO_ENTITY_PLURALS[entity] ?? `${entity}s`;
+	}
+
+	function mapGatewayOpToToolName(op: string): string | undefined {
+		const normalized = op.trim();
+		if (!normalized) return undefined;
+		const override = GATEWAY_OP_TOOL_OVERRIDES[normalized];
+		if (override) return override;
+
+		const parts = normalized.split('.');
+		if (parts.length !== 3 || parts[0] !== 'onto') {
+			return undefined;
+		}
+
+		const entity = parts[1];
+		const action = parts[2];
+		if (!entity || !action) return undefined;
+
+		switch (action) {
+			case 'list':
+				return `list_onto_${toOntologyPlural(entity)}`;
+			case 'search':
+				return `search_onto_${toOntologyPlural(entity)}`;
+			case 'get':
+				return `get_onto_${entity}_details`;
+			case 'create':
+				return `create_onto_${entity}`;
+			case 'update':
+				return `update_onto_${entity}`;
+			case 'delete':
+				return `delete_onto_${entity}`;
+			default:
+				return undefined;
+		}
+	}
+
+	function normalizeToolDisplayPayload(
+		toolName: string,
+		argsJson: string | Record<string, any>
+	): {
+		hidden: boolean;
+		toolName: string;
+		args: string | Record<string, any>;
+		gatewayOp?: string;
+		originalToolName: string;
+	} {
+		if (HIDDEN_THINKING_TOOLS.has(toolName)) {
+			return {
+				hidden: true,
+				toolName,
+				args: argsJson,
+				originalToolName: toolName
+			};
+		}
+
+		if (toolName !== 'tool_exec') {
+			return {
+				hidden: false,
+				toolName,
+				args: argsJson,
+				originalToolName: toolName
+			};
+		}
+
+		const parsed = safeParseArgs(argsJson as string | Record<string, unknown>);
+		const op = typeof parsed.op === 'string' ? parsed.op.trim() : '';
+		const nestedArgs =
+			parsed.args && typeof parsed.args === 'object' && !Array.isArray(parsed.args)
+				? (parsed.args as Record<string, any>)
+				: {};
+		const mappedToolName = op ? mapGatewayOpToToolName(op) : undefined;
+
+		return {
+			hidden: false,
+			toolName: mappedToolName ?? toolName,
+			args: mappedToolName ? nestedArgs : parsed,
+			gatewayOp: op || undefined,
+			originalToolName: toolName
+		};
+	}
+
 	$effect(() => {
 		if (resolvedProjectFocus?.projectId && resolvedProjectFocus.projectName) {
 			cacheEntityName(
@@ -1903,6 +2025,42 @@
 			action: 'Deleting document',
 			target: resolveEntityName('document', args?.document_id)
 		}),
+		list_task_documents: (args) => ({
+			action: 'Listing task documents',
+			target: resolveEntityName('task', args?.task_id)
+		}),
+		create_task_document: (args) => ({
+			action: 'Attaching document to task',
+			target: resolveEntityName('task', args?.task_id)
+		}),
+		get_document_tree: (args) => ({
+			action: 'Loading document tree',
+			target: resolveEntityName('project', args?.project_id)
+		}),
+		move_document_in_tree: (args) => ({
+			action: 'Reorganizing document tree',
+			target: resolveEntityName('document', args?.document_id)
+		}),
+		get_document_path: (args) => ({
+			action: 'Loading document path',
+			target: resolveEntityName('document', args?.document_id)
+		}),
+		get_onto_project_graph: (args) => ({
+			action: 'Loading project graph',
+			target: resolveEntityName('project', args?.project_id)
+		}),
+		reorganize_onto_project_graph: (args) => ({
+			action: 'Reorganizing project graph',
+			target: resolveEntityName('project', args?.project_id)
+		}),
+		link_onto_entities: (args) => ({
+			action: 'Linking entities',
+			target: resolveEntityName(args?.src_kind as OntologyEntityKind, args?.src_id)
+		}),
+		unlink_onto_edge: (args) => ({
+			action: 'Unlinking entities',
+			target: resolveEntityName(args?.src_kind as OntologyEntityKind, args?.src_id)
+		}),
 		get_entity_relationships: (args) => ({
 			action: 'Loading relationships',
 			target: resolveEntityName(args?.entity_kind as OntologyEntityKind, args?.entity_id)
@@ -1963,7 +2121,25 @@
 		set_project_calendar: (args) => ({
 			action: 'Updating project calendar',
 			target: resolveEntityName('project', args?.project_id)
-		})
+		}),
+		tool_exec: (args) => {
+			const op = typeof args?.op === 'string' ? args.op.trim() : '';
+			const opArgs =
+				args?.args && typeof args.args === 'object' && !Array.isArray(args.args)
+					? (args.args as Record<string, any>)
+					: {};
+			const target =
+				(typeof opArgs.search === 'string' && opArgs.search) ||
+				(typeof opArgs.query === 'string' && opArgs.query) ||
+				(typeof opArgs.title === 'string' && opArgs.title) ||
+				(typeof opArgs.name === 'string' && opArgs.name) ||
+				(typeof opArgs.url === 'string' && opArgs.url) ||
+				undefined;
+			return {
+				action: op ? `Executing ${op}` : 'Executing tool operation',
+				target
+			};
+		}
 	};
 
 	const TOOL_ACTION_PAST_TENSE: Record<string, string> = {
@@ -2066,6 +2242,11 @@
 
 		if (!formatter) {
 			// Fallback for unknown tools
+			if (toolName === 'tool_exec') {
+				if (status === 'pending') return 'Executing tool operation...';
+				if (status === 'completed') return 'Executed tool operation';
+				return `Tool operation failed${errorSuffix}`;
+			}
 			if (status === 'pending') return `Using tool: ${toolName}`;
 			if (status === 'completed') return `Tool ${toolName} completed`;
 			return `Tool ${toolName} failed${errorSuffix}`;
@@ -2099,6 +2280,11 @@
 		} catch (e) {
 			if (dev) {
 				console.error('[AgentChat] Error parsing tool arguments:', e);
+			}
+			if (toolName === 'tool_exec') {
+				return status === 'failed'
+					? `Tool operation failed${errorSuffix}`
+					: 'Executing tool operation...';
 			}
 			return `Using tool: ${toolName}`;
 		}
@@ -2376,14 +2562,17 @@
 			hasChanges: mutationCount > 0,
 			totalMutations: mutationCount,
 			affectedProjectIds: Array.from(mutatedProjectIds),
-			hasMessagesSent: hasSentMessage
+			hasMessagesSent: hasSentMessage,
+			sessionId: currentSession?.id ?? null,
+			contextType: selectedContextType ?? null,
+			entityId: selectedEntityId ?? null
 		};
 	}
 
 	interface ActivityUpdateResult {
 		matched: boolean;
 		toolName?: string;
-		args?: string;
+		args?: string | Record<string, unknown>;
 	}
 
 	function updateActivityStatus(
@@ -2395,7 +2584,7 @@
 
 		let matchFound = false;
 		let foundToolName: string | undefined;
-		let foundArgs: string | undefined;
+		let foundArgs: string | Record<string, unknown> | undefined;
 
 		updateThinkingBlock(currentThinkingBlockId, (block) => {
 			const activityIndex = block.activities.findIndex(
@@ -2410,7 +2599,9 @@
 			matchFound = true;
 			const activity = block.activities[activityIndex]!;
 			const toolName = activity.metadata?.toolName || 'unknown';
-			const args = activity.metadata?.arguments || '';
+			const args =
+				(activity.metadata?.arguments as string | Record<string, unknown> | undefined) ??
+				'';
 			foundToolName = toolName;
 			foundArgs = args;
 			const newContent = formatToolMessage(toolName, args, status, errorMessage);
@@ -2457,7 +2648,11 @@
 		return { matched: matchFound, toolName: foundToolName, args: foundArgs };
 	}
 
-	function showToolResultToast(toolName: string, argsJson: string, success: boolean): void {
+	function showToolResultToast(
+		toolName: string,
+		argsJson: string | Record<string, unknown>,
+		success: boolean
+	): void {
 		// Only show toasts for data mutation tools
 		if (!DATA_MUTATION_TOOLS.has(toolName)) return;
 
@@ -2550,6 +2745,7 @@
 
 		// Clear any pending tool results to prevent memory leaks
 		pendingToolResults.clear();
+		hiddenToolCallIds.clear();
 
 		const summary = buildMutationSummary();
 		if (summary.hasChanges && isProjectContext(selectedContextType) && selectedEntityId) {
@@ -2664,6 +2860,8 @@
 		const runId = activeStreamRunId;
 
 		isStreaming = true;
+		pendingToolResults.clear();
+		hiddenToolCallIds.clear();
 
 		// NEW: Create thinking block for agent activity
 		createThinkingBlock();
@@ -3075,20 +3273,35 @@
 
 			case 'tool_call':
 				// Tool being called - parse arguments for meaningful display
-				const toolName = event.tool_call?.function?.name || 'unknown';
+				const rawToolName = event.tool_call?.function?.name || 'unknown';
 				const toolCallId = event.tool_call?.id;
 				const args = event.tool_call?.function?.arguments || '';
+				const displayPayload = normalizeToolDisplayPayload(rawToolName, args);
+
+				if (displayPayload.hidden) {
+					if (toolCallId) {
+						hiddenToolCallIds.add(toolCallId);
+					}
+					break;
+				}
 
 				if (dev) {
 					console.log('[AgentChat] Tool call:', {
-						toolName,
+						toolName: rawToolName,
 						toolCallId,
-						args: args.substring(0, 100) // Log first 100 chars of args
+						args:
+							typeof args === 'string'
+								? args.substring(0, 100)
+								: JSON.stringify(args).slice(0, 100)
 					});
 				}
 
 				// Format message with parsed arguments
-				const displayMessage = formatToolMessage(toolName, args, 'pending');
+				const displayMessage = formatToolMessage(
+					displayPayload.toolName,
+					displayPayload.args,
+					'pending'
+				);
 
 				const activity: ActivityEntry = {
 					id: crypto.randomUUID(),
@@ -3098,9 +3311,12 @@
 					status: 'pending',
 					toolCallId,
 					metadata: {
-						toolName,
+						toolName: displayPayload.toolName,
+						originalToolName: displayPayload.originalToolName,
+						gatewayOp: displayPayload.gatewayOp,
 						toolCallId,
-						arguments: args,
+						arguments: displayPayload.args,
+						rawArguments: args,
 						status: 'pending',
 						toolCall: event.tool_call
 					}
@@ -3129,6 +3345,10 @@
 				// Tool result received - update matching tool call activity
 				const toolResult = event.result;
 				const resultToolCallId = toolResult?.toolCallId ?? toolResult?.tool_call_id;
+				const rawResultToolName =
+					(typeof toolResult?.toolName === 'string' && toolResult.toolName) ||
+					(typeof toolResult?.tool_name === 'string' && toolResult.tool_name) ||
+					undefined;
 				const success = toolResult?.success ?? true;
 				const toolError = toolResult?.error;
 				const toolErrorMessage = success ? undefined : formatErrorMessage(toolError);
@@ -3144,6 +3364,19 @@
 				}
 
 				indexEntitiesFromToolResult(toolResult);
+
+				if (resultToolCallId && hiddenToolCallIds.has(resultToolCallId)) {
+					hiddenToolCallIds.delete(resultToolCallId);
+					pendingToolResults.delete(resultToolCallId);
+					break;
+				}
+				if (
+					!resultToolCallId &&
+					rawResultToolName &&
+					HIDDEN_THINKING_TOOLS.has(rawResultToolName)
+				) {
+					break;
+				}
 
 				if (resultToolCallId) {
 					// Update the matching activity status
@@ -3164,7 +3397,7 @@
 						resolvedToolName = result.toolName;
 						resolvedArgs = result.args;
 					}
-					resolvedToolName = resolvedToolName ?? toolResult?.toolName;
+					resolvedToolName = resolvedToolName ?? rawResultToolName;
 				} else {
 					// No matching tool call ID - log warning but don't add duplicate message
 					if (dev) {
@@ -3173,7 +3406,18 @@
 							event
 						);
 					}
-					resolvedToolName = toolResult?.toolName;
+					resolvedToolName = rawResultToolName;
+				}
+
+				if (resolvedToolName === 'tool_exec') {
+					const gatewayOp =
+						toolResult?.data && typeof toolResult.data === 'object'
+							? (toolResult.data as Record<string, unknown>).op
+							: undefined;
+					if (typeof gatewayOp === 'string' && gatewayOp.trim()) {
+						resolvedToolName =
+							mapGatewayOpToToolName(gatewayOp.trim()) ?? resolvedToolName;
+					}
 				}
 
 				recordDataMutation(resolvedToolName, resolvedArgs, success, toolResult);

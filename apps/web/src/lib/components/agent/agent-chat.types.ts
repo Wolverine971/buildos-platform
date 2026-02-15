@@ -71,6 +71,12 @@ export interface DataMutationSummary {
 	affectedProjectIds: string[];
 	/** Whether the user sent at least one message during this modal session */
 	hasMessagesSent: boolean;
+	/** Session ID for callers that need session resumption */
+	sessionId?: string | null;
+	/** Context type used during this chat session */
+	contextType?: string | null;
+	/** Entity ID used during this chat session */
+	entityId?: string | null;
 }
 
 export function isThinkingBlockMessage(message: UIMessage): message is ThinkingBlockMessage {

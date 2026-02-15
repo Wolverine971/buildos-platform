@@ -16,6 +16,11 @@
 			"components": ["ExampleProjectGraph"]
 		},
 		{
+			"file": "src/routes/briefs/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
@@ -23,7 +28,7 @@
 		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
 			"type": "component",
-			"components": ["DailyBriefModal"]
+			"components": ["DailyBriefModal", "AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/dashboard/Dashboard.svelte",
@@ -687,6 +692,12 @@
 			"type": "store",
 			"components": [],
 			"exports": ["brainDumpAutoAccept"]
+		},
+		{
+			"file": "src/lib/stores/briefChatSession.store.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["briefChatSessionStore"]
 		},
 		{
 			"file": "src/lib/stores/briefPreferences.ts",
