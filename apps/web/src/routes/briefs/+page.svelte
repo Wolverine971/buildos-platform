@@ -99,7 +99,7 @@
 	let showBriefChatModal = $state(false);
 	let briefChatBrief = $state<DailyBrief | null>(null);
 	let briefChatSessionId = $state<string | null>(null);
-	let AgentChatModal = $state<any>(null);
+	let BriefChatModal = $state<any>(null);
 
 	// Reactive streaming data
 	let currentStreamingStatus = $state<StreamingStatus | null>(null);
@@ -563,18 +563,23 @@
 	);
 
 	// Brief chat handlers
+	function getBriefChatKey(brief: DailyBrief): string {
+		return brief.chat_brief_id || brief.id;
+	}
+
 	async function handleBriefChat(brief: DailyBrief) {
-		if (!AgentChatModal) {
+		// Lazy load BriefChatModal (two-pane brief + chat modal)
+		if (!BriefChatModal) {
 			try {
-				const module = await import('$lib/components/agent/AgentChatModal.svelte');
-				AgentChatModal = module.default;
+				const module = await import('$lib/components/briefs/BriefChatModal.svelte');
+				BriefChatModal = module.default;
 			} catch (err) {
-				console.error('Failed to load AgentChatModal:', err);
+				console.error('Failed to load BriefChatModal:', err);
 				return;
 			}
 		}
 
-		briefChatSessionId = briefChatSessionStore.get(brief.id);
+		briefChatSessionId = briefChatSessionStore.get(getBriefChatKey(brief));
 		briefChatBrief = brief;
 		showBriefChatModal = true;
 	}
@@ -582,7 +587,7 @@
 	function handleBriefChatClose(summary?: DataMutationSummary) {
 		// Record session for future resumption
 		if (briefChatBrief && summary?.sessionId) {
-			briefChatSessionStore.set(briefChatBrief.id, summary.sessionId);
+			briefChatSessionStore.set(getBriefChatKey(briefChatBrief), summary.sessionId);
 		}
 
 		showBriefChatModal = false;
@@ -1369,12 +1374,11 @@
 	}}
 />
 
-<!-- Brief Chat Modal -->
-{#if AgentChatModal && showBriefChatModal && briefChatBrief}
-	<AgentChatModal
+<!-- Brief Chat Modal (two-pane: brief + chat) -->
+{#if BriefChatModal && showBriefChatModal && briefChatBrief}
+	<BriefChatModal
 		isOpen={showBriefChatModal}
-		contextType="daily_brief"
-		entityId={briefChatBrief.id}
+		brief={briefChatBrief}
 		initialChatSessionId={briefChatSessionId}
 		onClose={handleBriefChatClose}
 	/>

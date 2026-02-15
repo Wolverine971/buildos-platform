@@ -1,6 +1,7 @@
 // apps/web/src/lib/types/daily-brief.ts
 export interface DailyBrief {
 	id: string;
+	chat_brief_id?: string; // Ontology brief id to use for brief chat context
 	user_id: string;
 	brief_date: string;
 	summary_content: string;
@@ -31,6 +32,7 @@ export interface ProjectDailyBrief {
 	created_at?: string;
 	updated_at?: string;
 	projects?: {
+		id?: string;
 		name: string;
 		description?: string;
 		slug: string;

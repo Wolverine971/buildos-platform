@@ -182,6 +182,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let toolRounds = 0;
 	let toolCallsMade = 0;
 	let validationRetryUsed = false;
+	let toolLimitNotice: string | null = null;
+
+	const markToolLimitReached = (kind: 'round' | 'call'): void => {
+		if (toolLimitNotice) return;
+		finishedReason = kind === 'round' ? 'tool_round_limit' : 'tool_call_limit';
+		toolLimitNotice =
+			kind === 'round'
+				? 'I hit a safety limit while coordinating tools. Please break the request into smaller steps and try again.'
+				: 'I hit a safety limit on tool calls. Please clarify the exact item and update you want, then I can continue.';
+	};
 
 	while (true) {
 		if (signal?.aborted) {
@@ -252,7 +262,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		toolRounds += 1;
 		if (toolRounds > maxToolRounds) {
-			throw new Error('FastChat exceeded tool round limit');
+			markToolLimitReached('round');
+			break;
 		}
 
 		messages.push({
@@ -263,10 +274,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		const validationIssues = validateToolCalls(pendingToolCalls, tools);
 		if (validationIssues.length > 0) {
+			let exceededToolCallLimit = false;
 			for (const issue of validationIssues) {
 				toolCallsMade += 1;
 				if (toolCallsMade > maxToolCalls) {
-					throw new Error('FastChat exceeded tool call limit');
+					markToolLimitReached('call');
+					exceededToolCallLimit = true;
+					break;
 				}
 
 				const errorMessage = `Tool validation failed: ${issue.errors.join(' ')}`;
@@ -279,7 +293,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 				toolExecutions.push({ toolCall: issue.toolCall, result });
 				if (params.onToolResult) {
-					await params.onToolResult({ toolCall: issue.toolCall, result });
+					try {
+						await params.onToolResult({ toolCall: issue.toolCall, result });
+					} catch {
+						// UI/logging callbacks must not crash tool orchestration.
+					}
 				}
 
 				messages.push({
@@ -287,6 +305,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					content: JSON.stringify({ error: errorMessage }),
 					tool_call_id: issue.toolCall.id
 				});
+			}
+
+			if (exceededToolCallLimit) {
+				break;
 			}
 
 			if (!validationRetryUsed) {
@@ -308,7 +330,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 			toolCallsMade += 1;
 			if (toolCallsMade > maxToolCalls) {
-				throw new Error('FastChat exceeded tool call limit');
+				markToolLimitReached('call');
+				break;
 			}
 
 			let result: ChatToolResult;
@@ -323,8 +346,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				try {
 					result = await params.toolExecutor(toolCall);
 				} catch (error) {
-					const message =
-						error instanceof Error ? error.message : 'Tool execution failed';
+					const message = error instanceof Error ? error.message : 'Tool execution failed';
 					result = {
 						tool_call_id: toolCall.id,
 						result: null,
@@ -337,7 +359,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const execution: FastToolExecution = { toolCall, result };
 			toolExecutions.push(execution);
 			if (params.onToolResult) {
-				await params.onToolResult(execution);
+				try {
+					await params.onToolResult(execution);
+				} catch {
+					// UI/logging callbacks must not crash tool orchestration.
+				}
 			}
 
 			const toolPayload = result.result ?? (result.error ? { error: result.error } : null);
@@ -347,6 +373,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				tool_call_id: toolCall.id
 			});
 		}
+
+		if (toolLimitNotice) {
+			break;
+		}
+	}
+
+	if (toolLimitNotice) {
+		const prefix = assistantText.trim().length > 0 ? '\n\n' : '';
+		const noticeDelta = `${prefix}${toolLimitNotice}`;
+		assistantText += noticeDelta;
+		await onDelta(noticeDelta);
 	}
 
 	return { assistantText, usage, finishedReason, toolExecutions };

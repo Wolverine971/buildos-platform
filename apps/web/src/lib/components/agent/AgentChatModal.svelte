@@ -85,6 +85,7 @@
 		initialBraindump?: InitialBraindump | null;
 		initialChatSessionId?: string | null;
 		initialProjectFocus?: ProjectFocus | null;
+		embedded?: boolean;
 	}
 
 	type ContextSelectionType = ChatContextType | 'agent_to_agent';
@@ -103,7 +104,8 @@
 		autoInitProject = null,
 		initialBraindump = null,
 		initialChatSessionId = null,
-		initialProjectFocus = null
+		initialProjectFocus = null,
+		embedded = false
 	}: Props = $props();
 
 	// Context selection state
@@ -992,6 +994,10 @@
 	$effect(() => {
 		if (!isOpen) {
 			if (wasOpen) {
+				// In embedded mode, trigger full close cleanup since there's no Modal.onClose
+				if (embedded) {
+					handleClose();
+				}
 				wasOpen = false;
 				autoInitDismissed = false;
 				lastAutoInitProjectId = null;
@@ -3943,220 +3949,23 @@
 	});
 </script>
 
-<Modal
-	{isOpen}
-	onClose={handleClose}
-	size="xl"
-	variant="bottom-sheet"
-	enableGestures={false}
-	showDragHandle={false}
-	closeOnBackdrop={false}
-	showCloseButton={false}
-	ariaLabel="BuildOS chat assistant dialog"
->
-	{#snippet header()}
-		<!-- INKPRINT header bar with Frame texture -->
-		<div class="border-b border-border bg-card tx tx-frame tx-weak">
-			<AgentChatHeader
-				{selectedContextType}
-				{displayContextLabel}
-				{displayContextSubtitle}
-				{isStreaming}
-				showBackButton={shouldShowBackButton}
-				onBack={handleBackNavigation}
-				onClose={handleClose}
-				projectId={selectedEntityId}
-				{resolvedProjectFocus}
-				onChangeFocus={openFocusSelector}
-				onClearFocus={handleFocusClear}
-				{ontologyLoaded}
-				hasActiveThinkingBlock={!!currentThinkingBlockId}
-				{currentActivity}
-				{contextUsage}
-			/>
-		</div>
-	{/snippet}
-
-	{#snippet children()}
-		<!-- INKPRINT panel container with Frame texture -->
-		<!-- Height strategy:
-			 - Portrait mobile: Full height minus header space (8rem/128px for modal chrome)
-			 - Landscape mobile: Reduced height to fit short viewport, no min-height
-			 - Tablet/Desktop (sm+): 75vh with 500px min for comfortable reading
-			 - Uses dvh (dynamic viewport height) for better mobile keyboard handling
-		-->
-		<div
-			class="relative z-10 flex h-[calc(100dvh-8rem)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak landscape:h-[calc(100dvh-4rem)] sm:h-[75dvh] sm:min-h-[500px] sm:landscape:min-h-0"
-		>
-			<!-- Keep context selection mounted so Back returns to prior step -->
-			<div
-				class={`flex h-full min-h-0 flex-col ${showContextSelection ? '' : 'hidden'}`}
-				aria-hidden={!showContextSelection}
-			>
-				<ContextSelectionScreen
-					bind:this={contextSelectionRef}
-					inModal
-					onSelect={handleContextSelect}
-					onNavigationChange={handleContextSelectionNavChange}
+{#if embedded}
+	<!-- Embedded mode: render chat content directly without Modal wrapper -->
+	<div class="flex h-full flex-col overflow-hidden bg-card">
+		<!-- Embedded chat content area -->
+		<div class="relative z-10 flex flex-1 flex-col overflow-hidden bg-card">
+			<div class="flex h-full min-h-0 flex-col">
+				<AgentMessageList
+					{messages}
+					{displayContextLabel}
+					onToggleThinkingBlock={toggleThinkingBlockCollapse}
+					bind:container={messagesContainer}
+					onScroll={handleScroll}
+					{voiceNotesByGroupId}
+					onDeleteVoiceNote={removeVoiceNoteFromGroup}
 				/>
-			</div>
 
-			<!-- Chat / wizard view - Same height constraint as selection -->
-			<div class={`${showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}>
-				{#if showProjectActionSelector}
-					<ProjectActionSelector
-						projectId={selectedEntityId || ''}
-						projectName={projectFocus?.projectName ?? selectedContextLabel ?? 'Project'}
-						onSelectAction={(action) => handleProjectActionSelect(action)}
-						onSelectFocus={handleFocusSelection}
-					/>
-				{:else if agentToAgentMode && agentToAgentStep !== 'chat'}
-					<AgentAutomationWizard
-						step={agentToAgentStep ?? 'agent'}
-						{agentProjects}
-						{agentProjectsLoading}
-						{agentProjectsError}
-						{agentGoal}
-						{agentTurnBudget}
-						{selectedAgentLabel}
-						{selectedContextLabel}
-						onUseActionableInsight={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
-						onProjectSelect={(project) => selectAgentProject(project)}
-						onBackAgent={backToAgentSelection}
-						onBackProject={backToAgentProjectSelection}
-						onStartChat={startAgentToAgentChat}
-						onExit={() => {
-							agentToAgentMode = false;
-							agentToAgentStep = null;
-							changeContext();
-						}}
-						onGoalChange={(value) => (agentGoal = value)}
-						onTurnBudgetChange={updateAgentTurnBudget}
-					/>
-				{:else if isBraindumpContext && braindumpMode === 'input'}
-					<!-- BRAINDUMP INPUT MODE - Simplified view with just textarea -->
-					<div class="flex flex-1 flex-col min-h-0 p-4 sm:p-6">
-						<div class="mb-4 text-center">
-							<h2 class="text-lg font-semibold text-foreground">
-								Capture your thoughts
-							</h2>
-							<p class="text-sm text-muted-foreground">
-								Type or record whatever's on your mind. No structure needed.
-							</p>
-						</div>
-						<div class="flex-1 min-h-0 overflow-hidden">
-							<AgentComposer
-								bind:voiceInputRef
-								bind:inputValue
-								bind:isVoiceRecording
-								bind:isVoiceInitializing
-								bind:isVoiceTranscribing
-								bind:voiceErrorMessage
-								bind:voiceRecordingDuration
-								bind:voiceSupportsLiveTranscript
-								isStreaming={false}
-								isSendDisabled={!inputValue.trim() ||
-									isVoiceRecording ||
-									isVoiceInitializing ||
-									isVoiceTranscribing}
-								displayContextLabel="your braindump"
-								vocabularyTerms="braindump"
-								onKeyDownHandler={(e) => {
-									if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-										e.preventDefault();
-										handleBraindumpSubmit();
-									}
-								}}
-								onSend={handleBraindumpSubmit}
-							/>
-						</div>
-						<!-- Desktop keyboard shortcut hint (hidden on mobile) -->
-						<p class="mt-2 hidden text-center text-xs text-muted-foreground md:block">
-							Press Cmd/Ctrl + Enter to continue
-						</p>
-					</div>
-				{:else if isBraindumpContext && braindumpMode === 'options'}
-					<!-- BRAINDUMP OPTIONS MODE - Choose save or chat -->
-					<div class="flex flex-1 flex-col min-h-0 p-4 sm:p-6">
-						<div class="mb-6 text-center">
-							<h2 class="text-lg font-semibold text-foreground">
-								What would you like to do?
-							</h2>
-							<p class="text-sm text-muted-foreground">
-								You can save this braindump for later or explore it with AI now.
-							</p>
-						</div>
-
-						<!-- Preview of braindump content -->
-						<div
-							class="mb-6 rounded-lg border border-border bg-muted/50 p-4 max-h-48 overflow-y-auto"
-						>
-							<p class="text-xs uppercase tracking-wide text-muted-foreground mb-2">
-								Your braindump
-							</p>
-							<p class="text-sm text-foreground whitespace-pre-wrap">
-								{pendingBraindumpContent}
-							</p>
-						</div>
-
-						{#if braindumpSaveError}
-							<div
-								class="mb-4 rounded-lg border border-red-600/30 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/20 dark:text-red-400"
-								role="alert"
-							>
-								{braindumpSaveError}
-							</div>
-						{/if}
-
-						<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-							<button
-								type="button"
-								class="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-								disabled={isSavingBraindump}
-								onclick={saveBraindump}
-							>
-								{#if isSavingBraindump}
-									<span
-										class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-									></span>
-									Saving...
-								{:else}
-									Save braindump
-								{/if}
-							</button>
-							<button
-								type="button"
-								class="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
-								disabled={isSavingBraindump}
-								onclick={chatAboutBraindump}
-							>
-								Chat about this
-							</button>
-						</div>
-
-						<button
-							type="button"
-							class="mt-4 text-sm text-muted-foreground hover:text-foreground transition"
-							onclick={cancelBraindumpOptions}
-						>
-							← Edit braindump
-						</button>
-					</div>
-				{:else}
-					<AgentMessageList
-						{messages}
-						{displayContextLabel}
-						onToggleThinkingBlock={toggleThinkingBlockCollapse}
-						bind:container={messagesContainer}
-						onScroll={handleScroll}
-						{voiceNotesByGroupId}
-						onDeleteVoiceNote={removeVoiceNoteFromGroup}
-					/>
-				{/if}
-
-				{#if !showContextSelection && !showProjectActionSelector && isStreaming && currentActivity && !currentThinkingBlockId}
-					<!-- INKPRINT activity indicator with Grain texture -->
-					<!-- NOTE: Hidden when thinking block is active to prevent duplicate status displays -->
+				{#if isStreaming && currentActivity && !currentThinkingBlockId}
 					<div
 						class="border-t border-border bg-muted p-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground tx tx-grain tx-weak sm:p-2.5"
 					>
@@ -4170,8 +3979,7 @@
 					</div>
 				{/if}
 
-				{#if !showContextSelection && !showProjectActionSelector && error}
-					<!-- INKPRINT error message with Static texture -->
+				{#if error}
 					<div
 						class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
 						role="alert"
@@ -4181,122 +3989,401 @@
 					</div>
 				{/if}
 
-				{#if !showContextSelection && !showProjectActionSelector && agentToAgentMode}
-					<!-- INKPRINT automation footer with Thread texture -->
-					<div class="border-t border-border bg-muted p-2 tx tx-thread tx-weak sm:p-2.5">
-						<div
-							class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
-						>
-							<div class="space-y-0.5">
-								<p class="text-xs font-semibold text-foreground">
-									Automation loop is {agentLoopActive ? 'active' : 'paused'}.
-								</p>
-								<p
-									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>
-									Helper: {selectedAgentLabel} • Project: {selectedContextLabel ??
-										'Select a project'} • Goal: {agentGoal || 'Add a goal'}
-								</p>
-								<p
-									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>
-									Turns remaining: {agentTurnsRemaining} / {agentTurnBudget}
-								</p>
-							</div>
-							<!-- INKPRINT tactile buttons -->
-							<div class="flex flex-wrap items-center gap-2">
-								<button
-									type="button"
-									class="inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
-									disabled={isStreaming ||
-										agentMessageLoading ||
-										agentTurnsRemaining <= 0}
-									onclick={() => {
-										agentLoopActive = true;
-										runAgentToAgentTurn();
-									}}
-								>
-									{agentLoopActive ? 'Run next turn' : 'Resume loop'}
-								</button>
-								<button
-									type="button"
-									class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
-									onclick={stopAgentLoop}
-								>
-									Stop
-								</button>
-							</div>
-						</div>
-						<!-- INKPRINT micro-label controls -->
-						<div
-							class="mt-1.5 flex flex-wrap items-center gap-2 text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-						>
-							<label class="flex items-center gap-1.5">
-								<span class="font-bold">Turn limit</span>
-								<input
-									type="number"
-									min="1"
-									max="50"
-									class="w-16 rounded-lg border border-border bg-background px-2 py-1 text-[0.65rem] font-semibold text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-ring"
-									value={agentTurnBudget}
-									disabled={agentLoopActive || agentMessageLoading || isStreaming}
-									oninput={(e) =>
-										updateAgentTurnBudget(
-											Number((e.target as HTMLInputElement).value)
-										)}
-								/>
-							</label>
-							{#if agentTurnsRemaining <= 0}
-								<!-- INKPRINT warning badge with Static texture -->
-								<span
-									class="rounded-lg bg-amber-100 px-2.5 py-1.5 text-[0.65rem] font-semibold text-amber-700 tx tx-static tx-weak dark:bg-amber-900/30 dark:text-amber-300"
-								>
-									Turn limit reached — adjust and resume.
-								</span>
-							{/if}
-						</div>
-						{#if agentMessageLoading}
-							<p
-								class="mt-1 text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-							>
-								Fetching the next update...
-							</p>
-						{/if}
-					</div>
-				{:else if !showContextSelection && !showProjectActionSelector && !(isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options'))}
-					<!-- INKPRINT composer footer - hidden for braindump input/options modes -->
-					<div
-						bind:this={composerContainer}
-						class="border-t border-border bg-card p-2 sm:p-2.5 tx tx-grain tx-weak"
-					>
-						<AgentComposer
-							bind:voiceInputRef
-							bind:inputValue
-							bind:isVoiceRecording
-							bind:isVoiceInitializing
-							bind:isVoiceTranscribing
-							bind:voiceErrorMessage
-							bind:voiceRecordingDuration
-							bind:voiceSupportsLiveTranscript
-							bind:voiceNoteGroupId
-							{isStreaming}
-							{isSendDisabled}
-							allowSendWhileStreaming={isTouchDevice}
-							{displayContextLabel}
-							vocabularyTerms={resolvedProjectFocus?.projectName ??
-								displayContextLabel}
-							onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
-							onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
-							onKeyDownHandler={handleKeyDown}
-							onSend={handleSendMessage}
-							onStop={() => handleStopGeneration('user_cancelled')}
-						/>
-					</div>
-				{/if}
+				<div
+					bind:this={composerContainer}
+					class="border-t border-border bg-card p-2 sm:p-2.5 tx tx-grain tx-weak"
+				>
+					<AgentComposer
+						bind:voiceInputRef
+						bind:inputValue
+						bind:isVoiceRecording
+						bind:isVoiceInitializing
+						bind:isVoiceTranscribing
+						bind:voiceErrorMessage
+						bind:voiceRecordingDuration
+						bind:voiceSupportsLiveTranscript
+						bind:voiceNoteGroupId
+						{isStreaming}
+						{isSendDisabled}
+						allowSendWhileStreaming={isTouchDevice}
+						{displayContextLabel}
+						vocabularyTerms={resolvedProjectFocus?.projectName ?? displayContextLabel}
+						onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
+						onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
+						onKeyDownHandler={handleKeyDown}
+						onSend={handleSendMessage}
+						onStop={() => handleStopGeneration('user_cancelled')}
+					/>
+				</div>
 			</div>
 		</div>
-	{/snippet}
-</Modal>
+	</div>
+{:else}
+	<Modal
+		{isOpen}
+		onClose={handleClose}
+		size="xl"
+		variant="bottom-sheet"
+		enableGestures={false}
+		showDragHandle={false}
+		closeOnBackdrop={false}
+		showCloseButton={false}
+		ariaLabel="BuildOS chat assistant dialog"
+	>
+		{#snippet header()}
+			<!-- INKPRINT header bar with Frame texture -->
+			<div class="border-b border-border bg-card tx tx-frame tx-weak">
+				<AgentChatHeader
+					{selectedContextType}
+					{displayContextLabel}
+					{displayContextSubtitle}
+					{isStreaming}
+					showBackButton={shouldShowBackButton}
+					onBack={handleBackNavigation}
+					onClose={handleClose}
+					projectId={selectedEntityId}
+					{resolvedProjectFocus}
+					onChangeFocus={openFocusSelector}
+					onClearFocus={handleFocusClear}
+					{ontologyLoaded}
+					hasActiveThinkingBlock={!!currentThinkingBlockId}
+					{currentActivity}
+					{contextUsage}
+				/>
+			</div>
+		{/snippet}
+
+		{#snippet children()}
+			<!-- INKPRINT panel container with Frame texture -->
+			<!-- Height strategy:
+			 - Portrait mobile: Full height minus header space (8rem/128px for modal chrome)
+			 - Landscape mobile: Reduced height to fit short viewport, no min-height
+			 - Tablet/Desktop (sm+): 75vh with 500px min for comfortable reading
+			 - Uses dvh (dynamic viewport height) for better mobile keyboard handling
+		-->
+			<div
+				class="relative z-10 flex h-[calc(100dvh-8rem)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak landscape:h-[calc(100dvh-4rem)] sm:h-[75dvh] sm:min-h-[500px] sm:landscape:min-h-0"
+			>
+				<!-- Keep context selection mounted so Back returns to prior step -->
+				<div
+					class={`flex h-full min-h-0 flex-col ${showContextSelection ? '' : 'hidden'}`}
+					aria-hidden={!showContextSelection}
+				>
+					<ContextSelectionScreen
+						bind:this={contextSelectionRef}
+						inModal
+						onSelect={handleContextSelect}
+						onNavigationChange={handleContextSelectionNavChange}
+					/>
+				</div>
+
+				<!-- Chat / wizard view - Same height constraint as selection -->
+				<div class={`${showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}>
+					{#if showProjectActionSelector}
+						<ProjectActionSelector
+							projectId={selectedEntityId || ''}
+							projectName={projectFocus?.projectName ??
+								selectedContextLabel ??
+								'Project'}
+							onSelectAction={(action) => handleProjectActionSelect(action)}
+							onSelectFocus={handleFocusSelection}
+						/>
+					{:else if agentToAgentMode && agentToAgentStep !== 'chat'}
+						<AgentAutomationWizard
+							step={agentToAgentStep ?? 'agent'}
+							{agentProjects}
+							{agentProjectsLoading}
+							{agentProjectsError}
+							{agentGoal}
+							{agentTurnBudget}
+							{selectedAgentLabel}
+							{selectedContextLabel}
+							onUseActionableInsight={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
+							onProjectSelect={(project) => selectAgentProject(project)}
+							onBackAgent={backToAgentSelection}
+							onBackProject={backToAgentProjectSelection}
+							onStartChat={startAgentToAgentChat}
+							onExit={() => {
+								agentToAgentMode = false;
+								agentToAgentStep = null;
+								changeContext();
+							}}
+							onGoalChange={(value) => (agentGoal = value)}
+							onTurnBudgetChange={updateAgentTurnBudget}
+						/>
+					{:else if isBraindumpContext && braindumpMode === 'input'}
+						<!-- BRAINDUMP INPUT MODE - Simplified view with just textarea -->
+						<div class="flex flex-1 flex-col min-h-0 p-4 sm:p-6">
+							<div class="mb-4 text-center">
+								<h2 class="text-lg font-semibold text-foreground">
+									Capture your thoughts
+								</h2>
+								<p class="text-sm text-muted-foreground">
+									Type or record whatever's on your mind. No structure needed.
+								</p>
+							</div>
+							<div class="flex-1 min-h-0 overflow-hidden">
+								<AgentComposer
+									bind:voiceInputRef
+									bind:inputValue
+									bind:isVoiceRecording
+									bind:isVoiceInitializing
+									bind:isVoiceTranscribing
+									bind:voiceErrorMessage
+									bind:voiceRecordingDuration
+									bind:voiceSupportsLiveTranscript
+									isStreaming={false}
+									isSendDisabled={!inputValue.trim() ||
+										isVoiceRecording ||
+										isVoiceInitializing ||
+										isVoiceTranscribing}
+									displayContextLabel="your braindump"
+									vocabularyTerms="braindump"
+									onKeyDownHandler={(e) => {
+										if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+											e.preventDefault();
+											handleBraindumpSubmit();
+										}
+									}}
+									onSend={handleBraindumpSubmit}
+								/>
+							</div>
+							<!-- Desktop keyboard shortcut hint (hidden on mobile) -->
+							<p
+								class="mt-2 hidden text-center text-xs text-muted-foreground md:block"
+							>
+								Press Cmd/Ctrl + Enter to continue
+							</p>
+						</div>
+					{:else if isBraindumpContext && braindumpMode === 'options'}
+						<!-- BRAINDUMP OPTIONS MODE - Choose save or chat -->
+						<div class="flex flex-1 flex-col min-h-0 p-4 sm:p-6">
+							<div class="mb-6 text-center">
+								<h2 class="text-lg font-semibold text-foreground">
+									What would you like to do?
+								</h2>
+								<p class="text-sm text-muted-foreground">
+									You can save this braindump for later or explore it with AI now.
+								</p>
+							</div>
+
+							<!-- Preview of braindump content -->
+							<div
+								class="mb-6 rounded-lg border border-border bg-muted/50 p-4 max-h-48 overflow-y-auto"
+							>
+								<p
+									class="text-xs uppercase tracking-wide text-muted-foreground mb-2"
+								>
+									Your braindump
+								</p>
+								<p class="text-sm text-foreground whitespace-pre-wrap">
+									{pendingBraindumpContent}
+								</p>
+							</div>
+
+							{#if braindumpSaveError}
+								<div
+									class="mb-4 rounded-lg border border-red-600/30 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/20 dark:text-red-400"
+									role="alert"
+								>
+									{braindumpSaveError}
+								</div>
+							{/if}
+
+							<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
+								<button
+									type="button"
+									class="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+									disabled={isSavingBraindump}
+									onclick={saveBraindump}
+								>
+									{#if isSavingBraindump}
+										<span
+											class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+										></span>
+										Saving...
+									{:else}
+										Save braindump
+									{/if}
+								</button>
+								<button
+									type="button"
+									class="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
+									disabled={isSavingBraindump}
+									onclick={chatAboutBraindump}
+								>
+									Chat about this
+								</button>
+							</div>
+
+							<button
+								type="button"
+								class="mt-4 text-sm text-muted-foreground hover:text-foreground transition"
+								onclick={cancelBraindumpOptions}
+							>
+								← Edit braindump
+							</button>
+						</div>
+					{:else}
+						<AgentMessageList
+							{messages}
+							{displayContextLabel}
+							onToggleThinkingBlock={toggleThinkingBlockCollapse}
+							bind:container={messagesContainer}
+							onScroll={handleScroll}
+							{voiceNotesByGroupId}
+							onDeleteVoiceNote={removeVoiceNoteFromGroup}
+						/>
+					{/if}
+
+					{#if !showContextSelection && !showProjectActionSelector && isStreaming && currentActivity && !currentThinkingBlockId}
+						<!-- INKPRINT activity indicator with Grain texture -->
+						<!-- NOTE: Hidden when thinking block is active to prevent duplicate status displays -->
+						<div
+							class="border-t border-border bg-muted p-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground tx tx-grain tx-weak sm:p-2.5"
+						>
+							<span class="inline-flex items-center gap-1.5">
+								<span
+									class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-accent"
+									aria-hidden="true"
+								></span>
+								<span role="status" aria-live="polite">{currentActivity}</span>
+							</span>
+						</div>
+					{/if}
+
+					{#if !showContextSelection && !showProjectActionSelector && error}
+						<!-- INKPRINT error message with Static texture -->
+						<div
+							class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
+							role="alert"
+							aria-live="assertive"
+						>
+							{error}
+						</div>
+					{/if}
+
+					{#if !showContextSelection && !showProjectActionSelector && agentToAgentMode}
+						<!-- INKPRINT automation footer with Thread texture -->
+						<div
+							class="border-t border-border bg-muted p-2 tx tx-thread tx-weak sm:p-2.5"
+						>
+							<div
+								class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+							>
+								<div class="space-y-0.5">
+									<p class="text-xs font-semibold text-foreground">
+										Automation loop is {agentLoopActive ? 'active' : 'paused'}.
+									</p>
+									<p
+										class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+									>
+										Helper: {selectedAgentLabel} • Project: {selectedContextLabel ??
+											'Select a project'} • Goal: {agentGoal || 'Add a goal'}
+									</p>
+									<p
+										class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+									>
+										Turns remaining: {agentTurnsRemaining} / {agentTurnBudget}
+									</p>
+								</div>
+								<!-- INKPRINT tactile buttons -->
+								<div class="flex flex-wrap items-center gap-2">
+									<button
+										type="button"
+										class="inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
+										disabled={isStreaming ||
+											agentMessageLoading ||
+											agentTurnsRemaining <= 0}
+										onclick={() => {
+											agentLoopActive = true;
+											runAgentToAgentTurn();
+										}}
+									>
+										{agentLoopActive ? 'Run next turn' : 'Resume loop'}
+									</button>
+									<button
+										type="button"
+										class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
+										onclick={stopAgentLoop}
+									>
+										Stop
+									</button>
+								</div>
+							</div>
+							<!-- INKPRINT micro-label controls -->
+							<div
+								class="mt-1.5 flex flex-wrap items-center gap-2 text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+							>
+								<label class="flex items-center gap-1.5">
+									<span class="font-bold">Turn limit</span>
+									<input
+										type="number"
+										min="1"
+										max="50"
+										class="w-16 rounded-lg border border-border bg-background px-2 py-1 text-[0.65rem] font-semibold text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-ring"
+										value={agentTurnBudget}
+										disabled={agentLoopActive ||
+											agentMessageLoading ||
+											isStreaming}
+										oninput={(e) =>
+											updateAgentTurnBudget(
+												Number((e.target as HTMLInputElement).value)
+											)}
+									/>
+								</label>
+								{#if agentTurnsRemaining <= 0}
+									<!-- INKPRINT warning badge with Static texture -->
+									<span
+										class="rounded-lg bg-amber-100 px-2.5 py-1.5 text-[0.65rem] font-semibold text-amber-700 tx tx-static tx-weak dark:bg-amber-900/30 dark:text-amber-300"
+									>
+										Turn limit reached — adjust and resume.
+									</span>
+								{/if}
+							</div>
+							{#if agentMessageLoading}
+								<p
+									class="mt-1 text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>
+									Fetching the next update...
+								</p>
+							{/if}
+						</div>
+					{:else if !showContextSelection && !showProjectActionSelector && !(isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options'))}
+						<!-- INKPRINT composer footer - hidden for braindump input/options modes -->
+						<div
+							bind:this={composerContainer}
+							class="border-t border-border bg-card p-2 sm:p-2.5 tx tx-grain tx-weak"
+						>
+							<AgentComposer
+								bind:voiceInputRef
+								bind:inputValue
+								bind:isVoiceRecording
+								bind:isVoiceInitializing
+								bind:isVoiceTranscribing
+								bind:voiceErrorMessage
+								bind:voiceRecordingDuration
+								bind:voiceSupportsLiveTranscript
+								bind:voiceNoteGroupId
+								{isStreaming}
+								{isSendDisabled}
+								allowSendWhileStreaming={isTouchDevice}
+								{displayContextLabel}
+								vocabularyTerms={resolvedProjectFocus?.projectName ??
+									displayContextLabel}
+								onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
+								onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
+								onKeyDownHandler={handleKeyDown}
+								onSend={handleSendMessage}
+								onStop={() => handleStopGeneration('user_cancelled')}
+							/>
+						</div>
+					{/if}
+				</div>
+			</div>
+		{/snippet}
+	</Modal>
+{/if}
 
 {#if isProjectContext(selectedContextType) && selectedEntityId && resolvedProjectFocus}
 	<ProjectFocusSelector

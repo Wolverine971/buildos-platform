@@ -460,6 +460,24 @@
 				continue;
 			}
 
+			// For state_key filter, allow terminal states through when their
+			// corresponding special toggle is enabled (e.g. showCompleted allows
+			// 'done' tasks past the state_key filter even if 'done' isn't selected)
+			if (field === 'state_key') {
+				const stateVal = String(item[field] ?? '');
+				const allowedByToggle =
+					(entityType === 'tasks' && toggles.showCompleted && stateVal === 'done') ||
+					(entityType === 'plans' && toggles.showCompleted && stateVal === 'completed') ||
+					(entityType === 'goals' && toggles.showAchieved && stateVal === 'achieved') ||
+					(entityType === 'goals' && toggles.showAbandoned && stateVal === 'abandoned') ||
+					(entityType === 'risks' && toggles.showClosed && stateVal === 'closed') ||
+					(entityType === 'events' && toggles.showCancelled && stateVal === 'cancelled');
+				if (allowedByToggle || selectedValues.includes(stateVal)) {
+					continue;
+				}
+				return false;
+			}
+
 			// Standard field filter
 			const itemValue = item[field];
 			if (itemValue != null && !selectedValues.includes(String(itemValue))) {

@@ -78,7 +78,7 @@
 	let showBriefModal = $state(false);
 	let selectedBrief = $state<DailyBrief | null>(null);
 	let DailyBriefModal = $state<any>(null);
-	let AgentChatModal = $state<any>(null);
+	let BriefChatModal = $state<any>(null);
 
 	// Brief chat state
 	let showBriefChatModal = $state(false);
@@ -259,13 +259,13 @@
 		// Close the brief modal first to avoid stacking
 		showBriefModal = false;
 
-		// Lazy load AgentChatModal if not already loaded
-		if (!AgentChatModal) {
+		// Lazy load BriefChatModal (two-pane brief + chat modal)
+		if (!BriefChatModal) {
 			try {
-				const module = await import('$lib/components/agent/AgentChatModal.svelte');
-				AgentChatModal = module.default;
+				const module = await import('$lib/components/briefs/BriefChatModal.svelte');
+				BriefChatModal = module.default;
 			} catch (err) {
-				console.error('Failed to load AgentChatModal:', err);
+				console.error('Failed to load BriefChatModal:', err);
 				return;
 			}
 		}
@@ -699,12 +699,11 @@
 	/>
 {/if}
 
-<!-- Brief Chat Modal -->
-{#if AgentChatModal && showBriefChatModal && briefChatBrief}
-	<AgentChatModal
+<!-- Brief Chat Modal (two-pane: brief + chat) -->
+{#if BriefChatModal && showBriefChatModal && briefChatBrief}
+	<BriefChatModal
 		isOpen={showBriefChatModal}
-		contextType="daily_brief"
-		entityId={briefChatBrief.id}
+		brief={briefChatBrief}
 		initialChatSessionId={briefChatSessionId}
 		onClose={handleBriefChatClose}
 	/>
