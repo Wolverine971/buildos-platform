@@ -48,7 +48,7 @@
 					<h3 class="text-lg font-semibold text-foreground truncate">
 						{brief.project_name || brief.projects?.name || 'Unknown Project'}
 					</h3>
-					{#if brief.projects?.slug}
+					{#if brief.projects?.id}
 						<Button
 							type="button"
 							onclick={goToProject}

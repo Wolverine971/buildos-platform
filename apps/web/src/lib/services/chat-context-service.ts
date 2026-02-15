@@ -774,6 +774,78 @@ You are an ontology system assistant helping users work with the BuildOS knowled
 		}
 	}
 
+	private async resolveActorId(userId: string): Promise<string> {
+		const { data: actorId, error } = await this.supabase.rpc('ensure_actor_for_user', {
+			p_user_id: userId
+		});
+
+		if (error || !actorId) {
+			throw new Error(error?.message || 'Failed to resolve actor');
+		}
+
+		return actorId;
+	}
+
+	private toLegacyProjectStatus(
+		stateKey: string | null | undefined
+	): 'active' | 'paused' | 'completed' | 'archived' {
+		switch (stateKey) {
+			case 'completed':
+				return 'completed';
+			case 'cancelled':
+				return 'archived';
+			case 'planning':
+				return 'paused';
+			case 'active':
+			default:
+				return 'active';
+		}
+	}
+
+	private toLegacyTaskStatus(
+		stateKey: string | null | undefined
+	): 'backlog' | 'in_progress' | 'done' | 'blocked' {
+		switch (stateKey) {
+			case 'in_progress':
+				return 'in_progress';
+			case 'done':
+				return 'done';
+			case 'blocked':
+				return 'blocked';
+			case 'todo':
+			default:
+				return 'backlog';
+		}
+	}
+
+	private toLegacyPriority(priority: number | null | undefined): 'low' | 'medium' | 'high' {
+		if ((priority ?? 0) >= 4) return 'high';
+		if ((priority ?? 0) >= 2) return 'medium';
+		return 'low';
+	}
+
+	private getTaskProps(task: { props?: Json | null }): Record<string, unknown> {
+		return (task.props as Record<string, unknown> | null) ?? {};
+	}
+
+	private normalizeTaskStatus(
+		status: string | null | undefined
+	): 'backlog' | 'in_progress' | 'done' | 'blocked' {
+		switch (status) {
+			case 'todo':
+			case 'backlog':
+				return 'backlog';
+			case 'in_progress':
+				return 'in_progress';
+			case 'done':
+				return 'done';
+			case 'blocked':
+				return 'blocked';
+			default:
+				return 'backlog';
+		}
+	}
+
 	private async buildProjectCreationContext(userId: string): Promise<LocationContext> {
 		const { data: user } = await this.supabase
 			.from('users')
@@ -891,37 +963,66 @@ Use tools to explore more details.`;
 		userId: string,
 		sourceContextType?: ChatContextType
 	): Promise<LocationContext> {
+		const actorId = await this.resolveActorId(userId);
+
 		const { data: task } = await this.supabase
-			.from('tasks')
-			.select(
-				`
-        id, title, status, priority, start_date, duration_minutes,
-        description, details, task_type, recurrence_pattern,
-        project:projects!inner(id, name, status),
-        subtasks:tasks!parent_task_id(id)
-      `
-			)
+			.from('onto_tasks')
+			.select('id, title, state_key, priority, start_at, description, props, project_id')
 			.eq('id', taskId)
-			.eq('user_id', userId)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
 			.single();
 
 		if (!task) throw new Error('Task not found');
 
+		const { data: project } = task.project_id
+			? await this.supabase
+					.from('onto_projects')
+					.select('id, name, state_key')
+					.eq('id', task.project_id)
+					.is('deleted_at', null)
+					.maybeSingle()
+			: { data: null };
+
+		const { data: candidateSubtasks } = await this.supabase
+			.from('onto_tasks')
+			.select('id, props')
+			.eq('project_id', task.project_id)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.limit(200);
+
+		const subtasks =
+			candidateSubtasks?.filter((candidate) => {
+				const props = this.getTaskProps(candidate);
+				return props.parent_task_id === task.id;
+			}) ?? [];
+
+		const props = this.getTaskProps(task);
+		const status = this.toLegacyTaskStatus(task.state_key);
+		const priority = this.toLegacyPriority(task.priority);
+		const startDate = task.start_at;
+		const durationMinutes =
+			typeof props.duration_minutes === 'number' ? props.duration_minutes : 60;
+		const recurrencePattern =
+			typeof props.recurrence_pattern === 'string' ? props.recurrence_pattern : null;
+		const details = typeof props.details === 'string' ? props.details : null;
+
 		if (abbreviated) {
 			const content = `
 ## Current Task: ${task.title}
-- Status: ${task.status} | Priority: ${task.priority}
-- Project: ${task.project?.name || 'No project'}
-- Schedule: ${task.start_date || 'Not scheduled'} (${task.duration_minutes || 60} min)
-${task.recurrence_pattern ? `- Recurring: ${task.recurrence_pattern}` : ''}
+- Status: ${status} | Priority: ${priority}
+- Project: ${project?.name || 'No project'}
+- Schedule: ${startDate || 'Not scheduled'} (${durationMinutes} min)
+${recurrencePattern ? `- Recurring: ${recurrencePattern}` : ''}
 
 ### Description Preview (100 chars)
 ${task.description?.substring(0, 100) || 'No description'}${(task.description?.length || 0) > 100 ? '...' : ''}
 
 ### Details Preview (100 chars)
-${task.details?.substring(0, 100) || 'No details'}${(task.details?.length || 0) > 100 ? '...' : ''}
+${details?.substring(0, 100) || 'No details'}${(details?.length || 0) > 100 ? '...' : ''}
 
-${Array.isArray(task.subtasks) && task.subtasks.length > 0 ? `Has ${task.subtasks.length} subtasks` : 'No subtasks'}
+${subtasks.length > 0 ? `Has ${subtasks.length} subtasks` : 'No subtasks'}
 
 Use get_task_details('${taskId}') for complete information.`;
 
@@ -931,7 +1032,7 @@ Use get_task_details('${taskId}') for complete information.`;
 				metadata: {
 					contextType: sourceContextType,
 					taskId,
-					projectId: task.project?.id,
+					projectId: task.project_id ?? undefined,
 					taskTitle: task.title,
 					abbreviated: true
 				}
@@ -1002,20 +1103,24 @@ Use calendar tools to find available time slots or schedule tasks.`;
 		abbreviated: boolean,
 		userId: string
 	): Promise<LocationContext> {
+		const actorId = await this.resolveActorId(userId);
+
 		// Get user's active projects and recent tasks
 		const { data: projects } = await this.supabase
-			.from('projects')
-			.select('id, name, status')
-			.eq('user_id', userId)
-			.eq('status', 'active')
+			.from('onto_projects')
+			.select('id, name, state_key')
+			.eq('created_by', actorId)
+			.eq('state_key', 'active')
+			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(3);
 
 		const { data: tasks } = await this.supabase
-			.from('tasks')
-			.select('id, title, priority, start_date')
-			.eq('user_id', userId)
-			.in('status', ['in_progress', 'blocked'])
+			.from('onto_tasks')
+			.select('id, title, priority, start_at, state_key')
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.in('state_key', ['in_progress', 'blocked'])
 			.order('priority', { ascending: false })
 			.limit(5);
 
@@ -1026,7 +1131,7 @@ Use calendar tools to find available time slots or schedule tasks.`;
 ${projects?.map((p) => `- ${p.name}`).join('\n') || 'No active projects'}
 
 ### Current Tasks (${tasks?.length || 0})
-${tasks?.map((t) => `- [${t.priority}] ${t.title}`).join('\n') || 'No active tasks'}
+${tasks?.map((t) => `- [${this.toLegacyPriority(t.priority)}] ${t.title}`).join('\n') || 'No active tasks'}
 
 Use search tools to explore projects, tasks, notes, and calendar events.`;
 
@@ -1104,45 +1209,74 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 		projectId: string,
 		userId: string
 	): Promise<AbbreviatedProject> {
+		const actorId = await this.resolveActorId(userId);
+
 		const { data } = await this.supabase
-			.from('projects')
-			.select(
-				`
-        id, name, slug, status, start_date, end_date,
-        description, executive_summary, tags, context,
-        tasks(id, status),
-        phases(id),
-        notes(id),
-        brain_dumps(id)
-      `
-			)
+			.from('onto_projects')
+			.select('id, name, state_key, start_at, end_at, description, props')
 			.eq('id', projectId)
-			.eq('user_id', userId)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
 			.single();
 
 		if (!data) throw new Error('Project not found');
 
-		const taskStats = this.calculateTaskStats(data.tasks || []);
+		const [{ data: tasks }, { data: plans }, { data: notes }, { data: brainDumps }] =
+			await Promise.all([
+				this.supabase
+					.from('onto_tasks')
+					.select('id, state_key')
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null),
+				this.supabase
+					.from('onto_plans')
+					.select('id')
+					.eq('project_id', projectId)
+					.is('deleted_at', null),
+				this.supabase
+					.from('notes')
+					.select('id')
+					.eq('project_id', projectId)
+					.eq('user_id', userId),
+				this.supabase
+					.from('brain_dumps')
+					.select('id')
+					.eq('project_id', projectId)
+					.eq('user_id', userId)
+			]);
+
+		const projectProps = (data.props as Record<string, unknown> | null) ?? {};
+		const taskStats = this.calculateTaskStats(
+			(tasks ?? []).map((task) => ({
+				status: this.toLegacyTaskStatus(task.state_key)
+			}))
+		);
 
 		return {
 			id: data.id,
 			name: data.name,
-			slug: data.slug,
-			status: data.status,
-			start_date: data.start_date,
-			end_date: data.end_date,
+			slug: null,
+			status: this.toLegacyProjectStatus(data.state_key),
+			start_date: data.start_at,
+			end_date: data.end_at,
 			description: data.description,
-			executive_summary: data.executive_summary,
-			tags: data.tags,
+			executive_summary:
+				typeof projectProps.executive_summary === 'string'
+					? projectProps.executive_summary
+					: null,
+			tags: Array.isArray(projectProps.tags) ? (projectProps.tags as string[]) : null,
 			context_preview:
-				data.context?.substring(0, this.PREVIEW_LIMITS.PROJECT_CONTEXT) || null,
+				(typeof projectProps.context === 'string'
+					? projectProps.context.substring(0, this.PREVIEW_LIMITS.PROJECT_CONTEXT)
+					: null) || null,
 			task_count: taskStats.total,
 			active_task_count: taskStats.active,
 			completed_task_count: taskStats.completed,
 			completion_percentage: taskStats.percentage,
-			has_phases: data.phases?.length > 0,
-			has_notes: data.notes?.length > 0,
-			has_brain_dumps: data.brain_dumps?.length > 0
+			has_phases: (plans?.length ?? 0) > 0,
+			has_notes: (notes?.length ?? 0) > 0,
+			has_brain_dumps: (brainDumps?.length ?? 0) > 0
 		};
 	}
 
@@ -1154,43 +1288,65 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 		userId: string,
 		limit = 10
 	): Promise<AbbreviatedTask[]> {
+		const actorId = await this.resolveActorId(userId);
+
 		const { data: tasks } = await this.supabase
-			.from('tasks')
+			.from('onto_tasks')
 			.select(
 				`
-        id, title, status, priority, start_date, duration_minutes,
-        description, details, task_type, recurrence_pattern,
-        subtasks:tasks!parent_task_id(id),
-        dependencies
+        id, title, state_key, priority, start_at,
+        description, props
       `
 			)
 			.eq('project_id', projectId)
-			.eq('user_id', userId)
-			.in('status', ['in_progress', 'backlog', 'blocked'])
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.in('state_key', ['in_progress', 'todo', 'blocked'])
 			.order('priority', { ascending: false })
-			.order('start_date', { ascending: true })
+			.order('start_at', { ascending: true })
 			.limit(limit);
 
 		if (!tasks) return [];
 
+		const { data: subtaskCandidates } = await this.supabase
+			.from('onto_tasks')
+			.select('id, props')
+			.eq('project_id', projectId)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.limit(500);
+
+		const parentIds = new Set(
+			(subtaskCandidates ?? [])
+				.map((candidate) => this.getTaskProps(candidate).parent_task_id)
+				.filter((value): value is string => typeof value === 'string')
+		);
+
 		return tasks.map((t) => {
-			const subtasks = Array.isArray(t.subtasks) ? t.subtasks : [];
-			const dependencies = Array.isArray(t.dependencies) ? t.dependencies : [];
+			const props = this.getTaskProps(t);
+			const dependencies = Array.isArray(props.dependencies) ? props.dependencies : [];
+			const details = typeof props.details === 'string' ? props.details : null;
+			const recurrencePattern =
+				typeof props.recurrence_pattern === 'string' ? props.recurrence_pattern : null;
+			const taskType = typeof props.task_type === 'string' ? props.task_type : 'one_off';
+			const durationMinutes =
+				typeof props.duration_minutes === 'number' ? props.duration_minutes : null;
+			const status = this.toLegacyTaskStatus(t.state_key);
 
 			return {
 				id: t.id,
 				title: t.title,
-				status: t.status,
-				priority: t.priority,
-				start_date: t.start_date,
-				duration_minutes: t.duration_minutes,
+				status,
+				priority: this.toLegacyPriority(t.priority),
+				start_date: t.start_at,
+				duration_minutes: durationMinutes,
 				description_preview:
 					t.description?.substring(0, this.PREVIEW_LIMITS.TASK_DESCRIPTION) || '',
-				details_preview: t.details?.substring(0, this.PREVIEW_LIMITS.TASK_DETAILS) || null,
-				has_subtasks: subtasks.length > 0,
+				details_preview: details?.substring(0, this.PREVIEW_LIMITS.TASK_DETAILS) || null,
+				has_subtasks: parentIds.has(t.id),
 				has_dependencies: dependencies.length > 0,
-				is_recurring: !!t.recurrence_pattern,
-				is_overdue: this.isOverdue(t.start_date, t.status)
+				is_recurring: !!recurrencePattern || taskType === 'recurring',
+				is_overdue: this.isOverdue(t.start_at, status)
 			};
 		});
 	}
@@ -1203,45 +1359,69 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 		userId: string,
 		sourceContextType?: ChatContextType
 	): Promise<LocationContext> {
-		const { data: project } = await this.supabase
-			.from('projects')
-			.select(
-				`
-        *,
-        tasks(*),
-        phases(*),
-        notes(*),
-        brain_dumps(*)
-      `
-			)
-			.eq('id', projectId)
-			.eq('user_id', userId)
-			.single();
+		const actorId = await this.resolveActorId(userId);
+
+		const [{ data: project }, { data: tasks }, { data: plans }, { data: notes }] =
+			await Promise.all([
+				this.supabase
+					.from('onto_projects')
+					.select('id, name, state_key, start_at, end_at, description, props')
+					.eq('id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+					.single(),
+				this.supabase
+					.from('onto_tasks')
+					.select('id, title, state_key, priority, start_at, description, props')
+					.eq('project_id', projectId)
+					.eq('created_by', actorId)
+					.is('deleted_at', null),
+				this.supabase
+					.from('onto_plans')
+					.select('id, name, description, plan, state_key')
+					.eq('project_id', projectId)
+					.is('deleted_at', null),
+				this.supabase
+					.from('notes')
+					.select('*')
+					.eq('project_id', projectId)
+					.eq('user_id', userId)
+			]);
 
 		if (!project) throw new Error('Project not found');
 
-		const taskStats = this.calculateTaskStats(project.tasks || []);
+		const projectProps = (project.props as Record<string, unknown> | null) ?? {};
+		const legacyTasks = (tasks ?? []).map((task) => ({
+			status: this.toLegacyTaskStatus(task.state_key)
+		}));
+		const taskStats = this.calculateTaskStats(legacyTasks);
+		const tags = Array.isArray(projectProps.tags) ? (projectProps.tags as string[]) : [];
+		const contextText = typeof projectProps.context === 'string' ? projectProps.context : null;
+		const executiveSummary =
+			typeof projectProps.executive_summary === 'string'
+				? projectProps.executive_summary
+				: null;
 
 		// Build comprehensive context
 		let content = `## Project: ${project.name} (Full Context)\n\n`;
 		content += `### Overview\n`;
-		content += `- Status: ${project.status}\n`;
-		content += `- Period: ${project.start_date || 'Not set'} to ${project.end_date || 'Not set'}\n`;
-		content += `- Tags: ${project.tags?.join(', ') || 'None'}\n\n`;
+		content += `- Status: ${this.toLegacyProjectStatus(project.state_key)}\n`;
+		content += `- Period: ${project.start_at || 'Not set'} to ${project.end_at || 'Not set'}\n`;
+		content += `- Tags: ${tags.join(', ') || 'None'}\n\n`;
 
 		if (project.description) {
 			content += `### Description\n${project.description}\n\n`;
 		}
 
-		if (project.executive_summary) {
-			content += `### Executive Summary\n${project.executive_summary}\n\n`;
+		if (executiveSummary) {
+			content += `### Executive Summary\n${executiveSummary}\n\n`;
 		}
 
-		if (project.context) {
-			content += `### Full Context\n${project.context}\n\n`;
+		if (contextText) {
+			content += `### Full Context\n${contextText}\n\n`;
 		}
 
-		const projectRecord = project as Record<string, unknown>;
+		const projectRecord = projectProps;
 		const coreProblem = this.getOptionalStringField(projectRecord, 'core_problem');
 		if (coreProblem) {
 			content += `### Core Problem\n${coreProblem}\n\n`;
@@ -1257,17 +1437,14 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 			content += `### Success Metrics\n${successMetrics}\n\n`;
 		}
 
-		// Include phases
-		if (project.phases && project.phases.length > 0) {
-			content += `### Phases\n`;
-			project.phases.forEach((phase) => {
-				const phaseRecord = phase as Record<string, unknown>;
-				const phaseStatus =
-					this.getOptionalStringField(phaseRecord, 'status') ?? 'unspecified';
-				content += `\n#### ${phase.name}\n`;
-				content += `- Status: ${phaseStatus}\n`;
-				content += `- Period: ${phase.start_date || 'TBD'} to ${phase.end_date || 'TBD'}\n`;
-				if (phase.description) content += `- ${phase.description}\n`;
+		// Include plans
+		if (plans && plans.length > 0) {
+			content += `### Plans\n`;
+			plans.forEach((plan) => {
+				content += `\n#### ${plan.name}\n`;
+				content += `- Status: ${plan.state_key || 'unspecified'}\n`;
+				if (plan.description) content += `- ${plan.description}\n`;
+				if (plan.plan) content += `- ${plan.plan}\n`;
 			});
 			content += '\n';
 		}
@@ -1279,12 +1456,12 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 				contextType: sourceContextType ?? 'project',
 				projectId,
 				projectName: project.name,
-				projectStatus: project.status,
+				projectStatus: this.toLegacyProjectStatus(project.state_key),
 				completionPercentage: taskStats.percentage,
 				abbreviated: false,
 				taskCount: taskStats.total,
-				hasPhases: project.phases?.length > 0,
-				hasNotes: project.notes?.length > 0
+				hasPhases: (plans?.length ?? 0) > 0,
+				hasNotes: (notes?.length ?? 0) > 0
 			}
 		};
 	}
@@ -1297,51 +1474,81 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 		userId: string,
 		sourceContextType?: ChatContextType
 	): Promise<LocationContext> {
+		const actorId = await this.resolveActorId(userId);
+
 		const { data: task } = await this.supabase
-			.from('tasks')
-			.select(
-				`
-        *,
-        project:projects(*),
-        subtasks:tasks!parent_task_id(*)
-      `
-			)
+			.from('onto_tasks')
+			.select('id, title, description, state_key, priority, start_at, project_id, props')
 			.eq('id', taskId)
-			.eq('user_id', userId)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
 			.single();
 
 		if (!task) throw new Error('Task not found');
 
+		const props = this.getTaskProps(task);
+		const details = typeof props.details === 'string' ? props.details : null;
+		const taskType = typeof props.task_type === 'string' ? props.task_type : 'one_off';
+		const recurrencePattern =
+			typeof props.recurrence_pattern === 'string' ? props.recurrence_pattern : null;
+
+		const { data: project } = task.project_id
+			? await this.supabase
+					.from('onto_projects')
+					.select('id, name')
+					.eq('id', task.project_id)
+					.is('deleted_at', null)
+					.maybeSingle()
+			: { data: null };
+
 		// Fetch parent task separately if needed
 		let parentTask = null;
-		if (task.parent_task_id) {
+		const parentTaskId = typeof props.parent_task_id === 'string' ? props.parent_task_id : null;
+		if (parentTaskId) {
 			const { data } = await this.supabase
-				.from('tasks')
-				.select('id, title, status')
-				.eq('id', task.parent_task_id)
-				.eq('user_id', userId)
+				.from('onto_tasks')
+				.select('id, title, state_key')
+				.eq('id', parentTaskId)
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
 				.single();
 			parentTask = data;
 		}
 
+		const { data: candidateSubtasks } = await this.supabase
+			.from('onto_tasks')
+			.select('id, title, description, state_key, props')
+			.eq('project_id', task.project_id)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.limit(500);
+
+		const subtasks =
+			candidateSubtasks?.filter((candidate) => {
+				const candidateProps = this.getTaskProps(candidate);
+				return candidateProps.parent_task_id === task.id;
+			}) ?? [];
+
 		let content = `## Task: ${task.title} (Full Details)\n\n`;
 		content += `### Status & Priority\n`;
-		content += `- Status: ${task.status}\n`;
-		content += `- Priority: ${task.priority}\n`;
-		content += `- Type: ${task.task_type || 'one_off'}\n`;
-		if (task.recurrence_pattern) content += `- Recurring: ${task.recurrence_pattern}\n`;
-		if (parentTask) content += `- Parent Task: ${parentTask.title} (${parentTask.status})\n`;
+		content += `- Status: ${this.toLegacyTaskStatus(task.state_key)}\n`;
+		content += `- Priority: ${this.toLegacyPriority(task.priority)}\n`;
+		content += `- Type: ${taskType}\n`;
+		if (recurrencePattern) content += `- Recurring: ${recurrencePattern}\n`;
+		if (project) content += `- Project: ${project.name}\n`;
+		if (parentTask)
+			content += `- Parent Task: ${parentTask.title} (${this.toLegacyTaskStatus(parentTask.state_key)})\n`;
 		content += '\n';
 
 		if (task.description) {
 			content += `### Description\n${task.description}\n\n`;
 		}
 
-		if (task.details) {
-			content += `### Details\n${task.details}\n\n`;
+		if (details) {
+			content += `### Details\n${details}\n\n`;
 		}
 
-		const taskRecord = task as Record<string, unknown>;
+		const taskRecord = props;
 		const acceptanceCriteria = this.getOptionalStringField(taskRecord, 'acceptance_criteria');
 		if (acceptanceCriteria) {
 			content += `### Acceptance Criteria\n${acceptanceCriteria}\n\n`;
@@ -1353,11 +1560,10 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 		}
 
 		// Include subtasks
-		const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
 		if (subtasks.length > 0) {
 			content += `### Subtasks (${subtasks.length})\n`;
 			subtasks.forEach((st: any) => {
-				content += `- [${st.status}] ${st.title}\n`;
+				content += `- [${this.toLegacyTaskStatus(st.state_key)}] ${st.title}\n`;
 				if (typeof st.description === 'string') {
 					const preview = st.description.substring(0, 100);
 					const truncated = st.description.length > 100 ? '...' : '';
@@ -1449,9 +1655,13 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 		percentage: number;
 	} {
 		const total = tasks.length;
-		const completed = tasks.filter((t) => t.status === 'done').length;
+		const completed = tasks.filter(
+			(t) => this.normalizeTaskStatus(t.status ?? t.state_key) === 'done'
+		).length;
 		const active = tasks.filter((t) =>
-			['in_progress', 'backlog', 'blocked'].includes(t.status)
+			['in_progress', 'backlog', 'blocked'].includes(
+				this.normalizeTaskStatus(t.status ?? t.state_key)
+			)
 		).length;
 		const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -1462,11 +1672,11 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 	 * Check if a task is overdue
 	 */
 	private isOverdue(startDate: string | null, status: string): boolean {
-		if (!startDate || status === 'done') return false;
+		if (!startDate || this.normalizeTaskStatus(status) === 'done') return false;
 		const taskDate = new Date(startDate);
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
-		return taskDate < today && status !== 'done';
+		return taskDate < today && this.normalizeTaskStatus(status) !== 'done';
 	}
 
 	private getOptionalStringField(source: Record<string, unknown>, key: string): string | null {

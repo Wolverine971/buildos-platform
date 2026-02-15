@@ -304,7 +304,7 @@ export async function sendEmailNotification(
 				} else {
 					// Fetch the full brief with LLM analysis
 					const { data: brief, error: briefError } = await supabase
-						.from('daily_briefs')
+						.from('ontology_daily_briefs')
 						.select('*')
 						.eq('id', briefId)
 						.single();
@@ -323,7 +323,7 @@ export async function sendEmailNotification(
 						subject = delivery.payload.title;
 					} else {
 						// Use the full brief content (LLM analysis or summary)
-						const briefContent = brief.llm_analysis || brief.summary_content || '';
+						const briefContent = brief.llm_analysis || brief.executive_summary || '';
 
 						if (!briefContent) {
 							emailLogger.warn(

@@ -300,58 +300,6 @@ app.post('/queue/brief', async (req, res) => {
 	}
 });
 
-// Queue phases endpoint
-app.post('/queue/phases', async (req, res) => {
-	try {
-		const { userId, projectId, options } = req.body;
-
-		if (!userId || !projectId) {
-			return res.status(400).json({
-				error: 'userId and projectId are required'
-			});
-		}
-
-		// Check for existing jobs
-		const { data: existingJobs } = await supabase
-			.from('queue_jobs')
-			.select('*')
-			.eq('user_id', userId)
-			.eq('job_type', 'generate_phases')
-			.eq('metadata->projectId', projectId)
-			.in('status', ['pending', 'processing']);
-
-		if (existingJobs && existingJobs.length > 0) {
-			return res.status(409).json({
-				error: 'Phases generation already in progress for this project'
-			});
-		}
-
-		// Queue the job
-		const job = await queue.add(
-			'generate_phases',
-			userId,
-			{
-				projectId,
-				options
-			},
-			{
-				priority: 5
-			}
-		);
-
-		return res.json({
-			success: true,
-			jobId: job.queue_job_id
-		});
-	} catch (error: any) {
-		console.error('Error queueing phases generation:', error);
-		return res.status(500).json({
-			error: 'Failed to queue phases generation',
-			message: error.message
-		});
-	}
-});
-
 // Queue onboarding analysis endpoint
 app.post('/queue/onboarding', async (req, res) => {
 	try {

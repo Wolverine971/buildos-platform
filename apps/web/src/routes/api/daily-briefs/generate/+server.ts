@@ -1,39 +1,20 @@
 // apps/web/src/routes/api/daily-briefs/generate/+server.ts
 import type { RequestHandler } from './$types';
-import { DailyBriefGenerator } from '$lib/services/dailyBrief/generator';
-import { DailyBriefRepository } from '$lib/services/dailyBrief/repository';
-import { BriefStreamHandler } from '$lib/services/dailyBrief/streamHandler';
-import { BriefGenerationValidator } from '$lib/services/dailyBrief/validator';
-import { DailyBriefEmailSender } from '$lib/services/dailyBrief/emailSender';
-import { ActivityLogger } from '$lib/utils/activityLogger';
-import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
-import { getCurrentDateInTimezone } from '$lib/utils/timezone';
+import { ApiResponse, HttpStatus, parseRequestBody } from '$lib/utils/api-response';
+import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
+import { PRIVATE_RAILWAY_WORKER_TOKEN } from '$env/static/private';
 
-/**
- * Validate timezone string and return safe timezone
- * Falls back to UTC if invalid with warning log
- */
-function getSafeTimezone(timezone: string | null | undefined, userId: string): string {
-	if (!timezone) {
-		return 'UTC';
-	}
-
-	try {
-		// Validate timezone using Intl API
-		new Intl.DateTimeFormat('en-US', { timeZone: timezone });
-		return timezone;
-	} catch {
-		console.warn(
-			`[Brief Generation] Invalid timezone "${timezone}" for user ${userId}, falling back to UTC`
-		);
-		return 'UTC';
-	}
-}
-
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
+	}
+
+	if (!PUBLIC_RAILWAY_WORKER_URL) {
+		return ApiResponse.error(
+			'Local brief generation is deprecated. Configure Railway worker and use queue-based generation.',
+			HttpStatus.SERVICE_UNAVAILABLE
+		);
 	}
 
 	const body = await parseRequestBody(request);
@@ -41,204 +22,85 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		return ApiResponse.badRequest('Invalid request body');
 	}
 
-	const { briefDate, forceRegenerate = false, streaming = false, background = false } = body;
-
-	const userId = user.id;
-
-	// Calculate target date in user's timezone (avoid DB call if briefDate provided)
-	let targetDate: string;
-	if (briefDate) {
-		// User explicitly provided a date, use it as-is
-		targetDate = briefDate;
-	} else {
-		// Fetch timezone from users table (centralized source of truth)
-		// Fallback to user_brief_preferences for backward compatibility
-		const { data: user } = await supabase
-			.from('users')
-			.select('timezone')
-			.eq('id', userId)
-			.single();
-
-		let userTimezone = user?.timezone;
-
-		userTimezone = getSafeTimezone(userTimezone, userId);
-		targetDate = getCurrentDateInTimezone(userTimezone);
-
-		console.log(
-			`[Brief Generation] Calculated target date for user ${userId}: ${targetDate} (timezone: ${userTimezone}, from: ${user?.timezone ? 'users.timezone' : 'brief_preferences fallback'})`
-		);
-	}
-
-	// Initialize services
-	const activityLogger = new ActivityLogger(supabase);
-	const repository = new DailyBriefRepository(supabase);
-	const validator = new BriefGenerationValidator(repository);
-	const generator = new DailyBriefGenerator(repository, activityLogger);
+	const { briefDate, forceRegenerate = false, timezone, includeProjects, excludeProjects } = body;
 
 	try {
-		// Validate generation can start
-		const validation = await validator.validateGeneration(userId, targetDate, forceRegenerate);
-		if (!validation.canStart) {
-			return ApiResponse.error(validation.message, validation.statusCode || 409);
+		const headers: Record<string, string> = {
+			'Content-Type': 'application/json'
+		};
+
+		if (PRIVATE_RAILWAY_WORKER_TOKEN) {
+			headers.Authorization = `Bearer ${PRIVATE_RAILWAY_WORKER_TOKEN}`;
 		}
 
-		// Handle different generation modes
-		if (background) {
-			return handleBackgroundGeneration(
-				generator,
-				repository,
-				userId,
-				targetDate,
-				validation.briefId!,
-				supabase
+		const response = await fetch(`${PUBLIC_RAILWAY_WORKER_URL}/queue/brief`, {
+			method: 'POST',
+			headers,
+			body: JSON.stringify({
+				userId: user.id,
+				briefDate,
+				timezone,
+				forceRegenerate,
+				options: {
+					includeProjects,
+					excludeProjects,
+					useOntology: true
+				}
+			})
+		});
+
+		if (!response.ok) {
+			const error = await response.json().catch(() => ({}));
+			return ApiResponse.error(
+				error?.error || 'Failed to queue brief generation',
+				response.status,
+				undefined,
+				error
 			);
 		}
 
-		if (streaming) {
-			const streamHandler = new BriefStreamHandler(generator, repository);
-			return streamHandler.createStreamResponse(userId, targetDate, validation.briefId!);
-		}
-
-		// Regular synchronous generation
-		const result = await generator.generateDailyBrief(userId, targetDate);
-		await repository.markGenerationCompleted(validation.briefId!, result);
-
-		// Send email if user has opted in
-		const emailSender = new DailyBriefEmailSender(supabase);
-		await emailSender.sendDailyBriefEmail(userId, targetDate, result);
-
-		return ApiResponse.success({
-			brief_id: validation.briefId,
-			result
-		});
+		const result = await response.json();
+		return ApiResponse.success(
+			{
+				brief_id: result?.jobId || null,
+				jobId: result?.jobId || null,
+				status: 'processing',
+				queued: true
+			},
+			'Brief generation queued'
+		);
 	} catch (err) {
-		await activityLogger.logActivity(userId, 'brief_generation_failed', {
-			brief_date: targetDate,
-			error: err instanceof Error ? err.message : 'Unknown error'
-		});
-
-		if (err instanceof Error && 'status' in err) {
-			return ApiResponse.error(err.message, (err as any).status);
-		}
-
-		return ApiResponse.internalError(err, 'Failed to generate daily brief');
+		return ApiResponse.internalError(err, 'Failed to queue daily brief generation');
 	}
 };
 
-// SSE endpoint for streaming
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+// Legacy SSE endpoint kept only to avoid breaking callers in environments without worker connectivity.
+export const GET: RequestHandler = async ({ locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
 	}
 
-	const userId = user.id;
-	const briefDateParam = url.searchParams.get('briefDate');
-	const forceRegenerate = url.searchParams.get('forceRegenerate') === 'true';
-	const streaming = url.searchParams.get('streaming') === 'true';
-
-	if (!streaming) {
-		return ApiResponse.badRequest('This endpoint is for streaming only');
-	}
-
-	// Calculate target date in user's timezone (avoid DB call if briefDate provided)
-	let briefDate: string;
-	if (briefDateParam) {
-		briefDate = briefDateParam;
-	} else {
-		// Fetch timezone from users table (centralized source of truth)
-		// Fallback to user_brief_preferences for backward compatibility
-		const { data: user } = await supabase
-			.from('users')
-			.select('timezone')
-			.eq('id', userId)
-			.single();
-
-		let userTimezone = user?.timezone;
-
-		// Fallback to preferences table if users.timezone is not set
-		if (!userTimezone) {
-			const { data: userRecord } = await supabase
-				.from('users')
-				.select('timezone')
-				.eq('id', userId)
-				.single();
-			userTimezone = userRecord?.timezone;
-		}
-
-		userTimezone = getSafeTimezone(userTimezone, userId);
-		briefDate = getCurrentDateInTimezone(userTimezone);
-
-		console.log(
-			`[Brief Generation SSE] Calculated target date for user ${userId}: ${briefDate} (timezone: ${userTimezone}, from: ${user?.timezone ? 'users.timezone' : 'brief_preferences fallback'})`
-		);
-	}
-
-	// Initialize services
-	const activityLogger = new ActivityLogger(supabase);
-	const repository = new DailyBriefRepository(supabase);
-	const validator = new BriefGenerationValidator(repository);
-	const generator = new DailyBriefGenerator(repository, activityLogger);
-
-	try {
-		// Validate generation can start
-		const validation = await validator.validateGeneration(userId, briefDate, forceRegenerate);
-		if (!validation.canStart) {
-			// Return error as SSE event
-			const encoder = new TextEncoder();
-			const stream = new ReadableStream({
-				start(controller) {
-					const errorEvent = {
-						type: 'error',
-						data: { message: validation.message }
-					};
-					controller.enqueue(encoder.encode(`data: ${JSON.stringify(errorEvent)}\n\n`));
-					controller.close();
+	const encoder = new TextEncoder();
+	const stream = new ReadableStream({
+		start(controller) {
+			const event = {
+				type: 'error',
+				data: {
+					message:
+						'Local SSE brief generation has been removed. Use queue-based worker generation.'
 				}
-			});
-
-			return new Response(stream, {
-				headers: {
-					'Content-Type': 'text/event-stream',
-					'Cache-Control': 'no-cache',
-					Connection: 'keep-alive'
-				}
-			});
+			};
+			controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+			controller.close();
 		}
-
-		const streamHandler = new BriefStreamHandler(generator, repository);
-		return streamHandler.createStreamResponse(userId, briefDate, validation.briefId!);
-	} catch (err) {
-		console.error('Error in streaming endpoint:', err);
-		return ApiResponse.internalError(err, 'Failed to start streaming');
-	}
-};
-
-async function handleBackgroundGeneration(
-	generator: DailyBriefGenerator,
-	repository: DailyBriefRepository,
-	userId: string,
-	targetDate: string,
-	briefId: string,
-	supabase: any
-) {
-	// Start background generation without awaiting
-	generator
-		.generateDailyBrief(userId, targetDate)
-		.then(async (result) => {
-			await repository.markGenerationCompleted(briefId, result);
-
-			// Send email if user has opted in
-			const emailSender = new DailyBriefEmailSender(supabase);
-			await emailSender.sendDailyBriefEmail(userId, targetDate, result);
-		})
-		.catch((err) =>
-			repository.markGenerationFailed(userId, targetDate, err.message || 'Unknown error')
-		);
-
-	return ApiResponse.success({
-		brief_id: briefId,
-		message: 'Brief generation started in background',
-		status: 'processing'
 	});
-}
+
+	return new Response(stream, {
+		headers: {
+			'Content-Type': 'text/event-stream',
+			'Cache-Control': 'no-cache',
+			Connection: 'keep-alive'
+		}
+	});
+};

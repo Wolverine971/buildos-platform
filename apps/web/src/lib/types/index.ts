@@ -197,30 +197,6 @@ export interface SynthesisContent {
 }
 
 // ==========================================
-// PHASE GENERATION TYPES
-// ==========================================
-
-export interface PhaseGenerationResult {
-	phases: Array<{
-		name: string;
-		description: string;
-		start_date: string;
-		end_date: string;
-		order: number;
-	}>;
-	task_assignments: {
-		[task_id: string]: {
-			phase_order: number | null;
-			suggested_start_date: string | null;
-			reason: string;
-		};
-	};
-	recurring_tasks: string[];
-	backlog_tasks: string[];
-	summary: string;
-}
-
-// ==========================================
 // UI/COMPONENT TYPES
 // ==========================================
 

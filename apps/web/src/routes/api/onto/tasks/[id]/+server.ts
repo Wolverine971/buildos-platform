@@ -492,8 +492,15 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
+		const isTransitioningToDone =
+			state_key !== undefined &&
+			existingTask.state_key !== 'done' &&
+			updatedTask.state_key === 'done';
 		const shouldSyncEvents =
-			title !== undefined || start_at !== undefined || due_at !== undefined;
+			title !== undefined ||
+			start_at !== undefined ||
+			due_at !== undefined ||
+			isTransitioningToDone;
 
 		if (shouldSyncEvents) {
 			try {

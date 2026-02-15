@@ -66,15 +66,87 @@ export class TimeBlockService {
 		return this.suggestionService;
 	}
 
+	private extractProjectColorId(props: unknown): string | null {
+		if (!props || typeof props !== 'object' || Array.isArray(props)) {
+			return null;
+		}
+		const colorId = (props as Record<string, unknown>).calendar_color_id;
+		return typeof colorId === 'string' ? colorId : null;
+	}
+
+	private async loadProjectMetaMap(
+		projectIds: string[]
+	): Promise<Map<string, { id: string; name: string; calendar_color_id: string | null }>> {
+		const uniqueIds = Array.from(new Set(projectIds.filter(Boolean)));
+		const map = new Map<
+			string,
+			{ id: string; name: string; calendar_color_id: string | null }
+		>();
+		if (uniqueIds.length === 0) {
+			return map;
+		}
+
+		const { data: actorId, error: actorError } = await this.supabase.rpc(
+			'ensure_actor_for_user',
+			{
+				p_user_id: this.userId
+			}
+		);
+		if (actorError || !actorId) {
+			throw actorError || new Error('Failed to resolve actor for time block project');
+		}
+
+		const { data: projects, error: projectError } = await this.supabase
+			.from('onto_projects')
+			.select('id, name, props')
+			.in('id', uniqueIds)
+			.eq('created_by', actorId)
+			.is('deleted_at', null);
+
+		if (projectError) {
+			throw projectError;
+		}
+
+		for (const project of projects || []) {
+			map.set(project.id, {
+				id: project.id,
+				name: project.name,
+				calendar_color_id: this.extractProjectColorId(project.props)
+			});
+		}
+
+		return map;
+	}
+
+	private async attachProjectMetadata<T extends { project_id: string | null }>(
+		rows: T[]
+	): Promise<
+		Array<
+			T & { project: { id: string; name: string; calendar_color_id: string | null } | null }
+		>
+	> {
+		const projectMap = await this.loadProjectMetaMap(
+			rows
+				.map((row) => row.project_id)
+				.filter((id): id is string => typeof id === 'string' && id.length > 0)
+		);
+		return rows.map((row) => ({
+			...row,
+			project: row.project_id ? (projectMap.get(row.project_id) ?? null) : null
+		}));
+	}
+
+	private async loadProjectMeta(
+		projectId: string
+	): Promise<{ id: string; name: string; calendar_color_id: string | null } | null> {
+		const projectMap = await this.loadProjectMetaMap([projectId]);
+		return projectMap.get(projectId) ?? null;
+	}
+
 	private async fetchTimeBlockWithProject(blockId: string): Promise<TimeBlockWithProject> {
 		const { data: existingBlock, error: fetchError } = await this.supabase
 			.from('time_blocks')
-			.select(
-				`
-				*,
-				project:projects(id, name, calendar_color_id)
-			`
-			)
+			.select('*')
 			.eq('id', blockId)
 			.eq('user_id', this.userId)
 			.maybeSingle();
@@ -91,7 +163,15 @@ export class TimeBlockService {
 			throw new Error('Cannot generate suggestions for deleted blocks');
 		}
 
-		return existingBlock as TimeBlockWithProject;
+		const project =
+			existingBlock.project_id && typeof existingBlock.project_id === 'string'
+				? await this.loadProjectMeta(existingBlock.project_id)
+				: null;
+
+		return {
+			...existingBlock,
+			project
+		} as TimeBlockWithProject;
 	}
 
 	private async updateSuggestionsState(
@@ -132,27 +212,16 @@ export class TimeBlockService {
 		const projectId = blockType === 'project' ? (params.project_id ?? null) : null;
 
 		let project: {
+			id: string;
 			name: string;
 			calendar_color_id: string | null;
 		} | null = null;
 
 		if (blockType === 'project') {
-			const { data: projectRow, error: projectError } = await this.supabase
-				.from('projects')
-				.select('name, calendar_color_id')
-				.eq('id', projectId!)
-				.eq('user_id', this.userId)
-				.maybeSingle();
-
-			if (projectError) {
-				throw projectError;
-			}
-
-			if (!projectRow) {
+			project = await this.loadProjectMeta(projectId!);
+			if (!project) {
 				throw new Error('Project not found');
 			}
-
-			project = projectRow;
 		}
 
 		const calendarContent = this.buildCalendarEventContent({
@@ -199,12 +268,7 @@ export class TimeBlockService {
 				last_synced_at: nowIso,
 				updated_at: nowIso
 			})
-			.select(
-				`
-				*,
-				project:projects(id, name, calendar_color_id)
-			`
-			)
+			.select('*')
 			.single();
 
 		if (error) {
@@ -212,7 +276,10 @@ export class TimeBlockService {
 			throw error;
 		}
 
-		return timeBlock as TimeBlockWithProject;
+		return {
+			...timeBlock,
+			project
+		} as TimeBlockWithProject;
 	}
 
 	async generateSuggestionsForTimeBlock(blockId: string): Promise<TimeBlockWithProject> {
@@ -278,12 +345,7 @@ export class TimeBlockService {
 				.update(updatePayload)
 				.eq('id', blockId)
 				.eq('user_id', this.userId)
-				.select(
-					`
-					*,
-					project:projects(id, name, calendar_color_id)
-				`
-				)
+				.select('*')
 				.single();
 
 			if (updateError) {
@@ -308,7 +370,8 @@ export class TimeBlockService {
 				}
 			}
 
-			return updatedBlock as TimeBlockWithProject;
+			const [hydrated] = await this.attachProjectMetadata([updatedBlock]);
+			return hydrated as TimeBlockWithProject;
 		} catch (error) {
 			console.error('[TimeBlockService] Suggestion generation failed:', error);
 
@@ -331,25 +394,7 @@ export class TimeBlockService {
 		params: UpdateTimeBlockParams
 	): Promise<TimeBlockWithProject> {
 		// Fetch the existing block
-		const { data: existingBlock, error: fetchError } = await this.supabase
-			.from('time_blocks')
-			.select(
-				`
-				*,
-				project:projects(id, name, calendar_color_id)
-			`
-			)
-			.eq('id', blockId)
-			.eq('user_id', this.userId)
-			.maybeSingle();
-
-		if (fetchError) {
-			throw fetchError;
-		}
-
-		if (!existingBlock) {
-			throw new Error('Time block not found');
-		}
+		const existingBlock = await this.fetchTimeBlockWithProject(blockId);
 
 		if (existingBlock.sync_status === 'deleted') {
 			throw new Error('Cannot update deleted blocks');
@@ -399,27 +444,16 @@ export class TimeBlockService {
 
 		// Fetch project info if needed
 		let project: {
+			id: string;
 			name: string;
 			calendar_color_id: string | null;
 		} | null = null;
 
 		if (blockType === 'project' && projectId) {
-			const { data: projectRow, error: projectError } = await this.supabase
-				.from('projects')
-				.select('name, calendar_color_id')
-				.eq('id', projectId)
-				.eq('user_id', this.userId)
-				.maybeSingle();
-
-			if (projectError) {
-				throw projectError;
-			}
-
-			if (!projectRow) {
+			project = await this.loadProjectMeta(projectId);
+			if (!project) {
 				throw new Error('Project not found');
 			}
-
-			project = projectRow;
 		}
 
 		const durationMinutes = this.calculateDuration(startTime, endTime);
@@ -509,19 +543,15 @@ export class TimeBlockService {
 			.update(updatePayload)
 			.eq('id', blockId)
 			.eq('user_id', this.userId)
-			.select(
-				`
-				*,
-				project:projects(id, name, calendar_color_id)
-			`
-			)
+			.select('*')
 			.single();
 
 		if (updateError) {
 			throw updateError;
 		}
 
-		return updatedBlock as TimeBlockWithProject;
+		const [hydrated] = await this.attachProjectMetadata([updatedBlock]);
+		return hydrated as TimeBlockWithProject;
 	}
 
 	/**
@@ -534,12 +564,7 @@ export class TimeBlockService {
 	async getTimeBlocks(startDate: Date, endDate: Date): Promise<TimeBlockWithProject[]> {
 		const { data, error } = await this.supabase
 			.from('time_blocks')
-			.select(
-				`
-				*,
-				project:projects(id, name, calendar_color_id)
-			`
-			)
+			.select('*')
 			.eq('user_id', this.userId)
 			.neq('sync_status', 'deleted')
 			.filter('start_time', 'lt', endDate.toISOString())
@@ -550,7 +575,8 @@ export class TimeBlockService {
 			throw error;
 		}
 
-		return (data as TimeBlockWithProject[]) ?? [];
+		const rows = (data ?? []) as Array<Database['public']['Tables']['time_blocks']['Row']>;
+		return (await this.attachProjectMetadata(rows)) as TimeBlockWithProject[];
 	}
 
 	async calculateTimeAllocation(startDate: Date, endDate: Date): Promise<TimeAllocation> {
@@ -566,17 +592,7 @@ export class TimeBlockService {
 
 		const { data, error } = await this.supabase
 			.from('time_blocks')
-			.select(
-				`
-				id,
-				block_type,
-				project_id,
-				start_time,
-				end_time,
-				duration_minutes,
-				project:projects(id, name, calendar_color_id)
-			`
-			)
+			.select('id, block_type, project_id, start_time, end_time, duration_minutes')
 			.eq('user_id', this.userId)
 			.neq('sync_status', 'deleted')
 			.filter('start_time', 'lt', endDate.toISOString())
@@ -586,7 +602,13 @@ export class TimeBlockService {
 			throw error;
 		}
 
-		const blocks = (data as TimeBlockWithProject[]) ?? [];
+		const rows = (data ?? []) as Array<
+			Pick<
+				Database['public']['Tables']['time_blocks']['Row'],
+				'id' | 'block_type' | 'project_id' | 'start_time' | 'end_time' | 'duration_minutes'
+			>
+		>;
+		const blocks = (await this.attachProjectMetadata(rows as any)) as TimeBlockWithProject[];
 
 		const rangeStartMs = startDate.getTime();
 		const rangeEndMs = endDate.getTime();

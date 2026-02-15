@@ -6,7 +6,7 @@
  * This module manages the lifecycle of project synthesis notifications,
  * integrating with the generic stackable notification system.
  *
- * Pattern: Controller-based bridge (similar to phase-generation-notification.bridge.ts)
+ * Pattern: Controller-based bridge for long-running project synthesis notifications
  *
  * Responsibilities:
  * - Create and manage synthesis notifications
@@ -20,7 +20,6 @@ import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 import { get } from 'svelte/store';
 import { notificationStore } from '$lib/stores/notification.store';
-import { projectStoreV2 } from '$lib/stores/project.store';
 import { toastService } from '$lib/stores/toast.store';
 import type {
 	Notification,
@@ -383,9 +382,6 @@ async function executeSynthesis(
 		).length;
 		const newTasksCount = operations.filter((op) => op.operation === 'create').length;
 		const deletionsCount = operations.filter((op) => op.operation === 'delete').length;
-
-		// Update project store
-		projectStoreV2.setSynthesis(synthesis);
 
 		// Clean up timers
 		stopAndCleanup(controller);

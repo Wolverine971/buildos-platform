@@ -11,10 +11,9 @@
 	 *
 	 * Test Scenarios:
 	 * 1. Brain Dump - Simulates dual processing with streaming progress
-	 * 2. Phase Generation - Step-based progress (5 steps)
-	 * 3. Calendar Analysis - Indeterminate progress
-	 * 4. Error State - Error with retry action
-	 * 5. Clear All - Tests cleanup logic
+	 * 2. Calendar Analysis - Indeterminate progress
+	 * 3. Error State - Error with retry action
+	 * 4. Clear All - Tests cleanup logic
 	 */
 
 	import { onDestroy } from 'svelte';
@@ -80,95 +79,6 @@
 			activeTimers.delete(timer2);
 		}, 4000);
 		activeTimers.add(timer2);
-	}
-
-	function createPhaseGenerationNotification() {
-		const id = notificationStore.add({
-			type: 'phase-generation',
-			status: 'processing',
-			isMinimized: true,
-			isPersistent: false,
-			autoCloseMs: 5000, // Auto-close on success
-			data: {
-				projectId: 'project-1',
-				projectName: 'My Project',
-				isRegeneration: false,
-				strategy: 'phases-only',
-				taskCount: 15
-			},
-			progress: {
-				type: 'steps',
-				currentStep: 1,
-				totalSteps: 5,
-				steps: [
-					{ name: 'Analyzing tasks', status: 'processing' },
-					{ name: 'Resolving conflicts', status: 'pending' },
-					{ name: 'Creating phases', status: 'pending' },
-					{ name: 'Assigning tasks', status: 'pending' },
-					{ name: 'Finalizing', status: 'pending' }
-				]
-			},
-			actions: {
-				viewProject: () => console.log('View project clicked'),
-				retry: () => console.log('Retry clicked'),
-				dismiss: () => notificationStore.remove(id)
-			}
-		});
-
-		// Simulate step progression
-		let currentStep = 1;
-		const interval = setInterval(() => {
-			if (currentStep >= 5) {
-				clearInterval(interval);
-				activeTimers.delete(interval);
-				notificationStore.setStatus(id, 'success');
-				return;
-			}
-
-			currentStep++;
-			const steps = [
-				{ name: 'Analyzing tasks', status: 'completed' as const },
-				{
-					name: 'Resolving conflicts',
-					status:
-						currentStep === 2
-							? ('processing' as const)
-							: currentStep > 2
-								? ('completed' as const)
-								: ('pending' as const)
-				},
-				{
-					name: 'Creating phases',
-					status:
-						currentStep === 3
-							? ('processing' as const)
-							: currentStep > 3
-								? ('completed' as const)
-								: ('pending' as const)
-				},
-				{
-					name: 'Assigning tasks',
-					status:
-						currentStep === 4
-							? ('processing' as const)
-							: currentStep > 4
-								? ('completed' as const)
-								: ('pending' as const)
-				},
-				{
-					name: 'Finalizing',
-					status: currentStep === 5 ? ('processing' as const) : ('pending' as const)
-				}
-			];
-
-			notificationStore.setProgress(id, {
-				type: 'steps',
-				currentStep,
-				totalSteps: 5,
-				steps
-			});
-		}, 1500);
-		activeTimers.add(interval);
 	}
 
 	function createCalendarNotification() {
@@ -252,12 +162,6 @@
 			class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
 		>
 			+ Brain Dump
-		</button>
-		<button
-			onclick={createPhaseGenerationNotification}
-			class="px-3 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
-		>
-			+ Phase Gen
 		</button>
 		<button
 			onclick={createCalendarNotification}

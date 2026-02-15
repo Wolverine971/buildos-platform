@@ -1859,36 +1859,42 @@ export class AgentChatOrchestrator {
 		defaultContext: ChatContextType
 	): LastTurnContext {
 		const entities: LastTurnContext['entities'] = {};
-
-		const assignEntity = (slot: keyof LastTurnContext['entities'], id?: string) => {
+		const upsertEntity = (slot: 'projects' | 'tasks' | 'plans' | 'goals' | 'documents') => {
+			const id = contextShift.entity_id;
 			if (!id) return;
-			if (slot === 'task_ids' || slot === 'goal_ids') {
-				if (!entities[slot]) entities[slot] = [];
-				if (!entities[slot]!.includes(id)) {
-					entities[slot]!.push(id);
+			const list = ((entities as any)[slot] ??= []) as Array<{
+				id: string;
+				name?: string;
+				description?: string;
+			}>;
+			const existing = list.find((item) => item.id === id);
+			if (existing) {
+				if (!existing.name && contextShift.entity_name) {
+					existing.name = contextShift.entity_name;
 				}
 				return;
 			}
-			if (!(entities as any)[slot]) {
-				(entities as any)[slot] = id;
-			}
+			list.push({
+				id,
+				name: contextShift.entity_name
+			});
 		};
 
 		switch (contextShift.entity_type) {
 			case 'project':
-				assignEntity('project_id', contextShift.entity_id);
+				upsertEntity('projects');
 				break;
 			case 'task':
-				assignEntity('task_ids', contextShift.entity_id);
+				upsertEntity('tasks');
 				break;
 			case 'plan':
-				assignEntity('plan_id', contextShift.entity_id);
+				upsertEntity('plans');
 				break;
 			case 'goal':
-				assignEntity('goal_ids', contextShift.entity_id);
+				upsertEntity('goals');
 				break;
 			case 'document':
-				assignEntity('document_id', contextShift.entity_id);
+				upsertEntity('documents');
 				break;
 		}
 

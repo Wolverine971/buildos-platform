@@ -2,7 +2,6 @@
 import { SupabaseQueue, ProcessingJob } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
 import { processEmailBriefJob } from './workers/brief/emailWorker';
-import { processPhasesJob } from './workers/phases/phasesWorker';
 import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWorker';
 import { processSMSJob } from './workers/smsWorker';
 import { processNotification } from './workers/notification/notificationWorker';
@@ -59,26 +58,6 @@ async function processBrief(job: ProcessingJob) {
 		return { success: true, duration };
 	} catch (error: any) {
 		await job.log(`❌ ${jobType} brief failed: ${error.message}`);
-		throw error;
-	}
-}
-
-/**
- * Phases generation processor
- */
-async function processPhases(job: ProcessingJob) {
-	await job.log(`Starting phases generation for project ${job.data.projectId}`);
-
-	try {
-		// Convert ProcessingJob to type-safe legacy format
-		const legacyJob = createLegacyJob(job);
-
-		await processPhasesJob(legacyJob);
-		await job.log('✅ Phases generation completed');
-
-		return { success: true };
-	} catch (error: any) {
-		await job.log(`❌ Phases generation failed: ${error.message}`);
 		throw error;
 	}
 }
@@ -345,7 +324,6 @@ export async function startWorker() {
 	// Register processors
 	queue.process('generate_daily_brief', processBrief);
 	queue.process('generate_brief_email', processEmailBrief); // Phase 2: Email worker
-	queue.process('generate_phases', processPhases);
 	queue.process('onboarding_analysis', processOnboarding);
 
 	// Register notification processor (multi-channel: push, email, in-app, SMS)
@@ -442,7 +420,6 @@ export async function startWorker() {
 	const jobTypes = [
 		'generate_daily_brief',
 		'generate_brief_email',
-		'generate_phases',
 		'onboarding_analysis',
 		'send_notification',
 		'project_activity_batch_flush',

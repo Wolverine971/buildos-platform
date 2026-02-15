@@ -22,7 +22,6 @@ import type { UserPreferences } from '$lib/types/user-preferences';
 
 type User = Database['public']['Tables']['users']['Row'];
 type UserSMSPreferences = Database['public']['Tables']['user_sms_preferences']['Row'];
-type Project = Database['public']['Tables']['projects']['Row'];
 
 export interface OnboardingProgress {
 	currentStep: number;
@@ -73,8 +72,15 @@ export class OnboardingV2Service {
 			.eq('user_id', userId)
 			.maybeSingle();
 
-		// Fetch projects
-		const { data: projects } = await client.from('projects').select('id').eq('user_id', userId);
+		// Fetch ontology projects
+		const { data: actorId } = await client.rpc('ensure_actor_for_user', { p_user_id: userId });
+		const { data: projects } = actorId
+			? await client
+					.from('onto_projects')
+					.select('id')
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
+			: { data: [] as Array<{ id: string }> };
 
 		return {
 			currentStep: this.calculateCurrentStep(user),

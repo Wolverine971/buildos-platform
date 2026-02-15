@@ -4,24 +4,25 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
-import { ApiResponse } from '$lib/utils/api-response';
+import { ApiResponse, requireAuth } from '$lib/utils/api-response';
 
 interface CalendarRequest {
 	method: string;
 	params?: any;
 }
 
-export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
-		const { user } = await safeGetSession();
-		if (!user) {
-			return ApiResponse.unauthorized();
+		const authResult = await requireAuth(locals);
+		if ('error' in authResult && authResult.error) {
+			return authResult.error;
 		}
+		const { user } = authResult;
 
 		const body = (await request.json()) as CalendarRequest;
 		const { method, params = {} } = body;
 
-		const calendarService = new CalendarService(supabase);
+		const calendarService = new CalendarService(locals.supabase);
 
 		// Route to appropriate CalendarService method
 		switch (method) {
@@ -55,6 +56,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				return json({ success: true, data: deleteResult });
 			}
 
+			case 'getUpcomingTasks': {
+				const tasks = await calendarService.getUpcomingTasks(user.id, params);
+				return json({ success: true, data: tasks });
+			}
+
 			case 'bulkDeleteCalendarEvents': {
 				const bulkDeleteResult = await calendarService.bulkDeleteCalendarEvents(
 					user.id,
@@ -85,6 +91,48 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			case 'disconnectCalendar':
 				await calendarService.disconnectCalendar(user.id);
 				return json({ success: true, data: { disconnected: true } });
+
+			case 'createProjectCalendar': {
+				const result = await calendarService.createProjectCalendar(user.id, params);
+				return json({ success: true, data: result });
+			}
+
+			case 'updateCalendarProperties': {
+				const result = await calendarService.updateCalendarProperties(
+					user.id,
+					params.calendarId,
+					params.updates
+				);
+				return json({ success: true, data: result });
+			}
+
+			case 'deleteProjectCalendar': {
+				const result = await calendarService.deleteProjectCalendar(user.id, params.calendarId);
+				return json({ success: true, data: result });
+			}
+
+			case 'listUserCalendars': {
+				const result = await calendarService.listUserCalendars(user.id);
+				return json({ success: true, data: result });
+			}
+
+			case 'shareCalendar': {
+				const result = await calendarService.shareCalendar(
+					user.id,
+					params.calendarId,
+					params.shares
+				);
+				return json({ success: true, data: result });
+			}
+
+			case 'unshareCalendar': {
+				const result = await calendarService.unshareCalendar(
+					user.id,
+					params.calendarId,
+					params.emails
+				);
+				return json({ success: true, data: result });
+			}
 
 			default:
 				return ApiResponse.badRequest(`Unknown method: ${method}`);
@@ -128,14 +176,15 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 };
 
 // GET endpoint for checking connection status
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ locals }) => {
 	try {
-		const { user } = await safeGetSession();
-		if (!user) {
-			return ApiResponse.unauthorized();
+		const authResult = await requireAuth(locals);
+		if ('error' in authResult && authResult.error) {
+			return authResult.error;
 		}
+		const { user } = authResult;
 
-		const calendarService = new CalendarService(supabase);
+		const calendarService = new CalendarService(locals.supabase);
 		const isConnected = await calendarService.hasValidConnection(user.id);
 
 		return json({

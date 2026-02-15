@@ -1,7 +1,6 @@
 // apps/web/src/lib/services/projectBriefTemplateGenerator.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import type { Project } from '$lib/types/project';
 import type { UserContext } from '$lib/types/user-context';
 import { SmartLLMService } from './smart-llm-service';
 import { PromptTemplateService } from './promptTemplate.service';
@@ -25,6 +24,16 @@ export interface GeneratedTemplate {
 	in_use: boolean;
 	is_default: boolean;
 }
+
+type Project = {
+	id: string;
+	name: string;
+	description: string | null;
+	executive_summary?: string | null;
+	status?: string;
+	user_id: string;
+	[key: string]: any;
+};
 
 export class ProjectBriefTemplateGeneratorService {
 	private smartLLM: SmartLLMService;
@@ -81,18 +90,41 @@ export class ProjectBriefTemplateGeneratorService {
 	}
 
 	private async fetchProject(projectId: string, userId: string): Promise<Project> {
+		const { data: actorId, error: actorError } = await this.supabase.rpc(
+			'ensure_actor_for_user',
+			{
+				p_user_id: userId
+			}
+		);
+		if (actorError || !actorId) {
+			throw new Error('Failed to resolve project actor');
+		}
+
 		const { data, error } = await this.supabase
-			.from('projects')
+			.from('onto_projects')
 			.select(`*`)
 			.eq('id', projectId)
-			.eq('user_id', userId)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
 			.single();
 
 		if (error || !data) {
 			throw new Error('Failed to fetch project');
 		}
 
-		return data;
+		return {
+			...data,
+			user_id: userId,
+			status:
+				data.state_key === 'planning'
+					? 'paused'
+					: data.state_key === 'completed'
+						? 'completed'
+						: data.state_key === 'cancelled'
+							? 'archived'
+							: 'active',
+			executive_summary: null
+		} as Project;
 	}
 
 	private async fetchUserContext(userId: string): Promise<UserContext | null> {

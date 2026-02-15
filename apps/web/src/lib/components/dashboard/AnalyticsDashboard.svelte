@@ -88,9 +88,10 @@
 	const displayName = $derived(user?.name ?? user?.email?.split('@')[0] ?? 'there');
 
 	const needsAttention = $derived(
-		analytics.attention.overdueTasks > 0 ||
-			analytics.attention.staleProjects7d > 0 ||
-			analytics.attention.staleProjects30d > 0
+		analytics.attention.overdueTasks > 0
+		// ||
+		// 	analytics.attention.staleProjects7d > 0 ||
+		// 	analytics.attention.staleProjects30d > 0
 	);
 
 	const attentionParts = $derived.by(() => {
@@ -100,12 +101,12 @@
 				`${analytics.attention.overdueTasks} overdue ${analytics.attention.overdueTasks === 1 ? 'task' : 'tasks'}`
 			);
 		}
-		if (analytics.attention.staleProjects7d > 0) {
-			parts.push(
-				`${analytics.attention.staleProjects7d} stale ${analytics.attention.staleProjects7d === 1 ? 'project' : 'projects'}`
-			);
-		}
-		return parts.join(' · ');
+		// if (analytics.attention.staleProjects7d > 0) {
+		// 	parts.push(
+		// 		`${analytics.attention.staleProjects7d} stale ${analytics.attention.staleProjects7d === 1 ? 'project' : 'projects'}`
+		// 	);
+		// }
+		return parts?.length ? parts.join(' · ') : null;
 	});
 
 	const ACTIVE_STATES = new Set(['active', 'in_progress', 'execution']);
@@ -347,13 +348,6 @@
 				>
 					View &rarr;
 				</a>
-			</div>
-		{:else}
-			<div
-				class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-xs"
-			>
-				<CircleCheck class="h-3 w-3 text-emerald-500 shrink-0" />
-				<span class="text-muted-foreground">All caught up</span>
 			</div>
 		{/if}
 

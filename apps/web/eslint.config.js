@@ -81,6 +81,25 @@ export default [
 		}
 	},
 
+	/* ---------- Server Route Guardrails ---------- */
+	{
+		files: ['**/src/routes/**/+server.ts'],
+		rules: {
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['$lib/stores/*'],
+							message:
+								'`+server.ts` files must not import client stores. Move UI side effects to client code.'
+						}
+					]
+				}
+			]
+		}
+	},
+
 	/* ---------- Svelte with TypeScript ---------- */
 	{
 		files: ['**/*.svelte'],

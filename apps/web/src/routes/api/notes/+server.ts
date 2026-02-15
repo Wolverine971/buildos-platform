@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { cleanDataForTable, validateRequiredFields } from '$lib/utils/data-cleaner';
 import { ApiResponse } from '$lib/utils/api-response';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -11,6 +12,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 	try {
 		const data = await request.json();
+		const actorId = await ensureActorId(supabase, user.id);
 
 		// Clean the note data
 		const cleanedData = cleanDataForTable('notes', {
@@ -32,10 +34,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		// If linking to a project, verify the project exists and belongs to user
 		if (cleanedData.project_id) {
 			const { data: project, error: projectError } = await supabase
-				.from('projects')
+				.from('onto_projects')
 				.select('id')
 				.eq('id', cleanedData.project_id)
-				.eq('user_id', user.id)
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
 				.single();
 
 			if (projectError || !project) {
@@ -46,19 +49,32 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { data: note, error } = await supabase
 			.from('notes')
 			.insert(cleanedData as any)
-			.select(
-				`
-                *,
-                projects:project_id(id, name, slug)
-            `
-			)
+			.select('*')
 			.single();
 
 		if (error) {
 			return ApiResponse.databaseError(error);
 		}
 
-		return ApiResponse.success({ note });
+		let projectMeta: { id: string; name: string; slug: null } | null = null;
+		if (note?.project_id) {
+			const { data: project } = await supabase
+				.from('onto_projects')
+				.select('id, name')
+				.eq('id', note.project_id)
+				.is('deleted_at', null)
+				.maybeSingle();
+			if (project) {
+				projectMeta = { id: project.id, name: project.name, slug: null };
+			}
+		}
+
+		return ApiResponse.success({
+			note: {
+				...note,
+				projects: projectMeta
+			}
+		});
 	} catch (err) {
 		return ApiResponse.internalError(err);
 	}
@@ -71,21 +87,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
+		const actorId = await ensureActorId(supabase, user.id);
 		// Parse query parameters
 		const projectId = url.searchParams.get('project_id');
 		const limit = Number(url.searchParams.get('limit')) || 50;
 		const search = url.searchParams.get('search')?.trim();
 		const offset = Number(url.searchParams.get('offset')) || 0;
 
-		let query = supabase
-			.from('notes')
-			.select(
-				`
-                *,
-                projects:project_id(id, name, slug)
-            `
-			)
-			.eq('user_id', user.id);
+		let query = supabase.from('notes').select('*', { count: 'exact' }).eq('user_id', user.id);
 
 		// Apply filters
 		if (projectId) {
@@ -107,8 +116,34 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			return ApiResponse.databaseError(error);
 		}
 
+		const projectIds = Array.from(
+			new Set(
+				(notes || [])
+					.map((note: any) => note.project_id)
+					.filter((id: string | null): id is string => Boolean(id))
+			)
+		);
+
+		const projectMap = new Map<string, { id: string; name: string; slug: null }>();
+		if (projectIds.length > 0) {
+			const { data: projects } = await supabase
+				.from('onto_projects')
+				.select('id, name')
+				.in('id', projectIds)
+				.eq('created_by', actorId)
+				.is('deleted_at', null);
+			for (const project of projects || []) {
+				projectMap.set(project.id, { id: project.id, name: project.name, slug: null });
+			}
+		}
+
+		const normalizedNotes = (notes || []).map((note: any) => ({
+			...note,
+			projects: note.project_id ? (projectMap.get(note.project_id) ?? null) : null
+		}));
+
 		return ApiResponse.success({
-			notes: notes || [],
+			notes: normalizedNotes,
 			total: count,
 			offset,
 			limit

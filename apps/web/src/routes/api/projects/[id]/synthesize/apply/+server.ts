@@ -3,6 +3,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { ProjectSynthesisService } from '$lib/services/projectSynthesis.service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 export const POST: RequestHandler = async ({
 	params,
@@ -16,6 +17,7 @@ export const POST: RequestHandler = async ({
 
 	try {
 		const { operations } = await request.json();
+		const actorId = await ensureActorId(supabase, user.id);
 
 		if (!operations || !Array.isArray(operations)) {
 			return ApiResponse.badRequest('Invalid operations provided');
@@ -23,16 +25,17 @@ export const POST: RequestHandler = async ({
 
 		// Verify project ownership
 		const { data: project, error: projectError } = await supabase
-			.from('projects')
-			.select('id, user_id')
+			.from('onto_projects')
+			.select('id, created_by')
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
 		if (projectError || !project) {
 			return ApiResponse.notFound('Project');
 		}
 
-		if (project.user_id !== user.id) {
+		if (project.created_by !== actorId) {
 			return ApiResponse.forbidden('Forbidden');
 		}
 

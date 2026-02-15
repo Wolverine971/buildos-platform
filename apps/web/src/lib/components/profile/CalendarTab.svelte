@@ -338,14 +338,59 @@
 	async function loadCalendarProjects() {
 		try {
 			if (!supabase) return; // Guard for SSR
-			const { data, error } = await supabase
-				.from('projects')
-				.select('id, name, created_at, description, task_count')
-				.eq('source', 'calendar_analysis')
+			const { data: actorId, error: actorError } = await supabase.rpc(
+				'ensure_actor_for_user',
+				{
+					p_user_id: data.user.id
+				}
+			);
+
+			if (actorError || !actorId) throw actorError || new Error('Failed to resolve actor');
+
+			const { data: projects, error: projectsError } = await supabase
+				.from('onto_projects')
+				.select('id, name, created_at, description, props')
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
 				.order('created_at', { ascending: false });
 
-			if (error) throw error;
-			calendarProjects = data || [];
+			if (projectsError) throw projectsError;
+
+			const calendarSourceProjects = (projects || []).filter((project) => {
+				const props = (project.props as Record<string, unknown> | null) ?? {};
+				const source = props.source;
+				const sourceMetadata =
+					(props.source_metadata as Record<string, unknown> | null)?.source ?? null;
+				return source === 'calendar_analysis' || sourceMetadata === 'calendar_analysis';
+			});
+
+			const projectIds = calendarSourceProjects.map((project) => project.id);
+			let taskCountByProject = new Map<string, number>();
+			if (projectIds.length > 0) {
+				const { data: tasks, error: tasksError } = await supabase
+					.from('onto_tasks')
+					.select('id, project_id')
+					.in('project_id', projectIds)
+					.is('deleted_at', null);
+
+				if (tasksError) throw tasksError;
+
+				taskCountByProject = new Map<string, number>();
+				for (const task of tasks || []) {
+					taskCountByProject.set(
+						task.project_id,
+						(taskCountByProject.get(task.project_id) || 0) + 1
+					);
+				}
+			}
+
+			calendarProjects = calendarSourceProjects.map((project) => ({
+				id: project.id,
+				name: project.name,
+				created_at: project.created_at,
+				description: project.description,
+				task_count: taskCountByProject.get(project.id) || 0
+			}));
 		} catch (error) {
 			console.error('Error loading calendar projects:', error);
 		}

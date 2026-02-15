@@ -13,7 +13,6 @@ import type {
 	TimeBlockType
 } from '@buildos/shared-types';
 import type { BrainDumpParseResult, ParsedOperation } from './brain-dump';
-import type { Phase, Task } from './project';
 import type { SynthesisOptions } from './synthesis';
 import type { TaskComparison } from '$lib/types';
 
@@ -38,7 +37,6 @@ export type NotificationStatus =
  */
 export type NotificationType =
 	| 'brain-dump'
-	| 'phase-generation'
 	| 'project-synthesis'
 	| 'calendar-analysis'
 	| 'daily-brief'
@@ -216,39 +214,6 @@ export interface TimeBlockNotification extends BaseNotification {
 	actions: NotificationActions;
 }
 
-// ============================================================================
-// Phase Generation Notification
-// ============================================================================
-
-export interface PhaseGenerationNotification extends BaseNotification {
-	type: 'phase-generation';
-	data: {
-		projectId: string;
-		projectName: string;
-		isRegeneration: boolean;
-		strategy: 'phases-only' | 'schedule-in-phases' | 'calendar-optimized';
-		taskCount: number;
-		selectedStatuses: string[];
-		requestPayload: Record<string, unknown>;
-		result?: {
-			phases: Phase[];
-			backlogTasks: Task[];
-			calendarEventCount?: number;
-			summaryMarkdown?: string;
-		};
-		telemetry?: {
-			startedAt: number;
-			finishedAt?: number;
-			durationMs?: number;
-			fallbackMode: 'sse' | 'timer';
-		};
-		error?: string;
-	};
-	progress: NotificationProgress;
-	actions: NotificationActions;
-}
-
-// ============================================================================
 // Project Synthesis Notification
 // ============================================================================
 
@@ -345,7 +310,6 @@ export interface GenericNotification extends BaseNotification {
 export type Notification =
 	| BrainDumpNotification
 	| TimeBlockNotification
-	| PhaseGenerationNotification
 	| ProjectSynthesisNotification
 	| CalendarAnalysisNotification
 	| GenericNotification;
@@ -399,12 +363,6 @@ export function isBrainDumpNotification(
 	notification: Notification
 ): notification is BrainDumpNotification {
 	return notification.type === 'brain-dump';
-}
-
-export function isPhaseGenerationNotification(
-	notification: Notification
-): notification is PhaseGenerationNotification {
-	return notification.type === 'phase-generation';
 }
 
 export function isProjectSynthesisNotification(

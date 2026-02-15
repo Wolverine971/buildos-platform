@@ -153,7 +153,10 @@ interface EventGroupAnalysis {
 // Constants
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.4; // Lowered from 0.6 for more suggestions
 const PREFERENCES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const DEBUG_LOGGING = true; // Enable debug logging for calendar analysis
+const CALENDAR_ANALYSIS_DEBUG_ENV = process.env.CALENDAR_ANALYSIS_DEBUG;
+const DEBUG_LOGGING =
+	CALENDAR_ANALYSIS_DEBUG_ENV === 'true' ||
+	(CALENDAR_ANALYSIS_DEBUG_ENV !== 'false' && process.env.NODE_ENV !== 'production');
 
 const CALENDAR_TASK_STATE_MAP: Record<string, TaskState> = {
 	backlog: 'todo',
@@ -1828,27 +1831,77 @@ IMPORTANT:
 	 * Get projects created from calendar analysis with proper typing
 	 */
 	async getCalendarProjects(userId: string): Promise<any[]> {
-		const { data, error } = await this.supabase
-			.from('projects')
-			.select(
-				`
-				*,
-				tasks!tasks_project_id_fkey(count)
-			`
-			)
-			.eq('user_id', userId)
-			.eq('source', 'calendar_analysis')
+		const { data: actorId, error: actorError } = await this.supabase.rpc(
+			'ensure_actor_for_user',
+			{
+				p_user_id: userId
+			}
+		);
+
+		if (actorError || !actorId) {
+			this.errorLogger.logError(actorError ?? new Error('Missing actor id'), {
+				userId,
+				metadata: { operation: 'get_calendar_projects_actor' }
+			});
+			return [];
+		}
+
+		const { data: projects, error: projectsError } = await this.supabase
+			.from('onto_projects')
+			.select('id, name, description, created_at, props')
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
 			.order('created_at', { ascending: false });
 
-		if (error) {
-			this.errorLogger.logError(error, {
+		if (projectsError) {
+			this.errorLogger.logError(projectsError, {
 				userId,
 				metadata: { operation: 'get_calendar_projects' }
 			});
 			return [];
 		}
 
-		return data || [];
+		const calendarProjects = (projects ?? []).filter((project) => {
+			const props = (project.props as Record<string, unknown> | null) ?? {};
+			const source = props.source;
+			const sourceMetadata =
+				(props.source_metadata as Record<string, unknown> | null)?.source ?? null;
+			return source === 'calendar_analysis' || sourceMetadata === 'calendar_analysis';
+		});
+
+		if (calendarProjects.length === 0) {
+			return [];
+		}
+
+		const projectIds = calendarProjects.map((project) => project.id);
+		const { data: tasks, error: tasksError } = await this.supabase
+			.from('onto_tasks')
+			.select('id, project_id')
+			.in('project_id', projectIds)
+			.is('deleted_at', null);
+
+		if (tasksError) {
+			this.errorLogger.logError(tasksError, {
+				userId,
+				metadata: { operation: 'get_calendar_projects_task_counts' }
+			});
+		}
+
+		const taskCountByProject = new Map<string, number>();
+		for (const task of tasks ?? []) {
+			taskCountByProject.set(
+				task.project_id,
+				(taskCountByProject.get(task.project_id) ?? 0) + 1
+			);
+		}
+
+		return calendarProjects.map((project) => ({
+			id: project.id,
+			name: project.name,
+			description: project.description,
+			created_at: project.created_at,
+			task_count: taskCountByProject.get(project.id) ?? 0
+		}));
 	}
 
 	// Private helper methods

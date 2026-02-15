@@ -6,7 +6,27 @@ import { isValidUUID } from './validation-utils';
 import type { ParsedOperation } from '$lib/types/brain-dump';
 
 export class ReferenceResolver {
+	private actorIdByUser = new Map<string, string>();
+
 	constructor(private supabase: SupabaseClient<Database>) {}
+
+	private async resolveActorId(userId: string): Promise<string | null> {
+		const cached = this.actorIdByUser.get(userId);
+		if (cached) {
+			return cached;
+		}
+
+		const { data: actorId, error } = await this.supabase.rpc('ensure_actor_for_user', {
+			p_user_id: userId
+		});
+		if (error || !actorId) {
+			console.warn('Failed to resolve actor for reference resolution:', error?.message);
+			return null;
+		}
+
+		this.actorIdByUser.set(userId, actorId);
+		return actorId;
+	}
 
 	/**
 	 * Resolve references in operations
@@ -134,7 +154,6 @@ export class ReferenceResolver {
 		const referenceFields = [
 			'project_id',
 			'task_id',
-			'phase_id',
 			'parent_task_id',
 			'parent_note_id',
 			'assignee_id',
@@ -156,8 +175,6 @@ export class ReferenceResolver {
 			table = 'projects';
 		} else if (field === 'task_id' || field === 'parent_task_id') {
 			table = 'tasks';
-		} else if (field === 'phase_id') {
-			table = 'phases';
 		} else if (field === 'assignee_id') {
 			table = 'profiles';
 		} else if (field === 'parent_note_id') {
@@ -225,16 +242,28 @@ export class ReferenceResolver {
 		// Build query to find records by name/title
 		const values = [...new Set(references.map((r) => r.value))];
 		const nameField = this.getNameField(table);
+		const targetTable =
+			table === 'projects' ? 'onto_projects' : table === 'tasks' ? 'onto_tasks' : table;
 
 		if (!nameField) {
 			return resolved;
 		}
 
 		try {
-			const { data, error } = await this.supabase
-				.from(table as any)
+			let query = this.supabase
+				.from(targetTable as any)
 				.select('id, ' + nameField)
 				.in(nameField, values);
+
+			if (table === 'projects' || table === 'tasks') {
+				const actorId = await this.resolveActorId(userId);
+				if (!actorId) {
+					return resolved;
+				}
+				query = query.eq('created_by', actorId).is('deleted_at', null);
+			}
+
+			const { data, error } = await query;
 
 			if (!error && data) {
 				// Create lookup map
@@ -267,7 +296,6 @@ export class ReferenceResolver {
 		const nameFields: Record<string, string> = {
 			projects: 'name',
 			tasks: 'title',
-			phases: 'name',
 			project_notes: 'title',
 			project_documents: 'title',
 			brain_dumps: 'title',

@@ -30,10 +30,6 @@
 		cleanupBrainDumpNotificationBridge
 	} from '$lib/services/brain-dump-notification.bridge';
 	import {
-		initPhaseGenerationNotificationBridge,
-		cleanupPhaseGenerationNotificationBridge
-	} from '$lib/services/phase-generation-notification.bridge';
-	import {
 		initCalendarAnalysisNotificationBridge,
 		cleanupCalendarAnalysisNotificationBridge
 	} from '$lib/services/calendar-analysis-notification.bridge';
@@ -623,7 +619,6 @@
 
 		// Initialize notification bridges
 		initBrainDumpNotificationBridge();
-		initPhaseGenerationNotificationBridge();
 		initCalendarAnalysisNotificationBridge();
 		initProjectSynthesisNotificationBridge();
 		initTimeBlockNotificationBridge();
@@ -711,7 +706,6 @@
 
 			// Cleanup notification bridges
 			cleanupBrainDumpNotificationBridge();
-			cleanupPhaseGenerationNotificationBridge();
 			cleanupCalendarAnalysisNotificationBridge();
 			cleanupProjectSynthesisNotificationBridge();
 

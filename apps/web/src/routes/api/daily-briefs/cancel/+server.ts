@@ -13,40 +13,44 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	const targetDate = briefDate || new Date().toISOString().split('T')[0];
 
 	try {
-		// Update main brief status to cancelled/failed
-		const { data: updatedBrief, error: updateError } = await supabase
-			.from('daily_briefs')
-			.update({
-				generation_status: 'failed',
-				generation_error: 'Cancelled by user',
-				generation_completed_at: new Date().toISOString()
-			})
+		const { data: processingBrief } = await supabase
+			.from('ontology_daily_briefs')
+			.select('id')
 			.eq('user_id', userId)
 			.eq('brief_date', targetDate)
 			.eq('generation_status', 'processing')
-			.select()
-			.single();
+			.order('created_at', { ascending: false })
+			.order('id', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (!processingBrief?.id) {
+			return ApiResponse.success(
+				{
+					brief_id: null
+				},
+				'No in-progress brief generation found for this date'
+			);
+		}
+
+		const { error: updateError } = await supabase
+			.from('ontology_daily_briefs')
+			.update({
+				generation_status: 'failed',
+				generation_error: 'Cancelled by user',
+				generation_completed_at: new Date().toISOString(),
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', processingBrief.id)
+			.eq('user_id', userId);
 
 		if (updateError) {
 			throw updateError;
 		}
 
-		// Also cancel any in-progress project/life goal briefs
-		await Promise.all([
-			supabase
-				.from('project_daily_briefs')
-				.update({
-					generation_status: 'failed',
-					generation_error: 'Cancelled by user'
-				})
-				.eq('user_id', userId)
-				.eq('brief_date', targetDate)
-				.eq('generation_status', 'processing')
-		]);
-
 		return ApiResponse.success(
 			{
-				brief_id: updatedBrief?.id
+				brief_id: processingBrief.id
 			},
 			'Brief generation cancelled successfully'
 		);

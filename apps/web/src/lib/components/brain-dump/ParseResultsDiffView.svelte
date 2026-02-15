@@ -55,6 +55,44 @@
 	}
 	let itemStates: LoadingItem[] = [];
 
+	function mapProjectStateToStatus(
+		stateKey: string | null | undefined
+	): 'active' | 'paused' | 'completed' | 'archived' {
+		switch (stateKey) {
+			case 'completed':
+				return 'completed';
+			case 'cancelled':
+				return 'archived';
+			case 'planning':
+				return 'paused';
+			case 'active':
+			default:
+				return 'active';
+		}
+	}
+
+	function mapTaskStateToStatus(
+		stateKey: string | null | undefined
+	): 'backlog' | 'in_progress' | 'done' | 'blocked' {
+		switch (stateKey) {
+			case 'in_progress':
+				return 'in_progress';
+			case 'done':
+				return 'done';
+			case 'blocked':
+				return 'blocked';
+			case 'todo':
+			default:
+				return 'backlog';
+		}
+	}
+
+	function mapTaskPriority(priority: number | null | undefined): 'low' | 'medium' | 'high' {
+		if ((priority ?? 0) >= 4) return 'high';
+		if ((priority ?? 0) >= 2) return 'medium';
+		return 'low';
+	}
+
 	// Group operations by type
 	$: updateOperations = parseResults.operations.filter(
 		(op) => op.operation === 'update' && !op.error && !disabledOperations.has(op.id)
@@ -125,8 +163,8 @@
 			if (projectIds.size > 0) {
 				try {
 					const { data: projects, error } = await supabase
-						.from('projects')
-						.select('*')
+						.from('onto_projects')
+						.select('id, name, description, state_key, start_at, end_at, props')
 						.in('id', Array.from(projectIds));
 
 					if (error) throw error;
@@ -138,7 +176,24 @@
 							const project = projects?.find((p) => p.id === id);
 
 							if (project) {
-								return { ...item, loading: false, data: project };
+								const props =
+									(project.props as Record<string, unknown> | null) ?? {};
+								const legacyProject = {
+									id: project.id,
+									name: project.name,
+									description: project.description,
+									status: mapProjectStateToStatus(project.state_key),
+									start_date: project.start_at,
+									end_date: project.end_at,
+									context:
+										typeof props.context === 'string' ? props.context : null,
+									executive_summary:
+										typeof props.executive_summary === 'string'
+											? props.executive_summary
+											: null,
+									tags: Array.isArray(props.tags) ? props.tags : []
+								};
+								return { ...item, loading: false, data: legacyProject };
 							} else {
 								return { ...item, loading: false, error: 'Project not found' };
 							}
@@ -161,8 +216,10 @@
 			if (taskIds.size > 0) {
 				try {
 					const { data: tasks, error } = await supabase
-						.from('tasks')
-						.select('*')
+						.from('onto_tasks')
+						.select(
+							'id, title, description, state_key, priority, start_at, props, project_id'
+						)
 						.in('id', Array.from(taskIds));
 
 					if (error) throw error;
@@ -174,7 +231,35 @@
 							const task = tasks?.find((t) => t.id === id);
 
 							if (task) {
-								return { ...item, loading: false, data: task };
+								const props = (task.props as Record<string, unknown> | null) ?? {};
+								const legacyTask = {
+									id: task.id,
+									title: task.title,
+									description: task.description,
+									details:
+										typeof props.details === 'string' ? props.details : null,
+									status: mapTaskStateToStatus(task.state_key),
+									priority: mapTaskPriority(task.priority),
+									task_type:
+										typeof props.task_type === 'string'
+											? props.task_type
+											: 'one_off',
+									duration_minutes:
+										typeof props.duration_minutes === 'number'
+											? props.duration_minutes
+											: null,
+									start_date: task.start_at,
+									recurrence_pattern:
+										typeof props.recurrence_pattern === 'string'
+											? props.recurrence_pattern
+											: null,
+									recurrence_ends:
+										typeof props.recurrence_ends === 'string'
+											? props.recurrence_ends
+											: null,
+									project_id: task.project_id
+								};
+								return { ...item, loading: false, data: legacyTask };
 							} else {
 								return { ...item, loading: false, error: 'Task not found' };
 							}

@@ -72,7 +72,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.select(
 				`
 				*,
-				projects(id, name, slug, created_at),
 				tasks(id, title, status),
 				notes(id, title)
 			`
@@ -87,13 +86,17 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		let projectsMap = new Map();
 		if (projectIds?.length) {
 			const { data: projects, error: projectsError } = await supabase
-				.from('projects')
-				.select('id, name, slug, description, created_at')
-				.in('id', projectIds as string[]);
+				.from('onto_projects')
+				.select('id, name, description, created_at')
+				.in('id', projectIds as string[])
+				.is('deleted_at', null);
 
 			if (!projectsError && projects) {
 				projects.forEach((project) => {
-					projectsMap.set(project.id, project);
+					projectsMap.set(project.id, {
+						...project,
+						slug: null
+					});
 				});
 			}
 		}

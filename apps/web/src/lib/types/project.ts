@@ -66,39 +66,6 @@ export interface PhaseWithTasks extends Phase {
 	completed_tasks: number;
 }
 
-export interface PhaseGenerationResult {
-	phases: Array<{
-		name: string;
-		description: string;
-		start_date: string;
-		end_date: string;
-		order: number;
-	}>;
-	task_assignments: {
-		[task_id: string]: {
-			phase_order: number | null;
-			suggested_start_date: string | null;
-			reason: string;
-		};
-	};
-	recurring_tasks: string[];
-	backlog_tasks: string[];
-	summary: string;
-	recurring_task_suggestions?: {
-		[task_id: string]: {
-			action: 'keep_as_is' | 'reschedule' | 'adjust_pattern';
-			current_pattern?: string;
-			suggested_pattern?: string;
-			current_start_date?: string;
-			suggested_start_date?: string;
-			suggested_end_date?: string;
-			reason: string;
-			phase_alignment?: number;
-		};
-	};
-	recurring_task_warnings?: string[];
-}
-
 // ==========================================
 // TYPE GUARDS
 // ==========================================

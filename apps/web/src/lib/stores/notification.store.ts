@@ -602,8 +602,6 @@ export function createNotificationStore() {
 			// Add error to data based on type
 			if (updated.type === 'brain-dump') {
 				updated.data.error = error;
-			} else if (updated.type === 'phase-generation') {
-				updated.data.error = error;
 			} else if (updated.type === 'calendar-analysis') {
 				updated.data.error = error;
 			} else if (updated.type === 'generic') {

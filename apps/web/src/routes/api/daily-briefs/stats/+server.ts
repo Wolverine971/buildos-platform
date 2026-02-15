@@ -14,70 +14,66 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		const now = new Date();
 		const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 		const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+		const weekAgoDate = weekAgo.toISOString().split('T')[0]!;
+		const monthAgoDate = monthAgo.toISOString().split('T')[0]!;
 
-		// Get basic statistics
-		const [totalBriefs, weeklyBriefs, monthlyBriefs, recentBrief] = await Promise.all([
+		const [allRowsResult, recentBriefResult] = await Promise.all([
 			supabase
-				.from('daily_briefs')
-				.select('*', { count: 'exact', head: true })
+				.from('ontology_daily_briefs')
+				.select('brief_date, generation_status')
 				.eq('user_id', userId),
-
 			supabase
-				.from('daily_briefs')
-				.select('*', { count: 'exact', head: true })
-				.eq('user_id', userId)
-				.gte('brief_date', weekAgo.toISOString().split('T')[0]),
-
-			supabase
-				.from('daily_briefs')
-				.select('*', { count: 'exact', head: true })
-				.eq('user_id', userId)
-				.gte('brief_date', monthAgo.toISOString().split('T')[0]),
-
-			supabase
-				.from('daily_briefs')
+				.from('ontology_daily_briefs')
 				.select('brief_date, created_at')
 				.eq('user_id', userId)
+				.eq('generation_status', 'completed')
 				.order('brief_date', { ascending: false })
+				.order('created_at', { ascending: false })
 				.limit(1)
-				.single()
+				.maybeSingle()
 		]);
 
-		// Calculate streak
-		const { data: recentBriefs } = await supabase
-			.from('daily_briefs')
-			.select('brief_date')
-			.eq('user_id', userId)
-			.order('brief_date', { ascending: false })
-			.limit(100);
+		if (allRowsResult.error) {
+			throw allRowsResult.error;
+		}
+
+		const rows = allRowsResult.data || [];
+		const completedDates = new Set(
+			rows.filter((row) => row.generation_status === 'completed').map((row) => row.brief_date)
+		);
+
+		const uniqueCompletedDates = Array.from(completedDates).sort((a, b) =>
+			a < b ? 1 : a > b ? -1 : 0
+		);
+
+		const totalBriefs = uniqueCompletedDates.length;
+		const weeklyBriefs = uniqueCompletedDates.filter((date) => date >= weekAgoDate).length;
+		const monthlyBriefs = uniqueCompletedDates.filter((date) => date >= monthAgoDate).length;
 
 		let currentStreak = 0;
-		if (recentBriefs && recentBriefs.length > 0) {
-			const briefDates = recentBriefs.map((b) => new Date(b.brief_date));
+		if (uniqueCompletedDates.length > 0) {
+			const briefDateSet = new Set(uniqueCompletedDates);
 			const today = new Date();
 			today.setHours(0, 0, 0, 0);
 
 			let checkDate = new Date(today);
-			for (const briefDate of briefDates) {
-				const briefDateOnly = new Date(briefDate);
-				briefDateOnly.setHours(0, 0, 0, 0);
-
-				if (briefDateOnly.getTime() === checkDate.getTime()) {
-					currentStreak++;
-					checkDate.setDate(checkDate.getDate() - 1);
-				} else if (briefDateOnly.getTime() < checkDate.getTime()) {
+			while (true) {
+				const checkString = checkDate.toISOString().split('T')[0]!;
+				if (!briefDateSet.has(checkString)) {
 					break;
 				}
+				currentStreak += 1;
+				checkDate.setDate(checkDate.getDate() - 1);
 			}
 		}
 
 		return ApiResponse.success({
-			total_briefs: totalBriefs.count || 0,
-			briefs_this_week: weeklyBriefs.count || 0,
-			briefs_this_month: monthlyBriefs.count || 0,
+			total_briefs: totalBriefs,
+			briefs_this_week: weeklyBriefs,
+			briefs_this_month: monthlyBriefs,
 			current_streak: currentStreak,
-			last_brief_date: recentBrief.data?.brief_date || null,
-			last_brief_created: recentBrief.data?.created_at || null
+			last_brief_date: recentBriefResult.data?.brief_date || null,
+			last_brief_created: recentBriefResult.data?.created_at || null
 		});
 	} catch (error) {
 		console.error('Error fetching brief stats:', error);

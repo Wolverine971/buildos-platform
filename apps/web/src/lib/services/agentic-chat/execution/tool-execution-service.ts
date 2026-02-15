@@ -74,6 +74,14 @@ interface ToolErrorLogDetails {
 	timeoutMs?: number;
 }
 
+interface GatewayDetailFallback {
+	op: string;
+	entry: ReturnType<typeof getToolRegistry>['ops'][string];
+	args: Record<string, any>;
+	requiredIdKey: string;
+	warning: string;
+}
+
 export type ToolExecutionTelemetryHook = (
 	result: ToolExecutionResult,
 	telemetry: ToolExecutionTelemetry
@@ -731,26 +739,19 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		const opArgs = args.args && typeof args.args === 'object' ? args.args : {};
-		let normalizedArgs = this.applySchemaDefaults(
-			entry.tool_name,
-			opArgs,
-			CHAT_TOOL_DEFINITIONS
-		);
-		normalizedArgs = this.applyContextDefaults(
-			entry.tool_name,
-			normalizedArgs,
-			context,
-			CHAT_TOOL_DEFINITIONS
-		);
-		normalizedArgs = this.applyArgumentAliases(
-			entry.tool_name,
-			normalizedArgs,
-			CHAT_TOOL_DEFINITIONS
-		);
-		normalizedArgs = this.normalizeIdFields(normalizedArgs);
+		let effectiveOp = op;
+		let effectiveEntry = entry;
+		let normalizedArgs = this.normalizeGatewayArgsForTool(entry.tool_name, opArgs, context);
+		const fallback = this.resolveGatewayDetailFallback(op, normalizedArgs, context, registry);
+		if (fallback) {
+			effectiveOp = fallback.op;
+			effectiveEntry = fallback.entry;
+			normalizedArgs = fallback.args;
+		}
+		const warnings = fallback ? [fallback.warning] : [];
 
 		const validation = this.validateToolCall(
-			entry.tool_name,
+			effectiveEntry.tool_name,
 			normalizedArgs,
 			CHAT_TOOL_DEFINITIONS
 		);
@@ -765,7 +766,7 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		const dryRun = Boolean(args.dry_run);
-		if (dryRun && entry.kind === 'write') {
+		if (dryRun && effectiveEntry.kind === 'write') {
 			return {
 				success: true,
 				data: {
@@ -773,7 +774,7 @@ export class ToolExecutionService implements BaseService {
 					ok: true,
 					result: {
 						dry_run: true,
-						tool_name: entry.tool_name,
+						tool_name: effectiveEntry.tool_name,
 						args: normalizedArgs
 					},
 					meta: { warnings: ['dry_run enabled; no changes applied'] }
@@ -786,9 +787,9 @@ export class ToolExecutionService implements BaseService {
 		const execStart = Date.now();
 		let abortListener: (() => void) | undefined;
 		try {
-			const timeout = this.resolveTimeoutMs(entry.tool_name, options.timeout);
+			const timeout = this.resolveTimeoutMs(effectiveEntry.tool_name, options.timeout);
 			const execPromise = this.executeWithTimeout<ToolExecutorResponse>(
-				() => this.toolExecutor(entry.tool_name, normalizedArgs, context),
+				() => this.toolExecutor(effectiveEntry.tool_name, normalizedArgs, context),
 				timeout
 			);
 			let execution: ToolExecutorResponse;
@@ -817,14 +818,25 @@ export class ToolExecutionService implements BaseService {
 				typeof executionMetadata?.durationMs === 'number'
 					? executionMetadata.durationMs
 					: Date.now() - execStart;
+			const resultWithFallback = fallback
+				? this.decorateGatewayFallbackResult(cleanedResult, {
+						requestedOp: op,
+						executedOp: effectiveOp,
+						requiredIdKey: fallback.requiredIdKey
+					})
+				: (cleanedResult ?? null);
+			const meta: Record<string, any> = { latency_ms: latencyMs, warnings };
+			if (effectiveOp !== op) {
+				meta.executed_op = effectiveOp;
+			}
 
 			return {
 				success: true,
 				data: {
 					op,
 					ok: true,
-					result: cleanedResult ?? null,
-					meta: { latency_ms: latencyMs, warnings: [] }
+					result: resultWithFallback,
+					meta
 				},
 				streamEvents: Array.isArray(execution?.streamEvents)
 					? (execution.streamEvents as StreamEvent[])
@@ -855,7 +867,7 @@ export class ToolExecutionService implements BaseService {
 
 			const normalizedError = this.normalizeExecutionError(
 				error,
-				entry.tool_name,
+				effectiveEntry.tool_name,
 				normalizedArgs
 			);
 			return {
@@ -871,6 +883,89 @@ export class ToolExecutionService implements BaseService {
 				toolCallId: 'gateway'
 			};
 		}
+	}
+
+	private normalizeGatewayArgsForTool(
+		toolName: string,
+		args: Record<string, any>,
+		context: ServiceContext
+	): Record<string, any> {
+		let normalizedArgs = this.applySchemaDefaults(toolName, args, CHAT_TOOL_DEFINITIONS);
+		normalizedArgs = this.applyContextDefaults(
+			toolName,
+			normalizedArgs,
+			context,
+			CHAT_TOOL_DEFINITIONS
+		);
+		normalizedArgs = this.applyArgumentAliases(
+			toolName,
+			normalizedArgs,
+			CHAT_TOOL_DEFINITIONS
+		);
+		return this.normalizeIdFields(normalizedArgs);
+	}
+
+	private resolveGatewayDetailFallback(
+		op: string,
+		args: Record<string, any>,
+		context: ServiceContext,
+		registry: ReturnType<typeof getToolRegistry>
+	): GatewayDetailFallback | null {
+		const detailMatch = op.match(
+			/^onto\.(task|goal|plan|document|milestone|risk|requirement)\.get$/
+		);
+		if (!detailMatch) {
+			return null;
+		}
+
+		const entity = detailMatch[1];
+		const requiredIdKey = `${entity}_id`;
+		const rawId = args[requiredIdKey];
+		const hasRequiredId = typeof rawId === 'string' && rawId.trim().length > 0;
+		if (hasRequiredId) {
+			return null;
+		}
+
+		const fallbackOp = `onto.${entity}.list`;
+		const fallbackEntry = registry.ops[fallbackOp];
+		if (!fallbackEntry) {
+			return null;
+		}
+
+		const fallbackArgs: Record<string, any> = {};
+		if (typeof args.limit === 'number' && Number.isFinite(args.limit)) {
+			fallbackArgs.limit = args.limit;
+		}
+
+		return {
+			op: fallbackOp,
+			entry: fallbackEntry,
+			args: this.normalizeGatewayArgsForTool(fallbackEntry.tool_name, fallbackArgs, context),
+			requiredIdKey,
+			warning: `${op} requires ${requiredIdKey}; executed ${fallbackOp} to fetch candidate IDs first.`
+		};
+	}
+
+	private decorateGatewayFallbackResult(
+		result: unknown,
+		fallback: { requestedOp: string; executedOp: string; requiredIdKey: string }
+	): Record<string, any> {
+		const fallbackDetails = {
+			reason: 'missing_required_id',
+			required_arg: fallback.requiredIdKey,
+			requested_op: fallback.requestedOp,
+			executed_op: fallback.executedOp
+		};
+		if (result && typeof result === 'object' && !Array.isArray(result)) {
+			return {
+				...(result as Record<string, any>),
+				_fallback: fallbackDetails
+			};
+		}
+		return {
+			value: result ?? null,
+			_fallback: fallbackDetails
+		};
 	}
 
 	private buildGatewayErrorResult(

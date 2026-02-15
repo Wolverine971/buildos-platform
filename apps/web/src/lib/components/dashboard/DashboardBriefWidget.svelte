@@ -171,20 +171,7 @@
 					updated_at: ontologyBrief.updated_at
 				} as DailyBrief;
 			} else if (!ontologyError || ontologyError.code === 'PGRST116') {
-				// No ontology brief found, try legacy briefs table
-				const { data: legacyBrief, error: legacyError } = await supabase
-					.from('daily_briefs')
-					.select('*')
-					.eq('user_id', user.id)
-					.eq('brief_date', todayDate)
-					.eq('generation_status', 'completed')
-					.maybeSingle();
-
-				if (legacyBrief) {
-					brief = legacyBrief as DailyBrief;
-				} else {
-					brief = null;
-				}
+				brief = null;
 			} else {
 				// Actual error occurred
 				console.error('Error fetching ontology brief:', ontologyError);

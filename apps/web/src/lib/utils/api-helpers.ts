@@ -278,45 +278,6 @@ export async function verifyProjectAccess(
 }
 
 /**
- * Verifies project access for legacy projects table (non-ontology).
- * Uses user_id field instead of created_by/actor.
- *
- * @param supabase - The Supabase client
- * @param projectId - The project ID to verify
- * @param userId - The authenticated user's ID
- * @returns Authorization result with error response if unauthorized
- */
-export async function verifyLegacyProjectAccess(
-	supabase: TypedSupabaseClient,
-	projectId: string,
-	userId: string
-): Promise<AuthorizationResult> {
-	const { data: project, error: projectError } = await supabase
-		.from('projects')
-		.select('id, user_id')
-		.eq('id', projectId)
-		.single();
-
-	if (projectError || !project) {
-		return {
-			authorized: false,
-			error: ApiResponse.notFound('Project')
-		};
-	}
-
-	if (project.user_id !== userId) {
-		return {
-			authorized: false,
-			error: ApiResponse.forbidden('You do not have access to this project')
-		};
-	}
-
-	return {
-		authorized: true
-	};
-}
-
-/**
  * Verifies access to an entity within a project.
  * First checks project access, then entity existence.
  *

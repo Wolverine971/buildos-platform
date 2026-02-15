@@ -2111,10 +2111,17 @@ Generate a helpful response that:
 			// Need specific ID
 			if (context.lastTurnContext?.entities) {
 				const entities = context.lastTurnContext.entities;
-				if (toolName.includes('project') && entities.project_id) {
-					args.id = entities.project_id;
-				} else if (toolName.includes('task') && entities.task_ids?.length) {
-					args.id = entities.task_ids[0];
+				const firstProjectId =
+					entities.projects?.[0]?.id ??
+					(typeof entities.project_id === 'string' ? entities.project_id : undefined);
+				const firstTaskId =
+					entities.tasks?.[0]?.id ??
+					(Array.isArray(entities.task_ids) ? entities.task_ids[0] : undefined);
+
+				if (toolName.includes('project') && firstProjectId) {
+					args.id = firstProjectId;
+				} else if (toolName.includes('task') && firstTaskId) {
+					args.id = firstTaskId;
 				}
 			}
 		}

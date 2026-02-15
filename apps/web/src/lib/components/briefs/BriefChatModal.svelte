@@ -4,7 +4,15 @@
 
 	Layout:
 	- Desktop (≥768px): Split pane — brief left (flex-1, min 400px), chat right (w-[420px])
-	- Mobile (<768px): Tabbed view — Brief tab / Chat tab
+	- Mobile (<768px): Bottom-sheet with tabbed view — Brief tab / Chat tab
+
+	Mobile UX:
+	- Bottom-sheet slide-up animation with drag handle
+	- Swipe-to-dismiss gesture (120px threshold)
+	- Safe area insets for iPhone notch/home indicator
+	- 44px WCAG AA touch targets on tabs
+	- Landscape-optimized compact layout
+	- Overscroll containment on all panes
 
 	Design: INKPRINT texture-based design language
 -->
@@ -12,7 +20,7 @@
 	import { fade } from 'svelte/transition';
 	import { onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
-	import { X } from 'lucide-svelte';
+	import { X, FileText, MessageCircle } from 'lucide-svelte';
 	import { portal } from '$lib/actions/portal';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
 	import { renderMarkdown } from '$lib/utils/markdown';
@@ -34,8 +42,24 @@
 	let lastSummary = $state<DataMutationSummary | undefined>(undefined);
 	let briefChatEntityId = $derived(brief.chat_brief_id || brief.id);
 
+	// Touch gesture state
+	let isDragging = $state(false);
+	let dragStartY = $state(0);
+	let dragTranslateY = $state(0);
+
+	// Auto-detect touch device
+	const isTouchDevice = $derived(
+		browser &&
+			('ontouchstart' in window ||
+				navigator.maxTouchPoints > 0 ||
+				(navigator as any).msMaxTouchPoints > 0)
+	);
+
+	// Tab badge state
+	let chatTabHasUnread = $state(false);
+	let briefTabHasUpdates = $state(false);
+
 	function handleChatClose(summary?: DataMutationSummary) {
-		// Store the summary from AgentChatModal's handleClose
 		lastSummary = summary;
 		onClose?.(summary);
 	}
@@ -55,14 +79,17 @@
 	}
 
 	function requestClose() {
-		// Setting isOpen to false will cause the embedded AgentChatModal
-		// to detect the transition and call handleClose() with the summary
 		isOpen = false;
-		// If the chat didn't fire its own close (e.g., no chat session was started),
-		// still notify the parent
 		if (!lastSummary) {
 			onClose?.();
 		}
+	}
+
+	function switchTab(tab: 'brief' | 'chat') {
+		activeTab = tab;
+		// Clear badge when switching to that tab
+		if (tab === 'chat') chatTabHasUnread = false;
+		if (tab === 'brief') briefTabHasUpdates = false;
 	}
 
 	function formatBriefDate(dateStr: string): string {
@@ -77,6 +104,66 @@
 		} catch {
 			return dateStr;
 		}
+	}
+
+	// Touch gesture handlers (mobile only, downward swipe to dismiss)
+	function handleTouchStart(e: TouchEvent) {
+		if (!isTouchDevice) return;
+		const target = e.target as HTMLElement;
+		// Only allow drag from the drag handle area or header
+		const isDragHandle = target.closest('.brief-drag-handle');
+		if (!isDragHandle) return;
+
+		const touch = e.touches[0];
+		if (!touch) return;
+		isDragging = true;
+		dragStartY = touch.clientY;
+		dragTranslateY = 0;
+	}
+
+	function handleTouchMove(e: TouchEvent) {
+		if (!isDragging) return;
+		const currentY = e.touches?.[0]?.clientY;
+		if (currentY === undefined) return;
+		const deltaY = currentY - dragStartY;
+		// Only allow downward drag
+		if (deltaY > 0) {
+			e.preventDefault();
+			dragTranslateY = deltaY;
+		}
+	}
+
+	function handleTouchEnd() {
+		if (!isDragging) return;
+		const dismissed = dragTranslateY > 120;
+		if (dismissed) {
+			requestClose();
+		} else {
+			dragTranslateY = 0;
+		}
+		isDragging = false;
+		dragStartY = 0;
+	}
+
+	// Svelte action: attach non-passive touch listeners for swipe gesture
+	function touchGesture(node: HTMLElement) {
+		if (!isTouchDevice) return;
+
+		const onStart = (e: TouchEvent) => handleTouchStart(e);
+		const onMove = (e: TouchEvent) => handleTouchMove(e);
+		const onEnd = () => handleTouchEnd();
+
+		node.addEventListener('touchstart', onStart, { passive: false });
+		node.addEventListener('touchmove', onMove, { passive: false });
+		node.addEventListener('touchend', onEnd, { passive: false });
+
+		return {
+			destroy() {
+				node.removeEventListener('touchstart', onStart);
+				node.removeEventListener('touchmove', onMove);
+				node.removeEventListener('touchend', onEnd);
+			}
+		};
 	}
 
 	$effect(() => {
@@ -94,6 +181,10 @@
 		if (isOpen) {
 			lastSummary = undefined;
 			activeTab = 'chat';
+			chatTabHasUnread = false;
+			briefTabHasUpdates = false;
+			dragTranslateY = 0;
+			isDragging = false;
 		}
 	});
 
@@ -114,25 +205,46 @@
 			class="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-[9998]"
 			style="touch-action: none;"
 			onclick={handleBackdropClick}
+			ontouchend={handleBackdropClick}
 			aria-hidden="true"
 		></div>
 
 		<!-- Modal container -->
 		<div class="fixed inset-0 z-[9999] overflow-hidden" style="touch-action: none;">
-			<div class="flex h-full items-center justify-center p-2 sm:p-4" role="presentation">
+			<div
+				class="flex h-full justify-center
+					items-end md:items-center
+					p-0 md:p-4"
+				role="presentation"
+			>
 				<!-- Modal content -->
 				<div
-					class="w-full max-w-7xl h-[calc(100dvh-1rem)] sm:h-[90dvh]
-						bg-card border border-border rounded-lg shadow-ink-strong
+					use:touchGesture
+					class="brief-modal-container w-full max-w-7xl
+						bg-card border border-border shadow-ink-strong
 						flex flex-col overflow-hidden
-						tx tx-frame tx-weak animate-modal-scale"
+						tx tx-frame tx-weak
+						rounded-t-2xl md:rounded-lg
+						brief-animate-slide-up md:brief-animate-scale"
+					style="
+						transform: translateY({dragTranslateY}px) translateZ(0);
+						transition: {isDragging ? 'none' : 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'};
+					"
 					role="dialog"
 					aria-modal="true"
 					aria-label="Brief Chat"
 				>
+					<!-- Drag handle (mobile only) -->
+					<div
+						class="brief-drag-handle flex md:hidden items-center justify-center pt-2 pb-1 flex-shrink-0"
+						style="touch-action: none; cursor: grab;"
+					>
+						<div class="w-8 h-1 rounded-full bg-muted-foreground/30"></div>
+					</div>
+
 					<!-- Header bar -->
 					<div
-						class="flex h-12 items-center justify-between gap-3 px-4
+						class="brief-header flex h-11 md:h-12 items-center justify-between gap-3 px-3 md:px-4
 							border-b border-border bg-muted flex-shrink-0"
 					>
 						<h2 class="text-sm font-semibold text-foreground truncate">
@@ -154,26 +266,40 @@
 					</div>
 
 					<!-- Mobile tab selector -->
-					<div class="flex md:hidden border-b border-border bg-muted/50 flex-shrink-0">
+					<div
+						class="brief-tabs flex md:hidden border-b border-border bg-muted/50 flex-shrink-0"
+					>
 						<button
 							type="button"
-							class="flex-1 px-4 py-2 text-sm font-semibold transition-colors
+							class="brief-tab flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-semibold transition-colors relative
 								{activeTab === 'brief'
 								? 'text-foreground border-b-2 border-accent'
 								: 'text-muted-foreground hover:text-foreground'}"
-							onclick={() => (activeTab = 'brief')}
+							onclick={() => switchTab('brief')}
 						>
-							Brief
+							<FileText class="h-4 w-4 landscape-only-icon" />
+							<span>Brief</span>
+							{#if briefTabHasUpdates}
+								<span
+									class="absolute top-2 right-[calc(50%-24px)] w-2 h-2 rounded-full bg-accent"
+								></span>
+							{/if}
 						</button>
 						<button
 							type="button"
-							class="flex-1 px-4 py-2 text-sm font-semibold transition-colors
+							class="brief-tab flex-1 flex items-center justify-center gap-1.5 h-11 text-sm font-semibold transition-colors relative
 								{activeTab === 'chat'
 								? 'text-foreground border-b-2 border-accent'
 								: 'text-muted-foreground hover:text-foreground'}"
-							onclick={() => (activeTab = 'chat')}
+							onclick={() => switchTab('chat')}
 						>
-							Chat
+							<MessageCircle class="h-4 w-4 landscape-only-icon" />
+							<span>Chat</span>
+							{#if chatTabHasUnread}
+								<span
+									class="absolute top-2 right-[calc(50%-20px)] w-2 h-2 rounded-full bg-accent"
+								></span>
+							{/if}
 						</button>
 					</div>
 
@@ -182,13 +308,14 @@
 						<!-- Left pane: Brief content -->
 						<div
 							class="flex-col overflow-y-auto border-r border-border bg-card
-								brief-scroll
+								brief-scroll brief-pane
 								{activeTab === 'brief' ? 'flex' : 'hidden'} md:flex
 								md:flex-1 md:min-w-[400px]"
+							style="touch-action: pan-y;"
 						>
-							<div class="px-4 sm:px-6 py-6">
+							<div class="px-3 py-4 md:px-6 md:py-6">
 								<div
-									class="prose prose-sm dark:prose-invert max-w-none
+									class="prose prose-base md:prose-sm dark:prose-invert max-w-none
 										prose-headings:font-semibold prose-headings:text-foreground dark:prose-headings:text-white
 										prose-p:text-muted-foreground dark:prose-p:text-muted-foreground
 										prose-li:text-muted-foreground dark:prose-li:text-muted-foreground
@@ -206,9 +333,10 @@
 
 						<!-- Right pane: Chat -->
 						<div
-							class="flex-col min-h-0
+							class="flex-col min-h-0 brief-pane
 								{activeTab === 'chat' ? 'flex' : 'hidden'} md:flex
 								w-full md:w-[340px] lg:w-[420px] md:flex-shrink-0"
+							style="touch-action: pan-y;"
 						>
 							<AgentChatModal
 								embedded={true}
@@ -227,11 +355,126 @@
 {/if}
 
 <style>
+	/* ==================== Root & Containment ==================== */
+
 	.brief-chat-root {
 		overscroll-behavior: contain;
 		z-index: 9999;
 		position: relative;
 	}
+
+	/* ==================== Modal Container ==================== */
+
+	.brief-modal-container {
+		/* GPU acceleration */
+		transform: translateZ(0);
+		backface-visibility: hidden;
+		will-change: transform, opacity;
+
+		/* Disable tap highlight */
+		-webkit-tap-highlight-color: transparent;
+		-webkit-touch-callout: none;
+		touch-action: manipulation;
+
+		/* Mobile: near-full height with safe area subtraction */
+		height: calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem);
+	}
+
+	/* Desktop: fixed 90dvh centered */
+	@media (min-width: 768px) {
+		.brief-modal-container {
+			height: 90dvh;
+			will-change: auto;
+		}
+	}
+
+	/* ==================== GPU-Optimized Animations ==================== */
+
+	/* Mobile: slide up from bottom */
+	@keyframes brief-slide-up {
+		from {
+			transform: translateY(100%) translateZ(0);
+			opacity: 0;
+		}
+		to {
+			transform: translateY(0) translateZ(0);
+			opacity: 1;
+		}
+	}
+
+	/* Desktop: scale from center */
+	@keyframes brief-scale {
+		from {
+			transform: scale(0.95) translateZ(0);
+			opacity: 0;
+		}
+		to {
+			transform: scale(1) translateZ(0);
+			opacity: 1;
+		}
+	}
+
+	:global(.brief-animate-slide-up) {
+		animation: brief-slide-up 300ms cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	:global(.brief-animate-scale) {
+		animation: brief-scale 200ms cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	/* Desktop overrides slide-up to scale */
+	@media (min-width: 768px) {
+		:global(.brief-animate-slide-up) {
+			animation: brief-scale 200ms cubic-bezier(0.4, 0, 0.2, 1);
+		}
+	}
+
+	/* ==================== Drag Handle ==================== */
+
+	.brief-drag-handle:active {
+		cursor: grabbing;
+	}
+
+	.brief-drag-handle:active > div {
+		background: hsl(var(--foreground) / 0.5);
+		width: 2.5rem;
+	}
+
+	/* ==================== Header Safe Area ==================== */
+
+	@supports (padding-top: env(safe-area-inset-top)) {
+		/* On iOS, the drag handle area absorbs the safe area top */
+		.brief-drag-handle {
+			padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+		}
+	}
+
+	/* ==================== Tab Styling ==================== */
+
+	.brief-tab {
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	/* In landscape with short viewport, hide tab text and show icons only */
+	@media (orientation: landscape) and (max-height: 500px) {
+		.brief-tab span {
+			display: none;
+		}
+		/* :global needed because class is applied on Svelte component props */
+		.brief-tab :global(.landscape-only-icon) {
+			width: 1.25rem;
+			height: 1.25rem;
+		}
+	}
+
+	/* ==================== Content Panes ==================== */
+
+	.brief-pane {
+		overscroll-behavior: contain;
+	}
+
+	/* ==================== Brief Scroll Pane ==================== */
 
 	.brief-scroll {
 		overscroll-behavior: contain;
@@ -256,5 +499,53 @@
 
 	:global(.brief-scroll::-webkit-scrollbar-thumb:hover) {
 		background: hsl(var(--muted-foreground) / 0.5);
+	}
+
+	/* ==================== iOS Safe Area Support ==================== */
+
+	@supports (-webkit-touch-callout: none) {
+		.brief-modal-container {
+			/* Account for notch and home indicator */
+			max-height: calc(
+				100dvh - env(safe-area-inset-top, 0px) -
+					max(env(safe-area-inset-bottom, 0px), 0.5rem)
+			);
+		}
+	}
+
+	/* ==================== Landscape Optimization ==================== */
+
+	@media (orientation: landscape) and (max-height: 500px) {
+		.brief-modal-container {
+			/* Maximize space in landscape */
+			height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+			border-radius: 0.5rem;
+		}
+
+		.brief-header {
+			/* Compact header in landscape */
+			height: 2.5rem;
+		}
+
+		.brief-tabs {
+			/* Shorter tabs in landscape */
+			height: 2.5rem;
+		}
+
+		.brief-tab {
+			height: 2.5rem;
+		}
+
+		.brief-drag-handle {
+			/* Minimal drag handle in landscape */
+			padding-top: 0.125rem;
+			padding-bottom: 0.125rem;
+		}
+	}
+
+	/* ==================== Body Scroll Lock ==================== */
+
+	:global(body:has(.brief-chat-root)) {
+		overflow: hidden;
 	}
 </style>

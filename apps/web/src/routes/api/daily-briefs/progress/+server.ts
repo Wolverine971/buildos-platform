@@ -13,13 +13,15 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const date = url.searchParams.get('date') || new Date().toISOString().split('T')[0]!;
 
 	try {
-		// Get main brief status
 		const { data: brief } = await supabase
-			.from('daily_briefs')
+			.from('ontology_daily_briefs')
 			.select('*')
 			.eq('user_id', userId)
 			.eq('brief_date', date)
-			.single();
+			.order('created_at', { ascending: false })
+			.order('id', { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
 		if (!brief) {
 			return ApiResponse.success({
@@ -28,27 +30,25 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			});
 		}
 
-		// Get project brief progress
 		const { data: projectBriefs } = await supabase
-			.from('project_daily_briefs')
-			.select('id, project_id, generation_status, brief_content, projects!inner(name)')
-			.eq('user_id', userId)
-			.eq('brief_date', date);
+			.from('ontology_project_briefs')
+			.select('id, project_id, brief_content, project:onto_projects!inner(name)')
+			.eq('daily_brief_id', brief.id);
 
+		const completedCount = projectBriefs?.length || 0;
 		const projectProgress = {
-			total: projectBriefs?.length || 0,
-			completed:
-				projectBriefs?.filter((b) => b.generation_status === 'completed').length || 0,
-			failed: projectBriefs?.filter((b) => b.generation_status === 'failed').length || 0,
+			total: completedCount,
+			completed: completedCount,
+			failed: 0,
 			briefs:
-				projectBriefs
-					?.filter((b) => b.generation_status === 'completed')
-					.map((b) => ({
-						id: b.id,
-						project_name: b.projects.name,
-						content: b.brief_content
-					})) || []
+				projectBriefs?.map((item: any) => ({
+					id: item.id,
+					project_name: item.project?.name || 'Project',
+					content: item.brief_content
+				})) || []
 		};
+
+		const summaryContent = brief.executive_summary || brief.llm_analysis || '';
 
 		return ApiResponse.success({
 			exists: true,
@@ -57,8 +57,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				brief.generation_status === 'completed'
 					? {
 							id: brief.id,
-							content: brief.summary_content,
-							priority_actions: brief.priority_actions
+							content: summaryContent,
+							priority_actions: brief.priority_actions || []
 						}
 					: null,
 			projects: projectProgress,

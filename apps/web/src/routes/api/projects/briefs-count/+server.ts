@@ -11,39 +11,37 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			return ApiResponse.error('Unauthorized', 401);
 		}
 
-		// Get project IDs from query params
-		const projectIds = url.searchParams.get('projectIds')?.split(',') || [];
+		const projectIds =
+			url.searchParams
+				.get('projectIds')
+				?.split(',')
+				.map((id) => id.trim())
+				.filter(Boolean) || [];
 
 		if (projectIds.length === 0) {
 			return ApiResponse.success({ briefCounts: {} });
 		}
 
-		// Fetch brief counts for the specified projects
 		const briefCounts: Record<string, number> = {};
+		for (const projectId of projectIds) {
+			briefCounts[projectId] = 0;
+		}
 
-		// Get daily briefs count for each project
-		const { data: briefsData, error: briefsError } = await (
-			supabase.from('daily_briefs') as any
-		)
-			.select('project_id')
+		const { data: briefsData, error: briefsError } = await supabase
+			.from('ontology_project_briefs')
+			.select('project_id, daily_brief:ontology_daily_briefs!inner(user_id)')
 			.in('project_id', projectIds)
-			.eq('user_id', user.id);
+			.eq('daily_brief.user_id', user.id);
 
 		if (briefsError) {
 			console.error('Error fetching briefs count:', briefsError);
 			return ApiResponse.error('Failed to fetch briefs count');
 		}
 
-		// Count briefs per project
-		projectIds.forEach((projectId: string) => {
-			briefCounts[projectId] = 0;
-		});
-
-		(briefsData as any[])?.forEach((brief: any) => {
-			if (brief.project_id) {
-				briefCounts[brief.project_id] = (briefCounts[brief.project_id] || 0) + 1;
-			}
-		});
+		for (const brief of (briefsData as any[]) || []) {
+			if (!brief.project_id) continue;
+			briefCounts[brief.project_id] = (briefCounts[brief.project_id] || 0) + 1;
+		}
 
 		return ApiResponse.success({ briefCounts });
 	} catch (error) {

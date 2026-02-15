@@ -107,65 +107,6 @@ export class SMSService extends ApiService {
 				'Task reminders via SMS are no longer supported. Please use event reminders or daily briefings instead.'
 			]
 		};
-
-		// Legacy implementation below (kept for reference, never executed)
-		/*
-		try {
-			// Get task details
-			const { data: task } = await this.supabase
-				.from('tasks')
-				.select('*, projects(name)')
-				.eq('id', taskId)
-				.maybeSingle(); // Use maybeSingle() to avoid 406 when no rows
-
-			if (!task) {
-				return {
-					success: false,
-					errors: ['Task not found']
-				};
-			}
-
-			// Get user preferences
-			const { data: prefs } = await this.supabase
-				.from('user_sms_preferences')
-				.select(
-					'id, user_id, phone_number, phone_verified, phone_verified_at, opted_out, opted_out_at, opt_out_reason, quiet_hours_start, quiet_hours_end, urgent_alerts, event_reminders_enabled, event_reminder_lead_time_minutes, morning_kickoff_enabled, morning_kickoff_time, evening_recap_enabled, daily_sms_limit, daily_sms_count, daily_count_reset_at, created_at, updated_at'
-				)
-				.eq('user_id', task.user_id)
-				.maybeSingle(); // Use maybeSingle() to avoid 406 when no rows
-
-			if (!prefs?.phone_number) {
-				return {
-					success: false,
-					errors: ['Task reminders are disabled or phone not configured']
-				};
-			}
-
-			// Use the template-based approach
-			return this.sendSMS({
-				userId: task.user_id,
-				phoneNumber: prefs.phone_number,
-				message: '', // Will be filled by template
-				templateKey: 'task_reminder',
-				templateVars: {
-					task_name: task.name,
-					due_time: task.due_date,
-					task_context: task.projects?.name
-				},
-				priority: task.priority === 'critical' ? 'urgent' : 'normal',
-				metadata: {
-					task_id: taskId,
-					project_id: task.project_id
-				}
-			});
-		} catch (error: any) {
-			console.error('Failed to send task reminder:', error);
-			return {
-				success: false,
-				errors: [error.message || 'Failed to send task reminder']
-			};
-		}
-		*/
 	}
 
 	async verifyPhoneNumber(

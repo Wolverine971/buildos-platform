@@ -24,15 +24,6 @@ export interface BriefJobData extends Omit<DailyBriefJobMetadata, 'briefDate' | 
 	};
 }
 
-export interface PhasesJobData {
-	userId: string;
-	projectId: string;
-	options?: {
-		regenerate?: boolean;
-		template?: string;
-	};
-}
-
 export interface OnboardingAnalysisJobData {
 	userId: string;
 	userContext: {
@@ -76,7 +67,6 @@ export async function updateJobStatus(
 	status: QueueJobStatus,
 	jobType:
 		| 'brief'
-		| 'phases'
 		| 'onboarding'
 		| 'send_sms'
 		| 'email'

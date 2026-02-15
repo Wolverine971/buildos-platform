@@ -21,7 +21,6 @@
 
 	// Lazy-loaded type-specific components
 	let BrainDumpMinimizedView = $state<any>(null);
-	let PhaseGenerationMinimizedView = $state<any>(null);
 	let ProjectSynthesisMinimizedView = $state<any>(null);
 	let CalendarAnalysisMinimizedView = $state<any>(null);
 	let TimeBlockMinimizedView = $state<any>(null);
@@ -36,14 +35,6 @@
 							'./types/brain-dump/BrainDumpMinimizedView.svelte'
 						);
 						BrainDumpMinimizedView = module.default;
-					}
-					break;
-				case 'phase-generation':
-					if (!PhaseGenerationMinimizedView) {
-						const module = await import(
-							'./types/phase-generation/PhaseGenerationMinimizedView.svelte'
-						);
-						PhaseGenerationMinimizedView = module.default;
 					}
 					break;
 				case 'project-synthesis':
@@ -97,15 +88,13 @@
 	let typeSpecificComponent = $derived(
 		notification.type === 'brain-dump'
 			? BrainDumpMinimizedView
-			: notification.type === 'phase-generation'
-				? PhaseGenerationMinimizedView
-				: notification.type === 'project-synthesis'
-					? ProjectSynthesisMinimizedView
-					: notification.type === 'calendar-analysis'
-						? CalendarAnalysisMinimizedView
-						: notification.type === 'time-block'
-							? TimeBlockMinimizedView
-							: null
+			: notification.type === 'project-synthesis'
+				? ProjectSynthesisMinimizedView
+				: notification.type === 'calendar-analysis'
+					? CalendarAnalysisMinimizedView
+					: notification.type === 'time-block'
+						? TimeBlockMinimizedView
+						: null
 	);
 
 	// Get notification title based on type (fallback for generic view)
@@ -119,41 +108,33 @@
 					: notification.status === 'error'
 						? 'Brain dump failed'
 						: 'Brain dump'
-			: notification.type === 'phase-generation'
+			: notification.type === 'project-synthesis'
 				? notification.status === 'processing'
-					? `Generating phases for ${notification.data.projectName}`
+					? `Analyzing tasks for ${notification.data.projectName}`
 					: notification.status === 'success'
-						? 'Phases generated'
+						? 'Synthesis complete'
 						: notification.status === 'error'
-							? 'Phase generation failed'
-							: 'Phase generation'
-				: notification.type === 'project-synthesis'
+							? 'Synthesis failed'
+							: 'Project synthesis'
+				: notification.type === 'calendar-analysis'
 					? notification.status === 'processing'
-						? `Analyzing tasks for ${notification.data.projectName}`
+						? 'Analyzing calendar'
 						: notification.status === 'success'
-							? 'Synthesis complete'
+							? 'Calendar analyzed'
 							: notification.status === 'error'
-								? 'Synthesis failed'
-								: 'Project synthesis'
-					: notification.type === 'calendar-analysis'
+								? 'Calendar analysis failed'
+								: 'Calendar analysis'
+					: notification.type === 'time-block'
 						? notification.status === 'processing'
-							? 'Analyzing calendar'
+							? 'Creating time block'
 							: notification.status === 'success'
-								? 'Calendar analyzed'
-								: notification.status === 'error'
-									? 'Calendar analysis failed'
-									: 'Calendar analysis'
-						: notification.type === 'time-block'
-							? notification.status === 'processing'
-								? 'Creating time block'
-								: notification.status === 'success'
-									? 'Time block ready'
-									: notification.status === 'warning'
-										? 'Time block created (no suggestions)'
-										: 'Time block'
-							: notification.type === 'generic'
-								? notification.data.title
-								: 'Processing'
+								? 'Time block ready'
+								: notification.status === 'warning'
+									? 'Time block created (no suggestions)'
+									: 'Time block'
+						: notification.type === 'generic'
+							? notification.data.title
+							: 'Processing'
 	);
 
 	// Get subtitle/progress message with type-safe handling across progress variants

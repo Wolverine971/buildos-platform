@@ -499,24 +499,24 @@ async function processBrainDumpWithStreaming({
 
 					// Check if a new project was created
 					const createdProject = executionResult.results?.find(
-						(r: any) => r.table === 'projects' && r.operationType === 'create'
+						(r: any) => r.table === 'onto_projects' && r.operationType === 'create'
 					);
 
 					if (createdProject?.id) {
 						// New project was created - fetch the project details
 						try {
 							const { data: project, error } = await supabase
-								.from('projects')
-								.select('id, name, slug, description')
+								.from('onto_projects')
+								.select('id, name')
 								.eq('id', createdProject.id)
-								.eq('user_id', userId)
+								.is('deleted_at', null)
 								.single();
 
 							if (!error && project) {
 								projectInfo = {
 									id: project.id,
 									name: project.name,
-									slug: project.slug,
+									slug: null,
 									isNew: true
 								};
 							}
@@ -527,17 +527,17 @@ async function processBrainDumpWithStreaming({
 						// Existing project was updated
 						try {
 							const { data: project, error } = await supabase
-								.from('projects')
-								.select('id, name, slug, description')
+								.from('onto_projects')
+								.select('id, name')
 								.eq('id', selectedProjectId)
-								.eq('user_id', userId)
+								.is('deleted_at', null)
 								.single();
 
 							if (!error && project) {
 								projectInfo = {
 									id: project.id,
 									name: project.name,
-									slug: project.slug,
+									slug: null,
 									isNew: false
 								};
 							}

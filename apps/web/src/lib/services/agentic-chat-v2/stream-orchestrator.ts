@@ -346,7 +346,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				try {
 					result = await params.toolExecutor(toolCall);
 				} catch (error) {
-					const message = error instanceof Error ? error.message : 'Tool execution failed';
+					const message =
+						error instanceof Error ? error.message : 'Tool execution failed';
 					result = {
 						tool_call_id: toolCall.id,
 						result: null,

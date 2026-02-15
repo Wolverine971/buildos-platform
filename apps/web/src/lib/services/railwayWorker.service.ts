@@ -4,7 +4,6 @@ import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 import type {
 	QueueJob,
 	DailyBriefQueueJob,
-	PhaseQueueJob,
 	OnboardingAnalysisJobMetadata,
 	QueueJobType,
 	ApiResponse
@@ -12,7 +11,6 @@ import type {
 
 // Legacy type aliases for backward compatibility
 export type BriefGenerationJob = DailyBriefQueueJob;
-export type PhasesGenerationJob = PhaseQueueJob;
 export type OnboardingAnalysisJob = QueueJob<'onboarding_analysis'>;
 
 export interface QueueBriefResponse {
@@ -22,24 +20,12 @@ export interface QueueBriefResponse {
 	message: string;
 }
 
-export interface QueuePhasesResponse {
-	success: boolean;
-	jobId: string;
-	projectId: string;
-	message: string;
-}
-
 export interface QueueOnboardingResponse {
 	success: boolean;
 	jobId: string;
 	message: string;
 	analyzingFields: string[];
 }
-
-type ProjectMetadata = { projectId: string };
-
-const hasProjectMetadata = (metadata: unknown): metadata is ProjectMetadata =>
-	typeof (metadata as ProjectMetadata | null | undefined)?.projectId === 'string';
 
 export interface UserQuestion {
 	id: string;
@@ -144,46 +130,6 @@ export class RailwayWorkerService {
 			...result,
 			message: result.message || 'Brief generation queued successfully'
 		};
-	}
-
-	/**
-	 * Queue a phases generation job
-	 */
-	static async queuePhasesGeneration(
-		userId: string,
-		projectId: string,
-		options?: {
-			regenerate?: boolean;
-			template?: string;
-			includeExistingTasks?: boolean;
-		}
-	): Promise<QueuePhasesResponse> {
-		const response = await fetch(`${this.WORKER_URL}/queue/phases`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				userId,
-				projectId,
-				options
-			}),
-			signal: AbortSignal.timeout(this.TIMEOUT)
-		});
-
-		if (!response.ok) {
-			const error = await response.json();
-			throw new Error(
-				error?.error || `Failed to queue phases generation (${response.status})`
-			);
-		}
-
-		const result = await response.json();
-		if (!result?.success || !result?.jobId) {
-			throw new Error('Invalid response format from worker');
-		}
-
-		return result;
 	}
 
 	/**
@@ -345,38 +291,6 @@ export class RailwayWorkerService {
 			};
 		} catch (error) {
 			console.error('Error checking if brief is generating:', error);
-			return { isGenerating: false };
-		}
-	}
-
-	/**
-	 * Check if phases are currently being generated for a project
-	 */
-	static async isPhasesGenerating(
-		userId: string,
-		projectId: string
-	): Promise<{
-		isGenerating: boolean;
-		job?: PhasesGenerationJob;
-	}> {
-		try {
-			const pendingJobs = await this.getUserPendingJobs(userId, 'generate_phases');
-
-			const activeJob = pendingJobs.find((job): job is PhasesGenerationJob => {
-				return (
-					job.job_type === 'generate_phases' &&
-					job.status === 'processing' &&
-					hasProjectMetadata(job.metadata) &&
-					job.metadata.projectId === projectId
-				);
-			});
-
-			return {
-				isGenerating: !!activeJob,
-				job: activeJob
-			};
-		} catch (error) {
-			console.error('Error checking if phases are generating:', error);
 			return { isGenerating: false };
 		}
 	}

@@ -170,9 +170,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Initialize error logger
 		const errorLogger = ErrorLoggerService.getInstance(supabase);
 
-		// 4. Fetch the daily brief data with llm_analysis
+		// 4. Fetch the ontology daily brief data with llm_analysis
 		const { data: brief, error: briefError } = await supabase
-			.from('daily_briefs')
+			.from('ontology_daily_briefs')
 			.select('*')
 			.eq('id', payload.briefId)
 			.single();
@@ -189,8 +189,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw error(404, 'Brief not found');
 		}
 
-		// Get llm_analysis content or fallback to summary_content
-		const briefContent = brief.llm_analysis || brief.summary_content || '';
+		// Get llm_analysis content or fallback to executive_summary
+		const briefContent = brief.llm_analysis || brief.executive_summary || '';
 
 		if (!briefContent) {
 			await errorLogger.logAPIError(
@@ -201,7 +201,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				{
 					briefId: payload.briefId,
 					hasLlmAnalysis: !!brief.llm_analysis,
-					hasSummaryContent: !!brief.summary_content
+					hasSummaryContent: !!brief.executive_summary
 				}
 			);
 			console.error('No content found in brief');

@@ -63,16 +63,27 @@ export class ProjectDataFetcher {
 		} = options;
 
 		try {
+			const { data: actorId, error: actorError } = await this.supabase.rpc(
+				'ensure_actor_for_user',
+				{
+					p_user_id: userId
+				}
+			);
+			if (actorError || !actorId) {
+				throw actorError || new Error('Failed to resolve ontology actor');
+			}
+
 			// Build parallel queries array
 			const queries = [];
 
 			// Always get the project
 			queries.push(
 				this.supabase
-					.from('projects')
+					.from('onto_projects')
 					.select('*')
-					.eq('user_id', userId)
+					.eq('created_by', actorId)
 					.eq('id', projectId)
+					.is('deleted_at', null)
 					.single()
 			);
 
@@ -80,11 +91,11 @@ export class ProjectDataFetcher {
 			if (includeTasks) {
 				queries.push(
 					this.supabase
-						.from('tasks')
+						.from('onto_tasks')
 						.select('*')
-						.eq('user_id', userId)
 						.eq('project_id', projectId)
-						.in('status', ['backlog', 'in_progress', 'blocked'])
+						.is('deleted_at', null)
+						.in('state_key', ['todo', 'in_progress', 'blocked'])
 						.order('updated_at', { ascending: false })
 						.limit(taskLimit + 5)
 				);
@@ -94,10 +105,11 @@ export class ProjectDataFetcher {
 			if (includePhases) {
 				queries.push(
 					this.supabase
-						.from('phases')
-						.select('*, tasks:tasks(*)')
+						.from('onto_plans')
+						.select('*')
 						.eq('project_id', projectId)
-						.order('phase_number', { ascending: true })
+						.is('deleted_at', null)
+						.order('updated_at', { ascending: false })
 				);
 			}
 
@@ -153,11 +165,78 @@ export class ProjectDataFetcher {
 				};
 			}
 
-			const tasksData = (tasksResult?.data ?? []) as ProjectWithRelations['tasks'];
+			const tasksData = ((tasksResult?.data ?? []) as Array<Record<string, any>>).map(
+				(task) => ({
+					id: task.id,
+					user_id: userId,
+					project_id: task.project_id,
+					title: task.title,
+					description: task.description ?? null,
+					details:
+						task.props && typeof task.props === 'object' && !Array.isArray(task.props)
+							? (((task.props as Record<string, unknown>).details as string | null) ??
+								null)
+							: null,
+					status:
+						task.state_key === 'in_progress'
+							? 'in_progress'
+							: task.state_key === 'done'
+								? 'done'
+								: task.state_key === 'blocked'
+									? 'blocked'
+									: 'backlog',
+					priority:
+						task.priority == null
+							? 'medium'
+							: task.priority >= 4
+								? 'high'
+								: task.priority <= 2
+									? 'low'
+									: 'medium',
+					start_date: task.start_at,
+					due_date: task.due_at,
+					completed_at: task.completed_at,
+					created_at: task.created_at,
+					updated_at: task.updated_at
+				})
+			) as ProjectWithRelations['tasks'];
 			const notesData = (notesResult?.data ?? []) as ProjectWithRelations['notes'];
-			const phasesData = (phasesResult?.data ?? []) as ProjectWithRelations['phases'];
+			const phasesData = ((phasesResult?.data ?? []) as Array<Record<string, any>>).map(
+				(plan, index) => ({
+					id: plan.id,
+					project_id: plan.project_id,
+					name: plan.name,
+					description: plan.description ?? null,
+					start_date: null,
+					end_date: null,
+					order: index + 1,
+					phase_number: index + 1,
+					tasks: [],
+					task_count: 0,
+					completed_tasks: 0,
+					created_at: plan.created_at,
+					updated_at: plan.updated_at
+				})
+			) as ProjectWithRelations['phases'];
 
-			const projectBase = projectResult.data as ProjectWithRelations;
+			const projectRow = projectResult.data as Record<string, any>;
+			const projectBase = {
+				...projectRow,
+				user_id: userId,
+				slug: null,
+				status:
+					projectRow.state_key === 'planning'
+						? 'paused'
+						: projectRow.state_key === 'completed'
+							? 'completed'
+							: projectRow.state_key === 'cancelled'
+								? 'archived'
+								: 'active',
+				start_date: projectRow.start_at ?? null,
+				end_date: projectRow.end_at ?? null,
+				executive_summary: null,
+				tags: Array.isArray(projectRow.tags) ? projectRow.tags : []
+			} as ProjectWithRelations;
 
 			const fullProjectWithRelations: ProjectWithRelations = {
 				...projectBase,
@@ -265,20 +344,43 @@ export class ProjectDataFetcher {
 		userId: string,
 		options?: {
 			limit?: number;
-			includeStatus?: Database['public']['Enums']['project_status'][];
+			includeStatus?: string[];
 		}
 	): Promise<ProjectSummary[]> {
-		const {
-			limit = 50,
-			includeStatus = ['active'] as Database['public']['Enums']['project_status'][]
-		} = options || {};
+		const { limit = 50, includeStatus = ['active'] } = options || {};
 
 		try {
+			const { data: actorId, error: actorError } = await this.supabase.rpc(
+				'ensure_actor_for_user',
+				{
+					p_user_id: userId
+				}
+			);
+			if (actorError || !actorId) {
+				console.error('Error resolving actor for project summary:', actorError);
+				return [];
+			}
+
+			const includeStates = includeStatus.map((status) => {
+				switch (status) {
+					case 'paused':
+						return 'planning';
+					case 'archived':
+						return 'cancelled';
+					case 'completed':
+						return 'completed';
+					case 'active':
+					default:
+						return 'active';
+				}
+			});
+
 			const { data, error } = await this.supabase
-				.from('projects')
-				.select('id, name, slug, description, executive_summary, tags, status, updated_at')
-				.eq('user_id', userId)
-				.in('status', includeStatus)
+				.from('onto_projects')
+				.select('id, name, description, state_key, updated_at')
+				.eq('created_by', actorId)
+				.in('state_key', includeStates)
+				.is('deleted_at', null)
 				.order('updated_at', { ascending: false })
 				.limit(limit);
 
@@ -287,7 +389,23 @@ export class ProjectDataFetcher {
 				return [];
 			}
 
-			return (data || []) as ProjectSummary[];
+			return (data || []).map((project) => ({
+				id: project.id,
+				name: project.name,
+				slug: null,
+				description: project.description,
+				executive_summary: null,
+				tags: [],
+				status:
+					project.state_key === 'planning'
+						? 'paused'
+						: project.state_key === 'completed'
+							? 'completed'
+							: project.state_key === 'cancelled'
+								? 'archived'
+								: 'active',
+				updated_at: project.updated_at
+			}));
 		} catch (error) {
 			console.error('Error in getAllUserProjectsSummary:', error);
 			return [];

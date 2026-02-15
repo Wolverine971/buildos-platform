@@ -1,8 +1,78 @@
 // apps/web/src/routes/api/projects/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { cleanDataForTable, validateRequiredFields } from '$lib/utils/data-cleaner';
 import { validatePagination } from '$lib/utils/api-helpers';
+import {
+	ensureActorId,
+	fetchProjectSummaries,
+	type OntologyProjectSummary
+} from '$lib/services/ontology/ontology-projects.service';
+
+function toLegacyStatus(stateKey: string): 'active' | 'paused' | 'completed' | 'archived' {
+	switch (stateKey) {
+		case 'planning':
+			return 'paused';
+		case 'completed':
+			return 'completed';
+		case 'cancelled':
+			return 'archived';
+		case 'active':
+		default:
+			return 'active';
+	}
+}
+
+function toProjectState(
+	status: string | null | undefined
+): 'planning' | 'active' | 'completed' | 'cancelled' {
+	switch ((status || '').toLowerCase()) {
+		case 'paused':
+			return 'planning';
+		case 'completed':
+			return 'completed';
+		case 'archived':
+			return 'cancelled';
+		case 'planning':
+			return 'planning';
+		case 'cancelled':
+			return 'cancelled';
+		case 'active':
+		default:
+			return 'active';
+	}
+}
+
+function mapStatusFilters(statuses: string[]): Set<string> {
+	const mapped = new Set<string>();
+	for (const status of statuses) {
+		mapped.add(toProjectState(status));
+	}
+	return mapped;
+}
+
+function toLegacyProject(summary: OntologyProjectSummary, includeCounts: boolean) {
+	const status = toLegacyStatus(summary.state_key);
+	const response: Record<string, unknown> = {
+		id: summary.id,
+		name: summary.name,
+		description: summary.description,
+		status,
+		state_key: summary.state_key,
+		slug: null,
+		created_at: summary.created_at,
+		updated_at: summary.updated_at,
+		next_step_short: summary.next_step_short,
+		next_step_long: summary.next_step_long,
+		next_step_source: summary.next_step_source,
+		next_step_updated_at: summary.next_step_updated_at
+	};
+
+	if (includeCounts) {
+		response.task_count = summary.task_count;
+	}
+
+	return response;
+}
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -11,13 +81,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	try {
+		const actorId = await ensureActorId(supabase, user.id);
 		const mode = url.searchParams.get('mode');
-		// Use mode-specific defaults but enforce max limits (security fix: 2026-01-03)
 		const defaultLimit = mode === 'context-selection' ? 100 : 20;
 		const { page, limit, offset } = validatePagination(url, {
 			defaultLimit,
 			maxLimit: 100
 		});
+
 		const statusParam = url.searchParams.get('status');
 		const statuses = statusParam
 			? statusParam
@@ -27,43 +98,20 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			: mode === 'context-selection'
 				? ['active', 'paused']
 				: ['active'];
+
 		const includeCounts =
 			(mode === 'context-selection' && url.searchParams.get('include_counts') !== 'false') ||
 			url.searchParams.get('include_counts') === 'true';
 
-		const selectFields = includeCounts
-			? `id, name, description, status, slug, updated_at, tasks:tasks(count)`
-			: '*';
-
-		const {
-			data: projects,
-			error,
-			count
-		} = await supabase
-			.from('projects')
-			.select(selectFields, { count: 'exact' })
-			.eq('user_id', user.id)
-			.in('status', statuses as any)
-			.order('updated_at', { ascending: false })
-			.range(offset, offset + limit - 1);
-
-		if (error) {
-			return ApiResponse.databaseError(error);
-		}
-
-		const normalizedProjects = (projects || []).map((project: any) => {
-			if (!includeCounts) return project;
-			const taskCount = project.tasks?.[0]?.count ?? 0;
-			const { tasks, ...rest } = project;
-			return {
-				...rest,
-				task_count: taskCount
-			};
-		});
+		const allowedStates = mapStatusFilters(statuses);
+		const summaries = await fetchProjectSummaries(supabase, actorId);
+		const filtered = summaries.filter((project) => allowedStates.has(project.state_key));
+		const paginated = filtered.slice(offset, offset + limit);
+		const projects = paginated.map((project) => toLegacyProject(project, includeCounts));
 
 		return ApiResponse.success({
-			projects: normalizedProjects,
-			total: count ?? normalizedProjects.length,
+			projects,
+			total: filtered.length,
 			page,
 			limit,
 			statuses
@@ -80,37 +128,55 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const data = await request.json();
-
-		// Clean and validate project data
-		const cleanedData = cleanDataForTable('projects', {
-			...data,
-			user_id: user.id,
-			status: data.status || 'active',
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString()
-		});
-
-		// Validate required fields
-		const validation = validateRequiredFields('projects', cleanedData, 'create');
-		if (!validation.isValid) {
-			return ApiResponse.badRequest('Validation failed', {
-				missingFields: validation.missingFields
-			});
+		const payload = await request.json();
+		const name = typeof payload?.name === 'string' ? payload.name.trim() : '';
+		if (!name) {
+			return ApiResponse.badRequest('Project name is required');
 		}
 
-		// Create the project
+		const actorId = await ensureActorId(supabase, user.id);
+		const status = typeof payload?.status === 'string' ? payload.status : 'active';
+		const stateKey = toProjectState(status);
+
+		const incomingProps =
+			payload?.props && typeof payload.props === 'object' && !Array.isArray(payload.props)
+				? payload.props
+				: {};
+
+		const projectInsert = {
+			name,
+			description: typeof payload?.description === 'string' ? payload.description : null,
+			created_by: actorId,
+			state_key: stateKey,
+			type_key: typeof payload?.type_key === 'string' ? payload.type_key : 'project.default',
+			start_at: typeof payload?.start_date === 'string' ? payload.start_date : null,
+			end_at: typeof payload?.end_date === 'string' ? payload.end_date : null,
+			props: {
+				...incomingProps,
+				...(payload?.calendar_color_id
+					? { calendar_color_id: payload.calendar_color_id }
+					: {})
+			}
+		};
+
 		const { data: project, error } = await supabase
-			.from('projects')
-			.insert(cleanedData as any)
-			.select()
+			.from('onto_projects')
+			.insert(projectInsert)
+			.select('*')
 			.single();
 
 		if (error) {
 			return ApiResponse.databaseError(error);
 		}
 
-		return ApiResponse.created(project, 'Project created successfully');
+		return ApiResponse.created(
+			{
+				...project,
+				status: toLegacyStatus(project.state_key),
+				slug: null
+			},
+			'Project created successfully'
+		);
 	} catch (err) {
 		return ApiResponse.internalError(err);
 	}

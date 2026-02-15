@@ -881,7 +881,7 @@ export class CalendarWebhookService {
 			// Batch query all task events at once
 			const { data: taskEvents, error } = await this.supabase
 				.from('task_calendar_events')
-				.select('*, tasks(*)')
+				.select('*')
 				.in('calendar_event_id', eventIds)
 				.eq('user_id', userId);
 
@@ -893,7 +893,7 @@ export class CalendarWebhookService {
 			// Also batch query time blocks
 			const { data: timeBlocks, error: timeBlockError } = await this.supabase
 				.from('time_blocks')
-				.select('*, project:projects(id, name, calendar_color_id)')
+				.select('*')
 				.in('calendar_event_id', eventIds)
 				.eq('user_id', userId);
 
@@ -1290,11 +1290,59 @@ export class CalendarWebhookService {
 				);
 
 				console.log(`[BATCH_PROCESS] Updating ${uniqueTaskUpdates.length} tasks`);
-				const { error: taskUpdateError } = await this.supabase
-					.from('tasks')
-					.upsert(uniqueTaskUpdates, {
-						onConflict: 'id'
-					});
+				let taskUpdateError: Error | null = null;
+				for (const taskUpdate of uniqueTaskUpdates) {
+					try {
+						const { data: existingTask, error: existingError } = await this.supabase
+							.from('onto_tasks')
+							.select('props')
+							.eq('id', taskUpdate.id)
+							.is('deleted_at', null)
+							.maybeSingle();
+
+						if (existingError) {
+							throw existingError;
+						}
+
+						const existingProps =
+							(existingTask?.props as Record<string, unknown> | null) ?? {};
+						const nextProps =
+							typeof taskUpdate.duration_minutes === 'number'
+								? {
+										...existingProps,
+										duration_minutes: taskUpdate.duration_minutes
+									}
+								: existingProps;
+
+						const updatePayload: Record<string, unknown> = {
+							updated_at: taskUpdate.updated_at
+						};
+						if (typeof taskUpdate.title === 'string') {
+							updatePayload.title = taskUpdate.title;
+						}
+						if (typeof taskUpdate.start_date === 'string') {
+							updatePayload.start_at = taskUpdate.start_date;
+						}
+						if (typeof taskUpdate.duration_minutes === 'number') {
+							updatePayload.props = nextProps;
+						}
+
+						const { error: updateError } = await this.supabase
+							.from('onto_tasks')
+							.update(updatePayload)
+							.eq('id', taskUpdate.id);
+
+						if (updateError) {
+							throw updateError;
+						}
+					} catch (error) {
+						taskUpdateError =
+							error instanceof Error
+								? error
+								: new Error('Failed to update onto task');
+						console.error('[BATCH_PROCESS] Error updating ontology task:', error);
+					}
+				}
 
 				if (taskUpdateError) {
 					console.error('[BATCH_PROCESS] Error updating tasks:', taskUpdateError);
@@ -1435,7 +1483,7 @@ export class CalendarWebhookService {
 			// Check if this event is linked to a task
 			const { data: taskEvent, error } = await this.supabase
 				.from('task_calendar_events')
-				.select('*, tasks(*)')
+				.select('*')
 				.eq('calendar_event_id', event.id)
 				.eq('user_id', userId)
 				.single();
@@ -1580,13 +1628,12 @@ export class CalendarWebhookService {
 			// Optionally update task status or add a note
 			if (taskEvent.task_id) {
 				await this.supabase
-					.from('tasks')
+					.from('onto_tasks')
 					.update({
 						updated_at: new Date().toISOString()
 						// You might want to add a note or change status
 					})
-					.eq('id', taskEvent.task_id)
-					.eq('user_id', userId);
+					.eq('id', taskEvent.task_id);
 			}
 
 			console.log(`Deleted task_calendar_event ${taskEvent.id} due to calendar deletion`);
@@ -1649,15 +1696,27 @@ export class CalendarWebhookService {
 
 			// Update the task's start_date and duration
 			if (taskEvent.task_id) {
+				const { data: existingTask } = await this.supabase
+					.from('onto_tasks')
+					.select('props')
+					.eq('id', taskEvent.task_id)
+					.is('deleted_at', null)
+					.maybeSingle();
+
+				const existingProps = (existingTask?.props as Record<string, unknown> | null) ?? {};
+				const nextProps = {
+					...existingProps,
+					duration_minutes: durationMinutes
+				};
+
 				await this.supabase
-					.from('tasks')
+					.from('onto_tasks')
 					.update({
-						start_date: startDate.toISOString(),
-						duration_minutes: durationMinutes,
+						start_at: startDate.toISOString(),
+						props: nextProps,
 						updated_at: new Date().toISOString()
 					})
-					.eq('id', taskEvent.task_id)
-					.eq('user_id', userId);
+					.eq('id', taskEvent.task_id);
 			}
 
 			console.log(`Updated task ${taskEvent.task_id} from Google Calendar change`);

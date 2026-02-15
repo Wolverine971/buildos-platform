@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/daily-briefs/history/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { mapOntologyDailyBriefRow } from '$lib/services/dailyBrief/ontology-mappers';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -9,68 +10,46 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	const userId = user.id;
-
-	// Query parameters for pagination and filtering
-	const page = parseInt(url.searchParams.get('page') || '1');
-	const limit = parseInt(url.searchParams.get('limit') || '50');
+	const page = parseInt(url.searchParams.get('page') || '1', 10);
+	const limit = parseInt(url.searchParams.get('limit') || '50', 10);
 	const startDate = url.searchParams.get('start_date');
 	const endDate = url.searchParams.get('end_date');
-	const search = url.searchParams.get('search');
-
+	const search = url.searchParams.get('search')?.trim();
 	const offset = (page - 1) * limit;
 
 	try {
-		// Build the query
-		let query = supabase.from('daily_briefs').select('*').eq('user_id', userId);
+		let query = supabase
+			.from('ontology_daily_briefs')
+			.select('*', { count: 'exact' })
+			.eq('user_id', userId);
 
-		// Apply date filters
 		if (startDate) {
 			query = query.gte('brief_date', startDate);
 		}
 		if (endDate) {
 			query = query.lte('brief_date', endDate);
 		}
-
-		// Apply search filter (searches in summary_content and insights)
 		if (search) {
-			query = query.or(`summary_content.ilike.%${search}%,insights.ilike.%${search}%`);
+			query = query.or(`executive_summary.ilike.%${search}%,llm_analysis.ilike.%${search}%`);
 		}
 
-		// Apply pagination and ordering
-		query = query.order('brief_date', { ascending: false }).range(offset, offset + limit - 1);
+		query = query
+			.order('brief_date', { ascending: false })
+			.order('created_at', { ascending: false })
+			.range(offset, offset + limit - 1);
 
-		const { data: briefs, error, count: _count } = await query;
+		const { data: briefs, error, count } = await query;
 
 		if (error) throw error;
 
-		// Get total count for pagination info
-		let totalQuery = supabase
-			.from('daily_briefs')
-			.select('*', { count: 'exact', head: true })
-			.eq('user_id', userId);
-
-		if (startDate) {
-			totalQuery = totalQuery.gte('brief_date', startDate);
-		}
-		if (endDate) {
-			totalQuery = totalQuery.lte('brief_date', endDate);
-		}
-		if (search) {
-			totalQuery = totalQuery.or(
-				`summary_content.ilike.%${search}%,insights.ilike.%${search}%`
-			);
-		}
-
-		const { count: totalCount } = await totalQuery;
-
 		return ApiResponse.success({
-			briefs: briefs || [],
+			briefs: (briefs || []).map((row: any) => mapOntologyDailyBriefRow(row)),
 			pagination: {
 				page,
 				limit,
-				total: totalCount || 0,
-				totalPages: Math.ceil((totalCount || 0) / limit),
-				hasNext: offset + limit < (totalCount || 0),
+				total: count || 0,
+				totalPages: Math.ceil((count || 0) / limit),
+				hasNext: offset + limit < (count || 0),
 				hasPrev: page > 1
 			}
 		});

@@ -221,7 +221,7 @@ export class ActivityLogger {
 					.lt('created_at', `${date}T23:59:59`),
 
 				this.supabase
-					.from('daily_briefs')
+					.from('ontology_daily_briefs')
 					.select('*', { count: 'exact' })
 					.eq('brief_date', date),
 
@@ -244,7 +244,7 @@ export class ActivityLogger {
 					date,
 					metric_name: 'daily_briefs_generated',
 					metric_value: totalBriefs.count || 0,
-					metadata: { source: 'daily_briefs' }
+					metadata: { source: 'ontology_daily_briefs' }
 				},
 				{
 					date,

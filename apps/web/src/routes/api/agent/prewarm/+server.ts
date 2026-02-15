@@ -57,24 +57,22 @@ async function authenticateRequest(
 	}
 }
 
-async function hasLegacyProjectAccess(
+async function hasProjectAccess(
 	supabase: any,
 	projectId: string,
-	userId: string
+	_actorId: string
 ): Promise<boolean> {
-	const { data, error } = await supabase
-		.from('projects')
-		.select('id')
-		.eq('id', projectId)
-		.eq('user_id', userId)
-		.maybeSingle();
+	const { data, error } = await supabase.rpc('current_actor_has_project_access', {
+		p_project_id: projectId,
+		p_required_access: 'read'
+	});
 
 	if (error) {
-		logger.debug('Legacy project lookup failed for prewarm', { error, projectId, userId });
+		logger.debug('Project access lookup failed for prewarm', { error, projectId });
 		return false;
 	}
 
-	return !!data;
+	return Boolean(data);
 }
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
@@ -169,11 +167,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			shouldWarmLocation = false;
 			locationSkipReason = 'missing_entity';
 		} else {
-			const legacyProject = await hasLegacyProjectAccess(supabase, resolvedEntityId, userId);
-			if (!legacyProject) {
+			const hasAccess = await hasProjectAccess(supabase, resolvedEntityId, actorId);
+			if (!hasAccess) {
 				shouldWarmLocation = false;
-				locationSkipReason = 'project_not_legacy';
-				logger.debug('Skipping location prewarm for non-legacy project', {
+				locationSkipReason = 'project_not_accessible';
+				logger.debug('Skipping location prewarm for inaccessible project', {
 					contextType: normalizedContextType,
 					entityId: resolvedEntityId
 				});

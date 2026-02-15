@@ -140,43 +140,104 @@ export function generateOntologyCacheKey(
  * @param entities - The entities object to mutate
  * @param entityId - The entity ID to assign
  */
-type EntityType = 'project' | 'task' | 'plan' | 'goal' | 'document';
+type EntityType =
+	| 'project'
+	| 'task'
+	| 'plan'
+	| 'goal'
+	| 'document'
+	| 'milestone'
+	| 'risk'
+	| 'requirement';
+
+const ENTITY_LIST_KEYS: Record<EntityType, keyof LastTurnContext['entities']> = {
+	project: 'projects',
+	task: 'tasks',
+	plan: 'plans',
+	goal: 'goals',
+	document: 'documents',
+	milestone: 'milestones',
+	risk: 'risks',
+	requirement: 'requirements'
+};
+
+function truncateEntityText(value: unknown, maxLength: number): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	const normalized = value.replace(/\s+/g, ' ').trim();
+	if (!normalized) return undefined;
+	if (normalized.length <= maxLength) return normalized;
+	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+function toEntityPreview(
+	value: unknown,
+	fallbackId?: string
+): { id?: string; name?: string; description?: string } {
+	if (!value || typeof value !== 'object') {
+		return { id: fallbackId };
+	}
+	const record = value as Record<string, unknown>;
+	return {
+		id:
+			(typeof record.id === 'string' && record.id) ||
+			(typeof record.entity_id === 'string' && record.entity_id) ||
+			(typeof record.entityId === 'string' && record.entityId) ||
+			fallbackId,
+		name:
+			truncateEntityText(record.name, 80) ??
+			truncateEntityText(record.title, 80) ??
+			truncateEntityText(record.summary, 80) ??
+			truncateEntityText(record.text, 80),
+		description:
+			truncateEntityText(record.description, 140) ??
+			truncateEntityText(record.content, 140) ??
+			truncateEntityText(record.summary, 140)
+	};
+}
 
 function assignEntityByType(
 	entities: LastTurnContext['entities'],
 	entityType: EntityType,
-	entityId: string
+	entityId: string,
+	previewSource?: unknown
 ): void {
 	if (!entityId) return;
+	const preview = toEntityPreview(previewSource, entityId);
+	const listKey = ENTITY_LIST_KEYS[entityType];
+	const list = (((entities as Record<string, unknown>)[listKey] as Array<{
+		id: string;
+		name?: string;
+		description?: string;
+	}> | undefined) ?? []);
+	const existing = list.find((item) => item.id === entityId);
+	if (existing) {
+		if (!existing.name && preview.name) existing.name = preview.name;
+		if (!existing.description && preview.description) existing.description = preview.description;
+	} else {
+		list.push({
+			id: entityId,
+			name: preview.name,
+			description: preview.description
+		});
+	}
+	(entities as Record<string, unknown>)[listKey] = list;
 
-	const pushUnique = (slot: 'task_ids' | 'goal_ids', id: string) => {
-		if (!entities[slot]) entities[slot] = [];
-		if (!entities[slot]!.includes(id)) {
-			entities[slot]!.push(id);
-		}
-	};
-
+	// Back-compat for older readers.
 	switch (entityType) {
 		case 'project':
-			if (!entities.project_id) {
-				entities.project_id = entityId;
-			}
+			entities.project_id = entities.project_id ?? entityId;
 			break;
 		case 'task':
-			pushUnique('task_ids', entityId);
+			entities.task_ids = Array.from(new Set([...(entities.task_ids ?? []), entityId]));
 			break;
 		case 'plan':
-			if (!entities.plan_id) {
-				entities.plan_id = entityId;
-			}
+			entities.plan_id = entities.plan_id ?? entityId;
 			break;
 		case 'goal':
-			pushUnique('goal_ids', entityId);
+			entities.goal_ids = Array.from(new Set([...(entities.goal_ids ?? []), entityId]));
 			break;
 		case 'document':
-			if (!entities.document_id) {
-				entities.document_id = entityId;
-			}
+			entities.document_id = entities.document_id ?? entityId;
 			break;
 		default:
 			break;
@@ -200,6 +261,12 @@ export function assignEntityByPrefix(
 		assignEntityByType(entities, 'goal', entityId);
 	} else if (entityId.startsWith('doc_')) {
 		assignEntityByType(entities, 'document', entityId);
+	} else if (entityId.startsWith('mil_')) {
+		assignEntityByType(entities, 'milestone', entityId);
+	} else if (entityId.startsWith('risk_')) {
+		assignEntityByType(entities, 'risk', entityId);
+	} else if (entityId.startsWith('req_')) {
+		assignEntityByType(entities, 'requirement', entityId);
 	}
 }
 
@@ -213,7 +280,13 @@ const ENTITY_CONTAINER_KEYS: Record<string, EntityType> = {
 	goal: 'goal',
 	goals: 'goal',
 	document: 'document',
-	documents: 'document'
+	documents: 'document',
+	milestone: 'milestone',
+	milestones: 'milestone',
+	risk: 'risk',
+	risks: 'risk',
+	requirement: 'requirement',
+	requirements: 'requirement'
 };
 
 const ENTITY_ID_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
@@ -221,12 +294,17 @@ const ENTITY_ID_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
 	{ suffix: 'task_id', entityType: 'task' },
 	{ suffix: 'plan_id', entityType: 'plan' },
 	{ suffix: 'goal_id', entityType: 'goal' },
-	{ suffix: 'document_id', entityType: 'document' }
+	{ suffix: 'document_id', entityType: 'document' },
+	{ suffix: 'milestone_id', entityType: 'milestone' },
+	{ suffix: 'risk_id', entityType: 'risk' },
+	{ suffix: 'requirement_id', entityType: 'requirement' }
 ];
 
 const ENTITY_ID_LIST_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
 	{ suffix: 'task_ids', entityType: 'task' },
-	{ suffix: 'goal_ids', entityType: 'goal' }
+	{ suffix: 'goal_ids', entityType: 'goal' },
+	{ suffix: 'plan_ids', entityType: 'plan' },
+	{ suffix: 'document_ids', entityType: 'document' }
 ];
 
 function normalizeKey(key: string): string {
@@ -259,7 +337,10 @@ function coerceEntityType(value: unknown): EntityType | undefined {
 		normalized === 'task' ||
 		normalized === 'plan' ||
 		normalized === 'goal' ||
-		normalized === 'document'
+		normalized === 'document' ||
+		normalized === 'milestone' ||
+		normalized === 'risk' ||
+		normalized === 'requirement'
 	) {
 		return normalized as EntityType;
 	}
@@ -290,11 +371,11 @@ function extractEntitiesFromPayload(
 	const entityType = coerceEntityType(obj.entity_type ?? obj.entityType);
 	const entityId = obj.entity_id ?? obj.entityId;
 	if (entityType && typeof entityId === 'string') {
-		assignEntityByType(entities, entityType, entityId);
+		assignEntityByType(entities, entityType, entityId, obj);
 	}
 
 	if (allowHintId && entityHint && typeof obj.id === 'string') {
-		assignEntityByType(entities, entityHint, obj.id);
+		assignEntityByType(entities, entityHint, obj.id, obj);
 	}
 
 	for (const [key, value] of Object.entries(obj)) {
@@ -309,7 +390,7 @@ function extractEntitiesFromPayload(
 		const keyEntityType = getEntityTypeFromKey(normalizedKey);
 		if (keyEntityType) {
 			if (typeof value === 'string') {
-				assignEntityByType(entities, keyEntityType, value);
+				assignEntityByType(entities, keyEntityType, value, obj[keyEntityType]);
 				continue;
 			}
 			if (Array.isArray(value)) {
@@ -327,6 +408,11 @@ function extractEntitiesFromPayload(
 			for (const entry of value) {
 				if (typeof entry === 'string') {
 					assignEntityByType(entities, listEntityType, entry);
+				} else if (entry && typeof entry === 'object') {
+					const preview = toEntityPreview(entry);
+					if (preview.id) {
+						assignEntityByType(entities, listEntityType, preview.id, entry);
+					}
 				}
 			}
 			continue;
@@ -460,19 +546,49 @@ export function buildContextShiftLastTurnContext(
 
 	switch (contextShift.entity_type) {
 		case 'project':
-			if (contextShift.entity_id) entities.project_id = contextShift.entity_id;
+			if (contextShift.entity_id) {
+				assignEntityByType(entities, 'project', contextShift.entity_id, {
+					id: contextShift.entity_id,
+					name: contextShift.entity_name,
+					description: contextShift.message
+				});
+			}
 			break;
 		case 'task':
-			if (contextShift.entity_id) entities.task_ids = [contextShift.entity_id];
+			if (contextShift.entity_id) {
+				assignEntityByType(entities, 'task', contextShift.entity_id, {
+					id: contextShift.entity_id,
+					name: contextShift.entity_name,
+					description: contextShift.message
+				});
+			}
 			break;
 		case 'plan':
-			if (contextShift.entity_id) entities.plan_id = contextShift.entity_id;
+			if (contextShift.entity_id) {
+				assignEntityByType(entities, 'plan', contextShift.entity_id, {
+					id: contextShift.entity_id,
+					name: contextShift.entity_name,
+					description: contextShift.message
+				});
+			}
 			break;
 		case 'goal':
-			if (contextShift.entity_id) entities.goal_ids = [contextShift.entity_id];
+			if (contextShift.entity_id) {
+				assignEntityByType(entities, 'goal', contextShift.entity_id, {
+					id: contextShift.entity_id,
+					name: contextShift.entity_name,
+					description: contextShift.message
+				});
+			}
 			break;
 		case 'document':
-			if (contextShift.entity_id) entities.document_id = contextShift.entity_id;
+			if (contextShift.entity_id) {
+				assignEntityByType(entities, 'document', contextShift.entity_id, {
+					id: contextShift.entity_id,
+					name: contextShift.entity_name,
+					description: contextShift.message
+				});
+			}
 			break;
 		default:
 			break;

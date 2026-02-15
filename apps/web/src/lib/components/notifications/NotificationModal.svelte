@@ -19,7 +19,6 @@
 
 	// Lazy-loaded type-specific components
 	let BrainDumpModalContent = $state<any>(null);
-	let PhaseGenerationModalContent = $state<any>(null);
 	let ProjectSynthesisModalContent = $state<any>(null);
 	let CalendarAnalysisModalContent = $state<any>(null);
 	let TimeBlockModalContent = $state<any>(null);
@@ -34,14 +33,6 @@
 							'./types/brain-dump/BrainDumpModalContent.svelte'
 						);
 						BrainDumpModalContent = module.default;
-					}
-					break;
-				case 'phase-generation':
-					if (!PhaseGenerationModalContent) {
-						const module = await import(
-							'./types/phase-generation/PhaseGenerationModalContent.svelte'
-						);
-						PhaseGenerationModalContent = module.default;
 					}
 					break;
 				case 'project-synthesis':
@@ -92,15 +83,13 @@
 	let typeSpecificComponent = $derived(
 		notification.type === 'brain-dump'
 			? BrainDumpModalContent
-			: notification.type === 'phase-generation'
-				? PhaseGenerationModalContent
-				: notification.type === 'project-synthesis'
-					? ProjectSynthesisModalContent
-					: notification.type === 'calendar-analysis'
-						? CalendarAnalysisModalContent
-						: notification.type === 'time-block'
-							? TimeBlockModalContent
-							: null
+			: notification.type === 'project-synthesis'
+				? ProjectSynthesisModalContent
+				: notification.type === 'calendar-analysis'
+					? CalendarAnalysisModalContent
+					: notification.type === 'time-block'
+						? TimeBlockModalContent
+						: null
 	);
 
 	// Get modal title based on notification type (fallback for generic view)
@@ -108,17 +97,15 @@
 	let modalTitle = $derived(
 		notification.type === 'brain-dump'
 			? 'Brain Dump Processing'
-			: notification.type === 'phase-generation'
-				? `Phase Generation - ${notification.data.projectName}`
-				: notification.type === 'project-synthesis'
-					? `Project Synthesis - ${notification.data.projectName}`
-					: notification.type === 'calendar-analysis'
-						? 'Calendar Analysis'
-						: notification.type === 'generic'
-							? notification.data.title
-							: notification.type === 'time-block'
-								? 'Time Block Suggestions'
-								: 'Processing'
+			: notification.type === 'project-synthesis'
+				? `Project Synthesis - ${notification.data.projectName}`
+				: notification.type === 'calendar-analysis'
+					? 'Calendar Analysis'
+					: notification.type === 'generic'
+						? notification.data.title
+						: notification.type === 'time-block'
+							? 'Time Block Suggestions'
+							: 'Processing'
 	);
 
 	// Handle minimize (for ongoing processing)
@@ -276,13 +263,11 @@
 						<p class="text-muted-foreground">
 							{notification.type === 'brain-dump'
 								? 'Brain dump processed successfully'
-								: notification.type === 'phase-generation'
-									? 'Phases generated successfully'
-									: notification.type === 'calendar-analysis'
-										? 'Calendar analyzed successfully'
-										: notification.type === 'generic'
-											? notification.data.message
-											: 'Operation completed successfully'}
+								: notification.type === 'calendar-analysis'
+									? 'Calendar analyzed successfully'
+									: notification.type === 'generic'
+										? notification.data.message
+										: 'Operation completed successfully'}
 						</p>
 
 						<!-- Action buttons -->
@@ -312,13 +297,11 @@
 						<p class="text-red-600 dark:text-red-400">
 							{notification.type === 'brain-dump'
 								? notification.data?.error || 'Brain dump processing failed'
-								: notification.type === 'phase-generation'
-									? notification.data?.error || 'Phase generation failed'
-									: notification.type === 'calendar-analysis'
-										? notification.data?.error || 'Calendar analysis failed'
-										: notification.type === 'generic'
-											? notification.data?.error || 'An error occurred'
-											: 'An error occurred'}
+								: notification.type === 'calendar-analysis'
+									? notification.data?.error || 'Calendar analysis failed'
+									: notification.type === 'generic'
+										? notification.data?.error || 'An error occurred'
+										: 'An error occurred'}
 						</p>
 
 						<!-- Action buttons -->

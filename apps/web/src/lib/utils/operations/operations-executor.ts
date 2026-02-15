@@ -16,9 +16,9 @@ import { generateSlug } from './validation-utils';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { BrainDumpStatusService } from '$lib/services/braindump-status.service';
 import { validateTaskDateAgainstProject } from '../dateValidation';
-import { CalendarService } from '$lib/services/calendar-service';
 import { normalizeMarkdownHeadings } from '../markdown-nesting';
 import { seedProjectNextSteps } from '$lib/services/next-step-seeding.service';
+import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 
 export class OperationsExecutor {
 	private supabase: SupabaseClient<Database>;
@@ -30,7 +30,7 @@ export class OperationsExecutor {
 	private llmService: SmartLLMService | null = null;
 	private completedBrainDumpIds = new Set<string>();
 	private newProjectId: string | null = null; // Track newly created project ID
-	private calendarService: CalendarService;
+	private currentActorId: string | null = null;
 
 	constructor(supabase: SupabaseClient<Database>) {
 		this.supabase = supabase;
@@ -39,7 +39,338 @@ export class OperationsExecutor {
 		this.statusService = new BrainDumpStatusService(supabase);
 		this.validator = new OperationValidator();
 		this.referenceResolver = new ReferenceResolver(supabase);
-		this.calendarService = new CalendarService(supabase);
+	}
+
+	private async resolveActorId(userId: string): Promise<string> {
+		const { data: actorId, error } = await this.supabase.rpc('ensure_actor_for_user', {
+			p_user_id: userId
+		});
+		if (error || !actorId) {
+			throw new Error(
+				`Failed to resolve actor for operations: ${error?.message || 'unknown error'}`
+			);
+		}
+		return actorId;
+	}
+
+	private getTargetTable(table: TableName): string {
+		if (table === 'projects') return 'onto_projects';
+		if (table === 'tasks') return 'onto_tasks';
+		return table;
+	}
+
+	private requireActorId(): string {
+		if (!this.currentActorId) {
+			throw new Error('Missing actor ID for ontology operation');
+		}
+		return this.currentActorId;
+	}
+
+	private mapConditionField(table: TableName, field: string): string {
+		if (table === 'projects') {
+			if (field === 'status') return 'state_key';
+			if (field === 'start_date') return 'start_at';
+			if (field === 'end_date') return 'end_at';
+			if (field === 'user_id') return 'created_by';
+		}
+
+		if (table === 'tasks') {
+			if (field === 'status') return 'state_key';
+			if (field === 'start_date') return 'start_at';
+			if (field === 'due_date') return 'due_at';
+			if (field === 'user_id') return 'created_by';
+		}
+
+		return field;
+	}
+
+	private mapConditionValue(table: TableName, field: string, value: unknown): unknown {
+		if ((table === 'projects' || table === 'tasks') && field === 'user_id') {
+			return this.requireActorId();
+		}
+
+		if (table === 'projects' && field === 'status') {
+			return this.mapProjectStatusToState(typeof value === 'string' ? value : null);
+		}
+
+		if (table === 'tasks' && field === 'status') {
+			return this.mapTaskStatusToState(typeof value === 'string' ? value : null);
+		}
+
+		if (table === 'tasks' && field === 'priority') {
+			return this.mapTaskPriority(value);
+		}
+
+		return value;
+	}
+
+	private applyOwnerFilter(query: any, table: TableName, userId: string): any {
+		if (table === 'projects' || table === 'tasks') {
+			return query.eq('created_by', this.requireActorId());
+		}
+		return query.eq('user_id', userId);
+	}
+
+	private mapProjectStatusToState(
+		status: string | null | undefined
+	): 'planning' | 'active' | 'completed' | 'cancelled' {
+		switch (status) {
+			case 'completed':
+				return 'completed';
+			case 'archived':
+				return 'cancelled';
+			case 'paused':
+				return 'planning';
+			case 'active':
+			default:
+				return 'active';
+		}
+	}
+
+	private mapTaskStatusToState(
+		status: string | null | undefined
+	): 'todo' | 'in_progress' | 'done' | 'blocked' {
+		switch (status) {
+			case 'in_progress':
+				return 'in_progress';
+			case 'done':
+				return 'done';
+			case 'blocked':
+				return 'blocked';
+			case 'backlog':
+			default:
+				return 'todo';
+		}
+	}
+
+	private mapTaskPriority(priority: unknown): number {
+		if (typeof priority === 'number' && Number.isFinite(priority)) {
+			return Math.max(1, Math.min(5, Math.round(priority)));
+		}
+
+		if (typeof priority === 'string') {
+			switch (priority.toLowerCase()) {
+				case 'high':
+				case 'critical':
+				case 'urgent':
+					return 5;
+				case 'medium':
+					return 3;
+				case 'low':
+					return 1;
+				default:
+					return 3;
+			}
+		}
+
+		return 3;
+	}
+
+	private async mapCreateData(
+		table: TableName,
+		data: Record<string, any>
+	): Promise<Record<string, any>> {
+		if (table === 'projects') {
+			const actorId = this.requireActorId();
+
+			const props: Record<string, unknown> = {
+				slug: data.slug,
+				context: data.context ?? null,
+				executive_summary: data.executive_summary ?? null,
+				tags: Array.isArray(data.tags) ? data.tags : [],
+				core_context_descriptions: data.core_context_descriptions ?? null,
+				core_goals_momentum: data.core_goals_momentum ?? null,
+				core_harmony_integration: data.core_harmony_integration ?? null,
+				core_integrity_ideals: data.core_integrity_ideals ?? null,
+				core_meaning_identity: data.core_meaning_identity ?? null,
+				core_opportunity_freedom: data.core_opportunity_freedom ?? null,
+				core_people_bonds: data.core_people_bonds ?? null,
+				core_power_resources: data.core_power_resources ?? null,
+				core_reality_understanding: data.core_reality_understanding ?? null,
+				core_trust_safeguards: data.core_trust_safeguards ?? null,
+				calendar_color_id: data.calendar_color_id ?? null,
+				calendar_settings: data.calendar_settings ?? null,
+				calendar_sync_enabled: data.calendar_sync_enabled ?? null,
+				source: data.source ?? null,
+				source_metadata: data.source_metadata ?? null
+			};
+
+			return {
+				name: data.name,
+				description: data.description ?? null,
+				state_key: this.mapProjectStatusToState(data.status),
+				start_at: data.start_date ?? null,
+				end_at: data.end_date ?? null,
+				type_key: typeof data.type_key === 'string' ? data.type_key : 'project.generic',
+				props,
+				created_by: actorId
+			};
+		}
+
+		if (table === 'tasks') {
+			const actorId = this.requireActorId();
+
+			if (!data.project_id) {
+				throw new Error('Task creation requires project_id');
+			}
+
+			const props: Record<string, unknown> = {
+				details: data.details ?? null,
+				task_type: data.task_type ?? 'one_off',
+				duration_minutes: data.duration_minutes ?? null,
+				recurrence_pattern: data.recurrence_pattern ?? null,
+				recurrence_ends: data.recurrence_ends ?? null,
+				recurrence_end_source: data.recurrence_end_source ?? null,
+				dependencies: data.dependencies ?? null,
+				parent_task_id: data.parent_task_id ?? null,
+				task_steps: data.task_steps ?? null,
+				source: data.source ?? null,
+				source_calendar_event_id: data.source_calendar_event_id ?? null
+			};
+
+			return {
+				project_id: data.project_id,
+				title: data.title,
+				description: data.description ?? null,
+				state_key: this.mapTaskStatusToState(data.status),
+				priority: this.mapTaskPriority(data.priority),
+				start_at: data.start_date ?? null,
+				due_at: data.due_date ?? data.start_date ?? null,
+				type_key:
+					typeof data.type_key === 'string'
+						? data.type_key
+						: data.task_type === 'recurring'
+							? 'task.routine'
+							: 'task.execute',
+				props,
+				created_by: actorId
+			};
+		}
+
+		return data;
+	}
+
+	private async mapUpdateData(
+		table: TableName,
+		data: Record<string, any>,
+		conditions: Record<string, any> | undefined
+	): Promise<Record<string, any>> {
+		if (table === 'projects') {
+			const update: Record<string, any> = {};
+			if (data.name !== undefined) update.name = data.name;
+			if (data.description !== undefined) update.description = data.description ?? null;
+			if (data.status !== undefined)
+				update.state_key = this.mapProjectStatusToState(data.status);
+			if (data.start_date !== undefined) update.start_at = data.start_date ?? null;
+			if (data.end_date !== undefined) update.end_at = data.end_date ?? null;
+
+			const propPatch: Record<string, unknown> = {};
+			const propFields = [
+				'slug',
+				'context',
+				'executive_summary',
+				'tags',
+				'core_context_descriptions',
+				'core_goals_momentum',
+				'core_harmony_integration',
+				'core_integrity_ideals',
+				'core_meaning_identity',
+				'core_opportunity_freedom',
+				'core_people_bonds',
+				'core_power_resources',
+				'core_reality_understanding',
+				'core_trust_safeguards',
+				'calendar_color_id',
+				'calendar_settings',
+				'calendar_sync_enabled',
+				'source',
+				'source_metadata'
+			];
+
+			for (const field of propFields) {
+				if (data[field] !== undefined) {
+					propPatch[field] = data[field];
+				}
+			}
+
+			if (Object.keys(propPatch).length > 0 && conditions?.id) {
+				const actorId = this.requireActorId();
+				const { data: existingProject } = await this.supabase
+					.from('onto_projects')
+					.select('props')
+					.eq('id', conditions.id)
+					.eq('created_by', actorId)
+					.maybeSingle();
+
+				const existingProps =
+					(existingProject?.props as Record<string, unknown> | null) ?? {};
+				update.props = {
+					...existingProps,
+					...propPatch
+				};
+			}
+
+			return update;
+		}
+
+		if (table === 'tasks') {
+			const update: Record<string, any> = {};
+			if (data.title !== undefined) update.title = data.title;
+			if (data.description !== undefined) update.description = data.description ?? null;
+			if (data.status !== undefined)
+				update.state_key = this.mapTaskStatusToState(data.status);
+			if (data.priority !== undefined) update.priority = this.mapTaskPriority(data.priority);
+			if (data.start_date !== undefined) {
+				update.start_at = data.start_date ?? null;
+				if (data.due_date === undefined) {
+					update.due_at = data.start_date ?? null;
+				}
+			}
+			if (data.due_date !== undefined) {
+				update.due_at = data.due_date ?? null;
+			}
+
+			const propPatch: Record<string, unknown> = {};
+			const propFields = [
+				'details',
+				'task_type',
+				'duration_minutes',
+				'recurrence_pattern',
+				'recurrence_ends',
+				'recurrence_end_source',
+				'dependencies',
+				'parent_task_id',
+				'task_steps',
+				'source',
+				'source_calendar_event_id'
+			];
+
+			for (const field of propFields) {
+				if (data[field] !== undefined) {
+					propPatch[field] = data[field];
+				}
+			}
+
+			if (Object.keys(propPatch).length > 0 && conditions?.id) {
+				const actorId = this.requireActorId();
+				const { data: existingTask } = await this.supabase
+					.from('onto_tasks')
+					.select('props')
+					.eq('id', conditions.id)
+					.eq('created_by', actorId)
+					.maybeSingle();
+
+				const existingProps = (existingTask?.props as Record<string, unknown> | null) ?? {};
+				update.props = {
+					...existingProps,
+					...propPatch
+				};
+			}
+
+			return update;
+		}
+
+		return data;
 	}
 
 	/**
@@ -65,6 +396,7 @@ export class OperationsExecutor {
 		try {
 			// Reset state for new execution
 			this.newProjectId = null;
+			this.currentActorId = await this.resolveActorId(userId);
 
 			// Filter enabled operations and sort by dependency order
 			const enabledOperations = operations.filter((op) => op.enabled !== false);
@@ -173,11 +505,13 @@ export class OperationsExecutor {
 
 			// Create brain dump links to track what was created from this brain dump
 			if (brainDumpId && successful.length > 0) {
-				await this.createBrainDumpLinks(brainDumpId, successful, userId);
+				await this.createBrainDumpLinks(brainDumpId, successful);
 			}
 		} catch (error) {
 			console.error('Fatal error during execution:', error);
 			throw error;
+		} finally {
+			this.currentActorId = null;
 		}
 
 		return { successful, failed, results };
@@ -240,11 +574,13 @@ export class OperationsExecutor {
 						`Rolling back ${operation.table} create operation (id: ${result.id})`
 					);
 
-					const { error } = await this.supabase
-						.from(operation.table as any)
+					const targetTable = this.getTargetTable(operation.table);
+					let query = this.supabase
+						.from(targetTable as any)
 						.delete()
-						.eq('id', result.id)
-						.eq('user_id', userId); // Ensure we only delete user's own data
+						.eq('id', result.id);
+					query = this.applyOwnerFilter(query, operation.table, userId);
+					const { error } = await query;
 
 					if (error) {
 						console.error(
@@ -332,10 +668,12 @@ export class OperationsExecutor {
 	/**
 	 * Validate task dates against project timeline
 	 */
-	private async validateTaskDates(taskData: Record<string, any>, userId: string): Promise<void> {
+	private async validateTaskDates(taskData: Record<string, any>): Promise<void> {
 		if (!taskData.start_date) {
 			return; // No date to validate
 		}
+
+		const actorId = this.requireActorId();
 
 		// Get project info if we have project_id or if this is a new project
 		let projectStartDate: string | null = null;
@@ -344,28 +682,28 @@ export class OperationsExecutor {
 		if (taskData.project_id) {
 			// Get existing project
 			const { data: project, error } = await this.supabase
-				.from('projects')
-				.select('start_date, end_date')
+				.from('onto_projects')
+				.select('start_at, end_at')
 				.eq('id', taskData.project_id)
-				.eq('user_id', userId)
+				.eq('created_by', actorId)
 				.single();
 
 			if (project && !error) {
-				projectStartDate = project.start_date;
-				projectEndDate = project.end_date;
+				projectStartDate = project.start_at;
+				projectEndDate = project.end_at;
 			}
 		} else if (this.newProjectId) {
 			// Use the newly created project ID
 			const { data: project, error } = await this.supabase
-				.from('projects')
-				.select('start_date, end_date')
+				.from('onto_projects')
+				.select('start_at, end_at')
 				.eq('id', this.newProjectId)
-				.eq('user_id', userId)
+				.eq('created_by', actorId)
 				.single();
 
 			if (project && !error) {
-				projectStartDate = project.start_date;
-				projectEndDate = project.end_date;
+				projectStartDate = project.start_at;
+				projectEndDate = project.end_at;
 			}
 		}
 
@@ -446,13 +784,16 @@ export class OperationsExecutor {
 			}
 
 			// Validate task date against project timeline
-			await this.validateTaskDates(data, userId);
+			await this.validateTaskDates(data);
 		}
+
+		const targetTable = this.getTargetTable(operation.table);
+		const insertData = await this.mapCreateData(operation.table, data);
 
 		// Execute insert
 		const { data: result, error } = await this.supabase
-			.from(operation.table as any)
-			.insert(data)
+			.from(targetTable as any)
+			.insert(insertData)
 			.select()
 			.single();
 
@@ -460,31 +801,38 @@ export class OperationsExecutor {
 			throw new Error(`Failed to create ${operation.table}: ${error.message}`);
 		}
 
+		const createdRecord = result as any;
+
 		// Track newly created project ID
-		if (operation.table === 'projects' && result && 'id' in result) {
-			this.newProjectId = (result as any).id;
+		if (operation.table === 'projects' && createdRecord && 'id' in createdRecord) {
+			this.newProjectId = createdRecord.id;
 		}
 
 		// Handle post-creation actions
-		if (operation.table === 'projects' && result && brainDumpId) {
+		if (operation.table === 'projects' && createdRecord && brainDumpId) {
 			// 	await this.handleProjectPostCreation(result, brainDumpId);
 			if (!this.completedBrainDumpIds.has(brainDumpId)) {
-				await this.markBrainDumpAsCompleted(brainDumpId, (result as any).id);
+				await this.markBrainDumpAsCompleted(brainDumpId, createdRecord.id);
 				this.completedBrainDumpIds.add(brainDumpId);
 			}
 
 			// Seed initial next steps for the new project (non-blocking)
 			seedProjectNextSteps(this.supabase, {
-				projectId: (result as any).id,
+				projectId: createdRecord.id,
 				userId,
 				projectData: {
-					name: data.name,
-					description: data.description,
+					name: insertData.name ?? data.name,
+					description: insertData.description ?? data.description,
 					context: data.context
-				},
-				isOntoProject: false // Legacy projects table
+				}
 			}).catch((err) => {
 				console.warn('Failed to seed next steps (non-fatal):', err);
+			});
+		}
+
+		if (operation.table === 'tasks' && typeof createdRecord?.id === 'string') {
+			this.syncOntologyTaskEvents(createdRecord.id, userId).catch((syncError) => {
+				console.error('Failed to sync ontology task events after create:', syncError);
 			});
 		}
 
@@ -506,7 +854,7 @@ export class OperationsExecutor {
 			// Create conditions from the id in data field
 			conditions = { id: data.id };
 			// Remove id and user_id from data to avoid trying to update primary key or user_id
-			const { id, user_id, ...updateData } = data;
+			const { id: _id, user_id: _userId, ...updateData } = data;
 			data = updateData;
 		}
 
@@ -523,50 +871,6 @@ export class OperationsExecutor {
 			throw error;
 		}
 
-		// For tasks, we need to query with calendar events first
-		if (operation.table === 'tasks' && conditions.id) {
-			// Get existing task with calendar events
-			const { data: existingTask } = await this.supabase
-				.from('tasks')
-				.select('*, task_calendar_events(*)')
-				.eq('id', conditions.id)
-				.eq('user_id', userId)
-				.single();
-
-			// Perform the update
-			const { data: result, error } = await this.supabase
-				.from('tasks')
-				.update(data)
-				.eq('id', conditions.id)
-				.eq('user_id', userId)
-				.select();
-
-			if (error) {
-				throw new Error(`Failed to update task: ${error.message}`);
-			}
-
-			// Sync calendar events if task has a start date
-			if (existingTask && (data.start_date || existingTask.start_date)) {
-				// Process calendar sync in background (non-blocking)
-				this.updateTaskCalendarEvents(existingTask, data, userId).catch((error) => {
-					console.error('Failed to update task calendar events:', error);
-					// Log error but don't fail the operation
-					this.errorLogger.logCalendarError(
-						error,
-						'update',
-						conditions.id as string,
-						userId,
-						{
-							taskStartDate: data.start_date || existingTask.start_date,
-							reason: 'Failed to sync task update from braindump'
-						}
-					);
-				});
-			}
-
-			return result;
-		}
-
 		// Normalize project context if updating projects
 		if (operation.table === 'projects' && data.context) {
 			// Normalize markdown headings in the context to prevent heading inflation
@@ -576,19 +880,39 @@ export class OperationsExecutor {
 			console.log('Normalized project context headings to start at ## level');
 		}
 
-		// For other tables, proceed with normal update
-		let query = this.supabase.from(operation.table as any).update(data);
+		const targetTable = this.getTargetTable(operation.table);
+		const updateData = await this.mapUpdateData(operation.table, data, conditions);
+		let query = this.supabase.from(targetTable as any).update(updateData);
 
 		// Apply conditions
 		for (const [field, value] of Object.entries(conditions)) {
-			query = query.eq(field, value);
+			const mappedField = this.mapConditionField(operation.table, field);
+			const mappedValue = this.mapConditionValue(operation.table, field, value);
+			query = query.eq(mappedField, mappedValue);
 		}
 
-		// Add user filter for security and execute
-		const { data: result, error } = await query.eq('user_id', userId).select();
+		// Add owner filter for security and execute
+		query = this.applyOwnerFilter(query, operation.table, userId);
+		const { data: result, error } = await query.select();
 
 		if (error) {
 			throw new Error(`Failed to update ${operation.table}: ${error.message}`);
+		}
+
+		if (operation.table === 'tasks') {
+			const conditionTaskId = typeof conditions.id === 'string' ? conditions.id : null;
+			const updatedRecords = Array.isArray(result) ? (result as any[]) : [];
+			const resultTaskId =
+				updatedRecords.length > 0 && typeof updatedRecords[0]?.id === 'string'
+					? updatedRecords[0].id
+					: null;
+			const taskId = conditionTaskId ?? resultTaskId;
+
+			if (taskId) {
+				this.syncOntologyTaskEvents(taskId, userId).catch((syncError) => {
+					console.error('Failed to sync ontology task events after update:', syncError);
+				});
+			}
 		}
 
 		return result;
@@ -605,9 +929,10 @@ export class OperationsExecutor {
 		}
 
 		const data = validation.sanitizedData || operation.data;
+		const targetTable = this.getTargetTable(operation.table);
 
 		// Build delete query
-		let query = this.supabase.from(operation.table as any).delete();
+		let query = this.supabase.from(targetTable as any).delete();
 
 		// Apply conditions from data
 		if (data.id) {
@@ -618,12 +943,14 @@ export class OperationsExecutor {
 		} else {
 			// Use all data fields as conditions
 			for (const [field, value] of Object.entries(data)) {
-				query = query.eq(field, value);
+				const mappedField = this.mapConditionField(operation.table, field);
+				const mappedValue = this.mapConditionValue(operation.table, field, value);
+				query = query.eq(mappedField, mappedValue);
 			}
 		}
 
-		// Add user filter for security
-		query = query.eq('user_id', userId);
+		// Add owner filter for security
+		query = this.applyOwnerFilter(query, operation.table, userId);
 
 		// Execute delete
 		const { data: result, error } = await query.select();
@@ -658,17 +985,16 @@ export class OperationsExecutor {
 	 * Sort operations by dependency order
 	 */
 	private sortOperationsByDependency(operations: ParsedOperation[]): ParsedOperation[] {
-		// Simple dependency ordering: projects -> phases -> tasks -> others
-		const priority: Record<TableName, number> = {
+		// Simple dependency ordering: projects -> tasks -> others
+		const priority: Partial<Record<TableName, number>> = {
 			projects: 1,
-			phases: 2,
-			tasks: 3,
-			notes: 4,
-			project_context: 4,
-			project_notes: 4,
-			brain_dumps: 5,
-			daily_briefs: 5,
-			project_questions: 5
+			tasks: 2,
+			notes: 3,
+			project_context: 3,
+			project_notes: 3,
+			brain_dumps: 4,
+			daily_briefs: 4,
+			project_questions: 4
 		};
 
 		return [...operations].sort((a, b) => {
@@ -739,8 +1065,7 @@ export class OperationsExecutor {
 	 */
 	private async createBrainDumpLinks(
 		brainDumpId: string,
-		operations: ParsedOperation[],
-		userId: string
+		operations: ParsedOperation[]
 	): Promise<void> {
 		try {
 			const links: any[] = [];
@@ -767,17 +1092,13 @@ export class OperationsExecutor {
 						link.note_id = op.result.id;
 						link.project_id = op.result.project_id || op.data?.project_id;
 						break;
-					case 'phases':
-						link.phase_id = op.result.id;
-						link.project_id = op.result.project_id || op.data?.project_id;
-						break;
 					default:
 						// Skip other tables
 						continue;
 				}
 
 				// Only add if we have at least one entity ID
-				if (link.project_id || link.task_id || link.note_id || link.phase_id) {
+				if (link.project_id || link.task_id || link.note_id) {
 					links.push(link);
 				}
 			}
@@ -956,64 +1277,27 @@ export class OperationsExecutor {
 	}
 
 	/**
-	 * Update calendar events for an existing task
+	 * Sync ontology-backed task events after task create/update operations.
 	 */
-	private async updateTaskCalendarEvents(
-		task: any,
-		updates: Record<string, any>,
-		userId: string
-	): Promise<void> {
-		try {
-			// Check if user has calendar connection
-			const hasConnection = await this.calendarService.hasValidConnection(userId);
-			if (!hasConnection) {
-				console.log('User does not have calendar connection, skipping sync');
-				return;
-			}
+	private async syncOntologyTaskEvents(taskId: string, userId: string): Promise<void> {
+		const actorId = this.requireActorId();
+		const { data: task, error } = await this.supabase
+			.from('onto_tasks')
+			.select('*')
+			.eq('id', taskId)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.maybeSingle();
 
-			if (!task.task_calendar_events?.length) {
-				// No calendar events to update - check if we should create new ones
-
-				return;
-			}
-
-			// Calculate new event times
-			const newStartDate = updates.start_date || task.start_date;
-			const newDuration = updates.duration_minutes || task.duration_minutes || 60;
-			const newTitle = updates.title || updates.name || task.title || task.name;
-			const newDescription = updates.description || task.description;
-
-			// Calculate end time
-			const startDateTime = new Date(newStartDate);
-			const endDateTime = new Date(startDateTime.getTime() + newDuration * 60 * 1000);
-
-			// Update each calendar event
-			for (const event of task.task_calendar_events) {
-				if (event.sync_status === 'deleted') continue;
-
-				try {
-					const result = await this.calendarService.updateCalendarEvent(userId, {
-						event_id: event.calendar_event_id,
-						calendar_id: event.calendar_id || 'primary',
-						start_time: newStartDate,
-						end_time: endDateTime.toISOString(),
-						summary: newTitle,
-						description: newDescription,
-						timeZone: 'America/New_York' // Could be retrieved from user preferences
-					});
-
-					if (!result.success) {
-						console.error('Failed to update calendar event:', event.calendar_event_id);
-					}
-				} catch (error) {
-					console.error('Error updating calendar event:', error);
-					// Continue with other events even if one fails
-				}
-			}
-		} catch (error) {
-			// Don't throw - calendar sync is non-blocking
-			console.error('Error updating task calendar events:', error);
-			throw error; // Re-throw to be caught by caller's error handler
+		if (error) {
+			throw new Error(`Failed to load task for event sync: ${error.message}`);
 		}
+
+		if (!task) {
+			return;
+		}
+
+		const taskEventSync = new TaskEventSyncService(this.supabase);
+		await taskEventSync.syncTaskEvents(userId, actorId, task);
 	}
 }

@@ -14,19 +14,40 @@ import type { Json } from './database.types';
  * Persistent context that passes between conversation turns
  * Contains lightweight pointers to entities and summary of last interaction
  */
+export interface LastTurnEntityPreview {
+	id: string;
+	name?: string;
+	description?: string;
+}
+
+export interface LastTurnEntities {
+	projects?: LastTurnEntityPreview[];
+	tasks?: LastTurnEntityPreview[];
+	plans?: LastTurnEntityPreview[];
+	goals?: LastTurnEntityPreview[];
+	documents?: LastTurnEntityPreview[];
+	milestones?: LastTurnEntityPreview[];
+	risks?: LastTurnEntityPreview[];
+	requirements?: LastTurnEntityPreview[];
+
+	/** @deprecated Use entities.projects */
+	project_id?: string;
+	/** @deprecated Use entities.tasks */
+	task_ids?: string[];
+	/** @deprecated Use entities.plans */
+	plan_id?: string;
+	/** @deprecated Use entities.goals */
+	goal_ids?: string[];
+	/** @deprecated Use entities.documents */
+	document_id?: string;
+}
+
 export interface LastTurnContext {
 	// Brief 10-20 word summary of the last interaction
 	summary: string;
 
-	// Entity IDs mentioned or accessed in last turn
-	entities: {
-		project_id?: string;
-		task_ids?: string[];
-		plan_id?: string;
-		goal_ids?: string[];
-		document_id?: string;
-		output_id?: string;
-	};
+	// Compact entity previews mentioned or accessed in last turn
+	entities: LastTurnEntities;
 
 	// Context type from last interaction
 	context_type: ChatContextType;

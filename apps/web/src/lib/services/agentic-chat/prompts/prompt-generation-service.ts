@@ -168,7 +168,8 @@ export class PromptGenerationService {
 					`- Use tool_help(\"root\") to list groups, then drill down only when needed (e.g., tool_help(\"onto.task\"), tool_help(\"onto.task.update\")).\n` +
 					`- For onto.* search ops, prefer args.search (not args.query).\n` +
 					`- When a tool_exec error includes help_path, call tool_help(help_path) once and retry once.\n` +
-					`- Do not guess IDs or required fields; use list/search/get ops via tool_exec to look them up.`
+					`- For onto.*.get ops, always pass the exact *_id. If unknown, use list/search ops first to discover the ID.\n` +
+					`- Do not guess IDs or required fields.`
 			);
 		}
 
@@ -246,18 +247,26 @@ export class PromptGenerationService {
 	 */
 	private formatEntityReferences(entities: LastTurnContext['entities']): string[] {
 		const refs: string[] = [];
+		const projects = this.getLastTurnEntityList(entities, 'projects');
+		const tasks = this.getLastTurnEntityList(entities, 'tasks');
+		const plans = this.getLastTurnEntityList(entities, 'plans');
+		const goals = this.getLastTurnEntityList(entities, 'goals');
+		const documents = this.getLastTurnEntityList(entities, 'documents');
 
-		if (entities.project_id) {
-			refs.push(`project:${entities.project_id}`);
+		if (projects.length > 0) {
+			refs.push(`project:${projects.map((item) => item.id).join(',')}`);
 		}
-		if (entities.task_ids?.length) {
-			refs.push(`tasks:${entities.task_ids.join(',')}`);
+		if (tasks.length > 0) {
+			refs.push(`tasks:${tasks.map((item) => item.id).join(',')}`);
 		}
-		if (entities.plan_id) {
-			refs.push(`plan:${entities.plan_id}`);
+		if (plans.length > 0) {
+			refs.push(`plans:${plans.map((item) => item.id).join(',')}`);
 		}
-		if (entities.goal_ids?.length) {
-			refs.push(`goals:${entities.goal_ids.join(',')}`);
+		if (goals.length > 0) {
+			refs.push(`goals:${goals.map((item) => item.id).join(',')}`);
+		}
+		if (documents.length > 0) {
+			refs.push(`documents:${documents.map((item) => item.id).join(',')}`);
 		}
 
 		return refs;
@@ -479,27 +488,105 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 	 */
 	private formatLastTurnEntities(entities: LastTurnContext['entities'] = {}): string[] {
 		const lines: string[] = [];
+		const projects = this.getLastTurnEntityList(entities, 'projects');
+		const tasks = this.getLastTurnEntityList(entities, 'tasks');
+		const plans = this.getLastTurnEntityList(entities, 'plans');
+		const goals = this.getLastTurnEntityList(entities, 'goals');
+		const documents = this.getLastTurnEntityList(entities, 'documents');
 
-		if (entities.project_id) {
-			lines.push(`Current project focus: ${entities.project_id}`);
+		if (projects.length > 0) {
+			const project = projects[0];
+			if (project) {
+				lines.push(`Current project focus: ${project.name ?? project.id}`);
+				if (project.description) {
+					lines.push(`Project context: ${project.description}`);
+				}
+			}
 		}
 
-		if (entities.task_ids?.length) {
-			const [primaryTask, ...restTasks] = entities.task_ids;
-			const suffix =
-				restTasks.length > 0 ? ` (additional tasks: ${restTasks.join(', ')})` : '';
-			lines.push(`Last touched task: ${primaryTask}${suffix}`);
+		if (tasks.length > 0) {
+			const [primaryTask, ...restTasks] = tasks;
+			if (primaryTask) {
+				const primaryLabel = primaryTask.name ?? primaryTask.id;
+				const suffix =
+					restTasks.length > 0
+						? ` (additional tasks: ${restTasks
+								.slice(0, 4)
+								.map((item) => item.name ?? item.id)
+								.join(', ')})`
+						: '';
+				lines.push(`Last touched task: ${primaryLabel}${suffix}`);
+				if (primaryTask.description) {
+					lines.push(`Task context: ${primaryTask.description}`);
+				}
+			}
 		}
 
-		if (entities.plan_id) {
-			lines.push(`Active plan: ${entities.plan_id}`);
+		if (plans.length > 0) {
+			const plan = plans[0];
+			if (plan) {
+				lines.push(`Active plan: ${plan.name ?? plan.id}`);
+				if (plan.description) {
+					lines.push(`Plan context: ${plan.description}`);
+				}
+			}
 		}
 
-		if (entities.goal_ids?.length) {
-			lines.push(`Goals referenced: ${entities.goal_ids.join(', ')}`);
+		if (goals.length > 0) {
+			lines.push(
+				`Goals referenced: ${goals
+					.slice(0, 5)
+					.map((item) => item.name ?? item.id)
+					.join(', ')}`
+			);
+		}
+
+		if (documents.length > 0) {
+			lines.push(
+				`Documents referenced: ${documents
+					.slice(0, 5)
+					.map((item) => item.name ?? item.id)
+					.join(', ')}`
+			);
 		}
 
 		return lines;
+	}
+
+	private getLastTurnEntityList(
+		entities: LastTurnContext['entities'],
+		key: 'projects' | 'tasks' | 'plans' | 'goals' | 'documents'
+	): Array<{ id: string; name?: string; description?: string }> {
+		const collection = (entities as Record<string, unknown>)[key];
+		if (Array.isArray(collection)) {
+			return collection
+				.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+				.map((item) => ({
+					id: typeof item.id === 'string' ? item.id : '',
+					name: typeof item.name === 'string' ? item.name : undefined,
+					description: typeof item.description === 'string' ? item.description : undefined
+				}))
+				.filter((item) => item.id.length > 0);
+		}
+
+		const legacyIdMap: Record<
+			'projects' | 'tasks' | 'plans' | 'goals' | 'documents',
+			string[]
+		> = {
+			projects: typeof entities.project_id === 'string' ? [entities.project_id] : [],
+			tasks: Array.isArray(entities.task_ids)
+				? entities.task_ids.filter((id): id is string => typeof id === 'string')
+				: [],
+			plans: typeof entities.plan_id === 'string' ? [entities.plan_id] : [],
+			goals: Array.isArray(entities.goal_ids)
+				? entities.goal_ids.filter((id): id is string => typeof id === 'string')
+				: [],
+			documents: typeof entities.document_id === 'string' ? [entities.document_id] : []
+		};
+
+		return (legacyIdMap[key] ?? [])
+			.filter((id) => typeof id === 'string' && id.trim().length > 0)
+			.map((id) => ({ id }));
 	}
 
 	private detectElementType(ontology?: OntologyContext): string | undefined {

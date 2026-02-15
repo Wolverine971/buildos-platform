@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/braindumps/init/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -14,15 +15,17 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const rawProjectId = url.searchParams.get('projectId');
 		const projectId = rawProjectId === 'new' ? null : rawProjectId;
 		const excludeBrainDumpId = url.searchParams.get('excludeBrainDumpId');
+		const actorId = await ensureActorId(supabase, user.id);
 
 		// Execute queries in parallel for faster loading
 		const [projectsResult, recentBrainDumpsResult, draftCountsResult, currentDraftResult] =
 			await Promise.all([
 				// Get projects with essential fields
 				supabase
-					.from('projects')
-					.select('id, name, slug, description, created_at, updated_at')
-					.eq('user_id', user.id)
+					.from('onto_projects')
+					.select('id, name, description, created_at, updated_at')
+					.eq('created_by', actorId)
+					.is('deleted_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(20),
 
@@ -98,9 +101,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			const [tasksResult, notesResult] = await Promise.all([
 				// Get task counts per project
 				supabase
-					.from('tasks')
+					.from('onto_tasks')
 					.select('project_id')
-					.eq('user_id', user.id)
+					.is('deleted_at', null)
 					.in('project_id', projectIds),
 
 				// Get note counts per project
@@ -135,6 +138,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			// Combine project data with counts
 			projectsWithCounts = projects.map((project) => ({
 				...project,
+				slug: null,
 				taskCount: taskCounts[project.id] || 0,
 				noteCount: noteCounts[project.id] || 0,
 				draftCount: draftCounts[project.id] || 0

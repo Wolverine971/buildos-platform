@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/calendar/task-events/+server.ts
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 /**
  * GET /api/calendar/task-events
@@ -23,30 +24,56 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 	}
 
 	try {
-		// Query tasks directly and join with task_calendar_events
-		const { data: tasks, error: fetchError } = await supabase
-			.from('tasks')
-			.select('id, task_calendar_events(*)')
-			.eq('user_id', user.id)
-			.gte('start_date', timeMin)
-			.lte('start_date', timeMax);
+		const actorId = await ensureActorId(supabase, user.id);
 
-		if (fetchError) {
-			console.error('[API] Failed to fetch task calendar events:', fetchError);
+		const { data: events, error: eventsError } = await supabase
+			.from('onto_events')
+			.select('id, props')
+			.eq('created_by', actorId)
+			.eq('owner_entity_type', 'task')
+			.is('deleted_at', null)
+			.gte('start_at', timeMin)
+			.lte('start_at', timeMax);
+
+		if (eventsError) {
+			console.error('[API] Failed to fetch ontology task events:', eventsError);
 			return ApiResponse.error('Failed to fetch task calendar events', 500);
 		}
 
-		// Extract calendar event IDs from the nested structure
-		const calendarEventIds: string[] = [];
-		for (const task of tasks || []) {
-			if (Array.isArray(task.task_calendar_events)) {
-				for (const tce of task.task_calendar_events) {
-					if (tce.calendar_event_id) {
-						calendarEventIds.push(tce.calendar_event_id);
-					}
-				}
-			}
+		if (!events?.length) {
+			return ApiResponse.success({ calendar_event_ids: [] });
 		}
+
+		const eventIds = events.map((event) => event.id);
+		const { data: syncRows, error: syncError } = await supabase
+			.from('onto_event_sync')
+			.select('event_id, external_event_id')
+			.in('event_id', eventIds);
+
+		if (syncError) {
+			console.error('[API] Failed to fetch ontology event sync rows:', syncError);
+		}
+
+		const syncMap = new Map(
+			(syncRows ?? []).map((row) => [row.event_id, row.external_event_id])
+		);
+		const calendarEventIds = Array.from(
+			new Set(
+				events
+					.map((event) => {
+						const synced = syncMap.get(event.id);
+						if (synced) return synced;
+
+						const props = (event.props as Record<string, unknown> | null) ?? {};
+						const propExternal = props.external_event_id;
+						if (typeof propExternal === 'string' && propExternal.length > 0) {
+							return propExternal;
+						}
+						return null;
+					})
+					.filter((eventId): eventId is string => Boolean(eventId))
+			)
+		);
 
 		return ApiResponse.success({
 			calendar_event_ids: calendarEventIds

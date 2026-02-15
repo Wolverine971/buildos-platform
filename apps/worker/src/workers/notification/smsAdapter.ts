@@ -10,7 +10,6 @@
 
 import { createServiceClient } from '@buildos/supabase-client';
 import type { Json, NotificationDelivery } from '@buildos/shared-types';
-import { getTaskCount } from '@buildos/shared-types';
 import type { Logger } from '@buildos/shared-utils';
 import { checkUserPreferences } from './preferenceChecker.js';
 import { performSMSSafetyChecks } from '../../lib/utils/smsPreferenceChecks.js';
@@ -185,23 +184,26 @@ async function fetchFreshBriefCounts(
 			briefDate
 		});
 
-		// Get project briefs for this user and date
-		const { data: projectBriefs, error } = await supabase
-			.from('project_daily_briefs')
+		const { data: dailyBrief, error: dailyBriefError } = await supabase
+			.from('ontology_daily_briefs')
 			.select('id, metadata')
 			.eq('user_id', userId)
-			.eq('brief_date', briefDate);
+			.eq('brief_date', briefDate)
+			.order('created_at', { ascending: false })
+			.order('id', { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
-		if (error) {
-			smsLogger.error('Failed to fetch project briefs', error, {
+		if (dailyBriefError) {
+			smsLogger.error('Failed to fetch ontology daily brief', dailyBriefError, {
 				userId,
 				briefDate
 			});
 			return null;
 		}
 
-		if (!projectBriefs || projectBriefs.length === 0) {
-			smsLogger.warn('No project briefs found for user and date', {
+		if (!dailyBrief?.id) {
+			smsLogger.warn('No ontology daily brief found for user and date', {
 				userId,
 				briefDate
 			});
@@ -213,24 +215,44 @@ async function fetchFreshBriefCounts(
 			};
 		}
 
-		const projectCount = projectBriefs.length;
+		const { data: projectBriefs, error: projectBriefsError } = await supabase
+			.from('ontology_project_briefs')
+			.select('id, metadata')
+			.eq('daily_brief_id', dailyBrief.id);
 
-		// Calculate task counts from project brief metadata
-		// Using type-safe helper function to extract task counts
+		if (projectBriefsError) {
+			smsLogger.error('Failed to fetch ontology project briefs', projectBriefsError, {
+				userId,
+				briefDate,
+				dailyBriefId: dailyBrief.id
+			});
+			return null;
+		}
+
+		const projectCount = projectBriefs?.length || 0;
 		const todaysTaskCount =
-			projectBriefs.reduce((sum, pb) => {
-				return sum + getTaskCount(pb.metadata, 'todays_task_count');
-			}, 0) || 0;
-
-		const overdueTaskCount =
-			projectBriefs.reduce((sum, pb) => {
-				return sum + getTaskCount(pb.metadata, 'overdue_task_count');
+			projectBriefs?.reduce((sum, pb) => {
+				const metadata = (pb.metadata || {}) as Record<string, unknown>;
+				return (
+					sum +
+					(typeof metadata.todaysTaskCount === 'number' ? metadata.todaysTaskCount : 0)
+				);
 			}, 0) || 0;
 
 		const upcomingTaskCount =
-			projectBriefs.reduce((sum, pb) => {
-				return sum + getTaskCount(pb.metadata, 'upcoming_task_count');
+			projectBriefs?.reduce((sum, pb) => {
+				const metadata = (pb.metadata || {}) as Record<string, unknown>;
+				return (
+					sum +
+					(typeof metadata.thisWeekTaskCount === 'number'
+						? metadata.thisWeekTaskCount
+						: 0)
+				);
 			}, 0) || 0;
+
+		const briefMetadata = (dailyBrief.metadata || {}) as Record<string, unknown>;
+		const overdueTaskCount =
+			typeof briefMetadata.overdueCount === 'number' ? briefMetadata.overdueCount : 0;
 
 		smsLogger.info('Fetched fresh brief counts', {
 			projectCount,

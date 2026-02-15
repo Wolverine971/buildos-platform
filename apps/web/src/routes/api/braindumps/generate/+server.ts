@@ -455,17 +455,17 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 						// Better project information resolution
 						const createdProject = executionResult.results?.find(
-							(r: any) => r.table === 'projects' && r.operationType === 'create'
+							(r: any) => r.table === 'onto_projects' && r.operationType === 'create'
 						);
 
 						if (createdProject?.id) {
 							// New project was created - fetch the project details including slug
 							try {
 								const { data: project, error } = await supabase
-									.from('projects')
-									.select('id, name, slug, description')
+									.from('onto_projects')
+									.select('id, name')
 									.eq('id', createdProject.id)
-									.eq('user_id', user.id)
+									.is('deleted_at', null)
 									.single();
 
 								if (!error && project) {
@@ -484,10 +484,10 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 							// Existing project was updated
 							try {
 								const { data: project, error } = await supabase
-									.from('projects')
-									.select('id, name, slug, description')
+									.from('onto_projects')
+									.select('id, name')
 									.eq('id', selectedProjectId)
-									.eq('user_id', user.id)
+									.is('deleted_at', null)
 									.single();
 
 								if (!error && project) {

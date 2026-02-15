@@ -1,15 +1,13 @@
 // apps/web/src/lib/services/calendar-service.ts
 import { calendar_v3, google } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Json } from '@buildos/shared-types';
-import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { Database } from '@buildos/shared-types';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { GoogleOAuthService, GoogleOAuthConnectionError } from './google-oauth-service';
 import { ErrorLoggerService } from './errorLogger.service';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { recurrencePatternBuilder, type RecurrenceConfig } from './recurrence-pattern.service';
-import { OntoEventService } from './ontology/onto-event.service';
 
 // Use GoogleOAuthConnectionError from google-oauth-service
 export { GoogleOAuthConnectionError as CalendarConnectionError };
@@ -210,30 +208,16 @@ export interface CreateStandaloneEventParams {
 	calendar_id?: string;
 }
 
-type TaskRow = Database['public']['Tables']['tasks']['Row'] & {
-	project?: Pick<Database['public']['Tables']['projects']['Row'], 'id' | 'name' | 'slug'>;
+type TaskRow = Database['public']['Tables']['onto_tasks']['Row'] & {
+	project?: Pick<Database['public']['Tables']['onto_projects']['Row'], 'id' | 'name'> & {
+		slug?: string | null;
+	};
 };
-
-type TaskCalendarEventRow = Database['public']['Tables']['task_calendar_events']['Row'];
 
 interface OrganizerMetadata {
 	organizer_email: string | null;
 	organizer_display_name: string | null;
 	organizer_self: boolean | null;
-}
-
-interface DualWriteOntoEventArgs {
-	task: TaskRow;
-	calendarId: string;
-	googleEvent: calendar_v3.Schema$Event;
-	startDate: Date;
-	endDate: Date;
-	recurrence: string[];
-	timeZone?: string;
-	attendees: TaskCalendarEventRow['attendees'];
-	organizerMetadata: OrganizerMetadata;
-	legacyTaskCalendarEventId?: string | null;
-	eventDescription: string;
 }
 
 export interface CreateStandaloneEventResult {
@@ -299,10 +283,6 @@ export class CalendarService {
 		this.activityLogger = new ActivityLogger(supabase);
 		this.oAuthService = new GoogleOAuthService(supabase);
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
-	}
-
-	private get typedClient(): TypedSupabaseClient {
-		return this.supabase as unknown as TypedSupabaseClient;
 	}
 
 	/**
@@ -712,17 +692,31 @@ export class CalendarService {
 				recurrence_ends: overrideEnds
 			} = params;
 
+			const { data: actorId, error: actorError } = await this.supabase.rpc(
+				'ensure_actor_for_user',
+				{
+					p_user_id: userId
+				}
+			);
+
+			if (actorError || !actorId) {
+				throw new Error(
+					`Failed to resolve actor: ${actorError?.message || 'unknown error'}`
+				);
+			}
+
 			// Get task details
 			const { data: taskRecord, error: taskError } = await this.supabase
-				.from('tasks')
+				.from('onto_tasks')
 				.select(
 					`
 					*,
-					project:projects(id, name, slug)
+					project:onto_projects(id, name)
 				`
 				)
 				.eq('id', task_id)
-				.eq('user_id', userId)
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
 				.single();
 
 			if (taskError || !taskRecord) {
@@ -730,7 +724,10 @@ export class CalendarService {
 			}
 
 			const task = taskRecord as TaskRow;
-			const taskDuration = duration_minutes || task.duration_minutes || 60;
+			const taskProps = (task.props as Record<string, unknown> | null) ?? {};
+			const defaultDuration =
+				typeof taskProps.duration_minutes === 'number' ? taskProps.duration_minutes : 60;
+			const taskDuration = duration_minutes || defaultDuration;
 
 			// Parse start time and calculate end time
 			const startDate = new Date(start_time);
@@ -763,11 +760,24 @@ export class CalendarService {
 			);
 
 			// Use override recurrence settings if provided, otherwise use task's settings
-			const recurrencePattern = overridePattern || task.recurrence_pattern;
-			const recurrenceEnds = overrideEnds || task.recurrence_ends;
+			const taskRecurrencePattern =
+				typeof taskProps.recurrence_pattern === 'string'
+					? (taskProps.recurrence_pattern as Database['public']['Enums']['recurrence_pattern'])
+					: undefined;
+			const taskRecurrenceEnds =
+				typeof taskProps.recurrence_ends === 'string'
+					? (taskProps.recurrence_ends as string)
+					: undefined;
+			const taskType =
+				typeof taskProps.task_type === 'string'
+					? (taskProps.task_type as string)
+					: 'one_off';
+
+			const recurrencePattern = overridePattern || taskRecurrencePattern;
+			const recurrenceEnds = overrideEnds || taskRecurrenceEnds;
 
 			const recurrence = [];
-			if ((task.task_type === 'recurring' || overridePattern) && recurrencePattern) {
+			if ((taskType === 'recurring' || overridePattern) && recurrencePattern) {
 				const rrule = this.convertToRRule(
 					recurrencePattern,
 					recurrenceEnds ?? undefined,
@@ -832,25 +842,6 @@ export class CalendarService {
 				}
 
 				await this.markAppInitiatedChange(response.data.id!, userId);
-
-				const legacyTaskCalendarEventId = await this.fetchLegacyTaskCalendarEventId(
-					task_id,
-					response.data.id!
-				);
-
-				await this.dualWriteOntoEvent({
-					task,
-					calendarId: calendar_id,
-					googleEvent: response.data,
-					startDate,
-					endDate,
-					recurrence,
-					timeZone,
-					attendees: attendeesForStorage,
-					organizerMetadata,
-					legacyTaskCalendarEventId,
-					eventDescription
-				});
 
 				return {
 					success: true,
@@ -1005,18 +996,26 @@ export class CalendarService {
 						.from('task_calendar_events')
 						.select('task_id')
 						.eq('calendar_event_id', event_id)
+						.eq('user_id', userId)
 						.maybeSingle();
 
 					if (taskEvent?.task_id) {
 						taskIdForLink = taskEvent.task_id;
-						const { data: taskDetails } = await this.supabase
-							.from('tasks')
-							.select('project_id')
-							.eq('id', taskEvent.task_id)
-							.maybeSingle();
+						const { data: actorId } = await this.supabase.rpc('ensure_actor_for_user', {
+							p_user_id: userId
+						});
+						if (actorId) {
+							const { data: taskDetails } = await this.supabase
+								.from('onto_tasks')
+								.select('project_id')
+								.eq('id', taskEvent.task_id)
+								.eq('created_by', actorId)
+								.is('deleted_at', null)
+								.maybeSingle();
 
-						if (taskDetails?.project_id) {
-							projectIdForLink = taskDetails.project_id;
+							if (taskDetails?.project_id) {
+								projectIdForLink = taskDetails.project_id;
+							}
 						}
 					}
 				} catch (fetchError) {
@@ -1124,7 +1123,8 @@ export class CalendarService {
 					...updates,
 					updated_at: new Date().toISOString()
 				})
-				.eq('calendar_event_id', event_id);
+				.eq('calendar_event_id', event_id)
+				.eq('user_id', userId);
 
 			await this.markAppInitiatedChange(event_id, userId);
 
@@ -1179,7 +1179,8 @@ export class CalendarService {
 			await this.supabase
 				.from('task_calendar_events')
 				.delete()
-				.eq('calendar_event_id', event_id);
+				.eq('calendar_event_id', event_id)
+				.eq('user_id', userId);
 
 			return {
 				success: true,
@@ -1208,7 +1209,8 @@ export class CalendarService {
 				await this.supabase
 					.from('task_calendar_events')
 					.delete()
-					.eq('calendar_event_id', params.event_id);
+					.eq('calendar_event_id', params.event_id)
+					.eq('user_id', userId);
 
 				return {
 					success: true,
@@ -1238,19 +1240,33 @@ export class CalendarService {
 			const endDate = new Date();
 			endDate.setDate(endDate.getDate() + days_ahead);
 
+			const { data: actorId, error: actorError } = await this.supabase.rpc(
+				'ensure_actor_for_user',
+				{
+					p_user_id: userId
+				}
+			);
+
+			if (actorError || !actorId) {
+				throw new Error(
+					`Failed to resolve actor: ${actorError?.message || 'unknown error'}`
+				);
+			}
+
 			const { data: tasks, error } = await this.supabase
-				.from('tasks')
+				.from('onto_tasks')
 				.select(
 					`
 					*,
-					project:projects(name, slug)
+					project:onto_projects(name)
 				`
 				)
-				.eq('user_id', userId)
-				.in('status', ['backlog', 'in_progress'])
-				.gte('start_date', startDate)
-				.lte('start_date', endDate.toISOString())
-				.order('start_date', { ascending: true });
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
+				.in('state_key', ['todo', 'in_progress'])
+				.gte('start_at', startDate)
+				.lte('start_at', endDate.toISOString())
+				.order('start_at', { ascending: true });
 
 			if (error) throw error;
 
@@ -1258,18 +1274,32 @@ export class CalendarService {
 				task_count: tasks?.length || 0,
 				days_ahead,
 				tasks:
-					tasks?.map((task) => ({
-						id: task.id,
-						title: task.title,
-						description: task.description,
-						start_date: task.start_date,
-						duration_minutes: task.duration_minutes,
-						task_type: task.task_type,
-						recurrence_pattern: task.recurrence_pattern,
-						project: task.project,
-						status: task.status,
-						priority: task.priority
-					})) || []
+					tasks?.map((task) => {
+						const props = (task.props as Record<string, unknown> | null) ?? {};
+						return {
+							id: task.id,
+							title: task.title,
+							description: task.description,
+							start_date: task.start_at,
+							duration_minutes:
+								typeof props.duration_minutes === 'number'
+									? props.duration_minutes
+									: null,
+							task_type:
+								typeof props.task_type === 'string'
+									? props.task_type
+									: typeof props.recurrence_pattern === 'string'
+										? 'recurring'
+										: 'one_off',
+							recurrence_pattern:
+								typeof props.recurrence_pattern === 'string'
+									? props.recurrence_pattern
+									: null,
+							project: task.project,
+							status: this.toLegacyTaskStatus(task.state_key),
+							priority: this.mapPriorityToLabel(task.priority)
+						};
+					}) || []
 			};
 		} catch (error) {
 			console.error('Error getting upcoming tasks:', error);
@@ -1962,100 +1992,25 @@ export class CalendarService {
 		}
 	}
 
-	private async fetchLegacyTaskCalendarEventId(
-		taskId: string,
-		calendarEventId: string
-	): Promise<string | null> {
-		const { data, error } = await this.supabase
-			.from('task_calendar_events')
-			.select('id')
-			.eq('task_id', taskId)
-			.eq('calendar_event_id', calendarEventId)
-			.order('updated_at', { ascending: false })
-			.limit(1)
-			.maybeSingle();
-
-		if (error && error.code !== 'PGRST116') {
-			console.warn(
-				'[CalendarService] Unable to resolve legacy task_calendar_events id',
-				error
-			);
+	private toLegacyTaskStatus(
+		stateKey: string | null | undefined
+	): 'backlog' | 'in_progress' | 'done' | 'blocked' {
+		switch (stateKey) {
+			case 'in_progress':
+				return 'in_progress';
+			case 'done':
+				return 'done';
+			case 'blocked':
+				return 'blocked';
+			case 'todo':
+			default:
+				return 'backlog';
 		}
-
-		return data?.id ?? null;
 	}
 
-	private async lookupOntoId(
-		legacyTable: string,
-		legacyId?: string | null
-	): Promise<string | null> {
-		if (!legacyId) return null;
-
-		const { data, error } = await this.supabase
-			.from('legacy_entity_mappings')
-			.select('onto_id')
-			.eq('legacy_table', legacyTable)
-			.eq('legacy_id', legacyId)
-			.maybeSingle();
-
-		if (error) {
-			// 42P01 = undefined table (pre-migration environments)
-			if (error.code !== '42P01' && error.code !== 'PGRST116') {
-				console.warn('[CalendarService] Failed to lookup ontology id', error);
-			}
-			return null;
-		}
-
-		return data?.onto_id ?? null;
-	}
-
-	private async dualWriteOntoEvent(args: DualWriteOntoEventArgs): Promise<void> {
-		try {
-			const ontoTaskId = await this.lookupOntoId('tasks', args.task.id);
-			if (!ontoTaskId) {
-				return;
-			}
-
-			const ontoProjectId = await this.lookupOntoId('projects', args.task.project_id);
-
-			const recurrencePayload =
-				args.recurrence.length > 0
-					? {
-							source: 'google',
-							is_recurring: true,
-							rules: args.recurrence
-						}
-					: {};
-
-			await OntoEventService.createEvent(this.typedClient, {
-				orgId: null,
-				projectId: ontoProjectId,
-				owner: { type: 'task', id: ontoTaskId },
-				typeKey: 'event.task_work',
-				stateKey: 'scheduled',
-				title: args.task.title,
-				description: args.eventDescription,
-				location: args.googleEvent.location ?? null,
-				startAt: args.startDate.toISOString(),
-				endAt: args.endDate.toISOString(),
-				allDay: Boolean(args.googleEvent.start?.date),
-				timezone: args.timeZone ?? args.googleEvent.start?.timeZone ?? null,
-				recurrence: recurrencePayload,
-				externalLink: args.googleEvent.htmlLink ?? null,
-				props: {
-					legacy_task_id: args.task.id,
-					legacy_project_id: args.task.project_id,
-					legacy_task_calendar_event_id: args.legacyTaskCalendarEventId ?? null,
-					google_calendar_event_id: args.googleEvent.id,
-					google_calendar_id: args.calendarId,
-					organizer: args.organizerMetadata,
-					attendees: args.attendees,
-					recurrence_rule: args.recurrence[0] ?? null
-				} as unknown as Json,
-				createdBy: args.task.user_id
-			});
-		} catch (error) {
-			console.warn('[CalendarService] Failed dual-writing onto_event', error);
-		}
+	private mapPriorityToLabel(priority: number | null | undefined): 'low' | 'medium' | 'high' {
+		if ((priority ?? 0) >= 4) return 'high';
+		if ((priority ?? 0) >= 2) return 'medium';
+		return 'low';
 	}
 }

@@ -94,6 +94,62 @@ async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
 	return body;
 }
 
+async function checkProjectAccessFallback(
+	supabase: any,
+	projectId: string,
+	errorLogger?: ErrorLoggerService,
+	context?: {
+		userId?: string;
+		endpoint?: string;
+		httpMethod?: string;
+	},
+	fallbackReason: 'rpc_failed' | 'exception' = 'rpc_failed'
+): Promise<{ allowed: boolean; reason: string }> {
+	try {
+		const { data, error } = await supabase
+			.from('onto_projects')
+			.select('id')
+			.eq('id', projectId)
+			.maybeSingle();
+
+		if (error) {
+			logger.warn('Project access fallback lookup failed', {
+				error,
+				projectId,
+				fallbackReason
+			});
+			if (errorLogger) {
+				void errorLogger.logError(error, {
+					userId: context?.userId,
+					endpoint: context?.endpoint ?? FASTCHAT_STREAM_ENDPOINT,
+					httpMethod: context?.httpMethod ?? FASTCHAT_STREAM_METHOD,
+					operationType: 'fastchat_project_access_fallback',
+					metadata: { projectId, fallbackReason, reason: 'fallback_lookup_failed' }
+				});
+			}
+			return { allowed: false, reason: 'fallback_lookup_failed' };
+		}
+
+		return { allowed: Boolean(data), reason: data ? 'fallback_lookup' : 'denied' };
+	} catch (fallbackError) {
+		logger.warn('Project access fallback lookup exception', {
+			error: fallbackError,
+			projectId,
+			fallbackReason
+		});
+		if (errorLogger) {
+			void errorLogger.logError(fallbackError, {
+				userId: context?.userId,
+				endpoint: context?.endpoint ?? FASTCHAT_STREAM_ENDPOINT,
+				httpMethod: context?.httpMethod ?? FASTCHAT_STREAM_METHOD,
+				operationType: 'fastchat_project_access_fallback',
+				metadata: { projectId, fallbackReason, reason: 'fallback_lookup_exception' }
+			});
+		}
+		return { allowed: false, reason: 'fallback_lookup_exception' };
+	}
+}
+
 async function checkProjectAccess(
 	supabase: any,
 	projectId: string,
@@ -111,7 +167,10 @@ async function checkProjectAccess(
 		});
 
 		if (error) {
-			logger.warn('Project access RPC failed; allowing fast path', { error, projectId });
+			logger.warn('Project access RPC failed; falling back to project lookup', {
+				error,
+				projectId
+			});
 			if (errorLogger) {
 				void errorLogger.logError(error, {
 					userId: context?.userId,
@@ -121,12 +180,21 @@ async function checkProjectAccess(
 					metadata: { projectId, reason: 'rpc_failed' }
 				});
 			}
-			return { allowed: true, reason: 'rpc_failed' };
+			return checkProjectAccessFallback(
+				supabase,
+				projectId,
+				errorLogger,
+				context,
+				'rpc_failed'
+			);
 		}
 
 		return { allowed: !!data, reason: data ? 'ok' : 'denied' };
 	} catch (error) {
-		logger.warn('Project access check failed; allowing fast path', { error, projectId });
+		logger.warn('Project access check failed; falling back to project lookup', {
+			error,
+			projectId
+		});
 		if (errorLogger) {
 			void errorLogger.logError(error, {
 				userId: context?.userId,
@@ -136,7 +204,7 @@ async function checkProjectAccess(
 				metadata: { projectId, reason: 'exception' }
 			});
 		}
-		return { allowed: true, reason: 'exception' };
+		return checkProjectAccessFallback(supabase, projectId, errorLogger, context, 'exception');
 	}
 }
 
@@ -812,38 +880,129 @@ function isDailyBriefContext(value: unknown): boolean {
 	return typeof value === 'string' && value === 'daily_brief';
 }
 
-function appendUniqueId(values: string[] | undefined, value: string): string[] {
-	const next = values ? [...values] : [];
-	if (!next.includes(value)) next.push(value);
-	return next;
+function isExpectedToolValidationFailure(errorMessage: string | null | undefined): boolean {
+	if (!errorMessage) return false;
+	return (
+		/Tool validation failed/i.test(errorMessage) ||
+		/Missing required parameter/i.test(errorMessage) ||
+		/No update fields provided/i.test(errorMessage) ||
+		/Invalid .*expected UUID/i.test(errorMessage) ||
+		/Tool arguments must be a JSON object/i.test(errorMessage) ||
+		/Invalid JSON in tool arguments/i.test(errorMessage)
+	);
+}
+
+type LastTurnEntityType =
+	| 'project'
+	| 'task'
+	| 'goal'
+	| 'plan'
+	| 'document'
+	| 'milestone'
+	| 'risk'
+	| 'requirement';
+
+const LAST_TURN_ENTITY_LIST_KEY: Record<LastTurnEntityType, keyof LastTurnContext['entities']> = {
+	project: 'projects',
+	task: 'tasks',
+	goal: 'goals',
+	plan: 'plans',
+	document: 'documents',
+	milestone: 'milestones',
+	risk: 'risks',
+	requirement: 'requirements'
+};
+
+function truncateEntityText(value: unknown, maxLength: number): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	const normalized = value.replace(/\s+/g, ' ').trim();
+	if (!normalized) return undefined;
+	if (normalized.length <= maxLength) return normalized;
+	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+function extractEntityPreview(value: unknown, fallbackId?: string): {
+	id?: string;
+	name?: string;
+	description?: string;
+} {
+	if (!value || typeof value !== 'object') {
+		return { id: fallbackId };
+	}
+	const record = value as Record<string, unknown>;
+	const id = normalizeTextValue(record.id ?? record.entity_id ?? record.entityId ?? fallbackId);
+	const name =
+		truncateEntityText(record.name, 80) ??
+		truncateEntityText(record.title, 80) ??
+		truncateEntityText(record.summary, 80) ??
+		truncateEntityText(record.text, 80);
+	const description =
+		truncateEntityText(record.description, 140) ??
+		truncateEntityText(record.content, 140) ??
+		truncateEntityText(record.summary, 140);
+	return { id, name, description };
+}
+
+function upsertLastTurnEntity(
+	entities: LastTurnContext['entities'],
+	entityType: LastTurnEntityType,
+	preview: { id?: string; name?: string; description?: string }
+): void {
+	const id = normalizeTextValue(preview.id);
+	if (!id) return;
+
+	const listKey = LAST_TURN_ENTITY_LIST_KEY[entityType];
+	const list = (((entities as Record<string, unknown>)[listKey] as Array<{
+		id: string;
+		name?: string;
+		description?: string;
+	}> | undefined) ?? []);
+	const existing = list.find((item) => item.id === id);
+	if (existing) {
+		if (!existing.name && preview.name) existing.name = preview.name;
+		if (!existing.description && preview.description) existing.description = preview.description;
+	} else {
+		list.push({
+			id,
+			name: preview.name,
+			description: preview.description
+		});
+	}
+	(entities as Record<string, unknown>)[listKey] = list;
+
+	// Back-compat for existing readers while rollout completes.
+	switch (entityType) {
+		case 'project':
+			entities.project_id = entities.project_id ?? id;
+			break;
+		case 'task':
+			entities.task_ids = Array.from(new Set([...(entities.task_ids ?? []), id]));
+			break;
+		case 'goal':
+			entities.goal_ids = Array.from(new Set([...(entities.goal_ids ?? []), id]));
+			break;
+		case 'plan':
+			entities.plan_id = entities.plan_id ?? id;
+			break;
+		case 'document':
+			entities.document_id = entities.document_id ?? id;
+			break;
+		default:
+			break;
+	}
 }
 
 function assignLastTurnEntity(
 	entities: LastTurnContext['entities'],
 	entityType: string | undefined,
-	entityId: string | undefined
+	entityId: string | undefined,
+	record?: unknown
 ): void {
-	if (!entityType || !entityId) return;
-	const normalizedType = entityType.toLowerCase();
-	switch (normalizedType) {
-		case 'project':
-			entities.project_id = entities.project_id ?? entityId;
-			break;
-		case 'task':
-			entities.task_ids = appendUniqueId(entities.task_ids, entityId);
-			break;
-		case 'goal':
-			entities.goal_ids = appendUniqueId(entities.goal_ids, entityId);
-			break;
-		case 'plan':
-			entities.plan_id = entities.plan_id ?? entityId;
-			break;
-		case 'document':
-			entities.document_id = entities.document_id ?? entityId;
-			break;
-		default:
-			break;
-	}
+	if (!entityType) return;
+	const normalizedType = entityType.toLowerCase() as LastTurnEntityType;
+	if (!LAST_TURN_ENTITY_LIST_KEY[normalizedType]) return;
+	const preview = extractEntityPreview(record, entityId);
+	upsertLastTurnEntity(entities, normalizedType, preview);
 }
 
 function assignLastTurnEntityByPrefix(
@@ -861,6 +1020,12 @@ function assignLastTurnEntityByPrefix(
 		assignLastTurnEntity(entities, 'plan', entityId);
 	} else if (normalized.startsWith('doc_')) {
 		assignLastTurnEntity(entities, 'document', entityId);
+	} else if (normalized.startsWith('mil_')) {
+		assignLastTurnEntity(entities, 'milestone', entityId);
+	} else if (normalized.startsWith('risk_')) {
+		assignLastTurnEntity(entities, 'risk', entityId);
+	} else if (normalized.startsWith('req_')) {
+		assignLastTurnEntity(entities, 'requirement', entityId);
 	}
 }
 
@@ -890,13 +1055,32 @@ function collectLastTurnEntitiesFromValue(
 	assignLastTurnEntity(
 		entities,
 		normalizeTextValue(record.entity_type ?? record.entityType),
-		normalizeTextValue(record.entity_id ?? record.entityId)
+		normalizeTextValue(record.entity_id ?? record.entityId),
+		record
 	);
-	assignLastTurnEntity(entities, 'project', normalizeTextValue(record.project_id));
-	assignLastTurnEntity(entities, 'task', normalizeTextValue(record.task_id));
-	assignLastTurnEntity(entities, 'goal', normalizeTextValue(record.goal_id));
-	assignLastTurnEntity(entities, 'plan', normalizeTextValue(record.plan_id));
-	assignLastTurnEntity(entities, 'document', normalizeTextValue(record.document_id));
+	assignLastTurnEntity(entities, 'project', normalizeTextValue(record.project_id), record.project);
+	assignLastTurnEntity(entities, 'task', normalizeTextValue(record.task_id), record.task);
+	assignLastTurnEntity(entities, 'goal', normalizeTextValue(record.goal_id), record.goal);
+	assignLastTurnEntity(entities, 'plan', normalizeTextValue(record.plan_id), record.plan);
+	assignLastTurnEntity(
+		entities,
+		'document',
+		normalizeTextValue(record.document_id),
+		record.document
+	);
+	assignLastTurnEntity(
+		entities,
+		'milestone',
+		normalizeTextValue(record.milestone_id),
+		record.milestone
+	);
+	assignLastTurnEntity(entities, 'risk', normalizeTextValue(record.risk_id), record.risk);
+	assignLastTurnEntity(
+		entities,
+		'requirement',
+		normalizeTextValue(record.requirement_id),
+		record.requirement
+	);
 
 	const taskIds = Array.isArray(record.task_ids) ? record.task_ids : [];
 	for (const taskId of taskIds) {
@@ -905,6 +1089,14 @@ function collectLastTurnEntitiesFromValue(
 	const goalIds = Array.isArray(record.goal_ids) ? record.goal_ids : [];
 	for (const goalId of goalIds) {
 		assignLastTurnEntity(entities, 'goal', normalizeTextValue(goalId));
+	}
+	const planIds = Array.isArray(record.plan_ids) ? record.plan_ids : [];
+	for (const planId of planIds) {
+		assignLastTurnEntity(entities, 'plan', normalizeTextValue(planId));
+	}
+	const documentIds = Array.isArray(record.document_ids) ? record.document_ids : [];
+	for (const documentId of documentIds) {
+		assignLastTurnEntity(entities, 'document', normalizeTextValue(documentId));
 	}
 
 	const entitiesAccessed = Array.isArray(record._entities_accessed)
@@ -926,20 +1118,23 @@ function collectLastTurnEntitiesFromValue(
 		'document'
 	];
 	for (const key of singularKeys) {
-		assignLastTurnEntity(entities, key, extractEntityIdFromRecord(record[key]));
+		assignLastTurnEntity(entities, key, extractEntityIdFromRecord(record[key]), record[key]);
 	}
 
-	const pluralKeys: Array<{ key: string; entityType: string }> = [
+	const pluralKeys: Array<{ key: string; entityType: LastTurnEntityType }> = [
 		{ key: 'projects', entityType: 'project' },
 		{ key: 'tasks', entityType: 'task' },
 		{ key: 'goals', entityType: 'goal' },
 		{ key: 'plans', entityType: 'plan' },
-		{ key: 'documents', entityType: 'document' }
+		{ key: 'documents', entityType: 'document' },
+		{ key: 'milestones', entityType: 'milestone' },
+		{ key: 'risks', entityType: 'risk' },
+		{ key: 'requirements', entityType: 'requirement' }
 	];
 	for (const { key, entityType } of pluralKeys) {
 		if (!Array.isArray(record[key])) continue;
 		for (const item of record[key] as unknown[]) {
-			assignLastTurnEntity(entities, entityType, extractEntityIdFromRecord(item));
+			assignLastTurnEntity(entities, entityType, extractEntityIdFromRecord(item), item);
 		}
 	}
 
@@ -952,11 +1147,30 @@ function collectLastTurnEntitiesFromValue(
 
 function formatLastTurnEntityReferences(entities: LastTurnContext['entities']): string[] {
 	const refs: string[] = [];
-	if (entities.project_id) refs.push(`project:${entities.project_id}`);
-	if (entities.plan_id) refs.push(`plan:${entities.plan_id}`);
-	if (entities.document_id) refs.push(`document:${entities.document_id}`);
-	if (entities.task_ids?.length) refs.push(`tasks:${entities.task_ids.slice(0, 4).join(',')}`);
-	if (entities.goal_ids?.length) refs.push(`goals:${entities.goal_ids.slice(0, 4).join(',')}`);
+	const formatItems = (items: Array<{ id: string; name?: string }>): string =>
+		items
+			.slice(0, 4)
+			.map((item) => (item.name ? `${item.name} (${item.id})` : item.id))
+			.join(',');
+	if (entities.projects?.length)
+		refs.push(`projects:${formatItems(entities.projects)}`);
+	if (entities.tasks?.length)
+		refs.push(`tasks:${formatItems(entities.tasks)}`);
+	if (entities.plans?.length)
+		refs.push(`plans:${formatItems(entities.plans)}`);
+	if (entities.goals?.length)
+		refs.push(`goals:${formatItems(entities.goals)}`);
+	if (entities.documents?.length)
+		refs.push(`documents:${formatItems(entities.documents)}`);
+
+	// Backward-compat with stored legacy contexts.
+	if (refs.length === 0) {
+		if (entities.project_id) refs.push(`project:${entities.project_id}`);
+		if (entities.plan_id) refs.push(`plan:${entities.plan_id}`);
+		if (entities.document_id) refs.push(`document:${entities.document_id}`);
+		if (entities.task_ids?.length) refs.push(`tasks:${entities.task_ids.slice(0, 4).join(',')}`);
+		if (entities.goal_ids?.length) refs.push(`goals:${entities.goal_ids.slice(0, 4).join(',')}`);
+	}
 	return refs;
 }
 
@@ -1022,13 +1236,18 @@ function buildLastTurnContext(params: {
 		assignLastTurnEntity(
 			entities,
 			params.contextShift.entity_type,
-			normalizeTextValue(params.contextShift.entity_id)
+			normalizeTextValue(params.contextShift.entity_id),
+			{
+				id: params.contextShift.entity_id,
+				name: params.contextShift.entity_name,
+				description: params.contextShift.message
+			}
 		);
 	}
 
 	const effectiveContextType = params.contextShift?.new_context ?? params.contextType;
-	if (isProjectScopedContext(effectiveContextType) && params.entityId && !entities.project_id) {
-		entities.project_id = params.entityId;
+	if (isProjectScopedContext(effectiveContextType) && params.entityId && !entities.projects?.length) {
+		assignLastTurnEntity(entities, 'project', params.entityId);
 	}
 
 	const summary =
@@ -1776,55 +1995,87 @@ export const POST: RequestHandler = async ({
 					});
 				},
 				onToolResult: async ({ toolCall, result }) => {
-					const patchedCall = patchToolCall(toolCall);
-					emitToolResult(agentStream, patchedCall, result, (error) => {
+					try {
+						const patchedCall = patchToolCall(toolCall);
+						emitToolResult(agentStream, patchedCall, result, (error) => {
+							logFastChatError({
+								error,
+								operationType: 'fastchat_stream_emit_tool_result',
+								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+								metadata: {
+									sessionId: session.id,
+									contextType: effectiveContextType,
+									toolName: patchedCall.function.name,
+									toolCallId: patchedCall.id
+								}
+							});
+						});
+						if (!result.success) {
+							if (isExpectedToolValidationFailure(result.error)) {
+								logger.warn('FastChat tool validation failure', {
+									sessionId: session.id,
+									contextType: effectiveContextType,
+									entityId: effectiveEntityId,
+									toolName: patchedCall.function.name,
+									toolCallId: patchedCall.id,
+									toolError: result.error
+								});
+							} else {
+								logFastChatError({
+									error: new Error(
+										result.error ?? 'FastChat tool execution failed'
+									),
+									operationType: 'fastchat_tool_result_failure',
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+									metadata: {
+										sessionId: session.id,
+										contextType: effectiveContextType,
+										entityId: effectiveEntityId,
+										toolName: patchedCall.function.name,
+										toolCallId: patchedCall.id,
+										toolError: result.error
+									}
+								});
+							}
+						}
+
+						const contextShift = extractContextShiftPayload(result);
+						if (contextShift) {
+							effectiveContextType = contextShift.new_context;
+							effectiveEntityId = contextShift.entity_id;
+							latestContextShift = contextShift;
+							if (isProjectScopedContext(contextShift.new_context)) {
+								effectiveProjectIdForTools = contextShift.entity_id;
+							}
+							await emitContextShift(agentStream, contextShift, (error) => {
+								logFastChatError({
+									error,
+									operationType: 'fastchat_stream_emit_context_shift',
+									projectId: contextShift.entity_id,
+									metadata: {
+										sessionId: session.id,
+										contextType: contextShift.new_context,
+										entityId: contextShift.entity_id
+									}
+								});
+							});
+						}
+					} catch (error) {
+						logger.warn('FastChat onToolResult callback failed', {
+							error,
+							sessionId: session.id
+						});
 						logFastChatError({
 							error,
-							operationType: 'fastchat_stream_emit_tool_result',
-							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
-								contextType: effectiveContextType,
-								toolName: patchedCall.function.name,
-								toolCallId: patchedCall.id
-							}
-						});
-					});
-					if (!result.success) {
-						logFastChatError({
-							error: new Error(result.error ?? 'FastChat tool execution failed'),
-							operationType: 'fastchat_tool_result_failure',
+							operationType: 'fastchat_stream_on_tool_result',
 							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 							metadata: {
 								sessionId: session.id,
 								contextType: effectiveContextType,
 								entityId: effectiveEntityId,
-								toolName: patchedCall.function.name,
-								toolCallId: patchedCall.id,
-								toolError: result.error
+								toolName: toolCall.function.name,
+								toolCallId: toolCall.id
 							}
-						});
-					}
-
-					const contextShift = extractContextShiftPayload(result);
-					if (contextShift) {
-						effectiveContextType = contextShift.new_context;
-						effectiveEntityId = contextShift.entity_id;
-						latestContextShift = contextShift;
-						if (isProjectScopedContext(contextShift.new_context)) {
-							effectiveProjectIdForTools = contextShift.entity_id;
-						}
-						await emitContextShift(agentStream, contextShift, (error) => {
-							logFastChatError({
-								error,
-								operationType: 'fastchat_stream_emit_context_shift',
-								projectId: contextShift.entity_id,
-								metadata: {
-									sessionId: session.id,
-									contextType: contextShift.new_context,
-									entityId: contextShift.entity_id
-								}
-							});
 						});
 					}
 				},

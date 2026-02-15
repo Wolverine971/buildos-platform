@@ -146,7 +146,7 @@ export class RealtimeBriefService {
 					{
 						event: '*',
 						schema: 'public',
-						table: 'daily_briefs',
+						table: 'ontology_daily_briefs',
 						filter: `user_id=eq.${this.state.userId}`
 					},
 					(payload) => this.handleBriefUpdate(payload)
@@ -669,7 +669,7 @@ export class RealtimeBriefService {
 
 			// First, check if today's brief is already completed
 			const { data: todaysBrief, error: briefError } = await this.state.supabaseClient
-				.from('daily_briefs')
+				.from('ontology_daily_briefs')
 				.select('*')
 				.eq('user_id', userId)
 				.eq('brief_date', todayDate)

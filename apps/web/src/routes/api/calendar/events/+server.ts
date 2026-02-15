@@ -1,14 +1,14 @@
 // apps/web/src/routes/api/calendar/events/+server.ts
-import { ApiResponse } from '$lib/utils/api-response';
+import { ApiResponse, requireAuth } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 
-export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supabase } }) => {
-	const { user } = await safeGetSession();
-
-	if (!user) {
-		return ApiResponse.unauthorized('Unauthorized');
+export const GET: RequestHandler = async ({ url, locals }) => {
+	const authResult = await requireAuth(locals);
+	if ('error' in authResult && authResult.error) {
+		return authResult.error;
 	}
+	const { user } = authResult;
 
 	try {
 		const timeMin = url.searchParams.get('timeMin');
@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 		const calendarId = url.searchParams.get('calendarId') || undefined;
 		const maxResults = url.searchParams.get('maxResults') || undefined;
 
-		const calendarService = new CalendarService(supabase);
+		const calendarService = new CalendarService(locals.supabase);
 
 		const result = await calendarService.getCalendarEvents(user.id, {
 			timeMin: timeMin || undefined,

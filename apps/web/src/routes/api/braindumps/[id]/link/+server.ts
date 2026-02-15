@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ActivityLogger } from '$lib/utils/activityLogger';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 export const PATCH: RequestHandler = async ({
 	params,
@@ -15,6 +16,7 @@ export const PATCH: RequestHandler = async ({
 
 	try {
 		const { project_id } = await request.json();
+		const actorId = await ensureActorId(supabase, user.id);
 
 		// Validate project_id
 		if (!project_id) {
@@ -31,7 +33,12 @@ export const PATCH: RequestHandler = async ({
 				.select('user_id, title, content, project_id')
 				.eq('id', params.id)
 				.single(),
-			supabase.from('projects').select('id, name, user_id').eq('id', project_id).single()
+			supabase
+				.from('onto_projects')
+				.select('id, name, created_by')
+				.eq('id', project_id)
+				.is('deleted_at', null)
+				.single()
 		]);
 
 		if (fetchError) {
@@ -51,7 +58,7 @@ export const PATCH: RequestHandler = async ({
 			return ApiResponse.notFound('Project');
 		}
 
-		if (project.user_id !== user.id) {
+		if (project.created_by !== actorId) {
 			return ApiResponse.forbidden('You do not own this project');
 		}
 

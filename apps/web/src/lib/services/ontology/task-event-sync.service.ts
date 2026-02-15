@@ -60,6 +60,14 @@ export class TaskEventSyncService {
 			existingEvents = events ?? [];
 		}
 
+		if (task.state_key === 'done') {
+			const eventsToRemove = this.getFutureEventsToRemoveOnCompletion(existingEvents);
+			if (eventsToRemove.length > 0) {
+				await this.removeEvents(userId, eventsToRemove);
+			}
+			return;
+		}
+
 		if (desiredSpecs.length === 0) {
 			await this.removeEvents(userId, existingEvents);
 			return;
@@ -135,6 +143,36 @@ export class TaskEventSyncService {
 
 		const eventsToRemove = existingEvents.filter((event) => !usedEventIds.has(event.id));
 		await this.removeEvents(userId, eventsToRemove);
+	}
+
+	private getFutureEventsToRemoveOnCompletion(events: OntoEventRow[]): OntoEventRow[] {
+		const nowMs = Date.now();
+		return events.filter((event) => this.shouldRemoveEventOnCompletion(event, nowMs));
+	}
+
+	private shouldRemoveEventOnCompletion(event: OntoEventRow, nowMs: number): boolean {
+		const props = (event.props as Record<string, unknown> | null) ?? {};
+		const kind = props.task_event_kind as TaskEventKind | undefined;
+		const startMs = this.parseTimestampMs(event.start_at);
+		const endMs = this.parseTimestampMs(event.end_at);
+
+		if (kind === 'due') {
+			const dueMs = endMs ?? startMs;
+			return dueMs !== null && dueMs > nowMs;
+		}
+
+		if (kind === 'start' || kind === 'range') {
+			return startMs !== null && startMs > nowMs;
+		}
+
+		// Fallback for legacy/untyped task events.
+		return startMs !== null && startMs > nowMs;
+	}
+
+	private parseTimestampMs(value: string | null): number | null {
+		if (!value) return null;
+		const timestamp = Date.parse(value);
+		return Number.isNaN(timestamp) ? null : timestamp;
 	}
 
 	private buildSpecs(task: OntoTaskRow): TaskEventSpec[] {

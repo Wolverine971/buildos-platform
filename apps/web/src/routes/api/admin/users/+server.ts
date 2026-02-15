@@ -156,7 +156,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				.from('user_brief_preferences')
 				.select('user_id, is_active')
 				.in('user_id', userIds),
-			supabase.from('daily_briefs').select('user_id').in('user_id', userIds),
+			supabase.from('ontology_daily_briefs').select('user_id').in('user_id', userIds),
 			actorIds.length
 				? supabase
 						.from('onto_tasks')

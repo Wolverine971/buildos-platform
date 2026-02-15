@@ -9,23 +9,20 @@ const MAX_TASKS_PER_PROMPT = 12;
 const MAX_SUGGESTIONS = 3;
 const DEFAULT_MODEL_LABEL = 'openrouter:auto';
 
-type TaskRow = Database['public']['Tables']['tasks']['Row'];
-type ProjectRow = Database['public']['Tables']['projects']['Row'];
+type TaskRow = Database['public']['Tables']['onto_tasks']['Row'];
+type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
 
 interface CandidateTask
-	extends Pick<
-		TaskRow,
-		| 'id'
-		| 'title'
-		| 'description'
-		| 'details'
-		| 'priority'
-		| 'duration_minutes'
-		| 'status'
-		| 'start_date'
-		| 'project_id'
-	> {
-	project?: Pick<ProjectRow, 'id' | 'name' | 'status' | 'calendar_color_id'> | null;
+	extends Pick<TaskRow, 'id' | 'title' | 'description' | 'priority' | 'project_id'> {
+	status: string;
+	duration_minutes: number | null;
+	start_date: string | null;
+	project?: {
+		id: string;
+		name: string;
+		status: string;
+		calendar_color_id: string | null;
+	} | null;
 }
 
 interface GenerateSuggestionsParams {
@@ -94,25 +91,54 @@ export class TimeBlockSuggestionService {
 	}
 
 	private async fetchCandidateTasks(params: GenerateSuggestionsParams): Promise<CandidateTask[]> {
+		const { data: actorId, error: actorError } = await this.supabase.rpc(
+			'ensure_actor_for_user',
+			{
+				p_user_id: this.userId
+			}
+		);
+		if (actorError || !actorId) {
+			console.error('[TimeBlockSuggestionService] Failed to resolve actor:', actorError);
+			return [];
+		}
+
+		const { data: ownedProjects, error: ownedProjectsError } = await this.supabase
+			.from('onto_projects')
+			.select('id')
+			.eq('created_by', actorId)
+			.is('deleted_at', null);
+
+		if (ownedProjectsError) {
+			console.error(
+				'[TimeBlockSuggestionService] Failed to load ontology projects:',
+				ownedProjectsError
+			);
+			return [];
+		}
+
+		const scopedProjectIds = (ownedProjects ?? []).map((project) => project.id);
+		if (scopedProjectIds.length === 0) {
+			return [];
+		}
+
 		let query = this.supabase
-			.from('tasks')
+			.from('onto_tasks')
 			.select(
 				`
 				id,
 				title,
 				description,
-				details,
 				priority,
-				duration_minutes,
-				status,
-				start_date,
+				state_key,
+				props,
+				start_at,
 				project_id,
-				project:projects(id, name, status, calendar_color_id)
+				project:onto_projects(id, name, state_key, props)
 			`
 			)
-			.eq('user_id', this.userId)
+			.in('project_id', scopedProjectIds)
 			.is('deleted_at', null)
-			.in('status', ['backlog', 'in_progress', 'blocked'])
+			.in('state_key', ['todo', 'in_progress', 'blocked'])
 			.order('updated_at', { ascending: false })
 			.limit(MAX_TASKS_PER_PROMPT);
 
@@ -132,7 +158,51 @@ export class TimeBlockSuggestionService {
 
 		const tasks = (data ?? []) as CandidateTask[];
 
-		return tasks
+		const normalized = tasks.map((task: any) => {
+			const props = task.props && typeof task.props === 'object' ? task.props : {};
+			const projectProps =
+				task.project?.props && typeof task.project.props === 'object'
+					? task.project.props
+					: {};
+			return {
+				...task,
+				duration_minutes:
+					typeof props.duration_minutes === 'number'
+						? props.duration_minutes
+						: typeof props.estimated_minutes === 'number'
+							? props.estimated_minutes
+							: null,
+				start_date: task.start_at ?? null,
+				status:
+					task.state_key === 'in_progress'
+						? 'in_progress'
+						: task.state_key === 'done'
+							? 'done'
+							: task.state_key === 'blocked'
+								? 'blocked'
+								: 'backlog',
+				project: task.project
+					? {
+							id: task.project.id,
+							name: task.project.name,
+							status:
+								task.project.state_key === 'planning'
+									? 'paused'
+									: task.project.state_key === 'completed'
+										? 'completed'
+										: task.project.state_key === 'cancelled'
+											? 'archived'
+											: 'active',
+							calendar_color_id:
+								typeof projectProps.calendar_color_id === 'string'
+									? projectProps.calendar_color_id
+									: null
+						}
+					: null
+			} satisfies CandidateTask;
+		});
+
+		return normalized
 			.filter((task) => {
 				if (task.project?.status && task.project.status !== 'active') {
 					return false;

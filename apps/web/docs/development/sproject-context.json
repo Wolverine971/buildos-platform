@@ -18,7 +18,7 @@
 		{
 			"file": "src/routes/briefs/+page.svelte",
 			"type": "page",
-			"components": ["AgentChatModal"]
+			"components": ["BriefChatModal"]
 		},
 		{
 			"file": "src/routes/projects/+page.svelte",
@@ -28,12 +28,12 @@
 		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
 			"type": "component",
-			"components": ["DailyBriefModal", "AgentChatModal"]
+			"components": ["DailyBriefModal", "BriefChatModal"]
 		},
 		{
 			"file": "src/lib/components/dashboard/Dashboard.svelte",
 			"type": "component",
-			"components": ["AgentChatModal", "DailyBriefModal"]
+			"components": ["AgentChatModal", "DailyBriefModal", "BriefChatModal"]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
@@ -45,7 +45,6 @@
 			"type": "component",
 			"components": [
 				"BrainDumpMinimizedView",
-				"PhaseGenerationMinimizedView",
 				"ProjectSynthesisMinimizedView",
 				"CalendarAnalysisMinimizedView",
 				"TimeBlockMinimizedView"
@@ -56,7 +55,6 @@
 			"type": "component",
 			"components": [
 				"BrainDumpModalContent",
-				"PhaseGenerationModalContent",
 				"ProjectSynthesisModalContent",
 				"CalendarAnalysisModalContent",
 				"TimeBlockModalContent"
@@ -442,16 +440,6 @@
 			"exports": ["OntologyContextLoader"]
 		},
 		{
-			"file": "src/lib/services/phase-generation-notification.bridge.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"initPhaseGenerationNotificationBridge",
-				"cleanupPhaseGenerationNotificationBridge",
-				"startPhaseGeneration"
-			]
-		},
-		{
 			"file": "src/lib/services/project-activity-log.service.ts",
 			"type": "service",
 			"components": [],
@@ -484,18 +472,6 @@
 			"type": "service",
 			"components": [],
 			"exports": ["ProjectBriefTemplateGeneratorService"]
-		},
-		{
-			"file": "src/lib/services/projectData.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ProjectDataService"]
-		},
-		{
-			"file": "src/lib/services/projectService.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ProjectService", "projectService"]
 		},
 		{
 			"file": "src/lib/services/projectSynthesis.service.ts",
@@ -544,12 +520,6 @@
 			"type": "service",
 			"components": [],
 			"exports": ["RecurrencePatternBuilder", "recurrencePatternBuilder"]
-		},
-		{
-			"file": "src/lib/services/recurring-instance.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["RecurringInstanceService"]
 		},
 		{
 			"file": "src/lib/services/scheduledSmsUpdate.service.ts",
@@ -761,18 +731,6 @@
 				"hasNavigationData",
 				"clearNavigationData"
 			]
-		},
-		{
-			"file": "src/lib/stores/project.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["projectStoreV2", "projectStoreV2Internal"]
-		},
-		{
-			"file": "src/lib/stores/schedulingStore.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["schedulingStore"]
 		},
 		{
 			"file": "src/lib/stores/searchStore.ts",

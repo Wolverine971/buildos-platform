@@ -45,6 +45,7 @@ export interface NextAvailableSlotResult {
 export class TaskTimeSlotFinder {
 	private supabase: any;
 	private maxDaysToLookAhead = 7;
+	private actorIdByUserId = new Map<string, string>();
 
 	constructor(supabaseClient: any) {
 		this.supabase = supabaseClient;
@@ -337,6 +338,11 @@ export class TaskTimeSlotFinder {
 		userId: string,
 		timezone: string
 	): Promise<Task[]> {
+		const actorId = await this.getActorId(userId);
+		if (!actorId) {
+			return [];
+		}
+
 		const dayStart = startOfDay(date);
 		const dayEnd = addDays(dayStart, 1);
 
@@ -345,20 +351,22 @@ export class TaskTimeSlotFinder {
 		const utcEnd = fromZonedTime(dayEnd, timezone);
 
 		const { data, error } = await this.supabase
-			.from('tasks')
-			.select('*')
-			.eq('user_id', userId)
-			.gte('start_date', utcStart.toISOString())
-			.lt('start_date', utcEnd.toISOString())
+			.from('onto_tasks')
+			.select(
+				'id, title, description, project_id, state_key, priority, start_at, created_at, updated_at, deleted_at, completed_at, props'
+			)
+			.eq('created_by', actorId)
+			.gte('start_at', utcStart.toISOString())
+			.lt('start_at', utcEnd.toISOString())
 			.is('deleted_at', null)
-			.order('start_date', { ascending: true });
+			.order('start_at', { ascending: true });
 
 		if (error) {
 			console.error('Error fetching existing tasks:', error);
 			return [];
 		}
 
-		return data || [];
+		return (data ?? []).map((task: any) => this.mapOntoTaskToTask(task, userId));
 	}
 
 	/**
@@ -370,6 +378,11 @@ export class TaskTimeSlotFinder {
 		timezone: string
 	): Promise<Map<string, Task[]>> {
 		if (dates.length === 0) return new Map();
+
+		const actorId = await this.getActorId(userId);
+		if (!actorId) {
+			return new Map();
+		}
 
 		// Get the full date range to query
 		const sortedDates = [...dates].sort((a, b) => a.getTime() - b.getTime());
@@ -388,13 +401,15 @@ export class TaskTimeSlotFinder {
 		const utcEnd = fromZonedTime(rangeEnd, timezone);
 
 		const { data, error } = await this.supabase
-			.from('tasks')
-			.select('*')
-			.eq('user_id', userId)
-			.gte('start_date', utcStart.toISOString())
-			.lt('start_date', utcEnd.toISOString())
+			.from('onto_tasks')
+			.select(
+				'id, title, description, project_id, state_key, priority, start_at, created_at, updated_at, deleted_at, completed_at, props'
+			)
+			.eq('created_by', actorId)
+			.gte('start_at', utcStart.toISOString())
+			.lt('start_at', utcEnd.toISOString())
 			.is('deleted_at', null)
-			.order('start_date', { ascending: true });
+			.order('start_at', { ascending: true });
 
 		if (error) {
 			console.error('Error fetching existing tasks batch:', error);
@@ -408,7 +423,7 @@ export class TaskTimeSlotFinder {
 			tasksByDay.set(dateKey, []);
 		});
 
-		const taskRows = data ?? [];
+		const taskRows = (data ?? []).map((task: any) => this.mapOntoTaskToTask(task, userId));
 
 		taskRows.forEach((task: Task) => {
 			if (task.start_date) {
@@ -422,6 +437,94 @@ export class TaskTimeSlotFinder {
 		});
 
 		return tasksByDay;
+	}
+
+	private async getActorId(userId: string): Promise<string | null> {
+		const cached = this.actorIdByUserId.get(userId);
+		if (cached) return cached;
+
+		const { data: actorId, error } = await this.supabase.rpc('ensure_actor_for_user', {
+			p_user_id: userId
+		});
+
+		if (error || !actorId) {
+			console.error('Failed to resolve actor for task scheduling:', error);
+			return null;
+		}
+
+		this.actorIdByUserId.set(userId, actorId);
+		return actorId;
+	}
+
+	private mapTaskStateToStatus(
+		stateKey: string | null | undefined
+	): 'backlog' | 'in_progress' | 'done' | 'blocked' {
+		switch (stateKey) {
+			case 'in_progress':
+				return 'in_progress';
+			case 'done':
+				return 'done';
+			case 'blocked':
+				return 'blocked';
+			case 'todo':
+			default:
+				return 'backlog';
+		}
+	}
+
+	private mapPriorityLevel(priority: number | null | undefined): 'low' | 'medium' | 'high' {
+		if ((priority ?? 0) >= 4) return 'high';
+		if ((priority ?? 0) >= 2) return 'medium';
+		return 'low';
+	}
+
+	private mapOntoTaskToTask(task: any, userId: string): Task {
+		const props = (task.props as Record<string, unknown> | null) ?? {};
+		const recurrencePattern =
+			typeof props.recurrence_pattern === 'string' ? props.recurrence_pattern : null;
+		const taskType =
+			typeof props.task_type === 'string'
+				? props.task_type
+				: recurrencePattern
+					? 'recurring'
+					: 'one_off';
+
+		return {
+			id: task.id,
+			title: task.title,
+			description: task.description ?? null,
+			details: typeof props.details === 'string' ? props.details : null,
+			status: this.mapTaskStateToStatus(task.state_key),
+			priority: this.mapPriorityLevel(task.priority),
+			start_date: task.start_at ?? null,
+			duration_minutes:
+				typeof props.duration_minutes === 'number' ? props.duration_minutes : null,
+			task_type: taskType as Task['task_type'],
+			recurrence_pattern: recurrencePattern as Task['recurrence_pattern'],
+			recurrence_ends:
+				typeof props.recurrence_ends === 'string' ? props.recurrence_ends : null,
+			recurrence_end_source:
+				typeof props.recurrence_end_source === 'string'
+					? props.recurrence_end_source
+					: null,
+			dependencies: Array.isArray(props.dependencies)
+				? (props.dependencies as string[])
+				: null,
+			parent_task_id: typeof props.parent_task_id === 'string' ? props.parent_task_id : null,
+			task_steps: typeof props.task_steps === 'string' ? props.task_steps : null,
+			source: typeof props.source === 'string' ? props.source : null,
+			source_calendar_event_id:
+				typeof props.source_calendar_event_id === 'string'
+					? props.source_calendar_event_id
+					: null,
+			project_id: task.project_id ?? null,
+			completed_at: task.completed_at ?? null,
+			deleted_at: task.deleted_at ?? null,
+			outdated: null,
+			created_at: task.created_at,
+			updated_at: task.updated_at,
+			user_id: userId
+		};
 	}
 
 	/**

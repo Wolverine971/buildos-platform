@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/daily-briefs/status/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { mapOntologyDailyBriefRow } from '$lib/services/dailyBrief/ontology-mappers';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -12,24 +13,25 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const userId = url.searchParams.get('userId') || user.id;
 
 	try {
-		// Get daily brief for the date
-		const { data: brief, error } = await supabase
-			.from('daily_briefs')
+		const { data: briefRow, error } = await supabase
+			.from('ontology_daily_briefs')
 			.select('*')
 			.eq('user_id', userId)
 			.eq('brief_date', date)
-			.single();
+			.order('created_at', { ascending: false })
+			.order('id', { ascending: false })
+			.limit(1)
+			.maybeSingle();
 
 		if (error && error.code !== 'PGRST116') {
 			throw error;
 		}
 
-		// Also check for any active generation jobs in the new queue_jobs table
 		const { data: activeJobs } = await supabase
-			.from('queue_jobs') // Updated table name
+			.from('queue_jobs')
 			.select('*')
 			.eq('user_id', userId)
-			.eq('job_type', 'generate_daily_brief') // Filter by job type
+			.eq('job_type', 'generate_daily_brief')
 			.in('status', ['pending', 'processing', 'failed', 'completed'])
 			.gte('scheduled_for', `${date}T00:00:00Z`)
 			.lt('scheduled_for', `${date}T23:59:59Z`)
@@ -37,12 +39,21 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			.limit(1);
 
 		const activeJobsList =
-			activeJobs?.filter((j) => j.status !== 'failed' && j.status !== 'completed') ?? [];
+			activeJobs?.filter((job) => job.status !== 'failed' && job.status !== 'completed') ??
+			[];
 		const hasActiveJob = activeJobsList.length > 0;
 		const activeJob = hasActiveJob ? (activeJobsList[0] as any) : null;
-		const isGenerating = brief?.generation_status === 'processing' || hasActiveJob;
 
-		// Extract progress information from job metadata if available
+		let mappedBrief = briefRow ? mapOntologyDailyBriefRow(briefRow) : null;
+		if (mappedBrief && activeJob?.metadata?.generation_progress) {
+			mappedBrief = {
+				...mappedBrief,
+				generation_progress: activeJob.metadata.generation_progress
+			};
+		}
+
+		const isGenerating = mappedBrief?.generation_status === 'processing' || hasActiveJob;
+
 		let progress = null;
 		if (activeJob?.metadata?.progress) {
 			progress = {
@@ -59,9 +70,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		}
 
 		return ApiResponse.success({
-			brief: brief || null,
+			brief: mappedBrief,
 			generation_status:
-				brief?.generation_status || (hasActiveJob ? activeJob?.status : null),
+				mappedBrief?.generation_status || (hasActiveJob ? activeJob?.status : null),
 			isGenerating,
 			activeJob: activeJob
 				? {

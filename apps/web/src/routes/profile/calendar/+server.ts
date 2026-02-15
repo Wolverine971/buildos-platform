@@ -2,6 +2,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 // Removed - now using GoogleOAuthService.generateCalendarAuthUrl()
 
@@ -18,10 +19,11 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 		// Create OAuth service instance
 		const oAuthService = new GoogleOAuthService(supabase);
 
+		const calendarStatusPromise = oAuthService.safeGetCalendarStatus(user.id);
+
 		// Load calendar data in parallel
 		const [calendarStatus, calendarPreferences, scheduledTasks] = await Promise.all([
-			// Get calendar connection status
-			oAuthService.safeGetCalendarStatus(user.id),
+			calendarStatusPromise,
 
 			// Get calendar preferences
 			supabase
@@ -49,35 +51,100 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 					);
 				}),
 
-			// Get scheduled tasks only if calendar is connected
-			oAuthService.safeGetCalendarStatus(user.id).then(async (status) => {
+			// Get scheduled ontology tasks only if calendar is connected
+			calendarStatusPromise.then(async (status) => {
 				if (!status.isConnected) return [];
 
-				const { data, error } = await supabase
-					.from('tasks')
-					.select(
-						`
-						*,
-						project:projects(name, slug),
-						task_calendar_events!inner(
-							calendar_event_id,
-							event_link,
-							event_start,
-							event_end,
-							last_synced_at
-						)
-					`
-					)
-					.eq('user_id', user.id)
-					.not('task_calendar_events.calendar_event_id', 'is', null)
-					.order('start_date', { ascending: true })
-					.limit(10);
-
-				if (error) {
-					console.error('Error fetching scheduled tasks:', error);
+				let actorId: string;
+				try {
+					actorId = await ensureActorId(supabase, user.id);
+				} catch (error) {
+					console.error('Error resolving actor for scheduled tasks:', error);
 					return [];
 				}
-				return data || [];
+
+				const { data: events, error: eventsError } = await supabase
+					.from('onto_events')
+					.select(
+						'id, owner_entity_id, project_id, start_at, end_at, external_link, last_synced_at'
+					)
+					.eq('created_by', actorId)
+					.eq('owner_entity_type', 'task')
+					.is('deleted_at', null)
+					.gte('start_at', new Date().toISOString())
+					.order('start_at', { ascending: true })
+					.limit(10);
+
+				if (eventsError || !events?.length) {
+					if (eventsError) {
+						console.error('Error fetching scheduled ontology events:', eventsError);
+					}
+					return [];
+				}
+
+				const taskIds = Array.from(
+					new Set(events.map((event) => event.owner_entity_id).filter(Boolean))
+				) as string[];
+				const projectIds = Array.from(
+					new Set(events.map((event) => event.project_id).filter(Boolean))
+				) as string[];
+
+				const [
+					{ data: tasks, error: tasksError },
+					{ data: projects, error: projectsError }
+				] = await Promise.all([
+					taskIds.length > 0
+						? supabase
+								.from('onto_tasks')
+								.select('id, title, start_at, project_id')
+								.in('id', taskIds)
+								.is('deleted_at', null)
+						: Promise.resolve({ data: [], error: null }),
+					projectIds.length > 0
+						? supabase.from('onto_projects').select('id, name').in('id', projectIds)
+						: Promise.resolve({ data: [], error: null })
+				]);
+
+				if (tasksError) {
+					console.error('Error fetching scheduled ontology tasks:', tasksError);
+					return [];
+				}
+				if (projectsError) {
+					console.error('Error fetching scheduled ontology projects:', projectsError);
+				}
+
+				const taskMap = new Map((tasks ?? []).map((task) => [task.id, task]));
+				const projectMap = new Map(
+					(projects ?? []).map((project) => [project.id, project])
+				);
+
+				return events
+					.map((event) => {
+						if (!event.owner_entity_id) return null;
+						const task = taskMap.get(event.owner_entity_id);
+						if (!task) return null;
+						const project = task.project_id ? projectMap.get(task.project_id) : null;
+
+						return {
+							id: task.id,
+							title: task.title,
+							start_date: task.start_at,
+							project: {
+								name: project?.name ?? 'Untitled Project',
+								slug: null
+							},
+							task_calendar_events: [
+								{
+									calendar_event_id: event.id,
+									event_link: event.external_link,
+									event_start: event.start_at,
+									event_end: event.end_at,
+									last_synced_at: event.last_synced_at
+								}
+							]
+						};
+					})
+					.filter(Boolean);
 			})
 		]);
 

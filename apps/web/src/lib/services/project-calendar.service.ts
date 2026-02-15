@@ -407,11 +407,12 @@ export class ProjectCalendarService {
 
 			// Get all tasks for the project
 			const { data: tasks, error: tasksError } = await this.supabase
-				.from('tasks')
+				.from('onto_tasks')
 				.select('*')
 				.eq('project_id', projectId)
-				.not('start_date', 'is', null)
-				.order('start_date', { ascending: true });
+				.is('deleted_at', null)
+				.not('start_at', 'is', null)
+				.order('start_at', { ascending: true });
 
 			if (tasksError) {
 				return ApiResponse.error('Failed to fetch project tasks', 500);
@@ -443,12 +444,21 @@ export class ProjectCalendarService {
 			// Schedule each task to the project calendar
 			const results = [];
 			for (const task of tasks || []) {
+				const taskProps = (task.props as Record<string, unknown> | null) ?? {};
+				const durationMinutes =
+					typeof taskProps.duration_minutes === 'number'
+						? taskProps.duration_minutes
+						: 60;
+				const taskDescription =
+					task.description ||
+					(typeof taskProps.details === 'string' ? taskProps.details : undefined);
+
 				const result = await this.calendarService.scheduleTask(userId, {
 					task_id: task.id,
-					start_time: task.start_date!,
-					duration_minutes: task.duration_minutes || 60,
+					start_time: task.start_at!,
+					duration_minutes: durationMinutes,
 					calendar_id: calendarId,
-					description: task.description || undefined
+					description: taskDescription
 					// Don't set color_id - let events inherit the calendar's default color
 				});
 				results.push(result);

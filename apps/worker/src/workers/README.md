@@ -12,9 +12,7 @@ workers/
 │   └── queue.ts     # Queue definitions and shared functions
 ├── brief/           # Brief generation worker
 │   ├── briefWorker.ts    # Worker job processor
-│   └── briefGenerator.ts # Brief generation logic
-└── phases/          # Project phases generation worker
-    └── phasesWorker.ts   # Worker job processor (generation logic TBD)
+│   └── ontologyBriefGenerator.ts # Ontology daily brief generation logic
 ```
 
 ## Adding a New Worker
@@ -37,17 +35,11 @@ To add a new worker type:
 - Scheduled automatically via cron
 - Can be triggered manually via API
 
-### Project Phases Generation (`project_phases`)
-
-- Generates project phases (implementation pending)
-- Triggered manually via API
-- No automatic scheduling
-
 ## Database Schema
 
 Jobs are tracked in the `brief_generation_jobs` table with the following key fields:
 
-- `job_type`: Identifies the type of job ('generate_daily_brief', 'generate_phases', etc.)
+- `job_type`: Identifies the type of job ('generate_daily_brief', 'generate_brief_email', etc.)
 - `queue_job_id`: References the BullMQ job ID
 - `status`: Current job status ('pending', 'processing', 'completed', 'failed')
 - `metadata`: JSON field for job-specific data

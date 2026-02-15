@@ -5,7 +5,8 @@ import type { Database } from '@buildos/shared-types';
 import type { Project, ProjectWithRelations, Task } from '$lib/types/project';
 import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PhaseGenerationConfig } from '$lib/services/phase-generation/types';
+
+type PhaseGenerationConfig = Record<string, any>;
 
 // Import refactored services
 import { ProjectDataFetcher } from './prompts/core/project-data-fetcher';

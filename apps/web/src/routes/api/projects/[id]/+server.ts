@@ -1,8 +1,79 @@
 // apps/web/src/routes/api/projects/[id]/+server.ts
 import type { RequestHandler } from './$types';
-import { cleanDataForTable, validateRequiredFields } from '$lib/utils/data-cleaner';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
-import { CalendarService } from '$lib/services/calendar-service';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+
+function toLegacyStatus(stateKey: string): 'active' | 'paused' | 'completed' | 'archived' {
+	switch (stateKey) {
+		case 'planning':
+			return 'paused';
+		case 'completed':
+			return 'completed';
+		case 'cancelled':
+			return 'archived';
+		case 'active':
+		default:
+			return 'active';
+	}
+}
+
+function toProjectState(
+	status: string | null | undefined
+): 'planning' | 'active' | 'completed' | 'cancelled' {
+	switch ((status || '').toLowerCase()) {
+		case 'paused':
+			return 'planning';
+		case 'completed':
+			return 'completed';
+		case 'archived':
+			return 'cancelled';
+		case 'planning':
+			return 'planning';
+		case 'cancelled':
+			return 'cancelled';
+		case 'active':
+		default:
+			return 'active';
+	}
+}
+
+function toLegacyTaskStatus(stateKey: string): 'backlog' | 'in_progress' | 'done' | 'blocked' {
+	switch (stateKey) {
+		case 'in_progress':
+			return 'in_progress';
+		case 'done':
+			return 'done';
+		case 'blocked':
+			return 'blocked';
+		case 'todo':
+		default:
+			return 'backlog';
+	}
+}
+
+function toTaskState(
+	status: string | null | undefined
+): 'todo' | 'in_progress' | 'done' | 'blocked' {
+	switch ((status || '').toLowerCase()) {
+		case 'in_progress':
+			return 'in_progress';
+		case 'done':
+			return 'done';
+		case 'blocked':
+			return 'blocked';
+		case 'backlog':
+		case 'todo':
+		default:
+			return 'todo';
+	}
+}
+
+function hasProjectWriteAccess(supabase: App.Locals['supabase'], projectId: string) {
+	return supabase.rpc('current_actor_has_project_access', {
+		p_project_id: projectId,
+		p_required_access: 'write'
+	});
+}
 
 export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -10,25 +81,91 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		return ApiResponse.unauthorized();
 	}
 
-	const userId = user.id;
-
 	try {
-		const { data, error } = await supabase
-			.from('projects')
-			.select(
-				`*,
-                tasks (*)
-            `
-			)
-			.eq('id', params.id)
-			.eq('user_id', userId)
-			.single();
+		await ensureActorId(supabase, user.id);
 
-		if (error) {
-			return ApiResponse.databaseError(error);
+		const { data: canRead, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_access',
+			{
+				p_project_id: params.id,
+				p_required_access: 'read'
+			}
+		);
+
+		if (accessError) {
+			return ApiResponse.databaseError(accessError);
 		}
 
-		return ApiResponse.success({ project: data });
+		if (!canRead) {
+			return ApiResponse.notFound('Project');
+		}
+
+		const [{ data: project, error: projectError }, { data: tasks, error: tasksError }] =
+			await Promise.all([
+				supabase
+					.from('onto_projects')
+					.select('*')
+					.eq('id', params.id)
+					.is('deleted_at', null)
+					.single(),
+				supabase
+					.from('onto_tasks')
+					.select('*')
+					.eq('project_id', params.id)
+					.is('deleted_at', null)
+					.order('updated_at', { ascending: false })
+			]);
+
+		if (projectError || !project) {
+			return ApiResponse.notFound('Project');
+		}
+
+		if (tasksError) {
+			return ApiResponse.databaseError(tasksError);
+		}
+
+		const mappedTasks = (tasks || []).map((task) => ({
+			id: task.id,
+			project_id: task.project_id,
+			user_id: user.id,
+			title: task.title,
+			description: task.description ?? null,
+			details:
+				task.props && typeof task.props === 'object' && !Array.isArray(task.props)
+					? (((task.props as Record<string, unknown>).details as string | null) ?? null)
+					: null,
+			status: toLegacyTaskStatus(task.state_key),
+			priority:
+				task.priority == null
+					? 'medium'
+					: task.priority >= 4
+						? 'high'
+						: task.priority <= 2
+							? 'low'
+							: 'medium',
+			start_date: task.start_at,
+			due_date: task.due_at,
+			completed_at: task.completed_at,
+			created_at: task.created_at,
+			updated_at: task.updated_at
+		}));
+
+		return ApiResponse.success({
+			project: {
+				id: project.id,
+				user_id: user.id,
+				name: project.name,
+				description: project.description,
+				status: toLegacyStatus(project.state_key),
+				state_key: project.state_key,
+				start_date: project.start_at,
+				end_date: project.end_at,
+				slug: null,
+				created_at: project.created_at,
+				updated_at: project.updated_at,
+				tasks: mappedTasks
+			}
+		});
 	} catch (err) {
 		return ApiResponse.internalError(err);
 	}
@@ -45,83 +182,86 @@ export const PUT: RequestHandler = async ({
 	}
 
 	try {
+		await ensureActorId(supabase, user.id);
+		const { data: canWrite, error: accessError } = await hasProjectWriteAccess(
+			supabase,
+			params.id
+		);
+
+		if (accessError) {
+			return ApiResponse.databaseError(accessError);
+		}
+
+		if (!canWrite) {
+			return ApiResponse.forbidden();
+		}
+
 		const data = await parseRequestBody(request);
 		if (!data) {
 			return ApiResponse.badRequest('Invalid request body');
 		}
 
-		// Verify project ownership first
-		const { data: project, error: projectError } = await supabase
-			.from('projects')
-			.select('user_id')
-			.eq('id', params.id)
-			.single();
+		const projectUpdate: Record<string, unknown> = {
+			updated_at: new Date().toISOString()
+		};
 
-		if (projectError) {
-			return ApiResponse.notFound('Project');
+		if (typeof data.name === 'string') projectUpdate.name = data.name.trim();
+		if (typeof data.description === 'string' || data.description === null) {
+			projectUpdate.description = data.description;
+		}
+		if (typeof data.status === 'string') {
+			projectUpdate.state_key = toProjectState(data.status);
+		}
+		if (typeof data.start_date === 'string' || data.start_date === null) {
+			projectUpdate.start_at = data.start_date;
+		}
+		if (typeof data.end_date === 'string' || data.end_date === null) {
+			projectUpdate.end_at = data.end_date;
+		}
+		if (typeof data.next_step_short === 'string' || data.next_step_short === null) {
+			projectUpdate.next_step_short = data.next_step_short;
+		}
+		if (typeof data.next_step_long === 'string' || data.next_step_long === null) {
+			projectUpdate.next_step_long = data.next_step_long;
+		}
+		if (typeof data.next_step_source === 'string' || data.next_step_source === null) {
+			projectUpdate.next_step_source = data.next_step_source;
+		}
+		if (typeof data.next_step_updated_at === 'string' || data.next_step_updated_at === null) {
+			projectUpdate.next_step_updated_at = data.next_step_updated_at;
 		}
 
-		if (project.user_id !== user.id) {
-			return ApiResponse.forbidden();
+		if (typeof data.status === 'string' && typeof data.next_step_source === 'undefined') {
+			projectUpdate.next_step_source = 'user';
+			projectUpdate.next_step_updated_at = new Date().toISOString();
 		}
 
-		// Clean the project data - now includes context and executive_summary
-		const cleanedData = cleanDataForTable('projects', data);
-
-		// Validate required fields
-		const validation = validateRequiredFields('projects', cleanedData, 'update');
-		if (!validation.isValid && validation.missingFields[0] === 'id' && !params.id) {
-			return ApiResponse.badRequest('Validation failed', {
-				missingFields: validation.missingFields
-			});
+		if (typeof data.props === 'object' && data.props && !Array.isArray(data.props)) {
+			projectUpdate.props = data.props;
 		}
-
-		// Add updated timestamp
-		cleanedData.updated_at = new Date().toISOString();
 
 		const { data: updatedProject, error } = await supabase
-			.from('projects')
-			.update(cleanedData)
+			.from('onto_projects')
+			.update(projectUpdate)
 			.eq('id', params.id)
-			.select()
+			.is('deleted_at', null)
+			.select('*')
 			.single();
 
 		if (error) {
 			return ApiResponse.databaseError(error);
 		}
 
-		if (cleanedData.status === 'archived' || cleanedData.status === 'paused') {
-			// remove all scheduled tasks when archiving or pausing
-
-			const { data: tasks, error: tasksError } = await supabase
-				.from('tasks')
-				.select('*, task_calendar_events(*)')
-				.eq('project_id', params.id)
-				.eq('user_id', user.id);
-
-			if (tasksError) {
-				console.error('Error fetching tasks:', tasksError);
+		return ApiResponse.success({
+			project: {
+				...updatedProject,
+				status: toLegacyStatus(updatedProject.state_key),
+				slug: null,
+				start_date: updatedProject.start_at,
+				end_date: updatedProject.end_at,
+				user_id: user.id
 			}
-
-			const taskCalendarEvents = (tasks ?? [])
-				.filter((t) => t.task_calendar_events.length)
-				.flatMap((task) => task.task_calendar_events);
-
-			if (taskCalendarEvents && taskCalendarEvents.length > 0) {
-				const calendarService = new CalendarService(supabase);
-				const deletionResult = await calendarService.bulkDeleteCalendarEvents(
-					user.id,
-					taskCalendarEvents as any
-				);
-
-				// Log warnings if any
-				if (deletionResult.warnings.length > 0) {
-					console.warn('Calendar deletion warnings:', deletionResult.warnings);
-				}
-			}
-		}
-
-		return ApiResponse.success({ project: updatedProject });
+		});
 	} catch (err) {
 		return ApiResponse.internalError(err);
 	}
@@ -134,37 +274,26 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 	}
 
 	try {
-		// Verify project ownership
+		const actorId = await ensureActorId(supabase, user.id);
+
 		const { data: project, error: projectError } = await supabase
-			.from('projects')
-			.select('user_id')
+			.from('onto_projects')
+			.select('id, created_by')
 			.eq('id', params.id)
+			.is('deleted_at', null)
 			.single();
 
-		if (projectError) {
+		if (projectError || !project) {
 			return ApiResponse.notFound('Project');
 		}
 
-		if (project.user_id !== user.id) {
-			return ApiResponse.forbidden();
+		if (project.created_by !== actorId) {
+			return ApiResponse.forbidden('Only the project owner can delete this project');
 		}
 
-		// Delete all tasks associated with the project first (cascade delete)
-		const { error: tasksError } = await supabase
-			.from('tasks')
-			.delete()
-			.eq('project_id', params.id);
-
-		if (tasksError) {
-			console.error('Error deleting tasks:', tasksError);
-		}
-
-		// Delete the project
-		const { error: deleteError } = await supabase
-			.from('projects')
-			.delete()
-			.eq('id', params.id)
-			.eq('user_id', user.id);
+		const { error: deleteError } = await supabase.rpc('delete_onto_project', {
+			p_project_id: params.id
+		});
 
 		if (deleteError) {
 			return ApiResponse.databaseError(deleteError);

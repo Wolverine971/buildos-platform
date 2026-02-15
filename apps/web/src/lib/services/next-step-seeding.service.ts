@@ -67,7 +67,6 @@ interface SeedNextStepParams {
 	projectData?: Partial<ProjectContext>;
 	tasks?: TaskContext[];
 	brainDumpContent?: string;
-	isOntoProject?: boolean; // Whether this is an onto_projects or legacy projects
 }
 
 interface GeneratedNextStep {
@@ -93,14 +92,7 @@ export class NextStepSeedingService {
 	 * @param params - Seeding parameters
 	 */
 	async seedNextSteps(params: SeedNextStepParams): Promise<void> {
-		const {
-			projectId,
-			userId,
-			projectData,
-			tasks,
-			brainDumpContent,
-			isOntoProject = true
-		} = params;
+		const { projectId, projectData, tasks, brainDumpContent } = params;
 
 		console.log(`🌱 Seeding next steps for project ${projectId}`);
 
@@ -117,7 +109,7 @@ export class NextStepSeedingService {
 				};
 			} else {
 				// Fetch project from database
-				const fetchedProject = await this.fetchProjectContext(projectId, isOntoProject);
+				const fetchedProject = await this.fetchProjectContext(projectId);
 				if (!fetchedProject) {
 					console.warn(`⚠️ Project ${projectId} not found, skipping next step seeding`);
 					return;
@@ -128,16 +120,12 @@ export class NextStepSeedingService {
 			// 2. Get tasks if not provided
 			let projectTasks = tasks ?? [];
 			if (!projectTasks || projectTasks.length === 0) {
-				projectTasks = await this.fetchProjectTasks(projectId, userId, isOntoProject);
+				projectTasks = await this.fetchProjectTasks(projectId);
 			}
 
-			// 3. Get goals and task-goal links (onto projects only)
-			const projectGoals = await this.fetchProjectGoals(projectId, isOntoProject);
-			const taskGoalLinks = await this.fetchTaskGoalLinks(
-				projectId,
-				projectTasks,
-				isOntoProject
-			);
+			// 3. Get goals and task-goal links
+			const projectGoals = await this.fetchProjectGoals(projectId);
+			const taskGoalLinks = await this.fetchTaskGoalLinks(projectId, projectTasks);
 
 			// 4. Generate next steps
 			const nextStep = await this.generateInitialNextStep(
@@ -149,7 +137,7 @@ export class NextStepSeedingService {
 			);
 
 			// 5. Update project with next steps
-			await this.updateProjectNextStep(projectId, nextStep, isOntoProject);
+			await this.updateProjectNextStep(projectId, nextStep);
 
 			console.log(`✅ Seeded next steps for project ${projectId}`);
 		} catch (error) {
@@ -161,100 +149,50 @@ export class NextStepSeedingService {
 	/**
 	 * Fetch project context from database
 	 */
-	private async fetchProjectContext(
-		projectId: string,
-		isOntoProject: boolean
-	): Promise<ProjectContext | null> {
-		if (isOntoProject) {
-			const { data, error } = await this.supabase
-				.from('onto_projects')
-				.select('id, name, description, type_key')
-				.eq('id', projectId)
-				.single();
+	private async fetchProjectContext(projectId: string): Promise<ProjectContext | null> {
+		const { data, error } = await this.supabase
+			.from('onto_projects')
+			.select('id, name, description, type_key')
+			.eq('id', projectId)
+			.single();
 
-			if (error || !data) return null;
+		if (error || !data) return null;
 
-			return {
-				id: data.id,
-				name: data.name,
-				description: data.description,
-				templateType: data.type_key
-			};
-		} else {
-			// Legacy projects table
-			const { data, error } = await this.supabase
-				.from('projects')
-				.select('id, name, description, context')
-				.eq('id', projectId)
-				.single();
-
-			if (error || !data) return null;
-
-			return {
-				id: data.id,
-				name: data.name,
-				description: data.description,
-				context: data.context
-			};
-		}
+		return {
+			id: data.id,
+			name: data.name,
+			description: data.description,
+			templateType: data.type_key
+		};
 	}
 
 	/**
 	 * Fetch tasks associated with the project
 	 */
-	private async fetchProjectTasks(
-		projectId: string,
-		userId: string,
-		isOntoProject: boolean
-	): Promise<TaskContext[]> {
-		if (isOntoProject) {
-			const { data } = await this.supabase
-				.from('onto_tasks')
-				.select('id, title, priority, state_key, completed_at, updated_at')
-				.eq('project_id', projectId)
-				.order('priority', { ascending: false, nullsFirst: false })
-				.order('updated_at', { ascending: false })
-				.limit(10);
+	private async fetchProjectTasks(projectId: string): Promise<TaskContext[]> {
+		const { data } = await this.supabase
+			.from('onto_tasks')
+			.select('id, title, priority, state_key, completed_at, updated_at')
+			.eq('project_id', projectId)
+			.is('deleted_at', null)
+			.order('priority', { ascending: false, nullsFirst: false })
+			.order('updated_at', { ascending: false })
+			.limit(10);
 
-			return (data ?? []).map((t) => ({
-				id: t.id,
-				title: t.title,
-				priority: t.priority,
-				status: t.state_key,
-				completedAt: t.completed_at,
-				updatedAt: t.updated_at
-			}));
-		} else {
-			// Legacy tasks table
-			const { data } = await this.supabase
-				.from('tasks')
-				.select('id, title, priority, status, completed_at, updated_at')
-				.eq('project_id', projectId)
-				.eq('user_id', userId)
-				.order('priority', { ascending: false, nullsFirst: false })
-				.order('updated_at', { ascending: false })
-				.limit(10);
-
-			return (data ?? []).map((t) => ({
-				id: t.id,
-				title: t.title,
-				priority: t.priority,
-				status: t.status,
-				completedAt: t.completed_at,
-				updatedAt: t.updated_at
-			}));
-		}
+		return (data ?? []).map((t) => ({
+			id: t.id,
+			title: t.title,
+			priority: t.priority,
+			status: t.state_key,
+			completedAt: t.completed_at,
+			updatedAt: t.updated_at
+		}));
 	}
 
 	/**
 	 * Fetch goals associated with the project (onto projects only)
 	 */
-	private async fetchProjectGoals(
-		projectId: string,
-		isOntoProject: boolean
-	): Promise<GoalContext[]> {
-		if (!isOntoProject) return [];
-
+	private async fetchProjectGoals(projectId: string): Promise<GoalContext[]> {
 		const { data } = await this.supabase
 			.from('onto_goals')
 			.select('id, name, type_key, props')
@@ -274,10 +212,9 @@ export class NextStepSeedingService {
 	 */
 	private async fetchTaskGoalLinks(
 		projectId: string,
-		tasks: TaskContext[],
-		isOntoProject: boolean
+		tasks: TaskContext[]
 	): Promise<TaskGoalLink[]> {
-		if (!isOntoProject || tasks.length === 0) return [];
+		if (tasks.length === 0) return [];
 
 		const taskIds = tasks.map((task) => task.id);
 		const rels = ['supports_goal', 'has_task', 'achieved_by'];
@@ -672,41 +609,21 @@ export class NextStepSeedingService {
 	 */
 	private async updateProjectNextStep(
 		projectId: string,
-		nextStep: GeneratedNextStep,
-		isOntoProject: boolean
+		nextStep: GeneratedNextStep
 	): Promise<void> {
-		if (isOntoProject) {
-			const { error } = await this.supabase
-				.from('onto_projects')
-				.update({
-					next_step_short: nextStep.short,
-					next_step_long: nextStep.long,
-					next_step_updated_at: new Date().toISOString(),
-					next_step_source: 'ai',
-					updated_at: new Date().toISOString()
-				})
-				.eq('id', projectId);
+		const { error } = await this.supabase
+			.from('onto_projects')
+			.update({
+				next_step_short: nextStep.short,
+				next_step_long: nextStep.long,
+				next_step_updated_at: new Date().toISOString(),
+				next_step_source: 'ai',
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', projectId);
 
-			if (error) {
-				throw new Error(`Failed to update onto_projects: ${error.message}`);
-			}
-		} else {
-			// For legacy projects, we can't update since the columns don't exist
-			// Instead, we could create an onto_project record or log this
-			console.log(
-				`⚠️ Legacy project ${projectId} - next steps not persisted (columns not available)`
-			);
-
-			// Optionally: Check if there's a corresponding onto_project and update that
-			const { data: ontoProject } = await this.supabase
-				.from('onto_projects')
-				.select('id')
-				.eq('id', projectId)
-				.single();
-
-			if (ontoProject) {
-				await this.updateProjectNextStep(projectId, nextStep, true);
-			}
+		if (error) {
+			throw new Error(`Failed to update onto_projects: ${error.message}`);
 		}
 	}
 
@@ -745,8 +662,7 @@ export function createNextStepSeedingService(
  * await seedProjectNextSteps(supabase, {
  *   projectId: result.id,
  *   userId,
- *   projectData: { name: data.name, description: data.description },
- *   isOntoProject: false
+ *   projectData: { name: data.name, description: data.description }
  * });
  */
 export async function seedProjectNextSteps(
