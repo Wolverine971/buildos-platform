@@ -114,54 +114,46 @@
 				</div>
 			{:else if message.type === 'assistant'}
 				<!-- INKPRINT assistant message with Frame texture -->
-				<div class="flex sm:gap-3">
-					<!-- INKPRINT avatar badge - DESKTOP ONLY -->
-					<div
-						class="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink"
-					>
-						OS
-					</div>
-					<div
-						class="agent-resp-div clarity-zone min-w-0 flex-1 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:p-4"
-					>
-						{#if shouldRenderAsMarkdown(message.content)}
-							<div
-								class="{proseClasses} overflow-x-auto break-words [&>*:nth-child(2)]:mt-0"
-							>
-								<!-- INKPRINT avatar badge - MOBILE ONLY (floated inside BFC for text wrap) -->
-								<div
-									class="sm:hidden float-left mr-2 mb-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink"
-								>
-									OS
-								</div>
-								{@html renderMarkdown(message.content)}
-							</div>
-						{:else}
-							<div class="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-								<!-- INKPRINT avatar badge - MOBILE ONLY (floated for text wrap) -->
-								<div
-									class="sm:hidden float-left mr-2 mb-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink"
-								>
-									OS
-								</div>
-								{message.content}
-							</div>
-						{/if}
-						{#if message.metadata?.interrupted}
-							<div
-								class="mt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
-								role="status"
-								aria-live="polite"
-							>
-								Response interrupted
-							</div>
-						{/if}
-						<!-- INKPRINT micro-label timestamp -->
+				<div
+					class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:p-4"
+				>
+					{#if shouldRenderAsMarkdown(message.content)}
 						<div
-							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+							class="{proseClasses} overflow-x-auto break-words [&>*:nth-child(2)]:mt-0"
 						>
-							{formatTime(message.timestamp)}
+							<!-- INKPRINT avatar badge (floated inside bubble for text wrap) -->
+							<div
+								class="float-left mr-2 mb-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink sm:h-9 sm:w-9"
+							>
+								OS
+							</div>
+							{@html renderMarkdown(message.content)}
 						</div>
+					{:else}
+						<div class="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+							<!-- INKPRINT avatar badge (floated inside bubble for text wrap) -->
+							<div
+								class="float-left mr-2 mb-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink sm:h-9 sm:w-9"
+							>
+								OS
+							</div>
+							{message.content}
+						</div>
+					{/if}
+					{#if message.metadata?.interrupted}
+						<div
+							class="mt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
+							role="status"
+							aria-live="polite"
+						>
+							Response interrupted
+						</div>
+					{/if}
+					<!-- INKPRINT micro-label timestamp -->
+					<div
+						class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+					>
+						{formatTime(message.timestamp)}
 					</div>
 				</div>
 			{:else if message.type === 'agent_peer'}

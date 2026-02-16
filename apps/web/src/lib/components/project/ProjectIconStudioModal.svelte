@@ -83,9 +83,7 @@
 	const STALL_WARNING_MS = 45000;
 
 	const isGenerating = $derived(
-		isCreatingGeneration ||
-			((generationStatus === 'queued' || generationStatus === 'processing') &&
-				!stalledMessage)
+		isCreatingGeneration || generationStatus === 'queued' || generationStatus === 'processing'
 	);
 
 	const modalTitle = $derived(existingIconSvg ? 'Edit Project Image' : 'Generate Project Image');
@@ -155,9 +153,10 @@
 		isFetchingGeneration = true;
 		try {
 			const response = await fetch(
-				`/api/onto/projects/${projectId}/icon/generations/${targetGenerationId}`,
+				`/api/onto/projects/${projectId}/icon/generations/${targetGenerationId}?t=${Date.now()}`,
 				{
 					method: 'GET',
+					cache: 'no-store',
 					credentials: 'same-origin',
 					headers: { Accept: 'application/json' }
 				}
@@ -204,9 +203,7 @@
 				const startedAt = Date.parse(generation.created_at);
 				if (Number.isFinite(startedAt) && Date.now() - startedAt >= STALL_WARNING_MS) {
 					stalledMessage =
-						'Generation is taking longer than expected. The worker may be offline. You can refresh status after starting the worker.';
-					stopPolling();
-					return;
+						'Generation is taking longer than expected. Still waiting for worker completion...';
 				}
 			} else {
 				stalledMessage = null;
@@ -218,11 +215,10 @@
 		} catch (error) {
 			generationError =
 				error instanceof Error ? error.message : 'Failed to load generation status';
-			if (generationStatus === 'queued' || generationStatus === 'processing') {
-				generationStatus = 'failed';
-			}
 			stalledMessage = null;
-			stopPolling();
+			if (generationStatus !== 'queued' && generationStatus !== 'processing') {
+				stopPolling();
+			}
 		} finally {
 			isFetchingGeneration = false;
 		}
