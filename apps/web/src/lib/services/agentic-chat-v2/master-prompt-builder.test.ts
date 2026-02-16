@@ -44,6 +44,12 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'To inspect events outside that context window, call cal.event.list with args.timeMin and args.timeMax.'
 		);
 		expect(prompt).toContain(
+			'Project context data may include context_meta.entity_scopes with returned/total_matching/limit/is_complete values per entity.'
+		);
+		expect(prompt).toContain(
+			'context_meta may include generated_at/source/cache_age_seconds to describe snapshot freshness.'
+		);
+		expect(prompt).toContain(
 			'Use new_parent_id only when nesting under a parent (omit it for root moves).'
 		);
 		expect(prompt).toContain(

@@ -2,7 +2,7 @@
 
 # Brief Chat Execution Plan
 
-**Status:** In Progress  
+**Status:** Core Backend + Split-Pane UI Complete, Runtime Constraint Fix Added  
 **Owner:** Codex + DJ  
 **Created:** 2026-02-14  
 **Primary Spec:** `docs/specs/BRIEF_CHAT_SPEC.md`
@@ -38,7 +38,7 @@
 
 - [x] Update ontology brief generation to immutable snapshots on regenerate.
 - [x] Ensure lookup-by-date uses latest snapshot semantics where required.
-- [ ] Keep previous snapshots available in history views.
+- [x] Keep previous snapshots available in history views.
 
 ## Phase C: DB Guarantees
 
@@ -109,6 +109,36 @@
     - `apps/web/src/lib/services/dailyBrief/ontologyBriefRepository.test.ts`
     - `apps/web/src/lib/services/agentic-chat-v2/context-loader.test.ts`
 
+### 2026-02-15
+
+- Verified split-pane Brief Chat integration on `/briefs`:
+    - `apps/web/src/routes/briefs/+page.svelte`
+    - `apps/web/src/lib/components/briefs/BriefChatModal.svelte`
+    - Chat opens with `context_type='daily_brief'` and `entity_id=brief_id` through V2 stream.
+- Fixed Brief Chat session keying in UI to prioritize ontology snapshot id:
+    - `apps/web/src/lib/types/daily-brief.ts`
+    - `apps/web/src/routes/briefs/+page.svelte`
+    - `apps/web/src/lib/components/briefs/BriefChatModal.svelte`
+- Updated `/briefs` data loader to prefer ontology snapshots for current brief and project briefs:
+    - `apps/web/src/routes/briefs/+server.ts`
+- Fixed database constraint mismatch causing runtime error
+  (`chat_sessions_context_type_check` rejecting `daily_brief`):
+    - `supabase/migrations/20260424000006_add_daily_brief_context_type_to_chat_sessions.sql`
+- Implemented `/briefs` snapshot-specific selection + deep linking:
+    - `apps/web/src/routes/briefs/+server.ts`
+    - `apps/web/src/routes/briefs/+page.svelte`
+    - Added `brief_id` query support and made history selection open exact snapshot instead of date-only latest.
+- Patched snapshot-safe project brief API reads to avoid same-date multi-snapshot mixing:
+    - `apps/web/src/routes/api/project-briefs/+server.ts`
+    - Added explicit `brief_id` support and latest-snapshot-by-date resolution when `brief_id` is absent.
+- Added canonical prewarm session reuse for Brief Chat:
+    - `apps/web/src/routes/api/agent/prewarm/+server.ts`
+    - Prewarm now reuses active `(user_id, context_type='daily_brief', entity_id=brief_id)` sessions and enforces brief ownership access checks.
+- Validation:
+    - `vitest` targeted suite passed for ontology brief snapshot + daily brief context loader.
+    - `tsc --noEmit` still reports unrelated pre-existing errors across other modules
+      (for example: calendar services, analytics briefs typing, markdown normalization).
+
 ---
 
 ## 5) Open Decisions
@@ -120,6 +150,76 @@
 
 ## 6) Next Up (Execution Order)
 
-1. Build Brief Chat UI history/latest selection behavior using snapshot semantics (`brief_id` picker + date grouping).
-2. Audit remaining ontology brief consumers for any date-scoped `.single()`/`.maybeSingle()` patterns and convert to latest-snapshot ordering.
-3. Add a dedicated user-facing ontology brief history endpoint if existing pages cannot consume snapshot history cleanly.
+1. Add a dedicated user-facing ontology brief history endpoint only if existing `/briefs` list UX needs server-side pagination/grouping beyond current behavior.
+
+---
+
+## 7) UI Handoff Guide (For Implementation Agent)
+
+### Required Contracts (Do Not Change)
+
+- Brief chat must use `POST /api/agent/v2/stream` (no legacy `/api/agent/stream` path).
+- Use `context_type: 'daily_brief'` for interactive brief chat.
+- Use canonical session key `entity_id = brief_id` (ontology daily brief snapshot ID).
+- Regenerate creates a new `brief_id` and therefore a fresh chat session; old sessions remain in background/history.
+- Keep `daily_brief_update` reserved for preferences/settings only.
+
+### Backend Behavior Already Implemented
+
+- V2 stream validates brief chat requests and requires `entity_id` for `daily_brief`.
+- V2 stream verifies brief ownership (`ontology_daily_briefs.user_id = auth user`) before streaming.
+- V2 session service reuses active session for the same `(user_id, context_type='daily_brief', entity_id=brief_id)`.
+- V2 context loader provides daily brief context with:
+    - `brief_id`, `brief_date`, `executive_summary`, `priority_actions`, `generation_status`, `llm_analysis`, `metadata`
+    - `project_briefs[]`
+    - `mentioned_entities[]` (source: `ontology_brief_entities` first, markdown-link fallback second)
+    - `mentioned_entity_counts`
+- Prompt guardrails for ambiguity/out-of-brief caution are active in V2.
+
+### UI Implementation Guidance
+
+1. Routing and state
+
+- Build/use a Brief Chat surface (modal/page) that always tracks active `brief_id`.
+- Support deep links with `brief_id` directly; if only `date` is present, resolve to latest snapshot for that date (`created_at DESC`).
+- Preserve previously viewed `brief_id` sessions in history; do not auto-archive old snapshots.
+
+2. Chat pane wiring
+
+- Reuse `AgentChatModal` internals but send:
+    - `context_type: 'daily_brief'`
+    - `entity_id: <active brief_id>`
+- Keep `session_id` if already known; backend will canonicalize by `brief_id` anyway.
+
+3. Brief pane data + mapping
+
+- Load/render brief content from ontology snapshot (`ontology_daily_briefs`) plus `ontology_project_briefs`.
+- Build actionable entity mapping from `ontology_brief_entities` first.
+- Only parse markdown links for entity mapping when brief entities are missing.
+
+4. Live reconciliation
+
+- Prefer SSE `operation` events (with `entity_id`) to update/highlight brief items.
+- Parse `tool_result` payloads only when explicit `operation` contract is missing.
+- Update UI badges/strikethrough/date/assignee states when affected entity IDs are in brief mappings.
+
+5. Regenerate flow
+
+- “Generate New Brief” should switch active context to new snapshot (`new brief_id`) and start a fresh chat.
+- Keep prior brief snapshots visible in history/background selector.
+
+### Recommended UI Starting Points
+
+- Chat shell/components: `apps/web/src/lib/components/agent/AgentChatModal.svelte`
+- Existing brief display patterns: `apps/web/src/lib/components/briefs/DailyBriefModal.svelte`
+- Dashboard brief loading behavior: `apps/web/src/lib/components/dashboard/DashboardBriefWidget.svelte`
+- Project brief list endpoint (already user-scoped): `apps/web/src/routes/api/onto/projects/[id]/briefs/+server.ts`
+- V2 stream endpoint contract: `apps/web/src/routes/api/agent/v2/stream/+server.ts`
+
+### Suggested UI Acceptance Checklist
+
+- Opening Brief Chat for same `brief_id` resumes same thread.
+- Regenerating brief creates a new thread tied to new `brief_id`.
+- Chat requests for brief context always hit `/api/agent/v2/stream`.
+- Ambiguous out-of-brief edits trigger agent clarification behavior (not silent broad edits).
+- Live updates reconcile primarily from `operation` events and correctly patch brief UI.

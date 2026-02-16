@@ -11,6 +11,7 @@ import type {
 	EntityContextData,
 	FastChatEventWindow,
 	GlobalContextData,
+	LightDocument,
 	LightEvent,
 	LightGoal,
 	LightMilestone,
@@ -22,7 +23,7 @@ import type {
 	ProjectContextData,
 	LinkedEdge
 } from './context-models';
-import { buildDocStructureSummary } from './context-models';
+import { buildDocStructureSummary, collectDocStructureIds } from './context-models';
 import type { MasterPromptContext } from './master-prompt-builder';
 
 const logger = createLogger('FastChatContext');
@@ -35,10 +36,12 @@ const FASTCHAT_CONTEXT_RPC = 'load_fastchat_context';
 const FASTCHAT_EVENT_WINDOW_PAST_DAYS = 7;
 const FASTCHAT_EVENT_WINDOW_FUTURE_DAYS = 14;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const CONTEXT_RELEVANCE_DUE_SOON_DAYS = 7;
 const PROJECT_CONTEXT_GOAL_LIMIT = 12;
 const PROJECT_CONTEXT_MILESTONE_LIMIT = 12;
 const PROJECT_CONTEXT_PLAN_LIMIT = 12;
 const PROJECT_CONTEXT_TASK_LIMIT = 18;
+const PROJECT_CONTEXT_DOCUMENT_LIMIT = 20;
 const PROJECT_CONTEXT_EVENT_LIMIT = 16;
 const PROJECT_DESCRIPTION_MAX_CHARS = 320;
 const ENTITY_DESCRIPTION_MAX_CHARS = 220;
@@ -63,6 +66,10 @@ type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 type PlanRow = Database['public']['Tables']['onto_plans']['Row'];
 type TaskRow = Database['public']['Tables']['onto_tasks']['Row'];
 type DocumentRow = Database['public']['Tables']['onto_documents']['Row'];
+type ContextDocumentRow = Pick<
+	DocumentRow,
+	'id' | 'title' | 'state_key' | 'created_at' | 'updated_at'
+>;
 type EventRow = Database['public']['Tables']['onto_events']['Row'];
 type ActorRow = Database['public']['Tables']['onto_actors']['Row'];
 type ProjectLogRow = Database['public']['Tables']['onto_project_logs']['Row'];
@@ -107,6 +114,7 @@ type FastChatContextRpcResponse = {
 	milestones?: Array<MilestoneRow & { project_id?: string }>;
 	plans?: Array<PlanRow & { project_id?: string }>;
 	tasks?: Array<TaskRow & { project_id?: string }>;
+	documents?: Array<ContextDocumentRow & { project_id?: string }>;
 	events?: Array<EventRow & { project_id?: string }>;
 	members?: ProjectMemberRow[];
 	project_logs?: ProjectLogRow[];
@@ -571,6 +579,19 @@ function mapEvent(row: EventRow): LightEvent {
 	};
 }
 
+function mapDocument(row: ContextDocumentRow, linkedDocIds: Set<string>): LightDocument {
+	const inDocStructure = linkedDocIds.has(row.id);
+	return {
+		id: row.id,
+		title: row.title ?? 'Untitled document',
+		state_key: row.state_key,
+		created_at: row.created_at,
+		updated_at: row.updated_at,
+		in_doc_structure: inDocStructure,
+		is_unlinked: !inDocStructure
+	};
+}
+
 function normalizeOptionalText(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const trimmed = value.trim();
@@ -590,6 +611,54 @@ function toTimestamp(value: string | null | undefined): number {
 	return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
+function parseTimestamp(value: string | null | undefined): number | null {
+	if (!value) return null;
+	const parsed = Date.parse(value);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+const COMPLETED_STATE_KEYS = new Set([
+	'done',
+	'completed',
+	'closed',
+	'archived',
+	'cancelled',
+	'canceled'
+]);
+
+function normalizeStateKey(value: string | null | undefined): string {
+	return (value ?? '').trim().toLowerCase();
+}
+
+function isCompletedByState(stateKey: string | null | undefined): boolean {
+	return COMPLETED_STATE_KEYS.has(normalizeStateKey(stateKey));
+}
+
+function dueProximityBucket(
+	value: string | null | undefined,
+	nowMs: number,
+	dueSoonDays: number = CONTEXT_RELEVANCE_DUE_SOON_DAYS
+): number {
+	const dueMs = parseTimestamp(value);
+	if (dueMs === null) return 3;
+	if (dueMs < nowMs) return 0;
+	if (dueMs <= nowMs + dueSoonDays * DAY_IN_MS) return 1;
+	return 2;
+}
+
+function compareNullableNumberDesc(a: number | null | undefined, b: number | null | undefined): number {
+	const aNum = typeof a === 'number' && Number.isFinite(a) ? a : null;
+	const bNum = typeof b === 'number' && Number.isFinite(b) ? b : null;
+	if (aNum === null && bNum === null) return 0;
+	if (aNum === null) return 1;
+	if (bNum === null) return -1;
+	return bNum - aNum;
+}
+
+function documentRecencyTimestamp(row: ContextDocumentRow): number {
+	return Math.max(toTimestamp(row.updated_at), toTimestamp(row.created_at));
+}
+
 function limitByUpdatedAt<T extends { updated_at: string | null }>(rows: T[], limit: number): T[] {
 	if (rows.length <= limit) return rows;
 	return [...rows]
@@ -602,6 +671,325 @@ function limitByStartAt<T extends { start_at: string | null }>(rows: T[], limit:
 	return [...rows]
 		.sort((a, b) => toTimestamp(a.start_at) - toTimestamp(b.start_at))
 		.slice(0, limit);
+}
+
+function isTaskCompleted(row: TaskRow): boolean {
+	return Boolean(row.completed_at) || isCompletedByState(row.state_key);
+}
+
+function isGoalCompleted(row: GoalRow): boolean {
+	return Boolean(row.completed_at) || isCompletedByState(row.state_key);
+}
+
+function isMilestoneCompleted(row: MilestoneRow): boolean {
+	return Boolean(row.completed_at) || isCompletedByState(row.state_key);
+}
+
+function isPlanCompleted(row: PlanRow): boolean {
+	return isCompletedByState(row.state_key);
+}
+
+function taskStateBucket(row: TaskRow): number {
+	const state = normalizeStateKey(row.state_key);
+	if (state === 'in_progress') return 0;
+	if (state === 'blocked') return 1;
+	if (state === 'todo' || state === 'pending') return 2;
+	if (state === 'draft' || state === 'backlog') return 3;
+	return 4;
+}
+
+function goalStateBucket(row: GoalRow): number {
+	const state = normalizeStateKey(row.state_key);
+	if (state === 'active' || state === 'in_progress') return 0;
+	if (state === 'todo' || state === 'pending' || state === 'draft') return 1;
+	if (state === 'blocked') return 2;
+	return 3;
+}
+
+function milestoneStateBucket(row: MilestoneRow): number {
+	const state = normalizeStateKey(row.state_key);
+	if (state === 'missed') return 0;
+	if (state === 'in_progress') return 1;
+	if (state === 'pending' || state === 'todo') return 2;
+	if (state === 'draft') return 3;
+	return 4;
+}
+
+function planStateBucket(row: PlanRow): number {
+	const state = normalizeStateKey(row.state_key);
+	if (state === 'active' || state === 'in_progress') return 0;
+	if (state === 'blocked') return 1;
+	if (state === 'todo' || state === 'pending' || state === 'draft') return 2;
+	return 3;
+}
+
+function limitTasksForContext(rows: TaskRow[], limit: number, nowMs: number): TaskRow[] {
+	return [...rows]
+		.sort((a, b) => {
+			const aCompleted = isTaskCompleted(a);
+			const bCompleted = isTaskCompleted(b);
+			if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+
+			if (!aCompleted && !bCompleted) {
+				const dueDelta = dueProximityBucket(a.due_at, nowMs) - dueProximityBucket(b.due_at, nowMs);
+				if (dueDelta !== 0) return dueDelta;
+
+				const stateDelta = taskStateBucket(a) - taskStateBucket(b);
+				if (stateDelta !== 0) return stateDelta;
+
+				const priorityDelta = compareNullableNumberDesc(a.priority, b.priority);
+				if (priorityDelta !== 0) return priorityDelta;
+			} else {
+				const completedDelta = toTimestamp(b.completed_at) - toTimestamp(a.completed_at);
+				if (completedDelta !== 0) return completedDelta;
+			}
+
+			const updatedDelta = toTimestamp(b.updated_at) - toTimestamp(a.updated_at);
+			if (updatedDelta !== 0) return updatedDelta;
+
+			const startDelta = toTimestamp(a.start_at) - toTimestamp(b.start_at);
+			if (startDelta !== 0) return startDelta;
+
+			return a.id.localeCompare(b.id);
+		})
+		.slice(0, Math.max(0, limit));
+}
+
+function limitGoalsForContext(rows: GoalRow[], limit: number, nowMs: number): GoalRow[] {
+	return [...rows]
+		.sort((a, b) => {
+			const aCompleted = isGoalCompleted(a);
+			const bCompleted = isGoalCompleted(b);
+			if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+
+			if (!aCompleted && !bCompleted) {
+				const targetDelta =
+					dueProximityBucket(a.target_date, nowMs) - dueProximityBucket(b.target_date, nowMs);
+				if (targetDelta !== 0) return targetDelta;
+
+				const stateDelta = goalStateBucket(a) - goalStateBucket(b);
+				if (stateDelta !== 0) return stateDelta;
+			} else {
+				const completedDelta = toTimestamp(b.completed_at) - toTimestamp(a.completed_at);
+				if (completedDelta !== 0) return completedDelta;
+			}
+
+			const updatedDelta = toTimestamp(b.updated_at) - toTimestamp(a.updated_at);
+			if (updatedDelta !== 0) return updatedDelta;
+
+			return a.id.localeCompare(b.id);
+		})
+		.slice(0, Math.max(0, limit));
+}
+
+function limitMilestonesForContext(rows: MilestoneRow[], limit: number, nowMs: number): MilestoneRow[] {
+	return [...rows]
+		.sort((a, b) => {
+			const aCompleted = isMilestoneCompleted(a);
+			const bCompleted = isMilestoneCompleted(b);
+			if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+
+			if (!aCompleted && !bCompleted) {
+				const dueDelta = dueProximityBucket(a.due_at, nowMs) - dueProximityBucket(b.due_at, nowMs);
+				if (dueDelta !== 0) return dueDelta;
+
+				const stateDelta = milestoneStateBucket(a) - milestoneStateBucket(b);
+				if (stateDelta !== 0) return stateDelta;
+			} else {
+				const completedDelta = toTimestamp(b.completed_at) - toTimestamp(a.completed_at);
+				if (completedDelta !== 0) return completedDelta;
+			}
+
+			const updatedDelta = toTimestamp(b.updated_at) - toTimestamp(a.updated_at);
+			if (updatedDelta !== 0) return updatedDelta;
+
+			return a.id.localeCompare(b.id);
+		})
+		.slice(0, Math.max(0, limit));
+}
+
+function limitPlansForContext(rows: PlanRow[], limit: number): PlanRow[] {
+	return [...rows]
+		.sort((a, b) => {
+			const aCompleted = isPlanCompleted(a);
+			const bCompleted = isPlanCompleted(b);
+			if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
+
+			const stateDelta = planStateBucket(a) - planStateBucket(b);
+			if (stateDelta !== 0) return stateDelta;
+
+			const updatedDelta = toTimestamp(b.updated_at) - toTimestamp(a.updated_at);
+			if (updatedDelta !== 0) return updatedDelta;
+
+			return a.id.localeCompare(b.id);
+		})
+		.slice(0, Math.max(0, limit));
+}
+
+function limitDocumentsForContext(
+	rows: ContextDocumentRow[],
+	linkedDocIds: Set<string>,
+	limit: number
+): ContextDocumentRow[] {
+	if (rows.length === 0) return [];
+
+	return [...rows]
+		.sort((a, b) => {
+			const aLinked = linkedDocIds.has(a.id);
+			const bLinked = linkedDocIds.has(b.id);
+			if (aLinked !== bLinked) return aLinked ? 1 : -1;
+
+			const recencyDelta = documentRecencyTimestamp(b) - documentRecencyTimestamp(a);
+			if (recencyDelta !== 0) return recencyDelta;
+
+			return (a.title ?? '').localeCompare(b.title ?? '');
+		})
+		.slice(0, Math.max(0, limit));
+}
+
+function buildEntityScopeMeta(params: {
+	returned: number;
+	totalMatching: number;
+	limit: number | null;
+	selectionStrategy: string;
+	filters?: Record<string, unknown>;
+}) {
+	return {
+		returned: params.returned,
+		total_matching: params.totalMatching,
+		limit: params.limit,
+		is_complete: params.returned >= params.totalMatching,
+		selection_strategy: params.selectionStrategy,
+		filters: params.filters
+	};
+}
+
+function buildProjectContextData(params: {
+	source: 'rpc' | 'fallback';
+	projectRow: ProjectSelectRow;
+	goals: GoalRow[];
+	milestones: MilestoneRow[];
+	plans: PlanRow[];
+	tasks: TaskRow[];
+	documents: ContextDocumentRow[];
+	events: EventRow[];
+	members: ProjectMemberRow[];
+	eventWindow: FastChatEventWindow;
+}): ProjectContextData {
+	const nowMs = parseTimestamp(params.eventWindow.now_at) ?? Date.now();
+	const rawDocStructure = params.projectRow.doc_structure as DocStructure | null | undefined;
+	const doc_structure = buildDocStructureSummary(rawDocStructure);
+	const linkedDocIds = new Set(collectDocStructureIds(rawDocStructure));
+
+	const goalRows = limitGoalsForContext(params.goals, PROJECT_CONTEXT_GOAL_LIMIT, nowMs);
+	const milestoneRows = limitMilestonesForContext(
+		params.milestones,
+		PROJECT_CONTEXT_MILESTONE_LIMIT,
+		nowMs
+	);
+	const planRows = limitPlansForContext(params.plans, PROJECT_CONTEXT_PLAN_LIMIT);
+	const taskRows = limitTasksForContext(params.tasks, PROJECT_CONTEXT_TASK_LIMIT, nowMs);
+	const windowedEvents = filterEventsToWindow(params.events, params.eventWindow);
+	const eventRows = limitByStartAt(windowedEvents, PROJECT_CONTEXT_EVENT_LIMIT);
+	const documentRows = limitDocumentsForContext(
+		params.documents,
+		linkedDocIds,
+		PROJECT_CONTEXT_DOCUMENT_LIMIT
+	);
+	const unlinkedTotal = params.documents.filter((row) => !linkedDocIds.has(row.id)).length;
+	const linkedTotal = Math.max(0, params.documents.length - unlinkedTotal);
+
+	return {
+		project: mapProject(params.projectRow, { includeDocStructure: false }),
+		doc_structure,
+		goals: goalRows.map(mapGoal),
+		milestones: milestoneRows.map(mapMilestone),
+		plans: planRows.map(mapPlan),
+		tasks: taskRows.map(mapTask),
+		documents: documentRows.map((row) => mapDocument(row, linkedDocIds)),
+		events: eventRows.map(mapEvent),
+		events_window: params.eventWindow,
+		members: sortProjectMembers(params.members.map(mapProjectMember)),
+		context_meta: {
+			generated_at: new Date().toISOString(),
+			source: params.source,
+			cache_age_seconds: 0,
+			entity_scopes: {
+				goals: buildEntityScopeMeta({
+					returned: goalRows.length,
+					totalMatching: params.goals.length,
+					limit: PROJECT_CONTEXT_GOAL_LIMIT,
+					selectionStrategy: 'goal_priority_v1',
+					filters: {
+						deleted: 'excluded',
+						states: 'all',
+						due_soon_days: CONTEXT_RELEVANCE_DUE_SOON_DAYS
+					}
+				}),
+				milestones: buildEntityScopeMeta({
+					returned: milestoneRows.length,
+					totalMatching: params.milestones.length,
+					limit: PROJECT_CONTEXT_MILESTONE_LIMIT,
+					selectionStrategy: 'milestone_priority_v1',
+					filters: {
+						deleted: 'excluded',
+						states: 'all',
+						due_soon_days: CONTEXT_RELEVANCE_DUE_SOON_DAYS
+					}
+				}),
+				plans: buildEntityScopeMeta({
+					returned: planRows.length,
+					totalMatching: params.plans.length,
+					limit: PROJECT_CONTEXT_PLAN_LIMIT,
+					selectionStrategy: 'plan_priority_v1',
+					filters: {
+						deleted: 'excluded',
+						states: 'all'
+					}
+				}),
+				tasks: buildEntityScopeMeta({
+					returned: taskRows.length,
+					totalMatching: params.tasks.length,
+					limit: PROJECT_CONTEXT_TASK_LIMIT,
+					selectionStrategy: 'task_priority_v1',
+					filters: {
+						deleted: 'excluded',
+						states: 'all',
+						due_soon_days: CONTEXT_RELEVANCE_DUE_SOON_DAYS
+					}
+				}),
+				events: buildEntityScopeMeta({
+					returned: eventRows.length,
+					totalMatching: windowedEvents.length,
+					limit: PROJECT_CONTEXT_EVENT_LIMIT,
+					selectionStrategy: 'start_at_asc_windowed',
+					filters: {
+						deleted: 'excluded',
+						start_at_window: {
+							start_at: params.eventWindow.start_at,
+							end_at: params.eventWindow.end_at,
+							past_days: params.eventWindow.past_days,
+							future_days: params.eventWindow.future_days
+						}
+					}
+				}),
+				documents: {
+					...buildEntityScopeMeta({
+						returned: documentRows.length,
+						totalMatching: params.documents.length,
+						limit: PROJECT_CONTEXT_DOCUMENT_LIMIT,
+						selectionStrategy: 'unlinked_first_recent_activity_desc',
+						filters: {
+							deleted: 'excluded',
+							include_unlinked: true
+						}
+					}),
+					unlinked_total: unlinkedTotal,
+					linked_total: linkedTotal
+				}
+			}
+		}
+	};
 }
 
 function getDefaultRoleProfile(roleKey: string | null | undefined): {
@@ -737,35 +1125,18 @@ function buildProjectContextFromRpc(
 	const projectRow = payload.project;
 	if (!projectRow) return null;
 
-	const doc_structure = buildDocStructureSummary(
-		projectRow.doc_structure as DocStructure | null | undefined
-	);
-
-	const goalRows = limitByUpdatedAt(asArray<GoalRow>(payload.goals), PROJECT_CONTEXT_GOAL_LIMIT);
-	const milestoneRows = limitByUpdatedAt(
-		asArray<MilestoneRow>(payload.milestones),
-		PROJECT_CONTEXT_MILESTONE_LIMIT
-	);
-	const planRows = limitByUpdatedAt(asArray<PlanRow>(payload.plans), PROJECT_CONTEXT_PLAN_LIMIT);
-	const taskRows = limitByUpdatedAt(asArray<TaskRow>(payload.tasks), PROJECT_CONTEXT_TASK_LIMIT);
-	const eventRows = limitByStartAt(
-		filterEventsToWindow(asArray<EventRow>(payload.events), eventWindow),
-		PROJECT_CONTEXT_EVENT_LIMIT
-	);
-
-	return {
-		project: mapProject(projectRow, { includeDocStructure: false }),
-		doc_structure,
-		goals: goalRows.map(mapGoal),
-		milestones: milestoneRows.map(mapMilestone),
-		plans: planRows.map(mapPlan),
-		tasks: taskRows.map(mapTask),
-		events: eventRows.map(mapEvent),
-		events_window: eventWindow,
-		members: sortProjectMembers(
-			asArray<ProjectMemberRow>(payload.members).map(mapProjectMember)
-		)
-	};
+	return buildProjectContextData({
+		source: 'rpc',
+		projectRow,
+		goals: asArray<GoalRow>(payload.goals),
+		milestones: asArray<MilestoneRow>(payload.milestones),
+		plans: asArray<PlanRow>(payload.plans),
+		tasks: asArray<TaskRow>(payload.tasks),
+		documents: asArray<ContextDocumentRow>(payload.documents),
+		events: asArray<EventRow>(payload.events),
+		members: asArray<ProjectMemberRow>(payload.members),
+		eventWindow
+	});
 }
 
 function buildEntityContextFromRpc(params: {
@@ -997,48 +1368,52 @@ async function loadProjectContextData(
 		return null;
 	}
 
-	const project = mapProject(projectRow, { includeDocStructure: false });
-
-	const [goalsRes, milestonesRes, plansRes, tasksRes, eventsRes, membersRes] = await Promise.all([
-		supabase
-			.from('onto_goals')
-			.select('id, name, description, state_key, target_date, completed_at, updated_at')
-			.eq('project_id', projectId)
-			.is('deleted_at', null),
-		supabase
-			.from('onto_milestones')
-			.select('id, title, description, state_key, due_at, completed_at, updated_at')
-			.eq('project_id', projectId)
-			.is('deleted_at', null),
-		supabase
-			.from('onto_plans')
-			.select('id, name, description, state_key, updated_at')
-			.eq('project_id', projectId)
-			.is('deleted_at', null),
-		supabase
-			.from('onto_tasks')
-			.select(
-				'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
-			)
-			.eq('project_id', projectId)
-			.is('deleted_at', null),
-		supabase
-			.from('onto_events')
-			.select(
-				'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
-			)
-			.eq('project_id', projectId)
-			.is('deleted_at', null)
-			.gte('start_at', eventWindow.start_at)
-			.lte('start_at', eventWindow.end_at),
-		supabase
-			.from('onto_project_members')
-			.select(
-				'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, name, email)'
-			)
-			.eq('project_id', projectId)
-			.is('removed_at', null)
-	]);
+	const [goalsRes, milestonesRes, plansRes, tasksRes, eventsRes, membersRes, documentsRes] =
+		await Promise.all([
+			supabase
+				.from('onto_goals')
+				.select('id, name, description, state_key, target_date, completed_at, updated_at')
+				.eq('project_id', projectId)
+				.is('deleted_at', null),
+			supabase
+				.from('onto_milestones')
+				.select('id, title, description, state_key, due_at, completed_at, updated_at')
+				.eq('project_id', projectId)
+				.is('deleted_at', null),
+			supabase
+				.from('onto_plans')
+				.select('id, name, description, state_key, updated_at')
+				.eq('project_id', projectId)
+				.is('deleted_at', null),
+			supabase
+				.from('onto_tasks')
+				.select(
+					'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
+				)
+				.eq('project_id', projectId)
+				.is('deleted_at', null),
+			supabase
+				.from('onto_events')
+				.select(
+					'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
+				)
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.gte('start_at', eventWindow.start_at)
+				.lte('start_at', eventWindow.end_at),
+			supabase
+				.from('onto_project_members')
+				.select(
+					'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, name, email)'
+				)
+				.eq('project_id', projectId)
+				.is('removed_at', null),
+			supabase
+				.from('onto_documents')
+				.select('id, title, state_key, created_at, updated_at')
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+		]);
 
 	if (goalsRes.error) {
 		logger.warn('Failed to load project goals', { error: goalsRes.error });
@@ -1068,44 +1443,27 @@ async function loadProjectContextData(
 	if (membersRes.error) {
 		reportContextLoadError(onError, 'query.project.members', membersRes.error, { projectId });
 	}
+	if (documentsRes.error) {
+		logger.warn('Failed to load project documents for fast context', {
+			error: documentsRes.error
+		});
+		reportContextLoadError(onError, 'query.project.documents', documentsRes.error, {
+			projectId
+		});
+	}
 
-	const doc_structure = buildDocStructureSummary(
-		projectRow.doc_structure as DocStructure | null | undefined
-	);
-	const goalRows = limitByUpdatedAt(
-		(goalsRes.data ?? []) as GoalRow[],
-		PROJECT_CONTEXT_GOAL_LIMIT
-	);
-	const milestoneRows = limitByUpdatedAt(
-		(milestonesRes.data ?? []) as MilestoneRow[],
-		PROJECT_CONTEXT_MILESTONE_LIMIT
-	);
-	const planRows = limitByUpdatedAt(
-		(plansRes.data ?? []) as PlanRow[],
-		PROJECT_CONTEXT_PLAN_LIMIT
-	);
-	const taskRows = limitByUpdatedAt(
-		(tasksRes.data ?? []) as TaskRow[],
-		PROJECT_CONTEXT_TASK_LIMIT
-	);
-	const eventRows = limitByStartAt(
-		filterEventsToWindow((eventsRes.data ?? []) as EventRow[], eventWindow),
-		PROJECT_CONTEXT_EVENT_LIMIT
-	);
-
-	return {
-		project,
-		doc_structure,
-		goals: goalRows.map(mapGoal),
-		milestones: milestoneRows.map(mapMilestone),
-		plans: planRows.map(mapPlan),
-		tasks: taskRows.map(mapTask),
-		events: eventRows.map(mapEvent),
-		events_window: eventWindow,
-		members: sortProjectMembers(
-			((membersRes.data ?? []) as ProjectMemberRow[]).map(mapProjectMember)
-		)
-	};
+	return buildProjectContextData({
+		source: 'fallback',
+		projectRow,
+		goals: (goalsRes.data ?? []) as GoalRow[],
+		milestones: (milestonesRes.data ?? []) as MilestoneRow[],
+		plans: (plansRes.data ?? []) as PlanRow[],
+		tasks: (tasksRes.data ?? []) as TaskRow[],
+		documents: (documentsRes.data ?? []) as ContextDocumentRow[],
+		events: (eventsRes.data ?? []) as EventRow[],
+		members: (membersRes.data ?? []) as ProjectMemberRow[],
+		eventWindow
+	});
 }
 
 async function loadLinkedEntities(

@@ -112,6 +112,11 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -130,11 +135,6 @@
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -462,22 +462,10 @@
 			]
 		},
 		{
-			"file": "src/lib/services/project-synthesis.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ProjectSynthesisService"]
-		},
-		{
 			"file": "src/lib/services/projectBriefTemplateGenerator.service.ts",
 			"type": "service",
 			"components": [],
 			"exports": ["ProjectBriefTemplateGeneratorService"]
-		},
-		{
-			"file": "src/lib/services/projectSynthesis.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ProjectSynthesisService"]
 		},
 		{
 			"file": "src/lib/services/promptEnhancer.service.ts",
@@ -802,12 +790,6 @@
 			"exports": ["isThinkingBlockMessage", "findThinkingBlockById"]
 		},
 		{
-			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["createDragDropState"]
-		},
-		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 			"type": "component",
 			"components": [],
@@ -829,6 +811,12 @@
 				"createDefaultPanelState",
 				"createDefaultPanelStates"
 			]
+		},
+		{
+			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["createDragDropState"]
 		},
 		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
@@ -961,8 +949,8 @@
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
-		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
+		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",

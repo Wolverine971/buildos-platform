@@ -365,6 +365,27 @@ function isCacheFresh(cache: FastChatContextCache | null | undefined): boolean {
 	return Date.now() - createdAt <= FASTCHAT_CONTEXT_CACHE_TTL_MS;
 }
 
+function resolveCacheAgeSeconds(createdAtRaw: string | null | undefined): number {
+	if (!createdAtRaw) return 0;
+	const createdAtMs = Date.parse(createdAtRaw);
+	if (!Number.isFinite(createdAtMs)) return 0;
+	return Math.max(0, Math.floor((Date.now() - createdAtMs) / 1000));
+}
+
+function annotateContextMetaCacheAge(
+	data: Record<string, unknown> | string | null | undefined,
+	cacheAgeSeconds: number
+): void {
+	if (!data || typeof data !== 'object') return;
+	const record = data as Record<string, unknown>;
+	const contextMeta =
+		record.context_meta && typeof record.context_meta === 'object'
+			? (record.context_meta as Record<string, unknown>)
+			: null;
+	if (!contextMeta) return;
+	contextMeta.cache_age_seconds = Math.max(0, Math.floor(cacheAgeSeconds));
+}
+
 function buildEmptyAgentState(sessionId: string): AgentState {
 	return {
 		sessionId,
@@ -1803,6 +1824,7 @@ export const POST: RequestHandler = async ({
 
 			let systemPrompt: string | undefined;
 			let contextUsageSnapshot: ContextUsageSnapshot | null = null;
+			let contextCacheAgeSeconds = 0;
 			let promptContext:
 				| {
 						contextType: ChatContextType;
@@ -1825,6 +1847,7 @@ export const POST: RequestHandler = async ({
 					isCacheFresh(cachedContext)
 				) {
 					promptContext = { ...cachedContext.context };
+					contextCacheAgeSeconds = resolveCacheAgeSeconds(cachedContext.created_at);
 				} else {
 					promptContext = await loadFastChatPromptContext({
 						supabase,
@@ -1875,6 +1898,8 @@ export const POST: RequestHandler = async ({
 						}
 					);
 				}
+
+				annotateContextMetaCacheAge(promptContext?.data, contextCacheAgeSeconds);
 
 				const rawAgentState =
 					(sessionMetadata.agent_state as AgentState | undefined) ??

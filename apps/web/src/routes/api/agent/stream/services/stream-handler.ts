@@ -1140,15 +1140,7 @@ export class StreamHandler {
 
 	private resolveOperationEntityType(
 		toolName: string
-	):
-		| 'document'
-		| 'task'
-		| 'goal'
-		| 'plan'
-		| 'project'
-		| 'milestone'
-		| 'risk'
-		| null {
+	): 'document' | 'task' | 'goal' | 'plan' | 'project' | 'milestone' | 'risk' | null {
 		const match = toolName.match(
 			/(?:list|search|get|create|update|delete)_onto_([a-z_]+?)(?:_details)?$/
 		);
@@ -1179,14 +1171,7 @@ export class StreamHandler {
 
 		const resolved = map[raw];
 		return resolved
-			? (resolved as
-					| 'document'
-					| 'task'
-					| 'goal'
-					| 'plan'
-					| 'project'
-					| 'milestone'
-					| 'risk')
+			? (resolved as 'document' | 'task' | 'goal' | 'plan' | 'project' | 'milestone' | 'risk')
 			: null;
 	}
 
@@ -1214,14 +1199,7 @@ export class StreamHandler {
 
 	private buildExpectedOutcome(
 		action: 'create' | 'update' | 'delete',
-		entityType:
-			| 'document'
-			| 'task'
-			| 'goal'
-			| 'plan'
-			| 'project'
-			| 'milestone'
-			| 'risk',
+		entityType: 'document' | 'task' | 'goal' | 'plan' | 'project' | 'milestone' | 'risk',
 		args?: Record<string, any>
 	): string {
 		const name =

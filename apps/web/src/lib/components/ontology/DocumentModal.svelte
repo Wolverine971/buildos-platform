@@ -931,7 +931,7 @@
 	closeOnBackdrop={false}
 	closeOnEscape={!saving}
 	showCloseButton={false}
-	customClasses="lg:!max-w-6xl xl:!max-w-7xl"
+	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header with strip texture -->
@@ -1050,15 +1050,19 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="overflow-y-auto flex-1" style="max-height: calc(100vh - 120px);">
+		<div class="flex-1 flex flex-col min-h-[80vh]">
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
 				</div>
 			{:else}
-				<form id={documentFormId} class="h-full" onsubmit={handleSave}>
+				<form
+					id={documentFormId}
+					class="flex-1 flex flex-col min-h-0"
+					onsubmit={handleSave}
+				>
 					<!-- Desktop: Two-column layout | Mobile: Content-first with collapsible metadata -->
-					<div class="flex flex-col lg:flex-row h-full">
+					<div class="flex flex-col lg:flex-row flex-1 min-h-0">
 						<!-- Left sidebar (metadata + history + activity) - Desktop only, hidden on mobile -->
 						<div
 							class="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 flex-shrink-0 lg:border-r border-border bg-muted overflow-y-auto tx tx-frame tx-weak"
@@ -1311,7 +1315,7 @@
 						</div>
 
 						<!-- Main content area -->
-						<div class="flex-1 flex flex-col min-w-0">
+						<div class="flex-1 flex flex-col min-w-0 min-h-0">
 							{#if comparisonMode && activeDocumentId}
 								<!-- Comparison view replaces the editor -->
 								<DocumentComparisonView
@@ -1331,7 +1335,7 @@
 								/>
 							{:else}
 								<!-- Mobile: Compact title input at top -->
-								<div class="lg:hidden p-3 pb-0">
+								<div class="lg:hidden p-3 pb-0 shrink-0">
 									<TextInput
 										id="document-title-mobile"
 										bind:value={title}
@@ -1436,7 +1440,7 @@
 
 							<!-- Mobile: Collapsible metadata section at bottom -->
 							<div
-								class="lg:hidden border-t border-border bg-muted tx tx-strip tx-weak wt-paper"
+								class="lg:hidden flex-shrink-0 border-t border-border bg-muted tx tx-strip tx-weak wt-paper max-h-[40vh] overflow-y-auto"
 							>
 								<!-- Toggle button -->
 								<button
@@ -1656,11 +1660,13 @@
 				</form>
 
 				{#if activeDocumentId}
-					<EntityCommentsSection
-						{projectId}
-						entityType="document"
-						entityId={activeDocumentId}
-					/>
+					<div class="flex-shrink-0 max-h-[15vh] overflow-y-auto border-t border-border">
+						<EntityCommentsSection
+							{projectId}
+							entityType="document"
+							entityId={activeDocumentId}
+						/>
+					</div>
 				{/if}
 			{/if}
 		</div>
@@ -1840,3 +1846,17 @@
 		onMove={handleMove}
 	/>
 {/if}
+
+<style>
+	/*
+	 * Force the Modal's modal-content slot to be a flex container
+	 * so the document editor fills available height and scrolls internally.
+	 * This keeps the voice record button always visible at the bottom of the editor.
+	 */
+	:global(.document-modal-container .modal-content) {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		    min-height: 80vh;
+	}
+</style>

@@ -197,13 +197,20 @@
 		if (isNaN(date.getTime())) {
 			return 'Unknown';
 		}
+		const now = new Date();
+		const diffMs = now.getTime() - date.getTime();
+		const diffMins = Math.floor(diffMs / (1000 * 60));
+		const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+		if (diffMins < 1) return 'now';
+		if (diffMins < 60) return `${diffMins}m ago`;
+		if (diffHours < 24) return `${diffHours}h ago`;
+		if (diffDays < 7) return `${diffDays}d ago`;
+
 		const month = date.getMonth() + 1;
 		const day = date.getDate();
-		const hours = date.getHours();
-		const minutes = date.getMinutes().toString().padStart(2, '0');
-		const ampm = hours >= 12 ? 'p' : 'a';
-		const hour12 = hours % 12 || 12;
-		return `${month}/${day} ${hour12}:${minutes}${ampm}`;
+		return `${month}/${day}`;
 	}
 
 	function formatEntityType(type: string): string {
@@ -236,20 +243,6 @@
 		return formatEventLabel(event);
 	}
 
-	function getSourceBadge(source: string | null): string {
-		switch (source) {
-			case 'chat':
-				return 'via chat';
-			case 'form':
-				return 'via form';
-			case 'brain_dump':
-				return 'via brain dump';
-			case 'api':
-				return 'via API';
-			default:
-				return '';
-		}
-	}
 </script>
 
 <div
@@ -312,8 +305,8 @@
 					</p>
 				</div>
 			{:else}
-				<!-- Log entries - styled like a terminal/log file -->
-				<div class="font-mono text-xs divide-y divide-border/50">
+				<!-- Log entries - compact single-line rows -->
+				<div class="text-xs divide-y divide-border/50">
 					{#each logs as log}
 						{@const ActionIcon = getActionIcon(log.action)}
 						{@const isClickable = log.entity_type !== 'edge' && onEntityClick}
@@ -321,87 +314,35 @@
 						{#if isClickable}
 							<button
 								type="button"
-								class="group flex items-start gap-2 px-4 py-2 hover:bg-muted cursor-pointer text-left w-full pressable"
+								class="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 hover:bg-muted cursor-pointer text-left w-full pressable"
 								onclick={() => handleEntityClick(log)}
 							>
-								<!-- Timestamp + Source -->
-								<span class="shrink-0 w-20 flex flex-col">
-									<span class="text-muted-foreground/70 text-[10px] tabular-nums">
-										{formatTimestamp(log.created_at)}
-									</span>
-									{#if log.change_source}
-										<span class="text-muted-foreground/50 text-[10px]">
-											{getSourceBadge(log.change_source)}
-										</span>
-									{/if}
-								</span>
-
-								<!-- Divider -->
-								<span class="shrink-0 w-px h-4 bg-border/60"></span>
-
-								<!-- Content: {Person} {action} {data} -->
-								<span class="flex-1 min-w-0">
-									<span class="text-foreground font-medium">
-										{log.changed_by_name || 'Someone'}
-									</span>
-									<span class="text-muted-foreground ml-1">{log.action}</span>
-									<span class="mx-1 text-foreground font-medium">
-										{formatEntityType(log.entity_type)}:
-									</span>
-									<span class="text-foreground truncate">
-										{log.entity_name || log.entity_id.slice(0, 8)}
-									</span>
-									{#if eventLabel}
-										<span class="text-muted-foreground/70 ml-1">
-											- {eventLabel}
-										</span>
-									{/if}
-								</span>
-
-								<!-- Action icon -->
 								<span class="shrink-0 {getActionColor(log.action)}">
-									<ActionIcon class="w-3.5 h-3.5" />
+									<ActionIcon class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+								</span>
+								<span class="flex-1 min-w-0 truncate" title="{log.changed_by_name || 'Someone'} {log.action} {formatEntityType(log.entity_type)}: {log.entity_name || log.entity_id.slice(0, 8)}{eventLabel ? ` - ${eventLabel}` : ''}">
+									<span class="text-foreground font-medium">{log.changed_by_name || 'Someone'}</span>
+									<span class="text-muted-foreground"> {log.action} </span>
+									<span class="text-foreground">{formatEntityType(log.entity_type)}: {log.entity_name || log.entity_id.slice(0, 8)}</span>
+									{#if eventLabel}<span class="text-muted-foreground/70"> - {eventLabel}</span>{/if}
+								</span>
+								<span class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap">
+									{formatTimestamp(log.created_at)}
 								</span>
 							</button>
 						{:else}
-							<div class="group flex items-start gap-2 px-4 py-2">
-								<!-- Timestamp + Source -->
-								<span class="shrink-0 w-20 flex flex-col">
-									<span class="text-muted-foreground/70 text-[10px] tabular-nums">
-										{formatTimestamp(log.created_at)}
-									</span>
-									{#if log.change_source}
-										<span class="text-muted-foreground/50 text-[10px]">
-											{getSourceBadge(log.change_source)}
-										</span>
-									{/if}
-								</span>
-
-								<!-- Divider -->
-								<span class="shrink-0 w-px h-4 bg-border/60"></span>
-
-								<!-- Content: {Person} {action} {data} -->
-								<span class="flex-1 min-w-0">
-									<span class="text-foreground font-medium">
-										{log.changed_by_name || 'Someone'}
-									</span>
-									<span class="text-muted-foreground ml-1">{log.action}</span>
-									<span class="mx-1 text-foreground font-medium">
-										{formatEntityType(log.entity_type)}:
-									</span>
-									<span class="text-foreground truncate">
-										{log.entity_name || log.entity_id.slice(0, 8)}
-									</span>
-									{#if eventLabel}
-										<span class="text-muted-foreground/70 ml-1">
-											- {eventLabel}
-										</span>
-									{/if}
-								</span>
-
-								<!-- Action icon -->
+							<div class="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2">
 								<span class="shrink-0 {getActionColor(log.action)}">
-									<ActionIcon class="w-3.5 h-3.5" />
+									<ActionIcon class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+								</span>
+								<span class="flex-1 min-w-0 truncate" title="{log.changed_by_name || 'Someone'} {log.action} {formatEntityType(log.entity_type)}: {log.entity_name || log.entity_id.slice(0, 8)}{eventLabel ? ` - ${eventLabel}` : ''}">
+									<span class="text-foreground font-medium">{log.changed_by_name || 'Someone'}</span>
+									<span class="text-muted-foreground"> {log.action} </span>
+									<span class="text-foreground">{formatEntityType(log.entity_type)}: {log.entity_name || log.entity_id.slice(0, 8)}</span>
+									{#if eventLabel}<span class="text-muted-foreground/70"> - {eventLabel}</span>{/if}
+								</span>
+								<span class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap">
+									{formatTimestamp(log.created_at)}
 								</span>
 							</div>
 						{/if}

@@ -105,13 +105,7 @@ export interface StreamRequest {
 	/** Optional voice note group id for attachments */
 	voice_note_group_id?: string;
 	/** Optional ontology entity type for element-level context */
-	ontology_entity_type?:
-		| 'task'
-		| 'plan'
-		| 'goal'
-		| 'document'
-		| 'milestone'
-		| 'risk';
+	ontology_entity_type?: 'task' | 'plan' | 'goal' | 'document' | 'milestone' | 'risk';
 	/** Optional last turn context provided by client */
 	last_turn_context?: LastTurnContext;
 	/** Optional run id for guarding/persistence */

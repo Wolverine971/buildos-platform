@@ -981,12 +981,16 @@ function buildToolValidationRepairInstruction(
 		lines.push(
 			'Canonical ontology family: onto.<entity>.create|list|get|update|delete|search (entities: project, task, goal, plan, document, milestone, risk).'
 		);
-		lines.push('In tool_exec.op, use only canonical ops; never legacy names like get_document_tree.');
+		lines.push(
+			'In tool_exec.op, use only canonical ops; never legacy names like get_document_tree.'
+		);
 		lines.push(
 			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'
 		);
 		lines.push('Calendar events are under cal.event.* (not onto.event.*).');
-		lines.push('If a tool_exec result has _fallback for missing *_id, use list/tree candidates and retry with exact *_id.');
+		lines.push(
+			'If a tool_exec result has _fallback for missing *_id, use list/tree candidates and retry with exact *_id.'
+		);
 		lines.push(
 			'For first-time or complex writes, call tool_help("<exact op>", { format: "full", include_schemas: true }) before retrying tool_exec.'
 		);

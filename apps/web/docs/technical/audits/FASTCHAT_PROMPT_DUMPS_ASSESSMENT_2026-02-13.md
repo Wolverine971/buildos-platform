@@ -115,3 +115,99 @@ The prompt assembly is functional but inefficient. The largest issue is schema o
 2. Add section budgets and telemetry guardrails.
 3. Implement adaptive project context packing.
 4. Refine instruction pressure once cost/noise issues are under control.
+
+---
+
+## Reassessment Update (2026-02-13, after prompt-dump cleanup + same-day changes)
+
+### Updated Scope
+
+- Current dump set now contains `7` files (older dumps were deleted):
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T04-28-20-298Z.txt`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T04-29-15-176Z.txt`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T13-47-06-802Z.txt`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-43-07-932Z.txt`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-45-15-393Z.txt`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-55-54-949Z.txt`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-57-55-954Z.txt`
+
+### Current Quantitative Snapshot
+
+- Across current 7 dumps:
+- Average file size: `78,549` bytes (down from `106,861` in previous sample).
+- Average tool-definition section: `66,383` chars (`83.7%` of payload).
+- Average data section: `2,363` chars (`2.74%` of payload).
+- Context split:
+- `project` (`6` files): avg `86,416` bytes, tools `85.21%`, and `57` tools loaded each turn.
+- `project_create` (`1` file): `31,346` bytes, tools `75.47%`, `6` tools loaded.
+
+### Current Findings
+
+#### 1) Prompt size improved, but mostly from smaller data/history payloads (not tool routing)
+
+- Total prompt size is materially smaller than the prior 47-dump baseline.
+- However, tools still dominate bytes in project turns (`~85%`), so core schema overhead remains.
+- Evidence:
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-57-55-954Z.txt:8`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-45-15-393Z.txt:8`
+
+#### 2) Tool subset optimization is not in effect for project mode
+
+- All sampled `project` turns load the same `57` tools.
+- This conflicts with the earlier trajectory toward tighter per-turn tool subsets.
+- Evidence:
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T04-29-15-176Z.txt:8`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T13-47-06-802Z.txt:8`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-55-54-949Z.txt:8`
+
+#### 3) Continuity-hint redundancy improved
+
+- In the current sample, continuity hints are consistently disabled while history is present.
+- This removes the previously observed “history + continuity hint + current message” stacking issue.
+- Evidence:
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-57-55-954Z.txt:15`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T04-29-15-176Z.txt:15`
+
+#### 4) Streamed assistant-fragment persistence is still partially present
+
+- Two files still show concatenated assistant lead-in + final answer persisted into one history entry.
+- One newer sample is clean, so this appears intermittent rather than fully resolved.
+- Evidence (duplicated lead-in pattern):
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T04-29-15-176Z.txt:209`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T04-29-15-176Z.txt:211`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-45-15-393Z.txt:193`
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-45-15-393Z.txt:195`
+- Clean sample for contrast:
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-57-55-954Z.txt:204`
+
+#### 5) “System prompt length” telemetry label is still semantically misleading
+
+- Field still logs full `systemPrompt` payload (instructions + context + data), not instructions-only.
+- Example in current dump: reported `11754`, while extracted `instructions + context + data` is `11750` (near-identical, framing overhead only).
+- Evidence:
+- `apps/web/.prompt-dumps/fastchat-2026-02-13T19-57-55-954Z.txt:17`
+- `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.ts:116`
+
+#### 6) Root-cause signal for duplicated assistant content remains in stream persistence path
+
+- Stream handler appends every streamed text chunk across tool rounds into `state.assistantResponse`.
+- That aggregated string is later persisted as a single assistant message.
+- This aligns with the duplicated lead-ins seen in history dumps.
+- Evidence:
+- `apps/web/src/routes/api/agent/stream/services/stream-handler.ts:685`
+- `apps/web/src/routes/api/agent/stream/services/stream-handler.ts:393`
+
+### Test/QA State (targeted)
+
+- `pnpm test src/routes/api/onto/shared/markdown-normalization.test.ts` ✅ (4 tests)
+- `pnpm test src/lib/services/agentic-chat-v2/history-composer.test.ts src/routes/api/agent/stream/services/stream-handler.test.ts` ✅ (5 tests)
+- Gap: existing `stream-handler` test only asserts error/done ordering, not multi-round text persistence behavior.
+- Evidence:
+- `apps/web/src/routes/api/agent/stream/services/stream-handler.test.ts:65`
+
+### Updated Priority Order
+
+1. P0: persist finalized assistant output per turn (or explicitly segment pre-tool lead-in from post-tool final response) to stop history duplication.
+2. P0: enforce intent-routed tool subset in project mode; loading all `57` tools is still the dominant cost driver.
+3. P1: add regression test for multi-round tool turns asserting exactly one canonical assistant history message.
+4. P1: rename telemetry to clarify `system_prompt_payload_length` vs instruction-only length.

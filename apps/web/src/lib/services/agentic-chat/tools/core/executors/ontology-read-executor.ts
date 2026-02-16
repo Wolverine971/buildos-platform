@@ -378,9 +378,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 					count: 'exact'
 				}
 			)
-				.eq('created_by', actorId)
-				.is('deleted_at', null) // Exclude soft-deleted documents
-				.order('updated_at', { ascending: false });
+			.eq('created_by', actorId)
+			.is('deleted_at', null) // Exclude soft-deleted documents
+			.order('updated_at', { ascending: false });
 
 		if (args.project_id) {
 			await this.assertProjectOwnership(args.project_id, actorId);
@@ -400,9 +400,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 		const { data, count, error } = await query;
 		if (error) throw error;
-		const documents = (data ?? []).map((document) =>
-			this.summarizeDocumentForList(document)
-		);
+		const documents = (data ?? []).map((document) => this.summarizeDocumentForList(document));
 
 		return {
 			documents,

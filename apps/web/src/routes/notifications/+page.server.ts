@@ -12,6 +12,7 @@ type NotificationDeliveryRow = Database['public']['Tables']['notification_delive
 		target_user_id: string | null;
 		payload: Record<string, unknown>;
 		created_at: string | null;
+		correlation_id?: string | null;
 		metadata?: Record<string, unknown> | null;
 	} | null;
 };
@@ -49,6 +50,7 @@ export const load: PageServerLoad = async ({ locals }) => {
           actor_user_id,
           target_user_id,
           payload,
+          correlation_id,
           metadata,
           created_at
         )
@@ -56,7 +58,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		)
 		.eq('recipient_user_id', user.id)
 		.order('created_at', { ascending: false })
-		.limit(50);
+		.limit(200);
 
 	if (error) {
 		console.error('[Notifications] Failed to load deliveries', error);
@@ -66,7 +68,79 @@ export const load: PageServerLoad = async ({ locals }) => {
 		};
 	}
 
+	const deliveries = (data ?? []) as NotificationDeliveryRow[];
+	const deliveredEventIds = new Set(
+		deliveries
+			.map((row) => row.notification_events?.id)
+			.filter((value): value is string => typeof value === 'string' && value.length > 0)
+	);
+
+	// Shared project activity can be emitted as events even when channel delivery is suppressed
+	// (e.g. global in-app/push disabled). Include those events in the feed.
+	const { data: projectEvents, error: projectEventsError } = await supabase
+		.from('notification_events')
+		.select(
+			'id, event_type, event_source, actor_user_id, target_user_id, payload, metadata, correlation_id, created_at'
+		)
+		.eq('target_user_id', user.id)
+		.eq('event_type', 'project.activity.batched')
+		.order('created_at', { ascending: false })
+		.limit(100);
+
+	if (projectEventsError) {
+		console.error('[Notifications] Failed to load shared project activity events', projectEventsError);
+	}
+
+	const syntheticRows: NotificationDeliveryRow[] = (projectEvents ?? [])
+		.filter((eventRow) => !deliveredEventIds.has(eventRow.id))
+		.map((eventRow) => {
+			const syntheticRow = {
+				id: `event-${eventRow.id}`,
+				event_id: eventRow.id,
+				recipient_user_id: user.id,
+				subscription_id: null,
+				channel: 'in_app',
+				channel_identifier: null,
+				payload: (eventRow.payload ?? {}) as any,
+				status: 'delivered',
+				attempts: 1,
+				max_attempts: 1,
+				sent_at: eventRow.created_at,
+				delivered_at: eventRow.created_at,
+				opened_at: null,
+				clicked_at: null,
+				failed_at: null,
+				last_error: null,
+				external_id: null,
+				tracking_id: null,
+				metadata: {} as any,
+				correlation_id: eventRow.correlation_id,
+				created_at: eventRow.created_at,
+				updated_at: eventRow.created_at ?? new Date().toISOString(),
+				notification_events: {
+					id: eventRow.id,
+					event_type: eventRow.event_type,
+					event_source: eventRow.event_source,
+					actor_user_id: eventRow.actor_user_id,
+					target_user_id: eventRow.target_user_id,
+					payload: (eventRow.payload ?? {}) as Record<string, unknown>,
+					correlation_id: eventRow.correlation_id,
+					metadata: (eventRow.metadata ?? null) as Record<string, unknown> | null,
+					created_at: eventRow.created_at
+				}
+			};
+			return syntheticRow as NotificationDeliveryRow;
+		});
+
+	const notifications = [...deliveries, ...syntheticRows]
+		.sort((a, b) => {
+			const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+			const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+			return bTime - aTime;
+		})
+		.slice(0, 100);
+
 	return {
-		notifications: (data ?? []) as NotificationDeliveryRow[]
+		notifications
 	};
 };

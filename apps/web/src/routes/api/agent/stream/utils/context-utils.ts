@@ -140,14 +140,7 @@ export function generateOntologyCacheKey(
  * @param entities - The entities object to mutate
  * @param entityId - The entity ID to assign
  */
-type EntityType =
-	| 'project'
-	| 'task'
-	| 'plan'
-	| 'goal'
-	| 'document'
-	| 'milestone'
-	| 'risk';
+type EntityType = 'project' | 'task' | 'plan' | 'goal' | 'document' | 'milestone' | 'risk';
 
 const ENTITY_LIST_KEYS: Record<EntityType, keyof LastTurnContext['entities']> = {
 	project: 'projects',

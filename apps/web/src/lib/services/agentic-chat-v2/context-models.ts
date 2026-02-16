@@ -75,6 +75,16 @@ export type LightTask = {
 	updated_at: string | null;
 };
 
+export type LightDocument = {
+	id: string;
+	title: string;
+	state_key: string | null;
+	created_at: string | null;
+	updated_at: string | null;
+	in_doc_structure: boolean;
+	is_unlinked: boolean;
+};
+
 export type LightEvent = {
 	id: string;
 	title: string;
@@ -94,6 +104,34 @@ export type FastChatEventWindow = {
 	end_at: string;
 	past_days: number;
 	future_days: number;
+};
+
+export type EntityScopeMeta = {
+	returned: number;
+	total_matching: number;
+	limit: number | null;
+	is_complete: boolean;
+	selection_strategy: string;
+	filters?: Record<string, unknown>;
+};
+
+export type DocumentScopeMeta = EntityScopeMeta & {
+	unlinked_total: number;
+	linked_total: number;
+};
+
+export type ProjectContextMeta = {
+	generated_at: string;
+	source: 'rpc' | 'fallback';
+	cache_age_seconds?: number;
+	entity_scopes: {
+		goals: EntityScopeMeta;
+		milestones: EntityScopeMeta;
+		plans: EntityScopeMeta;
+		tasks: EntityScopeMeta;
+		events: EntityScopeMeta;
+		documents: DocumentScopeMeta;
+	};
 };
 
 export type LightProjectMember = {
@@ -139,9 +177,11 @@ export type ProjectContextData = {
 	milestones: LightMilestone[];
 	plans: LightPlan[];
 	tasks: LightTask[];
+	documents: LightDocument[];
 	events: LightEvent[];
 	events_window: FastChatEventWindow;
 	members: LightProjectMember[];
+	context_meta: ProjectContextMeta;
 };
 
 export type EntityContextData = ProjectContextData & {

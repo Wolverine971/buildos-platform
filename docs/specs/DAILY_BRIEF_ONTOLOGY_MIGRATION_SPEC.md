@@ -29,6 +29,13 @@ The ontology-based daily brief system has been fully implemented and is now the 
 - Project links: `/projects/{project_id}`
 - Task links: `/projects/{project_id}/tasks/{task_id}`
 
+**Column Parity (Important):**
+
+- `onto_projects` does **not** have a `slug` column.
+- Ontology brief/project payloads use ID-based routing (`/projects/{project_id}`), not slug-based routing.
+- Regression guardrail: `apps/web/scripts/check-onto-project-select-columns.cjs` validates
+  `onto_projects` select columns against `packages/shared-types/src/database.schema.ts`.
+
 **Feature Access:**
 
 - Dashboard widget for generating/viewing briefs

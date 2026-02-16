@@ -14,6 +14,7 @@ DECLARE
   v_milestones jsonb;
   v_plans jsonb;
   v_tasks jsonb;
+  v_documents jsonb;
   v_events jsonb;
   v_members jsonb;
   v_logs jsonb;
@@ -170,6 +171,15 @@ BEGIN
     WHERE project_id = p_project_id
       AND deleted_at IS NULL
   ) t;
+
+  SELECT COALESCE(jsonb_agg(to_jsonb(d)), '[]'::jsonb)
+  INTO v_documents
+  FROM (
+    SELECT id, project_id, title, state_key, created_at, updated_at
+    FROM onto_documents
+    WHERE project_id = p_project_id
+      AND deleted_at IS NULL
+  ) d;
 
   SELECT COALESCE(jsonb_agg(to_jsonb(e)), '[]'::jsonb)
   INTO v_events
@@ -363,6 +373,7 @@ BEGIN
     'milestones', v_milestones,
     'plans', v_plans,
     'tasks', v_tasks,
+    'documents', v_documents,
     'events', v_events,
     'members', v_members,
     'focus_entity_full', v_focus_entity,

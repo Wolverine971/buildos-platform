@@ -501,20 +501,22 @@ describe('streamFastChat repetition guard', () => {
 			}
 		}));
 
-		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
-			tool_call_id: toolCall.id,
-			result: {
-				op: 'onto.document.list',
-				ok: true,
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
 				result: {
-					documents: docs,
-					total: docs.length,
-					message: `Found ${docs.length} ontology documents.`
+					op: 'onto.document.list',
+					ok: true,
+					result: {
+						documents: docs,
+						total: docs.length,
+						message: `Found ${docs.length} ontology documents.`
+					},
+					meta: {}
 				},
-				meta: {}
-			},
-			success: true
-		}));
+				success: true
+			})
+		);
 
 		const result = await streamFastChat({
 			llm,
@@ -544,4 +546,4 @@ describe('streamFastChat repetition guard', () => {
 		expect(payload?.result?.documents?.[0]?.content_length).toBeGreaterThan(0);
 		expect(payload?.result?.documents?.[0]?.markdown_outline?.counts?.h1).toBe(1);
 	});
-	});
+});

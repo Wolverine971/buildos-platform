@@ -249,13 +249,7 @@ export class OntologyCacheService {
 	private async loadOntologyContext(
 		contextType: ChatContextType,
 		entityId?: string,
-		ontologyEntityType?:
-			| 'task'
-			| 'plan'
-			| 'goal'
-			| 'document'
-			| 'milestone'
-			| 'risk'
+		ontologyEntityType?: 'task' | 'plan' | 'goal' | 'document' | 'milestone' | 'risk'
 	): Promise<OntologyContext | null> {
 		logger.debug('Loading ontology context', {
 			contextType,

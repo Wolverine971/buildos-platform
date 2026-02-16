@@ -1168,7 +1168,7 @@
 			: ''}"
 	>
 		<!-- Header: Unified toolbar row -->
-		<div class="border-b border-border bg-muted/30">
+		<div class="border-b border-border bg-muted/30 shrink-0">
 			<div class="flex items-center px-2 py-1.5 sm:px-3">
 				<!-- Segmented Control for Edit/Preview -->
 				<div
@@ -1341,7 +1341,7 @@
 		<!-- Footer with voice controls (compact, mobile-optimized) -->
 		{#if enableVoice}
 			<div
-				class="flex items-center justify-between gap-2 px-2 py-1.5 sm:px-3 sm:py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground"
+				class="shrink-0 flex items-center justify-between gap-2 px-2 py-1.5 sm:px-3 sm:py-2 border-t border-border bg-muted/30 text-xs text-muted-foreground"
 			>
 				<!-- Left side: Recording status or voice info -->
 				<div class="flex items-center gap-2 min-w-0 flex-1">
