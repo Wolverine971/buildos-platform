@@ -306,4 +306,4 @@
 </div>
 
 <!-- Brief Modal -->
-<ProjectBriefModal brief={selectedBrief} isOpen={isModalOpen} on:close={closeBriefModal} />
+<ProjectBriefModal brief={selectedBrief} bind:isOpen={isModalOpen} {projectName} onClose={closeBriefModal} />

@@ -1593,13 +1593,6 @@
 		}
 	}
 
-	function handleGraphHide() {
-		graphHidden = true;
-		if (typeof window !== 'undefined' && window.localStorage) {
-			window.localStorage.setItem('buildos:project-graph-hidden', 'true');
-		}
-	}
-
 	function handleGraphShow() {
 		graphHidden = false;
 		if (typeof window !== 'undefined' && window.localStorage) {
@@ -2805,33 +2798,13 @@
 	size="xl"
 	ariaLabel="Project relationship graph"
 >
-	{#snippet header()}
-		<div class="flex items-center gap-3">
-			<div
-				class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
-			>
-				<GitBranch class="w-4 h-4 text-accent" />
-			</div>
-			<div>
-				<p class="text-base font-semibold text-foreground">Project Graph</p>
-				<p class="text-xs text-muted-foreground">
-					Explore project relationships
-				</p>
-			</div>
-		</div>
-	{/snippet}
 	<div class="h-[60vh] sm:h-[70vh]">
 		{#if showGraphModal}
 			<ProjectGraphSection
 				projectId={project.id}
-				embedded={true}
 				onNodeClick={(node) => {
 					showGraphModal = false;
 					handleGraphNodeClick(node);
-				}}
-				onHide={() => {
-					showGraphModal = false;
-					handleGraphHide();
 				}}
 			/>
 		{/if}
