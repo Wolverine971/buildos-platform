@@ -72,7 +72,8 @@
 		ListChecks,
 		MoreHorizontal,
 		GitBranch,
-		Users
+		Users,
+		Maximize2
 	} from 'lucide-svelte';
 	import type {
 		Project,
@@ -87,6 +88,7 @@
 	} from '$lib/types/onto';
 	import type { PageData } from './$types';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
 	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
@@ -301,6 +303,9 @@
 
 	// Graph visibility state - will be loaded from localStorage in onMount
 	let graphHidden = $state(false);
+
+	// Graph modal state
+	let showGraphModal = $state(false);
 
 	// ============================================================
 	// HYDRATION - Load full data after skeleton render
@@ -1716,17 +1721,6 @@
 		</div>
 	</header>
 
-	<!-- Relationship Graph Section -->
-	{#if !graphHidden}
-		<div class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4">
-			<ProjectGraphSection
-				projectId={project.id}
-				onNodeClick={handleGraphNodeClick}
-				onHide={handleGraphHide}
-			/>
-		</div>
-	{/if}
-
 	<!-- Main Content -->
 	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
 		<!-- Hydration Error Banner -->
@@ -1934,6 +1928,36 @@
 			{#if isHydrating && skeletonCounts}
 				<!-- Skeleton insight panels -->
 				<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
+					<!-- Graph Preview (compact, clickable) -->
+					{#if !graphHidden}
+						<button
+							type="button"
+							onclick={() => (showGraphModal = true)}
+							class="w-full bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden text-left hover:bg-muted/50 transition-colors pressable group"
+						>
+							<div class="flex items-center justify-between gap-2 px-4 py-3">
+								<div class="flex items-center gap-3">
+									<div
+										class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
+									>
+										<GitBranch class="w-4 h-4 text-accent" />
+									</div>
+									<div>
+										<p class="text-sm font-semibold text-foreground">
+											Project Graph
+										</p>
+										<p class="text-xs text-muted-foreground">
+											Click to explore
+										</p>
+									</div>
+								</div>
+								<Maximize2
+									class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+								/>
+							</div>
+						</button>
+					{/if}
+
 					<InsightPanelSkeleton
 						icon={Target}
 						label="Goals"
@@ -2021,6 +2045,36 @@
 			{:else}
 				<!-- Hydrated insight panels -->
 				<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
+					<!-- Graph Preview (compact, clickable) -->
+					{#if !graphHidden}
+						<button
+							type="button"
+							onclick={() => (showGraphModal = true)}
+							class="w-full bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden text-left hover:bg-muted/50 transition-colors pressable group"
+						>
+							<div class="flex items-center justify-between gap-2 px-4 py-3">
+								<div class="flex items-center gap-3">
+									<div
+										class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
+									>
+										<GitBranch class="w-4 h-4 text-accent" />
+									</div>
+									<div>
+										<p class="text-sm font-semibold text-foreground">
+											Project Graph
+										</p>
+										<p class="text-xs text-muted-foreground">
+											Click to explore
+										</p>
+									</div>
+								</div>
+								<Maximize2
+									class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+								/>
+							</div>
+						</button>
+					{/if}
+
 					{#each insightPanels as section}
 						{@const isOpen = expandedPanels[section.key]}
 						{@const SectionIcon = section.icon}
@@ -2742,3 +2796,44 @@
 		{/if}
 	</div>
 {/if}
+
+<!-- Project Graph Modal -->
+<Modal
+	bind:isOpen={showGraphModal}
+	onClose={() => (showGraphModal = false)}
+	title="Project Graph"
+	size="xl"
+	ariaLabel="Project relationship graph"
+>
+	{#snippet header()}
+		<div class="flex items-center gap-3">
+			<div
+				class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
+			>
+				<GitBranch class="w-4 h-4 text-accent" />
+			</div>
+			<div>
+				<p class="text-base font-semibold text-foreground">Project Graph</p>
+				<p class="text-xs text-muted-foreground">
+					Explore project relationships
+				</p>
+			</div>
+		</div>
+	{/snippet}
+	<div class="h-[60vh] sm:h-[70vh]">
+		{#if showGraphModal}
+			<ProjectGraphSection
+				projectId={project.id}
+				embedded={true}
+				onNodeClick={(node) => {
+					showGraphModal = false;
+					handleGraphNodeClick(node);
+				}}
+				onHide={() => {
+					showGraphModal = false;
+					handleGraphHide();
+				}}
+			/>
+		{/if}
+	</div>
+</Modal>

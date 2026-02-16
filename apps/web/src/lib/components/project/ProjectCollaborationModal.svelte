@@ -1186,7 +1186,9 @@
 					</div>
 
 					{#if editingMemberRoleProfile}
-						<div class="mt-3 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2">
+						<div
+							class="mt-3 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2"
+						>
 							<p class="micro-label text-muted-foreground">
 								Edit role profile: {getMemberLabel(editingMemberRoleProfile)}
 							</p>
@@ -1344,11 +1346,11 @@
 				</div>
 
 				{#if currentMember}
-					<div class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-1">
+					<div
+						class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-1"
+					>
 						<div class="flex items-center justify-between gap-2">
-							<p class="micro-label text-muted-foreground">
-								Current role profile
-							</p>
+							<p class="micro-label text-muted-foreground">Current role profile</p>
 							<Button
 								variant="ghost"
 								size="sm"
@@ -1464,10 +1466,10 @@
 				</form>
 
 				{#if roleProfileAlternatives.length > 0}
-					<div class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2">
-						<p class="micro-label text-muted-foreground">
-							Alternative role profiles
-						</p>
+					<div
+						class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2"
+					>
+						<p class="micro-label text-muted-foreground">Alternative role profiles</p>
 						<div class="space-y-2">
 							{#each roleProfileAlternatives as alternative, index (`${alternative.role_name}-${index}`)}
 								<div
@@ -1509,7 +1511,9 @@
 				{#if isLoading && !notificationSettings}
 					<p class="text-xs text-muted-foreground">Loading notification settings...</p>
 				{:else if notificationSettings}
-					<div class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-3">
+					<div
+						class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-3"
+					>
 						<label class="flex items-start gap-2.5 cursor-pointer">
 							<input
 								type="checkbox"

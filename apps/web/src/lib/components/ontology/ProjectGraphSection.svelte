@@ -36,9 +36,11 @@
 		projectId: string;
 		onNodeClick?: (node: GraphNode) => void;
 		onHide?: () => void;
+		/** When true, auto-expands and fills container without collapsible wrapper */
+		embedded?: boolean;
 	}
 
-	let { projectId, onNodeClick, onHide }: Props = $props();
+	let { projectId, onNodeClick, onHide, embedded = false }: Props = $props();
 
 	// UI State
 	let isExpanded = $state(false);
@@ -70,6 +72,12 @@
 			if (savedLayout && layouts.some((l) => l.value === savedLayout)) {
 				selectedLayout = savedLayout;
 			}
+		}
+
+		// Auto-expand and load in embedded mode
+		if (embedded && !isExpanded) {
+			isExpanded = true;
+			loadGraphData();
 		}
 	});
 
@@ -160,132 +168,211 @@
 	}
 </script>
 
-<section
-	class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-thread tx-weak overflow-hidden"
->
-	<!-- Header - Always visible -->
-	<button
-		type="button"
-		onclick={handleToggle}
-		class="w-full flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted transition-colors pressable"
-		aria-expanded={isExpanded}
-	>
-		<div class="flex items-center gap-2 sm:gap-3">
-			<div
-				class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
-			>
-				<GitBranch class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
-			</div>
-			<div>
-				<p class="text-xs sm:text-sm font-semibold text-foreground">Project Graph</p>
-				<p class="text-[10px] sm:text-xs text-muted-foreground">
-					{#if isLoading}
-						Loading...
-					{:else if nodeCount > 0}
-						{nodeCount} {nodeCount === 1 ? 'node' : 'nodes'}
-					{:else}
-						Visualize project relationships
-					{/if}
-				</p>
-			</div>
-		</div>
+{#if embedded}
+	<!-- Embedded mode: no collapsible wrapper, fills container -->
+	<div class="flex flex-col h-full">
+		<!-- Controls Row -->
+		<div
+			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-muted border-b border-border tx tx-grain tx-weak shrink-0"
+		>
+			<div class="flex items-center gap-1.5 sm:gap-2">
+				<Select
+					bind:value={selectedLayout}
+					size="sm"
+					placeholder="Layout"
+					class="!min-h-[26px] sm:!min-h-[28px] !py-0 !pl-2 !pr-6 sm:!pr-8 !text-[10px] sm:!text-xs w-[90px] sm:w-[110px]"
+					aria-label="Graph layout"
+				>
+					{#each layouts as layout}
+						<option value={layout.value}>{layout.label}</option>
+					{/each}
+				</Select>
 
-		<ChevronDown
-			class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {isExpanded
-				? 'rotate-180'
-				: ''}"
-		/>
-	</button>
-
-	<!-- Expanded Content -->
-	{#if isExpanded}
-		<div class="border-t border-border" transition:slide={{ duration: 120 }}>
-			<!-- Controls Row -->
-			<div
-				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-muted border-b border-border tx tx-grain tx-weak"
-			>
-				<div class="flex items-center gap-1.5 sm:gap-2">
-					<!-- Layout Selector -->
-					<Select
-						bind:value={selectedLayout}
-						size="sm"
-						placeholder="Layout"
-						class="!min-h-[26px] sm:!min-h-[28px] !py-0 !pl-2 !pr-6 sm:!pr-8 !text-[10px] sm:!text-xs w-[90px] sm:w-[110px]"
-						aria-label="Graph layout"
-					>
-						{#each layouts as layout}
-							<option value={layout.value}>{layout.label}</option>
-						{/each}
-					</Select>
-
-					<!-- Fit Button -->
-					<button
-						type="button"
-						onclick={handleFitToView}
-						disabled={!graphInstance}
-						class="flex items-center justify-center gap-1 sm:gap-1.5 h-[26px] sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
-						aria-label="Fit to view"
-					>
-						<Maximize2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-						<span class="hidden sm:inline">Fit</span>
-					</button>
-				</div>
-
-				<!-- Hide Button -->
 				<button
 					type="button"
-					onclick={handleHide}
-					class="flex items-center justify-center gap-1 sm:gap-1.5 h-[26px] sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
-					aria-label="Hide graph"
+					onclick={handleFitToView}
+					disabled={!graphInstance}
+					class="flex items-center justify-center gap-1 sm:gap-1.5 h-[26px] sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
+					aria-label="Fit to view"
 				>
-					<EyeOff class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
-					<span class="hidden sm:inline">Hide</span>
+					<Maximize2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+					<span class="hidden sm:inline">Fit</span>
 				</button>
 			</div>
 
-			<!-- Graph Container -->
-			<div class="h-[200px] sm:h-[250px] lg:h-[280px] relative">
-				{#if isLoading}
-					<div
-						class="absolute inset-0 flex items-center justify-center bg-muted tx tx-pulse tx-weak"
-					>
-						<div
-							class="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground"
-						>
-							<LoaderCircle class="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
-							<span>Loading graph...</span>
-						</div>
+			<button
+				type="button"
+				onclick={handleHide}
+				class="flex items-center justify-center gap-1 sm:gap-1.5 h-[26px] sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
+				aria-label="Hide graph"
+			>
+				<EyeOff class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+				<span class="hidden sm:inline">Hide</span>
+			</button>
+		</div>
+
+		<!-- Graph Container - fills remaining space -->
+		<div class="flex-1 relative min-h-0">
+			{#if isLoading}
+				<div
+					class="absolute inset-0 flex items-center justify-center bg-muted tx tx-pulse tx-weak"
+				>
+					<div class="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+						<LoaderCircle class="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+						<span>Loading graph...</span>
 					</div>
-				{:else if loadError}
-					<div
-						class="absolute inset-0 flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4 text-center tx tx-static tx-weak"
+				</div>
+			{:else if loadError}
+				<div
+					class="absolute inset-0 flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4 text-center tx tx-static tx-weak"
+				>
+					<p class="text-xs sm:text-sm text-muted-foreground">{loadError}</p>
+					<button
+						type="button"
+						onclick={handleRetry}
+						class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition pressable"
 					>
-						<p class="text-xs sm:text-sm text-muted-foreground">{loadError}</p>
+						Try again
+					</button>
+				</div>
+			{:else if graphData}
+				<OntologyGraph data={graphData} {viewMode} bind:selectedNode bind:graphInstance />
+			{:else}
+				<div class="absolute inset-0 flex items-center justify-center tx tx-bloom tx-weak">
+					<p class="text-xs sm:text-sm text-muted-foreground">No graph data available</p>
+				</div>
+			{/if}
+		</div>
+	</div>
+{:else}
+	<!-- Collapsible mode: original behavior -->
+	<section
+		class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-thread tx-weak overflow-hidden"
+	>
+		<!-- Header - Always visible -->
+		<button
+			type="button"
+			onclick={handleToggle}
+			class="w-full flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-muted transition-colors pressable"
+			aria-expanded={isExpanded}
+		>
+			<div class="flex items-center gap-2 sm:gap-3">
+				<div
+					class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
+				>
+					<GitBranch class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
+				</div>
+				<div>
+					<p class="text-xs sm:text-sm font-semibold text-foreground">Project Graph</p>
+					<p class="text-[10px] sm:text-xs text-muted-foreground">
+						{#if isLoading}
+							Loading...
+						{:else if nodeCount > 0}
+							{nodeCount} {nodeCount === 1 ? 'node' : 'nodes'}
+						{:else}
+							Visualize project relationships
+						{/if}
+					</p>
+				</div>
+			</div>
+
+			<ChevronDown
+				class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {isExpanded
+					? 'rotate-180'
+					: ''}"
+			/>
+		</button>
+
+		<!-- Expanded Content -->
+		{#if isExpanded}
+			<div class="border-t border-border" transition:slide={{ duration: 120 }}>
+				<!-- Controls Row -->
+				<div
+					class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 bg-muted border-b border-border tx tx-grain tx-weak"
+				>
+					<div class="flex items-center gap-1.5 sm:gap-2">
+						<!-- Layout Selector -->
+						<Select
+							bind:value={selectedLayout}
+							size="sm"
+							placeholder="Layout"
+							class="!min-h-[26px] sm:!min-h-[28px] !py-0 !pl-2 !pr-6 sm:!pr-8 !text-[10px] sm:!text-xs w-[90px] sm:w-[110px]"
+							aria-label="Graph layout"
+						>
+							{#each layouts as layout}
+								<option value={layout.value}>{layout.label}</option>
+							{/each}
+						</Select>
+
+						<!-- Fit Button -->
 						<button
 							type="button"
-							onclick={handleRetry}
-							class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition pressable"
+							onclick={handleFitToView}
+							disabled={!graphInstance}
+							class="flex items-center justify-center gap-1 sm:gap-1.5 h-[26px] sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition pressable"
+							aria-label="Fit to view"
 						>
-							Try again
+							<Maximize2 class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+							<span class="hidden sm:inline">Fit</span>
 						</button>
 					</div>
-				{:else if graphData}
-					<OntologyGraph
-						data={graphData}
-						{viewMode}
-						bind:selectedNode
-						bind:graphInstance
-					/>
-				{:else}
-					<div
-						class="absolute inset-0 flex items-center justify-center tx tx-bloom tx-weak"
+
+					<!-- Hide Button -->
+					<button
+						type="button"
+						onclick={handleHide}
+						class="flex items-center justify-center gap-1 sm:gap-1.5 h-[26px] sm:h-7 px-2 sm:px-2.5 text-[10px] sm:text-xs font-medium rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
+						aria-label="Hide graph"
 					>
-						<p class="text-xs sm:text-sm text-muted-foreground">
-							No graph data available
-						</p>
-					</div>
-				{/if}
+						<EyeOff class="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+						<span class="hidden sm:inline">Hide</span>
+					</button>
+				</div>
+
+				<!-- Graph Container -->
+				<div class="h-[200px] sm:h-[250px] lg:h-[280px] relative">
+					{#if isLoading}
+						<div
+							class="absolute inset-0 flex items-center justify-center bg-muted tx tx-pulse tx-weak"
+						>
+							<div
+								class="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground"
+							>
+								<LoaderCircle class="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+								<span>Loading graph...</span>
+							</div>
+						</div>
+					{:else if loadError}
+						<div
+							class="absolute inset-0 flex flex-col items-center justify-center gap-2 sm:gap-3 p-3 sm:p-4 text-center tx tx-static tx-weak"
+						>
+							<p class="text-xs sm:text-sm text-muted-foreground">{loadError}</p>
+							<button
+								type="button"
+								onclick={handleRetry}
+								class="px-2.5 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-medium rounded-md bg-accent text-accent-foreground hover:bg-accent/90 transition pressable"
+							>
+								Try again
+							</button>
+						</div>
+					{:else if graphData}
+						<OntologyGraph
+							data={graphData}
+							{viewMode}
+							bind:selectedNode
+							bind:graphInstance
+						/>
+					{:else}
+						<div
+							class="absolute inset-0 flex items-center justify-center tx tx-bloom tx-weak"
+						>
+							<p class="text-xs sm:text-sm text-muted-foreground">
+								No graph data available
+							</p>
+						</div>
+					{/if}
+				</div>
 			</div>
-		</div>
-	{/if}
-</section>
+		{/if}
+	</section>
+{/if}
