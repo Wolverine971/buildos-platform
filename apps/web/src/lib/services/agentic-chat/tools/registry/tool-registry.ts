@@ -74,9 +74,7 @@ const ENTITY_ALIASES: Record<string, string> = {
 	milestone: 'milestone',
 	milestones: 'milestone',
 	risk: 'risk',
-	risks: 'risk',
-	requirement: 'requirement',
-	requirements: 'requirement'
+	risks: 'risk'
 };
 
 const WRITE_PREFIXES = [

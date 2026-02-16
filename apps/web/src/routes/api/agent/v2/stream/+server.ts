@@ -45,7 +45,6 @@ import {
 	loadFastChatPromptContext,
 	normalizeFastContextType,
 	composeFastChatHistory,
-	FASTCHAT_LIMITS,
 	selectFastChatTools,
 	streamFastChat,
 	type FastAgentStreamRequest
@@ -77,9 +76,13 @@ const FASTCHAT_HISTORY_MAX_MESSAGE_CHARS = parsePositiveInt(
 	process.env.FASTCHAT_HISTORY_MAX_MESSAGE_CHARS,
 	1200
 );
-const FASTCHAT_GATEWAY_MIN_TOOL_ROUNDS = parsePositiveInt(
-	process.env.FASTCHAT_GATEWAY_MIN_TOOL_ROUNDS,
-	12
+const FASTCHAT_GATEWAY_MAX_TOOL_ROUNDS = parsePositiveInt(
+	process.env.FASTCHAT_GATEWAY_MAX_TOOL_ROUNDS,
+	8
+);
+const FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS = parsePositiveInt(
+	process.env.FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS,
+	6
 );
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -279,8 +282,7 @@ const OPERATION_ENTITY_TYPES: OperationEventPayload['entity_type'][] = [
 	'plan',
 	'project',
 	'milestone',
-	'risk',
-	'requirement'
+	'risk'
 ];
 
 function isOperationEntityType(
@@ -776,8 +778,7 @@ const CONTEXT_SHIFT_ENTITY_TYPES: ContextShiftPayload['entity_type'][] = [
 	'goal',
 	'document',
 	'milestone',
-	'risk',
-	'requirement'
+	'risk'
 ];
 
 const CONTEXT_SHIFT_NESTED_KEYS = ['result', 'data', 'payload'];
@@ -892,15 +893,7 @@ function isExpectedToolValidationFailure(errorMessage: string | null | undefined
 	);
 }
 
-type LastTurnEntityType =
-	| 'project'
-	| 'task'
-	| 'goal'
-	| 'plan'
-	| 'document'
-	| 'milestone'
-	| 'risk'
-	| 'requirement';
+type LastTurnEntityType = 'project' | 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'risk';
 
 const LAST_TURN_ENTITY_LIST_KEY: Record<LastTurnEntityType, keyof LastTurnContext['entities']> = {
 	project: 'projects',
@@ -909,8 +902,7 @@ const LAST_TURN_ENTITY_LIST_KEY: Record<LastTurnEntityType, keyof LastTurnContex
 	plan: 'plans',
 	document: 'documents',
 	milestone: 'milestones',
-	risk: 'risks',
-	requirement: 'requirements'
+	risk: 'risks'
 };
 
 function truncateEntityText(value: unknown, maxLength: number): string | undefined {
@@ -921,7 +913,10 @@ function truncateEntityText(value: unknown, maxLength: number): string | undefin
 	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
-function extractEntityPreview(value: unknown, fallbackId?: string): {
+function extractEntityPreview(
+	value: unknown,
+	fallbackId?: string
+): {
 	id?: string;
 	name?: string;
 	description?: string;
@@ -952,15 +947,19 @@ function upsertLastTurnEntity(
 	if (!id) return;
 
 	const listKey = LAST_TURN_ENTITY_LIST_KEY[entityType];
-	const list = (((entities as Record<string, unknown>)[listKey] as Array<{
-		id: string;
-		name?: string;
-		description?: string;
-	}> | undefined) ?? []);
+	const list =
+		((entities as Record<string, unknown>)[listKey] as
+			| Array<{
+					id: string;
+					name?: string;
+					description?: string;
+			  }>
+			| undefined) ?? [];
 	const existing = list.find((item) => item.id === id);
 	if (existing) {
 		if (!existing.name && preview.name) existing.name = preview.name;
-		if (!existing.description && preview.description) existing.description = preview.description;
+		if (!existing.description && preview.description)
+			existing.description = preview.description;
 	} else {
 		list.push({
 			id,
@@ -1024,8 +1023,6 @@ function assignLastTurnEntityByPrefix(
 		assignLastTurnEntity(entities, 'milestone', entityId);
 	} else if (normalized.startsWith('risk_')) {
 		assignLastTurnEntity(entities, 'risk', entityId);
-	} else if (normalized.startsWith('req_')) {
-		assignLastTurnEntity(entities, 'requirement', entityId);
 	}
 }
 
@@ -1058,7 +1055,12 @@ function collectLastTurnEntitiesFromValue(
 		normalizeTextValue(record.entity_id ?? record.entityId),
 		record
 	);
-	assignLastTurnEntity(entities, 'project', normalizeTextValue(record.project_id), record.project);
+	assignLastTurnEntity(
+		entities,
+		'project',
+		normalizeTextValue(record.project_id),
+		record.project
+	);
 	assignLastTurnEntity(entities, 'task', normalizeTextValue(record.task_id), record.task);
 	assignLastTurnEntity(entities, 'goal', normalizeTextValue(record.goal_id), record.goal);
 	assignLastTurnEntity(entities, 'plan', normalizeTextValue(record.plan_id), record.plan);
@@ -1075,12 +1077,6 @@ function collectLastTurnEntitiesFromValue(
 		record.milestone
 	);
 	assignLastTurnEntity(entities, 'risk', normalizeTextValue(record.risk_id), record.risk);
-	assignLastTurnEntity(
-		entities,
-		'requirement',
-		normalizeTextValue(record.requirement_id),
-		record.requirement
-	);
 
 	const taskIds = Array.isArray(record.task_ids) ? record.task_ids : [];
 	for (const taskId of taskIds) {
@@ -1128,8 +1124,7 @@ function collectLastTurnEntitiesFromValue(
 		{ key: 'plans', entityType: 'plan' },
 		{ key: 'documents', entityType: 'document' },
 		{ key: 'milestones', entityType: 'milestone' },
-		{ key: 'risks', entityType: 'risk' },
-		{ key: 'requirements', entityType: 'requirement' }
+		{ key: 'risks', entityType: 'risk' }
 	];
 	for (const { key, entityType } of pluralKeys) {
 		if (!Array.isArray(record[key])) continue;
@@ -1152,24 +1147,21 @@ function formatLastTurnEntityReferences(entities: LastTurnContext['entities']): 
 			.slice(0, 4)
 			.map((item) => (item.name ? `${item.name} (${item.id})` : item.id))
 			.join(',');
-	if (entities.projects?.length)
-		refs.push(`projects:${formatItems(entities.projects)}`);
-	if (entities.tasks?.length)
-		refs.push(`tasks:${formatItems(entities.tasks)}`);
-	if (entities.plans?.length)
-		refs.push(`plans:${formatItems(entities.plans)}`);
-	if (entities.goals?.length)
-		refs.push(`goals:${formatItems(entities.goals)}`);
-	if (entities.documents?.length)
-		refs.push(`documents:${formatItems(entities.documents)}`);
+	if (entities.projects?.length) refs.push(`projects:${formatItems(entities.projects)}`);
+	if (entities.tasks?.length) refs.push(`tasks:${formatItems(entities.tasks)}`);
+	if (entities.plans?.length) refs.push(`plans:${formatItems(entities.plans)}`);
+	if (entities.goals?.length) refs.push(`goals:${formatItems(entities.goals)}`);
+	if (entities.documents?.length) refs.push(`documents:${formatItems(entities.documents)}`);
 
 	// Backward-compat with stored legacy contexts.
 	if (refs.length === 0) {
 		if (entities.project_id) refs.push(`project:${entities.project_id}`);
 		if (entities.plan_id) refs.push(`plan:${entities.plan_id}`);
 		if (entities.document_id) refs.push(`document:${entities.document_id}`);
-		if (entities.task_ids?.length) refs.push(`tasks:${entities.task_ids.slice(0, 4).join(',')}`);
-		if (entities.goal_ids?.length) refs.push(`goals:${entities.goal_ids.slice(0, 4).join(',')}`);
+		if (entities.task_ids?.length)
+			refs.push(`tasks:${entities.task_ids.slice(0, 4).join(',')}`);
+		if (entities.goal_ids?.length)
+			refs.push(`goals:${entities.goal_ids.slice(0, 4).join(',')}`);
 	}
 	return refs;
 }
@@ -1246,7 +1238,11 @@ function buildLastTurnContext(params: {
 	}
 
 	const effectiveContextType = params.contextShift?.new_context ?? params.contextType;
-	if (isProjectScopedContext(effectiveContextType) && params.entityId && !entities.projects?.length) {
+	if (
+		isProjectScopedContext(effectiveContextType) &&
+		params.entityId &&
+		!entities.projects?.length
+	) {
 		assignLastTurnEntity(entities, 'project', params.entityId);
 	}
 
@@ -1280,7 +1276,6 @@ const TOOL_ENTITY_KEYS = [
 	'document',
 	'milestone',
 	'risk',
-	'requirement',
 	'event'
 ];
 
@@ -1807,6 +1802,7 @@ export const POST: RequestHandler = async ({
 			};
 
 			let systemPrompt: string | undefined;
+			let contextUsageSnapshot: ContextUsageSnapshot | null = null;
 			let promptContext:
 				| {
 						contextType: ChatContextType;
@@ -1895,6 +1891,7 @@ export const POST: RequestHandler = async ({
 					history: historyForModel,
 					userMessage: message
 				});
+				contextUsageSnapshot = usageSnapshot;
 				emitContextUsage(agentStream, usageSnapshot, (error) => {
 					logFastChatError({
 						error,
@@ -1917,6 +1914,15 @@ export const POST: RequestHandler = async ({
 				});
 			}
 
+			const gatewayRoundCap =
+				contextUsageSnapshot?.status === 'near_limit' ||
+				contextUsageSnapshot?.status === 'over_budget'
+					? Math.min(
+							FASTCHAT_GATEWAY_MAX_TOOL_ROUNDS,
+							FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS
+						)
+					: FASTCHAT_GATEWAY_MAX_TOOL_ROUNDS;
+
 			const { assistantText, usage, finishedReason, toolExecutions } = await streamFastChat({
 				llm,
 				userId,
@@ -1930,9 +1936,7 @@ export const POST: RequestHandler = async ({
 				message,
 				signal: request.signal,
 				systemPrompt,
-				maxToolRounds: gatewayEnabled
-					? Math.max(FASTCHAT_LIMITS.MAX_TOOL_ROUNDS, FASTCHAT_GATEWAY_MIN_TOOL_ROUNDS)
-					: undefined,
+				maxToolRounds: gatewayEnabled ? Math.max(1, gatewayRoundCap) : undefined,
 				tools,
 				debugContext: {
 					gatewayEnabled,

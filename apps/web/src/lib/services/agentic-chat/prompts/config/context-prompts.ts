@@ -158,7 +158,7 @@ From the user's message, infer:
 - **Goal**: Include if user states a clear outcome ("I want to...", "The goal is...")
 - **Tasks**: ONLY if user mentions SPECIFIC FUTURE ACTIONS ("call vendor", "schedule meeting")
 - **Plans/Milestones**: ONLY if user describes these entities or phases, deadlines, or workstreams
-- **Don't add** peripheral entities (risks, documents, requirements, metrics, sources) unless explicitly mentioned
+- **Don't add** peripheral entities (risks, documents, metrics, sources) unless explicitly mentioned
 
 **Anti-Inference Rules:**
 - "I want to write a book" -> project + 1 goal ("Finish the book"), NO tasks
@@ -243,7 +243,7 @@ Minimal mnemonic: Kind -> Constraint -> Choice.`,
 	includeHeader: true
 };
 
-const FOCUSED_ENTITY_PROMPTS: Record<FocusEntityType, PromptSection> = {
+const FOCUSED_ENTITY_PROMPTS: Partial<Record<FocusEntityType, PromptSection>> = {
 	task: {
 		id: 'focus-task-guidance',
 		title: 'Task Focus Guidance',
@@ -299,15 +299,6 @@ const FOCUSED_ENTITY_PROMPTS: Record<FocusEntityType, PromptSection> = {
 - Risks should link to the goal, plan, or task they threaten.
 - Mitigation should be expressed as a plan or tasks under a plan.
 - If the risk affects a milestone, link it and ensure a plan exists to address it.`,
-		includeHeader: true
-	},
-	requirement: {
-		id: 'focus-requirement-guidance',
-		title: 'Requirement Focus Guidance',
-		content: `You are focused on a requirement.
-- Requirements should attach to a goal or plan, with tasks implementing them under the plan.
-- Clarify acceptance criteria if missing.
-- If the requirement implies a milestone, suggest linking it.`,
 		includeHeader: true
 	}
 };

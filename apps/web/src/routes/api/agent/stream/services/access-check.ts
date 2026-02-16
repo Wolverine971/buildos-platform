@@ -20,8 +20,7 @@ const ENTITY_TABLE_MAP: Record<string, keyof Database['public']['Tables']> = {
 	goal: 'onto_goals',
 	document: 'onto_documents',
 	milestone: 'onto_milestones',
-	risk: 'onto_risks',
-	requirement: 'onto_requirements'
+	risk: 'onto_risks'
 };
 
 export class AccessCheckService {

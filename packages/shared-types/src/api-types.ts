@@ -3,9 +3,19 @@
 export interface ApiResponse<T = unknown> {
 	success: boolean;
 	data?: T;
-	error?: ApiError;
+	error?: string;
+	message?: string;
+	warnings?: ApiWarning[];
+	code?: string;
+	details?: unknown;
+	errorInfo?: ApiError;
 	timestamp: string;
 	requestId?: string;
+}
+
+export interface ApiWarning {
+	message: string;
+	type: string;
 }
 
 export interface ApiError {
@@ -146,10 +156,17 @@ export enum StreamEventType {
 }
 
 // Helper functions for API responses
-export function createSuccessResponse<T>(data: T, requestId?: string): ApiResponse<T> {
+export function createSuccessResponse<T>(
+	data: T,
+	requestId?: string,
+	message?: string,
+	warnings?: ApiWarning[]
+): ApiResponse<T> {
 	return {
 		success: true,
 		data,
+		message,
+		warnings,
 		timestamp: new Date().toISOString(),
 		requestId
 	};
@@ -162,14 +179,20 @@ export function createErrorResponse(
 	details?: unknown,
 	requestId?: string
 ): ApiResponse<never> {
+	const errorInfo: ApiError = {
+		code,
+		message,
+		status,
+		details
+	};
+
 	return {
 		success: false,
-		error: {
-			code,
-			message,
-			status,
-			details
-		},
+		error: message,
+		message,
+		code,
+		details,
+		errorInfo,
 		timestamp: new Date().toISOString(),
 		requestId
 	};

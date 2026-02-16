@@ -1148,7 +1148,6 @@ export class StreamHandler {
 		| 'project'
 		| 'milestone'
 		| 'risk'
-		| 'requirement'
 		| null {
 		const match = toolName.match(
 			/(?:list|search|get|create|update|delete)_onto_([a-z_]+?)(?:_details)?$/
@@ -1175,9 +1174,7 @@ export class StreamHandler {
 			milestones: 'milestone',
 			milestone: 'milestone',
 			risks: 'risk',
-			risk: 'risk',
-			requirements: 'requirement',
-			requirement: 'requirement'
+			risk: 'risk'
 		};
 
 		const resolved = map[raw];
@@ -1189,8 +1186,7 @@ export class StreamHandler {
 					| 'plan'
 					| 'project'
 					| 'milestone'
-					| 'risk'
-					| 'requirement')
+					| 'risk')
 			: null;
 	}
 
@@ -1204,7 +1200,6 @@ export class StreamHandler {
 			'project_id',
 			'milestone_id',
 			'risk_id',
-			'requirement_id',
 			'entity_id'
 		];
 		const ids: string[] = [];
@@ -1226,8 +1221,7 @@ export class StreamHandler {
 			| 'plan'
 			| 'project'
 			| 'milestone'
-			| 'risk'
-			| 'requirement',
+			| 'risk',
 		args?: Record<string, any>
 	): string {
 		const name =
@@ -1262,9 +1256,7 @@ export class StreamHandler {
 			milestone: 'milestone',
 			milestones: 'milestone',
 			risk: 'risk',
-			risks: 'risk',
-			requirement: 'requirement',
-			requirements: 'requirement'
+			risks: 'risk'
 		};
 
 		const extracted: Array<{ id: string; kind: string; name?: string }> = [];

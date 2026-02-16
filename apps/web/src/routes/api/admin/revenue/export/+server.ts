@@ -1,11 +1,11 @@
 // apps/web/src/routes/api/admin/revenue/export/+server.ts
-import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized();
 	}
 
 	// Check admin status
@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		.single();
 
 	if (!adminCheck?.is_admin) {
-		throw error(403, 'Forbidden');
+		return ApiResponse.forbidden();
 	}
 
 	const period = url.searchParams.get('period') || 'month';
@@ -135,6 +135,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 	} catch (err) {
 		console.error('Error exporting revenue data:', err);
-		throw error(500, 'Failed to export revenue data');
+		return ApiResponse.internalError(err, 'Failed to export revenue data');
 	}
 };

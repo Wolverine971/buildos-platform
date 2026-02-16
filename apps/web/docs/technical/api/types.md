@@ -246,22 +246,40 @@ interface ActivityLog {
 **File:** `src/lib/types/index.ts`
 
 ```typescript
-interface ApiResponse {
+interface ApiResponse<T = unknown> {
 	success: boolean;
 	data?: T;
 	error?: string;
 	message?: string;
+	warnings?: Array<{ message: string; type: string }>;
+	code?: string;
+	details?: unknown;
+	errorInfo?: {
+		code: string;
+		message: string;
+		status: number;
+		details?: unknown;
+		field?: string;
+	};
+	timestamp: string;
+	requestId?: string;
 }
 ```
 
 ### Properties
 
-| Property | Type      | Optional | Description |
-| -------- | --------- | -------- | ----------- |
-| success  | `boolean` | No       | -           |
-| data     | `T`       | Yes      | -           |
-| error    | `string`  | Yes      | -           |
-| message  | `string`  | Yes      | -           |
+| Property  | Type      | Optional | Description |
+| --------- | --------- | -------- | ----------- |
+| success   | `boolean` | No       | -           |
+| data      | `T`       | Yes      | -           |
+| error     | `string`  | Yes      | -           |
+| message   | `string`  | Yes      | -           |
+| warnings  | `Array`   | Yes      | -           |
+| code      | `string`  | Yes      | -           |
+| details   | `unknown` | Yes      | -           |
+| errorInfo | `object`  | Yes      | -           |
+| timestamp | `string`  | No       | -           |
+| requestId | `string`  | Yes      | -           |
 
 ---
 

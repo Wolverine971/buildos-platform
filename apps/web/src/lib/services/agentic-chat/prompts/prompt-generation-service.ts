@@ -161,15 +161,15 @@ export class PromptGenerationService {
 		if (isToolGatewayEnabled()) {
 			sections.push(
 				`## Tool Discovery Mode\n\n` +
-					`- You only have access to tool_help and tool_exec (and optional tool_batch).\n` +
+					`- You only have access to tool_help and tool_exec.\n` +
+					`- Gateway query pattern (default): tool_help(\"root\") -> tool_help(\"<group/entity>\") -> tool_exec(op,args).\n` +
 					`- Use tool_help when the op or arg schema is uncertain; avoid repeated calls for the same help path in one turn.\n` +
 					`- Reuse discovered schemas in the same turn, and only re-check help after a validation error.\n` +
-					`- Prefer tool_batch for first-time discovery + execution to reduce round trips.\n` +
-					`- Use tool_help(\"root\") to list groups, then drill down only when needed (e.g., tool_help(\"onto.task\"), tool_help(\"onto.task.update\")).\n` +
-					`- For onto.* search ops, prefer args.search (not args.query).\n` +
-					`- When a tool_exec error includes help_path, call tool_help(help_path) once and retry once.\n` +
-					`- For onto.*.get ops, always pass the exact *_id. If unknown, use list/search ops first to discover the ID.\n` +
-					`- Do not guess IDs or required fields.`
+					`- For any onto.*.search op (including onto.search), use args.query.\n` +
+					`- Calendar events are under cal.event.* (not onto.event.*).\n` +
+					`- When a tool_exec error includes help_path, call tool_help(help_path) once and retry once with corrected args.\n` +
+					`- For onto.*.get ops, always pass the exact *_id. If unknown, use list/search ops first to discover IDs.\n` +
+					`- Do not guess IDs or required fields, and do not repeat the same failing op+args without new help output.`
 			);
 		}
 
@@ -560,7 +560,9 @@ ${Object.entries(ontologyContext.metadata.entity_count)
 		const collection = (entities as Record<string, unknown>)[key];
 		if (Array.isArray(collection)) {
 			return collection
-				.filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+				.filter(
+					(item): item is Record<string, unknown> => !!item && typeof item === 'object'
+				)
 				.map((item) => ({
 					id: typeof item.id === 'string' ? item.id : '',
 					name: typeof item.name === 'string' ? item.name : undefined,

@@ -85,7 +85,11 @@
 			}
 
 			const result = await response.json();
-			return result.success && result.connected === true;
+			const connected =
+				(result?.data && typeof result.data === 'object'
+					? (result.data as { connected?: boolean }).connected
+					: undefined) ?? result?.connected;
+			return result.success && connected === true;
 		} catch (error) {
 			console.error('Failed to check calendar connection:', error);
 			connectionError = error instanceof Error ? error.message : 'Connection check failed';

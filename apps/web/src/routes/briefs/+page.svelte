@@ -73,6 +73,7 @@
 	let dailyBrief = $state<DailyBrief | null>(null);
 	let projectBriefs = $state<any[]>([]);
 	let briefHistory = $state<DailyBrief[]>([]);
+	let activeBriefId = $state<string | null>(null);
 	let isToday = $state(false);
 
 	// Component state
@@ -157,7 +158,7 @@
 	}
 
 	// Function to fetch brief data with proper timezone
-	async function fetchBriefData(date?: string, view?: string) {
+	async function fetchBriefData(date?: string, view?: string, briefId?: string | null) {
 		if (!browser) return;
 
 		isLoading = true;
@@ -169,11 +170,15 @@
 			// Use provided values or current state
 			const fetchDate = date !== undefined ? date : currentDate;
 			const fetchView = view !== undefined ? view : selectedView;
+			const fetchBriefId = briefId !== undefined ? briefId : activeBriefId;
 
 			if (fetchDate) {
 				params.set('date', fetchDate);
 			}
 			params.set('view', fetchView);
+			if (fetchView === 'single' && fetchBriefId) {
+				params.set('brief_id', fetchBriefId);
+			}
 			params.set('timezone', userTimezone);
 
 			const response = await fetch(`/briefs?${params.toString()}`);
@@ -191,6 +196,11 @@
 				dailyBrief = result.data.dailyBrief;
 				projectBriefs = result.data.projectBriefs || [];
 				briefHistory = result.data.briefHistory || [];
+				activeBriefId =
+					result.data.activeBriefId ||
+					result.data.dailyBrief?.chat_brief_id ||
+					result.data.dailyBrief?.id ||
+					null;
 				isToday = result.data.isToday;
 
 				// Update URL if needed
@@ -200,6 +210,11 @@
 				}
 				if (selectedView !== url.searchParams.get('view')) {
 					url.searchParams.set('view', selectedView);
+				}
+				if (selectedView === 'single' && activeBriefId) {
+					url.searchParams.set('brief_id', activeBriefId);
+				} else {
+					url.searchParams.delete('brief_id');
 				}
 
 				// Use replaceState to update URL without navigation
@@ -331,15 +346,17 @@
 		const urlParams = new URLSearchParams($page.url.search);
 		const dateParam = urlParams.get('date');
 		const viewParam = urlParams.get('view');
+		const briefIdParam = urlParams.get('brief_id');
 
 		// Set initial view
 		selectedView = (viewParam as 'single' | 'list' | 'analytics') || 'single';
 
 		// If no date was provided, use today in user's timezone
 		currentDate = dateParam || getTodayInTimezone(userTimezone);
+		activeBriefId = briefIdParam;
 
 		// Fetch initial data with proper timezone
-		await fetchBriefData();
+		await fetchBriefData(currentDate, selectedView, activeBriefId);
 
 		// Fetch next scheduled brief time
 		await fetchNextScheduledBrief();
@@ -393,6 +410,10 @@
 		if (currentStreamingStatus?.isGenerating || checkingExistingGeneration) return;
 
 		error = null;
+		if (forceRegenerate) {
+			// Regeneration creates a fresh snapshot; clear explicit pin to prior brief_id.
+			activeBriefId = null;
+		}
 
 		try {
 			// Pass timezone and supabase client along with other options
@@ -484,25 +505,32 @@
 		const newDate = date.toISOString().split('T')[0];
 
 		currentDate = newDate;
+		activeBriefId = null;
 		fetchBriefData(newDate);
 	}
 
 	function goToToday() {
 		const todayDate = getTodayInTimezone(userTimezone);
 		currentDate = todayDate;
+		activeBriefId = null;
 		fetchBriefData(todayDate);
 	}
 
 	function changeView(newView: 'single' | 'list' | 'analytics') {
 		selectedView = newView;
-		fetchBriefData(currentDate, newView);
+		if (newView !== 'single') {
+			activeBriefId = null;
+		}
+		fetchBriefData(currentDate, newView, newView === 'single' ? activeBriefId : null);
 		showMobileMenu = false;
 	}
 
-	function selectBriefDate(briefDate: string) {
-		currentDate = briefDate;
+	function selectBriefSnapshot(brief: DailyBrief) {
+		const briefId = getBriefChatKey(brief);
+		currentDate = brief.brief_date;
 		selectedView = 'single';
-		fetchBriefData(briefDate, 'single');
+		activeBriefId = briefId;
+		fetchBriefData(brief.brief_date, 'single', briefId);
 	}
 
 	async function exportBrief(brief: DailyBrief) {
@@ -1079,7 +1107,7 @@
 										<div class="flex items-center space-x-1 sm:space-x-1">
 											<Button
 												type="button"
-												onclick={() => selectBriefDate(brief.brief_date)}
+												onclick={() => selectBriefSnapshot(brief)}
 												variant="ghost"
 												size="sm"
 												class="p-1.5 text-muted-foreground hover:text-accent hover:bg-accent/10"

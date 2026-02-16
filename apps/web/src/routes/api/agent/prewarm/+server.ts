@@ -75,6 +75,26 @@ async function hasProjectAccess(
 	return Boolean(data);
 }
 
+async function hasDailyBriefAccess(
+	supabase: any,
+	briefId: string,
+	userId: string
+): Promise<boolean> {
+	const { data, error } = await supabase
+		.from('ontology_daily_briefs')
+		.select('id')
+		.eq('id', briefId)
+		.eq('user_id', userId)
+		.maybeSingle();
+
+	if (error) {
+		logger.debug('Daily brief access lookup failed for prewarm', { error, briefId, userId });
+		return false;
+	}
+
+	return Boolean(data?.id);
+}
+
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	const authResult = await authenticateRequest(safeGetSession, supabase);
 	if (!authResult.success) {
@@ -98,32 +118,68 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	let createdSession = false;
 
 	const focusProvided = Object.prototype.hasOwnProperty.call(body, 'projectFocus');
-	const candidateEntityId = entity_id ?? projectFocus?.projectId ?? undefined;
-	const requiresEntityId =
+	const rawCandidateEntityId = entity_id ?? projectFocus?.projectId ?? undefined;
+	const candidateEntityId =
+		typeof rawCandidateEntityId === 'string' && rawCandidateEntityId.trim().length > 0
+			? rawCandidateEntityId.trim()
+			: undefined;
+	const isProjectScopedContext =
 		normalizedContextType === 'project' ||
 		normalizedContextType === 'project_audit' ||
 		normalizedContextType === 'project_forecast';
+	const isDailyBriefContext = normalizedContextType === 'daily_brief';
+	const requiresEntityId = isProjectScopedContext || isDailyBriefContext;
 
 	if (!session_id) {
 		if (requiresEntityId && !candidateEntityId) {
 			return ApiResponse.success({ warmed: false, reason: 'missing_entity' });
 		}
 
-		try {
-			const created = await sessionManager.createSession({
-				userId,
-				contextType: normalizedContextType,
-				entityId: candidateEntityId
-			});
-			session = created;
-			createdSession = true;
-		} catch (error) {
-			logger.error('Failed to create session for prewarm', {
-				error,
-				userId,
-				contextType: normalizedContextType
-			});
-			return ApiResponse.error('Failed to create session', 500, 'SESSION_CREATE_FAILED');
+		if (isDailyBriefContext && candidateEntityId) {
+			const hasBriefAccess = await hasDailyBriefAccess(supabase, candidateEntityId, userId);
+			if (!hasBriefAccess) {
+				return ApiResponse.success({ warmed: false, reason: 'brief_not_accessible' });
+			}
+
+			const { data: existingBriefSession, error: existingBriefSessionError } = await supabase
+				.from('chat_sessions')
+				.select('*')
+				.eq('user_id', userId)
+				.eq('context_type', 'daily_brief')
+				.eq('entity_id', candidateEntityId)
+				.eq('status', 'active')
+				.order('updated_at', { ascending: false })
+				.limit(1)
+				.maybeSingle();
+
+			if (existingBriefSessionError) {
+				logger.warn('Failed to resolve canonical prewarm brief session', {
+					error: existingBriefSessionError,
+					userId,
+					briefId: candidateEntityId
+				});
+			} else if (existingBriefSession) {
+				session = existingBriefSession;
+			}
+		}
+
+		if (!session) {
+			try {
+				const created = await sessionManager.createSession({
+					userId,
+					contextType: normalizedContextType,
+					entityId: candidateEntityId
+				});
+				session = created;
+				createdSession = true;
+			} catch (error) {
+				logger.error('Failed to create session for prewarm', {
+					error,
+					userId,
+					contextType: normalizedContextType
+				});
+				return ApiResponse.error('Failed to create session', 500, 'SESSION_CREATE_FAILED');
+			}
 		}
 	} else {
 		const { data: existing, error: sessionError } = await supabase
@@ -154,7 +210,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	const locationCacheKey = buildLocationCacheKey(normalizedContextType, resolvedEntityId);
 	const linkedEntitiesCacheKey = buildLinkedEntitiesCacheKey(resolvedFocus);
 	const docStructureProjectId =
-		resolvedFocus?.projectId ?? (requiresEntityId ? (resolvedEntityId ?? null) : null);
+		resolvedFocus?.projectId ?? (isProjectScopedContext ? (resolvedEntityId ?? null) : null);
 	const docStructureCacheKey = docStructureProjectId
 		? buildDocStructureCacheKey(docStructureProjectId)
 		: null;
@@ -162,7 +218,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	let shouldWarmLocation = !requiresEntityId || !!resolvedEntityId;
 	let locationSkipReason: string | null = null;
 
-	if (requiresEntityId) {
+	if (isProjectScopedContext) {
 		if (!resolvedEntityId) {
 			shouldWarmLocation = false;
 			locationSkipReason = 'missing_entity';
@@ -174,6 +230,21 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				logger.debug('Skipping location prewarm for inaccessible project', {
 					contextType: normalizedContextType,
 					entityId: resolvedEntityId
+				});
+			}
+		}
+	} else if (isDailyBriefContext) {
+		if (!resolvedEntityId) {
+			shouldWarmLocation = false;
+			locationSkipReason = 'missing_entity';
+		} else {
+			const hasBriefAccess = await hasDailyBriefAccess(supabase, resolvedEntityId, userId);
+			if (!hasBriefAccess) {
+				shouldWarmLocation = false;
+				locationSkipReason = 'brief_not_accessible';
+				logger.debug('Skipping location prewarm for inaccessible daily brief', {
+					contextType: normalizedContextType,
+					briefId: resolvedEntityId
 				});
 			}
 		}

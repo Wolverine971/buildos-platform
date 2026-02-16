@@ -1,6 +1,6 @@
 // apps/web/src/routes/api/llm-usage/summary/+server.ts
 
-import { json, type RequestHandler } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { LLMUsageService } from '$lib/services/llm-usage.service';
 import { ApiResponse } from '$utils/api-response';
 
@@ -30,7 +30,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		} = await supabase.auth.getUser();
 
 		if (authError || !user) {
-			return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+			return ApiResponse.unauthorized();
 		}
 
 		const usageService = new LLMUsageService(supabase);
@@ -54,19 +54,13 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			const endParam = url.searchParams.get('endDate');
 
 			if (!startParam || !endParam) {
-				return json(
-					{
-						success: false,
-						error: 'startDate and endDate required for custom period'
-					},
-					{ status: 400 }
-				);
+				return ApiResponse.badRequest('startDate and endDate required for custom period');
 			}
 
 			startDate = new Date(startParam);
 			endDate = new Date(endParam);
 		} else {
-			return json({ success: false, error: 'Invalid period parameter' }, { status: 400 });
+			return ApiResponse.badRequest('Invalid period parameter');
 		}
 
 		// Fetch usage data
@@ -77,28 +71,24 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			usageService.getOperationBreakdown(user.id, startDate, endDate)
 		]);
 
-		return json({
-			success: true,
-			data: {
-				period: {
-					type: period,
-					startDate: startDate.toISOString(),
-					endDate: endDate.toISOString()
-				},
-				summary,
-				dailyUsage,
-				modelBreakdown,
-				operationBreakdown
-			}
+		return ApiResponse.success({
+			period: {
+				type: period,
+				startDate: startDate.toISOString(),
+				endDate: endDate.toISOString()
+			},
+			summary,
+			dailyUsage,
+			modelBreakdown,
+			operationBreakdown
 		});
 	} catch (error) {
 		console.error('Error fetching LLM usage summary:', error);
-		return json(
-			{
-				success: false,
-				error: error instanceof Error ? error.message : 'Failed to fetch usage summary'
-			},
-			{ status: 500 }
+		return ApiResponse.error(
+			error instanceof Error ? error.message : 'Failed to fetch usage summary',
+			500,
+			'INTERNAL_ERROR',
+			error
 		);
 	}
 };

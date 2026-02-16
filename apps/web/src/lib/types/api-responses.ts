@@ -6,43 +6,39 @@
  * The local ApiResponse utility class generates these structures.
  */
 
-import type { ChatSession, ChatMessage } from '@buildos/shared-types';
+import type {
+	ApiResponse as SharedApiResponse,
+	ChatSession,
+	ChatMessage
+} from '@buildos/shared-types';
 
 /**
  * Standard success response format
  */
-export interface ApiSuccessResponse<T = any> {
-	success: true;
-	data?: T;
-	message?: string;
-}
+export type ApiSuccessResponse<T = unknown> = SharedApiResponse<T> & { success: true };
 
 /**
  * Standard error response format
  */
-export interface ApiErrorResponse {
-	error: string;
-	code?: string;
-	details?: any;
-}
+export type ApiErrorResponse = SharedApiResponse<never> & { success: false };
 
 /**
  * Union type for all API responses
  */
-export type ApiResponseType<T = any> = ApiSuccessResponse<T> | ApiErrorResponse;
+export type ApiResponseType<T = unknown> = SharedApiResponse<T>;
 
 /**
  * Type guard to check if response is a success
  */
 export function isApiSuccess<T>(response: ApiResponseType<T>): response is ApiSuccessResponse<T> {
-	return 'success' in response && response.success === true;
+	return response.success === true;
 }
 
 /**
  * Type guard to check if response is an error
  */
 export function isApiError(response: ApiResponseType): response is ApiErrorResponse {
-	return 'error' in response;
+	return response.success === false;
 }
 
 // Specific response types for chat endpoints

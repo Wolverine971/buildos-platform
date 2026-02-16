@@ -12,7 +12,6 @@
 		FileText,
 		Flag,
 		AlertTriangle,
-		ClipboardList,
 		Search,
 		X,
 		Loader
@@ -42,8 +41,7 @@
 		{ value: 'plan', label: 'Plans', icon: Calendar },
 		{ value: 'document', label: 'Documents', icon: FileText },
 		{ value: 'milestone', label: 'Milestones', icon: Flag },
-		{ value: 'risk', label: 'Risks', icon: AlertTriangle },
-		{ value: 'requirement', label: 'Requirements', icon: ClipboardList }
+		{ value: 'risk', label: 'Risks', icon: AlertTriangle }
 	];
 
 	// --- Metadata display helpers ---

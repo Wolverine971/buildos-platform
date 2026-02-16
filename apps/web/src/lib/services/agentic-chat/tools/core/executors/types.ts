@@ -47,7 +47,9 @@ export interface ListOntoTasksArgs {
 }
 
 export interface SearchOntoTasksArgs {
-	search: string;
+	query: string;
+	/** @deprecated Legacy alias. Use query. */
+	search?: string;
 	project_id?: string;
 	state_key?: string;
 	limit?: number;
@@ -70,7 +72,9 @@ export interface ListOntoProjectsArgs {
 }
 
 export interface SearchOntoProjectsArgs {
-	search: string;
+	query: string;
+	/** @deprecated Legacy alias. Use query. */
+	search?: string;
 	state_key?: string;
 	type_key?: string;
 	limit?: number;
@@ -96,17 +100,48 @@ export interface ListOntoRisksArgs {
 	limit?: number;
 }
 
-export interface ListOntoRequirementsArgs {
-	project_id?: string;
-	type_key?: string;
-	limit?: number;
-}
-
 export interface SearchOntoDocumentsArgs {
-	search: string;
+	query: string;
+	/** @deprecated Legacy alias. Use query. */
+	search?: string;
 	project_id?: string;
 	type_key?: string;
 	state_key?: string;
+	limit?: number;
+}
+
+export interface SearchOntoGoalsArgs {
+	query: string;
+	/** @deprecated Legacy alias. Use query. */
+	search?: string;
+	project_id?: string;
+	limit?: number;
+}
+
+export interface SearchOntoPlansArgs {
+	query: string;
+	/** @deprecated Legacy alias. Use query. */
+	search?: string;
+	project_id?: string;
+	limit?: number;
+}
+
+export interface SearchOntoMilestonesArgs {
+	query: string;
+	/** @deprecated Legacy alias. Use query. */
+	search?: string;
+	project_id?: string;
+	state_key?: string;
+	limit?: number;
+}
+
+export interface SearchOntoRisksArgs {
+	query: string;
+	/** @deprecated Legacy alias. Use query. */
+	search?: string;
+	project_id?: string;
+	state_key?: string;
+	impact?: string;
 	limit?: number;
 }
 
@@ -147,10 +182,6 @@ export interface GetOntoMilestoneDetailsArgs {
 
 export interface GetOntoRiskDetailsArgs {
 	risk_id: string;
-}
-
-export interface GetOntoRequirementDetailsArgs {
-	requirement_id: string;
 }
 
 export interface ListTaskDocumentsArgs {
@@ -236,6 +267,45 @@ export interface CreateOntoDocumentArgs {
 	parent_id?: string | null;
 	/** Position within parent's children (0-indexed). If omitted, appends to end. */
 	position?: number;
+}
+
+export interface CreateOntoMilestoneArgs {
+	project_id: string;
+	title: string;
+	goal_id?: string;
+	due_at?: string;
+	state_key?: string;
+	description?: string;
+	milestone?: string;
+	props?: Record<string, unknown>;
+	parent?: { kind: string; id: string; is_primary?: boolean };
+	parents?: Array<{ kind: string; id: string; is_primary?: boolean }>;
+	connections?: Array<{
+		kind: string;
+		id: string;
+		intent?: 'containment' | 'semantic';
+		rel?: string;
+	}>;
+}
+
+export interface CreateOntoRiskArgs {
+	project_id: string;
+	title: string;
+	impact: 'low' | 'medium' | 'high' | 'critical';
+	probability?: number;
+	state_key?: string;
+	content?: string;
+	description?: string;
+	mitigation_strategy?: string;
+	props?: Record<string, unknown>;
+	parent?: { kind: string; id: string; is_primary?: boolean };
+	parents?: Array<{ kind: string; id: string; is_primary?: boolean }>;
+	connections?: Array<{
+		kind: string;
+		id: string;
+		intent?: 'containment' | 'semantic';
+		rel?: string;
+	}>;
 }
 
 export interface MoveDocumentInTreeArgs {
@@ -429,14 +499,6 @@ export interface UpdateOntoRiskArgs {
 	props?: Record<string, unknown>;
 }
 
-export interface UpdateOntoRequirementArgs {
-	requirement_id: string;
-	text?: string;
-	priority?: number;
-	type_key?: string;
-	props?: Record<string, unknown>;
-}
-
 export interface DeleteOntoTaskArgs {
 	task_id: string;
 }
@@ -451,6 +513,18 @@ export interface DeleteOntoPlanArgs {
 
 export interface DeleteOntoDocumentArgs {
 	document_id: string;
+}
+
+export interface DeleteOntoProjectArgs {
+	project_id: string;
+}
+
+export interface DeleteOntoMilestoneArgs {
+	milestone_id: string;
+}
+
+export interface DeleteOntoRiskArgs {
+	risk_id: string;
 }
 
 // ============================================
@@ -469,14 +543,6 @@ export interface GetEntityRelationshipsArgs {
 
 export interface GetLinkedEntitiesArgs {
 	entity_id: string;
-	entity_kind: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'risk' | 'requirement';
-	filter_kind?:
-		| 'task'
-		| 'plan'
-		| 'goal'
-		| 'milestone'
-		| 'document'
-		| 'risk'
-		| 'requirement'
-		| 'all';
+	entity_kind: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'risk';
+	filter_kind?: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'risk' | 'all';
 }

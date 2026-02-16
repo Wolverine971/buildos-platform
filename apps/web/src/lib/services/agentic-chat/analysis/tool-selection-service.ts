@@ -92,15 +92,9 @@ export class ToolSelectionService {
 		}
 
 		const focusType = focus.focusType;
-		const otherTypes = [
-			'task',
-			'goal',
-			'plan',
-			'document',
-			'milestone',
-			'risk',
-			'requirement'
-		].filter((type) => type !== focusType);
+		const otherTypes = ['task', 'goal', 'plan', 'document', 'milestone', 'risk'].filter(
+			(type) => type !== focusType
+		);
 
 		return tools.filter((tool) => {
 			const toolName = resolveToolName(tool).toLowerCase();
@@ -150,8 +144,7 @@ export class ToolSelectionService {
 			plan: ['plan', 'plans'],
 			document: ['document', 'documents', 'doc', 'docs'],
 			milestone: ['milestone', 'milestones'],
-			risk: ['risk', 'risks'],
-			requirement: ['requirement', 'requirements', 'req', 'reqs']
+			risk: ['risk', 'risks']
 		};
 
 		const mentions = new Set<string>();

@@ -165,7 +165,6 @@ BuildOS uses a props-based ontology system with these core entities:
 - **Milestones** (onto_milestones): Checkpoints and due dates
 - **Documents** (onto_documents): Project documentation
 - **Risks** (onto_risks): Risk registers and mitigation plans
-- **Requirements** (onto_requirements): Constraints and requirements
 - **Metrics** (onto_metrics): KPIs and measurable success indicators
 - **Sources** (onto_sources): External references and links
 - **Edges** (onto_edges): Relationships between entities
@@ -179,7 +178,6 @@ These query the ontology system and return abbreviated data:
 - list_onto_documents → Document summaries (id, title, state_key, type_key)
 - list_onto_milestones → Milestone summaries (id, title, due_at, state_key)
 - list_onto_risks → Risk summaries (id, title, impact, state_key)
-- list_onto_requirements → Requirement summaries (id, text, priority)
 
 **Filters Available:**
 - Projects: state_key, type_key (state: 'planning', 'active', 'completed', 'cancelled')
@@ -189,7 +187,6 @@ These query the ontology system and return abbreviated data:
 - Documents: project_id, type_key, state_key (draft, in_review, ready, published, archived)
 - Milestones: project_id, state_key (pending, in_progress, completed, missed)
 - Risks: project_id, state_key (identified, mitigated, occurred, closed), impact
-- Requirements: project_id
 
 ### Tier 2: ONTOLOGY DETAIL Tools (Use When Needed)
 Get complete entity data including props (JSON):
@@ -200,7 +197,6 @@ Get complete entity data including props (JSON):
 - get_onto_document_details → Full document with all properties
 - get_onto_milestone_details → Full milestone with all properties
 - get_onto_risk_details → Full risk with all properties
-- get_onto_requirement_details → Full requirement with all properties
 
 ### Tier 3: ONTOLOGY RELATIONSHIP Tools
 Explore the entity graph:
@@ -223,7 +219,6 @@ Create, update, and delete ontology entities:
 - update_onto_document → Update document fields (required: document_id, optional: title, description, type_key, state_key, content, props)
 - update_onto_milestone → Update milestone fields (required: milestone_id, optional: title, due_at, state_key, description, props)
 - update_onto_risk → Update risk fields (required: risk_id, optional: title, impact, probability, state_key, content, props)
-- update_onto_requirement → Update requirement fields (required: requirement_id, optional: text, priority, type_key, props)
 
 **DELETE Tools** (Remove entities):
 - delete_onto_task → Delete task permanently (required: task_id)

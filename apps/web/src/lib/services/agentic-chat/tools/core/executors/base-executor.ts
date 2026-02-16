@@ -231,8 +231,7 @@ export class BaseExecutor {
 			'onto_goals',
 			'onto_documents',
 			'onto_milestones',
-			'onto_risks',
-			'onto_requirements'
+			'onto_risks'
 		];
 
 		for (const table of tables) {

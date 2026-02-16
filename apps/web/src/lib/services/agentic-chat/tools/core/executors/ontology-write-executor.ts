@@ -3,9 +3,9 @@
  * Ontology Write Executor
  *
  * Handles all write operations for ontology entities:
- * - create_onto_* (project, task, goal, plan, document)
- * - update_onto_* (project, task, goal, plan, document)
- * - delete_onto_* (task, goal, plan, document)
+ * - create_onto_* (project, task, goal, plan, document, milestone, risk)
+ * - update_onto_* (project, task, goal, plan, document, milestone, risk)
+ * - delete_onto_* (project, task, goal, plan, document, milestone, risk)
  * - create_task_document
  *
  * Includes support for update strategies (replace, append, merge_llm).
@@ -19,6 +19,8 @@ import type {
 	CreateOntoGoalArgs,
 	CreateOntoPlanArgs,
 	CreateOntoDocumentArgs,
+	CreateOntoMilestoneArgs,
+	CreateOntoRiskArgs,
 	MoveDocumentInTreeArgs,
 	CreateTaskDocumentArgs,
 	UpdateOntoProjectArgs,
@@ -28,14 +30,16 @@ import type {
 	UpdateOntoDocumentArgs,
 	UpdateOntoMilestoneArgs,
 	UpdateOntoRiskArgs,
-	UpdateOntoRequirementArgs,
 	LinkOntoEntitiesArgs,
 	UnlinkOntoEdgeArgs,
 	ReorganizeOntoProjectGraphArgs,
 	DeleteOntoTaskArgs,
 	DeleteOntoGoalArgs,
 	DeleteOntoPlanArgs,
-	DeleteOntoDocumentArgs
+	DeleteOntoDocumentArgs,
+	DeleteOntoProjectArgs,
+	DeleteOntoMilestoneArgs,
+	DeleteOntoRiskArgs
 } from './types';
 import { createLogger } from '$lib/utils/logger';
 
@@ -493,6 +497,65 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		};
 	}
 
+	async createOntoMilestone(args: CreateOntoMilestoneArgs): Promise<{
+		milestone: any;
+		message: string;
+	}> {
+		const payload = {
+			project_id: args.project_id,
+			title: args.title,
+			goal_id: args.goal_id,
+			due_at: args.due_at,
+			state_key: args.state_key,
+			description: args.description,
+			milestone: args.milestone,
+			props: args.props ?? {},
+			parent: args.parent,
+			parents: args.parents,
+			connections: args.connections
+		};
+
+		const data = await this.apiRequest('/api/onto/milestones/create', {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		});
+
+		return {
+			milestone: data.milestone,
+			message: `Created ontology milestone "${data.milestone?.title ?? 'Milestone'}"`
+		};
+	}
+
+	async createOntoRisk(args: CreateOntoRiskArgs): Promise<{
+		risk: any;
+		message: string;
+	}> {
+		const payload = {
+			project_id: args.project_id,
+			title: args.title,
+			impact: args.impact,
+			probability: args.probability,
+			state_key: args.state_key,
+			content: args.content,
+			description: args.description,
+			mitigation_strategy: args.mitigation_strategy,
+			props: args.props ?? {},
+			parent: args.parent,
+			parents: args.parents,
+			connections: args.connections
+		};
+
+		const data = await this.apiRequest('/api/onto/risks/create', {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		});
+
+		return {
+			risk: data.risk,
+			message: `Created ontology risk "${data.risk?.title ?? 'Risk'}"`
+		};
+	}
+
 	async moveDocumentInTree(args: MoveDocumentInTreeArgs): Promise<{
 		structure: any;
 		message: string;
@@ -938,32 +1001,6 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		};
 	}
 
-	async updateOntoRequirement(args: UpdateOntoRequirementArgs): Promise<{
-		requirement: any;
-		message: string;
-	}> {
-		const updateData: Record<string, unknown> = {};
-
-		if (args.text !== undefined) updateData.text = args.text;
-		if (args.priority !== undefined) updateData.priority = args.priority;
-		if (args.type_key !== undefined) updateData.type_key = args.type_key;
-		if (args.props !== undefined) updateData.props = args.props;
-
-		if (Object.keys(updateData).length === 0) {
-			throw new Error('No updates provided for ontology requirement');
-		}
-
-		const data = await this.apiRequest(`/api/onto/requirements/${args.requirement_id}`, {
-			method: 'PATCH',
-			body: JSON.stringify(updateData)
-		});
-
-		return {
-			requirement: data.requirement,
-			message: `Updated ontology requirement "${data.requirement?.text ?? args.requirement_id}"`
-		};
-	}
-
 	// ============================================
 	// DELETE OPERATIONS
 	// ============================================
@@ -1021,6 +1058,48 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		return {
 			success: true,
 			message: data.message ?? 'Ontology document deleted successfully'
+		};
+	}
+
+	async deleteOntoMilestone(args: DeleteOntoMilestoneArgs): Promise<{
+		success: boolean;
+		message: string;
+	}> {
+		const data = await this.apiRequest(`/api/onto/milestones/${args.milestone_id}`, {
+			method: 'DELETE'
+		});
+
+		return {
+			success: true,
+			message: data.message ?? 'Ontology milestone deleted successfully'
+		};
+	}
+
+	async deleteOntoRisk(args: DeleteOntoRiskArgs): Promise<{
+		success: boolean;
+		message: string;
+	}> {
+		const data = await this.apiRequest(`/api/onto/risks/${args.risk_id}`, {
+			method: 'DELETE'
+		});
+
+		return {
+			success: true,
+			message: data.message ?? 'Ontology risk deleted successfully'
+		};
+	}
+
+	async deleteOntoProject(args: DeleteOntoProjectArgs): Promise<{
+		success: boolean;
+		message: string;
+	}> {
+		const data = await this.apiRequest(`/api/onto/projects/${args.project_id}`, {
+			method: 'DELETE'
+		});
+
+		return {
+			success: true,
+			message: data.message ?? 'Ontology project deleted successfully'
 		};
 	}
 

@@ -7,8 +7,8 @@
  *
  * Architecture:
  * - ChatToolExecutor: Orchestration, logging, dispatch
- * - OntologyReadExecutor: list_*, search_*, get_* (17 tools)
- * - OntologyWriteExecutor: create_*, update_*, delete_* (15 tools)
+ * - OntologyReadExecutor: list_*, search_*, get_* tools
+ * - OntologyWriteExecutor: create_*, update_*, delete_* tools
  * - UtilityExecutor: get_field_info, relationships (3 tools)
  * - ExternalExecutor: web_search, web_visit, buildos docs (4 tools)
  *
@@ -316,6 +316,12 @@ export class ChatToolExecutor {
 			case 'search_onto_tasks':
 				return this.readExecutor.searchOntoTasks(args);
 
+			case 'search_onto_goals':
+				return this.readExecutor.searchOntoGoals(args);
+
+			case 'search_onto_plans':
+				return this.readExecutor.searchOntoPlans(args);
+
 			case 'list_onto_plans':
 				return this.readExecutor.listOntoPlans(args);
 
@@ -331,11 +337,14 @@ export class ChatToolExecutor {
 			case 'list_onto_risks':
 				return this.readExecutor.listOntoRisks(args);
 
-			case 'list_onto_requirements':
-				return this.readExecutor.listOntoRequirements(args);
-
 			case 'search_onto_documents':
 				return this.readExecutor.searchOntoDocuments(args);
+
+			case 'search_onto_milestones':
+				return this.readExecutor.searchOntoMilestones(args);
+
+			case 'search_onto_risks':
+				return this.readExecutor.searchOntoRisks(args);
 
 			case 'search_ontology':
 				return this.readExecutor.searchOntology(args);
@@ -364,9 +373,6 @@ export class ChatToolExecutor {
 			case 'get_onto_risk_details':
 				return this.readExecutor.getOntoRiskDetails(args);
 
-			case 'get_onto_requirement_details':
-				return this.readExecutor.getOntoRequirementDetails(args);
-
 			case 'list_task_documents':
 				return this.readExecutor.listTaskDocuments(args);
 
@@ -393,6 +399,12 @@ export class ChatToolExecutor {
 
 			case 'create_onto_document':
 				return this.writeExecutor.createOntoDocument(args);
+
+			case 'create_onto_milestone':
+				return this.writeExecutor.createOntoMilestone(args);
+
+			case 'create_onto_risk':
+				return this.writeExecutor.createOntoRisk(args);
 
 			case 'move_document_in_tree':
 				return this.writeExecutor.moveDocumentInTree(args);
@@ -438,9 +450,6 @@ export class ChatToolExecutor {
 			case 'update_onto_risk':
 				return this.writeExecutor.updateOntoRisk(args);
 
-			case 'update_onto_requirement':
-				return this.writeExecutor.updateOntoRequirement(args);
-
 			case 'delete_onto_task':
 				return this.writeExecutor.deleteOntoTask(args);
 
@@ -452,6 +461,15 @@ export class ChatToolExecutor {
 
 			case 'delete_onto_document':
 				return this.writeExecutor.deleteOntoDocument(args);
+
+			case 'delete_onto_milestone':
+				return this.writeExecutor.deleteOntoMilestone(args);
+
+			case 'delete_onto_risk':
+				return this.writeExecutor.deleteOntoRisk(args);
+
+			case 'delete_onto_project':
+				return this.writeExecutor.deleteOntoProject(args);
 
 			// ==================
 			// UNKNOWN

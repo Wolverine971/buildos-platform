@@ -1,13 +1,7 @@
 // apps/web/src/lib/utils/api-client.ts
 import { browser } from '$app/environment';
-
-export interface ApiResponse<T = any> {
-	success: boolean;
-	data?: T;
-	error?: string;
-	message?: string;
-	warnings?: Array<{ message: string; type: string }>;
-}
+import type { ApiResponse as SharedApiResponse, ApiWarning } from '@buildos/shared-types';
+import { extractApiErrorMessage } from './api-client-helpers';
 
 export class ApiError extends Error {
 	constructor(
@@ -51,7 +45,7 @@ export abstract class ApiClient {
 			// Handle error responses
 			if (!response.ok) {
 				throw new ApiError(
-					data.error || data.message || `Request failed: ${response.status}`,
+					extractApiErrorMessage(data, `Request failed: ${response.status}`),
 					response.status,
 					data
 				);
@@ -135,14 +129,14 @@ export abstract class ApiClient {
 }
 
 // Utility function for handling API responses in a consistent way
-export function handleApiResponse<T>(response: ApiResponse<T>): {
+export function handleApiResponse<T>(response: SharedApiResponse<T>): {
 	data: T | null;
 	error: string | null;
 	warnings: string[];
 } {
-	if (response.success && response.data) {
+	if (response.success) {
 		return {
-			data: response.data,
+			data: response.data ?? null,
 			error: null,
 			warnings: response.warnings?.map((w) => w.message) || []
 		};
@@ -150,7 +144,7 @@ export function handleApiResponse<T>(response: ApiResponse<T>): {
 
 	return {
 		data: null,
-		error: response.error || response.message || 'An error occurred',
+		error: extractApiErrorMessage(response, 'An error occurred'),
 		warnings: response.warnings?.map((w) => w.message) || []
 	};
 }
@@ -159,19 +153,24 @@ export function handleApiResponse<T>(response: ApiResponse<T>): {
 export function createApiResponse<T>(
 	data?: T,
 	error?: string,
-	warnings?: Array<{ message: string; type: string }>
-): ApiResponse<T> {
+	warnings?: ApiWarning[]
+): SharedApiResponse<T> {
+	const timestamp = new Date().toISOString();
+
 	if (error) {
 		return {
 			success: false,
 			error,
-			warnings
+			message: error,
+			warnings,
+			timestamp
 		};
 	}
 
 	return {
 		success: true,
 		data,
-		warnings
+		warnings,
+		timestamp
 	};
 }

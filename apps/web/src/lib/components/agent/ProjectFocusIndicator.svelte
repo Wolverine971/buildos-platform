@@ -8,7 +8,6 @@
 		FileText,
 		Flag,
 		TriangleAlert,
-		Pin,
 		FolderKanban,
 		Search
 	} from 'lucide-svelte';
@@ -23,29 +22,27 @@
 	let { focus, onChangeFocus, onClearFocus }: Props = $props();
 
 	// Lucide icons matching the project page insight panels
-	const focusIcons: Record<ProjectFocus['focusType'], typeof Target> = {
+	const focusIcons: Partial<Record<ProjectFocus['focusType'], typeof Target>> = {
 		'project-wide': FolderKanban,
 		task: ListChecks,
 		goal: Target,
 		plan: Calendar,
 		document: FileText,
 		milestone: Flag,
-		risk: TriangleAlert,
-		requirement: Pin
+		risk: TriangleAlert
 	};
 
 	// Get the icon component for the current focus type
 	const FocusIcon = $derived(focus ? focusIcons[focus.focusType] || Search : Search);
 
-	const focusLabelMap: Record<ProjectFocus['focusType'], string> = {
+	const focusLabelMap: Partial<Record<ProjectFocus['focusType'], string>> = {
 		'project-wide': 'Project-wide view',
 		task: 'Task focus',
 		goal: 'Goal focus',
 		plan: 'Plan focus',
 		document: 'Document focus',
 		milestone: 'Milestone focus',
-		risk: 'Risk focus',
-		requirement: 'Requirement focus'
+		risk: 'Risk focus'
 	};
 
 	const resolvedLabel = $derived(
@@ -74,10 +71,7 @@
 			<span class="max-w-[60px] truncate sm:max-w-[140px] md:max-w-[200px]">
 				{resolvedLabel}
 			</span>
-			<!-- Hide Target icon on mobile to save space -->
-			{#if focus.focusType !== 'project-wide'}
-				<Target class="hidden h-3 w-3 sm:inline-block" />
-			{/if}
+			<Target class="hidden h-3 w-3 sm:inline-block" />
 		</button>
 
 		<!-- INKPRINT clear button -->

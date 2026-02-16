@@ -220,7 +220,9 @@ For detailed patterns, see:
 
 - **Supabase Access:** Use `locals.supabase` in API routes (`+server.ts`)
 - **Admin Operations:** Import via `createAdminSupabaseClient` from `$lib/supabase/admin`
-- **Response Format:** ALWAYS use `ApiResponse` wrapper from `$lib/utils/api-response`
+- **Response Format:** Use `ApiResponse` wrapper from `$lib/utils/api-response` for JSON endpoints
+  Protocol endpoints (SSE streams, file/binary downloads, tracking pixels/redirects, MCP/JSON-RPC)
+  can return protocol-native responses.
 
 **See `/apps/web/CLAUDE.md` for complete UI/Design and API patterns with code examples.**
 

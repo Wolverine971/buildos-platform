@@ -423,11 +423,11 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ locals }) => {
-	// ✅ ALWAYS use ApiResponse wrapper
+	// ✅ Use ApiResponse wrapper for JSON endpoints
 	// ✅ Access Supabase via locals.supabase
 
 	if (!locals.session) {
-		return ApiResponse.error('Unauthorized', 401);
+		return ApiResponse.unauthorized();
 	}
 
 	const supabase = locals.supabase;
@@ -437,7 +437,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		.eq('user_id', locals.session.user.id);
 
 	if (error) {
-		return ApiResponse.error(error.message, 500);
+		return ApiResponse.databaseError(error);
 	}
 
 	return ApiResponse.success(data);
@@ -460,7 +460,7 @@ const CreateProjectSchema = z.object({
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.session) {
-		return ApiResponse.error('Unauthorized', 401);
+		return ApiResponse.unauthorized();
 	}
 
 	// ✅ Parse and validate request body
@@ -468,12 +468,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		body = await request.json();
 	} catch {
-		return ApiResponse.error('Invalid JSON', 400);
+		return ApiResponse.badRequest('Invalid JSON');
 	}
 
 	const validation = CreateProjectSchema.safeParse(body);
 	if (!validation.success) {
-		return ApiResponse.error('Validation failed', 400, validation.error.errors);
+		return ApiResponse.badRequest('Validation failed', validation.error.errors);
 	}
 
 	const { name, description, status } = validation.data;
@@ -492,10 +492,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		.single();
 
 	if (error) {
-		return ApiResponse.error(error.message, 500);
+		return ApiResponse.databaseError(error);
 	}
 
-	return ApiResponse.success(data, 201);
+	return ApiResponse.created(data);
 };
 ```
 
@@ -510,7 +510,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 export const GET: RequestHandler = async ({ locals }) => {
 	// ✅ Check admin permission
 	if (!locals.session) {
-		return ApiResponse.error('Unauthorized', 401);
+		return ApiResponse.unauthorized();
 	}
 
 	const supabase = locals.supabase;
@@ -521,7 +521,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		.single();
 
 	if (profile?.role !== 'admin') {
-		return ApiResponse.error('Forbidden', 403);
+		return ApiResponse.forbidden();
 	}
 
 	// ✅ Use admin client to bypass RLS
@@ -532,7 +532,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		.order('created_at', { ascending: false });
 
 	if (error) {
-		return ApiResponse.error(error.message, 500);
+		return ApiResponse.databaseError(error);
 	}
 
 	return ApiResponse.success(data);
@@ -910,18 +910,21 @@ export const load: PageServerLoad = async ({ locals }) => {
 ### API Response Wrapper (Required)
 
 ```typescript
-// ✅ ALWAYS use ApiResponse in +server.ts files
+// ✅ Use ApiResponse for JSON endpoints
+// Protocol endpoints (SSE streams, file/binary downloads, tracking pixels/redirects, MCP/JSON-RPC)
+// can return protocol-native responses.
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	// Success
-	return ApiResponse.success(data, 200);
+	return ApiResponse.success(data);
+	return ApiResponse.created(data); // 201
 
 	// Error
 	return ApiResponse.error('Something went wrong', 500);
 
 	// Validation error
-	return ApiResponse.error('Invalid input', 400, validationErrors);
+	return ApiResponse.badRequest('Invalid input', validationErrors);
 };
 ```
 
@@ -1015,7 +1018,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 	const { data, error } = await locals.supabase.from('projects').select('*');
 
 	if (error) {
-		return ApiResponse.error(error.message, 500);
+		return ApiResponse.databaseError(error);
 	}
 
 	return ApiResponse.success(data);
@@ -1141,7 +1144,8 @@ export const load: PageServerLoad = async ({ fetch }) => {
 
 ### API Routes
 
-- ✅ ALWAYS use `ApiResponse` wrapper
+- ✅ Use `ApiResponse` wrapper for JSON endpoints
+- ✅ Allow protocol-native responses for SSE, file/binary, tracking pixel/redirect, and MCP/JSON-RPC endpoints
 - ✅ Validate input with zod or similar
 - ✅ Check authentication before processing
 - ✅ Return appropriate HTTP status codes

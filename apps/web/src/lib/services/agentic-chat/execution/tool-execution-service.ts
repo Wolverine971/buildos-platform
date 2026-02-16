@@ -33,6 +33,7 @@ import type { ChatMessage, ChatToolCall, ChatToolDefinition } from '@buildos/sha
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../tools/core/definitions';
 import { getToolHelp } from '../tools/registry/tool-help';
 import { getToolRegistry } from '../tools/registry/tool-registry';
+import { normalizeGatewayOpName } from '../tools/registry/gateway-op-aliases';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { dev } from '$app/environment';
 import { createLogger } from '$lib/utils/logger';
@@ -111,8 +112,7 @@ export class ToolExecutionService implements BaseService {
 		plan: 'plan_name',
 		document: 'document_title',
 		milestone: 'milestone_title',
-		risk: 'risk_title',
-		requirement: 'requirement_text'
+		risk: 'risk_title'
 	};
 	private static readonly UUID_VALIDATED_TOOL_NAMES = new Set([
 		'list_task_documents',
@@ -134,7 +134,6 @@ export class ToolExecutionService implements BaseService {
 		'document_id',
 		'milestone_id',
 		'risk_id',
-		'requirement_id',
 		'entity_id',
 		'src_id',
 		'dst_id',
@@ -151,7 +150,6 @@ export class ToolExecutionService implements BaseService {
 		'document_id',
 		'milestone_id',
 		'risk_id',
-		'requirement_id',
 		'entity_id',
 		'src_id',
 		'dst_id',
@@ -674,6 +672,8 @@ export class ToolExecutionService implements BaseService {
 
 			const results: any[] = [];
 			const streamEvents: StreamEvent[] = [];
+			let failedOps = 0;
+			let succeededOps = 0;
 
 			for (const entry of ops) {
 				if (!entry || typeof entry !== 'object') continue;
@@ -684,6 +684,7 @@ export class ToolExecutionService implements BaseService {
 						include_schemas: Boolean(entry.include_schemas)
 					});
 					results.push({ type: 'help', path: entry.path, result: help });
+					succeededOps += 1;
 					continue;
 				}
 				if (entry.type === 'exec') {
@@ -697,16 +698,48 @@ export class ToolExecutionService implements BaseService {
 						context,
 						options
 					);
-					results.push({ type: 'exec', op: entry.op, result: execResult.data });
+					const normalizedExecResult: Record<string, any> = {
+						type: 'exec',
+						op: entry.op,
+						ok: execResult.success,
+						result: execResult.data ?? null
+					};
+					if (!execResult.success) {
+						normalizedExecResult.error = execResult.error ?? 'Gateway exec failed';
+						failedOps += 1;
+					} else {
+						succeededOps += 1;
+					}
+					results.push(normalizedExecResult);
 					if (execResult.streamEvents) {
 						streamEvents.push(...execResult.streamEvents);
 					}
 				}
 			}
 
+			const summary = {
+				total_ops: results.length,
+				succeeded_ops: succeededOps,
+				failed_ops: failedOps
+			};
+			const payload = { ok: failedOps === 0, summary, results };
+			if (failedOps > 0) {
+				return {
+					success: false,
+					error: `tool_batch completed with ${failedOps} failed operation${
+						failedOps === 1 ? '' : 's'
+					}`,
+					errorType: 'execution_error',
+					data: payload,
+					streamEvents: streamEvents.length > 0 ? streamEvents : undefined,
+					toolName,
+					toolCallId: 'gateway'
+				};
+			}
+
 			return {
 				success: true,
-				data: { ok: true, results },
+				data: payload,
 				streamEvents: streamEvents.length > 0 ? streamEvents : undefined,
 				toolName,
 				toolCallId: 'gateway'
@@ -727,28 +760,64 @@ export class ToolExecutionService implements BaseService {
 		context: ServiceContext,
 		options: ToolExecutionOptions
 	): Promise<ToolExecutionResult> {
-		const op = typeof args.op === 'string' ? args.op.trim() : '';
+		const requestedOp = typeof args.op === 'string' ? args.op.trim() : '';
 		const registry = getToolRegistry();
-		if (!op) {
-			return this.buildGatewayErrorResult(op, 'VALIDATION_ERROR', 'Missing op');
+		if (!requestedOp) {
+			return this.buildGatewayErrorResult(requestedOp, 'VALIDATION_ERROR', 'Missing op');
 		}
 
-		const entry = registry.ops[op];
+		const canonicalOp = normalizeGatewayOpName(requestedOp);
+		const aliasedOp = canonicalOp !== requestedOp;
+		const entry = registry.ops[canonicalOp];
 		if (!entry) {
-			return this.buildGatewayErrorResult(op, 'NOT_FOUND', `Unknown op: ${op}`, 'root');
+			return this.buildGatewayErrorResult(
+				requestedOp,
+				'NOT_FOUND',
+				`Unknown op: ${requestedOp}`,
+				'root'
+			);
 		}
 
 		const opArgs = args.args && typeof args.args === 'object' ? args.args : {};
-		let effectiveOp = op;
+		let effectiveOp = canonicalOp;
 		let effectiveEntry = entry;
 		let normalizedArgs = this.normalizeGatewayArgsForTool(entry.tool_name, opArgs, context);
-		const fallback = this.resolveGatewayDetailFallback(op, normalizedArgs, context, registry);
+		const fallback = this.resolveGatewayDetailFallback(
+			canonicalOp,
+			normalizedArgs,
+			context,
+			registry
+		);
 		if (fallback) {
 			effectiveOp = fallback.op;
 			effectiveEntry = fallback.entry;
 			normalizedArgs = fallback.args;
 		}
-		const warnings = fallback ? [fallback.warning] : [];
+		const warnings: string[] = [];
+		if (aliasedOp) {
+			warnings.push(`Normalized legacy op "${requestedOp}" to "${canonicalOp}".`);
+		}
+		const requestedOpLower = requestedOp.toLowerCase();
+		const isLegacyDocStructureTreeGet =
+			requestedOpLower.includes('doc_structure.tree.get') ||
+			requestedOpLower.includes('doc_structure_tree_get');
+		const includeDocumentsProvided = Object.prototype.hasOwnProperty.call(
+			opArgs,
+			'include_documents'
+		);
+		if (
+			effectiveOp === 'onto.document.tree.get' &&
+			isLegacyDocStructureTreeGet &&
+			!includeDocumentsProvided
+		) {
+			normalizedArgs = { ...normalizedArgs, include_documents: true };
+			warnings.push(
+				'Legacy doc_structure tree op defaulted include_documents=true to expose unlinked documents.'
+			);
+		}
+		if (fallback) {
+			warnings.push(fallback.warning);
+		}
 
 		const validation = this.validateToolCall(
 			effectiveEntry.tool_name,
@@ -756,28 +825,38 @@ export class ToolExecutionService implements BaseService {
 			CHAT_TOOL_DEFINITIONS
 		);
 		if (!validation.isValid) {
+			const details: Record<string, any> = { field_errors: validation.errors };
+			if (aliasedOp) {
+				details.normalized_op = canonicalOp;
+			}
 			return this.buildGatewayErrorResult(
-				op,
+				requestedOp,
 				'VALIDATION_ERROR',
 				validation.errors.join('; '),
-				op,
-				{ field_errors: validation.errors }
+				effectiveOp,
+				details
 			);
 		}
 
 		const dryRun = Boolean(args.dry_run);
 		if (dryRun && effectiveEntry.kind === 'write') {
+			const meta: Record<string, any> = {
+				warnings: [...warnings, 'dry_run enabled; no changes applied']
+			};
+			if (effectiveOp !== requestedOp) {
+				meta.executed_op = effectiveOp;
+			}
 			return {
 				success: true,
 				data: {
-					op,
+					op: requestedOp,
 					ok: true,
 					result: {
 						dry_run: true,
 						tool_name: effectiveEntry.tool_name,
 						args: normalizedArgs
 					},
-					meta: { warnings: ['dry_run enabled; no changes applied'] }
+					meta
 				},
 				toolName: 'tool_exec',
 				toolCallId: 'gateway'
@@ -820,20 +899,20 @@ export class ToolExecutionService implements BaseService {
 					: Date.now() - execStart;
 			const resultWithFallback = fallback
 				? this.decorateGatewayFallbackResult(cleanedResult, {
-						requestedOp: op,
+						requestedOp,
 						executedOp: effectiveOp,
 						requiredIdKey: fallback.requiredIdKey
 					})
 				: (cleanedResult ?? null);
 			const meta: Record<string, any> = { latency_ms: latencyMs, warnings };
-			if (effectiveOp !== op) {
+			if (effectiveOp !== requestedOp) {
 				meta.executed_op = effectiveOp;
 			}
 
 			return {
 				success: true,
 				data: {
-					op,
+					op: requestedOp,
 					ok: true,
 					result: resultWithFallback,
 					meta
@@ -856,9 +935,13 @@ export class ToolExecutionService implements BaseService {
 					error: 'Operation cancelled',
 					errorType: 'execution_error',
 					data: {
-						op,
+						op: requestedOp,
 						ok: false,
-						error: { code: 'INTERNAL', message: 'Operation cancelled', help_path: op }
+						error: {
+							code: 'INTERNAL',
+							message: 'Operation cancelled',
+							help_path: effectiveOp
+						}
 					},
 					toolName: 'tool_exec',
 					toolCallId: 'gateway'
@@ -875,9 +958,9 @@ export class ToolExecutionService implements BaseService {
 				error: normalizedError,
 				errorType: 'execution_error',
 				data: {
-					op,
+					op: requestedOp,
 					ok: false,
-					error: { code: 'INTERNAL', message: normalizedError, help_path: op }
+					error: { code: 'INTERNAL', message: normalizedError, help_path: effectiveOp }
 				},
 				toolName: 'tool_exec',
 				toolCallId: 'gateway'
@@ -897,11 +980,7 @@ export class ToolExecutionService implements BaseService {
 			context,
 			CHAT_TOOL_DEFINITIONS
 		);
-		normalizedArgs = this.applyArgumentAliases(
-			toolName,
-			normalizedArgs,
-			CHAT_TOOL_DEFINITIONS
-		);
+		normalizedArgs = this.applyArgumentAliases(toolName, normalizedArgs, CHAT_TOOL_DEFINITIONS);
 		return this.normalizeIdFields(normalizedArgs);
 	}
 
@@ -911,9 +990,7 @@ export class ToolExecutionService implements BaseService {
 		context: ServiceContext,
 		registry: ReturnType<typeof getToolRegistry>
 	): GatewayDetailFallback | null {
-		const detailMatch = op.match(
-			/^onto\.(task|goal|plan|document|milestone|risk|requirement)\.get$/
-		);
+		const detailMatch = op.match(/^onto\.(task|goal|plan|document|milestone|risk)\.get$/);
 		if (!detailMatch) {
 			return null;
 		}
@@ -1929,6 +2006,15 @@ export class ToolExecutionService implements BaseService {
 			}
 		}
 
+		if (toolName === 'get_document_tree') {
+			if (resolved.include_documents === undefined) {
+				resolved.include_documents = true;
+			}
+			if (resolved.include_documents === true && resolved.include_content === undefined) {
+				resolved.include_content = false;
+			}
+		}
+
 		if (toolName === 'create_onto_document') {
 			const nestedDocument =
 				resolved.document && typeof resolved.document === 'object'
@@ -2097,14 +2183,10 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		const properties = paramSchema.properties ?? {};
-		const supportsSearch = properties.search && typeof properties.search === 'object';
-		const supportsQuery = properties.query && typeof properties.query === 'object';
-		if (!supportsSearch && !supportsQuery) {
-			return args;
-		}
-
 		const resolved = { ...args };
 		let mutated = false;
+		const supportsSearch = properties.search && typeof properties.search === 'object';
+		const supportsQuery = properties.query && typeof properties.query === 'object';
 		const normalizedSearch = typeof resolved.search === 'string' ? resolved.search.trim() : '';
 		const normalizedQuery = typeof resolved.query === 'string' ? resolved.query.trim() : '';
 
@@ -2118,6 +2200,11 @@ export class ToolExecutionService implements BaseService {
 			mutated = true;
 		}
 
+		const idAliasResult = this.applyIdAliases(resolved, paramSchema);
+		if (idAliasResult.mutated) {
+			mutated = true;
+		}
+
 		if (!mutated) {
 			return args;
 		}
@@ -2126,11 +2213,135 @@ export class ToolExecutionService implements BaseService {
 			logger.debug('Applied argument aliases for tool', {
 				toolName,
 				addedSearch: supportsSearch && !normalizedSearch && normalizedQuery.length > 0,
-				addedQuery: supportsQuery && !normalizedQuery && normalizedSearch.length > 0
+				addedQuery: supportsQuery && !normalizedQuery && normalizedSearch.length > 0,
+				addedIdAliases: idAliasResult.addedCount
 			});
 		}
 
-		return resolved;
+		return idAliasResult.args;
+	}
+
+	private applyIdAliases(
+		args: Record<string, any>,
+		paramSchema: Record<string, any>
+	): { args: Record<string, any>; mutated: boolean; addedCount: number } {
+		const properties =
+			paramSchema?.properties && typeof paramSchema.properties === 'object'
+				? (paramSchema.properties as Record<string, unknown>)
+				: {};
+		const required = Array.isArray(paramSchema?.required)
+			? (paramSchema.required as string[])
+			: [];
+		const idKeys = Object.keys(properties).filter((key) => key.endsWith('_id'));
+		if (idKeys.length === 0) {
+			return { args, mutated: false, addedCount: 0 };
+		}
+
+		const resolved: Record<string, any> = { ...args };
+		let mutated = false;
+		let addedCount = 0;
+
+		const requiredIdKeys = idKeys.filter((key) => required.includes(key));
+		const missingRequiredIdKeys = requiredIdKeys.filter(
+			(key) => !this.hasNonEmptyString(resolved[key])
+		);
+		const canUseGenericId =
+			missingRequiredIdKeys.length === 1 &&
+			missingRequiredIdKeys[0] !== 'project_id' &&
+			this.hasNonEmptyString(resolved.id) &&
+			idKeys.length <= 2; // tolerate project_id + one entity id.
+
+		for (const idKey of idKeys) {
+			if (this.hasNonEmptyString(resolved[idKey])) continue;
+			const alias = this.findAliasValueForIdKey(idKey, resolved, canUseGenericId);
+			if (!alias) continue;
+			resolved[idKey] = alias;
+			mutated = true;
+			addedCount += 1;
+		}
+
+		return {
+			args: mutated ? resolved : args,
+			mutated,
+			addedCount
+		};
+	}
+
+	private findAliasValueForIdKey(
+		idKey: string,
+		args: Record<string, any>,
+		allowGenericId: boolean
+	): string | null {
+		const base = idKey.slice(0, -3);
+		const aliases = this.buildIdAliasKeys(idKey, base, allowGenericId);
+		for (const aliasKey of aliases) {
+			const value = this.readAliasValue(args, aliasKey);
+			if (this.hasNonEmptyString(value)) {
+				return String(value).trim();
+			}
+		}
+
+		const nestedEntity = args[base];
+		if (nestedEntity && typeof nestedEntity === 'object' && !Array.isArray(nestedEntity)) {
+			const nestedValue = this.readAliasValue(nestedEntity as Record<string, any>, 'id');
+			if (this.hasNonEmptyString(nestedValue)) {
+				return String(nestedValue).trim();
+			}
+		}
+
+		return null;
+	}
+
+	private buildIdAliasKeys(idKey: string, base: string, allowGenericId: boolean): string[] {
+		const baseCamel = base.replace(/_([a-z])/g, (_, chr: string) => chr.toUpperCase());
+		const aliases = new Set<string>([
+			idKey,
+			`${base}_id`,
+			`${base}Id`,
+			`${baseCamel}Id`,
+			`${baseCamel}_id`,
+			`${base}.id`
+		]);
+
+		if (idKey === 'document_id') {
+			aliases.add('doc_id');
+			aliases.add('docId');
+			aliases.add('documentId');
+			aliases.add('document.id');
+		}
+
+		if (idKey === 'new_parent_id') {
+			aliases.add('parent_id');
+			aliases.add('parentId');
+			aliases.add('parent_document_id');
+			aliases.add('parentDocumentId');
+			aliases.add('parent.id');
+		}
+
+		if (allowGenericId) {
+			aliases.add('id');
+		}
+
+		return Array.from(aliases);
+	}
+
+	private readAliasValue(source: Record<string, any>, aliasKey: string): unknown {
+		if (!aliasKey.includes('.')) {
+			return source[aliasKey];
+		}
+		const parts = aliasKey.split('.');
+		let cursor: unknown = source;
+		for (const part of parts) {
+			if (!cursor || typeof cursor !== 'object' || Array.isArray(cursor)) {
+				return undefined;
+			}
+			cursor = (cursor as Record<string, unknown>)[part];
+		}
+		return cursor;
+	}
+
+	private hasNonEmptyString(value: unknown): boolean {
+		return typeof value === 'string' && value.trim().length > 0;
 	}
 
 	private toolSupportsProjectId(toolName: string, availableTools: ChatToolDefinition[]): boolean {

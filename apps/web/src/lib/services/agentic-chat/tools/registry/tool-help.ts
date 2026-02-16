@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts
 
 import { getToolRegistry } from './tool-registry';
+import { normalizeGatewayHelpPath } from './gateway-op-aliases';
 
 export type ToolHelpFormat = 'short' | 'full';
 
@@ -41,7 +42,7 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 	const includeSchemas = options.include_schemas ?? false;
 	const includeExamples = options.include_examples ?? true;
 
-	const normalized = normalizePath(path);
+	const normalized = normalizeGatewayHelpPath(normalizePath(path));
 	if (!normalized || normalized === 'root') {
 		return {
 			type: 'directory',

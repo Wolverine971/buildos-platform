@@ -365,8 +365,7 @@ export type StreamEvent =
 					| 'plan'
 					| 'project'
 					| 'milestone'
-					| 'risk'
-					| 'requirement';
+					| 'risk';
 				entity_name: string;
 				status: 'start' | 'success' | 'error';
 				entity_id?: string;

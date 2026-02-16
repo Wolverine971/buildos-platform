@@ -70,46 +70,5 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 				required: ['op', 'args']
 			}
 		}
-	},
-	{
-		type: 'function',
-		function: {
-			name: 'tool_batch',
-			description:
-				'Execute multiple tool_help/tool_exec operations in one call. Use for first-time operations to reduce round trips.',
-			parameters: {
-				type: 'object',
-				properties: {
-					ops: {
-						type: 'array',
-						description:
-							'Batch operations. Each entry must include type plus the relevant fields.',
-						items: {
-							type: 'object',
-							properties: {
-								type: {
-									type: 'string',
-									enum: ['help', 'exec']
-								},
-								path: { type: 'string' },
-								format: { type: 'string', enum: ['short', 'full'] },
-								include_examples: { type: 'boolean' },
-								include_schemas: { type: 'boolean' },
-								op: { type: 'string' },
-								args: { type: 'object' },
-								idempotency_key: { type: 'string' },
-								dry_run: { type: 'boolean' }
-							}
-						}
-					},
-					mode: {
-						type: 'string',
-						enum: ['sequential', 'parallel'],
-						description: 'Execution mode. Default is sequential.'
-					}
-				},
-				required: ['ops']
-			}
-		}
 	}
 ];

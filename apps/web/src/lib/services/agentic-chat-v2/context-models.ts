@@ -87,6 +87,15 @@ export type LightEvent = {
 	updated_at: string;
 };
 
+export type FastChatEventWindow = {
+	timezone: 'UTC';
+	now_at: string;
+	start_at: string;
+	end_at: string;
+	past_days: number;
+	future_days: number;
+};
+
 export type LightProjectMember = {
 	id: string;
 	actor_id: string;
@@ -131,6 +140,7 @@ export type ProjectContextData = {
 	plans: LightPlan[];
 	tasks: LightTask[];
 	events: LightEvent[];
+	events_window: FastChatEventWindow;
 	members: LightProjectMember[];
 };
 

@@ -49,7 +49,7 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 	{
 		title: 'Ontology System',
 		summary:
-			'Work management is modeled as an ontology—a knowledge graph where projects, tasks, plans, goals, milestones, documents, risks, requirements, metrics, and sources form interconnected webs of meaning instead of flat lists.',
+			'Work management is modeled as an ontology—a knowledge graph where projects, tasks, plans, goals, milestones, documents, risks, metrics, and sources form interconnected webs of meaning instead of flat lists.',
 		highlights: [
 			'Classification uses `type_key` strings (e.g., project.creative.book, task.execute, document.spec) plus three facets (context, scale, stage) to route UI and filtering.',
 			'Documents are organized in a hierarchical tree stored on each project (`doc_structure`); document containment is not modeled with edges.',
@@ -80,7 +80,7 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 			'Project mode focuses conversation within one project. Users can ask questions, create tasks, update plans, or request summaries—all scoped to that project context.',
 			'Within project mode, the ProjectFocusSelector lets users narrow to a specific task, goal, plan, or document for deep, focused conversations about that one thing.',
 			'Specialized flows exist for structured workflows: project_create guides turning ideas into projects, project_audit stress-tests for gaps, project_forecast explores timelines.',
-			'Focused entity conversations provide a spotlight on individual tasks, goals, plans, or documents—perfect for breaking down work, clarifying requirements, or updating status.',
+			'Focused entity conversations provide a spotlight on individual tasks, goals, plans, or documents—perfect for breaking down work, clarifying scope, or updating status.',
 			'Each mode changes what tools are available and how context loads. Project mode loads project context documents and related entities; focus mode loads the selected entity details and dependencies.',
 			'The focus system prevents context overload: instead of loading an entire project graph, the agent loads only what is relevant to the current conversation scope.'
 		],

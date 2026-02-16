@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/calendar/+server.ts
 // Direct proxy endpoint for CalendarService methods
 
-import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ApiResponse, requireAuth } from '$lib/utils/api-response';
@@ -28,37 +27,37 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		switch (method) {
 			case 'hasValidConnection': {
 				const isConnected = await calendarService.hasValidConnection(user.id);
-				return json({ success: true, data: isConnected });
+				return ApiResponse.success(isConnected);
 			}
 
 			case 'getCalendarEvents': {
 				const events = await calendarService.getCalendarEvents(user.id, params);
-				return json({ success: true, data: events });
+				return ApiResponse.success(events);
 			}
 
 			case 'findAvailableSlots': {
 				const slots = await calendarService.findAvailableSlots(user.id, params);
-				return json({ success: true, data: slots });
+				return ApiResponse.success(slots);
 			}
 
 			case 'scheduleTask': {
 				const scheduleResult = await calendarService.scheduleTask(user.id, params);
-				return json({ success: true, data: scheduleResult });
+				return ApiResponse.success(scheduleResult);
 			}
 
 			case 'updateCalendarEvent': {
 				const updateResult = await calendarService.updateCalendarEvent(user.id, params);
-				return json({ success: true, data: updateResult });
+				return ApiResponse.success(updateResult);
 			}
 
 			case 'deleteCalendarEvent': {
 				const deleteResult = await calendarService.deleteCalendarEvent(user.id, params);
-				return json({ success: true, data: deleteResult });
+				return ApiResponse.success(deleteResult);
 			}
 
 			case 'getUpcomingTasks': {
 				const tasks = await calendarService.getUpcomingTasks(user.id, params);
-				return json({ success: true, data: tasks });
+				return ApiResponse.success(tasks);
 			}
 
 			case 'bulkDeleteCalendarEvents': {
@@ -67,7 +66,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					params.events,
 					params.options
 				);
-				return json({ success: true, data: bulkDeleteResult });
+				return ApiResponse.success(bulkDeleteResult);
 			}
 
 			case 'bulkScheduleTasks': {
@@ -76,7 +75,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					params.tasks,
 					params.options
 				);
-				return json({ success: true, data: bulkScheduleResult });
+				return ApiResponse.success(bulkScheduleResult);
 			}
 
 			case 'bulkUpdateCalendarEvents': {
@@ -85,16 +84,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					params.updates,
 					params.options
 				);
-				return json({ success: true, data: bulkUpdateResult });
+				return ApiResponse.success(bulkUpdateResult);
 			}
 
 			case 'disconnectCalendar':
 				await calendarService.disconnectCalendar(user.id);
-				return json({ success: true, data: { disconnected: true } });
+				return ApiResponse.success({ disconnected: true });
 
 			case 'createProjectCalendar': {
 				const result = await calendarService.createProjectCalendar(user.id, params);
-				return json({ success: true, data: result });
+				return ApiResponse.success(result);
 			}
 
 			case 'updateCalendarProperties': {
@@ -103,17 +102,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					params.calendarId,
 					params.updates
 				);
-				return json({ success: true, data: result });
+				return ApiResponse.success(result);
 			}
 
 			case 'deleteProjectCalendar': {
-				const result = await calendarService.deleteProjectCalendar(user.id, params.calendarId);
-				return json({ success: true, data: result });
+				const result = await calendarService.deleteProjectCalendar(
+					user.id,
+					params.calendarId
+				);
+				return ApiResponse.success(result);
 			}
 
 			case 'listUserCalendars': {
 				const result = await calendarService.listUserCalendars(user.id);
-				return json({ success: true, data: result });
+				return ApiResponse.success(result);
 			}
 
 			case 'shareCalendar': {
@@ -122,7 +124,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					params.calendarId,
 					params.shares
 				);
-				return json({ success: true, data: result });
+				return ApiResponse.success(result);
 			}
 
 			case 'unshareCalendar': {
@@ -131,7 +133,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					params.calendarId,
 					params.emails
 				);
-				return json({ success: true, data: result });
+				return ApiResponse.success(result);
 			}
 
 			default:
@@ -145,33 +147,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			error.message?.includes('Connection required') ||
 			error.message?.includes('not connected')
 		) {
-			return json(
-				{
-					success: false,
-					error: 'Calendar not connected',
-					requiresAuth: true
-				},
-				{ status: 403 }
-			);
+			return ApiResponse.error('Calendar not connected', 403, 'CALENDAR_NOT_CONNECTED', {
+				requiresAuth: true
+			});
 		}
 
 		if (error.message?.includes('rate limit') || error.message?.includes('quota')) {
-			return json(
-				{
-					success: false,
-					error: 'Calendar API limit reached. Please try again in a few minutes.'
-				},
-				{ status: 429 }
+			return ApiResponse.error(
+				'Calendar API limit reached. Please try again in a few minutes.',
+				429,
+				'RATE_LIMITED'
 			);
 		}
 
-		return json(
-			{
-				success: false,
-				error: error.message || 'Calendar operation failed'
-			},
-			{ status: 500 }
-		);
+		return ApiResponse.internalError(error, error.message || 'Calendar operation failed');
 	}
 };
 
@@ -187,17 +176,17 @@ export const GET: RequestHandler = async ({ locals }) => {
 		const calendarService = new CalendarService(locals.supabase);
 		const isConnected = await calendarService.hasValidConnection(user.id);
 
-		return json({
-			success: true,
+		return ApiResponse.success({
 			connected: isConnected,
 			userId: user.id
 		});
 	} catch (error: any) {
 		console.error('Calendar connection check error:', error);
-		return json({
-			success: false,
-			connected: false,
-			error: error.message
-		});
+		return ApiResponse.error(
+			error.message || 'Calendar connection check failed',
+			500,
+			'OPERATION_FAILED',
+			{ connected: false }
+		);
 	}
 };

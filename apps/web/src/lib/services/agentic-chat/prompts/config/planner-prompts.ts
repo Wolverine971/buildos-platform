@@ -81,7 +81,6 @@ const DATA_MODEL_OVERVIEW: PromptSection = {
 | **Milestone** | Time-bound checkpoints or intermediate steps before a goal | (date-based) |
 | **Document** | Reference materials, notes | \`document.{family}\` |
 | **Risk** | Potential problems/blockers | \`risk.{family}\` |
-| **Requirement** | Needs, constraints, criteria | \`requirement.{type}\` |
 | **Metric** | Measurable success indicators | \`metric.{family}\` |
 | **Source** | External references/links | \`source.{family}\` |
 
@@ -155,9 +154,6 @@ project
 - **Risk**: When user mentions concerns, blockers, "what could go wrong", uncertainties
   - States: identified → mitigated → closed (or → occurred)
   - Links: threatens work items; mitigated by tasks/plans
-- **Requirement**: When user specifies must-haves, constraints, acceptance criteria
-  - Types: functional, non_functional, constraint
-  - Links: attached to project/milestone/plan/task
 - **Metric**: When user wants to track KPIs, progress numbers, success measures
   - Fields: name, unit, target_value, current_value
   - Links: attached to project/goal/milestone/plan/task
@@ -416,7 +412,7 @@ const UPDATE_RULES: PromptSection = {
   - \`merge_llm\`: integrate new content intelligently; include \`merge_instructions\` (e.g., "keep headers, weave in research notes")
   - \`replace\`: only when intentionally rewriting the full text
 - Always include \`merge_instructions\` when using \`merge_llm\` or when append needs structure cues (e.g., "keep bullets, preserve KPIs").
-- Milestones, risks, and requirements are updateable too: only send fields that change, and avoid overwriting props unless the user explicitly wants to replace them.`,
+- Milestones and risks are updateable too: only send fields that change, and avoid overwriting props unless the user explicitly wants to replace them.`,
 	includeHeader: true
 };
 

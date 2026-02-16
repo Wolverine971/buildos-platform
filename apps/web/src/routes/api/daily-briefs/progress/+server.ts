@@ -1,12 +1,11 @@
 // apps/web/src/routes/api/daily-briefs/progress/+server.ts
-import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		throw error(401, 'Unauthorized');
+		return ApiResponse.unauthorized();
 	}
 
 	const userId = user.id;
@@ -70,6 +69,6 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		});
 	} catch (err) {
 		console.error('Error getting brief progress:', err);
-		throw error(500, 'Failed to get brief progress');
+		return ApiResponse.internalError(err, 'Failed to get brief progress');
 	}
 };

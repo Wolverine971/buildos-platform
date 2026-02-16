@@ -46,7 +46,7 @@ export abstract class ApiService {
 			const response = await fetch(url.toString());
 			const result = await parseApiResponse(response);
 
-			if (result?.success && result.data) {
+			if (result?.success) {
 				return {
 					success: true,
 					data: result.data as T,
@@ -122,7 +122,7 @@ export abstract class ApiService {
 
 			const result = await parseApiResponse(response);
 
-			if (result?.success && result.data) {
+			if (result?.success) {
 				return {
 					success: true,
 					data: result.data as T,
@@ -160,7 +160,7 @@ export abstract class ApiService {
 
 			const result = await parseApiResponse(response);
 
-			if (result?.success && result.data) {
+			if (result?.success) {
 				return {
 					success: true,
 					data: result.data as T,

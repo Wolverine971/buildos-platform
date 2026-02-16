@@ -187,7 +187,7 @@ export class UtilityExecutor extends BaseExecutor {
 					milestones: kindKey === 'milestones' ? filteredEntities : [],
 					documents: kindKey === 'documents' ? filteredEntities : [],
 					risks: kindKey === 'risks' ? filteredEntities : [],
-					requirements: kindKey === 'requirements' ? filteredEntities : []
+					requirements: []
 				},
 				counts: {
 					...linkedContext.counts,
@@ -228,8 +228,7 @@ export class UtilityExecutor extends BaseExecutor {
 			goal: 'onto_goals',
 			milestone: 'onto_milestones',
 			document: 'onto_documents',
-			risk: 'onto_risks',
-			requirement: 'onto_requirements'
+			risk: 'onto_risks'
 		};
 
 		const table = tableMap[entityKind];

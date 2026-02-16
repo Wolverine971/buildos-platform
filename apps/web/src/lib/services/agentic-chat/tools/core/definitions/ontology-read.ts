@@ -157,33 +157,6 @@ Use for risk reviews, mitigation planning, or status updates.`,
 			}
 		}
 	},
-	{
-		type: 'function',
-		function: {
-			name: 'list_onto_requirements',
-			description: `List requirements from the ontology system (onto_requirements table). Returns requirement summaries with priority.
-Use for constraints, compliance, or scope requirements.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					project_id: {
-						type: 'string',
-						description: 'Filter requirements by project ID'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Filter by requirement type key'
-					},
-					limit: {
-						type: 'number',
-						default: 20,
-						maximum: 50,
-						description: 'Maximum number of requirements to return'
-					}
-				}
-			}
-		}
-	},
 
 	{
 		type: 'function',
@@ -269,9 +242,9 @@ Use when the user references a task by name or description but the project is un
 			parameters: {
 				type: 'object',
 				properties: {
-					search: {
+					query: {
 						type: 'string',
-						description: 'Keyword to match against task titles (required)'
+						description: 'Keyword query to match against task titles (required)'
 					},
 					project_id: {
 						type: 'string',
@@ -288,7 +261,7 @@ Use when the user references a task by name or description but the project is un
 						description: 'Maximum number of search results'
 					}
 				},
-				required: ['search']
+				required: ['query']
 			}
 		}
 	},
@@ -301,9 +274,9 @@ Use when the user references a task by name or description but the project is un
 			parameters: {
 				type: 'object',
 				properties: {
-					search: {
+					query: {
 						type: 'string',
-						description: 'Keyword to search for (required)'
+						description: 'Keyword query to search for (required)'
 					},
 					state_key: {
 						type: 'string',
@@ -321,7 +294,7 @@ Use when the user references a task by name or description but the project is un
 						description: 'Maximum search matches to return'
 					}
 				},
-				required: ['search']
+				required: ['query']
 			}
 		}
 	},
@@ -335,9 +308,9 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 			parameters: {
 				type: 'object',
 				properties: {
-					search: {
+					query: {
 						type: 'string',
-						description: 'Keyword to search for (required)'
+						description: 'Keyword query to search for (required)'
 					},
 					project_id: {
 						type: 'string',
@@ -359,7 +332,137 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 						description: 'Maximum number of search results'
 					}
 				},
-				required: ['search']
+				required: ['query']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'search_onto_goals',
+			description:
+				'Search ontology goals by name or description. Returns concise matches for goal discovery.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description: 'Keyword query to search for (required)'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Optional project filter to limit matches'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of search results'
+					}
+				},
+				required: ['query']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'search_onto_plans',
+			description:
+				'Search ontology plans by name or description. Returns concise matches for plan discovery.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description: 'Keyword query to search for (required)'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Optional project filter to limit matches'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of search results'
+					}
+				},
+				required: ['query']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'search_onto_milestones',
+			description:
+				'Search ontology milestones by title or description. Returns concise matches for timeline discovery.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description: 'Keyword query to search for (required)'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Optional project filter to limit matches'
+					},
+					state_key: {
+						type: 'string',
+						description:
+							'Filter by milestone state (pending, in_progress, completed, missed)'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of search results'
+					}
+				},
+				required: ['query']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'search_onto_risks',
+			description:
+				'Search ontology risks by title or content. Returns concise matches for risk discovery.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description: 'Keyword query to search for (required)'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Optional project filter to limit matches'
+					},
+					state_key: {
+						type: 'string',
+						description:
+							'Filter by risk state (identified, mitigated, occurred, closed)'
+					},
+					impact: {
+						type: 'string',
+						description: 'Filter by impact level (low, medium, high, critical)'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 50,
+						description: 'Maximum number of search results'
+					}
+				},
+				required: ['query']
 			}
 		}
 	},
@@ -368,7 +471,7 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 		type: 'function',
 		function: {
 			name: 'search_ontology',
-			description: `Fuzzy search across ontology entities (tasks, plans, goals, milestones, documents, requirements). Returns typed matches with snippets so you can load details with get_onto_* tools.`,
+			description: `Fuzzy search across ontology entities (tasks, plans, goals, milestones, documents). Returns typed matches with snippets so you can load details with get_onto_* tools.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -385,17 +488,7 @@ Use when the user references a doc name or needs to find a brief/spec quickly.`,
 						description: 'Optional entity type filters',
 						items: {
 							type: 'string',
-							enum: [
-								'task',
-								'plan',
-								'goal',
-								'milestone',
-								'document',
-								'requirement',
-								'risk',
-								'metric',
-								'source'
-							]
+							enum: ['task', 'plan', 'goal', 'milestone', 'document']
 						}
 					},
 					limit: {
@@ -565,29 +658,6 @@ Use when you need the full risk before updating it.`,
 	{
 		type: 'function',
 		function: {
-			name: 'get_onto_requirement_details',
-			description: `Get complete details for a specific ontology requirement including priority and type.
-Use when you need the full requirement record before updating it.`,
-			parameters: {
-				type: 'object',
-				properties: {
-					requirement_id: {
-						type: 'string',
-						description: 'Requirement ID to retrieve'
-					}
-				},
-				required: ['requirement_id']
-			}
-		}
-	},
-
-	// ============================================
-	// DOCUMENT TREE TOOLS
-	// ============================================
-
-	{
-		type: 'function',
-		function: {
 			name: 'get_document_tree',
 			description: `Get the hierarchical document tree structure for a project.
 Returns the tree structure; set include_documents to include document metadata and unlinked docs.
@@ -700,7 +770,6 @@ The initial context shows abbreviated linked entities. Use this tool to get full
 							'milestone',
 							'document',
 							'risk',
-							'requirement',
 							'metric',
 							'source'
 						],
@@ -715,7 +784,6 @@ The initial context shows abbreviated linked entities. Use this tool to get full
 							'milestone',
 							'document',
 							'risk',
-							'requirement',
 							'metric',
 							'source',
 							'all'

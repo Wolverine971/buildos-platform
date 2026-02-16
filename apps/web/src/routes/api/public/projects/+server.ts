@@ -18,8 +18,8 @@
  */
 
 import type { RequestHandler } from './$types';
-import { json } from '@sveltejs/kit';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { ApiResponse } from '$lib/utils/api-response';
 
 export const GET: RequestHandler = async () => {
 	try {
@@ -34,20 +34,14 @@ export const GET: RequestHandler = async () => {
 
 		if (error) {
 			console.error('[Public Projects API] Error fetching projects:', error);
-			return json(
-				{ success: false, error: 'Failed to fetch public projects' },
-				{ status: 500 }
-			);
+			return ApiResponse.internalError(error, 'Failed to fetch public projects');
 		}
 
-		return json({
-			success: true,
-			data: {
-				projects: projects || []
-			}
+		return ApiResponse.success({
+			projects: projects || []
 		});
 	} catch (err) {
 		console.error('[Public Projects API] Unexpected error:', err);
-		return json({ success: false, error: 'Internal server error' }, { status: 500 });
+		return ApiResponse.internalError(err, 'Internal server error');
 	}
 };

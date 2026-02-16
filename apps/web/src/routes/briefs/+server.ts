@@ -16,6 +16,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	const dateParam = url.searchParams.get('date');
 	const viewParam = url.searchParams.get('view');
+	const briefIdParam = url.searchParams.get('brief_id')?.trim() || null;
 	const timezone = url.searchParams.get('timezone');
 	const userTimezone = timezone || 'UTC';
 
@@ -44,24 +45,32 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	try {
 		if (selectedView === 'single') {
-			const [dailyBriefResult, projectBriefsResult] = await Promise.allSettled([
-				loadDailyBrief(supabase, user.id, currentDate),
-				loadProjectBriefs(supabase, user.id, currentDate)
-			]);
-
-			const dailyBrief =
-				dailyBriefResult.status === 'fulfilled' ? dailyBriefResult.value : null;
-			const projectBriefs =
-				projectBriefsResult.status === 'fulfilled' ? projectBriefsResult.value : [];
+			const dailyBriefResult = await loadDailyBrief(supabase, user.id, {
+				date: currentDate,
+				briefId: briefIdParam
+			});
+			const dailyBrief = dailyBriefResult.brief;
+			const resolvedDate = dailyBriefResult.resolvedDate;
+			const activeBriefId = dailyBrief?.chat_brief_id || dailyBrief?.id || null;
+			const projectBriefs = activeBriefId
+				? await loadProjectBriefsForBriefId(
+						supabase,
+						user.id,
+						activeBriefId,
+						resolvedDate,
+						dailyBrief?.generation_status
+					)
+				: [];
 
 			return ApiResponse.success({
-				currentDate,
+				currentDate: resolvedDate,
 				selectedView,
 				dailyBrief,
 				projectBriefs,
 				briefHistory: [],
+				activeBriefId,
 				timezone: userTimezone,
-				isToday: isTodayInTimezone(currentDate, userTimezone)
+				isToday: isTodayInTimezone(resolvedDate, userTimezone)
 			});
 		}
 
@@ -74,6 +83,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				dailyBrief: null,
 				projectBriefs: [],
 				briefHistory,
+				activeBriefId: null,
 				timezone: userTimezone,
 				isToday: false
 			});
@@ -85,6 +95,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			dailyBrief: null,
 			projectBriefs: [],
 			briefHistory: [],
+			activeBriefId: null,
 			timezone: userTimezone,
 			isToday: false
 		});
@@ -96,8 +107,29 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 async function loadDailyBrief(
 	supabase: any,
 	userId: string,
-	date: string
-): Promise<DailyBrief | null> {
+	params: { date: string; briefId?: string | null }
+): Promise<{ brief: DailyBrief | null; resolvedDate: string }> {
+	const { date, briefId } = params;
+	if (briefId) {
+		const { data: briefById, error: briefByIdError } = await supabase
+			.from('ontology_daily_briefs')
+			.select('*')
+			.eq('id', briefId)
+			.eq('user_id', userId)
+			.maybeSingle();
+
+		if (briefByIdError && briefByIdError.code !== 'PGRST116') {
+			throw briefByIdError;
+		}
+
+		if (briefById) {
+			return {
+				brief: mapOntologyDailyBriefRow(briefById),
+				resolvedDate: briefById.brief_date
+			};
+		}
+	}
+
 	const { data, error } = await supabase
 		.from('ontology_daily_briefs')
 		.select('*')
@@ -109,32 +141,25 @@ async function loadDailyBrief(
 		.maybeSingle();
 
 	if (error) {
-		if (error.code === 'PGRST116') return null;
+		if (error.code === 'PGRST116') {
+			return { brief: null, resolvedDate: date };
+		}
 		throw error;
 	}
 
-	return data ? mapOntologyDailyBriefRow(data) : null;
+	return {
+		brief: data ? mapOntologyDailyBriefRow(data) : null,
+		resolvedDate: data?.brief_date || date
+	};
 }
 
-async function loadProjectBriefs(
+async function loadProjectBriefsForBriefId(
 	supabase: any,
 	userId: string,
-	date: string
+	briefId: string,
+	briefDate: string,
+	generationStatus?: string
 ): Promise<ProjectDailyBrief[]> {
-	const { data: briefRow, error: briefError } = await supabase
-		.from('ontology_daily_briefs')
-		.select('id, brief_date, user_id, generation_status')
-		.eq('user_id', userId)
-		.eq('brief_date', date)
-		.order('created_at', { ascending: false })
-		.order('id', { ascending: false })
-		.limit(1)
-		.maybeSingle();
-
-	if (briefError || !briefRow?.id) {
-		return [];
-	}
-
 	const { data, error } = await supabase
 		.from('ontology_project_briefs')
 		.select(
@@ -153,7 +178,7 @@ async function loadProjectBriefs(
 			)
 		`
 		)
-		.eq('daily_brief_id', briefRow.id)
+		.eq('daily_brief_id', briefId)
 		.order('created_at', { ascending: true });
 
 	if (error) {
@@ -164,9 +189,9 @@ async function loadProjectBriefs(
 		mapOntologyProjectBriefRow({
 			row,
 			userId,
-			briefDate: briefRow.brief_date,
+			briefDate,
 			project: row.project,
-			generationStatus: briefRow.generation_status
+			generationStatus
 		})
 	);
 }

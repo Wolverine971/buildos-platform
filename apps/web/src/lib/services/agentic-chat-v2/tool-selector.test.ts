@@ -23,7 +23,7 @@ describe('selectFastChatTools', () => {
 		});
 		const names = tools.map((tool) => tool.function?.name);
 
-		expect(names).toEqual(['tool_help', 'tool_exec', 'tool_batch']);
+		expect(names).toEqual(['tool_help', 'tool_exec']);
 	});
 
 	it('returns legacy tools when gateway flag is disabled', () => {

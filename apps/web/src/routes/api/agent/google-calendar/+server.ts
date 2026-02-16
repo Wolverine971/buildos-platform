@@ -4,6 +4,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { CalendarService, CalendarConnectionError } from '$lib/services/calendar-service';
 import { dev } from '$app/environment';
+import { ApiResponse } from '$lib/utils/api-response';
 // MCP-compatible request types
 interface MCPToolCallRequest {
 	method: 'tools/call';
@@ -147,13 +148,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
-		return json({ error: 'Unauthorized' }, { status: 401 });
+		return ApiResponse.unauthorized();
 	}
 
 	const calendarService = new CalendarService(supabase);
 	const isConnected = await calendarService.hasValidConnection(user.id);
 
-	return json({
+	return ApiResponse.success({
 		service: 'buildos-google-calendar',
 		version: '1.0.0',
 		description: 'Google Calendar integration for BuildOS',

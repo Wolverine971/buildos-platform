@@ -9,7 +9,6 @@
 		FileText,
 		Flag,
 		AlertTriangle,
-		ClipboardList,
 		Search,
 		Loader,
 		CircleCheck,
@@ -45,8 +44,7 @@
 		{ value: 'plan', label: 'Plans', icon: ListTree, color: 'emerald' },
 		{ value: 'document', label: 'Documents', icon: FileText, color: 'amber' },
 		{ value: 'milestone', label: 'Milestones', icon: Flag, color: 'indigo' },
-		{ value: 'risk', label: 'Risks', icon: AlertTriangle, color: 'red' },
-		{ value: 'requirement', label: 'Requirements', icon: ClipboardList, color: 'slate' }
+		{ value: 'risk', label: 'Risks', icon: AlertTriangle, color: 'red' }
 	];
 
 	let selectedType = $state<FocusEntityType>('task');

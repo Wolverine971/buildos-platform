@@ -43,8 +43,8 @@
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import DocumentVersionHistoryPanel from './DocumentVersionHistoryPanel.svelte';
-	import DocumentVersionDiffDrawer from './DocumentVersionDiffDrawer.svelte';
 	import DocumentVersionRestoreModal from './DocumentVersionRestoreModal.svelte';
+	import DocumentComparisonView from './DocumentComparisonView.svelte';
 	import DocumentVoiceNotesPanel from './DocumentVoiceNotesPanel.svelte';
 	import DocMoveModal from './doc-tree/DocMoveModal.svelte';
 	import type { VersionListItem } from './DocumentVersionHistoryPanel.svelte';
@@ -294,14 +294,17 @@
 	let showActivityLog = $state(false);
 
 	// Version history state
-	let showDiffDrawer = $state(false);
-	let selectedVersionForDiff = $state<VersionListItem | null>(null);
-	let diffCompareMode = $state<'previous' | 'current'>('previous');
 	let showRestoreModal = $state(false);
 	let selectedVersionForRestore = $state<VersionListItem | null>(null);
 	let latestVersionNumber = $state(0);
 	let versionHistoryPanelRef = $state<{ refresh: () => void } | null>(null);
 	let isAdminUser = $state(false);
+
+	// Inline comparison mode state
+	let comparisonMode = $state(false);
+	let comparisonFromVersion = $state<number | null>(null);
+	let comparisonToVersion = $state<number | 'current'>(1);
+	let comparisonLatestVersion = $state(1);
 
 	// Document tree state for breadcrumb and move functionality
 	let docTreeStructure = $state<DocStructure | null>(null);
@@ -713,21 +716,10 @@
 	}
 
 	// Version history handlers
-	function handleDiffRequested(version: VersionListItem, compareMode: 'previous' | 'current') {
-		selectedVersionForDiff = version;
-		diffCompareMode = compareMode;
-		showDiffDrawer = true;
-	}
-
 	function handleRestoreRequested(version: VersionListItem, latestVersion: number) {
 		selectedVersionForRestore = version;
 		latestVersionNumber = latestVersion;
 		showRestoreModal = true;
-	}
-
-	function handleDiffDrawerClose() {
-		showDiffDrawer = false;
-		selectedVersionForDiff = null;
 	}
 
 	function handleRestoreModalClose() {
@@ -745,6 +737,23 @@
 		// Refresh version history panel
 		versionHistoryPanelRef?.refresh();
 		onSaved?.();
+	}
+
+	// Inline comparison mode handlers
+	function handleEnterComparison(versionNumber: number, latestVersion: number) {
+		comparisonLatestVersion = latestVersion;
+		comparisonFromVersion = versionNumber > 1 ? versionNumber - 1 : null;
+		comparisonToVersion = versionNumber;
+		comparisonMode = true;
+	}
+
+	function handleComparisonNavigate(fromVersion: number | null, toVersion: number | 'current') {
+		comparisonFromVersion = fromVersion;
+		comparisonToVersion = toVersion;
+	}
+
+	function handleExitComparison() {
+		comparisonMode = false;
 	}
 
 	function handleVoiceNoteSegmentSaved(note: VoiceNote) {
@@ -1228,8 +1237,8 @@
 													documentId={activeDocumentId}
 													{projectId}
 													isAdmin={isAdminUser}
-													onDiffRequested={handleDiffRequested}
 													onRestoreRequested={handleRestoreRequested}
+													onCompareRequested={handleEnterComparison}
 												/>
 											</div>
 										{/if}
@@ -1303,100 +1312,127 @@
 
 						<!-- Main content area -->
 						<div class="flex-1 flex flex-col min-w-0">
-							<!-- Mobile: Compact title input at top -->
-							<div class="lg:hidden p-3 pb-0">
-								<TextInput
-									id="document-title-mobile"
-									bind:value={title}
-									required
-									placeholder="Document title..."
-									aria-label="Document title"
-									class="text-base font-semibold border-none bg-transparent p-0 focus:ring-0"
-									disabled={saving}
+							{#if comparisonMode && activeDocumentId}
+								<!-- Comparison view replaces the editor -->
+								<DocumentComparisonView
+									documentId={activeDocumentId}
+									{projectId}
+									fromVersionNumber={comparisonFromVersion}
+									toVersionNumber={comparisonToVersion}
+									currentDocument={{
+										title,
+										description,
+										content: body,
+										state_key: stateKey
+									}}
+									latestVersionNumber={comparisonLatestVersion}
+									onExit={handleExitComparison}
+									onNavigate={handleComparisonNavigate}
 								/>
-							</div>
-
-							<!-- Content editor - the main focus -->
-							<div class="p-3 flex-1 flex flex-col min-h-0">
-								<div class="flex items-center justify-between gap-2 mb-2 shrink-0">
-									<h4 class="micro-label text-foreground">CONTENT</h4>
-									<!-- Mobile/tablet: date + save status next to content label -->
-									<p
-										class="micro-label text-muted-foreground/70 lg:hidden flex items-center gap-1.5"
-									>
-										{#if updatedAt && updatedAt !== createdAt}
-											<span
-												>UPDATED {new Date(updatedAt).toLocaleDateString(
-													undefined,
-													{ month: 'short', day: 'numeric' }
-												)}</span
-											>
-										{:else if createdAt}
-											<span
-												>CREATED {new Date(createdAt).toLocaleDateString(
-													undefined,
-													{ month: 'short', day: 'numeric' }
-												)}</span
-											>
-										{/if}
-										{#if isEditing}
-											<span class="inline-flex items-center gap-1">
-												{#if saveStatus === 'saving'}
-													<LoaderCircle
-														class="w-2.5 h-2.5 animate-spin text-muted-foreground"
-													/>
-													<span class="text-muted-foreground">SAVING</span
-													>
-												{:else if saveStatus === 'saved'}
-													<Check
-														class="w-2.5 h-2.5 text-green-600 dark:text-green-400"
-													/>
-													<span class="text-green-600 dark:text-green-400"
-														>SAVED</span
-													>
-												{:else if saveStatus === 'error'}
-													<AlertTriangle
-														class="w-2.5 h-2.5 text-destructive"
-													/>
-													<span class="text-destructive">FAILED</span>
-												{:else if saveStatus === 'conflict'}
-													<AlertTriangle
-														class="w-2.5 h-2.5 text-amber-500"
-													/>
-													<span class="text-amber-500">CONFLICT</span>
-												{:else if saveStatus === 'dirty'}
-													<span
-														class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
-													></span>
-													<span class="text-muted-foreground/50"
-														>UNSAVED</span
-													>
-												{/if}
-											</span>
-										{/if}
-									</p>
-									<!-- Desktop: MARKDOWN label -->
-									<span
-										class="micro-label text-muted-foreground/70 hidden lg:inline"
-										>MARKDOWN</span
-									>
-								</div>
-								<div class="flex-1 min-h-0">
-									<RichMarkdownEditor
-										bind:value={body}
-										maxLength={50000}
-										helpText=""
-										fillHeight={true}
-										voiceNoteSource="document-modal"
-										voiceNoteLinkedEntityType={activeDocumentId
-											? 'document'
-											: ''}
-										voiceNoteLinkedEntityId={activeDocumentId ?? ''}
-										onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
-										onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
+							{:else}
+								<!-- Mobile: Compact title input at top -->
+								<div class="lg:hidden p-3 pb-0">
+									<TextInput
+										id="document-title-mobile"
+										bind:value={title}
+										required
+										placeholder="Document title..."
+										aria-label="Document title"
+										class="text-base font-semibold border-none bg-transparent p-0 focus:ring-0"
+										disabled={saving}
 									/>
 								</div>
-							</div>
+
+								<!-- Content editor - the main focus -->
+								<div class="p-3 flex-1 flex flex-col min-h-0">
+									<div
+										class="flex items-center justify-between gap-2 mb-2 shrink-0"
+									>
+										<h4 class="micro-label text-foreground">CONTENT</h4>
+										<!-- Mobile/tablet: date + save status next to content label -->
+										<p
+											class="micro-label text-muted-foreground/70 lg:hidden flex items-center gap-1.5"
+										>
+											{#if updatedAt && updatedAt !== createdAt}
+												<span
+													>UPDATED {new Date(
+														updatedAt
+													).toLocaleDateString(undefined, {
+														month: 'short',
+														day: 'numeric'
+													})}</span
+												>
+											{:else if createdAt}
+												<span
+													>CREATED {new Date(
+														createdAt
+													).toLocaleDateString(undefined, {
+														month: 'short',
+														day: 'numeric'
+													})}</span
+												>
+											{/if}
+											{#if isEditing}
+												<span class="inline-flex items-center gap-1">
+													{#if saveStatus === 'saving'}
+														<LoaderCircle
+															class="w-2.5 h-2.5 animate-spin text-muted-foreground"
+														/>
+														<span class="text-muted-foreground"
+															>SAVING</span
+														>
+													{:else if saveStatus === 'saved'}
+														<Check
+															class="w-2.5 h-2.5 text-green-600 dark:text-green-400"
+														/>
+														<span
+															class="text-green-600 dark:text-green-400"
+															>SAVED</span
+														>
+													{:else if saveStatus === 'error'}
+														<AlertTriangle
+															class="w-2.5 h-2.5 text-destructive"
+														/>
+														<span class="text-destructive">FAILED</span>
+													{:else if saveStatus === 'conflict'}
+														<AlertTriangle
+															class="w-2.5 h-2.5 text-amber-500"
+														/>
+														<span class="text-amber-500">CONFLICT</span>
+													{:else if saveStatus === 'dirty'}
+														<span
+															class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+														></span>
+														<span class="text-muted-foreground/50"
+															>UNSAVED</span
+														>
+													{/if}
+												</span>
+											{/if}
+										</p>
+										<!-- Desktop: MARKDOWN label -->
+										<span
+											class="micro-label text-muted-foreground/70 hidden lg:inline"
+											>MARKDOWN</span
+										>
+									</div>
+									<div class="flex-1 min-h-0">
+										<RichMarkdownEditor
+											bind:value={body}
+											maxLength={50000}
+											helpText=""
+											fillHeight={true}
+											voiceNoteSource="document-modal"
+											voiceNoteLinkedEntityType={activeDocumentId
+												? 'document'
+												: ''}
+											voiceNoteLinkedEntityId={activeDocumentId ?? ''}
+											onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
+											onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
+										/>
+									</div>
+								</div>
+							{/if}
 
 							<!-- Mobile: Collapsible metadata section at bottom -->
 							<div
@@ -1499,8 +1535,8 @@
 													documentId={activeDocumentId}
 													{projectId}
 													isAdmin={isAdminUser}
-													onDiffRequested={handleDiffRequested}
 													onRestoreRequested={handleRestoreRequested}
+													onCompareRequested={handleEnterComparison}
 												/>
 											</div>
 										{/if}
@@ -1763,24 +1799,6 @@
 		onClose={closeLinkedEntityModals}
 		onSaved={closeLinkedEntityModals}
 		onDeleted={closeLinkedEntityModals}
-	/>
-{/if}
-
-<!-- Version Diff Drawer -->
-{#if showDiffDrawer && selectedVersionForDiff && activeDocumentId}
-	<DocumentVersionDiffDrawer
-		bind:isOpen={showDiffDrawer}
-		documentId={activeDocumentId}
-		{projectId}
-		versionNumber={selectedVersionForDiff.number}
-		compareMode={diffCompareMode}
-		currentDocument={{
-			title,
-			description,
-			content: body,
-			state_key: stateKey
-		}}
-		onClose={handleDiffDrawerClose}
 	/>
 {/if}
 

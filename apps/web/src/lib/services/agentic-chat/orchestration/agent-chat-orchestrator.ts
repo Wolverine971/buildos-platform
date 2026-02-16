@@ -2164,16 +2164,7 @@ export class AgentChatOrchestrator {
 
 	private resolveOperationEntityType(
 		toolName: string
-	):
-		| 'document'
-		| 'task'
-		| 'goal'
-		| 'plan'
-		| 'project'
-		| 'milestone'
-		| 'risk'
-		| 'requirement'
-		| null {
+	): 'document' | 'task' | 'goal' | 'plan' | 'project' | 'milestone' | 'risk' | null {
 		const match = toolName.match(
 			/(?:list|search|get|create|update|delete)_onto_([a-z_]+?)(?:_details)?$/
 		);
@@ -2199,37 +2190,18 @@ export class AgentChatOrchestrator {
 			milestones: 'milestone',
 			milestone: 'milestone',
 			risks: 'risk',
-			risk: 'risk',
-			requirements: 'requirement',
-			requirement: 'requirement'
+			risk: 'risk'
 		};
 
 		const resolved = map[raw];
 		return resolved
-			? (resolved as
-					| 'document'
-					| 'task'
-					| 'goal'
-					| 'plan'
-					| 'project'
-					| 'milestone'
-					| 'risk'
-					| 'requirement')
+			? (resolved as 'document' | 'task' | 'goal' | 'plan' | 'project' | 'milestone' | 'risk')
 			: null;
 	}
 
 	private resolveOperationEntityTypeFromOp(
 		op: string
-	):
-		| 'document'
-		| 'task'
-		| 'goal'
-		| 'plan'
-		| 'project'
-		| 'milestone'
-		| 'risk'
-		| 'requirement'
-		| null {
+	): 'document' | 'task' | 'goal' | 'plan' | 'project' | 'milestone' | 'risk' | null {
 		if (!op) return null;
 		const parts = op.split('.');
 		if (parts.length < 2) return null;
@@ -2242,20 +2214,11 @@ export class AgentChatOrchestrator {
 			goal: 'goal',
 			plan: 'plan',
 			milestone: 'milestone',
-			risk: 'risk',
-			requirement: 'requirement'
+			risk: 'risk'
 		};
 		const resolved = map[entity];
 		return resolved
-			? (resolved as
-					| 'document'
-					| 'task'
-					| 'goal'
-					| 'plan'
-					| 'project'
-					| 'milestone'
-					| 'risk'
-					| 'requirement')
+			? (resolved as 'document' | 'task' | 'goal' | 'plan' | 'project' | 'milestone' | 'risk')
 			: null;
 	}
 
@@ -2270,8 +2233,7 @@ export class AgentChatOrchestrator {
 			'plan_name',
 			'project_name',
 			'milestone_title',
-			'risk_title',
-			'requirement_text'
+			'risk_title'
 		];
 		for (const key of keys) {
 			const value = args[key];
@@ -2296,8 +2258,7 @@ export class AgentChatOrchestrator {
 			payload.plan ??
 			payload.project ??
 			payload.milestone ??
-			payload.risk ??
-			payload.requirement;
+			payload.risk;
 		if (entity && typeof entity === 'object') {
 			const title =
 				(entity as Record<string, any>).title ?? (entity as Record<string, any>).name;
@@ -2318,7 +2279,6 @@ export class AgentChatOrchestrator {
 			'project_id',
 			'milestone_id',
 			'risk_id',
-			'requirement_id',
 			'entity_id'
 		];
 		for (const key of keys) {
@@ -2331,15 +2291,7 @@ export class AgentChatOrchestrator {
 	}
 
 	private fallbackEntityLabel(
-		entityType:
-			| 'document'
-			| 'task'
-			| 'goal'
-			| 'plan'
-			| 'project'
-			| 'milestone'
-			| 'risk'
-			| 'requirement',
+		entityType: 'document' | 'task' | 'goal' | 'plan' | 'project' | 'milestone' | 'risk',
 		action: 'list' | 'search' | 'read' | 'create' | 'update' | 'delete'
 	): string {
 		if (action === 'list' || action === 'search') {

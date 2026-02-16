@@ -97,7 +97,7 @@
 			return {
 				projectId: $page.data.project.id,
 				projectName: $page.data.project.name ?? 'Project',
-				showActionSelector: true
+				showActionSelector: false
 			};
 		}
 		return null;

@@ -9,6 +9,7 @@ import type {
 	DailyBriefMentionedEntity,
 	DailyBriefProjectBrief,
 	EntityContextData,
+	FastChatEventWindow,
 	GlobalContextData,
 	LightEvent,
 	LightGoal,
@@ -31,6 +32,18 @@ const PROJECT_CONTEXTS = new Set<ChatContextType>(['project', 'project_audit', '
 const RECENT_ACTIVITY_PER_PROJECT = 6;
 const GLOBAL_DOC_STRUCTURE_DEPTH = 2;
 const FASTCHAT_CONTEXT_RPC = 'load_fastchat_context';
+const FASTCHAT_EVENT_WINDOW_PAST_DAYS = 7;
+const FASTCHAT_EVENT_WINDOW_FUTURE_DAYS = 14;
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const PROJECT_CONTEXT_GOAL_LIMIT = 12;
+const PROJECT_CONTEXT_MILESTONE_LIMIT = 12;
+const PROJECT_CONTEXT_PLAN_LIMIT = 12;
+const PROJECT_CONTEXT_TASK_LIMIT = 18;
+const PROJECT_CONTEXT_EVENT_LIMIT = 16;
+const PROJECT_DESCRIPTION_MAX_CHARS = 320;
+const ENTITY_DESCRIPTION_MAX_CHARS = 220;
+const TASK_DESCRIPTION_MAX_CHARS = 280;
+const EVENT_DESCRIPTION_MAX_CHARS = 180;
 
 type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
 type ProjectSelectRow = Pick<
@@ -231,16 +244,6 @@ const LINKED_ENTITY_CONFIG: Record<string, LinkedEntityConfig> = {
 			probability: row.probability,
 			updated_at: row.updated_at
 		})
-	},
-	requirement: {
-		table: 'onto_requirements',
-		select: 'id, text, priority, updated_at',
-		map: (row: any) => ({
-			id: row.id,
-			text: row.text,
-			priority: row.priority,
-			updated_at: row.updated_at
-		})
 	}
 };
 
@@ -259,8 +262,6 @@ const BRIEF_ENTITY_KIND_BY_PATH_SEGMENT: Record<string, string> = {
 	milestones: 'milestone',
 	risk: 'risk',
 	risks: 'risk',
-	requirement: 'requirement',
-	requirements: 'requirement',
 	event: 'event',
 	events: 'event'
 };
@@ -417,6 +418,35 @@ function asArray<T>(value: unknown): T[] {
 	return Array.isArray(value) ? (value as T[]) : [];
 }
 
+function buildFastChatEventWindow(now: Date = new Date()): FastChatEventWindow {
+	const nowAt = now.toISOString();
+	return {
+		timezone: 'UTC',
+		now_at: nowAt,
+		start_at: new Date(
+			now.getTime() - FASTCHAT_EVENT_WINDOW_PAST_DAYS * DAY_IN_MS
+		).toISOString(),
+		end_at: new Date(
+			now.getTime() + FASTCHAT_EVENT_WINDOW_FUTURE_DAYS * DAY_IN_MS
+		).toISOString(),
+		past_days: FASTCHAT_EVENT_WINDOW_PAST_DAYS,
+		future_days: FASTCHAT_EVENT_WINDOW_FUTURE_DAYS
+	};
+}
+
+function filterEventsToWindow(events: EventRow[], eventWindow: FastChatEventWindow): EventRow[] {
+	const windowStartMs = Date.parse(eventWindow.start_at);
+	const windowEndMs = Date.parse(eventWindow.end_at);
+	if (!Number.isFinite(windowStartMs) || !Number.isFinite(windowEndMs)) {
+		return events;
+	}
+
+	return events.filter((event) => {
+		const startAtMs = Date.parse(event.start_at);
+		return Number.isFinite(startAtMs) && startAtMs >= windowStartMs && startAtMs <= windowEndMs;
+	});
+}
+
 function resolveEntityName(entity: Record<string, unknown> | null | undefined): string | null {
 	if (!entity) return null;
 	const candidate =
@@ -462,10 +492,10 @@ function mapProject(
 		id: row.id,
 		name: row.name,
 		state_key: row.state_key,
-		description: row.description,
+		description: truncateText(row.description, PROJECT_DESCRIPTION_MAX_CHARS),
 		start_at: row.start_at,
 		end_at: row.end_at,
-		next_step_short: row.next_step_short,
+		next_step_short: truncateText(row.next_step_short, ENTITY_DESCRIPTION_MAX_CHARS),
 		updated_at: row.updated_at,
 		doc_structure: options?.includeDocStructure
 			? buildDocStructureSummary(
@@ -481,7 +511,7 @@ function mapGoal(row: GoalRow): LightGoal {
 	return {
 		id: row.id,
 		name: row.name,
-		description: row.description,
+		description: truncateText(row.description, ENTITY_DESCRIPTION_MAX_CHARS),
 		state_key: row.state_key,
 		target_date: row.target_date,
 		completed_at: row.completed_at,
@@ -493,7 +523,7 @@ function mapMilestone(row: MilestoneRow): LightMilestone {
 	return {
 		id: row.id,
 		title: row.title,
-		description: row.description,
+		description: truncateText(row.description, ENTITY_DESCRIPTION_MAX_CHARS),
 		state_key: row.state_key,
 		due_at: row.due_at,
 		completed_at: row.completed_at,
@@ -505,7 +535,7 @@ function mapPlan(row: PlanRow): LightPlan {
 	return {
 		id: row.id,
 		name: row.name,
-		description: row.description,
+		description: truncateText(row.description, ENTITY_DESCRIPTION_MAX_CHARS),
 		state_key: row.state_key,
 		task_count: null,
 		completed_task_count: null,
@@ -517,7 +547,7 @@ function mapTask(row: TaskRow): LightTask {
 	return {
 		id: row.id,
 		title: row.title,
-		description: row.description,
+		description: truncateText(row.description, TASK_DESCRIPTION_MAX_CHARS),
 		state_key: row.state_key,
 		priority: row.priority,
 		start_at: row.start_at,
@@ -531,7 +561,7 @@ function mapEvent(row: EventRow): LightEvent {
 	return {
 		id: row.id,
 		title: row.title,
-		description: row.description,
+		description: truncateText(row.description, EVENT_DESCRIPTION_MAX_CHARS),
 		state_key: row.state_key,
 		start_at: row.start_at,
 		end_at: row.end_at,
@@ -545,6 +575,33 @@ function normalizeOptionalText(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : null;
+}
+
+function truncateText(value: string | null | undefined, maxChars: number): string | null {
+	if (typeof value !== 'string') return value ?? null;
+	const trimmed = value.trim();
+	if (trimmed.length <= maxChars) return trimmed;
+	return `${trimmed.slice(0, Math.max(0, maxChars - 3))}...`;
+}
+
+function toTimestamp(value: string | null | undefined): number {
+	if (!value) return Number.NEGATIVE_INFINITY;
+	const parsed = Date.parse(value);
+	return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
+}
+
+function limitByUpdatedAt<T extends { updated_at: string | null }>(rows: T[], limit: number): T[] {
+	if (rows.length <= limit) return rows;
+	return [...rows]
+		.sort((a, b) => toTimestamp(b.updated_at) - toTimestamp(a.updated_at))
+		.slice(0, limit);
+}
+
+function limitByStartAt<T extends { start_at: string | null }>(rows: T[], limit: number): T[] {
+	if (rows.length <= limit) return rows;
+	return [...rows]
+		.sort((a, b) => toTimestamp(a.start_at) - toTimestamp(b.start_at))
+		.slice(0, limit);
 }
 
 function getDefaultRoleProfile(roleKey: string | null | undefined): {
@@ -674,7 +731,8 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 }
 
 function buildProjectContextFromRpc(
-	payload: FastChatContextRpcResponse
+	payload: FastChatContextRpcResponse,
+	eventWindow: FastChatEventWindow
 ): ProjectContextData | null {
 	const projectRow = payload.project;
 	if (!projectRow) return null;
@@ -683,14 +741,27 @@ function buildProjectContextFromRpc(
 		projectRow.doc_structure as DocStructure | null | undefined
 	);
 
+	const goalRows = limitByUpdatedAt(asArray<GoalRow>(payload.goals), PROJECT_CONTEXT_GOAL_LIMIT);
+	const milestoneRows = limitByUpdatedAt(
+		asArray<MilestoneRow>(payload.milestones),
+		PROJECT_CONTEXT_MILESTONE_LIMIT
+	);
+	const planRows = limitByUpdatedAt(asArray<PlanRow>(payload.plans), PROJECT_CONTEXT_PLAN_LIMIT);
+	const taskRows = limitByUpdatedAt(asArray<TaskRow>(payload.tasks), PROJECT_CONTEXT_TASK_LIMIT);
+	const eventRows = limitByStartAt(
+		filterEventsToWindow(asArray<EventRow>(payload.events), eventWindow),
+		PROJECT_CONTEXT_EVENT_LIMIT
+	);
+
 	return {
 		project: mapProject(projectRow, { includeDocStructure: false }),
 		doc_structure,
-		goals: asArray<GoalRow>(payload.goals).map(mapGoal),
-		milestones: asArray<MilestoneRow>(payload.milestones).map(mapMilestone),
-		plans: asArray<PlanRow>(payload.plans).map(mapPlan),
-		tasks: asArray<TaskRow>(payload.tasks).map(mapTask),
-		events: asArray<EventRow>(payload.events).map(mapEvent),
+		goals: goalRows.map(mapGoal),
+		milestones: milestoneRows.map(mapMilestone),
+		plans: planRows.map(mapPlan),
+		tasks: taskRows.map(mapTask),
+		events: eventRows.map(mapEvent),
+		events_window: eventWindow,
 		members: sortProjectMembers(
 			asArray<ProjectMemberRow>(payload.members).map(mapProjectMember)
 		)
@@ -902,6 +973,7 @@ async function loadGlobalContextData(
 async function loadProjectContextData(
 	supabase: SupabaseClient<Database>,
 	projectId: string,
+	eventWindow: FastChatEventWindow,
 	onError?: LoadContextParams['onError']
 ): Promise<ProjectContextData | null> {
 	const { data: projectRow, error } = await supabase
@@ -956,7 +1028,9 @@ async function loadProjectContextData(
 				'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
 			)
 			.eq('project_id', projectId)
-			.is('deleted_at', null),
+			.is('deleted_at', null)
+			.gte('start_at', eventWindow.start_at)
+			.lte('start_at', eventWindow.end_at),
 		supabase
 			.from('onto_project_members')
 			.select(
@@ -998,15 +1072,36 @@ async function loadProjectContextData(
 	const doc_structure = buildDocStructureSummary(
 		projectRow.doc_structure as DocStructure | null | undefined
 	);
+	const goalRows = limitByUpdatedAt(
+		(goalsRes.data ?? []) as GoalRow[],
+		PROJECT_CONTEXT_GOAL_LIMIT
+	);
+	const milestoneRows = limitByUpdatedAt(
+		(milestonesRes.data ?? []) as MilestoneRow[],
+		PROJECT_CONTEXT_MILESTONE_LIMIT
+	);
+	const planRows = limitByUpdatedAt(
+		(plansRes.data ?? []) as PlanRow[],
+		PROJECT_CONTEXT_PLAN_LIMIT
+	);
+	const taskRows = limitByUpdatedAt(
+		(tasksRes.data ?? []) as TaskRow[],
+		PROJECT_CONTEXT_TASK_LIMIT
+	);
+	const eventRows = limitByStartAt(
+		filterEventsToWindow((eventsRes.data ?? []) as EventRow[], eventWindow),
+		PROJECT_CONTEXT_EVENT_LIMIT
+	);
 
 	return {
 		project,
 		doc_structure,
-		goals: ((goalsRes.data ?? []) as GoalRow[]).map(mapGoal),
-		milestones: ((milestonesRes.data ?? []) as MilestoneRow[]).map(mapMilestone),
-		plans: ((plansRes.data ?? []) as PlanRow[]).map(mapPlan),
-		tasks: ((tasksRes.data ?? []) as TaskRow[]).map(mapTask),
-		events: ((eventsRes.data ?? []) as EventRow[]).map(mapEvent),
+		goals: goalRows.map(mapGoal),
+		milestones: milestoneRows.map(mapMilestone),
+		plans: planRows.map(mapPlan),
+		tasks: taskRows.map(mapTask),
+		events: eventRows.map(mapEvent),
+		events_window: eventWindow,
 		members: sortProjectMembers(
 			((membersRes.data ?? []) as ProjectMemberRow[]).map(mapProjectMember)
 		)
@@ -1094,12 +1189,13 @@ async function loadLinkedEntities(
 async function loadEntityContextData(params: {
 	supabase: SupabaseClient<Database>;
 	projectId: string;
+	eventWindow: FastChatEventWindow;
 	focusType: ProjectFocus['focusType'];
 	focusEntityId: string;
 	onError?: LoadContextParams['onError'];
 }): Promise<{ data: EntityContextData | null; focusEntityName?: string | null }> {
-	const { supabase, projectId, focusType, focusEntityId, onError } = params;
-	const projectContext = await loadProjectContextData(supabase, projectId, onError);
+	const { supabase, projectId, eventWindow, focusType, focusEntityId, onError } = params;
+	const projectContext = await loadProjectContextData(supabase, projectId, eventWindow, onError);
 	if (!projectContext) return { data: null };
 
 	const focusConfig = LINKED_ENTITY_CONFIG[focusType];
@@ -1273,6 +1369,7 @@ export async function loadFastChatPromptContext(
 	params: LoadContextParams
 ): Promise<MasterPromptContext> {
 	const { supabase, userId, contextType, entityId, projectFocus } = params;
+	const eventWindow = buildFastChatEventWindow();
 
 	const projectId = resolveProjectId(contextType, entityId, projectFocus);
 	const focusType =
@@ -1319,7 +1416,7 @@ export async function loadFastChatPromptContext(
 				return { ...baseContext, data };
 			}
 
-			const projectContext = buildProjectContextFromRpc(rpcPayload);
+			const projectContext = buildProjectContextFromRpc(rpcPayload, eventWindow);
 			if (projectContext) {
 				const resolvedProjectName =
 					projectContext.project.name ?? baseContext.projectName ?? null;
@@ -1363,6 +1460,7 @@ export async function loadFastChatPromptContext(
 			const { data, focusEntityName } = await loadEntityContextData({
 				supabase,
 				projectId,
+				eventWindow,
 				focusType,
 				focusEntityId,
 				onError: params.onError
@@ -1376,7 +1474,7 @@ export async function loadFastChatPromptContext(
 			};
 		}
 
-		const data = await loadProjectContextData(supabase, projectId, params.onError);
+		const data = await loadProjectContextData(supabase, projectId, eventWindow, params.onError);
 		const projectName = data?.project.name ?? baseContext.projectName ?? null;
 		return {
 			...baseContext,
@@ -1388,7 +1486,12 @@ export async function loadFastChatPromptContext(
 
 	if (contextType === 'ontology' && projectFocus?.projectId) {
 		const resolvedProjectId = projectFocus.projectId;
-		const data = await loadProjectContextData(supabase, resolvedProjectId, params.onError);
+		const data = await loadProjectContextData(
+			supabase,
+			resolvedProjectId,
+			eventWindow,
+			params.onError
+		);
 		return {
 			...baseContext,
 			projectId: resolvedProjectId,

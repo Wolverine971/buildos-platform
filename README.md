@@ -93,8 +93,17 @@ PUBLIC_STRIPE_PUBLISHABLE_KEY=
 **All API endpoints must:**
 
 - ✅ Access Supabase via `locals.supabase` in API routes
-- ✅ Use `ApiResponse` wrapper from `$lib/utils/api-response`
+- ✅ Use `ApiResponse` wrapper from `$lib/utils/api-response` for JSON endpoints
 - ✅ Return consistent response format (success/error)
+  Protocol endpoints (SSE streams, binary/file downloads, tracking pixels/redirects, MCP/JSON-RPC)
+  can return protocol-native responses.
+
+**Contract Drift Quick Check:**
+
+```bash
+# Routes that still use raw json() responses (should normally be protocol endpoints only)
+rg -l "return json\\(" apps/web/src/routes/api --glob '+server.ts'
+```
 
 **Documentation:**
 

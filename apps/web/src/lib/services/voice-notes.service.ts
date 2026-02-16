@@ -5,6 +5,7 @@ import type {
 	VoiceNotePlaybackResponse
 } from '$lib/types/voice-notes';
 import { ApiError } from '$lib/utils/api-client';
+import { extractApiErrorMessage } from '$lib/utils/api-client-helpers';
 
 export interface UploadVoiceNoteOptions {
 	audioBlob: Blob;
@@ -35,11 +36,6 @@ const MIME_EXTENSION_MAP: Record<string, string> = {
 
 function getExtensionForMimeType(mimeType: string): string {
 	return MIME_EXTENSION_MAP[mimeType] || 'webm';
-}
-
-function extractErrorMessage(payload: any, fallback: string): string {
-	if (!payload) return fallback;
-	return payload.error || payload.message || fallback;
 }
 
 export async function uploadVoiceNote(options: UploadVoiceNoteOptions): Promise<VoiceNote> {
@@ -129,7 +125,7 @@ export async function uploadVoiceNote(options: UploadVoiceNoteOptions): Promise<
 
 			reject(
 				new ApiError(
-					extractErrorMessage(payload, 'Failed to upload voice note'),
+					extractApiErrorMessage(payload, 'Failed to upload voice note'),
 					xhr.status,
 					payload
 				)
@@ -176,12 +172,12 @@ export async function listVoiceNotes(params?: {
 	const payload = (await response.json()) as {
 		success?: boolean;
 		data?: VoiceNoteListResponse;
-		error?: string;
+		error?: unknown;
 	};
 
 	if (!response.ok || !payload?.success) {
 		throw new ApiError(
-			payload?.error || 'Failed to load voice notes',
+			extractApiErrorMessage(payload, 'Failed to load voice notes'),
 			response.status,
 			payload
 		);
@@ -195,12 +191,12 @@ export async function getVoiceNotePlaybackUrl(id: string): Promise<VoiceNotePlay
 	const payload = (await response.json()) as {
 		success?: boolean;
 		data?: VoiceNotePlaybackResponse;
-		error?: string;
+		error?: unknown;
 	};
 
 	if (!response.ok || !payload?.success || !payload?.data) {
 		throw new ApiError(
-			payload?.error || 'Failed to load playback URL',
+			extractApiErrorMessage(payload, 'Failed to load playback URL'),
 			response.status,
 			payload
 		);
@@ -228,11 +224,15 @@ export async function updateVoiceNote(
 	const result = (await response.json()) as {
 		success?: boolean;
 		data?: VoiceNote;
-		error?: string;
+		error?: unknown;
 	};
 
 	if (!response.ok || !result?.success || !result?.data) {
-		throw new ApiError(result?.error || 'Failed to update voice note', response.status, result);
+		throw new ApiError(
+			extractApiErrorMessage(result, 'Failed to update voice note'),
+			response.status,
+			result
+		);
 	}
 
 	return result.data;
@@ -240,11 +240,11 @@ export async function updateVoiceNote(
 
 export async function deleteVoiceNote(id: string): Promise<void> {
 	const response = await fetch(`/api/voice-notes/${id}`, { method: 'DELETE' });
-	const payload = (await response.json()) as { success?: boolean; error?: string };
+	const payload = (await response.json()) as { success?: boolean; error?: unknown };
 
 	if (!response.ok || !payload?.success) {
 		throw new ApiError(
-			payload?.error || 'Failed to delete voice note',
+			extractApiErrorMessage(payload, 'Failed to delete voice note'),
 			response.status,
 			payload
 		);

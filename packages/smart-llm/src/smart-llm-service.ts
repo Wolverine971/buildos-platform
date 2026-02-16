@@ -1093,6 +1093,31 @@ export class SmartLLMService {
 		return `$${totalCost.toFixed(6)}`;
 	}
 
+	private describePromptCacheStatus(usage: any): string | undefined {
+		if (!usage || typeof usage !== 'object') return undefined;
+
+		const promptTokens =
+			typeof usage.prompt_tokens === 'number' && Number.isFinite(usage.prompt_tokens)
+				? usage.prompt_tokens
+				: undefined;
+		const cachedTokens =
+			typeof usage?.prompt_tokens_details?.cached_tokens === 'number' &&
+			Number.isFinite(usage.prompt_tokens_details.cached_tokens)
+				? usage.prompt_tokens_details.cached_tokens
+				: 0;
+
+		if (cachedTokens <= 0) {
+			return promptTokens !== undefined ? 'no cache' : undefined;
+		}
+
+		if (!promptTokens || promptTokens <= 0) {
+			return `cached ${cachedTokens} prompt tokens`;
+		}
+
+		const hitRate = Math.round((cachedTokens / promptTokens) * 1000) / 10;
+		return `${hitRate}% cache hit`;
+	}
+
 	// ============================================
 	// REPORTING METHODS
 	// ============================================
@@ -1395,6 +1420,16 @@ export class SmartLLMService {
 		usage?: any;
 		error?: string;
 		finished_reason?: string;
+		model?: string;
+		provider?: string;
+		request_id?: string;
+		requestId?: string;
+		system_fingerprint?: string;
+		systemFingerprint?: string;
+		reasoning_tokens?: number;
+		reasoningTokens?: number;
+		cache_status?: string;
+		cacheStatus?: string;
 	}> {
 		this.requireUserId(options.userId, 'streamText');
 		const requestStartedAt = new Date();
@@ -1612,6 +1647,33 @@ export class SmartLLMService {
 				return;
 			}
 
+			const responseRequestId =
+				response.headers.get('x-request-id') ||
+				response.headers.get('x-openrouter-request-id') ||
+				undefined;
+			const responseModelHeader =
+				response.headers.get('x-openrouter-model') ||
+				response.headers.get('x-model') ||
+				undefined;
+			const responseProviderHeader =
+				response.headers.get('x-openrouter-provider') ||
+				response.headers.get('x-provider') ||
+				undefined;
+			const responseSystemFingerprintHeader =
+				response.headers.get('x-openrouter-system-fingerprint') || undefined;
+
+			if (typeof responseModelHeader === 'string' && responseModelHeader.trim().length > 0) {
+				resolvedModel = responseModelHeader.trim();
+				modelResolvedFromStream = true;
+			}
+			if (
+				typeof responseProviderHeader === 'string' &&
+				responseProviderHeader.trim().length > 0
+			) {
+				resolvedProvider = responseProviderHeader.trim();
+				providerResolvedFromStream = true;
+			}
+
 			// Process SSE stream
 			const reader = response.body?.getReader();
 			if (!reader) {
@@ -1688,6 +1750,8 @@ export class SmartLLMService {
 			let inThinkingBlock = false;
 			let linesSinceYield = 0;
 			let lastYieldAt = Date.now();
+			let streamRequestId: string | undefined = responseRequestId;
+			let streamSystemFingerprint: string | undefined = responseSystemFingerprintHeader;
 
 			while (true) {
 				const { done, value } = await reader.read();
@@ -1788,16 +1852,44 @@ export class SmartLLMService {
 								.catch((err) => console.error('Failed to log usage:', err));
 						}
 
+						const reasoningTokens =
+							typeof usage?.completion_tokens_details?.reasoning_tokens ===
+								'number' &&
+							Number.isFinite(usage.completion_tokens_details.reasoning_tokens)
+								? usage.completion_tokens_details.reasoning_tokens
+								: undefined;
+						const cacheStatus = this.describePromptCacheStatus(usage);
+
 						yield {
 							type: 'done',
 							usage,
-							finished_reason: 'stop'
+							finished_reason: 'stop',
+							model: resolvedModel,
+							provider: resolvedProvider,
+							request_id: streamRequestId,
+							requestId: streamRequestId,
+							system_fingerprint: streamSystemFingerprint,
+							systemFingerprint: streamSystemFingerprint,
+							reasoning_tokens: reasoningTokens,
+							reasoningTokens,
+							cache_status: cacheStatus,
+							cacheStatus
 						};
 						break;
 					}
 
 					try {
 						const chunk = JSON.parse(data);
+
+						if (typeof chunk?.id === 'string' && chunk.id.trim().length > 0) {
+							streamRequestId = chunk.id;
+						}
+						if (
+							typeof chunk?.system_fingerprint === 'string' &&
+							chunk.system_fingerprint.trim().length > 0
+						) {
+							streamSystemFingerprint = chunk.system_fingerprint;
+						}
 
 						if (typeof chunk?.model === 'string' && chunk.model.trim().length > 0) {
 							resolvedModel = chunk.model;

@@ -178,6 +178,8 @@ BEGIN
     FROM onto_events
     WHERE project_id = p_project_id
       AND deleted_at IS NULL
+      AND start_at >= (now() - interval '7 days')
+      AND start_at <= (now() + interval '14 days')
   ) e;
 
   SELECT COALESCE(jsonb_agg(to_jsonb(m)), '[]'::jsonb)

@@ -90,7 +90,7 @@ describe('ToolExecutionService', () => {
 				]
 			};
 
-			mockToolExecutor.mockResolvedValueOnce(expectedResult);
+			mockToolExecutor.mockResolvedValueOnce({ data: expectedResult });
 
 			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
 
@@ -226,6 +226,152 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('should alias id to document_id for move_document_in_tree', async () => {
+			const documentId = '3f4c1f6f-77c6-45ab-9159-686dc2d92bc5';
+			const toolCall: ChatToolCall = {
+				id: 'call_move_doc_alias',
+				name: 'move_document_in_tree',
+				arguments: {
+					project_id: 'proj_123',
+					id: documentId,
+					new_position: 2
+				}
+			};
+			const moveDefinition: ChatToolDefinition = {
+				name: 'move_document_in_tree',
+				description: 'Move document in tree',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						document_id: { type: 'string' },
+						new_position: { type: 'number' }
+					},
+					required: ['project_id', 'document_id']
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ ok: true });
+
+			const result = await service.executeTool(toolCall, mockContext, [moveDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'move_document_in_tree',
+				expect.objectContaining({
+					project_id: 'proj_123',
+					document_id: documentId,
+					new_position: 2
+				}),
+				mockContext
+			);
+		});
+
+		it('should alias nested document.id to document_id for delete_onto_document', async () => {
+			const documentId = '7aa6df76-dd9d-4824-96ed-d6441a8d1644';
+			const toolCall: ChatToolCall = {
+				id: 'call_delete_doc_alias',
+				name: 'delete_onto_document',
+				arguments: {
+					document: { id: documentId }
+				}
+			};
+			const deleteDefinition: ChatToolDefinition = {
+				name: 'delete_onto_document',
+				description: 'Delete ontology document',
+				parameters: {
+					type: 'object',
+					properties: {
+						document_id: { type: 'string' }
+					},
+					required: ['document_id']
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ ok: true });
+
+			const result = await service.executeTool(toolCall, mockContext, [deleteDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'delete_onto_document',
+				expect.objectContaining({ document_id: documentId }),
+				mockContext
+			);
+		});
+
+		it('should default include_documents=true for get_document_tree', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_get_tree_defaults',
+				name: 'get_document_tree',
+				arguments: {
+					project_id: 'proj_123'
+				}
+			};
+			const treeDefinition: ChatToolDefinition = {
+				name: 'get_document_tree',
+				description: 'Get document tree',
+				parameters: {
+					type: 'object',
+					properties: {
+						project_id: { type: 'string' },
+						include_documents: { type: 'boolean' },
+						include_content: { type: 'boolean' }
+					},
+					required: ['project_id']
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ data: { structure: { root: [] } } });
+
+			const result = await service.executeTool(toolCall, mockContext, [treeDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'get_document_tree',
+				expect.objectContaining({
+					project_id: 'proj_123',
+					include_documents: true,
+					include_content: false
+				}),
+				mockContext
+			);
+		});
+
+		it('should mark tool_batch as failed when any exec op fails', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_tool_batch_partial_failure',
+				name: 'tool_batch',
+				arguments: {
+					ops: [
+						{ type: 'exec', op: 'util.web.search', args: { query: 'buildos' } },
+						{ type: 'exec', op: 'util.web.visit', args: {} }
+					]
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ results: [] });
+
+			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('tool_batch completed with 1 failed operation');
+			expect(result.data).toMatchObject({
+				ok: false,
+				summary: {
+					total_ops: 2,
+					succeeded_ops: 1,
+					failed_ops: 1
+				}
+			});
+			expect(mockToolExecutor).toHaveBeenCalledTimes(1);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'web_search',
+				expect.objectContaining({ query: 'buildos' }),
+				mockContext
+			);
+		});
+
 		it('should trim whitespace in tool names', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_trim',
@@ -302,7 +448,7 @@ describe('ToolExecutionService', () => {
 				_entities_accessed: ['proj_123', 'task_1']
 			};
 
-			mockToolExecutor.mockResolvedValueOnce(resultWithEntities);
+			mockToolExecutor.mockResolvedValueOnce({ data: resultWithEntities });
 
 			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
 

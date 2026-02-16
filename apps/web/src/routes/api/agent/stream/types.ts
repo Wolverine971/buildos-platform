@@ -111,8 +111,7 @@ export interface StreamRequest {
 		| 'goal'
 		| 'document'
 		| 'milestone'
-		| 'risk'
-		| 'requirement';
+		| 'risk';
 	/** Optional last turn context provided by client */
 	last_turn_context?: LastTurnContext;
 	/** Optional run id for guarding/persistence */

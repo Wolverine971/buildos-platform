@@ -8,22 +8,30 @@ This document provides templates for documenting API request and response format
 
 ## Standard Response Format
 
-All API endpoints follow a consistent response format:
+JSON API endpoints follow a consistent envelope format. Protocol endpoints (SSE streams, file/binary
+downloads, tracking pixels/redirects, MCP/JSON-RPC) can return protocol-native responses.
 
 ```typescript
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
 	success: boolean;
 	data?: T;
-	error?: {
+	error?: string;
+	message?: string;
+	warnings?: Array<{
 		message: string;
-		code?: string;
-		details?: any;
+		type: string;
+	}>;
+	code?: string;
+	details?: unknown;
+	errorInfo?: {
+		code: string;
+		message: string;
+		status: number;
+		details?: unknown;
+		field?: string;
 	};
-	meta?: {
-		total?: number;
-		page?: number;
-		limit?: number;
-	};
+	timestamp: string;
+	requestId?: string;
 }
 ```
 
@@ -84,7 +92,8 @@ interface SearchParams {
 		"id": "123",
 		"name": "Example Project",
 		"status": "active"
-	}
+	},
+	"timestamp": "2026-02-16T10:15:30.000Z"
 }
 ```
 
@@ -97,11 +106,15 @@ interface SearchParams {
 		{ "id": "1", "name": "Item 1" },
 		{ "id": "2", "name": "Item 2" }
 	],
-	"meta": {
-		"total": 42,
+	"pagination": {
 		"page": 1,
-		"limit": 20
-	}
+		"pageSize": 20,
+		"totalPages": 3,
+		"totalItems": 42,
+		"hasNext": true,
+		"hasPrevious": false
+	},
+	"timestamp": "2026-02-16T10:15:30.000Z"
 }
 ```
 
@@ -110,13 +123,13 @@ interface SearchParams {
 ```json
 {
 	"success": false,
-	"error": {
-		"message": "Resource not found",
-		"code": "NOT_FOUND",
-		"details": {
-			"resource": "project",
-			"id": "invalid-id"
-		}
-	}
+	"error": "Resource not found",
+	"message": "Resource not found",
+	"code": "NOT_FOUND",
+	"details": {
+		"resource": "project",
+		"id": "invalid-id"
+	},
+	"timestamp": "2026-02-16T10:15:30.000Z"
 }
 ```

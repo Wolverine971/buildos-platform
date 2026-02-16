@@ -67,8 +67,11 @@
 		documentId: string;
 		projectId: string;
 		isAdmin?: boolean;
+		/** @deprecated Use onCompareRequested for inline comparison mode */
 		onDiffRequested?: (version: VersionListItem, compareMode: 'previous' | 'current') => void;
 		onRestoreRequested?: (version: VersionListItem, latestVersionNumber: number) => void;
+		/** New: triggers inline comparison mode in the DocumentModal content area */
+		onCompareRequested?: (versionNumber: number, latestVersionNumber: number) => void;
 	}
 
 	let {
@@ -76,7 +79,8 @@
 		projectId,
 		isAdmin = false,
 		onDiffRequested,
-		onRestoreRequested
+		onRestoreRequested,
+		onCompareRequested
 	}: Props = $props();
 
 	// ============================================================
@@ -239,6 +243,13 @@
 		}
 	}
 
+	function handleCompare() {
+		if (selectedVersion && versions.length > 0) {
+			const latestNum = versions[0]?.number ?? 0;
+			onCompareRequested?.(selectedVersion.number, latestNum);
+		}
+	}
+
 	function handleRestore() {
 		if (selectedVersion && versions.length > 0) {
 			const latestNum = versions[0]?.number ?? 0;
@@ -319,10 +330,12 @@
 			<button
 				type="button"
 				onclick={() => (showFilters = !showFilters)}
-				class="p-1 rounded hover:bg-muted transition-colors"
+				class="p-1 rounded hover:bg-muted/80 transition-colors pressable"
 				aria-label="Toggle filters"
 			>
-				<Filter class="w-3.5 h-3.5 text-muted-foreground" />
+				<Filter
+					class="w-3.5 h-3.5 {showFilters ? 'text-accent' : 'text-muted-foreground'}"
+				/>
 			</button>
 		</div>
 		{#if lastUpdated}
@@ -415,9 +428,9 @@
 					<button
 						type="button"
 						onclick={() => handleVersionSelect(version)}
-						class="w-full text-left px-3 py-2 hover:bg-muted transition-colors {isSelected
+						class="w-full text-left px-3 py-2 transition-all pressable {isSelected
 							? 'bg-accent/10 border-l-2 border-accent'
-							: ''}"
+							: 'hover:bg-muted/60 border-l-2 border-transparent'}"
 					>
 						<div class="flex items-start gap-2">
 							<!-- Version number -->
@@ -503,52 +516,57 @@
 
 			<!-- Selected version actions -->
 			{#if selectedVersion}
-				<div class="px-3 py-2 border-t border-border bg-muted space-y-2">
-					<div class="text-[10px] text-muted-foreground">
-						<span class="font-medium text-foreground"
-							>Version {selectedVersion.number}</span
-						>
+				<div class="px-3 py-2 border-t border-border bg-muted/50 space-y-1.5">
+					<div class="text-[10px] text-muted-foreground flex items-center gap-1.5">
+						<span class="font-medium text-foreground">v{selectedVersion.number}</span>
 						{#if selectedVersion.snapshot_hash}
-							<span
-								class="ml-1 font-mono text-muted-foreground/50"
-								title="Snapshot hash"
-							>
+							<span class="font-mono text-muted-foreground/40" title="Snapshot hash">
 								#{selectedVersion.snapshot_hash.slice(0, 8)}
 							</span>
 						{/if}
 					</div>
 					<div class="flex items-center gap-1.5">
-						<Button
-							variant="secondary"
-							size="sm"
-							onclick={() => handleViewDiff('previous')}
-							disabled={selectedVersion.number === 1}
-							class="text-[10px] h-7 px-2 flex-1"
-						>
-							<GitCompare class="w-3 h-3 mr-1" />
-							vs Previous
-						</Button>
-						<Button
-							variant="secondary"
-							size="sm"
-							onclick={() => handleViewDiff('current')}
-							disabled={selectedVersion.number === versions[0]?.number}
-							class="text-[10px] h-7 px-2 flex-1"
-						>
-							<GitCompare class="w-3 h-3 mr-1" />
-							vs Current
-						</Button>
+						{#if onCompareRequested}
+							<button
+								type="button"
+								onclick={handleCompare}
+								class="flex-1 inline-flex items-center justify-center gap-1.5 h-7 px-2.5 text-[10px] font-medium rounded-md border border-border bg-card text-foreground shadow-ink pressable transition-all hover:border-accent/50 hover:text-accent"
+							>
+								<GitCompare class="w-3 h-3" />
+								See Changes
+							</button>
+						{:else}
+							<Button
+								variant="secondary"
+								size="sm"
+								onclick={() => handleViewDiff('previous')}
+								disabled={selectedVersion.number === 1}
+								class="text-[10px] h-7 px-2 flex-1"
+							>
+								<GitCompare class="w-3 h-3 mr-1" />
+								vs Previous
+							</Button>
+							<Button
+								variant="secondary"
+								size="sm"
+								onclick={() => handleViewDiff('current')}
+								disabled={selectedVersion.number === versions[0]?.number}
+								class="text-[10px] h-7 px-2 flex-1"
+							>
+								<GitCompare class="w-3 h-3 mr-1" />
+								vs Current
+							</Button>
+						{/if}
 					</div>
 					{#if isAdmin && selectedVersion.number !== versions[0]?.number}
-						<Button
-							variant="ghost"
-							size="sm"
+						<button
+							type="button"
 							onclick={handleRestore}
-							class="text-[10px] h-7 px-2 w-full text-amber-600 hover:text-amber-600 hover:bg-amber-500/10"
+							class="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 text-[10px] font-medium rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors pressable"
 						>
-							<RotateCcw class="w-3 h-3 mr-1" />
+							<RotateCcw class="w-3 h-3" />
 							Restore this version
-						</Button>
+						</button>
 					{/if}
 				</div>
 			{/if}

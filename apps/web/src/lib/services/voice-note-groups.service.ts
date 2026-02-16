@@ -1,11 +1,7 @@
 // apps/web/src/lib/services/voice-note-groups.service.ts
 import type { VoiceNoteGroup } from '$lib/types/voice-notes';
 import { ApiError } from '$lib/utils/api-client';
-
-function extractErrorMessage(payload: any, fallback: string): string {
-	if (!payload) return fallback;
-	return payload.error || payload.message || fallback;
-}
+import { extractApiErrorMessage } from '$lib/utils/api-client-helpers';
 
 export async function createVoiceNoteGroup(options?: {
 	id?: string;
@@ -23,13 +19,13 @@ export async function createVoiceNoteGroup(options?: {
 	const payload = (await response.json()) as {
 		success?: boolean;
 		data?: VoiceNoteGroup;
-		error?: string;
+		error?: unknown;
 		message?: string;
 	};
 
 	if (!response.ok || !payload?.data) {
 		throw new ApiError(
-			extractErrorMessage(payload, 'Failed to create voice note group'),
+			extractApiErrorMessage(payload, 'Failed to create voice note group'),
 			response.status,
 			payload
 		);
@@ -56,13 +52,13 @@ export async function attachVoiceNoteGroup(
 	const result = (await response.json()) as {
 		success?: boolean;
 		data?: VoiceNoteGroup;
-		error?: string;
+		error?: unknown;
 		message?: string;
 	};
 
 	if (!response.ok || !result?.data) {
 		throw new ApiError(
-			extractErrorMessage(result, 'Failed to attach voice note group'),
+			extractApiErrorMessage(result, 'Failed to attach voice note group'),
 			response.status,
 			result
 		);
@@ -83,13 +79,13 @@ export async function cleanupVoiceNoteGroups(options?: {
 	const payload = (await response.json()) as {
 		success?: boolean;
 		data?: { deletedGroupIds: string[]; deletedVoiceNotes: number };
-		error?: string;
+		error?: unknown;
 		message?: string;
 	};
 
 	if (!response.ok || !payload?.data) {
 		throw new ApiError(
-			extractErrorMessage(payload, 'Failed to cleanup voice note groups'),
+			extractApiErrorMessage(payload, 'Failed to cleanup voice note groups'),
 			response.status,
 			payload
 		);

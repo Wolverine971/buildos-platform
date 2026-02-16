@@ -28,6 +28,18 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
+	search_onto_goals: {
+		summary: 'Keyword search for goals by name or description.',
+		capabilities: ['Optional project filters', 'Useful for strategic discovery'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
+	search_onto_plans: {
+		summary: 'Keyword search for plans by name or description.',
+		capabilities: ['Optional project filters', 'Useful for plan discovery'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
 	list_onto_goals: {
 		summary: 'List project goals with brief descriptions.',
 		capabilities: ['Filter by project', 'Highlights strategic objectives'],
@@ -58,12 +70,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
-	list_onto_requirements: {
-		summary: 'List project requirements with priority.',
-		capabilities: ['Filter by project/type', 'Highlights constraints'],
-		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
-		category: 'search'
-	},
 	list_onto_projects: {
 		summary: 'List ontology projects grouped by recent activity.',
 		capabilities: ['Filter by type or state', 'Highlights facet metadata'],
@@ -82,10 +88,22 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
+	search_onto_milestones: {
+		summary: 'Keyword search for milestones by title or description.',
+		capabilities: ['Supports project/state filters', 'Helps locate timeline checkpoints'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
+	search_onto_risks: {
+		summary: 'Keyword search for risks by title or content.',
+		capabilities: ['Supports project/state/impact filters', 'Fast risk discovery'],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		category: 'search'
+	},
 	search_ontology: {
 		summary: 'Fuzzy search across all ontology entities with snippets.',
 		capabilities: [
-			'Scans tasks/plans/goals/milestones/documents/requirements',
+			'Scans tasks/plans/goals/milestones/documents',
 			'Accepts project scope and type filters'
 		],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
@@ -138,12 +156,6 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	get_onto_risk_details: {
 		summary: 'Load full risk details including impact and mitigation info.',
-		capabilities: ['Validates ownership', 'Use before edits'],
-		contexts: ['project', 'project_audit', 'project_forecast'],
-		category: 'read'
-	},
-	get_onto_requirement_details: {
-		summary: 'Load full requirement details including priority and type.',
 		capabilities: ['Validates ownership', 'Use before edits'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'read'
@@ -282,6 +294,18 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
+	create_onto_milestone: {
+		summary: 'Create a milestone checkpoint and link it to project goals.',
+		capabilities: ['Supports due dates/state', 'Supports parent/connections'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	create_onto_risk: {
+		summary: 'Create a risk with impact/probability and mitigation context.',
+		capabilities: ['Supports impact/state/probability', 'Supports parent/connections'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
 	move_document_in_tree: {
 		summary: 'Move or insert a document within the project doc_structure.',
 		capabilities: [
@@ -307,7 +331,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: [
 			'Normalizes edge direction',
 			'Validates ownership and project scope',
-			'Use for plans/goals/milestones/tasks/docs/risks/requirements'
+			'Use for plans/goals/milestones/tasks/docs/risks'
 		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
@@ -388,9 +412,9 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
-	update_onto_requirement: {
-		summary: 'Modify requirement text, priority, or metadata.',
-		capabilities: ['Supports partial updates', 'Validates ownership'],
+	delete_onto_project: {
+		summary: 'Delete an ontology project workspace.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
@@ -402,6 +426,18 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	delete_onto_document: {
 		summary: 'Remove a document and associated edges.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	delete_onto_milestone: {
+		summary: 'Remove a milestone and associated edges.',
+		capabilities: ['Validates ownership', 'Irreversible delete'],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	delete_onto_risk: {
+		summary: 'Remove a risk and associated edges.',
 		capabilities: ['Validates ownership', 'Irreversible delete'],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'

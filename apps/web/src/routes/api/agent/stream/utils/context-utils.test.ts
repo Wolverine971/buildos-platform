@@ -277,18 +277,24 @@ describe('assignEntityByPrefix', () => {
 
 	it('should assign project IDs', () => {
 		assignEntityByPrefix(entities, 'proj_123');
-		expect(entities.projects).toEqual([{ id: 'proj_123', name: undefined, description: undefined }]);
+		expect(entities.projects).toEqual([
+			{ id: 'proj_123', name: undefined, description: undefined }
+		]);
 	});
 
 	it('should assign task IDs to array', () => {
 		assignEntityByPrefix(entities, 'task_123');
-		expect(entities.tasks).toEqual([{ id: 'task_123', name: undefined, description: undefined }]);
+		expect(entities.tasks).toEqual([
+			{ id: 'task_123', name: undefined, description: undefined }
+		]);
 	});
 
 	it('should not duplicate task IDs', () => {
 		assignEntityByPrefix(entities, 'task_123');
 		assignEntityByPrefix(entities, 'task_123');
-		expect(entities.tasks).toEqual([{ id: 'task_123', name: undefined, description: undefined }]);
+		expect(entities.tasks).toEqual([
+			{ id: 'task_123', name: undefined, description: undefined }
+		]);
 	});
 
 	it('should append multiple task IDs', () => {
@@ -439,11 +445,11 @@ describe('generateLastTurnContext', () => {
 
 		const toolResults = [{ entities_accessed: ['task_123', 'proj_abc'] }];
 
-			const context = generateLastTurnContext(messages, 'project', { toolResults });
+		const context = generateLastTurnContext(messages, 'project', { toolResults });
 
-			expect(context!.entities.tasks?.map((item) => item.id)).toContain('task_123');
-			expect(context!.entities.projects?.map((item) => item.id)).toContain('proj_abc');
-		});
+		expect(context!.entities.tasks?.map((item) => item.id)).toContain('task_123');
+		expect(context!.entities.projects?.map((item) => item.id)).toContain('proj_abc');
+	});
 
 	it('should extract entities from tool result payload keys', () => {
 		const messages = [
@@ -461,31 +467,31 @@ describe('generateLastTurnContext', () => {
 			}
 		] as unknown as ChatMessage[];
 
-			const projectId = '22222222-2222-2222-2222-222222222222';
-			const taskId = '11111111-1111-1111-1111-111111111111';
-			const goalId = '33333333-3333-3333-3333-333333333333';
-			const planId = '44444444-4444-4444-4444-444444444444';
-			const documentId = '55555555-5555-5555-5555-555555555555';
+		const projectId = '22222222-2222-2222-2222-222222222222';
+		const taskId = '11111111-1111-1111-1111-111111111111';
+		const goalId = '33333333-3333-3333-3333-333333333333';
+		const planId = '44444444-4444-4444-4444-444444444444';
+		const documentId = '55555555-5555-5555-5555-555555555555';
 
-			const toolResults = [
-				{
-					result: {
-						tasks: [{ id: taskId, project_id: projectId }],
-						goal: { id: goalId },
-						plan: { id: planId },
-						document: { id: documentId }
-					}
+		const toolResults = [
+			{
+				result: {
+					tasks: [{ id: taskId, project_id: projectId }],
+					goal: { id: goalId },
+					plan: { id: planId },
+					document: { id: documentId }
 				}
-			];
+			}
+		];
 
-			const context = generateLastTurnContext(messages, 'project', { toolResults });
+		const context = generateLastTurnContext(messages, 'project', { toolResults });
 
-			expect(context!.entities.projects?.map((item) => item.id)).toContain(projectId);
-			expect(context!.entities.tasks?.map((item) => item.id)).toContain(taskId);
-			expect(context!.entities.goals?.map((item) => item.id)).toContain(goalId);
-			expect(context!.entities.plans?.map((item) => item.id)).toContain(planId);
-			expect(context!.entities.documents?.map((item) => item.id)).toContain(documentId);
-		});
+		expect(context!.entities.projects?.map((item) => item.id)).toContain(projectId);
+		expect(context!.entities.tasks?.map((item) => item.id)).toContain(taskId);
+		expect(context!.entities.goals?.map((item) => item.id)).toContain(goalId);
+		expect(context!.entities.plans?.map((item) => item.id)).toContain(planId);
+		expect(context!.entities.documents?.map((item) => item.id)).toContain(documentId);
+	});
 });
 
 // ============================================

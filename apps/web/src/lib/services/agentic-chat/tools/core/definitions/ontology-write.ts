@@ -336,6 +336,172 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 	{
 		type: 'function',
 		function: {
+			name: 'create_onto_milestone',
+			description: `Create a new milestone in the ontology system.
+Milestones mark major checkpoints and should usually connect to a goal.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project UUID (required)'
+					},
+					title: {
+						type: 'string',
+						description: 'Milestone title (required)'
+					},
+					goal_id: {
+						type: 'string',
+						description: 'Goal UUID to link this milestone to'
+					},
+					due_at: {
+						type: 'string',
+						description: 'Due date in ISO format'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Initial state (pending, in_progress, completed, missed)'
+					},
+					description: {
+						type: 'string',
+						description: 'Milestone description'
+					},
+					milestone: {
+						type: 'string',
+						description: 'Optional milestone subtitle/label'
+					},
+					props: {
+						type: 'object',
+						description: 'Additional properties/metadata'
+					},
+					parent: {
+						type: 'object',
+						description: 'Optional parent reference for containment',
+						properties: {
+							kind: { type: 'string' },
+							id: { type: 'string' },
+							is_primary: { type: 'boolean' }
+						}
+					},
+					parents: {
+						type: 'array',
+						description: 'Optional multiple containment parents',
+						items: {
+							type: 'object',
+							properties: {
+								kind: { type: 'string' },
+								id: { type: 'string' },
+								is_primary: { type: 'boolean' }
+							}
+						}
+					},
+					connections: {
+						type: 'array',
+						description: 'Optional relationship connections',
+						items: {
+							type: 'object',
+							properties: {
+								kind: { type: 'string' },
+								id: { type: 'string' },
+								intent: { type: 'string', enum: ['containment', 'semantic'] },
+								rel: { type: 'string' }
+							}
+						}
+					}
+				},
+				required: ['project_id', 'title']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'create_onto_risk',
+			description: `Create a new risk in the ontology system.
+Risks capture potential issues and mitigation planning.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project UUID (required)'
+					},
+					title: {
+						type: 'string',
+						description: 'Risk title (required)'
+					},
+					impact: {
+						type: 'string',
+						description: 'Impact level (required): low, medium, high, critical'
+					},
+					probability: {
+						type: 'number',
+						description: 'Probability value between 0 and 1'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Initial state (identified, mitigated, occurred, closed)'
+					},
+					content: {
+						type: 'string',
+						description: 'Risk content summary'
+					},
+					description: {
+						type: 'string',
+						description: 'Risk description'
+					},
+					mitigation_strategy: {
+						type: 'string',
+						description: 'Mitigation strategy'
+					},
+					props: {
+						type: 'object',
+						description: 'Additional properties/metadata'
+					},
+					parent: {
+						type: 'object',
+						description: 'Optional parent reference for containment',
+						properties: {
+							kind: { type: 'string' },
+							id: { type: 'string' },
+							is_primary: { type: 'boolean' }
+						}
+					},
+					parents: {
+						type: 'array',
+						description: 'Optional multiple containment parents',
+						items: {
+							type: 'object',
+							properties: {
+								kind: { type: 'string' },
+								id: { type: 'string' },
+								is_primary: { type: 'boolean' }
+							}
+						}
+					},
+					connections: {
+						type: 'array',
+						description: 'Optional relationship connections',
+						items: {
+							type: 'object',
+							properties: {
+								kind: { type: 'string' },
+								id: { type: 'string' },
+								intent: { type: 'string', enum: ['containment', 'semantic'] },
+								rel: { type: 'string' }
+							}
+						}
+					}
+				},
+				required: ['project_id', 'title', 'impact']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
 			name: 'move_document_in_tree',
 			description: `Move or insert an existing document within the project's doc_structure.
 Use this to nest existing or unlinked documents under a parent or reorder siblings.
@@ -425,7 +591,7 @@ Also ensures the project has_document edge exists for discovery.`,
 		function: {
 			name: 'link_onto_entities',
 			description: `Create a relationship edge between two ontology entities.
-Use this to connect plans, goals, milestones, tasks, documents, risks, or requirements.
+Use this to connect plans, goals, milestones, tasks, documents, or risks.
 Avoid creating project edges unless the entity is truly a root-level item.
 
 If you provide a non-standard relationship type, the API will normalize it to a canonical relationship and preserve your original value in edge props.original_rel.`,
@@ -435,7 +601,7 @@ If you provide a non-standard relationship type, the API will normalize it to a 
 					src_kind: {
 						type: 'string',
 						description:
-							'Source entity kind (project, plan, goal, milestone, task, document, risk, requirement, metric, source)'
+							'Source entity kind (project, plan, goal, milestone, task, document, risk, metric, source)'
 					},
 					src_id: {
 						type: 'string',
@@ -444,7 +610,7 @@ If you provide a non-standard relationship type, the API will normalize it to a 
 					dst_kind: {
 						type: 'string',
 						description:
-							'Destination entity kind (project, plan, goal, milestone, task, document, risk, requirement, metric, source)'
+							'Destination entity kind (project, plan, goal, milestone, task, document, risk, metric, source)'
 					},
 					dst_id: {
 						type: 'string',
@@ -510,7 +676,7 @@ IMPORTANT: Do not include documents. Documents are flat and managed only via ont
 								kind: {
 									type: 'string',
 									description:
-										'Entity kind (project, plan, goal, milestone, task, risk, requirement, metric, source). Document is not allowed.'
+										'Entity kind (project, plan, goal, milestone, task, risk, metric, source). Document is not allowed.'
 								},
 								connections: {
 									type: 'array',
@@ -520,7 +686,7 @@ IMPORTANT: Do not include documents. Documents are flat and managed only via ont
 											kind: {
 												type: 'string',
 												description:
-													'Connection kind (project, plan, goal, milestone, task, risk, requirement, metric, source). Document is not allowed.'
+													'Connection kind (project, plan, goal, milestone, task, risk, metric, source). Document is not allowed.'
 											},
 											id: {
 												type: 'string',
@@ -573,7 +739,7 @@ IMPORTANT: Do not include documents. Documents are flat and managed only via ont
 
 This is the PRIMARY tool for creating projects. It uses **entities + relationships only**
 to build the project graph:
-- Entities represent goals, plans, tasks, documents, risks, requirements, etc.
+- Entities represent goals, plans, tasks, documents, risks, etc.
 - Relationships are directional pairs that drive containment + semantic edges.
 - Context document linkage (document.context.project) is supported.
 - Documents created here (including the context document) are added to the project's doc_structure at root level unless moved later.
@@ -588,7 +754,7 @@ to build the project graph:
 **Start Simple (CRITICAL):**
 - Most new projects just need: project + 1 goal (if an outcome is stated) + maybe a few tasks (if explicit actions are mentioned)
 - Don't add plans/milestones unless user mentions phases, dates, or workstreams
-- Don't add peripheral entities (risks, documents, requirements, metrics, sources) unless explicitly mentioned
+- Don't add peripheral entities (risks, documents, metrics, sources) unless explicitly mentioned
 - Simple projects are GOOD - structure grows over time
 
 **Props Extraction (CRITICAL)**:
@@ -662,7 +828,7 @@ PROJECT WITH PHASES (user mentioned workstreams):
     end_at?: ISO datetime
   },
   entities: [
-    { temp_id: string, kind: "goal|milestone|plan|task|document|risk|requirement|metric|source", ... }
+    { temp_id: string, kind: "goal|milestone|plan|task|document|risk|metric|source", ... }
   ],
   relationships: [
     [ { temp_id, kind }, { temp_id, kind } ],
@@ -789,7 +955,6 @@ DO NOT leave props empty when information is available in the conversation!`,
 										'task',
 										'document',
 										'risk',
-										'requirement',
 										'metric',
 										'source'
 									]
@@ -1389,51 +1554,28 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 			}
 		}
 	},
-	{
-		type: 'function',
-		function: {
-			name: 'update_onto_requirement',
-			description: `Update an existing ontology requirement.
-Use for edits to requirement text, priority, or metadata.`,
-			parameters: {
-				type: 'object',
-				additionalProperties: false,
-				properties: {
-					requirement_id: {
-						type: 'string',
-						description: 'Requirement UUID (required)'
-					},
-					text: {
-						type: 'string',
-						description: 'Requirement text'
-					},
-					priority: {
-						type: 'number',
-						description: 'Requirement priority'
-					},
-					type_key: {
-						type: 'string',
-						description: 'Requirement type key'
-					},
-					props: {
-						type: 'object',
-						description: 'Metadata fields to merge into requirement props'
-					}
-				},
-				required: ['requirement_id'],
-				anyOf: [
-					{ required: ['text'] },
-					{ required: ['priority'] },
-					{ required: ['type_key'] },
-					{ required: ['props'] }
-				]
-			}
-		}
-	},
-
 	// ============================================
 	// DELETE TOOLS
 	// ============================================
+
+	{
+		type: 'function',
+		function: {
+			name: 'delete_onto_project',
+			description: `Delete a project from the ontology system.
+This action is permanent and removes the entire project workspace.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project UUID (required)'
+					}
+				},
+				required: ['project_id']
+			}
+		}
+	},
 
 	{
 		type: 'function',
@@ -1471,6 +1613,44 @@ Removes the document and associated edges. This action is permanent.`,
 					}
 				},
 				required: ['document_id']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'delete_onto_milestone',
+			description: `Delete a milestone from the ontology system.
+This action is permanent and cannot be undone.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					milestone_id: {
+						type: 'string',
+						description: 'Milestone UUID (required)'
+					}
+				},
+				required: ['milestone_id']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'delete_onto_risk',
+			description: `Delete a risk from the ontology system.
+This action is permanent and cannot be undone.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					risk_id: {
+						type: 'string',
+						description: 'Risk UUID (required)'
+					}
+				},
+				required: ['risk_id']
 			}
 		}
 	},

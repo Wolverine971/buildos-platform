@@ -491,7 +491,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 	const { data, error } = await supabase.from('table_name').select('*');
 
 	if (error) {
-		return ApiResponse.error(error.message, 500);
+		return ApiResponse.databaseError(error);
 	}
 
 	return ApiResponse.success(data);
@@ -515,7 +515,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 
 	if (error) {
-		return ApiResponse.error(error.message, 500);
+		return ApiResponse.databaseError(error);
 	}
 
 	return ApiResponse.success(data);
@@ -524,22 +524,28 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 #### API Response Wrapper (Required)
 
-**ALWAYS use `ApiResponse` for API endpoint responses:**
+Use `ApiResponse` for JSON API endpoint responses. Protocol endpoints (SSE streams, file/binary
+downloads, tracking pixels/redirects, MCP/JSON-RPC) can return protocol-native responses.
 
 ```typescript
 import { ApiResponse } from '$lib/utils/api-response';
 
 // ✅ Success response
-return ApiResponse.success(data, 200); // Default 200
+return ApiResponse.success(data);
+return ApiResponse.created(data); // 201
 
 // ✅ Error response
 return ApiResponse.error('Something went wrong', 500);
 
 // ✅ Validation error
-return ApiResponse.error('Invalid input', 400);
+return ApiResponse.badRequest('Invalid input');
 
 // ✅ Not found
-return ApiResponse.error('Resource not found', 404);
+return ApiResponse.notFound('Resource');
+
+// ✅ Internal/database helpers
+return ApiResponse.internalError(error, 'Something went wrong');
+return ApiResponse.databaseError(error);
 ```
 
 **Benefits:**
@@ -548,6 +554,14 @@ return ApiResponse.error('Resource not found', 404);
 - Automatic error handling and logging
 - Type-safe responses
 - Easy debugging
+
+Quick drift check:
+
+```bash
+rg -l "return json\\(" apps/web/src/routes/api --glob '+server.ts'
+```
+
+Expected output should only include protocol-native endpoints.
 
 ### API Service Pattern
 

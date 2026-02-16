@@ -1,19 +1,23 @@
 // apps/web/src/lib/utils/api-response.ts
 import { json } from '@sveltejs/kit';
 import { createHash } from 'crypto';
+import type { ApiResponse as SharedApiResponse, ApiWarning } from '@buildos/shared-types';
 
-// Standard error response format
 export interface ApiError {
+	success: false;
 	error: string;
+	message?: string;
 	code?: string;
-	details?: any;
+	details?: unknown;
+	timestamp: string;
 }
 
-// Standard success response format
-export interface ApiSuccess<T = any> {
+export interface ApiSuccess<T = unknown> {
 	success: true;
 	data?: T;
 	message?: string;
+	warnings?: ApiWarning[];
+	timestamp: string;
 }
 
 // Cache configuration interface
@@ -99,14 +103,42 @@ function buildCacheControl(config: CacheConfig): string {
 	return parts.join(', ');
 }
 
+function buildSuccessPayload<T = unknown>(
+	data?: T,
+	message?: string,
+	warnings?: ApiWarning[]
+): SharedApiResponse<T> {
+	return {
+		success: true,
+		data,
+		message,
+		warnings,
+		timestamp: new Date().toISOString()
+	};
+}
+
+function buildErrorPayload(
+	message: string,
+	status: number,
+	code?: string,
+	details?: unknown,
+	warnings?: ApiWarning[]
+): SharedApiResponse<never> {
+	return {
+		success: false,
+		error: message,
+		message,
+		code,
+		details,
+		warnings,
+		timestamp: new Date().toISOString()
+	};
+}
+
 export class ApiResponse {
 	// Success responses with optional caching
-	static success<T = any>(data?: T, message?: string, cacheConfig?: CacheConfig) {
-		const response = json({
-			success: true,
-			data,
-			message
-		} as ApiSuccess<T>);
+	static success<T = unknown>(data?: T, message?: string, cacheConfig?: CacheConfig) {
+		const response = json(buildSuccessPayload(data, message));
 
 		if (cacheConfig) {
 			response.headers.set('Cache-Control', buildCacheControl(cacheConfig));
@@ -118,15 +150,8 @@ export class ApiResponse {
 		return response;
 	}
 
-	static created<T = any>(data?: T, message?: string, cacheConfig?: CacheConfig) {
-		const response = json(
-			{
-				success: true,
-				data,
-				message
-			} as ApiSuccess<T>,
-			{ status: HttpStatus.CREATED }
-		);
+	static created<T = unknown>(data?: T, message?: string, cacheConfig?: CacheConfig) {
+		const response = json(buildSuccessPayload(data, message), { status: HttpStatus.CREATED });
 
 		if (cacheConfig) {
 			response.headers.set('Cache-Control', buildCacheControl(cacheConfig));
@@ -139,7 +164,7 @@ export class ApiResponse {
 	}
 
 	// Helper method for cacheable responses
-	static cached<T = any>(
+	static cached<T = unknown>(
 		data?: T,
 		message?: string,
 		maxAge: number = 300,
@@ -153,16 +178,9 @@ export class ApiResponse {
 		message: string,
 		status: number = HttpStatus.INTERNAL_SERVER_ERROR,
 		code?: string,
-		details?: any
+		details?: unknown
 	) {
-		return json(
-			{
-				error: message,
-				code,
-				details
-			} as ApiError,
-			{ status }
-		);
+		return json(buildErrorPayload(message, status, code, details), { status });
 	}
 
 	// Common error responses
@@ -232,7 +250,7 @@ export class ApiResponse {
 
 // Helper to validate required fields
 export function validateRequiredFields(
-	data: any,
+	data: Record<string, unknown>,
 	fields: string[]
 ): { valid: boolean; missing?: string } {
 	for (const field of fields) {

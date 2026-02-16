@@ -1,7 +1,7 @@
 // apps/web/src/lib/types/index.ts
 // Comprehensive type definitions for your SvelteKit + Supabase project
 
-import type { Database } from '@buildos/shared-types';
+import type { ApiResponse as SharedApiResponse, Database } from '@buildos/shared-types';
 import type { ParsedOperation } from './brain-dump';
 import type { Task, ProjectWithRelations } from './project';
 import type { UserContext } from './user-context';
@@ -259,12 +259,7 @@ export interface SystemMetric {
 // API RESPONSE TYPES
 // ==========================================
 
-export interface ApiResponse<T = any> {
-	success: boolean;
-	data?: T;
-	error?: string;
-	message?: string;
-}
+export type ApiResponse<T = unknown> = SharedApiResponse<T>;
 
 export interface PaginatedResponse<T> {
 	data: T[];

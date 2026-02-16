@@ -3,10 +3,10 @@
  * Ontology Read Executor
  *
  * Handles all read-only ontology operations:
- * - list_onto_* (projects, tasks, goals, plans, documents, milestones, risks, requirements)
- * - search_onto_* (projects, tasks, documents)
+ * - list_onto_* (projects, tasks, goals, plans, documents, milestones, risks)
+ * - search_onto_* (projects, tasks, goals, plans, documents, milestones, risks)
  * - search_ontology (cross-entity search)
- * - get_onto_*_details (project, task, goal, plan, document, milestone, risk, requirement)
+ * - get_onto_*_details (project, task, goal, plan, document, milestone, risk)
  * - list_task_documents
  */
 
@@ -22,7 +22,10 @@ import type {
 	ListOntoDocumentsArgs,
 	ListOntoMilestonesArgs,
 	ListOntoRisksArgs,
-	ListOntoRequirementsArgs,
+	SearchOntoGoalsArgs,
+	SearchOntoPlansArgs,
+	SearchOntoMilestonesArgs,
+	SearchOntoRisksArgs,
 	SearchOntoDocumentsArgs,
 	SearchOntologyArgs,
 	GetOntoProjectDetailsArgs,
@@ -33,7 +36,6 @@ import type {
 	GetOntoDocumentDetailsArgs,
 	GetOntoMilestoneDetailsArgs,
 	GetOntoRiskDetailsArgs,
-	GetOntoRequirementDetailsArgs,
 	ListTaskDocumentsArgs,
 	GetDocumentTreeArgs,
 	GetDocumentPathArgs
@@ -47,6 +49,10 @@ import type {
 export class OntologyReadExecutor extends BaseExecutor {
 	constructor(context: ExecutorContext) {
 		super(context);
+	}
+
+	private resolveSearchTerm(args: { query?: string; search?: string }): string {
+		return this.prepareSearchTerm(args.query ?? args.search);
 	}
 
 	// ============================================
@@ -359,43 +365,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		};
 	}
 
-	async listOntoRequirements(args: ListOntoRequirementsArgs): Promise<{
-		requirements: any[];
-		total: number;
-		message: string;
-	}> {
-		const actorId = await this.getActorId();
-		let query = this.supabase
-			.from('onto_requirements')
-			.select('id, project_id, text, priority, type_key, props, created_at, updated_at', {
-				count: 'exact'
-			})
-			.eq('created_by', actorId)
-			.is('deleted_at', null)
-			.order('created_at', { ascending: false });
-
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
-
-		if (args.type_key) {
-			query = query.eq('type_key', args.type_key);
-		}
-
-		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
-
-		return {
-			requirements: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} ontology requirements.`
-		};
-	}
-
 	async listTaskDocuments(args: ListTaskDocumentsArgs): Promise<{
 		documents: Array<{ document: any; edge: any }>;
 		scratch_pad: { document: any; edge: any } | null;
@@ -425,7 +394,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const searchTerm = this.prepareSearchTerm(args.search);
+		const searchTerm = this.resolveSearchTerm(args);
 		if (!searchTerm) {
 			throw new Error('Search term is required for search_onto_projects');
 		}
@@ -471,7 +440,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			projects: data ?? [],
 			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} projects matching "${args.search}".`
+			message: `Found ${data?.length ?? 0} projects matching "${searchTerm}".`
 		};
 	}
 
@@ -480,7 +449,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const searchTerm = this.prepareSearchTerm(args.search);
+		const searchTerm = this.resolveSearchTerm(args);
 		if (!searchTerm) {
 			throw new Error('Search term is required for search_onto_tasks');
 		}
@@ -540,7 +509,91 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			tasks: normalized,
 			total: count ?? normalized.length,
-			message: `Found ${normalized.length} tasks matching "${args.search}".`
+			message: `Found ${normalized.length} tasks matching "${searchTerm}".`
+		};
+	}
+
+	async searchOntoGoals(args: SearchOntoGoalsArgs): Promise<{
+		goals: any[];
+		total: number;
+		message: string;
+	}> {
+		const searchTerm = this.resolveSearchTerm(args);
+		if (!searchTerm) {
+			throw new Error('Search term is required for search_onto_goals');
+		}
+
+		const actorId = await this.getActorId();
+		const likePattern = `%${searchTerm}%`;
+
+		let query = this.supabase
+			.from('onto_goals')
+			.select(
+				'id, project_id, name, type_key, description, target_date, state_key, props, created_at, updated_at',
+				{ count: 'exact' }
+			)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.order('updated_at', { ascending: false })
+			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
+
+		if (args.project_id) {
+			await this.assertProjectOwnership(args.project_id, actorId);
+			query = query.eq('project_id', args.project_id);
+		}
+
+		const limit = Math.min(args.limit ?? 20, 50);
+		query = query.limit(limit);
+
+		const { data, count, error } = await query;
+		if (error) throw error;
+
+		return {
+			goals: data ?? [],
+			total: count ?? data?.length ?? 0,
+			message: `Found ${data?.length ?? 0} goals matching "${searchTerm}".`
+		};
+	}
+
+	async searchOntoPlans(args: SearchOntoPlansArgs): Promise<{
+		plans: any[];
+		total: number;
+		message: string;
+	}> {
+		const searchTerm = this.resolveSearchTerm(args);
+		if (!searchTerm) {
+			throw new Error('Search term is required for search_onto_plans');
+		}
+
+		const actorId = await this.getActorId();
+		const likePattern = `%${searchTerm}%`;
+
+		let query = this.supabase
+			.from('onto_plans')
+			.select(
+				'id, project_id, name, state_key, type_key, description, props, created_at, updated_at',
+				{ count: 'exact' }
+			)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.order('updated_at', { ascending: false })
+			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
+
+		if (args.project_id) {
+			await this.assertProjectOwnership(args.project_id, actorId);
+			query = query.eq('project_id', args.project_id);
+		}
+
+		const limit = Math.min(args.limit ?? 20, 50);
+		query = query.limit(limit);
+
+		const { data, count, error } = await query;
+		if (error) throw error;
+
+		return {
+			plans: data ?? [],
+			total: count ?? data?.length ?? 0,
+			message: `Found ${data?.length ?? 0} plans matching "${searchTerm}".`
 		};
 	}
 
@@ -549,7 +602,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const searchTerm = this.prepareSearchTerm(args.search);
+		const searchTerm = this.resolveSearchTerm(args);
 		if (!searchTerm) {
 			throw new Error('Search term is required for search_onto_documents');
 		}
@@ -592,7 +645,103 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			documents: data ?? [],
 			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} documents matching "${args.search}".`
+			message: `Found ${data?.length ?? 0} documents matching "${searchTerm}".`
+		};
+	}
+
+	async searchOntoMilestones(args: SearchOntoMilestonesArgs): Promise<{
+		milestones: any[];
+		total: number;
+		message: string;
+	}> {
+		const searchTerm = this.resolveSearchTerm(args);
+		if (!searchTerm) {
+			throw new Error('Search term is required for search_onto_milestones');
+		}
+
+		const actorId = await this.getActorId();
+		const likePattern = `%${searchTerm}%`;
+
+		let query = this.supabase
+			.from('onto_milestones')
+			.select(
+				'id, project_id, title, due_at, state_key, description, type_key, props, created_at, updated_at',
+				{ count: 'exact' }
+			)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.order('due_at', { ascending: true, nullsFirst: true })
+			.or(`title.ilike.${likePattern},description.ilike.${likePattern}`);
+
+		if (args.project_id) {
+			await this.assertProjectOwnership(args.project_id, actorId);
+			query = query.eq('project_id', args.project_id);
+		}
+
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
+		}
+
+		const limit = Math.min(args.limit ?? 20, 50);
+		query = query.limit(limit);
+
+		const { data, count, error } = await query;
+		if (error) throw error;
+
+		return {
+			milestones: data ?? [],
+			total: count ?? data?.length ?? 0,
+			message: `Found ${data?.length ?? 0} milestones matching "${searchTerm}".`
+		};
+	}
+
+	async searchOntoRisks(args: SearchOntoRisksArgs): Promise<{
+		risks: any[];
+		total: number;
+		message: string;
+	}> {
+		const searchTerm = this.resolveSearchTerm(args);
+		if (!searchTerm) {
+			throw new Error('Search term is required for search_onto_risks');
+		}
+
+		const actorId = await this.getActorId();
+		const likePattern = `%${searchTerm}%`;
+
+		let query = this.supabase
+			.from('onto_risks')
+			.select(
+				'id, project_id, title, impact, probability, state_key, content, type_key, props, created_at, updated_at',
+				{ count: 'exact' }
+			)
+			.eq('created_by', actorId)
+			.is('deleted_at', null)
+			.order('updated_at', { ascending: false })
+			.or(`title.ilike.${likePattern},content.ilike.${likePattern}`);
+
+		if (args.project_id) {
+			await this.assertProjectOwnership(args.project_id, actorId);
+			query = query.eq('project_id', args.project_id);
+		}
+
+		if (args.state_key) {
+			query = query.eq('state_key', args.state_key);
+		}
+
+		if (args.impact) {
+			query = query.eq('impact', args.impact);
+		}
+
+		const limit = Math.min(args.limit ?? 20, 50);
+		query = query.limit(limit);
+
+		const { data, count, error } = await query;
+		if (error) throw error;
+
+		return {
+			risks: data ?? [],
+			total: count ?? data?.length ?? 0,
+			message: `Found ${data?.length ?? 0} risks matching "${searchTerm}".`
 		};
 	}
 
@@ -732,18 +881,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			...details,
 			message: 'Complete ontology risk details loaded.'
-		};
-	}
-
-	async getOntoRequirementDetails(args: GetOntoRequirementDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/requirements/${args.requirement_id}`);
-		if (!details?.requirement) {
-			throw new Error('Ontology requirement not found');
-		}
-
-		return {
-			...details,
-			message: 'Complete ontology requirement details loaded.'
 		};
 	}
 

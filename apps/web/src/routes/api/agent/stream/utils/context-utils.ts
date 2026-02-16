@@ -147,8 +147,7 @@ type EntityType =
 	| 'goal'
 	| 'document'
 	| 'milestone'
-	| 'risk'
-	| 'requirement';
+	| 'risk';
 
 const ENTITY_LIST_KEYS: Record<EntityType, keyof LastTurnContext['entities']> = {
 	project: 'projects',
@@ -157,8 +156,7 @@ const ENTITY_LIST_KEYS: Record<EntityType, keyof LastTurnContext['entities']> = 
 	goal: 'goals',
 	document: 'documents',
 	milestone: 'milestones',
-	risk: 'risks',
-	requirement: 'requirements'
+	risk: 'risks'
 };
 
 function truncateEntityText(value: unknown, maxLength: number): string | undefined {
@@ -204,15 +202,19 @@ function assignEntityByType(
 	if (!entityId) return;
 	const preview = toEntityPreview(previewSource, entityId);
 	const listKey = ENTITY_LIST_KEYS[entityType];
-	const list = (((entities as Record<string, unknown>)[listKey] as Array<{
-		id: string;
-		name?: string;
-		description?: string;
-	}> | undefined) ?? []);
+	const list =
+		((entities as Record<string, unknown>)[listKey] as
+			| Array<{
+					id: string;
+					name?: string;
+					description?: string;
+			  }>
+			| undefined) ?? [];
 	const existing = list.find((item) => item.id === entityId);
 	if (existing) {
 		if (!existing.name && preview.name) existing.name = preview.name;
-		if (!existing.description && preview.description) existing.description = preview.description;
+		if (!existing.description && preview.description)
+			existing.description = preview.description;
 	} else {
 		list.push({
 			id: entityId,
@@ -265,8 +267,6 @@ export function assignEntityByPrefix(
 		assignEntityByType(entities, 'milestone', entityId);
 	} else if (entityId.startsWith('risk_')) {
 		assignEntityByType(entities, 'risk', entityId);
-	} else if (entityId.startsWith('req_')) {
-		assignEntityByType(entities, 'requirement', entityId);
 	}
 }
 
@@ -284,9 +284,7 @@ const ENTITY_CONTAINER_KEYS: Record<string, EntityType> = {
 	milestone: 'milestone',
 	milestones: 'milestone',
 	risk: 'risk',
-	risks: 'risk',
-	requirement: 'requirement',
-	requirements: 'requirement'
+	risks: 'risk'
 };
 
 const ENTITY_ID_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
@@ -296,8 +294,7 @@ const ENTITY_ID_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
 	{ suffix: 'goal_id', entityType: 'goal' },
 	{ suffix: 'document_id', entityType: 'document' },
 	{ suffix: 'milestone_id', entityType: 'milestone' },
-	{ suffix: 'risk_id', entityType: 'risk' },
-	{ suffix: 'requirement_id', entityType: 'requirement' }
+	{ suffix: 'risk_id', entityType: 'risk' }
 ];
 
 const ENTITY_ID_LIST_SUFFIXES: Array<{ suffix: string; entityType: EntityType }> = [
@@ -339,8 +336,7 @@ function coerceEntityType(value: unknown): EntityType | undefined {
 		normalized === 'goal' ||
 		normalized === 'document' ||
 		normalized === 'milestone' ||
-		normalized === 'risk' ||
-		normalized === 'requirement'
+		normalized === 'risk'
 	) {
 		return normalized as EntityType;
 	}

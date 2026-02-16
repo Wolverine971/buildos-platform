@@ -148,7 +148,6 @@ export class PlanOrchestrator implements BaseService {
 		'list_onto_plans',
 		'list_onto_milestones',
 		'list_onto_risks',
-		'list_onto_requirements',
 		'create_onto_task',
 		'create_onto_goal',
 		'create_onto_plan',
@@ -1100,10 +1099,13 @@ export class PlanOrchestrator implements BaseService {
 		const gatewayGuidance = isToolGatewayEnabled()
 			? `
 TOOL DISCOVERY MODE (CRITICAL):
-- You only have tool_help and tool_exec (and optional tool_batch).
+- You only have tool_help and tool_exec.
+- Gateway query pattern: tool_help("root") -> tool_help("<group/entity>") -> tool_exec(op,args).
 - If you need an op or its args, plan a tool_help call first.
-- Use tool_exec with args exactly as described by tool_help.
-- If tool_exec returns help_path, call tool_help(help_path) and retry with corrected args.`
+- Use tool_exec with op/args exactly as described by tool_help.
+- For any onto.*.search op (including onto.search), use args.query.
+- Calendar events are under cal.event.* (not onto.event.*).
+- If tool_exec returns help_path, call tool_help(help_path) and retry once with corrected args.`
 			: '';
 
 		const strategyGuidance =

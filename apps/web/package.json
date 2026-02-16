@@ -158,6 +158,7 @@
 		"cytoscape-dagre": "^2.5.0",
 		"date-fns": "^4.1.0",
 		"date-fns-tz": "^3.2.0",
+		"diff": "^8.0.3",
 		"google-auth-library": "^10.2.0",
 		"googleapis": "^154.1.0",
 		"lucide-svelte": "^0.536.0",

@@ -60,24 +60,17 @@ const UPDATE_TOOL_CONFIG: Record<string, UpdateToolConfig> = {
 		idKey: 'risk_id',
 		displayKey: 'risk_title',
 		preferredArgKeys: ['risk_title', 'title']
-	},
-	update_onto_requirement: {
-		kind: 'requirement',
-		idKey: 'requirement_id',
-		displayKey: 'requirement_text',
-		preferredArgKeys: ['requirement_text', 'text']
 	}
 };
 
-const ENTITY_PLURAL_KEYS: Record<OntologyEntityType, string> = {
+const ENTITY_PLURAL_KEYS: Partial<Record<OntologyEntityType, string>> = {
 	project: 'projects',
 	task: 'tasks',
 	goal: 'goals',
 	plan: 'plans',
 	document: 'documents',
 	milestone: 'milestones',
-	risk: 'risks',
-	requirement: 'requirements'
+	risk: 'risks'
 };
 
 function normalizeLabel(value: unknown): string | undefined {
@@ -134,6 +127,7 @@ function resolveDisplayNameFromContext(
 	}
 
 	const pluralKey = ENTITY_PLURAL_KEYS[entityKind];
+	if (!pluralKey) return undefined;
 	const collection = (entities as Record<string, any>)[pluralKey];
 	if (Array.isArray(collection)) {
 		const match = collection.find((item) => item && item.id === entityId);

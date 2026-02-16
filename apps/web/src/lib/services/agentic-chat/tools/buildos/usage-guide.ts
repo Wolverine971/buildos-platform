@@ -42,7 +42,7 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 			'When working within a single project—asking "what is next?", creating tasks, or updating plans—recommend project mode. The agent loads that project context document and can reason about its specific needs.',
 			'Within project mode, users can narrow focus further: users can say "Let me talk about the deployment task" or "Show me the API documentation document." The ProjectFocusSelector lets them choose tasks, goals, plans, or documents.',
 			'For turning a spark of an idea into a structured project, use project_create mode. This guides through type_key classification, prop inference, facet selection, and initial planning.',
-			'Focused entity conversations are perfect for detailed work on one task, goal, plan, or document: breaking it down, clarifying requirements, checking dependencies, or updating status.',
+			'Focused entity conversations are perfect for detailed work on one task, goal, plan, or document: breaking it down, clarifying scope, checking dependencies, or updating status.',
 			'Explain that each mode loads different context: project mode loads the project narrative story from context documents; focus mode loads entity details, blockers, and linked work.',
 			'Remind users they can change modes mid-conversation if the scope shifts: users can say "let me switch to project mode so I can see related tasks."'
 		],

@@ -57,6 +57,8 @@
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import { createProjectInvalidation } from '$lib/utils/invalidation';
 	import type { VoiceNote } from '$lib/types/voice-notes';
+	import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+	import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 
 	type ProjectAction = 'workspace';
 
@@ -1473,7 +1475,6 @@
 		| 'document'
 		| 'milestone'
 		| 'risk'
-		| 'requirement'
 		| 'event';
 
 	const ENTITY_NAME_FIELDS = ['name', 'title', 'text', 'summary', 'label'] as const;
@@ -1485,7 +1486,6 @@
 		document: 'document',
 		milestone: 'milestone',
 		risk: 'risk',
-		requirement: 'requirement',
 		event: 'event'
 	};
 	const ENTITY_PLURAL_KEYS: Record<string, OntologyEntityKind> = {
@@ -1496,7 +1496,6 @@
 		documents: 'document',
 		milestones: 'milestone',
 		risks: 'risk',
-		requirements: 'requirement',
 		events: 'event'
 	};
 
@@ -1695,8 +1694,6 @@
 			'milestones',
 			'risk',
 			'risks',
-			'requirement',
-			'requirements',
 			'results',
 			'context_shift'
 		];
@@ -1720,33 +1717,13 @@
 		return resolveEntityName(kind, id, name);
 	}
 
-	const HIDDEN_THINKING_TOOLS = new Set(['tool_help']);
-	const GATEWAY_OP_TOOL_OVERRIDES: Record<string, string> = {
-		'onto.search': 'search_ontology',
-		'onto.document.tree.get': 'get_document_tree',
-		'onto.document.tree.move': 'move_document_in_tree',
-		'onto.document.path.get': 'get_document_path',
-		'onto.entity.relationships.get': 'get_entity_relationships',
-		'onto.entity.links.get': 'get_linked_entities',
-		'onto.task.docs.list': 'list_task_documents',
-		'onto.task.docs.create_or_attach': 'create_task_document',
-		'onto.edge.link': 'link_onto_entities',
-		'onto.edge.unlink': 'unlink_onto_edge',
-		'onto.project.graph.reorganize': 'reorganize_onto_project_graph',
-		'onto.project.graph.get': 'get_onto_project_graph',
-		'util.schema.field_info': 'get_field_info',
-		'util.web.search': 'web_search',
-		'util.web.visit': 'web_visit',
-		'util.buildos.overview': 'get_buildos_overview',
-		'util.buildos.usage_guide': 'get_buildos_usage_guide',
-		'cal.event.list': 'list_calendar_events',
-		'cal.event.get': 'get_calendar_event_details',
-		'cal.event.create': 'create_calendar_event',
-		'cal.event.update': 'update_calendar_event',
-		'cal.event.delete': 'delete_calendar_event',
-		'cal.project.get': 'get_project_calendar',
-		'cal.project.set': 'set_project_calendar'
-	};
+	// Keep schema-discovery calls visible so users can see gateway activity.
+	const HIDDEN_THINKING_TOOLS = new Set<string>();
+	const GATEWAY_OP_TOOL_OVERRIDES: Record<string, string> = (() => {
+		const registry = getToolRegistry();
+		const entries = Object.values(registry.ops).map((op) => [op.op, op.tool_name] as const);
+		return Object.fromEntries(entries);
+	})();
 	const ONTO_ENTITY_PLURALS: Record<string, string> = {
 		project: 'projects',
 		task: 'tasks',
@@ -1755,7 +1732,6 @@
 		document: 'documents',
 		milestone: 'milestones',
 		risk: 'risks',
-		requirement: 'requirements',
 		event: 'events'
 	};
 
@@ -1764,8 +1740,9 @@
 	}
 
 	function mapGatewayOpToToolName(op: string): string | undefined {
-		const normalized = op.trim();
-		if (!normalized) return undefined;
+		const requested = op.trim();
+		if (!requested) return undefined;
+		const normalized = normalizeGatewayOpName(requested);
 		const override = GATEWAY_OP_TOOL_OVERRIDES[normalized];
 		if (override) return override;
 
@@ -1867,10 +1844,61 @@
 		}
 	});
 
+	function formatListPreview(values: string[], limit = 2): string {
+		const cleaned = values
+			.map((value) => (typeof value === 'string' ? value.trim() : ''))
+			.filter((value) => value.length > 0);
+		if (cleaned.length === 0) return '';
+		if (cleaned.length <= limit) return cleaned.join(', ');
+		return `${cleaned.slice(0, limit).join(', ')} (+${cleaned.length - limit} more)`;
+	}
+
 	const TOOL_DISPLAY_FORMATTERS: Record<
 		string,
 		(args: any) => { action: string; target?: string }
 	> = {
+		tool_help: (args) => ({
+			action: 'Checking tool guidance',
+			target:
+				typeof args?.path === 'string' && args.path.trim().length > 0
+					? args.path.trim()
+					: 'root'
+		}),
+		tool_batch: (args) => {
+			const ops = Array.isArray(args?.ops) ? args.ops : [];
+			const helpPaths = ops
+				.filter((op: any) => op?.type === 'help' && typeof op.path === 'string')
+				.map((op: any) => op.path as string);
+			const execOps = ops
+				.filter((op: any) => op?.type === 'exec' && typeof op.op === 'string')
+				.map((op: any) => op.op as string);
+
+			if (helpPaths.length > 0 && execOps.length === 0) {
+				return {
+					action: 'Checking tool guidance',
+					target: formatListPreview(helpPaths, 3)
+				};
+			}
+
+			if (helpPaths.length > 0 && execOps.length > 0) {
+				return {
+					action: `Running tool batch (${ops.length} ops)`,
+					target: `help: ${formatListPreview(helpPaths)}`
+				};
+			}
+
+			if (execOps.length > 0) {
+				return {
+					action: `Running tool batch (${ops.length} ops)`,
+					target: `exec: ${formatListPreview(execOps)}`
+				};
+			}
+
+			return {
+				action: 'Running tool batch',
+				target: ops.length > 0 ? `${ops.length} ops` : undefined
+			};
+		},
 		search_ontology: (args) => ({
 			action: 'Searching workspace',
 			target: args?.query || args?.search
@@ -1971,10 +1999,6 @@
 			action: 'Listing risks',
 			target: resolveEntityName('project', args?.project_id)
 		}),
-		list_onto_requirements: (args) => ({
-			action: 'Listing requirements',
-			target: resolveEntityName('project', args?.project_id)
-		}),
 		search_onto_documents: (args) => ({
 			action: 'Searching documents',
 			target: args?.search || args?.query
@@ -1990,10 +2014,6 @@
 		get_onto_risk_details: (args) => ({
 			action: 'Loading risk',
 			target: resolveEntityName('risk', args?.risk_id)
-		}),
-		get_onto_requirement_details: (args) => ({
-			action: 'Loading requirement',
-			target: resolveEntityName('requirement', args?.requirement_id)
 		}),
 		create_onto_document: (args) => ({
 			action: 'Creating document',
@@ -2018,14 +2038,6 @@
 		update_onto_risk: (args) => ({
 			action: 'Updating risk',
 			target: buildEntityTarget(args?.risk_title ?? args?.title, args?.risk_id, 'risk')
-		}),
-		update_onto_requirement: (args) => ({
-			action: 'Updating requirement',
-			target: buildEntityTarget(
-				args?.requirement_text ?? args?.text,
-				args?.requirement_id,
-				'requirement'
-			)
 		}),
 		delete_onto_document: (args) => ({
 			action: 'Deleting document',
@@ -2135,8 +2147,8 @@
 					? (args.args as Record<string, any>)
 					: {};
 			const target =
-				(typeof opArgs.search === 'string' && opArgs.search) ||
 				(typeof opArgs.query === 'string' && opArgs.query) ||
+				(typeof opArgs.search === 'string' && opArgs.search) ||
 				(typeof opArgs.title === 'string' && opArgs.title) ||
 				(typeof opArgs.name === 'string' && opArgs.name) ||
 				(typeof opArgs.url === 'string' && opArgs.url) ||
@@ -2473,7 +2485,6 @@
 		'delete_onto_document',
 		'update_onto_milestone',
 		'update_onto_risk',
-		'update_onto_requirement',
 		'create_calendar_event',
 		'update_calendar_event',
 		'delete_calendar_event',
@@ -2529,7 +2540,6 @@
 			data?.document?.project_id ??
 			data?.milestone?.project_id ??
 			data?.risk?.project_id ??
-			data?.requirement?.project_id ??
 			data?.event?.project_id;
 		if (typeof dataProjectId === 'string' && dataProjectId.length > 0) {
 			return dataProjectId;
@@ -2898,7 +2908,6 @@
 				| 'document'
 				| 'milestone'
 				| 'risk'
-				| 'requirement'
 				| undefined;
 			if (resolvedProjectFocus && resolvedProjectFocus.focusType !== 'project-wide') {
 				ontologyEntityType = resolvedProjectFocus.focusType;

@@ -770,16 +770,17 @@ All endpoints use consistent error formatting:
 
 ## 🔄 Response Wrapper
 
-All endpoints use the `ApiResponse` utility:
+JSON endpoints use the `ApiResponse` utility. Protocol endpoints can return transport-native payloads.
 
 ```typescript
 import { ApiResponse } from '$lib/utils/api-response';
 
 // Success
-return ApiResponse.success(data, 200);
+return ApiResponse.success(data);
+return ApiResponse.created(data); // 201
 
 // Error
-return ApiResponse.error('Error message', 400);
+return ApiResponse.badRequest('Error message');
 ```
 
 ---
