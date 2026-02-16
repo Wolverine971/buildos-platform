@@ -242,7 +242,6 @@
 
 		return formatEventLabel(event);
 	}
-
 </script>
 
 <div
@@ -320,13 +319,30 @@
 								<span class="shrink-0 {getActionColor(log.action)}">
 									<ActionIcon class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
 								</span>
-								<span class="flex-1 min-w-0 truncate" title="{log.changed_by_name || 'Someone'} {log.action} {formatEntityType(log.entity_type)}: {log.entity_name || log.entity_id.slice(0, 8)}{eventLabel ? ` - ${eventLabel}` : ''}">
-									<span class="text-foreground font-medium">{log.changed_by_name || 'Someone'}</span>
+								<span
+									class="flex-1 min-w-0 truncate"
+									title="{log.changed_by_name ||
+										'Someone'} {log.action} {formatEntityType(
+										log.entity_type
+									)}: {log.entity_name || log.entity_id.slice(0, 8)}{eventLabel
+										? ` - ${eventLabel}`
+										: ''}"
+								>
+									<span class="text-foreground font-medium"
+										>{log.changed_by_name || 'Someone'}</span
+									>
 									<span class="text-muted-foreground"> {log.action} </span>
-									<span class="text-foreground">{formatEntityType(log.entity_type)}: {log.entity_name || log.entity_id.slice(0, 8)}</span>
-									{#if eventLabel}<span class="text-muted-foreground/70"> - {eventLabel}</span>{/if}
+									<span class="text-foreground"
+										>{formatEntityType(log.entity_type)}: {log.entity_name ||
+											log.entity_id.slice(0, 8)}</span
+									>
+									{#if eventLabel}<span class="text-muted-foreground/70">
+											- {eventLabel}</span
+										>{/if}
 								</span>
-								<span class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap">
+								<span
+									class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap"
+								>
 									{formatTimestamp(log.created_at)}
 								</span>
 							</button>
@@ -335,13 +351,30 @@
 								<span class="shrink-0 {getActionColor(log.action)}">
 									<ActionIcon class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
 								</span>
-								<span class="flex-1 min-w-0 truncate" title="{log.changed_by_name || 'Someone'} {log.action} {formatEntityType(log.entity_type)}: {log.entity_name || log.entity_id.slice(0, 8)}{eventLabel ? ` - ${eventLabel}` : ''}">
-									<span class="text-foreground font-medium">{log.changed_by_name || 'Someone'}</span>
+								<span
+									class="flex-1 min-w-0 truncate"
+									title="{log.changed_by_name ||
+										'Someone'} {log.action} {formatEntityType(
+										log.entity_type
+									)}: {log.entity_name || log.entity_id.slice(0, 8)}{eventLabel
+										? ` - ${eventLabel}`
+										: ''}"
+								>
+									<span class="text-foreground font-medium"
+										>{log.changed_by_name || 'Someone'}</span
+									>
 									<span class="text-muted-foreground"> {log.action} </span>
-									<span class="text-foreground">{formatEntityType(log.entity_type)}: {log.entity_name || log.entity_id.slice(0, 8)}</span>
-									{#if eventLabel}<span class="text-muted-foreground/70"> - {eventLabel}</span>{/if}
+									<span class="text-foreground"
+										>{formatEntityType(log.entity_type)}: {log.entity_name ||
+											log.entity_id.slice(0, 8)}</span
+									>
+									{#if eventLabel}<span class="text-muted-foreground/70">
+											- {eventLabel}</span
+										>{/if}
 								</span>
-								<span class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap">
+								<span
+									class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap"
+								>
 									{formatTimestamp(log.created_at)}
 								</span>
 							</div>

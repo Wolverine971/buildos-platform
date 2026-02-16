@@ -303,6 +303,134 @@ describe('loadFastChatPromptContext project event window', () => {
 		});
 	});
 
+	it('applies member role defaults and sorts members by role and created_at', async () => {
+		const supabase = createProjectRpcSupabaseMock({
+			project: {
+				id: 'proj-1',
+				name: 'Project One',
+				state_key: 'active',
+				description: 'Test project',
+				start_at: null,
+				end_at: null,
+				next_step_short: null,
+				updated_at: '2026-02-15T20:00:00.000Z',
+				doc_structure: null
+			},
+			goals: [],
+			milestones: [],
+			plans: [],
+			tasks: [],
+			documents: [],
+			events: [],
+			members: [
+				{
+					id: 'm-viewer',
+					project_id: 'proj-1',
+					actor_id: 'actor-viewer',
+					role_key: 'viewer',
+					access: 'read',
+					role_name: '',
+					role_description: '',
+					created_at: '2026-02-03T00:00:00.000Z',
+					actor: {
+						id: 'actor-viewer',
+						name: 'Viewer Person',
+						email: 'viewer@example.com'
+					}
+				},
+				{
+					id: 'm-owner-late',
+					project_id: 'proj-1',
+					actor_id: 'actor-owner-late',
+					role_key: 'owner',
+					access: 'admin',
+					role_name: ' ',
+					role_description: null,
+					created_at: '2026-02-02T00:00:00.000Z',
+					actor_name: 'Owner Late',
+					actor_email: 'owner-late@example.com'
+				},
+				{
+					id: 'm-editor-early',
+					project_id: 'proj-1',
+					actor_id: 'actor-editor-early',
+					role_key: 'editor',
+					access: 'write',
+					role_name: 'Delivery Lead',
+					role_description: 'Owns day-to-day delivery coordination and follow-through.',
+					created_at: '2026-02-01T12:00:00.000Z',
+					actor_name: 'Editor Early',
+					actor_email: 'editor-early@example.com'
+				},
+				{
+					id: 'm-owner-early',
+					project_id: 'proj-1',
+					actor_id: 'actor-owner-early',
+					role_key: 'owner',
+					access: 'admin',
+					role_name: null,
+					role_description: null,
+					created_at: '2026-02-01T00:00:00.000Z',
+					actor_name: 'Owner Early',
+					actor_email: 'owner-early@example.com'
+				},
+				{
+					id: 'm-editor-late',
+					project_id: 'proj-1',
+					actor_id: 'actor-editor-late',
+					role_key: 'editor',
+					access: 'write',
+					role_name: null,
+					role_description: '   ',
+					created_at: '2026-02-03T00:00:00.000Z',
+					actor_name: 'Editor Late',
+					actor_email: 'editor-late@example.com'
+				}
+			]
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'project',
+			entityId: 'proj-1'
+		});
+
+		const data = context.data as Record<string, any>;
+		const members = data.members as Array<Record<string, any>>;
+
+		expect(members.map((member) => member.id)).toEqual([
+			'm-owner-early',
+			'm-owner-late',
+			'm-editor-early',
+			'm-editor-late',
+			'm-viewer'
+		]);
+
+		expect(members.find((member) => member.id === 'm-owner-late')).toMatchObject({
+			role_name: 'Project Owner',
+			role_description: 'Owns project direction, decision-making, and final approval.'
+		});
+
+		expect(members.find((member) => member.id === 'm-editor-late')).toMatchObject({
+			role_name: 'Collaborator',
+			role_description:
+				'Contributes actively by creating, editing, and coordinating project work.'
+		});
+
+		expect(members.find((member) => member.id === 'm-editor-early')).toMatchObject({
+			role_name: 'Delivery Lead',
+			role_description: 'Owns day-to-day delivery coordination and follow-through.'
+		});
+
+		expect(members.find((member) => member.id === 'm-viewer')).toMatchObject({
+			actor_name: 'Viewer Person',
+			actor_email: 'viewer@example.com',
+			role_name: 'Observer',
+			role_description: 'Tracks progress and context, with read-only access to project work.'
+		});
+	});
+
 	it('applies relevance priority and scope completeness metadata for project entities', async () => {
 		vi.useFakeTimers();
 		const now = new Date('2026-02-15T20:07:18.308Z');
@@ -598,9 +726,9 @@ describe('loadFastChatPromptContext project event window', () => {
 		expect(data.milestones.map((milestone: { id: string }) => milestone.id)).not.toContain(
 			'milestone-completed'
 		);
-		expect(data.milestones.slice(0, 3).map((milestone: { id: string }) => milestone.id)).toEqual(
-			['milestone-overdue', 'milestone-due-soon', 'milestone-future']
-		);
+		expect(
+			data.milestones.slice(0, 3).map((milestone: { id: string }) => milestone.id)
+		).toEqual(['milestone-overdue', 'milestone-due-soon', 'milestone-future']);
 
 		expect(data.plans).toHaveLength(12);
 		expect(data.plans.map((plan: { id: string }) => plan.id)).not.toContain('plan-completed');

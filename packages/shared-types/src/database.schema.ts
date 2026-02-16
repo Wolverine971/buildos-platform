@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-16T03:24:31.501Z
+// Generated on: 2026-02-16T17:38:37.057Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1251,6 +1251,33 @@ export type DatabaseSchema = {
 		type_key: string;
 		updated_at: string;
 	};
+	onto_project_icon_candidates: {
+		candidate_index: number;
+		concept: string;
+		created_at: string;
+		generation_id: string;
+		id: string;
+		llm_model: string | null;
+		project_id: string;
+		selected_at: string | null;
+		svg_byte_size: number;
+		svg_raw: string;
+		svg_sanitized: string;
+	};
+	onto_project_icon_generations: {
+		candidate_count: number;
+		completed_at: string | null;
+		created_at: string;
+		error_message: string | null;
+		id: string;
+		project_id: string;
+		requested_by: string;
+		selected_candidate_id: string | null;
+		status: string;
+		steering_prompt: string | null;
+		trigger_source: string;
+		updated_at: string;
+	};
 	onto_project_invites: {
 		accepted_at: string | null;
 		accepted_by_actor_id: string | null;
@@ -1311,6 +1338,11 @@ export type DatabaseSchema = {
 		facet_context: string | null;
 		facet_scale: string | null;
 		facet_stage: string | null;
+		icon_concept: string | null;
+		icon_generated_at: string | null;
+		icon_generation_prompt: string | null;
+		icon_generation_source: string | null;
+		icon_svg: string | null;
 		id: string;
 		is_public: boolean | null;
 		name: string;
@@ -2084,6 +2116,7 @@ export type DatabaseSchema = {
 		dimensions: Json;
 		id: string;
 		next_analysis_trigger: Json;
+		onboarding_seed: Json | null;
 		patterns: Json;
 		project_summary: Json;
 		session_count: number;
@@ -2281,6 +2314,8 @@ export type DatabaseSchema = {
 		is_beta_user: boolean | null;
 		last_visit: string | null;
 		name: string | null;
+		onboarding_intent: string | null;
+		onboarding_stakes: string | null;
 		onboarding_v2_completed_at: string | null;
 		onboarding_v2_skipped_calendar: boolean | null;
 		onboarding_v2_skipped_sms: boolean | null;
@@ -2460,6 +2495,8 @@ export const tableNames = [
 	'onto_milestones',
 	'onto_permissions',
 	'onto_plans',
+	'onto_project_icon_candidates',
+	'onto_project_icon_generations',
 	'onto_project_invites',
 	'onto_project_logs',
 	'onto_project_members',

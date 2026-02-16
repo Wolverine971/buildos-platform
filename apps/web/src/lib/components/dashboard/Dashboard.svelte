@@ -26,6 +26,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
+	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
@@ -35,6 +36,11 @@
 		id: string;
 		name: string;
 		description: string | null;
+		icon_svg: string | null;
+		icon_concept: string | null;
+		icon_generated_at: string | null;
+		icon_generation_source: 'auto' | 'manual' | null;
+		icon_generation_prompt: string | null;
 		type_key: string;
 		state_key: string;
 		facet_context: string | null;
@@ -198,6 +204,11 @@
 			id: project.id,
 			name: project.name,
 			description: project.description,
+			icon_svg: project.icon_svg,
+			icon_concept: project.icon_concept,
+			icon_generated_at: project.icon_generated_at,
+			icon_generation_source: project.icon_generation_source,
+			icon_generation_prompt: project.icon_generation_prompt,
 			state_key: project.state_key,
 			next_step_short: project.next_step_short,
 			next_step_long: project.next_step_long,
@@ -472,12 +483,19 @@
 										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
 									>
 										<div class="flex items-start justify-between gap-3">
-											<h4
-												class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-												style="view-transition-name: project-title-{project.id}"
-											>
-												{project.name}
-											</h4>
+											<div class="min-w-0 flex items-center gap-2.5">
+												<ProjectIcon
+													svg={project.icon_svg}
+													concept={project.icon_concept}
+													size="sm"
+												/>
+												<h4
+													class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+													style="view-transition-name: project-title-{project.id}"
+												>
+													{project.name}
+												</h4>
+											</div>
 											<div class="shrink-0 flex items-center gap-1.5">
 												<time
 													datetime={project.updated_at}
@@ -518,12 +536,19 @@
 											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
 										>
 											<div class="flex items-start justify-between gap-3">
-												<h4
-													class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-													style="view-transition-name: project-title-{project.id}"
-												>
-													{project.name}
-												</h4>
+												<div class="min-w-0 flex items-center gap-2.5">
+													<ProjectIcon
+														svg={project.icon_svg}
+														concept={project.icon_concept}
+														size="sm"
+													/>
+													<h4
+														class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+														style="view-transition-name: project-title-{project.id}"
+													>
+														{project.name}
+													</h4>
+												</div>
 												<div class="shrink-0 flex items-center gap-1.5">
 													<time
 														datetime={project.updated_at}
@@ -565,12 +590,19 @@
 											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
 										>
 											<div class="flex items-start justify-between gap-3">
-												<h4
-													class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-													style="view-transition-name: project-title-{project.id}"
-												>
-													{project.name}
-												</h4>
+												<div class="min-w-0 flex items-center gap-2.5">
+													<ProjectIcon
+														svg={project.icon_svg}
+														concept={project.icon_concept}
+														size="sm"
+													/>
+													<h4
+														class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+														style="view-transition-name: project-title-{project.id}"
+													>
+														{project.name}
+													</h4>
+												</div>
 												<div class="shrink-0 flex items-center gap-1.5">
 													<time
 														datetime={project.updated_at}
@@ -629,20 +661,27 @@
 										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
 									>
 										<div class="flex items-start justify-between gap-3">
-											<div class="min-w-0 flex items-center gap-2">
-												<h4
-													class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-													style="view-transition-name: project-title-{project.id}"
-												>
-													{project.name}
-												</h4>
-												<span
-													class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
-												>
-													Shared{project.access_role
-														? `: ${project.access_role}`
-														: ''}
-												</span>
+											<div class="min-w-0 flex items-center gap-2.5">
+												<ProjectIcon
+													svg={project.icon_svg}
+													concept={project.icon_concept}
+													size="sm"
+												/>
+												<div class="min-w-0 flex items-center gap-2">
+													<h4
+														class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+														style="view-transition-name: project-title-{project.id}"
+													>
+														{project.name}
+													</h4>
+													<span
+														class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
+													>
+														Shared{project.access_role
+															? `: ${project.access_role}`
+															: ''}
+													</span>
+												</div>
 											</div>
 											<div class="shrink-0 flex items-center gap-1.5">
 												<time
@@ -684,20 +723,27 @@
 											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
 										>
 											<div class="flex items-start justify-between gap-3">
-												<div class="min-w-0 flex items-center gap-2">
-													<h4
-														class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-														style="view-transition-name: project-title-{project.id}"
-													>
-														{project.name}
-													</h4>
-													<span
-														class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
-													>
-														Shared{project.access_role
-															? `: ${project.access_role}`
-															: ''}
-													</span>
+												<div class="min-w-0 flex items-center gap-2.5">
+													<ProjectIcon
+														svg={project.icon_svg}
+														concept={project.icon_concept}
+														size="sm"
+													/>
+													<div class="min-w-0 flex items-center gap-2">
+														<h4
+															class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+															style="view-transition-name: project-title-{project.id}"
+														>
+															{project.name}
+														</h4>
+														<span
+															class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
+														>
+															Shared{project.access_role
+																? `: ${project.access_role}`
+																: ''}
+														</span>
+													</div>
 												</div>
 												<div class="shrink-0 flex items-center gap-1.5">
 													<time
@@ -740,20 +786,27 @@
 											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
 										>
 											<div class="flex items-start justify-between gap-3">
-												<div class="min-w-0 flex items-center gap-2">
-													<h4
-														class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-														style="view-transition-name: project-title-{project.id}"
-													>
-														{project.name}
-													</h4>
-													<span
-														class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
-													>
-														Shared{project.access_role
-															? `: ${project.access_role}`
-															: ''}
-													</span>
+												<div class="min-w-0 flex items-center gap-2.5">
+													<ProjectIcon
+														svg={project.icon_svg}
+														concept={project.icon_concept}
+														size="sm"
+													/>
+													<div class="min-w-0 flex items-center gap-2">
+														<h4
+															class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
+															style="view-transition-name: project-title-{project.id}"
+														>
+															{project.name}
+														</h4>
+														<span
+															class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
+														>
+															Shared{project.access_role
+																? `: ${project.access_role}`
+																: ''}
+														</span>
+													</div>
 												</div>
 												<div class="shrink-0 flex items-center gap-1.5">
 													<time

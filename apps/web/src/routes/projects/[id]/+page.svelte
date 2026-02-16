@@ -88,11 +88,13 @@
 	import type { PageData } from './$types';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
+	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
 	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
 	import ProjectGraphSection from '$lib/components/ontology/ProjectGraphSection.svelte';
 	import ProjectActivityLogPanel from '$lib/components/ontology/ProjectActivityLogPanel.svelte';
 	import ProjectBriefsPanel from '$lib/components/ontology/ProjectBriefsPanel.svelte';
 	import ProjectCollaborationModal from '$lib/components/project/ProjectCollaborationModal.svelte';
+	import ProjectIconStudioModal from '$lib/components/project/ProjectIconStudioModal.svelte';
 	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
 	import {
 		DocTreeView,
@@ -196,6 +198,11 @@
 					id: data.project.id,
 					name: data.project.name,
 					description: data.project.description,
+					icon_svg: data.project.icon_svg,
+					icon_concept: data.project.icon_concept,
+					icon_generated_at: data.project.icon_generated_at,
+					icon_generation_source: data.project.icon_generation_source,
+					icon_generation_prompt: data.project.icon_generation_prompt,
 					state_key: data.project.state_key,
 					type_key: data.project.type_key || 'project',
 					next_step_short: data.project.next_step_short,
@@ -235,6 +242,7 @@
 	let showCollabModal = $state(false);
 	let showDeleteProjectModal = $state(false);
 	let showProjectCalendarSettingsModal = $state(false);
+	let showProjectIconStudioModal = $state(false);
 	let isDeletingProject = $state(false);
 	let deleteProjectError = $state<string | null>(null);
 	let editingTaskId = $state<string | null>(null);
@@ -365,6 +373,11 @@
 					...project,
 					name: navData.name,
 					description: navData.description,
+					icon_svg: navData.icon_svg,
+					icon_concept: navData.icon_concept,
+					icon_generated_at: navData.icon_generated_at,
+					icon_generation_source: navData.icon_generation_source,
+					icon_generation_prompt: navData.icon_generation_prompt,
 					state_key: navData.state_key,
 					next_step_short: navData.next_step_short,
 					next_step_long: navData.next_step_long,
@@ -1081,6 +1094,42 @@
 		}
 	}
 
+	async function handleProjectIconApplied() {
+		if (!project?.id) return;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}`);
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to refresh project image');
+			}
+
+			const nextProject = payload?.data?.project;
+			if (nextProject) {
+				project = nextProject as Project;
+			}
+
+			toastService.success('Project image updated');
+		} catch (error) {
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/projects/${project.id}`,
+				method: 'GET',
+				projectId: project.id,
+				entityType: 'project',
+				operation: 'project_icon_refresh'
+			});
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to refresh project image'
+			);
+		}
+	}
+
+	function openProjectIconStudioFromEditModal() {
+		showProjectEditModal = false;
+		showProjectIconStudioModal = true;
+	}
+
 	// ============================================================
 	// EVENT HANDLERS
 	// ============================================================
@@ -1615,6 +1664,11 @@
 					>
 						<ArrowLeft class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
 					</button>
+					<ProjectIcon
+						svg={project?.icon_svg ?? null}
+						concept={project?.icon_concept ?? null}
+						size="md"
+					/>
 					<div class="min-w-0">
 						<h1
 							class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
@@ -2528,6 +2582,7 @@
 			{project}
 			{contextDocument}
 			{canDeleteProject}
+			onOpenIconStudio={openProjectIconStudioFromEditModal}
 			onClose={() => (showProjectEditModal = false)}
 			onSaved={async () => {
 				await refreshData();
@@ -2546,6 +2601,19 @@
 		canManageMembers={canAdmin}
 		onLeftProject={() => goto('/projects')}
 		onClose={() => (showCollabModal = false)}
+	/>
+{/if}
+
+<!-- Project Icon Studio Modal -->
+{#if showProjectIconStudioModal && canEdit}
+	<ProjectIconStudioModal
+		bind:isOpen={showProjectIconStudioModal}
+		projectId={project.id}
+		projectName={project.name || 'Project'}
+		existingIconSvg={project.icon_svg ?? null}
+		existingIconConcept={project.icon_concept ?? null}
+		onApplied={handleProjectIconApplied}
+		onClose={() => (showProjectIconStudioModal = false)}
 	/>
 {/if}
 

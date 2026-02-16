@@ -186,6 +186,16 @@ export interface ProjectContextSnapshotJobMetadata {
 	force?: boolean;
 }
 
+export interface ProjectIconGenerationJobMetadata {
+	generationId: string;
+	projectId: string;
+	requestedByUserId: string;
+	triggerSource: 'auto' | 'manual' | 'regenerate';
+	steeringPrompt?: string;
+	candidateCount: number; // auto: 1, manual default: 4
+	autoSelect: boolean; // true for auto flow
+}
+
 export interface ProjectActivityBatchFlushJobMetadata {
 	batch_id?: string;
 	batchId?: string;
@@ -211,6 +221,7 @@ export interface JobMetadataMap {
 	buildos_homework: HomeworkJobMetadata;
 	buildos_tree_agent: TreeAgentJobMetadata;
 	build_project_context_snapshot: ProjectContextSnapshotJobMetadata;
+	generate_project_icon: ProjectIconGenerationJobMetadata;
 	project_activity_batch_flush: ProjectActivityBatchFlushJobMetadata;
 	other: Record<string, unknown>;
 }
@@ -275,6 +286,17 @@ export interface ProjectContextSnapshotResult {
 	error?: string;
 }
 
+export interface ProjectIconGenerationResult {
+	success: boolean;
+	projectId: string;
+	generationId: string;
+	candidatesCreated?: number;
+	selectedCandidateId?: string;
+	skipped?: boolean;
+	reason?: string;
+	error?: string;
+}
+
 export interface ProjectActivityBatchFlushResult {
 	batch_id: string | null;
 	status: 'flushed' | 'already_flushed' | 'missing' | 'failed' | 'invalid';
@@ -303,6 +325,7 @@ export interface JobResultMap {
 	transcribe_voice_note: VoiceNoteTranscriptionResult;
 	buildos_homework: HomeworkJobResult;
 	build_project_context_snapshot: ProjectContextSnapshotResult;
+	generate_project_icon: ProjectIconGenerationResult;
 	project_activity_batch_flush: ProjectActivityBatchFlushResult;
 	other: unknown;
 }
@@ -451,6 +474,8 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isClassifyChatSessionMetadata(metadata);
 		case 'process_onto_braindump':
 			return isOntoBraindumpProcessingMetadata(metadata);
+		case 'generate_project_icon':
+			return isProjectIconGenerationMetadata(metadata);
 		case 'project_activity_batch_flush':
 			return isProjectActivityBatchFlushMetadata(metadata);
 		default:
@@ -579,6 +604,26 @@ function isProjectActivityBatchFlushMetadata(
 	const snake = meta.batch_id;
 	const camel = meta.batchId;
 	return typeof snake === 'string' || typeof camel === 'string';
+}
+
+function isProjectIconGenerationMetadata(obj: unknown): obj is ProjectIconGenerationJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	const triggerSource = meta.triggerSource;
+	return (
+		typeof meta.generationId === 'string' &&
+		typeof meta.projectId === 'string' &&
+		typeof meta.requestedByUserId === 'string' &&
+		(triggerSource === 'auto' ||
+			triggerSource === 'manual' ||
+			triggerSource === 'regenerate') &&
+		typeof meta.candidateCount === 'number' &&
+		Number.isInteger(meta.candidateCount) &&
+		meta.candidateCount >= 1 &&
+		meta.candidateCount <= 8 &&
+		typeof meta.autoSelect === 'boolean' &&
+		(meta.steeringPrompt === undefined || typeof meta.steeringPrompt === 'string')
+	);
 }
 
 // Helper function to create a typed queue job

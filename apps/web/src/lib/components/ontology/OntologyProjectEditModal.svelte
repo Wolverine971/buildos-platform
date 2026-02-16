@@ -61,6 +61,7 @@
 		onClose?: () => void;
 		onSaved?: (project: Project) => void;
 		onDeleted?: () => void;
+		onOpenIconStudio?: () => void;
 	}
 
 	const FACET_CONTEXT_OPTIONS = [
@@ -92,7 +93,8 @@
 		canDeleteProject = false,
 		onClose,
 		onSaved,
-		onDeleted
+		onDeleted,
+		onOpenIconStudio
 	}: Props = $props();
 
 	let name = $state('');
@@ -524,6 +526,11 @@
 	function handleChatClose() {
 		showChatModal = false;
 	}
+
+	function handleOpenIconStudio() {
+		if (isSaving || isDeleting || !project) return;
+		onOpenIconStudio?.();
+	}
 </script>
 
 <Modal bind:isOpen onClose={handleClose} title="" size="xl" showCloseButton={false}>
@@ -559,6 +566,17 @@
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
+				<Button
+					type="button"
+					onclick={handleOpenIconStudio}
+					variant="ghost"
+					size="sm"
+					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-thread tx-weak"
+					disabled={isSaving || !project}
+					title="Open icon studio"
+				>
+					<Sparkles class="w-4 h-4 sm:w-5 sm:h-5" />
+				</Button>
 				<!-- Chat about this project button -->
 				<Button
 					type="button"

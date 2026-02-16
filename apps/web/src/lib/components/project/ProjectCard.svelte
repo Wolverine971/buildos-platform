@@ -18,6 +18,7 @@
 <script lang="ts">
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import ProjectCardNextStep from './ProjectCardNextStep.svelte';
+	import ProjectIcon from './ProjectIcon.svelte';
 	import { ListChecks, Target, Calendar, FileText } from 'lucide-svelte';
 
 	interface Props {
@@ -54,29 +55,32 @@
 >
 	<!-- Header - Mobile: Title + inline status, Desktop: Title + Badge -->
 	<div class="mb-1.5 sm:mb-3 flex items-start justify-between gap-1.5 sm:gap-3">
-		<div class="min-w-0 flex-1">
-			<h3
-				class="text-xs sm:text-base font-semibold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-snug"
-				style:view-transition-name="project-title-{project.id}"
-			>
-				{project.name}
-			</h3>
-			<!-- Mobile: Inline badges under title -->
-			<div class="flex flex-wrap items-center gap-1 mt-1 sm:hidden">
-				<span
-					class="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize {getStateBadgeClasses(
-						project.state_key
-					)}"
+		<div class="min-w-0 flex flex-1 items-start gap-2">
+			<ProjectIcon svg={project.icon_svg} concept={project.icon_concept} size="sm" />
+			<div class="min-w-0 flex-1">
+				<h3
+					class="text-xs sm:text-base font-semibold text-foreground line-clamp-2 transition-colors group-hover:text-accent leading-snug"
+					style:view-transition-name="project-title-{project.id}"
 				>
-					{project.state_key}
-				</span>
-				{#if isShared}
+					{project.name}
+				</h3>
+				<!-- Mobile: Inline badges under title -->
+				<div class="flex flex-wrap items-center gap-1 mt-1 sm:hidden">
 					<span
-						class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-accent/15 text-accent border border-accent/20"
+						class="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-semibold capitalize {getStateBadgeClasses(
+							project.state_key
+						)}"
 					>
-						Shared{project.access_role ? ` · ${project.access_role}` : ''}
+						{project.state_key}
 					</span>
-				{/if}
+					{#if isShared}
+						<span
+							class="inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-semibold bg-accent/15 text-accent border border-accent/20"
+						>
+							Shared{project.access_role ? ` · ${project.access_role}` : ''}
+						</span>
+					{/if}
+				</div>
 			</div>
 		</div>
 		<!-- Desktop: Status badge (and shared badge if applicable) -->

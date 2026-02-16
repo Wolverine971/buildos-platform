@@ -182,4 +182,101 @@ describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 
 		expect(syncTaskEventsMock).not.toHaveBeenCalled();
 	});
+
+	it('does not sync task events when reopening without scheduling edits', async () => {
+		const supabase = createSupabaseMock({
+			existingTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Task',
+				type_key: 'task.default',
+				state_key: 'done',
+				start_at: '2026-02-16T09:00:00Z',
+				due_at: '2026-02-16T10:00:00Z',
+				props: {},
+				project: { id: 'proj1', created_by: 'actor1' }
+			},
+			updatedTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Task',
+				type_key: 'task.default',
+				state_key: 'todo',
+				start_at: '2026-02-16T09:00:00Z',
+				due_at: '2026-02-16T10:00:00Z',
+				props: {}
+			}
+		});
+
+		const { PATCH } = await import('./+server');
+		const request = new Request('http://localhost/api/onto/tasks/task1', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ state_key: 'todo', title: 'Reopened task' })
+		});
+
+		await PATCH({
+			params: { id: 'task1' },
+			request,
+			locals: {
+				supabase: supabase as any,
+				safeGetSession: async () => ({ user: { id: 'user1' } })
+			}
+		} as any);
+
+		expect(syncTaskEventsMock).not.toHaveBeenCalled();
+	});
+
+	it('syncs task events when reopening with explicit scheduling edits', async () => {
+		const supabase = createSupabaseMock({
+			existingTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Task',
+				type_key: 'task.default',
+				state_key: 'done',
+				start_at: '2026-02-16T09:00:00Z',
+				due_at: '2026-02-16T10:00:00Z',
+				props: {},
+				project: { id: 'proj1', created_by: 'actor1' }
+			},
+			updatedTask: {
+				id: 'task1',
+				project_id: 'proj1',
+				title: 'Task',
+				type_key: 'task.default',
+				state_key: 'todo',
+				start_at: '2026-02-17T09:00:00Z',
+				due_at: '2026-02-17T10:00:00Z',
+				props: {}
+			}
+		});
+
+		const { PATCH } = await import('./+server');
+		const request = new Request('http://localhost/api/onto/tasks/task1', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				state_key: 'todo',
+				start_at: '2026-02-17T09:00:00Z',
+				due_at: '2026-02-17T10:00:00Z'
+			})
+		});
+
+		await PATCH({
+			params: { id: 'task1' },
+			request,
+			locals: {
+				supabase: supabase as any,
+				safeGetSession: async () => ({ user: { id: 'user1' } })
+			}
+		} as any);
+
+		expect(syncTaskEventsMock).toHaveBeenCalledTimes(1);
+		expect(syncTaskEventsMock).toHaveBeenCalledWith(
+			'user1',
+			'actor1',
+			expect.objectContaining({ id: 'task1', state_key: 'todo' })
+		);
+	});
 });

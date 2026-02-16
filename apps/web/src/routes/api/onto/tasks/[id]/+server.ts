@@ -496,11 +496,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			state_key !== undefined &&
 			existingTask.state_key !== 'done' &&
 			updatedTask.state_key === 'done';
+		const isTransitioningFromDone =
+			state_key !== undefined &&
+			existingTask.state_key === 'done' &&
+			updatedTask.state_key !== 'done';
+		const hasSchedulingEdit = start_at !== undefined || due_at !== undefined;
+		const shouldSyncFromTitleEdit = title !== undefined && !isTransitioningFromDone;
 		const shouldSyncEvents =
-			title !== undefined ||
-			start_at !== undefined ||
-			due_at !== undefined ||
-			isTransitioningToDone;
+			shouldSyncFromTitleEdit || hasSchedulingEdit || isTransitioningToDone;
 
 		if (shouldSyncEvents) {
 			try {

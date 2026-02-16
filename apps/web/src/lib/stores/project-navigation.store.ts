@@ -21,6 +21,11 @@ export interface ProjectNavigationData {
 	id: string;
 	name: string;
 	description: string | null;
+	icon_svg: string | null;
+	icon_concept: string | null;
+	icon_generated_at: string | null;
+	icon_generation_source: 'auto' | 'manual' | null;
+	icon_generation_prompt: string | null;
 	state_key: string;
 	next_step_short: string | null;
 	next_step_long: string | null;

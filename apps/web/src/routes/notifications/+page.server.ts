@@ -88,7 +88,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 		.limit(100);
 
 	if (projectEventsError) {
-		console.error('[Notifications] Failed to load shared project activity events', projectEventsError);
+		console.error(
+			'[Notifications] Failed to load shared project activity events',
+			projectEventsError
+		);
 	}
 
 	const syntheticRows: NotificationDeliveryRow[] = (projectEvents ?? [])

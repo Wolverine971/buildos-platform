@@ -17,6 +17,7 @@ import type {
 	ScheduleDailySMSJobMetadata,
 	ClassifyChatSessionJobMetadata,
 	VoiceNoteTranscriptionJobMetadata,
+	ProjectIconGenerationJobMetadata,
 	ProjectActivityBatchFlushJobMetadata
 } from './queue-types';
 import type { NotificationJobMetadata } from './notification.types';
@@ -550,6 +551,55 @@ export function validateProjectActivityBatchFlushMetadata(
 	return meta as unknown as ProjectActivityBatchFlushJobMetadata;
 }
 
+export function validateProjectIconGenerationMetadata(
+	metadata: unknown
+): ProjectIconGenerationJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+
+	const meta = metadata as Record<string, unknown>;
+
+	if (typeof meta.generationId !== 'string' || !isValidUUID(meta.generationId)) {
+		throw new ValidationError('generationId', meta.generationId, 'valid UUID');
+	}
+
+	if (typeof meta.projectId !== 'string' || !isValidUUID(meta.projectId)) {
+		throw new ValidationError('projectId', meta.projectId, 'valid UUID');
+	}
+
+	if (typeof meta.requestedByUserId !== 'string' || !isValidUUID(meta.requestedByUserId)) {
+		throw new ValidationError('requestedByUserId', meta.requestedByUserId, 'valid UUID');
+	}
+
+	if (
+		meta.triggerSource !== 'auto' &&
+		meta.triggerSource !== 'manual' &&
+		meta.triggerSource !== 'regenerate'
+	) {
+		throw new ValidationError('triggerSource', meta.triggerSource, 'auto|manual|regenerate');
+	}
+
+	if (
+		typeof meta.candidateCount !== 'number' ||
+		!Number.isInteger(meta.candidateCount) ||
+		meta.candidateCount < 1 ||
+		meta.candidateCount > 8
+	) {
+		throw new ValidationError('candidateCount', meta.candidateCount, 'integer between 1 and 8');
+	}
+
+	if (typeof meta.autoSelect !== 'boolean') {
+		throw new ValidationError('autoSelect', meta.autoSelect, 'boolean');
+	}
+
+	if (meta.steeringPrompt !== undefined && typeof meta.steeringPrompt !== 'string') {
+		throw new ValidationError('steeringPrompt', meta.steeringPrompt, 'string');
+	}
+
+	return meta as unknown as ProjectIconGenerationJobMetadata;
+}
+
 // Main validation function
 export function validateJobMetadata<T extends QueueJobType>(
 	jobType: T,
@@ -584,6 +634,8 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateClassifyChatSessionMetadata(metadata) as JobMetadataMap[T];
 		case 'transcribe_voice_note':
 			return validateVoiceNoteTranscriptionMetadata(metadata) as JobMetadataMap[T];
+		case 'generate_project_icon':
+			return validateProjectIconGenerationMetadata(metadata) as JobMetadataMap[T];
 		case 'project_activity_batch_flush':
 			return validateProjectActivityBatchFlushMetadata(metadata) as JobMetadataMap[T];
 		case 'other':

@@ -253,7 +253,99 @@ export const ONBOARDING_V2_CONFIG = {
 	}
 } as const;
 
-// Type exports for TypeScript
+// V3 Onboarding Configuration
+// Stripped to 4 meaningful steps. Collects only what behavior can't reveal.
+export const ONBOARDING_V3_CONFIG = {
+	version: 3,
+
+	steps: {
+		intent_stakes: {
+			id: 'intent_stakes',
+			order: 0,
+			skippable: false,
+			title: 'What Brings You Here?'
+		},
+		brain_dump: { id: 'brain_dump', order: 1, skippable: true, title: 'Brain Dump' },
+		notifications: { id: 'notifications', order: 2, skippable: true, title: 'Notifications' },
+		ready: { id: 'ready', order: 3, skippable: false, title: "You're Ready" }
+	},
+
+	intents: [
+		{
+			id: 'organize',
+			label: 'I have projects I need to get organized',
+			description: 'You have existing work that needs structure'
+		},
+		{
+			id: 'plan',
+			label: "I have goals but I'm not sure where to start",
+			description: 'You need guidance turning ideas into action'
+		},
+		{
+			id: 'unstuck',
+			label: "I'm overwhelmed and need to get unstuck",
+			description: 'You have a lot on your plate and need help sorting it out'
+		},
+		{
+			id: 'explore',
+			label: 'I just want to try it out',
+			description: 'No pressure — just browsing'
+		}
+	],
+
+	stakes: [
+		{
+			id: 'high',
+			label: 'This is for work or clients — it matters a lot',
+			description: "We'll be extra careful and precise"
+		},
+		{
+			id: 'medium',
+			label: "It's important to me personally",
+			description: "We'll be supportive and encouraging"
+		},
+		{
+			id: 'low',
+			label: "It's casual — side projects, hobbies, exploring",
+			description: "We'll keep things relaxed"
+		}
+	],
+
+	brainDumpPrompts: {
+		organize: {
+			heading: 'Tell us about the projects you need organized',
+			placeholder:
+				"Describe your projects, what's in progress, what needs structure. Just write freely — we'll sort it out..."
+		},
+		plan: {
+			heading: 'What are you trying to accomplish?',
+			placeholder:
+				"Describe your goals, even if they feel vague. We'll help you break them down into concrete steps..."
+		},
+		unstuck: {
+			heading: "What's on your plate right now?",
+			placeholder:
+				"Just dump everything that's on your mind — work, personal, ideas, worries. We'll help sort it out..."
+		},
+		explore: {
+			heading: "Got anything you're working on?",
+			placeholder:
+				'If you have something in mind, tell us about it. If not, no worries — you can always brain dump later...'
+		}
+	},
+
+	features: {
+		enableVoiceInput: true,
+		enableCalendarConnection: true
+	}
+} as const;
+
+// V3 Type exports
+export type OnboardingIntent = (typeof ONBOARDING_V3_CONFIG.intents)[number]['id'];
+export type OnboardingStakes = (typeof ONBOARDING_V3_CONFIG.stakes)[number]['id'];
+export type OnboardingV3Step = keyof typeof ONBOARDING_V3_CONFIG.steps;
+
+// V2 Type exports (kept for backward compatibility)
 export type OnboardingStep = keyof typeof ONBOARDING_V2_CONFIG.steps;
 export type UserArchetype = (typeof ONBOARDING_V2_CONFIG.archetypes)[number]['id'];
 export type ProductivityChallenge = (typeof ONBOARDING_V2_CONFIG.challenges)[number]['id'];

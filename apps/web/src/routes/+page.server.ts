@@ -29,6 +29,15 @@ export const load: PageServerLoad = async ({
 		};
 	}
 
+	// Skip expensive analytics for users still in onboarding —
+	// they'll see the onboarding modal, not the dashboard content.
+	if (!user.completed_onboarding) {
+		return {
+			user,
+			dashboard: createEmptyUserDashboardAnalytics()
+		};
+	}
+
 	try {
 		const dashboard = await measure('dashboard.analytics', () =>
 			getUserDashboardAnalytics(supabase, user.id, serverTiming)

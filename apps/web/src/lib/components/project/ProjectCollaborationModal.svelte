@@ -49,6 +49,11 @@
 		can_manage_default: boolean;
 	}
 
+	interface RoleProfileAlternative {
+		role_name: string;
+		role_description: string;
+	}
+
 	interface Props {
 		isOpen?: boolean;
 		onClose?: () => void;
@@ -89,8 +94,14 @@
 	let roleNameInput = $state('');
 	let roleDescriptionInput = $state('');
 	let isEditingRoleProfile = $state(false);
-	let roleProfileActionType = $state<'generate' | 'save' | null>(null);
+	let roleProfileActionType = $state<'generate' | 'save' | 'alternatives' | null>(null);
 	let roleProfileError = $state<string | null>(null);
+	let roleProfileAlternatives = $state<RoleProfileAlternative[]>([]);
+	let editingMemberRoleProfileId = $state<string | null>(null);
+	let editingMemberRoleNameInput = $state('');
+	let editingMemberRoleDescriptionInput = $state('');
+	let memberRoleProfileError = $state<string | null>(null);
+	let memberRoleProfileSaving = $state(false);
 	let notificationSettings = $state<NotificationSettingsRow | null>(null);
 	let settingsError = $state<string | null>(null);
 	let settingsActionType = $state<'member' | 'project' | null>(null);
@@ -126,6 +137,12 @@
 			isEditingRoleProfile = false;
 			roleProfileActionType = null;
 			roleProfileError = null;
+			roleProfileAlternatives = [];
+			editingMemberRoleProfileId = null;
+			editingMemberRoleNameInput = '';
+			editingMemberRoleDescriptionInput = '';
+			memberRoleProfileError = null;
+			memberRoleProfileSaving = false;
 			notificationSettings = null;
 			settingsError = null;
 			settingsActionType = null;
@@ -142,6 +159,12 @@
 		invites = [];
 		currentActorId = null;
 		roleProfileError = null;
+		roleProfileAlternatives = [];
+		editingMemberRoleProfileId = null;
+		editingMemberRoleNameInput = '';
+		editingMemberRoleDescriptionInput = '';
+		memberRoleProfileError = null;
+		memberRoleProfileSaving = false;
 		notificationSettings = null;
 		settingsError = null;
 		canManageInvites = true;
@@ -261,7 +284,16 @@
 			? (members.find((member) => member.actor_id === currentActorId) ?? null)
 			: null
 	);
+	const editingMemberRoleProfile = $derived(
+		editingMemberRoleProfileId
+			? (members.find((member) => member.id === editingMemberRoleProfileId) ?? null)
+			: null
+	);
 	const canLeaveProject = $derived(Boolean(currentMember && currentMember.role_key !== 'owner'));
+
+	function getMemberLabel(member: MemberRow): string {
+		return member.actor?.name || member.actor?.email || member.actor_id;
+	}
 
 	$effect(() => {
 		if (!isOpen || !currentMember) return;
@@ -284,6 +316,13 @@
 		roleNameInput = currentMember.role_name ?? '';
 		roleDescriptionInput = currentMember.role_description ?? '';
 		isEditingRoleProfile = false;
+	}
+
+	function handleUseRoleProfileAlternative(alternative: RoleProfileAlternative) {
+		roleProfileError = null;
+		roleNameInput = alternative.role_name;
+		roleDescriptionInput = alternative.role_description;
+		isEditingRoleProfile = true;
 	}
 
 	async function handleSaveRoleProfile(event: Event) {
@@ -396,6 +435,7 @@
 
 			toastService.success('Role profile generated');
 			roleContextInput = '';
+			roleProfileAlternatives = [];
 			await loadShareData();
 		} catch (err) {
 			console.error('[ProjectCollaborationModal] Failed to generate role profile:', err);
@@ -412,6 +452,70 @@
 			});
 			roleProfileError =
 				err instanceof Error ? err.message : 'Failed to generate role profile';
+			toastService.error(roleProfileError);
+		} finally {
+			roleProfileActionType = null;
+		}
+	}
+
+	async function handleGenerateRoleProfileAlternatives() {
+		if (isEditingRoleProfile) return;
+		roleProfileError = null;
+
+		const roleContext = roleContextInput.trim();
+		if (!roleContext) {
+			roleProfileError = 'Describe your role first';
+			return;
+		}
+
+		roleProfileActionType = 'alternatives';
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(
+				`/api/onto/projects/${projectId}/members/me/role-profile/alternatives`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						role_context: roleContext,
+						count: 3
+					})
+				}
+			);
+
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to generate role profile alternatives');
+			}
+
+			const alternatives = payload?.data?.alternatives;
+			if (!Array.isArray(alternatives) || alternatives.length === 0) {
+				throw new Error('No alternatives were returned');
+			}
+
+			roleProfileAlternatives = alternatives;
+			toastService.success('Role profile alternatives generated');
+		} catch (err) {
+			console.error(
+				'[ProjectCollaborationModal] Failed to generate role profile alternatives:',
+				err
+			);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/members/me/role-profile/alternatives`,
+				method: 'POST',
+				projectId,
+				entityType: 'project_member',
+				operation: 'project_member_role_profile_alternatives_generate',
+				metadata: {
+					source: 'project_collaboration_modal',
+					status: responseStatus
+				}
+			});
+			roleProfileError =
+				err instanceof Error ? err.message : 'Failed to generate role profile alternatives';
 			toastService.error(roleProfileError);
 		} finally {
 			roleProfileActionType = null;
@@ -657,7 +761,7 @@
 	}
 
 	async function handleMemberRoleChange(member: MemberRow, nextRole: MemberRole) {
-		if (!canManageMembers || memberActionId) {
+		if (!canManageMembers || memberActionId || memberRoleProfileSaving) {
 			return;
 		}
 
@@ -689,7 +793,7 @@
 				throw new Error(payload?.error || 'Failed to update member');
 			}
 
-			const label = member.actor?.name || member.actor?.email || 'Member';
+			const label = getMemberLabel(member);
 			toastService.success(`Updated ${label} to ${formatRole(nextRole)}`);
 			await loadShareData();
 		} catch (err) {
@@ -704,7 +808,7 @@
 	}
 
 	async function handleMemberRemove(member: MemberRow) {
-		if (!canManageMembers || memberActionId) {
+		if (!canManageMembers || memberActionId || memberRoleProfileSaving) {
 			return;
 		}
 
@@ -712,7 +816,7 @@
 			return;
 		}
 
-		const label = member.actor?.name || member.actor?.email || 'this member';
+		const label = getMemberLabel(member);
 		const confirmRemove = confirm(`Remove ${label} from this project?`);
 		if (!confirmRemove) {
 			return;
@@ -742,6 +846,106 @@
 		} finally {
 			memberActionId = null;
 			memberActionType = null;
+		}
+	}
+
+	function handleStartMemberRoleProfileEdit(member: MemberRow) {
+		if (!canManageMembers || memberRoleProfileSaving) return;
+		memberRoleProfileError = null;
+		editingMemberRoleProfileId = member.id;
+		editingMemberRoleNameInput = member.role_name ?? '';
+		editingMemberRoleDescriptionInput = member.role_description ?? '';
+	}
+
+	function handleCancelMemberRoleProfileEdit() {
+		if (memberRoleProfileSaving) return;
+		memberRoleProfileError = null;
+		editingMemberRoleProfileId = null;
+		editingMemberRoleNameInput = '';
+		editingMemberRoleDescriptionInput = '';
+	}
+
+	async function handleSaveMemberRoleProfile(event: Event) {
+		event.preventDefault();
+		if (!editingMemberRoleProfileId) return;
+
+		const targetMember = members.find((member) => member.id === editingMemberRoleProfileId);
+		if (!targetMember) {
+			memberRoleProfileError = 'Member not found';
+			return;
+		}
+
+		memberRoleProfileError = null;
+
+		const roleName = editingMemberRoleNameInput.trim();
+		const roleDescription = editingMemberRoleDescriptionInput.trim();
+		const roleNameValue = roleName.length > 0 ? roleName : null;
+		const roleDescriptionValue = roleDescription.length > 0 ? roleDescription : null;
+
+		if (
+			roleNameValue !== null &&
+			(roleNameValue.length < ROLE_NAME_MIN || roleNameValue.length > ROLE_NAME_MAX)
+		) {
+			memberRoleProfileError = `Role name must be ${ROLE_NAME_MIN}-${ROLE_NAME_MAX} characters`;
+			return;
+		}
+
+		if (
+			roleDescriptionValue !== null &&
+			(roleDescriptionValue.length < ROLE_DESCRIPTION_MIN ||
+				roleDescriptionValue.length > ROLE_DESCRIPTION_MAX)
+		) {
+			memberRoleProfileError = `Role description must be ${ROLE_DESCRIPTION_MIN}-${ROLE_DESCRIPTION_MAX} characters`;
+			return;
+		}
+
+		memberRoleProfileSaving = true;
+		let responseStatus: number | null = null;
+
+		try {
+			const response = await fetch(
+				`/api/onto/projects/${projectId}/members/${targetMember.id}/role-profile`,
+				{
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'same-origin',
+					body: JSON.stringify({
+						role_name: roleNameValue,
+						role_description: roleDescriptionValue
+					})
+				}
+			);
+
+			responseStatus = response.status;
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to update member role profile');
+			}
+
+			toastService.success(`Updated role profile for ${getMemberLabel(targetMember)}`);
+			editingMemberRoleProfileId = null;
+			editingMemberRoleNameInput = '';
+			editingMemberRoleDescriptionInput = '';
+			await loadShareData();
+		} catch (err) {
+			console.error('[ProjectCollaborationModal] Failed to update member role profile:', err);
+			void logOntologyClientError(err, {
+				endpoint: `/api/onto/projects/${projectId}/members/${targetMember.id}/role-profile`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'project_member',
+				entityId: targetMember.id,
+				operation: 'project_member_role_profile_admin_update',
+				metadata: {
+					source: 'project_collaboration_modal',
+					status: responseStatus
+				}
+			});
+			memberRoleProfileError =
+				err instanceof Error ? err.message : 'Failed to update member role profile';
+			toastService.error(memberRoleProfileError);
+		} finally {
+			memberRoleProfileSaving = false;
 		}
 	}
 
@@ -822,7 +1026,7 @@
 	</div>
 
 	<!-- Tab Content -->
-	<div class="p-3 sm:p-4 space-y-4">
+	<div class="p-3 sm:p-4 space-y-3">
 		{#if activeTab === 'sharing'}
 			<!-- Invite Form Section -->
 			<div class="space-y-3">
@@ -909,9 +1113,7 @@
 							>
 								<div class="min-w-0 flex-1">
 									<p class="text-sm text-foreground truncate">
-										{member.actor?.name ||
-											member.actor?.email ||
-											member.actor_id}
+										{getMemberLabel(member)}
 									</p>
 									{#if member.actor?.email && member.actor?.name}
 										<p class="text-xs text-muted-foreground truncate">
@@ -940,20 +1142,39 @@
 											size="sm"
 											class="min-w-[110px]"
 											placeholder=""
-											disabled={memberActionId !== null}
+											disabled={memberActionId !== null ||
+												memberRoleProfileSaving}
 											onchange={(value) =>
 												handleMemberRoleChange(member, value as MemberRole)}
 										>
 											<option value="editor">Editor</option>
 											<option value="viewer">Viewer</option>
 										</Select>
+									{/if}
+
+									{#if canManageMembers && member.actor_id !== currentActorId}
+										<Button
+											variant="ghost"
+											size="sm"
+											disabled={memberActionId !== null ||
+												memberRoleProfileSaving}
+											onclick={() => handleStartMemberRoleProfileEdit(member)}
+										>
+											{editingMemberRoleProfileId === member.id
+												? 'Editing...'
+												: 'Edit Profile'}
+										</Button>
+									{/if}
+
+									{#if canManageMembers && member.role_key !== 'owner'}
 										<Button
 											variant="ghost"
 											size="sm"
 											class="text-destructive hover:bg-destructive/10"
 											loading={memberActionId === member.id &&
 												memberActionType === 'remove'}
-											disabled={memberActionId !== null}
+											disabled={memberActionId !== null ||
+												memberRoleProfileSaving}
 											onclick={() => handleMemberRemove(member)}
 										>
 											Remove
@@ -963,6 +1184,74 @@
 							</div>
 						{/each}
 					</div>
+
+					{#if editingMemberRoleProfile}
+						<div class="mt-3 rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2">
+							<p class="micro-label text-muted-foreground">
+								Edit role profile: {getMemberLabel(editingMemberRoleProfile)}
+							</p>
+
+							<form class="space-y-2" onsubmit={handleSaveMemberRoleProfile}>
+								<div class="space-y-1">
+									<label
+										for="member-role-title-input"
+										class="text-xs font-medium text-muted-foreground"
+										>Role title</label
+									>
+									<TextInput
+										id="member-role-title-input"
+										bind:value={editingMemberRoleNameInput}
+										placeholder="Execution Lead"
+										maxlength={ROLE_NAME_MAX}
+										disabled={memberRoleProfileSaving}
+									/>
+								</div>
+
+								<div class="space-y-1">
+									<label
+										for="member-role-description-input"
+										class="text-xs font-medium text-muted-foreground"
+									>
+										Role description
+									</label>
+									<Textarea
+										id="member-role-description-input"
+										bind:value={editingMemberRoleDescriptionInput}
+										rows={3}
+										autoResize
+										maxRows={8}
+										placeholder="What outcomes and responsibilities do they own?"
+										maxlength={ROLE_DESCRIPTION_MAX}
+										disabled={memberRoleProfileSaving}
+									/>
+								</div>
+
+								{#if memberRoleProfileError}
+									<p class="text-xs text-destructive">{memberRoleProfileError}</p>
+								{/if}
+
+								<div class="flex items-center gap-2">
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										disabled={memberRoleProfileSaving}
+										onclick={handleCancelMemberRoleProfileEdit}
+									>
+										Cancel
+									</Button>
+									<Button
+										type="submit"
+										variant="secondary"
+										size="sm"
+										disabled={memberRoleProfileSaving}
+									>
+										{memberRoleProfileSaving ? 'Saving...' : 'Save Profile'}
+									</Button>
+								</div>
+							</form>
+						</div>
+					{/if}
 				{/if}
 
 				{#if canLeaveProject}
@@ -972,7 +1261,9 @@
 							size="sm"
 							class="text-destructive hover:bg-destructive/10"
 							loading={isLeavingProject}
-							disabled={isLeavingProject || memberActionId !== null}
+							disabled={isLeavingProject ||
+								memberActionId !== null ||
+								memberRoleProfileSaving}
 							onclick={handleLeaveProject}
 						>
 							Leave project
@@ -1053,9 +1344,9 @@
 				</div>
 
 				{#if currentMember}
-					<div class="rounded-md border border-border bg-muted/20 p-3 space-y-1">
+					<div class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-1">
 						<div class="flex items-center justify-between gap-2">
-							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+							<p class="micro-label text-muted-foreground">
 								Current role profile
 							</p>
 							<Button
@@ -1143,19 +1434,69 @@
 						<p class="text-xs text-destructive">{roleProfileError}</p>
 					{/if}
 
-					<Button
-						type="submit"
-						variant="secondary"
-						size="sm"
-						disabled={roleProfileActionType !== null ||
-							isEditingRoleProfile ||
-							roleContextInput.trim().length === 0}
-					>
-						{roleProfileActionType === 'generate'
-							? 'Generating...'
-							: 'Generate Role Profile'}
-					</Button>
+					<div class="flex items-center gap-2">
+						<Button
+							type="submit"
+							variant="secondary"
+							size="sm"
+							disabled={roleProfileActionType !== null ||
+								isEditingRoleProfile ||
+								roleContextInput.trim().length === 0}
+						>
+							{roleProfileActionType === 'generate'
+								? 'Generating...'
+								: 'Generate & Save'}
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							disabled={roleProfileActionType !== null ||
+								isEditingRoleProfile ||
+								roleContextInput.trim().length === 0}
+							onclick={handleGenerateRoleProfileAlternatives}
+						>
+							{roleProfileActionType === 'alternatives'
+								? 'Generating...'
+								: 'Generate Alternatives'}
+						</Button>
+					</div>
 				</form>
+
+				{#if roleProfileAlternatives.length > 0}
+					<div class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-2">
+						<p class="micro-label text-muted-foreground">
+							Alternative role profiles
+						</p>
+						<div class="space-y-2">
+							{#each roleProfileAlternatives as alternative, index (`${alternative.role_name}-${index}`)}
+								<div
+									class="rounded border border-border bg-background p-2 shadow-ink space-y-1"
+								>
+									<div class="flex items-start justify-between gap-2">
+										<div class="min-w-0">
+											<p class="text-sm text-foreground truncate">
+												{alternative.role_name}
+											</p>
+											<p class="text-xs text-muted-foreground">
+												{alternative.role_description}
+											</p>
+										</div>
+										<Button
+											variant="ghost"
+											size="sm"
+											disabled={roleProfileActionType !== null}
+											onclick={() =>
+												handleUseRoleProfileAlternative(alternative)}
+										>
+											Use This
+										</Button>
+									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
 			</div>
 
 			<!-- Notification Settings Section -->
@@ -1168,7 +1509,7 @@
 				{#if isLoading && !notificationSettings}
 					<p class="text-xs text-muted-foreground">Loading notification settings...</p>
 				{:else if notificationSettings}
-					<div class="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+					<div class="rounded-md border border-border bg-muted/20 p-3 shadow-ink-inner space-y-3">
 						<label class="flex items-start gap-2.5 cursor-pointer">
 							<input
 								type="checkbox"

@@ -12,6 +12,11 @@ export interface OntologyProjectSummary {
 	id: string;
 	name: string;
 	description: string | null;
+	icon_svg: string | null;
+	icon_concept: string | null;
+	icon_generated_at: string | null;
+	icon_generation_source: 'auto' | 'manual' | null;
+	icon_generation_prompt: string | null;
 	type_key: string;
 	state_key: string;
 	props: Json;
@@ -115,6 +120,11 @@ export async function fetchProjectSummaries(
 			id,
 			name,
 			description,
+			icon_svg,
+			icon_concept,
+			icon_generated_at,
+			icon_generation_source,
+			icon_generation_prompt,
 			type_key,
 			state_key,
 			props,
@@ -220,6 +230,12 @@ export async function fetchProjectSummaries(
 		id: project.id,
 		name: project.name,
 		description: project.description ?? null,
+		icon_svg: project.icon_svg ?? null,
+		icon_concept: project.icon_concept ?? null,
+		icon_generated_at: project.icon_generated_at ?? null,
+		icon_generation_source:
+			(project.icon_generation_source as 'auto' | 'manual' | undefined) ?? null,
+		icon_generation_prompt: project.icon_generation_prompt ?? null,
 		type_key: project.type_key,
 		state_key: project.state_key,
 		props: sanitizeProjectPropsForClient(project.props) as Json,

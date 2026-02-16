@@ -14,7 +14,11 @@
 	import { brainDumpService } from '$lib/services/braindump-api.service';
 	import { attachVoiceNoteGroup } from '$lib/services/voice-note-groups.service';
 	import { toastService } from '$lib/stores/toast.store';
-	import { ONBOARDING_V2_CONFIG } from '$lib/config/onboarding.config';
+	import {
+		ONBOARDING_V2_CONFIG,
+		ONBOARDING_V3_CONFIG,
+		type OnboardingIntent
+	} from '$lib/config/onboarding.config';
 	import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
 	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
 	import { scale, fade } from 'svelte/transition';
@@ -38,9 +42,17 @@
 			}
 		) => void;
 		onCalendarAnalyzed?: (completed: boolean) => void;
+		/** V3: tailor brain dump prompt based on user intent */
+		intent?: OnboardingIntent;
+		/** V3: allow skipping the brain dump (for "explore" users) */
+		isSkippable?: boolean;
 	}
 
-	let { userContext, onNext, onProjectsCreated, onCalendarAnalyzed }: Props = $props();
+	let { userContext, onNext, onProjectsCreated, onCalendarAnalyzed, intent, isSkippable }: Props =
+		$props();
+
+	// V3 intent-aware prompt configuration
+	const v3Prompts = $derived(intent ? ONBOARDING_V3_CONFIG.brainDumpPrompts[intent] : null);
 
 	let projectInput = $state('');
 	let isProcessing = $state(false);
@@ -235,9 +247,10 @@
 	}
 
 	async function processBrainDump() {
-		if (projectInput.trim().length < 20) {
+		const minimumLength = isSkippable ? 10 : 20;
+		if (projectInput.trim().length < minimumLength) {
 			toastService.error(
-				'Please provide more details about your projects (at least 20 characters)'
+				`Please provide more details about your projects (at least ${minimumLength} characters)`
 			);
 			return;
 		}
@@ -354,15 +367,22 @@
 		</div>
 
 		<h2 class="text-2xl sm:text-3xl font-bold mb-2 text-foreground">
-			Step 2: Clarity - Projects & Brain Dumping
+			{v3Prompts ? v3Prompts.heading : 'Step 2: Clarity - Projects & Brain Dumping'}
 		</h2>
-		<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto mb-2">
-			Get organized by getting things out of your head and onto the screen.
-		</p>
-		<p class="text-sm text-muted-foreground leading-relaxed max-w-xl mx-auto">
-			BuildOS works with <strong class="text-foreground">projects</strong> — work initiatives,
-			personal goals, creative pursuits, or anything you're working towards.
-		</p>
+		{#if v3Prompts}
+			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto mb-2">
+				Just write freely — BuildOS will turn your thoughts into organized projects and
+				tasks.
+			</p>
+		{:else}
+			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto mb-2">
+				Get organized by getting things out of your head and onto the screen.
+			</p>
+			<p class="text-sm text-muted-foreground leading-relaxed max-w-xl mx-auto">
+				BuildOS works with <strong class="text-foreground">projects</strong> — work initiatives,
+				personal goals, creative pursuits, or anything you're working towards.
+			</p>
+		{/if}
 	</div>
 
 	<!-- Philosophy Reinforcement + Examples - Compact -->
@@ -605,7 +625,8 @@
 				bind:voiceNoteGroupId
 				voiceNoteSource="onboarding_projects"
 				onVoiceNoteSegmentError={handleVoiceNoteError}
-				placeholder="Tell me about your projects, goals, and what you're working on. For example: 'I'm launching a new product next month, need to coordinate marketing, finish the website, and hire a designer...'"
+				placeholder={v3Prompts?.placeholder ||
+					"Tell me about your projects, goals, and what you're working on. For example: 'I'm launching a new product next month, need to coordinate marketing, finish the website, and hire a designer...'"}
 				rows={5}
 				maxRows={8}
 				autoResize
@@ -629,7 +650,7 @@
 				disabled={isProcessing || isRecording}
 				class="order-2 sm:order-1"
 			>
-				I'll add projects later
+				{isSkippable ? 'Skip for now' : "I'll add projects later"}
 			</Button>
 
 			<!-- Continue Button -->
@@ -637,7 +658,9 @@
 				variant="primary"
 				size="lg"
 				onclick={processBrainDump}
-				disabled={projectInput.trim().length < 20 || isProcessing || isRecording}
+				disabled={projectInput.trim().length < (isSkippable ? 10 : 20) ||
+					isProcessing ||
+					isRecording}
 				loading={isProcessing}
 				class="min-w-[160px] order-1 sm:order-2 shadow-ink pressable"
 			>

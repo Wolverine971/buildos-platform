@@ -2,10 +2,16 @@
 
 # Ontology System API Endpoints Reference
 
-**Last Updated**: January 8, 2026
+**Last Updated**: February 16, 2026
 **Status**: Production Ready
 **Base Path**: `/api/onto/`
 
+> **Recent Updates (2026-02-16)**:
+>
+> - Added project member role-profile endpoints for self edit/generate, alternatives generation, and admin member updates.
+> - Added project icon generation endpoints (create generation, read generation, select candidate).
+> - Task completion sync now prunes future task-linked calendar events when tasks transition to `done`; reopen does not auto-reschedule unless scheduling fields change.
+>
 > **Recent Updates (2026-01-08)**: Added project graph reorg + full-graph endpoints for node-centric restructuring and planning.
 >
 > **Recent Updates (2024-12-20)**: Schema migration complete. All entities now support soft deletes via `deleted_at`, dedicated `description` columns, and entity-specific fields. See [ONTOLOGY_SCHEMA_MIGRATION_PLAN.md](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md) for details.
@@ -154,6 +160,78 @@ POST /api/onto/projects/instantiate
 
 ---
 
+## 👥 Project Members & Role Profiles
+
+### List Project Members
+
+```http
+GET /api/onto/projects/[id]/members
+```
+
+Returns project members including permission fields (`role_key`, `access`) plus role-profile fields (`role_name`, `role_description`).
+
+### Update Current Member Role Profile
+
+```http
+PATCH /api/onto/projects/[id]/members/me/role-profile
+```
+
+Manually updates current member `role_name` and/or `role_description`.
+
+### Generate Current Member Role Profile
+
+```http
+POST /api/onto/projects/[id]/members/me/role-profile
+```
+
+Generates an AI-assisted role profile from `role_context` and can persist it for the current member.
+
+### Generate Current Member Role Profile Alternatives
+
+```http
+POST /api/onto/projects/[id]/members/me/role-profile/alternatives
+```
+
+Generates multiple role profile alternatives from `role_context` for picker-style UX.
+
+### Update Any Member Role Profile (Admin Access)
+
+```http
+PATCH /api/onto/projects/[id]/members/[memberId]/role-profile
+```
+
+Allows project admins to update another active member's role-profile fields.
+
+---
+
+## 🖼️ Project Icon Generation
+
+### Create Icon Generation
+
+```http
+POST /api/onto/projects/[id]/icon/generations
+```
+
+Creates generation record and queues `generate_project_icon` worker job.
+
+### Get Generation Status + Candidates
+
+```http
+GET /api/onto/projects/[id]/icon/generations/[generationId]
+```
+
+Returns generation status, selection state, and candidate rows.
+
+### Select Candidate
+
+```http
+POST /api/onto/projects/[id]/icon/generations/[generationId]/select
+```
+
+Applies selected sanitized candidate SVG to project icon fields.
+
+---
+
 ## ✅ Task Management
 
 > **Schema Reference**: See [TYPE_KEY_TAXONOMY.md](./TYPE_KEY_TAXONOMY.md#onto_tasks) for complete task type_key documentation.
@@ -241,6 +319,8 @@ PATCH /api/onto/tasks/[id]
 - `plan_id` updates edge relationships
 - Setting `state_key` to `done` auto-sets `completed_at` to current timestamp
 - Setting `state_key` away from `done` clears `completed_at`
+- Transition to `done` triggers task-event sync that removes future task-linked calendar events while preserving past history
+- Reopen (`done` -> non-`done`) does not auto-reschedule unless `start_at` and/or `due_at` are explicitly changed
 
 ### Delete Task
 

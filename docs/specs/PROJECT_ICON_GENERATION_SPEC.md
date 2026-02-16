@@ -1,470 +1,593 @@
 <!-- docs/specs/PROJECT_ICON_GENERATION_SPEC.md -->
 
-# Project Icon Generation Spec
+# Project Icon Image Generation Spec
 
 ## Status
 
-| Attribute | Value                                            |
-| --------- | ------------------------------------------------ |
-| Status    | Draft                                            |
-| Created   | 2026-02-12                                       |
-| Author    | AI-assisted                                      |
-| Scope     | Project identity, worker job, LLM SVG generation |
+| Attribute | Value                                                                                     |
+| --------- | ----------------------------------------------------------------------------------------- |
+| Status    | Phase 1 Complete (Backend + primary project-page UI integrated)                           |
+| Created   | 2026-02-12                                                                                |
+| Updated   | 2026-02-16                                                                                |
+| Author    | AI-assisted + revised                                                                     |
+| Scope     | Automatic + manual icon image generation, candidate selection, worker + queue, SVG safety |
 
 ---
 
 ## Overview
 
-Generate a unique, minimalistic SVG icon for each project once it has enough context (tasks, goals, documents). The icon acts as a visual badge that represents the project's essence. All icons share a cohesive style so they feel like a set, while remaining distinct enough to identify individual projects at a glance.
+Projects should have a visual identity image once they have enough context.
 
-### Core Idea
+This spec delivers two complementary flows:
 
-1. An LLM reads the project's context (name, description, goals, tasks, documents)
-2. It decides **what single concept** best represents this project
-3. It outputs a clean SVG icon following strict style constraints
-4. The SVG is stored directly on the project record (no external file storage needed)
+1. **Automatic background generation** when a project crosses readiness.
+2. **Manual icon studio** where the user can describe what they want ("Midjourney-style prompt"), generate multiple options, and choose one.
 
----
-
-## Approach: LLM-Generated SVG
-
-**Why this over an image generation API:**
-
-- **Zero new dependencies** - uses the existing SmartLLMService + OpenRouter
-- **No new API keys** - works with current LLM providers (GPT-4o, Claude, Gemini)
-- **Tiny output** - SVGs are ~500-2000 bytes, stored as text directly in the DB
-- **Infinitely scalable** - vector, looks crisp at any size
-- **Style-controllable** - the prompt constrains output to a consistent aesthetic
-- **Cheap** - single LLM call, ~500 input tokens + ~800 output tokens
-- **Editable** - SVG markup can be tweaked later if needed
+For v1, "image" means **sanitized SVG icon images** (not raster PNG/JPG). This keeps cost, performance, editability, and security manageable while still giving users prompt-driven creative control.
 
 ---
 
-## Database Migration
+## Product Requirements
 
-### New columns on `onto_projects`
+1. System can generate a project image automatically in the background when the project is "ready".
+2. User can open a generation flow, describe desired style/content in plain language, and generate options.
+3. User can choose a generated option and set it as the project icon.
+4. Generated SVG must be sanitized/validated before save/render.
+5. Queueing must use existing `add_queue_job` contract (`p_dedup_key`, not `p_queue_job_id`).
+6. Access control must require project write access for generation/selection APIs.
+
+---
+
+## Decision: SVG-First (v1)
+
+### Why SVG in v1
+
+- Reuses existing `SmartLLMService` + OpenRouter stack.
+- No new image API keys or media storage/CDN requirements.
+- Tiny payloads (usually 0.5-4KB).
+- Crisp at all sizes (20px navigation + 48px header).
+- User-steerable via text prompt while preserving a cohesive icon language.
+
+### Out of scope for v1
+
+- Photorealistic raster image generation.
+- Uploading external images as project icon source.
+
+---
+
+## Data Model
+
+## `onto_projects` additions
 
 ```sql
 ALTER TABLE onto_projects
-  ADD COLUMN icon_svg text,
-  ADD COLUMN icon_concept text,
-  ADD COLUMN icon_generated_at timestamptz;
+  ADD COLUMN IF NOT EXISTS icon_svg text,
+  ADD COLUMN IF NOT EXISTS icon_concept text,
+  ADD COLUMN IF NOT EXISTS icon_generated_at timestamptz,
+  ADD COLUMN IF NOT EXISTS icon_generation_source text,
+  ADD COLUMN IF NOT EXISTS icon_generation_prompt text;
 ```
 
-| Column              | Type          | Description                                                                                                                                |
-| ------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `icon_svg`          | `text`        | Raw SVG markup string. Null until generated.                                                                                               |
-| `icon_concept`      | `text`        | Short description of what the icon represents (e.g. "a rocket launching"). Useful for regeneration, accessibility alt-text, and debugging. |
-| `icon_generated_at` | `timestamptz` | When the icon was last generated. Null if never generated.                                                                                 |
+| Column                   | Type          | Description                            |
+| ------------------------ | ------------- | -------------------------------------- |
+| `icon_svg`               | `text`        | Selected, sanitized SVG rendered in UI |
+| `icon_concept`           | `text`        | Human-readable concept label           |
+| `icon_generated_at`      | `timestamptz` | Last time selected icon was generated  |
+| `icon_generation_source` | `text`        | `auto` or `manual`                     |
+| `icon_generation_prompt` | `text`        | Prompt text used for selected icon     |
 
-**No RLS changes needed** - these columns inherit the existing `onto_projects` row-level security policies.
+## New table: `onto_project_icon_generations`
+
+```sql
+CREATE TABLE IF NOT EXISTS onto_project_icon_generations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL REFERENCES onto_projects(id) ON DELETE CASCADE,
+  requested_by uuid NOT NULL,
+  trigger_source text NOT NULL CHECK (trigger_source IN ('auto', 'manual', 'regenerate')),
+  steering_prompt text,
+  candidate_count integer NOT NULL DEFAULT 4 CHECK (candidate_count >= 1 AND candidate_count <= 8),
+  status text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'processing', 'completed', 'failed', 'cancelled')),
+  selected_candidate_id uuid NULL,
+  error_message text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  completed_at timestamptz NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_onto_project_icon_generations_project
+  ON onto_project_icon_generations(project_id, created_at DESC);
+```
+
+## New table: `onto_project_icon_candidates`
+
+```sql
+CREATE TABLE IF NOT EXISTS onto_project_icon_candidates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  generation_id uuid NOT NULL REFERENCES onto_project_icon_generations(id) ON DELETE CASCADE,
+  project_id uuid NOT NULL REFERENCES onto_projects(id) ON DELETE CASCADE,
+  candidate_index integer NOT NULL CHECK (candidate_index >= 0),
+  concept text NOT NULL,
+  svg_raw text NOT NULL,
+  svg_sanitized text NOT NULL,
+  svg_byte_size integer NOT NULL,
+  llm_model text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  selected_at timestamptz NULL,
+  UNIQUE (generation_id, candidate_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_onto_project_icon_candidates_generation
+  ON onto_project_icon_candidates(generation_id, candidate_index);
+```
+
+Then add selected-candidate FK:
+
+```sql
+ALTER TABLE onto_project_icon_generations
+  ADD CONSTRAINT fk_icon_generation_selected_candidate
+  FOREIGN KEY (selected_candidate_id)
+  REFERENCES onto_project_icon_candidates(id)
+  ON DELETE SET NULL;
+```
+
+## RLS
+
+- Enable RLS on new tables.
+- Mirror project access pattern:
+- Read allowed when actor has `read` access to project.
+- Insert/update/select-candidate allowed when actor has `write` access to project.
 
 ---
 
-## New Queue Job Type
+## Queue Job Type
 
-### `generate_project_icon`
-
-Add to the `queue_type` enum in Supabase:
+## Enum
 
 ```sql
-ALTER TYPE queue_type ADD VALUE 'generate_project_icon';
+ALTER TYPE queue_type ADD VALUE IF NOT EXISTS 'generate_project_icon';
 ```
 
-### Job Metadata
+## Metadata and Result types
 
 ```typescript
-// In packages/shared-types/src/queue-types.ts
+// packages/shared-types/src/queue-types.ts
 
 export interface ProjectIconGenerationJobMetadata {
+	generationId: string;
 	projectId: string;
-	userId: string;
-	regenerate?: boolean; // Force regeneration even if icon exists
+	requestedByUserId: string;
+	triggerSource: 'auto' | 'manual' | 'regenerate';
+	steeringPrompt?: string;
+	candidateCount: number; // auto: 1, manual default: 4
+	autoSelect: boolean; // true for auto flow
 }
 
 export interface ProjectIconGenerationResult {
 	success: boolean;
 	projectId: string;
-	concept?: string; // What the icon represents
-	svgByteSize?: number; // Size of generated SVG
+	generationId: string;
+	candidatesCreated?: number;
+	selectedCandidateId?: string;
+	skipped?: boolean;
+	reason?: string;
 	error?: string;
 }
 ```
 
-Add to `JobMetadataMap` and `JobResultMap`.
+Add the new type to:
+
+- `JobMetadataMap`
+- `JobResultMap`
+- `isValidJobMetadata` switch
+- `validateJobMetadata` switch in `packages/shared-types/src/validation.ts`
 
 ---
 
-## Worker: Icon Generation Processor
+## Readiness + Auto Trigger Rules
 
-### Location
+Generation must be gated server-side (not UI-only).
+
+```typescript
+function isReadyForAutoIcon(project: {
+	task_count?: number | null;
+	goal_count?: number | null;
+	document_count?: number | null;
+	description?: string | null;
+	icon_svg?: string | null;
+}): boolean {
+	const totalEntities =
+		(project.task_count ?? 0) + (project.goal_count ?? 0) + (project.document_count ?? 0);
+
+	return totalEntities >= 3 && Boolean(project.description?.trim()) && !project.icon_svg;
+}
+```
+
+Auto queue trigger:
+
+- Run after successful context snapshot refresh (`build_project_context_snapshot`) or equivalent project activity checkpoint.
+- Apply cooldown (for example 24h) to avoid repeated churn.
+- Queue with dedup key: `project-icon:auto:${projectId}`.
+
+---
+
+## Worker: Project Icon Generator
+
+## Location
 
 `apps/worker/src/workers/project-icon/projectIconWorker.ts`
 
-### Flow
+## Registration
 
-```
-1. Receive job with projectId
-2. Fetch project context from DB:
-   - onto_projects: name, description, facet_context, facet_stage, state_key
-   - onto_goals: top 5 goals (name, description) linked via onto_edges
-   - onto_tasks: top 10 tasks (name) linked via onto_edges
-   - onto_documents: top 5 documents (name) linked via onto_edges
-3. Build LLM prompt with project context + style constraints
-4. Call SmartLLMService.generateText() → get SVG string
-5. Validate SVG output (basic checks)
-6. Write icon_svg, icon_concept, icon_generated_at to onto_projects
-7. Return result
-```
-
-### Context Gathering
-
-Reuse the pattern from `projectContextSnapshotWorker.ts` - fetch project data and connected entities via `onto_edges`. Keep it lightweight: names and short descriptions only, no full content.
+Register in `apps/worker/src/worker.ts`:
 
 ```typescript
-// Pseudocode for context assembly
-const context = {
-	name: project.name,
-	description: project.description,
-	stage: project.facet_stage,
-	context: project.facet_context,
-	goals: goals.map((g) => g.name).join(', '),
-	tasks: tasks.map((t) => t.name).join(', '),
-	documents: documents.map((d) => d.name).join(', ')
-};
+queue.process('generate_project_icon' as any, processProjectIconJob);
 ```
+
+## Worker flow
+
+1. Load generation row (`onto_project_icon_generations`) and mark `processing`.
+2. Load project context via `load_project_graph_context` RPC (not ad-hoc edge traversal).
+3. Build prompt using project context + optional `steeringPrompt`.
+4. Generate `candidateCount` candidates (JSON response with concept + svg).
+5. Sanitize + validate each SVG.
+6. Persist candidates in `onto_project_icon_candidates`.
+7. If `autoSelect` is true, select best candidate and update `onto_projects.icon_*`.
+8. Mark generation `completed` or `failed`.
+
+## Context payload (lightweight)
+
+Use project + compact highlights:
+
+- project: `name`, `description`, `facet_context`, `facet_stage`, `state_key`
+- top goals (name/description)
+- top tasks (title)
+- top documents (title/description)
+
+Use existing schema names (`title` for tasks/documents where applicable).
 
 ---
 
-## LLM Prompt Design
+## LLM Prompting Strategy
 
-The prompt has two parts: (1) analyze the project to pick an icon concept, and (2) generate the SVG.
+Manual flow must include user steering input.
 
-### System Prompt
+## System prompt (intent)
 
-```
-You are a minimalist icon designer for a productivity app called BuildOS.
+- You are a minimalist icon designer.
+- Return JSON only.
+- Keep Lucide-like style: stroke-only, `currentColor`, no text, no external refs, no animation.
+- Generate `N` distinct candidates that still feel like a coherent set.
 
-Your job: Given a project's context, create a single SVG icon that visually
-represents the project's core theme or purpose.
+## User prompt template
 
-## STYLE RULES (STRICT)
+```text
+Generate {candidateCount} SVG icon candidates for this project.
 
-You must follow ALL of these rules. Icons that violate these look broken.
+Project:
+- Name: {name}
+- Description: {description}
+- Stage: {facet_stage}
+- Goals: {topGoals}
+- Tasks: {topTasks}
+- Documents: {topDocuments}
 
-1. VIEWBOX: Always use viewBox="0 0 64 64"
-2. SIZE: The icon content should fit within a 48x48 area centered in the 64x64 viewbox (8px padding on each side)
-3. STROKE ONLY: Use stroke-based line art. No filled shapes. No solid backgrounds.
-4. STROKE WIDTH: Use stroke-width="2" consistently
-5. STROKE COLOR: Use currentColor so the icon inherits the parent's text color
-6. STROKE CAPS: Use stroke-linecap="round" stroke-linejoin="round"
-7. NO TEXT: Never include <text> elements or letters in the icon
-8. SIMPLICITY: Maximum 6 path/shape elements. Fewer is better.
-9. SINGLE CONCEPT: Represent ONE clear object or symbol, not a scene
-10. RECOGNIZABLE AT 24px: The icon must be identifiable when rendered small
-11. NO ANIMATIONS: No <animate>, no CSS animations
-12. NO EXTERNAL REFS: No <use>, <image>, xlink, or external URLs
-13. NO INLINE STYLES: Use attributes only, no style="" or <style> blocks
+User style direction:
+{steeringPrompt || "(none provided)"}
 
-## OUTPUT FORMAT
-
-Return ONLY two things:
-
-1. CONCEPT line: A 3-8 word description of what the icon depicts
-2. SVG block: The complete SVG markup
-
-Format:
-CONCEPT: [description]
-SVG:
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  ...paths and shapes...
-</svg>
-
-Nothing else. No explanation. No alternatives.
-```
-
-### User Prompt (per project)
-
-```
-Create an icon for this project:
-
-Name: {project.name}
-Description: {project.description}
-Stage: {project.facet_stage}
-Goals: {goals}
-Key tasks: {tasks}
-Documents: {documents}
-
-Pick a single symbol that captures the essence of this project.
-Keep it simple — think Lucide icon style.
-```
-
-### Why These Style Constraints
-
-| Rule                  | Reason                                                             |
-| --------------------- | ------------------------------------------------------------------ |
-| `currentColor` stroke | Icons adapt to light/dark mode and any color context automatically |
-| Stroke-only, no fills | Matches Lucide icon aesthetic already used throughout BuildOS      |
-| 64x64 viewBox         | Standard icon canvas, scales cleanly to any display size           |
-| Max 6 elements        | Prevents the LLM from generating overly complex, noisy icons       |
-| No text               | Text in SVGs doesn't scale well and creates accessibility issues   |
-| Round caps/joins      | Consistent with Inkprint design system's softer aesthetic          |
-
----
-
-## SVG Validation
-
-Before saving, apply basic validation:
-
-```typescript
-function validateIconSvg(svg: string): { valid: boolean; error?: string } {
-	// Must start with <svg and end with </svg>
-	if (!svg.trim().startsWith('<svg') || !svg.trim().endsWith('</svg>')) {
-		return { valid: false, error: 'Not a valid SVG element' };
-	}
-
-	// Must contain viewBox="0 0 64 64"
-	if (!svg.includes('viewBox="0 0 64 64"')) {
-		return { valid: false, error: 'Missing or incorrect viewBox' };
-	}
-
-	// Must use currentColor
-	if (!svg.includes('currentColor')) {
-		return { valid: false, error: 'Must use currentColor for strokes' };
-	}
-
-	// No embedded scripts or event handlers
-	const dangerous = /<script|on\w+\s*=/i;
-	if (dangerous.test(svg)) {
-		return { valid: false, error: 'Contains prohibited elements' };
-	}
-
-	// Size check - should be under 4KB
-	if (svg.length > 4096) {
-		return { valid: false, error: 'SVG too large (>4KB)' };
-	}
-
-	return { valid: true };
+Return JSON:
+{
+  "candidates": [
+    { "concept": "...", "svg": "<svg ...>...</svg>" }
+  ]
 }
 ```
 
-If validation fails, retry the LLM call once with a correction hint. If it fails again, mark the job as failed.
+## SmartLLM usage
+
+- Prefer `getJSONResponse(...)` for structured output and retries.
+- Include `userId` (required by worker SmartLLM wrapper).
+- Use `operationType: 'project_icon_generation'`.
+- Start with `profile: 'balanced'`.
 
 ---
 
-## API Endpoint
+## SVG Sanitization + Validation (Critical)
 
-### `POST /api/onto/projects/[id]/generate-icon`
+Do not render/store unsanitized SVG.
 
-Dispatches the worker job. Called from the UI when a user clicks "Generate Icon".
+Use `sanitize-html` allowlist in worker before persistence.
 
 ```typescript
-// src/routes/api/onto/projects/[id]/generate-icon/+server.ts
+import sanitizeHtml from 'sanitize-html';
 
-export const POST: RequestHandler = async ({ params, locals }) => {
-	const supabase = locals.supabase;
-	const user = locals.user;
-	const projectId = params.id;
-
-	// Verify project exists and user has access
-	const { data: project } = await supabase
-		.from('onto_projects')
-		.select('id, name, created_by')
-		.eq('id', projectId)
-		.single();
-
-	if (!project) return ApiResponse.error('Project not found', 404);
-
-	// Enqueue worker job
-	const { error } = await supabase.rpc('add_queue_job', {
-		p_user_id: user.id,
-		p_job_type: 'generate_project_icon',
-		p_metadata: { projectId, userId: user.id },
-		p_queue_job_id: `icon-${projectId}-${Date.now()}`,
-		p_scheduled_for: new Date().toISOString()
-	});
-
-	if (error) return ApiResponse.error('Failed to queue icon generation', 500);
-
-	return ApiResponse.success({ queued: true, projectId });
+const ALLOWED_TAGS = [
+	'svg',
+	'g',
+	'path',
+	'circle',
+	'rect',
+	'line',
+	'polyline',
+	'polygon',
+	'ellipse'
+];
+const ALLOWED_ATTRS = {
+	svg: [
+		'xmlns',
+		'viewBox',
+		'fill',
+		'stroke',
+		'stroke-width',
+		'stroke-linecap',
+		'stroke-linejoin'
+	],
+	g: ['fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'transform'],
+	path: ['d', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'transform'],
+	circle: ['cx', 'cy', 'r', 'fill', 'stroke', 'stroke-width'],
+	rect: ['x', 'y', 'width', 'height', 'rx', 'ry', 'fill', 'stroke', 'stroke-width'],
+	line: ['x1', 'y1', 'x2', 'y2', 'stroke', 'stroke-width', 'stroke-linecap'],
+	polyline: ['points', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin'],
+	polygon: ['points', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin'],
+	ellipse: ['cx', 'cy', 'rx', 'ry', 'fill', 'stroke', 'stroke-width']
 };
-```
 
----
-
-## UI Integration
-
-### Where the icon appears
-
-1. **Project Card** (`ProjectCard.svelte`) - small icon (24x24) next to the project name
-2. **Project Detail Header** - larger icon (48x48) in the project page header
-3. **Navigation/Sidebar** - small icon (20x20) in project lists
-4. **Brain Dump Results** - icon next to project names in processing results
-
-### Icon Display Component
-
-```svelte
-<!-- src/lib/components/project/ProjectIcon.svelte -->
-<script lang="ts">
-	import { Folder } from 'lucide-svelte';
-
-	interface Props {
-		iconSvg?: string | null;
-		size?: number;
-		class?: string;
-	}
-
-	let { iconSvg = null, size = 24, class: className = '' }: Props = $props();
-</script>
-
-{#if iconSvg}
-	<div
-		class="inline-flex items-center justify-center text-foreground {className}"
-		style="width: {size}px; height: {size}px;"
-	>
-		{@html iconSvg}
-	</div>
-{:else}
-	<Folder {size} class="text-muted-foreground {className}" />
-{/if}
-```
-
-- Falls back to a generic `Folder` lucide icon when no custom icon exists
-- Uses `currentColor` inheritance so the icon matches surrounding text color
-- Works in both light and dark mode automatically
-
-### "Generate Icon" Button
-
-Show a "Generate Icon" action on the project detail page when:
-
-- The project has **no icon** (`icon_svg IS NULL`)
-- OR the user explicitly wants to regenerate
-
-```svelte
-<button
-	onclick={generateIcon}
-	class="px-3 py-1.5 text-sm bg-accent/10 text-accent border border-accent/30 rounded-lg pressable"
->
-	{#if isGenerating}
-		Generating...
-	{:else if project.icon_svg}
-		Regenerate Icon
-	{:else}
-		Generate Icon
-	{/if}
-</button>
-```
-
-### Readiness Heuristic
-
-Suggest icon generation when a project reaches a certain "maturity":
-
-```typescript
-function isReadyForIcon(project: OntologyProjectSummary): boolean {
-	const totalEntities =
-		(project.task_count ?? 0) + (project.goal_count ?? 0) + (project.document_count ?? 0);
-	return totalEntities >= 3 && !project.icon_svg;
+function sanitizeIconSvg(raw: string): string {
+	return sanitizeHtml(raw, {
+		allowedTags: ALLOWED_TAGS,
+		allowedAttributes: ALLOWED_ATTRS,
+		allowedSchemes: [],
+		allowedSchemesByTag: {},
+		parser: { lowerCaseAttributeNames: false }
+	}).trim();
 }
 ```
 
-When this returns true, show a subtle prompt on the project card or detail page: "Your project has enough context to generate an icon."
+Then validate sanitized output:
+
+- starts with `<svg`, ends with `</svg>`
+- includes `viewBox="0 0 64 64"`
+- includes `stroke="currentColor"`
+- no `style`, no `class`, no `on*` handlers, no `<foreignObject>`, no `<script>`
+- size <= 4096 bytes
+- element count <= 8
+
+If candidate fails validation, drop it. If all fail, retry once with correction hint, then fail job.
+
+Render only `svg_sanitized` / `onto_projects.icon_svg`.
 
 ---
 
-## Automatic Generation (Future Enhancement)
+## API Design
 
-A future iteration could automatically dispatch icon generation when a project crosses the readiness threshold. This would happen in the `build_project_context_snapshot` worker as a follow-up job. **Not in scope for v1** - start with manual trigger only.
+## 1) Create generation (manual)
+
+`POST /api/onto/projects/[id]/icon/generations`
+
+Request:
+
+```json
+{
+	"steeringPrompt": "minimal mountain + trail vibe, no tools",
+	"candidateCount": 4
+}
+```
+
+Behavior:
+
+1. Require auth.
+2. Verify project write access.
+3. Create `onto_project_icon_generations` row (`status='queued'`, `trigger_source='manual'`).
+4. Queue `generate_project_icon` with:
+
+```typescript
+await supabase.rpc('add_queue_job', {
+	p_user_id: user.id,
+	p_job_type: 'generate_project_icon',
+	p_metadata: {
+		generationId,
+		projectId,
+		requestedByUserId: user.id,
+		triggerSource: 'manual',
+		steeringPrompt,
+		candidateCount,
+		autoSelect: false
+	},
+	p_priority: 8,
+	p_scheduled_for: new Date().toISOString(),
+	p_dedup_key: `project-icon:generation:${generationId}`
+});
+```
+
+5. Return `{ generationId, status: 'queued' }`.
+
+## 2) Fetch generation + candidates
+
+`GET /api/onto/projects/[id]/icon/generations/[generationId]`
+
+Returns status and candidates for picker UI.
+
+## 3) Select candidate
+
+`POST /api/onto/projects/[id]/icon/generations/[generationId]/select`
+
+Request:
+
+```json
+{
+	"candidateId": "uuid"
+}
+```
+
+Behavior:
+
+- Verify write access.
+- Verify candidate belongs to generation + project.
+- Mark selected candidate.
+- Update `onto_projects.icon_svg`, `icon_concept`, `icon_generated_at`, `icon_generation_source='manual'`, `icon_generation_prompt`.
+
+## 4) Auto queue helper (server-side)
+
+Create `queueProjectIconGeneration(...)` service similar to `queueProjectContextSnapshot(...)`.
+
+---
+
+## UI / UX
+
+## Components
+
+1. `ProjectIcon.svelte`
+2. `ProjectIconStudioModal.svelte`
+3. Candidate card component (preview + concept + select action)
+
+## Project detail actions
+
+- If no icon: show `Generate Image`.
+- If icon exists: show `Edit Image`.
+- CTA opens icon studio modal.
+
+## Icon studio flow
+
+1. Textarea: "Describe what you want this image to look like..."
+2. `Generate Options` button.
+3. Show 2-4 generated candidates.
+4. User selects one and applies it.
+5. `Generate More` allows iterative steering.
+
+## Project list/card integration
+
+Add icon fields to project summary pipeline:
+
+- `OntologyProjectSummary` type
+- `fetchProjectSummaries` select/map
+- navigation store snapshot
+- card + header components
+
+Fallback to existing folder icon when `icon_svg` is null.
+
+---
+
+## Background Generation
+
+Automatic generation runs without user interaction:
+
+1. Project reaches readiness threshold.
+2. System queues auto generation job (`candidateCount: 1`, `autoSelect: true`).
+3. Worker writes selected icon directly to `onto_projects`.
+4. UI updates naturally on next refresh/stream update.
+
+Manual flow always remains available for user-driven replacement.
+
+---
+
+## Observability
+
+Track:
+
+- generation created/completed/failed counts
+- auto vs manual split
+- sanitization rejection count
+- average generation latency
+- candidate selection rate
+- selected concept distribution
+
+Log model + token usage from SmartLLM metadata on each generation.
+
+---
+
+## Test Plan
+
+1. Queue metadata validation tests (`queue-types.ts` + `validation.ts`)
+2. Worker unit tests:
+
+- prompt construction
+- sanitization allowlist
+- validation failures + retry behavior
+- auto-select behavior
+
+3. API integration tests:
+
+- access control
+- enqueue contract with `p_dedup_key`
+- candidate selection updates project fields
+
+4. UI tests:
+
+- icon studio prompt + generate + select
+- fallback icon behavior
 
 ---
 
 ## Implementation Checklist
 
-### Phase 1: Foundation
+## Phase 1: Schema + Types
 
-- [ ] Supabase migration: add `icon_svg`, `icon_concept`, `icon_generated_at` to `onto_projects`
-- [ ] Supabase migration: add `generate_project_icon` to `queue_type` enum
-- [ ] Add `ProjectIconGenerationJobMetadata` and result types to `queue-types.ts`
-- [ ] Regenerate Supabase types (`pnpm supabase gen types`)
+- [x] Migration: add `onto_projects.icon_*` columns
+- [x] Migration: create `onto_project_icon_generations`
+- [x] Migration: create `onto_project_icon_candidates`
+- [x] Migration: add `generate_project_icon` to `queue_type`
+- [x] Add/enable RLS policies for new tables
+- [x] Add metadata/result types in `packages/shared-types/src/queue-types.ts`
+- [x] Add validation switch cases in `packages/shared-types/src/validation.ts`
+- [x] Regenerate DB/types with `pnpm gen:types`
 
-### Phase 2: Worker
+## Phase 2: Worker
 
-- [ ] Create `apps/worker/src/workers/project-icon/projectIconWorker.ts`
-- [ ] Implement context gathering (project + goals + tasks + documents via edges)
-- [ ] Implement LLM prompt construction with style constraints
-- [ ] Implement SVG validation
-- [ ] Register processor in worker entry point
-- [ ] Add type guard `isProjectIconGenerationMetadata` in queue-types.ts
+- [x] Create `apps/worker/src/workers/project-icon/projectIconWorker.ts`
+- [x] Reuse `load_project_graph_context` for context fetch
+- [x] Implement structured LLM generation (`getJSONResponse`)
+- [x] Implement sanitization + strict validation
+- [x] Persist generation/candidates + selected icon updates
+- [x] Register processor in `apps/worker/src/worker.ts`
 
-### Phase 3: API
+## Phase 3: API
 
-- [ ] Create `POST /api/onto/projects/[id]/generate-icon/+server.ts`
-- [ ] Wire up job dispatch with dedup key
+- [x] `POST /api/onto/projects/[id]/icon/generations`
+- [x] `GET /api/onto/projects/[id]/icon/generations/[generationId]`
+- [x] `POST /api/onto/projects/[id]/icon/generations/[generationId]/select`
+- [x] Add server helper `queueProjectIconGeneration(...)`
 
-### Phase 4: UI
+## Phase 4: UI
 
-- [ ] Create `ProjectIcon.svelte` component
-- [ ] Integrate into `ProjectCard.svelte` (small icon next to name)
-- [ ] Add "Generate Icon" button on project detail page
-- [ ] Add readiness heuristic and subtle prompt
-- [ ] Handle loading/generating state with optimistic UI
+- [x] Build `ProjectIcon.svelte`
+- [x] Build `ProjectIconStudioModal.svelte`
+- [x] Integrate into project detail page (`Generate Image` / `Edit Image`)
+- [x] Integrate icon into `ProjectCard.svelte` and other list/header surfaces
+- [x] Poll/refresh generation status in modal
 
-### Phase 5: Polish
+## Phase 5: Auto Generation
 
-- [ ] Test with diverse project types (technical, creative, personal, business)
-- [ ] Tune prompt if certain project types produce poor icons
-- [ ] Add retry logic in worker (1 retry with correction hint on validation failure)
+- [x] Add readiness gate helper server-side
+- [x] Trigger auto queue from background pipeline after context snapshot success
+- [x] Add cooldown + dedup policy for auto flow
 
 ---
 
 ## Cost Estimate
 
-| Item                                  | Cost                                     |
-| ------------------------------------- | ---------------------------------------- |
-| LLM call (GPT-4o-mini via OpenRouter) | ~$0.001 per icon                         |
-| LLM call (GPT-4o via OpenRouter)      | ~$0.01 per icon                          |
-| Storage                               | ~1-2KB per icon (text in DB, negligible) |
-| Total per user (10 projects)          | $0.01 - $0.10                            |
+Estimated with SVG generation via OpenRouter text models:
 
-Extremely cheap. No image storage, no CDN, no file management.
+- Auto generation (1 candidate): very low (roughly sub-cent)
+- Manual generation (4 candidates): roughly 4x auto
+- Storage: negligible (text)
 
----
-
-## Security Considerations
-
-- SVG output is sanitized (no `<script>`, no event handlers) before storage
-- SVG is rendered with `{@html}` in Svelte - validation is critical
-- The validation function strips dangerous patterns before DB write
-- `currentColor` means no hardcoded colors that could clash with themes
-- RLS on `onto_projects` ensures users can only generate icons for their own projects
+Cost depends on model selected by SmartLLM profile routing; treat these as ranges, not fixed per-model guarantees.
 
 ---
 
-## LLM Model Selection
+## Security Summary
 
-Recommended: **GPT-4o-mini** via OpenRouter for v1.
-
-- Best balance of SVG generation quality and cost
-- GPT-4o and Claude also produce good SVGs but cost 10-20x more
-- Can upgrade to GPT-4o for users who want higher-quality icons later
-- Gemini Flash is an alternative if cost needs to go even lower
-
-Use the existing `SmartLLMService.generateText()` with a model override for the icon generation task.
+1. Never render unsanitized SVG.
+2. Store sanitized SVG separately and render only sanitized field.
+3. Use strict allowlist tags/attributes.
+4. Require project write access for generation and selection.
+5. Use queue dedup keys to prevent spam/duplication.
 
 ---
 
-## Example Output
+## Rollout
 
-For a project named "Kitchen Renovation" with goals like "Design new layout", "Get contractor quotes", tasks like "Measure kitchen dimensions", "Research countertop materials":
-
-```
-CONCEPT: a house with a wrench
-SVG:
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M12 38 L32 18 L52 38" />
-  <path d="M18 38 L18 50 L46 50 L46 38" />
-  <path d="M26 50 L26 42 L38 42 L38 50" />
-  <path d="M40 28 L44 24 L48 28 L44 32 Z" />
-</svg>
-```
-
-All icons generated this way will share the same stroke weight, line cap style, viewBox, and `currentColor` inheritance - making them feel cohesive as a set while depicting different subjects.
+1. Launch with manual flow behind feature flag.
+2. Enable auto generation for a small cohort.
+3. Monitor sanitization rejection and candidate selection metrics.
+4. Expand auto rollout after quality is stable.

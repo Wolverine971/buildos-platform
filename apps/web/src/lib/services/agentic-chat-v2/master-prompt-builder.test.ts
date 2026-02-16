@@ -82,4 +82,23 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 
 		expect(prompt).toContain('<project_id>05c40ed8-9dbe-4893-bd64-8aeec90eab40</project_id>');
 	});
+
+	it('includes member role planning guardrails', () => {
+		const prompt = buildMasterPrompt({
+			contextType: 'project',
+			projectId: 'project-1',
+			entityId: 'project-1'
+		});
+
+		expect(prompt).toContain('<member_role_rules>');
+		expect(prompt).toContain(
+			'Prefer assigning work to members whose role_name/role_description aligns with the responsibility.'
+		);
+		expect(prompt).toContain(
+			'Treat permission role and access as hard constraints (for example, do not route admin actions to viewers).'
+		);
+		expect(prompt).toContain(
+			'If multiple members overlap responsibilities, ask one concise clarification before assigning ownership.'
+		);
+	});
 });

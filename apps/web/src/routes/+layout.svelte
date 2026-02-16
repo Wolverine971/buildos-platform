@@ -69,10 +69,11 @@
 	let currentRouteId = $state('');
 	let routeBasedState = $state({
 		showNavigation: true,
-		showFooter: true,
-		needsOnboarding: false,
-		showOnboardingModal: false
+		showFooter: true
 	});
+
+	// Onboarding state — reactive to data changes, not just route changes
+	let forceOnboardingActive = $state(false);
 
 	// Simplified state management - wrapped in $state for reactivity
 	let navigationElement = $state<HTMLElement | null>(null);
@@ -221,57 +222,50 @@
 		}
 	});
 
+	// Route-gated effect: only recompute nav/footer visibility on route change
 	$effect(() => {
 		if ($page.route?.id !== currentRouteId && browser) {
-			// Use untrack for state updates to prevent re-triggering the effect
 			untrack(() => {
 				currentRouteId = $page.route?.id || '';
 			});
 
 			const newShowNavigation = !currentRouteId.startsWith('/auth');
 			const newShowFooter = !currentRouteId.startsWith('/auth');
-			const newNeedsOnboarding = Boolean(user && !completedOnboarding);
 
-			// Calculate onboarding modal state
-			const isHomePage = $page?.url?.pathname === '/';
-			const forceOnboarding = $page?.url?.searchParams.get('onboarding') === 'true';
-			const newShowOnboardingModal =
-				newNeedsOnboarding &&
-				isHomePage &&
-				(forceOnboarding || (onboardingProgress < 25 && !checkModalDismissed())) &&
-				!animatingDismiss;
-
-			// Only update state if something actually changed
 			if (
 				routeBasedState.showNavigation !== newShowNavigation ||
-				routeBasedState.showFooter !== newShowFooter ||
-				routeBasedState.needsOnboarding !== newNeedsOnboarding ||
-				routeBasedState.showOnboardingModal !== newShowOnboardingModal
+				routeBasedState.showFooter !== newShowFooter
 			) {
 				untrack(() => {
 					routeBasedState = {
 						showNavigation: newShowNavigation,
-						showFooter: newShowFooter,
-						needsOnboarding: newNeedsOnboarding,
-						showOnboardingModal: newShowOnboardingModal
+						showFooter: newShowFooter
 					};
 				});
-			}
-
-			// Clean up onboarding URL parameter after handling
-			if (forceOnboarding && browser) {
-				const url = new URL($page.url);
-				url.searchParams.delete('onboarding');
-				replaceState(url.toString(), {});
 			}
 		}
 	});
 
-	// Destructure for template use - these variables are derived from routeBasedState
+	// Detect ?onboarding=true URL param and consume it into reactive state
+	$effect(() => {
+		if (browser && $page?.url?.searchParams.get('onboarding') === 'true') {
+			forceOnboardingActive = true;
+			const url = new URL($page.url);
+			url.searchParams.delete('onboarding');
+			replaceState(url.toString(), {});
+		}
+	});
+
+	// Onboarding state — fully reactive to user/data changes (not route-gated)
 	let showNavigation = $derived(routeBasedState.showNavigation);
 	let showFooter = $derived(routeBasedState.showFooter);
-	let needsOnboarding = $derived(routeBasedState.needsOnboarding);
-	let showOnboardingModal = $derived(routeBasedState.showOnboardingModal);
+	let needsOnboarding = $derived(Boolean(user && !completedOnboarding));
+	let showOnboardingModal = $derived.by(() => {
+		if (!needsOnboarding || animatingDismiss) return false;
+		const isHomePage = $page?.url?.pathname === '/';
+		if (!isHomePage) return false;
+		return forceOnboardingActive || (onboardingProgress < 25 && !checkModalDismissed());
+	});
 
 	// PERFORMANCE: Load authenticated resources with better caching
 	let resourcesLoadPromise = $state<Promise<void> | undefined>(undefined);
@@ -425,11 +419,7 @@
 		previousAuthUserId = null;
 
 		resetResourceLoaders();
-		routeBasedState = {
-			...routeBasedState,
-			needsOnboarding: false,
-			showOnboardingModal: false
-		};
+		forceOnboardingActive = false;
 
 		// Always invalidate data on sign-out
 		await synchronizeAuthState(true);
@@ -550,11 +540,8 @@
 				await new Promise((resolve) => setTimeout(resolve, 300));
 			}
 
-			// Update state
-			routeBasedState = {
-				...routeBasedState,
-				showOnboardingModal: false
-			};
+			// Clear force flag so derived state recalculates to false
+			forceOnboardingActive = false;
 
 			if (browser) {
 				try {

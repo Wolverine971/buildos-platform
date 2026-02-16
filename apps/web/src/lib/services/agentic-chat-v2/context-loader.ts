@@ -646,7 +646,10 @@ function dueProximityBucket(
 	return 2;
 }
 
-function compareNullableNumberDesc(a: number | null | undefined, b: number | null | undefined): number {
+function compareNullableNumberDesc(
+	a: number | null | undefined,
+	b: number | null | undefined
+): number {
 	const aNum = typeof a === 'number' && Number.isFinite(a) ? a : null;
 	const bNum = typeof b === 'number' && Number.isFinite(b) ? b : null;
 	if (aNum === null && bNum === null) return 0;
@@ -731,7 +734,8 @@ function limitTasksForContext(rows: TaskRow[], limit: number, nowMs: number): Ta
 			if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
 
 			if (!aCompleted && !bCompleted) {
-				const dueDelta = dueProximityBucket(a.due_at, nowMs) - dueProximityBucket(b.due_at, nowMs);
+				const dueDelta =
+					dueProximityBucket(a.due_at, nowMs) - dueProximityBucket(b.due_at, nowMs);
 				if (dueDelta !== 0) return dueDelta;
 
 				const stateDelta = taskStateBucket(a) - taskStateBucket(b);
@@ -764,7 +768,8 @@ function limitGoalsForContext(rows: GoalRow[], limit: number, nowMs: number): Go
 
 			if (!aCompleted && !bCompleted) {
 				const targetDelta =
-					dueProximityBucket(a.target_date, nowMs) - dueProximityBucket(b.target_date, nowMs);
+					dueProximityBucket(a.target_date, nowMs) -
+					dueProximityBucket(b.target_date, nowMs);
 				if (targetDelta !== 0) return targetDelta;
 
 				const stateDelta = goalStateBucket(a) - goalStateBucket(b);
@@ -782,7 +787,11 @@ function limitGoalsForContext(rows: GoalRow[], limit: number, nowMs: number): Go
 		.slice(0, Math.max(0, limit));
 }
 
-function limitMilestonesForContext(rows: MilestoneRow[], limit: number, nowMs: number): MilestoneRow[] {
+function limitMilestonesForContext(
+	rows: MilestoneRow[],
+	limit: number,
+	nowMs: number
+): MilestoneRow[] {
 	return [...rows]
 		.sort((a, b) => {
 			const aCompleted = isMilestoneCompleted(a);
@@ -790,7 +799,8 @@ function limitMilestonesForContext(rows: MilestoneRow[], limit: number, nowMs: n
 			if (aCompleted !== bCompleted) return aCompleted ? 1 : -1;
 
 			if (!aCompleted && !bCompleted) {
-				const dueDelta = dueProximityBucket(a.due_at, nowMs) - dueProximityBucket(b.due_at, nowMs);
+				const dueDelta =
+					dueProximityBucket(a.due_at, nowMs) - dueProximityBucket(b.due_at, nowMs);
 				if (dueDelta !== 0) return dueDelta;
 
 				const stateDelta = milestoneStateBucket(a) - milestoneStateBucket(b);

@@ -2,9 +2,10 @@
 
 # Brief Chat Execution Plan
 
-**Status:** Core Backend + Split-Pane UI Complete, Runtime Constraint Fix Added  
+**Status:** Fully Implemented (Scoped Engineering Work Complete)  
 **Owner:** Codex + DJ  
 **Created:** 2026-02-14  
+**Completed:** 2026-02-16  
 **Primary Spec:** `docs/specs/BRIEF_CHAT_SPEC.md`
 
 ---
@@ -141,16 +142,17 @@
 
 ---
 
-## 5) Open Decisions
+## 5) Open Decisions (Non-Blocking Product Policy)
 
 - Confirm whether project team brief generation permission should include viewers or remain owner/editor only.
 - Confirm whether project team brief snapshots should have a separate table family in V1 or be layered after current model stabilizes.
 
 ---
 
-## 6) Next Up (Execution Order)
+## 6) Remaining Engineering Work
 
-1. Add a dedicated user-facing ontology brief history endpoint only if existing `/briefs` list UX needs server-side pagination/grouping beyond current behavior.
+1. None required for the scoped execution plan.
+2. Optional enhancement only: add a dedicated server-paginated history endpoint if `/briefs` history UX later needs larger-scale grouping/filtering.
 
 ---
 

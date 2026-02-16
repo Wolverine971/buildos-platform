@@ -5199,6 +5199,123 @@ export type Database = {
           },
         ]
       }
+      onto_project_icon_candidates: {
+        Row: {
+          candidate_index: number
+          concept: string
+          created_at: string
+          generation_id: string
+          id: string
+          llm_model: string | null
+          project_id: string
+          selected_at: string | null
+          svg_byte_size: number
+          svg_raw: string
+          svg_sanitized: string
+        }
+        Insert: {
+          candidate_index: number
+          concept: string
+          created_at?: string
+          generation_id: string
+          id?: string
+          llm_model?: string | null
+          project_id: string
+          selected_at?: string | null
+          svg_byte_size: number
+          svg_raw: string
+          svg_sanitized: string
+        }
+        Update: {
+          candidate_index?: number
+          concept?: string
+          created_at?: string
+          generation_id?: string
+          id?: string
+          llm_model?: string | null
+          project_id?: string
+          selected_at?: string | null
+          svg_byte_size?: number
+          svg_raw?: string
+          svg_sanitized?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_project_icon_candidates_generation_id_fkey"
+            columns: ["generation_id"]
+            isOneToOne: false
+            referencedRelation: "onto_project_icon_generations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_icon_candidates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_project_icon_generations: {
+        Row: {
+          candidate_count: number
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          project_id: string
+          requested_by: string
+          selected_candidate_id: string | null
+          status: string
+          steering_prompt: string | null
+          trigger_source: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_count?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          project_id: string
+          requested_by: string
+          selected_candidate_id?: string | null
+          status?: string
+          steering_prompt?: string | null
+          trigger_source: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_count?: number
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          project_id?: string
+          requested_by?: string
+          selected_candidate_id?: string | null
+          status?: string
+          steering_prompt?: string | null
+          trigger_source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_onto_project_icon_generation_selected_candidate"
+            columns: ["selected_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "onto_project_icon_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_icon_generations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_project_invites: {
         Row: {
           accepted_at: string | null
@@ -5467,6 +5584,11 @@ export type Database = {
           facet_context: string | null
           facet_scale: string | null
           facet_stage: string | null
+          icon_concept: string | null
+          icon_generated_at: string | null
+          icon_generation_prompt: string | null
+          icon_generation_source: string | null
+          icon_svg: string | null
           id: string
           is_public: boolean | null
           name: string
@@ -5491,6 +5613,11 @@ export type Database = {
           facet_context?: string | null
           facet_scale?: string | null
           facet_stage?: string | null
+          icon_concept?: string | null
+          icon_generated_at?: string | null
+          icon_generation_prompt?: string | null
+          icon_generation_source?: string | null
+          icon_svg?: string | null
           id?: string
           is_public?: boolean | null
           name: string
@@ -5515,6 +5642,11 @@ export type Database = {
           facet_context?: string | null
           facet_scale?: string | null
           facet_stage?: string | null
+          icon_concept?: string | null
+          icon_generated_at?: string | null
+          icon_generation_prompt?: string | null
+          icon_generation_source?: string | null
+          icon_svg?: string | null
           id?: string
           is_public?: boolean | null
           name?: string
@@ -8652,6 +8784,7 @@ export type Database = {
           dimensions: Json
           id: string
           next_analysis_trigger: Json
+          onboarding_seed: Json | null
           patterns: Json
           project_summary: Json
           session_count: number
@@ -8668,6 +8801,7 @@ export type Database = {
           dimensions?: Json
           id?: string
           next_analysis_trigger?: Json
+          onboarding_seed?: Json | null
           patterns?: Json
           project_summary?: Json
           session_count?: number
@@ -8684,6 +8818,7 @@ export type Database = {
           dimensions?: Json
           id?: string
           next_analysis_trigger?: Json
+          onboarding_seed?: Json | null
           patterns?: Json
           project_summary?: Json
           session_count?: number
@@ -9385,6 +9520,8 @@ export type Database = {
           is_beta_user: boolean | null
           last_visit: string | null
           name: string | null
+          onboarding_intent: string | null
+          onboarding_stakes: string | null
           onboarding_v2_completed_at: string | null
           onboarding_v2_skipped_calendar: boolean | null
           onboarding_v2_skipped_sms: boolean | null
@@ -9410,6 +9547,8 @@ export type Database = {
           is_beta_user?: boolean | null
           last_visit?: string | null
           name?: string | null
+          onboarding_intent?: string | null
+          onboarding_stakes?: string | null
           onboarding_v2_completed_at?: string | null
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
@@ -9435,6 +9574,8 @@ export type Database = {
           is_beta_user?: boolean | null
           last_visit?: string | null
           name?: string | null
+          onboarding_intent?: string | null
+          onboarding_stakes?: string | null
           onboarding_v2_completed_at?: string | null
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
@@ -11053,6 +11194,7 @@ export type Database = {
         | "buildos_tree_agent"
         | "build_project_context_snapshot"
         | "project_activity_batch_flush"
+        | "generate_project_icon"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -11326,6 +11468,7 @@ export const Constants = {
         "buildos_tree_agent",
         "build_project_context_snapshot",
         "project_activity_batch_flush",
+        "generate_project_icon",
       ],
       recurrence_end_reason: [
         "indefinite",

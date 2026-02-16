@@ -21,6 +21,7 @@
 	let confirmPassword = $state('');
 	let name = $state('');
 	let error = $state('');
+	let showExistingAccountHint = $state(false);
 	let success = $state(false);
 	let successMessage = $state('');
 	let emailError = $state('');
@@ -238,15 +239,11 @@
 
 				// Handle specific error codes
 				if (result?.code === 'ALREADY_EXISTS' || result?.code === 'USER_EXISTS') {
-					// Offer to redirect to login
 					error = errorMessage;
-					setTimeout(() => {
-						if (confirm('Would you like to sign in instead?')) {
-							goto(`/auth/login${redirectQuery}`);
-						}
-					}, 100);
+					showExistingAccountHint = true;
 				} else {
 					error = errorMessage;
+					showExistingAccountHint = false;
 				}
 				return;
 			}
@@ -452,6 +449,16 @@
 							aria-live="assertive"
 						>
 							<span class="sr-only">Error: </span>{error}
+							{#if showExistingAccountHint}
+								<p class="mt-2 text-sm">
+									<a
+										href={`/auth/login${redirectQuery}`}
+										class="font-semibold underline underline-offset-2 hover:opacity-80 transition-opacity"
+									>
+										Sign in to your existing account &rarr;
+									</a>
+								</p>
+							{/if}
 						</div>
 					{/if}
 

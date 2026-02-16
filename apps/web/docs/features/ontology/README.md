@@ -2,10 +2,12 @@
 
 # Ontology System Documentation
 
-**Last Updated**: December 20, 2025
+**Last Updated**: February 16, 2026
 **Status**: Production Ready ✅
 **Location**: `/apps/web/docs/features/ontology/`
 
+> **Recent Updates (2026-02-16)**: Added project member role-profile endpoints, project icon generation endpoints, and task completion calendar-sync behavior notes. See [API Endpoint Reference](./API_ENDPOINTS.md).
+>
 > **Recent Updates (2024-12-20)**: Schema migration complete. All ontology tables now have dedicated columns for `description`, `deleted_at` (soft deletes), and entity-specific fields like `content`, `target_date`, `completed_at`. See [Migration Plan](/docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md).
 
 ---
@@ -23,7 +25,6 @@
 - **[Data Models](./DATA_MODELS.md)** - Complete database schema
 - **[API Endpoint Reference](./API_ENDPOINTS.md)** - CRUD implementation details
 - **[Recurring Series](./RECURRING_SERIES.md)** - Timezone-aware recurring task architecture
-- **[API Endpoint Reference](./API_ENDPOINTS.md)** - Complete API documentation
 
 ### Agent Chat Integration
 
@@ -113,15 +114,15 @@ Every ontology project carries an explicit context document with type key `docum
 
 States are managed at the application layer with simple transition validation:
 
-| Entity        | States                                                | Initial   |
-| ------------- | ----------------------------------------------------- | --------- |
-| **Project**   | `draft`, `active`, `paused`, `complete`, `archived`   | `draft`   |
-| **Task**      | `todo`, `in_progress`, `blocked`, `done`, `abandoned` | `todo`    |
-| **Plan**      | `draft`, `active`, `review`, `complete`               | `draft`   |
-| **Output**    | `draft`, `review`, `approved`, `published`            | `draft`   |
-| **Document**  | `draft`, `published`                                  | `draft`   |
-| **Goal**      | `active`, `achieved`, `abandoned`                     | `active`  |
-| **Milestone** | `pending`, `achieved`, `missed`                       | `pending` |
+| Entity        | States                                                 | Initial      |
+| ------------- | ------------------------------------------------------ | ------------ |
+| **Project**   | `planning`, `active`, `completed`, `cancelled`         | `planning`   |
+| **Task**      | `todo`, `in_progress`, `blocked`, `done`               | `todo`       |
+| **Plan**      | `draft`, `active`, `completed`                         | `draft`      |
+| **Document**  | `draft`, `in_review`, `ready`, `published`, `archived` | `draft`      |
+| **Goal**      | `draft`, `active`, `achieved`, `abandoned`             | `draft`      |
+| **Milestone** | `pending`, `in_progress`, `completed`, `missed`        | `pending`    |
+| **Risk**      | `identified`, `mitigated`, `occurred`, `closed`        | `identified` |
 
 See `src/lib/server/ontology/state-transitions.ts` for transition rules.
 

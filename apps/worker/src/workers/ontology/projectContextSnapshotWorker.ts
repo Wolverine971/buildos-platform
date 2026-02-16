@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 
 const SNAPSHOT_VERSION = 1;
 const SNAPSHOT_TTL_MS = 15 * 60 * 1000; // 15 minutes
+const AUTO_ICON_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 type ProjectGraphDataLight = {
 	project: any;
@@ -18,6 +19,113 @@ type ProjectGraphDataLight = {
 	insights: any[];
 	edges: any[];
 };
+
+function isReadyForAutoIcon(project: {
+	taskCount: number;
+	goalCount: number;
+	documentCount: number;
+	description?: string | null;
+	iconSvg?: string | null;
+}): boolean {
+	const totalEntities = project.taskCount + project.goalCount + project.documentCount;
+	return totalEntities >= 3 && Boolean(project.description?.trim()) && !project.iconSvg;
+}
+
+async function queueAutoProjectIconGeneration(params: {
+	projectId: string;
+	userId: string;
+	taskCount: number;
+	goalCount: number;
+	documentCount: number;
+	description?: string | null;
+	iconSvg?: string | null;
+}) {
+	const ready = isReadyForAutoIcon({
+		taskCount: params.taskCount,
+		goalCount: params.goalCount,
+		documentCount: params.documentCount,
+		description: params.description,
+		iconSvg: params.iconSvg
+	});
+
+	if (!ready) {
+		return { queued: false, reason: 'readiness_not_met' as const };
+	}
+
+	const { data: latestAutoGeneration, error: latestAutoGenerationError } = await (supabase as any)
+		.from('onto_project_icon_generations')
+		.select('id, created_at')
+		.eq('project_id', params.projectId)
+		.eq('trigger_source', 'auto')
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+
+	if (latestAutoGenerationError) {
+		throw new Error(
+			`Failed checking icon generation cooldown: ${latestAutoGenerationError.message}`
+		);
+	}
+
+	if (latestAutoGeneration?.created_at) {
+		const createdAtMs = Date.parse(latestAutoGeneration.created_at);
+		if (!Number.isNaN(createdAtMs) && Date.now() - createdAtMs < AUTO_ICON_COOLDOWN_MS) {
+			return { queued: false, reason: 'cooldown_active' as const };
+		}
+	}
+
+	const { data: generationRow, error: generationCreateError } = await (supabase as any)
+		.from('onto_project_icon_generations')
+		.insert({
+			project_id: params.projectId,
+			requested_by: params.userId,
+			trigger_source: 'auto',
+			steering_prompt: null,
+			candidate_count: 1,
+			status: 'queued'
+		})
+		.select('id')
+		.single();
+
+	if (generationCreateError || !generationRow?.id) {
+		throw new Error(
+			`Failed creating auto icon generation row: ${generationCreateError?.message}`
+		);
+	}
+
+	const generationId = generationRow.id as string;
+	const { error: queueError } = await supabase.rpc('add_queue_job', {
+		p_user_id: params.userId,
+		p_job_type: 'generate_project_icon',
+		p_metadata: {
+			generationId,
+			projectId: params.projectId,
+			requestedByUserId: params.userId,
+			triggerSource: 'auto',
+			candidateCount: 1,
+			autoSelect: true
+		},
+		p_priority: 9,
+		p_scheduled_for: new Date().toISOString(),
+		p_dedup_key: `project-icon:auto:${params.projectId}`
+	});
+
+	if (queueError) {
+		await (supabase as any)
+			.from('onto_project_icon_generations')
+			.update({
+				status: 'failed',
+				error_message: queueError.message,
+				completed_at: new Date().toISOString()
+			})
+			.eq('id', generationId)
+			.eq('project_id', params.projectId);
+
+		throw new Error(`Failed queueing auto icon generation: ${queueError.message}`);
+	}
+
+	return { queued: true, reason: 'queued' as const, generationId };
+}
 
 const HIGHLIGHT_LIMITS = {
 	goals: 10,
@@ -353,9 +461,9 @@ export async function processProjectContextSnapshotJob(
 			edges: Array.isArray(payload.edges) ? payload.edges : []
 		};
 
-		const { data: projectRow, error: projectError } = await supabase
+		const { data: projectRow, error: projectError } = await (supabase as any)
 			.from('onto_projects')
-			.select('doc_structure, updated_at')
+			.select('doc_structure, updated_at, description, icon_svg')
 			.eq('id', projectId)
 			.maybeSingle();
 
@@ -412,6 +520,25 @@ export async function processProjectContextSnapshotJob(
 			computed_at: new Date().toISOString(),
 			queue_job_id: job.id
 		});
+
+		try {
+			const autoResult = await queueAutoProjectIconGeneration({
+				projectId,
+				userId: job.userId,
+				taskCount: graph.tasks.length,
+				goalCount: graph.goals.length,
+				documentCount: graph.documents.length,
+				description: projectRow?.description ?? graph.project.description ?? null,
+				iconSvg: projectRow?.icon_svg ?? graph.project.icon_svg ?? null
+			});
+			if (autoResult.queued) {
+				await job.log(`Auto icon generation queued (${autoResult.generationId})`);
+			} else {
+				await job.log(`Auto icon generation skipped (${autoResult.reason})`);
+			}
+		} catch (autoQueueError: any) {
+			await job.log(`Auto icon generation trigger failed: ${autoQueueError.message}`);
+		}
 
 		await job.log(`Snapshot build completed in ${duration}ms`);
 		return { success: true, projectId, duration_ms: duration };

@@ -112,11 +112,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -135,6 +130,11 @@
 				"ProjectCalendarSettingsModal",
 				"OntologyProjectEditModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -414,12 +414,6 @@
 			"type": "service",
 			"components": [],
 			"exports": ["NotificationTestService", "notificationTestService"]
-		},
-		{
-			"file": "src/lib/services/onboarding-v2.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["OnboardingV2Service", "onboardingV2Service"]
 		},
 		{
 			"file": "src/lib/services/onboardingClient.service.ts",
@@ -790,6 +784,12 @@
 			"exports": ["isThinkingBlockMessage", "findThinkingBlockById"]
 		},
 		{
+			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["createDragDropState"]
+		},
+		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 			"type": "component",
 			"components": [],
@@ -811,12 +811,6 @@
 				"createDefaultPanelState",
 				"createDefaultPanelStates"
 			]
-		},
-		{
-			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["createDragDropState"]
 		},
 		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
@@ -949,8 +943,8 @@
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
-		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",

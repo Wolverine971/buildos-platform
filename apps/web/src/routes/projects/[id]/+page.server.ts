@@ -53,6 +53,11 @@ export interface ProjectSkeletonData {
 		id: string;
 		name: string;
 		description: string | null;
+		icon_svg: string | null;
+		icon_concept: string | null;
+		icon_generated_at: string | null;
+		icon_generation_source: 'auto' | 'manual' | null;
+		icon_generation_prompt: string | null;
 		state_key: string;
 		type_key?: string;
 		next_step_short: string | null;
@@ -186,6 +191,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			id: skeletonData.id,
 			name: skeletonData.name,
 			description: skeletonData.description,
+			icon_svg: skeletonData.icon_svg ?? null,
+			icon_concept: skeletonData.icon_concept ?? null,
+			icon_generated_at: skeletonData.icon_generated_at ?? null,
+			icon_generation_source:
+				(skeletonData.icon_generation_source as 'auto' | 'manual' | null | undefined) ??
+				null,
+			icon_generation_prompt: skeletonData.icon_generation_prompt ?? null,
 			state_key: skeletonData.state_key,
 			type_key: skeletonData.type_key,
 			next_step_short: skeletonData.next_step_short,

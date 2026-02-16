@@ -1334,7 +1334,7 @@
 									onNavigate={handleComparisonNavigate}
 								/>
 							{:else}
-								<!-- Mobile: Compact title input at top -->
+								<!-- Mobile: Compact title input + date/save status -->
 								<div class="lg:hidden p-3 pb-0 shrink-0">
 									<TextInput
 										id="document-title-mobile"
@@ -1857,6 +1857,6 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		    min-height: 80vh;
+		min-height: 80vh;
 	}
 </style>

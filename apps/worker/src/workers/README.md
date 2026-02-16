@@ -1,45 +1,32 @@
 <!-- apps/worker/src/workers/README.md -->
 
-# Workers Directory Structure
+# Workers Directory
 
-This directory contains the modular worker implementations for different job types.
+This directory contains worker processors for queue job types handled by `apps/worker/src/worker.ts`.
 
-## Structure
+## Current Worker Domains
 
-```
-workers/
-├── shared/          # Shared utilities and queue configuration
-│   └── queue.ts     # Queue definitions and shared functions
-├── brief/           # Brief generation worker
-│   ├── briefWorker.ts    # Worker job processor
-│   └── ontologyBriefGenerator.ts # Ontology daily brief generation logic
-```
+- `brief/` - Daily brief generation + email delivery jobs
+- `notification/` - Notification sends and project activity batch flush
+- `ontology/` - Ontology jobs, including `build_project_context_snapshot`
+- `project-icon/` - Project icon generation (`generate_project_icon`)
+- `onboarding/` - Onboarding analysis jobs
+- `chat/` - Chat session classification jobs
+- `braindump/` - Ontology braindump processing jobs
+- `voice-notes/` - Voice note transcription jobs
+- `homework/`, `tree-agent/` - Agent runtime jobs
+- `shared/` - Adapters and shared worker helpers
 
 ## Adding a New Worker
 
-To add a new worker type:
+1. Create a folder under `workers/` and implement a processor.
+2. Register the processor in `apps/worker/src/worker.ts` via `queue.process(jobType, handler)`.
+3. Add typed metadata/result contracts in `packages/shared-types/src/queue-types.ts`.
+4. Update metadata validation in `packages/shared-types/src/validation.ts`.
+5. Add or update queueing service code in web/server routes.
+6. Add tests for route enqueue behavior and worker processing behavior.
 
-1. Create a new directory under `workers/` for your worker type
-2. Add your worker processor file (e.g., `myWorker.ts`) with a `processMyJob` function
-3. Add your job data interface to `shared/queue.ts`
-4. Create a new queue instance in `shared/queue.ts`
-5. Add queue functions for your job type in `shared/queue.ts`
-6. Update `src/worker.ts` to start your new worker
-7. Add API endpoints in `src/index.ts` for queuing your jobs
+## Queue Storage
 
-## Job Types
-
-### Brief Generation (`daily_brief`)
-
-- Generates daily briefs for users
-- Scheduled automatically via cron
-- Can be triggered manually via API
-
-## Database Schema
-
-Jobs are tracked in the `brief_generation_jobs` table with the following key fields:
-
-- `job_type`: Identifies the type of job ('generate_daily_brief', 'generate_brief_email', etc.)
-- `queue_job_id`: References the BullMQ job ID
-- `status`: Current job status ('pending', 'processing', 'completed', 'failed')
-- `metadata`: JSON field for job-specific data
+Jobs are persisted in the queue tables behind the `add_queue_job` RPC and processed by `SupabaseQueue`.
+Primary routing field is `job_type`, with structured `metadata` validated in shared-types.

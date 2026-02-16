@@ -13,6 +13,7 @@ import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNot
 import { processHomeworkJob } from './workers/homework/homeworkWorker';
 import { processTreeAgentJob } from './workers/tree-agent/treeAgentWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
+import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -316,6 +317,22 @@ async function processProjectContextSnapshot(job: ProcessingJob) {
 }
 
 /**
+ * Project icon generation processor
+ */
+async function processProjectIcon(job: ProcessingJob) {
+	await job.log('Project icon generation job received');
+
+	try {
+		const result = await processProjectIconJob(job as any);
+		await job.log('Project icon generation job completed');
+		return result;
+	} catch (error: any) {
+		await job.log(`Project icon generation job failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -351,6 +368,9 @@ export async function startWorker() {
 
 	// Register project context snapshot processor
 	queue.process('build_project_context_snapshot' as any, processProjectContextSnapshot);
+
+	// Register project icon generation processor
+	queue.process('generate_project_icon' as any, processProjectIcon);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(
@@ -427,6 +447,8 @@ export async function startWorker() {
 		'process_onto_braindump',
 		'buildos_tree_agent'
 	];
+
+	jobTypes.push('generate_project_icon');
 
 	if (twilioEnabled) {
 		jobTypes.push('send_sms');

@@ -2,8 +2,8 @@
 
 # User Preferences System
 
-**Last Updated**: January 7, 2026
-**Status**: Complete
+**Last Updated**: February 16, 2026
+**Status**: Active
 **Category**: Feature
 **Location**: `/apps/web/docs/features/preferences/`
 
@@ -16,7 +16,7 @@ The BuildOS User Preferences System enables personalized AI interactions through
 1. **Global Preferences** - User-level settings applied to all conversations
 2. **Project Preferences** - Project-specific settings that override globals when chatting about a project
 
-This system was implemented as part of [Onboarding V2 Phase 3](../onboarding/ONBOARDING_V2_UPDATE_ASSESSMENT.md#phase-3-checklist).
+This system was originally introduced during onboarding V2 work. In the current V3 onboarding flow, these preferences are no longer captured during onboarding and are managed from profile/settings and project editing surfaces.
 
 ---
 
@@ -60,11 +60,10 @@ This system was implemented as part of [Onboarding V2 Phase 3](../onboarding/ONB
 
 ### UI Components
 
-| File                                                           | Purpose                                                            |
-| -------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `/src/lib/components/onboarding-v2/PreferencesStep.svelte`     | Onboarding capture (communication style, proactivity, role/domain) |
-| `/src/lib/components/profile/PreferencesTab.svelte`            | Settings page for editing global preferences                       |
-| `/src/lib/components/ontology/OntologyProjectEditModal.svelte` | Project-specific preferences in sidebar                            |
+| File                                                           | Purpose                                      |
+| -------------------------------------------------------------- | -------------------------------------------- |
+| `/src/lib/components/profile/PreferencesTab.svelte`            | Settings page for editing global preferences |
+| `/src/lib/components/ontology/OntologyProjectEditModal.svelte` | Project-specific preferences in sidebar      |
 
 ### API Endpoints
 
@@ -77,7 +76,6 @@ This system was implemented as part of [Onboarding V2 Phase 3](../onboarding/ONB
 | File                                         | Purpose                                            |
 | -------------------------------------------- | -------------------------------------------------- |
 | `/src/lib/services/agent-context-service.ts` | Loads and injects preferences into planner context |
-| `/src/lib/services/onboarding-v2.service.ts` | Saves preferences during onboarding                |
 
 ---
 
@@ -292,13 +290,17 @@ Project preferences are stored within the existing `props` JSONB column:
 
 ## User Interface
 
-### Onboarding (PreferencesStep.svelte)
+### Onboarding (V3)
 
-During onboarding, users select:
+Onboarding V3 no longer captures communication/proactivity/role-domain preferences.
 
-1. Communication Style (required)
-2. Proactivity Level (required)
-3. Role and Domain (optional)
+During onboarding, users provide:
+
+1. Intent (`organize` | `plan` | `unstuck` | `explore`)
+2. Stakes (`high` | `medium` | `low`)
+3. Optional notification opt-ins
+
+Preference controls are deferred to settings and project editing after onboarding.
 
 ### Settings (PreferencesTab.svelte)
 
@@ -322,8 +324,8 @@ In the project edit modal sidebar under "AI Preferences":
 
 ## Related Documentation
 
-- **[Onboarding V2 Assessment](../onboarding/ONBOARDING_V2_UPDATE_ASSESSMENT.md)** - Implementation phases and decisions
-- **[Onboarding README](../onboarding/README.md)** - Onboarding flow overview
+- **[Onboarding README](../onboarding/README.md)** - Current onboarding flow (V3)
+- **[Onboarding V2 Assessment](../onboarding/ONBOARDING_V2_UPDATE_ASSESSMENT.md)** - Historical implementation record
 - **[Ontology System](../ontology/README.md)** - Project structure (where project prefs live)
 - **[Agent Context Service](/src/lib/services/agent-context-service.ts)** - Preference injection implementation
 
@@ -331,10 +333,11 @@ In the project edit modal sidebar under "AI Preferences":
 
 ## Implementation History
 
-| Phase   | Date       | Scope                                                                                   |
-| ------- | ---------- | --------------------------------------------------------------------------------------- |
-| Phase 2 | 2026-01-07 | Communication style, proactivity level capture in onboarding                            |
-| Phase 3 | 2026-01-07 | Working context (role/domain), settings tab, project preferences, full prompt injection |
+| Phase | Date       | Scope                                                                                    |
+| ----- | ---------- | ---------------------------------------------------------------------------------------- |
+| 2     | 2026-01-07 | Introduced communication style + proactivity onboarding capture (V2-era behavior)        |
+| 3     | 2026-01-07 | Added role/domain context, settings tab, project preferences, and prompt injection       |
+| 4     | 2026-02-16 | Onboarding V3 removed direct preference capture; settings/project editors are primary UX |
 
 ---
 

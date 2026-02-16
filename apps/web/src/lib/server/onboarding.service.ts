@@ -3,6 +3,10 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { User } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { queueOnboardingAnalysis } from '$lib/server/onboarding-analysis.service';
+import {
+	seedProfileFromOnboarding,
+	type OnboardingV3SeedData
+} from '$lib/server/onboarding-profile-seed.service';
 import type { UserContext } from '$lib/types/user-context';
 
 type SupabaseClientType = SupabaseClient<Database>;
@@ -181,6 +185,125 @@ export class OnboardingServerService {
 		} catch (queueError) {
 			// Log the error but don't fail the onboarding completion
 			console.error('Failed to queue onboarding analysis:', queueError);
+		}
+	}
+
+	/**
+	 * V3: Save onboarding intent and stakes to users table
+	 */
+	async saveIntentAndStakes(intent: string, stakes: string, userId: string): Promise<void> {
+		const { error } = await this.supabase
+			.from('users')
+			.update({
+				onboarding_intent: intent,
+				onboarding_stakes: stakes
+			} as any)
+			.eq('id', userId);
+
+		if (error) {
+			console.error('Error saving intent/stakes:', error);
+			throw new Error(`Failed to save intent/stakes: ${error.message}`);
+		}
+	}
+
+	/**
+	 * V3: Complete onboarding, seed behavioral profile, and queue analysis
+	 */
+	async completeOnboardingV3(
+		userId: string,
+		onboardingData: {
+			intent: string;
+			stakes: string;
+			projectsCreated: number;
+			tasksCreated: number;
+			goalsCreated?: number;
+			smsEnabled: boolean;
+			emailEnabled: boolean;
+			timeSpentSeconds?: number;
+		}
+	): Promise<void> {
+		const completedAt = new Date().toISOString();
+
+		// 1. Mark onboarding complete on users table
+		const { error: userError } = await this.supabase
+			.from('users')
+			.update({
+				completed_onboarding: true,
+				onboarding_intent: onboardingData.intent,
+				onboarding_stakes: onboardingData.stakes,
+				onboarding_v2_completed_at: completedAt
+			})
+			.eq('id', userId);
+
+		if (userError) {
+			console.error('Error completing onboarding (users):', userError);
+			throw new Error(`Failed to complete onboarding: ${userError.message}`);
+		}
+
+		// 2. Mark complete on user_context table (backward compat).
+		// Create a row if this user never had one (e.g. V3 users who skipped legacy prompts).
+		const { data: updatedContext, error: contextUpdateError } = await this.supabase
+			.from('user_context')
+			.update({
+				onboarding_completed_at: completedAt,
+				onboarding_version: 3,
+				updated_at: completedAt
+			} as any)
+			.eq('user_id', userId)
+			.select('user_id')
+			.maybeSingle();
+
+		if (contextUpdateError) {
+			console.error(
+				'Error updating onboarding completion in user_context (non-fatal):',
+				contextUpdateError
+			);
+		} else if (!updatedContext) {
+			const { error: contextInsertError } = await this.supabase.from('user_context').insert({
+				user_id: userId,
+				onboarding_completed_at: completedAt,
+				onboarding_version: 3,
+				created_at: completedAt,
+				updated_at: completedAt
+			} as any);
+
+			if (contextInsertError) {
+				console.error(
+					'Error creating onboarding completion row in user_context (non-fatal):',
+					contextInsertError
+				);
+			}
+		}
+
+		// 3. Seed behavioral profile (non-fatal)
+		try {
+			await seedProfileFromOnboarding(userId, {
+				intent: onboardingData.intent as OnboardingV3SeedData['intent'],
+				stakes: onboardingData.stakes as OnboardingV3SeedData['stakes'],
+				projectsCreated: onboardingData.projectsCreated,
+				tasksCreated: onboardingData.tasksCreated,
+				goalsCreated: onboardingData.goalsCreated ?? 0,
+				smsEnabled: onboardingData.smsEnabled,
+				emailEnabled: onboardingData.emailEnabled,
+				timeSpentSeconds: onboardingData.timeSpentSeconds
+			});
+		} catch (seedError) {
+			console.error('Failed to seed behavioral profile (non-fatal):', seedError);
+		}
+
+		// 4. Queue onboarding analysis (non-fatal)
+		try {
+			const result = await queueOnboardingAnalysis({
+				userId,
+				userContext: {},
+				options: { maxQuestions: 5 }
+			});
+
+			if (!result.queued) {
+				console.warn(`Failed to queue analysis for ${userId}:`, result.reason);
+			}
+		} catch (queueError) {
+			console.error('Failed to queue onboarding analysis (non-fatal):', queueError);
 		}
 	}
 
