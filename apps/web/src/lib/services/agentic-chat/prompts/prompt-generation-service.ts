@@ -162,13 +162,21 @@ export class PromptGenerationService {
 			sections.push(
 				`## Tool Discovery Mode\n\n` +
 					`- You only have access to tool_help and tool_exec.\n` +
-					`- Gateway query pattern (default): tool_help(\"root\") -> tool_help(\"<group/entity>\") -> tool_exec(op,args).\n` +
+					`- In tool_exec.op, use only canonical ops.\n` +
+					`- Canonical ontology CRUD/search family: onto.<entity>.create|list|get|update|delete|search.\n` +
+					`- Supported onto entities: project, task, goal, plan, document, milestone, risk.\n` +
+					`- Canonical exception ops: onto.search, onto.document.tree.get, onto.document.tree.move, onto.document.path.get, onto.project.graph.get, onto.project.graph.reorganize, onto.edge.link, onto.edge.unlink, onto.entity.relationships.get, onto.entity.links.get.\n` +
+					`- Calendar ops are under cal.event.* and cal.project.* (not onto.event.*). Utility ops are under util.*.\n` +
+					`- Never use legacy op strings in tool_exec.op (for example: get_document_tree, move_document_in_tree, list_onto_*).\n` +
+					`- Use targeted discovery first: tool_help(\"onto.<entity>\") or tool_help(\"cal.event\"). Use tool_help(\"root\") only when namespace is unknown.\n` +
 					`- Use tool_help when the op or arg schema is uncertain; avoid repeated calls for the same help path in one turn.\n` +
 					`- Reuse discovered schemas in the same turn, and only re-check help after a validation error.\n` +
-					`- For any onto.*.search op (including onto.search), use args.query.\n` +
-					`- Calendar events are under cal.event.* (not onto.event.*).\n` +
+					`- When op and args are already known in-turn, call tool_exec directly.\n` +
+					`- For first-time or complex writes in a turn, call tool_help(\"<exact op>\", { format: \"full\", include_schemas: true }) before tool_exec.\n` +
+					`- For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.\n` +
 					`- When a tool_exec error includes help_path, call tool_help(help_path) once and retry once with corrected args.\n` +
-					`- For onto.*.get ops, always pass the exact *_id. If unknown, use list/search ops first to discover IDs.\n` +
+					`- If a tool_exec result includes _fallback due to missing *_id, extract candidate IDs from returned list/tree payload and retry with an exact *_id.\n` +
+					`- For onto.*.get ops, always pass the exact *_id. If unknown, use list/search/tree ops first to discover IDs.\n` +
 					`- Do not guess IDs or required fields, and do not repeat the same failing op+args without new help output.`
 			);
 		}

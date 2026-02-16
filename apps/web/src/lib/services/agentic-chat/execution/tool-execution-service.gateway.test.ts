@@ -165,6 +165,118 @@ describe('ToolExecutionService gateway fallback', () => {
 		);
 	});
 
+	it('normalizes bare legacy move_document_in_tree op to gateway canonical op', async () => {
+		const documentId = '823f2215-f0c3-40b8-b468-8f1a592384f2';
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				moved: true,
+				document_id: documentId
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'move_document_in_tree',
+				args: { document_id: documentId }
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'move_document_in_tree',
+			expect.objectContaining({
+				project_id: PROJECT_ID,
+				document_id: documentId
+			}),
+			expect.any(Object)
+		);
+		expect((result.data as any)?.op).toBe('move_document_in_tree');
+		expect((result.data as any)?.meta?.executed_op).toBe('onto.document.tree.move');
+		expect((result.data as any)?.meta?.warnings).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining(
+					'Normalized legacy op "move_document_in_tree" to "onto.document.tree.move".'
+				)
+			])
+		);
+	});
+
+	it('allows null new_parent_id for onto.document.tree.move root placement', async () => {
+		const documentId = '823f2215-f0c3-40b8-b468-8f1a592384f2';
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				moved: true,
+				document_id: documentId
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.document.tree.move',
+				args: {
+					document_id: documentId,
+					new_parent_id: null,
+					new_position: 0
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'move_document_in_tree',
+			expect.objectContaining({
+				project_id: PROJECT_ID,
+				document_id: documentId,
+				new_parent_id: null,
+				new_position: 0
+			}),
+			expect.any(Object)
+		);
+	});
+
+	it('allows null clearing fields for onto.task.update', async () => {
+		const taskId = '3f4c1f6f-77c6-45ab-9159-686dc2d92bc5';
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				task: {
+					id: taskId,
+					title: 'Task'
+				}
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.task.update',
+				args: {
+					task_id: taskId,
+					goal_id: null,
+					due_at: null
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'update_onto_task',
+			expect.objectContaining({
+				task_id: taskId,
+				goal_id: null,
+				due_at: null
+			}),
+			expect.any(Object)
+		);
+	});
+
 	it('normalizes onto_projects.doc_structure.tree.get and injects project_id', async () => {
 		const toolExecutor = vi.fn().mockResolvedValue({
 			data: {

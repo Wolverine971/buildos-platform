@@ -1100,12 +1100,19 @@ export class PlanOrchestrator implements BaseService {
 			? `
 TOOL DISCOVERY MODE (CRITICAL):
 - You only have tool_help and tool_exec.
-- Gateway query pattern: tool_help("root") -> tool_help("<group/entity>") -> tool_exec(op,args).
-- If you need an op or its args, plan a tool_help call first.
+- In tool_exec.op, use only canonical ops.
+- Canonical ontology CRUD/search family: onto.<entity>.create|list|get|update|delete|search.
+- Supported onto entities: project, task, goal, plan, document, milestone, risk.
+- Canonical exception ops: onto.search, onto.document.tree.get, onto.document.tree.move, onto.document.path.get, onto.project.graph.get, onto.project.graph.reorganize, onto.edge.link, onto.edge.unlink, onto.entity.relationships.get, onto.entity.links.get.
+- Calendar ops are under cal.event.* and cal.project.* (not onto.event.*). Utility ops are under util.*.
+- Never use legacy op strings in tool_exec.op (for example: get_document_tree, move_document_in_tree, list_onto_*).
+- Prefer targeted discovery first (e.g., tool_help("onto.document"), tool_help("cal.event")); use tool_help("root") only when namespace is unknown.
+- If you need an op or arg schema, plan a tool_help call first.
+- For first-time/complex writes, plan tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.
 - Use tool_exec with op/args exactly as described by tool_help.
-- For any onto.*.search op (including onto.search), use args.query.
-- Calendar events are under cal.event.* (not onto.event.*).
-- If tool_exec returns help_path, call tool_help(help_path) and retry once with corrected args.`
+- For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.
+- If tool_exec returns help_path, call tool_help(help_path) and retry once with corrected args.
+- If tool_exec returns _fallback due to missing *_id, extract candidate IDs from returned list/tree payload and retry with an exact *_id.`
 			: '';
 
 		const strategyGuidance =

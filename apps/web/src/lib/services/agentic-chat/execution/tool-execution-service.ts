@@ -1267,7 +1267,7 @@ export class ToolExecutionService implements BaseService {
 
 		const hasUpdateField = Object.entries(args).some(([key, value]) => {
 			if (ignoredKeys.has(key)) return false;
-			if (value === undefined || value === null) return false;
+			if (value === undefined) return false;
 			if (typeof value === 'string') {
 				return value.trim().length > 0;
 			}

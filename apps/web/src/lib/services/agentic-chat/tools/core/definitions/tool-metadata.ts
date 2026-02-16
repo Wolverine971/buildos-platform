@@ -54,7 +54,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	list_onto_documents: {
 		summary: 'List project documents (briefs, specs, context, research).',
-		capabilities: ['Filter by project/type/state', 'Returns concise summaries'],
+		capabilities: [
+			'Filter by project/type/state',
+			'Returns concise summaries with markdown header outlines',
+			'Does not return full document bodies'
+		],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},
@@ -84,7 +88,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	search_onto_documents: {
 		summary: 'Keyword search for documents by title.',
-		capabilities: ['Supports project/type/state filters', 'Fast doc discovery'],
+		capabilities: [
+			'Supports project/type/state filters',
+			'Returns markdown header outlines',
+			'Does not return full document bodies'
+		],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'search'
 	},

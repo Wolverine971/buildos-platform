@@ -340,7 +340,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const moveExecution = await executeSyntheticGatewayExec('onto.document.tree.move', {
 				project_id: candidateProjectId,
 				document_id: documentId,
-				new_parent_id: null,
 				new_position: rootCount + index
 			});
 			if (moveExecution?.result?.success) {
@@ -862,7 +861,7 @@ function validateUpdateToolArgs(
 	const ignoredKeys = new Set<string>([idKey, 'update_strategy', 'merge_instructions']);
 	const hasUpdateField = Object.entries(args).some(([key, value]) => {
 		if (ignoredKeys.has(key)) return false;
-		if (value === undefined || value === null) return false;
+		if (value === undefined) return false;
 		if (typeof value === 'string') {
 			return value.trim().length > 0;
 		}
@@ -977,10 +976,20 @@ function buildToolValidationRepairInstruction(
 	];
 	if (hasGatewayExecIssue) {
 		lines.push(
-			'Gateway pattern: tool_help("root") -> tool_help("<group/entity>") -> tool_exec(op,args).'
+			'Gateway pattern: use targeted tool_help("<group/entity>") first; use tool_help("root") only when namespace is unknown.'
 		);
-		lines.push('For any onto.*.search op (including onto.search), use args.query.');
+		lines.push(
+			'Canonical ontology family: onto.<entity>.create|list|get|update|delete|search (entities: project, task, goal, plan, document, milestone, risk).'
+		);
+		lines.push('In tool_exec.op, use only canonical ops; never legacy names like get_document_tree.');
+		lines.push(
+			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'
+		);
 		lines.push('Calendar events are under cal.event.* (not onto.event.*).');
+		lines.push('If a tool_exec result has _fallback for missing *_id, use list/tree candidates and retry with exact *_id.');
+		lines.push(
+			'For first-time or complex writes, call tool_help("<exact op>", { format: "full", include_schemas: true }) before retrying tool_exec.'
+		);
 	}
 
 	for (const issue of issues) {
@@ -1031,6 +1040,9 @@ function compactGatewayExecPayload(op: string, payload: unknown): unknown {
 	const normalizedOp = normalizeGatewayOpName(op).toLowerCase();
 	if (normalizedOp === 'onto.document.tree.get') {
 		return compactDocumentTreeGatewayPayload(payload);
+	}
+	if (normalizedOp === 'onto.document.list' || normalizedOp === 'onto.document.search') {
+		return compactDocumentCollectionGatewayPayload(payload);
 	}
 	return applyToolPayloadSizeGuard(payload);
 }
@@ -1154,6 +1166,93 @@ function compactDocumentTreeGatewayPayload(payload: unknown): unknown {
 	}
 
 	return applyToolPayloadSizeGuard(compactPayload);
+}
+
+function compactDocumentCollectionGatewayPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object') {
+		return payload;
+	}
+	const record = payload as Record<string, any>;
+	const listResult = record.result && typeof record.result === 'object' ? record.result : null;
+	if (!listResult) {
+		return applyToolPayloadSizeGuard(payload);
+	}
+
+	const documentsRaw = Array.isArray(listResult.documents) ? listResult.documents : [];
+	const summary = documentsRaw.slice(0, MAX_TOOL_LIST_ITEMS).map((doc: any) => ({
+		id: typeof doc?.id === 'string' ? doc.id : null,
+		title: typeof doc?.title === 'string' ? doc.title : null,
+		type_key: typeof doc?.type_key === 'string' ? doc.type_key : null,
+		state_key: typeof doc?.state_key === 'string' ? doc.state_key : null,
+		updated_at: typeof doc?.updated_at === 'string' ? doc.updated_at : null,
+		content_length:
+			typeof doc?.content_length === 'number'
+				? doc.content_length
+				: typeof doc?.content === 'string'
+					? doc.content.length
+					: 0,
+		description_preview: toTextPreview(doc?.description, 180),
+		markdown_outline: compactMarkdownOutline(doc?.markdown_outline)
+	}));
+	const total =
+		typeof listResult.total === 'number' ? listResult.total : Math.max(documentsRaw.length, 0);
+
+	const compactPayload: Record<string, unknown> = {
+		op: record.op,
+		ok: record.ok,
+		result: {
+			message: typeof listResult.message === 'string' ? listResult.message : null,
+			total,
+			documents: summary
+		},
+		meta: record.meta
+	};
+	if (documentsRaw.length > summary.length) {
+		(compactPayload.result as Record<string, unknown>).documents_truncated =
+			documentsRaw.length - summary.length;
+	}
+
+	return applyToolPayloadSizeGuard(compactPayload);
+}
+
+function toTextPreview(value: unknown, maxLength: number): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	if (trimmed.length <= maxLength) return trimmed;
+	return `${trimmed.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+function compactMarkdownOutline(outline: unknown): unknown {
+	if (!outline || typeof outline !== 'object') return null;
+	const record = outline as Record<string, any>;
+	const counts =
+		record.counts && typeof record.counts === 'object'
+			? {
+					total:
+						typeof (record.counts as Record<string, any>).total === 'number'
+							? (record.counts as Record<string, any>).total
+							: 0,
+					h1:
+						typeof (record.counts as Record<string, any>).h1 === 'number'
+							? (record.counts as Record<string, any>).h1
+							: 0,
+					h2:
+						typeof (record.counts as Record<string, any>).h2 === 'number'
+							? (record.counts as Record<string, any>).h2
+							: 0,
+					h3:
+						typeof (record.counts as Record<string, any>).h3 === 'number'
+							? (record.counts as Record<string, any>).h3
+							: 0
+				}
+			: { total: 0, h1: 0, h2: 0, h3: 0 };
+	const headings = Array.isArray(record.headings) ? record.headings : [];
+	return {
+		counts,
+		headings: headings.slice(0, 24),
+		truncated: Boolean(record.truncated) || headings.length > 24
+	};
 }
 
 function applyToolPayloadSizeGuard(payload: unknown): unknown {

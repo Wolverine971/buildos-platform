@@ -7,6 +7,14 @@
  */
 
 export const GATEWAY_OP_ALIASES: Record<string, string> = {
+	get_document_tree: 'onto.document.tree.get',
+	move_document_in_tree: 'onto.document.tree.move',
+	get_document_path: 'onto.document.path.get',
+	get_onto_project_graph: 'onto.project.graph.get',
+	reorganize_onto_project_graph: 'onto.project.graph.reorganize',
+	link_onto_entities: 'onto.edge.link',
+	unlink_onto_edge: 'onto.edge.unlink',
+	search_ontology: 'onto.search',
 	onto_projects_get_document_tree: 'onto.document.tree.get',
 	onto_projects_move_document_in_tree: 'onto.document.tree.move',
 	onto_projects_get_document_path: 'onto.document.path.get',

@@ -51,8 +51,131 @@ export class OntologyReadExecutor extends BaseExecutor {
 		super(context);
 	}
 
+	private static readonly MAX_MARKDOWN_HEADERS = 40;
+	private static readonly MAX_HEADING_TEXT_LENGTH = 140;
+
 	private resolveSearchTerm(args: { query?: string; search?: string }): string {
 		return this.prepareSearchTerm(args.query ?? args.search);
+	}
+
+	private summarizeDocumentForList(document: Record<string, any>): Record<string, any> {
+		const content = typeof document.content === 'string' ? document.content : '';
+		const fallback = typeof document.description === 'string' ? document.description : '';
+		const outline = this.extractMarkdownOutline(content || fallback);
+
+		return {
+			id: typeof document.id === 'string' ? document.id : null,
+			project_id: typeof document.project_id === 'string' ? document.project_id : null,
+			title: typeof document.title === 'string' ? document.title : null,
+			type_key: typeof document.type_key === 'string' ? document.type_key : null,
+			state_key: typeof document.state_key === 'string' ? document.state_key : null,
+			description: typeof document.description === 'string' ? document.description : null,
+			created_at: typeof document.created_at === 'string' ? document.created_at : null,
+			updated_at: typeof document.updated_at === 'string' ? document.updated_at : null,
+			content_length: content.length,
+			markdown_outline: outline
+		};
+	}
+
+	private extractMarkdownOutline(markdown: string): {
+		counts: { total: number; h1: number; h2: number; h3: number };
+		headings: Array<{ level: 1 | 2 | 3; text: string; children: Array<any> }>;
+		truncated: boolean;
+	} {
+		type Heading = { level: 1 | 2 | 3; text: string };
+		type HeadingNode = { level: 1 | 2 | 3; text: string; children: HeadingNode[] };
+
+		const headings: Heading[] = [];
+		const lines = markdown.split(/\r?\n/);
+		let inFence = false;
+		let fenceChar = '';
+		let fenceLength = 0;
+
+		for (let index = 0; index < lines.length; index += 1) {
+			const line = lines[index] ?? '';
+			const fenceMatch = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+			if (fenceMatch) {
+				const fence = fenceMatch[1];
+				const nextFenceChar = fence[0] ?? '';
+				const nextFenceLength = fence.length;
+				if (!inFence) {
+					inFence = true;
+					fenceChar = nextFenceChar;
+					fenceLength = nextFenceLength;
+				} else if (nextFenceChar === fenceChar && nextFenceLength >= fenceLength) {
+					inFence = false;
+					fenceChar = '';
+					fenceLength = 0;
+				}
+				continue;
+			}
+			if (inFence) continue;
+
+			const atxMatch = line.match(/^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/);
+			if (atxMatch) {
+				const level = Math.min(atxMatch[1].length, 3) as 1 | 2 | 3;
+				const text = this.normalizeHeadingText(atxMatch[2]);
+				if (text) {
+					headings.push({ level, text });
+					if (headings.length >= OntologyReadExecutor.MAX_MARKDOWN_HEADERS) break;
+				}
+				continue;
+			}
+
+			const nextLine = lines[index + 1] ?? '';
+			const setextMatch = nextLine.match(/^\s{0,3}(=+|-+)\s*$/);
+			if (!setextMatch) continue;
+
+			const text = this.normalizeHeadingText(line);
+			if (!text) continue;
+			const level = setextMatch[1]?.[0] === '=' ? 1 : 2;
+			headings.push({ level: level as 1 | 2 | 3, text });
+			if (headings.length >= OntologyReadExecutor.MAX_MARKDOWN_HEADERS) break;
+			index += 1;
+		}
+
+		const counts = { total: headings.length, h1: 0, h2: 0, h3: 0 };
+		const rootNodes: HeadingNode[] = [];
+		const stack: HeadingNode[] = [];
+
+		for (const heading of headings) {
+			if (heading.level === 1) counts.h1 += 1;
+			else if (heading.level === 2) counts.h2 += 1;
+			else counts.h3 += 1;
+
+			const node: HeadingNode = {
+				level: heading.level,
+				text: heading.text,
+				children: []
+			};
+
+			while (stack.length > 0 && stack[stack.length - 1]!.level >= node.level) {
+				stack.pop();
+			}
+
+			if (stack.length === 0) {
+				rootNodes.push(node);
+			} else {
+				stack[stack.length - 1]!.children.push(node);
+			}
+			stack.push(node);
+		}
+
+		const truncated = headings.length >= OntologyReadExecutor.MAX_MARKDOWN_HEADERS;
+		return {
+			counts,
+			headings: rootNodes,
+			truncated
+		};
+	}
+
+	private normalizeHeadingText(raw: string): string {
+		const trimmed = raw.trim().replace(/\s+/g, ' ');
+		if (!trimmed) return '';
+		if (trimmed.length <= OntologyReadExecutor.MAX_HEADING_TEXT_LENGTH) {
+			return trimmed;
+		}
+		return `${trimmed.slice(0, OntologyReadExecutor.MAX_HEADING_TEXT_LENGTH - 3)}...`;
 	}
 
 	// ============================================
@@ -250,14 +373,14 @@ export class OntologyReadExecutor extends BaseExecutor {
 		let query = this.supabase
 			.from('onto_documents')
 			.select(
-				'id, project_id, title, type_key, state_key, content, description, props, created_at, updated_at',
+				'id, project_id, title, type_key, state_key, content, description, created_at, updated_at',
 				{
 					count: 'exact'
 				}
 			)
-			.eq('created_by', actorId)
-			.is('deleted_at', null) // Exclude soft-deleted documents
-			.order('updated_at', { ascending: false });
+				.eq('created_by', actorId)
+				.is('deleted_at', null) // Exclude soft-deleted documents
+				.order('updated_at', { ascending: false });
 
 		if (args.project_id) {
 			await this.assertProjectOwnership(args.project_id, actorId);
@@ -277,11 +400,14 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 		const { data, count, error } = await query;
 		if (error) throw error;
+		const documents = (data ?? []).map((document) =>
+			this.summarizeDocumentForList(document)
+		);
 
 		return {
-			documents: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} ontology documents.`
+			documents,
+			total: count ?? documents.length,
+			message: `Found ${documents.length} ontology documents.`
 		};
 	}
 
@@ -613,7 +739,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		let query = this.supabase
 			.from('onto_documents')
 			.select(
-				'id, project_id, title, type_key, state_key, content, description, props, created_at, updated_at',
+				'id, project_id, title, type_key, state_key, content, description, created_at, updated_at',
 				{
 					count: 'exact'
 				}
@@ -641,11 +767,12 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 		const { data, count, error } = await query;
 		if (error) throw error;
+		const documents = (data ?? []).map((document) => this.summarizeDocumentForList(document));
 
 		return {
-			documents: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} documents matching "${searchTerm}".`
+			documents,
+			total: count ?? documents.length,
+			message: `Found ${documents.length} documents matching "${searchTerm}".`
 		};
 	}
 

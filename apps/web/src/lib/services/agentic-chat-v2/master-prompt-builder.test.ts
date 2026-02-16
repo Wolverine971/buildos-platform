@@ -23,17 +23,31 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			entityId: null
 		});
 
-		expect(prompt).toContain('Gateway query pattern (default)');
+		expect(prompt).toContain('Canonical ontology CRUD/search family');
+		expect(prompt).toContain('In tool_exec.op, use only canonical ops.');
+		expect(prompt).toContain('Never use legacy op strings in tool_exec.op');
 		expect(prompt).toContain(
-			'For any onto.*.search op (including onto.search), use args.query.'
+			'Use targeted discovery first: tool_help("onto.<entity>") or tool_help("cal.event").'
 		);
-		expect(prompt).toContain('Calendar events are under cal.event.* (not onto.event.*).');
+		expect(prompt).toContain(
+			'For first-time or complex writes in a turn, call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.'
+		);
+		expect(prompt).toContain(
+			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'
+		);
+		expect(prompt).toContain('Calendar ops are under cal.event.* and cal.project.*');
 		expect(prompt).not.toContain('tool_batch');
 		expect(prompt).toContain(
 			'Project context events are time-boxed to the last 7 days and next 14 days (UTC).'
 		);
 		expect(prompt).toContain(
 			'To inspect events outside that context window, call cal.event.list with args.timeMin and args.timeMax.'
+		);
+		expect(prompt).toContain(
+			'Use new_parent_id only when nesting under a parent (omit it for root moves).'
+		);
+		expect(prompt).toContain(
+			'For "link unlinked docs" requests, call onto.document.tree.get once, then issue onto.document.tree.move for each unlinked document ID.'
 		);
 		expect(prompt).not.toContain('Common ops you can often use directly');
 	});
@@ -48,7 +62,7 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		});
 
 		expect(prompt).not.toContain('<tool_discovery>');
-		expect(prompt).not.toContain('Gateway query pattern (default)');
+		expect(prompt).not.toContain('Canonical ontology CRUD/search family');
 	});
 
 	it('falls back project_id to entity_id for project context', () => {

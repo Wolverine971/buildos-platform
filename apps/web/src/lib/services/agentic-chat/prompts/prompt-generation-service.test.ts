@@ -23,11 +23,19 @@ describe('PromptGenerationService gateway tool instructions', () => {
 		});
 
 		expect(prompt).toContain('## Tool Discovery Mode');
-		expect(prompt).toContain('Gateway query pattern (default)');
+		expect(prompt).toContain('Canonical ontology CRUD/search family');
+		expect(prompt).toContain('In tool_exec.op, use only canonical ops.');
+		expect(prompt).toContain('Never use legacy op strings in tool_exec.op');
 		expect(prompt).toContain(
-			'For any onto.*.search op (including onto.search), use args.query.'
+			'Use targeted discovery first: tool_help("onto.<entity>") or tool_help("cal.event").'
 		);
-		expect(prompt).toContain('Calendar events are under cal.event.* (not onto.event.*).');
+		expect(prompt).toContain(
+			'For first-time or complex writes in a turn, call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.'
+		);
+		expect(prompt).toContain(
+			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'
+		);
+		expect(prompt).toContain('Calendar ops are under cal.event.* and cal.project.*');
 		expect(prompt).not.toContain('tool_batch');
 	});
 
@@ -40,6 +48,6 @@ describe('PromptGenerationService gateway tool instructions', () => {
 		});
 
 		expect(prompt).not.toContain('## Tool Discovery Mode');
-		expect(prompt).not.toContain('Gateway query pattern (default)');
+		expect(prompt).not.toContain('Canonical ontology CRUD/search family');
 	});
 });

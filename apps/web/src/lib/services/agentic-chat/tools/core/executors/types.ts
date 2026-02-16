@@ -380,10 +380,10 @@ export interface UpdateOntoTaskArgs {
 	type_key?: string;
 	state_key?: string;
 	priority?: number;
-	goal_id?: string;
-	supporting_milestone_id?: string;
-	start_at?: string;
-	due_at?: string;
+	goal_id?: string | null;
+	supporting_milestone_id?: string | null;
+	start_at?: string | null;
+	due_at?: string | null;
 	props?: Record<string, unknown>;
 }
 

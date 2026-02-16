@@ -264,6 +264,7 @@ describe('streamFastChat repetition guard', () => {
 		} as any;
 
 		const movedIds: string[] = [];
+		const moveArgs: Array<Record<string, unknown>> = [];
 		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
 			const parsed = JSON.parse(toolCall.function.arguments || '{}');
 			const op = parsed?.op as string | undefined;
@@ -301,6 +302,23 @@ describe('streamFastChat repetition guard', () => {
 			}
 			if (op === 'onto.document.tree.move') {
 				const docId = parsed?.args?.document_id;
+				moveArgs.push((parsed?.args as Record<string, unknown>) ?? {});
+				if ((parsed?.args as Record<string, unknown>)?.new_parent_id === null) {
+					return {
+						tool_call_id: toolCall.id,
+						result: {
+							op,
+							ok: false,
+							error: {
+								code: 'VALIDATION_ERROR',
+								message:
+									'Invalid type for parameter new_parent_id: expected string, got null'
+							}
+						},
+						success: false,
+						error: 'Invalid type for parameter new_parent_id: expected string, got null'
+					};
+				}
 				if (typeof docId === 'string') {
 					movedIds.push(docId);
 				}
@@ -335,6 +353,9 @@ describe('streamFastChat repetition guard', () => {
 		expect(result.finishedReason).toBe('stop');
 		expect(result.assistantText).toContain('organized 2 unlinked document');
 		expect(movedIds).toEqual(['doc-a', 'doc-b']);
+		expect(
+			moveArgs.every((args) => !Object.prototype.hasOwnProperty.call(args, 'new_parent_id'))
+		).toBe(true);
 		expect(llm.streamText).toHaveBeenCalledTimes(2);
 		expect(toolExecutor).toHaveBeenCalledTimes(5);
 	});
@@ -426,4 +447,101 @@ describe('streamFastChat repetition guard', () => {
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 		expect(toolExecutor).toHaveBeenCalledTimes(3);
 	});
-});
+
+	it('compacts onto.document.list payloads into stable summaries for model context', async () => {
+		let streamInvocation = 0;
+		let secondPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					const toolCall: ChatToolCall = {
+						id: 'tool_call_docs_1',
+						type: 'function',
+						function: {
+							name: 'tool_exec',
+							arguments: JSON.stringify({
+								op: 'onto.document.list',
+								args: {
+									project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+									limit: 50
+								}
+							})
+						}
+					};
+					yield { type: 'tool_call', tool_call: toolCall };
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				secondPassMessages = params.messages as FastChatHistoryMessage[];
+				yield { type: 'text', content: 'Done.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const docs = Array.from({ length: 6 }, (_, index) => ({
+			id: `doc-${index + 1}`,
+			title: `Document ${index + 1}`,
+			type_key: 'document.context.project',
+			state_key: 'draft',
+			updated_at: `2026-02-1${index}T00:00:00.000Z`,
+			description: `Description ${index + 1}`,
+			content: `# Header ${index + 1}\n## Subheader\n${'x'.repeat(3500)}`,
+			markdown_outline: {
+				counts: { total: 2, h1: 1, h2: 1, h3: 0 },
+				headings: [
+					{
+						level: 1,
+						text: `Header ${index + 1}`,
+						children: [{ level: 2, text: 'Subheader', children: [] }]
+					}
+				],
+				truncated: false
+			}
+		}));
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+			tool_call_id: toolCall.id,
+			result: {
+				op: 'onto.document.list',
+				ok: true,
+				result: {
+					documents: docs,
+					total: docs.length,
+					message: `Found ${docs.length} ontology documents.`
+				},
+				meta: {}
+			},
+			success: true
+		}));
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			projectId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			history: [],
+			message: 'List documents',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(result.finishedReason).toBe('stop');
+		expect(secondPassMessages).toBeDefined();
+		const toolMessage = [...(secondPassMessages ?? [])]
+			.reverse()
+			.find((message) => message.role === 'tool');
+		expect(toolMessage).toBeDefined();
+		const payload = JSON.parse((toolMessage as FastChatHistoryMessage).content || '{}');
+		expect(payload?.truncated).not.toBe(true);
+		expect(payload?.result?.total).toBe(6);
+		expect(Array.isArray(payload?.result?.documents)).toBe(true);
+		expect(payload?.result?.documents).toHaveLength(6);
+		expect(payload?.result?.documents?.[0]?.content_length).toBeGreaterThan(0);
+		expect(payload?.result?.documents?.[0]?.markdown_outline?.counts?.h1).toBe(1);
+	});
+	});

@@ -298,7 +298,7 @@ Examples: document.context.project, document.knowledge.research, document.spec.t
 						description: 'Additional properties/metadata'
 					},
 					parent_id: {
-						type: 'string',
+						type: ['string', 'null'],
 						description:
 							'Parent document ID to place this document under in the tree hierarchy. Null or omitted places at root level.'
 					},
@@ -518,7 +518,7 @@ If new_parent_id is null or omitted, the document is placed at root level.`,
 						description: 'Document UUID to move (required)'
 					},
 					new_parent_id: {
-						type: 'string',
+						type: ['string', 'null'],
 						description:
 							'New parent document ID (null or omitted places the document at root level).'
 					},
@@ -1162,19 +1162,19 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 						description: 'New priority (1-5)'
 					},
 					goal_id: {
-						type: 'string',
+						type: ['string', 'null'],
 						description: 'Optional goal UUID that this task supports (null clears)'
 					},
 					supporting_milestone_id: {
-						type: 'string',
+						type: ['string', 'null'],
 						description: 'Optional milestone UUID this task targets (null clears)'
 					},
 					start_at: {
-						type: 'string',
+						type: ['string', 'null'],
 						description: 'New start date (ISO format) or null to clear'
 					},
 					due_at: {
-						type: 'string',
+						type: ['string', 'null'],
 						description: 'New due date (ISO format) or null to clear'
 					},
 					props: {
