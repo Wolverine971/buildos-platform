@@ -245,6 +245,8 @@
 	let showDeleteProjectModal = $state(false);
 	let showProjectCalendarSettingsModal = $state(false);
 	let showProjectIconStudioModal = $state(false);
+	// Project image generation is temporarily disabled.
+	const ENABLE_PROJECT_ICON_STUDIO_UI = false;
 	let isDeletingProject = $state(false);
 	let deleteProjectError = $state<string | null>(null);
 	let editingTaskId = $state<string | null>(null);
@@ -1131,8 +1133,7 @@
 	}
 
 	function openProjectIconStudioFromEditModal() {
-		showProjectEditModal = false;
-		showProjectIconStudioModal = true;
+		toastService.info('Project image generation is temporarily disabled.');
 	}
 
 	// ============================================================
@@ -2651,8 +2652,8 @@
 	/>
 {/if}
 
-<!-- Project Icon Studio Modal -->
-{#if showProjectIconStudioModal && canEdit}
+<!-- Project Icon Studio Modal (temporarily disabled) -->
+{#if ENABLE_PROJECT_ICON_STUDIO_UI && showProjectIconStudioModal && canEdit}
 	<ProjectIconStudioModal
 		bind:isOpen={showProjectIconStudioModal}
 		projectId={project.id}

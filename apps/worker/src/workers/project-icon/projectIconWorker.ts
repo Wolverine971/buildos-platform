@@ -9,7 +9,10 @@ import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { supabase } from '../../lib/supabase';
 
 const MAX_ICON_BYTES = 4096;
-const MAX_ICON_ELEMENTS = 8;
+const MAX_ICON_ELEMENTS = 26;
+const PROJECT_ICON_GENERATION_ENABLED =
+	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
+const PROJECT_ICON_GENERATION_DISABLED_MESSAGE = 'Project image generation is temporarily disabled';
 
 const ALLOWED_TAGS = [
 	'svg',
@@ -104,11 +107,15 @@ function validateSanitizedIconSvg(svg: string): { valid: true } | { valid: false
 		return { valid: false, reason: `SVG exceeds ${MAX_ICON_BYTES} bytes` };
 	}
 
+	// Count only inner elements. The root <svg> tag is required and should not consume budget.
 	const elementCount = (
-		trimmed.match(/<\s*(svg|g|path|circle|rect|line|polyline|polygon|ellipse)\b/gi) || []
+		trimmed.match(/<\s*(g|path|circle|rect|line|polyline|polygon|ellipse)\b/gi) || []
 	).length;
 	if (elementCount > MAX_ICON_ELEMENTS) {
-		return { valid: false, reason: `SVG exceeds ${MAX_ICON_ELEMENTS} allowed elements` };
+		return {
+			valid: false,
+			reason: `SVG exceeds ${MAX_ICON_ELEMENTS} allowed elements (found ${elementCount})`
+		};
 	}
 
 	return { valid: true };
@@ -161,22 +168,20 @@ function renderList(items: string[]): string {
 	return items.map((item) => `- ${item}`).join('\n');
 }
 
-function buildPrompts(params: {
-	context: ProjectContextPayload;
-	candidateCount: number;
-	steeringPrompt?: string;
-	correctionHint?: string;
-}) {
-	const { context, candidateCount, steeringPrompt, correctionHint } = params;
+type ImagePromptQueryDraft = {
+	imagePromptQuery: string;
+	visualIntent?: string | null;
+	styleKeywords?: string[] | null;
+	subjectKeywords?: string[] | null;
+	compositionNotes?: string | null;
+	avoidNotes?: string | null;
+};
 
-	const systemPrompt = [
-		'You are a minimalist icon designer.',
-		'Return JSON only.',
-		'Generate Lucide-like stroke-only SVG icons using currentColor.',
-		'No text, no external references, no animation, no raster images.',
-		`Return exactly ${candidateCount} distinct candidates in a coherent visual family.`,
-		'Each SVG must use viewBox="0 0 64 64" and include stroke="currentColor".'
-	].join('\n');
+function buildImagePromptQueryPrompts(params: {
+	context: ProjectContextPayload;
+	steeringPrompt?: string;
+}) {
+	const { context, steeringPrompt } = params;
 
 	const goals = context.topGoals.map((goal) =>
 		goal.description ? `${goal.name}: ${goal.description}` : goal.name
@@ -186,14 +191,18 @@ function buildPrompts(params: {
 		doc.description ? `${doc.title}: ${doc.description}` : doc.title
 	);
 
-	const correctionSection = correctionHint
-		? `\nCorrection requirements from previous attempt:\n${correctionHint}\n`
-		: '';
+	const systemPrompt = [
+		'You are an expert art director for product icon generation.',
+		'Generate one concise, high-signal image prompt query for an icon generator.',
+		'Output JSON only.',
+		'Focus on symbolic meaning, visual metaphor, composition, and style constraints.',
+		'The query must be specific enough to generate a coherent icon family.'
+	].join('\n');
 
 	const userPrompt = [
-		`Generate ${candidateCount} SVG icon candidates for this project.`,
+		'Synthesize an image prompt query from project ontology context.',
 		'',
-		'Project:',
+		'Project context:',
 		`- Name: ${context.project.name ?? '(untitled project)'}`,
 		`- Description: ${context.project.description ?? '(none)'}`,
 		`- Stage: ${context.project.facet_stage ?? '(none)'}`,
@@ -207,6 +216,153 @@ function buildPrompts(params: {
 		steeringPrompt && steeringPrompt.trim().length > 0
 			? steeringPrompt.trim()
 			: '(none provided)',
+		'',
+		'Return JSON with this shape:',
+		'{',
+		'  "imagePromptQuery": "single-paragraph prompt for icon generation",',
+		'  "visualIntent": "short phrase",',
+		'  "styleKeywords": ["..."],',
+		'  "subjectKeywords": ["..."],',
+		'  "compositionNotes": "optional short note",',
+		'  "avoidNotes": "optional short note"',
+		'}'
+	].join('\n');
+
+	return { systemPrompt, userPrompt };
+}
+
+function buildFallbackImagePromptQuery(params: {
+	context: ProjectContextPayload;
+	steeringPrompt?: string;
+}): string {
+	const { context, steeringPrompt } = params;
+	const goals =
+		context.topGoals
+			.map((goal) => goal.name)
+			.slice(0, 3)
+			.join(', ') || 'core project goals';
+	const tasks =
+		context.topTasks
+			.map((task) => task.title)
+			.slice(0, 4)
+			.join(', ') || 'primary tasks';
+
+	return [
+		`Design a minimalist Lucide-style icon for "${context.project.name ?? 'this project'}".`,
+		`Convey: ${context.project.description ?? context.project.facet_context ?? 'project intent'}.`,
+		`Visual motifs inspired by goals: ${goals}.`,
+		`Operational context from tasks: ${tasks}.`,
+		'Use clean stroke-based geometry, high legibility at small size, strong central metaphor, and no text.',
+		steeringPrompt && steeringPrompt.trim().length > 0
+			? `Style direction: ${steeringPrompt.trim()}.`
+			: ''
+	]
+		.filter((segment) => segment.length > 0)
+		.join(' ');
+}
+
+async function synthesizeImagePromptQuery(params: {
+	llm: SmartLLMService;
+	userId: string;
+	projectId: string;
+	context: ProjectContextPayload;
+	steeringPrompt?: string;
+}): Promise<{ imagePromptQuery: string; usedFallback: boolean }> {
+	const prompts = buildImagePromptQueryPrompts({
+		context: params.context,
+		steeringPrompt: params.steeringPrompt
+	});
+
+	try {
+		const response = await params.llm.getJSONResponse<ImagePromptQueryDraft>({
+			systemPrompt: prompts.systemPrompt,
+			userPrompt: prompts.userPrompt,
+			userId: params.userId,
+			profile: 'balanced',
+			temperature: 0.35,
+			operationType: 'project_icon_prompt_synthesis',
+			projectId: params.projectId,
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 2
+			}
+		});
+
+		const primaryQuery =
+			typeof response?.imagePromptQuery === 'string' ? response.imagePromptQuery.trim() : '';
+		if (primaryQuery.length > 0) {
+			return { imagePromptQuery: primaryQuery, usedFallback: false };
+		}
+	} catch {
+		// Fall through to deterministic fallback query below.
+	}
+
+	return {
+		imagePromptQuery: buildFallbackImagePromptQuery({
+			context: params.context,
+			steeringPrompt: params.steeringPrompt
+		}),
+		usedFallback: true
+	};
+}
+
+async function resolveImagePromptQuery(params: {
+	llm: SmartLLMService;
+	userId: string;
+	projectId: string;
+	context: ProjectContextPayload;
+	steeringPrompt?: string;
+}): Promise<{ imagePromptQuery: string; source: 'user' | 'llm' | 'fallback' }> {
+	const userPrompt =
+		typeof params.steeringPrompt === 'string' ? params.steeringPrompt.trim() : '';
+	if (userPrompt.length > 0) {
+		return {
+			imagePromptQuery: userPrompt,
+			source: 'user'
+		};
+	}
+
+	const synthesized = await synthesizeImagePromptQuery({
+		llm: params.llm,
+		userId: params.userId,
+		projectId: params.projectId,
+		context: params.context,
+		steeringPrompt: undefined
+	});
+
+	return {
+		imagePromptQuery: synthesized.imagePromptQuery,
+		source: synthesized.usedFallback ? 'fallback' : 'llm'
+	};
+}
+
+function buildCandidateGenerationPrompts(params: {
+	context: ProjectContextPayload;
+	imagePromptQuery: string;
+	candidateCount: number;
+	correctionHint?: string;
+}) {
+	const { context, imagePromptQuery, candidateCount, correctionHint } = params;
+
+	const systemPrompt = [
+		'You are a minimalist icon designer.',
+		'Return JSON only.',
+		'Generate Lucide-like stroke-only SVG icons using currentColor.',
+		'No text, no external references, no animation, no raster images.',
+		'Each SVG must use viewBox="0 0 64 64" and include stroke="currentColor".'
+	].join('\n');
+
+	const correctionSection = correctionHint
+		? `\nCorrection requirements from previous attempt:\n${correctionHint}\n`
+		: '';
+
+	const userPrompt = [
+		`Generate ${candidateCount} SVG icon candidates using this resolved image prompt query.`,
+		'',
+		`Project name: ${context.project.name ?? '(untitled project)'}`,
+		'',
+		'Image prompt query:',
+		imagePromptQuery,
 		correctionSection,
 		'Return JSON:',
 		'{',
@@ -242,14 +398,14 @@ async function generateValidCandidates(params: {
 	userId: string;
 	projectId: string;
 	context: ProjectContextPayload;
+	imagePromptQuery: string;
 	candidateCount: number;
-	steeringPrompt?: string;
 	correctionHint?: string;
 }): Promise<{ candidates: IconCandidate[]; droppedReasons: string[] }> {
-	const prompts = buildPrompts({
+	const prompts = buildCandidateGenerationPrompts({
 		context: params.context,
+		imagePromptQuery: params.imagePromptQuery,
 		candidateCount: params.candidateCount,
-		steeringPrompt: params.steeringPrompt,
 		correctionHint: params.correctionHint
 	});
 
@@ -361,6 +517,23 @@ export async function processProjectIconJob(
 			);
 		}
 
+		if (!PROJECT_ICON_GENERATION_ENABLED) {
+			stage = 'feature_disabled';
+			await job.log('Project icon generation is disabled; marking generation as failed');
+			await markGenerationFailed(
+				generationId,
+				projectId,
+				PROJECT_ICON_GENERATION_DISABLED_MESSAGE
+			);
+			return {
+				success: true,
+				projectId,
+				generationId,
+				skipped: true,
+				reason: 'feature_disabled'
+			};
+		}
+
 		await job.log(
 			`Project icon generation started (${generationId}) project=${projectId} candidateCount=${candidateCount} autoSelect=${autoSelect}`
 		);
@@ -432,14 +605,40 @@ export async function processProjectIconJob(
 			appName: 'BuildOS Project Icon Worker'
 		});
 
+		stage = 'resolve_image_prompt_query';
+		const { imagePromptQuery, source: imagePromptSource } = await resolveImagePromptQuery({
+			llm,
+			userId: requestedByUserId,
+			projectId,
+			context,
+			steeringPrompt
+		});
+		await job.log(
+			`Image prompt query resolved (${imagePromptSource}): ${imagePromptQuery.slice(0, 280)}`
+		);
+
+		stage = 'persist_image_prompt_query';
+		const { error: promptPersistError } = await (supabase as any)
+			.from('onto_project_icon_generations')
+			.update({
+				steering_prompt: imagePromptQuery
+			})
+			.eq('id', generationId)
+			.eq('project_id', projectId);
+		if (promptPersistError) {
+			throw new Error(
+				`Failed to persist resolved image prompt query: ${promptPersistError.message}`
+			);
+		}
+
 		stage = 'generate_candidates_initial';
 		let { candidates, droppedReasons } = await generateValidCandidates({
 			llm,
 			userId: requestedByUserId,
 			projectId,
 			context,
-			candidateCount,
-			steeringPrompt
+			imagePromptQuery,
+			candidateCount
 		});
 		await job.log(
 			`Initial candidate pass produced ${candidates.length}/${candidateCount} valid candidates`
@@ -465,8 +664,8 @@ export async function processProjectIconJob(
 				userId: requestedByUserId,
 				projectId,
 				context,
+				imagePromptQuery,
 				candidateCount,
-				steeringPrompt,
 				correctionHint
 			});
 			candidates = retry.candidates;
@@ -561,7 +760,7 @@ export async function processProjectIconJob(
 					icon_concept: chosen.concept,
 					icon_generated_at: completedAt,
 					icon_generation_source: source,
-					icon_generation_prompt: steeringPrompt ?? null
+					icon_generation_prompt: imagePromptQuery
 				})
 				.eq('id', projectId);
 			if (projectUpdateError) {

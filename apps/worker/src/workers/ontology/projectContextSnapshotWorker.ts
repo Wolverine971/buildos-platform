@@ -5,6 +5,8 @@ import { supabase } from '../../lib/supabase';
 const SNAPSHOT_VERSION = 1;
 const SNAPSHOT_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const AUTO_ICON_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+const PROJECT_ICON_GENERATION_ENABLED =
+	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
 
 type ProjectGraphDataLight = {
 	project: any;
@@ -40,6 +42,10 @@ async function queueAutoProjectIconGeneration(params: {
 	description?: string | null;
 	iconSvg?: string | null;
 }) {
+	if (!PROJECT_ICON_GENERATION_ENABLED) {
+		return { queued: false, reason: 'feature_disabled' as const };
+	}
+
 	const ready = isReadyForAutoIcon({
 		taskCount: params.taskCount,
 		goalCount: params.goalCount,

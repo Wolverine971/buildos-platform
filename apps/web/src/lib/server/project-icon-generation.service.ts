@@ -3,6 +3,9 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { createLogger } from '$lib/utils/logger';
 
 const logger = createLogger('ProjectIconGeneration');
+const PROJECT_ICON_GENERATION_ENABLED =
+	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
+const PROJECT_ICON_GENERATION_DISABLED_MESSAGE = 'Project image generation is temporarily disabled';
 
 export type ProjectIconTriggerSource = 'auto' | 'manual' | 'regenerate';
 
@@ -17,6 +20,16 @@ export async function queueProjectIconGeneration(params: {
 	priority?: number;
 	dedupKey?: string;
 }): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
+	if (!PROJECT_ICON_GENERATION_ENABLED) {
+		logger.info('Project icon generation queue call skipped because feature is disabled', {
+			projectId: params.projectId,
+			generationId: params.generationId,
+			userId: params.userId,
+			triggerSource: params.triggerSource
+		});
+		return { queued: false, reason: PROJECT_ICON_GENERATION_DISABLED_MESSAGE };
+	}
+
 	try {
 		const supabase = createAdminSupabaseClient();
 		const dedupKey = params.dedupKey ?? `project-icon:generation:${params.generationId}`;

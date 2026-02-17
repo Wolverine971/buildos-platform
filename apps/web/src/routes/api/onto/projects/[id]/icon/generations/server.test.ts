@@ -10,7 +10,7 @@ vi.mock('$lib/server/project-icon-generation.service', () => ({
 	queueProjectIconGeneration: queueProjectIconGenerationMock
 }));
 
-import { POST } from './+server';
+import { GET, POST } from './+server';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 const GENERATION_ID = '22222222-2222-4222-8222-222222222222';
@@ -73,7 +73,7 @@ describe('POST /api/onto/projects/[id]/icon/generations', () => {
 		});
 	});
 
-	it('creates generation and queues project icon job', async () => {
+	it('returns 503 when icon generation is disabled', async () => {
 		const event = createEvent({
 			steeringPrompt: 'minimal mountain + trail vibe, no tools',
 			candidateCount: 4
@@ -81,12 +81,44 @@ describe('POST /api/onto/projects/[id]/icon/generations', () => {
 		const supabase = event.locals.supabase as any;
 		const { projectSelect } = mockProjectExists();
 
-		const insertSingle = vi.fn().mockResolvedValue({
-			data: { id: GENERATION_ID, status: 'queued' },
+		supabase.rpc.mockResolvedValue({ data: true, error: null });
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'onto_projects') {
+				return { select: projectSelect };
+			}
+			return {};
+		});
+
+		const response = await POST(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(503);
+		expect(payload.success).toBe(false);
+		expect(payload.error).toBe('Project image generation is temporarily disabled');
+		expect(queueProjectIconGenerationMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('GET /api/onto/projects/[id]/icon/generations', () => {
+	it('returns latest manual/regenerate generation metadata', async () => {
+		const event = createEvent();
+		const supabase = event.locals.supabase as any;
+		const { projectSelect } = mockProjectExists();
+
+		const latestMaybeSingle = vi.fn().mockResolvedValue({
+			data: {
+				id: GENERATION_ID,
+				status: 'completed',
+				created_at: '2026-02-17T20:00:00.000Z',
+				trigger_source: 'manual'
+			},
 			error: null
 		});
-		const insertSelect = vi.fn().mockReturnValue({ single: insertSingle });
-		const insert = vi.fn().mockReturnValue({ select: insertSelect });
+		const latestLimit = vi.fn().mockReturnValue({ maybeSingle: latestMaybeSingle });
+		const latestOrder = vi.fn().mockReturnValue({ limit: latestLimit });
+		const latestIn = vi.fn().mockReturnValue({ order: latestOrder });
+		const latestEq = vi.fn().mockReturnValue({ in: latestIn });
+		const latestSelect = vi.fn().mockReturnValue({ eq: latestEq });
 
 		supabase.rpc.mockResolvedValue({ data: true, error: null });
 		supabase.from.mockImplementation((table: string) => {
@@ -94,33 +126,57 @@ describe('POST /api/onto/projects/[id]/icon/generations', () => {
 				return { select: projectSelect };
 			}
 			if (table === 'onto_project_icon_generations') {
-				return { insert };
+				return { select: latestSelect };
 			}
 			return {};
 		});
 
-		queueProjectIconGenerationMock.mockResolvedValue({
-			queued: true,
-			jobId: 'job-1',
-			reason: 'queued'
-		});
-
-		const response = await POST(event);
+		const response = await GET(event);
 		const payload = await response.json();
 
-		expect(response.status).toBe(201);
+		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(payload.data.generationId).toBe(GENERATION_ID);
-		expect(queueProjectIconGenerationMock).toHaveBeenCalledWith({
-			projectId: PROJECT_ID,
-			generationId: GENERATION_ID,
-			userId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-			triggerSource: 'manual',
-			steeringPrompt: 'minimal mountain + trail vibe, no tools',
-			candidateCount: 4,
-			autoSelect: false,
-			priority: 8,
-			dedupKey: `project-icon:generation:${GENERATION_ID}`
+		expect(payload.data.status).toBe('completed');
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+			p_project_id: PROJECT_ID,
+			p_required_access: 'read'
 		});
+	});
+
+	it('returns null metadata when no previous generation exists', async () => {
+		const event = createEvent();
+		const supabase = event.locals.supabase as any;
+		const { projectSelect } = mockProjectExists();
+
+		const latestMaybeSingle = vi.fn().mockResolvedValue({
+			data: null,
+			error: null
+		});
+		const latestLimit = vi.fn().mockReturnValue({ maybeSingle: latestMaybeSingle });
+		const latestOrder = vi.fn().mockReturnValue({ limit: latestLimit });
+		const latestIn = vi.fn().mockReturnValue({ order: latestOrder });
+		const latestEq = vi.fn().mockReturnValue({ in: latestIn });
+		const latestSelect = vi.fn().mockReturnValue({ eq: latestEq });
+
+		supabase.rpc.mockResolvedValue({ data: true, error: null });
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'onto_projects') {
+				return { select: projectSelect };
+			}
+			if (table === 'onto_project_icon_generations') {
+				return { select: latestSelect };
+			}
+			return {};
+		});
+
+		const response = await GET(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.success).toBe(true);
+		expect(payload.data.generationId).toBeNull();
+		expect(payload.data.status).toBeNull();
+		expect(payload.data.createdAt).toBeNull();
 	});
 });

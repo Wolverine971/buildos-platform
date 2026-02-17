@@ -11,6 +11,63 @@ import {
 } from '../shared';
 
 const logger = createLogger('API:ProjectIconGenerationsCreate');
+const PROJECT_ICON_GENERATION_ENABLED =
+	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
+const PROJECT_ICON_GENERATION_DISABLED_MESSAGE = 'Project image generation is temporarily disabled';
+
+export const GET: RequestHandler = async ({ params, locals }) => {
+	try {
+		const projectId = params.id?.trim() ?? '';
+		const projectIdValidation = validateProjectAndGenerationIds(projectId);
+		if (projectIdValidation) return projectIdValidation;
+
+		const access = await requireProjectAccess(locals, projectId, 'read');
+		if (!access.ok) return access.response;
+
+		const { data: latestGeneration, error: latestGenerationError } = await access.supabase
+			.from('onto_project_icon_generations')
+			.select('id, status, created_at, trigger_source')
+			.eq('project_id', projectId)
+			.in('trigger_source', ['manual', 'regenerate'])
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (latestGenerationError) {
+			return ApiResponse.databaseError(latestGenerationError);
+		}
+
+		if (!latestGeneration) {
+			return ApiResponse.success({
+				generationId: null,
+				status: null,
+				createdAt: null
+			});
+		}
+
+		logger.info('Loaded latest project icon generation', {
+			projectId,
+			userId: access.userId,
+			generationId: latestGeneration.id,
+			status: latestGeneration.status,
+			triggerSource: latestGeneration.trigger_source
+		});
+
+		return ApiResponse.success({
+			generationId: latestGeneration.id,
+			status: latestGeneration.status,
+			createdAt: latestGeneration.created_at
+		});
+	} catch (error) {
+		logger.error(
+			error instanceof Error ? error : 'Unknown icon generation latest lookup error',
+			{
+				projectId: params.id?.trim() ?? null
+			}
+		);
+		return ApiResponse.internalError(error, 'Failed to load latest icon generation');
+	}
+};
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -20,6 +77,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		const access = await requireProjectAccess(locals, projectId, 'write');
 		if (!access.ok) return access.response;
+
+		if (!PROJECT_ICON_GENERATION_ENABLED) {
+			logger.info('Project icon generation request rejected because feature is disabled', {
+				projectId,
+				userId: access.userId
+			});
+			return ApiResponse.error(PROJECT_ICON_GENERATION_DISABLED_MESSAGE, 503);
+		}
 
 		const body = await request.json().catch(() => ({}));
 		if (!body || typeof body !== 'object') {

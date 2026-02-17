@@ -6,6 +6,7 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
 	import { LoaderCircle, Sparkles, RefreshCw, Check } from 'lucide-svelte';
+	import { untrack } from 'svelte';
 
 	type GenerationStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
 	type QueueJobStatus =
@@ -78,7 +79,9 @@
 
 	let isCreatingGeneration = $state(false);
 	let isFetchingGeneration = $state(false);
+	let isLoadingLatestGeneration = $state(false);
 	let selectingCandidateId = $state<string | null>(null);
+	let latestLoadRequestId = 0;
 
 	let pollTimer: ReturnType<typeof setInterval> | null = null;
 	const POLL_INTERVAL_MS = 2000;
@@ -162,27 +165,99 @@
 		logIconStudio('debug', 'Stopped generation polling');
 	}
 
-	// Reset state on open; clean up polling on close and destroy
+	// Reset state on open; clean up polling on close and destroy.
+	// IMPORTANT: The body is wrapped in untrack() so the only dependency is `isOpen`.
+	// Without untrack, logIconStudio reads `generationId` (a $state), which makes this
+	// effect re-trigger whenever loadLatestGeneration or handleGenerate sets generationId,
+	// creating an infinite reset loop that causes visible UI jumps.
 	$effect(() => {
 		if (isOpen) {
-			logIconStudio('debug', 'Modal opened, resetting icon generation state');
-			steeringPrompt = '';
-			generationId = null;
-			generationStatus = null;
-			selectedCandidateId = null;
-			generationError = null;
-			candidates = [];
-			queueJob = null;
-			stalledMessage = null;
-			selectingCandidateId = null;
-			isCreatingGeneration = false;
-			isFetchingGeneration = false;
+			untrack(() => {
+				logIconStudio('debug', 'Modal opened, resetting icon generation state');
+				steeringPrompt = '';
+				generationId = null;
+				generationStatus = null;
+				selectedCandidateId = null;
+				generationError = null;
+				candidates = [];
+				queueJob = null;
+				stalledMessage = null;
+				selectingCandidateId = null;
+				isCreatingGeneration = false;
+				isFetchingGeneration = false;
+				isLoadingLatestGeneration = false;
+
+				latestLoadRequestId += 1;
+				const requestId = latestLoadRequestId;
+				void loadLatestGeneration(requestId);
+			});
 		}
 
 		return () => {
 			stopPolling();
 		};
 	});
+
+	async function loadLatestGeneration(requestId: number) {
+		if (!isOpen || !projectId) return;
+
+		isLoadingLatestGeneration = true;
+		try {
+			logIconStudio('debug', 'Loading latest icon generation for modal hydration');
+			const response = await fetch(
+				`/api/onto/projects/${projectId}/icon/generations?t=${Date.now()}`,
+				{
+					method: 'GET',
+					cache: 'no-store',
+					credentials: 'same-origin',
+					headers: { Accept: 'application/json' }
+				}
+			);
+
+			const payload = await response.json().catch(() => null);
+			if (!response.ok || payload?.success === false) {
+				throw new Error(parseApiError(payload, 'Failed to load latest icon generation'));
+			}
+			if (requestId !== latestLoadRequestId || !isOpen) return;
+
+			const data = payload?.data ?? {};
+			const nextGenerationId =
+				typeof data.generationId === 'string' ? data.generationId : null;
+			const nextStatus = normalizeGenerationStatus(data.status);
+
+			if (!nextGenerationId) {
+				logIconStudio('debug', 'No previous icon generation found');
+				return;
+			}
+
+			generationId = nextGenerationId;
+			generationStatus = nextStatus;
+			logIconStudio('info', 'Hydrating modal with previous icon generation', {
+				nextGenerationId,
+				nextStatus
+			});
+
+			await fetchGeneration(nextGenerationId);
+			if (requestId !== latestLoadRequestId || !isOpen) return;
+
+			if (generationStatus === 'queued' || generationStatus === 'processing') {
+				startPolling();
+			}
+		} catch (error) {
+			if (requestId !== latestLoadRequestId || !isOpen) return;
+
+			logIconStudio('warn', 'Failed loading latest icon generation; studio remains usable', {
+				error:
+					error instanceof Error
+						? { message: error.message, stack: dev ? error.stack : undefined }
+						: error
+			});
+		} finally {
+			if (requestId === latestLoadRequestId) {
+				isLoadingLatestGeneration = false;
+			}
+		}
+	}
 
 	async function fetchGeneration(targetGenerationId: string) {
 		if (!targetGenerationId || isFetchingGeneration) return;
@@ -252,7 +327,25 @@
 				});
 			}
 
-			const isStillGenerating = nextStatus === 'queued' || nextStatus === 'processing';
+			let isStillGenerating = nextStatus === 'queued' || nextStatus === 'processing';
+			if (isStillGenerating && nextCandidates.length > 0) {
+				logIconStudio(
+					'warn',
+					'Candidates exist while generation still marked active; reconciling to completed',
+					{
+						targetGenerationId,
+						previousStatus,
+						nextStatus,
+						nextCandidateCount: nextCandidates.length,
+						queueStatus: nextQueueJob?.status ?? null,
+						queueJobId: nextQueueJob?.queue_job_id ?? null
+					}
+				);
+				nextStatus = 'completed';
+				generationStatus = 'completed';
+				isStillGenerating = false;
+			}
+
 			if (isStillGenerating && nextQueueJob) {
 				if (nextQueueJob.status === 'failed' || nextQueueJob.status === 'cancelled') {
 					logIconStudio(
@@ -337,6 +430,8 @@
 	async function handleGenerate() {
 		if (isGenerating || selectingCandidateId || !projectId) return;
 
+		latestLoadRequestId += 1;
+		isLoadingLatestGeneration = false;
 		logIconStudio('info', 'Starting icon generation request', {
 			promptLength: steeringPrompt.trim().length,
 			candidateCount
@@ -543,6 +638,14 @@
 				</Button>
 			{/if}
 		</div>
+
+		{#if isLoadingLatestGeneration && !isGenerating && candidates.length === 0}
+			<div
+				class="rounded-md border border-border px-3 py-2 text-sm text-muted-foreground tx tx-static tx-weak wt-ghost sp-inline"
+			>
+				Loading previous image options...
+			</div>
+		{/if}
 
 		<!-- Generating indicator -->
 		{#if isGenerating}

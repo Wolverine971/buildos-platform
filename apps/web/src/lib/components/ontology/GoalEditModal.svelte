@@ -714,26 +714,25 @@
 		</div>
 	{/snippet}
 
-	<!-- Footer: Grain texture (execution) + Plate weight (authority) -->
+	<!-- Footer Actions -->
 	{#snippet footer()}
 		{#if !isLoading && goal}
 			<div
 				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 			>
-				<!-- Delete button on left -->
-				<Button
-					type="button"
-					variant="danger"
-					size="sm"
-					onclick={() => (showDeleteConfirm = true)}
-					disabled={isDeleting || isSaving}
-					icon={Trash2}
-					iconSize="sm"
-				>
-					Delete
-				</Button>
-
-				<!-- Actions on right -->
+				<div class="flex items-center gap-1">
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onclick={() => (showDeleteConfirm = true)}
+						disabled={isDeleting || isSaving}
+						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+					>
+						<Trash2 class="w-3.5 h-3.5" />
+						<span class="hidden sm:inline ml-1">Delete</span>
+					</Button>
+				</div>
 				<div class="flex items-center gap-2">
 					<Button
 						type="button"
@@ -741,6 +740,7 @@
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
+						class="text-xs h-8 pressable"
 					>
 						Cancel
 					</Button>
@@ -751,10 +751,10 @@
 						onclick={handleSave}
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !name.trim()}
-						icon={Save}
-						iconSize="sm"
+						class="text-xs h-8 pressable"
 					>
-						Save Changes
+						<Save class="w-3.5 h-3.5" />
+						<span class="ml-1">Save</span>
 					</Button>
 				</div>
 			</div>

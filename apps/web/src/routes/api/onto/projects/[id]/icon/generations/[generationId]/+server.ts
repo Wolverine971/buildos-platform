@@ -44,6 +44,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.databaseError(candidatesError);
 		}
 
+		let resolvedGeneration = generation;
+		const resolvedCandidates = candidates ?? [];
+
 		// Queue state is useful for diagnosing "stuck queued" generations.
 		let queueJob: {
 			queue_job_id: string;
@@ -55,10 +58,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			started_at: string | null;
 			completed_at: string | null;
 		} | null = null;
+		let adminClient: ReturnType<typeof createAdminSupabaseClient> | null = null;
 
 		try {
-			const admin = createAdminSupabaseClient();
-			const { data: latestQueueJob } = await admin
+			adminClient = createAdminSupabaseClient();
+			const { data: latestQueueJob } = await adminClient
 				.from('queue_jobs')
 				.select(
 					'queue_job_id, status, attempts, max_attempts, error_message, created_at, started_at, completed_at'
@@ -97,14 +101,76 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		if (
+			resolvedGeneration.trigger_source !== 'auto' &&
+			(resolvedGeneration.status === 'queued' ||
+				resolvedGeneration.status === 'processing') &&
+			resolvedCandidates.length > 0
+		) {
+			const completedAt = resolvedGeneration.completed_at ?? new Date().toISOString();
+			const selectedCandidateId =
+				resolvedGeneration.selected_candidate_id ??
+				resolvedCandidates.find((candidate) => Boolean(candidate.selected_at))?.id ??
+				null;
+
+			logger.warn(
+				'Generation has candidates while still non-terminal; reconciling status to completed',
+				{
+					projectId,
+					generationId,
+					generationStatus: resolvedGeneration.status,
+					queueStatus: queueJob?.status ?? null,
+					queueJobId: queueJob?.queue_job_id ?? null,
+					candidateCount: resolvedCandidates.length
+				}
+			);
+
+			resolvedGeneration = {
+				...resolvedGeneration,
+				status: 'completed',
+				error_message: null,
+				completed_at: completedAt,
+				selected_candidate_id: selectedCandidateId
+			};
+
+			try {
+				const reconcileClient = adminClient ?? createAdminSupabaseClient();
+				const { error: reconcileError } = await reconcileClient
+					.from('onto_project_icon_generations')
+					.update({
+						status: 'completed',
+						error_message: null,
+						completed_at: completedAt,
+						selected_candidate_id: selectedCandidateId
+					})
+					.eq('id', generationId)
+					.eq('project_id', projectId);
+
+				if (reconcileError) {
+					logger.warn('Failed to persist reconciled icon generation status', {
+						projectId,
+						generationId,
+						error: reconcileError
+					});
+				}
+			} catch (reconcileError) {
+				logger.warn('Icon generation status reconciliation threw', {
+					projectId,
+					generationId,
+					error: reconcileError
+				});
+			}
+		}
+
+		if (
 			queueJob &&
-			(generation.status === 'queued' || generation.status === 'processing') &&
+			(resolvedGeneration.status === 'queued' ||
+				resolvedGeneration.status === 'processing') &&
 			(queueJob.status === 'failed' || queueJob.status === 'cancelled')
 		) {
 			logger.warn('Generation status is active while queue job is terminal', {
 				projectId,
 				generationId,
-				generationStatus: generation.status,
+				generationStatus: resolvedGeneration.status,
 				queueStatus: queueJob.status,
 				queueJobId: queueJob.queue_job_id,
 				queueError: queueJob.error_message
@@ -112,8 +178,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		return ApiResponse.success({
-			generation,
-			candidates: candidates ?? [],
+			generation: resolvedGeneration,
+			candidates: resolvedCandidates,
 			queueJob
 		});
 	} catch (error) {

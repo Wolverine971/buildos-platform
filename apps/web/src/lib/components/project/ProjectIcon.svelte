@@ -12,6 +12,7 @@
 	}
 
 	let { svg = null, concept = null, size = 'md', class: className = '' }: Props = $props();
+	const PROJECT_ICON_DISPLAY_ENABLED = false;
 
 	const sizeClasses = $derived.by(() => {
 		switch (size) {
@@ -46,19 +47,21 @@
 	});
 </script>
 
-<div
-	class="project-icon inline-flex items-center justify-center shrink-0 overflow-hidden border border-border/70 bg-muted/30 text-foreground/90 {sizeClasses.wrapper} {className}"
-	title={concept ?? 'Project icon'}
-	aria-hidden="true"
->
-	{#if safeSvg}
-		<span class="project-icon-svg" aria-hidden="true">
-			{@html safeSvg}
-		</span>
-	{:else}
-		<FolderOpen class="{sizeClasses.icon} text-muted-foreground" aria-hidden="true" />
-	{/if}
-</div>
+{#if PROJECT_ICON_DISPLAY_ENABLED}
+	<div
+		class="project-icon inline-flex items-center justify-center shrink-0 overflow-hidden border border-border/70 bg-muted/30 text-foreground/90 {sizeClasses.wrapper} {className}"
+		title={concept ?? 'Project icon'}
+		aria-hidden="true"
+	>
+		{#if safeSvg}
+			<span class="project-icon-svg" aria-hidden="true">
+				{@html safeSvg}
+			</span>
+		{:else}
+			<FolderOpen class="{sizeClasses.icon} text-muted-foreground" aria-hidden="true" />
+		{/if}
+	</div>
+{/if}
 
 <style>
 	.project-icon-svg {

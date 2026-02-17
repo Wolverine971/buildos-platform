@@ -24,8 +24,8 @@
 		Calendar,
 		FileText,
 		X,
-		FolderKanban,
 		Trash2,
+		Save,
 		Zap,
 		Sparkles,
 		RefreshCw,
@@ -540,11 +540,6 @@
 			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
-				>
-					<FolderKanban class="w-5 h-5" />
-				</div>
 				<div class="min-w-0 flex-1">
 					<h2
 						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
@@ -566,6 +561,11 @@
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
+				<!--
+					Project image generation is temporarily disabled.
+					Icon Studio trigger intentionally commented out.
+				-->
+				<!--
 				<Button
 					type="button"
 					onclick={handleOpenIconStudio}
@@ -577,6 +577,7 @@
 				>
 					<Sparkles class="w-4 h-4 sm:w-5 sm:h-5" />
 				</Button>
+				-->
 				<!-- Chat about this project button -->
 				<Button
 					type="button"
@@ -1022,38 +1023,33 @@
 
 	{#snippet footer()}
 		{#if project}
-			<!-- Footer Actions - delete on left, cancel/save on right -->
 			<form onsubmit={handleSubmit} class="contents">
 				<div
-					class="flex flex-row items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
+					class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 				>
-					<!-- Delete button on left -->
-					<div class="flex items-center gap-1.5 sm:gap-2">
+					<div class="flex items-center gap-1">
 						{#if canDeleteProject}
-							<Trash2 class="w-3 h-3 sm:w-4 sm:h-4 text-destructive shrink-0" />
 							<Button
 								type="button"
-								variant="danger"
+								variant="ghost"
 								size="sm"
 								onclick={() => (showDeleteConfirm = true)}
 								disabled={isDeleting || isSaving}
-								class="text-[10px] sm:text-xs px-2 py-1 sm:px-3 sm:py-1.5"
+								class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
 							>
-								<span class="hidden sm:inline">Delete</span>
-								<span class="sm:hidden">Del</span>
+								<Trash2 class="w-3.5 h-3.5" />
+								<span class="hidden sm:inline ml-1">Delete</span>
 							</Button>
 						{/if}
 					</div>
-
-					<!-- Cancel and Save on right -->
-					<div class="flex flex-row items-center gap-2">
+					<div class="flex items-center gap-2">
 						<Button
 							type="button"
 							variant="ghost"
 							size="sm"
 							onclick={handleClose}
 							disabled={isSaving || isDeleting}
-							class="text-xs sm:text-sm px-2 sm:px-4"
+							class="text-xs h-8 pressable"
 						>
 							Cancel
 						</Button>
@@ -1063,10 +1059,10 @@
 							size="sm"
 							loading={isSaving}
 							disabled={isSaving || isDeleting}
-							class="text-xs sm:text-sm px-2 sm:px-4"
+							class="text-xs h-8 pressable"
 						>
-							<span class="hidden sm:inline">Save Changes</span>
-							<span class="sm:hidden">Save</span>
+							<Save class="w-3.5 h-3.5" />
+							<span class="ml-1">Save</span>
 						</Button>
 					</div>
 				</div>

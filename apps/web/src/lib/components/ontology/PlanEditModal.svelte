@@ -621,50 +621,47 @@
 		</div>
 	{/snippet}
 
-	<!-- Footer Actions - Dense Mode A -->
+	<!-- Footer Actions -->
 	{#snippet footer()}
 		{#if !isLoading && plan}
 			<div
-				class="flex flex-row items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
+				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 			>
-				<!-- Delete button on left -->
-				<div class="flex items-center gap-1.5">
+				<div class="flex items-center gap-1">
 					<Button
 						type="button"
-						variant="danger"
+						variant="ghost"
 						size="sm"
 						onclick={() => (showDeleteConfirm = true)}
 						disabled={isDeleting || isSaving}
-						class="text-xs px-2 py-1.5"
-						icon={Trash2}
+						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
 					>
-						<span class="hidden sm:inline">Delete</span>
-						<span class="sm:hidden">Del</span>
+						<Trash2 class="w-3.5 h-3.5" />
+						<span class="hidden sm:inline ml-1">Delete</span>
 					</Button>
 				</div>
-
-				<!-- Cancel and Save on right -->
-				<div class="flex flex-row items-center gap-2">
+				<div class="flex items-center gap-2">
 					<Button
+						type="button"
 						variant="ghost"
 						size="sm"
 						onclick={handleClose}
 						disabled={isSaving || isDeleting}
-						class="text-xs px-3"
+						class="text-xs h-8 pressable"
 					>
 						Cancel
 					</Button>
 					<Button
+						type="button"
 						variant="primary"
 						size="sm"
 						onclick={handleSave}
 						loading={isSaving}
 						disabled={formDisabled || !name.trim()}
-						class="text-xs px-3"
+						class="text-xs h-8 pressable"
 					>
 						<Save class="w-3.5 h-3.5" />
-						<span class="hidden sm:inline">Save changes</span>
-						<span class="sm:hidden">Save</span>
+						<span class="ml-1">Save</span>
 					</Button>
 				</div>
 			</div>
