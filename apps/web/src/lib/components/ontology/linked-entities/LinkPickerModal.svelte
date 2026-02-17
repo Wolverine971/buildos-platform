@@ -177,7 +177,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-end gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
+			class="flex items-center justify-end gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 		>
 			<Button variant="ghost" size="sm" onclick={handleClose} class="pressable">Cancel</Button
 			>

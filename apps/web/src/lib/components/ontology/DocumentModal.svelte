@@ -73,7 +73,8 @@
 		FilePlus,
 		Check,
 		AlertTriangle,
-		LoaderCircle
+		LoaderCircle,
+		MessageSquare
 	} from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { untrack, type Component } from 'svelte';
@@ -293,6 +294,10 @@
 	let showVoiceNotes = $state(false);
 	let showActivityLog = $state(false);
 
+	// Comments section (collapsed by default)
+	let showComments = $state(false);
+	let commentsCount = $state(0);
+
 	// Version history state
 	let showRestoreModal = $state(false);
 	let selectedVersionForRestore = $state<VersionListItem | null>(null);
@@ -347,6 +352,9 @@
 		serverUpdatedAt = null;
 		saveStatus = 'idle';
 		clearAutosaveTimers();
+		// Reset comments panel
+		showComments = false;
+		commentsCount = 0;
 	}
 
 	function normalizeDocumentState(state?: string | null): string {
@@ -931,7 +939,7 @@
 	closeOnBackdrop={false}
 	closeOnEscape={!saving}
 	showCloseButton={false}
-	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container"
+	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container sm:!max-h-[95dvh]"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header with strip texture -->
@@ -1050,7 +1058,7 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="flex-1 flex flex-col min-h-[80vh]">
+		<div class="flex-1 flex flex-col min-h-0">
 			{#if loading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
@@ -1348,9 +1356,9 @@
 								</div>
 
 								<!-- Content editor - the main focus -->
-								<div class="p-3 flex-1 flex flex-col min-h-0">
+								<div class="px-3 pt-2 pb-1 flex-1 flex flex-col min-h-0">
 									<div
-										class="flex items-center justify-between gap-2 mb-2 shrink-0"
+										class="flex items-center justify-between gap-2 mb-1.5 shrink-0"
 									>
 										<h4 class="micro-label text-foreground">CONTENT</h4>
 										<!-- Mobile/tablet: date + save status next to content label -->
@@ -1440,7 +1448,7 @@
 
 							<!-- Mobile: Collapsible metadata section at bottom -->
 							<div
-								class="lg:hidden flex-shrink-0 border-t border-border bg-muted tx tx-strip tx-weak wt-paper max-h-[40vh] overflow-y-auto"
+								class="lg:hidden flex-shrink-0 border-t border-border bg-muted tx tx-strip tx-weak wt-paper max-h-[30vh] overflow-y-auto"
 							>
 								<!-- Toggle button -->
 								<button
@@ -1660,12 +1668,54 @@
 				</form>
 
 				{#if activeDocumentId}
-					<div class="flex-shrink-0 max-h-[15vh] overflow-y-auto border-t border-border">
-						<EntityCommentsSection
-							{projectId}
-							entityType="document"
-							entityId={activeDocumentId}
-						/>
+					<div class="flex-shrink-0 border-t border-border">
+						<!-- Collapsible comments toggle -->
+						<button
+							type="button"
+							onclick={() => (showComments = !showComments)}
+							class="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 transition-colors pressable group"
+						>
+							<span class="flex items-center gap-2">
+								<MessageSquare
+									class="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors"
+								/>
+								<span class="micro-label text-foreground">COMMENTS</span>
+								{#if commentsCount > 0}
+									<span
+										class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-accent/20 text-accent rounded-full"
+									>
+										{commentsCount}
+									</span>
+								{/if}
+							</span>
+							{#if showComments}
+								<ChevronDown
+									class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+								/>
+							{:else}
+								<ChevronRight
+									class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+								/>
+							{/if}
+						</button>
+						<!-- Always render to fetch count; hide body when collapsed -->
+						<div
+							class="{showComments
+								? 'max-h-[25vh]'
+								: 'max-h-0'} overflow-hidden transition-[max-height] duration-200"
+						>
+							<div
+								class="overflow-y-auto"
+								style:max-height={showComments ? '25vh' : undefined}
+							>
+								<EntityCommentsSection
+									{projectId}
+									entityType="document"
+									entityId={activeDocumentId}
+									onCountChange={(count) => (commentsCount = count)}
+								/>
+							</div>
+						</div>
 					</div>
 				{/if}
 			{/if}
@@ -1673,7 +1723,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-between gap-2 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak wt-paper"
+			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 		>
 			<div class="flex items-center gap-1">
 				{#if activeDocumentId}
@@ -1857,6 +1907,7 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		min-height: 80vh;
+		flex: 1;
+		min-height: 0;
 	}
 </style>

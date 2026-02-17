@@ -383,17 +383,22 @@ export async function startWorker() {
 		console.warn('⚠️  SMS functionality disabled - Twilio credentials not configured');
 	}
 
-	// Clean up stale jobs on startup to prevent accidental processing of old jobs
+	// Run queue cleanup on startup to cancel stale jobs and enforce retention
 	try {
 		console.log('🧹 Running startup cleanup check...');
 		const cleanupResult = await cleanupStaleJobs({
-			staleThresholdHours: 24,
-			oldFailedJobsDays: 0, // Don't clean up old failed jobs on startup
+			staleThresholdHours: config.staleJobThresholdHours,
+			oldFailedJobsDays: config.oldFailedJobsDays,
+			completedJobsRetentionDays: config.completedJobsRetentionDays,
+			maxDeletionBatchSize: config.cleanupBatchSize,
 			dryRun: false
 		});
 
 		if (cleanupResult.staleCancelled > 0) {
 			console.log(`✅ Cancelled ${cleanupResult.staleCancelled} stale job(s) on startup`);
+		}
+		if (cleanupResult.completedDeleted > 0) {
+			console.log(`✅ Deleted ${cleanupResult.completedDeleted} completed job(s) on startup`);
 		}
 		if (cleanupResult.errors.length > 0) {
 			console.warn('⚠️  Cleanup had errors:', cleanupResult.errors);

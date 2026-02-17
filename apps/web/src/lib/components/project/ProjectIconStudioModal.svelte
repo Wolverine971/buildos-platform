@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/project/ProjectIconStudioModal.svelte -->
 <script lang="ts">
+	import { dev } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
@@ -14,6 +15,7 @@
 		| 'failed'
 		| 'cancelled'
 		| 'retrying';
+	type IconStudioLogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 	interface IconGeneration {
 		id: string;
@@ -108,8 +110,41 @@
 		return null;
 	}
 
+	function logIconStudio(
+		level: IconStudioLogLevel,
+		event: string,
+		meta?: Record<string, unknown>
+	) {
+		if (level === 'debug' && !dev) return;
+
+		const payload = {
+			projectId,
+			generationId,
+			...(meta ?? {})
+		};
+
+		switch (level) {
+			case 'debug':
+				console.debug('[ProjectIconStudioModal]', event, payload);
+				break;
+			case 'info':
+				console.info('[ProjectIconStudioModal]', event, payload);
+				break;
+			case 'warn':
+				console.warn('[ProjectIconStudioModal]', event, payload);
+				break;
+			case 'error':
+				console.error('[ProjectIconStudioModal]', event, payload);
+				break;
+		}
+	}
+
 	function startPolling() {
 		if (typeof window === 'undefined' || pollTimer) return;
+
+		logIconStudio('debug', 'Starting generation polling', {
+			pollIntervalMs: POLL_INTERVAL_MS
+		});
 
 		pollTimer = window.setInterval(() => {
 			if (!isOpen || !generationId) {
@@ -124,11 +159,13 @@
 		if (!pollTimer) return;
 		clearInterval(pollTimer);
 		pollTimer = null;
+		logIconStudio('debug', 'Stopped generation polling');
 	}
 
 	// Reset state on open; clean up polling on close and destroy
 	$effect(() => {
 		if (isOpen) {
+			logIconStudio('debug', 'Modal opened, resetting icon generation state');
 			steeringPrompt = '';
 			generationId = null;
 			generationStatus = null;
@@ -150,8 +187,17 @@
 	async function fetchGeneration(targetGenerationId: string) {
 		if (!targetGenerationId || isFetchingGeneration) return;
 
+		const fetchStartedAt = Date.now();
+		const previousStatus = generationStatus;
+		const previousQueueStatus = queueJob?.status ?? null;
+		const previousCandidateCount = candidates.length;
+
 		isFetchingGeneration = true;
 		try {
+			logIconStudio('debug', 'Fetching generation status', {
+				targetGenerationId
+			});
+
 			const response = await fetch(
 				`/api/onto/projects/${projectId}/icon/generations/${targetGenerationId}?t=${Date.now()}`,
 				{
@@ -185,9 +231,40 @@
 
 			candidates = nextCandidates;
 
+			const nextQueueStatus = nextQueueJob?.status ?? null;
+			if (
+				nextStatus !== previousStatus ||
+				nextQueueStatus !== previousQueueStatus ||
+				nextCandidates.length !== previousCandidateCount
+			) {
+				logIconStudio('info', 'Generation state updated', {
+					targetGenerationId,
+					previousStatus,
+					nextStatus,
+					previousQueueStatus,
+					nextQueueStatus,
+					previousCandidateCount,
+					nextCandidateCount: nextCandidates.length,
+					queueJobId: nextQueueJob?.queue_job_id ?? null,
+					queueAttempts: nextQueueJob?.attempts ?? null,
+					queueMaxAttempts: nextQueueJob?.max_attempts ?? null,
+					latencyMs: Date.now() - fetchStartedAt
+				});
+			}
+
 			const isStillGenerating = nextStatus === 'queued' || nextStatus === 'processing';
 			if (isStillGenerating && nextQueueJob) {
 				if (nextQueueJob.status === 'failed' || nextQueueJob.status === 'cancelled') {
+					logIconStudio(
+						'warn',
+						'Queue job failed before generation reached terminal state',
+						{
+							targetGenerationId,
+							queueStatus: nextQueueJob.status,
+							queueJobId: nextQueueJob.queue_job_id,
+							queueError: nextQueueJob.error_message
+						}
+					);
 					generationStatus = 'failed';
 					generationError =
 						nextQueueJob.error_message ??
@@ -197,11 +274,32 @@
 					stopPolling();
 					return;
 				}
+
+				if (nextQueueJob.status === 'completed' && previousQueueStatus !== 'completed') {
+					logIconStudio(
+						'warn',
+						'Queue job completed but generation is still non-terminal',
+						{
+							targetGenerationId,
+							generationStatus: nextStatus,
+							queueJobId: nextQueueJob.queue_job_id
+						}
+					);
+				}
 			}
 
 			if (isStillGenerating && generation?.created_at) {
 				const startedAt = Date.parse(generation.created_at);
 				if (Number.isFinite(startedAt) && Date.now() - startedAt >= STALL_WARNING_MS) {
+					if (!stalledMessage) {
+						logIconStudio('warn', 'Generation appears stalled waiting for worker', {
+							targetGenerationId,
+							generationCreatedAt: generation.created_at,
+							stallWarningMs: STALL_WARNING_MS,
+							queueStatus: nextQueueJob?.status ?? null,
+							queueJobId: nextQueueJob?.queue_job_id ?? null
+						});
+					}
 					stalledMessage =
 						'Generation is taking longer than expected. Still waiting for worker completion...';
 				}
@@ -210,11 +308,23 @@
 			}
 
 			if (!isStillGenerating) {
+				logIconStudio('info', 'Generation reached terminal state', {
+					targetGenerationId,
+					generationStatus: nextStatus,
+					candidateCount: nextCandidates.length
+				});
 				stopPolling();
 			}
 		} catch (error) {
 			generationError =
 				error instanceof Error ? error.message : 'Failed to load generation status';
+			logIconStudio('error', 'Failed to fetch generation status', {
+				targetGenerationId,
+				error:
+					error instanceof Error
+						? { message: error.message, stack: dev ? error.stack : undefined }
+						: error
+			});
 			stalledMessage = null;
 			if (generationStatus !== 'queued' && generationStatus !== 'processing') {
 				stopPolling();
@@ -227,6 +337,10 @@
 	async function handleGenerate() {
 		if (isGenerating || selectingCandidateId || !projectId) return;
 
+		logIconStudio('info', 'Starting icon generation request', {
+			promptLength: steeringPrompt.trim().length,
+			candidateCount
+		});
 		isCreatingGeneration = true;
 		generationError = null;
 		generationId = null;
@@ -260,11 +374,17 @@
 			const nextGenerationId =
 				typeof data.generationId === 'string' ? data.generationId : null;
 			const nextStatus = normalizeGenerationStatus(data.status) ?? 'queued';
+			const queueJobId = typeof data.queueJobId === 'string' ? data.queueJobId : null;
 
 			if (!nextGenerationId) {
 				throw new Error('Generation ID missing from response');
 			}
 
+			logIconStudio('info', 'Icon generation created', {
+				nextGenerationId,
+				nextStatus,
+				queueJobId
+			});
 			generationId = nextGenerationId;
 			generationStatus = nextStatus;
 
@@ -276,6 +396,26 @@
 		} catch (error) {
 			generationError =
 				error instanceof Error ? error.message : 'Failed to start icon generation';
+			logIconStudio('error', 'Failed to create icon generation', {
+				error:
+					error instanceof Error
+						? { message: error.message, stack: dev ? error.stack : undefined }
+						: error,
+				promptLength: steeringPrompt.trim().length,
+				candidateCount
+			});
+
+			if (
+				generationId &&
+				(generationStatus === 'queued' || generationStatus === 'processing')
+			) {
+				logIconStudio(
+					'warn',
+					'Initial status fetch failed after generation creation; continuing polling',
+					{ generationId, generationStatus }
+				);
+				startPolling();
+			}
 		} finally {
 			isCreatingGeneration = false;
 		}
@@ -283,6 +423,7 @@
 
 	async function handleRefreshStatus() {
 		if (!generationId || isFetchingGeneration) return;
+		logIconStudio('debug', 'Manual status refresh requested', { generationId });
 		stalledMessage = null;
 		await fetchGeneration(generationId);
 		if (generationStatus === 'queued' || generationStatus === 'processing') {
@@ -293,6 +434,10 @@
 	async function handleSelectCandidate(candidateId: string) {
 		if (!generationId || selectingCandidateId || isGenerating) return;
 
+		logIconStudio('info', 'Selecting generated icon candidate', {
+			generationId,
+			candidateId
+		});
 		selectingCandidateId = candidateId;
 		generationError = null;
 
@@ -316,17 +461,30 @@
 			}
 
 			selectedCandidateId = candidateId;
+			logIconStudio('info', 'Icon candidate applied successfully', {
+				generationId,
+				candidateId
+			});
 			await fetchGeneration(generationId);
 			await onApplied?.();
 			handleClose();
 		} catch (error) {
 			generationError = error instanceof Error ? error.message : 'Failed to apply icon';
+			logIconStudio('error', 'Failed to apply icon candidate', {
+				generationId,
+				candidateId,
+				error:
+					error instanceof Error
+						? { message: error.message, stack: dev ? error.stack : undefined }
+						: error
+			});
 		} finally {
 			selectingCandidateId = null;
 		}
 	}
 
 	function handleClose() {
+		logIconStudio('debug', 'Closing icon studio modal');
 		isOpen = false;
 		onClose?.();
 	}

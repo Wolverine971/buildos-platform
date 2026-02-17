@@ -10,8 +10,9 @@
 	 */
 
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import { notificationStore } from '$lib/stores/notification.store';
-	import { LoaderCircle, CheckCircle, AlertCircle, XCircle } from 'lucide-svelte';
+	import { LoaderCircle, CircleCheck, AlertCircle, XCircle } from 'lucide-svelte';
 	import type { Notification } from '$lib/types/notification.types';
 
 	// Props
@@ -79,7 +80,6 @@
 	});
 
 	// Resolve the type-specific component (if loaded)
-	// FIX: Changed from $derived(() => { ... }) to $derived(expression)
 	let typeSpecificComponent = $derived(
 		notification.type === 'brain-dump'
 			? BrainDumpModalContent
@@ -93,7 +93,6 @@
 	);
 
 	// Get modal title based on notification type (fallback for generic view)
-	// FIX: Simplified the $derived expression
 	let modalTitle = $derived(
 		notification.type === 'brain-dump'
 			? 'Brain Dump Processing'
@@ -155,175 +154,121 @@
 		size="lg"
 		showCloseButton={true}
 	>
-		{#snippet header()}
-			<div class="flex items-center gap-3 px-6 py-4 border-b">
-				<!-- Status Icon -->
-				{#if notification.status === 'processing'}
-					<LoaderCircle class="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
-				{:else if notification.status === 'success'}
-					<CheckCircle class="w-6 h-6 text-green-600 dark:text-green-400" />
-				{:else if notification.status === 'error'}
-					<AlertCircle class="w-6 h-6 text-red-600 dark:text-red-400" />
-				{:else if notification.status === 'cancelled'}
-					<XCircle class="w-6 h-6 text-muted-foreground" />
-				{/if}
+		{#snippet children()}
+			<div class="px-3 sm:px-4 py-3 sm:py-4">
+				<div class="space-y-4">
+					{#if notification.status === 'processing'}
+						<div class="text-center py-8">
+							<LoaderCircle class="w-12 h-12 text-accent animate-spin mx-auto mb-4" />
+							<p class="text-muted-foreground">
+								{notification.progress?.message || 'Processing...'}
+							</p>
 
-				<!-- Title -->
-				<div class="flex-1">
-					<h2 class="text-xl font-bold text-foreground">
-						{modalTitle}
-					</h2>
-					{#if notification.progress?.message}
-						<p class="text-sm text-muted-foreground mt-0.5">
-							{notification.progress.message}
-						</p>
+							<!-- Progress bar for percentage-based progress -->
+							{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
+								<div class="mt-4 max-w-md mx-auto">
+									<div class="h-2 bg-muted rounded-full overflow-hidden">
+										<div
+											class="h-full bg-accent transition-all duration-300"
+											style="width: {notification.progress.percentage}%"
+										></div>
+									</div>
+									<p class="text-sm text-muted-foreground mt-2">
+										{notification.progress.percentage}%
+									</p>
+								</div>
+							{/if}
+
+							<!-- Step-based progress -->
+							{#if notification.progress?.type === 'steps'}
+								<div class="mt-6 space-y-2 max-w-md mx-auto">
+									{#each notification.progress.steps as step, index}
+										<div class="flex items-center gap-3">
+											<div
+												class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
+												{step.status === 'completed'
+													? 'bg-accent/10'
+													: step.status === 'processing'
+														? 'bg-accent/10'
+														: step.status === 'error'
+															? 'bg-destructive/10'
+															: 'bg-muted'}"
+											>
+												{#if step.status === 'completed'}
+													<CircleCheck class="w-4 h-4 text-accent" />
+												{:else if step.status === 'processing'}
+													<LoaderCircle
+														class="w-4 h-4 text-accent animate-spin"
+													/>
+												{:else if step.status === 'error'}
+													<AlertCircle class="w-4 h-4 text-destructive" />
+												{:else}
+													<div
+														class="w-2 h-2 bg-muted-foreground rounded-full"
+													></div>
+												{/if}
+											</div>
+											<span
+												class="text-sm
+												{step.status === 'processing' ? 'text-foreground font-medium' : 'text-muted-foreground'}"
+											>
+												{step.name}
+											</span>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</div>
+					{:else if notification.status === 'success'}
+						<div class="text-center py-8">
+							<CircleCheck class="w-16 h-16 text-accent mx-auto mb-4" />
+							<h3 class="text-lg font-semibold text-foreground mb-2">Success!</h3>
+							<p class="text-muted-foreground">
+								{notification.type === 'brain-dump'
+									? 'Brain dump processed successfully'
+									: notification.type === 'calendar-analysis'
+										? 'Calendar analyzed successfully'
+										: notification.type === 'generic'
+											? notification.data.message
+											: 'Operation completed successfully'}
+							</p>
+						</div>
+					{:else if notification.status === 'error'}
+						<div class="text-center py-8">
+							<AlertCircle class="w-16 h-16 text-destructive mx-auto mb-4" />
+							<h3 class="text-lg font-semibold text-foreground mb-2">Error</h3>
+							<p class="text-destructive">
+								{notification.type === 'brain-dump'
+									? notification.data?.error || 'Brain dump processing failed'
+									: notification.type === 'calendar-analysis'
+										? notification.data?.error || 'Calendar analysis failed'
+										: notification.type === 'generic'
+											? notification.data?.error || 'An error occurred'
+											: 'An error occurred'}
+							</p>
+						</div>
 					{/if}
 				</div>
 			</div>
 		{/snippet}
-
-		<!-- Content area -->
-		<div class="px-6 py-5">
-			<!-- Placeholder content - will be replaced with type-specific components -->
-			<div class="space-y-4">
-				{#if notification.status === 'processing'}
-					<div class="text-center py-8">
-						<LoaderCircle
-							class="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-4"
-						/>
-						<p class="text-muted-foreground">
-							{notification.progress?.message || 'Processing...'}
-						</p>
-
-						<!-- Progress bar for percentage-based progress -->
-						{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
-							<div class="mt-4 max-w-md mx-auto">
-								<div class="h-2 bg-muted rounded-full overflow-hidden">
-									<div
-										class="h-full bg-blue-600 dark:bg-blue-400 transition-all duration-300"
-										style="width: {notification.progress.percentage}%"
-									></div>
-								</div>
-								<p class="text-sm text-muted-foreground mt-2">
-									{notification.progress.percentage}%
-								</p>
-							</div>
-						{/if}
-
-						<!-- Step-based progress -->
-						{#if notification.progress?.type === 'steps'}
-							<div class="mt-6 space-y-2 max-w-md mx-auto">
-								{#each notification.progress.steps as step, index}
-									<div class="flex items-center gap-3">
-										<div
-											class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center
-                           {step.status === 'completed'
-												? 'bg-green-100 dark:bg-green-900'
-												: step.status === 'processing'
-													? 'bg-blue-100 dark:bg-blue-900'
-													: step.status === 'error'
-														? 'bg-red-100 dark:bg-red-900'
-														: 'bg-muted'}"
-										>
-											{#if step.status === 'completed'}
-												<CheckCircle
-													class="w-4 h-4 text-green-600 dark:text-green-400"
-												/>
-											{:else if step.status === 'processing'}
-												<LoaderCircle
-													class="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin"
-												/>
-											{:else if step.status === 'error'}
-												<AlertCircle
-													class="w-4 h-4 text-red-600 dark:text-red-400"
-												/>
-											{:else}
-												<div class="w-2 h-2 bg-gray-400 rounded-full"></div>
-											{/if}
-										</div>
-										<span
-											class="text-sm
-                         {step.status === 'processing'
-												? 'text-foreground font-medium'
-												: 'text-muted-foreground'}"
-										>
-											{step.name}
-										</span>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				{:else if notification.status === 'success'}
-					<div class="text-center py-8">
-						<CheckCircle
-							class="w-16 h-16 text-green-600 dark:text-green-400 mx-auto mb-4"
-						/>
-						<h3 class="text-lg font-semibold text-foreground mb-2">Success!</h3>
-						<p class="text-muted-foreground">
-							{notification.type === 'brain-dump'
-								? 'Brain dump processed successfully'
-								: notification.type === 'calendar-analysis'
-									? 'Calendar analyzed successfully'
-									: notification.type === 'generic'
-										? notification.data.message
-										: 'Operation completed successfully'}
-						</p>
-
-						<!-- Action buttons -->
-						<div class="mt-6 flex gap-3 justify-center">
-							{#if notification.actions?.view}
-								<button
-									onclick={notification.actions.view}
-									class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-								>
-									View Results
-								</button>
-							{/if}
-							<button
-								onclick={handleDismiss}
-								class="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted transition-colors"
-							>
-								Dismiss
-							</button>
-						</div>
-					</div>
-				{:else if notification.status === 'error'}
-					<div class="text-center py-8">
-						<AlertCircle
-							class="w-16 h-16 text-red-600 dark:text-red-400 mx-auto mb-4"
-						/>
-						<h3 class="text-lg font-semibold text-foreground mb-2">Error</h3>
-						<p class="text-red-600 dark:text-red-400">
-							{notification.type === 'brain-dump'
-								? notification.data?.error || 'Brain dump processing failed'
-								: notification.type === 'calendar-analysis'
-									? notification.data?.error || 'Calendar analysis failed'
-									: notification.type === 'generic'
-										? notification.data?.error || 'An error occurred'
-										: 'An error occurred'}
-						</p>
-
-						<!-- Action buttons -->
-						<div class="mt-6 flex gap-3 justify-center">
-							{#if notification.actions?.retry}
-								<button
-									onclick={notification.actions.retry}
-									class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-								>
-									Retry
-								</button>
-							{/if}
-							<button
-								onclick={handleDismiss}
-								class="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted transition-colors"
-							>
-								Dismiss
-							</button>
-						</div>
-					</div>
-				{/if}
-			</div>
-		</div>
+		{#snippet footer()}
+			{#if notification.status === 'success' || notification.status === 'error'}
+				<div
+					class="flex items-center justify-end gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
+				>
+					{#if notification.status === 'success' && notification.actions?.view}
+						<Button onclick={notification.actions.view} variant="primary" size="md">
+							View Results
+						</Button>
+					{/if}
+					{#if notification.status === 'error' && notification.actions?.retry}
+						<Button onclick={notification.actions.retry} variant="primary" size="md">
+							Retry
+						</Button>
+					{/if}
+					<Button onclick={handleDismiss} variant="outline" size="md">Dismiss</Button>
+				</div>
+			{/if}
+		{/snippet}
 	</Modal>
 {/if}

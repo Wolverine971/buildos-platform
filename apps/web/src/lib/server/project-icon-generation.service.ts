@@ -20,6 +20,17 @@ export async function queueProjectIconGeneration(params: {
 	try {
 		const supabase = createAdminSupabaseClient();
 		const dedupKey = params.dedupKey ?? `project-icon:generation:${params.generationId}`;
+		logger.info('Queueing project icon generation job', {
+			projectId: params.projectId,
+			generationId: params.generationId,
+			userId: params.userId,
+			triggerSource: params.triggerSource,
+			candidateCount: params.candidateCount,
+			autoSelect: params.autoSelect,
+			priority: params.priority ?? 8,
+			dedupKey
+		});
+
 		const { data, error } = await supabase.rpc('add_queue_job', {
 			p_user_id: params.userId,
 			p_job_type: 'generate_project_icon',
@@ -47,7 +58,23 @@ export async function queueProjectIconGeneration(params: {
 			return { queued: false, reason: error.message };
 		}
 
-		return { queued: true, jobId: data as string, reason: 'queued' };
+		if (typeof data !== 'string' || data.length === 0) {
+			logger.warn('Queue RPC returned invalid job id for project icon generation', {
+				projectId: params.projectId,
+				generationId: params.generationId,
+				triggerSource: params.triggerSource,
+				returnedJobId: data
+			});
+			return { queued: false, reason: 'Queue did not return a valid job ID' };
+		}
+
+		logger.info('Queued project icon generation job', {
+			projectId: params.projectId,
+			generationId: params.generationId,
+			jobId: data,
+			triggerSource: params.triggerSource
+		});
+		return { queued: true, jobId: data, reason: 'queued' };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Queue failed';
 		logger.warn('Queue project icon generation failed', {

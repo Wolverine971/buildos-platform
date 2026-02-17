@@ -6,7 +6,7 @@
 		Copy,
 		Download,
 		ExternalLink,
-		CheckCircle,
+		CircleCheck,
 		Mail,
 		LoaderCircle,
 		AlertCircle,
@@ -291,7 +291,7 @@
 		{#if isRegenerating}
 			<!-- Regenerating state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
-				<RefreshCw class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
+				<RefreshCw class="h-12 w-12 text-accent animate-spin mb-4" />
 				<p class="text-foreground font-medium mb-2">Regenerating Brief</p>
 				<p class="text-muted-foreground text-sm mb-4">
 					{regenerateProgress.message}
@@ -300,7 +300,7 @@
 					<div class="w-full max-w-md">
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-blue-600 dark:bg-blue-400 h-2 rounded-full transition-all duration-300"
+								class="bg-accent h-2 rounded-full transition-all duration-300"
 								style="width: {regenerateProgress.percentage}%"
 							></div>
 						</div>
@@ -313,15 +313,13 @@
 		{:else if loading}
 			<!-- Loading state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
-				<LoaderCircle
-					class="h-12 w-12 text-blue-600 dark:text-blue-400 animate-spin mb-4"
-				/>
+				<LoaderCircle class="h-12 w-12 text-accent animate-spin mb-4" />
 				<p class="text-muted-foreground">Loading brief...</p>
 			</div>
 		{:else if error}
 			<!-- Error state -->
 			<div class="flex flex-col items-center justify-center py-8 sm:py-12 px-4 sm:px-6">
-				<AlertCircle class="h-12 w-12 text-red-500 dark:text-red-400 mb-4" />
+				<AlertCircle class="h-12 w-12 text-destructive mb-4" />
 				<p class="text-foreground font-medium mb-2">Failed to load brief</p>
 				<p class="text-muted-foreground text-sm mb-4">{error}</p>
 				<Button
@@ -336,18 +334,13 @@
 			<!-- Header Info -->
 
 			<!-- Brief Content -->
-			<div class="px-4 sm:px-6 py-6">
+			<div class="px-3 sm:px-4 py-4 sm:py-6">
 				<div
-					class="prose prose-sm dark:prose-invert max-w-none
-				prose-headings:font-semibold prose-headings:text-foreground dark:prose-headings:text-white
-				prose-p:text-muted-foreground dark:prose-p:text-muted-foreground
-				prose-li:text-muted-foreground dark:prose-li:text-muted-foreground
-				prose-strong:text-foreground dark:prose-strong:text-muted-foreground
-				prose-blockquote:text-muted-foreground dark:prose-blockquote:text-muted-foreground
-				prose-blockquote:border-border dark:prose-blockquote:border-gray-600
-				prose-code:bg-muted dark:prose-code:bg-gray-800
-				prose-code:text-foreground dark:prose-code:text-muted-foreground
-				prose-pre:bg-muted dark:prose-pre:bg-gray-800"
+					class="prose prose-sm max-w-none overflow-x-auto
+						prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
+						prose-strong:text-foreground prose-a:text-accent prose-blockquote:text-muted-foreground
+						prose-blockquote:border-border prose-code:bg-muted prose-code:text-foreground
+						prose-pre:bg-muted prose-pre:text-foreground prose-hr:border-border"
 				>
 					{@html renderMarkdown(displayBrief.summary_content)}
 				</div>
@@ -362,16 +355,14 @@
 
 	{#snippet footer()}
 		<!-- Footer Actions -->
-		<div class="px-4 sm:px-6 py-4 border-t border-border bg-muted/50">
+		<div class="px-3 sm:px-4 py-3 border-t border-border bg-muted/50">
 			<!-- Email opt-in banner if not opted in -->
 			{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
-				<div
-					class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
-				>
+				<div class="mb-4 p-3 bg-accent/5 border border-accent/20 rounded-lg">
 					<div class="flex items-center justify-between">
 						<div class="flex items-center space-x-2">
-							<Mail class="h-5 w-5 text-blue-600 dark:text-blue-400" />
-							<p class="text-sm text-blue-700 dark:text-blue-300">
+							<Mail class="h-5 w-5 text-accent" />
+							<p class="text-sm text-foreground">
 								Get your daily briefs delivered to your inbox
 							</p>
 						</div>
@@ -407,7 +398,7 @@
 							onclick={copyToClipboard}
 							variant="outline"
 							size="sm"
-							icon={copiedToClipboard ? CheckCircle : Copy}
+							icon={copiedToClipboard ? CircleCheck : Copy}
 							disabled={isRegenerating}
 							class="w-full sm:w-auto"
 						>

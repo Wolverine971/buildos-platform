@@ -1392,11 +1392,11 @@
 	isOpen={showSettingsModal}
 	user={data.user}
 	onClose={() => (showSettingsModal = false)}
-	on:save={() => {
+	onSave={() => {
 		toastService.success('Brief settings updated successfully');
 		showSettingsModal = false;
 	}}
-	on:reset={() => {
+	onReset={() => {
 		toastService.success('Brief settings reset to defaults');
 		showSettingsModal = false;
 	}}

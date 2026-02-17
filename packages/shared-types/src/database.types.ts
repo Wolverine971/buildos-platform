@@ -10314,6 +10314,18 @@ export type Database = {
         Args: { p_order_threshold: number; p_project_id: string }
         Returns: undefined
       }
+      delete_old_completed_queue_jobs: {
+        Args: {
+          p_batch_size?: number
+          p_job_types?: string[]
+          p_retention_days?: number
+        }
+        Returns: {
+          deleted_count: number
+          newest_deleted_completed_at: string
+          oldest_deleted_completed_at: string
+        }[]
+      }
       delete_onto_project: {
         Args: { p_project_id: string }
         Returns: undefined

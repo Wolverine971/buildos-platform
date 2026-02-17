@@ -5,6 +5,8 @@ import cron from 'node-cron';
 import { format } from 'date-fns';
 
 import { supabase } from './lib/supabase';
+import { queueConfig } from './config/queueConfig';
+import { cleanupStaleJobs } from './lib/utils/queueCleanup';
 import { queue } from './worker';
 import type { Database } from '@buildos/shared-types';
 import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
@@ -141,6 +143,22 @@ export function startScheduler() {
 		await checkSMSAlerts();
 	});
 
+	// Run queue retention cleanup on a cron schedule
+	if (queueConfig.enableRetentionCleanup) {
+		if (cron.validate(queueConfig.retentionCleanupCron)) {
+			cron.schedule(queueConfig.retentionCleanupCron, async () => {
+				await runQueueRetentionCleanup();
+			});
+			console.log(
+				`🧹 Queue retention cleanup scheduled (${queueConfig.retentionCleanupCron})`
+			);
+		} else {
+			console.warn(
+				`⚠️ Invalid QUEUE_RETENTION_CLEANUP_CRON value "${queueConfig.retentionCleanupCron}", scheduled cleanup disabled`
+			);
+		}
+	}
+
 	// Also run once at startup
 	setTimeout(() => {
 		checkAndScheduleBriefs();
@@ -149,6 +167,37 @@ export function startScheduler() {
 	console.log(
 		'⏰ Scheduler started - checking every hour (briefs, SMS alerts) and midnight (SMS scheduling)'
 	);
+}
+
+async function runQueueRetentionCleanup() {
+	try {
+		console.log('🧹 Running scheduled queue retention cleanup...');
+		const result = await cleanupStaleJobs({
+			staleThresholdHours: queueConfig.staleJobThresholdHours,
+			oldFailedJobsDays: queueConfig.oldFailedJobsDays,
+			completedJobsRetentionDays: queueConfig.completedJobsRetentionDays,
+			maxDeletionBatchSize: queueConfig.cleanupBatchSize,
+			dryRun: false
+		});
+
+		if (
+			result.staleCancelled > 0 ||
+			result.oldFailedCancelled > 0 ||
+			result.completedDeleted > 0
+		) {
+			console.log(
+				`✅ Scheduled queue retention cleanup complete: stale=${result.staleCancelled}, oldFailed=${result.oldFailedCancelled}, completedDeleted=${result.completedDeleted}`
+			);
+		} else {
+			console.log('✅ Scheduled queue retention cleanup complete: nothing to clean');
+		}
+
+		if (result.errors.length > 0) {
+			console.warn('⚠️ Scheduled queue retention cleanup had errors:', result.errors);
+		}
+	} catch (error) {
+		console.error('❌ Scheduled queue retention cleanup failed:', error);
+	}
 }
 
 /**

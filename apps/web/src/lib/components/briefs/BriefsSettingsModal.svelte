@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/briefs/BriefsSettingsModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -24,34 +24,36 @@
 	} from 'lucide-svelte';
 	import { toastService } from '$lib/stores/toast.store';
 
-	// Props
-	export let isOpen = false;
-	export let user;
-	export let onClose: () => void;
+	interface Props {
+		isOpen?: boolean;
+		user: any;
+		onClose: () => void;
+		onSave?: () => void;
+		onReset?: () => void;
+	}
 
-	// Create event dispatcher for parent communication
-	const dispatch = createEventDispatcher();
+	let { isOpen = false, user, onClose, onSave, onReset }: Props = $props();
 
 	// State
-	let isEditing = false;
-	let briefPreferences: BriefPreferences | null = null;
-	let briefPreferencesForm: BriefPreferences = {
+	let isEditing = $state(false);
+	let briefPreferences = $state<BriefPreferences | null>(null);
+	let briefPreferencesForm = $state<BriefPreferences>({
 		frequency: 'daily',
 		day_of_week: 1,
 		time_of_day: '09:00:00',
 		timezone: 'UTC',
 		is_active: true
-	};
+	});
 
 	// For the time input, we need to handle HH:MM format
-	let timeInputValue = '09:00';
+	let timeInputValue = $state('09:00');
 
 	// Notification preferences state
-	let dailyBriefEmailEnabled = false;
-	let dailyBriefSmsEnabled = false;
-	let phoneVerified = false;
-	let phoneNumber: string | null = null;
-	let showPhoneVerificationModal = false;
+	let dailyBriefEmailEnabled = $state(false);
+	let dailyBriefSmsEnabled = $state(false);
+	let phoneVerified = $state(false);
+	let phoneNumber = $state<string | null>(null);
+	let showPhoneVerificationModal = $state(false);
 
 	// Timezone options
 	const TIMEZONE_OPTIONS = [
@@ -97,25 +99,33 @@
 	}
 
 	// Store subscription
-	$: briefPreferencesState = $briefPreferencesStore;
-	$: if (briefPreferencesState.preferences) {
-		briefPreferences = briefPreferencesState.preferences;
-		if (!isEditing) {
-			briefPreferencesForm = { ...briefPreferences };
-			timeInputValue = convertTimeToHHMM(briefPreferences.time_of_day);
+	let briefPreferencesState = $derived($briefPreferencesStore);
+
+	// Sync store preferences to local state
+	$effect(() => {
+		if (briefPreferencesState.preferences) {
+			briefPreferences = briefPreferencesState.preferences;
+			if (!isEditing) {
+				briefPreferencesForm = { ...briefPreferences };
+				timeInputValue = convertTimeToHHMM(briefPreferences.time_of_day);
+			}
 		}
-	}
+	});
 
 	// Handle store errors
-	$: if (briefPreferencesState.error) {
-		toastService.error(briefPreferencesState.error);
-		briefPreferencesStore.clearError();
-	}
+	$effect(() => {
+		if (briefPreferencesState.error) {
+			toastService.error(briefPreferencesState.error);
+			briefPreferencesStore.clearError();
+		}
+	});
 
 	// Update form when time input changes
-	$: if (timeInputValue && briefPreferencesForm) {
-		briefPreferencesForm.time_of_day = convertTimeToHHMMSS(timeInputValue);
-	}
+	$effect(() => {
+		if (timeInputValue && briefPreferencesForm) {
+			briefPreferencesForm.time_of_day = convertTimeToHHMMSS(timeInputValue);
+		}
+	});
 
 	// Load brief preferences on mount
 	async function loadBriefPreferences() {
@@ -203,7 +213,7 @@
 
 			isEditing = false;
 			toastService.success('Settings saved successfully');
-			dispatch('save');
+			onSave?.();
 		} catch (error) {
 			toastService.error(
 				`Failed to save settings: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -240,7 +250,7 @@
 				await briefPreferencesStore.resetToDefaults();
 				isEditing = false;
 				toastService.success('Brief preferences reset to defaults');
-				dispatch('reset');
+				onReset?.();
 			} catch (error) {
 				toastService.error(
 					`Failed to reset preferences: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -263,17 +273,17 @@
 
 <Modal {isOpen} {onClose} title="Brief Settings" size="md">
 	{#snippet children()}
-		<div class="space-y-3 sm:space-y-4 px-4 sm:px-6 py-4">
+		<div class="space-y-3 sm:space-y-4 px-3 sm:px-4 py-3 sm:py-4">
 			{#if briefPreferencesState.isLoading}
 				<div class="text-center py-8">
 					<div
-						class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"
+						class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
 					></div>
 					<p class="text-muted-foreground mt-4">Loading preferences...</p>
 				</div>
 			{:else if briefPreferencesState.error && !briefPreferences}
 				<div class="text-center py-8">
-					<AlertCircle class="w-12 h-12 text-rose-400 mx-auto mb-4" />
+					<AlertCircle class="w-12 h-12 text-destructive mx-auto mb-4" />
 					<p class="text-muted-foreground mb-4">Failed to load brief preferences</p>
 					<Button onclick={loadBriefPreferences} variant="primary" size="sm">
 						<RefreshCw class="w-4 h-4 mr-2" />
@@ -282,20 +292,22 @@
 				</div>
 			{:else if !isEditing && briefPreferences}
 				<!-- Display Mode -->
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 					<div>
-						<p class="block text-sm font-medium text-foreground mb-2">Frequency</p>
-						<div class="px-3 py-2 bg-muted rounded-lg">
+						<p class="block text-xs font-medium text-muted-foreground mb-1">
+							Frequency
+						</p>
+						<div class="px-3 py-2 bg-muted rounded-lg text-sm text-foreground">
 							{briefPreferences.frequency === 'daily' ? 'Daily' : 'Weekly'}
 						</div>
 					</div>
 
 					{#if briefPreferences.frequency === 'weekly'}
 						<div>
-							<p class="block text-sm font-medium text-foreground mb-2">
+							<p class="block text-xs font-medium text-muted-foreground mb-1">
 								Day of Week
 							</p>
-							<div class="px-3 py-2 bg-muted rounded-lg">
+							<div class="px-3 py-2 bg-muted rounded-lg text-sm text-foreground">
 								{DAY_OPTIONS.find((d) => d.value === briefPreferences?.day_of_week)
 									?.label || 'Monday'}
 							</div>
@@ -303,31 +315,33 @@
 					{/if}
 
 					<div>
-						<p class="block text-sm font-medium text-foreground mb-2">Time</p>
-						<div class="px-3 py-2 bg-muted rounded-lg">
+						<p class="block text-xs font-medium text-muted-foreground mb-1">Time</p>
+						<div class="px-3 py-2 bg-muted rounded-lg text-sm text-foreground">
 							{convertTimeToHHMM(briefPreferences?.time_of_day)}
 						</div>
 					</div>
 
 					<div>
-						<p class="block text-sm font-medium text-foreground mb-2">Timezone</p>
-						<div class="px-3 py-2 bg-muted rounded-lg">
+						<p class="block text-xs font-medium text-muted-foreground mb-1">Timezone</p>
+						<div class="px-3 py-2 bg-muted rounded-lg text-sm text-foreground">
 							{TIMEZONE_OPTIONS.find((tz) => tz.value === briefPreferences?.timezone)
 								?.label || briefPreferences?.timezone}
 						</div>
 					</div>
 
 					<div class="md:col-span-2">
-						<p class="block text-sm font-medium text-foreground mb-2">Status</p>
+						<p class="block text-xs font-medium text-muted-foreground mb-1">Status</p>
 						<div class="space-y-3">
 							<div class="flex items-center space-x-2">
 								<div
-									class={`px-3 py-1 rounded-full text-sm font-medium ${briefPreferences.is_active ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200' : 'bg-muted text-foreground dark:text-muted-foreground'}`}
+									class="px-3 py-1 rounded-full text-xs font-medium {briefPreferences.is_active
+										? 'bg-accent/10 text-accent'
+										: 'bg-muted text-muted-foreground'}"
 								>
 									{briefPreferences.is_active ? 'Active' : 'Inactive'}
 								</div>
 								{#if briefPreferencesState.nextScheduledBrief}
-									<span class="text-sm text-muted-foreground">
+									<span class="text-xs text-muted-foreground">
 										Next: {formatDateTime(
 											briefPreferencesState.nextScheduledBrief.toISOString()
 										)}
@@ -344,7 +358,9 @@
 									<div class="flex flex-col gap-1.5">
 										<div class="flex items-center gap-2 text-sm">
 											<Mail
-												class={`w-4 h-4 ${dailyBriefEmailEnabled ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'}`}
+												class="w-4 h-4 {dailyBriefEmailEnabled
+													? 'text-accent'
+													: 'text-muted-foreground'}"
 											/>
 											<span class="text-foreground">
 												Email: {dailyBriefEmailEnabled
@@ -354,7 +370,9 @@
 										</div>
 										<div class="flex items-center gap-2 text-sm">
 											<MessageSquare
-												class={`w-4 h-4 ${dailyBriefSmsEnabled ? 'text-orange-600 dark:text-orange-400' : 'text-muted-foreground'}`}
+												class="w-4 h-4 {dailyBriefSmsEnabled
+													? 'text-accent'
+													: 'text-muted-foreground'}"
 											/>
 											<span class="text-foreground">
 												SMS: {dailyBriefSmsEnabled ? 'Enabled' : 'Disabled'}
@@ -374,7 +392,7 @@
 			{:else}
 				<!-- Edit Mode -->
 				<div class="space-y-3 sm:space-y-4">
-					<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 lg:gap-5">
+					<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 						<FormField label="Frequency" labelFor="brief-frequency">
 							<Select
 								id="brief-frequency"
@@ -429,7 +447,7 @@
 								<input
 									type="checkbox"
 									bind:checked={briefPreferencesForm.is_active}
-									class="h-4 w-4 rounded border-border text-primary-600 focus:ring-primary-500 cursor-pointer dark:checked:bg-primary-600"
+									class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
 								/>
 								<span class="text-sm font-medium text-foreground">
 									Enable daily brief generation
@@ -455,14 +473,12 @@
 											<input
 												type="checkbox"
 												bind:checked={dailyBriefEmailEnabled}
-												class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer dark:checked:bg-blue-600"
+												class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
 											/>
 										</div>
 										<div class="flex-1">
 											<div class="flex items-center gap-2">
-												<Mail
-													class="w-4 h-4 text-blue-600 dark:text-blue-400"
-												/>
+												<Mail class="w-4 h-4 text-accent" />
 												<span class="text-sm font-medium text-foreground">
 													Email Notifications
 												</span>
@@ -481,14 +497,12 @@
 												checked={dailyBriefSmsEnabled}
 												onchange={(e) =>
 													handleSmsToggle(e.currentTarget.checked)}
-												class="h-4 w-4 rounded border-border text-orange-600 focus:ring-orange-500 cursor-pointer dark:checked:bg-orange-600"
+												class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
 											/>
 										</div>
 										<div class="flex-1">
 											<div class="flex items-center gap-2">
-												<MessageSquare
-													class="w-4 h-4 text-orange-600 dark:text-orange-400"
-												/>
+												<MessageSquare class="w-4 h-4 text-accent" />
 												<span class="text-sm font-medium text-foreground">
 													SMS Notifications
 												</span>
@@ -498,16 +512,14 @@
 											</p>
 											{#if !phoneVerified}
 												<div
-													class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1"
+													class="flex items-center gap-1 text-xs text-muted-foreground mt-1"
 												>
 													<AlertCircle class="w-3 h-3" />
 													<span>Phone verification required</span>
 												</div>
 											{:else if phoneNumber}
-												<div
-													class="text-xs text-green-600 dark:text-green-400 mt-1"
-												>
-													✓ Verified: {phoneNumber}
+												<div class="text-xs text-accent mt-1">
+													Verified: {phoneNumber}
 												</div>
 											{/if}
 										</div>
@@ -518,14 +530,10 @@
 					</div>
 
 					{#if briefPreferencesForm.is_active}
-						<div
-							class="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4"
-						>
+						<div class="bg-accent/5 border border-accent/20 rounded-lg p-3 sm:p-4">
 							<div class="flex items-center">
-								<Clock
-									class="w-5 h-5 text-primary-600 dark:text-primary-400 mr-2"
-								/>
-								<p class="text-sm text-primary-700 dark:text-primary-300">
+								<Clock class="w-5 h-5 text-accent mr-2 shrink-0" />
+								<p class="text-sm text-foreground">
 									<strong>Preview:</strong> Next brief will be scheduled for {briefPreferencesForm.frequency ===
 									'daily'
 										? 'daily'
@@ -547,7 +555,7 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/50">
+		<div class="px-3 sm:px-4 py-3 border-t border-border bg-muted/50">
 			<div class="flex justify-end space-x-2">
 				{#if !isEditing}
 					<Button onclick={onClose} variant="ghost" size="md">Close</Button>

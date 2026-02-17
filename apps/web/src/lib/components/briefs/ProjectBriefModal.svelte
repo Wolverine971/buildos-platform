@@ -23,14 +23,19 @@
 		onClose?: () => void;
 	}
 
-	let { brief, isOpen = $bindable(false), projectName = 'Daily Brief', onClose }: Props = $props();
+	let {
+		brief,
+		isOpen = $bindable(false),
+		projectName = 'Daily Brief',
+		onClose
+	}: Props = $props();
 
 	const projectId = $derived(brief?.projects?.id || brief?.project_id);
 	const displayName = $derived(brief?.projects?.name || projectName);
 </script>
 
 {#if brief}
-	<Modal {isOpen} onClose={onClose} title={displayName} size="xl">
+	<Modal {isOpen} {onClose} title={displayName} size="xl">
 		{#snippet children()}
 			<div class="px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4">
 				<!-- Metadata Bar -->
@@ -80,7 +85,9 @@
 						</h3>
 						<ul class="space-y-1">
 							{#each brief.metadata.key_insights as insight}
-								<li class="flex items-start gap-1.5 text-xs sm:text-sm text-muted-foreground">
+								<li
+									class="flex items-start gap-1.5 text-xs sm:text-sm text-muted-foreground"
+								>
 									<span class="shrink-0 mt-0.5 text-accent">&#8226;</span>
 									<span>{insight}</span>
 								</li>

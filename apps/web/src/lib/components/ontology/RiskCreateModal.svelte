@@ -581,7 +581,7 @@
 	<!-- Footer Actions -->
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-between gap-2 sm:gap-3 px-2 py-2 sm:px-4 sm:py-3 border-t border-border bg-muted tx tx-grain tx-weak"
+			class="flex flex-row items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 		>
 			{#if showTypeSelection}
 				<div class="flex-1"></div>

@@ -150,7 +150,8 @@
       "Bash(npx tailwindcss --help:*)",
       "Bash(npx tailwindcss:*)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm --filter=web exec svelte-check:*)",
-      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm --filter=web exec:*)"
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm --filter=web exec:*)",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "ask": []

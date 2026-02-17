@@ -40,9 +40,10 @@
 		projectId: string;
 		entityType: string;
 		entityId: string;
+		onCountChange?: (count: number) => void;
 	}
 
-	let { projectId, entityType, entityId }: Props = $props();
+	let { projectId, entityType, entityId, onCountChange }: Props = $props();
 
 	let comments = $state<Comment[]>([]);
 	let actorId = $state<string | null>(null);
@@ -67,6 +68,11 @@
 	const threads = $derived.by(() => buildThreads(comments));
 	const commentCount = $derived(comments.length);
 	const canWrite = $derived(Boolean(actorId));
+
+	// Notify parent when comment count changes
+	$effect(() => {
+		onCountChange?.(commentCount);
+	});
 
 	$effect(() => {
 		const key = `${projectId}:${entityType}:${entityId}`;

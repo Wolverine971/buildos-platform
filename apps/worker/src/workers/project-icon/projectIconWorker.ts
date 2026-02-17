@@ -309,7 +309,7 @@ async function markGenerationFailed(
 	projectId: string,
 	errorMessage: string
 ): Promise<void> {
-	await (supabase as any)
+	const { error } = await (supabase as any)
 		.from('onto_project_icon_generations')
 		.update({
 			status: 'failed',
@@ -318,23 +318,54 @@ async function markGenerationFailed(
 		})
 		.eq('id', generationId)
 		.eq('project_id', projectId);
+
+	if (error) {
+		throw new Error(`Failed to persist generation failure state: ${error.message}`);
+	}
 }
 
 export async function processProjectIconJob(
 	job: ProcessingJob<ProjectIconGenerationJobMetadata>
 ): Promise<ProjectIconGenerationResult> {
-	const generationId = job.data.generationId;
-	const projectId = job.data.projectId;
-	const requestedByUserId = job.data.requestedByUserId;
-	const candidateCount = Math.min(8, Math.max(1, Math.floor(job.data.candidateCount || 1)));
-	const autoSelect = Boolean(job.data.autoSelect);
-	const triggerSource = job.data.triggerSource;
+	const generationId = typeof job.data?.generationId === 'string' ? job.data.generationId : '';
+	const projectId = typeof job.data?.projectId === 'string' ? job.data.projectId : '';
+	const requestedByUserId =
+		typeof job.data?.requestedByUserId === 'string' ? job.data.requestedByUserId : '';
+	const candidateCount = Math.min(
+		8,
+		Math.max(
+			1,
+			Math.floor(typeof job.data?.candidateCount === 'number' ? job.data.candidateCount : 1)
+		)
+	);
+	const autoSelect = Boolean(job.data?.autoSelect);
+	const triggerSource =
+		job.data?.triggerSource === 'auto' ||
+		job.data?.triggerSource === 'manual' ||
+		job.data?.triggerSource === 'regenerate'
+			? job.data.triggerSource
+			: 'manual';
 	const steeringPrompt =
-		typeof job.data.steeringPrompt === 'string' ? job.data.steeringPrompt.trim() : undefined;
+		typeof job.data?.steeringPrompt === 'string' ? job.data.steeringPrompt.trim() : undefined;
 
-	await job.log(`Project icon generation started (${generationId})`);
+	let stage = 'validate_metadata';
 
 	try {
+		if (!generationId || !projectId || !requestedByUserId) {
+			const missingFields: string[] = [];
+			if (!generationId) missingFields.push('generationId');
+			if (!projectId) missingFields.push('projectId');
+			if (!requestedByUserId) missingFields.push('requestedByUserId');
+			throw new Error(
+				`Invalid project icon job metadata: missing ${missingFields.join(', ')}`
+			);
+		}
+
+		await job.log(
+			`Project icon generation started (${generationId}) project=${projectId} candidateCount=${candidateCount} autoSelect=${autoSelect}`
+		);
+
+		stage = 'load_generation';
 		const { data: generation, error: generationError } = await (supabase as any)
 			.from('onto_project_icon_generations')
 			.select('id, project_id, status')
@@ -348,6 +379,7 @@ export async function processProjectIconJob(
 		if (!generation) {
 			throw new Error('Generation record not found');
 		}
+		await job.log(`Loaded generation row (status=${generation.status})`);
 		if (generation.status === 'cancelled') {
 			await job.log('Generation cancelled before processing');
 			return {
@@ -359,7 +391,8 @@ export async function processProjectIconJob(
 			};
 		}
 
-		await (supabase as any)
+		stage = 'mark_processing';
+		const { error: setProcessingError } = await (supabase as any)
 			.from('onto_project_icon_generations')
 			.update({
 				status: 'processing',
@@ -367,7 +400,14 @@ export async function processProjectIconJob(
 			})
 			.eq('id', generationId)
 			.eq('project_id', projectId);
+		if (setProcessingError) {
+			throw new Error(
+				`Failed to mark generation as processing: ${setProcessingError.message}`
+			);
+		}
+		await job.log('Marked generation row as processing');
 
+		stage = 'load_project_context';
 		const { data: graphData, error: graphError } = await supabase.rpc(
 			'load_project_graph_context',
 			{
@@ -384,11 +424,15 @@ export async function processProjectIconJob(
 		}
 
 		const context = buildProjectContextPayload(graphPayload);
+		await job.log(
+			`Loaded project context (goals=${context.topGoals.length}, tasks=${context.topTasks.length}, documents=${context.topDocuments.length})`
+		);
 		const llm = new SmartLLMService({
 			httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
 			appName: 'BuildOS Project Icon Worker'
 		});
 
+		stage = 'generate_candidates_initial';
 		let { candidates, droppedReasons } = await generateValidCandidates({
 			llm,
 			userId: requestedByUserId,
@@ -397,6 +441,14 @@ export async function processProjectIconJob(
 			candidateCount,
 			steeringPrompt
 		});
+		await job.log(
+			`Initial candidate pass produced ${candidates.length}/${candidateCount} valid candidates`
+		);
+		if (droppedReasons.length > 0) {
+			await job.log(
+				`Dropped invalid candidates (initial pass): ${droppedReasons.slice(0, 5).join(' | ')}`
+			);
+		}
 
 		if (candidates.length === 0) {
 			const correctionHint = droppedReasons.length
@@ -407,6 +459,7 @@ export async function processProjectIconJob(
 				: 'Ensure valid SVG output with required viewBox/currentColor constraints.';
 
 			await job.log('Retrying icon generation with correction hints');
+			stage = 'generate_candidates_retry';
 			const retry = await generateValidCandidates({
 				llm,
 				userId: requestedByUserId,
@@ -418,6 +471,14 @@ export async function processProjectIconJob(
 			});
 			candidates = retry.candidates;
 			droppedReasons = retry.droppedReasons;
+			await job.log(
+				`Retry candidate pass produced ${candidates.length}/${candidateCount} valid candidates`
+			);
+			if (droppedReasons.length > 0) {
+				await job.log(
+					`Dropped invalid candidates (retry pass): ${droppedReasons.slice(0, 5).join(' | ')}`
+				);
+			}
 		}
 
 		if (candidates.length === 0) {
@@ -426,6 +487,7 @@ export async function processProjectIconJob(
 			);
 		}
 
+		stage = 'persist_candidates';
 		const { data: upsertedCandidates, error: upsertError } = await (supabase as any)
 			.from('onto_project_icon_candidates')
 			.upsert(
@@ -455,10 +517,12 @@ export async function processProjectIconJob(
 		if (persistedCandidates.length === 0) {
 			throw new Error('No icon candidates were persisted');
 		}
+		await job.log(`Persisted ${persistedCandidates.length} icon candidates`);
 
 		const completedAt = new Date().toISOString();
 		let selectedCandidateId: string | undefined;
 
+		stage = 'auto_select';
 		if (autoSelect) {
 			const chosen = chooseAutoCandidate(persistedCandidates);
 			if (!chosen) {
@@ -466,11 +530,16 @@ export async function processProjectIconJob(
 			}
 			selectedCandidateId = chosen.id;
 
-			await (supabase as any)
+			const { error: clearSelectionError } = await (supabase as any)
 				.from('onto_project_icon_candidates')
 				.update({ selected_at: null })
 				.eq('generation_id', generationId)
 				.eq('project_id', projectId);
+			if (clearSelectionError) {
+				throw new Error(
+					`Failed to clear previous selected candidates: ${clearSelectionError.message}`
+				);
+			}
 
 			const { error: selectedCandidateError } = await (supabase as any)
 				.from('onto_project_icon_candidates')
@@ -498,8 +567,11 @@ export async function processProjectIconJob(
 			if (projectUpdateError) {
 				throw new Error(`Failed to apply icon to project: ${projectUpdateError.message}`);
 			}
+
+			await job.log(`Auto-selected candidate ${chosen.id} (${chosen.concept})`);
 		}
 
+		stage = 'complete_generation';
 		const { error: generationUpdateError } = await (supabase as any)
 			.from('onto_project_icon_generations')
 			.update({
@@ -526,8 +598,22 @@ export async function processProjectIconJob(
 		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Project icon generation failed';
-		await markGenerationFailed(generationId, projectId, message);
-		await job.log(`Project icon generation failed: ${message}`);
+
+		if (generationId && projectId) {
+			try {
+				await markGenerationFailed(generationId, projectId, `[stage:${stage}] ${message}`);
+			} catch (markFailedError) {
+				const markFailedMessage =
+					markFailedError instanceof Error ? markFailedError.message : 'Unknown error';
+				await job.log(`Failed to mark generation as failed: ${markFailedMessage}`);
+			}
+		} else {
+			await job.log(
+				'Skipping failure-state persistence due to missing generation/project IDs'
+			);
+		}
+
+		await job.log(`Project icon generation failed at stage "${stage}": ${message}`);
 		throw error;
 	}
 }

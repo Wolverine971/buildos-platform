@@ -2,7 +2,10 @@
 import type { RequestHandler } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createLogger } from '$lib/utils/logger';
 import { requireProjectAccess, validateProjectAndGenerationIds } from '../../shared';
+
+const logger = createLogger('API:ProjectIconGenerationStatus');
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -84,8 +87,28 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 					completed_at: typeof raw.completed_at === 'string' ? raw.completed_at : null
 				};
 			}
-		} catch {
+		} catch (queueLookupError) {
 			// Do not fail status reads if queue diagnostics lookup fails.
+			logger.warn('Queue diagnostics lookup failed for icon generation', {
+				projectId,
+				generationId,
+				error: queueLookupError
+			});
+		}
+
+		if (
+			queueJob &&
+			(generation.status === 'queued' || generation.status === 'processing') &&
+			(queueJob.status === 'failed' || queueJob.status === 'cancelled')
+		) {
+			logger.warn('Generation status is active while queue job is terminal', {
+				projectId,
+				generationId,
+				generationStatus: generation.status,
+				queueStatus: queueJob.status,
+				queueJobId: queueJob.queue_job_id,
+				queueError: queueJob.error_message
+			});
 		}
 
 		return ApiResponse.success({
@@ -94,6 +117,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			queueJob
 		});
 	} catch (error) {
+		logger.error(error instanceof Error ? error : 'Unknown icon generation status error', {
+			projectId: params.id?.trim() ?? null,
+			generationId: params.generationId?.trim() ?? null
+		});
 		return ApiResponse.internalError(error, 'Failed to fetch icon generation');
 	}
 };

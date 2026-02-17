@@ -28,6 +28,14 @@ export interface QueueConfiguration {
 	// Performance tuning
 	workerTimeout: number; // Max time for a single job (ms)
 	enableConcurrentProcessing: boolean;
+
+	// Queue data retention
+	enableRetentionCleanup: boolean; // Enable scheduled retention cleanup
+	retentionCleanupCron: string; // Cron expression for scheduled cleanup
+	staleJobThresholdHours: number; // Cancel stale pending/retrying jobs older than this
+	oldFailedJobsDays: number; // Archive failed jobs older than this (0 disables)
+	completedJobsRetentionDays: number; // Delete completed jobs older than this (0 disables)
+	cleanupBatchSize: number; // Max rows to delete per cleanup batch
 }
 
 /**
@@ -66,6 +74,17 @@ function parseEnvBool(envVar: string, defaultValue: boolean): boolean {
 }
 
 /**
+ * Parse environment variable as string with fallback
+ */
+function parseEnvString(envVar: string, defaultValue: string): string {
+	const value = process.env[envVar];
+	if (!value) return defaultValue;
+
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : defaultValue;
+}
+
+/**
  * Validate configuration values and apply constraints
  */
 function validateConfig(config: QueueConfiguration): QueueConfiguration {
@@ -79,6 +98,10 @@ function validateConfig(config: QueueConfiguration): QueueConfiguration {
 	validated.retryBackoffBase = Math.max(100, validated.retryBackoffBase); // Min 100ms
 	validated.statsUpdateInterval = Math.max(10000, validated.statsUpdateInterval); // Min 10 seconds
 	validated.workerTimeout = Math.max(10000, validated.workerTimeout); // Min 10 seconds
+	validated.staleJobThresholdHours = Math.max(1, validated.staleJobThresholdHours);
+	validated.oldFailedJobsDays = Math.max(0, validated.oldFailedJobsDays);
+	validated.completedJobsRetentionDays = Math.max(0, validated.completedJobsRetentionDays);
+	validated.cleanupBatchSize = Math.max(10, Math.min(5000, validated.cleanupBatchSize));
 
 	return validated;
 }
@@ -107,7 +130,15 @@ function loadQueueConfig(): QueueConfiguration {
 
 		// Performance tuning
 		workerTimeout: parseEnvInt('QUEUE_WORKER_TIMEOUT', 600000), // 10 minutes default
-		enableConcurrentProcessing: parseEnvBool('QUEUE_ENABLE_CONCURRENT_PROCESSING', true)
+		enableConcurrentProcessing: parseEnvBool('QUEUE_ENABLE_CONCURRENT_PROCESSING', true),
+
+		// Data retention
+		enableRetentionCleanup: parseEnvBool('QUEUE_RETENTION_CLEANUP_ENABLED', true),
+		retentionCleanupCron: parseEnvString('QUEUE_RETENTION_CLEANUP_CRON', '30 3 * * *'),
+		staleJobThresholdHours: parseEnvInt('QUEUE_STALE_THRESHOLD_HOURS', 24),
+		oldFailedJobsDays: parseEnvInt('QUEUE_OLD_FAILED_RETENTION_DAYS', 0),
+		completedJobsRetentionDays: parseEnvInt('QUEUE_COMPLETED_RETENTION_DAYS', 30),
+		cleanupBatchSize: parseEnvInt('QUEUE_CLEANUP_BATCH_SIZE', 500)
 	};
 
 	return validateConfig(config);
@@ -173,6 +204,13 @@ export function getEnvironmentConfig(): QueueConfiguration {
 	console.log(
 		`   - Concurrent processing: ${mergedConfig.enableConcurrentProcessing ? 'enabled' : 'disabled'}`
 	);
+	console.log(
+		`   - Retention cleanup: ${mergedConfig.enableRetentionCleanup ? 'enabled' : 'disabled'}`
+	);
+	console.log(`   - Retention cron: ${mergedConfig.retentionCleanupCron}`);
+	console.log(`   - Stale threshold: ${mergedConfig.staleJobThresholdHours}h`);
+	console.log(`   - Completed retention: ${mergedConfig.completedJobsRetentionDays}d`);
+	console.log(`   - Cleanup batch size: ${mergedConfig.cleanupBatchSize}`);
 
 	return validateConfig(mergedConfig);
 }

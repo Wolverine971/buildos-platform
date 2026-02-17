@@ -718,7 +718,7 @@
 	{#snippet footer()}
 		{#if !isLoading && goal}
 			<div
-				class="flex items-center justify-between gap-2.5 px-4 py-2.5 border-t border-border bg-muted tx tx-grain tx-weak wt-plate sp-block"
+				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 			>
 				<!-- Delete button on left -->
 				<Button

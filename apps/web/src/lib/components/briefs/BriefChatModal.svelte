@@ -202,7 +202,7 @@
 	<div use:portal class="brief-chat-root" transition:fade={{ duration: 100 }} role="presentation">
 		<!-- Backdrop -->
 		<div
-			class="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-[9998]"
+			class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998]"
 			style="touch-action: none;"
 			onclick={handleBackdropClick}
 			ontouchend={handleBackdropClick}
@@ -256,9 +256,8 @@
 							class="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg
 								border border-border bg-card text-muted-foreground shadow-ink
 								transition-all pressable tx-button
-								hover:border-red-600/50 hover:text-red-600
-								focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring
-								dark:hover:border-red-400/50 dark:hover:text-red-400"
+								hover:border-destructive/50 hover:text-destructive
+								focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							aria-label="Close dialog"
 						>
 							<X class="h-4 w-4" />
@@ -315,16 +314,11 @@
 						>
 							<div class="px-3 py-4 md:px-6 md:py-6">
 								<div
-									class="prose prose-base md:prose-sm dark:prose-invert max-w-none
-										prose-headings:font-semibold prose-headings:text-foreground dark:prose-headings:text-white
-										prose-p:text-muted-foreground dark:prose-p:text-muted-foreground
-										prose-li:text-muted-foreground dark:prose-li:text-muted-foreground
-										prose-strong:text-foreground dark:prose-strong:text-muted-foreground
-										prose-blockquote:text-muted-foreground dark:prose-blockquote:text-muted-foreground
-										prose-blockquote:border-border dark:prose-blockquote:border-gray-600
-										prose-code:bg-muted dark:prose-code:bg-gray-800
-										prose-code:text-foreground dark:prose-code:text-muted-foreground
-										prose-pre:bg-muted dark:prose-pre:bg-gray-800"
+									class="prose prose-base md:prose-sm max-w-none overflow-x-auto
+										prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
+										prose-strong:text-foreground prose-a:text-accent prose-blockquote:text-muted-foreground
+										prose-blockquote:border-border prose-code:bg-muted prose-code:text-foreground
+										prose-pre:bg-muted prose-pre:text-foreground prose-hr:border-border"
 								>
 									{@html renderMarkdown(brief.summary_content)}
 								</div>

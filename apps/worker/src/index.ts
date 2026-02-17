@@ -8,6 +8,7 @@ import { supabase } from './lib/supabase';
 import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
+import { queueConfig } from './config/queueConfig';
 import { queue, startWorker } from './worker';
 import { classifyOntologyEntity } from './workers/ontology/ontologyClassifier';
 
@@ -552,17 +553,22 @@ app.get('/queue/stale-stats', async (req, res) => {
 		const { getStaleJobStats } = await import('./lib/utils/queueCleanup');
 
 		const thresholdHours = parseInt((req.query.thresholdHours as string) || '24');
+		const completedRetentionDays = parseInt(
+			(req.query.completedRetentionDays as string) || '30'
+		);
 		const stats = await getStaleJobStats({
-			staleThresholdHours: thresholdHours
+			staleThresholdHours: thresholdHours,
+			completedJobsRetentionDays: completedRetentionDays
 		});
 
 		res.json({
 			thresholdHours,
+			completedRetentionDays,
 			...stats,
 			message:
-				stats.staleCount > 0
-					? `Found ${stats.staleCount} stale job(s) that can be cleaned up`
-					: 'No stale jobs found'
+				stats.staleCount > 0 || stats.oldCompletedCount > 0
+					? `Found ${stats.staleCount} stale and ${stats.oldCompletedCount} old completed job(s) eligible for cleanup`
+					: 'No stale or old completed jobs found'
 		});
 	} catch (error: any) {
 		console.error('Error fetching stale job stats:', error);
@@ -578,15 +584,23 @@ app.post('/queue/cleanup', async (req, res) => {
 	try {
 		const { cleanupStaleJobs } = await import('./lib/utils/queueCleanup');
 
-		const { staleThresholdHours = 24, oldFailedJobsDays = 7, dryRun = false } = req.body;
+		const {
+			staleThresholdHours = queueConfig.staleJobThresholdHours,
+			oldFailedJobsDays = queueConfig.oldFailedJobsDays,
+			completedJobsRetentionDays = queueConfig.completedJobsRetentionDays,
+			maxDeletionBatchSize = queueConfig.cleanupBatchSize,
+			dryRun = false
+		} = req.body;
 
 		console.log(
-			`🧹 Manual cleanup triggered (dryRun: ${dryRun}, threshold: ${staleThresholdHours}h, oldFailed: ${oldFailedJobsDays}d)`
+			`🧹 Manual cleanup triggered (dryRun: ${dryRun}, threshold: ${staleThresholdHours}h, oldFailed: ${oldFailedJobsDays}d, completedRetention: ${completedJobsRetentionDays}d, batchSize: ${maxDeletionBatchSize})`
 		);
 
 		const result = await cleanupStaleJobs({
 			staleThresholdHours,
 			oldFailedJobsDays,
+			completedJobsRetentionDays,
+			maxDeletionBatchSize,
 			dryRun
 		});
 
@@ -594,8 +608,8 @@ app.post('/queue/cleanup', async (req, res) => {
 			success: true,
 			...result,
 			message: dryRun
-				? 'Dry run completed - no jobs were modified'
-				: `Cleanup completed - cancelled ${result.staleCancelled} stale job(s) and archived ${result.oldFailedCancelled} old failed job(s)`
+				? `Dry run completed - would cancel ${result.staleCancelled} stale job(s), archive ${result.oldFailedCancelled} old failed job(s), and delete ${result.completedDeleted} completed job(s)`
+				: `Cleanup completed - cancelled ${result.staleCancelled} stale job(s), archived ${result.oldFailedCancelled} old failed job(s), and deleted ${result.completedDeleted} completed job(s)`
 		});
 	} catch (error: any) {
 		console.error('Error during manual cleanup:', error);

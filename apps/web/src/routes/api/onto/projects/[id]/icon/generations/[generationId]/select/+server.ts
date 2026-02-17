@@ -2,7 +2,10 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { createLogger } from '$lib/utils/logger';
 import { requireProjectAccess, validateProjectAndGenerationIds } from '../../../shared';
+
+const logger = createLogger('API:ProjectIconGenerationSelect');
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -22,6 +25,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		if (!isValidUUID(candidateId)) {
 			return ApiResponse.badRequest('Invalid candidateId');
 		}
+
+		logger.info('Applying icon candidate selection', {
+			projectId,
+			generationId,
+			candidateId,
+			userId: access.userId
+		});
 
 		const { data: generation, error: generationError } = await access.supabase
 			.from('onto_project_icon_generations')
@@ -101,6 +111,13 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(projectUpdateError);
 		}
 
+		logger.info('Applied icon candidate to project', {
+			projectId,
+			generationId,
+			candidateId,
+			userId: access.userId
+		});
+
 		return ApiResponse.success({
 			generationId,
 			candidateId,
@@ -108,6 +125,10 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			applied: true
 		});
 	} catch (error) {
+		logger.error(error instanceof Error ? error : 'Unknown icon candidate select error', {
+			projectId: params.id?.trim() ?? null,
+			generationId: params.generationId?.trim() ?? null
+		});
 		return ApiResponse.internalError(error, 'Failed to select icon candidate');
 	}
 };

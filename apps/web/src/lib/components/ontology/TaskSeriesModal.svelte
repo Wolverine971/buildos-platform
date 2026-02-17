@@ -299,7 +299,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex flex-row items-center justify-end gap-2 sm:gap-4 p-2 sm:p-4 border-t border-border bg-muted tx tx-grain tx-weak"
+			class="flex flex-row items-center justify-end gap-2 sm:gap-4 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 		>
 			<Button
 				variant="ghost"

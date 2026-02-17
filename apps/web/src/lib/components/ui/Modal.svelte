@@ -547,10 +547,7 @@
 
 					<!-- Footer (compact spacing with safe area) -->
 					{#if footer}
-						<div
-							class="modal-footer flex-shrink-0"
-							style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));"
-						>
+						<div class="modal-footer flex-shrink-0">
 							{@render footer()}
 						</div>
 					{/if}

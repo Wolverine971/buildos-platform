@@ -301,89 +301,47 @@
 </script>
 
 <Modal {isOpen} {onClose} title="Edit Operation" size="lg">
-	{#snippet header()}
-		<!-- Compact Header -->
-		<div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-3">
-					<Database class="w-5 h-5 text-primary-600 dark:text-primary-400" />
-					<div>
-						<h3 class="text-base font-semibold text-foreground">Edit Operation</h3>
-						<div class="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-							<span class="px-1.5 py-0.5 bg-muted rounded text-xs">
-								{operation?.operation}
-							</span>
-							<span>•</span>
-							<span class="font-mono">{operation?.table}</span>
-						</div>
-					</div>
-				</div>
-				<Button
-					onclick={onClose}
-					variant="ghost"
-					size="sm"
-					class="!p-1.5 -mr-1.5"
-					aria-label="Close modal"
-				>
-					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M6 18L18 6M6 6l12 12"
-						/>
-					</svg>
-				</Button>
-			</div>
-
-			<!-- Compact Error Display -->
+	{#snippet children()}
+		{#if operation}
+			<!-- Validation Errors -->
 			{#if errors.length > 0}
 				<div
-					class="mx-4 mt-3 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-md"
+					class="mx-3 sm:mx-4 mt-3 p-3 bg-destructive/5 border border-destructive/20 rounded-md"
 					role="alert"
 				>
 					<div class="flex items-start gap-2">
-						<AlertCircle
-							class="w-4 h-4 text-rose-600 dark:text-rose-400 mt-0.5 flex-shrink-0"
-						/>
+						<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
 						<div class="flex-1 min-w-0">
-							<p class="text-sm font-medium text-rose-800 dark:text-rose-200 mb-1">
+							<p class="text-sm font-medium text-destructive mb-1">
 								Validation errors:
 							</p>
-							<ul class="text-xs text-rose-700 dark:text-rose-300 space-y-0.5">
+							<ul class="text-xs text-destructive/80 space-y-0.5">
 								{#each errors as error}
-									<li>• {error}</li>
+									<li>{error}</li>
 								{/each}
 							</ul>
 						</div>
 					</div>
 				</div>
 			{/if}
-		</div>
-	{/snippet}
-	{#snippet children()}
-		{#if operation}
+
 			<!-- Operation Type Banner -->
 			{#if operation.error}
-				<div
-					class="px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700"
-				>
-					<p class="text-sm text-amber-800 dark:text-amber-200">
+				<div class="px-3 sm:px-4 py-2 bg-muted border-b border-border">
+					<p class="text-sm text-foreground">
 						<strong>Fix Required Fields:</strong>
 						{operation.error}
 					</p>
 				</div>
 			{:else}
-				<div
-					class="px-4 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-200 dark:border-primary-700"
-				>
-					<p class="text-sm text-primary-800 dark:text-primary-200">
+				<div class="px-3 sm:px-4 py-2 bg-accent/5 border-b border-accent/20">
+					<p class="text-sm text-foreground">
 						<strong
 							>{operation.operation === 'create' ? 'Creating New' : 'Updating'}
 							{operation.table}</strong
 						>
 						{#if operation.operation === 'create'}
-							- Fields marked with <span class="text-rose-500">*</span> are required
+							- Fields marked with <span class="text-destructive">*</span> are required
 						{:else}
 							- All fields are optional for updates
 						{/if}
@@ -397,7 +355,7 @@
 					e.preventDefault();
 					handleSave();
 				}}
-				class="px-4 sm:px-6 py-4 space-y-3 sm:space-y-4"
+				class="px-3 sm:px-4 py-3 sm:py-4 space-y-3 sm:space-y-4"
 			>
 				{#if fieldsToDisplay.length === 0}
 					<div class="text-center py-8">
@@ -423,7 +381,7 @@
 									>
 										{config.label}
 										{#if config.required}
-											<span class="text-rose-500 ml-0.5">*</span>
+											<span class="text-destructive ml-0.5">*</span>
 										{/if}
 									</label>
 									{#if config.markdown}
@@ -452,7 +410,7 @@
 										<legend class="text-xs font-medium text-foreground">
 											{config.label}
 											{#if config.required}
-												<span class="text-rose-500 ml-0.5">*</span>
+												<span class="text-destructive ml-0.5">*</span>
 											{/if}
 										</legend>
 										<Button
@@ -460,7 +418,7 @@
 											onclick={() => toggleJsonView(field)}
 											variant="ghost"
 											size="sm"
-											class="text-xs text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground !p-1"
+											class="text-xs text-muted-foreground hover:text-muted-foreground !p-1"
 										>
 											{#if jsonViewMode[field]}
 												<span class="flex items-center space-x-1">
@@ -539,7 +497,7 @@
 																removeJsonbField(field, key)}
 															variant="ghost"
 															size="sm"
-															class="!p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
+															class="!p-1 text-destructive hover:text-destructive/80 hover:bg-destructive/5 opacity-0 group-hover:opacity-100 transition-opacity"
 															aria-label="Remove field {key}"
 														>
 															<Trash2 class="w-3 h-3" />
@@ -569,7 +527,7 @@
 									>
 										{config.label}
 										{#if config.required}
-											<span class="text-rose-500 ml-0.5">*</span>
+											<span class="text-destructive ml-0.5">*</span>
 										{/if}
 									</label>
 
@@ -632,7 +590,7 @@
 												type="checkbox"
 												checked={editedData[field] || false}
 												onchange={(e) => handleBooleanInput(field, e)}
-												class="h-3.5 w-3.5 text-primary-600 focus:ring-primary-500 border-border rounded"
+												class="h-3.5 w-3.5 text-accent focus:ring-ring border-border rounded"
 											/>
 											<label
 												for={fieldId}
@@ -677,7 +635,9 @@
 	{/snippet}
 	{#snippet footer()}
 		<!-- Compact Footer -->
-		<div class="flex items-center justify-between px-4 py-3 bg-muted border-t border-border">
+		<div
+			class="flex items-center justify-between px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
+		>
 			<Button onclick={onClose} variant="outline" size="sm" class="min-w-[80px]">
 				Cancel
 			</Button>
