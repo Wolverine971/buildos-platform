@@ -125,8 +125,10 @@ describe('GET /api/onto/projects/[id]/icon/generations/[generationId]', () => {
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
 		expect(payload.data.generation.id).toBe(GENERATION_ID);
+		expect(payload.data.generation.status).toBe('completed');
 		expect(payload.data.candidates).toHaveLength(1);
 		expect(payload.data.queueJob?.status).toBe('pending');
+		expect(adminFrom).not.toHaveBeenCalledWith('onto_project_icon_generations');
 	});
 
 	it('still returns generation payload when queue diagnostics lookup fails', async () => {

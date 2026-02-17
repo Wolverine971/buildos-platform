@@ -132,33 +132,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				selected_candidate_id: selectedCandidateId
 			};
 
-			try {
-				const reconcileClient = adminClient ?? createAdminSupabaseClient();
-				const { error: reconcileError } = await reconcileClient
-					.from('onto_project_icon_generations')
-					.update({
-						status: 'completed',
-						error_message: null,
-						completed_at: completedAt,
-						selected_candidate_id: selectedCandidateId
-					})
-					.eq('id', generationId)
-					.eq('project_id', projectId);
-
-				if (reconcileError) {
-					logger.warn('Failed to persist reconciled icon generation status', {
-						projectId,
-						generationId,
-						error: reconcileError
-					});
-				}
-			} catch (reconcileError) {
-				logger.warn('Icon generation status reconciliation threw', {
-					projectId,
-					generationId,
-					error: reconcileError
-				});
-			}
+			// Intentionally do not persist from GET.
+			// This endpoint must remain side-effect free for read-only users.
 		}
 
 		if (
