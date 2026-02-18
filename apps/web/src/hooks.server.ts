@@ -1,8 +1,18 @@
 // apps/web/src/hooks.server.ts
+import { json } from '@sveltejs/kit';
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { createSupabaseServer } from '$lib/supabase';
 import { createServerTiming } from '$lib/server/server-timing';
 import { dev } from '$app/environment';
+import {
+	CONSUMPTION_AUTO_POWER_UPGRADE_ENABLED,
+	CONSUMPTION_BILLING_GUARD_ENABLED,
+	CONSUMPTION_BILLING_LIMITS,
+	classifyFrozenMutationCapability,
+	shouldGuardMutationForConsumptionBilling
+} from '$lib/server/consumption-billing';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { StripeService } from '$lib/services/stripe-service';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
 
 // Rate limiting handle
@@ -276,6 +286,72 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 	}
 
+	const mutationGuardEnabled =
+		CONSUMPTION_BILLING_GUARD_ENABLED &&
+		shouldGuardMutationForConsumptionBilling(pathname, event.request.method);
+	let mutationGuardUserId: string | null = null;
+	let postMutationGateRow: Record<string, unknown> | null = null;
+
+	if (mutationGuardEnabled) {
+		const sessionData =
+			event.locals.user && event.locals.session
+				? { user: event.locals.user, session: event.locals.session }
+				: await event.locals.safeGetSession();
+		const user = sessionData.user;
+
+		if (user && !user.is_admin) {
+			mutationGuardUserId = user.id;
+
+			const gateResult: any = await measure('db.consumption_gate_pre', () =>
+				(event.locals.supabase as any).rpc('evaluate_user_consumption_gate', {
+					p_user_id: user.id,
+					p_project_limit: CONSUMPTION_BILLING_LIMITS.FREE_PROJECT_LIMIT,
+					p_credit_limit: CONSUMPTION_BILLING_LIMITS.FREE_CREDIT_LIMIT
+				})
+			);
+			const gateData = gateResult?.data;
+			const gateError = gateResult?.error;
+
+			if (gateError) {
+				console.error('Failed to evaluate consumption billing gate (pre):', gateError);
+			} else {
+				const gateRow = Array.isArray(gateData) ? gateData[0] : gateData;
+				const isFrozen = Boolean(
+					(gateRow as { is_frozen?: boolean } | null | undefined)?.is_frozen
+				);
+
+				if (isFrozen) {
+					const blockedCapability = classifyFrozenMutationCapability(pathname);
+					const frozenMessage =
+						blockedCapability === 'ai_compute'
+							? 'AI generation is paused until billing is activated. Your workspace remains readable.'
+							: blockedCapability === 'workspace_write'
+								? 'Editing is paused until billing is activated. Your workspace remains readable.'
+								: 'Upgrade required to continue. Your workspace remains readable.';
+
+					return json(
+						{
+							success: false,
+							error: frozenMessage,
+							code: 'UPGRADE_REQUIRED',
+							read_only: true,
+							blocked_capability: blockedCapability,
+							activation_path: '/billing/activate',
+							billing_state:
+								(gateRow as { billing_state?: string } | null | undefined)
+									?.billing_state ?? 'upgrade_required_frozen',
+							billing_tier:
+								(gateRow as { billing_tier?: string } | null | undefined)
+									?.billing_tier ?? 'explorer',
+							timestamp: new Date().toISOString()
+						},
+						{ status: 402 }
+					);
+				}
+			}
+		}
+	}
+
 	// PERFORMANCE: Resolve response with optimized headers
 	// Only include essential headers in serialized responses
 	const response = await resolve(event, {
@@ -284,6 +360,60 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			return name === 'content-range' || name === 'x-supabase-api-version';
 		}
 	});
+
+	if (mutationGuardEnabled && mutationGuardUserId && response.ok) {
+		try {
+			const gateResult: any = await measure('db.consumption_gate_post', () =>
+				(event.locals.supabase as any).rpc('evaluate_user_consumption_gate', {
+					p_user_id: mutationGuardUserId,
+					p_project_limit: CONSUMPTION_BILLING_LIMITS.FREE_PROJECT_LIMIT,
+					p_credit_limit: CONSUMPTION_BILLING_LIMITS.FREE_CREDIT_LIMIT
+				})
+			);
+			if (gateResult?.error) {
+				console.error(
+					'Failed to evaluate consumption billing gate (post):',
+					gateResult.error
+				);
+			} else {
+				const row = Array.isArray(gateResult?.data) ? gateResult.data[0] : gateResult?.data;
+				if (row && typeof row === 'object') {
+					postMutationGateRow = row as Record<string, unknown>;
+				}
+			}
+		} catch (error) {
+			console.error('Failed to evaluate consumption billing gate (post):', error);
+		}
+	}
+
+	if (
+		mutationGuardEnabled &&
+		mutationGuardUserId &&
+		response.ok &&
+		CONSUMPTION_AUTO_POWER_UPGRADE_ENABLED &&
+		StripeService.isEnabled()
+	) {
+		const stillFrozen = Boolean(postMutationGateRow?.is_frozen);
+		if (!stillFrozen) {
+			try {
+				const adminSupabase = createAdminSupabaseClient();
+				const stripeService = new StripeService(adminSupabase as any);
+				const upgradeResult = await measure('billing.auto_upgrade_power', () =>
+					stripeService.maybeAutoUpgradeToPowerTier(mutationGuardUserId, {
+						proIncludedCredits: CONSUMPTION_BILLING_LIMITS.PRO_INCLUDED_CREDITS
+					})
+				);
+
+				if (upgradeResult.upgraded) {
+					console.info(
+						`Auto-upgraded ${mutationGuardUserId} to Power at ${upgradeResult.currentCycleCredits} credits`
+					);
+				}
+			} catch (error) {
+				console.error('Failed auto-upgrade check (Pro -> Power):', error);
+			}
+		}
+	}
 
 	timing?.end('request');
 	const timingHeader = timing?.toHeader();

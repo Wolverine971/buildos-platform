@@ -46,6 +46,14 @@ declare global {
 				} | null;
 				paymentWarnings: any[];
 				isReadOnly: boolean;
+				consumptionGate?: {
+					billing_state: string;
+					billing_tier: string;
+					is_frozen: boolean;
+					project_count: number;
+					lifetime_credits_used: number;
+					trigger_reason: string | null;
+				} | null;
 				loading?: boolean;
 			}>;
 		}

@@ -50,6 +50,31 @@
 		return trimmed.slice(atIndex + 1);
 	}
 
+	function resolveLoginErrorMessage(result: {
+		error?: string;
+		code?: string;
+		status?: number;
+		details?: unknown;
+	}): string {
+		const rawMessage = result.error || 'Login failed';
+		const details =
+			result.details && typeof result.details === 'object'
+				? (result.details as Record<string, unknown>)
+				: null;
+		const reason = typeof details?.reason === 'string' ? details.reason : null;
+		const lowerMessage = rawMessage.toLowerCase();
+
+		if (
+			result.code === 'EMAIL_NOT_CONFIRMED' ||
+			reason === 'email_not_confirmed' ||
+			lowerMessage.includes('email not confirmed')
+		) {
+			return 'Your email is not confirmed yet. Check your inbox and spam folder for the confirmation email.';
+		}
+
+		return rawMessage;
+	}
+
 	async function resolvePendingInviteRedirect() {
 		let responseStatus: number | null = null;
 		try {
@@ -119,7 +144,8 @@
 			return;
 		}
 
-		const emailDomain = getEmailDomain(email);
+		const normalizedEmail = email.trim().toLowerCase();
+		const emailDomain = getEmailDomain(normalizedEmail);
 		let responseStatus: number | null = null;
 		let responseCode: string | undefined;
 		let requestTimedOut = false;
@@ -143,7 +169,7 @@
 				},
 				signal: controller.signal,
 				body: JSON.stringify({
-					email: email.trim(),
+					email: normalizedEmail,
 					password
 				})
 			});
@@ -153,7 +179,12 @@
 			responseCode = result?.code;
 
 			if (!response.ok) {
-				const message = result?.error || 'Login failed';
+				const message = resolveLoginErrorMessage({
+					error: result?.error,
+					code: result?.code,
+					status: responseStatus,
+					details: result?.details
+				});
 				void logAuthClientError(new Error(message), {
 					endpoint: '/api/auth/login',
 					method: 'POST',
@@ -162,6 +193,7 @@
 						status: responseStatus,
 						code: responseCode,
 						emailDomain,
+						attemptedEmail: normalizedEmail,
 						flow: 'password'
 					}
 				});
@@ -189,6 +221,7 @@
 					status: responseStatus,
 					code: responseCode,
 					emailDomain,
+					attemptedEmail: normalizedEmail,
 					flow: 'password',
 					timedOut: isTimeout
 				}

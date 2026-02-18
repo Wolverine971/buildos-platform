@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-17T21:41:31.508Z
+// Generated on: 2026-02-18T17:51:19.852Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -212,6 +212,83 @@ export type DatabaseSchema = {
 		wants_community_access: boolean | null;
 		wants_weekly_calls: boolean | null;
 		why_interested: string | null;
+	};
+	billing_accounts: {
+		billing_state: string;
+		billing_tier: string;
+		created_at: string;
+		cycle_end_at: string | null;
+		cycle_start_at: string | null;
+		frozen_at: string | null;
+		frozen_reason: string | null;
+		id: string;
+		updated_at: string;
+		user_id: string;
+	};
+	billing_credit_ledger: {
+		created_at: string;
+		credits_delta: number;
+		event_type: string;
+		id: string;
+		idempotency_key: string | null;
+		metadata: Json;
+		source_id: string | null;
+		source_type: string;
+		user_id: string;
+	};
+	billing_ops_anomalies: {
+		anomaly_key: string;
+		baseline_value: number | null;
+		created_at: string;
+		delta_ratio: number | null;
+		delta_value: number | null;
+		details: Json;
+		id: string;
+		metric_name: string;
+		notification_channels: string[];
+		notified_at: string | null;
+		observed_value: number;
+		severity: string;
+		snapshot_date: string;
+		snapshot_id: string;
+		updated_at: string;
+		window_days: number;
+	};
+	billing_ops_snapshots: {
+		anomaly_count: number;
+		auto_pro_to_power_escalation_rate: number;
+		auto_pro_to_power_transition_window_count: number;
+		created_at: string;
+		current_power_account_count: number;
+		current_power_share: number;
+		freeze_transitions_window_count: number;
+		frozen_account_share: number;
+		frozen_active_count: number;
+		generated_alerts: Json;
+		id: string;
+		manual_unfreeze_rate: number;
+		manual_unfreeze_window_count: number;
+		paid_account_count: number;
+		pro_to_power_transition_window_count: number;
+		snapshot_at: string;
+		snapshot_date: string;
+		source: string;
+		total_accounts_count: number;
+		updated_at: string;
+		window_days: number;
+	};
+	billing_state_transitions: {
+		change_source: string;
+		changed_by_user_id: string | null;
+		created_at: string;
+		from_billing_state: string | null;
+		from_billing_tier: string | null;
+		from_frozen_reason: string | null;
+		id: string;
+		to_billing_state: string;
+		to_billing_tier: string;
+		to_frozen_reason: string | null;
+		user_id: string;
 	};
 	brain_dump_links: {
 		brain_dump_id: string;
@@ -2426,6 +2503,11 @@ export const tableNames = [
 	'beta_feedback',
 	'beta_members',
 	'beta_signups',
+	'billing_accounts',
+	'billing_credit_ledger',
+	'billing_ops_anomalies',
+	'billing_ops_snapshots',
+	'billing_state_transitions',
 	'brain_dump_links',
 	'brain_dumps',
 	'calendar_analyses',

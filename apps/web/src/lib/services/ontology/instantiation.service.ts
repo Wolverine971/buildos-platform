@@ -296,19 +296,17 @@ export async function instantiateProject(
 		const newProjectId = randomUUID();
 
 		// Insert project first
-		const { error: projectError } = await client
-			.from('onto_projects')
-			.insert({
-				id: newProjectId,
-				name: parsed.project.name,
-				description: parsed.project.description ?? null,
-				type_key: parsed.project.type_key,
-				state_key: projectState,
-				props: mergedProjectProps as Json,
-				start_at: parsed.project.start_at ?? null,
-				end_at: parsed.project.end_at ?? null,
-				created_by: actorId
-			});
+		const { error: projectError } = await client.from('onto_projects').insert({
+			id: newProjectId,
+			name: parsed.project.name,
+			description: parsed.project.description ?? null,
+			type_key: parsed.project.type_key,
+			state_key: projectState,
+			props: mergedProjectProps as Json,
+			start_at: parsed.project.start_at ?? null,
+			end_at: parsed.project.end_at ?? null,
+			created_by: actorId
+		});
 
 		if (projectError) {
 			throw new OntologyInstantiationError(

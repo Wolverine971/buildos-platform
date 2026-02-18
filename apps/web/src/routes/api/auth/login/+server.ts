@@ -12,6 +12,35 @@ function getEmailDomain(value: string): string | null {
 	return trimmed.slice(atIndex + 1);
 }
 
+function getClientIp(headers: Headers): string | null {
+	const cfConnectingIp = headers.get('cf-connecting-ip')?.trim();
+	if (cfConnectingIp) return cfConnectingIp;
+
+	const realIp = headers.get('x-real-ip')?.trim();
+	if (realIp) return realIp;
+
+	const forwardedFor = headers.get('x-forwarded-for');
+	if (!forwardedFor) return null;
+
+	const [firstIp] = forwardedFor.split(',');
+	const candidate = firstIp?.trim();
+	return candidate || null;
+}
+
+function getRequestId(headers: Headers): string | undefined {
+	return (
+		headers.get('x-request-id') ||
+		headers.get('x-vercel-id') ||
+		headers.get('x-amzn-trace-id') ||
+		undefined
+	);
+}
+
+function isEmailNotConfirmedError(error: { message?: string } | null | undefined): boolean {
+	const message = (error?.message || '').toLowerCase();
+	return message.includes('email not confirmed') || message.includes('email not verified');
+}
+
 function buildProfilePayload(authUser: User) {
 	const now = new Date().toISOString();
 	return {
@@ -161,44 +190,76 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	}
 
-	const emailDomain = typeof email === 'string' ? getEmailDomain(email) : null;
+	const normalizedEmail = email.trim().toLowerCase();
+	const emailDomain = getEmailDomain(normalizedEmail);
+	const requestId = getRequestId(request.headers);
+	const clientIp = getClientIp(request.headers);
+	const clientUserAgent = request.headers.get('user-agent') || null;
+	const attemptMetadata = {
+		attemptedEmail: normalizedEmail,
+		emailDomain,
+		flow: 'password',
+		clientIp,
+		clientUserAgent
+	};
 
 	try {
 		const errorLogger = ErrorLoggerService.getInstance(supabase);
 
 		// Sign in using the server-side client
 		const { data, error } = await supabase.auth.signInWithPassword({
-			email: email.trim(),
+			email: normalizedEmail,
 			password
 		});
 
 		if (error) {
+			const emailNotConfirmed = isEmailNotConfirmedError(error);
 			await errorLogger.logError(
 				error,
 				{
 					endpoint: '/api/auth/login',
 					httpMethod: 'POST',
 					operationType: 'auth_login',
+					requestId,
 					metadata: {
-						emailDomain,
-						flow: 'password'
+						...attemptMetadata,
+						authProviderErrorCode: error.code,
+						authProviderStatus: error.status,
+						reason: emailNotConfirmed ? 'email_not_confirmed' : 'login_failed'
 					}
 				},
 				'warning'
 			);
+
+			if (emailNotConfirmed) {
+				return ApiResponse.error(
+					'Your email is not confirmed yet. Check your inbox and spam folder for the confirmation email.',
+					HttpStatus.UNAUTHORIZED,
+					ErrorCode.EMAIL_NOT_CONFIRMED,
+					{
+						reason: 'email_not_confirmed',
+						action: 'check_email'
+					}
+				);
+			}
+
 			return ApiResponse.unauthorized(error.message);
 		}
 
 		if (!data.session) {
-			await errorLogger.logError(new Error('Login failed - no session created'), {
-				endpoint: '/api/auth/login',
-				httpMethod: 'POST',
-				operationType: 'auth_login',
-				metadata: {
-					emailDomain,
-					flow: 'password'
-				}
-			});
+			await errorLogger.logError(
+				new Error('Login failed - no session created'),
+				{
+					endpoint: '/api/auth/login',
+					httpMethod: 'POST',
+					operationType: 'auth_login',
+					requestId,
+					metadata: {
+						...attemptMetadata
+					}
+				},
+				'warning'
+			);
 			return ApiResponse.error(
 				'Login failed - no session created',
 				HttpStatus.UNAUTHORIZED,
@@ -220,9 +281,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					endpoint: '/api/auth/login',
 					httpMethod: 'POST',
 					operationType: 'auth_login_set_session',
+					requestId,
 					metadata: {
-						emailDomain,
-						flow: 'password',
+						...attemptMetadata,
 						userId: data.user?.id
 					}
 				},
@@ -259,9 +320,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					endpoint: '/api/auth/login',
 					httpMethod: 'POST',
 					operationType: 'auth_login_profile_required',
+					requestId,
 					metadata: {
-						emailDomain,
-						flow: 'password',
+						...attemptMetadata,
 						userId: data.user.id
 					}
 				},
@@ -288,9 +349,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			endpoint: '/api/auth/login',
 			httpMethod: 'POST',
 			operationType: 'auth_login',
+			requestId,
 			metadata: {
-				emailDomain,
-				flow: 'password'
+				...attemptMetadata
 			}
 		});
 		return ApiResponse.internalError(err, 'Login failed');

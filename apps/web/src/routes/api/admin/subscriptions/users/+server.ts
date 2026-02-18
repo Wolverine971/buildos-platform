@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		const offset = (page - 1) * limit;
 
 		// Build query
-		let query = supabase.from('users').select(
+		let query: any = (supabase as any).from('users').select(
 			`
 				*,
 				payment_methods (
@@ -35,6 +35,13 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 					card_last4,
 					card_brand,
 					is_default
+				),
+				billing_accounts (
+					billing_state,
+					billing_tier,
+					frozen_at,
+					frozen_reason,
+					updated_at
 				),
 				customer_subscriptions (
 					*,
@@ -81,18 +88,22 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 						...subscription,
 						payment_methods: paymentMethods
 					})) ?? [];
+				const billingAccount = Array.isArray(user.billing_accounts)
+					? (user.billing_accounts[0] ?? null)
+					: (user.billing_accounts ?? null);
 
 				return {
 					...user,
 					payment_methods: paymentMethods,
+					billing_account: billingAccount,
 					customer_subscriptions: subscriptions
 				};
 			}) ?? [];
 
 		// Filter by subscription status if needed
-		let filteredUsers = normalizedUsers;
+		let filteredUsers: any[] = normalizedUsers;
 		if (status !== 'all') {
-			filteredUsers = filteredUsers.filter((user) => {
+			filteredUsers = filteredUsers.filter((user: any) => {
 				const sub = user.customer_subscriptions?.[0];
 				if (!sub) return status === 'none';
 				return sub.status === status;
@@ -132,7 +143,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	try {
-		const { action, userId, subscriptionId, reason } = await request.json();
+		const { action, userId, subscriptionId, reason, discountCode } = await request.json();
 
 		switch (action) {
 			case 'cancel': {
@@ -153,7 +164,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				await supabase.from('user_activity_logs').insert({
 					user_id: userId,
 					activity_type: 'admin_subscription_cancel',
-					metadata: {
+					activity_data: {
 						admin_id: user.id,
 						subscription_id: subscriptionId,
 						reason
@@ -178,7 +189,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				await supabase.from('user_activity_logs').insert({
 					user_id: userId,
 					activity_type: 'admin_trial_extended',
-					metadata: {
+					activity_data: {
 						admin_id: user.id,
 						subscription_id: subscriptionId
 					}
@@ -188,14 +199,15 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			}
 
 			case 'add_discount': {
-				// Add discount to user
-				const { discountCode } = await request.json();
+				if (!discountCode) {
+					return ApiResponse.badRequest('discountCode is required');
+				}
 
 				// Apply discount logic here
 				await supabase.from('user_activity_logs').insert({
 					user_id: userId,
 					activity_type: 'admin_discount_applied',
-					metadata: {
+					activity_data: {
 						admin_id: user.id,
 						subscription_id: subscriptionId,
 						discount_code: discountCode

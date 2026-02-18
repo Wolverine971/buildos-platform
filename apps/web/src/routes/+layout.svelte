@@ -6,14 +6,7 @@
 	import { setContext, onMount, onDestroy, untrack } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser, dev } from '$app/environment';
-	import {
-		goto,
-		replaceState,
-		onNavigate,
-		invalidate,
-		invalidateAll,
-		beforeNavigate
-	} from '$app/navigation';
+	import { goto, replaceState, onNavigate, invalidate, invalidateAll } from '$app/navigation';
 	import { navigationStore } from '$lib/stores/navigation.store';
 	import Navigation from '$lib/components/layout/Navigation.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
@@ -98,6 +91,14 @@
 		trialStatus: any | null;
 		paymentWarnings: any[];
 		isReadOnly: boolean;
+		consumptionGate: {
+			billing_state: string;
+			billing_tier: string;
+			is_frozen: boolean;
+			project_count: number;
+			lifetime_credits_used: number;
+			trigger_reason: string | null;
+		} | null;
 		loading: boolean;
 	};
 
@@ -106,6 +107,7 @@
 		trialStatus: null,
 		paymentWarnings: [],
 		isReadOnly: false,
+		consumptionGate: null,
 		loading
 	});
 
@@ -131,8 +133,9 @@
 	);
 	let trialStatus = $derived(billingContext.trialStatus);
 	let paymentWarnings = $derived(billingContext.paymentWarnings);
-	let isReadOnly = $derived(billingContext.isReadOnly);
+	let consumptionGate = $derived(billingContext.consumptionGate);
 	let billingLoading = $derived(billingContext.loading);
+	let isConsumptionFrozen = $derived(Boolean(consumptionGate?.is_frozen));
 
 	let onboardingResolveToken = 0;
 	let billingResolveToken = 0;
@@ -196,6 +199,7 @@
 							trialStatus: payload?.trialStatus ?? null,
 							paymentWarnings: payload?.paymentWarnings ?? [],
 							isReadOnly: Boolean(payload?.isReadOnly),
+							consumptionGate: payload?.consumptionGate ?? null,
 							loading: false
 						};
 					});
@@ -215,6 +219,7 @@
 							trialStatus: source.trialStatus ?? null,
 							paymentWarnings: source.paymentWarnings ?? [],
 							isReadOnly: Boolean(source.isReadOnly),
+							consumptionGate: source.consumptionGate ?? null,
 							loading: Boolean(source.loading)
 						}
 					: createBillingContextPlaceholder(Boolean(user && data.stripeEnabled));
@@ -632,7 +637,7 @@
 		});
 
 		// Add event listeners with better error handling
-		const handleBriefCompleteWrapper = (event: Event) => {
+		const handleBriefCompleteWrapper = (_event: Event) => {
 			try {
 				handleBriefComplete();
 			} catch (error) {
@@ -810,6 +815,33 @@
 			{#each paymentWarnings as warning (warning.id)}
 				<PaymentWarning notification={warning} ondismiss={handlePaymentWarningDismiss} />
 			{/each}
+		</div>
+	{/if}
+
+	{#if !billingLoading && isConsumptionFrozen}
+		<div class="container mx-auto px-3 sm:px-6 lg:px-8 mt-3 sm:mt-4">
+			<section
+				class="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 sm:px-5 sm:py-4 shadow-ink"
+				aria-live="polite"
+			>
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<h2 class="text-sm font-semibold text-warning-foreground">
+							Workspace is read-only until billing is activated
+						</h2>
+						<p class="text-sm text-muted-foreground">
+							Your projects are safe and fully readable. Activate Pro to continue
+							editing and AI generation.
+						</p>
+					</div>
+					<a
+						href="/billing/activate"
+						class="inline-flex items-center justify-center rounded-md border border-warning/60 bg-warning px-3 py-2 text-sm font-semibold text-warning-foreground shadow-ink hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						Activate Pro
+					</a>
+				</div>
+			</section>
 		</div>
 	{/if}
 

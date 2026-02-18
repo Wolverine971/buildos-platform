@@ -5,6 +5,20 @@ import { StripeService } from '$lib/services/stripe-service';
 import { STRIPE_PRICE_ID } from '$env/static/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
+type CheckoutRequestPayload = {
+	discountCode?: string;
+	successPath?: string;
+	cancelPath?: string;
+	source?: string;
+};
+
+function sanitizeRelativePath(candidate: unknown, fallback: string): string {
+	if (typeof candidate !== 'string') return fallback;
+	if (!candidate.startsWith('/')) return fallback;
+	if (candidate.startsWith('//')) return fallback;
+	return candidate;
+}
+
 export const POST: RequestHandler = async ({
 	request,
 	locals: { supabase, safeGetSession },
@@ -32,8 +46,16 @@ export const POST: RequestHandler = async ({
 			return ApiResponse.badRequest('User email not found');
 		}
 
-		// Get discount code from request if provided
-		const { discountCode } = await request.json();
+		// Get optional checkout overrides from request.
+		const payload = (await request.json().catch(() => ({}))) as CheckoutRequestPayload;
+		const discountCode =
+			typeof payload.discountCode === 'string' ? payload.discountCode : undefined;
+		const successPath = sanitizeRelativePath(payload.successPath, '/?payment=success');
+		const cancelPath = sanitizeRelativePath(payload.cancelPath, '/pricing?payment=cancelled');
+		const checkoutSource =
+			typeof payload.source === 'string' && payload.source.length > 0
+				? payload.source
+				: 'default';
 
 		// Create Stripe service instance
 		const stripeService = new StripeService(supabase);
@@ -43,10 +65,11 @@ export const POST: RequestHandler = async ({
 			userId: user.id,
 			userEmail: userData.email,
 			priceId: STRIPE_PRICE_ID || 'price_placeholder',
-			successUrl: `${PUBLIC_APP_URL || url.origin}?payment=success`,
-			cancelUrl: `${PUBLIC_APP_URL || url.origin}/pricing?payment=cancelled`,
+			successUrl: new URL(successPath, PUBLIC_APP_URL || url.origin).toString(),
+			cancelUrl: new URL(cancelPath, PUBLIC_APP_URL || url.origin).toString(),
 			discountCode,
 			metadata: {
+				checkout_source: checkoutSource,
 				environment: process.env.NODE_ENV || 'development'
 			}
 		});

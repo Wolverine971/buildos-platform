@@ -1,54 +1,35 @@
 <!-- docs/business/README.md -->
 
-# 💼 Business Documentation
+# Business Documentation
 
-This directory contains all business-related documentation for BuildOS, organized by business function and strategic areas.
+This directory contains cross-functional business docs for BuildOS.
 
-## 🎯 Directory Structure
+## Directory Structure
 
 ### `/strategy/`
 
-Strategic planning documentation including product vision, roadmap, success metrics, and competitive analysis.
-
-### `/product/`
-
-Product management documentation including feature specifications, user stories, user personas (ADHD, writers, etc.), and user feedback synthesis.
-
-### `/marketing/`
-
-Marketing and growth documentation including brand guidelines, content strategy, social media strategy, and campaign documentation.
+Company strategy, market context, and long-range planning.
 
 ### `/sales/`
 
-Sales and revenue documentation including pricing strategy, Stripe product configuration, and customer success documentation.
+Pricing and monetization strategy.
 
-### `/fundraising/`
+- [Consumption Pricing Migration Plan](./sales/consumption-pricing-migration-plan.md)
+- [Consumption Pricing Frozen-Route Audit](./sales/consumption-pricing-endpoint-audit.md)
+- [Consumption Pricing Support Runbook](./sales/consumption-pricing-support-runbook.md)
 
-Investor relations documentation including pitch decks, due diligence data room, and investor updates.
+### `/war-room/`
 
-## 🎯 Purpose
+Execution-focused positioning and strategic operating docs.
 
-This business documentation is designed for:
+### Root-Level Legacy Docs
 
-- Product managers planning features
-- Marketing team executing campaigns
-- Sales team understanding pricing and positioning
-- Investors and stakeholders understanding the business
-- Leadership making strategic decisions
+Older pitch and communications docs are still in `docs/business/` root and can be gradually reorganized into subfolders.
 
-## 📊 Key Focus Areas
+## Purpose
 
-- **ADHD-first design**: Understanding our primary user base
-- **AI-powered productivity**: Our core value proposition
-- **Brain dump innovation**: Our unique approach to task management
-- **SaaS business model**: Subscription-based revenue strategy
+Use this section for:
 
-## 📝 Maintenance
-
-Business documentation should be updated when:
-
-- Product strategy changes
-- New features are planned
-- Marketing campaigns are launched
-- Pricing or business model evolves
-- Investor updates are needed
+- Revenue model and pricing decisions
+- Strategic planning and positioning
+- Investor and leadership communication artifacts

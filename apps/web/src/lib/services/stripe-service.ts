@@ -4,11 +4,21 @@ import { env } from '$env/dynamic/private';
 import { PUBLIC_STRIPE_PUBLISHABLE_KEY } from '$env/static/public';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { INVOICE_CONFIG } from '$lib/config/stripe-invoice';
+import { CONSUMPTION_BILLING_LIMITS } from '$lib/server/consumption-billing';
 import { ErrorLoggerService } from './errorLogger.service';
 
 // Support legacy and PRIVATE_ env names without breaking existing deploys.
 const stripeEnabledFlag = (env.PRIVATE_ENABLE_STRIPE ?? env.ENABLE_STRIPE ?? 'false') === 'true';
 const stripeSecretKey = env.PRIVATE_STRIPE_SECRET_KEY ?? env.STRIPE_SECRET_KEY ?? '';
+const proPriceIdFromEnv = (env.PRIVATE_STRIPE_PRO_PRICE_ID ?? env.STRIPE_PRO_PRICE_ID ?? '').trim();
+const powerPriceIdFromEnv = (
+	env.PRIVATE_STRIPE_POWER_PRICE_ID ??
+	env.STRIPE_POWER_PRICE_ID ??
+	''
+).trim();
+
+const PRO_MONTHLY_PRICE_CENTS = 2000;
+const POWER_MONTHLY_PRICE_CENTS = 5000;
 
 // Initialize Stripe only if enabled
 const stripeClient =
@@ -31,6 +41,68 @@ export interface CreateCheckoutSessionOptions {
 export interface CustomerPortalOptions {
 	customerId: string;
 	returnUrl: string;
+}
+
+type SubscriptionTier = 'pro' | 'power' | 'unknown';
+
+interface PlanSnapshot {
+	id: string;
+	name: string;
+	price_cents: number;
+	stripe_price_id: string;
+	billing_interval: string | null;
+	interval_count: number | null;
+	is_active: boolean | null;
+}
+
+export interface AutoPowerUpgradeResult {
+	attempted: boolean;
+	upgraded: boolean;
+	reason:
+		| 'stripe_disabled'
+		| 'no_active_subscription'
+		| 'missing_billing_cycle'
+		| 'not_pro_tier'
+		| 'already_power'
+		| 'below_threshold'
+		| 'missing_power_price'
+		| 'upgraded';
+	subscriptionId: string | null;
+	fromPriceId: string | null;
+	toPriceId: string | null;
+	currentCycleCredits: number;
+	thresholdCredits: number;
+}
+
+function inferSubscriptionTier(args: {
+	priceId?: string | null;
+	planName?: string | null;
+	priceCents?: number | null;
+	billingInterval?: string | null;
+	intervalCount?: number | null;
+}): SubscriptionTier {
+	const priceId = args.priceId ?? null;
+	if (priceId && powerPriceIdFromEnv && priceId === powerPriceIdFromEnv) return 'power';
+	if (priceId && proPriceIdFromEnv && priceId === proPriceIdFromEnv) return 'pro';
+
+	const normalizedName = (args.planName ?? '').trim().toLowerCase();
+	if (normalizedName.includes('power')) return 'power';
+	if (normalizedName.includes('pro')) return 'pro';
+
+	const priceCents = typeof args.priceCents === 'number' ? args.priceCents : null;
+	const isMonthly =
+		(args.billingInterval === null ||
+			args.billingInterval === undefined ||
+			args.billingInterval === 'month') &&
+		(args.intervalCount === null ||
+			args.intervalCount === undefined ||
+			args.intervalCount === 1);
+	if (priceCents !== null && isMonthly) {
+		if (priceCents >= POWER_MONTHLY_PRICE_CENTS) return 'power';
+		if (priceCents >= PRO_MONTHLY_PRICE_CENTS) return 'pro';
+	}
+
+	return 'unknown';
 }
 
 function getInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
@@ -222,6 +294,270 @@ export class StripeService {
 				cancel_at_period_end: true
 			});
 		}
+	}
+
+	/**
+	 * Upgrade Pro -> Power immediately (with proration) when cycle usage exceeds the Pro inclusion.
+	 */
+	async maybeAutoUpgradeToPowerTier(
+		userId: string,
+		options?: { proIncludedCredits?: number }
+	): Promise<AutoPowerUpgradeResult> {
+		const thresholdCredits =
+			options?.proIncludedCredits ?? CONSUMPTION_BILLING_LIMITS.PRO_INCLUDED_CREDITS;
+		const buildResult = (
+			reason: AutoPowerUpgradeResult['reason'],
+			overrides: Partial<AutoPowerUpgradeResult> = {}
+		): AutoPowerUpgradeResult => ({
+			attempted: reason !== 'stripe_disabled',
+			upgraded: reason === 'upgraded',
+			reason,
+			subscriptionId: null,
+			fromPriceId: null,
+			toPriceId: null,
+			currentCycleCredits: 0,
+			thresholdCredits,
+			...overrides
+		});
+
+		if (!StripeService.isEnabled()) {
+			return buildResult('stripe_disabled');
+		}
+
+		const { data: currentSub, error: subscriptionError } = await this.supabase
+			.from('customer_subscriptions')
+			.select(
+				'stripe_subscription_id, stripe_price_id, current_period_start, current_period_end, status'
+			)
+			.eq('user_id', userId)
+			.in('status', ['active', 'trialing'])
+			.order('current_period_end', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (subscriptionError) {
+			throw new Error(
+				`Failed to load current subscription for auto-upgrade: ${subscriptionError.message}`
+			);
+		}
+
+		if (!currentSub?.stripe_subscription_id) {
+			return buildResult('no_active_subscription');
+		}
+
+		const subscriptionId = currentSub.stripe_subscription_id;
+		const fromPriceId = currentSub.stripe_price_id ?? null;
+
+		if (!currentSub.current_period_start || !currentSub.current_period_end) {
+			return buildResult('missing_billing_cycle', { subscriptionId, fromPriceId });
+		}
+
+		const currentPlan = await this.resolvePlanByPriceId(fromPriceId);
+		const currentTier = inferSubscriptionTier({
+			priceId: fromPriceId,
+			planName: currentPlan?.name ?? null,
+			priceCents: currentPlan?.price_cents ?? null,
+			billingInterval: currentPlan?.billing_interval ?? null,
+			intervalCount: currentPlan?.interval_count ?? null
+		});
+
+		if (currentTier === 'power') {
+			return buildResult('already_power', { subscriptionId, fromPriceId });
+		}
+
+		if (currentTier !== 'pro') {
+			return buildResult('not_pro_tier', { subscriptionId, fromPriceId });
+		}
+
+		const usageResult: any = await this.supabase.rpc('get_user_llm_usage', {
+			p_user_id: userId,
+			p_start_date: currentSub.current_period_start,
+			p_end_date: currentSub.current_period_end
+		});
+
+		if (usageResult?.error) {
+			throw new Error(
+				`Failed to evaluate cycle usage for auto-upgrade: ${usageResult.error.message}`
+			);
+		}
+
+		const usageRow = Array.isArray(usageResult?.data) ? usageResult.data[0] : usageResult?.data;
+		const totalTokens = Number(
+			(usageRow as { total_tokens?: number } | null | undefined)?.total_tokens ?? 0
+		);
+		const currentCycleCredits = Math.ceil(totalTokens / 1000);
+
+		if (currentCycleCredits <= thresholdCredits) {
+			return buildResult('below_threshold', {
+				subscriptionId,
+				fromPriceId,
+				currentCycleCredits
+			});
+		}
+
+		const toPowerPriceId = await this.resolvePowerPriceId(currentPlan);
+		if (!toPowerPriceId) {
+			return buildResult('missing_power_price', {
+				subscriptionId,
+				fromPriceId,
+				currentCycleCredits
+			});
+		}
+
+		if (fromPriceId && toPowerPriceId === fromPriceId) {
+			return buildResult('already_power', {
+				subscriptionId,
+				fromPriceId,
+				toPriceId: toPowerPriceId,
+				currentCycleCredits
+			});
+		}
+
+		const stripe = StripeService.getClient();
+		const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId, {
+			expand: ['items.data.price']
+		});
+		const primaryItem = stripeSubscription.items.data[0];
+		if (!primaryItem?.id) {
+			throw new Error(
+				`Stripe subscription ${subscriptionId} has no updatable subscription item`
+			);
+		}
+
+		const upgradedSubscription = await stripe.subscriptions.update(subscriptionId, {
+			cancel_at_period_end: false,
+			proration_behavior: 'create_prorations',
+			items: [
+				{
+					id: primaryItem.id,
+					price: toPowerPriceId,
+					quantity: primaryItem.quantity ?? 1
+				}
+			],
+			metadata: {
+				...stripeSubscription.metadata,
+				user_id: userId,
+				auto_tier_upgrade: 'pro_to_power',
+				auto_tier_upgrade_at: new Date().toISOString(),
+				auto_tier_upgrade_credits: String(currentCycleCredits),
+				auto_tier_upgrade_threshold: String(thresholdCredits)
+			}
+		});
+
+		await this.handleSubscriptionUpdate(upgradedSubscription);
+
+		const upgradedItem = upgradedSubscription.items.data[0] as
+			| (Stripe.SubscriptionItem & {
+					current_period_start?: number | null;
+					current_period_end?: number | null;
+			  })
+			| undefined;
+
+		const cycleStartAt = upgradedItem?.current_period_start
+			? new Date(upgradedItem.current_period_start * 1000).toISOString()
+			: currentSub.current_period_start;
+		const cycleEndAt = upgradedItem?.current_period_end
+			? new Date(upgradedItem.current_period_end * 1000).toISOString()
+			: currentSub.current_period_end;
+
+		const { error: billingAccountError } = await this.supabase.from('billing_accounts').upsert(
+			{
+				user_id: userId,
+				billing_state: 'power_active',
+				billing_tier: 'power',
+				frozen_at: null,
+				frozen_reason: null,
+				cycle_start_at: cycleStartAt,
+				cycle_end_at: cycleEndAt,
+				updated_at: new Date().toISOString()
+			},
+			{ onConflict: 'user_id' }
+		);
+
+		if (billingAccountError) {
+			console.error(
+				`Failed to sync billing_accounts for ${userId} after auto-upgrade:`,
+				billingAccountError
+			);
+		}
+
+		return buildResult('upgraded', {
+			subscriptionId,
+			fromPriceId,
+			toPriceId: toPowerPriceId,
+			currentCycleCredits
+		});
+	}
+
+	private async resolvePlanByPriceId(priceId: string | null): Promise<PlanSnapshot | null> {
+		if (!priceId) return null;
+
+		const { data, error } = await this.supabase
+			.from('subscription_plans')
+			.select(
+				'id, name, price_cents, stripe_price_id, billing_interval, interval_count, is_active'
+			)
+			.eq('stripe_price_id', priceId)
+			.maybeSingle();
+
+		if (error) {
+			console.error(`Failed to load subscription plan for price ${priceId}:`, error);
+			return null;
+		}
+
+		return data ? (data as PlanSnapshot) : null;
+	}
+
+	private async resolvePowerPriceId(currentPlan: PlanSnapshot | null): Promise<string | null> {
+		if (powerPriceIdFromEnv) {
+			return powerPriceIdFromEnv;
+		}
+
+		const { data: plans, error } = await this.supabase
+			.from('subscription_plans')
+			.select(
+				'id, name, price_cents, stripe_price_id, billing_interval, interval_count, is_active'
+			)
+			.eq('is_active', true)
+			.order('price_cents', { ascending: true });
+
+		if (error) {
+			console.error('Failed to load subscription plans while resolving power tier:', error);
+			return null;
+		}
+
+		if (!plans || plans.length === 0) {
+			return null;
+		}
+
+		const typedPlans = plans as PlanSnapshot[];
+		const monthlyPlans = typedPlans.filter(
+			(plan) =>
+				(plan.billing_interval === null || plan.billing_interval === 'month') &&
+				(plan.interval_count === null || plan.interval_count === 1)
+		);
+		const candidatePlans = monthlyPlans.length > 0 ? monthlyPlans : typedPlans;
+
+		const explicitPowerPlan = candidatePlans.find(
+			(plan) =>
+				inferSubscriptionTier({
+					priceId: plan.stripe_price_id,
+					planName: plan.name,
+					priceCents: plan.price_cents,
+					billingInterval: plan.billing_interval,
+					intervalCount: plan.interval_count
+				}) === 'power'
+		);
+		if (explicitPowerPlan) {
+			return explicitPowerPlan.stripe_price_id;
+		}
+
+		const currentPriceCents = currentPlan?.price_cents ?? PRO_MONTHLY_PRICE_CENTS;
+		const firstPlanAboveCurrent = candidatePlans.find(
+			(plan) => plan.price_cents > currentPriceCents
+		);
+
+		return firstPlanAboveCurrent?.stripe_price_id ?? null;
 	}
 
 	/**

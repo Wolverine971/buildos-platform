@@ -18,6 +18,7 @@ const createEmptyBillingContext = (loading: boolean) => ({
 	trialStatus: null,
 	paymentWarnings: [],
 	isReadOnly: false,
+	consumptionGate: null,
 	loading
 });
 
@@ -97,6 +98,7 @@ export const load: LayoutServerLoad = async ({
 							trialStatus: context?.trialStatus ?? null,
 							paymentWarnings: context?.paymentWarnings ?? [],
 							isReadOnly: Boolean(context?.isReadOnly),
+							consumptionGate: context?.consumptionGate ?? null,
 							loading: false
 						}))
 						.catch((error) => {

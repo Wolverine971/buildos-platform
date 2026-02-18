@@ -48,6 +48,7 @@ export const HttpStatus = {
 export const ErrorCode = {
 	// Authentication errors
 	UNAUTHORIZED: 'UNAUTHORIZED',
+	EMAIL_NOT_CONFIRMED: 'EMAIL_NOT_CONFIRMED',
 	FORBIDDEN: 'FORBIDDEN',
 	SESSION_EXPIRED: 'SESSION_EXPIRED',
 
