@@ -1116,7 +1116,7 @@
 	userId={emailUserId}
 	userName={emailUserName}
 	userEmail={emailUserEmail}
-	on:emailSent={() => {
+	onEmailSent={() => {
 		showEmailModal = false;
 	}}
 />

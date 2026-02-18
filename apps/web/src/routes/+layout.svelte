@@ -124,10 +124,10 @@
 	let billingContext = $state<BillingContext>(
 		createBillingContextPlaceholder(Boolean(data.user && data.stripeEnabled))
 	);
-	let onboardingProgress = $derived(
+	let onboardingProgress = $state(
 		typeof data.onboardingProgress === 'number'
 			? clampProgress(data.onboardingProgress)
-			: completedOnboarding
+			: data.completedOnboarding
 				? 100
 				: 0
 	);
