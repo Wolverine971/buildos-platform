@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/ontology/instantiation.service.ts
+import { randomUUID } from 'node:crypto';
 import {
 	ProjectSpecSchema,
 	validateProjectSpec as validateProjectSpecStruct,
@@ -291,10 +292,14 @@ export async function instantiateProject(
 
 	let projectId: string | undefined;
 	try {
+		// Generate ID client-side so project creation does not depend on insert RETURNING visibility.
+		const newProjectId = randomUUID();
+
 		// Insert project first
-		const { data: projectRows, error: projectError } = await client
+		const { error: projectError } = await client
 			.from('onto_projects')
 			.insert({
+				id: newProjectId,
 				name: parsed.project.name,
 				description: parsed.project.description ?? null,
 				type_key: parsed.project.type_key,
@@ -303,17 +308,15 @@ export async function instantiateProject(
 				start_at: parsed.project.start_at ?? null,
 				end_at: parsed.project.end_at ?? null,
 				created_by: actorId
-			})
-			.select('id')
-			.single();
+			});
 
-		if (projectError || !projectRows) {
+		if (projectError) {
 			throw new OntologyInstantiationError(
 				`Failed to create project: ${projectError?.message ?? 'Unknown error'}`
 			);
 		}
 
-		projectId = projectRows.id;
+		projectId = newProjectId;
 		inserted.projectId = projectId;
 
 		// Type guard: Ensure projectId is string for all subsequent operations
