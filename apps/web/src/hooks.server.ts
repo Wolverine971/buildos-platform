@@ -8,6 +8,7 @@ import {
 	CONSUMPTION_AUTO_POWER_UPGRADE_ENABLED,
 	CONSUMPTION_BILLING_GUARD_ENABLED,
 	CONSUMPTION_BILLING_LIMITS,
+	type FrozenMutationCapability,
 	classifyFrozenMutationCapability,
 	shouldGuardMutationForConsumptionBilling
 } from '$lib/server/consumption-billing';
@@ -290,9 +291,11 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		CONSUMPTION_BILLING_GUARD_ENABLED &&
 		shouldGuardMutationForConsumptionBilling(pathname, event.request.method);
 	let mutationGuardUserId: string | null = null;
+	let mutationCapability: FrozenMutationCapability | null = null;
 	let postMutationGateRow: Record<string, unknown> | null = null;
 
 	if (mutationGuardEnabled) {
+		mutationCapability = classifyFrozenMutationCapability(pathname);
 		const sessionData =
 			event.locals.user && event.locals.session
 				? { user: event.locals.user, session: event.locals.session }
@@ -321,7 +324,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				);
 
 				if (isFrozen) {
-					const blockedCapability = classifyFrozenMutationCapability(pathname);
+					const blockedCapability = mutationCapability ?? 'other_mutation';
 					const frozenMessage =
 						blockedCapability === 'ai_compute'
 							? 'AI generation is paused until billing is activated. Your workspace remains readable.'
@@ -394,7 +397,21 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		StripeService.isEnabled()
 	) {
 		const stillFrozen = Boolean(postMutationGateRow?.is_frozen);
-		if (!stillFrozen) {
+		const billingTier =
+			typeof postMutationGateRow?.billing_tier === 'string'
+				? postMutationGateRow.billing_tier
+				: null;
+		const lifetimeCreditsUsed =
+			typeof postMutationGateRow?.lifetime_credits_used === 'number'
+				? postMutationGateRow.lifetime_credits_used
+				: 0;
+		const shouldCheckAutoUpgrade =
+			!stillFrozen &&
+			billingTier === 'pro' &&
+			mutationCapability === 'ai_compute' &&
+			lifetimeCreditsUsed >= CONSUMPTION_BILLING_LIMITS.PRO_INCLUDED_CREDITS;
+
+		if (shouldCheckAutoUpgrade) {
 			try {
 				const adminSupabase = createAdminSupabaseClient();
 				const stripeService = new StripeService(adminSupabase as any);

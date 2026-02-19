@@ -57,7 +57,7 @@
 		</div>
 	</div>
 
-	<ProjectBriefModal brief={selectedBrief} isOpen={isModalOpen} on:close={handleCloseModal} />
+	<ProjectBriefModal brief={selectedBrief} isOpen={isModalOpen} onClose={handleCloseModal} />
 {:else}
 	<div class="text-center py-8">
 		<div class="bg-card rounded-lg p-6 border border-border">

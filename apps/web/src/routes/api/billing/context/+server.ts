@@ -15,7 +15,8 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 		const billingContext = await fetchBillingContext(
 			supabase,
 			user.id,
-			StripeService.isEnabled()
+			StripeService.isEnabled(),
+			{ consumptionGateMode: 'evaluate' }
 		);
 
 		return ApiResponse.success(billingContext);

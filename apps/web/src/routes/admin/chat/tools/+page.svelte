@@ -119,7 +119,7 @@
 			<!-- Timeframe -->
 			<Select
 				bind:value={selectedTimeframe}
-				onchange={(e) => (selectedTimeframe = e.detail)}
+				onchange={(value) => (selectedTimeframe = String(value))}
 				size="md"
 				placeholder="Last 7 Days"
 				aria-label="Select time range"

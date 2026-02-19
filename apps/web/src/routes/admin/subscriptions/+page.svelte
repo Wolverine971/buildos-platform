@@ -628,12 +628,7 @@
 			</div>
 
 			<!-- Status Filter -->
-			<Select
-				bind:value={statusFilter}
-				onchange={(e) => (statusFilter = e.detail)}
-				size="md"
-				placeholder="All Statuses"
-			>
+			<Select bind:value={statusFilter} size="md" placeholder="All Statuses">
 				<option value="all">All Statuses</option>
 				<option value="active">Active</option>
 				<option value="trialing">Trial</option>
@@ -1019,21 +1014,13 @@
 			</div>
 
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-				<Select
-					bind:value={timelineSourceFilter}
-					onchange={(e) => (timelineSourceFilter = e.detail)}
-					size="md"
-				>
+				<Select bind:value={timelineSourceFilter} size="md">
 					{#each TIMELINE_SOURCE_OPTIONS as option}
 						<option value={option.value}>{option.label}</option>
 					{/each}
 				</Select>
 
-				<Select
-					bind:value={timelineActorFilter}
-					onchange={(e) => (timelineActorFilter = e.detail)}
-					size="md"
-				>
+				<Select bind:value={timelineActorFilter} size="md">
 					<option value="all">All Actors</option>
 					{#each billingActorOptions as actor}
 						<option value={actor.id}>{actor.name || actor.email || actor.id}</option>

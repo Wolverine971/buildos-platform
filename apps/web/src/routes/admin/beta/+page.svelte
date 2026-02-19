@@ -641,7 +641,7 @@
 				<div>
 					<Select
 						bind:value={dataViewFilters.status}
-						onchange={(e) => (dataViewFilters.status = e.detail)}
+						onchange={(value) => (dataViewFilters.status = String(value))}
 						size="md"
 					>
 						<option value="all">All Status</option>
@@ -656,7 +656,7 @@
 				<div>
 					<Select
 						bind:value={dataViewFilters.sortBy}
-						onchange={(e) => (dataViewFilters.sortBy = e.detail)}
+						onchange={(value) => (dataViewFilters.sortBy = String(value))}
 						size="md"
 					>
 						<option value="created_at">Date Applied</option>
@@ -1284,7 +1284,7 @@
 						<div class="block text-sm font-medium text-foreground mb-1">Status</div>
 						<Select
 							bind:value={signupFilters.status}
-							onchange={(e) => (signupFilters.status = e.detail)}
+							onchange={(value) => (signupFilters.status = String(value))}
 							size="md"
 						>
 							<option value="all">All Status</option>
@@ -1300,7 +1300,7 @@
 						<div class="block text-sm font-medium text-foreground mb-1">Sort By</div>
 						<Select
 							bind:value={signupFilters.sortBy}
-							onchange={(e) => (signupFilters.sortBy = e.detail)}
+							onchange={(value) => (signupFilters.sortBy = String(value))}
 							size="md"
 						>
 							<option value="created_at">Date Applied</option>
@@ -1355,7 +1355,7 @@
 					<div>
 						<Select
 							bind:value={signupFilters.status}
-							onchange={(e) => (signupFilters.status = e.detail)}
+							onchange={(value) => (signupFilters.status = String(value))}
 							size="md"
 						>
 							<option value="all">All Status</option>
@@ -1370,7 +1370,7 @@
 					<div>
 						<Select
 							bind:value={signupFilters.sortBy}
-							onchange={(e) => (signupFilters.sortBy = e.detail)}
+							onchange={(value) => (signupFilters.sortBy = String(value))}
 							size="md"
 						>
 							<option value="created_at">Date Applied</option>
@@ -1383,7 +1383,7 @@
 					<div>
 						<Select
 							bind:value={memberFilters.tier}
-							onchange={(e) => (memberFilters.tier = e.detail)}
+							onchange={(value) => (memberFilters.tier = String(value))}
 							size="md"
 						>
 							<option value="all">All Tiers</option>
@@ -2654,7 +2654,7 @@
 	userId={emailUserId}
 	userName={emailUserName}
 	userEmail={emailUserEmail}
-	on:emailSent={() => {
+	onEmailSent={() => {
 		showEmailModal = false;
 		// Optionally refresh members list or show success message
 	}}

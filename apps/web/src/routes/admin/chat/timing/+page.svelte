@@ -236,7 +236,7 @@
 			<!-- Timeframe -->
 			<Select
 				bind:value={selectedTimeframe}
-				onchange={(e) => (selectedTimeframe = e.detail)}
+				onchange={(value) => (selectedTimeframe = String(value))}
 				size="md"
 				placeholder="Last 7 Days"
 				aria-label="Select time range"
@@ -290,7 +290,7 @@
 					<Select
 						id="timing-context-filter"
 						bind:value={selectedContextType}
-						onchange={(e) => (selectedContextType = e.detail)}
+						onchange={(value) => (selectedContextType = String(value))}
 						size="md"
 					>
 						<option value="all">All Contexts</option>
@@ -314,7 +314,7 @@
 					<Select
 						id="timing-plan-filter"
 						bind:value={selectedPlanStatus}
-						onchange={(e) => (selectedPlanStatus = e.detail)}
+						onchange={(value) => (selectedPlanStatus = String(value))}
 						size="md"
 					>
 						<option value="all">All</option>
@@ -336,7 +336,7 @@
 					<Select
 						id="timing-clarification-filter"
 						bind:value={hasClarification}
-						onchange={(e) => (hasClarification = e.detail)}
+						onchange={(value) => (hasClarification = String(value))}
 						size="md"
 					>
 						<option value="all">All</option>

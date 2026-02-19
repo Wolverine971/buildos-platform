@@ -92,7 +92,9 @@ export const load: LayoutServerLoad = async ({
 
 		stripeEnabled
 			? measure('db.billing_context', () =>
-					fetchBillingContext(supabase, user.id, stripeEnabled)
+					fetchBillingContext(supabase, user.id, stripeEnabled, {
+						consumptionGateMode: 'snapshot'
+					})
 						.then((context) => ({
 							subscription: context?.subscription ?? null,
 							trialStatus: context?.trialStatus ?? null,

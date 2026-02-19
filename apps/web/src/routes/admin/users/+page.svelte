@@ -1168,7 +1168,7 @@
 	userId={emailUserId}
 	userName={emailUserName}
 	userEmail={emailUserEmail}
-	on:emailSent={() => {
+	onEmailSent={() => {
 		showEmailModal = false;
 		// Optionally refresh user list or show success message
 	}}

@@ -19,7 +19,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 	}
 
 	const [billingContext, subscription] = await Promise.all([
-		fetchBillingContext(supabase as any, user.id, stripeEnabled),
+		fetchBillingContext(supabase as any, user.id, stripeEnabled, {
+			consumptionGateMode: 'evaluate'
+		}),
 		checkUserSubscription(supabase as any, user.id)
 	]);
 

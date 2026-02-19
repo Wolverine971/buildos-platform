@@ -172,22 +172,14 @@
 		<!-- Controls -->
 		<div class="admin-panel p-4">
 			<div class="flex flex-col sm:flex-row gap-4">
-				<Select
-					bind:value={selectedPeriod}
-					onchange={(e) => (selectedPeriod = e.detail)}
-					size="md"
-				>
+				<Select bind:value={selectedPeriod} size="md">
 					<option value="month">Monthly</option>
 					<option value="quarter">Quarterly</option>
 					<option value="year">Yearly</option>
 				</Select>
 
 				{#if selectedPeriod === 'month'}
-					<Select
-						bind:value={selectedMonth}
-						onchange={(e) => (selectedMonth = e.detail)}
-						size="md"
-					>
+					<Select bind:value={selectedMonth} size="md">
 						{#each Array(12) as _, i}
 							<option value={i + 1}>
 								{new Date(2000, i).toLocaleString('default', { month: 'long' })}
@@ -196,11 +188,7 @@
 					</Select>
 				{/if}
 
-				<Select
-					bind:value={selectedYear}
-					onchange={(e) => (selectedYear = e.detail)}
-					size="md"
-				>
+				<Select bind:value={selectedYear} size="md">
 					{#each Array(5) as _, i}
 						<option value={new Date().getFullYear() - i}>
 							{new Date().getFullYear() - i}
