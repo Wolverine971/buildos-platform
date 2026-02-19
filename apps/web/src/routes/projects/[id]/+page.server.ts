@@ -72,6 +72,7 @@ export interface ProjectSkeletonData {
 		plan_count: number;
 		milestone_count: number;
 		risk_count: number;
+		image_count: number;
 	};
 }
 
@@ -211,7 +212,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			goal_count: skeletonData.goal_count ?? 0,
 			plan_count: skeletonData.plan_count ?? 0,
 			milestone_count: skeletonData.milestone_count ?? 0,
-			risk_count: skeletonData.risk_count ?? 0
+			risk_count: skeletonData.risk_count ?? 0,
+			image_count: skeletonData.image_count ?? 0
 		},
 		access
 	} satisfies ProjectSkeletonData;

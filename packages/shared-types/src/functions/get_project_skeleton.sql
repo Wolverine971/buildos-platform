@@ -10,6 +10,11 @@ AS $function$
     'id', p.id,
     'name', p.name,
     'description', p.description,
+    'icon_svg', p.icon_svg,
+    'icon_concept', p.icon_concept,
+    'icon_generated_at', p.icon_generated_at,
+    'icon_generation_source', p.icon_generation_source,
+    'icon_generation_prompt', p.icon_generation_prompt,
     'state_key', p.state_key,
     'type_key', p.type_key,
     'next_step_short', p.next_step_short,
@@ -24,7 +29,9 @@ AS $function$
     'goal_count', (SELECT count(*) FROM onto_goals WHERE project_id = p.id AND deleted_at IS NULL),
     'plan_count', (SELECT count(*) FROM onto_plans WHERE project_id = p.id AND deleted_at IS NULL),
     'milestone_count', (SELECT count(*) FROM onto_milestones WHERE project_id = p.id AND deleted_at IS NULL),
-    'risk_count', (SELECT count(*) FROM onto_risks WHERE project_id = p.id AND deleted_at IS NULL)
+    'risk_count', (SELECT count(*) FROM onto_risks WHERE project_id = p.id AND deleted_at IS NULL),
+    'decision_count', (SELECT count(*) FROM onto_decisions WHERE project_id = p.id AND deleted_at IS NULL),
+    'image_count', (SELECT count(*) FROM onto_assets WHERE project_id = p.id AND deleted_at IS NULL)
   )
   FROM onto_projects p
   WHERE p.id = p_project_id

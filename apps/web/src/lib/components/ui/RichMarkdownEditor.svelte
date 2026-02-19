@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import CodeMirrorEditor from './codemirror/CodeMirrorEditor.svelte';
 	import {
 		Bold,
@@ -16,6 +16,7 @@
 		Quote,
 		Code,
 		Link as LinkIcon,
+		Image as ImageIcon,
 		Eye,
 		Edit3,
 		Mic,
@@ -40,7 +41,17 @@
 	import { haptic } from '$lib/utils/haptic';
 
 	type EditorSize = 'sm' | 'base' | 'lg';
-	type ToolbarAction = 'bold' | 'italic' | 'h1' | 'h2' | 'ul' | 'ol' | 'quote' | 'code' | 'link';
+	type ToolbarAction =
+		| 'bold'
+		| 'italic'
+		| 'h1'
+		| 'h2'
+		| 'ul'
+		| 'ol'
+		| 'quote'
+		| 'code'
+		| 'link'
+		| 'image';
 	type VoiceButtonVariant = 'muted' | 'loading' | 'prompt' | 'recording' | 'ready';
 
 	type VoiceButtonState = {
@@ -82,6 +93,8 @@
 		onVoiceNoteSegmentError?: (error: string) => void;
 		/** Callback on Cmd/Ctrl+S */
 		onSave?: () => void;
+		/** Optional handler to launch image insert picker */
+		onInsertImageRequested?: () => void;
 		/** Called on every document change (replaces onchange/oninput) */
 		onDocChange?: (value: string) => void;
 		// Bindable voice state
@@ -100,7 +113,7 @@
 		required = false,
 		disabled = false,
 		maxLength = 8000,
-		rows = 12,
+		rows: _rows = 12,
 		size = 'base',
 		fillHeight = false,
 		class: className = '',
@@ -119,6 +132,7 @@
 		onVoiceNoteSegmentSaved,
 		onVoiceNoteSegmentError,
 		onSave,
+		onInsertImageRequested,
 		onDocChange,
 		// Bindable voice state
 		isRecording = $bindable(false),
@@ -150,7 +164,7 @@
 	let voiceInitialized = $state(false);
 	// Smooth transition state - keeps recording UI visible during text insertion
 	let isTransitioningFromRecording = $state(false);
-	let transitionTranscript = $state('');
+	let _transitionTranscript = $state('');
 
 	// Extended "Added" feedback state (shows longer than transition)
 	let showAddedFeedback = $state(false);
@@ -220,12 +234,19 @@
 	];
 
 	// Secondary toolbar buttons (overflow on mobile)
-	const secondaryToolbarButtons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> =
-		[
+	const secondaryToolbarButtons = $derived.by(() => {
+		const buttons: Array<{ id: ToolbarAction; icon: typeof Bold; label: string }> = [
 			{ id: 'quote', icon: Quote, label: 'Quote' },
 			{ id: 'code', icon: Code, label: 'Code' },
 			{ id: 'link', icon: LinkIcon, label: 'Link' }
 		];
+
+		if (onInsertImageRequested) {
+			buttons.push({ id: 'image', icon: ImageIcon, label: 'Image' });
+		}
+
+		return buttons;
+	});
 
 	// Voice button state machine
 	const transcribingStatusLabel = $derived(
@@ -317,6 +338,9 @@
 				break;
 			case 'link':
 				editorRef.execLink();
+				break;
+			case 'image':
+				onInsertImageRequested?.();
 				break;
 		}
 	}
@@ -876,7 +900,7 @@
 
 		voiceRecordingService.initialize(
 			{
-				onTextUpdate: (text: string) => {
+				onTextUpdate: (_text: string) => {
 					// The service appends text - we intercept and insert at cursor instead
 					// This is handled in stopVoiceRecording after transcription completes
 					_voiceError = '';
@@ -1017,7 +1041,7 @@
 			// Clear inserting state
 			isInsertingText = false;
 			isTransitioningFromRecording = false;
-			transitionTranscript = '';
+			_transitionTranscript = '';
 		} catch (error) {
 			console.error('Failed to stop voice recording:', error);
 			const message =
@@ -1028,7 +1052,7 @@
 			isCurrentlyRecording = false;
 			isInsertingText = false;
 			isTransitioningFromRecording = false;
-			transitionTranscript = '';
+			_transitionTranscript = '';
 			showAddedFeedback = false;
 		} finally {
 			capturedTranscriptForCallback = '';
@@ -1075,7 +1099,7 @@
 		cursorPositionBeforeRecording = null;
 		// Clear transition state
 		isTransitioningFromRecording = false;
-		transitionTranscript = '';
+		_transitionTranscript = '';
 		// Clear feedback state
 		if (addedFeedbackTimeout) {
 			clearTimeout(addedFeedbackTimeout);
@@ -1145,6 +1169,16 @@
 	export async function cleanup() {
 		await stopRecordingInternal();
 		cleanupVoice();
+	}
+
+	export async function insertAtCursor(markdown: string) {
+		if (!markdown.trim()) return;
+		if (mode !== 'edit') {
+			mode = 'edit';
+			await tick();
+		}
+		editorRef?.insertAtCursor(markdown);
+		editorRef?.focus();
 	}
 </script>
 

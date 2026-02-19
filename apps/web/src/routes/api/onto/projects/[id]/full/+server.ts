@@ -28,6 +28,7 @@ interface ProjectFullData {
 	plans: unknown[];
 	tasks: unknown[];
 	documents: unknown[];
+	images: unknown[];
 	sources: unknown[];
 	milestones: unknown[];
 	risks: unknown[];
@@ -167,6 +168,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			plans: data.plans || [],
 			tasks: data.tasks || [],
 			documents: data.documents || [],
+			images: data.images || [],
 			sources: data.sources || [],
 			milestones: decoratedMilestones,
 			risks: data.risks || [],

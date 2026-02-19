@@ -126,6 +126,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			plansResult,
 			tasksResult,
 			documentsResult,
+			imagesResult,
 			sourcesResult,
 			milestonesResult,
 			risksResult,
@@ -162,6 +163,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('created_at'),
+			(supabase as any)
+				.from('onto_assets')
+				.select('*')
+				.eq('project_id', id)
+				.is('deleted_at', null)
+				.order('created_at', { ascending: false }),
 			supabase.from('onto_sources').select('*').eq('project_id', id).order('created_at'),
 			supabase
 				.from('onto_milestones')
@@ -204,6 +211,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (documentsResult.error) {
 			console.error('[Project API] Failed to fetch documents:', documentsResult.error);
 		}
+		if (imagesResult.error) {
+			console.error('[Project API] Failed to fetch images:', imagesResult.error);
+		}
 
 		// Extract context document from JOIN result
 		// The !inner join creates an aliased property with the table name
@@ -222,6 +232,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			plans: plansResult.data || [],
 			tasks: tasksResult.data || [],
 			documents: documentsResult.data || [],
+			images: imagesResult.data || [],
 			sources: sourcesResult.data || [],
 			milestones: decoratedMilestones,
 			risks: risksResult.data || [],

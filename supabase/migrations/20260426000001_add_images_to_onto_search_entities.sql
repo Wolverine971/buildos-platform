@@ -1,10 +1,24 @@
--- packages/shared-types/src/functions/onto_search_entities.sql
--- Source: Supabase pg_get_functiondef
+-- supabase/migrations/20260426000001_add_images_to_onto_search_entities.sql
+-- Add image entities to ontology cross-entity search.
 
-CREATE OR REPLACE FUNCTION public.onto_search_entities(p_actor_id uuid, p_query text, p_project_id uuid DEFAULT NULL::uuid, p_types text[] DEFAULT NULL::text[], p_limit integer DEFAULT 50)
- RETURNS TABLE(type text, id uuid, project_id uuid, project_name text, title text, snippet text, score double precision)
- LANGUAGE plpgsql
-AS $function$
+create or replace function onto_search_entities(
+  p_actor_id uuid,
+  p_query text,
+  p_project_id uuid default null,
+  p_types text[] default null,
+  p_limit int default 50
+)
+returns table (
+  type text,
+  id uuid,
+  project_id uuid,
+  project_name text,
+  title text,
+  snippet text,
+  score double precision
+)
+language plpgsql
+as $$
 declare
   v_limit int := least(coalesce(p_limit, 50), 50);
   v_query tsquery;
@@ -266,4 +280,4 @@ begin
   order by score desc
   limit v_limit;
 end;
-$function$
+$$;

@@ -709,9 +709,11 @@ export class StripeService {
 		// Get plan details
 		const { data: plan } = await this.supabase
 			.from('subscription_plans')
-			.select('id')
+			.select(
+				'id, name, price_cents, stripe_price_id, billing_interval, interval_count, is_active'
+			)
 			.eq('stripe_price_id', priceId)
-			.single();
+			.maybeSingle();
 
 		// Upsert subscription record
 		const customerId = getSubscriptionCustomerId(subscription);
@@ -756,6 +758,47 @@ export class StripeService {
 				subscription_plan_id: plan?.id
 			})
 			.eq('id', userId);
+
+		// Keep billing_accounts synchronized for fast snapshot reads (layout load path).
+		const isPaidLikeStatus = ['active', 'trialing', 'past_due'].includes(subscription.status);
+		if (isPaidLikeStatus) {
+			const planSnapshot = plan ? (plan as PlanSnapshot) : null;
+			const stripePriceCents = primaryItem?.price?.unit_amount ?? null;
+			const stripeBillingInterval = primaryItem?.price?.recurring?.interval ?? null;
+			const stripeIntervalCount = primaryItem?.price?.recurring?.interval_count ?? null;
+			const resolvedTier = inferSubscriptionTier({
+				priceId,
+				planName: planSnapshot?.name ?? null,
+				priceCents: planSnapshot?.price_cents ?? stripePriceCents,
+				billingInterval: planSnapshot?.billing_interval ?? stripeBillingInterval,
+				intervalCount: planSnapshot?.interval_count ?? stripeIntervalCount
+			});
+			const billingTier = resolvedTier === 'power' ? 'power' : 'pro';
+			const billingState = billingTier === 'power' ? 'power_active' : 'pro_active';
+
+			const { error: billingAccountError } = await this.supabase
+				.from('billing_accounts')
+				.upsert(
+					{
+						user_id: userId,
+						billing_state: billingState,
+						billing_tier: billingTier,
+						frozen_at: null,
+						frozen_reason: null,
+						cycle_start_at: currentPeriodStart,
+						cycle_end_at: currentPeriodEnd,
+						updated_at: new Date().toISOString()
+					},
+					{ onConflict: 'user_id' }
+				);
+
+			if (billingAccountError) {
+				console.error(
+					`Failed to sync billing_accounts for ${userId} after subscription update:`,
+					billingAccountError
+				);
+			}
+		}
 	}
 
 	/**
@@ -793,6 +836,43 @@ export class StripeService {
 				subscription_plan_id: null
 			})
 			.eq('id', userId);
+
+		const nowIso = new Date().toISOString();
+		const { error: billingAccountResetError } = await this.supabase
+			.from('billing_accounts')
+			.upsert(
+				{
+					user_id: userId,
+					billing_state: 'explorer_active',
+					billing_tier: 'explorer',
+					frozen_at: null,
+					frozen_reason: null,
+					cycle_start_at: null,
+					cycle_end_at: null,
+					updated_at: nowIso
+				},
+				{ onConflict: 'user_id' }
+			);
+
+		if (billingAccountResetError) {
+			console.error(
+				`Failed to reset billing_accounts for ${userId} after subscription deletion:`,
+				billingAccountResetError
+			);
+			return;
+		}
+
+		const gateResult: any = await this.supabase.rpc('evaluate_user_consumption_gate', {
+			p_user_id: userId,
+			p_project_limit: CONSUMPTION_BILLING_LIMITS.FREE_PROJECT_LIMIT,
+			p_credit_limit: CONSUMPTION_BILLING_LIMITS.FREE_CREDIT_LIMIT
+		});
+		if (gateResult?.error) {
+			console.error(
+				`Failed to re-evaluate consumption gate for ${userId} after subscription deletion:`,
+				gateResult.error
+			);
+		}
 	}
 
 	/**

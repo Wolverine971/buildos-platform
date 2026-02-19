@@ -10,6 +10,7 @@ import { processDailySMS } from './workers/dailySmsWorker';
 import { processChatClassificationJob } from './workers/chat/chatSessionClassifier';
 import { processBraindumpProcessingJob } from './workers/braindump/braindumpProcessor';
 import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
+import { processAssetOcrJob } from './workers/assets/assetOcrWorker';
 import { processHomeworkJob } from './workers/homework/homeworkWorker';
 import { processTreeAgentJob } from './workers/tree-agent/treeAgentWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
@@ -269,6 +270,22 @@ async function processVoiceNoteTranscription(job: ProcessingJob) {
 }
 
 /**
+ * Ontology asset OCR processor
+ */
+async function processAssetOcr(job: ProcessingJob) {
+	await job.log('Ontology asset OCR job received');
+	try {
+		const legacyJob = createLegacyJob(job);
+		const result = await processAssetOcrJob(legacyJob as any);
+		await job.log('Ontology asset OCR job completed');
+		return result;
+	} catch (error: any) {
+		await job.log(`Ontology asset OCR job failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
  * Homework (long-running task) processor
  */
 async function processHomework(job: ProcessingJob) {
@@ -359,6 +376,9 @@ export async function startWorker() {
 
 	// Register voice note transcription processor
 	queue.process('transcribe_voice_note', processVoiceNoteTranscription);
+
+	// Register ontology asset OCR processor
+	queue.process('extract_onto_asset_ocr' as any, processAssetOcr);
 
 	// Register homework (long-running task) processor
 	queue.process('buildos_homework', processHomework);

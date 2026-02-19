@@ -17,14 +17,22 @@ import {
 	Target,
 	Flag,
 	AlertTriangle,
-	Calendar as CalendarIcon
+	Calendar as CalendarIcon,
+	Image as ImageIcon
 } from 'lucide-svelte';
 
 // ============================================================
 // TYPES
 // ============================================================
 
-export type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'milestones' | 'events';
+export type InsightPanelKey =
+	| 'tasks'
+	| 'plans'
+	| 'goals'
+	| 'risks'
+	| 'milestones'
+	| 'events'
+	| 'images';
 
 // Lucide icon type - using typeof to match the actual icon component type
 type LucideIcon = typeof Circle;
@@ -372,6 +380,44 @@ export const EVENT_CONFIG: PanelConfig = {
 };
 
 // ============================================================
+// IMAGE CONFIGURATION
+// ============================================================
+
+export const IMAGE_CONFIG: PanelConfig = {
+	filters: [
+		{
+			id: 'ocr_status',
+			label: 'OCR',
+			multiSelect: true,
+			options: [
+				{ value: 'pending', label: 'Pending', icon: Clock, color: 'text-muted-foreground' },
+				{
+					value: 'processing',
+					label: 'Processing',
+					icon: ImageIcon,
+					color: 'text-accent'
+				},
+				{
+					value: 'complete',
+					label: 'Complete',
+					icon: CheckCircle2,
+					color: 'text-emerald-500'
+				},
+				{ value: 'failed', label: 'Failed', icon: AlertCircle, color: 'text-destructive' }
+			]
+		}
+	],
+	sorts: [
+		{ field: 'created_at', label: 'Created', defaultDirection: 'desc' },
+		{ field: 'updated_at', label: 'Updated', defaultDirection: 'desc' },
+		{ field: 'ocr_status', label: 'OCR Status', defaultDirection: 'asc' }
+	],
+	specialToggles: [{ id: 'showFailedOnly', label: 'Failed only', defaultValue: false }],
+	defaultSort: { field: 'created_at', direction: 'desc' },
+	defaultFilters: {}
+};
+
+// ============================================================
 // CONFIG MAP
 // ============================================================
 
@@ -381,7 +427,8 @@ export const PANEL_CONFIGS: Record<InsightPanelKey, PanelConfig> = {
 	goals: GOAL_CONFIG,
 	milestones: MILESTONE_CONFIG,
 	risks: RISK_CONFIG,
-	events: EVENT_CONFIG
+	events: EVENT_CONFIG,
+	images: IMAGE_CONFIG
 };
 
 // ============================================================
@@ -597,6 +644,10 @@ export function getSortValueDisplay(
 			return { label: 'Target', value: formatShortDate(value as string) };
 		case 'completed_at':
 			return { label: 'Done', value: formatShortDate(value as string) };
+		case 'ocr_status': {
+			const status = typeof value === 'string' ? value : 'unknown';
+			return { label: 'OCR', value: status.replace('_', ' ') };
+		}
 
 		// Priority
 		case 'priority': {
@@ -686,6 +737,7 @@ export function createDefaultPanelStates(): Record<InsightPanelKey, InsightPanel
 		goals: createDefaultPanelState(GOAL_CONFIG),
 		milestones: createDefaultPanelState(MILESTONE_CONFIG),
 		risks: createDefaultPanelState(RISK_CONFIG),
-		events: createDefaultPanelState(EVENT_CONFIG)
+		events: createDefaultPanelState(EVENT_CONFIG),
+		images: createDefaultPanelState(IMAGE_CONFIG)
 	};
 }

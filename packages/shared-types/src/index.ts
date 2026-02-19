@@ -22,6 +22,9 @@ export * from './chat.types';
 // Export agent types
 export * from './agent.types';
 
+// Export OCR transition helpers
+export * from './asset-ocr';
+
 // Export project activity logging types
 export * from './project-activity.types';
 

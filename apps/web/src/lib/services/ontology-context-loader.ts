@@ -12,15 +12,7 @@ import type {
 	OntologyEntityType,
 	ProjectHighlights,
 	HighlightSection,
-	ProjectHighlightGoal,
-	ProjectHighlightRisk,
-	ProjectHighlightRequirement,
-	ProjectHighlightDocument,
-	ProjectHighlightMilestone,
-	ProjectHighlightPlan,
-	ProjectHighlightSignal,
-	ProjectHighlightInsight,
-	ProjectHighlightTask,
+	ProjectHighlightImage,
 	GraphSnapshot,
 	DocumentTreeContext
 } from '$lib/types/agent-chat-enhancement';
@@ -95,11 +87,18 @@ type ProjectGraphContextRpcPayload = {
 	edges?: ProjectGraphDataLight['edges'] | null;
 };
 
+type ProjectAssetRow = Database['public']['Tables']['onto_assets']['Row'];
+type ProjectAssetHighlightsPayload = {
+	assets: ProjectAssetRow[];
+	totalCount: number;
+};
+
 const PROJECT_HIGHLIGHT_LIMITS = {
 	goals: 10,
 	risks: 6,
 	requirements: 8,
 	documents: 10,
+	images: 8,
 	milestones: 6,
 	plans: 6,
 	signals: 6,
@@ -116,7 +115,10 @@ const PROJECT_HIGHLIGHT_TRUNCATION = {
 	goalDescription: 140,
 	planDescription: 140,
 	milestoneDescription: 140,
-	riskContent: 160
+	riskContent: 160,
+	imageSummary: 140,
+	imageExtractedText: 220,
+	imageTitle: 90
 } as const;
 
 const GRAPH_SNAPSHOT_LIMITS = {
@@ -203,6 +205,7 @@ export class OntologyContextLoader {
 			risks: { items: [] },
 			requirements: { items: [] },
 			documents: { items: [] },
+			images: { items: [] },
 			milestones: { items: [] },
 			plans: { items: [] },
 			signals: { items: [] },
@@ -227,6 +230,14 @@ export class OntologyContextLoader {
 		const trimmed = value.trim();
 		if (trimmed.length <= limit) return trimmed;
 		return `${trimmed.slice(0, limit).trimEnd()}...`;
+	}
+
+	private truncateTokenSafeText(value: string | null | undefined, limit: number): string | null {
+		if (!value) return null;
+		const compact = value.replace(/\s+/g, ' ').trim();
+		if (!compact) return null;
+		if (compact.length <= limit) return compact;
+		return `${compact.slice(0, limit).trimEnd()}...`;
 	}
 
 	private formatPayloadSummary(payload: unknown): string | null {
@@ -274,6 +285,36 @@ export class OntologyContextLoader {
 			signals: Array.isArray(payload.signals) ? payload.signals : [],
 			insights: Array.isArray(payload.insights) ? payload.insights : [],
 			edges: Array.isArray(payload.edges) ? payload.edges : []
+		};
+	}
+
+	private async loadProjectAssetsForHighlights(
+		projectId: string
+	): Promise<ProjectAssetHighlightsPayload> {
+		const limit = PROJECT_HIGHLIGHT_LIMITS.images;
+		const { data, error, count } = await this.supabase
+			.from('onto_assets')
+			.select(
+				'id, project_id, kind, caption, alt_text, original_filename, ocr_status, extracted_text, extracted_text_source, extraction_summary, created_at, updated_at, deleted_at',
+				{ count: 'exact' }
+			)
+			.eq('project_id', projectId)
+			.eq('kind', 'image')
+			.is('deleted_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(limit);
+
+		if (error) {
+			console.warn('[OntologyLoader] Failed to load project assets for highlights', {
+				projectId,
+				error: error.message
+			});
+			return { assets: [], totalCount: 0 };
+		}
+
+		return {
+			assets: (data || []) as ProjectAssetRow[],
+			totalCount: count || 0
 		};
 	}
 
@@ -494,7 +535,8 @@ export class OntologyContextLoader {
 
 	private buildProjectHighlightsFromGraph(
 		graph: ProjectGraphDataLight,
-		directEdgeIds: Record<string, Set<string>>
+		directEdgeIds: Record<string, Set<string>>,
+		projectAssets: ProjectAssetHighlightsPayload
 	): ProjectHighlights {
 		const tasksById = new Map(graph.tasks.map((task) => [task.id, task]));
 
@@ -617,6 +659,34 @@ export class OntologyContextLoader {
 		const documentsSection = this.buildHighlightSection(
 			documentItems.slice(0, PROJECT_HIGHLIGHT_LIMITS.documents),
 			documentItems.length
+		);
+
+		const imageItems: ProjectHighlightImage[] = projectAssets.assets.map((asset) => ({
+			id: asset.id,
+			title:
+				this.truncateTokenSafeText(
+					asset.caption ||
+						asset.alt_text ||
+						asset.original_filename ||
+						`Image ${asset.id.slice(0, 8)}`,
+					PROJECT_HIGHLIGHT_TRUNCATION.imageTitle
+				) || `Image ${asset.id.slice(0, 8)}`,
+			ocr_status: asset.ocr_status,
+			extracted_text_source: asset.extracted_text_source,
+			extraction_summary: this.truncateTokenSafeText(
+				asset.extraction_summary,
+				PROJECT_HIGHLIGHT_TRUNCATION.imageSummary
+			),
+			extracted_text_preview: this.truncateTokenSafeText(
+				asset.extracted_text,
+				PROJECT_HIGHLIGHT_TRUNCATION.imageExtractedText
+			),
+			created_at: asset.created_at,
+			updated_at: asset.updated_at
+		}));
+		const imagesSection = this.buildHighlightSection(
+			imageItems.slice(0, PROJECT_HIGHLIGHT_LIMITS.images),
+			projectAssets.totalCount
 		);
 
 		const risksSorted = graph.risks
@@ -852,6 +922,7 @@ export class OntologyContextLoader {
 			risks: risksSection,
 			requirements: requirementsSection,
 			documents: documentsSection,
+			images: imagesSection,
 			milestones: milestonesSection,
 			plans: plansSection,
 			signals: signalsSection,
@@ -890,12 +961,16 @@ export class OntologyContextLoader {
 		};
 	}
 
-	private getProjectEntityCountsFromGraph(graph: ProjectGraphDataLight): Record<string, number> {
+	private getProjectEntityCountsFromGraph(
+		graph: ProjectGraphDataLight,
+		imageCount = 0
+	): Record<string, number> {
 		return {
 			tasks: graph.tasks.length,
 			goals: graph.goals.length,
 			plans: graph.plans.length,
 			documents: graph.documents.length,
+			images: imageCount,
 			milestones: graph.milestones.length,
 			risks: graph.risks.length,
 			requirements: graph.requirements.length,
@@ -1152,11 +1227,22 @@ export class OntologyContextLoader {
 			contextDocumentId &&
 			graphData.documents.find((doc) => doc.id === contextDocumentId)?.title;
 
+		const [projectAssets, docStructure] = await Promise.all([
+			this.loadProjectAssetsForHighlights(projectId),
+			this.loadProjectDocStructure(projectId)
+		]);
+
 		const relationships = this.buildProjectRelationshipsFromEdges(projectId, graphData.edges);
-		const entityCounts = this.getProjectEntityCountsFromGraph(graphData);
-		const projectHighlights = this.buildProjectHighlightsFromGraph(graphData, directEdgeIds);
+		const entityCounts = this.getProjectEntityCountsFromGraph(
+			graphData,
+			projectAssets.totalCount
+		);
+		const projectHighlights = this.buildProjectHighlightsFromGraph(
+			graphData,
+			directEdgeIds,
+			projectAssets
+		);
 		const graphSnapshot = this.buildGraphSnapshot(projectId, graphData, directEdgeIds);
-		const docStructure = await this.loadProjectDocStructure(projectId);
 		const documentTree = this.buildDocumentTreeContext(docStructure, graphData.documents);
 
 		const facets = {

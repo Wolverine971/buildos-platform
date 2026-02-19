@@ -18,7 +18,8 @@ import type {
 	ClassifyChatSessionJobMetadata,
 	VoiceNoteTranscriptionJobMetadata,
 	ProjectIconGenerationJobMetadata,
-	ProjectActivityBatchFlushJobMetadata
+	ProjectActivityBatchFlushJobMetadata,
+	AssetOcrJobMetadata
 } from './queue-types';
 import type { NotificationJobMetadata } from './notification.types';
 
@@ -600,6 +601,32 @@ export function validateProjectIconGenerationMetadata(
 	return meta as unknown as ProjectIconGenerationJobMetadata;
 }
 
+export function validateAssetOcrMetadata(metadata: unknown): AssetOcrJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+
+	const meta = metadata as Record<string, unknown>;
+
+	if (typeof meta.assetId !== 'string' || !isValidUUID(meta.assetId)) {
+		throw new ValidationError('assetId', meta.assetId, 'valid UUID');
+	}
+
+	if (typeof meta.projectId !== 'string' || !isValidUUID(meta.projectId)) {
+		throw new ValidationError('projectId', meta.projectId, 'valid UUID');
+	}
+
+	if (typeof meta.userId !== 'string' || !isValidUUID(meta.userId)) {
+		throw new ValidationError('userId', meta.userId, 'valid UUID');
+	}
+
+	if (meta.forceOverwrite !== undefined && typeof meta.forceOverwrite !== 'boolean') {
+		throw new ValidationError('forceOverwrite', meta.forceOverwrite, 'boolean');
+	}
+
+	return meta as unknown as AssetOcrJobMetadata;
+}
+
 // Main validation function
 export function validateJobMetadata<T extends QueueJobType>(
 	jobType: T,
@@ -636,6 +663,8 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateVoiceNoteTranscriptionMetadata(metadata) as JobMetadataMap[T];
 		case 'generate_project_icon':
 			return validateProjectIconGenerationMetadata(metadata) as JobMetadataMap[T];
+		case 'extract_onto_asset_ocr':
+			return validateAssetOcrMetadata(metadata) as JobMetadataMap[T];
 		case 'project_activity_batch_flush':
 			return validateProjectActivityBatchFlushMetadata(metadata) as JobMetadataMap[T];
 		case 'other':

@@ -73,7 +73,8 @@
 		MoreHorizontal,
 		GitBranch,
 		Users,
-		Maximize2
+		Maximize2,
+		Image as ImageIcon
 	} from 'lucide-svelte';
 	import type {
 		Project,
@@ -98,6 +99,7 @@
 	import ProjectCollaborationModal from '$lib/components/project/ProjectCollaborationModal.svelte';
 	import ProjectIconStudioModal from '$lib/components/project/ProjectIconStudioModal.svelte';
 	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
+	import ImageAssetsPanel from '$lib/components/ontology/ImageAssetsPanel.svelte';
 	import {
 		DocTreeView,
 		DocMoveModal,
@@ -133,7 +135,7 @@
 	import MobileCommandCenter from '$lib/components/project/MobileCommandCenter.svelte';
 
 	// Note: 'milestones' removed - now nested under goals
-	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'events';
+	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'events' | 'images';
 
 	type InsightPanel = {
 		key: InsightPanelKey;
@@ -190,6 +192,7 @@
 					plan_count: number;
 					milestone_count: number;
 					risk_count: number;
+					image_count: number;
 				})
 			: null
 	);
@@ -218,6 +221,7 @@
 	let documents = $state(
 		data.skeleton ? ([] as Document[]) : ((data.documents || []) as Document[])
 	);
+	let images = $state(data.skeleton ? ([] as any[]) : ((data.images || []) as any[]));
 	let plans = $state(data.skeleton ? ([] as Plan[]) : ((data.plans || []) as Plan[]));
 	let goals = $state(data.skeleton ? ([] as Goal[]) : ((data.goals || []) as Goal[]));
 	let milestones = $state(
@@ -283,7 +287,8 @@
 		plans: false,
 		goals: true,
 		events: false,
-		risks: false
+		risks: false,
+		images: false
 	});
 	let showMobileMenu = $state(false);
 	let mobileMenuButtonEl: HTMLButtonElement | null = $state(null);
@@ -337,6 +342,7 @@
 			project = fullData.project || project;
 			tasks = fullData.tasks || [];
 			documents = fullData.documents || [];
+			images = fullData.images || [];
 			plans = fullData.plans || [];
 			goals = fullData.goals || [];
 			milestones = fullData.milestones || [];
@@ -453,6 +459,8 @@
 				const eventEnd = endAt ? new Date(endAt) : startAt ? new Date(startAt) : null;
 				if (eventEnd && eventEnd < new Date()) return false;
 			}
+		} else if (entityType === 'images') {
+			if (toggles.showFailedOnly && item.ocr_status !== 'failed') return false;
 		}
 
 		// Check multi-select filters
@@ -665,6 +673,24 @@
 		) as unknown as OntoEventWithSync[];
 	});
 
+	// Filtered and sorted images
+	const filteredImages = $derived.by(() => {
+		const state = panelStates.images;
+		const filtered = images.filter((image) =>
+			filterEntity(
+				image as unknown as Record<string, unknown>,
+				state.filters,
+				state.toggles,
+				'images'
+			)
+		);
+		return sortEntities(
+			filtered as unknown as Record<string, unknown>[],
+			state.sort,
+			'images'
+		) as unknown as any[];
+	});
+
 	// Group milestones by their parent goal ID
 	const milestonesByGoalId = $derived.by(() => {
 		const map = new Map<string, Milestone[]>();
@@ -727,6 +753,9 @@
 			}).length,
 			showCancelled: events.filter((e) => e.state_key === 'cancelled').length,
 			showDeleted: events.filter((e) => e.deleted_at).length
+		},
+		images: {
+			showFailedOnly: images.filter((image) => image.ocr_status === 'failed').length
 		}
 	}));
 
@@ -799,6 +828,13 @@
 			description: 'Meetings and time blocks'
 		},
 		{
+			key: 'images',
+			label: 'Images',
+			icon: ImageIcon,
+			items: filteredImages,
+			description: 'Visual context and OCR'
+		},
+		{
 			key: 'risks',
 			label: 'Risks',
 			icon: AlertCircle,
@@ -834,6 +870,9 @@
 			case 'events':
 				showEventCreateModal = true;
 				break;
+			case 'images':
+				expandedPanels = { ...expandedPanels, images: true };
+				break;
 		}
 	}
 
@@ -863,6 +902,8 @@
 				return 'bg-red-500/10 text-red-500';
 			case 'events':
 				return 'bg-blue-500/10 text-blue-500';
+			case 'images':
+				return 'bg-emerald-500/10 text-emerald-500';
 			default:
 				return 'bg-accent/10 text-accent';
 		}
@@ -1079,6 +1120,7 @@
 			project = newData.project || project;
 			tasks = newData.tasks || [];
 			documents = newData.documents || [];
+			images = newData.images || [];
 			plans = newData.plans || [];
 			goals = newData.goals || [];
 			milestones = newData.milestones || [];
@@ -1966,6 +2008,12 @@
 						description="Meetings and time blocks"
 					/>
 					<InsightPanelSkeleton
+						icon={ImageIcon}
+						label="Images"
+						count={skeletonCounts.image_count}
+						description="Visual context and OCR"
+					/>
+					<InsightPanelSkeleton
 						icon={Calendar}
 						label="Plans"
 						count={skeletonCounts.plan_count}
@@ -2132,21 +2180,24 @@
 									transition:slide={{ duration: 120 }}
 								>
 									<!-- Filter/Sort Controls -->
-									<div
-										class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30"
-									>
-										<InsightFilterDropdown
-											filterGroups={PANEL_CONFIGS[section.key].filters}
-											activeFilters={panelStates[section.key].filters}
-											onchange={(filters) =>
-												updatePanelFilters(section.key, filters)}
-										/>
-										<InsightSortDropdown
-											sortOptions={PANEL_CONFIGS[section.key].sorts}
-											currentSort={panelStates[section.key].sort}
-											onchange={(sort) => updatePanelSort(section.key, sort)}
-										/>
-									</div>
+									{#if section.key !== 'images'}
+										<div
+											class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30"
+										>
+											<InsightFilterDropdown
+												filterGroups={PANEL_CONFIGS[section.key].filters}
+												activeFilters={panelStates[section.key].filters}
+												onchange={(filters) =>
+													updatePanelFilters(section.key, filters)}
+											/>
+											<InsightSortDropdown
+												sortOptions={PANEL_CONFIGS[section.key].sorts}
+												currentSort={panelStates[section.key].sort}
+												onchange={(sort) =>
+													updatePanelSort(section.key, sort)}
+											/>
+										</div>
+									{/if}
 
 									{#if section.key === 'tasks'}
 										{#if filteredTasks.length > 0}
@@ -2291,6 +2342,15 @@
 												</p>
 											</div>
 										{/if}
+									{:else if section.key === 'images'}
+										<div class="px-4 py-3">
+											<ImageAssetsPanel
+												projectId={project.id}
+												showTitle={false}
+												{canEdit}
+												onChanged={() => void refreshData()}
+											/>
+										</div>
 									{:else if section.key === 'risks'}
 										{#if filteredRisks.length > 0}
 											<ul class="divide-y divide-border/80">
@@ -2372,13 +2432,15 @@
 									{/if}
 
 									<!-- Special Toggles (Show Completed/Deleted) -->
-									<InsightSpecialToggles
-										toggles={PANEL_CONFIGS[section.key].specialToggles}
-										values={panelStates[section.key].toggles}
-										counts={panelCounts[section.key]}
-										onchange={(toggleId, value) =>
-											updatePanelToggle(section.key, toggleId, value)}
-									/>
+									{#if section.key !== 'images'}
+										<InsightSpecialToggles
+											toggles={PANEL_CONFIGS[section.key].specialToggles}
+											values={panelStates[section.key].toggles}
+											counts={panelCounts[section.key]}
+											onchange={(toggleId, value) =>
+												updatePanelToggle(section.key, toggleId, value)}
+										/>
+									{/if}
 								</div>
 							{/if}
 						</div>

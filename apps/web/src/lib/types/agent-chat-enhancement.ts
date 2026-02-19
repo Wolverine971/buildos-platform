@@ -10,14 +10,9 @@ import type {
 	LLMMessage,
 	ChatToolDefinition,
 	TemplateCreationEvent,
-	TemplateCreationRequestDetail,
-	TemplateCreationStatus,
-	TemplateRecommendationSet,
-	TemplateSchemaSummary,
 	LocationContext,
 	LastTurnContext,
 	ProjectFocus,
-	FocusEntitySummary,
 	Database
 } from '@buildos/shared-types';
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
@@ -181,6 +176,17 @@ export interface ProjectHighlightInsight {
 	summary?: string | null;
 }
 
+export interface ProjectHighlightImage {
+	id: string;
+	title: string;
+	ocr_status?: string | null;
+	extracted_text_source?: string | null;
+	extraction_summary?: string | null;
+	extracted_text_preview?: string | null;
+	created_at: string;
+	updated_at?: string | null;
+}
+
 export interface ProjectHighlightTask {
 	id: string;
 	title: string;
@@ -204,6 +210,7 @@ export interface ProjectHighlights {
 	risks: HighlightSection<ProjectHighlightRisk>;
 	requirements: HighlightSection<ProjectHighlightRequirement>;
 	documents: HighlightSection<ProjectHighlightDocument>;
+	images: HighlightSection<ProjectHighlightImage>;
 	milestones: HighlightSection<ProjectHighlightMilestone>;
 	plans: HighlightSection<ProjectHighlightPlan>;
 	signals: HighlightSection<ProjectHighlightSignal>;

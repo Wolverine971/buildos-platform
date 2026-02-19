@@ -42,6 +42,7 @@
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import DocumentVersionHistoryPanel from './DocumentVersionHistoryPanel.svelte';
 	import DocumentVersionRestoreModal from './DocumentVersionRestoreModal.svelte';
 	import DocumentComparisonView from './DocumentComparisonView.svelte';
@@ -65,6 +66,7 @@
 		Save,
 		Trash2,
 		X,
+		Image as ImageIcon,
 		ChevronDown,
 		ChevronUp,
 		ChevronRight,
@@ -148,6 +150,8 @@
 	let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let savedFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
 	const AUTOSAVE_DEBOUNCE_MS = 2000;
+	const INLINE_ASSET_RENDER_REGEX =
+		/\/api\/onto\/assets\/([0-9a-fA-F-]{36})\/render(?:\?[^\s)\]]*)?/g;
 
 	// Snapshot of last-saved values to detect actual changes
 	let lastSavedSnapshot = $state<{
@@ -287,9 +291,11 @@
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
 	let showMobileMetadata = $state(false);
+	let showImageInsertModal = $state(false);
 
 	// Left panel collapsible sections
 	let showLinkedEntities = $state(true);
+	let showImages = $state(true);
 	let showVersionHistory = $state(false);
 	let showVoiceNotes = $state(false);
 	let showActivityLog = $state(false);
@@ -297,6 +303,12 @@
 	// Comments section (collapsed by default)
 	let showComments = $state(false);
 	let commentsCount = $state(0);
+
+	type MarkdownEditorRef = {
+		insertAtCursor: (markdown: string) => Promise<void>;
+		focus?: () => void;
+	};
+	let markdownEditorRef = $state<MarkdownEditorRef | null>(null);
 
 	// Version history state
 	let showRestoreModal = $state(false);
@@ -355,6 +367,7 @@
 		// Reset comments panel
 		showComments = false;
 		commentsCount = 0;
+		showImageInsertModal = false;
 	}
 
 	function normalizeDocumentState(state?: string | null): string {
@@ -447,6 +460,7 @@
 
 	function closeModal() {
 		clearAutosaveTimers();
+		showImageInsertModal = false;
 		isOpen = false;
 		onClose?.();
 	}
@@ -457,6 +471,84 @@
 			return false;
 		}
 		return true;
+	}
+
+	function extractInlineAssetIds(markdown: string): string[] {
+		if (!markdown) return [];
+		const ids = new Set<string>();
+		const regex = new RegExp(INLINE_ASSET_RENDER_REGEX);
+		for (const match of markdown.matchAll(regex)) {
+			const id = match[1]?.toLowerCase();
+			if (id) ids.add(id);
+		}
+		return [...ids];
+	}
+
+	async function syncInlineImageLinks(documentId: string, markdown: string): Promise<void> {
+		const desiredIds = new Set(extractInlineAssetIds(markdown));
+		const listParams = new URLSearchParams({
+			project_id: projectId,
+			entity_kind: 'document',
+			entity_id: documentId,
+			role: 'inline',
+			limit: '200'
+		});
+
+		const listResponse = await fetch(`/api/onto/assets?${listParams.toString()}`);
+		const listPayload = await listResponse.json().catch(() => null);
+		if (!listResponse.ok) {
+			throw new Error(listPayload?.error || 'Failed to load inline image links');
+		}
+
+		const currentAssets = Array.isArray(listPayload?.data?.assets)
+			? (listPayload.data.assets as Array<{ id?: string }>)
+			: [];
+		const currentIds = new Set(
+			currentAssets
+				.map((asset) => (asset.id ? asset.id.toLowerCase() : ''))
+				.filter((id) => id.length > 0)
+		);
+
+		const toLink = [...desiredIds].filter((id) => !currentIds.has(id));
+		const toUnlink = [...currentIds].filter((id) => !desiredIds.has(id));
+
+		await Promise.all(
+			toLink.map(async (assetId) => {
+				const response = await fetch(`/api/onto/assets/${assetId}/links`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						entity_kind: 'document',
+						entity_id: documentId,
+						role: 'inline'
+					})
+				});
+				const payload = await response.json().catch(() => null);
+				if (!response.ok) {
+					throw new Error(payload?.error || `Failed to attach inline image ${assetId}`);
+				}
+			})
+		);
+
+		await Promise.all(
+			toUnlink.map(async (assetId) => {
+				const params = new URLSearchParams({
+					entity_kind: 'document',
+					entity_id: documentId,
+					role: 'inline'
+				});
+				const response = await fetch(
+					`/api/onto/assets/${assetId}/links?${params.toString()}`,
+					{
+						method: 'DELETE'
+					}
+				);
+				const payload = await response.json().catch(() => null);
+				if (!response.ok) {
+					throw new Error(payload?.error || `Failed to detach inline image ${assetId}`);
+				}
+			})
+		);
 	}
 
 	/** Internal save logic shared by autosave and manual save */
@@ -533,9 +625,35 @@
 
 			// Update server timestamp from response
 			const updatedDoc = result?.data?.document;
+			const newDocumentId = result?.data?.document?.id ?? result?.data?.id ?? null;
+			const persistedDocumentId = updatedDoc?.id ?? activeDocumentId ?? newDocumentId;
 			if (updatedDoc?.updated_at) {
 				serverUpdatedAt = updatedDoc.updated_at;
 				updatedAt = updatedDoc.updated_at;
+			}
+
+			if (persistedDocumentId) {
+				try {
+					await syncInlineImageLinks(persistedDocumentId, body);
+				} catch (syncError) {
+					void logOntologyClientError(syncError, {
+						endpoint: '/api/onto/assets',
+						method: 'POST',
+						projectId,
+						entityType: 'document',
+						entityId: persistedDocumentId,
+						operation: 'document_inline_image_sync',
+						metadata: {
+							inlineAssetIds: extractInlineAssetIds(body),
+							documentId: persistedDocumentId
+						}
+					});
+					if (!silent) {
+						toastService.warning(
+							'Document saved, but inline image links could not be fully synced'
+						);
+					}
+				}
 			}
 
 			// Capture snapshot of what we just saved
@@ -556,7 +674,6 @@
 			onSaved?.();
 
 			// If we just created a new document, transition to edit mode
-			const newDocumentId = result?.data?.document?.id ?? result?.data?.id;
 			if (wasCreating && newDocumentId) {
 				internalDocumentId = newDocumentId;
 				await loadDocument(newDocumentId);
@@ -930,6 +1047,30 @@
 			onCreateChildRequested(activeDocumentId);
 		}
 	}
+
+	type InsertableAsset = {
+		id: string;
+		alt_text?: string | null;
+		caption?: string | null;
+		original_filename?: string | null;
+	};
+
+	function toMarkdownAltText(asset: InsertableAsset): string {
+		const raw =
+			asset.alt_text?.trim() ||
+			asset.caption?.trim() ||
+			asset.original_filename?.trim() ||
+			'image';
+
+		return raw.replace(/\r?\n/g, ' ').replace(/\[/g, '\\[').replace(/\]/g, '\\]').slice(0, 120);
+	}
+
+	async function handleInsertImageAsset(asset: InsertableAsset) {
+		const alt = toMarkdownAltText(asset);
+		const markdown = `![${alt}](/api/onto/assets/${asset.id}/render)`;
+		await markdownEditorRef?.insertAtCursor(markdown);
+		showImageInsertModal = false;
+	}
 </script>
 
 <Modal
@@ -1221,6 +1362,38 @@
 										{/if}
 									</div>
 
+									<!-- Images Section -->
+									<div class="pt-2 border-t border-border">
+										<button
+											type="button"
+											onclick={() => (showImages = !showImages)}
+											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+										>
+											<span class="micro-label text-foreground">IMAGES</span>
+											{#if showImages}
+												<ChevronUp
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+												/>
+											{:else}
+												<ChevronDown
+													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+												/>
+											{/if}
+										</button>
+										{#if showImages}
+											<div class="pt-2">
+												<ImageAssetsPanel
+													{projectId}
+													entityKind="document"
+													entityId={activeDocumentId}
+													showTitle={false}
+													compact={true}
+													onChanged={() => onSaved?.()}
+												/>
+											</div>
+										{/if}
+									</div>
+
 									<!-- Version History Section -->
 									<div class="pt-2 border-t border-border">
 										<button
@@ -1361,6 +1534,17 @@
 										class="flex items-center justify-between gap-2 mb-1.5 shrink-0"
 									>
 										<h4 class="micro-label text-foreground">CONTENT</h4>
+										{#if isEditing && activeDocumentId}
+											<button
+												type="button"
+												onclick={() => (showImageInsertModal = true)}
+												class="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable"
+												title="Insert image from project library"
+											>
+												<ImageIcon class="w-3 h-3" />
+												Insert image
+											</button>
+										{/if}
 										<!-- Mobile/tablet: date + save status next to content label -->
 										<p
 											class="micro-label text-muted-foreground/70 lg:hidden flex items-center gap-1.5"
@@ -1430,10 +1614,13 @@
 									</div>
 									<div class="flex-1 min-h-0">
 										<RichMarkdownEditor
+											bind:this={markdownEditorRef}
 											bind:value={body}
 											maxLength={50000}
 											helpText=""
 											fillHeight={true}
+											onInsertImageRequested={() =>
+												(showImageInsertModal = true)}
 											voiceNoteSource="document-modal"
 											voiceNoteLinkedEntityType={activeDocumentId
 												? 'document'
@@ -1529,6 +1716,20 @@
 													initialLinkedEntities={linkedEntities}
 													onEntityClick={handleLinkedEntityClick}
 													onLinksChanged={handleLinksChanged}
+												/>
+											</div>
+										{/if}
+
+										<!-- Images -->
+										{#if isEditing && activeDocumentId}
+											<div class="pt-2 border-t border-border">
+												<ImageAssetsPanel
+													{projectId}
+													entityKind="document"
+													entityId={activeDocumentId}
+													title="Images"
+													compact={true}
+													onChanged={() => onSaved?.()}
 												/>
 											</div>
 										{/if}
@@ -1815,6 +2016,35 @@
 		</p>
 	{/snippet}
 </ConfirmationModal>
+
+{#if activeDocumentId}
+	<Modal
+		bind:isOpen={showImageInsertModal}
+		title="Insert Image"
+		size="lg"
+		onClose={() => (showImageInsertModal = false)}
+	>
+		{#snippet children()}
+			<div class="p-3 sm:p-4">
+				<p class="text-xs text-muted-foreground mb-3">
+					Choose a project image or upload a new one. The selected image will be inserted
+					as markdown and linked inline to this document.
+				</p>
+				<ImageAssetsPanel
+					{projectId}
+					entityKind="document"
+					entityId={activeDocumentId}
+					showTitle={false}
+					pickerMode={true}
+					filterScope="project"
+					linkRole="inline"
+					selectLabel="Insert"
+					onSelectAsset={handleInsertImageAsset}
+				/>
+			</div>
+		{/snippet}
+	</Modal>
+{/if}
 
 <!-- Linked Entity Modals -->
 {#if showTaskModal && selectedTaskIdForModal}

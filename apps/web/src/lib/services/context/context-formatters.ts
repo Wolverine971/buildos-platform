@@ -52,7 +52,7 @@ function findDocumentNodeWithPath(
 	return null;
 }
 
-function formatDocumentFocusDetails(
+function _formatDocumentFocusDetails(
 	tree: DocumentTreeContext | undefined,
 	documentId?: string | null
 ): string {
@@ -620,7 +620,7 @@ ${
 - Use create_onto_project to start new projects`;
 }
 
-function formatDocumentTreePreview(tree?: DocumentTreeContext): string {
+function _formatDocumentTreePreview(tree?: DocumentTreeContext): string {
 	if (!tree) return '';
 
 	const lines: string[] = [];
@@ -906,10 +906,7 @@ function formatProjectHighlights(highlights?: ProjectHighlights): string {
 		return `edge: ${direct ? 'direct' : 'project_id'}`;
 	};
 
-	const formatListCount = (label: string, list?: string[] | null): string | null => {
-		if (!list || list.length === 0) return null;
-		return `${label}: ${list.length}`;
-	};
+	const imageHighlights = highlights.images ?? { items: [], more: 0 };
 
 	const addSection = (title: string, lines: string[], more?: number): void => {
 		if (lines.length === 0) return;
@@ -986,6 +983,25 @@ function formatProjectHighlights(highlights?: ProjectHighlights): string {
 			return `- ${doc.title} [${doc.id}]${formatParts(parts)}${description}`;
 		}),
 		highlights.documents.more
+	);
+
+	addSection(
+		'Images',
+		imageHighlights.items.map((image) => {
+			const parts = formatCreatedUpdated(image.created_at, image.updated_at);
+			if (image.ocr_status) parts.unshift(`ocr: ${image.ocr_status}`);
+			if (image.extracted_text_source) parts.push(`source: ${image.extracted_text_source}`);
+			const details: string[] = [];
+			if (image.extraction_summary) {
+				details.push(`summary: ${image.extraction_summary}`);
+			}
+			if (image.extracted_text_preview) {
+				details.push(`text: ${image.extracted_text_preview}`);
+			}
+			const detailSuffix = details.length > 0 ? ` — ${details.join(' | ')}` : '';
+			return `- ${image.title || 'Image'} [${image.id}]${formatParts(parts)}${detailSuffix}`;
+		}),
+		imageHighlights.more
 	);
 
 	addSection(

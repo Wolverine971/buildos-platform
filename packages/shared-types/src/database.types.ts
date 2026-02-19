@@ -4400,6 +4400,188 @@ export type Database = {
           },
         ]
       }
+      onto_asset_links: {
+        Row: {
+          asset_id: string
+          created_at: string
+          created_by: string
+          entity_id: string
+          entity_kind: string
+          id: string
+          project_id: string
+          props: Json
+          role: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          created_by: string
+          entity_id: string
+          entity_kind: string
+          id?: string
+          project_id: string
+          props?: Json
+          role?: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          created_by?: string
+          entity_id?: string
+          entity_kind?: string
+          id?: string
+          project_id?: string
+          props?: Json
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_asset_links_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "onto_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_asset_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_asset_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_assets: {
+        Row: {
+          alt_text: string | null
+          caption: string | null
+          checksum_sha256: string | null
+          content_type: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          extracted_text: string | null
+          extracted_text_source: string
+          extracted_text_updated_at: string | null
+          extracted_text_updated_by: string | null
+          extraction_metadata: Json
+          extraction_summary: string | null
+          file_size_bytes: number
+          height: number | null
+          id: string
+          kind: string
+          metadata: Json
+          ocr_completed_at: string | null
+          ocr_error: string | null
+          ocr_model: string | null
+          ocr_started_at: string | null
+          ocr_status: string
+          ocr_version: number
+          original_filename: string | null
+          project_id: string
+          search_vector: unknown
+          storage_bucket: string
+          storage_path: string
+          updated_at: string
+          width: number | null
+        }
+        Insert: {
+          alt_text?: string | null
+          caption?: string | null
+          checksum_sha256?: string | null
+          content_type: string
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          extracted_text?: string | null
+          extracted_text_source?: string
+          extracted_text_updated_at?: string | null
+          extracted_text_updated_by?: string | null
+          extraction_metadata?: Json
+          extraction_summary?: string | null
+          file_size_bytes: number
+          height?: number | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          ocr_completed_at?: string | null
+          ocr_error?: string | null
+          ocr_model?: string | null
+          ocr_started_at?: string | null
+          ocr_status?: string
+          ocr_version?: number
+          original_filename?: string | null
+          project_id: string
+          search_vector?: unknown
+          storage_bucket?: string
+          storage_path: string
+          updated_at?: string
+          width?: number | null
+        }
+        Update: {
+          alt_text?: string | null
+          caption?: string | null
+          checksum_sha256?: string | null
+          content_type?: string
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          extracted_text?: string | null
+          extracted_text_source?: string
+          extracted_text_updated_at?: string | null
+          extracted_text_updated_by?: string | null
+          extraction_metadata?: Json
+          extraction_summary?: string | null
+          file_size_bytes?: number
+          height?: number | null
+          id?: string
+          kind?: string
+          metadata?: Json
+          ocr_completed_at?: string | null
+          ocr_error?: string | null
+          ocr_model?: string | null
+          ocr_started_at?: string | null
+          ocr_status?: string
+          ocr_version?: number
+          original_filename?: string | null
+          project_id?: string
+          search_vector?: unknown
+          storage_bucket?: string
+          storage_path?: string
+          updated_at?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_assets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_assets_extracted_text_updated_by_fkey"
+            columns: ["extracted_text_updated_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_assignments: {
         Row: {
           actor_id: string
@@ -11508,6 +11690,7 @@ export type Database = {
         | "build_project_context_snapshot"
         | "project_activity_batch_flush"
         | "generate_project_icon"
+        | "extract_onto_asset_ocr"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -11782,6 +11965,7 @@ export const Constants = {
         "build_project_context_snapshot",
         "project_activity_batch_flush",
         "generate_project_icon",
+        "extract_onto_asset_ocr",
       ],
       recurrence_end_reason: [
         "indefinite",

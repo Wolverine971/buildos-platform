@@ -201,6 +201,13 @@ export interface ProjectActivityBatchFlushJobMetadata {
 	batchId?: string;
 }
 
+export interface AssetOcrJobMetadata {
+	assetId: string;
+	projectId: string;
+	userId: string;
+	forceOverwrite?: boolean;
+}
+
 // Map job types to their metadata
 export interface JobMetadataMap {
 	generate_daily_brief: DailyBriefJobMetadata;
@@ -223,6 +230,7 @@ export interface JobMetadataMap {
 	build_project_context_snapshot: ProjectContextSnapshotJobMetadata;
 	generate_project_icon: ProjectIconGenerationJobMetadata;
 	project_activity_batch_flush: ProjectActivityBatchFlushJobMetadata;
+	extract_onto_asset_ocr: AssetOcrJobMetadata;
 	other: Record<string, unknown>;
 }
 
@@ -304,6 +312,16 @@ export interface ProjectActivityBatchFlushResult {
 	message: string | null;
 }
 
+export interface AssetOcrResult {
+	success: boolean;
+	assetId: string;
+	projectId?: string;
+	ocrStatus?: 'complete' | 'failed' | 'skipped';
+	transcriptLength?: number;
+	reason?: string;
+	error?: string;
+}
+
 // Job result types
 export interface JobResultMap {
 	// Allow indexing by queue job types that are not explicitly listed yet.
@@ -327,6 +345,7 @@ export interface JobResultMap {
 	build_project_context_snapshot: ProjectContextSnapshotResult;
 	generate_project_icon: ProjectIconGenerationResult;
 	project_activity_batch_flush: ProjectActivityBatchFlushResult;
+	extract_onto_asset_ocr: AssetOcrResult;
 	other: unknown;
 }
 

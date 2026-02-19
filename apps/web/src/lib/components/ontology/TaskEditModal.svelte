@@ -35,6 +35,7 @@
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
@@ -112,7 +113,7 @@
 	let showDeleteConfirm = $state(false);
 	let hasCalendarLink = $state(false);
 	let deleteFromCalendar = $state(true);
-	let hasChanges = $state(false);
+	let _hasChanges = $state(false);
 
 	// Form fields
 	let title = $state('');
@@ -273,7 +274,7 @@
 					Boolean(props.external_event_id || props.external_calendar_id)
 				);
 			});
-		} catch (err) {
+		} catch {
 			hasCalendarLink = false;
 		}
 	}
@@ -467,13 +468,13 @@
 		selectedLinkedTaskId = null;
 		documentIdForModal = null;
 		if (wasChanged) {
-			hasChanges = true;
+			_hasChanges = true;
 			loadTask();
 		}
 	}
 
 	function handleLinksChanged() {
-		hasChanges = true;
+		_hasChanges = true;
 	}
 
 	// Unified handler for LinkedEntities component clicks
@@ -701,6 +702,19 @@
 							projectId={task.project_id}
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={handleLinksChanged}
+						/>
+
+						<!-- Images -->
+						<ImageAssetsPanel
+							{projectId}
+							entityKind="task"
+							entityId={taskId}
+							title="Images"
+							compact={true}
+							onChanged={() => {
+								void loadTask();
+								onUpdated?.();
+							}}
 						/>
 
 						<!-- Tags (from classification) -->

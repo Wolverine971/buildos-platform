@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-19T00:00:32.333Z
+// Generated on: 2026-02-19T19:34:35.072Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1064,6 +1064,50 @@ export type DatabaseSchema = {
 		name: string;
 		org_id: string | null;
 		user_id: string | null;
+	};
+	onto_asset_links: {
+		asset_id: string;
+		created_at: string;
+		created_by: string;
+		entity_id: string;
+		entity_kind: string;
+		id: string;
+		project_id: string;
+		props: Json;
+		role: string;
+	};
+	onto_assets: {
+		alt_text: string | null;
+		caption: string | null;
+		checksum_sha256: string | null;
+		content_type: string;
+		created_at: string;
+		created_by: string;
+		deleted_at: string | null;
+		extracted_text: string | null;
+		extracted_text_source: string;
+		extracted_text_updated_at: string | null;
+		extracted_text_updated_by: string | null;
+		extraction_metadata: Json;
+		extraction_summary: string | null;
+		file_size_bytes: number;
+		height: number | null;
+		id: string;
+		kind: string;
+		metadata: Json;
+		ocr_completed_at: string | null;
+		ocr_error: string | null;
+		ocr_model: string | null;
+		ocr_started_at: string | null;
+		ocr_status: string;
+		ocr_version: number;
+		original_filename: string | null;
+		project_id: string;
+		search_vector: unknown;
+		storage_bucket: string;
+		storage_path: string;
+		updated_at: string;
+		width: number | null;
 	};
 	onto_assignments: {
 		actor_id: string;
@@ -2557,6 +2601,8 @@ export const tableNames = [
 	'notification_subscriptions',
 	'notification_tracking_links',
 	'onto_actors',
+	'onto_asset_links',
+	'onto_assets',
 	'onto_assignments',
 	'onto_braindumps',
 	'onto_comment_mentions',
