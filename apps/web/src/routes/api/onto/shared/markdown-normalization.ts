@@ -1,8 +1,8 @@
 // apps/web/src/routes/api/onto/shared/markdown-normalization.ts
 /**
- * Normalize markdown content when it arrives with escaped line breaks.
- * Converts escaped line breaks outside fenced code blocks so mixed payloads
- * (real newlines + literal "\n") still render correctly.
+ * Normalize markdown content when it arrives with escaped markdown sequences.
+ * Converts escaped line breaks/quotes outside fenced code blocks so mixed
+ * payloads (real newlines + literal "\n"/"\"") render correctly.
  */
 export function normalizeMarkdownInput(value: unknown): string | null {
 	if (typeof value !== 'string') {
@@ -14,12 +14,12 @@ export function normalizeMarkdownInput(value: unknown): string | null {
 	}
 
 	// Fast path: nothing to normalize.
-	if (!/\\r\\n|\\n|\\r|(?<!\w)\/n(?=$|[^\w])/.test(value)) {
+	if (!/\\r\\n|\\n|\\r|(?<!\w)\/n(?=$|[^\w])|\\"/.test(value)) {
 		return value;
 	}
 
 	if (!/[\r\n]/.test(value)) {
-		return normalizeEscapedLineBreaks(value);
+		return normalizeEscapedMarkdownSequences(value);
 	}
 
 	// For multi-line markdown, normalize per line while preserving fenced
@@ -64,7 +64,7 @@ export function normalizeMarkdownInput(value: unknown): string | null {
 			continue;
 		}
 
-		const normalizedLine = normalizeEscapedLineBreaks(line);
+		const normalizedLine = normalizeEscapedMarkdownSequences(line);
 		if (normalizedLine !== line) changed = true;
 		normalized += normalizedLine + newline;
 	}
@@ -72,12 +72,13 @@ export function normalizeMarkdownInput(value: unknown): string | null {
 	return changed ? normalized : value;
 }
 
-function normalizeEscapedLineBreaks(value: string): string {
+function normalizeEscapedMarkdownSequences(value: string): string {
 	return value
 		.replace(/\\r\\n/g, '\n')
 		.replace(/\\n/g, '\n')
 		.replace(/\\r/g, '\n')
-		.replace(/(?<!\w)\/n(?=$|[^\w])/g, '\n');
+		.replace(/(?<!\w)\/n(?=$|[^\w])/g, '\n')
+		.replace(/\\"/g, '"');
 }
 
 function getFenceDelimiter(line: string): { char: '`' | '~'; length: number } | null {

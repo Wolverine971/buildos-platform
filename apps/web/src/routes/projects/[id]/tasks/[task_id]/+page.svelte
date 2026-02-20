@@ -39,7 +39,8 @@
 		Sparkles,
 		RefreshCw,
 		X,
-		FolderOpen
+		FolderOpen,
+		Users
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -172,6 +173,13 @@
 	const otherTasks = $derived.by(() =>
 		projectTasks.filter((t: any) => t.id !== task?.id).slice(0, 10)
 	);
+	const taskAssignees = $derived.by(() => (Array.isArray(task?.assignees) ? task.assignees : []));
+	const taskAssigneeSummary = $derived.by(() => {
+		if (taskAssignees.length === 0) return 'Unassigned';
+		const first = formatAssigneeLabel(taskAssignees[0]);
+		if (taskAssignees.length === 1) return `@${first}`;
+		return `@${first} +${taskAssignees.length - 1}`;
+	});
 
 	// Task visuals based on current state (used in header)
 	const taskVisuals = $derived(getTaskVisuals(stateKey));
@@ -196,7 +204,7 @@
 	$effect(() => {
 		if (task) {
 			title = task.title || '';
-			description = task.props?.description || '';
+			description = task.description || task.props?.description || '';
 			priority = task.priority || 3;
 			stateKey = task.state_key || 'todo';
 			dueAt = task.due_at ? formatDateTimeForInput(task.due_at) : '';
@@ -308,6 +316,22 @@
 			day: 'numeric',
 			year: 'numeric'
 		});
+	}
+
+	function formatAssigneeLabel(assignee: {
+		name?: string | null;
+		email?: string | null;
+		actor_id?: string | null;
+	}): string {
+		const name = assignee.name?.trim();
+		if (name) return name;
+
+		const email = assignee.email?.trim().toLowerCase();
+		if (email) {
+			return email.split('@')[0] ?? 'teammate';
+		}
+
+		return assignee.actor_id?.slice(0, 8) ?? 'teammate';
 	}
 
 	function togglePanel(key: string) {
@@ -702,6 +726,27 @@
 								>
 									{project?.name || 'Project'}
 								</a>
+								<div class="hidden sm:flex items-center gap-1 mt-1 flex-wrap">
+									<Users class="w-3 h-3 text-muted-foreground" />
+									{#if taskAssignees.length === 0}
+										<span class="text-[11px] text-muted-foreground"
+											>Unassigned</span
+										>
+									{:else}
+										{#each taskAssignees.slice(0, 2) as assignee}
+											<span
+												class="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-foreground"
+											>
+												@{formatAssigneeLabel(assignee)}
+											</span>
+										{/each}
+										{#if taskAssignees.length > 2}
+											<span class="text-[11px] text-muted-foreground"
+												>+{taskAssignees.length - 2}</span
+											>
+										{/if}
+									{/if}
+								</div>
 							</div>
 						</div>
 					</div>
@@ -791,6 +836,10 @@
 						{formatDueDate(task.due_at)}
 					</span>
 				{/if}
+			</div>
+			<div class="flex sm:hidden items-center gap-1 text-muted-foreground">
+				<Users class="w-3 h-3" />
+				<span class="text-xs">{taskAssigneeSummary}</span>
 			</div>
 
 			<!-- Mobile: Quick Entity Stats (Goals, Plans, Docs, Tasks) -->
@@ -913,6 +962,31 @@
 										size="md"
 									/>
 								</FormField>
+
+								<div
+									class="rounded-lg border border-border bg-muted/30 p-2.5 sm:p-3"
+								>
+									<p
+										class="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
+									>
+										Assignees
+									</p>
+									{#if taskAssignees.length === 0}
+										<p class="text-xs text-muted-foreground">
+											No assignees yet
+										</p>
+									{:else}
+										<div class="flex flex-wrap gap-1.5">
+											{#each taskAssignees as assignee}
+												<span
+													class="inline-flex items-center rounded-full border border-border bg-card px-2 py-0.5 text-xs text-foreground"
+												>
+													@{formatAssigneeLabel(assignee)}
+												</span>
+											{/each}
+										</div>
+									{/if}
+								</div>
 
 								<!-- Grid: Priority, State, Due Date - 2 cols on mobile, 3 on desktop -->
 								<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">

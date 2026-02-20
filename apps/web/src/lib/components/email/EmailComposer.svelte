@@ -1277,10 +1277,10 @@
 </ConfirmationModal>
 
 <ImageUploadModal
-	isOpen={showImageModal}
+	bind:isOpen={showImageModal}
 	emailId={emailData.id}
-	on:close={() => (showImageModal = false)}
-	on:imageSelected={(event) => addImage(event.detail)}
+	onClose={() => (showImageModal = false)}
+	onImageSelected={(image) => addImage(image)}
 />
 
 <RecipientSelector

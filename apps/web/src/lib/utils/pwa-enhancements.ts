@@ -109,7 +109,11 @@ export function initializePWAEnhancements(): (() => void) | void {
 	const handleTouchStart = (e: TouchEvent) => {
 		if (e.touches.length !== 1) return;
 		lastTouchY = e.touches[0]!.clientY;
-		preventPullToRefresh = window.scrollY === 0;
+		// Skip pull-to-refresh prevention when a modal is open —
+		// body scroll is already locked, and preventing here blocks
+		// scrolling inside modal content.
+		const insideModal = (e.target as HTMLElement)?.closest?.('.modal-root');
+		preventPullToRefresh = window.scrollY === 0 && !insideModal;
 	};
 
 	const handleTouchMove = (e: TouchEvent) => {

@@ -71,6 +71,7 @@ export const GET: RequestHandler = async ({ request }) => {
 					await supabase.from('user_notifications').insert({
 						user_id: user.id,
 						type: 'trial_warning',
+						event_type: 'user.trial_reminder',
 						title: getNotificationTitle(reminderType, daysUntilEnd),
 						message: getNotificationMessage(reminderType, daysUntilEnd),
 						action_url: '/pricing',

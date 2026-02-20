@@ -91,27 +91,33 @@ async function notifyUserCompletion(params: {
 
 	let title: string;
 	let message: string;
+	let eventType: string;
 
 	switch (status) {
 		case 'completed':
 			title = 'Homework complete';
 			message = 'Your homework run has finished.';
+			eventType = 'homework.run_completed';
 			break;
 		case 'stopped':
 			title = 'Homework stopped';
 			message = 'Your homework run has stopped. You can continue anytime.';
+			eventType = 'homework.run_stopped';
 			break;
 		case 'failed':
 			title = 'Homework failed';
 			message = 'Your homework run encountered an error.';
+			eventType = 'homework.run_failed';
 			break;
 		case 'canceled':
 			title = 'Homework canceled';
 			message = 'Your homework run was canceled.';
+			eventType = 'homework.run_canceled';
 			break;
 		default:
 			title = 'Homework update';
 			message = `Your homework run status: ${status}`;
+			eventType = 'homework.run_updated';
 	}
 
 	await supabase.from('user_notifications').insert({
@@ -119,6 +125,7 @@ async function notifyUserCompletion(params: {
 		title,
 		message,
 		type: 'homework',
+		event_type: eventType,
 		action_url: `/homework/runs/${run.id}`,
 		data: {
 			run_id: run.id,

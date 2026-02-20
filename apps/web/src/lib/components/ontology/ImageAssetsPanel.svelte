@@ -20,6 +20,7 @@
 		filterScope?: 'entity' | 'project';
 		pickerMode?: boolean;
 		selectLabel?: string;
+		showUploadButton?: boolean;
 		onSelectAsset?: (asset: OntologyImageAsset) => void;
 		onChanged?: () => void;
 	}
@@ -36,6 +37,7 @@
 		filterScope = 'entity',
 		pickerMode = false,
 		selectLabel = 'Insert',
+		showUploadButton = true,
 		onSelectAsset,
 		onChanged
 	}: Props = $props();
@@ -168,6 +170,10 @@
 		activeAssetId = assetId;
 		showAssetDetailModal = true;
 	}
+
+	export function openUploadModal() {
+		showUploadModal = true;
+	}
 </script>
 
 <section class="space-y-3">
@@ -178,31 +184,33 @@
 		</div>
 	{/if}
 
-	<div class="flex flex-wrap items-center gap-2">
-		{#if canEdit}
-			<Button
-				size="sm"
-				variant="secondary"
-				class="h-7 px-2 text-xs"
-				onclick={() => (showUploadModal = true)}
-			>
-				<Upload class="h-3.5 w-3.5" />
-				Upload image
-			</Button>
-		{/if}
+	{#if (showUploadButton && canEdit) || (hasEntityBinding && canEdit && !pickerMode)}
+		<div class="flex flex-wrap items-center gap-2">
+			{#if showUploadButton && canEdit}
+				<Button
+					size="sm"
+					variant="secondary"
+					class="h-7 px-2 text-xs"
+					onclick={() => (showUploadModal = true)}
+				>
+					<Upload class="h-3.5 w-3.5" />
+					Upload image
+				</Button>
+			{/if}
 
-		{#if hasEntityBinding && canEdit && !pickerMode}
-			<Button
-				size="sm"
-				variant="secondary"
-				class="h-7 px-2 text-xs"
-				onclick={() => (showAttachExisting = !showAttachExisting)}
-			>
-				<Link2 class="h-3.5 w-3.5" />
-				Attach existing
-			</Button>
-		{/if}
-	</div>
+			{#if hasEntityBinding && canEdit && !pickerMode}
+				<Button
+					size="sm"
+					variant="secondary"
+					class="h-7 px-2 text-xs"
+					onclick={() => (showAttachExisting = !showAttachExisting)}
+				>
+					<Link2 class="h-3.5 w-3.5" />
+					Attach existing
+				</Button>
+			{/if}
+		</div>
+	{/if}
 
 	{#if showAttachExisting && hasEntityBinding && !pickerMode}
 		<div class="rounded-md border border-border bg-muted/30 p-2">

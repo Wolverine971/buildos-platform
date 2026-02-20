@@ -6,11 +6,31 @@
 
 | Attribute | Value                                                                                      |
 | --------- | ------------------------------------------------------------------------------------------ |
-| Status    | Proposed                                                                                   |
+| Status    | In progress (phase 1 shipped, phase 2 started)                                             |
 | Created   | 2026-02-19                                                                                 |
+| Updated   | 2026-02-20                                                                                 |
 | Owner     | Platform                                                                                   |
 | Scope     | Project collaboration, ontology tasks/goals/documents, notifications, agentic-chat phase 2 |
 | Companion | `docs/specs/TASK_ASSIGNMENT_INSIGHT_PANEL_SPEC.md`                                         |
+
+---
+
+## Progress Update (2026-02-20)
+
+### Completed in Phase 1
+
+- [x] Task assignment table + indexes + RLS (`onto_task_assignees`) is live via migration.
+- [x] Assignment APIs are wired (`assignee_actor_ids` on task create/update) with member validation and delta sync.
+- [x] Assignment + mention notification coalescing is implemented for task writes.
+- [x] Mention notifications are implemented for task, goal, and document create/update endpoints.
+- [x] Insight panel assignee display + filter plumbing is shipped.
+- [x] Regression tests for mention/assignment coordination and assignee filtering are in place.
+
+### Phase 2 progress
+
+- [x] Agentic chat task tools now support `assignee_handles` (for example `@jim`) and resolve handles to `assignee_actor_ids` through project members before task create/update writes.
+- [x] Chat tag action flow is now implemented via `tag_onto_entity` (`@handle` or user-ID recipients) and routes through ontology mention APIs.
+- [x] Manual ping endpoint is now implemented at `POST /api/onto/mentions/ping` for explicit tag notifications without content mutation.
 
 ---
 
@@ -369,13 +389,13 @@ Use case:
 
 ## Rollout Plan
 
-### Phase 1: Shared foundation (sequential)
+### Phase 1: Shared foundation (sequential) - ✅ complete
 
 - Add `onto_task_assignees` + RLS.
 - Add shared mention-resolution helper and member identity payload requirements.
 - Define shared notification contracts for assignment/tag events.
 
-### Phase 2: Parallel feature tracks
+### Phase 2: Parallel feature tracks - 🚧 in progress
 
 Track A (mentions):
 
@@ -387,13 +407,13 @@ Track B (assignments):
 - Add task assignment API support.
 - Add assignment visibility/filtering UX per companion assignment spec.
 
-### Phase 3: Integration and hardening (sequential)
+### Phase 3: Integration and hardening (sequential) - 🚧 in progress
 
 - Extend `/notifications` for new rows and consistent payload rendering.
 - Add assignment+mention coalescing to prevent duplicate same-save pings.
 - Run cross-feature regression tests.
 
-### Phase 4: Agentic chat assignment/tag actions
+### Phase 4: Agentic chat assignment/tag actions - 🚧 started
 
 - Add chat-side member resolution for `@name`.
 - Route assignment intents to existing task API.

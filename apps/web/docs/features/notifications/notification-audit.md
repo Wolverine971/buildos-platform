@@ -20,7 +20,7 @@ The main risks are consistency and trust in delivery state:
 - preference writes are split across paths, which can leave channels enabled but subscriptions inactive,
 - some webhook security and retry semantics can misclassify or duplicate behavior,
 - analytics definitions do not match current status transitions,
-- remaining legacy daily-brief worker/webhook paths add operational complexity.
+- mixed direct in-app write paths still bypass delivery tracking contracts.
 
 ## Remediation Progress (2026-02-20)
 
@@ -48,7 +48,22 @@ Priority-0 / high-severity items addressed in code:
     - Implementation: `apps/web/src/routes/notifications/+page.server.ts`, `apps/web/src/routes/notifications/+page.svelte`
 - [x] Added explicit transformer support for `project.invite.accepted`.
     - Implementation: `packages/shared-types/src/payloadTransformer.ts`, `packages/shared-types/src/notification.types.ts`, `apps/web/src/routes/api/onto/invites/[inviteId]/accept/+server.ts`
-- [ ] Legacy daily-brief worker/webhook decommission remains pending until queue backlog validation is completed.
+- [x] Ensured shared-project activity notifications create in-app deliveries by default once project-level activity notifications are enabled.
+    - Implementation: `supabase/migrations/20260426000008_shared_project_activity_default_in_app.sql`, `apps/web/src/lib/components/project/ProjectCollaborationModal.svelte`
+- [x] Decommissioned legacy `generate_brief_email` worker processing and cancelled remaining legacy queue jobs.
+    - Implementation: `apps/worker/src/worker.ts`, `supabase/migrations/20260426000009_decommission_legacy_brief_email_jobs.sql`
+- [x] Stopped emitting raw `project.activity.changed` events from project-log trigger path.
+    - Implementation: `supabase/migrations/20260426000010_remove_raw_project_activity_changed_events.sql`
+- [x] Removed unused notification subscription activity helper.
+    - Implementation: `apps/worker/src/workers/notification/preferenceChecker.ts`
+- [x] Added mention notification writes for goal/document create + update flows, aligned with task mention behavior.
+    - Implementation: `apps/web/src/routes/api/onto/goals/create/+server.ts`, `apps/web/src/routes/api/onto/goals/[id]/+server.ts`, `apps/web/src/routes/api/onto/documents/create/+server.ts`, `apps/web/src/routes/api/onto/documents/[id]/+server.ts`
+- [x] Started phase-2 agentic chat assignment support by resolving `@handle` inputs to assignee actor IDs before task create/update writes.
+    - Implementation: `apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts`, `apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts`
+- [x] Added phase-2 explicit entity tag ping flow (`tag_onto_entity`) backed by `POST /api/onto/mentions/ping` so chat/UI can notify tagged members without mutating content fields.
+    - Implementation: `apps/web/src/routes/api/onto/mentions/ping/+server.ts`, `apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts`, `apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts`
+- [ ] Mixed direct `user_notifications` write paths partially normalized by adding explicit `event_type` tags, but full pipeline standardization remains follow-up work.
+    - Implementation: `apps/worker/src/workers/homework/homeworkWorker.ts`, `apps/web/src/routes/api/homework/runs/[id]/cancel/+server.ts`, `apps/web/src/lib/services/dunning-service.ts`, `apps/web/src/routes/api/cron/trial-reminders/+server.ts`
 
 Validation run:
 
@@ -92,14 +107,14 @@ Evidence:
 
 Current flow:
 
-1. Trigger on `onto_project_logs` inserts a raw `project.activity.changed` event.
-2. Trigger queues/upserts `project_notification_batches`.
+1. Trigger on `onto_project_logs` queues/upserts `project_notification_batches`.
+2. Trigger no longer inserts raw `project.activity.changed` events (batched-only path).
 3. Flush job calls `flush_project_activity_notification_batch`.
 4. Flush emits `project.activity.batched` and creates deliveries gated by active subscriptions + preferences/project settings.
 
 Evidence:
 
-- Raw event insert with `target_user_id = NULL`: `supabase/migrations/20260424000000_project_activity_notification_batching.sql:729`
+- Raw event insert removal: `supabase/migrations/20260426000010_remove_raw_project_activity_changed_events.sql:1`
 - Subscription-aligned batched event delivery contract: `supabase/migrations/20260426000007_notification_priority2_activity_alignment.sql:1`
 - Flush worker: `apps/worker/src/workers/notification/projectActivityBatchWorker.ts:1`
 
@@ -181,13 +196,12 @@ Observed production emitters:
 
 - `brief.completed` and `brief.failed` from brief worker: `apps/worker/src/workers/brief/briefWorker.ts:267`, `apps/worker/src/workers/brief/briefWorker.ts:325`
 - `project.invite.accepted` from invite accept API: `apps/web/src/routes/api/onto/invites/[inviteId]/accept/+server.ts:158`, `apps/web/src/routes/api/onto/invites/[inviteId]/accept/+server.ts:234`
-- `project.activity.changed` from DB trigger: `supabase/migrations/20260424000000_project_activity_notification_batching.sql:738`
 - `project.activity.batched` from batch flush function: `supabase/migrations/20260424000000_project_activity_notification_batching.sql:149`
 
 Event types in shared union but not found as regular runtime emitters in product flows (outside admin/test tooling):
 
 - `user.signup`, `user.trial_expired`, `payment.failed`, `error.critical`,
-- `brain_dump.processed`, `task.due_soon`, `project.phase_scheduled`, `calendar.sync_failed`
+- `brain_dump.processed`, `task.due_soon`, `project.activity.changed`, `project.phase_scheduled`, `calendar.sync_failed`
 
 Evidence:
 
@@ -288,11 +302,13 @@ Evidence:
 
 6. **Raw `project.activity.changed` events are emitted for every log but not delivered**
     - Evidence:
-        - Trigger inserts event with `target_user_id = NULL`: `supabase/migrations/20260424000000_project_activity_notification_batching.sql:729`
+        - Historical (pre-fix): trigger inserted event with `target_user_id = NULL`: `supabase/migrations/20260424000000_project_activity_notification_batching.sql:729`
     - Impact:
         - Extra event volume without user-facing value in current flow.
     - Recommendation:
         - Either wire delivery usage for this event or stop writing raw events and keep only batched artifacts.
+    - Status:
+        - Fixed in code on 2026-02-20 (trigger no longer inserts raw `project.activity.changed`; batching path remains).
 
 7. **Twilio retry queueing does not use dedup keys**
     - Evidence:
@@ -330,15 +346,15 @@ Evidence:
 
 2. **Legacy daily-brief email worker path remains registered**
     - Evidence:
-        - Worker still registers `generate_brief_email`: `apps/worker/src/worker.ts:360`
+        - Historical (pre-fix): worker registered `generate_brief_email`: `apps/worker/src/worker.ts:360`
         - Legacy status called out in worker file: `apps/worker/src/workers/brief/emailWorker.ts:3`
-        - Legacy webhook still present: `apps/web/src/routes/webhooks/daily-brief-email/+server.ts:1`
+        - Legacy webhook remains for compatibility: `apps/web/src/routes/webhooks/daily-brief-email/+server.ts:1`
     - Impact:
         - Ongoing maintenance and mental overhead.
     - Recommendation:
         - Define decommission plan after queue/data migration validation.
     - Status:
-        - In progress as of 2026-02-20 (pending production queue backlog validation before disabling processor/webhook path).
+        - Fixed in code on 2026-02-20 (worker no longer registers `generate_brief_email`; remaining pending/retrying legacy jobs are cancelled by migration).
 
 3. **Unused subscription helper**
     - Evidence:
@@ -348,6 +364,8 @@ Evidence:
         - Dead code and confusion about active guardrails.
     - Recommendation:
         - Remove or integrate explicitly into send path.
+    - Status:
+        - Fixed in code on 2026-02-20 (`checkSubscriptionActive` removed from preference checker).
 
 4. **Mixed in-app write model increases inconsistency**
     - Evidence:
@@ -357,6 +375,8 @@ Evidence:
         - Uneven observability, preference enforcement, and analytics fidelity.
     - Recommendation:
         - Define which classes of in-app notifications must go through delivery pipeline and standardize.
+    - Status:
+        - Partially improved on 2026-02-20 (explicit `event_type` tagging added for remaining direct writers); full migration to delivery pipeline still pending.
 
 ## Recommended Remediation Plan
 
@@ -379,7 +399,7 @@ Evidence:
 1. Done (2026-02-20): Project activity batching now honors `notification_subscriptions` and keeps them synchronized for enabled recipients.
 2. Done (2026-02-20): Synthetic feed activity rows now use explicit virtual feed semantics (not delivered status).
 3. Done (2026-02-20): Added transformer coverage for `project.invite.accepted` and aligned payload fields.
-4. In progress: Decommission legacy brief email worker/webhook path after queue backlog validation in production.
+4. Done (2026-02-20): Decommissioned legacy brief email worker job processing and cancelled queued legacy jobs.
 
 ## Validation Checklist
 
@@ -394,3 +414,5 @@ Evidence:
 9. Verify project activity notifications only deliver when `project.activity.batched` subscription is active for recipient.
 10. Verify invite acceptance and project notification settings PATCH both create/maintain active `project.activity.batched` subscription rows.
 11. Verify synthetic project activity entries show as "Activity" (virtual feed rows), not "Delivered".
+12. Verify worker no longer registers `generate_brief_email` and that pending/retrying legacy jobs are cancelled after migration `20260426000009`.
+13. Verify trigger path no longer inserts raw `project.activity.changed` events for new `onto_project_logs` rows.

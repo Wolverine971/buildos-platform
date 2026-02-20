@@ -474,7 +474,7 @@
 		></div>
 
 		<!-- Modal Container -->
-		<div class="fixed inset-0 z-[9999] overflow-y-auto" style="touch-action: none;">
+		<div class="fixed inset-0 z-[9999] overflow-y-auto">
 			<div
 				class="flex min-h-full {variantClasses.container} justify-center p-0 sm:p-3"
 				role="presentation"

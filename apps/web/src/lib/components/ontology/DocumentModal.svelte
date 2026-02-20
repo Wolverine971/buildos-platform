@@ -1612,7 +1612,7 @@
 											>MARKDOWN</span
 										>
 									</div>
-									<div class="flex-1 min-h-0">
+									<div class="flex-1 min-h-0 flex flex-col">
 										<RichMarkdownEditor
 											bind:this={markdownEditorRef}
 											bind:value={body}
@@ -2139,5 +2139,14 @@
 		overflow: hidden;
 		flex: 1;
 		min-height: 0;
+	}
+
+	/* Mobile: allow modal-content to scroll as a fallback so content is
+	   always accessible, even if the nested flex fill-height chain breaks. */
+	@media (max-width: 1023px) {
+		:global(.document-modal-container .modal-content) {
+			overflow-y: auto;
+			-webkit-overflow-scrolling: touch;
+		}
 	}
 </style>

@@ -2,7 +2,7 @@
 
 # Prompt Audit: new-project-dual-context
 
-**Generated at:** 2026-02-16T05:57:24.445Z
+**Generated at:** 2026-02-20T06:37:30.286Z
 **Environment:** Development
 
 ## Metadata
@@ -13,7 +13,7 @@
 	"brainDumpLength": 21,
 	"hasExistingProject": false,
 	"existingContextLength": 0,
-	"timestamp": "2026-02-16T05:57:24.445Z"
+	"timestamp": "2026-02-20T06:37:30.286Z"
 }
 ```
 
@@ -25,7 +25,7 @@ A user just brain dumped information about a new project and you need to create 
 Your Job is to analyze the brain dump and create a well-structured project with comprehensive context.
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2026-02-16T05:57:24.445Z
+Current date and time: 2026-02-20T06:37:30.286Z
 
 ## Project Creation Decision:
 **Decision Matrix**:
@@ -112,7 +112,7 @@ Convert natural language dates to YYYY-MM-DD format:
    - "Q2" → end_date: June 30th of current year
    - Always calculate actual YYYY-MM-DD dates, NEVER use relative terms
    - If no timeline mentioned, use start_date: today, end_date: null
-   - Current date context: Today is 2026-02-16
+   - Current date context: Today is 2026-02-20
 
 ## Output JSON for Project WITH Context:
 ```json
@@ -138,7 +138,7 @@ Convert natural language dates to YYYY-MM-DD format:
         "executive_summary": "2-3 sentence executive summary",
         "tags": ["project", "tags"],
         "status": "active",
-        "start_date": "2026-02-16",
+        "start_date": "2026-02-20",
         "end_date": null,
         "core_integrity_ideals": "Complete updated paragraph or omit if not mentioned",
 		"core_people_bonds": "Complete updated paragraph or omit if not mentioned",

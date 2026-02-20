@@ -125,6 +125,7 @@
 		type FilterGroup,
 		type InsightPanelKey as ConfigPanelKey
 	} from '$lib/components/ontology/insight-panels';
+	import { taskMatchesAssigneeFilter } from '$lib/components/ontology/insight-panels/task-assignee-filter';
 
 	// ============================================================
 	// TYPES
@@ -280,6 +281,7 @@
 	let editingMilestoneId = $state<string | null>(null);
 	let showEventCreateModal = $state(false);
 	let editingEventId = $state<string | null>(null);
+	let imageAssetsPanelRef = $state<{ openUploadModal: () => void } | null>(null);
 	let projectNotificationSettings = $state<ProjectNotificationSettings | null>(null);
 	let isNotificationSettingsLoading = $state(false);
 	let isNotificationSettingsSaving = $state(false);
@@ -644,26 +646,13 @@
 				const assigneeRows = Array.isArray(item.assignees)
 					? (item.assignees as Array<{ actor_id?: string | null }>)
 					: [];
-				const taskAssigneeIds = assigneeRows
-					.map((assignee) => assignee.actor_id)
-					.filter((actorId): actorId is string => Boolean(actorId));
-
-				const includeUnassigned = selectedValues.includes(ASSIGNEE_FILTER_UNASSIGNED);
-				const selectedActorIds = selectedValues
-					.map((value) =>
-						value === ASSIGNEE_FILTER_ME
-							? currentProjectActorId
-							: value === ASSIGNEE_FILTER_UNASSIGNED
-								? null
-								: value
-					)
-					.filter((actorId): actorId is string => Boolean(actorId));
-
-				const matchesActor = taskAssigneeIds.some((actorId) =>
-					selectedActorIds.includes(actorId)
-				);
-				const isUnassigned = taskAssigneeIds.length === 0;
-				if (!matchesActor && !(includeUnassigned && isUnassigned)) {
+				if (
+					!taskMatchesAssigneeFilter({
+						selectedValues,
+						currentActorId: currentProjectActorId,
+						assignees: assigneeRows
+					})
+				) {
 					return false;
 				}
 				continue;
@@ -1053,6 +1042,7 @@
 				break;
 			case 'images':
 				expandedPanels = { ...expandedPanels, images: true };
+				imageAssetsPanelRef?.openUploadModal();
 				break;
 		}
 	}
@@ -2543,8 +2533,10 @@
 									{:else if section.key === 'images'}
 										<div class="px-4 py-3">
 											<ImageAssetsPanel
+												bind:this={imageAssetsPanelRef}
 												projectId={project.id}
 												showTitle={false}
+												showUploadButton={false}
 												{canEdit}
 												onChanged={() => void refreshData()}
 											/>

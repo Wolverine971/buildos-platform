@@ -62,6 +62,10 @@ import {
 	syncTaskAssignees,
 	validateAssigneesAreProjectEligible
 } from '$lib/server/task-assignment.service';
+import {
+	notifyEntityMentionsAdded,
+	resolveEntityMentionUserIds
+} from '$lib/server/entity-mention-notification.service';
 
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
 
@@ -329,6 +333,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			options: { mode: 'replace' }
 		});
 
+		const actorDisplayName =
+			(typeof user.name === 'string' && user.name) ||
+			user.email?.split('@')[0] ||
+			'A teammate';
+		const mentionUserIds = await resolveEntityMentionUserIds({
+			supabase,
+			projectId: project_id,
+			projectOwnerActorId: project.created_by,
+			actorUserId: user.id,
+			nextTextValues: [title, description]
+		});
+		let assignmentRecipientUserIds: string[] = [];
+
 		if (hasAssigneeInput) {
 			const { addedActorIds } = await syncTaskAssignees({
 				supabase,
@@ -338,12 +355,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				assignedByActorId: actorId
 			});
 
-			const actorDisplayName =
-				(typeof user.name === 'string' && user.name) ||
-				user.email?.split('@')[0] ||
-				'A teammate';
-
-			await notifyTaskAssignmentAdded({
+			const { recipientUserIds } = await notifyTaskAssignmentAdded({
 				supabase,
 				projectId: project_id,
 				projectName: project.name,
@@ -351,9 +363,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				taskTitle: task.title,
 				actorUserId: user.id,
 				actorDisplayName,
-				addedAssigneeActorIds: addedActorIds
+				addedAssigneeActorIds: addedActorIds,
+				coalescedMentionUserIds: mentionUserIds
 			});
+			assignmentRecipientUserIds = recipientUserIds;
 		}
+
+		await notifyEntityMentionsAdded({
+			supabase,
+			projectId: project_id,
+			projectName: project.name,
+			entityType: 'task',
+			entityId: task.id,
+			entityTitle: task.title,
+			actorUserId: user.id,
+			actorDisplayName,
+			mentionedUserIds: mentionUserIds,
+			skipUserIds: assignmentRecipientUserIds
+		});
 
 		// Create or update linked events when task is scheduled
 		try {

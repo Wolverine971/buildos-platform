@@ -215,6 +215,29 @@
 				return 'text-muted-foreground';
 		}
 	}
+
+	function getAssigneeDisplayLabel(assignee: {
+		name?: string | null;
+		email?: string | null;
+		actor_id?: string | null;
+	}): string {
+		const name = assignee.name?.trim();
+		if (name) return name;
+		const email = assignee.email?.trim().toLowerCase();
+		if (email) return email.split('@')[0] ?? 'Teammate';
+		if (assignee.actor_id) return assignee.actor_id.slice(0, 8);
+		return 'Teammate';
+	}
+
+	function formatTaskAssigneeSummary(task: Task): string | null {
+		const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+		if (assignees.length === 0) return null;
+		const firstAssignee = assignees[0];
+		if (!firstAssignee) return null;
+		const primaryLabel = getAssigneeDisplayLabel(firstAssignee);
+		if (assignees.length === 1) return `@${primaryLabel}`;
+		return `@${primaryLabel} +${assignees.length - 1}`;
+	}
 </script>
 
 <div class="space-y-1.5">
@@ -326,6 +349,7 @@
 				: undefined}
 		>
 			{#each tasks as task (task.id)}
+				{@const assigneeSummary = formatTaskAssigneeSummary(task)}
 				<button
 					type="button"
 					onclick={() => onEditTask(task.id)}
@@ -333,11 +357,18 @@
 				>
 					<div class="flex items-center justify-between gap-2">
 						<span class="text-xs text-foreground truncate">{task.title}</span>
-						<span
-							class="text-[10px] capitalize shrink-0 {getTaskStateColor(
-								task.state_key
-							)}">{task.state_key.replace('_', ' ')}</span
-						>
+						<div class="flex items-center gap-1.5 shrink-0">
+							{#if assigneeSummary}
+								<span
+									class="text-[10px] text-muted-foreground truncate max-w-[80px]"
+									>{assigneeSummary}</span
+								>
+								<span class="text-[10px] text-border">·</span>
+							{/if}
+							<span class="text-[10px] capitalize {getTaskStateColor(task.state_key)}"
+								>{task.state_key.replace('_', ' ')}</span
+							>
+						</div>
 					</div>
 				</button>
 			{/each}

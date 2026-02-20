@@ -450,6 +450,9 @@ export class ChatToolExecutor {
 			case 'update_onto_risk':
 				return this.writeExecutor.updateOntoRisk(args);
 
+			case 'tag_onto_entity':
+				return this.writeExecutor.tagOntoEntity(args);
+
 			case 'delete_onto_task':
 				return this.writeExecutor.deleteOntoTask(args);
 

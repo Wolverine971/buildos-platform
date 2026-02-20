@@ -246,10 +246,10 @@
 
 <Modal bind:isOpen title={modalTitle} size="xl" onClose={closeModal}>
 	{#snippet children()}
-		<div class="space-y-3 px-3 py-2 sm:px-4 sm:py-3">
+		<div class="space-y-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
 			{#if formError}
 				<p
-					class="rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive"
+					class="rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive tx tx-static tx-weak"
 				>
 					{formError}
 				</p>
@@ -260,18 +260,22 @@
 			{:else if asset}
 				<div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 					<div class="space-y-2">
-						<div class="rounded border border-border bg-muted/20 p-2">
+						<div
+							class="rounded-lg border border-border bg-muted/20 p-2 shadow-ink-inner tx tx-frame tx-weak"
+						>
 							<img
 								src={`/api/onto/assets/${asset.id}/render?width=1200`}
 								alt={asset.alt_text ?? 'Image preview'}
 								class="max-h-[28rem] w-full rounded object-contain"
 							/>
 						</div>
-						<div class="rounded border border-border bg-card px-2 py-1.5">
-							<p class="text-[11px] text-muted-foreground">
-								OCR status: {asset.ocr_status || 'pending'}
+						<div
+							class="flex items-center gap-3 rounded-lg border border-border bg-card px-2 py-1.5 tx tx-thread tx-weak"
+						>
+							<p class="micro-label text-muted-foreground">
+								OCR: {asset.ocr_status || 'pending'}
 							</p>
-							<p class="text-[11px] text-muted-foreground">Links: {links.length}</p>
+							<p class="micro-label text-muted-foreground">Links: {links.length}</p>
 						</div>
 					</div>
 
@@ -281,13 +285,15 @@
 								for="asset-caption"
 								class="text-[11px] font-medium text-muted-foreground">Caption</label
 							>
-							<input
-								id="asset-caption"
-								type="text"
-								class="w-full rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-								bind:value={caption}
-								disabled={!canEdit || saving}
-							/>
+							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+								<input
+									id="asset-caption"
+									type="text"
+									class="relative z-[2] w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-ring outline-none transition-colors"
+									bind:value={caption}
+									disabled={!canEdit || saving}
+								/>
+							</div>
 						</div>
 
 						<div class="space-y-1">
@@ -296,13 +302,15 @@
 								class="text-[11px] font-medium text-muted-foreground"
 								>Alt text</label
 							>
-							<input
-								id="asset-alt"
-								type="text"
-								class="w-full rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-								bind:value={altText}
-								disabled={!canEdit || saving}
-							/>
+							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+								<input
+									id="asset-alt"
+									type="text"
+									class="relative z-[2] w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-ring outline-none transition-colors"
+									bind:value={altText}
+									disabled={!canEdit || saving}
+								/>
+							</div>
 						</div>
 
 						<div class="space-y-1">
@@ -310,12 +318,14 @@
 								for="asset-summary"
 								class="text-[11px] font-medium text-muted-foreground">Summary</label
 							>
-							<textarea
-								id="asset-summary"
-								class="min-h-16 w-full rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-								bind:value={summary}
-								disabled={!canEdit || saving}
-							></textarea>
+							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+								<textarea
+									id="asset-summary"
+									class="relative z-[2] min-h-16 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-ring outline-none resize-none transition-colors"
+									bind:value={summary}
+									disabled={!canEdit || saving}
+								></textarea>
+							</div>
 						</div>
 
 						<div class="space-y-1">
@@ -324,12 +334,14 @@
 								class="text-[11px] font-medium text-muted-foreground"
 								>Extracted text</label
 							>
-							<textarea
-								id="asset-extracted"
-								class="min-h-36 w-full rounded border border-border bg-background px-2 py-1 text-xs text-foreground"
-								bind:value={extractedText}
-								disabled={!canEdit || saving}
-							></textarea>
+							<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
+								<textarea
+									id="asset-extracted"
+									class="relative z-[2] min-h-36 w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-ring outline-none resize-none transition-colors"
+									bind:value={extractedText}
+									disabled={!canEdit || saving}
+								></textarea>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -338,7 +350,9 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div class="flex flex-wrap items-center justify-between gap-2">
+		<div
+			class="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
+		>
 			<div class="flex items-center gap-2">
 				{#if entityKind && entityId}
 					<Button

@@ -1,76 +1,74 @@
 <!-- apps/web/src/lib/components/email/ImageUploadModal.svelte -->
 <script lang="ts">
-	import { onMount, createEventDispatcher } from 'svelte';
 	import { browser } from '$app/environment';
-	import { Upload, Image as ImageIcon, Trash2, Eye, X, Search } from 'lucide-svelte';
+	import { Upload, Image as ImageIcon, Trash2, Eye, Search } from 'lucide-svelte';
 	import Modal from '../ui/Modal.svelte';
-	import FormField from '../ui/FormField.svelte';
 	import TextInput from '../ui/TextInput.svelte';
-	import Textarea from '../ui/Textarea.svelte';
 	import Select from '../ui/Select.svelte';
 	import Button from '../ui/Button.svelte';
 
-	export let isOpen: boolean = false;
-	export let emailId: string | null = null;
-
-	const dispatch = createEventDispatcher();
-
-	let activeTab: 'upload' | 'gallery' = 'upload';
-	let isLoading = false;
-	let isUploading = false;
-	let error: string | null = null;
-	let searchQuery = '';
-	let selectedFilter = 'all'; // all, email, shared
-
-	// Upload state
-	let dragActive = false;
-	let fileInput: HTMLInputElement;
-	let uploadedFile: File | null = null;
-	let uploadPreview: string | null = null;
-
-	// Gallery state
-	let images: any[] = [];
-	let filteredImages: any[] = [];
-
-	onMount(() => {
-		if (isOpen) {
-			loadImages();
-		}
-	});
-
-	// Watch for open state changes
-	$: if (browser && isOpen) {
-		loadImages();
-		activeTab = 'upload';
-		clearUpload();
+	interface EmailImage {
+		id: string;
+		url: string;
+		filename: string;
+		original_filename: string;
+		file_size: number;
+		storage_path: string;
 	}
 
-	// Filter images based on search and filter
-	$: {
-		filteredImages = images.filter((image) => {
+	interface Props {
+		isOpen?: boolean;
+		emailId?: string | null;
+		onImageSelected?: (image: EmailImage) => void;
+		onClose?: () => void;
+	}
+
+	let { isOpen = $bindable(false), emailId = null, onImageSelected, onClose }: Props = $props();
+
+	let activeTab = $state<'upload' | 'gallery'>('upload');
+	let isLoading = $state(false);
+	let isUploading = $state(false);
+	let error = $state<string | null>(null);
+	let searchQuery = $state('');
+	let selectedFilter = $state('all');
+
+	let dragActive = $state(false);
+	let fileInput = $state<HTMLInputElement | null>(null);
+	let uploadedFile = $state<File | null>(null);
+	let uploadPreview = $state<string | null>(null);
+
+	let images = $state<EmailImage[]>([]);
+
+	const filteredImages = $derived.by(() =>
+		images.filter((image) => {
 			const matchesSearch =
 				searchQuery === '' ||
-				image.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
-				image.original_filename.toLowerCase().includes(searchQuery.toLowerCase());
+				image.filename?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				image.original_filename?.toLowerCase().includes(searchQuery.toLowerCase());
 
 			const matchesFilter =
 				selectedFilter === 'all' ||
-				(selectedFilter === 'email' && image.storage_path.includes(`emails/${emailId}`)) ||
-				(selectedFilter === 'shared' && image.storage_path.includes('shared'));
+				(selectedFilter === 'email' && image.storage_path?.includes(`emails/${emailId}`)) ||
+				(selectedFilter === 'shared' && image.storage_path?.includes('shared'));
 
 			return matchesSearch && matchesFilter;
-		});
-	}
+		})
+	);
+
+	$effect(() => {
+		if (browser && isOpen) {
+			void loadImages();
+			activeTab = 'upload';
+			clearUpload();
+		}
+	});
 
 	async function loadImages() {
 		isLoading = true;
 		error = null;
 
 		try {
-			const params = new URLSearchParams({
-				images_only: 'true'
-			});
-
+			const params = new URLSearchParams({ images_only: 'true' });
 			const response = await fetch(`/api/admin/emails/attachments?${params}`);
 			const result = await response.json();
 
@@ -87,7 +85,7 @@
 	}
 
 	function handleFileSelect(event: Event) {
-		const target = event.target as HTMLInputElement;
+		const target = event.currentTarget as HTMLInputElement;
 		const files = target.files;
 		if (files && files.length > 0) {
 			handleFiles(files);
@@ -98,13 +96,11 @@
 		const file = files[0];
 		if (!file) return;
 
-		// Validate file type
 		if (!file.type.startsWith('image/')) {
 			error = 'Please select an image file';
 			return;
 		}
 
-		// Validate file size (10MB limit)
 		if (file.size > 10 * 1024 * 1024) {
 			error = 'File size must be less than 10MB';
 			return;
@@ -113,7 +109,6 @@
 		uploadedFile = file;
 		error = null;
 
-		// Create preview
 		const reader = new FileReader();
 		reader.onload = (e) => {
 			uploadPreview = e.target?.result as string;
@@ -167,14 +162,9 @@
 			const result = await response.json();
 
 			if (result.success) {
-				// Add to images list
 				const attachment = result.data?.attachment || result.attachment;
 				images = [attachment, ...images];
-
-				// Clear upload state
 				clearUpload();
-
-				// Switch to gallery tab
 				activeTab = 'gallery';
 			} else {
 				throw new Error(result.error || 'Failed to upload image');
@@ -194,11 +184,11 @@
 		}
 	}
 
-	function selectImage(image: any) {
-		dispatch('imageSelected', image);
+	function selectImage(image: EmailImage) {
+		onImageSelected?.(image);
 	}
 
-	async function deleteImage(image: any) {
+	async function deleteImage(image: EmailImage) {
 		if (!confirm('Are you sure you want to delete this image?')) return;
 
 		try {
@@ -208,7 +198,6 @@
 
 			if (!response.ok) throw new Error('Failed to delete image');
 
-			// Remove from images list
 			images = images.filter((img) => img.id !== image.id);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to delete image';
@@ -224,58 +213,53 @@
 	}
 
 	function close() {
-		dispatch('close');
+		isOpen = false;
+		onClose?.();
 	}
 </script>
 
 <Modal {isOpen} onClose={close} title="Insert Image" size="xl">
 	{#snippet children()}
-		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 space-y-3 sm:space-y-4">
-			<!-- Error Message -->
+		<div class="space-y-3 px-3 py-3 sm:space-y-4 sm:px-4 sm:py-4 lg:px-6">
 			{#if error}
-				<div
-					class="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-md p-3"
-				>
-					<p class="text-rose-800 dark:text-rose-200 text-sm">{error}</p>
+				<div class="rounded-md border border-destructive/40 bg-destructive/10 p-3">
+					<p class="text-sm text-destructive">{error}</p>
 				</div>
 			{/if}
 
-			<!-- Tabs -->
 			<div class="border-b border-border">
 				<nav class="-mb-px flex space-x-6 sm:space-x-8">
-					<Button
+					<button
+						type="button"
+						class="border-b-2 px-1 pb-2 text-sm font-medium transition-colors {activeTab ===
+						'upload'
+							? 'border-accent text-accent'
+							: 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'}"
 						onclick={() => (activeTab = 'upload')}
-						variant="ghost"
-						size="md"
-						class="border-b-2 font-medium {activeTab === 'upload'
-							? 'border-primary-500 text-primary-600 dark:text-primary-400'
-							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
-						<Upload class="h-4 w-4 inline mr-2" />
+						<Upload class="mr-2 inline h-4 w-4" />
 						Upload New
-					</Button>
-					<Button
+					</button>
+					<button
+						type="button"
+						class="border-b-2 px-1 pb-2 text-sm font-medium transition-colors {activeTab ===
+						'gallery'
+							? 'border-accent text-accent'
+							: 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'}"
 						onclick={() => (activeTab = 'gallery')}
-						variant="ghost"
-						size="md"
-						class="border-b-2 font-medium {activeTab === 'gallery'
-							? 'border-primary-500 text-primary-600 dark:text-primary-400'
-							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
-						<ImageIcon class="h-4 w-4 inline mr-2" />
+						<ImageIcon class="mr-2 inline h-4 w-4" />
 						Gallery ({images.length})
-					</Button>
+					</button>
 				</nav>
 			</div>
 
-			<!-- Upload Tab -->
 			{#if activeTab === 'upload'}
 				<div class="space-y-4">
-					<!-- Upload Area -->
 					<div
-						class="border-2 border-dashed rounded-lg p-8 text-center {dragActive
-							? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-							: 'border-border hover:border-border'}"
+						class="rounded-lg border-2 border-dashed p-8 text-center transition-colors {dragActive
+							? 'border-accent bg-accent/10'
+							: 'border-border hover:border-muted-foreground'}"
 						role="button"
 						tabindex="0"
 						aria-label="Drag and drop image upload area"
@@ -291,13 +275,12 @@
 						}}
 					>
 						{#if uploadPreview}
-							<!-- Upload Preview -->
 							<div class="space-y-4">
 								<div class="flex justify-center">
 									<img
 										src={uploadPreview}
 										alt="Upload preview"
-										class="max-w-full max-h-48 rounded-lg shadow-ink"
+										class="max-h-48 max-w-full rounded-lg shadow-ink"
 									/>
 								</div>
 								<div class="text-sm text-muted-foreground">
@@ -305,14 +288,13 @@
 									<p>{formatFileSize(uploadedFile?.size || 0)}</p>
 								</div>
 								<div
-									class="flex flex-col sm:flex-row justify-center gap-3 sm:space-x-3"
+									class="flex flex-col justify-center gap-3 sm:flex-row sm:space-x-3"
 								>
 									<Button
 										onclick={uploadImage}
 										disabled={isUploading}
-										variant="primary"
+										variant="secondary"
 										size="md"
-										loading={isUploading}
 										class="w-full sm:w-auto"
 									>
 										{isUploading ? 'Uploading...' : 'Upload Image'}
@@ -320,7 +302,7 @@
 									<Button
 										onclick={clearUpload}
 										disabled={isUploading}
-										variant="outline"
+										variant="ghost"
 										size="md"
 										class="w-full sm:w-auto"
 									>
@@ -329,7 +311,6 @@
 								</div>
 							</div>
 						{:else}
-							<!-- Upload Prompt -->
 							<div class="space-y-4">
 								<div class="mx-auto h-12 w-12 text-muted-foreground">
 									<Upload class="h-12 w-12" />
@@ -347,7 +328,7 @@
 								</div>
 								<Button
 									onclick={() => fileInput?.click()}
-									variant="primary"
+									variant="secondary"
 									size="md"
 								>
 									Select Image
@@ -356,7 +337,6 @@
 						{/if}
 					</div>
 
-					<!-- File Input -->
 					<input
 						bind:this={fileInput}
 						type="file"
@@ -367,17 +347,14 @@
 				</div>
 			{/if}
 
-			<!-- Gallery Tab -->
 			{#if activeTab === 'gallery'}
 				<div class="space-y-4">
-					<!-- Gallery Controls -->
 					<div
-						class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0"
+						class="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0"
 					>
-						<!-- Search -->
 						<div class="relative flex-1 sm:max-w-sm">
 							<Search
-								class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10"
+								class="absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground"
 							/>
 							<TextInput
 								bind:value={searchQuery}
@@ -387,7 +364,6 @@
 							/>
 						</div>
 
-						<!-- Filter -->
 						<div class="flex items-center space-x-2">
 							<div class="text-sm font-medium text-foreground">Filter:</div>
 							<Select
@@ -403,16 +379,15 @@
 						</div>
 					</div>
 
-					<!-- Gallery Grid -->
 					{#if isLoading}
 						<div class="flex justify-center py-8">
 							<div
-								class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"
+								class="h-8 w-8 animate-spin rounded-full border-b-2 border-accent"
 							></div>
 						</div>
 					{:else if filteredImages.length === 0}
-						<div class="text-center py-8">
-							<ImageIcon class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+						<div class="py-8 text-center">
+							<ImageIcon class="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
 							<p class="text-muted-foreground">
 								{searchQuery
 									? 'No images match your search'
@@ -421,42 +396,40 @@
 						</div>
 					{:else}
 						<div
-							class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 max-h-80 sm:max-h-96 overflow-y-auto"
+							class="grid max-h-80 grid-cols-2 gap-3 overflow-y-auto sm:max-h-96 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5"
 						>
 							{#each filteredImages as image}
 								<div
-									class="group relative border border-border rounded-lg overflow-hidden hover:shadow-ink transition-shadow"
+									class="group relative overflow-hidden rounded-lg border border-border transition-shadow hover:shadow-ink"
 								>
-									<!-- Image -->
 									<div class="aspect-square bg-muted">
 										<img
 											src={image.url}
 											alt={image.original_filename}
-											class="w-full h-full object-cover"
+											class="h-full w-full object-cover"
 										/>
 									</div>
 
-									<!-- Overlay -->
 									<div
-										class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center"
+										class="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/50"
 									>
 										<div
-											class="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-2"
+											class="flex space-x-2 opacity-0 transition-opacity group-hover:opacity-100"
 										>
 											<Button
 												onclick={() => selectImage(image)}
-												variant="primary"
+												variant="secondary"
 												size="sm"
-												class="p-3 rounded-full"
+												class="rounded-full p-3"
 												title="Select image"
 											>
 												<Eye class="h-4 w-4 sm:h-5 sm:w-5" />
 											</Button>
 											<Button
 												onclick={() => deleteImage(image)}
-												variant="primary"
+												variant="danger"
 												size="sm"
-												class="p-3 rounded-full bg-rose-600 hover:bg-rose-700"
+												class="rounded-full p-3"
 												title="Delete image"
 											>
 												<Trash2 class="h-4 w-4 sm:h-5 sm:w-5" />
@@ -464,17 +437,16 @@
 										</div>
 									</div>
 
-									<!-- Info -->
-									<div class="p-2 bg-card">
-										<p class="text-xs font-medium text-foreground truncate">
+									<div class="bg-card p-2">
+										<p class="truncate text-xs font-medium text-foreground">
 											{image.original_filename}
 										</p>
 										<p class="text-xs text-muted-foreground">
 											{formatFileSize(image.file_size)}
 										</p>
-										{#if image.storage_path.includes('shared')}
+										{#if image.storage_path?.includes('shared')}
 											<span
-												class="inline-flex px-1 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300 rounded"
+												class="mt-0.5 inline-flex rounded bg-accent/15 px-1 py-0.5 text-xs font-medium text-accent"
 											>
 												Shared
 											</span>
@@ -487,14 +459,15 @@
 				</div>
 			{/if}
 		</div>
-
-		<!-- Footer -->
 	{/snippet}
-	{#snippet header()}
-		<div class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border">
-			<Button onclick={close} variant="outline" size="md" class="w-full sm:w-auto"
-				>Cancel</Button
-			>
+
+	{#snippet footer()}
+		<div
+			class="flex justify-end px-3 py-3 sm:px-4 sm:py-4 lg:px-6 border-t border-border bg-muted/30"
+		>
+			<Button onclick={close} variant="ghost" size="md" class="w-full sm:w-auto">
+				Cancel
+			</Button>
 		</div>
 	{/snippet}
 </Modal>

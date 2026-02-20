@@ -1,3 +1,4 @@
+// packages/smart-llm/src/response-parsing.test.ts
 import { describe, expect, it } from 'vitest';
 import { repairTruncatedJSONResponse } from './response-parsing';
 
@@ -13,7 +14,8 @@ describe('repairTruncatedJSONResponse', () => {
 	});
 
 	it('closes missing braces when JSON ends early', () => {
-		const broken = '{"agent_state_updates":{"current_understanding":{"entities":["task-a","task-b"]';
+		const broken =
+			'{"agent_state_updates":{"current_understanding":{"entities":["task-a","task-b"]';
 		const repaired = repairTruncatedJSONResponse(broken);
 
 		expect(repaired).not.toBeNull();

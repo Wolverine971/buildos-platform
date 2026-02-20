@@ -65,6 +65,10 @@ import {
 	syncTaskAssignees,
 	validateAssigneesAreProjectEligible
 } from '$lib/server/task-assignment.service';
+import {
+	notifyEntityMentionsAdded,
+	resolveEntityMentionUserIds
+} from '$lib/server/entity-mention-notification.service';
 
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
 
@@ -556,6 +560,20 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 		}
 
+		const actorDisplayName =
+			(typeof session.user.name === 'string' && session.user.name) ||
+			session.user.email?.split('@')[0] ||
+			'A teammate';
+		const mentionUserIds = await resolveEntityMentionUserIds({
+			supabase,
+			projectId: existingTask.project_id,
+			projectOwnerActorId: existingTask.project.created_by,
+			actorUserId: session.user.id,
+			nextTextValues: [updatedTask.title, updatedTask.description],
+			previousTextValues: [existingTask.title, existingTask.description]
+		});
+		let assignmentRecipientUserIds: string[] = [];
+
 		if (hasAssigneeInput) {
 			const { addedActorIds } = await syncTaskAssignees({
 				supabase,
@@ -565,12 +583,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				assignedByActorId: actorId
 			});
 
-			const actorDisplayName =
-				(typeof session.user.name === 'string' && session.user.name) ||
-				session.user.email?.split('@')[0] ||
-				'A teammate';
-
-			await notifyTaskAssignmentAdded({
+			const { recipientUserIds } = await notifyTaskAssignmentAdded({
 				supabase,
 				projectId: existingTask.project_id,
 				projectName: existingTask.project.name,
@@ -578,9 +591,24 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				taskTitle: updatedTask.title,
 				actorUserId: session.user.id,
 				actorDisplayName,
-				addedAssigneeActorIds: addedActorIds
+				addedAssigneeActorIds: addedActorIds,
+				coalescedMentionUserIds: mentionUserIds
 			});
+			assignmentRecipientUserIds = recipientUserIds;
 		}
+
+		await notifyEntityMentionsAdded({
+			supabase,
+			projectId: existingTask.project_id,
+			projectName: existingTask.project.name,
+			entityType: 'task',
+			entityId: params.id,
+			entityTitle: updatedTask.title,
+			actorUserId: session.user.id,
+			actorDisplayName,
+			mentionedUserIds: mentionUserIds,
+			skipUserIds: assignmentRecipientUserIds
+		});
 
 		// Log activity async (non-blocking)
 		logUpdateAsync(

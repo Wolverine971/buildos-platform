@@ -158,6 +158,7 @@ export class DunningService {
 		await this.supabase.from('user_notifications').insert({
 			user_id: userId,
 			type: 'payment_warning',
+			event_type: 'payment.warning',
 			title: 'Payment Method Required',
 			message: `Your subscription payment has failed. Please update your payment method to avoid service interruption.`,
 			priority: 'high',

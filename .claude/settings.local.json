@@ -153,7 +153,8 @@
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm --filter=web exec:*)",
       "Bash(git diff:*)",
       "mcp__plugin_compound-engineering_context7__resolve-library-id",
-      "mcp__plugin_compound-engineering_context7__query-docs"
+      "mcp__plugin_compound-engineering_context7__query-docs",
+      "Bash(xxd:*)"
     ],
     "deny": [],
     "ask": []

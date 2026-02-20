@@ -42,6 +42,10 @@ import {
 } from '$lib/services/async-activity-logger';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
 import {
+	notifyEntityMentionsAdded,
+	resolveEntityMentionUserIds
+} from '$lib/server/entity-mention-notification.service';
+import {
 	AutoOrganizeError,
 	autoOrganizeConnections,
 	assertEntityRefsInProject
@@ -109,7 +113,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Verify user owns the project
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id')
+			.select('id, name, created_by')
 			.eq('id', project_id)
 			.is('deleted_at', null)
 			.single();
@@ -209,6 +213,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			entity: { kind: 'goal', id: createdGoal.id },
 			connections: connectionList,
 			options: { mode: 'replace' }
+		});
+
+		const actorDisplayName =
+			(typeof user.name === 'string' && user.name) ||
+			user.email?.split('@')[0] ||
+			'A teammate';
+		const mentionUserIds = await resolveEntityMentionUserIds({
+			supabase,
+			projectId: project_id,
+			projectOwnerActorId: project.created_by,
+			actorUserId: user.id,
+			nextTextValues: [createdGoal.name, createdGoal.goal, createdGoal.description]
+		});
+
+		await notifyEntityMentionsAdded({
+			supabase,
+			projectId: project_id,
+			projectName: project.name,
+			entityType: 'goal',
+			entityId: createdGoal.id,
+			entityTitle: createdGoal.name,
+			actorUserId: user.id,
+			actorDisplayName,
+			mentionedUserIds: mentionUserIds
 		});
 
 		// Log activity async (non-blocking)

@@ -52,6 +52,7 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession } 
 		title: 'Homework canceled',
 		message: 'Your homework run was canceled.',
 		type: 'homework',
+		event_type: 'homework.run_canceled',
 		action_url: `/homework/runs/${runId}`,
 		data: { run_id: runId, status: 'canceled' }
 	});

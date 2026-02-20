@@ -289,7 +289,8 @@ export async function notifyTaskAssignmentAdded({
 	taskTitle,
 	actorUserId,
 	actorDisplayName,
-	addedAssigneeActorIds
+	addedAssigneeActorIds,
+	coalescedMentionUserIds = []
 }: {
 	supabase: SupabaseClient;
 	projectId: string;
@@ -299,9 +300,10 @@ export async function notifyTaskAssignmentAdded({
 	actorUserId: string;
 	actorDisplayName: string;
 	addedAssigneeActorIds: string[];
-}): Promise<void> {
+	coalescedMentionUserIds?: string[];
+}): Promise<{ recipientUserIds: string[] }> {
 	if (addedAssigneeActorIds.length === 0) {
-		return;
+		return { recipientUserIds: [] };
 	}
 
 	const { data: actorRows, error: actorError } = await supabase
@@ -311,7 +313,7 @@ export async function notifyTaskAssignmentAdded({
 
 	if (actorError) {
 		console.error('[Task Assignment] Failed to resolve assignee users:', actorError);
-		return;
+		return { recipientUserIds: [] };
 	}
 
 	const recipientUserIds = Array.from(
@@ -323,13 +325,14 @@ export async function notifyTaskAssignmentAdded({
 	);
 
 	if (recipientUserIds.length === 0) {
-		return;
+		return { recipientUserIds: [] };
 	}
 
 	const actorName = actorDisplayName || 'A teammate';
 	const projectLabel = projectName || 'your project';
 	const message = `${actorName} assigned you a task in ${projectLabel}.`;
 	const actionUrl = `/projects/${projectId}/tasks/${taskId}`;
+	const coalescedMentionSet = new Set<string>(coalescedMentionUserIds);
 
 	const rows = recipientUserIds.map((userId) => ({
 		user_id: userId,
@@ -345,6 +348,7 @@ export async function notifyTaskAssignmentAdded({
 			entity_title: taskTitle,
 			task_id: taskId,
 			actor_user_id: actorUserId,
+			coalesced_from_mention: coalescedMentionSet.has(userId),
 			source: 'assignment'
 		}
 	}));
@@ -356,4 +360,6 @@ export async function notifyTaskAssignmentAdded({
 			notificationError
 		);
 	}
+
+	return { recipientUserIds };
 }

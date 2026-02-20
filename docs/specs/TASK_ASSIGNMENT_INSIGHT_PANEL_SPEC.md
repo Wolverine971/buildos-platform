@@ -6,11 +6,23 @@
 
 | Attribute      | Value                                                                                   |
 | -------------- | --------------------------------------------------------------------------------------- |
-| Status         | Proposed                                                                                |
+| Status         | In progress (phases 0-4 complete, phase 5 partial)                                      |
 | Created        | 2026-02-19                                                                              |
+| Updated        | 2026-02-20                                                                              |
 | Owner          | Platform                                                                                |
 | Scope          | Ontology task assignments, insight panel assignee UX, assignment + mention coordination |
 | Companion Spec | `docs/specs/TASK_ASSIGNMENT_AND_MENTION_NOTIFICATION_SPEC.md`                           |
+
+---
+
+## Implementation Snapshot (2026-02-20)
+
+- Task assignment storage and RLS are live (`onto_task_assignees`).
+- Task create/update and project/task read endpoints return assignees.
+- Insight panel assignee filtering + row summaries are live.
+- Assignment/mention coalescing is live for task writes.
+- Goal/document mention notifications are live and coordinated with assignment flows.
+- Phase 2 in progress: agentic chat supports both task assignee `@handle` resolution and explicit `tag_onto_entity` notifications through `POST /api/onto/mentions/ping`.
 
 ---
 
@@ -41,8 +53,7 @@ The mention/tagging spec is strong, but assignments need their own implementatio
 ### What does not exist
 
 - No active project/task API flow currently reads or writes `onto_assignments` for task ownership.
-- No task modal or project task list currently renders assignees.
-- No assignee filter exists in insight panel config.
+- No runtime dependency has been identified that requires `onto_assignments` for modern project collaboration flows.
 
 ### Existing architecture decision
 
@@ -245,41 +256,41 @@ This keeps velocity high without creating duplicate or conflicting notification 
 
 ### Phase 0: Contract and type prep
 
-- [ ] Add `TaskAssignee` type to `apps/web/src/lib/types/onto.ts`
-- [ ] Extend task type shape with optional `assignees`
-- [ ] Add shared constants for assignee filter sentinels (`__unassigned__`, `__me__`)
+- [x] Add `TaskAssignee` type to `apps/web/src/lib/types/onto.ts`
+- [x] Extend task type shape with optional `assignees`
+- [x] Add shared constants for assignee filter sentinels (`__unassigned__`, `__me__`)
 
 ### Phase 1: DB foundation
 
-- [ ] Create migration for `onto_task_assignees`
-- [ ] Add indexes + RLS policies
-- [ ] Update shared DB type artifacts
+- [x] Create migration for `onto_task_assignees`
+- [x] Add indexes + RLS policies
+- [x] Update shared DB type artifacts
 
 ### Phase 2: API wiring
 
-- [ ] Update task create/patch endpoints for `assignee_actor_ids`
-- [ ] Add assignment delta logic + member validation
-- [ ] Add assignee hydration to task read endpoints
-- [ ] Add assignee hydration to project endpoints (`/api/onto/projects/[id]`, `/full`)
-- [ ] Update members endpoint to include actor `user_id`
+- [x] Update task create/patch endpoints for `assignee_actor_ids`
+- [x] Add assignment delta logic + member validation
+- [x] Add assignee hydration to task read endpoints
+- [x] Add assignee hydration to project endpoints (`/api/onto/projects/[id]`, `/full`)
+- [x] Update members endpoint to include actor `user_id`
 
 ### Phase 3: Insight panel UX
 
-- [ ] Add assignee filter group generation for task panel
-- [ ] Update task filtering logic for assignee arrays + unassigned sentinel
-- [ ] Update task row metadata formatting to show assignees
+- [x] Add assignee filter group generation for task panel
+- [x] Update task filtering logic for assignee arrays + unassigned sentinel
+- [x] Update task row metadata formatting to show assignees
 
 ### Phase 4: Mention coordination
 
-- [ ] Implement notification coalescing (assignment supersedes same-save mention for task recipients)
-- [ ] Add event payload flag `coalesced_from_mention`
-- [ ] Keep goal/document mention behavior unchanged
+- [x] Implement notification coalescing (assignment supersedes same-save mention for task recipients)
+- [x] Add event payload flag `coalesced_from_mention`
+- [x] Keep goal/document mention behavior unchanged
 
 ### Phase 5: Verification
 
-- [ ] Unit tests: assignment delta + coalescing
-- [ ] API tests: create/replace/remove assignments
-- [ ] UI tests: assignee render and filtering
+- [x] Unit tests: assignment delta + coalescing
+- [ ] API tests: create/replace/remove assignments (create/replace covered; explicit remove-path coverage pending)
+- [ ] UI tests: assignee render and filtering (filter logic covered; render coverage pending)
 - [ ] Regression tests: existing non-assignment task flows
 
 ### Phase 6: Legacy cleanup decision

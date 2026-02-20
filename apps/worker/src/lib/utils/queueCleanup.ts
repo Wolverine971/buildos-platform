@@ -31,7 +31,7 @@ export interface CleanupOptions {
 
 	/**
 	 * Job types to clean up
-	 * Default: ["generate_daily_brief", "generate_brief_email"]
+	 * Default: ["generate_daily_brief"]
 	 */
 	jobTypes?: QueueJobType[];
 
@@ -74,7 +74,7 @@ export async function cleanupStaleJobs(options: CleanupOptions = {}): Promise<Cl
 		staleThresholdHours = 24,
 		oldFailedJobsDays = 7,
 		completedJobsRetentionDays = 30,
-		jobTypes = ['generate_daily_brief', 'generate_brief_email'] as QueueJobType[],
+		jobTypes = ['generate_daily_brief'] as QueueJobType[],
 		completedJobTypes,
 		maxDeletionBatchSize = 500,
 		dryRun = false
@@ -449,7 +449,7 @@ export async function getStaleJobStats(
 }> {
 	const {
 		staleThresholdHours = 24,
-		jobTypes = ['generate_daily_brief', 'generate_brief_email'] as QueueJobType[],
+		jobTypes = ['generate_daily_brief'] as QueueJobType[],
 		completedJobsRetentionDays = 30,
 		completedJobTypes
 	} = options;

@@ -30,6 +30,7 @@ import type {
 	UpdateOntoDocumentArgs,
 	UpdateOntoMilestoneArgs,
 	UpdateOntoRiskArgs,
+	TagOntoEntityArgs,
 	LinkOntoEntitiesArgs,
 	UnlinkOntoEdgeArgs,
 	ReorganizeOntoProjectGraphArgs,
@@ -44,6 +45,78 @@ import type {
 import { createLogger } from '$lib/utils/logger';
 
 const logger = createLogger('OntologyWriteExecutor');
+
+const MAX_TASK_ASSIGNEES = 10;
+const MAX_MENTION_RECIPIENTS = 25;
+
+type ProjectMemberActor = {
+	id?: string;
+	user_id?: string | null;
+	name?: string | null;
+	email?: string | null;
+};
+
+type ProjectMemberRow = {
+	actor_id?: string;
+	actor?: ProjectMemberActor | null;
+};
+
+type IndexedProjectMember = {
+	actorId: string;
+	userId: string | null;
+	actor: ProjectMemberActor | null;
+	keys: Set<string>;
+};
+
+function normalizeHandleToken(raw: unknown): string | null {
+	if (typeof raw !== 'string') return null;
+	const trimmed = raw.trim().toLowerCase();
+	if (!trimmed) return null;
+	const withoutPrefix = trimmed.replace(/^@+/, '');
+	const cleaned = withoutPrefix.replace(/[^a-z0-9._-]/g, '');
+	return cleaned.length > 0 ? cleaned : null;
+}
+
+function formatMemberLabel(member: { actorId: string; actor: ProjectMemberActor | null }): string {
+	const actor = member.actor;
+	const name = actor?.name?.trim();
+	if (name) return name;
+
+	const email = actor?.email?.trim().toLowerCase();
+	if (email && email.includes('@')) {
+		return email.split('@')[0] ?? email;
+	}
+
+	return member.actorId.slice(0, 8);
+}
+
+function buildMemberHandleKeys(actor: ProjectMemberActor | null | undefined): Set<string> {
+	const keys = new Set<string>();
+	if (!actor) return keys;
+
+	const name = actor.name?.trim().toLowerCase();
+	if (name) {
+		const normalizedName = normalizeHandleToken(name);
+		if (normalizedName) keys.add(normalizedName);
+
+		const collapsedName = normalizeHandleToken(name.replace(/\s+/g, ''));
+		if (collapsedName) keys.add(collapsedName);
+
+		for (const part of name.split(/\s+/)) {
+			const normalizedPart = normalizeHandleToken(part);
+			if (normalizedPart) keys.add(normalizedPart);
+		}
+	}
+
+	const email = actor.email?.trim().toLowerCase();
+	if (email) {
+		const localPart = email.split('@')[0] ?? email;
+		const normalizedEmailLocal = normalizeHandleToken(localPart);
+		if (normalizedEmailLocal) keys.add(normalizedEmailLocal);
+	}
+
+	return keys;
+}
 
 /**
  * Helper to extract a string from meta object
@@ -272,6 +345,217 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		super(context);
 	}
 
+	private async fetchProjectMemberDirectory(projectId: string): Promise<IndexedProjectMember[]> {
+		const membersResponse = await this.apiRequest<{ members?: ProjectMemberRow[] }>(
+			`/api/onto/projects/${projectId}/members`,
+			{ method: 'GET' }
+		);
+		const members = Array.isArray(membersResponse?.members) ? membersResponse.members : [];
+
+		return members
+			.map((member) => {
+				const actorId =
+					typeof member.actor_id === 'string'
+						? member.actor_id
+						: typeof member.actor?.id === 'string'
+							? member.actor.id
+							: null;
+				if (!actorId) return null;
+				return {
+					actorId,
+					userId: typeof member.actor?.user_id === 'string' ? member.actor.user_id : null,
+					actor: member.actor ?? null,
+					keys: buildMemberHandleKeys(member.actor)
+				};
+			})
+			.filter((member): member is IndexedProjectMember => Boolean(member));
+	}
+
+	private resolveProjectMemberForHandle(
+		handle: string,
+		indexedMembers: IndexedProjectMember[],
+		type: 'assignee' | 'mention'
+	): IndexedProjectMember {
+		const exactMatches = indexedMembers.filter((member) => member.keys.has(handle));
+		if (exactMatches.length === 1) {
+			return exactMatches[0];
+		}
+		if (exactMatches.length > 1) {
+			const options = exactMatches.map((member) => formatMemberLabel(member)).join(', ');
+			throw new Error(
+				`Ambiguous ${type} handle "@${handle}". Matches: ${options}. Use explicit IDs to disambiguate.`
+			);
+		}
+
+		const prefixMatches = indexedMembers.filter((member) =>
+			Array.from(member.keys).some((key) => key.startsWith(handle))
+		);
+		if (prefixMatches.length === 1) {
+			return prefixMatches[0];
+		}
+		if (prefixMatches.length > 1) {
+			const options = prefixMatches.map((member) => formatMemberLabel(member)).join(', ');
+			throw new Error(
+				`Ambiguous ${type} handle "@${handle}". Matches: ${options}. Use explicit IDs to disambiguate.`
+			);
+		}
+
+		throw new Error(`No active project member matches ${type} handle "@${handle}"`);
+	}
+
+	private async resolveTaskAssigneeActorIds({
+		projectId,
+		assigneeActorIds,
+		assigneeHandles
+	}: {
+		projectId?: string;
+		assigneeActorIds: unknown;
+		assigneeHandles: unknown;
+	}): Promise<{ hasInput: boolean; assigneeActorIds: string[] }> {
+		const hasActorIdsInput = assigneeActorIds !== undefined;
+		const hasHandlesInput = assigneeHandles !== undefined;
+		const hasInput = hasActorIdsInput || hasHandlesInput;
+
+		if (!hasInput) {
+			return { hasInput: false, assigneeActorIds: [] };
+		}
+
+		const explicitActorIds: string[] = [];
+		if (hasActorIdsInput) {
+			if (!Array.isArray(assigneeActorIds)) {
+				throw new Error('assignee_actor_ids must be an array of actor IDs');
+			}
+			for (const value of assigneeActorIds) {
+				if (typeof value !== 'string' || value.trim().length === 0) {
+					throw new Error('assignee_actor_ids must contain non-empty strings');
+				}
+				explicitActorIds.push(value.trim());
+			}
+		}
+
+		const requestedHandles: string[] = [];
+		if (hasHandlesInput) {
+			if (!Array.isArray(assigneeHandles)) {
+				throw new Error('assignee_handles must be an array of handle strings');
+			}
+			for (const handle of assigneeHandles) {
+				const normalizedHandle = normalizeHandleToken(handle);
+				if (!normalizedHandle) {
+					throw new Error(`Invalid assignee handle: ${String(handle)}`);
+				}
+				requestedHandles.push(normalizedHandle);
+			}
+		}
+
+		const resolvedFromHandles: string[] = [];
+		if (requestedHandles.length > 0) {
+			const normalizedProjectId = projectId?.trim();
+			if (!normalizedProjectId) {
+				throw new Error(
+					'project_id is required to resolve assignee_handles for task assignment'
+				);
+			}
+
+			const indexedMembers = await this.fetchProjectMemberDirectory(normalizedProjectId);
+			for (const handle of requestedHandles) {
+				const member = this.resolveProjectMemberForHandle(
+					handle,
+					indexedMembers,
+					'assignee'
+				);
+				resolvedFromHandles.push(member.actorId);
+			}
+		}
+
+		const mergedActorIds = Array.from(new Set([...explicitActorIds, ...resolvedFromHandles]));
+		if (mergedActorIds.length > MAX_TASK_ASSIGNEES) {
+			throw new Error(`A task can have at most ${MAX_TASK_ASSIGNEES} assignees`);
+		}
+
+		return {
+			hasInput,
+			assigneeActorIds: mergedActorIds
+		};
+	}
+
+	private async resolveMentionUserIds({
+		projectId,
+		mentionedUserIds,
+		mentionedHandles
+	}: {
+		projectId?: string;
+		mentionedUserIds: unknown;
+		mentionedHandles: unknown;
+	}): Promise<{ hasInput: boolean; mentionedUserIds: string[] }> {
+		const hasUserIdsInput = mentionedUserIds !== undefined;
+		const hasHandlesInput = mentionedHandles !== undefined;
+		const hasInput = hasUserIdsInput || hasHandlesInput;
+
+		if (!hasInput) {
+			return { hasInput: false, mentionedUserIds: [] };
+		}
+
+		const explicitUserIds: string[] = [];
+		if (hasUserIdsInput) {
+			if (!Array.isArray(mentionedUserIds)) {
+				throw new Error('mentioned_user_ids must be an array of user IDs');
+			}
+			for (const value of mentionedUserIds) {
+				if (typeof value !== 'string' || value.trim().length === 0) {
+					throw new Error('mentioned_user_ids must contain non-empty strings');
+				}
+				explicitUserIds.push(value.trim());
+			}
+		}
+
+		const requestedHandles: string[] = [];
+		if (hasHandlesInput) {
+			if (!Array.isArray(mentionedHandles)) {
+				throw new Error('mentioned_handles must be an array of handle strings');
+			}
+			for (const handle of mentionedHandles) {
+				const normalizedHandle = normalizeHandleToken(handle);
+				if (!normalizedHandle) {
+					throw new Error(`Invalid mention handle: ${String(handle)}`);
+				}
+				requestedHandles.push(normalizedHandle);
+			}
+		}
+
+		const resolvedFromHandles: string[] = [];
+		if (requestedHandles.length > 0) {
+			const normalizedProjectId = projectId?.trim();
+			if (!normalizedProjectId) {
+				throw new Error('project_id is required to resolve mentioned_handles');
+			}
+
+			const indexedMembers = await this.fetchProjectMemberDirectory(normalizedProjectId);
+			for (const handle of requestedHandles) {
+				const member = this.resolveProjectMemberForHandle(
+					handle,
+					indexedMembers,
+					'mention'
+				);
+				if (!member.userId) {
+					throw new Error(
+						`Matched mention handle "@${handle}" has no linked user account; use mentioned_user_ids`
+					);
+				}
+				resolvedFromHandles.push(member.userId);
+			}
+		}
+
+		const mergedUserIds = Array.from(new Set([...explicitUserIds, ...resolvedFromHandles]));
+		if (mergedUserIds.length > MAX_MENTION_RECIPIENTS) {
+			throw new Error(`A mention ping can notify at most ${MAX_MENTION_RECIPIENTS} users`);
+		}
+
+		return {
+			hasInput,
+			mentionedUserIds: mergedUserIds
+		};
+	}
+
 	// ============================================
 	// CREATE OPERATIONS
 	// ============================================
@@ -372,6 +656,12 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		task: any;
 		message: string;
 	}> {
+		const assigneeResolution = await this.resolveTaskAssigneeActorIds({
+			projectId: args.project_id,
+			assigneeActorIds: args.assignee_actor_ids,
+			assigneeHandles: args.assignee_handles
+		});
+
 		const payload: Record<string, unknown> = {
 			project_id: args.project_id,
 			title: args.title,
@@ -400,6 +690,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		}
 		if (args.connections !== undefined) {
 			payload.connections = args.connections;
+		}
+		if (assigneeResolution.hasInput) {
+			payload.assignee_actor_ids = assigneeResolution.assigneeActorIds;
 		}
 
 		const data = await this.apiRequest('/api/onto/tasks/create', {
@@ -736,6 +1029,12 @@ export class OntologyWriteExecutor extends BaseExecutor {
 	}> {
 		const updateData: Record<string, unknown> = {};
 		const strategy = args.update_strategy ?? 'replace';
+		let taskDetailsCache: any | null = null;
+		const loadTaskDetails = async () => {
+			if (taskDetailsCache) return taskDetailsCache;
+			taskDetailsCache = await getTaskDetails(args.task_id);
+			return taskDetailsCache;
+		};
 
 		if (args.title !== undefined) updateData.title = args.title;
 		if (args.description !== undefined) {
@@ -745,7 +1044,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 				instructions: args.merge_instructions,
 				entityLabel: `task:${args.task_id}`,
 				existingLoader: async () => {
-					const details = await getTaskDetails(args.task_id);
+					const details = await loadTaskDetails();
 					// Description is now a column, not in props
 					const raw = details?.task?.description;
 					return {
@@ -767,6 +1066,27 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.start_at !== undefined) updateData.start_at = args.start_at;
 		if (args.due_at !== undefined) updateData.due_at = args.due_at;
 		if (args.props !== undefined) updateData.props = args.props;
+
+		const hasAssigneeInput =
+			Object.prototype.hasOwnProperty.call(args, 'assignee_actor_ids') ||
+			Object.prototype.hasOwnProperty.call(args, 'assignee_handles');
+		if (hasAssigneeInput) {
+			let projectId = typeof args.project_id === 'string' ? args.project_id : undefined;
+			if (!projectId && args.assignee_handles !== undefined) {
+				const details = await loadTaskDetails();
+				projectId =
+					typeof details?.task?.project_id === 'string'
+						? (details.task.project_id as string)
+						: undefined;
+			}
+
+			const assigneeResolution = await this.resolveTaskAssigneeActorIds({
+				projectId,
+				assigneeActorIds: args.assignee_actor_ids,
+				assigneeHandles: args.assignee_handles
+			});
+			updateData.assignee_actor_ids = assigneeResolution.assigneeActorIds;
+		}
 
 		if (Object.keys(updateData).length === 0) {
 			throw new Error('No updates provided for ontology task');
@@ -998,6 +1318,58 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		return {
 			risk: data.risk,
 			message: `Updated ontology risk "${data.risk?.title ?? args.risk_id}"`
+		};
+	}
+
+	async tagOntoEntity(args: TagOntoEntityArgs): Promise<{
+		project_id: string;
+		entity_type: 'task' | 'goal' | 'document';
+		entity_id: string;
+		mentioned_user_ids: string[];
+		notified_user_ids: string[];
+		message: string;
+	}> {
+		const mentionResolution = await this.resolveMentionUserIds({
+			projectId: args.project_id,
+			mentionedUserIds: args.mentioned_user_ids,
+			mentionedHandles: args.mentioned_handles
+		});
+
+		if (!mentionResolution.hasInput || mentionResolution.mentionedUserIds.length === 0) {
+			throw new Error('tag_onto_entity requires mentioned_user_ids or mentioned_handles');
+		}
+
+		if (!['task', 'goal', 'document'].includes(args.entity_type)) {
+			throw new Error('entity_type must be one of: task, goal, document');
+		}
+
+		const payload: Record<string, unknown> = {
+			project_id: args.project_id,
+			entity_type: args.entity_type,
+			entity_id: args.entity_id,
+			mentioned_user_ids: mentionResolution.mentionedUserIds
+		};
+		if (typeof args.message === 'string' && args.message.trim().length > 0) {
+			payload.message = args.message.trim();
+		}
+
+		const data = await this.apiRequest<{
+			project_id: string;
+			entity_type: 'task' | 'goal' | 'document';
+			entity_id: string;
+			mentioned_user_ids: string[];
+			notified_user_ids: string[];
+		}>('/api/onto/mentions/ping', {
+			method: 'POST',
+			body: JSON.stringify(payload)
+		});
+
+		const notifiedCount = Array.isArray(data.notified_user_ids)
+			? data.notified_user_ids.length
+			: 0;
+		return {
+			...data,
+			message: `Tagged ${notifiedCount} collaborator${notifiedCount === 1 ? '' : 's'} on the ${args.entity_type}.`
 		};
 	}
 

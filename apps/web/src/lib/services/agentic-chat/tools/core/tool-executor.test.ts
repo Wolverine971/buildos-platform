@@ -34,6 +34,15 @@ describe('ChatToolExecutor - Update Strategies', () => {
 
 		mockSupabase = {
 			from: vi.fn(() => mockChain),
+			auth: {
+				getSession: vi.fn().mockResolvedValue({
+					data: {
+						session: {
+							access_token: 'test-token'
+						}
+					}
+				})
+			},
 			...mockChain
 		} as unknown as SupabaseClient<Database>;
 

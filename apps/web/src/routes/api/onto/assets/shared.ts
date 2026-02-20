@@ -3,8 +3,10 @@ import { ApiResponse } from '$lib/utils/api-response';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 
+export type OntoAssetRow = Database['public']['Tables']['onto_assets']['Row'];
+
 export type AssetAccess = {
-	asset: Record<string, any>;
+	asset: OntoAssetRow;
 	actorId: string;
 };
 
@@ -174,6 +176,16 @@ export function getFileExtension(filename: string, contentType: string): string 
 			return 'gif';
 		case 'image/svg+xml':
 			return 'svg';
+		case 'image/avif':
+			return 'avif';
+		case 'image/heic':
+			return 'heic';
+		case 'image/heif':
+			return 'heif';
+		case 'image/tiff':
+			return 'tiff';
+		case 'image/bmp':
+			return 'bmp';
 		default:
 			return 'jpg';
 	}

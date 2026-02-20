@@ -18,6 +18,10 @@ import {
 	toDocumentSnapshot
 } from '$lib/services/ontology/versioning.service';
 import { classifyOntologyEntity } from '$lib/server/ontology-classification.service';
+import {
+	notifyEntityMentionsAdded,
+	resolveEntityMentionUserIds
+} from '$lib/server/entity-mention-notification.service';
 import { normalizeDocumentStateInput } from '../../shared/document-state';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 import {
@@ -84,7 +88,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Ensure project exists and belongs to current actor
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
-			.select('id')
+			.select('id, name, created_by')
 			.eq('id', project_id)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -312,6 +316,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				metadata: { nonFatal: true }
 			});
 		}
+
+		const actorDisplayName =
+			(typeof session.user.name === 'string' && session.user.name) ||
+			session.user.email?.split('@')[0] ||
+			'A teammate';
+		const mentionUserIds = await resolveEntityMentionUserIds({
+			supabase,
+			projectId: project_id as string,
+			projectOwnerActorId: project.created_by,
+			actorUserId: session.user.id,
+			nextTextValues: [document.title, document.description, document.content]
+		});
+
+		await notifyEntityMentionsAdded({
+			supabase,
+			projectId: project_id as string,
+			projectName: project.name,
+			entityType: 'document',
+			entityId: document.id,
+			entityTitle: document.title,
+			actorUserId: session.user.id,
+			actorDisplayName,
+			mentionedUserIds: mentionUserIds
+		});
 
 		// Log activity async (non-blocking)
 		logCreateAsync(

@@ -18,7 +18,7 @@ export const ONTOLOGY_WRITE_TOOLS = [
 		function: {
 			name: 'create_onto_task',
 			description: `Create a new task in the ontology system.
-Creates a task within a project and optionally assigns it to a plan.
+Creates a task within a project and optionally assigns it to a plan and collaborators.
 Automatically creates containment edges based on parent inputs (plan/goal/project).
 
 **CRITICAL: When to create tasks vs. when NOT to:**
@@ -79,6 +79,18 @@ Default: task.execute`
 					priority: {
 						type: 'number',
 						description: 'Priority level (1-5, default: 3). Higher = more important'
+					},
+					assignee_actor_ids: {
+						type: 'array',
+						description:
+							'Optional assignee actor IDs (UUIDs). Replaces assignment list on create. Max 10.',
+						items: { type: 'string' }
+					},
+					assignee_handles: {
+						type: 'array',
+						description:
+							'Optional assignee handles like ["@jim", "@dj"]. Handles resolve against active project members by name/email local-part.',
+						items: { type: 'string' }
 					},
 					plan_id: {
 						type: 'string',
@@ -1120,7 +1132,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 		function: {
 			name: 'update_onto_task',
 			description: `Update an existing task in the ontology system.
-Can modify title, description, state, priority, scheduling, and custom properties.
+Can modify title, description, state, priority, assignees, scheduling, and custom properties.
 Only updates fields that are provided - omitted fields remain unchanged.`,
 			parameters: {
 				type: 'object',
@@ -1128,6 +1140,11 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 					task_id: {
 						type: 'string',
 						description: 'Task UUID (required)'
+					},
+					project_id: {
+						type: 'string',
+						description:
+							'Optional project UUID used for assignee handle resolution. If omitted, the task project is resolved automatically.'
 					},
 					title: {
 						type: 'string',
@@ -1161,6 +1178,18 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 						type: 'number',
 						description: 'New priority (1-5)'
 					},
+					assignee_actor_ids: {
+						type: 'array',
+						description:
+							'Optional full replacement assignee actor ID list (UUIDs). Use [] to clear assignees. Max 10.',
+						items: { type: 'string' }
+					},
+					assignee_handles: {
+						type: 'array',
+						description:
+							'Optional assignee handles like ["@jim"]. Resolved against active project members by name/email local-part.',
+						items: { type: 'string' }
+					},
 					goal_id: {
 						type: ['string', 'null'],
 						description: 'Optional goal UUID that this task supports (null clears)'
@@ -1189,6 +1218,8 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 					{ required: ['type_key'] },
 					{ required: ['state_key'] },
 					{ required: ['priority'] },
+					{ required: ['assignee_actor_ids'] },
+					{ required: ['assignee_handles'] },
 					{ required: ['goal_id'] },
 					{ required: ['supporting_milestone_id'] },
 					{ required: ['start_at'] },
@@ -1439,6 +1470,52 @@ Use for edits to titles, states, body markdown, or metadata.`,
 					{ required: ['description'] },
 					{ required: ['props'] }
 				]
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'tag_onto_entity',
+			description: `Tag one or more collaborators on an existing task, goal, or document without editing content.
+Use this when the user explicitly asks to ping/tag someone (for example: "tag @jim on this document").`,
+			parameters: {
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project UUID (required)'
+					},
+					entity_type: {
+						type: 'string',
+						enum: ['task', 'goal', 'document'],
+						description: 'Entity type to tag on'
+					},
+					entity_id: {
+						type: 'string',
+						description: 'Entity UUID (required)'
+					},
+					mentioned_user_ids: {
+						type: 'array',
+						description:
+							'Optional explicit recipient user IDs (UUIDs). Recipients must be active project members.',
+						items: { type: 'string' }
+					},
+					mentioned_handles: {
+						type: 'array',
+						description:
+							'Optional @handles like ["@jim", "@dj"]. Handles resolve against active project members by name/email local-part.',
+						items: { type: 'string' }
+					},
+					message: {
+						type: 'string',
+						description:
+							'Optional short note appended to the notification body (for example: "please review section 2").'
+					}
+				},
+				required: ['project_id', 'entity_type', 'entity_id'],
+				anyOf: [{ required: ['mentioned_user_ids'] }, { required: ['mentioned_handles'] }]
 			}
 		}
 	},

@@ -242,10 +242,7 @@ export class SmartLLMService {
 				repaired: false
 			};
 		} catch (error) {
-			if (
-				allowTruncatedJsonRecovery &&
-				this.isLikelyTruncatedJSONError(error, cleaned)
-			) {
+			if (allowTruncatedJsonRecovery && this.isLikelyTruncatedJSONError(error, cleaned)) {
 				const repaired = repairTruncatedJSONResponse(cleaned);
 				if (repaired) {
 					try {
@@ -290,8 +287,7 @@ export class SmartLLMService {
 		let lastError: Error | null = null;
 		let retryCount = 0;
 		const maxRetries = options.validation?.maxRetries || 2;
-		const allowTruncatedJsonRecovery =
-			options.validation?.allowTruncatedJsonRecovery === true;
+		const allowTruncatedJsonRecovery = options.validation?.allowTruncatedJsonRecovery === true;
 		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
 		const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 4);
 		const attemptedModels = new Set<string>();
@@ -366,9 +362,7 @@ export class SmartLLMService {
 						result = parsed.value;
 						cleaned = parsed.cleaned;
 						if (parsed.repaired) {
-							console.warn(
-								`Recovered truncated JSON response from ${actualModel}`
-							);
+							console.warn(`Recovered truncated JSON response from ${actualModel}`);
 						}
 					} catch (parseError) {
 						// Log which model actually responded

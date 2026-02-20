@@ -1,7 +1,6 @@
 // apps/worker/src/worker.ts
 import { SupabaseQueue, ProcessingJob } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
-import { processEmailBriefJob } from './workers/brief/emailWorker';
 import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWorker';
 import { processSMSJob } from './workers/smsWorker';
 import { processNotification } from './workers/notification/notificationWorker';
@@ -100,32 +99,6 @@ async function processSMS(job: ProcessingJob) {
 		return { success: true };
 	} catch (error: any) {
 		await job.log(`❌ SMS send failed: ${error.message}`);
-		throw error;
-	}
-}
-
-/**
- * Email brief processor (Phase 2: Email decoupling)
- */
-async function processEmailBrief(job: ProcessingJob) {
-	const startTime = Date.now();
-	const emailId = job.data.emailId || 'unknown';
-
-	await job.log(`📧 Email sending started for email ${emailId}`);
-
-	try {
-		// Convert ProcessingJob to type-safe legacy format
-		const legacyJob = createLegacyJob(job);
-
-		// Use email processor
-		await processEmailBriefJob(legacyJob);
-
-		const duration = Date.now() - startTime;
-		await job.log(`✅ Email sent successfully in ${duration}ms`);
-
-		return { success: true, duration };
-	} catch (error: any) {
-		await job.log(`❌ Email sending failed: ${error.message}`);
 		throw error;
 	}
 }
@@ -357,7 +330,6 @@ export async function startWorker() {
 
 	// Register processors
 	queue.process('generate_daily_brief', processBrief);
-	queue.process('generate_brief_email', processEmailBrief); // Phase 2: Email worker
 	queue.process('onboarding_analysis', processOnboarding);
 
 	// Register notification processor (multi-channel: push, email, in-app, SMS)
@@ -464,7 +436,6 @@ export async function startWorker() {
 	// List enabled job types
 	const jobTypes = [
 		'generate_daily_brief',
-		'generate_brief_email',
 		'onboarding_analysis',
 		'send_notification',
 		'project_activity_batch_flush',

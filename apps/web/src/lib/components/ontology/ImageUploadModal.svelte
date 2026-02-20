@@ -169,7 +169,7 @@
 
 <Modal bind:isOpen title="Upload Image" size="md" onClose={closeModal}>
 	{#snippet children()}
-		<div class="space-y-3 px-3 py-2 sm:px-4 sm:py-3">
+		<div class="space-y-3 px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
 			{#if formError}
 				<p
 					class="rounded border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive"
@@ -237,7 +237,9 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div class="flex items-center justify-end gap-2">
+		<div
+			class="flex items-center justify-end gap-2 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
+		>
 			<Button size="sm" variant="ghost" class="h-8 px-2 text-xs" onclick={closeModal}>
 				<X class="h-3.5 w-3.5" />
 				Cancel

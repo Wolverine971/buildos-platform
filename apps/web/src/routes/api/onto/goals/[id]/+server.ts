@@ -40,6 +40,10 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import {
+	notifyEntityMentionsAdded,
+	resolveEntityMentionUserIds
+} from '$lib/server/entity-mention-notification.service';
 import { GOAL_STATES } from '$lib/types/onto';
 import {
 	autoOrganizeConnections,
@@ -86,7 +90,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id
+					id,
+					name,
+					created_by
 				)
 			`
 			)
@@ -201,7 +207,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				`
 				*,
 				project:onto_projects!inner(
-					id
+					id,
+					name,
+					created_by
 				)
 			`
 			)
@@ -366,6 +374,31 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				options: { mode: 'replace' }
 			});
 		}
+
+		const actorDisplayName =
+			(typeof session.user.name === 'string' && session.user.name) ||
+			session.user.email?.split('@')[0] ||
+			'A teammate';
+		const mentionUserIds = await resolveEntityMentionUserIds({
+			supabase,
+			projectId: existingGoal.project_id,
+			projectOwnerActorId: existingGoal.project.created_by,
+			actorUserId: session.user.id,
+			nextTextValues: [updatedGoal.name, updatedGoal.goal, updatedGoal.description],
+			previousTextValues: [existingGoal.name, existingGoal.goal, existingGoal.description]
+		});
+
+		await notifyEntityMentionsAdded({
+			supabase,
+			projectId: existingGoal.project_id,
+			projectName: existingGoal.project.name,
+			entityType: 'goal',
+			entityId: params.id,
+			entityTitle: updatedGoal.name,
+			actorUserId: session.user.id,
+			actorDisplayName,
+			mentionedUserIds: mentionUserIds
+		});
 
 		// Log activity async (non-blocking)
 		logUpdateAsync(

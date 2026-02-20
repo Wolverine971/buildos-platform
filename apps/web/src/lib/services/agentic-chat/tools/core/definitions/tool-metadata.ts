@@ -276,7 +276,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	create_onto_task: {
 		summary: 'Add a new task within a project/plan.',
-		capabilities: ['Sets priority/state/plan links', 'Accepts metadata props'],
+		capabilities: [
+			'Sets priority/state/plan links',
+			'Supports assignee actor IDs or @handle resolution',
+			'Accepts metadata props'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
@@ -367,7 +371,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: [
 			'Supports partial updates',
 			'Validates ownership',
-			'Append or LLM-merge description updates safely'
+			'Append or LLM-merge description updates safely',
+			'Supports assignment updates via actor IDs or @handles'
 		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
@@ -404,6 +409,16 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 			'Supports partial updates',
 			'Validates ownership',
 			'Append or LLM-merge body content safely'
+		],
+		contexts: ['project', 'project_audit', 'project_forecast'],
+		category: 'write'
+	},
+	tag_onto_entity: {
+		summary: 'Send explicit @tag notifications on a task, goal, or document.',
+		capabilities: [
+			'Supports explicit user IDs or @handle resolution',
+			'Does not mutate entity content',
+			'Reuses standard mention notification rules and permissions'
 		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'

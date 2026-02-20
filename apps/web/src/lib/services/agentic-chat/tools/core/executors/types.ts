@@ -213,6 +213,8 @@ export interface CreateOntoTaskArgs {
 	type_key?: string;
 	state_key?: string;
 	priority?: number;
+	assignee_actor_ids?: string[];
+	assignee_handles?: string[];
 	plan_id?: string;
 	goal_id?: string;
 	supporting_milestone_id?: string;
@@ -373,6 +375,7 @@ export interface CreateOntoProjectArgs {
 
 export interface UpdateOntoTaskArgs {
 	task_id: string;
+	project_id?: string;
 	title?: string;
 	description?: string;
 	update_strategy?: 'replace' | 'append' | 'merge_llm';
@@ -380,11 +383,22 @@ export interface UpdateOntoTaskArgs {
 	type_key?: string;
 	state_key?: string;
 	priority?: number;
+	assignee_actor_ids?: string[];
+	assignee_handles?: string[];
 	goal_id?: string | null;
 	supporting_milestone_id?: string | null;
 	start_at?: string | null;
 	due_at?: string | null;
 	props?: Record<string, unknown>;
+}
+
+export interface TagOntoEntityArgs {
+	project_id: string;
+	entity_type: 'task' | 'goal' | 'document';
+	entity_id: string;
+	mentioned_user_ids?: string[];
+	mentioned_handles?: string[];
+	message?: string;
 }
 
 export interface LinkOntoEntitiesArgs {

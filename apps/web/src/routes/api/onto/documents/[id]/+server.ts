@@ -14,6 +14,10 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import {
+	notifyEntityMentionsAdded,
+	resolveEntityMentionUserIds
+} from '$lib/server/entity-mention-notification.service';
 import { normalizeDocumentStateInput } from '../../shared/document-state';
 import {
 	AutoOrganizeError,
@@ -41,6 +45,7 @@ type AccessResult =
 	| {
 			document: Record<string, any>;
 			actorId: string;
+			project: Record<string, any>;
 	  }
 	| { error: Response };
 
@@ -137,7 +142,7 @@ async function ensureDocumentAccess(
 
 	const { data: project, error: projectError } = await supabase
 		.from('onto_projects')
-		.select('id')
+		.select('id, name, created_by')
 		.eq('id', document.project_id)
 		.is('deleted_at', null)
 		.maybeSingle();
@@ -162,7 +167,7 @@ async function ensureDocumentAccess(
 		return { error: ApiResponse.notFound('Project') };
 	}
 
-	return { document, actorId };
+	return { document, actorId, project };
 }
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -236,7 +241,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return accessResult.error;
 		}
 
-		const { document, actorId } = accessResult;
+		const { document, actorId, project } = accessResult;
 
 		// Optimistic concurrency: if client sends expected_updated_at, reject if stale
 		const expectedUpdatedAt = (body as Record<string, unknown>).expected_updated_at;
@@ -462,6 +467,35 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				});
 			}
 		}
+
+		const actorDisplayName =
+			(typeof session.user.name === 'string' && session.user.name) ||
+			session.user.email?.split('@')[0] ||
+			'A teammate';
+		const mentionUserIds = await resolveEntityMentionUserIds({
+			supabase: locals.supabase,
+			projectId: document.project_id,
+			projectOwnerActorId: project.created_by,
+			actorUserId: session.user.id,
+			nextTextValues: [
+				updatedDocument.title,
+				updatedDocument.description,
+				updatedDocument.content
+			],
+			previousTextValues: [document.title, document.description, document.content]
+		});
+
+		await notifyEntityMentionsAdded({
+			supabase: locals.supabase,
+			projectId: document.project_id,
+			projectName: project.name,
+			entityType: 'document',
+			entityId: documentId,
+			entityTitle: updatedDocument.title,
+			actorUserId: session.user.id,
+			actorDisplayName,
+			mentionedUserIds: mentionUserIds
+		});
 
 		// Log activity async (non-blocking)
 		logUpdateAsync(
