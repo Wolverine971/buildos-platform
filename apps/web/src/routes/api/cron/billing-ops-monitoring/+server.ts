@@ -15,6 +15,7 @@ import {
 	toSnapshotRecord,
 	type BillingOpsAnomaly
 } from '$lib/server/billing-ops-monitoring';
+import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notification.service';
 
 function metricLabel(metricName: string): string {
 	switch (metricName) {
@@ -186,7 +187,8 @@ export const GET: RequestHandler = async ({ request, url }) => {
 			adminRecipients = admins?.length || 0;
 
 			if (adminRecipients > 0) {
-				const notifications = (pendingNotificationAnomalies || []).flatMap(
+				const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+				const notificationJobs = (pendingNotificationAnomalies || []).flatMap(
 					(anomaly: any) => {
 						const payload = anomalyNotificationPayload(
 							{
@@ -212,25 +214,33 @@ export const GET: RequestHandler = async ({ request, url }) => {
 							snapshot.snapshot_date
 						);
 
-						return (admins || []).map((admin) => ({
-							user_id: admin.id,
-							type: 'billing_ops_alert',
-							event_type: 'billing_ops_anomaly',
-							title: payload.title,
-							message: payload.message,
-							priority: payload.priority,
-							action_url: '/admin/subscriptions',
-							data: payload.data,
-							expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-						}));
+						return (admins || []).map((admin) =>
+							createTrackedInAppNotification({
+								supabase,
+								recipientUserId: admin.id,
+								eventType: 'billing_ops_anomaly',
+								eventSource: 'cron_scheduler',
+								type: 'billing_ops_alert',
+								title: payload.title,
+								message: payload.message,
+								priority: payload.priority,
+								actionUrl: '/admin/subscriptions',
+								expiresAt,
+								payload: payload.data,
+								data: payload.data
+							})
+						);
 					}
 				);
 
-				if (notifications.length > 0) {
-					const { error: notificationsError } = await (supabase as any)
-						.from('user_notifications')
-						.insert(notifications);
-					if (notificationsError) throw notificationsError;
+				if (notificationJobs.length > 0) {
+					const notificationResults = await Promise.all(notificationJobs);
+					const failed = notificationResults.filter((result) => !result.success);
+					if (failed.length > 0) {
+						throw new Error(
+							`Failed to create ${failed.length} tracked billing ops notifications`
+						);
+					}
 				}
 			}
 

@@ -37,6 +37,7 @@ describe('OntologyWriteExecutor tag_onto_entity handle resolution', () => {
 		} as unknown as SupabaseClient<Database>;
 
 		let lastPingBody: any = null;
+		let lastDocumentPatchBody: any = null;
 
 		mockFetch = vi.fn().mockImplementation((url, options) => {
 			const urlValue = String(url);
@@ -67,6 +68,39 @@ describe('OntologyWriteExecutor tag_onto_entity handle resolution', () => {
 									}
 								}
 							]
+						}
+					})
+				);
+			}
+
+			if (urlValue.includes('/api/onto/documents/doc-1/full') && options?.method === 'GET') {
+				return Promise.resolve(
+					buildJsonResponse({
+						success: true,
+						data: {
+							document: {
+								id: 'doc-1',
+								project_id: 'project-1',
+								title: 'Doc title',
+								description: null,
+								content: 'Existing content'
+							}
+						}
+					})
+				);
+			}
+
+			if (urlValue.includes('/api/onto/documents/doc-1') && options?.method === 'PATCH') {
+				lastDocumentPatchBody = body;
+				return Promise.resolve(
+					buildJsonResponse({
+						success: true,
+						data: {
+							document: {
+								id: 'doc-1',
+								project_id: 'project-1',
+								content: body?.content ?? ''
+							}
 						}
 					})
 				);
@@ -109,20 +143,40 @@ describe('OntologyWriteExecutor tag_onto_entity handle resolution', () => {
 		};
 
 		(mockFetch as any).lastPingBody = () => lastPingBody;
+		(mockFetch as any).lastDocumentPatchBody = () => lastDocumentPatchBody;
 	});
 
-	it('resolves @handles and posts user IDs to mention ping endpoint', async () => {
+	it('resolves @handles and posts user IDs to mention ping endpoint in ping mode', async () => {
 		const executor = new OntologyWriteExecutor(context);
 
 		await executor.tagOntoEntity({
 			project_id: 'project-1',
 			entity_type: 'document',
 			entity_id: 'doc-1',
+			mode: 'ping',
 			mentioned_handles: ['@jim']
 		});
 
 		const lastPingBody = (mockFetch as any).lastPingBody();
 		expect(lastPingBody.mentioned_user_ids).toEqual(['user-jim']);
+	});
+
+	it('appends canonical mention tokens to document content in content mode', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.tagOntoEntity({
+			project_id: 'project-1',
+			entity_type: 'document',
+			entity_id: 'doc-1',
+			mode: 'content',
+			mentioned_handles: ['@jim'],
+			message: 'Please review this section.'
+		});
+
+		const lastDocumentPatchBody = (mockFetch as any).lastDocumentPatchBody();
+		expect(lastDocumentPatchBody.content).toContain('Existing content');
+		expect(lastDocumentPatchBody.content).toContain('[[user:user-jim|Jim]]');
+		expect(lastDocumentPatchBody.content).toContain('Please review this section.');
 	});
 
 	it('throws on ambiguous mention handle matches', async () => {

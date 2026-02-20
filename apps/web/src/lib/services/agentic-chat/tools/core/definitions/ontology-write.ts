@@ -1496,6 +1496,13 @@ Use this when the user explicitly asks to ping/tag someone (for example: "tag @j
 						type: 'string',
 						description: 'Entity UUID (required)'
 					},
+					mode: {
+						type: 'string',
+						enum: ['content', 'ping'],
+						default: 'content',
+						description:
+							'Tag behavior mode. "content" appends canonical mention tokens to entity text (default). "ping" sends explicit notification without editing content.'
+					},
 					mentioned_user_ids: {
 						type: 'array',
 						description:

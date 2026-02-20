@@ -29,7 +29,9 @@
 ### Phase 2 progress
 
 - [x] Agentic chat task tools now support `assignee_handles` (for example `@jim`) and resolve handles to `assignee_actor_ids` through project members before task create/update writes.
-- [x] Chat tag action flow is now implemented via `tag_onto_entity` (`@handle` or user-ID recipients) and routes through ontology mention APIs.
+- [x] Chat tag action flow is now implemented via `tag_onto_entity` (`@handle` or user-ID recipients) with two modes:
+    - `content` (default): inject canonical `[[user:<id>|Name]]` mention tokens into task/goal/document text fields and trigger normal mention delta notifications.
+    - `ping`: explicit notification-only tagging via `/api/onto/mentions/ping`.
 - [x] Manual ping endpoint is now implemented at `POST /api/onto/mentions/ping` for explicit tag notifications without content mutation.
 
 ---

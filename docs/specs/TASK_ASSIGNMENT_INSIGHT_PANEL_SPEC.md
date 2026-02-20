@@ -22,7 +22,7 @@
 - Insight panel assignee filtering + row summaries are live.
 - Assignment/mention coalescing is live for task writes.
 - Goal/document mention notifications are live and coordinated with assignment flows.
-- Phase 2 in progress: agentic chat supports both task assignee `@handle` resolution and explicit `tag_onto_entity` notifications through `POST /api/onto/mentions/ping`.
+- Phase 2 in progress: agentic chat supports task assignee `@handle` resolution plus `tag_onto_entity` with both content-mention injection (canonical tokens) and explicit ping mode (`POST /api/onto/mentions/ping`).
 
 ---
 

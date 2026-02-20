@@ -13,14 +13,14 @@ The notification system is functional and has a solid core pipeline, but it curr
 1. A persistent multi-channel delivery pipeline (`notification_events` -> `notification_deliveries` -> worker adapters).
 2. A separate project-activity batching pipeline with its own gating behavior.
 3. UI-local notification systems (toasts + stackable notifications + realtime brief broadcasts).
-4. Multiple direct writers to `user_notifications` that bypass delivery tracking.
+4. A tracked in-app helper path for feature notifications that now writes linked event/delivery artifacts.
 
 The main risks are consistency and trust in delivery state:
 
 - preference writes are split across paths, which can leave channels enabled but subscriptions inactive,
 - some webhook security and retry semantics can misclassify or duplicate behavior,
 - analytics definitions do not match current status transitions,
-- mixed direct in-app write paths still bypass delivery tracking contracts.
+- historical mixed in-app write paths required standardization to preserve delivery observability.
 
 ## Remediation Progress (2026-02-20)
 
@@ -60,17 +60,20 @@ Priority-0 / high-severity items addressed in code:
     - Implementation: `apps/web/src/routes/api/onto/goals/create/+server.ts`, `apps/web/src/routes/api/onto/goals/[id]/+server.ts`, `apps/web/src/routes/api/onto/documents/create/+server.ts`, `apps/web/src/routes/api/onto/documents/[id]/+server.ts`
 - [x] Started phase-2 agentic chat assignment support by resolving `@handle` inputs to assignee actor IDs before task create/update writes.
     - Implementation: `apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts`, `apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts`
-- [x] Added phase-2 explicit entity tag ping flow (`tag_onto_entity`) backed by `POST /api/onto/mentions/ping` so chat/UI can notify tagged members without mutating content fields.
+- [x] Added phase-2 entity tag flow (`tag_onto_entity`) with two execution paths: content mention injection (canonical tokens in task/goal/document fields) and explicit ping mode via `POST /api/onto/mentions/ping`.
     - Implementation: `apps/web/src/routes/api/onto/mentions/ping/+server.ts`, `apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts`, `apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts`
-- [ ] Mixed direct `user_notifications` write paths partially normalized by adding explicit `event_type` tags, but full pipeline standardization remains follow-up work.
-    - Implementation: `apps/worker/src/workers/homework/homeworkWorker.ts`, `apps/web/src/routes/api/homework/runs/[id]/cancel/+server.ts`, `apps/web/src/lib/services/dunning-service.ts`, `apps/web/src/routes/api/cron/trial-reminders/+server.ts`
+- [x] Standardized remaining direct in-app writers onto tracked notification artifacts (`notification_events` + `notification_deliveries` + linked `user_notifications`) so `/notifications` includes assignment/mention/homework/billing/trial flows consistently.
+    - Implementation: `apps/web/src/lib/server/tracked-in-app-notification.service.ts`, `apps/worker/src/lib/utils/trackedInAppNotification.ts`, `apps/web/src/lib/server/task-assignment.service.ts`, `apps/web/src/lib/server/entity-mention-notification.service.ts`, `apps/web/src/routes/api/onto/comments/comment-mentions.ts`, `apps/web/src/lib/services/dunning-service.ts`, `apps/web/src/routes/api/cron/trial-reminders/+server.ts`, `apps/web/src/routes/api/cron/billing-ops-monitoring/+server.ts`, `apps/web/src/routes/api/homework/runs/[id]/cancel/+server.ts`, `apps/worker/src/workers/homework/homeworkWorker.ts`, `supabase/migrations/20260426000011_notification_event_type_expansion_for_tracked_in_app.sql`
 
 Validation run:
 
 - `pnpm --filter @buildos/web test -- src/routes/api/notification-preferences/server.test.ts` passed (14/14).
 - `pnpm --filter @buildos/worker typecheck` passed.
+- `pnpm --filter @buildos/web test -- src/routes/api/onto/tasks/create/task-create-assignment-mentions.test.ts src/routes/api/onto/tasks/[id]/task-patch-assignment-mentions.test.ts src/routes/api/onto/documents/create/document-create-mentions.test.ts src/routes/api/onto/goals/create/goal-create-mentions.test.ts src/routes/api/onto/mentions/ping/mention-ping.test.ts` passed (6/6).
+- `pnpm --filter @buildos/web test -- src/lib/server/billing-ops-monitoring.test.ts src/routes/api/notification-preferences/server.test.ts` passed (17/17).
 - `pnpm --filter @buildos/web check` still fails due large unrelated pre-existing type/a11y issues across admin/blog/homework/etc routes.
 - `pnpm --filter @buildos/web check` rerun after Priority 2 changes showed no diagnostics in modified notification files (`routes/notifications`, project notification settings API, invite accept API, transformer/types).
+- `pnpm --filter @buildos/web check` rerun after tracked in-app migration showed no diagnostics in modified notification files (`task-assignment.service`, `entity-mention-notification.service`, `comment-mentions`, trial/billing/homework notification routes, `routes/notifications`).
 
 ## Method
 
@@ -126,19 +129,19 @@ Evidence:
 
 These are useful UX surfaces but are not equivalent to delivery-tracked notifications.
 
-### 4) Direct Writers to `user_notifications` (Outside Delivery Pipeline)
+### 4) Tracked In-App Writers (Linked Artifacts)
 
-Examples:
+Remaining in-app feature writers now create linked artifacts through tracked helper services:
 
-- `apps/web/src/lib/server/task-assignment.service.ts:352`
-- `apps/web/src/routes/api/onto/comments/comment-mentions.ts:147`
-- `apps/web/src/lib/services/dunning-service.ts:158`
-- `apps/web/src/routes/api/cron/trial-reminders/+server.ts:71`
-- `apps/web/src/routes/api/cron/billing-ops-monitoring/+server.ts:231`
-- `apps/worker/src/workers/homework/homeworkWorker.ts:117`
-- `apps/web/src/routes/api/homework/runs/[id]/cancel/+server.ts:50`
+- `notification_events` row per notification event
+- `notification_deliveries` row (`channel='in_app'`, linked to event)
+- `user_notifications` row linked to both event + delivery
 
-This creates a mixed model: some in-app notifications are tracked deliveries, others are direct inserts.
+Evidence:
+
+- Web helper: `apps/web/src/lib/server/tracked-in-app-notification.service.ts:1`
+- Worker helper: `apps/worker/src/lib/utils/trackedInAppNotification.ts:1`
+- Migrated feature paths: `apps/web/src/lib/server/task-assignment.service.ts:337`, `apps/web/src/lib/server/entity-mention-notification.service.ts:213`, `apps/web/src/routes/api/onto/comments/comment-mentions.ts:136`, `apps/web/src/lib/services/dunning-service.ts:159`, `apps/web/src/routes/api/cron/trial-reminders/+server.ts:75`, `apps/web/src/routes/api/cron/billing-ops-monitoring/+server.ts:220`, `apps/web/src/routes/api/homework/runs/[id]/cancel/+server.ts:50`, `apps/worker/src/workers/homework/homeworkWorker.ts:124`
 
 ## Notification Flow by Channel
 
@@ -197,6 +200,13 @@ Observed production emitters:
 - `brief.completed` and `brief.failed` from brief worker: `apps/worker/src/workers/brief/briefWorker.ts:267`, `apps/worker/src/workers/brief/briefWorker.ts:325`
 - `project.invite.accepted` from invite accept API: `apps/web/src/routes/api/onto/invites/[inviteId]/accept/+server.ts:158`, `apps/web/src/routes/api/onto/invites/[inviteId]/accept/+server.ts:234`
 - `project.activity.batched` from batch flush function: `supabase/migrations/20260424000000_project_activity_notification_batching.sql:149`
+- `task.assigned` from task assignment service: `apps/web/src/lib/server/task-assignment.service.ts:337`
+- `entity.tagged` from entity mention service: `apps/web/src/lib/server/entity-mention-notification.service.ts:213`
+- `comment.mentioned` from comment mention handler: `apps/web/src/routes/api/onto/comments/comment-mentions.ts:136`
+- `payment.warning` from dunning service: `apps/web/src/lib/services/dunning-service.ts:159`
+- `user.trial_reminder` from trial reminder cron: `apps/web/src/routes/api/cron/trial-reminders/+server.ts:75`
+- `billing_ops_anomaly` from billing ops monitoring cron: `apps/web/src/routes/api/cron/billing-ops-monitoring/+server.ts:220`
+- `homework.run_completed`, `homework.run_stopped`, `homework.run_failed`, `homework.run_canceled`, `homework.run_updated` from homework worker/API: `apps/worker/src/workers/homework/homeworkWorker.ts:91`, `apps/web/src/routes/api/homework/runs/[id]/cancel/+server.ts:50`
 
 Event types in shared union but not found as regular runtime emitters in product flows (outside admin/test tooling):
 
@@ -370,13 +380,13 @@ Evidence:
 4. **Mixed in-app write model increases inconsistency**
     - Evidence:
         - Worker in-app delivery path writes linked records: `apps/worker/src/workers/notification/notificationWorker.ts:429`
-        - Several feature paths write directly to `user_notifications` (see list above).
+        - Historical (pre-fix): several feature paths wrote only to `user_notifications` with no event/delivery linkage.
     - Impact:
         - Uneven observability, preference enforcement, and analytics fidelity.
     - Recommendation:
         - Define which classes of in-app notifications must go through delivery pipeline and standardize.
     - Status:
-        - Partially improved on 2026-02-20 (explicit `event_type` tagging added for remaining direct writers); full migration to delivery pipeline still pending.
+        - Fixed in code on 2026-02-20 (remaining direct writers now create linked `notification_events` + `notification_deliveries` + `user_notifications` via tracked in-app helper services; event-type constraint expanded in migration `20260426000011`).
 
 ## Recommended Remediation Plan
 
@@ -416,3 +426,6 @@ Evidence:
 11. Verify synthetic project activity entries show as "Activity" (virtual feed rows), not "Delivered".
 12. Verify worker no longer registers `generate_brief_email` and that pending/retrying legacy jobs are cancelled after migration `20260426000009`.
 13. Verify trigger path no longer inserts raw `project.activity.changed` events for new `onto_project_logs` rows.
+14. Verify migrated assignment/mention/comment flows create linked `event_id` + `delivery_id` on `user_notifications` rows and appear in `/notifications`.
+15. Verify dunning/trial/billing-ops/homework in-app notifications create `notification_deliveries` rows with `status='delivered'` and `channel='in_app'`.
+16. Verify migration `20260426000011` is applied and new event types insert successfully into `notification_events`.

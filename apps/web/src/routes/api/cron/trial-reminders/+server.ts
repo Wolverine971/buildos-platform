@@ -5,6 +5,7 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { TRIAL_CONFIG } from '$lib/config/trial';
 import { isAuthorizedCronRequest } from '$lib/utils/security';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notification.service';
 
 export const GET: RequestHandler = async ({ request }) => {
 	// Verify cron secret
@@ -67,17 +68,39 @@ export const GET: RequestHandler = async ({ request }) => {
 						reminder_type: reminderType
 					});
 
-					// Create in-app notification
-					await supabase.from('user_notifications').insert({
-						user_id: user.id,
+					const title = getNotificationTitle(reminderType, daysUntilEnd);
+					const message = getNotificationMessage(reminderType, daysUntilEnd);
+					const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+					const notifyResult = await createTrackedInAppNotification({
+						supabase,
+						recipientUserId: user.id,
+						eventType: 'user.trial_reminder',
+						eventSource: 'cron_scheduler',
 						type: 'trial_warning',
-						event_type: 'user.trial_reminder',
-						title: getNotificationTitle(reminderType, daysUntilEnd),
-						message: getNotificationMessage(reminderType, daysUntilEnd),
-						action_url: '/pricing',
-						action_label: 'Subscribe Now',
-						expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+						title,
+						message,
+						actionUrl: '/pricing',
+						expiresAt,
+						payload: {
+							reminder_type: reminderType,
+							days_until_end: daysUntilEnd
+						},
+						data: {
+							reminder_type: reminderType,
+							days_until_end: daysUntilEnd
+						}
 					});
+					if (!notifyResult.success) {
+						console.error(
+							'[Trial Reminders] Failed to create tracked in-app notification',
+							{
+								userId: user.id,
+								reminderType,
+								error: notifyResult.error
+							}
+						);
+					}
 
 					sent++;
 				}

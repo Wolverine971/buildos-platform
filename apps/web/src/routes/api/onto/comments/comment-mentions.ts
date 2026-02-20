@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/onto/comments/comment-mentions.ts
 import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
+import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notification.service';
 
 type SupabaseClient = App.Locals['supabase'];
 
@@ -128,37 +129,51 @@ export async function handleCommentMentions({
 		const projectName = project.name || 'project';
 		const message = `${author.name} mentioned you in a comment on ${entityLabel} in ${projectName}.`;
 
-		const notifications = newMentionUserIds.map((userId) => ({
-			user_id: userId,
-			type: 'comment_mention',
-			title: 'You were mentioned',
-			message,
-			action_url: `/projects/${project.id}`,
-			data: {
-				comment_id: comment.id,
-				project_id: project.id,
-				entity_type: comment.entity_type,
-				entity_id: comment.entity_id,
-				root_id: comment.root_id
-			}
-		}));
-
-		const { data: insertedNotifications, error: notificationError } = await supabase
-			.from('user_notifications')
-			.insert(notifications)
-			.select('id, user_id');
-
-		if (notificationError) {
-			console.error(
-				'[Comments API] Failed to create mention notifications:',
-				notificationError
-			);
-			return;
-		}
-
 		const notificationByUserId = new Map<string, string>();
-		for (const notification of insertedNotifications ?? []) {
-			notificationByUserId.set(notification.user_id, notification.id);
+
+		const notificationResults = await Promise.all(
+			newMentionUserIds.map(async (userId) => ({
+				userId,
+				result: await createTrackedInAppNotification({
+					supabase,
+					recipientUserId: userId,
+					eventType: 'comment.mentioned',
+					actorUserId: author.userId,
+					eventSource: 'api_action',
+					type: 'comment_mention',
+					title: 'You were mentioned',
+					message,
+					actionUrl: `/projects/${project.id}`,
+					payload: {
+						project_id: project.id,
+						project_name: project.name ?? null,
+						comment_id: comment.id,
+						root_id: comment.root_id,
+						entity_type: comment.entity_type,
+						entity_id: comment.entity_id,
+						actor_user_id: author.userId,
+						actor_name: author.name
+					},
+					data: {
+						comment_id: comment.id,
+						project_id: project.id,
+						entity_type: comment.entity_type,
+						entity_id: comment.entity_id,
+						root_id: comment.root_id
+					}
+				})
+			}))
+		);
+
+		for (const { userId, result } of notificationResults) {
+			if (result.success && result.userNotificationId) {
+				notificationByUserId.set(userId, result.userNotificationId);
+				continue;
+			}
+			console.error('[Comments API] Failed to create mention notification', {
+				userId,
+				error: result.error
+			});
 		}
 
 		const mentions = newMentionUserIds.map((userId) => ({

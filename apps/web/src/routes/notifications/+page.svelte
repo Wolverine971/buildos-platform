@@ -65,8 +65,10 @@
 			},
 			'project.shared': { action: 'Project Shared', past: 'A project was shared with you' },
 			'task.assigned': { action: 'Task Assigned', past: 'A task was assigned to you' },
+			'entity.tagged': { action: 'Tagged', past: 'A teammate tagged you' },
 			'task.completed': { action: 'Task Completed', past: 'A task was marked complete' },
 			'task.due_soon': { action: 'Task Due Soon', past: 'A task is due soon' },
+			'comment.mentioned': { action: 'Mentioned', past: 'You were mentioned in a comment' },
 			'project.activity.changed': {
 				action: 'Project Activity',
 				past: 'A teammate made a project update'
@@ -90,6 +92,32 @@
 			'calendar.sync_failed': {
 				action: 'Calendar Sync Failed',
 				past: 'Calendar sync encountered an error'
+			},
+			'payment.warning': { action: 'Payment Warning', past: 'Billing action is required' },
+			'user.trial_reminder': {
+				action: 'Trial Reminder',
+				past: 'Your trial period is ending'
+			},
+			billing_ops_anomaly: {
+				action: 'Billing Ops Alert',
+				past: 'A billing operations anomaly was detected'
+			},
+			'homework.run_completed': {
+				action: 'Homework Complete',
+				past: 'Your homework run finished'
+			},
+			'homework.run_stopped': {
+				action: 'Homework Stopped',
+				past: 'Your homework run stopped'
+			},
+			'homework.run_failed': { action: 'Homework Failed', past: 'Your homework run failed' },
+			'homework.run_canceled': {
+				action: 'Homework Canceled',
+				past: 'Your homework run was canceled'
+			},
+			'homework.run_updated': {
+				action: 'Homework Updated',
+				past: 'Your homework run updated'
 			}
 		};
 		if (descriptions[eventType]) return descriptions[eventType];
@@ -106,6 +134,10 @@
 	const getEventIcon = (eventType?: string | null) => {
 		if (!eventType) return Bell;
 		if (eventType.startsWith('project.activity')) return Users;
+		if (eventType.startsWith('homework.')) return Sparkles;
+		if (eventType.startsWith('payment.') || eventType.includes('billing')) return AlertTriangle;
+		if (eventType === 'user.trial_reminder') return Clock;
+		if (eventType === 'entity.tagged') return MessageSquare;
 		if (eventType.includes('invite') || eventType.includes('shared')) return Share2;
 		if (eventType === 'brief.completed') return Coffee;
 		if (eventType === 'brief.failed') return AlertTriangle;

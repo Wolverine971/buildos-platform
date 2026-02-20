@@ -414,10 +414,10 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	tag_onto_entity: {
-		summary: 'Send explicit @tag notifications on a task, goal, or document.',
+		summary: 'Tag collaborators on a task, goal, or document (content mention or manual ping).',
 		capabilities: [
 			'Supports explicit user IDs or @handle resolution',
-			'Does not mutate entity content',
+			'Supports content-mode canonical mention injection or ping-only mode',
 			'Reuses standard mention notification rules and permissions'
 		],
 		contexts: ['project', 'project_audit', 'project_forecast'],

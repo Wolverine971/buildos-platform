@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/entity-mention-notification.service.ts
 import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { createTrackedInAppNotification } from './tracked-in-app-notification.service';
 
 type SupabaseClient = App.Locals['supabase'];
 
@@ -205,28 +206,44 @@ export async function notifyEntityMentionsAdded({
 			: '';
 	const message = normalizedSuffix ? `${defaultMessage} ${normalizedSuffix}` : defaultMessage;
 
-	const rows = recipients.map((userId) => ({
-		user_id: userId,
-		type: 'entity_tagged',
-		title: 'You were tagged',
-		message,
-		action_url: actionUrl,
-		event_type: 'entity.tagged',
-		data: {
-			project_id: projectId,
-			entity_type: entityType,
-			entity_id: entityId,
-			entity_title: entityTitle ?? null,
-			actor_user_id: actorUserId,
-			coalesced_from_assignment: false,
-			source,
-			...(normalizedSuffix ? { message_suffix: normalizedSuffix } : {})
-		}
-	}));
+	const results = await Promise.all(
+		recipients.map((userId) =>
+			createTrackedInAppNotification({
+				supabase,
+				recipientUserId: userId,
+				eventType: 'entity.tagged',
+				actorUserId,
+				eventSource: 'api_action',
+				type: 'entity_tagged',
+				title: 'You were tagged',
+				message,
+				actionUrl,
+				payload: {
+					project_id: projectId,
+					project_name: projectName ?? null,
+					entity_type: entityType,
+					entity_id: entityId,
+					entity_title: entityTitle ?? null,
+					actor_user_id: actorUserId,
+					source
+				},
+				data: {
+					project_id: projectId,
+					entity_type: entityType,
+					entity_id: entityId,
+					entity_title: entityTitle ?? null,
+					actor_user_id: actorUserId,
+					coalesced_from_assignment: false,
+					source,
+					...(normalizedSuffix ? { message_suffix: normalizedSuffix } : {})
+				}
+			})
+		)
+	);
 
-	const { error } = await supabase.from('user_notifications').insert(rows);
-	if (error) {
-		console.error('[Entity Mentions] Failed to create mention notifications:', error);
+	const failed = results.filter((result) => !result.success);
+	if (failed.length > 0) {
+		console.error('[Entity Mentions] Failed to create mention notifications:', failed);
 		return { notifiedUserIds: [] };
 	}
 

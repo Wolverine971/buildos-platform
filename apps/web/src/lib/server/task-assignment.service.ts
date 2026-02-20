@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/task-assignment.service.ts
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { createTrackedInAppNotification } from './tracked-in-app-notification.service';
 
 const MAX_TASK_ASSIGNEES = 10;
 
@@ -333,32 +334,45 @@ export async function notifyTaskAssignmentAdded({
 	const message = `${actorName} assigned you a task in ${projectLabel}.`;
 	const actionUrl = `/projects/${projectId}/tasks/${taskId}`;
 	const coalescedMentionSet = new Set<string>(coalescedMentionUserIds);
+	const results = await Promise.all(
+		recipientUserIds.map(async (userId) =>
+			createTrackedInAppNotification({
+				supabase,
+				recipientUserId: userId,
+				eventType: 'task.assigned',
+				actorUserId,
+				eventSource: 'api_action',
+				type: 'task_assigned',
+				title: 'Task assigned to you',
+				message,
+				actionUrl,
+				payload: {
+					project_id: projectId,
+					project_name: projectName ?? null,
+					task_id: taskId,
+					task_title: taskTitle,
+					entity_type: 'task',
+					entity_id: taskId,
+					actor_user_id: actorUserId,
+					source: 'assignment'
+				},
+				data: {
+					project_id: projectId,
+					entity_type: 'task',
+					entity_id: taskId,
+					entity_title: taskTitle,
+					task_id: taskId,
+					actor_user_id: actorUserId,
+					coalesced_from_mention: coalescedMentionSet.has(userId),
+					source: 'assignment'
+				}
+			})
+		)
+	);
 
-	const rows = recipientUserIds.map((userId) => ({
-		user_id: userId,
-		type: 'task_assigned',
-		title: 'Task assigned to you',
-		message,
-		action_url: actionUrl,
-		event_type: 'task.assigned',
-		data: {
-			project_id: projectId,
-			entity_type: 'task',
-			entity_id: taskId,
-			entity_title: taskTitle,
-			task_id: taskId,
-			actor_user_id: actorUserId,
-			coalesced_from_mention: coalescedMentionSet.has(userId),
-			source: 'assignment'
-		}
-	}));
-
-	const { error: notificationError } = await supabase.from('user_notifications').insert(rows);
-	if (notificationError) {
-		console.error(
-			'[Task Assignment] Failed to create assignment notifications:',
-			notificationError
-		);
+	const failed = results.filter((result) => !result.success);
+	if (failed.length > 0) {
+		console.error('[Task Assignment] Failed to create assignment notifications:', failed);
 	}
 
 	return { recipientUserIds };

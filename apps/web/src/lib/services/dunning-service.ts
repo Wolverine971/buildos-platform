@@ -4,6 +4,7 @@ import { DUNNING_CONFIG, EMAIL_TEMPLATES, type DunningStage } from '$lib/config/
 import { EmailService } from './email-service';
 import { StripeService } from './stripe-service';
 import { PUBLIC_APP_URL } from '$env/static/public';
+import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notification.service';
 
 export interface FailedPayment {
 	id: string;
@@ -155,16 +156,32 @@ export class DunningService {
 	 * Add in-app warning for the user
 	 */
 	private async addInAppWarning(userId: string, stage: DunningStage): Promise<void> {
-		await this.supabase.from('user_notifications').insert({
-			user_id: userId,
+		const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+		const result = await createTrackedInAppNotification({
+			supabase: this.supabase,
+			recipientUserId: userId,
+			eventType: 'payment.warning',
+			eventSource: 'cron_scheduler',
 			type: 'payment_warning',
-			event_type: 'payment.warning',
 			title: 'Payment Method Required',
-			message: `Your subscription payment has failed. Please update your payment method to avoid service interruption.`,
+			message:
+				'Your subscription payment has failed. Please update your payment method to avoid service interruption.',
 			priority: 'high',
-			action_url: '/profile?tab=billing',
-			expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+			actionUrl: '/profile?tab=billing',
+			expiresAt,
+			payload: {
+				stage: stage.name,
+				action: stage.action
+			},
+			data: {
+				stage: stage.name,
+				action: stage.action
+			}
 		});
+
+		if (!result.success) {
+			console.error('Failed to create tracked payment warning notification:', result.error);
+		}
 	}
 
 	/**

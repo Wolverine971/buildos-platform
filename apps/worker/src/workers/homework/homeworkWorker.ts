@@ -4,6 +4,7 @@ import type { Database, HomeworkJobMetadata, Json } from '@buildos/shared-types'
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { runHomeworkIteration, type UsageEvent } from './engine/homeworkEngine';
+import { createTrackedInAppNotification } from '../../lib/utils/trackedInAppNotification';
 
 const DEFAULT_MAX_WALL_CLOCK_MS = 60 * 60 * 1000; // 60 minutes
 
@@ -120,13 +121,22 @@ async function notifyUserCompletion(params: {
 			eventType = 'homework.run_updated';
 	}
 
-	await supabase.from('user_notifications').insert({
-		user_id: run.user_id,
+	const result = await createTrackedInAppNotification({
+		supabase,
+		recipientUserId: run.user_id,
+		eventType,
+		eventSource: 'worker_job',
+		actorUserId: run.user_id,
+		type: 'homework',
 		title,
 		message,
-		type: 'homework',
-		event_type: eventType,
-		action_url: `/homework/runs/${run.id}`,
+		actionUrl: `/homework/runs/${run.id}`,
+		payload: {
+			run_id: run.id,
+			status,
+			iterations: run.iteration,
+			metrics: run.metrics ?? null
+		},
 		data: {
 			run_id: run.id,
 			status,
@@ -134,6 +144,14 @@ async function notifyUserCompletion(params: {
 			metrics: run.metrics ?? null
 		}
 	});
+	if (!result.success) {
+		console.error('[Homework] Failed to create tracked completion notification', {
+			runId: run.id,
+			userId: run.user_id,
+			status,
+			error: result.error
+		});
+	}
 }
 
 function initMetrics(run: HomeworkRun) {

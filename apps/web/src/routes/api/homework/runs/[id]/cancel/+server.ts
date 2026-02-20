@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notification.service';
 
 export const POST: RequestHandler = async ({ params, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -46,16 +47,26 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession } 
 		p_metadata_filter: { run_id: runId }
 	});
 
-	// Notify user about cancellation
-	await admin.from('user_notifications').insert({
-		user_id: user.id,
+	const notificationResult = await createTrackedInAppNotification({
+		supabase: admin,
+		recipientUserId: user.id,
+		eventType: 'homework.run_canceled',
+		eventSource: 'api_action',
+		actorUserId: user.id,
+		type: 'homework',
 		title: 'Homework canceled',
 		message: 'Your homework run was canceled.',
-		type: 'homework',
-		event_type: 'homework.run_canceled',
-		action_url: `/homework/runs/${runId}`,
+		actionUrl: `/homework/runs/${runId}`,
+		payload: { run_id: runId, status: 'canceled' },
 		data: { run_id: runId, status: 'canceled' }
 	});
+	if (!notificationResult.success) {
+		console.error('[Homework API] Failed to create cancel notification', {
+			runId,
+			userId: user.id,
+			error: notificationResult.error
+		});
+	}
 
 	return ApiResponse.success({ run_id: runId, status: 'canceled' }, 'Run canceled');
 };

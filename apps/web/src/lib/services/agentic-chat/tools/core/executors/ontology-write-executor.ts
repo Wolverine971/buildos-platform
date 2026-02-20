@@ -43,6 +43,7 @@ import type {
 	DeleteOntoRiskArgs
 } from './types';
 import { createLogger } from '$lib/utils/logger';
+import { createEntityReference, parseEntityReferences } from '$lib/utils/entity-reference-parser';
 
 const logger = createLogger('OntologyWriteExecutor');
 
@@ -68,6 +69,11 @@ type IndexedProjectMember = {
 	keys: Set<string>;
 };
 
+type MentionRecipient = {
+	userId: string;
+	displayName: string;
+};
+
 function normalizeHandleToken(raw: unknown): string | null {
 	if (typeof raw !== 'string') return null;
 	const trimmed = raw.trim().toLowerCase();
@@ -85,6 +91,22 @@ function formatMemberLabel(member: { actorId: string; actor: ProjectMemberActor 
 	const email = actor?.email?.trim().toLowerCase();
 	if (email && email.includes('@')) {
 		return email.split('@')[0] ?? email;
+	}
+
+	return member.actorId.slice(0, 8);
+}
+
+function formatMemberDisplayName(member: IndexedProjectMember): string {
+	const actorName = member.actor?.name?.trim();
+	if (actorName) return actorName;
+
+	const email = member.actor?.email?.trim().toLowerCase();
+	if (email && email.includes('@')) {
+		return email.split('@')[0] ?? email;
+	}
+
+	if (member.userId) {
+		return member.userId.slice(0, 8);
 	}
 
 	return member.actorId.slice(0, 8);
@@ -478,7 +500,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		};
 	}
 
-	private async resolveMentionUserIds({
+	private async resolveMentionRecipients({
 		projectId,
 		mentionedUserIds,
 		mentionedHandles
@@ -486,13 +508,13 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		projectId?: string;
 		mentionedUserIds: unknown;
 		mentionedHandles: unknown;
-	}): Promise<{ hasInput: boolean; mentionedUserIds: string[] }> {
+	}): Promise<{ hasInput: boolean; recipients: MentionRecipient[] }> {
 		const hasUserIdsInput = mentionedUserIds !== undefined;
 		const hasHandlesInput = mentionedHandles !== undefined;
 		const hasInput = hasUserIdsInput || hasHandlesInput;
 
 		if (!hasInput) {
-			return { hasInput: false, mentionedUserIds: [] };
+			return { hasInput: false, recipients: [] };
 		}
 
 		const explicitUserIds: string[] = [];
@@ -522,38 +544,85 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			}
 		}
 
-		const resolvedFromHandles: string[] = [];
-		if (requestedHandles.length > 0) {
-			const normalizedProjectId = projectId?.trim();
-			if (!normalizedProjectId) {
-				throw new Error('project_id is required to resolve mentioned_handles');
-			}
-
-			const indexedMembers = await this.fetchProjectMemberDirectory(normalizedProjectId);
-			for (const handle of requestedHandles) {
-				const member = this.resolveProjectMemberForHandle(
-					handle,
-					indexedMembers,
-					'mention'
-				);
-				if (!member.userId) {
-					throw new Error(
-						`Matched mention handle "@${handle}" has no linked user account; use mentioned_user_ids`
-					);
-				}
-				resolvedFromHandles.push(member.userId);
-			}
+		const normalizedProjectId = projectId?.trim();
+		if (!normalizedProjectId) {
+			throw new Error('project_id is required to resolve mention recipients');
 		}
 
-		const mergedUserIds = Array.from(new Set([...explicitUserIds, ...resolvedFromHandles]));
-		if (mergedUserIds.length > MAX_MENTION_RECIPIENTS) {
+		const indexedMembers = await this.fetchProjectMemberDirectory(normalizedProjectId);
+		const membersByUserId = new Map<string, IndexedProjectMember>();
+		for (const member of indexedMembers) {
+			if (!member.userId) continue;
+			membersByUserId.set(member.userId, member);
+		}
+
+		const orderedMembers: IndexedProjectMember[] = [];
+		for (const userId of explicitUserIds) {
+			const matchedMember = membersByUserId.get(userId);
+			if (!matchedMember) {
+				throw new Error(
+					`mentioned_user_ids must reference active project members. Unmatched user_id: ${userId}`
+				);
+			}
+			orderedMembers.push(matchedMember);
+		}
+
+		for (const handle of requestedHandles) {
+			const member = this.resolveProjectMemberForHandle(handle, indexedMembers, 'mention');
+			if (!member.userId) {
+				throw new Error(
+					`Matched mention handle "@${handle}" has no linked user account; use mentioned_user_ids`
+				);
+			}
+			orderedMembers.push(member);
+		}
+
+		const recipients = Array.from(
+			new Map(
+				orderedMembers
+					.filter((member) => typeof member.userId === 'string')
+					.map((member) => [
+						member.userId as string,
+						{
+							userId: member.userId as string,
+							displayName: formatMemberDisplayName(member)
+						}
+					])
+			).values()
+		);
+
+		if (recipients.length > MAX_MENTION_RECIPIENTS) {
 			throw new Error(`A mention ping can notify at most ${MAX_MENTION_RECIPIENTS} users`);
 		}
 
 		return {
 			hasInput,
-			mentionedUserIds: mergedUserIds
+			recipients
 		};
+	}
+
+	private extractMentionedUserIdsFromTextValues(
+		textValues: Array<string | null | undefined>
+	): Set<string> {
+		const mentionedUserIds = new Set<string>();
+		for (const rawValue of textValues) {
+			if (typeof rawValue !== 'string' || rawValue.length === 0) continue;
+			const parsed = parseEntityReferences(rawValue);
+			for (const entity of parsed.entities) {
+				if (entity.type !== 'user') continue;
+				if (entity.id.trim().length === 0) continue;
+				mentionedUserIds.add(entity.id);
+			}
+		}
+		return mentionedUserIds;
+	}
+
+	private buildMentionContentLine(recipients: MentionRecipient[], message?: string): string {
+		const mentionTokens = recipients.map((recipient) =>
+			createEntityReference('user', recipient.userId, recipient.displayName)
+		);
+		const suffix = typeof message === 'string' ? message.trim() : '';
+		return suffix.length > 0 ? `${mentionTokens.join(' ')} ${suffix}` : mentionTokens.join(' ');
 	}
 
 	// ============================================
@@ -1329,13 +1398,22 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		notified_user_ids: string[];
 		message: string;
 	}> {
-		const mentionResolution = await this.resolveMentionUserIds({
-			projectId: args.project_id,
+		const projectId = args.project_id?.trim();
+		const entityId = args.entity_id?.trim();
+		if (!projectId) {
+			throw new Error('project_id is required for tag_onto_entity');
+		}
+		if (!entityId) {
+			throw new Error('entity_id is required for tag_onto_entity');
+		}
+
+		const mentionResolution = await this.resolveMentionRecipients({
+			projectId,
 			mentionedUserIds: args.mentioned_user_ids,
 			mentionedHandles: args.mentioned_handles
 		});
 
-		if (!mentionResolution.hasInput || mentionResolution.mentionedUserIds.length === 0) {
+		if (!mentionResolution.hasInput || mentionResolution.recipients.length === 0) {
 			throw new Error('tag_onto_entity requires mentioned_user_ids or mentioned_handles');
 		}
 
@@ -1343,33 +1421,215 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			throw new Error('entity_type must be one of: task, goal, document');
 		}
 
-		const payload: Record<string, unknown> = {
-			project_id: args.project_id,
-			entity_type: args.entity_type,
-			entity_id: args.entity_id,
-			mentioned_user_ids: mentionResolution.mentionedUserIds
-		};
-		if (typeof args.message === 'string' && args.message.trim().length > 0) {
-			payload.message = args.message.trim();
+		const mode = args.mode === 'ping' ? 'ping' : 'content';
+		const recipientUserIds = mentionResolution.recipients.map((recipient) => recipient.userId);
+
+		if (mode === 'ping') {
+			const payload: Record<string, unknown> = {
+				project_id: projectId,
+				entity_type: args.entity_type,
+				entity_id: entityId,
+				mentioned_user_ids: recipientUserIds
+			};
+			if (typeof args.message === 'string' && args.message.trim().length > 0) {
+				payload.message = args.message.trim();
+			}
+
+			const data = await this.apiRequest<{
+				project_id: string;
+				entity_type: 'task' | 'goal' | 'document';
+				entity_id: string;
+				mentioned_user_ids: string[];
+				notified_user_ids: string[];
+			}>('/api/onto/mentions/ping', {
+				method: 'POST',
+				body: JSON.stringify(payload)
+			});
+
+			const notifiedCount = Array.isArray(data.notified_user_ids)
+				? data.notified_user_ids.length
+				: 0;
+			return {
+				...data,
+				message: `Tagged ${notifiedCount} collaborator${notifiedCount === 1 ? '' : 's'} on the ${args.entity_type}.`
+			};
 		}
 
-		const data = await this.apiRequest<{
-			project_id: string;
-			entity_type: 'task' | 'goal' | 'document';
-			entity_id: string;
-			mentioned_user_ids: string[];
-			notified_user_ids: string[];
-		}>('/api/onto/mentions/ping', {
-			method: 'POST',
-			body: JSON.stringify(payload)
+		let existingMentionedUserIds = new Set<string>();
+
+		if (args.entity_type === 'task') {
+			const taskDetails = await this.apiRequest<{ task?: Record<string, unknown> }>(
+				`/api/onto/tasks/${entityId}/full`,
+				{ method: 'GET' }
+			);
+			const task = taskDetails?.task;
+			if (!task) throw new Error(`Task not found: ${entityId}`);
+			const entityProjectId =
+				typeof task.project_id === 'string' ? task.project_id : undefined;
+			if (entityProjectId && entityProjectId !== projectId) {
+				throw new Error(
+					`task:${entityId} belongs to project ${entityProjectId}, not project ${projectId}`
+				);
+			}
+
+			existingMentionedUserIds = this.extractMentionedUserIdsFromTextValues([
+				task.title as string | null | undefined,
+				task.description as string | null | undefined
+			]);
+
+			const newRecipients = mentionResolution.recipients.filter(
+				(recipient) => !existingMentionedUserIds.has(recipient.userId)
+			);
+			if (newRecipients.length === 0) {
+				return {
+					project_id: projectId,
+					entity_type: 'task',
+					entity_id: entityId,
+					mentioned_user_ids: recipientUserIds,
+					notified_user_ids: [],
+					message: 'All selected collaborators are already mentioned on this task.'
+				};
+			}
+
+			const mentionLine = this.buildMentionContentLine(newRecipients, args.message);
+			const currentDescription = typeof task.description === 'string' ? task.description : '';
+			const nextDescription = currentDescription
+				? `${currentDescription}\n\n${mentionLine}`
+				: mentionLine;
+
+			await this.apiRequest(`/api/onto/tasks/${entityId}`, {
+				method: 'PATCH',
+				body: JSON.stringify({ description: nextDescription })
+			});
+
+			const expectedNotifiedUserIds = newRecipients
+				.map((recipient) => recipient.userId)
+				.filter((userId) => userId !== this.userId);
+
+			return {
+				project_id: projectId,
+				entity_type: 'task',
+				entity_id: entityId,
+				mentioned_user_ids: newRecipients.map((recipient) => recipient.userId),
+				notified_user_ids: expectedNotifiedUserIds,
+				message: `Added ${newRecipients.length} canonical mention token${newRecipients.length === 1 ? '' : 's'} to task content.`
+			};
+		}
+
+		if (args.entity_type === 'goal') {
+			const goalDetails = await this.apiRequest<{ goal?: Record<string, unknown> }>(
+				`/api/onto/goals/${entityId}/full`,
+				{ method: 'GET' }
+			);
+			const goal = goalDetails?.goal;
+			if (!goal) throw new Error(`Goal not found: ${entityId}`);
+			const entityProjectId =
+				typeof goal.project_id === 'string' ? goal.project_id : undefined;
+			if (entityProjectId && entityProjectId !== projectId) {
+				throw new Error(
+					`goal:${entityId} belongs to project ${entityProjectId}, not project ${projectId}`
+				);
+			}
+
+			existingMentionedUserIds = this.extractMentionedUserIdsFromTextValues([
+				goal.name as string | null | undefined,
+				goal.goal as string | null | undefined,
+				goal.description as string | null | undefined
+			]);
+
+			const newRecipients = mentionResolution.recipients.filter(
+				(recipient) => !existingMentionedUserIds.has(recipient.userId)
+			);
+			if (newRecipients.length === 0) {
+				return {
+					project_id: projectId,
+					entity_type: 'goal',
+					entity_id: entityId,
+					mentioned_user_ids: recipientUserIds,
+					notified_user_ids: [],
+					message: 'All selected collaborators are already mentioned on this goal.'
+				};
+			}
+
+			const mentionLine = this.buildMentionContentLine(newRecipients, args.message);
+			const currentDescription = typeof goal.description === 'string' ? goal.description : '';
+			const nextDescription = currentDescription
+				? `${currentDescription}\n\n${mentionLine}`
+				: mentionLine;
+
+			await this.apiRequest(`/api/onto/goals/${entityId}`, {
+				method: 'PATCH',
+				body: JSON.stringify({ description: nextDescription })
+			});
+
+			const expectedNotifiedUserIds = newRecipients
+				.map((recipient) => recipient.userId)
+				.filter((userId) => userId !== this.userId);
+
+			return {
+				project_id: projectId,
+				entity_type: 'goal',
+				entity_id: entityId,
+				mentioned_user_ids: newRecipients.map((recipient) => recipient.userId),
+				notified_user_ids: expectedNotifiedUserIds,
+				message: `Added ${newRecipients.length} canonical mention token${newRecipients.length === 1 ? '' : 's'} to goal content.`
+			};
+		}
+
+		const documentDetails = await this.apiRequest<{ document?: Record<string, unknown> }>(
+			`/api/onto/documents/${entityId}/full`,
+			{ method: 'GET' }
+		);
+		const document = documentDetails?.document;
+		if (!document) throw new Error(`Document not found: ${entityId}`);
+		const entityProjectId =
+			typeof document.project_id === 'string' ? document.project_id : undefined;
+		if (entityProjectId && entityProjectId !== projectId) {
+			throw new Error(
+				`document:${entityId} belongs to project ${entityProjectId}, not project ${projectId}`
+			);
+		}
+
+		existingMentionedUserIds = this.extractMentionedUserIdsFromTextValues([
+			document.title as string | null | undefined,
+			document.description as string | null | undefined,
+			document.content as string | null | undefined
+		]);
+
+		const newRecipients = mentionResolution.recipients.filter(
+			(recipient) => !existingMentionedUserIds.has(recipient.userId)
+		);
+		if (newRecipients.length === 0) {
+			return {
+				project_id: projectId,
+				entity_type: 'document',
+				entity_id: entityId,
+				mentioned_user_ids: recipientUserIds,
+				notified_user_ids: [],
+				message: 'All selected collaborators are already mentioned on this document.'
+			};
+		}
+
+		const mentionLine = this.buildMentionContentLine(newRecipients, args.message);
+		const currentContent = typeof document.content === 'string' ? document.content : '';
+		const nextContent = currentContent ? `${currentContent}\n\n${mentionLine}` : mentionLine;
+
+		await this.apiRequest(`/api/onto/documents/${entityId}`, {
+			method: 'PATCH',
+			body: JSON.stringify({ content: nextContent })
 		});
 
-		const notifiedCount = Array.isArray(data.notified_user_ids)
-			? data.notified_user_ids.length
-			: 0;
+		const expectedNotifiedUserIds = newRecipients
+			.map((recipient) => recipient.userId)
+			.filter((userId) => userId !== this.userId);
+
 		return {
-			...data,
-			message: `Tagged ${notifiedCount} collaborator${notifiedCount === 1 ? '' : 's'} on the ${args.entity_type}.`
+			project_id: projectId,
+			entity_type: 'document',
+			entity_id: entityId,
+			mentioned_user_ids: newRecipients.map((recipient) => recipient.userId),
+			notified_user_ids: expectedNotifiedUserIds,
+			message: `Added ${newRecipients.length} canonical mention token${newRecipients.length === 1 ? '' : 's'} to document content.`
 		};
 	}
 

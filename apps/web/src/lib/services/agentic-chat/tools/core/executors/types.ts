@@ -396,6 +396,7 @@ export interface TagOntoEntityArgs {
 	project_id: string;
 	entity_type: 'task' | 'goal' | 'document';
 	entity_id: string;
+	mode?: 'content' | 'ping';
 	mentioned_user_ids?: string[];
 	mentioned_handles?: string[];
 	message?: string;
