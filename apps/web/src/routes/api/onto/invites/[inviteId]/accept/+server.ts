@@ -49,6 +49,61 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		// Log acceptance to project activity + notify owners/inviter
 		if (projectId) {
 			const actorId = await ensureActorId(supabase, user.id);
+			const nowIso = new Date().toISOString();
+
+			// Keep project-activity event subscription aligned with project-level settings.
+			const { data: settingsRows, error: settingsError } = await supabase.rpc(
+				'get_project_notification_settings',
+				{
+					p_project_id: projectId
+				}
+			);
+
+			if (settingsError) {
+				void logOntologyApiError({
+					supabase,
+					error: settingsError,
+					endpoint: `/api/onto/invites/${inviteId}/accept`,
+					method: 'POST',
+					userId,
+					projectId,
+					entityType: 'project_invite',
+					operation: 'project_invite_accept_settings_fetch'
+				});
+			} else {
+				const settingsRow = Array.isArray(settingsRows)
+					? (settingsRows[0] as { effective_enabled?: boolean } | undefined)
+					: undefined;
+
+				if (settingsRow?.effective_enabled) {
+					const { error: subscriptionUpsertError } = await supabase
+						.from('notification_subscriptions')
+						.upsert(
+							{
+								user_id: user.id,
+								event_type: 'project.activity.batched',
+								is_active: true,
+								admin_only: false,
+								created_by: user.id,
+								updated_at: nowIso
+							},
+							{ onConflict: 'user_id,event_type' }
+						);
+
+					if (subscriptionUpsertError) {
+						void logOntologyApiError({
+							supabase,
+							error: subscriptionUpsertError,
+							endpoint: `/api/onto/invites/${inviteId}/accept`,
+							method: 'POST',
+							userId,
+							projectId,
+							entityType: 'project_invite',
+							operation: 'project_invite_accept_project_activity_subscription_upsert'
+						});
+					}
+				}
+			}
 
 			// Activity log entry for project feed
 			const { error: logError } = await supabase.from('onto_project_logs').insert({
@@ -166,6 +221,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 					project_id: projectId,
 					project_name: projectName,
 					actor_user_id: user.id,
+					actor_name: displayName,
 					actor_actor_id: actorId,
 					role_key: result?.role_key ?? null,
 					access: result?.access ?? null
@@ -205,7 +261,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 						is_active: true,
 						admin_only: false,
 						created_by: user.id,
-						updated_at: new Date().toISOString()
+						updated_at: nowIso
 					}));
 
 				if (missingSubscriptions.length > 0) {

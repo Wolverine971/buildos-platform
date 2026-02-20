@@ -66,10 +66,6 @@
 
 	// Context-aware chat configuration based on current page
 	const chatContextType = $derived.by((): ChatContextType => {
-		// Legacy task page (deprecated): treat as project context
-		if (currentPath.match(/^\/projects-old\/[^/]+\/tasks\/[^/]+/)) {
-			return 'project';
-		}
 		// Project detail page: /projects/[id]
 		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
 			return 'project';
@@ -79,11 +75,6 @@
 	});
 
 	const chatEntityId = $derived.by((): string | undefined => {
-		// Legacy task page (deprecated): return project ID from path
-		const legacyTaskMatch = currentPath.match(/^\/projects-old\/([^/]+)\/tasks\/[^/]+/);
-		if (legacyTaskMatch) {
-			return legacyTaskMatch[1];
-		}
 		// Project detail page: return project ID
 		if (currentPath.match(/^\/projects\/([^/]+)$/) && $page.data?.project) {
 			return $page.data.project.id;

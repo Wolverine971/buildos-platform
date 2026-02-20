@@ -12,17 +12,25 @@ BEGIN
     COUNT(DISTINCT ne.id) AS total_events,
     COUNT(nd.id) AS total_deliveries,
     COUNT(DISTINCT ns.user_id) AS unique_subscribers,
-    -- FIXED: Added explicit NULL filter
     ROUND(
-      AVG(EXTRACT(EPOCH FROM (nd.sent_at - nd.created_at))) FILTER (WHERE nd.sent_at IS NOT NULL)::NUMERIC,
+      AVG(EXTRACT(EPOCH FROM (nd.sent_at - nd.created_at)))
+        FILTER (WHERE nd.sent_at IS NOT NULL)::NUMERIC,
       2
     ) AS avg_delivery_time_seconds,
     ROUND(
-      (COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.status = 'sent')::NUMERIC, 0) * 100),
+      (
+        COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC
+        / NULLIF(COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC, 0)
+        * 100
+      ),
       2
     ) AS open_rate,
     ROUND(
-      (COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0) * 100),
+      (
+        COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC
+        / NULLIF(COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0)
+        * 100
+      ),
       2
     ) AS click_rate
   FROM notification_events ne

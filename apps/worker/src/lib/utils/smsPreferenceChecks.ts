@@ -135,6 +135,53 @@ export async function checkAndUpdateRateLimit(
 	supabase: TypedSupabaseClient
 ): Promise<RateLimitResult> {
 	try {
+		const defaultLimit = smsPrefs.daily_sms_limit || 10;
+		const { data, error } = await (supabase.rpc as any)('check_and_increment_sms_daily_limit', {
+			p_user_id: userId,
+			p_increment: 1,
+			p_default_limit: defaultLimit
+		});
+
+		if (!error) {
+			const row = (Array.isArray(data) ? data[0] : data) as
+				| {
+						allowed?: boolean;
+						current_count?: number | null;
+						limit?: number | null;
+						reason?: string | null;
+				  }
+				| null
+				| undefined;
+
+			if (row && typeof row.allowed === 'boolean') {
+				return {
+					allowed: row.allowed,
+					currentCount: row.current_count ?? undefined,
+					limit: row.limit ?? undefined,
+					reason: row.reason || (row.allowed ? undefined : 'Daily SMS limit reached')
+				};
+			}
+		} else {
+			console.warn(
+				`[SMS Rate Limit] Atomic RPC unavailable, falling back to legacy logic for user ${userId}:`,
+				error
+			);
+		}
+
+		// Fallback for environments where the migration has not been applied yet.
+		return legacyCheckAndUpdateRateLimit(userId, smsPrefs, supabase);
+	} catch (error: any) {
+		console.error(`[SMS Rate Limit] Error checking rate limit for user ${userId}:`, error);
+		return legacyCheckAndUpdateRateLimit(userId, smsPrefs, supabase);
+	}
+}
+
+async function legacyCheckAndUpdateRateLimit(
+	userId: string,
+	smsPrefs: SMSPreferences,
+	supabase: TypedSupabaseClient
+): Promise<RateLimitResult> {
+	try {
 		const limit = smsPrefs.daily_sms_limit || 10;
 
 		// Check if count needs reset (new day)
@@ -146,9 +193,6 @@ export async function checkAndUpdateRateLimit(
 		let currentCount = smsPrefs.daily_sms_count || 0;
 
 		if (!lastReset || lastReset !== today) {
-			// Reset count for new day
-			console.log(`[SMS Rate Limit] Resetting daily count for user ${userId} (new day)`);
-
 			const { error: resetError } = await supabase
 				.from('user_sms_preferences')
 				.update({
@@ -157,18 +201,11 @@ export async function checkAndUpdateRateLimit(
 				})
 				.eq('user_id', userId);
 
-			if (resetError) {
-				console.error(
-					`[SMS Rate Limit] Error resetting count for user ${userId}:`,
-					resetError
-				);
-				// Don't fail - use current count
-			} else {
+			if (!resetError) {
 				currentCount = 0;
 			}
 		}
 
-		// Check if limit reached
 		if (currentCount >= limit) {
 			return {
 				allowed: false,
@@ -177,11 +214,6 @@ export async function checkAndUpdateRateLimit(
 				reason: `Daily SMS limit reached (${currentCount}/${limit})`
 			};
 		}
-
-		// Increment count BEFORE sending (prevents race conditions)
-		console.log(
-			`[SMS Rate Limit] Incrementing count for user ${userId}: ${currentCount} -> ${currentCount + 1} (limit: ${limit})`
-		);
 
 		const { error: incrementError } = await supabase
 			.from('user_sms_preferences')
@@ -192,10 +224,9 @@ export async function checkAndUpdateRateLimit(
 
 		if (incrementError) {
 			console.error(
-				`[SMS Rate Limit] Error incrementing count for user ${userId}:`,
+				`[SMS Rate Limit] Legacy increment failed for user ${userId}:`,
 				incrementError
 			);
-			// Don't fail the SMS - allow it but log error
 		}
 
 		return {
@@ -204,8 +235,7 @@ export async function checkAndUpdateRateLimit(
 			limit
 		};
 	} catch (error: any) {
-		console.error(`[SMS Rate Limit] Error checking rate limit for user ${userId}:`, error);
-		// Fail closed - if we can't check limits, don't send
+		console.error(`[SMS Rate Limit] Legacy fallback failed for user ${userId}:`, error);
 		return {
 			allowed: false,
 			reason: `Error checking rate limit: ${error.message}`

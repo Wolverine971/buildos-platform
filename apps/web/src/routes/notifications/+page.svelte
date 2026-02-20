@@ -131,6 +131,7 @@
 
 	// Get delivery status info
 	const getStatusInfo = (
+		feedKind?: string | null,
 		status?: string | null,
 		openedAt?: string | null,
 		clickedAt?: string | null,
@@ -142,6 +143,14 @@
 		bgColor: string;
 		icon: typeof CheckCircle;
 	} => {
+		if (feedKind === 'activity_event') {
+			return {
+				label: 'Activity',
+				color: 'text-muted-foreground',
+				bgColor: 'bg-muted/50',
+				icon: Bell
+			};
+		}
 		if (clickedAt) {
 			return {
 				label: 'Clicked',
@@ -164,6 +173,14 @@
 				color: 'text-red-600 dark:text-red-400',
 				bgColor: 'bg-red-50 dark:bg-red-950/50',
 				icon: XCircle
+			};
+		}
+		if (status === 'cancelled') {
+			return {
+				label: 'Cancelled',
+				color: 'text-amber-700 dark:text-amber-400',
+				bgColor: 'bg-amber-50 dark:bg-amber-950/50',
+				icon: Clock
 			};
 		}
 		if (status === 'delivered' || status === 'sent') {
@@ -476,6 +493,7 @@
 								event?.event_type
 							)}
 							{@const statusInfo = getStatusInfo(
+								notification.feed_kind,
 								notification.status,
 								notification.opened_at,
 								notification.clicked_at,
@@ -557,7 +575,7 @@
 										{/if}
 
 										<!-- Error message for failed notifications -->
-										{#if notification.last_error && (notification.status === 'failed' || notification.failed_at)}
+										{#if notification.feed_kind !== 'activity_event' && notification.last_error && (notification.status === 'failed' || notification.status === 'cancelled' || notification.failed_at)}
 											<div
 												class="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1.5 rounded border border-red-200 dark:border-red-900"
 											>
@@ -571,12 +589,14 @@
 												class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80"
 											>
 												<ChannelIcon class="w-3 h-3" />
-												<span class="capitalize"
-													>{notification.channel?.replace('_', ' ') ||
-														'in app'}</span
-												>
+												<span class="capitalize">
+													{notification.feed_kind === 'activity_event'
+														? 'activity event'
+														: notification.channel?.replace('_', ' ') ||
+															'in app'}
+												</span>
 											</span>
-											{#if notification.attempts && notification.attempts > 1}
+											{#if notification.feed_kind !== 'activity_event' && notification.attempts && notification.attempts > 1}
 												<span class="text-muted-foreground/40">·</span>
 												<span class="text-[11px] text-muted-foreground/70">
 													Attempt {notification.attempts}/{notification.max_attempts ||
@@ -591,7 +611,7 @@
 													{content.details.join(' · ')}
 												</span>
 											{/if}
-											{#if notification.opened_at}
+											{#if notification.feed_kind !== 'activity_event' && notification.opened_at}
 												<span class="text-muted-foreground/40">·</span>
 												<span class="text-[11px] text-muted-foreground/70">
 													Opened {formatRelativeTime(

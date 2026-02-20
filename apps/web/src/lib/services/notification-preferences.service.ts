@@ -14,6 +14,7 @@ import type {
 	PushSubscription
 } from '@buildos/shared-types';
 import { PUBLIC_SUPABASE_ANON_KEY, PUBLIC_SUPABASE_URL } from '$env/static/public';
+import { browser } from '$app/environment';
 
 class NotificationPreferencesService {
 	private supabase: SupabaseClient;
@@ -66,6 +67,59 @@ class NotificationPreferencesService {
 	 * @param updates - Partial updates to notification preferences
 	 */
 	async update(updates: Partial<UserNotificationPreferences>): Promise<void> {
+		// Route browser updates through API so subscription side-effects stay consistent
+		if (browser) {
+			const response = await fetch('/api/notification-preferences', {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(updates)
+			});
+
+			const result = await response.json().catch(() => ({}));
+
+			if (!response.ok) {
+				const details =
+					result && typeof result === 'object' && 'details' in result
+						? (result.details as Record<string, unknown>)
+						: {};
+
+				if (details.requiresPhoneSetup) {
+					throw new Error(
+						'Phone number required. Please set up your phone number in Settings first.'
+					);
+				}
+
+				if (details.requiresPhoneVerification) {
+					throw new Error(
+						'Phone number not verified. Please verify your phone number in Settings first.'
+					);
+				}
+
+				if (details.requiresOptIn) {
+					throw new Error(
+						'You have opted out of SMS notifications. Please opt back in via Settings to enable SMS.'
+					);
+				}
+
+				if (details.requiresBriefActivation) {
+					throw new Error(
+						'Daily brief generation is not active. Please enable brief generation in Brief Preferences first.'
+					);
+				}
+
+				const errorMessage =
+					result && typeof result === 'object' && 'error' in result
+						? (result.error as string)
+						: 'Failed to update notification preferences';
+				throw new Error(errorMessage);
+			}
+
+			return;
+		}
+
+		// Server-side fallback (used only in non-browser contexts)
 		// Get current user ID
 		const {
 			data: { user },

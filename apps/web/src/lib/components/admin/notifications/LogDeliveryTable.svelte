@@ -80,6 +80,7 @@
 	function getStatusBadgeColor(status: string): string {
 		const colors: Record<string, string> = {
 			pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+			cancelled: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
 			sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
 			delivered: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
 			failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
@@ -98,6 +99,8 @@
 				return Send;
 			case 'delivered':
 				return CheckCircle;
+			case 'cancelled':
+				return Clock;
 			case 'failed':
 				return XCircle;
 			default:
@@ -114,6 +117,8 @@
 				return 'text-indigo-500';
 			case 'delivered':
 				return 'text-green-500';
+			case 'cancelled':
+				return 'text-amber-500';
 			case 'failed':
 				return 'text-red-500';
 			default:

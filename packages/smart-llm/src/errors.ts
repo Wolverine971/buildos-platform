@@ -84,7 +84,7 @@ export function isRetryableOpenRouterError(error: unknown): boolean {
 		return false;
 	}
 
-	const maybeError = error as { status?: number; message?: string };
+	const maybeError = error as { status?: number; message?: string; code?: string; name?: string };
 	const status = maybeError.status;
 
 	if (status === 408 || status === 409 || status === 429) {
@@ -95,8 +95,36 @@ export function isRetryableOpenRouterError(error: unknown): boolean {
 		return true;
 	}
 
+	const code = typeof maybeError.code === 'string' ? maybeError.code.toUpperCase() : '';
+	if (
+		code === 'ETIMEDOUT' ||
+		code === 'ECONNRESET' ||
+		code === 'ECONNREFUSED' ||
+		code === 'EAI_AGAIN' ||
+		code === 'UND_ERR_CONNECT_TIMEOUT' ||
+		code === 'UND_ERR_HEADERS_TIMEOUT' ||
+		code === 'UND_ERR_SOCKET' ||
+		code === 'UND_ERR_ABORTED'
+	) {
+		return true;
+	}
+
+	if (maybeError.name === 'AbortError') {
+		return true;
+	}
+
 	const message = typeof maybeError.message === 'string' ? maybeError.message.toLowerCase() : '';
 	if (message.includes('timeout') || message.includes('timed out')) {
+		return true;
+	}
+	if (
+		message.includes('terminated') ||
+		message.includes('aborted') ||
+		message.includes('connection reset') ||
+		message.includes('socket hang up') ||
+		message.includes('fetch failed') ||
+		message.includes('network error')
+	) {
 		return true;
 	}
 	if (message.includes('rate limit')) {

@@ -10771,6 +10771,21 @@ export type Database = {
           message_ids: string[]
         }[]
       }
+      check_and_increment_sms_daily_limit: {
+        Args: {
+          p_default_limit?: number
+          p_increment?: number
+          p_now?: string
+          p_user_id: string
+        }
+        Returns: {
+          allowed: boolean
+          current_count: number
+          limit: number
+          reason: string
+          reset_at: string
+        }[]
+      }
       check_feedback_rate_limit: {
         Args: { client_ip: unknown }
         Returns: boolean

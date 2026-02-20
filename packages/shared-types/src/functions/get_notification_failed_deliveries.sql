@@ -22,7 +22,7 @@ BEGIN
   FROM notification_deliveries nd
   JOIN notification_events ne ON ne.id = nd.event_id
   JOIN users u ON u.id = nd.recipient_user_id
-  WHERE nd.status = 'failed'
+  WHERE nd.status IN ('failed', 'bounced')
     AND nd.created_at > NOW() - p_interval::INTERVAL
   ORDER BY nd.created_at DESC
   LIMIT p_limit;

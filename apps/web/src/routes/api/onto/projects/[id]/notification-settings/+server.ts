@@ -172,6 +172,35 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
+		if (settings.effective_enabled) {
+			const { error: subscriptionUpsertError } = await supabase
+				.from('notification_subscriptions')
+				.upsert(
+					{
+						user_id: user.id,
+						event_type: 'project.activity.batched',
+						is_active: true,
+						admin_only: false,
+						created_by: user.id,
+						updated_at: new Date().toISOString()
+					},
+					{ onConflict: 'user_id,event_type' }
+				);
+
+			if (subscriptionUpsertError) {
+				await logOntologyApiError({
+					supabase,
+					error: subscriptionUpsertError,
+					endpoint: `/api/onto/projects/${projectId}/notification-settings`,
+					method: 'PATCH',
+					userId: user.id,
+					projectId,
+					entityType: 'project',
+					operation: 'project_notification_settings_subscription_upsert'
+				});
+			}
+		}
+
 		return ApiResponse.success({ settings });
 	} catch (error) {
 		console.error('[Project Notification Settings API] Failed to update settings:', error);

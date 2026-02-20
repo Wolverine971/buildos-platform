@@ -75,10 +75,10 @@
 		| { type: 'event'; data: any; project: ProjectInfo | null }
 		| null;
 
-	const LOCAL_STORAGE_KEY = 'dashboard_calendar_state';
+	const LOCAL_STORAGE_KEY = 'dashboard_calendar_state_v2';
 	const BUFFER_DAYS = 7;
 
-	let viewMode = $state<ViewMode>('week');
+	let viewMode = $state<ViewMode>('month');
 	let currentDate = $state(new Date());
 	let items = $state<CalendarItem[]>([]);
 	let isLoading = $state(false);

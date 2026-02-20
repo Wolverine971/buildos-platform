@@ -26,6 +26,20 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 			return ApiResponse.badRequest('Delivery not found');
 		}
 
+		if (!delivery.event_id) {
+			return ApiResponse.badRequest('Delivery is missing event_id');
+		}
+
+		const { data: event, error: eventError } = await supabase
+			.from('notification_events')
+			.select('event_type')
+			.eq('id', delivery.event_id)
+			.single();
+
+		if (eventError || !event?.event_type) {
+			return ApiResponse.badRequest('Event not found for delivery');
+		}
+
 		// Check if max attempts exceeded
 		if ((delivery.attempts ?? 0) >= (delivery.max_attempts ?? 3)) {
 			return ApiResponse.badRequest('Maximum retry attempts exceeded');
@@ -52,6 +66,7 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 			p_job_type: 'send_notification',
 			p_metadata: {
 				event_id: delivery.event_id,
+				event_type: event.event_type,
 				delivery_id: deliveryId,
 				channel: delivery.channel,
 				retry: true

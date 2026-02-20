@@ -17,6 +17,10 @@ type NotificationDeliveryRow = Database['public']['Tables']['notification_delive
 	} | null;
 };
 
+type NotificationFeedRow = NotificationDeliveryRow & {
+	feed_kind: 'delivery' | 'activity_event';
+};
+
 export const load: PageServerLoad = async ({ locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
@@ -63,7 +67,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	if (error) {
 		console.error('[Notifications] Failed to load deliveries', error);
 		return {
-			notifications: [] as NotificationDeliveryRow[],
+			notifications: [] as NotificationFeedRow[],
 			error: 'Failed to load notifications. Please try again.'
 		};
 	}
@@ -94,7 +98,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		);
 	}
 
-	const syntheticRows: NotificationDeliveryRow[] = (projectEvents ?? [])
+	const syntheticRows: NotificationFeedRow[] = (projectEvents ?? [])
 		.filter((eventRow) => !deliveredEventIds.has(eventRow.id))
 		.map((eventRow) => {
 			const syntheticRow = {
@@ -105,11 +109,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 				channel: 'in_app',
 				channel_identifier: null,
 				payload: (eventRow.payload ?? {}) as any,
-				status: 'delivered',
-				attempts: 1,
-				max_attempts: 1,
+				// Synthetic feed entry: represents a batched activity event without a delivery row.
+				status: 'pending',
+				attempts: 0,
+				max_attempts: 0,
 				sent_at: eventRow.created_at,
-				delivered_at: eventRow.created_at,
+				delivered_at: null,
 				opened_at: null,
 				clicked_at: null,
 				failed_at: null,
@@ -120,6 +125,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				correlation_id: eventRow.correlation_id,
 				created_at: eventRow.created_at,
 				updated_at: eventRow.created_at ?? new Date().toISOString(),
+				feed_kind: 'activity_event' as const,
 				notification_events: {
 					id: eventRow.id,
 					event_type: eventRow.event_type,
@@ -132,10 +138,15 @@ export const load: PageServerLoad = async ({ locals }) => {
 					created_at: eventRow.created_at
 				}
 			};
-			return syntheticRow as NotificationDeliveryRow;
+			return syntheticRow as NotificationFeedRow;
 		});
 
-	const notifications = [...deliveries, ...syntheticRows]
+	const deliveryRows: NotificationFeedRow[] = deliveries.map((row) => ({
+		...row,
+		feed_kind: 'delivery'
+	}));
+
+	const notifications = [...deliveryRows, ...syntheticRows]
 		.sort((a, b) => {
 			const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
 			const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;

@@ -18,6 +18,7 @@ import type {
 	TaskDueSoonEventPayload,
 	ProjectActivityChangedEventPayload,
 	ProjectActivityBatchedEventPayload,
+	ProjectInviteAcceptedEventPayload,
 	ProjectPhaseScheduledEventPayload,
 	CalendarSyncFailedEventPayload,
 	UserSignupEventPayload
@@ -34,6 +35,7 @@ export type EventPayload =
 	| TaskDueSoonEventPayload
 	| ProjectActivityChangedEventPayload
 	| ProjectActivityBatchedEventPayload
+	| ProjectInviteAcceptedEventPayload
 	| ProjectPhaseScheduledEventPayload
 	| CalendarSyncFailedEventPayload
 	| UserSignupEventPayload
@@ -250,6 +252,29 @@ function transformProjectActivityBatched(
 	};
 }
 
+function transformProjectInviteAccepted(
+	payload: ProjectInviteAcceptedEventPayload
+): NotificationPayload {
+	const actorName = payload.actor_name || 'A teammate';
+	const projectName = payload.project_name || 'your project';
+	const roleSuffix = payload.role_key ? ` as ${payload.role_key}` : '';
+
+	return {
+		title: `${actorName} joined ${projectName}`,
+		body: `${actorName} accepted your invite${roleSuffix}`,
+		action_url: payload.project_id ? `/projects/${payload.project_id}` : '/projects',
+		icon_url: '/AppImages/android/android-launchericon-192-192.png',
+		data: {
+			project_id: payload.project_id,
+			project_name: payload.project_name,
+			actor_user_id: payload.actor_user_id,
+			actor_name: payload.actor_name,
+			role_key: payload.role_key,
+			access: payload.access
+		}
+	};
+}
+
 /**
  * Transform project.phase_scheduled event payload
  */
@@ -384,6 +409,11 @@ export function transformEventPayload(
 			case 'project.activity.batched':
 				return transformProjectActivityBatched(
 					eventPayload as ProjectActivityBatchedEventPayload
+				);
+
+			case 'project.invite.accepted':
+				return transformProjectInviteAccepted(
+					eventPayload as ProjectInviteAcceptedEventPayload
 				);
 
 			case 'project.phase_scheduled':

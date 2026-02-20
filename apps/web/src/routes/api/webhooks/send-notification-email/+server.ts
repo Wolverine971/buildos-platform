@@ -79,8 +79,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			.maybeSingle();
 
 		// Determine which preference to check based on event type
+		const isDailyBriefEvent =
+			body.eventType === 'brief.completed' || body.eventType === 'brief.failed';
 		let emailAllowed = false;
-		if (body.eventType === 'brief.completed') {
+		if (isDailyBriefEvent) {
 			// For daily briefs, check should_email_daily_brief
 			emailAllowed = prefs?.should_email_daily_brief ?? false;
 		} else {
@@ -97,10 +99,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					prefError: prefError?.message,
 					emailEnabled: prefs?.email_enabled,
 					shouldEmailDailyBrief: prefs?.should_email_daily_brief,
-					checkUsed:
-						body.eventType === 'brief.completed'
-							? 'should_email_daily_brief'
-							: 'email_enabled'
+					checkUsed: isDailyBriefEvent ? 'should_email_daily_brief' : 'email_enabled'
 				}
 			);
 			return ApiResponse.success({

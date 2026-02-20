@@ -604,6 +604,7 @@ export async function processNotification(
 
 		// Define final states that should not be retried
 		const FINAL_STATES: NotificationStatus[] = [
+			'cancelled',
 			'sent',
 			'delivered',
 			'clicked',
@@ -738,8 +739,8 @@ export async function processNotification(
 			const { error: cancelError } = await supabase
 				.from('notification_deliveries')
 				.update({
-					status: 'failed', // Use 'failed' status but with specific error message
-					failed_at: new Date().toISOString(),
+					status: 'cancelled',
+					failed_at: null,
 					last_error: `Cancelled: ${prefCheck.reason}`,
 					attempts: (delivery.attempts || 0) + 1,
 					updated_at: new Date().toISOString()
@@ -774,8 +775,8 @@ export async function processNotification(
 			const { error: quietHoursError } = await supabase
 				.from('notification_deliveries')
 				.update({
-					status: 'failed',
-					failed_at: new Date().toISOString(),
+					status: 'cancelled',
+					failed_at: null,
 					last_error: 'Cancelled: push quiet hours',
 					attempts: (delivery.attempts || 0) + 1,
 					updated_at: new Date().toISOString()
@@ -892,6 +893,7 @@ export async function processNotification(
 			// Define states that should NOT be updated (successful or bounced deliveries)
 			// We DO want to update "failed" deliveries to capture latest error info
 			const CLEANUP_EXCLUDED_STATES: NotificationStatus[] = [
+				'cancelled',
 				'sent',
 				'delivered',
 				'clicked',

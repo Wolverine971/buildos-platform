@@ -151,7 +151,9 @@
       "Bash(npx tailwindcss:*)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm --filter=web exec svelte-check:*)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm --filter=web exec:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "mcp__plugin_compound-engineering_context7__resolve-library-id",
+      "mcp__plugin_compound-engineering_context7__query-docs"
     ],
     "deny": [],
     "ask": []

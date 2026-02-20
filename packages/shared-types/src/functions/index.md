@@ -4,7 +4,7 @@
 
 This directory contains SQL definitions for all RPC functions available in the BuildOS database.
 
-## Active Functions (92 total)
+## Active Functions (93 total)
 
 > **Note:** 52 unused functions were removed on 2026-01-12. See `supabase/migrations/20260112000000_cleanup_unused_rpc_functions.sql` for details.
 
@@ -65,8 +65,9 @@ This directory contains SQL definitions for all RPC functions available in the B
 - [get_notification_overview_metrics](./get_notification_overview_metrics.sql) - Get notification overview metrics
 - [log_notification_event](./log_notification_event.sql) - Log a notification event (used internally by SQL)
 
-### SMS (7 active)
+### SMS (8 active)
 
+- [check_and_increment_sms_daily_limit](./check_and_increment_sms_daily_limit.sql) - Atomically check and increment daily SMS usage
 - [get_sms_daily_metrics](./get_sms_daily_metrics.sql) - Get SMS daily metrics
 - [get_sms_notification_stats](./get_sms_notification_stats.sql) - Get SMS notification statistics
 - [get_user_sms_metrics](./get_user_sms_metrics.sql) - Get user SMS metrics

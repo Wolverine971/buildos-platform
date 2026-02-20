@@ -9,35 +9,47 @@ BEGIN
   RETURN QUERY
   SELECT
     nd.channel,
-    COUNT(*) AS total_sent,
-    COUNT(*) FILTER (WHERE nd.status = 'sent') AS sent,
-    COUNT(*) FILTER (WHERE nd.status = 'delivered') AS delivered,  -- FIXED
+    COUNT(*) FILTER (WHERE nd.status <> 'cancelled') AS total_sent,
+    COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked')) AS sent,
+    COUNT(*) FILTER (WHERE nd.status IN ('delivered', 'opened', 'clicked')) AS delivered,
     COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL) AS opened,
     COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL) AS clicked,
-    COUNT(*) FILTER (WHERE nd.status = 'failed') AS failed,
-    -- Success rate: % that were sent successfully
+    COUNT(*) FILTER (WHERE nd.status IN ('failed', 'bounced')) AS failed,
     ROUND(
-      (COUNT(*) FILTER (WHERE nd.status = 'sent')::NUMERIC / NULLIF(COUNT(*)::NUMERIC, 0) * 100),
+      (
+        COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC
+        / NULLIF(COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked', 'failed', 'bounced'))::NUMERIC, 0)
+        * 100
+      ),
       2
     ) AS success_rate,
-    -- Delivery rate: % that were confirmed delivered (NEW)
     ROUND(
-      (COUNT(*) FILTER (WHERE nd.status = 'delivered')::NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.status = 'sent')::NUMERIC, 0) * 100),
+      (
+        COUNT(*) FILTER (WHERE nd.status IN ('delivered', 'opened', 'clicked'))::NUMERIC
+        / NULLIF(COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC, 0)
+        * 100
+      ),
       2
     ) AS delivery_rate,
-    -- Open rate: % of sent that were opened
     ROUND(
-      (COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.status = 'sent')::NUMERIC, 0) * 100),
+      (
+        COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC
+        / NULLIF(COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC, 0)
+        * 100
+      ),
       2
     ) AS open_rate,
-    -- Click rate: % of opened that were clicked
     ROUND(
-      (COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0) * 100),
+      (
+        COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC
+        / NULLIF(COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0)
+        * 100
+      ),
       2
     ) AS click_rate,
-    -- Average delivery time with explicit NULL filter (FIXED)
     ROUND(
-      AVG(EXTRACT(EPOCH FROM (nd.sent_at - nd.created_at)) * 1000) FILTER (WHERE nd.sent_at IS NOT NULL)::NUMERIC,
+      AVG(EXTRACT(EPOCH FROM (nd.sent_at - nd.created_at)) * 1000)
+        FILTER (WHERE nd.sent_at IS NOT NULL)::NUMERIC,
       2
     ) AS avg_delivery_time_ms
   FROM notification_deliveries nd

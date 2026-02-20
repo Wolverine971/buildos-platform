@@ -20,17 +20,29 @@ BEGIN
 
   RETURN QUERY
   SELECT
-    COUNT(*) FILTER (WHERE nd.status = 'sent') AS total_sent,
+    COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked')) AS total_sent,
     ROUND(
-      (COUNT(*) FILTER (WHERE nd.status = 'sent')::NUMERIC / NULLIF(COUNT(*)::NUMERIC, 0) * 100),
+      (
+        COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC
+        / NULLIF(COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked', 'failed', 'bounced'))::NUMERIC, 0)
+        * 100
+      ),
       2
     ) AS delivery_success_rate,
     ROUND(
-      (COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.status = 'sent')::NUMERIC, 0) * 100),
+      (
+        COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC
+        / NULLIF(COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC, 0)
+        * 100
+      ),
       2
     ) AS avg_open_rate,
     ROUND(
-      (COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0) * 100),
+      (
+        COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC
+        / NULLIF(COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0)
+        * 100
+      ),
       2
     ) AS avg_click_rate
   FROM notification_deliveries nd

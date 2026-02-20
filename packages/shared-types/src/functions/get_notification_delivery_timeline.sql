@@ -18,11 +18,11 @@ BEGIN
   EXECUTE format('
     SELECT
       DATE_TRUNC(%L, nd.created_at) AS time_bucket,
-      COUNT(*) FILTER (WHERE nd.status = ''sent'') AS sent,
-      COUNT(*) FILTER (WHERE nd.status = ''delivered'') AS delivered,
+      COUNT(*) FILTER (WHERE nd.status IN (''sent'', ''delivered'', ''opened'', ''clicked'')) AS sent,
+      COUNT(*) FILTER (WHERE nd.status IN (''delivered'', ''opened'', ''clicked'')) AS delivered,
       COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL) AS opened,
       COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL) AS clicked,
-      COUNT(*) FILTER (WHERE nd.status = ''failed'') AS failed
+      COUNT(*) FILTER (WHERE nd.status IN (''failed'', ''bounced'')) AS failed
     FROM notification_deliveries nd
     WHERE nd.created_at > NOW() - %L::INTERVAL
     GROUP BY time_bucket

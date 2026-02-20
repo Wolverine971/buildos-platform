@@ -37,6 +37,7 @@ export type NotificationChannel = "push" | "email" | "sms" | "in_app";
 
 export type NotificationStatus =
   | "pending"
+  | "cancelled"
   | "sent"
   | "delivered"
   | "failed"
@@ -221,6 +222,15 @@ export interface ProjectActivityBatchedEventPayload {
   recipient_user_id?: string;
   action_counts?: Record<string, number>;
   actor_counts?: Record<string, number>;
+}
+
+export interface ProjectInviteAcceptedEventPayload {
+  project_id: string;
+  project_name?: string;
+  actor_user_id?: string;
+  actor_name?: string;
+  role_key?: string;
+  access?: string;
 }
 
 export interface ProjectPhaseScheduledEventPayload {

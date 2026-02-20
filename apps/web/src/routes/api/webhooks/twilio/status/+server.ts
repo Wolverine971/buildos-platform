@@ -4,6 +4,7 @@ import type { RequestHandler } from './$types';
 import twilio from 'twilio';
 import { PRIVATE_TWILIO_AUTH_TOKEN } from '$env/static/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
+import { dev } from '$app/environment';
 
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { smsMetricsService, createLogger, extractCorrelationContext } from '@buildos/shared-utils';
@@ -152,7 +153,14 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		// Validate webhook signature (important for security)
 		const twilioSignature = request.headers.get('X-Twilio-Signature');
-		if (twilioSignature) {
+		if (!twilioSignature) {
+			if (!dev) {
+				logger.error('Missing Twilio webhook signature');
+				return ApiResponse.error('Missing signature', 401);
+			}
+
+			logger.warn('Webhook signature missing in development mode');
+		} else {
 			const webhookUrl = `${PUBLIC_APP_URL}/api/webhooks/twilio/status`;
 			const isValid = twilio.validateRequest(
 				PRIVATE_TWILIO_AUTH_TOKEN,
@@ -165,8 +173,6 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				logger.error('Invalid Twilio webhook signature');
 				return ApiResponse.error('Invalid signature', 401);
 			}
-		} else {
-			logger.warn('Webhook signature missing (development mode?)');
 		}
 
 		// Map Twilio status to our enum
@@ -358,7 +364,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 								error_category: errorInfo.category
 							},
 							p_scheduled_for: scheduledFor.toISOString(),
-							p_priority: fullMessage.priority === 'urgent' ? 1 : 10
+							p_priority: fullMessage.priority === 'urgent' ? 1 : 10,
+							p_dedup_key: `sms_retry_${messageId}_${attemptCount + 1}`
 						});
 
 						if (queueError) {
