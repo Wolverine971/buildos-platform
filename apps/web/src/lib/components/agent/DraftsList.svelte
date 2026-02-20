@@ -98,8 +98,9 @@
 
 	// Auto-expand the most recent draft on mount
 	onMount(() => {
-		if (sortedDrafts.length > 0 && !expandedDraft) {
-			expandedDraft = sortedDrafts[0].id;
+		const firstDraft = sortedDrafts[0];
+		if (firstDraft && !expandedDraft) {
+			expandedDraft = firstDraft.id;
 		}
 	});
 </script>

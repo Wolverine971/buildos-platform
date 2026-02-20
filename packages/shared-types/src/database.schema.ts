@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-19T19:34:35.072Z
+// Generated on: 2026-02-20T00:33:32.596Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1526,6 +1526,15 @@ export type DatabaseSchema = {
 		snapshot_uri: string | null;
 		uri: string;
 	};
+	onto_task_assignees: {
+		assigned_by_actor_id: string;
+		assignee_actor_id: string;
+		created_at: string;
+		id: string;
+		project_id: string;
+		source: string;
+		task_id: string;
+	};
 	onto_tasks: {
 		completed_at: string | null;
 		created_at: string;
@@ -2634,6 +2643,7 @@ export const tableNames = [
 	'onto_risks',
 	'onto_signals',
 	'onto_sources',
+	'onto_task_assignees',
 	'onto_tasks',
 	'onto_tools',
 	'ontology_brief_entities',

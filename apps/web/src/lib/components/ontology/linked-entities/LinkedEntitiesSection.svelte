@@ -71,7 +71,8 @@
 		milestone: Flag,
 		document: FileText,
 		risk: AlertTriangle,
-		event: Calendar
+		event: Calendar,
+		requirement: FileText
 	};
 
 	const IconComponent = $derived(iconComponents[config.kind]);

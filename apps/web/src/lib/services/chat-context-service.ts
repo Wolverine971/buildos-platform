@@ -1247,11 +1247,15 @@ Use search tools to explore projects, tasks, notes, and calendar events.`;
 				status: this.toLegacyTaskStatus(task.state_key)
 			}))
 		);
+		const slug =
+			typeof projectProps.slug === 'string' && projectProps.slug.trim().length > 0
+				? projectProps.slug
+				: data.id;
 
 		return {
 			id: data.id,
 			name: data.name,
-			slug: null,
+			slug,
 			status: this.toLegacyProjectStatus(data.state_key),
 			start_date: data.start_at,
 			end_date: data.end_at,

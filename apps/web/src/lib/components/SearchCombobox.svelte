@@ -76,8 +76,11 @@
 				break;
 			case 'Enter':
 				event.preventDefault();
-				if (selectedIndex >= 0 && flatResults[selectedIndex]) {
-					navigateToItem(flatResults[selectedIndex]);
+				if (selectedIndex >= 0) {
+					const selectedResult = flatResults[selectedIndex];
+					if (selectedResult) {
+						navigateToItem(selectedResult);
+					}
 				}
 				break;
 			case 'Escape':

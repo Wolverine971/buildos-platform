@@ -1,5 +1,5 @@
 // apps/web/src/lib/components/agent/PlanVisualization.test.ts
-import type { AgentPlan } from '@buildos/shared-types';
+import type { AgentPlan, AgentPlanStep } from '@buildos/shared-types';
 
 // Sample test plan for visualization
 export const samplePlan: AgentPlan = {
@@ -69,18 +69,26 @@ export const samplePlan: AgentPlan = {
 };
 
 // Sample plan with error
+const samplePlanWithErrorSteps: AgentPlanStep[] = samplePlan.steps.map((step) => {
+	if (step.stepNumber === 3) {
+		return {
+			...step,
+			status: 'failed',
+			error: 'Failed to create task: Permission denied for project'
+		};
+	}
+
+	if (step.stepNumber > 3) {
+		return { ...step, status: 'pending' };
+	}
+
+	return step;
+});
+
 export const samplePlanWithError: AgentPlan = {
 	...samplePlan,
 	id: 'test-plan-2',
-	steps: [
-		...samplePlan.steps.slice(0, 2),
-		{
-			...samplePlan.steps[2],
-			status: 'failed',
-			error: 'Failed to create task: Permission denied for project'
-		},
-		...samplePlan.steps.slice(3).map((step) => ({ ...step, status: 'pending' as const }))
-	]
+	steps: samplePlanWithErrorSteps
 };
 
 // Sample simple plan

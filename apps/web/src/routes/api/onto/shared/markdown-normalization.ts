@@ -85,6 +85,7 @@ function getFenceDelimiter(line: string): { char: '`' | '~'; length: number } | 
 	if (!match) return null;
 
 	const marker = match[1];
+	if (!marker) return null;
 	return {
 		char: marker[0] as '`' | '~',
 		length: marker.length

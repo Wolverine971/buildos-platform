@@ -2908,6 +2908,7 @@
 				| 'document'
 				| 'milestone'
 				| 'risk'
+				| 'requirement'
 				| undefined;
 			if (resolvedProjectFocus && resolvedProjectFocus.focusType !== 'project-wide') {
 				ontologyEntityType = resolvedProjectFocus.focusType;

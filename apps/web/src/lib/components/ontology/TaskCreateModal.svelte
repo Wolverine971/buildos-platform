@@ -14,9 +14,9 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import TaskAssigneeSelector from './TaskAssigneeSelector.svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { format } from 'date-fns';
 	import { TASK_STATES } from '$lib/types/onto';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
@@ -106,6 +106,7 @@
 	let stateKey = $state('todo');
 	let startAt = $state('');
 	let dueAt = $state('');
+	let assigneeActorIds = $state<string[]>([]);
 
 	// Group types by category
 	const templateCategories = $derived(
@@ -157,6 +158,7 @@
 				state_key: stateKey || 'todo',
 				start_at: parseDateTimeFromInput(startAt),
 				due_at: parseDateTimeFromInput(dueAt),
+				assignee_actor_ids: assigneeActorIds,
 				classification_source: 'create_modal'
 			};
 
@@ -202,6 +204,7 @@
 		stateKey = 'todo';
 		startAt = '';
 		dueAt = '';
+		assigneeActorIds = [];
 		error = '';
 	}
 
@@ -416,6 +419,21 @@
 										disabled={isSaving}
 										size="md"
 									/>
+								</FormField>
+
+								<FormField
+									label="Assignees"
+									labelFor="task-assignees"
+									hint="Assign this task to one or more collaborators (max 10)"
+								>
+									<div id="task-assignees">
+										<TaskAssigneeSelector
+											{projectId}
+											bind:selectedActorIds={assigneeActorIds}
+											disabled={isSaving}
+											maxAssignees={10}
+										/>
+									</div>
 								</FormField>
 
 								<!-- Priority & State Grid -->

@@ -12,18 +12,30 @@ const DEFAULT_MODEL_LABEL = 'openrouter:auto';
 type TaskRow = Database['public']['Tables']['onto_tasks']['Row'];
 type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
 
-interface CandidateTask
-	extends Pick<TaskRow, 'id' | 'title' | 'description' | 'priority' | 'project_id'> {
-	status: string;
+interface CandidateTask {
+	id: string;
+	title: string;
+	description: string | null;
+	details: string | null;
+	priority: 'low' | 'medium' | 'high' | 'urgent' | null;
+	status: 'backlog' | 'in_progress' | 'blocked' | 'done';
 	duration_minutes: number | null;
 	start_date: string | null;
+	project_id: string;
 	project?: {
 		id: string;
 		name: string;
-		status: string;
+		status: 'active' | 'paused' | 'completed' | 'archived';
 		calendar_color_id: string | null;
 	} | null;
 }
+
+type CandidateTaskRow = Pick<
+	TaskRow,
+	'id' | 'title' | 'description' | 'priority' | 'state_key' | 'props' | 'start_at' | 'project_id'
+> & {
+	project: Pick<ProjectRow, 'id' | 'name' | 'state_key' | 'props'> | null;
+};
 
 interface GenerateSuggestionsParams {
 	blockType: TimeBlockType;
@@ -156,16 +168,26 @@ export class TimeBlockSuggestionService {
 			return [];
 		}
 
-		const tasks = (data ?? []) as CandidateTask[];
+		const tasks = (data ?? []) as CandidateTaskRow[];
 
-		const normalized = tasks.map((task: any) => {
-			const props = task.props && typeof task.props === 'object' ? task.props : {};
-			const projectProps =
-				task.project?.props && typeof task.project.props === 'object'
-					? task.project.props
+		const normalized = tasks.map((task) => {
+			const props =
+				task.props && typeof task.props === 'object' && !Array.isArray(task.props)
+					? (task.props as Record<string, unknown>)
 					: {};
+			const projectProps =
+				task.project?.props &&
+				typeof task.project.props === 'object' &&
+				!Array.isArray(task.project.props)
+					? (task.project.props as Record<string, unknown>)
+					: {};
+			const details = typeof props.details === 'string' ? (props.details as string) : null;
 			return {
-				...task,
+				id: task.id,
+				title: task.title,
+				description: task.description,
+				details,
+				priority: this.mapPriority(task.priority),
 				duration_minutes:
 					typeof props.duration_minutes === 'number'
 						? props.duration_minutes
@@ -173,26 +195,13 @@ export class TimeBlockSuggestionService {
 							? props.estimated_minutes
 							: null,
 				start_date: task.start_at ?? null,
-				status:
-					task.state_key === 'in_progress'
-						? 'in_progress'
-						: task.state_key === 'done'
-							? 'done'
-							: task.state_key === 'blocked'
-								? 'blocked'
-								: 'backlog',
+				status: this.mapStatus(task.state_key),
+				project_id: task.project_id,
 				project: task.project
 					? {
 							id: task.project.id,
 							name: task.project.name,
-							status:
-								task.project.state_key === 'planning'
-									? 'paused'
-									: task.project.state_key === 'completed'
-										? 'completed'
-										: task.project.state_key === 'cancelled'
-											? 'archived'
-											: 'active',
+							status: this.mapProjectStatus(task.project.state_key),
 							calendar_color_id:
 								typeof projectProps.calendar_color_id === 'string'
 									? projectProps.calendar_color_id
@@ -233,8 +242,8 @@ export class TimeBlockSuggestionService {
 			done: 3
 		};
 
-		const priorityKey = (task.priority ?? 'medium').toLowerCase();
-		const statusKey = (task.status ?? 'backlog').toLowerCase();
+		const priorityKey = task.priority ?? 'medium';
+		const statusKey = task.status;
 
 		const priorityValue = priorityRank[priorityKey] ?? 4;
 		const statusValue = statusRank[statusKey] ?? 4;
@@ -381,10 +390,7 @@ export class TimeBlockSuggestionService {
 						suggestion.project_name ??
 						relatedTask?.project?.name ??
 						(relatedTask?.project_id ? 'Project Work' : null),
-					priority:
-						(suggestion.priority as TimeBlockSuggestion['priority']) ??
-						(relatedTask?.priority as unknown as TimeBlockSuggestion['priority']) ??
-						undefined,
+					priority: suggestion.priority ?? relatedTask?.priority ?? undefined,
 					estimated_minutes: estimatedMinutes,
 					confidence:
 						typeof suggestion.confidence === 'number'
@@ -421,7 +427,7 @@ export class TimeBlockSuggestionService {
 			task_id: task.id,
 			project_id: task.project_id,
 			project_name: task.project?.name ?? null,
-			priority: (task.priority as unknown as TimeBlockSuggestion['priority']) ?? undefined,
+			priority: task.priority ?? undefined,
 			estimated_minutes:
 				task.duration_minutes && task.duration_minutes > 0
 					? Math.min(task.duration_minutes, params.durationMinutes)
@@ -457,5 +463,29 @@ export class TimeBlockSuggestionService {
 	private truncate(value: string, maxLength: number): string {
 		if (!value) return value;
 		return value.length <= maxLength ? value : `${value.slice(0, maxLength - 3)}...`;
+	}
+
+	private mapStatus(stateKey: TaskRow['state_key']): CandidateTask['status'] {
+		if (stateKey === 'in_progress') return 'in_progress';
+		if (stateKey === 'done') return 'done';
+		if (stateKey === 'blocked') return 'blocked';
+		return 'backlog';
+	}
+
+	private mapProjectStatus(
+		stateKey: ProjectRow['state_key']
+	): NonNullable<CandidateTask['project']>['status'] {
+		if (stateKey === 'planning') return 'paused';
+		if (stateKey === 'completed') return 'completed';
+		if (stateKey === 'cancelled') return 'archived';
+		return 'active';
+	}
+
+	private mapPriority(priority: TaskRow['priority']): CandidateTask['priority'] {
+		if (priority == null) return null;
+		if (priority >= 5) return 'urgent';
+		if (priority >= 4) return 'high';
+		if (priority <= 2) return 'low';
+		return 'medium';
 	}
 }

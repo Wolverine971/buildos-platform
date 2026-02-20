@@ -52,7 +52,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			};
 		}
 
-		const isGenerating = mappedBrief?.generation_status === 'processing' || hasActiveJob;
+		const isGenerating = mappedBrief?.generation_status === 'pending' || hasActiveJob;
 
 		let progress = null;
 		if (activeJob?.metadata?.progress) {

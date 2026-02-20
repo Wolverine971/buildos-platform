@@ -89,7 +89,7 @@
 	function formatTypeFamily(typeKey: string): string {
 		const parts = typeKey.split('.');
 		const meaningful = parts.filter((p) => p !== 'base');
-		const label = meaningful[meaningful.length - 1] || parts[0];
+		const label = meaningful[meaningful.length - 1] || parts[0] || typeKey || 'type';
 		return label.charAt(0).toUpperCase() + label.slice(1);
 	}
 

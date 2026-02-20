@@ -171,14 +171,12 @@ async function enrichLogsForDisplay(
 		task: { table: 'onto_tasks', nameField: 'title' },
 		goal: { table: 'onto_goals', nameField: 'name' },
 		plan: { table: 'onto_plans', nameField: 'name' },
-		output: { table: 'onto_outputs', nameField: 'name' },
 		milestone: { table: 'onto_milestones', nameField: 'title' },
 		risk: { table: 'onto_risks', nameField: 'title' },
 		project: { table: 'onto_projects', nameField: 'name' },
 		note: { table: 'onto_documents', nameField: 'title' },
 		document: { table: 'onto_documents', nameField: 'title' },
 		requirement: { table: 'onto_requirements', nameField: 'title' },
-		decision: { table: 'onto_decisions', nameField: 'title' },
 		source: { table: 'onto_sources', nameField: 'title' },
 		edge: { table: 'onto_edges', nameField: 'rel' }
 	};

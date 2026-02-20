@@ -1,11 +1,14 @@
--- packages/shared-types/src/functions/get_project_full.sql
--- Source: Supabase pg_get_functiondef
+-- supabase/migrations/20260426000003_remove_onto_outputs_from_get_project_full.sql
+-- Remove deprecated onto_outputs dependency from get_project_full()
 
-CREATE OR REPLACE FUNCTION public.get_project_full(p_project_id uuid, p_actor_id uuid)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
+CREATE OR REPLACE FUNCTION get_project_full(
+	p_project_id uuid,
+	p_actor_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 DECLARE
 	v_project jsonb;
 	v_result jsonb;
@@ -100,4 +103,8 @@ BEGIN
 
 	RETURN v_result;
 END;
-$function$
+$$;
+
+GRANT EXECUTE ON FUNCTION get_project_full(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_project_full(uuid, uuid) TO service_role;
+GRANT EXECUTE ON FUNCTION get_project_full(uuid, uuid) TO anon;

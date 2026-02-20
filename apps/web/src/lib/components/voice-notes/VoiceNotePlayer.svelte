@@ -168,7 +168,9 @@
 
 	function cycleSpeed() {
 		speedIndex = (speedIndex + 1) % PLAYBACK_SPEEDS.length;
-		playbackSpeed = PLAYBACK_SPEEDS[speedIndex];
+		const nextSpeed = PLAYBACK_SPEEDS[speedIndex] ?? PLAYBACK_SPEEDS[0];
+		if (!nextSpeed) return;
+		playbackSpeed = nextSpeed;
 		if (audio) {
 			audio.playbackRate = playbackSpeed;
 		}

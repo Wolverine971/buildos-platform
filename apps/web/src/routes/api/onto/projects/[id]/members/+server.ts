@@ -70,7 +70,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const { data: members, error } = await supabase
 			.from('onto_project_members')
 			.select(
-				'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, added_by_actor_id, removed_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, name, email)'
+				'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, added_by_actor_id, removed_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
 			)
 			.eq('project_id', projectId)
 			.is('removed_at', null)

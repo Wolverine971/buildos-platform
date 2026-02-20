@@ -39,6 +39,14 @@ import {
 // ============================================
 
 const logger = createLogger('API:AgentStream');
+const ALLOWED_STREAM_ONTOLOGY_ENTITY_TYPES = [
+	'task',
+	'plan',
+	'goal',
+	'document',
+	'milestone',
+	'risk'
+] as const;
 
 // ============================================
 // AUTHENTICATION HELPER
@@ -142,6 +150,11 @@ async function parseRequest(
 		}
 
 		const normalizedContextType = normalizeContextType(context_type);
+		const normalizedOntologyEntityType = ALLOWED_STREAM_ONTOLOGY_ENTITY_TYPES.includes(
+			ontologyEntityType as (typeof ALLOWED_STREAM_ONTOLOGY_ENTITY_TYPES)[number]
+		)
+			? (ontologyEntityType as (typeof ALLOWED_STREAM_ONTOLOGY_ENTITY_TYPES)[number])
+			: undefined;
 
 		const streamRequest: StreamRequest = {
 			message,
@@ -149,7 +162,7 @@ async function parseRequest(
 			context_type: normalizedContextType,
 			entity_id,
 			history: Array.isArray(conversationHistory) ? conversationHistory : [],
-			ontology_entity_type: ontologyEntityType,
+			ontology_entity_type: normalizedOntologyEntityType,
 			last_turn_context: providedLastTurnContext,
 			stream_run_id
 		};

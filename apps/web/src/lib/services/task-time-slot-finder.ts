@@ -27,6 +27,19 @@ interface TaskWithOriginalTime extends Task {
 	originalTime?: Date;
 }
 
+type RecurrenceEndReason = NonNullable<Task['recurrence_end_source']>;
+
+const RECURRENCE_END_REASONS: ReadonlySet<RecurrenceEndReason> = new Set([
+	'indefinite',
+	'project_inherited',
+	'user_specified',
+	'user_action',
+	'project_end',
+	'max_occurrences',
+	'end_date',
+	'task_deleted'
+]);
+
 export interface NextAvailableSlotRequest {
 	userId: string;
 	durationMinutes: number;
@@ -488,6 +501,11 @@ export class TaskTimeSlotFinder {
 				: recurrencePattern
 					? 'recurring'
 					: 'one_off';
+		const recurrenceEndSource =
+			typeof props.recurrence_end_source === 'string' &&
+			RECURRENCE_END_REASONS.has(props.recurrence_end_source as RecurrenceEndReason)
+				? (props.recurrence_end_source as RecurrenceEndReason)
+				: null;
 
 		return {
 			id: task.id,
@@ -503,10 +521,7 @@ export class TaskTimeSlotFinder {
 			recurrence_pattern: recurrencePattern as Task['recurrence_pattern'],
 			recurrence_ends:
 				typeof props.recurrence_ends === 'string' ? props.recurrence_ends : null,
-			recurrence_end_source:
-				typeof props.recurrence_end_source === 'string'
-					? props.recurrence_end_source
-					: null,
+			recurrence_end_source: recurrenceEndSource,
 			dependencies: Array.isArray(props.dependencies)
 				? (props.dependencies as string[])
 				: null,

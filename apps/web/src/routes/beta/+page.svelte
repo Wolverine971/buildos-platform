@@ -1,4 +1,27 @@
 <!-- apps/web/src/routes/beta/+page.svelte -->
+<script module lang="ts">
+	declare global {
+		interface Window {
+			grecaptcha?: {
+				render: (
+					container: string | HTMLElement,
+					options: {
+						sitekey: string;
+						callback: (token: string) => void;
+						'expired-callback'?: () => void;
+						'error-callback'?: () => void;
+						theme?: 'light' | 'dark';
+					}
+				) => number;
+				reset: (widgetId?: number) => void;
+				getResponse: (widgetId?: number) => string;
+				ready: (callback: () => void) => void;
+			};
+			onRecaptchaLoad?: () => void;
+		}
+	}
+</script>
+
 <script lang="ts">
 	import {
 		Users,
@@ -23,28 +46,6 @@
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
 	import { PUBLIC_RECAPTCHA_SITE_KEY } from '$env/static/public';
-
-	// TypeScript types for reCAPTCHA
-	declare global {
-		interface Window {
-			grecaptcha: {
-				render: (
-					container: string | HTMLElement,
-					options: {
-						sitekey: string;
-						callback: (token: string) => void;
-						'expired-callback'?: () => void;
-						'error-callback'?: () => void;
-						theme?: 'light' | 'dark';
-					}
-				) => number;
-				reset: (widgetId?: number) => void;
-				getResponse: (widgetId?: number) => string;
-				ready: (callback: () => void) => void;
-			};
-			onRecaptchaLoad?: () => void;
-		}
-	}
 
 	// Form state
 	let email = '';
@@ -503,7 +504,7 @@
 								id="honeypot"
 								type="text"
 								bind:value={honeypot}
-								tabindex="-1"
+								tabindex={-1}
 								autocomplete="off"
 								size="md"
 							/>
@@ -512,7 +513,7 @@
 						<!-- Email and Name -->
 						<fieldset class="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<legend class="sr-only">Personal Information</legend>
-							<FormField label="Email Address" name="email" required size="md">
+							<FormField label="Email Address" required>
 								<TextInput
 									id="email"
 									type="email"
@@ -529,7 +530,7 @@
 									</p>
 								{/if}
 							</FormField>
-							<FormField label="Full Name" name="fullName" required size="md">
+							<FormField label="Full Name" required>
 								<TextInput
 									id="fullName"
 									type="text"
@@ -545,7 +546,7 @@
 						<!-- Role and Company -->
 						<fieldset class="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<legend class="sr-only">Professional Information</legend>
-							<FormField label="Current Role" name="jobTitle" size="md">
+							<FormField label="Current Role">
 								<TextInput
 									id="jobTitle"
 									type="text"
@@ -554,7 +555,7 @@
 									size="md"
 								/>
 							</FormField>
-							<FormField label="Company (Optional)" name="companyName" size="md">
+							<FormField label="Company (Optional)">
 								<TextInput
 									id="companyName"
 									type="text"
@@ -631,11 +632,7 @@
 						</FormField>
 
 						<!-- Referral Source -->
-						<FormField
-							label="How did you hear about us?"
-							labelFor="referralSource"
-							size="md"
-						>
+						<FormField label="How did you hear about us?" labelFor="referralSource">
 							<Select id="referralSource" bind:value={referralSource} size="md">
 								<option value="">Select an option</option>
 								{#each referralSources as source}

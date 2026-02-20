@@ -30,10 +30,9 @@
 	function handleClose(summary?: DataMutationSummary) {
 		showChatModal = false;
 		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
-			toastService.success(
-				'Project created! Head to Projects to explore it.',
-				TOAST_DURATION.LONG
-			);
+			toastService.success('Project created! Head to Projects to explore it.', {
+				duration: TOAST_DURATION.LONG
+			});
 		}
 		goto('/projects');
 	}

@@ -31,6 +31,7 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
+import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -245,6 +246,21 @@ async function loadFullData(
 	const data = rawData as Record<string, any>;
 	if (data.project && typeof data.project === 'object') {
 		data.project = sanitizeProjectForClient(data.project as Record<string, unknown>);
+	}
+	const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
+	if (rawTasks.length > 0) {
+		try {
+			const assigneeMap = await fetchTaskAssigneesMap({
+				supabase,
+				taskIds: rawTasks.map((task) => task.id)
+			});
+			data.tasks = attachAssigneesToTasks(rawTasks, assigneeMap);
+		} catch (assigneeError) {
+			console.warn(
+				'[Project Page] Failed to enrich task assignees in fallback load:',
+				assigneeError
+			);
+		}
 	}
 	const goals = (data.goals || []) as GoalRow[];
 	const milestones = (data.milestones || []) as MilestoneRow[];

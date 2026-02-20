@@ -256,7 +256,7 @@ export interface UpcomingTask {
 		slug: string;
 	};
 	status: string;
-	priority?: number;
+	priority?: 'low' | 'medium' | 'high';
 }
 
 export interface GetUpcomingTasksResponse {
@@ -1280,11 +1280,11 @@ export class CalendarService {
 							id: task.id,
 							title: task.title,
 							description: task.description,
-							start_date: task.start_at,
+							start_date: task.start_at ?? undefined,
 							duration_minutes:
 								typeof props.duration_minutes === 'number'
 									? props.duration_minutes
-									: null,
+									: undefined,
 							task_type:
 								typeof props.task_type === 'string'
 									? props.task_type
@@ -1294,7 +1294,7 @@ export class CalendarService {
 							recurrence_pattern:
 								typeof props.recurrence_pattern === 'string'
 									? props.recurrence_pattern
-									: null,
+									: undefined,
 							project: task.project,
 							status: this.toLegacyTaskStatus(task.state_key),
 							priority: this.mapPriorityToLabel(task.priority)

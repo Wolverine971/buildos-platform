@@ -96,6 +96,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			const fenceMatch = line.match(/^\s{0,3}(`{3,}|~{3,})/);
 			if (fenceMatch) {
 				const fence = fenceMatch[1];
+				if (!fence) continue;
 				const nextFenceChar = fence[0] ?? '';
 				const nextFenceLength = fence.length;
 				if (!inFence) {
@@ -113,8 +114,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 			const atxMatch = line.match(/^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/);
 			if (atxMatch) {
-				const level = Math.min(atxMatch[1].length, 3) as 1 | 2 | 3;
-				const text = this.normalizeHeadingText(atxMatch[2]);
+				const hashes = atxMatch[1];
+				const headingText = atxMatch[2];
+				if (!hashes || headingText === undefined) continue;
+				const level = Math.min(hashes.length, 3) as 1 | 2 | 3;
+				const text = this.normalizeHeadingText(headingText);
 				if (text) {
 					headings.push({ level, text });
 					if (headings.length >= OntologyReadExecutor.MAX_MARKDOWN_HEADERS) break;
@@ -128,7 +132,8 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 			const text = this.normalizeHeadingText(line);
 			if (!text) continue;
-			const level = setextMatch[1]?.[0] === '=' ? 1 : 2;
+			const setextMarker = setextMatch[1];
+			const level = setextMarker?.[0] === '=' ? 1 : 2;
 			headings.push({ level: level as 1 | 2 | 3, text });
 			if (headings.length >= OntologyReadExecutor.MAX_MARKDOWN_HEADERS) break;
 			index += 1;

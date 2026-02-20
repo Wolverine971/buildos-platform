@@ -205,36 +205,6 @@ begin
 
     union all
 
-    -- Outputs
-    select
-      'output'::text as type,
-      o.id,
-      o.project_id,
-      p.name as project_name,
-      o.name as title,
-      ts_headline(
-        'english',
-        concat_ws(' ', coalesce(o.name, ''), coalesce(o.props::text, '')),
-        params.tsq,
-        'MaxFragments=2,MinWords=5,MaxWords=18'
-      ) as snippet,
-      (coalesce(ts_rank(o.search_vector, params.tsq), 0) * 0.6) +
-      (similarity(coalesce(o.name, ''), p_query) * 0.4) as score
-    from onto_outputs o
-    join params on true
-    left join onto_projects p on p.id = o.project_id
-    where o.created_by = p_actor_id
-      and o.deleted_at is null
-      and p.deleted_at is null
-      and (p_project_id is null or o.project_id = p_project_id)
-      and (p_types is null or 'output' = any(p_types))
-      and (
-        params.tsq @@ o.search_vector
-        or similarity(coalesce(o.name, ''), p_query) >= 0.2
-      )
-
-    union all
-
     -- Requirements
     select
       'requirement'::text as type,

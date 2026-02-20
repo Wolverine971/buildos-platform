@@ -30,7 +30,6 @@ AS $function$
     'plan_count', (SELECT count(*) FROM onto_plans WHERE project_id = p.id AND deleted_at IS NULL),
     'milestone_count', (SELECT count(*) FROM onto_milestones WHERE project_id = p.id AND deleted_at IS NULL),
     'risk_count', (SELECT count(*) FROM onto_risks WHERE project_id = p.id AND deleted_at IS NULL),
-    'decision_count', (SELECT count(*) FROM onto_decisions WHERE project_id = p.id AND deleted_at IS NULL),
     'image_count', (SELECT count(*) FROM onto_assets WHERE project_id = p.id AND deleted_at IS NULL)
   )
   FROM onto_projects p

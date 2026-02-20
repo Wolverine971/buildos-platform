@@ -265,7 +265,7 @@
 								id="website"
 								type="text"
 								bind:value={honeypot}
-								tabindex="-1"
+								tabindex={-1}
 								autocomplete="off"
 								size="md"
 							/>
@@ -388,7 +388,6 @@
 						<FormField
 							label="Email (optional) - if you'd like us to follow up"
 							labelFor="email"
-							size="md"
 						>
 							<TextInput
 								id="email"

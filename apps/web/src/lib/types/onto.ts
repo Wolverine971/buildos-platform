@@ -572,6 +572,16 @@ export const PlanSchema = z.object({
 
 export type Plan = z.infer<typeof PlanSchema>;
 
+export const TaskAssigneeSchema = z.object({
+	actor_id: z.string().uuid(),
+	user_id: z.string().uuid().nullable().optional(),
+	name: z.string().nullable().optional(),
+	email: z.string().email().nullable().optional(),
+	assigned_at: z.string().datetime()
+});
+
+export type TaskAssignee = z.infer<typeof TaskAssigneeSchema>;
+
 export const TaskSchema = z.object({
 	id: z.string().uuid(),
 	project_id: z.string().uuid(),
@@ -586,6 +596,7 @@ export const TaskSchema = z.object({
 	deleted_at: z.string().datetime().nullable().optional(),
 	props: z.record(z.unknown()),
 	facet_scale: z.string().nullable().optional(),
+	assignees: z.array(TaskAssigneeSchema).optional(),
 	created_by: z.string().uuid(),
 	created_at: z.string().datetime(),
 	updated_at: z.string().datetime()

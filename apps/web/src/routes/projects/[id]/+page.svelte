@@ -120,6 +120,9 @@
 		getSortValueDisplay,
 		STAGE_ORDER,
 		IMPACT_ORDER,
+		ASSIGNEE_FILTER_ME,
+		ASSIGNEE_FILTER_UNASSIGNED,
+		type FilterGroup,
 		type InsightPanelKey as ConfigPanelKey
 	} from '$lib/components/ontology/insight-panels';
 
@@ -154,6 +157,21 @@
 		effective_enabled: boolean;
 		member_overridden: boolean;
 		can_manage_default: boolean;
+	};
+
+	type ProjectMemberRow = {
+		actor_id: string;
+		actor: {
+			id: string;
+			user_id: string | null;
+			name: string | null;
+			email: string | null;
+		} | null;
+	};
+
+	type TaskAssigneeFilterMember = {
+		actorId: string;
+		label: string;
 	};
 
 	// ============================================================
@@ -247,7 +265,7 @@
 	let showProjectEditModal = $state(false);
 	let showCollabModal = $state(false);
 	let showDeleteProjectModal = $state(false);
-	let showProjectCalendarSettingsModal = $state(false);
+	let showProjectCalendarModal = $state(false);
 	let showProjectIconStudioModal = $state(false);
 	// Project image generation is temporarily disabled.
 	const ENABLE_PROJECT_ICON_STUDIO_UI = false;
@@ -265,6 +283,8 @@
 	let projectNotificationSettings = $state<ProjectNotificationSettings | null>(null);
 	let isNotificationSettingsLoading = $state(false);
 	let isNotificationSettingsSaving = $state(false);
+	let currentProjectActorId = $state<string | null>(null);
+	let taskAssigneeFilterMembers = $state<TaskAssigneeFilterMember[]>([]);
 
 	// Document Tree State
 	let parentDocumentId = $state<string | null>(null);
@@ -351,6 +371,7 @@
 
 			isHydrating = false;
 			void loadProjectEvents();
+			void loadProjectMembers();
 		} catch (err) {
 			console.error('[Project Page] Hydration failed:', err);
 			void logOntologyClientError(err, {
@@ -376,6 +397,7 @@
 		if (canOpenCollabModal) {
 			void loadProjectNotificationSettings();
 		}
+		void loadProjectMembers();
 
 		if (data.skeleton) {
 			// Check for warm navigation data first
@@ -406,6 +428,76 @@
 		}
 	});
 
+	function getAssigneeDisplayLabel(assignee: {
+		name?: string | null;
+		email?: string | null;
+		actor_id?: string | null;
+		actorId?: string | null;
+	}): string {
+		const name = assignee.name?.trim();
+		if (name) return name;
+
+		const email = assignee.email?.trim().toLowerCase();
+		if (email) {
+			return email.split('@')[0] ?? 'Teammate';
+		}
+
+		const actorId = assignee.actor_id ?? assignee.actorId;
+		if (actorId) {
+			return actorId.slice(0, 8);
+		}
+
+		return 'Teammate';
+	}
+
+	async function loadProjectMembers() {
+		if (!project?.id || !access.isAuthenticated) return;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}/members`, {
+				method: 'GET',
+				credentials: 'same-origin'
+			});
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to load project members');
+			}
+
+			const rows = (payload?.data?.members ?? []) as ProjectMemberRow[];
+			const seen = new Set<string>();
+			const members: TaskAssigneeFilterMember[] = [];
+
+			for (const row of rows) {
+				if (!row.actor_id || seen.has(row.actor_id)) continue;
+				seen.add(row.actor_id);
+				members.push({
+					actorId: row.actor_id,
+					label: getAssigneeDisplayLabel({
+						name: row.actor?.name ?? null,
+						email: row.actor?.email ?? null,
+						actor_id: row.actor_id
+					})
+				});
+			}
+
+			taskAssigneeFilterMembers = members.sort((a, b) =>
+				a.label.toLowerCase().localeCompare(b.label.toLowerCase())
+			);
+			currentProjectActorId =
+				typeof payload?.data?.actorId === 'string' ? payload.data.actorId : null;
+		} catch (error) {
+			console.error('[Project] Failed to load members for task assignee filters:', error);
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/projects/${project.id}/members`,
+				method: 'GET',
+				projectId: project.id,
+				entityType: 'project_member',
+				operation: 'task_assignee_filter_members_load'
+			});
+		}
+	}
+
 	// ============================================================
 	// DERIVED STATE
 	// ============================================================
@@ -417,6 +509,65 @@
 		}
 		return Array.from(set);
 	});
+
+	const taskAssigneeFilterMembersFromTasks = $derived.by((): TaskAssigneeFilterMember[] => {
+		const byActorId = new Map<string, TaskAssigneeFilterMember>();
+		for (const task of tasks) {
+			const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+			for (const assignee of assignees) {
+				if (!assignee.actor_id || byActorId.has(assignee.actor_id)) continue;
+				byActorId.set(assignee.actor_id, {
+					actorId: assignee.actor_id,
+					label: getAssigneeDisplayLabel(assignee)
+				});
+			}
+		}
+		return Array.from(byActorId.values()).sort((a, b) =>
+			a.label.toLowerCase().localeCompare(b.label.toLowerCase())
+		);
+	});
+
+	const taskFilterGroups = $derived.by((): FilterGroup[] => {
+		return PANEL_CONFIGS.tasks.filters.map((group) => {
+			if (group.id !== 'assignee_actor_id') return group;
+
+			const options: FilterGroup['options'] = [];
+			if (currentProjectActorId) {
+				options.push({ value: ASSIGNEE_FILTER_ME, label: 'Assigned to me' });
+			}
+			options.push({ value: ASSIGNEE_FILTER_UNASSIGNED, label: 'Unassigned' });
+			const mergedMembers = [
+				...taskAssigneeFilterMembers,
+				...taskAssigneeFilterMembersFromTasks
+			];
+			for (const member of mergedMembers) {
+				options.push({
+					value: member.actorId,
+					label: `@${member.label}`
+				});
+			}
+
+			const dedupedOptions: FilterGroup['options'] = [];
+			const seenValues = new Set<string>();
+			for (const option of options) {
+				if (seenValues.has(option.value)) continue;
+				seenValues.add(option.value);
+				dedupedOptions.push(option);
+			}
+
+			return {
+				...group,
+				options: dedupedOptions
+			};
+		});
+	});
+
+	function getPanelFilterGroups(panelKey: InsightPanelKey): FilterGroup[] {
+		if (panelKey === 'tasks') {
+			return taskFilterGroups;
+		}
+		return PANEL_CONFIGS[panelKey].filters;
+	}
 
 	// ============================================================
 	// INSIGHT PANEL FILTERING & SORTING
@@ -484,6 +635,36 @@
 				const timeframe = selectedValues[0] || 'all';
 				if (timeframe !== 'all') {
 					if (!isWithinTimeframe(item.due_at as string | null, timeframe)) return false;
+				}
+				continue;
+			}
+
+			// Special handling for task assignee filtering
+			if (field === 'assignee_actor_id' && entityType === 'tasks') {
+				const assigneeRows = Array.isArray(item.assignees)
+					? (item.assignees as Array<{ actor_id?: string | null }>)
+					: [];
+				const taskAssigneeIds = assigneeRows
+					.map((assignee) => assignee.actor_id)
+					.filter((actorId): actorId is string => Boolean(actorId));
+
+				const includeUnassigned = selectedValues.includes(ASSIGNEE_FILTER_UNASSIGNED);
+				const selectedActorIds = selectedValues
+					.map((value) =>
+						value === ASSIGNEE_FILTER_ME
+							? currentProjectActorId
+							: value === ASSIGNEE_FILTER_UNASSIGNED
+								? null
+								: value
+					)
+					.filter((actorId): actorId is string => Boolean(actorId));
+
+				const matchesActor = taskAssigneeIds.some((actorId) =>
+					selectedActorIds.includes(actorId)
+				);
+				const isUnassigned = taskAssigneeIds.length === 0;
+				if (!matchesActor && !(includeUnassigned && isUnassigned)) {
+					return false;
 				}
 				continue;
 			}
@@ -887,6 +1068,20 @@
 			.join(' ');
 	}
 
+	function formatTaskAssigneeSummary(task: Task): string {
+		const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+		if (assignees.length === 0) return 'Unassigned';
+		const firstAssignee = assignees[0];
+		if (!firstAssignee) return 'Unassigned';
+
+		const primaryLabel = getAssigneeDisplayLabel(firstAssignee);
+		if (assignees.length === 1) {
+			return `@${primaryLabel}`;
+		}
+
+		return `@${primaryLabel} +${assignees.length - 1}`;
+	}
+
 	/**
 	 * Get panel icon background and text color styles
 	 */
@@ -1128,6 +1323,7 @@
 			contextDocument = newData.context_document || null;
 			await loadProjectEvents();
 			await loadProjectNotificationSettings();
+			await loadProjectMembers();
 
 			toastService.success('Data refreshed');
 		} catch (error) {
@@ -2185,7 +2381,7 @@
 											class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30"
 										>
 											<InsightFilterDropdown
-												filterGroups={PANEL_CONFIGS[section.key].filters}
+												filterGroups={getPanelFilterGroups(section.key)}
 												activeFilters={panelStates[section.key].filters}
 												onchange={(filters) =>
 													updatePanelFilters(section.key, filters)}
@@ -2214,6 +2410,8 @@
 															title={task.title}
 															metadata="{formatState(
 																task.state_key
+															)} · {formatTaskAssigneeSummary(
+																task
 															)} · {sortDisplay.value}"
 															state={task.state_key}
 															onclick={() =>
@@ -2677,10 +2875,10 @@
 	{/await}
 {/if}
 
-<!-- Project Calendar Settings Modal -->
-{#if showProjectCalendarSettingsModal}
+<!-- Project Calendar Modal -->
+{#if showProjectCalendarModal}
 	{#await import('$lib/components/project/ProjectCalendarSettingsModal.svelte') then { default: ProjectCalendarSettingsModal }}
-		<ProjectCalendarSettingsModal bind:isOpen={showProjectCalendarSettingsModal} {project} />
+		<ProjectCalendarSettingsModal bind:isOpen={showProjectCalendarModal} {project} />
 	{/await}
 {/if}
 
@@ -2829,12 +3027,12 @@
 			<button
 				onclick={() => {
 					showMobileMenu = false;
-					showProjectCalendarSettingsModal = true;
+					showProjectCalendarModal = true;
 				}}
 				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"
 			>
 				<Calendar class="w-4 h-4 text-muted-foreground" />
-				Calendar settings
+				Calendar
 			</button>
 		{/if}
 		{#if canDeleteProject}

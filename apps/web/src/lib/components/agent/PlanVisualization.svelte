@@ -243,6 +243,7 @@
 				{@const Icon = getStepIcon(step)}
 				{@const isActive = currentStep === step.stepNumber}
 				{@const isExecuting = step.status === 'executing'}
+				{@const previousStepNumber = plan.steps[i - 1]?.stepNumber}
 
 				<div
 					class="relative pl-7 transition-all duration-300 {isActive
@@ -254,9 +255,8 @@
 					<!-- INKPRINT Step Connector Line -->
 					{#if i > 0}
 						<div
-							class="absolute left-3 top-0 -mt-2 h-2 w-0.5 {step.dependsOn?.includes(
-								plan.steps[i - 1].stepNumber
-							)
+							class="absolute left-3 top-0 -mt-2 h-2 w-0.5 {previousStepNumber !==
+								undefined && step.dependsOn?.includes(previousStepNumber)
 								? 'bg-amber-500'
 								: 'bg-border'}"
 							aria-hidden="true"

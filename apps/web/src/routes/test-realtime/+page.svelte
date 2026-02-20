@@ -9,6 +9,13 @@
 	let messages: string[] = [];
 
 	onMount(async () => {
+		if (!supabase) {
+			status = 'Unavailable (non-browser context)';
+			return;
+		}
+
+		status = 'Connecting...';
+
 		// Test real-time connection
 		channel = supabase.channel('test-channel');
 
@@ -19,16 +26,17 @@
 					`Task event: ${payload.eventType} - ${JSON.stringify(payload.new || payload.old)}`
 				];
 			})
-			.subscribe((status) => {
-				console.log('Subscription status:', status);
-				if (status === 'SUBSCRIBED') {
+			.subscribe((subscriptionStatus) => {
+				console.log('Subscription status:', subscriptionStatus);
+				status = subscriptionStatus;
+				if (subscriptionStatus === 'SUBSCRIBED') {
 					messages = [...messages, '✅ Connected to real-time!'];
 				}
 			});
 	});
 
 	onDestroy(async () => {
-		if (channel) {
+		if (channel && supabase) {
 			await supabase.removeChannel(channel);
 		}
 	});

@@ -19,6 +19,7 @@ import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
+import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -160,13 +161,24 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const sanitizedProject = sanitizeProjectForClient(data.project as Record<string, unknown>);
+		const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
+		let tasksWithAssignees = rawTasks;
+		try {
+			const assigneeMap = await fetchTaskAssigneesMap({
+				supabase,
+				taskIds: rawTasks.map((task) => task.id)
+			});
+			tasksWithAssignees = attachAssigneesToTasks(rawTasks, assigneeMap);
+		} catch (assigneeError) {
+			console.warn('[Project Full API] Failed to enrich task assignees:', assigneeError);
+		}
 
 		return ApiResponse.success({
 			project: sanitizedProject,
 			goals,
 			requirements: data.requirements || [],
 			plans: data.plans || [],
-			tasks: data.tasks || [],
+			tasks: tasksWithAssignees,
 			documents: data.documents || [],
 			images: data.images || [],
 			sources: data.sources || [],

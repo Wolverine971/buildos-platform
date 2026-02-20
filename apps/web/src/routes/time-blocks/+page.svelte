@@ -201,8 +201,10 @@
 		// Update the date range in the store to load blocks for new view
 		if (calendarDays.length > 0) {
 			const start = calendarDays[0];
-			const end = calendarDays[calendarDays.length - 1];
-			timeBlocksStore.setDateRange(start, end);
+			const end = calendarDays.at(-1);
+			if (start && end) {
+				timeBlocksStore.setDateRange(start, end);
+			}
 		}
 	}
 
@@ -211,8 +213,10 @@
 		// Update the date range in the store to load blocks for new view
 		if (calendarDays.length > 0) {
 			const start = calendarDays[0];
-			const end = calendarDays[calendarDays.length - 1];
-			timeBlocksStore.setDateRange(start, end);
+			const end = calendarDays.at(-1);
+			if (start && end) {
+				timeBlocksStore.setDateRange(start, end);
+			}
 		}
 	}
 

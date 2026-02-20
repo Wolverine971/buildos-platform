@@ -199,17 +199,19 @@ export class ProjectDataFetcher {
 					created_at: task.created_at,
 					updated_at: task.updated_at
 				})
-			) as ProjectWithRelations['tasks'];
+			) as unknown as ProjectWithRelations['tasks'];
 			const notesData = (notesResult?.data ?? []) as ProjectWithRelations['notes'];
 			const phasesData = ((phasesResult?.data ?? []) as Array<Record<string, any>>).map(
 				(plan, index) => ({
 					id: plan.id,
+					user_id: userId,
 					project_id: plan.project_id,
 					name: plan.name,
 					description: plan.description ?? null,
-					start_date: null,
-					end_date: null,
+					start_date: plan.start_date ?? plan.created_at ?? new Date().toISOString(),
+					end_date: plan.end_date ?? plan.updated_at ?? new Date().toISOString(),
 					order: index + 1,
+					scheduling_method: null,
 					phase_number: index + 1,
 					tasks: [],
 					task_count: 0,
@@ -217,13 +219,16 @@ export class ProjectDataFetcher {
 					created_at: plan.created_at,
 					updated_at: plan.updated_at
 				})
-			) as ProjectWithRelations['phases'];
+			) as unknown as ProjectWithRelations['phases'];
 
 			const projectRow = projectResult.data as Record<string, any>;
 			const projectBase = {
 				...projectRow,
 				user_id: userId,
-				slug: null,
+				slug:
+					typeof projectRow.slug === 'string' && projectRow.slug.trim().length > 0
+						? projectRow.slug
+						: projectRow.id,
 				status:
 					projectRow.state_key === 'planning'
 						? 'paused'
@@ -236,7 +241,7 @@ export class ProjectDataFetcher {
 				end_date: projectRow.end_at ?? null,
 				executive_summary: null,
 				tags: Array.isArray(projectRow.tags) ? projectRow.tags : []
-			} as ProjectWithRelations;
+			} as unknown as ProjectWithRelations;
 
 			const fullProjectWithRelations: ProjectWithRelations = {
 				...projectBase,
@@ -392,7 +397,7 @@ export class ProjectDataFetcher {
 			return (data || []).map((project) => ({
 				id: project.id,
 				name: project.name,
-				slug: null,
+				slug: project.id,
 				description: project.description,
 				executive_summary: null,
 				tags: [],

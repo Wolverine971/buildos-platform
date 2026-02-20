@@ -6318,6 +6318,72 @@ export type Database = {
           },
         ]
       }
+      onto_task_assignees: {
+        Row: {
+          assigned_by_actor_id: string
+          assignee_actor_id: string
+          created_at: string
+          id: string
+          project_id: string
+          source: string
+          task_id: string
+        }
+        Insert: {
+          assigned_by_actor_id: string
+          assignee_actor_id: string
+          created_at?: string
+          id?: string
+          project_id: string
+          source?: string
+          task_id: string
+        }
+        Update: {
+          assigned_by_actor_id?: string
+          assignee_actor_id?: string
+          created_at?: string
+          id?: string
+          project_id?: string
+          source?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_task_assignees_assigned_by_actor_id_fkey"
+            columns: ["assigned_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_task_assignees_assignee_actor_id_fkey"
+            columns: ["assignee_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_task_assignees_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onto_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_documents"
+            referencedColumns: ["task_id"]
+          },
+        ]
+      }
       onto_tasks: {
         Row: {
           completed_at: string | null
@@ -10893,6 +10959,17 @@ export type Database = {
           total_cost: number
           total_tokens: number
           user_id: string
+        }[]
+      }
+      get_allowed_transitions: {
+        Args: { p_object_id: string; p_object_kind: string }
+        Returns: {
+          actions: Json
+          can_run: boolean
+          event: string
+          failed_guards: Json
+          guards: Json
+          to_state: string
         }[]
       }
       get_brief_email_status: {

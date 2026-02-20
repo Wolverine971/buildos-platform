@@ -56,6 +56,15 @@ import {
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { EntityKind } from '$lib/services/ontology/edge-direction';
 import { logOntologyApiError } from '../../shared/error-logging';
+import {
+	TaskAssignmentValidationError,
+	attachAssigneesToTask,
+	fetchTaskAssigneesMap,
+	notifyTaskAssignmentAdded,
+	parseAssigneeActorIds,
+	syncTaskAssignees,
+	validateAssigneesAreProjectEligible
+} from '$lib/server/task-assignment.service';
 
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
 
@@ -165,8 +174,15 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 
 		// Remove nested project data from response
 		const { project: _project, ...taskData } = task;
+		let taskWithAssignees = { ...taskData, assignees: [] as unknown[] };
+		try {
+			const assigneeMap = await fetchTaskAssigneesMap({ supabase, taskIds: [params.id] });
+			taskWithAssignees = attachAssigneesToTask(taskData, assigneeMap);
+		} catch (assigneeError) {
+			console.warn('[Task GET] Failed to enrich assignees in response:', assigneeError);
+		}
 
-		return ApiResponse.success({ task: taskData, linkedEntities });
+		return ApiResponse.success({ task: taskWithAssignees, linkedEntities });
 	} catch (error) {
 		console.error('Error fetching task:', error);
 		await logOntologyApiError({
@@ -195,7 +211,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
-		const body = await request.json();
+		const body = (await request.json()) as Record<string, unknown>;
 		const {
 			title,
 			description,
@@ -211,7 +227,23 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			parent,
 			parents,
 			connections
-		} = body;
+		} = body as {
+			title?: string;
+			description?: string | null;
+			priority?: number | null;
+			state_key?: string | null;
+			type_key?: string | null;
+			props?: Record<string, unknown> | null;
+			plan_id?: string | null;
+			goal_id?: string | null;
+			supporting_milestone_id?: string | null;
+			start_at?: string | null;
+			due_at?: string | null;
+			parent?: NonNullable<Parameters<typeof toParentRefs>[0]>['parent'];
+			parents?: NonNullable<Parameters<typeof toParentRefs>[0]>['parents'];
+			connections?: ConnectionRef[];
+		};
+		const { hasInput: hasAssigneeInput, assigneeActorIds } = parseAssigneeActorIds(body);
 
 		// Get user's actor ID
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -258,7 +290,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				*,
 				project:onto_projects!inner(
 					id,
-					created_by
+					created_by,
+					name
 				)
 			`
 			)
@@ -296,6 +329,15 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (!hasAccess) {
 			return ApiResponse.forbidden('Access denied');
+		}
+
+		if (hasAssigneeInput) {
+			await validateAssigneesAreProjectEligible({
+				supabase,
+				projectId: existingTask.project_id,
+				assigneeActorIds,
+				projectOwnerActorId: existingTask.project.created_by
+			});
 		}
 
 		const invalidParent = explicitParents.find(
@@ -514,6 +556,32 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			}
 		}
 
+		if (hasAssigneeInput) {
+			const { addedActorIds } = await syncTaskAssignees({
+				supabase,
+				projectId: existingTask.project_id,
+				taskId: params.id,
+				assigneeActorIds,
+				assignedByActorId: actorId
+			});
+
+			const actorDisplayName =
+				(typeof session.user.name === 'string' && session.user.name) ||
+				session.user.email?.split('@')[0] ||
+				'A teammate';
+
+			await notifyTaskAssignmentAdded({
+				supabase,
+				projectId: existingTask.project_id,
+				projectName: existingTask.project.name,
+				taskId: params.id,
+				taskTitle: updatedTask.title,
+				actorUserId: session.user.id,
+				actorDisplayName,
+				addedAssigneeActorIds: addedActorIds
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logUpdateAsync(
 			supabase,
@@ -535,8 +603,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		return ApiResponse.success({ task: updatedTask });
+		let taskWithAssignees = { ...updatedTask, assignees: [] as unknown[] };
+		try {
+			const assigneeMap = await fetchTaskAssigneesMap({ supabase, taskIds: [params.id] });
+			taskWithAssignees = attachAssigneesToTask(updatedTask, assigneeMap);
+		} catch (assigneeError) {
+			console.warn('[Task PATCH] Failed to enrich assignees in response:', assigneeError);
+		}
+
+		return ApiResponse.success({ task: taskWithAssignees });
 	} catch (error) {
+		if (error instanceof TaskAssignmentValidationError) {
+			return ApiResponse.error(error.message, error.status);
+		}
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);
 		}

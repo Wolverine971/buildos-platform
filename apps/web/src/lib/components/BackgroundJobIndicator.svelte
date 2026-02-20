@@ -30,12 +30,13 @@
 	$: hasActiveJobs = $activeBackgroundJobs.length > 0;
 	$: recentCompletedJobs = $completedJobs.filter((job) => {
 		const isRecent = Date.now() - (job.endTime || job.startTime) < 30000; // 30 seconds
-		const hasProjectId = job.result?.projectId;
+		const projectId = job.result?.projectId;
 		// Hide if user has navigated to this project
-		const notNavigated = !hasProjectId || !navigatedProjects.has(job.result.projectId);
+		const notNavigated = !projectId || !navigatedProjects.has(projectId);
 		return isRecent && notNavigated;
 	});
 	$: hasRecentCompletedJobs = recentCompletedJobs.length > 0;
+	$: firstRecentCompletedProjectId = recentCompletedJobs[0]?.result?.projectId ?? null;
 	$: recentFailedJobs = $failedJobs.filter((job) => {
 		const isRecent = Date.now() - (job.endTime || job.startTime) < 60000; // 1 minute
 		return isRecent;
@@ -117,8 +118,8 @@
 				transition:scale={{ duration: 200, start: 0.95 }}
 			>
 				<Button
-					onclick={hasRecentCompletedJobs && recentCompletedJobs[0]?.result?.projectId
-						? () => handleViewProject(recentCompletedJobs[0].result?.projectId)
+					onclick={firstRecentCompletedProjectId
+						? () => handleViewProject(firstRecentCompletedProjectId)
 						: toggleExpanded}
 					class="w-full p-4 flex items-center justify-between rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
 					variant="ghost"

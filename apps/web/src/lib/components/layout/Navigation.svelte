@@ -66,9 +66,9 @@
 
 	// Context-aware chat configuration based on current page
 	const chatContextType = $derived.by((): ChatContextType => {
-		// Task page: /projects-old/[id]/tasks/[taskId] (deprecated)
+		// Legacy task page (deprecated): treat as project context
 		if (currentPath.match(/^\/projects-old\/[^/]+\/tasks\/[^/]+/)) {
-			return 'task';
+			return 'project';
 		}
 		// Project detail page: /projects/[id]
 		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
@@ -79,10 +79,10 @@
 	});
 
 	const chatEntityId = $derived.by((): string | undefined => {
-		// Task page (deprecated): return task ID
-		const taskMatch = currentPath.match(/^\/projects-old\/[^/]+\/tasks\/([^/]+)/);
-		if (taskMatch) {
-			return taskMatch[1];
+		// Legacy task page (deprecated): return project ID from path
+		const legacyTaskMatch = currentPath.match(/^\/projects-old\/([^/]+)\/tasks\/[^/]+/);
+		if (legacyTaskMatch) {
+			return legacyTaskMatch[1];
 		}
 		// Project detail page: return project ID
 		if (currentPath.match(/^\/projects\/([^/]+)$/) && $page.data?.project) {
@@ -239,12 +239,11 @@
 
 		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
 			if (wasProjectCreate) {
-				toastService.success(
-					'Project created! Head to Projects to explore it.',
-					TOAST_DURATION.LONG
-				);
+				toastService.success('Project created! Head to Projects to explore it.', {
+					duration: TOAST_DURATION.LONG
+				});
 			} else {
-				toastService.success('Changes saved.', TOAST_DURATION.NORMAL);
+				toastService.success('Changes saved.', { duration: TOAST_DURATION.STANDARD });
 			}
 		}
 	}

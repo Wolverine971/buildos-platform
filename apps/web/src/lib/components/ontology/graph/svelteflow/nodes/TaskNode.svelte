@@ -45,7 +45,13 @@
 		}
 	};
 
-	const style = stateStyles[data.state ?? 'todo'] ?? stateStyles.todo;
+	const defaultStyle = {
+		bg: 'bg-muted',
+		border: 'border-border',
+		icon: 'text-muted-foreground'
+	};
+
+	const style = stateStyles[data.state ?? 'todo'] ?? defaultStyle;
 </script>
 
 <div

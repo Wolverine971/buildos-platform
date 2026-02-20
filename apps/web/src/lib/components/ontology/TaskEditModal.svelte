@@ -30,6 +30,7 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import TaskAssigneeSelector from './TaskAssigneeSelector.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
@@ -124,6 +125,7 @@
 	let startAt = $state('');
 	let dueAt = $state('');
 	let completedAt = $state('');
+	let assigneeActorIds = $state<string[]>([]);
 	let showSeriesModal = $state(false);
 	let showSeriesDeleteConfirm = $state(false);
 	let isDeletingSeries = $state(false);
@@ -228,6 +230,13 @@
 				startAt = task.start_at ? formatDateTimeForInput(task.start_at) : '';
 				dueAt = task.due_at ? formatDateTimeForInput(task.due_at) : '';
 				completedAt = task.completed_at || '';
+				assigneeActorIds = Array.isArray(task.assignees)
+					? task.assignees
+							.map((assignee: { actor_id?: string }) => assignee.actor_id)
+							.filter((actorId: string | undefined): actorId is string =>
+								Boolean(actorId)
+							)
+					: [];
 				seriesActionError = '';
 				showSeriesDeleteConfirm = false;
 			}
@@ -296,7 +305,8 @@
 				state_key: stateKey,
 				type_key: typeKey || 'task.default',
 				start_at: parseDateTimeFromInput(startAt),
-				due_at: parseDateTimeFromInput(dueAt)
+				due_at: parseDateTimeFromInput(dueAt),
+				assignee_actor_ids: assigneeActorIds
 			};
 
 			const response = await fetch(`/api/onto/tasks/${taskId}`, {
@@ -629,6 +639,24 @@
 									disabled={isSaving}
 									size="md"
 								/>
+							</FormField>
+
+							<FormField
+								label="Assignees"
+								labelFor="task-assignees"
+								hint="Assign this task to one or more collaborators (max 10)"
+							>
+								<div id="task-assignees">
+									<TaskAssigneeSelector
+										{projectId}
+										bind:selectedActorIds={assigneeActorIds}
+										fallbackAssignees={Array.isArray(task?.assignees)
+											? task.assignees
+											: []}
+										disabled={isSaving || isLoading}
+										maxAssignees={10}
+									/>
+								</div>
 							</FormField>
 
 							<div class="grid grid-cols-2 gap-2 sm:gap-4">

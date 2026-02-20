@@ -590,7 +590,7 @@
 								onkeydown={handleKeydown}
 								placeholder="Confirm your password"
 								size="lg"
-								error={confirmPassword && !passwordsMatch}
+								error={Boolean(confirmPassword) && !passwordsMatch}
 							/>
 						</FormField>
 					</div>

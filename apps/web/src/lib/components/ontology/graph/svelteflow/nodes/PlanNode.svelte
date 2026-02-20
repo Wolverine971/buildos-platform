@@ -26,7 +26,12 @@
 		}
 	};
 
-	const style = stateStyles[data.state ?? 'draft'] ?? stateStyles.draft;
+	const defaultStyle = {
+		bg: 'bg-muted',
+		border: 'border-border'
+	};
+
+	const style = stateStyles[data.state ?? 'draft'] ?? defaultStyle;
 </script>
 
 <div

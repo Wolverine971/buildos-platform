@@ -12,10 +12,8 @@ import {
 	CheckCircle2,
 	AlertCircle,
 	Zap,
-	Scale,
 	Gauge,
 	Target,
-	Flag,
 	AlertTriangle,
 	Calendar as CalendarIcon,
 	Image as ImageIcon
@@ -72,6 +70,9 @@ export interface PanelConfig {
 	defaultFilters: Record<string, string[]>;
 }
 
+export const ASSIGNEE_FILTER_UNASSIGNED = '__unassigned__';
+export const ASSIGNEE_FILTER_ME = '__me__';
+
 // ============================================================
 // TASK CONFIGURATION
 // ============================================================
@@ -108,6 +109,15 @@ export const TASK_CONFIG: PanelConfig = {
 				{ value: 'medium', label: 'Medium' },
 				{ value: 'large', label: 'Large' },
 				{ value: 'epic', label: 'Epic' }
+			]
+		},
+		{
+			id: 'assignee_actor_id',
+			label: 'Assignee',
+			multiSelect: true,
+			options: [
+				{ value: ASSIGNEE_FILTER_ME, label: 'Assigned to me' },
+				{ value: ASSIGNEE_FILTER_UNASSIGNED, label: 'Unassigned' }
 			]
 		}
 	],
@@ -622,7 +632,7 @@ export interface SortValueDisplay {
 export function getSortValueDisplay(
 	entity: Record<string, unknown>,
 	sortField: string,
-	panelKey?: InsightPanelKey
+	_panelKey?: InsightPanelKey
 ): SortValueDisplay {
 	const value = entity[sortField];
 

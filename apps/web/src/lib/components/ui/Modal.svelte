@@ -219,8 +219,11 @@
 			return; // Let scroll happen naturally
 		}
 
+		const firstTouch = e.touches[0];
+		if (!firstTouch) return;
+
 		isDragging = true;
-		dragStartY = e.touches[0].clientY;
+		dragStartY = firstTouch.clientY;
 		dragCurrentY = dragStartY;
 		dragTranslateY = 0;
 

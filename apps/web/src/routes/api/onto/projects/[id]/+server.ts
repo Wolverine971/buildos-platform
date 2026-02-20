@@ -21,6 +21,7 @@ import {
 	sanitizeProjectForClient,
 	sanitizeProjectPropsPatchInput
 } from '$lib/utils/project-props-sanitizer';
+import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -225,12 +226,26 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			(milestonesResult.data || []) as MilestoneRow[]
 		);
 
+		const rawTasks = (tasksResult.data || []) as Array<
+			{ id: string } & Record<string, unknown>
+		>;
+		let tasksWithAssignees = rawTasks;
+		try {
+			const assigneeMap = await fetchTaskAssigneesMap({
+				supabase,
+				taskIds: rawTasks.map((task) => task.id)
+			});
+			tasksWithAssignees = attachAssigneesToTasks(rawTasks, assigneeMap);
+		} catch (assigneeError) {
+			console.warn('[Project API] Failed to enrich task assignees:', assigneeError);
+		}
+
 		return ApiResponse.success({
 			project: sanitizeProjectForClient(project),
 			goals: goalsResult.data || [],
 			requirements: requirementsResult.data || [],
 			plans: plansResult.data || [],
-			tasks: tasksResult.data || [],
+			tasks: tasksWithAssignees,
 			documents: documentsResult.data || [],
 			images: imagesResult.data || [],
 			sources: sourcesResult.data || [],

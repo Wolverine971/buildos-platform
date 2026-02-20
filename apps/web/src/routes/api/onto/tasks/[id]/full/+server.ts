@@ -24,6 +24,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { resolveLinkedEntities } from '../../task-linked-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import { attachAssigneesToTask, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const session = await locals.safeGetSession();
@@ -128,9 +129,16 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		// Extract project data and include project name in response
 		const { project, ...taskData } = task;
+		let taskWithAssignees = { ...taskData, assignees: [] as unknown[] };
+		try {
+			const assigneeMap = await fetchTaskAssigneesMap({ supabase, taskIds: [taskId] });
+			taskWithAssignees = attachAssigneesToTask(taskData, assigneeMap);
+		} catch (assigneeError) {
+			console.warn('[Task Full GET] Failed to enrich assignees in response:', assigneeError);
+		}
 
 		return ApiResponse.success({
-			task: { ...taskData, project: { name: project.name } },
+			task: { ...taskWithAssignees, project: { name: project.name } },
 			linkedEntities
 		});
 	} catch (error) {

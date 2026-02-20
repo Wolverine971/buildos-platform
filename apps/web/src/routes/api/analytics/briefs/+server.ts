@@ -67,11 +67,14 @@ async function getGenerationFrequency(
 			throw error;
 		}
 
-		const completedDates = Array.from(
+		const completedDates: string[] = Array.from(
 			new Set(
 				(rows || [])
 					.filter((row: any) => row.generation_status === 'completed')
 					.map((row: any) => row.brief_date)
+					.filter(
+						(briefDate: unknown): briefDate is string => typeof briefDate === 'string'
+					)
 			)
 		);
 

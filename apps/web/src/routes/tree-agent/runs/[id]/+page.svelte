@@ -62,8 +62,11 @@
 
 		const normalized = (json.data.events ?? [])
 			.map((row: TreeAgentEventRow) => normalizeTreeAgentEvent(row))
-			.filter((event): event is NonNullable<ReturnType<typeof normalizeTreeAgentEvent>> =>
-				Boolean(event)
+			.filter(
+				(
+					event: ReturnType<typeof normalizeTreeAgentEvent>
+				): event is NonNullable<ReturnType<typeof normalizeTreeAgentEvent>> =>
+					Boolean(event)
 			)
 			.sort(
 				(

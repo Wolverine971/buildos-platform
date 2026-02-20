@@ -78,7 +78,7 @@
 				{/if}
 
 				<div class="space-y-5">
-					<FormField label="New password" labelFor="password" size="md">
+					<FormField label="New password" labelFor="password">
 						<TextInput
 							id="password"
 							name="password"
@@ -92,7 +92,7 @@
 						/>
 					</FormField>
 
-					<FormField label="Confirm new password" labelFor="confirmPassword" size="md">
+					<FormField label="Confirm new password" labelFor="confirmPassword">
 						<TextInput
 							id="confirmPassword"
 							name="confirmPassword"

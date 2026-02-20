@@ -109,7 +109,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			const completedAt = resolvedGeneration.completed_at ?? new Date().toISOString();
 			const selectedCandidateId =
 				resolvedGeneration.selected_candidate_id ??
-				resolvedCandidates.find((candidate) => Boolean(candidate.selected_at))?.id ??
+				resolvedCandidates.find((candidate: { id: string; selected_at: string | null }) =>
+					Boolean(candidate.selected_at)
+				)?.id ??
 				null;
 
 			logger.warn(

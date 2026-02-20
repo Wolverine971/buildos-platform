@@ -4,6 +4,7 @@
 
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { OnboardingIntent, OnboardingStakes } from '$lib/config/onboarding.config';
+import type { Json } from '@buildos/shared-types';
 
 export interface OnboardingV3SeedData {
 	intent: OnboardingIntent;
@@ -152,7 +153,7 @@ function buildDimensionsFromOnboarding(
 	return dims;
 }
 
-function buildOnboardingSeed(data: OnboardingV3SeedData): Record<string, unknown> {
+function buildOnboardingSeed(data: OnboardingV3SeedData): Json {
 	return {
 		intent: data.intent,
 		stakes: data.stakes,
@@ -166,7 +167,7 @@ function buildOnboardingSeed(data: OnboardingV3SeedData): Record<string, unknown
 		notifications_enabled: data.smsEnabled || data.emailEnabled,
 		completed_at: new Date().toISOString(),
 		onboarding_version: 'v3'
-	};
+	} as Json;
 }
 
 function buildFeaturesUsed(data: OnboardingV3SeedData): string[] {

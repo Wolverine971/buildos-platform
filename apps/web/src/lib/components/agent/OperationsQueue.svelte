@@ -259,7 +259,10 @@
 							'table'
 						];
 						const currentIndex = options.indexOf(sortBy);
-						sortBy = options[(currentIndex + 1) % options.length];
+						const nextSort = options[(currentIndex + 1) % options.length];
+						if (nextSort) {
+							sortBy = nextSort;
+						}
 					}}
 					title="Change sort order"
 					aria-label="Change sort order"

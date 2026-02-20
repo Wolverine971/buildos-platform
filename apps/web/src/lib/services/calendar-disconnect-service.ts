@@ -175,7 +175,9 @@ export class CalendarDisconnectService {
 
 						const { error: updateError } = await this.supabase
 							.from('onto_tasks')
-							.update({ props: nextProps })
+							.update({
+								props: nextProps as Database['public']['Tables']['onto_tasks']['Update']['props']
+							})
 							.eq('id', task.id);
 
 						if (updateError) {
@@ -215,7 +217,7 @@ export class CalendarDisconnectService {
 						.is('deleted_at', null)
 						.order('start_at', { ascending: true })
 						.limit(10)
-				: { data: [], error: null };
+				: { data: [] };
 
 			const taskIds = Array.from(
 				new Set((events ?? []).map((event) => event.owner_entity_id).filter(Boolean))
@@ -228,7 +230,7 @@ export class CalendarDisconnectService {
 							.select('id, title, project_id')
 							.in('id', taskIds)
 							.is('deleted_at', null)
-					: { data: [], error: null };
+					: { data: [] };
 
 			// Get time blocks with calendar links
 			const { data: timeBlocks } = await this.supabase

@@ -66,6 +66,7 @@
 			if (isEntityFiltered && entityKind && entityId) {
 				params.set('entity_kind', entityKind);
 				params.set('entity_id', entityId);
+				params.set('role', linkRole);
 			}
 
 			const response = await fetch(`/api/onto/assets?${params.toString()}`);

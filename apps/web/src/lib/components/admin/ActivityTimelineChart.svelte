@@ -225,11 +225,11 @@
 					Activity Summary
 				</h4>
 				<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-					{#each Object.entries(sortedActivities.reduce((counts, activity) => {
-							const type = activity.entity_type.split('_')[0];
-							counts[type] = (counts[type] || 0) + 1;
-							return counts;
-						}, {})) as [type, count]}
+					{#each Object.entries(sortedActivities.reduce<Record<string, number>>( (counts, activity) => {
+								const [type = 'unknown'] = activity.entity_type.split('_');
+								counts[type] = (counts[type] || 0) + 1;
+								return counts;
+							}, {} )) as [type, count]}
 						<div class="text-center">
 							<div class="text-base font-bold text-foreground">
 								{count}
