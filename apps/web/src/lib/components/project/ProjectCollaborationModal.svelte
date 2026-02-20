@@ -1530,7 +1530,8 @@
 									Notify me about project activity
 								</span>
 								<span class="block text-xs text-muted-foreground">
-									Uses your existing push and in-app channel preferences.
+									In-app shared project updates are on by default. Push still uses
+									your global push preference.
 								</span>
 							</span>
 						</label>

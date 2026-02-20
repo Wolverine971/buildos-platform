@@ -209,6 +209,40 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				(recipientId) => recipientId !== user.id
 			);
 
+			// Ensure shared project activity subscription is active for this user + existing project recipients.
+			// Database trigger batching also maintains this server-side, but we prime it here immediately.
+			const projectActivitySubscriberIds = Array.from(new Set([user.id, ...recipientIds]));
+			if (projectActivitySubscriberIds.length > 0) {
+				const { error: projectActivitySubscriptionError } = await supabase
+					.from('notification_subscriptions')
+					.upsert(
+						projectActivitySubscriberIds.map((subscriberId) => ({
+							user_id: subscriberId,
+							event_type: 'project.activity.batched',
+							is_active: true,
+							admin_only: false,
+							created_by: user.id,
+							updated_at: nowIso
+						})),
+						{
+							onConflict: 'user_id,event_type'
+						}
+					);
+
+				if (projectActivitySubscriptionError) {
+					void logOntologyApiError({
+						supabase,
+						error: projectActivitySubscriptionError,
+						endpoint: `/api/onto/invites/${inviteId}/accept`,
+						method: 'POST',
+						userId,
+						projectId,
+						entityType: 'project_invite',
+						operation: 'project_invite_accept_project_activity_subscription_seed'
+					});
+				}
+			}
+
 			if (recipientIds.length > 0) {
 				const eventType = 'project.invite.accepted';
 				const correlationId = randomUUID();
