@@ -209,14 +209,34 @@
 	function handleTouchStart(e: TouchEvent) {
 		if (!gesturesEnabled) return;
 
-		// Check if touch started on scrollable content
 		touchStartTarget = e.target;
 		const target = e.target as HTMLElement;
-		const scrollableParent = target.closest('.modal-content');
 
-		// If scrollable content is at the top, allow gesture
-		if (scrollableParent && scrollableParent.scrollTop > 0) {
-			return; // Let scroll happen naturally
+		// Walk up from the touch target to find a scrollable container.
+		// If we encounter a nested scroll container (not .modal-content) that has
+		// scrollable content, bail out and let native scroll handle it.
+		// If we reach .modal-content, use the standard scrollTop check.
+		let el: HTMLElement | null = target;
+		while (el && el !== modalElement) {
+			if (el.classList.contains('modal-content')) {
+				// Reached the Modal's own scroll container
+				if (el.scrollTop > 0) {
+					return; // Already scrolled, let native scroll handle it
+				}
+				break; // At top, allow dismiss gesture
+			}
+
+			// Check for nested scroll containers (e.g., CodeMirror editors,
+			// overflow-y:auto panels inside modals with overflow:hidden on .modal-content)
+			const overflowY = window.getComputedStyle(el).overflowY;
+			if (
+				(overflowY === 'auto' || overflowY === 'scroll') &&
+				el.scrollHeight > el.clientHeight
+			) {
+				return; // Inside a scrollable child — let native scroll handle it
+			}
+
+			el = el.parentElement;
 		}
 
 		const firstTouch = e.touches[0];
@@ -240,8 +260,11 @@
 
 		// Only allow downward dragging (dismiss gesture)
 		if (deltaY > 0) {
-			// Prevent default to stop scroll while dragging modal
-			e.preventDefault();
+			// Guard: only preventDefault if the event is still cancelable
+			// (browser may have already committed to a scroll)
+			if (e.cancelable) {
+				e.preventDefault();
+			}
 			dragTranslateY = deltaY;
 			dragCurrentY = currentY;
 		}

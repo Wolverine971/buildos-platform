@@ -27,6 +27,7 @@ export interface JSONRequestOptions<T = unknown> {
 		retryOnParseError?: boolean;
 		validateSchema?: boolean;
 		maxRetries?: number;
+		allowTruncatedJsonRecovery?: boolean;
 	};
 	requirements?: {
 		maxLatency?: number;

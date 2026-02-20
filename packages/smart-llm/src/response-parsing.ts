@@ -137,6 +137,182 @@ export function cleanJSONResponse(raw: string): string {
 	return cleaned.trim();
 }
 
+type JSONStructureScan = {
+	stack: Array<'{' | '['>;
+	inString: boolean;
+	currentStringStart: number;
+	hasMismatchedClose: boolean;
+};
+
+function scanJSONStructure(input: string): JSONStructureScan {
+	const stack: Array<'{' | '['> = [];
+	let inString = false;
+	let escapeNext = false;
+	let currentStringStart = -1;
+	let hasMismatchedClose = false;
+
+	for (let i = 0; i < input.length; i++) {
+		const char = input[i];
+
+		if (inString) {
+			if (escapeNext) {
+				escapeNext = false;
+				continue;
+			}
+			if (char === '\\') {
+				escapeNext = true;
+				continue;
+			}
+			if (char === '"') {
+				inString = false;
+				currentStringStart = -1;
+			}
+			continue;
+		}
+
+		if (char === '"') {
+			inString = true;
+			currentStringStart = i;
+			continue;
+		}
+
+		if (char === '{' || char === '[') {
+			stack.push(char);
+			continue;
+		}
+
+		if (char === '}' || char === ']') {
+			const open = stack.pop();
+			const matches = (open === '{' && char === '}') || (open === '[' && char === ']');
+			if (!matches) {
+				hasMismatchedClose = true;
+				break;
+			}
+		}
+	}
+
+	return { stack, inString, currentStringStart, hasMismatchedClose };
+}
+
+function collectCandidateCutPoints(input: string): number[] {
+	const points = new Set<number>([input.length]);
+	let inString = false;
+	let escapeNext = false;
+
+	for (let i = 0; i < input.length; i++) {
+		const char = input[i];
+
+		if (inString) {
+			if (escapeNext) {
+				escapeNext = false;
+				continue;
+			}
+			if (char === '\\') {
+				escapeNext = true;
+				continue;
+			}
+			if (char === '"') {
+				inString = false;
+			}
+			continue;
+		}
+
+		if (char === '"') {
+			inString = true;
+			continue;
+		}
+
+		if (char === ',' || char === ':') {
+			points.add(i);
+			points.add(i + 1);
+			continue;
+		}
+
+		if (char === '{' || char === '[' || char === '}' || char === ']') {
+			points.add(i + 1);
+		}
+	}
+
+	return Array.from(points)
+		.filter((value) => value > 0 && value <= input.length)
+		.sort((a, b) => b - a);
+}
+
+function trimDanglingSeparators(value: string): string {
+	let trimmed = value.trimEnd();
+	while (trimmed.length > 0) {
+		const lastChar = trimmed[trimmed.length - 1];
+		if (lastChar === ',' || lastChar === ':') {
+			trimmed = trimmed.slice(0, -1).trimEnd();
+			continue;
+		}
+		break;
+	}
+	return trimmed;
+}
+
+function trimDanglingOpenContainers(value: string): string {
+	let trimmed = value.trimEnd();
+	while (trimmed.length > 1) {
+		const lastChar = trimmed[trimmed.length - 1];
+		if (lastChar === '{' || lastChar === '[') {
+			trimmed = trimDanglingSeparators(trimmed.slice(0, -1));
+			continue;
+		}
+		break;
+	}
+	return trimmed;
+}
+
+function buildRepairedCandidate(prefix: string): string | null {
+	let working = prefix.trimEnd();
+	if (!working) return null;
+	if (!working.startsWith('{') && !working.startsWith('[')) return null;
+
+	let scan = scanJSONStructure(working);
+	if (scan.hasMismatchedClose) return null;
+	if (scan.inString && scan.currentStringStart >= 0) {
+		working = working.slice(0, scan.currentStringStart).trimEnd();
+	}
+
+	working = trimDanglingSeparators(working);
+	working = trimDanglingOpenContainers(working);
+	if (!working) return null;
+
+	scan = scanJSONStructure(working);
+	if (scan.hasMismatchedClose || scan.inString) return null;
+	if (!working.startsWith('{') && !working.startsWith('[')) return null;
+
+	let candidate = working;
+	for (let i = scan.stack.length - 1; i >= 0; i--) {
+		candidate += scan.stack[i] === '{' ? '}' : ']';
+	}
+
+	candidate = candidate.replace(/,(\s*[}\]])/g, '$1').trim();
+	return candidate.length > 0 ? candidate : null;
+}
+
+export function repairTruncatedJSONResponse(raw: string): string | null {
+	const input = raw.trim();
+	if (!input) return null;
+	if (!input.startsWith('{') && !input.startsWith('[')) return null;
+
+	const candidateCutPoints = collectCandidateCutPoints(input).slice(0, 512);
+	for (const cutPoint of candidateCutPoints) {
+		const prefix = input.slice(0, cutPoint);
+		const candidate = buildRepairedCandidate(prefix);
+		if (!candidate) continue;
+		try {
+			JSON.parse(candidate);
+			return candidate;
+		} catch {
+			continue;
+		}
+	}
+
+	return null;
+}
+
 export function normalizeStreamingContent(
 	content: unknown,
 	inThinkingBlock: boolean

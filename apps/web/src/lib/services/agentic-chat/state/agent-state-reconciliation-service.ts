@@ -64,6 +64,7 @@ interface LLMService {
 			retryOnParseError?: boolean;
 			validateSchema?: boolean;
 			maxRetries?: number;
+			allowTruncatedJsonRecovery?: boolean;
 		};
 	}): Promise<T>;
 	generateText?(options: {
@@ -113,7 +114,8 @@ export class AgentStateReconciliationService {
 					chatSessionId: input.sessionId,
 					validation: {
 						retryOnParseError: true,
-						maxRetries: 2
+						maxRetries: 2,
+						allowTruncatedJsonRecovery: true
 					}
 				});
 			} else if (typeof llmWithJson.generateText === 'function') {

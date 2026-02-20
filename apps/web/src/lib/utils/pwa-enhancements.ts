@@ -119,7 +119,7 @@ export function initializePWAEnhancements(): (() => void) | void {
 		const touchYDelta = touchY - lastTouchY;
 		lastTouchY = touchY;
 
-		if (touchYDelta > 0 && window.scrollY === 0) {
+		if (touchYDelta > 0 && window.scrollY === 0 && e.cancelable) {
 			e.preventDefault();
 		}
 	};

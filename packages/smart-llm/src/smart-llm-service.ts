@@ -42,7 +42,8 @@ import {
 	cleanJSONResponse,
 	enhanceSystemPromptForJSON,
 	extractTextFromChoice,
-	normalizeStreamingContent
+	normalizeStreamingContent,
+	repairTruncatedJSONResponse
 } from './response-parsing';
 import { ToolCallAssembler, resolveToolCallAssemblerProfile } from './tool-call-assembler';
 import {
@@ -208,6 +209,60 @@ export class SmartLLMService {
 		return transforms.length > 0 ? transforms : undefined;
 	}
 
+	private isLikelyTruncatedJSONError(error: unknown, cleaned: string): boolean {
+		if (!(error instanceof SyntaxError)) return false;
+
+		const normalizedMessage = error.message.toLowerCase();
+		if (
+			normalizedMessage.includes('unterminated string') ||
+			normalizedMessage.includes('unexpected end of json input') ||
+			normalizedMessage.includes('unexpected end of data')
+		) {
+			return true;
+		}
+
+		const positionMatch = normalizedMessage.match(/position (\d+)/);
+		if (!positionMatch?.[1]) return false;
+		const position = Number.parseInt(positionMatch[1], 10);
+		if (!Number.isFinite(position)) return false;
+
+		return cleaned.length - position <= 8;
+	}
+
+	private parseCleanedJSON<T = unknown>(options: {
+		cleaned: string;
+		allowTruncatedJsonRecovery: boolean;
+	}): { value: T; cleaned: string; repaired: boolean } {
+		const { cleaned, allowTruncatedJsonRecovery } = options;
+
+		try {
+			return {
+				value: JSON.parse(cleaned) as T,
+				cleaned,
+				repaired: false
+			};
+		} catch (error) {
+			if (
+				allowTruncatedJsonRecovery &&
+				this.isLikelyTruncatedJSONError(error, cleaned)
+			) {
+				const repaired = repairTruncatedJSONResponse(cleaned);
+				if (repaired) {
+					try {
+						return {
+							value: JSON.parse(repaired) as T,
+							cleaned: repaired,
+							repaired: true
+						};
+					} catch {
+						// Fall through to throw the original parse error.
+					}
+				}
+			}
+			throw error;
+		}
+	}
+
 	// ============================================
 	// JSON RESPONSE METHOD
 	// ============================================
@@ -235,6 +290,8 @@ export class SmartLLMService {
 		let lastError: Error | null = null;
 		let retryCount = 0;
 		const maxRetries = options.validation?.maxRetries || 2;
+		const allowTruncatedJsonRecovery =
+			options.validation?.allowTruncatedJsonRecovery === true;
 		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
 		const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 4);
 		const attemptedModels = new Set<string>();
@@ -302,7 +359,17 @@ export class SmartLLMService {
 					try {
 						// Clean and parse JSON
 						cleaned = cleanJSONResponse(content);
-						result = JSON.parse(cleaned) as T;
+						const parsed = this.parseCleanedJSON<T>({
+							cleaned,
+							allowTruncatedJsonRecovery
+						});
+						result = parsed.value;
+						cleaned = parsed.cleaned;
+						if (parsed.repaired) {
+							console.warn(
+								`Recovered truncated JSON response from ${actualModel}`
+							);
+						}
 					} catch (parseError) {
 						// Log which model actually responded
 						const actualModelForError = response.model || requestedModel || 'unknown';
@@ -374,7 +441,19 @@ export class SmartLLMService {
 								}
 
 								cleanedRetry = cleanJSONResponse(retryContent);
-								result = JSON.parse(cleanedRetry) as T;
+								const parsedRetry = this.parseCleanedJSON<T>({
+									cleaned: cleanedRetry,
+									allowTruncatedJsonRecovery
+								});
+								result = parsedRetry.value;
+								cleanedRetry = parsedRetry.cleaned;
+								if (parsedRetry.repaired) {
+									console.warn(
+										`Recovered truncated JSON response from retry model ${
+											retryResponse.model || retryModel
+										}`
+									);
+								}
 								responseForLogging = retryResponse;
 								actualModel = retryResponse.model || retryModel;
 								retryModelUsed = retryModel;

@@ -12,6 +12,7 @@ import { markdown } from '@codemirror/lang-markdown';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { searchKeymap } from '@codemirror/search';
 import { inkprintTheme } from './inkprint-theme';
+import { stickyScroll, type StickyScrollConfig } from './sticky-scroll';
 
 // ---------------------------------------------------------------------------
 // Toolbar Commands (used by both keybindings and external toolbar buttons)
@@ -163,6 +164,8 @@ export interface EditorExtensionOptions {
 	placeholder?: string;
 	/** Callback for Cmd/Ctrl+S */
 	onSave?: () => void;
+	/** Enable sticky scroll heading navigation. Pass false to disable, or a config object. Default: enabled */
+	stickyScroll?: boolean | StickyScrollConfig;
 	/** Additional extensions to append (editable state, voice widget, etc.) */
 	additionalExtensions?: Extension[];
 }
@@ -175,7 +178,12 @@ export interface EditorExtensionOptions {
  * component (for dynamic toggling) and passed in additionalExtensions.
  */
 export function buildExtensions(options: EditorExtensionOptions = {}): Extension[] {
-	const { placeholder = '', onSave, additionalExtensions = [] } = options;
+	const {
+		placeholder = '',
+		onSave,
+		stickyScroll: stickyScrollOpt = true,
+		additionalExtensions = []
+	} = options;
 
 	const extensions: Extension[] = [
 		// Theme
@@ -186,6 +194,10 @@ export function buildExtensions(options: EditorExtensionOptions = {}): Extension
 		history(),
 		// Line wrapping
 		EditorView.lineWrapping,
+		// Sticky scroll heading navigation
+		...(stickyScrollOpt !== false
+			? [stickyScroll(typeof stickyScrollOpt === 'object' ? stickyScrollOpt : undefined)]
+			: []),
 		// Keymaps
 		keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, indentWithTab]),
 		// Formatting shortcuts

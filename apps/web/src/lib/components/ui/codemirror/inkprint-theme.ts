@@ -116,6 +116,78 @@ export const inkprintEditorTheme = EditorView.theme({
 		overflow: 'auto',
 		scrollbarWidth: 'thin',
 		scrollbarColor: 'hsl(var(--border)) transparent'
+	},
+	// Sticky scroll heading panel
+	'.cm-sticky-scroll': {
+		backgroundColor: 'hsl(var(--card))',
+		borderBottom: '1px solid hsl(var(--border))',
+		fontFamily:
+			'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+		fontSize: '13px',
+		lineHeight: '1.4',
+		overflow: 'hidden',
+		zIndex: '5'
+	},
+	'.cm-sticky-scroll-line': {
+		display: 'block',
+		width: '100%',
+		padding: '2px 12px',
+		minHeight: '24px',
+		margin: '0',
+		border: 'none',
+		background: 'none',
+		textAlign: 'left',
+		whiteSpace: 'nowrap',
+		overflow: 'hidden',
+		textOverflow: 'ellipsis',
+		color: 'hsl(var(--muted-foreground))',
+		cursor: 'pointer',
+		transition: 'background-color 0.1s, color 0.1s',
+		fontFamily: 'inherit',
+		fontSize: 'inherit',
+		lineHeight: 'inherit',
+		touchAction: 'manipulation',
+		WebkitTapHighlightColor: 'transparent'
+	},
+	'.cm-sticky-scroll-line:hover': {
+		backgroundColor: 'hsl(var(--muted) / 0.5)',
+		color: 'hsl(var(--foreground))'
+	},
+	'.cm-sticky-scroll-line:active': {
+		backgroundColor: 'hsl(var(--muted) / 0.65)',
+		color: 'hsl(var(--foreground))'
+	},
+	'.cm-sticky-scroll-line:focus-visible': {
+		outline: '2px solid hsl(var(--ring))',
+		outlineOffset: '-2px',
+		color: 'hsl(var(--foreground))'
+	},
+	// Level-based indentation
+	'.cm-sticky-scroll-h2': { paddingLeft: '24px' },
+	'.cm-sticky-scroll-h3': { paddingLeft: '36px', fontSize: '12px', opacity: '0.85' },
+	'.cm-sticky-scroll-h4': { paddingLeft: '48px', fontSize: '12px', opacity: '0.85' },
+	'.cm-sticky-scroll-h5': { paddingLeft: '60px', fontSize: '12px', opacity: '0.8' },
+	'.cm-sticky-scroll-h6': { paddingLeft: '72px', fontSize: '12px', opacity: '0.8' },
+	'@media (max-width: 768px)': {
+		'.cm-sticky-scroll': {
+			fontSize: '12px'
+		},
+		'.cm-sticky-scroll-line': {
+			padding: '4px 10px',
+			minHeight: '30px'
+		},
+		'.cm-sticky-scroll-h2': { paddingLeft: '18px' },
+		'.cm-sticky-scroll-h3': { paddingLeft: '26px', fontSize: '11px', opacity: '0.9' },
+		'.cm-sticky-scroll-h4': { paddingLeft: '34px', fontSize: '11px', opacity: '0.9' },
+		'.cm-sticky-scroll-h5': { paddingLeft: '42px', fontSize: '11px', opacity: '0.85' },
+		'.cm-sticky-scroll-h6': { paddingLeft: '50px', fontSize: '11px', opacity: '0.85' }
+	},
+	'@media (pointer: coarse)': {
+		'.cm-sticky-scroll-line': {
+			minHeight: '34px',
+			paddingTop: '6px',
+			paddingBottom: '6px'
+		}
 	}
 });
 
