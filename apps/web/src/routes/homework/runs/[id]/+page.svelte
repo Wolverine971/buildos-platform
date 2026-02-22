@@ -107,7 +107,10 @@
 	let pollError = $state<string | null>(null);
 	let pollFailureCount = $state(0);
 	let showLiveModal = $state(false);
+	let actionError = $state<string | null>(null);
 	let userAnswer = $state('');
+	let userAnswerInput: HTMLTextAreaElement | null = null;
+	let userAnswerFocused = $state(false);
 	let expandedIterations = $state<Set<string>>(new Set());
 	let expandedEvents = $state<Set<string>>(new Set());
 	let scratchpadExpanded = $state(true);
@@ -115,6 +118,38 @@
 	let scratchpadSaveStatus = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
 	let showDocumentModal = $state(false);
 	let selectedDocumentId = $state<string | null>(null);
+	const waitingQuestions = $derived.by(() => {
+		for (const row of events) {
+			if (row?.event?.type !== 'run_waiting_on_user') continue;
+			if (!Array.isArray(row.event.questions)) continue;
+			const questions = row.event.questions
+				.filter((question: unknown): question is string => typeof question === 'string')
+				.map((question: string) => question.trim())
+				.filter((question: string) => question.length > 0);
+			if (questions.length > 0) return questions;
+		}
+
+		const stopReasonDetail =
+			run?.stop_reason &&
+			typeof run.stop_reason === 'object' &&
+			!Array.isArray(run.stop_reason) &&
+			typeof run.stop_reason.detail === 'string'
+				? run.stop_reason.detail.trim()
+				: '';
+
+		return stopReasonDetail ? [stopReasonDetail] : [];
+	});
+	const requiresUserAnswer = $derived.by(
+		() => run.status === 'waiting_on_user' && waitingQuestions.length > 0
+	);
+	const canContinueWaitingRun = $derived.by(
+		() => !requiresUserAnswer || userAnswer.trim().length > 0
+	);
+	const pausePollingForAnswer = $derived.by(
+		() =>
+			run.status === 'waiting_on_user' &&
+			(userAnswerFocused || userAnswer.trim().length > 0)
+	);
 
 	const toggleIteration = (id: string) => {
 		const newSet = new Set(expandedIterations);
@@ -200,7 +235,8 @@
 		return Array.from(nodes.values()).filter((node) => !childSet.has(node.id));
 	});
 
-	const refresh = async () => {
+	const refresh = async (options: { force?: boolean } = {}) => {
+		if (!options.force && pausePollingForAnswer) return;
 		if (updating) return;
 		updating = true;
 		pollError = null;
@@ -250,18 +286,39 @@
 	};
 
 	const cancelRun = async () => {
-		await fetch(`/api/homework/runs/${run.id}/cancel`, { method: 'POST' });
-		await refresh();
+		actionError = null;
+		const res = await fetch(`/api/homework/runs/${run.id}/cancel`, { method: 'POST' });
+		if (!res.ok) {
+			const payload = await res.json().catch(() => null);
+			actionError =
+				payload?.message || payload?.error || `Failed to cancel run (${res.status}).`;
+			return;
+		}
+		await refresh({ force: true });
 	};
 
 	const continueRun = async () => {
-		await fetch(`/api/homework/runs/${run.id}/respond`, {
+		actionError = null;
+		const answerText = userAnswer.trim();
+		if (run.status === 'waiting_on_user' && requiresUserAnswer && !answerText) {
+			actionError = 'Answer the blocking question(s) before continuing.';
+			return;
+		}
+
+		const res = await fetch(`/api/homework/runs/${run.id}/respond`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(userAnswer ? { answers: userAnswer } : {})
+			body: JSON.stringify(answerText ? { answers: answerText } : {})
 		});
+		if (!res.ok) {
+			const payload = await res.json().catch(() => null);
+			actionError =
+				payload?.message || payload?.error || `Failed to continue run (${res.status}).`;
+			return;
+		}
 		userAnswer = '';
-		await refresh();
+		userAnswerFocused = false;
+		await refresh({ force: true });
 	};
 
 	const saveScratchpad = async (content: string): Promise<void> => {
@@ -320,6 +377,11 @@
 		selectedDocumentId = null;
 	};
 
+	const focusAnswerComposer = () => {
+		userAnswerInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+		userAnswerInput?.focus();
+	};
+
 	let lastScratchpadUpdate = $state(0);
 	let lastScratchpadEdit = $state(0);
 
@@ -354,7 +416,9 @@
 	});
 
 	onMount(() => {
-		polling = setInterval(refresh, 5000);
+		polling = setInterval(() => {
+			void refresh();
+		}, 5000);
 		return () => {
 			if (polling) clearInterval(polling);
 		};
@@ -383,7 +447,14 @@
 				>
 					Cancel
 				</button>
-			{:else if run.status === 'stopped' || run.status === 'waiting_on_user'}
+			{:else if run.status === 'waiting_on_user'}
+				<button
+					onclick={focusAnswerComposer}
+					class="px-3 py-1.5 text-sm bg-accent text-accent-foreground rounded-lg shadow-ink pressable hover:opacity-90 transition-all font-semibold"
+				>
+					Answer Questions
+				</button>
+			{:else if run.status === 'stopped'}
 				<button
 					onclick={continueRun}
 					class="px-3 py-1.5 text-sm bg-accent text-accent-foreground rounded-lg shadow-ink pressable hover:opacity-90 transition-all font-semibold"
@@ -404,15 +475,30 @@
 		</div>
 	{/if}
 
+	{#if actionError && run.status !== 'waiting_on_user'}
+		<div
+			class="px-3 py-2 mb-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg"
+		>
+			<p class="text-sm text-red-700 dark:text-red-300">{actionError}</p>
+		</div>
+	{/if}
+
 	<!-- Waiting banner -->
 	{#if run.status === 'waiting_on_user'}
 		<div
 			class="px-3 py-2 mb-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg tx tx-pulse tx-weak"
 		>
-			<p class="text-sm font-medium text-blue-900 dark:text-blue-100">Needs your input.</p>
+			<p class="text-sm font-medium text-blue-900 dark:text-blue-100">Action required.</p>
 			<p class="text-xs text-blue-700 dark:text-blue-300">
-				Add answers below and press Continue.
+				{waitingQuestions.length > 0
+					? `Answer ${waitingQuestions.length} blocking question${waitingQuestions.length === 1 ? '' : 's'} below and continue.`
+					: 'Add answers below and press Continue.'}
 			</p>
+			{#if pausePollingForAnswer}
+				<p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+					Live refresh is paused while you type.
+				</p>
+			{/if}
 		</div>
 	{/if}
 
@@ -931,29 +1017,103 @@
 		</section>
 	{/if}
 
-	<!-- Provide Answers (if waiting on user) -->
+	<!-- User Input (prominent when waiting on questions) -->
 	{#if run.status === 'waiting_on_user'}
-		<section class="mb-6">
-			<h2 class="text-lg font-semibold text-foreground mb-2">Provide Answers</h2>
-			<p class="text-sm text-muted-foreground mb-3">
-				The run is waiting on your input. Provide clarifications and click Continue.
-			</p>
+		<section
+			class="mb-6 p-4 sm:p-5 bg-amber-50/80 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-700 rounded-xl shadow-ink tx tx-grid tx-weak"
+		>
+			<div class="flex items-start gap-3 mb-4">
+				<div
+					class="shrink-0 w-8 h-8 rounded-full bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center justify-center"
+				>
+					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+						/>
+					</svg>
+				</div>
+				<div class="min-w-0">
+					<p class="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+						Homework blocked
+					</p>
+					<h2 class="text-xl font-semibold text-foreground">
+						Answer these question{waitingQuestions.length === 1 ? '' : 's'} to continue
+					</h2>
+					<p class="text-sm text-amber-900/80 dark:text-amber-200/80 mt-1">
+						The run will stay paused until you submit your response.
+					</p>
+				</div>
+			</div>
 
-			<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden mb-3">
+			{#if waitingQuestions.length > 0}
+				<ol class="space-y-2 mb-4">
+					{#each waitingQuestions as question, idx}
+						<li
+							class="p-3 bg-background/70 border border-amber-200 dark:border-amber-800 rounded-lg"
+						>
+							<p class="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1">
+								Question {idx + 1}
+							</p>
+							<p class="text-sm text-foreground">{question}</p>
+						</li>
+					{/each}
+				</ol>
+			{:else}
+				<p class="text-sm text-muted-foreground mb-4">
+					No explicit question payload was returned. Add clarifications and continue.
+				</p>
+			{/if}
+
+			{#if actionError}
+				<div
+					class="mb-3 px-3 py-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg"
+				>
+					<p class="text-sm text-red-700 dark:text-red-300">{actionError}</p>
+				</div>
+			{/if}
+
+			<label
+				for="homework-user-answer"
+				class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+			>
+				Your response
+			</label>
+			<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden mt-1 mb-3">
 				<textarea
+					id="homework-user-answer"
+					bind:this={userAnswerInput}
 					bind:value={userAnswer}
-					rows="4"
-					placeholder="Your answers or clarifications"
-					class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-ring text-foreground placeholder:text-muted-foreground outline-none resize-none transition-colors"
+					rows="6"
+					placeholder="Type your answer and clarifications here..."
+					onfocus={() => {
+						userAnswerFocused = true;
+					}}
+					onblur={() => {
+						userAnswerFocused = false;
+					}}
+					class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground outline-none resize-y transition-colors"
 				></textarea>
 			</div>
 
-			<button
-				onclick={continueRun}
-				class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-semibold shadow-ink pressable hover:opacity-90 transition-all"
-			>
-				Continue
-			</button>
+			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+				{#if pausePollingForAnswer}
+					<p class="text-xs text-amber-800 dark:text-amber-300">
+						Background refresh paused while you compose your answer.
+					</p>
+				{:else}
+					<p class="text-xs text-muted-foreground">Background refresh every 5 seconds.</p>
+				{/if}
+				<button
+					onclick={continueRun}
+					disabled={!canContinueWaitingRun || updating}
+					class="px-4 py-2 bg-accent text-accent-foreground rounded-lg font-semibold shadow-ink pressable hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+				>
+					Continue Homework
+				</button>
+			</div>
 		</section>
 	{/if}
 
@@ -1327,7 +1487,7 @@
 		documentId={selectedDocumentId}
 		bind:isOpen={showDocumentModal}
 		onClose={closeDocumentModal}
-		onSaved={refresh}
-		onDeleted={refresh}
+		onSaved={() => refresh({ force: true })}
+		onDeleted={() => refresh({ force: true })}
 	/>
 {/if}

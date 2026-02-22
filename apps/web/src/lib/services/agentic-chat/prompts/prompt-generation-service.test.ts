@@ -33,6 +33,15 @@ describe('PromptGenerationService gateway tool instructions', () => {
 			'For first-time or complex writes in a turn, call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.'
 		);
 		expect(prompt).toContain(
+			'Gateway payload contract: tool_help({ path: "<path>" }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
+		);
+		expect(prompt).toContain(
+			'CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.'
+		);
+		expect(prompt).toContain(
+			'Example: tool_exec({ op: "onto.task.update", args: { task_id: "<task_id_uuid>", title: "Updated title" } }).'
+		);
+		expect(prompt).toContain(
 			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'
 		);
 		expect(prompt).toContain('Calendar ops are under cal.event.* and cal.project.*');

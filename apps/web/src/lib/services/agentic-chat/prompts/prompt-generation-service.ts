@@ -169,6 +169,13 @@ export class PromptGenerationService {
 					`- Calendar ops are under cal.event.* and cal.project.* (not onto.event.*). Utility ops are under util.*.\n` +
 					`- Never use legacy op strings in tool_exec.op (for example: get_document_tree, move_document_in_tree, list_onto_*).\n` +
 					`- Use targeted discovery first: tool_help(\"onto.<entity>\") or tool_help(\"cal.event\"). Use tool_help(\"root\") only when namespace is unknown.\n` +
+					`- Path heuristic: tasks -> onto.task, documents -> onto.document, goals -> onto.goal, plans -> onto.plan, milestones -> onto.milestone, risks -> onto.risk, calendar -> cal.event.\n` +
+					`- Gateway payload contract: tool_help({ path: \"<path>\" }) and tool_exec({ op: \"<canonical op>\", args: { ... } }).\n` +
+					`- Never call tool_exec with {} or with missing op/args.\n` +
+					`- CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.\n` +
+					`- Update contract: onto.<entity>.update requires args.<entity>_id plus at least one field to change.\n` +
+					`- Example: tool_exec({ op: \"onto.task.update\", args: { task_id: \"<task_id_uuid>\", title: \"Updated title\" } }).\n` +
+					`- Example: tool_exec({ op: \"onto.document.update\", args: { document_id: \"<document_id_uuid>\", content: \"<markdown content>\" } }).\n` +
 					`- Use tool_help when the op or arg schema is uncertain; avoid repeated calls for the same help path in one turn.\n` +
 					`- Reuse discovered schemas in the same turn, and only re-check help after a validation error.\n` +
 					`- When op and args are already known in-turn, call tool_exec directly.\n` +

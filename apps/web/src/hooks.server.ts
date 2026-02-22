@@ -1,5 +1,5 @@
 // apps/web/src/hooks.server.ts
-import { json } from '@sveltejs/kit';
+import { json, redirect } from '@sveltejs/kit';
 import type { Handle, HandleServerError } from '@sveltejs/kit';
 import { createSupabaseServer } from '$lib/supabase';
 import { createServerTiming } from '$lib/server/server-timing';
@@ -15,6 +15,28 @@ import {
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { StripeService } from '$lib/services/stripe-service';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
+
+const LEGACY_FEATURE_PATHS = new Set(['/features', '/features/']);
+const LEGACY_BLOG_MARKDOWN_PATH = /^\/src\/content\/blogs\/([^/]+)\/([^/]+?)(?:\.md)?\/?$/;
+
+function getLegacyRedirectPath(pathname: string): string | null {
+	if (LEGACY_FEATURE_PATHS.has(pathname)) {
+		return '/';
+	}
+
+	const legacyBlogPathMatch = pathname.match(LEGACY_BLOG_MARKDOWN_PATH);
+	if (!legacyBlogPathMatch) {
+		return null;
+	}
+
+	const [, category, rawSlug] = legacyBlogPathMatch;
+	if (!category || !rawSlug) {
+		return null;
+	}
+
+	const slug = rawSlug.replace(/\.md$/i, '');
+	return `/blogs/${category}/${slug}`;
+}
 
 // Rate limiting handle
 // const handleRateLimit: Handle = async ({ event, resolve }) => {
@@ -109,6 +131,17 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 	// PERFORMANCE: Skip session loading for static assets and API routes that don't need auth
 	const pathname = event.url.pathname;
+	const search = event.url.search;
+	const legacyRedirectPath = getLegacyRedirectPath(pathname);
+	const shouldRedirectToApexDomain = event.url.hostname === 'www.build-os.com';
+
+	if (legacyRedirectPath || shouldRedirectToApexDomain) {
+		const targetPath = `${legacyRedirectPath ?? pathname}${search}`;
+		if (shouldRedirectToApexDomain) {
+			throw redirect(308, `https://build-os.com${targetPath}`);
+		}
+		throw redirect(308, targetPath);
+	}
 
 	// Skip auth for static assets and certain API routes
 	if (

@@ -91,6 +91,10 @@ export function isRetryableOpenRouterError(error: unknown): boolean {
 		return true;
 	}
 
+	if (status && status >= 400 && status < 500) {
+		return false;
+	}
+
 	if (status && status >= 500 && status < 600) {
 		return true;
 	}
@@ -131,10 +135,10 @@ export function isRetryableOpenRouterError(error: unknown): boolean {
 		return true;
 	}
 	if (message.includes('provider returned error')) {
-		return true;
+		return false;
 	}
 
-	return isOpenRouterProviderError(error);
+	return false;
 }
 
 export function summarizeOpenRouterMessageContent(

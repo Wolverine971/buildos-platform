@@ -485,22 +485,22 @@ export const TEXT_MODELS: Record<string, ModelProfile> = {
 
 // Models that have reliable tool-calling support when routed through OpenRouter.
 // The order doubles as our fallback priority list whenever we must guarantee tool support.
-// Updated 2026-01-15 based on latest benchmark data (τ²-Bench, SWE-bench, tool-calling success rates)
-// Priority: Highest reliability first, then cost-effectiveness as tiebreaker
+// Updated 2026-02-22 with production argument-fidelity observations.
+// Priority: argument reliability first; cost/speed second.
 export const TOOL_CALLING_MODEL_ORDER = [
-	'x-ai/grok-4.1-fast', // Best τ²-Bench: 100% (xAI claim), 2M context, optimized for agents: $0.20/$0.50
-	'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, 1500 parallel tools, 262K ctx, multimodal: $0.60/$0.30
-	'moonshotai/kimi-k2-thinking', // τ²-Bench: 93% (legacy), 256K ctx, 200-300 tool calls: $0.57/$2.42
-	'anthropic/claude-opus-4.5', // Best coding: 80.9% SWE-bench, agents, computer-use: $5/$25
-	'anthropic/claude-haiku-4.5', // Fast + reliable: parallel tool calls, extended thinking: $1/$5
-	'openai/gpt-4o-mini', // Very good: 88% success rate, fast + cheap: $0.15/$0.60
-	'openai/gpt-4o', // Strong: 87%+ success rate: $2.50/$10
-	'minimax/minimax-m2.1', // Excellent agentic: 87% τ²-Bench, 72.5% SWE-bench-multilingual: $0.27/$1.12
-	'qwen/qwen3-32b', // Best value: excellent multilingual, good tool-calling: $0.08/$0.24
-	'deepseek/deepseek-r1', // Good reasoning, slower: $0.55/$1.68
-	'deepseek/deepseek-chat', // Good for sequential tasks: $0.27/$1.10
-	'z-ai/glm-4.7', // Good tool use, strong coding, terminal-bench 90%+: $0.40/$1.50
-	'google/gemini-2.5-flash' // Hybrid reasoning model (deprecated June 2026): $0.30/$2.50
+	'openai/gpt-4o-mini',
+	'anthropic/claude-haiku-4.5',
+	'x-ai/grok-4.1-fast',
+	'anthropic/claude-sonnet-4',
+	'openai/gpt-4o',
+	'minimax/minimax-m2.1',
+	'qwen/qwen3-32b',
+	'deepseek/deepseek-chat',
+	'deepseek/deepseek-r1',
+	'z-ai/glm-4.7',
+	'google/gemini-2.5-flash',
+	'moonshotai/kimi-k2.5',
+	'moonshotai/kimi-k2-thinking'
 ] as const;
 export const TOOL_CALLING_MODEL_SET = new Set<string>(TOOL_CALLING_MODEL_ORDER);
 

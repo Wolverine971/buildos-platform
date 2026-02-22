@@ -39,6 +39,7 @@ type StreamFastChatParams = {
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
 	maxToolRounds?: number;
 	maxToolCalls?: number;
+	allowAutonomousRecovery?: boolean;
 	debugContext?: {
 		gatewayEnabled?: boolean;
 		historyStrategy?: string;
@@ -59,6 +60,15 @@ type ToolValidationIssue = {
 type GatewayRequiredFieldFailure = {
 	op: string;
 	field: string;
+};
+
+type ToolArgumentAnomaly = {
+	kind: 'malformed' | 'recovered';
+	toolCallId: string;
+	toolName: string;
+	rawArgs: unknown;
+	parseError?: string;
+	recoveredArgs?: Record<string, any>;
 };
 
 type LLMStreamPassMetadata = {
@@ -204,15 +214,19 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		allowedToolNames.has('tool_help') && allowedToolNames.has('tool_exec');
 	const maxToolRounds = Math.max(1, params.maxToolRounds ?? FASTCHAT_LIMITS.MAX_TOOL_ROUNDS);
 	const maxToolCalls = Math.max(1, params.maxToolCalls ?? FASTCHAT_LIMITS.MAX_TOOL_CALLS);
+	const maxValidationRepairRounds = gatewayModeActive ? 3 : 2;
+	const allowAutonomousRecovery = Boolean(params.allowAutonomousRecovery);
 	let toolRounds = 0;
 	let toolCallsMade = 0;
-	let validationRetryUsed = false;
+	let consecutiveValidationIssueRounds = 0;
 	let toolLimitNotice: string | null = null;
 	let hasWriteAttempt = false;
 	let readOnlyRoundCount = 0;
 	let lastReadOpSetKey: string | null = null;
 	let repeatedReadOpSetCount = 0;
 	let readLoopRepairInjected = false;
+	let rootHelpOnlyRoundCount = 0;
+	let rootHelpRecoveryInjected = false;
 	const gatewayRequiredFieldFailureCounts = new Map<string, number>();
 	let docOrganizationRecoveryEligible = false;
 	let gatewaySchemaRepairInjected = false;
@@ -220,6 +234,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let repeatedRoundCount = 0;
 	const repetitionLimit = gatewayModeActive ? 3 : 4;
 	let docOrganizationRecoveryAttempted = false;
+	const pendingRepairInstructions: string[] = [];
 
 	const markToolLimitReached = (kind: 'round' | 'call' | 'repetition'): void => {
 		if (toolLimitNotice) return;
@@ -236,12 +251,35 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					? 'I hit a safety limit on tool calls. Please clarify the exact item and update you want, then I can continue.'
 					: 'I stopped because the same tool sequence kept repeating without progress. Please clarify the exact action you want next.';
 	};
+	const markValidationLimitReached = (): void => {
+		if (toolLimitNotice) return;
+		finishedReason = 'tool_repetition_limit';
+		toolLimitNotice =
+			'I stopped because tool calls kept failing validation. Please restate the exact operation and required IDs, then try again.';
+	};
+	const queueRepairInstruction = (instruction: string | null | undefined): void => {
+		const normalized = typeof instruction === 'string' ? instruction.trim() : '';
+		if (!normalized) return;
+		if (!pendingRepairInstructions.includes(normalized)) {
+			pendingRepairInstructions.push(normalized);
+		}
+	};
+	const flushRepairInstructions = (): void => {
+		if (pendingRepairInstructions.length === 0) return;
+		const combined = buildConsolidatedRepairInstruction(pendingRepairInstructions);
+		pendingRepairInstructions.length = 0;
+		if (!combined) return;
+		messages.push({
+			role: 'system',
+			content: combined
+		});
+	};
 
 	const executeSyntheticGatewayExec = async (
 		op: string,
 		args: Record<string, any>
 	): Promise<FastToolExecution | null> => {
-		if (!params.toolExecutor) return null;
+		if (!allowAutonomousRecovery || !params.toolExecutor) return null;
 
 		toolCallsMade += 1;
 		if (toolCallsMade > maxToolCalls) {
@@ -294,6 +332,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 	const attemptDocOrganizationRecovery = async (): Promise<boolean> => {
 		if (
+			!allowAutonomousRecovery ||
 			!gatewayModeActive ||
 			typeof params.toolExecutor !== 'function' ||
 			!docOrganizationRecoveryEligible ||
@@ -368,6 +407,45 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		return true;
 	};
 
+	const attemptRootHelpListingRecovery = async (): Promise<boolean> => {
+		if (
+			!allowAutonomousRecovery ||
+			!gatewayModeActive ||
+			typeof params.toolExecutor !== 'function' ||
+			rootHelpRecoveryInjected
+		) {
+			return false;
+		}
+		rootHelpRecoveryInjected = true;
+
+		const projectListExecution = await executeSyntheticGatewayExec('onto.project.list', {
+			limit: 10
+		});
+		if (toolLimitNotice) {
+			return false;
+		}
+
+		const scopedProjectId =
+			typeof params.projectId === 'string' && isValidUUID(params.projectId)
+				? params.projectId
+				: typeof entityId === 'string' && isValidUUID(entityId)
+					? entityId
+					: undefined;
+
+		const taskListArgs: Record<string, unknown> = {
+			limit: scopedProjectId ? 50 : 25
+		};
+		if (scopedProjectId) {
+			taskListArgs.project_id = scopedProjectId;
+		}
+
+		const taskListExecution = await executeSyntheticGatewayExec('onto.task.list', taskListArgs);
+
+		const projectListSucceeded = didGatewayExecSucceed(projectListExecution);
+		const taskListSucceeded = didGatewayExecSucceed(taskListExecution);
+		return projectListSucceeded || taskListSucceeded;
+	};
+
 	while (true) {
 		if (signal?.aborted) {
 			throw new Error('Request aborted');
@@ -397,14 +475,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		})) {
 			if (event.type === 'text' && event.content) {
 				assistantBuffer += event.content;
-				if (toolRounds === 0) {
-					assistantText += event.content;
-					await onDelta(event.content);
-				}
+				assistantText += event.content;
+				await onDelta(event.content);
 			} else if (event.type === 'tool_call' && event.tool_call) {
-				pendingToolCalls.push(event.tool_call);
+				const normalizedToolCall = normalizeToolCallDefaults(event.tool_call);
+				pendingToolCalls.push(normalizedToolCall);
 				if (params.onToolCall) {
-					await params.onToolCall(event.tool_call);
+					await params.onToolCall(normalizedToolCall);
 				}
 			} else if (event.type === 'done') {
 				llmDoneReceived = true;
@@ -484,11 +561,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			llmStreamPasses.push(llmPassMeta);
 		}
 
-		if (toolRounds > 0 && assistantBuffer && pendingToolCalls.length === 0) {
-			assistantText += assistantBuffer;
-			await onDelta(assistantBuffer);
-		}
-
 		if (pendingToolCalls.length === 0) {
 			break;
 		}
@@ -503,35 +575,45 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			break;
 		}
 
+		const replayToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
 		messages.push({
 			role: 'assistant',
 			content: assistantBuffer,
-			tool_calls: pendingToolCalls
+			tool_calls: replayToolCalls
 		});
+
+		for (const toolCall of pendingToolCalls) {
+			const anomaly = inspectToolArgumentAnomaly(toolCall);
+			if (anomaly) {
+				logToolArgumentAnomaly({
+					sessionId,
+					anomaly
+				});
+			}
+		}
 
 		const validationIssues = validateToolCalls(pendingToolCalls, tools);
 		if (validationIssues.length > 0) {
-			let exceededToolCallLimit = false;
-			for (const issue of validationIssues) {
-				toolCallsMade += 1;
-				if (toolCallsMade > maxToolCalls) {
-					markToolLimitReached('call');
-					exceededToolCallLimit = true;
-					break;
-				}
-
-				const errorMessage = `Tool validation failed: ${issue.errors.join(' ')}`;
+			consecutiveValidationIssueRounds += 1;
+			const validationIssueByToolCallId = new Map(
+				validationIssues.map((issue) => [issue.toolCall.id, issue])
+			);
+			for (const toolCall of pendingToolCalls) {
+				const validationIssue = validationIssueByToolCallId.get(toolCall.id);
+				const errorMessage = validationIssue
+					? `Tool validation failed: ${validationIssue.errors.join(' ')}`
+					: 'Tool call skipped because another tool call in the same response failed validation. Re-emit corrected tool calls only.';
 				const result: ChatToolResult = {
-					tool_call_id: issue.toolCall.id,
+					tool_call_id: toolCall.id,
 					result: null,
 					success: false,
 					error: errorMessage
 				};
 
-				toolExecutions.push({ toolCall: issue.toolCall, result });
+				toolExecutions.push({ toolCall, result });
 				if (params.onToolResult) {
 					try {
-						await params.onToolResult({ toolCall: issue.toolCall, result });
+						await params.onToolResult({ toolCall, result });
 					} catch {
 						// UI/logging callbacks must not crash tool orchestration.
 					}
@@ -540,31 +622,30 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				messages.push({
 					role: 'tool',
 					content: JSON.stringify({ error: errorMessage }),
-					tool_call_id: issue.toolCall.id
+					tool_call_id: toolCall.id
 				});
 			}
 
-			if (exceededToolCallLimit) {
-				break;
-			}
-
-			if (!validationRetryUsed) {
-				validationRetryUsed = true;
-				messages.push({
-					role: 'system',
-					content: buildToolValidationRepairInstruction(
-						validationIssues,
-						gatewayModeActive
-					)
-				});
+			if (consecutiveValidationIssueRounds <= maxValidationRepairRounds) {
+				queueRepairInstruction(
+					buildToolValidationRepairInstruction(validationIssues, gatewayModeActive)
+				);
+				flushRepairInstructions();
 				continue;
 			}
 
+			markValidationLimitReached();
 			break;
 		}
+		consecutiveValidationIssueRounds = 0;
 
+		const executableToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
 		const roundExecutions: FastToolExecution[] = [];
-		for (const toolCall of pendingToolCalls) {
+		for (let index = 0; index < pendingToolCalls.length; index += 1) {
+			const toolCall = executableToolCalls[index] ?? pendingToolCalls[index];
+			if (!toolCall) {
+				continue;
+			}
 			if (signal?.aborted) {
 				throw new Error('Request aborted');
 			}
@@ -618,6 +699,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		}
 
 		const roundPattern = buildRoundToolPattern(pendingToolCalls);
+		const isRootHelpRound = isRootHelpOnlyRound(pendingToolCalls);
+		if (isRootHelpRound) {
+			rootHelpOnlyRoundCount += 1;
+		} else {
+			rootHelpOnlyRoundCount = 0;
+		}
+
 		if (roundPattern.hasWriteOps) {
 			hasWriteAttempt = true;
 			readOnlyRoundCount = 0;
@@ -636,15 +724,29 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		if (
 			gatewayModeActive &&
+			rootHelpOnlyRoundCount >= 2 &&
+			!rootHelpRecoveryInjected &&
+			!toolLimitNotice &&
+			!hasWriteAttempt
+		) {
+			const recovered = await attemptRootHelpListingRecovery();
+			queueRepairInstruction(buildRootHelpLoopRepairInstruction(recovered));
+			readLoopRepairInjected = true;
+			flushRepairInstructions();
+			if (toolLimitNotice) {
+				break;
+			}
+			continue;
+		}
+
+		if (
+			gatewayModeActive &&
 			!hasWriteAttempt &&
 			roundPattern.readOps.length > 0 &&
 			readOnlyRoundCount >= 2 &&
 			!readLoopRepairInjected
 		) {
-			messages.push({
-				role: 'system',
-				content: buildReadLoopRepairInstruction(roundPattern.readOps)
-			});
+			queueRepairInstruction(buildReadLoopRepairInstruction(roundPattern.readOps));
 			readLoopRepairInjected = true;
 		}
 
@@ -682,10 +784,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			maxRequiredFieldFailure.count >= 2 &&
 			!gatewaySchemaRepairInjected
 		) {
-			messages.push({
-				role: 'system',
-				content: buildGatewayRequiredFieldRepairInstruction(requiredFieldFailures)
-			});
+			queueRepairInstruction(
+				buildGatewayRequiredFieldRepairInstruction(requiredFieldFailures)
+			);
 			gatewaySchemaRepairInjected = true;
 		}
 
@@ -721,6 +822,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			markToolLimitReached('repetition');
 			break;
 		}
+		flushRepairInstructions();
 
 		if (toolLimitNotice) {
 			break;
@@ -739,7 +841,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			llmPasses: llmStreamPasses,
 			finishedReason,
 			toolRounds,
-			toolCallsMade
+			toolCallsMade,
+			toolExecutions
 		});
 	}
 
@@ -793,6 +896,285 @@ const STRICT_UUID_ARG_KEYS = new Set([
 	'supporting_milestone_id'
 ]);
 
+const MAX_TOOL_ARG_PARSE_DEPTH = 3;
+const MAX_TOOL_ARG_SEGMENTS = 8;
+
+function stripMarkdownCodeFence(raw: string): string {
+	let trimmed = raw.trim();
+	if (!trimmed.startsWith('```')) {
+		return trimmed;
+	}
+
+	trimmed = trimmed.replace(/^```(?:json)?/i, '').trim();
+	if (trimmed.endsWith('```')) {
+		trimmed = trimmed.slice(0, -3).trim();
+	}
+	return trimmed;
+}
+
+function parseToolArgumentObject(
+	raw: string,
+	depth = 0
+): { value?: Record<string, any>; error?: string } {
+	if (depth > MAX_TOOL_ARG_PARSE_DEPTH) {
+		return { error: 'Tool arguments must be a JSON object.' };
+	}
+
+	try {
+		const parsed = JSON.parse(raw);
+		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			return { value: parsed as Record<string, any> };
+		}
+
+		if (typeof parsed === 'string') {
+			const nested = parsed.trim();
+			if (nested) {
+				return parseToolArgumentObject(nested, depth + 1);
+			}
+		}
+
+		return { error: 'Tool arguments must be a JSON object.' };
+	} catch (error) {
+		return {
+			error: `Invalid JSON in tool arguments: ${error instanceof Error ? error.message : String(error)}`
+		};
+	}
+}
+
+function extractBalancedJsonObjectSegments(raw: string): string[] {
+	const segments: string[] = [];
+	let cursor = 0;
+
+	while (cursor < raw.length && segments.length < MAX_TOOL_ARG_SEGMENTS) {
+		const start = raw.indexOf('{', cursor);
+		if (start < 0) {
+			break;
+		}
+
+		let inString = false;
+		let escapeNext = false;
+		const stack: Array<'{' | '['> = ['{'];
+		let end = -1;
+
+		for (let i = start + 1; i < raw.length; i += 1) {
+			const char = raw[i];
+			if (inString) {
+				if (escapeNext) {
+					escapeNext = false;
+					continue;
+				}
+				if (char === '\\') {
+					escapeNext = true;
+					continue;
+				}
+				if (char === '"') {
+					inString = false;
+				}
+				continue;
+			}
+
+			if (char === '"') {
+				inString = true;
+				continue;
+			}
+
+			if (char === '{' || char === '[') {
+				stack.push(char);
+				continue;
+			}
+
+			if (char === '}' || char === ']') {
+				const open = stack.pop();
+				const isMatch = (open === '{' && char === '}') || (open === '[' && char === ']');
+				if (!isMatch) {
+					break;
+				}
+				if (stack.length === 0) {
+					end = i;
+					break;
+				}
+			}
+		}
+
+		if (end < 0) {
+			cursor = start + 1;
+			continue;
+		}
+
+		segments.push(raw.slice(start, end + 1));
+		cursor = end + 1;
+	}
+
+	return segments;
+}
+
+function parseMergedJsonObjectSegments(raw: string): Record<string, any> | null {
+	const segments = extractBalancedJsonObjectSegments(raw);
+	if (segments.length === 0) {
+		return null;
+	}
+
+	const parsedObjects: Record<string, any>[] = [];
+	for (const segment of segments) {
+		const parsed = parseToolArgumentObject(segment);
+		if (parsed.value) {
+			parsedObjects.push(parsed.value);
+		}
+	}
+
+	if (parsedObjects.length === 0) {
+		return null;
+	}
+	if (parsedObjects.length === 1) {
+		return parsedObjects[0] ?? null;
+	}
+	return Object.assign({}, ...parsedObjects);
+}
+
+function parseMergedJsonStringObjectSegments(raw: string): Record<string, any> | null {
+	const literalPattern = /"(?:\\.|[^"\\])*"/g;
+	const matches = raw.match(literalPattern);
+	if (!matches || matches.length === 0) {
+		return null;
+	}
+
+	const parsedObjects: Record<string, any>[] = [];
+	for (const literal of matches.slice(0, MAX_TOOL_ARG_SEGMENTS)) {
+		let parsedLiteral: unknown;
+		try {
+			parsedLiteral = JSON.parse(literal);
+		} catch {
+			continue;
+		}
+
+		if (typeof parsedLiteral !== 'string') {
+			continue;
+		}
+
+		const nested = parseToolArgumentObject(parsedLiteral);
+		if (nested.value) {
+			parsedObjects.push(nested.value);
+		}
+	}
+
+	if (parsedObjects.length === 0) {
+		return null;
+	}
+	if (parsedObjects.length === 1) {
+		return parsedObjects[0] ?? null;
+	}
+	return Object.assign({}, ...parsedObjects);
+}
+
+function recoverToolArgumentObject(raw: string): Record<string, any> | null {
+	const stripped = stripMarkdownCodeFence(raw);
+	const direct = parseToolArgumentObject(stripped);
+	if (direct.value) {
+		return direct.value;
+	}
+
+	const mergedSegments = parseMergedJsonObjectSegments(stripped);
+	if (mergedSegments) {
+		return mergedSegments;
+	}
+
+	const mergedStringSegments = parseMergedJsonStringObjectSegments(stripped);
+	if (mergedStringSegments) {
+		return mergedStringSegments;
+	}
+
+	const firstBrace = stripped.indexOf('{');
+	const lastBrace = stripped.lastIndexOf('}');
+	if (firstBrace >= 0 && lastBrace > firstBrace) {
+		const wrapped = stripped.slice(firstBrace, lastBrace + 1).trim();
+		const parsedWrapped = parseToolArgumentObject(wrapped);
+		if (parsedWrapped.value) {
+			return parsedWrapped.value;
+		}
+		const mergedWrapped = parseMergedJsonObjectSegments(wrapped);
+		if (mergedWrapped) {
+			return mergedWrapped;
+		}
+	}
+
+	return null;
+}
+
+function extractGatewayPathCandidate(raw: string): string | null {
+	const pathPattern =
+		/\b(root|onto(?:\.[a-z0-9_]+)*|cal(?:\.[a-z0-9_]+)*|util(?:\.[a-z0-9_]+)*)\b/i;
+	const match = raw.match(pathPattern);
+	if (!match || !match[1]) {
+		return null;
+	}
+	const candidate = match[1].trim();
+	return candidate.length > 0 ? candidate : null;
+}
+
+function extractGatewayOpCandidate(raw: string): string | null {
+	const opPattern = /\b(?:onto|cal|util)\.[a-z0-9_]+(?:\.[a-z0-9_]+){1,6}\b/i;
+	const match = raw.match(opPattern);
+	if (!match || !match[0]) {
+		return null;
+	}
+	const candidate = match[0].trim();
+	return candidate.length > 0 ? normalizeGatewayOpName(candidate) : null;
+}
+
+function buildGatewayFallbackArgs(toolName: string, rawArgs: string): Record<string, any> | null {
+	const recoveredObject = recoverToolArgumentObject(rawArgs);
+
+	if (toolName === 'tool_help') {
+		if (recoveredObject && typeof recoveredObject.path === 'string') {
+			const path = recoveredObject.path.trim();
+			if (path.length > 0) {
+				return { ...recoveredObject, path };
+			}
+		}
+
+		const pathCandidate = extractGatewayPathCandidate(rawArgs);
+		if (pathCandidate) {
+			return { path: pathCandidate };
+		}
+		return null;
+	}
+
+	if (toolName !== 'tool_exec') {
+		return null;
+	}
+
+	if (recoveredObject) {
+		const op =
+			typeof recoveredObject.op === 'string'
+				? normalizeGatewayOpName(recoveredObject.op)
+				: '';
+		const args =
+			recoveredObject.args &&
+			typeof recoveredObject.args === 'object' &&
+			!Array.isArray(recoveredObject.args)
+				? (recoveredObject.args as Record<string, any>)
+				: {};
+		const fallbackOp = op || extractGatewayOpCandidate(rawArgs) || '';
+		if (fallbackOp) {
+			return {
+				...recoveredObject,
+				op: fallbackOp,
+				args
+			};
+		}
+	}
+
+	const opCandidate = extractGatewayOpCandidate(rawArgs);
+	if (opCandidate) {
+		return {
+			op: opCandidate,
+			args: {}
+		};
+	}
+
+	return null;
+}
+
 function parseToolArguments(rawArgs: unknown): { args: Record<string, any>; error?: string } {
 	if (rawArgs === undefined || rawArgs === null) {
 		return { args: {} };
@@ -803,20 +1185,18 @@ function parseToolArguments(rawArgs: unknown): { args: Record<string, any>; erro
 		if (!trimmed) {
 			return { args: {} };
 		}
-		try {
-			const parsed = JSON.parse(trimmed);
-			if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-				return { args: {}, error: 'Tool arguments must be a JSON object.' };
-			}
-			return { args: parsed as Record<string, any> };
-		} catch (error) {
-			return {
-				args: {},
-				error: `Invalid JSON in tool arguments: ${
-					error instanceof Error ? error.message : String(error)
-				}`
-			};
+
+		const parsed = parseToolArgumentObject(trimmed);
+		if (parsed.value) {
+			return { args: parsed.value };
 		}
+
+		const recovered = recoverToolArgumentObject(trimmed);
+		if (recovered) {
+			return { args: recovered };
+		}
+
+		return { args: {}, error: parsed.error ?? 'Tool arguments must be a JSON object.' };
 	}
 
 	if (typeof rawArgs === 'object') {
@@ -827,6 +1207,168 @@ function parseToolArguments(rawArgs: unknown): { args: Record<string, any>; erro
 	}
 
 	return { args: {}, error: 'Tool arguments must be a JSON object.' };
+}
+
+function normalizeToolCallDefaults(toolCall: ChatToolCall): ChatToolCall {
+	const toolName = toolCall.function?.name?.trim() ?? '';
+	if (toolName !== 'tool_help' && toolName !== 'tool_exec') {
+		return toolCall;
+	}
+
+	const rawArgs = toolCall.function?.arguments;
+	const { args, error } = parseToolArguments(rawArgs);
+	if (!error) {
+		if (toolName === 'tool_help') {
+			const path = typeof args.path === 'string' ? args.path.trim() : '';
+			const normalizedArgs = path.length > 0 ? { ...args, path } : { ...args, path: 'root' };
+			const serializedArgs = JSON.stringify(normalizedArgs);
+			if (toolCall.function.arguments === serializedArgs) {
+				return toolCall;
+			}
+			return {
+				...toolCall,
+				function: {
+					...toolCall.function,
+					arguments: serializedArgs
+				}
+			};
+		}
+
+		return toolCall;
+	}
+
+	if (typeof rawArgs !== 'string') {
+		return toolCall;
+	}
+
+	const fallbackArgs = buildGatewayFallbackArgs(toolName, rawArgs);
+	if (!fallbackArgs) {
+		return toolCall;
+	}
+
+	if (toolName === 'tool_help') {
+		const path = typeof fallbackArgs.path === 'string' ? fallbackArgs.path.trim() : '';
+		if (!path) {
+			fallbackArgs.path = 'root';
+		} else {
+			fallbackArgs.path = path;
+		}
+	}
+
+	if (toolName === 'tool_exec') {
+		const op = typeof fallbackArgs.op === 'string' ? fallbackArgs.op.trim() : '';
+		if (!op) {
+			return toolCall;
+		}
+		fallbackArgs.op = normalizeGatewayOpName(op);
+		if (
+			!fallbackArgs.args ||
+			typeof fallbackArgs.args !== 'object' ||
+			Array.isArray(fallbackArgs.args)
+		) {
+			fallbackArgs.args = {};
+		}
+	}
+
+	const serializedArgs = JSON.stringify(fallbackArgs);
+	if (toolCall.function.arguments === serializedArgs) {
+		return toolCall;
+	}
+
+	return {
+		...toolCall,
+		function: {
+			...toolCall.function,
+			arguments: serializedArgs
+		}
+	};
+}
+
+function inspectToolArgumentAnomaly(toolCall: ChatToolCall): ToolArgumentAnomaly | null {
+	const toolName = toolCall.function?.name?.trim() ?? 'unknown';
+	const rawArgs = toolCall.function?.arguments;
+
+	if (rawArgs === undefined || rawArgs === null) {
+		return null;
+	}
+
+	if (typeof rawArgs !== 'string') {
+		return null;
+	}
+
+	const trimmed = rawArgs.trim();
+	if (!trimmed) {
+		return null;
+	}
+
+	const parsed = parseToolArgumentObject(trimmed);
+	if (parsed.value) {
+		return null;
+	}
+
+	const recovered = recoverToolArgumentObject(trimmed);
+	if (recovered) {
+		return {
+			kind: 'recovered',
+			toolCallId: toolCall.id,
+			toolName,
+			rawArgs,
+			parseError: parsed.error,
+			recoveredArgs: recovered
+		};
+	}
+
+	return {
+		kind: 'malformed',
+		toolCallId: toolCall.id,
+		toolName,
+		rawArgs,
+		parseError: parsed.error
+	};
+}
+
+function logToolArgumentAnomaly(params: { sessionId: string; anomaly: ToolArgumentAnomaly }): void {
+	const { sessionId, anomaly } = params;
+	const parts = [
+		`[FastChat][ToolArgs:${anomaly.kind.toUpperCase()}]`,
+		`session=${sessionId}`,
+		`tool=${anomaly.toolName}`,
+		`toolCallId=${anomaly.toolCallId}`,
+		`parseError=${anomaly.parseError ?? 'none'}`,
+		'rawArgs:',
+		typeof anomaly.rawArgs === 'string' ? anomaly.rawArgs : JSON.stringify(anomaly.rawArgs),
+		...(anomaly.recoveredArgs
+			? ['recoveredArgs:', JSON.stringify(anomaly.recoveredArgs, null, 2)]
+			: [])
+	];
+	console.warn(parts.join('\n'));
+}
+
+function sanitizeToolCallsForReplay(toolCalls: ChatToolCall[]): ChatToolCall[] {
+	let mutated = false;
+	const sanitized = toolCalls.map((toolCall) => {
+		const fn = toolCall.function;
+		if (!fn || typeof fn !== 'object') {
+			return toolCall;
+		}
+
+		const { args } = parseToolArguments(fn.arguments);
+		const serializedArgs = JSON.stringify(args ?? {});
+		if (fn.arguments === serializedArgs) {
+			return toolCall;
+		}
+
+		mutated = true;
+		return {
+			...toolCall,
+			function: {
+				...fn,
+				arguments: serializedArgs
+			}
+		};
+	});
+
+	return mutated ? sanitized : toolCalls;
 }
 
 function getValueByPath(value: Record<string, any>, path: string): unknown {
@@ -967,6 +1509,17 @@ function buildToolValidationRepairInstruction(
 ): string {
 	const hasGatewayExecIssue =
 		gatewayModeActive && issues.some((issue) => issue.toolName === 'tool_exec');
+	const hasGatewayEnvelopeFailure =
+		hasGatewayExecIssue &&
+		issues.some(
+			(issue) =>
+				issue.toolName === 'tool_exec' &&
+				issue.errors.some(
+					(error) =>
+						error.includes('Missing required parameter: op') ||
+						error.includes('Missing required parameter: args')
+				)
+		);
 	const lines = [
 		'One or more tool calls failed validation.',
 		'Do not guess or fabricate IDs. Never use placeholders.',
@@ -979,10 +1532,25 @@ function buildToolValidationRepairInstruction(
 			'Gateway pattern: use targeted tool_help("<group/entity>") first; use tool_help("root") only when namespace is unknown.'
 		);
 		lines.push(
+			'Gateway payload contract: tool_help({ path: "<path>" }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
+		);
+		lines.push(
 			'Canonical ontology family: onto.<entity>.create|list|get|update|delete|search (entities: project, task, goal, plan, document, milestone, risk).'
 		);
 		lines.push(
 			'In tool_exec.op, use only canonical ops; never legacy names like get_document_tree.'
+		);
+		lines.push(
+			'CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.'
+		);
+		lines.push(
+			'Update contract: onto.<entity>.update requires args.<entity>_id plus at least one field to change.'
+		);
+		lines.push(
+			'Example valid update: tool_exec({ op: "onto.task.update", args: { task_id: "<task_id_uuid>", title: "Updated title" } }).'
+		);
+		lines.push(
+			'Example valid document update: tool_exec({ op: "onto.document.update", args: { document_id: "<document_id_uuid>", content: "<markdown content>" } }).'
 		);
 		lines.push(
 			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'
@@ -994,6 +1562,11 @@ function buildToolValidationRepairInstruction(
 		lines.push(
 			'For first-time or complex writes, call tool_help("<exact op>", { format: "full", include_schemas: true }) before retrying tool_exec.'
 		);
+		if (hasGatewayEnvelopeFailure) {
+			lines.push(
+				'Never call tool_exec with {}. You must include both op and args, or ask one concise clarifying question.'
+			);
+		}
 	}
 
 	for (const issue of issues) {
@@ -1019,6 +1592,7 @@ function buildToolRoundFingerprint(roundExecutions: FastToolExecution[]): string
 
 const MAX_MODEL_TOOL_PAYLOAD_CHARS = 6000;
 const MAX_TOOL_LIST_ITEMS = 20;
+const MAX_TOOL_ARG_PREVIEW_CHARS = 400;
 
 function buildToolPayloadForModel(toolCall: ChatToolCall, result: ChatToolResult): unknown {
 	const basePayload = result.result ?? (result.error ? { error: result.error } : null);
@@ -1331,6 +1905,8 @@ function buildGatewayRequiredFieldRepairInstruction(
 	return [
 		`Repeated required-field validation failures detected: ${labels}.`,
 		'Do not call write ops with args:{}.',
+		'For onto.<entity>.update, include args.<entity>_id and at least one concrete field to change.',
+		'For onto.<entity>.delete, include args.<entity>_id.',
 		'For document organization, get IDs from onto.document.tree.get result.unlinked/documents and pass exact args.document_id for delete/move.',
 		'If IDs are still unclear, ask one concise clarifying question instead of repeating failed writes.'
 	].join(' ');
@@ -1550,6 +2126,78 @@ function buildReadLoopRepairInstruction(readOps: string[]): string {
 	].join(' ');
 }
 
+function buildRootHelpLoopRepairInstruction(fallbackExecuted: boolean): string {
+	const fallbackLine = fallbackExecuted
+		? 'Project/task listings were already fetched via tool_exec(onto.project.list) and tool_exec(onto.task.list).'
+		: 'Immediately call tool_exec for onto.project.list and onto.task.list instead of calling tool_help("root") again.';
+	return [
+		'Repeated tool_help("root") detected. Do not call tool_help("root") again in this turn.',
+		fallbackLine,
+		'Use the returned listing data to continue, or ask one precise clarifying question.',
+		'If you need schema details, use targeted tool_help("onto.project.list") or tool_help("onto.task.list"), never root.'
+	].join(' ');
+}
+
+function buildConsolidatedRepairInstruction(instructions: string[]): string {
+	const unique = Array.from(
+		new Set(
+			instructions
+				.map((instruction) => instruction.trim())
+				.filter((instruction) => instruction.length > 0)
+		)
+	);
+	if (unique.length === 0) return '';
+	if (unique.length === 1) return unique[0] ?? '';
+
+	const lines = [
+		'Repair instructions for the next response:',
+		...unique.map((instruction, index) => `${index + 1}. ${instruction}`),
+		'Apply all relevant items in a single corrected tool response.'
+	];
+	return lines.join('\n');
+}
+
+function isRootHelpOnlyRound(toolCalls: ChatToolCall[]): boolean {
+	if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+		return false;
+	}
+
+	for (const toolCall of toolCalls) {
+		const toolName = toolCall.function?.name?.trim();
+		if (toolName !== 'tool_help') {
+			return false;
+		}
+		const parsed = parseToolArguments(toolCall.function?.arguments);
+		const rawPath = parsed.args.path;
+		if (!isRootHelpPath(rawPath)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function isRootHelpPath(path: unknown): boolean {
+	if (typeof path !== 'string') {
+		return true;
+	}
+	const normalized = path.trim().toLowerCase();
+	return (
+		normalized.length === 0 || normalized === 'root' || normalized === '/' || normalized === '.'
+	);
+}
+
+function didGatewayExecSucceed(execution: FastToolExecution | null): boolean {
+	if (!execution || execution.result.success !== true) {
+		return false;
+	}
+	const payload = extractGatewayExecResultData(execution.result.result);
+	if (!payload) {
+		return true;
+	}
+	return payload.ok === true;
+}
+
 function stableStringify(value: unknown): string {
 	const seen = new WeakSet<object>();
 
@@ -1586,6 +2234,19 @@ function readNumberMeta(value: unknown): number | undefined {
 	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+function toSingleLinePreview(value: unknown, maxChars = MAX_TOOL_ARG_PREVIEW_CHARS): string {
+	if (value === undefined || value === null) {
+		return 'null';
+	}
+
+	const raw = typeof value === 'string' ? value : JSON.stringify(value);
+	const normalized = raw.replace(/\s+/g, ' ').trim();
+	if (normalized.length <= maxChars) {
+		return normalized;
+	}
+	return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
+}
+
 function appendRuntimeMetadataToPromptDump(
 	promptDumpPath: string | null,
 	params: {
@@ -1593,6 +2254,7 @@ function appendRuntimeMetadataToPromptDump(
 		finishedReason?: string;
 		toolRounds: number;
 		toolCallsMade: number;
+		toolExecutions: FastToolExecution[];
 	}
 ): void {
 	if (!promptDumpPath) return;
@@ -1626,6 +2288,38 @@ function appendRuntimeMetadataToPromptDump(
 		lines.push(
 			`Run summary: finished_reason=${params.finishedReason ?? 'unknown'}, tool_rounds=${params.toolRounds}, tool_calls=${params.toolCallsMade}`
 		);
+		if (Array.isArray(params.toolExecutions) && params.toolExecutions.length > 0) {
+			lines.push('');
+			lines.push('────────────────────────────────────────');
+			lines.push('TOOL EXECUTIONS (ACTUAL)');
+			lines.push('────────────────────────────────────────');
+			params.toolExecutions.forEach((execution, index) => {
+				const toolName = execution.toolCall.function?.name?.trim() ?? 'unknown';
+				const rawArgs = execution.toolCall.function?.arguments;
+				const parsed = parseToolArguments(execution.toolCall.function?.arguments);
+				const op =
+					toolName === 'tool_exec' && typeof parsed.args.op === 'string'
+						? parsed.args.op
+						: undefined;
+				const success = execution.result.success === true ? 'ok' : 'error';
+				const error =
+					typeof execution.result.error === 'string' &&
+					execution.result.error.trim().length > 0
+						? execution.result.error.trim()
+						: null;
+				lines.push(
+					`${index + 1}. ${toolName}${op ? ` (${op})` : ''} => ${success}${
+						error ? ` | ${error}` : ''
+					}`
+				);
+				lines.push(`   raw_args: ${toSingleLinePreview(rawArgs)}`);
+				if (parsed.error) {
+					lines.push(`   parsed_error: ${parsed.error}`);
+				} else {
+					lines.push(`   parsed_args: ${toSingleLinePreview(parsed.args)}`);
+				}
+			});
+		}
 		lines.push('');
 		appendFileSync(promptDumpPath, `${lines.join('\n')}\n`, 'utf-8');
 	} catch {

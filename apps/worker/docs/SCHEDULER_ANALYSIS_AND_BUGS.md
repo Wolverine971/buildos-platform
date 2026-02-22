@@ -1,4 +1,4 @@
-<!-- apps/worker/SCHEDULER_ANALYSIS_AND_BUGS.md -->
+<!-- apps/worker/docs/SCHEDULER_ANALYSIS_AND_BUGS.md -->
 
 # Scheduler.ts Analysis & Bug Report
 

@@ -14,12 +14,9 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Clock, Loader, Save, Trash2, X } from 'lucide-svelte';
+	import { ChevronDown, Clock, Loader, Save, Trash2, X } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
@@ -36,7 +33,6 @@
 	import GoalEditModal from './GoalEditModal.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
-	import { getPlanStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
@@ -80,11 +76,6 @@
 	let stateKey = $state('draft');
 	let typeKey = $state('plan.default');
 
-	const stateOptions = PLAN_STATES.map((state) => ({
-		value: state,
-		label: state.replace('_', ' ')
-	}));
-
 	// Modal states for linked entity navigation
 	let showGoalModal = $state(false);
 	let selectedGoalIdForModal = $state<string | null>(null);
@@ -93,6 +84,7 @@
 	let showDocumentModal = $state(false);
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
+	let showActivityLog = $state(false);
 
 	// Build focus for chat about this plan
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -106,9 +98,6 @@
 		};
 	});
 
-	const stateBadgeClasses = $derived(
-		`px-3 py-1 rounded-full text-xs font-semibold capitalize ${getPlanStateBadgeClass(stateKey)}`
-	);
 	const dateError = $derived.by(() => {
 		if (startDate && endDate) {
 			const start = new Date(startDate);
@@ -120,14 +109,6 @@
 		return '';
 	});
 
-	const startLabel = $derived(formatDateOnly(startDate) ?? 'Not scheduled');
-	const endLabel = $derived(formatDateOnly(endDate) ?? 'Not scheduled');
-	const durationLabel = $derived.by(() => {
-		const days = computeDurationDays(startDate, endDate);
-		return days > 0 ? `${days} day${days === 1 ? '' : 's'}` : 'Flexible timeline';
-	});
-	const lastUpdatedLabel = $derived(formatRelativeTime(plan?.updated_at || plan?.created_at));
-	const planIdLabel = $derived(plan?.id || planId);
 	const formDisabled = $derived(isSaving || isDeleting);
 
 	// Load plan data when modal opens (client-side only)
@@ -271,38 +252,6 @@
 		onClose?.();
 	}
 
-	function formatDateOnly(value: string | null | undefined): string | null {
-		if (!value) return null;
-		const parsed = new Date(value);
-		if (Number.isNaN(parsed.getTime())) return null;
-		return parsed.toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
-	}
-
-	function formatRelativeTime(value: string | null | undefined): string | null {
-		if (!value) return null;
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) return null;
-		const diffMs = Date.now() - date.getTime();
-		const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-		if (diffDays === 0) return 'Today';
-		if (diffDays === 1) return 'Yesterday';
-		if (diffDays < 7) return `${diffDays}d ago`;
-		return date.toLocaleDateString();
-	}
-
-	function computeDurationDays(start: string, end: string): number {
-		if (!start || !end) return 0;
-		const startDateObj = new Date(start);
-		const endDateObj = new Date(end);
-		if (Number.isNaN(startDateObj.getTime()) || Number.isNaN(endDateObj.getTime())) return 0;
-		const diff = endDateObj.getTime() - startDateObj.getTime();
-		return diff > 0 ? Math.round(diff / (1000 * 60 * 60 * 24)) : 0;
-	}
-
 	// Linked entity click handler
 	function handleLinkedEntityClick(kind: EntityKind, id: string) {
 		switch (kind) {
@@ -430,162 +379,111 @@
 				</div>
 			{:else}
 				<div class="grid gap-3 lg:grid-cols-3">
-					<section class="space-y-3 lg:col-span-2">
-						<Card class="shadow-ink tx tx-frame tx-weak wt-paper sp-block">
-							<CardHeader variant="default" class="flex items-center justify-between">
-								<div>
-									<p class="micro-label text-accent">PLAN DETAILS</p>
-								</div>
-							</CardHeader>
-							<CardBody class="space-y-3">
-								<form
-									onsubmit={(event) => {
-										event.preventDefault();
-										handleSave();
-									}}
-									class="space-y-2"
+					<div class="lg:col-span-2">
+						<form
+							onsubmit={(event) => {
+								event.preventDefault();
+								handleSave();
+							}}
+							class="space-y-2.5 sm:space-y-3 tx tx-frame tx-weak wt-paper p-2 sm:p-3"
+						>
+							<FormField
+								label="Name"
+								labelFor="plan-name"
+								required
+								error={!name.trim() && error ? 'Required' : ''}
+							>
+								<TextInput
+									id="plan-name"
+									bind:value={name}
+									inputmode="text"
+									enterkeyhint="next"
+									placeholder="Plan name..."
+									required
+									disabled={formDisabled}
+								/>
+							</FormField>
+
+							<FormField label="Description" labelFor="plan-description">
+								<Textarea
+									id="plan-description"
+									bind:value={description}
+									enterkeyhint="next"
+									rows={2}
+									placeholder="Objectives and target outcomes..."
+									disabled={formDisabled}
+								/>
+							</FormField>
+
+							<FormField label="Details" labelFor="plan-details">
+								<Textarea
+									id="plan-details"
+									bind:value={planDetails}
+									enterkeyhint="next"
+									rows={2}
+									placeholder="Execution outline, milestones, runbook..."
+									disabled={formDisabled}
+								/>
+							</FormField>
+
+							<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+								<FormField label="State" labelFor="plan-state">
+									<Select
+										id="plan-state"
+										bind:value={stateKey}
+										disabled={formDisabled}
+										size="sm"
+									>
+										{#each PLAN_STATES as state}
+											<option value={state}>
+												{state === 'draft'
+													? 'Draft'
+													: state === 'active'
+														? 'Active'
+														: state === 'completed'
+															? 'Completed'
+															: state}
+											</option>
+										{/each}
+									</Select>
+								</FormField>
+
+								<FormField label="Start" labelFor="plan-start">
+									<TextInput
+										id="plan-start"
+										bind:value={startDate}
+										type="date"
+										inputmode="numeric"
+										enterkeyhint="next"
+										disabled={formDisabled}
+										size="sm"
+									/>
+								</FormField>
+
+								<FormField label="End" labelFor="plan-end" error={dateError}>
+									<TextInput
+										id="plan-end"
+										bind:value={endDate}
+										type="date"
+										inputmode="numeric"
+										enterkeyhint="done"
+										disabled={formDisabled}
+										size="sm"
+									/>
+								</FormField>
+							</div>
+
+							{#if error}
+								<div
+									class="p-3 bg-destructive/10 border border-destructive/30 rounded"
 								>
-									<FormField label="Plan name" labelFor="plan-name" required>
-										<TextInput
-											id="plan-name"
-											bind:value={name}
-											inputmode="text"
-											enterkeyhint="next"
-											placeholder="e.g., Foundation sprint, GTM launch"
-											required
-											disabled={formDisabled}
-										/>
-									</FormField>
-
-									<FormField
-										label="Description"
-										labelFor="plan-description"
-										showOptional={false}
-									>
-										<Textarea
-											id="plan-description"
-											bind:value={description}
-											enterkeyhint="next"
-											rows={4}
-											placeholder="Summarize objectives, target outcomes, and cross-team dependencies."
-											disabled={formDisabled}
-										/>
-									</FormField>
-
-									<FormField
-										label="Plan details"
-										labelFor="plan-details"
-										hint="Optional execution outline or runbook"
-										showOptional={true}
-									>
-										<Textarea
-											id="plan-details"
-											bind:value={planDetails}
-											enterkeyhint="next"
-											rows={4}
-											placeholder="Capture the execution outline, milestones, or runbook details..."
-											disabled={formDisabled}
-										/>
-									</FormField>
-
-									<div class="grid gap-2 sm:grid-cols-2">
-										<FormField
-											label="Start date"
-											labelFor="plan-start"
-											showOptional={false}
-										>
-											<TextInput
-												id="plan-start"
-												bind:value={startDate}
-												type="date"
-												inputmode="numeric"
-												enterkeyhint="next"
-												disabled={formDisabled}
-											/>
-										</FormField>
-										<FormField
-											label="End date"
-											labelFor="plan-end"
-											error={dateError}
-											showOptional={false}
-										>
-											<TextInput
-												id="plan-end"
-												bind:value={endDate}
-												type="date"
-												inputmode="numeric"
-												enterkeyhint="done"
-												disabled={formDisabled}
-											/>
-										</FormField>
-									</div>
-
-									<!-- Plan State -->
-									<FormField
-										label="State"
-										labelFor="plan-state"
-										showOptional={false}
-									>
-										<Select
-											id="plan-state"
-											bind:value={stateKey}
-											disabled={formDisabled}
-										>
-											{#each PLAN_STATES as state}
-												<option value={state}>
-													{state === 'draft'
-														? 'Draft'
-														: state === 'active'
-															? 'Active'
-															: state === 'completed'
-																? 'Completed'
-																: state}
-												</option>
-											{/each}
-										</Select>
-									</FormField>
-
-									{#if error}
-										<div
-											class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive tx tx-static tx-weak wt-card sp-block"
-										>
-											{error}
-										</div>
-									{/if}
-								</form>
-							</CardBody>
-						</Card>
-					</section>
+									<p class="text-sm text-destructive">{error}</p>
+								</div>
+							{/if}
+						</form>
+					</div>
 
 					<div class="space-y-3">
-						<Card class="shadow-ink tx tx-frame tx-weak wt-paper sp-block">
-							<CardHeader class="flex items-center gap-2">
-								<Clock class="w-4 h-4 text-accent" />
-								<h4 class="micro-label text-muted-foreground">TIMELINE INSIGHT</h4>
-							</CardHeader>
-							<CardBody class="space-y-2">
-								<div class="grid grid-cols-2 gap-2 text-sm">
-									<div
-										class="rounded-lg bg-muted p-2 border border-border tx tx-grain tx-weak wt-paper sp-inline"
-									>
-										<p class="micro-label">START</p>
-										<p class="font-semibold text-foreground text-xs">
-											{startLabel}
-										</p>
-									</div>
-									<div
-										class="rounded-lg bg-muted p-2 border border-border tx tx-grain tx-weak wt-paper sp-inline"
-									>
-										<p class="micro-label">END</p>
-										<p class="font-semibold text-foreground text-xs">
-											{endLabel}
-										</p>
-									</div>
-								</div>
-							</CardBody>
-						</Card>
-
-						<!-- Linked Entities -->
 						<LinkedEntities
 							sourceId={planId}
 							sourceKind="plan"
@@ -595,24 +493,45 @@
 							onLinksChanged={handleLinksChanged}
 						/>
 
-						<!-- Tags (from classification) -->
 						{#if plan?.props?.tags?.length}
-							<Card class="shadow-ink tx tx-frame tx-weak wt-paper sp-block">
-								<CardHeader class="flex items-center gap-2">
-									<h4 class="micro-label text-muted-foreground">TAGS</h4>
-								</CardHeader>
-								<CardBody>
-									<TagsDisplay props={plan.props} size="sm" compact={true} />
-								</CardBody>
-							</Card>
+							<div
+								class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink"
+							>
+								<p
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
+								>
+									Tags
+								</p>
+								<TagsDisplay props={plan.props} size="sm" compact={true} />
+							</div>
 						{/if}
 
-						<!-- Activity Log -->
-						<EntityActivityLog
-							entityType="plan"
-							entityId={planId}
-							autoLoad={!isLoading}
-						/>
+						<!-- Activity Log (collapsible) -->
+						<div
+							class="border border-border rounded-lg bg-card shadow-ink overflow-hidden"
+						>
+							<button
+								type="button"
+								onclick={() => (showActivityLog = !showActivityLog)}
+								class="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:bg-muted/50 transition-colors"
+							>
+								<span>Activity</span>
+								<ChevronDown
+									class="w-3.5 h-3.5 transition-transform {showActivityLog
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+							{#if showActivityLog}
+								<div class="border-t border-border">
+									<EntityActivityLog
+										entityType="plan"
+										entityId={planId}
+										autoLoad={true}
+									/>
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
 

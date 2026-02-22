@@ -38,6 +38,7 @@ import {
 	supportsJsonMode
 } from './model-selection';
 import { OpenRouterClient } from './openrouter-client';
+import { MoonshotClient } from './moonshot-client';
 import {
 	cleanJSONResponse,
 	enhanceSystemPromptForJSON,
@@ -86,6 +87,32 @@ export type SmartLLMConfig = {
 		middleOutEnabled?: boolean;
 		middleOutMinChars?: number;
 	};
+	moonshot?: {
+		apiKey?: string;
+		apiUrl?: string;
+		routeKimiModelsDirect?: boolean;
+		modelMap?: Record<string, string>;
+		streamIncludeUsage?: boolean;
+	};
+};
+
+type ProviderRoute = {
+	provider: 'openrouter' | 'moonshot';
+	requestModel: string;
+	apiUrl: string;
+};
+
+const DEFAULT_MOONSHOT_API_URL = 'https://api.moonshot.ai/v1/chat/completions';
+const DEFAULT_MOONSHOT_MODEL_MAP: Record<string, string> = {
+	'moonshotai/kimi-k2.5': 'kimi-k2.5',
+	'moonshotai/kimi-k2-thinking': 'kimi-k2-thinking'
+};
+const MOONSHOT_REASONING_CONTENT_FALLBACK = '[reasoning omitted]';
+const CANONICAL_MODEL_ALIASES: Record<string, string> = {
+	'kimi-k2.5': 'moonshotai/kimi-k2.5',
+	'kimi-k2-5': 'moonshotai/kimi-k2.5',
+	'kimi-k2-thinking': 'moonshotai/kimi-k2-thinking',
+	'kimi-k2-thinking-turbo': 'moonshotai/kimi-k2-thinking'
 };
 
 // ============================================
@@ -95,10 +122,13 @@ export type SmartLLMConfig = {
 export class SmartLLMService {
 	private apiKey: string;
 	private apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+	private moonshotApiUrl = DEFAULT_MOONSHOT_API_URL;
+	private moonshotApiKey?: string;
 	private costTracking = new Map<string, number>();
 	private performanceMetrics = new Map<string, number[]>();
 	private errorLogger?: ErrorLogger;
 	private openRouterClient: OpenRouterClient;
+	private moonshotClient?: MoonshotClient;
 	private usageLogger: UsageLogger;
 	private fetchImpl: typeof fetch;
 	private enforceUserId: boolean;
@@ -106,6 +136,9 @@ export class SmartLLMService {
 	private middleOutMinChars: number;
 	private baseTransforms: string[];
 	private defaultTimeoutMs?: number;
+	private routeKimiModelsDirectToMoonshot: boolean;
+	private moonshotModelMap: Record<string, string>;
+	private moonshotStreamIncludeUsage: boolean;
 
 	// Optional: For logging and metrics
 	private supabase?: SupabaseClient<Database>;
@@ -129,6 +162,26 @@ export class SmartLLMService {
 		this.middleOutMinChars = config.openrouter?.middleOutMinChars ?? 60000;
 		this.baseTransforms = config.openrouter?.transforms ?? [];
 		this.defaultTimeoutMs = config.openrouter?.timeoutMs;
+		this.routeKimiModelsDirectToMoonshot = config.moonshot?.routeKimiModelsDirect ?? false;
+		this.moonshotModelMap = {
+			...DEFAULT_MOONSHOT_MODEL_MAP,
+			...Object.entries(config.moonshot?.modelMap ?? {}).reduce<Record<string, string>>(
+				(acc, [key, value]) => {
+					if (
+						typeof key === 'string' &&
+						key.trim().length > 0 &&
+						typeof value === 'string' &&
+						value.trim().length > 0
+					) {
+						acc[key.trim().toLowerCase()] = value.trim();
+					}
+					return acc;
+				},
+				{}
+			)
+		};
+		this.moonshotStreamIncludeUsage = config.moonshot?.streamIncludeUsage ?? true;
+		this.moonshotApiUrl = config.moonshot?.apiUrl?.trim() || DEFAULT_MOONSHOT_API_URL;
 
 		this.openRouterClient = new OpenRouterClient({
 			apiKey: this.apiKey,
@@ -138,6 +191,22 @@ export class SmartLLMService {
 			errorLogger: this.errorLogger,
 			fetchImpl: this.fetchImpl
 		});
+
+		const moonshotApiKey = config.moonshot?.apiKey?.trim();
+		this.moonshotApiKey = moonshotApiKey;
+		if (moonshotApiKey) {
+			this.moonshotClient = new MoonshotClient({
+				apiKey: moonshotApiKey,
+				apiUrl: this.moonshotApiUrl,
+				errorLogger: this.errorLogger,
+				fetchImpl: this.fetchImpl
+			});
+		}
+		if (this.routeKimiModelsDirectToMoonshot && !this.moonshotClient) {
+			console.warn(
+				'[SmartLLMService] Moonshot direct routing is enabled but no Moonshot API key is configured; falling back to OpenRouter.'
+			);
+		}
 		this.usageLogger =
 			config.usageLogger ||
 			new LLMUsageLogger({
@@ -207,6 +276,180 @@ export class SmartLLMService {
 			}
 		}
 		return transforms.length > 0 ? transforms : undefined;
+	}
+
+	private canonicalizeModelId(model: string): string {
+		const normalized = model.trim().toLowerCase();
+		return CANONICAL_MODEL_ALIASES[normalized] ?? model;
+	}
+
+	private isKimiModel(model: string | undefined): boolean {
+		if (!model) return false;
+		const normalized = model.trim().toLowerCase();
+		return normalized.startsWith('moonshotai/kimi') || normalized.startsWith('kimi-k2');
+	}
+
+	private resolveMoonshotModel(model: string): string {
+		const normalized = model.trim().toLowerCase();
+		const mapped = this.moonshotModelMap[normalized];
+		if (mapped) {
+			return mapped;
+		}
+		if (normalized.startsWith('moonshotai/')) {
+			return normalized.slice('moonshotai/'.length);
+		}
+		return model;
+	}
+
+	private resolveProviderRoute(
+		model: string,
+		options: { forceOpenRouter?: boolean } = {}
+	): ProviderRoute {
+		const shouldUseMoonshot =
+			!options.forceOpenRouter &&
+			this.routeKimiModelsDirectToMoonshot &&
+			!!this.moonshotClient &&
+			this.isKimiModel(model);
+		if (shouldUseMoonshot) {
+			return {
+				provider: 'moonshot',
+				requestModel: this.resolveMoonshotModel(model),
+				apiUrl: this.moonshotApiUrl
+			};
+		}
+		return {
+			provider: 'openrouter',
+			requestModel: model,
+			apiUrl: this.apiUrl
+		};
+	}
+
+	private buildProviderHeaders(provider: ProviderRoute['provider']): Record<string, string> {
+		if (provider === 'moonshot') {
+			const apiKey = this.moonshotApiKey || this.apiKey;
+			return {
+				Authorization: `Bearer ${apiKey}`,
+				'Content-Type': 'application/json'
+			};
+		}
+		return {
+			Authorization: `Bearer ${this.apiKey}`,
+			'Content-Type': 'application/json',
+			'HTTP-Referer': this.httpReferer,
+			'X-Title': this.appName
+		};
+	}
+
+	private ensureMoonshotReasoningContent(messages: any[]): any[] {
+		let mutated = false;
+		const updated = messages.map((message) => {
+			if (!message || typeof message !== 'object') {
+				return message;
+			}
+
+			const role = (message as { role?: unknown }).role;
+			if (role !== 'assistant') {
+				return message;
+			}
+
+			let next = message;
+			let localMutated = false;
+			const hasToolCalls =
+				Array.isArray((next as { tool_calls?: unknown[] }).tool_calls) &&
+				(next as { tool_calls: unknown[] }).tool_calls.length > 0;
+			if (hasToolCalls) {
+				const currentReasoningContent = (next as { reasoning_content?: unknown })
+					.reasoning_content;
+				const resolvedReasoningContent =
+					this.resolveReasoningContentForMoonshotToolMessage(currentReasoningContent);
+				if (resolvedReasoningContent !== currentReasoningContent) {
+					next = {
+						...next,
+						reasoning_content: resolvedReasoningContent
+					};
+					localMutated = true;
+				}
+			}
+
+			if (localMutated) {
+				mutated = true;
+			}
+			return next;
+		});
+
+		return mutated ? updated : messages;
+	}
+
+	private resolveReasoningContentForMoonshotToolMessage(reasoningContent: unknown): string {
+		if (typeof reasoningContent === 'string' && reasoningContent.trim().length > 0) {
+			return reasoningContent;
+		}
+		return MOONSHOT_REASONING_CONTENT_FALLBACK;
+	}
+
+	private resolveTemperatureForRoute(
+		route: ProviderRoute,
+		temperature: number | undefined,
+		fallback: number
+	): number {
+		// Moonshot Kimi direct requires temperature=1 (provider-side validation).
+		if (route.provider === 'moonshot' && this.isKimiModel(route.requestModel)) {
+			return 1;
+		}
+		return temperature ?? fallback;
+	}
+
+	private async callChatCompletions(params: {
+		model: string;
+		models?: string[];
+		messages: Array<{ role: string; content: string }>;
+		temperature?: number;
+		max_tokens?: number;
+		timeoutMs?: number;
+		response_format?: { type: string };
+		stream?: boolean;
+		transforms?: string[];
+	}): Promise<{
+		response: OpenRouterResponse;
+		route: ProviderRoute;
+	}> {
+		const route = this.resolveProviderRoute(params.model);
+		const temperature = this.resolveTemperatureForRoute(route, params.temperature, 0.7);
+
+		if (route.provider === 'moonshot') {
+			if (!this.moonshotClient) {
+				throw new Error('Moonshot client not configured');
+			}
+			const response = await this.moonshotClient.callMoonshot({
+				model: route.requestModel,
+				messages: params.messages,
+				temperature,
+				max_tokens: params.max_tokens,
+				timeoutMs: params.timeoutMs,
+				response_format: params.response_format,
+				stream: params.stream
+			});
+			const normalizedModel = response.model
+				? this.canonicalizeModelId(response.model)
+				: this.canonicalizeModelId(params.model);
+			response.model = normalizedModel;
+			response.provider = 'moonshotai';
+			return { response, route };
+		}
+
+		const response = await this.openRouterClient.callOpenRouter({
+			model: route.requestModel,
+			models: params.models,
+			messages: params.messages,
+			temperature,
+			max_tokens: params.max_tokens,
+			timeoutMs: params.timeoutMs,
+			response_format: params.response_format,
+			stream: params.stream,
+			transforms: params.transforms
+		});
+		response.model = response.model ? this.canonicalizeModelId(response.model) : params.model;
+		return { response, route };
 	}
 
 	private isLikelyTruncatedJSONError(error: unknown, cleaned: string): boolean {
@@ -293,6 +536,7 @@ export class SmartLLMService {
 		const attemptedModels = new Set<string>();
 		let lastResponse: OpenRouterResponse | null = null;
 		let lastRequestedModel = baseModel;
+		let lastRequestApiUrl = this.apiUrl;
 
 		// Make the OpenRouter API call with model routing + local fallbacks
 		try {
@@ -315,7 +559,7 @@ export class SmartLLMService {
 					routingModels.length > 0 ? routingModels : [requestedModel];
 
 				try {
-					const response = await this.openRouterClient.callOpenRouter({
+					const completion = await this.callChatCompletions({
 						model: requestedModel, // Primary model with fallback
 						models: modelsForRequest, // Filtered models for fallback routing
 						messages,
@@ -325,6 +569,8 @@ export class SmartLLMService {
 						timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
 						transforms
 					});
+					const response = completion.response;
+					lastRequestApiUrl = completion.route.apiUrl;
 
 					lastResponse = response;
 
@@ -402,7 +648,7 @@ export class SmartLLMService {
 							const retryModels = ['anthropic/claude-sonnet-4', 'openai/gpt-4o'];
 							try {
 								// Try again with powerful profile
-								const retryResponse = await this.openRouterClient.callOpenRouter({
+								const retryCompletion = await this.callChatCompletions({
 									model: retryModel,
 									models: retryModels,
 									messages,
@@ -414,6 +660,8 @@ export class SmartLLMService {
 									timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
 									transforms
 								});
+								const retryResponse = retryCompletion.response;
+								lastRequestApiUrl = retryCompletion.route.apiUrl;
 
 								// Guard against malformed retry response
 								if (!retryResponse.choices || retryResponse.choices.length === 0) {
@@ -461,7 +709,7 @@ export class SmartLLMService {
 								if (this.errorLogger) {
 									await this.errorLogger.logAPIError(
 										retryError,
-										this.apiUrl,
+										lastRequestApiUrl,
 										'POST',
 										options.userId,
 										{
@@ -482,7 +730,7 @@ export class SmartLLMService {
 							if (this.errorLogger) {
 								await this.errorLogger.logAPIError(
 									parseError,
-									this.apiUrl,
+									lastRequestApiUrl,
 									'POST',
 									options.userId,
 									{
@@ -637,25 +885,31 @@ export class SmartLLMService {
 
 			// Log to error tracking system
 			if (this.errorLogger) {
-				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
-					operation: 'getJSONResponse',
-					errorType: 'llm_api_request_failure',
-					modelRequested: baseModel,
-					profile,
-					complexity,
-					isTimeout: lastError.message.includes('timeout'),
-					projectId: options.projectId,
-					brainDumpId: options.brainDumpId,
-					taskId: options.taskId,
-					attempts: modelsAttempted.length,
-					modelsAttempted,
-					lastRequestedModel,
-					lastModel,
-					openrouterRequestId: lastResponse?.id,
-					openrouterProvider: lastResponse?.provider,
-					openrouterErrorDetails: openrouterErrorDetails ?? null,
-					emptyContentDetails: emptyContentDetails ?? null
-				});
+				await this.errorLogger.logAPIError(
+					error,
+					lastRequestApiUrl,
+					'POST',
+					options.userId,
+					{
+						operation: 'getJSONResponse',
+						errorType: 'llm_api_request_failure',
+						modelRequested: baseModel,
+						profile,
+						complexity,
+						isTimeout: lastError.message.includes('timeout'),
+						projectId: options.projectId,
+						brainDumpId: options.brainDumpId,
+						taskId: options.taskId,
+						attempts: modelsAttempted.length,
+						modelsAttempted,
+						lastRequestedModel,
+						lastModel,
+						openrouterRequestId: lastResponse?.id,
+						openrouterProvider: lastResponse?.provider,
+						openrouterErrorDetails: openrouterErrorDetails ?? null,
+						emptyContentDetails: emptyContentDetails ?? null
+					}
+				);
 			}
 
 			// Log failure to database
@@ -741,6 +995,7 @@ export class SmartLLMService {
 		let lastResponse: OpenRouterResponse | null = null;
 		let lastFinishReason: string | undefined;
 		let lastError: Error | null = null;
+		let lastRequestApiUrl = this.apiUrl;
 
 		try {
 			for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -770,7 +1025,7 @@ export class SmartLLMService {
 						{ role: 'user', content: options.prompt }
 					];
 					const transforms = this.resolveTransforms(messages);
-					attemptResponse = await this.openRouterClient.callOpenRouter({
+					const attemptCompletion = await this.callChatCompletions({
 						model: requestedModel, // Primary model with fallback
 						models: routingModels.length > 0 ? routingModels : [requestedModel],
 						messages,
@@ -780,6 +1035,8 @@ export class SmartLLMService {
 						stream: options.streaming || false,
 						transforms
 					});
+					attemptResponse = attemptCompletion.response;
+					lastRequestApiUrl = attemptCompletion.route.apiUrl;
 
 					lastResponse = attemptResponse;
 					lastFinishReason = attemptResponse.choices?.[0]?.finish_reason;
@@ -994,28 +1251,34 @@ export class SmartLLMService {
 
 			// Log to error tracking system
 			if (this.errorLogger) {
-				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
-					operation: 'generateText',
-					errorType: 'llm_text_generation_failure',
-					modelRequested: baseModel,
-					profile,
-					estimatedLength,
-					isTimeout: (error as Error).message.includes('timeout'),
-					projectId: options.projectId,
-					brainDumpId: options.brainDumpId,
-					taskId: options.taskId,
-					attempts: modelsAttempted.length,
-					modelsAttempted,
-					lastModel,
-					lastFinishReason,
-					openrouterRequestId: lastResponse?.id,
-					openrouterProvider: lastResponse?.provider,
-					openrouterNativeFinishReason:
-						lastResponse?.choices?.[0]?.native_finish_reason ?? null,
-					openrouterResponseError: lastResponse?.error ?? null,
-					openrouterErrorDetails: openrouterErrorDetails ?? null,
-					emptyContentDetails: emptyContentDetails ?? null
-				});
+				await this.errorLogger.logAPIError(
+					error,
+					lastRequestApiUrl,
+					'POST',
+					options.userId,
+					{
+						operation: 'generateText',
+						errorType: 'llm_text_generation_failure',
+						modelRequested: baseModel,
+						profile,
+						estimatedLength,
+						isTimeout: (error as Error).message.includes('timeout'),
+						projectId: options.projectId,
+						brainDumpId: options.brainDumpId,
+						taskId: options.taskId,
+						attempts: modelsAttempted.length,
+						modelsAttempted,
+						lastModel,
+						lastFinishReason,
+						openrouterRequestId: lastResponse?.id,
+						openrouterProvider: lastResponse?.provider,
+						openrouterNativeFinishReason:
+							lastResponse?.choices?.[0]?.native_finish_reason ?? null,
+						openrouterResponseError: lastResponse?.error ?? null,
+						openrouterErrorDetails: openrouterErrorDetails ?? null,
+						emptyContentDetails: emptyContentDetails ?? null
+					}
+				);
 			}
 
 			// Log failure to database
@@ -1535,15 +1798,10 @@ export class SmartLLMService {
 		let modelResolvedFromStream = false;
 		let resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
 		let providerResolvedFromStream = false;
+		let lastRequestApiUrl = this.apiUrl;
+		let lastRouteProvider: ProviderRoute['provider'] = 'openrouter';
 
 		try {
-			const headers = {
-				Authorization: `Bearer ${this.apiKey}`,
-				'Content-Type': 'application/json',
-				'HTTP-Referer': this.httpReferer,
-				'X-Title': this.appName
-			};
-
 			const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 3);
 			const attemptedModels = new Set<string>();
 			let response: Response | null = null;
@@ -1559,29 +1817,50 @@ export class SmartLLMService {
 					requestedModel,
 					...remainingModels.filter((model) => model !== requestedModel)
 				];
+				const route = this.resolveProviderRoute(requestedModel, {
+					forceOpenRouter: needsToolSupport
+				});
+				lastRequestApiUrl = route.apiUrl;
+				lastRouteProvider = route.provider;
+				const providerLabel = route.provider === 'moonshot' ? 'Moonshot' : 'OpenRouter';
 
-				const messagesForRequest = this.prepareMessagesForModel(
-					options.messages,
-					routingModels
+				const messagesForRequest = options.messages;
+				const transforms = needsToolSupport
+					? undefined
+					: this.resolveTransforms(messagesForRequest);
+				const requestTemperature = this.resolveTemperatureForRoute(
+					route,
+					options.temperature,
+					0.7
 				);
-				const transforms = this.resolveTransforms(messagesForRequest);
 				const body: any = {
-					model: requestedModel,
+					model: route.requestModel,
 					messages: messagesForRequest,
-					temperature: options.temperature ?? 0.7,
+					temperature: requestTemperature,
 					max_tokens: options.maxTokens ?? 2000,
 					stream: true
 				};
 
-				// Add fallback models using extra_body if we have multiple models
-				if (routingModels.length > 1) {
+				// OpenRouter supports server-side fallback routing. Moonshot direct does not.
+				if (route.provider === 'openrouter' && routingModels.length > 1) {
 					body.extra_body = {
 						models: routingModels.slice(1)
 					};
 				}
 
-				if (transforms && transforms.length > 0) {
+				if (route.provider === 'openrouter' && transforms && transforms.length > 0) {
 					body.transforms = transforms;
+				}
+				if (route.provider === 'moonshot') {
+					if (this.moonshotStreamIncludeUsage) {
+						body.stream_options = { include_usage: true };
+					}
+					body.messages = this.ensureMoonshotReasoningContent(body.messages);
+					const promptCacheKey =
+						options.chatSessionId || options.sessionId || options.agentSessionId;
+					if (promptCacheKey) {
+						body.prompt_cache_key = promptCacheKey;
+					}
 				}
 
 				// Add tools if provided
@@ -1591,9 +1870,9 @@ export class SmartLLMService {
 				}
 
 				try {
-					response = await this.fetchImpl(this.apiUrl, {
+					response = await this.fetchImpl(route.apiUrl, {
 						method: 'POST',
-						headers,
+						headers: this.buildProviderHeaders(route.provider),
 						body: JSON.stringify(body),
 						signal: options.signal
 					});
@@ -1601,7 +1880,7 @@ export class SmartLLMService {
 					lastError = error as Error;
 					attemptedModels.add(requestedModel);
 					if (attempt < maxAttempts - 1 && isRetryableOpenRouterError(error)) {
-						console.warn('OpenRouter stream retrying after fetch error', {
+						console.warn(`${providerLabel} stream retrying after fetch error`, {
 							attempt: attempt + 1,
 							maxAttempts,
 							model: requestedModel,
@@ -1613,8 +1892,11 @@ export class SmartLLMService {
 				}
 
 				if (response.ok) {
-					resolvedModel = requestedModel;
-					resolvedProvider = TEXT_MODELS[requestedModel]?.provider;
+					resolvedModel = this.canonicalizeModelId(requestedModel);
+					resolvedProvider =
+						route.provider === 'moonshot'
+							? 'moonshotai'
+							: TEXT_MODELS[resolvedModel]?.provider;
 					modelResolvedFromStream = false;
 					providerResolvedFromStream = false;
 					break;
@@ -1622,7 +1904,7 @@ export class SmartLLMService {
 
 				const errorText = await response.text();
 				const statusError = new Error(
-					`OpenRouter API error: ${response.status} - ${errorText}`
+					`${providerLabel} API error: ${response.status} - ${errorText}`
 				) as Error & { status?: number };
 				statusError.status = response.status;
 				lastError = statusError;
@@ -1630,7 +1912,7 @@ export class SmartLLMService {
 				attemptedModels.add(requestedModel);
 
 				if (attempt < maxAttempts - 1 && isRetryableOpenRouterError(statusError)) {
-					console.warn('OpenRouter stream retrying after failure', {
+					console.warn(`${providerLabel} stream retrying after failure`, {
 						attempt: attempt + 1,
 						maxAttempts,
 						model: requestedModel,
@@ -1650,15 +1932,19 @@ export class SmartLLMService {
 				const message =
 					lastError?.message ||
 					(lastErrorText
-						? `OpenRouter API error: ${lastErrorText}`
-						: 'OpenRouter stream request failed');
+						? `${
+								lastRouteProvider === 'moonshot' ? 'Moonshot' : 'OpenRouter'
+							} API error: ${lastErrorText}`
+						: `${
+								lastRouteProvider === 'moonshot' ? 'Moonshot' : 'OpenRouter'
+							} stream request failed`);
 				const operationType =
 					options.operationType || this.buildChatStreamOperationType(options.contextType);
 
 				if (this.errorLogger) {
 					await this.errorLogger.logAPIError(
 						lastError ?? message,
-						this.apiUrl,
+						lastRequestApiUrl,
 						'POST',
 						options.userId,
 						{
@@ -1723,20 +2009,23 @@ export class SmartLLMService {
 			const responseRequestId =
 				response.headers.get('x-request-id') ||
 				response.headers.get('x-openrouter-request-id') ||
+				response.headers.get('msh-request-id') ||
 				undefined;
 			const responseModelHeader =
 				response.headers.get('x-openrouter-model') ||
 				response.headers.get('x-model') ||
+				response.headers.get('msh-model') ||
 				undefined;
 			const responseProviderHeader =
 				response.headers.get('x-openrouter-provider') ||
 				response.headers.get('x-provider') ||
+				response.headers.get('msh-provider') ||
 				undefined;
 			const responseSystemFingerprintHeader =
 				response.headers.get('x-openrouter-system-fingerprint') || undefined;
 
 			if (typeof responseModelHeader === 'string' && responseModelHeader.trim().length > 0) {
-				resolvedModel = responseModelHeader.trim();
+				resolvedModel = this.canonicalizeModelId(responseModelHeader.trim());
 				modelResolvedFromStream = true;
 			}
 			if (
@@ -1745,6 +2034,8 @@ export class SmartLLMService {
 			) {
 				resolvedProvider = responseProviderHeader.trim();
 				providerResolvedFromStream = true;
+			} else if (!resolvedProvider && lastRouteProvider === 'moonshot') {
+				resolvedProvider = 'moonshotai';
 			}
 
 			// Process SSE stream
@@ -1756,7 +2047,7 @@ export class SmartLLMService {
 				if (this.errorLogger) {
 					await this.errorLogger.logAPIError(
 						'No response stream available',
-						this.apiUrl,
+						lastRequestApiUrl,
 						'POST',
 						options.userId,
 						{
@@ -1814,7 +2105,6 @@ export class SmartLLMService {
 
 			const decoder = new TextDecoder();
 			let buffer = '';
-			let accumulatedContent = '';
 			const toolCallAssembler = new ToolCallAssembler({
 				profile: resolveToolCallAssemblerProfile(resolvedProvider, resolvedModel),
 				isCompleteJSON: (value) => this.isCompleteJSON(value)
@@ -1825,6 +2115,7 @@ export class SmartLLMService {
 			let lastYieldAt = Date.now();
 			let streamRequestId: string | undefined = responseRequestId;
 			let streamSystemFingerprint: string | undefined = responseSystemFingerprintHeader;
+			let terminalFinishReason: string | undefined;
 
 			while (true) {
 				const { done, value } = await reader.read();
@@ -1835,35 +2126,36 @@ export class SmartLLMService {
 				buffer = lines.pop() || '';
 
 				for (const line of lines) {
-					if (!line.trim() || !line.startsWith('data: ')) continue;
+					if (!line.trim() || !line.startsWith('data:')) continue;
 
-					const data = line.slice(6); // Remove 'data: ' prefix
+					const data = line.slice(5).trimStart(); // Remove 'data:' prefix
 					if (data === '[DONE]') {
 						// Stream completed
 						const duration = performance.now() - startTime;
 						const requestCompletedAt = new Date();
 
-						// Yield any pending tool calls that weren't completed
-						// This can happen if the stream ends without a finish_reason
-						if (toolCallAssembler.hasPending()) {
-							for (const pending of toolCallAssembler.drain()) {
-								if (!pending?.function?.name) continue;
-								const { toolCall: sanitizedToolCall } =
-									this.coerceToolCallArguments(pending);
-								if (this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)) {
-									void this.writeKimiToolCallLog({
-										model: resolvedModel,
-										provider: resolvedProvider,
-										sessionId: options.sessionId,
-										messageId: options.messageId,
-										toolCall: sanitizedToolCall
-									});
-								}
-								yield {
-									type: 'tool_call',
-									tool_call: sanitizedToolCall
-								};
+						const pendingToolCalls = toolCallAssembler.hasPending()
+							? toolCallAssembler.drain()
+							: [];
+						for (const pending of pendingToolCalls) {
+							if (!pending?.function?.name) continue;
+							const shouldEmit =
+								terminalFinishReason === 'tool_calls' ||
+								this.isCompleteToolCallForFallbackEmission(pending);
+							if (!shouldEmit) continue;
+							if (this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)) {
+								void this.writeKimiToolCallLog({
+									model: resolvedModel,
+									provider: resolvedProvider,
+									sessionId: options.sessionId,
+									messageId: options.messageId,
+									toolCall: pending
+								});
 							}
+							yield {
+								type: 'tool_call',
+								tool_call: pending
+							};
 						}
 
 						// Log usage if available
@@ -1936,7 +2228,7 @@ export class SmartLLMService {
 						yield {
 							type: 'done',
 							usage,
-							finished_reason: 'stop',
+							finished_reason: terminalFinishReason ?? 'stop',
 							model: resolvedModel,
 							provider: resolvedProvider,
 							request_id: streamRequestId,
@@ -1965,10 +2257,14 @@ export class SmartLLMService {
 						}
 
 						if (typeof chunk?.model === 'string' && chunk.model.trim().length > 0) {
-							resolvedModel = chunk.model;
+							resolvedModel = this.canonicalizeModelId(chunk.model);
 							modelResolvedFromStream = true;
 							if (!providerResolvedFromStream) {
-								resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
+								resolvedProvider =
+									TEXT_MODELS[resolvedModel]?.provider ??
+									(lastRouteProvider === 'moonshot'
+										? 'moonshotai'
+										: resolvedProvider);
 							}
 							toolCallAssembler.setProfile(
 								resolveToolCallAssemblerProfile(resolvedProvider, resolvedModel)
@@ -1989,6 +2285,12 @@ export class SmartLLMService {
 						if (chunk.choices && chunk.choices[0]) {
 							const choice = chunk.choices[0];
 							const delta = choice.delta;
+							if (
+								typeof choice.finish_reason === 'string' &&
+								choice.finish_reason.trim().length > 0
+							) {
+								terminalFinishReason = choice.finish_reason;
+							}
 
 							if (delta.content) {
 								const {
@@ -1999,7 +2301,6 @@ export class SmartLLMService {
 								inThinkingBlock = nextThinkingState;
 
 								if (filteredContent) {
-									accumulatedContent += filteredContent;
 									yield {
 										type: 'text',
 										content: filteredContent
@@ -2017,22 +2318,18 @@ export class SmartLLMService {
 							if (choice.finish_reason === 'tool_calls') {
 								for (const pending of toolCallAssembler.drain()) {
 									if (!pending?.function?.name) continue;
-									const { toolCall: sanitizedToolCall } =
-										this.coerceToolCallArguments(pending);
-									if (
-										this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)
-									) {
+									if (this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)) {
 										void this.writeKimiToolCallLog({
 											model: resolvedModel,
 											provider: resolvedProvider,
 											sessionId: options.sessionId,
 											messageId: options.messageId,
-											toolCall: sanitizedToolCall
+											toolCall: pending
 										});
 									}
 									yield {
 										type: 'tool_call',
-										tool_call: sanitizedToolCall
+										tool_call: pending
 									};
 								}
 							}
@@ -2040,6 +2337,8 @@ export class SmartLLMService {
 							// Track usage
 							if (chunk.usage) {
 								usage = chunk.usage;
+							} else if (choice.usage) {
+								usage = choice.usage;
 							}
 						}
 					} catch (parseError) {
@@ -2067,12 +2366,18 @@ export class SmartLLMService {
 
 			// Log error
 			if (this.errorLogger) {
-				await this.errorLogger.logAPIError(error, this.apiUrl, 'POST', options.userId, {
-					operation: 'streamText',
-					errorType: 'llm_streaming_failure',
-					sessionId: options.sessionId,
-					messageId: options.messageId
-				});
+				await this.errorLogger.logAPIError(
+					error,
+					lastRequestApiUrl,
+					'POST',
+					options.userId,
+					{
+						operation: 'streamText',
+						errorType: 'llm_streaming_failure',
+						sessionId: options.sessionId,
+						messageId: options.messageId
+					}
+				);
 			}
 
 			// Log failure with context-aware operation type
@@ -2137,7 +2442,12 @@ export class SmartLLMService {
 
 	private isKimiK25Model(model?: string): boolean {
 		if (!model) return false;
-		return model.toLowerCase().startsWith('moonshotai/kimi-k2.5');
+		const normalized = model.toLowerCase();
+		return (
+			normalized.startsWith('moonshotai/kimi-k2.5') ||
+			normalized.startsWith('kimi-k2.5') ||
+			normalized.startsWith('kimi-k2-5')
+		);
 	}
 
 	private shouldLogKimiToolCalls(model: string | undefined, hasTools: boolean): boolean {
@@ -2223,173 +2533,18 @@ export class SmartLLMService {
 		}
 	}
 
-	private prepareMessagesForModel(
-		messages: Array<{
-			role: string;
-			content: string;
-			tool_calls?: any[];
-			tool_call_id?: string;
-			reasoning_content?: string;
-		}>,
-		models: string[]
-	): Array<{
-		role: string;
-		content: string;
-		tool_calls?: any[];
-		tool_call_id?: string;
-		reasoning_content?: string;
-	}> {
-		const needsReasoningContent = this.requiresToolCallReasoningContent(models);
-		let mutated = false;
-		const updated = messages.map((message) => {
-			let next = message;
-			let localMutated = false;
-
-			if (message.tool_calls !== undefined) {
-				const normalizedToolCalls = this.normalizeToolCallsForRequest(message.tool_calls);
-				if (normalizedToolCalls.mutated) {
-					next = {
-						...next,
-						tool_calls: normalizedToolCalls.toolCalls
-					};
-					localMutated = true;
-				}
-			}
-
-			if (
-				needsReasoningContent &&
-				next.role === 'assistant' &&
-				Array.isArray(next.tool_calls) &&
-				next.tool_calls.length > 0
-			) {
-				if (typeof next.reasoning_content !== 'string') {
-					next = {
-						...next,
-						reasoning_content: ''
-					};
-					localMutated = true;
-				}
-			}
-
-			if (localMutated) {
-				mutated = true;
-			}
-			return next;
-		});
-
-		return mutated ? updated : messages;
-	}
-
-	private normalizeToolCallsForRequest(toolCalls: unknown): {
-		toolCalls?: any[];
-		mutated: boolean;
-	} {
-		if (toolCalls === undefined || toolCalls === null) {
-			return { toolCalls: undefined, mutated: false };
-		}
-
-		let calls = toolCalls;
-		let mutated = false;
-
-		if (!Array.isArray(calls)) {
-			if (typeof calls === 'string') {
-				try {
-					const parsed = JSON.parse(calls);
-					if (Array.isArray(parsed)) {
-						calls = parsed;
-						mutated = true;
-					} else {
-						return { toolCalls: undefined, mutated: true };
-					}
-				} catch {
-					return { toolCalls: undefined, mutated: true };
-				}
-			} else {
-				return { toolCalls: undefined, mutated: true };
-			}
-		}
-
-		const sanitized = (calls as any[]).map((call) => {
-			const { toolCall, mutated: callMutated } = this.coerceToolCallArguments(call);
-			if (callMutated) {
-				mutated = true;
-			}
-			return toolCall;
-		});
-
-		return mutated ? { toolCalls: sanitized, mutated } : { toolCalls: calls as any[], mutated };
-	}
-
-	private coerceToolCallArguments(toolCall: any): { toolCall: any; mutated: boolean } {
-		if (!toolCall || typeof toolCall !== 'object') {
-			return { toolCall, mutated: false };
-		}
-
+	private isCompleteToolCallForFallbackEmission(toolCall: any): boolean {
+		if (!toolCall || typeof toolCall !== 'object') return false;
 		const fn = toolCall.function;
-		if (!fn || typeof fn !== 'object') {
-			return { toolCall, mutated: false };
-		}
+		if (!fn || typeof fn !== 'object') return false;
+		if (typeof fn.name !== 'string' || fn.name.trim().length === 0) return false;
 
 		const args = fn.arguments;
-		let nextArgs = args;
-		let mutated = false;
-
-		const setArgs = (value: string) => {
-			nextArgs = value;
-			mutated = true;
-		};
-
-		if (args === undefined || args === null) {
-			setArgs('{}');
-		} else if (typeof args === 'string') {
+		if (typeof args === 'string') {
 			const trimmed = args.trim();
-			if (!trimmed) {
-				setArgs('{}');
-			} else if (this.isCompleteJSON(trimmed)) {
-				if (trimmed !== args) {
-					setArgs(trimmed);
-				}
-			} else {
-				let fixed = trimmed;
-				if (fixed.includes('{') && !fixed.endsWith('}')) {
-					fixed = fixed.replace(/,\s*$/, '') + '}';
-				}
-				if (this.isCompleteJSON(fixed)) {
-					setArgs(fixed);
-				} else {
-					setArgs('{}');
-				}
-			}
-		} else if (typeof args === 'object') {
-			try {
-				setArgs(JSON.stringify(args));
-			} catch {
-				setArgs('{}');
-			}
-		} else {
-			setArgs('{}');
+			return trimmed.length > 0 && this.isCompleteJSON(trimmed);
 		}
-
-		if (!mutated) {
-			return { toolCall, mutated: false };
-		}
-
-		return {
-			toolCall: {
-				...toolCall,
-				function: {
-					...fn,
-					arguments: nextArgs
-				}
-			},
-			mutated: true
-		};
-	}
-
-	private requiresToolCallReasoningContent(models: string[]): boolean {
-		return models.some(
-			(model) => model === 'moonshotai/kimi-k2.5' || model === 'moonshotai/kimi-k2-thinking'
-		);
+		return Boolean(args && typeof args === 'object');
 	}
 
 	private normalizeToolsForRequest(tools: any[] | undefined): any[] {

@@ -71,6 +71,15 @@ This directory contains comprehensive analysis and documentation of the BuildOS 
 - Real-world usage examples
 - Migration strategy for ontology modals
 
+### 🔄 [SLOT_TO_SNIPPET_MIGRATION.md](./SLOT_TO_SNIPPET_MIGRATION.md)
+
+**10 min read** - Svelte 5 Modal Migration Reference
+
+- Conversion of 53 modal files from slot syntax to snippet syntax
+- Conversion patterns (header, footer, children snippets)
+- 9 partially converted files needing manual review
+- Automated script details and backup info
+
 ## Files Overview
 
 | File                               | Size | Type     | Best For            |

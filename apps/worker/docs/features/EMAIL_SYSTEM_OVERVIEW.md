@@ -1,4 +1,4 @@
-<!-- apps/worker/email-system.md -->
+<!-- apps/worker/docs/features/EMAIL_SYSTEM_OVERVIEW.md -->
 
 # Email System Overview
 

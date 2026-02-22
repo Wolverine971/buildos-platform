@@ -1,4 +1,4 @@
-<!-- apps/worker/DOCUMENTATION_INDEX.md -->
+<!-- apps/worker/docs/DOCUMENTATION_INDEX.md -->
 
 # Worker App Documentation Index
 
@@ -313,21 +313,30 @@ See **CLAUDE.md** - Original development guide with:
 
 ### In This Repository
 
-- **CLAUDE.md** - Original development guide with commands & patterns
-- **docs/README.md** - Monorepo navigation hub
-- **docs/DEPLOYMENT_TOPOLOGY.md** - System-wide deployment architecture
-- **docs/architecture/diagrams/** - Architecture diagrams
+- **[CLAUDE.md](../CLAUDE.md)** - Original development guide with commands & patterns
+- **[README.md](README.md)** - Worker docs overview
+- **[/docs/README.md](/docs/README.md)** - Monorepo navigation hub
+- **[/docs/DEPLOYMENT_TOPOLOGY.md](/docs/DEPLOYMENT_TOPOLOGY.md)** - System-wide deployment architecture
+- **[/docs/architecture/diagrams/](/docs/architecture/diagrams/)** - Architecture diagrams
+
+### Feature-Specific Docs (in this directory)
+
+- **[features/EMAIL_TRACKING.md](features/EMAIL_TRACKING.md)** - Email tracking implementation
+- **[features/EMAIL_SYSTEM_OVERVIEW.md](features/EMAIL_SYSTEM_OVERVIEW.md)** - Email system architecture
+- **[features/daily-briefs/](features/daily-briefs/)** - Daily brief generation
+- **[deployment/RAILWAY_DEPLOYMENT.md](deployment/RAILWAY_DEPLOYMENT.md)** - Railway deployment guide
+- **[SCHEDULER_ANALYSIS_AND_BUGS.md](SCHEDULER_ANALYSIS_AND_BUGS.md)** - Scheduler bug analysis
 
 ### Web App Integration
 
-- **apps/web/docs/** - Web app documentation
-- **apps/web/docs/features/onboarding/** - Onboarding feature docs
-- **apps/web/docs/features/brain-dump/** - Brain dump system docs
+- **/apps/web/docs/** - Web app documentation
+- **/apps/web/docs/features/onboarding/** - Onboarding feature docs
+- **/apps/web/docs/features/braindump-context/** - Brain dump system docs
 
 ### Database
 
 - Supabase console → SQL Editor (for live schema)
-- Migration files in `/migrations`
+- Migration files in `/supabase/migrations/`
 
 ---
 

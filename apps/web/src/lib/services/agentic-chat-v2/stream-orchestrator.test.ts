@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
 import { streamFastChat } from './stream-orchestrator';
+import type { FastChatHistoryMessage } from './types';
 
 function createGatewayTools(): ChatToolDefinition[] {
 	return [
@@ -102,9 +103,9 @@ describe('streamFastChat repetition guard', () => {
 		});
 
 		expect(result.finishedReason).toBe('tool_repetition_limit');
-		expect(result.toolExecutions).toHaveLength(4);
+		expect(result.toolExecutions).toHaveLength(3);
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
-		expect(toolExecutor).toHaveBeenCalledTimes(4);
+		expect(toolExecutor).toHaveBeenCalledTimes(3);
 		expect(result.assistantText).toContain('same tool sequence kept repeating');
 		expect(deltas.at(-1)).toContain('same tool sequence kept repeating');
 	});
@@ -173,10 +174,9 @@ describe('streamFastChat repetition guard', () => {
 		expect(toolExecutor).toHaveBeenCalledTimes(3);
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 		expect(result.assistantText).toContain('same tool sequence kept repeating');
-		// Repeated per-round lead-ins should not flood the UI.
 		expect(result.assistantText).toContain('Round 1 lead-in.');
-		expect(result.assistantText).not.toContain('Round 2 lead-in.');
-		expect(result.assistantText).not.toContain('Round 3 lead-in.');
+		expect(result.assistantText).toContain('Round 2 lead-in.');
+		expect(result.assistantText).toContain('Round 3 lead-in.');
 		expect(deltas.at(-1)).toContain('same tool sequence kept repeating');
 	});
 
@@ -236,7 +236,7 @@ describe('streamFastChat repetition guard', () => {
 		});
 
 		expect(result.finishedReason).toBe('tool_repetition_limit');
-		expect(toolExecutor).toHaveBeenCalledTimes(4);
+		expect(toolExecutor).toHaveBeenCalledTimes(3);
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 		expect(result.assistantText).toContain('same tool sequence kept repeating');
 	});
@@ -346,6 +346,7 @@ describe('streamFastChat repetition guard', () => {
 			history: [],
 			message: 'organize unlinked docs',
 			tools: createGatewayTools(),
+			allowAutonomousRecovery: true,
 			toolExecutor,
 			onDelta: async () => {}
 		});
@@ -545,5 +546,698 @@ describe('streamFastChat repetition guard', () => {
 		expect(payload?.result?.documents).toHaveLength(6);
 		expect(payload?.result?.documents?.[0]?.content_length).toBeGreaterThan(0);
 		expect(payload?.result?.documents?.[0]?.markdown_outline?.counts?.h1).toBe(1);
+	});
+
+	it('pairs every tool_call_id with a tool message when validation fails on part of a batch', async () => {
+		let streamInvocation = 0;
+		let secondPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:bad',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: '0x1 ???'
+							}
+						} satisfies ChatToolCall
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:good',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: JSON.stringify({ path: 'onto.task' })
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				secondPassMessages = params.messages as FastChatHistoryMessage[];
+				yield { type: 'text', content: 'Please send corrected tool calls only.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'show tool help',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(2);
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(secondPassMessages).toBeDefined();
+
+		const assistantMessage = [...(secondPassMessages ?? [])]
+			.reverse()
+			.find((message) => message.role === 'assistant' && message.tool_calls?.length === 2);
+		expect(assistantMessage).toBeDefined();
+
+		const replayBadCall = assistantMessage?.tool_calls?.find(
+			(toolCall) => toolCall.id === 'tool_help:bad'
+		);
+		expect(replayBadCall?.function.arguments).toBe('{}');
+
+		const toolMessages = (secondPassMessages ?? []).filter(
+			(message) => message.role === 'tool'
+		);
+		expect(toolMessages.map((message) => message.tool_call_id)).toEqual([
+			'tool_help:bad',
+			'tool_help:good'
+		]);
+		const badToolPayload = JSON.parse(toolMessages[0]?.content ?? '{}');
+		const goodToolPayload = JSON.parse(toolMessages[1]?.content ?? '{}');
+		expect(badToolPayload.error).toContain('Invalid JSON in tool arguments');
+		expect(goodToolPayload.error).toContain(
+			'skipped because another tool call in the same response failed validation'
+		);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.assistantText).toContain('corrected tool calls');
+	});
+
+	it('does not count validation-only failures against maxToolCalls', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:bad',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: '0x1 ???'
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:good',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: JSON.stringify({ path: 'onto.task' })
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Recovered after validation.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'show task help',
+			tools: createGatewayTools(),
+			toolExecutor,
+			maxToolCalls: 1,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.assistantText).toContain('Recovered after validation.');
+	});
+
+	it('allows another validation repair after a successful tool round', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:bad-1',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: 'bad payload'
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:good',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: JSON.stringify({ path: 'onto.task' })
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 3) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:bad-2',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: 'still bad'
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Completed after second repair.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'show task help',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(4);
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.assistantText).toContain('Completed after second repair.');
+	});
+
+	it('defaults tool_help path to root when model omits required path', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:0',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: JSON.stringify({})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Checked project context.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: "what's going on with my projects",
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		const executedCall = toolExecutor.mock.calls[0]?.[0] as ChatToolCall;
+		const parsedArgs = JSON.parse(executedCall.function.arguments || '{}');
+		expect(parsedArgs.path).toBe('root');
+		expect(result.finishedReason).toBe('stop');
+		expect(result.assistantText).toContain('Checked project context.');
+	});
+
+	it('does not coerce unrecoverable tool_help args to root', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:bad',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: '0x1 ???'
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Please provide a valid help path payload.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'show task help',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(result.toolExecutions.length).toBeGreaterThan(0);
+		expect(result.toolExecutions[0]?.result.error).toContain('Invalid JSON in tool arguments');
+		expect(result.finishedReason).toBe('stop');
+		expect(result.assistantText).toContain('Please provide a valid help path payload.');
+	});
+
+	it('recovers split tool_exec JSON fragments before executing tools', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:split',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments:
+									'0{"op":"onto.task.list"} {"args":{"project_id":"05c40ed8-9dbe-4893-bd64-8aeec90eab40","limit":10}}'
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Task list loaded.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const executedArgs: Array<Record<string, any>> = [];
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			const parsedArgs = JSON.parse(toolCall.function.arguments || '{}');
+			executedArgs.push(parsedArgs);
+			return {
+				tool_call_id: toolCall.id,
+				result: {
+					op: parsedArgs.op,
+					ok: true,
+					result: { tasks: [] }
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			projectId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			history: [],
+			message: 'list tasks',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(executedArgs[0]).toMatchObject({
+			op: 'onto.task.list',
+			args: {
+				project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+				limit: 10
+			}
+		});
+		expect(result.finishedReason).toBe('stop');
+		expect(result.assistantText).toContain('Task list loaded.');
+	});
+
+	it('recovers tool_help path from concatenated JSON objects', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:concat',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: '{} {"path":"onto.task","format":"short"}'
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Loaded task help.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			const parsedArgs = JSON.parse(toolCall.function.arguments || '{}');
+			return {
+				tool_call_id: toolCall.id,
+				result: {
+					path: parsedArgs.path,
+					format: parsedArgs.format
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'help me with tasks',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		const executedCall = toolExecutor.mock.calls[0]?.[0] as ChatToolCall;
+		const parsedArgs = JSON.parse(executedCall.function.arguments || '{}');
+		expect(parsedArgs.path).toBe('onto.task');
+		expect(parsedArgs.format).toBe('short');
+		expect(result.finishedReason).toBe('stop');
+		expect(result.assistantText).toContain('Loaded task help.');
+	});
+
+	it('recovers tool_exec args from noisy quoted JSON object segments', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:quoted-segments',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments:
+									'prefix "{\\"op\\":\\"onto.task.list\\"}" middle "{\\"args\\":{\\"project_id\\":\\"05c40ed8-9dbe-4893-bd64-8aeec90eab40\\",\\"limit\\":5}}" suffix'
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Recovered quoted tool args.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			projectId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			history: [],
+			message: 'recover quoted exec args',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		const executedCall = toolExecutor.mock.calls[0]?.[0] as ChatToolCall;
+		const parsedArgs = JSON.parse(executedCall.function.arguments || '{}');
+		expect(parsedArgs).toMatchObject({
+			op: 'onto.task.list',
+			args: {
+				project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+				limit: 5
+			}
+		});
+		expect(result.finishedReason).toBe('stop');
+	});
+
+	it('recovers tool_help path from plain malformed text fallback', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:path-fallback',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: '00 onto.task now'
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Recovered help path fallback.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'recover help path fallback',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		const executedCall = toolExecutor.mock.calls[0]?.[0] as ChatToolCall;
+		const parsedArgs = JSON.parse(executedCall.function.arguments || '{}');
+		expect(parsedArgs.path).toBe('onto.task');
+		expect(result.finishedReason).toBe('stop');
+	});
+
+	it('auto-runs project/task listing after repeated tool_help(root) loops', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation <= 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: `tool_help:${streamInvocation - 1}`,
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: JSON.stringify({ path: 'root' })
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Here are your active projects and tasks.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const executedGatewayOps: string[] = [];
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			if (toolCall.function.name === 'tool_help') {
+				return {
+					tool_call_id: toolCall.id,
+					result: {
+						type: 'directory',
+						path: 'root',
+						groups: ['onto', 'util', 'cal']
+					},
+					success: true
+				};
+			}
+
+			const parsed = JSON.parse(toolCall.function.arguments || '{}');
+			const op = parsed?.op as string | undefined;
+			if (typeof op === 'string') {
+				executedGatewayOps.push(op);
+			}
+
+			if (op === 'onto.project.list') {
+				return {
+					tool_call_id: toolCall.id,
+					result: {
+						op,
+						ok: true,
+						result: {
+							projects: [{ id: 'proj-1', title: 'Alpha' }],
+							total: 1
+						}
+					},
+					success: true
+				};
+			}
+
+			if (op === 'onto.task.list') {
+				return {
+					tool_call_id: toolCall.id,
+					result: {
+						op,
+						ok: true,
+						result: {
+							tasks: [{ id: 'task-1', title: 'Write docs' }],
+							total: 1
+						}
+					},
+					success: true
+				};
+			}
+
+			return {
+				tool_call_id: toolCall.id,
+				result: null,
+				success: false,
+				error: `Unexpected op: ${String(op)}`
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'what are my current priorities?',
+			tools: createGatewayTools(),
+			allowAutonomousRecovery: true,
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(result.finishedReason).toBe('stop');
+		expect(result.assistantText).toContain('active projects and tasks');
+		expect(executedGatewayOps).toContain('onto.project.list');
+		expect(executedGatewayOps).toContain('onto.task.list');
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
 	});
 });

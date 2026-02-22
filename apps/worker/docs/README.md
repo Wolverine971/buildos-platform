@@ -29,13 +29,15 @@ This is **worker service-specific** documentation (`/apps/worker`).
 
 ## Documentation Structure
 
-| Folder           | Contents             | Key Documents                                |
-| ---------------- | -------------------- | -------------------------------------------- |
-| `/features/`     | Worker features      | daily-briefs, queue-system, scheduler, email |
-| `/api/`          | Worker API endpoints | job status, queue management (future)        |
-| `/development/`  | Dev guides           | conventions, testing                         |
-| `/operations/`   | Deployment and ops   | Railway config, runbooks, monitoring         |
-| `/integrations/` | External services    | email (Nodemailer), Twilio                   |
+| Document / Folder                                                    | Contents                               |
+| -------------------------------------------------------------------- | -------------------------------------- |
+| **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)**                 | Complete navigation guide (start here) |
+| **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)**                         | Quick reference (8-min read)           |
+| **[WORKER_STRUCTURE_OVERVIEW.md](WORKER_STRUCTURE_OVERVIEW.md)**     | Full architecture deep dive            |
+| **[WORKER_JOBS_AND_FLOWS.md](WORKER_JOBS_AND_FLOWS.md)**             | Job types, data flows & API ref        |
+| **[SCHEDULER_ANALYSIS_AND_BUGS.md](SCHEDULER_ANALYSIS_AND_BUGS.md)** | Scheduler analysis & known bugs        |
+| `/features/`                                                         | Feature docs (daily-briefs, email)     |
+| `/deployment/`                                                       | Deployment guides (Railway)            |
 
 ## Quick Start for LLM Agents
 
@@ -160,13 +162,9 @@ TWILIO_PHONE_NUMBER=
 
 ## Deployment
 
-See `/operations/deployment/` for deployment documentation (future).
+See **[deployment/RAILWAY_DEPLOYMENT.md](deployment/RAILWAY_DEPLOYMENT.md)** for complete Railway deployment instructions.
 
-Currently documented at root level:
-
-- Railway deployment configuration (future: move to `/operations/deployment/`)
-
-For now, deployment happens automatically via Railway's GitHub integration:
+Deployment happens automatically via Railway's GitHub integration:
 
 1. Push to main branch
 2. Railway automatically deploys

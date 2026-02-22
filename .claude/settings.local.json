@@ -154,7 +154,8 @@
       "Bash(git diff:*)",
       "mcp__plugin_compound-engineering_context7__resolve-library-id",
       "mcp__plugin_compound-engineering_context7__query-docs",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(git -C /Users/djwayne/buildos-platform ls-files:*)"
     ],
     "deny": [],
     "ask": []

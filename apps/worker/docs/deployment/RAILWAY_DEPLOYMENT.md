@@ -1,4 +1,4 @@
-<!-- apps/worker/RAILWAY_DEPLOYMENT.md -->
+<!-- apps/worker/docs/deployment/RAILWAY_DEPLOYMENT.md -->
 
 # Railway Deployment Instructions - Worker Service
 

@@ -1,4 +1,4 @@
-<!-- apps/worker/WORKER_STRUCTURE_OVERVIEW.md -->
+<!-- apps/worker/docs/WORKER_STRUCTURE_OVERVIEW.md -->
 
 # BuildOS Worker App - Comprehensive Structure Overview
 

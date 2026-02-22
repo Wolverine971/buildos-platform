@@ -16,6 +16,7 @@ import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import type {
 	ChatContextType,
@@ -84,12 +85,33 @@ const FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS = parsePositiveInt(
 	process.env.FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS,
 	6
 );
+const FASTCHAT_RECONCILIATION_WAIT_MS = parsePositiveInt(
+	process.env.FASTCHAT_RECONCILIATION_WAIT_MS,
+	800
+);
+const FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS = parsePositiveInt(
+	process.env.FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS,
+	120000
+);
+const FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED = parseBooleanFlag(
+	process.env.FASTCHAT_ENABLE_AUTONOMOUS_RECOVERY,
+	false
+);
+const FASTCHAT_OPENROUTER_V2_ENABLED = parseBooleanFlag(process.env.OPENROUTER_V2_ENABLED, false);
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
 	if (!value) return fallback;
 	const parsed = Number.parseInt(value, 10);
 	if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
 	return parsed;
+}
+
+function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean {
+	if (!value) return fallback;
+	const normalized = value.trim().toLowerCase();
+	if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+	if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+	return fallback;
 }
 
 async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
@@ -275,6 +297,13 @@ type FastChatContextCache = {
 	};
 };
 
+type FastChatContextShiftHint = {
+	context_type: ChatContextType;
+	entity_id?: string | null;
+	project_id?: string | null;
+	shifted_at: string;
+};
+
 const OPERATION_ENTITY_TYPES: OperationEventPayload['entity_type'][] = [
 	'document',
 	'task',
@@ -356,6 +385,60 @@ function buildContextCacheKey(params: {
 		focusType ?? 'none',
 		focusEntityId ?? 'none'
 	].join('|');
+}
+
+function readRecentContextShiftHint(
+	metadata: Record<string, unknown>,
+	nowMs: number = Date.now()
+): FastChatContextShiftHint | null {
+	const raw = metadata.fastchat_last_context_shift;
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+	const record = raw as Record<string, unknown>;
+	const contextType =
+		typeof record.context_type === 'string'
+			? (normalizeFastContextType(record.context_type as ChatContextType) as ChatContextType)
+			: null;
+	if (!contextType) return null;
+	const shiftedAtRaw = typeof record.shifted_at === 'string' ? record.shifted_at : '';
+	const shiftedAtMs = Date.parse(shiftedAtRaw);
+	if (!Number.isFinite(shiftedAtMs)) return null;
+	if (nowMs - shiftedAtMs > FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS) return null;
+
+	return {
+		context_type: contextType,
+		entity_id: typeof record.entity_id === 'string' ? record.entity_id : null,
+		project_id: typeof record.project_id === 'string' ? record.project_id : null,
+		shifted_at: shiftedAtRaw
+	};
+}
+
+function shouldBypassContextCacheForShiftHint(params: {
+	requestContextType: ChatContextType;
+	requestEntityId?: string | null;
+	requestProjectFocus?: {
+		focusType?: string | null;
+		focusEntityId?: string | null;
+		projectId?: string;
+	};
+	shiftHint: FastChatContextShiftHint | null;
+}): boolean {
+	const { shiftHint } = params;
+	if (!shiftHint) return false;
+	const requestKey = buildContextCacheKey({
+		contextType: params.requestContextType,
+		entityId: params.requestEntityId,
+		projectFocus: params.requestProjectFocus
+	});
+	const shiftKey = buildContextCacheKey({
+		contextType: shiftHint.context_type,
+		entityId: shiftHint.entity_id ?? null,
+		projectFocus: shiftHint.project_id
+			? {
+					projectId: shiftHint.project_id
+				}
+			: undefined
+	});
+	return requestKey !== shiftKey;
 }
 
 function isCacheFresh(cache: FastChatContextCache | null | undefined): boolean {
@@ -765,6 +848,28 @@ function emitToolCall(
 		logger.warn('Failed to emit tool_call', { error, toolCall });
 		onError?.(error);
 	});
+}
+
+function previewToolArguments(raw: unknown, maxChars = 280): string {
+	if (raw === undefined || raw === null) {
+		return 'null';
+	}
+
+	let value: string;
+	if (typeof raw === 'string') {
+		value = raw;
+	} else {
+		try {
+			value = JSON.stringify(raw);
+		} catch {
+			value = String(raw);
+		}
+	}
+	const normalized = value.replace(/\s+/g, ' ').trim();
+	if (normalized.length <= maxChars) {
+		return normalized;
+	}
+	return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
 }
 
 function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolResult) {
@@ -1378,6 +1483,107 @@ function buildToolResultSummaries(
 	});
 }
 
+type PersistedToolTraceEntry = {
+	tool_call_id: string;
+	tool_name: string;
+	op?: string;
+	success: boolean;
+	error?: string;
+};
+
+const MAX_PERSISTED_TOOL_TRACE_ITEMS = 12;
+const MAX_PERSISTED_TOOL_ERROR_CHARS = 180;
+
+function truncateToolTraceText(value: string, maxChars: number): string {
+	const normalized = value.replace(/\s+/g, ' ').trim();
+	if (normalized.length <= maxChars) return normalized;
+	return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
+}
+
+function extractGatewayOpFromToolCall(toolCall: ChatToolCall): string | undefined {
+	if (toolCall.function?.name !== 'tool_exec' && toolCall.function?.name !== 'tool_batch') {
+		return undefined;
+	}
+	const rawArgs = toolCall.function.arguments;
+	if (typeof rawArgs !== 'string' || rawArgs.trim().length === 0) return undefined;
+	try {
+		const parsed = JSON.parse(rawArgs);
+		if (toolCall.function.name === 'tool_exec') {
+			return typeof parsed?.op === 'string' ? parsed.op : undefined;
+		}
+		if (toolCall.function.name === 'tool_batch' && Array.isArray(parsed?.ops)) {
+			const firstExec = parsed.ops.find(
+				(entry: unknown) =>
+					entry &&
+					typeof entry === 'object' &&
+					(entry as Record<string, unknown>).type === 'exec' &&
+					typeof (entry as Record<string, unknown>).op === 'string'
+			) as Record<string, unknown> | undefined;
+			return typeof firstExec?.op === 'string' ? firstExec.op : undefined;
+		}
+	} catch {
+		return undefined;
+	}
+	return undefined;
+}
+
+function buildPersistedToolTrace(
+	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>
+): PersistedToolTraceEntry[] {
+	if (!Array.isArray(executions) || executions.length === 0) return [];
+	return executions.slice(0, MAX_PERSISTED_TOOL_TRACE_ITEMS).map(({ toolCall, result }) => {
+		const op = extractGatewayOpFromToolCall(toolCall);
+		const rawError = typeof result.error === 'string' ? result.error : '';
+		return {
+			tool_call_id: toolCall.id,
+			tool_name: toolCall.function.name,
+			op,
+			success: result.success === true,
+			...(rawError
+				? {
+						error: truncateToolTraceText(rawError, MAX_PERSISTED_TOOL_ERROR_CHARS)
+					}
+				: {})
+		};
+	});
+}
+
+function buildPersistedToolTraceSummary(trace: PersistedToolTraceEntry[]): string | null {
+	if (!trace.length) return null;
+	const line = trace
+		.slice(0, 6)
+		.map((entry) => {
+			const label = entry.op ?? entry.tool_name;
+			if (entry.success) return `${label}:ok`;
+			return `${label}:err${entry.error ? `(${entry.error})` : ''}`;
+		})
+		.join('; ');
+	return `Tool trace: ${truncateToolTraceText(line, 420)}`;
+}
+
+function buildToolMessageSnapshotsForReconciliation(
+	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>,
+	toolSummaries: AgentStateToolSummary[]
+): AgentStateMessageSnapshot[] {
+	if (!executions.length) return [];
+	return executions.map(({ toolCall, result }, index) => {
+		const summary = toolSummaries[index];
+		const contentPayload = {
+			tool_name: toolCall.function.name,
+			op: extractGatewayOpFromToolCall(toolCall),
+			success: result.success,
+			error: result.error,
+			summary: summary?.summary
+		};
+		return {
+			role: 'tool',
+			tool_call_id: toolCall.id,
+			tool_name: toolCall.function.name,
+			content: JSON.stringify(contentPayload)
+		};
+	});
+}
+
 function _emitContextOperations(
 	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
 	params: {
@@ -1730,10 +1936,25 @@ export const POST: RequestHandler = async ({
 			});
 			const historyForModel = historyComposition.historyForModel;
 			const sessionMetadata = (session.agent_metadata ?? {}) as Record<string, any>;
+			const recentContextShiftHint = readRecentContextShiftHint(sessionMetadata);
+			const bypassContextCacheForShiftHint = shouldBypassContextCacheForShiftHint({
+				requestContextType: contextType,
+				requestEntityId: entityId,
+				requestProjectFocus: projectFocus,
+				shiftHint: recentContextShiftHint
+			});
 			const cacheKey = buildContextCacheKey({ contextType, entityId, projectFocus });
 			const cachedContext = sessionMetadata.fastchat_context_cache as
 				| FastChatContextCache
 				| undefined;
+			if (bypassContextCacheForShiftHint && cachedContext) {
+				logger.info('Bypassing fastchat context cache due to recent context shift hint', {
+					sessionId: session.id,
+					contextType,
+					entityId,
+					shiftHint: recentContextShiftHint
+				});
+			}
 
 			const userMessagePromise = sessionService.persistMessage({
 				sessionId: session.id,
@@ -1743,11 +1964,17 @@ export const POST: RequestHandler = async ({
 				metadata: voiceGroupId ? { voice_note_group_id: voiceGroupId } : undefined
 			});
 
-			const llm = new SmartLLMService({
-				supabase,
-				httpReferer: request.headers.get('referer') ?? undefined,
-				appName: 'BuildOS Agentic Chat V2'
-			});
+			const llm = FASTCHAT_OPENROUTER_V2_ENABLED
+				? new OpenRouterV2Service({
+						supabase,
+						httpReferer: request.headers.get('referer') ?? undefined,
+						appName: 'BuildOS Agentic Chat V2'
+					})
+				: new SmartLLMService({
+						supabase,
+						httpReferer: request.headers.get('referer') ?? undefined,
+						appName: 'BuildOS Agentic Chat V2'
+					});
 			const gatewayEnabled = isToolGatewayEnabled();
 			const tools = selectFastChatTools({ contextType, message });
 			const toolsRequiringProjectId = getToolsRequiringProjectId(tools);
@@ -1842,6 +2069,7 @@ export const POST: RequestHandler = async ({
 			try {
 				if (
 					cachedContext &&
+					!bypassContextCacheForShiftHint &&
 					cachedContext.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
 					cachedContext.key === cacheKey &&
 					isCacheFresh(cachedContext)
@@ -1947,6 +2175,10 @@ export const POST: RequestHandler = async ({
 							FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS
 						)
 					: FASTCHAT_GATEWAY_MAX_TOOL_ROUNDS;
+			const conversationHistoryForTools = [
+				...historyForModel,
+				{ role: 'user', content: message }
+			] as ServiceContext['conversationHistory'];
 
 			const { assistantText, usage, finishedReason, toolExecutions } = await streamFastChat({
 				llm,
@@ -1962,6 +2194,7 @@ export const POST: RequestHandler = async ({
 				signal: request.signal,
 				systemPrompt,
 				maxToolRounds: gatewayEnabled ? Math.max(1, gatewayRoundCap) : undefined,
+				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
 				tools,
 				debugContext: {
 					gatewayEnabled,
@@ -1985,7 +2218,7 @@ export const POST: RequestHandler = async ({
 								userId,
 								contextType: effectiveContextType,
 								entityId: effectiveEntityId ?? undefined,
-								conversationHistory: [],
+								conversationHistory: conversationHistoryForTools,
 								contextScope
 							};
 							const result = await toolExecutionService.executeTool(
@@ -2047,7 +2280,11 @@ export const POST: RequestHandler = async ({
 									entityId: effectiveEntityId,
 									toolName: patchedCall.function.name,
 									toolCallId: patchedCall.id,
-									toolError: result.error
+									toolError: result.error,
+									toolArgsRaw: patchedCall.function.arguments,
+									toolArgsPreview: previewToolArguments(
+										patchedCall.function.arguments
+									)
 								});
 							} else {
 								logFastChatError({
@@ -2076,6 +2313,25 @@ export const POST: RequestHandler = async ({
 							if (isProjectScopedContext(contextShift.new_context)) {
 								effectiveProjectIdForTools = contextShift.entity_id;
 							}
+							void updateAgentMetadata(
+								supabase,
+								session.id,
+								{
+									fastchat_last_context_shift: {
+										context_type: contextShift.new_context,
+										entity_id: contextShift.entity_id ?? null,
+										project_id: isProjectScopedContext(contextShift.new_context)
+											? (contextShift.entity_id ?? null)
+											: null,
+										shifted_at: new Date().toISOString()
+									}
+								},
+								{
+									errorLogger,
+									userId,
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs
+								}
+							);
 							await emitContextShift(agentStream, contextShift, (error) => {
 								logFastChatError({
 									error,
@@ -2148,11 +2404,21 @@ export const POST: RequestHandler = async ({
 				});
 			}
 
+			const normalizedExecutions = toolExecutions ?? [];
+			const persistedToolTrace = buildPersistedToolTrace(normalizedExecutions);
+			const persistedToolTraceSummary = buildPersistedToolTraceSummary(persistedToolTrace);
 			const assistantMessage = await sessionService.persistMessage({
 				sessionId: session.id,
 				userId,
 				role: 'assistant',
 				content: assistantText.trim(),
+				metadata:
+					persistedToolTrace.length > 0
+						? {
+								fastchat_tool_trace_v1: persistedToolTrace,
+								fastchat_tool_trace_summary: persistedToolTraceSummary
+							}
+						: undefined,
 				usage
 			});
 
@@ -2179,7 +2445,7 @@ export const POST: RequestHandler = async ({
 				contextType: effectiveContextType,
 				entityId: effectiveEntityId,
 				contextShift: latestContextShift,
-				toolExecutions: toolExecutions ?? [],
+				toolExecutions: normalizedExecutions,
 				timestamp: assistantMessage?.created_at ?? new Date().toISOString()
 			});
 			try {
@@ -2197,18 +2463,18 @@ export const POST: RequestHandler = async ({
 				});
 			}
 
-			await agentStream.sendMessage({
-				type: 'done',
-				usage,
-				finished_reason: finishedReason
-			});
-
+			const executionToolSummaries = buildToolResultSummaries(normalizedExecutions);
 			const summarizerMessages: AgentStateMessageSnapshot[] = [
 				...history.map((item) => ({
 					role: item.role,
-					content: item.content
+					content: item.content,
+					...(item.tool_call_id ? { tool_call_id: item.tool_call_id } : {})
 				})),
 				{ role: 'user', content: message },
+				...buildToolMessageSnapshotsForReconciliation(
+					normalizedExecutions,
+					executionToolSummaries
+				),
 				{ role: 'assistant', content: assistantText.trim() }
 			];
 			const toolSummaries = [
@@ -2219,10 +2485,10 @@ export const POST: RequestHandler = async ({
 					focusEntityType: promptContext?.focusEntityType ?? null,
 					focusEntityName: promptContext?.focusEntityName ?? null
 				}),
-				...buildToolResultSummaries(toolExecutions ?? [])
+				...executionToolSummaries
 			];
 
-			void (async () => {
+			const reconciliationTask = (async () => {
 				const reconciliation = new AgentStateReconciliationService(supabase, errorLogger);
 				const currentState = sanitizeAgentStateForPrompt(
 					(sessionMetadata.agent_state as AgentState | undefined) ??
@@ -2253,14 +2519,36 @@ export const POST: RequestHandler = async ({
 						}
 					);
 				}
-			})().catch((error) => {
-				logger.warn('FastChat agent_state reconciliation failed', { error });
-				logFastChatError({
-					error,
-					operationType: 'fastchat_agent_state_reconciliation',
-					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-					metadata: { sessionId: session.id, contextType: effectiveContextType }
+				return Boolean(updated);
+			})();
+			const reconciliationOutcome = await Promise.race([
+				reconciliationTask
+					.then((updated) => (updated ? 'updated' : 'unchanged'))
+					.catch((error) => {
+						logger.warn('FastChat agent_state reconciliation failed', { error });
+						logFastChatError({
+							error,
+							operationType: 'fastchat_agent_state_reconciliation',
+							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+							metadata: { sessionId: session.id, contextType: effectiveContextType }
+						});
+						return 'failed' as const;
+					}),
+				new Promise<'timeout'>((resolve) =>
+					setTimeout(() => resolve('timeout'), FASTCHAT_RECONCILIATION_WAIT_MS)
+				)
+			]);
+			if (reconciliationOutcome === 'timeout') {
+				logger.info('FastChat reconciliation continuing asynchronously', {
+					sessionId: session.id,
+					waitMs: FASTCHAT_RECONCILIATION_WAIT_MS
 				});
+			}
+
+			await agentStream.sendMessage({
+				type: 'done',
+				usage,
+				finished_reason: finishedReason
 			});
 		} catch (error) {
 			logger.error('Agent V2 stream error', { error });

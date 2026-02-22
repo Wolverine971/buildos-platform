@@ -7,7 +7,7 @@ vi.mock('$env/dynamic/private', () => ({
 	env: mockEnv
 }));
 
-import { selectFastChatTools } from './tool-selector';
+import { selectFastChatTools, shouldEnableCalendarTools } from './tool-selector';
 
 afterEach(() => {
 	delete mockEnv['AGENTIC_CHAT_TOOL_GATEWAY'];
@@ -38,5 +38,19 @@ describe('selectFastChatTools', () => {
 		expect(names.length).toBeGreaterThan(3);
 		expect(names).not.toContain('tool_help');
 		expect(names).not.toContain('tool_exec');
+		expect(names).toContain('web_search');
+		expect(names).toContain('web_visit');
+	});
+
+	it('does not enable calendar tools for generic time/date phrasing in global context', () => {
+		expect(
+			shouldEnableCalendarTools('global', 'It will take time to complete by a later date')
+		).toBe(false);
+	});
+
+	it('enables calendar tools for explicit calendar intent', () => {
+		expect(shouldEnableCalendarTools('global', "What's on my calendar for tomorrow?")).toBe(
+			true
+		);
 	});
 });

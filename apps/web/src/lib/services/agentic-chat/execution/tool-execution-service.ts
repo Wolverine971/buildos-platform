@@ -760,20 +760,22 @@ export class ToolExecutionService implements BaseService {
 		context: ServiceContext,
 		options: ToolExecutionOptions
 	): Promise<ToolExecutionResult> {
-		const requestedOp = typeof args.op === 'string' ? args.op.trim() : '';
+		const requestedOpRaw = typeof args.op === 'string' ? args.op.trim() : '';
 		const registry = getToolRegistry();
-		if (!requestedOp) {
-			return this.buildGatewayErrorResult(requestedOp, 'VALIDATION_ERROR', 'Missing op');
+		if (!requestedOpRaw) {
+			return this.buildGatewayErrorResult(requestedOpRaw, 'VALIDATION_ERROR', 'Missing op');
 		}
 
+		const requestedOp =
+			this.sanitizeGatewayRequestedOp(requestedOpRaw, registry) ?? requestedOpRaw;
 		const canonicalOp = normalizeGatewayOpName(requestedOp);
 		const aliasedOp = canonicalOp !== requestedOp;
 		const entry = registry.ops[canonicalOp];
 		if (!entry) {
 			return this.buildGatewayErrorResult(
-				requestedOp,
+				requestedOpRaw || requestedOp,
 				'NOT_FOUND',
-				`Unknown op: ${requestedOp}`,
+				`Unknown op: ${requestedOpRaw || requestedOp}`,
 				'root'
 			);
 		}
@@ -794,6 +796,11 @@ export class ToolExecutionService implements BaseService {
 			normalizedArgs = fallback.args;
 		}
 		const warnings: string[] = [];
+		if (requestedOp !== requestedOpRaw) {
+			warnings.push(
+				`Sanitized malformed op "${requestedOpRaw}" to "${requestedOp}" before execution.`
+			);
+		}
 		if (aliasedOp) {
 			warnings.push(`Normalized legacy op "${requestedOp}" to "${canonicalOp}".`);
 		}
@@ -1069,6 +1076,29 @@ export class ToolExecutionService implements BaseService {
 			toolName: 'tool_exec',
 			toolCallId: 'gateway'
 		};
+	}
+
+	private sanitizeGatewayRequestedOp(
+		requestedOp: string,
+		registry: ReturnType<typeof getToolRegistry>
+	): string | null {
+		const trimmed = requestedOp.trim();
+		if (!trimmed) return null;
+
+		const direct = normalizeGatewayOpName(trimmed);
+		if (registry.ops[direct]) {
+			return trimmed;
+		}
+
+		const candidates = trimmed.match(/(?:onto|cal|util)\.[a-z0-9_.]+/gi) ?? [];
+		for (const candidate of candidates) {
+			const normalizedCandidate = normalizeGatewayOpName(candidate);
+			if (registry.ops[normalizedCandidate]) {
+				return candidate;
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -2183,7 +2213,7 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		const properties = paramSchema.properties ?? {};
-		const resolved = { ...args };
+		let resolved = { ...args };
 		let mutated = false;
 		const supportsSearch = properties.search && typeof properties.search === 'object';
 		const supportsQuery = properties.query && typeof properties.query === 'object';
@@ -2200,8 +2230,15 @@ export class ToolExecutionService implements BaseService {
 			mutated = true;
 		}
 
+		const semanticAliasResult = this.applySemanticAliases(toolName, resolved);
+		if (semanticAliasResult.mutated) {
+			resolved = semanticAliasResult.args;
+			mutated = true;
+		}
+
 		const idAliasResult = this.applyIdAliases(resolved, paramSchema);
 		if (idAliasResult.mutated) {
+			resolved = idAliasResult.args;
 			mutated = true;
 		}
 
@@ -2214,11 +2251,12 @@ export class ToolExecutionService implements BaseService {
 				toolName,
 				addedSearch: supportsSearch && !normalizedSearch && normalizedQuery.length > 0,
 				addedQuery: supportsQuery && !normalizedQuery && normalizedSearch.length > 0,
+				addedSemanticAliases: semanticAliasResult.addedCount,
 				addedIdAliases: idAliasResult.addedCount
 			});
 		}
 
-		return idAliasResult.args;
+		return resolved;
 	}
 
 	private applyIdAliases(
@@ -2263,6 +2301,156 @@ export class ToolExecutionService implements BaseService {
 		return {
 			args: mutated ? resolved : args,
 			mutated,
+			addedCount
+		};
+	}
+
+	private applySemanticAliases(
+		toolName: string,
+		args: Record<string, any>
+	): { args: Record<string, any>; mutated: boolean; addedCount: number } {
+		const resolved: Record<string, any> = { ...args };
+		let addedCount = 0;
+
+		const mapAlias = (
+			targetKey: string,
+			aliasKeys: string[],
+			options: { allowNonString?: boolean } = {}
+		): void => {
+			const existing = resolved[targetKey];
+			if (options.allowNonString) {
+				if (existing !== undefined && existing !== null) return;
+			} else if (this.hasNonEmptyString(existing)) {
+				return;
+			}
+
+			for (const aliasKey of aliasKeys) {
+				const candidate = this.readAliasValue(resolved, aliasKey);
+				if (options.allowNonString) {
+					if (candidate !== undefined && candidate !== null) {
+						resolved[targetKey] = candidate;
+						addedCount += 1;
+						return;
+					}
+					continue;
+				}
+				if (this.hasNonEmptyString(candidate)) {
+					resolved[targetKey] = String(candidate).trim();
+					addedCount += 1;
+					return;
+				}
+			}
+		};
+
+		switch (toolName) {
+			case 'create_onto_task':
+				mapAlias('title', ['task_title', 'task_name', 'name', 'task.title', 'task.name']);
+				mapAlias('description', [
+					'task_description',
+					'details',
+					'summary',
+					'task.description',
+					'task.details'
+				]);
+				break;
+			case 'create_onto_plan':
+				mapAlias('name', ['title', 'plan_name', 'plan_title', 'plan.title', 'plan.name']);
+				mapAlias('description', [
+					'plan_description',
+					'details',
+					'summary',
+					'plan.description'
+				]);
+				break;
+			case 'create_onto_goal':
+				mapAlias('name', ['title', 'goal_name', 'goal_title', 'goal.title', 'goal.name']);
+				mapAlias('description', [
+					'goal_description',
+					'details',
+					'summary',
+					'goal.description'
+				]);
+				break;
+			case 'update_onto_task':
+				mapAlias('title', ['task_title', 'task_name', 'name', 'task.title', 'task.name']);
+				mapAlias('description', [
+					'task_description',
+					'details',
+					'summary',
+					'task.description',
+					'task.details'
+				]);
+				break;
+			case 'update_onto_plan':
+				mapAlias('name', ['plan_name', 'plan_title', 'title', 'plan.title', 'plan.name']);
+				mapAlias('description', [
+					'plan_description',
+					'details',
+					'summary',
+					'content',
+					'plan.description'
+				]);
+				break;
+			case 'update_onto_goal':
+				mapAlias('name', ['goal_name', 'goal_title', 'title', 'goal.title', 'goal.name']);
+				mapAlias('description', [
+					'goal_description',
+					'details',
+					'summary',
+					'content',
+					'goal.description'
+				]);
+				break;
+			case 'update_onto_document':
+				mapAlias('title', [
+					'document_title',
+					'doc_title',
+					'name',
+					'document.title',
+					'document.name'
+				]);
+				mapAlias('description', ['document_description', 'summary', 'details']);
+				mapAlias('content', [
+					'body_markdown',
+					'markdown',
+					'body',
+					'text',
+					'document.content'
+				]);
+				break;
+			case 'link_onto_entities':
+				mapAlias('src_kind', [
+					'source_kind',
+					'from_kind',
+					'from.kind',
+					'source.kind',
+					'src.kind'
+				]);
+				mapAlias('src_id', ['source_id', 'from_id', 'from.id', 'source.id', 'src.id']);
+				mapAlias('dst_kind', [
+					'target_kind',
+					'to_kind',
+					'to.kind',
+					'target.kind',
+					'dst.kind'
+				]);
+				mapAlias('dst_id', ['target_id', 'to_id', 'to.id', 'target.id', 'dst.id']);
+				mapAlias('rel', [
+					'relationship',
+					'relation',
+					'relationship_type',
+					'edge_type',
+					'type'
+				]);
+				mapAlias('props', ['edge_props', 'metadata'], { allowNonString: true });
+				break;
+			default:
+				break;
+		}
+
+		return {
+			args: addedCount > 0 ? resolved : args,
+			mutated: addedCount > 0,
 			addedCount
 		};
 	}

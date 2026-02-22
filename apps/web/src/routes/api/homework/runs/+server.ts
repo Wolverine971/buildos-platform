@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 const DEFAULT_MAX_WALL_CLOCK_MS = 60 * 60 * 1000; // 60 minutes
 const DEFAULT_MAX_ITERATIONS = 20;
@@ -80,19 +81,16 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	const contextType = typeof payload.context_type === 'string' ? payload.context_type : 'global';
 	const entityId = typeof payload.entity_id === 'string' ? payload.entity_id : undefined;
 	const rawScope = typeof payload.scope === 'string' ? payload.scope : 'global';
-	const projectIds = Array.isArray(payload.project_ids)
-		? payload.project_ids.filter((p: unknown) => typeof p === 'string')
+	let projectIds: string[] = Array.isArray(payload.project_ids)
+		? payload.project_ids.filter((p: unknown): p is string => typeof p === 'string')
 		: entityId
 			? [entityId]
 			: [];
+	projectIds = Array.from(
+		new Set(projectIds.map((id) => id.trim()).filter((id) => id.length > 0))
+	);
 
 	let scope: string = rawScope;
-	if (rawScope === 'project' && projectIds.length === 0) {
-		return ApiResponse.badRequest('Project scope requires a project_id');
-	}
-	if (rawScope === 'multi_project' && projectIds.length < 2) {
-		return ApiResponse.badRequest('Multiple Projects scope requires at least two project_ids');
-	}
 	if (rawScope === 'global' && entityId) {
 		scope = 'project';
 	}
@@ -107,6 +105,77 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 			: { write_mode: 'autopilot' };
 
 	const admin = createAdminSupabaseClient();
+	let actorId: string;
+	try {
+		actorId = await ensureActorId(admin, user.id);
+	} catch (error) {
+		return ApiResponse.error(
+			'Failed to resolve project actor',
+			HttpStatus.INTERNAL_SERVER_ERROR,
+			'DATABASE_ERROR',
+			error instanceof Error ? error.message : 'Unknown actor resolution error'
+		);
+	}
+
+	if (projectIds.length > 0) {
+		const { data: memberRows, error: memberError } = await admin
+			.from('onto_project_members')
+			.select('project_id')
+			.eq('actor_id', actorId)
+			.is('removed_at', null)
+			.in('project_id', projectIds);
+
+		if (memberError) {
+			return ApiResponse.error(
+				'Failed to validate project access',
+				HttpStatus.INTERNAL_SERVER_ERROR,
+				'DATABASE_ERROR',
+				memberError.message
+			);
+		}
+
+		const memberProjectIds = Array.from(
+			new Set((memberRows ?? []).map((row) => row.project_id).filter(Boolean))
+		);
+		const projectScopeFilter = memberProjectIds.length
+			? `created_by.eq.${actorId},id.in.(${memberProjectIds.join(',')})`
+			: `created_by.eq.${actorId}`;
+
+		const { data: accessibleProjects, error: accessError } = await admin
+			.from('onto_projects')
+			.select('id')
+			.in('id', projectIds)
+			.or(projectScopeFilter)
+			.is('deleted_at', null);
+
+		if (accessError) {
+			return ApiResponse.error(
+				'Failed to validate projects',
+				HttpStatus.INTERNAL_SERVER_ERROR,
+				'DATABASE_ERROR',
+				accessError.message
+			);
+		}
+
+		const accessibleProjectIds = new Set((accessibleProjects ?? []).map((row) => row.id));
+		const invalidProjectIds = projectIds.filter((id) => !accessibleProjectIds.has(id));
+
+		if (invalidProjectIds.length > 0) {
+			return ApiResponse.forbidden(
+				'One or more selected projects are unavailable, deleted, or inaccessible.'
+			);
+		}
+	}
+
+	if (scope === 'project' && projectIds.length === 0) {
+		return ApiResponse.badRequest('Project scope requires a project_id');
+	}
+	if (scope === 'project' && projectIds.length > 1) {
+		return ApiResponse.badRequest('Project scope supports only one project_id');
+	}
+	if (scope === 'multi_project' && projectIds.length < 2) {
+		return ApiResponse.badRequest('Multiple Projects scope requires at least two project_ids');
+	}
 
 	// Enforce per-user concurrency
 	const { count: activeCount, error: countError } = await admin

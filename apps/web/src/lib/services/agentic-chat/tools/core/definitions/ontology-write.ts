@@ -1211,24 +1211,10 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 						description: 'Properties to merge with existing props'
 					}
 				},
-				required: ['task_id'],
-				anyOf: [
-					{ required: ['title'] },
-					{ required: ['description'] },
-					{ required: ['type_key'] },
-					{ required: ['state_key'] },
-					{ required: ['priority'] },
-					{ required: ['assignee_actor_ids'] },
-					{ required: ['assignee_handles'] },
-					{ required: ['goal_id'] },
-					{ required: ['supporting_milestone_id'] },
-					{ required: ['start_at'] },
-					{ required: ['due_at'] },
-					{ required: ['props'] }
-				]
+					required: ['task_id']
+				}
 			}
-		}
-	},
+		},
 
 	{
 		type: 'function',
@@ -1273,16 +1259,10 @@ Only updates fields that are provided.`,
 						description: 'Properties to merge with existing props'
 					}
 				},
-				required: ['project_id'],
-				anyOf: [
-					{ required: ['name'] },
-					{ required: ['description'] },
-					{ required: ['state_key'] },
-					{ required: ['props'] }
-				]
+					required: ['project_id']
+				}
 			}
-		}
-	},
+		},
 
 	{
 		type: 'function',
@@ -1334,18 +1314,10 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 						description: 'Metadata fields to merge into goal props'
 					}
 				},
-				required: ['goal_id'],
-				anyOf: [
-					{ required: ['name'] },
-					{ required: ['description'] },
-					{ required: ['priority'] },
-					{ required: ['target_date'] },
-					{ required: ['measurement_criteria'] },
-					{ required: ['props'] }
-				]
+					required: ['goal_id']
+				}
 			}
-		}
-	},
+		},
 
 	{
 		type: 'function',
@@ -1397,18 +1369,10 @@ Use for edits to plan names, dates, status, or metadata.`,
 						description: 'Metadata fields to merge into plan props'
 					}
 				},
-				required: ['plan_id'],
-				anyOf: [
-					{ required: ['name'] },
-					{ required: ['description'] },
-					{ required: ['start_date'] },
-					{ required: ['end_date'] },
-					{ required: ['state_key'] },
-					{ required: ['props'] }
-				]
+					required: ['plan_id']
+				}
 			}
-		}
-	},
+		},
 
 	{
 		type: 'function',
@@ -1461,18 +1425,10 @@ Use for edits to titles, states, body markdown, or metadata.`,
 						description: 'Metadata fields to merge into document props'
 					}
 				},
-				required: ['document_id'],
-				anyOf: [
-					{ required: ['title'] },
-					{ required: ['type_key'] },
-					{ required: ['state_key'] },
-					{ required: ['content'] },
-					{ required: ['description'] },
-					{ required: ['props'] }
-				]
+					required: ['document_id']
+				}
 			}
-		}
-	},
+		},
 	{
 		type: 'function',
 		function: {
@@ -1521,11 +1477,10 @@ Use this when the user explicitly asks to ping/tag someone (for example: "tag @j
 							'Optional short note appended to the notification body (for example: "please review section 2").'
 					}
 				},
-				required: ['project_id', 'entity_type', 'entity_id'],
-				anyOf: [{ required: ['mentioned_user_ids'] }, { required: ['mentioned_handles'] }]
+					required: ['project_id', 'entity_type', 'entity_id']
+				}
 			}
-		}
-	},
+		},
 	{
 		type: 'function',
 		function: {
@@ -1561,17 +1516,10 @@ Use for edits to title, due date, state, or metadata.`,
 						description: 'Metadata fields to merge into milestone props'
 					}
 				},
-				required: ['milestone_id'],
-				anyOf: [
-					{ required: ['title'] },
-					{ required: ['due_at'] },
-					{ required: ['state_key'] },
-					{ required: ['description'] },
-					{ required: ['props'] }
-				]
+					required: ['milestone_id']
+				}
 			}
-		}
-	},
+		},
 	{
 		type: 'function',
 		function: {
@@ -1623,21 +1571,10 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 						description: 'Metadata fields to merge into risk props'
 					}
 				},
-				required: ['risk_id'],
-				anyOf: [
-					{ required: ['title'] },
-					{ required: ['impact'] },
-					{ required: ['probability'] },
-					{ required: ['state_key'] },
-					{ required: ['content'] },
-					{ required: ['description'] },
-					{ required: ['mitigation_strategy'] },
-					{ required: ['owner'] },
-					{ required: ['props'] }
-				]
+					required: ['risk_id']
+				}
 			}
-		}
-	},
+		},
 	// ============================================
 	// DELETE TOOLS
 	// ============================================

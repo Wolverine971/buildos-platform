@@ -1,4 +1,4 @@
-<!-- apps/web/MODAL_CONVERSION_SUMMARY.md -->
+<!-- apps/web/docs/technical/components/modals/SLOT_TO_SNIPPET_MIGRATION.md -->
 
 # Modal Component Conversion Summary: Slots → Snippets
 

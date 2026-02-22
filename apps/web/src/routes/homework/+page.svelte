@@ -18,7 +18,7 @@
 
 	const validateProjectSelection = () => {
 		if (scope === 'project') return Boolean(selectedProject);
-		if (scope === 'multi_project') return selectedProjectsMulti.length > 0;
+		if (scope === 'multi_project') return selectedProjectsMulti.length >= 2;
 		return true;
 	};
 
@@ -52,7 +52,10 @@
 			return;
 		}
 		if (!validateProjectSelection()) {
-			formError = 'Please select a project for this homework run.';
+			formError =
+				scope === 'multi_project'
+					? 'Please select at least two projects for a multi-project homework run.'
+					: 'Please select a project for this homework run.';
 			return;
 		}
 		submitting = true;

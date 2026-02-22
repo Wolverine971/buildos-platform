@@ -1,4 +1,4 @@
-<!-- apps/worker/QUICK_REFERENCE.md -->
+<!-- apps/worker/docs/QUICK_REFERENCE.md -->
 
 # Worker App - Quick Reference Guide
 
@@ -348,12 +348,18 @@ Set via `USE_WEBHOOK_EMAIL` environment variable.
 
 ## Documentation Files
 
-| File                           | Purpose                                 |
-| ------------------------------ | --------------------------------------- |
-| `CLAUDE.md`                    | Development guide & architecture        |
-| `WORKER_STRUCTURE_OVERVIEW.md` | Complete directory & component overview |
-| `WORKER_JOBS_AND_FLOWS.md`     | Job types, data flows & API reference   |
-| `QUICK_REFERENCE.md`           | This file                               |
+All worker docs are in `apps/worker/docs/`:
+
+| File                                                               | Purpose                                    |
+| ------------------------------------------------------------------ | ------------------------------------------ |
+| [`../CLAUDE.md`](../CLAUDE.md)                                     | Development guide & architecture           |
+| [`DOCUMENTATION_INDEX.md`](DOCUMENTATION_INDEX.md)                 | Complete navigation & cross-references     |
+| [`WORKER_STRUCTURE_OVERVIEW.md`](WORKER_STRUCTURE_OVERVIEW.md)     | Complete directory & component overview    |
+| [`WORKER_JOBS_AND_FLOWS.md`](WORKER_JOBS_AND_FLOWS.md)             | Job types, data flows & API reference      |
+| [`QUICK_REFERENCE.md`](QUICK_REFERENCE.md)                         | This file                                  |
+| [`SCHEDULER_ANALYSIS_AND_BUGS.md`](SCHEDULER_ANALYSIS_AND_BUGS.md) | Scheduler bug analysis                     |
+| [`features/`](features/)                                           | Email tracking, email system, daily briefs |
+| [`deployment/`](deployment/)                                       | Railway deployment guide                   |
 
 ---
 

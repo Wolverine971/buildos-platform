@@ -1,4 +1,4 @@
-<!-- apps/worker/WORKER_JOBS_AND_FLOWS.md -->
+<!-- apps/worker/docs/WORKER_JOBS_AND_FLOWS.md -->
 
 # BuildOS Worker - Job Types, Data Flows & API Reference
 

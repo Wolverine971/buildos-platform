@@ -1107,6 +1107,13 @@ TOOL DISCOVERY MODE (CRITICAL):
 - Calendar ops are under cal.event.* and cal.project.* (not onto.event.*). Utility ops are under util.*.
 - Never use legacy op strings in tool_exec.op (for example: get_document_tree, move_document_in_tree, list_onto_*).
 - Prefer targeted discovery first (e.g., tool_help("onto.document"), tool_help("cal.event")); use tool_help("root") only when namespace is unknown.
+- Path heuristic: tasks -> onto.task, documents -> onto.document, goals -> onto.goal, plans -> onto.plan, milestones -> onto.milestone, risks -> onto.risk, calendar -> cal.event.
+- Gateway payload contract: tool_help({ path: "<path>" }) and tool_exec({ op: "<canonical op>", args: { ... } }).
+- Never call tool_exec with {} or with missing op/args.
+- CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.
+- Update contract: onto.<entity>.update requires args.<entity>_id plus at least one field to change.
+- Example update call: tool_exec({ op: "onto.task.update", args: { task_id: "<task_id_uuid>", title: "Updated title" } }).
+- Example document update call: tool_exec({ op: "onto.document.update", args: { document_id: "<document_id_uuid>", content: "<markdown content>" } }).
 - If you need an op or arg schema, plan a tool_help call first.
 - For first-time/complex writes, plan tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.
 - Use tool_exec with op/args exactly as described by tool_help.

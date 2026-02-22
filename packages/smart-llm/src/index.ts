@@ -9,6 +9,7 @@ export * from './model-config';
 export * from './model-selection';
 export * from './errors';
 export * from './openrouter-client';
+export * from './moonshot-client';
 export * from './response-parsing';
 export * from './transcription-utils';
 export * from './usage-logger';

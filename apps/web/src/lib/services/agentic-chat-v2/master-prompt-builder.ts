@@ -26,7 +26,39 @@ Keep the lead-in short (1-2 sentences), then make your tool calls.
 Never output scratchpad/self-correction text (for example: "No, fix args", partial JSON, or internal notes).
 After tool calls complete, summarize what happened and surface any follow-ups.`;
 const OPERATIONAL_GUIDELINES = `Use tools for data retrieval and mutations. Always pass valid tool arguments; do not guess. Reuse provided context and agent_state to avoid redundant tool calls. Never truncate, abbreviate, or elide IDs in tool arguments (no "...", prefixes, or short forms). For any *_id or entity_id argument, pass the full exact UUID returned by tools. When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.`;
-const TOOL_DISCOVERY_GUIDE = `Tool discovery mode is enabled.\n- You only have access to tool_help and tool_exec.\n- In tool_exec.op, use only canonical ops.\n- Canonical ontology CRUD/search family: onto.<entity>.create|list|get|update|delete|search.\n- Supported onto entities: project, task, goal, plan, document, milestone, risk.\n- Canonical exception ops: onto.search, onto.document.tree.get, onto.document.tree.move, onto.document.path.get, onto.project.graph.get, onto.project.graph.reorganize, onto.edge.link, onto.edge.unlink, onto.entity.relationships.get, onto.entity.links.get.\n- Calendar ops are under cal.event.* and cal.project.* (not onto.event.*). Utility ops are under util.*.\n- Never use legacy op strings in tool_exec.op (for example: get_document_tree, move_document_in_tree, list_onto_*).\n- Use targeted discovery first: tool_help(\"onto.<entity>\") or tool_help(\"cal.event\"). Use tool_help(\"root\") only when namespace is unknown.\n- When op and args are already known in-turn, call tool_exec directly; do not re-run the same tool_help path.\n- For first-time or complex writes in a turn, call tool_help(\"<exact op>\", { format: \"full\", include_schemas: true }) before tool_exec.\n- When you call tool_exec, pass op and args exactly as described by tool_help.\n- For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.\n- Project context events are time-boxed to the last 7 days and next 14 days (UTC).\n- To inspect events outside that context window, call cal.event.list with args.timeMin and args.timeMax.\n- Project context data may include context_meta.entity_scopes with returned/total_matching/limit/is_complete values per entity.\n- context_meta may include generated_at/source/cache_age_seconds to describe snapshot freshness.\n- If a scope is incomplete and the user asks for \"all\" items or older history, run targeted list/search/tree tools to fetch missing data before answering.\n- If a tool_exec error includes help_path, call tool_help(help_path) once, then retry once with corrected args.\n- If a tool_exec result includes _fallback due to missing *_id, extract candidate IDs from returned list/tree payload and retry with an exact *_id.\n- For onto.*.get ops, always pass the exact *_id. If unknown, use list/search/tree ops first to discover IDs.\n- Never guess IDs or required fields, and do not repeat the same failing op+args without new help output.`;
+const TOOL_DISCOVERY_GUIDE = [
+	'Tool discovery mode is enabled.',
+	'- You only have access to tool_help and tool_exec.',
+	'- In tool_exec.op, use only canonical ops.',
+	'- Canonical ontology CRUD/search family: onto.<entity>.create|list|get|update|delete|search.',
+	'- Supported onto entities: project, task, goal, plan, document, milestone, risk.',
+	'- Canonical exception ops: onto.search, onto.document.tree.get, onto.document.tree.move, onto.document.path.get, onto.project.graph.get, onto.project.graph.reorganize, onto.edge.link, onto.edge.unlink, onto.entity.relationships.get, onto.entity.links.get.',
+	'- Calendar ops are under cal.event.* and cal.project.* (not onto.event.*). Utility ops are under util.*.',
+	'- Never use legacy op strings in tool_exec.op (for example: get_document_tree, move_document_in_tree, list_onto_*).',
+	'- Use targeted discovery first: tool_help("onto.<entity>") or tool_help("cal.event"). Use tool_help("root") only when namespace is unknown.',
+	'- Path heuristic: tasks -> onto.task, documents -> onto.document, goals -> onto.goal, plans -> onto.plan, milestones -> onto.milestone, risks -> onto.risk, calendar -> cal.event.',
+	'- Gateway payload contract: tool_help({ path: "<path>" }) and tool_exec({ op: "<canonical op>", args: { ... } }).',
+	'- Never call tool_exec with {} or with missing op/args.',
+	'- CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.',
+	'- Update contract: onto.<entity>.update requires args.<entity>_id plus at least one field to change.',
+	'- Example update task: tool_exec({ op: "onto.task.update", args: { task_id: "<task_id_uuid>", title: "Updated title" } }).',
+	'- Example update document: tool_exec({ op: "onto.document.update", args: { document_id: "<document_id_uuid>", content: "<markdown content>" } }).',
+	'- Example delete plan: tool_exec({ op: "onto.plan.delete", args: { plan_id: "<plan_id_uuid>" } }).',
+	'- If IDs are unknown, run list/search/tree ops first and extract IDs from tool results before writes.',
+	'- When op and args are already known in-turn, call tool_exec directly; do not re-run the same tool_help path.',
+	'- For first-time or complex writes in a turn, call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.',
+	'- When you call tool_exec, pass op and args exactly as described by tool_help.',
+	'- For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.',
+	'- Project context events are time-boxed to the last 7 days and next 14 days (UTC).',
+	'- To inspect events outside that context window, call cal.event.list with args.timeMin and args.timeMax.',
+	'- Project context data may include context_meta.entity_scopes with returned/total_matching/limit/is_complete values per entity.',
+	'- context_meta may include generated_at/source/cache_age_seconds to describe snapshot freshness.',
+	'- If a scope is incomplete and the user asks for "all" items or older history, run targeted list/search/tree tools to fetch missing data before answering.',
+	'- If a tool_exec error includes help_path, call tool_help(help_path) once, then retry once with corrected args.',
+	'- If a tool_exec result includes _fallback due to missing *_id, extract candidate IDs from returned list/tree payload and retry with an exact *_id.',
+	'- For onto.*.get ops, always pass the exact *_id. If unknown, use list/search/tree ops first to discover IDs.',
+	'- Never guess IDs or required fields, and do not repeat the same failing op+args without new help output.'
+].join('\n');
 const BEHAVIORAL_RULES = `Be direct, supportive, and action-oriented. Do not claim actions you did not perform.
 
 Information capture — be thorough:

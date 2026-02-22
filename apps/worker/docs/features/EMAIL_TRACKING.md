@@ -1,4 +1,4 @@
-<!-- apps/worker/EMAIL_TRACKING.md -->
+<!-- apps/worker/docs/features/EMAIL_TRACKING.md -->
 
 # Email Tracking Implementation
 

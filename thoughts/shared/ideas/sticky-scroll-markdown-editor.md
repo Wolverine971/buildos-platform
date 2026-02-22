@@ -1,4 +1,4 @@
-<!-- design-sticky-scroll-for-markdown-editor.md -->
+<!-- thoughts/shared/ideas/sticky-scroll-markdown-editor.md -->
 
 ## Sticky Scroll: What it does
 

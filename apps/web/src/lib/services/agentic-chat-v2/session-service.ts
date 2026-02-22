@@ -55,6 +55,8 @@ type FastChatSessionServiceOptions = {
 	httpMethod?: string;
 };
 
+const FASTCHAT_TRACE_SUMMARY_MAX_CHARS = 480;
+
 function sanitizeMetadata(metadata?: Record<string, unknown>): Record<string, unknown> | undefined {
 	if (!metadata) return undefined;
 	const sanitized = sanitizeLogData(metadata);
@@ -62,6 +64,48 @@ function sanitizeMetadata(metadata?: Record<string, unknown>): Record<string, un
 		return sanitized as Record<string, unknown>;
 	}
 	return { value: sanitized };
+}
+
+function truncateText(value: string, maxChars: number): string {
+	if (value.length <= maxChars) return value;
+	return `${value.slice(0, Math.max(0, maxChars - 3))}...`;
+}
+
+function deriveToolTraceSummary(metadata: unknown): string | null {
+	if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+	const record = metadata as Record<string, unknown>;
+	const explicit = record.fastchat_tool_trace_summary;
+	if (typeof explicit === 'string' && explicit.trim().length > 0) {
+		return truncateText(explicit.trim(), FASTCHAT_TRACE_SUMMARY_MAX_CHARS);
+	}
+
+	const traceRaw = record.fastchat_tool_trace_v1;
+	if (!Array.isArray(traceRaw) || traceRaw.length === 0) return null;
+	const snippets = traceRaw
+		.slice(0, 6)
+		.map((entry) => {
+			if (!entry || typeof entry !== 'object') return null;
+			const toolName =
+				typeof (entry as Record<string, unknown>).tool_name === 'string'
+					? ((entry as Record<string, unknown>).tool_name as string)
+					: null;
+			const op =
+				typeof (entry as Record<string, unknown>).op === 'string'
+					? ((entry as Record<string, unknown>).op as string)
+					: null;
+			const success = (entry as Record<string, unknown>).success === true;
+			const label = op ?? toolName ?? 'tool';
+			const error =
+				typeof (entry as Record<string, unknown>).error === 'string'
+					? ((entry as Record<string, unknown>).error as string)
+					: null;
+			if (success) return `${label}:ok`;
+			return `${label}:err${error ? `(${truncateText(error, 96)})` : ''}`;
+		})
+		.filter((item): item is string => Boolean(item));
+
+	if (snippets.length === 0) return null;
+	return truncateText(`Tool trace: ${snippets.join('; ')}`, FASTCHAT_TRACE_SUMMARY_MAX_CHARS);
 }
 
 export function createFastChatSessionService(
@@ -253,7 +297,7 @@ export function createFastChatSessionService(
 	): Promise<FastChatHistoryMessage[]> {
 		const { data, error } = await supabase
 			.from('chat_messages')
-			.select('role, content, created_at')
+			.select('role, content, metadata, created_at')
 			.eq('session_id', sessionId)
 			.order('created_at', { ascending: false })
 			.limit(limit);
@@ -281,7 +325,14 @@ export function createFastChatSessionService(
 			.filter((msg) => allowedRoles.has(msg.role))
 			.map((msg) => ({
 				role: msg.role as FastChatHistoryMessage['role'],
-				content: msg.content
+				content:
+					msg.role === 'assistant'
+						? (() => {
+								const traceSummary = deriveToolTraceSummary(msg.metadata);
+								if (!traceSummary) return msg.content;
+								return `${msg.content}\n\n${traceSummary}`;
+							})()
+						: msg.content
 			}));
 	}
 

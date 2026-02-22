@@ -199,15 +199,40 @@ async function getAccessibleProjectIds(
 ): Promise<Set<string>> {
 	const allowed = new Set<string>();
 	allowed.add(workspaceProjectId);
-	if (Array.isArray(run.project_ids)) {
-		for (const id of run.project_ids) if (typeof id === 'string') allowed.add(id);
-	}
+	const requestedProjectIds = Array.isArray(run.project_ids)
+		? run.project_ids.filter((id): id is string => typeof id === 'string')
+		: [];
 
 	const { data: memberships } = await supabase
 		.from('onto_project_members')
 		.select('project_id')
-		.eq('actor_id', actorId);
-	memberships?.forEach((row) => row.project_id && allowed.add(row.project_id));
+		.eq('actor_id', actorId)
+		.is('removed_at', null);
+
+	const memberProjectIds = Array.from(
+		new Set((memberships ?? []).map((row) => row.project_id).filter(Boolean))
+	);
+	const candidateProjectIds = Array.from(
+		new Set([workspaceProjectId, ...requestedProjectIds, ...memberProjectIds])
+	);
+	if (!candidateProjectIds.length) return allowed;
+
+	const accessScopeFilter = memberProjectIds.length
+		? `created_by.eq.${actorId},id.in.(${memberProjectIds.join(',')})`
+		: `created_by.eq.${actorId}`;
+
+	const { data: scopedProjects } = await supabase
+		.from('onto_projects')
+		.select('id')
+		.in('id', candidateProjectIds)
+		.or(accessScopeFilter)
+		.is('deleted_at', null);
+
+	scopedProjects?.forEach((project) => {
+		if (project?.id) {
+			allowed.add(project.id);
+		}
+	});
 
 	return allowed;
 }

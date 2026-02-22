@@ -162,10 +162,13 @@ export function estimateResponseLength(prompt: string): number {
 }
 
 export function ensureToolCompatibleModels(models: string[]): string[] {
-	const toolReadyModels = models.filter((model) => TOOL_CALLING_MODEL_SET.has(model));
+	const uniqueRequestedModels = Array.from(new Set(models));
+	const requestedToolReadyModels = uniqueRequestedModels.filter((model) =>
+		TOOL_CALLING_MODEL_SET.has(model)
+	);
 
-	if (toolReadyModels.length > 0) {
-		return toolReadyModels;
+	if (requestedToolReadyModels.length > 0) {
+		return requestedToolReadyModels;
 	}
 
 	console.warn(
@@ -174,12 +177,7 @@ export function ensureToolCompatibleModels(models: string[]): string[] {
 	);
 
 	// Use fallback order while keeping values unique
-	return Array.from(
-		new Set<string>([
-			...models.filter((model) => TOOL_CALLING_MODEL_SET.has(model)),
-			...TOOL_CALLING_MODEL_ORDER
-		])
-	);
+	return Array.from(new Set<string>(TOOL_CALLING_MODEL_ORDER));
 }
 
 export function pickEmergencyTextModel(

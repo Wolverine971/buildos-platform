@@ -20,16 +20,13 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Save, Loader, Trash2, ListChecks, X } from 'lucide-svelte';
+	import { Save, Loader, Trash2, ListChecks, X, ChevronDown } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import CardHeader from '$lib/components/ui/CardHeader.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import TaskAssigneeSelector from './TaskAssigneeSelector.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
@@ -143,6 +140,7 @@
 	let showLinkedTaskModal = $state(false);
 	let selectedLinkedTaskId = $state<string | null>(null);
 	let showChatModal = $state(false);
+	let showActivityLog = $state(false);
 
 	const seriesMeta = $derived.by(() => {
 		if (!task?.props || typeof task.props !== 'object') return null;
@@ -605,68 +603,46 @@
 								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-3 sm:space-y-4 tx tx-frame tx-weak wt-paper p-2"
+							class="space-y-2.5 sm:space-y-3 tx tx-frame tx-weak wt-paper p-2 sm:p-3"
 						>
 							<FormField
-								label="Task Title"
+								label="Title"
 								labelFor="title"
 								required={true}
-								error={!title.trim() && error ? 'Task title is required' : ''}
+								error={!title.trim() && error ? 'Required' : ''}
 							>
 								<TextInput
 									id="title"
 									bind:value={title}
 									inputmode="text"
 									enterkeyhint="next"
-									placeholder="Enter task title..."
+									placeholder="Task title..."
 									required={true}
 									disabled={isSaving}
 									error={!title.trim() && error ? true : false}
 								/>
 							</FormField>
 
-							<FormField
-								label="Description"
-								labelFor="description"
-								hint="Provide additional context about this task"
-							>
+							<FormField label="Description" labelFor="description">
 								<Textarea
 									id="description"
 									bind:value={description}
 									enterkeyhint="next"
-									placeholder="Describe the task..."
-									rows={3}
+									placeholder="Add details..."
+									rows={2}
 									disabled={isSaving}
 									size="md"
 								/>
 							</FormField>
 
-							<FormField
-								label="Assignees"
-								labelFor="task-assignees"
-								hint="Assign this task to one or more collaborators (max 10)"
-							>
-								<div id="task-assignees">
-									<TaskAssigneeSelector
-										{projectId}
-										bind:selectedActorIds={assigneeActorIds}
-										fallbackAssignees={Array.isArray(task?.assignees)
-											? task.assignees
-											: []}
-										disabled={isSaving || isLoading}
-										maxAssignees={10}
-									/>
-								</div>
-							</FormField>
-
-							<div class="grid grid-cols-2 gap-2 sm:gap-4">
+							<div class="grid grid-cols-2 gap-2">
 								<FormField label="State" labelFor="state" required={true}>
 									<Select
 										id="state"
 										bind:value={stateKey}
 										disabled={isSaving}
-										size="md"
-										placeholder="Select state"
+										size="sm"
+										placeholder="State"
 									>
 										{#each TASK_STATES as state}
 											<option value={state}>
@@ -689,8 +665,8 @@
 										id="priority"
 										value={priority}
 										disabled={isSaving}
-										size="md"
-										placeholder="Select priority"
+										size="sm"
+										placeholder="Priority"
 										onchange={(val) => (priority = Number(val))}
 									>
 										<option value={1}>P1 - Critical</option>
@@ -700,20 +676,55 @@
 										<option value={5}>P5 - Nice to have</option>
 									</Select>
 								</FormField>
+
+								<FormField label="Start" labelFor="start-date">
+									<TextInput
+										id="start-date"
+										type="datetime-local"
+										inputmode="numeric"
+										enterkeyhint="next"
+										bind:value={startAt}
+										disabled={isSaving}
+										size="sm"
+									/>
+								</FormField>
+
+								<FormField label="Due" labelFor="due-date">
+									<TextInput
+										id="due-date"
+										type="datetime-local"
+										inputmode="numeric"
+										enterkeyhint="done"
+										bind:value={dueAt}
+										disabled={isSaving}
+										size="sm"
+									/>
+								</FormField>
 							</div>
 
 							{#if stateKey === 'done' && completedAt}
 								<p class="text-xs text-muted-foreground">
-									Completed at:
-									<span class="font-medium text-foreground">
-										{format(new Date(completedAt), 'PPpp')}
-									</span>
+									Completed {format(new Date(completedAt), 'PPpp')}
 								</p>
 							{/if}
 
+							<FormField label="Assignees" labelFor="task-assignees">
+								<div id="task-assignees">
+									<TaskAssigneeSelector
+										{projectId}
+										bind:selectedActorIds={assigneeActorIds}
+										fallbackAssignees={Array.isArray(task?.assignees)
+											? task.assignees
+											: []}
+										disabled={isSaving || isLoading}
+										maxAssignees={10}
+									/>
+								</div>
+							</FormField>
+
 							{#if error}
 								<div
-									class="p-4 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak wt-paper"
+									class="p-3 bg-destructive/10 border border-destructive/30 rounded"
 								>
 									<p class="text-sm text-destructive">{error}</p>
 								</div>
@@ -745,251 +756,134 @@
 							}}
 						/>
 
-						<!-- Tags (from classification) -->
 						{#if task?.props?.tags?.length}
-							<Card variant="elevated" class="wt-paper">
-								<CardHeader variant="default">
-									<h3
-										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-									>
-										<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-										Tags
-									</h3>
-								</CardHeader>
-								<CardBody padding="sm">
-									<TagsDisplay props={task.props} size="sm" compact={true} />
-								</CardBody>
-							</Card>
+							<div
+								class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink"
+							>
+								<p
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
+								>
+									Tags
+								</p>
+								<TagsDisplay props={task.props} size="sm" compact={true} />
+							</div>
 						{/if}
 
-						<!-- Schedule -->
-						<Card variant="elevated" class="wt-paper">
-							<CardHeader variant="accent">
-								<h3
-									class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
-								>
-									<span class="text-base">📅</span>
-									{#if !startAt && !dueAt}Schedule?
-									{:else}Scheduled
-									{/if}
-								</h3>
-							</CardHeader>
-							<CardBody padding="sm">
-								<div class="space-y-2">
-									<div>
-										<label
-											for="sidebar-start-date"
-											class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5"
-										>
-											Start Date
-										</label>
-										<TextInput
-											id="sidebar-start-date"
-											type="datetime-local"
-											inputmode="numeric"
-											enterkeyhint="next"
-											bind:value={startAt}
-											disabled={isSaving}
-											size="sm"
-											class="border-border bg-card focus:ring-2 focus:ring-accent w-full"
-										/>
-										{#if startAt}
-											<p class="mt-1 text-xs text-muted-foreground">
-												{new Date(startAt).toLocaleString('en-US', {
-													weekday: 'short',
-													month: 'short',
-													day: 'numeric',
-													hour: 'numeric',
-													minute: '2-digit'
-												})}
-											</p>
-										{:else}
-											<p class="mt-1 text-xs text-muted-foreground italic">
-												No start date set
-											</p>
-										{/if}
-									</div>
-									<div>
-										<label
-											for="sidebar-due-date"
-											class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5"
-										>
-											Due Date
-										</label>
-										<TextInput
-											id="sidebar-due-date"
-											type="datetime-local"
-											inputmode="numeric"
-											enterkeyhint="done"
-											bind:value={dueAt}
-											disabled={isSaving}
-											size="sm"
-											class="border-border bg-card focus:ring-2 focus:ring-accent w-full"
-										/>
-										{#if dueAt}
-											<p class="mt-1 text-xs text-muted-foreground">
-												{new Date(dueAt).toLocaleString('en-US', {
-													weekday: 'short',
-													month: 'short',
-													day: 'numeric',
-													hour: 'numeric',
-													minute: '2-digit'
-												})}
-											</p>
-										{:else}
-											<p class="mt-1 text-xs text-muted-foreground italic">
-												No deadline set
-											</p>
-										{/if}
-									</div>
-								</div>
-							</CardBody>
-						</Card>
+						<div class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink">
+							<p
+								class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2"
+							>
+								Recurrence
+							</p>
+							{#if isSeriesMaster && seriesMeta}
+								<p class="text-sm text-foreground mb-2">
+									Recurring series{#if seriesMeta.instance_count}&ensp;·&ensp;{seriesMeta.instance_count}
+										instances{/if}
+								</p>
 
-						<!-- Recurrence -->
-						<Card variant="elevated" class="wt-paper">
-							<CardHeader variant="accent">
-								<h3
-									class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
-								>
-									<span class="text-base">🔄</span>
-									Recurrence
-								</h3>
-							</CardHeader>
-							<CardBody padding="sm">
-								{#if isSeriesMaster && seriesMeta}
-									<div class="space-y-2 text-sm">
-										<p class="text-foreground">
-											This task controls a recurring series.
-										</p>
-										<ul class="text-muted-foreground space-y-1">
-											{#if seriesId}
-												<li>
-													<span class="font-medium text-foreground"
-														>Series ID:</span
-													>
-													<span class="font-mono text-xs break-all"
-														>{seriesId}</span
-													>
-												</li>
-											{/if}
-											<li>
-												<span class="font-medium text-foreground"
-													>Timezone:</span
-												>
-												{seriesMeta.timezone}
-											</li>
-											{#if seriesMeta.rrule}
-												<li class="break-all">
-													<span class="font-medium text-foreground"
-														>RRULE:</span
-													>
-													{seriesMeta.rrule}
-												</li>
-											{/if}
-											{#if seriesMeta.instance_count}
-												<li>
-													<span class="font-medium text-foreground"
-														>Instances:</span
-													>
-													{seriesMeta.instance_count}
-												</li>
-											{/if}
-										</ul>
-									</div>
+								{#if seriesActionError}
+									<p class="text-xs text-destructive mb-2">{seriesActionError}</p>
+								{/if}
 
-									{#if seriesActionError}
-										<p class="text-sm text-destructive">
-											{seriesActionError}
-										</p>
-									{/if}
-
-									{#if !showSeriesDeleteConfirm}
-										<Button
-											size="sm"
-											variant="danger"
-											class="w-full mt-3"
-											onclick={() => (showSeriesDeleteConfirm = true)}
-										>
-											Delete Series
-										</Button>
-									{:else}
-										<div class="space-y-2 mt-3">
-											<p class="text-sm text-muted-foreground">
-												Delete this series? Completed instances remain
-												unless you force delete.
-											</p>
-											<div class="flex flex-col gap-2">
-												<Button
-													variant="danger"
-													size="sm"
-													disabled={isDeletingSeries}
-													onclick={() => handleDeleteSeries(false)}
-												>
-													{#if isDeletingSeries}
-														<Loader class="w-4 h-4 animate-spin" />
-														Removing…
-													{:else}
-														Delete Upcoming Only
-													{/if}
-												</Button>
-												<Button
-													variant="danger"
-													size="sm"
-													disabled={isDeletingSeries}
-													onclick={() => handleDeleteSeries(true)}
-												>
-													{#if isDeletingSeries}
-														<Loader class="w-4 h-4 animate-spin" />
-														Removing…
-													{:else}
-														Force Delete All
-													{/if}
-												</Button>
-												<Button
-													variant="ghost"
-													size="sm"
-													onclick={() => {
-														showSeriesDeleteConfirm = false;
-														seriesActionError = '';
-													}}
-													disabled={isDeletingSeries}
-												>
-													Cancel
-												</Button>
-											</div>
-										</div>
-									{/if}
-								{:else if isSeriesInstance && seriesMeta}
-									<p class="text-sm text-muted-foreground">
-										This task is part of a recurring series
-										{#if seriesMeta.master_task_id}
-											(master task: {seriesMeta.master_task_id})
-										{/if}
-										. Manage recurrence from the series master.
-									</p>
-								{:else}
-									<p class="text-sm text-muted-foreground mb-3">
-										Automatically create future instances on a schedule.
-									</p>
+								{#if !showSeriesDeleteConfirm}
 									<Button
 										size="sm"
-										variant="secondary"
+										variant="danger"
 										class="w-full"
-										onclick={openSeriesModal}
+										onclick={() => (showSeriesDeleteConfirm = true)}
 									>
-										Make Recurring
+										Delete Series
 									</Button>
+								{:else}
+									<div class="space-y-1.5 mt-1">
+										<p class="text-xs text-muted-foreground">
+											Delete this series? Completed instances remain unless
+											you force delete.
+										</p>
+										<Button
+											variant="danger"
+											size="sm"
+											class="w-full"
+											disabled={isDeletingSeries}
+											onclick={() => handleDeleteSeries(false)}
+										>
+											{#if isDeletingSeries}
+												<Loader class="w-3.5 h-3.5 animate-spin" />
+												Removing…
+											{:else}
+												Delete Upcoming
+											{/if}
+										</Button>
+										<Button
+											variant="danger"
+											size="sm"
+											class="w-full"
+											disabled={isDeletingSeries}
+											onclick={() => handleDeleteSeries(true)}
+										>
+											{#if isDeletingSeries}
+												<Loader class="w-3.5 h-3.5 animate-spin" />
+												Removing…
+											{:else}
+												Force Delete All
+											{/if}
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											class="w-full"
+											onclick={() => {
+												showSeriesDeleteConfirm = false;
+												seriesActionError = '';
+											}}
+											disabled={isDeletingSeries}
+										>
+											Cancel
+										</Button>
+									</div>
 								{/if}
-							</CardBody>
-						</Card>
+							{:else if isSeriesInstance}
+								<p class="text-sm text-muted-foreground">
+									Part of a recurring series.
+								</p>
+							{:else}
+								<Button
+									size="sm"
+									variant="secondary"
+									class="w-full"
+									onclick={openSeriesModal}
+								>
+									Make Recurring
+								</Button>
+							{/if}
+						</div>
 
-						<!-- Activity Log -->
-						<EntityActivityLog
-							entityType="task"
-							entityId={taskId}
-							autoLoad={!isLoading}
-						/>
+						<!-- Activity Log (collapsible) -->
+						<div
+							class="border border-border rounded-lg bg-card shadow-ink overflow-hidden"
+						>
+							<button
+								type="button"
+								onclick={() => (showActivityLog = !showActivityLog)}
+								class="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:bg-muted/50 transition-colors"
+							>
+								<span>Activity</span>
+								<ChevronDown
+									class="w-3.5 h-3.5 transition-transform {showActivityLog
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+							{#if showActivityLog}
+								<div class="border-t border-border">
+									<EntityActivityLog
+										entityType="task"
+										entityId={taskId}
+										autoLoad={true}
+									/>
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
 

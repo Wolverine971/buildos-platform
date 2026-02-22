@@ -330,4 +330,187 @@ describe('ToolExecutionService gateway fallback', () => {
 		expect((result.data as any)?.type).toBe('directory');
 		expect((result.data as any)?.path).toBe('onto.document.tree');
 	});
+
+	it('sanitizes malformed op wrappers and still executes canonical op', async () => {
+		const taskId = '3f4c1f6f-77c6-45ab-9159-686dc2d92bc5';
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: { task: { id: taskId, title: 'Updated title' } }
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'tool_exec"> <parameter name="op">onto.task.update',
+				args: { task_id: taskId, title: 'Updated title' }
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'update_onto_task',
+			expect.objectContaining({
+				task_id: taskId,
+				title: 'Updated title'
+			}),
+			expect.any(Object)
+		);
+		expect((result.data as any)?.meta?.warnings).toEqual(
+			expect.arrayContaining([expect.stringContaining('Sanitized malformed op')])
+		);
+	});
+
+	it('maps create task name aliases to title', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: { task: { id: 'task-1', title: 'Reach out to vendor' } }
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.task.create',
+				args: {
+					name: 'Reach out to vendor'
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'create_onto_task',
+			expect.objectContaining({
+				project_id: PROJECT_ID,
+				title: 'Reach out to vendor'
+			}),
+			expect.any(Object)
+		);
+	});
+
+	it('maps nested task.name alias to title for create task', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: { task: { id: 'task-2', title: 'Call Small Business Bureau' } }
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.task.create',
+				args: {
+					task: { name: 'Call Small Business Bureau' }
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'create_onto_task',
+			expect.objectContaining({
+				project_id: PROJECT_ID,
+				title: 'Call Small Business Bureau'
+			}),
+			expect.any(Object)
+		);
+	});
+
+	it('maps update plan aliases to canonical update fields', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: { plan: { id: PLAN_ID, name: 'Updated plan' } }
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.plan.update',
+				args: {
+					plan_id: PLAN_ID,
+					plan_name: 'Updated plan',
+					plan_description: 'Expanded execution details'
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'update_onto_plan',
+			expect.objectContaining({
+				plan_id: PLAN_ID,
+				name: 'Updated plan',
+				description: 'Expanded execution details'
+			}),
+			expect.any(Object)
+		);
+	});
+
+	it('maps link aliases from from/to/relationship payloads', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: { edge: { id: 'edge-1' } }
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.edge.link',
+				args: {
+					from: { kind: 'plan', id: PLAN_ID },
+					to: { kind: 'task', id: '3f4c1f6f-77c6-45ab-9159-686dc2d92bc5' },
+					relationship: 'has_task'
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'link_onto_entities',
+			expect.objectContaining({
+				src_kind: 'plan',
+				src_id: PLAN_ID,
+				dst_kind: 'task',
+				dst_id: '3f4c1f6f-77c6-45ab-9159-686dc2d92bc5',
+				rel: 'has_task'
+			}),
+			expect.any(Object)
+		);
+	});
+
+	it('maps link aliases from src/dst objects and relation', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: { edge: { id: 'edge-2' } }
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.edge.link',
+				args: {
+					src: { kind: 'plan', id: PLAN_ID },
+					dst: { kind: 'task', id: '3f4c1f6f-77c6-45ab-9159-686dc2d92bc5' },
+					relation: 'has_task'
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'link_onto_entities',
+			expect.objectContaining({
+				src_kind: 'plan',
+				src_id: PLAN_ID,
+				dst_kind: 'task',
+				dst_id: '3f4c1f6f-77c6-45ab-9159-686dc2d92bc5',
+				rel: 'has_task'
+			}),
+			expect.any(Object)
+		);
+	});
 });

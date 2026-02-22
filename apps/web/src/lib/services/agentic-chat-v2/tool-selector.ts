@@ -8,7 +8,6 @@ import {
 import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 import { normalizeFastContextType } from './prompt-builder';
 
-const WEB_TOOL_NAMES = new Set(['web_search', 'web_visit']);
 const CALENDAR_TOOL_NAMES = new Set([
 	'list_calendar_events',
 	'get_calendar_event_details',
@@ -52,8 +51,9 @@ const CALENDAR_INTENT_PATTERNS: RegExp[] = [
 	/\bappointment\b/i,
 	/\breminder\b/i,
 	/\bdeadline\b/i,
-	/\btime\b/i,
-	/\bdate\b/i
+	/\bwhat(?:'s| is)\s+on\s+my\s+calendar\b/i,
+	/\bcalendar\s+for\b/i,
+	/\bdue\s+(?:date|by)\b/i
 ];
 
 function matchesAny(text: string, patterns: RegExp[]): boolean {
@@ -99,10 +99,6 @@ export function selectFastChatTools(params: {
 	let tools = getToolsForContextType(normalized as Exclude<ChatContextType, 'general'>, {
 		includeWriteTools: true
 	});
-
-	if (!shouldEnableWebTools(params.message)) {
-		tools = tools.filter((tool) => !WEB_TOOL_NAMES.has(resolveToolName(tool)));
-	}
 
 	if (!shouldEnableCalendarTools(normalized, params.message)) {
 		tools = tools.filter((tool) => !CALENDAR_TOOL_NAMES.has(resolveToolName(tool)));

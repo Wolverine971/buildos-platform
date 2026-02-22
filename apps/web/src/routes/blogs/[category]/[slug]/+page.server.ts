@@ -11,8 +11,6 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		post,
-		relatedPosts,
-		// Return the path for dynamic import
-		contentPath: `/src/content/blogs/${category}/${slug}.md`
+		relatedPosts
 	};
 };

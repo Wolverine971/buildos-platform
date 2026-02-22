@@ -13,7 +13,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'tool_help',
 			description:
-				'List available tool namespaces, commands, and schemas. Use this to discover ops and required args before calling tool_exec.',
+				'List available tool namespaces, commands, and schemas. Use this first when op/args are uncertain. Always pass path (for example: "onto.task.update", "cal.event", or "root").',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -37,7 +37,8 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						description: 'Include full JSON schemas for args.'
 					}
 				},
-				required: ['path']
+				required: ['path'],
+				additionalProperties: false
 			}
 		}
 	},
@@ -46,17 +47,20 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		function: {
 			name: 'tool_exec',
 			description:
-				'Execute a discovered op. Use tool_help first if you are unsure about args or required fields.',
+				'Execute a discovered op. Required shape: { op, args }. Do not call with empty {}. For onto.<entity>.get/update/delete, args must include exact <entity>_id UUID.',
 			parameters: {
 				type: 'object',
 				properties: {
 					op: {
 						type: 'string',
-						description: 'Operation name from tool_help (example: "onto.task.list").'
+						minLength: 1,
+						description:
+							'Canonical operation name from tool_help (example: "onto.task.list" or "onto.task.update").'
 					},
 					args: {
 						type: 'object',
-						description: 'Arguments object for the op.'
+						description:
+							'Arguments object for the op. Must match required fields from tool_help for that exact op.'
 					},
 					idempotency_key: {
 						type: 'string',
@@ -67,7 +71,8 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						description: 'If true, return a simulated response without mutating data.'
 					}
 				},
-				required: ['op', 'args']
+				required: ['op', 'args'],
+				additionalProperties: false
 			}
 		}
 	}
