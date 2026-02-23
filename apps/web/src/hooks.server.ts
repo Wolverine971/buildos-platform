@@ -131,11 +131,11 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 	// PERFORMANCE: Skip session loading for static assets and API routes that don't need auth
 	const pathname = event.url.pathname;
-	const search = event.url.search;
 	const legacyRedirectPath = getLegacyRedirectPath(pathname);
 	const shouldRedirectToApexDomain = event.url.hostname === 'www.build-os.com';
 
 	if (legacyRedirectPath || shouldRedirectToApexDomain) {
+		const search = event.url.search;
 		const targetPath = `${legacyRedirectPath ?? pathname}${search}`;
 		if (shouldRedirectToApexDomain) {
 			throw redirect(308, `https://build-os.com${targetPath}`);

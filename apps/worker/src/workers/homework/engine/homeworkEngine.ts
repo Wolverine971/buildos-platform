@@ -198,7 +198,6 @@ async function getAccessibleProjectIds(
 	workspaceProjectId: string
 ): Promise<Set<string>> {
 	const allowed = new Set<string>();
-	allowed.add(workspaceProjectId);
 	const requestedProjectIds = Array.isArray(run.project_ids)
 		? run.project_ids.filter((id): id is string => typeof id === 'string')
 		: [];
@@ -212,9 +211,19 @@ async function getAccessibleProjectIds(
 	const memberProjectIds = Array.from(
 		new Set((memberships ?? []).map((row) => row.project_id).filter(Boolean))
 	);
-	const candidateProjectIds = Array.from(
-		new Set([workspaceProjectId, ...requestedProjectIds, ...memberProjectIds])
-	);
+	const scopedRunProjectIds =
+		run.scope === 'project'
+			? requestedProjectIds.slice(0, 1)
+			: run.scope === 'multi_project'
+				? requestedProjectIds
+				: [];
+	const scopeProjectIds =
+		run.scope === 'global'
+			? memberProjectIds
+			: scopedRunProjectIds.length
+				? scopedRunProjectIds
+				: [];
+	const candidateProjectIds = Array.from(new Set([workspaceProjectId, ...scopeProjectIds]));
 	if (!candidateProjectIds.length) return allowed;
 
 	const accessScopeFilter = memberProjectIds.length
@@ -388,6 +397,7 @@ async function ensureWorkspaceDocs(params: {
 		.select('id')
 		.contains('props', { homework_run_id: run.id, doc_role: 'scratchpad' })
 		.eq('project_id', projectId)
+		.is('deleted_at', null)
 		.order('created_at', { ascending: false })
 		.limit(1)
 		.maybeSingle();
@@ -468,6 +478,7 @@ async function ensureExecutorScratchpad(params: {
 			doc_role: 'scratchpad_exec',
 			branch_id: branchId
 		})
+		.is('deleted_at', null)
 		.limit(1)
 		.maybeSingle();
 
@@ -578,6 +589,7 @@ async function fetchExecutorScratchpadSummaries(
 		.from('onto_documents')
 		.select('id, title, props, updated_at, content')
 		.contains('props', { homework_run_id: runId, doc_role: 'scratchpad_exec' })
+		.is('deleted_at', null)
 		.order('updated_at', { ascending: false })
 		.limit(limit);
 
@@ -736,6 +748,7 @@ async function executeToolCall(params: {
 					.from('onto_projects')
 					.select('*')
 					.eq('id', projectId)
+					.is('deleted_at', null)
 					.single();
 				if (error) throw error;
 				return { name: tool.name, ok: true, result: data };
@@ -798,6 +811,7 @@ async function executeToolCall(params: {
 						'id, project_id, title, content, description, type_key, state_key, props, created_at, created_by, updated_at, deleted_at'
 					)
 					.eq('id', documentId)
+					.is('deleted_at', null)
 					.single();
 				if (error) throw error;
 				if (data?.project_id && !allowedProjects.has(data.project_id)) {
@@ -910,6 +924,7 @@ async function executeToolCall(params: {
 					.from('onto_documents')
 					.select('project_id')
 					.eq('id', documentId)
+					.is('deleted_at', null)
 					.single();
 				if (target?.project_id && !allowedProjects.has(target.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized project' };
@@ -928,6 +943,7 @@ async function executeToolCall(params: {
 					.from('onto_documents')
 					.update(updatePayload)
 					.eq('id', documentId)
+					.is('deleted_at', null)
 					.select('id, title')
 					.single();
 				if (error) throw error;
@@ -972,6 +988,7 @@ async function executeToolCall(params: {
 						'id, project_id, title, description, type_key, state_key, props, created_at, created_by, updated_at, deleted_at, due_at, start_at, completed_at, priority, facet_scale'
 					)
 					.eq('id', taskId)
+					.is('deleted_at', null)
 					.single();
 				if (error) throw error;
 				if (data?.project_id && !allowedProjects.has(data.project_id)) {
@@ -1040,6 +1057,7 @@ async function executeToolCall(params: {
 					.from('onto_tasks')
 					.select('project_id')
 					.eq('id', taskId)
+					.is('deleted_at', null)
 					.single();
 				if (task?.project_id && !allowedProjects.has(task.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized project' };
@@ -1057,6 +1075,7 @@ async function executeToolCall(params: {
 					.from('onto_tasks')
 					.update(updatePayload)
 					.eq('id', taskId)
+					.is('deleted_at', null)
 					.select('id, title')
 					.single();
 				if (error) throw error;
@@ -1217,13 +1236,16 @@ export async function runHomeworkIteration(params: {
 	const { supabase, llm, run, userId, iteration, onUsage } = params;
 	const actorId = await ensureActorId(supabase, userId);
 	const projectId = await ensureWorkspaceProject(supabase, userId, actorId, run);
+	const allowedProjects = await getAccessibleProjectIds(supabase, actorId, run, projectId);
+	if (!allowedProjects.has(projectId)) {
+		throw new Error('Workspace project is unavailable, deleted, or inaccessible.');
+	}
 	const { workspaceId, scratchpadId } = await ensureWorkspaceDocs({
 		supabase,
 		actorId,
 		projectId,
 		run
 	});
-	const allowedProjects = await getAccessibleProjectIds(supabase, actorId, run, projectId);
 	const lastIteration = await fetchLastIterationSummary(supabase, run.id, iteration);
 	const persistedPlan = getPlanFromMetrics(run);
 

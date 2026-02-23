@@ -7,6 +7,7 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 const DEFAULT_MAX_WALL_CLOCK_MS = 60 * 60 * 1000; // 60 minutes
 const DEFAULT_MAX_ITERATIONS = 20;
 const MAX_CONCURRENT_RUNS = 3;
+const ALLOWED_SCOPES = new Set(['global', 'project', 'multi_project']);
 
 function normalizeBudgets(input: Record<string, unknown> | undefined) {
 	const maxWallClockMs =
@@ -81,6 +82,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	const contextType = typeof payload.context_type === 'string' ? payload.context_type : 'global';
 	const entityId = typeof payload.entity_id === 'string' ? payload.entity_id : undefined;
 	const rawScope = typeof payload.scope === 'string' ? payload.scope : 'global';
+	if (!ALLOWED_SCOPES.has(rawScope)) {
+		return ApiResponse.badRequest('Invalid scope. Use global, project, or multi_project.');
+	}
 	let projectIds: string[] = Array.isArray(payload.project_ids)
 		? payload.project_ids.filter((p: unknown): p is string => typeof p === 'string')
 		: entityId

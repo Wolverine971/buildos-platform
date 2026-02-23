@@ -40,6 +40,7 @@ async function loadScratchpadContent(runId: string): Promise<string | null> {
 		.from('onto_documents')
 		.select('content')
 		.contains('props', { homework_run_id: runId, doc_role: 'scratchpad' })
+		.is('deleted_at', null)
 		.order('updated_at', { ascending: false })
 		.limit(1)
 		.maybeSingle();
@@ -227,7 +228,7 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 	const nextIteration = Math.max(run.iteration ?? 0, iteration);
 
 	// Mark run as running and set started_at if needed
-	await supabase
+	const { data: transitionedRun } = await supabase
 		.from('homework_runs')
 		.update({
 			status: 'running',
@@ -235,7 +236,28 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 			iteration: nextIteration,
 			updated_at: updatedAt
 		})
-		.eq('id', run_id);
+		.eq('id', run_id)
+		.in('status', ['queued', 'running', 'waiting_on_user', 'stopped'])
+		.select('id')
+		.maybeSingle();
+
+	if (!transitionedRun) {
+		const { data: latestRun } = await supabase
+			.from('homework_runs')
+			.select('status')
+			.eq('id', run_id)
+			.limit(1)
+			.maybeSingle();
+		const latestStatus = latestRun?.status ?? 'failed';
+		await job.log(`Homework run ${run_id} skipped before start (status=${latestStatus})`);
+		return {
+			success: true,
+			run_id,
+			iteration,
+			status: latestStatus,
+			message: 'Run no longer active'
+		};
+	}
 
 	// Emit run_started once per run - use seq 0 for first event
 	if (!run.started_at) {
@@ -442,6 +464,34 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 	metricsState.metrics.cost_total_usd = metricsState.costTotal;
 	metricsState.metrics.plan = iterationResult.plan ?? metricsState.metrics.plan;
 
+	const { data: latestRunState } = await supabase
+		.from('homework_runs')
+		.select('status')
+		.eq('id', run_id)
+		.limit(1)
+		.maybeSingle();
+	if (latestRunState?.status === 'canceled') {
+		await supabase
+			.from('homework_runs')
+			.update({
+				duration_ms: elapsedMs,
+				metrics: metricsState.metrics,
+				updated_at: nowIso()
+			})
+			.eq('id', run_id)
+			.eq('status', 'canceled');
+		await job.log(
+			`Homework run ${run_id} canceled during iteration ${iteration}; preserving canceled state`
+		);
+		return {
+			success: true,
+			run_id,
+			iteration,
+			status: 'canceled',
+			message: 'Run canceled'
+		};
+	}
+
 	let finalStatus: HomeworkRunStatus;
 	let stopReason: { type: string; detail: string } | null = null;
 
@@ -503,7 +553,7 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 			{ type: 'run_stopped', runId: run_id, stopReason },
 			iterationSeqBase + 3
 		);
-	} else if (maxIterations !== null && iteration > maxIterations) {
+	} else if (maxIterations !== null && iteration >= maxIterations) {
 		finalStatus = 'stopped';
 		stopReason = buildStopReason(
 			'max_iterations',
@@ -537,6 +587,19 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 
 	// Queue next job FIRST if needed, before updating status (Bug #10: prevent race condition)
 	if (finalStatus === 'queued') {
+		const { data: queueState } = await supabase
+			.from('homework_runs')
+			.select('status')
+			.eq('id', run_id)
+			.limit(1)
+			.maybeSingle();
+		if (queueState?.status === 'canceled') {
+			finalStatus = 'canceled';
+			stopReason = buildStopReason('canceled', 'Canceled by user');
+		}
+	}
+
+	if (finalStatus === 'queued') {
 		const nextJobIteration = iteration + 1;
 		const { error: queueError } = await supabase.rpc('add_queue_job', {
 			p_user_id: run.user_id,
@@ -568,7 +631,7 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 	}
 
 	// NOW update run status
-	await supabase
+	const { data: updatedRun } = await supabase
 		.from('homework_runs')
 		.update({
 			status: finalStatus,
@@ -579,9 +642,23 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 			updated_at: nowIso(),
 			iteration
 		})
-		.eq('id', run_id);
+		.eq('id', run_id)
+		.neq('status', 'canceled')
+		.select('id')
+		.maybeSingle();
 
-	if (finalStatus !== 'queued' && finalStatus !== 'waiting_on_user') {
+	if (!updatedRun) {
+		await job.log(`Homework run ${run_id} canceled before final status update`);
+		return {
+			success: true,
+			run_id,
+			iteration,
+			status: 'canceled',
+			message: 'Run canceled'
+		};
+	}
+
+	if (finalStatus !== 'queued' && finalStatus !== 'waiting_on_user' && finalStatus !== 'canceled') {
 		const scratchpad = await loadScratchpadContent(run_id);
 		const report =
 			scratchpad && !run.report

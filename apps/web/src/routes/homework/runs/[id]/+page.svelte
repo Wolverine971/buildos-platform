@@ -263,10 +263,6 @@
 				workspaceEdges = json.data.workspaceEdges ?? workspaceEdges;
 				scratchpad = json.data.scratchpad ?? scratchpad;
 				executorPads = json.data.executorPads ?? executorPads;
-				// Only update scratchpad content if not currently saving
-				if (scratchpadSaveStatus !== 'saving' && scratchpad?.content) {
-					scratchpadContent = scratchpad.content;
-				}
 				pollFailureCount = 0;
 			}
 		} catch (err) {

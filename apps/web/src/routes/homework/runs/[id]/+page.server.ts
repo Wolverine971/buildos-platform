@@ -45,6 +45,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		.from('onto_documents')
 		.select('id, title, type_key, state_key, project_id, props, updated_at, created_at')
 		.contains('props', { homework_run_id: runId })
+		.is('deleted_at', null)
 		.order('created_at', { ascending: true });
 
 	const { data: workspaceEdges } = await supabase
@@ -56,6 +57,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		.from('onto_documents')
 		.select('id, title, content')
 		.contains('props', { homework_run_id: runId, doc_role: 'scratchpad' })
+		.is('deleted_at', null)
 		.order('updated_at', { ascending: false })
 		.limit(1)
 		.maybeSingle();
@@ -64,6 +66,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		.from('onto_documents')
 		.select('id, title, content, props, updated_at, created_at')
 		.contains('props', { homework_run_id: runId, doc_role: 'scratchpad_exec' })
+		.is('deleted_at', null)
 		.order('updated_at', { ascending: false })
 		.limit(50);
 

@@ -23,6 +23,16 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession } 
 	if (runError || !run) {
 		return ApiResponse.error('Homework run not found', HttpStatus.NOT_FOUND, 'NOT_FOUND');
 	}
+	if (run.status === 'canceled') {
+		return ApiResponse.success({ run_id: runId, status: 'canceled' }, 'Run already canceled');
+	}
+	if (run.status === 'completed' || run.status === 'failed') {
+		return ApiResponse.error(
+			`Homework run cannot be canceled from status "${run.status}".`,
+			HttpStatus.CONFLICT,
+			'INVALID_STATUS'
+		);
+	}
 
 	const stopReason = { type: 'canceled', detail: 'Canceled by user' };
 	const now = new Date().toISOString();
@@ -30,7 +40,8 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession } 
 	const { error: updateError } = await admin
 		.from('homework_runs')
 		.update({ status: 'canceled', completed_at: now, stop_reason: stopReason, updated_at: now })
-		.eq('id', runId);
+		.eq('id', runId)
+		.eq('user_id', user.id);
 
 	if (updateError) {
 		return ApiResponse.error(

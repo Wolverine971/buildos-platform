@@ -399,8 +399,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		type: 'assignee' | 'mention'
 	): IndexedProjectMember {
 		const exactMatches = indexedMembers.filter((member) => member.keys.has(handle));
-		if (exactMatches.length === 1) {
-			return exactMatches[0];
+		const exactMatch = exactMatches[0];
+		if (exactMatches.length === 1 && exactMatch) {
+			return exactMatch;
 		}
 		if (exactMatches.length > 1) {
 			const options = exactMatches.map((member) => formatMemberLabel(member)).join(', ');
@@ -412,8 +413,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		const prefixMatches = indexedMembers.filter((member) =>
 			Array.from(member.keys).some((key) => key.startsWith(handle))
 		);
-		if (prefixMatches.length === 1) {
-			return prefixMatches[0];
+		const prefixMatch = prefixMatches[0];
+		if (prefixMatches.length === 1 && prefixMatch) {
+			return prefixMatch;
 		}
 		if (prefixMatches.length > 1) {
 			const options = prefixMatches.map((member) => formatMemberLabel(member)).join(', ');
