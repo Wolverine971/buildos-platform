@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/core/tool-schema-compat.test.ts
 import { describe, expect, it } from 'vitest';
 import { CHAT_TOOL_DEFINITIONS } from './tool-definitions';
 
@@ -21,4 +22,3 @@ describe('Chat tool schema compatibility', () => {
 		}
 	});
 });
-

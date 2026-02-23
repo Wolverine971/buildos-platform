@@ -1,3 +1,4 @@
+// packages/smart-llm/src/errors.test.ts
 import { describe, expect, it } from 'vitest';
 import { isRetryableOpenRouterError } from './errors';
 
@@ -22,4 +23,3 @@ describe('isRetryableOpenRouterError', () => {
 		expect(isRetryableOpenRouterError(error)).toBe(true);
 	});
 });
-

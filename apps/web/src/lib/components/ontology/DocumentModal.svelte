@@ -552,7 +552,9 @@
 	}
 
 	/** Internal save logic shared by autosave and manual save */
-	async function performSave(options: { silent?: boolean; forceVersion?: boolean } = {}): Promise<boolean> {
+	async function performSave(
+		options: { silent?: boolean; forceVersion?: boolean } = {}
+	): Promise<boolean> {
 		const { silent = false, forceVersion = false } = options;
 
 		try {

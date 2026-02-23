@@ -26,6 +26,24 @@ This folder contains diagnostic queries for troubleshooting Supabase database is
 
 **Related fix**: `/apps/web/supabase/migrations/20251022_fix_auth_identities_provider.sql`
 
+### check_project_activity_notification_pipeline.sql
+
+**Purpose**: Diagnose broken shared-project activity notifications (`project.activity.batched`) across:
+
+- `project_notification_batches`
+- `queue_jobs` (`project_activity_batch_flush`)
+- `notification_events`
+- `notification_deliveries`
+
+Includes an optional remediation block to fix legacy `notification_events` `event_type` constraints that can block batched event inserts with:
+`violates check constraint "valid_event_type"`.
+
+**When to use**:
+
+- `/notifications` is missing shared-project activity updates
+- Push notifications for shared project activity are not arriving
+- Batch flush jobs repeatedly fail
+
 ## How to Run Diagnostics
 
 ### Option 1: Supabase Dashboard (Recommended)

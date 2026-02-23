@@ -2318,7 +2318,9 @@ export class SmartLLMService {
 							if (choice.finish_reason === 'tool_calls') {
 								for (const pending of toolCallAssembler.drain()) {
 									if (!pending?.function?.name) continue;
-									if (this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)) {
+									if (
+										this.shouldLogKimiToolCalls(resolvedModel, needsToolSupport)
+									) {
 										void this.writeKimiToolCallLog({
 											model: resolvedModel,
 											provider: resolvedProvider,

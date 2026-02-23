@@ -239,6 +239,106 @@
 		};
 	};
 
+	const isRecord = (value: unknown): value is Record<string, unknown> =>
+		typeof value === 'object' && value !== null && !Array.isArray(value);
+
+	const pickString = (...values: unknown[]): string | null => {
+		for (const value of values) {
+			if (typeof value !== 'string') continue;
+			const trimmed = value.trim();
+			if (trimmed.length > 0) return trimmed;
+		}
+		return null;
+	};
+
+	const isProjectPath = (path: string): boolean => /^\/projects(\/|$|\?|#)/.test(path);
+
+	const isTaskPath = (path: string): boolean =>
+		/^\/tasks(\/|$|\?|#)/.test(path) || path.includes('/tasks/');
+
+	const normalizeProjectOrTaskPath = (value: unknown): string | null => {
+		const candidate = pickString(value);
+		if (!candidate || !candidate.startsWith('/')) return null;
+		if (!isProjectPath(candidate) && !isTaskPath(candidate)) return null;
+		return candidate;
+	};
+
+	const extractNotificationLink = (
+		deliveryPayload: Record<string, unknown> | null | undefined,
+		eventPayload: Record<string, unknown> | null | undefined
+	): { href: string; label: 'Open project' | 'Open task' } | null => {
+		const dp = deliveryPayload ?? {};
+		const ep = eventPayload ?? {};
+		const dpData = isRecord(dp.data) ? dp.data : null;
+		const epData = isRecord(ep.data) ? ep.data : null;
+
+		const explicitLink = normalizeProjectOrTaskPath(
+			pickString(
+				dp.action_url,
+				ep.action_url,
+				dp.actionUrl,
+				ep.actionUrl,
+				dp.url,
+				ep.url,
+				dpData?.url,
+				epData?.url,
+				dpData?.action_url,
+				epData?.action_url,
+				dpData?.actionUrl,
+				epData?.actionUrl
+			)
+		);
+
+		if (explicitLink) {
+			return {
+				href: explicitLink,
+				label: isTaskPath(explicitLink) ? 'Open task' : 'Open project'
+			};
+		}
+
+		const taskId = pickString(
+			dp.task_id,
+			ep.task_id,
+			dp.taskId,
+			ep.taskId,
+			dpData?.task_id,
+			epData?.task_id,
+			dpData?.taskId,
+			epData?.taskId,
+			dp.entity_type === 'task' ? dp.entity_id : null,
+			ep.entity_type === 'task' ? ep.entity_id : null,
+			dpData?.entity_type === 'task' ? dpData.entity_id : null,
+			epData?.entity_type === 'task' ? epData.entity_id : null
+		);
+
+		const projectId = pickString(
+			dp.project_id,
+			ep.project_id,
+			dp.projectId,
+			ep.projectId,
+			dpData?.project_id,
+			epData?.project_id,
+			dpData?.projectId,
+			epData?.projectId
+		);
+
+		if (projectId && taskId) {
+			return {
+				href: `/projects/${projectId}/tasks/${taskId}`,
+				label: 'Open task'
+			};
+		}
+
+		if (projectId) {
+			return {
+				href: `/projects/${projectId}`,
+				label: 'Open project'
+			};
+		}
+
+		return null;
+	};
+
 	// Extract rich event-specific details
 	const extractEventDetails = (
 		eventType?: string | null,
@@ -537,6 +637,10 @@
 								event?.event_type,
 								event?.payload as Record<string, unknown>
 							)}
+							{@const notificationLink = extractNotificationLink(
+								notification.payload as Record<string, unknown>,
+								event?.payload as Record<string, unknown>
+							)}
 
 							<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
 								<div class="flex gap-3">
@@ -570,6 +674,19 @@
 													>
 														{content.body}
 													</p>
+												{/if}
+												{#if notificationLink}
+													<a
+														href={notificationLink.href}
+														class="mt-1 inline-flex max-w-full items-center gap-1 text-xs font-medium text-accent hover:underline underline-offset-2"
+													>
+														<span>{notificationLink.label}</span>
+														<span
+															class="text-muted-foreground truncate"
+														>
+															{notificationLink.href}
+														</span>
+													</a>
 												{/if}
 											</div>
 											<div class="shrink-0 flex flex-col items-end gap-1">

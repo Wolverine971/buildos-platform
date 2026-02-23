@@ -120,7 +120,11 @@ export async function createOrMergeDocumentVersion(
 	const nowIso = now.toISOString();
 	const snapshotHash = hashSnapshot(snapshot);
 
-	if (!forceCreateVersion && previousSnapshot && hashSnapshot(previousSnapshot) === snapshotHash) {
+	if (
+		!forceCreateVersion &&
+		previousSnapshot &&
+		hashSnapshot(previousSnapshot) === snapshotHash
+	) {
 		return { status: 'skipped', reason: 'no_change' };
 	}
 
@@ -150,7 +154,12 @@ export async function createOrMergeDocumentVersion(
 		: false;
 
 	// Merge when same actor within window, unless caller explicitly forces a new version.
-	if (!forceCreateVersion && latestVersionRow && latestVersionRow.created_by === actorId && withinWindow) {
+	if (
+		!forceCreateVersion &&
+		latestVersionRow &&
+		latestVersionRow.created_by === actorId &&
+		withinWindow
+	) {
 		const updatedProps: DocumentVersionProps = {
 			...latestProps,
 			snapshot,

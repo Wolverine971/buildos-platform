@@ -1211,10 +1211,10 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 						description: 'Properties to merge with existing props'
 					}
 				},
-					required: ['task_id']
-				}
+				required: ['task_id']
 			}
-		},
+		}
+	},
 
 	{
 		type: 'function',
@@ -1259,10 +1259,10 @@ Only updates fields that are provided.`,
 						description: 'Properties to merge with existing props'
 					}
 				},
-					required: ['project_id']
-				}
+				required: ['project_id']
 			}
-		},
+		}
+	},
 
 	{
 		type: 'function',
@@ -1314,10 +1314,10 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 						description: 'Metadata fields to merge into goal props'
 					}
 				},
-					required: ['goal_id']
-				}
+				required: ['goal_id']
 			}
-		},
+		}
+	},
 
 	{
 		type: 'function',
@@ -1369,10 +1369,10 @@ Use for edits to plan names, dates, status, or metadata.`,
 						description: 'Metadata fields to merge into plan props'
 					}
 				},
-					required: ['plan_id']
-				}
+				required: ['plan_id']
 			}
-		},
+		}
+	},
 
 	{
 		type: 'function',
@@ -1425,10 +1425,10 @@ Use for edits to titles, states, body markdown, or metadata.`,
 						description: 'Metadata fields to merge into document props'
 					}
 				},
-					required: ['document_id']
-				}
+				required: ['document_id']
 			}
-		},
+		}
+	},
 	{
 		type: 'function',
 		function: {
@@ -1477,10 +1477,10 @@ Use this when the user explicitly asks to ping/tag someone (for example: "tag @j
 							'Optional short note appended to the notification body (for example: "please review section 2").'
 					}
 				},
-					required: ['project_id', 'entity_type', 'entity_id']
-				}
+				required: ['project_id', 'entity_type', 'entity_id']
 			}
-		},
+		}
+	},
 	{
 		type: 'function',
 		function: {
@@ -1516,10 +1516,10 @@ Use for edits to title, due date, state, or metadata.`,
 						description: 'Metadata fields to merge into milestone props'
 					}
 				},
-					required: ['milestone_id']
-				}
+				required: ['milestone_id']
 			}
-		},
+		}
+	},
 	{
 		type: 'function',
 		function: {
@@ -1571,10 +1571,10 @@ Use for edits to title, impact, probability, state, or mitigation metadata.`,
 						description: 'Metadata fields to merge into risk props'
 					}
 				},
-					required: ['risk_id']
-				}
+				required: ['risk_id']
 			}
-		},
+		}
+	},
 	// ============================================
 	// DELETE TOOLS
 	// ============================================

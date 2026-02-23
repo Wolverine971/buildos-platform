@@ -147,8 +147,7 @@
 	);
 	const pausePollingForAnswer = $derived.by(
 		() =>
-			run.status === 'waiting_on_user' &&
-			(userAnswerFocused || userAnswer.trim().length > 0)
+			run.status === 'waiting_on_user' && (userAnswerFocused || userAnswer.trim().length > 0)
 	);
 
 	const toggleIteration = (id: string) => {
@@ -1032,7 +1031,9 @@
 					</svg>
 				</div>
 				<div class="min-w-0">
-					<p class="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+					<p
+						class="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300"
+					>
 						Homework blocked
 					</p>
 					<h2 class="text-xl font-semibold text-foreground">
@@ -1050,7 +1051,9 @@
 						<li
 							class="p-3 bg-background/70 border border-amber-200 dark:border-amber-800 rounded-lg"
 						>
-							<p class="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1">
+							<p
+								class="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1"
+							>
 								Question {idx + 1}
 							</p>
 							<p class="text-sm text-foreground">{question}</p>

@@ -5,7 +5,7 @@ import type { ModelLane } from './types';
 const DEFAULT_TEXT_MODELS = [
 	'openai/gpt-4o-mini',
 	'x-ai/grok-4.1-fast',
-	'anthropic/claude-haiku-4.5',
+	'anthropic/claude-haiku-4.5'
 ] as const;
 
 const DEFAULT_JSON_MODELS = [

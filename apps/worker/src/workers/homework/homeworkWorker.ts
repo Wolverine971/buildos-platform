@@ -658,7 +658,11 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 		};
 	}
 
-	if (finalStatus !== 'queued' && finalStatus !== 'waiting_on_user' && finalStatus !== 'canceled') {
+	if (
+		finalStatus !== 'queued' &&
+		finalStatus !== 'waiting_on_user' &&
+		finalStatus !== 'canceled'
+	) {
 		const scratchpad = await loadScratchpadContent(run_id);
 		const report =
 			scratchpad && !run.report

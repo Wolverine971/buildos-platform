@@ -434,6 +434,12 @@
 			"exports": ["OntologyContextLoader"]
 		},
 		{
+			"file": "src/lib/services/openrouter-v2-service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["OpenRouterV2Service"]
+		},
+		{
 			"file": "src/lib/services/project-activity-log.service.ts",
 			"type": "service",
 			"components": [],

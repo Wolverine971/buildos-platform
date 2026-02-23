@@ -38,9 +38,9 @@ Observed issues in current stack (`packages/smart-llm/src/smart-llm-service.ts`,
 - OpenRouter-first architecture with explicit, documented request formats.
 - Minimal model selection strategy based on lanes, not weighted heuristics.
 - Stronger tool-calling reliability through:
-  - strict schema usage,
-  - predictable streaming assembly,
-  - optional `:exacto` variants for tool-heavy loops.
+    - strict schema usage,
+    - predictable streaming assembly,
+    - optional `:exacto` variants for tool-heavy loops.
 - Reuse existing tool definitions (`ChatToolDefinition`) where possible.
 - Keep current system untouched and enable migration by feature flag.
 
@@ -102,45 +102,49 @@ No changes to existing `packages/smart-llm/*` required for phase 1.
 export type ModelLane = 'text' | 'json' | 'tool_calling';
 
 export type OpenRouterV2Config = {
-  apiKey: string;
-  baseUrl?: string; // default: https://openrouter.ai/api/v1
-  httpReferer: string;
-  appName: string;
-  responsesApiEnabled?: boolean;
-  responsesPath?: '/responses' | '/beta/responses';
+	apiKey: string;
+	baseUrl?: string; // default: https://openrouter.ai/api/v1
+	httpReferer: string;
+	appName: string;
+	responsesApiEnabled?: boolean;
+	responsesPath?: '/responses' | '/beta/responses';
 };
 
 export type GenerateTextInput = {
-  messages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }>;
-  lane?: 'text';
-  model?: string;
-  models?: string[];
-  temperature?: number;
-  maxTokens?: number;
-  reasoning?: { effort?: 'low' | 'medium' | 'high'; max_tokens?: number; exclude?: boolean };
+	messages: Array<{
+		role: 'system' | 'user' | 'assistant' | 'tool';
+		content: string;
+		tool_call_id?: string;
+	}>;
+	lane?: 'text';
+	model?: string;
+	models?: string[];
+	temperature?: number;
+	maxTokens?: number;
+	reasoning?: { effort?: 'low' | 'medium' | 'high'; max_tokens?: number; exclude?: boolean };
 };
 
 export type GenerateJsonInput = {
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
-  lane?: 'json';
-  model?: string;
-  models?: string[];
-  jsonMode?: 'json_object' | 'json_schema';
-  jsonSchema?: Record<string, unknown>;
-  temperature?: number;
-  maxTokens?: number;
+	messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+	lane?: 'json';
+	model?: string;
+	models?: string[];
+	jsonMode?: 'json_object' | 'json_schema';
+	jsonSchema?: Record<string, unknown>;
+	temperature?: number;
+	maxTokens?: number;
 };
 
 export type StreamWithToolsInput = {
-  messages: Array<{ role: string; content: string; tool_calls?: any[]; tool_call_id?: string }>;
-  tools: any[]; // reuse current ChatToolDefinition-derived payload
-  tool_choice?: 'auto' | 'none' | 'required';
-  lane?: 'tool_calling';
-  model?: string;
-  models?: string[];
-  temperature?: number;
-  maxTokens?: number;
-  signal?: AbortSignal;
+	messages: Array<{ role: string; content: string; tool_calls?: any[]; tool_call_id?: string }>;
+	tools: any[]; // reuse current ChatToolDefinition-derived payload
+	tool_choice?: 'auto' | 'none' | 'required';
+	lane?: 'tool_calling';
+	model?: string;
+	models?: string[];
+	temperature?: number;
+	maxTokens?: number;
+	signal?: AbortSignal;
 };
 ```
 
@@ -193,8 +197,8 @@ Notes:
 - Assemble `delta.tool_calls` by `index` and `id`.
 - Append `function.arguments` fragments exactly as received.
 - Emit completed tool calls when:
-  - `finish_reason === 'tool_calls'`, or
-  - stream ends and arguments parse as valid JSON.
+    - `finish_reason === 'tool_calls'`, or
+    - stream ends and arguments parse as valid JSON.
 
 ### Validation Policy
 
@@ -240,10 +244,10 @@ Rules from docs:
 
 - Add this spec.
 - Add feature flags:
-  - `OPENROUTER_V2_ENABLED`
-  - `OPENROUTER_V2_RESPONSES_ENABLED`
-  - `OPENROUTER_V2_EXACTO_TOOLS_ENABLED`
-  - `OPENROUTER_V2_LANE_*` (optional overrides)
+    - `OPENROUTER_V2_ENABLED`
+    - `OPENROUTER_V2_RESPONSES_ENABLED`
+    - `OPENROUTER_V2_EXACTO_TOOLS_ENABLED`
+    - `OPENROUTER_V2_LANE_*` (optional overrides)
 
 ### Phase 1: Build V2 Service
 
@@ -259,11 +263,11 @@ Rules from docs:
 
 - Run V2 in shadow mode for selected sessions.
 - Compare:
-  - tool argument validity rate,
-  - tool-call completion rate,
-  - tool rounds to completion,
-  - timeout/failure rates,
-  - cost/latency.
+    - tool argument validity rate,
+    - tool-call completion rate,
+    - tool rounds to completion,
+    - timeout/failure rates,
+    - cost/latency.
 
 ### Phase 4: Default Switch
 
@@ -306,4 +310,3 @@ OpenRouter docs and pages used for this spec:
 - https://openrouter.ai/docs/features/provider-routing
 - https://openrouter.ai/docs/api-reference/parameters
 - https://openrouter.ai/rankings
-

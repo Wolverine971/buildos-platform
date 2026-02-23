@@ -1,9 +1,7 @@
+// apps/web/src/lib/services/ontology/versioning.service.test.ts
 import { describe, expect, it } from 'vitest';
 
-import {
-	createOrMergeDocumentVersion,
-	type DocumentSnapshot
-} from './versioning.service';
+import { createOrMergeDocumentVersion, type DocumentSnapshot } from './versioning.service';
 
 type VersioningState = {
 	latestVersion: Record<string, unknown> | null;
@@ -45,7 +43,10 @@ function createSupabaseMock(state: VersioningState) {
 						return { data: state.mergeResult ?? null, error: state.mergeError ?? null };
 					}
 					if (mode === 'insert') {
-						return { data: state.insertResult ?? null, error: state.insertError ?? null };
+						return {
+							data: state.insertResult ?? null,
+							error: state.insertError ?? null
+						};
 					}
 					return { data: null, error: null };
 				}

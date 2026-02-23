@@ -21,6 +21,65 @@ type NotificationFeedRow = NotificationDeliveryRow & {
 	feed_kind: 'delivery' | 'activity_event';
 };
 
+interface ProjectBatchRow {
+	id: string;
+	project_id: string;
+	event_count: number;
+	action_counts: Record<string, number> | null;
+	actor_counts: Record<string, number> | null;
+	window_start: string;
+	window_end: string;
+	flush_after: string;
+	latest_event_at: string | null;
+	status: 'pending' | 'processing' | 'failed' | 'flushed';
+	last_error: string | null;
+	created_at: string;
+}
+
+function normalizeBatchStatus(status: ProjectBatchRow['status']): 'pending' | 'failed' {
+	if (status === 'failed') return 'failed';
+	return 'pending';
+}
+
+function extractBatchIdFromEvent(
+	metadata: Record<string, unknown> | null | undefined,
+	payload: unknown
+): string | null {
+	const batchIdFromMetadata =
+		metadata && typeof metadata.batchId === 'string' ? metadata.batchId : null;
+	if (batchIdFromMetadata && batchIdFromMetadata.length > 0) {
+		return batchIdFromMetadata;
+	}
+
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return null;
+	}
+
+	const payloadObj = payload as Record<string, unknown>;
+	const directBatchId =
+		typeof payloadObj.batch_id === 'string' && payloadObj.batch_id.length > 0
+			? payloadObj.batch_id
+			: null;
+	if (directBatchId) {
+		return directBatchId;
+	}
+
+	const payloadData = payloadObj.data;
+	if (!payloadData || typeof payloadData !== 'object' || Array.isArray(payloadData)) {
+		return null;
+	}
+
+	const batchIdFromPayloadData =
+		typeof (payloadData as Record<string, unknown>).batch_id === 'string'
+			? ((payloadData as Record<string, unknown>).batch_id as string)
+			: null;
+	if (batchIdFromPayloadData && batchIdFromPayloadData.length > 0) {
+		return batchIdFromPayloadData;
+	}
+
+	return null;
+}
+
 export const load: PageServerLoad = async ({ locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) {
@@ -98,6 +157,49 @@ export const load: PageServerLoad = async ({ locals }) => {
 		);
 	}
 
+	// Fallback source: unresolved batch rows (pending/processing/failed) so shared project activity
+	// is still visible in /notifications if batch flush to notification_events fails.
+	const { data: pendingBatches, error: pendingBatchesError } = await supabase
+		.from('project_notification_batches')
+		.select(
+			'id, project_id, event_count, action_counts, actor_counts, window_start, window_end, flush_after, latest_event_at, status, last_error, created_at'
+		)
+		.eq('recipient_user_id', user.id)
+		.in('status', ['pending', 'processing', 'failed'])
+		.order('created_at', { ascending: false })
+		.limit(100);
+
+	if (pendingBatchesError) {
+		console.error(
+			'[Notifications] Failed to load project notification batches',
+			pendingBatchesError
+		);
+	}
+
+	const pendingBatchRows = (pendingBatches ?? []) as ProjectBatchRow[];
+	const pendingBatchProjectIds = Array.from(
+		new Set(pendingBatchRows.map((row) => row.project_id).filter(Boolean))
+	);
+
+	const projectNameById = new Map<string, string>();
+	if (pendingBatchProjectIds.length > 0) {
+		const { data: projects, error: projectsError } = await supabase
+			.from('onto_projects')
+			.select('id, name')
+			.in('id', pendingBatchProjectIds);
+
+		if (projectsError) {
+			console.error(
+				'[Notifications] Failed to resolve project names for batch rows',
+				projectsError
+			);
+		} else {
+			for (const project of projects ?? []) {
+				projectNameById.set(project.id, project.name || 'this project');
+			}
+		}
+	}
+
 	const syntheticRows: NotificationFeedRow[] = (projectEvents ?? [])
 		.filter((eventRow) => !deliveredEventIds.has(eventRow.id))
 		.map((eventRow) => {
@@ -141,12 +243,108 @@ export const load: PageServerLoad = async ({ locals }) => {
 			return syntheticRow as NotificationFeedRow;
 		});
 
+	const seenBatchIds = new Set<string>();
+	for (const row of deliveries) {
+		const metadata = row.notification_events?.metadata ?? null;
+		const batchId = extractBatchIdFromEvent(metadata, row.notification_events?.payload);
+		if (batchId) seenBatchIds.add(batchId);
+	}
+	for (const eventRow of projectEvents ?? []) {
+		const metadata = (eventRow.metadata ?? null) as Record<string, unknown> | null;
+		const batchId = extractBatchIdFromEvent(metadata, eventRow.payload);
+		if (batchId) seenBatchIds.add(batchId);
+	}
+
+	const batchFallbackRows: NotificationFeedRow[] = pendingBatchRows
+		.filter((batchRow) => !seenBatchIds.has(batchRow.id))
+		.map((batchRow) => {
+			const projectName = projectNameById.get(batchRow.project_id) || 'this project';
+			const eventCount = Number.isFinite(batchRow.event_count) ? batchRow.event_count : 0;
+			const title =
+				eventCount > 0
+					? `${eventCount} teammate update${eventCount === 1 ? '' : 's'} in ${projectName}`
+					: `Team updates in ${projectName}`;
+			const body =
+				batchRow.status === 'failed'
+					? `Project activity batch failed to flush. Showing staged updates from ${projectName}.`
+					: `Shared project activity is being prepared for ${projectName}.`;
+			const createdAt = batchRow.latest_event_at ?? batchRow.created_at;
+			const syntheticStatus = normalizeBatchStatus(batchRow.status);
+
+			const syntheticRow = {
+				id: `batch-${batchRow.id}`,
+				event_id: null,
+				recipient_user_id: user.id,
+				subscription_id: null,
+				channel: 'in_app',
+				channel_identifier: null,
+				payload: {
+					title,
+					body,
+					event_type: 'project.activity.batched',
+					project_id: batchRow.project_id,
+					project_name: projectName,
+					event_count: eventCount,
+					action_counts: batchRow.action_counts ?? {},
+					actor_counts: batchRow.actor_counts ?? {},
+					window_start: batchRow.window_start,
+					window_end: batchRow.window_end,
+					data: {
+						url: `/projects/${batchRow.project_id}`,
+						project_id: batchRow.project_id,
+						batch_id: batchRow.id
+					}
+				} as any,
+				// Synthetic feed entry sourced from project_notification_batches.
+				status: syntheticStatus,
+				attempts: 0,
+				max_attempts: 0,
+				sent_at: null,
+				delivered_at: null,
+				opened_at: null,
+				clicked_at: null,
+				failed_at: syntheticStatus === 'failed' ? createdAt : null,
+				last_error: batchRow.last_error,
+				external_id: null,
+				tracking_id: null,
+				metadata: {} as any,
+				correlation_id: null,
+				created_at: createdAt,
+				updated_at: createdAt,
+				feed_kind: 'delivery' as const,
+				notification_events: {
+					id: `batch-${batchRow.id}`,
+					event_type: 'project.activity.batched',
+					event_source: 'database_trigger',
+					actor_user_id: null,
+					target_user_id: user.id,
+					payload: {
+						project_id: batchRow.project_id,
+						project_name: projectName,
+						event_count: eventCount,
+						action_counts: batchRow.action_counts ?? {},
+						actor_counts: batchRow.actor_counts ?? {},
+						window_start: batchRow.window_start,
+						window_end: batchRow.window_end
+					},
+					correlation_id: null,
+					metadata: {
+						batchId: batchRow.id,
+						status: batchRow.status,
+						flushAfter: batchRow.flush_after
+					},
+					created_at: createdAt
+				}
+			};
+			return syntheticRow as NotificationFeedRow;
+		});
+
 	const deliveryRows: NotificationFeedRow[] = deliveries.map((row) => ({
 		...row,
 		feed_kind: 'delivery'
 	}));
 
-	const notifications = [...deliveryRows, ...syntheticRows]
+	const notifications = [...deliveryRows, ...syntheticRows, ...batchFallbackRows]
 		.sort((a, b) => {
 			const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
 			const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;

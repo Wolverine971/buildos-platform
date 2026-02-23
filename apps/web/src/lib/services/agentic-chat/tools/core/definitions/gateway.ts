@@ -36,11 +36,11 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						type: 'boolean',
 						description: 'Include full JSON schemas for args.'
 					}
-					},
-					required: ['path']
-				}
+				},
+				required: ['path']
 			}
-		},
+		}
+	},
 	{
 		type: 'function',
 		function: {
@@ -69,9 +69,9 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						type: 'boolean',
 						description: 'If true, return a simulated response without mutating data.'
 					}
-					},
-					required: ['op', 'args']
-				}
+				},
+				required: ['op', 'args']
 			}
 		}
+	}
 ];
