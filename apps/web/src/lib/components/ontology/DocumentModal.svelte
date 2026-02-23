@@ -552,8 +552,8 @@
 	}
 
 	/** Internal save logic shared by autosave and manual save */
-	async function performSave(options: { silent?: boolean } = {}): Promise<boolean> {
-		const { silent = false } = options;
+	async function performSave(options: { silent?: boolean; forceVersion?: boolean } = {}): Promise<boolean> {
+		const { silent = false, forceVersion = false } = options;
 
 		try {
 			saving = true;
@@ -566,6 +566,9 @@
 				description: description.trim() || null,
 				content: body
 			};
+			if (forceVersion) {
+				payload.force_version = true;
+			}
 
 			// Include expected_updated_at for conflict detection (editing existing docs only)
 			if (activeDocumentId && serverUpdatedAt) {
@@ -716,8 +719,12 @@
 
 	async function handleSave(event?: SubmitEvent) {
 		event?.preventDefault();
+		if (autosaveTimer) {
+			clearTimeout(autosaveTimer);
+			autosaveTimer = null;
+		}
 		if (!validateForm()) return;
-		await performSave({ silent: false });
+		await performSave({ silent: false, forceVersion: true });
 	}
 
 	/** Reload the document from server (used for conflict resolution) */
@@ -733,7 +740,7 @@
 		// Clear serverUpdatedAt so the next save won't include conflict check
 		serverUpdatedAt = null;
 		saveStatus = 'dirty';
-		await performSave({ silent: false });
+		await performSave({ silent: false, forceVersion: true });
 	}
 
 	async function handleDelete() {

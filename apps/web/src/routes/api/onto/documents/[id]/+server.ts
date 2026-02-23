@@ -265,8 +265,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			props,
 			parent,
 			parents,
-			connections
+			connections,
+			force_version
 		} = body as Record<string, unknown>;
+		const forceVersion = force_version === true;
 
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeDocumentStateInput(state_key);
@@ -369,7 +371,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				actorId,
 				snapshot: toDocumentSnapshot(updatedDocument),
 				previousSnapshot: toDocumentSnapshot(document),
-				changeSource: getChangeSourceFromRequest(request)
+				changeSource: getChangeSourceFromRequest(request),
+				forceCreateVersion: forceVersion
 			});
 
 			if (versionResult.status !== 'skipped') {

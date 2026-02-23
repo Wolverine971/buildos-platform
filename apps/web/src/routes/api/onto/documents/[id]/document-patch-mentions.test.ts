@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
+const createOrMergeDocumentVersionMock = vi.fn(async () => ({ status: 'skipped' as const }));
+const toDocumentSnapshotMock = vi.fn(() => ({}));
 
 vi.mock('$lib/services/ontology/doc-structure.service', () => ({
 	removeDocumentFromTree: vi.fn(),
@@ -26,8 +28,8 @@ vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
 }));
 
 vi.mock('$lib/services/ontology/versioning.service', () => ({
-	createOrMergeDocumentVersion: vi.fn(async () => ({ status: 'skipped' })),
-	toDocumentSnapshot: vi.fn(() => ({}))
+	createOrMergeDocumentVersion: createOrMergeDocumentVersionMock,
+	toDocumentSnapshot: toDocumentSnapshotMock
 }));
 
 vi.mock('$lib/server/entity-mention-notification.service', () => ({
@@ -172,6 +174,36 @@ describe('PATCH /api/onto/documents/[id] mention notifications', () => {
 				entityTitle: 'Document title',
 				actorUserId: 'user-actor',
 				mentionedUserIds: ['user-mentioned']
+			})
+		);
+	});
+
+	it('passes forceCreateVersion when force_version is requested', async () => {
+		const { PATCH } = await import('./+server');
+		const response = await PATCH({
+			params: { id: 'doc-1' },
+			request: new Request('http://localhost/api/onto/documents/doc-1', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					title: 'Document title',
+					force_version: true
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(createOrMergeDocumentVersionMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				documentId: 'doc-1',
+				actorId: 'actor-current',
+				forceCreateVersion: true
 			})
 		);
 	});

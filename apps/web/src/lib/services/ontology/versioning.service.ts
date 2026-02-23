@@ -51,6 +51,7 @@ type CreateOrMergeVersionParams = {
 	mergeWindowMinutes?: number;
 	changeSource?: string | null;
 	piiRedacted?: boolean;
+	forceCreateVersion?: boolean;
 };
 
 type VersioningResult =
@@ -111,14 +112,15 @@ export async function createOrMergeDocumentVersion(
 		previousSnapshot,
 		changeSource,
 		mergeWindowMinutes = DEFAULT_DOCUMENT_VERSION_WINDOW_MINUTES,
-		piiRedacted
+		piiRedacted,
+		forceCreateVersion = false
 	} = params;
 
 	const now = new Date();
 	const nowIso = now.toISOString();
 	const snapshotHash = hashSnapshot(snapshot);
 
-	if (previousSnapshot && hashSnapshot(previousSnapshot) === snapshotHash) {
+	if (!forceCreateVersion && previousSnapshot && hashSnapshot(previousSnapshot) === snapshotHash) {
 		return { status: 'skipped', reason: 'no_change' };
 	}
 
@@ -147,8 +149,8 @@ export async function createOrMergeDocumentVersion(
 		? now.getTime() - latestWindowEndMs <= mergeWindowMs
 		: false;
 
-	// Merge when same actor within window
-	if (latestVersionRow && latestVersionRow.created_by === actorId && withinWindow) {
+	// Merge when same actor within window, unless caller explicitly forces a new version.
+	if (!forceCreateVersion && latestVersionRow && latestVersionRow.created_by === actorId && withinWindow) {
 		const updatedProps: DocumentVersionProps = {
 			...latestProps,
 			snapshot,
