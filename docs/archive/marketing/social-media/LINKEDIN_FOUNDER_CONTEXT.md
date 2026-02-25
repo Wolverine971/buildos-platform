@@ -1,4 +1,4 @@
-<!-- docs/marketing/social-media/LINKEDIN_FOUNDER_CONTEXT.md -->
+<!-- docs/archive/marketing/social-media/LINKEDIN_FOUNDER_CONTEXT.md -->
 
 # LinkedIn Founder Context (Deprecated)
 

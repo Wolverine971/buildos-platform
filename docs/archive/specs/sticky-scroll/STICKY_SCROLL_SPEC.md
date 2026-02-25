@@ -1,4 +1,4 @@
-<!-- docs/specs/sticky-scroll/STICKY_SCROLL_SPEC.md -->
+<!-- docs/archive/specs/sticky-scroll/STICKY_SCROLL_SPEC.md -->
 
 # Sticky Scroll for Markdown Editor - Implementation Spec
 

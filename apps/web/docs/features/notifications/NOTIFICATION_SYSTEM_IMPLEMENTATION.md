@@ -10,8 +10,8 @@
 
 - **[Documentation Map](./NOTIFICATION_SYSTEM_DOCS_MAP.md)** - Complete guide to all notification docs and how they interlink
 - [Original Specification](./generic-stackable-notification-system-spec.md) - Full technical specification and design decisions
-- [Component Quick Reference](./apps/web/src/lib/components/notifications/README.md) - Fast lookups and code examples
-- [BuildOS CLAUDE.md](./apps/web/CLAUDE.md) - Project-wide development guidelines
+- [Component Quick Reference](../../../src/lib/components/notifications/README.md) - Fast lookups and code examples
+- [BuildOS CLAUDE.md](../../../../../CLAUDE.md) - Project-wide development guidelines
 - [Component Documentation](#file-structure) - See below for file locations
 
 ---

@@ -8,7 +8,7 @@ This directory contains comprehensive documentation for all BuildOS web applicat
 
 ### 🧠 Brain Dump System (10 docs)
 
-**Entry Point**: [/brain-dump/README.md](brain-dump/README.md)
+**Entry Point**: [/braindump-context/README.md](braindump-context/README.md)
 
 AI-powered stream-of-consciousness input processing:
 
@@ -131,7 +131,7 @@ Time block scheduling system.
 
 | Feature          | Status      | Docs | Entry Point                                                       |
 | ---------------- | ----------- | ---- | ----------------------------------------------------------------- |
-| Brain Dump       | ✅ Complete | 10   | [README](brain-dump/README.md)                                    |
+| Brain Dump       | ✅ Complete | 10   | [README](braindump-context/README.md)                             |
 | Calendar         | ✅ Complete | 7    | [README](calendar-integration/README.md)                          |
 | Notifications    | ✅ Complete | 6    | [MAP](notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md) ⭐           |
 | Admin Dashboard  | ✅ Complete | 1    | [README](admin-dashboard/README.md)                               |
@@ -145,7 +145,7 @@ Time block scheduling system.
 ```
 /features/
 ├── README.md (this file)
-├── /brain-dump/           (10 docs)
+├── /braindump-context/    (10 docs)
 ├── /calendar-integration/ (7 docs)
 ├── /notifications/        (6 docs)
 ├── /admin-dashboard/      (1 doc)

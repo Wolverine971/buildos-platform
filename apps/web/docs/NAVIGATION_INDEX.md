@@ -34,7 +34,7 @@
 - **Integrations**: [`/features/integrations/README.md`](./features/integrations/README.md) - External integration capabilities
 - **Notifications**: [`/features/notifications/README.md`](./features/notifications/README.md) - Notification system
 - **Onboarding**: [`/features/onboarding/README.md`](./features/onboarding/README.md) - User onboarding flow
-- **Onboarding V2**: [`/features/onboarding-v2/README.md`](./features/onboarding-v2/README.md) - Updated onboarding flow
+- **Onboarding V2**: [`/features/onboarding-v2/README.md`](./features/onboarding-v2/README.md) - Legacy archive
 - **Phase Generation**: [`/features/phase-generation/README.md`](./features/phase-generation/README.md) - Procedural phase generation
 - **Project Activity Logging**: [`/features/project-activity-logging/README.md`](./features/project-activity-logging/README.md) - Activity tracking and next steps
 - **Project Export**: [`/features/project-export/README.md`](./features/project-export/README.md) - Browser-native PDF export

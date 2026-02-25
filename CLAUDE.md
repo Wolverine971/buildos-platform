@@ -1,395 +1,150 @@
 <!-- CLAUDE.md -->
 
-# CLAUDE.md - BuildOS Platform (Turborepo Monorepo)
+# CLAUDE.md
 
-⚠️ **IMPORTANT**: This is a BuildOS platform codebase. ALWAYS use `pnpm` (never `npm`). The project uses Svelte 5 with new runes syntax (`$state`, `$derived`, `$effect`) - not the old reactive syntax.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 🎯 Quick Start
-
-**This is a monorepo-level guide.** For detailed app-specific documentation:
-
-- **Web App (SvelteKit)**: See `/apps/web/CLAUDE.md`
-- **Worker Service (Node.js)**: See `/apps/worker/CLAUDE.md`
-
-## 🏗️ Monorepo Structure
-
-BuildOS is a **Turborepo monorepo** with two independently deployed applications and shared packages.
-
-```
-buildos-platform/
-├── /apps/
-│   ├── /web/              → Vercel (SvelteKit + Svelte 5)
-│   └── /worker/           → Railway (Node.js + Express)
-├── /packages/
-│   ├── /shared-types/     → Shared TypeScript types
-│   ├── /shared-utils/     → Shared utilities
-│   ├── /smart-llm/        → LLM service abstraction
-│   ├── /supabase-client/  → Database client
-│   └── /twilio-service/   → SMS service
-└── /docs/                 → Cross-cutting documentation
-```
-
-## 📚 Documentation Navigation
-
-### Essential Entry Points
-
-| When You Want To...               | Start Here                                                  |
-| --------------------------------- | ----------------------------------------------------------- |
-| **Find web app documentation** ⭐ | `/apps/web/docs/NAVIGATION_INDEX.md` (complete navigation)  |
-| **Understand the system**         | `/docs/README.md` (navigation hub)                          |
-| **See web-worker communication**  | `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` ⭐ |
-| **See architecture & deployment** | `/docs/DEPLOYMENT_TOPOLOGY.md`                              |
-| **Understand queue system**       | `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`          |
-| **Find a specific task**          | `/docs/TASK_INDEX.md` (task-based index)                    |
-| **Work on web features**          | `/apps/web/docs/README.md` + `/apps/web/CLAUDE.md`          |
-| **Work on background jobs**       | `/apps/worker/docs/README.md` + `/apps/worker/CLAUDE.md`    |
-| **Learn monorepo workflows**      | `/docs/MONOREPO_GUIDE.md`                                   |
-
-### Documentation by Scope
-
-| Scope              | Location             | Contains                                |
-| ------------------ | -------------------- | --------------------------------------- |
-| **Monorepo-wide**  | `/docs/`             | Architecture, deployment, business docs |
-| **Web App**        | `/apps/web/docs/`    | Features, components, API, operations   |
-| **Worker Service** | `/apps/worker/docs/` | Daily briefs, queue system, scheduler   |
-| **Packages**       | `/packages/*/docs/`  | Package usage and implementation        |
-
-### Feature Documentation
-
-| Feature                 | Documentation Path                              |
-| ----------------------- | ----------------------------------------------- |
-| **Ontology System** ⭐  | `/apps/web/docs/features/ontology/`             |
-| **Agentic Chat** ⭐     | `/apps/web/docs/features/agentic-chat/`         |
-| Brain Dump System       | `/apps/web/docs/features/braindump-context/`    |
-| Calendar Integration    | `/apps/web/docs/features/calendar-integration/` |
-| Notification System     | `/apps/web/docs/features/notifications/`        |
-| Onboarding Flow         | `/apps/web/docs/features/onboarding/`           |
-| Daily Briefs (Worker)   | `/apps/worker/docs/features/daily-briefs/`      |
-| Homework System         | `/docs/specs/homework/`                         |
-| Tree Agent System       | `/docs/specs/tree-agent/`                       |
-| **Modal Components** ⭐ | `/apps/web/docs/technical/components/modals/`   |
-
-### Architecture & Deployment
-
-| Task                    | Documentation Path                                          |
-| ----------------------- | ----------------------------------------------------------- |
-| **System Architecture** | `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` ⭐ |
-| Queue System Flow       | `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`          |
-| Deployment Topology     | `/docs/DEPLOYMENT_TOPOLOGY.md`                              |
-| Web → Vercel            | `/apps/web/docs/operations/deployment/`                     |
-| Worker → Railway        | `/apps/worker/docs/README.md`                               |
-| Environment Variables   | `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`  |
-| Migrations              | `/apps/web/docs/migrations/`                                |
-
-## Essential Commands
-
-### Development
+## Commands
 
 ```bash
-# Install dependencies (always use pnpm, never npm)
+# Install dependencies (ALWAYS pnpm, NEVER npm)
 pnpm install
 
-# Start all apps in development mode
-pnpm dev
+# Development
+pnpm dev                          # All apps via Turborepo
+pnpm dev --filter=web             # SvelteKit web app only (localhost:5173)
+pnpm dev --filter=worker          # Worker service only (localhost:3001)
 
-# Start specific app
-pnpm dev --filter=web      # SvelteKit web app
-pnpm dev --filter=worker   # Background worker service
+# Testing
+pnpm test                         # All tests across monorepo
+pnpm test:run                     # Run once without watch
+cd apps/web && pnpm test path/to/file.test.ts   # Single test file
+cd apps/web && pnpm test:llm      # LLM prompt tests (uses real API, costs money)
+cd apps/worker && pnpm test:run   # Worker tests once
+cd apps/worker && pnpm test:scheduler  # Scheduler-specific tests
 
-# Fast development modes (web app)
-cd apps/web && pnpm dev:split    # Dev server with type checking in parallel (recommended)
-cd apps/web && pnpm dev:fast     # Quick dev without type checking
+# Code quality
+pnpm typecheck                    # Type checking all apps
+pnpm lint                         # Lint all apps
+pnpm lint:fix                     # Auto-fix lint issues
+pnpm format                       # Prettier formatting
+pnpm pre-push                     # Full validation: typecheck + test + lint + build
+
+# Building
+pnpm build                        # Build all apps
+pnpm build --filter=web           # Build web only
+pnpm build --filter=worker        # Build worker only
+
+# Type/schema generation
+pnpm gen:types                    # Generate Supabase types
+pnpm gen:schema                   # Extract database schema
+pnpm gen:all                      # Full regeneration pipeline (types + schema + web assets)
 ```
 
-### Testing
+## Architecture
 
-```bash
-# Run all tests across monorepo
-pnpm test
-pnpm test:run         # Run once without watch mode
+**BuildOS** is an AI-powered productivity platform. Users write stream-of-consciousness "brain dumps" and AI extracts projects, tasks, and context. The platform includes daily brief generation, calendar integration, ontology-driven project management, and an agentic chat system.
 
-# Web app specific tests
-cd apps/web
-pnpm test             # Unit tests
-pnpm test:llm         # LLM prompt tests (uses real OpenAI API - costs money)
-pnpm test:watch       # Watch mode
+### Monorepo Layout (Turborepo + pnpm workspaces)
 
-# Worker tests
-cd apps/worker
-pnpm test
-pnpm test:run         # Run once without watch mode
-pnpm test:scheduler   # Scheduler-specific tests
-```
+- **`apps/web`** — SvelteKit 2 + Svelte 5 frontend, deployed to **Vercel** (nodejs22.x runtime)
+- **`apps/worker`** — Node.js + Express background worker, deployed to **Railway**
+- **`packages/shared-types`** — TypeScript types (database schema, queue types, API types)
+- **`packages/shared-utils`** — Logging and metrics utilities
+- **`packages/smart-llm`** — LLM abstraction layer (OpenRouter primary, OpenAI/Anthropic fallback, Moonshot for Kimi models)
+- **`packages/supabase-client`** — Shared Supabase client configuration
+- **`packages/twilio-service`** — SMS/Twilio integration
 
-### Code Quality
+### Web App (`apps/web`)
 
-```bash
-# Type checking
-pnpm typecheck
+SvelteKit app with path aliases: `$components` → `src/lib/components`, `$ui` → `src/lib/ui`, `$utils` → `src/lib/utils`.
 
-# Linting and formatting
-pnpm lint
-pnpm lint:fix         # Auto-fix issues
-pnpm format           # Prettier formatting
+**Key directories:**
 
-# Pre-push validation (runs typecheck, test, lint, and build)
-pnpm pre-push
-```
+- `src/routes/api/` — ~45 API route groups (REST endpoints)
+- `src/routes/(public)/` — Public-facing pages
+- `src/lib/services/` — Business logic services (brain dump, calendar, chat, dashboard, etc.)
+- `src/lib/server/` — Server-only modules (billing, braindump processing, onboarding, OCR, ontology classification)
+- `src/lib/stores/` — Svelte stores (dashboard, navigation, notifications, brain dump, etc.)
+- `src/lib/components/` — UI components organized by feature domain
+- `src/lib/config/` — Feature configuration (calendar colors, billing, forms, onboarding, trial)
+- `src/lib/types/` — App-specific TypeScript types
 
-### Build & Deploy
+**Auth flow:** Supabase Auth + Google OAuth. `hooks.server.ts` creates the Supabase client per-request, validates JWT via `safeGetSession()`, and attaches `user`/`session`/`supabase` to `event.locals`. Consumption billing guards block mutations for frozen accounts (402 response).
 
-```bash
-# Build all apps
-pnpm build
+**Server timing:** `hooks.server.ts` instruments request performance via `Server-Timing` headers. Set `PERF_TIMING=true` and `PERF_LOG_SLOW=true` in env to enable.
 
-# Build specific app
-pnpm build --filter=web
-pnpm build --filter=worker
+### Worker (`apps/worker`)
 
-# Clean build artifacts
-pnpm clean
-```
+Express server with three main components:
 
-## 🎨 What is BuildOS?
+- **API Server** (`src/index.ts`) — REST endpoints for job management
+- **Worker** (`src/worker.ts`) — Supabase queue consumer processing jobs (briefs, braindumps, notifications, chat classification, voice transcription, OCR, homework, ontology, tree agent, project icons, SMS)
+- **Scheduler** (`src/scheduler.ts`) — Cron-based job scheduling with timezone-aware brief generation and engagement backoff
 
-BuildOS is an AI-powered productivity platform that transforms unstructured thoughts into actionable plans. It's designed for anyone struggling with disorganization who needs to get organized—from ADHD minds to overwhelmed professionals.
+**Queue system:** Redis-free, uses Supabase RPCs for atomic job claiming (`add_queue_job`, `claim_pending_jobs`, `complete_queue_job`, `fail_queue_job`). The `JobAdapter` pattern bridges the old BullMQ interface to the Supabase queue.
 
-**Core Innovation:** Brain Dump System - users write stream-of-consciousness thoughts, and AI automatically extracts projects, tasks, and context.
+### LLM Integration (`packages/smart-llm`)
 
-### Tech Stack
+Routes through **OpenRouter** as the primary provider with model selection based on task complexity (speed/smartness/cost scoring). Models are defined in `model-config.ts` with JSON and text profiles. Supports streaming, tool calling, and JSON mode. Falls back to direct OpenAI/Anthropic. Optional Moonshot direct routing for Kimi models.
 
-| Layer          | Technology                                   |
-| -------------- | -------------------------------------------- |
-| **Monorepo**   | Turborepo + pnpm workspaces                  |
-| **Web App**    | SvelteKit 2 + Svelte 5 (runes syntax)        |
-| **Worker**     | Node.js + Express + BullMQ (Supabase queue)  |
-| **Database**   | Supabase (PostgreSQL + RLS)                  |
-| **AI/LLM**     | OpenAI API with streaming (DeepSeek primary) |
-| **Auth**       | Supabase Auth + Google OAuth                 |
-| **Deployment** | Vercel (web) + Railway (worker)              |
+### Database
 
-**Detailed Architecture:** See `/docs/DEPLOYMENT_TOPOLOGY.md`
+**Supabase (PostgreSQL + RLS).** Generated types live in `packages/shared-types/src/database.types.ts`. The full OpenAPI spec is at `supabase.openapi.json`. Migrations are in `supabase/migrations/`.
 
-## 💡 Key Conventions
+API routes access Supabase via `locals.supabase` (user-scoped, respects RLS). Admin operations use `createAdminSupabaseClient()` from `$lib/supabase/admin`.
 
-### Svelte 5 Runes (Critical!)
+## Key Conventions
 
-```javascript
-// ✅ Use NEW runes syntax:
+### Svelte 5 Runes
+
+Always use Svelte 5 runes syntax. Never use the old reactive syntax.
+
+```svelte
 let count = $state(0);
 let doubled = $derived(count * 2);
-$effect(() => {
-	/* side effects */
-});
-
-// ❌ AVOID old reactive syntax:
-// let count = 0;
-// $: doubled = count * 2;
+$effect(() => { /* side effects */ });
 ```
 
-### Package Manager
+### API Response Pattern
 
-**ALWAYS use `pnpm`, NEVER use `npm`.** This is critical for monorepo workspace integrity.
+All JSON API endpoints must use `ApiResponse` from `$lib/utils/api-response`:
 
-### Code Patterns & Architecture
+```typescript
+import { ApiResponse, requireAuth } from '$lib/utils/api-response';
 
-For detailed patterns, see:
+// Success
+return ApiResponse.success(data);
 
-- **Web App Patterns:** `/apps/web/CLAUDE.md` (routes, components, stores, services)
-- **Worker Patterns:** `/apps/worker/CLAUDE.md` (jobs, queue, scheduler)
-- **Web Architecture:** `/apps/web/docs/technical/architecture/`
-- **API Documentation:** `/apps/web/docs/technical/api/`
+// Auth check
+const auth = await requireAuth(locals);
+if ('error' in auth) return auth.error;
 
-### UI/Design & API Patterns (Web App)
-
-**Critical requirements for web development:**
-
-#### UI Design Requirements
-
-- **Responsive Design:** ALL components must work on mobile and desktop
-- **Dark Mode:** Every component requires light/dark mode support using semantic tokens
-- **Design System:** **ALWAYS consult:** `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`
-- **Design Philosophy:** Inkprint - a printmaking-inspired aesthetic with semantic textures and warm accent colors
-- **Key Patterns:**
-    - Use semantic color tokens: `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-muted`, `bg-accent`
-    - Use Inkprint shadows: `shadow-ink`, `shadow-ink-strong`
-    - Use texture classes: `tx tx-frame tx-weak`, `tx tx-grain tx-weak`, `tx tx-bloom tx-weak`
-    - Use `pressable` class for interactive elements
-
-#### API Patterns
-
-- **Supabase Access:** Use `locals.supabase` in API routes (`+server.ts`)
-- **Admin Operations:** Import via `createAdminSupabaseClient` from `$lib/supabase/admin`
-- **Response Format:** Use `ApiResponse` wrapper from `$lib/utils/api-response` for JSON endpoints
-  Protocol endpoints (SSE streams, file/binary downloads, tracking pixels/redirects, MCP/JSON-RPC)
-  can return protocol-native responses.
-
-**See `/apps/web/CLAUDE.md` for complete UI/Design and API patterns with code examples.**
-
-## 🎯 Context for LLM Agents
-
-### Determining Scope
-
-**Ask yourself:** "Which app does this affect?"
-
-- **Web-only** (UI, API routes, frontend features) → `/apps/web/` → See `/apps/web/CLAUDE.md`
-- **Worker-only** (background jobs, email, cron) → `/apps/worker/` → See `/apps/worker/CLAUDE.md`
-- **Both apps** (architecture, database, shared types) → `/docs/` or `/packages/`
-- **Package** (shared code) → `/packages/[package-name]/`
-
-### Feature-Specific Guidance
-
-| Feature/System           | Where to Learn More                                            |
-| ------------------------ | -------------------------------------------------------------- |
-| **Agentic Chat**         | `/apps/web/docs/features/agentic-chat/README.md`               |
-| **Brain Dump Flow**      | `/apps/web/docs/features/braindump-context/README.md`          |
-| **Calendar Integration** | `/apps/web/docs/features/calendar-integration/README.md`       |
-| **Notification System**  | `/apps/web/docs/features/notifications/README.md`              |
-| **Daily Briefs**         | `/apps/worker/docs/features/daily-briefs/README.md`            |
-| **Queue System**         | `/apps/worker/CLAUDE.md` (Worker Service Architecture section) |
-| **Database Schema**      | `/apps/web/docs/technical/database/schema.md`                  |
-
-## 🧪 Testing & Quality
-
-```bash
-# Run all tests
-pnpm test
-
-# LLM tests (costs money - uses real OpenAI API)
-cd apps/web && pnpm test:llm
-
-# Pre-push validation (typecheck + test + lint + build)
-pnpm pre-push
+// Errors
+return ApiResponse.badRequest('message');
+return ApiResponse.unauthorized();
+return ApiResponse.notFound('Resource');
+return ApiResponse.databaseError(error);
 ```
 
-**Testing Documentation:**
+Protocol endpoints (SSE streams, file downloads, tracking pixels, webhooks) may return raw responses.
 
-- **Web Testing:** `/apps/web/docs/technical/testing/`
-- **Testing Checklist:** `/apps/web/docs/technical/testing/TESTING_CHECKLIST.md`
+### Design System: Inkprint
 
-## ⚙️ Environment Configuration
+The current design system is **Inkprint** (see `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`). Uses synesthetic texture-based design language inspired by halftone printing and field notes. Key tokens: `bg-card`, `text-foreground`, `shadow-ink`, texture classes like `tx-bloom`, `tx-grain`. All components must support light and dark modes with `dark:` prefix.
 
-See **complete environment setup:**
+### Formatting
 
-- `/docs/operations/environment/DEPLOYMENT_ENV_CHECKLIST.md`
+Prettier config: tabs, single quotes, no trailing commas, 100 char print width. Svelte files use the `svelte` parser via `prettier-plugin-svelte`.
 
-**Essential variables** (from `.env.example`):
+### Environment Variables
 
-```bash
-# Supabase (required)
-PUBLIC_SUPABASE_URL=
-PUBLIC_SUPABASE_ANON_KEY=
-PRIVATE_SUPABASE_SERVICE_KEY=
+Prefix conventions: `PUBLIC_` for client-accessible, `PRIVATE_` for server-only. See `.env.example` for the complete list. Key groups: Supabase, AI/LLM (OpenRouter primary), Google OAuth, Stripe (optional via `PRIVATE_ENABLE_STRIPE`), Worker communication, Twilio/SMS.
 
-# OpenAI (required)
-OPENAI_API_KEY=
+## Documentation
 
-# Google OAuth (required)
-PUBLIC_GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-```
-
-## 📝 Development Workflow
-
-### Before Committing
-
-```bash
-pnpm lint:fix       # Auto-fix formatting
-pnpm typecheck      # Check types
-pnpm test:run       # Run tests
-```
-
-### Before Pushing
-
-```bash
-pnpm pre-push       # Complete validation (typecheck + test + lint + build)
-```
-
-### Documentation Updates (Critical)
-
-**After making code changes, AI agents and developers MUST update documentation:**
-
-- Update feature docs in appropriate `/apps/*/docs/features/` directory
-- Update component READMEs for UI changes
-- Update API documentation for endpoint changes
-- Mark progress with completion status and known issues
-- Document key decisions and implementation patterns
-
-**Why:** Creates audit trail, prevents duplicate work, preserves knowledge for future developers and AI agents.
-
-**See `/apps/web/CLAUDE.md` Development Workflow section for detailed documentation update patterns.**
-
-### Working with Turborepo
-
-- Use `--filter` flag for specific apps: `pnpm build --filter=web`
-- Force bypass cache: `pnpm build --force`
-- See `/docs/MONOREPO_GUIDE.md` for complete workflows
-
-## 📝 Documentation Standards
-
-**IMPORTANT:** When creating documentation, follow these rules:
-
-### Where to Put Documentation
-
-- **Research/Investigation:** `/thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md`
-    - Format: Timestamped research docs with YAML frontmatter
-    - See: `.claude/commands/research_codebase_generic.md`
-
-- **Architecture (System-wide):** `/docs/architecture/`
-    - ADRs: `/docs/architecture/decisions/ADR-NNN-topic.md`
-    - Diagrams: `/docs/architecture/diagrams/`
-
-- **Web App Docs:** `/apps/web/docs/features/[feature]/`
-    - Feature specs, component docs, API docs, operations
-
-- **Worker Docs:** `/apps/worker/docs/features/[feature]/`
-    - Job specs, queue system, scheduler, operations
-
-- **Package Docs:** `/packages/[package]/docs/`
-    - Usage guides, implementation details
-
-**Complete Guidelines:** `/docs/DOCUMENTATION_GUIDELINES.md`
-
-### ❌ Do NOT Create
-
-- Random files at root level (`architecture.md`, `notes.md`, `summary.md`)
-- Docs outside the proper structure
-- Research docs without timestamps or frontmatter
-
-## 🔗 Additional Resources
-
-### App-Specific Documentation
-
-- **Web App (SvelteKit):** `/apps/web/CLAUDE.md` - Complete web development guide
-- **Worker Service (Node.js):** `/apps/worker/CLAUDE.md` - Complete worker development guide
-
-### Cross-Cutting Documentation
-
-- **Documentation Guidelines:** `/docs/DOCUMENTATION_GUIDELINES.md` ⭐
-- **Web-Worker Architecture:** `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` ⭐
-- **Queue System Flow:** `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`
-- **Deployment Topology:** `/docs/DEPLOYMENT_TOPOLOGY.md`
-- **Monorepo Workflows:** `/docs/MONOREPO_GUIDE.md`
-- **Task-Based Navigation:** `/docs/TASK_INDEX.md`
-- **Documentation Hub:** `/docs/README.md`
-
-### Integration Documentation
-
-- **Twilio/SMS Integration:** `/docs/integrations/twilio/README.md`
-- **Supabase Client:** `/packages/supabase-client/`
-- **Stripe Integration:** `/docs/integrations/stripe/`
-
-### Research Library
-
-- **Research Library:** `/research-library/` - Collected reference material (transcripts, blogs, papers, design thinking)
-
-### Technical Deep Dives
-
-- **Web Technical Docs:** `/apps/web/docs/technical/`
-- **Database Schema:** `/apps/web/docs/technical/database/`
-- **API Reference:** `/apps/web/docs/technical/api/`
-- **Deployment Runbooks:** `/apps/web/docs/technical/deployment/runbooks/`
-
----
-
-**📘 This is a high-level navigation guide. For detailed implementation patterns, code conventions, and architectural decisions, see the app-specific CLAUDE.md files and documentation folders listed above.**
+- `apps/web/docs/` — Web app feature docs, technical architecture, components, API
+- `apps/worker/docs/` — Worker features (daily briefs, queue system)
+- `docs/` — Cross-cutting docs (architecture diagrams, integrations, operations)
+- `apps/web/docs/technical/architecture/` — Architecture decisions (ADRs), system flows
+- `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` — Design system reference

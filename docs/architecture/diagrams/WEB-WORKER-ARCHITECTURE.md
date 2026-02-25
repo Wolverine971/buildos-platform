@@ -1004,7 +1004,7 @@ export class JobAdapter<T = any> {
 **Features:**
 
 - [Daily Briefs](/apps/worker/docs/features/daily-briefs/README.md)
-- [Brain Dump System](/apps/web/docs/features/brain-dump/README.md)
+- [Brain Dump System](/apps/web/docs/features/braindump-context/README.md)
 - [Calendar Integration](/apps/web/docs/features/calendar-integration/README.md)
 - [Notification System](/apps/web/docs/features/notifications/README.md)
 

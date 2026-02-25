@@ -206,7 +206,7 @@ Tests are located in:
 
 - [Original Spec](../../../../thoughts/shared/ideas/conversational-project-agent.md)
 - [Implementation Progress](../../../../thoughts/shared/research/2025-10-28_conversational-agent-implementation-progress.md)
-- [Brain Dump System](../brain-dump/README.md)
+- [Brain Dump System](../braindump-context/README.md)
 - [Database Schema](../../technical/database/schema.md)
 
 ## Future Enhancements

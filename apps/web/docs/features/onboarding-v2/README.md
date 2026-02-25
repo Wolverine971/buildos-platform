@@ -60,5 +60,6 @@ If you need prior implementation details for audits or migration history, see:
 
 - `apps/web/docs/features/onboarding/ONBOARDING_V2_UPDATE_ASSESSMENT.md`
 - `apps/web/docs/features/onboarding/ONBOARDING_V2_UPDATED_SPEC.md`
+- `docs/archive/apps-web/docs/features/onboarding-v2/calendar-connection-cta-spec.md`
 
 These are historical docs and may describe components/services that no longer exist in the runtime flow.

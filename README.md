@@ -110,12 +110,13 @@ rg -l "return json\\(" apps/web/src/routes/api --glob '+server.ts'
 - After making changes, update relevant docs in `/apps/*/docs/`
 - Mark progress and document key decisions
 
-**See `/CLAUDE.md` and `/apps/web/CLAUDE.md` for complete guidelines.**
+**See `/CLAUDE.md` for complete guidelines.**
 
 ## Project Documentation
 
 - [Web App Documentation](./apps/web/README.md)
 - [Worker Documentation](./apps/worker/README.md)
 - [Complete Development Guide](./CLAUDE.md) ⭐
-- [Architecture Overview](./docs/ARCHITECTURE.md)
-- [Migration Guide](./MIGRATION_GUIDE.md)
+- [Monorepo Docs Hub](./docs/README.md)
+- [Architecture Overview](./docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md)
+- [Active Migration Plan](./docs/migrations/active/ONTOLOGY_SCHEMA_MIGRATION_PLAN.md)

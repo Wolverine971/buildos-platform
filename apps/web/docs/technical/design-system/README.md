@@ -48,13 +48,13 @@ When building or updating components:
 
 The following documents describe the **previous** design system and are retained for historical reference only. **Do NOT use these patterns for new development.**
 
-| Document                                                                 | Status            | Notes                              |
-| ------------------------------------------------------------------------ | ----------------- | ---------------------------------- |
-| [SCRATCHPAD_OPS_SPEC.md](./SCRATCHPAD_OPS_SPEC.md)                       | ❌ **DEPRECATED** | Old industrial-creative aesthetic  |
-| [BUILDOS_STYLE_GUIDE.md](../components/BUILDOS_STYLE_GUIDE.md)           | ❌ **DEPRECATED** | Old Apple-inspired gradients       |
-| [DITHERING_MIGRATION_PLAN.md](../components/DITHERING_MIGRATION_PLAN.md) | ❌ **DEPRECATED** | Dithering is no longer used        |
-| [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)                     | ⚠️ **Outdated**   | May contain useful patterns        |
-| [DARK_MODE.md](./DARK_MODE.md)                                           | ⚠️ **Outdated**   | Dark mode now uses semantic tokens |
+| Document                                                                                                           | Status            | Notes                              |
+| ------------------------------------------------------------------------------------------------------------------ | ----------------- | ---------------------------------- |
+| [SCRATCHPAD_OPS_SPEC.md](../../../../../docs/archive/apps-web/docs/technical/design-system/SCRATCHPAD_OPS_SPEC.md) | ❌ **ARCHIVED**   | Old industrial-creative aesthetic  |
+| [BUILDOS_STYLE_GUIDE.md](../components/BUILDOS_STYLE_GUIDE.md)                                                     | ❌ **DEPRECATED** | Old Apple-inspired gradients       |
+| [DITHERING_MIGRATION_PLAN.md](../components/DITHERING_MIGRATION_PLAN.md)                                           | ❌ **DEPRECATED** | Dithering is no longer used        |
+| [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md)                                                               | ⚠️ **Outdated**   | May contain useful patterns        |
+| [DARK_MODE.md](./DARK_MODE.md)                                                                                     | ⚠️ **Outdated**   | Dark mode now uses semantic tokens |
 
 ### What NOT to Use
 

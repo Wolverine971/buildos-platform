@@ -1,4 +1,4 @@
-<!-- apps/web/docs/technical/design-system/SCRATCHPAD_OPS_SPEC.md -->
+<!-- docs/archive/apps-web/docs/technical/design-system/SCRATCHPAD_OPS_SPEC.md -->
 
 > # ⚠️ DEPRECATED - DO NOT USE
 >

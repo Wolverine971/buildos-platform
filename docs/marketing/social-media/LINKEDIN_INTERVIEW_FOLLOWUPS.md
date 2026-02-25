@@ -4,7 +4,7 @@
 
 > **Purpose:** Capture additional stories and details to strengthen LinkedIn content
 >
-> **Instructions:** Answer these when you have time. Voice memo transcription works great. After you answer, I'll integrate into `LINKEDIN_FOUNDER_CONTEXT.md` and update the strategy docs.
+> **Instructions:** Answer these when you have time. Voice memo transcription works great. After you answer, I'll integrate into `FOUNDER_CONTEXT.md` and update the strategy docs.
 
 ---
 
@@ -135,7 +135,7 @@ For the user who wanted to work on Project X Clear Schedule, they saw BuildLS, a
 ## After You Answer
 
 1. Reply with your answers (in this doc or separately)
-2. I'll update `LINKEDIN_FOUNDER_CONTEXT.md` with the new info
+2. I'll update `FOUNDER_CONTEXT.md` with the new info
 3. I'll revise the example posts in `LINKEDIN_STRATEGY.md` to use your real stories
 4. We'll have enough material to draft your first real LinkedIn posts
 

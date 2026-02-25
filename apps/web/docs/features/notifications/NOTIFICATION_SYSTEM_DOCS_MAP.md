@@ -12,15 +12,15 @@ This file provides a complete overview of all notification system documentation 
 Root Documentation
 ├── NOTIFICATION_SYSTEM_IMPLEMENTATION.md ⭐ START HERE
 │   ├── Links to: generic-stackable-notification-system-spec.md
-│   ├── Links to: apps/web/CLAUDE.md
+│   ├── Links to: CLAUDE.md (repo root)
 │   └── References: All component files
 │
 ├── generic-stackable-notification-system-spec.md
 │   ├── Links to: NOTIFICATION_SYSTEM_IMPLEMENTATION.md
-│   └── Links to: apps/web/CLAUDE.md
+│   └── Links to: CLAUDE.md (repo root)
 │
 └── apps/web/
-    ├── CLAUDE.md
+    ├── /CLAUDE.md
     │   └── Links to: Both root docs + component README
     │
     └── src/lib/
@@ -50,7 +50,7 @@ Root Documentation
 
 ### "I want to understand the system quickly"
 
-👉 Start here: [`apps/web/src/lib/components/notifications/README.md`](./apps/web/src/lib/components/notifications/README.md)
+👉 Start here: [`apps/web/src/lib/components/notifications/README.md`](../../../src/lib/components/notifications/README.md)
 
 - Quick overview
 - Code examples
@@ -76,7 +76,7 @@ Root Documentation
 
 ### "I'm starting a new feature and need project guidelines"
 
-👉 Start here: [`apps/web/CLAUDE.md`](./apps/web/CLAUDE.md)
+👉 Start here: [`CLAUDE.md`](../../../../../CLAUDE.md)
 
 - Project-wide patterns
 - Essential commands
@@ -110,7 +110,7 @@ Root Documentation
 **Cross-References:**
 
 - Links to: `generic-stackable-notification-system-spec.md` (original design)
-- Links to: `apps/web/CLAUDE.md` (project guidelines)
+- Links to: `CLAUDE.md` (project guidelines)
 - Links to: Component files (file structure section)
 - Referenced by: All other docs
 
@@ -141,12 +141,12 @@ Root Documentation
 **Cross-References:**
 
 - Links to: `NOTIFICATION_SYSTEM_IMPLEMENTATION.md` (implementation status)
-- Links to: `apps/web/CLAUDE.md` (project guidelines)
+- Links to: `CLAUDE.md` (project guidelines)
 - Referenced by: Implementation doc, component README
 
 ---
 
-### [apps/web/CLAUDE.md](./apps/web/CLAUDE.md)
+### [CLAUDE.md](../../../../../CLAUDE.md)
 
 **Purpose:** Project-wide development guidelines
 **Length:** ~500 lines
@@ -161,12 +161,12 @@ Root Documentation
 **Cross-References:**
 
 - Links to: Both notification system docs
-- Links to: `/docs/start-here.md` (general docs)
+- Links to: `/docs/README.md` (general docs)
 - Referenced by: All notification docs
 
 ---
 
-### [apps/web/src/lib/components/notifications/README.md](./apps/web/src/lib/components/notifications/README.md) ⭐
+### [apps/web/src/lib/components/notifications/README.md](../../../src/lib/components/notifications/README.md) ⭐
 
 **Purpose:** Quick reference for component usage
 **Length:** ~250 lines
@@ -194,7 +194,7 @@ Root Documentation
 
 ## 💻 Code Documentation
 
-### [src/lib/stores/notification.store.ts](./apps/web/src/lib/stores/notification.store.ts)
+### [src/lib/stores/notification.store.ts](../../../src/lib/stores/notification.store.ts)
 
 **Inline Documentation:**
 
@@ -218,7 +218,7 @@ Root Documentation
 
 ---
 
-### [src/lib/components/notifications/NotificationStackManager.svelte](./apps/web/src/lib/components/notifications/NotificationStackManager.svelte)
+### [src/lib/components/notifications/NotificationStackManager.svelte](../../../src/lib/components/notifications/NotificationStackManager.svelte)
 
 **Inline Documentation:**
 
@@ -233,7 +233,7 @@ Root Documentation
 
 ---
 
-### [src/lib/components/notifications/NotificationTestButtons.svelte](./apps/web/src/lib/components/notifications/NotificationTestButtons.svelte)
+### [src/lib/components/notifications/NotificationTestButtons.svelte](../../../src/lib/components/notifications/NotificationTestButtons.svelte)
 
 **Inline Documentation:**
 
@@ -257,24 +257,24 @@ Root Documentation
 
 ### How do I create a notification?
 
-1. **Quick answer:** [Component README - Quick Start](./apps/web/src/lib/components/notifications/README.md#quick-start)
+1. **Quick answer:** [Component README - Quick Start](../../../src/lib/components/notifications/README.md#quick-start)
 2. **Complete reference:** [Implementation - API Reference](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#api-reference)
 
 ### What are the notification types?
 
-1. **Quick answer:** [Component README - Notification Types](./apps/web/src/lib/components/notifications/README.md#notification-types)
+1. **Quick answer:** [Component README - Notification Types](../../../src/lib/components/notifications/README.md#notification-types)
 2. **Complete types:** `apps/web/src/lib/types/notification.types.ts`
 
 ### How do I handle progress updates?
 
-1. **Quick answer:** [Component README - Progress Types](./apps/web/src/lib/components/notifications/README.md#progress-types)
+1. **Quick answer:** [Component README - Progress Types](../../../src/lib/components/notifications/README.md#progress-types)
 2. **Examples:** [Implementation - API Reference](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#store-methods)
 
 ### Why isn't my Map triggering reactivity?
 
 ⚠️ **Critical Pattern:** [Implementation - Svelte 5 Map Reactivity Fix](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#4-svelte-5-map-reactivity-issue-critical-fix)
 
-Also in: [Component README - Critical Patterns](./apps/web/src/lib/components/notifications/README.md#critical-patterns)
+Also in: [Component README - Critical Patterns](../../../src/lib/components/notifications/README.md#critical-patterns)
 
 ### How do I integrate with existing features?
 
@@ -289,7 +289,7 @@ Also in: [Component README - Critical Patterns](./apps/web/src/lib/components/no
 
 ### How do I test the notification system?
 
-1. **Quick test:** [Component README - Quick Start #3](./apps/web/src/lib/components/notifications/README.md#3-add-test-buttons-development-only)
+1. **Quick test:** [Component README - Quick Start #3](../../../src/lib/components/notifications/README.md#3-add-test-buttons-development-only)
 2. **Complete guide:** [Implementation - Testing](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#testing)
 3. **Test component:** `apps/web/src/lib/components/notifications/NotificationTestButtons.svelte`
 
@@ -329,18 +329,18 @@ Step 3: Integration
 
 ## 📌 Quick Reference Table
 
-| I need to...                      | Go here                                                                                                                     |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Understand the system quickly** | [Component README](./apps/web/src/lib/components/notifications/README.md)                                                   |
-| **See code examples**             | [Component README - Quick Start](./apps/web/src/lib/components/notifications/README.md#quick-start)                         |
-| **Create a notification**         | [Implementation - API Reference](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#api-reference)                                     |
-| **Fix a Map reactivity bug**      | [Implementation - Svelte 5 Fix](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#4-svelte-5-map-reactivity-issue-critical-fix)       |
-| **Test the system**               | [Component README - Quick Start](./apps/web/src/lib/components/notifications/README.md#3-add-test-buttons-development-only) |
-| **Integrate with brain dump**     | [Implementation - Phase 2](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#phase-2-brain-dump-integration-est-2-4-hours)            |
-| **Understand design decisions**   | [Original Specification](./generic-stackable-notification-system-spec.md)                                                   |
-| **See all notification types**    | [Component README - Types](./apps/web/src/lib/components/notifications/README.md#notification-types)                        |
-| **Follow project guidelines**     | [CLAUDE.md](./apps/web/CLAUDE.md)                                                                                           |
-| **Find a specific file**          | [Implementation - File Structure](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#file-structure)                                   |
+| I need to...                      | Go here                                                                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Understand the system quickly** | [Component README](../../../src/lib/components/notifications/README.md)                                                   |
+| **See code examples**             | [Component README - Quick Start](../../../src/lib/components/notifications/README.md#quick-start)                         |
+| **Create a notification**         | [Implementation - API Reference](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#api-reference)                                   |
+| **Fix a Map reactivity bug**      | [Implementation - Svelte 5 Fix](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#4-svelte-5-map-reactivity-issue-critical-fix)     |
+| **Test the system**               | [Component README - Quick Start](../../../src/lib/components/notifications/README.md#3-add-test-buttons-development-only) |
+| **Integrate with brain dump**     | [Implementation - Phase 2](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#phase-2-brain-dump-integration-est-2-4-hours)          |
+| **Understand design decisions**   | [Original Specification](./generic-stackable-notification-system-spec.md)                                                 |
+| **See all notification types**    | [Component README - Types](../../../src/lib/components/notifications/README.md#notification-types)                        |
+| **Follow project guidelines**     | [CLAUDE.md](../../../../../CLAUDE.md)                                                                                     |
+| **Find a specific file**          | [Implementation - File Structure](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md#file-structure)                                 |
 
 ---
 

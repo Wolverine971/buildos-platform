@@ -1574,7 +1574,7 @@ test.describe('Time-Block Notification Integration', () => {
 
 - **Time Play Feature Spec**: `/apps/web/docs/features/time-blocks/README.md`
 - **Time Play Implementation Plan**: `/apps/web/docs/features/time-blocks/IMPLEMENTATION_PLAN.md`
-- **Notification System Documentation Map**: `/NOTIFICATION_SYSTEM_DOCS_MAP.md`
+- **Notification System Documentation Map**: `/apps/web/docs/features/notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md`
 
 ### Technical References
 
@@ -1596,7 +1596,7 @@ test.describe('Time-Block Notification Integration', () => {
 For questions about this specification:
 
 1. Review the [research document](/thoughts/shared/research/2025-10-23_21-27-27_timeblock-notification-stack-integration.md)
-2. Check the [notification system documentation map](/NOTIFICATION_SYSTEM_DOCS_MAP.md)
+2. Check the [notification system documentation map](/apps/web/docs/features/notifications/NOTIFICATION_SYSTEM_DOCS_MAP.md)
 3. Reference the [brain dump bridge implementation](/apps/web/src/lib/services/brain-dump-notification.bridge.ts) (proven pattern)
 4. Contact the product/engineering team
 

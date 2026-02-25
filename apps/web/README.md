@@ -259,20 +259,20 @@ PRIVATE_CRON_SECRET=your_random_secret
 
 ### For Developers
 
-- [**Build Status**](./docs/BUILD_STATUS.md) - Current implementation status
-- [**Stripe Integration**](./docs/STRIPE_IMPLEMENTATION_SUMMARY.md) - Payment system details
-- [**Scalability Analysis**](./docs/SCALABILITY_ANALYSIS.md) - Architecture scaling guide
-- [**Deployment Checklist**](./docs/DEPLOYMENT_CHECKLIST.md) - Production deployment guide
+- [**Web Docs Hub**](./docs/README.md) - Web app documentation home
+- [**Navigation Index**](./docs/NAVIGATION_INDEX.md) - Quick links by task
+- [**Technical Docs**](./docs/technical/README.md) - Architecture, API, and testing
+- [**Deployment Checklist**](./docs/technical/deployment/DEPLOYMENT_CHECKLIST.md) - Production deployment guide
 
 ### For Users
 
-- [**API Documentation**](./docs/API.md) - REST API reference
-- [**User Guide**](./docs/USER_GUIDE.md) - Feature documentation
-- [**FAQ**](./docs/FAQ.md) - Frequently asked questions
+- [**API Documentation**](./docs/technical/api/README.md) - API reference and endpoints
+- [**Feature Guides**](./docs/features/README.md) - Feature-level documentation
+- [**Onboarding Guide**](./docs/features/onboarding/README.md) - Current onboarding flow
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions should follow the monorepo workflow and documentation in the root [CLAUDE.md](../../CLAUDE.md).
 
 ### Development Workflow
 
@@ -290,10 +290,6 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - **ESLint + Prettier** for code formatting
 - **Conventional Commits** for commit messages
 - **Component-based architecture** with clear separation of concerns
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙋‍♂️ Support
 

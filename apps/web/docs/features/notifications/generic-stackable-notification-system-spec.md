@@ -10,10 +10,9 @@
 
 - **[Documentation Map](./NOTIFICATION_SYSTEM_DOCS_MAP.md)** - Complete guide to all notification docs and how they interlink
 - **[Implementation Summary](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md)** - ✅ Phase 1 complete with all bug fixes
-- **[Phase 2 Complete](./PHASE_2_COMPLETE.md)** - ✅ Brain Dump migration with streaming support
-- **[Multi-Brain Dump Plan](./MULTI_BRAINDUMP_REDESIGN_PLAN.md)** - ✅ Concurrent processing architecture
-- [Component Quick Reference](./apps/web/src/lib/components/notifications/README.md) - Fast lookups and code examples
-- [BuildOS CLAUDE.md](./apps/web/CLAUDE.md) - Project-wide development guidelines
+- **[Notification Audit](./notification-audit.md)** - Follow-up findings and remediation log
+- [Component Quick Reference](../../../src/lib/components/notifications/README.md) - Fast lookups and code examples
+- [BuildOS CLAUDE.md](../../../../../CLAUDE.md) - Project-wide development guidelines
 - Component files in `/apps/web/src/lib/components/notifications/`
 
 ---
@@ -33,8 +32,7 @@ This specification outlines a **generic, stackable notification system** for Bui
 See detailed documentation:
 
 - [NOTIFICATION_SYSTEM_IMPLEMENTATION.md](./NOTIFICATION_SYSTEM_IMPLEMENTATION.md) - Phase 1 details
-- [PHASE_2_COMPLETE.md](./PHASE_2_COMPLETE.md) - Brain Dump migration
-- [MULTI_BRAINDUMP_REDESIGN_PLAN.md](./MULTI_BRAINDUMP_REDESIGN_PLAN.md) - Concurrent processing architecture
+- [notification-audit.md](./notification-audit.md) - Follow-up findings and remediation tracking
 
 ### Key Goals
 

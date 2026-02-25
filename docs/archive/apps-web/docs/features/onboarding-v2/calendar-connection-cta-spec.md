@@ -1,4 +1,4 @@
-<!-- apps/web/docs/features/onboarding-v2/calendar-connection-cta-spec.md -->
+<!-- docs/archive/apps-web/docs/features/onboarding-v2/calendar-connection-cta-spec.md -->
 
 # Onboarding V2: Calendar Connection & Analysis CTA - Design Spec
 

@@ -1,4 +1,4 @@
-<!-- docs/specs/sticky-scroll/STICKY_SCROLL_SPEC_ALT.md -->
+<!-- docs/archive/specs/sticky-scroll/STICKY_SCROLL_SPEC_ALT.md -->
 
 ## Feature: Sticky Headings (Sticky Scroll) for CodeMirror 6 Markdown
 

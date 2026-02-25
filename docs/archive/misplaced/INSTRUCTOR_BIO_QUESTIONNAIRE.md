@@ -1,4 +1,4 @@
-<!-- docs/specs/sticky-scroll/test.md -->
+<!-- docs/archive/misplaced/INSTRUCTOR_BIO_QUESTIONNAIRE.md -->
 
 # Instructor Bio Questionnaire
 

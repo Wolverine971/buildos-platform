@@ -60,7 +60,7 @@
     - Comprehensive framework for brand activation campaigns
     - Step-by-step planning template with placeholders
 
-- **[Brand Evolution Roadmap](brand/brand-evolution-roadmap.md)** 📝
+- **[Brand Evolution Roadmap](brand/brand-evolution-roadmap-worksheet.md)** 📝
     - 2-3 year strategic brand evolution planning framework
     - Timeline and milestone template for brand growth
 
@@ -275,7 +275,7 @@ Brand Strategy 2025 (Master Document)
 
 1. **[Personal Brand Questionnaire](brand/personal-brand-questionnaire.md)** - Foundation for authentic messaging
 2. **[Customer Language Decoder](customer-language-decoder.md)** - Expand beyond ADHD segment
-3. **[Brand Evolution Roadmap](brand/brand-evolution-roadmap.md)** - Strategic 2-3 year planning
+3. **[Brand Evolution Roadmap](brand/brand-evolution-roadmap-worksheet.md)** - Strategic 2-3 year planning
 
 ### Medium-term (Strategic Expansion)
 
@@ -317,4 +317,4 @@ Brand Strategy 2025 (Master Document)
 ---
 
 _Last Updated: January 2025_
-_Related: [Documentation Start Here](../start-here.md) | [Business Strategy](../business/) | [Content Strategy](/apps/web/docs/content/)_
+_Related: [Documentation Hub](../README.md) | [Business Strategy](../business/) | [Content Strategy](/apps/web/docs/content/)_

@@ -4,7 +4,7 @@
 
 **Date:** 2026-02-20  
 **Status:** Ready for implementation  
-**Supersedes:** `docs/specs/sticky-scroll/STICKY_SCROLL_SPEC.md`, `docs/specs/sticky-scroll/STICKY_SCROLL_SPEC_ALT.md`  
+**Supersedes:** `docs/archive/specs/sticky-scroll/STICKY_SCROLL_SPEC.md`, `docs/archive/specs/sticky-scroll/STICKY_SCROLL_SPEC_ALT.md`  
 **Target:** `apps/web/src/lib/components/ui/codemirror/*`
 
 ## 1) Goal
