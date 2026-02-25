@@ -1,0 +1,1254 @@
+{
+	"generatedAt": "2026-02-25T19:11:22.099Z",
+	"componentSummary": {
+		"label": "components",
+		"total": 337,
+		"zeroRuntimeCount": 68,
+		"zeroAllCount": 68,
+		"zeroRuntime": [
+			{
+				"file": "apps/web/src/lib/components/admin/BrainDumpChart.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/admin/PayloadEditor.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/agent/DraftsList.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/agent/OperationsLog.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/agent/OperationsQueue.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/icons/ProjectSelectionIcons.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/icons/RecordingIcons.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/icons/SuccessIcons.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/OperationsList.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/ProjectSelectionView.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/RecordingView.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/TextVirtualizer.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/dashboard/BuildOSFlow.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/dashboard/Dashboard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/dashboard/ProjectCardSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ErrorBoundary.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/BraindumpHistoryCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/BraindumpHistoryDeleteModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/BraindumpModalHistory.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/ContributionChart.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/LinkNoteToProject.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/icons/LoadingSpinner.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/layout/ThemeToggle.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/notifications/NotificationTestButtons.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/DocumentEditor.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/DocumentVersionDiffDrawer.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/EntityListItem.CORRECTED.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/GoalReverseEngineerModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/graph/svelteflow/nodes/index.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/InsightPanelSkeleton.refactored.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/linked-entities/index.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/OntologyContextDocModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/OntologyProjectHeader.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/BraindumpProjectCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/CoreDimensionsField.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/NoteModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectBriefCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectCalendarConnectModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectContextModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectTimelineCompact.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/synthesis/SynthesisLoadingState.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/synthesis/SynthesisOptionsModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/SynthesisOperationModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/TaskBraindumpSection.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/projects/NewProjectModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/scheduling/PhaseScheduleCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/SearchCombobox.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/SearchViewAll.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/tasks/RecurrenceSelector.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/tasks/RecurringDeleteModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/time-blocks/TimeBlockModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/trial/ReadOnlyOverlay.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/ChoiceModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/CurrentTimeIndicator.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/LoadingModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/ManyToOneDiffView.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/ProgressiveImage.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/RecentActivityIndicator.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/SkeletonLoader.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/BriefsSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/NotesListSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/PhasesSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/ProjectHeaderSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/ProjectsGridSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/ProjectStatsSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/SynthesisSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/TaskListSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			}
+		],
+		"zeroAll": [
+			{
+				"file": "apps/web/src/lib/components/admin/BrainDumpChart.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/admin/PayloadEditor.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/agent/DraftsList.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/agent/OperationsLog.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/agent/OperationsQueue.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/icons/ProjectSelectionIcons.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/icons/RecordingIcons.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/icons/SuccessIcons.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/OperationsList.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/ProjectSelectionView.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/RecordingView.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/brain-dump/TextVirtualizer.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/dashboard/BuildOSFlow.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/dashboard/Dashboard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/dashboard/ProjectCardSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ErrorBoundary.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/BraindumpHistoryCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/BraindumpHistoryDeleteModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/BraindumpModalHistory.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/ContributionChart.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/history/LinkNoteToProject.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/icons/LoadingSpinner.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/layout/ThemeToggle.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/notifications/NotificationTestButtons.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/DocumentEditor.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/DocumentVersionDiffDrawer.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/EntityListItem.CORRECTED.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/GoalReverseEngineerModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/graph/svelteflow/nodes/index.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/InsightPanelSkeleton.refactored.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/linked-entities/index.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/OntologyContextDocModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ontology/OntologyProjectHeader.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/BraindumpProjectCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/CoreDimensionsField.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/NoteModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectBriefCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectCalendarConnectModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectContextModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/ProjectTimelineCompact.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/synthesis/SynthesisLoadingState.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/synthesis/SynthesisOptionsModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/SynthesisOperationModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/project/TaskBraindumpSection.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/projects/NewProjectModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/scheduling/PhaseScheduleCard.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/SearchCombobox.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/SearchViewAll.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/tasks/RecurrenceSelector.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/tasks/RecurringDeleteModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/time-blocks/TimeBlockModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/trial/ReadOnlyOverlay.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/ChoiceModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/CurrentTimeIndicator.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/LoadingModal.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/ManyToOneDiffView.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/ProgressiveImage.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/RecentActivityIndicator.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/SkeletonLoader.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/BriefsSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/NotesListSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/PhasesSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/ProjectHeaderSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/ProjectsGridSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/ProjectStatsSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/SynthesisSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/components/ui/skeletons/TaskListSkeleton.svelte",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			}
+		]
+	},
+	"serviceSummary": {
+		"label": "services",
+		"total": 222,
+		"zeroRuntimeCount": 19,
+		"zeroAllCount": 19,
+		"zeroRuntime": [
+			{
+				"file": "apps/web/src/lib/services/agent-planner-service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/config/error-handling-strategies.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/config/llm-cache-wrapper.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/config/test-enhanced-wrapper.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/config/token-optimization-strategies.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/tools/core/index.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/dailyBrief/ontologyBriefRepository.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/draft.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/link-shortener.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/ontology/project-props-generation.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/project-activity-log.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/project-graph/index.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/promptEnhancer.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/prompts/core/question-generation.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/errors.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/model-selection.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/openrouter-client.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/transcription-utils.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/usage-logger.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			}
+		],
+		"zeroAll": [
+			{
+				"file": "apps/web/src/lib/services/agent-planner-service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/config/error-handling-strategies.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/config/llm-cache-wrapper.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/config/test-enhanced-wrapper.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/config/token-optimization-strategies.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/agentic-chat/tools/core/index.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/dailyBrief/ontologyBriefRepository.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/draft.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/link-shortener.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/ontology/project-props-generation.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/project-activity-log.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/project-graph/index.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/promptEnhancer.service.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/prompts/core/question-generation.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/errors.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/model-selection.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/openrouter-client.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/transcription-utils.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			},
+			{
+				"file": "apps/web/src/lib/services/smart-llm/usage-logger.ts",
+				"inboundAll": 0,
+				"inboundRuntime": 0,
+				"importedOnlyByTests": false
+			}
+		]
+	},
+	"componentGroups": [
+		{
+			"group": "apps/web/src/lib/components/ErrorBoundary.svelte",
+			"files": 1,
+			"externalRuntimeInbound": 0
+		},
+		{
+			"group": "apps/web/src/lib/components/icons",
+			"files": 1,
+			"externalRuntimeInbound": 0
+		},
+		{
+			"group": "apps/web/src/lib/components/SearchCombobox.svelte",
+			"files": 1,
+			"externalRuntimeInbound": 0
+		},
+		{
+			"group": "apps/web/src/lib/components/SearchViewAll.svelte",
+			"files": 1,
+			"externalRuntimeInbound": 0
+		},
+		{
+			"group": "apps/web/src/lib/components/tasks",
+			"files": 2,
+			"externalRuntimeInbound": 0
+		},
+		{
+			"group": "apps/web/src/lib/components/BackgroundJobIndicator.svelte",
+			"files": 1,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/chat",
+			"files": 1,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/docs",
+			"files": 1,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/homework",
+			"files": 1,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/landing",
+			"files": 1,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/onboarding",
+			"files": 1,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/projects",
+			"files": 2,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/trial",
+			"files": 2,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/dashboard",
+			"files": 5,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/email",
+			"files": 5,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/history",
+			"files": 7,
+			"externalRuntimeInbound": 1
+		},
+		{
+			"group": "apps/web/src/lib/components/analytics",
+			"files": 2,
+			"externalRuntimeInbound": 2
+		},
+		{
+			"group": "apps/web/src/lib/components/onboarding-v2",
+			"files": 2,
+			"externalRuntimeInbound": 2
+		},
+		{
+			"group": "apps/web/src/lib/components/tree-agent",
+			"files": 2,
+			"externalRuntimeInbound": 2
+		},
+		{
+			"group": "apps/web/src/lib/components/notifications",
+			"files": 14,
+			"externalRuntimeInbound": 2
+		},
+		{
+			"group": "apps/web/src/lib/components/settings",
+			"files": 4,
+			"externalRuntimeInbound": 3
+		},
+		{
+			"group": "apps/web/src/lib/components/layout",
+			"files": 5,
+			"externalRuntimeInbound": 3
+		},
+		{
+			"group": "apps/web/src/lib/components/scheduling",
+			"files": 5,
+			"externalRuntimeInbound": 3
+		},
+		{
+			"group": "apps/web/src/lib/components/voice-notes",
+			"files": 5,
+			"externalRuntimeInbound": 3
+		},
+		{
+			"group": "apps/web/src/lib/components/onboarding-v3",
+			"files": 4,
+			"externalRuntimeInbound": 4
+		},
+		{
+			"group": "apps/web/src/lib/components/sms",
+			"files": 4,
+			"externalRuntimeInbound": 4
+		},
+		{
+			"group": "apps/web/src/lib/components/calendar",
+			"files": 5,
+			"externalRuntimeInbound": 4
+		},
+		{
+			"group": "apps/web/src/lib/components/brain-dump",
+			"files": 14,
+			"externalRuntimeInbound": 4
+		},
+		{
+			"group": "apps/web/src/lib/components/profile",
+			"files": 6,
+			"externalRuntimeInbound": 5
+		},
+		{
+			"group": "apps/web/src/lib/components/briefs",
+			"files": 6,
+			"externalRuntimeInbound": 8
+		},
+		{
+			"group": "apps/web/src/lib/components/project",
+			"files": 23,
+			"externalRuntimeInbound": 8
+		},
+		{
+			"group": "apps/web/src/lib/components/time-blocks",
+			"files": 10,
+			"externalRuntimeInbound": 9
+		},
+		{
+			"group": "apps/web/src/lib/components/SEOHead.svelte",
+			"files": 1,
+			"externalRuntimeInbound": 16
+		},
+		{
+			"group": "apps/web/src/lib/components/agent",
+			"files": 16,
+			"externalRuntimeInbound": 23
+		},
+		{
+			"group": "apps/web/src/lib/components/ontology",
+			"files": 90,
+			"externalRuntimeInbound": 62
+		},
+		{
+			"group": "apps/web/src/lib/components/admin",
+			"files": 36,
+			"externalRuntimeInbound": 66
+		},
+		{
+			"group": "apps/web/src/lib/components/ui",
+			"files": 50,
+			"externalRuntimeInbound": 550
+		}
+	]
+}

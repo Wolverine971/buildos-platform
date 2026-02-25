@@ -898,8 +898,10 @@
 			"components": [],
 			"exports": [
 				"showVoiceWidget",
+				"showVoiceInsertHint",
 				"updateVoicePreview",
 				"hideVoiceWidget",
+				"hideVoiceInsertHint",
 				"voiceWidgetExtension"
 			]
 		},

@@ -172,6 +172,8 @@
 
 	// Processing state - shows spinner on button while inserting text
 	let isInsertingText = $state(false);
+	let isVoiceButtonHovered = $state(false);
+	let isVoiceButtonFocused = $state(false);
 
 	// Cursor position tracking - CRITICAL for insertion at cursor
 	let cursorPositionBeforeRecording = $state<{ start: number; end: number } | null>(null);
@@ -272,6 +274,19 @@
 	);
 
 	const voiceButtonClasses = $derived(getVoiceButtonClasses(voiceButtonState.variant));
+	const shouldShowVoiceInsertHint = $derived.by(
+		() =>
+			Boolean(editorRef) &&
+			(isVoiceButtonHovered || isVoiceButtonFocused) &&
+			mode === 'edit' &&
+			enableVoice &&
+			isVoiceSupported &&
+			!voiceButtonState.disabled &&
+			!isCurrentlyRecording &&
+			!isInitializingRecording &&
+			!_isTranscribing &&
+			!isInsertingText
+	);
 
 	// ============================================
 	// Sync bindable props
@@ -303,6 +318,15 @@
 		if (editorRef && liveTranscriptPreview) {
 			editorRef.updateTranscriptPreview(liveTranscriptPreview);
 		}
+	});
+
+	$effect(() => {
+		if (!editorRef) return;
+		if (shouldShowVoiceInsertHint) {
+			editorRef.showVoiceInsertHint();
+			return;
+		}
+		editorRef.hideVoiceInsertHint();
 	});
 
 	// ============================================
@@ -350,10 +374,29 @@
 		if (nextMode === 'preview' && isCurrentlyRecording) {
 			stopVoiceRecording();
 		}
+		if (nextMode === 'preview') {
+			editorRef?.hideVoiceInsertHint();
+		}
 		mode = nextMode;
 		if (nextMode === 'edit') {
 			editorRef?.focus();
 		}
+	}
+
+	function handleVoiceButtonMouseEnter() {
+		isVoiceButtonHovered = true;
+	}
+
+	function handleVoiceButtonMouseLeave() {
+		isVoiceButtonHovered = false;
+	}
+
+	function handleVoiceButtonFocus() {
+		isVoiceButtonFocused = true;
+	}
+
+	function handleVoiceButtonBlur() {
+		isVoiceButtonFocused = false;
 	}
 
 	// ============================================
@@ -964,6 +1007,7 @@
 			const sel = editorRef.getSelection();
 			cursorPositionBeforeRecording = { start: sel.from, end: sel.to };
 			// Show inline transcribing indicator in the editor
+			editorRef.hideVoiceInsertHint();
 			editorRef.showTranscribing();
 		} else {
 			cursorPositionBeforeRecording = { start: value.length, end: value.length };
@@ -1107,6 +1151,9 @@
 		}
 		showAddedFeedback = false;
 		isInsertingText = false;
+		isVoiceButtonHovered = false;
+		isVoiceButtonFocused = false;
+		editorRef?.hideVoiceInsertHint();
 	}
 
 	// ============================================
@@ -1457,6 +1504,10 @@
 					class={`flex h-8 w-8 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
 					style="-webkit-tap-highlight-color: transparent;"
 					onclick={toggleVoiceRecording}
+					onmouseenter={handleVoiceButtonMouseEnter}
+					onmouseleave={handleVoiceButtonMouseLeave}
+					onfocus={handleVoiceButtonFocus}
+					onblur={handleVoiceButtonBlur}
 					aria-label={voiceButtonState.label}
 					title={voiceButtonState.label}
 					aria-pressed={voiceButtonState.variant === 'recording' ? true : undefined}

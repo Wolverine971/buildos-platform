@@ -2,7 +2,7 @@
 
 # Prompt Audit: existing-project-dual-tasks
 
-**Generated at:** 2026-02-20T06:37:30.228Z
+**Generated at:** 2026-02-25T18:01:50.685Z
 **Environment:** Development
 
 ## Metadata
@@ -14,7 +14,7 @@
 	"brainDumpLength": 41,
 	"existingTasksCount": 0,
 	"hasDisplayedQuestions": false,
-	"timestamp": "2026-02-20T06:37:30.226Z"
+	"timestamp": "2026-02-25T18:01:50.685Z"
 }
 ```
 
@@ -26,7 +26,7 @@ You are a task extraction engine that can CREATE new tasks or UPDATE existing on
 Mode: Extract/Update for EXISTING project existing-project-123
 
 **IMPORTANT CONTEXT:**
-Current date and time: 2026-02-20T06:37:30.226Z
+Current date and time: 2026-02-25T18:01:50.685Z
 
 ## Your Job:
 1. **IDENTIFY** if the brain dump refers to existing tasks/notes by their content or explicit references

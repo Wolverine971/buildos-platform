@@ -28,9 +28,11 @@
 	} from './extensions';
 	import {
 		voiceWidgetExtension,
-		showVoiceWidget,
+		showVoiceWidget as showVoiceWidgetEffect,
+		showVoiceInsertHint as showVoiceInsertHintEffect,
 		updateVoicePreview,
-		hideVoiceWidget
+		hideVoiceWidget as hideVoiceWidgetEffect,
+		hideVoiceInsertHint as hideVoiceInsertHintEffect
 	} from './voice-widget';
 
 	interface Props {
@@ -225,7 +227,14 @@
 	export function showTranscribing() {
 		if (!view) return;
 		const pos = view.state.selection.main.head;
-		view.dispatch({ effects: showVoiceWidget.of({ pos }) });
+		view.dispatch({ effects: showVoiceWidgetEffect.of({ pos }) });
+	}
+
+	/** Show the voice insertion hint at the current cursor position */
+	export function showVoiceInsertHint() {
+		if (!view) return;
+		const pos = view.state.selection.main.head;
+		view.dispatch({ effects: showVoiceInsertHintEffect.of({ pos }) });
 	}
 
 	/** Update the live transcript preview inside the widget */
@@ -237,7 +246,13 @@
 	/** Hide the voice transcription widget */
 	export function hideTranscribing() {
 		if (!view) return;
-		view.dispatch({ effects: hideVoiceWidget.of(null) });
+		view.dispatch({ effects: hideVoiceWidgetEffect.of(null) });
+	}
+
+	/** Hide the voice insertion hint widget */
+	export function hideVoiceInsertHint() {
+		if (!view) return;
+		view.dispatch({ effects: hideVoiceInsertHintEffect.of(null) });
 	}
 
 	// ---------------------------------------------------------------------------
