@@ -187,12 +187,6 @@
 			"exports": ["AgentExecutorService"]
 		},
 		{
-			"file": "src/lib/services/agent-planner-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["AgentPlannerService"]
-		},
-		{
 			"file": "src/lib/services/async-activity-logger.ts",
 			"type": "service",
 			"components": [],
@@ -317,12 +311,6 @@
 			"exports": ["DashboardDataService", "dashboardDataService"]
 		},
 		{
-			"file": "src/lib/services/draft.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["DraftService"]
-		},
-		{
 			"file": "src/lib/services/dunning-service.ts",
 			"type": "service",
 			"components": [],
@@ -351,12 +339,6 @@
 			"type": "service",
 			"components": [],
 			"exports": ["GoogleOAuthConnectionError", "GoogleOAuthService"]
-		},
-		{
-			"file": "src/lib/services/link-shortener.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["linkShortenerService"]
 		},
 		{
 			"file": "src/lib/services/linked-entity-context-formatter.ts",
@@ -440,12 +422,6 @@
 			"exports": ["OpenRouterV2Service"]
 		},
 		{
-			"file": "src/lib/services/project-activity-log.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ProjectActivityLogService", "createProjectActivityLogService"]
-		},
-		{
 			"file": "src/lib/services/project-calendar.service.ts",
 			"type": "service",
 			"components": [],
@@ -466,12 +442,6 @@
 			"type": "service",
 			"components": [],
 			"exports": ["ProjectBriefTemplateGeneratorService"]
-		},
-		{
-			"file": "src/lib/services/promptEnhancer.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["PromptEnhancerService"]
 		},
 		{
 			"file": "src/lib/services/promptTemplate.service.ts",

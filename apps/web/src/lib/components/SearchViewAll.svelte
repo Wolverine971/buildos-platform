@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/SearchViewAll.svelte -->
+<!-- Intentionally retained: may be reused in a future search UX iteration. -->
 <!-- This is a separate page component for viewing all results of a specific type -->
 <script lang="ts">
 	import { onMount } from 'svelte';

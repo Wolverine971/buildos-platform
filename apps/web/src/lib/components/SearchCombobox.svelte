@@ -1,4 +1,5 @@
 <!-- apps/web/src/lib/components/SearchCombobox.svelte -->
+<!-- Intentionally retained: may be reused in a future search UX iteration. -->
 
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
