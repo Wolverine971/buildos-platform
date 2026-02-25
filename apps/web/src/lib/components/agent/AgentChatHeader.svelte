@@ -3,9 +3,8 @@
 <script lang="ts">
 	import { X, ExternalLink, ArrowLeft } from 'lucide-svelte';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
-	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
+	import type { ChatContextType } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-	import { formatTokensEstimate } from './agent-chat-formatters';
 
 	interface Props {
 		selectedContextType: ChatContextType | null;
@@ -22,7 +21,6 @@
 		ontologyLoaded: boolean;
 		hasActiveThinkingBlock: boolean;
 		currentActivity: string;
-		contextUsage: ContextUsageSnapshot | null;
 	}
 
 	let {
@@ -39,23 +37,8 @@
 		onClearFocus,
 		ontologyLoaded,
 		hasActiveThinkingBlock,
-		currentActivity,
-		contextUsage
+		currentActivity
 	}: Props = $props();
-
-	const contextStatusLabel = $derived.by(() => {
-		if (!contextUsage) return '';
-		if (contextUsage.status === 'over_budget') return 'Over';
-		if (contextUsage.status === 'near_limit') return 'Near';
-		return 'OK';
-	});
-
-	const contextStatusClass = $derived.by(() => {
-		if (!contextUsage) return '';
-		if (contextUsage.status === 'over_budget') return 'text-red-600 dark:text-red-400';
-		if (contextUsage.status === 'near_limit') return 'text-amber-600 dark:text-amber-400';
-		return 'text-emerald-600 dark:text-emerald-400';
-	});
 
 	const isProjectContext = $derived.by(
 		() =>
@@ -144,44 +127,13 @@
 	<!-- Right side: Status pills, Project link, Close button -->
 	<div class="flex shrink-0 items-center gap-2">
 		<!-- INKPRINT status pills with micro-label styling -->
-		{#if ontologyLoaded || contextUsage || (currentActivity && !hasActiveThinkingBlock)}
+		{#if ontologyLoaded || (currentActivity && !hasActiveThinkingBlock)}
 			<div class="flex items-center gap-2">
 				{#if ontologyLoaded}
 					<span
 						class="micro-label rounded-lg border border-purple-600/30 bg-purple-50 px-2.5 py-1.5 text-purple-700 tx tx-thread tx-weak dark:bg-purple-950/30 dark:text-purple-400"
 					>
 						ONTO
-					</span>
-				{/if}
-
-				{#if contextUsage}
-					<span
-						class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[0.65rem] font-mono uppercase tracking-[0.1em] leading-none ${
-							contextUsage.status === 'over_budget'
-								? 'border-red-600/30 bg-red-50 text-red-700 tx tx-static tx-weak dark:bg-red-950/30 dark:text-red-400'
-								: contextUsage.status === 'near_limit'
-									? 'border-amber-600/30 bg-amber-50 text-amber-700 tx tx-static tx-weak dark:bg-amber-950/30 dark:text-amber-400'
-									: 'border-emerald-600/30 bg-emerald-50 text-emerald-700 tx tx-grain tx-weak dark:bg-emerald-950/30 dark:text-emerald-400'
-						}`}
-					>
-						<span
-							class={`h-1 w-1 rounded-full ${
-								contextUsage.status === 'over_budget'
-									? 'bg-red-600'
-									: contextUsage.status === 'near_limit'
-										? 'bg-amber-600'
-										: 'bg-emerald-600'
-							}`}
-						></span>
-						<span class="hidden sm:inline">
-							{formatTokensEstimate(contextUsage.estimatedTokens)}/
-						</span>
-						{formatTokensEstimate(contextUsage.tokenBudget)}
-						<span
-							class="hidden text-[9px] font-sans uppercase tracking-wider sm:inline"
-						>
-							{contextStatusLabel}
-						</span>
 					</span>
 				{/if}
 

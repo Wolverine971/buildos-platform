@@ -27,7 +27,6 @@
 		ChatContextType,
 		ChatRole,
 		AgentSSEMessage,
-		ContextUsageSnapshot,
 		AgentPlan
 	} from '@buildos/shared-types';
 	import {
@@ -266,12 +265,6 @@
 		return rawTitle || null;
 	}
 
-	function parseIsoTimestamp(value?: string | null): number | null {
-		if (!value) return null;
-		const parsed = Date.parse(value);
-		return Number.isNaN(parsed) ? null : parsed;
-	}
-
 	// Device detection for mobile UX
 	// On mobile/touch devices, Enter should not send messages (allows natural line breaks)
 	const isTouchDevice = $derived(
@@ -310,7 +303,6 @@
 
 	let messagesContainer = $state<HTMLElement | undefined>(undefined);
 	let composerContainer = $state<HTMLElement | undefined>(undefined);
-	let contextUsage = $state<ContextUsageSnapshot | null>(null);
 	let keyboardAvoidingCleanup = $state<(() => void) | null>(null);
 	let hasFinalizedSession = false;
 
@@ -547,7 +539,6 @@
 		agentState = null;
 		ontologyLoaded = false;
 		ontologySummary = null;
-		contextUsage = null;
 		pendingToolResults.clear();
 		resetMutationTracking();
 		voiceErrorMessage = '';
@@ -3066,41 +3057,6 @@
 				}
 				break;
 
-			case 'context_usage':
-				if (!event.usage) {
-					contextUsage = null;
-					break;
-				}
-
-				if (!contextUsage) {
-					contextUsage = event.usage;
-					break;
-				}
-
-				{
-					const currentCompressedAt = parseIsoTimestamp(contextUsage.lastCompressedAt);
-					const nextCompressedAt = parseIsoTimestamp(event.usage.lastCompressedAt);
-
-					if (currentCompressedAt === null && nextCompressedAt === null) {
-						contextUsage = event.usage;
-						break;
-					}
-
-					if (currentCompressedAt === null && nextCompressedAt !== null) {
-						contextUsage = event.usage;
-						break;
-					}
-
-					if (
-						currentCompressedAt !== null &&
-						nextCompressedAt !== null &&
-						nextCompressedAt >= currentCompressedAt
-					) {
-						contextUsage = event.usage;
-					}
-				}
-				break;
-
 			case 'focus_active':
 				projectFocus = event.focus;
 				break;
@@ -4058,7 +4014,6 @@
 					{ontologyLoaded}
 					hasActiveThinkingBlock={!!currentThinkingBlockId}
 					{currentActivity}
-					{contextUsage}
 				/>
 			</div>
 		{/snippet}
