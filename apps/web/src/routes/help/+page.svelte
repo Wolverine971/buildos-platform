@@ -18,7 +18,7 @@
 	title="Help Center - BuildOS | Guides, Tutorials & Support"
 	description="Get help with BuildOS. Comprehensive tutorials, guides, and answers to common questions about transforming brain dumps into organized projects with AI."
 	canonical="https://build-os.com/help"
-	keywords="BuildOS help, brain dump tutorial, project organization guide, daily briefs, AI productivity, getting started, support documentation"
+	keywords="BuildOS help, brain dump tutorial, project collaboration guide, daily briefs, AI productivity, getting started, support documentation"
 	author="DJ Wayne"
 />
 

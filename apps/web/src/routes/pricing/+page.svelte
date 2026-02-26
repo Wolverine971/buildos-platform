@@ -58,7 +58,7 @@
 		'@context': 'https://schema.org',
 		'@type': 'Product',
 		name: 'BuildOS Pro',
-		description: 'AI-powered project organization platform',
+		description: 'AI-powered project collaboration platform',
 		offers: {
 			'@type': 'Offer',
 			price: '12.00',

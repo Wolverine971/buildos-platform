@@ -167,7 +167,7 @@
 		content="Finally, a productivity tool that gets how your brain works. Transform scattered thoughts into organized action. 14-day free trial."
 	/>
 	<meta name="twitter:image" content="https://build-os.com/twitter_card_light.webp" />
-	<meta name="twitter:image:alt" content="BuildOS - AI-First Project Organization Platform" />
+	<meta name="twitter:image:alt" content="BuildOS - AI Project Collaboration Platform" />
 
 	<!-- Additional Meta Tags -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -180,7 +180,7 @@
 		"@context": "https://schema.org",
 		"@type": "SoftwareApplication",
 		"name": "BuildOS",
-		"description": "AI-first project organization platform that transforms brain dumps into structured projects. Perfect for disorganized minds, founders, and creators who need clarity.",
+		"description": "AI project collaboration platform that transforms brain dumps into shared project context. Built for disorganized minds, founders, and creators who need clarity.",
 		"applicationCategory": "ProductivityApplication",
 		"operatingSystem": "Web",
 		"offers": {

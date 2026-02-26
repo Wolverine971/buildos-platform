@@ -17,6 +17,58 @@ export interface AgentToAgentMessageResponse {
 	message: string;
 }
 
+interface AgentToAgentErrorPayload {
+	error?: string;
+	message?: string;
+	code?: string;
+	details?: unknown;
+}
+
+export class AgentToAgentRequestError extends Error {
+	constructor(
+		message: string,
+		public status: number,
+		public code?: string,
+		public details?: unknown
+	) {
+		super(message);
+		this.name = 'AgentToAgentRequestError';
+	}
+}
+
+async function buildRequestError(response: Response): Promise<AgentToAgentRequestError> {
+	let payload: unknown;
+
+	try {
+		payload = await response.json();
+	} catch {
+		payload = await response.text().catch(() => '');
+	}
+
+	if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+		const typedPayload = payload as AgentToAgentErrorPayload;
+		const message =
+			typeof typedPayload.error === 'string'
+				? typedPayload.error
+				: typeof typedPayload.message === 'string'
+					? typedPayload.message
+					: `Agent message request failed (${response.status})`;
+
+		return new AgentToAgentRequestError(
+			message,
+			response.status,
+			typeof typedPayload.code === 'string' ? typedPayload.code : undefined,
+			typedPayload.details
+		);
+	}
+
+	const fallback = typeof payload === 'string' ? payload.trim() : '';
+	return new AgentToAgentRequestError(
+		fallback || `Agent message request failed (${response.status})`,
+		response.status
+	);
+}
+
 export async function requestAgentToAgentMessage(
 	input: AgentToAgentMessageRequest
 ): Promise<AgentToAgentMessageResponse> {
@@ -27,12 +79,11 @@ export async function requestAgentToAgentMessage(
 	});
 
 	if (!res.ok) {
-		const fallback = await res.text();
-		throw new Error(fallback || `Agent message request failed (${res.status})`);
+		throw await buildRequestError(res);
 	}
 
 	const body = (await res.json()) as
-		| { data?: AgentToAgentMessageResponse }
+		| { data?: AgentToAgentMessageResponse; message?: string }
 		| AgentToAgentMessageResponse;
 
 	// Check if body is AgentToAgentMessageResponse directly
@@ -45,5 +96,5 @@ export async function requestAgentToAgentMessage(
 		return body.data;
 	}
 
-	throw new Error('Invalid response from agent message endpoint');
+	throw new AgentToAgentRequestError('Invalid response from agent message endpoint', res.status);
 }

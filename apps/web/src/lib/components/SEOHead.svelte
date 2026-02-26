@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/SEOHead.svelte -->
 <script lang="ts">
-	export let title = 'BuildOS - AI-First Project Organization for Chaotic Minds';
+	export let title = 'BuildOS - AI Project Collaboration for the builders';
 	export let description =
 		'Brain dump and let AI build structure. Perfect for ADHD minds, founders, and creators. Calendar sync, project phases, daily briefs. Try 14 days free.';
 	export let canonical = 'https://build-os.com/';
@@ -9,7 +9,7 @@
 	export let ogType = 'website';
 	export let ogImage = 'https://build-os.com/brain-bolt.png';
 	export let twitterImage = 'https://build-os.com/twitter_card_light.webp';
-	export let twitterImageAlt = 'BuildOS - AI-First Project Organization Platform';
+	export let twitterImageAlt = 'BuildOS - AI Project Collaboration Platform';
 	export let twitterCardType: 'summary' | 'summary_large_image' = 'summary_large_image';
 	export let author = 'DJ Wayne';
 	export let twitterSite = '@build_os';
