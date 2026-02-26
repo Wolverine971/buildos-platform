@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/instagram/COLLABORATION_PIVOT_CAROUSEL.md -->
+
 # Instagram Carousel: "I Changed One Word"
 
 Last updated: 2026-02-26
@@ -32,7 +34,7 @@ Last updated: 2026-02-26
 
 **Headline:** "Organization" assumes you already know the plan.
 
-**Subtext:** But you don't. You're figuring it out as you go. You brain dump at 2am. You pivot mid-sprint. You juggle 4 projects and none of them have a clean folder structure. Organization is the *output*. It's never the starting point.
+**Subtext:** But you don't. You're figuring it out as you go. You brain dump at 2am. You pivot mid-sprint. You juggle 4 projects and none of them have a clean folder structure. Organization is the _output_. It's never the starting point.
 
 **Visual direction:** Messy-to-clean visual metaphor — scattered sticky notes, crossed-out lists, the real chaos of work. Inkprint aesthetic, warm tones.
 
@@ -60,7 +62,7 @@ Last updated: 2026-02-26
 
 ## Slide 6 — What Collaboration Actually Means
 
-**Headline:** Collaboration means the system works *with* you.
+**Headline:** Collaboration means the system works _with_ you.
 
 **Subtext:** You talk, it listens. You brain dump, it organizes. You forget, it remembers. You change direction, it adapts. That's not a filing cabinet. That's a collaborator.
 

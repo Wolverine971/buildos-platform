@@ -374,7 +374,7 @@
 
 	// Controls whether the context selection screen is visible (keeps state alive for back nav)
 	let showContextSelection = $state(true);
-	let contextSelectionView = $state<'primary' | 'projectHub' | 'project-selection'>('primary');
+	let contextSelectionView = $state<'primary' | 'project-selection'>('primary');
 	let contextSelectionRef = $state<any>(null);
 
 	// Unified back navigation logic
@@ -450,7 +450,7 @@
 		return id;
 	}
 
-	function handleContextSelectionNavChange(view: 'primary' | 'projectHub' | 'project-selection') {
+	function handleContextSelectionNavChange(view: 'primary' | 'project-selection') {
 		contextSelectionView = view;
 	}
 

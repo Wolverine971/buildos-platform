@@ -561,7 +561,10 @@
 
 	const mergedTaskFilterMembers = $derived.by((): TaskAssigneeFilterMember[] => {
 		const byActorId = new Map<string, TaskAssigneeFilterMember>();
-		for (const member of [...taskAssigneeFilterMembers, ...taskAssigneeFilterMembersFromTasks]) {
+		for (const member of [
+			...taskAssigneeFilterMembers,
+			...taskAssigneeFilterMembersFromTasks
+		]) {
 			if (!member.actorId || byActorId.has(member.actorId)) continue;
 			byActorId.set(member.actorId, member);
 		}
@@ -587,7 +590,10 @@
 			}
 
 			for (const member of mergedTaskFilterMembers) {
-				if (group.id === 'person_focus_actor_id' && member.actorId === currentProjectActorId) {
+				if (
+					group.id === 'person_focus_actor_id' &&
+					member.actorId === currentProjectActorId
+				) {
 					continue;
 				}
 				options.push({
@@ -729,7 +735,9 @@
 						currentActorId: currentProjectActorId,
 						assignees: assigneeRows,
 						createdByActorId:
-							typeof item.created_by === 'string' ? (item.created_by as string) : null,
+							typeof item.created_by === 'string'
+								? (item.created_by as string)
+								: null,
 						lastChangedByActorId:
 							typeof item.last_changed_by_actor_id === 'string'
 								? (item.last_changed_by_actor_id as string)
@@ -792,7 +800,10 @@
 
 				const aUpdated = typeof a.updated_at === 'string' ? Date.parse(a.updated_at) : 0;
 				const bUpdated = typeof b.updated_at === 'string' ? Date.parse(b.updated_at) : 0;
-				return (Number.isFinite(bUpdated) ? bUpdated : 0) - (Number.isFinite(aUpdated) ? aUpdated : 0);
+				return (
+					(Number.isFinite(bUpdated) ? bUpdated : 0) -
+					(Number.isFinite(aUpdated) ? aUpdated : 0)
+				);
 			}
 
 			// Special handling for computed fields
@@ -2146,7 +2157,9 @@
 						{taskFilterGroups}
 					/>
 				{:catch}
-					<div class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
+					<div
+						class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+					>
 						Unable to load mobile command center.
 					</div>
 				{/await}
@@ -2524,7 +2537,8 @@
 										{#if filteredTasks.length > 0}
 											<ul class="divide-y divide-border/80">
 												{#each filteredTasks as task}
-													{@const taskSortSummary = getTaskSortSummary(task)}
+													{@const taskSortSummary =
+														getTaskSortSummary(task)}
 													<li class="flex items-center gap-1 min-w-0">
 														<EntityListItem
 															type="task"

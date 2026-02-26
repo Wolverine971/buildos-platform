@@ -541,8 +541,12 @@
 						{/if}
 						{#if needsOnboarding && !showMobileMenu}
 							<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-								<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75"></span>
-								<span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent"></span>
+								<span
+									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75"
+								></span>
+								<span
+									class="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent"
+								></span>
 							</span>
 						{/if}
 					</Button>
@@ -595,7 +599,9 @@
 												class="mt-2 text-xs text-accent flex items-center font-bold"
 											>
 												<AlertCircle class="w-3 h-3 mr-1" />
-												{isOnOnboarding ? 'Setting up...' : `Setup ${onboardingProgress}% complete`}
+												{isOnOnboarding
+													? 'Setting up...'
+													: `Setup ${onboardingProgress}% complete`}
 											</div>
 										{/if}
 									</div>
@@ -861,7 +867,9 @@
 						{#if needsOnboarding}
 							<div class="mt-1 text-xs text-accent flex items-center">
 								<AlertCircle class="w-3 h-3 mr-1" />
-								{isOnOnboarding ? 'Setting up...' : `Setup ${onboardingProgress}% complete`}
+								{isOnOnboarding
+									? 'Setting up...'
+									: `Setup ${onboardingProgress}% complete`}
 							</div>
 						{/if}
 					</div>

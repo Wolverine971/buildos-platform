@@ -45,6 +45,82 @@ const TERMINAL_PROJECT_STATES = new Set([
 	'abandoned'
 ]);
 
+function toNonNegativeInt(value: unknown): number {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return Math.max(0, Math.floor(value));
+	}
+	if (typeof value === 'string') {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) {
+			return Math.max(0, Math.floor(parsed));
+		}
+	}
+	return 0;
+}
+
+function normalizeDashboardAnalyticsPayload(raw: unknown): UserDashboardAnalytics {
+	const empty = createEmptyUserDashboardAnalytics();
+	const payload = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+	const snapshot =
+		typeof payload.snapshot === 'object' && payload.snapshot !== null
+			? (payload.snapshot as Record<string, unknown>)
+			: {};
+	const attention =
+		typeof payload.attention === 'object' && payload.attention !== null
+			? (payload.attention as Record<string, unknown>)
+			: {};
+	const recent =
+		typeof payload.recent === 'object' && payload.recent !== null
+			? (payload.recent as Record<string, unknown>)
+			: {};
+
+	const projects = Array.isArray(recent.projects)
+		? (recent.projects as UserDashboardAnalytics['recent']['projects'])
+		: empty.recent.projects;
+	const tasks = Array.isArray(recent.tasks)
+		? (recent.tasks as UserDashboardAnalytics['recent']['tasks'])
+		: empty.recent.tasks;
+	const documents = Array.isArray(recent.documents)
+		? (recent.documents as UserDashboardAnalytics['recent']['documents'])
+		: empty.recent.documents;
+	const goals = Array.isArray(recent.goals)
+		? (recent.goals as UserDashboardAnalytics['recent']['goals'])
+		: empty.recent.goals;
+	const chatSessions = Array.isArray(recent.chatSessions)
+		? (recent.chatSessions as UserDashboardAnalytics['recent']['chatSessions'])
+		: empty.recent.chatSessions;
+
+	return {
+		snapshot: {
+			totalProjects: toNonNegativeInt(snapshot.totalProjects),
+			activeProjects: toNonNegativeInt(snapshot.activeProjects),
+			totalTasks: toNonNegativeInt(snapshot.totalTasks),
+			totalGoals: toNonNegativeInt(snapshot.totalGoals),
+			totalDocuments: toNonNegativeInt(snapshot.totalDocuments),
+			tasksUpdated24h: toNonNegativeInt(snapshot.tasksUpdated24h),
+			tasksUpdated7d: toNonNegativeInt(snapshot.tasksUpdated7d),
+			documentsUpdated24h: toNonNegativeInt(snapshot.documentsUpdated24h),
+			documentsUpdated7d: toNonNegativeInt(snapshot.documentsUpdated7d),
+			goalsUpdated24h: toNonNegativeInt(snapshot.goalsUpdated24h),
+			goalsUpdated7d: toNonNegativeInt(snapshot.goalsUpdated7d),
+			chatSessions24h: toNonNegativeInt(snapshot.chatSessions24h),
+			chatSessions7d: toNonNegativeInt(snapshot.chatSessions7d)
+		},
+		attention: {
+			overdueTasks: toNonNegativeInt(attention.overdueTasks),
+			staleProjects7d: toNonNegativeInt(attention.staleProjects7d),
+			staleProjects30d: toNonNegativeInt(attention.staleProjects30d)
+		},
+		recent: {
+			projects,
+			tasks,
+			documents,
+			goals,
+			chatSessions
+		}
+	};
+}
+
 function normalizeStateKey(stateKey: string | null | undefined): string {
 	return (stateKey ?? '').trim().toLowerCase();
 }
@@ -254,6 +330,27 @@ export async function getUserDashboardAnalytics(
 		const actorId = await measure('dashboard.db.ensure_actor', () =>
 			ensureActorId(client, userId)
 		);
+		const { data: rpcPayload, error: rpcError } = await measure(
+			'dashboard.db.analytics_rpc',
+			() =>
+				client.rpc('get_user_dashboard_analytics_v1', {
+					p_actor_id: actorId,
+					p_user_id: userId,
+					p_recent_limit: RECENT_LIST_LIMIT
+				})
+		);
+
+		if (!rpcError && rpcPayload) {
+			return normalizeDashboardAnalyticsPayload(rpcPayload);
+		}
+
+		if (rpcError) {
+			console.warn(
+				'[Dashboard Analytics] Falling back to legacy analytics query path:',
+				rpcError
+			);
+		}
+
 		const projectSummaries = await measure('dashboard.db.projects.summary', () =>
 			fetchProjectSummaries(client, actorId, timing)
 		);

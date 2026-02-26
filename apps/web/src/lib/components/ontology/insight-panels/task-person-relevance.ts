@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/ontology/insight-panels/task-person-relevance.ts
 import { PERSON_FILTER_ME } from './insight-panel-config';
 
 export type TaskPersonAssigneeLike = {
@@ -72,7 +73,9 @@ export function taskMatchesPersonFocusFilter({
 	});
 }
 
-export function getTaskPersonRelevanceLabel(score: number): 'Assigned' | 'Created/Updated' | 'Other' {
+export function getTaskPersonRelevanceLabel(
+	score: number
+): 'Assigned' | 'Created/Updated' | 'Other' {
 	if (score >= 2) return 'Assigned';
 	if (score >= 1) return 'Created/Updated';
 	return 'Other';

@@ -40,6 +40,50 @@ export interface OntologyProjectSummary {
 	next_step_updated_at: string | null;
 }
 
+type ProjectSummaryRpcRow = {
+	id: string;
+	name: string;
+	description: string | null;
+	icon_svg: string | null;
+	icon_concept: string | null;
+	icon_generated_at: string | null;
+	icon_generation_source: string | null;
+	icon_generation_prompt: string | null;
+	type_key: string;
+	state_key: string;
+	props: Json;
+	facet_context: string | null;
+	facet_scale: string | null;
+	facet_stage: string | null;
+	created_at: string;
+	updated_at: string;
+	task_count: number | string | null;
+	goal_count: number | string | null;
+	plan_count: number | string | null;
+	document_count: number | string | null;
+	owner_actor_id: string;
+	access_role: string | null;
+	access_level: string | null;
+	is_shared: boolean | null;
+	next_step_short: string | null;
+	next_step_long: string | null;
+	next_step_source: 'ai' | 'user' | null;
+	next_step_updated_at: string | null;
+};
+
+function toInteger(value: number | string | null | undefined): number {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return Math.max(0, Math.floor(value));
+	}
+	if (typeof value === 'string') {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) {
+			return Math.max(0, Math.floor(parsed));
+		}
+	}
+	return 0;
+}
+
 /**
  * Resolve (or create) the actor id for the given user.
  */
@@ -66,6 +110,66 @@ export async function fetchProjectSummaries(
 ): Promise<OntologyProjectSummary[]> {
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		timing ? timing.measure(name, fn) : fn();
+
+	// Preferred path: single RPC performs summary + latest-activity aggregation server-side.
+	// If the migration is not present yet, fall back to the legacy multi-query path below.
+	const { data: rpcRows, error: rpcError } = await measure('db.projects.summary_rpc', () =>
+		client.rpc('get_onto_project_summaries_v1', {
+			p_actor_id: actorId
+		})
+	);
+
+	if (!rpcError && Array.isArray(rpcRows)) {
+		return (rpcRows as ProjectSummaryRpcRow[]).map((row) => ({
+			id: row.id,
+			name: row.name,
+			description: row.description ?? null,
+			icon_svg: row.icon_svg ?? null,
+			icon_concept: row.icon_concept ?? null,
+			icon_generated_at: row.icon_generated_at ?? null,
+			icon_generation_source:
+				row.icon_generation_source === 'auto' || row.icon_generation_source === 'manual'
+					? row.icon_generation_source
+					: null,
+			icon_generation_prompt: row.icon_generation_prompt ?? null,
+			type_key: row.type_key,
+			state_key: row.state_key,
+			props: sanitizeProjectPropsForClient(
+				(row.props ?? {}) as Record<string, unknown>
+			) as Json,
+			facet_context: row.facet_context ?? null,
+			facet_scale: row.facet_scale ?? null,
+			facet_stage: row.facet_stage ?? null,
+			created_at: row.created_at,
+			updated_at: row.updated_at,
+			task_count: toInteger(row.task_count),
+			goal_count: toInteger(row.goal_count),
+			plan_count: toInteger(row.plan_count),
+			document_count: toInteger(row.document_count),
+			owner_actor_id: row.owner_actor_id,
+			access_role:
+				row.access_role === 'owner' ||
+				row.access_role === 'editor' ||
+				row.access_role === 'viewer'
+					? row.access_role
+					: null,
+			access_level:
+				row.access_level === 'read' ||
+				row.access_level === 'write' ||
+				row.access_level === 'admin'
+					? row.access_level
+					: null,
+			is_shared: Boolean(row.is_shared),
+			next_step_short: row.next_step_short ?? null,
+			next_step_long: row.next_step_long ?? null,
+			next_step_source: row.next_step_source ?? null,
+			next_step_updated_at: row.next_step_updated_at ?? null
+		}));
+	}
+
+	if (rpcError) {
+		console.warn('[Ontology Projects] Falling back to legacy summaries query path:', rpcError);
+	}
 
 	const pickLatestTimestamp = (
 		...timestamps: Array<string | null | undefined>

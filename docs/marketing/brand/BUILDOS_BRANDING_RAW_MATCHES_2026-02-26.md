@@ -1,8 +1,11 @@
+<!-- docs/marketing/brand/BUILDOS_BRANDING_RAW_MATCHES_2026-02-26.md -->
+
 # BuildOS Branding Raw Matches (2026-02-26)
 
 Note: historical pre-P1 snapshot captured before the P1 copy updates were applied on 2026-02-26.
 
 Search scope:
+
 - `apps/web/src`
 - `apps/web/docs/business`
 - `docs/marketing`

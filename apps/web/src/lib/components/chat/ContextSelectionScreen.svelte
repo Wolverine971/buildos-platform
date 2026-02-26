@@ -10,16 +10,14 @@
 	import { onMount } from 'svelte';
 	import { browser, dev } from '$app/environment';
 	import {
-		Globe,
-		Plus,
+		MessagesSquare,
+		FolderPlus,
 		FolderOpen,
 		ChevronRight,
 		Sparkles,
 		LoaderCircle,
-		Lightbulb
+		PenLine
 	} from 'lucide-svelte';
-	import Card from '$lib/components/ui/Card.svelte';
-	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import type { ChatContextType } from '@buildos/shared-types';
 
 	interface OntologyProjectSummary {
@@ -44,7 +42,7 @@
 
 	interface Props {
 		inModal?: boolean;
-		onNavigationChange?: (view: 'primary' | 'projectHub' | 'project-selection') => void;
+		onNavigationChange?: (view: 'primary' | 'project-selection') => void;
 		onSelect?: (selection: ContextSelection) => void;
 	}
 
@@ -52,7 +50,7 @@
 	let { inModal = true, onNavigationChange, onSelect }: Props = $props();
 
 	// State
-	let selectedView: 'primary' | 'projectHub' | 'project-selection' = $state('primary');
+	let selectedView: 'primary' | 'project-selection' = $state('primary');
 	let projects = $state<OntologyProjectSummary[]>([]);
 	let isLoadingProjects = $state(false);
 	let projectsError = $state<string | null>(null);
@@ -120,7 +118,7 @@
 
 	$effect(() => {
 		if (!browser) return;
-		if (selectedView === 'projectHub' && !isLoadingProjects && projects.length === 0) {
+		if (selectedView === 'project-selection' && !isLoadingProjects && projects.length === 0) {
 			loadProjects(true);
 		}
 	});
@@ -132,15 +130,11 @@
 
 	// Primary actions - Svelte 5 callback pattern
 	function selectGlobal() {
-		onSelect?.({ contextType: 'global', label: 'Global conversation' });
+		onSelect?.({ contextType: 'global', label: 'General Chat' });
 	}
 
 	function selectAgentToAgent() {
 		onSelect?.({ contextType: 'agent_to_agent', label: 'Agent to BuildOS chat' });
-	}
-
-	function goToProjectHub() {
-		selectedView = 'projectHub';
 	}
 
 	function selectProjectCreate() {
@@ -148,10 +142,10 @@
 	}
 
 	function selectBraindump() {
-		onSelect?.({ contextType: 'brain_dump', label: 'Braindump' });
+		onSelect?.({ contextType: 'brain_dump', label: 'Brain Dump' });
 	}
 
-	function showProjectSelection() {
+	function goToProjectSelection() {
 		selectedView = 'project-selection';
 	}
 
@@ -168,15 +162,9 @@
 		selectedView = 'primary';
 	}
 
-	function backToProjectHub() {
-		selectedView = 'projectHub';
-	}
-
 	// Public function for parent to trigger back navigation
 	export function handleBackNavigation() {
 		if (selectedView === 'project-selection') {
-			backToProjectHub();
-		} else if (selectedView === 'projectHub') {
 			backToPrimary();
 		}
 	}
@@ -246,14 +234,14 @@
 							<div
 								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400"
 							>
-								<Plus class="h-5 w-5" />
+								<FolderPlus class="h-5 w-5" />
 							</div>
 							<div class="min-w-0 flex-1">
 								<h3 class="text-base font-semibold text-foreground">
 									Create your first project
 								</h3>
 								<p class="mt-0.5 text-xs text-muted-foreground">
-									Guided discovery to capture goals, milestones, and structure.
+									Guided setup to define goals, milestones, and structure.
 								</p>
 							</div>
 							<ChevronRight
@@ -276,9 +264,9 @@
 								<div
 									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent"
 								>
-									<Globe class="h-3.5 w-3.5" />
+									<MessagesSquare class="h-3.5 w-3.5" />
 								</div>
-								<span class="text-sm text-foreground">Global conversation</span>
+								<span class="text-sm text-foreground">General Chat</span>
 							</div>
 							<div
 								class="flex items-center gap-2.5 rounded-lg border border-border bg-card p-2.5"
@@ -286,42 +274,40 @@
 								<div
 									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400"
 								>
-									<Lightbulb class="h-3.5 w-3.5" />
+									<PenLine class="h-3.5 w-3.5" />
 								</div>
-								<span class="text-sm text-foreground">Braindump</span>
+								<span class="text-sm text-foreground">Brain Dump</span>
 							</div>
 						</div>
 					</div>
 				</div>
 			{:else}
-				<!-- Mobile: compact stacked list | Desktop: grid -->
-				<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-					<!-- Global conversation -->
+				<!-- Mobile: compact stacked list | Desktop: 2x2 grid -->
+				<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-4">
+					<!-- General Chat — multi-project, open scope -->
 					<button
 						onclick={selectGlobal}
 						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
 					>
-						<!-- Mobile: Icon + Title + Chevron in one row -->
 						<div class="flex items-center gap-2 sm:gap-3">
 							<div
 								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-lg"
 							>
-								<Globe class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+								<MessagesSquare class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 							</div>
 							<h3 class="flex-1 text-sm font-semibold text-foreground">
-								Global conversation
+								General Chat
 							</h3>
 							<ChevronRight
 								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:hidden"
 							/>
 						</div>
-						<!-- Description underneath -->
 						<p
 							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
 						>
-							Talk across projects, calendar, and knowledge with no preset scope.
+							Talk across all your projects, calendar, and tasks — no specific focus
+							needed.
 						</p>
-						<!-- Desktop footer -->
 						<div
 							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-accent sm:flex"
 						>
@@ -332,8 +318,49 @@
 						</div>
 					</button>
 
+					<!-- Project Chat — pick a project, chat about it -->
+					<button
+						onclick={goToProjectSelection}
+						disabled={isLoadingProjects || !hasProjects}
+						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-emerald-500/50 hover:shadow-ink-strong active:scale-[0.99] disabled:opacity-60 disabled:shadow-ink sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5 sm:disabled:translate-y-0"
+					>
+						<div class="flex items-center gap-2 sm:gap-3">
+							<div
+								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
+							>
+								{#if isLoadingProjects}
+									<LoaderCircle class="h-3.5 w-3.5 animate-spin sm:h-5 sm:w-5" />
+								{:else}
+									<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+								{/if}
+							</div>
+							<h3 class="flex-1 text-sm font-semibold text-foreground">
+								Project Chat
+							</h3>
+							<ChevronRight
+								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
+							/>
+						</div>
+						<p
+							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
+						>
+							Pick a project and get focused help — plan, update, or review.
+						</p>
+						<div
+							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
+						>
+							<span
+								>{#if hasProjects}{activeProjects.length} active projects{:else}No
+									projects yet{/if}</span
+							>
+							<ChevronRight
+								class="h-4 w-4 transition-transform group-hover:translate-x-1"
+							/>
+						</div>
+					</button>
+
 					<!-- Agent to BuildOS chat (dev only) -->
-					{#if dev}
+					{#if dev && 123 === false}
 						<button
 							onclick={selectAgentToAgent}
 							class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
@@ -345,7 +372,7 @@
 									<Sparkles class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 								</div>
 								<h3 class="flex-1 text-sm font-semibold text-foreground">
-									Agent to BuildOS chat
+									Agent to BuildOS
 								</h3>
 								<ChevronRight
 									class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
@@ -367,40 +394,40 @@
 						</button>
 					{/if}
 
-					<!-- Projects workspace -->
+					<!-- Start a Project — guided creation -->
 					<button
-						onclick={goToProjectHub}
-						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-emerald-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
+						onclick={selectProjectCreate}
+						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-purple-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
 					>
 						<div class="flex items-center gap-2 sm:gap-3">
 							<div
-								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
+								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 sm:h-10 sm:w-10 sm:rounded-lg"
 							>
-								<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+								<FolderPlus class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 							</div>
 							<h3 class="flex-1 text-sm font-semibold text-foreground">
-								Projects workspace
+								Start a Project
 							</h3>
 							<ChevronRight
-								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
+								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-purple-500 sm:hidden"
 							/>
 						</div>
 						<p
 							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
 						>
-							Start something new or dive into an existing project with focused tools.
+							Guided setup to define goals, milestones, and structure.
 						</p>
 						<div
-							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
+							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-purple-600 dark:text-purple-400 sm:flex"
 						>
-							<span>Project flows</span>
+							<span>New project</span>
 							<ChevronRight
 								class="h-4 w-4 transition-transform group-hover:translate-x-1"
 							/>
 						</div>
 					</button>
 
-					<!-- Braindump -->
+					<!-- Brain Dump — one-way capture -->
 					<button
 						onclick={selectBraindump}
 						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-violet-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
@@ -409,9 +436,9 @@
 							<div
 								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:h-10 sm:w-10 sm:rounded-lg"
 							>
-								<Lightbulb class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+								<PenLine class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 							</div>
-							<h3 class="flex-1 text-sm font-semibold text-foreground">Braindump</h3>
+							<h3 class="flex-1 text-sm font-semibold text-foreground">Brain Dump</h3>
 							<ChevronRight
 								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
 							/>
@@ -419,13 +446,12 @@
 						<p
 							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
 						>
-							Capture raw thoughts, then save them or explore with AI as a thought
-							partner.
+							Jot down thoughts or ideas — quick notes, no conversation needed.
 						</p>
 						<div
 							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-violet-600 dark:text-violet-400 sm:flex"
 						>
-							<span>Capture thoughts</span>
+							<span>Quick capture</span>
 							<ChevronRight
 								class="h-4 w-4 transition-transform group-hover:translate-x-1"
 							/>
@@ -444,107 +470,6 @@
 					</div>
 				{/if}
 			{/if}
-		</div>
-	{/if}
-
-	<!-- PROJECT HUB VIEW -->
-	{#if selectedView === 'projectHub'}
-		<div class="flex h-full min-h-0 flex-col">
-			<!-- Header - compact on mobile -->
-			<div class="border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm sm:p-4">
-				<h2 class="text-base font-semibold text-foreground sm:text-lg">Project flow</h2>
-				<p class="text-xs text-muted-foreground">
-					Choose whether you're starting fresh or advancing an existing project.
-				</p>
-			</div>
-			<div class="mx-auto w-full max-w-4xl flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:p-5">
-				<!-- Mobile: stacked list | Desktop: grid -->
-				<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-4">
-					<!-- Create new project -->
-					<button
-						onclick={selectProjectCreate}
-						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-purple-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
-					>
-						<div class="flex items-center gap-2 sm:gap-3">
-							<div
-								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 sm:h-10 sm:w-10 sm:rounded-lg"
-							>
-								<Plus class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-							</div>
-							<h3 class="flex-1 text-sm font-semibold text-foreground">
-								Create a new project
-							</h3>
-							<ChevronRight
-								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-purple-500 sm:hidden"
-							/>
-						</div>
-						<p
-							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-						>
-							Guided discovery to capture goals, milestones, and structure.
-						</p>
-						<div
-							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-purple-600 dark:text-purple-400 sm:flex"
-						>
-							<span>10-minute setup</span>
-							<ChevronRight
-								class="h-4 w-4 transition-transform group-hover:translate-x-1"
-							/>
-						</div>
-					</button>
-
-					<!-- Work with existing project -->
-					<button
-						onclick={showProjectSelection}
-						disabled={isLoadingProjects || !hasProjects}
-						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-emerald-500/50 hover:shadow-ink-strong active:scale-[0.99] disabled:opacity-60 disabled:shadow-ink sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5 sm:disabled:translate-y-0"
-					>
-						<div class="flex items-center gap-2 sm:gap-3">
-							<div
-								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
-							>
-								{#if isLoadingProjects}
-									<LoaderCircle class="h-3.5 w-3.5 animate-spin sm:h-5 sm:w-5" />
-								{:else}
-									<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-								{/if}
-							</div>
-							<h3 class="flex-1 text-sm font-semibold text-foreground">
-								Work with existing project
-							</h3>
-							<ChevronRight
-								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
-							/>
-						</div>
-						<p
-							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-						>
-							Select a project, then choose whether to update, audit, or forecast it.
-						</p>
-						<div
-							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
-						>
-							<span
-								>{#if hasProjects}{activeProjects.length} ready projects{:else}No
-									ontology projects yet{/if}</span
-							>
-							<ChevronRight
-								class="h-4 w-4 transition-transform group-hover:translate-x-1"
-							/>
-						</div>
-					</button>
-				</div>
-
-				{#if projectsError}
-					<div
-						class="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 p-3 sm:mt-6"
-					>
-						<p class="text-sm text-destructive" role="alert">
-							{projectsError}
-						</p>
-					</div>
-				{/if}
-			</div>
 		</div>
 	{/if}
 

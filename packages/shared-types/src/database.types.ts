@@ -11129,6 +11129,39 @@ export type Database = {
           total_sent: number
         }[]
       }
+      get_onto_project_summaries_v1: {
+        Args: { p_actor_id: string }
+        Returns: {
+          access_level: string
+          access_role: string
+          created_at: string
+          description: string
+          document_count: number
+          facet_context: string
+          facet_scale: string
+          facet_stage: string
+          goal_count: number
+          icon_concept: string
+          icon_generated_at: string
+          icon_generation_prompt: string
+          icon_generation_source: string
+          icon_svg: string
+          id: string
+          is_shared: boolean
+          name: string
+          next_step_long: string
+          next_step_short: string
+          next_step_source: string
+          next_step_updated_at: string
+          owner_actor_id: string
+          plan_count: number
+          props: Json
+          state_key: string
+          task_count: number
+          type_key: string
+          updated_at: string
+        }[]
+      }
       get_project_full: {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
@@ -11258,6 +11291,10 @@ export type Database = {
           total_subscribers: number
           trial_subscriptions: number
         }[]
+      }
+      get_user_dashboard_analytics_v1: {
+        Args: { p_actor_id: string; p_recent_limit?: number; p_user_id: string }
+        Returns: Json
       }
       get_user_engagement_metrics: {
         Args: never

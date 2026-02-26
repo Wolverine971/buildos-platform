@@ -1,3 +1,4 @@
+// apps/web/src/routes/projects/[id]/page.server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { ensureActorIdMock } = vi.hoisted(() => ({
@@ -113,9 +114,11 @@ function createHarness(options: HarnessOptions = {}) {
 	});
 
 	const userId = options.userId === undefined ? 'user-1' : options.userId;
-	const safeGetSession = vi.fn().mockResolvedValue(
-		userId ? { user: { id: userId, email: 'test@example.com' } } : { user: null }
-	);
+	const safeGetSession = vi
+		.fn()
+		.mockResolvedValue(
+			userId ? { user: { id: userId, email: 'test@example.com' } } : { user: null }
+		);
 
 	const event = {
 		params: { id: 'project-1' },

@@ -71,9 +71,7 @@
 			autoResize && 'resize-none overflow-hidden',
 
 			// State classes - clean borders
-			error
-				? 'border-destructive'
-				: 'border-border focus:border-b-accent',
+			error ? 'border-destructive' : 'border-border focus:border-b-accent',
 
 			// Background - card
 			'bg-card',
@@ -209,11 +207,15 @@
 
 	/* Bottom-only focus indicator */
 	textarea:focus {
-		box-shadow: 0 2px 0 0 hsl(var(--ring)), var(--tw-shadow, 0 0 #0000);
+		box-shadow:
+			0 2px 0 0 hsl(var(--ring)),
+			var(--tw-shadow, 0 0 #0000);
 	}
 
 	textarea[aria-invalid='true']:focus {
-		box-shadow: 0 2px 0 0 hsl(var(--destructive)), var(--tw-shadow, 0 0 #0000);
+		box-shadow:
+			0 2px 0 0 hsl(var(--destructive)),
+			var(--tw-shadow, 0 0 #0000);
 	}
 
 	/* Custom scrollbar - Inkprint aesthetic */

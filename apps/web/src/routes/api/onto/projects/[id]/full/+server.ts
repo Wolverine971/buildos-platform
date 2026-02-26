@@ -189,7 +189,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				lastChangedByActorMap
 			);
 		} catch (relevanceError) {
-			console.warn('[Project Full API] Failed to enrich task relevance actors:', relevanceError);
+			console.warn(
+				'[Project Full API] Failed to enrich task relevance actors:',
+				relevanceError
+			);
 		}
 
 		return ApiResponse.success({

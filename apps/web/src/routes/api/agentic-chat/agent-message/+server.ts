@@ -308,7 +308,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					priorBuildOSMessages: priorBuildOSMessages.length
 				}
 			});
-			return ApiResponse.error('Failed to generate agent message', 500, 'AGENT_EMPTY_MESSAGE');
+			return ApiResponse.error(
+				'Failed to generate agent message',
+				500,
+				'AGENT_EMPTY_MESSAGE'
+			);
 		}
 
 		return ApiResponse.success({

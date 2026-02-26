@@ -31,11 +31,6 @@
 			"components": ["DailyBriefModal", "BriefChatModal"]
 		},
 		{
-			"file": "src/lib/components/dashboard/Dashboard.svelte",
-			"type": "component",
-			"components": ["AgentChatModal", "DailyBriefModal", "BriefChatModal"]
-		},
-		{
 			"file": "src/lib/components/layout/Navigation.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
@@ -115,8 +110,13 @@
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
+				"MobileCommandCenter",
+				"ProjectBriefsPanel",
+				"ProjectActivityLogPanel",
+				"ImageAssetsPanel",
 				"DocumentModal",
 				"TaskCreateModal",
+				"TaskEditModal",
 				"PlanCreateModal",
 				"PlanEditModal",
 				"GoalCreateModal",
@@ -128,7 +128,10 @@
 				"EventCreateModal",
 				"EventEditModal",
 				"ProjectCalendarSettingsModal",
-				"OntologyProjectEditModal"
+				"OntologyProjectEditModal",
+				"ProjectCollaborationModal",
+				"ProjectIconStudioModal",
+				"ProjectGraphSection"
 			]
 		},
 		{
@@ -167,18 +170,6 @@
 			"type": "service",
 			"components": [],
 			"exports": ["AgentContextService"]
-		},
-		{
-			"file": "src/lib/services/agent-conversation-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["AgentConversationService"]
-		},
-		{
-			"file": "src/lib/services/agent-executor-instructions.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ExecutorInstructionGenerator"]
 		},
 		{
 			"file": "src/lib/services/agent-executor-service.ts",
@@ -772,6 +763,7 @@
 			"exports": [
 				"ASSIGNEE_FILTER_UNASSIGNED",
 				"ASSIGNEE_FILTER_ME",
+				"PERSON_FILTER_ME",
 				"TASK_CONFIG",
 				"PLAN_CONFIG",
 				"GOAL_CONFIG",
@@ -796,6 +788,17 @@
 			"type": "component",
 			"components": [],
 			"exports": ["taskMatchesAssigneeFilter"]
+		},
+		{
+			"file": "src/lib/components/ontology/insight-panels/task-person-relevance.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"resolveTaskPersonFocusActorId",
+				"getTaskPersonRelevanceScore",
+				"taskMatchesPersonFocusFilter",
+				"getTaskPersonRelevanceLabel"
+			]
 		},
 		{
 			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
@@ -918,6 +921,7 @@
 		],
 		"src/routes/projects/[id]/+page.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",
+			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
 			"src/lib/components/ontology/RiskEditModal.svelte",
@@ -934,7 +938,6 @@
 	},
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
-		"src/lib/components/dashboard/Dashboard.svelte",
 		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
@@ -944,6 +947,7 @@
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
+		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",

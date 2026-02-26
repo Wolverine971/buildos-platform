@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/task-relevance.service.ts
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 type SupabaseClient = App.Locals['supabase'];
@@ -60,7 +61,11 @@ export async function fetchTaskLastChangedByActorMap({
 	const userIdsToResolve = new Set<string>();
 
 	for (const row of (data ?? []) as TaskLogRow[]) {
-		if (!row.entity_id || byTaskId.has(row.entity_id) || unresolvedByTaskId.has(row.entity_id)) {
+		if (
+			!row.entity_id ||
+			byTaskId.has(row.entity_id) ||
+			unresolvedByTaskId.has(row.entity_id)
+		) {
 			continue;
 		}
 

@@ -115,23 +115,25 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			let isOwner = false;
 
 			if (user && actorId) {
-				const [writeResult, adminResult, ownerResult] = await measure('db.project_access.core', () =>
-					Promise.all([
-						supabase.rpc('current_actor_has_project_access', {
-							p_project_id: id,
-							p_required_access: 'write'
-						}),
-						supabase.rpc('current_actor_has_project_access', {
-							p_project_id: id,
-							p_required_access: 'admin'
-						}),
-						supabase
-							.from('onto_projects')
-							.select('id', { head: true, count: 'exact' })
-							.eq('id', id)
-							.eq('created_by', actorId)
-							.is('deleted_at', null)
-					])
+				const [writeResult, adminResult, ownerResult] = await measure(
+					'db.project_access.core',
+					() =>
+						Promise.all([
+							supabase.rpc('current_actor_has_project_access', {
+								p_project_id: id,
+								p_required_access: 'write'
+							}),
+							supabase.rpc('current_actor_has_project_access', {
+								p_project_id: id,
+								p_required_access: 'admin'
+							}),
+							supabase
+								.from('onto_projects')
+								.select('id', { head: true, count: 'exact' })
+								.eq('id', id)
+								.eq('created_by', actorId)
+								.is('deleted_at', null)
+						])
 				);
 
 				if (writeResult.error) {

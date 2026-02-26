@@ -1,12 +1,14 @@
 <!-- apps/web/src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte -->
 <script lang="ts">
 	import {
-		Rocket,
+		MessagesSquare,
+		FolderOpen,
+		FolderPlus,
+		PenLine,
 		Calendar,
 		LoaderCircle,
 		Sparkles,
 		CheckCircle,
-		Info,
 		TriangleAlert
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -356,18 +358,18 @@
 </script>
 
 <div class="max-w-3xl mx-auto px-4">
-	<!-- Header - Compact -->
+	<!-- Header -->
 	<div class="mb-6 text-center">
 		<div class="flex justify-center mb-4">
 			<div
 				class="w-14 h-14 bg-muted rounded-xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
 			>
-				<Rocket class="w-7 h-7 text-accent" />
+				<MessagesSquare class="w-7 h-7 text-accent" />
 			</div>
 		</div>
 
 		<h2 class="text-2xl sm:text-3xl font-bold mb-2 text-foreground">
-			{v3Prompts ? v3Prompts.heading : 'Step 2: Clarity - Projects & Brain Dumping'}
+			{v3Prompts ? v3Prompts.heading : 'Meet Your AI Assistant'}
 		</h2>
 		{#if v3Prompts}
 			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto mb-2">
@@ -376,69 +378,142 @@
 			</p>
 		{:else}
 			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto mb-2">
-				Get organized by getting things out of your head and onto the screen.
+				Everything in BuildOS happens through the <strong class="text-foreground"
+					>Agentic Chat</strong
+				>.
 			</p>
 			<p class="text-sm text-muted-foreground leading-relaxed max-w-xl mx-auto">
-				BuildOS works with <strong class="text-foreground">projects</strong> — work initiatives,
-				personal goals, creative pursuits, or anything you're working towards.
+				Here's how it works — then we'll capture your first project below.
 			</p>
 		{/if}
 	</div>
 
-	<!-- Philosophy Reinforcement + Examples - Compact -->
+	<!-- Agentic Chat Overview -->
 	<div class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak">
-		<!-- Screenshot -->
-		<div class="mb-3 bg-muted rounded-lg overflow-hidden border border-border">
-			<img
-				src="/onboarding-assets/screenshots/brain-dump-1.png"
-				alt="Screenshot of BuildOS brain dump input"
-				loading="lazy"
-				class="w-full"
-			/>
-		</div>
-
 		<h3 class="font-semibold mb-2 flex items-center gap-2 text-foreground text-sm">
 			<Sparkles class="w-4 h-4 text-accent" />
-			What Makes a Project?
+			Where to Find It
 		</h3>
 		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
-			Projects are focused endeavors with a goal or purpose. Organize around actually <em
-				>completing</em
-			> things.
+			Look for the <strong class="text-foreground">Brain Dump & Chat</strong> button in the top
+			navigation bar. Open it anytime to work with your AI assistant.
 		</p>
 
-		<!-- Compact examples grid -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-			<div class="flex gap-2">
-				<span>💼</span>
-				<span><strong class="text-foreground">Work:</strong> "Q1 Marketing Campaign"</span>
-			</div>
-			<div class="flex gap-2">
-				<span>🏋️</span>
-				<span
-					><strong class="text-foreground">Personal:</strong> "Get in shape for summer"</span
-				>
-			</div>
-			<div class="flex gap-2">
-				<span>🎨</span>
-				<span><strong class="text-foreground">Creative:</strong> "Launch my Etsy shop"</span
-				>
-			</div>
-			<div class="flex gap-2">
-				<span>📚</span>
-				<span><strong class="text-foreground">Learning:</strong> "Master Spanish"</span>
-			</div>
-		</div>
-
-		<!-- Second screenshot -->
-		<div class="mt-3 bg-muted rounded-lg overflow-hidden border border-border">
+		<!-- Screenshot: Where to find the chat -->
+		<div class="mb-4 bg-muted rounded-lg overflow-hidden border border-border">
 			<img
-				src="/onboarding-assets/screenshots/brain-dump-2.png"
-				alt="Screenshot of BuildOS showing generated project summaries"
+				src="/onboarding-assets/screenshots/agentic-chat-select.png"
+				alt="Arrow pointing to the Brain Dump & Chat button in the navigation bar"
 				loading="lazy"
 				class="w-full"
 			/>
 		</div>
+
+		<!-- Chat modes heading -->
+		<h3 class="font-semibold mb-2 flex items-center gap-2 text-foreground text-sm">
+			<Sparkles class="w-4 h-4 text-accent" />
+			Four Ways to Work
+		</h3>
+		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
+			When you open the chat, you choose how you want to work. Each mode tailors the
+			assistant to what you need.
+		</p>
+
+		<!-- Screenshot: The 4 chat modes -->
+		<div class="mb-3 bg-muted rounded-lg overflow-hidden border border-border">
+			<img
+				src="/onboarding-assets/screenshots/agentic-chat-options.png"
+				alt="The four chat mode options: General Chat, Project Chat, Start a Project, and Brain Dump"
+				loading="lazy"
+				class="w-full"
+			/>
+		</div>
+
+		<!-- Mode descriptions -->
+		<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-4">
+			<div class="flex gap-2 items-start">
+				<div
+					class="w-5 h-5 rounded bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5"
+				>
+					<MessagesSquare class="w-3 h-3 text-accent" />
+				</div>
+				<div>
+					<strong class="text-foreground">General Chat</strong>
+					<p class="text-muted-foreground leading-snug mt-0.5">
+						Talk about anything across all your projects, calendar, and tasks at once.
+					</p>
+				</div>
+			</div>
+			<div class="flex gap-2 items-start">
+				<div
+					class="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5"
+				>
+					<FolderOpen class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+				</div>
+				<div>
+					<strong class="text-foreground">Project Chat</strong>
+					<p class="text-muted-foreground leading-snug mt-0.5">
+						Pick a specific project and get focused help — plan, update, or review
+						progress.
+					</p>
+				</div>
+			</div>
+			<div class="flex gap-2 items-start">
+				<div
+					class="w-5 h-5 rounded bg-purple-500/10 flex items-center justify-center flex-shrink-0 mt-0.5"
+				>
+					<FolderPlus class="w-3 h-3 text-purple-600 dark:text-purple-400" />
+				</div>
+				<div>
+					<strong class="text-foreground">Start a Project</strong>
+					<p class="text-muted-foreground leading-snug mt-0.5">
+						Guided setup to define a new project with goals, milestones, and structure.
+					</p>
+				</div>
+			</div>
+			<div class="flex gap-2 items-start">
+				<div
+					class="w-5 h-5 rounded bg-violet-500/10 flex items-center justify-center flex-shrink-0 mt-0.5"
+				>
+					<PenLine class="w-3 h-3 text-violet-600 dark:text-violet-400" />
+				</div>
+				<div>
+					<strong class="text-foreground">Brain Dump</strong>
+					<p class="text-muted-foreground leading-snug mt-0.5">
+						Jot down thoughts or ideas — quick one-way capture, no conversation needed.
+					</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Voice transcription hint -->
+		<div class="border-t border-border pt-3">
+			<h3 class="font-semibold mb-2 flex items-center gap-2 text-foreground text-sm">
+				<Sparkles class="w-4 h-4 text-accent" />
+				Talk Instead of Type
+			</h3>
+			<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
+				Use the <strong class="text-foreground">voice button</strong> in any chat to talk instead
+				of type. It's faster for brain dumps, project updates, and when you're on the go.
+			</p>
+			<div class="bg-muted rounded-lg overflow-hidden border border-border">
+				<img
+					src="/onboarding-assets/screenshots/agentic-chat-voice-transcription.png"
+					alt="Voice transcription button highlighted in the chat input area"
+					loading="lazy"
+					class="w-full"
+				/>
+			</div>
+		</div>
+	</div>
+
+	<!-- Transition to project capture -->
+	<div class="mb-4 flex items-center gap-3">
+		<div class="flex-1 h-px bg-border"></div>
+		<span class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+			>Now let's capture your first project</span
+		>
+		<div class="flex-1 h-px bg-border"></div>
 	</div>
 
 	{#if showSuccess}

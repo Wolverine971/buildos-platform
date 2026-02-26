@@ -205,6 +205,9 @@ export const ONBOARDING_V2_CONFIG = {
 	// Asset paths
 	assets: {
 		screenshots: {
+			agenticChatSelect: '/onboarding-assets/screenshots/agentic-chat-select.png',
+			agenticChatOptions: '/onboarding-assets/screenshots/agentic-chat-options.png',
+			agenticChatVoice: '/onboarding-assets/screenshots/agentic-chat-voice-transcription.png',
 			brainDumpExample: '/onboarding-assets/screenshots/PLACEHOLDER_brain_dump_example.png',
 			calendarAnalysisBefore:
 				'/onboarding-assets/screenshots/PLACEHOLDER_calendar_analysis_before.png',
