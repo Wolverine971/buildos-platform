@@ -108,9 +108,9 @@ The clock is ticking with 2 months runway. We need to move FAST but strategicall
 
 ### Pitch & Story:
 
-- 30 second pitch: BuildOS is an AI-first project organization tool. Users braindump raw thoughts into the system and BuildOS does all the organizing. This helps people get organized, save time, and move from inaction to action. BuildOS is at the sweet spot of easy information capture and simple project organization. We're a tool in phase 1 and a thought partner in phase 2.
+- 30 second pitch: BuildOS is an AI project collaboration tool. Users braindump raw thoughts into the system and BuildOS turns them into shared project context and next steps. This helps people save time and move from inaction to action. BuildOS sits at the sweet spot of easy information capture and lightweight project collaboration. We're a tool in phase 1 and a thought partner in phase 2.
 - Origin: Personal need for organization tool that captures thoughts and uses them as context for follow-on research
-- Unfair advantage: Early to using AI for organization, moving fast, solo founder who can move even faster with a team
+- Unfair advantage: Early to AI-native project collaboration, moving fast, solo founder who can move even faster with a team
 
 ### Vision:
 

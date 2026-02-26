@@ -453,7 +453,7 @@ For most accelerator applications, use:
 
 ### "How do you monetize the free tier?"
 
-"We're launching with a simple freemium model: free tier for basic brain dumps and project organization, $20/month pro tier for unlimited projects, daily briefs, calendar integration, and priority AI processing. Free tier is lead generation; power users convert to paid."
+"We're launching with a simple freemium model: free tier for basic brain dumps and project collaboration, $20/month pro tier for unlimited projects, daily briefs, calendar integration, and priority AI processing. Free tier is lead generation; power users convert to paid."
 
 ---
 

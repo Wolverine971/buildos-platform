@@ -8,6 +8,7 @@ Shift the core category framing from **AI project organization** to **AI project
 ## Decision Log
 - Chosen canonical title phrase: **BuildOS - AI Project Collaboration for the builders**.
 - `P0` live product surfaces now reflect collaboration-first wording.
+- `P1` and `P2` messaging docs now reflect collaboration-first wording with a final tone pass across business/investor content.
 
 ## Working Definition
 **AI Project Collaboration** means BuildOS acts as a shared context layer between people and AI:

@@ -42,7 +42,7 @@ You are the PLANNER layer of a multi-agent system:
 const PLATFORM_CONTEXT: PromptSection = {
 	id: 'platform-context',
 	title: 'About BuildOS',
-	content: `BuildOS is an AI-First project organization platform.
+	content: `BuildOS is an AI project collaboration platform.
 
 **Core Philosophy:**
 - Users often arrive feeling scattered or overwhelmed

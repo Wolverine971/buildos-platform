@@ -1223,7 +1223,7 @@
 					<div class="flex flex-col lg:flex-row flex-1 min-h-0">
 						<!-- Left sidebar (metadata + history + activity) - Desktop only, hidden on mobile -->
 						<div
-							class="hidden lg:flex lg:flex-col lg:w-80 xl:w-96 flex-shrink-0 lg:border-r border-border bg-muted overflow-y-auto tx tx-frame tx-weak"
+							class="hidden lg:flex lg:flex-col lg:w-60 xl:w-76 flex-shrink-0 lg:border-r border-border bg-muted overflow-y-auto tx tx-frame tx-weak"
 						>
 							<div class="p-3 space-y-2">
 								<!-- Settings Section - Always expanded -->

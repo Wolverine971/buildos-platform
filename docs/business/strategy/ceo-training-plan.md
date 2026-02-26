@@ -18,8 +18,8 @@ Achieve complete fluency in investor communications, metrics mastery, and strate
 
 ### What is BuildOS?
 
-- **Product**: AI-first project organization tool where users brain dump thoughts and AI organizes them into structured projects with tasks
-- **Tagline**: "Let AI organize your thoughts"
+- **Product**: AI project collaboration tool where users brain dump thoughts and AI turns them into shared project context, plans, and tasks
+- **Tagline**: "Turn thoughts into shared project context"
 - **Core Innovation**: Solves context repetition problem for LLM users - builds reusable context that compounds over time
 - **Website**: build-os.com
 - **Stage**: Beta phase, early users, pre-funding

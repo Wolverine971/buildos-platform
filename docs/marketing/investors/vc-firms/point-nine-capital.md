@@ -166,7 +166,7 @@ Subject: AI-Powered Productivity SaaS - Strong Unit Economics
 
 Hi Christoph,
 
-BuildOS is a B2B productivity platform with AI-powered project organization.
+BuildOS is a B2B productivity platform with AI-powered project collaboration.
 We're at the "v0.9" stage with strong early metrics:
 
 • $XXK MRR growing X% month-over-month

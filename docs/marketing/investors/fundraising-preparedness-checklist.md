@@ -379,15 +379,15 @@ to answer questions here are my responses.\ │
 │   81 beta user signups\                                                                                                   │
 │   burn rate I can go another 2 months\                                                                                    │
 │   \                                                                                                                       │
-│   30 second pitch- buildos is an ai first project organization tool. Users braindump raw thoughts into the system and     │
-│   buildos does all the organizing. This helps move people get organized and save time and move them from inaction to      │
-│   action. Buildos is at the sweet spot of being able to easily do inforamtion capture and the project organization isnt   │
-│   too complicated. We in phase 1 are a tool and in phase 2 a thought partner.\                                            │
+│   30 second pitch- buildos is an ai project collaboration tool. Users braindump raw thoughts into the system and           │
+│   buildos turns them into shared project context and next steps. This helps people save time and move from inaction       │
+│   to action. Buildos sits at the sweet spot of easy information capture and lightweight project collaboration without      │
+│   heavy process. We in phase 1 are a tool and in phase 2 a thought partner.                                               │
 │   \                                                                                                                       │
 │   What sparked the idea was me being unorganized and wanting to build a tool to help me. I wanted it to first of all      │
 │   just capture my thoughts and I wanted to use this as context for follow on research.\                                   │
 │   \                                                                                                                       │
-│   Unfair advantage is that we are early to using ai for organization and we are moving very fast. I am a solo founder     │
+│   Unfair advantage is that we are early to AI-native project collaboration and we are moving very fast. I am a solo founder│
 │   and can move even faster with a team.\                                                                                  │
 │   If everything goes right I can see us with 10000+ users and 2 million + ARR and starting to accelerate faster and       │
 │   build out more of a team.\                                                                                              │

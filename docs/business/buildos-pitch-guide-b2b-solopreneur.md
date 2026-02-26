@@ -51,7 +51,7 @@ Solopreneurs and small teams juggle 3-10 active projects simultaneously. Each co
 - **83 signups** in 3 weeks at **$3 CAC**
 - **77% retention** (users don't leave because accumulated context becomes invaluable)
 - Average user manages **4.2 concurrent projects** (vs 2.1 with traditional tools)
-- **70% reduction** in time spent on project organization
+- **70% reduction** in time spent on project coordination
 
 ---
 
@@ -366,7 +366,7 @@ Questions?"
 
 ### Business Value Propositions
 
-1. **Time Savings**: 70% reduction in project organization time = 10-15 hours/week for typical user
+1. **Time Savings**: 70% reduction in project coordination time = 10-15 hours/week for typical user
 2. **Capacity Increase**: Manage 3x more projects without hiring PMs
 3. **Revenue Impact**: 10-15 saved hours/week = $4,000-6,000/month at $100/hour rates
 4. **Context Switching**: Eliminate 20+ minutes per context switch (6-8 switches/day = 2-3 hours saved)
@@ -486,7 +486,7 @@ For most business/accelerator applications:
 
 ### "Why will businesses pay for another project management tool?"
 
-"They're not paying for project management—they're paying for reclaimed time. At $100/hour consulting rates, BuildOS pays for itself in 15 minutes of saved time monthly. Our users save 10-15 hours weekly on project organization and context switching. That's $4,000-6,000 monthly value for a $20 subscription. The ROI is 200-300x."
+"They're not paying for project management—they're paying for reclaimed time. At $100/hour consulting rates, BuildOS pays for itself in 15 minutes of saved time monthly. Our users save 10-15 hours weekly on project coordination and context switching. That's $4,000-6,000 monthly value for a $20 subscription. The ROI is 200-300x."
 
 ---
 
@@ -588,7 +588,7 @@ For most business/accelerator applications:
 
 ### For Consultants
 
-"Stop losing billable hours to project organization. BuildOS captures client calls and structures them automatically so you're billing from minute one."
+"Stop losing billable hours to project coordination. BuildOS captures client calls and structures them automatically so you're billing from minute one."
 
 ### For Agencies
 

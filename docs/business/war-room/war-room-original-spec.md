@@ -2,7 +2,7 @@
 
 I have a project called buildos and attached is the context document.
 
-A new feature I want to work on is project war room. So you have your project that you have been continually updating via braindumps and regular manual project organization and its your baby. Now you want to protect your baby. Its time to take your baby to the war room.
+A new feature I want to work on is project war room. So you have your project that you have been continually updating via braindumps and regular manual project coordination and its your baby. Now you want to protect your baby. Its time to take your baby to the war room.
 
 The war room is where you stress test your ideas and projects.
 

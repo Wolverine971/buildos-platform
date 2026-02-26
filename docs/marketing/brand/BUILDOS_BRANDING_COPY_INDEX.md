@@ -7,8 +7,9 @@ Scope: places where BuildOS category/positioning language appears, especially ar
 ## Status Snapshot
 - `P0` live product surfaces: completed.
 - `P1` copy source-of-truth and social/founder messaging: completed.
+- `P2` investor/strategy docs + tone pass: completed.
 - Preferred canonical title phrase: `BuildOS - AI Project Collaboration for the builders`.
-- Remaining: `P2` investor/strategy docs and `P3` internal AI prompt identity text.
+- Remaining: `P3` internal AI prompt identity text.
 
 ## Completed P0: Live Product Surfaces
 
@@ -40,14 +41,19 @@ Scope: places where BuildOS category/positioning language appears, especially ar
 | Completed | `docs/marketing/social-media/twitter-strategy-worksheet.md:212` | Reputation line updated to "AI-powered project collaboration" |
 | Completed | `docs/marketing/social-media/LINKEDIN_FOUNDER_INTERVIEW.md:199` | Long-form founder statement updated to collaboration wording |
 
-## Remaining P2: Investor / Strategy Docs
+## Completed P2: Investor / Strategy + Tone Pass
 
-| Priority | File | Current Copy (excerpt) | Suggested Direction |
-| --- | --- | --- | --- |
-| P2 | `docs/business/strategy/ceo-training-plan.md:21` | Product line says "AI-first project organization tool" | Update strategy narrative. |
-| P2 | `docs/marketing/investors/fundraising-preparedness-checklist-part-2.md:111` | 30-second pitch uses old category wording | Update fundraising one-liner. |
-| P2 | `docs/marketing/investors/vc-firms/point-nine-capital.md:169` | "AI-powered project organization" | Update external positioning notes. |
-| P2 | `docs/business/buildos-pitch-guide.md:62` | Already says "context infrastructure for human-AI collaboration" | Keep as aligned reference language. |
+| Status | File | Updated Copy (excerpt) |
+| --- | --- | --- |
+| Completed | `docs/business/strategy/ceo-training-plan.md:21` | Product line updated to "AI project collaboration tool..." |
+| Completed | `docs/marketing/investors/fundraising-preparedness-checklist-part-2.md:111` | 30-second pitch updated to collaboration framing |
+| Completed | `docs/marketing/investors/fundraising-preparedness-checklist-part-2.md:113` | Unfair advantage updated to "AI-native project collaboration" |
+| Completed | `docs/marketing/investors/vc-firms/point-nine-capital.md:169` | "AI-powered project collaboration" |
+| Completed | `docs/marketing/investors/fundraising-preparedness-checklist.md:382` | Embedded 30-second pitch block updated to collaboration framing |
+| Completed | `docs/business/buildos-pitch-guide-b2b-solopreneur.md:54` | "project coordination" wording applied in ROI sections |
+| Completed | `docs/business/buildos-pitch-guide-b2b-solopreneur.md:369` | "project coordination time" wording applied |
+| Completed | `docs/business/buildos-pitch-guide.md:456` | Freemium line updated to "project collaboration" |
+| Completed | `docs/business/war-room/war-room-original-spec.md:5` | "manual project coordination" wording applied |
 
 ## Remaining P3: Internal AI Prompting Language
 
