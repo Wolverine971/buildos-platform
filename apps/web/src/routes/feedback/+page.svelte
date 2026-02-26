@@ -193,7 +193,7 @@
 				</div>
 			</div>
 			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-6">
-				Your Feedback is hella important
+				Your Feedback is everything
 			</h1>
 			<p class="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
 				Help us build the best personal operating system by sharing your thoughts, ideas,

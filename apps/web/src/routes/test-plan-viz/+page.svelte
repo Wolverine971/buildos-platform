@@ -1,11 +1,132 @@
 <!-- apps/web/src/routes/test-plan-viz/+page.svelte -->
 <script lang="ts">
 	import PlanVisualization from '$lib/components/agent/PlanVisualization.svelte';
-	import {
-		samplePlan,
-		samplePlanWithError,
-		sampleSimplePlan
-	} from '$lib/components/agent/PlanVisualization.test';
+	import type { AgentPlan } from '@buildos/shared-types';
+
+	const now = new Date().toISOString();
+	const basePlanFields = {
+		session_id: 'test-session-id',
+		user_id: 'test-user-id',
+		planner_agent_id: 'test-planner-id',
+		strategy: 'planner_stream' as const,
+		created_at: now,
+		updated_at: now
+	};
+
+	const samplePlan = {
+		...basePlanFields,
+		id: 'test-plan-complex',
+		user_message: 'Create and schedule project kickoff tasks',
+		status: 'executing' as const,
+		metadata: {
+			estimatedDuration: 420000,
+			requiredTools: ['search_tasks', 'create_onto_task', 'schedule_task'],
+			executorCount: 1
+		},
+		steps: [
+			{
+				stepNumber: 1,
+				type: 'search_project',
+				description: 'Find existing project tasks and deadlines',
+				executorRequired: false,
+				tools: ['search_tasks'],
+				status: 'completed' as const,
+				result: { success: true, message: 'Found 4 related tasks' }
+			},
+			{
+				stepNumber: 2,
+				type: 'create_tasks',
+				description: 'Create kickoff checklist tasks',
+				executorRequired: true,
+				tools: ['create_onto_task'],
+				dependsOn: [1],
+				status: 'completed' as const,
+				result: { id: 'task_123', name: 'Kickoff checklist created' }
+			},
+			{
+				stepNumber: 3,
+				type: 'schedule_tasks',
+				description: 'Schedule kickoff tasks on project calendar',
+				executorRequired: true,
+				tools: ['schedule_task', 'set_project_calendar'],
+				dependsOn: [2],
+				status: 'executing' as const
+			},
+			{
+				stepNumber: 4,
+				type: 'notify_team',
+				description: 'Prepare team notification draft',
+				executorRequired: false,
+				tools: ['fetch_project_data'],
+				dependsOn: [3],
+				status: 'pending' as const
+			}
+		]
+	} satisfies AgentPlan;
+
+	const samplePlanWithError = {
+		...basePlanFields,
+		id: 'test-plan-error',
+		user_message: 'Schedule onboarding sequence',
+		status: 'failed' as const,
+		metadata: {
+			estimatedDuration: 180000,
+			actualDuration: 120000
+		},
+		steps: [
+			{
+				stepNumber: 1,
+				type: 'search_project',
+				description: 'Locate onboarding task template',
+				executorRequired: false,
+				tools: ['search_tasks'],
+				status: 'completed' as const,
+				result: { success: true }
+			},
+			{
+				stepNumber: 2,
+				type: 'create_tasks',
+				description: 'Generate onboarding tasks from template',
+				executorRequired: true,
+				tools: ['create_onto_task'],
+				dependsOn: [1],
+				status: 'completed' as const,
+				result: { success: true, message: 'Created 6 tasks' }
+			},
+			{
+				stepNumber: 3,
+				type: 'schedule_tasks',
+				description: 'Schedule tasks based on team availability',
+				executorRequired: true,
+				tools: ['get_calendar_events', 'schedule_task'],
+				dependsOn: [2],
+				status: 'failed' as const,
+				error: 'Calendar API rate limit reached while scheduling the final task'
+			}
+		]
+	} satisfies AgentPlan;
+
+	const sampleSimplePlan = {
+		...basePlanFields,
+		id: 'test-plan-simple',
+		user_message: 'Create a single follow-up reminder',
+		status: 'completed' as const,
+		metadata: {
+			estimatedDuration: 30000,
+			actualDuration: 12000
+		},
+		steps: [
+			{
+				stepNumber: 1,
+				type: 'create_task',
+				description: 'Create reminder task for follow-up',
+				executorRequired: false,
+				tools: ['create_onto_task'],
+				status: 'completed' as const,
+				result: { id: 'task_789', name: 'Follow-up reminder' }
+			}
+		]
+	} satisfies AgentPlan;
 
 	let collapsedStates = $state({
 		plan1: false,
