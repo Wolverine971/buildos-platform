@@ -4,7 +4,6 @@
 	import {
 		ArrowRight,
 		Calendar,
-		CircleCheck,
 		FileText,
 		FolderKanban,
 		ListChecks,
@@ -110,23 +109,44 @@
 		return parts?.length ? parts.join(' · ') : null;
 	});
 
-	const ACTIVE_STATES = new Set(['active', 'in_progress', 'execution']);
+	const TERMINAL_PROJECT_STATES = new Set([
+		'done',
+		'completed',
+		'canceled',
+		'cancelled',
+		'closed',
+		'archived',
+		'abandoned'
+	]);
+
+	function normalizeStateKey(stateKey: string | null | undefined): string {
+		return (stateKey ?? '').trim().toLowerCase();
+	}
+
+	function isActiveProjectState(stateKey: string | null | undefined): boolean {
+		const normalized = normalizeStateKey(stateKey);
+		if (!normalized) return true;
+		return !TERMINAL_PROJECT_STATES.has(normalized);
+	}
 
 	const activeProjects = $derived(
-		analytics.recent.projects.filter((p) => ACTIVE_STATES.has(p.state_key))
+		analytics.recent.projects.filter((p) => isActiveProjectState(p.state_key))
 	);
+	// True when the user has absolutely nothing (brand new account)
+	const hasNoProjects = $derived(analytics.recent.projects.length === 0);
+	const projectsToDisplay = $derived(
+		activeProjects.length > 0 ? activeProjects : analytics.recent.projects.slice(0, 6)
+	);
+	const showingFallbackProjects = $derived(
+		!hasNoProjects && activeProjects.length === 0 && projectsToDisplay.length > 0
+	);
+	const projectSectionTitle = $derived(showingFallbackProjects ? 'Projects' : 'Active projects');
 
 	const sharedProjects = $derived(analytics.recent.projects.filter((p) => p.is_shared));
 
 	// Shared projects not already visible in the active list
 	const activeProjectIds = $derived(new Set(activeProjects.map((p) => p.id)));
 	const sharedNotActive = $derived(sharedProjects.filter((p) => !activeProjectIds.has(p.id)));
-
-	// True when the user has absolutely nothing (brand new account)
-	const hasNoProjects = $derived(analytics.recent.projects.length === 0);
-	const hasOnlySharedProjects = $derived(
-		analytics.recent.projects.length > 0 && analytics.recent.projects.every((p) => p.is_shared)
-	);
 
 	const recentChats = $derived(analytics.recent.chatSessions.slice(0, 4));
 
@@ -385,7 +405,9 @@
 		<!-- Active Projects -->
 		<section>
 			<div class="flex items-center justify-between mb-2">
-				<h2 class="text-sm sm:text-base font-semibold text-foreground">Active projects</h2>
+				<h2 class="text-sm sm:text-base font-semibold text-foreground">
+					{projectSectionTitle}
+				</h2>
 				{#if !hasNoProjects}
 					<a
 						href="/projects"
@@ -419,11 +441,11 @@
 						Create your first project
 					</Button>
 				</div>
-			{:else if activeProjects.length === 0}
+			{:else if projectsToDisplay.length === 0}
 				<div
 					class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
 				>
-					<p class="text-sm text-muted-foreground">No active projects right now.</p>
+					<p class="text-sm text-muted-foreground">No projects to show right now.</p>
 					<Button
 						variant="outline"
 						size="sm"
@@ -434,8 +456,13 @@
 					</Button>
 				</div>
 			{:else}
+				{#if showingFallbackProjects}
+					<div class="mb-2 text-xs text-muted-foreground px-1">
+						No active projects right now. Showing your most recent projects.
+					</div>
+				{/if}
 				<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
-					{#each activeProjects as project (project.id)}
+					{#each projectsToDisplay as project (project.id)}
 						<a
 							href="/projects/{project.id}"
 							onclick={() => handleProjectClick(project)}
@@ -449,7 +476,9 @@
 									<FolderKanban
 										class="h-3.5 w-3.5 shrink-0 {project.is_shared
 											? 'text-accent'
-											: 'text-emerald-500'}"
+											: isActiveProjectState(project.state_key)
+												? 'text-emerald-500'
+												: 'text-muted-foreground'}"
 									/>
 									<p class="text-sm font-semibold text-foreground truncate">
 										{project.name}
@@ -460,6 +489,13 @@
 										>
 											<Share2 class="h-2.5 w-2.5" />
 											Shared
+										</span>
+									{/if}
+									{#if !isActiveProjectState(project.state_key)}
+										<span
+											class="shrink-0 text-[10px] font-medium text-muted-foreground"
+										>
+											{formatStateLabel(project.state_key)}
 										</span>
 									{/if}
 								</div>
@@ -485,7 +521,7 @@
 		</section>
 
 		<!-- Shared With Me (projects not already in active list) -->
-		{#if sharedNotActive.length > 0}
+		{#if sharedNotActive.length > 0 && !showingFallbackProjects}
 			<section>
 				<div class="flex items-center justify-between mb-2">
 					<div class="flex items-center gap-2">

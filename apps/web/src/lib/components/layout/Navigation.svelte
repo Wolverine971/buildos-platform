@@ -105,6 +105,7 @@
 
 	const needsOnboarding = $derived(user && (!completedOnboarding || onboardingProgress < 100));
 	const onboardingUrgent = $derived(user && onboardingProgress < 50);
+	const isOnOnboarding = $derived(currentPath === '/onboarding');
 	const userName = $derived(user?.name || user?.email || '');
 	const pendingInvites = $derived.by(() => {
 		const invites = $page.data?.pendingInvites;
@@ -467,17 +468,6 @@
 								</div>
 							{/if}
 						</div>
-						<!-- New user hint: pulsing dot only for users who haven't completed onboarding at all -->
-						{#if user && !completedOnboarding && !showChatModal}
-							<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-								<span
-									class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75"
-								></span>
-								<span
-									class="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent"
-								></span>
-							</span>
-						{/if}
 						<!-- Text - Hidden on smaller screens, shown on larger -->
 						<span class="hidden xl:inline-block leading-none">Brain Dump & Chat</span>
 					</Button>
@@ -492,15 +482,20 @@
 								data-onboarding-link
 								onclick={() => handleMenuItemClick('/onboarding')}
 								class="inline-flex items-center px-2 md:px-3 lg:px-3.5 xl:px-4 py-1.5 md:py-2 lg:py-2.5 text-xs md:text-sm lg:text-sm font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 whitespace-nowrap tx tx-bloom tx-weak
-								{onboardingUrgent
-									? 'bg-warning text-warning-foreground hover:bg-warning/90 border border-warning/20'
-									: 'bg-accent hover:bg-accent/90 text-accent-foreground border border-accent/20'}
+								bg-accent text-accent-foreground hover:bg-accent/90 border border-accent/20
+								{isOnOnboarding ? '' : 'animate-pulse-glow'}
 								{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 								{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 							>
-								{#if onboardingUrgent}
+								{#if isOnOnboarding}
+									<LoaderCircle
+										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0 animate-spin"
+									/>
+									<span class="hidden lg:inline">Setup in Progress...</span>
+									<span class="lg:hidden">In Progress</span>
+								{:else if onboardingUrgent}
 									<AlertCircle
-										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0 animate-pulse"
+										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0"
 									/>
 									<span class="hidden lg:inline">Complete Setup</span>
 									<span class="lg:hidden">Setup</span>
@@ -509,7 +504,7 @@
 										class="w-3.5 h-3.5 md:w-4 md:h-4 lg:w-4 lg:h-4 mr-1 md:mr-1.5 lg:mr-2 flex-shrink-0"
 									/>
 									<span class="hidden xl:inline"
-										>Personalize ({onboardingProgress}%)</span
+										>Finish Setup ({onboardingProgress}%)</span
 									>
 									<span class="xl:hidden hidden lg:inline"
 										>Setup ({onboardingProgress}%)</span
@@ -531,7 +526,7 @@
 						variant="outline"
 						size="sm"
 						btnType="container"
-						class="md:hidden flex items-center justify-center px-3 h-9 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group"
+						class="md:hidden relative flex items-center justify-center px-3 h-9 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group !overflow-visible"
 						aria-expanded={showMobileMenu}
 						aria-label="Toggle mobile menu"
 					>
@@ -543,6 +538,12 @@
 							<Menu
 								class="w-7 h-7 text-muted-foreground group-hover:text-accent transition-colors"
 							/>
+						{/if}
+						{#if needsOnboarding && !showMobileMenu}
+							<span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+								<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75"></span>
+								<span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent"></span>
+							</span>
 						{/if}
 					</Button>
 
@@ -565,9 +566,6 @@
 							>
 							{#if user?.is_admin}
 								<Shield class="w-4 h-4 text-destructive" />
-							{/if}
-							{#if needsOnboarding}
-								<div class="w-2 h-2 bg-warning rounded-full animate-pulse"></div>
 							{/if}
 						</Button>
 
@@ -597,36 +595,10 @@
 												class="mt-2 text-xs text-accent flex items-center font-bold"
 											>
 												<AlertCircle class="w-3 h-3 mr-1" />
-												Setup {onboardingProgress}% complete
+												{isOnOnboarding ? 'Setting up...' : `Setup ${onboardingProgress}% complete`}
 											</div>
 										{/if}
 									</div>
-
-									<!-- Menu items -->
-									{#if needsOnboarding}
-										<div class="px-3 pt-2 pb-1">
-											<a
-												href="/onboarding"
-												onclick={() => handleMenuItemClick('/onboarding')}
-												class="flex items-center w-full px-4 py-2.5 text-sm font-bold tracking-tight rounded-lg transition-all duration-200 shadow-ink pressable tx tx-bloom tx-weak
-													{onboardingUrgent
-													? 'bg-warning text-warning-foreground hover:bg-warning/90 border border-warning/20'
-													: 'bg-accent hover:bg-accent/90 text-accent-foreground border border-accent/20'}
-													{loggingOut ? 'opacity-50 pointer-events-none' : ''}"
-											>
-												{#if onboardingUrgent}
-													<AlertCircle
-														class="w-4 h-4 mr-3 animate-pulse"
-													/>
-													Complete Setup
-												{:else}
-													<Sparkles class="w-4 h-4 mr-3" />
-													Complete Setup
-												{/if}
-												<ChevronRight class="w-3.5 h-3.5 ml-auto" />
-											</a>
-										</div>
-									{/if}
 
 									<a
 										href="/profile"
@@ -818,18 +790,20 @@
 							href="/onboarding"
 							onclick={() => handleMenuItemClick('/onboarding')}
 							class="flex items-center px-3 py-2.5 text-base font-bold tracking-tight rounded-lg shadow-ink pressable transition-all duration-200 tx tx-bloom tx-weak
-							{onboardingUrgent
-								? 'bg-warning text-warning-foreground hover:bg-warning/90 border border-warning/20'
-								: 'bg-accent hover:bg-accent/90 text-accent-foreground border border-accent/20'}
+							bg-accent text-accent-foreground hover:bg-accent/90 border border-accent/20
+							{isOnOnboarding ? '' : 'animate-pulse-glow'}
 							{loggingOut ? 'opacity-50 pointer-events-none' : ''}
 							{loadingLink === '/onboarding' ? loadingAccentClass : ''}"
 						>
-							{#if onboardingUrgent}
-								<AlertCircle class="w-5 h-5 mr-3 animate-pulse" />
+							{#if isOnOnboarding}
+								<LoaderCircle class="w-5 h-5 mr-3 animate-spin" />
+								Setup in Progress ({onboardingProgress}%)
+							{:else if onboardingUrgent}
+								<AlertCircle class="w-5 h-5 mr-3" />
 								Complete Setup ({onboardingProgress}%)
 							{:else}
 								<Sparkles class="w-5 h-5 mr-3" />
-								Personalize BuildOS ({onboardingProgress}%)
+								Finish Setup ({onboardingProgress}%)
 							{/if}
 							<ChevronRight class="w-4 h-4 ml-auto" />
 						</a>
@@ -877,7 +851,7 @@
 							{/if}
 							{#if needsOnboarding}
 								<div
-									class="ml-2 w-2 h-2 bg-warning rounded-full animate-pulse"
+									class="ml-2 w-2 h-2 bg-accent rounded-full animate-pulse"
 								></div>
 							{/if}
 						</div>
@@ -887,7 +861,7 @@
 						{#if needsOnboarding}
 							<div class="mt-1 text-xs text-accent flex items-center">
 								<AlertCircle class="w-3 h-3 mr-1" />
-								Setup {onboardingProgress}% complete
+								{isOnOnboarding ? 'Setting up...' : `Setup ${onboardingProgress}% complete`}
 							</div>
 						{/if}
 					</div>

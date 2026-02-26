@@ -106,7 +106,8 @@ export default {
 				'fade-in': 'fadeIn 200ms ease-out',
 				'slide-up': 'slideUp 200ms ease-out',
 				'scale-in': 'scaleIn 150ms ease-out',
-				shimmer: 'shimmer 2s linear infinite'
+				shimmer: 'shimmer 2s linear infinite',
+				'pulse-glow': 'pulseGlow 2.5s ease-in-out infinite'
 			},
 
 			keyframes: {
@@ -134,6 +135,10 @@ export default {
 				shimmer: {
 					'0%': { backgroundPosition: '-1000px 0' },
 					'100%': { backgroundPosition: '1000px 0' }
+				},
+				pulseGlow: {
+					'0%, 100%': { opacity: '1', boxShadow: '0 0 0 0 hsl(var(--accent) / 0)' },
+					'50%': { opacity: '0.85', boxShadow: '0 0 12px 2px hsl(var(--accent) / 0.3)' }
 				}
 			},
 

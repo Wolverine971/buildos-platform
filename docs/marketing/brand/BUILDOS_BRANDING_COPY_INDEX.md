@@ -8,8 +8,9 @@ Scope: places where BuildOS category/positioning language appears, especially ar
 - `P0` live product surfaces: completed.
 - `P1` copy source-of-truth and social/founder messaging: completed.
 - `P2` investor/strategy docs + tone pass: completed.
+- `P3` internal AI prompt identity text: completed.
 - Preferred canonical title phrase: `BuildOS - AI Project Collaboration for the builders`.
-- Remaining: `P3` internal AI prompt identity text.
+- Remaining: future net-new copy as product surfaces evolve.
 
 ## Completed P0: Live Product Surfaces
 
@@ -55,11 +56,12 @@ Scope: places where BuildOS category/positioning language appears, especially ar
 | Completed | `docs/business/buildos-pitch-guide.md:456` | Freemium line updated to "project collaboration" |
 | Completed | `docs/business/war-room/war-room-original-spec.md:5` | "manual project coordination" wording applied |
 
-## Remaining P3: Internal AI Prompting Language
+## Completed P3: Internal AI Prompting Language
 
-| Priority | File | Current Copy (excerpt) | Suggested Direction |
-| --- | --- | --- | --- |
-| P3 | `apps/web/src/lib/services/agentic-chat/prompts/config/planner-prompts.ts:45` | "BuildOS is an AI-First project organization platform." | Optional: update to collaboration-centric internal identity text. |
+| Status | File | Updated Copy (excerpt) |
+| --- | --- | --- |
+| Completed | `apps/web/src/lib/services/agentic-chat/prompts/config/planner-prompts.ts:45` | "BuildOS is an AI project collaboration platform." |
+| Completed | `apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts:19` | "BuildOS is a project collaboration system..." |
 
 ## Useful Search Command
 

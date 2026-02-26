@@ -92,14 +92,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
-	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
-	import ProjectGraphSection from '$lib/components/ontology/ProjectGraphSection.svelte';
-	import ProjectActivityLogPanel from '$lib/components/ontology/ProjectActivityLogPanel.svelte';
-	import ProjectBriefsPanel from '$lib/components/ontology/ProjectBriefsPanel.svelte';
-	import ProjectCollaborationModal from '$lib/components/project/ProjectCollaborationModal.svelte';
-	import ProjectIconStudioModal from '$lib/components/project/ProjectIconStudioModal.svelte';
 	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
-	import ImageAssetsPanel from '$lib/components/ontology/ImageAssetsPanel.svelte';
 	import {
 		DocTreeView,
 		DocMoveModal,
@@ -141,9 +134,6 @@
 	type OntoEventWithSync = OntoEvent & {
 		onto_event_sync?: Database['public']['Tables']['onto_event_sync']['Row'][];
 	};
-
-	// Import MobileCommandCenter for mobile-first layout
-	import MobileCommandCenter from '$lib/components/project/MobileCommandCenter.svelte';
 
 	// Note: 'milestones' removed - now nested under goals
 	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'events' | 'images';
@@ -301,6 +291,8 @@
 	let isNotificationSettingsSaving = $state(false);
 	let currentProjectActorId = $state<string | null>(null);
 	let taskAssigneeFilterMembers = $state<TaskAssigneeFilterMember[]>([]);
+	let membersLoadPromise = $state<Promise<void> | null>(null);
+	let membersLoaded = $state(false);
 
 	// Document Tree State
 	let parentDocumentId = $state<string | null>(null);
@@ -387,7 +379,7 @@
 
 			isHydrating = false;
 			void loadProjectEvents();
-			void loadProjectMembers();
+			void ensureProjectMembersLoaded();
 		} catch (err) {
 			console.error('[Project Page] Hydration failed:', err);
 			void logOntologyClientError(err, {
@@ -413,7 +405,6 @@
 		if (canOpenCollabModal) {
 			void loadProjectNotificationSettings();
 		}
-		void loadProjectMembers();
 
 		if (data.skeleton) {
 			// Check for warm navigation data first
@@ -441,6 +432,7 @@
 			hydrateFullData();
 		} else {
 			void loadProjectEvents();
+			void ensureProjectMembersLoaded();
 		}
 	});
 
@@ -511,7 +503,31 @@
 				entityType: 'project_member',
 				operation: 'task_assignee_filter_members_load'
 			});
+			throw error;
 		}
+	}
+
+	async function ensureProjectMembersLoaded(options: { force?: boolean } = {}): Promise<void> {
+		const { force = false } = options;
+		if (!project?.id || !access.isAuthenticated) return;
+		if (!force && membersLoaded) return;
+		if (membersLoadPromise) {
+			await membersLoadPromise;
+			return;
+		}
+
+		membersLoadPromise = (async () => {
+			try {
+				await loadProjectMembers();
+				membersLoaded = true;
+			} catch {
+				membersLoaded = false;
+			} finally {
+				membersLoadPromise = null;
+			}
+		})();
+
+		await membersLoadPromise;
 	}
 
 	// ============================================================
@@ -1409,7 +1425,7 @@
 			contextDocument = newData.context_document || null;
 			await loadProjectEvents();
 			await loadProjectNotificationSettings();
-			await loadProjectMembers();
+			await ensureProjectMembersLoaded({ force: true });
 
 			toastService.success('Data refreshed');
 		} catch (error) {
@@ -2090,44 +2106,50 @@
 					<div class="w-full h-[52px] bg-muted animate-pulse rounded-lg"></div>
 				</div>
 			{:else}
-				<MobileCommandCenter
-					goals={filteredGoals}
-					milestones={filteredMilestones}
-					tasks={filteredTasks}
-					plans={filteredPlans}
-					risks={filteredRisks}
-					{documents}
-					events={filteredEvents}
-					{milestonesByGoalId}
-					docStructure={docTreeStructure}
-					{docTreeDocuments}
-					projectId={project.id}
-					{canEdit}
-					onAddGoal={() => canEdit && (showGoalCreateModal = true)}
-					onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
-					onAddTask={() => canEdit && (showTaskCreateModal = true)}
-					onAddPlan={() => canEdit && (showPlanCreateModal = true)}
-					onAddRisk={() => canEdit && (showRiskCreateModal = true)}
-					onAddDocument={(parentId) => canEdit && handleCreateDocument(parentId)}
-					onAddEvent={() => canEdit && (showEventCreateModal = true)}
-					onEditGoal={(id) => (editingGoalId = id)}
-					onEditMilestone={(id) => (editingMilestoneId = id)}
-					onEditTask={(id) => (editingTaskId = id)}
-					onEditPlan={(id) => (editingPlanId = id)}
-					onEditRisk={(id) => (editingRiskId = id)}
-					onEditDocument={(id) => {
-						activeDocumentId = id;
-						showDocumentModal = true;
-					}}
-					onEditEvent={(id) => (editingEventId = id)}
-					onToggleMilestoneComplete={handleToggleMilestoneComplete}
-					{panelStates}
-					{panelCounts}
-					onFilterChange={updatePanelFilters}
-					onSortChange={updatePanelSort}
-					onToggleChange={updatePanelToggle}
-					{taskFilterGroups}
-				/>
+				{#await import('$lib/components/project/MobileCommandCenter.svelte') then { default: MobileCommandCenter }}
+					<MobileCommandCenter
+						goals={filteredGoals}
+						milestones={filteredMilestones}
+						tasks={filteredTasks}
+						plans={filteredPlans}
+						risks={filteredRisks}
+						{documents}
+						events={filteredEvents}
+						{milestonesByGoalId}
+						docStructure={docTreeStructure}
+						{docTreeDocuments}
+						projectId={project.id}
+						{canEdit}
+						onAddGoal={() => canEdit && (showGoalCreateModal = true)}
+						onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
+						onAddTask={() => canEdit && (showTaskCreateModal = true)}
+						onAddPlan={() => canEdit && (showPlanCreateModal = true)}
+						onAddRisk={() => canEdit && (showRiskCreateModal = true)}
+						onAddDocument={(parentId) => canEdit && handleCreateDocument(parentId)}
+						onAddEvent={() => canEdit && (showEventCreateModal = true)}
+						onEditGoal={(id) => (editingGoalId = id)}
+						onEditMilestone={(id) => (editingMilestoneId = id)}
+						onEditTask={(id) => (editingTaskId = id)}
+						onEditPlan={(id) => (editingPlanId = id)}
+						onEditRisk={(id) => (editingRiskId = id)}
+						onEditDocument={(id) => {
+							activeDocumentId = id;
+							showDocumentModal = true;
+						}}
+						onEditEvent={(id) => (editingEventId = id)}
+						onToggleMilestoneComplete={handleToggleMilestoneComplete}
+						{panelStates}
+						{panelCounts}
+						onFilterChange={updatePanelFilters}
+						onSortChange={updatePanelSort}
+						onToggleChange={updatePanelToggle}
+						{taskFilterGroups}
+					/>
+				{:catch}
+					<div class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
+						Unable to load mobile command center.
+					</div>
+				{/await}
 
 				<!-- Mobile History Section (Daily Briefs & Activity Log) -->
 				{#if canViewLogs}
@@ -2147,13 +2169,29 @@
 
 					<!-- Daily Briefs Panel -->
 					<div class="space-y-2">
-						<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
+						{#await import('$lib/components/ontology/ProjectBriefsPanel.svelte') then { default: ProjectBriefsPanel }}
+							<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
+						{:catch}
+							<div
+								class="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground"
+							>
+								Unable to load daily briefs.
+							</div>
+						{/await}
 
-						<!-- Activity Log Panel -->
-						<ProjectActivityLogPanel
-							projectId={project.id}
-							onEntityClick={handleActivityLogEntityClick}
-						/>
+						{#await import('$lib/components/ontology/ProjectActivityLogPanel.svelte') then { default: ProjectActivityLogPanel }}
+							<!-- Activity Log Panel -->
+							<ProjectActivityLogPanel
+								projectId={project.id}
+								onEntityClick={handleActivityLogEntityClick}
+							/>
+						{:catch}
+							<div
+								class="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground"
+							>
+								Unable to load activity log.
+							</div>
+						{/await}
 					</div>
 				{/if}
 			{/if}
@@ -2625,14 +2663,20 @@
 										{/if}
 									{:else if section.key === 'images'}
 										<div class="px-4 py-3">
-											<ImageAssetsPanel
-												bind:this={imageAssetsPanelRef}
-												projectId={project.id}
-												showTitle={false}
-												showUploadButton={false}
-												{canEdit}
-												onChanged={() => void refreshData()}
-											/>
+											{#await import('$lib/components/ontology/ImageAssetsPanel.svelte') then { default: ImageAssetsPanel }}
+												<ImageAssetsPanel
+													bind:this={imageAssetsPanelRef}
+													projectId={project.id}
+													showTitle={false}
+													showUploadButton={false}
+													{canEdit}
+													onChanged={() => void refreshData()}
+												/>
+											{:catch}
+												<div class="py-2 text-sm text-muted-foreground">
+													Unable to load image assets.
+												</div>
+											{/await}
 										</div>
 									{:else if section.key === 'risks'}
 										{#if filteredRisks.length > 0}
@@ -2745,13 +2789,29 @@
 						</div>
 
 						<!-- Daily Briefs Panel -->
-						<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
+						{#await import('$lib/components/ontology/ProjectBriefsPanel.svelte') then { default: ProjectBriefsPanel }}
+							<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
+						{:catch}
+							<div
+								class="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground"
+							>
+								Unable to load daily briefs.
+							</div>
+						{/await}
 
 						<!-- Activity Log Panel -->
-						<ProjectActivityLogPanel
-							projectId={project.id}
-							onEntityClick={handleActivityLogEntityClick}
-						/>
+						{#await import('$lib/components/ontology/ProjectActivityLogPanel.svelte') then { default: ProjectActivityLogPanel }}
+							<ProjectActivityLogPanel
+								projectId={project.id}
+								onEntityClick={handleActivityLogEntityClick}
+							/>
+						{:catch}
+							<div
+								class="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground"
+							>
+								Unable to load activity log.
+							</div>
+						{/await}
 					{/if}
 				</aside>
 			{/if}
@@ -2824,13 +2884,15 @@
 
 <!-- Task Edit Modal -->
 {#if editingTaskId}
-	<TaskEditModal
-		taskId={editingTaskId}
-		projectId={project.id}
-		onClose={() => (editingTaskId = null)}
-		onUpdated={handleTaskUpdated}
-		onDeleted={handleTaskDeleted}
-	/>
+	{#await import('$lib/components/ontology/TaskEditModal.svelte') then { default: TaskEditModal }}
+		<TaskEditModal
+			taskId={editingTaskId}
+			projectId={project.id}
+			onClose={() => (editingTaskId = null)}
+			onUpdated={handleTaskUpdated}
+			onDeleted={handleTaskDeleted}
+		/>
+	{/await}
 {/if}
 
 <!-- Plan Create Modal -->
@@ -2987,27 +3049,31 @@
 
 <!-- Project Collaboration Settings Modal -->
 {#if showCollabModal && canOpenCollabModal}
-	<ProjectCollaborationModal
-		bind:isOpen={showCollabModal}
-		projectId={project.id}
-		projectName={project.name || 'Project'}
-		canManageMembers={canAdmin}
-		onLeftProject={() => goto('/projects')}
-		onClose={() => (showCollabModal = false)}
-	/>
+	{#await import('$lib/components/project/ProjectCollaborationModal.svelte') then { default: ProjectCollaborationModal }}
+		<ProjectCollaborationModal
+			bind:isOpen={showCollabModal}
+			projectId={project.id}
+			projectName={project.name || 'Project'}
+			canManageMembers={canAdmin}
+			onLeftProject={() => goto('/projects')}
+			onClose={() => (showCollabModal = false)}
+		/>
+	{/await}
 {/if}
 
 <!-- Project Icon Studio Modal (temporarily disabled) -->
 {#if ENABLE_PROJECT_ICON_STUDIO_UI && showProjectIconStudioModal && canEdit}
-	<ProjectIconStudioModal
-		bind:isOpen={showProjectIconStudioModal}
-		projectId={project.id}
-		projectName={project.name || 'Project'}
-		existingIconSvg={project.icon_svg ?? null}
-		existingIconConcept={project.icon_concept ?? null}
-		onApplied={handleProjectIconApplied}
-		onClose={() => (showProjectIconStudioModal = false)}
-	/>
+	{#await import('$lib/components/project/ProjectIconStudioModal.svelte') then { default: ProjectIconStudioModal }}
+		<ProjectIconStudioModal
+			bind:isOpen={showProjectIconStudioModal}
+			projectId={project.id}
+			projectName={project.name || 'Project'}
+			existingIconSvg={project.icon_svg ?? null}
+			existingIconConcept={project.icon_concept ?? null}
+			onApplied={handleProjectIconApplied}
+			onClose={() => (showProjectIconStudioModal = false)}
+		/>
+	{/await}
 {/if}
 
 <!-- Project Delete Confirmation -->
@@ -3146,13 +3212,25 @@
 >
 	<div class="h-[60vh] sm:h-[70vh]">
 		{#if showGraphModal}
-			<ProjectGraphSection
-				projectId={project.id}
-				onNodeClick={(node) => {
-					showGraphModal = false;
-					handleGraphNodeClick(node);
-				}}
-			/>
+			{#await import('$lib/components/ontology/ProjectGraphSection.svelte')}
+				<div class="h-full flex items-center justify-center text-sm text-muted-foreground">
+					Loading project graph...
+				</div>
+			{:then { default: ProjectGraphSection }}
+				<ProjectGraphSection
+					projectId={project.id}
+					onNodeClick={(node) => {
+						showGraphModal = false;
+						handleGraphNodeClick(node);
+					}}
+				/>
+			{:catch graphLoadError}
+				<div class="h-full flex items-center justify-center px-4 text-sm text-destructive">
+					{graphLoadError instanceof Error
+						? graphLoadError.message
+						: 'Failed to load project graph.'}
+				</div>
+			{/await}
 		{/if}
 	</div>
 </Modal>

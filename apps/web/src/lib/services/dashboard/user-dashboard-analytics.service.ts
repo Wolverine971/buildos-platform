@@ -35,7 +35,25 @@ type GoalRow = Pick<
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RECENT_LIST_LIMIT = 12;
-const ACTIVE_PROJECT_STATES = new Set(['active', 'execution', 'in_progress']);
+const TERMINAL_PROJECT_STATES = new Set([
+	'done',
+	'completed',
+	'canceled',
+	'cancelled',
+	'closed',
+	'archived',
+	'abandoned'
+]);
+
+function normalizeStateKey(stateKey: string | null | undefined): string {
+	return (stateKey ?? '').trim().toLowerCase();
+}
+
+function isActiveProjectState(stateKey: string | null | undefined): boolean {
+	const normalized = normalizeStateKey(stateKey);
+	if (!normalized) return true;
+	return !TERMINAL_PROJECT_STATES.has(normalized);
+}
 
 function isoDaysAgo(days: number): string {
 	return new Date(Date.now() - days * DAY_MS).toISOString();
@@ -245,7 +263,7 @@ export async function getUserDashboardAnalytics(
 
 		payload.snapshot.totalProjects = projectSummaries.length;
 		payload.snapshot.activeProjects = projectSummaries.filter((project) =>
-			ACTIVE_PROJECT_STATES.has(project.state_key)
+			isActiveProjectState(project.state_key)
 		).length;
 		payload.snapshot.totalTasks = projectSummaries.reduce(
 			(sum, project) => sum + (project.task_count ?? 0),

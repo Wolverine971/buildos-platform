@@ -89,6 +89,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	}
 
 	const supabase = locals.supabase;
+	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
+		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
 
 	// Get user session (optional for public projects)
 	const { user } = await locals.safeGetSession();
@@ -97,72 +99,86 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	let actorId: string | null = null;
 	if (user) {
 		try {
-			actorId = await ensureActorId(supabase, user.id);
+			actorId = await measure('db.ensure_actor', () => ensureActorId(supabase, user.id));
 		} catch (err) {
 			console.error('[Project Page] Failed to get actor ID:', err);
 			throw error(500, 'Failed to resolve user');
 		}
 	}
 
-	let canEdit = false;
-	let canAdmin = false;
-	let canInvite = false;
-	let canViewLogs = false;
-	let isOwner = false;
+	const resolveAccess = async () =>
+		measure('db.project_access.resolve', async () => {
+			let canEdit = false;
+			let canAdmin = false;
+			let canInvite = false;
+			let canViewLogs = false;
+			let isOwner = false;
 
-	if (user && actorId) {
-		const [writeResult, adminResult, memberResult, ownerResult] = await Promise.all([
-			supabase.rpc('current_actor_has_project_access', {
-				p_project_id: id,
-				p_required_access: 'write'
-			}),
-			supabase.rpc('current_actor_has_project_access', {
-				p_project_id: id,
-				p_required_access: 'admin'
-			}),
-			supabase
-				.from('onto_project_members')
-				.select('id', { head: true, count: 'exact' })
-				.eq('project_id', id)
-				.eq('actor_id', actorId)
-				.is('removed_at', null),
-			supabase
-				.from('onto_projects')
-				.select('id', { head: true, count: 'exact' })
-				.eq('id', id)
-				.eq('created_by', actorId)
-				.is('deleted_at', null)
-		]);
+			if (user && actorId) {
+				const [writeResult, adminResult, ownerResult] = await measure('db.project_access.core', () =>
+					Promise.all([
+						supabase.rpc('current_actor_has_project_access', {
+							p_project_id: id,
+							p_required_access: 'write'
+						}),
+						supabase.rpc('current_actor_has_project_access', {
+							p_project_id: id,
+							p_required_access: 'admin'
+						}),
+						supabase
+							.from('onto_projects')
+							.select('id', { head: true, count: 'exact' })
+							.eq('id', id)
+							.eq('created_by', actorId)
+							.is('deleted_at', null)
+					])
+				);
 
-		if (writeResult.error) {
-			console.warn('[Project Page] Failed to check write access:', writeResult.error);
-		}
-		if (adminResult.error) {
-			console.warn('[Project Page] Failed to check admin access:', adminResult.error);
-		}
-		if (memberResult.error) {
-			console.warn('[Project Page] Failed to check membership:', memberResult.error);
-		}
-		if (ownerResult.error) {
-			console.warn('[Project Page] Failed to check ownership:', ownerResult.error);
-		}
+				if (writeResult.error) {
+					console.warn('[Project Page] Failed to check write access:', writeResult.error);
+				}
+				if (adminResult.error) {
+					console.warn('[Project Page] Failed to check admin access:', adminResult.error);
+				}
+				if (ownerResult.error) {
+					console.warn('[Project Page] Failed to check ownership:', ownerResult.error);
+				}
 
-		canEdit = Boolean(writeResult.data);
-		canAdmin = Boolean(adminResult.data);
-		const isMember = (memberResult.count ?? 0) > 0;
-		canInvite = canEdit;
-		canViewLogs = canAdmin || isMember;
-		isOwner = (ownerResult.count ?? 0) > 0;
-	}
+				canEdit = Boolean(writeResult.data);
+				canAdmin = Boolean(adminResult.data);
+				isOwner = (ownerResult.count ?? 0) > 0;
+				canInvite = canEdit;
 
-	const access = {
-		canEdit,
-		canAdmin,
-		canInvite,
-		canViewLogs,
-		isOwner,
-		isAuthenticated: Boolean(user)
-	};
+				if (canAdmin) {
+					canViewLogs = true;
+				} else {
+					const { count: memberCount, error: memberError } = await measure(
+						'db.project_access.member',
+						() =>
+							supabase
+								.from('onto_project_members')
+								.select('id', { head: true, count: 'exact' })
+								.eq('project_id', id)
+								.eq('actor_id', actorId)
+								.is('removed_at', null)
+					);
+
+					if (memberError) {
+						console.warn('[Project Page] Failed to check membership:', memberError);
+					}
+					canViewLogs = (memberCount ?? 0) > 0;
+				}
+			}
+
+			return {
+				canEdit,
+				canAdmin,
+				canInvite,
+				canViewLogs,
+				isOwner,
+				isAuthenticated: Boolean(user)
+			};
+		});
 
 	// Check if we have warm navigation data from the URL state
 	// This is passed via sessionStorage by the source page
@@ -171,22 +187,29 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	// COLD LOAD: Fetch skeleton data from RPC
 	// This is fast (~50ms) - just project metadata and counts
-	const { data: skeletonRaw, error: skeletonError } = await supabase.rpc('get_project_skeleton', {
-		p_project_id: id,
-		p_actor_id: actorId!
-	});
+	const { data: skeletonRaw, error: skeletonError } = await measure('db.project_skeleton', () =>
+		supabase.rpc('get_project_skeleton', {
+			p_project_id: id,
+			p_actor_id: actorId
+		})
+	);
 	const skeletonData = skeletonRaw as Record<string, any> | null;
 
 	if (skeletonError) {
 		console.error('[Project Page] Skeleton RPC error:', skeletonError);
 		// Fall back to full fetch if skeleton fails
-		const fallbackData = await loadFullData(id, supabase, actorId);
+		const [fallbackData, access] = await Promise.all([
+			measure('db.project_full_fallback', () => loadFullData(id, supabase, actorId)),
+			resolveAccess()
+		]);
 		return { ...fallbackData, access };
 	}
 
 	if (!skeletonData) {
 		throw error(404, 'Project not found');
 	}
+
+	const access = await resolveAccess();
 
 	// Return skeleton data for instant rendering
 	// Client will hydrate full data after mount
