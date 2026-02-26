@@ -51,14 +51,14 @@
 
 	// Wrapper classes - Inkprint design with GRID texture
 	// Per Inkprint Design System: "Grid = Input, editable, writable"
-	let wrapperClasses = 'relative rounded-lg overflow-hidden tx tx-grid tx-weak bg-card';
+	let wrapperClasses = 'relative overflow-hidden tx tx-grid tx-weak bg-card';
 
 	let textareaClasses = $derived(
 		twMerge(
 			// Base classes - Inkprint design
-			'w-full rounded-lg resize-y',
+			'w-full rounded resize-y',
 			'border transition-all duration-200',
-			'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+			'focus:outline-none',
 			'disabled:cursor-not-allowed disabled:opacity-50 disabled:resize-none',
 
 			// Placeholder - muted
@@ -72,8 +72,8 @@
 
 			// State classes - clean borders
 			error
-				? 'border-destructive focus:ring-destructive'
-				: 'border-border focus:border-accent',
+				? 'border-destructive'
+				: 'border-border focus:border-b-accent',
 
 			// Background - card
 			'bg-card',
@@ -207,9 +207,13 @@
 		transition: height 0.1s ease-out;
 	}
 
-	/* Dark mode focus ring offset */
-	:global(.dark) textarea:focus {
-		--tw-ring-offset-color: hsl(var(--background));
+	/* Bottom-only focus indicator */
+	textarea:focus {
+		box-shadow: 0 2px 0 0 hsl(var(--ring)), var(--tw-shadow, 0 0 #0000);
+	}
+
+	textarea[aria-invalid='true']:focus {
+		box-shadow: 0 2px 0 0 hsl(var(--destructive)), var(--tw-shadow, 0 0 #0000);
 	}
 
 	/* Custom scrollbar - Inkprint aesthetic */

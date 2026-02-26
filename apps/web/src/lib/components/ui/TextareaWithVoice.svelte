@@ -1020,8 +1020,8 @@
 
 	{#if showStatusRow}
 		<!-- Status row: hints, status indicators, and action buttons -->
-		<div class="mt-1.5 px-1">
-			<div class="flex flex-wrap items-center justify-between gap-2">
+		<div class="mt-1 px-1 pb-1">
+			<div class="flex flex-wrap items-end justify-between gap-2">
 				<!-- Left side: Status indicators and keyboard hints -->
 				<div class="flex flex-wrap items-center gap-1.5">
 					{#if enableVoice && isCurrentlyRecording}

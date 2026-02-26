@@ -73,7 +73,7 @@
 		{onVoiceNoteSegmentSaved}
 		{onVoiceNoteSegmentError}
 		class="w-full"
-		containerClass="rounded-lg border border-border bg-background shadow-ink-inner"
+		containerClass="rounded border border-border bg-background shadow-ink-inner"
 		textareaClass="border-none bg-transparent px-3 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-4 sm:py-3"
 		placeholder={`Share the next thing about ${displayContextLabel.toLowerCase()}...`}
 		autoResize
