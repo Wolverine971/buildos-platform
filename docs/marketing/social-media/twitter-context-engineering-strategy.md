@@ -253,7 +253,7 @@ Create and consistently use these terms to build association:
 
 ## 🎯 Key Phrases for Bio Updates
 
-Current: "BuildOS founder 🧠 AI first project organization. Turn brain dumps into projects. Build context, move forward. --- solves the llm memory problem"
+Current: "BuildOS founder 🧠 AI project collaboration for the builders. Turn brain dumps into shared context. Build context, move forward. --- solves the llm memory problem"
 
 Evolution options:
 

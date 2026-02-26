@@ -10,7 +10,7 @@
 ## Identity
 
 - **Who:** DJ, solo founder, Marines veteran (use sparingly), builder
-- **Building:** BuildOS - context infrastructure for the AI era / AI-first project organization
+- **Building:** BuildOS - context infrastructure for the AI era / AI project collaboration for the builders
 - **Angle:** Context engineering > agent engineering, AI that remembers
 
 ---

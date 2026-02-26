@@ -128,7 +128,7 @@ Each copy snippet is tracked with the following metadata:
 
 | Element          | Copy                                                                            | Intent   | Persona  | Notes             |
 | ---------------- | ------------------------------------------------------------------------------- | -------- | -------- | ----------------- |
-| Tagline          | "Transform thoughts into structured productivity with AI-powered organization." | explain  | guest    | Core value prop   |
+| Tagline          | "Transform thoughts into structured execution with AI-powered collaboration."   | explain  | guest    | Core value prop   |
 | Tagline Extended | "Capture ideas, manage projects, and stay organized effortlessly."              | explain  | guest    | Desktop extension |
 | CTA Primary      | "Start Free"                                                                    | convert  | guest    | -                 |
 | CTA Secondary    | "Join Beta"                                                                     | convert  | guest    | -                 |
@@ -167,7 +167,7 @@ Each copy snippet is tracked with the following metadata:
 | OG Title            | "BuildOS - Your Home Base for Scattered Minds"                                                                                                                                                      | -                |
 | OG Description      | "Finally, a productivity tool that gets how your brain works. BuildOS: where scattered thoughts become organized action. Built by someone who struggled with organization and needed a better way." | Personal touch   |
 | Twitter Description | "Finally, a productivity tool that gets how your brain works. Transform scattered thoughts into organized action. 14-day free trial."                                                               | -                |
-| JSON-LD Description | "AI-first project organization platform that transforms brain dumps into structured projects. Perfect for disorganized minds, founders, and creators who need clarity."                             | -                |
+| JSON-LD Description | "AI project collaboration platform that transforms brain dumps into shared project context. Built for disorganized minds, founders, and creators who need clarity."                                  | -                |
 
 #### Hero Section
 
@@ -740,7 +740,7 @@ Each copy snippet is tracked with the following metadata:
 
 | Element          | Copy                                                                                                                                               | Notes   |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| Title Tag        | "Sign In - BuildOS \| AI-First Project Organization"                                                                                               | noindex |
+| Title Tag        | "Sign In - BuildOS \| AI Project Collaboration"                                                                                                    | noindex |
 | Meta Description | "Sign in to BuildOS to access your projects, brain dumps, and AI-powered productivity tools. Transform scattered thoughts into structured action." |         |
 | H2               | "Welcome back"                                                                                                                                     |         |
 | Subtitle         | "Sign in to your BuildOS account"                                                                                                                  |         |
@@ -759,7 +759,7 @@ Each copy snippet is tracked with the following metadata:
 | Element          | Copy                                                                                                                                                                               | Notes   |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | Title Tag        | "Sign Up - BuildOS \| Start Your 14-Day Free Trial"                                                                                                                                | noindex |
-| Meta Description | "Create your BuildOS account and transform brain dumps into structured projects. AI-powered project organization for ADHD minds, founders, and creators. No credit card required." |         |
+| Meta Description | "Create your BuildOS account and transform brain dumps into shared project context. AI-powered project collaboration for ADHD minds, founders, and creators. No credit card required." |         |
 | H2               | "Join BuildOS"                                                                                                                                                                     |         |
 | Subtitle         | "Create your personal operating system"                                                                                                                                            |         |
 | Google CTA       | "Continue with Google"                                                                                                                                                             |         |

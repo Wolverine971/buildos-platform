@@ -72,6 +72,7 @@ export interface PanelConfig {
 
 export const ASSIGNEE_FILTER_UNASSIGNED = '__unassigned__';
 export const ASSIGNEE_FILTER_ME = '__me__';
+export const PERSON_FILTER_ME = '__person_me__';
 
 // ============================================================
 // TASK CONFIGURATION
@@ -119,9 +120,16 @@ export const TASK_CONFIG: PanelConfig = {
 				{ value: ASSIGNEE_FILTER_ME, label: 'Assigned to me' },
 				{ value: ASSIGNEE_FILTER_UNASSIGNED, label: 'Unassigned' }
 			]
+		},
+		{
+			id: 'person_focus_actor_id',
+			label: 'Person Focus',
+			multiSelect: false,
+			options: [{ value: PERSON_FILTER_ME, label: 'Me' }]
 		}
 	],
 	sorts: [
+		{ field: 'relevance', label: 'Relevance', defaultDirection: 'desc' },
 		{ field: 'due_at', label: 'Due Date', defaultDirection: 'asc' },
 		{ field: 'priority', label: 'Priority', defaultDirection: 'asc' },
 		{ field: 'created_at', label: 'Created', defaultDirection: 'desc' },
@@ -132,7 +140,7 @@ export const TASK_CONFIG: PanelConfig = {
 		{ id: 'showCompleted', label: 'Completed', defaultValue: false },
 		{ id: 'showDeleted', label: 'Deleted', defaultValue: false }
 	],
-	defaultSort: { field: 'updated_at', direction: 'desc' },
+	defaultSort: { field: 'relevance', direction: 'desc' },
 	defaultFilters: {
 		state_key: ['todo', 'in_progress', 'blocked']
 	}

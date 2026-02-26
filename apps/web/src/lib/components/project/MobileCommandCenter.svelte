@@ -29,6 +29,7 @@
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import {
 		PANEL_CONFIGS,
+		type FilterGroup,
 		type InsightPanelKey,
 		type InsightPanelState
 	} from '$lib/components/ontology/insight-panels';
@@ -83,6 +84,7 @@
 			sort: { field: string; direction: 'asc' | 'desc' }
 		) => void;
 		onToggleChange?: (panelKey: InsightPanelKey, toggleId: string, value: boolean) => void;
+		taskFilterGroups?: FilterGroup[];
 
 		// Permissions
 		canEdit?: boolean;
@@ -120,6 +122,7 @@
 		onFilterChange,
 		onSortChange,
 		onToggleChange,
+		taskFilterGroups,
 		canEdit = true
 	}: Props = $props();
 
@@ -337,6 +340,7 @@
 			emptyMessage="Add tasks to track work"
 			panelConfig={hasControls ? PANEL_CONFIGS.tasks : undefined}
 			panelState={hasControls && panelStates ? panelStates.tasks : undefined}
+			filterGroups={hasControls ? taskFilterGroups : undefined}
 			toggleCounts={hasControls && panelCounts ? panelCounts.tasks : undefined}
 			onFilterChange={hasControls && onFilterChange
 				? (filters) => onFilterChange('tasks', filters)

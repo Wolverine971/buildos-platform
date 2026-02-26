@@ -32,6 +32,10 @@ import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
+import {
+	attachLastChangedByActorToTasks,
+	fetchTaskLastChangedByActorMap
+} from '$lib/server/task-relevance.service';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -249,16 +253,34 @@ async function loadFullData(
 	}
 	const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
 	if (rawTasks.length > 0) {
+		const taskIds = rawTasks.map((task) => task.id);
 		try {
 			const assigneeMap = await fetchTaskAssigneesMap({
 				supabase,
-				taskIds: rawTasks.map((task) => task.id)
+				taskIds
 			});
 			data.tasks = attachAssigneesToTasks(rawTasks, assigneeMap);
 		} catch (assigneeError) {
 			console.warn(
 				'[Project Page] Failed to enrich task assignees in fallback load:',
 				assigneeError
+			);
+		}
+
+		try {
+			const lastChangedByActorMap = await fetchTaskLastChangedByActorMap({
+				supabase,
+				projectId: id,
+				taskIds
+			});
+			data.tasks = attachLastChangedByActorToTasks(
+				(data.tasks || rawTasks) as Array<{ id: string } & Record<string, unknown>>,
+				lastChangedByActorMap
+			);
+		} catch (relevanceError) {
+			console.warn(
+				'[Project Page] Failed to enrich task relevance actors in fallback load:',
+				relevanceError
 			);
 		}
 	}

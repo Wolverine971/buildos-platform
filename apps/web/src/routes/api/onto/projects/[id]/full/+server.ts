@@ -20,6 +20,10 @@ import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
+import {
+	attachLastChangedByActorToTasks,
+	fetchTaskLastChangedByActorMap
+} from '$lib/server/task-relevance.service';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -163,14 +167,29 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const sanitizedProject = sanitizeProjectForClient(data.project as Record<string, unknown>);
 		const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
 		let tasksWithAssignees = rawTasks;
+		const taskIds = rawTasks.map((task) => task.id);
 		try {
 			const assigneeMap = await fetchTaskAssigneesMap({
 				supabase,
-				taskIds: rawTasks.map((task) => task.id)
+				taskIds
 			});
 			tasksWithAssignees = attachAssigneesToTasks(rawTasks, assigneeMap);
 		} catch (assigneeError) {
 			console.warn('[Project Full API] Failed to enrich task assignees:', assigneeError);
+		}
+
+		try {
+			const lastChangedByActorMap = await fetchTaskLastChangedByActorMap({
+				supabase,
+				projectId: id,
+				taskIds
+			});
+			tasksWithAssignees = attachLastChangedByActorToTasks(
+				tasksWithAssignees,
+				lastChangedByActorMap
+			);
+		} catch (relevanceError) {
+			console.warn('[Project Full API] Failed to enrich task relevance actors:', relevanceError);
 		}
 
 		return ApiResponse.success({

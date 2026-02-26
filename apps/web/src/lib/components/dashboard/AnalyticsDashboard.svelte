@@ -75,6 +75,7 @@
 	let { user, analytics, onrefresh: refreshHandler }: Props = $props();
 
 	let isRefreshing = $state(false);
+	let isOpeningCalendar = $state(false);
 	let showBriefModal = $state(false);
 	let selectedBrief = $state<DailyBrief | null>(null);
 	let DailyBriefModal = $state<any>(null);
@@ -305,6 +306,16 @@
 			isRefreshing = false;
 		}
 	}
+
+	async function openCalendarDashboard() {
+		if (isOpeningCalendar) return;
+		isOpeningCalendar = true;
+		try {
+			await goto('/dashboard/calendar');
+		} finally {
+			isOpeningCalendar = false;
+		}
+	}
 </script>
 
 <main class="min-h-screen bg-background transition-colors rounded-md">
@@ -330,9 +341,19 @@
 						<RefreshCcw class="h-3.5 w-3.5" />
 					{/if}
 				</Button>
-				<Button variant="outline" size="sm" onclick={() => goto('/dashboard/calendar')}>
-					<Calendar class="h-3.5 w-3.5 sm:mr-1.5" />
-					<span class="hidden sm:inline">Calendar</span>
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={openCalendarDashboard}
+					disabled={isOpeningCalendar}
+				>
+					{#if isOpeningCalendar}
+						<LoaderCircle class="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
+						<span class="hidden sm:inline">Opening...</span>
+					{:else}
+						<Calendar class="h-3.5 w-3.5 sm:mr-1.5" />
+						<span class="hidden sm:inline">Calendar</span>
+					{/if}
 				</Button>
 				<Button variant="primary" size="sm" onclick={() => goto('/projects/create')}>
 					New Project

@@ -209,7 +209,7 @@ List 5 accounts to study and occasionally engage:
 ### 1-Year Vision
 
 - **Follower target:** 1,500+
-- **Your Twitter reputation will be:** The go-to person for AI-powered project organization and brain dump methodology
+- **Your Twitter reputation will be:** The go-to person for AI-powered project collaboration and brain dump methodology
 - **Opportunities you want from Twitter:** Speaking engagements, BuildOS customers, thought leadership in AI productivity space
 
 ---

@@ -122,10 +122,17 @@
 		IMPACT_ORDER,
 		ASSIGNEE_FILTER_ME,
 		ASSIGNEE_FILTER_UNASSIGNED,
+		PERSON_FILTER_ME,
 		type FilterGroup,
 		type InsightPanelKey as ConfigPanelKey
 	} from '$lib/components/ontology/insight-panels';
 	import { taskMatchesAssigneeFilter } from '$lib/components/ontology/insight-panels/task-assignee-filter';
+	import {
+		getTaskPersonRelevanceLabel,
+		getTaskPersonRelevanceScore,
+		resolveTaskPersonFocusActorId,
+		taskMatchesPersonFocusFilter
+	} from '$lib/components/ontology/insight-panels/task-person-relevance';
 
 	// ============================================================
 	// TYPES
@@ -173,6 +180,13 @@
 	type TaskAssigneeFilterMember = {
 		actorId: string;
 		label: string;
+	};
+
+	type TaskSortLike = Record<string, unknown> & {
+		assignees?: Array<{ actor_id?: string | null }>;
+		created_by?: string | null;
+		last_changed_by_actor_id?: string | null;
+		updated_at?: string | null;
 	};
 
 	// ============================================================
@@ -529,40 +543,70 @@
 		);
 	});
 
+	const mergedTaskFilterMembers = $derived.by((): TaskAssigneeFilterMember[] => {
+		const byActorId = new Map<string, TaskAssigneeFilterMember>();
+		for (const member of [...taskAssigneeFilterMembers, ...taskAssigneeFilterMembersFromTasks]) {
+			if (!member.actorId || byActorId.has(member.actorId)) continue;
+			byActorId.set(member.actorId, member);
+		}
+		return Array.from(byActorId.values()).sort((a, b) =>
+			a.label.toLowerCase().localeCompare(b.label.toLowerCase())
+		);
+	});
+
 	const taskFilterGroups = $derived.by((): FilterGroup[] => {
 		return PANEL_CONFIGS.tasks.filters.map((group) => {
-			if (group.id !== 'assignee_actor_id') return group;
+			if (group.id !== 'assignee_actor_id' && group.id !== 'person_focus_actor_id') {
+				return group;
+			}
 
 			const options: FilterGroup['options'] = [];
-			if (currentProjectActorId) {
-				options.push({ value: ASSIGNEE_FILTER_ME, label: 'Assigned to me' });
+			if (group.id === 'assignee_actor_id') {
+				if (currentProjectActorId) {
+					options.push({ value: ASSIGNEE_FILTER_ME, label: 'Assigned to me' });
+				}
+				options.push({ value: ASSIGNEE_FILTER_UNASSIGNED, label: 'Unassigned' });
+			} else if (group.id === 'person_focus_actor_id' && currentProjectActorId) {
+				options.push({ value: PERSON_FILTER_ME, label: 'Me' });
 			}
-			options.push({ value: ASSIGNEE_FILTER_UNASSIGNED, label: 'Unassigned' });
-			const mergedMembers = [
-				...taskAssigneeFilterMembers,
-				...taskAssigneeFilterMembersFromTasks
-			];
-			for (const member of mergedMembers) {
+
+			for (const member of mergedTaskFilterMembers) {
+				if (group.id === 'person_focus_actor_id' && member.actorId === currentProjectActorId) {
+					continue;
+				}
 				options.push({
 					value: member.actorId,
 					label: `@${member.label}`
 				});
 			}
 
-			const dedupedOptions: FilterGroup['options'] = [];
-			const seenValues = new Set<string>();
-			for (const option of options) {
-				if (seenValues.has(option.value)) continue;
-				seenValues.add(option.value);
-				dedupedOptions.push(option);
-			}
-
 			return {
 				...group,
-				options: dedupedOptions
+				options
 			};
 		});
 	});
+
+	const taskPersonFocusActorId = $derived.by(() =>
+		resolveTaskPersonFocusActorId({
+			selectedValues: panelStates.tasks.filters.person_focus_actor_id,
+			currentActorId: currentProjectActorId
+		})
+	);
+
+	function getTaskRelevanceScore(task: TaskSortLike): number {
+		return getTaskPersonRelevanceScore({
+			focusActorId: taskPersonFocusActorId,
+			assignees: Array.isArray(task.assignees)
+				? (task.assignees as Array<{ actor_id?: string | null }>)
+				: [],
+			createdByActorId: typeof task.created_by === 'string' ? task.created_by : null,
+			lastChangedByActorId:
+				typeof task.last_changed_by_actor_id === 'string'
+					? task.last_changed_by_actor_id
+					: null
+		});
+	}
 
 	function getPanelFilterGroups(panelKey: InsightPanelKey): FilterGroup[] {
 		if (panelKey === 'tasks') {
@@ -658,6 +702,29 @@
 				continue;
 			}
 
+			// Special handling for task person focus filtering
+			if (field === 'person_focus_actor_id' && entityType === 'tasks') {
+				const assigneeRows = Array.isArray(item.assignees)
+					? (item.assignees as Array<{ actor_id?: string | null }>)
+					: [];
+				if (
+					!taskMatchesPersonFocusFilter({
+						selectedValues,
+						currentActorId: currentProjectActorId,
+						assignees: assigneeRows,
+						createdByActorId:
+							typeof item.created_by === 'string' ? (item.created_by as string) : null,
+						lastChangedByActorId:
+							typeof item.last_changed_by_actor_id === 'string'
+								? (item.last_changed_by_actor_id as string)
+								: null
+					})
+				) {
+					return false;
+				}
+				continue;
+			}
+
 			// For state_key filter, allow terminal states through when their
 			// corresponding special toggle is enabled (e.g. showCompleted allows
 			// 'done' tasks past the state_key filter even if 'done' isn't selected)
@@ -697,6 +764,20 @@
 		return [...items].sort((a, b) => {
 			let aVal = a[sort.field];
 			let bVal = b[sort.field];
+
+			// Special handling for task relevance ordering
+			if (sort.field === 'relevance' && entityType === 'tasks') {
+				const aRelevance = getTaskRelevanceScore(a as TaskSortLike);
+				const bRelevance = getTaskRelevanceScore(b as TaskSortLike);
+				if (aRelevance !== bRelevance) {
+					const relevanceComparison = aRelevance - bRelevance;
+					return sort.direction === 'asc' ? relevanceComparison : -relevanceComparison;
+				}
+
+				const aUpdated = typeof a.updated_at === 'string' ? Date.parse(a.updated_at) : 0;
+				const bUpdated = typeof b.updated_at === 'string' ? Date.parse(b.updated_at) : 0;
+				return (Number.isFinite(bUpdated) ? bUpdated : 0) - (Number.isFinite(aUpdated) ? aUpdated : 0);
+			}
 
 			// Special handling for computed fields
 			if (sort.field === 'risk_score' && entityType === 'risks') {
@@ -1070,6 +1151,21 @@
 		}
 
 		return `@${primaryLabel} +${assignees.length - 1}`;
+	}
+
+	function getTaskSortSummary(task: Task): string {
+		if (panelStates.tasks.sort.field === 'relevance') {
+			const relevanceLabel = getTaskPersonRelevanceLabel(
+				getTaskRelevanceScore(task as unknown as TaskSortLike)
+			);
+			return `Relevance ${relevanceLabel}`;
+		}
+
+		return getSortValueDisplay(
+			task as unknown as Record<string, unknown>,
+			panelStates.tasks.sort.field,
+			'tasks'
+		).value;
 	}
 
 	/**
@@ -2030,6 +2126,7 @@
 					onFilterChange={updatePanelFilters}
 					onSortChange={updatePanelSort}
 					onToggleChange={updatePanelToggle}
+					{taskFilterGroups}
 				/>
 
 				<!-- Mobile History Section (Daily Briefs & Activity Log) -->
@@ -2389,11 +2486,7 @@
 										{#if filteredTasks.length > 0}
 											<ul class="divide-y divide-border/80">
 												{#each filteredTasks as task}
-													{@const sortDisplay = getSortValueDisplay(
-														task as unknown as Record<string, unknown>,
-														panelStates.tasks.sort.field,
-														'tasks'
-													)}
+													{@const taskSortSummary = getTaskSortSummary(task)}
 													<li class="flex items-center gap-1 min-w-0">
 														<EntityListItem
 															type="task"
@@ -2402,7 +2495,7 @@
 																task.state_key
 															)} · {formatTaskAssigneeSummary(
 																task
-															)} · {sortDisplay.value}"
+															)} · {taskSortSummary}"
 															state={task.state_key}
 															onclick={() =>
 																(editingTaskId = task.id)}

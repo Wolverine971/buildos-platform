@@ -96,11 +96,11 @@ When you don't have expertise to add, but want to engage:
 
 ### How DJ Explains BuildOS
 
-> "BuildOS is an AI-first project organization tool where you brain dump information and it organizes information for you. Anything could be a project, you can talk to it and it organizes for you. You can keep going back to this - any project you're going to keep coming back to, store in BuildOS as opposed to ChatGPT, keep coming back and building on the last conversation or last place where you made progress."
+> "BuildOS is an AI project collaboration tool where you brain dump information and it builds project context for you. Anything could be a project, you can talk to it and it structures it for you. You can keep going back to this - any project you're going to keep coming back to, store in BuildOS as opposed to ChatGPT, keep coming back and build from the last conversation or last place where you made progress."
 
 ### Words/Phrases He Uses Naturally
 
-- AI-first project organization
+- AI project collaboration
 - Brain dump information
 - Context
 - "Keep coming back to the same project"

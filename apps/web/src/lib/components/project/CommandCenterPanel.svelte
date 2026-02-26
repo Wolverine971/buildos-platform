@@ -14,7 +14,11 @@
 	import type { ComponentType, Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Plus } from 'lucide-svelte';
-	import type { PanelConfig, InsightPanelState } from '$lib/components/ontology/insight-panels';
+	import type {
+		FilterGroup,
+		PanelConfig,
+		InsightPanelState
+	} from '$lib/components/ontology/insight-panels';
 	import {
 		InsightFilterDropdown,
 		InsightSortDropdown,
@@ -41,6 +45,7 @@
 		// Optional filter/sort props
 		panelConfig?: PanelConfig;
 		panelState?: InsightPanelState;
+		filterGroups?: FilterGroup[];
 		toggleCounts?: Record<string, number>;
 		onFilterChange?: (filters: Record<string, string[]>) => void;
 		onSortChange?: (sort: { field: string; direction: 'asc' | 'desc' }) => void;
@@ -62,6 +67,7 @@
 		fullWidth = false,
 		panelConfig,
 		panelState,
+		filterGroups,
 		toggleCounts = {},
 		onFilterChange,
 		onSortChange,
@@ -117,7 +123,7 @@
 				{#if hasControls && panelConfig && panelState && onFilterChange && onSortChange}
 					<div class="flex items-center gap-1">
 						<InsightFilterDropdown
-							filterGroups={panelConfig.filters}
+							filterGroups={filterGroups ?? panelConfig.filters}
 							activeFilters={panelState.filters}
 							onchange={onFilterChange}
 						/>

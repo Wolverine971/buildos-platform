@@ -22,6 +22,10 @@ import {
 	sanitizeProjectPropsPatchInput
 } from '$lib/utils/project-props-sanitizer';
 import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
+import {
+	attachLastChangedByActorToTasks,
+	fetchTaskLastChangedByActorMap
+} from '$lib/server/task-relevance.service';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -230,14 +234,29 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			{ id: string } & Record<string, unknown>
 		>;
 		let tasksWithAssignees = rawTasks;
+		const taskIds = rawTasks.map((task) => task.id);
 		try {
 			const assigneeMap = await fetchTaskAssigneesMap({
 				supabase,
-				taskIds: rawTasks.map((task) => task.id)
+				taskIds
 			});
 			tasksWithAssignees = attachAssigneesToTasks(rawTasks, assigneeMap);
 		} catch (assigneeError) {
 			console.warn('[Project API] Failed to enrich task assignees:', assigneeError);
+		}
+
+		try {
+			const lastChangedByActorMap = await fetchTaskLastChangedByActorMap({
+				supabase,
+				projectId: id,
+				taskIds
+			});
+			tasksWithAssignees = attachLastChangedByActorToTasks(
+				tasksWithAssignees,
+				lastChangedByActorMap
+			);
+		} catch (relevanceError) {
+			console.warn('[Project API] Failed to enrich task relevance actors:', relevanceError);
 		}
 
 		return ApiResponse.success({

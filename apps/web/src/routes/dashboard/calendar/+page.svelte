@@ -81,8 +81,9 @@
 	let viewMode = $state<ViewMode>('month');
 	let currentDate = $state(new Date());
 	let items = $state<CalendarItem[]>([]);
-	let isLoading = $state(false);
+	let isLoading = $state(true);
 	let isRefreshing = $state(false);
+	let hasLoadedInitialData = $state(false);
 	let error = $state<string | null>(null);
 
 	let includeEvents = $state(true);
@@ -264,7 +265,8 @@
 			return;
 		}
 
-		if (options?.refreshing) {
+		const shouldUseRefreshState = options?.refreshing || hasLoadedInitialData;
+		if (shouldUseRefreshState) {
 			isRefreshing = true;
 		} else {
 			isLoading = true;
@@ -293,6 +295,7 @@
 			console.error('[DashboardCalendar] Failed to load items:', err);
 			error = err instanceof Error ? err.message : 'Failed to load calendar items';
 		} finally {
+			hasLoadedInitialData = true;
 			isLoading = false;
 			isRefreshing = false;
 		}

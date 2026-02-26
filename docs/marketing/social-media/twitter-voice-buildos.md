@@ -11,7 +11,7 @@
 
 ## Identity
 
-- **What:** BuildOS - AI-first project organization for scattered minds
+- **What:** BuildOS - AI project collaboration for the builders
 - **For:** People overwhelmed by complex tools, ADHD brains, anyone who's abandoned Notion 6 times
 - **Vibe:** The productivity tool that actually gets it
 
