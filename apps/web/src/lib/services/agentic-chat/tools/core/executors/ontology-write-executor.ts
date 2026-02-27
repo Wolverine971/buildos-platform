@@ -44,11 +44,21 @@ import type {
 } from './types';
 import { createLogger } from '$lib/utils/logger';
 import { createEntityReference, parseEntityReferences } from '$lib/utils/entity-reference-parser';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const logger = createLogger('OntologyWriteExecutor');
 
 const MAX_TASK_ASSIGNEES = 10;
 const MAX_MENTION_RECIPIENTS = 25;
+
+type ProjectDocumentRow = {
+	id?: string;
+	title?: string | null;
+};
+
+type ProjectDocumentDirectoryResponse = {
+	documents?: Record<string, ProjectDocumentRow>;
+};
 
 type ProjectMemberActor = {
 	id?: string;
@@ -73,6 +83,27 @@ type MentionRecipient = {
 	userId: string;
 	displayName: string;
 };
+
+function buildIndexedMemberPreview(members: IndexedProjectMember[], limit = 6): string {
+	return members
+		.slice(0, limit)
+		.map((member) => `${formatMemberLabel(member)} (${member.actorId})`)
+		.join(', ');
+}
+
+function previewProjectDocuments(
+	documents: Array<{ id: string; title: string | null }>,
+	limit = 6
+): string {
+	return documents
+		.slice(0, limit)
+		.map((document) =>
+			document.title && document.title.trim().length > 0
+				? `${document.title} (${document.id})`
+				: document.id
+		)
+		.join(', ');
+}
 
 function normalizeHandleToken(raw: unknown): string | null {
 	if (typeof raw !== 'string') return null;
@@ -367,6 +398,21 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		super(context);
 	}
 
+	private async fetchProjectOwnerActorId(projectId: string): Promise<string | null> {
+		const { data, error } = await this.supabase
+			.from('onto_projects')
+			.select('created_by')
+			.eq('id', projectId)
+			.is('deleted_at', null)
+			.maybeSingle();
+
+		if (error) {
+			throw new Error(`Failed to validate task assignees: ${error.message}`);
+		}
+
+		return data && typeof data.created_by === 'string' ? data.created_by : null;
+	}
+
 	private async fetchProjectMemberDirectory(projectId: string): Promise<IndexedProjectMember[]> {
 		const membersResponse = await this.apiRequest<{ members?: ProjectMemberRow[] }>(
 			`/api/onto/projects/${projectId}/members`,
@@ -391,6 +437,72 @@ export class OntologyWriteExecutor extends BaseExecutor {
 				};
 			})
 			.filter((member): member is IndexedProjectMember => Boolean(member));
+	}
+
+	private extractDocumentIdentifier(raw: unknown): string | null {
+		if (typeof raw !== 'string') return null;
+		const trimmed = raw.trim();
+		if (!trimmed) return null;
+
+		const entityRefs = parseEntityReferences(trimmed).entities;
+		const firstDocumentRef = entityRefs.find((entity) => entity.type === 'document');
+		if (firstDocumentRef?.id) {
+			return firstDocumentRef.id.trim();
+		}
+
+		const withoutQuotes = trimmed.replace(/^['"]+|['"]+$/g, '');
+		const prefixedMatch = withoutQuotes.match(/^document:([\w-]+)$/i);
+		if (prefixedMatch?.[1]) {
+			return prefixedMatch[1];
+		}
+
+		return withoutQuotes;
+	}
+
+	private async fetchProjectDocumentDirectory(
+		projectId: string
+	): Promise<Array<{ id: string; title: string | null }>> {
+		const data = await this.apiRequest<ProjectDocumentDirectoryResponse>(
+			`/api/onto/projects/${projectId}/doc-tree?include_documents=1&include_content=0`,
+			{ method: 'GET' }
+		);
+
+		const rawDocs = data?.documents ?? {};
+		return Object.entries(rawDocs)
+			.map(([id, doc]) => ({
+				id,
+				title: typeof doc?.title === 'string' ? doc.title : null
+			}))
+			.filter((doc) => doc.id.trim().length > 0);
+	}
+
+	private resolveDocumentIdByName(
+		documents: Array<{ id: string; title: string | null }>,
+		identifier: string
+	): { id: string; matchedBy: 'id' | 'title_exact' | 'title_contains' } | null {
+		const normalizedIdentifier = identifier.trim().toLowerCase();
+		if (!normalizedIdentifier) return null;
+
+		const exactIdMatch = documents.find((doc) => doc.id.toLowerCase() === normalizedIdentifier);
+		if (exactIdMatch) {
+			return { id: exactIdMatch.id, matchedBy: 'id' };
+		}
+
+		const exactTitleMatches = documents.filter(
+			(doc) => doc.title && doc.title.trim().toLowerCase() === normalizedIdentifier
+		);
+		if (exactTitleMatches.length === 1) {
+			return { id: exactTitleMatches[0].id, matchedBy: 'title_exact' };
+		}
+
+		const containsMatches = documents.filter((doc) =>
+			doc.title ? doc.title.trim().toLowerCase().includes(normalizedIdentifier) : false
+		);
+		if (containsMatches.length === 1) {
+			return { id: containsMatches[0].id, matchedBy: 'title_contains' };
+		}
+
+		return null;
 	}
 
 	private resolveProjectMemberForHandle(
@@ -471,16 +583,45 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			}
 		}
 
-		const resolvedFromHandles: string[] = [];
-		if (requestedHandles.length > 0) {
-			const normalizedProjectId = projectId?.trim();
+		const normalizedProjectId = projectId?.trim();
+		const requiresProjectMemberLookup =
+			explicitActorIds.length > 0 || requestedHandles.length > 0;
+		let indexedMembers: IndexedProjectMember[] = [];
+		if (requiresProjectMemberLookup) {
 			if (!normalizedProjectId) {
-				throw new Error(
-					'project_id is required to resolve assignee_handles for task assignment'
-				);
+				throw new Error('project_id is required to resolve task assignees for assignment');
+			}
+			indexedMembers = await this.fetchProjectMemberDirectory(normalizedProjectId);
+		}
+
+		if (explicitActorIds.length > 0 && normalizedProjectId) {
+			const allowedActorIds = new Set<string>(indexedMembers.map((member) => member.actorId));
+			const projectOwnerActorId = await this.fetchProjectOwnerActorId(normalizedProjectId);
+			if (projectOwnerActorId) {
+				allowedActorIds.add(projectOwnerActorId);
 			}
 
-			const indexedMembers = await this.fetchProjectMemberDirectory(normalizedProjectId);
+			const invalidActorIds = explicitActorIds.filter((actorId) => !allowedActorIds.has(actorId));
+			if (invalidActorIds.length > 0) {
+				const memberPreview = buildIndexedMemberPreview(indexedMembers);
+				const ownerHint =
+					projectOwnerActorId && !indexedMembers.some((member) => member.actorId === projectOwnerActorId)
+						? ` Project owner actor ID: ${projectOwnerActorId}.`
+						: '';
+				throw new Error(
+					`assignee_actor_ids must reference active project members. Invalid actor IDs: ${invalidActorIds.join(', ')}.` +
+						(memberPreview ? ` Active members: ${memberPreview}.` : '') +
+						ownerHint +
+						' Prefer assignee_handles like "@name".'
+				);
+			}
+		}
+
+		const resolvedFromHandles: string[] = [];
+		if (requestedHandles.length > 0) {
+			if (!normalizedProjectId) {
+				throw new Error('project_id is required to resolve assignee_handles for task assignment');
+			}
 			for (const handle of requestedHandles) {
 				const member = this.resolveProjectMemberForHandle(
 					handle,
@@ -924,27 +1065,78 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		structure: any;
 		message: string;
 	}> {
-		if (!args.project_id) {
+		const argsRecord = args as MoveDocumentInTreeArgs & Record<string, unknown>;
+		const projectId =
+			typeof args.project_id === 'string' && args.project_id.trim().length > 0
+				? args.project_id.trim()
+				: typeof argsRecord.projectId === 'string' && argsRecord.projectId.trim().length > 0
+					? argsRecord.projectId.trim()
+					: '';
+		if (!projectId) {
 			throw new Error('project_id is required for move_document_in_tree');
 		}
-		if (!args.document_id) {
-			throw new Error('document_id is required for move_document_in_tree');
+
+		const rawDocumentInput =
+			args.document_id ??
+			argsRecord.id ??
+			argsRecord.doc_id ??
+			argsRecord.documentId ??
+			((argsRecord.document as Record<string, unknown> | undefined)?.id as unknown);
+		const parsedDocumentId = this.extractDocumentIdentifier(rawDocumentInput);
+		if (!parsedDocumentId) {
+			throw new Error(
+				'document_id is required for move_document_in_tree (or provide id/document.id)'
+			);
 		}
 
-		const payload = {
-			document_id: args.document_id,
-			new_parent_id: args.new_parent_id ?? null,
-			new_position: typeof args.new_position === 'number' ? args.new_position : 0
-		};
+		let resolvedDocumentId = parsedDocumentId;
+		if (!isValidUUID(resolvedDocumentId)) {
+			const projectDocuments = await this.fetchProjectDocumentDirectory(projectId);
+			const matched = this.resolveDocumentIdByName(projectDocuments, resolvedDocumentId);
+			if (!matched) {
+				const preview = previewProjectDocuments(projectDocuments);
+				throw new Error(
+					`No active document in this project matches "${resolvedDocumentId}".` +
+						(preview ? ` Available documents: ${preview}.` : '') +
+						' Use get_document_tree first and pass the exact document_id.'
+				);
+			}
+			resolvedDocumentId = matched.id;
+		}
 
-		const data = await this.apiRequest(`/api/onto/projects/${args.project_id}/doc-tree/move`, {
-			method: 'POST',
-			body: JSON.stringify(payload)
-		});
+		const rawParentId =
+			args.new_parent_id ??
+			(argsRecord.parent_id as string | null | undefined) ??
+			(argsRecord.parentId as string | null | undefined);
+		const rawPosition = args.new_position ?? (argsRecord.position as number | undefined);
+		const payload = {
+			document_id: resolvedDocumentId,
+			new_parent_id: rawParentId ?? null,
+			new_position: typeof rawPosition === 'number' ? rawPosition : 0
+		};
+		let data: { structure: any };
+		try {
+			data = await this.apiRequest(`/api/onto/projects/${projectId}/doc-tree/move`, {
+				method: 'POST',
+				body: JSON.stringify(payload)
+			});
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			if (message.includes('Document not found')) {
+				const projectDocuments = await this.fetchProjectDocumentDirectory(projectId);
+				const preview = previewProjectDocuments(projectDocuments);
+				throw new Error(
+					`Document "${resolvedDocumentId}" was not found in project ${projectId}.` +
+						(preview ? ` Available documents: ${preview}.` : '') +
+						' Use get_document_tree first and pass the exact document_id.'
+				);
+			}
+			throw error;
+		}
 
 		return {
 			structure: data.structure,
-			message: `Moved document ${args.document_id} in doc structure.`
+			message: `Moved document ${resolvedDocumentId} in doc structure.`
 		};
 	}
 
@@ -1143,7 +1335,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			Object.prototype.hasOwnProperty.call(args, 'assignee_handles');
 		if (hasAssigneeInput) {
 			let projectId = typeof args.project_id === 'string' ? args.project_id : undefined;
-			if (!projectId && args.assignee_handles !== undefined) {
+			if (!projectId) {
 				const details = await loadTaskDetails();
 				projectId =
 					typeof details?.task?.project_id === 'string'

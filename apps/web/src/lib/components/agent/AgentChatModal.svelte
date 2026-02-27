@@ -2155,6 +2155,10 @@
 		Running: 'Ran'
 	};
 
+	const TOOL_ACTION_BASE_FORM: Record<string, string> = {
+		Running: 'run'
+	};
+
 	function toPastTenseAction(action: string): string {
 		const [verb, ...rest] = action.split(' ');
 		if (!verb) return action;
@@ -2162,6 +2166,17 @@
 			TOOL_ACTION_PAST_TENSE[verb] ??
 			(verb.endsWith('ing') ? `${verb.slice(0, -3)}ed` : verb);
 		return [pastVerb, ...rest].join(' ');
+	}
+
+	function toFailureAction(action: string): string {
+		const [verb, ...rest] = action.split(' ');
+		if (!verb) return action.toLowerCase();
+		const baseVerb =
+			TOOL_ACTION_BASE_FORM[verb] ??
+			(verb.toLowerCase().endsWith('ing')
+				? verb.toLowerCase().slice(0, -3)
+				: verb.toLowerCase());
+		return [baseVerb, ...rest].join(' ').toLowerCase();
 	}
 
 	function formatErrorMessage(error: unknown, maxLength = 160): string | undefined {
@@ -2272,7 +2287,7 @@
 				} else if (status === 'completed') {
 					return toPastTenseAction(action);
 				} else {
-					return `Failed to ${action.toLowerCase()}${errorSuffix}`;
+					return `Failed to ${toFailureAction(action)}${errorSuffix}`;
 				}
 			}
 
@@ -2284,7 +2299,7 @@
 				const pastTense = toPastTenseAction(action);
 				return `${pastTense}: "${target}"`;
 			} else {
-				return `Failed to ${action.toLowerCase()}: "${target}"${errorSuffix}`;
+				return `Failed to ${toFailureAction(action)}: "${target}"${errorSuffix}`;
 			}
 		} catch (e) {
 			if (dev) {
@@ -2675,9 +2690,10 @@
 				const message = target ? `${pastTense}: "${target}"` : pastTense;
 				toastService.success(message);
 			} else {
+				const failureAction = toFailureAction(action);
 				const message = target
-					? `Failed to ${action.toLowerCase()}: "${target}"`
-					: `Failed to ${action.toLowerCase()}`;
+					? `Failed to ${failureAction}: "${target}"`
+					: `Failed to ${failureAction}`;
 				toastService.error(message);
 			}
 		} catch (e) {

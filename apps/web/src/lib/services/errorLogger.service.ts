@@ -231,6 +231,17 @@ export class ErrorLoggerService {
 		return 'error';
 	}
 
+	private isProjectForeignKeyViolation(error: {
+		code?: string;
+		message?: string | null;
+		details?: string | null;
+		hint?: string | null;
+	}): boolean {
+		if (error.code !== '23503') return false;
+		const combined = `${error.message ?? ''} ${error.details ?? ''} ${error.hint ?? ''}`.toLowerCase();
+		return combined.includes('project_id');
+	}
+
 	public async logError(
 		error: any,
 		context?: ErrorContext,
@@ -290,13 +301,19 @@ export class ErrorLoggerService {
 
 			if (insertError) {
 				if (insertError.code === '23503' && errorEntry.project_id) {
+					const isProjectFkFailure = this.isProjectForeignKeyViolation(insertError as any);
 					const retryEntry = {
 						...errorEntry,
 						project_id: null,
 						metadata: {
 							...(errorEntry.metadata as Record<string, any>),
-							invalid_project_id: errorEntry.project_id,
-							project_id_fk_retry: true
+							project_id_fk_retry: true,
+							project_id_fk_retry_reason: isProjectFkFailure
+								? 'project_fk_violation'
+								: 'non_project_fk_violation',
+							...(isProjectFkFailure
+								? { invalid_project_id: errorEntry.project_id }
+								: { cleared_project_id_for_fk_retry: errorEntry.project_id })
 						}
 					};
 					const { data: retryData, error: retryError } = await this.supabase

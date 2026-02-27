@@ -30,8 +30,26 @@ describe('OntologyWriteExecutor task assignee handle resolution', () => {
 	let context: ExecutorContext;
 
 	beforeEach(() => {
+		const createProjectOwnerQuery = (createdBy: string | null = 'actor-owner') => {
+			const query = {
+				select: vi.fn().mockReturnThis(),
+				eq: vi.fn().mockReturnThis(),
+				is: vi.fn().mockReturnThis(),
+				maybeSingle: vi.fn().mockResolvedValue({
+					data: createdBy ? { created_by: createdBy } : null,
+					error: null
+				})
+			};
+			return query;
+		};
+
 		mockSupabase = {
-			from: vi.fn(),
+			from: vi.fn().mockImplementation((table: string) => {
+				if (table === 'onto_projects') {
+					return createProjectOwnerQuery();
+				}
+				throw new Error(`Unexpected table query in test: ${table}`);
+			}),
 			rpc: vi.fn().mockResolvedValue({ data: actorId, error: null }),
 			auth: {
 				getSession: vi.fn().mockResolvedValue({
@@ -229,5 +247,53 @@ describe('OntologyWriteExecutor task assignee handle resolution', () => {
 				assignee_handles: ['@ji']
 			})
 		).rejects.toThrow('Ambiguous assignee handle');
+	});
+
+	it('allows explicit assignee actor IDs when they belong to active members', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.createOntoTask({
+			project_id: 'project-1',
+			title: 'Assign by actor ID',
+			assignee_actor_ids: ['actor-jim']
+		});
+
+		const lastCreateBody = (mockFetch as any).lastCreateBody();
+		expect(lastCreateBody.assignee_actor_ids).toEqual(['actor-jim']);
+	});
+
+	it('loads project context when updating assignees by explicit actor IDs', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.updateOntoTask(
+			{
+				task_id: 'task-123',
+				assignee_actor_ids: ['actor-dj']
+			},
+			async () => ({
+				task: {
+					id: 'task-123',
+					project_id: 'project-1'
+				}
+			})
+		);
+
+		const lastPatchBody = (mockFetch as any).lastPatchBody();
+		expect(lastPatchBody.assignee_actor_ids).toEqual(['actor-dj']);
+	});
+
+	it('rejects explicit assignee actor IDs that are not active project members', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await expect(
+			executor.createOntoTask({
+				project_id: 'project-1',
+				title: 'Assign by invalid actor ID',
+				assignee_actor_ids: ['actor-removed']
+			})
+		).rejects.toThrow('assignee_actor_ids must reference active project members');
+
+		const lastCreateBody = (mockFetch as any).lastCreateBody();
+		expect(lastCreateBody).toBeNull();
 	});
 });

@@ -77,7 +77,8 @@ describe('Ontology document tree tools', () => {
 					buildJsonResponse({
 						structure: { version: 1, root: [] },
 						documents: {
-							'doc-unlinked': { id: 'doc-unlinked', title: 'Unlinked Doc' }
+							'doc-unlinked': { id: 'doc-unlinked', title: 'Unlinked Doc' },
+							'doc-brief': { id: 'doc-brief', title: 'Project Brief' }
 						},
 						unlinked: ['doc-unlinked']
 					})
@@ -154,5 +155,46 @@ describe('Ontology document tree tools', () => {
 			new_parent_id: 'parent-123',
 			new_position: 1
 		});
+	});
+
+	it('accepts id alias for move_document_in_tree', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.moveDocumentInTree({
+			project_id: 'project-1',
+			id: 'doc-unlinked',
+			new_parent_id: null,
+			new_position: 0
+		} as any);
+
+		const lastBody = (mockFetch as any).lastMoveBody();
+		expect(lastBody.document_id).toBe('doc-unlinked');
+	});
+
+	it('resolves entity-reference document IDs for move_document_in_tree', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.moveDocumentInTree({
+			project_id: 'project-1',
+			document_id: '[[document:doc-unlinked|Unlinked Doc]]',
+			new_parent_id: null,
+			new_position: 0
+		});
+
+		const lastBody = (mockFetch as any).lastMoveBody();
+		expect(lastBody.document_id).toBe('doc-unlinked');
+	});
+
+	it('fails with actionable guidance when document cannot be resolved in project', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await expect(
+			executor.moveDocumentInTree({
+				project_id: 'project-1',
+				document_id: 'Unknown Document Title',
+				new_parent_id: null,
+				new_position: 0
+			})
+		).rejects.toThrow('No active document in this project matches');
 	});
 });

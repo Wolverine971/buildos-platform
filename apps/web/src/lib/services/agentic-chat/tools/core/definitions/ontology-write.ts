@@ -83,7 +83,7 @@ Default: task.execute`
 					assignee_actor_ids: {
 						type: 'array',
 						description:
-							'Optional assignee actor IDs (UUIDs). Replaces assignment list on create. Max 10.',
+							'Optional assignee actor IDs (UUIDs) for active project members only. Prefer assignee_handles unless IDs were just retrieved from project members. Replaces assignment list on create. Max 10.',
 						items: { type: 'string' }
 					},
 					assignee_handles: {
@@ -517,7 +517,8 @@ Risks capture potential issues and mitigation planning.`,
 			name: 'move_document_in_tree',
 			description: `Move or insert an existing document within the project's doc_structure.
 Use this to nest existing or unlinked documents under a parent or reorder siblings.
-If new_parent_id is null or omitted, the document is placed at root level.`,
+If new_parent_id is null or omitted, the document is placed at root level.
+Always pass the exact document_id from get_document_tree/list_onto_documents (do not pass document titles).`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -1181,7 +1182,7 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 					assignee_actor_ids: {
 						type: 'array',
 						description:
-							'Optional full replacement assignee actor ID list (UUIDs). Use [] to clear assignees. Max 10.',
+							'Optional full replacement assignee actor ID list (UUIDs) for active project members only. Prefer assignee_handles unless IDs were just retrieved from project members. Use [] to clear assignees. Max 10.',
 						items: { type: 'string' }
 					},
 					assignee_handles: {
