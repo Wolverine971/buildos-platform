@@ -5097,6 +5097,7 @@ export type Database = {
           sync_status: string
           sync_token: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           calendar_id: string
@@ -5110,6 +5111,7 @@ export type Database = {
           sync_status?: string
           sync_token?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           calendar_id?: string
@@ -5123,6 +5125,7 @@ export type Database = {
           sync_status?: string
           sync_token?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -5137,6 +5140,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "onto_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_event_sync_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

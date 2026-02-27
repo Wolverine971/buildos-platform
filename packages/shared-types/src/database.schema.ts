@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-27T21:31:04.113Z
+// Generated on: 2026-02-27T21:49:35.111Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1232,6 +1232,7 @@ export type DatabaseSchema = {
 		sync_status: string;
 		sync_token: string | null;
 		updated_at: string;
+		user_id: string | null;
 	};
 	onto_events: {
 		all_day: boolean;

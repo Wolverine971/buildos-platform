@@ -167,7 +167,8 @@ export class OntoEventSyncService {
 			ownerId?: string | null;
 			includeDeleted?: boolean;
 			limit?: number | null;
-		}
+		},
+		syncUserId?: string | null
 	): Promise<Array<OntoEventRow & { onto_event_sync?: OntoEventSyncRow[] }>> {
 		let query = this.supabase
 			.from('onto_events')
@@ -176,6 +177,7 @@ export class OntoEventSyncService {
 				onto_event_sync (
 					id,
 					calendar_id,
+					user_id,
 					provider,
 					external_event_id,
 					sync_status,
@@ -215,11 +217,18 @@ export class OntoEventSyncService {
 			throw new Error(error.message);
 		}
 
-		return (data ?? []) as Array<OntoEventRow & { onto_event_sync?: OntoEventSyncRow[] }>;
+		const events = (data ?? []) as Array<
+			OntoEventRow & { onto_event_sync?: OntoEventSyncRow[] }
+		>;
+		return events.map((event) => ({
+			...event,
+			onto_event_sync: this.scopeSyncRows(event.onto_event_sync, syncUserId)
+		}));
 	}
 
 	async getEvent(
-		eventId: string
+		eventId: string,
+		syncUserId?: string | null
 	): Promise<(OntoEventRow & { onto_event_sync?: OntoEventSyncRow[] }) | null> {
 		const { data, error } = await this.supabase
 			.from('onto_events')
@@ -228,6 +237,7 @@ export class OntoEventSyncService {
 				onto_event_sync (
 					id,
 					calendar_id,
+					user_id,
 					provider,
 					external_event_id,
 					sync_status,
@@ -242,7 +252,25 @@ export class OntoEventSyncService {
 			throw new Error(error.message);
 		}
 
-		return data as (OntoEventRow & { onto_event_sync?: OntoEventSyncRow[] }) | null;
+		if (!data) {
+			return null;
+		}
+
+		const event = data as OntoEventRow & { onto_event_sync?: OntoEventSyncRow[] };
+		return {
+			...event,
+			onto_event_sync: this.scopeSyncRows(event.onto_event_sync, syncUserId)
+		};
+	}
+
+	private scopeSyncRows(
+		syncRows: OntoEventSyncRow[] | undefined,
+		syncUserId?: string | null
+	): OntoEventSyncRow[] {
+		const rows = syncRows ?? [];
+		if (syncUserId === undefined) return rows;
+		if (!syncUserId) return [];
+		return rows.filter((row) => row.user_id === syncUserId);
 	}
 
 	async createEvent(
@@ -292,7 +320,7 @@ export class OntoEventSyncService {
 
 		if (request.deferCalendarSync) {
 			this.defer('calendar create', async () => {
-				const latest = await this.getEvent(event.id);
+				const latest = await this.getEvent(event.id, userId);
 				if (!latest) return;
 				if ((latest as any).deleted_at) return;
 				await this.syncEventToCalendar(userId, latest as any, syncOptions);
@@ -306,7 +334,7 @@ export class OntoEventSyncService {
 	}
 
 	async updateEvent(userId: string, request: UpdateOntoEventRequest): Promise<OntoEventRow> {
-		const existing = await this.getEvent(request.eventId);
+		const existing = await this.getEvent(request.eventId, userId);
 		if (!existing) {
 			throw new Error('Event not found');
 		}
@@ -341,7 +369,7 @@ export class OntoEventSyncService {
 
 		if (request.deferCalendarSync) {
 			this.defer('calendar update', async () => {
-				const latest = await this.getEvent(request.eventId);
+				const latest = await this.getEvent(request.eventId, userId);
 				if (!latest) return;
 				if ((latest as any).deleted_at) return;
 				await this.updateCalendarFromEvent(
@@ -358,7 +386,7 @@ export class OntoEventSyncService {
 	}
 
 	async deleteEvent(userId: string, request: DeleteOntoEventRequest): Promise<OntoEventRow> {
-		const existing = await this.getEvent(request.eventId);
+		const existing = await this.getEvent(request.eventId, userId);
 		if (!existing) {
 			throw new Error('Event not found');
 		}
@@ -380,7 +408,7 @@ export class OntoEventSyncService {
 		if (request.syncToCalendar !== false) {
 			if (request.deferCalendarSync) {
 				this.defer('calendar delete', async () => {
-					const latest = await this.getEvent(request.eventId);
+					const latest = await this.getEvent(request.eventId, userId);
 					if (!latest) return;
 					await this.deleteCalendarEvent(
 						userId,
@@ -579,14 +607,20 @@ export class OntoEventSyncService {
 
 				const { data: syncRow } = await this.supabase
 					.from('onto_event_sync')
-					.insert({
-						event_id: event.id,
-						calendar_id: projectCalendar.id,
-						provider: 'google',
-						external_event_id: calendarEvent.eventId,
-						sync_status: 'synced',
-						last_synced_at: nowIso
-					})
+					.upsert(
+						{
+							event_id: event.id,
+							calendar_id: projectCalendar.id,
+							user_id: userId,
+							provider: 'google',
+							external_event_id: calendarEvent.eventId,
+							sync_status: 'synced',
+							last_synced_at: nowIso
+						},
+						{
+							onConflict: 'event_id,user_id,provider'
+						}
+					)
 					.select('*')
 					.single();
 
@@ -691,8 +725,31 @@ export class OntoEventSyncService {
 		event: OntoEventRow,
 		syncRows: OntoEventSyncRow[]
 	): Promise<void> {
-		const mapping = await this.resolveExternalMapping(event, syncRows);
-		if (!mapping) return;
+		const mapping = await this.resolveExternalMapping(userId, event, syncRows);
+		if (!mapping) {
+			if (event.project_id) {
+				const projectCalendar = await this.resolveProjectCalendar(
+					event.project_id,
+					userId,
+					false
+				);
+				if (!projectCalendar || projectCalendar.sync_enabled === false) {
+					return;
+				}
+
+				const status = await this.googleOAuthService.safeGetCalendarStatus(userId);
+				if (!status.isConnected) {
+					return;
+				}
+
+				await this.syncEventToCalendar(userId, event, {
+					scope: 'project',
+					calendarId: null,
+					createProjectCalendarIfMissing: false
+				});
+			}
+			return;
+		}
 
 		try {
 			const description = await this.buildCalendarEventDescription(event);
@@ -720,7 +777,7 @@ export class OntoEventSyncService {
 		event: OntoEventRow,
 		syncRows: OntoEventSyncRow[]
 	): Promise<void> {
-		const mapping = await this.resolveExternalMapping(event, syncRows);
+		const mapping = await this.resolveExternalMapping(userId, event, syncRows);
 		if (!mapping) return;
 
 		try {
@@ -739,6 +796,7 @@ export class OntoEventSyncService {
 	}
 
 	private async resolveExternalMapping(
+		userId: string,
 		event: OntoEventRow,
 		syncRows: OntoEventSyncRow[]
 	): Promise<{
@@ -747,21 +805,30 @@ export class OntoEventSyncService {
 		syncRowId?: string;
 	} | null> {
 		if (syncRows.length > 0) {
-			const syncRow = syncRows[0];
-			if (!syncRow) return null; // TypeScript guard - array[0] can be undefined
-			const calendar = await this.supabase
-				.from('project_calendars')
-				.select('calendar_id')
-				.eq('id', syncRow.calendar_id)
-				.maybeSingle();
+			const userCandidates = syncRows.filter(
+				(syncRow) => syncRow.user_id === userId || syncRow.user_id == null
+			);
 
-			if (calendar.data?.calendar_id) {
-				return {
-					externalEventId: syncRow.external_event_id,
-					calendarId: calendar.data.calendar_id,
-					syncRowId: syncRow.id
-				};
+			for (const syncRow of userCandidates) {
+				const calendar = await this.supabase
+					.from('project_calendars')
+					.select('calendar_id, user_id')
+					.eq('id', syncRow.calendar_id)
+					.maybeSingle();
+
+				if (calendar.data?.calendar_id && calendar.data.user_id === userId) {
+					return {
+						externalEventId: syncRow.external_event_id,
+						calendarId: calendar.data.calendar_id,
+						syncRowId: syncRow.id
+					};
+				}
 			}
+		}
+
+		// Project events should only sync via per-user onto_event_sync rows.
+		if (event.project_id) {
+			return null;
 		}
 
 		const props = (event.props as Record<string, unknown>) ?? {};

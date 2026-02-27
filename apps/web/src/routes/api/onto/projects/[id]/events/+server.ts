@@ -212,14 +212,18 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
 	try {
 		const eventService = new OntoEventSyncService(locals.supabase);
-		const events = await eventService.listProjectEvents(projectId, {
-			timeMin,
-			timeMax,
-			ownerType,
-			ownerId,
-			includeDeleted,
-			limit
-		});
+		const events = await eventService.listProjectEvents(
+			projectId,
+			{
+				timeMin,
+				timeMax,
+				ownerType,
+				ownerId,
+				includeDeleted,
+				limit
+			},
+			access.userId
+		);
 
 		return ApiResponse.success({ events });
 	} catch (error) {

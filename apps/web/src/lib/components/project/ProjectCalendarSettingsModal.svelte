@@ -104,12 +104,12 @@
 	function getItemColorClass(item: CalendarItem): string {
 		if (item.item_type === 'task') {
 			if (item.item_kind === 'range') {
-				return 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700';
+				return 'bg-emerald-500/10 border border-emerald-500/30';
 			}
 			if (item.item_kind === 'start') {
-				return 'bg-sky-100 dark:bg-sky-900/30 border border-sky-300 dark:border-sky-700';
+				return 'bg-sky-500/10 border border-sky-500/30';
 			}
-			return 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700';
+			return 'bg-amber-500/10 border border-amber-500/30';
 		}
 		return 'bg-muted border border-border';
 	}
@@ -482,31 +482,29 @@
 			</div>
 
 			{#if activeTab === 'calendar'}
-				<div class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
-					<p class="text-xs text-muted-foreground">
-						Showing scheduled tasks and onto events for this project.
-					</p>
-
+				<div class="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2">
 					{#if calendarError}
 						<div
-							class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+							class="p-2.5 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 						>
 							<div class="flex items-start gap-2">
 								<AlertCircle
-									class="h-4 w-4 text-destructive mt-0.5 flex-shrink-0"
+									class="h-3.5 w-3.5 text-destructive mt-0.5 flex-shrink-0"
 								/>
 								<div class="flex-1">
 									<h3 class="text-xs font-semibold text-destructive">
 										Error loading calendar
 									</h3>
-									<p class="mt-1 text-xs text-destructive/80">{calendarError}</p>
+									<p class="mt-0.5 text-xs text-destructive/80">
+										{calendarError}
+									</p>
 								</div>
 							</div>
 						</div>
 					{/if}
 
 					<div
-						class="flex-1 min-h-[32rem] rounded-lg border border-border bg-card overflow-hidden"
+						class="flex-1 min-h-[32rem] rounded-lg border border-border bg-card overflow-hidden shadow-ink"
 					>
 						<CalendarView
 							{viewMode}

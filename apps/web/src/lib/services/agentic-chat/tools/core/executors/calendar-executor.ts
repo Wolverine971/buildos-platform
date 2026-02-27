@@ -399,12 +399,16 @@ export class CalendarExecutor extends BaseExecutor {
 
 		let ontoEvents: any[] = [];
 		if (scope === 'project' && projectId) {
-			ontoEvents = await this.eventSyncService.listProjectEvents(projectId, {
-				timeMin,
-				timeMax,
-				includeDeleted: false,
-				limit: fetchLimit
-			});
+			ontoEvents = await this.eventSyncService.listProjectEvents(
+				projectId,
+				{
+					timeMin,
+					timeMax,
+					includeDeleted: false,
+					limit: fetchLimit
+				},
+				this.userId
+			);
 		} else {
 			const actorId = await this.getActorId();
 			let query = this.supabase
@@ -414,6 +418,7 @@ export class CalendarExecutor extends BaseExecutor {
 					onto_event_sync (
 						id,
 						calendar_id,
+						user_id,
 						provider,
 						external_event_id,
 						sync_status,
@@ -440,7 +445,12 @@ export class CalendarExecutor extends BaseExecutor {
 			if (error) {
 				throw new Error(error.message);
 			}
-			ontoEvents = data ?? [];
+			ontoEvents = (data ?? []).map((event) => ({
+				...event,
+				onto_event_sync: (event.onto_event_sync ?? []).filter(
+					(syncRow: any) => syncRow.user_id === this.userId
+				)
+			}));
 		}
 
 		const normalizeTitle = (value?: string | null) => (value ?? '').trim().toLowerCase();
@@ -488,7 +498,9 @@ export class CalendarExecutor extends BaseExecutor {
 
 		for (const event of ontoEvents) {
 			const syncRows = event.onto_event_sync || [];
-			const externalId = syncRows.length > 0 ? syncRows[0].external_event_id : null;
+			const externalId =
+				syncRows.find((syncRow: any) => syncRow.user_id === this.userId)
+					?.external_event_id ?? null;
 			let matchedGoogle: CalendarEvent | undefined;
 
 			if (externalId) {
@@ -602,7 +614,7 @@ export class CalendarExecutor extends BaseExecutor {
 
 	async getCalendarEventDetails(args: GetCalendarEventDetailsArgs) {
 		if (args.onto_event_id) {
-			const event = await this.eventSyncService.getEvent(args.onto_event_id);
+			const event = await this.eventSyncService.getEvent(args.onto_event_id, this.userId);
 			if (!event) {
 				throw new Error('Event not found');
 			}
@@ -773,7 +785,7 @@ export class CalendarExecutor extends BaseExecutor {
 
 	async updateCalendarEvent(args: UpdateCalendarEventArgs) {
 		if (args.onto_event_id) {
-			const existing = await this.eventSyncService.getEvent(args.onto_event_id);
+			const existing = await this.eventSyncService.getEvent(args.onto_event_id, this.userId);
 			if (!existing) {
 				throw new Error('Event not found');
 			}

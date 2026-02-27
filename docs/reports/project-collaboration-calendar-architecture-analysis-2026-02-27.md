@@ -19,6 +19,30 @@ This document captures:
 
 Reason: the single shared calendar model introduces fragile ownership/token dependencies, complicated ACL lifecycle handling, and worse failure characteristics for collaborative editing unless you also build substantial new infra.
 
+## Progress Update (2026-02-27)
+
+### Completed since this analysis
+
+1. Phase 1 hardening shipped:
+    - Project calendar uniqueness migration for `(project_id, user_id)`.
+    - Existing Google calendar linking support (`calendarId` / `calendar_id`) in API/service/tooling.
+    - Owner-only calendar executor restrictions replaced with project-access checks.
+    - Per-user calendar settings writes removed from shared `onto_projects.props.calendar`.
+    - Collaborator scheduling/update paths no longer blocked by creator-only assumptions.
+
+2. Phase 2 foundation shipped:
+    - Added `onto_event_sync.user_id` with FK/backfill/dedupe/indexes.
+    - Added unique event projection constraint on `(event_id, user_id, provider)` (partial index).
+    - Event sync service now reads/writes sync mappings as caller-scoped projections.
+    - Project event update/delete mapping resolution now uses caller-owned mapping only.
+    - API + calendar executor reads now scope sync rows to current user.
+
+### Still pending
+
+1. Background sync worker with retry/backoff and per-attempt visibility.
+2. Explicit sync mode policy controls (actor-projection default, optional member-fanout).
+3. UI surfacing of per-target sync health and retry state.
+
 ## Current Implementation Snapshot
 
 ### What is working
@@ -50,6 +74,8 @@ Reason: the single shared calendar model introduces fragile ownership/token depe
         - `supabase/migrations/20260208_120000_fix_calendar_items_user_scope.sql`
 
 ## Findings and Risks
+
+Note: this section captures baseline findings from the initial audit snapshot. See "Progress Update (2026-02-27)" above for remediation status.
 
 ### Critical
 

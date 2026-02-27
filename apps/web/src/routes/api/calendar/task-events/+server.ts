@@ -24,12 +24,11 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 	}
 
 	try {
-		const actorId = await ensureActorId(supabase, user.id);
+		await ensureActorId(supabase, user.id);
 
 		const { data: events, error: eventsError } = await supabase
 			.from('onto_events')
-			.select('id, props')
-			.eq('created_by', actorId)
+			.select('id, project_id, props')
 			.eq('owner_entity_type', 'task')
 			.is('deleted_at', null)
 			.gte('start_at', timeMin)
@@ -48,6 +47,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 		const { data: syncRows, error: syncError } = await supabase
 			.from('onto_event_sync')
 			.select('event_id, external_event_id')
+			.eq('user_id', user.id)
 			.in('event_id', eventIds);
 
 		if (syncError) {
@@ -66,7 +66,11 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 
 						const props = (event.props as Record<string, unknown> | null) ?? {};
 						const propExternal = props.external_event_id;
-						if (typeof propExternal === 'string' && propExternal.length > 0) {
+						if (
+							!event.project_id &&
+							typeof propExternal === 'string' &&
+							propExternal.length > 0
+						) {
 							return propExternal;
 						}
 						return null;

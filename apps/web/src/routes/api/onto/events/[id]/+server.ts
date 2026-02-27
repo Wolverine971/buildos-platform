@@ -155,7 +155,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	try {
 		const eventService = new OntoEventSyncService(locals.supabase);
-		const event = await eventService.getEvent(eventId);
+		const event = await eventService.getEvent(eventId, access.userId);
 
 		if (!event) {
 			return ApiResponse.notFound('Event');

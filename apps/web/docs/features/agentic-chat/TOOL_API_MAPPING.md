@@ -1,167 +1,173 @@
 <!-- apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md -->
 
-# Agentic Chat Tool -> API Mapping (Canonical)
+# Agentic Chat Tool -> Backend Mapping (Current)
 
-**Last Updated**: 2026-01-30
-**Status**: Active
-**Category**: Feature / Agentic Chat
-**Location**: `/apps/web/docs/features/agentic-chat/TOOL_API_MAPPING.md`
+> Last updated: 2026-02-27  
+> Scope: Tool behavior in the current web runtime (`/api/agent/v2/stream` + shared tool stack)
 
-This document maps Agentic Chat tools to their underlying API calls, data tables, and side effects. It replaces the deleted tool-system docs and is intended to be referenced by specs that need precise tool-to-API behavior.
+## 1. Execution Modes
 
----
+The runtime has two tool execution modes:
 
-## 1. Tool definition sources
+1. Gateway mode (`AGENTIC_CHAT_TOOL_GATEWAY=true`)
+    - Exposed tools: `tool_help`, `tool_exec`
+    - `tool_help` reads registry metadata from `tool-registry.ts`
+    - `tool_exec` runs canonical ops through `ToolExecutionService`
+2. Direct mode (gateway disabled)
+    - Exposed tools: full named tool set (`list_onto_*`, `create_onto_*`, `web_search`, etc.)
+    - Tool calls are dispatched by `ChatToolExecutor`
 
-| Purpose                  | File                                                                             |
-| ------------------------ | -------------------------------------------------------------------------------- |
-| Tool schemas             | `apps/web/src/lib/services/agentic-chat/tools/core/tool-definitions.ts`          |
-| Tool metadata / contexts | `apps/web/src/lib/services/agentic-chat/tools/core/definitions/tool-metadata.ts` |
-| Tool selection groups    | `apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts`              |
-| Tool execution dispatch  | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts`  |
+## 2. Source Files
 
-All tool calls flow through `ToolExecutionService` -> `ChatToolExecutor` -> domain executors.
+| Concern             | File                                                                            |
+| ------------------- | ------------------------------------------------------------------------------- |
+| Tool definitions    | `apps/web/src/lib/services/agentic-chat/tools/core/definitions/*.ts`            |
+| Context tool sets   | `apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts`             |
+| Gateway op registry | `apps/web/src/lib/services/agentic-chat/tools/registry/tool-registry.ts`        |
+| Gateway help output | `apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts`            |
+| Direct dispatcher   | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts` |
+| Domain executors    | `apps/web/src/lib/services/agentic-chat/tools/core/executors/*.ts`              |
 
----
+## 3. Gateway Canonical Ops
 
-## 2. Ontology write tools (API endpoints)
+Canonical namespaces used by `tool_exec.op`:
 
-Source: `apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-write-executor.ts`
+- Ontology CRUD/search: `onto.<entity>.<action>`
+- Ontology exceptions:
+    - `onto.search`
+    - `onto.document.tree.get`
+    - `onto.document.tree.move`
+    - `onto.document.path.get`
+    - `onto.project.graph.get`
+    - `onto.project.graph.reorganize`
+    - `onto.edge.link`
+    - `onto.edge.unlink`
+    - `onto.entity.relationships.get`
+    - `onto.entity.links.get`
+- Utility: `util.*` (`util.web.search`, `util.schema.field_info`, etc.)
+- Calendar: `cal.event.*`, `cal.project.*`
 
-| Tool                            | HTTP   | Endpoint                                     | Primary side effects                                                       |
-| ------------------------------- | ------ | -------------------------------------------- | -------------------------------------------------------------------------- |
-| `create_onto_project`           | POST   | `/api/onto/projects/instantiate`             | Creates project + entities + edges; returns `context_shift` to new project |
-| `create_onto_task`              | POST   | `/api/onto/tasks/create`                     | Creates task row in `onto_tasks`                                           |
-| `create_onto_goal`              | POST   | `/api/onto/goals/create`                     | Creates goal row in `onto_goals`                                           |
-| `create_onto_plan`              | POST   | `/api/onto/plans/create`                     | Creates plan row in `onto_plans`                                           |
-| `create_onto_document`          | POST   | `/api/onto/documents/create`                 | Creates document row in `onto_documents`                                   |
-| `create_task_document`          | POST   | `/api/onto/tasks/{task_id}/documents`        | Creates document + link edge to task                                       |
-| `link_onto_entities`            | POST   | `/api/onto/edges`                            | Inserts edges in `onto_edges`                                              |
-| `unlink_onto_edge`              | DELETE | `/api/onto/edges/{edge_id}`                  | Deletes edge in `onto_edges`                                               |
-| `reorganize_onto_project_graph` | POST   | `/api/onto/projects/{project_id}/reorganize` | Bulk create/delete/update edges                                            |
-| `update_onto_project`           | PATCH  | `/api/onto/projects/{project_id}`            | Updates project row                                                        |
-| `update_onto_task`              | PATCH  | `/api/onto/tasks/{task_id}`                  | Updates task row                                                           |
-| `update_onto_goal`              | PATCH  | `/api/onto/goals/{goal_id}`                  | Updates goal row                                                           |
-| `update_onto_plan`              | PATCH  | `/api/onto/plans/{plan_id}`                  | Updates plan row                                                           |
-| `update_onto_document`          | PATCH  | `/api/onto/documents/{document_id}`          | Updates document row                                                       |
-| `update_onto_milestone`         | PATCH  | `/api/onto/milestones/{milestone_id}`        | Updates milestone row                                                      |
-| `update_onto_risk`              | PATCH  | `/api/onto/risks/{risk_id}`                  | Updates risk row                                                           |
-| `update_onto_requirement`       | PATCH  | `/api/onto/requirements/{requirement_id}`    | Updates requirement row                                                    |
-| `delete_onto_task`              | DELETE | `/api/onto/tasks/{task_id}`                  | Soft-delete task                                                           |
-| `delete_onto_goal`              | DELETE | `/api/onto/goals/{goal_id}`                  | Soft-delete goal                                                           |
-| `delete_onto_plan`              | DELETE | `/api/onto/plans/{plan_id}`                  | Soft-delete plan                                                           |
-| `delete_onto_document`          | DELETE | `/api/onto/documents/{document_id}`          | Soft-delete document                                                       |
+## 4. Direct Tool Mapping
 
-Notes:
+### 4.1 Ontology write tools (HTTP endpoints)
 
-- `create_onto_project` is the only write tool that currently returns a `context_shift` in its payload.
-- Write tools use `BaseExecutor.apiRequest()` which adds `Authorization` and `X-Change-Source: chat` headers.
+Source: `ontology-write-executor.ts`
 
----
+| Tool                            | Method   | Endpoint                                        |
+| ------------------------------- | -------- | ----------------------------------------------- |
+| `create_onto_project`           | `POST`   | `/api/onto/projects/instantiate`                |
+| `create_onto_task`              | `POST`   | `/api/onto/tasks/create`                        |
+| `create_onto_goal`              | `POST`   | `/api/onto/goals/create`                        |
+| `create_onto_plan`              | `POST`   | `/api/onto/plans/create`                        |
+| `create_onto_document`          | `POST`   | `/api/onto/documents/create`                    |
+| `create_onto_milestone`         | `POST`   | `/api/onto/milestones/create`                   |
+| `create_onto_risk`              | `POST`   | `/api/onto/risks/create`                        |
+| `move_document_in_tree`         | `POST`   | `/api/onto/projects/{project_id}/doc-tree/move` |
+| `create_task_document`          | `POST`   | `/api/onto/tasks/{task_id}/documents`           |
+| `link_onto_entities`            | `POST`   | `/api/onto/edges`                               |
+| `unlink_onto_edge`              | `DELETE` | `/api/onto/edges/{edge_id}`                     |
+| `reorganize_onto_project_graph` | `POST`   | `/api/onto/projects/{project_id}/reorganize`    |
+| `update_onto_project`           | `PATCH`  | `/api/onto/projects/{project_id}`               |
+| `update_onto_task`              | `PATCH`  | `/api/onto/tasks/{task_id}`                     |
+| `update_onto_goal`              | `PATCH`  | `/api/onto/goals/{goal_id}`                     |
+| `update_onto_plan`              | `PATCH`  | `/api/onto/plans/{plan_id}`                     |
+| `update_onto_document`          | `PATCH`  | `/api/onto/documents/{document_id}`             |
+| `update_onto_milestone`         | `PATCH`  | `/api/onto/milestones/{milestone_id}`           |
+| `update_onto_risk`              | `PATCH`  | `/api/onto/risks/{risk_id}`                     |
+| `delete_onto_task`              | `DELETE` | `/api/onto/tasks/{task_id}`                     |
+| `delete_onto_goal`              | `DELETE` | `/api/onto/goals/{goal_id}`                     |
+| `delete_onto_plan`              | `DELETE` | `/api/onto/plans/{plan_id}`                     |
+| `delete_onto_document`          | `DELETE` | `/api/onto/documents/{document_id}`             |
+| `delete_onto_milestone`         | `DELETE` | `/api/onto/milestones/{milestone_id}`           |
+| `delete_onto_risk`              | `DELETE` | `/api/onto/risks/{risk_id}`                     |
+| `delete_onto_project`           | `DELETE` | `/api/onto/projects/{project_id}`               |
 
-## 3. Ontology read tools (Supabase queries)
+Special-case write tool:
 
-Source: `apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-read-executor.ts`
+- `tag_onto_entity` is composite logic:
+    - can call `/api/onto/mentions/ping` (`mode: ping`)
+    - can read entity `/full` endpoints and patch task/goal/document content to append canonical mention tokens
 
-These tools query Supabase directly (no internal HTTP endpoint) and read from `onto_*` tables, with ownership checks by actor ID.
+### 4.2 Ontology read tools (mixed query/API)
 
-Examples:
+Source: `ontology-read-executor.ts`
 
-- `list_onto_projects` -> `onto_projects`
-- `list_onto_tasks` -> `onto_tasks` (filters `deleted_at`)
-- `search_onto_documents` -> `onto_documents`
-- `get_onto_project_graph` -> `onto_edges` + entity tables
-- `get_document_tree` / `get_document_path` -> document edges + tree ordering
+- Direct Supabase reads from `onto_*` tables:
+    - `list_onto_projects`, `list_onto_tasks`, `list_onto_goals`, `list_onto_plans`, `list_onto_documents`, `list_onto_milestones`, `list_onto_risks`
+    - `search_onto_projects`, `search_onto_tasks`, `search_onto_goals`, `search_onto_plans`, `search_onto_documents`, `search_onto_milestones`, `search_onto_risks`
+- Internal API reads:
+    - `search_ontology` -> `POST /api/onto/search`
+    - `get_onto_*_details` -> `/api/onto/{entity}/{id}`
+    - `get_onto_project_graph` -> `/api/onto/projects/{project_id}/graph/full`
+    - `list_task_documents` -> `/api/onto/tasks/{task_id}/documents`
+    - `get_document_tree` -> `/api/onto/projects/{project_id}/doc-tree`
+    - `get_document_path` -> uses document details + project doc tree endpoint
 
----
+### 4.3 Utility tools
 
-## 4. Utility tools
+Source: `utility-executor.ts`
 
-Source: `apps/web/src/lib/services/agentic-chat/tools/core/executors/utility-executor.ts`
+| Tool                       | Backend                                           |
+| -------------------------- | ------------------------------------------------- |
+| `get_field_info`           | Static schema metadata (`ENTITY_FIELD_INFO`)      |
+| `get_entity_relationships` | Supabase `onto_edges` query                       |
+| `get_linked_entities`      | `OntologyContextLoader` + linked entity expansion |
 
-| Tool                       | Data source             | Notes                                    |
-| -------------------------- | ----------------------- | ---------------------------------------- |
-| `get_field_info`           | static schema map       | `ENTITY_FIELD_INFO` in `tools.config.ts` |
-| `get_entity_relationships` | `onto_edges`            | Incoming/outgoing edges                  |
-| `get_linked_entities`      | `OntologyContextLoader` | Loads full linked entity details         |
+### 4.4 Calendar tools
 
----
+Source: `calendar-executor.ts`
 
-## 5. Calendar tools
+| Tool                         | Backend                                                       |
+| ---------------------------- | ------------------------------------------------------------- |
+| `list_calendar_events`       | Google Calendar API + `onto_events`                           |
+| `get_calendar_event_details` | Google Calendar API + `onto_events`                           |
+| `create_calendar_event`      | Google Calendar API + `onto_events` (+ optional edge linking) |
+| `update_calendar_event`      | Google Calendar API + `onto_events`                           |
+| `delete_calendar_event`      | Google Calendar API + `onto_events`                           |
+| `get_project_calendar`       | `project_calendars`                                           |
+| `set_project_calendar`       | `project_calendars` + Google integration checks               |
 
-Source: `apps/web/src/lib/services/agentic-chat/tools/core/executors/calendar-executor.ts`
+### 4.5 External tools
 
-| Tool                         | API / tables                        | Notes                              |
-| ---------------------------- | ----------------------------------- | ---------------------------------- |
-| `list_calendar_events`       | Google Calendar API + `onto_events` | Merges synced and local events     |
-| `get_calendar_event_details` | Google Calendar API + `onto_events` | Uses `onto_event_id` or `event_id` |
-| `create_calendar_event`      | Google Calendar API + `onto_events` | Optionally syncs to Google         |
-| `update_calendar_event`      | Google Calendar API + `onto_events` | Supports `sync_to_calendar`        |
-| `delete_calendar_event`      | Google Calendar API + `onto_events` | Soft-deletes local event           |
-| `get_project_calendar`       | `project_calendars`                 | Returns sync settings              |
-| `set_project_calendar`       | `project_calendars` + Google API    | Creates/updates project calendar   |
+Source: `external-executor.ts`
 
----
+| Tool                      | Backend                                             |
+| ------------------------- | --------------------------------------------------- |
+| `web_search`              | Tavily client (`tools/websearch`)                   |
+| `web_visit`               | URL fetch + parser (+ optional markdown conversion) |
+| `get_buildos_overview`    | Local static content                                |
+| `get_buildos_usage_guide` | Local static content                                |
 
-## 6. External tools
+## 5. Request Headers for Internal API Calls
 
-Source: `apps/web/src/lib/services/agentic-chat/tools/core/executors/external-executor.ts`
+`BaseExecutor.apiRequest()` attaches:
 
-| Tool                      | Provider                                       | Notes                                     |
-| ------------------------- | ---------------------------------------------- | ----------------------------------------- |
-| `web_search`              | Tavily                                         | Uses `tavilySearch` in `tools/websearch/` |
-| `web_visit`               | Direct HTTP + optional LLM markdown conversion | Can persist cached visit entries          |
-| `get_buildos_overview`    | Internal docs                                  | Returns static BuildOS overview           |
-| `get_buildos_usage_guide` | Internal docs                                  | Returns usage guide content               |
+- `Authorization: Bearer <session token>`
+- `X-Change-Source: chat`
+- `Content-Type: application/json`
 
----
+This applies to executor HTTP calls to `/api/onto/*`.
 
-## 7. Context shift + relationship rules
+## 6. Context Shift Behavior
 
-### 7.1 Context shift
+Context shift is currently extracted from tool result payloads in `/api/agent/v2/stream`.
 
-`context_shift` can be produced by tool results and is handled in `StreamHandler`:
+Current behavior:
 
-- Extracted from `tool_result` payload
-- Emits SSE `context_shift`
-- Updates `chat_sessions.context_type` and `entity_id`
-- Persists a system message recording the shift
+- updates effective context/entity for remaining tool rounds
+- persists `fastchat_last_context_shift` hint in session metadata
+- emits SSE `context_shift`
 
-Currently, `create_onto_project` returns a `context_shift` to the newly created project.
+`create_onto_project` is the main write tool that returns a context shift in normal flows.
 
-<a name="ontology-relationship-rules"></a>
+## 7. Logging and Audit
 
-### 7.2 Relationship rules (high-level)
+| Table                  | Written by                                  |
+| ---------------------- | ------------------------------------------- |
+| `chat_tool_executions` | `ChatToolExecutor.logToolExecution()`       |
+| `chat_messages`        | V2 session service (`persistMessage`)       |
+| `chat_sessions`        | V2 session service + route metadata updates |
 
-Relationship creation happens in two main ways:
+## 8. Related Doc
 
-1. **Project instantiation**: `create_onto_project` posts a full spec including `entities` and `relationships`.
-2. **Explicit linking**: `link_onto_entities` inserts edges via `/api/onto/edges`.
-
-For relationship semantics, see the ontology edge types and constraints in the ontology services and database schema. If you need stricter rules, enforce them in `create_onto_project` validation and the edge API.
-
----
-
-## 8. Tool result stream events
-
-Some tools can return `_stream_events` or metadata that the tool executor extracts and forwards to the orchestrator. These are merged into the SSE stream, so tool-side events can drive UI updates without waiting for the planner to finish.
-
-See `ChatToolExecutor.extractStreamEvents()` for the extraction logic.
-
----
-
-## 9. Logging and audit trails
-
-| Log                    | Where                                 | Why                                 |
-| ---------------------- | ------------------------------------- | ----------------------------------- |
-| `chat_tool_executions` | `ChatToolExecutor.logToolExecution()` | Tool-level timing, args, results    |
-| `chat_messages`        | `MessagePersister`                    | User/assistant/tool message history |
-| `agent_chat_sessions`  | `AgentExecutorService`                | Executor sub-session tracking       |
-| `agent_executions`     | `AgentExecutorService`                | Executor run metadata               |
-
----
-
-## 10. Related docs
-
-- Canonical flow: `apps/web/docs/features/agentic-chat/README.md`
-- Agentic Chat performance ADR: `apps/web/docs/technical/architecture/decisions/ADR-001-agentic-chat-performance-optimizations.md`
+- Runtime architecture and flow: `apps/web/docs/features/agentic-chat/README.md`

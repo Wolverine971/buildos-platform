@@ -2,7 +2,7 @@
 
 # Project Calendar Collaboration and Event Sync Spec
 
-_Status: Proposed + Phase 1 in progress_  
+_Status: Active implementation (Phase 1 complete, Phase 2 in progress)_  
 _Date: 2026-02-27_  
 _Owner: Web/Ontology platform_
 
@@ -35,6 +35,38 @@ This leads to drift/failures when collaborators edit shared project events.
 1. Default architecture remains **per-user-per-project calendar mappings**.
 2. BuildOS remains canonical; Google calendars are projections.
 3. Single shared external project calendar remains an optional future mode, not default.
+
+## 4.1 Implementation Progress (2026-02-27)
+
+### Completed in Phase 1
+
+1. Added unique DB backstop for one mapping per `(project_id, user_id)`:
+    - `supabase/migrations/20260426000016_project_calendars_unique_project_user.sql`
+2. Added ability to link existing Google calendar IDs when creating project mappings:
+    - API/service + agentic tool support for `calendarId` / `calendar_id`.
+3. Stopped writing per-user sync settings into shared `onto_projects.props.calendar`.
+4. Replaced owner-only calendar executor checks with project-access checks.
+5. Removed creator-only assumptions in collaborator scheduling/update helper paths.
+
+### Completed in Phase 2 (current)
+
+1. Added explicit user scope to event sync targets:
+    - `onto_event_sync.user_id` + FK + backfill + dedupe + unique index on `(event_id, user_id, provider)`.
+    - `supabase/migrations/20260426000017_onto_event_sync_user_scope.sql`
+2. Updated event sync read/write paths to be user-scoped:
+    - Sync rows now written with `user_id`.
+    - Event mapping resolution for update/delete only uses caller-owned mapping.
+3. Updated API/tooling consumers to read caller-scoped sync rows:
+    - project events list
+    - single event get
+    - task-events endpoint
+    - calendar executor list/detail/update flows
+
+### Remaining for Phase 2 completion
+
+1. Add background sync worker with retry/backoff and attempt tracking.
+2. Add optional member-fanout sync mode (default remains actor-projection).
+3. Add UI/telemetry for per-target sync status and retry visibility.
 
 ## 5. Current-State Risks (Baseline)
 
@@ -86,11 +118,9 @@ This leads to drift/failures when collaborators edit shared project events.
 
 1. Remove creator-only (`created_by`) filters in calendar scheduling/update helper lookups that should work for collaborators.
 
-## 7.2 Phase 2 (Next)
+## 7.2 Phase 2 (In Progress)
 
-1. Introduce explicit user-scoped sync target model for ontology event projections:
-    - either add `user_id` to `onto_event_sync` with indexes/uniques
-    - or create `onto_event_sync_targets` as normalized replacement.
+1. Implement explicit user-scoped sync target model for ontology event projections.
 2. Define authoritative sync semantics:
     - actor-projection default
     - optional member-fanout mode
@@ -111,17 +141,18 @@ Notes:
 
 1. If duplicate rows exist, migration will fail; preflight query required for remediation.
 
-## 8.2 Phase 2 candidate model (planned)
+## 8.2 Phase 2 data model (implemented foundation + pending extensions)
 
-If extending `onto_event_sync`:
+Implemented:
 
-1. Add `user_id uuid not null references users(id)` (or actor equivalent).
-2. Add `last_synced_version bigint null`.
-3. Add unique `(event_id, user_id, provider)`.
+1. Extended `onto_event_sync` with `user_id uuid` FK to `users(id)`.
+2. Backfilled `user_id` from `project_calendars`.
+3. Added unique partial index on `(event_id, user_id, provider)` where `user_id IS NOT NULL`.
 
-If new table:
+Pending extensions:
 
-1. `onto_event_sync_targets(id, event_id, user_id, project_calendar_id, provider, external_event_id, sync_status, sync_error, last_synced_at, last_synced_version, created_at, updated_at)`
+1. Add attempt/backoff fields (or a dedicated job table) for durable retry workflow.
+2. Add optional `last_synced_version` semantics for stronger idempotency/version tracking.
 
 ## 9. API Contract Changes
 
@@ -196,12 +227,11 @@ Phase 2 test additions:
 1. Multi-user event edit sync behavior across per-user targets.
 2. Retry/backoff and partial-failure behavior.
 
-## 15. Rollout
+## 15. Rollout Status
 
-1. Deploy Phase 1 code + migration.
-2. Validate no duplicate mapping rows in production.
-3. Monitor calendar sync failure rates and permission errors for 7 days.
-4. Begin Phase 2 schema/worker implementation.
+1. Phase 1 code + migration: completed.
+2. Phase 2 user-scoped schema foundation + service/API alignment: completed.
+3. Next rollout step: background worker + retry/backoff + fanout policy controls.
 
 ## 16. Open Questions
 

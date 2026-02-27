@@ -179,10 +179,10 @@
 					start: scheduleStart,
 					end: new Date(schedule.proposedEnd),
 					color: isHighlighted
-						? 'bg-primary-200 dark:bg-primary-700 ring-2 ring-primary-500'
+						? 'bg-accent/20 ring-2 ring-accent'
 						: schedule.hasConflict
-							? 'bg-amber-100 dark:bg-amber-900/30 border-amber-400'
-							: 'bg-primary-100 dark:bg-primary-900/30 border-primary-500',
+							? 'bg-destructive/10 border-destructive/40'
+							: 'bg-accent/10 border-accent/40',
 					schedule: schedule,
 					isHighlighted
 				});
@@ -269,22 +269,20 @@
 <div class="flex flex-col h-full">
 	<!-- View Controls -->
 	<div
-		class="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border-b border-border gap-3"
+		class="flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 py-2 border-b border-border gap-2 bg-muted/30 tx tx-strip tx-weak"
 	>
-		<div class="flex items-center gap-2 flex-1">
+		<div class="flex items-center gap-1.5 flex-1 min-w-0">
 			<Button
 				onclick={() => navigatePeriod(-1)}
 				variant="ghost"
 				size="sm"
-				class="p-1.5"
+				class="p-1 shrink-0"
 				disabled={!canNavigateBack}
 			>
-				<ChevronLeft class="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+				<ChevronLeft class="w-4 h-4 shrink-0" />
 			</Button>
 
-			<span
-				class="text-sm sm:text-base font-medium text-foreground min-w-0 text-center flex-1 truncate"
-			>
+			<span class="text-sm font-semibold text-foreground min-w-0 text-center flex-1 truncate">
 				{formatDisplayDate()}
 			</span>
 
@@ -292,37 +290,42 @@
 				onclick={() => navigatePeriod(1)}
 				variant="ghost"
 				size="sm"
-				class="p-1.5"
+				class="p-1 shrink-0"
 				disabled={!canNavigateForward}
 			>
-				<ChevronRight class="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+				<ChevronRight class="w-4 h-4 shrink-0" />
 			</Button>
 
-			<Button onclick={goToToday} variant="ghost" size="sm" class="px-2 py-1 text-xs">
+			<Button
+				onclick={goToToday}
+				variant="outline"
+				size="sm"
+				class="px-2 py-1 text-xs ml-1 pressable"
+			>
 				Today
 			</Button>
 		</div>
 
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-1.5">
 			<Button
 				onclick={handleRefresh}
 				disabled={refreshing || loading}
 				variant="ghost"
 				size="sm"
-				class="p-1.5"
+				class="p-1"
 				title="Refresh calendar data"
 			>
-				<RefreshCw
-					class="w-4 h-4 sm:w-5 sm:h-5 shrink-0 {refreshing ? 'animate-spin' : ''}"
-				/>
+				<RefreshCw class="w-4 h-4 shrink-0 {refreshing ? 'animate-spin' : ''}" />
 			</Button>
 
-			<div class="flex items-center gap-1 bg-muted rounded-lg p-1">
+			<div
+				class="flex items-center gap-0.5 bg-muted rounded-lg p-0.5 border border-border shadow-ink-inner"
+			>
 				<Button
 					onclick={() => changeViewMode('day')}
 					variant={viewMode === 'day' ? 'primary' : 'ghost'}
 					size="sm"
-					class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
+					class="px-2.5 py-1 text-xs pressable"
 				>
 					Day
 				</Button>
@@ -330,7 +333,7 @@
 					onclick={() => changeViewMode('week')}
 					variant={viewMode === 'week' ? 'primary' : 'ghost'}
 					size="sm"
-					class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
+					class="px-2.5 py-1 text-xs pressable"
 				>
 					Week
 				</Button>
@@ -338,7 +341,7 @@
 					onclick={() => changeViewMode('month')}
 					variant={viewMode === 'month' ? 'primary' : 'ghost'}
 					size="sm"
-					class="px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
+					class="px-2.5 py-1 text-xs pressable"
 				>
 					Month
 				</Button>
@@ -347,66 +350,69 @@
 	</div>
 
 	<!-- Calendar Content -->
-	<div class="flex-1 overflow-auto p-4">
+	<div class="flex-1 overflow-auto p-3">
 		{#if loading}
 			<div class="flex items-center justify-center h-full">
-				<div class="flex flex-col items-center gap-3">
-					<Calendar class="w-12 h-12 text-muted-foreground animate-pulse" />
-					<span class="text-muted-foreground">Loading calendar...</span>
+				<div class="flex flex-col items-center gap-2">
+					<Calendar class="w-10 h-10 text-muted-foreground animate-pulse" />
+					<span class="text-xs text-muted-foreground">Loading calendar...</span>
 				</div>
 			</div>
 		{:else if viewMode === 'day'}
 			<!-- Day View -->
-			<div class="max-w-2xl mx-auto space-y-3">
+			<div class="max-w-2xl mx-auto space-y-2">
 				{#each getEventsForDay(internalDate) as event}
-					<Button
+					<button
 						onclick={() => handleEventClick(event)}
-						class="w-full text-left p-4 rounded-lg border transition-colors hover:shadow-ink {event.type ===
-						'proposed'
-							? 'border-primary-200 dark:border-primary-800'
-							: 'border-border'} {event.color}"
+						class="w-full text-left px-3 py-2.5 rounded-lg border border-border transition-colors hover:border-accent/50 hover:shadow-ink shadow-ink pressable tx tx-grain tx-weak {event.color}"
 					>
-						<div class="flex items-center justify-between">
-							<div class="flex-1">
+						<div class="flex items-center justify-between gap-2">
+							<div class="flex-1 min-w-0">
 								<div class="flex items-center gap-2">
-									<h4 class="font-medium text-foreground">
+									<h4 class="text-sm font-medium text-foreground truncate">
 										{event.title}
 									</h4>
 									{#if event.type === 'existing' && event.htmlLink}
-										<ExternalLink class="w-4 h-4 text-muted-foreground" />
+										<ExternalLink
+											class="w-3.5 h-3.5 text-muted-foreground shrink-0"
+										/>
 									{/if}
 								</div>
-								<p class="text-sm text-muted-foreground mt-1">
-									{formatTime(event.start)} - {formatTime(event.end)}
+								<p class="text-xs text-muted-foreground mt-0.5">
+									{formatTime(event.start)} – {formatTime(event.end)}
 								</p>
 								{#if event.type === 'proposed' && event.schedule?.hasConflict}
-									<p class="text-sm text-rose-600 dark:text-rose-400 mt-1">
-										⚠️ {event.schedule.conflictReason}
+									<p class="text-xs text-destructive mt-0.5">
+										{event.schedule.conflictReason}
 									</p>
 								{/if}
 							</div>
 							{#if event.type === 'proposed'}
-								<Clock class="w-5 h-5 text-muted-foreground" />
+								<Clock class="w-4 h-4 text-muted-foreground shrink-0" />
 							{/if}
 						</div>
-					</Button>
+					</button>
 				{/each}
 
 				{#if getEventsForDay(internalDate).length === 0}
-					<div class="text-center py-12 text-muted-foreground">
-						<Calendar class="w-12 h-12 mx-auto mb-3 opacity-50" />
-						<p>No events scheduled for this day</p>
+					<div class="text-center py-8 text-muted-foreground">
+						<Calendar class="w-10 h-10 mx-auto mb-2 opacity-40" />
+						<p class="text-sm">No events scheduled for this day</p>
 					</div>
 				{/if}
 			</div>
 		{:else if viewMode === 'week'}
 			<!-- Week View - Desktop: Grid, Mobile: Card-based list -->
-			<div class="hidden md:grid grid-cols-8 gap-px bg-border rounded-lg overflow-hidden">
+			<div
+				class="hidden md:grid grid-cols-8 gap-px bg-border rounded-lg overflow-hidden shadow-ink tx tx-frame tx-weak"
+			>
 				<!-- Time column -->
-				<div class="bg-muted">
-					<div class="h-12 border-b border-border"></div>
+				<div class="bg-muted/50">
+					<div class="h-10 border-b border-border"></div>
 					{#each Array(parseInt(workingHours.work_end_time.split(':')[0]) - parseInt(workingHours.work_start_time.split(':')[0])) as _, i}
-						<div class="h-20 p-2 text-xs text-muted-foreground border-b border-border">
+						<div
+							class="h-16 px-1.5 py-1 text-[10px] text-muted-foreground border-b border-border tabular-nums"
+						>
 							{parseInt(workingHours.work_start_time.split(':')[0]) + i}:00
 						</div>
 					{/each}
@@ -417,15 +423,15 @@
 					{@const dayEvents = getEventsForDay(date)}
 					{@const eventColumns = calculateEventColumns(dayEvents)}
 					{@const columnCount = eventColumns.size || 1}
-					<div class="bg-card">
-						<div class="h-12 p-2 border-b border-border text-center">
-							<div class="text-xs text-muted-foreground">
+					{@const isToday = date.toDateString() === new Date().toDateString()}
+					<div class="bg-card {isToday ? 'bg-accent/[0.03]' : ''}">
+						<div class="h-10 px-1.5 py-1 border-b border-border text-center">
+							<div class="text-[10px] uppercase tracking-wide text-muted-foreground">
 								{dayNames[date.getDay()]}
 							</div>
 							<div
-								class="text-sm font-medium {date.toDateString() ===
-								new Date().toDateString()
-									? 'text-primary-600 dark:text-primary-400'
+								class="text-sm font-semibold leading-tight {isToday
+									? 'text-accent'
 									: 'text-foreground'}"
 							>
 								{date.getDate()}
@@ -435,7 +441,7 @@
 							class="relative"
 							style="height: {(parseInt(workingHours.work_end_time.split(':')[0]) -
 								parseInt(workingHours.work_start_time.split(':')[0])) *
-								80}px"
+								64}px"
 						>
 							{#each Array.from(eventColumns.entries()) as [columnIndex, eventsInColumn]}
 								{#each eventsInColumn as event}
@@ -443,7 +449,7 @@
 									{@const width = 100 / columnCount - 4}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="absolute p-1 rounded text-xs overflow-hidden transition-opacity hover:opacity-90 {event.color}"
+										class="absolute px-1 py-0.5 rounded-sm text-[10px] leading-tight overflow-hidden transition-all hover:opacity-90 hover:shadow-ink pressable border border-transparent {event.color}"
 										style="left: {left + 2}%; right: {100 -
 											(left + width + 2)}%; top: {getTimePosition(
 											event.start
@@ -454,7 +460,7 @@
 										)}%"
 									>
 										<div class="font-medium truncate">{event.title}</div>
-										<div class="text-xs opacity-75">
+										<div class="opacity-70 tabular-nums">
 											{formatTime(event.start)}
 										</div>
 									</button>
@@ -466,42 +472,44 @@
 			</div>
 
 			<!-- Mobile Week View - Card-based layout -->
-			<div class="md:hidden space-y-3">
+			<div class="md:hidden space-y-2">
 				{#each getWeekDates(internalDate) as date}
 					{@const dayEvents = getEventsForDay(date)}
 					{@const isToday = date.toDateString() === new Date().toDateString()}
 					<div
-						class="rounded-lg border {isToday
-							? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20'
-							: 'border-border bg-card'} p-3"
+						class="rounded-lg border shadow-ink {isToday
+							? 'border-accent/50 bg-accent/[0.03]'
+							: 'border-border bg-card'} p-2.5"
 					>
-						<div class="mb-2 flex items-center justify-between">
-							<div>
-								<div class="text-xs font-semibold text-muted-foreground uppercase">
-									{dayNames[date.getDay()]}
-								</div>
+						<div class="mb-1.5 flex items-center justify-between">
+							<div class="flex items-baseline gap-2">
 								<div
-									class="text-lg font-bold {isToday
-										? 'text-primary-600'
+									class="text-base font-semibold tabular-nums {isToday
+										? 'text-accent'
 										: 'text-foreground'}"
 								>
 									{date.getDate()}
 								</div>
+								<div
+									class="text-[10px] uppercase tracking-wide text-muted-foreground"
+								>
+									{dayNames[date.getDay()]}
+								</div>
 							</div>
 							{#if isToday}
 								<span
-									class="inline-block rounded-full bg-primary-500 px-2 py-0.5 text-xs font-bold text-white"
+									class="inline-block rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-foreground"
 								>
 									Today
 								</span>
 							{/if}
 						</div>
 						{#if dayEvents.length > 0}
-							<div class="space-y-2 border-t border-border pt-2">
+							<div class="space-y-1 border-t border-border pt-1.5">
 								{#each dayEvents as event}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="flex w-full items-center gap-2 rounded-md p-2 text-left transition-colors hover:bg-muted {event.color}"
+										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted pressable {event.color}"
 									>
 										<div class="flex-1 min-w-0">
 											<div
@@ -509,7 +517,7 @@
 											>
 												{event.title}
 											</div>
-											<div class="text-xs text-muted-foreground">
+											<div class="text-xs text-muted-foreground tabular-nums">
 												{formatTime(event.start)}
 												{#if event.end && event.start.getTime() !== event.end.getTime()}
 													– {formatTime(event.end)}
@@ -521,7 +529,7 @@
 							</div>
 						{:else}
 							<div
-								class="border-t border-border pt-2 text-center text-xs text-muted-foreground"
+								class="border-t border-border pt-1.5 text-center text-[10px] text-muted-foreground"
 							>
 								No events
 							</div>
@@ -531,9 +539,13 @@
 			</div>
 		{:else}
 			<!-- Month View - Desktop: Grid, Mobile: List -->
-			<div class="hidden md:grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
+			<div
+				class="hidden md:grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden shadow-ink tx tx-frame tx-weak"
+			>
 				{#each dayNames as day}
-					<div class="bg-muted p-2 text-center text-sm font-medium text-muted-foreground">
+					<div
+						class="bg-muted/50 px-1.5 py-1.5 text-center text-[10px] uppercase tracking-wide font-medium text-muted-foreground"
+					>
 						{day}
 					</div>
 				{/each}
@@ -543,24 +555,30 @@
 					{@const isCurrentMonth = date.getMonth() === internalDate.getMonth()}
 					{@const isToday = date.toDateString() === new Date().toDateString()}
 					<div
-						class="bg-card p-2 min-h-[100px] {!isCurrentMonth
-							? 'opacity-50'
-							: ''} {isToday ? 'ring-2 ring-primary-500' : ''}"
+						class="bg-card p-1.5 min-h-[88px] {!isCurrentMonth
+							? 'opacity-40'
+							: ''} {isToday
+							? 'ring-1 ring-inset ring-accent/50 bg-accent/[0.03]'
+							: ''}"
 					>
-						<div class="text-sm font-medium text-foreground mb-1">
+						<div
+							class="text-xs font-semibold tabular-nums mb-1 {isToday
+								? 'text-accent'
+								: 'text-foreground'}"
+						>
 							{date.getDate()}
 						</div>
-						<div class="space-y-1">
+						<div class="space-y-0.5">
 							{#each dayEvents.slice(0, 3) as event}
 								<button
 									onclick={() => handleEventClick(event)}
-									class="w-full text-xs p-1 rounded truncate text-left transition-opacity hover:opacity-90 {event.color}"
+									class="w-full text-[10px] leading-tight px-1 py-0.5 rounded-sm truncate text-left transition-all hover:opacity-90 hover:shadow-ink pressable {event.color}"
 								>
 									<span class="truncate">{event.title}</span>
 								</button>
 							{/each}
 							{#if dayEvents.length > 3}
-								<div class="text-xs text-muted-foreground pl-1">
+								<div class="text-[10px] text-muted-foreground pl-1">
 									+{dayEvents.length - 3} more
 								</div>
 							{/if}
@@ -570,43 +588,45 @@
 			</div>
 
 			<!-- Mobile Month View - Card-based layout -->
-			<div class="md:hidden space-y-2">
+			<div class="md:hidden space-y-1.5">
 				{#each getMonthDates(internalDate) as date}
 					{@const dayEvents = getEventsForDay(date)}
 					{@const isCurrentMonth = date.getMonth() === internalDate.getMonth()}
 					{@const isToday = date.toDateString() === new Date().toDateString()}
 					{#if isCurrentMonth && dayEvents.length > 0}
 						<div
-							class="rounded-lg border {isToday
-								? 'border-primary-500 bg-primary-50 dark:bg-primary-950/20'
-								: 'border-border bg-card'} p-3"
+							class="rounded-lg border shadow-ink {isToday
+								? 'border-accent/50 bg-accent/[0.03]'
+								: 'border-border bg-card'} p-2.5"
 						>
-							<div class="mb-2 flex items-center justify-between">
-								<div>
-									<div class="text-xs font-bold text-muted-foreground uppercase">
-										{dayNames[date.getDay()]}
-									</div>
+							<div class="mb-1.5 flex items-center justify-between">
+								<div class="flex items-baseline gap-2">
 									<div
-										class="text-lg font-bold {isToday
-											? 'text-primary-600'
+										class="text-base font-semibold tabular-nums {isToday
+											? 'text-accent'
 											: 'text-foreground'}"
 									>
 										{date.getDate()}
 									</div>
+									<div
+										class="text-[10px] uppercase tracking-wide text-muted-foreground"
+									>
+										{dayNames[date.getDay()]}
+									</div>
 								</div>
 								{#if isToday}
 									<span
-										class="inline-block rounded-full bg-primary-500 px-2 py-0.5 text-xs font-bold text-white"
+										class="inline-block rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-accent-foreground"
 									>
 										Today
 									</span>
 								{/if}
 							</div>
-							<div class="space-y-1 border-t border-border pt-2">
+							<div class="space-y-0.5 border-t border-border pt-1.5">
 								{#each dayEvents as event}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="flex w-full items-center gap-2 rounded-md p-1.5 text-left text-xs transition-colors hover:bg-muted {event.color}"
+										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted pressable {event.color}"
 									>
 										<div
 											class="flex-1 min-w-0 truncate text-foreground font-medium"
@@ -616,7 +636,7 @@
 									</button>
 								{/each}
 								{#if dayEvents.length > 3}
-									<div class="text-xs text-muted-foreground px-1.5 pt-1">
+									<div class="text-[10px] text-muted-foreground px-1.5 pt-0.5">
 										+{dayEvents.length - 3} more
 									</div>
 								{/if}
