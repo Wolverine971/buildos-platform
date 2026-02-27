@@ -58,6 +58,13 @@
 		total_members: number;
 		mapped_members: number;
 		active_sync_members: number;
+		pending_invite_count: number;
+		pending_invites: Array<{
+			invitee_email: string;
+			role_key: string;
+			access: string;
+			expires_at: string;
+		}>;
 		members: CollaborationMember[];
 	}
 
@@ -726,6 +733,12 @@
 														{collaborationSummary.active_sync_members} of
 														{collaborationSummary.total_members} members
 														actively syncing
+														{#if collaborationSummary.pending_invite_count > 0}
+															• {collaborationSummary.pending_invite_count} pending invite{collaborationSummary.pending_invite_count ===
+															1
+																? ''
+																: 's'}
+														{/if}
 													</p>
 												{:else}
 													<p class="text-xs text-muted-foreground">
@@ -789,6 +802,36 @@
 														>
 															{badge.label}
 														</span>
+													</div>
+												{/each}
+												{#each collaborationSummary.pending_invites as invite}
+													<div
+														class="flex items-start justify-between gap-2 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-2.5 py-2"
+													>
+														<div class="min-w-0">
+															<p
+																class="text-xs font-medium text-foreground truncate"
+															>
+																{invite.invitee_email}
+															</p>
+															<p
+																class="text-[11px] text-muted-foreground truncate"
+															>
+																Invite pending, not linked yet
+															</p>
+														</div>
+														<div class="flex flex-col items-end gap-1">
+															<span
+																class="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+															>
+																Pending invite
+															</span>
+															<span
+																class="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground border border-border"
+															>
+																Not linked
+															</span>
+														</div>
 													</div>
 												{/each}
 											</div>

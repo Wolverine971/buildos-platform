@@ -10,6 +10,7 @@ type ProjectCalendarInsert = Database['public']['Tables']['project_calendars']['
 type ProjectCalendarUpdate = Database['public']['Tables']['project_calendars']['Update'];
 type Project = Database['public']['Tables']['onto_projects']['Row'];
 type ProjectMember = Database['public']['Tables']['onto_project_members']['Row'];
+type ProjectInvite = Database['public']['Tables']['onto_project_invites']['Row'];
 type OntoActor = Database['public']['Tables']['onto_actors']['Row'];
 export type ProjectCalendarSyncMode = 'actor_projection' | 'member_fanout';
 const DEFAULT_PROJECT_CALENDAR_SYNC_MODE: ProjectCalendarSyncMode = 'actor_projection';
@@ -28,11 +29,20 @@ export interface ProjectCalendarCollaborationMember {
 	is_current_user: boolean;
 }
 
+export interface ProjectCalendarPendingInvite {
+	invitee_email: string;
+	role_key: string;
+	access: string;
+	expires_at: string;
+}
+
 export interface ProjectCalendarCollaborationSummary {
 	sync_mode: ProjectCalendarSyncMode;
 	total_members: number;
 	mapped_members: number;
 	active_sync_members: number;
+	pending_invite_count: number;
+	pending_invites: ProjectCalendarPendingInvite[];
 	members: ProjectCalendarCollaborationMember[];
 }
 
@@ -328,7 +338,7 @@ export class ProjectCalendarService {
 		currentUserId: string
 	): Promise<Response> {
 		try {
-			const [syncMode, memberResponse, calendarResponse] = await Promise.all([
+			const [syncMode, memberResponse, calendarResponse, inviteResponse] = await Promise.all([
 				this.getProjectCalendarSyncMode(projectId),
 				this.supabase
 					.from('onto_project_members')
@@ -338,7 +348,12 @@ export class ProjectCalendarService {
 				this.supabase
 					.from('project_calendars')
 					.select('user_id, calendar_name, sync_enabled, sync_status')
+					.eq('project_id', projectId),
+				this.supabase
+					.from('onto_project_invites')
+					.select('invitee_email, role_key, access, expires_at')
 					.eq('project_id', projectId)
+					.eq('status', 'pending')
 			]);
 
 			if (memberResponse.error) {
@@ -347,6 +362,10 @@ export class ProjectCalendarService {
 
 			if (calendarResponse.error) {
 				return ApiResponse.error('Failed to fetch project calendar mappings', 500);
+			}
+
+			if (inviteResponse.error) {
+				return ApiResponse.error('Failed to fetch pending project invites', 500);
 			}
 
 			const members = (memberResponse.data ?? []) as Array<
@@ -440,11 +459,31 @@ export class ProjectCalendarService {
 				(member) => member.has_calendar && member.sync_enabled
 			).length;
 
+			const pendingInvitesRaw = (inviteResponse.data ?? []) as Array<
+				Pick<ProjectInvite, 'invitee_email' | 'role_key' | 'access' | 'expires_at'>
+			>;
+			const seenInviteEmails = new Set<string>();
+			const pendingInvites: ProjectCalendarPendingInvite[] = [];
+			for (const invite of pendingInvitesRaw) {
+				const normalizedEmail = invite.invitee_email.trim().toLowerCase();
+				if (!normalizedEmail || seenInviteEmails.has(normalizedEmail)) continue;
+				seenInviteEmails.add(normalizedEmail);
+				pendingInvites.push({
+					invitee_email: invite.invitee_email,
+					role_key: invite.role_key,
+					access: invite.access,
+					expires_at: invite.expires_at
+				});
+			}
+			pendingInvites.sort((a, b) => a.invitee_email.localeCompare(b.invitee_email));
+
 			const summary: ProjectCalendarCollaborationSummary = {
 				sync_mode: syncMode,
 				total_members: collaborationMembers.length,
 				mapped_members: mappedMembers,
 				active_sync_members: activeSyncMembers,
+				pending_invite_count: pendingInvites.length,
+				pending_invites: pendingInvites,
 				members: collaborationMembers
 			};
 
