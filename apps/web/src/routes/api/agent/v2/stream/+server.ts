@@ -2273,18 +2273,35 @@ export const POST: RequestHandler = async ({
 							});
 						});
 						if (!result.success) {
+							const toolFailureMetadata = {
+								sessionId: session.id,
+								contextType: effectiveContextType,
+								entityId: effectiveEntityId,
+								toolName: patchedCall.function.name,
+								toolCallId: patchedCall.id,
+								toolError: result.error
+							};
 							if (isExpectedToolValidationFailure(result.error)) {
 								logger.warn('FastChat tool validation failure', {
-									sessionId: session.id,
-									contextType: effectiveContextType,
-									entityId: effectiveEntityId,
-									toolName: patchedCall.function.name,
-									toolCallId: patchedCall.id,
-									toolError: result.error,
+									...toolFailureMetadata,
 									toolArgsRaw: patchedCall.function.arguments,
 									toolArgsPreview: previewToolArguments(
 										patchedCall.function.arguments
 									)
+								});
+								logFastChatError({
+									error: new Error(
+										result.error ?? 'FastChat tool validation failed'
+									),
+									operationType: 'tool_execution',
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+									metadata: {
+										...toolFailureMetadata,
+										failureStage: 'fastchat_tool_validation',
+										toolArgsPreview: previewToolArguments(
+											patchedCall.function.arguments
+										)
+									}
 								});
 							} else {
 								logFastChatError({
@@ -2293,14 +2310,7 @@ export const POST: RequestHandler = async ({
 									),
 									operationType: 'fastchat_tool_result_failure',
 									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-									metadata: {
-										sessionId: session.id,
-										contextType: effectiveContextType,
-										entityId: effectiveEntityId,
-										toolName: patchedCall.function.name,
-										toolCallId: patchedCall.id,
-										toolError: result.error
-									}
+									metadata: toolFailureMetadata
 								});
 							}
 						}

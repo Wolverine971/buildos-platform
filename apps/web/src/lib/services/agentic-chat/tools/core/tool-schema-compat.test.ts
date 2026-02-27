@@ -21,4 +21,19 @@ describe('Chat tool schema compatibility', () => {
 			}
 		}
 	});
+
+	it('does not require content for create_onto_document', () => {
+		const tool = CHAT_TOOL_DEFINITIONS.find(
+			(candidate) => candidate.function?.name === 'create_onto_document'
+		);
+		const parameters = tool?.function?.parameters as
+			| { required?: string[] }
+			| undefined;
+		const required = Array.isArray(parameters?.required) ? parameters.required : [];
+
+		expect(required).toContain('project_id');
+		expect(required).toContain('title');
+		expect(required).toContain('description');
+		expect(required).not.toContain('content');
+	});
 });
