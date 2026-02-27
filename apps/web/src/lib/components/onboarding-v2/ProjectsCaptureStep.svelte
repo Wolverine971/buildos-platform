@@ -8,7 +8,8 @@
 		Calendar,
 		LoaderCircle,
 		Sparkles,
-		CheckCircle
+		CheckCircle,
+		ArrowLeft
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -19,6 +20,7 @@
 	interface Props {
 		userContext?: any; // From previous onboarding inputs
 		onNext: () => void;
+		onBack?: () => void;
 		onProjectsCreated: (
 			projectIds: string[],
 			ontologyCounts?: {
@@ -41,7 +43,7 @@
 		isSkippable?: boolean;
 	}
 
-	let { userContext, onNext, onProjectsCreated, onCalendarAnalyzed, intent, isSkippable }: Props =
+	let { userContext, onNext, onBack, onProjectsCreated, onCalendarAnalyzed, intent, isSkippable }: Props =
 		$props();
 
 	// V3 intent-aware prompt configuration
@@ -223,6 +225,16 @@
 </script>
 
 <div class="max-w-3xl mx-auto px-4">
+	{#if onBack}
+		<button
+			class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+			onclick={onBack}
+		>
+			<ArrowLeft class="w-4 h-4" />
+			Back
+		</button>
+	{/if}
+
 	<!-- Header -->
 	<div class="mb-6 text-center">
 		<div class="flex justify-center mb-4">

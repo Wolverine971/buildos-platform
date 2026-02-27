@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/onboarding-v3/NotificationsStepV3.svelte -->
 <script lang="ts">
-	import { Bell, Mail, MessageSquare, CheckCircle2 } from 'lucide-svelte';
+	import { Bell, Mail, MessageSquare, CheckCircle2, ArrowLeft } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import PhoneVerificationCard from '$lib/components/onboarding-v2/PhoneVerificationCard.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -8,11 +8,12 @@
 	interface Props {
 		userId: string;
 		onNext: () => void;
+		onBack?: () => void;
 		onSMSEnabled?: (enabled: boolean) => void;
 		onEmailEnabled?: (enabled: boolean) => void;
 	}
 
-	let { userId, onNext, onSMSEnabled, onEmailEnabled }: Props = $props();
+	let { userId, onNext, onBack, onSMSEnabled, onEmailEnabled }: Props = $props();
 
 	let wantEmail = $state(false);
 	let wantSMS = $state(false);
@@ -90,6 +91,16 @@
 </script>
 
 <div class="max-w-xl mx-auto px-4 py-8 sm:py-12">
+	{#if onBack}
+		<button
+			class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+			onclick={onBack}
+		>
+			<ArrowLeft class="w-4 h-4" />
+			Back
+		</button>
+	{/if}
+
 	<div class="text-center mb-10">
 		<div class="flex justify-center mb-5">
 			<div

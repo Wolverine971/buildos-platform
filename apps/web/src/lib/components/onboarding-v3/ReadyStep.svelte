@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/onboarding-v3/ReadyStep.svelte -->
 <script lang="ts">
-	import { CheckCircle, ArrowRight, FolderOpen, MessageCircle, Mail } from 'lucide-svelte';
+	import { CheckCircle, ArrowRight, ArrowLeft, FolderOpen, MessageCircle, Mail } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
@@ -18,10 +18,11 @@
 			smsEnabled: boolean;
 			emailEnabled: boolean;
 		};
+		onBack?: () => void;
 		onboardingStartedAtMs?: number;
 	}
 
-	let { userId, summary, onboardingStartedAtMs }: Props = $props();
+	let { userId, summary, onBack, onboardingStartedAtMs }: Props = $props();
 
 	let isCompleting = $state(false);
 
@@ -79,6 +80,16 @@
 </script>
 
 <div class="max-w-2xl mx-auto px-4 py-8 sm:py-16">
+	{#if onBack}
+		<button
+			class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+			onclick={onBack}
+		>
+			<ArrowLeft class="w-4 h-4" />
+			Back
+		</button>
+	{/if}
+
 	<!-- Success icon -->
 	<div class="text-center mb-10" in:scale={{ duration: 400, start: 0.8 }}>
 		<div class="flex justify-center mb-6">

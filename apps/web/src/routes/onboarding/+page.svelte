@@ -119,6 +119,12 @@
 		currentStep = step;
 	}
 
+	function goBack() {
+		if (currentStep > 0) {
+			currentStep = currentStep - 1;
+		}
+	}
+
 	// Step 0: Intent + Stakes
 	function handleIntentSelected(intent: OnboardingIntent) {
 		v3Data.intent = intent;
@@ -194,6 +200,7 @@
 		<ProjectsCaptureStep
 			userContext={data.userContext}
 			onNext={handleBrainDumpDone}
+			onBack={goBack}
 			onProjectsCreated={handleProjectsCreated}
 			onCalendarAnalyzed={handleCalendarAnalyzed}
 			intent={v3Data.intent ?? undefined}
@@ -203,6 +210,7 @@
 		<NotificationsStepV3
 			userId={data.user.id}
 			onNext={handleNotificationsDone}
+			onBack={goBack}
 			onSMSEnabled={handleSMSEnabled}
 			onEmailEnabled={handleEmailEnabled}
 		/>
@@ -210,6 +218,7 @@
 		<ReadyStep
 			userId={data.user.id}
 			summary={v3Data}
+			onBack={goBack}
 			onboardingStartedAtMs={onboardingStartTime}
 		/>
 	{/if}
