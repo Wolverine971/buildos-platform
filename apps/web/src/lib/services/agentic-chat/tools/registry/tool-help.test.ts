@@ -45,4 +45,19 @@ describe('getToolHelp', () => {
 		expect(Array.isArray(help.notes)).toBe(true);
 		expect(help.notes.join(' ')).toContain('args.query');
 	});
+
+	it('includes explicit range and paging guidance for calendar list ops', () => {
+		const help = getToolHelp('cal.event.list', {
+			format: 'short',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('op');
+		expect(Array.isArray(help.notes)).toBe(true);
+		expect(help.notes.join(' ')).toContain('timeMin/timeMax');
+		expect(help.notes.join(' ')).toContain('limit');
+		expect(Array.isArray(help.examples)).toBe(true);
+		expect(help.examples[0]?.tool_exec?.args?.time_min).toBe('2026-03-01');
+		expect(help.examples[1]?.tool_exec?.args?.offset).toBe(100);
+	});
 });

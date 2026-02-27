@@ -1240,4 +1240,94 @@ describe('streamFastChat repetition guard', () => {
 		expect(executedGatewayOps).toContain('onto.task.list');
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 	});
+
+	it('returns cancelled with partial assistant text when stream aborts mid-response', async () => {
+		const abortController = new AbortController();
+		const deltas: string[] = [];
+		const llm = {
+			streamText: vi.fn(async function* () {
+				yield { type: 'text', content: 'Partial answer' };
+				abortController.abort();
+				const abortError = new Error('The operation was aborted.');
+				abortError.name = 'AbortError';
+				throw abortError;
+			})
+		} as any;
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Tell me something',
+			signal: abortController.signal,
+			onDelta: async (delta) => {
+				deltas.push(delta);
+			}
+		});
+
+		expect(result.cancelled).toBe(true);
+		expect(result.finishedReason).toBe('cancelled');
+		expect(result.assistantText).toBe('Partial answer');
+		expect(deltas).toEqual(['Partial answer']);
+	});
+
+	it('returns cancelled and preserves tool executions gathered before abort', async () => {
+		const abortController = new AbortController();
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:one',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments: JSON.stringify({
+									op: 'onto.task.list',
+									args: { limit: 1 }
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Should never reach second pass' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			abortController.abort();
+			return {
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'List tasks',
+			tools: createGatewayTools(),
+			toolExecutor,
+			signal: abortController.signal,
+			onDelta: async () => {}
+		});
+
+		expect(result.cancelled).toBe(true);
+		expect(result.finishedReason).toBe('cancelled');
+		expect(result.toolExecutions).toHaveLength(1);
+		expect(result.toolExecutions?.[0]?.toolCall.id).toBe('tool_exec:one');
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+	});
 });

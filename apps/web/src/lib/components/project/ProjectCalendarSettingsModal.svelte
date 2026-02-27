@@ -24,6 +24,7 @@
 		Settings
 	} from 'lucide-svelte';
 	import type { Database } from '@buildos/shared-types';
+	import type { Component } from 'svelte';
 	import {
 		GOOGLE_CALENDAR_COLORS,
 		type GoogleColorId,
@@ -34,6 +35,7 @@
 	type ProjectCalendar = Database['public']['Tables']['project_calendars']['Row'];
 	type CalendarViewMode = 'day' | 'week' | 'month';
 	type CalendarModalTab = 'calendar' | 'settings';
+	type LazyComponent = Component<any, any, any> | null;
 
 	interface Props {
 		isOpen: boolean;
@@ -75,6 +77,10 @@
 	let calendarLoading = $state(false);
 	let calendarRefreshing = $state(false);
 	let calendarError = $state<string | null>(null);
+	let editingTaskId = $state<string | null>(null);
+	let editingEventId = $state<string | null>(null);
+	let TaskEditModalComponent = $state<LazyComponent>(null);
+	let EventEditModalComponent = $state<LazyComponent>(null);
 
 	let formData = $state({
 		calendarName: '',
@@ -176,6 +182,67 @@
 	}
 
 	function handleCalendarRefresh() {
+		void loadProjectCalendar(currentDate, viewMode, { refreshing: true });
+	}
+
+	function resolveCalendarItem(event: any): CalendarItem | null {
+		return (
+			event?.calendarItem ||
+			event?.originalEvent?.calendarItem ||
+			event?.originalEvent ||
+			null
+		);
+	}
+
+	async function loadTaskEditModal() {
+		if (!TaskEditModalComponent) {
+			const mod = await import('$lib/components/ontology/TaskEditModal.svelte');
+			TaskEditModalComponent = mod.default;
+		}
+		return TaskEditModalComponent;
+	}
+
+	async function loadEventEditModal() {
+		if (!EventEditModalComponent) {
+			const mod = await import('$lib/components/ontology/EventEditModal.svelte');
+			EventEditModalComponent = mod.default;
+		}
+		return EventEditModalComponent;
+	}
+
+	async function handleCalendarEventClick(event: any) {
+		const item = resolveCalendarItem(event);
+		if (!item) {
+			toastService.warning('Could not open calendar item details');
+			return;
+		}
+
+		if (item.item_type === 'task' && item.task_id) {
+			await loadTaskEditModal();
+			editingTaskId = item.task_id;
+			editingEventId = null;
+			return;
+		}
+
+		if (item.event_id) {
+			await loadEventEditModal();
+			editingEventId = item.event_id;
+			editingTaskId = null;
+			return;
+		}
+
+		toastService.warning('This calendar item cannot be edited');
+	}
+
+	function closeTaskEditor() {
+		editingTaskId = null;
+	}
+
+	function closeEventEditor() {
+		editingEventId = null;
+	}
+
+	function handleEditorUpdated() {
 		void loadProjectCalendar(currentDate, viewMode, { refreshing: true });
 	}
 
@@ -451,6 +518,7 @@
 							ondateChange={handleCalendarDateChange}
 							onviewModeChange={handleCalendarViewModeChange}
 							onrefresh={handleCalendarRefresh}
+							oneventClick={handleCalendarEventClick}
 						/>
 					</div>
 				</div>
@@ -699,6 +767,30 @@
 		</div>
 	{/snippet}
 </Modal>
+
+{#if editingTaskId && project?.id}
+	{#await loadTaskEditModal() then TaskEditModal}
+		<TaskEditModal
+			taskId={editingTaskId}
+			projectId={project.id}
+			onClose={closeTaskEditor}
+			onUpdated={handleEditorUpdated}
+			onDeleted={handleEditorUpdated}
+		/>
+	{/await}
+{/if}
+
+{#if editingEventId && project?.id}
+	{#await loadEventEditModal() then EventEditModal}
+		<EventEditModal
+			eventId={editingEventId}
+			projectId={project.id}
+			onClose={closeEventEditor}
+			onUpdated={handleEditorUpdated}
+			onDeleted={handleEditorUpdated}
+		/>
+	{/await}
+{/if}
 
 <style>
 	:global(.modal-content button),

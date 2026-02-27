@@ -296,30 +296,29 @@ describe('buildProjectGraph', () => {
 		expect(dependents[0].id).toBe('task-1');
 	});
 
-	it('treats produces edges (and legacy has_output) as children', () => {
+	it('treats has_part edges as containment children', () => {
 		const data: ProjectGraphData = {
 			project: createMockProject(projectId, 'Test Project'),
 			plans: [],
 			tasks: [createMockTask('task-1', projectId, 'Task 1')],
 			goals: [],
 			milestones: [],
-			outputs: [createMockOutput('output-1', projectId, 'Output 1')],
-			documents: [],
+			outputs: [],
+			documents: [createMockDocument('doc-1', projectId, 'Doc 1')],
 			requirements: [],
 			metrics: [],
 			sources: [],
 			risks: [],
 			decisions: [],
 			edges: [
-				createMockEdge('e1', 'task', 'task-1', 'output', 'output-1', 'produces', projectId),
-				// Legacy containment still supported for backwards compatibility
+				createMockEdge('e1', 'task', 'task-1', 'document', 'doc-1', 'has_part', projectId),
 				createMockEdge(
 					'e2',
 					'project',
 					projectId,
-					'output',
-					'output-1',
-					'has_output',
+					'document',
+					'doc-1',
+					'has_document',
 					projectId
 				)
 			]
@@ -327,16 +326,16 @@ describe('buildProjectGraph', () => {
 
 		const graph = buildProjectGraph(data);
 
-		// Canonical produces edge should be treated as a child relationship
+		// has_part should be treated as a child relationship
 		const taskChildren = graph.getChildren('task-1');
-		expect(taskChildren.map((child) => child.id)).toContain('output-1');
+		expect(taskChildren.map((child) => child.id)).toContain('doc-1');
 
-		// Legacy has_output edge still surfaces the output under the project
+		// has_document still surfaces the document under the project
 		const projectChildren = graph.getChildren(projectId);
-		expect(projectChildren.map((child) => child.id)).toContain('output-1');
+		expect(projectChildren.map((child) => child.id)).toContain('doc-1');
 
-		const producesEdges = graph.getEdgesByRelationship('produces');
-		expect(producesEdges).toHaveLength(1);
+		const hasPartEdges = graph.getEdgesByRelationship('has_part');
+		expect(hasPartEdges).toHaveLength(1);
 	});
 });
 
@@ -699,21 +698,14 @@ describe('project-level traversal methods', () => {
 		expect(risks[0].title).toBe('Risk 1');
 	});
 
-	it('getDecisionsForProject returns all decisions for the project', () => {
+	it('does not expose removed decision accessors', () => {
 		const graph = buildProjectGraph(mockDataWithAllEntities);
-		const decisions = graph.getDecisionsForProject();
-
-		expect(decisions).toHaveLength(2);
-		expect(decisions.map((d) => d.title)).toContain('Decision 1');
-		expect(decisions.map((d) => d.title)).toContain('Decision 2');
+		expect((graph as any).getDecisionsForProject).toBeUndefined();
 	});
 
-	it('getOutputsForProject returns outputs linked via has_output', () => {
+	it('does not expose removed output accessors', () => {
 		const graph = buildProjectGraph(mockDataWithAllEntities);
-		const outputs = graph.getOutputsForProject();
-
-		expect(outputs).toHaveLength(1);
-		expect(outputs[0].name).toBe('Output 1');
+		expect((graph as any).getOutputsForProject).toBeUndefined();
 	});
 
 	it('getEntitiesForProject generic method works for plans', () => {
@@ -752,21 +744,21 @@ describe('project-level traversal methods', () => {
 		expect(projects).toHaveLength(0);
 	});
 
-	it('getEntitiesForProject returns all decisions (no edge required)', () => {
+	it('getEntitiesForProject returns empty for unsupported kinds', () => {
 		const graph = buildProjectGraph(mockDataWithAllEntities);
-		const decisions = graph.getEntitiesForProject('decision');
+		const decisions = (graph as any).getEntitiesForProject('decision');
 
-		expect(decisions).toHaveLength(2);
+		expect(decisions).toHaveLength(0);
 	});
 
-	it('treats has_decision edges as containment for children/parent lookups', () => {
+	it('ignores has_decision edges for containment lookups', () => {
 		const graph = buildProjectGraph(mockDataWithAllEntities);
 
 		const projectChildren = graph.getChildren(projectId);
-		expect(projectChildren.map((c) => c.id)).toContain('decision-1');
-		expect(projectChildren.map((c) => c.id)).toContain('decision-2');
+		expect(projectChildren.map((c) => c.id)).not.toContain('decision-1');
+		expect(projectChildren.map((c) => c.id)).not.toContain('decision-2');
 
 		const decisionParent = graph.getParent('decision-1');
-		expect(decisionParent?.id).toBe(projectId);
+		expect(decisionParent).toBeUndefined();
 	});
 });

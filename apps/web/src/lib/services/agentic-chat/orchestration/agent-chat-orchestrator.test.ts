@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.test.ts
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AgentChatOrchestrator } from './agent-chat-orchestrator';
 import type { AgentChatOrchestratorDependencies } from './agent-chat-orchestrator';
 import type { AgentChatRequest, StreamEvent } from '../shared/types';
@@ -93,7 +93,13 @@ describe('AgentChatOrchestrator (flexible loop)', () => {
 			events.push(event);
 		}
 
-		expect(events.map((e) => e.type)).toEqual(['agent_state', 'text', 'agent_state', 'done']);
+		expect(events.map((e) => e.type)).toEqual([
+			'telemetry',
+			'agent_state',
+			'text',
+			'agent_state',
+			'done'
+		]);
 		expect(callback).toHaveBeenCalled();
 		expect(deps.persistenceService.createAgent).toHaveBeenCalled();
 		expect(deps.llmService.streamText).toHaveBeenCalled();

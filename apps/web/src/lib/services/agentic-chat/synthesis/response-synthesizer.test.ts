@@ -326,7 +326,7 @@ describe('ResponseSynthesizer', () => {
 				mockContext
 			);
 
-			expect(response.text).toContain('Which project');
+			expect(response.text).toContain('which project');
 		});
 
 		it('should handle empty questions array', async () => {
@@ -359,7 +359,7 @@ describe('ResponseSynthesizer', () => {
 				callback
 			);
 
-			for await (const event of generator) {
+			for await (const _event of generator) {
 				// Process events
 			}
 
@@ -523,7 +523,8 @@ describe('ResponseSynthesizer', () => {
 			expect(response).toContain('apologize');
 			expect(mockLLMService.generateText).toHaveBeenCalledWith(
 				expect.objectContaining({
-					prompt: expect.stringContaining('Database connection timeout')
+					operationType: 'error_response',
+					prompt: expect.stringContaining('The user tried to: Fetch data')
 				})
 			);
 		});
@@ -552,7 +553,7 @@ describe('ResponseSynthesizer', () => {
 			);
 
 			expect(response).toContain('encountered an error');
-			expect(response).toContain('Original error');
+			expect(response).not.toContain('Original error');
 		});
 	});
 
@@ -577,9 +578,8 @@ describe('ResponseSynthesizer', () => {
 
 			expect(summary).toContain('2 successful');
 			expect(summary).toContain('1 failed');
-			expect(summary).toContain('Good health');
-			expect(summary).toContain('85');
-			expect(summary).toContain('Timeout');
+			expect(summary).toContain('Key results available in execution context');
+			expect(summary).toContain('retry or follow-up may be needed');
 		});
 
 		it('should handle all successful results', () => {

@@ -204,6 +204,60 @@ describe('ToolExecutionService gateway fallback', () => {
 		);
 	});
 
+	it('executes cal.event.list with time-range aliases and pagination args', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				events: [{ title: 'Roadmap review' }],
+				pagination: {
+					offset: 100,
+					limit: 100,
+					returned: 1,
+					total_available: 151,
+					has_more: true,
+					next_offset: 200
+				},
+				queried_range: {
+					time_min: '2026-03-01T00:00:00.000Z',
+					time_max: '2026-04-01T23:59:59.000Z'
+				}
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'cal.event.list',
+				args: {
+					calendar_scope: 'project',
+					time_min: '2026-03-01',
+					time_max: '2026-04-01',
+					limit: 100,
+					offset: 100
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'list_calendar_events',
+			expect.objectContaining({
+				project_id: PROJECT_ID,
+				calendar_scope: 'project',
+				time_min: '2026-03-01',
+				time_max: '2026-04-01',
+				limit: 100,
+				offset: 100
+			}),
+			expect.any(Object)
+		);
+		expect((result.data as any)?.op).toBe('cal.event.list');
+		expect((result.data as any)?.ok).toBe(true);
+		expect((result.data as any)?.result?.pagination?.has_more).toBe(true);
+		expect((result.data as any)?.meta?.executed_op).toBeUndefined();
+	});
+
 	it('allows null new_parent_id for onto.document.tree.move root placement', async () => {
 		const documentId = '823f2215-f0c3-40b8-b468-8f1a592384f2';
 		const toolExecutor = vi.fn().mockResolvedValue({

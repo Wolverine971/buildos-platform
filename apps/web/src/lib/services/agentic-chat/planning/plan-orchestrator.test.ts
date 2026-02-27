@@ -15,11 +15,8 @@ import type {
 	ServiceContext,
 	PlannerContext,
 	AgentPlan,
-	PlanStep,
 	StreamCallback,
-	StreamEvent,
-	ToolExecutionResult,
-	ExecutorResult
+	StreamEvent
 } from '../shared/types';
 
 describe('PlanOrchestrator', () => {
@@ -470,7 +467,7 @@ describe('PlanOrchestrator', () => {
 				async () => {}
 			);
 
-			for await (const event of generator) {
+			for await (const _event of generator) {
 				// Consume stream
 			}
 
@@ -536,7 +533,7 @@ describe('PlanOrchestrator', () => {
 				async () => {}
 			);
 
-			for await (const event of generator) {
+			for await (const _event of generator) {
 				// Consume stream
 			}
 
@@ -625,7 +622,7 @@ describe('PlanOrchestrator', () => {
 				async () => {}
 			);
 
-			for await (const event of generator) {
+			for await (const _event of generator) {
 				// Consume stream
 			}
 
@@ -722,10 +719,13 @@ describe('PlanOrchestrator', () => {
 				callback
 			);
 
-			const results = [];
-			for await (const event of generator) {
-				results.push(event);
-			}
+			await expect(
+				(async () => {
+					for await (const _event of generator) {
+						// consume
+					}
+				})()
+			).rejects.toThrow('Critical plan step failed');
 
 			// Should have failure event
 			const stepCompleteEvents = events.filter((e) => e.type === 'step_complete');
@@ -763,7 +763,7 @@ describe('PlanOrchestrator', () => {
 				async () => {}
 			);
 
-			for await (const event of generator) {
+			for await (const _event of generator) {
 				// Process events
 			}
 
@@ -795,9 +795,10 @@ describe('PlanOrchestrator', () => {
 			expect(mockPersistence.updatePlan).toHaveBeenCalledWith(
 				plan.id,
 				expect.objectContaining({
-					status: 'pending_review',
+					status: 'pending',
 					metadata: expect.objectContaining({
-						draftSavedAt: expect.any(String)
+						draftSavedAt: expect.any(String),
+						review_status: 'pending_review'
 					})
 				})
 			);
@@ -861,7 +862,7 @@ describe('PlanOrchestrator', () => {
 
 			const verdict = await orchestrator.reviewPlan(plan, intent, mockContext);
 			expect(verdict.verdict).toBe('approved');
-			expect(verdict.notes).toContain('approving');
+			expect(verdict.notes).toContain('approval');
 		});
 	});
 
@@ -983,7 +984,7 @@ describe('PlanOrchestrator', () => {
 			const validation = orchestrator.validatePlan(plan);
 
 			expect(validation.isValid).toBe(false);
-			expect(validation.errors[0]).toContain('invalid dependency');
+			expect(validation.errors[0]).toContain('cannot depend on future step');
 		});
 
 		it('should detect circular dependencies', () => {

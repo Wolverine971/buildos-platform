@@ -7,7 +7,8 @@ import type {
 	ChatSession,
 	ChatSessionInsert,
 	ChatSessionUpdate,
-	Database
+	Database,
+	Json
 } from '@buildos/shared-types';
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
@@ -32,6 +33,7 @@ type PersistMessageParams = {
 	content: string;
 	metadata?: ChatMessageInsert['metadata'];
 	usage?: FastAgentStreamUsage;
+	idempotencyKey?: string;
 };
 
 type UpdateSessionStatsParams = {
@@ -337,13 +339,59 @@ export function createFastChatSessionService(
 	}
 
 	async function persistMessage(params: PersistMessageParams): Promise<ChatMessage | null> {
-		const { sessionId, userId, role, content, metadata, usage } = params;
+		const { sessionId, userId, role, content, metadata, usage, idempotencyKey } = params;
+		const metadataRecord =
+			metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+				? ({ ...(metadata as Record<string, Json | undefined>) } as Record<
+						string,
+						Json | undefined
+					>)
+				: {};
+		if (idempotencyKey) {
+			metadataRecord.idempotency_key = idempotencyKey;
+		}
+
+		if (idempotencyKey) {
+			const { data: existing, error: existingError } = await supabase
+				.from('chat_messages')
+				.select('*')
+				.eq('session_id', sessionId)
+				.eq('user_id', userId)
+				.eq('role', role)
+				.contains('metadata', { idempotency_key: idempotencyKey })
+				.order('created_at', { ascending: false })
+				.limit(1)
+				.maybeSingle();
+
+			if (existingError) {
+				logger.warn('Failed to load idempotent chat message', {
+					error: existingError,
+					sessionId,
+					role
+				});
+				logFastChatSessionError({
+					error: existingError,
+					operationType: 'fastchat_message_idempotency_lookup',
+					userId,
+					tableName: 'chat_messages',
+					recordId: sessionId,
+					metadata: {
+						sessionId,
+						role,
+						idempotencyKey
+					}
+				});
+			} else if (existing) {
+				return existing;
+			}
+		}
+
 		const insert: ChatMessageInsert = {
 			session_id: sessionId,
 			user_id: userId,
 			role,
 			content,
-			metadata: metadata ?? null,
+			metadata: Object.keys(metadataRecord).length > 0 ? metadataRecord : null,
 			prompt_tokens: usage?.prompt_tokens ?? null,
 			completion_tokens: usage?.completion_tokens ?? null,
 			total_tokens: usage?.total_tokens ?? null

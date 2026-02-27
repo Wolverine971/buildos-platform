@@ -35,7 +35,7 @@ describe('AgentPersistenceService', () => {
 	beforeEach(() => {
 		// Setup mock table operations
 		mockTable = {
-			insert: vi.fn(() => mockTable),
+			insert: vi.fn().mockResolvedValue({ data: null, error: null }),
 			update: vi.fn(() => mockTable),
 			select: vi.fn(() => mockTable),
 			delete: vi.fn(() => mockTable),
@@ -59,6 +59,7 @@ describe('AgentPersistenceService', () => {
 		describe('createAgent', () => {
 			it('should create a new agent and return its ID', async () => {
 				const agentData = {
+					id: 'agent_123',
 					user_id: 'user_123',
 					session_id: 'session_123',
 					type: 'planner' as const,
@@ -69,19 +70,11 @@ describe('AgentPersistenceService', () => {
 					available_tools: ['tool1', 'tool2']
 				};
 
-				const expectedId = 'agent_123';
-				mockTable.single.mockResolvedValueOnce({
-					data: { id: expectedId, ...agentData },
-					error: null
-				});
-
 				const id = await service.createAgent(agentData);
 
-				expect(id).toBe(expectedId);
+				expect(id).toBe('agent_123');
 				expect(mockSupabase.from).toHaveBeenCalledWith('agents');
 				expect(mockTable.insert).toHaveBeenCalledWith(expect.objectContaining(agentData));
-				expect(mockTable.select).toHaveBeenCalled();
-				expect(mockTable.single).toHaveBeenCalled();
 			});
 
 			it('should throw PersistenceError on database error', async () => {
@@ -93,8 +86,8 @@ describe('AgentPersistenceService', () => {
 					name: 'Test Planner'
 				};
 
-				mockTable.single.mockResolvedValueOnce({
-					data: null,
+				mockTable.insert.mockResolvedValueOnce({
+					data: null as any,
 					error: { message: 'Database error', code: 'DB001' }
 				});
 
@@ -171,8 +164,8 @@ describe('AgentPersistenceService', () => {
 			});
 
 			it('should throw PersistenceError on update failure', async () => {
-				mockTable.single.mockResolvedValueOnce({
-					data: null,
+				mockTable.eq.mockResolvedValueOnce({
+					data: null as any,
 					error: { message: 'Update failed' }
 				});
 
@@ -221,6 +214,7 @@ describe('AgentPersistenceService', () => {
 		describe('createPlan', () => {
 			it('should create a new plan', async () => {
 				const planData = {
+					id: 'plan_123',
 					agent_id: 'agent_123',
 					user_id: 'user_123',
 					user_message: 'Create a project plan',
@@ -231,11 +225,6 @@ describe('AgentPersistenceService', () => {
 					],
 					status: 'pending' as const
 				};
-
-				mockTable.single.mockResolvedValueOnce({
-					data: { id: 'plan_123', ...planData },
-					error: null
-				});
 
 				const id = await service.createPlan(planData);
 
@@ -384,9 +373,13 @@ describe('AgentPersistenceService', () => {
 					total_tokens: 0
 				};
 
-				mockTable.single.mockResolvedValueOnce({
-					data: { id: 'session_123', ...sessionData },
-					error: null
+				mockTable.insert.mockReturnValueOnce({
+					select: vi.fn(() => ({
+						single: vi.fn().mockResolvedValue({
+							data: { id: 'session_123', ...sessionData },
+							error: null
+						})
+					}))
 				});
 
 				const id = await service.createChatSession(sessionData);
@@ -449,9 +442,13 @@ describe('AgentPersistenceService', () => {
 					metadata: { timestamp: Date.now() }
 				};
 
-				mockTable.single.mockResolvedValueOnce({
-					data: { id: 'msg_123', ...messageData },
-					error: null
+				mockTable.insert.mockReturnValueOnce({
+					select: vi.fn(() => ({
+						single: vi.fn().mockResolvedValue({
+							data: { id: 'msg_123', ...messageData },
+							error: null
+						})
+					}))
 				});
 
 				const id = await service.saveMessage(messageData);
@@ -471,9 +468,13 @@ describe('AgentPersistenceService', () => {
 					tool_calls: [{ id: 'call_1', function: { name: 'search', arguments: '{}' } }]
 				};
 
-				mockTable.single.mockResolvedValueOnce({
-					data: { id: 'msg_456', ...messageData },
-					error: null
+				mockTable.insert.mockReturnValueOnce({
+					select: vi.fn(() => ({
+						single: vi.fn().mockResolvedValue({
+							data: { id: 'msg_456', ...messageData },
+							error: null
+						})
+					}))
 				});
 
 				await service.saveMessage(messageData);
@@ -505,7 +506,7 @@ describe('AgentPersistenceService', () => {
 				expect(result).toEqual(messages);
 				expect(mockSupabase.from).toHaveBeenCalledWith('agent_chat_messages');
 				expect(mockTable.select).toHaveBeenCalledWith('*');
-				expect(mockTable.eq).toHaveBeenCalledWith('session_id', 'session_123');
+				expect(mockTable.eq).toHaveBeenCalledWith('agent_session_id', 'session_123');
 				expect(mockTable.order).toHaveBeenCalledWith('created_at', { ascending: true });
 				expect(mockTable.limit).toHaveBeenCalledWith(50);
 			});
@@ -544,7 +545,7 @@ describe('AgentPersistenceService', () => {
 
 	describe('Error Handling', () => {
 		it('should handle network errors gracefully', async () => {
-			mockTable.single.mockRejectedValueOnce(new Error('Network error'));
+			mockTable.insert.mockRejectedValueOnce(new Error('Network error'));
 
 			await expect(
 				service.createAgent({
@@ -557,8 +558,8 @@ describe('AgentPersistenceService', () => {
 		});
 
 		it('should provide meaningful error messages', async () => {
-			mockTable.single.mockResolvedValueOnce({
-				data: null,
+			mockTable.insert.mockResolvedValueOnce({
+				data: null as any,
 				error: {
 					message: 'unique constraint violation',
 					code: '23505',

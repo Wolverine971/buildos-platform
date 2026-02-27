@@ -50,7 +50,7 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'Project context events are time-boxed to the last 7 days and next 14 days (UTC).'
 		);
 		expect(prompt).toContain(
-			'To inspect events outside that context window, call cal.event.list with args.timeMin and args.timeMax.'
+			'To inspect events outside that context window, call cal.event.list with args.timeMin/args.timeMax (or args.time_min/args.time_max), and use limit/offset for paging.'
 		);
 		expect(prompt).toContain(
 			'Project context data may include context_meta.entity_scopes with returned/total_matching/limit/is_complete values per entity.'

@@ -25,6 +25,7 @@ import type {
 	ChatToolResult,
 	ContextShiftPayload,
 	ContextUsageSnapshot,
+	Json,
 	LastTurnContext,
 	OperationEventPayload
 } from '@buildos/shared-types';
@@ -50,6 +51,12 @@ import {
 	streamFastChat,
 	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
+import {
+	consumeTransientFastChatCancelHint,
+	normalizeFastChatStreamRunId,
+	readFastChatCancelReasonFromMetadata,
+	type FastChatCancelReason
+} from '$lib/services/agentic-chat-v2/cancel-reason-channel';
 
 const logger = createLogger('API:AgentStreamV2');
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
@@ -93,6 +100,10 @@ const FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS = parsePositiveInt(
 	process.env.FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS,
 	120000
 );
+const FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS = parsePositiveInt(
+	process.env.FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS,
+	70
+);
 const FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED = parseBooleanFlag(
 	process.env.FASTCHAT_ENABLE_AUTONOMOUS_RECOVERY,
 	false
@@ -114,9 +125,97 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
 	return fallback;
 }
 
+function isAbortLikeError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false;
+	const maybeError = error as { name?: string; message?: string };
+	const name = maybeError.name?.toLowerCase() ?? '';
+	const message = maybeError.message?.toLowerCase() ?? '';
+	return (
+		name === 'aborterror' ||
+		message.includes('aborted') ||
+		message.includes('request aborted') ||
+		message.includes('stream closed') ||
+		message.includes('cancelled')
+	);
+}
+
 async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
 	const body = (await request.json()) as FastAgentStreamRequest;
 	return body;
+}
+
+function waitMs(ms: number): Promise<void> {
+	if (!Number.isFinite(ms) || ms <= 0) return Promise.resolve();
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function readCancelReasonFromSessionMetadata(params: {
+	supabase: any;
+	userId: string;
+	sessionId: string;
+	streamRunId: string;
+}): Promise<FastChatCancelReason | null> {
+	const { data, error } = await params.supabase
+		.from('chat_sessions')
+		.select('agent_metadata')
+		.eq('id', params.sessionId)
+		.eq('user_id', params.userId)
+		.maybeSingle();
+
+	if (error || !data) return null;
+	return readFastChatCancelReasonFromMetadata({
+		agentMetadata: data.agent_metadata,
+		streamRunId: params.streamRunId
+	});
+}
+
+async function resolveInterruptedReason(params: {
+	supabase: any;
+	userId: string;
+	sessionId: string;
+	streamRunId?: string;
+	requestAborted: boolean;
+}): Promise<FastChatCancelReason | 'disconnect' | 'cancelled'> {
+	if (!params.requestAborted) {
+		return 'cancelled';
+	}
+	if (!params.streamRunId) {
+		return 'disconnect';
+	}
+
+	const transientReason = consumeTransientFastChatCancelHint({
+		userId: params.userId,
+		streamRunId: params.streamRunId
+	});
+	if (transientReason) return transientReason;
+
+	const sessionReason = await readCancelReasonFromSessionMetadata({
+		supabase: params.supabase,
+		userId: params.userId,
+		sessionId: params.sessionId,
+		streamRunId: params.streamRunId
+	});
+	if (sessionReason) return sessionReason;
+
+	if (FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS > 0) {
+		await waitMs(FASTCHAT_CANCEL_REASON_RETRY_DELAY_MS);
+	}
+
+	const transientRetry = consumeTransientFastChatCancelHint({
+		userId: params.userId,
+		streamRunId: params.streamRunId
+	});
+	if (transientRetry) return transientRetry;
+
+	const sessionRetry = await readCancelReasonFromSessionMetadata({
+		supabase: params.supabase,
+		userId: params.userId,
+		sessionId: params.sessionId,
+		streamRunId: params.streamRunId
+	});
+	if (sessionRetry) return sessionRetry;
+
+	return 'disconnect';
 }
 
 async function checkProjectAccessFallback(
@@ -1781,6 +1880,12 @@ export const POST: RequestHandler = async ({
 	if (!message) {
 		return ApiResponse.badRequest('Message is required');
 	}
+	const clientTurnIdRaw = streamRequest.client_turn_id;
+	const clientTurnId =
+		typeof clientTurnIdRaw === 'string' && clientTurnIdRaw.trim().length > 0
+			? clientTurnIdRaw.trim()
+			: undefined;
+	const streamRunId = normalizeFastChatStreamRunId(streamRequest.stream_run_id);
 
 	const initialContextType = normalizeFastContextType(streamRequest.context_type);
 	if (isDailyBriefContext(initialContextType)) {
@@ -1976,12 +2081,24 @@ export const POST: RequestHandler = async ({
 				});
 			}
 
+			const userMessageMetadata: Record<string, Json | undefined> = {};
+			if (voiceGroupId) {
+				userMessageMetadata.voice_note_group_id = voiceGroupId;
+			}
+			if (clientTurnId) {
+				userMessageMetadata.client_turn_id = clientTurnId;
+			}
+			if (streamRunId) {
+				userMessageMetadata.stream_run_id = streamRunId;
+			}
 			const userMessagePromise = sessionService.persistMessage({
 				sessionId: session.id,
 				userId,
 				role: 'user',
 				content: message,
-				metadata: voiceGroupId ? { voice_note_group_id: voiceGroupId } : undefined
+				metadata:
+					Object.keys(userMessageMetadata).length > 0 ? userMessageMetadata : undefined,
+				idempotencyKey: clientTurnId ? `turn:${clientTurnId}:user` : undefined
 			});
 
 			const llm = FASTCHAT_OPENROUTER_V2_ENABLED
@@ -2200,89 +2317,73 @@ export const POST: RequestHandler = async ({
 				{ role: 'user', content: message }
 			] as ServiceContext['conversationHistory'];
 
-			const { assistantText, usage, finishedReason, toolExecutions } = await streamFastChat({
-				llm,
-				userId,
-				sessionId: session.id,
-				contextType,
-				entityId,
-				projectId:
-					projectFocus?.projectId ??
-					(contextType === 'project' ? (entityId ?? null) : null),
-				history: historyForModel,
-				message,
-				signal: request.signal,
-				systemPrompt,
-				maxToolRounds: gatewayEnabled ? Math.max(1, gatewayRoundCap) : undefined,
-				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
-				tools,
-				debugContext: {
-					gatewayEnabled,
-					historyStrategy: historyComposition.strategy,
-					historyCompressed: historyComposition.compressed,
-					rawHistoryCount: historyComposition.rawHistoryCount,
-					historyForModelCount: historyForModel.length,
-					tailMessagesKept: historyComposition.tailMessagesKept,
-					continuityHintUsed: historyComposition.continuityHintUsed
-				},
-				toolExecutor: toolExecutionService
-					? async (toolCall) => {
-							const contextScope = effectiveProjectIdForTools
-								? {
-										projectId: effectiveProjectIdForTools,
-										projectName: promptContext?.projectName ?? undefined
-									}
-								: undefined;
-							const serviceContext: ServiceContext = {
-								sessionId: session.id,
-								userId,
-								contextType: effectiveContextType,
-								entityId: effectiveEntityId ?? undefined,
-								conversationHistory: conversationHistoryForTools,
-								contextScope
-							};
-							const result = await toolExecutionService.executeTool(
-								toolCall,
-								serviceContext,
-								tools,
-								{ abortSignal: request.signal }
-							);
-							return {
-								tool_call_id: result.toolCallId,
-								result: result.data ?? null,
-								success: result.success,
-								error:
-									typeof result.error === 'string'
-										? result.error
-										: result.error?.message
-							};
-						}
-					: toolExecutorInstance
-						? (toolCall) => toolExecutorInstance.execute(patchToolCall(toolCall))
-						: undefined,
-				onToolCall: async (toolCall) => {
-					const patchedCall = patchToolCall(toolCall);
-					emitToolCall(agentStream, patchedCall, (error) => {
-						logFastChatError({
-							error,
-							operationType: 'fastchat_stream_emit_tool_call',
-							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
-								contextType: effectiveContextType,
-								toolName: patchedCall.function.name,
-								toolCallId: patchedCall.id
+			const { assistantText, usage, finishedReason, toolExecutions, cancelled } =
+				await streamFastChat({
+					llm,
+					userId,
+					sessionId: session.id,
+					contextType,
+					entityId,
+					projectId:
+						projectFocus?.projectId ??
+						(contextType === 'project' ? (entityId ?? null) : null),
+					history: historyForModel,
+					message,
+					signal: request.signal,
+					systemPrompt,
+					maxToolRounds: gatewayEnabled ? Math.max(1, gatewayRoundCap) : undefined,
+					allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
+					tools,
+					debugContext: {
+						gatewayEnabled,
+						historyStrategy: historyComposition.strategy,
+						historyCompressed: historyComposition.compressed,
+						rawHistoryCount: historyComposition.rawHistoryCount,
+						historyForModelCount: historyForModel.length,
+						tailMessagesKept: historyComposition.tailMessagesKept,
+						continuityHintUsed: historyComposition.continuityHintUsed
+					},
+					toolExecutor: toolExecutionService
+						? async (toolCall) => {
+								const contextScope = effectiveProjectIdForTools
+									? {
+											projectId: effectiveProjectIdForTools,
+											projectName: promptContext?.projectName ?? undefined
+										}
+									: undefined;
+								const serviceContext: ServiceContext = {
+									sessionId: session.id,
+									userId,
+									contextType: effectiveContextType,
+									entityId: effectiveEntityId ?? undefined,
+									conversationHistory: conversationHistoryForTools,
+									contextScope
+								};
+								const result = await toolExecutionService.executeTool(
+									toolCall,
+									serviceContext,
+									tools,
+									{ abortSignal: request.signal }
+								);
+								return {
+									tool_call_id: result.toolCallId,
+									result: result.data ?? null,
+									success: result.success,
+									error:
+										typeof result.error === 'string'
+											? result.error
+											: result.error?.message
+								};
 							}
-						});
-					});
-				},
-				onToolResult: async ({ toolCall, result }) => {
-					try {
+						: toolExecutorInstance
+							? (toolCall) => toolExecutorInstance.execute(patchToolCall(toolCall))
+							: undefined,
+					onToolCall: async (toolCall) => {
 						const patchedCall = patchToolCall(toolCall);
-						emitToolResult(agentStream, patchedCall, result, (error) => {
+						emitToolCall(agentStream, patchedCall, (error) => {
 							logFastChatError({
 								error,
-								operationType: 'fastchat_stream_emit_tool_result',
+								operationType: 'fastchat_stream_emit_tool_call',
 								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 								metadata: {
 									sessionId: session.id,
@@ -2292,125 +2393,146 @@ export const POST: RequestHandler = async ({
 								}
 							});
 						});
-						if (!result.success) {
-							const toolFailureMetadata = {
-								sessionId: session.id,
-								contextType: effectiveContextType,
-								entityId: effectiveEntityId,
-								toolName: patchedCall.function.name,
-								toolCallId: patchedCall.id,
-								toolError: result.error
-							};
-							if (isExpectedToolValidationFailure(result.error)) {
-								logger.warn('FastChat tool validation failure', {
-									...toolFailureMetadata,
-									toolArgsRaw: patchedCall.function.arguments,
-									toolArgsPreview: previewToolArguments(
-										patchedCall.function.arguments
-									)
-								});
-								logFastChatError({
-									error: new Error(
-										result.error ?? 'FastChat tool validation failed'
-									),
-									operationType: 'tool_execution',
-									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-									metadata: {
-										...toolFailureMetadata,
-										failureStage: 'fastchat_tool_validation',
-										toolArgsPreview: previewToolArguments(
-											patchedCall.function.arguments
-										)
-									}
-								});
-							} else {
-								logFastChatError({
-									error: new Error(
-										result.error ?? 'FastChat tool execution failed'
-									),
-									operationType: 'fastchat_tool_result_failure',
-									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-									metadata: toolFailureMetadata
-								});
-							}
-						}
-
-						const contextShift = extractContextShiftPayload(result);
-						if (contextShift) {
-							effectiveContextType = contextShift.new_context;
-							effectiveEntityId = contextShift.entity_id;
-							latestContextShift = contextShift;
-							if (isProjectScopedContext(contextShift.new_context)) {
-								effectiveProjectIdForTools = contextShift.entity_id;
-							}
-							void updateAgentMetadata(
-								supabase,
-								session.id,
-								{
-									fastchat_last_context_shift: {
-										context_type: contextShift.new_context,
-										entity_id: contextShift.entity_id ?? null,
-										project_id: isProjectScopedContext(contextShift.new_context)
-											? (contextShift.entity_id ?? null)
-											: null,
-										shifted_at: new Date().toISOString()
-									}
-								},
-								{
-									errorLogger,
-									userId,
-									projectId: effectiveProjectIdForTools ?? projectIdForLogs
-								}
-							);
-							await emitContextShift(agentStream, contextShift, (error) => {
+					},
+					onToolResult: async ({ toolCall, result }) => {
+						try {
+							const patchedCall = patchToolCall(toolCall);
+							emitToolResult(agentStream, patchedCall, result, (error) => {
 								logFastChatError({
 									error,
-									operationType: 'fastchat_stream_emit_context_shift',
-									projectId: contextShift.entity_id,
+									operationType: 'fastchat_stream_emit_tool_result',
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 									metadata: {
 										sessionId: session.id,
-										contextType: contextShift.new_context,
-										entityId: contextShift.entity_id
+										contextType: effectiveContextType,
+										toolName: patchedCall.function.name,
+										toolCallId: patchedCall.id
 									}
 								});
 							});
+							if (!result.success) {
+								const toolFailureMetadata = {
+									sessionId: session.id,
+									contextType: effectiveContextType,
+									entityId: effectiveEntityId,
+									toolName: patchedCall.function.name,
+									toolCallId: patchedCall.id,
+									toolError: result.error
+								};
+								if (isExpectedToolValidationFailure(result.error)) {
+									logger.warn('FastChat tool validation failure', {
+										...toolFailureMetadata,
+										toolArgsRaw: patchedCall.function.arguments,
+										toolArgsPreview: previewToolArguments(
+											patchedCall.function.arguments
+										)
+									});
+									logFastChatError({
+										error: new Error(
+											result.error ?? 'FastChat tool validation failed'
+										),
+										operationType: 'tool_execution',
+										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+										metadata: {
+											...toolFailureMetadata,
+											failureStage: 'fastchat_tool_validation',
+											toolArgsPreview: previewToolArguments(
+												patchedCall.function.arguments
+											)
+										}
+									});
+								} else {
+									logFastChatError({
+										error: new Error(
+											result.error ?? 'FastChat tool execution failed'
+										),
+										operationType: 'fastchat_tool_result_failure',
+										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+										metadata: toolFailureMetadata
+									});
+								}
+							}
+
+							const contextShift = extractContextShiftPayload(result);
+							if (contextShift) {
+								effectiveContextType = contextShift.new_context;
+								effectiveEntityId = contextShift.entity_id;
+								latestContextShift = contextShift;
+								if (isProjectScopedContext(contextShift.new_context)) {
+									effectiveProjectIdForTools = contextShift.entity_id;
+								}
+								void updateAgentMetadata(
+									supabase,
+									session.id,
+									{
+										fastchat_last_context_shift: {
+											context_type: contextShift.new_context,
+											entity_id: contextShift.entity_id ?? null,
+											project_id: isProjectScopedContext(
+												contextShift.new_context
+											)
+												? (contextShift.entity_id ?? null)
+												: null,
+											shifted_at: new Date().toISOString()
+										}
+									},
+									{
+										errorLogger,
+										userId,
+										projectId: effectiveProjectIdForTools ?? projectIdForLogs
+									}
+								);
+								await emitContextShift(agentStream, contextShift, (error) => {
+									logFastChatError({
+										error,
+										operationType: 'fastchat_stream_emit_context_shift',
+										projectId: contextShift.entity_id,
+										metadata: {
+											sessionId: session.id,
+											contextType: contextShift.new_context,
+											entityId: contextShift.entity_id
+										}
+									});
+								});
+							}
+						} catch (error) {
+							logger.warn('FastChat onToolResult callback failed', {
+								error,
+								sessionId: session.id
+							});
+							logFastChatError({
+								error,
+								operationType: 'fastchat_stream_on_tool_result',
+								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+								metadata: {
+									sessionId: session.id,
+									contextType: effectiveContextType,
+									entityId: effectiveEntityId,
+									toolName: toolCall.function.name,
+									toolCallId: toolCall.id
+								}
+							});
 						}
-					} catch (error) {
-						logger.warn('FastChat onToolResult callback failed', {
-							error,
-							sessionId: session.id
-						});
-						logFastChatError({
-							error,
-							operationType: 'fastchat_stream_on_tool_result',
-							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
-								contextType: effectiveContextType,
-								entityId: effectiveEntityId,
-								toolName: toolCall.function.name,
-								toolCallId: toolCall.id
+					},
+					onDelta: async (delta) => {
+						try {
+							await agentStream.sendMessage({ type: 'text_delta', content: delta });
+						} catch (error) {
+							if (!request.signal.aborted) {
+								logFastChatError({
+									error,
+									operationType: 'fastchat_stream_emit_delta',
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+									metadata: {
+										sessionId: session.id,
+										contextType: effectiveContextType
+									}
+								});
 							}
-						});
+							throw error;
+						}
 					}
-				},
-				onDelta: async (delta) => {
-					try {
-						await agentStream.sendMessage({ type: 'text_delta', content: delta });
-					} catch (error) {
-						logFastChatError({
-							error,
-							operationType: 'fastchat_stream_emit_delta',
-							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
-								contextType: effectiveContextType
-							}
-						});
-						throw error;
-					}
-				}
-			});
+				});
 
 			const [userMessage] = await Promise.all([
 				userMessagePromise.catch((error) => {
@@ -2434,6 +2556,82 @@ export const POST: RequestHandler = async ({
 				});
 			}
 
+			const isCancelledTurn =
+				cancelled === true || finishedReason === 'cancelled' || request.signal.aborted;
+			const assistantContent = assistantText.trim();
+			if (isCancelledTurn) {
+				const interruptedReason = await resolveInterruptedReason({
+					supabase,
+					userId,
+					sessionId: session.id,
+					streamRunId: streamRunId ?? undefined,
+					requestAborted: request.signal.aborted
+				});
+				let interruptedMessage = null;
+				if (assistantContent.length > 0) {
+					const interruptedMetadata: Record<string, Json | undefined> = {
+						interrupted: true,
+						interrupted_reason: interruptedReason,
+						finished_reason: 'cancelled',
+						partial_tokens: Math.ceil(assistantContent.length / 4)
+					};
+					if (streamRunId) {
+						interruptedMetadata.stream_run_id = streamRunId;
+					}
+					if (clientTurnId) {
+						interruptedMetadata.client_turn_id = clientTurnId;
+					}
+					interruptedMessage = await sessionService.persistMessage({
+						sessionId: session.id,
+						userId,
+						role: 'assistant',
+						content: assistantContent,
+						metadata: interruptedMetadata,
+						usage,
+						idempotencyKey: clientTurnId
+							? `turn:${clientTurnId}:assistant_interrupted`
+							: undefined
+					});
+				}
+
+				await sessionService.updateSessionStats({
+					session,
+					messageCountDelta: assistantContent.length > 0 ? 2 : 1,
+					totalTokensDelta: usage?.total_tokens ?? 0,
+					contextType: effectiveContextType,
+					entityId: effectiveEntityId
+				});
+
+				if (!request.signal.aborted) {
+					const cancelledLastTurnContext = buildLastTurnContext({
+						assistantText: assistantContent,
+						userMessage: message,
+						contextType: effectiveContextType,
+						entityId: effectiveEntityId,
+						contextShift: latestContextShift,
+						toolExecutions: toolExecutions ?? [],
+						timestamp: interruptedMessage?.created_at ?? new Date().toISOString()
+					});
+					try {
+						await agentStream.sendMessage({
+							type: 'last_turn_context',
+							context: cancelledLastTurnContext
+						});
+					} catch (error) {
+						logger.warn('Failed to emit cancelled last_turn_context', {
+							error,
+							sessionId: session.id
+						});
+					}
+					await agentStream.sendMessage({
+						type: 'done',
+						usage,
+						finished_reason: 'cancelled'
+					});
+				}
+				return;
+			}
+
 			const normalizedExecutions = toolExecutions ?? [];
 			const persistedToolTrace = buildPersistedToolTrace(normalizedExecutions);
 			const persistedToolTraceSummary = buildPersistedToolTraceSummary(persistedToolTrace);
@@ -2446,10 +2644,18 @@ export const POST: RequestHandler = async ({
 					persistedToolTrace.length > 0
 						? {
 								fastchat_tool_trace_v1: persistedToolTrace,
-								fastchat_tool_trace_summary: persistedToolTraceSummary
+								fastchat_tool_trace_summary: persistedToolTraceSummary,
+								...(clientTurnId ? { client_turn_id: clientTurnId } : {}),
+								...(streamRunId ? { stream_run_id: streamRunId } : {})
 							}
-						: undefined,
-				usage
+						: clientTurnId || streamRunId
+							? {
+									...(clientTurnId ? { client_turn_id: clientTurnId } : {}),
+									...(streamRunId ? { stream_run_id: streamRunId } : {})
+								}
+							: undefined,
+				usage,
+				idempotencyKey: clientTurnId ? `turn:${clientTurnId}:assistant` : undefined
 			});
 
 			if (!assistantMessage) {
@@ -2581,6 +2787,14 @@ export const POST: RequestHandler = async ({
 				finished_reason: finishedReason
 			});
 		} catch (error) {
+			if (request.signal.aborted || isAbortLikeError(error)) {
+				logger.info('Agent V2 stream cancelled', {
+					sessionId: streamRequest.session_id ?? null,
+					contextType,
+					entityId
+				});
+				return;
+			}
 			logger.error('Agent V2 stream error', { error });
 			logFastChatError({
 				error,

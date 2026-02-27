@@ -280,6 +280,7 @@
 	let isStreaming = $state(false);
 	let currentStreamController: AbortController | null = null;
 	let activeStreamRunId = $state(0);
+	let activeClientTurnId = $state<string | null>(null);
 	let inputValue = $state('');
 	let error = $state<string | null>(null);
 	// Track current plan for potential future UI enhancements
@@ -368,6 +369,29 @@
 	let lastLoadedSessionId = $state<string | null>(null);
 	let sessionLoadRequestId = 0;
 	let sessionLoadController: AbortController | null = null;
+	const pendingSessionHydrationWaiters = new Set<(resolved: boolean) => void>();
+
+	function resolveSessionHydrationWaiters(resolved: boolean) {
+		if (pendingSessionHydrationWaiters.size === 0) return;
+		const waiters = [...pendingSessionHydrationWaiters];
+		pendingSessionHydrationWaiters.clear();
+		for (const waiter of waiters) {
+			waiter(resolved);
+		}
+	}
+
+	function waitForSessionHydration(timeoutMs = 450): Promise<boolean> {
+		if (currentSession?.id) return Promise.resolve(true);
+		return new Promise((resolve) => {
+			const waiter = (resolved: boolean) => {
+				clearTimeout(timeoutId);
+				pendingSessionHydrationWaiters.delete(waiter);
+				resolve(resolved);
+			};
+			pendingSessionHydrationWaiters.add(waiter);
+			const timeoutId = setTimeout(() => waiter(Boolean(currentSession?.id)), timeoutMs);
+		});
+	}
 
 	// Helper to check if we're in braindump context
 	const isBraindumpContext = $derived(selectedContextType === 'brain_dump');
@@ -525,6 +549,7 @@
 
 		messages = [];
 		currentSession = null;
+		resolveSessionHydrationWaiters(false);
 		currentPlan = null;
 		currentActivity = '';
 		inputValue = '';
@@ -1232,6 +1257,7 @@
 
 			// Set session and context
 			currentSession = session;
+			resolveSessionHydrationWaiters(Boolean(session.id));
 			lastLoadedSessionId = sessionId;
 
 			// Map context type - handle 'general' alias
@@ -2759,10 +2785,11 @@
 		finalizeSession('close');
 		stopVoiceInput();
 		if (currentStreamController && isStreaming) {
-			handleStopGeneration('user_cancelled');
+			void handleStopGeneration('user_cancelled');
 		} else if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;
+			activeClientTurnId = null;
 		}
 		cleanupVoiceInput();
 
@@ -2789,7 +2816,7 @@
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && isStreaming) {
 			event.preventDefault();
-			handleStopGeneration('user_cancelled');
+			void handleStopGeneration('user_cancelled');
 			return;
 		}
 
@@ -2848,10 +2875,15 @@
 		}
 
 		if (isStreaming) {
-			handleStopGeneration('superseded');
+			const awaitingSessionHandoff = !currentSession?.id;
+			await handleStopGeneration('superseded', { awaitCancelHint: true });
+			if (awaitingSessionHandoff) {
+				await waitForSessionHydration();
+			}
 		}
 
 		const now = new Date();
+		const clientTurnId = crypto.randomUUID();
 
 		// Add user message
 		const userMessage: UIMessage = {
@@ -2863,9 +2895,10 @@
 			content: trimmed,
 			timestamp: now,
 			created_at: now.toISOString(),
-			metadata: activeVoiceNoteGroupId
-				? { voice_note_group_id: activeVoiceNoteGroupId }
-				: undefined
+			metadata: {
+				...(activeVoiceNoteGroupId ? { voice_note_group_id: activeVoiceNoteGroupId } : {}),
+				client_turn_id: clientTurnId
+			}
 		};
 
 		messages = [...messages, userMessage];
@@ -2881,6 +2914,7 @@
 		// Increment run id for stale-stream guard
 		activeStreamRunId = activeStreamRunId + 1;
 		const runId = activeStreamRunId;
+		activeClientTurnId = clientTurnId;
 
 		isStreaming = true;
 		pendingToolResults.clear();
@@ -2936,6 +2970,7 @@
 					projectFocus: resolvedProjectFocus,
 					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity
 					stream_run_id: runId,
+					client_turn_id: clientTurnId,
 					voiceNoteGroupId: activeVoiceNoteGroupId
 				})
 			});
@@ -2946,7 +2981,12 @@
 
 			const callbacks: StreamCallbacks = {
 				onProgress: (data: any) => {
-					if (runId !== activeStreamRunId) return; // Drop stale chunks
+					if (runId !== activeStreamRunId) {
+						if (!currentSession?.id && data?.type === 'session' && data?.session) {
+							hydrateSessionFromEvent(data.session as ChatSession);
+						}
+						return;
+					}
 					receivedStreamEvent = true;
 					handleSSEMessage(data as AgentSSEMessage);
 				},
@@ -2958,6 +2998,7 @@
 					isStreaming = false;
 					currentActivity = '';
 					currentStreamController = null;
+					activeClientTurnId = null;
 					agentState = null;
 					finalizeThinkingBlock('error');
 					flushAssistantText();
@@ -2968,6 +3009,7 @@
 					isStreaming = false;
 					currentActivity = '';
 					currentStreamController = null;
+					activeClientTurnId = null;
 					agentState = null;
 					if (!receivedStreamEvent && !error) {
 						error = 'BuildOS did not return a response. Please try again.';
@@ -2992,6 +3034,7 @@
 				}
 				isStreaming = false;
 				currentActivity = '';
+				activeClientTurnId = null;
 				agentState = null;
 				finalizeThinkingBlock('interrupted', 'Stopped');
 				flushAssistantText();
@@ -3003,6 +3046,7 @@
 			error = 'Failed to send message. Please try again.';
 			isStreaming = false;
 			currentActivity = '';
+			activeClientTurnId = null;
 			agentState = null;
 			finalizeThinkingBlock('error'); // Ensure thinking block is closed on error
 			flushAssistantText();
@@ -3018,6 +3062,42 @@
 		}
 	}
 
+	function hydrateSessionFromEvent(sessionEvent: ChatSession) {
+		currentSession = sessionEvent;
+		const sessionTitle = deriveSessionTitle(sessionEvent);
+		const sessionContextType =
+			(sessionEvent.context_type as ChatContextType | undefined) ?? 'global';
+		const normalizedSessionContext =
+			sessionContextType === 'general' ? 'global' : sessionContextType;
+		if (!selectedContextType) {
+			selectedContextType = normalizedSessionContext;
+			selectedEntityId = sessionEvent.entity_id ?? undefined;
+			selectedContextLabel =
+				sessionTitle ||
+				CONTEXT_DESCRIPTORS[normalizedSessionContext]?.title ||
+				selectedContextLabel;
+			showContextSelection = false;
+		} else if (sessionTitle) {
+			// Update the label when the session already exists but now has a better title
+			selectedContextLabel = sessionTitle;
+		}
+
+		if (normalizedSessionContext === 'project' && sessionEvent.entity_id && !projectFocus) {
+			projectFocus = buildProjectWideFocus(
+				sessionEvent.entity_id,
+				sessionTitle ?? selectedContextLabel
+			);
+		}
+
+		const metadataFocus = (
+			(sessionEvent.agent_metadata as { focus?: ProjectFocus | null }) ?? null
+		)?.focus;
+		if (metadataFocus) {
+			projectFocus = metadataFocus;
+		}
+		resolveSessionHydrationWaiters(Boolean(sessionEvent.id));
+	}
+
 	function handleSSEMessage(event: AgentSSEMessage) {
 		if (event.type !== 'text' && event.type !== 'text_delta') {
 			flushAssistantText();
@@ -3026,42 +3106,7 @@
 			case 'session':
 				// Session hydration
 				if (event.session) {
-					currentSession = event.session;
-					const sessionTitle = deriveSessionTitle(event.session);
-					const sessionContextType =
-						(event.session.context_type as ChatContextType) ?? 'global';
-					const normalizedSessionContext =
-						sessionContextType === 'general' ? 'global' : sessionContextType;
-					if (!selectedContextType) {
-						selectedContextType = normalizedSessionContext;
-						selectedEntityId = event.session.entity_id ?? undefined;
-						selectedContextLabel =
-							sessionTitle ||
-							CONTEXT_DESCRIPTORS[normalizedSessionContext]?.title ||
-							selectedContextLabel;
-						showContextSelection = false;
-					} else if (sessionTitle) {
-						// Update the label when the session already exists but now has a better title
-						selectedContextLabel = sessionTitle;
-					}
-
-					if (
-						normalizedSessionContext === 'project' &&
-						event.session.entity_id &&
-						!projectFocus
-					) {
-						projectFocus = buildProjectWideFocus(
-							event.session.entity_id,
-							sessionTitle ?? selectedContextLabel
-						);
-					}
-
-					const metadataFocus = (
-						(event.session.agent_metadata as { focus?: ProjectFocus | null }) ?? null
-					)?.focus;
-					if (metadataFocus) {
-						projectFocus = metadataFocus;
-					}
+					hydrateSessionFromEvent(event.session);
 				}
 				break;
 
@@ -3798,8 +3843,49 @@
 		);
 	}
 
-	function handleStopGeneration(
-		reason: 'user_cancelled' | 'superseded' | 'error' = 'user_cancelled'
+	async function reportStreamCancellationReason(
+		reason: 'user_cancelled' | 'superseded',
+		runId: number,
+		options: { awaitAck?: boolean } = {}
+	): Promise<void> {
+		const payload = {
+			session_id: currentSession?.id,
+			stream_run_id: runId,
+			client_turn_id: activeClientTurnId ?? undefined,
+			reason
+		};
+		const request = fetch('/api/agent/v2/stream/cancel', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			keepalive: true,
+			body: JSON.stringify(payload)
+		}).catch((cancelError) => {
+			if (dev) {
+				console.debug(
+					'[AgentChat] Failed to report stream cancellation reason',
+					cancelError
+				);
+			}
+		});
+
+		if (!options.awaitAck) {
+			void request;
+			return;
+		}
+
+		await Promise.race([
+			request,
+			new Promise<void>((resolve) => {
+				setTimeout(resolve, 120);
+			})
+		]);
+	}
+
+	async function handleStopGeneration(
+		reason: 'user_cancelled' | 'superseded' | 'error' = 'user_cancelled',
+		options: { awaitCancelHint?: boolean } = {}
 	) {
 		if (!isStreaming || !currentStreamController) return;
 
@@ -3809,9 +3895,23 @@
 		}
 
 		const runId = activeStreamRunId;
+		const shouldReportReason = reason === 'user_cancelled' || reason === 'superseded';
+		const cancellationReasonPromise = shouldReportReason
+			? reportStreamCancellationReason(reason, runId, {
+					awaitAck: Boolean(options.awaitCancelHint)
+				})
+			: null;
+
+		// Flush any buffered tokens first so interruption metadata lands on the final visible partial.
+		flushAssistantText();
 		markAssistantInterrupted(reason, runId);
 		// Invalidate the active run id so late SSE chunks are dropped
 		activeStreamRunId = activeStreamRunId + 1;
+		activeClientTurnId = null;
+
+		if (cancellationReasonPromise && options.awaitCancelHint) {
+			await cancellationReasonPromise;
+		}
 
 		try {
 			currentStreamController.abort();
@@ -3826,8 +3926,11 @@
 			reason === 'superseded' ? 'cancelled' : 'interrupted',
 			reason === 'user_cancelled' ? 'Stopped by you' : 'Stopped'
 		);
-		flushAssistantText();
 		finalizeAssistantMessage();
+
+		if (cancellationReasonPromise && !options.awaitCancelHint) {
+			void cancellationReasonPromise;
+		}
 
 		isStreaming = false;
 		currentActivity = '';
@@ -3922,10 +4025,11 @@
 		finalizeSession('destroy');
 		stopVoiceInput();
 		if (currentStreamController && isStreaming) {
-			handleStopGeneration('user_cancelled');
+			void handleStopGeneration('user_cancelled');
 		} else if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;
+			activeClientTurnId = null;
 		}
 		cleanupVoiceInput();
 	});
@@ -3994,7 +4098,7 @@
 						onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
 						onKeyDownHandler={handleKeyDown}
 						onSend={handleSendMessage}
-						onStop={() => handleStopGeneration('user_cancelled')}
+						onStop={() => void handleStopGeneration('user_cancelled')}
 					/>
 				</div>
 			</div>
@@ -4356,7 +4460,7 @@
 								onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
 								onKeyDownHandler={handleKeyDown}
 								onSend={handleSendMessage}
-								onStop={() => handleStopGeneration('user_cancelled')}
+								onStop={() => void handleStopGeneration('user_cancelled')}
 							/>
 						</div>
 					{/if}

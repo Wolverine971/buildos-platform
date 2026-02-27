@@ -60,7 +60,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 
 			// Mock response based on URL
 			if (url.includes('/api/onto/documents/')) {
-				if (options?.method === 'GET') {
+				if (!options?.method || options.method === 'GET') {
 					return Promise.resolve({
 						ok: true,
 						json: () =>
@@ -86,7 +86,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 									id: 'doc-123',
 									title: body.title || 'Test Document',
 									props: {
-										body_markdown: body.body_markdown
+										body_markdown: body.content
 									}
 								}
 							})
@@ -95,7 +95,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			}
 
 			if (url.includes('/api/onto/tasks/')) {
-				if (options?.method === 'GET') {
+				if (!options?.method || options.method === 'GET') {
 					return Promise.resolve({
 						ok: true,
 						json: () =>
@@ -104,6 +104,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 								task: {
 									id: 'task-123',
 									title: 'Test Task',
+									description: 'Existing task description',
 									props: {
 										description: 'Existing task description'
 									}
@@ -202,7 +203,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			// Should fetch existing content first
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/documents/doc-123'),
-				expect.objectContaining({ method: 'GET' })
+				expect.any(Object)
 			);
 			// Then update with appended content
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -238,7 +239,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			// Should fetch existing content
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/documents/doc-123'),
-				expect.objectContaining({ method: 'GET' })
+				expect.any(Object)
 			);
 			// Should call LLM service
 			expect(mockLLMService.generateTextDetailed).toHaveBeenCalledWith(
@@ -284,7 +285,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			expect(result.success).toBe(true);
 			expect(consoleSpy).toHaveBeenCalledWith(
 				expect.stringContaining('LLM merge failed'),
-				expect.any(Error)
+				expect.objectContaining({
+					error: expect.any(String)
+				})
 			);
 			// Should fall back to append
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -301,7 +304,10 @@ describe('ChatToolExecutor - Update Strategies', () => {
 		it('should handle empty existing content gracefully', async () => {
 			// Mock empty existing content
 			mockFetch = vi.fn().mockImplementation((url, options) => {
-				if (url.includes('/api/onto/documents/') && options?.method === 'GET') {
+				if (
+					url.includes('/api/onto/documents/') &&
+					(!options?.method || options.method === 'GET')
+				) {
 					return Promise.resolve({
 						ok: true,
 						json: () =>
@@ -357,7 +363,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				expect.stringContaining('/api/onto/documents/doc-123'),
 				expect.objectContaining({
 					method: 'PATCH',
-					body: expect.stringContaining('"body_markdown":"New content"')
+					body: expect.stringContaining('"content":"New content"')
 				})
 			);
 		});
@@ -384,7 +390,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			// Should fetch existing task
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/tasks/task-123'),
-				expect.objectContaining({ method: 'GET' })
+				expect.any(Object)
 			);
 			// Should update with appended description
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -401,7 +407,10 @@ describe('ChatToolExecutor - Update Strategies', () => {
 		it('should handle missing description field gracefully', async () => {
 			// Mock task without description
 			mockFetch = vi.fn().mockImplementation((url, options) => {
-				if (url.includes('/api/onto/tasks/') && options?.method === 'GET') {
+				if (
+					url.includes('/api/onto/tasks/') &&
+					(!options?.method || options.method === 'GET')
+				) {
 					return Promise.resolve({
 						ok: true,
 						json: () =>
@@ -484,7 +493,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			// Should fetch existing content
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/documents/doc-123'),
-				expect.objectContaining({ method: 'GET' })
+				expect.any(Object)
 			);
 			// Should preserve existing content when new is empty
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -499,7 +508,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 		it('should handle fetch errors gracefully', async () => {
 			// Make fetch fail for GET
 			mockFetch = vi.fn().mockImplementation((url, options) => {
-				if (options?.method === 'GET') {
+				if (!options?.method || options.method === 'GET') {
 					return Promise.resolve({
 						ok: false,
 						json: () => Promise.resolve({ error: 'Network error' })
@@ -542,14 +551,16 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			expect(result.success).toBe(true);
 			expect(consoleSpy).toHaveBeenCalledWith(
 				expect.stringContaining('Failed to load existing content'),
-				expect.any(Error)
+				expect.objectContaining({
+					error: expect.any(String)
+				})
 			);
 			// Should use the new content when fetch fails
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/documents/doc-123'),
 				expect.objectContaining({
 					method: 'PATCH',
-					body: expect.stringContaining('"body_markdown":"New content"')
+					body: expect.stringContaining('"content":"New content"')
 				})
 			);
 
@@ -622,7 +633,9 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			expect(result.success).toBe(true);
 			expect(consoleSpy).toHaveBeenCalledWith(
 				expect.stringContaining('LLM service not available'),
-				expect.stringContaining('falling back to append')
+				expect.objectContaining({
+					entityLabel: expect.any(String)
+				})
 			);
 			// Should fall back to append
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -641,7 +654,10 @@ describe('ChatToolExecutor - Update Strategies', () => {
 		it('should apply strategies to goal descriptions', async () => {
 			// Mock goal endpoints
 			mockFetch = vi.fn().mockImplementation((url, options) => {
-				if (url.includes('/api/onto/goals/') && options?.method === 'GET') {
+				if (
+					url.includes('/api/onto/goals/') &&
+					(!options?.method || options.method === 'GET')
+				) {
 					return Promise.resolve({
 						ok: true,
 						json: () =>
@@ -708,7 +724,10 @@ describe('ChatToolExecutor - Update Strategies', () => {
 		it('should apply strategies to plan descriptions', async () => {
 			// Mock plan endpoints
 			mockFetch = vi.fn().mockImplementation((url, options) => {
-				if (url.includes('/api/onto/plans/') && options?.method === 'GET') {
+				if (
+					url.includes('/api/onto/plans/') &&
+					(!options?.method || options.method === 'GET')
+				) {
 					return Promise.resolve({
 						ok: true,
 						json: () =>

@@ -1,37 +1,4 @@
 // apps/web/src/routes/api/onto/tasks/create/+server.ts
-/**
- * Task Creation API Endpoint
- *
- * Creates a new task within the BuildOS ontology system.
- *
- * Documentation:
- * - Ontology System: /apps/web/docs/features/ontology/README.md
- * - Data Models: /apps/web/docs/features/ontology/DATA_MODELS.md
- * - Implementation: /apps/web/docs/features/ontology/IMPLEMENTATION_SUMMARY.md
- * - API Patterns: /apps/web/docs/technical/api/PATTERNS.md
- *
- * Request Body:
- * - project_id: string (required) - Project UUID
- * - title: string (required) - Task title
- * - description?: string - Task description (stored in column)
- * - priority?: number (1-5) - Task priority
- * - plan_id?: string - Associated plan UUID (creates edge relationship)
- * - type_key?: string (ignored; auto-classified) - Task type
- * - state_key?: string (default: 'todo') - Initial state
- * - start_at?: string - Start date ISO string (when work should begin)
- * - due_at?: string - Due date ISO string
- * - props?: object (ignored; auto-classified)
- *
- * Related Files:
- * - UI Component: /apps/web/src/lib/components/ontology/TaskCreateModal.svelte
- * - Update/Delete: /apps/web/src/routes/api/onto/tasks/[id]/+server.ts
- * - Database Schema: onto_tasks table
- *
- * Security:
- * - Uses locals.supabase for RLS enforcement
- * - Requires authenticated user with actor
- * - Verifies project ownership
- */
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
@@ -53,6 +20,7 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+import { parseTaskCreateBody } from './request-parser';
 import {
 	TaskAssignmentValidationError,
 	attachAssigneesToTask,
@@ -66,16 +34,13 @@ import {
 	notifyEntityMentionsAdded,
 	resolveEntityMentionUserIds
 } from '$lib/server/entity-mention-notification.service';
-
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
-
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
 	const { user } = await locals.safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized('Authentication required');
 	}
-
 	const supabase = locals.supabase;
 	const chatSessionId = getChatSessionIdFromRequest(request);
 	let requestProjectId: string | undefined;
@@ -86,40 +51,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	let requestMilestoneId: string | undefined;
 	let requestConnections: ConnectionRef[] | undefined;
 	let requestAssigneeActorIds: string[] | undefined;
-
 	try {
-		// Parse request body
 		const body = (await request.json()) as Record<string, unknown>;
 		const {
 			project_id,
 			title,
 			description,
-			priority = 3,
+			priority,
 			plan_id,
-			state_key = 'todo',
+			state_key,
 			goal_id,
 			supporting_milestone_id,
 			start_at,
 			due_at,
 			parent,
 			parents,
-			connections
-		} = body as {
-			project_id: string;
-			title: string;
-			description?: string | null;
-			priority?: number;
-			plan_id?: string | null;
-			state_key?: string;
-			goal_id?: string | null;
-			supporting_milestone_id?: string | null;
-			start_at?: string | null;
-			due_at?: string | null;
-			parent?: NonNullable<Parameters<typeof toParentRefs>[0]>['parent'];
-			parents?: NonNullable<Parameters<typeof toParentRefs>[0]>['parents'];
-			connections?: ConnectionRef[];
-		};
-		const classificationSource = body?.classification_source ?? body?.classificationSource;
+			connections,
+			classificationSource
+		} = parseTaskCreateBody(body);
 		requestProjectId = project_id;
 		requestTitle = title;
 		requestStateKey = state_key;
@@ -129,20 +78,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			typeof supporting_milestone_id === 'string' ? supporting_milestone_id : undefined;
 		const { hasInput: hasAssigneeInput, assigneeActorIds } = parseAssigneeActorIds(body);
 		requestAssigneeActorIds = assigneeActorIds;
-
 		// Validate required fields
 		if (!project_id || !title) {
 			return ApiResponse.badRequest('Project ID and title are required');
 		}
 		const normalizedState = normalizeTaskStateInput(state_key);
-
 		const finalState = normalizedState ?? 'todo';
-
 		// Get user's actor ID
 		const { data: actorData, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
 			p_user_id: user.id
 		});
-
 		if (actorError || !actorData) {
 			console.error('Error resolving actor for task creation:', actorError);
 			await logOntologyApiError({
@@ -157,9 +102,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 			return ApiResponse.internalError(new Error('Failed to get user actor'));
 		}
-
 		const actorId = actorData as EnsureActorResponse;
-
 		// Verify user owns the project
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
@@ -167,11 +110,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.eq('id', project_id)
 			.is('deleted_at', null)
 			.single();
-
 		if (projectError || !project) {
 			return ApiResponse.notFound('Project');
 		}
-
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
 			'current_actor_has_project_access',
 			{
@@ -179,7 +120,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				p_required_access: 'write'
 			}
 		);
-
 		if (accessError) {
 			console.error('[Task Create] Failed to check access:', accessError);
 			await logOntologyApiError({
@@ -194,13 +134,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 			return ApiResponse.internalError(accessError, 'Failed to check project access');
 		}
-
 		if (!hasAccess) {
 			return ApiResponse.forbidden(
 				'You do not have permission to create tasks in this project'
 			);
 		}
-
 		if (hasAssigneeInput) {
 			await validateAssigneesAreProjectEligible({
 				supabase,
@@ -209,7 +147,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				projectOwnerActorId: project.created_by
 			});
 		}
-
 		// If plan_id is provided, verify it belongs to the project
 		if (plan_id) {
 			const { data: plan, error: planError } = await supabase
@@ -219,12 +156,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				.is('deleted_at', null)
 				.eq('project_id', project_id)
 				.single();
-
 			if (planError || !plan) {
 				return ApiResponse.notFound('Plan');
 			}
 		}
-
 		// Validate optional goal and milestone relationships
 		let validatedGoalId: string | null = null;
 		let validatedMilestoneId: string | null = null;
@@ -237,14 +172,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			typeof supporting_milestone_id === 'string' && supporting_milestone_id.trim().length > 0
 				? supporting_milestone_id
 				: null;
-
 		const invalidParent = explicitParents.find(
 			(parentRef) => !ALLOWED_PARENT_KINDS.has(parentRef.kind)
 		);
 		if (invalidParent) {
 			return ApiResponse.badRequest(`Unsupported parent kind: ${invalidParent.kind}`);
 		}
-
 		const legacyConnections: ConnectionRef[] = [
 			...explicitParents,
 			...(normalizedPlanId ? [{ kind: 'plan' as const, id: normalizedPlanId }] : []),
@@ -259,11 +192,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					]
 				: [])
 		];
-
 		const connectionList: ConnectionRef[] =
 			Array.isArray(connections) && connections.length > 0 ? connections : legacyConnections;
 		requestConnections = connectionList;
-
 		if (connectionList.length > 0) {
 			await assertEntityRefsInProject({
 				supabase,
@@ -272,15 +203,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				allowProject: true
 			});
 		}
-
 		if (normalizedGoalId) {
 			validatedGoalId = normalizedGoalId;
 		}
-
 		if (normalizedMilestoneId) {
 			validatedMilestoneId = normalizedMilestoneId;
 		}
-
 		// Create the task
 		// Description is now a proper column (not just in props)
 		// completed_at is auto-set when state_key is 'done'
@@ -302,13 +230,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Auto-set completed_at when creating a task as done
 			...(finalState === 'done' ? { completed_at: new Date().toISOString() } : {})
 		};
-
 		const { data: task, error: createError } = await supabase
 			.from('onto_tasks')
 			.insert(taskData)
 			.select('*')
 			.single();
-
 		if (createError) {
 			console.error('Error creating task:', createError);
 			await logOntologyApiError({
@@ -324,7 +250,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 			return ApiResponse.databaseError(createError);
 		}
-
 		await autoOrganizeConnections({
 			supabase,
 			projectId: project_id,
@@ -332,7 +257,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			connections: connectionList,
 			options: { mode: 'replace' }
 		});
-
 		const actorDisplayName =
 			(typeof user.name === 'string' && user.name) ||
 			user.email?.split('@')[0] ||
@@ -345,7 +269,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			nextTextValues: [title, description]
 		});
 		let assignmentRecipientUserIds: string[] = [];
-
 		if (hasAssigneeInput) {
 			const { addedActorIds } = await syncTaskAssignees({
 				supabase,
@@ -354,7 +277,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				assigneeActorIds,
 				assignedByActorId: actorId
 			});
-
 			const { recipientUserIds } = await notifyTaskAssignmentAdded({
 				supabase,
 				projectId: project_id,
@@ -368,7 +290,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 			assignmentRecipientUserIds = recipientUserIds;
 		}
-
 		await notifyEntityMentionsAdded({
 			supabase,
 			projectId: project_id,
@@ -381,7 +302,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			mentionedUserIds: mentionUserIds,
 			skipUserIds: assignmentRecipientUserIds
 		});
-
 		// Create or update linked events when task is scheduled
 		try {
 			const taskEventSync = new TaskEventSyncService(supabase);
@@ -389,7 +309,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		} catch (eventError) {
 			console.warn('[Task Create] Failed to sync task events:', eventError);
 		}
-
 		// Log activity async (non-blocking)
 		logCreateAsync(
 			supabase,
@@ -401,7 +320,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			getChangeSourceFromRequest(request),
 			chatSessionId
 		);
-
 		if (classificationSource === 'create_modal') {
 			void classifyOntologyEntity({
 				entityType: 'task',
@@ -412,7 +330,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				if (dev) console.warn('[Task Create] Classification failed:', err);
 			});
 		}
-
 		let taskWithAssignees = { ...task, assignees: [] as unknown[] };
 		try {
 			const assigneeMap = await fetchTaskAssigneesMap({ supabase, taskIds: [task.id] });
@@ -420,7 +337,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		} catch (assigneeError) {
 			console.warn('[Task Create] Failed to enrich assignees in response:', assigneeError);
 		}
-
 		return ApiResponse.created({ task: taskWithAssignees });
 	} catch (error) {
 		if (error instanceof TaskAssignmentValidationError) {

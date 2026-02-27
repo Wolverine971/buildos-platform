@@ -106,6 +106,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const description = body?.description as string | undefined;
 	const colorId = body?.colorId as GoogleColorId | undefined;
 	const timeZone = body?.timeZone as string | undefined;
+	const calendarId =
+		(body?.calendarId as string | undefined) || (body?.calendar_id as string | undefined);
 
 	const oAuthService = new GoogleOAuthService(locals.supabase);
 	const status = await oAuthService.safeGetCalendarStatus(access.userId);
@@ -120,7 +122,8 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		name,
 		description,
 		colorId,
-		timeZone
+		timeZone,
+		calendarId
 	});
 };
 

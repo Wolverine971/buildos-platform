@@ -50,7 +50,7 @@ const TOOL_DISCOVERY_GUIDE = [
 	'- When you call tool_exec, pass op and args exactly as described by tool_help.',
 	'- For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.',
 	'- Project context events are time-boxed to the last 7 days and next 14 days (UTC).',
-	'- To inspect events outside that context window, call cal.event.list with args.timeMin and args.timeMax.',
+	'- To inspect events outside that context window, call cal.event.list with args.timeMin/args.timeMax (or args.time_min/args.time_max), and use limit/offset for paging.',
 	'- Project context data may include context_meta.entity_scopes with returned/total_matching/limit/is_complete values per entity.',
 	'- context_meta may include generated_at/source/cache_age_seconds to describe snapshot freshness.',
 	'- If a scope is incomplete and the user asks for "all" items or older history, run targeted list/search/tree tools to fetch missing data before answering.',

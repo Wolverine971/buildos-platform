@@ -692,19 +692,6 @@ export class CalendarService {
 				recurrence_ends: overrideEnds
 			} = params;
 
-			const { data: actorId, error: actorError } = await this.supabase.rpc(
-				'ensure_actor_for_user',
-				{
-					p_user_id: userId
-				}
-			);
-
-			if (actorError || !actorId) {
-				throw new Error(
-					`Failed to resolve actor: ${actorError?.message || 'unknown error'}`
-				);
-			}
-
 			// Get task details
 			const { data: taskRecord, error: taskError } = await this.supabase
 				.from('onto_tasks')
@@ -712,10 +699,9 @@ export class CalendarService {
 					`
 					*,
 					project:onto_projects(id, name)
-				`
+					`
 				)
 				.eq('id', task_id)
-				.eq('created_by', actorId)
 				.is('deleted_at', null)
 				.single();
 
@@ -1001,21 +987,15 @@ export class CalendarService {
 
 					if (taskEvent?.task_id) {
 						taskIdForLink = taskEvent.task_id;
-						const { data: actorId } = await this.supabase.rpc('ensure_actor_for_user', {
-							p_user_id: userId
-						});
-						if (actorId) {
-							const { data: taskDetails } = await this.supabase
-								.from('onto_tasks')
-								.select('project_id')
-								.eq('id', taskEvent.task_id)
-								.eq('created_by', actorId)
-								.is('deleted_at', null)
-								.maybeSingle();
+						const { data: taskDetails } = await this.supabase
+							.from('onto_tasks')
+							.select('project_id')
+							.eq('id', taskEvent.task_id)
+							.is('deleted_at', null)
+							.maybeSingle();
 
-							if (taskDetails?.project_id) {
-								projectIdForLink = taskDetails.project_id;
-							}
+						if (taskDetails?.project_id) {
+							projectIdForLink = taskDetails.project_id;
 						}
 					}
 				} catch (fetchError) {

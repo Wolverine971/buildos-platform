@@ -21,8 +21,18 @@ export type FastAgentStreamRequest = {
 	lastTurnContext?: LastTurnContext | null;
 	last_turn_context?: LastTurnContext | null;
 	stream_run_id?: string | number;
+	client_turn_id?: string;
 	voiceNoteGroupId?: string;
 	voice_note_group_id?: string;
+};
+
+export type FastAgentCancelReason = 'user_cancelled' | 'superseded';
+
+export type FastAgentCancelRequest = {
+	stream_run_id: string | number;
+	reason: FastAgentCancelReason;
+	session_id?: string;
+	client_turn_id?: string;
 };
 
 export type FastAgentStreamUsage = {

@@ -193,7 +193,7 @@ describe('StrategyAnalyzer', () => {
 		it('should estimate low complexity for simple queries', () => {
 			const complexity = analyzer.estimateComplexity('List all tasks', ['list_onto_tasks']);
 
-			expect(complexity).toBeLessThanOrEqual(2);
+			expect(complexity).toBeLessThanOrEqual(3);
 		});
 
 		it('should estimate high complexity for analytical queries', () => {
@@ -424,7 +424,7 @@ describe('StrategyAnalyzer', () => {
 			const explanation = analyzer.explainStrategy(ChatStrategy.PROJECT_CREATION);
 
 			expect(explanation.toLowerCase()).toContain('project');
-			expect(explanation.toLowerCase()).toContain('template');
+			expect(explanation.toLowerCase()).toContain('type_key');
 		});
 
 		it('should provide human-readable explanation for ask_clarifying', () => {

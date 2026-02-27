@@ -90,6 +90,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	usage?: FastAgentStreamUsage;
 	finishedReason?: string;
 	toolExecutions?: FastToolExecution[];
+	cancelled?: boolean;
 }> {
 	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
 		params;
@@ -235,6 +236,18 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const repetitionLimit = gatewayModeActive ? 3 : 4;
 	let docOrganizationRecoveryAttempted = false;
 	const pendingRepairInstructions: string[] = [];
+	const isAbortLikeError = (error: unknown): boolean => {
+		if (!error || typeof error !== 'object') return false;
+		const maybeError = error as { name?: string; message?: string };
+		const name = maybeError.name?.toLowerCase() ?? '';
+		const message = maybeError.message?.toLowerCase() ?? '';
+		return (
+			name === 'aborterror' ||
+			message.includes('aborted') ||
+			message.includes('request aborted') ||
+			message.includes('stream closed')
+		);
+	};
 
 	const markToolLimitReached = (kind: 'round' | 'call' | 'repetition'): void => {
 		if (toolLimitNotice) return;
@@ -446,387 +459,411 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		return projectListSucceeded || taskListSucceeded;
 	};
 
-	while (true) {
-		if (signal?.aborted) {
-			throw new Error('Request aborted');
-		}
-
-		let assistantBuffer = '';
-		const pendingToolCalls: ChatToolCall[] = [];
-		const llmPassMeta: LLMStreamPassMetadata = {
-			pass: llmStreamPasses.length + 1
-		};
-		let llmDoneReceived = false;
-
-		for await (const event of llm.streamText({
-			messages,
-			tools: hasTools ? tools : undefined,
-			tool_choice: hasTools ? 'auto' : undefined,
-			temperature: hasTools ? 0.2 : undefined,
-			userId,
-			sessionId,
-			chatSessionId: sessionId,
-			profile: 'balanced',
-			operationType: 'agentic_chat_v2_stream',
-			contextType: normalizedContext,
-			entityId: entityId ?? undefined,
-			projectId: params.projectId ?? undefined,
-			signal
-		})) {
-			if (event.type === 'text' && event.content) {
-				assistantBuffer += event.content;
-				assistantText += event.content;
-				await onDelta(event.content);
-			} else if (event.type === 'tool_call' && event.tool_call) {
-				const normalizedToolCall = normalizeToolCallDefaults(event.tool_call);
-				pendingToolCalls.push(normalizedToolCall);
-				if (params.onToolCall) {
-					await params.onToolCall(normalizedToolCall);
-				}
-			} else if (event.type === 'done') {
-				llmDoneReceived = true;
-				if (event.usage) {
-					if (!usage) {
-						usage = { ...event.usage };
-					} else {
-						if (event.usage.total_tokens !== undefined) {
-							usage.total_tokens =
-								(usage.total_tokens ?? 0) + (event.usage.total_tokens ?? 0);
-						}
-						if (event.usage.prompt_tokens !== undefined) {
-							usage.prompt_tokens =
-								(usage.prompt_tokens ?? 0) + (event.usage.prompt_tokens ?? 0);
-						}
-						if (event.usage.completion_tokens !== undefined) {
-							usage.completion_tokens =
-								(usage.completion_tokens ?? 0) +
-								(event.usage.completion_tokens ?? 0);
-						}
-					}
-
-					if (typeof event.usage.prompt_tokens === 'number') {
-						llmPassMeta.promptTokens = event.usage.prompt_tokens;
-					}
-					if (typeof event.usage.completion_tokens === 'number') {
-						llmPassMeta.completionTokens = event.usage.completion_tokens;
-					}
-					if (typeof event.usage.total_tokens === 'number') {
-						llmPassMeta.totalTokens = event.usage.total_tokens;
-					}
-					const usageRecord = event.usage as Record<string, unknown>;
-					const completionTokenDetails =
-						usageRecord.completion_tokens_details &&
-						typeof usageRecord.completion_tokens_details === 'object'
-							? (usageRecord.completion_tokens_details as Record<string, unknown>)
-							: null;
-					const usageReasoningTokens =
-						completionTokenDetails &&
-						typeof completionTokenDetails.reasoning_tokens === 'number'
-							? completionTokenDetails.reasoning_tokens
-							: undefined;
-					if (typeof usageReasoningTokens === 'number') {
-						llmPassMeta.reasoningTokens = usageReasoningTokens;
-					}
-				}
-				finishedReason = event.finished_reason ?? finishedReason;
-				llmPassMeta.finishedReason = event.finished_reason ?? llmPassMeta.finishedReason;
-				const eventRecord = event as Record<string, unknown>;
-				const model = readStringMeta(eventRecord.model);
-				const provider = readStringMeta(eventRecord.provider);
-				const requestId =
-					readStringMeta(eventRecord.request_id) ?? readStringMeta(eventRecord.requestId);
-				const systemFingerprint =
-					readStringMeta(eventRecord.system_fingerprint) ??
-					readStringMeta(eventRecord.systemFingerprint);
-				const cacheStatus =
-					readStringMeta(eventRecord.cache_status) ??
-					readStringMeta(eventRecord.cacheStatus);
-				const reasoningTokens =
-					readNumberMeta(eventRecord.reasoning_tokens) ??
-					readNumberMeta(eventRecord.reasoningTokens);
-
-				if (model) llmPassMeta.model = model;
-				if (provider) llmPassMeta.provider = provider;
-				if (requestId) llmPassMeta.requestId = requestId;
-				if (systemFingerprint) llmPassMeta.systemFingerprint = systemFingerprint;
-				if (cacheStatus) llmPassMeta.cacheStatus = cacheStatus;
-				if (typeof reasoningTokens === 'number') {
-					llmPassMeta.reasoningTokens = reasoningTokens;
-				}
-			} else if (event.type === 'error') {
-				throw new Error(event.error || 'LLM stream error');
+	try {
+		while (true) {
+			if (signal?.aborted) {
+				throw new Error('Request aborted');
 			}
-		}
-		if (llmDoneReceived) {
-			llmStreamPasses.push(llmPassMeta);
-		}
 
-		if (pendingToolCalls.length === 0) {
-			break;
-		}
+			let assistantBuffer = '';
+			const pendingToolCalls: ChatToolCall[] = [];
+			const llmPassMeta: LLMStreamPassMetadata = {
+				pass: llmStreamPasses.length + 1
+			};
+			let llmDoneReceived = false;
 
-		if (!params.toolExecutor) {
-			throw new Error('Tool executor is not configured');
-		}
+			for await (const event of llm.streamText({
+				messages,
+				tools: hasTools ? tools : undefined,
+				tool_choice: hasTools ? 'auto' : undefined,
+				temperature: hasTools ? 0.2 : undefined,
+				userId,
+				sessionId,
+				chatSessionId: sessionId,
+				profile: 'balanced',
+				operationType: 'agentic_chat_v2_stream',
+				contextType: normalizedContext,
+				entityId: entityId ?? undefined,
+				projectId: params.projectId ?? undefined,
+				signal
+			})) {
+				if (event.type === 'text' && event.content) {
+					assistantBuffer += event.content;
+					assistantText += event.content;
+					await onDelta(event.content);
+				} else if (event.type === 'tool_call' && event.tool_call) {
+					const normalizedToolCall = normalizeToolCallDefaults(event.tool_call);
+					pendingToolCalls.push(normalizedToolCall);
+					if (params.onToolCall) {
+						await params.onToolCall(normalizedToolCall);
+					}
+				} else if (event.type === 'done') {
+					llmDoneReceived = true;
+					if (event.usage) {
+						if (!usage) {
+							usage = { ...event.usage };
+						} else {
+							if (event.usage.total_tokens !== undefined) {
+								usage.total_tokens =
+									(usage.total_tokens ?? 0) + (event.usage.total_tokens ?? 0);
+							}
+							if (event.usage.prompt_tokens !== undefined) {
+								usage.prompt_tokens =
+									(usage.prompt_tokens ?? 0) + (event.usage.prompt_tokens ?? 0);
+							}
+							if (event.usage.completion_tokens !== undefined) {
+								usage.completion_tokens =
+									(usage.completion_tokens ?? 0) +
+									(event.usage.completion_tokens ?? 0);
+							}
+						}
 
-		toolRounds += 1;
-		if (toolRounds > maxToolRounds) {
-			markToolLimitReached('round');
-			break;
-		}
+						if (typeof event.usage.prompt_tokens === 'number') {
+							llmPassMeta.promptTokens = event.usage.prompt_tokens;
+						}
+						if (typeof event.usage.completion_tokens === 'number') {
+							llmPassMeta.completionTokens = event.usage.completion_tokens;
+						}
+						if (typeof event.usage.total_tokens === 'number') {
+							llmPassMeta.totalTokens = event.usage.total_tokens;
+						}
+						const usageRecord = event.usage as Record<string, unknown>;
+						const completionTokenDetails =
+							usageRecord.completion_tokens_details &&
+							typeof usageRecord.completion_tokens_details === 'object'
+								? (usageRecord.completion_tokens_details as Record<string, unknown>)
+								: null;
+						const usageReasoningTokens =
+							completionTokenDetails &&
+							typeof completionTokenDetails.reasoning_tokens === 'number'
+								? completionTokenDetails.reasoning_tokens
+								: undefined;
+						if (typeof usageReasoningTokens === 'number') {
+							llmPassMeta.reasoningTokens = usageReasoningTokens;
+						}
+					}
+					finishedReason = event.finished_reason ?? finishedReason;
+					llmPassMeta.finishedReason =
+						event.finished_reason ?? llmPassMeta.finishedReason;
+					const eventRecord = event as Record<string, unknown>;
+					const model = readStringMeta(eventRecord.model);
+					const provider = readStringMeta(eventRecord.provider);
+					const requestId =
+						readStringMeta(eventRecord.request_id) ??
+						readStringMeta(eventRecord.requestId);
+					const systemFingerprint =
+						readStringMeta(eventRecord.system_fingerprint) ??
+						readStringMeta(eventRecord.systemFingerprint);
+					const cacheStatus =
+						readStringMeta(eventRecord.cache_status) ??
+						readStringMeta(eventRecord.cacheStatus);
+					const reasoningTokens =
+						readNumberMeta(eventRecord.reasoning_tokens) ??
+						readNumberMeta(eventRecord.reasoningTokens);
 
-		const replayToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
-		messages.push({
-			role: 'assistant',
-			content: assistantBuffer,
-			tool_calls: replayToolCalls
-		});
-
-		for (const toolCall of pendingToolCalls) {
-			const anomaly = inspectToolArgumentAnomaly(toolCall);
-			if (anomaly) {
-				logToolArgumentAnomaly({
-					sessionId,
-					anomaly
-				});
+					if (model) llmPassMeta.model = model;
+					if (provider) llmPassMeta.provider = provider;
+					if (requestId) llmPassMeta.requestId = requestId;
+					if (systemFingerprint) llmPassMeta.systemFingerprint = systemFingerprint;
+					if (cacheStatus) llmPassMeta.cacheStatus = cacheStatus;
+					if (typeof reasoningTokens === 'number') {
+						llmPassMeta.reasoningTokens = reasoningTokens;
+					}
+				} else if (event.type === 'error') {
+					throw new Error(event.error || 'LLM stream error');
+				}
 			}
-		}
+			if (llmDoneReceived) {
+				llmStreamPasses.push(llmPassMeta);
+			}
 
-		const validationIssues = validateToolCalls(pendingToolCalls, tools);
-		if (validationIssues.length > 0) {
-			consecutiveValidationIssueRounds += 1;
-			const validationIssueByToolCallId = new Map(
-				validationIssues.map((issue) => [issue.toolCall.id, issue])
-			);
+			if (pendingToolCalls.length === 0) {
+				break;
+			}
+
+			if (!params.toolExecutor) {
+				throw new Error('Tool executor is not configured');
+			}
+
+			toolRounds += 1;
+			if (toolRounds > maxToolRounds) {
+				markToolLimitReached('round');
+				break;
+			}
+
+			const replayToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
+			messages.push({
+				role: 'assistant',
+				content: assistantBuffer,
+				tool_calls: replayToolCalls
+			});
+
 			for (const toolCall of pendingToolCalls) {
-				const validationIssue = validationIssueByToolCallId.get(toolCall.id);
-				const errorMessage = validationIssue
-					? `Tool validation failed: ${validationIssue.errors.join(' ')}`
-					: 'Tool call skipped because another tool call in the same response failed validation. Re-emit corrected tool calls only.';
-				const result: ChatToolResult = {
-					tool_call_id: toolCall.id,
-					result: null,
-					success: false,
-					error: errorMessage
-				};
+				const anomaly = inspectToolArgumentAnomaly(toolCall);
+				if (anomaly) {
+					logToolArgumentAnomaly({
+						sessionId,
+						anomaly
+					});
+				}
+			}
 
-				toolExecutions.push({ toolCall, result });
+			const validationIssues = validateToolCalls(pendingToolCalls, tools);
+			if (validationIssues.length > 0) {
+				consecutiveValidationIssueRounds += 1;
+				const validationIssueByToolCallId = new Map(
+					validationIssues.map((issue) => [issue.toolCall.id, issue])
+				);
+				for (const toolCall of pendingToolCalls) {
+					const validationIssue = validationIssueByToolCallId.get(toolCall.id);
+					const errorMessage = validationIssue
+						? `Tool validation failed: ${validationIssue.errors.join(' ')}`
+						: 'Tool call skipped because another tool call in the same response failed validation. Re-emit corrected tool calls only.';
+					const result: ChatToolResult = {
+						tool_call_id: toolCall.id,
+						result: null,
+						success: false,
+						error: errorMessage
+					};
+
+					toolExecutions.push({ toolCall, result });
+					if (params.onToolResult) {
+						try {
+							await params.onToolResult({ toolCall, result });
+						} catch {
+							// UI/logging callbacks must not crash tool orchestration.
+						}
+					}
+
+					messages.push({
+						role: 'tool',
+						content: JSON.stringify({ error: errorMessage }),
+						tool_call_id: toolCall.id
+					});
+				}
+
+				if (consecutiveValidationIssueRounds <= maxValidationRepairRounds) {
+					queueRepairInstruction(
+						buildToolValidationRepairInstruction(validationIssues, gatewayModeActive)
+					);
+					flushRepairInstructions();
+					continue;
+				}
+
+				markValidationLimitReached();
+				break;
+			}
+			consecutiveValidationIssueRounds = 0;
+
+			const executableToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
+			const roundExecutions: FastToolExecution[] = [];
+			for (let index = 0; index < pendingToolCalls.length; index += 1) {
+				const toolCall = executableToolCalls[index] ?? pendingToolCalls[index];
+				if (!toolCall) {
+					continue;
+				}
+				if (signal?.aborted) {
+					throw new Error('Request aborted');
+				}
+
+				toolCallsMade += 1;
+				if (toolCallsMade > maxToolCalls) {
+					markToolLimitReached('call');
+					break;
+				}
+
+				let result: ChatToolResult;
+				if (!allowedToolNames.has(toolCall.function.name)) {
+					result = {
+						tool_call_id: toolCall.id,
+						result: null,
+						success: false,
+						error: 'Tool not available in this context'
+					};
+				} else {
+					try {
+						result = await params.toolExecutor(toolCall);
+					} catch (error) {
+						const message =
+							error instanceof Error ? error.message : 'Tool execution failed';
+						result = {
+							tool_call_id: toolCall.id,
+							result: null,
+							success: false,
+							error: message
+						};
+					}
+				}
+
+				const execution: FastToolExecution = { toolCall, result };
+				toolExecutions.push(execution);
+				roundExecutions.push(execution);
 				if (params.onToolResult) {
 					try {
-						await params.onToolResult({ toolCall, result });
+						await params.onToolResult(execution);
 					} catch {
 						// UI/logging callbacks must not crash tool orchestration.
 					}
 				}
 
+				const toolPayload = buildToolPayloadForModel(toolCall, result);
 				messages.push({
 					role: 'tool',
-					content: JSON.stringify({ error: errorMessage }),
+					content: JSON.stringify(toolPayload),
 					tool_call_id: toolCall.id
 				});
 			}
 
-			if (consecutiveValidationIssueRounds <= maxValidationRepairRounds) {
-				queueRepairInstruction(
-					buildToolValidationRepairInstruction(validationIssues, gatewayModeActive)
-				);
+			const roundPattern = buildRoundToolPattern(pendingToolCalls);
+			const isRootHelpRound = isRootHelpOnlyRound(pendingToolCalls);
+			if (isRootHelpRound) {
+				rootHelpOnlyRoundCount += 1;
+			} else {
+				rootHelpOnlyRoundCount = 0;
+			}
+
+			if (roundPattern.hasWriteOps) {
+				hasWriteAttempt = true;
+				readOnlyRoundCount = 0;
+				lastReadOpSetKey = null;
+				repeatedReadOpSetCount = 0;
+			} else if (roundPattern.readOps.length > 0) {
+				readOnlyRoundCount += 1;
+				const readOpSetKey = roundPattern.readOps.join('|');
+				if (readOpSetKey && readOpSetKey === lastReadOpSetKey) {
+					repeatedReadOpSetCount += 1;
+				} else if (readOpSetKey) {
+					repeatedReadOpSetCount = 1;
+					lastReadOpSetKey = readOpSetKey;
+				}
+			}
+
+			if (
+				gatewayModeActive &&
+				rootHelpOnlyRoundCount >= 2 &&
+				!rootHelpRecoveryInjected &&
+				!toolLimitNotice &&
+				!hasWriteAttempt
+			) {
+				const recovered = await attemptRootHelpListingRecovery();
+				queueRepairInstruction(buildRootHelpLoopRepairInstruction(recovered));
+				readLoopRepairInjected = true;
 				flushRepairInstructions();
+				if (toolLimitNotice) {
+					break;
+				}
 				continue;
 			}
 
-			markValidationLimitReached();
-			break;
-		}
-		consecutiveValidationIssueRounds = 0;
-
-		const executableToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
-		const roundExecutions: FastToolExecution[] = [];
-		for (let index = 0; index < pendingToolCalls.length; index += 1) {
-			const toolCall = executableToolCalls[index] ?? pendingToolCalls[index];
-			if (!toolCall) {
-				continue;
-			}
-			if (signal?.aborted) {
-				throw new Error('Request aborted');
+			if (
+				gatewayModeActive &&
+				!hasWriteAttempt &&
+				roundPattern.readOps.length > 0 &&
+				readOnlyRoundCount >= 2 &&
+				!readLoopRepairInjected
+			) {
+				queueRepairInstruction(buildReadLoopRepairInstruction(roundPattern.readOps));
+				readLoopRepairInjected = true;
 			}
 
-			toolCallsMade += 1;
-			if (toolCallsMade > maxToolCalls) {
-				markToolLimitReached('call');
+			if (
+				gatewayModeActive &&
+				!hasWriteAttempt &&
+				roundPattern.readOps.length > 0 &&
+				repeatedReadOpSetCount >= 3
+			) {
+				if (await attemptDocOrganizationRecovery()) {
+					break;
+				}
+				markToolLimitReached('repetition');
 				break;
 			}
 
-			let result: ChatToolResult;
-			if (!allowedToolNames.has(toolCall.function.name)) {
-				result = {
-					tool_call_id: toolCall.id,
-					result: null,
-					success: false,
-					error: 'Tool not available in this context'
-				};
-			} else {
-				try {
-					result = await params.toolExecutor(toolCall);
-				} catch (error) {
-					const message =
-						error instanceof Error ? error.message : 'Tool execution failed';
-					result = {
-						tool_call_id: toolCall.id,
-						result: null,
-						success: false,
-						error: message
-					};
+			const requiredFieldFailures = extractGatewayRequiredFieldFailures(roundExecutions);
+			if (hasDocumentOrganizationFailureSignal(requiredFieldFailures)) {
+				docOrganizationRecoveryEligible = true;
+			}
+			let maxRequiredFieldFailure: (GatewayRequiredFieldFailure & { count: number }) | null =
+				null;
+			for (const failure of requiredFieldFailures) {
+				const key = `${failure.op}|${failure.field}`;
+				const nextCount = (gatewayRequiredFieldFailureCounts.get(key) ?? 0) + 1;
+				gatewayRequiredFieldFailureCounts.set(key, nextCount);
+				if (!maxRequiredFieldFailure || nextCount > maxRequiredFieldFailure.count) {
+					maxRequiredFieldFailure = { ...failure, count: nextCount };
 				}
 			}
 
-			const execution: FastToolExecution = { toolCall, result };
-			toolExecutions.push(execution);
-			roundExecutions.push(execution);
-			if (params.onToolResult) {
-				try {
-					await params.onToolResult(execution);
-				} catch {
-					// UI/logging callbacks must not crash tool orchestration.
+			if (
+				gatewayModeActive &&
+				maxRequiredFieldFailure &&
+				maxRequiredFieldFailure.count >= 2 &&
+				!gatewaySchemaRepairInjected
+			) {
+				queueRepairInstruction(
+					buildGatewayRequiredFieldRepairInstruction(requiredFieldFailures)
+				);
+				gatewaySchemaRepairInjected = true;
+			}
+
+			if (
+				gatewayModeActive &&
+				maxRequiredFieldFailure &&
+				maxRequiredFieldFailure.count >= 2 &&
+				(await attemptDocOrganizationRecovery())
+			) {
+				break;
+			}
+
+			if (
+				gatewayModeActive &&
+				maxRequiredFieldFailure &&
+				maxRequiredFieldFailure.count >= 3
+			) {
+				if (await attemptDocOrganizationRecovery()) {
+					break;
 				}
+				markToolLimitReached('repetition');
+				break;
 			}
 
-			const toolPayload = buildToolPayloadForModel(toolCall, result);
-			messages.push({
-				role: 'tool',
-				content: JSON.stringify(toolPayload),
-				tool_call_id: toolCall.id
-			});
-		}
-
-		const roundPattern = buildRoundToolPattern(pendingToolCalls);
-		const isRootHelpRound = isRootHelpOnlyRound(pendingToolCalls);
-		if (isRootHelpRound) {
-			rootHelpOnlyRoundCount += 1;
-		} else {
-			rootHelpOnlyRoundCount = 0;
-		}
-
-		if (roundPattern.hasWriteOps) {
-			hasWriteAttempt = true;
-			readOnlyRoundCount = 0;
-			lastReadOpSetKey = null;
-			repeatedReadOpSetCount = 0;
-		} else if (roundPattern.readOps.length > 0) {
-			readOnlyRoundCount += 1;
-			const readOpSetKey = roundPattern.readOps.join('|');
-			if (readOpSetKey && readOpSetKey === lastReadOpSetKey) {
-				repeatedReadOpSetCount += 1;
-			} else if (readOpSetKey) {
-				repeatedReadOpSetCount = 1;
-				lastReadOpSetKey = readOpSetKey;
+			const roundFingerprint = buildToolRoundFingerprint(roundExecutions);
+			if (roundFingerprint && roundFingerprint === lastRoundFingerprint) {
+				repeatedRoundCount += 1;
+			} else if (roundFingerprint) {
+				repeatedRoundCount = 1;
+				lastRoundFingerprint = roundFingerprint;
 			}
-		}
 
-		if (
-			gatewayModeActive &&
-			rootHelpOnlyRoundCount >= 2 &&
-			!rootHelpRecoveryInjected &&
-			!toolLimitNotice &&
-			!hasWriteAttempt
-		) {
-			const recovered = await attemptRootHelpListingRecovery();
-			queueRepairInstruction(buildRootHelpLoopRepairInstruction(recovered));
-			readLoopRepairInjected = true;
+			if (repeatedRoundCount >= repetitionLimit) {
+				if (await attemptDocOrganizationRecovery()) {
+					break;
+				}
+				markToolLimitReached('repetition');
+				break;
+			}
 			flushRepairInstructions();
+
 			if (toolLimitNotice) {
 				break;
 			}
-			continue;
 		}
-
-		if (
-			gatewayModeActive &&
-			!hasWriteAttempt &&
-			roundPattern.readOps.length > 0 &&
-			readOnlyRoundCount >= 2 &&
-			!readLoopRepairInjected
-		) {
-			queueRepairInstruction(buildReadLoopRepairInstruction(roundPattern.readOps));
-			readLoopRepairInjected = true;
-		}
-
-		if (
-			gatewayModeActive &&
-			!hasWriteAttempt &&
-			roundPattern.readOps.length > 0 &&
-			repeatedReadOpSetCount >= 3
-		) {
-			if (await attemptDocOrganizationRecovery()) {
-				break;
+	} catch (error) {
+		if (signal?.aborted || isAbortLikeError(error)) {
+			finishedReason = 'cancelled';
+			if (dev) {
+				appendRuntimeMetadataToPromptDump(promptDumpPath, {
+					llmPasses: llmStreamPasses,
+					finishedReason,
+					toolRounds,
+					toolCallsMade,
+					toolExecutions,
+					cancelled: true
+				});
 			}
-			markToolLimitReached('repetition');
-			break;
+			return { assistantText, usage, finishedReason, toolExecutions, cancelled: true };
 		}
-
-		const requiredFieldFailures = extractGatewayRequiredFieldFailures(roundExecutions);
-		if (hasDocumentOrganizationFailureSignal(requiredFieldFailures)) {
-			docOrganizationRecoveryEligible = true;
-		}
-		let maxRequiredFieldFailure: (GatewayRequiredFieldFailure & { count: number }) | null =
-			null;
-		for (const failure of requiredFieldFailures) {
-			const key = `${failure.op}|${failure.field}`;
-			const nextCount = (gatewayRequiredFieldFailureCounts.get(key) ?? 0) + 1;
-			gatewayRequiredFieldFailureCounts.set(key, nextCount);
-			if (!maxRequiredFieldFailure || nextCount > maxRequiredFieldFailure.count) {
-				maxRequiredFieldFailure = { ...failure, count: nextCount };
-			}
-		}
-
-		if (
-			gatewayModeActive &&
-			maxRequiredFieldFailure &&
-			maxRequiredFieldFailure.count >= 2 &&
-			!gatewaySchemaRepairInjected
-		) {
-			queueRepairInstruction(
-				buildGatewayRequiredFieldRepairInstruction(requiredFieldFailures)
-			);
-			gatewaySchemaRepairInjected = true;
-		}
-
-		if (
-			gatewayModeActive &&
-			maxRequiredFieldFailure &&
-			maxRequiredFieldFailure.count >= 2 &&
-			(await attemptDocOrganizationRecovery())
-		) {
-			break;
-		}
-
-		if (gatewayModeActive && maxRequiredFieldFailure && maxRequiredFieldFailure.count >= 3) {
-			if (await attemptDocOrganizationRecovery()) {
-				break;
-			}
-			markToolLimitReached('repetition');
-			break;
-		}
-
-		const roundFingerprint = buildToolRoundFingerprint(roundExecutions);
-		if (roundFingerprint && roundFingerprint === lastRoundFingerprint) {
-			repeatedRoundCount += 1;
-		} else if (roundFingerprint) {
-			repeatedRoundCount = 1;
-			lastRoundFingerprint = roundFingerprint;
-		}
-
-		if (repeatedRoundCount >= repetitionLimit) {
-			if (await attemptDocOrganizationRecovery()) {
-				break;
-			}
-			markToolLimitReached('repetition');
-			break;
-		}
-		flushRepairInstructions();
-
-		if (toolLimitNotice) {
-			break;
-		}
+		throw error;
 	}
 
 	if (toolLimitNotice) {
@@ -2255,6 +2292,7 @@ function appendRuntimeMetadataToPromptDump(
 		toolRounds: number;
 		toolCallsMade: number;
 		toolExecutions: FastToolExecution[];
+		cancelled?: boolean;
 	}
 ): void {
 	if (!promptDumpPath) return;
@@ -2288,6 +2326,9 @@ function appendRuntimeMetadataToPromptDump(
 		lines.push(
 			`Run summary: finished_reason=${params.finishedReason ?? 'unknown'}, tool_rounds=${params.toolRounds}, tool_calls=${params.toolCallsMade}`
 		);
+		if (params.cancelled) {
+			lines.push('Run summary: cancelled=true');
+		}
 		if (Array.isArray(params.toolExecutions) && params.toolExecutions.length > 0) {
 			lines.push('');
 			lines.push('────────────────────────────────────────');

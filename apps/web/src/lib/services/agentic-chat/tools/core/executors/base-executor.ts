@@ -125,7 +125,7 @@ export class BaseExecutor {
 			let errorMessage = `${response.status} ${response.statusText}`;
 			let errorDetails: any = null;
 
-			const contentType = response.headers.get('content-type');
+			const contentType = response.headers?.get?.('content-type');
 			if (contentType?.includes('application/json')) {
 				try {
 					const errorPayload = await response.json();
@@ -159,18 +159,33 @@ export class BaseExecutor {
 		}
 
 		// Validate Content-Type before parsing JSON response
-		const responseContentType = response.headers.get('content-type');
+		const responseContentType = response.headers?.get?.('content-type');
 		if (!responseContentType?.includes('application/json')) {
 			logger.warn('Response is not JSON', {
 				path,
 				contentType: responseContentType
 			});
-			const text = await response.text();
+
+			// Some test doubles and upstream proxies omit content-type but still return JSON.
 			try {
-				return JSON.parse(text);
+				if (typeof (response as any).json === 'function') {
+					const payload = await response.json();
+					return payload?.data ?? payload;
+				}
 			} catch {
-				return { data: text } as T;
+				// Fall through to text parsing
 			}
+
+			if (typeof (response as any).text === 'function') {
+				const text = await response.text();
+				try {
+					return JSON.parse(text);
+				} catch {
+					return { data: text } as T;
+				}
+			}
+
+			return {} as T;
 		}
 
 		const payload = await response.json();
@@ -180,6 +195,28 @@ export class BaseExecutor {
 	// ============================================
 	// OWNERSHIP ASSERTIONS
 	// ============================================
+
+	/**
+	 * Assert that the current user has project access at the required level.
+	 *
+	 * @param projectId - Project ID to check
+	 * @param requiredAccess - Access level required for the operation
+	 * @throws Error if project access is denied
+	 */
+	protected async assertProjectAccess(
+		projectId: string,
+		requiredAccess: 'read' | 'write' | 'admin' = 'write'
+	): Promise<void> {
+		const { data, error } = await this.supabase.rpc('current_actor_has_project_access', {
+			p_project_id: projectId,
+			p_required_access: requiredAccess
+		});
+
+		if (error) throw error;
+		if (!data) {
+			throw new Error('Project not found or access denied');
+		}
+	}
 
 	/**
 	 * Assert that the current user owns the specified project.

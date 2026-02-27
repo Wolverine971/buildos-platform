@@ -222,7 +222,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 
 	list_calendar_events: {
 		summary: 'List calendar events across Google Calendar and ontology events.',
-		capabilities: ['Supports time range filters', 'Merges Google + ontology events'],
+		capabilities: [
+			'Supports explicit time ranges (timeMin/timeMax or time_min/time_max)',
+			'Merges Google + ontology events',
+			'Supports pagination with limit/offset'
+		],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
 		category: 'read'
 	},

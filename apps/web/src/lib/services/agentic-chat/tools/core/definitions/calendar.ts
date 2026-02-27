@@ -12,21 +12,42 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'list_calendar_events',
-			description: `List calendar events for a time range. Merges Google Calendar events with ontology events and dedupes when possible.`,
+			description: `List calendar events for a time range. Merges Google Calendar events with ontology events and dedupes when possible. Use explicit time bounds to inspect future windows.`,
 			parameters: {
 				type: 'object',
 				properties: {
 					timeMin: {
 						type: 'string',
-						description: 'Start time (ISO 8601)'
+						description: 'Start time (ISO 8601 datetime or date-only). Alias: time_min.'
+					},
+					time_min: {
+						type: 'string',
+						description: 'Alias for timeMin.'
 					},
 					timeMax: {
 						type: 'string',
-						description: 'End time (ISO 8601)'
+						description: 'End time (ISO 8601 datetime or date-only). Alias: time_max.'
+					},
+					time_max: {
+						type: 'string',
+						description: 'Alias for timeMax.'
+					},
+					timezone: {
+						type: 'string',
+						description:
+							'Optional IANA timezone for date-only/naive datetime values (example: America/New_York).'
 					},
 					limit: {
 						type: 'number',
-						description: 'Maximum number of events to return'
+						description: 'Page size. Default 100, max 200.'
+					},
+					max_results: {
+						type: 'number',
+						description: 'Alias for limit.'
+					},
+					offset: {
+						type: 'number',
+						description: 'Zero-based pagination offset for merged results.'
 					},
 					calendar_scope: {
 						type: 'string',
@@ -268,6 +289,11 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					description: {
 						type: 'string',
 						description: 'Calendar description'
+					},
+					calendar_id: {
+						type: 'string',
+						description:
+							'Existing Google calendar id to link instead of creating a new calendar'
 					},
 					color_id: {
 						type: 'string',

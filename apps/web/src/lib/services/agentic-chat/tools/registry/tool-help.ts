@@ -226,6 +226,15 @@ function buildOpNotes(
 	properties: Record<string, JsonSchemaProperty>
 ): string[] {
 	const notes: string[] = [];
+	if (op === 'cal.event.list') {
+		notes.push(
+			'Prefer args.timeMin/timeMax (or args.time_min/time_max) to inspect an exact future/history window.'
+		);
+		notes.push(
+			'Use args.limit (or args.max_results) plus args.offset to page through long timelines.'
+		);
+	}
+
 	const updateMatch = op.match(/^onto\.([a-z_]+)\.update$/);
 	if (updateMatch) {
 		const idKey = `${updateMatch[1]}_id`;
@@ -262,6 +271,34 @@ function buildOpExamples(
 	required: string[],
 	properties: Record<string, JsonSchemaProperty>
 ): Array<Record<string, unknown>> {
+	if (op === 'cal.event.list') {
+		return [
+			{
+				description: 'List a specific future window',
+				tool_exec: {
+					op,
+					args: {
+						time_min: '2026-03-01',
+						time_max: '2026-04-01',
+						limit: 100
+					}
+				}
+			},
+			{
+				description: 'Page to the next chunk in the same window',
+				tool_exec: {
+					op,
+					args: {
+						time_min: '2026-03-01',
+						time_max: '2026-04-01',
+						limit: 100,
+						offset: 100
+					}
+				}
+			}
+		];
+	}
+
 	const examples: Array<Record<string, unknown>> = [
 		{
 			description: 'Minimal valid call',

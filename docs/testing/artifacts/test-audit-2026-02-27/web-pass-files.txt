@@ -1,0 +1,9 @@
+src/lib/tests/chat/progressive-flow.test.ts
+src/lib/services/ontology/project-graph-builder.test.ts
+src/routes/__tests__/authenticated-pages.test.ts
+src/lib/services/agentic-chat/persistence/agent-persistence-service.test.ts
+src/lib/services/agentic-chat/planning/plan-orchestrator.test.ts
+src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.test.ts
+src/lib/services/agentic-chat/synthesis/response-synthesizer.test.ts
+src/lib/services/agentic-chat/analysis/strategy-analyzer.test.ts
+src/lib/services/agentic-chat/tools/core/tool-executor.test.ts

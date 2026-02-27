@@ -4,7 +4,7 @@
 	import type { PageData } from './$types';
 	import type { ComponentType } from 'svelte';
 	import { format } from 'date-fns';
-	import { ArrowLeft, Calendar, Clock, Tag, ArrowRight } from 'lucide-svelte';
+	import { ArrowLeft, Calendar, Clock, Tag } from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -59,7 +59,7 @@
 				`../../../../content/blogs/${data.post.category}/${data.post.slug}.md`
 			);
 			contentComponent = module.default;
-		} catch (err) {
+		} catch (_err) {
 			error = 'Failed to load blog content';
 		} finally {
 			loading = false;
@@ -121,7 +121,7 @@
 	<meta name="robots" content="index, follow" />
 
 	<!-- JSON-LD Structured Data -->
-	{@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`}
+	{@html '<script type="application/ld+json">' + JSON.stringify(jsonLd) + '</script>'}
 </svelte:head>
 
 <div class="min-h-screen bg-background">

@@ -15,11 +15,19 @@ type CalendarScope = 'user' | 'project' | 'calendar_id';
 
 interface ListCalendarEventsArgs {
 	timeMin?: string;
+	time_min?: string;
 	timeMax?: string;
+	time_max?: string;
+	timezone?: string;
 	limit?: number;
+	max_results?: number;
+	offset?: number;
 	calendar_scope?: CalendarScope;
+	calendarScope?: CalendarScope;
 	project_id?: string;
+	projectId?: string;
 	calendar_id?: string;
+	calendarId?: string;
 }
 
 interface GetCalendarEventDetailsArgs {
@@ -69,9 +77,28 @@ interface ProjectCalendarArgs {
 	name?: string;
 	description?: string;
 	color_id?: string;
+	calendar_id?: string;
 	sync_enabled?: boolean;
 	action?: 'create' | 'update';
 }
+
+interface ResolvedListCalendarRange {
+	timeMin: string;
+	timeMax: string;
+	timezone: string;
+	defaultsApplied: {
+		timeMin: boolean;
+		timeMax: boolean;
+	};
+}
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_LIST_LOOKBACK_DAYS = 7;
+const DEFAULT_LIST_LOOKAHEAD_DAYS = 90;
+const DEFAULT_LIST_LIMIT = 100;
+const MAX_LIST_LIMIT = 200;
+const MAX_LIST_FETCH = 300;
+const MAX_LIST_OFFSET = 5000;
 
 export class CalendarExecutor extends BaseExecutor {
 	private readonly calendarService: CalendarService;
@@ -147,13 +174,110 @@ export class CalendarExecutor extends BaseExecutor {
 	private parseCalendarDateTime(
 		value: string,
 		timezone: string,
-		fieldName: 'start_at' | 'end_at',
+		fieldName: string,
 		dateBoundary: 'start' | 'end'
 	): NormalizedCalendarDateTime {
 		return normalizeCalendarDateTimeInput(value, timezone, {
 			fieldName,
 			dateBoundary
 		});
+	}
+
+	private getStringArg(...values: unknown[]): string | undefined {
+		for (const value of values) {
+			if (typeof value !== 'string') continue;
+			const trimmed = value.trim();
+			if (trimmed.length > 0) {
+				return trimmed;
+			}
+		}
+		return undefined;
+	}
+
+	private getNumericArg(...values: unknown[]): number | undefined {
+		for (const value of values) {
+			if (typeof value === 'number' && Number.isFinite(value)) {
+				return value;
+			}
+			if (typeof value === 'string') {
+				const trimmed = value.trim();
+				if (!trimmed) continue;
+				const parsed = Number(trimmed);
+				if (Number.isFinite(parsed)) {
+					return parsed;
+				}
+			}
+		}
+		return undefined;
+	}
+
+	private normalizeListCalendarScope(rawScope: unknown, fallback: CalendarScope): CalendarScope {
+		if (typeof rawScope !== 'string') {
+			return fallback;
+		}
+
+		const normalized = rawScope.trim();
+		if (!normalized) {
+			return fallback;
+		}
+		if (normalized === 'user' || normalized === 'project' || normalized === 'calendar_id') {
+			return normalized;
+		}
+		throw new Error('calendar_scope must be one of: user, project, calendar_id');
+	}
+
+	private normalizeListLimit(rawLimit: number | undefined): number {
+		if (rawLimit === undefined) {
+			return DEFAULT_LIST_LIMIT;
+		}
+		return Math.min(Math.max(Math.floor(rawLimit), 1), MAX_LIST_LIMIT);
+	}
+
+	private normalizeListOffset(rawOffset: number | undefined): number {
+		if (rawOffset === undefined) {
+			return 0;
+		}
+		return Math.min(Math.max(Math.floor(rawOffset), 0), MAX_LIST_OFFSET);
+	}
+
+	private async resolveListCalendarRange(
+		args: ListCalendarEventsArgs
+	): Promise<ResolvedListCalendarRange> {
+		const timezone = await this.resolveInputTimezone(args.timezone);
+		const rawTimeMin = this.getStringArg(args.timeMin, args.time_min);
+		const rawTimeMax = this.getStringArg(args.timeMax, args.time_max);
+		const defaultsApplied = {
+			timeMin: false,
+			timeMax: false
+		};
+
+		let timeMin = rawTimeMin
+			? this.parseCalendarDateTime(rawTimeMin, timezone, 'timeMin', 'start').iso
+			: null;
+		let timeMax = rawTimeMax
+			? this.parseCalendarDateTime(rawTimeMax, timezone, 'timeMax', 'end').iso
+			: null;
+
+		const now = Date.now();
+		if (!timeMin) {
+			defaultsApplied.timeMin = true;
+			timeMin = new Date(now - DEFAULT_LIST_LOOKBACK_DAYS * DAY_IN_MS).toISOString();
+		}
+		if (!timeMax) {
+			defaultsApplied.timeMax = true;
+			timeMax = new Date(now + DEFAULT_LIST_LOOKAHEAD_DAYS * DAY_IN_MS).toISOString();
+		}
+
+		if (Date.parse(timeMax) < Date.parse(timeMin)) {
+			throw new Error('timeMax/time_max must be after timeMin/time_min');
+		}
+
+		return {
+			timeMin,
+			timeMax,
+			timezone,
+			defaultsApplied
+		};
 	}
 
 	private async resolveTaskMetadata(
@@ -184,7 +308,7 @@ export class CalendarExecutor extends BaseExecutor {
 			throw new Error('Task does not belong to the specified project');
 		}
 
-		await this.assertProjectOwnership(task.project_id);
+		await this.assertProjectAccess(task.project_id, 'write');
 
 		const taskTitle = task.title ?? 'Task';
 		return {
@@ -214,26 +338,35 @@ export class CalendarExecutor extends BaseExecutor {
 	}
 
 	async listCalendarEvents(args: ListCalendarEventsArgs) {
-		const scope = args.calendar_scope ?? (args.project_id ? 'project' : 'user');
-		const timeMin = args.timeMin ?? undefined;
-		const timeMax = args.timeMax ?? undefined;
-		const limit = args.limit ?? 50;
+		const projectId = this.getStringArg(args.project_id, args.projectId);
+		const requestedScope = this.getStringArg(args.calendar_scope, args.calendarScope);
+		const scope = this.normalizeListCalendarScope(
+			requestedScope,
+			projectId ? 'project' : 'user'
+		);
+		const { timeMin, timeMax, timezone, defaultsApplied } =
+			await this.resolveListCalendarRange(args);
+		const limit = this.normalizeListLimit(this.getNumericArg(args.limit, args.max_results));
+		const offset = this.normalizeListOffset(this.getNumericArg(args.offset));
+		const fetchLimit = Math.min(limit + offset, MAX_LIST_FETCH);
 
 		let googleEvents: CalendarEvent[] = [];
 		let googleError: string | null = null;
 		let googleCalendarId: string | null = null;
-		const requestedCalendarId = this.normalizeCalendarId(args.calendar_id);
+		const requestedCalendarId = this.normalizeCalendarId(
+			this.getStringArg(args.calendar_id, args.calendarId)
+		);
 
 		if (scope === 'project') {
-			if (!args.project_id) {
+			if (!projectId) {
 				throw new Error('project_id is required when calendar_scope is project');
 			}
-			await this.assertProjectOwnership(args.project_id);
+			await this.assertProjectAccess(projectId, 'read');
 
 			const { data: projectCalendar } = await this.supabase
 				.from('project_calendars')
 				.select('id, calendar_id, sync_enabled')
-				.eq('project_id', args.project_id)
+				.eq('project_id', projectId)
 				.eq('user_id', this.userId)
 				.maybeSingle();
 
@@ -255,7 +388,7 @@ export class CalendarExecutor extends BaseExecutor {
 					calendarId: googleCalendarId,
 					timeMin,
 					timeMax,
-					maxResults: limit
+					maxResults: fetchLimit
 				});
 				googleEvents = response.events ?? [];
 			} catch (error) {
@@ -265,12 +398,12 @@ export class CalendarExecutor extends BaseExecutor {
 		}
 
 		let ontoEvents: any[] = [];
-		if (scope === 'project' && args.project_id) {
-			ontoEvents = await this.eventSyncService.listProjectEvents(args.project_id, {
+		if (scope === 'project' && projectId) {
+			ontoEvents = await this.eventSyncService.listProjectEvents(projectId, {
 				timeMin,
 				timeMax,
 				includeDeleted: false,
-				limit
+				limit: fetchLimit
 			});
 		} else {
 			const actorId = await this.getActorId();
@@ -291,10 +424,10 @@ export class CalendarExecutor extends BaseExecutor {
 				.eq('created_by', actorId)
 				.is('deleted_at', null)
 				.order('start_at', { ascending: true })
-				.limit(limit);
+				.limit(fetchLimit);
 
-			if (args.project_id) {
-				query = query.eq('project_id', args.project_id);
+			if (projectId) {
+				query = query.eq('project_id', projectId);
 			}
 			if (timeMin) {
 				query = query.gte('start_at', timeMin);
@@ -431,11 +564,39 @@ export class CalendarExecutor extends BaseExecutor {
 			return aTime - bTime;
 		});
 
+		const totalAvailable = merged.length;
+		const pagedEvents = merged.slice(offset, offset + limit);
+		const warnings: string[] = [];
+		if (googleError) {
+			warnings.push(googleError);
+		}
+		if (defaultsApplied.timeMin || defaultsApplied.timeMax) {
+			warnings.push(
+				`Applied default event window (${DEFAULT_LIST_LOOKBACK_DAYS}d past, ${DEFAULT_LIST_LOOKAHEAD_DAYS}d future). Pass timeMin/timeMax or time_min/time_max for exact range control.`
+			);
+		}
+
 		return {
-			events: merged,
+			events: pagedEvents,
 			google_event_count: googleEvents.length,
 			ontology_event_count: ontoEvents.length,
-			warnings: googleError ? [googleError] : []
+			merged_event_count: totalAvailable,
+			pagination: {
+				offset,
+				limit,
+				returned: pagedEvents.length,
+				total_available: totalAvailable,
+				has_more: offset + limit < totalAvailable,
+				next_offset: offset + limit < totalAvailable ? offset + limit : null
+			},
+			queried_range: {
+				time_min: timeMin,
+				time_max: timeMax,
+				timezone,
+				default_time_min_applied: defaultsApplied.timeMin,
+				default_time_max_applied: defaultsApplied.timeMax
+			},
+			warnings
 		};
 	}
 
@@ -457,7 +618,7 @@ export class CalendarExecutor extends BaseExecutor {
 			if (!args.project_id) {
 				throw new Error('project_id is required for project calendar lookup');
 			}
-			await this.assertProjectOwnership(args.project_id);
+			await this.assertProjectAccess(args.project_id, 'read');
 			const { data: projectCalendar } = await this.supabase
 				.from('project_calendars')
 				.select('calendar_id')
@@ -543,7 +704,7 @@ export class CalendarExecutor extends BaseExecutor {
 		}
 
 		if (projectId) {
-			await this.assertProjectOwnership(projectId);
+			await this.assertProjectAccess(projectId, 'write');
 		}
 
 		const props = taskMetadata
@@ -775,7 +936,7 @@ export class CalendarExecutor extends BaseExecutor {
 	}
 
 	async getProjectCalendar(args: ProjectCalendarArgs) {
-		await this.assertProjectOwnership(args.project_id);
+		await this.assertProjectAccess(args.project_id, 'read');
 		const response = await this.projectCalendarService.getProjectCalendar(
 			args.project_id,
 			this.userId
@@ -788,7 +949,14 @@ export class CalendarExecutor extends BaseExecutor {
 	}
 
 	async setProjectCalendar(args: ProjectCalendarArgs) {
-		await this.assertProjectOwnership(args.project_id);
+		await this.assertProjectAccess(args.project_id, 'write');
+		const requestedCalendarId =
+			typeof args.calendar_id === 'string'
+				? (this.normalizeCalendarId(args.calendar_id) ?? undefined)
+				: undefined;
+		if (args.calendar_id && !requestedCalendarId) {
+			throw new Error('calendar_id must be a valid Google Calendar ID');
+		}
 
 		const { data: existing } = await this.supabase
 			.from('project_calendars')
@@ -808,7 +976,8 @@ export class CalendarExecutor extends BaseExecutor {
 				userId: this.userId,
 				name: args.name,
 				description: args.description,
-				colorId: args.color_id as any
+				colorId: args.color_id as any,
+				calendarId: requestedCalendarId
 			});
 
 			const payload = await response.json().catch(() => null);
