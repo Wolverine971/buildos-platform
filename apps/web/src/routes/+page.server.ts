@@ -71,8 +71,8 @@ export const load: PageServerLoad = async ({
 
 	// Skip expensive analytics for users still in onboarding only when they truly
 	// have no projects yet. Some existing users can have projects even with
-	// completed_onboarding=false and should still see dashboard project data.
-	if (!user.completed_onboarding) {
+	// onboarding_completed_at=null and should still see dashboard project data.
+	if (!user.onboarding_completed_at) {
 		const hasProjects = await measure('dashboard.preflight.has_projects', () =>
 			hasAnyProjects(supabase, user.id)
 		);

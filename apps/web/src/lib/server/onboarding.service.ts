@@ -135,12 +135,27 @@ export class OnboardingServerService {
 	 * Complete onboarding - simplified version
 	 */
 	async completeOnboarding(user: User): Promise<void> {
-		// Mark onboarding as complete
+		const completedAt = new Date().toISOString();
+
+		// Mark onboarding as complete on users table.
+		const { error: userError } = await this.supabase
+			.from('users')
+			.update({
+				onboarding_completed_at: completedAt
+			} as any)
+			.eq('id', user.id);
+
+		if (userError) {
+			console.error('Error completing onboarding (users):', userError);
+			throw new Error(`Failed to complete onboarding: ${userError.message}`);
+		}
+
+		// Keep user_context completion timestamp for backward compatibility.
 		const { error } = await this.supabase
 			.from('user_context')
 			.update({
-				onboarding_completed_at: new Date().toISOString(),
-				updated_at: new Date().toISOString()
+				onboarding_completed_at: completedAt,
+				updated_at: completedAt
 			})
 			.eq('user_id', user.id);
 
@@ -228,10 +243,9 @@ export class OnboardingServerService {
 		const { error: userError } = await this.supabase
 			.from('users')
 			.update({
-				completed_onboarding: true,
+				onboarding_completed_at: completedAt,
 				onboarding_intent: onboardingData.intent,
-				onboarding_stakes: onboardingData.stakes,
-				onboarding_v2_completed_at: completedAt
+				onboarding_stakes: onboardingData.stakes
 			})
 			.eq('id', userId);
 

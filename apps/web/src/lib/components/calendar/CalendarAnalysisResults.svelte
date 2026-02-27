@@ -8,9 +8,7 @@
 	import {
 		CheckCircle,
 		Circle,
-		AlertTriangle,
 		Calendar,
-		Users,
 		TrendingUp,
 		Edit2,
 		ChevronDown,
@@ -28,16 +26,31 @@
 		Database['public']['Tables']['calendar_project_suggestions']['Row'];
 
 	interface EventPatternsData {
-		executive_summary?: string;
 		start_date?: string;
 		end_date?: string;
 		tags?: string[];
-		slug?: string;
-		recurring?: boolean;
-		common_attendees?: string[];
-		add_to_existing?: boolean;
-		existing_project_id?: string;
-		deduplication_reasoning?: string;
+	}
+
+	interface SuggestionTaskView {
+		title: string;
+		description?: string;
+		details?: string;
+		status?: 'backlog' | 'in_progress' | 'done' | 'blocked';
+		priority?: 'low' | 'medium' | 'high' | 'urgent' | number;
+		task_type?: 'one_off' | 'recurring';
+		duration_minutes?: number;
+		start_date?: string;
+		recurrence_pattern?:
+			| 'daily'
+			| 'weekdays'
+			| 'weekly'
+			| 'biweekly'
+			| 'monthly'
+			| 'quarterly'
+			| 'yearly';
+		recurrence_ends?: string;
+		event_id?: string;
+		tags?: string[];
 	}
 
 	interface Props {
@@ -85,6 +98,81 @@
 	let editingTaskData = $state<SuggestedTask | null>(null);
 	let isTaskEditModalOpen = $state(false);
 
+	function parseSuggestedTasks(value: unknown): SuggestionTaskView[] {
+		if (!Array.isArray(value)) return [];
+
+		return value
+			.filter(
+				(task): task is Record<string, unknown> => typeof task === 'object' && task !== null
+			)
+			.map((task) => ({
+				title:
+					typeof task.title === 'string' && task.title.trim().length > 0
+						? task.title
+						: 'Untitled Task',
+				description: typeof task.description === 'string' ? task.description : undefined,
+				details: typeof task.details === 'string' ? task.details : undefined,
+				status:
+					task.status === 'backlog' ||
+					task.status === 'in_progress' ||
+					task.status === 'done' ||
+					task.status === 'blocked'
+						? task.status
+						: undefined,
+				priority:
+					task.priority === 'low' ||
+					task.priority === 'medium' ||
+					task.priority === 'high' ||
+					task.priority === 'urgent' ||
+					typeof task.priority === 'number'
+						? task.priority
+						: undefined,
+				task_type:
+					task.task_type === 'one_off' || task.task_type === 'recurring'
+						? task.task_type
+						: undefined,
+				duration_minutes:
+					typeof task.duration_minutes === 'number' ? task.duration_minutes : undefined,
+				start_date: typeof task.start_date === 'string' ? task.start_date : undefined,
+				recurrence_pattern:
+					task.recurrence_pattern === 'daily' ||
+					task.recurrence_pattern === 'weekdays' ||
+					task.recurrence_pattern === 'weekly' ||
+					task.recurrence_pattern === 'biweekly' ||
+					task.recurrence_pattern === 'monthly' ||
+					task.recurrence_pattern === 'quarterly' ||
+					task.recurrence_pattern === 'yearly'
+						? task.recurrence_pattern
+						: undefined,
+				recurrence_ends:
+					typeof task.recurrence_ends === 'string' ? task.recurrence_ends : undefined,
+				event_id: typeof task.event_id === 'string' ? task.event_id : undefined,
+				tags: Array.isArray(task.tags)
+					? task.tags.filter((tag): tag is string => typeof tag === 'string')
+					: undefined
+			}));
+	}
+
+	function toEditableTask(task: SuggestionTaskView): SuggestedTask {
+		return {
+			title: task.title,
+			description: task.description ?? '',
+			details: task.details,
+			status: task.status ?? 'backlog',
+			priority:
+				task.priority === 'low' || task.priority === 'medium' || task.priority === 'high'
+					? task.priority
+					: 'medium',
+			task_type: task.task_type ?? 'one_off',
+			duration_minutes: task.duration_minutes,
+			start_date: task.start_date,
+			recurrence_pattern: task.recurrence_pattern,
+			recurrence_ends: task.recurrence_ends,
+			event_id: task.event_id,
+			tags: task.tags
+		};
+	}
+
 	// Start analysis automatically if requested
 	$effect(() => {
 		if (!browser) return;
@@ -115,21 +203,19 @@
 		if (suggestions) {
 			const newEnabledTasks: Record<string, boolean> = {};
 			suggestions.forEach((suggestion) => {
-				const tasks = suggestion.suggested_tasks;
-				if (tasks && Array.isArray(tasks)) {
-					tasks.forEach((task, index) => {
-						const taskKey = `${suggestion.id}-${index}`;
-						// Enable all tasks by default - LLM should only generate future tasks
-						newEnabledTasks[taskKey] = true;
-					});
-				}
+				const tasks = parseSuggestedTasks(suggestion.suggested_tasks);
+				tasks.forEach((_, index) => {
+					const taskKey = `${suggestion.id}-${index}`;
+					// Enable all tasks by default - LLM should only generate future tasks
+					newEnabledTasks[taskKey] = true;
+				});
 			});
 			enabledTasks = newEnabledTasks;
 		}
 	});
 
 	// Helper functions for task management
-	function isTaskInPast(task: any): boolean {
+	function isTaskInPast(task: SuggestionTaskView): boolean {
 		if (!task.start_date) return false;
 		const taskDate = new Date(task.start_date);
 		const today = new Date();
@@ -148,11 +234,12 @@
 
 	function startEditingTask(suggestionId: string, taskIndex: number) {
 		const suggestion = suggestions.find((s) => s.id === suggestionId);
-		const task = suggestion?.suggested_tasks?.[taskIndex];
+		const tasks = parseSuggestedTasks(suggestion?.suggested_tasks);
+		const task = tasks[taskIndex];
 
 		if (task) {
 			editingTaskKey = `${suggestionId}-${taskIndex}`;
-			editingTaskData = { ...task } as SuggestedTask;
+			editingTaskData = toEditableTask(task);
 			isTaskEditModalOpen = true;
 		}
 	}
@@ -160,12 +247,29 @@
 	function handleTaskSave(updatedTask: SuggestedTask) {
 		if (!editingTaskKey) return;
 
-		const [suggestionId, indexStr] = editingTaskKey.split('-');
+		const separatorIndex = editingTaskKey.lastIndexOf('-');
+		if (separatorIndex <= 0) {
+			isTaskEditModalOpen = false;
+			editingTaskKey = null;
+			editingTaskData = null;
+			return;
+		}
+		const suggestionId = editingTaskKey.slice(0, separatorIndex);
+		const indexStr = editingTaskKey.slice(separatorIndex + 1);
 		const taskIndex = parseInt(indexStr, 10);
+		if (Number.isNaN(taskIndex)) {
+			isTaskEditModalOpen = false;
+			editingTaskKey = null;
+			editingTaskData = null;
+			return;
+		}
 
 		const suggestion = suggestions.find((s) => s.id === suggestionId);
-		if (suggestion && suggestion.suggested_tasks && Array.isArray(suggestion.suggested_tasks)) {
-			suggestion.suggested_tasks[taskIndex] = updatedTask;
+		if (suggestion) {
+			const tasks = parseSuggestedTasks(suggestion.suggested_tasks);
+			tasks[taskIndex] = updatedTask;
+			suggestion.suggested_tasks =
+				tasks as unknown as CalendarProjectSuggestion['suggested_tasks'];
 			suggestions = [...suggestions]; // Trigger reactivity
 			toastService.success('Task updated successfully');
 		}
@@ -259,11 +363,15 @@
 			const currentMods = modifiedSuggestions.get(id);
 			modifiedSuggestions.set(id, {
 				name:
-					currentMods?.name || suggestion.user_modified_name || suggestion.suggested_name,
+					currentMods?.name ??
+					suggestion.user_modified_name ??
+					suggestion.suggested_name ??
+					undefined,
 				description:
-					currentMods?.description ||
-					suggestion.user_modified_description ||
-					suggestion.suggested_description
+					currentMods?.description ??
+					suggestion.user_modified_description ??
+					suggestion.suggested_description ??
+					undefined
 			});
 			modifiedSuggestions = new Map(modifiedSuggestions); // Trigger reactivity
 		}
@@ -292,17 +400,16 @@
 				const taskSelections: Record<string, boolean> = {};
 				let selectedTaskCount = 0;
 
-				if (s.suggested_tasks && Array.isArray(s.suggested_tasks)) {
-					s.suggested_tasks.forEach((_, index) => {
-						const taskKey = `${s.id}-${index}`;
-						const isSelected = enabledTasks[taskKey] ?? true;
-						taskSelections[taskKey] = isSelected;
+				const tasks = parseSuggestedTasks(s.suggested_tasks);
+				tasks.forEach((_, index) => {
+					const taskKey = `${s.id}-${index}`;
+					const isSelected = enabledTasks[taskKey] ?? true;
+					taskSelections[taskKey] = isSelected;
 
-						if (isSelected) {
-							selectedTaskCount++;
-						}
-					});
-				}
+					if (isSelected) {
+						selectedTaskCount++;
+					}
+				});
 
 				return {
 					suggestionId: s.id,
@@ -562,7 +669,7 @@
 					{@const isEditing = editingSuggestion === suggestion.id}
 					{@const confidence = suggestion.confidence_score || 0}
 					{@const modifications = modifiedSuggestions.get(suggestion.id)}
-					{@const tasks = suggestion.suggested_tasks}
+					{@const tasks = parseSuggestedTasks(suggestion.suggested_tasks)}
 					{@const patterns = suggestion.event_patterns as EventPatternsData | null}
 
 					<div
@@ -615,25 +722,6 @@
 												{modifications?.description ||
 													suggestion.suggested_description}
 											</p>
-
-											<!-- Deduplication Notice -->
-											{#if patterns?.add_to_existing && patterns?.existing_project_id}
-												<div
-													class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800/50"
-												>
-													<p
-														class="text-sm text-blue-700 dark:text-blue-300 font-medium"
-													>
-														💡 Matches existing project
-													</p>
-													<p
-														class="text-xs text-blue-600 dark:text-blue-400 mt-1"
-													>
-														{patterns.deduplication_reasoning ||
-															'Tasks will be added to your existing project instead of creating a duplicate.'}
-													</p>
-												</div>
-											{/if}
 										{/if}
 									</div>
 
@@ -664,20 +752,6 @@
 											{tasks.length} suggested task{tasks.length !== 1
 												? 's'
 												: ''}
-										</span>
-									{/if}
-
-									{#if patterns && patterns?.recurring}
-										<span class="flex items-center gap-1.5">
-											<TrendingUp class="w-4 h-4" />
-											Recurring
-										</span>
-									{/if}
-
-									{#if patterns && patterns?.common_attendees?.length}
-										<span class="flex items-center gap-1.5">
-											<Users class="w-4 h-4" />
-											{patterns.common_attendees.length} people
 										</span>
 									{/if}
 								</div>
@@ -712,8 +786,6 @@
 											{#each tasks as task, index}
 												{@const taskKey = `${suggestion.id}-${index}`}
 												{@const isPastTask = isTaskInPast(task)}
-												{@const isTaskEnabled =
-													enabledTasks[taskKey] ?? true}
 
 												<div
 													class="p-3 rounded transition-all duration-200 {isPastTask
@@ -960,23 +1032,6 @@
 											>
 												{suggestion.ai_reasoning}
 											</p>
-
-											{#if patterns && patterns?.executive_summary}
-												<div
-													class="mt-3 p-3 bg-purple-50 dark:bg-purple-950/20 rounded"
-												>
-													<p
-														class="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1"
-													>
-														Executive Summary:
-													</p>
-													<p
-														class="text-sm text-purple-600 dark:text-purple-400"
-													>
-														{patterns.executive_summary}
-													</p>
-												</div>
-											{/if}
 
 											{#if patterns && (patterns?.start_date || patterns?.end_date)}
 												<div

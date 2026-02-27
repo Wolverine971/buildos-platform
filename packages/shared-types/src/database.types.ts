@@ -10045,7 +10045,6 @@ export type Database = {
           access_restricted: boolean | null
           access_restricted_at: string | null
           bio: string | null
-          completed_onboarding: boolean | null
           created_at: string
           email: string
           id: string
@@ -10053,9 +10052,9 @@ export type Database = {
           is_beta_user: boolean | null
           last_visit: string | null
           name: string | null
+          onboarding_completed_at: string | null
           onboarding_intent: string | null
           onboarding_stakes: string | null
-          onboarding_v2_completed_at: string | null
           onboarding_v2_skipped_calendar: boolean | null
           onboarding_v2_skipped_sms: boolean | null
           preferences: Json | null
@@ -10072,7 +10071,6 @@ export type Database = {
           access_restricted?: boolean | null
           access_restricted_at?: string | null
           bio?: string | null
-          completed_onboarding?: boolean | null
           created_at?: string
           email: string
           id: string
@@ -10080,9 +10078,9 @@ export type Database = {
           is_beta_user?: boolean | null
           last_visit?: string | null
           name?: string | null
+          onboarding_completed_at?: string | null
           onboarding_intent?: string | null
           onboarding_stakes?: string | null
-          onboarding_v2_completed_at?: string | null
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
           preferences?: Json | null
@@ -10099,7 +10097,6 @@ export type Database = {
           access_restricted?: boolean | null
           access_restricted_at?: string | null
           bio?: string | null
-          completed_onboarding?: boolean | null
           created_at?: string
           email?: string
           id?: string
@@ -10107,9 +10104,9 @@ export type Database = {
           is_beta_user?: boolean | null
           last_visit?: string | null
           name?: string | null
+          onboarding_completed_at?: string | null
           onboarding_intent?: string | null
           onboarding_stakes?: string | null
-          onboarding_v2_completed_at?: string | null
           onboarding_v2_skipped_calendar?: boolean | null
           onboarding_v2_skipped_sms?: boolean | null
           preferences?: Json | null

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-26T22:07:14.719Z
+// Generated on: 2026-02-27T03:56:13.359Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2436,7 +2436,6 @@ export type DatabaseSchema = {
 		access_restricted: boolean | null;
 		access_restricted_at: string | null;
 		bio: string | null;
-		completed_onboarding: boolean | null;
 		created_at: string;
 		email: string;
 		id: string;
@@ -2444,9 +2443,9 @@ export type DatabaseSchema = {
 		is_beta_user: boolean | null;
 		last_visit: string | null;
 		name: string | null;
+		onboarding_completed_at: string | null;
 		onboarding_intent: string | null;
 		onboarding_stakes: string | null;
-		onboarding_v2_completed_at: string | null;
 		onboarding_v2_skipped_calendar: boolean | null;
 		onboarding_v2_skipped_sms: boolean | null;
 		preferences: Json | null;

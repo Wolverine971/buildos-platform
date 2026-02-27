@@ -3747,7 +3747,6 @@ export type Database = {
 					access_restricted: boolean | null;
 					access_restricted_at: string | null;
 					bio: string | null;
-					completed_onboarding: boolean | null;
 					created_at: string;
 					email: string;
 					id: string;
@@ -3755,6 +3754,7 @@ export type Database = {
 					is_beta_user: boolean | null;
 					last_visit: string | null;
 					name: string | null;
+					onboarding_completed_at: string | null;
 					stripe_customer_id: string | null;
 					subscription_plan_id: string | null;
 					subscription_status: string | null;
@@ -3765,7 +3765,6 @@ export type Database = {
 					access_restricted?: boolean | null;
 					access_restricted_at?: string | null;
 					bio?: string | null;
-					completed_onboarding?: boolean | null;
 					created_at?: string;
 					email: string;
 					id: string;
@@ -3773,6 +3772,7 @@ export type Database = {
 					is_beta_user?: boolean | null;
 					last_visit?: string | null;
 					name?: string | null;
+					onboarding_completed_at?: string | null;
 					stripe_customer_id?: string | null;
 					subscription_plan_id?: string | null;
 					subscription_status?: string | null;
@@ -3783,7 +3783,6 @@ export type Database = {
 					access_restricted?: boolean | null;
 					access_restricted_at?: string | null;
 					bio?: string | null;
-					completed_onboarding?: boolean | null;
 					created_at?: string;
 					email?: string;
 					id?: string;
@@ -3791,6 +3790,7 @@ export type Database = {
 					is_beta_user?: boolean | null;
 					last_visit?: string | null;
 					name?: string | null;
+					onboarding_completed_at?: string | null;
 					stripe_customer_id?: string | null;
 					subscription_plan_id?: string | null;
 					subscription_status?: string | null;

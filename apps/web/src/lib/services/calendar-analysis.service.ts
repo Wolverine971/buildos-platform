@@ -5,24 +5,14 @@ import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { instantiateProject } from '$lib/services/ontology/instantiation.service';
 import {
 	convertCalendarSuggestionToProjectSpec,
-	inferTaskTypeKey,
-	normalizeDueAt,
-	normalizePriority,
 	type CalendarSuggestionInput,
 	type CalendarSuggestionEventPatterns,
 	type CalendarSuggestionTask
 } from '$lib/services/ontology/braindump-to-ontology-adapter';
-import type { TaskState } from '$lib/types/onto';
-import type { Database, Json } from '@buildos/shared-types';
+import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ErrorLoggerService } from './errorLogger.service';
-import {
-	getProjectModel,
-	getTaskModel,
-	generateProjectContextFramework
-} from './prompts/core/prompt-components';
-import { ProjectDataFetcher } from './prompts/core/project-data-fetcher';
-import { formatProjectsSummaryList } from './prompts/core/data-formatter';
+import { generateProjectContextFramework } from './prompts/core/prompt-components';
 import { savePromptForAudit } from '$lib/utils/prompt-audit';
 
 // Helper functions for date arithmetic (replacing dayjs)
@@ -55,16 +45,14 @@ interface ProjectSuggestion {
 	// Reference to source event group from Part 1
 	event_group_id?: string; // Reference to EventGroup.group_id from Part 1
 
-	// Project fields matching BuildOS data model
+	// Project suggestion fields mapped into ontology ProjectSpec.project
 	name: string; // Required project name
-	slug: string; // Required slug generated from name
 	description: string; // Project description
 	context: string; // Rich markdown context following BuildOS framework
-	executive_summary: string; // Executive summary <500 chars
-	status: 'active' | 'paused' | 'completed' | 'archived';
-	start_date: string; // YYYY-MM-DD format
+	status?: 'active' | 'paused' | 'completed' | 'archived';
+	start_date?: string; // YYYY-MM-DD format
 	end_date?: string; // YYYY-MM-DD format (optional)
-	tags: string[];
+	tags?: string[];
 
 	// Calendar analysis specific fields
 	event_ids: string[];
@@ -72,21 +60,19 @@ interface ProjectSuggestion {
 	reasoning: string;
 	keywords: string[];
 
-	// Deduplication fields (REQUIRED - always check against existing projects)
-	add_to_existing: boolean; // If true, add tasks to existing project instead of creating new
-	existing_project_id: string | null; // ID of existing project to add tasks to
-	deduplication_reasoning: string; // REQUIRED: Explanation of deduplication decision
-
 	// Suggested tasks following BuildOS task model
 	suggested_tasks?: Array<{
 		title: string; // Required, max 255 chars
 		description: string; // Required
 		details?: string; // Comprehensive specifics
-		status: 'backlog' | 'in_progress' | 'done' | 'blocked';
-		priority: 'low' | 'medium' | 'high';
-		task_type: 'one_off' | 'recurring';
+		status?: 'backlog' | 'in_progress' | 'done' | 'blocked';
+		state_key?: 'todo' | 'in_progress' | 'done' | 'blocked';
+		priority?: 'low' | 'medium' | 'high' | 'urgent' | number;
+		task_type?: 'one_off' | 'recurring';
+		type_key?: string;
 		duration_minutes?: number;
 		start_date?: string; // YYYY-MM-DDTHH:MM:SS for scheduling
+		due_at?: string; // YYYY-MM-DDTHH:MM:SS (optional)
 		recurrence_pattern?:
 			| 'daily'
 			| 'weekdays'
@@ -96,6 +82,7 @@ interface ProjectSuggestion {
 			| 'quarterly'
 			| 'yearly';
 		recurrence_ends?: string; // YYYY-MM-DD
+		recurrence_rrule?: string;
 		event_id?: string; // Link to calendar event
 		tags?: string[];
 	}>;
@@ -152,18 +139,10 @@ interface EventGroupAnalysis {
 
 // Constants
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.4; // Lowered from 0.6 for more suggestions
-const PREFERENCES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const CALENDAR_ANALYSIS_DEBUG_ENV = process.env.CALENDAR_ANALYSIS_DEBUG;
 const DEBUG_LOGGING =
 	CALENDAR_ANALYSIS_DEBUG_ENV === 'true' ||
 	(CALENDAR_ANALYSIS_DEBUG_ENV !== 'false' && process.env.NODE_ENV !== 'production');
-
-const CALENDAR_TASK_STATE_MAP: Record<string, TaskState> = {
-	backlog: 'todo',
-	in_progress: 'in_progress',
-	done: 'done',
-	blocked: 'blocked'
-};
 
 type CalendarSuggestionModifications = {
 	name?: string;
@@ -239,117 +218,6 @@ function prepareCalendarTasks(
 	});
 
 	return preparedTasks;
-}
-
-async function addTasksToExistingProject(
-	supabase: SupabaseClient<Database>,
-	projectId: string,
-	userId: string,
-	tasks: CalendarSuggestionTask[]
-): Promise<{ taskCount: number; planId?: string }> {
-	if (!tasks?.length) {
-		return { taskCount: 0 };
-	}
-
-	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-		p_user_id: userId
-	});
-
-	if (actorError || !actorId) {
-		throw new Error(`Failed to resolve actor: ${actorError?.message}`);
-	}
-
-	const { data: existingPlans } = await supabase
-		.from('onto_plans')
-		.select('id, name')
-		.eq('project_id', projectId)
-		.is('deleted_at', null)
-		.order('created_at', { ascending: false })
-		.limit(1);
-
-	let planId: string | undefined;
-
-	if (!existingPlans?.length) {
-		const { data: newPlan, error: planError } = await supabase
-			.from('onto_plans')
-			.insert({
-				project_id: projectId,
-				name: 'Calendar-Imported Tasks',
-				type_key: 'plan.phase',
-				state_key: 'active',
-				props: { source: 'calendar_analysis' } as Json,
-				created_by: actorId
-			})
-			.select('id')
-			.single();
-
-		if (planError || !newPlan) {
-			throw new Error(`Failed to create plan: ${planError?.message}`);
-		}
-
-		planId = newPlan.id;
-
-		await supabase.from('onto_edges').insert({
-			project_id: projectId,
-			src_kind: 'project',
-			src_id: projectId,
-			rel: 'has_plan',
-			dst_kind: 'plan',
-			dst_id: planId
-		});
-	} else {
-		planId = existingPlans[0]!.id;
-	}
-
-	const taskInserts = tasks.map((task) => {
-		const title = task.title?.trim() || 'Untitled Task';
-
-		return {
-			project_id: projectId,
-			title,
-			type_key: inferTaskTypeKey(title),
-			state_key: CALENDAR_TASK_STATE_MAP[task.status ?? 'backlog'] ?? 'todo',
-			priority: normalizePriority(task.priority) ?? 3,
-			start_at: normalizeDueAt(task.start_date) ?? null,
-			due_at: normalizeDueAt(task.start_date) ?? null,
-			description: task.description ?? null,
-			props: {
-				details: task.details,
-				calendar_event_id: task.event_id,
-				task_type: task.task_type,
-				recurrence_pattern: task.recurrence_pattern,
-				recurrence_ends: task.recurrence_ends,
-				recurrence_rrule: task.recurrence_rrule,
-				duration_minutes: task.duration_minutes,
-				tags: task.tags
-			} as Json,
-			created_by: actorId
-		};
-	});
-
-	const { data: insertedTasks, error: tasksError } = await supabase
-		.from('onto_tasks')
-		.insert(taskInserts)
-		.select('id');
-
-	if (tasksError) {
-		throw new Error(`Failed to insert tasks: ${tasksError.message}`);
-	}
-
-	const edgeInserts = (insertedTasks ?? []).map((task) => ({
-		project_id: projectId,
-		src_kind: 'plan',
-		src_id: planId,
-		rel: 'has_task',
-		dst_kind: 'task',
-		dst_id: task.id
-	}));
-
-	if (edgeInserts.length > 0) {
-		await supabase.from('onto_edges').insert(edgeInserts);
-	}
-
-	return { taskCount: insertedTasks?.length ?? 0, planId };
 }
 
 export class CalendarAnalysisService extends ApiService {
@@ -465,7 +333,7 @@ export class CalendarAnalysisService extends ApiService {
 				};
 			}
 
-			// Part 2: Create projects from event groups with deduplication
+			// Part 2: Create ontology project suggestions from event groups
 			const suggestions = await this.createProjectsFromGroups({
 				eventGroups,
 				events: relevantEvents,
@@ -819,7 +687,7 @@ Return JSON with this structure:
 	}
 
 	/**
-	 * Part 2: Create BuildOS projects from event groups with deduplication
+	 * Part 2: Create BuildOS ontology project suggestions from event groups
 	 * This method transforms event groups into structured projects with tasks
 	 */
 	private async createProjectsFromGroups({
@@ -838,20 +706,8 @@ Return JSON with this structure:
 		const todayString = new Date().toISOString().slice(0, 10);
 		const now = new Date();
 
-		// Fetch existing projects for deduplication
-		const projectDataFetcher = new ProjectDataFetcher(this.supabase);
-		const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
-			limit: 50,
-			includeStatus: ['active', 'paused']
-		});
-
-		const projectsContext = formatProjectsSummaryList(existingProjects || []);
-
 		if (DEBUG_LOGGING) {
 			console.log(`[Calendar Analysis Part 2] Processing ${eventGroups.length} event groups`);
-			console.log(
-				`[Calendar Analysis Part 2] Checking against ${existingProjects?.length || 0} existing projects`
-			);
 		}
 
 		// Create a map of events for quick lookup
@@ -937,45 +793,9 @@ ${JSON.stringify(
 
 		const systemPrompt = `You are an expert in creating structured projects from calendar event patterns. Always respond with valid JSON following the specified schema.`;
 
-		const userPrompt = `You are creating BuildOS projects from calendar event groups with proper deduplication.
+		const userPrompt = `You are creating BuildOS ontology project suggestions from calendar event groups.
 
 **Today's date**: ${todayString}
-
-## User's Existing Projects
-
-${projectsContext || 'No existing projects found.'}
-
-## CRITICAL: Project Deduplication Rules
-
-**IMPORTANT**: Check EVERY event group against existing projects above.
-
-**Deduplication Decision** (Apply in order):
-
-1. **Strong Match (≥75% confidence)**:
-   - Set "add_to_existing: true"
-   - Set "existing_project_id: 'actual-uuid-from-above'"
-   - Set "deduplication_reasoning: 'Events match existing project because...'"
-   - Still generate tasks to add to that project
-
-2. **Weak/No Match (<75%)**:
-   - Set "add_to_existing: false"
-   - Set "existing_project_id: null"
-   - Set "deduplication_reasoning: 'No match with existing projects because...'"
-   - Create NEW project
-
-**ALWAYS** provide "deduplication_reasoning" explaining your decision.
-
-## Examples:
-
-✅ **Strong Match**:
-- Existing: "Product Launch Q4 2025"
-- Events: "Launch Planning Meeting", "Launch Review" (Oct-Dec 2025)
-- Decision: "add_to_existing: true" - Events are clearly part of existing Q4 launch project
-
-❌ **No Match**:
-- Existing: "Marketing Campaign"
-- Events: "Engineering Standup", "Code Review"
-- Decision: "add_to_existing: false" - Engineering events unrelated to marketing
 
 ## Event Groups to Process
 
@@ -983,14 +803,22 @@ You've already identified ${eventGroups.length} event groups. Now create BuildOS
 
 ${eventGroupsSection}
 
-## Data Models
+## Ontology-First Contract (CRITICAL)
 
-### Project Model (REQUIRED structure):
-${getProjectModel(true)}
+Your response is converted into an ontology \`ProjectSpec\` and instantiated into ontology entities.
 
-### Task Model (REQUIRED structure):
-${getTaskModel({ includeRecurring: true, includeProjectRef: false })}
+Each accepted suggestion creates a **new** ontology project:
+- \`onto_projects\` (project root)
+- \`onto_documents\` (context document from \`context\`, type \`document.context.project\`)
+- \`onto_plans\` (auto-created execution plan)
+- \`onto_tasks\` (from \`suggested_tasks\`)
+- \`onto_edges\` (project→plan, plan→task, project→context-document)
 
+**No merge behavior is supported in this flow.**
+Do not output merge fields (e.g. \`add_to_existing\`, \`existing_project_id\`, \`deduplication_reasoning\`).
+Do not design for legacy \`projects\`/\`tasks\` tables.
+
+### Context Markdown Guidance
 ${generateProjectContextFramework('condensed')}
 
 ## Output Format
@@ -1002,13 +830,11 @@ Return JSON:
     {
       "event_group_id": "group-1",
 
-      // Project fields
+      // Project suggestion fields (mapped to ontology project + context document)
       "name": "Specific project name",
-      "slug": "project-slug",
       "description": "2-3 sentence description",
       "context": "Comprehensive markdown using BuildOS framework above",
-      "executive_summary": "Brief summary <500 chars",
-      "status": "active",
+      "status": "active", // suggestion metadata; ontology project is created as active
       "start_date": "YYYY-MM-DD",
       "end_date": "YYYY-MM-DD" or null,
       "tags": ["tag1", "tag2"],
@@ -1019,25 +845,23 @@ Return JSON:
       "reasoning": "Why this is a project",
       "keywords": ["keyword1", "keyword2"],
 
-      // Deduplication (ALWAYS REQUIRED)
-      "add_to_existing": false,
-      "existing_project_id": null,
-      "deduplication_reasoning": "Checked against existing projects. No match found because...",
-
       // Tasks (see task generation rules below)
       "suggested_tasks": [
         {
           "title": "Task title",
           "description": "Task description",
           "details": "Comprehensive details including event info",
-          "status": "backlog",
+          "status": "backlog", // mapped to ontology state_key
+          "state_key": "todo", // optional ontology-native alternative
           "priority": "medium",
           "task_type": "one_off" | "recurring",
+          "type_key": "task.execute", // optional; inferred if omitted
           "recurrence_pattern": "daily|weekly|monthly|etc" or null,
           "recurrence_ends": "YYYY-MM-DD" or null,
           "recurrence_rrule": "RRULE:FREQ=WEEKLY;BYDAY=TU,TH;UNTIL=20251215T235959Z" or null,
           "duration_minutes": 60,
           "start_date": "YYYY-MM-DDTHH:MM:SS",
+          "due_at": "YYYY-MM-DDTHH:MM:SS" or null,
           "event_id": "calendar-event-id",
           "tags": ["tag1"]
         }
@@ -1102,17 +926,13 @@ When an event has a "recurrence" field with RRULE:
 **Duration**: Calculate from event.end - event.start (in minutes)
 **Event ID**: Always link task to source event via "event_id"
 
-### 4. Deduplication
+### 4. Ontology Contract Compliance
 
-- **ALWAYS** provide "deduplication_reasoning" (even for new projects)
-- Use EXACT project IDs from "User's Existing Projects" section above
-- Don't hallucinate project IDs
-
-### 5. Data Model Compliance
-
-- Follow BuildOS data models exactly
-- All required fields must be present
-- Use proper date formats (YYYY-MM-DD or ISO 8601 for timestamps)`;
+- Follow the schema in this prompt exactly
+- Keep project context strategic (for ontology context document)
+- Keep tasks actionable and schedulable (for ontology task instantiation)
+- Use proper date formats (YYYY-MM-DD or ISO 8601 for timestamps)
+- Do not output legacy table names, SQL, or merge fields`;
 
 		try {
 			if (DEBUG_LOGGING) {
@@ -1129,7 +949,6 @@ When an event has a "recurrence" field with RRULE:
 				metadata: {
 					userId,
 					eventGroupCount: eventGroups.length,
-					existingProjectCount: existingProjects?.length || 0,
 					pastEventCount: pastEvents.length,
 					upcomingEventCount: upcomingEvents.length,
 					timestamp: new Date().toISOString()
@@ -1169,14 +988,6 @@ When an event has a "recurrence" field with RRULE:
 			if (DEBUG_LOGGING) {
 				console.log(
 					`[Calendar Analysis Part 2] Generated ${suggestions.length} project suggestions`
-				);
-				console.log(
-					`[Calendar Analysis Part 2] Deduplication results:`,
-					suggestions.map((s) => ({
-						name: s.name,
-						add_to_existing: s.add_to_existing,
-						existing_project_id: s.existing_project_id
-					}))
 				);
 			}
 
@@ -1227,29 +1038,6 @@ When an event has a "recurrence" field with RRULE:
 					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has only ${taskCount} task(s). Minimum 2 expected.`
 				);
 			}
-
-			// Validate required deduplication fields
-			if (
-				!suggestion.deduplication_reasoning ||
-				suggestion.deduplication_reasoning.trim() === ''
-			) {
-				console.warn(
-					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has empty deduplication_reasoning (required field)`
-				);
-			}
-
-			// Validate deduplication consistency
-			if (suggestion.add_to_existing && !suggestion.existing_project_id) {
-				console.warn(
-					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has add_to_existing=true but no existing_project_id`
-				);
-			}
-
-			if (!suggestion.add_to_existing && suggestion.existing_project_id) {
-				console.warn(
-					`[Calendar Analysis] WARNING: Project "${suggestion.name}" has existing_project_id but add_to_existing=false`
-				);
-			}
 		});
 	}
 
@@ -1270,373 +1058,9 @@ When an event has a "recurrence" field with RRULE:
 			return [];
 		}
 
-		const today = new Date().toISOString().slice(0, 10);
-		const now = new Date();
-
-		// Fetch existing projects for deduplication
-		const projectDataFetcher = new ProjectDataFetcher(this.supabase);
-		const existingProjects = await projectDataFetcher.getAllUserProjectsSummary(userId, {
-			limit: 50,
-			includeStatus: ['active', 'paused']
-		});
-
-		const projectsContext = formatProjectsSummaryList(existingProjects || []);
-
-		if (DEBUG_LOGGING) {
-			console.log(
-				`[Calendar Analysis] Fetched ${existingProjects?.length || 0} existing projects for deduplication`
-			);
-		}
-
-		// Separate events into past and upcoming
-		const pastEvents = events.filter((e) => {
-			const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
-			return eventDate < now;
-		});
-
-		const upcomingEvents = events.filter((e) => {
-			const eventDate = new Date(e.start?.dateTime || e.start?.date || '');
-			return eventDate >= now;
-		});
-
-		if (DEBUG_LOGGING) {
-			console.log(
-				`[Calendar Analysis] Event split: ${pastEvents.length} past, ${upcomingEvents.length} upcoming`
-			);
-		}
-
-		// Calculate adaptive task count based on upcoming events
-		const upcomingEventCount = upcomingEvents.length;
-
-		const prompt = `
-A user has asked you to analyze their google calendar and suggest projects based off the events.
-
-Your role is to act like a project organizer and look at the google calendar events and suggest projects with associated tasks.
-
-**IMPORTANT CONTEXT**: Today's date is ${today}. You have access to both past and upcoming calendar events.
-
-You will be returning a JSON response of detailed "suggestions" array. See **Output Requirements** for correct JSON schema formatting.
-
-## User's Existing Projects
-
-${projectsContext || 'No existing projects found.'}
-
----
-
-## CRITICAL: Project Deduplication Rules
-
-**IMPORTANT**: The user already has the projects listed above. When analyzing calendar events:
-
-1. **Check for matches** against existing projects:
-   - Compare by project name, description, tags, and context
-   - Look for semantic similarity (e.g., "Marketing Campaign" matches "Q4 Marketing Push")
-   - Consider if calendar events relate to existing project scope
-
-2. **If a match is found** (confidence >= 70%):
-   - Set "add_to_existing": true
-   - Set "existing_project_id": "<matching_project_id>"
-   - Set "deduplication_reasoning": "Explanation of why this matches existing project"
-   - Still generate suggested_tasks to add to the existing project
-
-3. **Only suggest NEW projects if**:
-   - Calendar events represent meaningfully different work
-   - No semantic match with existing projects
-   - Events indicate a distinct initiative or goal
-
-4. **When uncertain** (50-70% match):
-   - Err on the side of adding to existing projects
-   - Provide clear reasoning for the decision
-
-## Project Detection Criteria
-
-Identify projects based on:
-- Recurring meetings with similar titles/attendees (likely ongoing projects)
-- Clusters of related events (project milestones, reviews, planning sessions)
-- Events with project-indicating keywords (sprint, launch, milestone, review, kickoff, deadline, sync, standup, retrospective, planning, design, implementation)
-- Series of events building toward a goal
-- Events with multiple attendees working on the same topic
-- Any pattern suggesting coordinated work effort
-
-Ignore:
-- One-off personal events (lunch, coffee, dentist, doctor, vacation)
-- Company all-hands or general meetings without specific project focus
-- Events marked as declined or tentative
-- Generic focus/work blocks without specific context
-- Social events without work context
-
-## Data Models
-
-### Project Model (REQUIRED structure):
-${getProjectModel(true)}
-
-### Task Model (REQUIRED structure):
-${getTaskModel({ includeRecurring: true, includeProjectRef: false })}
-
-${generateProjectContextFramework('condensed')}
-
-## Calendar Events to Analyze
-
-### Past Events (${pastEvents.length} events)
-**Use these events ONLY for project context and understanding. DO NOT create tasks from past events.**
-${JSON.stringify(
-	pastEvents.map((e) => ({
-		id: e.id || 'unknown',
-		title: e.summary,
-		description: e.description?.substring(0, 500),
-		start: e.start?.dateTime || e.start?.date,
-		end: e.end?.dateTime || e.end?.date,
-		attendees: e.attendees?.map((a) => a.email),
-		organizer: e.organizer?.email,
-		recurring: !!e.recurringEventId,
-		status: e.status,
-		location: e.location
-	})),
-	null,
-	2
-)}
-
-### Upcoming Events (${upcomingEvents.length} events)
-**Use these events for BOTH project context AND task generation.**
-${JSON.stringify(
-	upcomingEvents.map((e) => ({
-		id: e.id || 'unknown',
-		title: e.summary,
-		description: e.description?.substring(0, 500),
-		start: e.start?.dateTime || e.start?.date,
-		end: e.end?.dateTime || e.end?.date,
-		attendees: e.attendees?.map((a) => a.email),
-		organizer: e.organizer?.email,
-		recurring: !!e.recurringEventId,
-		status: e.status,
-		location: e.location
-	})),
-	null,
-	2
-)}
-
-## CRITICAL TASK GENERATION RULES
-
-
-For each project, create tasks using ONE or BOTH of these approaches:
-
-### Approach 1: Tasks from Upcoming Calendar Events
-- Convert upcoming calendar events into actionable tasks
-- Use the event's date/time as the task's start_date
-- If event is recurring, set task_type to "recurring" with appropriate recurrence_pattern
-
-### Approach 2: Inferred Next Steps
-- Based on the project context and goals, infer logical next steps
-- Schedule these tasks starting from ${today} or later
-- Space tasks intelligently (e.g., planning tasks this week, execution tasks next week)
-
-**TASK DATE REQUIREMENTS**:
-- ALL tasks MUST have start_date >= ${today} (today or future)
-- NEVER create tasks with dates in the past
-- Use past events to understand the project, but create tasks for future work
-- If an upcoming event exists, you can create a task for it
-- If no upcoming events exist, infer 2-3 logical next steps and schedule them starting ${today}
-
-**Examples**:
-
-Example 1 - Project with upcoming events:
-- Past events: "Sprint Planning" (weekly, last 8 weeks)
-- Upcoming events: "Sprint Planning" on ${new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
-- Tasks to create:
-  1. "Attend Sprint Planning" - from upcoming event
-  2. "Review sprint backlog" - inferred preparation task (2 days before)
-  3. "Update team on progress" - recurring task (weekly)
-
-Example 2 - Project with only past events:
-- Past events: "Product Review" (monthly, last 3 months)
-- No upcoming events
-- Tasks to create:
-  1. "Schedule next product review" - starting ${today}
-  2. "Gather product metrics" - starting ${new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
-  3. "Prepare review presentation" - starting ${new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}
-
-## Output Requirements - JSON schema
-
-Return a JSON object with a "suggestions" array. Each suggestion must follow this EXACT structure:
-
-{
-  "suggestions": [
-    {
-      // Project fields (all required unless noted)
-      "name": "Clear, action-oriented project name",
-      "slug": "generated-from-name-lowercase-hyphens",
-      "description": "2-3 sentence description of what this project is about",
-      "context": "Comprehensive markdown following the BuildOS context framework. Include all relevant information about the project's purpose, vision, scope, approach, stakeholders, timelines, and any other relevant context extracted from the calendar events. Use BOTH past and upcoming events to build complete context.",
-      "executive_summary": "Brief executive summary under 500 characters",
-      "status": "active", // Default to active for new projects
-      "start_date": "YYYY-MM-DD", // Earliest relevant event date or today
-      "end_date": "YYYY-MM-DD or null", // Latest relevant event date or null if ongoing
-      "tags": ["relevant", "tags", "from", "events"],
-
-      // Calendar analysis metadata (all required)
-      "event_ids": ["array", "of", "ALL", "event", "ids", "both", "past", "and", "upcoming"],
-      "confidence": 0.7, // 0-1 score, must be >= ${minConfidence}
-      "reasoning": "Clear explanation of why these events suggest a project",
-      "keywords": ["detected", "keywords", "that", "indicated", "project"],
-
-      // Deduplication fields (REQUIRED - check against existing projects)
-      "add_to_existing": false, // Set to true if this matches an existing project
-      "existing_project_id": null, // Set to existing project ID if add_to_existing is true
-      "deduplication_reasoning": "Explanation of deduplication decision (why new project or why adding to existing)",
-
-      "suggested_tasks": [
-        {
-          "title": "Specific task title (max 255 chars)",
-          "description": "Brief task description",
-          "details": "Comprehensive details including:\n- Event description\n- Meeting attendees (if from calendar event)\n- Location (if applicable)\n- Meeting link (if available)\n- Additional context or next steps",
-          "status": "backlog",
-          "priority": "medium", // low|medium|high based on urgency/importance
-          "task_type": "one_off", // or "recurring" for repeating events
-          "duration_minutes": 60, // Estimate based on event duration or task complexity
-          "start_date": "YYYY-MM-DDTHH:MM:SS", // MUST be >= ${today}T00:00:00, schedule intelligently
-          "recurrence_pattern": "weekly", // Only if task_type is "recurring"
-          "recurrence_ends": "YYYY-MM-DD", // Only if recurring
-          "event_id": "linked-calendar-event-id", // Only if task is from an upcoming event
-          "tags": ["optional", "task", "tags"]
-        }
-      ]
-    }
-  ]
-}
-
-**VALIDATION CHECKLIST** (verify before returning):
-- [ ] Checked all calendar events against existing projects for duplicates
-- [ ] Each suggestion has deduplication fields (add_to_existing, existing_project_id, deduplication_reasoning)
-- [ ] ALL task start_date values are >= ${today}
-- [ ] NO tasks have dates in the past
-- [ ] Task details include event metadata (attendees, location, links) when available
-- [ ] Tasks either correspond to upcoming events OR are inferred next steps
-- [ ] Project context incorporates insights from BOTH past and upcoming events
-- [ ] All required fields are present
-- [ ] Valid JSON that can be parsed
-
-IMPORTANT:
-- **Deduplication is CRITICAL** - always check against existing projects first
-- Only suggest NEW projects if meaningfully different from existing ones
-- Generate meaningful, actionable project names (not just event titles)
-- Create rich, comprehensive context using the BuildOS framework
-- **Enrich task details** with meeting metadata (attendees, location, links)
-- **ALL tasks must have future dates (>= ${today})**
-- Use proper date formats (YYYY-MM-DD for dates, YYYY-MM-DDTHH:MM:SS for timestamps)
-- Ensure all required fields are present
-- The response must be valid JSON that can be parsed
-`;
-
-		try {
-			if (DEBUG_LOGGING) {
-				console.log(
-					`[Calendar Analysis] Sending ${events.length} events to AI for analysis`
-				);
-				console.log(`[Calendar Analysis] Minimum confidence threshold: ${minConfidence}`);
-			}
-
-			const systemPrompt =
-				'You are an expert in analyzing calendar events to identify potential projects. Always respond with valid JSON following the specified schema.';
-
-			// Save prompt for auditing in development mode
-			await savePromptForAudit({
-				systemPrompt,
-				userPrompt: prompt,
-				scenarioType: 'calendar-analysis',
-				metadata: {
-					userId,
-					eventCount: events.length,
-					pastEventCount: pastEvents.length,
-					upcomingEventCount: upcomingEvents.length,
-					minConfidence,
-					existingProjectCount: existingProjects?.length || 0,
-					timestamp: new Date().toISOString()
-				}
-			});
-
-			// Use SmartLLMService's getJSONResponse method for better type safety and model routing
-			const response = await this.llmService.getJSONResponse<{
-				suggestions: ProjectSuggestion[];
-			}>({
-				systemPrompt,
-				userPrompt: prompt,
-				userId, // System-level operation
-				profile: 'balanced', // Use balanced profile for good accuracy/speed tradeoff
-				temperature: 0.3,
-				validation: {
-					retryOnParseError: true,
-					validateSchema: true,
-					maxRetries: 2
-				},
-				operationType: 'calendar_analysis'
-			});
-
-			// Filter by minimum confidence score
-			const suggestions = response.suggestions || [];
-
-			if (DEBUG_LOGGING) {
-				console.log(`[Calendar Analysis] Raw suggestions from AI: ${suggestions.length}`);
-				if (suggestions.length > 0) {
-					console.log(
-						`[Calendar Analysis] Raw confidence scores:`,
-						suggestions.map((s: ProjectSuggestion) => s.confidence)
-					);
-				}
-			}
-
-			const filtered = suggestions.filter(
-				(s: ProjectSuggestion) => s.confidence >= minConfidence
-			);
-
-			if (DEBUG_LOGGING) {
-				console.log(
-					`[Calendar Analysis] Suggestions after confidence filter (>= ${minConfidence}): ${filtered.length}`
-				);
-			}
-
-			// Validate that all tasks have future dates
-			const today = new Date();
-			today.setHours(0, 0, 0, 0);
-
-			filtered.forEach((suggestion) => {
-				if (suggestion.suggested_tasks && Array.isArray(suggestion.suggested_tasks)) {
-					const pastTasks = suggestion.suggested_tasks.filter((task) => {
-						if (!task.start_date) return false;
-						const taskDate = new Date(task.start_date);
-						return taskDate < today;
-					});
-
-					if (pastTasks.length > 0) {
-						console.warn(
-							`[Calendar Analysis] WARNING: Project "${suggestion.name}" has ${pastTasks.length} task(s) with past dates. These should not have been generated by the LLM.`,
-							pastTasks.map((t) => ({ title: t.title, start_date: t.start_date }))
-						);
-					}
-				}
-
-				// Validate that each project has at least one task
-				const taskCount = suggestion.suggested_tasks?.length || 0;
-				if (taskCount === 0) {
-					console.warn(
-						`[Calendar Analysis] WARNING: Project "${suggestion.name}" has no tasks. At least 2 tasks should be generated.`
-					);
-				} else if (taskCount === 1) {
-					console.warn(
-						`[Calendar Analysis] WARNING: Project "${suggestion.name}" has only 1 task. At least 2 tasks should be generated.`
-					);
-				}
-			});
-
-			return filtered;
-		} catch (error) {
-			this.errorLogger.logError(error, {
-				userId: 'system',
-				metadata: {
-					operation: 'calendar_analysis_ai',
-					eventCount: events.length
-				}
-			});
-			return [];
-		}
+		const eventGroups = await this.analyzeEventPatterns({ events, userId });
+		const suggestions = await this.createProjectsFromGroups({ eventGroups, events, userId });
+		return suggestions.filter((suggestion) => suggestion.confidence >= minConfidence);
 	}
 
 	/**
@@ -1671,36 +1095,6 @@ IMPORTANT:
 				event_patterns: parsedEventPatterns
 			};
 
-			const addToExisting = !!parsedEventPatterns?.add_to_existing;
-			const existingProjectId = parsedEventPatterns?.existing_project_id ?? null;
-
-			if (addToExisting && existingProjectId) {
-				if (DEBUG_LOGGING) {
-					console.log(
-						`[Calendar Analysis] Adding tasks to existing project: ${existingProjectId}`
-					);
-				}
-
-				const { taskCount, planId } = await addTasksToExistingProject(
-					this.supabase,
-					existingProjectId,
-					userId,
-					preparedTasks
-				);
-
-				await this.updateSuggestionStatus(suggestionId, 'accepted');
-
-				return {
-					success: true,
-					data: {
-						projectId: existingProjectId,
-						tasksCreated: taskCount,
-						addedToExisting: true,
-						planId
-					}
-				};
-			}
-
 			const projectSpec = convertCalendarSuggestionToProjectSpec(suggestionInput, {
 				name: modifications?.name,
 				description: modifications?.description,
@@ -1720,8 +1114,7 @@ IMPORTANT:
 				success: true,
 				data: {
 					projectId: project_id,
-					counts,
-					addedToExisting: false
+					counts
 				}
 			};
 		} catch (error) {
@@ -1997,15 +1390,9 @@ IMPORTANT:
 			suggested_tasks: suggestion.suggested_tasks || [],
 			// Store additional metadata in event_patterns for now
 			event_patterns: {
-				executive_summary: suggestion.executive_summary,
 				start_date: suggestion.start_date,
 				end_date: suggestion.end_date,
-				tags: suggestion.tags,
-				slug: suggestion.slug,
-				// CRITICAL: Store deduplication fields
-				add_to_existing: suggestion.add_to_existing,
-				existing_project_id: suggestion.existing_project_id,
-				deduplication_reasoning: suggestion.deduplication_reasoning
+				tags: suggestion.tags
 			},
 			status: 'pending' as const
 		}));

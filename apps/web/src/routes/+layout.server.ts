@@ -93,7 +93,7 @@ export const load: LayoutServerLoad = async ({
 
 	depends('app:invites');
 
-	const completedOnboarding = Boolean(user.completed_onboarding);
+	const completedOnboarding = Boolean(user.onboarding_completed_at);
 	const nowMs = Date.now();
 	const routePath = url.pathname;
 	const shouldLoadOnboardingProgress =

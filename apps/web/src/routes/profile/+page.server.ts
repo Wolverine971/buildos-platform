@@ -125,15 +125,15 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		// Get user metadata
 		supabase
 			.from('users')
-			.select('completed_onboarding, is_admin')
+			.select('onboarding_completed_at, is_admin')
 			.eq('id', user.id)
 			.single()
 			.then(({ data, error }) => {
 				if (error) {
 					console.error('Error fetching user data:', error);
-					return { completed_onboarding: false, is_admin: false };
+					return { onboarding_completed_at: null, is_admin: false };
 				}
-				return data || { completed_onboarding: false, is_admin: false };
+				return data || { onboarding_completed_at: null, is_admin: false };
 			})
 	]);
 
@@ -186,26 +186,8 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		}
 	}
 
-	// Calculate completion based on new 4-field structure
-	let completedOnboarding = userData.completed_onboarding || false;
-
-	if (userContext && !completedOnboarding) {
-		// Check completion using new input fields
-		const inputFields = [
-			'input_projects',
-			'input_work_style',
-			'input_challenges',
-			'input_help_focus'
-		];
-
-		const completedFields = inputFields.filter((field) => {
-			const value = (userContext as Record<string, any>)[field];
-			return value && typeof value === 'string' && value.trim().length > 0;
-		});
-
-		// Consider complete if at least 3 of 4 fields are filled
-		completedOnboarding = completedFields.length >= 3;
-	}
+	// Onboarding completion is derived from users.onboarding_completed_at.
+	const completedOnboarding = Boolean(userData.onboarding_completed_at);
 
 	// Enhanced progress data calculation for new structure
 	const categoryCompletion: Record<string, boolean> = {

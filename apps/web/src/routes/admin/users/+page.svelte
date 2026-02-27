@@ -91,7 +91,7 @@
 
 			// Handle boolean values for derived flags
 			if (
-				['completed_onboarding', 'daily_brief_opt_in', 'calendar_connected'].includes(
+				['onboarding_completed_at', 'daily_brief_opt_in', 'calendar_connected'].includes(
 					sortBy
 				)
 			) {
@@ -376,7 +376,7 @@
 					<option value="ontology_entity_total">Ontology Entities</option>
 					<option value="email">Email</option>
 					<option value="name">Name</option>
-					<option value="completed_onboarding">Onboarding Status</option>
+					<option value="onboarding_completed_at">Onboarding Status</option>
 					<option value="is_admin">Admin Status</option>
 				</Select>
 			</div>
@@ -678,12 +678,12 @@
 							</th>
 							<th
 								class="px-3 py-2 text-left text-[0.65rem] font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted select-none"
-								onclick={() => handleSort('completed_onboarding')}
+								onclick={() => handleSort('onboarding_completed_at')}
 								title="Click to sort by onboarding status"
 							>
 								<div class="flex items-center space-x-1">
 									<span>Onboarding</span>
-									{#if sortBy === 'completed_onboarding'}
+									{#if sortBy === 'onboarding_completed_at'}
 										{#if sortOrder === 'asc'}
 											<ChevronUp class="h-4 w-4" />
 										{:else}
@@ -844,7 +844,7 @@
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="flex items-center gap-1">
-										{#if user.completed_onboarding}
+										{#if user.onboarding_completed_at}
 											<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
 											<span
 												class="text-xs text-emerald-600 dark:text-emerald-400"
@@ -1039,7 +1039,7 @@
 							Onboarding
 						</div>
 						<div class="flex items-center gap-1.5 mt-0.5">
-							{#if selectedUser.completed_onboarding}
+							{#if selectedUser.onboarding_completed_at}
 								<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
 								<span class="text-xs text-emerald-600 dark:text-emerald-400"
 									>Completed</span

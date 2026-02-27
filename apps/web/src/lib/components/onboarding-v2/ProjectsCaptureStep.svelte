@@ -415,8 +415,8 @@
 			Four Ways to Work
 		</h3>
 		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
-			When you open the chat, you choose how you want to work. Each mode tailors the
-			assistant to what you need.
+			When you open the chat, you choose how you want to work. Each mode tailors the assistant
+			to what you need.
 		</p>
 
 		<!-- Screenshot: The 4 chat modes -->
@@ -430,8 +430,8 @@
 		</div>
 
 		<!-- Mode descriptions -->
-		<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs mb-4">
-			<div class="flex gap-2 items-start">
+		<div class="flex flex-col gap-3 text-xs mb-4">
+			<div class="flex gap-2.5 items-start">
 				<div
 					class="w-5 h-5 rounded bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5"
 				>
@@ -440,11 +440,13 @@
 				<div>
 					<strong class="text-foreground">General Chat</strong>
 					<p class="text-muted-foreground leading-snug mt-0.5">
-						Talk about anything across all your projects, calendar, and tasks at once.
+						Get the big picture across everything you're working on. Ask about your
+						week, compare progress across projects, or get high-level intel on what
+						needs attention — without picking a single project first.
 					</p>
 				</div>
 			</div>
-			<div class="flex gap-2 items-start">
+			<div class="flex gap-2.5 items-start">
 				<div
 					class="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5"
 				>
@@ -453,12 +455,13 @@
 				<div>
 					<strong class="text-foreground">Project Chat</strong>
 					<p class="text-muted-foreground leading-snug mt-0.5">
-						Pick a specific project and get focused help — plan, update, or review
-						progress.
+						Dive into a specific project. Update tasks, revise plans, add documents, or
+						ask questions — all within the context of that project so the assistant
+						knows exactly what you're working on.
 					</p>
 				</div>
 			</div>
-			<div class="flex gap-2 items-start">
+			<div class="flex gap-2.5 items-start">
 				<div
 					class="w-5 h-5 rounded bg-purple-500/10 flex items-center justify-center flex-shrink-0 mt-0.5"
 				>
@@ -467,11 +470,35 @@
 				<div>
 					<strong class="text-foreground">Start a Project</strong>
 					<p class="text-muted-foreground leading-snug mt-0.5">
-						Guided setup to define a new project with goals, milestones, and structure.
+						Got a new idea? Describe it and the assistant will help you shape it into a
+						structured project with goals, milestones, and next steps.
 					</p>
+					<div
+						class="mt-1.5 flex flex-wrap gap-1.5 text-[10px] font-medium text-muted-foreground"
+					>
+						<span class="rounded-full border border-border px-2 py-0.5"
+							>Home renovation</span
+						>
+						<span class="rounded-full border border-border px-2 py-0.5"
+							>Side business</span
+						>
+						<span class="rounded-full border border-border px-2 py-0.5"
+							>Fitness goal</span
+						>
+						<span class="rounded-full border border-border px-2 py-0.5">Job search</span
+						>
+						<span class="rounded-full border border-border px-2 py-0.5">App launch</span
+						>
+						<span class="rounded-full border border-border px-2 py-0.5"
+							>Wedding planning</span
+						>
+						<span class="rounded-full border border-border px-2 py-0.5"
+							>Learning a skill</span
+						>
+					</div>
 				</div>
 			</div>
-			<div class="flex gap-2 items-start">
+			<div class="flex gap-2.5 items-start">
 				<div
 					class="w-5 h-5 rounded bg-violet-500/10 flex items-center justify-center flex-shrink-0 mt-0.5"
 				>
@@ -480,7 +507,9 @@
 				<div>
 					<strong class="text-foreground">Brain Dump</strong>
 					<p class="text-muted-foreground leading-snug mt-0.5">
-						Jot down thoughts or ideas — quick one-way capture, no conversation needed.
+						Just drop a note and go. No back-and-forth, no agent response — think of it
+						like quick note-taking. Capture a thought, save a link, log a meeting recap,
+						or jot down something before you forget it.
 					</p>
 				</div>
 			</div>
@@ -539,37 +568,90 @@
 		{/if}
 
 		<!-- Calendar Connection & Analysis Section -->
-		{#if showConnectionSuccess}
-			<!-- Connection Success - Compact -->
+		{#if showConnectionSuccess || hasCalendarConnected}
+			<!-- Calendar Connected — prominent CTA to analyze -->
 			<div
-				class="mb-4 p-4 bg-accent/10 rounded-lg border border-accent/30 shadow-ink tx tx-grain tx-weak"
-				in:scale={{ duration: 400, start: 0.9 }}
-				out:fade={{ duration: 300 }}
+				class="mb-4 p-5 bg-accent/5 rounded-xl border-2 border-accent/30 shadow-ink tx tx-grain tx-weak"
+				in:scale={{ duration: 400, start: 0.95 }}
 			>
-				<div class="flex items-center gap-3 mb-3">
+				<div class="flex items-start gap-3 mb-4">
 					<div
-						class="w-9 h-9 bg-accent rounded-lg flex items-center justify-center flex-shrink-0"
+						class="w-12 h-12 bg-accent rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
 					>
-						<CheckCircle class="w-5 h-5 text-accent-foreground" />
+						<CheckCircle class="w-6 h-6 text-accent-foreground" />
 					</div>
 					<div class="flex-1">
-						<h4 class="font-semibold text-sm text-foreground">Calendar Connected!</h4>
-						<p class="text-xs text-muted-foreground">Ready to analyze your schedule</p>
+						<h3 class="text-base font-bold text-foreground flex items-center gap-2">
+							Google Calendar Connected
+							<span
+								class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
+							>
+								Ready
+							</span>
+						</h3>
+						<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
+							BuildOS can scan your calendar to automatically detect projects from
+							your meetings, recurring events, and upcoming deadlines.
+						</p>
 					</div>
 				</div>
 
-				<Button
-					variant="primary"
-					onclick={handleStartCalendarAnalysis}
-					disabled={calendarAnalysisStarted}
-					class="w-full shadow-ink pressable"
+				<!-- Benefits -->
+				<div
+					class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground"
 				>
-					<Sparkles class="w-4 h-4 mr-2" />
-					{calendarAnalysisStarted ? 'Analysis Running...' : 'Analyze My Calendar Now'}
-				</Button>
+					<span
+						class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
+					>
+						<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
+						Auto-detect projects from events
+					</span>
+					<span
+						class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
+					>
+						<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
+						Pre-fill tasks and deadlines
+					</span>
+					<span
+						class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
+					>
+						<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
+						Smart scheduling suggestions
+					</span>
+				</div>
+
+				{#if calendarAnalysisStarted}
+					<div
+						class="flex items-center gap-2 p-3 bg-card rounded-lg border border-border"
+					>
+						<LoaderCircle class="w-4 h-4 animate-spin text-accent flex-shrink-0" />
+						<span class="text-sm text-foreground font-medium">
+							Analyzing your calendar — check the notification in the bottom-right
+							corner.
+						</span>
+					</div>
+				{:else}
+					<Button
+						variant="primary"
+						size="lg"
+						onclick={handleStartCalendarAnalysis}
+						class="w-full shadow-ink pressable"
+					>
+						<Sparkles class="w-5 h-5 mr-2" />
+						Analyze My Calendar to Extract Projects
+					</Button>
+				{/if}
+			</div>
+
+			<!-- Divider -->
+			<div class="mb-3 flex items-center gap-2">
+				<div class="flex-1 h-px bg-border"></div>
+				<span class="text-xs text-muted-foreground">OR describe your projects manually</span
+				>
+				<div class="flex-1 h-px bg-border"></div>
 			</div>
 		{:else if !hasCalendarConnected && !isCheckingConnection}
-			<!-- Calendar Not Connected - Compact CTA -->
+			<!-- Calendar Not Connected -->
 			<div
 				class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
 			>
@@ -581,11 +663,11 @@
 					</div>
 					<div class="flex-1">
 						<h3 class="text-sm font-semibold text-foreground mb-1">
-							Analyze your calendar
+							Shortcut: Analyze your calendar
 						</h3>
 						<p class="text-xs text-muted-foreground leading-relaxed">
-							Connect Google Calendar to automatically create projects from your
-							meetings and events.
+							Connect Google Calendar and BuildOS will automatically detect projects
+							from your meetings and events.
 						</p>
 					</div>
 				</div>
@@ -628,66 +710,9 @@
 					onclick={skipProjectCapture}
 					disabled={isConnectingCalendar}
 				>
-					Skip — I'll connect later
+					Skip — I'll describe my projects manually
 				</button>
 			</div>
-		{:else if hasCalendarConnected}
-			<!-- Calendar Connected - Compact -->
-			<div
-				class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak"
-			>
-				<div class="flex items-center gap-3 mb-3">
-					<div
-						class="w-9 h-9 bg-accent rounded-lg flex items-center justify-center flex-shrink-0 shadow-ink"
-					>
-						<CheckCircle class="w-5 h-5 text-accent-foreground" />
-					</div>
-					<div class="flex-1">
-						<h4 class="font-semibold text-sm text-foreground flex items-center gap-2">
-							Google Calendar Connected
-							<span
-								class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
-							>
-								Ready
-							</span>
-						</h4>
-						<p class="text-xs text-muted-foreground">
-							Analyze to auto-suggest projects from your events
-						</p>
-					</div>
-				</div>
-
-				<div class="flex items-center gap-2">
-					<Button
-						variant="secondary"
-						onclick={handleStartCalendarAnalysis}
-						disabled={calendarAnalysisStarted}
-						class="shadow-ink pressable"
-					>
-						<Calendar class="w-4 h-4 mr-1.5" />
-						{calendarAnalysisStarted ? 'Analyzing...' : 'Analyze Calendar'}
-					</Button>
-
-					{#if calendarAnalysisStarted}
-						<span class="text-xs text-muted-foreground flex items-center gap-1">
-							<LoaderCircle class="w-3 h-3 animate-spin" />
-							Check notifications
-						</span>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Divider -->
-			<div class="mb-3 flex items-center gap-2">
-				<div class="flex-1 h-px bg-border"></div>
-				<span class="text-xs text-muted-foreground">OR</span>
-				<div class="flex-1 h-px bg-border"></div>
-			</div>
-
-			<!-- Manual Brain Dump Label -->
-			<p class="text-xs font-medium text-muted-foreground mb-2">
-				Describe your projects manually:
-			</p>
 		{/if}
 
 		<!-- Brain Dump Input with Voice -->

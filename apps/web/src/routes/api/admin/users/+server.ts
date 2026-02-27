@@ -52,7 +52,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
                 created_at,
                 updated_at,
                 bio,
-                completed_onboarding,
+                onboarding_completed_at,
                 last_visit
             `,
 			{ count: 'exact' }
@@ -73,9 +73,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		}
 
 		if (onboardingFilter === 'completed') {
-			query = query.eq('completed_onboarding', true);
+			query = query.not('onboarding_completed_at', 'is', null);
 		} else if (onboardingFilter === 'pending') {
-			query = query.eq('completed_onboarding', false);
+			query = query.is('onboarding_completed_at', null);
 		}
 
 		// Apply sorting - default to last_visit
@@ -375,7 +375,7 @@ export const PATCH: RequestHandler = async ({ request, locals: { supabase, safeG
 		}
 
 		// Whitelist allowed fields to prevent privilege escalation
-		const ALLOWED_FIELDS = ['name', 'bio', 'is_admin', 'completed_onboarding'];
+		const ALLOWED_FIELDS = ['name', 'bio', 'is_admin', 'onboarding_completed_at'];
 		const sanitizedUpdates = Object.keys(updates)
 			.filter((key) => ALLOWED_FIELDS.includes(key))
 			.reduce((obj, key) => ({ ...obj, [key]: updates[key] }), {});

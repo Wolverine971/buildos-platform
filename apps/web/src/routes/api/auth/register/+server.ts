@@ -20,7 +20,6 @@ function buildProfilePayload(authUser: User, name?: string) {
 		email: authUser.email as string,
 		name: name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
 		is_admin: false,
-		completed_onboarding: false,
 		created_at: now,
 		updated_at: now
 	};

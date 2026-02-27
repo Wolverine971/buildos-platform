@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/onboarding/+page.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
 	import type { OnboardingIntent, OnboardingStakes } from '$lib/config/onboarding.config';
 
@@ -12,23 +13,83 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Step tracking
-	let currentStep = $state(0);
-	const totalSteps = 4;
+	// --- Session state persistence (survives OAuth redirects) ---
+	const SESSION_KEY = 'buildos_onboarding_state';
 
-	// Onboarding timing
+	type SavedOnboardingState = {
+		currentStep: number;
+		v3Data: typeof v3Data;
+		savedAt: number;
+	};
+
+	function saveStateToSession() {
+		if (!browser) return;
+		const state: SavedOnboardingState = {
+			currentStep,
+			v3Data: { ...v3Data },
+			savedAt: Date.now()
+		};
+		try {
+			sessionStorage.setItem(SESSION_KEY, JSON.stringify(state));
+		} catch {
+			// sessionStorage may be unavailable (private browsing, etc.)
+		}
+	}
+
+	function loadStateFromSession(): SavedOnboardingState | null {
+		if (!browser) return null;
+		try {
+			const raw = sessionStorage.getItem(SESSION_KEY);
+			if (!raw) return null;
+			const state = JSON.parse(raw) as SavedOnboardingState;
+			// Expire after 30 minutes to avoid stale state
+			if (Date.now() - state.savedAt > 30 * 60 * 1000) {
+				sessionStorage.removeItem(SESSION_KEY);
+				return null;
+			}
+			return state;
+		} catch {
+			return null;
+		}
+	}
+
+	function clearSessionState() {
+		if (!browser) return;
+		try {
+			sessionStorage.removeItem(SESSION_KEY);
+		} catch {
+			// ignore
+		}
+	}
+
+	// --- Initialize state: restore from session or database ---
+	const totalSteps = 4;
 	const onboardingStartTime = Date.now();
 
-	// Collected data across steps
-	let v3Data = $state({
-		intent: null as OnboardingIntent | null,
-		stakes: null as OnboardingStakes | null,
-		projectsCreated: 0,
-		tasksCreated: 0,
-		goalsCreated: 0,
-		smsEnabled: false,
-		emailEnabled: false
-	});
+	// Try to restore from sessionStorage first (OAuth redirect scenario)
+	const savedSession = loadStateFromSession();
+
+	let currentStep = $state(savedSession?.currentStep ?? 0);
+	let v3Data = $state(
+		savedSession?.v3Data ?? {
+			intent: null as OnboardingIntent | null,
+			stakes: null as OnboardingStakes | null,
+			projectsCreated: 0,
+			tasksCreated: 0,
+			goalsCreated: 0,
+			smsEnabled: false,
+			emailEnabled: false
+		}
+	);
+
+	// If no session state, check if intent/stakes were saved to the database
+	// (user completed step 0, then got redirected by OAuth)
+	if (!savedSession && (data.savedIntent || data.savedStakes)) {
+		v3Data.intent = (data.savedIntent as OnboardingIntent) ?? null;
+		v3Data.stakes = (data.savedStakes as OnboardingStakes) ?? null;
+		// They already completed step 0, jump to step 1
+		currentStep = 1;
+	}
 
 	type OntologyCounts = {
 		goals: number;
@@ -42,6 +103,16 @@
 		risks: number;
 		edges: number;
 	};
+
+	// Persist state to sessionStorage whenever it changes
+	$effect(() => {
+		// Access reactive values to track them
+		void currentStep;
+		void v3Data.intent;
+		void v3Data.stakes;
+		void v3Data.projectsCreated;
+		saveStateToSession();
+	});
 
 	// Step navigation
 	function goToStep(step: number) {
@@ -89,6 +160,7 @@
 
 	function handleNotificationsDone() {
 		goToStep(3);
+		clearSessionState();
 	}
 
 	const isExploreUser = $derived(v3Data.intent === 'explore');

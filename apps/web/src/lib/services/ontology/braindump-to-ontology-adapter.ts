@@ -409,10 +409,13 @@ export interface CalendarSuggestionTask {
 	description?: string;
 	details?: string;
 	status?: 'backlog' | 'in_progress' | 'done' | 'blocked';
+	state_key?: 'todo' | 'in_progress' | 'done' | 'blocked';
 	priority?: 'low' | 'medium' | 'high' | 'urgent' | number;
 	task_type?: 'one_off' | 'recurring';
+	type_key?: string;
 	duration_minutes?: number;
 	start_date?: string;
+	due_at?: string;
 	recurrence_pattern?:
 		| 'daily'
 		| 'weekdays'
@@ -428,14 +431,9 @@ export interface CalendarSuggestionTask {
 }
 
 export interface CalendarSuggestionEventPatterns {
-	executive_summary?: string;
 	start_date?: string;
 	end_date?: string | null;
 	tags?: string[];
-	slug?: string;
-	add_to_existing?: boolean;
-	existing_project_id?: string | null;
-	deduplication_reasoning?: string;
 }
 
 export type CalendarSuggestionInput = Omit<
@@ -451,6 +449,7 @@ export type CalendarSuggestionInput = Omit<
  */
 const CALENDAR_TASK_STATE_MAP: Record<string, TaskState> = {
 	backlog: 'todo',
+	todo: 'todo',
 	in_progress: 'in_progress',
 	done: 'done',
 	blocked: 'blocked'
@@ -505,8 +504,7 @@ export function convertCalendarSuggestionToProjectSpec(
 		confidence: suggestion.confidence_score,
 		detected_keywords: detectedKeywords.length ? detectedKeywords : undefined,
 		ai_reasoning: suggestion.ai_reasoning ?? undefined,
-		suggested_priority: suggestion.suggested_priority ?? undefined,
-		deduplication_reasoning: eventPatterns?.deduplication_reasoning
+		suggested_priority: suggestion.suggested_priority ?? undefined
 	};
 
 	const rawTasks = Array.isArray(suggestion.suggested_tasks) ? suggestion.suggested_tasks : [];
@@ -547,20 +545,24 @@ export function convertCalendarSuggestionToProjectSpec(
 		tasks.forEach((task, index) => {
 			const title = task.title?.trim() || 'Untitled Task';
 			const tempId = `task-${index + 1}`;
+			const stateKey = (task.state_key ?? task.status ?? 'backlog').toString().toLowerCase();
 			entities.push({
 				temp_id: tempId,
 				kind: 'task',
 				title,
-				type_key: inferTaskTypeKey(title),
-				state_key: CALENDAR_TASK_STATE_MAP[task.status ?? 'backlog'] ?? 'todo',
+				type_key: task.type_key?.trim() || inferTaskTypeKey(title),
+				state_key: CALENDAR_TASK_STATE_MAP[stateKey] ?? 'todo',
 				priority: normalizePriority(task.priority) ?? 3,
-				due_at: normalizeDueAt(task.start_date),
+				due_at: normalizeDueAt(task.due_at ?? task.start_date),
 				props: {
 					description: task.description,
 					details: task.details,
 					calendar_event_id: task.event_id,
 					task_type: task.task_type,
+					task_state_key: task.state_key,
+					task_type_key: task.type_key,
 					start_date: task.start_date,
+					due_at: task.due_at,
 					duration_minutes: task.duration_minutes,
 					recurrence_pattern: task.recurrence_pattern,
 					recurrence_ends: task.recurrence_ends,
@@ -584,6 +586,8 @@ export function convertCalendarSuggestionToProjectSpec(
 			description,
 			type_key: inferProjectTypeKey(name, searchText),
 			state_key: 'active',
+			start_at: normalizeDueAt(eventPatterns?.start_date),
+			end_at: normalizeDueAt(eventPatterns?.end_date ?? undefined),
 			props: {
 				facets: {
 					context: inferContextFacet(contextText),
@@ -592,11 +596,7 @@ export function convertCalendarSuggestionToProjectSpec(
 				},
 				source: 'calendar_analysis',
 				source_metadata: sourceMetadata,
-				tags,
-				executive_summary: eventPatterns?.executive_summary,
-				slug: eventPatterns?.slug,
-				start_date: eventPatterns?.start_date,
-				end_date: eventPatterns?.end_date
+				tags
 			}
 		},
 

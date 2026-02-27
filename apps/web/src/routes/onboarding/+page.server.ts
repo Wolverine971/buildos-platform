@@ -9,18 +9,19 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		throw redirect(303, '/auth/login');
 	}
 
-	// Check if onboarding is already complete (V3 uses users.completed_onboarding, V2 used user_context.onboarding_completed_at)
+	// Check if onboarding is already complete (users.onboarding_completed_at).
+	// Also load intent/stakes so we can restore state after OAuth redirects.
 	const { data: userData } = await supabase
 		.from('users')
-		.select('completed_onboarding')
+		.select('onboarding_completed_at, onboarding_intent, onboarding_stakes')
 		.eq('id', user.id)
 		.single();
 
-	if (userData?.completed_onboarding) {
+	if (userData?.onboarding_completed_at) {
 		throw redirect(303, '/');
 	}
 
-	// Load user context (used by ProjectsCaptureStep) and check legacy V2 completion
+	// Load user context (used by ProjectsCaptureStep).
 	let userContext = null;
 	try {
 		const { data, error } = await supabase
@@ -38,13 +39,10 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		console.error('Error in onboarding page load:', error);
 	}
 
-	// Legacy V2 completion check
-	if (userContext?.onboarding_completed_at) {
-		throw redirect(303, '/');
-	}
-
 	return {
 		user,
-		userContext
+		userContext,
+		savedIntent: (userData?.onboarding_intent as string) ?? null,
+		savedStakes: (userData?.onboarding_stakes as string) ?? null
 	};
 };

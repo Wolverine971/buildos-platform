@@ -63,7 +63,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 
 	const { data: _existingUser, error: fetchError } = await supabase
 		.from('users')
-		.select('id, completed_onboarding')
+		.select('id')
 		.eq('id', data.user.id)
 		.single();
 
@@ -81,7 +81,6 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 				data.user.email?.split('@')[0] ||
 				'User',
 			is_admin: false,
-			completed_onboarding: false,
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString()
 		});

@@ -125,7 +125,6 @@ export class GoogleOAuthHandler {
 			email: authUser.email as string,
 			name: profile?.name || authUser.user_metadata?.name || 'User',
 			is_admin: false,
-			completed_onboarding: false,
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString()
 		};

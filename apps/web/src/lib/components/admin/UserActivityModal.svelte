@@ -81,11 +81,11 @@
 			<!-- Inline status badges -->
 			<div class="flex items-center gap-1.5 shrink-0">
 				<span
-					class="px-1.5 py-0.5 text-[0.6rem] rounded border {user.completed_onboarding
+					class="px-1.5 py-0.5 text-[0.6rem] rounded border {user.onboarding_completed_at
 						? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
 						: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'}"
 				>
-					{user.completed_onboarding ? 'Onboarded' : 'Pending'}
+					{user.onboarding_completed_at ? 'Onboarded' : 'Pending'}
 				</span>
 				<span class="text-[0.6rem] text-muted-foreground"
 					>{formatLastVisit(user.last_visit)}</span

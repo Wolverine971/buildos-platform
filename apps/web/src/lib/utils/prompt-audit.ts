@@ -140,7 +140,7 @@ export async function savePromptForAudit({
 
 **Flow Type:** 2-Part LLM Analysis
 **Current Part:** Part ${flowPart} of 2
-${flowPart === '1' ? '**Purpose:** Event pattern recognition and grouping' : '**Purpose:** Project creation with deduplication'}
+${flowPart === '1' ? '**Purpose:** Event pattern recognition and grouping' : '**Purpose:** Ontology project suggestion creation (new projects only)'}
 ${flowPart === '2' && metadata.eventGroupCount ? `**Input from Part 1:** ${metadata.eventGroupCount} event groups` : ''}
 `;
 		}
@@ -178,8 +178,8 @@ ${
 	flowPart === '1'
 		? `This is Part 1 of a 2-part flow. The output (event groups) will be passed to Part 2.
 Part 1 uses a lightweight event format to reduce token usage and focus on pattern recognition.`
-		: `This is Part 2 of a 2-part flow. It receives event groups from Part 1 and creates structured projects.
-Part 2 includes full data models and deduplication logic against existing projects.`
+		: `This is Part 2 of a 2-part flow. It receives event groups from Part 1 and creates ontology-first project suggestions.
+Each accepted suggestion creates a new ontology project graph (no merge/dedup with existing projects).`
 }
 `
 		: ''

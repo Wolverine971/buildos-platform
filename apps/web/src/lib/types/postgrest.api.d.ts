@@ -9589,7 +9589,7 @@ export interface paths {
 					bio?: components['parameters']['rowFilter.users.bio'];
 					/** @description Whether the user has admin privileges */
 					is_admin?: components['parameters']['rowFilter.users.is_admin'];
-					completed_onboarding?: components['parameters']['rowFilter.users.completed_onboarding'];
+					onboarding_completed_at?: components['parameters']['rowFilter.users.onboarding_completed_at'];
 					updated_at?: components['parameters']['rowFilter.users.updated_at'];
 					last_visit?: components['parameters']['rowFilter.users.last_visit'];
 					stripe_customer_id?: components['parameters']['rowFilter.users.stripe_customer_id'];
@@ -9678,7 +9678,7 @@ export interface paths {
 					bio?: components['parameters']['rowFilter.users.bio'];
 					/** @description Whether the user has admin privileges */
 					is_admin?: components['parameters']['rowFilter.users.is_admin'];
-					completed_onboarding?: components['parameters']['rowFilter.users.completed_onboarding'];
+					onboarding_completed_at?: components['parameters']['rowFilter.users.onboarding_completed_at'];
 					updated_at?: components['parameters']['rowFilter.users.updated_at'];
 					last_visit?: components['parameters']['rowFilter.users.last_visit'];
 					stripe_customer_id?: components['parameters']['rowFilter.users.stripe_customer_id'];
@@ -9720,7 +9720,7 @@ export interface paths {
 					bio?: components['parameters']['rowFilter.users.bio'];
 					/** @description Whether the user has admin privileges */
 					is_admin?: components['parameters']['rowFilter.users.is_admin'];
-					completed_onboarding?: components['parameters']['rowFilter.users.completed_onboarding'];
+					onboarding_completed_at?: components['parameters']['rowFilter.users.onboarding_completed_at'];
 					updated_at?: components['parameters']['rowFilter.users.updated_at'];
 					last_visit?: components['parameters']['rowFilter.users.last_visit'];
 					stripe_customer_id?: components['parameters']['rowFilter.users.stripe_customer_id'];
@@ -19428,11 +19428,8 @@ export interface components {
 			 * @default false
 			 */
 			is_admin: boolean;
-			/**
-			 * Format: boolean
-			 * @default false
-			 */
-			completed_onboarding: boolean;
+			/** Format: timestamp with time zone */
+			onboarding_completed_at?: string;
 			/**
 			 * Format: timestamp with time zone
 			 * @default now()
@@ -20748,7 +20745,7 @@ export interface components {
 		'rowFilter.users.bio': string;
 		/** @description Whether the user has admin privileges */
 		'rowFilter.users.is_admin': string;
-		'rowFilter.users.completed_onboarding': string;
+		'rowFilter.users.onboarding_completed_at': string;
 		'rowFilter.users.updated_at': string;
 		'rowFilter.users.last_visit': string;
 		'rowFilter.users.stripe_customer_id': string;
