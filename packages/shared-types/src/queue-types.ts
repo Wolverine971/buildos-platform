@@ -71,7 +71,7 @@ export interface OnboardingAnalysisJobMetadata {
 	responses?: Record<string, unknown>;
 }
 
-export interface CalendarSyncJobMetadata {
+export interface LegacyCalendarSyncJobMetadata {
 	calendarId: string;
 	syncDirection: 'to_google' | 'from_google' | 'bidirectional';
 	dateRange?: {
@@ -80,6 +80,21 @@ export interface CalendarSyncJobMetadata {
 	};
 	lastSyncedAt?: string;
 }
+
+export interface OntoProjectEventSyncJobMetadata {
+	kind: 'onto_project_event_sync';
+	action: 'upsert' | 'delete';
+	eventId: string;
+	projectId: string;
+	targetUserId: string;
+	triggeredByUserId?: string;
+	createCalendarIfMissing?: boolean;
+	eventUpdatedAt?: string;
+}
+
+export type CalendarSyncJobMetadata =
+	| LegacyCalendarSyncJobMetadata
+	| OntoProjectEventSyncJobMetadata;
 
 export interface BrainDumpProcessJobMetadata {
 	brainDumpId: string;
@@ -530,6 +545,14 @@ function isOnboardingAnalysisMetadata(obj: unknown): obj is OnboardingAnalysisJo
 function isCalendarSyncMetadata(obj: unknown): obj is CalendarSyncJobMetadata {
 	if (!obj || typeof obj !== 'object') return false;
 	const meta = obj as Record<string, unknown>;
+	if (meta.kind === 'onto_project_event_sync') {
+		return (
+			(meta.action === 'upsert' || meta.action === 'delete') &&
+			typeof meta.eventId === 'string' &&
+			typeof meta.projectId === 'string' &&
+			typeof meta.targetUserId === 'string'
+		);
+	}
 	return (
 		typeof meta.calendarId === 'string' &&
 		(!meta.syncDirection ||

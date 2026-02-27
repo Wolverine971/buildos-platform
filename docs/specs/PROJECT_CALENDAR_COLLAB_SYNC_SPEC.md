@@ -2,7 +2,7 @@
 
 # Project Calendar Collaboration and Event Sync Spec
 
-_Status: Active implementation (Phase 1 complete, Phase 2 in progress)_  
+_Status: Active implementation (Phase 1 complete, Phase 2 core backend complete)_  
 _Date: 2026-02-27_  
 _Owner: Web/Ontology platform_
 
@@ -61,12 +61,19 @@ This leads to drift/failures when collaborators edit shared project events.
     - single event get
     - task-events endpoint
     - calendar executor list/detail/update flows
+4. Added queue-backed background sync processing for project events:
+    - Project-scoped create/update/delete now enqueue `sync_calendar` jobs.
+    - Worker processes jobs via `/api/webhooks/calendar-sync-job`.
+    - Retry/backoff is handled by existing queue lifecycle (`fail_queue_job` + retry scheduling).
+5. Added optional project-level fanout sync mode:
+    - `actor_projection` (default): sync only to acting user.
+    - `member_fanout`: enqueue sync jobs for all members with enabled mappings.
+    - Mode stored in `onto_projects.props.calendar_sync_mode`.
 
-### Remaining for Phase 2 completion
+### Remaining follow-ups (post-Phase 2 backend)
 
-1. Add background sync worker with retry/backoff and attempt tracking.
-2. Add optional member-fanout sync mode (default remains actor-projection).
-3. Add UI/telemetry for per-target sync status and retry visibility.
+1. Add UI/telemetry for per-target sync status and retry visibility.
+2. Consider stronger idempotency/version tracking (`last_synced_version` semantics).
 
 ## 5. Current-State Risks (Baseline)
 
@@ -118,7 +125,7 @@ This leads to drift/failures when collaborators edit shared project events.
 
 1. Remove creator-only (`created_by`) filters in calendar scheduling/update helper lookups that should work for collaborators.
 
-## 7.2 Phase 2 (In Progress)
+## 7.2 Phase 2 (Completed - backend core)
 
 1. Implement explicit user-scoped sync target model for ontology event projections.
 2. Define authoritative sync semantics:
@@ -141,7 +148,7 @@ Notes:
 
 1. If duplicate rows exist, migration will fail; preflight query required for remediation.
 
-## 8.2 Phase 2 data model (implemented foundation + pending extensions)
+## 8.2 Phase 2 data model (implemented foundation + optional extensions)
 
 Implemented:
 
@@ -149,10 +156,9 @@ Implemented:
 2. Backfilled `user_id` from `project_calendars`.
 3. Added unique partial index on `(event_id, user_id, provider)` where `user_id IS NOT NULL`.
 
-Pending extensions:
+Optional extensions:
 
-1. Add attempt/backoff fields (or a dedicated job table) for durable retry workflow.
-2. Add optional `last_synced_version` semantics for stronger idempotency/version tracking.
+1. Add optional `last_synced_version` semantics for stronger idempotency/version tracking.
 
 ## 9. API Contract Changes
 
@@ -178,13 +184,14 @@ Authoritative model:
 1. BuildOS event updates are authoritative.
 2. External sync is best-effort with durable retry and visibility.
 
-Mutation flow (target state):
+Mutation flow (implemented backend):
 
 1. User updates event in BuildOS.
 2. Canonical row updated (`onto_events`).
 3. Sync jobs emitted for relevant targets.
-4. Worker applies changes to Google.
-5. Per-target sync state updated.
+4. Worker processes `sync_calendar` job and calls webhook processor.
+5. Webhook applies Google mutation for target user/calendar.
+6. Per-target sync state updated (`onto_event_sync`) and event-level status updated.
 
 Conflict policy:
 
@@ -193,8 +200,8 @@ Conflict policy:
 
 ## 11. Observability and Error Handling
 
-1. Track sync failures at per-target granularity.
-2. Expose “last sync status” in event and calendar settings UI.
+1. Track sync failures at per-target granularity (implemented in backend sync rows + queue attempts).
+2. Expose “last sync status” in event and calendar settings UI (pending UI work).
 3. Add structured logs for:
     - mapping resolution failures
     - token/auth failures
@@ -231,7 +238,8 @@ Phase 2 test additions:
 
 1. Phase 1 code + migration: completed.
 2. Phase 2 user-scoped schema foundation + service/API alignment: completed.
-3. Next rollout step: background worker + retry/backoff + fanout policy controls.
+3. Phase 2 background worker + retry/backoff + fanout policy controls: completed.
+4. Next rollout step: sync health UX/telemetry surfacing.
 
 ## 16. Open Questions
 

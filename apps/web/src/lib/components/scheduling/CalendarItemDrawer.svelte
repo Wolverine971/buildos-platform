@@ -25,24 +25,29 @@
 
 {#if isOpen}
 	<div class="fixed inset-0 z-50">
-		<button class="absolute inset-0 bg-black/30" aria-label="Close drawer" onclick={onClose} />
+		<button class="absolute inset-0 bg-black/30" aria-label="Close drawer" onclick={onClose}
+		></button>
 		<aside
-			class="absolute right-0 top-0 h-full w-full max-w-lg border-l border-border bg-background shadow-ink-strong"
+			class="absolute right-0 top-0 h-full w-full max-w-lg border-l border-border bg-background shadow-ink-strong tx tx-frame tx-weak"
 			in:fly={{ x: 400, duration: 180 }}
 			out:fly={{ x: 400, duration: 160 }}
 		>
-			<header class="border-b border-border px-5 py-4">
-				<div class="flex items-start justify-between gap-3">
+			<header class="border-b border-border px-4 py-3 bg-muted/30 tx tx-strip tx-weak">
+				<div class="flex items-start justify-between gap-2">
 					<div class="min-w-0 flex-1">
-						<h2 class="text-base font-semibold text-foreground leading-tight truncate">
+						<h2 class="text-sm font-semibold text-foreground leading-tight truncate">
 							{title}
 						</h2>
 						{#if subtitle}
-							<p class="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+							<p
+								class="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground"
+							>
+								{subtitle}
+							</p>
 						{/if}
 					</div>
 					<button
-						class="shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground"
+						class="shrink-0 rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted pressable transition-colors"
 						aria-label="Close drawer"
 						onclick={onClose}
 					>
@@ -50,7 +55,7 @@
 					</button>
 				</div>
 			</header>
-			<div class="h-[calc(100%-4.5rem)] overflow-y-auto px-5 py-4">
+			<div class="h-[calc(100%-3.5rem)] overflow-y-auto px-4 py-3">
 				<slot />
 			</div>
 		</aside>

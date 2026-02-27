@@ -2,6 +2,7 @@
 	"name": "BuildOS - AI-Powered Project Organization",
 	"short_name": "BuildOS",
 	"description": "Brain dump into BuildOS and let the Brain Bolt organize scattered thoughts into action.",
+	"id": "/",
 	"start_url": "/",
 	"scope": "/",
 	"icons": [

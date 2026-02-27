@@ -35,11 +35,36 @@ class BrowserPushService {
 	private supabase = createSupabaseBrowser(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 	private registration: ServiceWorkerRegistration | null = null;
 
+	private isIOSDevice(): boolean {
+		const userAgent = navigator.userAgent || '';
+		const iOSPattern = /iPad|iPhone|iPod/;
+		const isTouchMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+		return iOSPattern.test(userAgent) || isTouchMac;
+	}
+
+	private isStandaloneDisplayMode(): boolean {
+		const isStandaloneMedia = window.matchMedia('(display-mode: standalone)').matches;
+		const isStandaloneNavigator =
+			'standalone' in navigator &&
+			(navigator as Navigator & { standalone?: boolean }).standalone;
+
+		return Boolean(isStandaloneMedia || isStandaloneNavigator);
+	}
+
+	private assertIOSPushContext(): void {
+		// On iOS/iPadOS, permission requests for web push require Home Screen mode.
+		if (this.isIOSDevice() && !this.isStandaloneDisplayMode()) {
+			throw new Error(
+				'On iPhone/iPad, install BuildOS to your Home Screen and open it from there before enabling push notifications.'
+			);
+		}
+	}
+
 	/**
 	 * Check if browser supports push notifications
 	 */
 	isSupported(): boolean {
-		return 'serviceWorker' in navigator && 'PushManager' in window;
+		return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 	}
 
 	/**
@@ -56,6 +81,8 @@ class BrowserPushService {
 		if (!this.isSupported()) {
 			throw new Error('Push notifications are not supported in this browser');
 		}
+
+		this.assertIOSPushContext();
 
 		const permission = await Notification.requestPermission();
 		return permission === 'granted';
@@ -86,6 +113,8 @@ class BrowserPushService {
 		if (!VAPID_PUBLIC_KEY) {
 			throw new Error('VAPID public key not configured');
 		}
+
+		this.assertIOSPushContext();
 
 		if (!this.hasPermission()) {
 			const granted = await this.requestPermission();
@@ -148,6 +177,9 @@ class BrowserPushService {
 				throw error;
 			}
 
+			const activeWorker = registration.active || navigator.serviceWorker.controller;
+			activeWorker?.postMessage({ type: 'BUILDOS_SYNC_BADGE' });
+
 			console.log('[BrowserPush] Subscription successful');
 		} catch (error) {
 			console.error('[BrowserPush] Subscription failed:', error);
@@ -177,6 +209,17 @@ class BrowserPushService {
 					console.error('[BrowserPush] Failed to deactivate subscription:', error);
 				}
 			}
+
+			const appNavigator = navigator as Navigator & {
+				clearAppBadge?: () => Promise<void>;
+			};
+
+			if (typeof appNavigator.clearAppBadge === 'function') {
+				await appNavigator.clearAppBadge();
+			}
+
+			const activeWorker = registration.active || navigator.serviceWorker.controller;
+			activeWorker?.postMessage({ type: 'BUILDOS_CLEAR_BADGE' });
 
 			console.log('[BrowserPush] Unsubscribed successfully');
 		} catch (error) {

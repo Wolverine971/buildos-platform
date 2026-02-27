@@ -12,6 +12,39 @@ const THEME_COLORS = {
 	dark: '#0f172a'
 } as const;
 
+const BADGE_SYNC_MIN_INTERVAL_MS = 15000;
+let lastBadgeSyncAt = 0;
+
+async function postMessageToServiceWorker(
+	messageType: 'BUILDOS_SYNC_BADGE' | 'BUILDOS_CLEAR_BADGE'
+) {
+	if (!browser || !('serviceWorker' in navigator)) return;
+
+	try {
+		const registration =
+			(await navigator.serviceWorker.getRegistration('/sw.js')) ??
+			(await navigator.serviceWorker.getRegistration());
+		if (!registration) {
+			return;
+		}
+		const targetWorker = registration.active || navigator.serviceWorker.controller;
+		targetWorker?.postMessage({ type: messageType });
+	} catch (error) {
+		console.warn('[PWA] Failed to post message to service worker:', error);
+	}
+}
+
+async function requestBadgeSync(force = false) {
+	if (!browser) return;
+	const now = Date.now();
+	if (!force && now - lastBadgeSyncAt < BADGE_SYNC_MIN_INTERVAL_MS) {
+		return;
+	}
+
+	lastBadgeSyncAt = now;
+	await postMessageToServiceWorker('BUILDOS_SYNC_BADGE');
+}
+
 /**
  * Update theme colors dynamically based on dark mode
  */
@@ -102,6 +135,16 @@ export function initializePWAEnhancements(): (() => void) | void {
 		}
 	};
 
+	const handleVisibilityChange = () => {
+		if (document.visibilityState === 'visible') {
+			void requestBadgeSync();
+		}
+	};
+
+	const handleWindowFocus = () => {
+		void requestBadgeSync();
+	};
+
 	// Prevent pull-to-refresh on iOS PWA (optional)
 	let lastTouchY = 0;
 	let preventPullToRefresh = false;
@@ -131,6 +174,8 @@ export function initializePWAEnhancements(): (() => void) | void {
 	// Add event listeners
 	darkModeMediaQuery.addEventListener('change', handleDarkModeChange);
 	window.addEventListener('storage', handleStorageChange);
+	window.addEventListener('focus', handleWindowFocus);
+	document.addEventListener('visibilitychange', handleVisibilityChange);
 	document.addEventListener('touchstart', handleTouchStart, { passive: false });
 	document.addEventListener('touchmove', handleTouchMove, { passive: false });
 
@@ -141,11 +186,14 @@ export function initializePWAEnhancements(): (() => void) | void {
 
 	// Add viewport meta tag adjustments for notch handling
 	adjustViewportForNotch();
+	void requestBadgeSync(true);
 
 	// Return cleanup function
 	return () => {
 		darkModeMediaQuery.removeEventListener('change', handleDarkModeChange);
 		window.removeEventListener('storage', handleStorageChange);
+		window.removeEventListener('focus', handleWindowFocus);
+		document.removeEventListener('visibilitychange', handleVisibilityChange);
 		document.removeEventListener('touchstart', handleTouchStart);
 		document.removeEventListener('touchmove', handleTouchMove);
 	};

@@ -5,7 +5,6 @@
 	import { goto } from '$app/navigation';
 	import { addDays, format, startOfDay } from 'date-fns';
 	import {
-		Calendar,
 		SlidersHorizontal,
 		LoaderCircle,
 		ExternalLink,
@@ -156,12 +155,12 @@
 	function getItemColorClass(item: CalendarItem): string {
 		if (item.item_type === 'task') {
 			if (item.item_kind === 'range') {
-				return 'bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700';
+				return 'bg-emerald-500/10 border border-emerald-500/30';
 			}
 			if (item.item_kind === 'start') {
-				return 'bg-sky-100 dark:bg-sky-900/30 border border-sky-300 dark:border-sky-700';
+				return 'bg-sky-500/10 border border-sky-500/30';
 			}
-			return 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700';
+			return 'bg-amber-500/10 border border-amber-500/30';
 		}
 		return 'bg-muted border border-border';
 	}
@@ -584,16 +583,15 @@
 		if (!stateKey) return 'bg-muted text-muted-foreground';
 		const colors: Record<string, string> = {
 			todo: 'bg-muted text-muted-foreground',
-			in_progress: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300',
-			blocked: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
-			done: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
-			planning: 'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300',
-			active: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300',
-			paused: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
-			completed:
-				'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300',
+			in_progress: 'bg-sky-500/10 text-sky-600',
+			blocked: 'bg-red-500/10 text-red-600',
+			done: 'bg-emerald-500/10 text-emerald-600',
+			planning: 'bg-violet-500/10 text-violet-600',
+			active: 'bg-sky-500/10 text-sky-600',
+			paused: 'bg-amber-500/10 text-amber-600',
+			completed: 'bg-emerald-500/10 text-emerald-600',
 			cancelled: 'bg-muted text-muted-foreground line-through',
-			scheduled: 'bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300'
+			scheduled: 'bg-sky-500/10 text-sky-600'
 		};
 		return colors[stateKey] || 'bg-muted text-muted-foreground';
 	}
@@ -609,11 +607,9 @@
 
 	function getPriorityColor(priority: number | null | undefined): string {
 		if (priority == null) return '';
-		if (priority >= 4) return 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300';
-		if (priority === 3)
-			return 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300';
-		if (priority === 2)
-			return 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300';
+		if (priority >= 4) return 'bg-red-500/10 text-red-600';
+		if (priority === 3) return 'bg-orange-500/10 text-orange-600';
+		if (priority === 2) return 'bg-amber-500/10 text-amber-600';
 		return 'bg-muted text-muted-foreground';
 	}
 
@@ -656,39 +652,41 @@
 
 <main class="min-h-screen bg-background">
 	<div class="container mx-auto max-w-6xl px-3 py-3 sm:px-5 sm:py-6">
-		<div class="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-center sm:justify-between">
-			<div class="space-y-1">
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+			<div class="space-y-0.5">
 				<button
 					onclick={() => goto('/')}
-					class="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+					class="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground pressable"
 				>
-					<ArrowLeft class="h-3.5 w-3.5" />
+					<ArrowLeft class="h-3 w-3" />
 					Dashboard
 				</button>
-				<h1 class="text-2xl font-bold text-foreground">Calendar</h1>
-				<p class="text-sm text-muted-foreground">
-					All events and scheduled task markers, loaded after the page renders.
-				</p>
+				<h1 class="text-lg font-bold text-foreground">Calendar</h1>
 			</div>
-			<div class="flex flex-wrap items-center gap-2">
-				<Button variant="ghost" size="sm" onclick={() => (showSettings = !showSettings)}>
-					<SlidersHorizontal class="h-4 w-4 mr-2" />
+			<div class="flex flex-wrap items-center gap-1.5">
+				<Button
+					variant="outline"
+					size="sm"
+					onclick={() => (showSettings = !showSettings)}
+					class="pressable"
+				>
+					<SlidersHorizontal class="h-3.5 w-3.5 mr-1.5" />
 					Filters
-				</Button>
-				<Button variant="ghost" size="sm" disabled title="Event creation coming soon">
-					<Calendar class="h-4 w-4 mr-2" />
-					Add Event (soon)
 				</Button>
 			</div>
 		</div>
 
 		{#if showSettings}
-			<div class="mt-3 sm:mt-4 rounded-lg border border-border bg-card p-3 sm:p-4">
-				<div class="flex items-center gap-2 mb-2 sm:mb-3">
-					<SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
-					<span class="text-sm font-semibold text-foreground">Display Filters</span>
+			<div
+				class="mt-3 rounded-lg border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak"
+			>
+				<div class="flex items-center gap-2 mb-2">
+					<SlidersHorizontal class="h-3.5 w-3.5 text-muted-foreground" />
+					<span class="text-xs font-semibold text-foreground uppercase tracking-wide"
+						>Display Filters</span
+					>
 				</div>
-				<div class="grid gap-2 sm:gap-3 sm:grid-cols-2 lg:grid-cols-4">
+				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
 					<label class="flex items-center gap-2 text-sm">
 						<input
 							type="checkbox"
@@ -731,13 +729,13 @@
 
 		{#if error}
 			<div
-				class="mt-4 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-700 dark:text-red-400"
+				class="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive tx tx-static tx-weak"
 			>
 				{error}
 			</div>
 		{/if}
 
-		<div class="mt-4 rounded-lg border border-border bg-card">
+		<div class="mt-3 rounded-lg border border-border bg-card shadow-ink">
 			<CalendarView
 				{viewMode}
 				{currentDate}
@@ -763,18 +761,18 @@
 			? `Task · ${getTaskMarkerLabel(selectedItem.item_kind)}`
 			: 'Event'}
 	>
-		<div class="space-y-5">
+		<div class="space-y-3">
 			<!-- Status badges row -->
 			{#if detailLoading}
 				<div
-					class="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center"
+					class="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center"
 				>
 					<LoaderCircle class="h-4 w-4 animate-spin" />
 					Loading details…
 				</div>
 			{:else if detailError}
 				<div
-					class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20 p-3 text-sm text-red-700 dark:text-red-400"
+					class="rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-sm text-destructive tx tx-static tx-weak"
 				>
 					{detailError}
 				</div>
@@ -846,9 +844,7 @@
 						</div>
 					{/if}
 					{#if detail.data?.completed_at}
-						<div
-							class="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400"
-						>
+						<div class="flex items-center gap-2 text-sm text-emerald-600">
 							<CheckCircle2 class="h-3.5 w-3.5 shrink-0" />
 							<span
 								>Completed: {format(
@@ -990,7 +986,7 @@
 						</h3>
 						<button
 							onclick={() => openProject(detail.project?.id ?? null)}
-							class="w-full rounded-lg border border-border bg-card p-3 text-left hover:bg-muted/50 transition-colors"
+							class="w-full rounded-lg border border-border bg-card p-2.5 text-left hover:border-accent/50 hover:bg-muted/50 transition-colors shadow-ink pressable"
 						>
 							<div class="flex items-center gap-2">
 								<FolderOpen class="h-4 w-4 shrink-0 text-accent" />

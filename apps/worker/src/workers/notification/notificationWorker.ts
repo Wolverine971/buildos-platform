@@ -288,6 +288,42 @@ interface DeliveryResult {
 	error?: string;
 }
 
+async function getUnreadPushCount(
+	recipientUserId: string,
+	jobLogger: Logger
+): Promise<number | null> {
+	try {
+		const { count, error } = await supabase
+			.from('notification_deliveries')
+			.select('id', { count: 'exact', head: true })
+			.eq('recipient_user_id', recipientUserId)
+			.eq('channel', 'push')
+			.in('status', ['pending', 'sent', 'delivered'])
+			.is('failed_at', null)
+			.is('opened_at', null);
+
+		if (error) {
+			jobLogger.warn('Failed to fetch unread push count', {
+				recipientUserId,
+				error: error.message
+			});
+			return null;
+		}
+
+		if (typeof count !== 'number') {
+			return null;
+		}
+
+		return Math.max(0, count);
+	} catch (error: any) {
+		jobLogger.warn('Unexpected error fetching unread push count', {
+			recipientUserId,
+			error: error?.message || 'Unknown error'
+		});
+		return null;
+	}
+}
+
 /**
  * Send browser push notification
  */
@@ -318,6 +354,8 @@ async function sendPushNotification(
 			subscriptionId: pushSubscription.id
 		});
 
+		const unreadPushCount = await getUnreadPushCount(delivery.recipient_user_id, pushLogger);
+
 		// Format notification payload
 		// Note: payload is guaranteed to have title and body by enrichDeliveryPayload
 		const payload = JSON.stringify({
@@ -326,6 +364,7 @@ async function sendPushNotification(
 			icon:
 				delivery.payload.icon_url || '/AppImages/android/android-launchericon-192-192.png',
 			badge: '/AppImages/android/android-launchericon-96-96.png',
+			badge_count: unreadPushCount ?? 1,
 			tag: delivery.payload.tag || delivery.payload.event_type || 'notification',
 			requireInteraction: delivery.payload.priority === 'urgent',
 			data: {

@@ -9,6 +9,32 @@ type ProjectCalendar = Database['public']['Tables']['project_calendars']['Row'];
 type ProjectCalendarInsert = Database['public']['Tables']['project_calendars']['Insert'];
 type ProjectCalendarUpdate = Database['public']['Tables']['project_calendars']['Update'];
 type Project = Database['public']['Tables']['onto_projects']['Row'];
+type ProjectMember = Database['public']['Tables']['onto_project_members']['Row'];
+type OntoActor = Database['public']['Tables']['onto_actors']['Row'];
+export type ProjectCalendarSyncMode = 'actor_projection' | 'member_fanout';
+const DEFAULT_PROJECT_CALENDAR_SYNC_MODE: ProjectCalendarSyncMode = 'actor_projection';
+
+export interface ProjectCalendarCollaborationMember {
+	actor_id: string;
+	user_id: string | null;
+	display_name: string;
+	email: string | null;
+	role_key: string;
+	access: string;
+	has_calendar: boolean;
+	sync_enabled: boolean;
+	calendar_name: string | null;
+	sync_status: string | null;
+	is_current_user: boolean;
+}
+
+export interface ProjectCalendarCollaborationSummary {
+	sync_mode: ProjectCalendarSyncMode;
+	total_members: number;
+	mapped_members: number;
+	active_sync_members: number;
+	members: ProjectCalendarCollaborationMember[];
+}
 
 export interface CreateProjectCalendarOptions {
 	projectId: string;
@@ -25,6 +51,7 @@ export interface UpdateProjectCalendarOptions {
 	description?: string;
 	colorId?: GoogleColorId;
 	syncEnabled?: boolean;
+	syncMode?: ProjectCalendarSyncMode;
 }
 
 export class ProjectCalendarService {
@@ -34,6 +61,73 @@ export class ProjectCalendarService {
 	constructor(supabase: SupabaseClient<Database>) {
 		this.supabase = supabase;
 		this.calendarService = new CalendarService(supabase);
+	}
+
+	private parseProjectSyncMode(
+		props: Record<string, unknown> | null | undefined
+	): ProjectCalendarSyncMode {
+		return props?.calendar_sync_mode === 'member_fanout'
+			? 'member_fanout'
+			: DEFAULT_PROJECT_CALENDAR_SYNC_MODE;
+	}
+
+	async getProjectCalendarSyncMode(projectId: string): Promise<ProjectCalendarSyncMode> {
+		const { data: project } = await this.supabase
+			.from('onto_projects')
+			.select('props')
+			.eq('id', projectId)
+			.is('deleted_at', null)
+			.maybeSingle();
+
+		return this.parseProjectSyncMode(
+			(project?.props as Record<string, unknown> | null | undefined) ?? null
+		);
+	}
+
+	async updateProjectCalendarSyncMode(
+		projectId: string,
+		syncMode: ProjectCalendarSyncMode
+	): Promise<Response> {
+		try {
+			const { data: project, error: projectError } = await this.supabase
+				.from('onto_projects')
+				.select('id, props')
+				.eq('id', projectId)
+				.is('deleted_at', null)
+				.single();
+
+			if (projectError || !project) {
+				return ApiResponse.error('Project not found', 404);
+			}
+
+			const currentProps = (project.props as Record<string, unknown> | null) ?? {};
+			const nextProps = {
+				...currentProps,
+				calendar_sync_mode: syncMode
+			};
+
+			const { error: updateError } = await this.supabase
+				.from('onto_projects')
+				.update({
+					props: nextProps,
+					updated_at: new Date().toISOString()
+				})
+				.eq('id', projectId);
+
+			if (updateError) {
+				return ApiResponse.error('Failed to update project calendar sync mode', 500);
+			}
+
+			return ApiResponse.success(
+				{
+					sync_mode: syncMode
+				},
+				'Project calendar sync mode updated successfully'
+			);
+		} catch (error) {
+			console.error('Error updating project calendar sync mode:', error);
+			return ApiResponse.error('Failed to update project calendar sync mode', 500);
+		}
 	}
 
 	/**
@@ -214,10 +308,150 @@ export class ProjectCalendarService {
 				return ApiResponse.error('Failed to fetch project calendar', 500);
 			}
 
-			return ApiResponse.success(data);
+			if (!data) {
+				return ApiResponse.success(null);
+			}
+
+			const syncMode = await this.getProjectCalendarSyncMode(projectId);
+			return ApiResponse.success({
+				...data,
+				sync_mode: syncMode
+			});
 		} catch (error) {
 			console.error('Error fetching project calendar:', error);
 			return ApiResponse.error('Failed to fetch project calendar', 500);
+		}
+	}
+
+	async getProjectCalendarCollaboration(
+		projectId: string,
+		currentUserId: string
+	): Promise<Response> {
+		try {
+			const [syncMode, memberResponse, calendarResponse] = await Promise.all([
+				this.getProjectCalendarSyncMode(projectId),
+				this.supabase
+					.from('onto_project_members')
+					.select('actor_id, role_key, access')
+					.eq('project_id', projectId)
+					.is('removed_at', null),
+				this.supabase
+					.from('project_calendars')
+					.select('user_id, calendar_name, sync_enabled, sync_status')
+					.eq('project_id', projectId)
+			]);
+
+			if (memberResponse.error) {
+				return ApiResponse.error('Failed to fetch project members', 500);
+			}
+
+			if (calendarResponse.error) {
+				return ApiResponse.error('Failed to fetch project calendar mappings', 500);
+			}
+
+			const members = (memberResponse.data ?? []) as Array<
+				Pick<ProjectMember, 'actor_id' | 'role_key' | 'access'>
+			>;
+			const actorIds = Array.from(
+				new Set(members.map((member) => member.actor_id).filter(Boolean))
+			);
+
+			let actorsById = new Map<
+				string,
+				Pick<OntoActor, 'id' | 'user_id' | 'name' | 'email'>
+			>();
+			if (actorIds.length > 0) {
+				const { data: actorRows, error: actorError } = await this.supabase
+					.from('onto_actors')
+					.select('id, user_id, name, email')
+					.in('id', actorIds);
+
+				if (actorError) {
+					return ApiResponse.error('Failed to fetch project actor details', 500);
+				}
+
+				actorsById = new Map(
+					(actorRows ?? []).map((actor) => [
+						actor.id,
+						{
+							id: actor.id,
+							user_id: actor.user_id,
+							name: actor.name,
+							email: actor.email
+						}
+					])
+				);
+			}
+
+			const calendarByUserId = new Map<
+				string,
+				{
+					calendar_name: string | null;
+					sync_enabled: boolean;
+					sync_status: string | null;
+				}
+			>();
+			for (const calendar of calendarResponse.data ?? []) {
+				if (!calendar.user_id) continue;
+				calendarByUserId.set(calendar.user_id, {
+					calendar_name: calendar.calendar_name,
+					sync_enabled: calendar.sync_enabled ?? true,
+					sync_status: calendar.sync_status
+				});
+			}
+
+			const collaborationMembers: ProjectCalendarCollaborationMember[] = members.map(
+				(member) => {
+					const actor = actorsById.get(member.actor_id);
+					const userId = actor?.user_id ?? null;
+					const mapping = userId ? calendarByUserId.get(userId) : undefined;
+					const displayName =
+						actor?.name?.trim() ||
+						actor?.email?.trim() ||
+						(userId === currentUserId ? 'You' : 'Project member');
+
+					return {
+						actor_id: member.actor_id,
+						user_id: userId,
+						display_name: displayName,
+						email: actor?.email ?? null,
+						role_key: member.role_key,
+						access: member.access,
+						has_calendar: Boolean(mapping),
+						sync_enabled: mapping?.sync_enabled ?? false,
+						calendar_name: mapping?.calendar_name ?? null,
+						sync_status: mapping?.sync_status ?? null,
+						is_current_user: userId === currentUserId
+					};
+				}
+			);
+
+			collaborationMembers.sort((a, b) => {
+				if (a.is_current_user && !b.is_current_user) return -1;
+				if (!a.is_current_user && b.is_current_user) return 1;
+				if (a.has_calendar !== b.has_calendar) return a.has_calendar ? -1 : 1;
+				return a.display_name.localeCompare(b.display_name);
+			});
+
+			const mappedMembers = collaborationMembers.filter(
+				(member) => member.has_calendar
+			).length;
+			const activeSyncMembers = collaborationMembers.filter(
+				(member) => member.has_calendar && member.sync_enabled
+			).length;
+
+			const summary: ProjectCalendarCollaborationSummary = {
+				sync_mode: syncMode,
+				total_members: collaborationMembers.length,
+				mapped_members: mappedMembers,
+				active_sync_members: activeSyncMembers,
+				members: collaborationMembers
+			};
+
+			return ApiResponse.success(summary);
+		} catch (error) {
+			console.error('Error fetching project calendar collaboration summary:', error);
+			return ApiResponse.error('Failed to fetch project calendar collaboration summary', 500);
 		}
 	}
 
@@ -285,7 +519,28 @@ export class ProjectCalendarService {
 				return ApiResponse.error('Failed to update calendar settings', 500);
 			}
 
-			return ApiResponse.success(updatedCalendar, 'Calendar settings updated successfully');
+			if (updates.syncMode) {
+				const syncModeResponse = await this.updateProjectCalendarSyncMode(
+					projectId,
+					updates.syncMode
+				);
+				const payload = await syncModeResponse.json().catch(() => null);
+				if (!payload?.success) {
+					return ApiResponse.error(
+						payload?.error || 'Failed to update project calendar sync mode',
+						500
+					);
+				}
+			}
+
+			return ApiResponse.success(
+				{
+					...updatedCalendar,
+					sync_mode:
+						updates.syncMode ?? (await this.getProjectCalendarSyncMode(projectId))
+				},
+				'Calendar settings updated successfully'
+			);
 		} catch (error) {
 			console.error('Error updating project calendar:', error);
 			return ApiResponse.error('Failed to update project calendar', 500);

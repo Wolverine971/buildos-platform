@@ -14,6 +14,7 @@ import { processHomeworkJob } from './workers/homework/homeworkWorker';
 import { processTreeAgentJob } from './workers/tree-agent/treeAgentWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
+import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -323,6 +324,22 @@ async function processProjectIcon(job: ProcessingJob) {
 }
 
 /**
+ * Calendar sync projection processor
+ */
+async function processCalendarSync(job: ProcessingJob) {
+	await job.log('Calendar sync job received');
+
+	try {
+		const result = await processCalendarSyncJob(job);
+		await job.log('Calendar sync job completed');
+		return result;
+	} catch (error: any) {
+		await job.log(`Calendar sync job failed: ${error.message}`);
+		throw error;
+	}
+}
+
+/**
  * Start the Supabase-based worker
  */
 export async function startWorker() {
@@ -363,6 +380,9 @@ export async function startWorker() {
 
 	// Register project icon generation processor
 	queue.process('generate_project_icon' as any, processProjectIcon);
+
+	// Register calendar sync projection processor
+	queue.process('sync_calendar', processCalendarSync);
 
 	// Check if Twilio is configured
 	const twilioEnabled = !!(
@@ -438,6 +458,7 @@ export async function startWorker() {
 		'generate_daily_brief',
 		'onboarding_analysis',
 		'send_notification',
+		'sync_calendar',
 		'project_activity_batch_flush',
 		'classify_chat_session',
 		'process_onto_braindump',

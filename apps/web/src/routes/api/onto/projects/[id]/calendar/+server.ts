@@ -4,6 +4,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import type { GoogleColorId } from '$lib/config/calendar-colors';
+import type { ProjectCalendarSyncMode } from '$lib/services/project-calendar.service';
 
 type ProjectAccessResult =
 	| {
@@ -142,11 +143,35 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	}
 
 	const service = new ProjectCalendarService(locals.supabase);
+	const syncMode =
+		(body?.syncMode as ProjectCalendarSyncMode | undefined) ||
+		(body?.sync_mode as ProjectCalendarSyncMode | undefined);
+
+	if (syncMode && syncMode !== 'actor_projection' && syncMode !== 'member_fanout') {
+		return ApiResponse.badRequest('syncMode must be actor_projection or member_fanout');
+	}
+
+	const hasCalendarSettings =
+		body?.name !== undefined ||
+		body?.description !== undefined ||
+		body?.colorId !== undefined ||
+		body?.syncEnabled !== undefined;
+
+	if (syncMode && !hasCalendarSettings) {
+		const syncModeResult = await service.updateProjectCalendarSyncMode(projectId, syncMode);
+		const syncPayload = await syncModeResult.json().catch(() => null);
+		if (!syncPayload?.success) {
+			return syncModeResult;
+		}
+		return ApiResponse.success(syncPayload.data, 'Project calendar sync mode updated');
+	}
+
 	return service.updateProjectCalendar(projectId, access.userId, {
 		name: body?.name,
 		description: body?.description,
 		colorId: body?.colorId,
-		syncEnabled: body?.syncEnabled
+		syncEnabled: body?.syncEnabled,
+		syncMode
 	});
 };
 

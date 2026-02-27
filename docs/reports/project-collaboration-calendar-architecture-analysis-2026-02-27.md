@@ -36,12 +36,18 @@ Reason: the single shared calendar model introduces fragile ownership/token depe
     - Event sync service now reads/writes sync mappings as caller-scoped projections.
     - Project event update/delete mapping resolution now uses caller-owned mapping only.
     - API + calendar executor reads now scope sync rows to current user.
+    - Added queue-backed project event sync dispatch (`sync_calendar` jobs) for create/update/delete.
+    - Added worker processor + authenticated webhook execution path for background sync application.
+    - Enabled queue retry/backoff semantics for transient sync failures.
+    - Added optional project sync mode policy in project props:
+        - `actor_projection` (default)
+        - `member_fanout`
+    - Added project calendar API support to read/update sync mode.
 
 ### Still pending
 
-1. Background sync worker with retry/backoff and per-attempt visibility.
-2. Explicit sync mode policy controls (actor-projection default, optional member-fanout).
-3. UI surfacing of per-target sync health and retry state.
+1. UI surfacing of per-target sync health and retry state.
+2. Optional stronger idempotency/version guardrails (for example, `last_synced_version`).
 
 ## Current Implementation Snapshot
 

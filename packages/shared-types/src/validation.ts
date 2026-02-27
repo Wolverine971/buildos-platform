@@ -242,6 +242,38 @@ export function validateCalendarSyncMetadata(metadata: unknown): CalendarSyncJob
 	}
 
 	const meta = metadata as Record<string, unknown>;
+	if (meta.kind === 'onto_project_event_sync') {
+		if (meta.action !== 'upsert' && meta.action !== 'delete') {
+			throw new ValidationError('action', meta.action, 'upsert|delete');
+		}
+		if (typeof meta.eventId !== 'string') {
+			throw new ValidationError('eventId', meta.eventId, 'string');
+		}
+		if (typeof meta.projectId !== 'string') {
+			throw new ValidationError('projectId', meta.projectId, 'string');
+		}
+		if (typeof meta.targetUserId !== 'string') {
+			throw new ValidationError('targetUserId', meta.targetUserId, 'string');
+		}
+		if (meta.triggeredByUserId !== undefined && typeof meta.triggeredByUserId !== 'string') {
+			throw new ValidationError('triggeredByUserId', meta.triggeredByUserId, 'string');
+		}
+		if (
+			meta.createCalendarIfMissing !== undefined &&
+			typeof meta.createCalendarIfMissing !== 'boolean'
+		) {
+			throw new ValidationError(
+				'createCalendarIfMissing',
+				meta.createCalendarIfMissing,
+				'boolean'
+			);
+		}
+		if (meta.eventUpdatedAt !== undefined && typeof meta.eventUpdatedAt !== 'string') {
+			throw new ValidationError('eventUpdatedAt', meta.eventUpdatedAt, 'string');
+		}
+
+		return meta as unknown as CalendarSyncJobMetadata;
+	}
 
 	if (typeof meta.calendarId !== 'string') {
 		throw new ValidationError('calendarId', meta.calendarId, 'string');

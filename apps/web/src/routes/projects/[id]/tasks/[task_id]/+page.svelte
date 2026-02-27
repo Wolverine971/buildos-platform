@@ -3,10 +3,9 @@
 	Task Focus Page - Focused Task Work Area
 
 	A dedicated full-page experience for working on a single task:
-	- Task header with title, state, and quick actions
+	- Minimal header with back navigation and task title
 	- Main content area with Details and Workspace tabs
-	- Project context sidebar with goals, plans, documents, and other tasks
-	- Linked entities panel for relationships
+	- Sidebar with task actions, project context, linked entities, and documents
 
 	Documentation:
 	- Ontology System: /apps/web/docs/features/ontology/README.md
@@ -28,7 +27,6 @@
 		ListChecks,
 		Flag,
 		ChevronDown,
-		ChevronRight,
 		Plus,
 		Clock,
 		CheckCircle2,
@@ -36,11 +34,9 @@
 		AlertTriangle,
 		Layers,
 		CircleCheck,
-		Sparkles,
 		RefreshCw,
 		X,
-		FolderOpen,
-		Users
+		FolderOpen
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -53,6 +49,7 @@
 	import LinkedEntities from '$lib/components/ontology/linked-entities/LinkedEntities.svelte';
 	import StateDisplay from '$lib/components/ontology/StateDisplay.svelte';
 	import TaskEditModal from '$lib/components/ontology/TaskEditModal.svelte';
+	import TaskAssigneeSelector from '$lib/components/ontology/TaskAssigneeSelector.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
 	import type { EntityKind } from '$lib/components/ontology/linked-entities/linked-entities.types';
 	import { format } from 'date-fns';
@@ -61,7 +58,6 @@
 		promoteTaskDocument,
 		type TaskWorkspaceDocument
 	} from '$lib/services/ontology/task-document.service';
-	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type { Component } from 'svelte';
 
 	// ============================================================
@@ -77,12 +73,15 @@
 	let documents = $state(data.documents || []);
 	let milestones = $state(data.milestones || []);
 	let projectTasks = $state(data.tasks || []);
+
 	// Form fields
 	let title = $state('');
 	let description = $state('');
 	let priority = $state<number>(3);
 	let stateKey = $state('todo');
+	let startAt = $state('');
 	let dueAt = $state('');
+	let assigneeActorIds = $state<string[]>([]);
 
 	// UI state
 	let isSaving = $state(false);
@@ -92,7 +91,6 @@
 	let dataRefreshing = $state(false);
 	let initialLoaded = $state(false);
 
-	// Mark initial load complete after first data load
 	$effect(() => {
 		if (task && !initialLoaded) {
 			initialLoaded = true;
@@ -116,7 +114,7 @@
 	let autoSaveTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
 	let hasUnsavedChanges = $state(false);
 	let lastSavedContent = $state('');
-	const AUTO_SAVE_DELAY = 2000; // 2 seconds debounce
+	const AUTO_SAVE_DELAY = 2000;
 
 	// Sidebar panels state
 	let expandedPanels = $state<Record<string, boolean>>({
@@ -143,19 +141,12 @@
 	let selectedTaskId = $state<string | null>(null);
 	let showMilestoneModal = $state(false);
 	let selectedMilestoneId = $state<string | null>(null);
-	let showChatModal = $state(false);
 
 	// Lazy-loaded modal components
-
 	let DocumentModalComponent = $state<Component<any, any> | null>(null);
-
 	let GoalEditModalComponent = $state<Component<any, any> | null>(null);
-
 	let PlanEditModalComponent = $state<Component<any, any> | null>(null);
-
 	let MilestoneEditModalComponent = $state<Component<any, any> | null>(null);
-
-	let AgentChatModalComponent = $state<Component<any, any> | null>(null);
 
 	// ============================================================
 	// DERIVED STATE
@@ -173,45 +164,30 @@
 	const otherTasks = $derived.by(() =>
 		projectTasks.filter((t: any) => t.id !== task?.id).slice(0, 10)
 	);
-	const taskAssignees = $derived.by(() => (Array.isArray(task?.assignees) ? task.assignees : []));
-	const taskAssigneeSummary = $derived.by(() => {
-		if (taskAssignees.length === 0) return 'Unassigned';
-		const first = formatAssigneeLabel(taskAssignees[0]);
-		if (taskAssignees.length === 1) return `@${first}`;
-		return `@${first} +${taskAssignees.length - 1}`;
-	});
 
-	// Task visuals based on current state (used in header)
 	const taskVisuals = $derived(getTaskVisuals(stateKey));
 	const TaskIcon = $derived(taskVisuals.icon);
-
-	const entityFocus = $derived.by((): ProjectFocus | null => {
-		if (!task || !project?.id) return null;
-		return {
-			focusType: 'task',
-			focusEntityId: task.id,
-			focusEntityName: task.title || 'Untitled Task',
-			projectId: project.id,
-			projectName: project.name || 'Project'
-		};
-	});
 
 	// ============================================================
 	// INITIALIZATION
 	// ============================================================
 
-	// Initialize form fields from task data
 	$effect(() => {
 		if (task) {
 			title = task.title || '';
 			description = task.description || task.props?.description || '';
 			priority = task.priority || 3;
 			stateKey = task.state_key || 'todo';
+			startAt = task.start_at ? formatDateTimeForInput(task.start_at) : '';
 			dueAt = task.due_at ? formatDateTimeForInput(task.due_at) : '';
+			assigneeActorIds = Array.isArray(task.assignees)
+				? task.assignees
+						.map((a: { actor_id?: string }) => a.actor_id)
+						.filter((id: string | undefined): id is string => Boolean(id))
+				: [];
 		}
 	});
 
-	// Load view preference from localStorage
 	$effect(() => {
 		if (!browser) return;
 		if (hasLoadedViewPreference) return;
@@ -222,7 +198,6 @@
 		hasLoadedViewPreference = true;
 	});
 
-	// Load workspace documents when switching to workspace tab
 	$effect(() => {
 		if (!browser) return;
 		if (activeView === 'workspace' && !workspaceInitialized && task) {
@@ -230,7 +205,6 @@
 		}
 	});
 
-	// Auto-save effect with debounce
 	$effect(() => {
 		if (!browser) return;
 		if (!selectedWorkspaceDocId) return;
@@ -241,12 +215,10 @@
 
 		hasUnsavedChanges = true;
 
-		// Clear existing timeout
 		if (autoSaveTimeout) {
 			clearTimeout(autoSaveTimeout);
 		}
 
-		// Set new timeout for auto-save
 		autoSaveTimeout = setTimeout(async () => {
 			if (workspaceDocContent !== lastSavedContent && selectedWorkspaceDocId) {
 				try {
@@ -254,12 +226,11 @@
 					lastSavedContent = workspaceDocContent;
 					hasUnsavedChanges = false;
 				} catch {
-					// Error already shown via toast in saveWorkspaceDocument
+					// Error already shown via toast
 				}
 			}
 		}, AUTO_SAVE_DELAY);
 
-		// Cleanup on unmount
 		return () => {
 			if (autoSaveTimeout) {
 				clearTimeout(autoSaveTimeout);
@@ -318,22 +289,6 @@
 		});
 	}
 
-	function formatAssigneeLabel(assignee: {
-		name?: string | null;
-		email?: string | null;
-		actor_id?: string | null;
-	}): string {
-		const name = assignee.name?.trim();
-		if (name) return name;
-
-		const email = assignee.email?.trim().toLowerCase();
-		if (email) {
-			return email.split('@')[0] ?? 'teammate';
-		}
-
-		return assignee.actor_id?.slice(0, 8) ?? 'teammate';
-	}
-
 	function togglePanel(key: string) {
 		expandedPanels = { ...expandedPanels, [key]: !expandedPanels[key] };
 	}
@@ -368,7 +323,7 @@
 		if (doc) {
 			const content = (doc.document?.props?.body_markdown as string) ?? '';
 			workspaceDocContent = content;
-			lastSavedContent = content; // Track baseline for auto-save
+			lastSavedContent = content;
 			hasUnsavedChanges = false;
 		}
 	}
@@ -468,7 +423,9 @@
 				description: description.trim() || null,
 				priority: Number(priority),
 				state_key: stateKey,
-				due_at: parseDateTimeFromInput(dueAt)
+				start_at: parseDateTimeFromInput(startAt),
+				due_at: parseDateTimeFromInput(dueAt),
+				assignee_actor_ids: assigneeActorIds
 			};
 
 			const response = await fetch(`/api/onto/tasks/${task.id}`, {
@@ -582,13 +539,6 @@
 		}
 	}
 
-	async function loadAgentChatModal() {
-		if (!AgentChatModalComponent) {
-			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
-			AgentChatModalComponent = mod.default;
-		}
-	}
-
 	async function openDocumentModal(id: string | null = null) {
 		await loadDocumentModal();
 		activeDocumentId = id;
@@ -618,12 +568,6 @@
 		showMilestoneModal = true;
 	}
 
-	async function openChatModal() {
-		if (!task || !project?.id) return;
-		await loadAgentChatModal();
-		showChatModal = true;
-	}
-
 	function handleModalClose() {
 		showDocumentModal = false;
 		showGoalModal = false;
@@ -639,7 +583,6 @@
 	}
 
 	function handleDocumentSaved() {
-		// Refresh data but keep modal open - user can close manually when done editing
 		refreshData();
 	}
 
@@ -689,181 +632,39 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background overflow-x-hidden">
-	<!-- Sticky Header - Compact Mobile-First -->
+	<!-- Minimal Header -->
 	<header
-		class="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
+		class="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80 tx tx-strip tx-weak"
 	>
-		<div
-			class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-1.5 sm:py-2 space-y-1 sm:space-y-2"
-		>
-			<!-- Title Row - Compact -->
-			<div class="flex items-center justify-between gap-1.5 sm:gap-2">
-				<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
-					<button
-						onclick={() => goto(`/projects/${project?.id}`)}
-						class="p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0 pressable"
-						aria-label="Back to project"
-					>
-						<ArrowLeft class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-					</button>
-					<div class="min-w-0 flex-1">
-						<div class="flex items-center gap-2">
-							<div
-								class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
-							>
-								<TaskIcon class="w-3.5 h-3.5 sm:w-4 sm:h-4 {taskVisuals.color}" />
-							</div>
-							<div class="min-w-0">
-								<h1
-									class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
-								>
-									{title || 'Untitled Task'}
-								</h1>
-								<!-- Desktop: Show project link -->
-								<a
-									href="/projects/{project?.id}"
-									class="text-xs text-muted-foreground hover:text-foreground transition-colors truncate hidden sm:block"
-								>
-									{project?.name || 'Project'}
-								</a>
-								<div class="hidden sm:flex items-center gap-1 mt-1 flex-wrap">
-									<Users class="w-3 h-3 text-muted-foreground" />
-									{#if taskAssignees.length === 0}
-										<span class="text-[11px] text-muted-foreground"
-											>Unassigned</span
-										>
-									{:else}
-										{#each taskAssignees.slice(0, 2) as assignee}
-											<span
-												class="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-foreground"
-											>
-												@{formatAssigneeLabel(assignee)}
-											</span>
-										{/each}
-										{#if taskAssignees.length > 2}
-											<span class="text-[11px] text-muted-foreground"
-												>+{taskAssignees.length - 2}</span
-											>
-										{/if}
-									{/if}
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Desktop Actions -->
-				<div class="hidden sm:flex items-center gap-1.5 shrink-0">
-					<StateDisplay state={stateKey} entityKind="task" />
-					<button
-						onclick={openChatModal}
-						class="p-2 rounded-lg hover:bg-muted transition-colors pressable"
-						aria-label="Chat about this task"
-						title="Chat about this task"
-					>
-						<Sparkles class="w-5 h-5 text-accent" />
-					</button>
-					<button
-						onclick={refreshData}
-						disabled={dataRefreshing}
-						class="p-2 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 pressable"
-						aria-label="Refresh data"
-					>
-						<RefreshCw
-							class="w-4 h-4 text-muted-foreground {dataRefreshing
-								? 'animate-spin'
-								: ''}"
-						/>
-					</button>
-					<button
-						onclick={() => (showDeleteConfirm = true)}
-						disabled={isDeleting || isSaving}
-						class="p-2 rounded-lg hover:bg-destructive/10 transition-colors pressable"
-						aria-label="Delete task"
-					>
-						<Trash2 class="w-5 h-5 text-destructive" />
-					</button>
-					<Button
-						variant="primary"
-						size="sm"
-						onclick={handleSave}
-						loading={isSaving}
-						disabled={isSaving || isDeleting || !title.trim()}
-						class="pressable"
-					>
-						<Save class="w-4 h-4" />
-						Save
-					</Button>
-				</div>
-
-				<!-- Mobile: State + Quick Actions -->
-				<div class="flex items-center gap-1.5 sm:hidden">
-					<StateDisplay state={stateKey} entityKind="task" />
-					<button
-						onclick={openChatModal}
-						class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
-						aria-label="AI Chat"
-					>
-						<Sparkles class="w-4 h-4 text-accent" />
-					</button>
-					<button
-						onclick={refreshData}
-						disabled={dataRefreshing}
-						class="p-1.5 rounded-lg hover:bg-muted transition-colors disabled:opacity-50 pressable"
-						aria-label="Refresh"
-					>
-						<RefreshCw
-							class="w-4 h-4 text-muted-foreground {dataRefreshing
-								? 'animate-spin'
-								: ''}"
-						/>
-					</button>
-				</div>
-			</div>
-
-			<!-- Mobile: Project Context & Due Date Bar -->
-			<div class="flex sm:hidden items-center justify-between gap-2 text-muted-foreground">
-				<a
-					href="/projects/{project?.id}"
-					class="flex items-center gap-1 text-xs hover:text-foreground transition-colors truncate"
+		<div class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-1.5 sm:py-2">
+			<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
+				<button
+					onclick={() => goto(`/projects/${project?.id}`)}
+					class="p-1 sm:p-1.5 rounded-lg hover:bg-muted transition-colors shrink-0 pressable"
+					aria-label="Back to project"
 				>
-					<ChevronRight class="w-3 h-3 rotate-180" />
-					<span class="truncate">{project?.name || 'Project'}</span>
-				</a>
-				{#if task?.due_at}
-					<span class="flex items-center gap-1 text-xs shrink-0">
-						<Clock class="w-3 h-3" />
-						{formatDueDate(task.due_at)}
-					</span>
-				{/if}
-			</div>
-			<div class="flex sm:hidden items-center gap-1 text-muted-foreground">
-				<Users class="w-3 h-3" />
-				<span class="text-xs">{taskAssigneeSummary}</span>
-			</div>
-
-			<!-- Mobile: Quick Entity Stats (Goals, Plans, Docs, Tasks) -->
-			{#if true}
-				{@const mobileStats = [
-					{ key: 'goals', count: goals.length, Icon: Target },
-					{ key: 'plans', count: plans.length, Icon: Calendar },
-					{ key: 'docs', count: documents.length, Icon: FileText },
-					{ key: 'tasks', count: otherTasks.length, Icon: ListChecks }
-				].filter((s) => s.count > 0)}
-				{#if mobileStats.length > 0}
-					<div
-						class="flex sm:hidden items-center gap-2.5 text-muted-foreground overflow-x-auto pb-0.5"
+					<ArrowLeft class="w-4 h-4 text-muted-foreground" />
+				</button>
+				<div
+					class="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-accent/10 flex items-center justify-center shrink-0"
+				>
+					<TaskIcon class="w-3.5 h-3.5 sm:w-4 sm:h-4 {taskVisuals.color}" />
+				</div>
+				<div class="min-w-0 flex-1">
+					<h1
+						class="text-sm sm:text-base font-semibold text-foreground leading-tight truncate"
 					>
-						{#each mobileStats as stat (stat.key)}
-							{@const StatIcon = stat.Icon}
-							<span class="flex items-center gap-0.5 shrink-0" title={stat.key}>
-								<StatIcon class="h-3 w-3" />
-								<span class="font-semibold text-[10px]">{stat.count}</span>
-							</span>
-						{/each}
-					</div>
-				{/if}
-			{/if}
+						{title || 'Untitled Task'}
+					</h1>
+					<a
+						href="/projects/{project?.id}"
+						class="text-[10px] sm:text-xs text-muted-foreground hover:text-foreground transition-colors truncate block"
+					>
+						{project?.name || 'Project'}
+					</a>
+				</div>
+				<StateDisplay state={stateKey} entityKind="task" />
+			</div>
 		</div>
 	</header>
 
@@ -873,8 +674,8 @@
 			class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px] gap-2 sm:gap-4 lg:gap-6"
 		>
 			<!-- Left Column: Task Details & Workspace -->
-			<div class="min-w-0 space-y-2 sm:space-y-4">
-				<!-- Tab Navigation - Compact -->
+			<div class="min-w-0 space-y-2 sm:space-y-3">
+				<!-- Tab Navigation -->
 				<div
 					class="inline-flex rounded-lg border border-border bg-muted/50 p-0.5 sm:p-1 text-xs sm:text-sm font-semibold shadow-ink tx tx-frame tx-weak"
 					role="tablist"
@@ -918,18 +719,16 @@
 				{#if activeView === 'details'}
 					<!-- DETAILS TAB -->
 					<section
-						class="bg-card border border-border rounded-lg sm:rounded-xl shadow-ink tx tx-grain tx-weak overflow-hidden"
+						class="bg-card border border-border rounded-lg shadow-ink tx tx-grain tx-weak wt-paper sp-block overflow-hidden"
 					>
-						<div class="px-3 sm:px-4 py-2 sm:py-3 border-b border-border">
-							<p
-								class="text-[10px] sm:text-xs text-muted-foreground uppercase tracking-wide font-semibold"
-							>
-								Task Details
-							</p>
-						</div>
 						<div class="p-3 sm:p-4">
-							<form class="space-y-3 sm:space-y-4" onsubmit={handleSave}>
-								<!-- Task Title -->
+							<form
+								class="space-y-2.5 sm:space-y-3"
+								onsubmit={(e) => {
+									e.preventDefault();
+									handleSave();
+								}}
+							>
 								<FormField
 									label="Title"
 									labelFor="title"
@@ -950,7 +749,6 @@
 									/>
 								</FormField>
 
-								<!-- Description -->
 								<FormField label="Description" labelFor="description">
 									<Textarea
 										id="description"
@@ -963,50 +761,7 @@
 									/>
 								</FormField>
 
-								<div
-									class="rounded-lg border border-border bg-muted/30 p-2.5 sm:p-3"
-								>
-									<p
-										class="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2"
-									>
-										Assignees
-									</p>
-									{#if taskAssignees.length === 0}
-										<p class="text-xs text-muted-foreground">
-											No assignees yet
-										</p>
-									{:else}
-										<div class="flex flex-wrap gap-1.5">
-											{#each taskAssignees as assignee}
-												<span
-													class="inline-flex items-center rounded-full border border-border bg-card px-2 py-0.5 text-xs text-foreground"
-												>
-													@{formatAssigneeLabel(assignee)}
-												</span>
-											{/each}
-										</div>
-									{/if}
-								</div>
-
-								<!-- Grid: Priority, State, Due Date - 2 cols on mobile, 3 on desktop -->
-								<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-									<FormField label="Priority" labelFor="priority" required={true}>
-										<Select
-											id="priority"
-											value={priority}
-											disabled={isSaving}
-											size="sm"
-											placeholder="Priority"
-											onchange={(val) => (priority = Number(val))}
-										>
-											<option value={1}>P1 Critical</option>
-											<option value={2}>P2 High</option>
-											<option value={3}>P3 Medium</option>
-											<option value={4}>P4 Low</option>
-											<option value={5}>P5 Nice</option>
-										</Select>
-									</FormField>
-
+								<div class="grid grid-cols-2 gap-2">
 									<FormField label="State" labelFor="state" required={true}>
 										<Select
 											id="state"
@@ -1031,11 +786,36 @@
 										</Select>
 									</FormField>
 
-									<FormField
-										label="Due Date"
-										labelFor="due-date"
-										class="col-span-2 sm:col-span-1"
-									>
+									<FormField label="Priority" labelFor="priority" required={true}>
+										<Select
+											id="priority"
+											value={priority}
+											disabled={isSaving}
+											size="sm"
+											placeholder="Priority"
+											onchange={(val) => (priority = Number(val))}
+										>
+											<option value={1}>P1 Critical</option>
+											<option value={2}>P2 High</option>
+											<option value={3}>P3 Medium</option>
+											<option value={4}>P4 Low</option>
+											<option value={5}>P5 Nice to have</option>
+										</Select>
+									</FormField>
+
+									<FormField label="Start" labelFor="start-date">
+										<TextInput
+											id="start-date"
+											type="datetime-local"
+											inputmode="numeric"
+											enterkeyhint="next"
+											bind:value={startAt}
+											disabled={isSaving}
+											size="sm"
+										/>
+									</FormField>
+
+									<FormField label="Due" labelFor="due-date">
 										<TextInput
 											id="due-date"
 											type="datetime-local"
@@ -1048,9 +828,23 @@
 									</FormField>
 								</div>
 
+								<FormField label="Assignees" labelFor="task-assignees">
+									<div id="task-assignees">
+										<TaskAssigneeSelector
+											projectId={project?.id}
+											bind:selectedActorIds={assigneeActorIds}
+											fallbackAssignees={Array.isArray(task?.assignees)
+												? task.assignees
+												: []}
+											disabled={isSaving}
+											maxAssignees={10}
+										/>
+									</div>
+								</FormField>
+
 								{#if error}
 									<div
-										class="p-2 sm:p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
+										class="p-2 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 									>
 										<p class="text-xs sm:text-sm text-destructive">{error}</p>
 									</div>
@@ -1059,9 +853,9 @@
 						</div>
 					</section>
 
-					<!-- Compact secondary sections in a 2-column grid -->
+					<!-- Secondary sections: Connected Docs & Linked Entities -->
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-						<!-- Connected Documents - Compact -->
+						<!-- Connected Documents -->
 						<section
 							class="bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden"
 						>
@@ -1159,7 +953,7 @@
 							{/if}
 						</section>
 
-						<!-- Linked Entities - Compact -->
+						<!-- Linked Entities -->
 						<section
 							class="bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden"
 						>
@@ -1199,7 +993,7 @@
 				{:else}
 					<!-- WORKSPACE TAB -->
 					<div class="space-y-2 sm:space-y-3">
-						<!-- Document Selector - Compact -->
+						<!-- Document Selector -->
 						<section
 							class="bg-card border border-border rounded-lg shadow-ink tx tx-bloom tx-weak p-2 sm:p-3"
 						>
@@ -1280,7 +1074,6 @@
 												>Promoted</span
 											>
 										{/if}
-										<!-- Unsaved changes indicator -->
 										{#if hasUnsavedChanges}
 											<span
 												class="flex items-center gap-1 text-[10px] text-warning"
@@ -1308,12 +1101,10 @@
 								</div>
 							</section>
 						{:else if workspaceLoading}
-							<!-- Skeleton Loading State -->
 							<section
 								class="bg-card border border-border rounded-lg shadow-ink tx tx-pulse tx-weak overflow-hidden"
 							>
 								<div class="p-3 sm:p-4 space-y-3">
-									<!-- Skeleton toolbar -->
 									<div class="flex items-center gap-2">
 										<div class="h-8 w-8 rounded bg-muted animate-pulse"></div>
 										<div class="h-8 w-8 rounded bg-muted animate-pulse"></div>
@@ -1321,7 +1112,6 @@
 										<div class="flex-1"></div>
 										<div class="h-8 w-20 rounded bg-muted animate-pulse"></div>
 									</div>
-									<!-- Skeleton content lines -->
 									<div class="space-y-2 pt-2">
 										<div class="h-4 w-3/4 rounded bg-muted animate-pulse"></div>
 										<div
@@ -1400,12 +1190,52 @@
 				<div class="sm:hidden h-16"></div>
 			</div>
 
-			<!-- Right Column: Project Context Sidebar - Hidden on Mobile (shown via header stats) -->
+			<!-- Right Column: Sidebar -->
 			<aside
-				class="hidden lg:block min-w-0 space-y-2 lg:sticky lg:top-28 lg:max-h-[calc(100vh-140px)] lg:overflow-y-auto lg:pr-1"
+				class="hidden lg:block min-w-0 space-y-2 lg:sticky lg:top-16 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:pr-1"
 			>
+				<!-- Actions Panel -->
+				<section
+					class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper sp-block overflow-hidden"
+				>
+					<div class="px-3 py-2.5 flex items-center gap-2">
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={handleSave}
+							loading={isSaving}
+							disabled={isSaving || isDeleting || !title.trim()}
+							class="pressable flex-1"
+						>
+							<Save class="w-3.5 h-3.5" />
+							Save
+						</Button>
+						<button
+							onclick={refreshData}
+							disabled={dataRefreshing}
+							class="p-2 rounded-lg border border-border hover:bg-muted transition-colors disabled:opacity-50 pressable"
+							aria-label="Refresh data"
+						>
+							<RefreshCw
+								class="w-3.5 h-3.5 text-muted-foreground {dataRefreshing
+									? 'animate-spin'
+									: ''}"
+							/>
+						</button>
+						<button
+							onclick={() => (showDeleteConfirm = true)}
+							disabled={isDeleting || isSaving}
+							class="p-2 rounded-lg border border-border hover:bg-destructive/10 hover:border-destructive/30 transition-colors pressable"
+							aria-label="Delete task"
+						>
+							<Trash2 class="w-3.5 h-3.5 text-destructive" />
+						</button>
+					</div>
+				</section>
+
+				<!-- Project Context Label -->
 				<p
-					class="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground px-1 mb-1"
+					class="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground px-1 mt-3 mb-1"
 				>
 					Project Context
 				</p>
@@ -1766,15 +1596,6 @@
 	/>
 {/if}
 
-<!-- Agent Chat Modal (Lazy Loaded) -->
-{#if showChatModal && AgentChatModalComponent && entityFocus}
-	<AgentChatModalComponent
-		isOpen={showChatModal}
-		initialProjectFocus={entityFocus}
-		onClose={() => (showChatModal = false)}
-	/>
-{/if}
-
 <!-- Mobile Project Context Floating Button -->
 {#if goals.length > 0 || plans.length > 0 || documents.length > 0 || otherTasks.length > 0}
 	<button
@@ -1789,7 +1610,6 @@
 
 <!-- Mobile Project Context Slide-up Sheet -->
 {#if showMobileContextSheet}
-	<!-- Backdrop -->
 	<div
 		class="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
 		onclick={() => (showMobileContextSheet = false)}
@@ -1799,11 +1619,9 @@
 		aria-label="Close context sheet"
 	></div>
 
-	<!-- Sheet -->
 	<div
 		class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-2xl shadow-ink-strong max-h-[75vh] flex flex-col animate-in slide-in-from-bottom duration-300"
 	>
-		<!-- Handle & Header -->
 		<div class="sticky top-0 bg-card border-b border-border rounded-t-2xl">
 			<div class="flex justify-center py-2">
 				<div class="w-10 h-1 bg-muted-foreground/30 rounded-full"></div>
@@ -1824,9 +1642,7 @@
 			</div>
 		</div>
 
-		<!-- Scrollable Content -->
 		<div class="flex-1 overflow-y-auto p-3 space-y-2">
-			<!-- Goals -->
 			{#if goals.length > 0}
 				<div
 					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
@@ -1861,7 +1677,6 @@
 				</div>
 			{/if}
 
-			<!-- Plans -->
 			{#if plans.length > 0}
 				<div
 					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
@@ -1894,7 +1709,6 @@
 				</div>
 			{/if}
 
-			<!-- Documents -->
 			{#if documents.length > 0}
 				<div
 					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
@@ -1936,7 +1750,6 @@
 				</div>
 			{/if}
 
-			<!-- Other Tasks -->
 			{#if otherTasks.length > 0}
 				<div
 					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
@@ -1976,7 +1789,6 @@
 				</div>
 			{/if}
 
-			<!-- Milestones -->
 			{#if milestones.length > 0}
 				<div
 					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"

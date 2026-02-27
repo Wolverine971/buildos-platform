@@ -14,6 +14,8 @@ type OntoTaskRow = Database['public']['Tables']['onto_tasks']['Row'];
 type TaskEventKind = 'range' | 'start' | 'due';
 
 export type CalendarScope = 'project' | 'user' | 'calendar_id';
+type ProjectCalendarSyncMode = 'actor_projection' | 'member_fanout';
+type ProjectEventSyncAction = 'upsert' | 'delete';
 
 export interface CreateOntoEventRequest {
 	orgId?: string | null;
@@ -78,6 +80,7 @@ export interface CreateOntoEventResult {
 const DEFAULT_EVENT_DURATION_MINUTES = 30;
 const FALLBACK_APP_URL = 'https://build-os.com';
 const APP_BASE_URL = (PUBLIC_APP_URL || FALLBACK_APP_URL).replace(/\/$/, '');
+const DEFAULT_PROJECT_CALENDAR_SYNC_MODE: ProjectCalendarSyncMode = 'actor_projection';
 
 function buildProjectUrl(projectId: string): string {
 	return `${APP_BASE_URL}/projects/${projectId}`;
@@ -318,6 +321,21 @@ export class OntoEventSyncService {
 			createProjectCalendarIfMissing: request.createProjectCalendarIfMissing ?? true
 		};
 
+		if (syncOptions.scope === 'project' && event.project_id) {
+			const enqueueResult = await this.enqueueProjectEventSyncJobs(userId, event, 'upsert');
+			return {
+				event,
+				sync: {
+					success: enqueueResult.enqueued > 0,
+					provider: 'google',
+					error:
+						enqueueResult.enqueued > 0
+							? undefined
+							: 'No eligible calendar sync targets were found'
+				}
+			};
+		}
+
 		if (request.deferCalendarSync) {
 			this.defer('calendar create', async () => {
 				const latest = await this.getEvent(event.id, userId);
@@ -367,6 +385,11 @@ export class OntoEventSyncService {
 			return updated;
 		}
 
+		if (updated.project_id) {
+			await this.enqueueProjectEventSyncJobs(userId, updated, 'upsert');
+			return updated;
+		}
+
 		if (request.deferCalendarSync) {
 			this.defer('calendar update', async () => {
 				const latest = await this.getEvent(request.eventId, userId);
@@ -406,7 +429,9 @@ export class OntoEventSyncService {
 		}
 
 		if (request.syncToCalendar !== false) {
-			if (request.deferCalendarSync) {
+			if (updated.project_id) {
+				await this.enqueueProjectEventSyncJobs(userId, updated, 'delete');
+			} else if (request.deferCalendarSync) {
 				this.defer('calendar delete', async () => {
 					const latest = await this.getEvent(request.eventId, userId);
 					if (!latest) return;
@@ -878,6 +903,283 @@ export class OntoEventSyncService {
 		}
 
 		return payload.data as ProjectCalendarRow;
+	}
+
+	private parseProjectCalendarSyncMode(
+		props: Record<string, unknown> | null | undefined
+	): ProjectCalendarSyncMode {
+		const mode = props?.calendar_sync_mode;
+		return mode === 'member_fanout' ? 'member_fanout' : DEFAULT_PROJECT_CALENDAR_SYNC_MODE;
+	}
+
+	private async getProjectCalendarSyncMode(projectId: string): Promise<ProjectCalendarSyncMode> {
+		const { data: project, error } = await this.supabase
+			.from('onto_projects')
+			.select('props')
+			.eq('id', projectId)
+			.is('deleted_at', null)
+			.maybeSingle();
+
+		if (error || !project) {
+			return DEFAULT_PROJECT_CALENDAR_SYNC_MODE;
+		}
+
+		return this.parseProjectCalendarSyncMode(
+			(project.props as Record<string, unknown> | null) ?? null
+		);
+	}
+
+	private async resolveProjectSyncTargets(
+		projectId: string,
+		triggeredByUserId: string
+	): Promise<{ mode: ProjectCalendarSyncMode; targetUserIds: string[] }> {
+		const mode = await this.getProjectCalendarSyncMode(projectId);
+		if (mode === 'actor_projection') {
+			return {
+				mode,
+				targetUserIds: [triggeredByUserId]
+			};
+		}
+
+		const { data: mappings, error } = await this.supabase
+			.from('project_calendars')
+			.select('user_id')
+			.eq('project_id', projectId)
+			.or('sync_enabled.is.null,sync_enabled.eq.true');
+
+		if (error) {
+			throw new Error(error.message);
+		}
+
+		const targetUserIds = Array.from(
+			new Set((mappings ?? []).map((mapping) => mapping.user_id).filter(Boolean))
+		);
+
+		return {
+			mode,
+			targetUserIds: targetUserIds.length > 0 ? targetUserIds : [triggeredByUserId]
+		};
+	}
+
+	private async enqueueProjectEventSyncJobs(
+		triggeredByUserId: string,
+		event: OntoEventRow,
+		action: ProjectEventSyncAction
+	): Promise<{
+		mode: ProjectCalendarSyncMode;
+		targetUserIds: string[];
+		enqueued: number;
+	}> {
+		if (!event.project_id) {
+			return {
+				mode: DEFAULT_PROJECT_CALENDAR_SYNC_MODE,
+				targetUserIds: [],
+				enqueued: 0
+			};
+		}
+
+		const { mode, targetUserIds } = await this.resolveProjectSyncTargets(
+			event.project_id,
+			triggeredByUserId
+		);
+		const eventVersion = event.updated_at ?? event.created_at ?? new Date().toISOString();
+
+		let enqueued = 0;
+		for (const targetUserId of targetUserIds) {
+			const dedupKey = [
+				'onto-project-event-sync',
+				action,
+				event.id,
+				targetUserId,
+				eventVersion
+			].join(':');
+
+			const metadata = {
+				kind: 'onto_project_event_sync',
+				action,
+				eventId: event.id,
+				projectId: event.project_id,
+				targetUserId,
+				triggeredByUserId,
+				createCalendarIfMissing: targetUserId === triggeredByUserId,
+				eventUpdatedAt: eventVersion
+			};
+
+			const { error } = await this.supabase.rpc('add_queue_job', {
+				p_user_id: targetUserId,
+				p_job_type: 'sync_calendar',
+				p_metadata: metadata as unknown as Json,
+				p_priority: 5,
+				p_scheduled_for: new Date().toISOString(),
+				p_dedup_key: dedupKey
+			});
+
+			if (error) {
+				console.error('[OntoEventSyncService] Failed to enqueue calendar sync job:', error);
+				continue;
+			}
+
+			enqueued += 1;
+		}
+
+		if (enqueued === 0) {
+			await this.markEventSyncError(event.id, 'Failed to enqueue calendar sync job');
+		}
+
+		return {
+			mode,
+			targetUserIds,
+			enqueued
+		};
+	}
+
+	private isGoogleNotFoundError(error: unknown): boolean {
+		const message = error instanceof Error ? error.message.toLowerCase() : '';
+		return message.includes('not found') || message.includes('404');
+	}
+
+	async processProjectEventSyncJob(input: {
+		action: ProjectEventSyncAction;
+		eventId: string;
+		projectId: string;
+		targetUserId: string;
+		createCalendarIfMissing?: boolean;
+	}): Promise<{
+		outcome: 'synced' | 'deleted' | 'skipped';
+		reason: string;
+	}> {
+		const event = await this.getEvent(input.eventId, input.targetUserId);
+		if (!event) {
+			return {
+				outcome: 'skipped',
+				reason: 'event_not_found'
+			};
+		}
+
+		if (!event.project_id || event.project_id !== input.projectId) {
+			return {
+				outcome: 'skipped',
+				reason: 'project_mismatch'
+			};
+		}
+
+		const syncRows = event.onto_event_sync ?? [];
+		const shouldDelete = input.action === 'delete' || Boolean(event.deleted_at);
+		if (shouldDelete) {
+			const mapping = await this.resolveExternalMapping(input.targetUserId, event, syncRows);
+			if (!mapping) {
+				return {
+					outcome: 'skipped',
+					reason: 'no_external_mapping'
+				};
+			}
+
+			try {
+				await this.calendarService.deleteCalendarEvent(input.targetUserId, {
+					event_id: mapping.externalEventId,
+					calendar_id: mapping.calendarId,
+					send_notifications: false
+				});
+
+				const nowIso = new Date().toISOString();
+				await this.markEventSynced(event.id, nowIso, mapping.syncRowId, 'cancelled');
+				return {
+					outcome: 'deleted',
+					reason: 'deleted_external_event'
+				};
+			} catch (error) {
+				if (this.isGoogleNotFoundError(error)) {
+					const nowIso = new Date().toISOString();
+					await this.markEventSynced(event.id, nowIso, mapping.syncRowId, 'cancelled');
+					return {
+						outcome: 'deleted',
+						reason: 'external_event_already_missing'
+					};
+				}
+
+				const message = error instanceof Error ? error.message : 'Calendar delete failed';
+				await this.markEventSyncError(event.id, message, mapping.syncRowId);
+				throw error instanceof Error ? error : new Error(message);
+			}
+		}
+
+		const mapping = await this.resolveExternalMapping(input.targetUserId, event, syncRows);
+		if (!mapping) {
+			const projectCalendar = await this.resolveProjectCalendar(
+				event.project_id,
+				input.targetUserId,
+				input.createCalendarIfMissing ?? false
+			);
+			if (!projectCalendar || projectCalendar.sync_enabled === false) {
+				return {
+					outcome: 'skipped',
+					reason: 'project_calendar_unavailable'
+				};
+			}
+
+			const status = await this.googleOAuthService.safeGetCalendarStatus(input.targetUserId);
+			if (!status.isConnected) {
+				return {
+					outcome: 'skipped',
+					reason: 'calendar_not_connected'
+				};
+			}
+
+			const syncResult = await this.syncEventToCalendar(input.targetUserId, event, {
+				scope: 'project',
+				calendarId: null,
+				createProjectCalendarIfMissing: input.createCalendarIfMissing ?? false
+			});
+
+			if (!syncResult.sync?.success) {
+				throw new Error(syncResult.sync?.error || 'Calendar sync failed');
+			}
+
+			return {
+				outcome: 'synced',
+				reason: 'created_external_event'
+			};
+		}
+
+		try {
+			const description = await this.buildCalendarEventDescription(event);
+			await this.calendarService.updateCalendarEvent(input.targetUserId, {
+				event_id: mapping.externalEventId,
+				calendar_id: mapping.calendarId,
+				start_time: event.start_at,
+				end_time: event.end_at ?? undefined,
+				summary: event.title,
+				description,
+				location: event.location ?? undefined,
+				timeZone: event.timezone ?? undefined
+			});
+
+			const nowIso = new Date().toISOString();
+			await this.markEventSynced(event.id, nowIso, mapping.syncRowId);
+			return {
+				outcome: 'synced',
+				reason: 'updated_external_event'
+			};
+		} catch (error) {
+			if (this.isGoogleNotFoundError(error)) {
+				const recreated = await this.syncEventToCalendar(input.targetUserId, event, {
+					scope: 'project',
+					calendarId: null,
+					createProjectCalendarIfMissing: false
+				});
+
+				if (recreated.sync?.success) {
+					return {
+						outcome: 'synced',
+						reason: 'recreated_external_event'
+					};
+				}
+			}
+
+			const message = error instanceof Error ? error.message : 'Calendar update failed';
+			await this.markEventSyncError(event.id, message, mapping.syncRowId);
+			throw error instanceof Error ? error : new Error(message);
+		}
 	}
 
 	private async markEventSynced(

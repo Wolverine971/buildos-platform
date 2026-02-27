@@ -21,7 +21,8 @@
 		LoaderCircle,
 		Trash2,
 		Palette,
-		Settings
+		Settings,
+		Users
 	} from 'lucide-svelte';
 	import type { Database } from '@buildos/shared-types';
 	import type { Component } from 'svelte';
@@ -36,6 +37,29 @@
 	type CalendarViewMode = 'day' | 'week' | 'month';
 	type CalendarModalTab = 'calendar' | 'settings';
 	type LazyComponent = Component<any, any, any> | null;
+	type ProjectCalendarSyncMode = 'actor_projection' | 'member_fanout';
+
+	interface CollaborationMember {
+		actor_id: string;
+		user_id: string | null;
+		display_name: string;
+		email: string | null;
+		role_key: string;
+		access: string;
+		has_calendar: boolean;
+		sync_enabled: boolean;
+		calendar_name: string | null;
+		sync_status: string | null;
+		is_current_user: boolean;
+	}
+
+	interface CollaborationSummary {
+		sync_mode: ProjectCalendarSyncMode;
+		total_members: number;
+		mapped_members: number;
+		active_sync_members: number;
+		members: CollaborationMember[];
+	}
 
 	interface Props {
 		isOpen: boolean;
@@ -63,6 +87,9 @@
 	let errors = $state<string[]>([]);
 
 	let calendarExists = $state(false);
+	let collaborationLoading = $state(false);
+	let collaborationError = $state<string | null>(null);
+	let collaborationSummary = $state<CollaborationSummary | null>(null);
 
 	let activeTab = $state<CalendarModalTab>('calendar');
 
@@ -86,7 +113,8 @@
 		calendarName: '',
 		calendarDescription: '',
 		selectedColorId: DEFAULT_CALENDAR_COLOR as GoogleColorId,
-		syncEnabled: true
+		syncEnabled: true,
+		syncMode: 'actor_projection' as ProjectCalendarSyncMode
 	});
 
 	let defaultColorId = $derived.by(() => {
@@ -154,11 +182,14 @@
 			currentDate = new Date();
 			calendarItems = [];
 			calendarError = null;
+			collaborationSummary = null;
+			collaborationError = null;
 			return;
 		}
 
 		if (browser && project) {
 			void loadCalendarSettings();
+			void loadCollaborationSummary();
 		}
 	});
 
@@ -303,7 +334,8 @@
 					calendarName: calendar.calendar_name,
 					calendarDescription: '',
 					selectedColorId: (calendar.color_id || DEFAULT_CALENDAR_COLOR) as GoogleColorId,
-					syncEnabled: calendar.sync_enabled ?? true
+					syncEnabled: calendar.sync_enabled ?? true,
+					syncMode: (calendar.sync_mode || 'actor_projection') as ProjectCalendarSyncMode
 				};
 			} else {
 				calendarExists = false;
@@ -312,7 +344,8 @@
 					calendarDescription:
 						project.description || `Tasks and events for ${project.name}`,
 					selectedColorId: defaultColorId,
-					syncEnabled: true
+					syncEnabled: true,
+					syncMode: collaborationSummary?.sync_mode ?? 'actor_projection'
 				};
 			}
 		} catch (error) {
@@ -323,11 +356,77 @@
 				calendarName: `${project.name} - Tasks`,
 				calendarDescription: project.description || `Tasks and events for ${project.name}`,
 				selectedColorId: defaultColorId,
-				syncEnabled: true
+				syncEnabled: true,
+				syncMode: collaborationSummary?.sync_mode ?? 'actor_projection'
 			};
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function loadCollaborationSummary() {
+		if (!project?.id) return;
+
+		collaborationLoading = true;
+		collaborationError = null;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}/calendar/collaboration`);
+			const result = await response.json();
+
+			if (result.success && result.data) {
+				collaborationSummary = result.data as CollaborationSummary;
+				formData.syncMode = collaborationSummary.sync_mode;
+			} else {
+				collaborationSummary = null;
+				collaborationError = result.error || 'Failed to load collaboration sync status';
+			}
+		} catch (error) {
+			console.error('Error loading collaboration sync status:', error);
+			collaborationSummary = null;
+			collaborationError = 'Failed to load collaboration sync status';
+		} finally {
+			collaborationLoading = false;
+		}
+	}
+
+	async function persistProjectSyncMode(projectId: string, syncMode: ProjectCalendarSyncMode) {
+		const response = await fetch(`/api/onto/projects/${projectId}/calendar`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ syncMode })
+		});
+
+		const result = await response.json();
+		if (!result.success) {
+			throw new Error(result.error || 'Failed to update sync mode');
+		}
+	}
+
+	function getMemberSyncBadge(member: CollaborationMember): {
+		label: string;
+		className: string;
+	} {
+		if (!member.has_calendar) {
+			return {
+				label: 'Not linked',
+				className: 'bg-muted text-muted-foreground border border-border'
+			};
+		}
+
+		if (!member.sync_enabled) {
+			return {
+				label: 'Sync off',
+				className:
+					'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+			};
+		}
+
+		return {
+			label: 'Synced',
+			className:
+				'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+		};
 	}
 
 	async function handleSubmit(e: Event) {
@@ -352,6 +451,19 @@
 				const result = await response.json();
 				if (result.success) {
 					calendarExists = true;
+					if (formData.syncMode !== 'actor_projection') {
+						try {
+							await persistProjectSyncMode(project.id, formData.syncMode);
+						} catch (syncModeError) {
+							console.error(
+								'Failed to update project sync mode after calendar create:',
+								syncModeError
+							);
+							toastService.warning(
+								'Calendar was created, but we could not update the project sync mode'
+							);
+						}
+					}
 					toastService.success('Project calendar created successfully');
 					onCalendarCreated?.(result.data);
 				} else {
@@ -364,7 +476,8 @@
 					body: JSON.stringify({
 						name: formData.calendarName,
 						colorId: formData.selectedColorId,
-						syncEnabled: formData.syncEnabled
+						syncEnabled: formData.syncEnabled,
+						syncMode: formData.syncMode
 					})
 				});
 
@@ -376,6 +489,8 @@
 					throw new Error(result.error || 'Failed to update calendar');
 				}
 			}
+
+			void loadCollaborationSummary();
 		} catch (error: unknown) {
 			console.error('Error saving calendar:', error);
 			const message =
@@ -595,6 +710,95 @@
 								<div
 									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
 								>
+									<div class="flex items-center justify-between gap-2 mb-2">
+										<div class="flex items-center gap-2 sm:gap-3">
+											<div class="p-1.5 sm:p-2 bg-accent/10 rounded-lg">
+												<Users
+													class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent"
+												/>
+											</div>
+											<div>
+												<p class="text-sm font-semibold text-foreground">
+													Team Sync Coverage
+												</p>
+												{#if collaborationSummary}
+													<p class="text-xs text-muted-foreground">
+														{collaborationSummary.active_sync_members} of
+														{collaborationSummary.total_members} members
+														actively syncing
+													</p>
+												{:else}
+													<p class="text-xs text-muted-foreground">
+														Shows who has linked a project calendar
+													</p>
+												{/if}
+											</div>
+										</div>
+										{#if collaborationLoading}
+											<LoaderCircle
+												class="h-4 w-4 animate-spin text-muted-foreground"
+											/>
+										{/if}
+									</div>
+
+									{#if collaborationError}
+										<p class="text-xs text-destructive">{collaborationError}</p>
+									{:else if collaborationSummary}
+										<div class="space-y-2">
+											<div
+												class="flex items-center justify-between rounded-md border border-border/70 bg-background/70 px-2.5 py-2 text-xs"
+											>
+												<span class="text-muted-foreground"
+													>Project sync mode</span
+												>
+												<span class="font-medium text-foreground">
+													{collaborationSummary.sync_mode ===
+													'member_fanout'
+														? 'Member fanout'
+														: 'Actor projection'}
+												</span>
+											</div>
+											<div class="max-h-44 overflow-y-auto space-y-1.5 pr-1">
+												{#each collaborationSummary.members as member}
+													{@const badge = getMemberSyncBadge(member)}
+													<div
+														class="flex items-start justify-between gap-2 rounded-md border border-border/80 bg-background/70 px-2.5 py-2"
+													>
+														<div class="min-w-0">
+															<p
+																class="text-xs font-medium text-foreground truncate"
+															>
+																{member.display_name}
+																{#if member.is_current_user}
+																	<span
+																		class="text-muted-foreground font-normal"
+																	>
+																		(You)
+																	</span>
+																{/if}
+															</p>
+															<p
+																class="text-[11px] text-muted-foreground truncate"
+															>
+																{member.calendar_name ||
+																	'No calendar linked'}
+															</p>
+														</div>
+														<span
+															class={`shrink-0 rounded px-2 py-0.5 text-[10px] font-medium ${badge.className}`}
+														>
+															{badge.label}
+														</span>
+													</div>
+												{/each}
+											</div>
+										</div>
+									{/if}
+								</div>
+
+								<div
+									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+								>
 									<FormField label="Calendar Name" required>
 										<TextInput
 											bind:value={formData.calendarName}
@@ -674,6 +878,30 @@
 											>
 										</p>
 									</div>
+								</div>
+
+								<div
+									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+								>
+									<FormField
+										label="Project Sync Mode"
+										hint="Choose how project event changes are projected to member calendars"
+									>
+										<select
+											bind:value={formData.syncMode}
+											class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+										>
+											<option value="actor_projection"
+												>Actor projection</option
+											>
+											<option value="member_fanout">Member fanout</option>
+										</select>
+									</FormField>
+									<p class="mt-2 text-xs text-muted-foreground">
+										Actor projection updates only the editor's linked calendar.
+										Member fanout updates all members with linked, enabled
+										calendars.
+									</p>
 								</div>
 
 								{#if calendarExists}

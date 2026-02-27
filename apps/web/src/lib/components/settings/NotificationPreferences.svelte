@@ -5,6 +5,7 @@
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
 	import { browserPushService } from '$lib/services/browser-push.service';
 	import { smsService } from '$lib/services/sms.service';
+	import { isInstalledPWA } from '$lib/utils/pwa-enhancements';
 	import { toastService } from '$lib/stores/toast.store';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -47,6 +48,8 @@
 	let pushSubscribed = $state(false);
 	let pushPermissionStatus = $state<NotificationPermission>('default');
 	let pushSubscriptionError = $state<string | null>(null);
+	let isIOSDevice = $state(false);
+	let isIOSPWAContext = $state(false);
 
 	// Preference settings for brief.completed (with defaults)
 	let pushEnabled = $state(false);
@@ -58,6 +61,11 @@
 	let quietHoursEnd = $state('08:00');
 
 	onMount(async () => {
+		const userAgent = navigator.userAgent || '';
+		const isTouchMac = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+		isIOSDevice = /iPad|iPhone|iPod/.test(userAgent) || isTouchMac;
+		isIOSPWAContext = isInstalledPWA();
+
 		await Promise.all([
 			loadPreferences(),
 			loadDailyBriefPreferences(),
@@ -187,7 +195,8 @@
 
 	async function checkPushSubscriptionStatus() {
 		try {
-			pushSupported = browserPushService.isSupported();
+			const supportsPushApi = browserPushService.isSupported();
+			pushSupported = supportsPushApi && (!isIOSDevice || isIOSPWAContext);
 			if (pushSupported) {
 				pushSubscribed = await browserPushService.isSubscribed();
 				pushPermissionStatus = Notification.permission;
@@ -205,9 +214,7 @@
 
 			try {
 				if (!browserPushService.isSupported()) {
-					throw new Error(
-						'Push notifications are not supported in this browser. Please try Chrome, Firefox, or Safari.'
-					);
+					throw new Error('Push notifications are not supported in this browser.');
 				}
 
 				// Request permission from browser
@@ -442,7 +449,22 @@
 									class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
 								>
 									<AlertCircle class="w-3.5 h-3.5" />
-									<span>Not supported in this browser</span>
+									<span>
+										{#if isIOSDevice && !isIOSPWAContext}
+											Install BuildOS to your Home Screen first
+										{:else}
+											Not supported in this browser
+										{/if}
+									</span>
+								</div>
+							{:else if isIOSDevice}
+								<div
+									class="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground"
+								>
+									<AlertCircle class="w-3.5 h-3.5" />
+									<span>
+										In iOS Settings, enable Notifications and Badges for BuildOS
+									</span>
 								</div>
 							{:else if pushEnabled && !pushSubscribed}
 								<div
