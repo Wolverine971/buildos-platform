@@ -43,8 +43,15 @@
 		isSkippable?: boolean;
 	}
 
-	let { userContext, onNext, onBack, onProjectsCreated, onCalendarAnalyzed, intent, isSkippable }: Props =
-		$props();
+	let {
+		userContext,
+		onNext,
+		onBack,
+		onProjectsCreated,
+		onCalendarAnalyzed,
+		intent,
+		isSkippable
+	}: Props = $props();
 
 	// V3 intent-aware prompt configuration
 	const v3Prompts = $derived(intent ? ONBOARDING_V3_CONFIG.brainDumpPrompts[intent] : null);
@@ -436,16 +443,14 @@
 						</span>
 					</h3>
 					<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
-						BuildOS can scan your calendar to automatically detect projects from
-						your meetings, recurring events, and upcoming deadlines.
+						BuildOS can scan your calendar to automatically detect projects from your
+						meetings, recurring events, and upcoming deadlines.
 					</p>
 				</div>
 			</div>
 
 			<!-- Benefits -->
-			<div
-				class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground"
-			>
+			<div class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
 				<span
 					class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
 				>
@@ -467,13 +472,10 @@
 			</div>
 
 			{#if calendarAnalysisStarted}
-				<div
-					class="flex items-center gap-2 p-3 bg-card rounded-lg border border-border"
-				>
+				<div class="flex items-center gap-2 p-3 bg-card rounded-lg border border-border">
 					<LoaderCircle class="w-4 h-4 animate-spin text-accent flex-shrink-0" />
 					<span class="text-sm text-foreground font-medium">
-						Analyzing your calendar — check the notification in the bottom-right
-						corner.
+						Analyzing your calendar — check the notification in the bottom-right corner.
 					</span>
 				</div>
 			{:else}
@@ -504,8 +506,8 @@
 						Shortcut: Analyze your calendar
 					</h3>
 					<p class="text-xs text-muted-foreground leading-relaxed">
-						Connect Google Calendar and BuildOS will automatically detect projects
-						from your meetings and events.
+						Connect Google Calendar and BuildOS will automatically detect projects from
+						your meetings and events.
 					</p>
 				</div>
 			</div>

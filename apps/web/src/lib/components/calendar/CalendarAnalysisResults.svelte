@@ -167,7 +167,8 @@
 				if (!modifiedSuggestions.has(s.id)) {
 					modifiedSuggestions.set(s.id, {
 						name: s.user_modified_name ?? s.suggested_name ?? undefined,
-						description: s.user_modified_description ?? s.suggested_description ?? undefined
+						description:
+							s.user_modified_description ?? s.suggested_description ?? undefined
 					});
 				}
 			});
@@ -434,7 +435,9 @@
 		{/if}
 		{#if !analyzing && !analysisId && suggestions.length === 0 && !autoStart}
 			<!-- Date Range Selection (only show if not autoStart) -->
-			<div class="bg-card rounded-lg p-3 border border-border shadow-ink tx tx-grid tx-weak wt-paper sp-block">
+			<div
+				class="bg-card rounded-lg p-3 border border-border shadow-ink tx tx-grid tx-weak wt-paper sp-block"
+			>
 				<h3 class="text-sm font-semibold text-foreground mb-2">Select Analysis Period</h3>
 				<p class="text-sm text-muted-foreground mb-2">
 					Choose how far back and forward to analyze your calendar
@@ -498,15 +501,9 @@
 			<div class="flex flex-col items-center justify-center py-8">
 				<!-- Loader Container with Gradient Background -->
 				<div class="mb-3">
-					<div
-						class="hidden"
-					></div>
-					<div
-						class="bg-accent/10 p-4 rounded-full border border-accent/20 shadow-ink"
-					>
-						<LoaderCircle
-							class="w-8 h-8 text-accent animate-spin"
-						/>
+					<div class="hidden"></div>
+					<div class="bg-accent/10 p-4 rounded-full border border-accent/20 shadow-ink">
+						<LoaderCircle class="w-8 h-8 text-accent animate-spin" />
 					</div>
 				</div>
 
@@ -519,9 +516,7 @@
 
 				<!-- Progress Indicator -->
 				<div class="mt-3 flex items-center gap-2">
-					<div
-						class="w-2 h-2 bg-accent rounded-full animate-pulse"
-					></div>
+					<div class="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
 					<div
 						class="w-2 h-2 bg-accent rounded-full animate-pulse"
 						style="animation-delay: 0.2s"
@@ -577,13 +572,9 @@
 								disabled={processing}
 							>
 								{#if isSelected}
-									<CheckCircle
-										class="w-5 h-5 text-accent"
-									/>
+									<CheckCircle class="w-5 h-5 text-accent" />
 								{:else}
-									<Circle
-										class="w-5 h-5 text-muted-foreground"
-									/>
+									<Circle class="w-5 h-5 text-muted-foreground" />
 								{/if}
 							</button>
 
@@ -593,9 +584,12 @@
 									<div class="flex-1">
 										<input
 											type="text"
-											value={modifications?.name ?? suggestion.suggested_name ?? ''}
+											value={modifications?.name ??
+												suggestion.suggested_name ??
+												''}
 											oninput={(e) => {
-												const mods = modifiedSuggestions.get(suggestion.id) ?? {};
+												const mods =
+													modifiedSuggestions.get(suggestion.id) ?? {};
 												mods.name = e.currentTarget.value;
 												modifiedSuggestions.set(suggestion.id, mods);
 												modifiedSuggestions = new Map(modifiedSuggestions);
@@ -606,9 +600,12 @@
 										/>
 										<input
 											type="text"
-											value={modifications?.description ?? suggestion.suggested_description ?? ''}
+											value={modifications?.description ??
+												suggestion.suggested_description ??
+												''}
 											oninput={(e) => {
-												const mods = modifiedSuggestions.get(suggestion.id) ?? {};
+												const mods =
+													modifiedSuggestions.get(suggestion.id) ?? {};
 												mods.description = e.currentTarget.value;
 												modifiedSuggestions.set(suggestion.id, mods);
 												modifiedSuggestions = new Map(modifiedSuggestions);
@@ -708,9 +705,23 @@
 																			type="text"
 																			value={task.title}
 																			oninput={(e) => {
-																				const arr = suggestion.suggested_tasks;
-																				if (Array.isArray(arr) && arr[index]) {
-																					(arr[index] as Record<string, unknown>).title = e.currentTarget.value;
+																				const arr =
+																					suggestion.suggested_tasks;
+																				if (
+																					Array.isArray(
+																						arr
+																					) &&
+																					arr[index]
+																				) {
+																					(
+																						arr[
+																							index
+																						] as Record<
+																							string,
+																							unknown
+																						>
+																					).title =
+																						e.currentTarget.value;
 																				}
 																			}}
 																			class="font-medium text-foreground text-sm bg-transparent border-0 border-b border-transparent hover:border-border focus:border-accent outline-none p-0 pb-0.5 flex-1 min-w-0 transition-colors"
@@ -883,8 +894,7 @@
 																		</div>
 																	{/if}
 																</div>
-
-																															</div>
+															</div>
 														</div>
 													</div>
 												</div>
@@ -982,9 +992,7 @@
 		{:else}
 			<!-- No suggestions -->
 			<div class="text-center py-8">
-				<div
-					class="bg-muted p-3 rounded-full inline-block mb-3"
-				>
+				<div class="bg-muted p-3 rounded-full inline-block mb-3">
 					<Calendar class="w-12 h-12 text-muted-foreground" />
 				</div>
 				<p class="text-lg font-medium text-foreground">
@@ -1008,9 +1016,7 @@
 		{#if !analyzing}
 			<div class="text-sm text-muted-foreground font-medium">
 				{#if suggestions.length > 0}
-					<span class="text-accent"
-						>{selectedSuggestions.size}</span
-					>
+					<span class="text-accent">{selectedSuggestions.size}</span>
 					of {suggestions.length} selected
 				{/if}
 			</div>
@@ -1066,4 +1072,3 @@
 		{/snippet}
 	</Modal>
 {/if}
-

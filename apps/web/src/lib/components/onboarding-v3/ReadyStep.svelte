@@ -1,6 +1,13 @@
 <!-- apps/web/src/lib/components/onboarding-v3/ReadyStep.svelte -->
 <script lang="ts">
-	import { CheckCircle, ArrowRight, ArrowLeft, FolderOpen, MessageCircle, Mail } from 'lucide-svelte';
+	import {
+		CheckCircle,
+		ArrowRight,
+		ArrowLeft,
+		FolderOpen,
+		MessageCircle,
+		Mail
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
