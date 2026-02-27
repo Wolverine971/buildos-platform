@@ -96,11 +96,18 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					start_at: {
 						type: 'string',
-						description: 'Start time (ISO 8601)'
+						description:
+							'Start time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
 					},
 					end_at: {
 						type: 'string',
-						description: 'End time (ISO 8601)'
+						description:
+							'End time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
+					},
+					timezone: {
+						type: 'string',
+						description:
+							'Optional IANA timezone (e.g., America/New_York). Used when start_at/end_at omit timezone.'
 					},
 					description: {
 						type: 'string',
@@ -163,11 +170,18 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					start_at: {
 						type: 'string',
-						description: 'New start time (ISO 8601)'
+						description:
+							'New start time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
 					},
 					end_at: {
 						type: 'string',
-						description: 'New end time (ISO 8601)'
+						description:
+							'New end time (ISO 8601). Include timezone offset or Z unless timezone is provided.'
+					},
+					timezone: {
+						type: 'string',
+						description:
+							'Optional IANA timezone (e.g., America/New_York). Used when start_at/end_at omit timezone.'
 					},
 					description: {
 						type: 'string',

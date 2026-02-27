@@ -94,6 +94,8 @@ Guidelines:
 
 - Prefer `calendar_scope="project"` when working inside a project.
 - Use `calendar_scope="user"` for the user's primary calendar.
+- Always send timezone-aware ISO timestamps for `start_at` / `end_at` (prefer UTC `...Z`).
+- If you must send a local timestamp without offset, include `timezone` (IANA format, e.g. `America/New_York`).
 - Dedupe relies on `onto_event_sync.external_event_id` when available; ontology-only events may be unsynced.
 - When linking an event to a task, include `task_id`; the tool will attach task metadata
   (`task_id`, `task_title`, `task_link`) on the ontology event.

@@ -1246,7 +1246,7 @@ Return JSON: { steps: [...], reasoning: "Brief explanation" }`;
 				return 'Use only to remove a specific edge requested.';
 			case 'create_calendar_event':
 			case 'update_calendar_event':
-				return 'Use ISO timestamps with timezone.';
+				return 'Use timezone-aware ISO timestamps (prefer UTC with trailing Z).';
 			case 'delete_calendar_event':
 				return 'Use only with explicit delete intent.';
 			default:

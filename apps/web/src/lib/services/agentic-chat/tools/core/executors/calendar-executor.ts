@@ -5,6 +5,11 @@ import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.ser
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import type { CalendarEvent } from '$lib/services/calendar-service';
+import {
+	normalizeCalendarDateTimeInput,
+	isValidIanaTimezone,
+	type NormalizedCalendarDateTime
+} from './calendar-datetime';
 
 type CalendarScope = 'user' | 'project' | 'calendar_id';
 
@@ -28,7 +33,8 @@ interface GetCalendarEventDetailsArgs {
 interface CreateCalendarEventArgs {
 	title: string;
 	start_at: string;
-	end_at?: string;
+	end_at?: string | null;
+	timezone?: string;
 	description?: string;
 	location?: string;
 	project_id?: string;
@@ -44,7 +50,8 @@ interface UpdateCalendarEventArgs {
 	calendar_id?: string;
 	title?: string;
 	start_at?: string;
-	end_at?: string;
+	end_at?: string | null;
+	timezone?: string;
 	description?: string;
 	location?: string;
 	sync_to_calendar?: boolean;
@@ -71,6 +78,7 @@ export class CalendarExecutor extends BaseExecutor {
 	private readonly eventSyncService: OntoEventSyncService;
 	private readonly projectCalendarService: ProjectCalendarService;
 	private readonly googleOAuthService: GoogleOAuthService;
+	private cachedUserTimezone: string | null = null;
 
 	constructor(context: ConstructorParameters<typeof BaseExecutor>[0]) {
 		super(context);
@@ -101,6 +109,51 @@ export class CalendarExecutor extends BaseExecutor {
 			return trimmed;
 		}
 		return null;
+	}
+
+	private async getUserTimezone(): Promise<string> {
+		if (this.cachedUserTimezone) {
+			return this.cachedUserTimezone;
+		}
+
+		const { data } = await this.supabase
+			.from('users')
+			.select('timezone')
+			.eq('id', this.userId)
+			.maybeSingle();
+
+		const timezone =
+			typeof data?.timezone === 'string' && isValidIanaTimezone(data.timezone)
+				? data.timezone
+				: 'America/New_York';
+
+		this.cachedUserTimezone = timezone;
+		return timezone;
+	}
+
+	private async resolveInputTimezone(candidate?: string | null): Promise<string> {
+		const trimmed = typeof candidate === 'string' ? candidate.trim() : '';
+		if (trimmed.length === 0) {
+			return this.getUserTimezone();
+		}
+		if (!isValidIanaTimezone(trimmed)) {
+			throw new Error(
+				`Invalid timezone "${trimmed}". Use an IANA timezone like "America/New_York".`
+			);
+		}
+		return trimmed;
+	}
+
+	private parseCalendarDateTime(
+		value: string,
+		timezone: string,
+		fieldName: 'start_at' | 'end_at',
+		dateBoundary: 'start' | 'end'
+	): NormalizedCalendarDateTime {
+		return normalizeCalendarDateTimeInput(value, timezone, {
+			fieldName,
+			dateBoundary
+		});
 	}
 
 	private async resolveTaskMetadata(
@@ -435,6 +488,26 @@ export class CalendarExecutor extends BaseExecutor {
 			throw new Error('title and start_at are required');
 		}
 
+		const resolvedTimezone = await this.resolveInputTimezone(args.timezone);
+		const normalizedStart = this.parseCalendarDateTime(
+			args.start_at,
+			resolvedTimezone,
+			'start_at',
+			'start'
+		);
+		const normalizedEnd =
+			typeof args.end_at === 'string' && args.end_at.trim().length > 0
+				? this.parseCalendarDateTime(args.end_at, resolvedTimezone, 'end_at', 'end')
+				: null;
+
+		if (normalizedEnd) {
+			const startMs = Date.parse(normalizedStart.iso);
+			const endMs = Date.parse(normalizedEnd.iso);
+			if (endMs <= startMs) {
+				throw new Error('end_at must be after start_at');
+			}
+		}
+
 		const actorId = await this.getActorId();
 		let projectId = args.project_id ?? null;
 		let taskMetadata: {
@@ -476,9 +549,18 @@ export class CalendarExecutor extends BaseExecutor {
 		const props = taskMetadata
 			? {
 					...this.enrichTaskProps({}, taskMetadata),
-					task_event_kind: args.end_at ? 'range' : 'start'
+					task_event_kind: normalizedEnd ? 'range' : 'start'
 				}
 			: undefined;
+
+		const inferredTimezoneUsed =
+			!normalizedStart.hadExplicitTimezone || Boolean(normalizedEnd?.assumedTimezone);
+		const timezoneForEvent =
+			typeof args.timezone === 'string' && args.timezone.trim().length > 0
+				? resolvedTimezone
+				: inferredTimezoneUsed
+					? resolvedTimezone
+					: undefined;
 
 		const resolvedOwnerType = ownerType as 'task' | 'project' | 'actor' | 'standalone';
 		const result = await this.eventSyncService.createEvent(this.userId, {
@@ -492,8 +574,9 @@ export class CalendarExecutor extends BaseExecutor {
 			title: args.title,
 			description: args.description ?? null,
 			location: args.location ?? null,
-			startAt: args.start_at,
-			endAt: args.end_at ?? null,
+			startAt: normalizedStart.iso,
+			endAt: normalizedEnd?.iso ?? null,
+			timezone: timezoneForEvent,
 			createdBy: actorId,
 			props,
 			calendarScope: scope,
@@ -533,6 +616,40 @@ export class CalendarExecutor extends BaseExecutor {
 			if (!existing) {
 				throw new Error('Event not found');
 			}
+
+			const resolvedTimezone = await this.resolveInputTimezone(
+				args.timezone ?? existing.timezone
+			);
+			const normalizedStart =
+				typeof args.start_at === 'string'
+					? this.parseCalendarDateTime(
+							args.start_at,
+							resolvedTimezone,
+							'start_at',
+							'start'
+						)
+					: undefined;
+			const normalizedEnd =
+				typeof args.end_at === 'string'
+					? this.parseCalendarDateTime(args.end_at, resolvedTimezone, 'end_at', 'end')
+					: args.end_at === null
+						? null
+						: undefined;
+
+			const startForValidation = normalizedStart?.iso ?? existing.start_at;
+			if (normalizedEnd && typeof normalizedEnd === 'object') {
+				const startMs = Date.parse(startForValidation);
+				const endMs = Date.parse(normalizedEnd.iso);
+				if (endMs <= startMs) {
+					throw new Error('end_at must be after start_at');
+				}
+			}
+
+			const inferredTimezoneUsed =
+				(normalizedStart && !normalizedStart.hadExplicitTimezone) ||
+				(normalizedEnd && !normalizedEnd.hadExplicitTimezone);
+			const timezoneForUpdate =
+				args.timezone !== undefined || inferredTimezoneUsed ? resolvedTimezone : undefined;
 
 			let nextProps: Record<string, unknown> | undefined;
 			if (existing.owner_entity_type === 'task' && existing.owner_entity_id) {
@@ -579,8 +696,12 @@ export class CalendarExecutor extends BaseExecutor {
 				title: args.title,
 				description: args.description ?? null,
 				location: args.location ?? null,
-				startAt: args.start_at,
-				endAt: args.end_at ?? null,
+				startAt: normalizedStart?.iso,
+				endAt:
+					normalizedEnd && typeof normalizedEnd === 'object'
+						? normalizedEnd.iso
+						: normalizedEnd,
+				timezone: timezoneForUpdate,
 				props: nextProps as any,
 				syncToCalendar: args.sync_to_calendar
 			});
@@ -591,15 +712,40 @@ export class CalendarExecutor extends BaseExecutor {
 			throw new Error('event_id is required for Google event update');
 		}
 
+		const resolvedTimezone = await this.resolveInputTimezone(args.timezone);
+		const normalizedStart =
+			typeof args.start_at === 'string'
+				? this.parseCalendarDateTime(args.start_at, resolvedTimezone, 'start_at', 'start')
+				: undefined;
+		const normalizedEnd =
+			typeof args.end_at === 'string'
+				? this.parseCalendarDateTime(args.end_at, resolvedTimezone, 'end_at', 'end')
+				: undefined;
+
+		if (normalizedStart && normalizedEnd) {
+			const startMs = Date.parse(normalizedStart.iso);
+			const endMs = Date.parse(normalizedEnd.iso);
+			if (endMs <= startMs) {
+				throw new Error('end_at must be after start_at');
+			}
+		}
+
+		const inferredTimezoneUsed =
+			(normalizedStart && !normalizedStart.hadExplicitTimezone) ||
+			(normalizedEnd && !normalizedEnd.hadExplicitTimezone);
+		const timezoneForUpdate =
+			args.timezone !== undefined || inferredTimezoneUsed ? resolvedTimezone : undefined;
+
 		const calendarId = this.normalizeCalendarId(args.calendar_id) ?? 'primary';
 		const updated = await this.calendarService.updateCalendarEvent(this.userId, {
 			event_id: args.event_id,
 			calendar_id: calendarId,
-			start_time: args.start_at,
-			end_time: args.end_at,
+			start_time: normalizedStart?.iso,
+			end_time: normalizedEnd?.iso,
 			summary: args.title,
 			description: args.description,
-			location: args.location
+			location: args.location,
+			timeZone: timezoneForUpdate
 		});
 
 		return { source: 'google', result: updated };
