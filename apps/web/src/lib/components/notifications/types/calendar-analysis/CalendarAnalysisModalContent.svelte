@@ -55,9 +55,9 @@
 		{#snippet header()}
 			<!-- Custom header with minimize button -->
 			<div
-				class="flex justify-between items-center px-6 py-4 border-b border-border bg-muted/50"
+				class="flex justify-between items-center px-3 py-2 border-b border-border bg-muted/50"
 			>
-				<h2 class="text-xl font-bold text-foreground">Analyzing Calendar</h2>
+				<h2 class="text-sm font-semibold text-foreground">Analyzing Calendar</h2>
 				<div class="flex items-center gap-2">
 					<Button
 						variant="ghost"
@@ -78,9 +78,9 @@
 		{/snippet}
 
 		{#snippet children()}
-			<div class="flex flex-col items-center gap-4 px-6 py-8 text-center">
-				<LoaderCircle class="h-10 w-10 animate-spin text-blue-600 dark:text-blue-400" />
-				<p class="text-base text-foreground">{progressMessage}</p>
+			<div class="flex flex-col items-center gap-3 px-4 py-6 text-center tx tx-grain tx-weak">
+				<LoaderCircle class="h-8 w-8 animate-spin text-accent" />
+				<p class="text-sm text-foreground">{progressMessage}</p>
 				<p class="text-sm text-muted-foreground">
 					You can minimize this window and continue working. We'll keep the results in the
 					notification tray when they're ready.
@@ -102,9 +102,9 @@
 		{#snippet header()}
 			<!-- Custom header with minimize button -->
 			<div
-				class="flex justify-between items-center px-6 py-4 border-b border-border bg-muted/50"
+				class="flex justify-between items-center px-3 py-2 border-b border-border bg-muted/50"
 			>
-				<h2 class="text-xl font-bold text-foreground">Calendar Analysis Results</h2>
+				<h2 class="text-sm font-semibold text-foreground">Calendar Analysis Results</h2>
 				<div class="flex items-center gap-2">
 					<Button
 						variant="ghost"

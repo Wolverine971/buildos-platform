@@ -8,22 +8,13 @@
 		Calendar,
 		LoaderCircle,
 		Sparkles,
-		CheckCircle,
-		TriangleAlert
+		CheckCircle
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import TextareaWithVoice from '$lib/components/ui/TextareaWithVoice.svelte';
-	import { brainDumpService } from '$lib/services/braindump-api.service';
-	import { attachVoiceNoteGroup } from '$lib/services/voice-note-groups.service';
 	import { toastService } from '$lib/stores/toast.store';
-	import {
-		ONBOARDING_V2_CONFIG,
-		ONBOARDING_V3_CONFIG,
-		type OnboardingIntent
-	} from '$lib/config/onboarding.config';
-	import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
+	import { ONBOARDING_V3_CONFIG, type OnboardingIntent } from '$lib/config/onboarding.config';
 	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
-	import { scale, fade } from 'svelte/transition';
+	import { scale } from 'svelte/transition';
 
 	interface Props {
 		userContext?: any; // From previous onboarding inputs
@@ -56,14 +47,6 @@
 	// V3 intent-aware prompt configuration
 	const v3Prompts = $derived(intent ? ONBOARDING_V3_CONFIG.brainDumpPrompts[intent] : null);
 
-	let projectInput = $state('');
-	let isProcessing = $state(false);
-
-	// Voice state from TextareaWithVoice (bindable)
-	let isRecording = $state(false);
-	let voiceError = $state('');
-	let voiceNoteGroupId = $state<string | null>(null);
-
 	// Calendar connection state
 	let hasCalendarConnected = $state(false);
 	let isCheckingConnection = $state(true);
@@ -71,18 +54,8 @@
 	let isConnectingCalendar = $state(false);
 	let showConnectionSuccess = $state(false);
 
-	let createdProjects = $state<string[]>([]);
-	let showSuccess = $state(false);
 	let calendarAnalysisStarted = $state(false);
 	let calendarAnalysisCompleted = $state(false);
-
-	// Reference to TextareaWithVoice for cleanup
-	let textareaWithVoiceRef = $state<TextareaWithVoice | null>(null);
-
-	function handleVoiceNoteError(message: string) {
-		if (!message) return;
-		toastService.error(message);
-	}
 
 	/**
 	 * Check if user has Google Calendar connected
@@ -246,114 +219,6 @@
 				error instanceof Error ? error.message : 'Failed to start calendar analysis'
 			);
 		}
-	}
-
-	async function processBrainDump() {
-		const minimumLength = isSkippable ? 10 : 20;
-		if (projectInput.trim().length < minimumLength) {
-			toastService.error(
-				`Please provide more details about your projects (at least ${minimumLength} characters)`
-			);
-			return;
-		}
-
-		isProcessing = true;
-		let brainDumpId: string | null = null;
-
-		// Build context from user_context if available
-		const context: DisplayedBrainDumpQuestion[] = [];
-
-		if (userContext?.input_work_style) {
-			context.push({
-				question: "What's your work style?",
-				answer: userContext.input_work_style
-			});
-		}
-
-		if (userContext?.input_challenges) {
-			context.push({
-				question: 'What challenges are you facing?',
-				answer: userContext.input_challenges
-			});
-		}
-
-		try {
-			try {
-				const draftResponse = await brainDumpService.saveDraft(
-					projectInput,
-					undefined,
-					null,
-					{
-						forceNew: true
-					}
-				);
-				brainDumpId = draftResponse?.data?.brainDumpId ?? null;
-			} catch (error) {
-				console.warn('Failed to create braindump draft for voice attachments:', error);
-			}
-
-			await brainDumpService.parseBrainDumpWithStream(
-				projectInput,
-				null, // New project
-				brainDumpId ?? undefined,
-				context,
-				{
-					autoAccept: true, // Auto-create without review
-					onProgress: (status) => {
-						console.log('Processing:', status);
-					},
-					onComplete: (result) => {
-						const createdProjectId =
-							result.ontology?.project_id || result.projectInfo?.id;
-						const projectName = result.projectInfo?.name || 'Project';
-
-						if (voiceNoteGroupId && brainDumpId) {
-							void attachVoiceNoteGroup(voiceNoteGroupId, {
-								linkedEntityType: 'brain_dump',
-								linkedEntityId: brainDumpId,
-								status: 'attached'
-							}).catch((error) => {
-								console.warn('Failed to attach voice notes to braindump:', error);
-							});
-						}
-						voiceNoteGroupId = null;
-
-						if (createdProjectId) {
-							createdProjects.push(createdProjectId);
-							showSuccess = true;
-							toastService.success(`🎉 Created "${projectName}"!`);
-
-							// Wait a moment to show success, then continue
-							setTimeout(() => {
-								onProjectsCreated(createdProjects, result.ontology?.counts);
-								onNext();
-							}, 1500);
-						} else {
-							toastService.warning(
-								'No projects created, but you can add them later!'
-							);
-							onNext();
-						}
-					},
-					onError: (error) => {
-						toastService.error(`Processing failed: ${error}`);
-						isProcessing = false;
-					}
-				}
-			);
-		} catch (error) {
-			console.error('Brain dump error:', error);
-			toastService.error('Failed to process. Please try again.');
-			isProcessing = false;
-		}
-	}
-
-	async function skipProjectCapture() {
-		// Stop recording before navigating
-		if (isRecording) {
-			await textareaWithVoiceRef?.stopRecording();
-		}
-		onNext();
 	}
 </script>
 
@@ -536,241 +401,141 @@
 		</div>
 	</div>
 
-	<!-- Transition to project capture -->
-	<div class="mb-4 flex items-center gap-3">
-		<div class="flex-1 h-px bg-border"></div>
-		<span class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
-			>Now let's capture your first project</span
-		>
-		<div class="flex-1 h-px bg-border"></div>
-	</div>
-
-	{#if showSuccess}
-		<!-- Success animation - Compact -->
+	<!-- Calendar Connection & Analysis Section -->
+	{#if showConnectionSuccess || hasCalendarConnected}
+		<!-- Calendar Connected — prominent CTA to analyze -->
 		<div
-			class="mb-4 p-4 bg-accent/10 rounded-lg border border-accent/30 animate-in fade-in slide-in-from-top-2 tx tx-grain tx-weak"
+			class="mb-4 p-5 bg-accent/5 rounded-xl border-2 border-accent/30 shadow-ink tx tx-grain tx-weak"
+			in:scale={{ duration: 400, start: 0.95 }}
 		>
-			<div class="flex items-center gap-2 text-accent">
-				<CheckCircle class="w-5 h-5" />
-				<p class="font-medium text-sm">Project created! Moving to next step...</p>
-			</div>
-		</div>
-	{:else}
-		<!-- Voice Error Display - Compact -->
-		{#if voiceError}
-			<div
-				class="mb-3 flex items-center gap-2 px-3 py-2 bg-destructive/10 text-destructive text-xs border border-destructive/30 rounded-lg tx tx-static tx-weak"
-				transition:fade={{ duration: 200 }}
-			>
-				<TriangleAlert class="w-3.5 h-3.5 flex-shrink-0" />
-				<span>{voiceError}</span>
-			</div>
-		{/if}
-
-		<!-- Calendar Connection & Analysis Section -->
-		{#if showConnectionSuccess || hasCalendarConnected}
-			<!-- Calendar Connected — prominent CTA to analyze -->
-			<div
-				class="mb-4 p-5 bg-accent/5 rounded-xl border-2 border-accent/30 shadow-ink tx tx-grain tx-weak"
-				in:scale={{ duration: 400, start: 0.95 }}
-			>
-				<div class="flex items-start gap-3 mb-4">
-					<div
-						class="w-12 h-12 bg-accent rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
-					>
-						<CheckCircle class="w-6 h-6 text-accent-foreground" />
-					</div>
-					<div class="flex-1">
-						<h3 class="text-base font-bold text-foreground flex items-center gap-2">
-							Google Calendar Connected
-							<span
-								class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
-							>
-								Ready
-							</span>
-						</h3>
-						<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
-							BuildOS can scan your calendar to automatically detect projects from
-							your meetings, recurring events, and upcoming deadlines.
-						</p>
-					</div>
-				</div>
-
-				<!-- Benefits -->
+			<div class="flex items-start gap-3 mb-4">
 				<div
-					class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground"
+					class="w-12 h-12 bg-accent rounded-xl flex items-center justify-center flex-shrink-0 shadow-ink"
 				>
-					<span
-						class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
-					>
-						<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
-						Auto-detect projects from events
-					</span>
-					<span
-						class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
-					>
-						<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
-						Pre-fill tasks and deadlines
-					</span>
-					<span
-						class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
-					>
-						<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
-						Smart scheduling suggestions
-					</span>
+					<CheckCircle class="w-6 h-6 text-accent-foreground" />
 				</div>
-
-				{#if calendarAnalysisStarted}
-					<div
-						class="flex items-center gap-2 p-3 bg-card rounded-lg border border-border"
-					>
-						<LoaderCircle class="w-4 h-4 animate-spin text-accent flex-shrink-0" />
-						<span class="text-sm text-foreground font-medium">
-							Analyzing your calendar — check the notification in the bottom-right
-							corner.
+				<div class="flex-1">
+					<h3 class="text-base font-bold text-foreground flex items-center gap-2">
+						Google Calendar Connected
+						<span
+							class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
+						>
+							Ready
 						</span>
-					</div>
-				{:else}
-					<Button
-						variant="primary"
-						size="lg"
-						onclick={handleStartCalendarAnalysis}
-						class="w-full shadow-ink pressable"
-					>
-						<Sparkles class="w-5 h-5 mr-2" />
-						Analyze My Calendar to Extract Projects
-					</Button>
-				{/if}
+					</h3>
+					<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
+						BuildOS can scan your calendar to automatically detect projects from
+						your meetings, recurring events, and upcoming deadlines.
+					</p>
+				</div>
 			</div>
 
-			<!-- Divider -->
-			<div class="mb-3 flex items-center gap-2">
-				<div class="flex-1 h-px bg-border"></div>
-				<span class="text-xs text-muted-foreground">OR describe your projects manually</span
-				>
-				<div class="flex-1 h-px bg-border"></div>
-			</div>
-		{:else if !hasCalendarConnected && !isCheckingConnection}
-			<!-- Calendar Not Connected -->
+			<!-- Benefits -->
 			<div
-				class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
+				class="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground"
 			>
-				<div class="flex items-start gap-3 mb-3">
-					<div
-						class="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0 shadow-ink"
-					>
-						<Calendar class="w-5 h-5 text-accent-foreground" />
-					</div>
-					<div class="flex-1">
-						<h3 class="text-sm font-semibold text-foreground mb-1">
-							Shortcut: Analyze your calendar
-						</h3>
-						<p class="text-xs text-muted-foreground leading-relaxed">
-							Connect Google Calendar and BuildOS will automatically detect projects
-							from your meetings and events.
-						</p>
-					</div>
-				</div>
+				<span
+					class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
+				>
+					<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
+					Auto-detect projects from events
+				</span>
+				<span
+					class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
+				>
+					<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
+					Pre-fill tasks and deadlines
+				</span>
+				<span
+					class="flex items-center gap-1.5 bg-card rounded-lg border border-border px-3 py-2"
+				>
+					<CheckCircle class="w-3.5 h-3.5 text-accent flex-shrink-0" />
+					Smart scheduling suggestions
+				</span>
+			</div>
 
-				<!-- Benefits - Compact inline -->
-				<div class="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-					<span class="flex items-center gap-1">
-						<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
-						Auto-detect projects
-					</span>
-					<span class="flex items-center gap-1">
-						<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
-						Pre-fill tasks
-					</span>
-					<span class="flex items-center gap-1">
-						<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
-						Smart scheduling
+			{#if calendarAnalysisStarted}
+				<div
+					class="flex items-center gap-2 p-3 bg-card rounded-lg border border-border"
+				>
+					<LoaderCircle class="w-4 h-4 animate-spin text-accent flex-shrink-0" />
+					<span class="text-sm text-foreground font-medium">
+						Analyzing your calendar — check the notification in the bottom-right
+						corner.
 					</span>
 				</div>
-
-				<!-- Primary CTA -->
+			{:else}
 				<Button
 					variant="primary"
-					onclick={handleConnectCalendar}
-					disabled={isConnectingCalendar}
-					loading={isConnectingCalendar}
-					class="w-full mb-2 shadow-ink pressable"
+					size="lg"
+					onclick={handleStartCalendarAnalysis}
+					class="w-full shadow-ink pressable"
 				>
-					{#if isConnectingCalendar}
-						Connecting...
-					{:else}
-						<Calendar class="w-4 h-4 mr-2" />
-						Connect Google Calendar
-					{/if}
+					<Sparkles class="w-5 h-5 mr-2" />
+					Analyze My Calendar to Extract Projects
 				</Button>
-
-				<!-- Secondary Action -->
-				<button
-					class="text-xs text-muted-foreground hover:text-foreground w-full text-center transition-colors"
-					onclick={skipProjectCapture}
-					disabled={isConnectingCalendar}
-				>
-					Skip — I'll describe my projects manually
-				</button>
-			</div>
-		{/if}
-
-		<!-- Brain Dump Input with Voice -->
-		<div class="mb-4">
-			<TextareaWithVoice
-				bind:this={textareaWithVoiceRef}
-				bind:value={projectInput}
-				bind:isRecording
-				bind:voiceError
-				bind:voiceNoteGroupId
-				voiceNoteSource="onboarding_projects"
-				onVoiceNoteSegmentError={handleVoiceNoteError}
-				placeholder={v3Prompts?.placeholder ||
-					"Tell me about your projects, goals, and what you're working on. For example: 'I'm launching a new product next month, need to coordinate marketing, finish the website, and hire a designer...'"}
-				rows={5}
-				maxRows={8}
-				autoResize
-				disabled={isProcessing}
-				enableVoice={ONBOARDING_V2_CONFIG.features.enableVoiceInput}
-				showStatusRow
-				showLiveTranscriptPreview
-				idleHint="Type or use voice to describe your projects"
-				containerClass="bg-card border border-border rounded-xl shadow-ink-inner"
-				textareaClass="min-h-[120px] resize-none"
-				vocabularyTerms="project, goal, task, milestone, deadline"
-			/>
+			{/if}
 		</div>
+	{:else if !hasCalendarConnected && !isCheckingConnection}
+		<!-- Calendar Not Connected -->
+		<div
+			class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
+		>
+			<div class="flex items-start gap-3 mb-3">
+				<div
+					class="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0 shadow-ink"
+				>
+					<Calendar class="w-5 h-5 text-accent-foreground" />
+				</div>
+				<div class="flex-1">
+					<h3 class="text-sm font-semibold text-foreground mb-1">
+						Shortcut: Analyze your calendar
+					</h3>
+					<p class="text-xs text-muted-foreground leading-relaxed">
+						Connect Google Calendar and BuildOS will automatically detect projects
+						from your meetings and events.
+					</p>
+				</div>
+			</div>
 
-		<!-- Actions -->
-		<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-			<!-- Skip Button -->
-			<Button
-				variant="ghost"
-				onclick={skipProjectCapture}
-				disabled={isProcessing || isRecording}
-				class="order-2 sm:order-1"
-			>
-				{isSkippable ? 'Skip for now' : "I'll add projects later"}
-			</Button>
+			<!-- Benefits - Compact inline -->
+			<div class="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+				<span class="flex items-center gap-1">
+					<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
+					Auto-detect projects
+				</span>
+				<span class="flex items-center gap-1">
+					<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
+					Pre-fill tasks
+				</span>
+				<span class="flex items-center gap-1">
+					<CheckCircle class="w-3 h-3 text-accent flex-shrink-0" />
+					Smart scheduling
+				</span>
+			</div>
 
-			<!-- Continue Button -->
+			<!-- Primary CTA -->
 			<Button
 				variant="primary"
-				size="lg"
-				onclick={processBrainDump}
-				disabled={projectInput.trim().length < (isSkippable ? 10 : 20) ||
-					isProcessing ||
-					isRecording}
-				loading={isProcessing}
-				class="min-w-[160px] order-1 sm:order-2 shadow-ink pressable"
+				onclick={handleConnectCalendar}
+				disabled={isConnectingCalendar}
+				loading={isConnectingCalendar}
+				class="w-full mb-2 shadow-ink pressable"
 			>
-				{#if isProcessing}
-					Creating Projects...
+				{#if isConnectingCalendar}
+					Connecting...
 				{:else}
-					Continue
-					<Sparkles class="w-5 h-5 ml-2" />
+					<Calendar class="w-4 h-4 mr-2" />
+					Connect Google Calendar
 				{/if}
 			</Button>
 		</div>
 	{/if}
+
+	<!-- Continue -->
+	<div class="mt-4 p-2 flex justify-center">
+		<Button variant="ghost" onclick={onNext}>
+			{isSkippable ? 'Skip for now' : 'Continue'}
+		</Button>
+	</div>
 </div>

@@ -10,17 +10,13 @@
 		Circle,
 		Calendar,
 		TrendingUp,
-		Edit2,
 		ChevronDown,
 		ChevronUp,
 		LoaderCircle,
 		Clock,
-		Edit3,
 		Repeat
 	} from 'lucide-svelte';
 	import type { Database } from '@buildos/shared-types';
-	import CalendarTaskEditModal from './CalendarTaskEditModal.svelte';
-	import type { SuggestedTask } from '$lib/utils/calendar-task-field-config';
 
 	type CalendarProjectSuggestion =
 		Database['public']['Tables']['calendar_project_suggestions']['Row'];
@@ -79,7 +75,6 @@
 	}: Props = $props();
 
 	let selectedSuggestions = $state(new Set<string>());
-	let editingSuggestion = $state<string | null>(null);
 	let processing = $state(false);
 	let analyzing = $state(false);
 	let expandedSuggestions = $state(new Set<string>());
@@ -94,9 +89,6 @@
 	// Task management state
 	let tasksExpanded = $state(new Set<string>());
 	let enabledTasks = $state<Record<string, boolean>>({});
-	let editingTaskKey = $state<string | null>(null);
-	let editingTaskData = $state<SuggestedTask | null>(null);
-	let isTaskEditModalOpen = $state(false);
 
 	function parseSuggestedTasks(value: unknown): SuggestionTaskView[] {
 		if (!Array.isArray(value)) return [];
@@ -153,26 +145,6 @@
 			}));
 	}
 
-	function toEditableTask(task: SuggestionTaskView): SuggestedTask {
-		return {
-			title: task.title,
-			description: task.description ?? '',
-			details: task.details,
-			status: task.status ?? 'backlog',
-			priority:
-				task.priority === 'low' || task.priority === 'medium' || task.priority === 'high'
-					? task.priority
-					: 'medium',
-			task_type: task.task_type ?? 'one_off',
-			duration_minutes: task.duration_minutes,
-			start_date: task.start_date,
-			recurrence_pattern: task.recurrence_pattern,
-			recurrence_ends: task.recurrence_ends,
-			event_id: task.event_id,
-			tags: task.tags
-		};
-	}
-
 	// Start analysis automatically if requested
 	$effect(() => {
 		if (!browser) return;
@@ -182,16 +154,26 @@
 		}
 	});
 
-	// Auto-select high confidence suggestions (only once when suggestions are loaded)
+	// Auto-select high confidence suggestions, pre-populate modifications, and auto-expand tasks
 	$effect(() => {
 		if (suggestions && suggestions.length > 0 && !autoSelectProcessed) {
 			const newSelected = new Set<string>();
+			const newTasksExpanded = new Set<string>();
 			suggestions.forEach((s) => {
 				if (s.confidence_score && s.confidence_score >= 0.7) {
 					newSelected.add(s.id);
 				}
+				newTasksExpanded.add(s.id);
+				if (!modifiedSuggestions.has(s.id)) {
+					modifiedSuggestions.set(s.id, {
+						name: s.user_modified_name ?? s.suggested_name ?? undefined,
+						description: s.user_modified_description ?? s.suggested_description ?? undefined
+					});
+				}
 			});
 			selectedSuggestions = newSelected;
+			tasksExpanded = newTasksExpanded;
+			modifiedSuggestions = new Map(modifiedSuggestions);
 			autoSelectProcessed = true;
 		}
 	});
@@ -230,59 +212,6 @@
 			tasksExpanded.add(suggestionId);
 		}
 		tasksExpanded = new Set(tasksExpanded);
-	}
-
-	function startEditingTask(suggestionId: string, taskIndex: number) {
-		const suggestion = suggestions.find((s) => s.id === suggestionId);
-		const tasks = parseSuggestedTasks(suggestion?.suggested_tasks);
-		const task = tasks[taskIndex];
-
-		if (task) {
-			editingTaskKey = `${suggestionId}-${taskIndex}`;
-			editingTaskData = toEditableTask(task);
-			isTaskEditModalOpen = true;
-		}
-	}
-
-	function handleTaskSave(updatedTask: SuggestedTask) {
-		if (!editingTaskKey) return;
-
-		const separatorIndex = editingTaskKey.lastIndexOf('-');
-		if (separatorIndex <= 0) {
-			isTaskEditModalOpen = false;
-			editingTaskKey = null;
-			editingTaskData = null;
-			return;
-		}
-		const suggestionId = editingTaskKey.slice(0, separatorIndex);
-		const indexStr = editingTaskKey.slice(separatorIndex + 1);
-		const taskIndex = parseInt(indexStr, 10);
-		if (Number.isNaN(taskIndex)) {
-			isTaskEditModalOpen = false;
-			editingTaskKey = null;
-			editingTaskData = null;
-			return;
-		}
-
-		const suggestion = suggestions.find((s) => s.id === suggestionId);
-		if (suggestion) {
-			const tasks = parseSuggestedTasks(suggestion.suggested_tasks);
-			tasks[taskIndex] = updatedTask;
-			suggestion.suggested_tasks =
-				tasks as unknown as CalendarProjectSuggestion['suggested_tasks'];
-			suggestions = [...suggestions]; // Trigger reactivity
-			toastService.success('Task updated successfully');
-		}
-
-		isTaskEditModalOpen = false;
-		editingTaskKey = null;
-		editingTaskData = null;
-	}
-
-	function handleTaskEditClose() {
-		isTaskEditModalOpen = false;
-		editingTaskKey = null;
-		editingTaskData = null;
 	}
 
 	function formatDate(dateStr: string | null | undefined): string {
@@ -353,37 +282,6 @@
 			expandedSuggestions.add(id);
 		}
 		expandedSuggestions = new Set(expandedSuggestions);
-	}
-
-	function startEditingSuggestion(id: string) {
-		editingSuggestion = id;
-		const suggestion = suggestions.find((s) => s.id === id);
-		if (suggestion) {
-			// Always set/update the modifications when starting to edit
-			const currentMods = modifiedSuggestions.get(id);
-			modifiedSuggestions.set(id, {
-				name:
-					currentMods?.name ??
-					suggestion.user_modified_name ??
-					suggestion.suggested_name ??
-					undefined,
-				description:
-					currentMods?.description ??
-					suggestion.user_modified_description ??
-					suggestion.suggested_description ??
-					undefined
-			});
-			modifiedSuggestions = new Map(modifiedSuggestions); // Trigger reactivity
-		}
-	}
-
-	function saveEditingSuggestion() {
-		editingSuggestion = null;
-	}
-
-	function cancelEditingSuggestion(id: string) {
-		modifiedSuggestions.delete(id);
-		editingSuggestion = null;
 	}
 
 	async function handleCreateProjects() {
@@ -498,17 +396,12 @@
 		onClose?.();
 		// Reset state
 		selectedSuggestions = new Set();
-		editingSuggestion = null;
 		modifiedSuggestions = new Map();
 		expandedSuggestions = new Set();
 		analysisTriggered = false; // Reset flag to allow future analyses
 		autoSelectProcessed = false; // Reset auto-select flag
-		// Reset task state
 		tasksExpanded = new Set();
 		enabledTasks = {};
-		editingTaskKey = null;
-		editingTaskData = null;
-		isTaskEditModalOpen = false;
 	}
 
 	function formatConfidence(score: number | null): string {
@@ -528,26 +421,26 @@
 
 {#snippet resultsContent()}
 	<div
-		class="space-y-6 px-4 sm:px-6 py-3 sm:py-4 {embedded
+		class="space-y-3 px-3 sm:px-4 py-2 sm:py-3 {embedded
 			? ''
 			: 'border-b border-border bg-muted/50 flex-shrink-0'}"
 	>
 		{#if errorMessage}
 			<div
-				class="rounded border border-red-300 bg-red-50/80 p-4 text-sm text-red-700 dark:border-red-800/60 dark:bg-red-900/20 dark:text-red-200"
+				class="rounded-lg border border-border p-3 text-sm text-red-700 dark:text-red-300 tx tx-static tx-weak shadow-ink"
 			>
 				{errorMessage}
 			</div>
 		{/if}
 		{#if !analyzing && !analysisId && suggestions.length === 0 && !autoStart}
 			<!-- Date Range Selection (only show if not autoStart) -->
-			<div class="bg-accent/10 rounded p-6 border border-accent/20 shadow-ink mx-1">
-				<h3 class="text-lg font-semibold text-foreground mb-4">Select Analysis Period</h3>
-				<p class="text-sm text-muted-foreground mb-6">
+			<div class="bg-card rounded-lg p-3 border border-border shadow-ink tx tx-grid tx-weak wt-paper sp-block">
+				<h3 class="text-sm font-semibold text-foreground mb-2">Select Analysis Period</h3>
+				<p class="text-sm text-muted-foreground mb-2">
 					Choose how far back and forward to analyze your calendar
 				</p>
 
-				<div class="grid grid-cols-2 gap-6">
+				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<label
 							for="daysBack"
@@ -558,7 +451,7 @@
 						<select
 							id="daysBack"
 							bind:value={daysBack}
-							class="w-full rounded border border-border px-4 py-2.5 text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+							class="w-full rounded-lg border border-border px-3 py-2 text-sm text-foreground bg-background shadow-ink-inner focus:outline-none focus:border-accent focus:ring-1 focus:ring-ring transition-colors"
 						>
 							<option value={30}>1 month</option>
 							<option value={60}>2 months</option>
@@ -576,7 +469,7 @@
 						<select
 							id="daysForward"
 							bind:value={daysForward}
-							class="w-full rounded border border-border px-4 py-2.5 text-sm text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
+							class="w-full rounded-lg border border-border px-3 py-2 text-sm text-foreground bg-background shadow-ink-inner focus:outline-none focus:border-accent focus:ring-1 focus:ring-ring transition-colors"
 						>
 							<option value={30}>1 month</option>
 							<option value={60}>2 months (default)</option>
@@ -587,14 +480,14 @@
 					</div>
 				</div>
 
-				<div class="mt-6 flex justify-center">
+				<div class="mt-3 flex justify-center">
 					<Button
 						variant="primary"
 						onclick={() => {
 							analysisTriggered = true;
 							startAnalysis();
 						}}
-						class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"
+						class="px-4 py-2"
 					>
 						Start Analysis
 					</Button>
@@ -602,39 +495,39 @@
 			</div>
 		{:else if analyzing}
 			<!-- Loading State -->
-			<div class="flex flex-col items-center justify-center py-16">
+			<div class="flex flex-col items-center justify-center py-8">
 				<!-- Loader Container with Gradient Background -->
-				<div class="relative mb-6">
+				<div class="mb-3">
 					<div
-						class="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-600 dark:from-blue-500 dark:to-purple-500 rounded-full blur-xl opacity-20 animate-pulse"
+						class="hidden"
 					></div>
 					<div
-						class="relative bg-accent/10 p-5 rounded-full border border-accent/20 shadow-ink-strong"
+						class="bg-accent/10 p-4 rounded-full border border-accent/20 shadow-ink"
 					>
 						<LoaderCircle
-							class="w-12 h-12 text-purple-600 dark:text-purple-400 animate-spin"
+							class="w-8 h-8 text-accent animate-spin"
 						/>
 					</div>
 				</div>
 
 				<!-- Loading Text -->
-				<h3 class="text-xl font-semibold text-foreground mb-3">Analyzing Your Calendar</h3>
-				<p class="text-base text-muted-foreground text-center max-w-md leading-relaxed">
+				<h3 class="text-sm font-semibold text-foreground mb-2">Analyzing Your Calendar</h3>
+				<p class="text-sm text-muted-foreground text-center">
 					Looking for project patterns in your meetings and events. This typically takes
 					10-30 seconds...
 				</p>
 
 				<!-- Progress Indicator -->
-				<div class="mt-6 flex items-center gap-2">
+				<div class="mt-3 flex items-center gap-2">
 					<div
-						class="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-pulse"
+						class="w-2 h-2 bg-accent rounded-full animate-pulse"
 					></div>
 					<div
-						class="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-pulse"
+						class="w-2 h-2 bg-accent rounded-full animate-pulse"
 						style="animation-delay: 0.2s"
 					></div>
 					<div
-						class="w-2 h-2 bg-purple-600 dark:bg-purple-400 rounded-full animate-pulse"
+						class="w-2 h-2 bg-accent rounded-full animate-pulse"
 						style="animation-delay: 0.4s"
 					></div>
 				</div>
@@ -642,42 +535,41 @@
 		{:else if suggestions.length > 0}
 			<!-- Summary -->
 			<div
-				class="clarity-zone bg-accent/10 rounded p-6 border border-accent/20 shadow-ink mx-1"
+				class="bg-card rounded-lg p-3 border border-border shadow-ink tx tx-frame tx-weak wt-card"
 			>
 				<div class="flex items-center justify-between">
 					<div>
-						<h3 class="text-lg font-semibold text-foreground">
+						<h3 class="text-sm font-semibold text-foreground">
 							Found {suggestions.length} potential project{suggestions.length !== 1
 								? 's'
 								: ''}
 						</h3>
-						<p class="text-sm text-muted-foreground mt-2">
+						<p class="text-sm text-muted-foreground mt-1">
 							Review and select the projects you'd like to create
 						</p>
 					</div>
 					<div class="bg-card p-3 rounded shadow-ink">
-						<Calendar class="w-8 h-8 text-purple-600 dark:text-purple-400" />
+						<Calendar class="w-8 h-8 text-accent" />
 					</div>
 				</div>
 			</div>
 
 			<!-- Suggestions List -->
-			<div class="space-y-4 max-h-[500px] overflow-y-auto pr-2 -mx-2 px-2">
+			<div class="space-y-2 max-h-[500px] overflow-y-auto pr-2 -mx-2 px-2">
 				{#each suggestions as suggestion}
 					{@const isSelected = selectedSuggestions.has(suggestion.id)}
 					{@const isExpanded = expandedSuggestions.has(suggestion.id)}
-					{@const isEditing = editingSuggestion === suggestion.id}
 					{@const confidence = suggestion.confidence_score || 0}
 					{@const modifications = modifiedSuggestions.get(suggestion.id)}
 					{@const tasks = parseSuggestedTasks(suggestion.suggested_tasks)}
 					{@const patterns = suggestion.event_patterns as EventPatternsData | null}
 
 					<div
-						class="border-2 rounded p-6 transition-all duration-300 hover:shadow-ink {isSelected
-							? 'border-purple-500 dark:border-purple-400 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20'
-							: 'clarity-zone border-border'}"
+						class="border rounded-lg p-3 transition-colors shadow-ink tx tx-bloom tx-weak wt-paper sp-block {isSelected
+							? 'border-accent bg-accent/5'
+							: 'border-border'}"
 					>
-						<div class="flex items-start gap-4">
+						<div class="flex items-start gap-3">
 							<!-- Selection Indicator -->
 							<button
 								onclick={() => toggleSuggestion(suggestion.id)}
@@ -686,11 +578,11 @@
 							>
 								{#if isSelected}
 									<CheckCircle
-										class="w-6 h-6 text-purple-600 dark:text-purple-400"
+										class="w-5 h-5 text-accent"
 									/>
 								{:else}
 									<Circle
-										class="w-6 h-6 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground"
+										class="w-5 h-5 text-muted-foreground"
 									/>
 								{/if}
 							</button>
@@ -699,30 +591,32 @@
 							<div class="flex-1 min-w-0">
 								<div class="flex items-start justify-between gap-2">
 									<div class="flex-1">
-										{#if isEditing && modifications}
-											<input
-												type="text"
-												bind:value={modifications.name}
-												placeholder={suggestion.suggested_name}
-												class="w-full rounded border border-border px-4 py-2.5 mb-3 text-base text-foreground bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
-											/>
-											<textarea
-												bind:value={modifications.description}
-												placeholder={suggestion.suggested_description}
-												class="w-full rounded border border-border px-4 py-2.5 text-sm text-muted-foreground bg-card focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition-all duration-200"
-												rows="2"
-											></textarea>
-										{:else}
-											<h4 class="text-lg font-semibold text-foreground">
-												{modifications?.name || suggestion.suggested_name}
-											</h4>
-											<p
-												class="text-sm text-muted-foreground mt-2 leading-relaxed"
-											>
-												{modifications?.description ||
-													suggestion.suggested_description}
-											</p>
-										{/if}
+										<input
+											type="text"
+											value={modifications?.name ?? suggestion.suggested_name ?? ''}
+											oninput={(e) => {
+												const mods = modifiedSuggestions.get(suggestion.id) ?? {};
+												mods.name = e.currentTarget.value;
+												modifiedSuggestions.set(suggestion.id, mods);
+												modifiedSuggestions = new Map(modifiedSuggestions);
+											}}
+											class="w-full text-sm font-semibold text-foreground bg-transparent border-0 border-b border-transparent hover:border-border focus:border-accent outline-none p-0 pb-0.5 transition-colors"
+											placeholder="Project name"
+											disabled={processing}
+										/>
+										<input
+											type="text"
+											value={modifications?.description ?? suggestion.suggested_description ?? ''}
+											oninput={(e) => {
+												const mods = modifiedSuggestions.get(suggestion.id) ?? {};
+												mods.description = e.currentTarget.value;
+												modifiedSuggestions.set(suggestion.id, mods);
+												modifiedSuggestions = new Map(modifiedSuggestions);
+											}}
+											class="w-full text-sm text-muted-foreground bg-transparent border-0 border-b border-transparent hover:border-border focus:border-accent outline-none p-0 pb-0.5 mt-1 transition-colors"
+											placeholder="Project description"
+											disabled={processing}
+										/>
 									</div>
 
 									<!-- Confidence Badge -->
@@ -737,7 +631,7 @@
 
 								<!-- Metadata -->
 								<div
-									class="flex flex-wrap items-center gap-4 mt-4 text-sm text-muted-foreground"
+									class="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground"
 								>
 									<span class="flex items-center gap-1.5">
 										<Calendar class="w-4 h-4" />
@@ -760,7 +654,7 @@
 								{#if tasks && Array.isArray(tasks) && tasks.length > 0}
 									{@const tasksAreExpanded = tasksExpanded.has(suggestion.id)}
 									<button
-										class="flex items-center gap-2 mt-4 text-sm text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
+										class="flex items-center gap-2 mt-4 text-sm text-muted-foreground hover:text-accent transition-all duration-200"
 										onclick={() => toggleTasksExpanded(suggestion.id)}
 									>
 										<span
@@ -781,7 +675,7 @@
 
 									{#if tasksAreExpanded}
 										<div
-											class="mt-4 space-y-2 pl-6 border-l-2 border-purple-200 dark:border-purple-800"
+											class="mt-3 space-y-1.5 pl-4 border-l-2 border-accent/20"
 										>
 											{#each tasks as task, index}
 												{@const taskKey = `${suggestion.id}-${index}`}
@@ -798,7 +692,7 @@
 															type="checkbox"
 															bind:checked={enabledTasks[taskKey]}
 															disabled={processing}
-															class="mt-1 w-4 h-4 text-purple-600 border-border rounded focus:ring-purple-500"
+															class="mt-1 w-4 h-4 text-accent border-border rounded focus:ring-ring"
 														/>
 														<div class="flex-1 min-w-0">
 															<!-- Enhanced Task Display - All Fields -->
@@ -810,11 +704,19 @@
 																	<div
 																		class="flex items-center gap-2 mb-2"
 																	>
-																		<h5
-																			class="font-medium text-foreground text-sm"
-																		>
-																			{task.title}
-																		</h5>
+																		<input
+																			type="text"
+																			value={task.title}
+																			oninput={(e) => {
+																				const arr = suggestion.suggested_tasks;
+																				if (Array.isArray(arr) && arr[index]) {
+																					(arr[index] as Record<string, unknown>).title = e.currentTarget.value;
+																				}
+																			}}
+																			class="font-medium text-foreground text-sm bg-transparent border-0 border-b border-transparent hover:border-border focus:border-accent outline-none p-0 pb-0.5 flex-1 min-w-0 transition-colors"
+																			placeholder="Task name"
+																			disabled={processing}
+																		/>
 																		{#if task.status}
 																			<span
 																				class="px-2 py-0.5 text-xs rounded-full font-medium
@@ -936,7 +838,7 @@
 																		<!-- Recurrence Pattern (if recurring) -->
 																		{#if task.task_type === 'recurring' && task.recurrence_pattern}
 																			<span
-																				class="flex items-center gap-1 px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full"
+																				class="flex items-center gap-1 px-2 py-0.5 bg-accent/10 text-accent rounded-full"
 																			>
 																				<Repeat
 																					class="w-3 h-3"
@@ -982,21 +884,7 @@
 																	{/if}
 																</div>
 
-																<!-- Edit Button -->
-																<Button
-																	size="sm"
-																	variant="ghost"
-																	icon={Edit3}
-																	onclick={() =>
-																		startEditingTask(
-																			suggestion.id,
-																			index
-																		)}
-																	disabled={processing}
-																	class="ml-2 !p-1.5 flex-shrink-0"
-																	title="Edit task"
-																/>
-															</div>
+																															</div>
 														</div>
 													</div>
 												</div>
@@ -1008,7 +896,7 @@
 								<!-- AI Reasoning (expandable) -->
 								{#if suggestion.ai_reasoning}
 									<button
-										class="flex items-center gap-2 mt-4 text-sm text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-200"
+										class="flex items-center gap-2 mt-4 text-sm text-muted-foreground hover:text-accent transition-all duration-200"
 										onclick={() => toggleExpanded(suggestion.id)}
 									>
 										<span>Why this was suggested</span>
@@ -1025,7 +913,7 @@
 
 									{#if isExpanded}
 										<div
-											class="clarity-zone mt-4 p-4 border-l-2 border-purple-200 dark:border-purple-800/50"
+											class="clarity-zone mt-4 p-4 border-l-2 border-accent/20"
 										>
 											<p
 												class="text-sm text-muted-foreground leading-relaxed"
@@ -1076,7 +964,7 @@
 													</span>
 													{#each patterns.tags as tag}
 														<span
-															class="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-700 text-blue-700 dark:text-blue-300 rounded-full"
+															class="inline-flex px-2 py-1 text-xs font-medium bg-muted text-muted-foreground rounded-full"
 														>
 															{tag}
 														</span>
@@ -1086,46 +974,6 @@
 										</div>
 									{/if}
 								{/if}
-
-								<!-- Actions -->
-								<div
-									class="flex items-center gap-3 mt-4 pt-4 border-t border-border"
-								>
-									{#if isEditing}
-										<Button
-											size="sm"
-											variant="primary"
-											onclick={saveEditingSuggestion}
-											class="px-4 py-2"
-										>
-											Save
-										</Button>
-										<Button
-											size="sm"
-											variant="secondary"
-											onclick={() => cancelEditingSuggestion(suggestion.id)}
-											class="px-4 py-2"
-										>
-											Cancel
-										</Button>
-									{:else}
-										<button
-											class="flex items-center gap-1.5 px-3 py-1.5 text-sm text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded transition-all duration-200"
-											onclick={() => startEditingSuggestion(suggestion.id)}
-											disabled={processing}
-										>
-											<Edit2 class="w-4 h-4" />
-											Edit
-										</button>
-										<button
-											class="px-3 py-1.5 text-sm text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/20 rounded transition-all duration-200"
-											onclick={() => toggleSuggestion(suggestion.id)}
-											disabled={processing}
-										>
-											{isSelected ? 'Deselect' : 'Select'}
-										</button>
-									{/if}
-								</div>
 							</div>
 						</div>
 					</div>
@@ -1133,9 +981,9 @@
 			</div>
 		{:else}
 			<!-- No suggestions -->
-			<div class="text-center py-12">
+			<div class="text-center py-8">
 				<div
-					class="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-800/30 dark:to-slate-800/30 p-4 rounded-full inline-block mb-4"
+					class="bg-muted p-3 rounded-full inline-block mb-3"
 				>
 					<Calendar class="w-12 h-12 text-muted-foreground" />
 				</div>
@@ -1153,14 +1001,14 @@
 
 {#snippet resultsFooter()}
 	<div
-		class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 {embedded
+		class="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 {embedded
 			? ''
 			: 'border-t border-border bg-muted/50'}"
 	>
 		{#if !analyzing}
 			<div class="text-sm text-muted-foreground font-medium">
 				{#if suggestions.length > 0}
-					<span class="text-purple-600 dark:text-purple-400"
+					<span class="text-accent"
 						>{selectedSuggestions.size}</span
 					>
 					of {suggestions.length} selected
@@ -1172,7 +1020,7 @@
 					variant="secondary"
 					onclick={handleClose}
 					disabled={processing}
-					class="px-6 py-2.5"
+					class="px-4 py-2"
 				>
 					{suggestions.length > 0 ? 'Cancel' : 'Close'}
 				</Button>
@@ -1182,7 +1030,7 @@
 						onclick={handleCreateProjects}
 						disabled={selectedSuggestions.size === 0 || processing}
 						loading={processing}
-						class="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"
+						class="px-4 py-2"
 					>
 						Create {selectedSuggestions.size} Project{selectedSuggestions.size !== 1
 							? 's'
@@ -1219,12 +1067,3 @@
 	</Modal>
 {/if}
 
-<!-- Task Edit Modal -->
-{#if isTaskEditModalOpen && editingTaskData}
-	<CalendarTaskEditModal
-		isOpen={isTaskEditModalOpen}
-		task={editingTaskData}
-		onSave={handleTaskSave}
-		onClose={handleTaskEditClose}
-	/>
-{/if}
