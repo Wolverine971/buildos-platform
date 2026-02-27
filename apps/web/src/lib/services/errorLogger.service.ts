@@ -238,7 +238,8 @@ export class ErrorLoggerService {
 		hint?: string | null;
 	}): boolean {
 		if (error.code !== '23503') return false;
-		const combined = `${error.message ?? ''} ${error.details ?? ''} ${error.hint ?? ''}`.toLowerCase();
+		const combined =
+			`${error.message ?? ''} ${error.details ?? ''} ${error.hint ?? ''}`.toLowerCase();
 		return combined.includes('project_id');
 	}
 
@@ -301,7 +302,9 @@ export class ErrorLoggerService {
 
 			if (insertError) {
 				if (insertError.code === '23503' && errorEntry.project_id) {
-					const isProjectFkFailure = this.isProjectForeignKeyViolation(insertError as any);
+					const isProjectFkFailure = this.isProjectForeignKeyViolation(
+						insertError as any
+					);
 					const retryEntry = {
 						...errorEntry,
 						project_id: null,

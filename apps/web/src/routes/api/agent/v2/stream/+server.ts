@@ -1489,10 +1489,15 @@ type PersistedToolTraceEntry = {
 	op?: string;
 	success: boolean;
 	error?: string;
+	arguments_preview?: string;
+	result_preview?: string;
+	duration_ms?: number;
 };
 
 const MAX_PERSISTED_TOOL_TRACE_ITEMS = 12;
 const MAX_PERSISTED_TOOL_ERROR_CHARS = 180;
+const MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS = 420;
+const MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS = 600;
 
 function truncateToolTraceText(value: string, maxChars: number): string {
 	const normalized = value.replace(/\s+/g, ' ').trim();
@@ -1534,11 +1539,26 @@ function buildPersistedToolTrace(
 	return executions.slice(0, MAX_PERSISTED_TOOL_TRACE_ITEMS).map(({ toolCall, result }) => {
 		const op = extractGatewayOpFromToolCall(toolCall);
 		const rawError = typeof result.error === 'string' ? result.error : '';
+		const argumentsPreview = previewToolArguments(
+			toolCall.function.arguments,
+			MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS
+		);
+		const resultPreview =
+			result.result === undefined
+				? undefined
+				: previewToolArguments(result.result, MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS);
+		const durationMs =
+			typeof result.duration_ms === 'number' && Number.isFinite(result.duration_ms)
+				? result.duration_ms
+				: undefined;
 		return {
 			tool_call_id: toolCall.id,
 			tool_name: toolCall.function.name,
 			op,
 			success: result.success === true,
+			...(argumentsPreview ? { arguments_preview: argumentsPreview } : {}),
+			...(resultPreview ? { result_preview: resultPreview } : {}),
+			...(durationMs !== undefined ? { duration_ms: durationMs } : {}),
 			...(rawError
 				? {
 						error: truncateToolTraceText(rawError, MAX_PERSISTED_TOOL_ERROR_CHARS)

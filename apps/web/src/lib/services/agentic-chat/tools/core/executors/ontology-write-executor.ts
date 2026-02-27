@@ -601,11 +601,14 @@ export class OntologyWriteExecutor extends BaseExecutor {
 				allowedActorIds.add(projectOwnerActorId);
 			}
 
-			const invalidActorIds = explicitActorIds.filter((actorId) => !allowedActorIds.has(actorId));
+			const invalidActorIds = explicitActorIds.filter(
+				(actorId) => !allowedActorIds.has(actorId)
+			);
 			if (invalidActorIds.length > 0) {
 				const memberPreview = buildIndexedMemberPreview(indexedMembers);
 				const ownerHint =
-					projectOwnerActorId && !indexedMembers.some((member) => member.actorId === projectOwnerActorId)
+					projectOwnerActorId &&
+					!indexedMembers.some((member) => member.actorId === projectOwnerActorId)
 						? ` Project owner actor ID: ${projectOwnerActorId}.`
 						: '';
 				throw new Error(
@@ -620,7 +623,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		const resolvedFromHandles: string[] = [];
 		if (requestedHandles.length > 0) {
 			if (!normalizedProjectId) {
-				throw new Error('project_id is required to resolve assignee_handles for task assignment');
+				throw new Error(
+					'project_id is required to resolve assignee_handles for task assignment'
+				);
 			}
 			for (const handle of requestedHandles) {
 				const member = this.resolveProjectMemberForHandle(

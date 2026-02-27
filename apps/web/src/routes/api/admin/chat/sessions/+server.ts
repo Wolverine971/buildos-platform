@@ -1,33 +1,97 @@
 // apps/web/src/routes/api/admin/chat/sessions/+server.ts
 /**
- * Chat Sessions List API
+ * Chat Session Audit List API
  *
- * Returns paginated list of chat sessions with filters and timing metrics
+ * Returns paginated current-agent sessions (`chat_sessions`) with
+ * aggregated metrics from:
+ * - chat_messages
+ * - chat_tool_executions
+ * - llm_usage_logs
  */
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
-interface TimingMetrics {
-	ttfr_ms: number | null;
-	ttfe_ms: number | null;
-	context_build_ms: number | null;
-	tool_selection_ms: number | null;
-	clarification_ms: number | null;
-	plan_creation_ms: number | null;
-	plan_execution_ms: number | null;
-	plan_step_count: number | null;
-	plan_status: string | null;
-}
+type SessionAggregate = {
+	messageCount: number;
+	messageTokens: number;
+	messageErrors: number;
+	toolTraceCount: number;
+};
+
+type ToolAggregate = {
+	total: number;
+	failures: number;
+	lastExecutedAt: string | null;
+};
+
+type UsageAggregate = {
+	llmCalls: number;
+	totalTokens: number;
+	totalCost: number;
+	failures: number;
+};
+
+const COST_PER_MILLION_TOKENS_USD = 0.21;
+
+const parsePositiveInt = (value: string | null, fallback: number): number => {
+	const parsed = Number.parseInt(value ?? '', 10);
+	if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+	return parsed;
+};
+
+const asNumber = (value: unknown): number => {
+	if (typeof value === 'number') return value;
+	if (typeof value === 'string') {
+		const parsed = Number.parseFloat(value);
+		return Number.isFinite(parsed) ? parsed : 0;
+	}
+	return 0;
+};
+
+const toIsoOrNow = (value: string | null | undefined): string => value ?? new Date().toISOString();
+
+const buildTitle = (session: {
+	title?: string | null;
+	auto_title?: string | null;
+	summary?: string | null;
+	context_type?: string | null;
+}): string => {
+	const explicitTitle = session.title?.trim() || session.auto_title?.trim();
+	if (explicitTitle) return explicitTitle;
+	if (session.summary?.trim()) {
+		return session.summary.trim().slice(0, 120);
+	}
+	const contextType = (session.context_type ?? 'global').replaceAll('_', ' ');
+	return `Agent Session (${contextType})`;
+};
+
+const calcStartDate = (timeframe: string): Date => {
+	const now = new Date();
+	switch (timeframe) {
+		case '24h':
+			return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+		case '30d':
+			return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+		case '7d':
+		default:
+			return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+	}
+};
+
+const parseToolTraceCountFromMetadata = (metadata: unknown): number => {
+	if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return 0;
+	const record = metadata as Record<string, unknown>;
+	const trace = record.fastchat_tool_trace_v1;
+	return Array.isArray(trace) ? trace.length : 0;
+};
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
-	// Check authentication
 	const { user } = await safeGetSession();
 	if (!user?.id) {
 		return ApiResponse.unauthorized();
 	}
 
-	// Check admin permission
 	const { data: adminUser, error: adminError } = await supabase
 		.from('admin_users')
 		.select('user_id')
@@ -38,239 +102,221 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		return ApiResponse.forbidden('Admin access required');
 	}
 
-	// Parse query parameters
 	const timeframe = url.searchParams.get('timeframe') || '7d';
 	const status = url.searchParams.get('status');
 	const contextType = url.searchParams.get('context_type');
-	const search = url.searchParams.get('search');
-	const page = parseInt(url.searchParams.get('page') || '1');
-	const limit = parseInt(url.searchParams.get('limit') || '20');
-	const sortBy = url.searchParams.get('sort_by') || 'created_at';
-	const sortOrder = url.searchParams.get('sort_order') || 'desc';
+	const search = url.searchParams.get('search')?.trim();
+	const sortOrder = url.searchParams.get('sort_order') === 'asc' ? 'asc' : 'desc';
+	const page = parsePositiveInt(url.searchParams.get('page'), 1);
+	const limit = Math.min(parsePositiveInt(url.searchParams.get('limit'), 20), 100);
+	const offset = (page - 1) * limit;
+	const startDate = calcStartDate(timeframe);
 
-	// Calculate time range
-	const now = new Date();
-	let startDate: Date;
-
-	switch (timeframe) {
-		case '24h':
-			startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-			break;
-		case '30d':
-			startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-			break;
-		case '7d':
-		default:
-			startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-	}
+	const allowedDbSortFields = new Set(['created_at', 'updated_at', 'last_message_at']);
+	const requestedSort = (url.searchParams.get('sort_by') || 'updated_at').trim();
+	const sortBy = allowedDbSortFields.has(requestedSort) ? requestedSort : 'updated_at';
 
 	try {
-		// Build query
 		let query = supabase
-			.from('agent_chat_sessions')
+			.from('chat_sessions')
 			.select(
 				`
         id,
-        status,
-        created_at,
-        completed_at,
-        message_count,
-        session_type,
-        context_type,
-        initial_context,
         user_id,
-        plan_id,
-        users!agent_chat_sessions_user_id_fkey(id, email, name)
+        title,
+        auto_title,
+        summary,
+        status,
+        context_type,
+        entity_id,
+        message_count,
+        total_tokens_used,
+        tool_call_count,
+        created_at,
+        updated_at,
+        last_message_at,
+        agent_metadata,
+        users!chat_sessions_user_id_fkey(id, email, name)
       `,
 				{ count: 'exact' }
 			)
 			.gte('created_at', startDate.toISOString())
-			.order('created_at', { ascending: sortOrder === 'asc' });
+			.order(sortBy, { ascending: sortOrder === 'asc', nullsFirst: sortOrder === 'asc' })
+			.range(offset, offset + limit - 1);
 
-		// Apply filters
-		if (status) {
-			query = query.eq('status', status as 'active' | 'completed' | 'failed');
+		if (status && status !== 'all') {
+			query = query.eq('status', status);
 		}
 
-		if (contextType) {
+		if (contextType && contextType !== 'all') {
 			query = query.eq('context_type', contextType);
 		}
 
 		if (search) {
-			// Search in user email or session ID
-			query = query.or(`id.ilike.%${search}%,users.email.ilike.%${search}%`);
+			query = query.or(
+				`id.ilike.%${search}%,title.ilike.%${search}%,auto_title.ilike.%${search}%,summary.ilike.%${search}%`
+			);
 		}
 
-		// Apply pagination
-		const offset = (page - 1) * limit;
-		query = query.range(offset, offset + limit - 1);
+		const { data: sessionRows, error: sessionError, count } = await query;
+		if (sessionError) throw sessionError;
 
-		const { data: sessionsData, error: sessionsError, count } = await query;
+		const sessionsData = sessionRows ?? [];
+		const sessionIds = sessionsData.map((session: any) => session.id).filter(Boolean);
 
-		if (sessionsError) throw sessionsError;
-
-		// For each session, check for token usage, tool calls, errors, and timing metrics
-		const sessionIds = sessionsData?.map((s) => s.id) || [];
-
-		const usageBySession = new Map<string, { total_tokens: number; total_cost: number }>();
-		const tokensBySession = new Map<string, number>();
-		const toolCallsBySession = new Map<string, number>();
+		const messageAggBySession = new Map<string, SessionAggregate>();
+		const toolAggBySession = new Map<string, ToolAggregate>();
+		const usageAggBySession = new Map<string, UsageAggregate>();
 		const sessionsWithErrors = new Set<string>();
-		const timingBySession = new Map<string, TimingMetrics>();
 
 		if (sessionIds.length > 0) {
 			const [
-				{ data: usageLogs, error: usageError },
-				{ data: messageStats, error: messageStatsError },
-				{ data: executions, error: executionsError },
-				{ data: timingMetrics, error: timingError }
+				{ data: messageRows, error: messageError },
+				{ data: toolRows, error: toolError },
+				{ data: usageRows, error: usageError }
 			] = await Promise.all([
 				supabase
+					.from('chat_messages')
+					.select('session_id, total_tokens, error_message, role, metadata')
+					.in('session_id', sessionIds),
+				supabase
+					.from('chat_tool_executions')
+					.select('session_id, success, created_at')
+					.in('session_id', sessionIds),
+				supabase
 					.from('llm_usage_logs')
-					.select('agent_session_id, total_tokens, total_cost_usd')
-					.in('agent_session_id', sessionIds),
-				supabase
-					.from('agent_chat_messages')
-					.select('agent_session_id, tokens_used, tool_calls')
-					.in('agent_session_id', sessionIds),
-				supabase
-					.from('agent_executions')
-					.select('agent_session_id, success')
-					.in('agent_session_id', sessionIds),
-				supabase
-					.from('timing_metrics')
-					.select(
-						`
-						session_id,
-						time_to_first_response_ms,
-						time_to_first_event_ms,
-						context_build_ms,
-						tool_selection_ms,
-						clarification_ms,
-						plan_creation_ms,
-						plan_execution_ms,
-						plan_step_count,
-						plan_status
-					`
-					)
-					.in('session_id', sessionIds)
+					.select('chat_session_id, total_tokens, total_cost_usd, status, error_message')
+					.in('chat_session_id', sessionIds)
 			]);
 
+			if (messageError) throw messageError;
+			if (toolError) throw toolError;
 			if (usageError) throw usageError;
-			if (messageStatsError) throw messageStatsError;
-			if (executionsError) throw executionsError;
-			if (timingError) throw timingError;
 
-			(usageLogs || []).forEach((log) => {
-				if (!log.agent_session_id) return;
-				const current = usageBySession.get(log.agent_session_id) || {
-					total_tokens: 0,
-					total_cost: 0
+			for (const row of messageRows ?? []) {
+				const sessionId = row.session_id;
+				if (!sessionId) continue;
+				const current = messageAggBySession.get(sessionId) ?? {
+					messageCount: 0,
+					messageTokens: 0,
+					messageErrors: 0,
+					toolTraceCount: 0
 				};
-				current.total_tokens += log.total_tokens || 0;
-				current.total_cost += Number(log.total_cost_usd || 0);
-				usageBySession.set(log.agent_session_id, current);
-			});
-
-			(messageStats || []).forEach((msg) => {
-				if (!msg.agent_session_id) return;
-				const tokenSum =
-					(tokensBySession.get(msg.agent_session_id) || 0) + (msg.tokens_used || 0);
-				tokensBySession.set(msg.agent_session_id, tokenSum);
-
-				if (msg.tool_calls) {
-					const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls.length : 1;
-					const current = toolCallsBySession.get(msg.agent_session_id) || 0;
-					toolCallsBySession.set(msg.agent_session_id, current + toolCalls);
+				current.messageCount += 1;
+				current.messageTokens += asNumber(row.total_tokens);
+				current.toolTraceCount += parseToolTraceCountFromMetadata(row.metadata);
+				if (row.error_message) {
+					current.messageErrors += 1;
+					sessionsWithErrors.add(sessionId);
 				}
-			});
+				messageAggBySession.set(sessionId, current);
+			}
 
-			(executions || []).forEach((execution) => {
-				if (execution.success === false && execution.agent_session_id) {
-					sessionsWithErrors.add(execution.agent_session_id);
+			for (const row of toolRows ?? []) {
+				const sessionId = row.session_id;
+				if (!sessionId) continue;
+				const current = toolAggBySession.get(sessionId) ?? {
+					total: 0,
+					failures: 0,
+					lastExecutedAt: null
+				};
+				current.total += 1;
+				if (row.success === false) {
+					current.failures += 1;
+					sessionsWithErrors.add(sessionId);
 				}
-			});
+				if (
+					row.created_at &&
+					(!current.lastExecutedAt || row.created_at > current.lastExecutedAt)
+				) {
+					current.lastExecutedAt = row.created_at;
+				}
+				toolAggBySession.set(sessionId, current);
+			}
 
-			// Store timing metrics by session - use most recent if multiple
-			(timingMetrics || []).forEach((timing) => {
-				if (!timing.session_id) return;
-				// Only set if not already present (first row is most recent due to order)
-				if (!timingBySession.has(timing.session_id)) {
-					timingBySession.set(timing.session_id, {
-						ttfr_ms: timing.time_to_first_response_ms,
-						ttfe_ms: timing.time_to_first_event_ms,
-						context_build_ms: timing.context_build_ms,
-						tool_selection_ms: timing.tool_selection_ms,
-						clarification_ms: timing.clarification_ms,
-						plan_creation_ms: timing.plan_creation_ms,
-						plan_execution_ms: timing.plan_execution_ms,
-						plan_step_count: timing.plan_step_count,
-						plan_status: timing.plan_status
-					});
+			for (const row of usageRows ?? []) {
+				const sessionId = row.chat_session_id;
+				if (!sessionId) continue;
+				const current = usageAggBySession.get(sessionId) ?? {
+					llmCalls: 0,
+					totalTokens: 0,
+					totalCost: 0,
+					failures: 0
+				};
+				current.llmCalls += 1;
+				current.totalTokens += asNumber(row.total_tokens);
+				current.totalCost += asNumber(row.total_cost_usd);
+				if (row.status !== 'success' || row.error_message) {
+					current.failures += 1;
+					sessionsWithErrors.add(sessionId);
 				}
-			});
+				usageAggBySession.set(sessionId, current);
+			}
 		}
 
-		// Format sessions
-		const sessions = (sessionsData || []).map((session) => {
-			const usageStats = usageBySession.get(session.id);
-			const fallbackTokens = tokensBySession.get(session.id) ?? 0;
-			const totalTokens = usageStats?.total_tokens ?? fallbackTokens;
-			const costEstimate = usageStats?.total_cost ?? (totalTokens / 1000000) * 0.21; // $0.21 per 1M tokens fallback
-			const context = session.initial_context as Record<string, any> | null;
-			const title =
-				context?.task?.title ||
-				context?.task?.name ||
-				context?.title ||
-				context?.user_message ||
-				(session.session_type === 'planner_thinking' ? 'Planner Session' : 'Agent Session');
+		const sessions = sessionsData.map((session: any) => {
+			const messageAgg = messageAggBySession.get(session.id);
+			const toolAgg = toolAggBySession.get(session.id);
+			const usageAgg = usageAggBySession.get(session.id);
+			const metadata =
+				session.agent_metadata && typeof session.agent_metadata === 'object'
+					? (session.agent_metadata as Record<string, unknown>)
+					: {};
 
-			const timing = timingBySession.get(session.id);
+			const messageCount = Number(session.message_count ?? messageAgg?.messageCount ?? 0);
+			const totalTokens = Number(
+				session.total_tokens_used ?? usageAgg?.totalTokens ?? messageAgg?.messageTokens ?? 0
+			);
+			const toolCallCount = Number(
+				toolAgg?.total ?? session.tool_call_count ?? messageAgg?.toolTraceCount ?? 0
+			);
+			const llmCallCount = usageAgg?.llmCalls ?? 0;
+			const toolFailureCount = toolAgg?.failures ?? 0;
+			const hasErrors =
+				sessionsWithErrors.has(session.id) ||
+				toolFailureCount > 0 ||
+				(usageAgg?.failures ?? 0) > 0 ||
+				(messageAgg?.messageErrors ?? 0) > 0;
+			const costEstimate =
+				usageAgg?.totalCost && usageAgg.totalCost > 0
+					? usageAgg.totalCost
+					: (totalTokens / 1_000_000) * COST_PER_MILLION_TOKENS_USD;
 
 			return {
 				id: session.id,
-				title,
+				title: buildTitle(session),
 				user: {
-					id: session.users?.id,
-					email: session.users?.email,
-					name: session.users?.name
+					id: session.users?.id ?? session.user_id,
+					email: session.users?.email ?? '',
+					name: session.users?.name ?? ''
 				},
-				message_count: session.message_count || 0,
+				status: session.status ?? 'active',
+				context_type: session.context_type ?? 'global',
+				entity_id: session.entity_id ?? null,
+				message_count: messageCount,
 				total_tokens: totalTokens,
-				tool_call_count: toolCallsBySession.get(session.id) || 0,
-				context_type: session.context_type || session.session_type,
-				status: session.status,
-				created_at: session.created_at,
-				updated_at: session.completed_at || session.created_at,
-				has_agent_plan: !!session.plan_id,
-				has_compression: false,
-				has_errors: sessionsWithErrors.has(session.id) || session.status === 'failed',
+				tool_call_count: toolCallCount,
+				llm_call_count: llmCallCount,
+				tool_failure_count: toolFailureCount,
 				cost_estimate: costEstimate,
-				// Timing metrics
-				timing: timing || null
+				has_errors: hasErrors,
+				has_agent_state: Boolean(metadata.agent_state),
+				has_context_shift: Boolean(metadata.fastchat_last_context_shift),
+				last_tool_at: toolAgg?.lastExecutedAt ?? null,
+				created_at: toIsoOrNow(session.created_at),
+				updated_at: toIsoOrNow(
+					session.updated_at ?? session.last_message_at ?? session.created_at
+				),
+				last_message_at: session.last_message_at ?? null
 			};
 		});
-
-		// If sorting by timing field, sort in memory after fetching
-		if (sortBy.startsWith('timing_')) {
-			const timingField = sortBy.replace('timing_', '') as keyof TimingMetrics;
-			sessions.sort((a, b) => {
-				const aVal =
-					a.timing?.[timingField] ?? (sortOrder === 'desc' ? -Infinity : Infinity);
-				const bVal =
-					b.timing?.[timingField] ?? (sortOrder === 'desc' ? -Infinity : Infinity);
-				const aNum = typeof aVal === 'number' ? aVal : 0;
-				const bNum = typeof bVal === 'number' ? bVal : 0;
-				return sortOrder === 'desc' ? bNum - aNum : aNum - bNum;
-			});
-		}
 
 		return ApiResponse.success({
 			sessions,
 			total: count || 0,
 			page,
 			limit,
-			total_pages: Math.ceil((count || 0) / limit)
+			total_pages: Math.max(1, Math.ceil((count || 0) / limit))
 		});
 	} catch (err) {
 		console.error('Sessions list error:', err);

@@ -1,264 +1,432 @@
 <!-- apps/web/src/routes/admin/chat/sessions/+page.svelte -->
 <script lang="ts">
 	import {
-		MessageSquare,
-		Filter,
-		Search,
-		RefreshCw,
-		CheckCircle,
-		XCircle,
-		Clock,
-		Bot,
-		Sparkles,
+		Activity,
 		AlertCircle,
+		Bot,
 		ChevronDown,
-		ChevronUp,
-		Timer,
-		Zap
+		ChevronRight,
+		Clock,
+		Database,
+		MessageSquare,
+		RefreshCw,
+		Search,
+		Terminal,
+		Wrench,
+		XCircle
 	} from 'lucide-svelte';
+	import { browser } from '$app/environment';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import SessionDetailModal from '$lib/components/admin/SessionDetailModal.svelte';
-	import { browser } from '$app/environment';
 
-	let isLoading = $state(true);
-	let error = $state<string | null>(null);
-	let selectedSessionId = $state<string | null>(null);
+	type SessionListItem = {
+		id: string;
+		title: string;
+		user: { id: string; email: string; name: string };
+		status: string;
+		context_type: string;
+		entity_id: string | null;
+		message_count: number;
+		total_tokens: number;
+		tool_call_count: number;
+		llm_call_count: number;
+		tool_failure_count: number;
+		cost_estimate: number;
+		has_errors: boolean;
+		has_agent_state: boolean;
+		has_context_shift: boolean;
+		last_tool_at: string | null;
+		created_at: string;
+		updated_at: string;
+		last_message_at: string | null;
+	};
 
-	// Filters
-	let searchQuery = $state('');
-	let selectedStatus = $state<string>('all');
-	let selectedContextType = $state<string>('all');
-	let selectedTimeframe = $state<'24h' | '7d' | '30d'>('7d');
-	let showFilters = $state(false);
+	type TimelineType =
+		| 'session'
+		| 'message'
+		| 'tool_execution'
+		| 'llm_call'
+		| 'operation'
+		| 'context_shift'
+		| 'timing';
 
-	// Timing metrics type
-	interface TimingMetrics {
-		ttfr_ms: number | null;
-		ttfe_ms: number | null;
-		context_build_ms: number | null;
-		tool_selection_ms: number | null;
-		clarification_ms: number | null;
-		plan_creation_ms: number | null;
-		plan_execution_ms: number | null;
-		plan_step_count: number | null;
-		plan_status: string | null;
-	}
+	type TimelineSeverity = 'info' | 'success' | 'warning' | 'error';
 
-	// Sessions data
-	let sessions = $state<
-		Array<{
+	type TimelineEvent = {
+		id: string;
+		timestamp: string;
+		type: TimelineType;
+		severity: TimelineSeverity;
+		title: string;
+		summary: string;
+		turn_index: number | null;
+		payload: Record<string, unknown>;
+	};
+
+	type SessionDetailPayload = {
+		session: {
 			id: string;
 			title: string;
 			user: { id: string; email: string; name: string };
+			context_type: string;
+			context_id: string | null;
+			status: string;
 			message_count: number;
 			total_tokens: number;
 			tool_call_count: number;
-			context_type: string;
-			status: string;
+			llm_call_count: number;
+			cost_estimate: number;
+			has_errors: boolean;
 			created_at: string;
 			updated_at: string;
-			has_agent_plan: boolean;
-			has_compression: boolean;
-			has_errors: boolean;
-			cost_estimate: number;
-			timing: TimingMetrics | null;
-		}>
-	>([]);
+			last_message_at: string | null;
+			agent_metadata: Record<string, unknown>;
+		};
+		metrics: {
+			total_tokens: number;
+			total_cost_usd: number;
+			tool_calls: number;
+			tool_failures: number;
+			llm_calls: number;
+			llm_failures: number;
+			messages: number;
+		};
+		messages: Array<Record<string, unknown>>;
+		tool_executions: Array<Record<string, unknown>>;
+		llm_calls: Array<Record<string, unknown>>;
+		operations: Array<Record<string, unknown>>;
+		timeline: TimelineEvent[];
+		timing_metrics: Record<string, unknown> | null;
+	};
 
-	// View mode (list or timing)
-	let viewMode = $state<'list' | 'timing'>('list');
+	const PAGE_SIZE = 25;
 
+	let isLoadingSessions = $state(true);
+	let sessionsError = $state<string | null>(null);
+	let sessions = $state<SessionListItem[]>([]);
 	let totalSessions = $state(0);
 	let currentPage = $state(1);
-	let pageSize = $state(20);
 
-	// Load data on mount and when filters change
+	let selectedSessionId = $state<string | null>(null);
+	let isLoadingDetail = $state(false);
+	let detailError = $state<string | null>(null);
+	let sessionDetail = $state<SessionDetailPayload | null>(null);
+
+	let searchQuery = $state('');
+	let selectedStatus = $state('all');
+	let selectedContextType = $state('all');
+	let selectedTimeframe = $state<'24h' | '7d' | '30d'>('7d');
+	let selectedSortBy = $state<'updated_at' | 'created_at' | 'last_message_at'>('updated_at');
+	let selectedSortOrder = $state<'asc' | 'desc'>('desc');
+
+	let showOnlyErrors = $state(false);
+	let timelineSearch = $state('');
+	let expandedEventIds = $state<Set<string>>(new Set());
+	let eventTypeFilters = $state<Record<TimelineType, boolean>>({
+		session: true,
+		message: true,
+		tool_execution: true,
+		llm_call: true,
+		operation: true,
+		context_shift: true,
+		timing: true
+	});
+
 	$effect(() => {
 		if (!browser) return;
 		selectedTimeframe;
 		selectedStatus;
 		selectedContextType;
+		selectedSortBy;
+		selectedSortOrder;
 		currentPage;
 		loadSessions();
 	});
 
-	async function loadSessions() {
+	$effect(() => {
 		if (!browser) return;
-		isLoading = true;
-		error = null;
+		if (!selectedSessionId) {
+			sessionDetail = null;
+			detailError = null;
+			return;
+		}
+		loadSessionDetail(selectedSessionId);
+	});
+
+	const visibleTimeline = $derived.by(() => {
+		if (!sessionDetail?.timeline?.length) return [] as TimelineEvent[];
+		const query = timelineSearch.trim().toLowerCase();
+		return sessionDetail.timeline.filter((event) => {
+			if (!eventTypeFilters[event.type]) return false;
+			if (showOnlyErrors && event.severity !== 'error') return false;
+			if (!query) return true;
+			const haystack =
+				`${event.title} ${event.summary} ${JSON.stringify(event.payload ?? {})}`.toLowerCase();
+			return haystack.includes(query);
+		});
+	});
+
+	async function loadSessions() {
+		isLoadingSessions = true;
+		sessionsError = null;
 
 		try {
 			const params = new URLSearchParams({
 				timeframe: selectedTimeframe,
 				page: currentPage.toString(),
-				limit: pageSize.toString()
+				limit: PAGE_SIZE.toString(),
+				sort_by: selectedSortBy,
+				sort_order: selectedSortOrder
 			});
 
 			if (selectedStatus !== 'all') params.append('status', selectedStatus);
 			if (selectedContextType !== 'all') params.append('context_type', selectedContextType);
-			if (searchQuery) params.append('search', searchQuery);
+			if (searchQuery.trim()) params.append('search', searchQuery.trim());
 
-			const response = await fetch(`/api/admin/chat/sessions?${params}`);
+			const response = await fetch(`/api/admin/chat/sessions?${params.toString()}`);
+			if (!response.ok) throw new Error('Failed to load sessions');
 
-			if (!response.ok) {
-				throw new Error('Failed to load sessions');
+			const result = await response.json();
+			if (!result.success) {
+				throw new Error(result.message || 'Failed to load sessions');
 			}
 
-			const data = await response.json();
+			sessions = result.data.sessions ?? [];
+			totalSessions = result.data.total ?? 0;
 
-			if (data.success) {
-				sessions = data.data.sessions;
-				totalSessions = data.data.total;
-			} else {
-				throw new Error(data.message || 'Failed to load sessions');
+			if (sessions.length === 0) {
+				selectedSessionId = null;
+				sessionDetail = null;
+				return;
+			}
+
+			const stillExists =
+				selectedSessionId && sessions.some((session) => session.id === selectedSessionId);
+			if (!stillExists) {
+				selectedSessionId = sessions[0].id;
 			}
 		} catch (err) {
-			console.error('Error loading sessions:', err);
-			error = err instanceof Error ? err.message : 'Failed to load sessions';
+			console.error('Failed loading sessions', err);
+			sessionsError = err instanceof Error ? err.message : 'Failed to load sessions';
 		} finally {
-			isLoading = false;
+			isLoadingSessions = false;
 		}
 	}
 
-	function formatNumber(num: number): string {
-		return new Intl.NumberFormat().format(num);
-	}
+	async function loadSessionDetail(sessionId: string) {
+		isLoadingDetail = true;
+		detailError = null;
+		expandedEventIds = new Set();
 
-	function formatCurrency(num: number): string {
-		return new Intl.NumberFormat('en-US', {
-			style: 'currency',
-			currency: 'USD',
-			minimumFractionDigits: 2
-		}).format(num);
-	}
+		try {
+			const response = await fetch(`/api/admin/chat/sessions/${sessionId}`);
+			if (!response.ok) throw new Error('Failed to load session detail');
 
-	function formatDate(dateString: string): string {
-		return new Date(dateString).toLocaleString();
-	}
+			const result = await response.json();
+			if (!result.success) {
+				throw new Error(result.message || 'Failed to load session detail');
+			}
 
-	function formatMs(ms: number | null | undefined): string {
-		if (ms === null || ms === undefined) return '-';
-		if (ms < 1000) return `${Math.round(ms)}ms`;
-		return `${(ms / 1000).toFixed(2)}s`;
-	}
-
-	function getTtfrWarning(ms: number | null): 'normal' | 'warning' | 'critical' {
-		if (ms === null) return 'normal';
-		if (ms > 10000) return 'critical';
-		if (ms > 5000) return 'warning';
-		return 'normal';
-	}
-
-	function getStatusColor(status: string): string {
-		switch (status) {
-			case 'active':
-				return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-			case 'archived':
-				return 'bg-muted text-foreground dark:text-muted-foreground';
-			case 'compressed':
-				return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-			default:
-				return 'bg-muted text-foreground dark:text-muted-foreground';
+			sessionDetail = result.data as SessionDetailPayload;
+		} catch (err) {
+			console.error('Failed loading session detail', err);
+			detailError = err instanceof Error ? err.message : 'Failed to load session detail';
+			sessionDetail = null;
+		} finally {
+			isLoadingDetail = false;
 		}
 	}
 
-	function getStatusIcon(status: string) {
-		switch (status) {
-			case 'active':
-				return Clock;
-			case 'archived':
-				return CheckCircle;
-			case 'compressed':
-				return Sparkles;
-			default:
-				return MessageSquare;
-		}
-	}
-
-	function viewSession(sessionId: string) {
-		selectedSessionId = sessionId;
-	}
-
-	function closeModal() {
-		selectedSessionId = null;
-	}
-
-	function handleSearch(event: Event) {
+	function handleSearchSubmit(event: Event) {
 		event.preventDefault();
 		currentPage = 1;
 		loadSessions();
 	}
 
+	function previousPage() {
+		if (currentPage > 1) currentPage -= 1;
+	}
+
 	function nextPage() {
-		if (currentPage * pageSize < totalSessions) {
-			currentPage++;
+		if (currentPage * PAGE_SIZE < totalSessions) currentPage += 1;
+	}
+
+	function toggleEventType(type: TimelineType) {
+		eventTypeFilters = {
+			...eventTypeFilters,
+			[type]: !eventTypeFilters[type]
+		};
+	}
+
+	function toggleEventExpansion(eventId: string) {
+		const next = new Set(expandedEventIds);
+		if (next.has(eventId)) {
+			next.delete(eventId);
+		} else {
+			next.add(eventId);
+		}
+		expandedEventIds = next;
+	}
+
+	function eventTypeLabel(type: TimelineType): string {
+		switch (type) {
+			case 'session':
+				return 'Session';
+			case 'message':
+				return 'Message';
+			case 'tool_execution':
+				return 'Tool';
+			case 'llm_call':
+				return 'LLM';
+			case 'operation':
+				return 'Operation';
+			case 'context_shift':
+				return 'Context Shift';
+			case 'timing':
+				return 'Timing';
+			default:
+				return type;
 		}
 	}
 
-	function previousPage() {
-		if (currentPage > 1) {
-			currentPage--;
+	function eventIcon(type: TimelineType) {
+		switch (type) {
+			case 'session':
+				return Activity;
+			case 'message':
+				return MessageSquare;
+			case 'tool_execution':
+				return Wrench;
+			case 'llm_call':
+				return Bot;
+			case 'operation':
+				return Database;
+			case 'context_shift':
+				return RefreshCw;
+			case 'timing':
+				return Clock;
+			default:
+				return Activity;
 		}
+	}
+
+	function eventSeverityClasses(severity: TimelineSeverity): string {
+		switch (severity) {
+			case 'success':
+				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20';
+			case 'warning':
+				return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20';
+			case 'error':
+				return 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20';
+			case 'info':
+			default:
+				return 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20';
+		}
+	}
+
+	function timelineDotClasses(severity: TimelineSeverity): string {
+		switch (severity) {
+			case 'success':
+				return 'bg-emerald-500';
+			case 'warning':
+				return 'bg-amber-500';
+			case 'error':
+				return 'bg-red-500';
+			case 'info':
+			default:
+				return 'bg-cyan-500';
+		}
+	}
+
+	function formatDateTime(value: string | null | undefined): string {
+		if (!value) return '-';
+		return new Date(value).toLocaleString();
+	}
+
+	function formatNumber(value: number | null | undefined): string {
+		return new Intl.NumberFormat('en-US').format(value ?? 0);
+	}
+
+	function formatCurrency(value: number | null | undefined): string {
+		return new Intl.NumberFormat('en-US', {
+			style: 'currency',
+			currency: 'USD',
+			minimumFractionDigits: 4,
+			maximumFractionDigits: 4
+		}).format(value ?? 0);
+	}
+
+	function formatDuration(ms: unknown): string {
+		const value = typeof ms === 'number' ? ms : Number(ms);
+		if (!Number.isFinite(value) || value <= 0) return '-';
+		if (value < 1000) return `${Math.round(value)}ms`;
+		return `${(value / 1000).toFixed(2)}s`;
+	}
+
+	function statusBadge(status: string): string {
+		switch (status) {
+			case 'active':
+				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+			case 'archived':
+				return 'bg-slate-500/10 text-slate-700 dark:text-slate-300';
+			case 'compressed':
+				return 'bg-blue-500/10 text-blue-700 dark:text-blue-300';
+			case 'failed':
+				return 'bg-red-500/10 text-red-700 dark:text-red-300';
+			default:
+				return 'bg-muted text-muted-foreground';
+		}
+	}
+
+	function prettyJson(value: unknown): string {
+		try {
+			return JSON.stringify(value, null, 2);
+		} catch {
+			return String(value);
+		}
+	}
+
+	function payloadField(payload: Record<string, unknown>, key: string): unknown {
+		return payload ? payload[key] : undefined;
+	}
+
+	function stringValue(value: unknown): string {
+		if (typeof value === 'string') return value;
+		if (value === null || value === undefined) return '';
+		return String(value);
 	}
 </script>
 
 <svelte:head>
-	<title>Chat Sessions - Admin - BuildOS</title>
+	<title>Chat Session Audit - Admin - BuildOS</title>
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <div class="admin-page">
-	<!-- Header -->
 	<AdminPageHeader
-		title="Chat Sessions"
-		description="View and analyze all chat conversations"
-		icon={MessageSquare}
+		title="Chat Session Audit"
+		description="Replay complete agentic chat sessions with tool calls, LLM events, and payload traces."
+		icon={Terminal}
 		showBack={true}
 	>
-		<div slot="actions" class="flex flex-wrap items-center gap-3">
-			<!-- Timeframe -->
+		<div slot="actions" class="flex flex-wrap items-center gap-2">
 			<Select
 				bind:value={selectedTimeframe}
-				onchange={(value) => (selectedTimeframe = String(value))}
+				onchange={(value) => (selectedTimeframe = String(value) as '24h' | '7d' | '30d')}
 				size="md"
-				placeholder="Last 7 Days"
-				aria-label="Select time range"
 			>
 				<option value="24h">Last 24 Hours</option>
 				<option value="7d">Last 7 Days</option>
 				<option value="30d">Last 30 Days</option>
 			</Select>
-
-			<!-- View Toggle -->
-			<div class="flex items-center border border-border rounded-lg overflow-hidden">
-				<button
-					onclick={() => (viewMode = 'list')}
-					class="px-3 py-1.5 text-sm font-medium transition-colors {viewMode === 'list'
-						? 'bg-accent text-accent-foreground'
-						: 'bg-card text-muted-foreground hover:text-foreground'}"
-				>
-					List
-				</button>
-				<button
-					onclick={() => (viewMode = 'timing')}
-					class="px-3 py-1.5 text-sm font-medium transition-colors {viewMode === 'timing'
-						? 'bg-accent text-accent-foreground'
-						: 'bg-card text-muted-foreground hover:text-foreground'}"
-				>
-					Timing
-				</button>
-			</div>
-
-			<!-- Refresh -->
 			<Button
 				onclick={loadSessions}
-				disabled={isLoading}
+				disabled={isLoadingSessions}
+				loading={isLoadingSessions}
+				icon={RefreshCw}
 				variant="secondary"
 				size="sm"
-				icon={RefreshCw}
-				loading={isLoading}
 				class="pressable"
 			>
 				Refresh
@@ -266,317 +434,166 @@
 		</div>
 	</AdminPageHeader>
 
-	<!-- Search and Filters -->
-	<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6">
-		<!-- Search Bar -->
-		<form onsubmit={handleSearch} class="mb-4">
-			<div class="flex items-center gap-2">
-				<div class="flex-1 relative">
-					<Search
-						class="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground"
-					/>
-					<input
-						type="text"
-						bind:value={searchQuery}
-						placeholder="Search sessions by user email or session ID..."
-						class="w-full pl-10 pr-4 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:ring-2 focus:ring-ring focus:border-accent text-foreground placeholder:text-muted-foreground"
-						aria-label="Search sessions"
-					/>
-				</div>
-				<Button type="submit" variant="primary" size="md" class="pressable">Search</Button>
-			</div>
-		</form>
-
-		<!-- Filter Toggle -->
-		<button
-			onclick={() => (showFilters = !showFilters)}
-			class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-ring rounded"
-			aria-expanded={showFilters}
+	<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-4">
+		<form
+			onsubmit={handleSearchSubmit}
+			class="grid grid-cols-1 lg:grid-cols-[1fr,160px,220px,170px,120px,auto] gap-3"
 		>
-			<Filter class="h-4 w-4" />
-			<span>Filters</span>
-			{#if showFilters}
-				<ChevronUp class="h-4 w-4" />
-			{:else}
-				<ChevronDown class="h-4 w-4" />
-			{/if}
-		</button>
-
-		<!-- Filters -->
-		{#if showFilters}
-			<div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-				<!-- Status Filter -->
-				<div>
-					<label
-						for="session-status-filter"
-						class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
-					>
-						Status
-					</label>
-					<Select
-						id="session-status-filter"
-						bind:value={selectedStatus}
-						onchange={(value) => (selectedStatus = String(value))}
-						size="md"
-					>
-						<option value="all">All Statuses</option>
-						<option value="active">Active</option>
-						<option value="archived">Archived</option>
-						<option value="compressed">Compressed</option>
-					</Select>
-				</div>
-
-				<!-- Context Type Filter -->
-				<div>
-					<label
-						for="session-context-filter"
-						class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
-					>
-						Context Type
-					</label>
-					<Select
-						id="session-context-filter"
-						bind:value={selectedContextType}
-						onchange={(value) => (selectedContextType = String(value))}
-						size="md"
-					>
-						<option value="all">All Contexts</option>
-						<option value="global">Global</option>
-						<option value="general">General</option>
-						<option value="project">Project workspace</option>
-						<option value="project_create">Project Create</option>
-						<option value="project_audit">Project Audit</option>
-						<option value="project_forecast">Project Forecast</option>
-						<option value="calendar">Calendar</option>
-						<option value="daily_brief_update">Daily Brief Update</option>
-						<option value="brain_dump">Braindump</option>
-						<option value="ontology">Ontology</option>
-					</Select>
-				</div>
+			<div class="relative">
+				<Search
+					class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+				/>
+				<input
+					type="text"
+					bind:value={searchQuery}
+					placeholder="Search by session id/title..."
+					class="w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:ring-2 focus:ring-ring focus:border-accent text-foreground"
+				/>
 			</div>
-		{/if}
+			<Select
+				bind:value={selectedStatus}
+				onchange={(value) => (selectedStatus = String(value))}
+				size="md"
+				aria-label="Status filter"
+			>
+				<option value="all">All Statuses</option>
+				<option value="active">Active</option>
+				<option value="archived">Archived</option>
+				<option value="compressed">Compressed</option>
+				<option value="failed">Failed</option>
+			</Select>
+			<Select
+				bind:value={selectedContextType}
+				onchange={(value) => (selectedContextType = String(value))}
+				size="md"
+				aria-label="Context filter"
+			>
+				<option value="all">All Contexts</option>
+				<option value="global">Global</option>
+				<option value="general">General</option>
+				<option value="project">Project</option>
+				<option value="project_create">Project Create</option>
+				<option value="project_audit">Project Audit</option>
+				<option value="project_forecast">Project Forecast</option>
+				<option value="calendar">Calendar</option>
+				<option value="daily_brief">Daily Brief</option>
+				<option value="daily_brief_update">Daily Brief Update</option>
+				<option value="brain_dump">Brain Dump</option>
+				<option value="ontology">Ontology</option>
+			</Select>
+			<Select
+				bind:value={selectedSortBy}
+				onchange={(value) =>
+					(selectedSortBy = String(value) as
+						| 'updated_at'
+						| 'created_at'
+						| 'last_message_at')}
+				size="md"
+				aria-label="Sort field"
+			>
+				<option value="updated_at">Sort: Updated</option>
+				<option value="created_at">Sort: Created</option>
+				<option value="last_message_at">Sort: Last Message</option>
+			</Select>
+			<Select
+				bind:value={selectedSortOrder}
+				onchange={(value) => (selectedSortOrder = String(value) as 'asc' | 'desc')}
+				size="md"
+				aria-label="Sort order"
+			>
+				<option value="desc">Newest</option>
+				<option value="asc">Oldest</option>
+			</Select>
+			<Button type="submit" variant="primary" size="md" class="pressable">Apply</Button>
+		</form>
 	</div>
 
-	{#if error}
-		<div
-			class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
-			role="alert"
-		>
-			<div class="flex items-center gap-2">
-				<AlertCircle class="h-5 w-5 text-red-500 shrink-0" />
-				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
-			</div>
-		</div>
-	{/if}
-
-	<!-- Sessions List -->
-	{#if isLoading}
-		<div class="space-y-3">
-			{#each Array(5) as _}
-				<div class="bg-card border border-border rounded-lg p-4 shadow-ink animate-pulse">
-					<div class="h-4 bg-muted rounded w-3/4 mb-4"></div>
-					<div class="h-3 bg-muted rounded w-1/2"></div>
+	<div class="grid grid-cols-1 xl:grid-cols-[360px,1fr] gap-4 items-start min-h-[68vh]">
+		<div class="bg-card border border-border rounded-lg shadow-ink overflow-hidden">
+			<div class="p-3 border-b border-border flex items-center justify-between gap-2">
+				<div>
+					<div class="text-sm font-semibold text-foreground">Sessions</div>
+					<div class="text-xs text-muted-foreground">
+						{formatNumber(totalSessions)} total
+					</div>
 				</div>
-			{/each}
-		</div>
-	{:else if sessions.length === 0}
-		<div
-			class="bg-card border border-border rounded-lg p-12 text-center shadow-ink tx tx-frame tx-weak"
-		>
-			<MessageSquare class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-			<h3 class="text-base font-medium text-foreground mb-2">No sessions found</h3>
-			<p class="text-sm text-muted-foreground">Try adjusting your filters or search query.</p>
-		</div>
-	{:else}
-		<div class="space-y-3">
-			{#each sessions as session}
-				{@const StatusIcon = getStatusIcon(session.status)}
-				<button
-					onclick={() => viewSession(session.id)}
-					class="w-full bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all text-left pressable focus:outline-none focus:ring-2 focus:ring-ring tx tx-frame tx-weak"
-				>
-					<!-- Header -->
-					<div class="flex items-start justify-between mb-3">
-						<div class="flex-1 min-w-0">
-							<div class="flex flex-wrap items-center gap-2 mb-2">
-								<h3 class="text-sm font-semibold text-foreground truncate">
-									{session.title || 'Untitled Session'}
-								</h3>
+				<div class="text-xs text-muted-foreground">Page {currentPage}</div>
+			</div>
+
+			{#if isLoadingSessions}
+				<div class="p-3 space-y-3">
+					{#each Array(6) as _}
+						<div class="border border-border rounded-lg p-3 animate-pulse">
+							<div class="h-3 bg-muted rounded w-3/4 mb-2"></div>
+							<div class="h-2.5 bg-muted rounded w-1/2"></div>
+						</div>
+					{/each}
+				</div>
+			{:else if sessionsError}
+				<div class="p-4 text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
+					<AlertCircle class="h-4 w-4 mt-0.5 shrink-0" />
+					<span>{sessionsError}</span>
+				</div>
+			{:else if sessions.length === 0}
+				<div class="p-6 text-center text-sm text-muted-foreground">
+					<MessageSquare class="h-8 w-8 mx-auto mb-2 opacity-60" />
+					No sessions found for current filters.
+				</div>
+			{:else}
+				<div class="max-h-[62vh] overflow-y-auto p-2 space-y-2">
+					{#each sessions as session}
+						<button
+							class="w-full text-left rounded-lg border p-3 transition-all pressable {selectedSessionId ===
+							session.id
+								? 'border-cyan-500/60 bg-cyan-500/10 shadow-ink-strong'
+								: 'border-border bg-background hover:border-cyan-500/40'}"
+							onclick={() => (selectedSessionId = session.id)}
+						>
+							<div class="flex items-start justify-between gap-2 mb-1.5">
+								<div class="text-sm font-semibold text-foreground leading-tight">
+									{session.title}
+								</div>
+								{#if session.has_errors}
+									<span
+										class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-500/10 text-red-700 dark:text-red-300"
+									>
+										<XCircle class="h-3 w-3" />
+										Error
+									</span>
+								{/if}
+							</div>
+							<div class="text-[11px] text-muted-foreground truncate">
+								{session.user.email}
+							</div>
+							<div class="mt-1 text-[11px] text-muted-foreground">
+								{formatDateTime(session.updated_at)}
+							</div>
+							<div class="mt-2 flex flex-wrap items-center gap-1.5">
 								<span
-									class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {getStatusColor(
+									class="px-1.5 py-0.5 rounded-full text-[10px] font-medium {statusBadge(
 										session.status
 									)}"
 								>
-									<StatusIcon class="h-3 w-3 mr-1" />
 									{session.status}
 								</span>
-							</div>
-							<div
-								class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
-							>
-								<span class="truncate max-w-[200px]">{session.user.email}</span>
-								<span>•</span>
-								<span>{formatDate(session.created_at)}</span>
-								<span>•</span>
-								<span class="capitalize">{session.context_type}</span>
-							</div>
-						</div>
-					</div>
-
-					<!-- Metrics -->
-					{#if viewMode === 'list'}
-						<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-							<div>
-								<div class="text-xs text-muted-foreground">Messages</div>
-								<div class="text-base font-semibold text-foreground">
-									{formatNumber(session.message_count)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-muted-foreground">Tokens</div>
-								<div class="text-base font-semibold text-foreground">
-									{formatNumber(session.total_tokens)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-muted-foreground">Tool Calls</div>
-								<div class="text-base font-semibold text-foreground">
-									{formatNumber(session.tool_call_count)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-muted-foreground">Cost</div>
-								<div class="text-base font-semibold text-foreground">
-									{formatCurrency(session.cost_estimate)}
-								</div>
-							</div>
-						</div>
-					{:else}
-						<!-- Timing Metrics View -->
-						<div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-3">
-							<div>
-								<div class="text-xs text-muted-foreground flex items-center gap-1">
-									<Clock class="h-3 w-3" /> TTFR
-								</div>
-								<div
-									class="text-base font-semibold {getTtfrWarning(
-										session.timing?.ttfr_ms
-									) === 'critical'
-										? 'text-red-500'
-										: getTtfrWarning(session.timing?.ttfr_ms) === 'warning'
-											? 'text-amber-500'
-											: 'text-foreground'}"
+								<span
+									class="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground"
 								>
-									{formatMs(session.timing?.ttfr_ms)}
-								</div>
+									{session.context_type}
+								</span>
+								<span class="text-[10px] text-muted-foreground">
+									{formatNumber(session.message_count)} msg
+								</span>
+								<span class="text-[10px] text-muted-foreground">
+									{formatNumber(session.tool_call_count)} tools
+								</span>
 							</div>
-							<div>
-								<div class="text-xs text-muted-foreground flex items-center gap-1">
-									<Zap class="h-3 w-3" /> TTFE
-								</div>
-								<div class="text-base font-semibold text-foreground">
-									{formatMs(session.timing?.ttfe_ms)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-muted-foreground">Context</div>
-								<div class="text-base font-semibold text-foreground">
-									{formatMs(session.timing?.context_build_ms)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-muted-foreground">Tool Sel.</div>
-								<div
-									class="text-base font-semibold {(session.timing
-										?.tool_selection_ms ?? 0) > 2000
-										? 'text-red-500'
-										: (session.timing?.tool_selection_ms ?? 0) > 1000
-											? 'text-amber-500'
-											: 'text-foreground'}"
-								>
-									{formatMs(session.timing?.tool_selection_ms)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-muted-foreground">Plan</div>
-								<div class="text-base font-semibold text-foreground">
-									{formatMs(session.timing?.plan_creation_ms)}
-								</div>
-							</div>
-							<div>
-								<div class="text-xs text-muted-foreground">Exec</div>
-								<div
-									class="text-base font-semibold {(session.timing
-										?.plan_execution_ms ?? 0) > 10000
-										? 'text-red-500'
-										: (session.timing?.plan_execution_ms ?? 0) > 5000
-											? 'text-amber-500'
-											: 'text-foreground'}"
-								>
-									{formatMs(session.timing?.plan_execution_ms)}
-								</div>
-							</div>
-						</div>
-					{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
 
-					<!-- Badges -->
-					<div class="flex flex-wrap items-center gap-2">
-						{#if session.has_agent_plan}
-							<span
-								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400"
-							>
-								<Bot class="h-3 w-3 mr-1" />
-								Multi-Agent
-							</span>
-						{/if}
-						{#if session.has_compression}
-							<span
-								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-							>
-								<Sparkles class="h-3 w-3 mr-1" />
-								Compressed
-							</span>
-						{/if}
-						{#if session.has_errors}
-							<span
-								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600 dark:text-red-400"
-							>
-								<AlertCircle class="h-3 w-3 mr-1" />
-								Has Errors
-							</span>
-						{/if}
-						{#if session.timing?.ttfr_ms && session.timing.ttfr_ms > 5000}
-							<span
-								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {session
-									.timing.ttfr_ms > 10000
-									? 'bg-red-500/10 text-red-600 dark:text-red-400'
-									: 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}"
-							>
-								<Timer class="h-3 w-3 mr-1" />
-								Slow ({formatMs(session.timing.ttfr_ms)})
-							</span>
-						{/if}
-						{#if session.timing?.plan_step_count}
-							<span
-								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
-							>
-								{session.timing.plan_step_count} steps
-							</span>
-						{/if}
-					</div>
-				</button>
-			{/each}
-		</div>
-
-		<!-- Pagination -->
-		<div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-			<div class="text-sm text-muted-foreground">
-				Showing {(currentPage - 1) * pageSize + 1} to {Math.min(
-					currentPage * pageSize,
-					totalSessions
-				)} of {formatNumber(totalSessions)} sessions
-			</div>
-			<div class="flex items-center gap-2">
+			<div class="p-3 border-t border-border flex items-center justify-between gap-2">
 				<Button
 					onclick={previousPage}
 					disabled={currentPage === 1}
@@ -586,12 +603,15 @@
 				>
 					Previous
 				</Button>
-				<span class="text-sm text-muted-foreground px-2">
-					Page {currentPage} of {Math.ceil(totalSessions / pageSize)}
-				</span>
+				<div class="text-xs text-muted-foreground">
+					{Math.min((currentPage - 1) * PAGE_SIZE + 1, totalSessions)}-{Math.min(
+						currentPage * PAGE_SIZE,
+						totalSessions
+					)} / {formatNumber(totalSessions)}
+				</div>
 				<Button
 					onclick={nextPage}
-					disabled={currentPage * pageSize >= totalSessions}
+					disabled={currentPage * PAGE_SIZE >= totalSessions}
 					variant="secondary"
 					size="sm"
 					class="pressable"
@@ -600,8 +620,462 @@
 				</Button>
 			</div>
 		</div>
-	{/if}
-</div>
 
-<!-- Session Detail Modal -->
-<SessionDetailModal sessionId={selectedSessionId} onClose={closeModal} />
+		<div class="bg-card border border-border rounded-lg shadow-ink min-h-[68vh]">
+			{#if !selectedSessionId}
+				<div class="p-8 text-center text-sm text-muted-foreground">
+					<Activity class="h-10 w-10 mx-auto mb-3 opacity-60" />
+					Select a session to inspect the complete event timeline.
+				</div>
+			{:else if isLoadingDetail}
+				<div class="p-4 space-y-3">
+					{#each Array(8) as _}
+						<div class="border border-border rounded-lg p-3 animate-pulse">
+							<div class="h-3 bg-muted rounded w-1/3 mb-2"></div>
+							<div class="h-2.5 bg-muted rounded w-5/6"></div>
+						</div>
+					{/each}
+				</div>
+			{:else if detailError}
+				<div class="p-4 text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
+					<AlertCircle class="h-4 w-4 mt-0.5 shrink-0" />
+					<span>{detailError}</span>
+				</div>
+			{:else if sessionDetail}
+				<div class="p-4 border-b border-border space-y-4">
+					<div class="flex flex-wrap items-start justify-between gap-3">
+						<div>
+							<h2 class="text-lg font-semibold text-foreground">
+								{sessionDetail.session.title}
+							</h2>
+							<div class="text-sm text-muted-foreground mt-1">
+								{sessionDetail.session.user.email} • {sessionDetail.session
+									.context_type}
+							</div>
+							<div class="text-xs text-muted-foreground mt-1">
+								Created {formatDateTime(sessionDetail.session.created_at)} • Updated
+								{formatDateTime(sessionDetail.session.updated_at)}
+							</div>
+						</div>
+						<div class="flex items-center gap-2">
+							<span
+								class="px-2 py-1 rounded-full text-xs font-medium {statusBadge(
+									sessionDetail.session.status
+								)}"
+							>
+								{sessionDetail.session.status}
+							</span>
+							{#if sessionDetail.session.has_errors}
+								<span
+									class="px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-700 dark:text-red-300"
+								>
+									Has Errors
+								</span>
+							{/if}
+						</div>
+					</div>
+
+					<div class="grid grid-cols-2 lg:grid-cols-6 gap-2">
+						<div class="rounded-lg border border-border bg-background p-2.5">
+							<div class="text-[11px] text-muted-foreground">Messages</div>
+							<div class="text-sm font-semibold text-foreground">
+								{formatNumber(sessionDetail.metrics.messages)}
+							</div>
+						</div>
+						<div class="rounded-lg border border-border bg-background p-2.5">
+							<div class="text-[11px] text-muted-foreground">Tool Calls</div>
+							<div class="text-sm font-semibold text-foreground">
+								{formatNumber(sessionDetail.metrics.tool_calls)}
+							</div>
+						</div>
+						<div class="rounded-lg border border-border bg-background p-2.5">
+							<div class="text-[11px] text-muted-foreground">LLM Calls</div>
+							<div class="text-sm font-semibold text-foreground">
+								{formatNumber(sessionDetail.metrics.llm_calls)}
+							</div>
+						</div>
+						<div class="rounded-lg border border-border bg-background p-2.5">
+							<div class="text-[11px] text-muted-foreground">Total Tokens</div>
+							<div class="text-sm font-semibold text-foreground">
+								{formatNumber(sessionDetail.metrics.total_tokens)}
+							</div>
+						</div>
+						<div class="rounded-lg border border-border bg-background p-2.5">
+							<div class="text-[11px] text-muted-foreground">Cost</div>
+							<div class="text-sm font-semibold text-foreground">
+								{formatCurrency(sessionDetail.metrics.total_cost_usd)}
+							</div>
+						</div>
+						<div class="rounded-lg border border-border bg-background p-2.5">
+							<div class="text-[11px] text-muted-foreground">Failures</div>
+							<div class="text-sm font-semibold text-foreground">
+								{formatNumber(
+									sessionDetail.metrics.tool_failures +
+										sessionDetail.metrics.llm_failures
+								)}
+							</div>
+						</div>
+					</div>
+
+					<div class="rounded-lg border border-border bg-background p-3 space-y-3">
+						<div class="flex flex-wrap items-center gap-2">
+							<div
+								class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+							>
+								Event Filters
+							</div>
+							{#each Object.keys(eventTypeFilters) as rawType}
+								{@const type = rawType as TimelineType}
+								<button
+									class="px-2 py-1 rounded-full border text-[11px] transition-colors {eventTypeFilters[
+										type
+									]
+										? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
+										: 'border-border bg-card text-muted-foreground'}"
+									onclick={() => toggleEventType(type)}
+								>
+									{eventTypeLabel(type)}
+								</button>
+							{/each}
+							<button
+								class="px-2 py-1 rounded-full border text-[11px] transition-colors {showOnlyErrors
+									? 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300'
+									: 'border-border bg-card text-muted-foreground'}"
+								onclick={() => (showOnlyErrors = !showOnlyErrors)}
+							>
+								Errors Only
+							</button>
+						</div>
+						<div class="relative">
+							<Search
+								class="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+							/>
+							<input
+								type="text"
+								bind:value={timelineSearch}
+								placeholder="Search timeline events..."
+								class="w-full text-sm pl-8 pr-3 py-1.5 border border-border bg-card rounded-lg shadow-ink-inner focus:ring-2 focus:ring-ring focus:border-accent text-foreground"
+							/>
+						</div>
+					</div>
+				</div>
+
+				<div class="p-4 max-h-[58vh] overflow-y-auto">
+					{#if visibleTimeline.length === 0}
+						<div class="text-sm text-muted-foreground text-center py-10">
+							No timeline events match the current filters.
+						</div>
+					{:else}
+						<div class="relative pl-2">
+							<div class="absolute left-[8px] top-0 bottom-0 w-px bg-border"></div>
+							<div class="space-y-3">
+								{#each visibleTimeline as event}
+									{@const EventIcon = eventIcon(event.type)}
+									{@const payload = event.payload ?? {}}
+									<div class="relative pl-8">
+										<div
+											class="absolute left-[2px] top-4 h-3 w-3 rounded-full ring-2 ring-card {timelineDotClasses(
+												event.severity
+											)}"
+										></div>
+										<div
+											class="rounded-lg border border-border bg-background p-3 shadow-ink"
+										>
+											<div
+												class="flex flex-wrap items-center justify-between gap-2 mb-2"
+											>
+												<div class="flex items-center gap-2">
+													<span
+														class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-medium {eventSeverityClasses(
+															event.severity
+														)}"
+													>
+														<EventIcon class="h-3 w-3" />
+														{eventTypeLabel(event.type)}
+													</span>
+													{#if event.turn_index}
+														<span
+															class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground"
+														>
+															Turn {event.turn_index}
+														</span>
+													{/if}
+												</div>
+												<span class="text-[11px] text-muted-foreground">
+													{formatDateTime(event.timestamp)}
+												</span>
+											</div>
+
+											<div class="text-sm font-semibold text-foreground">
+												{event.title}
+											</div>
+											<div
+												class="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words"
+											>
+												{event.summary}
+											</div>
+
+											{#if event.type === 'message'}
+												<div
+													class="mt-3 rounded-lg border px-3 py-2 text-sm whitespace-pre-wrap break-words {stringValue(
+														payloadField(payload, 'role')
+													) === 'user'
+														? 'bg-cyan-500/8 border-cyan-500/20'
+														: stringValue(
+																	payloadField(payload, 'role')
+															  ) === 'assistant'
+															? 'bg-emerald-500/8 border-emerald-500/20'
+															: 'bg-muted/40 border-border'}"
+												>
+													<div
+														class="text-[11px] text-muted-foreground uppercase tracking-wide mb-1"
+													>
+														{stringValue(
+															payloadField(payload, 'role')
+														) || 'message'}
+													</div>
+													{stringValue(
+														payloadField(payload, 'content')
+													) || '(empty)'}
+												</div>
+												<div
+													class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground"
+												>
+													<span
+														>Tokens: {formatNumber(
+															Number(
+																payloadField(
+																	payload,
+																	'total_tokens'
+																) || 0
+															)
+														)}</span
+													>
+													{#if payloadField(payload, 'error_message')}
+														<span
+															class="text-red-600 dark:text-red-400"
+														>
+															Error: {stringValue(
+																payloadField(
+																	payload,
+																	'error_message'
+																)
+															)}
+														</span>
+													{/if}
+												</div>
+											{/if}
+
+											{#if event.type === 'tool_execution'}
+												<div
+													class="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]"
+												>
+													<div
+														class="rounded border border-border bg-card px-2 py-1.5"
+													>
+														<div class="text-muted-foreground">
+															Tool
+														</div>
+														<div class="font-medium text-foreground">
+															{stringValue(
+																payloadField(payload, 'tool_name')
+															) || '-'}
+														</div>
+													</div>
+													<div
+														class="rounded border border-border bg-card px-2 py-1.5"
+													>
+														<div class="text-muted-foreground">
+															Duration
+														</div>
+														<div class="font-medium text-foreground">
+															{formatDuration(
+																payloadField(
+																	payload,
+																	'execution_time_ms'
+																)
+															)}
+														</div>
+													</div>
+													<div
+														class="rounded border border-border bg-card px-2 py-1.5"
+													>
+														<div class="text-muted-foreground">
+															Success
+														</div>
+														<div
+															class="font-medium {payloadField(
+																payload,
+																'success'
+															) === false
+																? 'text-red-600 dark:text-red-400'
+																: 'text-emerald-600 dark:text-emerald-400'}"
+														>
+															{payloadField(payload, 'success') ===
+															false
+																? 'false'
+																: 'true'}
+														</div>
+													</div>
+													<div
+														class="rounded border border-border bg-card px-2 py-1.5"
+													>
+														<div class="text-muted-foreground">
+															Tool Tokens
+														</div>
+														<div class="font-medium text-foreground">
+															{formatNumber(
+																Number(
+																	payloadField(
+																		payload,
+																		'tokens_consumed'
+																	) || 0
+																)
+															)}
+														</div>
+													</div>
+												</div>
+												{#if payloadField(payload, 'arguments') !== undefined}
+													<details
+														class="mt-2 rounded border border-border bg-card p-2 text-xs"
+													>
+														<summary
+															class="cursor-pointer font-medium text-foreground"
+														>
+															Tool Arguments
+														</summary>
+														<pre
+															class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-[11px] text-foreground">{prettyJson(
+																payloadField(payload, 'arguments')
+															)}</pre>
+													</details>
+												{/if}
+												{#if payloadField(payload, 'result') !== undefined}
+													<details
+														class="mt-2 rounded border border-border bg-card p-2 text-xs"
+													>
+														<summary
+															class="cursor-pointer font-medium text-foreground"
+														>
+															Tool Result
+														</summary>
+														<pre
+															class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-[11px] text-foreground">{prettyJson(
+																payloadField(payload, 'result')
+															)}</pre>
+													</details>
+												{/if}
+											{/if}
+
+											{#if event.type === 'llm_call'}
+												<div
+													class="mt-3 grid grid-cols-2 lg:grid-cols-5 gap-2 text-[11px]"
+												>
+													<div
+														class="rounded border border-border bg-card px-2 py-1.5"
+													>
+														<div class="text-muted-foreground">
+															Model
+														</div>
+														<div class="font-medium text-foreground">
+															{stringValue(
+																payloadField(payload, 'model_used')
+															) || '-'}
+														</div>
+													</div>
+													<div
+														class="rounded border border-border bg-card px-2 py-1.5"
+													>
+														<div class="text-muted-foreground">
+															Provider
+														</div>
+														<div class="font-medium text-foreground">
+															{stringValue(
+																payloadField(payload, 'provider')
+															) || '-'}
+														</div>
+													</div>
+													<div
+														class="rounded border border-border bg-card px-2 py-1.5"
+													>
+														<div class="text-muted-foreground">
+															Tokens
+														</div>
+														<div class="font-medium text-foreground">
+															{formatNumber(
+																Number(
+																	payloadField(
+																		payload,
+																		'total_tokens'
+																	) || 0
+																)
+															)}
+														</div>
+													</div>
+													<div
+														class="rounded border border-border bg-card px-2 py-1.5"
+													>
+														<div class="text-muted-foreground">
+															Cost
+														</div>
+														<div class="font-medium text-foreground">
+															{formatCurrency(
+																Number(
+																	payloadField(
+																		payload,
+																		'total_cost_usd'
+																	) || 0
+																)
+															)}
+														</div>
+													</div>
+													<div
+														class="rounded border border-border bg-card px-2 py-1.5"
+													>
+														<div class="text-muted-foreground">
+															Latency
+														</div>
+														<div class="font-medium text-foreground">
+															{formatDuration(
+																payloadField(
+																	payload,
+																	'response_time_ms'
+																)
+															)}
+														</div>
+													</div>
+												</div>
+											{/if}
+
+											<div class="mt-3">
+												<button
+													type="button"
+													onclick={() => toggleEventExpansion(event.id)}
+													class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+												>
+													{#if expandedEventIds.has(event.id)}
+														<ChevronDown class="h-3 w-3" />
+														Hide Raw Payload
+													{:else}
+														<ChevronRight class="h-3 w-3" />
+														Show Raw Payload
+													{/if}
+												</button>
+												{#if expandedEventIds.has(event.id)}
+													<pre
+														class="mt-2 bg-card border border-border rounded-lg p-3 text-[11px] text-foreground whitespace-pre-wrap break-words overflow-x-auto">{prettyJson(
+															payload
+														)}</pre>
+												{/if}
+											</div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+	</div>
+</div>
