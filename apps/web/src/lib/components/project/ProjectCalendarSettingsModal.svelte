@@ -734,7 +734,8 @@
 														{collaborationSummary.total_members} members
 														actively syncing
 														{#if collaborationSummary.pending_invite_count > 0}
-															• {collaborationSummary.pending_invite_count} pending invite{collaborationSummary.pending_invite_count ===
+															• {collaborationSummary.pending_invite_count}
+															pending invite{collaborationSummary.pending_invite_count ===
 															1
 																? ''
 																: 's'}

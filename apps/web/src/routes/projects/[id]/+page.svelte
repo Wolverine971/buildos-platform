@@ -45,36 +45,25 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { slide } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { getNavigationData } from '$lib/stores/project-navigation.store';
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
-	import InsightPanelSkeleton from '$lib/components/ontology/InsightPanelSkeleton.svelte';
 	import ProjectContentSkeleton from '$lib/components/ontology/ProjectContentSkeleton.svelte';
-	import EntityListItem from '$lib/components/ontology/EntityListItem.svelte';
 	import {
-		Plus,
-		FileText,
+		AlertCircle,
 		Calendar,
-		ExternalLink,
 		Bell,
 		BellOff,
-		Pencil,
-		Trash2,
-		ArrowLeft,
-		CheckCircle,
 		Clock,
-		Target,
-		ChevronDown,
-		AlertCircle,
+		Image as ImageIcon,
 		ListChecks,
-		MoreHorizontal,
+		Pencil,
+		Target,
+		Trash2,
 		GitBranch,
-		Users,
-		Maximize2,
-		Image as ImageIcon
+		Users
 	} from 'lucide-svelte';
 	import type {
 		Project,
@@ -90,41 +79,39 @@
 	import type { PageData } from './$types';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
-	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
-	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
+	import { DocMoveModal, DocDeleteConfirmModal } from '$lib/components/ontology/doc-tree';
+	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
+	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
+	import ProjectHistorySection from '$lib/components/project/ProjectHistorySection.svelte';
+	import ProjectInsightRail from '$lib/components/project/ProjectInsightRail.svelte';
 	import {
-		DocTreeView,
-		DocMoveModal,
-		DocDeleteConfirmModal
-	} from '$lib/components/ontology/doc-tree';
+		flushPendingImageUploadOpen,
+		requestImageUploadOpen,
+		resolveEntityOpenAction
+	} from '$lib/components/project/project-page-interactions';
+	import type { ImageUploadPanelRef } from '$lib/components/project/project-page-interactions';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
+	import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/types';
 	import type { Database, EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 	import {
-		InsightFilterDropdown,
-		InsightSortDropdown,
-		InsightSpecialToggles,
 		PANEL_CONFIGS,
 		createDefaultPanelStates,
-		getPriorityGroup,
-		calculateRiskScore,
-		isWithinTimeframe,
 		getSortValueDisplay,
-		STAGE_ORDER,
-		IMPACT_ORDER,
-		ASSIGNEE_FILTER_ME,
-		ASSIGNEE_FILTER_UNASSIGNED,
-		PERSON_FILTER_ME,
+		buildTaskFilterGroups,
+		filterAndSortInsightEntities,
+		updateInsightPanelFilters,
+		updateInsightPanelSort,
+		updateInsightPanelToggle,
+		calculateInsightPanelCounts,
+		getTaskRelevanceScoreForSort,
 		type FilterGroup,
-		type InsightPanelKey as ConfigPanelKey
+		type InsightPanelKey as ConfigPanelKey,
+		type TaskAssigneeFilterMember
 	} from '$lib/components/ontology/insight-panels';
-	import { taskMatchesAssigneeFilter } from '$lib/components/ontology/insight-panels/task-assignee-filter';
 	import {
 		getTaskPersonRelevanceLabel,
-		getTaskPersonRelevanceScore,
-		resolveTaskPersonFocusActorId,
-		taskMatchesPersonFocusFilter
+		resolveTaskPersonFocusActorId
 	} from '$lib/components/ontology/insight-panels/task-person-relevance';
 
 	// ============================================================
@@ -141,7 +128,7 @@
 	type InsightPanel = {
 		key: InsightPanelKey;
 		label: string;
-		icon: typeof CheckCircle;
+		icon: typeof Target;
 		items: Array<unknown>;
 		description?: string;
 	};
@@ -165,18 +152,6 @@
 			name: string | null;
 			email: string | null;
 		} | null;
-	};
-
-	type TaskAssigneeFilterMember = {
-		actorId: string;
-		label: string;
-	};
-
-	type TaskSortLike = Record<string, unknown> & {
-		assignees?: Array<{ actor_id?: string | null }>;
-		created_by?: string | null;
-		last_changed_by_actor_id?: string | null;
-		updated_at?: string | null;
 	};
 
 	// ============================================================
@@ -244,7 +219,9 @@
 	let documents = $state(
 		data.skeleton ? ([] as Document[]) : ((data.documents || []) as Document[])
 	);
-	let images = $state(data.skeleton ? ([] as any[]) : ((data.images || []) as any[]));
+	let images = $state(
+		data.skeleton ? ([] as OntologyImageAsset[]) : ((data.images || []) as OntologyImageAsset[])
+	);
 	let plans = $state(data.skeleton ? ([] as Plan[]) : ((data.plans || []) as Plan[]));
 	let goals = $state(data.skeleton ? ([] as Goal[]) : ((data.goals || []) as Goal[]));
 	let milestones = $state(
@@ -271,9 +248,6 @@
 	let showCollabModal = $state(false);
 	let showDeleteProjectModal = $state(false);
 	let showProjectCalendarModal = $state(false);
-	let showProjectIconStudioModal = $state(false);
-	// Project image generation is temporarily disabled.
-	const ENABLE_PROJECT_ICON_STUDIO_UI = false;
 	let isDeletingProject = $state(false);
 	let deleteProjectError = $state<string | null>(null);
 	let editingTaskId = $state<string | null>(null);
@@ -285,7 +259,8 @@
 	let editingMilestoneId = $state<string | null>(null);
 	let showEventCreateModal = $state(false);
 	let editingEventId = $state<string | null>(null);
-	let imageAssetsPanelRef = $state<{ openUploadModal: () => void } | null>(null);
+	let imageAssetsPanelRef = $state<ImageUploadPanelRef | null>(null);
+	let pendingImageUploadOpen = $state(false);
 	let projectNotificationSettings = $state<ProjectNotificationSettings | null>(null);
 	let isNotificationSettingsLoading = $state(false);
 	let isNotificationSettingsSaving = $state(false);
@@ -319,17 +294,10 @@
 		images: false
 	});
 	let showMobileMenu = $state(false);
-	let mobileMenuButtonEl: HTMLButtonElement | null = $state(null);
 	let mobileMenuPos = $state({ top: 0, right: 0 });
 
-	function openMobileMenu() {
-		if (mobileMenuButtonEl) {
-			const rect = mobileMenuButtonEl.getBoundingClientRect();
-			mobileMenuPos = {
-				top: rect.bottom + 4,
-				right: window.innerWidth - rect.right
-			};
-		}
+	function handleHeaderMenuOpen(position: { top: number; right: number }) {
+		mobileMenuPos = position;
 		showMobileMenu = true;
 	}
 
@@ -341,6 +309,13 @@
 
 	// Graph modal state
 	let showGraphModal = $state(false);
+
+	$effect(() => {
+		const nextPending = flushPendingImageUploadOpen(pendingImageUploadOpen, imageAssetsPanelRef);
+		if (nextPending !== pendingImageUploadOpen) {
+			pendingImageUploadOpen = nextPending;
+		}
+	});
 
 	// ============================================================
 	// HYDRATION - Load full data after skeleton render
@@ -574,38 +549,9 @@
 	});
 
 	const taskFilterGroups = $derived.by((): FilterGroup[] => {
-		return PANEL_CONFIGS.tasks.filters.map((group) => {
-			if (group.id !== 'assignee_actor_id' && group.id !== 'person_focus_actor_id') {
-				return group;
-			}
-
-			const options: FilterGroup['options'] = [];
-			if (group.id === 'assignee_actor_id') {
-				if (currentProjectActorId) {
-					options.push({ value: ASSIGNEE_FILTER_ME, label: 'Assigned to me' });
-				}
-				options.push({ value: ASSIGNEE_FILTER_UNASSIGNED, label: 'Unassigned' });
-			} else if (group.id === 'person_focus_actor_id' && currentProjectActorId) {
-				options.push({ value: PERSON_FILTER_ME, label: 'Me' });
-			}
-
-			for (const member of mergedTaskFilterMembers) {
-				if (
-					group.id === 'person_focus_actor_id' &&
-					member.actorId === currentProjectActorId
-				) {
-					continue;
-				}
-				options.push({
-					value: member.actorId,
-					label: `@${member.label}`
-				});
-			}
-
-			return {
-				...group,
-				options
-			};
+		return buildTaskFilterGroups({
+			members: mergedTaskFilterMembers,
+			currentActorId: currentProjectActorId
 		});
 	});
 
@@ -615,20 +561,6 @@
 			currentActorId: currentProjectActorId
 		})
 	);
-
-	function getTaskRelevanceScore(task: TaskSortLike): number {
-		return getTaskPersonRelevanceScore({
-			focusActorId: taskPersonFocusActorId,
-			assignees: Array.isArray(task.assignees)
-				? (task.assignees as Array<{ actor_id?: string | null }>)
-				: [],
-			createdByActorId: typeof task.created_by === 'string' ? task.created_by : null,
-			lastChangedByActorId:
-				typeof task.last_changed_by_actor_id === 'string'
-					? task.last_changed_by_actor_id
-					: null
-		});
-	}
 
 	function getPanelFilterGroups(panelKey: InsightPanelKey): FilterGroup[] {
 		if (panelKey === 'tasks') {
@@ -641,332 +573,60 @@
 	// INSIGHT PANEL FILTERING & SORTING
 	// ============================================================
 
-	/**
-	 * Generic filter function for entities
-	 */
-	function filterEntity<T extends Record<string, unknown>>(
-		item: T,
-		filters: Record<string, string[]>,
-		toggles: Record<string, boolean>,
-		entityType: ConfigPanelKey
-	): boolean {
-		// Check deleted_at filter (all entity types)
-		if (!toggles.showDeleted && item.deleted_at) {
-			return false;
-		}
-
-		// Entity-specific terminal state filtering
-		if (entityType === 'tasks') {
-			if (!toggles.showCompleted && item.state_key === 'done') return false;
-		} else if (entityType === 'plans') {
-			if (!toggles.showCompleted && item.state_key === 'completed') return false;
-		} else if (entityType === 'goals') {
-			if (!toggles.showAchieved && item.state_key === 'achieved') return false;
-			if (!toggles.showAbandoned && item.state_key === 'abandoned') return false;
-		} else if (entityType === 'milestones') {
-			const { state } = resolveMilestoneState(item as unknown as Milestone);
-			if (!toggles.showCompleted && state === 'completed') return false;
-			if (!toggles.showMissed && state === 'missed') return false;
-		} else if (entityType === 'risks') {
-			if (!toggles.showClosed && item.state_key === 'closed') return false;
-		} else if (entityType === 'events') {
-			if (!toggles.showCancelled && item.state_key === 'cancelled') return false;
-			// Filter out past events (end_at or start_at before now)
-			if (!toggles.showPast) {
-				const endAt = item.end_at as string | null;
-				const startAt = item.start_at as string | null;
-				const eventEnd = endAt ? new Date(endAt) : startAt ? new Date(startAt) : null;
-				if (eventEnd && eventEnd < new Date()) return false;
-			}
-		} else if (entityType === 'images') {
-			if (toggles.showFailedOnly && item.ocr_status !== 'failed') return false;
-		}
-
-		// Check multi-select filters
-		for (const [field, selectedValues] of Object.entries(filters)) {
-			if (!selectedValues || selectedValues.length === 0) continue;
-
-			// Special handling for priority (grouped)
-			if (field === 'priority' && entityType === 'tasks') {
-				const priorityGroup = getPriorityGroup(item.priority as number | null);
-				if (!selectedValues.includes(priorityGroup)) return false;
-				continue;
-			}
-			if (field === 'state_key' && entityType === 'milestones') {
-				const { state } = resolveMilestoneState(item as unknown as Milestone);
-				if (!selectedValues.includes(state)) return false;
-				continue;
-			}
-
-			// Special handling for timeframe (milestones)
-			if (field === 'timeframe' && entityType === 'milestones') {
-				const timeframe = selectedValues[0] || 'all';
-				if (timeframe !== 'all') {
-					if (!isWithinTimeframe(item.due_at as string | null, timeframe)) return false;
-				}
-				continue;
-			}
-
-			// Special handling for task assignee filtering
-			if (field === 'assignee_actor_id' && entityType === 'tasks') {
-				const assigneeRows = Array.isArray(item.assignees)
-					? (item.assignees as Array<{ actor_id?: string | null }>)
-					: [];
-				if (
-					!taskMatchesAssigneeFilter({
-						selectedValues,
-						currentActorId: currentProjectActorId,
-						assignees: assigneeRows
-					})
-				) {
-					return false;
-				}
-				continue;
-			}
-
-			// Special handling for task person focus filtering
-			if (field === 'person_focus_actor_id' && entityType === 'tasks') {
-				const assigneeRows = Array.isArray(item.assignees)
-					? (item.assignees as Array<{ actor_id?: string | null }>)
-					: [];
-				if (
-					!taskMatchesPersonFocusFilter({
-						selectedValues,
-						currentActorId: currentProjectActorId,
-						assignees: assigneeRows,
-						createdByActorId:
-							typeof item.created_by === 'string'
-								? (item.created_by as string)
-								: null,
-						lastChangedByActorId:
-							typeof item.last_changed_by_actor_id === 'string'
-								? (item.last_changed_by_actor_id as string)
-								: null
-					})
-				) {
-					return false;
-				}
-				continue;
-			}
-
-			// For state_key filter, allow terminal states through when their
-			// corresponding special toggle is enabled (e.g. showCompleted allows
-			// 'done' tasks past the state_key filter even if 'done' isn't selected)
-			if (field === 'state_key') {
-				const stateVal = String(item[field] ?? '');
-				const allowedByToggle =
-					(entityType === 'tasks' && toggles.showCompleted && stateVal === 'done') ||
-					(entityType === 'plans' && toggles.showCompleted && stateVal === 'completed') ||
-					(entityType === 'goals' && toggles.showAchieved && stateVal === 'achieved') ||
-					(entityType === 'goals' && toggles.showAbandoned && stateVal === 'abandoned') ||
-					(entityType === 'risks' && toggles.showClosed && stateVal === 'closed') ||
-					(entityType === 'events' && toggles.showCancelled && stateVal === 'cancelled');
-				if (allowedByToggle || selectedValues.includes(stateVal)) {
-					continue;
-				}
-				return false;
-			}
-
-			// Standard field filter
-			const itemValue = item[field];
-			if (itemValue != null && !selectedValues.includes(String(itemValue))) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	/**
-	 * Generic sort function for entities
-	 */
-	function sortEntities<T extends Record<string, unknown>>(
-		items: T[],
-		sort: { field: string; direction: 'asc' | 'desc' },
-		entityType: ConfigPanelKey
-	): T[] {
-		return [...items].sort((a, b) => {
-			let aVal = a[sort.field];
-			let bVal = b[sort.field];
-
-			// Special handling for task relevance ordering
-			if (sort.field === 'relevance' && entityType === 'tasks') {
-				const aRelevance = getTaskRelevanceScore(a as TaskSortLike);
-				const bRelevance = getTaskRelevanceScore(b as TaskSortLike);
-				if (aRelevance !== bRelevance) {
-					const relevanceComparison = aRelevance - bRelevance;
-					return sort.direction === 'asc' ? relevanceComparison : -relevanceComparison;
-				}
-
-				const aUpdated = typeof a.updated_at === 'string' ? Date.parse(a.updated_at) : 0;
-				const bUpdated = typeof b.updated_at === 'string' ? Date.parse(b.updated_at) : 0;
-				return (
-					(Number.isFinite(bUpdated) ? bUpdated : 0) -
-					(Number.isFinite(aUpdated) ? aUpdated : 0)
-				);
-			}
-
-			// Special handling for computed fields
-			if (sort.field === 'risk_score' && entityType === 'risks') {
-				aVal = calculateRiskScore(a.impact as string, a.probability as number);
-				bVal = calculateRiskScore(b.impact as string, b.probability as number);
-			}
-
-			// Special handling for stage ordering (plans)
-			if (sort.field === 'facet_stage' && entityType === 'plans') {
-				aVal = STAGE_ORDER[String(a.facet_stage)] ?? 99;
-				bVal = STAGE_ORDER[String(b.facet_stage)] ?? 99;
-			}
-
-			// Special handling for impact ordering (risks)
-			if (sort.field === 'impact' && entityType === 'risks') {
-				aVal = IMPACT_ORDER[String(a.impact)] ?? 99;
-				bVal = IMPACT_ORDER[String(b.impact)] ?? 99;
-			}
-
-			// Handle nulls (always sort to end)
-			if (aVal == null && bVal == null) return 0;
-			if (aVal == null) return 1;
-			if (bVal == null) return -1;
-
-			// Compare values
-			let comparison = 0;
-			if (typeof aVal === 'string' && typeof bVal === 'string') {
-				comparison = aVal.localeCompare(bVal);
-			} else if (typeof aVal === 'number' && typeof bVal === 'number') {
-				comparison = aVal - bVal;
-			} else {
-				comparison = String(aVal).localeCompare(String(bVal));
-			}
-
-			return sort.direction === 'asc' ? comparison : -comparison;
-		});
-	}
-
 	// Filtered and sorted tasks
 	const filteredTasks = $derived.by(() => {
-		const state = panelStates.tasks;
-		const filtered = tasks.filter((t) =>
-			filterEntity(
-				t as unknown as Record<string, unknown>,
-				state.filters,
-				state.toggles,
-				'tasks'
-			)
-		);
-		return sortEntities(
-			filtered as unknown as Record<string, unknown>[],
-			state.sort,
-			'tasks'
-		) as unknown as Task[];
+		return filterAndSortInsightEntities(tasks, panelStates.tasks, 'tasks', {
+			currentActorId: currentProjectActorId,
+			taskFocusActorId: taskPersonFocusActorId
+		});
 	});
 
 	// Filtered and sorted plans
 	const filteredPlans = $derived.by(() => {
-		const state = panelStates.plans;
-		const filtered = plans.filter((p) =>
-			filterEntity(
-				p as unknown as Record<string, unknown>,
-				state.filters,
-				state.toggles,
-				'plans'
-			)
-		);
-		return sortEntities(
-			filtered as unknown as Record<string, unknown>[],
-			state.sort,
-			'plans'
-		) as unknown as Plan[];
+		return filterAndSortInsightEntities(plans, panelStates.plans, 'plans', {
+			currentActorId: currentProjectActorId,
+			taskFocusActorId: taskPersonFocusActorId
+		});
 	});
 
 	// Filtered and sorted goals
 	const filteredGoals = $derived.by(() => {
-		const state = panelStates.goals;
-		const filtered = goals.filter((g) =>
-			filterEntity(
-				g as unknown as Record<string, unknown>,
-				state.filters,
-				state.toggles,
-				'goals'
-			)
-		);
-		return sortEntities(
-			filtered as unknown as Record<string, unknown>[],
-			state.sort,
-			'goals'
-		) as unknown as Goal[];
+		return filterAndSortInsightEntities(goals, panelStates.goals, 'goals', {
+			currentActorId: currentProjectActorId,
+			taskFocusActorId: taskPersonFocusActorId
+		});
 	});
 
 	// Filtered and sorted milestones
 	const filteredMilestones = $derived.by(() => {
-		const state = panelStates.milestones;
-		const filtered = milestones.filter((m) =>
-			filterEntity(
-				m as unknown as Record<string, unknown>,
-				state.filters,
-				state.toggles,
-				'milestones'
-			)
-		);
-		return sortEntities(
-			filtered as unknown as Record<string, unknown>[],
-			state.sort,
-			'milestones'
-		) as unknown as Milestone[];
+		return filterAndSortInsightEntities(milestones, panelStates.milestones, 'milestones', {
+			currentActorId: currentProjectActorId,
+			taskFocusActorId: taskPersonFocusActorId
+		});
 	});
 
 	// Filtered and sorted risks
 	const filteredRisks = $derived.by(() => {
-		const state = panelStates.risks;
-		const filtered = risks.filter((r) =>
-			filterEntity(
-				r as unknown as Record<string, unknown>,
-				state.filters,
-				state.toggles,
-				'risks'
-			)
-		);
-		return sortEntities(
-			filtered as unknown as Record<string, unknown>[],
-			state.sort,
-			'risks'
-		) as unknown as Risk[];
+		return filterAndSortInsightEntities(risks, panelStates.risks, 'risks', {
+			currentActorId: currentProjectActorId,
+			taskFocusActorId: taskPersonFocusActorId
+		});
 	});
 
 	// Filtered and sorted events
 	const filteredEvents = $derived.by(() => {
-		const state = panelStates.events;
-		const filtered = events.filter((e) =>
-			filterEntity(
-				e as unknown as Record<string, unknown>,
-				state.filters,
-				state.toggles,
-				'events'
-			)
-		);
-		return sortEntities(
-			filtered as unknown as Record<string, unknown>[],
-			state.sort,
-			'events'
-		) as unknown as OntoEventWithSync[];
+		return filterAndSortInsightEntities(events, panelStates.events, 'events', {
+			currentActorId: currentProjectActorId,
+			taskFocusActorId: taskPersonFocusActorId
+		});
 	});
 
 	// Filtered and sorted images
 	const filteredImages = $derived.by(() => {
-		const state = panelStates.images;
-		const filtered = images.filter((image) =>
-			filterEntity(
-				image as unknown as Record<string, unknown>,
-				state.filters,
-				state.toggles,
-				'images'
-			)
-		);
-		return sortEntities(
-			filtered as unknown as Record<string, unknown>[],
-			state.sort,
-			'images'
-		) as unknown as any[];
+		return filterAndSortInsightEntities(images, panelStates.images, 'images', {
+			currentActorId: currentProjectActorId,
+			taskFocusActorId: taskPersonFocusActorId
+		});
 	});
 
 	// Group milestones by their parent goal ID
@@ -991,87 +651,32 @@
 	});
 
 	// Counts for special toggles
-	const panelCounts = $derived.by(() => ({
-		tasks: {
-			showCompleted: tasks.filter((t) => t.state_key === 'done').length,
-			showDeleted: tasks.filter((t) => t.deleted_at).length
-		},
-		plans: {
-			showCompleted: plans.filter((p) => p.state_key === 'completed').length,
-			showDeleted: plans.filter((p) => p.deleted_at).length
-		},
-		goals: {
-			showAchieved: goals.filter((g) => g.state_key === 'achieved').length,
-			showAbandoned: goals.filter((g) => g.state_key === 'abandoned').length,
-			showDeleted: goals.filter((g) => (g as unknown as Record<string, unknown>).deleted_at)
-				.length
-		},
-		milestones: {
-			showCompleted: milestones.filter((m) => resolveMilestoneState(m).state === 'completed')
-				.length,
-			showMissed: milestones.filter((m) => resolveMilestoneState(m).state === 'missed')
-				.length,
-			showDeleted: milestones.filter(
-				(m) => (m as unknown as Record<string, unknown>).deleted_at
-			).length
-		},
-		risks: {
-			showClosed: risks.filter((r) => r.state_key === 'closed').length,
-			showDeleted: risks.filter((r) => (r as unknown as Record<string, unknown>).deleted_at)
-				.length
-		},
-		events: {
-			showPast: events.filter((e) => {
-				const eventEnd = e.end_at
-					? new Date(e.end_at)
-					: e.start_at
-						? new Date(e.start_at)
-						: null;
-				return eventEnd && eventEnd < new Date();
-			}).length,
-			showCancelled: events.filter((e) => e.state_key === 'cancelled').length,
-			showDeleted: events.filter((e) => e.deleted_at).length
-		},
-		images: {
-			showFailedOnly: images.filter((image) => image.ocr_status === 'failed').length
-		}
-	}));
+	const panelCounts = $derived.by(() =>
+		calculateInsightPanelCounts({
+			tasks,
+			plans,
+			goals,
+			milestones,
+			risks,
+			events,
+			images
+		})
+	);
 
 	// Panel state update handlers
 	function updatePanelFilters(panelKey: ConfigPanelKey, filters: Record<string, string[]>) {
-		panelStates = {
-			...panelStates,
-			[panelKey]: {
-				...panelStates[panelKey],
-				filters
-			}
-		};
+		panelStates = updateInsightPanelFilters(panelStates, panelKey, filters);
 	}
 
 	function updatePanelSort(
 		panelKey: ConfigPanelKey,
 		sort: { field: string; direction: 'asc' | 'desc' }
 	) {
-		panelStates = {
-			...panelStates,
-			[panelKey]: {
-				...panelStates[panelKey],
-				sort
-			}
-		};
+		panelStates = updateInsightPanelSort(panelStates, panelKey, sort);
 	}
 
 	function updatePanelToggle(panelKey: ConfigPanelKey, toggleId: string, value: boolean) {
-		panelStates = {
-			...panelStates,
-			[panelKey]: {
-				...panelStates[panelKey],
-				toggles: {
-					...panelStates[panelKey].toggles,
-					[toggleId]: value
-				}
-			}
-		};
+		panelStates = updateInsightPanelToggle(panelStates, panelKey, toggleId, value);
 	}
 
 	// Note: Milestones are now nested under goals, not shown as a separate panel
@@ -1150,7 +755,7 @@
 				break;
 			case 'images':
 				expandedPanels = { ...expandedPanels, images: true };
-				imageAssetsPanelRef?.openUploadModal();
+				pendingImageUploadOpen = requestImageUploadOpen(imageAssetsPanelRef);
 				break;
 		}
 	}
@@ -1183,16 +788,12 @@
 	function getTaskSortSummary(task: Task): string {
 		if (panelStates.tasks.sort.field === 'relevance') {
 			const relevanceLabel = getTaskPersonRelevanceLabel(
-				getTaskRelevanceScore(task as unknown as TaskSortLike)
+				getTaskRelevanceScoreForSort(task, taskPersonFocusActorId)
 			);
 			return `Relevance ${relevanceLabel}`;
 		}
 
-		return getSortValueDisplay(
-			task as unknown as Record<string, unknown>,
-			panelStates.tasks.sort.field,
-			'tasks'
-		).value;
+		return getSortValueDisplay(task, panelStates.tasks.sort.field, 'tasks').value;
 	}
 
 	/**
@@ -1413,7 +1014,8 @@
 		}
 	}
 
-	async function refreshData() {
+	async function refreshData(options: { showSuccessToast?: boolean } = {}) {
+		const { showSuccessToast = false } = options;
 		if (!project?.id) return;
 
 		try {
@@ -1428,7 +1030,7 @@
 			project = newData.project || project;
 			tasks = newData.tasks || [];
 			documents = newData.documents || [];
-			images = newData.images || [];
+			images = (newData.images || []) as OntologyImageAsset[];
 			plans = newData.plans || [];
 			goals = newData.goals || [];
 			milestones = newData.milestones || [];
@@ -1438,7 +1040,9 @@
 			await loadProjectNotificationSettings();
 			await ensureProjectMembersLoaded({ force: true });
 
-			toastService.success('Data refreshed');
+			if (showSuccessToast) {
+				toastService.success('Data refreshed');
+			}
 		} catch (error) {
 			console.error('[Project] Failed to refresh', error);
 			void logOntologyClientError(error, {
@@ -1452,48 +1056,13 @@
 		}
 	}
 
-	async function handleProjectIconApplied() {
-		if (!project?.id) return;
-
-		try {
-			const response = await fetch(`/api/onto/projects/${project.id}`);
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to refresh project image');
-			}
-
-			const nextProject = payload?.data?.project;
-			if (nextProject) {
-				project = nextProject as Project;
-			}
-
-			toastService.success('Project image updated');
-		} catch (error) {
-			void logOntologyClientError(error, {
-				endpoint: `/api/onto/projects/${project.id}`,
-				method: 'GET',
-				projectId: project.id,
-				entityType: 'project',
-				operation: 'project_icon_refresh'
-			});
-			toastService.error(
-				error instanceof Error ? error.message : 'Failed to refresh project image'
-			);
-		}
-	}
-
-	function openProjectIconStudioFromEditModal() {
-		toastService.info('Project image generation is temporarily disabled.');
-	}
-
 	// ============================================================
 	// EVENT HANDLERS
 	// ============================================================
 
 	async function handleDocumentSaved() {
 		// Refresh data but keep modal open - user can close manually when done editing
-		await refreshData();
+		await refreshData({ showSuccessToast: false });
 		docTreeViewRef?.refresh();
 	}
 
@@ -1542,7 +1111,8 @@
 		deleteDocumentHasChildren = hasChildren;
 		// Count children if it's a folder - rough estimate
 		if (hasChildren && docTreeStructure) {
-			const countChildren = (nodes: { id: string; children?: any[] }[]): number => {
+			type DocTreeNode = { id: string; children?: DocTreeNode[] };
+			const countChildren = (nodes: DocTreeNode[]): number => {
 				let count = 0;
 				for (const node of nodes) {
 					if (node.id === docId && node.children) {
@@ -1632,7 +1202,7 @@
 				error instanceof Error ? error.message : 'Failed to delete document'
 			);
 			// On error, refresh to restore correct state
-			void refreshData();
+			void refreshData({ showSuccessToast: false });
 			docTreeViewRef?.refresh();
 		}
 	}
@@ -1650,11 +1220,11 @@
 		showTaskCreateModal = false;
 		// Auto-open edit modal for the newly created task
 		editingTaskId = taskId;
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 	}
 
 	function handleTaskUpdated() {
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 		editingTaskId = null;
 	}
 
@@ -1673,11 +1243,11 @@
 		showPlanCreateModal = false;
 		// Auto-open edit modal for the newly created plan
 		editingPlanId = planId;
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 	}
 
 	function handlePlanUpdated() {
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 		editingPlanId = null;
 	}
 
@@ -1695,11 +1265,11 @@
 		showGoalCreateModal = false;
 		// Auto-open edit modal for the newly created goal
 		editingGoalId = goalId;
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 	}
 
 	function handleGoalUpdated() {
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 		editingGoalId = null;
 	}
 
@@ -1719,11 +1289,11 @@
 		showRiskCreateModal = false;
 		// Auto-open edit modal for the newly created risk
 		editingRiskId = riskId;
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 	}
 
 	function handleRiskUpdated() {
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 		editingRiskId = null;
 	}
 
@@ -1742,11 +1312,11 @@
 		milestoneCreateGoalContext = null;
 		// Auto-open edit modal for the newly created milestone
 		editingMilestoneId = milestoneId;
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 	}
 
 	function handleMilestoneUpdated() {
-		void refreshData();
+		void refreshData({ showSuccessToast: false });
 		editingMilestoneId = null;
 	}
 
@@ -1876,73 +1446,70 @@
 		}
 	}
 
-	function handleNextStepEntityClick(ref: EntityReference) {
-		// Open the appropriate modal based on entity type
-		switch (ref.type) {
+	function openEntityEditor(
+		entityType: string,
+		entityId: string
+	): 'opened' | 'unsupported' | 'unknown' {
+		const resolution = resolveEntityOpenAction(entityType, entityId);
+		if (resolution.result !== 'opened') {
+			return resolution.result;
+		}
+		const actionEntityId = resolution.action.entityId;
+
+		switch (resolution.action.kind) {
 			case 'task':
-				editingTaskId = ref.id;
-				break;
+				editingTaskId = actionEntityId;
+				return 'opened';
 			case 'plan':
-				editingPlanId = ref.id;
-				break;
+				editingPlanId = actionEntityId;
+				return 'opened';
 			case 'goal':
-				editingGoalId = ref.id;
-				break;
-			case 'note':
+				editingGoalId = actionEntityId;
+				return 'opened';
 			case 'document':
-				activeDocumentId = ref.id;
+				activeDocumentId = actionEntityId;
 				showDocumentModal = true;
-				break;
+				return 'opened';
 			case 'milestone':
-				editingMilestoneId = ref.id;
-				break;
+				editingMilestoneId = actionEntityId;
+				return 'opened';
 			case 'risk':
-				editingRiskId = ref.id;
-				break;
+				editingRiskId = actionEntityId;
+				return 'opened';
 			case 'event':
-				editingEventId = ref.id;
-				break;
+				editingEventId = actionEntityId;
+				return 'opened';
 			case 'project':
 				showProjectEditModal = true;
-				break;
-			default:
-				console.warn(`Unknown entity type clicked: ${ref.type}`);
+				return 'opened';
 		}
 	}
 
-	function handleGraphNodeClick(node: GraphNode) {
-		// Open the appropriate modal based on node type
-		switch (node.type) {
-			case 'task':
-				editingTaskId = node.id;
-				break;
-			case 'plan':
-				editingPlanId = node.id;
-				break;
-			case 'goal':
-				editingGoalId = node.id;
-				break;
-			case 'note':
-			case 'document':
-				activeDocumentId = node.id;
-				showDocumentModal = true;
-				break;
-			case 'milestone':
-				editingMilestoneId = node.id;
-				break;
-			case 'risk':
-				editingRiskId = node.id;
-				break;
-			case 'event':
-				editingEventId = node.id;
-				break;
-			case 'project':
-				// Already on this project page, open edit modal
-				showProjectEditModal = true;
-				break;
-			default:
-				console.warn(`Unknown graph node type clicked: ${node.type}`);
+	function handleEntityClick(
+		entityType: string,
+		entityId: string,
+		options: { unknownContext: string; unsupportedContext?: string }
+	) {
+		const result = openEntityEditor(entityType, entityId);
+		if (result === 'unsupported' && options.unsupportedContext) {
+			console.info(`${options.unsupportedContext}: ${entityType}`);
+			return;
 		}
+		if (result === 'unknown') {
+			console.warn(`${options.unknownContext}: ${entityType}`);
+		}
+	}
+
+	function handleNextStepEntityClick(ref: EntityReference) {
+		handleEntityClick(ref.type, ref.id, {
+			unknownContext: 'Unknown entity type clicked'
+		});
+	}
+
+	function handleGraphNodeClick(node: GraphNode) {
+		handleEntityClick(node.type, node.id, {
+			unknownContext: 'Unknown graph node type clicked'
+		});
 	}
 
 	function handleGraphShow() {
@@ -1953,44 +1520,14 @@
 	}
 
 	function handleActivityLogEntityClick(entityType: ProjectLogEntityType, entityId: string) {
-		// Open the appropriate modal based on entity type
-		switch (entityType) {
-			case 'task':
-				editingTaskId = entityId;
-				break;
-			case 'plan':
-				editingPlanId = entityId;
-				break;
-			case 'goal':
-				editingGoalId = entityId;
-				break;
-			case 'note':
-			case 'document':
-				// Both notes and documents use the DocumentModal
-				activeDocumentId = entityId;
-				showDocumentModal = true;
-				break;
-			case 'milestone':
-				editingMilestoneId = entityId;
-				break;
-			case 'risk':
-				editingRiskId = entityId;
-				break;
-			case 'event':
-				editingEventId = entityId;
-				break;
-			case 'project':
-				// Already on this project page, open edit modal
-				showProjectEditModal = true;
-				break;
-			case 'requirement':
-			case 'source':
-				// These entity types don't have edit modals yet
-				console.info(`No edit modal available for entity type: ${entityType}`);
-				break;
-			default:
-				console.warn(`Unknown activity log entity type clicked: ${entityType}`);
-		}
+		handleEntityClick(entityType, entityId, {
+			unsupportedContext: 'No edit modal available for entity type',
+			unknownContext: 'Unknown activity log entity type clicked'
+		});
+	}
+
+	function refreshProjectSilently() {
+		void refreshData({ showSuccessToast: false });
 	}
 </script>
 
@@ -1999,72 +1536,14 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background overflow-x-hidden">
-	<!-- Header - Project identity card -->
-	<header class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4">
-		<div
-			class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-3 sm:p-4 space-y-1 sm:space-y-3"
-		>
-			<!-- Title Row -->
-			<div class="flex items-center justify-between gap-1.5 sm:gap-2">
-				<div class="flex items-center gap-1.5 sm:gap-3 min-w-0">
-					<button
-						onclick={() => goto('/projects')}
-						class="flex items-center justify-center p-1 sm:p-2 rounded-lg hover:bg-muted transition-colors shrink-0 pressable"
-						aria-label="Back to projects"
-					>
-						<ArrowLeft class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-					</button>
-					<ProjectIcon
-						svg={project?.icon_svg ?? null}
-						concept={project?.icon_concept ?? null}
-						size="md"
-					/>
-					<div class="min-w-0">
-						<h1
-							class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
-							style:view-transition-name="project-title-{project.id}"
-						>
-							{project?.name || 'Untitled Project'}
-						</h1>
-						{#if project?.description}
-							<p
-								class="text-xs text-muted-foreground mt-0.5 line-clamp-2 hidden sm:block"
-								title={project.description}
-							>
-								{project.description}
-							</p>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Settings dropdown menu -->
-				<div class="flex items-center gap-1.5 shrink-0">
-					<button
-						bind:this={mobileMenuButtonEl}
-						onclick={openMobileMenu}
-						class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
-						aria-label="Project options"
-						aria-expanded={showMobileMenu}
-					>
-						<MoreHorizontal class="w-5 h-5 text-muted-foreground" />
-					</button>
-				</div>
-			</div>
-
-			<!-- Next Step Display -->
-			<NextStepDisplay
-				projectId={project.id}
-				nextStepShort={project.next_step_short}
-				nextStepLong={project.next_step_long}
-				nextStepSource={project.next_step_source}
-				nextStepUpdatedAt={project.next_step_updated_at}
-				onEntityClick={handleNextStepEntityClick}
-				onNextStepGenerated={async () => {
-					await refreshData();
-				}}
-			/>
-		</div>
-	</header>
+	<ProjectHeaderCard
+		{project}
+		{showMobileMenu}
+		onBack={() => goto('/projects')}
+		onOpenMenu={handleHeaderMenuOpen}
+		onEntityClick={handleNextStepEntityClick}
+		onNextStepGenerated={refreshProjectSilently}
+	/>
 
 	<!-- Main Content -->
 	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
@@ -2164,49 +1643,13 @@
 					</div>
 				{/await}
 
-				<!-- Mobile History Section (Daily Briefs & Activity Log) -->
-				{#if canViewLogs}
-					<!-- History Section Divider -->
-					<div class="relative py-3 mt-3">
-						<div class="absolute inset-0 flex items-center px-2">
-							<div class="w-full border-t border-border/40"></div>
-						</div>
-						<div class="relative flex justify-center">
-							<span
-								class="bg-background px-2 text-[9px] font-medium text-muted-foreground/70 uppercase tracking-widest"
-							>
-								History
-							</span>
-						</div>
-					</div>
-
-					<!-- Daily Briefs Panel -->
-					<div class="space-y-2">
-						{#await import('$lib/components/ontology/ProjectBriefsPanel.svelte') then { default: ProjectBriefsPanel }}
-							<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
-						{:catch}
-							<div
-								class="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground"
-							>
-								Unable to load daily briefs.
-							</div>
-						{/await}
-
-						{#await import('$lib/components/ontology/ProjectActivityLogPanel.svelte') then { default: ProjectActivityLogPanel }}
-							<!-- Activity Log Panel -->
-							<ProjectActivityLogPanel
-								projectId={project.id}
-								onEntityClick={handleActivityLogEntityClick}
-							/>
-						{:catch}
-							<div
-								class="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground"
-							>
-								Unable to load activity log.
-							</div>
-						{/await}
-					</div>
-				{/if}
+				<ProjectHistorySection
+					{canViewLogs}
+					projectId={project.id}
+					projectName={project.name || 'Project'}
+					compact={true}
+					onEntityClick={handleActivityLogEntityClick}
+				/>
 			{/if}
 		</div>
 
@@ -2219,616 +1662,71 @@
 			{:else}
 				<!-- Hydrated state - show real content -->
 				<div class="min-w-0 space-y-2 sm:space-y-4">
-					<!-- Documents Section - Collapsible -->
-					<section
-						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-					>
-						<div
-							class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3"
-						>
-							<button
-								onclick={() => (documentsExpanded = !documentsExpanded)}
-								class="flex items-center gap-2 flex-1 text-left hover:bg-muted/60 rounded-lg transition-colors pressable"
-							>
-								<div
-									class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
-								>
-									<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
-								</div>
-								<div>
-									<p class="text-xs sm:text-sm font-semibold text-foreground">
-										Documents
-									</p>
-									<p class="text-[10px] sm:text-xs text-muted-foreground">
-										{documents.length}
-										{documents.length === 1 ? 'document' : 'documents'}
-									</p>
-								</div>
-							</button>
-							<div class="flex items-center gap-1 sm:gap-2">
-								{#if canEdit}
-									<button
-										onclick={() => handleCreateDocument(null)}
-										class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
-										aria-label="Add document"
-									>
-										<Plus
-											class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground"
-										/>
-									</button>
-								{/if}
-								<button
-									onclick={() => (documentsExpanded = !documentsExpanded)}
-									class="p-1 sm:p-1.5 rounded-md hover:bg-muted transition-colors pressable"
-									aria-label={documentsExpanded
-										? 'Collapse documents'
-										: 'Expand documents'}
-								>
-									<ChevronDown
-										class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground transition-transform duration-[120ms] {documentsExpanded
-											? 'rotate-180'
-											: ''}"
-									/>
-								</button>
-							</div>
-						</div>
-
-						{#if documentsExpanded}
-							<div
-								class="border-t border-border"
-								transition:slide={{ duration: 120 }}
-							>
-								<DocTreeView
-									bind:this={docTreeViewRef}
-									projectId={project.id}
-									onOpenDocument={handleOpenDocument}
-									onCreateDocument={handleCreateDocument}
-									onMoveDocument={canEdit ? handleMoveDocument : undefined}
-									onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
-									onDataLoaded={handleDocTreeDataLoaded}
-									selectedDocumentId={activeDocumentId}
-								/>
-							</div>
-						{/if}
-					</section>
+					<ProjectDocumentsSection
+						projectId={project.id}
+						{documents}
+						{canEdit}
+						{documentsExpanded}
+						{activeDocumentId}
+						onToggleExpanded={() => (documentsExpanded = !documentsExpanded)}
+						onCreateDocument={handleCreateDocument}
+						onOpenDocument={handleOpenDocument}
+						onMoveDocument={canEdit ? handleMoveDocument : undefined}
+						onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
+						onDataLoaded={handleDocTreeDataLoaded}
+						onTreeRefChange={(ref) => {
+							docTreeViewRef = ref;
+						}}
+					/>
 				</div>
 			{/if}
 
 			<!-- Right Column: Insight Panels -->
-			{#if isHydrating && skeletonCounts}
-				<!-- Skeleton insight panels -->
-				<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
-					<!-- Graph Preview (compact, clickable) -->
-					{#if !graphHidden}
-						<button
-							type="button"
-							onclick={() => (showGraphModal = true)}
-							class="w-full bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden text-left hover:bg-muted/50 transition-colors pressable group"
-						>
-							<div class="flex items-center justify-between gap-2 px-4 py-3">
-								<div class="flex items-center gap-3">
-									<div
-										class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
-									>
-										<GitBranch class="w-4 h-4 text-accent" />
-									</div>
-									<div>
-										<p class="text-sm font-semibold text-foreground">
-											Project Graph
-										</p>
-										<p class="text-xs text-muted-foreground">
-											Click to explore
-										</p>
-									</div>
-								</div>
-								<Maximize2
-									class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-								/>
-							</div>
-						</button>
-					{/if}
-
-					<InsightPanelSkeleton
-						icon={Target}
-						label="Goals"
-						count={skeletonCounts.goal_count}
-						description="What success looks like"
-						expanded={true}
-					/>
-					<InsightPanelSkeleton
-						icon={Clock}
-						label="Events"
-						count={0}
-						description="Meetings and time blocks"
-					/>
-					<InsightPanelSkeleton
-						icon={ImageIcon}
-						label="Images"
-						count={skeletonCounts.image_count}
-						description="Visual context and OCR"
-					/>
-					<InsightPanelSkeleton
-						icon={Calendar}
-						label="Plans"
-						count={skeletonCounts.plan_count}
-						description="Execution scaffolding"
-					/>
-					<InsightPanelSkeleton
-						icon={ListChecks}
-						label="Tasks"
-						count={skeletonCounts.task_count}
-						description="What needs to move"
-					/>
-					<InsightPanelSkeleton
-						icon={AlertCircle}
-						label="Risks"
-						count={skeletonCounts.risk_count}
-						description="What could go wrong"
-					/>
-
-					<!-- History Section Divider -->
-					<div class="relative py-4">
-						<div class="absolute inset-0 flex items-center px-4">
-							<div class="w-full border-t border-border/40"></div>
-						</div>
-						<div class="relative flex justify-center">
-							<span
-								class="bg-background px-3 text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest"
-							>
-								History
-							</span>
-						</div>
-					</div>
-
-					<!-- Daily Briefs Panel - loads lazily, show placeholder -->
-					<div
-						class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-					>
-						<div class="flex items-center gap-3 px-4 py-3">
-							<div
-								class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
-							>
-								<FileText class="w-4 h-4 text-accent" />
-							</div>
-							<div>
-								<p class="text-sm font-semibold text-foreground">Daily Briefs</p>
-								<p class="text-xs text-muted-foreground">AI-generated summaries</p>
-							</div>
-						</div>
-					</div>
-
-					{#if canViewLogs}
-						<!-- Activity Log Panel - loads lazily, show placeholder -->
-						<div
-							class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-						>
-							<div class="flex items-center gap-3 px-4 py-3">
-								<div
-									class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
-								>
-									<Clock class="w-4 h-4 text-accent" />
-								</div>
-								<div>
-									<p class="text-sm font-semibold text-foreground">
-										Activity Log
-									</p>
-									<p class="text-xs text-muted-foreground">Recent changes</p>
-								</div>
-							</div>
-						</div>
-					{/if}
-				</aside>
-			{:else}
-				<!-- Hydrated insight panels -->
-				<aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
-					<!-- Graph Preview (compact, clickable) -->
-					{#if !graphHidden}
-						<button
-							type="button"
-							onclick={() => (showGraphModal = true)}
-							class="w-full bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden text-left hover:bg-muted/50 transition-colors pressable group"
-						>
-							<div class="flex items-center justify-between gap-2 px-4 py-3">
-								<div class="flex items-center gap-3">
-									<div
-										class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
-									>
-										<GitBranch class="w-4 h-4 text-accent" />
-									</div>
-									<div>
-										<p class="text-sm font-semibold text-foreground">
-											Project Graph
-										</p>
-										<p class="text-xs text-muted-foreground">
-											Click to explore
-										</p>
-									</div>
-								</div>
-								<Maximize2
-									class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-								/>
-							</div>
-						</button>
-					{/if}
-
-					{#each insightPanels as section}
-						{@const isOpen = expandedPanels[section.key]}
-						{@const SectionIcon = section.icon}
-						{@const iconStyles = getPanelIconStyles(section.key)}
-						<div
-							class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-						>
-							<div class="flex items-center justify-between gap-3 px-4 py-3">
-								<button
-									onclick={() => togglePanel(section.key)}
-									class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 rounded-lg transition-colors pressable"
-								>
-									<div
-										class="w-9 h-9 rounded-lg flex items-center justify-center {iconStyles}"
-									>
-										<SectionIcon class="w-4 h-4" />
-									</div>
-									<div class="min-w-0">
-										<p class="text-sm font-semibold text-foreground">
-											{section.label}
-											<span class="text-muted-foreground font-normal"
-												>({section.items.length})</span
-											>
-										</p>
-										<p class="text-xs text-muted-foreground">
-											{#if section.description}
-												{section.description}
-											{/if}
-										</p>
-									</div>
-								</button>
-								<div class="flex items-center gap-2">
-									{#if canEdit}
-										<button
-											onclick={() => openCreateModalForPanel(section.key)}
-											class="p-1.5 rounded-md hover:bg-muted transition-colors pressable"
-											aria-label="Add {section.label.toLowerCase()}"
-										>
-											<Plus class="w-4 h-4 text-muted-foreground" />
-										</button>
-									{/if}
-									<button
-										onclick={() => togglePanel(section.key)}
-										class="p-1.5 rounded-md hover:bg-muted transition-colors pressable"
-										aria-label={isOpen
-											? `Collapse ${section.label.toLowerCase()}`
-											: `Expand ${section.label.toLowerCase()}`}
-									>
-										<ChevronDown
-											class="w-4 h-4 text-muted-foreground transition-transform duration-[120ms] {isOpen
-												? 'rotate-180'
-												: ''}"
-										/>
-									</button>
-								</div>
-							</div>
-
-							{#if isOpen}
-								<div
-									class="border-t border-border"
-									transition:slide={{ duration: 120 }}
-								>
-									<!-- Filter/Sort Controls -->
-									{#if section.key !== 'images'}
-										<div
-											class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30"
-										>
-											<InsightFilterDropdown
-												filterGroups={getPanelFilterGroups(section.key)}
-												activeFilters={panelStates[section.key].filters}
-												onchange={(filters) =>
-													updatePanelFilters(section.key, filters)}
-											/>
-											<InsightSortDropdown
-												sortOptions={PANEL_CONFIGS[section.key].sorts}
-												currentSort={panelStates[section.key].sort}
-												onchange={(sort) =>
-													updatePanelSort(section.key, sort)}
-											/>
-										</div>
-									{/if}
-
-									{#if section.key === 'tasks'}
-										{#if filteredTasks.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each filteredTasks as task}
-													{@const taskSortSummary =
-														getTaskSortSummary(task)}
-													<li class="flex items-center gap-1 min-w-0">
-														<EntityListItem
-															type="task"
-															title={task.title}
-															metadata="{formatState(
-																task.state_key
-															)} · {formatTaskAssigneeSummary(
-																task
-															)} · {taskSortSummary}"
-															state={task.state_key}
-															onclick={() =>
-																(editingTaskId = task.id)}
-															class="flex-1 min-w-0 !w-auto"
-														/>
-														<a
-															href="/projects/{project.id}/tasks/{task.id}"
-															class="shrink-0 p-2 mr-1 rounded-lg hover:bg-accent/10 transition-colors pressable"
-															title="Open task focus page"
-														>
-															<ExternalLink
-																class="w-4 h-4 text-muted-foreground hover:text-accent"
-															/>
-														</a>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
-													No tasks yet
-												</p>
-												<p class="text-xs text-muted-foreground/70 mt-1">
-													Add tasks to track work
-												</p>
-											</div>
-										{/if}
-									{:else if section.key === 'plans'}
-										{#if filteredPlans.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each filteredPlans as plan}
-													{@const sortDisplay = getSortValueDisplay(
-														plan as unknown as Record<string, unknown>,
-														panelStates.plans.sort.field,
-														'plans'
-													)}
-													<li>
-														<EntityListItem
-															type="plan"
-															title={plan.name}
-															metadata="{formatState(
-																plan.state_key
-															)} · {sortDisplay.value}"
-															state={plan.state_key}
-															onclick={() =>
-																(editingPlanId = plan.id)}
-														/>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
-													No plans yet
-												</p>
-												<p class="text-xs text-muted-foreground/70 mt-1">
-													Create a plan to organize work
-												</p>
-											</div>
-										{/if}
-									{:else if section.key === 'goals'}
-										{#if filteredGoals.length > 0}
-											<div class="divide-y divide-border/80">
-												{#each filteredGoals as goal (goal.id)}
-													{@const sortDisplay = getSortValueDisplay(
-														goal as unknown as Record<string, unknown>,
-														panelStates.goals.sort.field,
-														'goals'
-													)}
-													{@const goalMilestones =
-														milestonesByGoalId.get(goal.id) || []}
-													{@const completedCount = goalMilestones.filter(
-														(m) =>
-															resolveMilestoneState(m).state ===
-															'completed'
-													).length}
-													<!-- Goal Card with nested milestones -->
-													<div
-														class="bg-card rounded-lg overflow-hidden shadow-ink border-t border-r border-b border-border"
-													>
-														<!-- Goal Header -->
-														<div class="flex items-start">
-															<EntityListItem
-																type="goal"
-																title={goal.name}
-																metadata="{formatState(
-																	goal.state_key
-																)} · {sortDisplay.value}"
-																state={goal.state_key}
-																onclick={() =>
-																	(editingGoalId = goal.id)}
-																class="flex-1 !rounded-none !shadow-none"
-															/>
-															{#if goalMilestones.length > 0}
-																<span
-																	class="px-2.5 py-2.5 text-[10px] text-muted-foreground shrink-0"
-																>
-																	{completedCount}/{goalMilestones.length}
-																</span>
-															{/if}
-														</div>
-
-														<!-- Nested Milestones Section -->
-														<GoalMilestonesSection
-															milestones={goalMilestones}
-															goalId={goal.id}
-															goalName={goal.name}
-															goalState={goal.state_key}
-															{canEdit}
-															onAddMilestone={handleAddMilestoneFromGoal}
-															onEditMilestone={(id) =>
-																(editingMilestoneId = id)}
-															onToggleMilestoneComplete={handleToggleMilestoneComplete}
-														/>
-													</div>
-												{/each}
-											</div>
-										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
-													No goals yet
-												</p>
-												<p class="text-xs text-muted-foreground/70 mt-1">
-													Set goals to define success
-												</p>
-											</div>
-										{/if}
-									{:else if section.key === 'images'}
-										<div class="px-4 py-3">
-											{#await import('$lib/components/ontology/ImageAssetsPanel.svelte') then { default: ImageAssetsPanel }}
-												<ImageAssetsPanel
-													bind:this={imageAssetsPanelRef}
-													projectId={project.id}
-													showTitle={false}
-													showUploadButton={false}
-													{canEdit}
-													onChanged={() => void refreshData()}
-												/>
-											{:catch}
-												<div class="py-2 text-sm text-muted-foreground">
-													Unable to load image assets.
-												</div>
-											{/await}
-										</div>
-									{:else if section.key === 'risks'}
-										{#if filteredRisks.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each filteredRisks as risk}
-													{@const sortDisplay = getSortValueDisplay(
-														risk as unknown as Record<string, unknown>,
-														panelStates.risks.sort.field,
-														'risks'
-													)}
-													{@const severity = risk.props?.severity as
-														| 'low'
-														| 'medium'
-														| 'high'
-														| 'critical'
-														| undefined}
-													<li>
-														<EntityListItem
-															type="risk"
-															title={risk.title}
-															metadata="{formatState(
-																risk.state_key
-															)}{severity
-																? ` · ${severity} severity`
-																: ''} · {sortDisplay.value}"
-															state={risk.state_key}
-															{severity}
-															onclick={() =>
-																(editingRiskId = risk.id)}
-														/>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
-													No risks identified
-												</p>
-												<p class="text-xs text-muted-foreground/70 mt-1">
-													Document risks to track blockers
-												</p>
-											</div>
-										{/if}
-									{:else if section.key === 'events'}
-										{#if filteredEvents.length > 0}
-											<ul class="divide-y divide-border/80">
-												{#each filteredEvents as event}
-													{@const sortDisplay = getSortValueDisplay(
-														event as unknown as Record<string, unknown>,
-														panelStates.events.sort.field,
-														'events'
-													)}
-													{@const syncStatus = isEventSynced(event)
-														? ''
-														: ' · Local only'}
-													<li>
-														<EntityListItem
-															type="event"
-															title={event.title}
-															metadata="{formatEventDateCompact(
-																event
-															)} · {sortDisplay.value}{syncStatus}"
-															state={event.state_key}
-															onclick={() =>
-																(editingEventId = event.id)}
-														/>
-													</li>
-												{/each}
-											</ul>
-										{:else}
-											<div class="px-4 py-4 text-center">
-												<p class="text-sm text-muted-foreground">
-													No events scheduled
-												</p>
-												<p class="text-xs text-muted-foreground/70 mt-1">
-													Add events to track meetings
-												</p>
-											</div>
-										{/if}
-									{/if}
-
-									<!-- Special Toggles (Show Completed/Deleted) -->
-									{#if section.key !== 'images'}
-										<InsightSpecialToggles
-											toggles={PANEL_CONFIGS[section.key].specialToggles}
-											values={panelStates[section.key].toggles}
-											counts={panelCounts[section.key]}
-											onchange={(toggleId, value) =>
-												updatePanelToggle(section.key, toggleId, value)}
-										/>
-									{/if}
-								</div>
-							{/if}
-						</div>
-					{/each}
-
-					{#if canViewLogs}
-						<!-- History Section Divider -->
-						<div class="relative py-2 sm:py-4">
-							<div class="absolute inset-0 flex items-center px-3 sm:px-4">
-								<div class="w-full border-t border-border/40"></div>
-							</div>
-							<div class="relative flex justify-center">
-								<span
-									class="bg-background px-2 sm:px-3 text-[9px] sm:text-[10px] font-medium text-muted-foreground/70 uppercase tracking-widest"
-								>
-									History
-								</span>
-							</div>
-						</div>
-
-						<!-- Daily Briefs Panel -->
-						{#await import('$lib/components/ontology/ProjectBriefsPanel.svelte') then { default: ProjectBriefsPanel }}
-							<ProjectBriefsPanel projectId={project.id} projectName={project.name} />
-						{:catch}
-							<div
-								class="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground"
-							>
-								Unable to load daily briefs.
-							</div>
-						{/await}
-
-						<!-- Activity Log Panel -->
-						{#await import('$lib/components/ontology/ProjectActivityLogPanel.svelte') then { default: ProjectActivityLogPanel }}
-							<ProjectActivityLogPanel
-								projectId={project.id}
-								onEntityClick={handleActivityLogEntityClick}
-							/>
-						{:catch}
-							<div
-								class="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground"
-							>
-								Unable to load activity log.
-							</div>
-						{/await}
-					{/if}
-				</aside>
-			{/if}
+			<ProjectInsightRail
+				{isHydrating}
+				{skeletonCounts}
+				{graphHidden}
+				{canViewLogs}
+				{canEdit}
+				projectId={project.id}
+				projectName={project.name || 'Project'}
+				{insightPanels}
+				{expandedPanels}
+				{panelStates}
+				{panelCounts}
+				{filteredTasks}
+				{filteredPlans}
+				{filteredGoals}
+				{filteredRisks}
+				{filteredEvents}
+				{milestonesByGoalId}
+				{getPanelFilterGroups}
+				{getPanelIconStyles}
+				{formatState}
+				{formatTaskAssigneeSummary}
+				{getTaskSortSummary}
+				{formatEventDateCompact}
+				{isEventSynced}
+				onShowGraphModal={() => (showGraphModal = true)}
+				onTogglePanel={togglePanel}
+				onOpenCreateModalForPanel={openCreateModalForPanel}
+				onUpdatePanelFilters={updatePanelFilters}
+				onUpdatePanelSort={updatePanelSort}
+				onUpdatePanelToggle={updatePanelToggle}
+				onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
+				onEditTask={(id) => (editingTaskId = id)}
+				onEditPlan={(id) => (editingPlanId = id)}
+				onEditGoal={(id) => (editingGoalId = id)}
+				onEditRisk={(id) => (editingRiskId = id)}
+				onEditMilestone={(id) => (editingMilestoneId = id)}
+				onEditEvent={(id) => (editingEventId = id)}
+				onToggleMilestoneComplete={handleToggleMilestoneComplete}
+				onHistoryEntityClick={handleActivityLogEntityClick}
+				onRefreshData={refreshProjectSilently}
+				onImageAssetsPanelRefChange={(ref) => {
+					imageAssetsPanelRef = ref;
+				}}
+			/>
 		</div>
 	</main>
 </div>
@@ -3051,10 +1949,9 @@
 			{project}
 			{contextDocument}
 			{canDeleteProject}
-			onOpenIconStudio={openProjectIconStudioFromEditModal}
 			onClose={() => (showProjectEditModal = false)}
 			onSaved={async () => {
-				await refreshData();
+				await refreshData({ showSuccessToast: false });
 				showProjectEditModal = false;
 			}}
 		/>
@@ -3071,21 +1968,6 @@
 			canManageMembers={canAdmin}
 			onLeftProject={() => goto('/projects')}
 			onClose={() => (showCollabModal = false)}
-		/>
-	{/await}
-{/if}
-
-<!-- Project Icon Studio Modal (temporarily disabled) -->
-{#if ENABLE_PROJECT_ICON_STUDIO_UI && showProjectIconStudioModal && canEdit}
-	{#await import('$lib/components/project/ProjectIconStudioModal.svelte') then { default: ProjectIconStudioModal }}
-		<ProjectIconStudioModal
-			bind:isOpen={showProjectIconStudioModal}
-			projectId={project.id}
-			projectName={project.name || 'Project'}
-			existingIconSvg={project.icon_svg ?? null}
-			existingIconConcept={project.icon_concept ?? null}
-			onApplied={handleProjectIconApplied}
-			onClose={() => (showProjectIconStudioModal = false)}
 		/>
 	{/await}
 {/if}

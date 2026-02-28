@@ -7,3 +7,4 @@ export { default as InsightSpecialToggles } from './InsightSpecialToggles.svelte
 
 // Configuration and types
 export * from './insight-panel-config';
+export * from './panel-data-controller';

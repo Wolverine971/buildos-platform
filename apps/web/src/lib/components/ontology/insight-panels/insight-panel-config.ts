@@ -638,11 +638,12 @@ export interface SortValueDisplay {
  * Get the formatted sort value for display in an entity item
  */
 export function getSortValueDisplay(
-	entity: Record<string, unknown>,
+	entity: object,
 	sortField: string,
 	_panelKey?: InsightPanelKey
 ): SortValueDisplay {
-	const value = entity[sortField];
+	const entityRecord = entity as Record<string, unknown>;
+	const value = entityRecord[sortField];
 
 	switch (sortField) {
 		// Date fields - show relative time
