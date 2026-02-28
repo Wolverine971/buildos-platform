@@ -31,6 +31,36 @@
 	}: Props = $props();
 
 	const proseClasses = getProseClasses('sm');
+
+	const USER_MESSAGE_PREVIEW_LINES = 10;
+	const USER_MESSAGE_COLLAPSE_CHAR_THRESHOLD = 800;
+
+	let expandedUserMessages = $state<Record<string, boolean>>({});
+
+	function getLineCount(content: string): number {
+		return content.split(/\r\n|\r|\n/).length;
+	}
+
+	function isCollapsibleUserMessage(message: UIMessage): boolean {
+		if (message.type !== 'user') return false;
+		const content = message.content?.trim() ?? '';
+		if (!content) return false;
+		return (
+			getLineCount(content) > USER_MESSAGE_PREVIEW_LINES ||
+			content.length > USER_MESSAGE_COLLAPSE_CHAR_THRESHOLD
+		);
+	}
+
+	function isUserMessageExpanded(messageId: string): boolean {
+		return expandedUserMessages[messageId] ?? false;
+	}
+
+	function toggleUserMessageExpansion(messageId: string): void {
+		expandedUserMessages = {
+			...expandedUserMessages,
+			[messageId]: !(expandedUserMessages[messageId] ?? false)
+		};
+	}
 </script>
 
 <!-- INKPRINT message container with muted background -->
@@ -91,9 +121,21 @@
 					>
 						<div
 							class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+							class:user-message-content-collapsed={isCollapsibleUserMessage(message) &&
+								!isUserMessageExpanded(message.id)}
 						>
 							{message.content}
 						</div>
+						{#if isCollapsibleUserMessage(message)}
+							<button
+								type="button"
+								class="mt-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent transition-opacity hover:opacity-80"
+								onclick={() => toggleUserMessageExpansion(message.id)}
+								aria-expanded={isUserMessageExpanded(message.id)}
+							>
+								{isUserMessageExpanded(message.id) ? 'Less' : 'More'}
+							</button>
+						{/if}
 						<!-- INKPRINT: Timestamp -->
 						<div
 							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent"
@@ -318,5 +360,10 @@
 	.agent-chat-scroll > :global(*) {
 		content-visibility: auto;
 		contain-intrinsic-size: 0 120px;
+	}
+
+	.user-message-content-collapsed {
+		max-height: calc(10 * 1.625em);
+		overflow: hidden;
 	}
 </style>

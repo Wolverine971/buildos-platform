@@ -190,18 +190,6 @@
 			expanded={true}
 		/>
 		<InsightPanelSkeleton
-			icon={Clock}
-			label="Events"
-			count={0}
-			description="Meetings and time blocks"
-		/>
-		<InsightPanelSkeleton
-			icon={ImageIcon}
-			label="Images"
-			count={skeletonCounts.image_count}
-			description="Visual context and OCR"
-		/>
-		<InsightPanelSkeleton
 			icon={Calendar}
 			label="Plans"
 			count={skeletonCounts.plan_count}
@@ -212,6 +200,18 @@
 			label="Tasks"
 			count={skeletonCounts.task_count}
 			description="What needs to move"
+		/>
+		<InsightPanelSkeleton
+			icon={Clock}
+			label="Events"
+			count={0}
+			description="Meetings and time blocks"
+		/>
+		<InsightPanelSkeleton
+			icon={ImageIcon}
+			label="Images"
+			count={skeletonCounts.image_count}
+			description="Visual context and OCR"
 		/>
 		<InsightPanelSkeleton
 			icon={AlertCircle}
