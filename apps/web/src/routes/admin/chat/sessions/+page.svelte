@@ -321,7 +321,7 @@
 				return 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20';
 			case 'info':
 			default:
-				return 'bg-accent/10 text-accent-foreground border-accent/20';
+				return 'bg-accent/10 text-foreground border-accent/30';
 		}
 	}
 
@@ -371,7 +371,7 @@
 			case 'archived':
 				return 'bg-muted text-muted-foreground';
 			case 'compressed':
-				return 'bg-accent/10 text-accent-foreground';
+				return 'bg-accent/15 text-foreground';
 			case 'failed':
 				return 'bg-red-500/10 text-red-700 dark:text-red-300';
 			default:
@@ -403,7 +403,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="admin-page">
+<div class="sessions-page admin-page">
 	<AdminPageHeader
 		title="Chat Session Audit"
 		description="Replay complete agentic chat sessions with tool calls, LLM events, and payload traces."
@@ -505,7 +505,7 @@
 		</form>
 	</div>
 
-	<div class="grid grid-cols-1 xl:grid-cols-[320px,1fr] gap-3 items-start">
+	<div class="grid grid-cols-1 xl:grid-cols-[300px,1fr] gap-3 items-start min-w-0">
 		<div
 			class="bg-card border border-border rounded-lg shadow-ink overflow-hidden flex flex-col xl:max-h-[calc(100vh-220px)]"
 		>
@@ -558,36 +558,36 @@
 								</div>
 								{#if session.has_errors}
 									<span
-										class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-500/10 text-red-700 dark:text-red-300 shrink-0"
+										class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-700 dark:text-red-300 shrink-0"
 									>
 										<XCircle class="h-3 w-3" />
 										Error
 									</span>
 								{/if}
 							</div>
-							<div class="text-[11px] text-muted-foreground truncate">
+							<div class="text-xs text-muted-foreground truncate">
 								{session.user.email}
 							</div>
-							<div class="mt-0.5 text-[11px] text-muted-foreground">
+							<div class="mt-0.5 text-xs text-muted-foreground">
 								{formatDateTime(session.updated_at)}
 							</div>
 							<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
 								<span
-									class="px-1.5 py-0.5 rounded-full text-[10px] font-medium {statusBadge(
+									class="px-1.5 py-0.5 rounded-full text-xs font-medium {statusBadge(
 										session.status
 									)}"
 								>
 									{session.status}
 								</span>
 								<span
-									class="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-muted text-muted-foreground"
+									class="px-1.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground"
 								>
 									{session.context_type}
 								</span>
-								<span class="text-[10px] text-muted-foreground">
+								<span class="text-xs text-foreground/70">
 									{formatNumber(session.message_count)} msg
 								</span>
-								<span class="text-[10px] text-muted-foreground">
+								<span class="text-xs text-foreground/70">
 									{formatNumber(session.tool_call_count)} tools
 								</span>
 							</div>
@@ -627,7 +627,7 @@
 		</div>
 
 		<div
-			class="bg-card border border-border rounded-lg shadow-ink xl:max-h-[calc(100vh-220px)] flex flex-col"
+			class="bg-card border border-border rounded-lg shadow-ink xl:max-h-[calc(100vh-220px)] flex flex-col min-w-0 overflow-hidden"
 		>
 			{#if !selectedSessionId}
 				<div
@@ -663,14 +663,14 @@
 								{sessionDetail.session.user.email} · {sessionDetail.session
 									.context_type}
 							</div>
-							<div class="text-[11px] text-muted-foreground mt-0.5">
+							<div class="text-xs text-muted-foreground mt-0.5">
 								Created {formatDateTime(sessionDetail.session.created_at)} · Updated
 								{formatDateTime(sessionDetail.session.updated_at)}
 							</div>
 						</div>
 						<div class="flex items-center gap-1.5 shrink-0">
 							<span
-								class="px-2 py-0.5 rounded-full text-[11px] font-medium {statusBadge(
+								class="px-2 py-0.5 rounded-full text-xs font-medium {statusBadge(
 									sessionDetail.session.status
 								)}"
 							>
@@ -678,7 +678,7 @@
 							</span>
 							{#if sessionDetail.session.has_errors}
 								<span
-									class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-500/10 text-red-700 dark:text-red-300"
+									class="px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-700 dark:text-red-300"
 								>
 									Errors
 								</span>
@@ -688,37 +688,37 @@
 
 					<div class="grid grid-cols-3 lg:grid-cols-6 gap-1.5">
 						<div class="rounded-lg border border-border bg-background p-2">
-							<div class="text-[10px] text-muted-foreground">Messages</div>
+							<div class="text-xs text-foreground/70">Messages</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(sessionDetail.metrics.messages)}
 							</div>
 						</div>
 						<div class="rounded-lg border border-border bg-background p-2">
-							<div class="text-[10px] text-muted-foreground">Tool Calls</div>
+							<div class="text-xs text-foreground/70">Tool Calls</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(sessionDetail.metrics.tool_calls)}
 							</div>
 						</div>
 						<div class="rounded-lg border border-border bg-background p-2">
-							<div class="text-[10px] text-muted-foreground">LLM Calls</div>
+							<div class="text-xs text-foreground/70">LLM Calls</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(sessionDetail.metrics.llm_calls)}
 							</div>
 						</div>
 						<div class="rounded-lg border border-border bg-background p-2">
-							<div class="text-[10px] text-muted-foreground">Tokens</div>
+							<div class="text-xs text-foreground/70">Tokens</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(sessionDetail.metrics.total_tokens)}
 							</div>
 						</div>
 						<div class="rounded-lg border border-border bg-background p-2">
-							<div class="text-[10px] text-muted-foreground">Cost</div>
+							<div class="text-xs text-foreground/70">Cost</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatCurrency(sessionDetail.metrics.total_cost_usd)}
 							</div>
 						</div>
 						<div class="rounded-lg border border-border bg-background p-2">
-							<div class="text-[10px] text-muted-foreground">Failures</div>
+							<div class="text-xs text-foreground/70">Failures</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(
 									sessionDetail.metrics.tool_failures +
@@ -731,27 +731,27 @@
 					<div class="rounded-lg border border-border bg-background p-2.5 space-y-2">
 						<div class="flex flex-wrap items-center gap-1.5">
 							<span
-								class="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
+								class="text-xs font-semibold text-foreground/60 uppercase tracking-wide"
 							>
 								Filters
 							</span>
 							{#each Object.keys(eventTypeFilters) as rawType}
 								{@const type = rawType as TimelineType}
 								<button
-									class="px-2 py-0.5 rounded-full border text-[11px] transition-colors {eventTypeFilters[
+									class="px-2 py-1 rounded-full border text-xs font-medium transition-colors {eventTypeFilters[
 										type
 									]
-										? 'border-accent/40 bg-accent/10 text-accent-foreground'
-										: 'border-border bg-card text-muted-foreground'}"
+										? 'border-accent bg-accent/15 text-foreground'
+										: 'border-border bg-card text-foreground/50 hover:text-foreground/70'}"
 									onclick={() => toggleEventType(type)}
 								>
 									{eventTypeLabel(type)}
 								</button>
 							{/each}
 							<button
-								class="px-2 py-0.5 rounded-full border text-[11px] transition-colors {showOnlyErrors
-									? 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300'
-									: 'border-border bg-card text-muted-foreground'}"
+								class="px-2 py-1 rounded-full border text-xs font-medium transition-colors {showOnlyErrors
+									? 'border-red-500/60 bg-red-500/15 text-red-700 dark:text-red-300'
+									: 'border-border bg-card text-foreground/50 hover:text-foreground/70'}"
 								onclick={() => (showOnlyErrors = !showOnlyErrors)}
 							>
 								Errors Only
@@ -797,7 +797,7 @@
 											>
 												<div class="flex items-center gap-2">
 													<span
-														class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-medium {eventSeverityClasses(
+														class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium {eventSeverityClasses(
 															event.severity
 														)}"
 													>
@@ -806,13 +806,13 @@
 													</span>
 													{#if event.turn_index}
 														<span
-															class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground"
+															class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground/70"
 														>
 															Turn {event.turn_index}
 														</span>
 													{/if}
 												</div>
-												<span class="text-[11px] text-muted-foreground">
+												<span class="text-xs text-muted-foreground">
 													{formatDateTime(event.timestamp)}
 												</span>
 											</div>
@@ -821,7 +821,7 @@
 												{event.title}
 											</div>
 											<div
-												class="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words"
+												class="text-sm text-foreground/75 mt-1 whitespace-pre-wrap break-words"
 											>
 												{event.summary}
 											</div>
@@ -839,7 +839,7 @@
 															: 'bg-muted/40 border-border'}"
 												>
 													<div
-														class="text-[11px] text-muted-foreground uppercase tracking-wide mb-1"
+														class="text-xs text-foreground/60 uppercase tracking-wide font-semibold mb-1"
 													>
 														{stringValue(
 															payloadField(payload, 'role')
@@ -850,7 +850,7 @@
 													) || '(empty)'}
 												</div>
 												<div
-													class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground"
+													class="mt-2 flex flex-wrap items-center gap-3 text-xs text-foreground/70"
 												>
 													<span
 														>Tokens: {formatNumber(
@@ -879,15 +879,15 @@
 
 											{#if event.type === 'tool_execution'}
 												<div
-													class="mt-2 grid grid-cols-2 gap-1.5 text-[11px]"
+													class="mt-2 grid grid-cols-2 gap-1.5 text-xs"
 												>
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														<div class="text-muted-foreground">
+														<div class="text-foreground/60 font-medium">
 															Tool
 														</div>
-														<div class="font-medium text-foreground">
+														<div class="font-semibold text-foreground">
 															{stringValue(
 																payloadField(payload, 'tool_name')
 															) || '-'}
@@ -896,10 +896,10 @@
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														<div class="text-muted-foreground">
+														<div class="text-foreground/60 font-medium">
 															Duration
 														</div>
-														<div class="font-medium text-foreground">
+														<div class="font-semibold text-foreground">
 															{formatDuration(
 																payloadField(
 																	payload,
@@ -911,11 +911,11 @@
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														<div class="text-muted-foreground">
+														<div class="text-foreground/60 font-medium">
 															Success
 														</div>
 														<div
-															class="font-medium {payloadField(
+															class="font-semibold {payloadField(
 																payload,
 																'success'
 															) === false
@@ -931,10 +931,10 @@
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														<div class="text-muted-foreground">
+														<div class="text-foreground/60 font-medium">
 															Tool Tokens
 														</div>
-														<div class="font-medium text-foreground">
+														<div class="font-semibold text-foreground">
 															{formatNumber(
 																Number(
 																	payloadField(
@@ -956,7 +956,7 @@
 															Tool Arguments
 														</summary>
 														<pre
-															class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-[11px] text-foreground">{prettyJson(
+															class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
 																payloadField(payload, 'arguments')
 															)}</pre>
 													</details>
@@ -971,7 +971,7 @@
 															Tool Result
 														</summary>
 														<pre
-															class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-[11px] text-foreground">{prettyJson(
+															class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
 																payloadField(payload, 'result')
 															)}</pre>
 													</details>
@@ -980,15 +980,15 @@
 
 											{#if event.type === 'llm_call'}
 												<div
-													class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]"
+													class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs"
 												>
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														<div class="text-muted-foreground">
+														<div class="text-foreground/60 font-medium">
 															Model
 														</div>
-														<div class="font-medium text-foreground">
+														<div class="font-semibold text-foreground">
 															{stringValue(
 																payloadField(payload, 'model_used')
 															) || '-'}
@@ -997,10 +997,10 @@
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														<div class="text-muted-foreground">
+														<div class="text-foreground/60 font-medium">
 															Provider
 														</div>
-														<div class="font-medium text-foreground">
+														<div class="font-semibold text-foreground">
 															{stringValue(
 																payloadField(payload, 'provider')
 															) || '-'}
@@ -1009,10 +1009,10 @@
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														<div class="text-muted-foreground">
+														<div class="text-foreground/60 font-medium">
 															Tokens
 														</div>
-														<div class="font-medium text-foreground">
+														<div class="font-semibold text-foreground">
 															{formatNumber(
 																Number(
 																	payloadField(
@@ -1026,10 +1026,10 @@
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														<div class="text-muted-foreground">
+														<div class="text-foreground/60 font-medium">
 															Cost
 														</div>
-														<div class="font-medium text-foreground">
+														<div class="font-semibold text-foreground">
 															{formatCurrency(
 																Number(
 																	payloadField(
@@ -1043,10 +1043,10 @@
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>
-														<div class="text-muted-foreground">
+														<div class="text-foreground/60 font-medium">
 															Latency
 														</div>
-														<div class="font-medium text-foreground">
+														<div class="font-semibold text-foreground">
 															{formatDuration(
 																payloadField(
 																	payload,
@@ -1074,7 +1074,7 @@
 												</button>
 												{#if expandedEventIds.has(event.id)}
 													<pre
-														class="mt-2 bg-card border border-border rounded-lg p-3 text-[11px] text-foreground whitespace-pre-wrap break-words overflow-x-auto">{prettyJson(
+														class="mt-2 bg-card border border-border rounded-lg p-3 text-xs text-foreground whitespace-pre-wrap break-words overflow-x-auto">{prettyJson(
 															payload
 														)}</pre>
 												{/if}
@@ -1090,3 +1090,10 @@
 		</div>
 	</div>
 </div>
+
+<style>
+	/* Override AdminShell's max-w-7xl so the split-panel layout uses full available width */
+	:global(.max-w-7xl:has(> .sessions-page)) {
+		max-width: none;
+	}
+</style>
