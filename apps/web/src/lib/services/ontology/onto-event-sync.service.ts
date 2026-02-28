@@ -573,6 +573,7 @@ export class OntoEventSyncService {
 			scope: CalendarScope;
 			calendarId: string | null;
 			createProjectCalendarIfMissing: boolean;
+			expectedEventVersion?: string | null;
 		}
 	): Promise<CreateOntoEventResult> {
 		const nowIso = new Date().toISOString();
@@ -656,7 +657,7 @@ export class OntoEventSyncService {
 					provider: 'google'
 				};
 
-				const { data: updated } = await this.supabase
+				let eventUpdateQuery = this.supabase
 					.from('onto_events')
 					.update({
 						props: nextProps,
@@ -665,9 +666,15 @@ export class OntoEventSyncService {
 						sync_status: 'synced',
 						sync_error: null
 					})
-					.eq('id', event.id)
-					.select('*')
-					.single();
+					.eq('id', event.id);
+				if (options.expectedEventVersion) {
+					eventUpdateQuery = eventUpdateQuery.eq(
+						'updated_at',
+						options.expectedEventVersion
+					);
+				}
+
+				const { data: updated } = await eventUpdateQuery.select('*').single();
 
 				return {
 					event: updated ?? event,
@@ -680,7 +687,12 @@ export class OntoEventSyncService {
 				};
 			} catch (error) {
 				const message = error instanceof Error ? error.message : 'Calendar sync failed';
-				await this.markEventSyncError(event.id, message);
+				await this.markEventSyncError(
+					event.id,
+					message,
+					undefined,
+					options.expectedEventVersion ?? undefined
+				);
 				return {
 					event,
 					sync: {
@@ -710,7 +722,7 @@ export class OntoEventSyncService {
 				provider: 'google'
 			};
 
-			const { data: updated } = await this.supabase
+			let eventUpdateQuery = this.supabase
 				.from('onto_events')
 				.update({
 					props: nextProps,
@@ -719,9 +731,12 @@ export class OntoEventSyncService {
 					sync_status: 'synced',
 					sync_error: null
 				})
-				.eq('id', event.id)
-				.select('*')
-				.single();
+				.eq('id', event.id);
+			if (options.expectedEventVersion) {
+				eventUpdateQuery = eventUpdateQuery.eq('updated_at', options.expectedEventVersion);
+			}
+
+			const { data: updated } = await eventUpdateQuery.select('*').single();
 
 			return {
 				event: updated ?? event,
@@ -734,7 +749,12 @@ export class OntoEventSyncService {
 			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Calendar sync failed';
-			await this.markEventSyncError(event.id, message);
+			await this.markEventSyncError(
+				event.id,
+				message,
+				undefined,
+				options.expectedEventVersion ?? undefined
+			);
 			return {
 				event,
 				sync: {
@@ -770,7 +790,8 @@ export class OntoEventSyncService {
 				await this.syncEventToCalendar(userId, event, {
 					scope: 'project',
 					calendarId: null,
-					createProjectCalendarIfMissing: false
+					createProjectCalendarIfMissing: false,
+					expectedEventVersion: event.updated_at ?? event.created_at
 				});
 			}
 			return;
@@ -961,6 +982,23 @@ export class OntoEventSyncService {
 		};
 	}
 
+	private isStaleEventVersion(
+		expectedEventUpdatedAt: string | null | undefined,
+		currentEventUpdatedAt: string | null | undefined
+	): boolean {
+		if (!expectedEventUpdatedAt || !currentEventUpdatedAt) {
+			return false;
+		}
+
+		const expectedTimestamp = Date.parse(expectedEventUpdatedAt);
+		const currentTimestamp = Date.parse(currentEventUpdatedAt);
+		if (Number.isNaN(expectedTimestamp) || Number.isNaN(currentTimestamp)) {
+			return false;
+		}
+
+		return expectedTimestamp < currentTimestamp;
+	}
+
 	private async enqueueProjectEventSyncJobs(
 		triggeredByUserId: string,
 		event: OntoEventRow,
@@ -1044,6 +1082,7 @@ export class OntoEventSyncService {
 		projectId: string;
 		targetUserId: string;
 		createCalendarIfMissing?: boolean;
+		expectedEventUpdatedAt?: string;
 	}): Promise<{
 		outcome: 'synced' | 'deleted' | 'skipped';
 		reason: string;
@@ -1060,6 +1099,13 @@ export class OntoEventSyncService {
 			return {
 				outcome: 'skipped',
 				reason: 'project_mismatch'
+			};
+		}
+		const eventVersion = event.updated_at ?? event.created_at;
+		if (this.isStaleEventVersion(input.expectedEventUpdatedAt, eventVersion)) {
+			return {
+				outcome: 'skipped',
+				reason: 'stale_event_version'
 			};
 		}
 
@@ -1082,7 +1128,13 @@ export class OntoEventSyncService {
 				});
 
 				const nowIso = new Date().toISOString();
-				await this.markEventSynced(event.id, nowIso, mapping.syncRowId, 'cancelled');
+				await this.markEventSynced(
+					event.id,
+					nowIso,
+					mapping.syncRowId,
+					'cancelled',
+					eventVersion
+				);
 				return {
 					outcome: 'deleted',
 					reason: 'deleted_external_event'
@@ -1090,7 +1142,13 @@ export class OntoEventSyncService {
 			} catch (error) {
 				if (this.isGoogleNotFoundError(error)) {
 					const nowIso = new Date().toISOString();
-					await this.markEventSynced(event.id, nowIso, mapping.syncRowId, 'cancelled');
+					await this.markEventSynced(
+						event.id,
+						nowIso,
+						mapping.syncRowId,
+						'cancelled',
+						eventVersion
+					);
 					return {
 						outcome: 'deleted',
 						reason: 'external_event_already_missing'
@@ -1098,7 +1156,7 @@ export class OntoEventSyncService {
 				}
 
 				const message = error instanceof Error ? error.message : 'Calendar delete failed';
-				await this.markEventSyncError(event.id, message, mapping.syncRowId);
+				await this.markEventSyncError(event.id, message, mapping.syncRowId, eventVersion);
 				throw error instanceof Error ? error : new Error(message);
 			}
 		}
@@ -1128,7 +1186,8 @@ export class OntoEventSyncService {
 			const syncResult = await this.syncEventToCalendar(input.targetUserId, event, {
 				scope: 'project',
 				calendarId: null,
-				createProjectCalendarIfMissing: input.createCalendarIfMissing ?? false
+				createProjectCalendarIfMissing: input.createCalendarIfMissing ?? false,
+				expectedEventVersion: eventVersion
 			});
 
 			if (!syncResult.sync?.success) {
@@ -1155,7 +1214,7 @@ export class OntoEventSyncService {
 			});
 
 			const nowIso = new Date().toISOString();
-			await this.markEventSynced(event.id, nowIso, mapping.syncRowId);
+			await this.markEventSynced(event.id, nowIso, mapping.syncRowId, 'synced', eventVersion);
 			return {
 				outcome: 'synced',
 				reason: 'updated_external_event'
@@ -1165,7 +1224,8 @@ export class OntoEventSyncService {
 				const recreated = await this.syncEventToCalendar(input.targetUserId, event, {
 					scope: 'project',
 					calendarId: null,
-					createProjectCalendarIfMissing: false
+					createProjectCalendarIfMissing: false,
+					expectedEventVersion: eventVersion
 				});
 
 				if (recreated.sync?.success) {
@@ -1177,7 +1237,7 @@ export class OntoEventSyncService {
 			}
 
 			const message = error instanceof Error ? error.message : 'Calendar update failed';
-			await this.markEventSyncError(event.id, message, mapping.syncRowId);
+			await this.markEventSyncError(event.id, message, mapping.syncRowId, eventVersion);
 			throw error instanceof Error ? error : new Error(message);
 		}
 	}
@@ -1186,9 +1246,10 @@ export class OntoEventSyncService {
 		eventId: string,
 		timestamp: string,
 		syncRowId?: string,
-		status: string = 'synced'
+		status: string = 'synced',
+		expectedEventVersion?: string
 	): Promise<void> {
-		await this.supabase
+		let eventUpdateQuery = this.supabase
 			.from('onto_events')
 			.update({
 				last_synced_at: timestamp,
@@ -1196,6 +1257,10 @@ export class OntoEventSyncService {
 				sync_error: null
 			})
 			.eq('id', eventId);
+		if (expectedEventVersion) {
+			eventUpdateQuery = eventUpdateQuery.eq('updated_at', expectedEventVersion);
+		}
+		await eventUpdateQuery;
 
 		if (syncRowId) {
 			await this.supabase
@@ -1212,16 +1277,21 @@ export class OntoEventSyncService {
 	private async markEventSyncError(
 		eventId: string,
 		message: string,
-		syncRowId?: string
+		syncRowId?: string,
+		expectedEventVersion?: string
 	): Promise<void> {
 		const trimmed = message?.slice(0, 500) ?? 'Calendar sync failed';
-		await this.supabase
+		let eventUpdateQuery = this.supabase
 			.from('onto_events')
 			.update({
 				sync_status: 'failed',
 				sync_error: trimmed
 			})
 			.eq('id', eventId);
+		if (expectedEventVersion) {
+			eventUpdateQuery = eventUpdateQuery.eq('updated_at', expectedEventVersion);
+		}
+		await eventUpdateQuery;
 
 		if (syncRowId) {
 			await this.supabase

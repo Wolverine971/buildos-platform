@@ -117,15 +117,9 @@
 			"components": ["ImageAssetsPanel"]
 		},
 		{
-			"file": "src/routes/dashboard/calendar/+page.svelte",
-			"type": "page",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
+			"file": "src/lib/components/project/ProjectModalsHost.svelte",
+			"type": "component",
 			"components": [
-				"MobileCommandCenter",
 				"DocumentModal",
 				"TaskCreateModal",
 				"TaskEditModal",
@@ -144,6 +138,16 @@
 				"ProjectCollaborationModal",
 				"ProjectGraphSection"
 			]
+		},
+		{
+			"file": "src/routes/dashboard/calendar/+page.svelte",
+			"type": "page",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["MobileCommandCenter"]
 		},
 		{
 			"file": "src/routes/projects/create/+page.svelte",
@@ -756,6 +760,29 @@
 			"exports": ["isThinkingBlockMessage", "findThinkingBlockById"]
 		},
 		{
+			"file": "src/lib/components/project/project-page-data-controller.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"fetchProjectFullData",
+				"fetchProjectSnapshot",
+				"fetchProjectMembers",
+				"fetchProjectEvents",
+				"fetchProjectNotificationSettings",
+				"updateProjectNotificationSettings"
+			]
+		},
+		{
+			"file": "src/lib/components/project/project-page-interactions.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"requestImageUploadOpen",
+				"flushPendingImageUploadOpen",
+				"resolveEntityOpenAction"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 			"type": "component",
 			"components": [],
@@ -940,11 +967,7 @@
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/EventEditModal.svelte"
 		],
-		"src/routes/dashboard/calendar/+page.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/routes/projects/[id]/+page.svelte": [
+		"src/lib/components/project/ProjectModalsHost.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/PlanEditModal.svelte",
@@ -954,6 +977,10 @@
 			"src/lib/components/ontology/EventEditModal.svelte",
 			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
+		],
+		"src/routes/dashboard/calendar/+page.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte"
 		],
 		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",
@@ -969,9 +996,12 @@
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/lib/components/project/ProjectInsightRail.svelte",
+		"src/lib/components/project/ProjectModalsHost.svelte",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
+		"src/lib/components/project/project-page-data-controller.ts",
+		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",

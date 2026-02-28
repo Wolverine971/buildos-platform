@@ -116,4 +116,3 @@ describe('GET /api/onto/projects/[id]/calendar/collaboration', () => {
 		expect(getProjectCalendarCollaborationMock).toHaveBeenCalledWith(PROJECT_ID, USER_ID);
 	});
 });
-

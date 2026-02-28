@@ -14,7 +14,8 @@ function isValidPayload(body: unknown): body is OntoProjectEventSyncJobMetadata 
 		(payload.action === 'upsert' || payload.action === 'delete') &&
 		typeof payload.eventId === 'string' &&
 		typeof payload.projectId === 'string' &&
-		typeof payload.targetUserId === 'string'
+		typeof payload.targetUserId === 'string' &&
+		(payload.eventUpdatedAt === undefined || typeof payload.eventUpdatedAt === 'string')
 	);
 }
 
@@ -44,7 +45,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			eventId: body.eventId,
 			projectId: body.projectId,
 			targetUserId: body.targetUserId,
-			createCalendarIfMissing: body.createCalendarIfMissing
+			createCalendarIfMissing: body.createCalendarIfMissing,
+			expectedEventUpdatedAt: body.eventUpdatedAt
 		});
 
 		return ApiResponse.success(result);

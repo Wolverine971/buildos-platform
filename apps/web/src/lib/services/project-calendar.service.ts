@@ -134,9 +134,7 @@ export class ProjectCalendarService {
 		return rawAction === 'delete' ? 'delete' : 'upsert';
 	}
 
-	private parseProjectEventSyncMetadata(
-		value: Json | null
-	): {
+	private parseProjectEventSyncMetadata(value: Json | null): {
 		kind: 'onto_project_event_sync';
 		eventId: string;
 		projectId: string;
@@ -613,7 +611,10 @@ export class ProjectCalendarService {
 			}
 
 			const events = (eventRows ?? []) as Array<
-				Pick<OntoEvent, 'id' | 'title' | 'start_at' | 'end_at' | 'updated_at' | 'deleted_at'>
+				Pick<
+					OntoEvent,
+					'id' | 'title' | 'start_at' | 'end_at' | 'updated_at' | 'deleted_at'
+				>
 			>;
 			if (events.length === 0) {
 				const emptyPayload: ProjectCalendarSyncHealthPayload = {
@@ -637,7 +638,9 @@ export class ProjectCalendarService {
 					.eq('provider', 'google'),
 				this.supabase
 					.from('queue_jobs')
-					.select('id, status, attempts, max_attempts, error_message, metadata, created_at')
+					.select(
+						'id, status, attempts, max_attempts, error_message, metadata, created_at'
+					)
 					.eq('job_type', 'sync_calendar')
 					.in('status', [...ACTIVE_QUEUE_STATUSES])
 					.order('created_at', { ascending: false })
@@ -661,7 +664,13 @@ export class ProjectCalendarService {
 			const queueRows = (queueRowsResponse.data ?? []) as Array<
 				Pick<
 					QueueJob,
-					'id' | 'status' | 'attempts' | 'max_attempts' | 'error_message' | 'metadata' | 'created_at'
+					| 'id'
+					| 'status'
+					| 'attempts'
+					| 'max_attempts'
+					| 'error_message'
+					| 'metadata'
+					| 'created_at'
 				>
 			>;
 
@@ -745,7 +754,7 @@ export class ProjectCalendarService {
 					.from('onto_actors')
 					.select('user_id, name, email')
 					.in('user_id', targetUserIds)
-					.eq('kind', 'user');
+					.eq('kind', 'human');
 
 				if (actorError) {
 					return ApiResponse.error('Failed to resolve sync target identities', 500);
@@ -779,10 +788,10 @@ export class ProjectCalendarService {
 						const queueStatus = queueState?.status ?? null;
 						const syncStatus = syncRow?.sync_status ?? null;
 						const retryAction =
-							queueState?.action ??
-							(event.deleted_at ? 'delete' : 'upsert');
+							queueState?.action ?? (event.deleted_at ? 'delete' : 'upsert');
 						const canRetry =
-							Boolean(userId) && (syncStatus === 'failed' || queueStatus === 'failed');
+							Boolean(userId) &&
+							(syncStatus === 'failed' || queueStatus === 'failed');
 
 						if (syncStatus === 'failed' || queueStatus === 'failed') {
 							failedTargets += 1;
@@ -803,7 +812,7 @@ export class ProjectCalendarService {
 								currentUserId,
 								userId ? actorByUserId.get(userId) : undefined
 							),
-							email: userId ? actorByUserId.get(userId)?.email ?? null : null,
+							email: userId ? (actorByUserId.get(userId)?.email ?? null) : null,
 							sync_status: syncStatus,
 							sync_error: syncRow?.sync_error ?? null,
 							last_synced_at: syncRow?.last_synced_at ?? null,
@@ -889,14 +898,13 @@ export class ProjectCalendarService {
 			}
 
 			if (!targetCalendar) {
-				return ApiResponse.badRequest('Target user does not have a linked project calendar');
+				return ApiResponse.badRequest(
+					'Target user does not have a linked project calendar'
+				);
 			}
 
-			const action =
-				input.action ??
-				(event.deleted_at ? 'delete' : 'upsert');
-			const eventVersion =
-				event.updated_at ?? event.created_at ?? new Date().toISOString();
+			const action = input.action ?? (event.deleted_at ? 'delete' : 'upsert');
+			const eventVersion = event.updated_at ?? event.created_at ?? new Date().toISOString();
 
 			const metadata = {
 				kind: 'onto_project_event_sync',

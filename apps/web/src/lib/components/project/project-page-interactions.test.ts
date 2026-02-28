@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/project/project-page-interactions.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import {
 	flushPendingImageUploadOpen,

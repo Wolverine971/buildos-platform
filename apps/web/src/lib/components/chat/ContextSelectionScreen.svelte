@@ -360,7 +360,7 @@
 					</button>
 
 					<!-- Agent to BuildOS chat (dev only) -->
-					{#if dev && 123 === false}
+					{#if dev}
 						<button
 							onclick={selectAgentToAgent}
 							class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"

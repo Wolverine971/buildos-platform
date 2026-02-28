@@ -2,8 +2,8 @@
 
 # Project Calendar Collaboration and Event Sync Spec
 
-_Status: Active implementation (Phase 1 complete, Phase 2 core backend complete)_  
-_Date: 2026-02-27_  
+_Status: Active implementation (Phase 1 complete, Phase 2 backend + sync-health UX + hardening complete)_  
+_Date: 2026-02-28_  
 _Owner: Web/Ontology platform_
 
 ## 1. Problem Statement
@@ -36,7 +36,7 @@ This leads to drift/failures when collaborators edit shared project events.
 2. BuildOS remains canonical; Google calendars are projections.
 3. Single shared external project calendar remains an optional future mode, not default.
 
-## 4.1 Implementation Progress (2026-02-27)
+## 4.1 Implementation Progress (2026-02-28)
 
 ### Completed in Phase 1
 
@@ -70,10 +70,35 @@ This leads to drift/failures when collaborators edit shared project events.
     - `member_fanout`: enqueue sync jobs for all members with enabled mappings.
     - Mode stored in `onto_projects.props.calendar_sync_mode`.
 
-### Remaining follow-ups (post-Phase 2 backend)
+### Completed after Phase 2 backend (2026-02-28)
 
-1. Add UI/telemetry for per-target sync status and retry visibility.
-2. Consider stronger idempotency/version tracking (`last_synced_version` semantics).
+1. Added per-target sync health API surface:
+    - `GET /api/onto/projects/:id/calendar/sync-health` (recent event target status + queue attempts/errors)
+    - `POST /api/onto/projects/:id/calendar/sync-health` (manual retry enqueue for specific event/target)
+2. Added Event Sync Health UI in project calendar settings:
+    - New `Event Sync Health` panel in `ProjectCalendarSettingsModal.svelte`
+    - Per-target status badges (synced/failed/retrying/pending/deleted)
+    - Retry control for failed targets
+3. Expanded Team Sync Coverage to include pending invitees in the same panel:
+    - "Pending invite" + "Not linked" indicators now rendered with members.
+4. Added collaboration-summary expired invite filtering:
+    - Pending invites now filtered by `expires_at >= now()`.
+5. Added targeted tests:
+    - Route test for collaboration summary access/delegation (`calendar/collaboration/server.test.ts`)
+    - Modal rendering/retry behavior test (`ProjectCalendarSettingsModal.test.ts`)
+6. Added stale-version guard for queued project event sync jobs:
+    - Worker processing now reads `eventUpdatedAt` metadata and skips stale jobs (`reason: stale_event_version`).
+    - Webhook route now validates/forwards optional `eventUpdatedAt`.
+7. Added version-guarded sync status writes:
+    - Event-level sync status updates now apply with expected event version checks to avoid stale jobs overwriting newer state.
+8. Added service-level hardening tests:
+    - `onto-event-sync.service.test.ts` covers stale-job skip behavior.
+    - `project-calendar.service.test.ts` covers sync-health aggregation/limit capping and retry enqueue metadata.
+
+### Remaining follow-ups
+
+1. Optional: add full end-to-end queue worker integration tests (queue claim -> webhook -> DB assertions).
+2. Optional: add telemetry counters for stale-job skips to support operational alerting.
 
 ## 5. Current-State Risks (Baseline)
 
@@ -201,7 +226,7 @@ Conflict policy:
 ## 11. Observability and Error Handling
 
 1. Track sync failures at per-target granularity (implemented in backend sync rows + queue attempts).
-2. Expose “last sync status” in event and calendar settings UI (pending UI work).
+2. Expose “last sync status” in event and calendar settings UI (implemented in project calendar settings).
 3. Add structured logs for:
     - mapping resolution failures
     - token/auth failures
@@ -239,7 +264,9 @@ Phase 2 test additions:
 1. Phase 1 code + migration: completed.
 2. Phase 2 user-scoped schema foundation + service/API alignment: completed.
 3. Phase 2 background worker + retry/backoff + fanout policy controls: completed.
-4. Next rollout step: sync health UX/telemetry surfacing.
+4. Phase 2 sync health API + settings UI + retry controls: completed (2026-02-28).
+5. Phase 2 idempotency/version hardening + deeper service tests: completed (2026-02-28).
+6. Next rollout step: optional E2E queue integration coverage + telemetry refinement.
 
 ## 16. Open Questions
 

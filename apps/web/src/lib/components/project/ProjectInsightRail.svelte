@@ -294,10 +294,10 @@
 			{@const isOpen = expandedPanels[section.key]}
 			{@const SectionIcon = section.icon}
 			{@const iconStyles = getPanelIconStyles(section.key)}
-			<div
-				class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak"
-			>
-				<div class="flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors">
+			<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+				<div
+					class="flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors"
+				>
 					<button
 						onclick={() => onTogglePanel(section.key)}
 						class="flex items-center gap-3 flex-1 text-left min-w-0 pressable"

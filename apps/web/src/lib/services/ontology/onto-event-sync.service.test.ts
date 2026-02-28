@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/ontology/onto-event-sync.service.test.ts
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { OntoEventSyncService } from './onto-event-sync.service';
 
 function createSupabaseMock(fixtures: {
@@ -114,5 +114,40 @@ describe('OntoEventSyncService calendar descriptions', () => {
 		});
 
 		expect(description).toBe('Meet with client. https://zoom.us/j/123');
+	});
+});
+
+describe('OntoEventSyncService project sync job version guards', () => {
+	it('skips stale project sync jobs when event has newer update timestamp', async () => {
+		const service = new OntoEventSyncService({} as any);
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-1',
+			project_id: 'project-1',
+			updated_at: '2026-02-28T12:00:00.000Z',
+			created_at: '2026-02-28T10:00:00.000Z',
+			deleted_at: null,
+			onto_event_sync: []
+		});
+
+		const updateCalendarEventSpy = vi.spyOn(
+			(service as any).calendarService,
+			'updateCalendarEvent'
+		);
+		const syncEventToCalendarSpy = vi.spyOn(service as any, 'syncEventToCalendar');
+
+		const result = await service.processProjectEventSyncJob({
+			action: 'upsert',
+			eventId: 'event-1',
+			projectId: 'project-1',
+			targetUserId: 'user-1',
+			expectedEventUpdatedAt: '2026-02-28T11:00:00.000Z'
+		});
+
+		expect(result).toEqual({
+			outcome: 'skipped',
+			reason: 'stale_event_version'
+		});
+		expect(updateCalendarEventSpy).not.toHaveBeenCalled();
+		expect(syncEventToCalendarSpy).not.toHaveBeenCalled();
 	});
 });

@@ -236,7 +236,11 @@
 <!-- Task Create Modal -->
 {#if showTaskCreateModal}
 	{#await import('$lib/components/ontology/TaskCreateModal.svelte') then { default: TaskCreateModal }}
-		<TaskCreateModal projectId={project.id} onClose={onCloseTaskCreateModal} onCreated={onTaskCreated} />
+		<TaskCreateModal
+			projectId={project.id}
+			onClose={onCloseTaskCreateModal}
+			onCreated={onTaskCreated}
+		/>
 	{/await}
 {/if}
 
@@ -256,7 +260,11 @@
 <!-- Plan Create Modal -->
 {#if showPlanCreateModal}
 	{#await import('$lib/components/ontology/PlanCreateModal.svelte') then { default: PlanCreateModal }}
-		<PlanCreateModal projectId={project.id} onClose={onClosePlanCreateModal} onCreated={onPlanCreated} />
+		<PlanCreateModal
+			projectId={project.id}
+			onClose={onClosePlanCreateModal}
+			onCreated={onPlanCreated}
+		/>
 	{/await}
 {/if}
 
@@ -276,7 +284,11 @@
 <!-- Goal Create Modal -->
 {#if showGoalCreateModal}
 	{#await import('$lib/components/ontology/GoalCreateModal.svelte') then { default: GoalCreateModal }}
-		<GoalCreateModal projectId={project.id} onClose={onCloseGoalCreateModal} onCreated={onGoalCreated} />
+		<GoalCreateModal
+			projectId={project.id}
+			onClose={onCloseGoalCreateModal}
+			onCreated={onGoalCreated}
+		/>
 	{/await}
 {/if}
 
@@ -296,7 +308,11 @@
 <!-- Risk Create Modal -->
 {#if showRiskCreateModal}
 	{#await import('$lib/components/ontology/RiskCreateModal.svelte') then { default: RiskCreateModal }}
-		<RiskCreateModal projectId={project.id} onClose={onCloseRiskCreateModal} onCreated={onRiskCreated} />
+		<RiskCreateModal
+			projectId={project.id}
+			onClose={onCloseRiskCreateModal}
+			onCreated={onRiskCreated}
+		/>
 	{/await}
 {/if}
 
@@ -343,7 +359,12 @@
 <!-- Event Create Modal -->
 {#if showEventCreateModal}
 	{#await import('$lib/components/ontology/EventCreateModal.svelte') then { default: EventCreateModal }}
-		<EventCreateModal projectId={project.id} {tasks} onClose={onCloseEventCreateModal} onCreated={onEventCreated} />
+		<EventCreateModal
+			projectId={project.id}
+			{tasks}
+			onClose={onCloseEventCreateModal}
+			onCreated={onEventCreated}
+		/>
 	{/await}
 {/if}
 
@@ -393,7 +414,7 @@
 			projectId={project.id}
 			projectName={project.name || 'Project'}
 			canManageMembers={canAdmin}
-			onLeftProject={onLeftProject}
+			{onLeftProject}
 			onClose={onCloseCollabModal}
 		/>
 	{/await}

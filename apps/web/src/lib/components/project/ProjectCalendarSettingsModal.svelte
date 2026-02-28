@@ -450,7 +450,10 @@
 		return retryingTargetKeys.includes(makeRetryTargetKey(eventId, userId));
 	}
 
-	function getSyncTargetBadge(target: EventSyncHealthTarget): { label: string; className: string } {
+	function getSyncTargetBadge(target: EventSyncHealthTarget): {
+		label: string;
+		className: string;
+	} {
 		if (
 			target.queue_status === 'pending' ||
 			target.queue_status === 'processing' ||
@@ -458,15 +461,13 @@
 		) {
 			return {
 				label: `Retrying (${target.queue_attempts ?? 0}/${target.queue_max_attempts ?? '?'})`,
-				className:
-					'bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/30'
+				className: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/30'
 			};
 		}
 		if (target.sync_status === 'failed' || target.queue_status === 'failed') {
 			return {
 				label: 'Failed',
-				className:
-					'bg-destructive/10 text-destructive border border-destructive/30'
+				className: 'bg-destructive/10 text-destructive border border-destructive/30'
 			};
 		}
 		if (target.sync_status === 'synced') {
@@ -479,14 +480,12 @@
 		if (target.sync_status === 'cancelled') {
 			return {
 				label: 'Deleted',
-				className:
-					'bg-muted text-muted-foreground border border-border'
+				className: 'bg-muted text-muted-foreground border border-border'
 			};
 		}
 		return {
 			label: 'Pending',
-			className:
-				'bg-muted text-muted-foreground border border-border'
+			className: 'bg-muted text-muted-foreground border border-border'
 		};
 	}
 
@@ -497,7 +496,9 @@
 		syncHealthError = null;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${project.id}/calendar/sync-health?limit=12`);
+			const response = await fetch(
+				`/api/onto/projects/${project.id}/calendar/sync-health?limit=12`
+			);
 			const result = await response.json();
 
 			if (result.success && result.data) {
@@ -874,14 +875,17 @@
 											</p>
 											{#if syncHealthPayload}
 												<p class="text-xs text-muted-foreground">
-													{syncHealthPayload.summary.failed_targets} failed target syncs
+													{syncHealthPayload.summary.failed_targets} failed
+													target syncs
 													{#if syncHealthPayload.summary.active_queue_targets > 0}
-														• {syncHealthPayload.summary.active_queue_targets} active retries
+														• {syncHealthPayload.summary
+															.active_queue_targets} active retries
 													{/if}
 												</p>
 											{:else}
 												<p class="text-xs text-muted-foreground">
-													Recent per-target event sync status and retry controls
+													Recent per-target event sync status and retry
+													controls
 												</p>
 											{/if}
 										</div>
@@ -905,17 +909,22 @@
 													<div
 														class="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
 													>
-														<p class="text-xs font-medium text-foreground truncate">
+														<p
+															class="text-xs font-medium text-foreground truncate"
+														>
 															{event.title}
 														</p>
 														<div class="mt-1 space-y-1.5">
 															{#if event.targets.length === 0}
-																<p class="text-[11px] text-muted-foreground">
+																<p
+																	class="text-[11px] text-muted-foreground"
+																>
 																	No sync targets recorded yet
 																</p>
 															{:else}
 																{#each event.targets as target}
-																	{@const statusBadge = getSyncTargetBadge(target)}
+																	{@const statusBadge =
+																		getSyncTargetBadge(target)}
 																	<div
 																		class="flex items-start justify-between gap-2 rounded border border-border/70 bg-background px-2 py-1.5"
 																	>
@@ -929,7 +938,8 @@
 																				<p
 																					class="text-[10px] text-destructive truncate"
 																				>
-																					{target.sync_error || target.queue_error}
+																					{target.sync_error ||
+																						target.queue_error}
 																				</p>
 																			{/if}
 																			{#if target.queue_max_attempts !== null && target.queue_attempts !== null}
@@ -940,7 +950,9 @@
 																				</p>
 																			{/if}
 																		</div>
-																		<div class="flex flex-col items-end gap-1">
+																		<div
+																			class="flex flex-col items-end gap-1"
+																		>
 																			<span
 																				class={`shrink-0 rounded px-2 py-0.5 text-[10px] font-medium ${statusBadge.className}`}
 																			>
@@ -950,11 +962,20 @@
 																				<button
 																					type="button"
 																					class="inline-flex items-center rounded border border-border bg-card px-2 py-1 text-[10px] font-medium text-foreground hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
-																					disabled={isRetryingTarget(event.event_id, target.user_id)}
-																					onclick={() => retrySyncTarget(event.event_id, target)}
+																					disabled={isRetryingTarget(
+																						event.event_id,
+																						target.user_id
+																					)}
+																					onclick={() =>
+																						retrySyncTarget(
+																							event.event_id,
+																							target
+																						)}
 																				>
 																					{#if isRetryingTarget(event.event_id, target.user_id)}
-																						<LoaderCircle class="mr-1 h-3 w-3 animate-spin" />
+																						<LoaderCircle
+																							class="mr-1 h-3 w-3 animate-spin"
+																						/>
 																						Retrying
 																					{:else}
 																						Retry

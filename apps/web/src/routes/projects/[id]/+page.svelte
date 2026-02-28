@@ -70,7 +70,6 @@
 		Task,
 		Document,
 		Plan,
-		OntoEvent,
 		Goal,
 		Milestone,
 		Risk,
@@ -83,6 +82,16 @@
 	import ProjectInsightRail from '$lib/components/project/ProjectInsightRail.svelte';
 	import ProjectModalsHost from '$lib/components/project/ProjectModalsHost.svelte';
 	import {
+		fetchProjectEvents,
+		fetchProjectFullData,
+		fetchProjectMembers,
+		fetchProjectNotificationSettings,
+		fetchProjectSnapshot,
+		updateProjectNotificationSettings,
+		type OntoEventWithSync,
+		type ProjectNotificationSettings
+	} from '$lib/components/project/project-page-data-controller';
+	import {
 		flushPendingImageUploadOpen,
 		requestImageUploadOpen,
 		resolveEntityOpenAction
@@ -90,7 +99,7 @@
 	import type { ImageUploadPanelRef } from '$lib/components/project/project-page-interactions';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/types';
-	import type { Database, EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
+	import type { EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 	import {
 		PANEL_CONFIGS,
@@ -116,10 +125,6 @@
 	// TYPES
 	// ============================================================
 
-	type OntoEventWithSync = OntoEvent & {
-		onto_event_sync?: Database['public']['Tables']['onto_event_sync']['Row'][];
-	};
-
 	// Note: 'milestones' removed - now nested under goals
 	type InsightPanelKey = 'tasks' | 'plans' | 'goals' | 'risks' | 'events' | 'images';
 
@@ -129,27 +134,6 @@
 		icon: typeof Target;
 		items: Array<unknown>;
 		description?: string;
-	};
-
-	type ProjectNotificationSettings = {
-		project_id: string;
-		member_count: number;
-		is_shared_project: boolean;
-		project_default_enabled: boolean;
-		member_enabled: boolean;
-		effective_enabled: boolean;
-		member_overridden: boolean;
-		can_manage_default: boolean;
-	};
-
-	type ProjectMemberRow = {
-		actor_id: string;
-		actor: {
-			id: string;
-			user_id: string | null;
-			name: string | null;
-			email: string | null;
-		} | null;
 	};
 
 	// ============================================================
@@ -309,7 +293,10 @@
 	let showGraphModal = $state(false);
 
 	$effect(() => {
-		const nextPending = flushPendingImageUploadOpen(pendingImageUploadOpen, imageAssetsPanelRef);
+		const nextPending = flushPendingImageUploadOpen(
+			pendingImageUploadOpen,
+			imageAssetsPanelRef
+		);
 		if (nextPending !== pendingImageUploadOpen) {
 			pendingImageUploadOpen = nextPending;
 		}
@@ -327,17 +314,7 @@
 		if (!data.skeleton) return;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${data.projectId}/full`);
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to load project data');
-			}
-
-			const fullData = payload?.data;
-			if (!fullData) {
-				throw new Error('No data returned from server');
-			}
+			const fullData = await fetchProjectFullData(data.projectId);
 
 			// Hydrate all state at once
 			project = fullData.project || project;
@@ -435,17 +412,8 @@
 		if (!project?.id || !access.isAuthenticated) return;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${project.id}/members`, {
-				method: 'GET',
-				credentials: 'same-origin'
-			});
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to load project members');
-			}
-
-			const rows = (payload?.data?.members ?? []) as ProjectMemberRow[];
+			const payload = await fetchProjectMembers(project.id);
+			const rows = payload.members;
 			const seen = new Set<string>();
 			const members: TaskAssigneeFilterMember[] = [];
 
@@ -465,8 +433,7 @@
 			taskAssigneeFilterMembers = members.sort((a, b) =>
 				a.label.toLowerCase().localeCompare(b.label.toLowerCase())
 			);
-			currentProjectActorId =
-				typeof payload?.data?.actorId === 'string' ? payload.data.actorId : null;
+			currentProjectActorId = payload.actorId;
 		} catch (error) {
 			console.error('[Project] Failed to load members for task assignee filters:', error);
 			void logOntologyClientError(error, {
@@ -621,10 +588,15 @@
 
 	// Filtered and sorted images
 	const filteredImages = $derived.by(() => {
-		return filterAndSortInsightEntities(images, panelStates.images, 'images', {
-			currentActorId: currentProjectActorId,
-			taskFocusActorId: taskPersonFocusActorId
-		});
+		return filterAndSortInsightEntities(
+			images as unknown as Array<Record<string, unknown>>,
+			panelStates.images,
+			'images',
+			{
+				currentActorId: currentProjectActorId,
+				taskFocusActorId: taskPersonFocusActorId
+			}
+		) as unknown as OntologyImageAsset[];
 	});
 
 	// Group milestones by their parent goal ID
@@ -894,14 +866,7 @@
 		if (!project?.id) return;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${project.id}/events`);
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to load events');
-			}
-
-			events = (payload?.data?.events || []) as OntoEventWithSync[];
+			events = await fetchProjectEvents(project.id);
 		} catch (error) {
 			console.error('[Project] Failed to load events', error);
 			void logOntologyClientError(error, {
@@ -924,17 +889,7 @@
 
 		isNotificationSettingsLoading = true;
 		try {
-			const response = await fetch(`/api/onto/projects/${project.id}/notification-settings`, {
-				method: 'GET',
-				credentials: 'same-origin'
-			});
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to load notification settings');
-			}
-
-			projectNotificationSettings = payload?.data?.settings ?? null;
+			projectNotificationSettings = await fetchProjectNotificationSettings(project.id);
 		} catch (error) {
 			console.error('[Project] Failed to load notification settings', error);
 			void logOntologyClientError(error, {
@@ -973,19 +928,11 @@
 		isNotificationSettingsSaving = true;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${project.id}/notification-settings`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				credentials: 'same-origin',
-				body: JSON.stringify({ member_enabled: nextEnabled })
+			const updatedSettings = await updateProjectNotificationSettings({
+				projectId: project.id,
+				memberEnabled: nextEnabled
 			});
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to update notification settings');
-			}
-
-			projectNotificationSettings = payload?.data?.settings ?? projectNotificationSettings;
+			projectNotificationSettings = updatedSettings ?? projectNotificationSettings;
 
 			toastService.success(
 				nextEnabled
@@ -1017,14 +964,7 @@
 		if (!project?.id) return;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${project.id}`);
-			const payload = await response.json().catch(() => null);
-
-			if (!response.ok) {
-				throw new Error(payload?.error ?? 'Failed to refresh data');
-			}
-
-			const newData = payload?.data || {};
+			const newData = await fetchProjectSnapshot(project.id);
 			project = newData.project || project;
 			tasks = newData.tasks || [];
 			documents = newData.documents || [];

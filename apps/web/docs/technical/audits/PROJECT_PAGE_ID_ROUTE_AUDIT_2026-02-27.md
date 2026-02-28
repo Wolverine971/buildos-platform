@@ -128,6 +128,12 @@ Add route-level client tests for:
 - Keep state ownership in route file; pass explicit close/save/delete callbacks into host.
 - Preserve lazy imports and existing modal behavior while reducing route template surface area.
 
+### Phase 8: Data-controller extraction (small-medium)
+
+- Move project-page API fetch/parsing flows into a dedicated typed module.
+- Keep route-level logging/toast behavior unchanged while reducing in-file fetch boilerplate.
+- Add focused unit tests around payload parsing and error propagation for controller functions.
+
 ## Execution Status
 
 - [x] Audit complete
@@ -138,6 +144,7 @@ Add route-level client tests for:
 - [x] Phase 5 complete
 - [x] Phase 6 complete
 - [x] Phase 7 complete
+- [x] Phase 8 complete
 
 ## Implementation Updates (This Session)
 
@@ -190,3 +197,13 @@ Add route-level client tests for:
         - `apps/web/src/routes/projects/[id]/+page.svelte`
     - added small route-side modal close/save helper callbacks (`closeDocumentModal`, `closeGraphModal`, `handleProjectSaved`, etc.) to keep state transitions centralized
     - reduced `+page.svelte` size from ~2132 lines to 1965 lines while preserving modal behavior and lazy-loading boundaries
+16. Phase 8 implementation:
+    - added `apps/web/src/lib/components/project/project-page-data-controller.ts` with typed endpoint helpers for:
+        - skeleton hydration full payload
+        - project snapshot refresh payload
+        - members lookup
+        - events lookup
+        - notification settings fetch/update
+    - rewired `apps/web/src/routes/projects/[id]/+page.svelte` data-loading functions (`hydrateFullData`, `loadProjectMembers`, `loadProjectEvents`, `loadProjectNotificationSettings`, `handleProjectNotificationQuickToggle`, `refreshData`) to use controller functions
+    - added tests in `apps/web/src/lib/components/project/project-page-data-controller.test.ts` covering success/error payload parsing and request method/body expectations
+    - reduced `+page.svelte` size from 1965 lines to 1897 lines

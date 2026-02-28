@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/project/ProjectCalendarSettingsModal.test.ts
 // @vitest-environment jsdom
 // apps/web/src/lib/components/project/ProjectCalendarSettingsModal.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -144,7 +145,10 @@ describe('ProjectCalendarSettingsModal sync coverage and health', () => {
 				});
 			}
 
-			if (method === 'POST' && url === `/api/onto/projects/${PROJECT_ID}/calendar/sync-health`) {
+			if (
+				method === 'POST' &&
+				url === `/api/onto/projects/${PROJECT_ID}/calendar/sync-health`
+			) {
 				return okJson({
 					success: true,
 					data: { queue_job_id: 'job-1' }

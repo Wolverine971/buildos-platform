@@ -40,7 +40,10 @@ async function requireProjectAccess(
 	]);
 
 	if (actorResult.error || !actorResult.data) {
-		console.error('[Project Calendar Sync Health API] Failed to resolve actor:', actorResult.error);
+		console.error(
+			'[Project Calendar Sync Health API] Failed to resolve actor:',
+			actorResult.error
+		);
 		return {
 			ok: false,
 			response: ApiResponse.internalError(
@@ -108,20 +111,17 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 	const access = await requireProjectAccess(locals, projectId, 'write');
 	if (!access.ok) return access.response;
 
-	const body = (await request.json().catch(() => null)) as
-		| {
-				eventId?: string;
-				event_id?: string;
-				targetUserId?: string;
-				target_user_id?: string;
-				action?: 'upsert' | 'delete';
-		  }
-		| null;
+	const body = (await request.json().catch(() => null)) as {
+		eventId?: string;
+		event_id?: string;
+		targetUserId?: string;
+		target_user_id?: string;
+		action?: 'upsert' | 'delete';
+	} | null;
 
 	const eventId = body?.eventId || body?.event_id;
 	const targetUserId = body?.targetUserId || body?.target_user_id;
-	const action =
-		body?.action === 'delete' || body?.action === 'upsert' ? body.action : undefined;
+	const action = body?.action === 'delete' || body?.action === 'upsert' ? body.action : undefined;
 
 	if (!eventId || !targetUserId) {
 		return ApiResponse.badRequest('eventId and targetUserId are required');
@@ -134,4 +134,3 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 		action
 	});
 };
-

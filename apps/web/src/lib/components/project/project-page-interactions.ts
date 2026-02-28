@@ -38,7 +38,10 @@ export type EntityOpenResolution =
 	| { result: 'unsupported' }
 	| { result: 'unknown' };
 
-export function resolveEntityOpenAction(entityType: string, entityId: string): EntityOpenResolution {
+export function resolveEntityOpenAction(
+	entityType: string,
+	entityId: string
+): EntityOpenResolution {
 	switch (entityType) {
 		case 'task':
 			return { result: 'opened', action: { kind: 'task', entityId } };
