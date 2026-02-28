@@ -77,10 +77,8 @@
 	} from '$lib/types/onto';
 	import type { PageData } from './$types';
 	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
-	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
+	import ProjectInsightRailSkeleton from '$lib/components/project/ProjectInsightRailSkeleton.svelte';
 	import ProjectHistorySection from '$lib/components/project/ProjectHistorySection.svelte';
-	import ProjectInsightRail from '$lib/components/project/ProjectInsightRail.svelte';
-	import ProjectModalsHost from '$lib/components/project/ProjectModalsHost.svelte';
 	import {
 		fetchProjectEvents,
 		fetchProjectFullData,
@@ -246,6 +244,7 @@
 	let projectNotificationSettings = $state<ProjectNotificationSettings | null>(null);
 	let isNotificationSettingsLoading = $state(false);
 	let isNotificationSettingsSaving = $state(false);
+	let notificationSettingsLoadPromise = $state<Promise<void> | null>(null);
 	let currentProjectActorId = $state<string | null>(null);
 	let taskAssigneeFilterMembers = $state<TaskAssigneeFilterMember[]>([]);
 	let membersLoadPromise = $state<Promise<void> | null>(null);
@@ -281,6 +280,9 @@
 	function handleHeaderMenuOpen(position: { top: number; right: number }) {
 		mobileMenuPos = position;
 		showMobileMenu = true;
+		if (canOpenCollabModal) {
+			void ensureProjectNotificationSettingsLoaded();
+		}
 	}
 
 	// Insight panel filter/sort state
@@ -291,6 +293,29 @@
 
 	// Graph modal state
 	let showGraphModal = $state(false);
+
+	const hasAnyModalOpen = $derived(
+		showDocumentModal ||
+			showMoveDocModal ||
+			showDeleteDocConfirmModal ||
+			showTaskCreateModal ||
+			Boolean(editingTaskId) ||
+			showPlanCreateModal ||
+			Boolean(editingPlanId) ||
+			showGoalCreateModal ||
+			Boolean(editingGoalId) ||
+			showRiskCreateModal ||
+			Boolean(editingRiskId) ||
+			showMilestoneCreateModal ||
+			Boolean(editingMilestoneId) ||
+			showEventCreateModal ||
+			Boolean(editingEventId) ||
+			showProjectCalendarModal ||
+			showProjectEditModal ||
+			showCollabModal ||
+			showDeleteProjectModal ||
+			showGraphModal
+	);
 
 	$effect(() => {
 		const nextPending = flushPendingImageUploadOpen(
@@ -350,10 +375,6 @@
 		if (typeof window !== 'undefined' && window.localStorage) {
 			const stored = window.localStorage.getItem('buildos:project-graph-hidden');
 			graphHidden = stored === 'true';
-		}
-
-		if (canOpenCollabModal) {
-			void loadProjectNotificationSettings();
 		}
 
 		if (data.skeleton) {
@@ -911,6 +932,31 @@
 		}
 	}
 
+	async function ensureProjectNotificationSettingsLoaded(
+		options: {
+			force?: boolean;
+			showToast?: boolean;
+		} = {}
+	) {
+		const { force = false, showToast = false } = options;
+		if (!project?.id || !canOpenCollabModal) return;
+		if (!force && projectNotificationSettings) return;
+		if (notificationSettingsLoadPromise) {
+			await notificationSettingsLoadPromise;
+			return;
+		}
+
+		notificationSettingsLoadPromise = (async () => {
+			try {
+				await loadProjectNotificationSettings(showToast);
+			} finally {
+				notificationSettingsLoadPromise = null;
+			}
+		})();
+
+		await notificationSettingsLoadPromise;
+	}
+
 	async function handleProjectNotificationQuickToggle() {
 		if (!project?.id || !projectNotificationSettings || isNotificationSettingsSaving) {
 			return;
@@ -974,9 +1020,13 @@
 			milestones = newData.milestones || [];
 			risks = newData.risks || [];
 			contextDocument = newData.context_document || null;
-			await loadProjectEvents();
-			await loadProjectNotificationSettings();
-			await ensureProjectMembersLoaded({ force: true });
+			await Promise.all([
+				loadProjectEvents(),
+				canOpenCollabModal
+					? ensureProjectNotificationSettingsLoaded({ force: true })
+					: Promise.resolve(),
+				ensureProjectMembersLoaded({ force: true })
+			]);
 
 			if (showSuccessToast) {
 				toastService.success('Data refreshed');
@@ -1648,164 +1698,221 @@
 			{:else}
 				<!-- Hydrated state - show real content -->
 				<div class="min-w-0 space-y-2 sm:space-y-4">
-					<ProjectDocumentsSection
-						projectId={project.id}
-						{documents}
-						{canEdit}
-						{documentsExpanded}
-						{activeDocumentId}
-						onToggleExpanded={() => (documentsExpanded = !documentsExpanded)}
-						onCreateDocument={handleCreateDocument}
-						onOpenDocument={handleOpenDocument}
-						onMoveDocument={canEdit ? handleMoveDocument : undefined}
-						onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
-						onDataLoaded={handleDocTreeDataLoaded}
-						onTreeRefChange={(ref) => {
-							docTreeViewRef = ref;
-						}}
-					/>
+					{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
+						<ProjectContentSkeleton
+							documentCount={Math.max(
+								documents.length,
+								skeletonCounts?.document_count ?? 0
+							)}
+						/>
+					{:then { default: ProjectDocumentsSection }}
+						<ProjectDocumentsSection
+							projectId={project.id}
+							{documents}
+							{canEdit}
+							{documentsExpanded}
+							{activeDocumentId}
+							onToggleExpanded={() => (documentsExpanded = !documentsExpanded)}
+							onCreateDocument={handleCreateDocument}
+							onOpenDocument={handleOpenDocument}
+							onMoveDocument={canEdit ? handleMoveDocument : undefined}
+							onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
+							onDataLoaded={handleDocTreeDataLoaded}
+							onTreeRefChange={(ref) => {
+								docTreeViewRef = ref;
+							}}
+						/>
+					{:catch}
+						<div
+							class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+						>
+							Unable to load documents section.
+						</div>
+					{/await}
 				</div>
 			{/if}
 
 			<!-- Right Column: Insight Panels -->
-			<ProjectInsightRail
-				{isHydrating}
-				{skeletonCounts}
-				{graphHidden}
-				{canViewLogs}
-				{canEdit}
-				projectId={project.id}
-				projectName={project.name || 'Project'}
-				{insightPanels}
-				{expandedPanels}
-				{panelStates}
-				{panelCounts}
-				{filteredTasks}
-				{filteredPlans}
-				{filteredGoals}
-				{filteredRisks}
-				{filteredEvents}
-				{milestonesByGoalId}
-				{getPanelFilterGroups}
-				{getPanelIconStyles}
-				{formatState}
-				{formatTaskAssigneeSummary}
-				{getTaskSortSummary}
-				{formatEventDateCompact}
-				{isEventSynced}
-				onShowGraphModal={() => (showGraphModal = true)}
-				onTogglePanel={togglePanel}
-				onOpenCreateModalForPanel={openCreateModalForPanel}
-				onUpdatePanelFilters={updatePanelFilters}
-				onUpdatePanelSort={updatePanelSort}
-				onUpdatePanelToggle={updatePanelToggle}
-				onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
-				onEditTask={(id) => (editingTaskId = id)}
-				onEditPlan={(id) => (editingPlanId = id)}
-				onEditGoal={(id) => (editingGoalId = id)}
-				onEditRisk={(id) => (editingRiskId = id)}
-				onEditMilestone={(id) => (editingMilestoneId = id)}
-				onEditEvent={(id) => (editingEventId = id)}
-				onToggleMilestoneComplete={handleToggleMilestoneComplete}
-				onHistoryEntityClick={handleActivityLogEntityClick}
-				onRefreshData={refreshProjectSilently}
-				onImageAssetsPanelRefChange={(ref) => {
-					imageAssetsPanelRef = ref;
-				}}
-			/>
+			{#if isHydrating && skeletonCounts}
+				<ProjectInsightRailSkeleton
+					{skeletonCounts}
+					{graphHidden}
+					{canViewLogs}
+					onShowGraphModal={() => (showGraphModal = true)}
+				/>
+			{:else}
+				{#await import('$lib/components/project/ProjectInsightRail.svelte')}
+					<ProjectInsightRailSkeleton
+						skeletonCounts={{
+							task_count: Math.max(tasks.length, skeletonCounts?.task_count ?? 0),
+							document_count: Math.max(
+								documents.length,
+								skeletonCounts?.document_count ?? 0
+							),
+							goal_count: Math.max(goals.length, skeletonCounts?.goal_count ?? 0),
+							plan_count: Math.max(plans.length, skeletonCounts?.plan_count ?? 0),
+							milestone_count: Math.max(
+								milestones.length,
+								skeletonCounts?.milestone_count ?? 0
+							),
+							risk_count: Math.max(risks.length, skeletonCounts?.risk_count ?? 0),
+							image_count: Math.max(images.length, skeletonCounts?.image_count ?? 0)
+						}}
+						{graphHidden}
+						{canViewLogs}
+						onShowGraphModal={() => (showGraphModal = true)}
+					/>
+				{:then { default: ProjectInsightRail }}
+					<ProjectInsightRail
+						{isHydrating}
+						{skeletonCounts}
+						{graphHidden}
+						{canViewLogs}
+						{canEdit}
+						projectId={project.id}
+						projectName={project.name || 'Project'}
+						{insightPanels}
+						{expandedPanels}
+						{panelStates}
+						{panelCounts}
+						{filteredTasks}
+						{filteredPlans}
+						{filteredGoals}
+						{filteredRisks}
+						{filteredEvents}
+						{milestonesByGoalId}
+						{getPanelFilterGroups}
+						{getPanelIconStyles}
+						{formatState}
+						{formatTaskAssigneeSummary}
+						{getTaskSortSummary}
+						{formatEventDateCompact}
+						{isEventSynced}
+						onShowGraphModal={() => (showGraphModal = true)}
+						onTogglePanel={togglePanel}
+						onOpenCreateModalForPanel={openCreateModalForPanel}
+						onUpdatePanelFilters={updatePanelFilters}
+						onUpdatePanelSort={updatePanelSort}
+						onUpdatePanelToggle={updatePanelToggle}
+						onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
+						onEditTask={(id) => (editingTaskId = id)}
+						onEditPlan={(id) => (editingPlanId = id)}
+						onEditGoal={(id) => (editingGoalId = id)}
+						onEditRisk={(id) => (editingRiskId = id)}
+						onEditMilestone={(id) => (editingMilestoneId = id)}
+						onEditEvent={(id) => (editingEventId = id)}
+						onToggleMilestoneComplete={handleToggleMilestoneComplete}
+						onHistoryEntityClick={handleActivityLogEntityClick}
+						onRefreshData={refreshProjectSilently}
+						onImageAssetsPanelRefChange={(ref) => {
+							imageAssetsPanelRef = ref;
+						}}
+					/>
+				{:catch}
+					<div
+						class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+					>
+						Unable to load insight rail.
+					</div>
+				{/await}
+			{/if}
 		</div>
 	</main>
 </div>
 
-<ProjectModalsHost
-	{project}
-	{contextDocument}
-	{goals}
-	{tasks}
-	{documentTypeOptions}
-	{docTreeStructure}
-	{docTreeDocuments}
-	{canDeleteProject}
-	{canOpenCollabModal}
-	{canAdmin}
-	{showDocumentModal}
-	{activeDocumentId}
-	{parentDocumentId}
-	{showMoveDocModal}
-	{moveDocumentId}
-	{moveDocumentTitle}
-	{showDeleteDocConfirmModal}
-	{deleteDocumentId}
-	{deleteDocumentTitle}
-	{deleteDocumentHasChildren}
-	{deleteDocumentChildCount}
-	{showTaskCreateModal}
-	{editingTaskId}
-	{showPlanCreateModal}
-	{editingPlanId}
-	{showGoalCreateModal}
-	{editingGoalId}
-	{showRiskCreateModal}
-	{editingRiskId}
-	{showMilestoneCreateModal}
-	{milestoneCreateGoalContext}
-	{editingMilestoneId}
-	{showEventCreateModal}
-	{editingEventId}
-	{showProjectCalendarModal}
-	{showProjectEditModal}
-	{showCollabModal}
-	{showDeleteProjectModal}
-	{isDeletingProject}
-	{deleteProjectError}
-	{showGraphModal}
-	onCloseDocumentModal={closeDocumentModal}
-	onDocumentSaved={handleDocumentSaved}
-	onDocumentDeleted={handleDocumentDeleted}
-	onCloseMoveDocModal={closeMoveDocumentModal}
-	onMoveDocumentConfirm={handleMoveDocumentConfirm}
-	onCloseDeleteDocConfirmModal={closeDeleteDocumentConfirmModal}
-	onDeleteDocumentConfirm={handleDeleteDocumentConfirm}
-	onCloseTaskCreateModal={() => (showTaskCreateModal = false)}
-	onTaskCreated={handleTaskCreated}
-	onCloseTaskEditModal={() => (editingTaskId = null)}
-	onTaskUpdated={handleTaskUpdated}
-	onTaskDeleted={handleTaskDeleted}
-	onClosePlanCreateModal={() => (showPlanCreateModal = false)}
-	onPlanCreated={handlePlanCreated}
-	onClosePlanEditModal={() => (editingPlanId = null)}
-	onPlanUpdated={handlePlanUpdated}
-	onPlanDeleted={handlePlanDeleted}
-	onCloseGoalCreateModal={() => (showGoalCreateModal = false)}
-	onGoalCreated={handleGoalCreated}
-	onCloseGoalEditModal={() => (editingGoalId = null)}
-	onGoalUpdated={handleGoalUpdated}
-	onGoalDeleted={handleGoalDeleted}
-	onCloseRiskCreateModal={() => (showRiskCreateModal = false)}
-	onRiskCreated={handleRiskCreated}
-	onCloseRiskEditModal={() => (editingRiskId = null)}
-	onRiskUpdated={handleRiskUpdated}
-	onRiskDeleted={handleRiskDeleted}
-	onCloseMilestoneCreateModal={closeMilestoneCreateModal}
-	onMilestoneCreated={handleMilestoneCreated}
-	onCloseMilestoneEditModal={() => (editingMilestoneId = null)}
-	onMilestoneUpdated={handleMilestoneUpdated}
-	onMilestoneDeleted={handleMilestoneDeleted}
-	onCloseEventCreateModal={() => (showEventCreateModal = false)}
-	onEventCreated={handleEventCreated}
-	onCloseEventEditModal={() => (editingEventId = null)}
-	onEventUpdated={handleEventUpdated}
-	onEventDeleted={handleEventDeleted}
-	onCloseProjectCalendarModal={closeProjectCalendarModal}
-	onCloseProjectEditModal={closeProjectEditModal}
-	onProjectSaved={handleProjectSaved}
-	onCloseCollabModal={closeCollabModal}
-	onLeftProject={handleCollaborationLeftProject}
-	onProjectDeleteConfirm={handleProjectDeleteConfirm}
-	onCancelProjectDelete={cancelDeleteProjectModal}
-	onCloseGraphModal={closeGraphModal}
-	onGraphNodeClick={handleGraphNodeClick}
-/>
+{#if hasAnyModalOpen}
+	{#await import('$lib/components/project/ProjectModalsHost.svelte') then { default: ProjectModalsHost }}
+		<ProjectModalsHost
+			{project}
+			{contextDocument}
+			{goals}
+			{tasks}
+			{documentTypeOptions}
+			{docTreeStructure}
+			{docTreeDocuments}
+			{canDeleteProject}
+			{canOpenCollabModal}
+			{canAdmin}
+			{showDocumentModal}
+			{activeDocumentId}
+			{parentDocumentId}
+			{showMoveDocModal}
+			{moveDocumentId}
+			{moveDocumentTitle}
+			{showDeleteDocConfirmModal}
+			{deleteDocumentId}
+			{deleteDocumentTitle}
+			{deleteDocumentHasChildren}
+			{deleteDocumentChildCount}
+			{showTaskCreateModal}
+			{editingTaskId}
+			{showPlanCreateModal}
+			{editingPlanId}
+			{showGoalCreateModal}
+			{editingGoalId}
+			{showRiskCreateModal}
+			{editingRiskId}
+			{showMilestoneCreateModal}
+			{milestoneCreateGoalContext}
+			{editingMilestoneId}
+			{showEventCreateModal}
+			{editingEventId}
+			{showProjectCalendarModal}
+			{showProjectEditModal}
+			{showCollabModal}
+			{showDeleteProjectModal}
+			{isDeletingProject}
+			{deleteProjectError}
+			{showGraphModal}
+			onCloseDocumentModal={closeDocumentModal}
+			onDocumentSaved={handleDocumentSaved}
+			onDocumentDeleted={handleDocumentDeleted}
+			onCloseMoveDocModal={closeMoveDocumentModal}
+			onMoveDocumentConfirm={handleMoveDocumentConfirm}
+			onCloseDeleteDocConfirmModal={closeDeleteDocumentConfirmModal}
+			onDeleteDocumentConfirm={handleDeleteDocumentConfirm}
+			onCloseTaskCreateModal={() => (showTaskCreateModal = false)}
+			onTaskCreated={handleTaskCreated}
+			onCloseTaskEditModal={() => (editingTaskId = null)}
+			onTaskUpdated={handleTaskUpdated}
+			onTaskDeleted={handleTaskDeleted}
+			onClosePlanCreateModal={() => (showPlanCreateModal = false)}
+			onPlanCreated={handlePlanCreated}
+			onClosePlanEditModal={() => (editingPlanId = null)}
+			onPlanUpdated={handlePlanUpdated}
+			onPlanDeleted={handlePlanDeleted}
+			onCloseGoalCreateModal={() => (showGoalCreateModal = false)}
+			onGoalCreated={handleGoalCreated}
+			onCloseGoalEditModal={() => (editingGoalId = null)}
+			onGoalUpdated={handleGoalUpdated}
+			onGoalDeleted={handleGoalDeleted}
+			onCloseRiskCreateModal={() => (showRiskCreateModal = false)}
+			onRiskCreated={handleRiskCreated}
+			onCloseRiskEditModal={() => (editingRiskId = null)}
+			onRiskUpdated={handleRiskUpdated}
+			onRiskDeleted={handleRiskDeleted}
+			onCloseMilestoneCreateModal={closeMilestoneCreateModal}
+			onMilestoneCreated={handleMilestoneCreated}
+			onCloseMilestoneEditModal={() => (editingMilestoneId = null)}
+			onMilestoneUpdated={handleMilestoneUpdated}
+			onMilestoneDeleted={handleMilestoneDeleted}
+			onCloseEventCreateModal={() => (showEventCreateModal = false)}
+			onEventCreated={handleEventCreated}
+			onCloseEventEditModal={() => (editingEventId = null)}
+			onEventUpdated={handleEventUpdated}
+			onEventDeleted={handleEventDeleted}
+			onCloseProjectCalendarModal={closeProjectCalendarModal}
+			onCloseProjectEditModal={closeProjectEditModal}
+			onProjectSaved={handleProjectSaved}
+			onCloseCollabModal={closeCollabModal}
+			onLeftProject={handleCollaborationLeftProject}
+			onProjectDeleteConfirm={handleProjectDeleteConfirm}
+			onCancelProjectDelete={cancelDeleteProjectModal}
+			onCloseGraphModal={closeGraphModal}
+			onGraphNodeClick={handleGraphNodeClick}
+		/>
+	{/await}
+{/if}
 
 <!-- Settings Menu Portal - Rendered outside all containers to avoid z-index issues -->
 {#if showMobileMenu}
@@ -1858,6 +1965,7 @@
 			<button
 				onclick={() => {
 					showMobileMenu = false;
+					void ensureProjectNotificationSettingsLoaded();
 					showCollabModal = true;
 				}}
 				class="w-full flex items-center gap-3 px-3 py-2 text-sm text-left text-foreground hover:bg-muted transition-colors pressable"

@@ -878,9 +878,7 @@
 											{/if}
 
 											{#if event.type === 'tool_execution'}
-												<div
-													class="mt-2 grid grid-cols-2 gap-1.5 text-xs"
-												>
+												<div class="mt-2 grid grid-cols-2 gap-1.5 text-xs">
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
 													>

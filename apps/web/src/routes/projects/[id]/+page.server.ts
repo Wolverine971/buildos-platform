@@ -189,18 +189,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	// COLD LOAD: Fetch skeleton data from RPC
 	// This is fast (~50ms) - just project metadata and counts
-	if (!actorId) {
-		const [fallbackData, access] = await Promise.all([
-			measure('db.project_full_fallback', () => loadFullData(id, supabase, actorId)),
-			resolveAccess()
-		]);
-		return { ...fallbackData, access };
-	}
-
+	const skeletonActorId = actorId ?? '00000000-0000-0000-0000-000000000000';
 	const { data: skeletonRaw, error: skeletonError } = await measure('db.project_skeleton', () =>
 		supabase.rpc('get_project_skeleton', {
 			p_project_id: id,
-			p_actor_id: actorId
+			p_actor_id: skeletonActorId
 		})
 	);
 	const skeletonData = skeletonRaw as Record<string, any> | null;

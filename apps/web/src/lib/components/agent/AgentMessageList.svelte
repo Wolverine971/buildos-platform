@@ -121,8 +121,9 @@
 					>
 						<div
 							class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
-							class:user-message-content-collapsed={isCollapsibleUserMessage(message) &&
-								!isUserMessageExpanded(message.id)}
+							class:user-message-content-collapsed={isCollapsibleUserMessage(
+								message
+							) && !isUserMessageExpanded(message.id)}
 						>
 							{message.content}
 						</div>

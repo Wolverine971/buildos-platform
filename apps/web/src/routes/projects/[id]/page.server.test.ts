@@ -212,6 +212,27 @@ describe('projects/[id] +page.server load', () => {
 		});
 	});
 
+	it('anonymous requests return skeleton data without access fan-out queries', async () => {
+		const { event, operations, from } = createHarness({
+			userId: null
+		});
+
+		const result = await load(event);
+
+		expect(result.skeleton).toBe(true);
+		expect(result.access).toEqual({
+			canEdit: false,
+			canAdmin: false,
+			canInvite: false,
+			canViewLogs: false,
+			isOwner: false,
+			isAuthenticated: false
+		});
+		expect(operations).toEqual(['rpc:get_project_skeleton']);
+		expect(from).not.toHaveBeenCalled();
+		expect(ensureActorIdMock).not.toHaveBeenCalled();
+	});
+
 	it('not-found short-circuits before access fan-out queries', async () => {
 		const { event, operations } = createHarness({
 			skeletonData: null
