@@ -56,44 +56,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
-			"type": "component",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectHistorySection.svelte",
-			"type": "component",
-			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectInsightRail.svelte",
-			"type": "component",
-			"components": ["ImageAssetsPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectModalsHost.svelte",
-			"type": "component",
-			"components": [
-				"DocumentModal",
-				"TaskCreateModal",
-				"TaskEditModal",
-				"PlanCreateModal",
-				"PlanEditModal",
-				"GoalCreateModal",
-				"GoalEditModal",
-				"RiskCreateModal",
-				"RiskEditModal",
-				"MilestoneCreateModal",
-				"MilestoneEditModal",
-				"EventCreateModal",
-				"EventEditModal",
-				"ProjectCalendarSettingsModal",
-				"OntologyProjectEditModal",
-				"ProjectCollaborationModal",
-				"ProjectGraphSection"
-			]
-		},
-		{
 			"file": "src/lib/components/ontology/DocumentModal.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
@@ -137,6 +99,44 @@
 				"GoalEditModal",
 				"PlanEditModal",
 				"AgentChatModal"
+			]
+		},
+		{
+			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
+			"type": "component",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectHistorySection.svelte",
+			"type": "component",
+			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectInsightRail.svelte",
+			"type": "component",
+			"components": ["ImageAssetsPanel"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectModalsHost.svelte",
+			"type": "component",
+			"components": [
+				"DocumentModal",
+				"TaskCreateModal",
+				"TaskEditModal",
+				"PlanCreateModal",
+				"PlanEditModal",
+				"GoalCreateModal",
+				"GoalEditModal",
+				"RiskCreateModal",
+				"RiskEditModal",
+				"MilestoneCreateModal",
+				"MilestoneEditModal",
+				"EventCreateModal",
+				"EventEditModal",
+				"ProjectCalendarSettingsModal",
+				"OntologyProjectEditModal",
+				"ProjectCollaborationModal",
+				"ProjectGraphSection"
 			]
 		},
 		{
@@ -954,6 +954,20 @@
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
+		"src/lib/components/ontology/EventEditModal.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte",
+			"src/lib/components/ontology/DocumentModal.svelte"
+		],
+		"src/lib/components/ontology/GoalEditModal.svelte": [
+			"src/lib/components/ontology/MilestoneEditModal.svelte"
+		],
+		"src/lib/components/ontology/TaskEditModal.svelte": [
+			"src/lib/components/ontology/DocumentModal.svelte",
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte"
+		],
 		"src/lib/components/project/ProjectCalendarSettingsModal.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/EventEditModal.svelte"
@@ -968,20 +982,6 @@
 			"src/lib/components/ontology/EventEditModal.svelte",
 			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
-		],
-		"src/lib/components/ontology/EventEditModal.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte"
-		],
-		"src/lib/components/ontology/GoalEditModal.svelte": [
-			"src/lib/components/ontology/MilestoneEditModal.svelte"
-		],
-		"src/lib/components/ontology/TaskEditModal.svelte": [
-			"src/lib/components/ontology/DocumentModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte"
 		],
 		"src/routes/dashboard/calendar/+page.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
