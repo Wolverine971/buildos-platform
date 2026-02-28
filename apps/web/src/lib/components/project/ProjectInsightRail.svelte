@@ -295,15 +295,15 @@
 			{@const SectionIcon = section.icon}
 			{@const iconStyles = getPanelIconStyles(section.key)}
 			<div
-				class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+				class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak"
 			>
-				<div class="flex items-center justify-between gap-3 px-4 py-3">
+				<div class="flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-muted/30 transition-colors">
 					<button
 						onclick={() => onTogglePanel(section.key)}
-						class="flex items-center gap-3 flex-1 text-left hover:bg-muted/60 rounded-lg transition-colors pressable"
+						class="flex items-center gap-3 flex-1 text-left min-w-0 pressable"
 					>
 						<div
-							class="w-9 h-9 rounded-lg flex items-center justify-center {iconStyles}"
+							class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 {iconStyles}"
 						>
 							<SectionIcon class="w-4 h-4" />
 						</div>
@@ -314,14 +314,14 @@
 									>({section.items.length})</span
 								>
 							</p>
-							<p class="text-xs text-muted-foreground">
-								{#if section.description}
+							{#if section.description}
+								<p class="text-xs text-muted-foreground">
 									{section.description}
-								{/if}
-							</p>
+								</p>
+							{/if}
 						</div>
 					</button>
-					<div class="flex items-center gap-2">
+					<div class="flex items-center gap-1.5 shrink-0">
 						{#if canEdit}
 							<button
 								onclick={() => onOpenCreateModalForPanel(section.key)}
@@ -351,7 +351,7 @@
 					<div class="border-t border-border" transition:slide={{ duration: 120 }}>
 						{#if section.key !== 'images'}
 							<div
-								class="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30"
+								class="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30"
 							>
 								<InsightFilterDropdown
 									filterGroups={getPanelFilterGroups(section.key)}
@@ -398,7 +398,7 @@
 									{/each}
 								</ul>
 							{:else}
-								<div class="px-4 py-4 text-center">
+								<div class="px-3 py-3 text-center">
 									<p class="text-sm text-muted-foreground">No tasks yet</p>
 									<p class="text-xs text-muted-foreground/70 mt-1">
 										Add tasks to track work
@@ -428,7 +428,7 @@
 									{/each}
 								</ul>
 							{:else}
-								<div class="px-4 py-4 text-center">
+								<div class="px-3 py-3 text-center">
 									<p class="text-sm text-muted-foreground">No plans yet</p>
 									<p class="text-xs text-muted-foreground/70 mt-1">
 										Create a plan to organize work
@@ -437,7 +437,7 @@
 							{/if}
 						{:else if section.key === 'goals'}
 							{#if filteredGoals.length > 0}
-								<div class="divide-y divide-border/80">
+								<ul class="divide-y divide-border/80">
 									{#each filteredGoals as goal (goal.id)}
 										{@const sortDisplay = getSortValueDisplay(
 											goal,
@@ -449,10 +449,8 @@
 										{@const completedCount = goalMilestones.filter(
 											(m) => resolveMilestoneState(m).state === 'completed'
 										).length}
-										<div
-											class="bg-card rounded-lg overflow-hidden shadow-ink border-t border-r border-b border-border"
-										>
-											<div class="flex items-start">
+										<li>
+											<div class="flex items-center min-w-0">
 												<EntityListItem
 													type="goal"
 													title={goal.name}
@@ -461,11 +459,11 @@
 													)} · {sortDisplay.value}"
 													state={goal.state_key}
 													onclick={() => onEditGoal(goal.id)}
-													class="flex-1 !rounded-none !shadow-none"
+													class="flex-1 min-w-0"
 												/>
 												{#if goalMilestones.length > 0}
 													<span
-														class="px-2.5 py-2.5 text-[10px] text-muted-foreground shrink-0"
+														class="px-2 py-2 text-[10px] text-muted-foreground shrink-0"
 													>
 														{completedCount}/{goalMilestones.length}
 													</span>
@@ -482,11 +480,11 @@
 												onEditMilestone={(id) => onEditMilestone(id)}
 												{onToggleMilestoneComplete}
 											/>
-										</div>
+										</li>
 									{/each}
-								</div>
+								</ul>
 							{:else}
-								<div class="px-4 py-4 text-center">
+								<div class="px-3 py-3 text-center">
 									<p class="text-sm text-muted-foreground">No goals yet</p>
 									<p class="text-xs text-muted-foreground/70 mt-1">
 										Set goals to define success
@@ -494,7 +492,7 @@
 								</div>
 							{/if}
 						{:else if section.key === 'images'}
-							<div class="px-4 py-3">
+							<div class="px-3 py-2">
 								{#await import('$lib/components/ontology/ImageAssetsPanel.svelte') then { default: ImageAssetsPanel }}
 									<ImageAssetsPanel
 										bind:this={imageAssetsPanelRef}
@@ -540,7 +538,7 @@
 									{/each}
 								</ul>
 							{:else}
-								<div class="px-4 py-4 text-center">
+								<div class="px-3 py-3 text-center">
 									<p class="text-sm text-muted-foreground">No risks identified</p>
 									<p class="text-xs text-muted-foreground/70 mt-1">
 										Document risks to track blockers
@@ -573,7 +571,7 @@
 									{/each}
 								</ul>
 							{:else}
-								<div class="px-4 py-4 text-center">
+								<div class="px-3 py-3 text-center">
 									<p class="text-sm text-muted-foreground">No events scheduled</p>
 									<p class="text-xs text-muted-foreground/70 mt-1">
 										Add events to track meetings

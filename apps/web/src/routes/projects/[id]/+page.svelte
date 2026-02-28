@@ -77,13 +77,11 @@
 		MilestoneState
 	} from '$lib/types/onto';
 	import type { PageData } from './$types';
-	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
-	import Modal from '$lib/components/ui/Modal.svelte';
-	import { DocMoveModal, DocDeleteConfirmModal } from '$lib/components/ontology/doc-tree';
 	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
 	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
 	import ProjectHistorySection from '$lib/components/project/ProjectHistorySection.svelte';
 	import ProjectInsightRail from '$lib/components/project/ProjectInsightRail.svelte';
+	import ProjectModalsHost from '$lib/components/project/ProjectModalsHost.svelte';
 	import {
 		flushPendingImageUploadOpen,
 		requestImageUploadOpen,
@@ -1078,9 +1076,7 @@
 			}
 		}
 		// Close modal immediately for snappy UX
-		showDocumentModal = false;
-		activeDocumentId = null;
-		parentDocumentId = null;
+		closeDocumentModal();
 		// Refresh doc tree in background (async, non-blocking)
 		docTreeViewRef?.refresh();
 	}
@@ -1446,6 +1442,56 @@
 		}
 	}
 
+	function closeDocumentModal() {
+		showDocumentModal = false;
+		activeDocumentId = null;
+		parentDocumentId = null;
+	}
+
+	function closeMoveDocumentModal() {
+		showMoveDocModal = false;
+		moveDocumentId = null;
+	}
+
+	function closeDeleteDocumentConfirmModal() {
+		showDeleteDocConfirmModal = false;
+		deleteDocumentId = null;
+	}
+
+	function closeMilestoneCreateModal() {
+		showMilestoneCreateModal = false;
+		milestoneCreateGoalContext = null;
+	}
+
+	function closeProjectCalendarModal() {
+		showProjectCalendarModal = false;
+	}
+
+	function closeProjectEditModal() {
+		showProjectEditModal = false;
+	}
+
+	async function handleProjectSaved() {
+		await refreshData({ showSuccessToast: false });
+		showProjectEditModal = false;
+	}
+
+	function closeCollabModal() {
+		showCollabModal = false;
+	}
+
+	function cancelDeleteProjectModal() {
+		showDeleteProjectModal = false;
+	}
+
+	function closeGraphModal() {
+		showGraphModal = false;
+	}
+
+	function handleCollaborationLeftProject() {
+		goto('/projects');
+	}
+
 	function openEntityEditor(
 		entityType: string,
 		entityId: string
@@ -1731,275 +1777,95 @@
 	</main>
 </div>
 
-<!-- Document Create/Edit Modal -->
-{#if showDocumentModal}
-	{#await import('$lib/components/ontology/DocumentModal.svelte') then { default: DocumentModal }}
-		<DocumentModal
-			bind:isOpen={showDocumentModal}
-			projectId={project.id}
-			documentId={activeDocumentId}
-			{parentDocumentId}
-			typeOptions={documentTypeOptions}
-			onClose={() => {
-				showDocumentModal = false;
-				activeDocumentId = null;
-				parentDocumentId = null;
-			}}
-			onSaved={handleDocumentSaved}
-			onDeleted={handleDocumentDeleted}
-		/>
-	{/await}
-{/if}
-
-<!-- Document Move Modal -->
-{#if showMoveDocModal && moveDocumentId}
-	<DocMoveModal
-		bind:isOpen={showMoveDocModal}
-		projectId={project.id}
-		documentId={moveDocumentId}
-		documentTitle={moveDocumentTitle}
-		structure={docTreeStructure}
-		documents={docTreeDocuments}
-		onClose={() => {
-			showMoveDocModal = false;
-			moveDocumentId = null;
-		}}
-		onMove={handleMoveDocumentConfirm}
-	/>
-{/if}
-
-<!-- Document Delete Confirm Modal -->
-{#if showDeleteDocConfirmModal && deleteDocumentId}
-	<DocDeleteConfirmModal
-		bind:isOpen={showDeleteDocConfirmModal}
-		documentTitle={deleteDocumentTitle}
-		hasChildren={deleteDocumentHasChildren}
-		childCount={deleteDocumentChildCount}
-		onClose={() => {
-			showDeleteDocConfirmModal = false;
-			deleteDocumentId = null;
-		}}
-		onDelete={handleDeleteDocumentConfirm}
-	/>
-{/if}
-
-<!-- Task Create Modal -->
-{#if showTaskCreateModal}
-	{#await import('$lib/components/ontology/TaskCreateModal.svelte') then { default: TaskCreateModal }}
-		<TaskCreateModal
-			projectId={project.id}
-			onClose={() => (showTaskCreateModal = false)}
-			onCreated={handleTaskCreated}
-		/>
-	{/await}
-{/if}
-
-<!-- Task Edit Modal -->
-{#if editingTaskId}
-	{#await import('$lib/components/ontology/TaskEditModal.svelte') then { default: TaskEditModal }}
-		<TaskEditModal
-			taskId={editingTaskId}
-			projectId={project.id}
-			onClose={() => (editingTaskId = null)}
-			onUpdated={handleTaskUpdated}
-			onDeleted={handleTaskDeleted}
-		/>
-	{/await}
-{/if}
-
-<!-- Plan Create Modal -->
-{#if showPlanCreateModal}
-	{#await import('$lib/components/ontology/PlanCreateModal.svelte') then { default: PlanCreateModal }}
-		<PlanCreateModal
-			projectId={project.id}
-			onClose={() => (showPlanCreateModal = false)}
-			onCreated={handlePlanCreated}
-		/>
-	{/await}
-{/if}
-
-<!-- Plan Edit Modal -->
-{#if editingPlanId}
-	{#await import('$lib/components/ontology/PlanEditModal.svelte') then { default: PlanEditModal }}
-		<PlanEditModal
-			planId={editingPlanId}
-			projectId={project.id}
-			onClose={() => (editingPlanId = null)}
-			onUpdated={handlePlanUpdated}
-			onDeleted={handlePlanDeleted}
-		/>
-	{/await}
-{/if}
-
-<!-- Goal Create Modal -->
-{#if showGoalCreateModal}
-	{#await import('$lib/components/ontology/GoalCreateModal.svelte') then { default: GoalCreateModal }}
-		<GoalCreateModal
-			projectId={project.id}
-			onClose={() => (showGoalCreateModal = false)}
-			onCreated={handleGoalCreated}
-		/>
-	{/await}
-{/if}
-
-<!-- Goal Edit Modal -->
-{#if editingGoalId}
-	{#await import('$lib/components/ontology/GoalEditModal.svelte') then { default: GoalEditModal }}
-		<GoalEditModal
-			goalId={editingGoalId}
-			projectId={project.id}
-			onClose={() => (editingGoalId = null)}
-			onUpdated={handleGoalUpdated}
-			onDeleted={handleGoalDeleted}
-		/>
-	{/await}
-{/if}
-
-<!-- Risk Create Modal -->
-{#if showRiskCreateModal}
-	{#await import('$lib/components/ontology/RiskCreateModal.svelte') then { default: RiskCreateModal }}
-		<RiskCreateModal
-			projectId={project.id}
-			onClose={() => (showRiskCreateModal = false)}
-			onCreated={handleRiskCreated}
-		/>
-	{/await}
-{/if}
-
-<!-- Risk Edit Modal -->
-{#if editingRiskId}
-	{#await import('$lib/components/ontology/RiskEditModal.svelte') then { default: RiskEditModal }}
-		<RiskEditModal
-			riskId={editingRiskId}
-			projectId={project.id}
-			onClose={() => (editingRiskId = null)}
-			onUpdated={handleRiskUpdated}
-			onDeleted={handleRiskDeleted}
-		/>
-	{/await}
-{/if}
-
-<!-- Milestone Create Modal -->
-{#if showMilestoneCreateModal}
-	{#await import('$lib/components/ontology/MilestoneCreateModal.svelte') then { default: MilestoneCreateModal }}
-		<MilestoneCreateModal
-			projectId={project.id}
-			{goals}
-			goalId={milestoneCreateGoalContext?.goalId}
-			goalName={milestoneCreateGoalContext?.goalName}
-			onClose={() => {
-				showMilestoneCreateModal = false;
-				milestoneCreateGoalContext = null;
-			}}
-			onCreated={handleMilestoneCreated}
-		/>
-	{/await}
-{/if}
-
-<!-- Milestone Edit Modal -->
-{#if editingMilestoneId}
-	{#await import('$lib/components/ontology/MilestoneEditModal.svelte') then { default: MilestoneEditModal }}
-		<MilestoneEditModal
-			milestoneId={editingMilestoneId}
-			projectId={project.id}
-			onClose={() => (editingMilestoneId = null)}
-			onUpdated={handleMilestoneUpdated}
-			onDeleted={handleMilestoneDeleted}
-		/>
-	{/await}
-{/if}
-
-<!-- Event Create Modal -->
-{#if showEventCreateModal}
-	{#await import('$lib/components/ontology/EventCreateModal.svelte') then { default: EventCreateModal }}
-		<EventCreateModal
-			projectId={project.id}
-			{tasks}
-			onClose={() => (showEventCreateModal = false)}
-			onCreated={handleEventCreated}
-		/>
-	{/await}
-{/if}
-
-<!-- Event Edit Modal -->
-{#if editingEventId}
-	{#await import('$lib/components/ontology/EventEditModal.svelte') then { default: EventEditModal }}
-		<EventEditModal
-			eventId={editingEventId}
-			projectId={project.id}
-			onClose={() => (editingEventId = null)}
-			onUpdated={handleEventUpdated}
-			onDeleted={handleEventDeleted}
-		/>
-	{/await}
-{/if}
-
-<!-- Project Calendar Modal -->
-{#if showProjectCalendarModal}
-	{#await import('$lib/components/project/ProjectCalendarSettingsModal.svelte') then { default: ProjectCalendarSettingsModal }}
-		<ProjectCalendarSettingsModal bind:isOpen={showProjectCalendarModal} {project} />
-	{/await}
-{/if}
-
-<!-- Project Edit Modal -->
-{#if showProjectEditModal}
-	{#await import('$lib/components/ontology/OntologyProjectEditModal.svelte') then { default: OntologyProjectEditModal }}
-		<OntologyProjectEditModal
-			bind:isOpen={showProjectEditModal}
-			{project}
-			{contextDocument}
-			{canDeleteProject}
-			onClose={() => (showProjectEditModal = false)}
-			onSaved={async () => {
-				await refreshData({ showSuccessToast: false });
-				showProjectEditModal = false;
-			}}
-		/>
-	{/await}
-{/if}
-
-<!-- Project Collaboration Settings Modal -->
-{#if showCollabModal && canOpenCollabModal}
-	{#await import('$lib/components/project/ProjectCollaborationModal.svelte') then { default: ProjectCollaborationModal }}
-		<ProjectCollaborationModal
-			bind:isOpen={showCollabModal}
-			projectId={project.id}
-			projectName={project.name || 'Project'}
-			canManageMembers={canAdmin}
-			onLeftProject={() => goto('/projects')}
-			onClose={() => (showCollabModal = false)}
-		/>
-	{/await}
-{/if}
-
-<!-- Project Delete Confirmation -->
-{#if showDeleteProjectModal}
-	<ConfirmationModal
-		title="Delete project"
-		confirmText="Delete"
-		confirmVariant="danger"
-		isOpen={showDeleteProjectModal}
-		loading={isDeletingProject}
-		onconfirm={handleProjectDeleteConfirm}
-		oncancel={() => (showDeleteProjectModal = false)}
-	>
-		{#snippet content()}
-			<p class="text-sm text-muted-foreground">
-				This will permanently delete <span class="font-semibold text-foreground"
-					>{project.name}</span
-				>
-				and all related data. This action cannot be undone.
-			</p>
-		{/snippet}
-		{#snippet details()}
-			{#if deleteProjectError}
-				<p class="mt-2 text-sm text-destructive">
-					{deleteProjectError}
-				</p>
-			{/if}
-		{/snippet}
-	</ConfirmationModal>
-{/if}
+<ProjectModalsHost
+	{project}
+	{contextDocument}
+	{goals}
+	{tasks}
+	{documentTypeOptions}
+	{docTreeStructure}
+	{docTreeDocuments}
+	{canDeleteProject}
+	{canOpenCollabModal}
+	{canAdmin}
+	{showDocumentModal}
+	{activeDocumentId}
+	{parentDocumentId}
+	{showMoveDocModal}
+	{moveDocumentId}
+	{moveDocumentTitle}
+	{showDeleteDocConfirmModal}
+	{deleteDocumentId}
+	{deleteDocumentTitle}
+	{deleteDocumentHasChildren}
+	{deleteDocumentChildCount}
+	{showTaskCreateModal}
+	{editingTaskId}
+	{showPlanCreateModal}
+	{editingPlanId}
+	{showGoalCreateModal}
+	{editingGoalId}
+	{showRiskCreateModal}
+	{editingRiskId}
+	{showMilestoneCreateModal}
+	{milestoneCreateGoalContext}
+	{editingMilestoneId}
+	{showEventCreateModal}
+	{editingEventId}
+	{showProjectCalendarModal}
+	{showProjectEditModal}
+	{showCollabModal}
+	{showDeleteProjectModal}
+	{isDeletingProject}
+	{deleteProjectError}
+	{showGraphModal}
+	onCloseDocumentModal={closeDocumentModal}
+	onDocumentSaved={handleDocumentSaved}
+	onDocumentDeleted={handleDocumentDeleted}
+	onCloseMoveDocModal={closeMoveDocumentModal}
+	onMoveDocumentConfirm={handleMoveDocumentConfirm}
+	onCloseDeleteDocConfirmModal={closeDeleteDocumentConfirmModal}
+	onDeleteDocumentConfirm={handleDeleteDocumentConfirm}
+	onCloseTaskCreateModal={() => (showTaskCreateModal = false)}
+	onTaskCreated={handleTaskCreated}
+	onCloseTaskEditModal={() => (editingTaskId = null)}
+	onTaskUpdated={handleTaskUpdated}
+	onTaskDeleted={handleTaskDeleted}
+	onClosePlanCreateModal={() => (showPlanCreateModal = false)}
+	onPlanCreated={handlePlanCreated}
+	onClosePlanEditModal={() => (editingPlanId = null)}
+	onPlanUpdated={handlePlanUpdated}
+	onPlanDeleted={handlePlanDeleted}
+	onCloseGoalCreateModal={() => (showGoalCreateModal = false)}
+	onGoalCreated={handleGoalCreated}
+	onCloseGoalEditModal={() => (editingGoalId = null)}
+	onGoalUpdated={handleGoalUpdated}
+	onGoalDeleted={handleGoalDeleted}
+	onCloseRiskCreateModal={() => (showRiskCreateModal = false)}
+	onRiskCreated={handleRiskCreated}
+	onCloseRiskEditModal={() => (editingRiskId = null)}
+	onRiskUpdated={handleRiskUpdated}
+	onRiskDeleted={handleRiskDeleted}
+	onCloseMilestoneCreateModal={closeMilestoneCreateModal}
+	onMilestoneCreated={handleMilestoneCreated}
+	onCloseMilestoneEditModal={() => (editingMilestoneId = null)}
+	onMilestoneUpdated={handleMilestoneUpdated}
+	onMilestoneDeleted={handleMilestoneDeleted}
+	onCloseEventCreateModal={() => (showEventCreateModal = false)}
+	onEventCreated={handleEventCreated}
+	onCloseEventEditModal={() => (editingEventId = null)}
+	onEventUpdated={handleEventUpdated}
+	onEventDeleted={handleEventDeleted}
+	onCloseProjectCalendarModal={closeProjectCalendarModal}
+	onCloseProjectEditModal={closeProjectEditModal}
+	onProjectSaved={handleProjectSaved}
+	onCloseCollabModal={closeCollabModal}
+	onLeftProject={handleCollaborationLeftProject}
+	onProjectDeleteConfirm={handleProjectDeleteConfirm}
+	onCancelProjectDelete={cancelDeleteProjectModal}
+	onCloseGraphModal={closeGraphModal}
+	onGraphNodeClick={handleGraphNodeClick}
+/>
 
 <!-- Settings Menu Portal - Rendered outside all containers to avoid z-index issues -->
 {#if showMobileMenu}
@@ -2097,36 +1963,3 @@
 		{/if}
 	</div>
 {/if}
-
-<!-- Project Graph Modal -->
-<Modal
-	bind:isOpen={showGraphModal}
-	onClose={() => (showGraphModal = false)}
-	title="Project Graph"
-	size="xl"
-	ariaLabel="Project relationship graph"
->
-	<div class="h-[60vh] sm:h-[70vh]">
-		{#if showGraphModal}
-			{#await import('$lib/components/ontology/ProjectGraphSection.svelte')}
-				<div class="h-full flex items-center justify-center text-sm text-muted-foreground">
-					Loading project graph...
-				</div>
-			{:then { default: ProjectGraphSection }}
-				<ProjectGraphSection
-					projectId={project.id}
-					onNodeClick={(node) => {
-						showGraphModal = false;
-						handleGraphNodeClick(node);
-					}}
-				/>
-			{:catch graphLoadError}
-				<div class="h-full flex items-center justify-center px-4 text-sm text-destructive">
-					{graphLoadError instanceof Error
-						? graphLoadError.message
-						: 'Failed to load project graph.'}
-				</div>
-			{/await}
-		{/if}
-	</div>
-</Modal>

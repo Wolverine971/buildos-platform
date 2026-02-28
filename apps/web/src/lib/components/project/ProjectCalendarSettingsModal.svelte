@@ -68,6 +68,43 @@
 		members: CollaborationMember[];
 	}
 
+	interface EventSyncHealthTarget {
+		user_id: string | null;
+		display_name: string;
+		email: string | null;
+		sync_status: string | null;
+		sync_error: string | null;
+		last_synced_at: string | null;
+		queue_status: string | null;
+		queue_attempts: number | null;
+		queue_max_attempts: number | null;
+		queue_error: string | null;
+		retry_action: 'upsert' | 'delete';
+		can_retry: boolean;
+	}
+
+	interface EventSyncHealthEvent {
+		event_id: string;
+		title: string;
+		start_at: string;
+		end_at: string | null;
+		updated_at: string | null;
+		deleted_at: string | null;
+		targets: EventSyncHealthTarget[];
+	}
+
+	interface EventSyncHealthSummary {
+		total_events: number;
+		total_targets: number;
+		failed_targets: number;
+		active_queue_targets: number;
+	}
+
+	interface EventSyncHealthPayload {
+		events: EventSyncHealthEvent[];
+		summary: EventSyncHealthSummary;
+	}
+
 	interface Props {
 		isOpen: boolean;
 		project: Project | null;
@@ -97,6 +134,10 @@
 	let collaborationLoading = $state(false);
 	let collaborationError = $state<string | null>(null);
 	let collaborationSummary = $state<CollaborationSummary | null>(null);
+	let syncHealthLoading = $state(false);
+	let syncHealthError = $state<string | null>(null);
+	let syncHealthPayload = $state<EventSyncHealthPayload | null>(null);
+	let retryingTargetKeys = $state<string[]>([]);
 
 	let activeTab = $state<CalendarModalTab>('calendar');
 
@@ -191,12 +232,16 @@
 			calendarError = null;
 			collaborationSummary = null;
 			collaborationError = null;
+			syncHealthPayload = null;
+			syncHealthError = null;
+			retryingTargetKeys = [];
 			return;
 		}
 
 		if (browser && project) {
 			void loadCalendarSettings();
 			void loadCollaborationSummary();
+			void loadSyncHealth();
 		}
 	});
 
@@ -397,6 +442,110 @@
 		}
 	}
 
+	function makeRetryTargetKey(eventId: string, userId: string | null): string {
+		return `${eventId}:${userId || 'legacy'}`;
+	}
+
+	function isRetryingTarget(eventId: string, userId: string | null): boolean {
+		return retryingTargetKeys.includes(makeRetryTargetKey(eventId, userId));
+	}
+
+	function getSyncTargetBadge(target: EventSyncHealthTarget): { label: string; className: string } {
+		if (
+			target.queue_status === 'pending' ||
+			target.queue_status === 'processing' ||
+			target.queue_status === 'retrying'
+		) {
+			return {
+				label: `Retrying (${target.queue_attempts ?? 0}/${target.queue_max_attempts ?? '?'})`,
+				className:
+					'bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/30'
+			};
+		}
+		if (target.sync_status === 'failed' || target.queue_status === 'failed') {
+			return {
+				label: 'Failed',
+				className:
+					'bg-destructive/10 text-destructive border border-destructive/30'
+			};
+		}
+		if (target.sync_status === 'synced') {
+			return {
+				label: 'Synced',
+				className:
+					'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+			};
+		}
+		if (target.sync_status === 'cancelled') {
+			return {
+				label: 'Deleted',
+				className:
+					'bg-muted text-muted-foreground border border-border'
+			};
+		}
+		return {
+			label: 'Pending',
+			className:
+				'bg-muted text-muted-foreground border border-border'
+		};
+	}
+
+	async function loadSyncHealth() {
+		if (!project?.id) return;
+
+		syncHealthLoading = true;
+		syncHealthError = null;
+
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}/calendar/sync-health?limit=12`);
+			const result = await response.json();
+
+			if (result.success && result.data) {
+				syncHealthPayload = result.data as EventSyncHealthPayload;
+			} else {
+				syncHealthPayload = null;
+				syncHealthError = result.error || 'Failed to load event sync health';
+			}
+		} catch (error) {
+			console.error('Error loading event sync health:', error);
+			syncHealthPayload = null;
+			syncHealthError = 'Failed to load event sync health';
+		} finally {
+			syncHealthLoading = false;
+		}
+	}
+
+	async function retrySyncTarget(eventId: string, target: EventSyncHealthTarget) {
+		if (!project?.id || !target.user_id) return;
+		const retryKey = makeRetryTargetKey(eventId, target.user_id);
+		if (retryingTargetKeys.includes(retryKey)) return;
+
+		retryingTargetKeys = [...retryingTargetKeys, retryKey];
+		try {
+			const response = await fetch(`/api/onto/projects/${project.id}/calendar/sync-health`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					eventId,
+					targetUserId: target.user_id,
+					action: target.retry_action
+				})
+			});
+			const result = await response.json();
+			if (!result.success) {
+				throw new Error(result.error || 'Failed to queue sync retry');
+			}
+
+			toastService.success(`Queued sync retry for ${target.display_name}`);
+			await Promise.all([loadSyncHealth(), loadCollaborationSummary()]);
+		} catch (error) {
+			console.error('Failed to retry sync target:', error);
+			toastService.error(error instanceof Error ? error.message : 'Failed to retry sync');
+		} finally {
+			retryingTargetKeys = retryingTargetKeys.filter((key) => key !== retryKey);
+		}
+	}
+
 	async function persistProjectSyncMode(projectId: string, syncMode: ProjectCalendarSyncMode) {
 		const response = await fetch(`/api/onto/projects/${projectId}/calendar`, {
 			method: 'PATCH',
@@ -498,6 +647,7 @@
 			}
 
 			void loadCollaborationSummary();
+			void loadSyncHealth();
 		} catch (error: unknown) {
 			console.error('Error saving calendar:', error);
 			const message =
@@ -712,6 +862,115 @@
 											</div>
 										{/if}
 									</div>
+								</div>
+
+								<div
+									class="bg-card rounded-lg border border-border p-3 sm:p-4 shadow-ink"
+								>
+									<div class="flex items-center justify-between gap-2 mb-2">
+										<div>
+											<p class="text-sm font-semibold text-foreground">
+												Event Sync Health
+											</p>
+											{#if syncHealthPayload}
+												<p class="text-xs text-muted-foreground">
+													{syncHealthPayload.summary.failed_targets} failed target syncs
+													{#if syncHealthPayload.summary.active_queue_targets > 0}
+														• {syncHealthPayload.summary.active_queue_targets} active retries
+													{/if}
+												</p>
+											{:else}
+												<p class="text-xs text-muted-foreground">
+													Recent per-target event sync status and retry controls
+												</p>
+											{/if}
+										</div>
+										{#if syncHealthLoading}
+											<LoaderCircle
+												class="h-4 w-4 animate-spin text-muted-foreground"
+											/>
+										{/if}
+									</div>
+
+									{#if syncHealthError}
+										<p class="text-xs text-destructive">{syncHealthError}</p>
+									{:else if syncHealthPayload}
+										<div class="max-h-64 overflow-y-auto space-y-2 pr-1">
+											{#if syncHealthPayload.events.length === 0}
+												<p class="text-xs text-muted-foreground">
+													No project events found for sync health.
+												</p>
+											{:else}
+												{#each syncHealthPayload.events as event}
+													<div
+														class="rounded-md border border-border/70 bg-background/70 px-2.5 py-2"
+													>
+														<p class="text-xs font-medium text-foreground truncate">
+															{event.title}
+														</p>
+														<div class="mt-1 space-y-1.5">
+															{#if event.targets.length === 0}
+																<p class="text-[11px] text-muted-foreground">
+																	No sync targets recorded yet
+																</p>
+															{:else}
+																{#each event.targets as target}
+																	{@const statusBadge = getSyncTargetBadge(target)}
+																	<div
+																		class="flex items-start justify-between gap-2 rounded border border-border/70 bg-background px-2 py-1.5"
+																	>
+																		<div class="min-w-0 flex-1">
+																			<p
+																				class="text-[11px] font-medium text-foreground truncate"
+																			>
+																				{target.display_name}
+																			</p>
+																			{#if target.sync_error || target.queue_error}
+																				<p
+																					class="text-[10px] text-destructive truncate"
+																				>
+																					{target.sync_error || target.queue_error}
+																				</p>
+																			{/if}
+																			{#if target.queue_max_attempts !== null && target.queue_attempts !== null}
+																				<p
+																					class="text-[10px] text-muted-foreground"
+																				>
+																					Attempts: {target.queue_attempts}/{target.queue_max_attempts}
+																				</p>
+																			{/if}
+																		</div>
+																		<div class="flex flex-col items-end gap-1">
+																			<span
+																				class={`shrink-0 rounded px-2 py-0.5 text-[10px] font-medium ${statusBadge.className}`}
+																			>
+																				{statusBadge.label}
+																			</span>
+																			{#if target.can_retry && target.user_id}
+																				<button
+																					type="button"
+																					class="inline-flex items-center rounded border border-border bg-card px-2 py-1 text-[10px] font-medium text-foreground hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+																					disabled={isRetryingTarget(event.event_id, target.user_id)}
+																					onclick={() => retrySyncTarget(event.event_id, target)}
+																				>
+																					{#if isRetryingTarget(event.event_id, target.user_id)}
+																						<LoaderCircle class="mr-1 h-3 w-3 animate-spin" />
+																						Retrying
+																					{:else}
+																						Retry
+																					{/if}
+																				</button>
+																			{/if}
+																		</div>
+																	</div>
+																{/each}
+															{/if}
+														</div>
+													</div>
+												{/each}
+											{/if}
+										</div>
+									{/if}
 								</div>
 
 								<div

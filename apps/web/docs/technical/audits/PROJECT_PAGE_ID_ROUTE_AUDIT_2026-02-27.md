@@ -122,6 +122,12 @@ Add route-level client tests for:
 - image `+` first-click behavior
 - entity click routing from Next Step / Graph / Activity Log
 
+### Phase 7: Modal host extraction (small-medium)
+
+- Move bottom-of-page modal rendering from `+page.svelte` into a dedicated host component.
+- Keep state ownership in route file; pass explicit close/save/delete callbacks into host.
+- Preserve lazy imports and existing modal behavior while reducing route template surface area.
+
 ## Execution Status
 
 - [x] Audit complete
@@ -131,6 +137,7 @@ Add route-level client tests for:
 - [x] Phase 4 complete (entity routing dedupe)
 - [x] Phase 5 complete
 - [x] Phase 6 complete
+- [x] Phase 7 complete
 
 ## Implementation Updates (This Session)
 
@@ -177,3 +184,9 @@ Add route-level client tests for:
 14. Post-phase cleanup pass:
     - consolidated duplicated next-step/graph/activity-log entity click handling through a shared `handleEntityClick(...)` wrapper in `+page.svelte`
     - added `refreshProjectSilently()` callback helper and replaced repeated inline `onRefreshData={() => refreshData()}` handlers
+15. Phase 7 implementation:
+    - extracted bottom modal/graph rendering into `apps/web/src/lib/components/project/ProjectModalsHost.svelte`
+    - rewired route to render one host instance with explicit state + action props:
+        - `apps/web/src/routes/projects/[id]/+page.svelte`
+    - added small route-side modal close/save helper callbacks (`closeDocumentModal`, `closeGraphModal`, `handleProjectSaved`, etc.) to keep state transitions centralized
+    - reduced `+page.svelte` size from ~2132 lines to 1965 lines while preserving modal behavior and lazy-loading boundaries

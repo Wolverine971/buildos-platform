@@ -321,7 +321,7 @@
 				return 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20';
 			case 'info':
 			default:
-				return 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20';
+				return 'bg-accent/10 text-accent-foreground border-accent/20';
 		}
 	}
 
@@ -335,7 +335,7 @@
 				return 'bg-red-500';
 			case 'info':
 			default:
-				return 'bg-cyan-500';
+				return 'bg-accent';
 		}
 	}
 
@@ -369,9 +369,9 @@
 			case 'active':
 				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
 			case 'archived':
-				return 'bg-slate-500/10 text-slate-700 dark:text-slate-300';
+				return 'bg-muted text-muted-foreground';
 			case 'compressed':
-				return 'bg-blue-500/10 text-blue-700 dark:text-blue-300';
+				return 'bg-accent/10 text-accent-foreground';
 			case 'failed':
 				return 'bg-red-500/10 text-red-700 dark:text-red-300';
 			default:
@@ -434,12 +434,9 @@
 		</div>
 	</AdminPageHeader>
 
-	<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-4">
-		<form
-			onsubmit={handleSearchSubmit}
-			class="grid grid-cols-1 lg:grid-cols-[1fr,160px,220px,170px,120px,auto] gap-3"
-		>
-			<div class="relative">
+	<div class="bg-card border border-border rounded-lg p-3 shadow-ink">
+		<form onsubmit={handleSearchSubmit} class="flex flex-wrap items-end gap-2">
+			<div class="relative flex-1 min-w-[180px]">
 				<Search
 					class="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
 				/>
@@ -508,9 +505,13 @@
 		</form>
 	</div>
 
-	<div class="grid grid-cols-1 xl:grid-cols-[360px,1fr] gap-4 items-start min-h-[68vh]">
-		<div class="bg-card border border-border rounded-lg shadow-ink overflow-hidden">
-			<div class="p-3 border-b border-border flex items-center justify-between gap-2">
+	<div class="grid grid-cols-1 xl:grid-cols-[320px,1fr] gap-3 items-start">
+		<div
+			class="bg-card border border-border rounded-lg shadow-ink overflow-hidden flex flex-col xl:max-h-[calc(100vh-220px)]"
+		>
+			<div
+				class="p-3 border-b border-border flex items-center justify-between gap-2 shrink-0"
+			>
 				<div>
 					<div class="text-sm font-semibold text-foreground">Sessions</div>
 					<div class="text-xs text-muted-foreground">
@@ -521,16 +522,16 @@
 			</div>
 
 			{#if isLoadingSessions}
-				<div class="p-3 space-y-3">
+				<div class="p-2 space-y-2">
 					{#each Array(6) as _}
-						<div class="border border-border rounded-lg p-3 animate-pulse">
+						<div class="border border-border rounded-lg p-2.5 animate-pulse">
 							<div class="h-3 bg-muted rounded w-3/4 mb-2"></div>
 							<div class="h-2.5 bg-muted rounded w-1/2"></div>
 						</div>
 					{/each}
 				</div>
 			{:else if sessionsError}
-				<div class="p-4 text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
+				<div class="p-3 text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
 					<AlertCircle class="h-4 w-4 mt-0.5 shrink-0" />
 					<span>{sessionsError}</span>
 				</div>
@@ -540,22 +541,24 @@
 					No sessions found for current filters.
 				</div>
 			{:else}
-				<div class="max-h-[62vh] overflow-y-auto p-2 space-y-2">
+				<div class="flex-1 overflow-y-auto p-2 space-y-1.5">
 					{#each sessions as session}
 						<button
-							class="w-full text-left rounded-lg border p-3 transition-all pressable {selectedSessionId ===
+							class="w-full text-left rounded-lg border p-2.5 transition-all pressable {selectedSessionId ===
 							session.id
-								? 'border-cyan-500/60 bg-cyan-500/10 shadow-ink-strong'
-								: 'border-border bg-background hover:border-cyan-500/40'}"
+								? 'border-accent/60 bg-accent/10 shadow-ink-strong'
+								: 'border-border bg-background hover:border-accent/40'}"
 							onclick={() => (selectedSessionId = session.id)}
 						>
-							<div class="flex items-start justify-between gap-2 mb-1.5">
-								<div class="text-sm font-semibold text-foreground leading-tight">
+							<div class="flex items-start justify-between gap-2 mb-1">
+								<div
+									class="text-sm font-semibold text-foreground leading-tight line-clamp-2"
+								>
 									{session.title}
 								</div>
 								{#if session.has_errors}
 									<span
-										class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-500/10 text-red-700 dark:text-red-300"
+										class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-500/10 text-red-700 dark:text-red-300 shrink-0"
 									>
 										<XCircle class="h-3 w-3" />
 										Error
@@ -565,10 +568,10 @@
 							<div class="text-[11px] text-muted-foreground truncate">
 								{session.user.email}
 							</div>
-							<div class="mt-1 text-[11px] text-muted-foreground">
+							<div class="mt-0.5 text-[11px] text-muted-foreground">
 								{formatDateTime(session.updated_at)}
 							</div>
-							<div class="mt-2 flex flex-wrap items-center gap-1.5">
+							<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
 								<span
 									class="px-1.5 py-0.5 rounded-full text-[10px] font-medium {statusBadge(
 										session.status
@@ -593,7 +596,9 @@
 				</div>
 			{/if}
 
-			<div class="p-3 border-t border-border flex items-center justify-between gap-2">
+			<div
+				class="p-2.5 border-t border-border flex items-center justify-between gap-2 shrink-0"
+			>
 				<Button
 					onclick={previousPage}
 					disabled={currentPage === 1}
@@ -601,7 +606,7 @@
 					size="sm"
 					class="pressable"
 				>
-					Previous
+					Prev
 				</Button>
 				<div class="text-xs text-muted-foreground">
 					{Math.min((currentPage - 1) * PAGE_SIZE + 1, totalSessions)}-{Math.min(
@@ -621,45 +626,51 @@
 			</div>
 		</div>
 
-		<div class="bg-card border border-border rounded-lg shadow-ink min-h-[68vh]">
+		<div
+			class="bg-card border border-border rounded-lg shadow-ink xl:max-h-[calc(100vh-220px)] flex flex-col"
+		>
 			{#if !selectedSessionId}
-				<div class="p-8 text-center text-sm text-muted-foreground">
-					<Activity class="h-10 w-10 mx-auto mb-3 opacity-60" />
+				<div
+					class="p-8 text-center text-sm text-muted-foreground flex-1 flex flex-col items-center justify-center"
+				>
+					<Activity class="h-10 w-10 mb-3 opacity-60" />
 					Select a session to inspect the complete event timeline.
 				</div>
 			{:else if isLoadingDetail}
-				<div class="p-4 space-y-3">
+				<div class="p-3 space-y-2">
 					{#each Array(8) as _}
-						<div class="border border-border rounded-lg p-3 animate-pulse">
+						<div class="border border-border rounded-lg p-2.5 animate-pulse">
 							<div class="h-3 bg-muted rounded w-1/3 mb-2"></div>
 							<div class="h-2.5 bg-muted rounded w-5/6"></div>
 						</div>
 					{/each}
 				</div>
 			{:else if detailError}
-				<div class="p-4 text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
+				<div class="p-3 text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
 					<AlertCircle class="h-4 w-4 mt-0.5 shrink-0" />
 					<span>{detailError}</span>
 				</div>
 			{:else if sessionDetail}
-				<div class="p-4 border-b border-border space-y-4">
-					<div class="flex flex-wrap items-start justify-between gap-3">
-						<div>
-							<h2 class="text-lg font-semibold text-foreground">
+				<div class="p-3 border-b border-border space-y-2.5 shrink-0">
+					<div class="flex flex-wrap items-start justify-between gap-2">
+						<div class="min-w-0 flex-1">
+							<h2
+								class="text-base font-semibold text-foreground leading-tight truncate"
+							>
 								{sessionDetail.session.title}
 							</h2>
-							<div class="text-sm text-muted-foreground mt-1">
-								{sessionDetail.session.user.email} • {sessionDetail.session
+							<div class="text-xs text-muted-foreground mt-0.5">
+								{sessionDetail.session.user.email} · {sessionDetail.session
 									.context_type}
 							</div>
-							<div class="text-xs text-muted-foreground mt-1">
-								Created {formatDateTime(sessionDetail.session.created_at)} • Updated
+							<div class="text-[11px] text-muted-foreground mt-0.5">
+								Created {formatDateTime(sessionDetail.session.created_at)} · Updated
 								{formatDateTime(sessionDetail.session.updated_at)}
 							</div>
 						</div>
-						<div class="flex items-center gap-2">
+						<div class="flex items-center gap-1.5 shrink-0">
 							<span
-								class="px-2 py-1 rounded-full text-xs font-medium {statusBadge(
+								class="px-2 py-0.5 rounded-full text-[11px] font-medium {statusBadge(
 									sessionDetail.session.status
 								)}"
 							>
@@ -667,47 +678,47 @@
 							</span>
 							{#if sessionDetail.session.has_errors}
 								<span
-									class="px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-700 dark:text-red-300"
+									class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-500/10 text-red-700 dark:text-red-300"
 								>
-									Has Errors
+									Errors
 								</span>
 							{/if}
 						</div>
 					</div>
 
-					<div class="grid grid-cols-2 lg:grid-cols-6 gap-2">
-						<div class="rounded-lg border border-border bg-background p-2.5">
-							<div class="text-[11px] text-muted-foreground">Messages</div>
+					<div class="grid grid-cols-3 lg:grid-cols-6 gap-1.5">
+						<div class="rounded-lg border border-border bg-background p-2">
+							<div class="text-[10px] text-muted-foreground">Messages</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(sessionDetail.metrics.messages)}
 							</div>
 						</div>
-						<div class="rounded-lg border border-border bg-background p-2.5">
-							<div class="text-[11px] text-muted-foreground">Tool Calls</div>
+						<div class="rounded-lg border border-border bg-background p-2">
+							<div class="text-[10px] text-muted-foreground">Tool Calls</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(sessionDetail.metrics.tool_calls)}
 							</div>
 						</div>
-						<div class="rounded-lg border border-border bg-background p-2.5">
-							<div class="text-[11px] text-muted-foreground">LLM Calls</div>
+						<div class="rounded-lg border border-border bg-background p-2">
+							<div class="text-[10px] text-muted-foreground">LLM Calls</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(sessionDetail.metrics.llm_calls)}
 							</div>
 						</div>
-						<div class="rounded-lg border border-border bg-background p-2.5">
-							<div class="text-[11px] text-muted-foreground">Total Tokens</div>
+						<div class="rounded-lg border border-border bg-background p-2">
+							<div class="text-[10px] text-muted-foreground">Tokens</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(sessionDetail.metrics.total_tokens)}
 							</div>
 						</div>
-						<div class="rounded-lg border border-border bg-background p-2.5">
-							<div class="text-[11px] text-muted-foreground">Cost</div>
+						<div class="rounded-lg border border-border bg-background p-2">
+							<div class="text-[10px] text-muted-foreground">Cost</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatCurrency(sessionDetail.metrics.total_cost_usd)}
 							</div>
 						</div>
-						<div class="rounded-lg border border-border bg-background p-2.5">
-							<div class="text-[11px] text-muted-foreground">Failures</div>
+						<div class="rounded-lg border border-border bg-background p-2">
+							<div class="text-[10px] text-muted-foreground">Failures</div>
 							<div class="text-sm font-semibold text-foreground">
 								{formatNumber(
 									sessionDetail.metrics.tool_failures +
@@ -717,20 +728,20 @@
 						</div>
 					</div>
 
-					<div class="rounded-lg border border-border bg-background p-3 space-y-3">
-						<div class="flex flex-wrap items-center gap-2">
-							<div
-								class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+					<div class="rounded-lg border border-border bg-background p-2.5 space-y-2">
+						<div class="flex flex-wrap items-center gap-1.5">
+							<span
+								class="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
 							>
-								Event Filters
-							</div>
+								Filters
+							</span>
 							{#each Object.keys(eventTypeFilters) as rawType}
 								{@const type = rawType as TimelineType}
 								<button
-									class="px-2 py-1 rounded-full border text-[11px] transition-colors {eventTypeFilters[
+									class="px-2 py-0.5 rounded-full border text-[11px] transition-colors {eventTypeFilters[
 										type
 									]
-										? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
+										? 'border-accent/40 bg-accent/10 text-accent-foreground'
 										: 'border-border bg-card text-muted-foreground'}"
 									onclick={() => toggleEventType(type)}
 								>
@@ -738,7 +749,7 @@
 								</button>
 							{/each}
 							<button
-								class="px-2 py-1 rounded-full border text-[11px] transition-colors {showOnlyErrors
+								class="px-2 py-0.5 rounded-full border text-[11px] transition-colors {showOnlyErrors
 									? 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300'
 									: 'border-border bg-card text-muted-foreground'}"
 								onclick={() => (showOnlyErrors = !showOnlyErrors)}
@@ -760,29 +771,29 @@
 					</div>
 				</div>
 
-				<div class="p-4 max-h-[58vh] overflow-y-auto">
+				<div class="p-3 flex-1 overflow-y-auto">
 					{#if visibleTimeline.length === 0}
-						<div class="text-sm text-muted-foreground text-center py-10">
+						<div class="text-sm text-muted-foreground text-center py-8">
 							No timeline events match the current filters.
 						</div>
 					{:else}
 						<div class="relative pl-2">
 							<div class="absolute left-[8px] top-0 bottom-0 w-px bg-border"></div>
-							<div class="space-y-3">
+							<div class="space-y-2">
 								{#each visibleTimeline as event}
 									{@const EventIcon = eventIcon(event.type)}
 									{@const payload = event.payload ?? {}}
-									<div class="relative pl-8">
+									<div class="relative pl-7">
 										<div
-											class="absolute left-[2px] top-4 h-3 w-3 rounded-full ring-2 ring-card {timelineDotClasses(
+											class="absolute left-[2px] top-3.5 h-3 w-3 rounded-full ring-2 ring-card {timelineDotClasses(
 												event.severity
 											)}"
 										></div>
 										<div
-											class="rounded-lg border border-border bg-background p-3 shadow-ink"
+											class="rounded-lg border border-border bg-background p-2.5 shadow-ink"
 										>
 											<div
-												class="flex flex-wrap items-center justify-between gap-2 mb-2"
+												class="flex flex-wrap items-center justify-between gap-2 mb-1.5"
 											>
 												<div class="flex items-center gap-2">
 													<span
@@ -817,10 +828,10 @@
 
 											{#if event.type === 'message'}
 												<div
-													class="mt-3 rounded-lg border px-3 py-2 text-sm whitespace-pre-wrap break-words {stringValue(
+													class="mt-2 rounded-lg border px-2.5 py-2 text-sm whitespace-pre-wrap break-words {stringValue(
 														payloadField(payload, 'role')
 													) === 'user'
-														? 'bg-cyan-500/8 border-cyan-500/20'
+														? 'bg-accent/8 border-accent/20'
 														: stringValue(
 																	payloadField(payload, 'role')
 															  ) === 'assistant'
@@ -868,7 +879,7 @@
 
 											{#if event.type === 'tool_execution'}
 												<div
-													class="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]"
+													class="mt-2 grid grid-cols-2 gap-1.5 text-[11px]"
 												>
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
@@ -969,7 +980,7 @@
 
 											{#if event.type === 'llm_call'}
 												<div
-													class="mt-3 grid grid-cols-2 lg:grid-cols-5 gap-2 text-[11px]"
+													class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]"
 												>
 													<div
 														class="rounded border border-border bg-card px-2 py-1.5"
@@ -1047,7 +1058,7 @@
 												</div>
 											{/if}
 
-											<div class="mt-3">
+											<div class="mt-2">
 												<button
 													type="button"
 													onclick={() => toggleEventExpansion(event.id)}
