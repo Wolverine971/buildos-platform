@@ -11,6 +11,7 @@ import {
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 import { processSessionActivityAndNextSteps } from './chatSessionActivityProcessor';
+import { processProfileSignals } from './profileSignalProcessor';
 
 /**
  * Response structure from LLM classification
@@ -359,6 +360,34 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			console.error(`⚠️ Activity processing failed (non-fatal):`, activityError);
 		}
 
+		let profileSignalResult: Awaited<ReturnType<typeof processProfileSignals>> = {
+			skipped: true,
+			reason: 'not_attempted',
+			extractedCount: 0,
+			insertedCount: 0,
+			mergedCount: 0,
+			needsReviewCount: 0
+		};
+		try {
+			profileSignalResult = await processProfileSignals({
+				sessionId: validatedData.sessionId,
+				userId: validatedData.userId,
+				messages: typedMessages,
+				classification: {
+					title,
+					topics,
+					summary
+				}
+			});
+			if (!profileSignalResult.skipped) {
+				console.log(
+					`🧬 Profile signals: extracted=${profileSignalResult.extractedCount}, inserted=${profileSignalResult.insertedCount}, merged=${profileSignalResult.mergedCount}, needsReview=${profileSignalResult.needsReviewCount}`
+				);
+			}
+		} catch (profileError) {
+			console.error(`⚠️ Profile signal extraction failed (non-fatal):`, profileError);
+		}
+
 		await updateJobStatus(job.id, 'completed', 'chat_classification');
 
 		return {
@@ -371,7 +400,8 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			usedFallbackClassification,
 			activityLogsCreated: activityResult.activityLogsCreated,
 			nextStepUpdated: activityResult.nextStepUpdated,
-			projectId: activityResult.projectId
+			projectId: activityResult.projectId,
+			profileSignals: profileSignalResult
 		};
 	} catch (error: any) {
 		console.error(`❌ Chat classification job ${job.id} failed:`, error.message);

@@ -6795,6 +6795,307 @@ export type Database = {
           },
         ]
       }
+      profile_access_audit: {
+        Row: {
+          access_type: string
+          actor_id: string | null
+          context_type: string | null
+          created_at: string
+          document_ids: Json | null
+          id: string
+          profile_id: string
+          reason: string | null
+        }
+        Insert: {
+          access_type: string
+          actor_id?: string | null
+          context_type?: string | null
+          created_at?: string
+          document_ids?: Json | null
+          id?: string
+          profile_id: string
+          reason?: string | null
+        }
+        Update: {
+          access_type?: string
+          actor_id?: string | null
+          context_type?: string | null
+          created_at?: string
+          document_ids?: Json | null
+          id?: string
+          profile_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_access_audit_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_access_audit_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_document_embeddings: {
+        Row: {
+          created_at: string
+          document_id: string
+          embedding: string
+          embedding_dim: number
+          id: string
+          model_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          embedding: string
+          embedding_dim: number
+          id?: string
+          model_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          embedding?: string
+          embedding_dim?: number
+          id?: string
+          model_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_document_embeddings_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "profile_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_document_sources: {
+        Row: {
+          created_at: string
+          document_version_id: string
+          fragment_id: string | null
+          id: string
+          source_id: string | null
+          source_type: string
+        }
+        Insert: {
+          created_at?: string
+          document_version_id: string
+          fragment_id?: string | null
+          id?: string
+          source_id?: string | null
+          source_type: string
+        }
+        Update: {
+          created_at?: string
+          document_version_id?: string
+          fragment_id?: string | null
+          id?: string
+          source_id?: string | null
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_document_sources_document_version_id_fkey"
+            columns: ["document_version_id"]
+            isOneToOne: false
+            referencedRelation: "profile_document_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_document_sources_fragment_id_fkey"
+            columns: ["fragment_id"]
+            isOneToOne: false
+            referencedRelation: "profile_fragments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_document_versions: {
+        Row: {
+          change_type: string | null
+          content: string | null
+          created_at: string
+          created_by: string | null
+          document_id: string
+          id: string
+          merge_run_id: string | null
+          number: number
+        }
+        Insert: {
+          change_type?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          id?: string
+          merge_run_id?: string | null
+          number: number
+        }
+        Update: {
+          change_type?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          id?: string
+          merge_run_id?: string | null
+          number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_document_versions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "profile_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_documents: {
+        Row: {
+          content: string | null
+          created_at: string
+          deleted_at: string | null
+          id: string
+          profile_id: string
+          props: Json
+          search_vector: unknown
+          sensitivity: string
+          summary: string | null
+          title: string
+          type_key: string
+          updated_at: string
+          usage_scope: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          profile_id: string
+          props?: Json
+          search_vector?: unknown
+          sensitivity?: string
+          summary?: string | null
+          title: string
+          type_key?: string
+          updated_at?: string
+          usage_scope?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          profile_id?: string
+          props?: Json
+          search_vector?: unknown
+          sensitivity?: string
+          summary?: string | null
+          title?: string
+          type_key?: string
+          updated_at?: string
+          usage_scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_documents_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_fragments: {
+        Row: {
+          category: string
+          confidence: number
+          content: string
+          created_at: string
+          extracted_from_message_ids: Json | null
+          fingerprint_hash: string
+          id: string
+          idempotency_key: string
+          profile_id: string
+          sensitivity: string
+          source_id: string | null
+          source_type: string
+          status: string
+          suggested_chapter_id: string | null
+          suggested_chapter_title: string | null
+        }
+        Insert: {
+          category?: string
+          confidence?: number
+          content: string
+          created_at?: string
+          extracted_from_message_ids?: Json | null
+          fingerprint_hash: string
+          id?: string
+          idempotency_key: string
+          profile_id: string
+          sensitivity?: string
+          source_id?: string | null
+          source_type: string
+          status?: string
+          suggested_chapter_id?: string | null
+          suggested_chapter_title?: string | null
+        }
+        Update: {
+          category?: string
+          confidence?: number
+          content?: string
+          created_at?: string
+          extracted_from_message_ids?: Json | null
+          fingerprint_hash?: string
+          id?: string
+          idempotency_key?: string
+          profile_id?: string
+          sensitivity?: string
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          suggested_chapter_id?: string | null
+          suggested_chapter_title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_fragments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_fragments_suggested_chapter_id_fkey"
+            columns: ["suggested_chapter_id"]
+            isOneToOne: false
+            referencedRelation: "profile_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_brief_templates: {
         Row: {
           context_snapshot: Json | null
@@ -9906,6 +10207,60 @@ export type Database = {
           },
         ]
       }
+      user_profiles: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          doc_structure: Json
+          extraction_enabled: boolean
+          id: string
+          safe_summary: string | null
+          summary: string | null
+          summary_updated_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          doc_structure?: Json
+          extraction_enabled?: boolean
+          id?: string
+          safe_summary?: string | null
+          summary?: string | null
+          summary_updated_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          doc_structure?: Json
+          extraction_enabled?: boolean
+          id?: string
+          safe_summary?: string | null
+          summary?: string | null
+          summary_updated_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_project_behavioral_profiles: {
         Row: {
           agent_instructions: string
@@ -11509,6 +11864,10 @@ export type Database = {
           title: string
           type: string
         }[]
+      }
+      prune_stale_profile_fragments: {
+        Args: { p_older_than_days?: number }
+        Returns: number
       }
       queue_project_activity_notification_batch: {
         Args: {

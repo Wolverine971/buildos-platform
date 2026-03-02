@@ -256,6 +256,9 @@ export class ChatToolExecutor {
 			case 'get_field_info':
 				return this.utilityExecutor.getFieldInfo(args);
 
+			case 'get_user_profile_overview':
+				return this.utilityExecutor.getUserProfileOverview(args);
+
 			case 'get_entity_relationships':
 				return this.utilityExecutor.getEntityRelationships(args);
 

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-02-28T23:46:06.580Z
+// Generated on: 2026-03-02T02:16:15.346Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1629,6 +1629,75 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	profile_access_audit: {
+		access_type: string;
+		actor_id: string | null;
+		context_type: string | null;
+		created_at: string;
+		document_ids: Json | null;
+		id: string;
+		profile_id: string;
+		reason: string | null;
+	};
+	profile_document_embeddings: {
+		created_at: string;
+		document_id: string;
+		embedding: string;
+		embedding_dim: number;
+		id: string;
+		model_key: string;
+		updated_at: string;
+	};
+	profile_document_sources: {
+		created_at: string;
+		document_version_id: string;
+		fragment_id: string | null;
+		id: string;
+		source_id: string | null;
+		source_type: string;
+	};
+	profile_document_versions: {
+		change_type: string | null;
+		content: string | null;
+		created_at: string;
+		created_by: string | null;
+		document_id: string;
+		id: string;
+		merge_run_id: string | null;
+		number: number;
+	};
+	profile_documents: {
+		content: string | null;
+		created_at: string;
+		deleted_at: string | null;
+		id: string;
+		profile_id: string;
+		props: Json;
+		search_vector: unknown;
+		sensitivity: string;
+		summary: string | null;
+		title: string;
+		type_key: string;
+		updated_at: string;
+		usage_scope: string;
+	};
+	profile_fragments: {
+		category: string;
+		confidence: number;
+		content: string;
+		created_at: string;
+		extracted_from_message_ids: Json | null;
+		fingerprint_hash: string;
+		id: string;
+		idempotency_key: string;
+		profile_id: string;
+		sensitivity: string;
+		source_id: string | null;
+		source_type: string;
+		status: string;
+		suggested_chapter_id: string | null;
+		suggested_chapter_title: string | null;
+	};
 	project_brief_templates: {
 		context_snapshot: Json | null;
 		created_at: string | null;
@@ -2397,6 +2466,18 @@ export type DatabaseSchema = {
 		type: string;
 		user_id: string;
 	};
+	user_profiles: {
+		actor_id: string | null;
+		created_at: string;
+		doc_structure: Json;
+		extraction_enabled: boolean;
+		id: string;
+		safe_summary: string | null;
+		summary: string | null;
+		summary_updated_at: string | null;
+		updated_at: string;
+		user_id: string;
+	};
 	user_project_behavioral_profiles: {
 		agent_instructions: string;
 		computed_at: string;
@@ -2652,6 +2733,12 @@ export const tableNames = [
 	'payment_methods',
 	'phase_tasks',
 	'phases',
+	'profile_access_audit',
+	'profile_document_embeddings',
+	'profile_document_sources',
+	'profile_document_versions',
+	'profile_documents',
+	'profile_fragments',
 	'project_brief_templates',
 	'project_calendars',
 	'project_context_snapshot',
@@ -2699,6 +2786,7 @@ export const tableNames = [
 	'user_notification_preferences',
 	'user_notification_preferences_backup',
 	'user_notifications',
+	'user_profiles',
 	'user_project_behavioral_profiles',
 	'user_sms_preferences',
 	'users',

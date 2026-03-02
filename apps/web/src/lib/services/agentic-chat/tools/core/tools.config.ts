@@ -144,7 +144,7 @@ export const TOOL_CATEGORIES = {
 		costTier: 'medium'
 	},
 	utility: {
-		tools: ['get_field_info'],
+		tools: ['get_field_info', 'get_user_profile_overview'],
 		averageTokens: 80,
 		costTier: 'low'
 	},
@@ -180,6 +180,7 @@ export const TOOL_CATEGORIES = {
 const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	base: [
 		'get_field_info',
+		'get_user_profile_overview',
 		'get_entity_relationships',
 		'get_linked_entities',
 		'web_search',
@@ -402,6 +403,7 @@ export const ONTOLOGY_TOOLS = extractTools([
 
 export const UTILITY_TOOLS = extractTools([
 	'get_field_info',
+	'get_user_profile_overview',
 	'get_buildos_overview',
 	'get_buildos_usage_guide'
 ]);

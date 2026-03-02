@@ -499,6 +499,23 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		category: 'utility'
 	},
+	get_user_profile_overview: {
+		summary: 'Read the user profile chapter/section overview from profile doc_structure.',
+		capabilities: [
+			'Returns profile chapter metadata by section',
+			'Can include normalized profile doc_structure tree',
+			'Optional chapter summary excerpts for lightweight personalization'
+		],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
+		category: 'read'
+	},
 	web_search: {
 		summary: 'Live web research via Tavily with synthesized answer and cited sources.',
 		capabilities: [

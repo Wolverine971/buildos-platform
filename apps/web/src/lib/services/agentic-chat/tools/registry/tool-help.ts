@@ -258,6 +258,11 @@ function buildOpNotes(
 		);
 	}
 
+	if (op === 'util.profile.overview') {
+		notes.push('Use this when personalization is relevant; profile context is not preloaded.');
+		notes.push('Start with default args for a lightweight section overview.');
+	}
+
 	if (notes.length === 0) {
 		notes.push('Match args exactly to required fields in this schema.');
 	}

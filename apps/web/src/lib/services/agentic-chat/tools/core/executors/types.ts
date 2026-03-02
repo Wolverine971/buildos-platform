@@ -551,6 +551,13 @@ export interface GetFieldInfoArgs {
 	field_name?: string;
 }
 
+export interface GetUserProfileOverviewArgs {
+	include_doc_structure?: boolean;
+	include_chapters?: boolean;
+	include_summaries?: boolean;
+	limit?: number;
+}
+
 export interface GetEntityRelationshipsArgs {
 	entity_id: string;
 	direction?: 'outgoing' | 'incoming' | 'both';

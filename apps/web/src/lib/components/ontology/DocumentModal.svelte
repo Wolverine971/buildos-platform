@@ -127,6 +127,7 @@
 
 	let loading = $state(false);
 	let saving = $state(false);
+	let blockingSave = $state(false);
 	let deleting = $state(false);
 	let deleteModalOpen = $state(false);
 	let formError = $state<string | null>(null);
@@ -153,13 +154,16 @@
 	const INLINE_ASSET_RENDER_REGEX =
 		/\/api\/onto\/assets\/([0-9a-fA-F-]{36})\/render(?:\?[^\s)\]]*)?/g;
 
-	// Snapshot of last-saved values to detect actual changes
-	let lastSavedSnapshot = $state<{
+	type SaveSnapshot = {
 		title: string;
 		description: string;
 		body: string;
 		stateKey: string;
-	} | null>(null);
+	};
+
+	// Snapshot of last-saved values to detect actual changes
+	let lastSavedSnapshot = $state<SaveSnapshot | null>(null);
+	let autosaveQueued = $state(false);
 
 	// Track the server's updated_at for conflict detection
 	let serverUpdatedAt = $state<string | null>(null);
@@ -175,13 +179,9 @@
 		);
 	});
 
-	function captureSnapshot() {
-		lastSavedSnapshot = {
-			title,
-			description,
-			body,
-			stateKey
-		};
+	function captureSnapshot(snapshot?: SaveSnapshot) {
+		const source = snapshot ?? { title, description, body, stateKey };
+		lastSavedSnapshot = { ...source };
 	}
 
 	function clearAutosaveTimers() {
@@ -193,6 +193,7 @@
 			clearTimeout(savedFeedbackTimer);
 			savedFeedbackTimer = null;
 		}
+		autosaveQueued = false;
 	}
 
 	function scheduleAutosave() {
@@ -201,9 +202,12 @@
 		}
 		autosaveTimer = setTimeout(() => {
 			autosaveTimer = null;
-			if (hasUnsavedChanges && isEditing && !saving && !loading) {
-				handleAutosave();
+			if (!hasUnsavedChanges || !isEditing || loading) return;
+			if (saving) {
+				autosaveQueued = true;
+				return;
 			}
+			void handleAutosave();
 		}, AUTOSAVE_DEBOUNCE_MS);
 	}
 
@@ -553,20 +557,33 @@
 
 	/** Internal save logic shared by autosave and manual save */
 	async function performSave(
-		options: { silent?: boolean; forceVersion?: boolean } = {}
+		options: { silent?: boolean; forceVersion?: boolean; blockingUi?: boolean } = {}
 	): Promise<boolean> {
-		const { silent = false, forceVersion = false } = options;
+		const { silent = false, forceVersion = false, blockingUi = false } = options;
+		if (saving) {
+			if (isEditing && hasUnsavedChanges) {
+				autosaveQueued = true;
+			}
+			return false;
+		}
+		const snapshotAtRequest: SaveSnapshot = {
+			title,
+			description,
+			body,
+			stateKey
+		};
 
 		try {
 			saving = true;
+			blockingSave = blockingUi;
 			saveStatus = 'saving';
 			formError = null;
 
 			const payload: Record<string, unknown> = {
-				title: title.trim(),
-				state_key: stateKey,
-				description: description.trim() || null,
-				content: body
+				title: snapshotAtRequest.title.trim(),
+				state_key: snapshotAtRequest.stateKey,
+				description: snapshotAtRequest.description.trim() || null,
+				content: snapshotAtRequest.body
 			};
 			if (forceVersion) {
 				payload.force_version = true;
@@ -639,7 +656,7 @@
 
 			if (persistedDocumentId) {
 				try {
-					await syncInlineImageLinks(persistedDocumentId, body);
+					await syncInlineImageLinks(persistedDocumentId, snapshotAtRequest.body);
 				} catch (syncError) {
 					void logOntologyClientError(syncError, {
 						endpoint: '/api/onto/assets',
@@ -649,7 +666,7 @@
 						entityId: persistedDocumentId,
 						operation: 'document_inline_image_sync',
 						metadata: {
-							inlineAssetIds: extractInlineAssetIds(body),
+							inlineAssetIds: extractInlineAssetIds(snapshotAtRequest.body),
 							documentId: persistedDocumentId
 						}
 					});
@@ -662,7 +679,7 @@
 			}
 
 			// Capture snapshot of what we just saved
-			captureSnapshot();
+			captureSnapshot(snapshotAtRequest);
 
 			// Show saved status briefly, then return to idle
 			saveStatus = 'saved';
@@ -675,8 +692,8 @@
 
 			if (!silent) {
 				toastService.success(wasCreating ? 'Document created' : 'Document updated');
+				onSaved?.();
 			}
-			onSaved?.();
 
 			// If we just created a new document, transition to edit mode
 			if (wasCreating && newDocumentId) {
@@ -710,6 +727,20 @@
 			return false;
 		} finally {
 			saving = false;
+			blockingSave = false;
+			if (autosaveQueued) {
+				autosaveQueued = false;
+				if (
+					saveStatus !== 'conflict' &&
+					saveStatus !== 'error' &&
+					isEditing &&
+					hasUnsavedChanges &&
+					!loading &&
+					title.trim()
+				) {
+					void handleAutosave();
+				}
+			}
 		}
 	}
 
@@ -726,7 +757,7 @@
 			autosaveTimer = null;
 		}
 		if (!validateForm()) return;
-		await performSave({ silent: false, forceVersion: true });
+		await performSave({ silent: false, forceVersion: true, blockingUi: true });
 	}
 
 	/** Reload the document from server (used for conflict resolution) */
@@ -742,7 +773,7 @@
 		// Clear serverUpdatedAt so the next save won't include conflict check
 		serverUpdatedAt = null;
 		saveStatus = 'dirty';
-		await performSave({ silent: false, forceVersion: true });
+		await performSave({ silent: false, forceVersion: true, blockingUi: true });
 	}
 
 	async function handleDelete() {
@@ -1087,7 +1118,7 @@
 	onClose={closeModal}
 	size="xl"
 	closeOnBackdrop={false}
-	closeOnEscape={!saving}
+	closeOnEscape={!blockingSave}
 	showCloseButton={false}
 	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container sm:!max-h-[95dvh]"
 >
@@ -1182,7 +1213,7 @@
 					<button
 						type="button"
 						onclick={openChatAbout}
-						disabled={loading || saving}
+						disabled={loading || blockingSave}
 						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 						title="Chat about this document"
 					>
@@ -1197,7 +1228,7 @@
 				<button
 					type="button"
 					onclick={closeModal}
-					disabled={saving}
+					disabled={blockingSave}
 					class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 					aria-label="Close modal"
 				>
@@ -1243,7 +1274,7 @@
 											placeholder="Document title"
 											aria-label="Document title"
 											class="text-sm"
-											disabled={saving}
+											disabled={blockingSave}
 										/>
 									</FormField>
 
@@ -1258,7 +1289,7 @@
 											bind:value={description}
 											placeholder="Short summary"
 											rows={2}
-											disabled={saving}
+											disabled={blockingSave}
 											size="sm"
 										/>
 									</FormField>
@@ -1533,7 +1564,7 @@
 										placeholder="Document title..."
 										aria-label="Document title"
 										class="text-base font-semibold border-none bg-transparent p-0 focus:ring-0"
-										disabled={saving}
+										disabled={blockingSave}
 									/>
 								</div>
 
@@ -1690,7 +1721,7 @@
 												bind:value={description}
 												placeholder="Short summary"
 												rows={2}
-												disabled={saving}
+												disabled={blockingSave}
 												size="sm"
 											/>
 										</FormField>
@@ -1953,7 +1984,7 @@
 						variant="ghost"
 						size="sm"
 						onclick={openMoveModal}
-						disabled={saving || treeLoading}
+						disabled={blockingSave || treeLoading}
 						class="text-xs px-2 h-8 pressable"
 						title="Move to another location"
 					>
@@ -1967,7 +1998,7 @@
 							variant="ghost"
 							size="sm"
 							onclick={handleCreateChild}
-							disabled={saving}
+							disabled={blockingSave}
 							class="text-xs px-2 h-8 pressable"
 							title="Create child document"
 						>
@@ -1985,7 +2016,7 @@
 					variant="ghost"
 					size="sm"
 					onclick={closeModal}
-					disabled={saving}
+					disabled={blockingSave}
 					class="text-xs h-8 pressable"
 				>
 					Cancel
@@ -1995,7 +2026,7 @@
 					form={documentFormId}
 					variant="primary"
 					size="sm"
-					loading={saving}
+					loading={blockingSave}
 					disabled={saving || !title.trim()}
 					class="text-xs h-8 pressable tx tx-grain tx-weak wt-card"
 				>

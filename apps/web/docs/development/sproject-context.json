@@ -26,6 +26,26 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
+			"file": "src/routes/dashboard/calendar/+page.svelte",
+			"type": "page",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"MobileCommandCenter",
+				"ProjectDocumentsSection",
+				"ProjectInsightRail",
+				"ProjectModalsHost"
+			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
 			"type": "component",
 			"components": ["DailyBriefModal", "BriefChatModal"]
@@ -140,29 +160,14 @@
 			]
 		},
 		{
-			"file": "src/routes/dashboard/calendar/+page.svelte",
-			"type": "page",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"MobileCommandCenter",
-				"ProjectDocumentsSection",
-				"ProjectInsightRail",
-				"ProjectModalsHost"
-			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
 			"type": "page",
 			"components": ["SvelteFlowGraph", "G6Graph"]
+		},
+		{
+			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
+			"type": "page",
+			"components": ["DocumentModal", "GoalEditModal", "PlanEditModal", "MilestoneEditModal"]
 		},
 		{
 			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",
@@ -173,11 +178,6 @@
 				"SuccessView",
 				"OperationEditModal"
 			]
-		},
-		{
-			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
-			"type": "page",
-			"components": ["DocumentModal", "GoalEditModal", "PlanEditModal", "MilestoneEditModal"]
 		},
 		{
 			"file": "src/lib/services/agent-context-service.ts",
@@ -951,6 +951,14 @@
 		}
 	],
 	"dependencies": {
+		"src/routes/dashboard/calendar/+page.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectInsightRail.svelte",
+			"src/lib/components/project/ProjectModalsHost.svelte"
+		],
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
@@ -982,14 +990,6 @@
 			"src/lib/components/ontology/EventEditModal.svelte",
 			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
-		],
-		"src/routes/dashboard/calendar/+page.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectInsightRail.svelte",
-			"src/lib/components/project/ProjectModalsHost.svelte"
 		],
 		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",

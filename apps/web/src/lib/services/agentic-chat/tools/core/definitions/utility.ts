@@ -41,6 +41,39 @@ Use this when users ask questions like:
 			}
 		}
 	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_user_profile_overview',
+			description: `Get a high-level overview of the current user's profile memory.
+Returns profile sections/chapters and doc_structure so you can decide what personal context is relevant before using it.
+Use this only when personalization is needed; user profile context is not preloaded into prompts.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					include_doc_structure: {
+						type: 'boolean',
+						description: 'Include normalized profile doc_structure tree (default true).'
+					},
+					include_chapters: {
+						type: 'boolean',
+						description: 'Include chapter overview list (default true).'
+					},
+					include_summaries: {
+						type: 'boolean',
+						description:
+							'Include short summary excerpts from chapters when available (default false).'
+					},
+					limit: {
+						type: 'number',
+						default: 40,
+						maximum: 200,
+						description: 'Max chapters to return when include_chapters=true (1-200).'
+					}
+				}
+			}
+		}
+	},
 
 	{
 		type: 'function',

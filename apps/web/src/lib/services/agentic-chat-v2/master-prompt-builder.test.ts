@@ -30,6 +30,9 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'Use targeted discovery first: tool_help("onto.<entity>") or tool_help("cal.event").'
 		);
 		expect(prompt).toContain(
+			'User profile context is NOT preloaded. If personalization is needed, call tool_help("util.profile") and then util.profile.overview.'
+		);
+		expect(prompt).toContain(
 			'For first-time or complex writes in a turn, call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.'
 		);
 		expect(prompt).toContain(
@@ -109,5 +112,15 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		expect(prompt).toContain(
 			'If multiple members overlap responsibilities, ask one concise clarification before assigning ownership.'
 		);
+	});
+
+	it('does not inject user profile data into the system prompt by default', () => {
+		const prompt = buildMasterPrompt({
+			contextType: 'global',
+			projectId: null,
+			entityId: null
+		});
+
+		expect(prompt).not.toContain('<user_profile>');
 	});
 });

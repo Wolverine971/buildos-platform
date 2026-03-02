@@ -258,6 +258,36 @@ describe('ToolExecutionService gateway fallback', () => {
 		expect((result.data as any)?.meta?.executed_op).toBeUndefined();
 	});
 
+	it('executes util.profile.overview via get_user_profile_overview', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				profile_exists: true,
+				profile: { id: 'profile_1' }
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'util.profile.overview',
+				args: { include_doc_structure: true, include_chapters: true }
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'get_user_profile_overview',
+			expect.objectContaining({
+				include_doc_structure: true,
+				include_chapters: true
+			}),
+			expect.any(Object)
+		);
+		expect((result.data as any)?.op).toBe('util.profile.overview');
+	});
+
 	it('allows null new_parent_id for onto.document.tree.move root placement', async () => {
 		const documentId = '823f2215-f0c3-40b8-b468-8f1a592384f2';
 		const toolExecutor = vi.fn().mockResolvedValue({

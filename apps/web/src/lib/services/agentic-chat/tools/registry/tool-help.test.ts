@@ -60,4 +60,29 @@ describe('getToolHelp', () => {
 		expect(help.examples[0]?.tool_exec?.args?.time_min).toBe('2026-03-01');
 		expect(help.examples[1]?.tool_exec?.args?.offset).toBe(100);
 	});
+
+	it('supports profile overview op discovery', () => {
+		const help = getToolHelp('util.profile.overview', {
+			format: 'short',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('op');
+		expect(help.op).toBe('util.profile.overview');
+		expect(Array.isArray(help.notes)).toBe(true);
+		expect(help.notes.join(' ')).toContain('not preloaded');
+		expect(help.example_tool_exec?.args).toEqual({});
+	});
+
+	it('lists util.profile namespace with profile overview op', () => {
+		const help = getToolHelp('util.profile', {
+			format: 'short',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('directory');
+		expect(help.path).toBe('util.profile');
+		expect(Array.isArray(help.items)).toBe(true);
+		expect(help.items.map((item: any) => item.name)).toContain('util.profile.overview');
+	});
 });
