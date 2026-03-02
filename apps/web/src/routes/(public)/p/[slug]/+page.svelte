@@ -10,6 +10,14 @@
 	const description = page.summary || page.description || 'Public page from BuildOS';
 	const canonical = `https://build-os.com/p/${page.slug}`;
 	const updatedAt = page.last_updated_at || page.published_at;
+
+	const formattedDate = updatedAt
+		? new Date(updatedAt).toLocaleDateString('en-US', {
+				year: 'numeric',
+				month: 'long',
+				day: 'numeric'
+			})
+		: null;
 </script>
 
 <SEOHead
@@ -30,50 +38,85 @@
 	}}
 />
 
-<main class="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
-	<header class="mb-6 border-b border-border pb-4">
-		<h1 class="text-3xl font-bold text-foreground">{title}</h1>
-		{#if description}
-			<p class="mt-2 text-sm text-muted-foreground">{description}</p>
-		{/if}
-	</header>
+<main class="min-h-screen rounded-lg bg-card">
+	<div class="mx-auto px-4 py-6 sm:px-8 sm:py-10">
+		<!-- Header -->
+		<header class="mb-6">
+			{#if page.author_name || formattedDate}
+				<div class="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+					{#if page.author_name}
+						<span class="micro-label text-accent">{page.author_name}</span>
+					{/if}
+					{#if page.author_name && formattedDate}
+						<span class="text-border text-xs">·</span>
+					{/if}
+					{#if formattedDate}
+						<span class="micro-label">{formattedDate}</span>
+					{/if}
+				</div>
+			{/if}
+			<h1 class="text-xl font-bold leading-tight text-foreground sm:text-2xl">
+				{title}
+			</h1>
+			{#if description}
+				<p class="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+					{description}
+				</p>
+			{/if}
+		</header>
 
-	<article class={getProseClasses('base')}>
-		{@html renderMarkdown(page.content)}
-	</article>
+		<hr class="border-border mb-6" />
 
-	{#if Array.isArray(page.citations) && page.citations.length > 0}
-		<section class="mt-8 border-t border-border pt-4">
-			<h2 class="text-base font-semibold text-foreground">Sources</h2>
-			<ul class="mt-2 space-y-1 text-sm text-muted-foreground">
-				{#each page.citations as citation, index}
-					<li>
-						<a
-							class="text-accent underline underline-offset-2"
-							href={citation.url}
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							{citation.label ||
-								citation.title ||
-								citation.url ||
-								`Source ${index + 1}`}
-						</a>
-					</li>
-				{/each}
-			</ul>
-		</section>
-	{/if}
+		<!-- Article body -->
+		<div
+			class="{getProseClasses('base')}
+				prose-p:text-sm prose-p:leading-relaxed sm:prose-p:text-base sm:prose-p:leading-[1.75]
+				prose-li:text-sm prose-li:leading-relaxed sm:prose-li:text-base sm:prose-li:leading-[1.75]
+				prose-blockquote:border-l-2 prose-blockquote:pl-4
+				prose-img:rounded-lg prose-img:border prose-img:border-border prose-img:shadow-ink"
+		>
+			{@html renderMarkdown(page.content)}
+		</div>
 
-	<footer class="mt-10 border-t border-border pt-4 text-xs text-muted-foreground space-y-1">
-		{#if page.author_name}
-			<p>Created by {page.author_name}</p>
+		<!-- Citations -->
+		{#if Array.isArray(page.citations) && page.citations.length > 0}
+			<section class="mt-8 border-t border-border pt-4">
+				<p class="micro-label text-muted-foreground mb-2">SOURCES</p>
+				<ol class="space-y-1.5">
+					{#each page.citations as citation, index}
+						<li class="flex items-baseline gap-2 text-sm">
+							<span class="text-xs text-muted-foreground tabular-nums shrink-0">
+								{index + 1}.
+							</span>
+							<a
+								class="text-accent underline underline-offset-2 decoration-accent/30
+									hover:decoration-accent transition-colors break-all"
+								href={citation.url}
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								{citation.label ||
+									citation.title ||
+									citation.url ||
+									`Source ${index + 1}`}
+							</a>
+						</li>
+					{/each}
+				</ol>
+			</section>
 		{/if}
-		{#if updatedAt}
-			<p>Last updated {new Date(updatedAt).toLocaleString()}</p>
-		{/if}
-		{#if page.project_name}
-			<p>From project {page.project_name}</p>
-		{/if}
-	</footer>
+
+		<!-- Footer -->
+		<footer class="mt-8 border-t border-border pt-4 pb-2">
+			<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+				{#if page.project_name}
+					<span class="micro-label">{page.project_name}</span>
+					<span class="text-border text-xs">·</span>
+				{/if}
+				<span class="micro-label text-muted-foreground/60">
+					Published with BuildOS
+				</span>
+			</div>
+		</footer>
+	</div>
 </main>
