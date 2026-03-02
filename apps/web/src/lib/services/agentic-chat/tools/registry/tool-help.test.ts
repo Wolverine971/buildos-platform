@@ -85,4 +85,29 @@ describe('getToolHelp', () => {
 		expect(Array.isArray(help.items)).toBe(true);
 		expect(help.items.map((item: any) => item.name)).toContain('util.profile.overview');
 	});
+
+	it('supports contact search op discovery with redaction notes', () => {
+		const help = getToolHelp('util.contact.search', {
+			format: 'short',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('op');
+		expect(help.op).toBe('util.contact.search');
+		expect(Array.isArray(help.notes)).toBe(true);
+		expect(help.notes.join(' ')).toContain('redacted');
+	});
+
+	it('lists util.contact namespace with contact ops', () => {
+		const help = getToolHelp('util.contact', {
+			format: 'short',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('directory');
+		expect(help.path).toBe('util.contact');
+		expect(Array.isArray(help.items)).toBe(true);
+		expect(help.items.map((item: any) => item.name)).toContain('util.contact.search');
+		expect(help.items.map((item: any) => item.name)).toContain('util.contact.upsert');
+	});
 });

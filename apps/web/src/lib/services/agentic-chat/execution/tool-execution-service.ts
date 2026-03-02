@@ -1258,6 +1258,15 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		switch (toolName) {
+			case 'list_calendar_events':
+			case 'get_calendar_event_details':
+			case 'create_calendar_event':
+			case 'update_calendar_event':
+			case 'delete_calendar_event':
+			case 'get_project_calendar':
+			case 'set_project_calendar':
+				this.validateCalendarToolArgs(toolName, args, errors);
+				break;
 			case 'reorganize_onto_project_graph':
 				this.validateReorganizeProjectGraphArgs(args, errors);
 				break;
@@ -1355,6 +1364,50 @@ export class ToolExecutionService implements BaseService {
 			const requiresStrictUuid = ToolExecutionService.STRICT_UUID_ARG_KEYS.has(key);
 			if (looksTruncated || (requiresStrictUuid && !isValidUUID(trimmed))) {
 				addErrorOnce(`Invalid ${key}: expected UUID`);
+			}
+		}
+	}
+
+	private validateCalendarToolArgs(
+		toolName: string,
+		args: Record<string, any>,
+		errors: string[]
+	): void {
+		const addErrorOnce = (message: string): void => {
+			if (!errors.includes(message)) {
+				errors.push(message);
+			}
+		};
+
+		const validateUuidIfPresent = (key: string): void => {
+			const raw = args[key];
+			if (typeof raw !== 'string') return;
+			const trimmed = raw.trim();
+			if (!trimmed) return;
+			if (!isValidUUID(trimmed)) {
+				addErrorOnce(`Invalid ${key}: expected UUID`);
+			}
+		};
+
+		validateUuidIfPresent('project_id');
+		validateUuidIfPresent('task_id');
+		validateUuidIfPresent('onto_event_id');
+
+		const calendarScope =
+			typeof args.calendar_scope === 'string' ? args.calendar_scope.trim() : '';
+		if (calendarScope === 'project') {
+			const projectId =
+				typeof args.project_id === 'string' ? args.project_id.trim() : undefined;
+			if (!projectId) {
+				addErrorOnce('Missing required parameter: project_id');
+			}
+		}
+
+		if (toolName === 'get_project_calendar' || toolName === 'set_project_calendar') {
+			const projectId =
+				typeof args.project_id === 'string' ? args.project_id.trim() : undefined;
+			if (!projectId) {
+				addErrorOnce('Missing required parameter: project_id');
 			}
 		}
 	}

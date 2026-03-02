@@ -47,12 +47,19 @@ export const GET: RequestHandler = async ({ params, request, locals: { supabase 
 			`
 			)
 			.eq('tracking_id', tracking_id)
-			.single();
+			.maybeSingle();
 
-		if (emailError || !email) {
+		if (emailError) {
+			baseLogger.error('Failed to load email for tracking pixel', emailError, {
+				trackingId: tracking_id
+			});
+			// Still return a 1x1 transparent pixel even if tracking fails
+			return pixelResponse;
+		}
+
+		if (!email) {
 			baseLogger.warn('Email not found for tracking pixel', {
-				trackingId: tracking_id,
-				error: emailError?.message
+				trackingId: tracking_id
 			});
 			// Still return a 1x1 transparent pixel even if tracking fails
 			return pixelResponse;

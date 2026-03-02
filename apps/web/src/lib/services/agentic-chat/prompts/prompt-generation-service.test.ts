@@ -32,6 +32,8 @@ describe('PromptGenerationService gateway tool instructions', () => {
 		expect(prompt).toContain(
 			'User profile context is NOT preloaded. If personalization is needed, call tool_help("util.profile") and then util.profile.overview.'
 		);
+		expect(prompt).toContain('contacts -> util.contact');
+		expect(prompt).toContain('Contact method values are sensitive and redacted by default.');
 		expect(prompt).toContain(
 			'For first-time or complex writes in a turn, call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.'
 		);

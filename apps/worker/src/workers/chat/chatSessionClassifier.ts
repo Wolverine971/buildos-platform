@@ -12,6 +12,7 @@ import {
 import { LegacyJob } from '../shared/jobAdapter';
 import { processSessionActivityAndNextSteps } from './chatSessionActivityProcessor';
 import { processProfileSignals } from './profileSignalProcessor';
+import { processContactSignals } from './contactSignalProcessor';
 
 /**
  * Response structure from LLM classification
@@ -388,6 +389,36 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			console.error(`⚠️ Profile signal extraction failed (non-fatal):`, profileError);
 		}
 
+		let contactSignalResult: Awaited<ReturnType<typeof processContactSignals>> = {
+			skipped: true,
+			reason: 'not_attempted',
+			extractedCount: 0,
+			insertedCount: 0,
+			appliedCount: 0,
+			createdCount: 0,
+			needsConfirmationCount: 0,
+			mergeCandidateCount: 0
+		};
+		try {
+			contactSignalResult = await processContactSignals({
+				sessionId: validatedData.sessionId,
+				userId: validatedData.userId,
+				messages: typedMessages,
+				classification: {
+					title,
+					topics,
+					summary
+				}
+			});
+			if (!contactSignalResult.skipped) {
+				console.log(
+					`👥 Contact signals: extracted=${contactSignalResult.extractedCount}, inserted=${contactSignalResult.insertedCount}, applied=${contactSignalResult.appliedCount}, created=${contactSignalResult.createdCount}, needsConfirmation=${contactSignalResult.needsConfirmationCount}, mergeCandidates=${contactSignalResult.mergeCandidateCount}`
+				);
+			}
+		} catch (contactError) {
+			console.error(`⚠️ Contact signal extraction failed (non-fatal):`, contactError);
+		}
+
 		await updateJobStatus(job.id, 'completed', 'chat_classification');
 
 		return {
@@ -401,7 +432,8 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			activityLogsCreated: activityResult.activityLogsCreated,
 			nextStepUpdated: activityResult.nextStepUpdated,
 			projectId: activityResult.projectId,
-			profileSignals: profileSignalResult
+			profileSignals: profileSignalResult,
+			contactSignals: contactSignalResult
 		};
 	} catch (error: any) {
 		console.error(`❌ Chat classification job ${job.id} failed:`, error.message);

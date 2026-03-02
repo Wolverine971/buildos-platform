@@ -999,6 +999,41 @@ describe('ToolExecutionService', () => {
 			expect(validation.isValid).toBe(false);
 			expect(validation.errors[0]).toContain('Invalid type for parameter project_id');
 		});
+
+		it('should reject invalid project_id for create_calendar_event', () => {
+			const toolDefs: ChatToolDefinition[] = [
+				{
+					name: 'create_calendar_event',
+					description: 'Create calendar event',
+					parameters: {
+						type: 'object',
+						properties: {
+							title: { type: 'string' },
+							start_at: { type: 'string' },
+							project_id: { type: 'string' },
+							calendar_scope: { type: 'string' }
+						},
+						required: ['title', 'start_at']
+					}
+				}
+			];
+
+			const toolCall: ChatToolCall = {
+				id: 'call_calendar_invalid_project',
+				name: 'create_calendar_event',
+				arguments: {
+					title: 'Project planning',
+					start_at: '2026-03-03T10:00:00Z',
+					calendar_scope: 'project',
+					project_id: 'f'
+				}
+			};
+
+			const validation = service.validateToolCall(toolCall, toolDefs);
+
+			expect(validation.isValid).toBe(false);
+			expect(validation.errors).toContain('Invalid project_id: expected UUID');
+		});
 	});
 
 	describe('getToolDefinition', () => {

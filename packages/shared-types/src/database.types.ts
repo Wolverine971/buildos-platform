@@ -9839,6 +9839,519 @@ export type Database = {
           },
         ]
       }
+      user_contact_access_audit: {
+        Row: {
+          access_type: string
+          actor_id: string | null
+          contact_id: string | null
+          context_type: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          access_type: string
+          actor_id?: string | null
+          contact_id?: string | null
+          context_type?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          access_type?: string
+          actor_id?: string | null
+          contact_id?: string | null
+          context_type?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contact_access_audit_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_access_audit_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "user_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_access_audit_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_contact_links: {
+        Row: {
+          actor_id: string | null
+          contact_id: string
+          created_at: string
+          created_by_actor_id: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          link_type: string
+          profile_document_id: string | null
+          profile_fragment_id: string | null
+          project_id: string | null
+          props: Json
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          contact_id: string
+          created_at?: string
+          created_by_actor_id?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          link_type: string
+          profile_document_id?: string | null
+          profile_fragment_id?: string | null
+          project_id?: string | null
+          props?: Json
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          contact_id?: string
+          created_at?: string
+          created_by_actor_id?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          link_type?: string
+          profile_document_id?: string | null
+          profile_fragment_id?: string | null
+          project_id?: string | null
+          props?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contact_links_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_links_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "user_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_links_created_by_actor_id_fkey"
+            columns: ["created_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_links_profile_document_id_fkey"
+            columns: ["profile_document_id"]
+            isOneToOne: false
+            referencedRelation: "profile_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_links_profile_fragment_id_fkey"
+            columns: ["profile_fragment_id"]
+            isOneToOne: false
+            referencedRelation: "profile_fragments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_links_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_contact_merge_candidates: {
+        Row: {
+          created_at: string
+          id: string
+          observation_id: string | null
+          primary_contact_id: string
+          reason: string
+          resolved_at: string | null
+          resolved_by_actor_id: string | null
+          score: number
+          secondary_contact_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          observation_id?: string | null
+          primary_contact_id: string
+          reason: string
+          resolved_at?: string | null
+          resolved_by_actor_id?: string | null
+          score: number
+          secondary_contact_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          observation_id?: string | null
+          primary_contact_id?: string
+          reason?: string
+          resolved_at?: string | null
+          resolved_by_actor_id?: string | null
+          score?: number
+          secondary_contact_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contact_merge_candidates_observation_id_fkey"
+            columns: ["observation_id"]
+            isOneToOne: false
+            referencedRelation: "user_contact_observations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_merge_candidates_primary_contact_id_fkey"
+            columns: ["primary_contact_id"]
+            isOneToOne: false
+            referencedRelation: "user_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_merge_candidates_resolved_by_actor_id_fkey"
+            columns: ["resolved_by_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_merge_candidates_secondary_contact_id_fkey"
+            columns: ["secondary_contact_id"]
+            isOneToOne: false
+            referencedRelation: "user_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_merge_candidates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_contact_methods: {
+        Row: {
+          confidence: number
+          contact_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_primary: boolean
+          is_verified: boolean
+          label: string | null
+          method_type: string
+          sensitivity: string
+          updated_at: string
+          usage_scope: string
+          user_id: string
+          value_hash: string
+          value_normalized: string
+          value_raw: string
+          verification_source: string
+        }
+        Insert: {
+          confidence?: number
+          contact_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_primary?: boolean
+          is_verified?: boolean
+          label?: string | null
+          method_type: string
+          sensitivity?: string
+          updated_at?: string
+          usage_scope?: string
+          user_id: string
+          value_hash: string
+          value_normalized: string
+          value_raw: string
+          verification_source?: string
+        }
+        Update: {
+          confidence?: number
+          contact_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_primary?: boolean
+          is_verified?: boolean
+          label?: string | null
+          method_type?: string
+          sensitivity?: string
+          updated_at?: string
+          usage_scope?: string
+          user_id?: string
+          value_hash?: string
+          value_normalized?: string
+          value_raw?: string
+          verification_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contact_methods_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "user_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_methods_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_contact_observations: {
+        Row: {
+          confidence: number
+          created_at: string
+          id: string
+          idempotency_key: string
+          inference_flags: Json
+          proposed_display_name: string | null
+          proposed_method_hash: string | null
+          proposed_method_normalized: string | null
+          proposed_method_type: string | null
+          proposed_method_value: string | null
+          relationship_label: string | null
+          resolved_at: string | null
+          resolved_contact_id: string | null
+          session_id: string | null
+          source_id: string | null
+          source_type: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          inference_flags?: Json
+          proposed_display_name?: string | null
+          proposed_method_hash?: string | null
+          proposed_method_normalized?: string | null
+          proposed_method_type?: string | null
+          proposed_method_value?: string | null
+          relationship_label?: string | null
+          resolved_at?: string | null
+          resolved_contact_id?: string | null
+          session_id?: string | null
+          source_id?: string | null
+          source_type: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          inference_flags?: Json
+          proposed_display_name?: string | null
+          proposed_method_hash?: string | null
+          proposed_method_normalized?: string | null
+          proposed_method_type?: string | null
+          proposed_method_value?: string | null
+          relationship_label?: string | null
+          resolved_at?: string | null
+          resolved_contact_id?: string | null
+          session_id?: string | null
+          source_id?: string | null
+          source_type?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contact_observations_resolved_contact_id_fkey"
+            columns: ["resolved_contact_id"]
+            isOneToOne: false
+            referencedRelation: "user_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contact_observations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_contacts: {
+        Row: {
+          confidence: number
+          created_at: string
+          deleted_at: string | null
+          display_name: string
+          family_name: string | null
+          first_seen_at: string
+          first_seen_source: string
+          given_name: string | null
+          id: string
+          last_confirmed_at: string | null
+          last_seen_at: string
+          linked_actor_id: string | null
+          linked_user_id: string | null
+          merged_into_contact_id: string | null
+          nickname: string | null
+          normalized_name: string | null
+          notes: string | null
+          organization: string | null
+          profile_id: string | null
+          relationship_label: string | null
+          search_vector: unknown
+          sensitivity: string
+          status: string
+          title: string | null
+          updated_at: string
+          usage_scope: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          deleted_at?: string | null
+          display_name: string
+          family_name?: string | null
+          first_seen_at?: string
+          first_seen_source?: string
+          given_name?: string | null
+          id?: string
+          last_confirmed_at?: string | null
+          last_seen_at?: string
+          linked_actor_id?: string | null
+          linked_user_id?: string | null
+          merged_into_contact_id?: string | null
+          nickname?: string | null
+          normalized_name?: string | null
+          notes?: string | null
+          organization?: string | null
+          profile_id?: string | null
+          relationship_label?: string | null
+          search_vector?: unknown
+          sensitivity?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          usage_scope?: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          deleted_at?: string | null
+          display_name?: string
+          family_name?: string | null
+          first_seen_at?: string
+          first_seen_source?: string
+          given_name?: string | null
+          id?: string
+          last_confirmed_at?: string | null
+          last_seen_at?: string
+          linked_actor_id?: string | null
+          linked_user_id?: string | null
+          merged_into_contact_id?: string | null
+          nickname?: string | null
+          normalized_name?: string | null
+          notes?: string | null
+          organization?: string | null
+          profile_id?: string | null
+          relationship_label?: string | null
+          search_vector?: unknown
+          sensitivity?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+          usage_scope?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contacts_linked_actor_id_fkey"
+            columns: ["linked_actor_id"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contacts_linked_user_id_fkey"
+            columns: ["linked_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contacts_merged_into_contact_id_fkey"
+            columns: ["merged_into_contact_id"]
+            isOneToOne: false
+            referencedRelation: "user_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contacts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_contacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_context: {
         Row: {
           active_projects: string | null

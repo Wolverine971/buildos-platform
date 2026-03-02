@@ -10,6 +10,7 @@ import {
 	isValidIanaTimezone,
 	type NormalizedCalendarDateTime
 } from './calendar-datetime';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 type CalendarScope = 'user' | 'project' | 'calendar_id';
 
@@ -211,6 +212,17 @@ export class CalendarExecutor extends BaseExecutor {
 		return undefined;
 	}
 
+	private getUuidArg(fieldName: string, ...values: unknown[]): string | undefined {
+		const value = this.getStringArg(...values);
+		if (!value) {
+			return undefined;
+		}
+		if (!isValidUUID(value)) {
+			throw new Error(`Invalid ${fieldName}: expected UUID`);
+		}
+		return value;
+	}
+
 	private normalizeListCalendarScope(rawScope: unknown, fallback: CalendarScope): CalendarScope {
 		if (typeof rawScope !== 'string') {
 			return fallback;
@@ -338,7 +350,7 @@ export class CalendarExecutor extends BaseExecutor {
 	}
 
 	async listCalendarEvents(args: ListCalendarEventsArgs) {
-		const projectId = this.getStringArg(args.project_id, args.projectId);
+		const projectId = this.getUuidArg('project_id', args.project_id, args.projectId);
 		const requestedScope = this.getStringArg(args.calendar_scope, args.calendarScope);
 		const scope = this.normalizeListCalendarScope(
 			requestedScope,
@@ -614,7 +626,11 @@ export class CalendarExecutor extends BaseExecutor {
 
 	async getCalendarEventDetails(args: GetCalendarEventDetailsArgs) {
 		if (args.onto_event_id) {
-			const event = await this.eventSyncService.getEvent(args.onto_event_id, this.userId);
+			const ontoEventId = this.getUuidArg('onto_event_id', args.onto_event_id);
+			if (!ontoEventId) {
+				throw new Error('onto_event_id is required for ontology event lookup');
+			}
+			const event = await this.eventSyncService.getEvent(ontoEventId, this.userId);
 			if (!event) {
 				throw new Error('Event not found');
 			}
@@ -627,14 +643,15 @@ export class CalendarExecutor extends BaseExecutor {
 
 		let calendarId = this.normalizeCalendarId(args.calendar_id) ?? 'primary';
 		if (args.calendar_scope === 'project') {
-			if (!args.project_id) {
+			const projectId = this.getUuidArg('project_id', args.project_id);
+			if (!projectId) {
 				throw new Error('project_id is required for project calendar lookup');
 			}
-			await this.assertProjectAccess(args.project_id, 'read');
+			await this.assertProjectAccess(projectId, 'read');
 			const { data: projectCalendar } = await this.supabase
 				.from('project_calendars')
 				.select('calendar_id')
-				.eq('project_id', args.project_id)
+				.eq('project_id', projectId)
 				.eq('user_id', this.userId)
 				.maybeSingle();
 			if (projectCalendar?.calendar_id) {
@@ -682,7 +699,7 @@ export class CalendarExecutor extends BaseExecutor {
 		}
 
 		const actorId = await this.getActorId();
-		let projectId = args.project_id ?? null;
+		let projectId = this.getUuidArg('project_id', args.project_id) ?? null;
 		let taskMetadata: {
 			taskId: string;
 			taskTitle: string;
@@ -690,8 +707,9 @@ export class CalendarExecutor extends BaseExecutor {
 			taskLink: string;
 		} | null = null;
 
-		if (args.task_id) {
-			taskMetadata = await this.resolveTaskMetadata(args.task_id, projectId ?? undefined);
+		const taskId = this.getUuidArg('task_id', args.task_id);
+		if (taskId) {
+			taskMetadata = await this.resolveTaskMetadata(taskId, projectId ?? undefined);
 			projectId = taskMetadata.projectId;
 		}
 
@@ -785,7 +803,11 @@ export class CalendarExecutor extends BaseExecutor {
 
 	async updateCalendarEvent(args: UpdateCalendarEventArgs) {
 		if (args.onto_event_id) {
-			const existing = await this.eventSyncService.getEvent(args.onto_event_id, this.userId);
+			const ontoEventId = this.getUuidArg('onto_event_id', args.onto_event_id);
+			if (!ontoEventId) {
+				throw new Error('onto_event_id is required for ontology event update');
+			}
+			const existing = await this.eventSyncService.getEvent(ontoEventId, this.userId);
 			if (!existing) {
 				throw new Error('Event not found');
 			}
@@ -865,7 +887,7 @@ export class CalendarExecutor extends BaseExecutor {
 			}
 
 			const updated = await this.eventSyncService.updateEvent(this.userId, {
-				eventId: args.onto_event_id,
+				eventId: ontoEventId,
 				title: args.title,
 				description: args.description ?? null,
 				location: args.location ?? null,
@@ -926,8 +948,12 @@ export class CalendarExecutor extends BaseExecutor {
 
 	async deleteCalendarEvent(args: DeleteCalendarEventArgs) {
 		if (args.onto_event_id) {
+			const ontoEventId = this.getUuidArg('onto_event_id', args.onto_event_id);
+			if (!ontoEventId) {
+				throw new Error('onto_event_id is required for ontology event delete');
+			}
 			const deleted = await this.eventSyncService.deleteEvent(this.userId, {
-				eventId: args.onto_event_id,
+				eventId: ontoEventId,
 				syncToCalendar: args.sync_to_calendar
 			});
 			return { source: 'ontology', event: deleted };
@@ -948,9 +974,13 @@ export class CalendarExecutor extends BaseExecutor {
 	}
 
 	async getProjectCalendar(args: ProjectCalendarArgs) {
-		await this.assertProjectAccess(args.project_id, 'read');
+		const projectId = this.getUuidArg('project_id', args.project_id);
+		if (!projectId) {
+			throw new Error('project_id is required');
+		}
+		await this.assertProjectAccess(projectId, 'read');
 		const response = await this.projectCalendarService.getProjectCalendar(
-			args.project_id,
+			projectId,
 			this.userId
 		);
 		const payload = await response.json().catch(() => null);
@@ -961,7 +991,11 @@ export class CalendarExecutor extends BaseExecutor {
 	}
 
 	async setProjectCalendar(args: ProjectCalendarArgs) {
-		await this.assertProjectAccess(args.project_id, 'write');
+		const projectId = this.getUuidArg('project_id', args.project_id);
+		if (!projectId) {
+			throw new Error('project_id is required');
+		}
+		await this.assertProjectAccess(projectId, 'write');
 		const requestedCalendarId =
 			typeof args.calendar_id === 'string'
 				? (this.normalizeCalendarId(args.calendar_id) ?? undefined)
@@ -973,7 +1007,7 @@ export class CalendarExecutor extends BaseExecutor {
 		const { data: existing } = await this.supabase
 			.from('project_calendars')
 			.select('*')
-			.eq('project_id', args.project_id)
+			.eq('project_id', projectId)
 			.eq('user_id', this.userId)
 			.maybeSingle();
 
@@ -984,7 +1018,7 @@ export class CalendarExecutor extends BaseExecutor {
 			}
 
 			const response = await this.projectCalendarService.createProjectCalendar({
-				projectId: args.project_id,
+				projectId,
 				userId: this.userId,
 				name: args.name,
 				description: args.description,
@@ -1000,7 +1034,7 @@ export class CalendarExecutor extends BaseExecutor {
 		}
 
 		const response = await this.projectCalendarService.updateProjectCalendar(
-			args.project_id,
+			projectId,
 			this.userId,
 			{
 				name: args.name,

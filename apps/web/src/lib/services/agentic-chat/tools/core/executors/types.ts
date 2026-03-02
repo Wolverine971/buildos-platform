@@ -568,3 +568,83 @@ export interface GetLinkedEntitiesArgs {
 	entity_kind: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'risk';
 	filter_kind?: 'task' | 'plan' | 'goal' | 'milestone' | 'document' | 'risk' | 'all';
 }
+
+export interface SearchUserContactsArgs {
+	query?: string;
+	method_type?:
+		| 'phone'
+		| 'email'
+		| 'sms'
+		| 'whatsapp'
+		| 'telegram'
+		| 'website'
+		| 'address'
+		| 'other';
+	relationship_label?: string;
+	include_methods?: boolean;
+	include_archived?: boolean;
+	include_sensitive_values?: boolean;
+	user_confirmed_sensitive?: boolean;
+	reason?: string;
+	limit?: number;
+}
+
+export interface UpsertUserContactArgs {
+	display_name: string;
+	given_name?: string | null;
+	family_name?: string | null;
+	nickname?: string | null;
+	organization?: string | null;
+	title?: string | null;
+	notes?: string | null;
+	relationship_label?: string | null;
+	confidence?: number;
+	sensitivity?: 'standard' | 'sensitive';
+	usage_scope?: 'all_agents' | 'profile_only' | 'never_prompt';
+	methods?: Array<{
+		method_type:
+			| 'phone'
+			| 'email'
+			| 'sms'
+			| 'whatsapp'
+			| 'telegram'
+			| 'website'
+			| 'address'
+			| 'other';
+		label?: string | null;
+		value: string;
+		is_primary?: boolean;
+		is_verified?: boolean;
+		verification_source?: 'inferred' | 'user_confirmed' | 'import';
+		confidence?: number;
+		sensitivity?: 'standard' | 'sensitive';
+		usage_scope?: 'all_agents' | 'profile_only' | 'never_prompt';
+	}>;
+	include_sensitive_values?: boolean;
+}
+
+export interface ListUserContactCandidatesArgs {
+	status?: 'pending' | 'confirmed_merge' | 'rejected' | 'snoozed';
+	limit?: number;
+	include_sensitive_values?: boolean;
+	user_confirmed_sensitive?: boolean;
+	reason?: string;
+}
+
+export interface ResolveUserContactCandidateArgs {
+	candidate_id: string;
+	action: 'confirmed_merge' | 'rejected' | 'snoozed';
+	include_sensitive_values?: boolean;
+}
+
+export interface LinkUserContactArgs {
+	contact_id: string;
+	link_type: 'profile_document' | 'profile_fragment' | 'onto_actor' | 'onto_entity';
+	profile_document_id?: string | null;
+	profile_fragment_id?: string | null;
+	actor_id?: string | null;
+	project_id?: string | null;
+	entity_type?: string | null;
+	entity_id?: string | null;
+	props?: Record<string, unknown>;
+}

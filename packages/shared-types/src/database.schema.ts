@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-03-02T02:16:15.346Z
+// Generated on: 2026-03-02T05:16:20.715Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2366,6 +2366,113 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	user_contact_access_audit: {
+		access_type: string;
+		actor_id: string | null;
+		contact_id: string | null;
+		context_type: string | null;
+		created_at: string;
+		id: string;
+		metadata: Json;
+		reason: string | null;
+		user_id: string;
+	};
+	user_contact_links: {
+		actor_id: string | null;
+		contact_id: string;
+		created_at: string;
+		created_by_actor_id: string | null;
+		entity_id: string | null;
+		entity_type: string | null;
+		id: string;
+		link_type: string;
+		profile_document_id: string | null;
+		profile_fragment_id: string | null;
+		project_id: string | null;
+		props: Json;
+		user_id: string;
+	};
+	user_contact_merge_candidates: {
+		created_at: string;
+		id: string;
+		observation_id: string | null;
+		primary_contact_id: string;
+		reason: string;
+		resolved_at: string | null;
+		resolved_by_actor_id: string | null;
+		score: number;
+		secondary_contact_id: string;
+		status: string;
+		user_id: string;
+	};
+	user_contact_methods: {
+		confidence: number;
+		contact_id: string;
+		created_at: string;
+		deleted_at: string | null;
+		id: string;
+		is_primary: boolean;
+		is_verified: boolean;
+		label: string | null;
+		method_type: string;
+		sensitivity: string;
+		updated_at: string;
+		usage_scope: string;
+		user_id: string;
+		value_hash: string;
+		value_normalized: string;
+		value_raw: string;
+		verification_source: string;
+	};
+	user_contact_observations: {
+		confidence: number;
+		created_at: string;
+		id: string;
+		idempotency_key: string;
+		inference_flags: Json;
+		proposed_display_name: string | null;
+		proposed_method_hash: string | null;
+		proposed_method_normalized: string | null;
+		proposed_method_type: string | null;
+		proposed_method_value: string | null;
+		relationship_label: string | null;
+		resolved_at: string | null;
+		resolved_contact_id: string | null;
+		session_id: string | null;
+		source_id: string | null;
+		source_type: string;
+		status: string;
+		user_id: string;
+	};
+	user_contacts: {
+		confidence: number;
+		created_at: string;
+		deleted_at: string | null;
+		display_name: string;
+		family_name: string | null;
+		first_seen_at: string;
+		first_seen_source: string;
+		given_name: string | null;
+		id: string;
+		last_confirmed_at: string | null;
+		last_seen_at: string;
+		linked_actor_id: string | null;
+		linked_user_id: string | null;
+		merged_into_contact_id: string | null;
+		nickname: string | null;
+		normalized_name: string | null;
+		notes: string | null;
+		organization: string | null;
+		profile_id: string | null;
+		relationship_label: string | null;
+		search_vector: unknown;
+		sensitivity: string;
+		status: string;
+		title: string | null;
+		updated_at: string;
+		usage_scope: string;
+		user_id: string;
+	};
 	user_context: {
 		active_projects: string | null;
 		background: string | null;
@@ -2781,6 +2888,12 @@ export const tableNames = [
 	'user_brief_preferences',
 	'user_calendar_preferences',
 	'user_calendar_tokens',
+	'user_contact_access_audit',
+	'user_contact_links',
+	'user_contact_merge_candidates',
+	'user_contact_methods',
+	'user_contact_observations',
+	'user_contacts',
 	'user_context',
 	'user_discounts',
 	'user_notification_preferences',

@@ -516,6 +516,91 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		category: 'read'
 	},
+	search_user_contacts: {
+		summary: 'Search user-owned contact memory by name, relationship, and method metadata.',
+		capabilities: [
+			'Returns redacted method values by default',
+			'Supports method_type and relationship filtering',
+			'Can include archived contacts when requested'
+		],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
+		category: 'search'
+	},
+	upsert_user_contact: {
+		summary: 'Create or update a contact with conflict-safe method upsert.',
+		capabilities: [
+			'Matches by strong method hash before name fallback',
+			'Adds/updates multiple contact methods in one call',
+			'Stores sensitivity and usage_scope controls'
+		],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
+		category: 'write'
+	},
+	list_user_contact_candidates: {
+		summary: 'List contact merge candidates for user confirmation flows.',
+		capabilities: [
+			'Supports pending and resolved candidate statuses',
+			'Includes both primary and secondary contact payloads',
+			'Returns redacted methods by default'
+		],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
+		category: 'read'
+	},
+	resolve_user_contact_candidate: {
+		summary: 'Resolve ambiguous contact merge candidates using explicit user clarification.',
+		capabilities: [
+			'Supports confirmed_merge, rejected, and snoozed actions',
+			'Performs contact merge when confirmed',
+			'Audit-ready merge resolution'
+		],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
+		category: 'write'
+	},
+	link_user_contact: {
+		summary: 'Link a contact to profile documents/fragments or ontology entities.',
+		capabilities: [
+			'Supports profile_document, profile_fragment, onto_actor, and onto_entity links',
+			'Attaches contact context to project entities',
+			'Stores link metadata for downstream retrieval'
+		],
+		contexts: [
+			'base',
+			'global',
+			'project_create',
+			'project',
+			'project_audit',
+			'project_forecast'
+		],
+		category: 'write'
+	},
 	web_search: {
 		summary: 'Live web research via Tavily with synthesized answer and cited sources.',
 		capabilities: [

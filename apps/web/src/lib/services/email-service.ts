@@ -50,7 +50,8 @@ export class EmailService {
 		const sentAt = new Date().toISOString();
 		const senderType = data.from || 'dj';
 		const trackingEnabled = data.trackingEnabled ?? true;
-		const trackingId = trackingEnabled ? randomUUID() : null;
+		const metadataTrackingId = this.extractTrackingIdFromMetadata(data.metadata);
+		const trackingId = trackingEnabled ? metadataTrackingId || randomUUID() : null;
 		const sender = getSenderByType(senderType);
 		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 		const trackingPixel = trackingId
@@ -193,6 +194,10 @@ export class EmailService {
 			if (trackingId) {
 				processedHtml = this.rewriteLinksForTracking(html, trackingId);
 			}
+			// Avoid injecting a duplicate tracking pixel when caller-provided HTML already includes it.
+			if (trackingPixel && trackingId && this.hasTrackingPixel(processedHtml, trackingId)) {
+				return processedHtml;
+			}
 			return trackingPixel
 				? this.appendTrackingPixel(processedHtml, trackingPixel)
 				: processedHtml;
@@ -237,6 +242,24 @@ export class EmailService {
 		}
 
 		return `${html}${trackingPixel}`;
+	}
+
+	private extractTrackingIdFromMetadata(metadata?: Record<string, any>): string | null {
+		if (!metadata || typeof metadata !== 'object') {
+			return null;
+		}
+
+		const trackingIdValue = metadata.trackingId ?? metadata.tracking_id;
+		if (typeof trackingIdValue !== 'string') {
+			return null;
+		}
+
+		const trackingId = trackingIdValue.trim();
+		return trackingId.length > 0 ? trackingId : null;
+	}
+
+	private hasTrackingPixel(html: string, trackingId: string): boolean {
+		return html.includes(`/api/email-tracking/${trackingId}`);
 	}
 
 	private async logRichEmailData({

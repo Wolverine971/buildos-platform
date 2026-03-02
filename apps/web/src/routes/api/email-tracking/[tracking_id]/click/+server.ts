@@ -33,12 +33,19 @@ export const GET: RequestHandler = async ({ params, url, locals: { supabase } })
 			`
 			)
 			.eq('tracking_id', tracking_id)
-			.single()) as any;
+			.maybeSingle()) as any;
 
-		if (emailError || !email) {
+		if (emailError) {
+			baseLogger.error('Failed to load email for click tracking', emailError, {
+				trackingId: tracking_id
+			});
+			// Still redirect even if tracking fails
+			throw redirect(302, destination);
+		}
+
+		if (!email) {
 			baseLogger.warn('Email not found for click tracking', {
-				trackingId: tracking_id,
-				error: emailError?.message
+				trackingId: tracking_id
 			});
 			// Still redirect even if tracking fails
 			throw redirect(302, destination);

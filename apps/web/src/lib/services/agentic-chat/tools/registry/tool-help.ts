@@ -262,6 +262,20 @@ function buildOpNotes(
 		notes.push('Use this when personalization is relevant; profile context is not preloaded.');
 		notes.push('Start with default args for a lightweight section overview.');
 	}
+	if (op === 'util.contact.search' || op === 'util.contact.candidates.list') {
+		notes.push('Contact methods are redacted by default.');
+		notes.push(
+			'Only request include_sensitive_values=true when the user explicitly asks for exact phone/email values, and set user_confirmed_sensitive=true with a short reason.'
+		);
+	}
+	if (op === 'util.contact.candidate.resolve') {
+		notes.push(
+			'Use action=confirmed_merge only when the user explicitly confirms both contacts are the same person.'
+		);
+	}
+	if (op === 'util.contact.link') {
+		notes.push('Choose a link_type first, then pass matching target IDs for that link type.');
+	}
 
 	if (notes.length === 0) {
 		notes.push('Match args exactly to required fields in this schema.');

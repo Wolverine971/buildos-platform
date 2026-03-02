@@ -288,6 +288,35 @@ describe('ToolExecutionService gateway fallback', () => {
 		expect((result.data as any)?.op).toBe('util.profile.overview');
 	});
 
+	it('executes util.contact.search via search_user_contacts', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				contacts: [{ id: 'contact_1', display_name: 'Stacy' }]
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'util.contact.search',
+				args: { query: 'stacy', include_methods: true }
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'search_user_contacts',
+			expect.objectContaining({
+				query: 'stacy',
+				include_methods: true
+			}),
+			expect.any(Object)
+		);
+		expect((result.data as any)?.op).toBe('util.contact.search');
+	});
+
 	it('allows null new_parent_id for onto.document.tree.move root placement', async () => {
 		const documentId = '823f2215-f0c3-40b8-b468-8f1a592384f2';
 		const toolExecutor = vi.fn().mockResolvedValue({

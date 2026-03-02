@@ -144,7 +144,15 @@ export const TOOL_CATEGORIES = {
 		costTier: 'medium'
 	},
 	utility: {
-		tools: ['get_field_info', 'get_user_profile_overview'],
+		tools: [
+			'get_field_info',
+			'get_user_profile_overview',
+			'search_user_contacts',
+			'upsert_user_contact',
+			'list_user_contact_candidates',
+			'resolve_user_contact_candidate',
+			'link_user_contact'
+		],
 		averageTokens: 80,
 		costTier: 'low'
 	},
@@ -181,6 +189,11 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	base: [
 		'get_field_info',
 		'get_user_profile_overview',
+		'search_user_contacts',
+		'upsert_user_contact',
+		'list_user_contact_candidates',
+		'resolve_user_contact_candidate',
+		'link_user_contact',
 		'get_entity_relationships',
 		'get_linked_entities',
 		'web_search',
@@ -404,6 +417,11 @@ export const ONTOLOGY_TOOLS = extractTools([
 export const UTILITY_TOOLS = extractTools([
 	'get_field_info',
 	'get_user_profile_overview',
+	'search_user_contacts',
+	'upsert_user_contact',
+	'list_user_contact_candidates',
+	'resolve_user_contact_candidate',
+	'link_user_contact',
 	'get_buildos_overview',
 	'get_buildos_usage_guide'
 ]);

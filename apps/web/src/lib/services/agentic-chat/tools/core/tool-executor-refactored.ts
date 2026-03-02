@@ -9,7 +9,7 @@
  * - ChatToolExecutor: Orchestration, logging, dispatch
  * - OntologyReadExecutor: list_*, search_*, get_* tools
  * - OntologyWriteExecutor: create_*, update_*, delete_* tools
- * - UtilityExecutor: get_field_info, relationships (3 tools)
+ * - UtilityExecutor: profile/contact/relationship utility tools
  * - ExternalExecutor: web_search, web_visit, buildos docs (4 tools)
  *
  * Benefits:
@@ -258,6 +258,21 @@ export class ChatToolExecutor {
 
 			case 'get_user_profile_overview':
 				return this.utilityExecutor.getUserProfileOverview(args);
+
+			case 'search_user_contacts':
+				return this.utilityExecutor.searchUserContacts(args);
+
+			case 'upsert_user_contact':
+				return this.utilityExecutor.upsertUserContact(args);
+
+			case 'list_user_contact_candidates':
+				return this.utilityExecutor.listUserContactCandidates(args);
+
+			case 'resolve_user_contact_candidate':
+				return this.utilityExecutor.resolveUserContactCandidate(args);
+
+			case 'link_user_contact':
+				return this.utilityExecutor.linkUserContact(args);
 
 			case 'get_entity_relationships':
 				return this.utilityExecutor.getEntityRelationships(args);

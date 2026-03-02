@@ -2,7 +2,7 @@
 /**
  * Utility Tool Definitions
  *
- * Tools for schema information, web search, and BuildOS documentation.
+ * Tools for schema info, user memory context, and external utility operations.
  */
 
 import type { ChatToolDefinition } from '@buildos/shared-types';
@@ -71,6 +71,245 @@ Use this only when personalization is needed; user profile context is not preloa
 						description: 'Max chapters to return when include_chapters=true (1-200).'
 					}
 				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'search_user_contacts',
+			description: `Search the current user's contact memory by name, relationship, and method metadata.
+Contact method values are redacted by default. Set include_sensitive_values=true only when the user explicitly asks for exact phone/email details and confirm with user_confirmed_sensitive=true.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description:
+							'Optional keyword query (name, org, relationship, or method hint).'
+					},
+					method_type: {
+						type: 'string',
+						enum: [
+							'phone',
+							'email',
+							'sms',
+							'whatsapp',
+							'telegram',
+							'website',
+							'address',
+							'other'
+						],
+						description: 'Optional method type filter.'
+					},
+					relationship_label: {
+						type: 'string',
+						description: 'Optional relationship filter (friend, client, teammate, etc).'
+					},
+					include_methods: {
+						type: 'boolean',
+						description: 'Include contact methods in results (default true).'
+					},
+					include_archived: {
+						type: 'boolean',
+						description: 'Include archived/merged contacts (default false).'
+					},
+					include_sensitive_values: {
+						type: 'boolean',
+						description:
+							'Return raw phone/email values instead of redacted displays (default false).'
+					},
+					user_confirmed_sensitive: {
+						type: 'boolean',
+						description:
+							'Set true only when user explicitly requested exact sensitive contact values.'
+					},
+					reason: {
+						type: 'string',
+						description:
+							'Brief reason for sensitive value exposure when include_sensitive_values=true.'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 100,
+						description: 'Maximum contacts to return (1-100).'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'upsert_user_contact',
+			description: `Create or update a user-owned contact with conflict-safe method upsert.
+Use this when the user explicitly adds or updates a contact's details.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					display_name: {
+						type: 'string',
+						description: 'Contact display name (required).'
+					},
+					given_name: { type: 'string' },
+					family_name: { type: 'string' },
+					nickname: { type: 'string' },
+					organization: { type: 'string' },
+					title: { type: 'string' },
+					notes: { type: 'string' },
+					relationship_label: {
+						type: 'string',
+						description: 'Relationship label (friend, client, teammate, etc).'
+					},
+					confidence: { type: 'number' },
+					sensitivity: { type: 'string', enum: ['standard', 'sensitive'] },
+					usage_scope: {
+						type: 'string',
+						enum: ['all_agents', 'profile_only', 'never_prompt']
+					},
+					methods: {
+						type: 'array',
+						items: {
+							type: 'object',
+							properties: {
+								method_type: {
+									type: 'string',
+									enum: [
+										'phone',
+										'email',
+										'sms',
+										'whatsapp',
+										'telegram',
+										'website',
+										'address',
+										'other'
+									]
+								},
+								label: { type: 'string' },
+								value: { type: 'string' },
+								is_primary: { type: 'boolean' },
+								is_verified: { type: 'boolean' },
+								verification_source: {
+									type: 'string',
+									enum: ['inferred', 'user_confirmed', 'import']
+								},
+								confidence: { type: 'number' },
+								sensitivity: { type: 'string', enum: ['standard', 'sensitive'] },
+								usage_scope: {
+									type: 'string',
+									enum: ['all_agents', 'profile_only', 'never_prompt']
+								}
+							},
+							required: ['method_type', 'value']
+						}
+					},
+					include_sensitive_values: {
+						type: 'boolean',
+						description: 'Return raw method values in the resulting contact payload.'
+					}
+				},
+				required: ['display_name']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'list_user_contact_candidates',
+			description: `List pending or resolved contact merge candidates created by de-conflict logic.
+Use this before resolving ambiguous "same person?" contact cases.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					status: {
+						type: 'string',
+						enum: ['pending', 'confirmed_merge', 'rejected', 'snoozed'],
+						description: 'Candidate status filter (default pending).'
+					},
+					limit: {
+						type: 'number',
+						default: 20,
+						maximum: 100,
+						description: 'Maximum candidates to return (1-100).'
+					},
+					include_sensitive_values: {
+						type: 'boolean',
+						description:
+							'Return raw method values in embedded contact records (default false).'
+					},
+					user_confirmed_sensitive: {
+						type: 'boolean',
+						description:
+							'Set true only when user explicitly requested exact sensitive values.'
+					},
+					reason: {
+						type: 'string',
+						description:
+							'Brief reason for sensitive value exposure when include_sensitive_values=true.'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'resolve_user_contact_candidate',
+			description: `Resolve a contact merge candidate after user clarification.
+Use action confirmed_merge only when user confirmed both records are the same person.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					candidate_id: {
+						type: 'string',
+						description: 'Merge candidate id (required).'
+					},
+					action: {
+						type: 'string',
+						enum: ['confirmed_merge', 'rejected', 'snoozed'],
+						description: 'Resolution action (required).'
+					},
+					include_sensitive_values: {
+						type: 'boolean',
+						description:
+							'Return raw method values in resolved candidate payload (default false).'
+					}
+				},
+				required: ['candidate_id', 'action']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'link_user_contact',
+			description: `Create a link between a contact and profile or project context entities.
+Use this to tag contacts in profile documents/fragments or ontology entities.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					contact_id: {
+						type: 'string',
+						description: 'Contact id to link (required).'
+					},
+					link_type: {
+						type: 'string',
+						enum: ['profile_document', 'profile_fragment', 'onto_actor', 'onto_entity'],
+						description: 'Link target type (required).'
+					},
+					profile_document_id: { type: 'string' },
+					profile_fragment_id: { type: 'string' },
+					actor_id: { type: 'string' },
+					project_id: { type: 'string' },
+					entity_type: { type: 'string' },
+					entity_id: { type: 'string' },
+					props: {
+						type: 'object',
+						description: 'Optional metadata payload for the link.'
+					}
+				},
+				required: ['contact_id', 'link_type']
 			}
 		}
 	},

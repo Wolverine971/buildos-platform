@@ -15,13 +15,26 @@ import {
 	formatLinkedEntitiesFullDetail,
 	getLinkedEntitiesSummary
 } from '$lib/services/linked-entity-context-formatter';
+import {
+	createOrUpsertUserContact,
+	createUserContactLink,
+	insertUserContactAuditEvent,
+	listUserContactMergeCandidates,
+	resolveUserContactMergeCandidate,
+	searchUserContacts
+} from '$lib/server/user-contact.service';
 import type { OntologyEntityType } from '$lib/types/agent-chat-enhancement';
 import type {
 	ExecutorContext,
 	GetFieldInfoArgs,
 	GetUserProfileOverviewArgs,
 	GetEntityRelationshipsArgs,
-	GetLinkedEntitiesArgs
+	GetLinkedEntitiesArgs,
+	LinkUserContactArgs,
+	ListUserContactCandidatesArgs,
+	ResolveUserContactCandidateArgs,
+	SearchUserContactsArgs,
+	UpsertUserContactArgs
 } from './types';
 
 type ProfileDocTreeNode = {
@@ -375,6 +388,260 @@ export class UtilityExecutor extends BaseExecutor {
 			chapters,
 			sections,
 			message: `Loaded user profile overview with ${chapters.length} chapter(s).`
+		};
+	}
+
+	// ============================================
+	// USER CONTACTS
+	// ============================================
+
+	private resolveSensitiveContactExposure(args: {
+		include_sensitive_values?: boolean;
+		user_confirmed_sensitive?: boolean;
+		reason?: string;
+	}): { exposeSensitive: boolean; warning?: string } {
+		if (args.include_sensitive_values !== true) {
+			return { exposeSensitive: false };
+		}
+		if (args.user_confirmed_sensitive === true) {
+			const reason = typeof args.reason === 'string' ? args.reason.trim() : '';
+			if (reason.length >= 4) {
+				return { exposeSensitive: true };
+			}
+		}
+		return {
+			exposeSensitive: false,
+			warning:
+				'Sensitive values remain redacted. To expose raw values, provide include_sensitive_values=true, user_confirmed_sensitive=true, and a short reason.'
+		};
+	}
+
+	async searchUserContacts(args: SearchUserContactsArgs = {}): Promise<{
+		contacts: Record<string, any>[];
+		count: number;
+		total_considered: number;
+		sensitive_values_exposed: boolean;
+		warning?: string;
+		message: string;
+	}> {
+		const actorId = await this.getActorId();
+		const includeMethods = args.include_methods !== false;
+		const exposure = this.resolveSensitiveContactExposure({
+			include_sensitive_values: args.include_sensitive_values,
+			user_confirmed_sensitive: args.user_confirmed_sensitive,
+			reason: args.reason
+		});
+
+		const { contacts, total_considered } = await searchUserContacts({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			query: args.query ?? null,
+			methodType: args.method_type ?? null,
+			relationshipLabel: args.relationship_label ?? null,
+			includeArchived: args.include_archived === true,
+			includeMethods,
+			exposeSensitive: exposure.exposeSensitive,
+			limit: args.limit ?? 20
+		});
+
+		await insertUserContactAuditEvent({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			actorId,
+			accessType: includeMethods ? 'method_read' : 'search',
+			contextType: 'chat',
+			reason: 'tool:search_user_contacts',
+			metadata: {
+				session_id: this.sessionId ?? null,
+				query: args.query ?? null,
+				method_type: args.method_type ?? null,
+				include_archived: args.include_archived === true,
+				include_methods: includeMethods,
+				requested_sensitive_values: args.include_sensitive_values === true,
+				exposed_sensitive_values: exposure.exposeSensitive,
+				returned_count: contacts.length
+			}
+		});
+
+		return {
+			contacts,
+			count: contacts.length,
+			total_considered,
+			sensitive_values_exposed: exposure.exposeSensitive,
+			...(exposure.warning ? { warning: exposure.warning } : {}),
+			message: `Found ${contacts.length} contact(s).`
+		};
+	}
+
+	async upsertUserContact(args: UpsertUserContactArgs): Promise<{
+		contact: Record<string, any>;
+		created: boolean;
+		message: string;
+	}> {
+		const actorId = await this.getActorId();
+
+		const { contact, created } = await createOrUpsertUserContact({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			input: {
+				display_name: args.display_name,
+				given_name: args.given_name,
+				family_name: args.family_name,
+				nickname: args.nickname,
+				organization: args.organization,
+				title: args.title,
+				notes: args.notes,
+				relationship_label: args.relationship_label,
+				confidence: args.confidence,
+				sensitivity: args.sensitivity,
+				usage_scope: args.usage_scope,
+				methods: args.methods
+			},
+			exposeSensitive: args.include_sensitive_values === true
+		});
+
+		await insertUserContactAuditEvent({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			contactId: String(contact.id),
+			actorId,
+			accessType: 'method_write',
+			contextType: 'chat',
+			reason: created ? 'tool:upsert_user_contact:create' : 'tool:upsert_user_contact:update',
+			metadata: {
+				session_id: this.sessionId ?? null,
+				method_count: Array.isArray(args.methods) ? args.methods.length : 0
+			}
+		});
+
+		return {
+			contact,
+			created,
+			message: created ? 'Contact created.' : 'Contact updated.'
+		};
+	}
+
+	async listUserContactCandidates(args: ListUserContactCandidatesArgs = {}): Promise<{
+		candidates: Record<string, any>[];
+		count: number;
+		sensitive_values_exposed: boolean;
+		warning?: string;
+		message: string;
+	}> {
+		const actorId = await this.getActorId();
+		const exposure = this.resolveSensitiveContactExposure({
+			include_sensitive_values: args.include_sensitive_values,
+			user_confirmed_sensitive: args.user_confirmed_sensitive,
+			reason: args.reason
+		});
+
+		const { candidates } = await listUserContactMergeCandidates({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			status: args.status ?? 'pending',
+			limit: args.limit ?? 20,
+			exposeSensitive: exposure.exposeSensitive
+		});
+
+		await insertUserContactAuditEvent({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			actorId,
+			accessType: exposure.exposeSensitive ? 'method_read' : 'search',
+			contextType: 'chat',
+			reason: 'tool:list_user_contact_candidates',
+			metadata: {
+				session_id: this.sessionId ?? null,
+				status: args.status ?? 'pending',
+				requested_sensitive_values: args.include_sensitive_values === true,
+				exposed_sensitive_values: exposure.exposeSensitive,
+				returned_count: candidates.length
+			}
+		});
+
+		return {
+			candidates,
+			count: candidates.length,
+			sensitive_values_exposed: exposure.exposeSensitive,
+			...(exposure.warning ? { warning: exposure.warning } : {}),
+			message: `Found ${candidates.length} merge candidate(s).`
+		};
+	}
+
+	async resolveUserContactCandidate(args: ResolveUserContactCandidateArgs): Promise<{
+		candidate: Record<string, any>;
+		message: string;
+	}> {
+		const actorId = await this.getActorId();
+		const { candidate } = await resolveUserContactMergeCandidate({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			candidateId: args.candidate_id,
+			action: args.action,
+			actorId,
+			exposeSensitive: args.include_sensitive_values === true
+		});
+
+		await insertUserContactAuditEvent({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			contactId: String(candidate.primary_contact_id ?? ''),
+			actorId,
+			accessType: 'merge',
+			contextType: 'chat',
+			reason: `tool:resolve_user_contact_candidate:${args.action}`,
+			metadata: {
+				session_id: this.sessionId ?? null,
+				candidate_id: args.candidate_id
+			}
+		});
+
+		return {
+			candidate,
+			message: 'Contact candidate resolved.'
+		};
+	}
+
+	async linkUserContact(args: LinkUserContactArgs): Promise<{
+		link: Record<string, any>;
+		message: string;
+	}> {
+		const actorId = await this.getActorId();
+		const { link } = await createUserContactLink({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			contactId: args.contact_id,
+			linkType: args.link_type,
+			profileDocumentId: args.profile_document_id,
+			profileFragmentId: args.profile_fragment_id,
+			actorId: args.actor_id,
+			projectId: args.project_id,
+			entityType: args.entity_type,
+			entityId: args.entity_id,
+			props:
+				args.props && typeof args.props === 'object' && !Array.isArray(args.props)
+					? (args.props as Record<string, any>)
+					: undefined,
+			createdByActorId: actorId
+		});
+
+		await insertUserContactAuditEvent({
+			supabase: this.supabase as any,
+			userId: this.userId,
+			contactId: args.contact_id,
+			actorId,
+			accessType: 'link',
+			contextType: 'chat',
+			reason: `tool:link_user_contact:${args.link_type}`,
+			metadata: {
+				session_id: this.sessionId ?? null,
+				link_id: String(link.id ?? '')
+			}
+		});
+
+		return {
+			link,
+			message: 'Contact link created.'
 		};
 	}
 
