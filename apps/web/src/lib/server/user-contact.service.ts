@@ -195,7 +195,10 @@ function redactMethodValue(methodType: string, rawValue: string): string {
 	return `${rawValue.slice(0, 2)}***${rawValue.slice(-2)}`;
 }
 
-function sanitizeMethodColumns(row: Record<string, any>, exposeSensitive: boolean): Record<string, any> {
+function sanitizeMethodColumns(
+	row: Record<string, any>,
+	exposeSensitive: boolean
+): Record<string, any> {
 	if (exposeSensitive) return row;
 	return {
 		...row,

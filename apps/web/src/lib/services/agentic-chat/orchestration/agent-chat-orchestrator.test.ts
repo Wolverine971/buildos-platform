@@ -104,4 +104,46 @@ describe('AgentChatOrchestrator (flexible loop)', () => {
 		expect(deps.persistenceService.createAgent).toHaveBeenCalled();
 		expect(deps.llmService.streamText).toHaveBeenCalled();
 	});
+
+	it('emits contact clarification and exits before planner loop', async () => {
+		(deps.contextService.buildPlannerContext as any).mockResolvedValue({
+			systemPrompt: 'You are helpful',
+			conversationHistory: [],
+			locationContext: 'Project summary',
+			availableTools: [],
+			metadata: {
+				sessionId: baseRequest.sessionId,
+				contextType: baseRequest.contextType,
+				totalTokens: 0,
+				hasOntology: false,
+				contactClarification: {
+					questions: ['Are "Stacy" (phone: ***1234) and "Stacy" (email: s***@x.com) the same person?'],
+					candidateIds: ['candidate_123']
+				}
+			}
+		});
+
+		const events: StreamEvent[] = [];
+		const callback = vi.fn();
+
+		for await (const event of orchestrator.streamConversation(baseRequest, callback)) {
+			events.push(event);
+		}
+
+		expect(events.map((e) => e.type)).toEqual([
+			'telemetry',
+			'text',
+			'clarifying_questions',
+			'done'
+		]);
+		expect(
+			(events.find((event) => event.type === 'clarifying_questions') as any)?.questions?.[0]
+		).toContain('same person');
+		expect(
+			(events.find((event) => event.type === 'clarifying_questions') as any)?.contactMetadata
+				?.candidateIds
+		).toEqual(['candidate_123']);
+		expect(deps.llmService.streamText).not.toHaveBeenCalled();
+		expect(deps.toolExecutionService.executeTool).not.toHaveBeenCalled();
+	});
 });

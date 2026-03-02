@@ -16,7 +16,8 @@ import type {
 	LastTurnContext,
 	OntologyContext,
 	ProjectFocus,
-	ContextCacheHint
+	ContextCacheHint,
+	ContactClarificationMetadata
 } from '$lib/types/agent-chat-enhancement';
 
 // Re-export PlannerContext from canonical location
@@ -83,6 +84,7 @@ export interface BuildPlannerContextParams {
 	userMessage: string;
 	contextType: ChatContextType;
 	entityId?: string;
+	contactClarificationMetadata?: ContactClarificationMetadata;
 	deferCompression?: boolean;
 }
 

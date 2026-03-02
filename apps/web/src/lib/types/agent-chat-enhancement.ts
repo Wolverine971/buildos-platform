@@ -636,6 +636,17 @@ export interface AgentStateDelta {
 	agent_state_updates?: AgentStateUpdate;
 }
 
+export interface ContactClarificationMetadata {
+	candidateIds: string[];
+	awaitingResponse: boolean;
+	askedAt: string;
+	cooldownUntil?: string | null;
+	ignoredCount?: number;
+	lastResolvedCandidateId?: string;
+	lastResolvedAction?: 'confirmed_merge' | 'rejected' | 'snoozed';
+	lastResolvedAt?: string;
+}
+
 export interface EnhancedBuildPlannerContextParams {
 	sessionId: string;
 	userId: string;
@@ -647,5 +658,6 @@ export interface EnhancedBuildPlannerContextParams {
 	ontologyContext?: OntologyContext;
 	projectFocus?: ProjectFocus | null;
 	contextCache?: ContextCacheHint;
+	contactClarificationMetadata?: ContactClarificationMetadata;
 	deferCompression?: boolean;
 }

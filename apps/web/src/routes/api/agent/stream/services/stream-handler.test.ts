@@ -101,4 +101,90 @@ describe('StreamHandler error semantics', () => {
 		expect(errorAndDone).toEqual(['error', 'done']);
 		expect(closed).toBe(true);
 	});
+
+	it('stores contact clarification metadata when candidate ids are emitted', async () => {
+		const handler = new StreamHandler({} as any);
+		const state = {
+			assistantResponse: '',
+			toolCalls: [],
+			toolResults: [],
+			totalTokens: 0,
+			completionSent: false,
+			contextShiftOccurred: false,
+			effectiveContextType: 'global',
+			pendingMetadataUpdates: {},
+			hasPendingMetadataUpdate: false
+		} as any;
+		const sessionMetadata = {} as any;
+
+		await (handler as any).handleClarifyingQuestions(
+			{
+				questions: ['Are these the same person?'],
+				contactMetadata: { candidateIds: ['candidate_1'] }
+			},
+			state,
+			sessionMetadata,
+			'global',
+			'session_1'
+		);
+
+		expect(sessionMetadata.contactClarification).toMatchObject({
+			candidateIds: ['candidate_1'],
+			awaitingResponse: true,
+			cooldownUntil: null
+		});
+		expect(state.pendingMetadataUpdates.contactClarification?.candidateIds).toEqual([
+			'candidate_1'
+		]);
+		expect(state.hasPendingMetadataUpdate).toBe(true);
+	});
+
+	it('classifies explicit contact clarification yes/no/snooze responses', () => {
+		const handler = new StreamHandler({} as any);
+		expect((handler as any).classifyContactClarificationResponse('yes, same person')).toBe(
+			'confirmed_merge'
+		);
+		expect((handler as any).classifyContactClarificationResponse('no, different person')).toBe(
+			'rejected'
+		);
+		expect((handler as any).classifyContactClarificationResponse('not sure, later')).toBe(
+			'snoozed'
+		);
+		expect((handler as any).classifyContactClarificationResponse('maybe')).toBeNull();
+	});
+
+	it('applies cooldown when contact clarification is ignored', async () => {
+		const handler = new StreamHandler({} as any);
+		const state = {
+			assistantResponse: '',
+			toolCalls: [],
+			toolResults: [],
+			totalTokens: 0,
+			completionSent: false,
+			contextShiftOccurred: false,
+			effectiveContextType: 'global',
+			pendingMetadataUpdates: {},
+			hasPendingMetadataUpdate: false
+		} as any;
+		const sessionMetadata = {
+			contactClarification: {
+				candidateIds: ['candidate_2'],
+				awaitingResponse: true,
+				askedAt: new Date().toISOString()
+			}
+		} as any;
+
+		await (handler as any).processPendingContactClarification({
+			state,
+			sessionMetadata,
+			userId: 'user_1',
+			actorId: 'actor_1',
+			userMessage: "Can you summarize today's priorities?",
+			sessionId: 'session_1'
+		});
+
+		expect(sessionMetadata.contactClarification.cooldownUntil).toBeTypeOf('string');
+		expect(sessionMetadata.contactClarification.ignoredCount).toBe(1);
+		expect(state.hasPendingMetadataUpdate).toBe(true);
+	});
 });

@@ -198,6 +198,17 @@ export interface ProjectClarificationMetadata {
 	previousResponses: string[];
 }
 
+export interface ContactClarificationMetadata {
+	candidateIds: string[];
+	awaitingResponse: boolean;
+	askedAt: string;
+	cooldownUntil?: string | null;
+	ignoredCount?: number;
+	lastResolvedCandidateId?: string;
+	lastResolvedAction?: 'confirmed_merge' | 'rejected' | 'snoozed';
+	lastResolvedAt?: string;
+}
+
 /**
  * Request payload for the AgentChatOrchestrator
  */
@@ -215,6 +226,8 @@ export interface AgentChatRequest {
 	contextCache?: ContextCacheHint;
 	/** Metadata for project creation clarification flow */
 	projectClarificationMetadata?: ProjectClarificationMetadata;
+	/** Metadata for contact identity clarification flow */
+	contactClarificationMetadata?: ContactClarificationMetadata;
 	/** Optional timing metrics record for latency tracking */
 	timingMetricsId?: string;
 	/** Abort signal to cancel streaming work when the client disconnects */
@@ -272,6 +285,11 @@ export interface PlannerContext {
 		scope?: OntologyContextScope;
 		/** Token usage from compression */
 		compressionUsage?: ContextUsageSnapshot;
+		/** Contact identity ambiguity clarification prompt payload (when relevant). */
+		contactClarification?: {
+			questions: string[];
+			candidateIds: string[];
+		};
 		/** Strategy analysis for this request */
 		strategyAnalysis?: StrategyAnalysis;
 		/** Tool selection metadata */
@@ -375,6 +393,7 @@ export type StreamEvent =
 			type: 'clarifying_questions';
 			questions: string[];
 			metadata?: ProjectClarificationMetadata;
+			contactMetadata?: Pick<ContactClarificationMetadata, 'candidateIds'>;
 	  }
 	| { type: 'plan_created'; plan: AgentPlan }
 	| {

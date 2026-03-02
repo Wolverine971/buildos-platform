@@ -178,13 +178,15 @@ export class SessionManager {
 				error,
 				sessionId,
 				hasOntologyCache: !!metadata.ontologyCache,
-				hasClarification: !!metadata.projectClarification
+				hasClarification: !!metadata.projectClarification,
+				hasContactClarification: !!metadata.contactClarification
 			});
 		} else {
 			logger.debug('Session metadata persisted', {
 				sessionId,
 				hasOntologyCache: !!metadata.ontologyCache,
-				clarificationRound: metadata.projectClarification?.roundNumber
+				clarificationRound: metadata.projectClarification?.roundNumber,
+				contactClarificationPending: metadata.contactClarification?.awaitingResponse === true
 			});
 		}
 	}

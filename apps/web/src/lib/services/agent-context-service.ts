@@ -40,7 +40,8 @@ import type {
 	OntologyContext,
 	EnhancedPlannerContext,
 	EnhancedBuildPlannerContextParams,
-	ProjectFocus
+	ProjectFocus,
+	ContactClarificationMetadata
 } from '$lib/types/agent-chat-enhancement';
 import type { EntityLinkedContext } from '$lib/types/linked-entity-context.types';
 import type { UserPreferences } from '$lib/types/user-preferences';
@@ -52,6 +53,7 @@ import {
 	buildLocationCacheKey,
 	isCacheFresh
 } from '$lib/services/agentic-chat/context-prewarm';
+import { listUserContactMergeCandidates } from '$lib/server/user-contact.service';
 
 // Import from new context module
 import {
@@ -98,6 +100,18 @@ const debugLog = (...args: unknown[]) => {
 
 const BEHAVIORAL_PROFILE_CACHE_TTL_MS = 30_000;
 const DEFAULT_BEHAVIORAL_PROFILE_TIMEOUT_MS = 25;
+const CONTACT_RELEVANCE_KEYWORDS = [
+	'contact',
+	'call',
+	'text',
+	'message',
+	'email',
+	'phone',
+	'number',
+	'reach',
+	'tag',
+	'invite'
+];
 const behavioralProfileCache = new Map<
 	string,
 	{
@@ -105,6 +119,17 @@ const behavioralProfileCache = new Map<
 		data: BehavioralPromptLayer | undefined;
 	}
 >();
+
+function normalizeContactMatchText(value: string | null | undefined): string {
+	if (typeof value !== 'string') return '';
+	return value
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9\s]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
 
 // ============================================
 // TYPES
@@ -203,6 +228,10 @@ export class AgentContextService {
 		const contextCache = 'contextCache' in params ? params.contextCache : undefined;
 		const deferCompression =
 			'deferCompression' in params ? params.deferCompression === true : false;
+		const contactClarificationMetadata =
+			'contactClarificationMetadata' in params
+				? params.contactClarificationMetadata
+				: undefined;
 
 		debugLog('[AgentContext] Building enhanced planner context', {
 			contextType,
@@ -343,6 +372,11 @@ export class AgentContextService {
 		})();
 
 		const userProfilePromise = this.loadUserProfileWithPreferences(userId);
+		const contactClarificationPromise = this.loadPendingContactClarification({
+			userId,
+			userMessage,
+			clarificationMetadata: contactClarificationMetadata
+		});
 		const behavioralPromptLayerPromise = this.loadBehavioralPromptLayer(
 			userId,
 			projectIdForBehavioralContext
@@ -353,12 +387,14 @@ export class AgentContextService {
 			historyResult,
 			locationResult,
 			userProfileData,
+			contactClarification,
 			behavioralLayer
 		] = await Promise.all([
 			linkedEntitiesPromise,
 			historyPromise,
 			locationPromise,
 			userProfilePromise,
+			contactClarificationPromise,
 			behavioralPromptLayerPromise
 		]);
 
@@ -428,9 +464,157 @@ export class AgentContextService {
 				hasOntology: !!ontologyContext,
 				focus: projectFocus ?? null,
 				scope: contextScope,
-				compressionUsage
+				compressionUsage,
+				contactClarification
 			}
 		};
+	}
+
+	private async loadPendingContactClarification(params: {
+		userId: string;
+		userMessage: string;
+		clarificationMetadata?: ContactClarificationMetadata;
+	}): Promise<{ questions: string[]; candidateIds: string[] } | undefined> {
+		const { userId, userMessage, clarificationMetadata } = params;
+		try {
+			const { candidates } = await listUserContactMergeCandidates({
+				supabase: this.supabase as any,
+				userId,
+				status: 'pending',
+				limit: 6,
+				exposeSensitive: false
+			});
+
+			if (!Array.isArray(candidates) || candidates.length === 0) {
+				return undefined;
+			}
+
+			const relevant = this.selectRelevantContactCandidates(userMessage, candidates);
+			if (relevant.length === 0) {
+				return undefined;
+			}
+
+			const priorCandidateIds = new Set(
+				(clarificationMetadata?.candidateIds ?? []).map((value) => String(value))
+			);
+			let topCandidate = relevant[0];
+			if (priorCandidateIds.size > 0) {
+				const pinnedCandidate = relevant.find((candidate) =>
+					priorCandidateIds.has(String(candidate?.id))
+				);
+				if (pinnedCandidate) {
+					topCandidate = pinnedCandidate;
+				}
+			}
+			if (!topCandidate) return undefined;
+
+			const cooldownUntilRaw = clarificationMetadata?.cooldownUntil;
+			if (typeof cooldownUntilRaw === 'string' && cooldownUntilRaw.trim().length > 0) {
+				const cooldownUntilTs = Date.parse(cooldownUntilRaw);
+				if (
+					Number.isFinite(cooldownUntilTs) &&
+					cooldownUntilTs > Date.now() &&
+					(priorCandidateIds.size === 0 || priorCandidateIds.has(String(topCandidate.id)))
+				) {
+					return undefined;
+				}
+			}
+
+			return {
+				questions: [this.buildContactClarificationQuestion(topCandidate)],
+				candidateIds: [String(topCandidate.id)]
+			};
+		} catch (error) {
+			logger.warn('[AgentContext] Failed to load pending contact clarification', {
+				userId,
+				error: error instanceof Error ? error.message : String(error)
+			});
+			void this.errorLogger.logError(
+				error,
+				{
+					userId,
+					operationType: 'context_contact_clarification',
+					metadata: {
+						messageLength: userMessage.length
+					}
+				},
+				'warning'
+			);
+			return undefined;
+		}
+	}
+
+	private selectRelevantContactCandidates(
+		userMessage: string,
+		candidates: Record<string, any>[]
+	): Record<string, any>[] {
+		const normalizedMessage = normalizeContactMatchText(userMessage);
+		if (!normalizedMessage) return [];
+
+		const hasKeywordIntent = CONTACT_RELEVANCE_KEYWORDS.some((keyword) =>
+			normalizedMessage.includes(keyword)
+		);
+		const hasPhoneLikePattern = /\+?\d[\d\-\s().]{6,}/.test(userMessage);
+		const hasEmailLikePattern = /\b[^\s@]+@[^\s@]+\.[^\s@]+\b/.test(userMessage);
+		const hasContactIntent = hasKeywordIntent || hasPhoneLikePattern || hasEmailLikePattern;
+
+		const scored = candidates
+			.map((candidate) => {
+				const primaryName = normalizeContactMatchText(
+					candidate?.primary_contact?.display_name
+				);
+				const secondaryName = normalizeContactMatchText(
+					candidate?.secondary_contact?.display_name
+				);
+				const candidateNames = [primaryName, secondaryName].filter(
+					(value): value is string => value.length > 0
+				);
+
+				const nameMatch = candidateNames.some((name) => {
+					if (normalizedMessage.includes(name)) return true;
+					const tokens = name.split(' ').filter((token) => token.length >= 3);
+					return tokens.some((token) => normalizedMessage.includes(token));
+				});
+
+				const score = (nameMatch ? 2 : 0) + (hasContactIntent ? 1 : 0);
+				return { candidate, score };
+			})
+			.filter((item) => item.score > 0)
+			.sort((a, b) => {
+				if (a.score !== b.score) return b.score - a.score;
+				const aCreatedAt = Date.parse(String(a.candidate?.created_at ?? '')) || 0;
+				const bCreatedAt = Date.parse(String(b.candidate?.created_at ?? '')) || 0;
+				if (aCreatedAt !== bCreatedAt) return aCreatedAt - bCreatedAt;
+				const aNumericScore = Number(a.candidate?.score ?? 0);
+				const bNumericScore = Number(b.candidate?.score ?? 0);
+				return bNumericScore - aNumericScore;
+			});
+
+		return scored.map((item) => item.candidate);
+	}
+
+	private buildContactClarificationQuestion(candidate: Record<string, any>): string {
+		const primary = this.formatContactCandidateDescriptor(candidate?.primary_contact);
+		const secondary = this.formatContactCandidateDescriptor(candidate?.secondary_contact);
+		return `Quick clarification before I continue: are ${primary} and ${secondary} the same person?`;
+	}
+
+	private formatContactCandidateDescriptor(contact: Record<string, any> | null | undefined): string {
+		const displayNameRaw = typeof contact?.display_name === 'string' ? contact.display_name : '';
+		const displayName = displayNameRaw.trim() || 'this contact';
+		const methods = Array.isArray(contact?.methods) ? contact.methods : [];
+		const primaryMethod = methods.find((method) => method?.is_primary === true) ?? methods[0];
+		if (!primaryMethod) return `"${displayName}"`;
+
+		const methodTypeRaw =
+			typeof primaryMethod?.method_type === 'string' ? primaryMethod.method_type : 'method';
+		const methodType = methodTypeRaw.trim() || 'method';
+		const valueDisplayRaw =
+			typeof primaryMethod?.value_display === 'string' ? primaryMethod.value_display : '';
+		const valueDisplay = valueDisplayRaw.trim();
+		if (!valueDisplay) return `"${displayName}"`;
+
+		return `"${displayName}" (${methodType}: ${valueDisplay})`;
 	}
 
 	/**

@@ -28,7 +28,8 @@ import type {
 } from '$lib/types/agent-chat-enhancement';
 import type {
 	StreamEvent,
-	ProjectClarificationMetadata
+	ProjectClarificationMetadata,
+	ContactClarificationMetadata
 } from '$lib/services/agentic-chat/shared/types';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createAgentChatOrchestrator } from '$lib/services/agentic-chat';
@@ -60,6 +61,7 @@ import {
 import { createSessionManager } from './session-manager';
 import { createMessagePersister } from './message-persister';
 import { buildDocStructureCacheKey } from '$lib/services/agentic-chat/context-prewarm';
+import { resolveUserContactMergeCandidate } from '$lib/server/user-contact.service';
 
 const logger = createLogger('StreamHandler');
 
@@ -312,6 +314,15 @@ export class StreamHandler {
 				});
 			}
 
+			await this.processPendingContactClarification({
+				sessionMetadata,
+				state,
+				userId,
+				actorId,
+				userMessage: request.message,
+				sessionId: session.id
+			});
+
 			// Create orchestrator
 			const orchestrator = createAgentChatOrchestrator(this.supabase, {
 				fetchFn,
@@ -343,6 +354,7 @@ export class StreamHandler {
 					docStructure: sessionMetadata.docStructureCache
 				},
 				projectClarificationMetadata,
+				contactClarificationMetadata: sessionMetadata.contactClarification,
 				timingMetricsId,
 				abortSignal
 			};
@@ -801,7 +813,11 @@ export class StreamHandler {
 	 * Handle clarifying questions event.
 	 */
 	private async handleClarifyingQuestions(
-		event: { questions?: string[]; metadata?: ProjectClarificationMetadata },
+		event: {
+			questions?: string[];
+			metadata?: ProjectClarificationMetadata;
+			contactMetadata?: Pick<ContactClarificationMetadata, 'candidateIds'>;
+		},
 		state: StreamState,
 		sessionMetadata: AgentSessionMetadata,
 		contextType: ChatContextType,
@@ -845,6 +861,152 @@ export class StreamHandler {
 				sessionId
 			});
 		}
+
+		const contactCandidateIds = Array.isArray(event.contactMetadata?.candidateIds)
+			? event.contactMetadata?.candidateIds
+					.map((value) => String(value).trim())
+					.filter((value) => value.length > 0)
+			: [];
+
+		if (contactCandidateIds.length > 0) {
+			const existing = sessionMetadata.contactClarification;
+			const updatedContactClarification: ContactClarificationMetadata = {
+				candidateIds: contactCandidateIds,
+				awaitingResponse: true,
+				askedAt: new Date().toISOString(),
+				cooldownUntil: null,
+				ignoredCount:
+					typeof existing?.ignoredCount === 'number' && Number.isFinite(existing.ignoredCount)
+						? existing.ignoredCount
+						: 0,
+				lastResolvedCandidateId: existing?.lastResolvedCandidateId,
+				lastResolvedAction: existing?.lastResolvedAction,
+				lastResolvedAt: existing?.lastResolvedAt
+			};
+
+			this.persistContactClarificationMetadata(state, sessionMetadata, updatedContactClarification);
+			logger.debug('Contact clarification metadata updated in memory', {
+				sessionId,
+				candidateCount: contactCandidateIds.length
+			});
+		}
+	}
+
+	private persistContactClarificationMetadata(
+		state: StreamState,
+		sessionMetadata: AgentSessionMetadata,
+		metadata: ContactClarificationMetadata
+	): void {
+		sessionMetadata.contactClarification = metadata;
+		state.pendingMetadataUpdates.contactClarification = metadata;
+		state.hasPendingMetadataUpdate = true;
+	}
+
+	private classifyContactClarificationResponse(
+		message: string
+	): 'confirmed_merge' | 'rejected' | 'snoozed' | null {
+		const normalized = message.trim().toLowerCase();
+		if (!normalized) return null;
+
+		const affirmativePatterns = [
+			/^(yes|yep|yeah|yup|correct|affirmative)\b/,
+			/\b(same person|same one|they'?re the same|they are the same)\b/
+		];
+		const negativePatterns = [
+			/^(no|nope|nah|negative)\b/,
+			/\b(different person|different people|not the same|separate)\b/,
+			/\b(do not merge|don't merge)\b/
+		];
+		const snoozePatterns = [
+			/^(not sure|unsure|skip|later|not now)\b/,
+			/\b(i do not know|i don't know)\b/
+		];
+
+		const hasAffirmative = affirmativePatterns.some((pattern) => pattern.test(normalized));
+		const hasNegative = negativePatterns.some((pattern) => pattern.test(normalized));
+		const hasSnooze = snoozePatterns.some((pattern) => pattern.test(normalized));
+
+		if (hasSnooze) return 'snoozed';
+		if (hasAffirmative && !hasNegative) return 'confirmed_merge';
+		if (hasNegative && !hasAffirmative) return 'rejected';
+		return null;
+	}
+
+	private async processPendingContactClarification(params: {
+		state: StreamState;
+		sessionMetadata: AgentSessionMetadata;
+		userId: string;
+		actorId: string;
+		userMessage: string;
+		sessionId: string;
+	}): Promise<void> {
+		const { state, sessionMetadata, userId, actorId, userMessage, sessionId } = params;
+		const clarification = sessionMetadata.contactClarification;
+		if (
+			!clarification ||
+			clarification.awaitingResponse !== true ||
+			!Array.isArray(clarification.candidateIds) ||
+			clarification.candidateIds.length === 0
+		) {
+			return;
+		}
+
+		const candidateId = String(clarification.candidateIds[0] ?? '').trim();
+		if (!candidateId) return;
+
+		const action = this.classifyContactClarificationResponse(userMessage);
+		if (action) {
+			try {
+				await resolveUserContactMergeCandidate({
+					supabase: this.supabase as any,
+					userId,
+					candidateId,
+					action,
+					actorId
+				});
+
+				const nowIso = new Date().toISOString();
+				this.persistContactClarificationMetadata(state, sessionMetadata, {
+					...clarification,
+					candidateIds: [],
+					awaitingResponse: false,
+					cooldownUntil: null,
+					lastResolvedCandidateId: candidateId,
+					lastResolvedAction: action,
+					lastResolvedAt: nowIso
+				});
+
+				logger.info('Auto-resolved pending contact clarification', {
+					sessionId,
+					candidateId,
+					action
+				});
+				return;
+			} catch (error) {
+				logger.warn('Failed to auto-resolve contact clarification response', {
+					sessionId,
+					candidateId,
+					action,
+					error: error instanceof Error ? error.message : String(error)
+				});
+			}
+		}
+
+		if (clarification.cooldownUntil) {
+			return;
+		}
+
+		const ignoredCount =
+			typeof clarification.ignoredCount === 'number' && Number.isFinite(clarification.ignoredCount)
+				? clarification.ignoredCount
+				: 0;
+		const cooldownMs = 10 * 60 * 1000;
+		const cooldownUntil = new Date(Date.now() + cooldownMs).toISOString();
+		this.persistContactClarificationMetadata(state, sessionMetadata, {
+			...clarification,
+			cooldownUntil,
+			ignoredCount: ignoredCount + 1
+		});
 	}
 
 	/**

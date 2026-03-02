@@ -229,6 +229,7 @@ export class AgentChatOrchestrator {
 				...(request.lastTurnContext ? { lastTurnContext: request.lastTurnContext } : {}),
 				projectFocus: request.projectFocus ?? null,
 				contextCache: request.contextCache,
+				contactClarificationMetadata: request.contactClarificationMetadata,
 				deferCompression: true
 			});
 			void this.safeUpdateTimingMetric(timingMetricsId, {
@@ -374,6 +375,35 @@ export class AgentChatOrchestrator {
 					await callback(doneEvent);
 					return;
 				}
+			}
+
+			const contactClarificationQuestions =
+				plannerContext.metadata.contactClarification?.questions ?? [];
+			if (contactClarificationQuestions.length > 0) {
+				const introEvent: StreamEvent = {
+					type: 'text',
+					content:
+						'Before I continue, I need one contact clarification to avoid merging the wrong person:'
+				};
+				yield introEvent;
+				await callback(introEvent);
+
+				const clarifyingEvent: StreamEvent = {
+					type: 'clarifying_questions',
+					questions: contactClarificationQuestions,
+					contactMetadata: {
+						candidateIds:
+							plannerContext.metadata.contactClarification?.candidateIds?.map(String) ?? []
+					}
+				};
+				yield clarifyingEvent;
+				await callback(clarifyingEvent);
+
+				const doneEvent: StreamEvent = { type: 'done' };
+				doneEmitted = true;
+				yield doneEvent;
+				await callback(doneEvent);
+				return;
 			}
 
 			const messages = this.buildPlannerMessages(plannerContext, request.userMessage);
@@ -730,6 +760,7 @@ export class AgentChatOrchestrator {
 					: {}),
 				projectFocus: serviceContext.projectFocus ?? null,
 				contextCache: request.contextCache,
+				contactClarificationMetadata: request.contactClarificationMetadata,
 				deferCompression: true
 			});
 

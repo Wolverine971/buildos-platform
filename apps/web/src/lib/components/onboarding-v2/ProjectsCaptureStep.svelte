@@ -286,7 +286,7 @@
 		<!-- Screenshot: Where to find the chat -->
 		<div class="mb-4 bg-muted rounded-lg overflow-hidden border border-border">
 			<img
-				src="/onboarding-assets/screenshots/agentic-chat-select.png"
+				src="/onboarding-assets/screenshots/agentic-chat-select.webp"
 				alt="Arrow pointing to the Brain Dump & Chat button in the navigation bar"
 				loading="lazy"
 				class="w-full"
@@ -306,7 +306,7 @@
 		<!-- Screenshot: The 4 chat modes -->
 		<div class="mb-3 bg-muted rounded-lg overflow-hidden border border-border">
 			<img
-				src="/onboarding-assets/screenshots/agentic-chat-options.png"
+				src="/onboarding-assets/screenshots/agentic-chat-options.webp"
 				alt="The four chat mode options: General Chat, Project Chat, Start a Project, and Brain Dump"
 				loading="lazy"
 				class="w-full"
@@ -411,7 +411,7 @@
 			</p>
 			<div class="bg-muted rounded-lg overflow-hidden border border-border">
 				<img
-					src="/onboarding-assets/screenshots/agentic-chat-voice-transcription.png"
+					src="/onboarding-assets/screenshots/agentic-chat-voice-transcription.webp"
 					alt="Voice transcription button highlighted in the chat input area"
 					loading="lazy"
 					class="w-full"

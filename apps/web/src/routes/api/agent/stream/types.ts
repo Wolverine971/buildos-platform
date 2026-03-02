@@ -34,7 +34,10 @@ import type {
 } from '$lib/types/agent-chat-enhancement';
 
 // Import types that already exist - don't recreate them
-import type { ProjectClarificationMetadata } from '$lib/services/agentic-chat/shared/types';
+import type {
+	ProjectClarificationMetadata,
+	ContactClarificationMetadata
+} from '$lib/services/agentic-chat/shared/types';
 
 // ============================================
 // ENDPOINT-SPECIFIC TYPES
@@ -79,6 +82,8 @@ export interface AgentSessionMetadata {
 	agent_state?: AgentState;
 	/** Metadata for project creation clarification rounds */
 	projectClarification?: ProjectClarificationMetadata;
+	/** Metadata for contact merge candidate clarifications */
+	contactClarification?: ContactClarificationMetadata;
 	/** Last context usage snapshot */
 	lastContextUsage?: ContextUsageSnapshot;
 	/** Allow additional metadata fields */
