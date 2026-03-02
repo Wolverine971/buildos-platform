@@ -49,6 +49,9 @@ export interface RemoveDocumentOptions {
 export interface UpdateDocMetadataOptions {
 	title?: string | null;
 	description?: string | null;
+	is_public?: boolean;
+	public_slug?: string | null;
+	public_status?: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
 }
 
 // ============================================
@@ -90,6 +93,24 @@ function normalizeDocTreeNodes(nodes: unknown): DocTreeNode[] {
 				: descriptionCandidate === null
 					? null
 					: undefined;
+		const isPublicCandidate = record.is_public;
+		const isPublic = typeof isPublicCandidate === 'boolean' ? isPublicCandidate : undefined;
+		const publicSlugCandidate = record.public_slug;
+		const publicSlug =
+			typeof publicSlugCandidate === 'string'
+				? publicSlugCandidate
+				: publicSlugCandidate === null
+					? null
+					: undefined;
+		const publicStatusCandidate = record.public_status;
+		const publicStatus =
+			publicStatusCandidate === 'not_public' ||
+			publicStatusCandidate === 'pending_confirmation' ||
+			publicStatusCandidate === 'live' ||
+			publicStatusCandidate === 'unpublished' ||
+			publicStatusCandidate === 'archived'
+				? publicStatusCandidate
+				: undefined;
 		const children = normalizeDocTreeNodes(record.children);
 
 		const node: DocTreeNode = {
@@ -98,6 +119,9 @@ function normalizeDocTreeNodes(nodes: unknown): DocTreeNode[] {
 			...(type ? { type } : {}),
 			...(title !== undefined ? { title } : {}),
 			...(description !== undefined ? { description } : {}),
+			...(isPublic !== undefined ? { is_public: isPublic } : {}),
+			...(publicSlug !== undefined ? { public_slug: publicSlug } : {}),
+			...(publicStatus !== undefined ? { public_status: publicStatus } : {}),
 			...(children.length > 0 ? { children } : {})
 		};
 
@@ -435,6 +459,9 @@ export function enrichTreeNodes(
 			has_content: !!(doc?.content && doc.content.trim().length > 0),
 			created_at: doc?.created_at || new Date().toISOString(),
 			updated_at: doc?.updated_at || new Date().toISOString(),
+			is_public: node.is_public === true,
+			public_slug: node.public_slug ?? null,
+			public_status: node.public_status ?? (node.is_public ? 'live' : 'not_public'),
 			depth,
 			path
 		};
@@ -691,7 +718,10 @@ export async function addDocumentToTree(
 		id: docId,
 		order: 0, // Will be set by insertNodeIntoTree
 		...(resolvedTitle !== undefined ? { title: resolvedTitle } : {}),
-		...(resolvedDescription !== undefined ? { description: resolvedDescription } : {})
+		...(resolvedDescription !== undefined ? { description: resolvedDescription } : {}),
+		is_public: false,
+		public_slug: null,
+		public_status: 'not_public'
 	};
 
 	// Determine position
@@ -798,6 +828,15 @@ export async function moveDocument(
 		...(findResult?.node.type ? { type: findResult.node.type } : {}),
 		...(resolvedTitle !== undefined ? { title: resolvedTitle } : {}),
 		...(resolvedDescription !== undefined ? { description: resolvedDescription } : {}),
+		...(findResult?.node.is_public !== undefined
+			? { is_public: findResult.node.is_public }
+			: {}),
+		...(findResult?.node.public_slug !== undefined
+			? { public_slug: findResult.node.public_slug }
+			: {}),
+		...(findResult?.node.public_status !== undefined
+			? { public_status: findResult.node.public_status }
+			: {}),
 		children: findResult?.node.children
 	};
 
@@ -823,7 +862,13 @@ export async function updateDocNodeMetadata(
 	metadata: UpdateDocMetadataOptions,
 	actorId?: string
 ): Promise<DocStructure | null> {
-	if (metadata.title === undefined && metadata.description === undefined) {
+	if (
+		metadata.title === undefined &&
+		metadata.description === undefined &&
+		metadata.is_public === undefined &&
+		metadata.public_slug === undefined &&
+		metadata.public_status === undefined
+	) {
 		return null;
 	}
 
@@ -842,14 +887,37 @@ export async function updateDocNodeMetadata(
 				const nextTitle = metadata.title !== undefined ? metadata.title : node.title;
 				const nextDescription =
 					metadata.description !== undefined ? metadata.description : node.description;
+				const nextIsPublic =
+					metadata.is_public !== undefined ? metadata.is_public : node.is_public;
+				const nextPublicSlug =
+					metadata.public_slug !== undefined ? metadata.public_slug : node.public_slug;
+				const nextPublicStatus =
+					metadata.public_status !== undefined
+						? metadata.public_status
+						: node.public_status;
 
-				if (nextTitle !== node.title || nextDescription !== node.description) {
+				if (
+					nextTitle !== node.title ||
+					nextDescription !== node.description ||
+					nextIsPublic !== node.is_public ||
+					nextPublicSlug !== node.public_slug ||
+					nextPublicStatus !== node.public_status
+				) {
 					nodeChanged = true;
 					nextNode = {
 						...node,
 						...(metadata.title !== undefined ? { title: metadata.title } : {}),
 						...(metadata.description !== undefined
 							? { description: metadata.description }
+							: {}),
+						...(metadata.is_public !== undefined
+							? { is_public: metadata.is_public }
+							: {}),
+						...(metadata.public_slug !== undefined
+							? { public_slug: metadata.public_slug }
+							: {}),
+						...(metadata.public_status !== undefined
+							? { public_status: metadata.public_status }
 							: {})
 					};
 				}

@@ -2,7 +2,7 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import { Upload, Link2, Unlink, Eye } from 'lucide-svelte';
+	import { Upload, Link2, Unlink, Eye, ImageIcon } from 'lucide-svelte';
 	import ImageUploadModal from './ImageUploadModal.svelte';
 	import ProjectImageLibrary from './ProjectImageLibrary.svelte';
 	import AssetDetailModal from './AssetDetailModal.svelte';
@@ -176,33 +176,35 @@
 	}
 </script>
 
-<section class="space-y-3">
+<section class="space-y-2">
 	{#if showTitle}
-		<div class="flex items-center justify-between">
+		<div class="flex items-center justify-between px-0.5">
 			<h3 class="text-sm font-semibold text-foreground">{title}</h3>
-			<span class="text-xs text-muted-foreground">{assets.length}</span>
+			{#if assets.length > 0}
+				<span class="micro-label text-muted-foreground">{assets.length}</span>
+			{/if}
 		</div>
 	{/if}
 
 	{#if (showUploadButton && canEdit) || (hasEntityBinding && canEdit && !pickerMode)}
-		<div class="flex flex-wrap items-center gap-2">
+		<div class="flex flex-wrap items-center gap-1.5">
 			{#if showUploadButton && canEdit}
 				<Button
 					size="sm"
-					variant="secondary"
-					class="h-7 px-2 text-xs"
+					variant="outline"
+					class="h-7 px-2 text-xs pressable"
 					onclick={() => (showUploadModal = true)}
 				>
 					<Upload class="h-3.5 w-3.5" />
-					Upload image
+					Upload
 				</Button>
 			{/if}
 
 			{#if hasEntityBinding && canEdit && !pickerMode}
 				<Button
 					size="sm"
-					variant="secondary"
-					class="h-7 px-2 text-xs"
+					variant="outline"
+					class="h-7 px-2 text-xs pressable"
 					onclick={() => (showAttachExisting = !showAttachExisting)}
 				>
 					<Link2 class="h-3.5 w-3.5" />
@@ -213,7 +215,7 @@
 	{/if}
 
 	{#if showAttachExisting && hasEntityBinding && !pickerMode}
-		<div class="rounded-md border border-border bg-muted/30 p-2">
+		<div class="rounded-lg border border-border bg-muted/30 p-2 tx tx-thread tx-weak">
 			<ProjectImageLibrary
 				{projectId}
 				pickerMode={true}
@@ -228,7 +230,17 @@
 	{/if}
 
 	{#if loading}
-		<p class="text-xs text-muted-foreground">Loading images...</p>
+		<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+			{#each { length: compact ? 2 : 4 } as _}
+				<div class="rounded-lg border border-border bg-muted overflow-hidden">
+					<div class="aspect-[4/3] animate-pulse bg-muted"></div>
+					<div class="px-2 py-1.5 space-y-1 border-t border-border">
+						<div class="h-3 w-3/4 rounded bg-muted-foreground/10 animate-pulse"></div>
+						<div class="h-2.5 w-1/2 rounded bg-muted-foreground/10 animate-pulse"></div>
+					</div>
+				</div>
+			{/each}
+		</div>
 	{:else if pickerMode}
 		<ProjectImageLibrary
 			{projectId}
@@ -240,49 +252,70 @@
 			onOpenAsset={(asset) => openAssetDetail(asset.id)}
 		/>
 	{:else if assets.length === 0}
-		<p class="text-xs text-muted-foreground">No images yet.</p>
+		<div
+			class="flex flex-col items-center justify-center py-6 border-2 border-dashed border-border rounded-lg"
+		>
+			<ImageIcon class="w-6 h-6 text-muted-foreground mb-2" />
+			<p class="text-xs text-muted-foreground">No images yet</p>
+			{#if showUploadButton && canEdit}
+				<Button
+					size="sm"
+					variant="outline"
+					class="mt-3 h-7 px-3 text-xs pressable"
+					onclick={() => (showUploadModal = true)}
+				>
+					<Upload class="h-3.5 w-3.5" />
+					Upload first image
+				</Button>
+			{/if}
+		</div>
 	{:else}
-		<div class="space-y-2">
-			{#each assets as asset}
-				<div class="rounded-md border border-border bg-card p-2">
-					<div class="flex items-start justify-between gap-2">
-						<div class="min-w-0 flex items-center gap-2">
-							<img
-								src={`/api/onto/assets/${asset.id}/render?width=${compact ? 96 : 160}`}
-								alt={asset.alt_text ?? 'Image preview'}
-								class="h-10 w-10 rounded border border-border object-cover"
-								loading="lazy"
-							/>
-							<div class="min-w-0">
-								<p class="truncate text-xs font-medium text-foreground">
-									{assetTitle(asset)}
-								</p>
-								<p class="text-[11px] text-muted-foreground">
-									OCR: {asset.ocr_status || 'pending'}
-								</p>
+		<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+			{#each assets as asset (asset.id)}
+				<div
+					class="group rounded-lg border border-border overflow-hidden shadow-ink tx tx-thread tx-weak wt-paper
+						hover:border-accent/50 hover:shadow-ink-strong transition-all"
+				>
+					<button
+						class="block w-full cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+						onclick={() => openAssetDetail(asset.id)}
+					>
+						<img
+							src={`/api/onto/assets/${asset.id}/render?width=240`}
+							alt={asset.alt_text ?? 'Image preview'}
+							class="aspect-[4/3] w-full object-cover bg-muted"
+							loading="lazy"
+						/>
+					</button>
+					<div class="px-2 py-1.5 border-t border-border bg-card">
+						<div class="flex items-center justify-between gap-1">
+							<p class="truncate text-xs font-medium text-foreground min-w-0">
+								{assetTitle(asset)}
+							</p>
+							<div
+								class="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+							>
+								<button
+									class="rounded p-0.5 hover:bg-muted transition-colors"
+									onclick={() => openAssetDetail(asset.id)}
+									title="View details"
+								>
+									<Eye class="h-3.5 w-3.5 text-muted-foreground" />
+								</button>
+								{#if hasEntityBinding && canEdit}
+									<button
+										class="rounded p-0.5 hover:bg-muted transition-colors"
+										onclick={() => handleUnlink(asset.id)}
+										title="Detach image"
+									>
+										<Unlink class="h-3.5 w-3.5 text-muted-foreground" />
+									</button>
+								{/if}
 							</div>
 						</div>
-						<div class="flex items-center gap-1">
-							<Button
-								size="sm"
-								variant="secondary"
-								class="h-6 px-1.5"
-								onclick={() => openAssetDetail(asset.id)}
-								title="View image details"
-							>
-								<Eye class="h-3.5 w-3.5" />
-							</Button>
-							{#if hasEntityBinding && canEdit}
-								<Button
-									size="sm"
-									variant="secondary"
-									class="h-6 px-1.5"
-									onclick={() => handleUnlink(asset.id)}
-								>
-									<Unlink class="h-3.5 w-3.5" />
-								</Button>
-							{/if}
-						</div>
+						<p class="text-[10px] text-muted-foreground mt-0.5">
+							{asset.ocr_status === 'complete' ? 'OCR complete' : asset.ocr_status || 'pending'}
+						</p>
 					</div>
 				</div>
 			{/each}

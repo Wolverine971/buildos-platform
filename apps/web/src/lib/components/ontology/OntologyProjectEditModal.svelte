@@ -591,7 +591,7 @@
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this project"
-						class="w-4 h-4 sm:w-5 sm:h-5 rounded object-cover"
+						class="w-6 h-6 sm:w-5 sm:h-5 rounded object-cover"
 					/>
 				</Button>
 				<!-- Inkprint close button -->

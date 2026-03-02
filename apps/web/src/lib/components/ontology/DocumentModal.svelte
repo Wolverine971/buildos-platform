@@ -61,6 +61,7 @@
 	import type { VoiceNote } from '$lib/types/voice-notes';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
 	import {
 		exportDocumentAsDocx,
 		exportDocumentAsHtml,
@@ -87,7 +88,9 @@
 		AlertTriangle,
 		LoaderCircle,
 		MessageSquare,
-		Download
+		Download,
+		Globe,
+		ExternalLink
 	} from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { untrack, type Component } from 'svelte';
@@ -175,12 +178,54 @@
 		stateKey: string;
 	};
 
+	type PublicPageState = {
+		id: string;
+		slug: string;
+		url_path: string;
+		title: string;
+		summary: string | null;
+		public_status: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
+		visibility: 'public' | 'unlisted';
+		noindex: boolean;
+		live_sync_enabled: boolean;
+		last_live_sync_at: string | null;
+		last_live_sync_error: string | null;
+		is_live_public: boolean;
+	};
+
+	type PublicPagePreview = {
+		slug: string;
+		url_path: string;
+		title: string;
+		summary: string | null;
+		content: string;
+		visibility: 'public' | 'unlisted';
+		noindex: boolean;
+		live_sync_enabled: boolean;
+	};
+
+	type PublicPageDraft = {
+		slug: string;
+		title: string;
+		summary: string;
+		visibility: 'public' | 'unlisted';
+		noindex: boolean;
+		live_sync_enabled: boolean;
+	};
+
 	// Snapshot of last-saved values to detect actual changes
 	let lastSavedSnapshot = $state<SaveSnapshot | null>(null);
 	let autosaveQueued = $state(false);
 
 	// Track the server's updated_at for conflict detection
 	let serverUpdatedAt = $state<string | null>(null);
+	let publicPageState = $state<PublicPageState | null>(null);
+	let publicPageLoading = $state(false);
+	let publicPageActionLoading = $state(false);
+	let showPublicPageConfirmModal = $state(false);
+	let publicPagePreview = $state<PublicPagePreview | null>(null);
+	let publicPageDraft = $state<PublicPageDraft | null>(null);
+	let lastSavePublishedLive = $state(false);
 
 	/** Whether content has changed vs. last-saved snapshot */
 	const hasUnsavedChanges = $derived.by(() => {
@@ -300,6 +345,14 @@
 		const tags = documentProps?.tags;
 		return Array.isArray(tags) ? tags.length : 0;
 	});
+	const isLiveDocument = $derived(publicPageState?.is_live_public === true);
+	const publicPageUrlPath = $derived.by(() => {
+		if (!publicPageState?.slug) return null;
+		return publicPageState.url_path || `/p/${publicPageState.slug}`;
+	});
+	const publicPageAbsoluteUrl = $derived.by(() =>
+		publicPageUrlPath ? `https://build-os.com${publicPageUrlPath}` : null
+	);
 
 	let lastLoadedId = $state<string | null>(null);
 
@@ -380,6 +433,269 @@
 		};
 	});
 
+	function normalizePublicPageState(data: unknown): PublicPageState | null {
+		if (!data || typeof data !== 'object') return null;
+		const row = data as Record<string, unknown>;
+		const slug = typeof row.slug === 'string' ? row.slug : '';
+		if (!slug) return null;
+
+		return {
+			id: typeof row.id === 'string' ? row.id : '',
+			slug,
+			url_path:
+				typeof row.url_path === 'string' && row.url_path ? row.url_path : `/p/${slug}`,
+			title: typeof row.title === 'string' ? row.title : '',
+			summary: typeof row.summary === 'string' ? row.summary : null,
+			public_status:
+				row.public_status === 'pending_confirmation' ||
+				row.public_status === 'live' ||
+				row.public_status === 'unpublished' ||
+				row.public_status === 'archived'
+					? row.public_status
+					: 'not_public',
+			visibility: row.visibility === 'unlisted' ? 'unlisted' : 'public',
+			noindex: row.noindex === true,
+			live_sync_enabled: row.live_sync_enabled !== false,
+			last_live_sync_at:
+				typeof row.last_live_sync_at === 'string' ? row.last_live_sync_at : null,
+			last_live_sync_error:
+				typeof row.last_live_sync_error === 'string' ? row.last_live_sync_error : null,
+			is_live_public: row.is_live_public === true
+		};
+	}
+
+	function normalizePublicPagePreview(data: unknown): PublicPagePreview | null {
+		if (!data || typeof data !== 'object') return null;
+		const row = data as Record<string, unknown>;
+		const slug = typeof row.slug === 'string' ? row.slug : '';
+		if (!slug) return null;
+
+		return {
+			slug,
+			url_path:
+				typeof row.url_path === 'string' && row.url_path ? row.url_path : `/p/${slug}`,
+			title: typeof row.title === 'string' ? row.title : '',
+			summary: typeof row.summary === 'string' ? row.summary : null,
+			content: typeof row.content === 'string' ? row.content : '',
+			visibility: row.visibility === 'unlisted' ? 'unlisted' : 'public',
+			noindex: row.noindex === true,
+			live_sync_enabled: row.live_sync_enabled !== false
+		};
+	}
+
+	function updatePublicPageDraft(patch: Partial<PublicPageDraft>) {
+		if (!publicPageDraft) return;
+		publicPageDraft = {
+			...publicPageDraft,
+			...patch
+		};
+	}
+
+	function closePublicPageConfirmModal() {
+		if (publicPageActionLoading) return;
+		showPublicPageConfirmModal = false;
+	}
+
+	function openPublicPageInNewTab() {
+		const slug = publicPageState?.slug;
+		if (!slug || !browser) return;
+		window.open(`/p/${slug}`, '_blank', 'noopener,noreferrer');
+	}
+
+	async function loadPublicPageState(documentId: string) {
+		try {
+			publicPageLoading = true;
+			const response = await fetch(`/api/onto/documents/${documentId}/public-page`);
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to load public page state');
+			}
+			publicPageState = normalizePublicPageState(payload?.data?.publicPage);
+		} catch (error) {
+			publicPageState = null;
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${documentId}/public-page`,
+				method: 'GET',
+				projectId,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_public_page_state_load'
+			});
+		} finally {
+			publicPageLoading = false;
+		}
+	}
+
+	async function handleMakeDocumentPublic() {
+		if (!activeDocumentId || blockingSave || loading) return;
+		if (!validateForm()) return;
+
+		if (hasUnsavedChanges) {
+			const saved = await performSave({
+				silent: true,
+				forceVersion: true,
+				blockingUi: true
+			});
+			if (!saved) {
+				toastService.error('Save failed. Resolve issues before publishing.');
+				return;
+			}
+		}
+
+		try {
+			publicPageActionLoading = true;
+			const response = await fetch(
+				`/api/onto/documents/${activeDocumentId}/public-page/prepare`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						slug: publicPageState?.slug ?? title.trim(),
+						title: title.trim() || null,
+						summary: description.trim() || null,
+						visibility: publicPageState?.visibility ?? 'public',
+						noindex: publicPageState?.noindex ?? false,
+						live_sync_enabled: publicPageState?.live_sync_enabled ?? true
+					})
+				}
+			);
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to prepare public page');
+			}
+
+			const preview = normalizePublicPagePreview(payload?.data?.preview);
+			if (!preview) {
+				throw new Error('Failed to build public page preview');
+			}
+
+			publicPagePreview = preview;
+			publicPageDraft = {
+				slug: preview.slug,
+				title: preview.title,
+				summary: preview.summary ?? '',
+				visibility: preview.visibility,
+				noindex: preview.noindex,
+				live_sync_enabled: preview.live_sync_enabled
+			};
+			showPublicPageConfirmModal = true;
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to prepare public page';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${activeDocumentId}/public-page/prepare`,
+				method: 'POST',
+				projectId,
+				entityType: 'document',
+				entityId: activeDocumentId,
+				operation: 'document_public_page_prepare'
+			});
+			toastService.error(message);
+		} finally {
+			publicPageActionLoading = false;
+		}
+	}
+
+	async function handleConfirmPublicPage() {
+		if (!activeDocumentId || !publicPageDraft) return;
+		const slug = publicPageDraft.slug.trim();
+		if (!slug) {
+			toastService.error('Public URL slug is required');
+			return;
+		}
+
+		try {
+			publicPageActionLoading = true;
+			const response = await fetch(
+				`/api/onto/documents/${activeDocumentId}/public-page/confirm`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						slug,
+						title: publicPageDraft.title.trim() || null,
+						summary: publicPageDraft.summary.trim() || null,
+						visibility: publicPageDraft.visibility,
+						noindex: publicPageDraft.noindex,
+						live_sync_enabled: publicPageDraft.live_sync_enabled
+					})
+				}
+			);
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to publish public page');
+			}
+
+			const confirmed = normalizePublicPageState(payload?.data?.publicPage);
+			if (!confirmed) {
+				throw new Error('Failed to read updated public page state');
+			}
+			publicPageState = confirmed;
+			showPublicPageConfirmModal = false;
+			toastService.success('Document is now public');
+			onSaved?.();
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to publish public page';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${activeDocumentId}/public-page/confirm`,
+				method: 'POST',
+				projectId,
+				entityType: 'document',
+				entityId: activeDocumentId,
+				operation: 'document_public_page_confirm'
+			});
+			toastService.error(message);
+		} finally {
+			publicPageActionLoading = false;
+		}
+	}
+
+	async function handleLiveSyncToggle(nextEnabled: boolean) {
+		if (!activeDocumentId || !publicPageState) return;
+
+		const previousState = publicPageState;
+		publicPageState = {
+			...publicPageState,
+			live_sync_enabled: nextEnabled
+		};
+
+		try {
+			const response = await fetch(
+				`/api/onto/documents/${activeDocumentId}/public-page/live-sync`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						live_sync_enabled: nextEnabled
+					})
+				}
+			);
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to update live sync');
+			}
+
+			const updated = normalizePublicPageState(payload?.data?.publicPage);
+			if (updated) {
+				publicPageState = updated;
+			}
+			toastService.success(nextEnabled ? 'Live sync enabled' : 'Live sync paused');
+		} catch (error) {
+			publicPageState = previousState;
+			const message = error instanceof Error ? error.message : 'Failed to update live sync';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${activeDocumentId}/public-page/live-sync`,
+				method: 'POST',
+				projectId,
+				entityType: 'document',
+				entityId: activeDocumentId,
+				operation: 'document_public_page_live_sync_toggle'
+			});
+			toastService.error(message);
+		}
+	}
+
 	function resetForm() {
 		title = '';
 		typeKey = typeOptions[0] ?? 'document.knowledge.research';
@@ -395,11 +711,18 @@
 		lastSavedSnapshot = null;
 		serverUpdatedAt = null;
 		saveStatus = 'idle';
+		lastSavePublishedLive = false;
 		clearAutosaveTimers();
 		// Reset comments panel
 		showComments = false;
 		commentsCount = 0;
 		showImageInsertModal = false;
+		publicPageState = null;
+		publicPageLoading = false;
+		publicPageActionLoading = false;
+		showPublicPageConfirmModal = false;
+		publicPagePreview = null;
+		publicPageDraft = null;
 	}
 
 	function normalizeDocumentState(state?: string | null): string {
@@ -451,6 +774,8 @@
 			serverUpdatedAt = document.updated_at ?? null;
 			captureSnapshot();
 			saveStatus = 'idle';
+			lastSavePublishedLive = false;
+			void loadPublicPageState(id);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load document';
 			void logOntologyClientError(error, {
@@ -463,6 +788,7 @@
 			});
 			formError = message;
 			toastService.error(message);
+			publicPageState = null;
 		} finally {
 			loading = false;
 		}
@@ -493,6 +819,7 @@
 	function closeModal() {
 		clearAutosaveTimers();
 		showImageInsertModal = false;
+		showPublicPageConfirmModal = false;
 		isOpen = false;
 		onClose?.();
 	}
@@ -666,12 +993,28 @@
 				// Conflict detected - server version is newer
 				saveStatus = 'conflict';
 				formError = null;
+				lastSavePublishedLive = false;
 				return false;
 			}
 
 			if (!request.ok) {
 				throw new Error(result?.error || 'Failed to save document');
 			}
+
+			const publicPageSync = result?.data?.publicPageSync;
+			const syncedPublicPageState = normalizePublicPageState(publicPageSync?.page);
+			if (syncedPublicPageState) {
+				publicPageState = syncedPublicPageState;
+			}
+			const savedAndPublishedLive =
+				Boolean(publicPageSync?.isLivePublic) && Boolean(publicPageSync?.synced);
+			if (publicPageSync?.error && publicPageState) {
+				publicPageState = {
+					...publicPageState,
+					last_live_sync_error: String(publicPageSync.error)
+				};
+			}
+			lastSavePublishedLive = savedAndPublishedLive;
 
 			// Update server timestamp from response
 			const updatedDoc = result?.data?.document;
@@ -719,7 +1062,19 @@
 			}, 2000);
 
 			if (!silent) {
-				toastService.success(wasCreating ? 'Document created' : 'Document updated');
+				if (wasCreating) {
+					toastService.success('Document created');
+				} else if (savedAndPublishedLive) {
+					toastService.success('Saved and published live');
+				} else {
+					toastService.success('Document updated');
+				}
+
+				if (publicPageSync?.error) {
+					toastService.warning(
+						`Document saved, but live sync failed: ${String(publicPageSync.error)}`
+					);
+				}
 				onSaved?.();
 			}
 
@@ -749,6 +1104,7 @@
 			});
 			formError = message;
 			saveStatus = 'error';
+			lastSavePublishedLive = false;
 			if (!silent) {
 				toastService.error(message);
 			}
@@ -1364,7 +1720,9 @@
 									<span class="text-muted-foreground">SAVING</span>
 								{:else if saveStatus === 'saved'}
 									<Check class="w-2.5 h-2.5 text-green-600 dark:text-green-400" />
-									<span class="text-green-600 dark:text-green-400">SAVED</span>
+									<span class="text-green-600 dark:text-green-400"
+										>{lastSavePublishedLive ? 'LIVE UPDATED' : 'SAVED'}</span
+									>
 								{:else if saveStatus === 'error'}
 									<AlertTriangle class="w-2.5 h-2.5 text-destructive" />
 									<span class="text-destructive">SAVE FAILED</span>
@@ -1394,7 +1752,7 @@
 						<img
 							src="/brain-bolt.png"
 							alt="Chat"
-							class="w-4 h-4 rounded object-cover"
+							class="w-6 h-6 rounded object-cover"
 						/>
 					</button>
 				{/if}
@@ -1487,6 +1845,109 @@
 										</Select>
 									</FormField>
 								</div>
+
+								<!-- Public Page -->
+								{#if isEditing && activeDocumentId}
+									<div class="pt-2 border-t border-border space-y-2">
+										{#if publicPageLoading}
+											<div
+												class="flex items-center gap-2 text-xs text-muted-foreground"
+											>
+												<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
+												<span>Loading public page state...</span>
+											</div>
+										{:else if isLiveDocument && publicPageState}
+											<div
+												class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2.5 py-2 space-y-2 tx tx-grain tx-weak wt-paper"
+											>
+												<div class="flex items-start gap-2">
+													<Globe
+														class="w-3.5 h-3.5 text-emerald-700 mt-0.5"
+													/>
+													<div class="min-w-0">
+														<p class="micro-label text-emerald-900">
+															LIVE DOCUMENT
+														</p>
+														<p
+															class="text-[11px] leading-snug text-emerald-800"
+														>
+															This document is live. Saving updates
+															publishes immediately.
+														</p>
+													</div>
+												</div>
+												<div
+													class="flex items-center justify-between gap-2"
+												>
+													<span
+														class="text-[11px] text-emerald-900 font-mono truncate"
+													>
+														{publicPageUrlPath}
+													</span>
+													<button
+														type="button"
+														onclick={openPublicPageInNewTab}
+														class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900 hover:text-emerald-700 transition-colors pressable"
+													>
+														Open
+														<ExternalLink class="w-3 h-3" />
+													</button>
+												</div>
+												<label
+													class="flex items-center justify-between gap-2 text-[11px] text-emerald-900"
+												>
+													<span>Live sync on save</span>
+													<input
+														type="checkbox"
+														checked={publicPageState.live_sync_enabled}
+														onchange={(event) =>
+															handleLiveSyncToggle(
+																(
+																	event.currentTarget as HTMLInputElement
+																).checked
+															)}
+														class="h-3.5 w-3.5 rounded border-border"
+													/>
+												</label>
+												{#if publicPageState.last_live_sync_error}
+													<p
+														class="text-[11px] text-amber-700 leading-snug"
+													>
+														Last live sync error: {publicPageState.last_live_sync_error}
+													</p>
+												{/if}
+											</div>
+										{:else}
+											<div class="space-y-1">
+												<Button
+													type="button"
+													variant="outline"
+													size="sm"
+													onclick={handleMakeDocumentPublic}
+													disabled={blockingSave ||
+														publicPageActionLoading ||
+														isArchivedDocument}
+													class="w-full text-xs justify-center"
+												>
+													<Globe class="w-3.5 h-3.5" />
+													<span class="ml-1">
+														{publicPageState
+															? 'Update Public Page'
+															: 'Make This Document Public'}
+													</span>
+												</Button>
+												{#if publicPageState?.public_status && publicPageState.public_status !== 'not_public'}
+													<p class="text-[11px] text-muted-foreground">
+														Status: {publicPageState.public_status.replace(
+															'_',
+															' '
+														)}
+													</p>
+												{/if}
+											</div>
+										{/if}
+									</div>
+								{/if}
 
 								<!-- Tags Display -->
 								{#if isEditing && hasTags}
@@ -1798,7 +2259,9 @@
 														/>
 														<span
 															class="text-green-600 dark:text-green-400"
-															>SAVED</span
+															>{lastSavePublishedLive
+																? 'LIVE UPDATED'
+																: 'SAVED'}</span
 														>
 													{:else if saveStatus === 'error'}
 														<AlertTriangle
@@ -1921,6 +2384,71 @@
 												{/each}
 											</Select>
 										</FormField>
+
+										<!-- Public Page -->
+										{#if isEditing && activeDocumentId}
+											<div class="pt-2 border-t border-border space-y-2">
+												{#if publicPageLoading}
+													<div
+														class="flex items-center gap-2 text-xs text-muted-foreground"
+													>
+														<LoaderCircle
+															class="w-3.5 h-3.5 animate-spin"
+														/>
+														<span>Loading public page state...</span>
+													</div>
+												{:else if isLiveDocument && publicPageState}
+													<div
+														class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2.5 py-2 space-y-1.5"
+													>
+														<p class="micro-label text-emerald-900">
+															LIVE DOCUMENT
+														</p>
+														<p
+															class="text-[11px] leading-snug text-emerald-800"
+														>
+															Saving updates publishes this page
+															immediately.
+														</p>
+														<div
+															class="flex items-center justify-between gap-2"
+														>
+															<span
+																class="text-[11px] text-emerald-900 font-mono truncate"
+															>
+																{publicPageUrlPath}
+															</span>
+															<button
+																type="button"
+																onclick={openPublicPageInNewTab}
+																class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900"
+															>
+																Open
+																<ExternalLink class="w-3 h-3" />
+															</button>
+														</div>
+													</div>
+												{:else}
+													<Button
+														type="button"
+														variant="outline"
+														size="sm"
+														onclick={handleMakeDocumentPublic}
+														disabled={blockingSave ||
+															publicPageActionLoading ||
+															isArchivedDocument}
+														class="w-full text-xs justify-center"
+													>
+														<Globe class="w-3.5 h-3.5" />
+														<span class="ml-1">
+															{publicPageState
+																? 'Update Public Page'
+																: 'Make This Document Public'}
+														</span>
+													</Button>
+												{/if}
+											</div>
+										{/if}
 
 										<!-- Linked Entities -->
 										{#if isEditing && activeDocumentId}
@@ -2355,6 +2883,188 @@
 					selectLabel="Insert"
 					onSelectAsset={handleInsertImageAsset}
 				/>
+			</div>
+		{/snippet}
+	</Modal>
+{/if}
+
+{#if activeDocumentId && publicPageDraft && publicPagePreview}
+	{@const draft = publicPageDraft}
+	{@const preview = publicPagePreview}
+	<Modal
+		bind:isOpen={showPublicPageConfirmModal}
+		size="xl"
+		title="Confirm Public Page"
+		onClose={closePublicPageConfirmModal}
+		closeOnEscape={!publicPageActionLoading}
+		closeOnBackdrop={!publicPageActionLoading}
+	>
+		{#snippet children()}
+			<div class="p-3 sm:p-4 space-y-4">
+				<p class="text-sm text-muted-foreground">
+					Review this preview, then confirm to publish this document as a public page.
+				</p>
+
+				<div class="grid gap-3 sm:grid-cols-2">
+					<FormField
+						label="Public URL slug"
+						labelFor="public-page-slug"
+						uppercase={false}
+					>
+						<div class="flex items-center gap-2">
+							<span class="text-xs text-muted-foreground shrink-0">/p/</span>
+							<TextInput
+								id="public-page-slug"
+								value={draft.slug}
+								oninput={(event) =>
+									updatePublicPageDraft({
+										slug: (event.currentTarget as HTMLInputElement).value
+									})}
+								placeholder="document-slug"
+								disabled={publicPageActionLoading}
+							/>
+						</div>
+					</FormField>
+
+					<FormField label="Public title" labelFor="public-page-title" uppercase={false}>
+						<TextInput
+							id="public-page-title"
+							value={draft.title}
+							oninput={(event) =>
+								updatePublicPageDraft({
+									title: (event.currentTarget as HTMLInputElement).value
+								})}
+							placeholder="Public page title"
+							disabled={publicPageActionLoading}
+						/>
+					</FormField>
+
+					<div class="sm:col-span-2">
+						<FormField label="Summary" labelFor="public-page-summary" uppercase={false}>
+							<Textarea
+								id="public-page-summary"
+								value={draft.summary}
+								oninput={(event) =>
+									updatePublicPageDraft({
+										summary: (event.currentTarget as HTMLTextAreaElement).value
+									})}
+								rows={2}
+								placeholder="Short summary for the public page"
+								disabled={publicPageActionLoading}
+								size="sm"
+							/>
+						</FormField>
+					</div>
+
+					<FormField
+						label="Visibility"
+						labelFor="public-page-visibility"
+						uppercase={false}
+					>
+						<Select
+							id="public-page-visibility"
+							value={draft.visibility}
+							onchange={(value) =>
+								updatePublicPageDraft({
+									visibility: value as PublicPageDraft['visibility']
+								})}
+							size="sm"
+							class="w-full text-xs"
+							disabled={publicPageActionLoading}
+						>
+							<option value="public">Public</option>
+							<option value="unlisted">Unlisted</option>
+						</Select>
+					</FormField>
+
+					<div class="space-y-2 self-end pb-1">
+						<label class="flex items-center gap-2 text-xs text-foreground">
+							<input
+								type="checkbox"
+								checked={draft.noindex}
+								onchange={(event) =>
+									updatePublicPageDraft({
+										noindex: (event.currentTarget as HTMLInputElement).checked
+									})}
+								class="h-3.5 w-3.5 rounded border-border"
+								disabled={publicPageActionLoading}
+							/>
+							<span>Hide from search engines (`noindex`)</span>
+						</label>
+						<label class="flex items-center gap-2 text-xs text-foreground">
+							<input
+								type="checkbox"
+								checked={draft.live_sync_enabled}
+								onchange={(event) =>
+									updatePublicPageDraft({
+										live_sync_enabled: (event.currentTarget as HTMLInputElement)
+											.checked
+									})}
+								class="h-3.5 w-3.5 rounded border-border"
+								disabled={publicPageActionLoading}
+							/>
+							<span>Enable live sync on document save</span>
+						</label>
+					</div>
+				</div>
+
+				<div class="rounded-lg border border-border overflow-hidden">
+					<div
+						class="px-3 py-2 border-b border-border bg-muted/60 flex items-center justify-between gap-2"
+					>
+						<span class="micro-label text-foreground">PUBLIC PREVIEW</span>
+						<span class="text-xs text-muted-foreground truncate">
+							{publicPageAbsoluteUrl
+								? publicPageAbsoluteUrl.replace(
+										`/p/${publicPageState?.slug ?? preview.slug}`,
+										`/p/${draft.slug.trim() || preview.slug}`
+									)
+								: `https://build-os.com/p/${draft.slug.trim() || preview.slug}`}
+						</span>
+					</div>
+					<div class="p-3 max-h-[50vh] overflow-y-auto space-y-3">
+						<div>
+							<h3 class="text-lg font-semibold text-foreground">
+								{draft.title.trim() || preview.title}
+							</h3>
+							{#if draft.summary.trim()}
+								<p class="mt-1 text-sm text-muted-foreground">
+									{draft.summary.trim()}
+								</p>
+							{/if}
+						</div>
+						<article class={getProseClasses('base')}>
+							{@html renderMarkdown(preview.content)}
+						</article>
+					</div>
+				</div>
+			</div>
+		{/snippet}
+		{#snippet footer()}
+			<div
+				class="px-3 sm:px-4 py-3 border-t border-border bg-muted/50 flex justify-end gap-2"
+			>
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					onclick={closePublicPageConfirmModal}
+					disabled={publicPageActionLoading}
+					class="text-xs"
+				>
+					Cancel
+				</Button>
+				<Button
+					type="button"
+					variant="primary"
+					size="sm"
+					onclick={handleConfirmPublicPage}
+					loading={publicPageActionLoading}
+					disabled={publicPageActionLoading || !draft.slug.trim()}
+					class="text-xs"
+				>
+					Confirm and Publish
+				</Button>
 			</div>
 		{/snippet}
 	</Modal>

@@ -385,7 +385,7 @@
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this risk"
-						class="w-5 h-5 rounded object-cover"
+						class="w-6 h-6 rounded object-cover"
 					/>
 				</button>
 				<!-- Inkprint close button -->

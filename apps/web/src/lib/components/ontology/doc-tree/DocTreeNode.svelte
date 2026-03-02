@@ -17,7 +17,7 @@
 	- Texture classes for states
 -->
 <script lang="ts">
-	import { ChevronRight, FileText, Folder, FolderOpen, GripVertical } from 'lucide-svelte';
+	import { ChevronRight, FileText, Folder, FolderOpen, Globe, GripVertical } from 'lucide-svelte';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 	import DocTreeNode from './DocTreeNode.svelte';
 	import type { DragState, DropZone } from './useDragDrop.svelte';
@@ -250,6 +250,17 @@
 					title="Has content"
 				>
 					<span class="w-1 h-1 rounded-full bg-accent"></span>
+				</span>
+			{/if}
+
+			<!-- Public page indicator -->
+			{#if !isFolder && node.is_public}
+				<span
+					class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex-shrink-0"
+					title={node.public_slug ? `Public page: /p/${node.public_slug}` : 'Public page'}
+				>
+					<Globe class="w-2.5 h-2.5" />
+					Public
 				</span>
 			{/if}
 

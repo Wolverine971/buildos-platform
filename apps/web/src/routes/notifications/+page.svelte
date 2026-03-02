@@ -352,13 +352,11 @@
 			};
 		}
 
-		const bestRow = rows
-			.slice()
-			.sort((a, b) => {
-				const rankDelta = getStatusRank(b) - getStatusRank(a);
-				if (rankDelta !== 0) return rankDelta;
-				return compareByCreatedAtDesc(a, b);
-			})[0];
+		const bestRow = rows.slice().sort((a, b) => {
+			const rankDelta = getStatusRank(b) - getStatusRank(a);
+			if (rankDelta !== 0) return rankDelta;
+			return compareByCreatedAtDesc(a, b);
+		})[0];
 
 		return getStatusInfo(
 			bestRow.feed_kind,
@@ -794,173 +792,179 @@
 					<div
 						class="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border"
 					>
-							{#each group.items as rollup (rollup.id)}
-								{@const notification = rollup.representative}
-								{@const event = notification.notification_events}
-								{@const EventIcon = getEventIcon(event?.event_type)}
-								{@const content = extractContent(
-									notification.payload as Record<string, unknown>,
-									event?.payload as Record<string, unknown>,
-									event?.event_type
-								)}
-								{@const statusInfo = getRollupStatusInfo(rollup.rows)}
-								{@const StatusIcon = statusInfo.icon}
-								{@const eventDetails = extractEventDetails(
-									event?.event_type,
-									event?.payload as Record<string, unknown>
-								)}
-								{@const notificationLink = extractNotificationLink(
-									notification.payload as Record<string, unknown>,
-									event?.payload as Record<string, unknown>
-								)}
-								{@const erroredRow = rollup.rows.find(
-									(row) =>
-										row.feed_kind !== 'activity_event' &&
-										row.last_error &&
-										(row.status === 'failed' || row.status === 'cancelled' || row.failed_at)
-								)}
-								{@const attemptedRow = rollup.rows.find(
-									(row) => row.feed_kind !== 'activity_event' && row.attempts && row.attempts > 1
-								)}
-								{@const openedRow = rollup.rows.find(
-									(row) => row.feed_kind !== 'activity_event' && row.opened_at
-								)}
+						{#each group.items as rollup (rollup.id)}
+							{@const notification = rollup.representative}
+							{@const event = notification.notification_events}
+							{@const EventIcon = getEventIcon(event?.event_type)}
+							{@const content = extractContent(
+								notification.payload as Record<string, unknown>,
+								event?.payload as Record<string, unknown>,
+								event?.event_type
+							)}
+							{@const statusInfo = getRollupStatusInfo(rollup.rows)}
+							{@const StatusIcon = statusInfo.icon}
+							{@const eventDetails = extractEventDetails(
+								event?.event_type,
+								event?.payload as Record<string, unknown>
+							)}
+							{@const notificationLink = extractNotificationLink(
+								notification.payload as Record<string, unknown>,
+								event?.payload as Record<string, unknown>
+							)}
+							{@const erroredRow = rollup.rows.find(
+								(row) =>
+									row.feed_kind !== 'activity_event' &&
+									row.last_error &&
+									(row.status === 'failed' ||
+										row.status === 'cancelled' ||
+										row.failed_at)
+							)}
+							{@const attemptedRow = rollup.rows.find(
+								(row) =>
+									row.feed_kind !== 'activity_event' &&
+									row.attempts &&
+									row.attempts > 1
+							)}
+							{@const openedRow = rollup.rows.find(
+								(row) => row.feed_kind !== 'activity_event' && row.opened_at
+							)}
 
-								<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
-									<div class="flex gap-3">
-										<!-- Icon -->
-										<div class="shrink-0 pt-0.5">
-											<div
-												class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
-											>
-												<EventIcon class="w-4 h-4 text-accent" />
+							<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
+								<div class="flex gap-3">
+									<!-- Icon -->
+									<div class="shrink-0 pt-0.5">
+										<div
+											class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
+										>
+											<EventIcon class="w-4 h-4 text-accent" />
+										</div>
+									</div>
+
+									<!-- Content -->
+									<div class="flex-1 min-w-0">
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0">
+												<p
+													class="text-sm font-medium text-foreground leading-snug"
+												>
+													{content.title}
+												</p>
+												{#if eventDetails.summary}
+													<p
+														class="text-sm text-muted-foreground mt-0.5 leading-snug"
+													>
+														{eventDetails.summary}
+													</p>
+												{:else if content.body}
+													<p
+														class="text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2"
+													>
+														{content.body}
+													</p>
+												{/if}
+												{#if notificationLink}
+													<a
+														href={notificationLink.href}
+														class="mt-1 inline-flex max-w-full items-center gap-1 text-xs font-medium text-accent hover:underline underline-offset-2"
+													>
+														<span>{notificationLink.label}</span>
+														<span
+															class="text-muted-foreground truncate"
+														>
+															{notificationLink.href}
+														</span>
+													</a>
+												{/if}
+											</div>
+											<div class="shrink-0 flex flex-col items-end gap-1">
+												<span
+													class="text-xs text-muted-foreground tabular-nums"
+												>
+													{formatRelativeTime(rollup.created_at)}
+												</span>
+												<!-- Status badge -->
+												<span
+													class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded {statusInfo.bgColor} {statusInfo.color}"
+												>
+													<StatusIcon class="w-2.5 h-2.5" />
+													{statusInfo.label}
+												</span>
 											</div>
 										</div>
 
-										<!-- Content -->
-										<div class="flex-1 min-w-0">
-											<div class="flex items-start justify-between gap-3">
-												<div class="min-w-0">
-													<p
-														class="text-sm font-medium text-foreground leading-snug"
-													>
-														{content.title}
-													</p>
-													{#if eventDetails.summary}
-														<p
-															class="text-sm text-muted-foreground mt-0.5 leading-snug"
-														>
-															{eventDetails.summary}
-														</p>
-													{:else if content.body}
-														<p
-															class="text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2"
-														>
-															{content.body}
-														</p>
-													{/if}
-													{#if notificationLink}
-														<a
-															href={notificationLink.href}
-															class="mt-1 inline-flex max-w-full items-center gap-1 text-xs font-medium text-accent hover:underline underline-offset-2"
-														>
-															<span>{notificationLink.label}</span>
-															<span
-																class="text-muted-foreground truncate"
-															>
-																{notificationLink.href}
-															</span>
-														</a>
-													{/if}
-												</div>
-												<div class="shrink-0 flex flex-col items-end gap-1">
+										<!-- Event-specific stats -->
+										{#if eventDetails.stats.length > 0}
+											<div class="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+												{#each eventDetails.stats as stat}
 													<span
-														class="text-xs text-muted-foreground tabular-nums"
+														class="inline-flex items-center gap-1 text-xs"
 													>
-														{formatRelativeTime(rollup.created_at)}
-													</span>
-													<!-- Status badge -->
-													<span
-														class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded {statusInfo.bgColor} {statusInfo.color}"
-													>
-														<StatusIcon class="w-2.5 h-2.5" />
-														{statusInfo.label}
-													</span>
-												</div>
-											</div>
-
-											<!-- Event-specific stats -->
-											{#if eventDetails.stats.length > 0}
-												<div class="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-													{#each eventDetails.stats as stat}
-														<span
-															class="inline-flex items-center gap-1 text-xs"
+														<span class="text-muted-foreground"
+															>{stat.label}:</span
 														>
-															<span class="text-muted-foreground"
-																>{stat.label}:</span
-															>
-															<span class="font-medium text-foreground"
-																>{stat.value}</span
-															>
-														</span>
-													{/each}
-												</div>
-											{/if}
-
-											<!-- Error message for failed notifications -->
-											{#if erroredRow}
-												<div
-													class="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1.5 rounded border border-red-200 dark:border-red-900"
-												>
-													{erroredRow.last_error}
-												</div>
-											{/if}
-
-											<!-- Meta row -->
-											<div class="flex items-center gap-2 mt-2 flex-wrap">
-												{#if rollup.channels.length > 1}
-													<span class="text-[11px] text-muted-foreground/70">
-														{rollup.channels.length} channels
-													</span>
-												{/if}
-												{#each rollup.channels as channelInfo}
-													{@const RollupChannelIcon = getChannelIcon(channelInfo.channel)}
-													<span
-														class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80"
-													>
-														<RollupChannelIcon class="w-3 h-3" />
-														<span class="capitalize">
-															{formatChannelLabel(channelInfo.channel)}
-														</span>
+														<span class="font-medium text-foreground"
+															>{stat.value}</span
+														>
 													</span>
 												{/each}
-												{#if attemptedRow}
-													<span class="text-muted-foreground/40">·</span>
-													<span class="text-[11px] text-muted-foreground/70">
-														Attempt {attemptedRow.attempts}/{attemptedRow.max_attempts || 3}
-													</span>
-												{/if}
-												{#if content.details.length > 0}
-													<span class="text-muted-foreground/40">·</span>
-													<span
-														class="text-[11px] text-muted-foreground/70 truncate"
-													>
-														{content.details.join(' · ')}
-													</span>
-												{/if}
-												{#if openedRow}
-													<span class="text-muted-foreground/40">·</span>
-													<span class="text-[11px] text-muted-foreground/70">
-														Opened {formatRelativeTime(
-															openedRow.opened_at
-														)}
-													</span>
-												{/if}
 											</div>
+										{/if}
+
+										<!-- Error message for failed notifications -->
+										{#if erroredRow}
+											<div
+												class="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1.5 rounded border border-red-200 dark:border-red-900"
+											>
+												{erroredRow.last_error}
+											</div>
+										{/if}
+
+										<!-- Meta row -->
+										<div class="flex items-center gap-2 mt-2 flex-wrap">
+											{#if rollup.channels.length > 1}
+												<span class="text-[11px] text-muted-foreground/70">
+													{rollup.channels.length} channels
+												</span>
+											{/if}
+											{#each rollup.channels as channelInfo}
+												{@const RollupChannelIcon = getChannelIcon(
+													channelInfo.channel
+												)}
+												<span
+													class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80"
+												>
+													<RollupChannelIcon class="w-3 h-3" />
+													<span class="capitalize">
+														{formatChannelLabel(channelInfo.channel)}
+													</span>
+												</span>
+											{/each}
+											{#if attemptedRow}
+												<span class="text-muted-foreground/40">·</span>
+												<span class="text-[11px] text-muted-foreground/70">
+													Attempt {attemptedRow.attempts}/{attemptedRow.max_attempts ||
+														3}
+												</span>
+											{/if}
+											{#if content.details.length > 0}
+												<span class="text-muted-foreground/40">·</span>
+												<span
+													class="text-[11px] text-muted-foreground/70 truncate"
+												>
+													{content.details.join(' · ')}
+												</span>
+											{/if}
+											{#if openedRow}
+												<span class="text-muted-foreground/40">·</span>
+												<span class="text-[11px] text-muted-foreground/70">
+													Opened {formatRelativeTime(openedRow.opened_at)}
+												</span>
+											{/if}
 										</div>
 									</div>
 								</div>
-							{/each}
+							</div>
+						{/each}
 					</div>
 				</div>
 			{/each}

@@ -226,14 +226,18 @@ function removeArchivedNodesPromoteChildren(
 
 		next.push({
 			...node,
-			...(cleanedChildren.length > 0 ? { children: cleanedChildren } : { children: undefined })
+			...(cleanedChildren.length > 0
+				? { children: cleanedChildren }
+				: { children: undefined })
 		});
 	}
 
 	return reorderNodes(next);
 }
 
-function buildChildrenMap(structure: DocStructure): Map<string, Array<{ id: string; order: number }>> {
+function buildChildrenMap(
+	structure: DocStructure
+): Map<string, Array<{ id: string; order: number }>> {
 	const map = new Map<string, Array<{ id: string; order: number }>>();
 	const traverse = (nodes: DocTreeNode[]) => {
 		for (const node of nodes) {
@@ -260,7 +264,10 @@ function chunk<T>(items: T[], size: number): T[][] {
 	return chunks;
 }
 
-async function getArchivedDocIdsInTree(projectId: string, treeDocIds: string[]): Promise<Set<string>> {
+async function getArchivedDocIdsInTree(
+	projectId: string,
+	treeDocIds: string[]
+): Promise<Set<string>> {
 	const archived = new Set<string>();
 	for (const idChunk of chunk(treeDocIds, 500)) {
 		const { data, error } = await supabase
@@ -271,7 +278,9 @@ async function getArchivedDocIdsInTree(projectId: string, treeDocIds: string[]):
 			.is('deleted_at', null);
 
 		if (error) {
-			throw new Error(`Failed loading document states for project ${projectId}: ${error.message}`);
+			throw new Error(
+				`Failed loading document states for project ${projectId}: ${error.message}`
+			);
 		}
 
 		for (const doc of data ?? []) {
@@ -306,7 +315,9 @@ async function syncChildrenColumns(
 			.is('deleted_at', null);
 
 		if (error) {
-			throw new Error(`Failed updating children for doc ${docId} in project ${projectId}: ${error.message}`);
+			throw new Error(
+				`Failed updating children for doc ${docId} in project ${projectId}: ${error.message}`
+			);
 		}
 	}
 }
@@ -320,7 +331,9 @@ async function insertStructureHistory(projectId: string, structure: DocStructure
 		change_type: 'reorganize'
 	});
 	if (error) {
-		throw new Error(`Failed inserting structure history for project ${projectId}: ${error.message}`);
+		throw new Error(
+			`Failed inserting structure history for project ${projectId}: ${error.message}`
+		);
 	}
 }
 
@@ -374,7 +387,9 @@ async function run(): Promise<void> {
 		if (MAX_PROJECTS > 0 && scannedProjects >= MAX_PROJECTS) break;
 
 		const batchLimit =
-			MAX_PROJECTS > 0 ? Math.min(BATCH_SIZE, Math.max(0, MAX_PROJECTS - scannedProjects)) : BATCH_SIZE;
+			MAX_PROJECTS > 0
+				? Math.min(BATCH_SIZE, Math.max(0, MAX_PROJECTS - scannedProjects))
+				: BATCH_SIZE;
 		if (batchLimit <= 0) break;
 
 		const projects = await loadProjectBatch(offset, batchLimit);
@@ -394,7 +409,11 @@ async function run(): Promise<void> {
 				projectsWithArchivedInTree += 1;
 
 				const stats: CleanupStats = { archivedNodesRemoved: 0, promotedNodes: 0 };
-				const nextRoot = removeArchivedNodesPromoteChildren(structure.root, archivedDocIds, stats);
+				const nextRoot = removeArchivedNodesPromoteChildren(
+					structure.root,
+					archivedDocIds,
+					stats
+				);
 				const nextStructure: DocStructure = {
 					version: structure.version + 1,
 					root: nextRoot
@@ -443,7 +462,9 @@ async function run(): Promise<void> {
 					.select('id');
 
 				if (updateError) {
-					throw new Error(`Failed updating project ${project.id}: ${updateError.message}`);
+					throw new Error(
+						`Failed updating project ${project.id}: ${updateError.message}`
+					);
 				}
 
 				if (!updatedRows || updatedRows.length === 0) {
@@ -510,4 +531,3 @@ run().catch((error) => {
 	console.error('Cleanup failed:', error);
 	process.exit(1);
 });
-

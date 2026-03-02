@@ -50,7 +50,10 @@
 			state_key: doc.state_key ?? 'active',
 			type_key: doc.type_key ?? 'document',
 			created_at: doc.created_at ?? new Date().toISOString(),
-			updated_at: doc.updated_at ?? new Date().toISOString()
+			updated_at: doc.updated_at ?? new Date().toISOString(),
+			is_public: false,
+			public_slug: null,
+			public_status: 'not_public'
 		};
 	}
 

@@ -303,6 +303,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		!pathname.startsWith('/auth/') &&
 		!pathname.startsWith('/api/auth/') &&
 		!pathname.startsWith('/api/public/') &&
+		!pathname.startsWith('/p/') &&
 		pathname !== '/robots.txt' &&
 		pathname !== '/sitemap.xml';
 

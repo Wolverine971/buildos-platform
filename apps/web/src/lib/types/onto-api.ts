@@ -280,6 +280,12 @@ export interface DocTreeNode {
 	title?: string | null;
 	/** Optional cached description for faster doc tree rendering */
 	description?: string | null;
+	/** Whether this document currently has a live public page */
+	is_public?: boolean;
+	/** Public slug when document is public */
+	public_slug?: string | null;
+	/** Public lifecycle status for badges/UI */
+	public_status?: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
 	/** Order among siblings (0-indexed) */
 	order: number;
 	/** Child nodes (optional) */
@@ -316,6 +322,9 @@ export interface EnrichedDocTreeNode {
 	has_content: boolean;
 	created_at: string;
 	updated_at: string;
+	is_public: boolean;
+	public_slug: string | null;
+	public_status: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
 
 	// Computed for UI
 	/** Icon derived from type_key or props */

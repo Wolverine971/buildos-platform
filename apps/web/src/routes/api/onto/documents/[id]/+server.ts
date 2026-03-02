@@ -41,6 +41,7 @@ import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { DocStructure } from '$lib/types/onto';
 import { logOntologyApiError } from '../../shared/error-logging';
+import { syncLivePublicPageForDocument } from '$lib/server/public-page.service';
 
 type Locals = App.Locals;
 type ArchiveChildrenMode = 'archive_children' | 'promote_children' | 'unlink_children';
@@ -732,6 +733,60 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			mentionedUserIds: mentionUserIds
 		});
 
+		let publicPageSync: {
+			isLivePublic: boolean;
+			synced: boolean;
+			page: unknown;
+			error: string | null;
+		} | null = null;
+		try {
+			publicPageSync = await syncLivePublicPageForDocument(
+				locals.supabase,
+				{
+					id: String(updatedDocument.id),
+					project_id: String(updatedDocument.project_id),
+					title: typeof updatedDocument.title === 'string' ? updatedDocument.title : null,
+					description:
+						typeof updatedDocument.description === 'string'
+							? updatedDocument.description
+							: null,
+					content:
+						typeof updatedDocument.content === 'string'
+							? updatedDocument.content
+							: null,
+					props:
+						updatedDocument.props &&
+						typeof updatedDocument.props === 'object' &&
+						!Array.isArray(updatedDocument.props)
+							? (updatedDocument.props as Record<string, unknown>)
+							: null,
+					state_key:
+						typeof updatedDocument.state_key === 'string'
+							? updatedDocument.state_key
+							: null,
+					updated_at:
+						typeof updatedDocument.updated_at === 'string'
+							? updatedDocument.updated_at
+							: null
+				},
+				actorId
+			);
+		} catch (syncError) {
+			console.error('[Document API] Failed to sync live public page:', syncError);
+			await logOntologyApiError({
+				supabase: locals.supabase,
+				error: syncError,
+				endpoint: `/api/onto/documents/${documentId}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: document.project_id,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'public_page_live_sync',
+				metadata: { nonFatal: true }
+			});
+		}
+
 		// Log activity async (non-blocking)
 		logUpdateAsync(
 			locals.supabase,
@@ -749,7 +804,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		return ApiResponse.success({ document: updatedDocument, version });
+		return ApiResponse.success({ document: updatedDocument, version, publicPageSync });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

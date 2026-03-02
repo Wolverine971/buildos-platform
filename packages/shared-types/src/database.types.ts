@@ -6140,6 +6140,185 @@ export type Database = {
         }
         Relationships: []
       }
+      onto_public_page_slug_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_slug: string
+          old_slug: string
+          project_id: string
+          public_page_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_slug: string
+          old_slug: string
+          project_id: string
+          public_page_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_slug?: string
+          old_slug?: string
+          project_id?: string
+          public_page_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_public_page_slug_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_public_page_slug_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_public_page_slug_history_public_page_id_fkey"
+            columns: ["public_page_id"]
+            isOneToOne: false
+            referencedRelation: "onto_public_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onto_public_pages: {
+        Row: {
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          document_id: string
+          id: string
+          last_live_sync_at: string | null
+          last_live_sync_error: string | null
+          last_unpublished_at: string | null
+          live_sync_enabled: boolean
+          noindex: boolean
+          project_id: string
+          public_status: string
+          published_at: string | null
+          published_by: string | null
+          published_content: string | null
+          published_description: string | null
+          published_props: Json
+          published_version_number: number | null
+          slug: string
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+          updated_by: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          document_id: string
+          id?: string
+          last_live_sync_at?: string | null
+          last_live_sync_error?: string | null
+          last_unpublished_at?: string | null
+          live_sync_enabled?: boolean
+          noindex?: boolean
+          project_id: string
+          public_status?: string
+          published_at?: string | null
+          published_by?: string | null
+          published_content?: string | null
+          published_description?: string | null
+          published_props?: Json
+          published_version_number?: number | null
+          slug: string
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          updated_by: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          document_id?: string
+          id?: string
+          last_live_sync_at?: string | null
+          last_live_sync_error?: string | null
+          last_unpublished_at?: string | null
+          live_sync_enabled?: boolean
+          noindex?: boolean
+          project_id?: string
+          public_status?: string
+          published_at?: string | null
+          published_by?: string | null
+          published_content?: string | null
+          published_description?: string | null
+          published_props?: Json
+          published_version_number?: number | null
+          slug?: string
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          updated_by?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_public_pages_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_public_pages_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_public_pages_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "task_documents"
+            referencedColumns: ["document_id"]
+          },
+          {
+            foreignKeyName: "onto_public_pages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_public_pages_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_public_pages_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_requirements: {
         Row: {
           created_at: string

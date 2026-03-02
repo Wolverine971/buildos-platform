@@ -566,7 +566,7 @@
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this task"
-						class="w-5 h-5 rounded object-cover"
+						class="w-6 h-6 rounded object-cover"
 					/>
 				</button>
 				<!-- Close button -->
@@ -849,8 +849,8 @@
 							{:else}
 								<Button
 									size="sm"
-									variant="secondary"
-									class="w-full"
+									variant="outline"
+									class="w-full pressable"
 									onclick={openSeriesModal}
 								>
 									Make Recurring

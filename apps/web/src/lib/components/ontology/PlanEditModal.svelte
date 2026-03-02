@@ -349,7 +349,7 @@
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this plan"
-						class="w-4 h-4 rounded object-cover"
+						class="w-6 h-6 rounded object-cover"
 					/>
 				</button>
 				<!-- Close button -->
