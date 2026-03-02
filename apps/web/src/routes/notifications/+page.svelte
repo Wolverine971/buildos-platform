@@ -30,6 +30,37 @@
 
 	const notifications = $derived(data.notifications ?? []);
 	const errorMessage = $derived(data.error ?? null);
+	type NotificationRow = NonNullable<PageData['notifications']>[number];
+
+	interface NotificationRollup {
+		id: string;
+		created_at: string | null;
+		representative: NotificationRow;
+		rows: NotificationRow[];
+		channels: Array<{
+			channel: string;
+			row: NotificationRow;
+		}>;
+	}
+
+	const channelOrder: Record<string, number> = {
+		in_app: 0,
+		push: 1,
+		sms: 2,
+		email: 3,
+		activity_event: 4
+	};
+
+	const timestampFromValue = (value?: string | null): number => {
+		if (!value) return 0;
+		const ts = new Date(value).getTime();
+		return Number.isFinite(ts) ? ts : 0;
+	};
+
+	const compareByCreatedAtDesc = (
+		a: { created_at?: string | null },
+		b: { created_at?: string | null }
+	): number => timestampFromValue(b.created_at) - timestampFromValue(a.created_at);
 
 	// Relative time formatting
 	const formatRelativeTime = (value?: string | null): string => {
@@ -161,6 +192,42 @@
 		return Monitor; // in_app
 	};
 
+	const formatChannelLabel = (channel?: string | null): string => {
+		if (!channel || channel === 'in_app') return 'in app';
+		if (channel === 'activity_event') return 'activity event';
+		return channel.replace(/_/g, ' ');
+	};
+
+	const getNotificationChannelKey = (notification: NotificationRow): string => {
+		if (notification.feed_kind === 'activity_event') return 'activity_event';
+		return notification.channel || 'in_app';
+	};
+
+	const getNotificationRollupKey = (notification: NotificationRow): string => {
+		const eventId =
+			typeof notification.event_id === 'string' && notification.event_id.length > 0
+				? notification.event_id
+				: null;
+		if (eventId) return `event:${eventId}`;
+
+		const eventTableId = notification.notification_events?.id;
+		if (typeof eventTableId === 'string' && eventTableId.length > 0) {
+			return `notification_event:${eventTableId}`;
+		}
+
+		const correlationId =
+			typeof notification.correlation_id === 'string' &&
+			notification.correlation_id.length > 0
+				? notification.correlation_id
+				: null;
+		if (correlationId) {
+			const eventType = notification.notification_events?.event_type || 'unknown';
+			return `correlation:${eventType}:${correlationId}`;
+		}
+
+		return `row:${notification.id}`;
+	};
+
 	// Get delivery status info
 	const getStatusInfo = (
 		feedKind?: string | null,
@@ -237,6 +304,70 @@
 			bgColor: 'bg-muted/50',
 			icon: Bell
 		};
+	};
+
+	const getStatusRank = (notification: NotificationRow): number => {
+		if (notification.clicked_at) return 600;
+		if (notification.opened_at) return 500;
+		if (notification.status === 'delivered' || notification.status === 'sent') return 400;
+		if (notification.status === 'pending') return 300;
+		if (notification.status === 'cancelled') return 200;
+		if (notification.failed_at || notification.status === 'failed') return 100;
+		return 0;
+	};
+
+	const getRollupStatusInfo = (rows: NotificationRow[]) => {
+		if (rows.length === 0) {
+			return getStatusInfo('delivery', null, null, null, null, null);
+		}
+		if (rows.length === 1) {
+			const row = rows[0];
+			return getStatusInfo(
+				row.feed_kind,
+				row.status,
+				row.opened_at,
+				row.clicked_at,
+				row.failed_at,
+				row.last_error
+			);
+		}
+
+		const hasFailedRow = rows.some(
+			(row) => row.failed_at || row.status === 'failed' || row.status === 'cancelled'
+		);
+		const hasSuccessfulRow = rows.some(
+			(row) =>
+				row.clicked_at ||
+				row.opened_at ||
+				row.status === 'delivered' ||
+				row.status === 'sent'
+		);
+
+		if (hasFailedRow && hasSuccessfulRow) {
+			return {
+				label: 'Partially Delivered',
+				color: 'text-amber-700 dark:text-amber-400',
+				bgColor: 'bg-amber-50 dark:bg-amber-950/50',
+				icon: AlertTriangle
+			};
+		}
+
+		const bestRow = rows
+			.slice()
+			.sort((a, b) => {
+				const rankDelta = getStatusRank(b) - getStatusRank(a);
+				if (rankDelta !== 0) return rankDelta;
+				return compareByCreatedAtDesc(a, b);
+			})[0];
+
+		return getStatusInfo(
+			bestRow.feed_kind,
+			bestRow.status,
+			bestRow.opened_at,
+			bestRow.clicked_at,
+			bestRow.failed_at,
+			bestRow.last_error
+		);
 	};
 
 	const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -522,9 +653,57 @@
 		return { title, body, details };
 	};
 
+	const rolledUpNotifications = $derived.by(() => {
+		const rowsByRollupKey = new Map<string, NotificationRow[]>();
+
+		for (const notification of notifications) {
+			const rollupKey = getNotificationRollupKey(notification);
+			const existing = rowsByRollupKey.get(rollupKey);
+			if (existing) {
+				existing.push(notification);
+			} else {
+				rowsByRollupKey.set(rollupKey, [notification]);
+			}
+		}
+
+		const rollups: NotificationRollup[] = [];
+		for (const [rollupKey, rows] of rowsByRollupKey) {
+			const sortedRows = rows.slice().sort(compareByCreatedAtDesc);
+			const representative = sortedRows[0];
+			if (!representative) continue;
+
+			const rowsByChannel = new Map<string, NotificationRow>();
+			for (const row of sortedRows) {
+				const channelKey = getNotificationChannelKey(row);
+				if (!rowsByChannel.has(channelKey)) {
+					rowsByChannel.set(channelKey, row);
+				}
+			}
+
+			const channels = Array.from(rowsByChannel.entries())
+				.map(([channel, row]) => ({ channel, row }))
+				.sort(
+					(a, b) =>
+						(channelOrder[a.channel] ?? Number.MAX_SAFE_INTEGER) -
+							(channelOrder[b.channel] ?? Number.MAX_SAFE_INTEGER) ||
+						a.channel.localeCompare(b.channel)
+				);
+
+			rollups.push({
+				id: rollupKey,
+				created_at: representative.created_at,
+				representative,
+				rows: sortedRows,
+				channels
+			});
+		}
+
+		return rollups.sort((a, b) => compareByCreatedAtDesc(a, b));
+	});
+
 	// Group notifications by date
 	const groupedNotifications = $derived.by(() => {
-		const groups: { label: string; items: typeof notifications }[] = [];
+		const groups: { label: string; items: typeof rolledUpNotifications }[] = [];
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 		const yesterday = new Date(today);
@@ -532,23 +711,23 @@
 		const weekAgo = new Date(today);
 		weekAgo.setDate(weekAgo.getDate() - 7);
 
-		let todayItems: typeof notifications = [];
-		let yesterdayItems: typeof notifications = [];
-		let thisWeekItems: typeof notifications = [];
-		let olderItems: typeof notifications = [];
+		let todayItems: typeof rolledUpNotifications = [];
+		let yesterdayItems: typeof rolledUpNotifications = [];
+		let thisWeekItems: typeof rolledUpNotifications = [];
+		let olderItems: typeof rolledUpNotifications = [];
 
-		for (const n of notifications) {
-			const date = new Date(n.created_at || '');
+		for (const rollup of rolledUpNotifications) {
+			const date = new Date(rollup.created_at || '');
 			date.setHours(0, 0, 0, 0);
 
 			if (date.getTime() >= today.getTime()) {
-				todayItems.push(n);
+				todayItems.push(rollup);
 			} else if (date.getTime() >= yesterday.getTime()) {
-				yesterdayItems.push(n);
+				yesterdayItems.push(rollup);
 			} else if (date.getTime() >= weekAgo.getTime()) {
-				thisWeekItems.push(n);
+				thisWeekItems.push(rollup);
 			} else {
-				olderItems.push(n);
+				olderItems.push(rollup);
 			}
 		}
 
@@ -584,7 +763,7 @@
 	{/if}
 
 	<!-- Empty State -->
-	{#if notifications.length === 0 && !errorMessage}
+	{#if rolledUpNotifications.length === 0 && !errorMessage}
 		<div
 			class="rounded-xl bg-card border border-border px-6 py-12 flex flex-col items-center text-center gap-3"
 		>
@@ -615,164 +794,173 @@
 					<div
 						class="bg-card rounded-xl border border-border overflow-hidden divide-y divide-border"
 					>
-						{#each group.items as notification (notification.id)}
-							{@const event = notification.notification_events}
-							{@const EventIcon = getEventIcon(event?.event_type)}
-							{@const ChannelIcon = getChannelIcon(notification.channel)}
-							{@const content = extractContent(
-								notification.payload as Record<string, unknown>,
-								event?.payload as Record<string, unknown>,
-								event?.event_type
-							)}
-							{@const statusInfo = getStatusInfo(
-								notification.feed_kind,
-								notification.status,
-								notification.opened_at,
-								notification.clicked_at,
-								notification.failed_at,
-								notification.last_error
-							)}
-							{@const StatusIcon = statusInfo.icon}
-							{@const eventDetails = extractEventDetails(
-								event?.event_type,
-								event?.payload as Record<string, unknown>
-							)}
-							{@const notificationLink = extractNotificationLink(
-								notification.payload as Record<string, unknown>,
-								event?.payload as Record<string, unknown>
-							)}
+							{#each group.items as rollup (rollup.id)}
+								{@const notification = rollup.representative}
+								{@const event = notification.notification_events}
+								{@const EventIcon = getEventIcon(event?.event_type)}
+								{@const content = extractContent(
+									notification.payload as Record<string, unknown>,
+									event?.payload as Record<string, unknown>,
+									event?.event_type
+								)}
+								{@const statusInfo = getRollupStatusInfo(rollup.rows)}
+								{@const StatusIcon = statusInfo.icon}
+								{@const eventDetails = extractEventDetails(
+									event?.event_type,
+									event?.payload as Record<string, unknown>
+								)}
+								{@const notificationLink = extractNotificationLink(
+									notification.payload as Record<string, unknown>,
+									event?.payload as Record<string, unknown>
+								)}
+								{@const erroredRow = rollup.rows.find(
+									(row) =>
+										row.feed_kind !== 'activity_event' &&
+										row.last_error &&
+										(row.status === 'failed' || row.status === 'cancelled' || row.failed_at)
+								)}
+								{@const attemptedRow = rollup.rows.find(
+									(row) => row.feed_kind !== 'activity_event' && row.attempts && row.attempts > 1
+								)}
+								{@const openedRow = rollup.rows.find(
+									(row) => row.feed_kind !== 'activity_event' && row.opened_at
+								)}
 
-							<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
-								<div class="flex gap-3">
-									<!-- Icon -->
-									<div class="shrink-0 pt-0.5">
-										<div
-											class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
-										>
-											<EventIcon class="w-4 h-4 text-accent" />
+								<div class="px-4 py-3 hover:bg-muted/30 transition-colors">
+									<div class="flex gap-3">
+										<!-- Icon -->
+										<div class="shrink-0 pt-0.5">
+											<div
+												class="w-9 h-9 rounded-lg bg-accent/10 flex items-center justify-center"
+											>
+												<EventIcon class="w-4 h-4 text-accent" />
+											</div>
 										</div>
-									</div>
 
-									<!-- Content -->
-									<div class="flex-1 min-w-0">
-										<div class="flex items-start justify-between gap-3">
-											<div class="min-w-0">
-												<p
-													class="text-sm font-medium text-foreground leading-snug"
-												>
-													{content.title}
-												</p>
-												{#if eventDetails.summary}
+										<!-- Content -->
+										<div class="flex-1 min-w-0">
+											<div class="flex items-start justify-between gap-3">
+												<div class="min-w-0">
 													<p
-														class="text-sm text-muted-foreground mt-0.5 leading-snug"
+														class="text-sm font-medium text-foreground leading-snug"
 													>
-														{eventDetails.summary}
+														{content.title}
 													</p>
-												{:else if content.body}
-													<p
-														class="text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2"
-													>
-														{content.body}
-													</p>
-												{/if}
-												{#if notificationLink}
-													<a
-														href={notificationLink.href}
-														class="mt-1 inline-flex max-w-full items-center gap-1 text-xs font-medium text-accent hover:underline underline-offset-2"
-													>
-														<span>{notificationLink.label}</span>
-														<span
-															class="text-muted-foreground truncate"
+													{#if eventDetails.summary}
+														<p
+															class="text-sm text-muted-foreground mt-0.5 leading-snug"
 														>
-															{notificationLink.href}
-														</span>
-													</a>
-												{/if}
-											</div>
-											<div class="shrink-0 flex flex-col items-end gap-1">
-												<span
-													class="text-xs text-muted-foreground tabular-nums"
-												>
-													{formatRelativeTime(notification.created_at)}
-												</span>
-												<!-- Status badge -->
-												<span
-													class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded {statusInfo.bgColor} {statusInfo.color}"
-												>
-													<StatusIcon class="w-2.5 h-2.5" />
-													{statusInfo.label}
-												</span>
-											</div>
-										</div>
-
-										<!-- Event-specific stats -->
-										{#if eventDetails.stats.length > 0}
-											<div class="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-												{#each eventDetails.stats as stat}
+															{eventDetails.summary}
+														</p>
+													{:else if content.body}
+														<p
+															class="text-sm text-muted-foreground mt-0.5 leading-snug line-clamp-2"
+														>
+															{content.body}
+														</p>
+													{/if}
+													{#if notificationLink}
+														<a
+															href={notificationLink.href}
+															class="mt-1 inline-flex max-w-full items-center gap-1 text-xs font-medium text-accent hover:underline underline-offset-2"
+														>
+															<span>{notificationLink.label}</span>
+															<span
+																class="text-muted-foreground truncate"
+															>
+																{notificationLink.href}
+															</span>
+														</a>
+													{/if}
+												</div>
+												<div class="shrink-0 flex flex-col items-end gap-1">
 													<span
-														class="inline-flex items-center gap-1 text-xs"
+														class="text-xs text-muted-foreground tabular-nums"
 													>
-														<span class="text-muted-foreground"
-															>{stat.label}:</span
+														{formatRelativeTime(rollup.created_at)}
+													</span>
+													<!-- Status badge -->
+													<span
+														class="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded {statusInfo.bgColor} {statusInfo.color}"
+													>
+														<StatusIcon class="w-2.5 h-2.5" />
+														{statusInfo.label}
+													</span>
+												</div>
+											</div>
+
+											<!-- Event-specific stats -->
+											{#if eventDetails.stats.length > 0}
+												<div class="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+													{#each eventDetails.stats as stat}
+														<span
+															class="inline-flex items-center gap-1 text-xs"
 														>
-														<span class="font-medium text-foreground"
-															>{stat.value}</span
-														>
+															<span class="text-muted-foreground"
+																>{stat.label}:</span
+															>
+															<span class="font-medium text-foreground"
+																>{stat.value}</span
+															>
+														</span>
+													{/each}
+												</div>
+											{/if}
+
+											<!-- Error message for failed notifications -->
+											{#if erroredRow}
+												<div
+													class="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1.5 rounded border border-red-200 dark:border-red-900"
+												>
+													{erroredRow.last_error}
+												</div>
+											{/if}
+
+											<!-- Meta row -->
+											<div class="flex items-center gap-2 mt-2 flex-wrap">
+												{#if rollup.channels.length > 1}
+													<span class="text-[11px] text-muted-foreground/70">
+														{rollup.channels.length} channels
+													</span>
+												{/if}
+												{#each rollup.channels as channelInfo}
+													{@const RollupChannelIcon = getChannelIcon(channelInfo.channel)}
+													<span
+														class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80"
+													>
+														<RollupChannelIcon class="w-3 h-3" />
+														<span class="capitalize">
+															{formatChannelLabel(channelInfo.channel)}
+														</span>
 													</span>
 												{/each}
+												{#if attemptedRow}
+													<span class="text-muted-foreground/40">·</span>
+													<span class="text-[11px] text-muted-foreground/70">
+														Attempt {attemptedRow.attempts}/{attemptedRow.max_attempts || 3}
+													</span>
+												{/if}
+												{#if content.details.length > 0}
+													<span class="text-muted-foreground/40">·</span>
+													<span
+														class="text-[11px] text-muted-foreground/70 truncate"
+													>
+														{content.details.join(' · ')}
+													</span>
+												{/if}
+												{#if openedRow}
+													<span class="text-muted-foreground/40">·</span>
+													<span class="text-[11px] text-muted-foreground/70">
+														Opened {formatRelativeTime(
+															openedRow.opened_at
+														)}
+													</span>
+												{/if}
 											</div>
-										{/if}
-
-										<!-- Error message for failed notifications -->
-										{#if notification.feed_kind !== 'activity_event' && notification.last_error && (notification.status === 'failed' || notification.status === 'cancelled' || notification.failed_at)}
-											<div
-												class="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1.5 rounded border border-red-200 dark:border-red-900"
-											>
-												{notification.last_error}
-											</div>
-										{/if}
-
-										<!-- Meta row -->
-										<div class="flex items-center gap-2 mt-2">
-											<span
-												class="inline-flex items-center gap-1 text-[11px] text-muted-foreground/80"
-											>
-												<ChannelIcon class="w-3 h-3" />
-												<span class="capitalize">
-													{notification.feed_kind === 'activity_event'
-														? 'activity event'
-														: notification.channel?.replace('_', ' ') ||
-															'in app'}
-												</span>
-											</span>
-											{#if notification.feed_kind !== 'activity_event' && notification.attempts && notification.attempts > 1}
-												<span class="text-muted-foreground/40">·</span>
-												<span class="text-[11px] text-muted-foreground/70">
-													Attempt {notification.attempts}/{notification.max_attempts ||
-														3}
-												</span>
-											{/if}
-											{#if content.details.length > 0}
-												<span class="text-muted-foreground/40">·</span>
-												<span
-													class="text-[11px] text-muted-foreground/70 truncate"
-												>
-													{content.details.join(' · ')}
-												</span>
-											{/if}
-											{#if notification.feed_kind !== 'activity_event' && notification.opened_at}
-												<span class="text-muted-foreground/40">·</span>
-												<span class="text-[11px] text-muted-foreground/70">
-													Opened {formatRelativeTime(
-														notification.opened_at
-													)}
-												</span>
-											{/if}
 										</div>
 									</div>
 								</div>
-							</div>
-						{/each}
+							{/each}
 					</div>
 				</div>
 			{/each}

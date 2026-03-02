@@ -316,6 +316,8 @@
 	let showMobileMetadata = $state(false);
 	let showImageInsertModal = $state(false);
 	let exportingFormat = $state<DocumentExportFormat | null>(null);
+	let showExportMenu = $state(false);
+	let exportMenuRef = $state<HTMLDivElement | null>(null);
 
 	// Left panel collapsible sections
 	let showLinkedEntities = $state(true);
@@ -927,6 +929,7 @@
 		if (exportingFormat) return;
 
 		try {
+			showExportMenu = false;
 			exportingFormat = format;
 			const payload = buildExportPayload();
 
@@ -961,6 +964,19 @@
 			toastService.error(message);
 		} finally {
 			exportingFormat = null;
+		}
+	}
+
+	function handleExportMenuWindowClick(event: MouseEvent) {
+		if (!showExportMenu) return;
+		if (!exportMenuRef) return;
+		if (exportMenuRef.contains(event.target as Node)) return;
+		showExportMenu = false;
+	}
+
+	function handleExportMenuWindowKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && showExportMenu) {
+			showExportMenu = false;
 		}
 	}
 
@@ -1268,6 +1284,8 @@
 		showImageInsertModal = false;
 	}
 </script>
+
+<svelte:window onclick={handleExportMenuWindowClick} onkeydown={handleExportMenuWindowKeydown} />
 
 <Modal
 	bind:isOpen
@@ -2125,39 +2143,69 @@
 			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 		>
 			<div class="flex items-center gap-2 flex-wrap">
-				<div
-					class="inline-flex items-center rounded-md border border-border bg-card shadow-ink overflow-hidden tx tx-grain tx-weak wt-paper"
-				>
-					<button
+				<div class="relative" bind:this={exportMenuRef}>
+					<Button
 						type="button"
-						onclick={() => handleExport('docx')}
+						variant="ghost"
+						size="sm"
+						onclick={(event) => {
+							event.stopPropagation();
+							showExportMenu = !showExportMenu;
+						}}
 						disabled={blockingSave || loading || exportingFormat !== null}
-						class="h-8 px-2.5 text-xs font-medium text-foreground hover:bg-muted transition-colors pressable disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
-						title="Export as DOCX"
+						class="text-xs px-2 h-8 pressable inline-flex items-center gap-1"
+						aria-haspopup="menu"
+						aria-expanded={showExportMenu}
 					>
 						<Download class="w-3.5 h-3.5" />
-						<span>DOCX</span>
-					</button>
-					<div class="w-px h-5 bg-border"></div>
-					<button
-						type="button"
-						onclick={() => handleExport('html')}
-						disabled={blockingSave || loading || exportingFormat !== null}
-						class="h-8 px-2.5 text-xs font-medium text-foreground hover:bg-muted transition-colors pressable disabled:opacity-50 disabled:cursor-not-allowed"
-						title="Export as HTML"
-					>
-						HTML
-					</button>
-					<div class="w-px h-5 bg-border"></div>
-					<button
-						type="button"
-						onclick={() => handleExport('pdf')}
-						disabled={blockingSave || loading || exportingFormat !== null}
-						class="h-8 px-2.5 text-xs font-medium text-foreground hover:bg-muted transition-colors pressable disabled:opacity-50 disabled:cursor-not-allowed"
-						title="Export as PDF"
-					>
-						PDF
-					</button>
+						<span class="hidden sm:inline">Export</span>
+						<ChevronDown
+							class="w-3.5 h-3.5 transition-transform duration-150 {showExportMenu
+								? 'rotate-180'
+								: ''}"
+						/>
+					</Button>
+
+					{#if showExportMenu}
+						<div
+							class="absolute left-0 bottom-full mb-1 z-50 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
+							role="menu"
+							onclick={(event) => event.stopPropagation()}
+							onkeydown={(event) => {
+								if (event.key === 'Escape') {
+									showExportMenu = false;
+								}
+							}}
+						>
+							<button
+								type="button"
+								onclick={() => handleExport('docx')}
+								disabled={exportingFormat !== null}
+								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								role="menuitem"
+							>
+								Export as DOCX
+							</button>
+							<button
+								type="button"
+								onclick={() => handleExport('html')}
+								disabled={exportingFormat !== null}
+								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								role="menuitem"
+							>
+								Export as HTML
+							</button>
+							<button
+								type="button"
+								onclick={() => handleExport('pdf')}
+								disabled={exportingFormat !== null}
+								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								role="menuitem"
+							>
+								Export as PDF
+							</button>
+						</div>
+					{/if}
 				</div>
 
 				{#if activeDocumentId}

@@ -75,7 +75,7 @@
 	let documents = $state<Record<string, OntoDocument>>({});
 	let unlinked = $state<OntoDocument[]>([]);
 	let archived = $state<OntoDocument[]>([]);
-let archivedExpanded = $state(true);
+	let archivedExpanded = $state(true);
 	let expandedIds = $state<Set<string>>(new Set());
 	let currentVersion = $state(0);
 	let hasUpdate = $state(false);
