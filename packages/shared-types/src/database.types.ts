@@ -6140,6 +6140,93 @@ export type Database = {
         }
         Relationships: []
       }
+      onto_public_page_review_attempts: {
+        Row: {
+          created_at: string
+          created_by: string
+          document_id: string
+          id: string
+          image_findings: Json
+          policy_version: string
+          project_id: string
+          public_page_id: string | null
+          reasons: Json
+          review_metadata: Json
+          source: string
+          status: string
+          summary: string | null
+          text_findings: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          document_id: string
+          id?: string
+          image_findings?: Json
+          policy_version?: string
+          project_id: string
+          public_page_id?: string | null
+          reasons?: Json
+          review_metadata?: Json
+          source: string
+          status: string
+          summary?: string | null
+          text_findings?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          document_id?: string
+          id?: string
+          image_findings?: Json
+          policy_version?: string
+          project_id?: string
+          public_page_id?: string | null
+          reasons?: Json
+          review_metadata?: Json
+          source?: string
+          status?: string
+          summary?: string | null
+          text_findings?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_public_page_review_attempts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_public_page_review_attempts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "onto_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_public_page_review_attempts_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "task_documents"
+            referencedColumns: ["document_id"]
+          },
+          {
+            foreignKeyName: "onto_public_page_review_attempts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_public_page_review_attempts_public_page_id_fkey"
+            columns: ["public_page_id"]
+            isOneToOne: false
+            referencedRelation: "onto_public_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_public_page_slug_history: {
         Row: {
           changed_at: string

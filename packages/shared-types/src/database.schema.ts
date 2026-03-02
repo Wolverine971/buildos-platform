@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-03-02T21:35:53.527Z
+// Generated on: 2026-03-02T22:26:00.354Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1479,6 +1479,22 @@ export type DatabaseSchema = {
 		type_key: string;
 		updated_at: string;
 	};
+	onto_public_page_review_attempts: {
+		created_at: string;
+		created_by: string;
+		document_id: string;
+		id: string;
+		image_findings: Json;
+		policy_version: string;
+		project_id: string;
+		public_page_id: string | null;
+		reasons: Json;
+		review_metadata: Json;
+		source: string;
+		status: string;
+		summary: string | null;
+		text_findings: Json;
+	};
 	onto_public_page_slug_history: {
 		changed_at: string;
 		changed_by: string | null;
@@ -2863,6 +2879,7 @@ export const tableNames = [
 	'onto_project_members',
 	'onto_project_structure_history',
 	'onto_projects',
+	'onto_public_page_review_attempts',
 	'onto_public_page_slug_history',
 	'onto_public_pages',
 	'onto_requirements',

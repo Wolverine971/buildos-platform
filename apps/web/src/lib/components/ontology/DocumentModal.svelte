@@ -213,6 +213,30 @@
 		live_sync_enabled: boolean;
 	};
 
+	type PublicPageReviewFinding = {
+		code: string;
+		category: string;
+		severity: 'low' | 'medium' | 'high';
+		source: 'text' | 'image';
+		message: string;
+		recommendation: string;
+		excerpt: string | null;
+		asset_id: string | null;
+		asset_label: string | null;
+	};
+
+	type PublicPageReview = {
+		id: string;
+		source: 'publish_confirm' | 'live_sync' | 'manual_retry';
+		status: 'passed' | 'flagged' | 'error';
+		policy_version: string;
+		summary: string | null;
+		reasons: string[];
+		text_findings: PublicPageReviewFinding[];
+		image_findings: PublicPageReviewFinding[];
+		created_at: string;
+	};
+
 	// Snapshot of last-saved values to detect actual changes
 	let lastSavedSnapshot = $state<SaveSnapshot | null>(null);
 	let autosaveQueued = $state(false);
@@ -225,6 +249,7 @@
 	let showPublicPageConfirmModal = $state(false);
 	let publicPagePreview = $state<PublicPagePreview | null>(null);
 	let publicPageDraft = $state<PublicPageDraft | null>(null);
+	let latestPublicPageReview = $state<PublicPageReview | null>(null);
 	let lastSavePublishedLive = $state(false);
 
 	/** Whether content has changed vs. last-saved snapshot */
@@ -352,6 +377,12 @@
 	});
 	const publicPageAbsoluteUrl = $derived.by(() =>
 		publicPageUrlPath ? `https://build-os.com${publicPageUrlPath}` : null
+	);
+	const hasFlaggedPublicPageReview = $derived(latestPublicPageReview?.status === 'flagged');
+	const latestPublicPageReviewReasons = $derived.by(() =>
+		Array.isArray(latestPublicPageReview?.reasons)
+			? latestPublicPageReview.reasons.slice(0, 3)
+			: []
 	);
 
 	let lastLoadedId = $state<string | null>(null);
@@ -483,6 +514,66 @@
 		};
 	}
 
+	function normalizePublicPageReview(data: unknown): PublicPageReview | null {
+		if (!data || typeof data !== 'object') return null;
+		const row = data as Record<string, unknown>;
+		if (typeof row.id !== 'string' || !row.id) return null;
+
+		const normalizeFinding = (value: unknown): PublicPageReviewFinding | null => {
+			if (!value || typeof value !== 'object') return null;
+			const finding = value as Record<string, unknown>;
+			const message = typeof finding.message === 'string' ? finding.message : '';
+			const recommendation =
+				typeof finding.recommendation === 'string' ? finding.recommendation : '';
+			if (!message || !recommendation) return null;
+			return {
+				code: typeof finding.code === 'string' ? finding.code : 'policy',
+				category: typeof finding.category === 'string' ? finding.category : 'other',
+				severity:
+					finding.severity === 'low' || finding.severity === 'high'
+						? finding.severity
+						: 'medium',
+				source: finding.source === 'image' ? 'image' : 'text',
+				message,
+				recommendation,
+				excerpt: typeof finding.excerpt === 'string' ? finding.excerpt : null,
+				asset_id: typeof finding.asset_id === 'string' ? finding.asset_id : null,
+				asset_label: typeof finding.asset_label === 'string' ? finding.asset_label : null
+			};
+		};
+
+		const normalizeFindings = (value: unknown): PublicPageReviewFinding[] =>
+			Array.isArray(value)
+				? value
+						.map((entry) => normalizeFinding(entry))
+						.filter((entry): entry is PublicPageReviewFinding => Boolean(entry))
+				: [];
+
+		const reasons = Array.isArray(row.reasons)
+			? row.reasons
+					.map((entry) => (typeof entry === 'string' ? entry : null))
+					.filter((entry): entry is string => Boolean(entry && entry.trim()))
+			: [];
+
+		return {
+			id: row.id,
+			source:
+				row.source === 'live_sync' || row.source === 'manual_retry'
+					? row.source
+					: 'publish_confirm',
+			status: row.status === 'flagged' || row.status === 'error' ? row.status : 'passed',
+			policy_version:
+				typeof row.policy_version === 'string' && row.policy_version
+					? row.policy_version
+					: 'public_page_policy_v1',
+			summary: typeof row.summary === 'string' ? row.summary : null,
+			reasons,
+			text_findings: normalizeFindings(row.text_findings),
+			image_findings: normalizeFindings(row.image_findings),
+			created_at: typeof row.created_at === 'string' ? row.created_at : ''
+		};
+	}
+
 	function updatePublicPageDraft(patch: Partial<PublicPageDraft>) {
 		if (!publicPageDraft) return;
 		publicPageDraft = {
@@ -511,8 +602,10 @@
 				throw new Error(payload?.error || 'Failed to load public page state');
 			}
 			publicPageState = normalizePublicPageState(payload?.data?.publicPage);
+			latestPublicPageReview = normalizePublicPageReview(payload?.data?.latestReview);
 		} catch (error) {
 			publicPageState = null;
+			latestPublicPageReview = null;
 			void logOntologyClientError(error, {
 				endpoint: `/api/onto/documents/${documentId}/public-page`,
 				method: 'GET',
@@ -622,7 +715,19 @@
 				}
 			);
 			const payload = await response.json().catch(() => null);
+			const review = normalizePublicPageReview(
+				payload?.data?.review ?? payload?.details?.review
+			);
+			if (review) {
+				latestPublicPageReview = review;
+			}
 			if (!response.ok) {
+				if (response.status === 422 && review?.status === 'flagged') {
+					toastService.error(
+						'Publishing blocked by content policy. Review the flagged items and try again.'
+					);
+					return;
+				}
 				throw new Error(payload?.error || 'Failed to publish public page');
 			}
 
@@ -723,6 +828,7 @@
 		showPublicPageConfirmModal = false;
 		publicPagePreview = null;
 		publicPageDraft = null;
+		latestPublicPageReview = null;
 	}
 
 	function normalizeDocumentState(state?: string | null): string {
@@ -789,6 +895,7 @@
 			formError = message;
 			toastService.error(message);
 			publicPageState = null;
+			latestPublicPageReview = null;
 		} finally {
 			loading = false;
 		}
@@ -1003,9 +1110,14 @@
 
 			const publicPageSync = result?.data?.publicPageSync;
 			const syncedPublicPageState = normalizePublicPageState(publicPageSync?.page);
+			const syncedPublicPageReview = normalizePublicPageReview(publicPageSync?.review);
 			if (syncedPublicPageState) {
 				publicPageState = syncedPublicPageState;
 			}
+			if (syncedPublicPageReview) {
+				latestPublicPageReview = syncedPublicPageReview;
+			}
+			const liveSyncBlocked = Boolean(publicPageSync?.blocked);
 			const savedAndPublishedLive =
 				Boolean(publicPageSync?.isLivePublic) && Boolean(publicPageSync?.synced);
 			if (publicPageSync?.error && publicPageState) {
@@ -1066,13 +1178,17 @@
 					toastService.success('Document created');
 				} else if (savedAndPublishedLive) {
 					toastService.success('Saved and published live');
+				} else if (liveSyncBlocked) {
+					toastService.success('Document updated');
 				} else {
 					toastService.success('Document updated');
 				}
 
 				if (publicPageSync?.error) {
 					toastService.warning(
-						`Document saved, but live sync failed: ${String(publicPageSync.error)}`
+						liveSyncBlocked
+							? `Document saved, but public update was blocked by content policy: ${String(publicPageSync.error)}`
+							: `Document saved, but live sync failed: ${String(publicPageSync.error)}`
 					);
 				}
 				onSaved?.();
@@ -1946,6 +2062,40 @@
 												{/if}
 											</div>
 										{/if}
+
+										{#if hasFlaggedPublicPageReview && latestPublicPageReview}
+											<div
+												class="rounded-md border border-red-300/70 bg-red-50/70 px-2.5 py-2 space-y-1.5 tx tx-grain tx-weak wt-paper"
+											>
+												<p class="micro-label text-red-900">
+													CONTENT REVIEW FLAGGED
+												</p>
+												{#if latestPublicPageReview.summary}
+													<p
+														class="text-[11px] text-red-800 leading-snug"
+													>
+														{latestPublicPageReview.summary}
+													</p>
+												{/if}
+												{#if latestPublicPageReviewReasons.length > 0}
+													<ul
+														class="space-y-0.5 text-[11px] text-red-800 list-disc pl-4"
+													>
+														{#each latestPublicPageReviewReasons as reason}
+															<li>{reason}</li>
+														{/each}
+													</ul>
+												{/if}
+												<p class="text-[11px] text-red-800 leading-snug">
+													Edit the content and publish again to rerun
+													review.
+												</p>
+											</div>
+										{:else if latestPublicPageReview?.status === 'passed'}
+											<p class="text-[11px] text-muted-foreground">
+												Last content review passed.
+											</p>
+										{/if}
 									</div>
 								{/if}
 
@@ -2447,6 +2597,32 @@
 														</span>
 													</Button>
 												{/if}
+
+												{#if hasFlaggedPublicPageReview && latestPublicPageReview}
+													<div
+														class="rounded-md border border-red-300/70 bg-red-50/70 px-2.5 py-2 space-y-1.5"
+													>
+														<p class="micro-label text-red-900">
+															CONTENT REVIEW FLAGGED
+														</p>
+														{#if latestPublicPageReview.summary}
+															<p
+																class="text-[11px] text-red-800 leading-snug"
+															>
+																{latestPublicPageReview.summary}
+															</p>
+														{/if}
+														{#if latestPublicPageReviewReasons.length > 0}
+															<ul
+																class="space-y-0.5 text-[11px] text-red-800 list-disc pl-4"
+															>
+																{#each latestPublicPageReviewReasons as reason}
+																	<li>{reason}</li>
+																{/each}
+															</ul>
+														{/if}
+													</div>
+												{/if}
 											</div>
 										{/if}
 
@@ -2902,8 +3078,29 @@
 		{#snippet children()}
 			<div class="p-3 sm:p-4 space-y-4">
 				<p class="text-sm text-muted-foreground">
-					Review this preview, then confirm to publish this document as a public page.
+					Review this preview, then confirm to publish this document as a public page. A
+					content review will run on publish (document text plus embedded image
+					metadata/OCR).
 				</p>
+				{#if hasFlaggedPublicPageReview && latestPublicPageReview}
+					<div
+						class="rounded-md border border-red-300/70 bg-red-50/70 px-3 py-2 space-y-1.5 tx tx-grain tx-weak wt-paper"
+					>
+						<p class="micro-label text-red-900">LAST REVIEW WAS FLAGGED</p>
+						{#if latestPublicPageReview.summary}
+							<p class="text-xs text-red-800 leading-snug">
+								{latestPublicPageReview.summary}
+							</p>
+						{/if}
+						{#if latestPublicPageReviewReasons.length > 0}
+							<ul class="space-y-0.5 text-xs text-red-800 list-disc pl-4">
+								{#each latestPublicPageReviewReasons as reason}
+									<li>{reason}</li>
+								{/each}
+							</ul>
+						{/if}
+					</div>
+				{/if}
 
 				<div class="grid gap-3 sm:grid-cols-2">
 					<FormField

@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { getDocumentPublicPageState } from '$lib/server/public-page.service';
+import { getLatestPublicPageReviewForDocument } from '$lib/server/public-page-content-review.service';
 import { ensureDocumentAccessForPublicPage } from '../../shared-public-page';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -23,8 +24,12 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	);
 	if ('error' in access) return access.error;
 
-	const publicPage = await getDocumentPublicPageState(locals.supabase, documentId);
+	const [publicPage, latestReview] = await Promise.all([
+		getDocumentPublicPageState(locals.supabase, documentId),
+		getLatestPublicPageReviewForDocument(locals.supabase, documentId)
+	]);
 	return ApiResponse.success({
-		publicPage
+		publicPage,
+		latestReview
 	});
 };

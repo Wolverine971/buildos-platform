@@ -314,7 +314,9 @@
 							</div>
 						</div>
 						<p class="text-[10px] text-muted-foreground mt-0.5">
-							{asset.ocr_status === 'complete' ? 'OCR complete' : asset.ocr_status || 'pending'}
+							{asset.ocr_status === 'complete'
+								? 'OCR complete'
+								: asset.ocr_status || 'pending'}
 						</p>
 					</div>
 				</div>

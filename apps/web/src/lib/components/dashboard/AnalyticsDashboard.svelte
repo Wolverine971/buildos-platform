@@ -231,6 +231,37 @@
 			.join(' ');
 	}
 
+	function resolveProjectHref(project: { id?: string | null }): string {
+		const projectId = typeof project.id === 'string' ? project.id.trim() : '';
+		return projectId ? `/projects/${projectId}` : '/projects';
+	}
+
+	function handleProjectCardClick(
+		event: MouseEvent,
+		project: {
+			id?: string | null;
+			name: string;
+			description: string | null;
+			state_key: string;
+			task_count: number;
+			document_count: number;
+			goal_count: number;
+		}
+	) {
+		const projectId = typeof project.id === 'string' ? project.id.trim() : '';
+		if (!projectId) {
+			event.preventDefault();
+			console.warn('[Dashboard] Project card clicked without a valid id');
+			void goto('/projects');
+			return;
+		}
+
+		handleProjectClick({
+			...project,
+			id: projectId
+		});
+	}
+
 	function handleProjectClick(project: {
 		id: string;
 		name: string;
@@ -464,8 +495,8 @@
 				<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
 					{#each projectsToDisplay as project (project.id)}
 						<a
-							href="/projects/{project.id}"
-							onclick={() => handleProjectClick(project)}
+							href={resolveProjectHref(project)}
+							onclick={(event) => handleProjectCardClick(event, project)}
 							class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable {project.is_shared
 								? 'tx tx-thread tx-weak'
@@ -545,8 +576,8 @@
 				<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
 					{#each sharedNotActive as project (project.id)}
 						<a
-							href="/projects/{project.id}"
-							onclick={() => handleProjectClick(project)}
+							href={resolveProjectHref(project)}
+							onclick={(event) => handleProjectCardClick(event, project)}
 							class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable tx tx-thread tx-weak"
 						>

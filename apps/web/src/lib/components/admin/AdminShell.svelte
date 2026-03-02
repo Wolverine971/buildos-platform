@@ -27,7 +27,8 @@
 		BarChart3,
 		Layers,
 		Activity,
-		Database
+		Database,
+		Globe
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import AdminSidebar, { type AdminNavGroup } from '$lib/components/admin/AdminSidebar.svelte';
@@ -172,6 +173,12 @@
 					href: '/admin/ontology',
 					icon: Workflow,
 					description: 'Knowledge graph'
+				},
+				{
+					title: 'Public Pages',
+					href: '/admin/ontology/public-pages',
+					icon: Globe,
+					description: 'Published pages & reviews'
 				},
 				{
 					title: 'Migration',

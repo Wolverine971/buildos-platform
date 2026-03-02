@@ -1,5 +1,9 @@
 // apps/web/src/lib/server/public-page.service.ts
 import { updateDocNodeMetadata } from '$lib/services/ontology/doc-structure.service';
+import {
+	runPublicPageContentReview,
+	type PublicPageReviewAttempt
+} from '$lib/server/public-page-content-review.service';
 
 type SupabaseLike = any;
 
@@ -49,6 +53,15 @@ export type PublicPagePreview = {
 	visibility: 'public' | 'unlisted';
 	noindex: boolean;
 	live_sync_enabled: boolean;
+};
+
+export type PublicPageLiveSyncResult = {
+	isLivePublic: boolean;
+	synced: boolean;
+	blocked: boolean;
+	page: PublicPageState | null;
+	error: string | null;
+	review: PublicPageReviewAttempt | null;
 };
 
 type DocumentLike = {
@@ -361,20 +374,80 @@ export async function setDocumentPublicPageLiveSync(
 export async function syncLivePublicPageForDocument(
 	supabase: SupabaseLike,
 	document: DocumentLike,
-	actorId: string
-): Promise<{
-	isLivePublic: boolean;
-	synced: boolean;
-	page: PublicPageState | null;
-	error: string | null;
-}> {
+	actorId: string,
+	actorUserId?: string | null
+): Promise<PublicPageLiveSyncResult> {
 	const existing = await getDocumentPublicPageState(supabase, document.id);
 	if (!existing || !existing.is_live_public || !existing.live_sync_enabled) {
 		return {
 			isLivePublic: Boolean(existing?.is_live_public),
 			synced: false,
+			blocked: false,
 			page: existing,
-			error: null
+			error: null,
+			review: null
+		};
+	}
+
+	let review: PublicPageReviewAttempt | null = null;
+	try {
+		review = await runPublicPageContentReview({
+			supabase,
+			document,
+			actorId,
+			actorUserId,
+			source: 'live_sync',
+			publicPageId: existing.id
+		});
+	} catch (reviewError) {
+		const message = 'Failed to run public page content review';
+		await (supabase as any)
+			.from('onto_public_pages')
+			.update({
+				last_live_sync_error: message,
+				updated_by: actorId
+			})
+			.eq('id', existing.id);
+		return {
+			isLivePublic: true,
+			synced: false,
+			blocked: false,
+			page: {
+				...existing,
+				last_live_sync_error: message
+			},
+			error:
+				reviewError instanceof Error && reviewError.message
+					? `${message}: ${reviewError.message}`
+					: message,
+			review: null
+		};
+	}
+	if (review.status === 'flagged') {
+		const message =
+			review.reasons[0] ?? 'Public page live update blocked by content policy review';
+		const { data: blockedRow } = await (supabase as any)
+			.from('onto_public_pages')
+			.update({
+				last_live_sync_error: message,
+				updated_by: actorId
+			})
+			.eq('id', existing.id)
+			.select('*')
+			.maybeSingle();
+		const blockedState = blockedRow
+			? toPublicPageState(blockedRow as Record<string, any>)
+			: ({
+					...existing,
+					last_live_sync_error: message
+				} as PublicPageState);
+		return {
+			isLivePublic: true,
+			synced: false,
+			blocked: true,
+			page: blockedState,
+			error: message,
+			review
 		};
 	}
 
@@ -420,8 +493,10 @@ export async function syncLivePublicPageForDocument(
 		return {
 			isLivePublic: true,
 			synced: false,
+			blocked: false,
 			page: existing,
-			error: message
+			error: message,
+			review
 		};
 	}
 
@@ -437,8 +512,10 @@ export async function syncLivePublicPageForDocument(
 	return {
 		isLivePublic: true,
 		synced: true,
+		blocked: false,
 		page: syncedState,
-		error: null
+		error: null,
+		review
 	};
 }
 

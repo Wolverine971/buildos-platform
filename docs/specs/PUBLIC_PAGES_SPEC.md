@@ -256,16 +256,36 @@ Actions:
     - `live_sync_enabled=true` (default)
 5. Sync doc tree node `is_public=true`.
 
-### 9.4 Live Save Propagation
+### 9.4 Content Review Gate (Text + Images)
+
+Before publish confirmation is accepted, run an AI-assisted content review:
+
+1. Scan document markdown/body content.
+2. Scan embedded image context (inline asset metadata + OCR/extracted text).
+3. Apply policy checks:
+    - Secrets/credentials (API keys, private keys, tokens)
+    - Sensitive personal data (SSN/card numbers/private identifiers)
+    - Self-harm/violence instructions
+    - Sexual content involving minors
+    - Illegal activity instructions
+    - Explicit hate/harassment targeting protected groups
+4. Persist a review attempt record (pass/flagged + reasons + findings).
+5. If flagged:
+    - Block publish (`422`)
+    - Show clear reasons in modal
+    - User edits content and retries publish.
+
+### 9.5 Live Save Propagation
 
 When a source document is public and `live_sync_enabled=true`:
 
 1. User edits + saves in `DocumentModal`.
-2. Same save pipeline (or immediate async worker) updates public page payload.
-3. Public page reflects the change immediately.
-4. UI shows save + live sync confirmation ("Saved and published live").
+2. Same save pipeline runs the same content review gate.
+3. If review passes, update public page payload immediately.
+4. If review flags, keep existing public page content unchanged and show warning in modal.
+5. UI shows save + live sync confirmation ("Saved and published live") only on pass.
 
-### 9.5 Unpublish
+### 9.6 Unpublish
 
 `POST /api/onto/public-pages/:id/unpublish`
 
@@ -274,7 +294,7 @@ When a source document is public and `live_sync_enabled=true`:
 - Set doc tree `is_public=false`
 - Public route returns 404
 
-### 9.6 Live Indicator in Modal
+### 9.7 Live Indicator in Modal
 
 If document is live public:
 
@@ -302,13 +322,20 @@ If document is live public:
 - `GET /api/onto/public-pages/:id/preview`
     - Authenticated preview read model used by confirmation view.
 - `GET /api/onto/documents/:id/public-page`
-    - Returns public page state for modal/sidebar.
+    - Returns public page state + latest review state for modal/sidebar.
 - `POST /api/onto/documents/:id/public-page/prepare`
     - Builds preview payload before confirmation.
 - `POST /api/onto/documents/:id/public-page/confirm`
-    - Confirms and makes document public.
+    - Confirms and makes document public (only if content review passes).
 - `POST /api/onto/documents/:id/public-page/live-sync`
     - Toggle live sync mode (optional if v1 ships with always-on live sync).
+
+### 10.1.1 Admin Surfaces
+
+- `GET /admin/ontology/public-pages`
+    - Admin dashboard for:
+    - Current published public pages
+    - Content review attempts (including flagged attempts and reasons)
 
 ### 10.2 Public APIs (anonymous)
 

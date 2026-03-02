@@ -14,7 +14,11 @@ import {
 } from '$lib/services/ontology/ontology-projects.service';
 import type {
 	UserDashboardAnalytics,
-	DashboardChatSessionActivity
+	DashboardChatSessionActivity,
+	DashboardProjectActivity,
+	DashboardTaskActivity,
+	DashboardDocumentActivity,
+	DashboardGoalActivity
 } from '$lib/types/dashboard-analytics';
 import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 
@@ -58,8 +62,173 @@ function toNonNegativeInt(value: unknown): number {
 	return 0;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function toTrimmedString(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function toNullableString(value: unknown): string | null {
+	return toTrimmedString(value);
+}
+
+const EPOCH_ISO = new Date(0).toISOString();
+
+function toIsoTimestamp(value: unknown, fallback: string = EPOCH_ISO): string {
+	const timestamp = toTrimmedString(value);
+	if (!timestamp) return fallback;
+	return Number.isNaN(Date.parse(timestamp)) ? fallback : timestamp;
+}
+
+function toBooleanFlag(value: unknown): boolean {
+	if (typeof value === 'boolean') return value;
+	if (typeof value === 'number') return value === 1;
+	if (typeof value === 'string') {
+		const normalized = value.trim().toLowerCase();
+		return (
+			normalized === 'true' ||
+			normalized === '1' ||
+			normalized === 't' ||
+			normalized === 'yes'
+		);
+	}
+	return false;
+}
+
+function normalizeRecentProjects(raw: unknown): DashboardProjectActivity[] {
+	if (!Array.isArray(raw)) return [];
+
+	return raw.flatMap((entry) => {
+		if (!isRecord(entry)) return [];
+
+		const id = toTrimmedString(entry.id) ?? toTrimmedString(entry.project_id);
+		if (!id) return [];
+
+		return [
+			{
+				id,
+				name:
+					toTrimmedString(entry.name) ??
+					toTrimmedString(entry.project_name) ??
+					'Untitled project',
+				description: toNullableString(entry.description),
+				state_key: toTrimmedString(entry.state_key) ?? 'active',
+				is_shared: toBooleanFlag(entry.is_shared),
+				updated_at: toIsoTimestamp(entry.updated_at),
+				task_count: toNonNegativeInt(entry.task_count),
+				goal_count: toNonNegativeInt(entry.goal_count),
+				document_count: toNonNegativeInt(entry.document_count)
+			}
+		];
+	});
+}
+
+function normalizeRecentTasks(raw: unknown): DashboardTaskActivity[] {
+	if (!Array.isArray(raw)) return [];
+
+	return raw.flatMap((entry) => {
+		if (!isRecord(entry)) return [];
+
+		const id = toTrimmedString(entry.id);
+		const projectId = toTrimmedString(entry.project_id);
+		if (!id || !projectId) return [];
+
+		return [
+			{
+				id,
+				project_id: projectId,
+				project_name: toTrimmedString(entry.project_name) ?? 'Unknown project',
+				title: toTrimmedString(entry.title) ?? 'Untitled task',
+				description: toNullableString(entry.description),
+				state_key: toTrimmedString(entry.state_key) ?? '',
+				due_at: toNullableString(entry.due_at),
+				updated_at: toIsoTimestamp(entry.updated_at)
+			}
+		];
+	});
+}
+
+function normalizeRecentDocuments(raw: unknown): DashboardDocumentActivity[] {
+	if (!Array.isArray(raw)) return [];
+
+	return raw.flatMap((entry) => {
+		if (!isRecord(entry)) return [];
+
+		const id = toTrimmedString(entry.id);
+		const projectId = toTrimmedString(entry.project_id);
+		if (!id || !projectId) return [];
+
+		return [
+			{
+				id,
+				project_id: projectId,
+				project_name: toTrimmedString(entry.project_name) ?? 'Unknown project',
+				title: toTrimmedString(entry.title) ?? 'Untitled document',
+				description: toNullableString(entry.description),
+				state_key: toTrimmedString(entry.state_key) ?? '',
+				updated_at: toIsoTimestamp(entry.updated_at)
+			}
+		];
+	});
+}
+
+function normalizeRecentGoals(raw: unknown): DashboardGoalActivity[] {
+	if (!Array.isArray(raw)) return [];
+
+	return raw.flatMap((entry) => {
+		if (!isRecord(entry)) return [];
+
+		const id = toTrimmedString(entry.id);
+		const projectId = toTrimmedString(entry.project_id);
+		if (!id || !projectId) return [];
+
+		return [
+			{
+				id,
+				project_id: projectId,
+				project_name: toTrimmedString(entry.project_name) ?? 'Unknown project',
+				name: toTrimmedString(entry.name) ?? 'Untitled goal',
+				description: toNullableString(entry.description),
+				state_key: toTrimmedString(entry.state_key) ?? '',
+				target_date: toNullableString(entry.target_date),
+				updated_at: toIsoTimestamp(entry.updated_at)
+			}
+		];
+	});
+}
+
+function normalizeRecentChatSessions(raw: unknown): DashboardChatSessionActivity[] {
+	if (!Array.isArray(raw)) return [];
+
+	return raw.flatMap((entry) => {
+		if (!isRecord(entry)) return [];
+
+		const id = toTrimmedString(entry.id);
+		if (!id) return [];
+
+		return [
+			{
+				id,
+				title: toTrimmedString(entry.title) ?? 'Untitled chat session',
+				summary: toNullableString(entry.summary),
+				status: toTrimmedString(entry.status) ?? 'active',
+				context_type: toNullableString(entry.context_type),
+				entity_id: toNullableString(entry.entity_id),
+				context_label: toTrimmedString(entry.context_label) ?? 'Chat session',
+				project_id: toNullableString(entry.project_id),
+				project_name: toNullableString(entry.project_name),
+				message_count: toNonNegativeInt(entry.message_count),
+				last_activity_at: toIsoTimestamp(entry.last_activity_at)
+			}
+		];
+	});
+}
+
 function normalizeDashboardAnalyticsPayload(raw: unknown): UserDashboardAnalytics {
-	const empty = createEmptyUserDashboardAnalytics();
 	const payload = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
 	const snapshot =
 		typeof payload.snapshot === 'object' && payload.snapshot !== null
@@ -74,21 +243,11 @@ function normalizeDashboardAnalyticsPayload(raw: unknown): UserDashboardAnalytic
 			? (payload.recent as Record<string, unknown>)
 			: {};
 
-	const projects = Array.isArray(recent.projects)
-		? (recent.projects as UserDashboardAnalytics['recent']['projects'])
-		: empty.recent.projects;
-	const tasks = Array.isArray(recent.tasks)
-		? (recent.tasks as UserDashboardAnalytics['recent']['tasks'])
-		: empty.recent.tasks;
-	const documents = Array.isArray(recent.documents)
-		? (recent.documents as UserDashboardAnalytics['recent']['documents'])
-		: empty.recent.documents;
-	const goals = Array.isArray(recent.goals)
-		? (recent.goals as UserDashboardAnalytics['recent']['goals'])
-		: empty.recent.goals;
-	const chatSessions = Array.isArray(recent.chatSessions)
-		? (recent.chatSessions as UserDashboardAnalytics['recent']['chatSessions'])
-		: empty.recent.chatSessions;
+	const projects = normalizeRecentProjects(recent.projects);
+	const tasks = normalizeRecentTasks(recent.tasks);
+	const documents = normalizeRecentDocuments(recent.documents);
+	const goals = normalizeRecentGoals(recent.goals);
+	const chatSessions = normalizeRecentChatSessions(recent.chatSessions);
 
 	return {
 		snapshot: {

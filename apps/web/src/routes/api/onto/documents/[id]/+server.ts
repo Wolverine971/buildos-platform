@@ -736,8 +736,10 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		let publicPageSync: {
 			isLivePublic: boolean;
 			synced: boolean;
+			blocked: boolean;
 			page: unknown;
 			error: string | null;
+			review: unknown | null;
 		} | null = null;
 		try {
 			publicPageSync = await syncLivePublicPageForDocument(
@@ -769,7 +771,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 							? updatedDocument.updated_at
 							: null
 				},
-				actorId
+				actorId,
+				session.user.id
 			);
 		} catch (syncError) {
 			console.error('[Document API] Failed to sync live public page:', syncError);

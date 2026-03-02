@@ -3,9 +3,11 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	confirmDocumentPublicPage,
+	getDocumentPublicPageState,
 	isValidPublicPageSlug,
 	normalizePublicPageSlug
 } from '$lib/server/public-page.service';
+import { runPublicPageContentReview } from '$lib/server/public-page-content-review.service';
 import { ensureDocumentAccessForPublicPage } from '../../../shared-public-page';
 
 export const POST: RequestHandler = async ({ params, locals, request }) => {
@@ -38,6 +40,24 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 	}
 
 	try {
+		const existing = await getDocumentPublicPageState(locals.supabase, documentId);
+		const review = await runPublicPageContentReview({
+			supabase: locals.supabase,
+			document: access.document as any,
+			actorId: access.actorId,
+			actorUserId: session.user.id,
+			source: 'publish_confirm',
+			publicPageId: existing?.id ?? null
+		});
+		if (review.status === 'flagged') {
+			return ApiResponse.error(
+				'Content review flagged this page. Update the document and try publishing again.',
+				422,
+				'CONTENT_REVIEW_FLAGGED',
+				{ review }
+			);
+		}
+
 		const publicPage = await confirmDocumentPublicPage(
 			locals.supabase,
 			access.document as any,
@@ -60,7 +80,8 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 
 		return ApiResponse.success(
 			{
-				publicPage
+				publicPage,
+				review
 			},
 			'Document is now public'
 		);
