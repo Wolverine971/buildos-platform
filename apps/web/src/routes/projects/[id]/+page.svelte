@@ -1149,47 +1149,38 @@
 		}
 	}
 
-	async function handleDeleteDocumentConfirm(mode: 'cascade' | 'promote') {
+	async function handleDeleteDocumentConfirm(
+		mode: 'archive_children' | 'promote_children' | 'unlink_children'
+	) {
 		if (!deleteDocumentId || !project?.id) return;
 
-		const docIdToDelete = deleteDocumentId;
+		const docIdToArchive = deleteDocumentId;
 
-		// Optimistic delete - close modal and update UI immediately
-		showDeleteDocConfirmModal = false;
-		deleteDocumentId = null;
-
-		// Remove from local state immediately
-		documents = documents.filter((d) => d.id !== docIdToDelete);
-		if (docTreeDocuments[docIdToDelete]) {
-			const { [docIdToDelete]: _, ...rest } = docTreeDocuments;
-			docTreeDocuments = rest;
-		}
-
-		// Refresh doc tree to update visual structure
-		docTreeViewRef?.refresh();
-
-		// Make API call in background
 		try {
-			const res = await fetch(`/api/onto/documents/${docIdToDelete}`, {
-				method: 'DELETE',
+			const res = await fetch(`/api/onto/documents/${docIdToArchive}`, {
+				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ mode })
+				body: JSON.stringify({
+					action: 'archive',
+					archive_children_mode: mode
+				})
 			});
 
 			if (!res.ok) {
 				const data = await res.json().catch(() => ({}));
-				throw new Error(data.error || 'Failed to delete document');
+				throw new Error(data.error || 'Failed to archive document');
 			}
 
-			toastService.success('Document deleted');
-		} catch (error) {
-			console.error('[Project] Failed to delete document:', error);
-			toastService.error(
-				error instanceof Error ? error.message : 'Failed to delete document'
-			);
-			// On error, refresh to restore correct state
-			void refreshData({ showSuccessToast: false });
+			showDeleteDocConfirmModal = false;
+			deleteDocumentId = null;
+			toastService.success('Document archived');
+			await refreshData({ showSuccessToast: false });
 			docTreeViewRef?.refresh();
+		} catch (error) {
+			console.error('[Project] Failed to archive document:', error);
+			toastService.error(
+				error instanceof Error ? error.message : 'Failed to archive document'
+			);
 		}
 	}
 

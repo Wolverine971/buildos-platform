@@ -143,7 +143,9 @@
 		onCloseMoveDocModal: () => void;
 		onMoveDocumentConfirm: (newParentId: string | null) => void | Promise<void>;
 		onCloseDeleteDocConfirmModal: () => void;
-		onDeleteDocumentConfirm: (mode: 'cascade' | 'promote') => void | Promise<void>;
+		onDeleteDocumentConfirm: (
+			mode: 'archive_children' | 'promote_children' | 'unlink_children'
+		) => void | Promise<void>;
 		onCloseTaskCreateModal: () => void;
 		onTaskCreated: (taskId: string) => void;
 		onCloseTaskEditModal: () => void;

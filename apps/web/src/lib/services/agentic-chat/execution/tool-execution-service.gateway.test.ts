@@ -395,7 +395,8 @@ describe('ToolExecutionService gateway fallback', () => {
 			data: {
 				structure: { root: [] },
 				documents: {},
-				unlinked: []
+				unlinked: [],
+				archived: []
 			}
 		} satisfies ToolExecutorResponse);
 		const service = new ToolExecutionService(toolExecutor);

@@ -2,15 +2,15 @@
 <!--
 	Context menu for document tree nodes
 
-	Actions:
-	- Open document
-	- Create child document
-	- Move document
-	- Delete document
+		Actions:
+		- Open document
+		- Create child document
+		- Move document
+		- Archive document
 -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { FileText, FolderPlus, Move, Trash2 } from 'lucide-svelte';
+	import { Archive, FileText, FolderPlus, Move } from 'lucide-svelte';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 
 	interface Props {
@@ -115,14 +115,14 @@
 
 		<div class="my-1 border-t border-border"></div>
 
-		<!-- Delete -->
+		<!-- Archive -->
 		<button
 			type="button"
-			onclick={() => handleAction('delete')}
+			onclick={() => handleAction('archive')}
 			class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
 		>
-			<Trash2 class="w-4 h-4" />
-			{isFolder ? 'Delete folder...' : 'Delete'}
+			<Archive class="w-4 h-4" />
+			{isFolder ? 'Archive folder...' : 'Archive'}
 		</button>
 	</div>
 </div>

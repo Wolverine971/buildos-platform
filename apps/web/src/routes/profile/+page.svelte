@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import {
 		User,
+		Users,
 		CircleCheck,
 		Rocket,
 		Settings,
@@ -34,6 +35,7 @@
 	import BriefsTab from '$lib/components/profile/BriefsTab.svelte';
 	import CalendarTab from '$lib/components/profile/CalendarTab.svelte';
 	import AccountTab from '$lib/components/profile/AccountTab.svelte';
+	import ContactsTab from '$lib/components/profile/ContactsTab.svelte';
 	import NotificationsTab from '$lib/components/profile/NotificationsTab.svelte';
 	import PreferencesTab from '$lib/components/profile/PreferencesTab.svelte';
 
@@ -91,6 +93,7 @@
 			if (
 				[
 					'account',
+					'contacts',
 					'preferences',
 					'briefs',
 					'calendar',
@@ -105,6 +108,7 @@
 
 	let profileTabs = $derived<TabNavTab[]>([
 		{ id: 'account', label: 'Account', icon: User },
+		{ id: 'contacts', label: 'Contacts', icon: Users },
 		{ id: 'preferences', label: 'AI Preferences', icon: Sparkles },
 		{ id: 'briefs', label: 'Brief Settings', icon: Bell },
 		{ id: 'calendar', label: 'Calendar', icon: Calendar },
@@ -392,6 +396,8 @@
 				onsuccess={handleComponentSuccess}
 				onerror={handleComponentError}
 			/>
+		{:else if activeTab === 'contacts'}
+			<ContactsTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
 		{:else if activeTab === 'preferences'}
 			<PreferencesTab />
 		{:else if activeTab === 'briefs'}

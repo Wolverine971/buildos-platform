@@ -9,6 +9,7 @@
 	- Polls for real-time updates (30s)
 	- Shows loading skeleton
 	- Shows unlinked documents section
+	- Shows archived documents section
 	- Context menu support
 
 	Inkprint Design:
@@ -18,7 +19,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { onMount, onDestroy } from 'svelte';
-	import { FileText, RefreshCw, FolderPlus, Plus } from 'lucide-svelte';
+	import { Archive, FileText, RefreshCw, Plus } from 'lucide-svelte';
 	import DocTreeNode from './DocTreeNode.svelte';
 	import DocTreeSkeleton from './DocTreeSkeleton.svelte';
 	import DocTreeContextMenu from './DocTreeContextMenu.svelte';
@@ -73,6 +74,8 @@
 	let structure = $state<DocStructure | null>(null);
 	let documents = $state<Record<string, OntoDocument>>({});
 	let unlinked = $state<OntoDocument[]>([]);
+	let archived = $state<OntoDocument[]>([]);
+let archivedExpanded = $state(true);
 	let expandedIds = $state<Set<string>>(new Set());
 	let currentVersion = $state(0);
 	let hasUpdate = $state(false);
@@ -323,6 +326,7 @@
 			structure = data.data.structure;
 			documents = data.data.documents;
 			unlinked = data.data.unlinked;
+			archived = data.data.archived ?? [];
 			currentVersion = newVersion;
 
 			// Notify parent of loaded data
@@ -384,7 +388,7 @@
 			case 'move':
 				onMoveDocument?.(contextMenuNode.id);
 				break;
-			case 'delete':
+			case 'archive':
 				onDeleteDocument?.(
 					contextMenuNode.id,
 					contextMenuNode.type === 'folder' && !!contextMenuNode.children?.length
@@ -491,7 +495,7 @@
 				Retry
 			</button>
 		</div>
-	{:else if enrichedTree.length === 0 && unlinked.length === 0}
+	{:else if enrichedTree.length === 0 && unlinked.length === 0 && archived.length === 0}
 		<!-- Empty state -->
 		<div class="flex flex-col items-center gap-3 px-4 py-6 bg-muted/30 tx tx-bloom tx-weak">
 			<div class="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
@@ -547,6 +551,42 @@
 				onTouchStart={enableDragDrop ? handleTouchStart : undefined}
 				dragState={dragDrop?.state ?? null}
 			/>
+		{/if}
+
+		<!-- Archived documents -->
+		{#if archived.length > 0}
+			<div class="mt-3 border-t border-border pt-3">
+				<button
+					type="button"
+					onclick={() => (archivedExpanded = !archivedExpanded)}
+					class="w-full flex items-center gap-2 px-2 py-1.5 text-left text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+				>
+					<Archive class="w-3.5 h-3.5" />
+					<span>Archived Documents ({archived.length})</span>
+					<span
+						class="ml-auto text-[10px] transform transition-transform {archivedExpanded
+							? 'rotate-180'
+							: ''}"
+					>
+						▼
+					</span>
+				</button>
+
+				{#if archivedExpanded}
+					<div class="mt-1 space-y-0.5 pl-2">
+						{#each archived as doc (doc.id)}
+							<button
+								type="button"
+								onclick={() => onOpenDocument(doc.id)}
+								class="w-full flex items-center gap-2 px-2 py-1.5 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent/5 rounded-md transition-colors"
+							>
+								<Archive class="w-3.5 h-3.5 text-muted-foreground" />
+								<span class="truncate">{doc.title}</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
+			</div>
 		{/if}
 
 		<!-- Cut indicator -->

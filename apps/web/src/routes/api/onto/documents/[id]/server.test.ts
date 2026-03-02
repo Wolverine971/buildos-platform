@@ -2,9 +2,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const removeDocumentFromTreeMock = vi.fn();
+const getDocTreeMock = vi.fn();
+const findNodeByIdMock = vi.fn();
+const collectDocIdsMock = vi.fn();
+const updateDocNodeMetadataMock = vi.fn();
+const logOntologyApiErrorMock = vi.fn();
 
 vi.mock('$lib/services/ontology/doc-structure.service', () => ({
-	removeDocumentFromTree: removeDocumentFromTreeMock
+	getDocTree: getDocTreeMock,
+	findNodeById: findNodeByIdMock,
+	collectDocIds: collectDocIdsMock,
+	removeDocumentFromTree: removeDocumentFromTreeMock,
+	updateDocNodeMetadata: updateDocNodeMetadataMock
 }));
 
 vi.mock('$lib/services/async-activity-logger', () => ({
@@ -29,7 +38,7 @@ vi.mock('$lib/services/ontology/versioning.service', () => ({
 }));
 
 vi.mock('../../shared/error-logging', () => ({
-	logOntologyApiError: vi.fn()
+	logOntologyApiError: logOntologyApiErrorMock
 }));
 
 class QueryBuilderMock {

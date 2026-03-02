@@ -393,7 +393,9 @@ export class AgentChatOrchestrator {
 					questions: contactClarificationQuestions,
 					contactMetadata: {
 						candidateIds:
-							plannerContext.metadata.contactClarification?.candidateIds?.map(String) ?? []
+							plannerContext.metadata.contactClarification?.candidateIds?.map(
+								String
+							) ?? []
 					}
 				};
 				yield clarifyingEvent;

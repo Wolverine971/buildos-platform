@@ -55,7 +55,8 @@ describe('GET /api/onto/projects/[id]/doc-tree', () => {
 		getDocTreeMock.mockResolvedValue({
 			structure: { version: 1, root: [] },
 			documents: {},
-			unlinked: []
+			unlinked: [],
+			archived: []
 		});
 	});
 

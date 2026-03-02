@@ -146,7 +146,8 @@ describe('streamFastChat repetition guard', () => {
 					result: {
 						structure: { root: [] },
 						documents: {},
-						unlinked: []
+						unlinked: [],
+						archived: []
 					}
 				},
 				success: true

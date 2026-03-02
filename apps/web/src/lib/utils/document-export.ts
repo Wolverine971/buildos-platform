@@ -1,3 +1,4 @@
+// apps/web/src/lib/utils/document-export.ts
 import { renderMarkdown } from '$lib/utils/markdown';
 
 export type DocumentExportFormat = 'docx' | 'html' | 'pdf';
@@ -10,8 +11,7 @@ export type DocumentExportPayload = {
 	updatedAt?: string | null;
 };
 
-const DOCX_MIME =
-	'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
 const TEXT_ENCODER = new TextEncoder();
 
@@ -339,18 +339,21 @@ function buildDocxBlob(payload: DocumentExportPayload): Blob {
 	return buildZipBlob(files, DOCX_MIME);
 }
 
-type ParagraphStyle = 'Normal' | 'Title' | 'Heading1' | 'Heading2' | 'Heading3' | 'Quote' | 'CodeBlock';
+type ParagraphStyle =
+	| 'Normal'
+	| 'Title'
+	| 'Heading1'
+	| 'Heading2'
+	| 'Heading3'
+	| 'Quote'
+	| 'CodeBlock';
 
 type WordParagraph = {
 	style: ParagraphStyle;
 	text: string;
 };
 
-function buildDocumentXml(
-	title: string,
-	description: string,
-	paragraphs: WordParagraph[]
-): string {
+function buildDocumentXml(title: string, description: string, paragraphs: WordParagraph[]): string {
 	const xmlParagraphs: string[] = [wordParagraph('Title', title)];
 	if (description) {
 		xmlParagraphs.push(wordParagraph('Quote', description));
@@ -516,14 +519,18 @@ function markdownToWordParagraphs(markdown: string): WordParagraph[] {
 		const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
 		if (headingMatch) {
 			const level = (headingMatch[1] ?? '').length;
-			const style: ParagraphStyle = level === 1 ? 'Heading1' : level === 2 ? 'Heading2' : 'Heading3';
+			const style: ParagraphStyle =
+				level === 1 ? 'Heading1' : level === 2 ? 'Heading2' : 'Heading3';
 			paragraphs.push({ style, text: stripInlineMarkdown(headingMatch[2] ?? '') });
 			continue;
 		}
 
 		const blockquoteMatch = line.match(/^>\s?(.*)$/);
 		if (blockquoteMatch) {
-			paragraphs.push({ style: 'Quote', text: stripInlineMarkdown(blockquoteMatch[1] ?? '') });
+			paragraphs.push({
+				style: 'Quote',
+				text: stripInlineMarkdown(blockquoteMatch[1] ?? '')
+			});
 			continue;
 		}
 
@@ -557,7 +564,10 @@ function stripInlineMarkdown(text: string): string {
 			const safeAlt = alt?.trim() || 'image';
 			return `[Image: ${safeAlt}] (${src})`;
 		})
-		.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label: string, href: string) => `${label} (${href})`)
+		.replace(
+			/\[([^\]]+)\]\(([^)]+)\)/g,
+			(_, label: string, href: string) => `${label} (${href})`
+		)
 		.replace(/`([^`]+)`/g, '$1')
 		.replace(/\*\*([^*]+)\*\*/g, '$1')
 		.replace(/__([^_]+)__/g, '$1')

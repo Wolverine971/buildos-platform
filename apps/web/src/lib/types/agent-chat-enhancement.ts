@@ -542,6 +542,7 @@ export interface DocStructureCache {
 		}
 	>;
 	unlinked?: string[];
+	archived?: string[];
 }
 
 export interface ContextCacheHint {

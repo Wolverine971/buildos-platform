@@ -4,6 +4,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import {
 	archiveUserContact,
 	insertUserContactAuditEvent,
+	resolveSensitiveContactExposure,
 	updateUserContact
 } from '$lib/server/user-contact.service';
 import { resolveProfileActorId } from '$lib/server/user-profile.service';
@@ -26,13 +27,19 @@ export const PATCH: RequestHandler = async ({
 
 	try {
 		const actorId = await resolveProfileActorId(supabase as any, user.id);
-		const exposeSensitive = body.expose_sensitive === true;
+		const requestedSensitive =
+			body.expose_sensitive === true || body.include_sensitive_values === true;
+		const exposure = resolveSensitiveContactExposure({
+			includeSensitiveValues: requestedSensitive,
+			userConfirmedSensitive: body.user_confirmed_sensitive === true,
+			reason: typeof body.reason === 'string' ? body.reason : null
+		});
 		const { contact, updated } = await updateUserContact({
 			supabase: supabase as any,
 			userId: user.id,
 			contactId,
 			input: body as any,
-			exposeSensitive
+			exposeSensitive: exposure.exposeSensitive
 		});
 
 		await insertUserContactAuditEvent({
@@ -45,7 +52,12 @@ export const PATCH: RequestHandler = async ({
 			reason: 'contact_patch'
 		});
 
-		return ApiResponse.success({ contact, updated });
+		return ApiResponse.success({
+			contact,
+			updated,
+			sensitive_values_exposed: exposure.exposeSensitive,
+			...(exposure.warning ? { warning: exposure.warning } : {})
+		});
 	} catch (error) {
 		console.error('[Contacts API] Failed to patch contact:', error);
 		return ApiResponse.internalError(error, 'Failed to update contact');

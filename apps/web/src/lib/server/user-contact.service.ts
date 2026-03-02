@@ -3,6 +3,12 @@ import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
 import { createLogger } from '$lib/utils/logger';
+import type {
+	ContactImportCommitResult,
+	ContactImportNormalizedInput,
+	ContactImportPreviewResult,
+	ContactImportPreviewRow
+} from '$lib/types/profile-contacts';
 
 const logger = createLogger('UserContactService');
 
@@ -61,6 +67,106 @@ const CONTACT_METHOD_TYPES = new Set([
 	'address',
 	'other'
 ]);
+const CSV_IMPORT_MAX_BYTES = 2 * 1024 * 1024;
+const CSV_IMPORT_MAX_ROWS = 500;
+
+export function resolveSensitiveContactExposure(args: {
+	includeSensitiveValues?: boolean;
+	userConfirmedSensitive?: boolean;
+	reason?: string | null;
+}): { exposeSensitive: boolean; warning?: string } {
+	if (args.includeSensitiveValues !== true) {
+		return { exposeSensitive: false };
+	}
+	if (args.userConfirmedSensitive === true) {
+		const reason = typeof args.reason === 'string' ? args.reason.trim() : '';
+		if (reason.length >= 4) {
+			return { exposeSensitive: true };
+		}
+	}
+	return {
+		exposeSensitive: false,
+		warning:
+			'Sensitive values remain redacted. To expose raw values, provide expose_sensitive=true (or include_sensitive_values=true), user_confirmed_sensitive=true, and a short reason.'
+	};
+}
+
+function splitCsvRecord(recordText: string): string[] {
+	const values: string[] = [];
+	let current = '';
+	let inQuotes = false;
+
+	for (let i = 0; i < recordText.length; i += 1) {
+		const char = recordText[i];
+		if (char === '"') {
+			const next = recordText[i + 1];
+			if (inQuotes && next === '"') {
+				current += '"';
+				i += 1;
+				continue;
+			}
+			inQuotes = !inQuotes;
+			continue;
+		}
+		if (char === ',' && !inQuotes) {
+			values.push(current.trim());
+			current = '';
+			continue;
+		}
+		current += char;
+	}
+
+	if (inQuotes) {
+		throw new Error('CSV contains unclosed quoted field');
+	}
+
+	values.push(current.trim());
+	return values;
+}
+
+function parseCsvRows(csvText: string): string[][] {
+	const rows: string[][] = [];
+	let currentRecord = '';
+	let inQuotes = false;
+
+	for (let i = 0; i < csvText.length; i += 1) {
+		const char = csvText[i];
+		if (char === '"') {
+			const next = csvText[i + 1];
+			if (inQuotes && next === '"') {
+				currentRecord += '""';
+				i += 1;
+				continue;
+			}
+			inQuotes = !inQuotes;
+			currentRecord += char;
+			continue;
+		}
+
+		if (!inQuotes && (char === '\n' || char === '\r')) {
+			if (char === '\r' && csvText[i + 1] === '\n') {
+				i += 1;
+			}
+			if (currentRecord.trim().length > 0) {
+				rows.push(splitCsvRecord(currentRecord));
+			}
+			currentRecord = '';
+			continue;
+		}
+
+		currentRecord += char;
+	}
+
+	if (currentRecord.trim().length > 0) {
+		rows.push(splitCsvRecord(currentRecord));
+	}
+
+	if (inQuotes) {
+		throw new Error('CSV contains unclosed quoted field');
+	}
+
+	return rows;
+}
 
 function toFiniteConfidence(value: unknown, fallback = 0.7): number {
 	const num = Number(value);
@@ -428,6 +534,456 @@ async function getContactWithMethods(params: {
 	};
 }
 
+function readCsvField(row: Record<string, string>, aliases: string[]): string | undefined {
+	for (const alias of aliases) {
+		const value = row[alias];
+		if (typeof value !== 'string') continue;
+		const trimmed = value.trim();
+		if (trimmed.length > 0) return trimmed;
+	}
+	return undefined;
+}
+
+function normalizeCsvImportRow(row: Record<string, string>): {
+	normalized?: ContactImportNormalizedInput;
+	error?: string;
+} {
+	const displayNameField = readCsvField(row, ['display_name', 'name', 'full_name']);
+	const givenName = readCsvField(row, ['given_name', 'first_name']);
+	const familyName = readCsvField(row, ['family_name', 'last_name', 'surname']);
+	const displayName =
+		displayNameField ?? [givenName, familyName].filter(Boolean).join(' ').trim();
+
+	if (!displayName) {
+		return {
+			error: 'display_name is required (or provide given_name and family_name).'
+		};
+	}
+
+	const phone = readCsvField(row, ['phone', 'phone_number', 'mobile']);
+	const phoneLabel = readCsvField(row, ['phone_label', 'mobile_label']);
+	const email = readCsvField(row, ['email', 'email_address']);
+	const emailLabel = readCsvField(row, ['email_label']);
+
+	const methods: ContactMethodInput[] = [];
+	if (phone) {
+		methods.push({
+			method_type: 'phone',
+			value: phone,
+			label: phoneLabel ?? null
+		});
+	}
+	if (email) {
+		methods.push({
+			method_type: 'email',
+			value: email,
+			label: emailLabel ?? null
+		});
+	}
+
+	try {
+		for (const method of methods) {
+			normalizeMethodInput(method);
+		}
+	} catch (error) {
+		return {
+			error: error instanceof Error ? error.message : 'Invalid method value'
+		};
+	}
+
+	return {
+		normalized: {
+			display_name: displayName,
+			...(givenName ? { given_name: givenName } : {}),
+			...(familyName ? { family_name: familyName } : {}),
+			...(readCsvField(row, ['nickname'])
+				? { nickname: readCsvField(row, ['nickname']) }
+				: {}),
+			...(readCsvField(row, ['relationship_label', 'relationship'])
+				? {
+						relationship_label: readCsvField(row, [
+							'relationship_label',
+							'relationship'
+						])
+					}
+				: {}),
+			...(readCsvField(row, ['organization', 'company'])
+				? { organization: readCsvField(row, ['organization', 'company']) }
+				: {}),
+			...(readCsvField(row, ['title', 'job_title'])
+				? { title: readCsvField(row, ['title', 'job_title']) }
+				: {}),
+			...(readCsvField(row, ['notes', 'note'])
+				? { notes: readCsvField(row, ['notes', 'note']) }
+				: {}),
+			methods: methods.map((method) => ({
+				method_type: method.method_type as 'phone' | 'email',
+				value: method.value,
+				...(method.label ? { label: method.label } : {})
+			}))
+		}
+	};
+}
+
+async function matchContactIdsByStrongMethods(params: {
+	supabase: AnySupabase;
+	userId: string;
+	methods: ContactMethodInput[];
+}): Promise<{ ids: string[]; ambiguous: boolean }> {
+	const { supabase, userId, methods } = params;
+	const supabaseAny = supabase as any;
+	const strongMethods = methods.filter(
+		(method) => method.method_type === 'phone' || method.method_type === 'email'
+	);
+	if (strongMethods.length === 0) {
+		return { ids: [], ambiguous: false };
+	}
+
+	const matchedIds = new Set<string>();
+	let ambiguous = false;
+
+	for (const methodInput of strongMethods) {
+		const method = normalizeMethodInput(methodInput);
+		const { data, error } = await supabaseAny
+			.from('user_contact_methods')
+			.select('contact_id')
+			.eq('user_id', userId)
+			.eq('method_type', method.methodType)
+			.eq('value_hash', method.valueHash)
+			.is('deleted_at', null);
+
+		if (error) {
+			throw new Error(`Failed to query contact methods during import: ${error.message}`);
+		}
+
+		const idsForMethod: string[] = Array.from(
+			new Set<string>(
+				(data ?? [])
+					.map((item: Record<string, unknown>) => item.contact_id)
+					.filter((value: unknown): value is string => typeof value === 'string')
+			)
+		);
+		if (idsForMethod.length > 1) {
+			ambiguous = true;
+		}
+		for (const id of idsForMethod) {
+			matchedIds.add(id);
+		}
+	}
+
+	if (matchedIds.size > 1) {
+		ambiguous = true;
+	}
+
+	return {
+		ids: Array.from(matchedIds),
+		ambiguous
+	};
+}
+
+async function getContactNamesById(params: {
+	supabase: AnySupabase;
+	userId: string;
+	contactIds: string[];
+}): Promise<Map<string, string>> {
+	const { supabase, userId, contactIds } = params;
+	if (contactIds.length === 0) return new Map();
+
+	const supabaseAny = supabase as any;
+	const { data, error } = await supabaseAny
+		.from('user_contacts')
+		.select('id, display_name')
+		.eq('user_id', userId)
+		.in('id', contactIds);
+
+	if (error) {
+		throw new Error(`Failed to load matched contact names: ${error.message}`);
+	}
+
+	const names = new Map<string, string>();
+	for (const row of data ?? []) {
+		const id = typeof row?.id === 'string' ? row.id : '';
+		const displayName =
+			typeof row?.display_name === 'string' && row.display_name.trim().length > 0
+				? row.display_name.trim()
+				: 'Contact';
+		if (id) names.set(id, displayName);
+	}
+	return names;
+}
+
+export async function previewUserContactCsvImport(params: {
+	supabase: AnySupabase;
+	userId: string;
+	csvText: string;
+}): Promise<ContactImportPreviewResult> {
+	const { supabase, userId, csvText } = params;
+	if (typeof csvText !== 'string' || csvText.trim().length === 0) {
+		throw new Error('CSV file is required');
+	}
+	if (Buffer.byteLength(csvText, 'utf8') > CSV_IMPORT_MAX_BYTES) {
+		throw new Error('CSV file exceeds 2 MB limit');
+	}
+
+	const rawRows = parseCsvRows(csvText);
+	if (rawRows.length === 0) {
+		throw new Error('CSV has no rows');
+	}
+
+	const rawHeaders = rawRows[0] ?? [];
+	const headers = rawHeaders.map((header) =>
+		header
+			.trim()
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '_')
+			.replace(/^_+|_+$/g, '')
+	);
+	if (headers.length === 0 || headers.every((header) => header.length === 0)) {
+		throw new Error('CSV header row is required');
+	}
+
+	const dataRows = rawRows.slice(1);
+	if (dataRows.length > CSV_IMPORT_MAX_ROWS) {
+		throw new Error(`CSV row count exceeds ${CSV_IMPORT_MAX_ROWS}`);
+	}
+
+	const rows: ContactImportPreviewRow[] = [];
+	const matchedContactIds = new Set<string>();
+
+	for (let index = 0; index < dataRows.length; index += 1) {
+		const record = dataRows[index] ?? [];
+		const rowNumber = index + 2;
+		const rowObject: Record<string, string> = {};
+		for (let i = 0; i < headers.length; i += 1) {
+			const header = headers[i];
+			if (!header) continue;
+			rowObject[header] = String(record[i] ?? '');
+		}
+
+		const hasAnyValue = Object.values(rowObject).some((value) => value.trim().length > 0);
+		if (!hasAnyValue) {
+			rows.push({
+				row_number: rowNumber,
+				status: 'skipped',
+				action: 'none',
+				reason: 'Row is empty.'
+			});
+			continue;
+		}
+
+		const normalizedResult = normalizeCsvImportRow(rowObject);
+		if (!normalizedResult.normalized) {
+			rows.push({
+				row_number: rowNumber,
+				status: 'error',
+				action: 'none',
+				reason: normalizedResult.error ?? 'Invalid row'
+			});
+			continue;
+		}
+
+		const methods = normalizedResult.normalized.methods.map((method) => ({
+			method_type: method.method_type,
+			value: method.value,
+			label: method.label ?? null
+		}));
+		const matchResult = await matchContactIdsByStrongMethods({
+			supabase,
+			userId,
+			methods
+		});
+
+		if (matchResult.ambiguous) {
+			rows.push({
+				row_number: rowNumber,
+				status: 'skipped',
+				action: 'none',
+				reason: 'Multiple strong method matches found. Resolve manually.',
+				normalized_input: normalizedResult.normalized
+			});
+			continue;
+		}
+
+		if (matchResult.ids.length === 1) {
+			const matchedId = matchResult.ids[0]!;
+			matchedContactIds.add(matchedId);
+			rows.push({
+				row_number: rowNumber,
+				status: 'ready',
+				action: 'upsert_existing',
+				normalized_input: normalizedResult.normalized,
+				matched_contact_id: matchedId
+			});
+			continue;
+		}
+
+		rows.push({
+			row_number: rowNumber,
+			status: 'ready',
+			action: 'create_new',
+			normalized_input: normalizedResult.normalized
+		});
+	}
+
+	if (matchedContactIds.size > 0) {
+		const namesById = await getContactNamesById({
+			supabase,
+			userId,
+			contactIds: Array.from(matchedContactIds)
+		});
+		for (const row of rows) {
+			if (row.matched_contact_id) {
+				row.matched_contact_name =
+					namesById.get(row.matched_contact_id) ?? 'Existing contact';
+			}
+		}
+	}
+
+	const summary = {
+		total: rows.length,
+		ready: rows.filter((row) => row.status === 'ready').length,
+		skipped: rows.filter((row) => row.status === 'skipped').length,
+		errors: rows.filter((row) => row.status === 'error').length
+	};
+
+	return { summary, rows };
+}
+
+type ContactUpsertDedupeMode = 'default' | 'strong_method_only';
+
+function toContactUpsertInput(normalized: ContactImportNormalizedInput): ContactUpsertInput {
+	return {
+		display_name: normalized.display_name,
+		given_name: normalized.given_name ?? null,
+		family_name: normalized.family_name ?? null,
+		nickname: normalized.nickname ?? null,
+		organization: normalized.organization ?? null,
+		title: normalized.title ?? null,
+		notes: normalized.notes ?? null,
+		relationship_label: normalized.relationship_label ?? null,
+		methods: (normalized.methods ?? []).map((method) => ({
+			method_type: method.method_type,
+			value: method.value,
+			label: method.label ?? null
+		}))
+	};
+}
+
+export async function commitUserContactCsvImport(params: {
+	supabase: AnySupabase;
+	userId: string;
+	rows: Array<{
+		row_number: number;
+		action: 'create_new' | 'upsert_existing';
+		normalized_input: ContactImportNormalizedInput;
+		matched_contact_id?: string;
+	}>;
+	handlers?: {
+		updateUserContact?: typeof updateUserContact;
+		createOrUpsertUserContact?: typeof createOrUpsertUserContact;
+	};
+}): Promise<ContactImportCommitResult> {
+	const { supabase, userId, rows } = params;
+	const updateContactHandler = params.handlers?.updateUserContact ?? updateUserContact;
+	const createContactHandler =
+		params.handlers?.createOrUpsertUserContact ?? createOrUpsertUserContact;
+	const requestedRows = Array.isArray(rows) ? rows : [];
+	if (requestedRows.length === 0) {
+		throw new Error('At least one import row is required');
+	}
+	if (requestedRows.length > CSV_IMPORT_MAX_ROWS) {
+		throw new Error(`Import row count exceeds ${CSV_IMPORT_MAX_ROWS}`);
+	}
+
+	const results: ContactImportCommitResult['results'] = [];
+	let importedCount = 0;
+
+	for (const row of requestedRows) {
+		const rowNumber = Number(row?.row_number ?? 0);
+		const action = row?.action;
+		const normalizedInput = row?.normalized_input;
+
+		if (!Number.isFinite(rowNumber) || rowNumber <= 0) {
+			results.push({
+				row_number: 0,
+				success: false,
+				error: 'Invalid row_number'
+			});
+			continue;
+		}
+		if (action !== 'create_new' && action !== 'upsert_existing') {
+			results.push({
+				row_number: rowNumber,
+				success: false,
+				error: 'Invalid action'
+			});
+			continue;
+		}
+		if (!normalizedInput || typeof normalizedInput !== 'object') {
+			results.push({
+				row_number: rowNumber,
+				success: false,
+				error: 'normalized_input is required'
+			});
+			continue;
+		}
+
+		try {
+			if (action === 'upsert_existing') {
+				const contactId =
+					typeof row.matched_contact_id === 'string' ? row.matched_contact_id : '';
+				if (!contactId) {
+					throw new Error('matched_contact_id is required for upsert_existing');
+				}
+
+				const { contact } = await updateContactHandler({
+					supabase,
+					userId,
+					contactId,
+					input: toContactUpsertInput(normalizedInput),
+					exposeSensitive: false
+				});
+				importedCount += 1;
+				results.push({
+					row_number: rowNumber,
+					success: true,
+					contact_id: String(contact.id ?? contactId)
+				});
+				continue;
+			}
+
+			const { contact } = await createContactHandler({
+				supabase,
+				userId,
+				input: toContactUpsertInput(normalizedInput),
+				exposeSensitive: false,
+				dedupeMode: 'strong_method_only'
+			});
+			importedCount += 1;
+			results.push({
+				row_number: rowNumber,
+				success: true,
+				contact_id: String(contact.id ?? '')
+			});
+		} catch (error) {
+			results.push({
+				row_number: rowNumber,
+				success: false,
+				error: error instanceof Error ? error.message : 'Failed to import row'
+			});
+		}
+	}
+
+	return {
+		summary: {
+			requested: requestedRows.length,
+			imported: importedCount,
+			failed: requestedRows.length - importedCount
+		},
+		results
+	};
+}
+
 export async function listUserContacts(params: {
 	supabase: AnySupabase;
 	userId: string;
@@ -613,8 +1169,9 @@ export async function createOrUpsertUserContact(params: {
 	userId: string;
 	input: ContactUpsertInput;
 	exposeSensitive?: boolean;
+	dedupeMode?: ContactUpsertDedupeMode;
 }): Promise<{ contact: Record<string, any>; created: boolean }> {
-	const { supabase, userId, input, exposeSensitive = false } = params;
+	const { supabase, userId, input, exposeSensitive = false, dedupeMode = 'default' } = params;
 	const supabaseAny = supabase as any;
 
 	const displayName = clampText(input.display_name, 240);
@@ -627,7 +1184,7 @@ export async function createOrUpsertUserContact(params: {
 		contactId = await chooseContactByStrongMethod({ supabase, userId, methods });
 	}
 
-	if (!contactId) {
+	if (!contactId && dedupeMode !== 'strong_method_only') {
 		const { data: byName, error: byNameError } = await supabaseAny
 			.from('user_contacts')
 			.select('id')

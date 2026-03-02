@@ -4,7 +4,8 @@ import { ApiResponse } from '$lib/utils/api-response';
 import {
 	createOrUpsertUserContact,
 	insertUserContactAuditEvent,
-	listUserContacts
+	listUserContacts,
+	resolveSensitiveContactExposure
 } from '$lib/server/user-contact.service';
 import { resolveProfileActorId } from '$lib/server/user-profile.service';
 
@@ -20,7 +21,14 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 	try {
 		const includeArchived = parseBool(url.searchParams.get('include_archived'));
 		const includeMethods = parseBool(url.searchParams.get('include_methods'), true);
-		const exposeSensitive = parseBool(url.searchParams.get('expose_sensitive'));
+		const requestedSensitive =
+			parseBool(url.searchParams.get('expose_sensitive')) ||
+			parseBool(url.searchParams.get('include_sensitive_values'));
+		const exposure = resolveSensitiveContactExposure({
+			includeSensitiveValues: requestedSensitive,
+			userConfirmedSensitive: parseBool(url.searchParams.get('user_confirmed_sensitive')),
+			reason: url.searchParams.get('reason')
+		});
 		const limitRaw = Number.parseInt(url.searchParams.get('limit') ?? '200', 10);
 		const limit = Number.isFinite(limitRaw) ? limitRaw : 200;
 
@@ -30,7 +38,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			userId: user.id,
 			includeArchived,
 			includeMethods,
-			exposeSensitive,
+			exposeSensitive: exposure.exposeSensitive,
 			limit
 		});
 
@@ -38,18 +46,24 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 			supabase: supabase as any,
 			userId: user.id,
 			actorId,
-			accessType: 'search',
+			accessType: includeMethods ? 'method_read' : 'search',
 			contextType: 'api',
 			reason: 'contacts_list',
 			metadata: {
 				include_archived: includeArchived,
 				include_methods: includeMethods,
-				expose_sensitive: exposeSensitive,
+				requested_sensitive_values: requestedSensitive,
+				exposed_sensitive_values: exposure.exposeSensitive,
+				reason: url.searchParams.get('reason'),
 				count: contacts.length
 			}
 		});
 
-		return ApiResponse.success({ contacts });
+		return ApiResponse.success({
+			contacts,
+			sensitive_values_exposed: exposure.exposeSensitive,
+			...(exposure.warning ? { warning: exposure.warning } : {})
+		});
 	} catch (error) {
 		console.error('[Contacts API] Failed to list contacts:', error);
 		return ApiResponse.internalError(error, 'Failed to list contacts');
@@ -67,12 +81,18 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 
 	try {
 		const actorId = await resolveProfileActorId(supabase as any, user.id);
-		const exposeSensitive = body.expose_sensitive === true;
+		const requestedSensitive =
+			body.expose_sensitive === true || body.include_sensitive_values === true;
+		const exposure = resolveSensitiveContactExposure({
+			includeSensitiveValues: requestedSensitive,
+			userConfirmedSensitive: body.user_confirmed_sensitive === true,
+			reason: typeof body.reason === 'string' ? body.reason : null
+		});
 		const { contact, created } = await createOrUpsertUserContact({
 			supabase: supabase as any,
 			userId: user.id,
 			input: body as any,
-			exposeSensitive
+			exposeSensitive: exposure.exposeSensitive
 		});
 
 		await insertUserContactAuditEvent({
@@ -88,7 +108,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		return ApiResponse.success(
 			{
 				contact,
-				created
+				created,
+				sensitive_values_exposed: exposure.exposeSensitive,
+				...(exposure.warning ? { warning: exposure.warning } : {})
 			},
 			created ? 'Contact created' : 'Contact updated'
 		);

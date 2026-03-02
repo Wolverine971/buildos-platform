@@ -145,6 +145,19 @@ type DocMeta = {
 	description: string | null;
 };
 
+function normalizeDocumentState(state: unknown): string {
+	if (typeof state !== 'string') return 'draft';
+	const normalized = state
+		.trim()
+		.toLowerCase()
+		.replace(/[\s-]+/g, '_');
+	if (!normalized) return 'draft';
+	if (normalized === 'review') return 'in_review';
+	if (normalized === 'inreview') return 'in_review';
+	if (normalized === 'archive') return 'archived';
+	return normalized;
+}
+
 async function fetchDocMeta(
 	supabase: SupabaseClient<Database>,
 	projectId: string,
@@ -462,7 +475,7 @@ export async function getDocTree(
 	const structure = parseDocStructure(project?.doc_structure);
 
 	if (!includeDocuments) {
-		return { structure, documents: {}, unlinked: [] };
+		return { structure, documents: {}, unlinked: [], archived: [] };
 	}
 
 	const documentSelect = includeContent
@@ -489,9 +502,15 @@ export async function getDocTree(
 
 	// Find unlinked documents (in DB but not in structure)
 	const structureDocIds = collectDocIds(structure.root);
-	const unlinked = typedDocs.filter((doc) => !structureDocIds.has(doc.id));
+	const archived = typedDocs.filter(
+		(doc) => normalizeDocumentState(doc.state_key) === 'archived'
+	);
+	const archivedDocIds = new Set(archived.map((doc) => doc.id));
+	const unlinked = typedDocs.filter(
+		(doc) => !archivedDocIds.has(doc.id) && !structureDocIds.has(doc.id)
+	);
 
-	return { structure, documents, unlinked };
+	return { structure, documents, unlinked, archived };
 }
 
 /**

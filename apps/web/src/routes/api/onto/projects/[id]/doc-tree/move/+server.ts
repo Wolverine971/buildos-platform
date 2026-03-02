@@ -132,6 +132,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			.select('id')
 			.eq('id', documentId)
 			.eq('project_id', id)
+			.neq('state_key', 'archived')
 			.is('deleted_at', null)
 			.maybeSingle();
 

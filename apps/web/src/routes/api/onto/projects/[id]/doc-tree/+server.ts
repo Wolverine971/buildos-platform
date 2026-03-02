@@ -165,12 +165,12 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 				? true
 				: includeDocumentsParam === 'true' || includeDocumentsParam === '1';
 
-		const { structure, documents, unlinked } = await getDocTree(supabase, id, {
+		const { structure, documents, unlinked, archived } = await getDocTree(supabase, id, {
 			includeContent,
 			includeDocuments
 		});
 
-		return ApiResponse.success({ structure, documents, unlinked });
+		return ApiResponse.success({ structure, documents, unlinked, archived });
 	} catch (error) {
 		console.error('[Doc Tree API] Unexpected GET error:', error);
 		await logOntologyApiError({
@@ -302,6 +302,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				.select('id')
 				.eq('project_id', id)
 				.in('id', structureIds)
+				.neq('state_key', 'archived')
 				.is('deleted_at', null);
 
 			if (docsError) {
@@ -325,7 +326,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			if (invalidIds.length > 0) {
 				const preview = invalidIds.slice(0, 20);
 				return ApiResponse.badRequest(
-					`Structure includes documents not in this project: ${preview.join(', ')}`,
+					`Structure includes documents that are deleted, archived, or outside this project: ${preview.join(', ')}`,
 					{
 						invalid_ids: preview,
 						count: invalidIds.length

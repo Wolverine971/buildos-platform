@@ -348,6 +348,8 @@ export interface GetDocTreeResponse {
 	documents: Record<string, OntoDocument>;
 	/** Orphaned documents not in the tree structure */
 	unlinked: OntoDocument[];
+	/** Archived documents (always shown outside the active tree) */
+	archived: OntoDocument[];
 }
 
 /**

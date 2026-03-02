@@ -48,6 +48,7 @@
 	import DocumentComparisonView from './DocumentComparisonView.svelte';
 	import DocumentVoiceNotesPanel from './DocumentVoiceNotesPanel.svelte';
 	import DocMoveModal from './doc-tree/DocMoveModal.svelte';
+	import DocDeleteConfirmModal from './doc-tree/DocDeleteConfirmModal.svelte';
 	import type { VersionListItem } from './DocumentVersionHistoryPanel.svelte';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { DocStructure, OntoDocument, GetDocTreeResponse } from '$lib/types/onto-api';
@@ -68,9 +69,11 @@
 		type DocumentExportPayload
 	} from '$lib/utils/document-export';
 	import {
+		Archive,
 		FileText,
 		Loader,
 		Save,
+		RotateCcw,
 		Trash2,
 		X,
 		Image as ImageIcon,
@@ -136,8 +139,11 @@
 	let loading = $state(false);
 	let saving = $state(false);
 	let blockingSave = $state(false);
+	let archiving = $state(false);
+	let restoring = $state(false);
 	let deleting = $state(false);
-	let deleteModalOpen = $state(false);
+	let archiveModalOpen = $state(false);
+	let permanentDeleteModalOpen = $state(false);
 	let formError = $state<string | null>(null);
 	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
 	let hasChanges = $state(false);
@@ -254,10 +260,15 @@
 	// Active document ID - prefers internal state (for newly created docs)
 	const activeDocumentId = $derived(internalDocumentId);
 
-	const stateOptions = DOCUMENT_STATES.map((state) => ({
-		value: state,
-		label: state.replace('_', ' ')
-	}));
+	const isArchivedDocument = $derived(stateKey === 'archived');
+	const stateOptions = $derived.by(() =>
+		DOCUMENT_STATES.filter((state) => state !== 'archived' || isArchivedDocument).map(
+			(state) => ({
+				value: state,
+				label: state.replace('_', ' ')
+			})
+		)
+	);
 
 	const isEditing = $derived(Boolean(activeDocumentId));
 	const documentFormId = $derived(`document-modal-${documentId ?? 'new'}`);
@@ -342,6 +353,12 @@
 	let showMoveModal = $state(false);
 	let treeLoading = $state(false);
 	let lastDocTreeLoadKey = $state<string | null>(null);
+	const activeDocTreeNode = $derived.by(() => {
+		if (!activeDocumentId || !docTreeStructure?.root) return null;
+		return findNodeById(docTreeStructure.root, activeDocumentId)?.node ?? null;
+	});
+	const archiveChildCount = $derived(activeDocTreeNode?.children?.length ?? 0);
+	const archiveHasChildren = $derived(archiveChildCount > 0);
 	type VoiceNotesPanelRef = {
 		refresh: () => void;
 		upsertVoiceNote: (note: VoiceNote) => void;
@@ -785,31 +802,110 @@
 		await performSave({ silent: false, forceVersion: true, blockingUi: true });
 	}
 
+	type ArchiveMode = 'archive_children' | 'promote_children' | 'unlink_children';
+
+	async function handleArchive(mode: ArchiveMode) {
+		if (!activeDocumentId) return;
+		try {
+			archiving = true;
+			const response = await fetch(`/api/onto/documents/${activeDocumentId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'archive',
+					archive_children_mode: mode
+				})
+			});
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to archive document');
+			}
+
+			stateKey = 'archived';
+			toastService.success('Document archived');
+			archiveModalOpen = false;
+			onSaved?.();
+			closeModal();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to archive document';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${activeDocumentId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'document',
+				entityId: activeDocumentId,
+				operation: 'document_archive'
+			});
+			toastService.error(message);
+			throw error;
+		} finally {
+			archiving = false;
+		}
+	}
+
+	async function handleRestore() {
+		if (!activeDocumentId) return;
+		try {
+			restoring = true;
+			const response = await fetch(`/api/onto/documents/${activeDocumentId}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'restore'
+				})
+			});
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to restore document');
+			}
+
+			toastService.success('Document restored');
+			onSaved?.();
+			closeModal();
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to restore document';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${activeDocumentId}`,
+				method: 'PATCH',
+				projectId,
+				entityType: 'document',
+				entityId: activeDocumentId,
+				operation: 'document_restore'
+			});
+			toastService.error(message);
+		} finally {
+			restoring = false;
+		}
+	}
+
 	async function handleDelete() {
 		if (!activeDocumentId) return;
 		try {
 			deleting = true;
 			const response = await fetch(`/api/onto/documents/${activeDocumentId}`, {
-				method: 'DELETE'
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ permanent: true })
 			});
 			const payload = await response.json().catch(() => null);
 			if (!response.ok) {
-				throw new Error(payload?.error || 'Failed to delete document');
+				throw new Error(payload?.error || 'Failed to permanently delete document');
 			}
 
-			toastService.success('Document deleted');
-			deleteModalOpen = false;
+			toastService.success('Document permanently deleted');
+			permanentDeleteModalOpen = false;
 			onDeleted?.();
 			closeModal();
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to delete document';
+			const message =
+				error instanceof Error ? error.message : 'Failed to permanently delete document';
 			void logOntologyClientError(error, {
 				endpoint: `/api/onto/documents/${activeDocumentId}`,
 				method: 'DELETE',
 				projectId,
 				entityType: 'document',
 				entityId: activeDocumentId,
-				operation: 'document_delete'
+				operation: 'document_delete_permanent'
 			});
 			toastService.error(message);
 		} finally {
@@ -1365,6 +1461,7 @@
 											bind:value={stateKey}
 											size="sm"
 											class="w-full text-xs"
+											disabled={blockingSave || isArchivedDocument}
 										>
 											{#each stateOptions as option}
 												<option value={option.value}>{option.label}</option>
@@ -1797,6 +1894,7 @@
 												bind:value={stateKey}
 												size="sm"
 												class="w-full text-xs"
+												disabled={blockingSave || isArchivedDocument}
 											>
 												{#each stateOptions as option}
 													<option value={option.value}
@@ -2063,43 +2161,67 @@
 				</div>
 
 				{#if activeDocumentId}
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onclick={() => (deleteModalOpen = true)}
-						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
-					>
-						<Trash2 class="w-3.5 h-3.5" />
-						<span class="hidden sm:inline ml-1">Delete</span>
-					</Button>
-					<!-- Move to... button -->
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onclick={openMoveModal}
-						disabled={blockingSave || treeLoading}
-						class="text-xs px-2 h-8 pressable"
-						title="Move to another location"
-					>
-						<FolderInput class="w-3.5 h-3.5" />
-						<span class="hidden sm:inline ml-1">Move</span>
-					</Button>
-					<!-- Create Child button -->
-					{#if onCreateChildRequested}
+					{#if isArchivedDocument}
 						<Button
 							type="button"
 							variant="ghost"
 							size="sm"
-							onclick={handleCreateChild}
-							disabled={blockingSave}
+							onclick={handleRestore}
+							disabled={restoring || blockingSave}
 							class="text-xs px-2 h-8 pressable"
-							title="Create child document"
 						>
-							<FilePlus class="w-3.5 h-3.5" />
-							<span class="hidden sm:inline ml-1">Add Child</span>
+							<RotateCcw class="w-3.5 h-3.5" />
+							<span class="hidden sm:inline ml-1">Restore</span>
 						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onclick={() => (permanentDeleteModalOpen = true)}
+							class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+						>
+							<Trash2 class="w-3.5 h-3.5" />
+							<span class="hidden sm:inline ml-1">Delete Permanently</span>
+						</Button>
+					{:else}
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onclick={() => (archiveModalOpen = true)}
+							class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+						>
+							<Archive class="w-3.5 h-3.5" />
+							<span class="hidden sm:inline ml-1">Archive</span>
+						</Button>
+						<!-- Move to... button -->
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							onclick={openMoveModal}
+							disabled={blockingSave || treeLoading}
+							class="text-xs px-2 h-8 pressable"
+							title="Move to another location"
+						>
+							<FolderInput class="w-3.5 h-3.5" />
+							<span class="hidden sm:inline ml-1">Move</span>
+						</Button>
+						<!-- Create Child button -->
+						{#if onCreateChildRequested}
+							<Button
+								type="button"
+								variant="ghost"
+								size="sm"
+								onclick={handleCreateChild}
+								disabled={blockingSave}
+								class="text-xs px-2 h-8 pressable"
+								title="Create child document"
+							>
+								<FilePlus class="w-3.5 h-3.5" />
+								<span class="hidden sm:inline ml-1">Add Child</span>
+							</Button>
+						{/if}
 					{/if}
 				{/if}
 			</div>
@@ -2120,7 +2242,7 @@
 					variant="primary"
 					size="sm"
 					loading={blockingSave}
-					disabled={saving || !title.trim()}
+					disabled={saving || !title.trim() || isArchivedDocument}
 					class="text-xs h-8 pressable tx tx-grain tx-weak wt-card"
 				>
 					<Save class="w-3.5 h-3.5" />
@@ -2131,21 +2253,32 @@
 	{/snippet}
 </Modal>
 
+{#if activeDocumentId}
+	<DocDeleteConfirmModal
+		isOpen={archiveModalOpen}
+		documentTitle={title || 'Untitled'}
+		hasChildren={archiveHasChildren}
+		childCount={archiveChildCount}
+		onClose={() => (archiveModalOpen = false)}
+		onDelete={handleArchive}
+	/>
+{/if}
+
 <ConfirmationModal
-	isOpen={deleteModalOpen}
-	title="Delete document"
-	confirmText="Delete document"
+	isOpen={permanentDeleteModalOpen}
+	title="Delete archived document"
+	confirmText="Delete permanently"
 	confirmVariant="danger"
 	loading={deleting}
 	loadingText="Deleting..."
 	icon="danger"
 	onconfirm={handleDelete}
-	oncancel={() => (deleteModalOpen = false)}
+	oncancel={() => (permanentDeleteModalOpen = false)}
 >
 	{#snippet content()}
 		<p class="text-sm text-muted-foreground">
-			This action permanently removes the document and its history. Agents will lose access to
-			this context.
+			This permanently removes the archived document and its version history. This cannot be
+			undone.
 		</p>
 	{/snippet}
 </ConfirmationModal>

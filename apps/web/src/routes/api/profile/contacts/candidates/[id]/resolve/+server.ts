@@ -3,6 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	insertUserContactAuditEvent,
+	resolveSensitiveContactExposure,
 	resolveUserContactMergeCandidate
 } from '$lib/server/user-contact.service';
 import { resolveProfileActorId } from '$lib/server/user-profile.service';
@@ -34,7 +35,14 @@ export const POST: RequestHandler = async ({
 
 	try {
 		const actorId = await resolveProfileActorId(supabase as any, user.id);
-		const exposeSensitive = (body as any).expose_sensitive === true;
+		const requestedSensitive =
+			(body as any).expose_sensitive === true ||
+			(body as any).include_sensitive_values === true;
+		const exposure = resolveSensitiveContactExposure({
+			includeSensitiveValues: requestedSensitive,
+			userConfirmedSensitive: (body as any).user_confirmed_sensitive === true,
+			reason: typeof (body as any).reason === 'string' ? (body as any).reason : null
+		});
 
 		const { candidate } = await resolveUserContactMergeCandidate({
 			supabase: supabase as any,
@@ -42,7 +50,7 @@ export const POST: RequestHandler = async ({
 			candidateId,
 			action,
 			actorId,
-			exposeSensitive
+			exposeSensitive: exposure.exposeSensitive
 		});
 
 		await insertUserContactAuditEvent({
@@ -56,7 +64,14 @@ export const POST: RequestHandler = async ({
 			metadata: { candidate_id: candidateId }
 		});
 
-		return ApiResponse.success({ candidate }, 'Merge candidate resolved');
+		return ApiResponse.success(
+			{
+				candidate,
+				sensitive_values_exposed: exposure.exposeSensitive,
+				...(exposure.warning ? { warning: exposure.warning } : {})
+			},
+			'Merge candidate resolved'
+		);
 	} catch (error) {
 		console.error('[Contacts API] Failed to resolve merge candidate:', error);
 		return ApiResponse.internalError(error, 'Failed to resolve merge candidate');

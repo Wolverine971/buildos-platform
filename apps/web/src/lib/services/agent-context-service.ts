@@ -599,8 +599,11 @@ export class AgentContextService {
 		return `Quick clarification before I continue: are ${primary} and ${secondary} the same person?`;
 	}
 
-	private formatContactCandidateDescriptor(contact: Record<string, any> | null | undefined): string {
-		const displayNameRaw = typeof contact?.display_name === 'string' ? contact.display_name : '';
+	private formatContactCandidateDescriptor(
+		contact: Record<string, any> | null | undefined
+	): string {
+		const displayNameRaw =
+			typeof contact?.display_name === 'string' ? contact.display_name : '';
 		const displayName = displayNameRaw.trim() || 'this contact';
 		const methods = Array.isArray(contact?.methods) ? contact.methods : [];
 		const primaryMethod = methods.find((method) => method?.is_primary === true) ?? methods[0];

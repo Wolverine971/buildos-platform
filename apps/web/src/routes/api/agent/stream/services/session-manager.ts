@@ -186,7 +186,8 @@ export class SessionManager {
 				sessionId,
 				hasOntologyCache: !!metadata.ontologyCache,
 				clarificationRound: metadata.projectClarification?.roundNumber,
-				contactClarificationPending: metadata.contactClarification?.awaitingResponse === true
+				contactClarificationPending:
+					metadata.contactClarification?.awaitingResponse === true
 			});
 		}
 	}

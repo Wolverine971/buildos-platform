@@ -117,7 +117,9 @@ describe('AgentChatOrchestrator (flexible loop)', () => {
 				totalTokens: 0,
 				hasOntology: false,
 				contactClarification: {
-					questions: ['Are "Stacy" (phone: ***1234) and "Stacy" (email: s***@x.com) the same person?'],
+					questions: [
+						'Are "Stacy" (phone: ***1234) and "Stacy" (email: s***@x.com) the same person?'
+					],
 					candidateIds: ['candidate_123']
 				}
 			}

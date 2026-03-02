@@ -340,7 +340,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 							projectId: docStructureProjectId,
 							structure: tree.structure,
 							documents: {},
-							unlinked: []
+							unlinked: [],
+							archived: []
 						};
 					} catch (error) {
 						logger.warn('Doc structure prewarm failed', {

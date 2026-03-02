@@ -876,7 +876,8 @@ export class StreamHandler {
 				askedAt: new Date().toISOString(),
 				cooldownUntil: null,
 				ignoredCount:
-					typeof existing?.ignoredCount === 'number' && Number.isFinite(existing.ignoredCount)
+					typeof existing?.ignoredCount === 'number' &&
+					Number.isFinite(existing.ignoredCount)
 						? existing.ignoredCount
 						: 0,
 				lastResolvedCandidateId: existing?.lastResolvedCandidateId,
@@ -884,7 +885,11 @@ export class StreamHandler {
 				lastResolvedAt: existing?.lastResolvedAt
 			};
 
-			this.persistContactClarificationMetadata(state, sessionMetadata, updatedContactClarification);
+			this.persistContactClarificationMetadata(
+				state,
+				sessionMetadata,
+				updatedContactClarification
+			);
 			logger.debug('Contact clarification metadata updated in memory', {
 				sessionId,
 				candidateCount: contactCandidateIds.length
@@ -997,7 +1002,8 @@ export class StreamHandler {
 		}
 
 		const ignoredCount =
-			typeof clarification.ignoredCount === 'number' && Number.isFinite(clarification.ignoredCount)
+			typeof clarification.ignoredCount === 'number' &&
+			Number.isFinite(clarification.ignoredCount)
 				? clarification.ignoredCount
 				: 0;
 		const cooldownMs = 10 * 60 * 1000;
@@ -1192,7 +1198,8 @@ export class StreamHandler {
 				projectId,
 				structure: tree.structure,
 				documents: {},
-				unlinked: []
+				unlinked: [],
+				archived: []
 			};
 
 			sessionMetadata.docStructureCache = cache;
