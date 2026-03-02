@@ -61,6 +61,13 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import {
+		exportDocumentAsDocx,
+		exportDocumentAsHtml,
+		exportDocumentAsPdf,
+		type DocumentExportFormat,
+		type DocumentExportPayload
+	} from '$lib/utils/document-export';
+	import {
 		FileText,
 		Loader,
 		Save,
@@ -76,7 +83,8 @@
 		Check,
 		AlertTriangle,
 		LoaderCircle,
-		MessageSquare
+		MessageSquare,
+		Download
 	} from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { untrack, type Component } from 'svelte';
@@ -296,6 +304,7 @@
 	let showChatModal = $state(false);
 	let showMobileMetadata = $state(false);
 	let showImageInsertModal = $state(false);
+	let exportingFormat = $state<DocumentExportFormat | null>(null);
 
 	// Left panel collapsible sections
 	let showLinkedEntities = $state(true);
@@ -805,6 +814,57 @@
 			toastService.error(message);
 		} finally {
 			deleting = false;
+		}
+	}
+
+	function buildExportPayload(): DocumentExportPayload {
+		return {
+			title: title.trim() || 'Untitled Document',
+			description: description.trim() || null,
+			markdown: body || '',
+			stateKey,
+			updatedAt
+		};
+	}
+
+	async function handleExport(format: DocumentExportFormat) {
+		if (exportingFormat) return;
+
+		try {
+			exportingFormat = format;
+			const payload = buildExportPayload();
+
+			if (format === 'docx') {
+				exportDocumentAsDocx(payload);
+				toastService.success('DOCX export downloaded');
+				return;
+			}
+
+			if (format === 'html') {
+				exportDocumentAsHtml(payload);
+				toastService.success('HTML export downloaded');
+				return;
+			}
+
+			const opened = exportDocumentAsPdf(payload);
+			if (!opened) {
+				throw new Error('Popup blocked. Allow popups and try PDF export again.');
+			}
+			toastService.success('Print opened. Choose "Save as PDF" in your browser.');
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to export document';
+			void logOntologyClientError(error, {
+				endpoint: '/document/export',
+				method: 'CLIENT',
+				projectId,
+				entityType: 'document',
+				entityId: activeDocumentId ?? undefined,
+				operation: 'document_export',
+				metadata: { format }
+			});
+			toastService.error(message);
+		} finally {
+			exportingFormat = null;
 		}
 	}
 
@@ -1966,7 +2026,42 @@
 		<div
 			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 		>
-			<div class="flex items-center gap-1">
+			<div class="flex items-center gap-2 flex-wrap">
+				<div
+					class="inline-flex items-center rounded-md border border-border bg-card shadow-ink overflow-hidden tx tx-grain tx-weak wt-paper"
+				>
+					<button
+						type="button"
+						onclick={() => handleExport('docx')}
+						disabled={blockingSave || loading || exportingFormat !== null}
+						class="h-8 px-2.5 text-xs font-medium text-foreground hover:bg-muted transition-colors pressable disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+						title="Export as DOCX"
+					>
+						<Download class="w-3.5 h-3.5" />
+						<span>DOCX</span>
+					</button>
+					<div class="w-px h-5 bg-border"></div>
+					<button
+						type="button"
+						onclick={() => handleExport('html')}
+						disabled={blockingSave || loading || exportingFormat !== null}
+						class="h-8 px-2.5 text-xs font-medium text-foreground hover:bg-muted transition-colors pressable disabled:opacity-50 disabled:cursor-not-allowed"
+						title="Export as HTML"
+					>
+						HTML
+					</button>
+					<div class="w-px h-5 bg-border"></div>
+					<button
+						type="button"
+						onclick={() => handleExport('pdf')}
+						disabled={blockingSave || loading || exportingFormat !== null}
+						class="h-8 px-2.5 text-xs font-medium text-foreground hover:bg-muted transition-colors pressable disabled:opacity-50 disabled:cursor-not-allowed"
+						title="Export as PDF"
+					>
+						PDF
+					</button>
+				</div>
+
 				{#if activeDocumentId}
 					<Button
 						type="button"
@@ -2006,8 +2101,6 @@
 							<span class="hidden sm:inline ml-1">Add Child</span>
 						</Button>
 					{/if}
-				{:else}
-					<div></div>
 				{/if}
 			</div>
 			<div class="flex items-center gap-2">

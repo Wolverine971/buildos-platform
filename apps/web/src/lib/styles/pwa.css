@@ -1,18 +1,9 @@
 /* apps/web/src/lib/styles/pwa.css */
 
-/* Safe area adjustments for devices with notches */
-.pwa-installed {
-	padding-top: env(safe-area-inset-top);
-	padding-left: env(safe-area-inset-left);
-	padding-right: env(safe-area-inset-right);
-	padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* Adjust header/navigation for PWA */
-.pwa-installed header,
-.pwa-installed nav {
-	/* Add extra padding for status bar on iOS */
-	padding-top: calc(1rem + env(safe-area-inset-top));
+/* Safe-area handling for installed PWAs.
+   Side insets are already handled globally in app/layout styles. */
+.pwa-installed [data-fixed-element] {
+	padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* Bottom navigation adjustments for home indicator */
