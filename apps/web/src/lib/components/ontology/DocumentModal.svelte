@@ -1859,6 +1859,64 @@
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
+				<!-- Export button -->
+				<div class="relative" bind:this={exportMenuRef}>
+					<button
+						type="button"
+						onclick={(event) => {
+							event.stopPropagation();
+							showExportMenu = !showExportMenu;
+						}}
+						disabled={blockingSave || loading || exportingFormat !== null}
+						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+						title="Export document"
+						aria-haspopup="menu"
+						aria-expanded={showExportMenu}
+					>
+						<Download class="w-4 h-4" />
+					</button>
+
+					{#if showExportMenu}
+						<div
+							class="absolute right-0 top-full mt-1 z-50 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
+							role="menu"
+							onclick={(event) => event.stopPropagation()}
+							onkeydown={(event) => {
+								if (event.key === 'Escape') {
+									showExportMenu = false;
+								}
+							}}
+						>
+							<button
+								type="button"
+								onclick={() => handleExport('docx')}
+								disabled={exportingFormat !== null}
+								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								role="menuitem"
+							>
+								Export as DOCX
+							</button>
+							<button
+								type="button"
+								onclick={() => handleExport('html')}
+								disabled={exportingFormat !== null}
+								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								role="menuitem"
+							>
+								Export as HTML
+							</button>
+							<button
+								type="button"
+								onclick={() => handleExport('pdf')}
+								disabled={exportingFormat !== null}
+								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+								role="menuitem"
+							>
+								Export as PDF
+							</button>
+						</div>
+					{/if}
+				</div>
 				<!-- Chat about this document button -->
 				{#if isEditing}
 					<button
@@ -2320,6 +2378,24 @@
 											</div>
 										{/if}
 									</div>
+
+									<!-- Move to... button -->
+									{#if !isArchivedDocument}
+										<div class="pt-2 border-t border-border">
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												onclick={openMoveModal}
+												disabled={blockingSave || treeLoading}
+												class="w-full text-xs justify-start px-2 h-8 pressable"
+												title="Move to another location"
+											>
+												<FolderInput class="w-3.5 h-3.5" />
+												<span class="ml-1">Move to...</span>
+											</Button>
+										</div>
+									{/if}
 								{/if}
 							</div>
 						</div>
@@ -2344,19 +2420,6 @@
 									onNavigate={handleComparisonNavigate}
 								/>
 							{:else}
-								<!-- Mobile: Compact title input + date/save status -->
-								<div class="lg:hidden p-3 pb-0 shrink-0">
-									<TextInput
-										id="document-title-mobile"
-										bind:value={title}
-										required
-										placeholder="Document title..."
-										aria-label="Document title"
-										class="text-base font-semibold border-none bg-transparent p-0 focus:ring-0"
-										disabled={blockingSave}
-									/>
-								</div>
-
 								<!-- Content editor - the main focus -->
 								<div class="px-3 pt-2 pb-1 flex-1 flex flex-col min-h-0">
 									<div
@@ -2647,6 +2710,24 @@
 														<span class="text-xs font-mono text-foreground truncate text-right">{activeDocumentId}</span>
 													</div>
 												</div>
+
+												<!-- Move to... button -->
+												{#if !isArchivedDocument}
+													<div class="pt-2 border-t border-border">
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															onclick={openMoveModal}
+															disabled={blockingSave || treeLoading}
+															class="w-full text-xs justify-start px-2 h-8 pressable"
+															title="Move to another location"
+														>
+															<FolderInput class="w-3.5 h-3.5" />
+															<span class="ml-1">Move to...</span>
+														</Button>
+													</div>
+												{/if}
 											{/if}
 
 										<!-- Links tab content -->
@@ -2827,71 +2908,6 @@
 			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 		>
 			<div class="flex items-center gap-2 flex-wrap">
-				<div class="relative" bind:this={exportMenuRef}>
-					<Button
-						type="button"
-						variant="ghost"
-						size="sm"
-						onclick={(event) => {
-							event.stopPropagation();
-							showExportMenu = !showExportMenu;
-						}}
-						disabled={blockingSave || loading || exportingFormat !== null}
-						class="text-xs px-2 h-8 pressable inline-flex items-center gap-1"
-						aria-haspopup="menu"
-						aria-expanded={showExportMenu}
-					>
-						<Download class="w-3.5 h-3.5" />
-						<span class="hidden sm:inline">Export</span>
-						<ChevronDown
-							class="w-3.5 h-3.5 transition-transform duration-150 {showExportMenu
-								? 'rotate-180'
-								: ''}"
-						/>
-					</Button>
-
-					{#if showExportMenu}
-						<div
-							class="absolute left-0 bottom-full mb-1 z-50 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
-							role="menu"
-							onclick={(event) => event.stopPropagation()}
-							onkeydown={(event) => {
-								if (event.key === 'Escape') {
-									showExportMenu = false;
-								}
-							}}
-						>
-							<button
-								type="button"
-								onclick={() => handleExport('docx')}
-								disabled={exportingFormat !== null}
-								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-								role="menuitem"
-							>
-								Export as DOCX
-							</button>
-							<button
-								type="button"
-								onclick={() => handleExport('html')}
-								disabled={exportingFormat !== null}
-								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-								role="menuitem"
-							>
-								Export as HTML
-							</button>
-							<button
-								type="button"
-								onclick={() => handleExport('pdf')}
-								disabled={exportingFormat !== null}
-								class="w-full px-3 py-2 text-left text-xs font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-								role="menuitem"
-							>
-								Export as PDF
-							</button>
-						</div>
-					{/if}
-				</div>
-
 				{#if activeDocumentId}
 					{#if isArchivedDocument}
 						<Button
@@ -2926,19 +2942,6 @@
 							<Archive class="w-3.5 h-3.5" />
 							<span class="hidden sm:inline ml-1">Archive</span>
 						</Button>
-						<!-- Move to... button -->
-						<Button
-							type="button"
-							variant="ghost"
-							size="sm"
-							onclick={openMoveModal}
-							disabled={blockingSave || treeLoading}
-							class="text-xs px-2 h-8 pressable"
-							title="Move to another location"
-						>
-							<FolderInput class="w-3.5 h-3.5" />
-							<span class="hidden sm:inline ml-1">Move</span>
-						</Button>
 						<!-- Create Child button -->
 						{#if onCreateChildRequested}
 							<Button
@@ -2964,7 +2967,7 @@
 					size="sm"
 					onclick={closeModal}
 					disabled={blockingSave}
-					class="text-xs h-8 pressable"
+					class="hidden sm:inline-flex text-xs h-8 pressable"
 				>
 					Cancel
 				</Button>
