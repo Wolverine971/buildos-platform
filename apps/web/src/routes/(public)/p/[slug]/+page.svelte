@@ -1,9 +1,20 @@
 <!-- apps/web/src/routes/(public)/p/[slug]/+page.svelte -->
 <script lang="ts">
+	import { onMount, tick } from 'svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
 
 	let { data } = $props();
+
+	// Scroll to hash anchor on page load (SvelteKit renders after hydration)
+	onMount(async () => {
+		const hash = window.location.hash;
+		if (hash) {
+			await tick();
+			const el = document.querySelector(hash);
+			el?.scrollIntoView({ behavior: 'smooth' });
+		}
+	});
 	const page = data.page;
 
 	const title = page.title || 'Public Page';
@@ -120,3 +131,15 @@
 		</footer>
 	</div>
 </main>
+
+<style>
+	/* Offset anchors so headings don't hide behind the top edge */
+	main :global(h1[id]),
+	main :global(h2[id]),
+	main :global(h3[id]),
+	main :global(h4[id]),
+	main :global(h5[id]),
+	main :global(h6[id]) {
+		scroll-margin-top: 1.5rem;
+	}
+</style>

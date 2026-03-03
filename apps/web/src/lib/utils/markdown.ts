@@ -1,6 +1,10 @@
 // apps/web/src/lib/utils/markdown.ts
 import { marked } from 'marked';
+import { gfmHeadingId } from 'marked-gfm-heading-id';
 import sanitizeHtml from 'sanitize-html';
+
+// Enable heading IDs for anchor links (marked v16+ dropped them by default)
+marked.use(gfmHeadingId());
 
 // Configure marked with useful options
 marked.setOptions({
@@ -42,8 +46,14 @@ const sanitizeOptions = {
 		'td'
 	],
 	allowedAttributes: {
-		a: ['href', 'title', 'target'],
+		a: ['href', 'title', 'target', 'rel'],
 		img: ['src', 'alt', 'title', 'width', 'height'],
+		h1: ['id'],
+		h2: ['id'],
+		h3: ['id'],
+		h4: ['id'],
+		h5: ['id'],
+		h6: ['id'],
 		code: ['class'],
 		pre: ['class']
 	},
