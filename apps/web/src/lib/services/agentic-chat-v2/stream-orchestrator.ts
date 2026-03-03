@@ -1561,6 +1561,7 @@ function buildToolValidationRepairInstruction(
 		'One or more tool calls failed validation.',
 		'Do not guess or fabricate IDs. Never use placeholders.',
 		'Never truncate, abbreviate, or elide IDs (no "...", prefixes, or short forms).',
+		'Tool calls are executed exactly as emitted. Return strict JSON arguments with concrete final values only.',
 		'Return only corrected tool calls with arguments. Do not include prose.',
 		'If a required value is missing, ask a clarifying question instead of calling a tool.'
 	];
@@ -1584,10 +1585,10 @@ function buildToolValidationRepairInstruction(
 			'Update contract: onto.<entity>.update requires args.<entity>_id plus at least one field to change.'
 		);
 		lines.push(
-			'Example valid update: tool_exec({ op: "onto.task.update", args: { task_id: "<task_id_uuid>", title: "Updated title" } }).'
+			'Example valid update: tool_exec({ op: "onto.task.update", args: { task_id: "11111111-1111-4111-8111-111111111111", title: "Updated title" } }).'
 		);
 		lines.push(
-			'Example valid document update: tool_exec({ op: "onto.document.update", args: { document_id: "<document_id_uuid>", content: "<markdown content>" } }).'
+			'Example valid document update: tool_exec({ op: "onto.document.update", args: { document_id: "22222222-2222-4222-8222-222222222222", content: "Updated markdown content" } }).'
 		);
 		lines.push(
 			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'

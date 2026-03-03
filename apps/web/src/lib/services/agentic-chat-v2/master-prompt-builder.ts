@@ -25,7 +25,10 @@ const RESPONSE_PATTERN = `CRITICAL: Always respond to the user with text BEFORE 
 Keep the lead-in short (1-2 sentences), then make your tool calls.
 Never output scratchpad/self-correction text (for example: "No, fix args", partial JSON, or internal notes).
 After tool calls complete, summarize what happened and surface any follow-ups.`;
-const OPERATIONAL_GUIDELINES = `Use tools for data retrieval and mutations. Always pass valid tool arguments; do not guess. Reuse provided context and agent_state to avoid redundant tool calls. Never truncate, abbreviate, or elide IDs in tool arguments (no "...", prefixes, or short forms). For any *_id or entity_id argument, pass the full exact UUID returned by tools. When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.`;
+const OPERATIONAL_GUIDELINES = `Use tools for data retrieval and mutations. Always pass valid tool arguments; do not guess. Reuse provided context and agent_state to avoid redundant tool calls. Never truncate, abbreviate, or elide IDs in tool arguments (no "...", prefixes, or short forms). For any *_id or entity_id argument, pass the full exact UUID returned by tools. When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.
+Tool calls are executed exactly as emitted. Arguments must be strict JSON with concrete final values.
+Never use placeholders or symbolic tokens in arguments (for example "__TASK_ID_FROM_ABOVE__", "<task_id_uuid>", "REPLACE_ME", "TBD").
+If a required value is unknown (especially any *_id), do not emit a write call that depends on it. Fetch the value first with read/list/search tools or ask one concise clarifying question.`;
 const TOOL_DISCOVERY_GUIDE = [
 	'Tool discovery mode is enabled.',
 	'- You only have access to tool_help and tool_exec.',
@@ -39,13 +42,16 @@ const TOOL_DISCOVERY_GUIDE = [
 	'- Path heuristic: tasks -> onto.task, documents -> onto.document, goals -> onto.goal, plans -> onto.plan, milestones -> onto.milestone, risks -> onto.risk, calendar -> cal.event, user profile -> util.profile.',
 	'- User profile context is NOT preloaded. If personalization is needed, call tool_help("util.profile") and then util.profile.overview.',
 	'- Gateway payload contract: tool_help({ path: "<path>" }) and tool_exec({ op: "<canonical op>", args: { ... } }).',
+	'- Tool calls are executed as-is. tool_exec.args must be valid JSON with concrete final values only.',
+	'- Never use placeholders or symbolic tokens in op/args (for example "__TASK_ID_FROM_ABOVE__", "<task_id_uuid>", "REPLACE_ME", "TBD").',
 	'- Never call tool_exec with {} or with missing op/args.',
 	'- CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.',
 	'- Update contract: onto.<entity>.update requires args.<entity>_id plus at least one field to change.',
-	'- Example update task: tool_exec({ op: "onto.task.update", args: { task_id: "<task_id_uuid>", title: "Updated title" } }).',
-	'- Example update document: tool_exec({ op: "onto.document.update", args: { document_id: "<document_id_uuid>", content: "<markdown content>" } }).',
-	'- Example delete plan: tool_exec({ op: "onto.plan.delete", args: { plan_id: "<plan_id_uuid>" } }).',
+	'- Example update task: tool_exec({ op: "onto.task.update", args: { task_id: "11111111-1111-4111-8111-111111111111", title: "Updated title" } }).',
+	'- Example update document: tool_exec({ op: "onto.document.update", args: { document_id: "22222222-2222-4222-8222-222222222222", content: "Updated markdown content" } }).',
+	'- Example delete plan: tool_exec({ op: "onto.plan.delete", args: { plan_id: "33333333-3333-4333-8333-333333333333" } }).',
 	'- If IDs are unknown, run list/search/tree ops first and extract IDs from tool results before writes.',
+	'- Do not emit dependent write calls that require an ID from another call in the same response unless the ID is already known in context.',
 	'- When op and args are already known in-turn, call tool_exec directly; do not re-run the same tool_help path.',
 	'- For first-time or complex writes in a turn, call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.',
 	'- When you call tool_exec, pass op and args exactly as described by tool_help.',

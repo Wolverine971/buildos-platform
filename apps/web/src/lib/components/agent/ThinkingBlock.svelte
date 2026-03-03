@@ -214,7 +214,7 @@
 						{:else}
 							{@const style = getActivityStyle(activity.activityType)}
 							<div class="py-0.5">
-								<div class="flex items-start gap-1.5 leading-snug sm:items-center">
+								<div class="flex gap-1.5 leading-snug items-center">
 									<!-- Icon -->
 									<span
 										class="shrink-0 pt-0.5 text-[0.65rem] {style.color} sm:pt-0"
