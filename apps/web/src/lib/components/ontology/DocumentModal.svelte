@@ -1766,7 +1766,7 @@
 	closeOnBackdrop={false}
 	closeOnEscape={!blockingSave}
 	showCloseButton={false}
-	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container sm:!max-h-[95dvh]"
+	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container !max-h-[100dvh] !h-[100dvh] sm:!h-auto sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header with strip texture -->
