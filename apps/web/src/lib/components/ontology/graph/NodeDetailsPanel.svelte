@@ -28,7 +28,8 @@
 		CalendarDays,
 		Lightbulb,
 		Shield,
-		BookOpen
+		BookOpen,
+		Layers
 	} from 'lucide-svelte';
 	import type { GraphNode, NodeType } from './lib/graph.types';
 
