@@ -990,7 +990,16 @@
 
 	<!-- Mobile action bar: Visible only on portrait phones (< 480px) -->
 	<!-- z-10 ensures buttons are ALWAYS clickable above any overlays -->
-	<div class="relative z-10 mt-2 flex items-center justify-end gap-2 xs:hidden">
+	<div class="relative z-10 mt-2 flex items-center gap-2 xs:hidden">
+		<!-- Mobile hint text (left-aligned, pushes buttons right) -->
+		<span class="flex-1 text-xs text-muted-foreground p-2">
+			{#if enableVoice && !voiceBlocked}
+				Tap send or use voice
+			{:else}
+				Tap send
+			{/if}
+		</span>
+
 		<!-- Voice recording button for mobile (larger touch target) -->
 		{#if enableVoice}
 			<button
@@ -1021,7 +1030,7 @@
 	{#if showStatusRow}
 		<!-- Status row: hints, status indicators, and action buttons -->
 		<div class="mt-1 px-1 pb-1">
-			<div class="flex flex-wrap items-end justify-between gap-2">
+			<div class="flex flex-wrap items-center justify-between gap-2">
 				<!-- Left side: Status indicators and keyboard hints -->
 				<div class="flex flex-wrap items-center gap-1.5">
 					{#if enableVoice && isCurrentlyRecording}
@@ -1085,8 +1094,8 @@
 							>
 							<span class="ml-1">new line</span>
 						</span>
-						<!-- Mobile hint: conditional on voice availability -->
-						<span class="text-xs text-muted-foreground md:hidden">
+						<!-- Mobile hint: visible between xs and md (below xs it's in the mobile action bar) -->
+						<span class="hidden text-xs text-muted-foreground xs:inline md:hidden">
 							{#if enableVoice && !voiceBlocked}
 								Tap send or use voice
 							{:else}

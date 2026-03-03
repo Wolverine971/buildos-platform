@@ -341,7 +341,7 @@ BEGIN
         INNER JOIN project_ids p ON p.id = t.project_id
         WHERE t.deleted_at IS NULL
           AND t.due_at < v_now
-          AND COALESCE(t.state_key, '') NOT IN ('done', 'completed', 'canceled', 'cancelled', 'archived')
+          AND t.state_key IN ('todo', 'in_progress', 'blocked')
       ) AS overdue_tasks,
       (
         SELECT COUNT(*)::int

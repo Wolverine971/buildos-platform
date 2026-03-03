@@ -2528,14 +2528,23 @@
 							{/if}
 
 							<!-- Mobile: Tabbed bottom panel -->
-							<div class="lg:hidden flex-shrink-0 border-t border-border bg-muted tx tx-strip tx-weak wt-paper">
+							<div
+								class="lg:hidden flex-shrink-0 border-t border-border bg-muted tx tx-strip tx-weak wt-paper"
+							>
 								<!-- Tab bar - always visible -->
-								<div class="flex items-center gap-1 px-2 py-1.5 overflow-x-auto scrollbar-hide">
+								<div
+									class="flex items-center gap-1 px-2 py-1.5 overflow-x-auto scrollbar-hide"
+								>
 									<!-- Details tab -->
 									<button
 										type="button"
-										onclick={() => (activeMobileTab = activeMobileTab === 'details' ? null : 'details')}
-										class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab === 'details' ? 'bg-card shadow-ink text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
+										onclick={() =>
+											(activeMobileTab =
+												activeMobileTab === 'details' ? null : 'details')}
+										class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
+										'details'
+											? 'bg-card shadow-ink text-foreground'
+											: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
 									>
 										<Settings2 class="w-3.5 h-3.5" />
 										Details
@@ -2545,13 +2554,20 @@
 									{#if isEditing && activeDocumentId}
 										<button
 											type="button"
-											onclick={() => (activeMobileTab = activeMobileTab === 'links' ? null : 'links')}
-											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab === 'links' ? 'bg-card shadow-ink text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
+											onclick={() =>
+												(activeMobileTab =
+													activeMobileTab === 'links' ? null : 'links')}
+											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
+											'links'
+												? 'bg-card shadow-ink text-foreground'
+												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
 										>
 											<Link class="w-3.5 h-3.5" />
 											Links
 											{#if linkedCount + tagCount > 0}
-												<span class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-[0.55rem] font-bold bg-accent/20 text-accent rounded-full">
+												<span
+													class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-[0.55rem] font-bold bg-accent/20 text-accent rounded-full"
+												>
 													{linkedCount + tagCount}
 												</span>
 											{/if}
@@ -2560,8 +2576,13 @@
 										<!-- Media tab -->
 										<button
 											type="button"
-											onclick={() => (activeMobileTab = activeMobileTab === 'media' ? null : 'media')}
-											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab === 'media' ? 'bg-card shadow-ink text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
+											onclick={() =>
+												(activeMobileTab =
+													activeMobileTab === 'media' ? null : 'media')}
+											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
+											'media'
+												? 'bg-card shadow-ink text-foreground'
+												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
 										>
 											<ImageIcon class="w-3.5 h-3.5" />
 											Media
@@ -2570,8 +2591,15 @@
 										<!-- History tab -->
 										<button
 											type="button"
-											onclick={() => (activeMobileTab = activeMobileTab === 'history' ? null : 'history')}
-											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab === 'history' ? 'bg-card shadow-ink text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
+											onclick={() =>
+												(activeMobileTab =
+													activeMobileTab === 'history'
+														? null
+														: 'history')}
+											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
+											'history'
+												? 'bg-card shadow-ink text-foreground'
+												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
 										>
 											<Clock class="w-3.5 h-3.5" />
 											History
@@ -2580,13 +2608,22 @@
 										<!-- Comments tab -->
 										<button
 											type="button"
-											onclick={() => (activeMobileTab = activeMobileTab === 'comments' ? null : 'comments')}
-											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab === 'comments' ? 'bg-card shadow-ink text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
+											onclick={() =>
+												(activeMobileTab =
+													activeMobileTab === 'comments'
+														? null
+														: 'comments')}
+											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
+											'comments'
+												? 'bg-card shadow-ink text-foreground'
+												: 'text-muted-foreground hover:text-foreground hover:bg-card/50'}"
 										>
 											<MessageSquare class="w-3.5 h-3.5" />
 											Comments
 											{#if commentsCount > 0}
-												<span class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-[0.55rem] font-bold bg-accent/20 text-accent rounded-full">
+												<span
+													class="inline-flex items-center justify-center min-w-[1rem] h-3.5 px-1 text-[0.55rem] font-bold bg-accent/20 text-accent rounded-full"
+												>
 													{commentsCount}
 												</span>
 											{/if}
@@ -2596,7 +2633,9 @@
 
 								<!-- Tab content panel -->
 								{#if activeMobileTab}
-									<div class="max-h-[40vh] overflow-y-auto border-t border-border/50 p-3 space-y-3 tx tx-frame tx-weak">
+									<div
+										class="max-h-[40vh] overflow-y-auto border-t border-border/50 p-3 space-y-3 tx tx-frame tx-weak"
+									>
 										<!-- Details tab content -->
 										{#if activeMobileTab === 'details'}
 											<FormField
@@ -2627,7 +2666,9 @@
 													disabled={blockingSave || isArchivedDocument}
 												>
 													{#each stateOptions as option}
-														<option value={option.value}>{option.label}</option>
+														<option value={option.value}
+															>{option.label}</option
+														>
 													{/each}
 												</Select>
 											</FormField>
@@ -2635,18 +2676,34 @@
 											{#if isEditing && activeDocumentId}
 												<div class="pt-2 border-t border-border space-y-2">
 													{#if publicPageLoading}
-														<div class="flex items-center gap-2 text-xs text-muted-foreground">
-															<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
-															<span>Loading public page state...</span>
+														<div
+															class="flex items-center gap-2 text-xs text-muted-foreground"
+														>
+															<LoaderCircle
+																class="w-3.5 h-3.5 animate-spin"
+															/>
+															<span>Loading public page state...</span
+															>
 														</div>
 													{:else if isLiveDocument && publicPageState}
-														<div class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2.5 py-2 space-y-1.5">
-															<p class="micro-label text-emerald-900">LIVE DOCUMENT</p>
-															<p class="text-[11px] leading-snug text-emerald-800">
-																Saving updates publishes this page immediately.
+														<div
+															class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2.5 py-2 space-y-1.5"
+														>
+															<p class="micro-label text-emerald-900">
+																LIVE DOCUMENT
 															</p>
-															<div class="flex items-center justify-between gap-2">
-																<span class="text-[11px] text-emerald-900 font-mono truncate">
+															<p
+																class="text-[11px] leading-snug text-emerald-800"
+															>
+																Saving updates publishes this page
+																immediately.
+															</p>
+															<div
+																class="flex items-center justify-between gap-2"
+															>
+																<span
+																	class="text-[11px] text-emerald-900 font-mono truncate"
+																>
 																	{publicPageUrlPath}
 																</span>
 																<button
@@ -2665,26 +2722,38 @@
 															variant="outline"
 															size="sm"
 															onclick={handleMakeDocumentPublic}
-															disabled={blockingSave || publicPageActionLoading || isArchivedDocument}
+															disabled={blockingSave ||
+																publicPageActionLoading ||
+																isArchivedDocument}
 															class="w-full text-xs justify-center"
 														>
 															<Globe class="w-3.5 h-3.5" />
 															<span class="ml-1">
-																{publicPageState ? 'Update Public Page' : 'Make This Document Public'}
+																{publicPageState
+																	? 'Update Public Page'
+																	: 'Make This Document Public'}
 															</span>
 														</Button>
 													{/if}
 
 													{#if hasFlaggedPublicPageReview && latestPublicPageReview}
-														<div class="rounded-md border border-red-300/70 bg-red-50/70 px-2.5 py-2 space-y-1.5">
-															<p class="micro-label text-red-900">CONTENT REVIEW FLAGGED</p>
+														<div
+															class="rounded-md border border-red-300/70 bg-red-50/70 px-2.5 py-2 space-y-1.5"
+														>
+															<p class="micro-label text-red-900">
+																CONTENT REVIEW FLAGGED
+															</p>
 															{#if latestPublicPageReview.summary}
-																<p class="text-[11px] text-red-800 leading-snug">
+																<p
+																	class="text-[11px] text-red-800 leading-snug"
+																>
 																	{latestPublicPageReview.summary}
 																</p>
 															{/if}
 															{#if latestPublicPageReviewReasons.length > 0}
-																<ul class="space-y-0.5 text-[11px] text-red-800 list-disc pl-4">
+																<ul
+																	class="space-y-0.5 text-[11px] text-red-800 list-disc pl-4"
+																>
 																	{#each latestPublicPageReviewReasons as reason}
 																		<li>{reason}</li>
 																	{/each}
@@ -2697,17 +2766,49 @@
 
 											{#if isEditing}
 												<div class="pt-2 border-t border-border space-y-1">
-													<div class="flex items-center justify-between gap-2">
-														<span class="micro-label text-muted-foreground/70">CREATED</span>
-														<span class="text-xs font-mono text-foreground">{createdAt ? new Date(createdAt).toLocaleDateString() : '—'}</span>
+													<div
+														class="flex items-center justify-between gap-2"
+													>
+														<span
+															class="micro-label text-muted-foreground/70"
+															>CREATED</span
+														>
+														<span
+															class="text-xs font-mono text-foreground"
+															>{createdAt
+																? new Date(
+																		createdAt
+																	).toLocaleDateString()
+																: '—'}</span
+														>
 													</div>
-													<div class="flex items-center justify-between gap-2">
-														<span class="micro-label text-muted-foreground/70">UPDATED</span>
-														<span class="text-xs font-mono text-foreground">{updatedAt ? new Date(updatedAt).toLocaleDateString() : '—'}</span>
+													<div
+														class="flex items-center justify-between gap-2"
+													>
+														<span
+															class="micro-label text-muted-foreground/70"
+															>UPDATED</span
+														>
+														<span
+															class="text-xs font-mono text-foreground"
+															>{updatedAt
+																? new Date(
+																		updatedAt
+																	).toLocaleDateString()
+																: '—'}</span
+														>
 													</div>
-													<div class="flex items-start justify-between gap-2">
-														<span class="micro-label text-muted-foreground/70 shrink-0">ID</span>
-														<span class="text-xs font-mono text-foreground truncate text-right">{activeDocumentId}</span>
+													<div
+														class="flex items-start justify-between gap-2"
+													>
+														<span
+															class="micro-label text-muted-foreground/70 shrink-0"
+															>ID</span
+														>
+														<span
+															class="text-xs font-mono text-foreground truncate text-right"
+															>{activeDocumentId}</span
+														>
 													</div>
 												</div>
 
@@ -2730,7 +2831,7 @@
 												{/if}
 											{/if}
 
-										<!-- Links tab content -->
+											<!-- Links tab content -->
 										{:else if activeMobileTab === 'links'}
 											{#if isEditing && activeDocumentId}
 												<LinkedEntities
@@ -2749,7 +2850,7 @@
 												</div>
 											{/if}
 
-										<!-- Media tab content -->
+											<!-- Media tab content -->
 										{:else if activeMobileTab === 'media'}
 											{#if isEditing && activeDocumentId}
 												<ImageAssetsPanel
@@ -2771,7 +2872,7 @@
 												</div>
 											{/if}
 
-										<!-- History tab content -->
+											<!-- History tab content -->
 										{:else if activeMobileTab === 'history'}
 											{#if isEditing && activeDocumentId}
 												<DocumentVersionHistoryPanel
@@ -2791,14 +2892,15 @@
 												</div>
 											{/if}
 
-										<!-- Comments tab content -->
+											<!-- Comments tab content -->
 										{:else if activeMobileTab === 'comments'}
 											{#if activeDocumentId}
 												<EntityCommentsSection
 													{projectId}
 													entityType="document"
 													entityId={activeDocumentId}
-													onCountChange={(count) => (commentsCount = count)}
+													onCountChange={(count) =>
+														(commentsCount = count)}
 												/>
 											{/if}
 										{/if}

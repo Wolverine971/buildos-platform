@@ -44,9 +44,9 @@
 
 	// Size classes with consistent padding and minimum 16px font for mobile
 	const sizeClasses = {
-		sm: 'px-3 py-2 text-sm min-h-[44px]',
+		sm: 'px-3 py-2 text-base sm:text-sm min-h-[44px]',
 		md: 'px-4 py-2.5 text-base min-h-[44px]',
-		lg: 'px-4 py-3 text-lg min-h-[48px]'
+		lg: 'px-4 py-3 text-lg min-h-[46px]'
 	};
 
 	// Wrapper classes - Inkprint design with GRID texture
@@ -90,6 +90,55 @@
 		)
 	);
 
+	// Measure the wrapped height of placeholder text so it doesn't get clipped on mobile
+	function measurePlaceholderHeight(): number {
+		if (!textareaElement || !textareaElement.placeholder) return 0;
+
+		// Save current state
+		const savedValue = textareaElement.value;
+		const savedHeight = textareaElement.style.height;
+		const savedMinHeight = textareaElement.style.minHeight;
+		const savedOverflow = textareaElement.style.overflowY;
+
+		// Temporarily set value to placeholder and remove height constraints
+		textareaElement.value = textareaElement.placeholder;
+		textareaElement.style.height = 'auto';
+		textareaElement.style.minHeight = '0';
+		textareaElement.style.overflowY = 'hidden';
+
+		const height = textareaElement.scrollHeight;
+
+		// Restore
+		textareaElement.value = savedValue;
+		textareaElement.style.height = savedHeight;
+		textareaElement.style.minHeight = savedMinHeight;
+		textareaElement.style.overflowY = savedOverflow;
+
+		return height;
+	}
+
+	// Ensure textarea is tall enough to show wrapped placeholder text
+	function adjustForPlaceholder() {
+		if (!textareaElement) return;
+
+		if (value) {
+			// Content exists — clear placeholder constraint, let rows/autoResize handle it
+			textareaElement.style.minHeight = '';
+			return;
+		}
+
+		// Value is empty — reset any explicit height left over from autoResize
+		if (autoResize) {
+			textareaElement.style.height = '';
+			textareaElement.style.overflowY = '';
+		}
+
+		const neededHeight = measurePlaceholderHeight();
+		if (neededHeight > 0) {
+			textareaElement.style.minHeight = `${neededHeight}px`;
+		}
+	}
+
 	function handleInput(event: Event) {
 		const target = event.target as HTMLTextAreaElement;
 		value = target.value;
@@ -125,7 +174,23 @@
 		}
 	}
 
-	// Adjust height on mount if autoResize is enabled (Svelte 5 effect)
+	// Adjust min-height for placeholder on mount and when value changes
+	$effect(() => {
+		if (textareaElement) {
+			adjustForPlaceholder();
+		}
+	});
+
+	// Re-measure placeholder height on viewport resize (orientation change, etc.)
+	$effect(() => {
+		if (!textareaElement) return;
+
+		const handleResize = () => adjustForPlaceholder();
+		window.addEventListener('resize', handleResize);
+		return () => window.removeEventListener('resize', handleResize);
+	});
+
+	// Auto-resize for content
 	$effect(() => {
 		if (autoResize && textareaElement && value) {
 			adjustHeight();

@@ -4115,6 +4115,7 @@
 		closeOnBackdrop={false}
 		showCloseButton={false}
 		ariaLabel="BuildOS chat assistant dialog"
+		customClasses="lg:!max-w-6xl xl:!max-w-7xl !max-h-[100dvh] !h-[100dvh] sm:!h-[90dvh] sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg"
 	>
 		{#snippet header()}
 			<!-- INKPRINT header bar with Frame texture -->
@@ -4139,15 +4140,9 @@
 		{/snippet}
 
 		{#snippet children()}
-			<!-- INKPRINT panel container with Frame texture -->
-			<!-- Height strategy:
-			 - Portrait mobile: Full height minus header space (8rem/128px for modal chrome)
-			 - Landscape mobile: Reduced height to fit short viewport, no min-height
-			 - Tablet/Desktop (sm+): 75vh with 500px min for comfortable reading
-			 - Uses dvh (dynamic viewport height) for better mobile keyboard handling
-		-->
+			<!-- INKPRINT panel container - fills modal content area -->
 			<div
-				class="relative z-10 flex h-[calc(100dvh-8rem)] flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak landscape:h-[calc(100dvh-4rem)] sm:h-[75dvh] sm:min-h-[500px] sm:landscape:min-h-0"
+				class="relative z-10 flex h-full flex-col overflow-hidden bg-card"
 			>
 				<!-- Keep context selection mounted so Back returns to prior step -->
 				<div
@@ -4351,7 +4346,7 @@
 					{#if !showContextSelection && !showProjectActionSelector && agentToAgentMode}
 						<!-- INKPRINT automation footer with Thread texture -->
 						<div
-							class="border-t border-border bg-muted p-2 tx tx-thread tx-weak sm:p-2.5"
+							class="border-t border-border bg-muted px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] tx tx-thread tx-weak sm:px-4 sm:py-2.5"
 						>
 							<div
 								class="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
@@ -4438,7 +4433,7 @@
 						<!-- INKPRINT composer footer - hidden for braindump input/options modes -->
 						<div
 							bind:this={composerContainer}
-							class="border-t border-border bg-card p-2 sm:p-2.5 tx tx-grain tx-weak"
+							class="border-t border-border bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-2.5 tx tx-grain tx-weak"
 						>
 							<AgentComposer
 								bind:voiceInputRef

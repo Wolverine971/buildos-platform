@@ -676,30 +676,6 @@
 										<option value={5}>P5 - Nice to have</option>
 									</Select>
 								</FormField>
-
-								<FormField label="Start" labelFor="start-date">
-									<TextInput
-										id="start-date"
-										type="datetime-local"
-										inputmode="numeric"
-										enterkeyhint="next"
-										bind:value={startAt}
-										disabled={isSaving}
-										size="sm"
-									/>
-								</FormField>
-
-								<FormField label="Due" labelFor="due-date">
-									<TextInput
-										id="due-date"
-										type="datetime-local"
-										inputmode="numeric"
-										enterkeyhint="done"
-										bind:value={dueAt}
-										disabled={isSaving}
-										size="sm"
-									/>
-								</FormField>
 							</div>
 
 							{#if stateKey === 'done' && completedAt}
@@ -707,6 +683,129 @@
 									Completed {format(new Date(completedAt), 'PPpp')}
 								</p>
 							{/if}
+
+							<!-- Schedule section: dates + recurrence grouped together -->
+							<div class="border border-border rounded-lg bg-card/50 p-2 sm:p-3 space-y-2">
+								<p
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+								>
+									Schedule
+								</p>
+								<div class="grid grid-cols-2 gap-2">
+									<FormField label="Start" labelFor="start-date">
+										<TextInput
+											id="start-date"
+											type="datetime-local"
+											inputmode="numeric"
+											enterkeyhint="next"
+											bind:value={startAt}
+											disabled={isSaving}
+											size="sm"
+										/>
+									</FormField>
+
+									<FormField label="Due" labelFor="due-date">
+										<TextInput
+											id="due-date"
+											type="datetime-local"
+											inputmode="numeric"
+											enterkeyhint="done"
+											bind:value={dueAt}
+											disabled={isSaving}
+											size="sm"
+										/>
+									</FormField>
+								</div>
+
+								<div class="pt-2 border-t border-border/50">
+									<p
+										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
+									>
+										Recurrence
+									</p>
+									{#if isSeriesMaster && seriesMeta}
+										<p class="text-sm text-foreground mb-2">
+											Recurring series{#if seriesMeta.instance_count}&ensp;·&ensp;{seriesMeta.instance_count}
+												instances{/if}
+										</p>
+
+										{#if seriesActionError}
+											<p class="text-xs text-destructive mb-2">{seriesActionError}</p>
+										{/if}
+
+										{#if !showSeriesDeleteConfirm}
+											<Button
+												size="sm"
+												variant="danger"
+												class="w-full"
+												onclick={() => (showSeriesDeleteConfirm = true)}
+											>
+												Delete Series
+											</Button>
+										{:else}
+											<div class="space-y-1.5 mt-1">
+												<p class="text-xs text-muted-foreground">
+													Delete this series? Completed instances remain unless
+													you force delete.
+												</p>
+												<Button
+													variant="danger"
+													size="sm"
+													class="w-full"
+													disabled={isDeletingSeries}
+													onclick={() => handleDeleteSeries(false)}
+												>
+													{#if isDeletingSeries}
+														<Loader class="w-3.5 h-3.5 animate-spin" />
+														Removing…
+													{:else}
+														Delete Upcoming
+													{/if}
+												</Button>
+												<Button
+													variant="danger"
+													size="sm"
+													class="w-full"
+													disabled={isDeletingSeries}
+													onclick={() => handleDeleteSeries(true)}
+												>
+													{#if isDeletingSeries}
+														<Loader class="w-3.5 h-3.5 animate-spin" />
+														Removing…
+													{:else}
+														Force Delete All
+													{/if}
+												</Button>
+												<Button
+													variant="ghost"
+													size="sm"
+													class="w-full"
+													onclick={() => {
+														showSeriesDeleteConfirm = false;
+														seriesActionError = '';
+													}}
+													disabled={isDeletingSeries}
+												>
+													Cancel
+												</Button>
+											</div>
+										{/if}
+									{:else if isSeriesInstance}
+										<p class="text-sm text-muted-foreground">
+											Part of a recurring series.
+										</p>
+									{:else}
+										<Button
+											size="sm"
+											variant="outline"
+											class="w-full pressable"
+											onclick={openSeriesModal}
+										>
+											Make Recurring
+										</Button>
+									{/if}
+								</div>
+							</div>
 
 							<FormField label="Assignees" labelFor="task-assignees">
 								<div id="task-assignees">
@@ -768,95 +867,6 @@
 								<TagsDisplay props={task.props} size="sm" compact={true} />
 							</div>
 						{/if}
-
-						<div class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink">
-							<p
-								class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2"
-							>
-								Recurrence
-							</p>
-							{#if isSeriesMaster && seriesMeta}
-								<p class="text-sm text-foreground mb-2">
-									Recurring series{#if seriesMeta.instance_count}&ensp;·&ensp;{seriesMeta.instance_count}
-										instances{/if}
-								</p>
-
-								{#if seriesActionError}
-									<p class="text-xs text-destructive mb-2">{seriesActionError}</p>
-								{/if}
-
-								{#if !showSeriesDeleteConfirm}
-									<Button
-										size="sm"
-										variant="danger"
-										class="w-full"
-										onclick={() => (showSeriesDeleteConfirm = true)}
-									>
-										Delete Series
-									</Button>
-								{:else}
-									<div class="space-y-1.5 mt-1">
-										<p class="text-xs text-muted-foreground">
-											Delete this series? Completed instances remain unless
-											you force delete.
-										</p>
-										<Button
-											variant="danger"
-											size="sm"
-											class="w-full"
-											disabled={isDeletingSeries}
-											onclick={() => handleDeleteSeries(false)}
-										>
-											{#if isDeletingSeries}
-												<Loader class="w-3.5 h-3.5 animate-spin" />
-												Removing…
-											{:else}
-												Delete Upcoming
-											{/if}
-										</Button>
-										<Button
-											variant="danger"
-											size="sm"
-											class="w-full"
-											disabled={isDeletingSeries}
-											onclick={() => handleDeleteSeries(true)}
-										>
-											{#if isDeletingSeries}
-												<Loader class="w-3.5 h-3.5 animate-spin" />
-												Removing…
-											{:else}
-												Force Delete All
-											{/if}
-										</Button>
-										<Button
-											variant="ghost"
-											size="sm"
-											class="w-full"
-											onclick={() => {
-												showSeriesDeleteConfirm = false;
-												seriesActionError = '';
-											}}
-											disabled={isDeletingSeries}
-										>
-											Cancel
-										</Button>
-									</div>
-								{/if}
-							{:else if isSeriesInstance}
-								<p class="text-sm text-muted-foreground">
-									Part of a recurring series.
-								</p>
-							{:else}
-								<Button
-									size="sm"
-									variant="outline"
-									class="w-full pressable"
-									onclick={openSeriesModal}
-								>
-									Make Recurring
-								</Button>
-							{/if}
-						</div>
 
 						<!-- Activity Log (collapsible) -->
 						<div

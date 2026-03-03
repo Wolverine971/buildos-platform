@@ -124,9 +124,7 @@
 					<span class="micro-label">{page.project_name}</span>
 					<span class="text-border text-xs">·</span>
 				{/if}
-				<span class="micro-label text-muted-foreground/60">
-					Published with BuildOS
-				</span>
+				<span class="micro-label text-muted-foreground/60"> Published with BuildOS </span>
 			</div>
 		</footer>
 	</div>

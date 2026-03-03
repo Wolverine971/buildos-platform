@@ -39,6 +39,7 @@ type GoalRow = Pick<
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RECENT_LIST_LIMIT = 12;
+const ACTIVE_TASK_STATES = ['todo', 'in_progress', 'blocked'] as const;
 const TERMINAL_PROJECT_STATES = new Set([
 	'done',
 	'completed',
@@ -609,7 +610,7 @@ export async function getUserDashboardAnalytics(
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 					.lt('due_at', nowIso)
-					.not('state_key', 'in', '(done,completed,canceled,cancelled,archived)');
+					.in('state_key', [...ACTIVE_TASK_STATES]);
 
 				if (error) {
 					console.error('[Dashboard Analytics] Failed to count overdue tasks:', error);
