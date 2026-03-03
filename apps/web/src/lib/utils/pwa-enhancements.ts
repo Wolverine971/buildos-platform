@@ -184,8 +184,7 @@ export function initializePWAEnhancements(): (() => void) | void {
 		document.body.classList.add('pwa-installed');
 	}
 
-	// Add viewport meta tag adjustments for notch handling
-	adjustViewportForNotch();
+	// viewport-fit=cover is set in app.html to avoid FOUC on PWA load
 	void requestBadgeSync(true);
 
 	// Return cleanup function
@@ -197,18 +196,6 @@ export function initializePWAEnhancements(): (() => void) | void {
 		document.removeEventListener('touchstart', handleTouchStart);
 		document.removeEventListener('touchmove', handleTouchMove);
 	};
-}
-
-/**
- * Adjust viewport for devices with notches (iPhone X and later)
- */
-function adjustViewportForNotch() {
-	if (!browser) return;
-
-	const viewport = document.querySelector('meta[name="viewport"]');
-	if (viewport) {
-		viewport.setAttribute('content', 'width=device-width, initial-scale=1, viewport-fit=cover');
-	}
 }
 
 /**
