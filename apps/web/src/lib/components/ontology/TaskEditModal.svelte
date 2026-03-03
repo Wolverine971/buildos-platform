@@ -685,7 +685,9 @@
 							{/if}
 
 							<!-- Schedule section: dates + recurrence grouped together -->
-							<div class="border border-border rounded-lg bg-card/50 p-2 sm:p-3 space-y-2">
+							<div
+								class="border border-border rounded-lg bg-card/50 p-2 sm:p-3 space-y-2"
+							>
 								<p
 									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
 								>
@@ -730,7 +732,9 @@
 										</p>
 
 										{#if seriesActionError}
-											<p class="text-xs text-destructive mb-2">{seriesActionError}</p>
+											<p class="text-xs text-destructive mb-2">
+												{seriesActionError}
+											</p>
 										{/if}
 
 										{#if !showSeriesDeleteConfirm}
@@ -745,8 +749,8 @@
 										{:else}
 											<div class="space-y-1.5 mt-1">
 												<p class="text-xs text-muted-foreground">
-													Delete this series? Completed instances remain unless
-													you force delete.
+													Delete this series? Completed instances remain
+													unless you force delete.
 												</p>
 												<Button
 													variant="danger"

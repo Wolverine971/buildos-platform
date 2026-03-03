@@ -4141,9 +4141,7 @@
 
 		{#snippet children()}
 			<!-- INKPRINT panel container - fills modal content area -->
-			<div
-				class="relative z-10 flex h-full flex-col overflow-hidden bg-card"
-			>
+			<div class="relative z-10 flex h-full flex-col overflow-hidden bg-card">
 				<!-- Keep context selection mounted so Back returns to prior step -->
 				<div
 					class={`flex h-full min-h-0 flex-col ${showContextSelection ? '' : 'hidden'}`}

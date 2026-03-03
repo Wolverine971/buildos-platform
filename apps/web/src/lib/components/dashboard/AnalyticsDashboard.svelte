@@ -87,27 +87,10 @@
 
 	const displayName = $derived(user?.name ?? user?.email?.split('@')[0] ?? 'there');
 
-	const needsAttention = $derived(
-		analytics.attention.overdueTasks > 0
-		// ||
-		// 	analytics.attention.staleProjects7d > 0 ||
-		// 	analytics.attention.staleProjects30d > 0
+	const overdueTasks = $derived(analytics.attention.overdueTasks);
+	const overdueLabel = $derived(
+		`${overdueTasks} overdue ${overdueTasks === 1 ? 'task' : 'tasks'}`
 	);
-
-	const attentionParts = $derived.by(() => {
-		const parts: string[] = [];
-		if (analytics.attention.overdueTasks > 0) {
-			parts.push(
-				`${analytics.attention.overdueTasks} overdue ${analytics.attention.overdueTasks === 1 ? 'task' : 'tasks'}`
-			);
-		}
-		// if (analytics.attention.staleProjects7d > 0) {
-		// 	parts.push(
-		// 		`${analytics.attention.staleProjects7d} stale ${analytics.attention.staleProjects7d === 1 ? 'project' : 'projects'}`
-		// 	);
-		// }
-		return parts?.length ? parts.join(' · ') : null;
-	});
 
 	const TERMINAL_PROJECT_STATES = new Set([
 		'done',
@@ -412,13 +395,12 @@
 			</div>
 		</header>
 
-		<!-- Attention Indicator (compact inline) -->
-		{#if needsAttention}
+		{#if overdueTasks > 0}
 			<div
 				class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-accent/20 bg-accent/5 text-xs"
 			>
 				<AlertTriangle class="h-3 w-3 text-accent shrink-0" />
-				<span class="text-muted-foreground">{attentionParts}</span>
+				<span class="text-muted-foreground">{overdueLabel}</span>
 				<a
 					href="/projects"
 					class="ml-auto shrink-0 font-semibold text-accent hover:underline underline-offset-2"
