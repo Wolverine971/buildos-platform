@@ -773,6 +773,10 @@ export class OntoEventSyncService {
 		const mapping = await this.resolveExternalMapping(userId, event, syncRows);
 		if (!mapping) {
 			if (event.project_id) {
+				if (this.hasPriorExternalReference(event)) {
+					await this.markEventSyncError(event.id, 'missing_project_sync_mapping');
+					return;
+				}
 				const projectCalendar = await this.resolveProjectCalendar(
 					event.project_id,
 					userId,
@@ -811,7 +815,17 @@ export class OntoEventSyncService {
 			});
 
 			const nowIso = new Date().toISOString();
-			await this.markEventSynced(event.id, nowIso, mapping.syncRowId);
+			let syncRowId = mapping.syncRowId;
+			if (!syncRowId && event.project_id) {
+				syncRowId = await this.repairProjectSyncRow({
+					userId,
+					event,
+					externalEventId: mapping.externalEventId,
+					calendarId: mapping.calendarId,
+					timestamp: nowIso
+				});
+			}
+			await this.markEventSynced(event.id, nowIso, syncRowId);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Calendar update failed';
 			await this.markEventSyncError(event.id, message, mapping.syncRowId);
@@ -872,14 +886,39 @@ export class OntoEventSyncService {
 			}
 		}
 
-		// Project events should only sync via per-user onto_event_sync rows.
+		const props = (event.props as Record<string, unknown>) ?? {};
+		const externalEventId =
+			typeof props.external_event_id === 'string' ? props.external_event_id.trim() : '';
+		const externalCalendarId =
+			typeof props.external_calendar_id === 'string' ? props.external_calendar_id.trim() : '';
+		const linkMapping = parseGoogleEventMappingFromExternalLink(event.external_link);
+
 		if (event.project_id) {
+			const recoveredEventId = externalEventId || linkMapping?.externalEventId;
+			const recoveredCalendarId = externalCalendarId || linkMapping?.calendarId;
+			if (recoveredEventId && recoveredCalendarId) {
+				return {
+					externalEventId: recoveredEventId,
+					calendarId: recoveredCalendarId
+				};
+			}
+
+			if (recoveredEventId) {
+				const projectCalendar = await this.resolveProjectCalendar(
+					event.project_id,
+					userId,
+					false
+				);
+				if (projectCalendar?.calendar_id) {
+					return {
+						externalEventId: recoveredEventId,
+						calendarId: projectCalendar.calendar_id
+					};
+				}
+			}
+
 			return null;
 		}
-
-		const props = (event.props as Record<string, unknown>) ?? {};
-		const externalEventId = props.external_event_id as string | undefined;
-		const externalCalendarId = props.external_calendar_id as string | undefined;
 
 		if (externalEventId && externalCalendarId) {
 			return {
@@ -888,12 +927,79 @@ export class OntoEventSyncService {
 			};
 		}
 
-		const linkMapping = parseGoogleEventMappingFromExternalLink(event.external_link);
 		if (linkMapping) {
 			return linkMapping;
 		}
 
 		return null;
+	}
+
+	private hasPriorExternalReference(event: OntoEventRow): boolean {
+		const props = (event.props as Record<string, unknown> | null) ?? {};
+		const hasPropEventId =
+			typeof props.external_event_id === 'string' && props.external_event_id.trim().length > 0;
+		const hasPropCalendarId =
+			typeof props.external_calendar_id === 'string' &&
+			props.external_calendar_id.trim().length > 0;
+		const hasLinkMapping = Boolean(parseGoogleEventMappingFromExternalLink(event.external_link));
+		const hasSyncTimestamp =
+			typeof event.last_synced_at === 'string' && event.last_synced_at.trim().length > 0;
+
+		return (
+			hasPropEventId ||
+			hasPropCalendarId ||
+			hasLinkMapping ||
+			hasSyncTimestamp ||
+			event.sync_status === 'synced'
+		);
+	}
+
+	private async repairProjectSyncRow(params: {
+		userId: string;
+		event: OntoEventRow;
+		externalEventId: string;
+		calendarId: string;
+		timestamp: string;
+	}): Promise<string | undefined> {
+		const { userId, event, externalEventId, calendarId, timestamp } = params;
+		if (!event.project_id) return undefined;
+
+		const { data: projectCalendar } = await this.supabase
+			.from('project_calendars')
+			.select('id, calendar_id')
+			.eq('project_id', event.project_id)
+			.eq('user_id', userId)
+			.maybeSingle();
+
+		if (!projectCalendar?.id || !projectCalendar.calendar_id) {
+			return undefined;
+		}
+
+		if (projectCalendar.calendar_id !== calendarId) {
+			return undefined;
+		}
+
+		const { data: repaired } = await this.supabase
+			.from('onto_event_sync')
+			.upsert(
+				{
+					event_id: event.id,
+					calendar_id: projectCalendar.id,
+					user_id: userId,
+					provider: 'google',
+					external_event_id: externalEventId,
+					sync_status: 'synced',
+					sync_error: null,
+					last_synced_at: timestamp
+				},
+				{
+					onConflict: 'event_id,user_id,provider'
+				}
+			)
+			.select('id')
+			.maybeSingle();
+
+		return repaired?.id;
 	}
 
 	private async resolveProjectCalendar(
@@ -1163,6 +1269,19 @@ export class OntoEventSyncService {
 
 		const mapping = await this.resolveExternalMapping(input.targetUserId, event, syncRows);
 		if (!mapping) {
+			if (this.hasPriorExternalReference(event)) {
+				await this.markEventSyncError(
+					event.id,
+					'missing_project_sync_mapping',
+					undefined,
+					eventVersion
+				);
+				return {
+					outcome: 'skipped',
+					reason: 'missing_project_sync_mapping'
+				};
+			}
+
 			const projectCalendar = await this.resolveProjectCalendar(
 				event.project_id,
 				input.targetUserId,
@@ -1214,26 +1333,33 @@ export class OntoEventSyncService {
 			});
 
 			const nowIso = new Date().toISOString();
-			await this.markEventSynced(event.id, nowIso, mapping.syncRowId, 'synced', eventVersion);
+			let syncRowId = mapping.syncRowId;
+			if (!syncRowId) {
+				syncRowId = await this.repairProjectSyncRow({
+					userId: input.targetUserId,
+					event,
+					externalEventId: mapping.externalEventId,
+					calendarId: mapping.calendarId,
+					timestamp: nowIso
+				});
+			}
+			await this.markEventSynced(event.id, nowIso, syncRowId, 'synced', eventVersion);
 			return {
 				outcome: 'synced',
 				reason: 'updated_external_event'
 			};
 		} catch (error) {
 			if (this.isGoogleNotFoundError(error)) {
-				const recreated = await this.syncEventToCalendar(input.targetUserId, event, {
-					scope: 'project',
-					calendarId: null,
-					createProjectCalendarIfMissing: false,
-					expectedEventVersion: eventVersion
-				});
-
-				if (recreated.sync?.success) {
-					return {
-						outcome: 'synced',
-						reason: 'recreated_external_event'
-					};
-				}
+				await this.markEventSyncError(
+					event.id,
+					'external_event_not_found',
+					mapping.syncRowId,
+					eventVersion
+				);
+				return {
+					outcome: 'skipped',
+					reason: 'external_event_not_found'
+				};
 			}
 
 			const message = error instanceof Error ? error.message : 'Calendar update failed';

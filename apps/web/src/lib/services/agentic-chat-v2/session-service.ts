@@ -40,6 +40,7 @@ type UpdateSessionStatsParams = {
 	session: ChatSession;
 	messageCountDelta: number;
 	totalTokensDelta?: number;
+	toolCallCountDelta?: number;
 	contextType?: ChatContextType;
 	entityId?: string | null;
 };
@@ -425,7 +426,14 @@ export function createFastChatSessionService(
 	}
 
 	async function updateSessionStats(params: UpdateSessionStatsParams): Promise<ChatSession> {
-		const { session, messageCountDelta, totalTokensDelta, contextType, entityId } = params;
+		const {
+			session,
+			messageCountDelta,
+			totalTokensDelta,
+			toolCallCountDelta,
+			contextType,
+			entityId
+		} = params;
 		const now = new Date().toISOString();
 		const updates: ChatSessionUpdate = {
 			updated_at: now,
@@ -435,6 +443,9 @@ export function createFastChatSessionService(
 
 		if (typeof totalTokensDelta === 'number') {
 			updates.total_tokens_used = (session.total_tokens_used ?? 0) + totalTokensDelta;
+		}
+		if (typeof toolCallCountDelta === 'number') {
+			updates.tool_call_count = (session.tool_call_count ?? 0) + toolCallCountDelta;
 		}
 
 		if (contextType && session.context_type !== contextType) {
@@ -463,6 +474,7 @@ export function createFastChatSessionService(
 					sessionId: session.id,
 					messageCountDelta,
 					totalTokensDelta,
+					toolCallCountDelta,
 					contextType,
 					entityId
 				}

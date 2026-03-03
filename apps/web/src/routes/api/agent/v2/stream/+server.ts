@@ -34,6 +34,7 @@ import type { AgentState } from '$lib/types/agent-chat-enhancement';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor-refactored';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
 import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
+import { getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	AgentStateReconciliationService,
@@ -1680,6 +1681,73 @@ function buildPersistedToolTraceSummary(trace: PersistedToolTraceEntry[]): strin
 	return `Tool trace: ${truncateToolTraceText(line, 420)}`;
 }
 
+type ToolExecutionInsertRow = {
+	session_id: string;
+	message_id: string | null;
+	tool_name: string;
+	tool_category: string | null;
+	arguments: Json;
+	result: Json | null;
+	execution_time_ms: number | null;
+	tokens_consumed: number | null;
+	success: boolean;
+	error_message: string | null;
+};
+
+function parseToolArgumentsForPersistence(rawArgs: unknown): Json {
+	if (!rawArgs || rawArgs === '') return {} as Json;
+	if (typeof rawArgs === 'string') {
+		try {
+			return JSON.parse(rawArgs) as Json;
+		} catch {
+			return { raw: rawArgs } as Json;
+		}
+	}
+	if (typeof rawArgs === 'object') {
+		return rawArgs as Json;
+	}
+	return { value: String(rawArgs) } as Json;
+}
+
+function normalizeToolResultForPersistence(rawResult: unknown): Json | null {
+	if (rawResult === undefined) return null;
+	if (
+		rawResult === null ||
+		typeof rawResult === 'string' ||
+		typeof rawResult === 'number' ||
+		typeof rawResult === 'boolean'
+	) {
+		return rawResult as Json;
+	}
+	if (Array.isArray(rawResult) || typeof rawResult === 'object') {
+		return rawResult as Json;
+	}
+	return { value: String(rawResult) } as Json;
+}
+
+function buildToolExecutionInsertRows(params: {
+	sessionId: string;
+	messageId: string | null;
+	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
+}): ToolExecutionInsertRow[] {
+	if (!Array.isArray(params.executions) || params.executions.length === 0) return [];
+	return params.executions.map(({ toolCall, result }) => ({
+		session_id: params.sessionId,
+		message_id: params.messageId,
+		tool_name: toolCall.function.name,
+		tool_category: getToolCategory(toolCall.function.name) ?? null,
+		arguments: parseToolArgumentsForPersistence(toolCall.function.arguments),
+		result: result.success ? normalizeToolResultForPersistence(result.result) : null,
+		execution_time_ms:
+			typeof result.duration_ms === 'number' && Number.isFinite(result.duration_ms)
+				? result.duration_ms
+				: null,
+		tokens_consumed: null,
+		success: result.success === true,
+		error_message: typeof result.error === 'string' ? result.error : null
+	}));
+}
+
 function buildToolMessageSnapshotsForReconciliation(
 	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>,
 	toolSummaries: AgentStateToolSummary[]
@@ -2533,6 +2601,7 @@ export const POST: RequestHandler = async ({
 						}
 					}
 				});
+			const normalizedExecutions = toolExecutions ?? [];
 
 			const [userMessage] = await Promise.all([
 				userMessagePromise.catch((error) => {
@@ -2594,10 +2663,39 @@ export const POST: RequestHandler = async ({
 					});
 				}
 
+				const interruptedToolExecutionRows = buildToolExecutionInsertRows({
+					sessionId: session.id,
+					messageId: interruptedMessage?.id ?? null,
+					executions: normalizedExecutions
+				});
+				if (interruptedToolExecutionRows.length > 0) {
+					const { error: toolExecutionInsertError } = await supabase
+						.from('chat_tool_executions')
+						.insert(interruptedToolExecutionRows);
+					if (toolExecutionInsertError) {
+						logger.warn('Failed to persist FastChat interrupted tool executions', {
+							error: toolExecutionInsertError,
+							sessionId: session.id
+						});
+						logFastChatError({
+							error: toolExecutionInsertError,
+							operationType: 'fastchat_persist_tool_executions',
+							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								messageId: interruptedMessage?.id ?? null,
+								toolExecutionCount: interruptedToolExecutionRows.length,
+								interrupted: true
+							}
+						});
+					}
+				}
+
 				await sessionService.updateSessionStats({
 					session,
 					messageCountDelta: assistantContent.length > 0 ? 2 : 1,
 					totalTokensDelta: usage?.total_tokens ?? 0,
+					toolCallCountDelta: normalizedExecutions.length,
 					contextType: effectiveContextType,
 					entityId: effectiveEntityId
 				});
@@ -2632,7 +2730,6 @@ export const POST: RequestHandler = async ({
 				return;
 			}
 
-			const normalizedExecutions = toolExecutions ?? [];
 			const persistedToolTrace = buildPersistedToolTrace(normalizedExecutions);
 			const persistedToolTraceSummary = buildPersistedToolTraceSummary(persistedToolTrace);
 			const assistantMessage = await sessionService.persistMessage({
@@ -2667,10 +2764,38 @@ export const POST: RequestHandler = async ({
 				});
 			}
 
+			const toolExecutionRows = buildToolExecutionInsertRows({
+				sessionId: session.id,
+				messageId: assistantMessage?.id ?? null,
+				executions: normalizedExecutions
+			});
+			if (toolExecutionRows.length > 0) {
+				const { error: toolExecutionInsertError } = await supabase
+					.from('chat_tool_executions')
+					.insert(toolExecutionRows);
+				if (toolExecutionInsertError) {
+					logger.warn('Failed to persist FastChat tool executions', {
+						error: toolExecutionInsertError,
+						sessionId: session.id
+					});
+					logFastChatError({
+						error: toolExecutionInsertError,
+						operationType: 'fastchat_persist_tool_executions',
+						projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+						metadata: {
+							sessionId: session.id,
+							messageId: assistantMessage?.id ?? null,
+							toolExecutionCount: toolExecutionRows.length
+						}
+					});
+				}
+			}
+
 			await sessionService.updateSessionStats({
 				session,
 				messageCountDelta: 2,
 				totalTokensDelta: usage?.total_tokens ?? 0,
+				toolCallCountDelta: normalizedExecutions.length,
 				contextType: effectiveContextType,
 				entityId: effectiveEntityId
 			});

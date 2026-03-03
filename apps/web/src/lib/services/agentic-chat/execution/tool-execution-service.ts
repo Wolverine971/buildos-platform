@@ -1410,6 +1410,16 @@ export class ToolExecutionService implements BaseService {
 				addErrorOnce('Missing required parameter: project_id');
 			}
 		}
+
+		if (toolName === 'update_calendar_event' || toolName === 'delete_calendar_event') {
+			const hasOntoEventId =
+				typeof args.onto_event_id === 'string' && args.onto_event_id.trim().length > 0;
+			const hasGoogleEventId =
+				typeof args.event_id === 'string' && args.event_id.trim().length > 0;
+			if (!hasOntoEventId && !hasGoogleEventId) {
+				addErrorOnce('Missing required parameter: onto_event_id or event_id');
+			}
+		}
 	}
 
 	private validateReorganizeProjectGraphArgs(args: Record<string, any>, errors: string[]): void {
@@ -2497,6 +2507,19 @@ export class ToolExecutionService implements BaseService {
 				]);
 				mapAlias('props', ['edge_props', 'metadata'], { allowNonString: true });
 				break;
+			case 'list_calendar_events':
+				mapAlias('query', ['q']);
+				break;
+			case 'get_calendar_event_details':
+			case 'update_calendar_event':
+			case 'delete_calendar_event':
+				mapAlias('event_id', [
+					'external_event_id',
+					'externalEventId',
+					'event.id',
+					'external_event.id'
+				]);
+				break;
 			default:
 				break;
 		}
@@ -2549,6 +2572,13 @@ export class ToolExecutionService implements BaseService {
 			aliases.add('docId');
 			aliases.add('documentId');
 			aliases.add('document.id');
+		}
+
+		if (idKey === 'event_id') {
+			aliases.add('external_event_id');
+			aliases.add('externalEventId');
+			aliases.add('external_event.id');
+			aliases.add('external.id');
 		}
 
 		if (idKey === 'new_parent_id') {

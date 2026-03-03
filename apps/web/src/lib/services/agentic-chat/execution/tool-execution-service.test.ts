@@ -226,6 +226,77 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('should alias q to query for list_calendar_events', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_calendar_query_alias',
+				name: 'list_calendar_events',
+				arguments: { q: 'roadmap' }
+			};
+			const listCalendarDefinition: ChatToolDefinition = {
+				name: 'list_calendar_events',
+				description: 'List calendar events',
+				parameters: {
+					type: 'object',
+					properties: {
+						query: { type: 'string' }
+					}
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ events: [] });
+
+			const result = await service.executeTool(toolCall, mockContext, [
+				listCalendarDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'list_calendar_events',
+				{ q: 'roadmap', query: 'roadmap' },
+				mockContext
+			);
+		});
+
+		it('should alias external_event_id to event_id for calendar update', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_calendar_external_event_alias',
+				name: 'update_calendar_event',
+				arguments: {
+					external_event_id: 'evt_123',
+					title: 'Rescheduled meeting'
+				}
+			};
+			const updateCalendarDefinition: ChatToolDefinition = {
+				name: 'update_calendar_event',
+				description: 'Update calendar event',
+				parameters: {
+					type: 'object',
+					properties: {
+						onto_event_id: { type: 'string' },
+						event_id: { type: 'string' },
+						title: { type: 'string' }
+					}
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ success: true });
+
+			const result = await service.executeTool(toolCall, mockContext, [
+				updateCalendarDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'update_calendar_event',
+				expect.objectContaining({
+					external_event_id: 'evt_123',
+					event_id: 'evt_123',
+					title: 'Rescheduled meeting'
+				}),
+				mockContext
+			);
+		});
+
 		it('should alias id to document_id for move_document_in_tree', async () => {
 			const documentId = '3f4c1f6f-77c6-45ab-9159-686dc2d92bc5';
 			const toolCall: ChatToolCall = {
@@ -420,6 +491,35 @@ describe('ToolExecutionService', () => {
 			expect(result.success).toBe(false);
 			expect(result.error).toContain('Missing required parameter');
 			expect(result.error).toContain('title');
+		});
+
+		it('should require onto_event_id or event_id for calendar update', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call_calendar_missing_id',
+				name: 'update_calendar_event',
+				arguments: {
+					title: 'Rename only'
+				}
+			};
+			const updateCalendarDefinition: ChatToolDefinition = {
+				name: 'update_calendar_event',
+				description: 'Update calendar event',
+				parameters: {
+					type: 'object',
+					properties: {
+						onto_event_id: { type: 'string' },
+						event_id: { type: 'string' },
+						title: { type: 'string' }
+					}
+				}
+			};
+
+			const result = await service.executeTool(toolCall, mockContext, [
+				updateCalendarDefinition
+			]);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('onto_event_id or event_id');
 		});
 
 		it('should handle unknown tools', async () => {

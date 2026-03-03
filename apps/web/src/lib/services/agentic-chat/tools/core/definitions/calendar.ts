@@ -37,6 +37,15 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 						description:
 							'Optional IANA timezone for date-only/naive datetime values (example: America/New_York).'
 					},
+					query: {
+						type: 'string',
+						description:
+							'Optional text search query. Matches Google event text (q) and ontology event title/description/location.'
+					},
+					q: {
+						type: 'string',
+						description: 'Alias for query.'
+					},
 					limit: {
 						type: 'number',
 						description: 'Page size. Default 100, max 200.'
@@ -179,11 +188,24 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					event_id: {
 						type: 'string',
-						description: 'Google event id'
+						description: 'Google event id. Alias: external_event_id.'
+					},
+					external_event_id: {
+						type: 'string',
+						description: 'Alias for event_id.'
 					},
 					calendar_id: {
 						type: 'string',
 						description: 'Google calendar id (defaults to primary)'
+					},
+					calendar_scope: {
+						type: 'string',
+						enum: ['user', 'project', 'calendar_id'],
+						description: 'Resolve event id against a specific calendar scope'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Project id for project calendar lookup'
 					},
 					title: {
 						type: 'string',
@@ -234,11 +256,24 @@ export const CALENDAR_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					event_id: {
 						type: 'string',
-						description: 'Google event id'
+						description: 'Google event id. Alias: external_event_id.'
+					},
+					external_event_id: {
+						type: 'string',
+						description: 'Alias for event_id.'
 					},
 					calendar_id: {
 						type: 'string',
 						description: 'Google calendar id (defaults to primary)'
+					},
+					calendar_scope: {
+						type: 'string',
+						enum: ['user', 'project', 'calendar_id'],
+						description: 'Resolve event id against a specific calendar scope'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Project id for project calendar lookup'
 					},
 					sync_to_calendar: {
 						type: 'boolean',

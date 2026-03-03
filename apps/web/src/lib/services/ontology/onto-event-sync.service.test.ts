@@ -150,4 +150,120 @@ describe('OntoEventSyncService project sync job version guards', () => {
 		expect(updateCalendarEventSpy).not.toHaveBeenCalled();
 		expect(syncEventToCalendarSpy).not.toHaveBeenCalled();
 	});
+
+	it('skips upsert when project mapping is missing but prior external reference exists', async () => {
+		const service = new OntoEventSyncService({} as any);
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-2',
+			project_id: 'project-1',
+			updated_at: '2026-03-01T12:00:00.000Z',
+			created_at: '2026-03-01T10:00:00.000Z',
+			deleted_at: null,
+			external_link: null,
+			sync_status: 'synced',
+			props: {
+				external_event_id: 'evt_existing',
+				external_calendar_id: 'cal_existing'
+			},
+			onto_event_sync: []
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue(null);
+		const markSyncErrorSpy = vi
+			.spyOn(service as any, 'markEventSyncError')
+			.mockResolvedValue(undefined);
+		const syncEventToCalendarSpy = vi.spyOn(service as any, 'syncEventToCalendar');
+
+		const result = await service.processProjectEventSyncJob({
+			action: 'upsert',
+			eventId: 'event-2',
+			projectId: 'project-1',
+			targetUserId: 'user-1'
+		});
+
+		expect(result).toEqual({
+			outcome: 'skipped',
+			reason: 'missing_project_sync_mapping'
+		});
+		expect(syncEventToCalendarSpy).not.toHaveBeenCalled();
+		expect(markSyncErrorSpy).toHaveBeenCalledWith(
+			'event-2',
+			'missing_project_sync_mapping',
+			undefined,
+			'2026-03-01T12:00:00.000Z'
+		);
+	});
+
+	it('does not recreate external events on google 404 during project updates', async () => {
+		const service = new OntoEventSyncService({} as any);
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-3',
+			project_id: 'project-1',
+			updated_at: '2026-03-02T12:00:00.000Z',
+			created_at: '2026-03-02T10:00:00.000Z',
+			deleted_at: null,
+			external_link: null,
+			props: {},
+			onto_event_sync: [
+				{
+					id: 'sync-1',
+					user_id: 'user-1'
+				}
+			]
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue({
+			externalEventId: 'evt_404',
+			calendarId: 'cal_1',
+			syncRowId: 'sync-1'
+		});
+		vi.spyOn(service as any, 'buildCalendarEventDescription').mockResolvedValue('notes');
+		vi.spyOn((service as any).calendarService, 'updateCalendarEvent').mockRejectedValue(
+			new Error('404 not found')
+		);
+		const syncEventToCalendarSpy = vi.spyOn(service as any, 'syncEventToCalendar');
+		const markSyncErrorSpy = vi
+			.spyOn(service as any, 'markEventSyncError')
+			.mockResolvedValue(undefined);
+
+		const result = await service.processProjectEventSyncJob({
+			action: 'upsert',
+			eventId: 'event-3',
+			projectId: 'project-1',
+			targetUserId: 'user-1'
+		});
+
+		expect(result).toEqual({
+			outcome: 'skipped',
+			reason: 'external_event_not_found'
+		});
+		expect(syncEventToCalendarSpy).not.toHaveBeenCalled();
+		expect(markSyncErrorSpy).toHaveBeenCalledWith(
+			'event-3',
+			'external_event_not_found',
+			'sync-1',
+			'2026-03-02T12:00:00.000Z'
+		);
+	});
+
+	it('recovers project mapping from event props when sync row is missing', async () => {
+		const service = new OntoEventSyncService({} as any);
+
+		const mapping = await (service as any).resolveExternalMapping(
+			'user-1',
+			{
+				id: 'event-4',
+				project_id: 'project-1',
+				props: {
+					external_event_id: 'evt_recover',
+					external_calendar_id: 'cal_recover'
+				},
+				external_link: null
+			},
+			[]
+		);
+
+		expect(mapping).toEqual({
+			externalEventId: 'evt_recover',
+			calendarId: 'cal_recover'
+		});
+	});
 });

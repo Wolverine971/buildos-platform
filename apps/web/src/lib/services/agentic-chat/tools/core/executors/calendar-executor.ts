@@ -20,6 +20,8 @@ interface ListCalendarEventsArgs {
 	timeMax?: string;
 	time_max?: string;
 	timezone?: string;
+	query?: string;
+	q?: string;
 	limit?: number;
 	max_results?: number;
 	offset?: number;
@@ -34,9 +36,13 @@ interface ListCalendarEventsArgs {
 interface GetCalendarEventDetailsArgs {
 	onto_event_id?: string;
 	event_id?: string;
+	external_event_id?: string;
 	calendar_id?: string;
+	calendarId?: string;
 	calendar_scope?: CalendarScope;
+	calendarScope?: CalendarScope;
 	project_id?: string;
+	projectId?: string;
 }
 
 interface CreateCalendarEventArgs {
@@ -56,20 +62,32 @@ interface CreateCalendarEventArgs {
 interface UpdateCalendarEventArgs {
 	onto_event_id?: string;
 	event_id?: string;
+	external_event_id?: string;
 	calendar_id?: string;
+	calendarId?: string;
+	calendar_scope?: CalendarScope;
+	calendarScope?: CalendarScope;
+	project_id?: string;
+	projectId?: string;
 	title?: string;
 	start_at?: string;
 	end_at?: string | null;
 	timezone?: string;
-	description?: string;
-	location?: string;
+	description?: string | null;
+	location?: string | null;
 	sync_to_calendar?: boolean;
 }
 
 interface DeleteCalendarEventArgs {
 	onto_event_id?: string;
 	event_id?: string;
+	external_event_id?: string;
 	calendar_id?: string;
+	calendarId?: string;
+	calendar_scope?: CalendarScope;
+	calendarScope?: CalendarScope;
+	project_id?: string;
+	projectId?: string;
 	sync_to_calendar?: boolean;
 }
 
@@ -238,6 +256,43 @@ export class CalendarExecutor extends BaseExecutor {
 		throw new Error('calendar_scope must be one of: user, project, calendar_id');
 	}
 
+	private async resolveCalendarIdForScope(input: {
+		calendarScope?: CalendarScope;
+		calendarId?: string;
+		projectId?: string;
+		access: 'read' | 'write';
+	}): Promise<string> {
+		const scope = this.normalizeListCalendarScope(input.calendarScope, 'user');
+		const requestedCalendarId = this.normalizeCalendarId(input.calendarId);
+		const projectId = this.getUuidArg('project_id', input.projectId);
+
+		if (scope === 'project') {
+			if (!projectId) {
+				throw new Error('project_id is required when calendar_scope is project');
+			}
+			await this.assertProjectAccess(projectId, input.access);
+			const { data: projectCalendar } = await this.supabase
+				.from('project_calendars')
+				.select('calendar_id')
+				.eq('project_id', projectId)
+				.eq('user_id', this.userId)
+				.maybeSingle();
+			if (!projectCalendar?.calendar_id) {
+				throw new Error('Project calendar not found');
+			}
+			return projectCalendar.calendar_id;
+		}
+
+		if (scope === 'calendar_id') {
+			if (!requestedCalendarId) {
+				throw new Error('calendar_id must be a valid Google Calendar ID');
+			}
+			return requestedCalendarId;
+		}
+
+		return requestedCalendarId ?? 'primary';
+	}
+
 	private normalizeListLimit(rawLimit: number | undefined): number {
 		if (rawLimit === undefined) {
 			return DEFAULT_LIST_LIMIT;
@@ -351,6 +406,7 @@ export class CalendarExecutor extends BaseExecutor {
 
 	async listCalendarEvents(args: ListCalendarEventsArgs) {
 		const projectId = this.getUuidArg('project_id', args.project_id, args.projectId);
+		const textQuery = this.getStringArg(args.query, args.q);
 		const requestedScope = this.getStringArg(args.calendar_scope, args.calendarScope);
 		const scope = this.normalizeListCalendarScope(
 			requestedScope,
@@ -400,7 +456,8 @@ export class CalendarExecutor extends BaseExecutor {
 					calendarId: googleCalendarId,
 					timeMin,
 					timeMax,
-					maxResults: fetchLimit
+					maxResults: fetchLimit,
+					q: textQuery
 				});
 				googleEvents = response.events ?? [];
 			} catch (error) {
@@ -463,6 +520,21 @@ export class CalendarExecutor extends BaseExecutor {
 					(syncRow: any) => syncRow.user_id === this.userId
 				)
 			}));
+		}
+
+		if (textQuery) {
+			const normalizedQuery = textQuery.toLowerCase();
+			ontoEvents = ontoEvents.filter((event) => {
+				const props = (event.props as Record<string, unknown> | null) ?? {};
+				const taskTitle =
+					typeof props.task_title === 'string' ? props.task_title : undefined;
+				const candidates = [event.title, event.description, event.location, taskTitle];
+				return candidates.some((candidate) =>
+					typeof candidate === 'string'
+						? candidate.toLowerCase().includes(normalizedQuery)
+						: false
+				);
+			});
 		}
 
 		const normalizeTitle = (value?: string | null) => (value ?? '').trim().toLowerCase();
@@ -617,6 +689,7 @@ export class CalendarExecutor extends BaseExecutor {
 				time_min: timeMin,
 				time_max: timeMax,
 				timezone,
+				query: textQuery ?? null,
 				default_time_min_applied: defaultsApplied.timeMin,
 				default_time_max_applied: defaultsApplied.timeMax
 			},
@@ -637,36 +710,22 @@ export class CalendarExecutor extends BaseExecutor {
 			return { source: 'ontology', event };
 		}
 
-		if (!args.event_id) {
+		const eventId = this.getStringArg(args.event_id, args.external_event_id);
+		if (!eventId) {
 			throw new Error('event_id is required for Google event lookup');
 		}
 
-		let calendarId = this.normalizeCalendarId(args.calendar_id) ?? 'primary';
-		if (args.calendar_scope === 'project') {
-			const projectId = this.getUuidArg('project_id', args.project_id);
-			if (!projectId) {
-				throw new Error('project_id is required for project calendar lookup');
-			}
-			await this.assertProjectAccess(projectId, 'read');
-			const { data: projectCalendar } = await this.supabase
-				.from('project_calendars')
-				.select('calendar_id')
-				.eq('project_id', projectId)
-				.eq('user_id', this.userId)
-				.maybeSingle();
-			if (projectCalendar?.calendar_id) {
-				calendarId = projectCalendar.calendar_id;
-			}
-		} else if (args.calendar_scope === 'calendar_id') {
-			const requestedCalendarId = this.normalizeCalendarId(args.calendar_id);
-			if (!requestedCalendarId) {
-				throw new Error('calendar_id must be a valid Google Calendar ID');
-			}
-			calendarId = requestedCalendarId;
-		}
+		const calendarId = await this.resolveCalendarIdForScope({
+			calendarScope: this.getStringArg(args.calendar_scope, args.calendarScope) as
+				| CalendarScope
+				| undefined,
+			calendarId: this.getStringArg(args.calendar_id, args.calendarId),
+			projectId: this.getStringArg(args.project_id, args.projectId),
+			access: 'read'
+		});
 
 		const event = await this.calendarService.getCalendarEvent(this.userId, {
-			event_id: args.event_id,
+			event_id: eventId,
 			calendar_id: calendarId
 		});
 
@@ -889,8 +948,12 @@ export class CalendarExecutor extends BaseExecutor {
 			const updated = await this.eventSyncService.updateEvent(this.userId, {
 				eventId: ontoEventId,
 				title: args.title,
-				description: args.description ?? null,
-				location: args.location ?? null,
+				description: Object.prototype.hasOwnProperty.call(args, 'description')
+					? args.description ?? null
+					: undefined,
+				location: Object.prototype.hasOwnProperty.call(args, 'location')
+					? args.location ?? null
+					: undefined,
 				startAt: normalizedStart?.iso,
 				endAt:
 					normalizedEnd && typeof normalizedEnd === 'object'
@@ -903,18 +966,35 @@ export class CalendarExecutor extends BaseExecutor {
 			return { source: 'ontology', event: updated };
 		}
 
-		if (!args.event_id) {
+		const googleEventId = this.getStringArg(args.event_id, args.external_event_id);
+		if (!googleEventId) {
 			throw new Error('event_id is required for Google event update');
 		}
 
-		const resolvedTimezone = await this.resolveInputTimezone(args.timezone);
+		const shouldResolveTimezone =
+			args.timezone !== undefined ||
+			typeof args.start_at === 'string' ||
+			typeof args.end_at === 'string';
+		const resolvedTimezone = shouldResolveTimezone
+			? await this.resolveInputTimezone(args.timezone)
+			: undefined;
 		const normalizedStart =
 			typeof args.start_at === 'string'
-				? this.parseCalendarDateTime(args.start_at, resolvedTimezone, 'start_at', 'start')
+				? this.parseCalendarDateTime(
+						args.start_at,
+						resolvedTimezone ?? (await this.getUserTimezone()),
+						'start_at',
+						'start'
+					)
 				: undefined;
 		const normalizedEnd =
 			typeof args.end_at === 'string'
-				? this.parseCalendarDateTime(args.end_at, resolvedTimezone, 'end_at', 'end')
+				? this.parseCalendarDateTime(
+						args.end_at,
+						resolvedTimezone ?? (await this.getUserTimezone()),
+						'end_at',
+						'end'
+					)
 				: undefined;
 
 		if (normalizedStart && normalizedEnd) {
@@ -929,17 +1009,32 @@ export class CalendarExecutor extends BaseExecutor {
 			(normalizedStart && !normalizedStart.hadExplicitTimezone) ||
 			(normalizedEnd && !normalizedEnd.hadExplicitTimezone);
 		const timezoneForUpdate =
-			args.timezone !== undefined || inferredTimezoneUsed ? resolvedTimezone : undefined;
+			resolvedTimezone && (args.timezone !== undefined || inferredTimezoneUsed)
+				? resolvedTimezone
+				: undefined;
 
-		const calendarId = this.normalizeCalendarId(args.calendar_id) ?? 'primary';
+		const calendarId = await this.resolveCalendarIdForScope({
+			calendarScope: this.getStringArg(args.calendar_scope, args.calendarScope) as
+				| CalendarScope
+				| undefined,
+			calendarId: this.getStringArg(args.calendar_id, args.calendarId),
+			projectId: this.getStringArg(args.project_id, args.projectId),
+			access: 'write'
+		});
+		const descriptionForGoogleUpdate = Object.prototype.hasOwnProperty.call(args, 'description')
+			? args.description ?? undefined
+			: undefined;
+		const locationForGoogleUpdate = Object.prototype.hasOwnProperty.call(args, 'location')
+			? args.location ?? undefined
+			: undefined;
 		const updated = await this.calendarService.updateCalendarEvent(this.userId, {
-			event_id: args.event_id,
+			event_id: googleEventId,
 			calendar_id: calendarId,
 			start_time: normalizedStart?.iso,
 			end_time: normalizedEnd?.iso,
 			summary: args.title,
-			description: args.description,
-			location: args.location,
+			description: descriptionForGoogleUpdate,
+			location: locationForGoogleUpdate,
 			timeZone: timezoneForUpdate
 		});
 
@@ -959,13 +1054,21 @@ export class CalendarExecutor extends BaseExecutor {
 			return { source: 'ontology', event: deleted };
 		}
 
-		if (!args.event_id) {
+		const googleEventId = this.getStringArg(args.event_id, args.external_event_id);
+		if (!googleEventId) {
 			throw new Error('event_id is required for Google event delete');
 		}
 
-		const calendarId = this.normalizeCalendarId(args.calendar_id) ?? 'primary';
+		const calendarId = await this.resolveCalendarIdForScope({
+			calendarScope: this.getStringArg(args.calendar_scope, args.calendarScope) as
+				| CalendarScope
+				| undefined,
+			calendarId: this.getStringArg(args.calendar_id, args.calendarId),
+			projectId: this.getStringArg(args.project_id, args.projectId),
+			access: 'write'
+		});
 		const result = await this.calendarService.deleteCalendarEvent(this.userId, {
-			event_id: args.event_id,
+			event_id: googleEventId,
 			calendar_id: calendarId,
 			send_notifications: false
 		});

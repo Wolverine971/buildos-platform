@@ -79,6 +79,9 @@
 	let selectedBrief = $state<DailyBrief | null>(null);
 	let DailyBriefModal = $state<any>(null);
 	let BriefChatModal = $state<any>(null);
+	let OverdueTaskTriageModal = $state<any>(null);
+	let showOverdueTaskTriageModal = $state(false);
+	let isOpeningOverdueTriage = $state(false);
 
 	// Brief chat state
 	let showBriefChatModal = $state(false);
@@ -331,6 +334,31 @@
 		briefChatSessionId = null;
 	}
 
+	async function openOverdueTaskTriage() {
+		if (isOpeningOverdueTriage) return;
+		isOpeningOverdueTriage = true;
+
+		try {
+			if (!OverdueTaskTriageModal) {
+				const module = await import('./OverdueTaskTriageModal.svelte');
+				OverdueTaskTriageModal = module.default;
+			}
+			showOverdueTaskTriageModal = true;
+		} catch (err) {
+			console.error('Failed to load OverdueTaskTriageModal:', err);
+			await goto('/projects');
+		} finally {
+			isOpeningOverdueTriage = false;
+		}
+	}
+
+	function handleOverdueTaskTriageClose(summary?: { hasChanges: boolean; changedCount: number }) {
+		showOverdueTaskTriageModal = false;
+		if (summary?.hasChanges && refreshHandler) {
+			void refreshHandler();
+		}
+	}
+
 	async function handleRefresh() {
 		if (!refreshHandler || isRefreshing) return;
 		isRefreshing = true;
@@ -401,10 +429,22 @@
 			>
 				<AlertTriangle class="h-3 w-3 text-accent shrink-0" />
 				<span class="text-muted-foreground">{overdueLabel}</span>
-				<a
-					href="/projects"
-					class="ml-auto shrink-0 font-semibold text-accent hover:underline underline-offset-2"
+				<button
+					type="button"
+					onclick={openOverdueTaskTriage}
+					disabled={isOpeningOverdueTriage}
+					class="ml-auto shrink-0 font-semibold text-accent hover:underline underline-offset-2 disabled:opacity-60"
 				>
+					{#if isOpeningOverdueTriage}
+						<span class="inline-flex items-center gap-1">
+							<LoaderCircle class="h-3 w-3 animate-spin" />
+							Opening...
+						</span>
+					{:else}
+						Triage now
+					{/if}
+				</button>
+				<a href="/projects" class="shrink-0 text-muted-foreground hover:text-accent transition-colors">
 					View &rarr;
 				</a>
 			</div>
@@ -775,5 +815,12 @@
 		brief={briefChatBrief}
 		initialChatSessionId={briefChatSessionId}
 		onClose={handleBriefChatClose}
+	/>
+{/if}
+
+{#if OverdueTaskTriageModal && showOverdueTaskTriageModal}
+	<OverdueTaskTriageModal
+		isOpen={showOverdueTaskTriageModal}
+		onClose={handleOverdueTaskTriageClose}
 	/>
 {/if}
