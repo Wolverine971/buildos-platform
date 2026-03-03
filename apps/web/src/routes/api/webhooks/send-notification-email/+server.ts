@@ -125,7 +125,11 @@ export const POST: RequestHandler = async ({ request }) => {
 				event_id: body.eventId,
 				event_type: body.eventType,
 				notification_type: 'system',
-				sent_via: 'webhook'
+				sent_via: 'webhook',
+				// Preserve worker-generated tracking ID so the webhook send path
+				// does not rotate tracking IDs and orphan existing tracked links/pixels.
+				trackingId: body.trackingId,
+				tracking_id: body.trackingId
 			}
 		});
 

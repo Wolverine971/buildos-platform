@@ -51,7 +51,23 @@ export class EmailService {
 		const senderType = data.from || 'dj';
 		const trackingEnabled = data.trackingEnabled ?? true;
 		const metadataTrackingId = this.extractTrackingIdFromMetadata(data.metadata);
-		const trackingId = trackingEnabled ? metadataTrackingId || randomUUID() : null;
+		const htmlTrackingId = this.extractTrackingIdFromHtml(data.html);
+		if (
+			trackingEnabled &&
+			metadataTrackingId &&
+			htmlTrackingId &&
+			metadataTrackingId !== htmlTrackingId
+		) {
+			console.warn('EmailService tracking ID mismatch between metadata and HTML', {
+				to: data.to,
+				subject: data.subject,
+				metadataTrackingId,
+				htmlTrackingId
+			});
+		}
+		const trackingId = trackingEnabled
+			? metadataTrackingId || htmlTrackingId || randomUUID()
+			: null;
 		const sender = getSenderByType(senderType);
 		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 		const trackingPixel = trackingId
@@ -256,6 +272,19 @@ export class EmailService {
 
 		const trackingId = trackingIdValue.trim();
 		return trackingId.length > 0 ? trackingId : null;
+	}
+
+	private extractTrackingIdFromHtml(html?: string): string | null {
+		if (typeof html !== 'string' || html.length === 0) {
+			return null;
+		}
+
+		const match = html.match(/\/api\/email-tracking\/([a-zA-Z0-9-]+)/i);
+		if (!match?.[1]) {
+			return null;
+		}
+
+		return match[1];
 	}
 
 	private hasTrackingPixel(html: string, trackingId: string): boolean {
