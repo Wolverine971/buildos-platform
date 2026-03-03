@@ -732,7 +732,7 @@
 						<Button size="sm" variant="outline" disabled={isBulkRunning} onclick={() => runBulkAction('in_progress')}>
 							All in progress
 						</Button>
-						<Button size="sm" variant="warning" disabled={isBulkRunning} onclick={() => runBulkAction('done')}>
+						<Button size="sm" variant="danger" disabled={isBulkRunning} onclick={() => runBulkAction('done')}>
 							Mark all done
 						</Button>
 					</div>
