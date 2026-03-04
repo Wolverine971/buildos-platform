@@ -1870,6 +1870,102 @@
 		return `${cleaned.slice(0, limit).join(', ')} (+${cleaned.length - limit} more)`;
 	}
 
+	const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+	const DATE_TIME_REGEX = /T\d{2}:\d{2}/;
+
+	function normalizeCalendarTimeZone(value: unknown): string | undefined {
+		const tz = normalizeEntityLabel(value);
+		if (!tz) return undefined;
+		try {
+			new Intl.DateTimeFormat('en-US', { timeZone: tz });
+			return tz;
+		} catch {
+			return undefined;
+		}
+	}
+
+	function formatDateOnlyLabel(raw: string): string {
+		const [yearPart, monthPart, dayPart] = raw.split('-');
+		const year = Number.parseInt(yearPart ?? '', 10);
+		const month = Number.parseInt(monthPart ?? '', 10);
+		const day = Number.parseInt(dayPart ?? '', 10);
+		if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+			return raw;
+		}
+
+		const monthName = new Intl.DateTimeFormat('en-US', {
+			month: 'short',
+			timeZone: 'UTC'
+		}).format(new Date(Date.UTC(2000, Math.max(0, month - 1), 1)));
+
+		return `${monthName} ${day}, ${year}`;
+	}
+
+	function formatCalendarDateLabel(value: unknown, timeZone?: string): string | undefined {
+		const raw = normalizeEntityLabel(value);
+		if (!raw) return undefined;
+
+		if (DATE_ONLY_REGEX.test(raw)) {
+			return formatDateOnlyLabel(raw);
+		}
+
+		const parsed = new Date(raw);
+		if (Number.isNaN(parsed.getTime())) {
+			return raw;
+		}
+
+		return new Intl.DateTimeFormat('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+			...(timeZone ? { timeZone } : {})
+		}).format(parsed);
+	}
+
+	function formatCalendarRangeTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+
+		const rawTimeMin = args.time_min ?? args.timeMin;
+		const rawTimeMax = args.time_max ?? args.timeMax;
+		const timeZone = normalizeCalendarTimeZone(args.timezone);
+		const timeMin = formatCalendarDateLabel(rawTimeMin, timeZone);
+		const timeMax = formatCalendarDateLabel(rawTimeMax, timeZone);
+		if (!timeMin && !timeMax) return undefined;
+
+		const rangeLabel = `${timeMin ?? 'Start: now'} to ${timeMax ?? 'End: open'}`;
+		const details: string[] = [];
+
+		const projectTarget = resolveEntityName('project', args.project_id ?? args.projectId);
+		if (projectTarget) {
+			details.push(projectTarget);
+		} else {
+			const scope =
+				normalizeEntityLabel(args.calendar_scope) ??
+				normalizeEntityLabel(args.calendarScope);
+			if (scope) {
+				details.push(`scope: ${scope}`);
+			}
+		}
+
+		const query = normalizeEntityLabel(args.query) ?? normalizeEntityLabel(args.q);
+		if (query) {
+			details.push(`query: ${query}`);
+		}
+		const hasTimeBoundary =
+			(typeof rawTimeMin === 'string' && DATE_TIME_REGEX.test(rawTimeMin)) ||
+			(typeof rawTimeMax === 'string' && DATE_TIME_REGEX.test(rawTimeMax));
+		if (timeZone && hasTimeBoundary) {
+			details.push(`tz: ${timeZone}`);
+		}
+
+		if (details.length > 0) {
+			return `${rangeLabel} · ${details.join(' · ')}`;
+		}
+		return rangeLabel;
+	}
+
 	const TOOL_DISPLAY_FORMATTERS: Record<
 		string,
 		(args: any) => { action: string; target?: string }
@@ -2131,7 +2227,10 @@
 		}),
 		list_calendar_events: (args) => ({
 			action: 'Listing calendar events',
-			target: resolveEntityName('project', args?.project_id) || args?.calendar_scope
+			target:
+				formatCalendarRangeTarget(args) ||
+				resolveEntityName('project', args?.project_id) ||
+				args?.calendar_scope
 		}),
 		get_calendar_event_details: (args) => ({
 			action: 'Loading calendar event',
@@ -4051,20 +4150,6 @@
 					onDeleteVoiceNote={removeVoiceNoteFromGroup}
 				/>
 
-				{#if isStreaming && currentActivity && !currentThinkingBlockId}
-					<div
-						class="border-t border-border bg-muted p-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground tx tx-grain tx-weak sm:p-2.5"
-					>
-						<span class="inline-flex items-center gap-1.5">
-							<span
-								class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-accent"
-								aria-hidden="true"
-							></span>
-							<span role="status" aria-live="polite">{currentActivity}</span>
-						</span>
-					</div>
-				{/if}
-
 				{#if error}
 					<div
 						class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
@@ -4312,22 +4397,6 @@
 							{voiceNotesByGroupId}
 							onDeleteVoiceNote={removeVoiceNoteFromGroup}
 						/>
-					{/if}
-
-					{#if !showContextSelection && !showProjectActionSelector && isStreaming && currentActivity && !currentThinkingBlockId}
-						<!-- INKPRINT activity indicator with Grain texture -->
-						<!-- NOTE: Hidden when thinking block is active to prevent duplicate status displays -->
-						<div
-							class="border-t border-border bg-muted p-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground tx tx-grain tx-weak sm:p-2.5"
-						>
-							<span class="inline-flex items-center gap-1.5">
-								<span
-									class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-accent"
-									aria-hidden="true"
-								></span>
-								<span role="status" aria-live="polite">{currentActivity}</span>
-							</span>
-						</div>
 					{/if}
 
 					{#if !showContextSelection && !showProjectActionSelector && error}

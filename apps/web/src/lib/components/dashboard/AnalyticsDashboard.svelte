@@ -444,7 +444,10 @@
 						Triage now
 					{/if}
 				</button>
-				<a href="/projects" class="shrink-0 text-muted-foreground hover:text-accent transition-colors">
+				<a
+					href="/projects"
+					class="shrink-0 text-muted-foreground hover:text-accent transition-colors"
+				>
 					View &rarr;
 				</a>
 			</div>

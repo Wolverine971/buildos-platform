@@ -35,9 +35,9 @@ This creates friction and leaves overdue queues stale. It also flattens collabor
 
 1. Let users process overdue tasks in <60 seconds for common cases.
 2. Support fast per-task actions:
-   - change state
-   - reschedule due date
-   - skip to next
+    - change state
+    - reschedule due date
+    - skip to next
 3. Support bulk actions for all remaining overdue tasks.
 4. Keep user in dashboard context (no forced route change).
 5. Use existing task mutation APIs where possible.
@@ -109,13 +109,13 @@ Lane order (highest to lowest):
 Lane definitions:
 
 1. `Assigned to me · Collaborative`
-   - Task assignee list includes current actor.
-   - Project is collaborative (shared project/member project).
+    - Task assignee list includes current actor.
+    - Project is collaborative (shared project/member project).
 2. `Assigned to me · Other projects`
-   - Task assignee list includes current actor.
-   - Project is not collaborative.
+    - Task assignee list includes current actor.
+    - Project is not collaborative.
 3. `Other overdue`
-   - All remaining overdue tasks (unassigned or assigned to others).
+    - All remaining overdue tasks (unassigned or assigned to others).
 
 Default modal behavior:
 
@@ -147,18 +147,18 @@ Primary actions shown on each card:
 2. `In progress` → `state_key: 'in_progress'`
 3. `Blocked` → `state_key: 'blocked'`
 4. `Reschedule` quick chips:
-   - `Today`
-   - `Tomorrow`
-   - `+3d`
-   - `Next week`
-   - `Pick date...`
+    - `Today`
+    - `Tomorrow`
+    - `+3d`
+    - `Next week`
+    - `Pick date...`
 5. `Skip` (no mutation, move to next in queue)
 
 Queue removal rule:
 
 - Remove from queue immediately if mutation makes task non-overdue:
-  - `state_key` becomes `done`, or
-  - `due_at` moves to `>= now`
+    - `state_key` becomes `done`, or
+    - `due_at` moves to `>= now`
 
 ## 7.6 Bulk Actions (All Remaining)
 
@@ -185,8 +185,8 @@ Post-action behavior:
 
 - If queue becomes empty after actions: success state with copy like `You cleared your overdue queue`.
 - CTA options:
-  - `Close`
-  - `Go to projects`
+    - `Close`
+    - `Go to projects`
 
 ## 8. Interaction Model
 
@@ -261,32 +261,32 @@ Response shape:
 
 ```ts
 {
-  tasks: Array<{
-    id: string;
-    project_id: string;
-    project_name: string;
-    title: string;
-    description: string | null;
-    state_key: 'todo' | 'in_progress' | 'blocked' | 'done';
-    due_at: string | null;
-    priority: number | null;
-    updated_at: string;
-    is_assigned_to_me: boolean;
-    project_is_shared: boolean;
-    project_is_collaborative: boolean;
-    assignees?: Array<{
-      actor_id: string;
-      name: string | null;
-      email: string | null;
-    }>;
-  }>;
-  laneCounts: {
-    assigned_collab: number;
-    assigned_other: number;
-    other: number;
-  };
-  total: number;
-  nextCursor: string | null;
+	tasks: Array<{
+		id: string;
+		project_id: string;
+		project_name: string;
+		title: string;
+		description: string | null;
+		state_key: 'todo' | 'in_progress' | 'blocked' | 'done';
+		due_at: string | null;
+		priority: number | null;
+		updated_at: string;
+		is_assigned_to_me: boolean;
+		project_is_shared: boolean;
+		project_is_collaborative: boolean;
+		assignees?: Array<{
+			actor_id: string;
+			name: string | null;
+			email: string | null;
+		}>;
+	}>;
+	laneCounts: {
+		assigned_collab: number;
+		assigned_other: number;
+		other: number;
+	}
+	total: number;
+	nextCursor: string | null;
 }
 ```
 
@@ -366,14 +366,14 @@ Optimistic behavior:
 ## 12. Error Handling
 
 1. Read endpoint fails:
-   - show inline retry state in modal.
+    - show inline retry state in modal.
 2. Task patch fails:
-   - restore item to queue.
-   - toast with task title + error.
+    - restore item to queue.
+    - toast with task title + error.
 3. Partial bulk failures:
-   - keep failed items in queue and summarize results.
+    - keep failed items in queue and summarize results.
 4. Task no longer overdue at mutation time:
-   - treat as resolved and remove locally.
+    - treat as resolved and remove locally.
 
 ## 13. Accessibility
 
@@ -388,13 +388,13 @@ Optimistic behavior:
 Suggested events:
 
 1. `overdue_triage_opened`
-   - fields: `default_lane`, `lane_counts`
+    - fields: `default_lane`, `lane_counts`
 2. `overdue_triage_task_action`
-   - fields: `action`, `task_id`, `project_id`, `lane`, `is_assigned_to_me`, `project_is_collaborative`, `result`
+    - fields: `action`, `task_id`, `project_id`, `lane`, `is_assigned_to_me`, `project_is_collaborative`, `result`
 3. `overdue_triage_bulk_action`
-   - fields: `action`, `scope`, `lane`, `attempted`, `succeeded`, `failed`
+    - fields: `action`, `scope`, `lane`, `attempted`, `succeeded`, `failed`
 4. `overdue_triage_completed`
-   - fields: `resolved_count`, `duration_ms`, `resolved_by_lane`
+    - fields: `resolved_count`, `duration_ms`, `resolved_by_lane`
 
 ## 15. Rollout Plan
 
@@ -427,8 +427,8 @@ Suggested events:
 
 1. Should `Mark all done` ship in MVP, or be deferred to Phase 2 for safety?
 2. For swipe defaults, do you prefer:
-   - right = done / left = tomorrow (recommended), or
-   - different mapping?
+    - right = done / left = tomorrow (recommended), or
+    - different mapping?
 3. Should `Skip` tasks remain in queue order for the same session, or move to end?
 4. Should lane 3 (`Other overdue`) be collapsed by default until lane 1 and lane 2 are empty?
 5. Should triage include `Delete` action, or stay state/reschedule-only?

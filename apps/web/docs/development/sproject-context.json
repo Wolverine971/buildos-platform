@@ -28,7 +28,7 @@
 		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
 			"type": "component",
-			"components": ["DailyBriefModal", "BriefChatModal"]
+			"components": ["DailyBriefModal", "BriefChatModal", "OverdueTaskTriageModal"]
 		},
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",

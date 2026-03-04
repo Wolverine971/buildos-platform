@@ -937,11 +937,14 @@ export class OntoEventSyncService {
 	private hasPriorExternalReference(event: OntoEventRow): boolean {
 		const props = (event.props as Record<string, unknown> | null) ?? {};
 		const hasPropEventId =
-			typeof props.external_event_id === 'string' && props.external_event_id.trim().length > 0;
+			typeof props.external_event_id === 'string' &&
+			props.external_event_id.trim().length > 0;
 		const hasPropCalendarId =
 			typeof props.external_calendar_id === 'string' &&
 			props.external_calendar_id.trim().length > 0;
-		const hasLinkMapping = Boolean(parseGoogleEventMappingFromExternalLink(event.external_link));
+		const hasLinkMapping = Boolean(
+			parseGoogleEventMappingFromExternalLink(event.external_link)
+		);
 		const hasSyncTimestamp =
 			typeof event.last_synced_at === 'string' && event.last_synced_at.trim().length > 0;
 

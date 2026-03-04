@@ -119,7 +119,9 @@
 	}
 
 	function priorityValue(value: number | null): number {
-		return typeof value === 'number' && Number.isFinite(value) ? value : Number.MAX_SAFE_INTEGER;
+		return typeof value === 'number' && Number.isFinite(value)
+			? value
+			: Number.MAX_SAFE_INTEGER;
 	}
 
 	function sortLane(key: LaneKey) {
@@ -165,7 +167,9 @@
 		activeLane = LANE_ORDER.find((lane) => laneTasks[lane].length > 0) ?? 'assigned_collab';
 	}
 
-	function getTaskById(taskId: string): { lane: LaneKey; index: number; task: OverdueTask } | null {
+	function getTaskById(
+		taskId: string
+	): { lane: LaneKey; index: number; task: OverdueTask } | null {
 		for (const lane of LANE_ORDER) {
 			const index = laneTasks[lane].findIndex((task) => task.id === taskId);
 			if (index >= 0) {
@@ -502,33 +506,41 @@
 <Modal {isOpen} onClose={closeModal} title="Overdue Task Triage" size="xl">
 	<div class="p-3 space-y-3">
 		<div class="flex flex-wrap items-center gap-2 text-xs">
-			<span class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
+			<span
+				class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1"
+			>
 				<TriangleAlert class="h-3 w-3 text-accent" />
 				{totalRemaining} remaining
 			</span>
-			<span class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1">
+			<span
+				class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1"
+			>
 				<CircleCheck class="h-3 w-3 text-success" />
 				{resolvedCount} resolved
 			</span>
 		</div>
 
 		{#if isLoading}
-			<div class="rounded-lg border border-border bg-card p-4 text-center text-sm text-muted-foreground shadow-ink">
+			<div
+				class="rounded-lg border border-border bg-card p-4 text-center text-sm text-muted-foreground shadow-ink"
+			>
 				<LoaderCircle class="mx-auto mb-2 h-5 w-5 animate-spin" />
 				Loading overdue tasks...
 			</div>
 		{:else if error}
-			<div class="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2 tx tx-static tx-weak shadow-ink">
+			<div
+				class="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2 tx tx-static tx-weak shadow-ink"
+			>
 				<p class="text-sm text-destructive">{error}</p>
 				<Button variant="outline" size="sm" onclick={loadOverdueTasks}>Retry</Button>
 			</div>
 		{:else if totalRemaining === 0}
-			<div class="rounded-lg border border-success/30 bg-success/5 p-4 text-center space-y-2 tx tx-bloom tx-weak shadow-ink">
+			<div
+				class="rounded-lg border border-success/30 bg-success/5 p-4 text-center space-y-2 tx tx-bloom tx-weak shadow-ink"
+			>
 				<CircleCheck class="mx-auto h-6 w-6 text-success" />
 				<p class="text-sm font-semibold text-foreground">You cleared your overdue queue</p>
-				<p class="text-xs text-muted-foreground">
-					No overdue tasks are left to triage.
-				</p>
+				<p class="text-xs text-muted-foreground">No overdue tasks are left to triage.</p>
 				<div class="pt-1">
 					<a
 						href="/projects"
@@ -545,20 +557,29 @@
 						<button
 							type="button"
 							onclick={() => switchLane(lane)}
-							class="rounded-md border px-2.5 py-2 text-left transition-colors shadow-ink pressable {activeLane === lane
+							class="rounded-md border px-2.5 py-2 text-left transition-colors shadow-ink pressable {activeLane ===
+							lane
 								? 'border-accent/40 bg-accent/10 tx tx-pulse tx-weak'
 								: 'border-border bg-card hover:bg-muted/40'}"
 						>
-							<p class="text-[11px] font-semibold text-foreground truncate">{laneLabels[lane]}</p>
-							<p class="text-[11px] text-muted-foreground mt-0.5">{laneCounts[lane]} tasks</p>
+							<p class="text-[11px] font-semibold text-foreground truncate">
+								{laneLabels[lane]}
+							</p>
+							<p class="text-[11px] text-muted-foreground mt-0.5">
+								{laneCounts[lane]} tasks
+							</p>
 						</button>
 					{/each}
 				</div>
 
-				<div class="rounded-lg border border-border bg-card p-3 space-y-2 tx tx-pulse tx-weak shadow-ink">
+				<div
+					class="rounded-lg border border-border bg-card p-3 space-y-2 tx tx-pulse tx-weak shadow-ink"
+				>
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
-							<p class="text-sm font-semibold text-foreground truncate">{currentTask?.title}</p>
+							<p class="text-sm font-semibold text-foreground truncate">
+								{currentTask?.title}
+							</p>
 							<p class="text-xs text-muted-foreground truncate mt-0.5">
 								{currentTask?.project_name}
 							</p>
@@ -583,7 +604,9 @@
 					</div>
 
 					{#if currentTask}
-						<div class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+						<div
+							class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"
+						>
 							<span class="inline-flex items-center gap-1">
 								<CalendarDays class="h-3 w-3" />
 								Due {formatDueDate(currentTask.due_at)}
@@ -599,11 +622,11 @@
 								<span class="text-border">&middot;</span>
 								<span>P{currentTask.priority}</span>
 							{/if}
-								{#if currentTaskAssigneeLabel}
-									<span class="text-border">&middot;</span>
-									<span>@{currentTaskAssigneeLabel}</span>
-								{/if}
-							</div>
+							{#if currentTaskAssigneeLabel}
+								<span class="text-border">&middot;</span>
+								<span>@{currentTaskAssigneeLabel}</span>
+							{/if}
+						</div>
 
 						<div class="grid gap-2 sm:grid-cols-3">
 							<Button
@@ -633,7 +656,9 @@
 						</div>
 
 						<div class="space-y-2">
-							<p class="text-[11px] font-semibold text-muted-foreground">Reschedule</p>
+							<p class="text-[11px] font-semibold text-muted-foreground">
+								Reschedule
+							</p>
 							<div class="flex flex-wrap gap-2">
 								<Button
 									size="sm"
@@ -711,7 +736,9 @@
 					{/if}
 				</div>
 
-				<div class="rounded-lg border border-border bg-card p-3 space-y-2 tx tx-frame tx-weak shadow-ink">
+				<div
+					class="rounded-lg border border-border bg-card p-3 space-y-2 tx tx-frame tx-weak shadow-ink"
+				>
 					<div class="flex items-center justify-between gap-2">
 						<p class="text-xs font-semibold text-foreground">Bulk actions</p>
 						<select
@@ -723,16 +750,36 @@
 						</select>
 					</div>
 					<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-						<Button size="sm" variant="outline" disabled={isBulkRunning} onclick={() => runBulkAction('tomorrow')}>
+						<Button
+							size="sm"
+							variant="outline"
+							disabled={isBulkRunning}
+							onclick={() => runBulkAction('tomorrow')}
+						>
 							All to tomorrow
 						</Button>
-						<Button size="sm" variant="outline" disabled={isBulkRunning} onclick={() => runBulkAction('plus3')}>
+						<Button
+							size="sm"
+							variant="outline"
+							disabled={isBulkRunning}
+							onclick={() => runBulkAction('plus3')}
+						>
 							All +3 days
 						</Button>
-						<Button size="sm" variant="outline" disabled={isBulkRunning} onclick={() => runBulkAction('in_progress')}>
+						<Button
+							size="sm"
+							variant="outline"
+							disabled={isBulkRunning}
+							onclick={() => runBulkAction('in_progress')}
+						>
 							All in progress
 						</Button>
-						<Button size="sm" variant="danger" disabled={isBulkRunning} onclick={() => runBulkAction('done')}>
+						<Button
+							size="sm"
+							variant="danger"
+							disabled={isBulkRunning}
+							onclick={() => runBulkAction('done')}
+						>
 							Mark all done
 						</Button>
 					</div>

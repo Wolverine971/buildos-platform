@@ -132,18 +132,4 @@
 			{/if}
 		{/snippet}
 	</TextareaWithVoice>
-
-	{#if isStreaming}
-		<!-- INKPRINT streaming status indicator -->
-		<div class="flex items-center gap-2 px-1">
-			<div
-				class="flex items-center gap-1.5 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2.5 py-1.5 text-emerald-700 tx tx-grain tx-weak dark:bg-emerald-950/30 dark:text-emerald-400"
-			>
-				<div
-					class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"
-				></div>
-				<span class="text-[0.65rem] font-semibold uppercase tracking-[0.1em]">Working</span>
-			</div>
-		</div>
-	{/if}
 </form>

@@ -949,10 +949,10 @@ export class CalendarExecutor extends BaseExecutor {
 				eventId: ontoEventId,
 				title: args.title,
 				description: Object.prototype.hasOwnProperty.call(args, 'description')
-					? args.description ?? null
+					? (args.description ?? null)
 					: undefined,
 				location: Object.prototype.hasOwnProperty.call(args, 'location')
-					? args.location ?? null
+					? (args.location ?? null)
 					: undefined,
 				startAt: normalizedStart?.iso,
 				endAt:
@@ -1022,10 +1022,10 @@ export class CalendarExecutor extends BaseExecutor {
 			access: 'write'
 		});
 		const descriptionForGoogleUpdate = Object.prototype.hasOwnProperty.call(args, 'description')
-			? args.description ?? undefined
+			? (args.description ?? undefined)
 			: undefined;
 		const locationForGoogleUpdate = Object.prototype.hasOwnProperty.call(args, 'location')
-			? args.location ?? undefined
+			? (args.location ?? undefined)
 			: undefined;
 		const updated = await this.calendarService.updateCalendarEvent(this.userId, {
 			event_id: googleEventId,

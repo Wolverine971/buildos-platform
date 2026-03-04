@@ -83,7 +83,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	}
 
 	try {
-		const limit = Math.min(toPositiveInt(url.searchParams.get('limit'), DEFAULT_LIMIT), MAX_LIMIT);
+		const limit = Math.min(
+			toPositiveInt(url.searchParams.get('limit'), DEFAULT_LIMIT),
+			MAX_LIMIT
+		);
 		const cursor = toPositiveInt(url.searchParams.get('cursor'), 0);
 		const laneFilter = parseLane(url.searchParams.get('lane'));
 
