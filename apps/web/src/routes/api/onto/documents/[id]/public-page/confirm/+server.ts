@@ -7,7 +7,11 @@ import {
 	isValidPublicPageSlug,
 	normalizePublicPageSlug
 } from '$lib/server/public-page.service';
-import { runPublicPageContentReview } from '$lib/server/public-page-content-review.service';
+import {
+	getLatestPublicPageReviewForDocument,
+	isPublicPageReviewReusableForDocument,
+	runPublicPageContentReview
+} from '$lib/server/public-page-content-review.service';
 import { ensureDocumentAccessForPublicPage } from '../../../shared-public-page';
 
 export const POST: RequestHandler = async ({ params, locals, request }) => {
@@ -41,21 +45,28 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 
 	try {
 		const existing = await getDocumentPublicPageState(locals.supabase, documentId);
-		const review = await runPublicPageContentReview({
-			supabase: locals.supabase,
-			document: access.document as any,
-			actorId: access.actorId,
-			actorUserId: session.user.id,
-			source: 'publish_confirm',
-			publicPageId: existing?.id ?? null
-		});
-		if (review.status === 'flagged') {
-			return ApiResponse.error(
-				'Content review flagged this page. Update the document and try publishing again.',
-				422,
-				'CONTENT_REVIEW_FLAGGED',
-				{ review }
-			);
+		const latestReview = await getLatestPublicPageReviewForDocument(
+			locals.supabase,
+			documentId
+		);
+		const review =
+			latestReview &&
+			isPublicPageReviewReusableForDocument(latestReview, access.document as any)
+				? latestReview
+				: await runPublicPageContentReview({
+						supabase: locals.supabase,
+						document: access.document as any,
+						actorId: access.actorId,
+						actorUserId: session.user.id,
+						source: 'publish_confirm',
+						publicPageId: existing?.id ?? null
+					});
+		if (review.status === 'flagged' && review.admin_decision !== 'approved') {
+			const message =
+				review.admin_decision === 'rejected'
+					? 'Content review flagged this page and admin marked it not okay. Update the document and try publishing again.'
+					: 'Content review flagged this page and is awaiting admin approval. Ask an admin to review and mark this content okay.';
+			return ApiResponse.error(message, 422, 'CONTENT_REVIEW_FLAGGED', { review });
 		}
 
 		const publicPage = await confirmDocumentPublicPage(

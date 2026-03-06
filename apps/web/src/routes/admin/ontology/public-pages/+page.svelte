@@ -1,11 +1,11 @@
 <!-- apps/web/src/routes/admin/ontology/public-pages/+page.svelte -->
 <script lang="ts">
-	import type { PageData } from './$types';
+	import type { ActionData, PageData } from './$types';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { Globe, ShieldAlert, CheckCircle2 } from 'lucide-svelte';
 
-	let { data }: { data: PageData } = $props();
+	let { data, form }: { data: PageData; form?: ActionData } = $props();
 	let reviewFilter = $state<'all' | 'flagged'>('all');
 
 	const filteredReviews = $derived.by(() =>
@@ -26,6 +26,12 @@
 		if (status === 'passed') return 'text-emerald-700 bg-emerald-100 border-emerald-200';
 		return 'text-amber-700 bg-amber-100 border-amber-200';
 	}
+
+	function decisionTone(decision: string | null): string {
+		if (decision === 'approved') return 'text-emerald-700 bg-emerald-100 border-emerald-200';
+		if (decision === 'rejected') return 'text-red-700 bg-red-100 border-red-200';
+		return 'text-amber-700 bg-amber-100 border-amber-200';
+	}
 </script>
 
 <svelte:head>
@@ -36,11 +42,25 @@
 <div class="space-y-6">
 	<AdminPageHeader
 		title="Public Pages"
-		description="Monitor published pages and content review attempts."
+		description="Monitor published pages, flagged content, and override decisions."
 		icon={Globe}
 		backHref="/admin/ontology/graph"
 		backLabel="Ontology Graph"
 	/>
+
+	{#if form?.error}
+		<div
+			class="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+		>
+			{form.error}
+		</div>
+	{:else if form?.success}
+		<div
+			class="rounded-lg border border-emerald-300/70 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+		>
+			Review decision saved.
+		</div>
+	{/if}
 
 	<div class="grid gap-3 md:grid-cols-4">
 		<div class="rounded-lg border border-border bg-card p-4 shadow-ink">
@@ -170,13 +190,14 @@
 						<th class="px-4 py-2 text-left">Page</th>
 						<th class="px-4 py-2 text-left">Project / Document</th>
 						<th class="px-4 py-2 text-left">Summary</th>
+						<th class="px-4 py-2 text-left">Admin Review</th>
 						<th class="px-4 py-2 text-left">When</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-border">
 					{#if filteredReviews.length === 0}
 						<tr>
-							<td colspan="5" class="px-4 py-6 text-center text-muted-foreground">
+							<td colspan="6" class="px-4 py-6 text-center text-muted-foreground">
 								No review attempts for this filter.
 							</td>
 						</tr>
@@ -229,6 +250,73 @@
 										Text findings: {review.text_findings_count} | Image findings:
 										{review.image_findings_count}
 									</p>
+								</td>
+								<td class="px-4 py-3 align-top">
+									<span
+										class={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${decisionTone(review.admin_decision)}`}
+									>
+										{review.admin_decision === 'approved'
+											? 'OK to Publish'
+											: review.admin_decision === 'rejected'
+												? 'Not OK'
+												: 'Pending'}
+									</span>
+									{#if review.admin_decision_at}
+										<p class="mt-1 text-xs text-muted-foreground">
+											{formatDate(review.admin_decision_at)}
+										</p>
+									{/if}
+									{#if review.admin_decision_by_name}
+										<p class="text-xs text-muted-foreground">
+											by {review.admin_decision_by_name}
+										</p>
+									{/if}
+									{#if review.admin_decision_reason}
+										<p class="mt-1 text-xs text-muted-foreground">
+											{review.admin_decision_reason}
+										</p>
+									{/if}
+									{#if review.status === 'flagged'}
+										<form
+											method="POST"
+											action="?/decide"
+											class="mt-2 space-y-2"
+										>
+											<input
+												type="hidden"
+												name="review_id"
+												value={review.id}
+											/>
+											<input
+												type="text"
+												name="decision_note"
+												placeholder="Optional decision note"
+												class="w-full rounded-md border border-border bg-background px-2 py-1 text-xs"
+											/>
+											<div class="flex gap-2">
+												<Button
+													type="submit"
+													name="decision"
+													value="approved"
+													size="sm"
+													variant="success"
+													class="text-xs"
+												>
+													Mark OK
+												</Button>
+												<Button
+													type="submit"
+													name="decision"
+													value="rejected"
+													size="sm"
+													variant="danger"
+													class="text-xs"
+												>
+													Mark Not OK
+												</Button>
+											</div>
+										</form>
+									{/if}
 								</td>
 								<td class="px-4 py-3 align-top text-xs text-muted-foreground">
 									{formatDate(review.created_at)}

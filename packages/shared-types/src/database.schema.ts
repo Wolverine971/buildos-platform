@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-03-04T04:43:18.103Z
+// Generated on: 2026-03-06T02:53:20.045Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1480,6 +1480,10 @@ export type DatabaseSchema = {
 		updated_at: string;
 	};
 	onto_public_page_review_attempts: {
+		admin_decision: string | null;
+		admin_decision_at: string | null;
+		admin_decision_by: string | null;
+		admin_decision_reason: string | null;
 		created_at: string;
 		created_by: string;
 		document_id: string;

@@ -1,7 +1,8 @@
 // apps/web/src/routes/admin/ontology/public-pages/+page.server.ts
-import { error, redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { error, fail, redirect } from '@sveltejs/kit';
+import type { Actions, PageServerLoad } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { setPublicPageReviewAdminDecision } from '$lib/server/public-page-content-review.service';
 
 type PublicPageRow = {
 	id: string;
@@ -34,6 +35,10 @@ type ReviewRow = {
 	policy_version: string;
 	created_by: string;
 	created_at: string;
+	admin_decision: string | null;
+	admin_decision_reason: string | null;
+	admin_decision_by: string | null;
+	admin_decision_at: string | null;
 };
 
 function toStringArray(value: unknown): string[] {
@@ -45,6 +50,12 @@ function toStringArray(value: unknown): string[] {
 
 function toFindingCount(value: unknown): number {
 	return Array.isArray(value) ? value.length : 0;
+}
+
+function toStringOrNull(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
 }
 
 export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase } }) => {
@@ -80,7 +91,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		(adminClient as any)
 			.from('onto_public_page_review_attempts')
 			.select(
-				'id, project_id, document_id, public_page_id, source, status, summary, reasons, text_findings, image_findings, policy_version, created_by, created_at'
+				'id, project_id, document_id, public_page_id, source, status, summary, reasons, text_findings, image_findings, policy_version, created_by, created_at, admin_decision, admin_decision_reason, admin_decision_by, admin_decision_at'
 			)
 			.order('created_at', { ascending: false })
 			.limit(600)
@@ -109,6 +120,9 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		projectIds.add(review.project_id);
 		documentIds.add(review.document_id);
 		actorIds.add(review.created_by);
+		if (review.admin_decision_by) {
+			actorIds.add(review.admin_decision_by);
+		}
 	}
 
 	const [projectsRes, documentsRes, actorsRes] = await Promise.all([
@@ -190,7 +204,17 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		policy_version: review.policy_version,
 		created_by: review.created_by,
 		created_by_name: actorNameById.get(review.created_by) ?? 'Unknown',
-		created_at: review.created_at
+		created_at: review.created_at,
+		admin_decision:
+			review.admin_decision === 'approved' || review.admin_decision === 'rejected'
+				? review.admin_decision
+				: null,
+		admin_decision_reason: toStringOrNull(review.admin_decision_reason),
+		admin_decision_by: review.admin_decision_by,
+		admin_decision_by_name: review.admin_decision_by
+			? (actorNameById.get(review.admin_decision_by) ?? 'Unknown')
+			: null,
+		admin_decision_at: toStringOrNull(review.admin_decision_at)
 	}));
 
 	const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -211,4 +235,60 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		reviews: hydratedReviews,
 		stats
 	};
+};
+
+export const actions: Actions = {
+	decide: async ({ request, locals: { safeGetSession, supabase } }) => {
+		const { user } = await safeGetSession();
+		if (!user) {
+			return fail(401, { error: 'Unauthorized' });
+		}
+
+		const { data: dbUser, error: dbUserError } = await supabase
+			.from('users')
+			.select('is_admin')
+			.eq('id', user.id)
+			.single();
+		if (dbUserError || !dbUser?.is_admin) {
+			return fail(403, { error: 'Admin access required' });
+		}
+
+		const formData = await request.formData();
+		const reviewId = toStringOrNull(formData.get('review_id'));
+		const decisionRaw = toStringOrNull(formData.get('decision'));
+		const decision =
+			decisionRaw === 'approved' || decisionRaw === 'rejected' ? decisionRaw : null;
+		const decisionNote = toStringOrNull(formData.get('decision_note'));
+
+		if (!reviewId || !decision) {
+			return fail(400, { error: 'Missing review decision parameters' });
+		}
+
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: user.id
+		});
+		if (actorError || !actorId) {
+			console.error('[Admin][Public Pages] Failed to resolve admin actor:', actorError);
+			return fail(500, { error: 'Failed to resolve admin actor' });
+		}
+
+		try {
+			const adminClient = createAdminSupabaseClient();
+			await setPublicPageReviewAdminDecision({
+				supabase: adminClient,
+				reviewId,
+				actorId: String(actorId),
+				decision,
+				reason: decisionNote
+			});
+			return {
+				success: true,
+				reviewId,
+				decision
+			};
+		} catch (err) {
+			console.error('[Admin][Public Pages] Failed to persist review decision:', err);
+			return fail(500, { error: 'Failed to save review decision' });
+		}
+	}
 };

@@ -27,7 +27,10 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		expect(prompt).toContain('In tool_exec.op, use only canonical ops.');
 		expect(prompt).toContain('Never use legacy op strings in tool_exec.op');
 		expect(prompt).toContain(
-			'Use targeted discovery first: tool_help("onto.<entity>") or tool_help("cal.event").'
+			'Use targeted discovery first: tool_help("onto.<entity>") or tool_help("cal.skill") for calendar workflows.'
+		);
+		expect(prompt).toContain(
+			'Calendar skill rule: if the user asks to read/create/update/delete calendar events or manage project calendar mapping, call tool_help("cal.skill") once in-turn before tool_exec calls.'
 		);
 		expect(prompt).toContain(
 			'User profile context is NOT preloaded. If personalization is needed, call tool_help("util.profile") and then util.profile.overview.'
@@ -42,7 +45,7 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.'
 		);
 		expect(prompt).toContain(
-			'Example update task: tool_exec({ op: "onto.task.update", args: { task_id: "<task_id_uuid>", title: "Updated title" } }).'
+			'Example update task: tool_exec({ op: "onto.task.update", args: { task_id: "11111111-1111-4111-8111-111111111111", title: "Updated title" } }).'
 		);
 		expect(prompt).toContain(
 			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'

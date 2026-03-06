@@ -1570,6 +1570,9 @@ function buildToolValidationRepairInstruction(
 			'Gateway pattern: use targeted tool_help("<group/entity>") first; use tool_help("root") only when namespace is unknown.'
 		);
 		lines.push(
+			'For calendar workflows, call tool_help("cal.skill") before calendar tool_exec calls.'
+		);
+		lines.push(
 			'Gateway payload contract: tool_help({ path: "<path>" }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
 		);
 		lines.push(
@@ -1593,7 +1596,9 @@ function buildToolValidationRepairInstruction(
 		lines.push(
 			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'
 		);
-		lines.push('Calendar events are under cal.event.* (not onto.event.*).');
+		lines.push(
+			'Calendar events are under cal.event.* (not onto.event.*). Project calendar mapping is under cal.project.*.'
+		);
 		lines.push(
 			'If a tool_exec result has _fallback for missing *_id, use list/tree candidates and retry with exact *_id.'
 		);
@@ -1943,6 +1948,8 @@ function buildGatewayRequiredFieldRepairInstruction(
 	return [
 		`Repeated required-field validation failures detected: ${labels}.`,
 		'Do not call write ops with args:{}.',
+		'For search ops, include args.query (for example onto.project.search, onto.task.search, onto.search).',
+		'If query is unclear, ask one concise clarifying question instead of repeating empty search args.',
 		'For onto.<entity>.update, include args.<entity>_id and at least one concrete field to change.',
 		'For onto.<entity>.delete, include args.<entity>_id.',
 		'For document organization, get IDs from onto.document.tree.get result.unlinked/documents and pass exact args.document_id for delete/move.',

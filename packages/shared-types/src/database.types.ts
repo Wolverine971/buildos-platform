@@ -6142,6 +6142,10 @@ export type Database = {
       }
       onto_public_page_review_attempts: {
         Row: {
+          admin_decision: string | null
+          admin_decision_at: string | null
+          admin_decision_by: string | null
+          admin_decision_reason: string | null
           created_at: string
           created_by: string
           document_id: string
@@ -6158,6 +6162,10 @@ export type Database = {
           text_findings: Json
         }
         Insert: {
+          admin_decision?: string | null
+          admin_decision_at?: string | null
+          admin_decision_by?: string | null
+          admin_decision_reason?: string | null
           created_at?: string
           created_by: string
           document_id: string
@@ -6174,6 +6182,10 @@ export type Database = {
           text_findings?: Json
         }
         Update: {
+          admin_decision?: string | null
+          admin_decision_at?: string | null
+          admin_decision_by?: string | null
+          admin_decision_reason?: string | null
           created_at?: string
           created_by?: string
           document_id?: string
@@ -6190,6 +6202,13 @@ export type Database = {
           text_findings?: Json
         }
         Relationships: [
+          {
+            foreignKeyName: "onto_public_page_review_attempts_admin_decision_by_fkey"
+            columns: ["admin_decision_by"]
+            isOneToOne: false
+            referencedRelation: "onto_actors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "onto_public_page_review_attempts_created_by_fkey"
             columns: ["created_by"]

@@ -4,6 +4,7 @@ import type { Database, Json } from '@buildos/shared-types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { OntoEventService, type OntoEventOwner } from './onto-event.service';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
@@ -146,11 +147,50 @@ export class OntoEventSyncService {
 	private readonly calendarService: CalendarService;
 	private readonly projectCalendarService: ProjectCalendarService;
 	private readonly googleOAuthService: GoogleOAuthService;
+	private readonly errorLogger: ErrorLoggerService;
 
 	constructor(private readonly supabase: SupabaseClient<Database>) {
 		this.calendarService = new CalendarService(supabase);
 		this.projectCalendarService = new ProjectCalendarService(supabase);
 		this.googleOAuthService = new GoogleOAuthService(supabase);
+		this.errorLogger = new ErrorLoggerService(supabase);
+	}
+
+	private async logGoogleDeleteFailure(params: {
+		error: unknown;
+		userId: string;
+		eventId: string;
+		projectId?: string | null;
+		externalEventId?: string;
+		calendarId?: string;
+		syncRowId?: string;
+		phase: 'inline_delete' | 'project_sync_job_delete';
+		reason: string;
+		metadata?: Record<string, unknown>;
+	}): Promise<void> {
+		try {
+			await this.errorLogger.logCalendarError(
+				params.error,
+				'delete',
+				params.eventId,
+				params.userId,
+				{
+					projectId: params.projectId ?? undefined,
+					calendarEventId: params.externalEventId,
+					calendarId: params.calendarId,
+					reason: params.reason,
+					phase: params.phase,
+					ontoEventId: params.eventId,
+					syncRowId: params.syncRowId,
+					...(params.metadata ?? {})
+				}
+			);
+		} catch (loggingError) {
+			console.warn(
+				'[OntoEventSyncService] Failed to log Google delete failure:',
+				loggingError
+			);
+		}
 	}
 
 	private defer(label: string, task: () => Promise<void>): void {
@@ -851,6 +891,17 @@ export class OntoEventSyncService {
 			await this.markEventSynced(event.id, nowIso, mapping.syncRowId, 'cancelled');
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Calendar delete failed';
+			await this.logGoogleDeleteFailure({
+				error,
+				userId,
+				eventId: event.id,
+				projectId: event.project_id,
+				externalEventId: mapping.externalEventId,
+				calendarId: mapping.calendarId,
+				syncRowId: mapping.syncRowId,
+				phase: 'inline_delete',
+				reason: message
+			});
 			await this.markEventSyncError(event.id, message, mapping.syncRowId);
 		}
 	}
@@ -1265,6 +1316,22 @@ export class OntoEventSyncService {
 				}
 
 				const message = error instanceof Error ? error.message : 'Calendar delete failed';
+				await this.logGoogleDeleteFailure({
+					error,
+					userId: input.targetUserId,
+					eventId: event.id,
+					projectId: event.project_id,
+					externalEventId: mapping.externalEventId,
+					calendarId: mapping.calendarId,
+					syncRowId: mapping.syncRowId,
+					phase: 'project_sync_job_delete',
+					reason: message,
+					metadata: {
+						action: input.action,
+						expectedEventUpdatedAt: input.expectedEventUpdatedAt ?? null,
+						currentEventUpdatedAt: eventVersion ?? null
+					}
+				});
 				await this.markEventSyncError(event.id, message, mapping.syncRowId, eventVersion);
 				throw error instanceof Error ? error : new Error(message);
 			}

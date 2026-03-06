@@ -796,6 +796,15 @@ export class ToolExecutionService implements BaseService {
 			normalizedArgs = fallback.args;
 		}
 		const warnings: string[] = [];
+		const searchQueryFallback = this.resolveGatewaySearchQueryFallback(
+			effectiveOp,
+			normalizedArgs,
+			context
+		);
+		if (searchQueryFallback) {
+			normalizedArgs = searchQueryFallback.args;
+			warnings.push(searchQueryFallback.warning);
+		}
 		if (requestedOp !== requestedOpRaw) {
 			warnings.push(
 				`Sanitized malformed op "${requestedOpRaw}" to "${requestedOp}" before execution.`
@@ -1028,6 +1037,64 @@ export class ToolExecutionService implements BaseService {
 			requiredIdKey,
 			warning: `${op} requires ${requiredIdKey}; executed ${fallbackOp} to fetch candidate IDs first.`
 		};
+	}
+
+	private resolveGatewaySearchQueryFallback(
+		op: string,
+		args: Record<string, any>,
+		context: ServiceContext
+	): { args: Record<string, any>; warning: string } | null {
+		const normalizedOp = normalizeGatewayOpName(op).toLowerCase();
+		const isSearchOp = normalizedOp === 'onto.search' || normalizedOp.endsWith('.search');
+		if (!isSearchOp) {
+			return null;
+		}
+
+		const existingQuery = typeof args.query === 'string' ? args.query.trim() : '';
+		if (existingQuery.length > 0) {
+			return null;
+		}
+
+		const inferredQuery = this.inferSearchQueryFromHistory(context.conversationHistory);
+		if (!inferredQuery) {
+			return null;
+		}
+
+		return {
+			args: {
+				...args,
+				query: inferredQuery
+			},
+			warning: `${op} was called without args.query; inferred query from the latest user message.`
+		};
+	}
+
+	private inferSearchQueryFromHistory(conversationHistory: ChatMessage[]): string | null {
+		if (!Array.isArray(conversationHistory) || conversationHistory.length === 0) {
+			return null;
+		}
+
+		for (let index = conversationHistory.length - 1; index >= 0; index -= 1) {
+			const message = conversationHistory[index] as ChatMessage | undefined;
+			if (!message || message.role !== 'user') continue;
+			if (typeof message.content !== 'string') continue;
+
+			const normalized = message.content.replace(/\s+/g, ' ').trim();
+			if (!normalized) continue;
+			if (this.isLowSignalSearchQuery(normalized)) continue;
+			return normalized.slice(0, 220);
+		}
+
+		return null;
+	}
+
+	private isLowSignalSearchQuery(value: string): boolean {
+		const normalized = value.trim().toLowerCase();
+		if (!normalized) return true;
+		if (normalized.length < 3) return true;
+		return /^(ok|okay|yes|yep|yeah|no|nope|sure|thanks|thank you|thx|cool|got it|go ahead|continue|retry|search)$/i.test(
+			normalized
+		);
 	}
 
 	private decorateGatewayFallbackResult(

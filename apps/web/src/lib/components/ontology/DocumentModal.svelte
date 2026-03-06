@@ -237,6 +237,10 @@
 		text_findings: PublicPageReviewFinding[];
 		image_findings: PublicPageReviewFinding[];
 		created_at: string;
+		admin_decision: 'approved' | 'rejected' | null;
+		admin_decision_reason: string | null;
+		admin_decision_by: string | null;
+		admin_decision_at: string | null;
 	};
 
 	// Snapshot of last-saved values to detect actual changes
@@ -386,6 +390,16 @@
 			? latestPublicPageReview.reasons.slice(0, 3)
 			: []
 	);
+	const latestPublicPageReviewGuidance = $derived.by(() => {
+		if (!latestPublicPageReview || latestPublicPageReview.status !== 'flagged') return null;
+		if (latestPublicPageReview.admin_decision === 'approved') {
+			return 'Admin marked this content okay. Publish again to proceed.';
+		}
+		if (latestPublicPageReview.admin_decision === 'rejected') {
+			return 'Admin marked this content not okay. Update the document and rerun review.';
+		}
+		return 'Publishing is blocked pending admin review. Ask an admin to mark this content okay.';
+	});
 
 	let lastLoadedId = $state<string | null>(null);
 
@@ -405,6 +419,8 @@
 	let exportingFormat = $state<DocumentExportFormat | null>(null);
 	let showExportMenu = $state(false);
 	let exportMenuRef = $state<HTMLDivElement | null>(null);
+	let exportButtonRef = $state<HTMLButtonElement | null>(null);
+	let exportMenuPos = $state({ top: 0, right: 0 });
 
 	// Left panel collapsible sections
 	let showLinkedEntities = $state(true);
@@ -573,7 +589,17 @@
 			reasons,
 			text_findings: normalizeFindings(row.text_findings),
 			image_findings: normalizeFindings(row.image_findings),
-			created_at: typeof row.created_at === 'string' ? row.created_at : ''
+			created_at: typeof row.created_at === 'string' ? row.created_at : '',
+			admin_decision:
+				row.admin_decision === 'approved' || row.admin_decision === 'rejected'
+					? row.admin_decision
+					: null,
+			admin_decision_reason:
+				typeof row.admin_decision_reason === 'string' ? row.admin_decision_reason : null,
+			admin_decision_by:
+				typeof row.admin_decision_by === 'string' ? row.admin_decision_by : null,
+			admin_decision_at:
+				typeof row.admin_decision_at === 'string' ? row.admin_decision_at : null
 		};
 	}
 
@@ -726,9 +752,15 @@
 			}
 			if (!response.ok) {
 				if (response.status === 422 && review?.status === 'flagged') {
-					toastService.error(
-						'Publishing blocked by content policy. Review the flagged items and try again.'
-					);
+					if (review.admin_decision === 'rejected') {
+						toastService.error(
+							'Publishing blocked: admin marked this content not okay. Update it and try again.'
+						);
+					} else {
+						toastService.error(
+							'Publishing blocked pending admin review. Ask an admin to mark the flagged content okay or update the document.'
+						);
+					}
 					return;
 				}
 				throw new Error(payload?.error || 'Failed to publish public page');
@@ -1111,26 +1143,6 @@
 				throw new Error(result?.error || 'Failed to save document');
 			}
 
-			const publicPageSync = result?.data?.publicPageSync;
-			const syncedPublicPageState = normalizePublicPageState(publicPageSync?.page);
-			const syncedPublicPageReview = normalizePublicPageReview(publicPageSync?.review);
-			if (syncedPublicPageState) {
-				publicPageState = syncedPublicPageState;
-			}
-			if (syncedPublicPageReview) {
-				latestPublicPageReview = syncedPublicPageReview;
-			}
-			const liveSyncBlocked = Boolean(publicPageSync?.blocked);
-			const savedAndPublishedLive =
-				Boolean(publicPageSync?.isLivePublic) && Boolean(publicPageSync?.synced);
-			if (publicPageSync?.error && publicPageState) {
-				publicPageState = {
-					...publicPageState,
-					last_live_sync_error: String(publicPageSync.error)
-				};
-			}
-			lastSavePublishedLive = savedAndPublishedLive;
-
 			// Update server timestamp from response
 			const updatedDoc = result?.data?.document;
 			const newDocumentId = result?.data?.document?.id ?? result?.data?.id ?? null;
@@ -1140,34 +1152,36 @@
 				updatedAt = updatedDoc.updated_at;
 			}
 
+			// Fire-and-forget: sync inline image links in the background
 			if (persistedDocumentId) {
-				try {
-					await syncInlineImageLinks(persistedDocumentId, snapshotAtRequest.body);
-				} catch (syncError) {
-					void logOntologyClientError(syncError, {
-						endpoint: '/api/onto/assets',
-						method: 'POST',
-						projectId,
-						entityType: 'document',
-						entityId: persistedDocumentId,
-						operation: 'document_inline_image_sync',
-						metadata: {
-							inlineAssetIds: extractInlineAssetIds(snapshotAtRequest.body),
-							documentId: persistedDocumentId
+				void syncInlineImageLinks(persistedDocumentId, snapshotAtRequest.body).catch(
+					(syncError) => {
+						void logOntologyClientError(syncError, {
+							endpoint: '/api/onto/assets',
+							method: 'POST',
+							projectId,
+							entityType: 'document',
+							entityId: persistedDocumentId,
+							operation: 'document_inline_image_sync',
+							metadata: {
+								inlineAssetIds: extractInlineAssetIds(snapshotAtRequest.body),
+								documentId: persistedDocumentId
+							}
+						});
+						if (!silent) {
+							toastService.warning(
+								'Document saved, but inline image links could not be fully synced'
+							);
 						}
-					});
-					if (!silent) {
-						toastService.warning(
-							'Document saved, but inline image links could not be fully synced'
-						);
 					}
-				}
+				);
 			}
 
 			// Capture snapshot of what we just saved
 			captureSnapshot(snapshotAtRequest);
 
 			// Show saved status briefly, then return to idle
+			lastSavePublishedLive = false;
 			saveStatus = 'saved';
 			if (savedFeedbackTimer) clearTimeout(savedFeedbackTimer);
 			savedFeedbackTimer = setTimeout(() => {
@@ -1177,23 +1191,7 @@
 			}, 2000);
 
 			if (!silent) {
-				if (wasCreating) {
-					toastService.success('Document created');
-				} else if (savedAndPublishedLive) {
-					toastService.success('Saved and published live');
-				} else if (liveSyncBlocked) {
-					toastService.success('Document updated');
-				} else {
-					toastService.success('Document updated');
-				}
-
-				if (publicPageSync?.error) {
-					toastService.warning(
-						liveSyncBlocked
-							? `Document saved, but public update was blocked by content policy: ${String(publicPageSync.error)}`
-							: `Document saved, but live sync failed: ${String(publicPageSync.error)}`
-					);
-				}
+				toastService.success(wasCreating ? 'Document created' : 'Document updated');
 				onSaved?.();
 			}
 
@@ -1862,9 +1860,17 @@
 				<!-- Export button -->
 				<div class="relative" bind:this={exportMenuRef}>
 					<button
+						bind:this={exportButtonRef}
 						type="button"
 						onclick={(event) => {
 							event.stopPropagation();
+							if (!showExportMenu && exportButtonRef) {
+								const rect = exportButtonRef.getBoundingClientRect();
+								exportMenuPos = {
+									top: rect.bottom + 4,
+									right: window.innerWidth - rect.right
+								};
+							}
 							showExportMenu = !showExportMenu;
 						}}
 						disabled={blockingSave || loading || exportingFormat !== null}
@@ -1878,7 +1884,8 @@
 
 					{#if showExportMenu}
 						<div
-							class="absolute right-0 top-full mt-1 z-50 w-40 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
+							class="fixed z-[10000] w-40 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
+							style="top: {exportMenuPos.top}px; right: {exportMenuPos.right}px;"
 							role="menu"
 							onclick={(event) => event.stopPropagation()}
 							onkeydown={(event) => {
@@ -2147,10 +2154,36 @@
 														{/each}
 													</ul>
 												{/if}
-												<p class="text-[11px] text-red-800 leading-snug">
-													Edit the content and publish again to rerun
-													review.
-												</p>
+												{#if latestPublicPageReview.admin_decision}
+													<p
+														class="text-[11px] text-red-800 leading-snug"
+													>
+														Admin decision:
+														{latestPublicPageReview.admin_decision ===
+														'approved'
+															? 'OK to publish'
+															: 'Not okay'}
+														{#if latestPublicPageReview.admin_decision_at}
+															({formatDate(
+																latestPublicPageReview.admin_decision_at
+															)})
+														{/if}
+													</p>
+												{/if}
+												{#if latestPublicPageReview.admin_decision_reason}
+													<p
+														class="text-[11px] text-red-800 leading-snug"
+													>
+														{latestPublicPageReview.admin_decision_reason}
+													</p>
+												{/if}
+												{#if latestPublicPageReviewGuidance}
+													<p
+														class="text-[11px] text-red-800 leading-snug"
+													>
+														{latestPublicPageReviewGuidance}
+													</p>
+												{/if}
 											</div>
 										{:else if latestPublicPageReview?.status === 'passed'}
 											<p class="text-[11px] text-muted-foreground">
@@ -2759,6 +2792,24 @@
 																	{/each}
 																</ul>
 															{/if}
+															{#if latestPublicPageReview.admin_decision}
+																<p
+																	class="text-[11px] text-red-800 leading-snug"
+																>
+																	Admin decision:
+																	{latestPublicPageReview.admin_decision ===
+																	'approved'
+																		? 'OK to publish'
+																		: 'Not okay'}
+																</p>
+															{/if}
+															{#if latestPublicPageReviewGuidance}
+																<p
+																	class="text-[11px] text-red-800 leading-snug"
+																>
+																	{latestPublicPageReviewGuidance}
+																</p>
+															{/if}
 														</div>
 													{/if}
 												</div>
@@ -3183,6 +3234,27 @@
 									<li>{reason}</li>
 								{/each}
 							</ul>
+						{/if}
+						{#if latestPublicPageReview.admin_decision}
+							<p class="text-xs text-red-800 leading-snug">
+								Admin decision:
+								{latestPublicPageReview.admin_decision === 'approved'
+									? 'OK to publish'
+									: 'Not okay'}
+								{#if latestPublicPageReview.admin_decision_at}
+									({formatDate(latestPublicPageReview.admin_decision_at)})
+								{/if}
+							</p>
+						{/if}
+						{#if latestPublicPageReview.admin_decision_reason}
+							<p class="text-xs text-red-800 leading-snug">
+								{latestPublicPageReview.admin_decision_reason}
+							</p>
+						{/if}
+						{#if latestPublicPageReviewGuidance}
+							<p class="text-xs text-red-800 leading-snug">
+								{latestPublicPageReviewGuidance}
+							</p>
 						{/if}
 					</div>
 				{/if}

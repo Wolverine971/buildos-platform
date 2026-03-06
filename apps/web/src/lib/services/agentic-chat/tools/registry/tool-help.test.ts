@@ -61,6 +61,48 @@ describe('getToolHelp', () => {
 		expect(help.examples[1]?.tool_exec?.args?.offset).toBe(100);
 	});
 
+	it('includes required identifier guidance for calendar update ops', () => {
+		const help = getToolHelp('cal.event.update', {
+			format: 'short',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('op');
+		expect(Array.isArray(help.notes)).toBe(true);
+		expect(help.notes.join(' ')).toContain('onto_event_id or args.event_id');
+		expect(help.example_tool_exec?.args?.onto_event_id).toBe('<onto_event_id_uuid>');
+		expect(help.example_tool_exec?.args?.title).toBe('<title>');
+	});
+
+	it('returns calendar skill playbook for cal.skill', () => {
+		const help = getToolHelp('cal.skill', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('skill');
+		expect(help.path).toBe('cal.skill');
+		expect(Array.isArray(help.workflow)).toBe(true);
+		expect(Array.isArray(help.ops?.read)).toBe(true);
+		expect(Array.isArray(help.ops?.write)).toBe(true);
+		expect(help.ops.read.map((item: any) => item.op)).toContain('cal.event.list');
+		expect(help.ops.write.map((item: any) => item.op)).toContain('cal.event.create');
+		expect(help.ops.write.map((item: any) => item.op)).toContain('cal.event.update');
+		expect(help.ops.write.map((item: any) => item.op)).toContain('cal.event.delete');
+	});
+
+	it('lists calendar skill under cal namespace', () => {
+		const help = getToolHelp('cal', {
+			format: 'short',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('directory');
+		expect(help.path).toBe('cal');
+		expect(Array.isArray(help.items)).toBe(true);
+		expect(help.items.map((item: any) => item.name)).toContain('cal.skill');
+	});
+
 	it('supports profile overview op discovery', () => {
 		const help = getToolHelp('util.profile.overview', {
 			format: 'short',

@@ -1106,8 +1106,9 @@ TOOL DISCOVERY MODE (CRITICAL):
 - Canonical exception ops: onto.search, onto.document.tree.get, onto.document.tree.move, onto.document.path.get, onto.project.graph.get, onto.project.graph.reorganize, onto.edge.link, onto.edge.unlink, onto.entity.relationships.get, onto.entity.links.get.
 - Calendar ops are under cal.event.* and cal.project.* (not onto.event.*). Utility ops are under util.*.
 - Never use legacy op strings in tool_exec.op (for example: get_document_tree, move_document_in_tree, list_onto_*).
-- Prefer targeted discovery first (e.g., tool_help("onto.document"), tool_help("cal.event")); use tool_help("root") only when namespace is unknown.
-- Path heuristic: tasks -> onto.task, documents -> onto.document, goals -> onto.goal, plans -> onto.plan, milestones -> onto.milestone, risks -> onto.risk, calendar -> cal.event, user profile -> util.profile.
+- Prefer targeted discovery first (e.g., tool_help("onto.document"), tool_help("cal.skill") for calendar workflows); use tool_help("root") only when namespace is unknown.
+- Path heuristic: tasks -> onto.task, documents -> onto.document, goals -> onto.goal, plans -> onto.plan, milestones -> onto.milestone, risks -> onto.risk, calendar -> cal.skill, user profile -> util.profile.
+- Calendar skill rule: if the user asks to read/create/update/delete calendar events or manage project calendar mapping, plan a tool_help("cal.skill") step before calendar tool_exec calls.
 - User profile context is NOT preloaded. If personalization is needed, call tool_help("util.profile") and then util.profile.overview.
 - Gateway payload contract: tool_help({ path: "<path>" }) and tool_exec({ op: "<canonical op>", args: { ... } }).
 - Never call tool_exec with {} or with missing op/args.

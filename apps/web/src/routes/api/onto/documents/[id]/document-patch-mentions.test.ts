@@ -7,8 +7,8 @@ const createOrMergeDocumentVersionMock = vi.fn(async () => ({ status: 'skipped' 
 const toDocumentSnapshotMock = vi.fn(() => ({}));
 
 vi.mock('$lib/services/ontology/doc-structure.service', () => ({
-	removeDocumentFromTree: vi.fn(),
-	updateDocNodeMetadata: vi.fn()
+	removeDocumentFromTree: vi.fn(async () => null),
+	updateDocNodeMetadata: vi.fn(async () => null)
 }));
 
 vi.mock('$lib/services/async-activity-logger', () => ({
@@ -39,6 +39,17 @@ vi.mock('$lib/server/entity-mention-notification.service', () => ({
 
 vi.mock('../../shared/error-logging', () => ({
 	logOntologyApiError: vi.fn()
+}));
+
+vi.mock('$lib/server/public-page.service', () => ({
+	syncLivePublicPageForDocument: vi.fn(async () => ({
+		isLivePublic: false,
+		synced: false,
+		blocked: false,
+		page: null,
+		error: null,
+		review: null
+	}))
 }));
 
 class QueryBuilderMock {
@@ -152,30 +163,36 @@ describe('PATCH /api/onto/documents/[id] mention notifications', () => {
 		} as any);
 
 		expect(response.status).toBe(200);
-		expect(resolveEntityMentionUserIdsMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				projectId: 'project-1',
-				projectOwnerActorId: 'actor-owner',
-				actorUserId: 'user-actor',
-				nextTextValues: [
-					'Document title',
-					'Updated [[user:user-mentioned|Jo]]',
-					'Before content'
-				],
-				previousTextValues: ['Document title', 'Before description', 'Before content']
-			})
-		);
-		expect(notifyEntityMentionsAddedMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				projectId: 'project-1',
-				projectName: 'Project One',
-				entityType: 'document',
-				entityId: 'doc-1',
-				entityTitle: 'Document title',
-				actorUserId: 'user-actor',
-				mentionedUserIds: ['user-mentioned']
-			})
-		);
+		// Post-save operations now run in the background (fire-and-forget).
+		// Use vi.waitFor to poll until the background promises settle.
+		await vi.waitFor(() => {
+			expect(resolveEntityMentionUserIdsMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					projectId: 'project-1',
+					projectOwnerActorId: 'actor-owner',
+					actorUserId: 'user-actor',
+					nextTextValues: [
+						'Document title',
+						'Updated [[user:user-mentioned|Jo]]',
+						'Before content'
+					],
+					previousTextValues: ['Document title', 'Before description', 'Before content']
+				})
+			);
+		});
+		await vi.waitFor(() => {
+			expect(notifyEntityMentionsAddedMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					projectId: 'project-1',
+					projectName: 'Project One',
+					entityType: 'document',
+					entityId: 'doc-1',
+					entityTitle: 'Document title',
+					actorUserId: 'user-actor',
+					mentionedUserIds: ['user-mentioned']
+				})
+			);
+		});
 	});
 
 	it('passes forceCreateVersion when force_version is requested', async () => {
@@ -199,12 +216,14 @@ describe('PATCH /api/onto/documents/[id] mention notifications', () => {
 		} as any);
 
 		expect(response.status).toBe(200);
-		expect(createOrMergeDocumentVersionMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				documentId: 'doc-1',
-				actorId: 'actor-current',
-				forceCreateVersion: true
-			})
-		);
+		await vi.waitFor(() => {
+			expect(createOrMergeDocumentVersionMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					documentId: 'doc-1',
+					actorId: 'actor-current',
+					forceCreateVersion: true
+				})
+			);
+		});
 	});
 });

@@ -27,12 +27,15 @@ describe('PromptGenerationService gateway tool instructions', () => {
 		expect(prompt).toContain('In tool_exec.op, use only canonical ops.');
 		expect(prompt).toContain('Never use legacy op strings in tool_exec.op');
 		expect(prompt).toContain(
-			'Use targeted discovery first: tool_help("onto.<entity>") or tool_help("cal.event").'
+			'Use targeted discovery first: tool_help("onto.<entity>") or tool_help("cal.skill") for calendar workflows.'
 		);
 		expect(prompt).toContain(
 			'User profile context is NOT preloaded. If personalization is needed, call tool_help("util.profile") and then util.profile.overview.'
 		);
 		expect(prompt).toContain('contacts -> util.contact');
+		expect(prompt).toContain(
+			'Calendar skill rule: if the user asks to read/create/update/delete calendar events or manage project calendar mapping, call tool_help("cal.skill") once in-turn before tool_exec calls.'
+		);
 		expect(prompt).toContain('Contact method values are sensitive and redacted by default.');
 		expect(prompt).toContain(
 			'For first-time or complex writes in a turn, call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.'

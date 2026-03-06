@@ -168,8 +168,9 @@ export class PromptGenerationService {
 					`- Canonical exception ops: onto.search, onto.document.tree.get, onto.document.tree.move, onto.document.path.get, onto.project.graph.get, onto.project.graph.reorganize, onto.edge.link, onto.edge.unlink, onto.entity.relationships.get, onto.entity.links.get.\n` +
 					`- Calendar ops are under cal.event.* and cal.project.* (not onto.event.*). Utility ops are under util.*.\n` +
 					`- Never use legacy op strings in tool_exec.op (for example: get_document_tree, move_document_in_tree, list_onto_*).\n` +
-					`- Use targeted discovery first: tool_help(\"onto.<entity>\") or tool_help(\"cal.event\"). Use tool_help(\"root\") only when namespace is unknown.\n` +
-					`- Path heuristic: tasks -> onto.task, documents -> onto.document, goals -> onto.goal, plans -> onto.plan, milestones -> onto.milestone, risks -> onto.risk, calendar -> cal.event, user profile -> util.profile, contacts -> util.contact.\n` +
+					`- Use targeted discovery first: tool_help(\"onto.<entity>\") or tool_help(\"cal.skill\") for calendar workflows. Use tool_help(\"root\") only when namespace is unknown.\n` +
+					`- Path heuristic: tasks -> onto.task, documents -> onto.document, goals -> onto.goal, plans -> onto.plan, milestones -> onto.milestone, risks -> onto.risk, calendar -> cal.skill, user profile -> util.profile, contacts -> util.contact.\n` +
+					`- Calendar skill rule: if the user asks to read/create/update/delete calendar events or manage project calendar mapping, call tool_help(\"cal.skill\") once in-turn before tool_exec calls.\n` +
 					`- User profile context is NOT preloaded. If personalization is needed, call tool_help(\"util.profile\") and then util.profile.overview.\n` +
 					`- Contact method values are sensitive and redacted by default. Only request raw values when the user explicitly asks for exact phone/email details.\n` +
 					`- Gateway payload contract: tool_help({ path: \"<path>\" }) and tool_exec({ op: \"<canonical op>\", args: { ... } }).\n` +

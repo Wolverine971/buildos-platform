@@ -43,6 +43,7 @@ const POLICY_MAP: Record<string, { do: string[]; dont: string[]; edge_cases: str
 		edge_cases: ['If critical info is missing, add clarifications[] and still create']
 	}
 };
+const CALENDAR_SKILL_PATH = 'cal.skill';
 
 export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record<string, any> {
 	const registry = getToolRegistry();
@@ -79,7 +80,7 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 				}
 			},
 			workflow: [
-				'1) Discover target group with tool_help("onto.<entity>") or tool_help("cal.event").',
+				'1) Discover target group with tool_help("onto.<entity>") or tool_help("cal.skill") for calendar workflows.',
 				'2) For first-time/complex writes, inspect exact schema with tool_help("<exact op>", { format: "full", include_schemas: true }).',
 				'3) Execute with tool_exec({ op: "<exact op>", args: { ... } }).',
 				'4) If execution returns error.help_path, call tool_help(help_path) then retry once.'
@@ -105,6 +106,9 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 		}
 		return rootHelp;
 	}
+	if (normalized === CALENDAR_SKILL_PATH) {
+		return buildCalendarSkillHelp(registry.version, format, includeExamples);
+	}
 
 	const op = registry.ops[normalized];
 	if (op) {
@@ -112,6 +116,13 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 	}
 
 	const children = listChildren(normalized, registry.ops);
+	if (normalized === 'cal' && !children.some((child) => child.name === CALENDAR_SKILL_PATH)) {
+		children.unshift({
+			name: CALENDAR_SKILL_PATH,
+			type: 'guide',
+			summary: 'Calendar workflow playbook (read/create/update/delete + project mapping).'
+		});
+	}
 	if (children.length === 0) {
 		return {
 			type: 'not_found',
@@ -234,6 +245,27 @@ function buildOpNotes(
 			'Use args.limit (or args.max_results) plus args.offset to page through long timelines.'
 		);
 	}
+	if (op === 'cal.event.get') {
+		notes.push(
+			'Prefer args.onto_event_id when available; otherwise pass args.event_id (+ scope/calendar hints when needed).'
+		);
+	}
+	if (op === 'cal.event.create' || op === 'cal.event.update') {
+		notes.push(
+			'Use timezone-safe ISO 8601 for args.start_at/args.end_at (include offset/Z, or pass args.timezone).'
+		);
+	}
+	if (op === 'cal.event.update' || op === 'cal.event.delete') {
+		notes.push('Pass args.onto_event_id or args.event_id.');
+	}
+	if (op.startsWith('cal.event.')) {
+		notes.push(
+			'When args.calendar_scope="project", include args.project_id so the correct project calendar is resolved.'
+		);
+	}
+	if (op === 'cal.project.get' || op === 'cal.project.set') {
+		notes.push('Pass args.project_id as an exact UUID.');
+	}
 
 	const updateMatch = op.match(/^onto\.([a-z_]+)\.update$/);
 	if (updateMatch) {
@@ -317,6 +349,65 @@ function buildOpExamples(
 			}
 		];
 	}
+	if (op === 'cal.event.create') {
+		return [
+			{
+				description: 'Create a project-scoped event',
+				tool_exec: {
+					op,
+					args: {
+						title: 'Design review',
+						start_at: '2026-03-10T18:00:00.000Z',
+						end_at: '2026-03-10T19:00:00.000Z',
+						calendar_scope: 'project',
+						project_id: '<project_id_uuid>'
+					}
+				}
+			}
+		];
+	}
+	if (op === 'cal.event.update') {
+		return [
+			{
+				description: 'Update an event by ontology event id',
+				tool_exec: {
+					op,
+					args: {
+						onto_event_id: '<onto_event_id_uuid>',
+						title: 'Updated title'
+					}
+				}
+			}
+		];
+	}
+	if (op === 'cal.event.delete') {
+		return [
+			{
+				description: 'Delete an event by ontology event id',
+				tool_exec: {
+					op,
+					args: {
+						onto_event_id: '<onto_event_id_uuid>'
+					}
+				}
+			}
+		];
+	}
+	if (op === 'cal.project.set') {
+		return [
+			{
+				description: 'Link or update a project calendar mapping',
+				tool_exec: {
+					op,
+					args: {
+						project_id: '<project_id_uuid>',
+						action: 'update',
+						sync_enabled: true
+					}
+				}
+			}
+		];
+	}
 
 	const examples: Array<Record<string, unknown>> = [
 		{
@@ -383,8 +474,163 @@ function buildMinimalArgsTemplate(
 	if ((op === 'onto.search' || /^onto\.[a-z_]+\.search$/.test(op)) && args.query === undefined) {
 		args.query = '<search query>';
 	}
+	if (op === 'cal.event.update' || op === 'cal.event.delete') {
+		if (args.onto_event_id === undefined && args.event_id === undefined) {
+			args.onto_event_id = '<onto_event_id_uuid>';
+		}
+	}
+	if (op === 'cal.event.update' && args.title === undefined) {
+		args.title = '<title>';
+	}
 
 	return args;
+}
+
+function buildCalendarSkillHelp(
+	version: string,
+	format: ToolHelpFormat,
+	includeExamples: boolean
+): Record<string, any> {
+	const skill: Record<string, any> = {
+		type: 'skill',
+		path: CALENDAR_SKILL_PATH,
+		name: 'calendar',
+		format,
+		version,
+		summary:
+			'Calendar operation playbook for BuildOS agentic chat. Use before calendar read/write tasks to avoid scope, ID, and timestamp errors.',
+		when_to_use: [
+			'Read events or search a date window',
+			'Create/schedule events',
+			'Update/reschedule events',
+			'Delete/cancel events',
+			'Get or set project calendar mapping'
+		],
+		workflow: [
+			'1) Choose scope first: user, project, or explicit calendar_id.',
+			'2) For project scope, always pass project_id.',
+			'3) Use timezone-safe ISO 8601 for all event times (offset/Z, or pass timezone).',
+			'4) Use list/get to discover IDs before update/delete; never guess IDs.',
+			'5) For update/delete, pass onto_event_id or event_id.',
+			'6) If execution returns help_path, call tool_help(help_path) and retry once.'
+		],
+		ops: {
+			read: [
+				{
+					op: 'cal.event.list',
+					use_for: 'List/search events in a time window',
+					key_args: [
+						'timeMin/timeMax (aliases: time_min/time_max)',
+						'query (alias: q)',
+						'limit/max_results + offset',
+						'calendar_scope + project_id/calendar_id'
+					]
+				},
+				{
+					op: 'cal.event.get',
+					use_for: 'Read one event detail',
+					key_args: ['onto_event_id preferred, otherwise event_id']
+				},
+				{
+					op: 'cal.project.get',
+					use_for: 'Read project calendar mapping',
+					key_args: ['project_id']
+				}
+			],
+			write: [
+				{
+					op: 'cal.event.create',
+					use_for: 'Create event',
+					key_args: [
+						'title + start_at (required)',
+						'end_at (recommended)',
+						'project_id for project scope'
+					]
+				},
+				{
+					op: 'cal.event.update',
+					use_for: 'Update event',
+					key_args: ['onto_event_id or event_id', 'one or more fields to change']
+				},
+				{
+					op: 'cal.event.delete',
+					use_for: 'Delete event',
+					key_args: ['onto_event_id or event_id']
+				},
+				{
+					op: 'cal.project.set',
+					use_for: 'Create/update project calendar mapping',
+					key_args: [
+						'project_id',
+						'optional calendar_id to link existing Google calendar'
+					]
+				}
+			]
+		},
+		guardrails: [
+			'Prefer project scope when the request is tied to a project.',
+			'Use user scope for the user primary calendar.',
+			'Use calendar_id scope only when an explicit Google calendar id is provided.'
+		]
+	};
+
+	if (includeExamples) {
+		skill.examples = [
+			{
+				description: 'Read: list next 30 days in project calendar',
+				tool_exec: {
+					op: 'cal.event.list',
+					args: {
+						time_min: '2026-03-01',
+						time_max: '2026-03-31',
+						calendar_scope: 'project',
+						project_id: '<project_id_uuid>'
+					}
+				}
+			},
+			{
+				description: 'Write: create project event',
+				tool_exec: {
+					op: 'cal.event.create',
+					args: {
+						title: 'Sprint planning',
+						start_at: '2026-03-05T15:00:00.000Z',
+						end_at: '2026-03-05T15:30:00.000Z',
+						calendar_scope: 'project',
+						project_id: '<project_id_uuid>'
+					}
+				}
+			},
+			{
+				description: 'Write: update by ontology id',
+				tool_exec: {
+					op: 'cal.event.update',
+					args: {
+						onto_event_id: '<onto_event_id_uuid>',
+						start_at: '2026-03-05T16:00:00.000Z'
+					}
+				}
+			},
+			{
+				description: 'Write: delete by ontology id',
+				tool_exec: {
+					op: 'cal.event.delete',
+					args: {
+						onto_event_id: '<onto_event_id_uuid>'
+					}
+				}
+			}
+		];
+	}
+
+	if (format === 'full') {
+		skill.notes = [
+			'Call tool_help("cal.event.<op>", { format: "full", include_schemas: true }) when arg schema is uncertain.',
+			'For first-time or complex calendar writes in a turn, inspect exact op schema before tool_exec.'
+		];
+	}
+
+	return skill;
 }
 
 function buildPlaceholderValue(name: string, def: JsonSchemaProperty): unknown {

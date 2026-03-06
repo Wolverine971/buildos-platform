@@ -7,6 +7,7 @@ export const PUBLIC_PAGE_CONTENT_POLICY_VERSION = 'public_page_policy_v1';
 
 export type PublicPageReviewSource = 'publish_confirm' | 'live_sync' | 'manual_retry';
 export type PublicPageReviewStatus = 'passed' | 'flagged' | 'error';
+export type PublicPageAdminDecision = 'approved' | 'rejected';
 export type PublicPageReviewSeverity = 'low' | 'medium' | 'high';
 export type PublicPageReviewCategory =
 	| 'credentials'
@@ -45,6 +46,10 @@ export type PublicPageReviewAttempt = {
 	created_by: string;
 	created_at: string;
 	review_metadata: Record<string, unknown>;
+	admin_decision: PublicPageAdminDecision | null;
+	admin_decision_reason: string | null;
+	admin_decision_by: string | null;
+	admin_decision_at: string | null;
 };
 
 type DocumentLike = {
@@ -54,6 +59,7 @@ type DocumentLike = {
 	description: string | null;
 	content: string | null;
 	props: Record<string, unknown> | null;
+	updated_at?: string | null;
 };
 
 type AssetLike = {
@@ -74,6 +80,14 @@ type ReviewOptions = {
 	actorUserId?: string | null;
 	source: PublicPageReviewSource;
 	publicPageId?: string | null;
+};
+
+type SetAdminDecisionOptions = {
+	supabase: SupabaseLike;
+	reviewId: string;
+	actorId: string;
+	decision: PublicPageAdminDecision;
+	reason?: string | null;
 };
 
 type LlmReviewResult = {
@@ -180,6 +194,14 @@ function toStringOrNull(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : null;
+}
+
+function readMetadataString(
+	metadata: Record<string, unknown> | null | undefined,
+	key: string
+): string | null {
+	if (!metadata) return null;
+	return toStringOrNull(metadata[key]);
 }
 
 function getDocumentContent(document: DocumentLike): string {
@@ -594,8 +616,33 @@ function toReviewAttempt(row: Record<string, unknown>): PublicPageReviewAttempt 
 		image_findings: normalizeFindingsJson(row.image_findings),
 		created_by: String(row.created_by),
 		created_at: String(row.created_at),
-		review_metadata: metadata
+		review_metadata: metadata,
+		admin_decision:
+			row.admin_decision === 'approved' || row.admin_decision === 'rejected'
+				? row.admin_decision
+				: null,
+		admin_decision_reason: toStringOrNull(row.admin_decision_reason),
+		admin_decision_by: toStringOrNull(row.admin_decision_by),
+		admin_decision_at: toStringOrNull(row.admin_decision_at)
 	};
+}
+
+function getDocumentUpdatedAt(document: DocumentLike): string | null {
+	return toStringOrNull(document.updated_at);
+}
+
+export function isPublicPageReviewReusableForDocument(
+	review: PublicPageReviewAttempt,
+	document: DocumentLike
+): boolean {
+	if (review.policy_version !== PUBLIC_PAGE_CONTENT_POLICY_VERSION) return false;
+	const reviewDocumentUpdatedAt = readMetadataString(
+		review.review_metadata,
+		'document_updated_at'
+	);
+	const documentUpdatedAt = getDocumentUpdatedAt(document);
+	if (!reviewDocumentUpdatedAt || !documentUpdatedAt) return false;
+	return reviewDocumentUpdatedAt === documentUpdatedAt;
 }
 
 async function fetchInlineAssetsForDocument(
@@ -678,6 +725,7 @@ export async function runPublicPageContentReview(
 
 	const reviewMetadata = {
 		provider: llmResult ? 'rule_engine+smart_llm' : 'rule_engine',
+		document_updated_at: getDocumentUpdatedAt(document),
 		scanned: {
 			content_char_count: content.length,
 			image_count: assets.length
@@ -728,5 +776,32 @@ export async function getLatestPublicPageReviewForDocument(
 		.maybeSingle();
 
 	if (error || !data) return null;
+	return toReviewAttempt(data as Record<string, unknown>);
+}
+
+export async function setPublicPageReviewAdminDecision(
+	options: SetAdminDecisionOptions
+): Promise<PublicPageReviewAttempt> {
+	const { supabase, reviewId, actorId, decision, reason } = options;
+	const { data, error } = await (supabase as any)
+		.from('onto_public_page_review_attempts')
+		.update({
+			admin_decision: decision,
+			admin_decision_reason: toStringOrNull(reason),
+			admin_decision_by: actorId,
+			admin_decision_at: new Date().toISOString()
+		})
+		.eq('id', reviewId)
+		.eq('status', 'flagged')
+		.select('*')
+		.maybeSingle();
+
+	if (error) {
+		throw error;
+	}
+	if (!data) {
+		throw new Error('Review attempt not found or not eligible for admin decision');
+	}
+
 	return toReviewAttempt(data as Record<string, unknown>);
 }

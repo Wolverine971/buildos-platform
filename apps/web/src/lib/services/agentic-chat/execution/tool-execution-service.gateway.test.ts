@@ -32,13 +32,14 @@ function buildGatewayToolCall(
 	};
 }
 
-function buildContext(): ServiceContext {
+function buildContext(overrides: Partial<ServiceContext> = {}): ServiceContext {
 	return {
 		sessionId: 'session_123',
 		userId: 'user_123',
 		contextType: 'project',
 		entityId: PROJECT_ID,
-		conversationHistory: []
+		conversationHistory: [],
+		...overrides
 	};
 }
 
@@ -123,6 +124,46 @@ describe('ToolExecutionService gateway fallback', () => {
 				query: 'launch checklist'
 			}),
 			expect.any(Object)
+		);
+	});
+
+	it('infers query for onto.*.search when args.query is missing', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				projects: []
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.project.search',
+				args: {}
+			}),
+			buildContext({
+				contextType: 'global',
+				conversationHistory: [
+					{
+						role: 'user',
+						content: 'Find projects related to onboarding flow'
+					} as any
+				]
+			}),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'search_onto_projects',
+			expect.objectContaining({
+				query: 'Find projects related to onboarding flow'
+			}),
+			expect.any(Object)
+		);
+		expect((result.data as any)?.meta?.warnings).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining('called without args.query; inferred query')
+			])
 		);
 	});
 
@@ -443,6 +484,21 @@ describe('ToolExecutionService gateway fallback', () => {
 		expect(result.success).toBe(true);
 		expect((result.data as any)?.type).toBe('directory');
 		expect((result.data as any)?.path).toBe('onto.document.tree');
+	});
+
+	it('normalizes calendar skill help alias to cal.skill', async () => {
+		const toolExecutor = vi.fn();
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildGatewayToolCall('tool_help', { path: 'calendar.skill' }),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect((result.data as any)?.type).toBe('skill');
+		expect((result.data as any)?.path).toBe('cal.skill');
 	});
 
 	it('sanitizes malformed op wrappers and still executes canonical op', async () => {

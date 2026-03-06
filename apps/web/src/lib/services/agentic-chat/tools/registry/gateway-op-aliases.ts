@@ -39,7 +39,10 @@ export const GATEWAY_OP_ALIASES: Record<string, string> = {
 const GATEWAY_HELP_PATH_ALIASES: Record<string, string> = {
 	'onto_projects.doc_structure': 'onto.document.tree',
 	'onto_projects.doc_structure.tree': 'onto.document.tree',
-	'onto_projects.doc_structure.path': 'onto.document.path'
+	'onto_projects.doc_structure.path': 'onto.document.path',
+	'calendar.skill': 'cal.skill',
+	'calendar.skills': 'cal.skill',
+	'cal.skills': 'cal.skill'
 };
 
 export function normalizeGatewayOpName(op: string): string {

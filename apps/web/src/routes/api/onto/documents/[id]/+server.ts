@@ -90,10 +90,23 @@ async function ensureDocumentAccess(
 		return { error: ApiResponse.notFound('Document') };
 	}
 
-	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-		p_user_id: userId
-	});
+	// Parallelize actor resolution, access check, and project fetch —
+	// all three depend only on document.project_id / userId, not on each other.
+	const [actorResult, accessResult, projectResult] = await Promise.all([
+		supabase.rpc('ensure_actor_for_user', { p_user_id: userId }),
+		supabase.rpc('current_actor_has_project_access', {
+			p_project_id: document.project_id,
+			p_required_access: requiredAccess
+		}),
+		supabase
+			.from('onto_projects')
+			.select('id, name, created_by')
+			.eq('id', document.project_id)
+			.is('deleted_at', null)
+			.maybeSingle()
+	]);
 
+	const { data: actorId, error: actorError } = actorResult;
 	if (actorError || !actorId) {
 		console.error('[Document API] Failed to resolve actor:', actorError);
 		await logOntologyApiError({
@@ -115,14 +128,7 @@ async function ensureDocumentAccess(
 		};
 	}
 
-	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_access',
-		{
-			p_project_id: document.project_id,
-			p_required_access: requiredAccess
-		}
-	);
-
+	const { data: hasAccess, error: accessError } = accessResult;
 	if (accessError) {
 		console.error('[Document API] Failed to check access:', accessError);
 		await logOntologyApiError({
@@ -145,13 +151,7 @@ async function ensureDocumentAccess(
 		};
 	}
 
-	const { data: project, error: projectError } = await supabase
-		.from('onto_projects')
-		.select('id, name, created_by')
-		.eq('id', document.project_id)
-		.is('deleted_at', null)
-		.maybeSingle();
-
+	const { data: project, error: projectError } = projectResult;
 	if (projectError) {
 		console.error('[Document API] Failed to fetch project:', projectError);
 		await logOntologyApiError({
@@ -595,42 +595,8 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.databaseError(updateError);
 		}
 
-		let version: { number: number; status: 'created' | 'merged' } | null = null;
-
-		try {
-			const versionResult = await createOrMergeDocumentVersion({
-				supabase: locals.supabase,
-				documentId,
-				actorId,
-				snapshot: toDocumentSnapshot(updatedDocument),
-				previousSnapshot: toDocumentSnapshot(document),
-				changeSource: getChangeSourceFromRequest(request),
-				forceCreateVersion: forceVersion
-			});
-
-			if (versionResult.status !== 'skipped') {
-				version = {
-					number: versionResult.versionNumber,
-					status: versionResult.status
-				};
-			}
-		} catch (versionError) {
-			console.error('[Document API] Failed to create/merge document version:', versionError);
-			await logOntologyApiError({
-				supabase: locals.supabase,
-				error: versionError,
-				endpoint: `/api/onto/documents/${documentId}`,
-				method: 'PATCH',
-				userId: session.user.id,
-				projectId: document.project_id,
-				entityType: 'document',
-				entityId: documentId,
-				operation: 'document_version_create',
-				tableName: 'onto_document_versions',
-				metadata: { nonFatal: true }
-			});
-		}
-
+		// Connection/parent organization — must stay blocking because
+		// autoOrganizeConnections can throw AutoOrganizeError for user feedback.
 		const hasParentField = Object.prototype.hasOwnProperty.call(body, 'parent');
 		const hasParentsField = Object.prototype.hasOwnProperty.call(body, 'parents');
 		const hasConnectionsInput = Array.isArray(connections);
@@ -671,126 +637,176 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
+		// ── Fire-and-forget post-save operations ──
+		// These run in the background after the response is sent.
+		// Each operation has its own error handling — failures are logged but non-fatal.
 		const shouldSyncDocStructure =
 			Object.prototype.hasOwnProperty.call(updatePayload, 'title') ||
 			Object.prototype.hasOwnProperty.call(updatePayload, 'description');
 
-		if (shouldSyncDocStructure) {
-			try {
-				await updateDocNodeMetadata(
-					locals.supabase,
-					document.project_id,
-					documentId,
-					{
-						title: updatedDocument.title ?? null,
-						description: updatedDocument.description ?? null
-					},
-					actorId
-				);
-			} catch (syncError) {
-				console.error('[Document API] Failed to sync doc_structure metadata:', syncError);
-				await logOntologyApiError({
+		const changeSource = getChangeSourceFromRequest(request);
+		// Capture session values before the async closure (TypeScript narrowing doesn't persist)
+		const userId = session.user.id;
+		const userName = session.user.name;
+		const userEmail = session.user.email;
+
+		const postSaveWork = async () => {
+			await Promise.all([
+				// Versioning
+				createOrMergeDocumentVersion({
 					supabase: locals.supabase,
-					error: syncError,
-					endpoint: `/api/onto/documents/${documentId}`,
-					method: 'PATCH',
-					userId: session.user.id,
-					projectId: document.project_id,
-					entityType: 'project',
-					entityId: documentId,
-					operation: 'doc_structure_metadata_sync',
-					metadata: { nonFatal: true }
-				});
-			}
-		}
+					documentId,
+					actorId,
+					snapshot: toDocumentSnapshot(updatedDocument),
+					previousSnapshot: toDocumentSnapshot(document),
+					changeSource,
+					forceCreateVersion: forceVersion
+				}).catch((versionError) => {
+					console.error(
+						'[Document API] Failed to create/merge document version:',
+						versionError
+					);
+					void logOntologyApiError({
+						supabase: locals.supabase,
+						error: versionError,
+						endpoint: `/api/onto/documents/${documentId}`,
+						method: 'PATCH',
+						userId,
+						projectId: document.project_id,
+						entityType: 'document',
+						entityId: documentId,
+						operation: 'document_version_create',
+						tableName: 'onto_document_versions',
+						metadata: { nonFatal: true }
+					});
+				}),
 
-		const actorDisplayName =
-			(typeof session.user.name === 'string' && session.user.name) ||
-			session.user.email?.split('@')[0] ||
-			'A teammate';
-		const mentionUserIds = await resolveEntityMentionUserIds({
-			supabase: locals.supabase,
-			projectId: document.project_id,
-			projectOwnerActorId: project.created_by,
-			actorUserId: session.user.id,
-			nextTextValues: [
-				updatedDocument.title,
-				updatedDocument.description,
-				updatedDocument.content
-			],
-			previousTextValues: [document.title, document.description, document.content]
+				// Doc tree metadata sync
+				shouldSyncDocStructure
+					? updateDocNodeMetadata(
+							locals.supabase,
+							document.project_id,
+							documentId,
+							{
+								title: updatedDocument.title ?? null,
+								description: updatedDocument.description ?? null
+							},
+							actorId
+						).catch((syncError) => {
+							console.error(
+								'[Document API] Failed to sync doc_structure metadata:',
+								syncError
+							);
+							void logOntologyApiError({
+								supabase: locals.supabase,
+								error: syncError,
+								endpoint: `/api/onto/documents/${documentId}`,
+								method: 'PATCH',
+								userId,
+								projectId: document.project_id,
+								entityType: 'project',
+								entityId: documentId,
+								operation: 'doc_structure_metadata_sync',
+								metadata: { nonFatal: true }
+							});
+						})
+					: Promise.resolve(),
+
+				// Mention resolution + notification
+				(async () => {
+					const actorDisplayName =
+						(typeof userName === 'string' && userName) ||
+						userEmail?.split('@')[0] ||
+						'A teammate';
+					const mentionUserIds = await resolveEntityMentionUserIds({
+						supabase: locals.supabase,
+						projectId: document.project_id,
+						projectOwnerActorId: project.created_by,
+						actorUserId: userId,
+						nextTextValues: [
+							updatedDocument.title,
+							updatedDocument.description,
+							updatedDocument.content
+						],
+						previousTextValues: [document.title, document.description, document.content]
+					});
+					await notifyEntityMentionsAdded({
+						supabase: locals.supabase,
+						projectId: document.project_id,
+						projectName: project.name,
+						entityType: 'document',
+						entityId: documentId,
+						entityTitle: updatedDocument.title,
+						actorUserId: userId,
+						actorDisplayName,
+						mentionedUserIds: mentionUserIds
+					});
+				})().catch((mentionError) => {
+					console.error(
+						'[Document API] Failed to process mention notifications:',
+						mentionError
+					);
+				}),
+
+				// Public page live sync
+				syncLivePublicPageForDocument(
+					locals.supabase,
+					{
+						id: String(updatedDocument.id),
+						project_id: String(updatedDocument.project_id),
+						title:
+							typeof updatedDocument.title === 'string'
+								? updatedDocument.title
+								: null,
+						description:
+							typeof updatedDocument.description === 'string'
+								? updatedDocument.description
+								: null,
+						content:
+							typeof updatedDocument.content === 'string'
+								? updatedDocument.content
+								: null,
+						props:
+							updatedDocument.props &&
+							typeof updatedDocument.props === 'object' &&
+							!Array.isArray(updatedDocument.props)
+								? (updatedDocument.props as Record<string, unknown>)
+								: null,
+						state_key:
+							typeof updatedDocument.state_key === 'string'
+								? updatedDocument.state_key
+								: null,
+						updated_at:
+							typeof updatedDocument.updated_at === 'string'
+								? updatedDocument.updated_at
+								: null
+					},
+					actorId,
+					userId
+				).catch((syncError) => {
+					console.error('[Document API] Failed to sync live public page:', syncError);
+					void logOntologyApiError({
+						supabase: locals.supabase,
+						error: syncError,
+						endpoint: `/api/onto/documents/${documentId}`,
+						method: 'PATCH',
+						userId,
+						projectId: document.project_id,
+						entityType: 'document',
+						entityId: documentId,
+						operation: 'public_page_live_sync',
+						metadata: { nonFatal: true }
+					});
+				})
+			]);
+		};
+
+		// Launch background work — do not await
+		postSaveWork().catch((err) => {
+			console.error('[Document API] Post-save background ops failed:', err);
 		});
 
-		await notifyEntityMentionsAdded({
-			supabase: locals.supabase,
-			projectId: document.project_id,
-			projectName: project.name,
-			entityType: 'document',
-			entityId: documentId,
-			entityTitle: updatedDocument.title,
-			actorUserId: session.user.id,
-			actorDisplayName,
-			mentionedUserIds: mentionUserIds
-		});
-
-		let publicPageSync: {
-			isLivePublic: boolean;
-			synced: boolean;
-			blocked: boolean;
-			page: unknown;
-			error: string | null;
-			review: unknown | null;
-		} | null = null;
-		try {
-			publicPageSync = await syncLivePublicPageForDocument(
-				locals.supabase,
-				{
-					id: String(updatedDocument.id),
-					project_id: String(updatedDocument.project_id),
-					title: typeof updatedDocument.title === 'string' ? updatedDocument.title : null,
-					description:
-						typeof updatedDocument.description === 'string'
-							? updatedDocument.description
-							: null,
-					content:
-						typeof updatedDocument.content === 'string'
-							? updatedDocument.content
-							: null,
-					props:
-						updatedDocument.props &&
-						typeof updatedDocument.props === 'object' &&
-						!Array.isArray(updatedDocument.props)
-							? (updatedDocument.props as Record<string, unknown>)
-							: null,
-					state_key:
-						typeof updatedDocument.state_key === 'string'
-							? updatedDocument.state_key
-							: null,
-					updated_at:
-						typeof updatedDocument.updated_at === 'string'
-							? updatedDocument.updated_at
-							: null
-				},
-				actorId,
-				session.user.id
-			);
-		} catch (syncError) {
-			console.error('[Document API] Failed to sync live public page:', syncError);
-			await logOntologyApiError({
-				supabase: locals.supabase,
-				error: syncError,
-				endpoint: `/api/onto/documents/${documentId}`,
-				method: 'PATCH',
-				userId: session.user.id,
-				projectId: document.project_id,
-				entityType: 'document',
-				entityId: documentId,
-				operation: 'public_page_live_sync',
-				metadata: { nonFatal: true }
-			});
-		}
-
-		// Log activity async (non-blocking)
+		// Log activity async (already non-blocking)
 		logUpdateAsync(
 			locals.supabase,
 			document.project_id,
@@ -802,12 +818,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				state_key: updatedDocument.state_key,
 				type_key: updatedDocument.type_key
 			},
-			session.user.id,
-			getChangeSourceFromRequest(request),
+			userId,
+			changeSource,
 			chatSessionId
 		);
 
-		return ApiResponse.success({ document: updatedDocument, version, publicPageSync });
+		return ApiResponse.success({ document: updatedDocument });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

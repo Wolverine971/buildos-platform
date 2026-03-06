@@ -1872,6 +1872,9 @@
 
 	const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 	const DATE_TIME_REGEX = /T\d{2}:\d{2}/;
+	const EXPLICIT_TIMEZONE_SUFFIX_REGEX = /(Z|[+-]\d{2}(?::?\d{2})?)$/i;
+	const EXPLICIT_TIME_REGEX =
+		/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}(?::?\d{2})?)$/i;
 
 	function normalizeCalendarTimeZone(value: unknown): string | undefined {
 		const tz = normalizeEntityLabel(value);
@@ -1901,12 +1904,63 @@
 		return `${monthName} ${day}, ${year}`;
 	}
 
+	function formatClockLabel(hour24: number, minute: number): string {
+		const hour = ((hour24 % 24) + 24) % 24;
+		const suffix = hour >= 12 ? 'PM' : 'AM';
+		const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+		return `${hour12}:${String(minute).padStart(2, '0')} ${suffix}`;
+	}
+
+	function normalizeOffsetLabel(rawOffset: string): string {
+		const upper = rawOffset.toUpperCase();
+		if (upper === 'Z') {
+			return 'UTC';
+		}
+		const normalized = upper.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+		return `UTC${normalized}`;
+	}
+
+	function formatExplicitTimezoneDateLabel(raw: string): string | undefined {
+		const match = raw.match(EXPLICIT_TIME_REGEX);
+		if (!match) {
+			return undefined;
+		}
+
+		const yearPart = match[1];
+		const monthPart = match[2];
+		const dayPart = match[3];
+		const hourPart = match[4];
+		const minutePart = match[5];
+		const offsetPart = match[6];
+		if (!yearPart || !monthPart || !dayPart || !hourPart || !minutePart || !offsetPart) {
+			return undefined;
+		}
+
+		const hour = Number.parseInt(hourPart, 10);
+		const minute = Number.parseInt(minutePart, 10);
+		if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+			return undefined;
+		}
+
+		const dateLabel = formatDateOnlyLabel(`${yearPart}-${monthPart}-${dayPart}`);
+		const timeLabel = formatClockLabel(hour, minute);
+		return `${dateLabel}, ${timeLabel} ${normalizeOffsetLabel(offsetPart)}`;
+	}
+
 	function formatCalendarDateLabel(value: unknown, timeZone?: string): string | undefined {
 		const raw = normalizeEntityLabel(value);
 		if (!raw) return undefined;
 
 		if (DATE_ONLY_REGEX.test(raw)) {
 			return formatDateOnlyLabel(raw);
+		}
+
+		const hasExplicitTimezone = EXPLICIT_TIMEZONE_SUFFIX_REGEX.test(raw);
+		if (!timeZone && hasExplicitTimezone) {
+			const explicitLabel = formatExplicitTimezoneDateLabel(raw);
+			if (explicitLabel) {
+				return explicitLabel;
+			}
 		}
 
 		const parsed = new Date(raw);
