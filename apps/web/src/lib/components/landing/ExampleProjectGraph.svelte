@@ -24,6 +24,7 @@
 		Calendar,
 		Flag,
 		AlertTriangle,
+		Scale,
 		Maximize2,
 		ChevronDown,
 		Shuffle
@@ -273,13 +274,13 @@
 			</div>
 
 			<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
-				See how complex projects come together.
+				See how a thinking environment connects complex work.
 			</h2>
 
 			<p class="text-sm text-muted-foreground max-w-2xl">
-				This interactive graph shows how BuildOS organizes real projects. Goals cascade into
-				milestones, milestones spawn plans, plans break down into tasks — all connected in a
-				living knowledge graph.
+				This interactive graph shows how BuildOS organizes long-lived projects. Chapters,
+				research, milestones, plans, tasks, and supporting context stay connected instead of
+				being scattered across tabs.
 			</p>
 		</div>
 
