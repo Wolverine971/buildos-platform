@@ -4,8 +4,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import {
 	confirmDocumentPublicPage,
 	getDocumentPublicPageState,
-	isValidPublicPageSlug,
-	normalizePublicPageSlug
+	PublicPageSlugConflictError
 } from '$lib/server/public-page.service';
 import {
 	getLatestPublicPageReviewForDocument,
@@ -34,14 +33,6 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 	if ('error' in access) return access.error;
 
 	const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-	const normalizedSlug = normalizePublicPageSlug(
-		typeof payload?.slug === 'string' ? payload.slug : (access.document.title ?? 'document')
-	);
-	if (!isValidPublicPageSlug(normalizedSlug)) {
-		return ApiResponse.badRequest(
-			'Invalid slug. Use lowercase letters, numbers, and hyphens only.'
-		);
-	}
 
 	try {
 		const existing = await getDocumentPublicPageState(locals.supabase, documentId);
@@ -74,7 +65,8 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 			access.document as any,
 			access.actorId,
 			{
-				slug: normalizedSlug,
+				slug: typeof payload?.slug === 'string' ? payload.slug : undefined,
+				slug_base: typeof payload?.slug_base === 'string' ? payload.slug_base : undefined,
 				title: typeof payload?.title === 'string' ? payload.title : undefined,
 				summary: typeof payload?.summary === 'string' ? payload.summary : undefined,
 				visibility:
@@ -97,6 +89,18 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 			'Document is now public'
 		);
 	} catch (error) {
+		if (error instanceof PublicPageSlugConflictError) {
+			return ApiResponse.error(error.message, 409, error.code, {
+				slug_prefix: error.suggestion.slug_prefix,
+				suggested_slug_base: error.suggestion.slug_base,
+				suggested_slug: error.suggestion.slug
+			});
+		}
+		if (error instanceof Error && error.message === 'Invalid or reserved slug') {
+			return ApiResponse.badRequest(
+				'Invalid slug. Use lowercase letters, numbers, and hyphens only.'
+			);
+		}
 		return ApiResponse.internalError(error, 'Failed to confirm public page');
 	}
 };

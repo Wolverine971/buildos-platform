@@ -8,6 +8,8 @@ import {
 type SupabaseLike = any;
 
 export const PUBLIC_PAGE_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+export const PUBLIC_PAGE_SLUG_PREFIX_MAX_LENGTH = 24;
+export const PUBLIC_PAGE_SLUG_BASE_MAX_LENGTH = 48;
 
 const RESERVED_PUBLIC_PAGE_SLUGS = new Set([
 	'admin',
@@ -25,11 +27,32 @@ const RESERVED_PUBLIC_PAGE_SLUGS = new Set([
 	'signup'
 ]);
 
+export type PublicPageSlugSuggestion = {
+	slug_prefix: string | null;
+	slug_base: string;
+	slug: string;
+	deduped: boolean;
+};
+
+export class PublicPageSlugConflictError extends Error {
+	code = 'SLUG_TAKEN' as const;
+	status = 409 as const;
+	suggestion: PublicPageSlugSuggestion;
+
+	constructor(suggestion: PublicPageSlugSuggestion) {
+		super('That public URL is already taken');
+		this.name = 'PublicPageSlugConflictError';
+		this.suggestion = suggestion;
+	}
+}
+
 export type PublicPageState = {
 	id: string;
 	project_id: string;
 	document_id: string;
 	slug: string;
+	slug_prefix: string | null;
+	slug_base: string;
 	url_path: string;
 	title: string;
 	summary: string | null;
@@ -46,6 +69,9 @@ export type PublicPageState = {
 
 export type PublicPagePreview = {
 	slug: string;
+	slug_prefix: string | null;
+	slug_base: string;
+	slug_was_deduped: boolean;
 	url_path: string;
 	title: string;
 	summary: string | null;
@@ -76,7 +102,8 @@ type DocumentLike = {
 };
 
 type ConfirmPublicPageInput = {
-	slug: string;
+	slug?: string | null;
+	slug_base?: string | null;
 	title?: string | null;
 	summary?: string | null;
 	visibility?: 'public' | 'unlisted';
@@ -92,6 +119,24 @@ function toStringOrNull(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeSlugToken(
+	input: string,
+	maxLength: number,
+	fallback: string | null = null
+): string {
+	const normalized = input
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9\s-]/g, '')
+		.replace(/[\s-]+/g, '-')
+		.replace(/^-|-$/g, '');
+
+	const truncated = normalized.slice(0, maxLength).replace(/-+$/g, '').replace(/^-+/g, '');
+	if (truncated) return truncated;
+	if (fallback) return normalizeSlugToken(fallback, maxLength, null);
+	return '';
 }
 
 function stripMarkdown(value: string): string {
@@ -119,14 +164,50 @@ function deriveSummary(
 }
 
 export function normalizePublicPageSlug(input: string): string {
-	const base = input
+	return input
 		.trim()
 		.toLowerCase()
 		.replace(/[^a-z0-9\s-]/g, '')
-		.replace(/\s+/g, '-')
-		.replace(/-+/g, '-')
+		.replace(/[\s-]+/g, '-')
 		.replace(/^-|-$/g, '');
-	return base;
+}
+
+export function normalizePublicPageSlugPrefix(input: string, fallback = 'user'): string {
+	return normalizeSlugToken(input, PUBLIC_PAGE_SLUG_PREFIX_MAX_LENGTH, fallback);
+}
+
+export function normalizePublicPageSlugBase(input: string, fallback = 'page'): string {
+	return normalizeSlugToken(input, PUBLIC_PAGE_SLUG_BASE_MAX_LENGTH, fallback);
+}
+
+export function composePublicPageSlug(slugPrefix: string | null, slugBase: string): string {
+	const normalizedBase = normalizePublicPageSlugBase(slugBase);
+	const normalizedPrefix = slugPrefix ? normalizePublicPageSlugPrefix(slugPrefix) : null;
+	const composed = normalizedPrefix ? `${normalizedPrefix}-${normalizedBase}` : normalizedBase;
+	return normalizePublicPageSlug(composed);
+}
+
+export function splitPublicPageSlugForDisplay(
+	slug: string,
+	slugPrefix?: string | null
+): { slug_prefix: string | null; slug_base: string } {
+	const normalizedSlug = normalizePublicPageSlug(slug);
+	const normalizedPrefix = slugPrefix ? normalizePublicPageSlugPrefix(slugPrefix) : null;
+	if (
+		normalizedPrefix &&
+		normalizedSlug.startsWith(`${normalizedPrefix}-`) &&
+		normalizedSlug.length > normalizedPrefix.length + 1
+	) {
+		return {
+			slug_prefix: normalizedPrefix,
+			slug_base: normalizedSlug.slice(normalizedPrefix.length + 1)
+		};
+	}
+
+	return {
+		slug_prefix: normalizedPrefix,
+		slug_base: normalizedSlug || normalizePublicPageSlugBase('page')
+	};
 }
 
 export function isValidPublicPageSlug(slug: string): boolean {
@@ -145,13 +226,19 @@ function toPublicPageState(row: Record<string, any>): PublicPageState {
 		publicStatus === 'live' &&
 		visibility === 'public' &&
 		!row.deleted_at;
+	const slug = String(row.slug);
+	const storedSlugPrefix = toStringOrNull(row.slug_prefix);
+	const storedSlugBase = toStringOrNull(row.slug_base);
+	const displayParts = splitPublicPageSlugForDisplay(slug, storedSlugPrefix);
 
 	return {
 		id: String(row.id),
 		project_id: String(row.project_id),
 		document_id: String(row.document_id),
-		slug: String(row.slug),
-		url_path: toUrlPath(String(row.slug)),
+		slug,
+		slug_prefix: displayParts.slug_prefix,
+		slug_base: storedSlugBase ?? displayParts.slug_base,
+		url_path: toUrlPath(slug),
 		title: String(row.title ?? ''),
 		summary: toStringOrNull(row.summary),
 		status,
@@ -222,6 +309,110 @@ async function syncDocTreePublicMetadata(
 	);
 }
 
+async function resolvePublicPageSlugPrefix(
+	supabase: SupabaseLike,
+	actorId: string,
+	existingState: PublicPageState | null
+): Promise<string> {
+	if (existingState?.slug_prefix) {
+		return normalizePublicPageSlugPrefix(existingState.slug_prefix);
+	}
+
+	const { data, error } = await (supabase as any).rpc('resolve_onto_public_page_slug_prefix', {
+		p_actor_id: actorId
+	});
+	if (error) {
+		throw error;
+	}
+
+	return normalizePublicPageSlugPrefix(typeof data === 'string' ? data : 'user');
+}
+
+function resolveRequestedSlugBase(
+	input: Partial<ConfirmPublicPageInput>,
+	existingState: PublicPageState | null,
+	slugPrefix: string,
+	document: DocumentLike
+): string {
+	const explicitBase = toStringOrNull(input.slug_base);
+	if (explicitBase) {
+		return normalizePublicPageSlugBase(explicitBase);
+	}
+
+	const explicitLegacySlug = toStringOrNull(input.slug);
+	if (explicitLegacySlug) {
+		const parts = splitPublicPageSlugForDisplay(explicitLegacySlug, slugPrefix);
+		return normalizePublicPageSlugBase(parts.slug_base);
+	}
+
+	if (existingState?.slug_base) {
+		return normalizePublicPageSlugBase(existingState.slug_base);
+	}
+
+	return normalizePublicPageSlugBase(toStringOrNull(document.title) ?? 'page');
+}
+
+export async function suggestAvailablePublicPageSlug(
+	supabase: SupabaseLike,
+	options: {
+		slugPrefix: string | null;
+		slugBase: string;
+		excludePublicPageId?: string | null;
+	}
+): Promise<PublicPageSlugSuggestion> {
+	const { data, error } = await (supabase as any).rpc('suggest_onto_public_page_slug', {
+		p_slug_prefix: options.slugPrefix,
+		p_slug_base: options.slugBase,
+		p_exclude_page_id: options.excludePublicPageId ?? null
+	});
+	if (error) {
+		throw error;
+	}
+
+	const row = Array.isArray(data) ? data[0] : data;
+	const slugPrefix =
+		typeof row?.slug_prefix === 'string' && row.slug_prefix.trim()
+			? normalizePublicPageSlugPrefix(row.slug_prefix)
+			: null;
+	const slugBase = normalizePublicPageSlugBase(
+		typeof row?.slug_base === 'string' ? row.slug_base : options.slugBase
+	);
+	const slug =
+		typeof row?.slug === 'string' && row.slug.trim()
+			? normalizePublicPageSlug(row.slug)
+			: composePublicPageSlug(slugPrefix, slugBase);
+
+	return {
+		slug_prefix: slugPrefix,
+		slug_base: slugBase,
+		slug,
+		deduped: row?.deduped === true
+	};
+}
+
+function isUniqueViolationError(error: unknown): error is { code: string } {
+	return Boolean(error && typeof error === 'object' && (error as any).code === '23505');
+}
+
+async function assertPublicPageSlugAvailable(
+	supabase: SupabaseLike,
+	options: {
+		slugPrefix: string | null;
+		slugBase: string;
+		excludePublicPageId?: string | null;
+	}
+) {
+	const submittedSlug = composePublicPageSlug(options.slugPrefix, options.slugBase);
+	if (!isValidPublicPageSlug(submittedSlug)) {
+		throw new Error('Invalid or reserved slug');
+	}
+
+	const suggestion = await suggestAvailablePublicPageSlug(supabase, options);
+	if (suggestion.slug !== submittedSlug) {
+		throw new PublicPageSlugConflictError(suggestion);
+	}
+}
+
 export async function getDocumentPublicPageState(
 	supabase: SupabaseLike,
 	documentId: string
@@ -238,16 +429,19 @@ export async function getDocumentPublicPageState(
 }
 
 export async function prepareDocumentPublicPagePreview(
+	supabase: SupabaseLike,
 	document: DocumentLike,
 	existingState: PublicPageState | null,
+	actorId: string,
 	input: Partial<ConfirmPublicPageInput> = {}
 ): Promise<PublicPagePreview> {
-	const fallbackSlugSource =
-		toStringOrNull(input.slug) ??
-		existingState?.slug ??
-		toStringOrNull(document.title) ??
-		'document';
-	const normalizedSlug = normalizePublicPageSlug(fallbackSlugSource);
+	const slugPrefix = await resolvePublicPageSlugPrefix(supabase, actorId, existingState);
+	const requestedSlugBase = resolveRequestedSlugBase(input, existingState, slugPrefix, document);
+	const suggestedSlug = await suggestAvailablePublicPageSlug(supabase, {
+		slugPrefix,
+		slugBase: requestedSlugBase,
+		excludePublicPageId: existingState?.id ?? null
+	});
 
 	const content = getDocumentContent(document);
 	const title = toStringOrNull(input.title) ?? toStringOrNull(document.title) ?? 'Untitled';
@@ -258,8 +452,11 @@ export async function prepareDocumentPublicPagePreview(
 	);
 
 	return {
-		slug: normalizedSlug,
-		url_path: toUrlPath(normalizedSlug),
+		slug: suggestedSlug.slug,
+		slug_prefix: suggestedSlug.slug_prefix,
+		slug_base: suggestedSlug.slug_base,
+		slug_was_deduped: suggestedSlug.deduped,
+		url_path: toUrlPath(suggestedSlug.slug),
 		title,
 		summary,
 		content,
@@ -275,12 +472,16 @@ export async function confirmDocumentPublicPage(
 	actorId: string,
 	input: ConfirmPublicPageInput
 ): Promise<PublicPageState> {
-	const slug = normalizePublicPageSlug(input.slug);
-	if (!isValidPublicPageSlug(slug)) {
-		throw new Error('Invalid or reserved slug');
-	}
-
 	const existingState = await getDocumentPublicPageState(supabase, document.id);
+	const slugPrefix = await resolvePublicPageSlugPrefix(supabase, actorId, existingState);
+	const slugBase = resolveRequestedSlugBase(input, existingState, slugPrefix, document);
+	await assertPublicPageSlugAvailable(supabase, {
+		slugPrefix,
+		slugBase,
+		excludePublicPageId: existingState?.id ?? null
+	});
+
+	const slug = composePublicPageSlug(slugPrefix, slugBase);
 	const snapshot = buildPublishedSnapshot(
 		document,
 		(document.props as Record<string, unknown> | null) ?? null,
@@ -293,6 +494,8 @@ export async function confirmDocumentPublicPage(
 
 	const baseUpdate = {
 		slug,
+		slug_prefix: slugPrefix,
+		slug_base: slugBase,
 		title: snapshot.title,
 		summary: snapshot.summary,
 		status: 'published',
@@ -319,6 +522,14 @@ export async function confirmDocumentPublicPage(
 			.select('*')
 			.single();
 		if (error || !data) {
+			if (isUniqueViolationError(error)) {
+				const suggestion = await suggestAvailablePublicPageSlug(supabase, {
+					slugPrefix,
+					slugBase,
+					excludePublicPageId: existingState.id
+				});
+				throw new PublicPageSlugConflictError(suggestion);
+			}
 			throw error ?? new Error('Failed to update public page');
 		}
 		row = data as Record<string, any>;
@@ -334,6 +545,13 @@ export async function confirmDocumentPublicPage(
 			.select('*')
 			.single();
 		if (error || !data) {
+			if (isUniqueViolationError(error)) {
+				const suggestion = await suggestAvailablePublicPageSlug(supabase, {
+					slugPrefix,
+					slugBase
+				});
+				throw new PublicPageSlugConflictError(suggestion);
+			}
 			throw error ?? new Error('Failed to create public page');
 		}
 		row = data as Record<string, any>;
@@ -456,6 +674,7 @@ export async function syncLivePublicPageForDocument(
 		(document.props as Record<string, unknown> | null) ?? null,
 		{
 			slug: existing.slug,
+			slug_base: existing.slug_base,
 			title: existing.title,
 			summary: existing.summary,
 			visibility: existing.visibility,

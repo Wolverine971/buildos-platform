@@ -183,6 +183,8 @@
 	type PublicPageState = {
 		id: string;
 		slug: string;
+		slug_prefix: string | null;
+		slug_base: string;
 		url_path: string;
 		title: string;
 		summary: string | null;
@@ -197,6 +199,9 @@
 
 	type PublicPagePreview = {
 		slug: string;
+		slug_prefix: string | null;
+		slug_base: string;
+		slug_was_deduped: boolean;
 		url_path: string;
 		title: string;
 		summary: string | null;
@@ -207,7 +212,8 @@
 	};
 
 	type PublicPageDraft = {
-		slug: string;
+		slug_prefix: string | null;
+		slug_base: string;
 		title: string;
 		summary: string;
 		visibility: 'public' | 'unlisted';
@@ -384,6 +390,21 @@
 	const publicPageAbsoluteUrl = $derived.by(() =>
 		publicPageUrlPath ? `https://build-os.com${publicPageUrlPath}` : null
 	);
+	const publicPageDraftUrlPreview = $derived.by(() =>
+		getPublicPageDraftUrlPreview(publicPageDraft, publicPagePreview)
+	);
+	const publicPageSlugBaseHelperText = $derived.by(() => {
+		if (!publicPageDraft) return null;
+		const normalized = normalizePublicPageSlugBaseInput(publicPageDraft.slug_base, 'page');
+		const trimmed = publicPageDraft.slug_base.trim();
+		if (!trimmed) {
+			return 'Leaving this blank will use `page`.';
+		}
+		if (normalized !== trimmed.toLowerCase()) {
+			return `Will publish as \`${normalized}\`.`;
+		}
+		return null;
+	});
 	const hasFlaggedPublicPageReview = $derived(latestPublicPageReview?.status === 'flagged');
 	const latestPublicPageReviewReasons = $derived.by(() =>
 		Array.isArray(latestPublicPageReview?.reasons)
@@ -483,6 +504,50 @@
 		};
 	});
 
+	function normalizePublicPageSlugBaseInput(
+		value: string,
+		fallback: string | null = null
+	): string {
+		const normalized = value
+			.trim()
+			.toLowerCase()
+			.replace(/[^a-z0-9\s-]/g, '')
+			.replace(/[\s-]+/g, '-')
+			.replace(/^-|-$/g, '')
+			.slice(0, 48)
+			.replace(/-+$/g, '');
+		if (normalized) return normalized;
+		if (fallback) return normalizePublicPageSlugBaseInput(fallback, null);
+		return '';
+	}
+
+	function getPublicPageDraftFinalSlug(
+		draft: PublicPageDraft | null,
+		preview: PublicPagePreview | null
+	): string | null {
+		if (!draft && !preview) return null;
+		const slugPrefix = draft?.slug_prefix ?? preview?.slug_prefix ?? null;
+		const slugBase = normalizePublicPageSlugBaseInput(
+			draft?.slug_base ?? preview?.slug_base ?? '',
+			'page'
+		);
+		if (!slugBase) return null;
+		return slugPrefix ? `${slugPrefix}-${slugBase}` : slugBase;
+	}
+
+	function getPublicPageDraftUrlPreview(
+		draft: PublicPageDraft | null,
+		preview: PublicPagePreview | null
+	): string | null {
+		const draftSlug = getPublicPageDraftFinalSlug(draft, preview);
+		if (!draftSlug) return null;
+		if (!publicPageAbsoluteUrl) return `https://build-os.com/p/${draftSlug}`;
+		return publicPageAbsoluteUrl.replace(
+			`/p/${publicPageState?.slug ?? preview?.slug ?? draftSlug}`,
+			`/p/${draftSlug}`
+		);
+	}
+
 	function normalizePublicPageState(data: unknown): PublicPageState | null {
 		if (!data || typeof data !== 'object') return null;
 		const row = data as Record<string, unknown>;
@@ -492,6 +557,9 @@
 		return {
 			id: typeof row.id === 'string' ? row.id : '',
 			slug,
+			slug_prefix:
+				typeof row.slug_prefix === 'string' && row.slug_prefix ? row.slug_prefix : null,
+			slug_base: typeof row.slug_base === 'string' && row.slug_base ? row.slug_base : slug,
 			url_path:
 				typeof row.url_path === 'string' && row.url_path ? row.url_path : `/p/${slug}`,
 			title: typeof row.title === 'string' ? row.title : '',
@@ -522,6 +590,10 @@
 
 		return {
 			slug,
+			slug_prefix:
+				typeof row.slug_prefix === 'string' && row.slug_prefix ? row.slug_prefix : null,
+			slug_base: typeof row.slug_base === 'string' && row.slug_base ? row.slug_base : slug,
+			slug_was_deduped: row.slug_was_deduped === true,
 			url_path:
 				typeof row.url_path === 'string' && row.url_path ? row.url_path : `/p/${slug}`,
 			title: typeof row.title === 'string' ? row.title : '',
@@ -672,7 +744,7 @@
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						slug: publicPageState?.slug ?? title.trim(),
+						slug_base: publicPageState?.slug_base ?? title.trim(),
 						title: title.trim() || null,
 						summary: description.trim() || null,
 						visibility: publicPageState?.visibility ?? 'public',
@@ -693,7 +765,8 @@
 
 			publicPagePreview = preview;
 			publicPageDraft = {
-				slug: preview.slug,
+				slug_prefix: preview.slug_prefix,
+				slug_base: preview.slug_base,
 				title: preview.title,
 				summary: preview.summary ?? '',
 				visibility: preview.visibility,
@@ -720,11 +793,7 @@
 
 	async function handleConfirmPublicPage() {
 		if (!activeDocumentId || !publicPageDraft) return;
-		const slug = publicPageDraft.slug.trim();
-		if (!slug) {
-			toastService.error('Public URL slug is required');
-			return;
-		}
+		const slugBase = publicPageDraft.slug_base.trim();
 
 		try {
 			publicPageActionLoading = true;
@@ -734,7 +803,7 @@
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({
-						slug,
+						slug_base: slugBase || null,
 						title: publicPageDraft.title.trim() || null,
 						summary: publicPageDraft.summary.trim() || null,
 						visibility: publicPageDraft.visibility,
@@ -751,6 +820,14 @@
 				latestPublicPageReview = review;
 			}
 			if (!response.ok) {
+				const suggestedSlugBase =
+					typeof payload?.details?.suggested_slug_base === 'string'
+						? payload.details.suggested_slug_base
+						: null;
+				const suggestedSlug =
+					typeof payload?.details?.suggested_slug === 'string'
+						? payload.details.suggested_slug
+						: null;
 				if (response.status === 422 && review?.status === 'flagged') {
 					if (review.admin_decision === 'rejected') {
 						toastService.error(
@@ -761,6 +838,25 @@
 							'Publishing blocked pending admin review. Ask an admin to mark the flagged content okay or update the document.'
 						);
 					}
+					return;
+				}
+				if (response.status === 409 && suggestedSlugBase) {
+					publicPageDraft = {
+						...publicPageDraft,
+						slug_base: suggestedSlugBase
+					};
+					if (publicPagePreview && suggestedSlug) {
+						publicPagePreview = {
+							...publicPagePreview,
+							slug: suggestedSlug,
+							slug_base: suggestedSlugBase,
+							slug_was_deduped: true,
+							url_path: `/p/${suggestedSlug}`
+						};
+					}
+					toastService.error(
+						'That public URL is already taken. A suggested alternative has been loaded.'
+					);
 					return;
 				}
 				throw new Error(payload?.error || 'Failed to publish public page');
@@ -2068,14 +2164,23 @@
 													>
 														{publicPageUrlPath}
 													</span>
-													<button
-														type="button"
-														onclick={openPublicPageInNewTab}
-														class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900 hover:text-emerald-700 transition-colors pressable"
-													>
-														Open
-														<ExternalLink class="w-3 h-3" />
-													</button>
+													<div class="flex items-center gap-2 shrink-0">
+														<button
+															type="button"
+															onclick={handleMakeDocumentPublic}
+															class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900 hover:text-emerald-700 transition-colors pressable"
+														>
+															Edit Public Settings
+														</button>
+														<button
+															type="button"
+															onclick={openPublicPageInNewTab}
+															class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900 hover:text-emerald-700 transition-colors pressable"
+														>
+															Open
+															<ExternalLink class="w-3 h-3" />
+														</button>
+													</div>
 												</div>
 												<label
 													class="flex items-center justify-between gap-2 text-[11px] text-emerald-900"
@@ -2739,15 +2844,51 @@
 																>
 																	{publicPageUrlPath}
 																</span>
-																<button
-																	type="button"
-																	onclick={openPublicPageInNewTab}
-																	class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900"
+																<div
+																	class="flex items-center gap-2 shrink-0"
 																>
-																	Open
-																	<ExternalLink class="w-3 h-3" />
-																</button>
+																	<button
+																		type="button"
+																		onclick={handleMakeDocumentPublic}
+																		class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900"
+																	>
+																		Edit
+																	</button>
+																	<button
+																		type="button"
+																		onclick={openPublicPageInNewTab}
+																		class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900"
+																	>
+																		Open
+																		<ExternalLink
+																			class="w-3 h-3"
+																		/>
+																	</button>
+																</div>
 															</div>
+															<label
+																class="flex items-center justify-between gap-2 text-[11px] text-emerald-900"
+															>
+																<span>Live sync on save</span>
+																<input
+																	type="checkbox"
+																	checked={publicPageState.live_sync_enabled}
+																	onchange={(event) =>
+																		handleLiveSyncToggle(
+																			(
+																				event.currentTarget as HTMLInputElement
+																			).checked
+																		)}
+																	class="h-3.5 w-3.5 rounded border-border"
+																/>
+															</label>
+															{#if publicPageState.last_live_sync_error}
+																<p
+																	class="text-[11px] text-amber-700 leading-snug"
+																>
+																	Last live sync error: {publicPageState.last_live_sync_error}
+																</p>
+															{/if}
 														</div>
 													{:else}
 														<Button
@@ -3206,7 +3347,7 @@
 	<Modal
 		bind:isOpen={showPublicPageConfirmModal}
 		size="xl"
-		title="Confirm Public Page"
+		title={publicPageState ? 'Update Public Page' : 'Confirm Public Page'}
 		onClose={closePublicPageConfirmModal}
 		closeOnEscape={!publicPageActionLoading}
 		closeOnBackdrop={!publicPageActionLoading}
@@ -3261,22 +3402,47 @@
 
 				<div class="grid gap-3 sm:grid-cols-2">
 					<FormField
-						label="Public URL slug"
-						labelFor="public-page-slug"
+						label="Public URL"
+						labelFor="public-page-slug-base"
 						uppercase={false}
 					>
-						<div class="flex items-center gap-2">
-							<span class="text-xs text-muted-foreground shrink-0">/p/</span>
-							<TextInput
-								id="public-page-slug"
-								value={draft.slug}
-								oninput={(event) =>
-									updatePublicPageDraft({
-										slug: (event.currentTarget as HTMLInputElement).value
-									})}
-								placeholder="document-slug"
-								disabled={publicPageActionLoading}
-							/>
+						<div class="space-y-2">
+							<div class="flex items-center gap-2">
+								<span class="text-xs text-muted-foreground shrink-0">/p/</span>
+								{#if draft.slug_prefix}
+									<span
+										class="inline-flex items-center rounded-md border border-border bg-muted px-2 py-1 text-xs font-mono text-foreground"
+									>
+										{draft.slug_prefix}
+									</span>
+									<span class="text-xs text-muted-foreground shrink-0">-</span>
+								{/if}
+								<TextInput
+									id="public-page-slug-base"
+									value={draft.slug_base}
+									oninput={(event) =>
+										updatePublicPageDraft({
+											slug_base: (event.currentTarget as HTMLInputElement)
+												.value
+										})}
+									placeholder="page"
+									disabled={publicPageActionLoading}
+								/>
+							</div>
+							<p class="text-[11px] text-muted-foreground">
+								The prefix is frozen from the publishing account name.
+							</p>
+							{#if publicPageSlugBaseHelperText}
+								<p class="text-[11px] text-muted-foreground">
+									{publicPageSlugBaseHelperText}
+								</p>
+							{/if}
+							{#if preview.slug_was_deduped}
+								<p class="text-[11px] text-muted-foreground">
+									This page already needed a unique suffix, so the next available
+									URL was suggested.
+								</p>
+							{/if}
 						</div>
 					</FormField>
 
@@ -3368,12 +3534,7 @@
 					>
 						<span class="micro-label text-foreground">PUBLIC PREVIEW</span>
 						<span class="text-xs text-muted-foreground truncate">
-							{publicPageAbsoluteUrl
-								? publicPageAbsoluteUrl.replace(
-										`/p/${publicPageState?.slug ?? preview.slug}`,
-										`/p/${draft.slug.trim() || preview.slug}`
-									)
-								: `https://build-os.com/p/${draft.slug.trim() || preview.slug}`}
+							{publicPageDraftUrlPreview ?? `https://build-os.com/p/${preview.slug}`}
 						</span>
 					</div>
 					<div class="p-3 max-h-[50vh] overflow-y-auto space-y-3">
@@ -3414,10 +3575,10 @@
 					size="sm"
 					onclick={handleConfirmPublicPage}
 					loading={publicPageActionLoading}
-					disabled={publicPageActionLoading || !draft.slug.trim()}
+					disabled={publicPageActionLoading}
 					class="text-xs"
 				>
-					Confirm and Publish
+					{publicPageState ? 'Confirm Changes' : 'Confirm and Publish'}
 				</Button>
 			</div>
 		{/snippet}

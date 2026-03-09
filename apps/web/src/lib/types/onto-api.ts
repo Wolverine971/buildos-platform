@@ -361,6 +361,37 @@ export interface GetDocTreeResponse {
 	archived: OntoDocument[];
 }
 
+export interface DocumentPublicPageState {
+	id: string;
+	slug: string;
+	slug_prefix: string | null;
+	slug_base: string;
+	url_path: string;
+	title: string;
+	summary: string | null;
+	public_status: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
+	visibility: 'public' | 'unlisted';
+	noindex: boolean;
+	live_sync_enabled: boolean;
+	last_live_sync_at: string | null;
+	last_live_sync_error: string | null;
+	is_live_public: boolean;
+}
+
+export interface DocumentPublicPagePreview {
+	slug: string;
+	slug_prefix: string | null;
+	slug_base: string;
+	slug_was_deduped: boolean;
+	url_path: string;
+	title: string;
+	summary: string | null;
+	content: string;
+	visibility: 'public' | 'unlisted';
+	noindex: boolean;
+	live_sync_enabled: boolean;
+}
+
 /**
  * Request to move a document in the tree
  */

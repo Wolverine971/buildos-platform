@@ -6319,6 +6319,8 @@ export type Database = {
           published_props: Json
           published_version_number: number | null
           slug: string
+          slug_base: string | null
+          slug_prefix: string | null
           status: string
           summary: string | null
           title: string
@@ -6346,6 +6348,8 @@ export type Database = {
           published_props?: Json
           published_version_number?: number | null
           slug: string
+          slug_base?: string | null
+          slug_prefix?: string | null
           status?: string
           summary?: string | null
           title: string
@@ -6373,6 +6377,8 @@ export type Database = {
           published_props?: Json
           published_version_number?: number | null
           slug?: string
+          slug_base?: string | null
+          slug_prefix?: string | null
           status?: string
           summary?: string | null
           title?: string
@@ -12621,6 +12627,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      normalize_onto_public_page_slug_part: {
+        Args: { p_fallback?: string; p_input: string; p_max_length: number }
+        Returns: string
+      }
       onto_check_guard: {
         Args: { p_entity: Json; p_guard: Json }
         Returns: boolean
@@ -12726,6 +12736,10 @@ export type Database = {
         Args: { p_stall_timeout?: string }
         Returns: number
       }
+      resolve_onto_public_page_slug_prefix: {
+        Args: { p_actor_id: string }
+        Returns: string
+      }
       search_all_content: {
         Args: {
           current_user_id: string
@@ -12826,6 +12840,19 @@ export type Database = {
           brief_id: string
           message: string
           started: boolean
+        }[]
+      }
+      suggest_onto_public_page_slug: {
+        Args: {
+          p_exclude_page_id?: string
+          p_slug_base: string
+          p_slug_prefix: string
+        }
+        Returns: {
+          deduped: boolean
+          slug: string
+          slug_base: string
+          slug_prefix: string
         }[]
       }
       task_series_delete: {
