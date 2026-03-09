@@ -19,7 +19,7 @@
 
 	const title = page.title || 'Public Page';
 	const description = page.summary || page.description || 'Public page from BuildOS';
-	const canonical = `https://build-os.com/p/${page.slug}`;
+	const canonical = `https://build-os.com${page.url_path || `/p/${page.slug}`}`;
 	const updatedAt = page.last_updated_at || page.published_at;
 
 	const formattedDate = updatedAt

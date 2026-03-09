@@ -9,6 +9,8 @@ type PublicPageRow = {
 	project_id: string;
 	document_id: string;
 	slug: string;
+	slug_prefix: string | null;
+	slug_base: string | null;
 	title: string;
 	status: string;
 	public_status: string;
@@ -83,7 +85,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		(adminClient as any)
 			.from('onto_public_pages')
 			.select(
-				'id, project_id, document_id, slug, title, status, public_status, visibility, live_sync_enabled, published_at, last_live_sync_at, last_live_sync_error, updated_at, created_at'
+				'id, project_id, document_id, slug, slug_prefix, slug_base, title, status, public_status, visibility, live_sync_enabled, published_at, last_live_sync_at, last_live_sync_error, updated_at, created_at'
 			)
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
@@ -180,6 +182,10 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 
 	const hydratedPages = pages.map((page) => ({
 		...page,
+		url_path:
+			page.slug_prefix && page.slug_base
+				? `/p/${page.slug_prefix}/${page.slug_base}`
+				: `/p/${page.slug}`,
 		project_name: projectNameById.get(page.project_id) ?? 'Unknown Project',
 		document_title: documentTitleById.get(page.document_id) ?? page.title
 	}));
@@ -194,6 +200,13 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		page_slug:
 			review.public_page_id && pageById.has(review.public_page_id)
 				? (pageById.get(review.public_page_id)?.slug ?? null)
+				: null,
+		page_url_path:
+			review.public_page_id && pageById.has(review.public_page_id)
+				? ((pageById.get(review.public_page_id)?.slug_prefix &&
+					pageById.get(review.public_page_id)?.slug_base
+						? `/p/${pageById.get(review.public_page_id)?.slug_prefix}/${pageById.get(review.public_page_id)?.slug_base}`
+						: `/p/${pageById.get(review.public_page_id)?.slug}`) ?? null)
 				: null,
 		source: review.source,
 		status: review.status,

@@ -111,7 +111,14 @@ type ConfirmPublicPageInput = {
 	live_sync_enabled?: boolean;
 };
 
-function toUrlPath(slug: string): string {
+export function buildPublicPageUrlPath(
+	slug: string,
+	slugPrefix?: string | null,
+	slugBase?: string | null
+): string {
+	if (slugPrefix && slugBase) {
+		return `/p/${slugPrefix}/${slugBase}`;
+	}
 	return `/p/${slug}`;
 }
 
@@ -238,7 +245,11 @@ function toPublicPageState(row: Record<string, any>): PublicPageState {
 		slug,
 		slug_prefix: displayParts.slug_prefix,
 		slug_base: storedSlugBase ?? displayParts.slug_base,
-		url_path: toUrlPath(slug),
+		url_path: buildPublicPageUrlPath(
+			slug,
+			displayParts.slug_prefix,
+			storedSlugBase ?? displayParts.slug_base
+		),
 		title: String(row.title ?? ''),
 		summary: toStringOrNull(row.summary),
 		status,
@@ -456,7 +467,11 @@ export async function prepareDocumentPublicPagePreview(
 		slug_prefix: suggestedSlug.slug_prefix,
 		slug_base: suggestedSlug.slug_base,
 		slug_was_deduped: suggestedSlug.deduped,
-		url_path: toUrlPath(suggestedSlug.slug),
+		url_path: buildPublicPageUrlPath(
+			suggestedSlug.slug,
+			suggestedSlug.slug_prefix,
+			suggestedSlug.slug_base
+		),
 		title,
 		summary,
 		content,

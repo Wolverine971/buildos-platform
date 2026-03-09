@@ -1,7 +1,11 @@
 // apps/web/src/routes/api/public/pages/[slug]/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { getPublicPageBySlug, getPublicPageRedirectSlug } from '$lib/server/public-page.service';
+import {
+	buildPublicPageUrlPath,
+	getPublicPageBySlug,
+	getPublicPageRedirectSlug
+} from '$lib/server/public-page.service';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	const slug = (params.slug ?? '').trim().toLowerCase();
@@ -50,7 +54,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				page: {
 					id: page.id,
 					slug: page.slug,
-					url_path: `/p/${page.slug}`,
+					slug_prefix:
+						typeof page.slug_prefix === 'string' && page.slug_prefix.trim()
+							? page.slug_prefix
+							: null,
+					slug_base:
+						typeof page.slug_base === 'string' && page.slug_base.trim()
+							? page.slug_base
+							: page.slug,
+					url_path: buildPublicPageUrlPath(page.slug, page.slug_prefix, page.slug_base),
 					title: page.title,
 					summary: page.summary,
 					content: page.published_content ?? '',

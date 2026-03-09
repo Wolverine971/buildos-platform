@@ -541,11 +541,13 @@
 	): string | null {
 		const draftSlug = getPublicPageDraftFinalSlug(draft, preview);
 		if (!draftSlug) return null;
-		if (!publicPageAbsoluteUrl) return `https://build-os.com/p/${draftSlug}`;
-		return publicPageAbsoluteUrl.replace(
-			`/p/${publicPageState?.slug ?? preview?.slug ?? draftSlug}`,
-			`/p/${draftSlug}`
+		const slugPrefix = draft?.slug_prefix ?? preview?.slug_prefix ?? null;
+		const slugBase = normalizePublicPageSlugBaseInput(
+			draft?.slug_base ?? preview?.slug_base ?? '',
+			'page'
 		);
+		const urlPath = slugPrefix ? `/p/${slugPrefix}/${slugBase}` : `/p/${draftSlug}`;
+		return `https://build-os.com${urlPath}`;
 	}
 
 	function normalizePublicPageState(data: unknown): PublicPageState | null {
@@ -561,7 +563,14 @@
 				typeof row.slug_prefix === 'string' && row.slug_prefix ? row.slug_prefix : null,
 			slug_base: typeof row.slug_base === 'string' && row.slug_base ? row.slug_base : slug,
 			url_path:
-				typeof row.url_path === 'string' && row.url_path ? row.url_path : `/p/${slug}`,
+				typeof row.url_path === 'string' && row.url_path
+					? row.url_path
+					: typeof row.slug_prefix === 'string' &&
+						  row.slug_prefix &&
+						  typeof row.slug_base === 'string' &&
+						  row.slug_base
+						? `/p/${row.slug_prefix}/${row.slug_base}`
+						: `/p/${slug}`,
 			title: typeof row.title === 'string' ? row.title : '',
 			summary: typeof row.summary === 'string' ? row.summary : null,
 			public_status:
@@ -595,7 +604,14 @@
 			slug_base: typeof row.slug_base === 'string' && row.slug_base ? row.slug_base : slug,
 			slug_was_deduped: row.slug_was_deduped === true,
 			url_path:
-				typeof row.url_path === 'string' && row.url_path ? row.url_path : `/p/${slug}`,
+				typeof row.url_path === 'string' && row.url_path
+					? row.url_path
+					: typeof row.slug_prefix === 'string' &&
+						  row.slug_prefix &&
+						  typeof row.slug_base === 'string' &&
+						  row.slug_base
+						? `/p/${row.slug_prefix}/${row.slug_base}`
+						: `/p/${slug}`,
 			title: typeof row.title === 'string' ? row.title : '',
 			summary: typeof row.summary === 'string' ? row.summary : null,
 			content: typeof row.content === 'string' ? row.content : '',
@@ -689,9 +705,9 @@
 	}
 
 	function openPublicPageInNewTab() {
-		const slug = publicPageState?.slug;
-		if (!slug || !browser) return;
-		window.open(`/p/${slug}`, '_blank', 'noopener,noreferrer');
+		const urlPath = publicPageState?.url_path;
+		if (!urlPath || !browser) return;
+		window.open(urlPath, '_blank', 'noopener,noreferrer');
 	}
 
 	async function loadPublicPageState(documentId: string) {
@@ -851,7 +867,10 @@
 							slug: suggestedSlug,
 							slug_base: suggestedSlugBase,
 							slug_was_deduped: true,
-							url_path: `/p/${suggestedSlug}`
+							url_path:
+								publicPageDraft?.slug_prefix && suggestedSlugBase
+									? `/p/${publicPageDraft.slug_prefix}/${suggestedSlugBase}`
+									: `/p/${suggestedSlug}`
 						};
 					}
 					toastService.error(
@@ -3534,7 +3553,10 @@
 					>
 						<span class="micro-label text-foreground">PUBLIC PREVIEW</span>
 						<span class="text-xs text-muted-foreground truncate">
-							{publicPageDraftUrlPreview ?? `https://build-os.com/p/${preview.slug}`}
+							{publicPageDraftUrlPreview ??
+								(preview.slug_prefix && preview.slug_base
+									? `https://build-os.com/p/${preview.slug_prefix}/${preview.slug_base}`
+									: `https://build-os.com/p/${preview.slug}`)}
 						</span>
 					</div>
 					<div class="p-3 max-h-[50vh] overflow-y-auto space-y-3">

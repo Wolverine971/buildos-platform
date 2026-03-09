@@ -1,14 +1,15 @@
-// apps/web/src/routes/(public)/p/[slug]/+page.server.ts
+// apps/web/src/routes/(public)/p/[slugPrefix]/[slugBase]/+page.server.ts
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 
 export const load: PageServerLoad = async ({ params, fetch }) => {
-	const slug = params.slug?.trim().toLowerCase();
-	if (!slug) {
+	const slugPrefix = params.slugPrefix?.trim().toLowerCase();
+	const slugBase = params.slugBase?.trim().toLowerCase();
+	if (!slugPrefix || !slugBase) {
 		throw error(404, 'Public page not found');
 	}
 
-	const response = await fetch(`/api/public/pages/${slug}`);
+	const response = await fetch(`/api/public/pages/${slugPrefix}-${slugBase}`);
 	const payload = await response.json().catch(() => null);
 	if (!response.ok) {
 		const redirectSlug = payload?.details?.redirect_slug;
@@ -21,15 +22,6 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 	const page = payload?.data?.page;
 	if (!page) {
 		throw error(404, 'Public page not found');
-	}
-
-	if (
-		typeof page.slug_prefix === 'string' &&
-		page.slug_prefix.trim() &&
-		typeof page.slug_base === 'string' &&
-		page.slug_base.trim()
-	) {
-		throw redirect(301, `/p/${page.slug_prefix}/${page.slug_base}`);
 	}
 
 	return { page };

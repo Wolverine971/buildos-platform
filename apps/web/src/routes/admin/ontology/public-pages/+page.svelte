@@ -114,7 +114,7 @@
 										{page.title || 'Untitled'}
 									</p>
 									<p class="text-xs text-muted-foreground font-mono">
-										/p/{page.slug}
+										{page.url_path}
 									</p>
 								</td>
 								<td class="px-4 py-3 align-top">
@@ -216,9 +216,7 @@
 								</td>
 								<td class="px-4 py-3 align-top">
 									<p class="font-mono text-xs text-foreground">
-										{review.page_slug
-											? `/p/${review.page_slug}`
-											: 'Draft/Unpublished'}
+										{review.page_url_path || 'Draft/Unpublished'}
 									</p>
 									<p class="text-xs text-muted-foreground">
 										policy: {review.policy_version}

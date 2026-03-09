@@ -10,6 +10,7 @@ vi.mock('$lib/server/public-page-content-review.service', () => ({
 }));
 
 import {
+	buildPublicPageUrlPath,
 	normalizePublicPageSlugBase,
 	normalizePublicPageSlugPrefix,
 	prepareDocumentPublicPagePreview,
@@ -36,6 +37,13 @@ describe('public-page.service slug helpers', () => {
 			slug_prefix: 'dj-wayne',
 			slug_base: 'market-map'
 		});
+	});
+
+	it('builds nested public page URL paths when prefix and base are present', () => {
+		expect(buildPublicPageUrlPath('dj-wayne-market-map', 'dj-wayne', 'market-map')).toBe(
+			'/p/dj-wayne/market-map'
+		);
+		expect(buildPublicPageUrlPath('legacy-page')).toBe('/p/legacy-page');
 	});
 });
 
