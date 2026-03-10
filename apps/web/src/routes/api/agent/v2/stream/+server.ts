@@ -30,7 +30,7 @@ import type {
 	OperationEventPayload
 } from '@buildos/shared-types';
 import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
-import type { AgentState } from '$lib/types/agent-chat-enhancement';
+import type { AgentState, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor-refactored';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
 import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
@@ -528,11 +528,7 @@ function normalizePrewarmedContextCache(raw: unknown): FastChatContextCache | nu
 function shouldBypassContextCacheForShiftHint(params: {
 	requestContextType: ChatContextType;
 	requestEntityId?: string | null;
-	requestProjectFocus?: {
-		focusType?: string | null;
-		focusEntityId?: string | null;
-		projectId?: string;
-	};
+	requestProjectFocus?: Pick<ProjectFocus, 'focusType' | 'focusEntityId' | 'projectId'> | null;
 	shiftHint: FastChatContextShiftHint | null;
 }): boolean {
 	const { shiftHint } = params;
@@ -544,12 +540,7 @@ function shouldBypassContextCacheForShiftHint(params: {
 	});
 	const shiftKey = buildContextCacheKey({
 		contextType: shiftHint.context_type,
-		entityId: shiftHint.entity_id ?? null,
-		projectFocus: shiftHint.project_id
-			? {
-					projectId: shiftHint.project_id
-				}
-			: undefined
+		entityId: shiftHint.entity_id ?? shiftHint.project_id ?? null
 	});
 	return requestKey !== shiftKey;
 }
@@ -1726,6 +1717,89 @@ function buildToolExecutionInsertRows(params: {
 	}));
 }
 
+async function persistToolExecutionRows(params: {
+	supabase: any;
+	sessionId: string;
+	messageId: string | null;
+	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
+	projectId?: string;
+	contextType: ChatContextType;
+	interrupted?: boolean;
+	logError?: (params: {
+		error: unknown;
+		operationType: string;
+		projectId?: string;
+		metadata?: Record<string, unknown>;
+	}) => void;
+}): Promise<void> {
+	const rows = buildToolExecutionInsertRows({
+		sessionId: params.sessionId,
+		messageId: params.messageId,
+		executions: params.executions
+	});
+	if (rows.length === 0) return;
+
+	const { error } = await params.supabase.from('chat_tool_executions').insert(rows);
+	if (!error) return;
+
+	logger.warn(
+		params.interrupted
+			? 'Failed to persist FastChat interrupted tool executions'
+			: 'Failed to persist FastChat tool executions',
+		{
+			error,
+			sessionId: params.sessionId
+		}
+	);
+	params.logError?.({
+		error,
+		operationType: 'fastchat_persist_tool_executions',
+		projectId: params.projectId,
+		metadata: {
+			sessionId: params.sessionId,
+			messageId: params.messageId,
+			toolExecutionCount: rows.length,
+			contextType: params.contextType,
+			...(params.interrupted ? { interrupted: true } : {})
+		}
+	});
+}
+
+function detachFastChatTask(
+	promise: Promise<unknown>,
+	params: {
+		label: string;
+		projectId?: string;
+		contextType: ChatContextType;
+		sessionId: string;
+		entityId?: string | null;
+		logError?: (params: {
+			error: unknown;
+			operationType: string;
+			projectId?: string;
+			metadata?: Record<string, unknown>;
+		}) => void;
+	}
+): void {
+	void promise.catch((error) => {
+		logger.warn(`Detached FastChat task failed: ${params.label}`, {
+			error,
+			sessionId: params.sessionId
+		});
+		params.logError?.({
+			error,
+			operationType: 'fastchat_detached_task',
+			projectId: params.projectId,
+			metadata: {
+				task: params.label,
+				sessionId: params.sessionId,
+				contextType: params.contextType,
+				entityId: params.entityId ?? null
+			}
+		});
+	});
+}
+
 function buildToolMessageSnapshotsForReconciliation(
 	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>,
 	toolSummaries: AgentStateToolSummary[]
@@ -2605,28 +2679,49 @@ export const POST: RequestHandler = async ({
 					}
 				});
 			const normalizedExecutions = toolExecutions ?? [];
-
-			const [userMessage] = await Promise.all([
-				userMessagePromise.catch((error) => {
-					logger.warn('Failed to persist user message', { error, sessionId: session.id });
-					logFastChatError({
-						error,
-						operationType: 'fastchat_persist_message',
-						projectId: projectIdForLogs,
-						metadata: { role: 'user', sessionId: session.id }
-					});
-					return null;
-				})
-			]);
-
-			if (voiceGroupId && userMessage?.id) {
-				await sessionService.attachVoiceNoteGroup({
-					groupId: voiceGroupId,
-					userId,
-					sessionId: session.id,
-					messageId: userMessage.id
+			const persistedUserMessagePromise = userMessagePromise.catch((error) => {
+				logger.warn('Failed to persist user message', { error, sessionId: session.id });
+				logFastChatError({
+					error,
+					operationType: 'fastchat_persist_message',
+					projectId: projectIdForLogs,
+					metadata: { role: 'user', sessionId: session.id }
 				});
-			}
+				return null;
+			});
+			const finalizeUserMessagePromise = (async () => {
+				const userMessage = await persistedUserMessagePromise;
+				if (voiceGroupId && userMessage?.id) {
+					await sessionService.attachVoiceNoteGroup({
+						groupId: voiceGroupId,
+						userId,
+						sessionId: session.id,
+						messageId: userMessage.id
+					});
+				}
+				return userMessage;
+			})();
+			const sessionContextSyncPromise = sessionService.updateSessionContext({
+				session,
+				contextType: effectiveContextType,
+				entityId: effectiveEntityId
+			});
+			detachFastChatTask(finalizeUserMessagePromise, {
+				label: 'finalize_user_message',
+				projectId: projectIdForLogs,
+				contextType: effectiveContextType,
+				sessionId: session.id,
+				entityId: effectiveEntityId,
+				logError: logFastChatError
+			});
+			detachFastChatTask(sessionContextSyncPromise, {
+				label: 'sync_session_context',
+				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+				contextType: effectiveContextType,
+				sessionId: session.id,
+				entityId: effectiveEntityId,
+				logError: logFastChatError
+			});
 
 			const isCancelledTurn =
 				cancelled === true || finishedReason === 'cancelled' || request.signal.aborted;
@@ -2666,38 +2761,23 @@ export const POST: RequestHandler = async ({
 					});
 				}
 
-				const interruptedToolExecutionRows = buildToolExecutionInsertRows({
+				const interruptedToolExecutionPersistPromise = persistToolExecutionRows({
+					supabase,
 					sessionId: session.id,
 					messageId: interruptedMessage?.id ?? null,
-					executions: normalizedExecutions
-				});
-				if (interruptedToolExecutionRows.length > 0) {
-					const { error: toolExecutionInsertError } = await supabase
-						.from('chat_tool_executions')
-						.insert(interruptedToolExecutionRows);
-					if (toolExecutionInsertError) {
-						logger.warn('Failed to persist FastChat interrupted tool executions', {
-							error: toolExecutionInsertError,
-							sessionId: session.id
-						});
-						logFastChatError({
-							error: toolExecutionInsertError,
-							operationType: 'fastchat_persist_tool_executions',
-							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
-								messageId: interruptedMessage?.id ?? null,
-								toolExecutionCount: interruptedToolExecutionRows.length,
-								interrupted: true
-							}
-						});
-					}
-				}
-
-				await sessionService.updateSessionContext({
-					session,
+					executions: normalizedExecutions,
+					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 					contextType: effectiveContextType,
-					entityId: effectiveEntityId
+					interrupted: true,
+					logError: logFastChatError
+				});
+				detachFastChatTask(interruptedToolExecutionPersistPromise, {
+					label: 'persist_interrupted_tool_executions',
+					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+					contextType: effectiveContextType,
+					sessionId: session.id,
+					entityId: effectiveEntityId,
+					logError: logFastChatError
 				});
 
 				if (!request.signal.aborted) {
@@ -2764,37 +2844,22 @@ export const POST: RequestHandler = async ({
 				});
 			}
 
-			const toolExecutionRows = buildToolExecutionInsertRows({
+			const toolExecutionPersistPromise = persistToolExecutionRows({
+				supabase,
 				sessionId: session.id,
 				messageId: assistantMessage?.id ?? null,
-				executions: normalizedExecutions
-			});
-			if (toolExecutionRows.length > 0) {
-				const { error: toolExecutionInsertError } = await supabase
-					.from('chat_tool_executions')
-					.insert(toolExecutionRows);
-				if (toolExecutionInsertError) {
-					logger.warn('Failed to persist FastChat tool executions', {
-						error: toolExecutionInsertError,
-						sessionId: session.id
-					});
-					logFastChatError({
-						error: toolExecutionInsertError,
-						operationType: 'fastchat_persist_tool_executions',
-						projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-						metadata: {
-							sessionId: session.id,
-							messageId: assistantMessage?.id ?? null,
-							toolExecutionCount: toolExecutionRows.length
-						}
-					});
-				}
-			}
-
-			await sessionService.updateSessionContext({
-				session,
+				executions: normalizedExecutions,
+				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 				contextType: effectiveContextType,
-				entityId: effectiveEntityId
+				logError: logFastChatError
+			});
+			detachFastChatTask(toolExecutionPersistPromise, {
+				label: 'persist_tool_executions',
+				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+				contextType: effectiveContextType,
+				sessionId: session.id,
+				entityId: effectiveEntityId,
+				logError: logFastChatError
 			});
 
 			const lastTurnContext = buildLastTurnContext({
@@ -2845,7 +2910,6 @@ export const POST: RequestHandler = async ({
 				}),
 				...executionToolSummaries
 			];
-
 			void (async () => {
 				const reconciliation = new AgentStateReconciliationService(supabase, errorLogger);
 				const currentState = sanitizeAgentStateForPrompt(

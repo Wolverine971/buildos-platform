@@ -33,12 +33,13 @@ Implemented on this branch:
 - global-context data now includes lightweight `context_meta.entity_limits_per_project` so the prompt can treat it as a compact portfolio summary
 - v2 prewarm is now wired to the real `fastchat_context_cache` path instead of the legacy context caches
 - modal open and focus changes now call `/api/agent/v2/prewarm`, and first send can carry a client-held `prewarmedContext` payload when no session-backed cache exists yet
+- post-stream tail work is shorter: voice-note attachment, tool-execution persistence, and session-context sync now continue after `done` instead of blocking it
 
 Still outstanding:
 
-- global `load_fastchat_context` still returns all project summaries on cache miss
+- global `load_fastchat_context` still returns all matching project summary rows on cache miss, even though each project's nested arrays are now capped
 - focused-entity linked-edge and linked-entity expansion inside project context is still unbounded
-- assistant message persistence and tool execution persistence are still awaited before `done`
+- assistant message persistence is still awaited before `done` so the next turn can reliably read the previous assistant reply from `chat_messages`
 - message idempotency lookup still scans JSON metadata
 
 ## Current Runtime Summary
@@ -378,9 +379,12 @@ Possible extra activity here:
 
 ### Step 8: finish persistence after the stream
 
-After the main stream completes, the route does the rest of persistence synchronously before final `done`.
+After the main stream completes, the route now splits post-stream work into:
 
-#### 8a. await user message write and attach voice notes
+- hot-path persistence still completed before `done`
+- detached persistence that continues after `done`
+
+#### 8a. continue user-message finalization in the background
 
 - `apps/web/src/routes/api/agent/v2/stream/+server.ts#L2606`
 - `apps/web/src/routes/api/agent/v2/stream/+server.ts#L2619`
@@ -391,6 +395,8 @@ Supabase calls:
 - optional `voice_note_groups.update(...)`
 - optional fallback `voice_note_groups.insert(...)`
 
+This no longer blocks final `done`.
+
 #### 8b. persist assistant message
 
 - `apps/web/src/routes/api/agent/v2/stream/+server.ts#L2735`
@@ -400,7 +406,15 @@ Supabase calls:
 1. optional assistant idempotency lookup in `chat_messages`
 2. assistant insert into `chat_messages`
 
-#### 8c. persist tool execution rows
+This is still awaited before `done`.
+
+Reason:
+
+- the next request composes model history primarily from persisted `chat_messages`
+- `last_turn_context` is only a compact summary, not a full replacement for the prior assistant reply
+- moving the assistant row behind `done` would need additional continuity logic to avoid a history gap on rapid follow-up turns
+
+#### 8c. persist tool execution rows in a detached task
 
 - `apps/web/src/routes/api/agent/v2/stream/+server.ts#L2773`
 
@@ -408,7 +422,9 @@ Supabase call:
 
 - bulk insert into `chat_tool_executions`
 
-#### 8d. sync session context when needed
+This no longer blocks final `done`.
+
+#### 8d. sync session context when needed in a detached task
 
 - `apps/web/src/routes/api/agent/v2/stream/+server.ts`
 - implementation in `apps/web/src/lib/services/agentic-chat-v2/session-service.ts`
@@ -429,6 +445,8 @@ Counter ownership is now left to the existing database triggers on:
 
 - `chat_messages`
 - `chat_tool_executions`
+
+This context/entity sync no longer blocks final `done`.
 
 #### 8e. run agent-state reconciliation
 
@@ -490,7 +508,9 @@ Those inserts appear to be non-blocking from the main request path, but they sti
 Why:
 
 - prewarm is now best-effort rather than absent, but it only helps when the user sends inside the cache TTL window
-- cache is only session metadata based and short-lived
+- cache is now short-lived and split across two stores:
+    - session-backed `fastchat_context_cache`
+    - client-held `prewarmedContext` for the first send
 - cache miss goes into a still-wide context build
 - global context still returns all project summaries on cache miss
 - focused-entity project context can still fan out into `onto_edges` plus linked entity tables
@@ -516,13 +536,16 @@ Primary files:
 Why:
 
 - assistant message persistence is awaited
-- tool execution persistence is awaited
-- optional session context sync is awaited when context changes
+- assistant persistence still includes an idempotency lookup plus insert
+- the route still emits `last_turn_context` only after assistant persistence has completed
 
 Resolved on this branch:
 
 - reconciliation is no longer waited on before `done`
 - the old synchronous session counter update is gone
+- tool execution persistence no longer blocks `done`
+- user-message voice-note attachment no longer blocks `done`
+- optional session context sync no longer blocks `done`
 
 Impact:
 
@@ -615,6 +638,28 @@ If the goal is to make the current save behavior feel faster without a full rede
 5. Trim the remaining `load_fastchat_context` hot paths, especially focused-entity linked-entity expansion and, if needed, the number of projects included in global summaries.
 6. Replace JSON metadata idempotency lookups with a dedicated indexed idempotency field.
 
+## Recommended Next Work
+
+Based on the code-path audit after the implemented changes above, the next work items should be:
+
+1. Trim focused-entity context fan-out inside `load_fastchat_context`.
+    - Add limits or ranking for `onto_edges` and linked-entity fetches.
+    - Prefer the most relevant linked entities rather than returning the full neighborhood.
+    - This is now the clearest remaining first-token bottleneck on project-focused turns.
+2. Decide whether assistant-message persistence can be pushed further off the hot path.
+    - Tool rows, voice-note attachment, and session-context sync no longer gate `done`.
+    - The remaining blocker is the assistant `chat_messages` row, which is still needed for reliable history continuity on fast follow-up turns.
+    - The next cut here would be adding continuity protection for cases where `last_turn_context` is newer than persisted message history.
+3. Replace JSON metadata idempotency lookups with an indexed field.
+    - `chat_messages.metadata @> {"idempotency_key": ...}` is still extra work on every persisted message.
+    - A dedicated column plus index is the straightforward fix.
+4. Measure prewarm effectiveness before adding more cache layers.
+    - With v2 prewarm now live, the next decision should be based on hit rate, not assumption.
+    - If hit rate is low, the likely reasons will be TTL, focus-key churn, or users sending before prewarm completes.
+5. Decide whether global context should also cap the number of projects.
+    - Global context is much narrower than before, but it still includes every matching project summary row.
+    - This may be acceptable for most users, but high-project-count accounts are still a likely outlier path.
+
 ## Bottom Line
 
 The active stack is agentic chat v2 plus OpenRouter v2 for the main turn path.
@@ -633,6 +678,7 @@ The next optimization batch now has a concrete change in place too:
 - global-context `load_fastchat_context` now omits project doc trees and caps per-project goals, milestones, plans, and activity
 - the loader exposes `context_meta.entity_limits_per_project` so the prompt can treat global context as a compact summary
 - v2 prewarm now targets `fastchat_context_cache` directly and can hand the first turn a client-held cache entry when no session exists yet
+- post-stream tail work is shorter: tool-execution persistence, voice-note attachment, and session-context sync no longer block final `done`
 
 The save path itself is not just "insert a message." A single turn can involve:
 
@@ -650,5 +696,13 @@ The save path itself is not just "insert a message." A single turn can involve:
 The biggest speed issues are:
 
 - context loading before the stream starts
-- remaining awaited work after the stream ends, especially assistant/tool persistence
+- remaining awaited work after the stream ends, especially assistant-message persistence
 - context payload size and query cost
+
+As of now, the most likely next implementation order is:
+
+1. focused-entity context trimming
+2. decide whether assistant-message persistence can move further off the hot path without breaking continuity
+3. indexed idempotency keys
+4. prewarm hit-rate instrumentation
+5. optional project-count cap for global context
