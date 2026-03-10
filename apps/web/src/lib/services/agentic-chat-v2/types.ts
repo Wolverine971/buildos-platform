@@ -10,6 +10,7 @@ import type {
 	OperationEventPayload
 } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import type { FastChatContextCache } from './context-cache';
 
 export type FastAgentStreamRequest = {
 	message: string;
@@ -24,6 +25,8 @@ export type FastAgentStreamRequest = {
 	client_turn_id?: string;
 	voiceNoteGroupId?: string;
 	voice_note_group_id?: string;
+	prewarmedContext?: FastChatContextCache | null;
+	prewarmed_context?: FastChatContextCache | null;
 };
 
 export type FastAgentCancelReason = 'user_cancelled' | 'superseded';

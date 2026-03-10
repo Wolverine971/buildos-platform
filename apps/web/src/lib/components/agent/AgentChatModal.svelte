@@ -58,6 +58,11 @@
 	import type { VoiceNote } from '$lib/types/voice-notes';
 	import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 	import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
+	import {
+		buildFastChatContextCacheKey,
+		isFastChatContextCacheFresh,
+		type FastChatContextCache
+	} from '$lib/services/agentic-chat-v2/context-cache';
 
 	type ProjectAction = 'workspace';
 
@@ -120,7 +125,8 @@
 	let lastAutoInitProjectId = $state<string | null>(null);
 	let wasOpen = $state(false);
 	let lastPrewarmKey = $state<string | null>(null);
-	const ENABLE_V2_PREWARM = false;
+	let prewarmedContext = $state<FastChatContextCache | null>(null);
+	const ENABLE_V2_PREWARM = true;
 
 	const contextDescriptor = $derived(
 		selectedContextType ? CONTEXT_DESCRIPTORS[selectedContextType] : null
@@ -178,28 +184,17 @@
 		return projectFocus ?? defaultProjectFocus;
 	});
 
-	function buildPrewarmKey(
-		sessionId: string | null | undefined,
-		contextType: ChatContextType | null,
-		entityId?: string,
-		focus?: ProjectFocus | null
-	): string | null {
-		if (!contextType) return null;
-		const sessionKey = sessionId ?? 'new';
-		const focusKey = focus?.focusType
-			? `${focus.focusType}:${focus.focusEntityId ?? 'project-wide'}`
-			: 'none';
-		return [sessionKey, contextType, entityId ?? 'global', focusKey].join('|');
-	}
-
 	async function prewarmAgentContext(payload: {
 		session_id?: string;
 		context_type: ChatContextType;
 		entity_id?: string;
 		projectFocus?: ProjectFocus | null;
-	}): Promise<ChatSession | null> {
+	}): Promise<{
+		session: ChatSession | null;
+		prewarmedContext: FastChatContextCache | null;
+	} | null> {
 		try {
-			const response = await fetch('/api/agent/prewarm', {
+			const response = await fetch('/api/agent/v2/prewarm', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -216,7 +211,11 @@
 			}
 
 			const session = result?.data?.session ?? null;
-			return session as ChatSession | null;
+			const prewarmedContext = result?.data?.prewarmed_context ?? null;
+			return {
+				session: session as ChatSession | null,
+				prewarmedContext: prewarmedContext as FastChatContextCache | null
+			};
 		} catch (err) {
 			if (dev) {
 				console.warn('[AgentChat] Prewarm failed:', err);
@@ -1022,6 +1021,7 @@
 				lastLoadedSessionId = null; // Reset to allow reloading same session
 				showProjectActionSelector = false;
 				lastPrewarmKey = null;
+				prewarmedContext = null;
 				if (sessionLoadController) {
 					sessionLoadController.abort();
 					sessionLoadController = null;
@@ -1091,42 +1091,51 @@
 	$effect(() => {
 		if (!ENABLE_V2_PREWARM) return;
 		if (!browser || !isOpen || !selectedContextType) return;
-		const prewarmSessionId = currentSession?.id ?? initialChatSessionId ?? null;
 		const prewarmEntityId = selectedEntityId ?? resolvedProjectFocus?.projectId;
 		if (isProjectContext(selectedContextType) && !prewarmEntityId) return;
-		const key = buildPrewarmKey(
-			prewarmSessionId,
-			selectedContextType,
-			prewarmEntityId,
-			resolvedProjectFocus
-		);
-		if (!key || key === lastPrewarmKey) return;
+		const key = buildFastChatContextCacheKey({
+			contextType: selectedContextType,
+			entityId: prewarmEntityId ?? null,
+			projectFocus: resolvedProjectFocus
+		});
+		const hasFreshMatchingPrewarm =
+			prewarmedContext &&
+			prewarmedContext.key === key &&
+			isFastChatContextCacheFresh(prewarmedContext);
+		if (!key || (key === lastPrewarmKey && hasFreshMatchingPrewarm)) return;
 		lastPrewarmKey = key;
 
 		void (async () => {
-			const session = await prewarmAgentContext({
-				session_id: prewarmSessionId ?? undefined,
+			const warmed = await prewarmAgentContext({
+				session_id: currentSession?.id ?? undefined,
 				context_type: selectedContextType,
 				entity_id: prewarmEntityId,
 				projectFocus: resolvedProjectFocus
 			});
 
-			if (session) {
-				currentSession = session;
-				// Use prewarmEntityId (captured at effect time) to match the key
-				// computed in the effect body — selectedEntityId may differ when
-				// it's undefined and the fallback resolvedProjectFocus.projectId is used
-				const refreshedKey = buildPrewarmKey(
-					session.id,
-					selectedContextType,
-					prewarmEntityId,
-					resolvedProjectFocus
-				);
-				if (refreshedKey) {
-					lastPrewarmKey = refreshedKey;
-				}
+			if (warmed?.session) {
+				currentSession = warmed.session;
+			}
+			if (
+				warmed?.prewarmedContext &&
+				warmed.prewarmedContext.key === key &&
+				isFastChatContextCacheFresh(warmed.prewarmedContext)
+			) {
+				prewarmedContext = warmed.prewarmedContext;
 			}
 		})();
+	});
+
+	$effect(() => {
+		if (!selectedContextType || !prewarmedContext) return;
+		const activeKey = buildFastChatContextCacheKey({
+			contextType: selectedContextType,
+			entityId: selectedEntityId ?? resolvedProjectFocus?.projectId ?? null,
+			projectFocus: resolvedProjectFocus
+		});
+		if (prewarmedContext.key !== activeKey || !isFastChatContextCacheFresh(prewarmedContext)) {
+			prewarmedContext = null;
+		}
 	});
 
 	// Handle initialBraindump prop - when opening from history to explore an existing braindump
@@ -3107,6 +3116,20 @@
 			if (resolvedProjectFocus && resolvedProjectFocus.focusType !== 'project-wide') {
 				ontologyEntityType = resolvedProjectFocus.focusType;
 			}
+			const prewarmCacheKey =
+				selectedContextType &&
+				buildFastChatContextCacheKey({
+					contextType: selectedContextType,
+					entityId: selectedEntityId ?? resolvedProjectFocus?.projectId ?? null,
+					projectFocus: resolvedProjectFocus
+				});
+			const matchingPrewarmedContext =
+				prewarmCacheKey &&
+				prewarmedContext &&
+				prewarmedContext.key === prewarmCacheKey &&
+				isFastChatContextCacheFresh(prewarmedContext)
+					? prewarmedContext
+					: null;
 
 			const response = await fetch('/api/agent/v2/stream', {
 				method: 'POST',
@@ -3124,7 +3147,8 @@
 					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity
 					stream_run_id: runId,
 					client_turn_id: clientTurnId,
-					voiceNoteGroupId: activeVoiceNoteGroupId
+					voiceNoteGroupId: activeVoiceNoteGroupId,
+					prewarmedContext: matchingPrewarmedContext
 				})
 			});
 

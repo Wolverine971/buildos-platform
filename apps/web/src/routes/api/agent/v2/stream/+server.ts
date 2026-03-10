@@ -53,6 +53,13 @@ import {
 	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
 import {
+	FASTCHAT_CONTEXT_CACHE_VERSION,
+	buildFastChatContextCacheEntry,
+	buildFastChatContextCacheKey as buildContextCacheKey,
+	isFastChatContextCacheFresh as isCacheFresh,
+	type FastChatContextCache
+} from '$lib/services/agentic-chat-v2/context-cache';
+import {
 	consumeTransientFastChatCancelHint,
 	normalizeFastChatStreamRunId,
 	readFastChatCancelReasonFromMetadata,
@@ -63,8 +70,6 @@ const logger = createLogger('API:AgentStreamV2');
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
 const FASTCHAT_STREAM_METHOD = 'POST';
 
-const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
-const FASTCHAT_CONTEXT_CACHE_VERSION = 1;
 const FASTCHAT_HISTORY_LOOKBACK_MESSAGES = parsePositiveInt(
 	process.env.FASTCHAT_HISTORY_LOOKBACK_MESSAGES,
 	10
@@ -377,22 +382,6 @@ async function checkDailyBriefAccess(
 	}
 }
 
-type FastChatContextCache = {
-	version: number;
-	key: string;
-	created_at: string;
-	context: {
-		contextType: ChatContextType;
-		entityId?: string | null;
-		projectId?: string | null;
-		projectName?: string | null;
-		focusEntityType?: string | null;
-		focusEntityId?: string | null;
-		focusEntityName?: string | null;
-		data?: Record<string, unknown> | string | null;
-	};
-};
-
 type FastChatContextShiftHint = {
 	context_type: ChatContextType;
 	entity_id?: string | null;
@@ -466,23 +455,6 @@ function maybeInjectProjectId(
 	};
 }
 
-function buildContextCacheKey(params: {
-	contextType: ChatContextType;
-	entityId?: string | null;
-	projectFocus?: { focusType?: string | null; focusEntityId?: string | null; projectId?: string };
-}): string {
-	const focusType = params.projectFocus?.focusType ?? null;
-	const focusEntityId = params.projectFocus?.focusEntityId ?? null;
-	const projectId = params.projectFocus?.projectId ?? params.entityId ?? null;
-	return [
-		'v2',
-		params.contextType,
-		projectId ?? 'none',
-		focusType ?? 'none',
-		focusEntityId ?? 'none'
-	].join('|');
-}
-
 function readRecentContextShiftHint(
 	metadata: Record<string, unknown>,
 	nowMs: number = Date.now()
@@ -505,6 +477,51 @@ function readRecentContextShiftHint(
 		entity_id: typeof record.entity_id === 'string' ? record.entity_id : null,
 		project_id: typeof record.project_id === 'string' ? record.project_id : null,
 		shifted_at: shiftedAtRaw
+	};
+}
+
+function normalizePrewarmedContextCache(raw: unknown): FastChatContextCache | null {
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+	const record = raw as Record<string, unknown>;
+	const key = typeof record.key === 'string' ? record.key : null;
+	const createdAt = typeof record.created_at === 'string' ? record.created_at : null;
+	const version = typeof record.version === 'number' ? record.version : null;
+	const contextRaw =
+		record.context && typeof record.context === 'object' && !Array.isArray(record.context)
+			? (record.context as Record<string, unknown>)
+			: null;
+	if (!key || !createdAt || version === null || !contextRaw) return null;
+
+	const contextTypeRaw =
+		typeof contextRaw.contextType === 'string'
+			? contextRaw.contextType
+			: typeof contextRaw.context_type === 'string'
+				? contextRaw.context_type
+				: null;
+	if (!contextTypeRaw) return null;
+
+	return {
+		version,
+		key,
+		created_at: createdAt,
+		context: {
+			contextType: normalizeFastContextType(contextTypeRaw as ChatContextType),
+			entityId: typeof contextRaw.entityId === 'string' ? contextRaw.entityId : null,
+			projectId: typeof contextRaw.projectId === 'string' ? contextRaw.projectId : null,
+			projectName: typeof contextRaw.projectName === 'string' ? contextRaw.projectName : null,
+			focusEntityType:
+				typeof contextRaw.focusEntityType === 'string' ? contextRaw.focusEntityType : null,
+			focusEntityId:
+				typeof contextRaw.focusEntityId === 'string' ? contextRaw.focusEntityId : null,
+			focusEntityName:
+				typeof contextRaw.focusEntityName === 'string' ? contextRaw.focusEntityName : null,
+			data:
+				contextRaw.data && typeof contextRaw.data === 'object'
+					? (contextRaw.data as Record<string, unknown>)
+					: typeof contextRaw.data === 'string'
+						? contextRaw.data
+						: null
+		}
 	};
 }
 
@@ -535,13 +552,6 @@ function shouldBypassContextCacheForShiftHint(params: {
 			: undefined
 	});
 	return requestKey !== shiftKey;
-}
-
-function isCacheFresh(cache: FastChatContextCache | null | undefined): boolean {
-	if (!cache?.created_at) return false;
-	const createdAt = Date.parse(cache.created_at);
-	if (Number.isNaN(createdAt)) return false;
-	return Date.now() - createdAt <= FASTCHAT_CONTEXT_CACHE_TTL_MS;
 }
 
 function resolveCacheAgeSeconds(createdAtRaw: string | null | undefined): number {
@@ -1922,6 +1932,9 @@ export const POST: RequestHandler = async ({
 			? clientTurnIdRaw.trim()
 			: undefined;
 	const streamRunId = normalizeFastChatStreamRunId(streamRequest.stream_run_id);
+	const requestPrewarmedContext = normalizePrewarmedContextCache(
+		streamRequest.prewarmedContext ?? streamRequest.prewarmed_context ?? null
+	);
 
 	const initialContextType = normalizeFastContextType(streamRequest.context_type);
 	if (isDailyBriefContext(initialContextType)) {
@@ -2240,6 +2253,11 @@ export const POST: RequestHandler = async ({
 				  }
 				| undefined;
 			try {
+				const hasFreshRequestPrewarmCache =
+					requestPrewarmedContext &&
+					requestPrewarmedContext.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
+					requestPrewarmedContext.key === cacheKey &&
+					isCacheFresh(requestPrewarmedContext);
 				if (
 					cachedContext &&
 					!bypassContextCacheForShiftHint &&
@@ -2249,6 +2267,23 @@ export const POST: RequestHandler = async ({
 				) {
 					promptContext = { ...cachedContext.context };
 					contextCacheAgeSeconds = resolveCacheAgeSeconds(cachedContext.created_at);
+				} else if (hasFreshRequestPrewarmCache) {
+					promptContext = { ...requestPrewarmedContext.context };
+					contextCacheAgeSeconds = resolveCacheAgeSeconds(
+						requestPrewarmedContext.created_at
+					);
+					void updateAgentMetadata(
+						supabase,
+						session.id,
+						{
+							fastchat_context_cache: requestPrewarmedContext
+						},
+						{
+							errorLogger,
+							userId,
+							projectId: projectIdForLogs
+						}
+					);
 				} else {
 					promptContext = await loadFastChatPromptContext({
 						supabase,
@@ -2272,25 +2307,25 @@ export const POST: RequestHandler = async ({
 						}
 					});
 
+					const fastChatContextCache = buildFastChatContextCacheEntry({
+						cacheKey,
+						context: {
+							contextType: promptContext.contextType,
+							entityId: promptContext.entityId ?? null,
+							projectId: promptContext.projectId ?? null,
+							projectName: promptContext.projectName ?? null,
+							focusEntityType: promptContext.focusEntityType ?? null,
+							focusEntityId: promptContext.focusEntityId ?? null,
+							focusEntityName: promptContext.focusEntityName ?? null,
+							data: promptContext.data ?? null
+						}
+					});
+
 					void updateAgentMetadata(
 						supabase,
 						session.id,
 						{
-							fastchat_context_cache: {
-								version: FASTCHAT_CONTEXT_CACHE_VERSION,
-								key: cacheKey,
-								created_at: new Date().toISOString(),
-								context: {
-									contextType: promptContext.contextType,
-									entityId: promptContext.entityId ?? null,
-									projectId: promptContext.projectId ?? null,
-									projectName: promptContext.projectName ?? null,
-									focusEntityType: promptContext.focusEntityType ?? null,
-									focusEntityId: promptContext.focusEntityId ?? null,
-									focusEntityName: promptContext.focusEntityName ?? null,
-									data: promptContext.data ?? null
-								}
-							}
+							fastchat_context_cache: fastChatContextCache
 						},
 						{
 							errorLogger,

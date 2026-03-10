@@ -31,10 +31,11 @@ Implemented on this branch:
 - project-context RPC payloads now include `entity_counts` so `context_meta` still reports full matching totals after SQL-side truncation
 - global-context `load_fastchat_context` now omits project `doc_structure` and limits goals, milestones, plans, and recent activity per project
 - global-context data now includes lightweight `context_meta.entity_limits_per_project` so the prompt can treat it as a compact portfolio summary
+- v2 prewarm is now wired to the real `fastchat_context_cache` path instead of the legacy context caches
+- modal open and focus changes now call `/api/agent/v2/prewarm`, and first send can carry a client-held `prewarmedContext` payload when no session-backed cache exists yet
 
 Still outstanding:
 
-- prewarm is still disabled
 - global `load_fastchat_context` still returns all project summaries on cache miss
 - focused-entity linked-edge and linked-entity expansion inside project context is still unbounded
 - assistant message persistence and tool execution persistence are still awaited before `done`
@@ -59,12 +60,18 @@ The main implications are:
 - Tool gateway mode is off, so v2 is using the direct fastchat tool-selection path instead of gateway-only tools:
     - `apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts#L90`
 
-The current UI is not prewarming context:
+The current UI now prewarms v2 context on open/focus change:
 
 - `apps/web/src/lib/components/agent/AgentChatModal.svelte#L123`
-- `ENABLE_V2_PREWARM = false`
+- `ENABLE_V2_PREWARM = true`
+- `POST /api/agent/v2/prewarm`
 
-That means first-turn latency is paying full context-load cost inside the stream request.
+The prewarm flow populates either:
+
+- session-backed `agent_metadata.fastchat_context_cache`, when a session already exists
+- or a client-held `prewarmedContext` payload that is attached to the first `/api/agent/v2/stream` request
+
+That means first-turn latency can now skip the main context-load path when the user sends within the cache TTL window and the context key still matches.
 
 ## Model Path In Use
 
@@ -95,6 +102,23 @@ Reconciliation path status on this branch:
 
 ## Client API Call Sequence
 
+### Open/focus prewarm flow
+
+When the modal opens or the focus changes, the UI now does a best-effort v2 prewarm:
+
+1. `POST /api/agent/v2/prewarm`
+    - sent from `apps/web/src/lib/components/agent/AgentChatModal.svelte`
+    - includes:
+        - optional `session_id`
+        - `context_type`
+        - `entity_id`
+        - `projectFocus`
+
+2. Server returns either:
+    - a fresh or reused `prewarmed_context`
+    - optional updated `session`
+    - cache source metadata
+
 ### Normal send flow
 
 For a normal turn, the current client-side flow is:
@@ -111,6 +135,7 @@ For a normal turn, the current client-side flow is:
         - `stream_run_id`
         - `client_turn_id`
         - optional `voiceNoteGroupId`
+        - optional `prewarmedContext`
 
 2. Optional cancel call if the user stops the turn:
     - `POST /api/agent/v2/stream/cancel`
@@ -227,7 +252,11 @@ This is already partially optimized for latency because it is kicked off early a
 
 ### Step 5: build prompt context
 
-The route either reuses a short-lived session metadata cache or loads fresh context:
+The route now has three context sources, in order:
+
+1. short-lived session metadata cache
+2. request-carried `prewarmedContext`
+3. fresh load via `loadFastChatPromptContext`
 
 - `apps/web/src/routes/api/agent/v2/stream/+server.ts#L2275`
 - cache TTL is currently 2 minutes:
@@ -236,6 +265,8 @@ The route either reuses a short-lived session metadata cache or loads fresh cont
 If cache is missed, the route calls:
 
 - `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts#L1184`
+
+If the request supplies a matching fresh `prewarmedContext`, the route can skip the fresh context load even before the session metadata cache has been written.
 
 #### Global/project context path
 
@@ -458,7 +489,7 @@ Those inserts appear to be non-blocking from the main request path, but they sti
 
 Why:
 
-- prewarm is disabled
+- prewarm is now best-effort rather than absent, but it only helps when the user sends inside the cache TTL window
 - cache is only session metadata based and short-lived
 - cache miss goes into a still-wide context build
 - global context still returns all project summaries on cache miss
@@ -468,6 +499,7 @@ Resolved on this branch:
 
 - plain project-context RPC payloads are now trimmed inside Postgres before they cross the network boundary
 - global context no longer ships per-project doc trees and no longer returns uncapped goals, milestones, and plans
+- v2 prewarm now warms the actual fastchat cache path and can fall back to a client-held cache blob before first send
 
 Impact:
 
@@ -579,7 +611,7 @@ If the goal is to make the current save behavior feel faster without a full rede
 1. Keep database triggers as the single source of truth for session metrics and avoid reintroducing app-side counter writes.
 2. Keep reconciliation off the synchronous `done` path and move it to a proper background queue if stronger delivery guarantees are needed.
 3. Keep metadata writes on the merge RPC path and use the same pattern for any future `agent_metadata` patches.
-4. Enable or redesign prewarm so the first turn does not pay full context-build cost on demand.
+4. Measure prewarm hit rate and decide whether the current session-backed plus client-held design is sufficient or whether a dedicated server-side ephemeral cache is worth adding.
 5. Trim the remaining `load_fastchat_context` hot paths, especially focused-entity linked-entity expansion and, if needed, the number of projects included in global summaries.
 6. Replace JSON metadata idempotency lookups with a dedicated indexed idempotency field.
 
@@ -600,6 +632,7 @@ The next optimization batch now has a concrete change in place too:
 - the loader preserves accurate scope totals by reading RPC-provided `entity_counts`
 - global-context `load_fastchat_context` now omits project doc trees and caps per-project goals, milestones, plans, and activity
 - the loader exposes `context_meta.entity_limits_per_project` so the prompt can treat global context as a compact summary
+- v2 prewarm now targets `fastchat_context_cache` directly and can hand the first turn a client-held cache entry when no session exists yet
 
 The save path itself is not just "insert a message." A single turn can involve:
 
