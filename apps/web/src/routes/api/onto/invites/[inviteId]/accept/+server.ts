@@ -26,6 +26,39 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Invite ID required');
 		}
 
+		let inviteContext: {
+			invited_by_user_id?: string | null;
+			project_name?: string | null;
+		} | null = null;
+		const { data: inviteContextRows, error: inviteContextError } = await supabase.rpc(
+			'get_pending_project_invite_context',
+			{
+				p_invite_id: inviteId
+			}
+		);
+
+		if (inviteContextError) {
+			void logOntologyApiError({
+				supabase,
+				error: inviteContextError,
+				endpoint: `/api/onto/invites/${inviteId}/accept`,
+				method: 'POST',
+				userId: user.id,
+				entityType: 'project_invite',
+				operation: 'project_invite_accept_context_fetch'
+			});
+		} else {
+			inviteContext = Array.isArray(inviteContextRows)
+				? ((inviteContextRows[0] as {
+						invited_by_user_id?: string | null;
+						project_name?: string | null;
+					} | null) ?? null)
+				: ((inviteContextRows as {
+						invited_by_user_id?: string | null;
+						project_name?: string | null;
+					} | null) ?? null);
+		}
+
 		const { data, error } = await supabase.rpc('accept_project_invite_by_id', {
 			p_invite_id: inviteId
 		});
@@ -105,36 +138,6 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				}
 			}
 
-			// Activity log entry for project feed
-			const { error: logError } = await supabase.from('onto_project_logs').insert({
-				project_id: projectId,
-				entity_type: 'project',
-				entity_id: projectId,
-				action: 'updated',
-				changed_by: user.id,
-				changed_by_actor_id: actorId,
-				change_source: 'api',
-				after_data: {
-					event: 'invite_accepted',
-					role_key: result?.role_key ?? null,
-					access: result?.access ?? null,
-					actor_id: actorId
-				}
-			});
-			if (logError) {
-				console.warn('[Invite Accept API] Failed to log invite acceptance:', logError);
-				void logOntologyApiError({
-					supabase,
-					error: logError,
-					endpoint: `/api/onto/invites/${inviteId}/accept`,
-					method: 'POST',
-					userId,
-					projectId,
-					entityType: 'project_invite',
-					operation: 'project_invite_accept_log'
-				});
-			}
-
 			// Build notifications for project owners (and inviter if distinct)
 			const { data: project, error: projectError } = await supabase
 				.from('onto_projects')
@@ -181,26 +184,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				if (uid) recipients.add(uid);
 			}
 
-			// Ensure inviter also gets notified if available
-			const { data: inviteRow, error: inviteRowError } = await supabase
-				.from('onto_project_invites')
-				.select('invited_by_actor_id, invited_by:invited_by_actor_id(user_id)')
-				.eq('id', inviteId)
-				.maybeSingle();
-			if (inviteRowError) {
-				void logOntologyApiError({
-					supabase,
-					error: inviteRowError,
-					endpoint: `/api/onto/invites/${inviteId}/accept`,
-					method: 'POST',
-					userId,
-					projectId,
-					entityType: 'project_invite',
-					operation: 'project_invite_accept_inviter_fetch'
-				});
-			}
-
-			const inviterUserId = (inviteRow as any)?.invited_by?.user_id as string | null;
+			const inviterUserId = inviteContext?.invited_by_user_id ?? null;
 			if (inviterUserId) {
 				recipients.add(inviterUserId);
 			}
@@ -247,7 +231,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 				const eventType = 'project.invite.accepted';
 				const correlationId = randomUUID();
 				const displayName = user.name || user.email || 'A teammate';
-				const projectName = project?.name || 'project';
+				const projectName = project?.name || inviteContext?.project_name || 'project';
 				const payload = {
 					title: `${displayName} joined ${projectName}`,
 					body: `${displayName} accepted an invite as ${result?.role_key ?? 'member'}`,

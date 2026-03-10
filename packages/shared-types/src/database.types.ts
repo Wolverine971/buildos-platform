@@ -12328,6 +12328,16 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_pending_project_invite_context: {
+        Args: { p_invite_id: string }
+        Returns: {
+          invite_id: string
+          invited_by_actor_id: string
+          invited_by_user_id: string
+          project_id: string
+          project_name: string
+        }[]
+      }
       get_project_full: {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
