@@ -10,6 +10,9 @@ describe('getToolHelp', () => {
 		expect(help.path).toBe('root');
 		expect(help.command_contract?.tool_exec?.required).toEqual(['op', 'args']);
 		expect(Array.isArray(help.workflow)).toBe(true);
+		expect(help.workflow.join(' ')).toContain('util.contact');
+		expect(help.workflow.join(' ')).toContain('util.web');
+		expect(help.workflow.join(' ')).toContain('tool_help({ path: help_path })');
 		expect(Array.isArray(help.examples)).toBe(true);
 		expect(help.examples.length).toBeGreaterThan(0);
 	});

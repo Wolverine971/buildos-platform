@@ -16,6 +16,7 @@
 
 	type LaneKey = 'assigned_collab' | 'assigned_other' | 'other';
 	type BulkScope = 'current_lane' | 'all_lanes';
+	type ReschedulePreset = 'today' | 'tomorrow' | 'plus3' | 'nextWeek';
 	const BLOCKED_REVISIT_PRESET: 'tomorrow' | 'plus3' = 'tomorrow';
 
 	type TaskAssignee = {
@@ -53,17 +54,42 @@
 		changedCount: number;
 	};
 
+	type RescheduleSlot = {
+		start_at: string;
+		due_at: string;
+		duration_minutes: number;
+	};
+
+	type ReschedulePlan = {
+		preset: ReschedulePreset;
+		timezone: string;
+		duration_minutes: number;
+		window_start_at: string;
+		window_end_at: string;
+		note: string | null;
+		slots: RescheduleSlot[];
+		calendar_connected: boolean;
+	};
+
 	interface Props {
 		isOpen: boolean;
 		onClose: (summary?: CloseSummary) => void;
 	}
 
 	const LANE_ORDER: LaneKey[] = ['assigned_collab', 'assigned_other', 'other'];
+	const RESCHEDULE_PRESETS: ReschedulePreset[] = ['today', 'tomorrow', 'plus3', 'nextWeek'];
 
 	const laneLabels: Record<LaneKey, string> = {
 		assigned_collab: 'Assigned to me · Collaborative',
 		assigned_other: 'Assigned to me · Other projects',
 		other: 'Other overdue'
+	};
+
+	const reschedulePresetLabels: Record<ReschedulePreset, string> = {
+		today: 'Today',
+		tomorrow: 'Tomorrow',
+		plus3: '+3d',
+		nextWeek: 'Next week'
 	};
 
 	let { isOpen, onClose }: Props = $props();
@@ -77,8 +103,6 @@
 	let pendingTaskIds = $state(new Set<string>());
 	let activeLane = $state<LaneKey>('assigned_collab');
 	let bulkScope = $state<BulkScope>('current_lane');
-	let showDatePicker = $state(false);
-	let pickedDate = $state('');
 	let laneIndex = $state<Record<LaneKey, number>>({
 		assigned_collab: 0,
 		assigned_other: 0,
@@ -89,6 +113,11 @@
 		assigned_other: [],
 		other: []
 	});
+	let activeReschedulePreset = $state<ReschedulePreset | null>(null);
+	let loadingReschedulePreset = $state<ReschedulePreset | null>(null);
+	let reschedulePlans = $state<Partial<Record<ReschedulePreset, ReschedulePlan>>>({});
+	let rescheduleError = $state<string | null>(null);
+	let rescheduleTaskId = $state<string | null>(null);
 
 	const laneCounts = $derived({
 		assigned_collab: laneTasks.assigned_collab.length,
@@ -282,8 +311,11 @@
 			initialCount = tasks.length;
 			changedCount = 0;
 			bulkScope = 'current_lane';
-			showDatePicker = false;
-			pickedDate = '';
+			activeReschedulePreset = null;
+			loadingReschedulePreset = null;
+			reschedulePlans = {};
+			rescheduleError = null;
+			rescheduleTaskId = null;
 		} catch (err) {
 			console.error('[Overdue Triage] Failed to load tasks:', err);
 			error = err instanceof Error ? err.message : 'Failed to load overdue tasks';
@@ -303,10 +335,23 @@
 
 		if (!isOpen && wasOpen) {
 			wasOpen = false;
-			showDatePicker = false;
-			pickedDate = '';
 			pendingTaskIds = new Set<string>();
+			activeReschedulePreset = null;
+			loadingReschedulePreset = null;
+			reschedulePlans = {};
+			rescheduleError = null;
+			rescheduleTaskId = null;
 		}
+	});
+
+	$effect(() => {
+		const nextTaskId = currentTask?.id ?? null;
+		if (nextTaskId === rescheduleTaskId) return;
+		rescheduleTaskId = nextTaskId;
+		activeReschedulePreset = null;
+		loadingReschedulePreset = null;
+		reschedulePlans = {};
+		rescheduleError = null;
 	});
 
 	async function patchTask(taskId: string, updates: Record<string, unknown>) {
@@ -397,35 +442,6 @@
 		await mutateTask(currentTask.id, { state_key: state }, { advanceWhenStillOverdue: true });
 	}
 
-	async function handleReschedulePreset(preset: 'today' | 'tomorrow' | 'plus3' | 'nextWeek') {
-		if (!currentTask) return;
-		await mutateTask(
-			currentTask.id,
-			{
-				due_at: presetDueAt(preset)
-			},
-			{ advanceWhenStillOverdue: true }
-		);
-	}
-
-	async function handleReschedulePickedDate() {
-		if (!currentTask || !pickedDate) return;
-		const date = new Date(`${pickedDate}T00:00:00`);
-		if (Number.isNaN(date.getTime())) {
-			toastService.error('Choose a valid date');
-			return;
-		}
-		await mutateTask(
-			currentTask.id,
-			{
-				due_at: toIsoEndOfDay(date)
-			},
-			{ advanceWhenStillOverdue: true }
-		);
-		showDatePicker = false;
-		pickedDate = '';
-	}
-
 	function handleSkip() {
 		if (!currentTask) return;
 		const found = getTaskById(currentTask.id);
@@ -437,6 +453,143 @@
 		laneCopy.push(skipped);
 		laneTasks[lane] = laneCopy;
 		advanceInLane(lane);
+	}
+
+	async function fetchReschedulePlan(
+		taskId: string,
+		preset: ReschedulePreset
+	): Promise<ReschedulePlan | null> {
+		const response = await fetch(`/api/onto/tasks/${taskId}/reschedule-options`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				preset,
+				limit: 5
+			})
+		});
+
+		const payload = (await response.json().catch(() => null)) as {
+			success?: boolean;
+			error?: string;
+			data?: ReschedulePlan;
+		} | null;
+
+		if (!response.ok || !payload?.success || !payload.data) {
+			throw new Error(payload?.error || 'Failed to load reschedule options');
+		}
+
+		return payload.data;
+	}
+
+	function storeReschedulePlan(
+		taskId: string,
+		preset: ReschedulePreset,
+		plan: ReschedulePlan
+	): ReschedulePlan | null {
+		if (currentTask?.id !== taskId) return null;
+		reschedulePlans = {
+			...reschedulePlans,
+			[preset]: plan
+		};
+		activeReschedulePreset = preset;
+		return plan;
+	}
+
+	async function handleShowRescheduleOptions(preset: ReschedulePreset) {
+		if (!currentTask) return;
+		const taskId = currentTask.id;
+		loadingReschedulePreset = preset;
+		activeReschedulePreset = preset;
+		rescheduleError = null;
+		try {
+			const plan = await fetchReschedulePlan(taskId, preset);
+			if (!plan) return;
+			storeReschedulePlan(taskId, preset, plan);
+		} catch (err) {
+			console.error('[Overdue Triage] Failed to load reschedule options:', err);
+			if (currentTask?.id !== taskId) return;
+			rescheduleError =
+				err instanceof Error ? err.message : 'Failed to load reschedule options';
+			reschedulePlans = {
+				...reschedulePlans,
+				[preset]: undefined
+			};
+			toastService.error(rescheduleError);
+		} finally {
+			if (currentTask?.id === taskId && loadingReschedulePreset === preset) {
+				loadingReschedulePreset = null;
+			}
+		}
+	}
+
+	async function applyRescheduleSlot(slot: RescheduleSlot) {
+		if (!currentTask) return;
+		await mutateTask(
+			currentTask.id,
+			{
+				start_at: slot.start_at,
+				due_at: slot.due_at
+			},
+			{ advanceWhenStillOverdue: true }
+		);
+	}
+
+	async function handleAutoReschedule(preset: ReschedulePreset) {
+		if (!currentTask) return;
+		const taskId = currentTask.id;
+		loadingReschedulePreset = preset;
+		activeReschedulePreset = preset;
+		rescheduleError = null;
+		try {
+			const plan = await fetchReschedulePlan(taskId, preset);
+			if (!plan) return;
+			storeReschedulePlan(taskId, preset, plan);
+			const firstSlot = plan.slots[0];
+			if (!firstSlot) {
+				const message = plan.note || 'No available slots found in this window';
+				rescheduleError = message;
+				toastService.error(message);
+				return;
+			}
+			await applyRescheduleSlot(firstSlot);
+		} catch (err) {
+			console.error('[Overdue Triage] Failed to auto-schedule task:', err);
+			if (currentTask?.id !== taskId) return;
+			const message = err instanceof Error ? err.message : 'Failed to auto-schedule task';
+			rescheduleError = message;
+			toastService.error(message);
+		} finally {
+			if (currentTask?.id === taskId && loadingReschedulePreset === preset) {
+				loadingReschedulePreset = null;
+			}
+		}
+	}
+
+	function formatSlotDayLabel(value: string): string {
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return 'Invalid date';
+		return date.toLocaleDateString(undefined, {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric'
+		});
+	}
+
+	function formatSlotTimeRange(startValue: string, endValue: string): string {
+		const start = new Date(startValue);
+		const end = new Date(endValue);
+		if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+			return 'Invalid time';
+		}
+		return `${start.toLocaleTimeString(undefined, {
+			hour: 'numeric',
+			minute: '2-digit'
+		})} - ${end.toLocaleTimeString(undefined, {
+			hour: 'numeric',
+			minute: '2-digit'
+		})}`;
 	}
 
 	function tasksForBulkScope(): OverdueTask[] {
@@ -659,67 +812,107 @@
 							<p class="text-[11px] font-semibold text-muted-foreground">
 								Reschedule
 							</p>
-							<div class="flex flex-wrap gap-2">
-								<Button
-									size="sm"
-									variant="outline"
-									disabled={pendingTaskIds.has(currentTask.id)}
-									onclick={() => handleReschedulePreset('today')}
-								>
-									Today
-								</Button>
-								<Button
-									size="sm"
-									variant="outline"
-									disabled={pendingTaskIds.has(currentTask.id)}
-									onclick={() => handleReschedulePreset('tomorrow')}
-								>
-									Tomorrow
-								</Button>
-								<Button
-									size="sm"
-									variant="outline"
-									disabled={pendingTaskIds.has(currentTask.id)}
-									onclick={() => handleReschedulePreset('plus3')}
-								>
-									+3d
-								</Button>
-								<Button
-									size="sm"
-									variant="outline"
-									disabled={pendingTaskIds.has(currentTask.id)}
-									onclick={() => handleReschedulePreset('nextWeek')}
-								>
-									Next week
-								</Button>
-								<Button
-									size="sm"
-									variant="ghost"
-									disabled={pendingTaskIds.has(currentTask.id)}
-									onclick={() => (showDatePicker = !showDatePicker)}
-								>
-									Pick date...
-								</Button>
+							<div class="space-y-2">
+								{#each RESCHEDULE_PRESETS as preset}
+									{@const plan = reschedulePlans[preset]}
+									<div
+										class="rounded-md border border-border bg-background/60 p-2.5 space-y-2"
+									>
+										<div
+											class="flex flex-wrap items-center justify-between gap-2"
+										>
+											<div class="min-w-0">
+												<p class="text-xs font-medium text-foreground">
+													{reschedulePresetLabels[preset]}
+												</p>
+												{#if activeReschedulePreset === preset && plan?.note}
+													<p
+														class="mt-0.5 text-[11px] text-muted-foreground"
+													>
+														{plan.note}
+													</p>
+												{/if}
+											</div>
+											<div class="flex flex-wrap items-center gap-2">
+												<Button
+													size="sm"
+													variant="outline"
+													disabled={pendingTaskIds.has(currentTask.id) ||
+														loadingReschedulePreset === preset}
+													onclick={() => handleAutoReschedule(preset)}
+												>
+													Auto schedule
+												</Button>
+												<Button
+													size="sm"
+													variant="ghost"
+													disabled={pendingTaskIds.has(currentTask.id) ||
+														loadingReschedulePreset === preset}
+													onclick={() =>
+														handleShowRescheduleOptions(preset)}
+												>
+													Show slots
+												</Button>
+											</div>
+										</div>
+
+										{#if loadingReschedulePreset === preset}
+											<div
+												class="flex items-center gap-2 text-[11px] text-muted-foreground"
+											>
+												<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+												Finding open time...
+											</div>
+										{:else if activeReschedulePreset === preset}
+											{#if plan?.slots?.length}
+												<div class="grid gap-2">
+													{#each plan.slots as slot}
+														<button
+															type="button"
+															class="flex items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-2 text-left transition-colors shadow-ink hover:bg-muted/40"
+															disabled={pendingTaskIds.has(
+																currentTask.id
+															)}
+															onclick={() =>
+																applyRescheduleSlot(slot)}
+														>
+															<div class="min-w-0">
+																<p
+																	class="text-xs font-medium text-foreground"
+																>
+																	{formatSlotDayLabel(
+																		slot.start_at
+																	)}
+																</p>
+																<p
+																	class="mt-0.5 text-[11px] text-muted-foreground"
+																>
+																	{formatSlotTimeRange(
+																		slot.start_at,
+																		slot.due_at
+																	)}
+																</p>
+															</div>
+															<span
+																class="text-[11px] font-medium text-accent"
+															>
+																Use slot
+															</span>
+														</button>
+													{/each}
+												</div>
+											{:else}
+												<p class="text-[11px] text-muted-foreground">
+													{rescheduleError ||
+														plan?.note ||
+														'No open time found in this window.'}
+												</p>
+											{/if}
+										{/if}
+									</div>
+								{/each}
 							</div>
 						</div>
-
-						{#if showDatePicker}
-							<div class="flex flex-wrap items-center gap-2">
-								<input
-									type="date"
-									bind:value={pickedDate}
-									class="h-9 rounded-md border border-border bg-background px-2 text-sm shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-ring"
-								/>
-								<Button
-									size="sm"
-									variant="outline"
-									disabled={!pickedDate || pendingTaskIds.has(currentTask.id)}
-									onclick={handleReschedulePickedDate}
-								>
-									Apply
-								</Button>
-							</div>
-						{/if}
 
 						<div class="flex flex-wrap items-center gap-2 pt-1">
 							<Button size="sm" variant="ghost" onclick={handleSkip}>
@@ -756,7 +949,7 @@
 							disabled={isBulkRunning}
 							onclick={() => runBulkAction('tomorrow')}
 						>
-							All to tomorrow
+							All due tomorrow
 						</Button>
 						<Button
 							size="sm"
@@ -764,7 +957,7 @@
 							disabled={isBulkRunning}
 							onclick={() => runBulkAction('plus3')}
 						>
-							All +3 days
+							All due +3d
 						</Button>
 						<Button
 							size="sm"

@@ -30,7 +30,6 @@ DECLARE
   v_linked_edges jsonb;
   v_linked_entities jsonb;
   v_project_ids uuid[];
-  v_limit integer;
   v_user_id uuid;
 BEGIN
   v_user_id := p_user_id;
@@ -52,14 +51,14 @@ BEGIN
     SELECT COALESCE(jsonb_agg(to_jsonb(p)), '[]'::jsonb)
     INTO v_projects
     FROM (
-      SELECT id, name, state_key, description, start_at, end_at, next_step_short, updated_at, doc_structure
+      SELECT id, name, state_key, description, start_at, end_at, next_step_short, updated_at
       FROM onto_projects
       WHERE deleted_at IS NULL
         AND created_by = v_user_id
       ORDER BY updated_at DESC
     ) p;
 
-    SELECT array_agg(id)
+    SELECT array_agg(id ORDER BY updated_at DESC)
     INTO v_project_ids
     FROM onto_projects
     WHERE deleted_at IS NULL
@@ -79,39 +78,189 @@ BEGIN
     INTO v_goals
     FROM (
       SELECT id, project_id, name, description, state_key, target_date, completed_at, updated_at
-      FROM onto_goals
-      WHERE project_id = ANY(v_project_ids)
-        AND deleted_at IS NULL
+      FROM (
+        SELECT
+          g.id,
+          g.project_id,
+          g.name,
+          g.description,
+          g.state_key,
+          g.target_date,
+          g.completed_at,
+          g.updated_at,
+          row_number() OVER (
+            PARTITION BY g.project_id
+            ORDER BY
+              CASE WHEN g.is_completed THEN 1 ELSE 0 END ASC,
+              CASE
+                WHEN g.is_completed THEN NULL
+                WHEN g.target_date IS NULL THEN 3
+                WHEN g.target_date < now() THEN 0
+                WHEN g.target_date <= (now() + interval '7 days') THEN 1
+                ELSE 2
+              END ASC NULLS LAST,
+              CASE
+                WHEN g.is_completed THEN NULL
+                WHEN g.state_norm IN ('active', 'in_progress') THEN 0
+                WHEN g.state_norm IN ('todo', 'pending', 'draft') THEN 1
+                WHEN g.state_norm = 'blocked' THEN 2
+                ELSE 3
+              END ASC NULLS LAST,
+              CASE WHEN g.is_completed THEN g.completed_at ELSE NULL END DESC NULLS LAST,
+              g.updated_at DESC NULLS LAST,
+              g.id ASC
+          ) AS project_rank
+        FROM (
+          SELECT
+            id,
+            project_id,
+            name,
+            description,
+            state_key,
+            target_date,
+            completed_at,
+            updated_at,
+            lower(btrim(COALESCE(state_key, ''))) AS state_norm,
+            (
+              completed_at IS NOT NULL
+              OR lower(btrim(COALESCE(state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
+            ) AS is_completed
+          FROM onto_goals
+          WHERE project_id = ANY(v_project_ids)
+            AND deleted_at IS NULL
+        ) g
+      ) g
+      WHERE g.project_rank <= 4
+      ORDER BY array_position(v_project_ids, g.project_id), g.project_rank
     ) g;
 
     SELECT COALESCE(jsonb_agg(to_jsonb(m)), '[]'::jsonb)
     INTO v_milestones
     FROM (
       SELECT id, project_id, title, description, state_key, due_at, completed_at, updated_at
-      FROM onto_milestones
-      WHERE project_id = ANY(v_project_ids)
-        AND deleted_at IS NULL
+      FROM (
+        SELECT
+          m.id,
+          m.project_id,
+          m.title,
+          m.description,
+          m.state_key,
+          m.due_at,
+          m.completed_at,
+          m.updated_at,
+          row_number() OVER (
+            PARTITION BY m.project_id
+            ORDER BY
+              CASE WHEN m.is_completed THEN 1 ELSE 0 END ASC,
+              CASE
+                WHEN m.is_completed THEN NULL
+                WHEN m.due_at IS NULL THEN 3
+                WHEN m.due_at < now() THEN 0
+                WHEN m.due_at <= (now() + interval '7 days') THEN 1
+                ELSE 2
+              END ASC NULLS LAST,
+              CASE
+                WHEN m.is_completed THEN NULL
+                WHEN m.state_norm = 'missed' THEN 0
+                WHEN m.state_norm = 'in_progress' THEN 1
+                WHEN m.state_norm IN ('pending', 'todo') THEN 2
+                WHEN m.state_norm = 'draft' THEN 3
+                ELSE 4
+              END ASC NULLS LAST,
+              CASE WHEN m.is_completed THEN m.completed_at ELSE NULL END DESC NULLS LAST,
+              m.updated_at DESC NULLS LAST,
+              m.id ASC
+          ) AS project_rank
+        FROM (
+          SELECT
+            id,
+            project_id,
+            title,
+            description,
+            state_key,
+            due_at,
+            completed_at,
+            updated_at,
+            lower(btrim(COALESCE(state_key, ''))) AS state_norm,
+            (
+              completed_at IS NOT NULL
+              OR lower(btrim(COALESCE(state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
+            ) AS is_completed
+          FROM onto_milestones
+          WHERE project_id = ANY(v_project_ids)
+            AND deleted_at IS NULL
+        ) m
+      ) m
+      WHERE m.project_rank <= 4
+      ORDER BY array_position(v_project_ids, m.project_id), m.project_rank
     ) m;
 
     SELECT COALESCE(jsonb_agg(to_jsonb(pl)), '[]'::jsonb)
     INTO v_plans
     FROM (
       SELECT id, project_id, name, description, state_key, updated_at
-      FROM onto_plans
-      WHERE project_id = ANY(v_project_ids)
-        AND deleted_at IS NULL
+      FROM (
+        SELECT
+          pl.id,
+          pl.project_id,
+          pl.name,
+          pl.description,
+          pl.state_key,
+          pl.updated_at,
+          row_number() OVER (
+            PARTITION BY pl.project_id
+            ORDER BY
+              CASE WHEN pl.is_completed THEN 1 ELSE 0 END ASC,
+              CASE
+                WHEN pl.state_norm IN ('active', 'in_progress') THEN 0
+                WHEN pl.state_norm = 'blocked' THEN 1
+                WHEN pl.state_norm IN ('todo', 'pending', 'draft') THEN 2
+                ELSE 3
+              END ASC,
+              pl.updated_at DESC NULLS LAST,
+              pl.id ASC
+          ) AS project_rank
+        FROM (
+          SELECT
+            id,
+            project_id,
+            name,
+            description,
+            state_key,
+            updated_at,
+            lower(btrim(COALESCE(state_key, ''))) AS state_norm,
+            lower(btrim(COALESCE(state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled') AS is_completed
+          FROM onto_plans
+          WHERE project_id = ANY(v_project_ids)
+            AND deleted_at IS NULL
+        ) pl
+      ) pl
+      WHERE pl.project_rank <= 4
+      ORDER BY array_position(v_project_ids, pl.project_id), pl.project_rank
     ) pl;
-
-    v_limit := array_length(v_project_ids, 1) * 6;
 
     SELECT COALESCE(jsonb_agg(to_jsonb(l)), '[]'::jsonb)
     INTO v_logs
     FROM (
       SELECT project_id, entity_type, entity_id, action, created_at, after_data, before_data
-      FROM onto_project_logs
-      WHERE project_id = ANY(v_project_ids)
-      ORDER BY created_at DESC
-      LIMIT v_limit
+      FROM (
+        SELECT
+          l.project_id,
+          l.entity_type,
+          l.entity_id,
+          l.action,
+          l.created_at,
+          l.after_data,
+          l.before_data,
+          row_number() OVER (
+            PARTITION BY l.project_id
+            ORDER BY l.created_at DESC, l.entity_id ASC
+          ) AS project_rank
+        FROM onto_project_logs l
+        WHERE l.project_id = ANY(v_project_ids)
+      ) l
+      WHERE l.project_rank <= 6
+      ORDER BY array_position(v_project_ids, l.project_id), l.project_rank
     ) l;
 
     RETURN jsonb_build_object(

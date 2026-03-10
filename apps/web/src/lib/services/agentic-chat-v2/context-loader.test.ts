@@ -167,6 +167,249 @@ describe('loadFastChatPromptContext daily_brief', () => {
 	});
 });
 
+describe('loadFastChatPromptContext global', () => {
+	it('builds compact portfolio summaries with per-project limits and no doc_structure', async () => {
+		vi.useFakeTimers();
+		const now = new Date('2026-02-15T20:07:18.308Z');
+		vi.setSystemTime(now);
+
+		const dayMs = 24 * 60 * 60 * 1000;
+		const isoFromDays = (daysFromNow: number): string =>
+			new Date(now.getTime() + daysFromNow * dayMs).toISOString();
+
+		const supabase = createProjectRpcSupabaseMock({
+			projects: [
+				{
+					id: 'proj-1',
+					name: 'Project One',
+					state_key: 'active',
+					description: 'Project one',
+					start_at: null,
+					end_at: null,
+					next_step_short: null,
+					updated_at: isoFromDays(0)
+				},
+				{
+					id: 'proj-2',
+					name: 'Project Two',
+					state_key: 'active',
+					description: 'Project two',
+					start_at: null,
+					end_at: null,
+					next_step_short: null,
+					updated_at: isoFromDays(-1)
+				}
+			],
+			goals: [
+				{
+					id: 'goal-completed',
+					project_id: 'proj-1',
+					name: 'Completed Goal',
+					description: null,
+					state_key: 'completed',
+					target_date: isoFromDays(1),
+					completed_at: isoFromDays(-1),
+					updated_at: isoFromDays(0)
+				},
+				{
+					id: 'goal-overdue',
+					project_id: 'proj-1',
+					name: 'Overdue Goal',
+					description: null,
+					state_key: 'active',
+					target_date: isoFromDays(-1),
+					completed_at: null,
+					updated_at: isoFromDays(-2)
+				},
+				{
+					id: 'goal-due-soon',
+					project_id: 'proj-1',
+					name: 'Soon Goal',
+					description: null,
+					state_key: 'active',
+					target_date: isoFromDays(2),
+					completed_at: null,
+					updated_at: isoFromDays(-3)
+				},
+				{
+					id: 'goal-future',
+					project_id: 'proj-1',
+					name: 'Future Goal',
+					description: null,
+					state_key: 'active',
+					target_date: isoFromDays(14),
+					completed_at: null,
+					updated_at: isoFromDays(-4)
+				},
+				{
+					id: 'goal-no-date',
+					project_id: 'proj-1',
+					name: 'No Date Goal',
+					description: null,
+					state_key: 'active',
+					target_date: null,
+					completed_at: null,
+					updated_at: isoFromDays(-5)
+				},
+				{
+					id: 'goal-proj-2',
+					project_id: 'proj-2',
+					name: 'Project Two Goal',
+					description: null,
+					state_key: 'active',
+					target_date: null,
+					completed_at: null,
+					updated_at: isoFromDays(-2)
+				}
+			],
+			milestones: [
+				{
+					id: 'milestone-overdue',
+					project_id: 'proj-1',
+					title: 'Overdue Milestone',
+					description: null,
+					state_key: 'pending',
+					due_at: isoFromDays(-1),
+					completed_at: null,
+					updated_at: isoFromDays(-2)
+				},
+				{
+					id: 'milestone-soon',
+					project_id: 'proj-1',
+					title: 'Soon Milestone',
+					description: null,
+					state_key: 'in_progress',
+					due_at: isoFromDays(2),
+					completed_at: null,
+					updated_at: isoFromDays(-3)
+				},
+				{
+					id: 'milestone-future',
+					project_id: 'proj-1',
+					title: 'Future Milestone',
+					description: null,
+					state_key: 'pending',
+					due_at: isoFromDays(14),
+					completed_at: null,
+					updated_at: isoFromDays(-4)
+				},
+				{
+					id: 'milestone-no-date',
+					project_id: 'proj-1',
+					title: 'No Date Milestone',
+					description: null,
+					state_key: 'pending',
+					due_at: null,
+					completed_at: null,
+					updated_at: isoFromDays(-5)
+				},
+				{
+					id: 'milestone-completed',
+					project_id: 'proj-1',
+					title: 'Completed Milestone',
+					description: null,
+					state_key: 'completed',
+					due_at: isoFromDays(1),
+					completed_at: isoFromDays(-1),
+					updated_at: isoFromDays(0)
+				}
+			],
+			plans: [
+				{
+					id: 'plan-active',
+					project_id: 'proj-1',
+					name: 'Active Plan',
+					description: null,
+					state_key: 'active',
+					updated_at: isoFromDays(-8)
+				},
+				{
+					id: 'plan-blocked',
+					project_id: 'proj-1',
+					name: 'Blocked Plan',
+					description: null,
+					state_key: 'blocked',
+					updated_at: isoFromDays(-1)
+				},
+				{
+					id: 'plan-todo',
+					project_id: 'proj-1',
+					name: 'Todo Plan',
+					description: null,
+					state_key: 'todo',
+					updated_at: isoFromDays(-2)
+				},
+				{
+					id: 'plan-draft',
+					project_id: 'proj-1',
+					name: 'Draft Plan',
+					description: null,
+					state_key: 'draft',
+					updated_at: isoFromDays(-3)
+				},
+				{
+					id: 'plan-completed',
+					project_id: 'proj-1',
+					name: 'Completed Plan',
+					description: null,
+					state_key: 'completed',
+					updated_at: isoFromDays(0)
+				}
+			],
+			project_logs: Array.from({ length: 8 }, (_, index) => ({
+				project_id: 'proj-1',
+				entity_type: 'task',
+				entity_id: `task-${index + 1}`,
+				action: 'updated',
+				created_at: isoFromDays(-(index + 1) / 10),
+				after_data: { title: `Task ${index + 1}` },
+				before_data: null
+			}))
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'global'
+		});
+
+		const data = context.data as Record<string, any>;
+		expect(data.projects).toHaveLength(2);
+		expect(data.projects[0].doc_structure).toBeUndefined();
+		expect(data.context_meta).toMatchObject({
+			source: 'rpc',
+			project_count: 2,
+			includes_doc_structure: false,
+			entity_limits_per_project: {
+				recent_activity: 6,
+				goals: 4,
+				milestones: 4,
+				plans: 4
+			}
+		});
+
+		expect(data.project_goals['proj-1'].map((goal: { id: string }) => goal.id)).toEqual([
+			'goal-overdue',
+			'goal-due-soon',
+			'goal-future',
+			'goal-no-date'
+		]);
+		expect(data.project_goals['proj-2'].map((goal: { id: string }) => goal.id)).toEqual([
+			'goal-proj-2'
+		]);
+		expect(
+			data.project_milestones['proj-1'].map((milestone: { id: string }) => milestone.id)
+		).toEqual(['milestone-overdue', 'milestone-soon', 'milestone-future', 'milestone-no-date']);
+		expect(data.project_plans['proj-1'].map((plan: { id: string }) => plan.id)).toEqual([
+			'plan-active',
+			'plan-blocked',
+			'plan-todo',
+			'plan-draft'
+		]);
+		expect(data.project_recent_activity['proj-1']).toHaveLength(6);
+	});
+});
+
 describe('loadFastChatPromptContext project event window', () => {
 	it('time-boxes project events and emits events_window metadata from RPC payloads', async () => {
 		vi.useFakeTimers();

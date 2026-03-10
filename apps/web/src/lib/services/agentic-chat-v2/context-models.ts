@@ -168,6 +168,19 @@ export type GlobalContextData = {
 	project_goals: Record<string, LightGoal[]>;
 	project_milestones: Record<string, LightMilestone[]>;
 	project_plans: Record<string, LightPlan[]>;
+	context_meta?: {
+		generated_at: string;
+		source: 'rpc' | 'fallback';
+		cache_age_seconds?: number;
+		project_count: number;
+		includes_doc_structure: boolean;
+		entity_limits_per_project: {
+			recent_activity: number | null;
+			goals: number | null;
+			milestones: number | null;
+			plans: number | null;
+		};
+	};
 };
 
 export type ProjectContextData = {

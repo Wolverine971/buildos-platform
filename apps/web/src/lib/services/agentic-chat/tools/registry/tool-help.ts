@@ -80,10 +80,10 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 				}
 			},
 			workflow: [
-				'1) Discover target group with tool_help("onto.<entity>") or tool_help("cal.skill") for calendar workflows.',
-				'2) For first-time/complex writes, inspect exact schema with tool_help("<exact op>", { format: "full", include_schemas: true }).',
+				'1) Choose the help path by intent: onto.<entity>, onto.task.docs, cal.skill, util.profile, util.contact, util.web, util.buildos, util.schema, or root when namespace is unknown.',
+				'2) If tool_help returns a directory or skill, narrow to the exact op; for first-time/complex writes, inspect exact schema with tool_help({ path: "<exact op>", format: "full", include_schemas: true }).',
 				'3) Execute with tool_exec({ op: "<exact op>", args: { ... } }).',
-				'4) If execution returns error.help_path, call tool_help(help_path) then retry once.'
+				'4) If execution returns error.help_path, call tool_help({ path: help_path }) then retry once.'
 			]
 		};
 		if (includeExamples) {
@@ -140,7 +140,7 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 		version: registry.version,
 		items: children,
 		next_step:
-			'Call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec for writes.'
+			'Call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) before tool_exec for writes.'
 	};
 	if (includeExamples) {
 		const firstOp = children.find((child) => child.type === 'op');
@@ -512,7 +512,7 @@ function buildCalendarSkillHelp(
 			'3) Use timezone-safe ISO 8601 for all event times (offset/Z, or pass timezone).',
 			'4) Use list/get to discover IDs before update/delete; never guess IDs.',
 			'5) For update/delete, pass onto_event_id or event_id.',
-			'6) If execution returns help_path, call tool_help(help_path) and retry once.'
+			'6) If execution returns help_path, call tool_help({ path: help_path }) and retry once.'
 		],
 		ops: {
 			read: [
@@ -625,7 +625,7 @@ function buildCalendarSkillHelp(
 
 	if (format === 'full') {
 		skill.notes = [
-			'Call tool_help("cal.event.<op>", { format: "full", include_schemas: true }) when arg schema is uncertain.',
+			'Call tool_help({ path: "cal.event.<op>", format: "full", include_schemas: true }) when arg schema is uncertain.',
 			'For first-time or complex calendar writes in a turn, inspect exact op schema before tool_exec.'
 		];
 	}

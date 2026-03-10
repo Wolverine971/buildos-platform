@@ -29,11 +29,13 @@ Implemented on this branch:
 - `agent_metadata` writes now use a single merge RPC instead of a read-modify-write cycle
 - project-context `load_fastchat_context` payloads are now limited inside Postgres for goals, milestones, plans, tasks, documents, and events
 - project-context RPC payloads now include `entity_counts` so `context_meta` still reports full matching totals after SQL-side truncation
+- global-context `load_fastchat_context` now omits project `doc_structure` and limits goals, milestones, plans, and recent activity per project
+- global-context data now includes lightweight `context_meta.entity_limits_per_project` so the prompt can treat it as a compact portfolio summary
 
 Still outstanding:
 
 - prewarm is still disabled
-- global `load_fastchat_context` is still likely the largest first-token bottleneck on cache miss
+- global `load_fastchat_context` still returns all project summaries on cache miss
 - focused-entity linked-edge and linked-entity expansion inside project context is still unbounded
 - assistant message persistence and tool execution persistence are still awaited before `done`
 - message idempotency lookup still scans JSON metadata
@@ -255,6 +257,16 @@ See:
 
 - `packages/shared-types/src/functions/load_fastchat_context.sql#L33`
 
+On this branch, the global-context branch now trims the payload before returning it:
+
+- project rows omit `doc_structure`
+- goals: 4 per project
+- milestones: 4 per project
+- plans: 4 per project
+- recent activity: 6 per project
+
+The loader also annotates global context with compact summary metadata via `context_meta.entity_limits_per_project`.
+
 For project context it reads:
 
 - `onto_projects`
@@ -449,12 +461,13 @@ Why:
 - prewarm is disabled
 - cache is only session metadata based and short-lived
 - cache miss goes into a still-wide context build
-- global context RPC still returns full project, goal, milestone, and plan payloads
+- global context still returns all project summaries on cache miss
 - focused-entity project context can still fan out into `onto_edges` plus linked entity tables
 
 Resolved on this branch:
 
 - plain project-context RPC payloads are now trimmed inside Postgres before they cross the network boundary
+- global context no longer ships per-project doc trees and no longer returns uncapped goals, milestones, and plans
 
 Impact:
 
@@ -567,7 +580,7 @@ If the goal is to make the current save behavior feel faster without a full rede
 2. Keep reconciliation off the synchronous `done` path and move it to a proper background queue if stronger delivery guarantees are needed.
 3. Keep metadata writes on the merge RPC path and use the same pattern for any future `agent_metadata` patches.
 4. Enable or redesign prewarm so the first turn does not pay full context-build cost on demand.
-5. Trim the remaining `load_fastchat_context` hot paths, especially global context and focused-entity linked-entity expansion.
+5. Trim the remaining `load_fastchat_context` hot paths, especially focused-entity linked-entity expansion and, if needed, the number of projects included in global summaries.
 6. Replace JSON metadata idempotency lookups with a dedicated indexed idempotency field.
 
 ## Bottom Line
@@ -585,6 +598,8 @@ The next optimization batch now has a concrete change in place too:
 
 - project-context `load_fastchat_context` now limits the biggest arrays in SQL before returning them
 - the loader preserves accurate scope totals by reading RPC-provided `entity_counts`
+- global-context `load_fastchat_context` now omits project doc trees and caps per-project goals, milestones, plans, and activity
+- the loader exposes `context_meta.entity_limits_per_project` so the prompt can treat global context as a compact summary
 
 The save path itself is not just "insert a message." A single turn can involve:
 

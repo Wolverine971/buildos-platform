@@ -337,10 +337,7 @@ export class TaskTimeSlotFinder {
 		const dayOfWeek = date.getDay();
 		const workingDays = preferences.working_days || [1, 2, 3, 4, 5];
 
-		// Convert Sunday = 0 to Sunday = 7 for consistency with ISO week days
-		const isoDay = dayOfWeek === 0 ? 7 : dayOfWeek;
-
-		return workingDays.includes(isoDay);
+		return workingDays.includes(dayOfWeek);
 	}
 
 	/**

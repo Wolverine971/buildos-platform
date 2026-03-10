@@ -47,37 +47,37 @@
   <path d="M60 342C60 329.85 69.85 320 82 320H538C550.15 320 560 329.85 560 342V372H60V342Z" fill="#EEE7DE"/>
   <text x="92" y="353" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="16" font-weight="800" letter-spacing="0.18em">CURRENT STACK</text>
   <g>
-    <rect x="434" y="333" width="88" height="24" rx="12" fill="#FCF9F5"/>
-    <rect x="434" y="333" width="88" height="24" rx="12" stroke="#D8D2CA" stroke-width="1.2"/>
-    <text x="478" y="349" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="11" font-weight="800" letter-spacing="0.16em" text-anchor="middle">4 TOOLS</text>
+    <rect x="426" y="331" width="96" height="28" rx="14" fill="#FCF9F5"/>
+    <rect x="426" y="331" width="96" height="28" rx="14" stroke="#D8D2CA" stroke-width="1.2"/>
+    <text x="474" y="349" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="11" font-weight="800" letter-spacing="0.16em" text-anchor="middle">4 TOOLS</text>
   </g>
 
   <g transform="translate(92 398) rotate(-6)">
     <rect width="156" height="58" rx="14" fill="#FCF9F5"/>
     <rect width="156" height="58" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
-    <text x="18" y="24" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700">Notes app</text>
-    <text x="18" y="43" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13">ideas + scraps</text>
+    <text x="18" y="26" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="17" font-weight="700">Notes app</text>
+    <text x="18" y="45" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600">ideas + scraps</text>
   </g>
 
   <g transform="translate(276 392) rotate(5)">
     <rect width="170" height="64" rx="14" fill="#FCF9F5"/>
     <rect width="170" height="64" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
-    <text x="18" y="24" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700">Google Doc</text>
-    <text x="18" y="43" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13">outline + draft</text>
+    <text x="18" y="27" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="17" font-weight="700">Google Doc</text>
+    <text x="18" y="46" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600">outline + draft</text>
   </g>
 
   <g transform="translate(100 482) rotate(3)">
     <rect width="164" height="60" rx="14" fill="#FCF9F5"/>
     <rect width="164" height="60" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
-    <text x="18" y="24" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700">Chat thread</text>
-    <text x="18" y="43" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13">rewrites + examples</text>
+    <text x="18" y="26" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="17" font-weight="700">Chat thread</text>
+    <text x="18" y="45" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600">rewrites + examples</text>
   </g>
 
   <g transform="translate(296 475) rotate(-4)">
     <rect width="170" height="66" rx="14" fill="#FCF9F5"/>
     <rect width="170" height="66" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
-    <text x="18" y="24" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700">Edit checklist</text>
-    <text x="18" y="43" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13">publish steps</text>
+    <text x="18" y="27" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="17" font-weight="700">Edit checklist</text>
+    <text x="18" y="46" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600">publish steps</text>
   </g>
 
   <text x="420" y="566" fill="#B54834" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="16" font-weight="800" text-anchor="end">missing context</text>
@@ -92,9 +92,9 @@
   <path d="M640 342C640 329.85 649.85 320 662 320H1118C1130.15 320 1140 329.85 1140 342V372H640V342Z" fill="#F6E8DA"/>
   <text x="672" y="353" fill="#A6541C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="16" font-weight="800" letter-spacing="0.18em">THINKING ENVIRONMENT</text>
   <g>
-    <rect x="983" y="333" width="125" height="24" rx="12" fill="#FCF9F5"/>
-    <rect x="983" y="333" width="125" height="24" rx="12" stroke="#E07830" stroke-width="1.2"/>
-    <text x="1045.5" y="349" fill="#A6541C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="11" font-weight="800" letter-spacing="0.16em" text-anchor="middle">ONE PROJECT</text>
+    <rect x="962" y="331" width="140" height="28" rx="14" fill="#FCF9F5"/>
+    <rect x="962" y="331" width="140" height="28" rx="14" stroke="#E07830" stroke-width="1.2"/>
+    <text x="1032" y="349" fill="#A6541C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="11" font-weight="800" letter-spacing="0.16em" text-anchor="middle">ONE PROJECT</text>
   </g>
 
   <line x1="809" y1="430" x2="962" y2="430" stroke="#C8C2BA" stroke-width="2"/>
@@ -127,12 +127,12 @@
   </g>
 
   <g>
-    <rect x="920" y="488" width="170" height="80" rx="18" fill="#17171A"/>
-    <rect x="920" y="488" width="170" height="80" rx="18" fill="url(#panelAccent)"/>
-    <rect x="920" y="488" width="170" height="80" rx="18" stroke="#E07830" stroke-width="1.5"/>
-    <text x="942" y="513" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13" font-weight="800" letter-spacing="0.12em">NEXT MOVE</text>
-    <text x="942" y="539" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="21" font-weight="800">Draft the</text>
-    <text x="942" y="562" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="21" font-weight="800">cold open</text>
+    <rect x="916" y="486" width="174" height="84" rx="18" fill="#17171A"/>
+    <rect x="916" y="486" width="174" height="84" rx="18" fill="url(#panelAccent)"/>
+    <rect x="916" y="486" width="174" height="84" rx="18" stroke="#E07830" stroke-width="1.5"/>
+    <text x="940" y="512" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13" font-weight="800" letter-spacing="0.12em">NEXT MOVE</text>
+    <text x="940" y="538" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="20" font-weight="800">Draft the</text>
+    <text x="940" y="561" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="20" font-weight="800">cold open</text>
   </g>
 
   <text x="66" y="619" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="17" font-weight="600">BuildOS for creators: one place to think, plan, and keep context.</text>

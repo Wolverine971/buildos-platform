@@ -27,19 +27,27 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		expect(prompt).toContain('In tool_exec.op, use only canonical ops.');
 		expect(prompt).toContain('Never use legacy op strings in tool_exec.op');
 		expect(prompt).toContain(
-			'Use targeted discovery first: tool_help("onto.<entity>") or tool_help("cal.skill") for calendar workflows.'
+			'Use targeted discovery first unless the exact op and args are already known in-turn.'
+		);
+		expect(prompt).toContain('task docs / task workspace docs -> onto.task.docs');
+		expect(prompt).toContain(
+			'contacts -> util.contact, web/current info/URLs -> util.web, BuildOS product/docs/workflows -> util.buildos, field/schema questions -> util.schema, unknown namespace -> root.'
 		);
 		expect(prompt).toContain(
-			'Calendar skill rule: if the user asks to read/create/update/delete calendar events or manage project calendar mapping, call tool_help("cal.skill") once in-turn before tool_exec calls.'
+			'tool_help can return a directory, a skill playbook, or an exact op schema.'
 		);
 		expect(prompt).toContain(
-			'User profile context is NOT preloaded. If personalization is needed, call tool_help("util.profile") and then util.profile.overview.'
+			'Calendar skill rule: if the user asks to read/create/update/delete calendar events or manage project calendar mapping, call tool_help({ path: "cal.skill" }) once in-turn before calendar tool_exec calls.'
 		);
 		expect(prompt).toContain(
-			'For first-time or complex writes in a turn, call tool_help("<exact op>", { format: "full", include_schemas: true }) before tool_exec.'
+			'User profile context is NOT preloaded. If personalization is needed, call tool_help({ path: "util.profile" }) and then util.profile.overview.'
+		);
+		expect(prompt).toContain('Contact method values are sensitive and redacted by default.');
+		expect(prompt).toContain(
+			'For first-time or complex writes in a turn, call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) before tool_exec.'
 		);
 		expect(prompt).toContain(
-			'Gateway payload contract: tool_help({ path: "<path>" }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
+			'Gateway payload contract: tool_help({ path: "<path>", format?: "short|full", include_schemas?: boolean }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
 		);
 		expect(prompt).toContain(
 			'CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.'
@@ -51,6 +59,7 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'
 		);
 		expect(prompt).toContain('Calendar ops are under cal.event.* and cal.project.*');
+		expect(prompt).toContain('onto.task.docs.list, onto.task.docs.create_or_attach');
 		expect(prompt).not.toContain('tool_batch');
 		expect(prompt).toContain(
 			'Project context events are time-boxed to the last 7 days and next 14 days (UTC).'
@@ -62,7 +71,13 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'Project context data may include context_meta.entity_scopes with returned/total_matching/limit/is_complete values per entity.'
 		);
 		expect(prompt).toContain(
+			'Global context data may include context_meta.entity_limits_per_project and may omit doc_structure to keep portfolio summaries compact.'
+		);
+		expect(prompt).toContain(
 			'context_meta may include generated_at/source/cache_age_seconds to describe snapshot freshness.'
+		);
+		expect(prompt).toContain(
+			'If global summaries are limited and the user asks for exhaustive cross-project results, run targeted list/search tools before answering.'
 		);
 		expect(prompt).toContain(
 			'Use new_parent_id only when nesting under a parent (omit it for root moves).'

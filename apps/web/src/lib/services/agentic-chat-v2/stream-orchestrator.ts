@@ -1567,16 +1567,20 @@ function buildToolValidationRepairInstruction(
 	];
 	if (hasGatewayExecIssue) {
 		lines.push(
-			'Gateway pattern: use targeted tool_help("<group/entity>") first; use tool_help("root") only when namespace is unknown.'
+			'Gateway pattern: choose targeted tool_help by intent: onto.<entity>, onto.task.docs, cal.skill, util.profile, util.contact, util.web, util.buildos, util.schema; use root only when namespace is unknown.'
+		);
+		lines.push('tool_help can return a directory, a skill playbook, or an exact op schema.');
+		lines.push(
+			'For calendar workflows, call tool_help({ path: "cal.skill" }) before calendar tool_exec calls.'
 		);
 		lines.push(
-			'For calendar workflows, call tool_help("cal.skill") before calendar tool_exec calls.'
-		);
-		lines.push(
-			'Gateway payload contract: tool_help({ path: "<path>" }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
+			'Gateway payload contract: tool_help({ path: "<path>", format?: "short|full", include_schemas?: boolean }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
 		);
 		lines.push(
 			'Canonical ontology family: onto.<entity>.create|list|get|update|delete|search (entities: project, task, goal, plan, document, milestone, risk).'
+		);
+		lines.push(
+			'Canonical onto exceptions also include onto.task.docs.list, onto.task.docs.create_or_attach, tree/path ops, project graph ops, edge ops, and entity relationship/link ops.'
 		);
 		lines.push(
 			'In tool_exec.op, use only canonical ops; never legacy names like get_document_tree.'

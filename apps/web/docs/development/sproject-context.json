@@ -427,6 +427,12 @@
 			"exports": ["OpenRouterV2Service"]
 		},
 		{
+			"file": "src/lib/services/overdue-task-reschedule.service.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["OverdueTaskRescheduleService"]
+		},
+		{
 			"file": "src/lib/services/project-calendar.service.ts",
 			"type": "service",
 			"components": [],

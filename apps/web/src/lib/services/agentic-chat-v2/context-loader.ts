@@ -31,7 +31,9 @@ const logger = createLogger('FastChatContext');
 const PROJECT_CONTEXTS = new Set<ChatContextType>(['project', 'project_audit', 'project_forecast']);
 
 const RECENT_ACTIVITY_PER_PROJECT = 6;
-const GLOBAL_DOC_STRUCTURE_DEPTH = 2;
+const GLOBAL_CONTEXT_GOAL_LIMIT = 4;
+const GLOBAL_CONTEXT_MILESTONE_LIMIT = 4;
+const GLOBAL_CONTEXT_PLAN_LIMIT = 4;
 const FASTCHAT_CONTEXT_RPC = 'load_fastchat_context';
 const FASTCHAT_EVENT_WINDOW_PAST_DAYS = 7;
 const FASTCHAT_EVENT_WINDOW_FUTURE_DAYS = 14;
@@ -59,8 +61,9 @@ type ProjectSelectRow = Pick<
 	| 'end_at'
 	| 'next_step_short'
 	| 'updated_at'
-	| 'doc_structure'
->;
+> & {
+	doc_structure?: ProjectRow['doc_structure'] | null;
+};
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 type PlanRow = Database['public']['Tables']['onto_plans']['Row'];
@@ -1116,14 +1119,46 @@ function mapRecentActivity(rows: ProjectLogRow[]): Record<string, LightRecentAct
 	return result;
 }
 
-function groupByProject<T extends { project_id: string }, U>(
-	rows: T[],
-	mapper: (row: T) => U
-): Record<string, U[]> {
+function buildGlobalContextMeta(params: {
+	source: 'rpc' | 'fallback';
+	projectCount: number;
+}): NonNullable<GlobalContextData['context_meta']> {
+	return {
+		generated_at: new Date().toISOString(),
+		source: params.source,
+		cache_age_seconds: 0,
+		project_count: params.projectCount,
+		includes_doc_structure: false,
+		entity_limits_per_project: {
+			recent_activity: RECENT_ACTIVITY_PER_PROJECT,
+			goals: GLOBAL_CONTEXT_GOAL_LIMIT,
+			milestones: GLOBAL_CONTEXT_MILESTONE_LIMIT,
+			plans: GLOBAL_CONTEXT_PLAN_LIMIT
+		}
+	};
+}
+
+function limitAndMapByProject<T extends { project_id: string }, U>(params: {
+	rows: T[];
+	projectIds: string[];
+	limitRows: (rows: T[]) => T[];
+	mapper: (row: T) => U;
+}): Record<string, U[]> {
+	const grouped = new Map<string, T[]>();
+	for (const row of params.rows) {
+		const bucket = grouped.get(row.project_id);
+		if (bucket) {
+			bucket.push(row);
+			continue;
+		}
+		grouped.set(row.project_id, [row]);
+	}
+
 	const result: Record<string, U[]> = {};
-	for (const row of rows) {
-		const bucket = (result[row.project_id] ??= []);
-		bucket.push(mapper(row));
+	for (const projectId of params.projectIds) {
+		const bucket = grouped.get(projectId);
+		if (!bucket || bucket.length === 0) continue;
+		result[projectId] = params.limitRows(bucket).map(params.mapper);
 	}
 	return result;
 }
@@ -1132,8 +1167,7 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 	const projects = asArray<ProjectSelectRow>(payload.projects);
 	const lightProjects = projects.map((row) =>
 		mapProject(row, {
-			includeDocStructure: true,
-			truncateDepth: GLOBAL_DOC_STRUCTURE_DEPTH
+			includeDocStructure: false
 		})
 	);
 
@@ -1143,10 +1177,16 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 			project_recent_activity: {},
 			project_goals: {},
 			project_milestones: {},
-			project_plans: {}
+			project_plans: {},
+			context_meta: buildGlobalContextMeta({
+				source: 'rpc',
+				projectCount: 0
+			})
 		};
 	}
 
+	const projectIds = lightProjects.map((project) => project.id);
+	const nowMs = Date.now();
 	const goals = asArray<GoalRow & { project_id?: string }>(payload.goals).filter(
 		(row): row is GoalRow & { project_id: string } => typeof row.project_id === 'string'
 	);
@@ -1160,9 +1200,29 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 	return {
 		projects: lightProjects,
 		project_recent_activity: mapRecentActivity(asArray<ProjectLogRow>(payload.project_logs)),
-		project_goals: groupByProject(goals, mapGoal),
-		project_milestones: groupByProject(milestones, mapMilestone),
-		project_plans: groupByProject(plans, mapPlan)
+		project_goals: limitAndMapByProject({
+			rows: goals,
+			projectIds,
+			limitRows: (rows) => limitGoalsForContext(rows, GLOBAL_CONTEXT_GOAL_LIMIT, nowMs),
+			mapper: mapGoal
+		}),
+		project_milestones: limitAndMapByProject({
+			rows: milestones,
+			projectIds,
+			limitRows: (rows) =>
+				limitMilestonesForContext(rows, GLOBAL_CONTEXT_MILESTONE_LIMIT, nowMs),
+			mapper: mapMilestone
+		}),
+		project_plans: limitAndMapByProject({
+			rows: plans,
+			projectIds,
+			limitRows: (rows) => limitPlansForContext(rows, GLOBAL_CONTEXT_PLAN_LIMIT),
+			mapper: mapPlan
+		}),
+		context_meta: buildGlobalContextMeta({
+			source: 'rpc',
+			projectCount: lightProjects.length
+		})
 	};
 }
 
@@ -1272,9 +1332,7 @@ async function loadGlobalContextData(
 ): Promise<GlobalContextData> {
 	const { data: projects, error } = await supabase
 		.from('onto_projects')
-		.select(
-			'id, name, state_key, description, start_at, end_at, next_step_short, updated_at, doc_structure'
-		)
+		.select('id, name, state_key, description, start_at, end_at, next_step_short, updated_at')
 		.eq('created_by', userId)
 		.is('deleted_at', null)
 		.order('updated_at', { ascending: false });
@@ -1287,18 +1345,22 @@ async function loadGlobalContextData(
 			project_recent_activity: {},
 			project_goals: {},
 			project_milestones: {},
-			project_plans: {}
+			project_plans: {},
+			context_meta: buildGlobalContextMeta({
+				source: 'fallback',
+				projectCount: 0
+			})
 		};
 	}
 
 	const projectRows = projects ?? [];
 	const lightProjects = projectRows.map((row) =>
 		mapProject(row, {
-			includeDocStructure: true,
-			truncateDepth: GLOBAL_DOC_STRUCTURE_DEPTH
+			includeDocStructure: false
 		})
 	);
 	const projectIds = lightProjects.map((project) => project.id);
+	const nowMs = Date.now();
 
 	if (projectIds.length === 0) {
 		return {
@@ -1306,7 +1368,11 @@ async function loadGlobalContextData(
 			project_recent_activity: {},
 			project_goals: {},
 			project_milestones: {},
-			project_plans: {}
+			project_plans: {},
+			context_meta: buildGlobalContextMeta({
+				source: 'fallback',
+				projectCount: lightProjects.length
+			})
 		};
 	}
 
@@ -1367,18 +1433,24 @@ async function loadGlobalContextData(
 		});
 	}
 
-	const project_goals = groupByProject(
-		(goalsRes.data ?? []) as Array<GoalRow & { project_id: string }>,
-		mapGoal
-	);
-	const project_milestones = groupByProject(
-		(milestonesRes.data ?? []) as Array<MilestoneRow & { project_id: string }>,
-		mapMilestone
-	);
-	const project_plans = groupByProject(
-		(plansRes.data ?? []) as Array<PlanRow & { project_id: string }>,
-		mapPlan
-	);
+	const project_goals = limitAndMapByProject({
+		rows: (goalsRes.data ?? []) as Array<GoalRow & { project_id: string }>,
+		projectIds,
+		limitRows: (rows) => limitGoalsForContext(rows, GLOBAL_CONTEXT_GOAL_LIMIT, nowMs),
+		mapper: mapGoal
+	});
+	const project_milestones = limitAndMapByProject({
+		rows: (milestonesRes.data ?? []) as Array<MilestoneRow & { project_id: string }>,
+		projectIds,
+		limitRows: (rows) => limitMilestonesForContext(rows, GLOBAL_CONTEXT_MILESTONE_LIMIT, nowMs),
+		mapper: mapMilestone
+	});
+	const project_plans = limitAndMapByProject({
+		rows: (plansRes.data ?? []) as Array<PlanRow & { project_id: string }>,
+		projectIds,
+		limitRows: (rows) => limitPlansForContext(rows, GLOBAL_CONTEXT_PLAN_LIMIT),
+		mapper: mapPlan
+	});
 	const project_recent_activity = mapRecentActivity((logsRes.data ?? []) as ProjectLogRow[]);
 
 	return {
@@ -1386,7 +1458,11 @@ async function loadGlobalContextData(
 		project_recent_activity,
 		project_goals,
 		project_milestones,
-		project_plans
+		project_plans,
+		context_meta: buildGlobalContextMeta({
+			source: 'fallback',
+			projectCount: lightProjects.length
+		})
 	};
 }
 

@@ -333,7 +333,10 @@
 		content="Dump ideas, scripts, chapters, and research. BuildOS turns them into structured projects that keep context warm over time."
 	/>
 	<meta name="twitter:image" content="https://build-os.com/twitter_card_light.webp" />
-	<meta name="twitter:image:alt" content="BuildOS - A Thinking Environment for Complex Creative Work" />
+	<meta
+		name="twitter:image:alt"
+		content="BuildOS - A Thinking Environment for Complex Creative Work"
+	/>
 
 	<!-- Additional Meta Tags -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
