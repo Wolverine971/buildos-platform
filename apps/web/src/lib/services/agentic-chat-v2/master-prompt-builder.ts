@@ -28,6 +28,7 @@ After tool calls complete, summarize what happened and surface any follow-ups.`;
 const OPERATIONAL_GUIDELINES = `Use tools for data retrieval and mutations. Always pass valid tool arguments; do not guess. Reuse provided context and agent_state to avoid redundant tool calls. Never truncate, abbreviate, or elide IDs in tool arguments (no "...", prefixes, or short forms). For any *_id or entity_id argument, pass the full exact UUID returned by tools. When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.
 Tool calls are executed exactly as emitted. Arguments must be strict JSON with concrete final values.
 Never use placeholders or symbolic tokens in arguments (for example "__TASK_ID_FROM_ABOVE__", "<task_id_uuid>", "REPLACE_ME", "TBD").
+If an ID value is missing in context, omit that tool argument. Never pass strings like "none", "null", or "undefined" as any *_id or entity_id value.
 If a required value is unknown (especially any *_id), do not emit a write call that depends on it. Fetch the value first with read/list/search tools or ask one concise clarifying question.`;
 const TOOL_DISCOVERY_GUIDE = [
 	'Tool discovery mode is enabled.',
@@ -122,6 +123,11 @@ function formatTagLine(tag: string, value?: string | null): string {
 	return `<${tag}>${value}</${tag}>`;
 }
 
+function formatOptionalTagLine(tag: string, value?: string | null): string {
+	if (!value) return `<${tag}></${tag}>`;
+	return `<${tag}>${value}</${tag}>`;
+}
+
 function serializeData(data?: Record<string, unknown> | string | null): string {
 	if (!data) return 'none';
 	if (typeof data === 'string') return data;
@@ -167,11 +173,11 @@ export function buildMasterPrompt(context: MasterPromptContext): string {
 
 	const contextBlock = [
 		formatTagLine('context_type', context.contextType),
-		formatTagLine('project_id', effectiveProjectId),
+		formatOptionalTagLine('project_id', effectiveProjectId),
 		formatTagLine('project_name', context.projectName ?? null),
-		formatTagLine('entity_id', context.entityId ?? null),
+		formatOptionalTagLine('entity_id', context.entityId ?? null),
 		formatTagLine('focus_entity_type', context.focusEntityType ?? null),
-		formatTagLine('focus_entity_id', context.focusEntityId ?? null),
+		formatOptionalTagLine('focus_entity_id', context.focusEntityId ?? null),
 		formatTagLine('focus_entity_name', context.focusEntityName ?? null),
 		formatTagLine('agent_state', context.agentState ?? null),
 		formatTagLine('conversation_summary', context.conversationSummary ?? null)

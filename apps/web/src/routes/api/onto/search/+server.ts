@@ -8,8 +8,10 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const ALLOWED_TYPES = new Set(['task', 'plan', 'goal', 'milestone', 'document', 'image']);
+const NULLISH_PROJECT_ID_SENTINELS = new Set(['none', 'null', 'undefined']);
 
 type SearchRequest = {
 	query?: string;
@@ -17,6 +19,23 @@ type SearchRequest = {
 	types?: string[];
 	limit?: number;
 };
+
+function normalizeOptionalProjectId(value: unknown): string | null | 'invalid' {
+	if (typeof value !== 'string') {
+		return null;
+	}
+
+	const trimmed = value.trim();
+	if (!trimmed) {
+		return null;
+	}
+
+	if (NULLISH_PROJECT_ID_SENTINELS.has(trimmed.toLowerCase())) {
+		return null;
+	}
+
+	return isValidUUID(trimmed) ? trimmed : 'invalid';
+}
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -35,10 +54,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('Query is required');
 		}
 
-		const projectId =
-			typeof body.project_id === 'string' && body.project_id.trim()
-				? body.project_id.trim()
-				: null;
+		const normalizedProjectId = normalizeOptionalProjectId(body.project_id);
+		if (normalizedProjectId === 'invalid') {
+			return ApiResponse.badRequest('Invalid project_id');
+		}
+		const projectId = normalizedProjectId;
 
 		const requestedTypes =
 			Array.isArray(body.types) && body.types.length

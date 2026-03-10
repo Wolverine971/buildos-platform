@@ -826,4 +826,158 @@ describe('loadFastChatPromptContext project event window', () => {
 			}
 		});
 	});
+
+	it('preserves total scope metadata when the RPC returns pre-truncated project arrays', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-02-15T20:07:18.308Z'));
+
+		const supabase = createProjectRpcSupabaseMock({
+			project: {
+				id: 'proj-1',
+				name: 'Project One',
+				state_key: 'active',
+				description: 'Test project',
+				start_at: null,
+				end_at: null,
+				next_step_short: null,
+				updated_at: '2026-02-15T20:00:00.000Z',
+				doc_structure: {
+					version: 1,
+					root: [{ id: 'doc-linked', order: 0 }]
+				}
+			},
+			goals: [
+				{
+					id: 'goal-overdue',
+					name: 'Overdue Goal',
+					description: null,
+					state_key: 'active',
+					target_date: '2026-02-14T20:07:18.308Z',
+					completed_at: null,
+					updated_at: '2026-02-13T20:07:18.308Z'
+				}
+			],
+			milestones: [
+				{
+					id: 'milestone-due-soon',
+					title: 'Soon Milestone',
+					description: null,
+					state_key: 'in_progress',
+					due_at: '2026-02-17T20:07:18.308Z',
+					completed_at: null,
+					updated_at: '2026-02-13T20:07:18.308Z'
+				}
+			],
+			plans: [
+				{
+					id: 'plan-active',
+					name: 'Active Plan',
+					description: null,
+					state_key: 'active',
+					updated_at: '2026-02-13T20:07:18.308Z'
+				}
+			],
+			tasks: [
+				{
+					id: 'task-overdue',
+					title: 'Overdue Task',
+					description: null,
+					state_key: 'in_progress',
+					priority: 3,
+					start_at: '2026-02-10T20:07:18.308Z',
+					due_at: '2026-02-14T20:07:18.308Z',
+					completed_at: null,
+					updated_at: '2026-02-13T20:07:18.308Z'
+				}
+			],
+			documents: [
+				{
+					id: 'doc-unlinked',
+					title: 'Recent Unlinked',
+					state_key: 'draft',
+					created_at: '2026-02-10T20:07:18.308Z',
+					updated_at: '2026-02-14T20:07:18.308Z'
+				},
+				{
+					id: 'doc-linked',
+					title: 'Linked Doc',
+					state_key: 'draft',
+					created_at: '2026-02-01T20:07:18.308Z',
+					updated_at: '2026-02-02T20:07:18.308Z'
+				}
+			],
+			events: [
+				{
+					id: 'event-1',
+					title: 'Soon Event',
+					description: null,
+					state_key: 'scheduled',
+					start_at: '2026-02-16T20:07:18.308Z',
+					end_at: '2026-02-16T21:07:18.308Z',
+					all_day: false,
+					location: null,
+					updated_at: '2026-02-14T20:07:18.308Z'
+				}
+			],
+			members: [],
+			entity_counts: {
+				goals_total: 17,
+				milestones_total: 9,
+				plans_total: 14,
+				tasks_total: 23,
+				documents_total: 31,
+				document_linked_total: 3,
+				document_unlinked_total: 28,
+				events_total: 22
+			}
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'project',
+			entityId: 'proj-1'
+		});
+
+		const data = context.data as Record<string, any>;
+
+		expect(data.documents.map((doc: { id: string }) => doc.id)).toEqual([
+			'doc-unlinked',
+			'doc-linked'
+		]);
+		expect(data.context_meta.entity_scopes).toMatchObject({
+			goals: {
+				returned: 1,
+				total_matching: 17,
+				is_complete: false
+			},
+			milestones: {
+				returned: 1,
+				total_matching: 9,
+				is_complete: false
+			},
+			plans: {
+				returned: 1,
+				total_matching: 14,
+				is_complete: false
+			},
+			tasks: {
+				returned: 1,
+				total_matching: 23,
+				is_complete: false
+			},
+			events: {
+				returned: 1,
+				total_matching: 22,
+				is_complete: false
+			},
+			documents: {
+				returned: 2,
+				total_matching: 31,
+				is_complete: false,
+				unlinked_total: 28,
+				linked_total: 3
+			}
+		});
+	});
 });

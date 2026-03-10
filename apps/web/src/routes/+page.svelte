@@ -169,11 +169,6 @@
 			priceCurrency: 'USD',
 			description: '14-day free trial'
 		},
-		aggregateRating: {
-			'@type': 'AggregateRating',
-			ratingValue: 4.8,
-			ratingCount: 127
-		},
 		author: {
 			'@type': 'Organization',
 			name: 'BuildOS',
@@ -270,7 +265,7 @@
 
 	<meta
 		name="keywords"
-		content="AI project management, ADHD productivity tool, brain dump app, task organization, Google Calendar sync, daily briefs, voice notes, context management, chaotic minds"
+		content="AI project management, thinking environment, brain dump app, task organization, Google Calendar sync, daily briefs, voice notes, context management, creator productivity"
 	/>
 	<link rel="canonical" href="https://build-os.com/" />
 
@@ -338,7 +333,7 @@
 		content="Dump ideas, scripts, chapters, and research. BuildOS turns them into structured projects that keep context warm over time."
 	/>
 	<meta name="twitter:image" content="https://build-os.com/twitter_card_light.webp" />
-	<meta name="twitter:image:alt" content="BuildOS - AI Project Collaboration Platform" />
+	<meta name="twitter:image:alt" content="BuildOS - A Thinking Environment for Complex Creative Work" />
 
 	<!-- Additional Meta Tags -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -759,8 +754,8 @@
 							Grounded creator projects.
 						</h2>
 						<p class="mt-2 text-sm text-muted-foreground max-w-2xl">
-							These are the kinds of projects worth demoing over and over because the
-							transformation is obvious in seconds.
+							Real projects where the transformation from dump to structure is obvious
+							in seconds.
 						</p>
 					</div>
 					<a

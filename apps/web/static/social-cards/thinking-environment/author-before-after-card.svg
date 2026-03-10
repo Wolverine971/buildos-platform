@@ -1,0 +1,113 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0" y1="0" x2="1200" y2="675" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FCF9F5"/>
+      <stop offset="1" stop-color="#F4EFE8"/>
+    </linearGradient>
+    <radialGradient id="accentGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(1030 120) rotate(131.503) scale(358.693 262.959)">
+      <stop stop-color="#E07830" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#E07830" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grain" width="120" height="120" patternUnits="userSpaceOnUse">
+      <circle cx="22" cy="18" r="0.8" fill="#17171A" fill-opacity="0.03"/>
+      <circle cx="72" cy="24" r="0.8" fill="#17171A" fill-opacity="0.025"/>
+      <circle cx="54" cy="58" r="0.8" fill="#17171A" fill-opacity="0.03"/>
+      <circle cx="18" cy="92" r="0.8" fill="#17171A" fill-opacity="0.025"/>
+      <circle cx="94" cy="88" r="0.8" fill="#17171A" fill-opacity="0.03"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#17171A" flood-opacity="0.10"/>
+    </filter>
+    <linearGradient id="panelAccent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E07830" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#E07830" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="675" fill="url(#bgGradient)"/>
+  <rect width="1200" height="675" fill="url(#grain)"/>
+  <rect width="1200" height="5" fill="#E07830"/>
+  <ellipse cx="1030" cy="120" rx="300" ry="220" fill="url(#accentGlow)"/>
+
+  <rect x="34" y="34" width="1132" height="607" rx="20" stroke="#D8D2CA" stroke-width="1.5"/>
+
+  <text x="66" y="86" fill="#6F675F" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700" letter-spacing="0.22em">AUTHOR DEMO</text>
+  <text x="66" y="144" fill="#17171A" font-family="'Iowan Old Style', Georgia, serif" font-size="52" font-weight="700">From rough author note</text>
+  <text x="66" y="195" fill="#17171A" font-family="'Iowan Old Style', Georgia, serif" font-size="52" font-weight="700">to real revision plan</text>
+  <text x="66" y="234" fill="#6E6E73" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="24" font-weight="500">A thinking environment turns a messy revision thought</text>
+  <text x="66" y="265" fill="#6E6E73" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="24" font-weight="500">into structure, story memory, and a clear next move.</text>
+
+  <text x="970" y="95" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="28" font-weight="900">Build<tspan fill="#E07830">OS</tspan></text>
+
+  <g filter="url(#shadow)">
+    <rect x="60" y="318" width="500" height="290" rx="22" fill="#F8F5F1"/>
+    <rect x="60" y="318" width="500" height="290" rx="22" stroke="#D8D2CA" stroke-width="1.5"/>
+  </g>
+  <rect x="60" y="318" width="500" height="54" rx="22" fill="#EEE7DE"/>
+  <path d="M60 340C60 327.85 69.85 318 82 318H538C550.15 318 560 327.85 560 340V372H60V340Z" fill="#EEE7DE"/>
+  <text x="92" y="352" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="16" font-weight="800" letter-spacing="0.18em">RAW INPUT</text>
+  <g>
+    <rect x="425" y="331" width="97" height="24" rx="12" fill="#FCF9F5"/>
+    <rect x="425" y="331" width="97" height="24" rx="12" stroke="#D8D2CA" stroke-width="1.2"/>
+    <text x="473.5" y="347" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="11" font-weight="800" letter-spacing="0.16em" text-anchor="middle">ROUGH NOTE</text>
+  </g>
+
+  <rect x="92" y="402" width="436" height="150" rx="18" fill="#FCF9F5"/>
+  <rect x="92" y="402" width="436" height="150" rx="18" stroke="#D8D2CA" stroke-width="1.5"/>
+
+  <text x="120" y="429" fill="#8A8178" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="800" letter-spacing="0.18em">REVISION DUMP</text>
+  <text x="120" y="461" fill="#17171A" font-family="'Iowan Old Style', Georgia, serif" font-size="30" font-weight="700">chapter 9 drags.</text>
+  <text x="120" y="497" fill="#17171A" font-family="'Iowan Old Style', Georgia, serif" font-size="30" font-weight="700">the queen's motive is weak.</text>
+  <text x="120" y="533" fill="#17171A" font-family="'Iowan Old Style', Georgia, serif" font-size="30" font-weight="700">forgot which clues I planted.</text>
+
+  <text x="92" y="585" fill="#B54834" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="800">no structure • no memory • no next move</text>
+
+  <g filter="url(#shadow)">
+    <rect x="640" y="318" width="500" height="290" rx="22" fill="#F8F5F1"/>
+    <rect x="640" y="318" width="500" height="290" rx="22" fill="url(#panelAccent)"/>
+    <rect x="640" y="318" width="500" height="290" rx="22" stroke="#E07830" stroke-width="1.5"/>
+  </g>
+  <rect x="640" y="318" width="500" height="54" rx="22" fill="#F6E8DA"/>
+  <path d="M640 340C640 327.85 649.85 318 662 318H1118C1130.15 318 1140 327.85 1140 340V372H640V340Z" fill="#F6E8DA"/>
+  <text x="672" y="352" fill="#A6541C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="16" font-weight="800" letter-spacing="0.18em">BUILDOS OUTPUT</text>
+  <g>
+    <rect x="969" y="331" width="139" height="24" rx="12" fill="#FCF9F5"/>
+    <rect x="969" y="331" width="139" height="24" rx="12" stroke="#E07830" stroke-width="1.2"/>
+    <text x="1038.5" y="347" fill="#A6541C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="11" font-weight="800" letter-spacing="0.16em" text-anchor="middle">ONE BOOK PROJECT</text>
+  </g>
+
+  <g>
+    <rect x="675" y="403" width="182" height="66" rx="14" fill="#FCF9F5"/>
+    <rect x="675" y="403" width="182" height="66" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
+    <circle cx="705" cy="431" r="6" fill="#E07830"/>
+    <text x="722" y="437" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="19" font-weight="700">Revision plan</text>
+    <text x="722" y="456" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600">chapter pacing</text>
+  </g>
+
+  <g>
+    <rect x="922" y="403" width="184" height="66" rx="14" fill="#FCF9F5"/>
+    <rect x="922" y="403" width="184" height="66" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
+    <circle cx="952" cy="431" r="6" fill="#E07830"/>
+    <text x="969" y="437" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="19" font-weight="700">Character note</text>
+    <text x="969" y="456" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600">queen motive</text>
+  </g>
+
+  <g>
+    <rect x="675" y="492" width="182" height="66" rx="14" fill="#FCF9F5"/>
+    <rect x="675" y="492" width="182" height="66" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
+    <circle cx="705" cy="520" r="6" fill="#E07830"/>
+    <text x="722" y="526" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="19" font-weight="700">Clue tracker</text>
+    <text x="722" y="545" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600">planted clues</text>
+  </g>
+
+  <g>
+    <rect x="922" y="486" width="184" height="82" rx="16" fill="#17171A"/>
+    <rect x="922" y="486" width="184" height="82" rx="16" fill="url(#panelAccent)"/>
+    <rect x="922" y="486" width="184" height="82" rx="16" stroke="#E07830" stroke-width="1.5"/>
+    <text x="948" y="512" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13" font-weight="800" letter-spacing="0.12em">NEXT MOVE</text>
+    <text x="948" y="538" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="19" font-weight="800">Rewrite the next</text>
+    <text x="948" y="560" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="19" font-weight="800">scene in chapter 9</text>
+  </g>
+
+  <text x="66" y="628" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="17" font-weight="600">BuildOS for authors: revision structure, story memory, and the next move in one place.</text>
+</svg>

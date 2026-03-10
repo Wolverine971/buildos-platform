@@ -98,6 +98,24 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		expect(prompt).toContain('<project_id>05c40ed8-9dbe-4893-bd64-8aeec90eab40</project_id>');
 	});
 
+	it('renders absent ID tags as empty values instead of the string none', () => {
+		const prompt = buildMasterPrompt({
+			contextType: 'global',
+			projectId: null,
+			entityId: null,
+			focusEntityId: null
+		});
+
+		expect(prompt).toContain('<project_id></project_id>');
+		expect(prompt).toContain('<entity_id></entity_id>');
+		expect(prompt).toContain('<focus_entity_id></focus_entity_id>');
+		expect(prompt).not.toContain('<project_id>none</project_id>');
+		expect(prompt).not.toContain('<entity_id>none</entity_id>');
+		expect(prompt).toContain(
+			'Never pass strings like "none", "null", or "undefined" as any *_id or entity_id value.'
+		);
+	});
+
 	it('includes member role planning guardrails', () => {
 		const prompt = buildMasterPrompt({
 			contextType: 'project',

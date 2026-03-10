@@ -12627,6 +12627,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      merge_chat_session_agent_metadata: {
+        Args: { p_patch?: Json; p_session_id: string }
+        Returns: Json
+      }
       normalize_onto_public_page_slug_part: {
         Args: { p_fallback?: string; p_input: string; p_max_length: number }
         Returns: string

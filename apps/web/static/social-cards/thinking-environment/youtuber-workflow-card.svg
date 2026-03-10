@@ -1,0 +1,139 @@
+<svg width="1200" height="675" viewBox="0 0 1200 675" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0" y1="0" x2="1200" y2="675" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FCF9F5"/>
+      <stop offset="1" stop-color="#F6F1EA"/>
+    </linearGradient>
+    <radialGradient id="accentGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(140 560) rotate(6.29722) scale(393.43 259.492)">
+      <stop stop-color="#E07830" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#E07830" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grain" width="120" height="120" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="24" r="0.8" fill="#17171A" fill-opacity="0.035"/>
+      <circle cx="76" cy="21" r="0.8" fill="#17171A" fill-opacity="0.03"/>
+      <circle cx="43" cy="58" r="0.8" fill="#17171A" fill-opacity="0.03"/>
+      <circle cx="92" cy="74" r="0.8" fill="#17171A" fill-opacity="0.025"/>
+      <circle cx="30" cy="92" r="0.8" fill="#17171A" fill-opacity="0.03"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#17171A" flood-opacity="0.10"/>
+    </filter>
+    <linearGradient id="panelAccent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E07830" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#E07830" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="675" fill="url(#bgGradient)"/>
+  <rect width="1200" height="675" fill="url(#grain)"/>
+  <rect width="1200" height="5" fill="#E07830"/>
+  <ellipse cx="140" cy="560" rx="330" ry="220" fill="url(#accentGlow)"/>
+
+  <rect x="34" y="34" width="1132" height="607" rx="20" stroke="#D8D2CA" stroke-width="1.5"/>
+
+  <text x="66" y="86" fill="#6F675F" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700" letter-spacing="0.22em">CREATOR WORKFLOW</text>
+  <text x="66" y="144" fill="#17171A" font-family="'Iowan Old Style', Georgia, serif" font-size="52" font-weight="700">Most YouTube workflows</text>
+  <text x="66" y="195" fill="#17171A" font-family="'Iowan Old Style', Georgia, serif" font-size="52" font-weight="700">are not systems</text>
+  <text x="66" y="234" fill="#6E6E73" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="24" font-weight="500">BuildOS turns scattered creator tools into one project</text>
+  <text x="66" y="265" fill="#6E6E73" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="24" font-weight="500">that keeps the context attached.</text>
+
+  <text x="970" y="95" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="28" font-weight="900">Build<tspan fill="#E07830">OS</tspan></text>
+
+  <g filter="url(#shadow)">
+    <rect x="60" y="320" width="500" height="265" rx="22" fill="#F8F5F1"/>
+    <rect x="60" y="320" width="500" height="265" rx="22" stroke="#D8D2CA" stroke-width="1.5"/>
+  </g>
+  <rect x="60" y="320" width="500" height="52" rx="22" fill="#EEE7DE"/>
+  <path d="M60 342C60 329.85 69.85 320 82 320H538C550.15 320 560 329.85 560 342V372H60V342Z" fill="#EEE7DE"/>
+  <text x="92" y="353" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="16" font-weight="800" letter-spacing="0.18em">CURRENT STACK</text>
+  <g>
+    <rect x="434" y="333" width="88" height="24" rx="12" fill="#FCF9F5"/>
+    <rect x="434" y="333" width="88" height="24" rx="12" stroke="#D8D2CA" stroke-width="1.2"/>
+    <text x="478" y="349" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="11" font-weight="800" letter-spacing="0.16em" text-anchor="middle">4 TOOLS</text>
+  </g>
+
+  <g transform="translate(92 398) rotate(-6)">
+    <rect width="156" height="58" rx="14" fill="#FCF9F5"/>
+    <rect width="156" height="58" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
+    <text x="18" y="24" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700">Notes app</text>
+    <text x="18" y="43" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13">ideas + scraps</text>
+  </g>
+
+  <g transform="translate(276 392) rotate(5)">
+    <rect width="170" height="64" rx="14" fill="#FCF9F5"/>
+    <rect width="170" height="64" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
+    <text x="18" y="24" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700">Google Doc</text>
+    <text x="18" y="43" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13">outline + draft</text>
+  </g>
+
+  <g transform="translate(100 482) rotate(3)">
+    <rect width="164" height="60" rx="14" fill="#FCF9F5"/>
+    <rect width="164" height="60" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
+    <text x="18" y="24" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700">Chat thread</text>
+    <text x="18" y="43" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13">rewrites + examples</text>
+  </g>
+
+  <g transform="translate(296 475) rotate(-4)">
+    <rect width="170" height="66" rx="14" fill="#FCF9F5"/>
+    <rect width="170" height="66" rx="14" stroke="#D8D2CA" stroke-width="1.5"/>
+    <text x="18" y="24" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700">Edit checklist</text>
+    <text x="18" y="43" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13">publish steps</text>
+  </g>
+
+  <text x="420" y="566" fill="#B54834" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="16" font-weight="800" text-anchor="end">missing context</text>
+  <path d="M435 560H506" stroke="#B54834" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="6 8"/>
+
+  <g filter="url(#shadow)">
+    <rect x="640" y="320" width="500" height="265" rx="22" fill="#F8F5F1"/>
+    <rect x="640" y="320" width="500" height="265" rx="22" fill="url(#panelAccent)"/>
+    <rect x="640" y="320" width="500" height="265" rx="22" stroke="#E07830" stroke-width="1.5"/>
+  </g>
+  <rect x="640" y="320" width="500" height="52" rx="22" fill="#F6E8DA"/>
+  <path d="M640 342C640 329.85 649.85 320 662 320H1118C1130.15 320 1140 329.85 1140 342V372H640V342Z" fill="#F6E8DA"/>
+  <text x="672" y="353" fill="#A6541C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="16" font-weight="800" letter-spacing="0.18em">THINKING ENVIRONMENT</text>
+  <g>
+    <rect x="983" y="333" width="125" height="24" rx="12" fill="#FCF9F5"/>
+    <rect x="983" y="333" width="125" height="24" rx="12" stroke="#E07830" stroke-width="1.2"/>
+    <text x="1045.5" y="349" fill="#A6541C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="11" font-weight="800" letter-spacing="0.16em" text-anchor="middle">ONE PROJECT</text>
+  </g>
+
+  <line x1="809" y1="430" x2="962" y2="430" stroke="#C8C2BA" stroke-width="2"/>
+  <line x1="805" y1="465" x2="805" y2="494" stroke="#C8C2BA" stroke-width="2"/>
+  <line x1="960" y1="465" x2="960" y2="488" stroke="#C8C2BA" stroke-width="2"/>
+  <circle cx="805" cy="430" r="4.5" fill="#E07830"/>
+  <circle cx="960" cy="430" r="4.5" fill="#E07830"/>
+  <circle cx="805" cy="494" r="4.5" fill="#E07830"/>
+  <circle cx="960" cy="488" r="4.5" fill="#E07830"/>
+
+  <g>
+    <rect x="690" y="395" width="144" height="70" rx="16" fill="#FCF9F5"/>
+    <rect x="690" y="395" width="144" height="70" rx="16" stroke="#D8D2CA" stroke-width="1.5"/>
+    <text x="762" y="422" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700" text-anchor="middle">Research</text>
+    <text x="762" y="445" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600" text-anchor="middle">sources + examples</text>
+  </g>
+
+  <g>
+    <rect x="900" y="395" width="136" height="70" rx="16" fill="#FCF9F5"/>
+    <rect x="900" y="395" width="136" height="70" rx="16" stroke="#D8D2CA" stroke-width="1.5"/>
+    <text x="968" y="422" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700" text-anchor="middle">Script</text>
+    <text x="968" y="445" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600" text-anchor="middle">outline + hook</text>
+  </g>
+
+  <g>
+    <rect x="720" y="494" width="170" height="64" rx="18" fill="#FCF9F5"/>
+    <rect x="720" y="494" width="170" height="64" rx="18" stroke="#D8D2CA" stroke-width="1.5"/>
+    <text x="805" y="519" fill="#17171A" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="18" font-weight="700" text-anchor="middle">Production plan</text>
+    <text x="805" y="540" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="12" font-weight="600" text-anchor="middle">b-roll + checklist</text>
+  </g>
+
+  <g>
+    <rect x="920" y="488" width="170" height="80" rx="18" fill="#17171A"/>
+    <rect x="920" y="488" width="170" height="80" rx="18" fill="url(#panelAccent)"/>
+    <rect x="920" y="488" width="170" height="80" rx="18" stroke="#E07830" stroke-width="1.5"/>
+    <text x="942" y="513" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="13" font-weight="800" letter-spacing="0.12em">NEXT MOVE</text>
+    <text x="942" y="539" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="21" font-weight="800">Draft the</text>
+    <text x="942" y="562" fill="#FCF9F5" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="21" font-weight="800">cold open</text>
+  </g>
+
+  <text x="66" y="619" fill="#7B736C" font-family="'Avenir Next', 'Söhne', 'Inter', sans-serif" font-size="17" font-weight="600">BuildOS for creators: one place to think, plan, and keep context.</text>
+</svg>

@@ -93,10 +93,6 @@ const FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS = parsePositiveInt(
 	process.env.FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS,
 	6
 );
-const FASTCHAT_RECONCILIATION_WAIT_MS = parsePositiveInt(
-	process.env.FASTCHAT_RECONCILIATION_WAIT_MS,
-	800
-);
 const FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS = parsePositiveInt(
 	process.env.FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS,
 	120000
@@ -859,15 +855,13 @@ async function updateAgentMetadata(
 	}
 ): Promise<void> {
 	const errorLogger = options?.errorLogger;
-
-	const { data, error } = await supabase
-		.from('chat_sessions')
-		.select('agent_metadata')
-		.eq('id', sessionId)
-		.maybeSingle();
+	const { data, error } = await (supabase as any).rpc('merge_chat_session_agent_metadata', {
+		p_session_id: sessionId,
+		p_patch: patch as Json
+	});
 
 	if (error) {
-		logger.warn('Failed to load agent metadata for update', { error, sessionId });
+		logger.warn('Failed to merge agent metadata', { error, sessionId });
 		if (errorLogger) {
 			void errorLogger.logError(error, {
 				userId: options?.userId,
@@ -878,7 +872,7 @@ async function updateAgentMetadata(
 				tableName: 'chat_sessions',
 				recordId: sessionId,
 				metadata: {
-					stage: 'select',
+					stage: 'rpc',
 					patch: sanitizeLogData(patch)
 				}
 			});
@@ -886,34 +880,8 @@ async function updateAgentMetadata(
 		return;
 	}
 
-	const current = (data?.agent_metadata ?? {}) as Record<string, unknown>;
-	const next = {
-		...current,
-		...patch
-	};
-
-	const { error: updateError } = await supabase
-		.from('chat_sessions')
-		.update({ agent_metadata: next, updated_at: new Date().toISOString() })
-		.eq('id', sessionId);
-
-	if (updateError) {
-		logger.warn('Failed to update agent metadata', { updateError, sessionId });
-		if (errorLogger) {
-			void errorLogger.logError(updateError, {
-				userId: options?.userId,
-				projectId: options?.projectId,
-				endpoint: FASTCHAT_STREAM_ENDPOINT,
-				httpMethod: FASTCHAT_STREAM_METHOD,
-				operationType: 'fastchat_update_agent_metadata',
-				tableName: 'chat_sessions',
-				recordId: sessionId,
-				metadata: {
-					stage: 'update',
-					patch: sanitizeLogData(patch)
-				}
-			});
-		}
+	if (data === null) {
+		logger.warn('No chat session metadata merged', { sessionId });
 	}
 }
 
@@ -2691,11 +2659,8 @@ export const POST: RequestHandler = async ({
 					}
 				}
 
-				await sessionService.updateSessionStats({
+				await sessionService.updateSessionContext({
 					session,
-					messageCountDelta: assistantContent.length > 0 ? 2 : 1,
-					totalTokensDelta: usage?.total_tokens ?? 0,
-					toolCallCountDelta: normalizedExecutions.length,
 					contextType: effectiveContextType,
 					entityId: effectiveEntityId
 				});
@@ -2791,11 +2756,8 @@ export const POST: RequestHandler = async ({
 				}
 			}
 
-			await sessionService.updateSessionStats({
+			await sessionService.updateSessionContext({
 				session,
-				messageCountDelta: 2,
-				totalTokensDelta: usage?.total_tokens ?? 0,
-				toolCallCountDelta: normalizedExecutions.length,
 				contextType: effectiveContextType,
 				entityId: effectiveEntityId
 			});
@@ -2849,7 +2811,7 @@ export const POST: RequestHandler = async ({
 				...executionToolSummaries
 			];
 
-			const reconciliationTask = (async () => {
+			void (async () => {
 				const reconciliation = new AgentStateReconciliationService(supabase, errorLogger);
 				const currentState = sanitizeAgentStateForPrompt(
 					(sessionMetadata.agent_state as AgentState | undefined) ??
@@ -2865,46 +2827,30 @@ export const POST: RequestHandler = async ({
 					httpReferer: request.headers.get('referer') ?? undefined
 				});
 
-				if (updated) {
-					const sanitizedUpdated = sanitizeAgentStateForPrompt(updated);
-					await updateAgentMetadata(
-						supabase,
-						session.id,
-						{
-							agent_state: sanitizedUpdated
-						},
-						{
-							errorLogger,
-							userId,
-							projectId: effectiveProjectIdForTools ?? projectIdForLogs
-						}
-					);
-				}
-				return Boolean(updated);
-			})();
-			const reconciliationOutcome = await Promise.race([
-				reconciliationTask
-					.then((updated) => (updated ? 'updated' : 'unchanged'))
-					.catch((error) => {
-						logger.warn('FastChat agent_state reconciliation failed', { error });
-						logFastChatError({
-							error,
-							operationType: 'fastchat_agent_state_reconciliation',
-							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-							metadata: { sessionId: session.id, contextType: effectiveContextType }
-						});
-						return 'failed' as const;
-					}),
-				new Promise<'timeout'>((resolve) =>
-					setTimeout(() => resolve('timeout'), FASTCHAT_RECONCILIATION_WAIT_MS)
-				)
-			]);
-			if (reconciliationOutcome === 'timeout') {
-				logger.info('FastChat reconciliation continuing asynchronously', {
-					sessionId: session.id,
-					waitMs: FASTCHAT_RECONCILIATION_WAIT_MS
+				if (!updated) return;
+
+				const sanitizedUpdated = sanitizeAgentStateForPrompt(updated);
+				await updateAgentMetadata(
+					supabase,
+					session.id,
+					{
+						agent_state: sanitizedUpdated
+					},
+					{
+						errorLogger,
+						userId,
+						projectId: effectiveProjectIdForTools ?? projectIdForLogs
+					}
+				);
+			})().catch((error) => {
+				logger.warn('FastChat agent_state reconciliation failed', { error });
+				logFastChatError({
+					error,
+					operationType: 'fastchat_agent_state_reconciliation',
+					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+					metadata: { sessionId: session.id, contextType: effectiveContextType }
 				});
-			}
+			});
 
 			await agentStream.sendMessage({
 				type: 'done',

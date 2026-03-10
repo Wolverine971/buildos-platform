@@ -1,5 +1,5 @@
 ---
-title: 'Anti-AI Show-Don''t-Tell Marketing Strategy'
+title: "Anti-AI Show-Don't-Tell Marketing Strategy"
 created: 2026-03-09
 status: draft
 owner: DJ Wayne

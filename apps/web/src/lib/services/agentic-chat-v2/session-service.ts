@@ -36,11 +36,8 @@ type PersistMessageParams = {
 	idempotencyKey?: string;
 };
 
-type UpdateSessionStatsParams = {
+type UpdateSessionContextParams = {
 	session: ChatSession;
-	messageCountDelta: number;
-	totalTokensDelta?: number;
-	toolCallCountDelta?: number;
 	contextType?: ChatContextType;
 	entityId?: string | null;
 };
@@ -425,56 +422,36 @@ export function createFastChatSessionService(
 		return data;
 	}
 
-	async function updateSessionStats(params: UpdateSessionStatsParams): Promise<ChatSession> {
-		const {
-			session,
-			messageCountDelta,
-			totalTokensDelta,
-			toolCallCountDelta,
-			contextType,
-			entityId
-		} = params;
-		const now = new Date().toISOString();
-		const updates: ChatSessionUpdate = {
-			updated_at: now,
-			last_message_at: now,
-			message_count: (session.message_count ?? 0) + messageCountDelta
-		};
-
-		if (typeof totalTokensDelta === 'number') {
-			updates.total_tokens_used = (session.total_tokens_used ?? 0) + totalTokensDelta;
-		}
-		if (typeof toolCallCountDelta === 'number') {
-			updates.tool_call_count = (session.tool_call_count ?? 0) + toolCallCountDelta;
-		}
-
+	async function updateSessionContext(params: UpdateSessionContextParams): Promise<ChatSession> {
+		const { session, contextType, entityId } = params;
+		const updates: ChatSessionUpdate = {};
 		if (contextType && session.context_type !== contextType) {
 			updates.context_type = contextType;
 		}
 		if (entityId !== undefined && session.entity_id !== entityId) {
 			updates.entity_id = entityId ?? null;
 		}
+		if (Object.keys(updates).length === 0) {
+			return session;
+		}
 
 		const { data, error } = await supabase
 			.from('chat_sessions')
-			.update(updates)
+			.update({ ...updates, updated_at: new Date().toISOString() })
 			.eq('id', session.id)
 			.select('*')
 			.maybeSingle();
 
 		if (error) {
-			logger.warn('Failed to update session stats', { error, sessionId: session.id });
+			logger.warn('Failed to update session context', { error, sessionId: session.id });
 			logFastChatSessionError({
 				error,
-				operationType: 'fastchat_session_stats_update',
+				operationType: 'fastchat_session_update_context',
 				userId: session.user_id,
 				tableName: 'chat_sessions',
 				recordId: session.id,
 				metadata: {
 					sessionId: session.id,
-					messageCountDelta,
-					totalTokensDelta,
-					toolCallCountDelta,
 					contextType,
 					entityId
 				}
@@ -552,7 +529,7 @@ export function createFastChatSessionService(
 		resolveSession,
 		loadRecentMessages,
 		persistMessage,
-		updateSessionStats,
+		updateSessionContext,
 		attachVoiceNoteGroup
 	};
 }

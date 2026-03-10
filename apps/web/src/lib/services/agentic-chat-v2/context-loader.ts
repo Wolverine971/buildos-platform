@@ -107,6 +107,17 @@ type LoadContextParams = {
 	}) => void;
 };
 
+type FastChatContextEntityCounts = {
+	goals_total?: number | null;
+	milestones_total?: number | null;
+	plans_total?: number | null;
+	tasks_total?: number | null;
+	documents_total?: number | null;
+	document_linked_total?: number | null;
+	document_unlinked_total?: number | null;
+	events_total?: number | null;
+};
+
 type FastChatContextRpcResponse = {
 	projects?: ProjectSelectRow[];
 	project?: ProjectSelectRow | null;
@@ -123,6 +134,7 @@ type FastChatContextRpcResponse = {
 	focus_entity_id?: string | null;
 	linked_entities?: Record<string, Array<Record<string, unknown>>>;
 	linked_edges?: LinkedEdge[];
+	entity_counts?: FastChatContextEntityCounts | null;
 };
 
 type LinkedEntityConfig = {
@@ -662,11 +674,10 @@ function documentRecencyTimestamp(row: ContextDocumentRow): number {
 	return Math.max(toTimestamp(row.updated_at), toTimestamp(row.created_at));
 }
 
-function limitByUpdatedAt<T extends { updated_at: string | null }>(rows: T[], limit: number): T[] {
-	if (rows.length <= limit) return rows;
-	return [...rows]
-		.sort((a, b) => toTimestamp(b.updated_at) - toTimestamp(a.updated_at))
-		.slice(0, limit);
+function resolveEntityCount(value: unknown, fallback: number): number {
+	return typeof value === 'number' && Number.isFinite(value) && value >= 0
+		? Math.floor(value)
+		: fallback;
 }
 
 function limitByStartAt<T extends { start_at: string | null }>(rows: T[], limit: number): T[] {
@@ -885,6 +896,7 @@ function buildProjectContextData(params: {
 	events: EventRow[];
 	members: ProjectMemberRow[];
 	eventWindow: FastChatEventWindow;
+	entityCounts?: FastChatContextEntityCounts | null;
 }): ProjectContextData {
 	const nowMs = parseTimestamp(params.eventWindow.now_at) ?? Date.now();
 	const rawDocStructure = params.projectRow.doc_structure as DocStructure | null | undefined;
@@ -906,8 +918,34 @@ function buildProjectContextData(params: {
 		linkedDocIds,
 		PROJECT_CONTEXT_DOCUMENT_LIMIT
 	);
-	const unlinkedTotal = params.documents.filter((row) => !linkedDocIds.has(row.id)).length;
-	const linkedTotal = Math.max(0, params.documents.length - unlinkedTotal);
+	const fallbackUnlinkedTotal = params.documents.filter(
+		(row) => !linkedDocIds.has(row.id)
+	).length;
+	const fallbackLinkedTotal = Math.max(0, params.documents.length - fallbackUnlinkedTotal);
+	const entityCounts = params.entityCounts ?? null;
+	const goalTotalMatching = resolveEntityCount(entityCounts?.goals_total, params.goals.length);
+	const milestoneTotalMatching = resolveEntityCount(
+		entityCounts?.milestones_total,
+		params.milestones.length
+	);
+	const planTotalMatching = resolveEntityCount(entityCounts?.plans_total, params.plans.length);
+	const taskTotalMatching = resolveEntityCount(entityCounts?.tasks_total, params.tasks.length);
+	const eventTotalMatching = resolveEntityCount(
+		entityCounts?.events_total,
+		windowedEvents.length
+	);
+	const documentTotalMatching = resolveEntityCount(
+		entityCounts?.documents_total,
+		params.documents.length
+	);
+	const unlinkedTotal = resolveEntityCount(
+		entityCounts?.document_unlinked_total,
+		fallbackUnlinkedTotal
+	);
+	const linkedTotal = resolveEntityCount(
+		entityCounts?.document_linked_total,
+		fallbackLinkedTotal
+	);
 
 	return {
 		project: mapProject(params.projectRow, { includeDocStructure: false }),
@@ -927,7 +965,7 @@ function buildProjectContextData(params: {
 			entity_scopes: {
 				goals: buildEntityScopeMeta({
 					returned: goalRows.length,
-					totalMatching: params.goals.length,
+					totalMatching: goalTotalMatching,
 					limit: PROJECT_CONTEXT_GOAL_LIMIT,
 					selectionStrategy: 'goal_priority_v1',
 					filters: {
@@ -938,7 +976,7 @@ function buildProjectContextData(params: {
 				}),
 				milestones: buildEntityScopeMeta({
 					returned: milestoneRows.length,
-					totalMatching: params.milestones.length,
+					totalMatching: milestoneTotalMatching,
 					limit: PROJECT_CONTEXT_MILESTONE_LIMIT,
 					selectionStrategy: 'milestone_priority_v1',
 					filters: {
@@ -949,7 +987,7 @@ function buildProjectContextData(params: {
 				}),
 				plans: buildEntityScopeMeta({
 					returned: planRows.length,
-					totalMatching: params.plans.length,
+					totalMatching: planTotalMatching,
 					limit: PROJECT_CONTEXT_PLAN_LIMIT,
 					selectionStrategy: 'plan_priority_v1',
 					filters: {
@@ -959,7 +997,7 @@ function buildProjectContextData(params: {
 				}),
 				tasks: buildEntityScopeMeta({
 					returned: taskRows.length,
-					totalMatching: params.tasks.length,
+					totalMatching: taskTotalMatching,
 					limit: PROJECT_CONTEXT_TASK_LIMIT,
 					selectionStrategy: 'task_priority_v1',
 					filters: {
@@ -970,7 +1008,7 @@ function buildProjectContextData(params: {
 				}),
 				events: buildEntityScopeMeta({
 					returned: eventRows.length,
-					totalMatching: windowedEvents.length,
+					totalMatching: eventTotalMatching,
 					limit: PROJECT_CONTEXT_EVENT_LIMIT,
 					selectionStrategy: 'start_at_asc_windowed',
 					filters: {
@@ -986,7 +1024,7 @@ function buildProjectContextData(params: {
 				documents: {
 					...buildEntityScopeMeta({
 						returned: documentRows.length,
-						totalMatching: params.documents.length,
+						totalMatching: documentTotalMatching,
 						limit: PROJECT_CONTEXT_DOCUMENT_LIMIT,
 						selectionStrategy: 'unlinked_first_recent_activity_desc',
 						filters: {
@@ -1145,7 +1183,8 @@ function buildProjectContextFromRpc(
 		documents: asArray<ContextDocumentRow>(payload.documents),
 		events: asArray<EventRow>(payload.events),
 		members: asArray<ProjectMemberRow>(payload.members),
-		eventWindow
+		eventWindow,
+		entityCounts: payload.entity_counts
 	});
 }
 

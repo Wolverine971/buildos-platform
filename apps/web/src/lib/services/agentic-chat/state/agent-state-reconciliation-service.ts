@@ -16,6 +16,7 @@ import type {
 	AgentStateUpdate
 } from '$lib/types/agent-chat-enhancement';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { cleanJSONResponse } from '$lib/services/smart-llm/response-parsing';
 import { getOptimalJSONProfile } from '../config/model-selection-config';
 import { createLogger } from '$lib/utils/logger';
@@ -24,6 +25,14 @@ import { sanitizeLogText } from '$lib/utils/logging-helpers';
 import { v4 as uuidv4 } from 'uuid';
 
 const logger = createLogger('AgentStateReconciliation');
+
+function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean {
+	if (!value) return fallback;
+	const normalized = value.trim().toLowerCase();
+	if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+	if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+	return fallback;
+}
 
 export interface AgentStateMessageSnapshot {
 	role: 'user' | 'assistant' | 'system' | 'tool';
@@ -91,11 +100,7 @@ export class AgentStateReconciliationService {
 			return null;
 		}
 
-		const llmService = new SmartLLMService({
-			supabase: this.supabase,
-			httpReferer: input.httpReferer,
-			appName: 'BuildOS Agentic Chat'
-		});
+		const llmService = this.createLLMService(input);
 
 		const systemPrompt = this.buildSystemPrompt();
 		const userPrompt = this.buildUserPrompt(input);
@@ -166,6 +171,20 @@ export class AgentStateReconciliationService {
 		const updated = this.applyDelta(input.agentState, delta);
 		updated.lastSummarizedAt = new Date().toISOString();
 		return updated;
+	}
+
+	private createLLMService(input: AgentStateReconciliationInput): LLMService {
+		const config = {
+			supabase: this.supabase,
+			httpReferer: input.httpReferer,
+			appName: 'BuildOS Agentic Chat Reconciliation'
+		};
+
+		if (parseBooleanFlag(process.env.OPENROUTER_V2_ENABLED, false)) {
+			return new OpenRouterV2Service(config);
+		}
+
+		return new SmartLLMService(config);
 	}
 
 	private buildSystemPrompt(): string {

@@ -1,5 +1,5 @@
--- packages/shared-types/src/functions/load_fastchat_context.sql
--- Source: Supabase pg_get_functiondef
+-- supabase/migrations/20260428000006_limit_fastchat_project_context_payloads.sql
+-- Limit project-context payload volume inside load_fastchat_context and return entity counts.
 
 CREATE OR REPLACE FUNCTION public.load_fastchat_context(p_context_type text, p_user_id uuid, p_project_id uuid DEFAULT NULL::uuid, p_focus_type text DEFAULT NULL::text, p_focus_entity_id uuid DEFAULT NULL::uuid)
  RETURNS jsonb
