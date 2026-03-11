@@ -263,8 +263,12 @@
 	 * Insert text at a specific position with smart spacing.
 	 * Used after voice transcription completes to insert the final text.
 	 */
-	export function insertTextAt(pos: number, text: string, replaceEnd?: number) {
-		if (!view) return;
+	export function insertTextAt(
+		pos: number,
+		text: string,
+		replaceEnd?: number
+	): { from: number; to: number; text: string } | null {
+		if (!view) return null;
 		const doc = view.state.doc.toString();
 		const end = replaceEnd ?? pos;
 		const trimmed = text.trim();
@@ -283,15 +287,16 @@
 			selection: { anchor: newCursorPos }
 		});
 		view.focus();
+		return { from: pos, to: pos + finalText.length, text: finalText };
 	}
 
 	/**
 	 * Insert text at the current cursor position.
 	 */
 	export function insertAtCursor(text: string) {
-		if (!view) return;
+		if (!view) return null;
 		const pos = view.state.selection.main.head;
-		insertTextAt(pos, text);
+		return insertTextAt(pos, text);
 	}
 
 	/** Get the underlying EditorView instance (for advanced operations) */

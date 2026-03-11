@@ -144,7 +144,6 @@
 	let loading = $state(false);
 	let saving = $state(false);
 	let blockingSave = $state(false);
-	let archiving = $state(false);
 	let restoring = $state(false);
 	let deleting = $state(false);
 	let archiveModalOpen = $state(false);
@@ -263,6 +262,9 @@
 	let publicPageDraft = $state<PublicPageDraft | null>(null);
 	let latestPublicPageReview = $state<PublicPageReview | null>(null);
 	let lastSavePublishedLive = $state(false);
+	let discardChangesModalOpen = $state(false);
+	let editorIsRecording = $state(false);
+	let editorIsTranscribing = $state(false);
 
 	/** Whether content has changed vs. last-saved snapshot */
 	const hasUnsavedChanges = $derived.by(() => {
@@ -353,6 +355,15 @@
 	);
 
 	const isEditing = $derived(Boolean(activeDocumentId));
+	const hasDraftContent = $derived.by(
+		() => !isEditing && Boolean(title.trim() || description.trim() || body.trim())
+	);
+	const isCloseBlocked = $derived(
+		blockingSave || saveStatus === 'saving' || editorIsRecording || editorIsTranscribing
+	);
+	const shouldPromptBeforeClose = $derived.by(
+		() => !isCloseBlocked && (hasUnsavedChanges || hasDraftContent)
+	);
 	const documentFormId = $derived(`document-modal-${documentId ?? 'new'}`);
 	const titleFieldError = $derived(formError === 'Title is required' ? formError : '');
 	const globalFormError = $derived.by(() => {
@@ -387,9 +398,6 @@
 		if (!publicPageState?.slug) return null;
 		return publicPageState.url_path || `/p/${publicPageState.slug}`;
 	});
-	const publicPageAbsoluteUrl = $derived.by(() =>
-		publicPageUrlPath ? `https://build-os.com${publicPageUrlPath}` : null
-	);
 	const publicPageDraftUrlPreview = $derived.by(() =>
 		getPublicPageDraftUrlPreview(publicPageDraft, publicPagePreview)
 	);
@@ -979,6 +987,9 @@
 		publicPagePreview = null;
 		publicPageDraft = null;
 		latestPublicPageReview = null;
+		discardChangesModalOpen = false;
+		editorIsRecording = false;
+		editorIsTranscribing = false;
 	}
 
 	function normalizeDocumentState(state?: string | null): string {
@@ -1077,8 +1088,38 @@
 		clearAutosaveTimers();
 		showImageInsertModal = false;
 		showPublicPageConfirmModal = false;
+		showExportMenu = false;
+		discardChangesModalOpen = false;
 		isOpen = false;
 		onClose?.();
+	}
+
+	function handleModalBeforeClose(): boolean {
+		if (blockingSave || saveStatus === 'saving') {
+			toastService.warning('Wait for the current save to finish before closing.');
+			return false;
+		}
+
+		if (editorIsRecording || editorIsTranscribing) {
+			toastService.warning('Finish voice capture before closing this document.');
+			return false;
+		}
+
+		if (shouldPromptBeforeClose) {
+			discardChangesModalOpen = true;
+			return false;
+		}
+
+		return true;
+	}
+
+	function requestClose() {
+		if (!handleModalBeforeClose()) return;
+		closeModal();
+	}
+
+	function handleDiscardChangesConfirm() {
+		closeModal();
 	}
 
 	function validateForm(): boolean {
@@ -1397,7 +1438,6 @@
 	async function handleArchive(mode: ArchiveMode) {
 		if (!activeDocumentId) return;
 		try {
-			archiving = true;
 			const response = await fetch(`/api/onto/documents/${activeDocumentId}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
@@ -1429,7 +1469,6 @@
 			toastService.error(message);
 			throw error;
 		} finally {
-			archiving = false;
 		}
 	}
 
@@ -1878,9 +1917,11 @@
 <Modal
 	bind:isOpen
 	onClose={closeModal}
+	onBeforeClose={handleModalBeforeClose}
 	size="xl"
 	closeOnBackdrop={false}
 	closeOnEscape={!blockingSave}
+	enableGestures={false}
 	showCloseButton={false}
 	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container !max-h-[100dvh] !h-[100dvh] sm:!h-auto sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg"
 >
@@ -2058,8 +2099,8 @@
 				<!-- Close button -->
 				<button
 					type="button"
-					onclick={closeModal}
-					disabled={blockingSave}
+					onclick={requestClose}
+					disabled={isCloseBlocked}
 					class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 					aria-label="Close modal"
 				>
@@ -2579,6 +2620,28 @@
 							{:else}
 								<!-- Content editor - the main focus -->
 								<div class="px-3 pt-2 pb-1 flex-1 flex flex-col min-h-0">
+									<div class="lg:hidden mb-2 shrink-0 space-y-1">
+										<label
+											for="document-title-mobile-inline"
+											class="micro-label text-muted-foreground/70"
+										>
+											TITLE
+										</label>
+										<TextInput
+											id="document-title-mobile-inline"
+											bind:value={title}
+											required
+											placeholder="Document title"
+											aria-label="Document title"
+											class="text-base font-semibold"
+											disabled={blockingSave}
+										/>
+										{#if titleFieldError}
+											<p class="text-xs text-destructive">
+												{titleFieldError}
+											</p>
+										{/if}
+									</div>
 									<div
 										class="flex items-center justify-between gap-2 mb-1.5 shrink-0"
 									>
@@ -2667,9 +2730,12 @@
 										<RichMarkdownEditor
 											bind:this={markdownEditorRef}
 											bind:value={body}
+											onSave={handleSave}
 											maxLength={50000}
 											helpText=""
 											fillHeight={true}
+											bind:isRecording={editorIsRecording}
+											bind:isTranscribing={editorIsTranscribing}
 											onInsertImageRequested={() =>
 												(showImageInsertModal = true)}
 											voiceNoteSource="document-modal"
@@ -3278,8 +3344,8 @@
 					type="button"
 					variant="ghost"
 					size="sm"
-					onclick={closeModal}
-					disabled={blockingSave}
+					onclick={requestClose}
+					disabled={isCloseBlocked}
 					class="hidden sm:inline-flex text-xs h-8 pressable"
 				>
 					Cancel
@@ -3327,6 +3393,25 @@
 		<p class="text-sm text-muted-foreground">
 			This permanently removes the archived document and its version history. This cannot be
 			undone.
+		</p>
+	{/snippet}
+</ConfirmationModal>
+
+<ConfirmationModal
+	isOpen={discardChangesModalOpen}
+	title="Discard changes?"
+	confirmText="Discard changes"
+	confirmVariant="danger"
+	onconfirm={handleDiscardChangesConfirm}
+	oncancel={() => (discardChangesModalOpen = false)}
+>
+	{#snippet content()}
+		<p class="text-sm text-muted-foreground">
+			{#if isEditing}
+				You have unsaved document changes. Closing now will discard them.
+			{:else}
+				This draft has not been created yet. Closing now will discard it.
+			{/if}
 		</p>
 	{/snippet}
 </ConfirmationModal>

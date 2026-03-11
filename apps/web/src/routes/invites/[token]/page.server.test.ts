@@ -1,3 +1,4 @@
+// apps/web/src/routes/invites/[token]/page.server.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { createHash } from 'crypto';
 

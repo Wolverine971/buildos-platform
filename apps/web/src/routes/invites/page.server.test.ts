@@ -1,3 +1,4 @@
+// apps/web/src/routes/invites/page.server.test.ts
 import { describe, expect, it, vi } from 'vitest';
 
 const logErrorMock = vi.fn();

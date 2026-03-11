@@ -39,6 +39,12 @@
 	import { liveTranscript } from '$lib/utils/voice';
 	import { browser } from '$app/environment';
 	import { haptic } from '$lib/utils/haptic';
+	import {
+		canReplaceInsertedVoiceRange,
+		normalizeVoiceTranscript,
+		preserveInsertedVoiceSpacing,
+		type InsertedVoiceRange
+	} from './rich-markdown-editor-voice';
 
 	type EditorSize = 'sm' | 'base' | 'lg';
 	type ToolbarAction =
@@ -146,6 +152,7 @@
 	let showMoreTools = $state(false);
 	const generatedId = `rich-markdown-${++richMarkdownIdCounter}`;
 	const editorId = $derived(id ?? generatedId);
+	const voiceClientId = `${generatedId}-voice`;
 
 	// ============================================
 	// Voice Recording State
@@ -177,6 +184,7 @@
 
 	// Cursor position tracking - CRITICAL for insertion at cursor
 	let cursorPositionBeforeRecording = $state<{ start: number; end: number } | null>(null);
+	let pendingInsertedVoiceRange = $state<InsertedVoiceRange | null>(null);
 
 	// Voice service subscriptions
 	let durationUnsubscribe: (() => void) | null = null;
@@ -309,7 +317,7 @@
 
 	$effect(() => {
 		if (voiceInitialized) {
-			voiceRecordingService.setVocabularyTerms(vocabularyTerms);
+			voiceRecordingService.setVocabularyTerms(vocabularyTerms, voiceClientId);
 		}
 	});
 
@@ -569,24 +577,59 @@
 	// ============================================
 	// Transcription at Cursor Position
 	// ============================================
-	function insertTranscriptionAtCursor(transcript: string) {
+	function insertTranscriptionAtCursor(transcript: string): InsertedVoiceRange | null {
 		const trimmedTranscript = transcript.trim();
-		if (!trimmedTranscript || !editorRef) return;
+		if (!trimmedTranscript || !editorRef) return null;
 
 		if (!cursorPositionBeforeRecording) {
 			// Fallback: append to end
 			const pos = value.length;
 			const separator = value.trim() ? ' ' : '';
-			editorRef.insertTextAt(pos, separator + trimmedTranscript);
-			return;
+			const inserted = editorRef.insertTextAt(pos, separator + trimmedTranscript);
+			return inserted ? { ...inserted } : null;
 		}
 
 		const { start, end } = cursorPositionBeforeRecording;
 		// insertTextAt handles smart spacing when start === end (no selection)
-		editorRef.insertTextAt(start, trimmedTranscript, end !== start ? end : undefined);
+		const inserted = editorRef.insertTextAt(
+			start,
+			trimmedTranscript,
+			end !== start ? end : undefined
+		);
 
 		// Reset cursor tracking
 		cursorPositionBeforeRecording = null;
+		return inserted ? { ...inserted } : null;
+	}
+
+	function applyVoiceTextUpdate(text: string) {
+		const finalTranscript = normalizeVoiceTranscript(text);
+		if (!finalTranscript || !editorRef) return;
+
+		_voiceError = '';
+
+		if (pendingInsertedVoiceRange) {
+			if (canReplaceInsertedVoiceRange(value, pendingInsertedVoiceRange)) {
+				const replacementText = preserveInsertedVoiceSpacing(
+					pendingInsertedVoiceRange.text,
+					finalTranscript
+				);
+				const replaced = editorRef.insertTextAt(
+					pendingInsertedVoiceRange.from,
+					replacementText,
+					pendingInsertedVoiceRange.to
+				);
+				pendingInsertedVoiceRange = replaced ? { ...replaced } : null;
+			} else {
+				pendingInsertedVoiceRange = null;
+			}
+			return;
+		}
+
+		const inserted = insertTranscriptionAtCursor(finalTranscript);
+		if (inserted) {
+			pendingInsertedVoiceRange = inserted;
+		}
 	}
 
 	// ============================================
@@ -943,10 +986,8 @@
 
 		voiceRecordingService.initialize(
 			{
-				onTextUpdate: (_text: string) => {
-					// The service appends text - we intercept and insert at cursor instead
-					// This is handled in stopVoiceRecording after transcription completes
-					_voiceError = '';
+				onTextUpdate: (text: string) => {
+					applyVoiceTextUpdate(text);
 				},
 				onError: (errorMessage: string) => {
 					_voiceError = errorMessage;
@@ -968,10 +1009,11 @@
 				},
 				onAudioCaptured: handleAudioCaptured
 			},
-			transcriptionService
+			transcriptionService,
+			voiceClientId
 		);
 
-		const durationStore = voiceRecordingService.getRecordingDuration();
+		const durationStore = voiceRecordingService.getRecordingDuration(voiceClientId);
 		durationUnsubscribe = durationStore.subscribe((newDuration) => {
 			_recordingDuration = newDuration;
 		});
@@ -1001,6 +1043,7 @@
 		_voiceError = '';
 		isInitializingRecording = true;
 		hadLiveTranscript = false;
+		pendingInsertedVoiceRange = null;
 
 		// CRITICAL: Capture cursor position BEFORE recording starts
 		if (editorRef) {
@@ -1015,7 +1058,7 @@
 
 		try {
 			// Pass empty string - we handle text insertion ourselves
-			await voiceRecordingService.startRecording('');
+			await voiceRecordingService.startRecording('', voiceClientId);
 			isInitializingRecording = false;
 			isCurrentlyRecording = true;
 			microphonePermissionGranted = true;
@@ -1067,13 +1110,13 @@
 
 		try {
 			// Pass empty string - we handle text ourselves
-			await voiceRecordingService.stopRecording('');
+			await voiceRecordingService.stopRecording('', undefined, voiceClientId);
 
 			// If we had a live transcript, insert it at cursor position now
 			// The audio transcription may update it later with better accuracy
 			if (transcriptToInsert) {
-				// Insert text
-				insertTranscriptionAtCursor(transcriptToInsert);
+				const inserted = insertTranscriptionAtCursor(transcriptToInsert);
+				pendingInsertedVoiceRange = inserted;
 
 				// Show "Added" feedback for 1.5 seconds
 				showAddedFeedback = true;
@@ -1129,7 +1172,7 @@
 		durationUnsubscribe = null;
 		transcriptUnsubscribe = null;
 
-		voiceRecordingService.cleanup();
+		voiceRecordingService.cleanup(voiceClientId);
 
 		isCurrentlyRecording = false;
 		isInitializingRecording = false;
@@ -1141,6 +1184,7 @@
 		microphonePermissionGranted = false;
 		voiceInitialized = false;
 		cursorPositionBeforeRecording = null;
+		pendingInsertedVoiceRange = null;
 		// Clear transition state
 		isTransitioningFromRecording = false;
 		_transitionTranscript = '';
@@ -1192,18 +1236,20 @@
 		}
 
 		if (!enableVoice && voiceInitialized) {
-			stopRecordingInternal();
-			cleanupVoice();
+			void stopRecordingInternal().finally(() => {
+				cleanupVoice();
+			});
 		}
 
 		if ((voiceBlocked || disabled) && isCurrentlyRecording) {
-			stopRecordingInternal();
+			void stopRecordingInternal();
 		}
 	});
 
 	onDestroy(() => {
-		stopRecordingInternal();
-		cleanupVoice();
+		void stopRecordingInternal().finally(() => {
+			cleanupVoice();
+		});
 	});
 
 	// ============================================

@@ -1,3 +1,4 @@
+// apps/web/src/routes/invites/[token]/page.test.ts
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';

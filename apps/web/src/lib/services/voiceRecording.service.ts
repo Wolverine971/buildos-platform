@@ -40,11 +40,17 @@ export interface TranscriptionService {
 	}>;
 }
 
+interface VoiceClientState {
+	callbacks: VoiceRecordingCallbacks;
+	transcriptionService: TranscriptionService | null;
+	vocabularyTerms: string;
+}
+
 export class VoiceRecordingService {
 	private static instance: VoiceRecordingService;
-	private callbacks: VoiceRecordingCallbacks | null = null;
-	private transcriptionService: TranscriptionService | null = null;
-	private vocabularyTerms: string = '';
+	private static readonly DEFAULT_CLIENT_ID = '__default__';
+	private clients = new Map<string, VoiceClientState>();
+	private activeClientId: string | null = null;
 
 	// Recording state - use writable store for reactivity
 	private recordingStartTime: number = 0;
@@ -67,28 +73,29 @@ export class VoiceRecordingService {
 
 	public initialize(
 		callbacks: VoiceRecordingCallbacks,
-		transcriptionService?: TranscriptionService | null
+		transcriptionService?: TranscriptionService | null,
+		clientId: string = VoiceRecordingService.DEFAULT_CLIENT_ID
 	): void {
-		this.callbacks = callbacks;
-		this.transcriptionService = transcriptionService ?? null;
-
-		// Unsubscribe from any existing subscription to prevent leaks
-		if (this.liveTranscriptUnsubscribe) {
-			this.liveTranscriptUnsubscribe();
-			this.liveTranscriptUnsubscribe = null;
-		}
+		const previous = this.clients.get(clientId);
+		this.clients.set(clientId, {
+			callbacks,
+			transcriptionService: transcriptionService ?? null,
+			vocabularyTerms: previous?.vocabularyTerms ?? ''
+		});
 
 		// Subscribe to live transcript updates
-		if (browser) {
+		if (browser && !this.liveTranscriptUnsubscribe) {
 			this.liveTranscriptUnsubscribe = liveTranscript.subscribe((transcript) => {
 				this.currentLiveTranscript = transcript;
 			});
 		}
 
-		// Set up runtime capability update callback
-		if (callbacks.onCapabilityUpdate) {
-			setCapabilityUpdateCallback(callbacks.onCapabilityUpdate);
-		}
+		// Fan out runtime capability updates to all registered clients.
+		setCapabilityUpdateCallback((update) => {
+			for (const client of this.clients.values()) {
+				client.callbacks.onCapabilityUpdate?.(update);
+			}
+		});
 	}
 
 	public isVoiceSupported(): boolean {
@@ -104,15 +111,20 @@ export class VoiceRecordingService {
 	 * This is useful for project names, technical terms, or other domain-specific vocabulary.
 	 * @param terms Comma-separated string of terms (e.g., "Project Alpha, task list, sprint")
 	 */
-	public setVocabularyTerms(terms: string): void {
-		this.vocabularyTerms = terms;
+	public setVocabularyTerms(
+		terms: string,
+		clientId: string = VoiceRecordingService.DEFAULT_CLIENT_ID
+	): void {
+		const client = this.clients.get(clientId);
+		if (!client) return;
+		client.vocabularyTerms = terms;
 	}
 
 	/**
 	 * Get the current vocabulary terms
 	 */
-	public getVocabularyTerms(): string {
-		return this.vocabularyTerms;
+	public getVocabularyTerms(clientId: string = VoiceRecordingService.DEFAULT_CLIENT_ID): string {
+		return this.clients.get(clientId)?.vocabularyTerms ?? '';
 	}
 
 	/**
@@ -142,7 +154,7 @@ export class VoiceRecordingService {
 		releasePrewarmedStream();
 	}
 
-	public getRecordingDuration() {
+	public getRecordingDuration(_clientId: string = VoiceRecordingService.DEFAULT_CLIENT_ID) {
 		return this.recordingDurationStore;
 	}
 
@@ -166,12 +178,26 @@ export class VoiceRecordingService {
 		return get(isRecording) && this.currentLiveTranscript.length > 0;
 	}
 
-	public async startRecording(currentInputText: string): Promise<void> {
-		if (!this.callbacks) {
+	private getClientState(clientId: string): VoiceClientState {
+		const client = this.clients.get(clientId);
+		if (!client) {
 			throw new Error('VoiceRecordingService not initialized');
+		}
+		return client;
+	}
+
+	public async startRecording(
+		currentInputText: string,
+		clientId: string = VoiceRecordingService.DEFAULT_CLIENT_ID
+	): Promise<void> {
+		const client = this.getClientState(clientId);
+		if (this.activeClientId && this.activeClientId !== clientId && get(isRecording)) {
+			throw new Error('Voice recording is already active in another editor');
 		}
 
 		try {
+			this.activeClientId = clientId;
+
 			// Reset transcript accumulator
 			this.finalTranscriptSinceLastStop = '';
 
@@ -180,7 +206,7 @@ export class VoiceRecordingService {
 
 			// Add line break AFTER recording starts (non-blocking)
 			if (currentInputText.trim()) {
-				this.callbacks.onTextUpdate(currentInputText + '\n\n');
+				client.callbacks.onTextUpdate(currentInputText + '\n\n');
 			}
 
 			// Start timer - reset to 0 first
@@ -189,24 +215,29 @@ export class VoiceRecordingService {
 			this.startRecordingTimer();
 
 			// Notify permission granted
-			if (this.callbacks.onPermissionGranted) {
-				this.callbacks.onPermissionGranted();
+			if (client.callbacks.onPermissionGranted) {
+				client.callbacks.onPermissionGranted();
 			}
 		} catch (error) {
+			if (this.activeClientId === clientId) {
+				this.activeClientId = null;
+			}
 			console.error('Recording error:', error);
 			const errorMessage =
 				error instanceof Error ? error.message : 'Unable to access microphone';
-			this.callbacks.onError(errorMessage);
+			client.callbacks.onError(errorMessage);
 			throw error;
 		}
 	}
 
 	public async stopRecording(
 		currentInputText: string,
-		options?: { skipTranscription?: boolean }
+		options?: { skipTranscription?: boolean },
+		clientId: string = VoiceRecordingService.DEFAULT_CLIENT_ID
 	): Promise<Blob | null> {
-		if (!this.callbacks) {
-			throw new Error('VoiceRecordingService not initialized');
+		const client = this.getClientState(clientId);
+		if (this.activeClientId && this.activeClientId !== clientId && get(isRecording)) {
+			throw new Error('Voice recording is controlled by another editor');
 		}
 
 		const durationSeconds = Math.max(
@@ -223,7 +254,7 @@ export class VoiceRecordingService {
 			// Stop recording and get audio blob
 			const audioBlob = await voiceStopRecording();
 
-			this.callbacks.onAudioCaptured?.(audioBlob, { durationSeconds });
+			client.callbacks.onAudioCaptured?.(audioBlob, { durationSeconds });
 
 			if (!options?.skipTranscription) {
 				const canSyncTranscribe =
@@ -243,14 +274,15 @@ export class VoiceRecordingService {
 					await this.transcribeAudio(
 						audioBlob!,
 						capturedLiveTranscript,
-						currentInputText
+						currentInputText,
+						clientId
 					);
 				} else if (capturedLiveTranscript) {
 					// Use live transcript if available
 					if (!currentInputText.endsWith(capturedLiveTranscript)) {
 						const separator = currentInputText.trim() ? ' ' : '';
 						const newText = currentInputText + separator + capturedLiveTranscript;
-						this.callbacks.onTextUpdate(newText);
+						client.callbacks.onTextUpdate(newText);
 					}
 				}
 			}
@@ -259,16 +291,22 @@ export class VoiceRecordingService {
 			this.finalTranscriptSinceLastStop = '';
 
 			// CRITICAL: Always reset phase to idle after stopping, regardless of path taken
-			this.callbacks.onPhaseChange('idle');
+			client.callbacks.onPhaseChange('idle');
+			if (this.activeClientId === clientId) {
+				this.activeClientId = null;
+			}
 			return audioBlob;
 		} catch (error) {
 			console.error('Stop recording error:', error);
 			const errorMessage =
 				error instanceof Error ? error.message : 'Failed to stop recording';
-			this.callbacks.onError(errorMessage);
+			client.callbacks.onError(errorMessage);
 
 			// CRITICAL: Reset phase to idle even on error to prevent stuck state
-			this.callbacks.onPhaseChange('idle');
+			client.callbacks.onPhaseChange('idle');
+			if (this.activeClientId === clientId) {
+				this.activeClientId = null;
+			}
 			return null;
 		}
 	}
@@ -276,11 +314,13 @@ export class VoiceRecordingService {
 	private async transcribeAudio(
 		audioBlob: Blob,
 		capturedLiveTranscript: string,
-		currentInputText: string
+		currentInputText: string,
+		clientId: string
 	): Promise<void> {
-		if (!this.callbacks || !this.transcriptionService) return;
+		const client = this.clients.get(clientId);
+		if (!client?.transcriptionService) return;
 
-		this.callbacks.onPhaseChange('transcribing');
+		client.callbacks.onPhaseChange('transcribing');
 
 		try {
 			// Get MIME type and extension from blob
@@ -288,9 +328,9 @@ export class VoiceRecordingService {
 			const extension = this.getFileExtension(mimeType);
 			const audioFile = new File([audioBlob], `recording.${extension}`, { type: mimeType });
 
-			const response = await this.transcriptionService.transcribeAudio(
+			const response = await client.transcriptionService.transcribeAudio(
 				audioFile,
-				this.vocabularyTerms || undefined
+				client.vocabularyTerms || undefined
 			);
 
 			if (response?.transcript) {
@@ -306,7 +346,7 @@ export class VoiceRecordingService {
 					if (similarity > 0.8) {
 						if (!currentInputText.endsWith(capturedLiveTranscript)) {
 							const separator = currentInputText.trim() ? ' ' : '';
-							this.callbacks.onTextUpdate(
+							client.callbacks.onTextUpdate(
 								currentInputText + separator + capturedLiveTranscript
 							);
 						}
@@ -321,7 +361,7 @@ export class VoiceRecordingService {
 						}
 
 						const separator = baseText ? ' ' : '';
-						this.callbacks.onTextUpdate(baseText + separator + newTranscript);
+						client.callbacks.onTextUpdate(baseText + separator + newTranscript);
 						console.log(
 							'Replaced live transcription with more accurate audio transcription'
 						);
@@ -339,7 +379,7 @@ export class VoiceRecordingService {
 							newLength: updatedText.length,
 							transcript: newTranscript.substring(0, 50) + '...'
 						});
-						this.callbacks.onTextUpdate(updatedText);
+						client.callbacks.onTextUpdate(updatedText);
 					} else {
 						console.log('Skipping exact duplicate transcription');
 					}
@@ -348,18 +388,18 @@ export class VoiceRecordingService {
 				console.warn('No transcript received from transcription service');
 			}
 
-			this.callbacks.onPhaseChange('idle');
+			client.callbacks.onPhaseChange('idle');
 		} catch (error) {
 			console.error('Transcription error:', error);
 			const errorMessage =
 				error instanceof Error ? error.message : 'Failed to transcribe audio';
-			this.callbacks.onError(errorMessage);
+			client.callbacks.onError(errorMessage);
 			if (capturedLiveTranscript && !currentInputText.endsWith(capturedLiveTranscript)) {
 				const separator = currentInputText.trim() ? ' ' : '';
 				const fallbackText = currentInputText + separator + capturedLiveTranscript;
-				this.callbacks.onTextUpdate(fallbackText);
+				client.callbacks.onTextUpdate(fallbackText);
 			}
-			this.callbacks.onPhaseChange('idle');
+			client.callbacks.onPhaseChange('idle');
 		}
 	}
 
@@ -409,27 +449,30 @@ export class VoiceRecordingService {
 		}
 	}
 
-	public cleanup(): void {
-		// Stop timer
-		this.stopRecordingTimer();
+	public cleanup(clientId: string = VoiceRecordingService.DEFAULT_CLIENT_ID): void {
+		const isActiveClient = this.activeClientId === clientId;
+		this.clients.delete(clientId);
 
-		// Unsubscribe from live transcript
-		if (this.liveTranscriptUnsubscribe) {
-			this.liveTranscriptUnsubscribe();
-			this.liveTranscriptUnsubscribe = null;
+		if (isActiveClient) {
+			this.stopRecordingTimer();
+			if (get(isRecording)) {
+				forceCleanup();
+			}
+			this.activeClientId = null;
 		}
 
-		// Release any pre-warmed stream first
-		this.releasePrewarmedStream();
+		if (this.clients.size === 0) {
+			if (this.liveTranscriptUnsubscribe) {
+				this.liveTranscriptUnsubscribe();
+				this.liveTranscriptUnsubscribe = null;
+			}
 
-		// Force cleanup of voice utility
-		forceCleanup();
-
-		// Reset state
-		this.currentLiveTranscript = '';
-		this.finalTranscriptSinceLastStop = '';
-		this.recordingDurationStore.set(0);
-		this.recordingStartTime = 0;
+			this.releasePrewarmedStream();
+			this.currentLiveTranscript = '';
+			this.finalTranscriptSinceLastStop = '';
+			this.recordingDurationStore.set(0);
+			this.recordingStartTime = 0;
+		}
 	}
 }
 

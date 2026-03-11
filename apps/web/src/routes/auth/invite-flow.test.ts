@@ -1,3 +1,4 @@
+// apps/web/src/routes/auth/invite-flow.test.ts
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
