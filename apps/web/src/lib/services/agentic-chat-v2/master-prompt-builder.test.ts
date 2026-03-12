@@ -37,7 +37,10 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'tool_help can return a directory, a skill playbook, or an exact op schema.'
 		);
 		expect(prompt).toContain(
-			'Calendar skill rule: if the user asks to read/create/update/delete calendar events or manage project calendar mapping, call tool_help({ path: "cal.skill" }) once in-turn before calendar tool_exec calls.'
+			'Fetch a skill only when the workflow is multi-step, stateful, or easy to get wrong.'
+		);
+		expect(prompt).toContain(
+			'Good skill entry points: calendar/event work or project calendar mapping -> cal.skill; project document tree, unlinked docs, or task docs -> onto.document.skill; plan creation or plan restructuring -> onto.plan.skill.'
 		);
 		expect(prompt).toContain(
 			'User profile context is NOT preloaded. If personalization is needed, call tool_help({ path: "util.profile" }) and then util.profile.overview.'
@@ -65,7 +68,7 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'Project context events are time-boxed to the last 7 days and next 14 days (UTC).'
 		);
 		expect(prompt).toContain(
-			'To inspect events outside that context window, call cal.event.list with args.timeMin/args.timeMax (or args.time_min/args.time_max), and use limit/offset for paging.'
+			'To inspect events outside that context window, call cal.event.list with args.timeMin/timeMax (or args.time_min/time_max), and use limit/offset for paging.'
 		);
 		expect(prompt).toContain(
 			'Project context data may include context_meta.entity_scopes with returned/total_matching/limit/is_complete values per entity.'

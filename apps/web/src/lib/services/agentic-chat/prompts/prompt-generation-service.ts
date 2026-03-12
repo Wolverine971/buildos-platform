@@ -27,6 +27,7 @@ import {
 import { createLogger } from '$lib/utils/logger';
 import { dev } from '$app/environment';
 import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
+import { formatGatewayGuidanceLines } from '$lib/services/agentic-chat/tools/registry/gateway-guidance';
 
 // Import prompt configurations
 import {
@@ -159,36 +160,7 @@ export class PromptGenerationService {
 		);
 
 		if (isToolGatewayEnabled()) {
-			sections.push(
-				`## Tool Discovery Mode\n\n` +
-					`- You only have access to tool_help and tool_exec.\n` +
-					`- In tool_exec.op, use only canonical ops.\n` +
-					`- Canonical ontology CRUD/search family: onto.<entity>.create|list|get|update|delete|search.\n` +
-					`- Supported onto entities: project, task, goal, plan, document, milestone, risk.\n` +
-					`- Canonical exception ops: onto.search, onto.document.tree.get, onto.document.tree.move, onto.document.path.get, onto.project.graph.get, onto.project.graph.reorganize, onto.edge.link, onto.edge.unlink, onto.entity.relationships.get, onto.entity.links.get.\n` +
-					`- Calendar ops are under cal.event.* and cal.project.* (not onto.event.*). Utility ops are under util.*.\n` +
-					`- Never use legacy op strings in tool_exec.op (for example: get_document_tree, move_document_in_tree, list_onto_*).\n` +
-					`- Use targeted discovery first: tool_help(\"onto.<entity>\") or tool_help(\"cal.skill\") for calendar workflows. Use tool_help(\"root\") only when namespace is unknown.\n` +
-					`- Path heuristic: tasks -> onto.task, documents -> onto.document, goals -> onto.goal, plans -> onto.plan, milestones -> onto.milestone, risks -> onto.risk, calendar -> cal.skill, user profile -> util.profile, contacts -> util.contact.\n` +
-					`- Calendar skill rule: if the user asks to read/create/update/delete calendar events or manage project calendar mapping, call tool_help(\"cal.skill\") once in-turn before tool_exec calls.\n` +
-					`- User profile context is NOT preloaded. If personalization is needed, call tool_help(\"util.profile\") and then util.profile.overview.\n` +
-					`- Contact method values are sensitive and redacted by default. Only request raw values when the user explicitly asks for exact phone/email details.\n` +
-					`- Gateway payload contract: tool_help({ path: \"<path>\" }) and tool_exec({ op: \"<canonical op>\", args: { ... } }).\n` +
-					`- Never call tool_exec with {} or with missing op/args.\n` +
-					`- CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.\n` +
-					`- Update contract: onto.<entity>.update requires args.<entity>_id plus at least one field to change.\n` +
-					`- Example: tool_exec({ op: \"onto.task.update\", args: { task_id: \"<task_id_uuid>\", title: \"Updated title\" } }).\n` +
-					`- Example: tool_exec({ op: \"onto.document.update\", args: { document_id: \"<document_id_uuid>\", content: \"<markdown content>\" } }).\n` +
-					`- Use tool_help when the op or arg schema is uncertain; avoid repeated calls for the same help path in one turn.\n` +
-					`- Reuse discovered schemas in the same turn, and only re-check help after a validation error.\n` +
-					`- When op and args are already known in-turn, call tool_exec directly.\n` +
-					`- For first-time or complex writes in a turn, call tool_help(\"<exact op>\", { format: \"full\", include_schemas: true }) before tool_exec.\n` +
-					`- For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.\n` +
-					`- When a tool_exec error includes help_path, call tool_help(help_path) once and retry once with corrected args.\n` +
-					`- If a tool_exec result includes _fallback due to missing *_id, extract candidate IDs from returned list/tree payload and retry with an exact *_id.\n` +
-					`- For onto.*.get ops, always pass the exact *_id. If unknown, use list/search/tree ops first to discover IDs.\n` +
-					`- Do not guess IDs or required fields, and do not repeat the same failing op+args without new help output.`
-			);
+			sections.push(`## Tool Discovery Mode\n\n${formatGatewayGuidanceLines()}`);
 		}
 
 		// ===== BEHAVIORAL SECTIONS (Consolidated + New) =====

@@ -17,9 +17,16 @@
 		Loader
 	} from 'lucide-svelte';
 	import type { FocusEntitySummary, ProjectFocus } from '@buildos/shared-types';
+	import {
+		DEFAULT_PROJECT_ENTITY_RESULT_LIMIT,
+		MAX_PROJECT_ENTITY_RESULT_LIMIT,
+		PROJECT_ENTITY_SEARCH_DEBOUNCE_MS,
+		fetchProjectEntities,
+		normalizeEntitySearch,
+		type FocusEntityType
+	} from './project-entity-browser';
 
 	type ProjectAction = 'workspace';
-	type FocusEntityType = FocusEntitySummary['type'];
 
 	interface Props {
 		projectId: string;
@@ -186,18 +193,13 @@
 	let errorMessage = $state<string | null>(null);
 	let searchTerm = $state('');
 	let abortController: AbortController | null = null;
+	let entityRequestId = 0;
+	let isSearchActive = $derived(normalizeEntitySearch(searchTerm).length > 0);
 
-	// Live client-side filtering — instant as the user types
-	let filteredEntities = $derived.by(() => {
-		const q = searchTerm.trim().toLowerCase();
-		if (!q) return sortedEntities;
-		return sortedEntities.filter((e) => e.name.toLowerCase().includes(q));
-	});
-
-	let isSearchActive = $derived(searchTerm.trim().length > 0);
-
-	async function loadEntities(type: FocusEntityType) {
+	async function loadEntities(type: FocusEntityType, searchValue = searchTerm) {
 		if (!projectId) return;
+		entityRequestId += 1;
+		const requestId = entityRequestId;
 
 		if (abortController) {
 			abortController.abort();
@@ -208,24 +210,24 @@
 		errorMessage = null;
 
 		try {
-			const params = new URLSearchParams({ type });
-			const response = await fetch(
-				`/api/onto/projects/${projectId}/entities?${params.toString()}`,
-				{ signal: abortController.signal }
-			);
-			if (!response.ok) {
-				throw new Error(`Failed with status ${response.status}`);
-			}
-			const payload = await response.json();
-			const data = payload?.data ?? payload ?? [];
-			entities = Array.isArray(data) ? data : [];
+			entities = await fetchProjectEntities({
+				projectId,
+				type,
+				search: searchValue,
+				limit: normalizeEntitySearch(searchValue)
+					? MAX_PROJECT_ENTITY_RESULT_LIMIT
+					: DEFAULT_PROJECT_ENTITY_RESULT_LIMIT,
+				signal: abortController.signal
+			});
 		} catch (error) {
-			if ((error as Error)?.name === 'AbortError') return;
+			if ((error as Error)?.name === 'AbortError' || requestId !== entityRequestId) return;
 			console.error('[ProjectActionSelector] Failed to load entities:', error);
 			errorMessage = 'Unable to load entities for this project.';
 			entities = [];
 		} finally {
-			loading = false;
+			if (requestId === entityRequestId) {
+				loading = false;
+			}
 		}
 	}
 
@@ -242,7 +244,11 @@
 
 	$effect(() => {
 		if (!browser || !projectId) return;
-		loadEntities(selectedType);
+		const timeoutId = setTimeout(
+			() => void loadEntities(selectedType, searchTerm),
+			normalizeEntitySearch(searchTerm) ? PROJECT_ENTITY_SEARCH_DEBOUNCE_MS : 0
+		);
+		return () => clearTimeout(timeoutId);
 	});
 
 	onDestroy(() => {
@@ -367,30 +373,19 @@
 					</div>
 				{/if}
 				<p class="text-sm font-semibold text-foreground">
-					No {selectedType}s found
+					{#if isSearchActive}No matches{:else}No {selectedType}s found{/if}
 				</p>
 				<p class="mt-1 text-xs text-muted-foreground">
-					This project doesn't have any {selectedType}s yet.
+					{#if isSearchActive}
+						No {selectedType}s match "{normalizeEntitySearch(searchTerm)}"
+					{:else}
+						This project doesn't have any {selectedType}s yet.
+					{/if}
 				</p>
-			</div>
-		{:else if filteredEntities.length === 0}
-			<div class="flex flex-col items-center justify-center py-8 text-center">
-				<Search class="mb-2 h-5 w-5 text-muted-foreground" aria-hidden="true" />
-				<p class="text-sm font-semibold text-foreground">No matches</p>
-				<p class="mt-1 text-xs text-muted-foreground">
-					No {selectedType}s match "{searchTerm.trim()}"
-				</p>
-				<button
-					type="button"
-					onclick={() => (searchTerm = '')}
-					class="mt-2 text-xs font-semibold text-accent hover:underline"
-				>
-					Clear filter
-				</button>
 			</div>
 		{:else}
 			<div class="space-y-1.5" role="list">
-				{#each filteredEntities as entity (entity.id)}
+				{#each sortedEntities as entity (entity.id)}
 					<button
 						type="button"
 						onclick={() => handleEntitySelect(entity)}

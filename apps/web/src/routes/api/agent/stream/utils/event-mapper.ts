@@ -192,7 +192,7 @@ export function mapPlannerEventToSSE(
 
 	// Check if this is already an AgentSSEMessage (passthrough)
 	// AgentSSEMessage types that don't exist in StreamEvent
-	const sseOnlyTypes = ['focus_active', 'focus_changed', 'context_shift'];
+	const sseOnlyTypes = ['focus_active', 'focus_changed', 'context_shift', 'skill_activity'];
 	if (sseOnlyTypes.includes(event.type)) {
 		return event as AgentSSEMessage;
 	}
@@ -220,7 +220,7 @@ export function mapPlannerEventToSSE(
 export function isKnownEventType(eventType: string): boolean {
 	return (
 		eventType in EVENT_MAPPERS ||
-		['focus_active', 'focus_changed', 'context_shift'].includes(eventType)
+		['focus_active', 'focus_changed', 'context_shift', 'skill_activity'].includes(eventType)
 	);
 }
 

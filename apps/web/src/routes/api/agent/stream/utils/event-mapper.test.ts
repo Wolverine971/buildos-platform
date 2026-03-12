@@ -48,6 +48,17 @@ describe('mapPlannerEventToSSE', () => {
 			const result = mapPlannerEventToSSE(event);
 			expect(result).toBe(event);
 		});
+
+		it('should pass through skill_activity events', () => {
+			const event = {
+				type: 'skill_activity',
+				action: 'loaded',
+				path: 'cal.skill',
+				via: 'tool_help'
+			} as const satisfies AgentSSEMessage;
+			const result = mapPlannerEventToSSE(event);
+			expect(result).toBe(event);
+		});
 	});
 
 	describe('session event', () => {
@@ -421,6 +432,7 @@ describe('isKnownEventType', () => {
 		expect(isKnownEventType('focus_active')).toBe(true);
 		expect(isKnownEventType('focus_changed')).toBe(true);
 		expect(isKnownEventType('context_shift')).toBe(true);
+		expect(isKnownEventType('skill_activity')).toBe(true);
 	});
 
 	it('should return false for unknown types', () => {

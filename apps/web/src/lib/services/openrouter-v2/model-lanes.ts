@@ -3,25 +3,28 @@
 import type { ModelLane } from './types';
 
 const DEFAULT_TEXT_MODELS = [
-	'openrouter/hunter-alpha',
-	'openai/gpt-4o-mini',
-	'openrouter/healer-alpha'
+	// Mature, high-volume defaults for general text generation.
+	'google/gemini-3.1-flash-lite-preview',
+	'inception/mercury-2',
+	'openai/gpt-4o-mini'
 ] as const;
 
-// Keep the v2 JSON lane on models with verified native json_object support.
-// Hunter/Healer are available through shared profile routing, but their native
-// JSON-mode compatibility was not confirmed from the official OpenRouter pages.
+// Prefer mature models with explicit response_format / structured output support.
+// Hunter/Healer remain available in the wider registry, but their official pages
+// mark prompts/completions as provider-logged alpha traffic, so they are not the
+// default production choice for machine-parseable workflows.
 const DEFAULT_JSON_MODELS = [
-	'openai/gpt-4o-mini',
-	'deepseek/deepseek-chat',
-	'qwen/qwen3-32b'
+	'deepseek/deepseek-v3.2',
+	'google/gemini-3.1-flash-lite-preview',
+	'minimax/minimax-m2.5'
 ] as const;
 
+// V2 currently attempts at most 3 lane models, so keep the default list to 3
+// meaningful fallbacks rather than carrying unreachable entries.
 const DEFAULT_TOOL_MODELS = [
-	'openrouter/hunter-alpha',
-	'openai/gpt-4o-mini',
+	'minimax/minimax-m2.5',
 	'x-ai/grok-4.1-fast',
-	'anthropic/claude-haiku-4.5'
+	'deepseek/deepseek-v3.2'
 ] as const;
 
 const DEFAULT_TOOL_MODELS_EXACTO = [

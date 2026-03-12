@@ -2,6 +2,8 @@
 
 import { getToolRegistry } from './tool-registry';
 import { normalizeGatewayHelpPath } from './gateway-op-aliases';
+import { getSkillByPath, listSkillsForDirectory } from '../skills/registry';
+import type { SkillDefinition, SkillHelpPayload } from '../skills/types';
 
 export type ToolHelpFormat = 'short' | 'full';
 
@@ -43,8 +45,6 @@ const POLICY_MAP: Record<string, { do: string[]; dont: string[]; edge_cases: str
 		edge_cases: ['If critical info is missing, add clarifications[] and still create']
 	}
 };
-const CALENDAR_SKILL_PATH = 'cal.skill';
-
 export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record<string, any> {
 	const registry = getToolRegistry();
 	const format: ToolHelpFormat = options.format ?? 'short';
@@ -80,7 +80,7 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 				}
 			},
 			workflow: [
-				'1) Choose the help path by intent: onto.<entity>, onto.task.docs, cal.skill, util.profile, util.contact, util.web, util.buildos, util.schema, or root when namespace is unknown.',
+				'1) Choose the help path by intent: onto.<entity>, onto.task.docs, cal.skill, onto.document.skill, onto.plan.skill, util.profile, util.contact, util.web, util.buildos, util.schema, or root when namespace is unknown.',
 				'2) If tool_help returns a directory or skill, narrow to the exact op; for first-time/complex writes, inspect exact schema with tool_help({ path: "<exact op>", format: "full", include_schemas: true }).',
 				'3) Execute with tool_exec({ op: "<exact op>", args: { ... } }).',
 				'4) If execution returns error.help_path, call tool_help({ path: help_path }) then retry once.'
@@ -106,8 +106,9 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 		}
 		return rootHelp;
 	}
-	if (normalized === CALENDAR_SKILL_PATH) {
-		return buildCalendarSkillHelp(registry.version, format, includeExamples);
+	const skill = getSkillByPath(normalized);
+	if (skill) {
+		return buildSkillHelp(skill, registry.version, format, includeExamples);
 	}
 
 	const op = registry.ops[normalized];
@@ -115,14 +116,14 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 		return buildOpHelp(op, format, includeSchemas, includeExamples);
 	}
 
-	const children = listChildren(normalized, registry.ops);
-	if (normalized === 'cal' && !children.some((child) => child.name === CALENDAR_SKILL_PATH)) {
-		children.unshift({
-			name: CALENDAR_SKILL_PATH,
-			type: 'guide',
-			summary: 'Calendar workflow playbook (read/create/update/delete + project mapping).'
-		});
-	}
+	const children = [
+		...listSkillsForDirectory(normalized),
+		...listChildren(normalized, registry.ops)
+	].sort((a, b) => {
+		if (a.type === 'skill' && b.type !== 'skill') return -1;
+		if (a.type !== 'skill' && b.type === 'skill') return 1;
+		return a.name.localeCompare(b.name);
+	});
 	if (children.length === 0) {
 		return {
 			type: 'not_found',
@@ -486,151 +487,37 @@ function buildMinimalArgsTemplate(
 	return args;
 }
 
-function buildCalendarSkillHelp(
+function buildSkillHelp(
+	skill: SkillDefinition,
 	version: string,
 	format: ToolHelpFormat,
 	includeExamples: boolean
-): Record<string, any> {
-	const skill: Record<string, any> = {
+): SkillHelpPayload {
+	const payload: SkillHelpPayload = {
 		type: 'skill',
-		path: CALENDAR_SKILL_PATH,
-		name: 'calendar',
+		path: skill.path,
+		name: skill.name,
 		format,
 		version,
-		summary:
-			'Calendar operation playbook for BuildOS agentic chat. Use before calendar read/write tasks to avoid scope, ID, and timestamp errors.',
-		when_to_use: [
-			'Read events or search a date window',
-			'Create/schedule events',
-			'Update/reschedule events',
-			'Delete/cancel events',
-			'Get or set project calendar mapping'
-		],
-		workflow: [
-			'1) Choose scope first: user, project, or explicit calendar_id.',
-			'2) For project scope, always pass project_id.',
-			'3) Use timezone-safe ISO 8601 for all event times (offset/Z, or pass timezone).',
-			'4) Use list/get to discover IDs before update/delete; never guess IDs.',
-			'5) For update/delete, pass onto_event_id or event_id.',
-			'6) If execution returns help_path, call tool_help({ path: help_path }) and retry once.'
-		],
-		ops: {
-			read: [
-				{
-					op: 'cal.event.list',
-					use_for: 'List/search events in a time window',
-					key_args: [
-						'timeMin/timeMax (aliases: time_min/time_max)',
-						'query (alias: q)',
-						'limit/max_results + offset',
-						'calendar_scope + project_id/calendar_id'
-					]
-				},
-				{
-					op: 'cal.event.get',
-					use_for: 'Read one event detail',
-					key_args: ['onto_event_id preferred, otherwise event_id']
-				},
-				{
-					op: 'cal.project.get',
-					use_for: 'Read project calendar mapping',
-					key_args: ['project_id']
-				}
-			],
-			write: [
-				{
-					op: 'cal.event.create',
-					use_for: 'Create event',
-					key_args: [
-						'title + start_at (required)',
-						'end_at (recommended)',
-						'project_id for project scope'
-					]
-				},
-				{
-					op: 'cal.event.update',
-					use_for: 'Update event',
-					key_args: ['onto_event_id or event_id', 'one or more fields to change']
-				},
-				{
-					op: 'cal.event.delete',
-					use_for: 'Delete event',
-					key_args: ['onto_event_id or event_id']
-				},
-				{
-					op: 'cal.project.set',
-					use_for: 'Create/update project calendar mapping',
-					key_args: [
-						'project_id',
-						'optional calendar_id to link existing Google calendar'
-					]
-				}
-			]
-		},
-		guardrails: [
-			'Prefer project scope when the request is tied to a project.',
-			'Use user scope for the user primary calendar.',
-			'Use calendar_id scope only when an explicit Google calendar id is provided.'
-		]
+		summary: skill.summary,
+		when_to_use: skill.whenToUse,
+		workflow: skill.workflow.map((step, index) => `${index + 1}) ${step}`),
+		related_ops: skill.relatedOps
 	};
 
-	if (includeExamples) {
-		skill.examples = [
-			{
-				description: 'Read: list next 30 days in project calendar',
-				tool_exec: {
-					op: 'cal.event.list',
-					args: {
-						time_min: '2026-03-01',
-						time_max: '2026-03-31',
-						calendar_scope: 'project',
-						project_id: '<project_id_uuid>'
-					}
-				}
-			},
-			{
-				description: 'Write: create project event',
-				tool_exec: {
-					op: 'cal.event.create',
-					args: {
-						title: 'Sprint planning',
-						start_at: '2026-03-05T15:00:00.000Z',
-						end_at: '2026-03-05T15:30:00.000Z',
-						calendar_scope: 'project',
-						project_id: '<project_id_uuid>'
-					}
-				}
-			},
-			{
-				description: 'Write: update by ontology id',
-				tool_exec: {
-					op: 'cal.event.update',
-					args: {
-						onto_event_id: '<onto_event_id_uuid>',
-						start_at: '2026-03-05T16:00:00.000Z'
-					}
-				}
-			},
-			{
-				description: 'Write: delete by ontology id',
-				tool_exec: {
-					op: 'cal.event.delete',
-					args: {
-						onto_event_id: '<onto_event_id_uuid>'
-					}
-				}
-			}
-		];
+	if (skill.guardrails?.length) {
+		payload.guardrails = skill.guardrails;
 	}
 
-	if (format === 'full') {
-		skill.notes = [
-			'Call tool_help({ path: "cal.event.<op>", format: "full", include_schemas: true }) when arg schema is uncertain.',
-			'For first-time or complex calendar writes in a turn, inspect exact op schema before tool_exec.'
-		];
+	if (includeExamples && skill.examples?.length) {
+		payload.examples = skill.examples;
 	}
 
-	return skill;
+	if (format === 'full' && skill.notes?.length) {
+		payload.notes = skill.notes;
+	}
+
+	return payload;
 }
 
 function buildPlaceholderValue(name: string, def: JsonSchemaProperty): unknown {

@@ -1,9 +1,9 @@
 <!-- apps/web/src/lib/components/agent/AgentChatHeader.svelte -->
 <!-- INKPRINT Design System: Header component with Frame texture -->
 <script lang="ts">
-	import { X, ExternalLink, ArrowLeft } from 'lucide-svelte';
+	import { X, ExternalLink, ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-svelte';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
-	import type { ChatContextType } from '@buildos/shared-types';
+	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 
 	interface Props {
@@ -21,6 +21,8 @@
 		ontologyLoaded: boolean;
 		hasActiveThinkingBlock: boolean;
 		currentActivity: string;
+		sessionStatusLabel?: string | null;
+		contextUsage?: ContextUsageSnapshot | null;
 	}
 
 	let {
@@ -37,7 +39,9 @@
 		onClearFocus,
 		ontologyLoaded,
 		hasActiveThinkingBlock,
-		currentActivity
+		currentActivity,
+		sessionStatusLabel = null,
+		contextUsage = null
 	}: Props = $props();
 
 	const isProjectContext = $derived.by(
@@ -49,6 +53,24 @@
 
 	// Determine project URL based on context
 	const projectUrl = $derived(projectId ? `/projects/${projectId}` : null);
+
+	const contextUsageBadge = $derived.by(() => {
+		if (!contextUsage || contextUsage.status === 'ok') {
+			return null;
+		}
+
+		return {
+			label:
+				contextUsage.status === 'over_budget'
+					? 'Context full'
+					: `Context ${Math.round(contextUsage.usagePercent)}%`,
+			title: `${contextUsage.estimatedTokens}/${contextUsage.tokenBudget} estimated tokens`,
+			className:
+				contextUsage.status === 'over_budget'
+					? 'border-red-600/30 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300'
+					: 'border-amber-500/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
+		};
+	});
 </script>
 
 <!-- INKPRINT compact header: fixed 48px height with Frame texture for structural hierarchy -->
@@ -127,8 +149,27 @@
 	<!-- Right side: Status pills, Project link, Close button -->
 	<div class="flex shrink-0 items-center gap-2">
 		<!-- INKPRINT status pills with micro-label styling -->
-		{#if ontologyLoaded || (currentActivity && !hasActiveThinkingBlock)}
+		{#if sessionStatusLabel || contextUsageBadge || ontologyLoaded || (currentActivity && !hasActiveThinkingBlock)}
 			<div class="flex items-center gap-2">
+				{#if sessionStatusLabel}
+					<span
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+					>
+						<LoaderCircle class="h-3 w-3 animate-spin" />
+						{sessionStatusLabel}
+					</span>
+				{/if}
+
+				{#if contextUsageBadge}
+					<span
+						class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] ${contextUsageBadge.className}`}
+						title={contextUsageBadge.title}
+					>
+						<AlertTriangle class="h-3 w-3" />
+						{contextUsageBadge.label}
+					</span>
+				{/if}
+
 				{#if ontologyLoaded}
 					<span
 						class="micro-label rounded-lg border border-purple-600/30 bg-purple-50 px-2.5 py-1.5 text-purple-700 tx tx-thread tx-weak dark:bg-purple-950/30 dark:text-purple-400"

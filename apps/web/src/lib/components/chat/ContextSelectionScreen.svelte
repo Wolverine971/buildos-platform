@@ -7,7 +7,7 @@
 -->
 
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy } from 'svelte';
 	import { browser, dev } from '$app/environment';
 	import {
 		MessagesSquare,
@@ -16,7 +16,9 @@
 		ChevronRight,
 		Sparkles,
 		LoaderCircle,
-		PenLine
+		PenLine,
+		Search,
+		X
 	} from 'lucide-svelte';
 	import type { ChatContextType } from '@buildos/shared-types';
 
@@ -55,32 +57,66 @@
 	let isLoadingProjects = $state(false);
 	let projectsError = $state<string | null>(null);
 	let hasLoadedProjects = $state(false);
+	let projectSearchTerm = $state('');
+	let projectListController: AbortController | null = null;
+	let lastProjectQuery = $state('');
+	let lastProjectLimit = $state(0);
+	let projectListRequestId = 0;
 
 	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'completed', 'retired', 'closed']);
+	const PROJECT_LIST_LIMIT = 24;
+	const PROJECT_SEARCH_LIMIT = 50;
+	const PROJECT_SEARCH_DEBOUNCE_MS = 180;
+	const normalizedProjectSearch = $derived(projectSearchTerm.trim());
+	const isProjectSearchActive = $derived(normalizedProjectSearch.length > 0);
 
-	// Load projects on mount
-	onMount(async () => {
-		await loadProjects(true);
-	});
-
-	async function loadProjects(force = false) {
-		if (isLoadingProjects || (!force && hasLoadedProjects && projects.length > 0)) {
+	async function loadProjects(
+		options: { force?: boolean; search?: string; limit?: number } = {}
+	) {
+		const { force = false } = options;
+		const search = (options.search ?? projectSearchTerm).trim();
+		const limit = options.limit ?? (search ? PROJECT_SEARCH_LIMIT : PROJECT_LIST_LIMIT);
+		if (
+			!force &&
+			hasLoadedProjects &&
+			search === lastProjectQuery &&
+			limit === lastProjectLimit &&
+			(projects.length > 0 || !projectsError)
+		) {
 			return;
 		}
+
+		projectListRequestId += 1;
+		const requestId = projectListRequestId;
+		if (projectListController) {
+			projectListController.abort();
+		}
+		projectListController = new AbortController();
 
 		isLoadingProjects = true;
 		projectsError = null;
 
 		try {
-			const response = await fetch('/api/onto/projects', {
+			const params = new URLSearchParams();
+			params.set('limit', String(limit));
+			if (search) {
+				params.set('search', search);
+			}
+
+			const response = await fetch(`/api/onto/projects?${params.toString()}`, {
 				method: 'GET',
 				credentials: 'same-origin',
 				cache: 'no-store',
+				signal: projectListController.signal,
 				headers: {
 					Accept: 'application/json'
 				}
 			});
 			const payload = await response.json();
+
+			if (requestId !== projectListRequestId) {
+				return;
+			}
 
 			if (!response.ok || payload?.success === false) {
 				projectsError = payload?.error || 'Failed to load ontology projects';
@@ -107,25 +143,43 @@
 			);
 			projects = processedProjects;
 			hasLoadedProjects = true;
+			lastProjectQuery = search;
+			lastProjectLimit = limit;
 		} catch (err) {
+			if ((err as Error)?.name === 'AbortError' || requestId !== projectListRequestId) {
+				return;
+			}
 			console.error('Failed to load ontology projects:', err);
 			projectsError = 'Failed to load ontology projects';
 			hasLoadedProjects = true;
 		} finally {
-			isLoadingProjects = false;
+			if (requestId === projectListRequestId) {
+				isLoadingProjects = false;
+				projectListController = null;
+			}
 		}
 	}
 
 	$effect(() => {
 		if (!browser) return;
-		if (selectedView === 'project-selection' && !isLoadingProjects && projects.length === 0) {
-			loadProjects(true);
-		}
+		if (selectedView !== 'project-selection') return;
+		const timeoutId = setTimeout(
+			() => void loadProjects({ search: projectSearchTerm }),
+			normalizedProjectSearch ? PROJECT_SEARCH_DEBOUNCE_MS : 0
+		);
+		return () => clearTimeout(timeoutId);
 	});
 
 	// Notify parent of navigation changes for header back button
 	$effect(() => {
 		onNavigationChange?.(selectedView);
+	});
+
+	onDestroy(() => {
+		if (projectListController) {
+			projectListController.abort();
+			projectListController = null;
+		}
 	});
 
 	// Primary actions - Svelte 5 callback pattern
@@ -159,7 +213,12 @@
 	}
 
 	function backToPrimary() {
+		const shouldRestoreDefaultProjects = lastProjectQuery !== '';
+		projectSearchTerm = '';
 		selectedView = 'primary';
+		if (shouldRestoreDefaultProjects) {
+			void loadProjects({ force: true, search: '', limit: PROJECT_LIST_LIMIT });
+		}
 	}
 
 	// Public function for parent to trigger back navigation
@@ -192,7 +251,9 @@
 		})
 	);
 	const hasProjects = $derived(projects.length > 0);
-	const isNewUser = $derived(hasLoadedProjects && !hasProjects && !projectsError);
+	const isNewUser = $derived(
+		hasLoadedProjects && lastProjectQuery === '' && !hasProjects && !projectsError
+	);
 </script>
 
 <div class="flex h-full min-h-0 flex-col overflow-hidden bg-background">
@@ -321,18 +382,13 @@
 					<!-- Project Chat — pick a project, chat about it -->
 					<button
 						onclick={goToProjectSelection}
-						disabled={isLoadingProjects || !hasProjects}
 						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-emerald-500/50 hover:shadow-ink-strong active:scale-[0.99] disabled:opacity-60 disabled:shadow-ink sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5 sm:disabled:translate-y-0"
 					>
 						<div class="flex items-center gap-2 sm:gap-3">
 							<div
 								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
 							>
-								{#if isLoadingProjects}
-									<LoaderCircle class="h-3.5 w-3.5 animate-spin sm:h-5 sm:w-5" />
-								{:else}
-									<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-								{/if}
+								<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
 							</div>
 							<h3 class="flex-1 text-sm font-semibold text-foreground">
 								Project Chat
@@ -350,8 +406,8 @@
 							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
 						>
 							<span
-								>{#if hasProjects}{activeProjects.length} active projects{:else}No
-									projects yet{/if}</span
+								>{#if hasLoadedProjects && hasProjects}{activeProjects.length} active
+									projects{:else}Browse projects{/if}</span
 							>
 							<ChevronRight
 								class="h-4 w-4 transition-transform group-hover:translate-x-1"
@@ -480,6 +536,30 @@
 			<div class="border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm sm:p-4">
 				<h2 class="text-base font-semibold text-foreground sm:text-lg">Select a Project</h2>
 				<p class="text-xs text-muted-foreground">Choose which project to work with</p>
+				<div class="relative mt-3">
+					<Search
+						class="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+					/>
+					<input
+						type="text"
+						inputmode="search"
+						enterkeyhint="search"
+						placeholder="Search projects..."
+						class="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-8 text-xs text-foreground shadow-ink-inner transition-colors placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
+						bind:value={projectSearchTerm}
+						aria-label="Search projects"
+					/>
+					{#if isProjectSearchActive}
+						<button
+							type="button"
+							class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							onclick={() => (projectSearchTerm = '')}
+							aria-label="Clear project search"
+						>
+							<X class="h-3.5 w-3.5" />
+						</button>
+					{/if}
+				</div>
 			</div>
 
 			<!-- Projects List -->
@@ -578,11 +658,25 @@
 						<h3
 							class="mb-1.5 text-base font-semibold text-foreground sm:text-lg sm:mb-2"
 						>
-							No Ontology Projects
+							{#if isProjectSearchActive}No matching projects{:else}No Ontology
+								Projects{/if}
 						</h3>
 						<p class="max-w-xs text-xs text-muted-foreground sm:text-sm">
-							Instantiate your first ontology project to get started
+							{#if isProjectSearchActive}
+								No projects match "{normalizedProjectSearch}".
+							{:else}
+								Instantiate your first ontology project to get started
+							{/if}
 						</p>
+						{#if isProjectSearchActive}
+							<button
+								type="button"
+								class="mt-3 text-xs font-semibold text-accent hover:underline"
+								onclick={() => (projectSearchTerm = '')}
+							>
+								Clear search
+							</button>
+						{/if}
 					</div>
 				{/if}
 			</div>

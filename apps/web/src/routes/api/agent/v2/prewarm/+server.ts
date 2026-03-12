@@ -6,7 +6,8 @@ import { createLogger } from '$lib/utils/logger';
 import {
 	createFastChatSessionService,
 	loadFastChatPromptContext,
-	normalizeFastContextType
+	normalizeFastContextType,
+	type FastAgentPrewarmRequest
 } from '$lib/services/agentic-chat-v2';
 import {
 	FASTCHAT_CONTEXT_CACHE_VERSION,
@@ -17,13 +18,6 @@ import {
 } from '$lib/services/agentic-chat-v2/context-cache';
 
 const logger = createLogger('API:AgentPrewarmV2');
-
-type FastChatPrewarmRequest = {
-	session_id?: string;
-	context_type?: ChatContextType;
-	entity_id?: string;
-	projectFocus?: ProjectFocus | null;
-};
 
 function trimOptionalString(value: unknown): string | undefined {
 	if (typeof value !== 'string') return undefined;
@@ -98,9 +92,9 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		return ApiResponse.unauthorized();
 	}
 
-	let body: FastChatPrewarmRequest;
+	let body: FastAgentPrewarmRequest;
 	try {
-		body = (await request.json()) as FastChatPrewarmRequest;
+		body = (await request.json()) as FastAgentPrewarmRequest;
 	} catch (_error) {
 		return ApiResponse.badRequest('Invalid request body');
 	}
@@ -128,16 +122,19 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	const sessionId = trimOptionalString(body.session_id);
+	const ensureSession = body.ensure_session === true;
 	let session: ChatSession | null = null;
-	if (sessionId) {
-		const { data } = await supabase
-			.from('chat_sessions')
-			.select('*')
-			.eq('id', sessionId)
-			.eq('user_id', user.id)
-			.maybeSingle();
-		if (!data) {
-			return ApiResponse.success({ warmed: false, reason: 'session_not_found' });
+	if (sessionId || ensureSession) {
+		if (sessionId) {
+			const { data } = await supabase
+				.from('chat_sessions')
+				.select('*')
+				.eq('id', sessionId)
+				.eq('user_id', user.id)
+				.maybeSingle();
+			if (!data && !ensureSession) {
+				return ApiResponse.success({ warmed: false, reason: 'session_not_found' });
+			}
 		}
 
 		const sessionService = createFastChatSessionService(supabase, {

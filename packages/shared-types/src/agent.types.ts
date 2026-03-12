@@ -416,6 +416,13 @@ type LegacyAgentSSEMessage =
   | { type: 'queue_update'; operations: ChatOperation[] }
   | { type: 'executor_instructions'; instructions: string };
 
+export type SkillActivityEvent = {
+  type: 'skill_activity';
+  action: 'requested' | 'loaded';
+  path: string;
+  via: 'tool_help';
+};
+
 export type AgentSSEMessage =
   | { type: 'context_usage'; usage: ContextUsageSnapshot }
   | { type: 'session'; session?: ChatSession; sessionId?: string }
@@ -452,6 +459,7 @@ export type AgentSSEMessage =
   | { type: 'text_delta'; content: string }
   | { type: 'tool_call'; tool_call: ChatToolCall }
   | { type: 'tool_result'; result: Record<string, any> }
+  | SkillActivityEvent
   | { type: 'context_shift'; context_shift: ContextShiftPayload }
   | { type: 'entity_patch'; patch: Record<string, any> }
   | TemplateCreationEvent

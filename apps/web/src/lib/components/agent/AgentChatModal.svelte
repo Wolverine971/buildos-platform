@@ -27,7 +27,8 @@
 		ChatContextType,
 		ChatRole,
 		AgentSSEMessage,
-		AgentPlan
+		AgentPlan,
+		ContextUsageSnapshot
 	} from '@buildos/shared-types';
 	import {
 		requestAgentToAgentMessage,
@@ -63,6 +64,7 @@
 		isFastChatContextCacheFresh,
 		type FastChatContextCache
 	} from '$lib/services/agentic-chat-v2/context-cache';
+	import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
 
 	type ProjectAction = 'workspace';
 
@@ -100,6 +102,12 @@
 		contextType: ContextSelectionType;
 		entityId?: string;
 		label?: string;
+	}
+
+	interface SessionBootstrapTarget {
+		contextType: ChatContextType;
+		entityId?: string;
+		projectFocus?: ProjectFocus | null;
 	}
 
 	let {
@@ -184,12 +192,10 @@
 		return projectFocus ?? defaultProjectFocus;
 	});
 
-	async function prewarmAgentContext(payload: {
-		session_id?: string;
-		context_type: ChatContextType;
-		entity_id?: string;
-		projectFocus?: ProjectFocus | null;
-	}): Promise<{
+	async function prewarmAgentContext(
+		payload: FastAgentPrewarmRequest,
+		options: { signal?: AbortSignal } = {}
+	): Promise<{
 		session: ChatSession | null;
 		prewarmedContext: FastChatContextCache | null;
 	} | null> {
@@ -199,6 +205,7 @@
 				headers: {
 					'Content-Type': 'application/json'
 				},
+				signal: options.signal,
 				body: JSON.stringify(payload)
 			});
 			if (!response.ok) {
@@ -217,6 +224,9 @@
 				prewarmedContext: prewarmedContext as FastChatContextCache | null
 			};
 		} catch (err) {
+			if ((err as DOMException)?.name === 'AbortError') {
+				throw err;
+			}
 			if (dev) {
 				console.warn('[AgentChat] Prewarm failed:', err);
 			}
@@ -310,6 +320,7 @@
 	let lastTurnContext = $state<LastTurnContext | null>(null);
 	let ontologyLoaded = $state(false);
 	let ontologySummary = $state<string | null>(null);
+	let contextUsage = $state<ContextUsageSnapshot | null>(null);
 
 	// ✅ Svelte 5: Remove duplicate type declaration (imported from agent-chat.types.ts)
 	const AGENT_STATE_MESSAGES: Record<AgentLoopState, string> = {
@@ -364,33 +375,20 @@
 
 	// Session resumption state
 	let isLoadingSession = $state(false);
+	let isPreparingSession = $state(false);
 	let sessionLoadError = $state<string | null>(null);
 	let lastLoadedSessionId = $state<string | null>(null);
 	let sessionLoadRequestId = 0;
 	let sessionLoadController: AbortController | null = null;
-	const pendingSessionHydrationWaiters = new Set<(resolved: boolean) => void>();
-
-	function resolveSessionHydrationWaiters(resolved: boolean) {
-		if (pendingSessionHydrationWaiters.size === 0) return;
-		const waiters = [...pendingSessionHydrationWaiters];
-		pendingSessionHydrationWaiters.clear();
-		for (const waiter of waiters) {
-			waiter(resolved);
-		}
-	}
-
-	function waitForSessionHydration(timeoutMs = 450): Promise<boolean> {
-		if (currentSession?.id) return Promise.resolve(true);
-		return new Promise((resolve) => {
-			const waiter = (resolved: boolean) => {
-				clearTimeout(timeoutId);
-				pendingSessionHydrationWaiters.delete(waiter);
-				resolve(resolved);
-			};
-			pendingSessionHydrationWaiters.add(waiter);
-			const timeoutId = setTimeout(() => waiter(Boolean(currentSession?.id)), timeoutMs);
-		});
-	}
+	let sessionBootstrapRequestId = 0;
+	let sessionBootstrapController: AbortController | null = null;
+	let sessionBootstrapPromise: Promise<ChatSession | null> | null = null;
+	const isSessionBusy = $derived(isLoadingSession || isPreparingSession);
+	const sessionStatusLabel = $derived.by(() => {
+		if (isLoadingSession) return 'Loading session';
+		if (isPreparingSession) return 'Preparing session';
+		return null;
+	});
 
 	// Helper to check if we're in braindump context
 	const isBraindumpContext = $derived(selectedContextType === 'brain_dump');
@@ -412,6 +410,111 @@
 		}
 		return true;
 	});
+
+	const shouldShowSessionLoadingState = $derived.by(() => {
+		if (!isSessionBusy || messages.length > 0) return false;
+		if (showContextSelection || showProjectActionSelector) return false;
+		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
+		if (isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options')) {
+			return false;
+		}
+		return true;
+	});
+
+	const shouldShowSessionLoadErrorState = $derived.by(() => {
+		if (!sessionLoadError || isSessionBusy || messages.length > 0) return false;
+		if (showContextSelection || showProjectActionSelector) return false;
+		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
+		if (isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options')) {
+			return false;
+		}
+		return true;
+	});
+
+	function cancelSessionBootstrap() {
+		sessionBootstrapRequestId += 1;
+		if (sessionBootstrapController) {
+			sessionBootstrapController.abort();
+			sessionBootstrapController = null;
+		}
+		sessionBootstrapPromise = null;
+		isPreparingSession = false;
+	}
+
+	function buildSessionBootstrapTarget(
+		contextType: ChatContextType,
+		entityId?: string,
+		projectFocusOverride?: ProjectFocus | null
+	): SessionBootstrapTarget {
+		return {
+			contextType,
+			entityId: entityId ?? projectFocusOverride?.projectId ?? undefined,
+			projectFocus: projectFocusOverride ?? null
+		};
+	}
+
+	async function ensureSessionReady(target: SessionBootstrapTarget): Promise<ChatSession | null> {
+		if (currentSession?.id) {
+			return currentSession;
+		}
+
+		if (isProjectContext(target.contextType) && !target.entityId) {
+			throw new Error('Select a project before starting the conversation.');
+		}
+
+		if (sessionBootstrapPromise) {
+			return sessionBootstrapPromise;
+		}
+
+		sessionBootstrapRequestId += 1;
+		const requestId = sessionBootstrapRequestId;
+		const controller = new AbortController();
+		sessionBootstrapController = controller;
+		isPreparingSession = true;
+
+		let bootstrapPromise: Promise<ChatSession | null>;
+		bootstrapPromise = (async () => {
+			const warmed = await prewarmAgentContext(
+				{
+					session_id: currentSession?.id ?? undefined,
+					context_type: target.contextType,
+					entity_id: target.entityId,
+					projectFocus: target.projectFocus,
+					ensure_session: true
+				},
+				{ signal: controller.signal }
+			);
+
+			if (requestId !== sessionBootstrapRequestId || controller.signal.aborted) {
+				throw new DOMException('Session bootstrap aborted', 'AbortError');
+			}
+
+			if (!warmed?.session?.id) {
+				throw new Error('Unable to prepare a chat session right now.');
+			}
+
+			hydrateSessionFromEvent(warmed.session);
+			if (warmed.prewarmedContext && isFastChatContextCacheFresh(warmed.prewarmedContext)) {
+				prewarmedContext = warmed.prewarmedContext;
+				lastPrewarmKey = warmed.prewarmedContext.key;
+			}
+
+			return warmed.session;
+		})().finally(() => {
+			if (requestId === sessionBootstrapRequestId) {
+				isPreparingSession = false;
+			}
+			if (sessionBootstrapController === controller) {
+				sessionBootstrapController = null;
+			}
+			if (sessionBootstrapPromise === bootstrapPromise) {
+				sessionBootstrapPromise = null;
+			}
+		});
+
+		sessionBootstrapPromise = bootstrapPromise;
+		return bootstrapPromise;
+	}
 
 	function handleBackNavigation() {
 		if (isStreaming) return;
@@ -484,6 +587,7 @@
 	const isSendDisabled = $derived(
 		agentToAgentMode ||
 			!selectedContextType ||
+			isSessionBusy ||
 			(!inputValue.trim() && !isVoiceRecording) || // Allow send if recording (will get transcribed text)
 			(isStreaming && !isTouchDevice) ||
 			isVoiceInitializing ||
@@ -545,10 +649,10 @@
 		const { preserveContext = true } = options;
 
 		stopVoiceInput();
+		cancelSessionBootstrap();
 
 		messages = [];
 		currentSession = null;
-		resolveSessionHydrationWaiters(false);
 		currentPlan = null;
 		currentActivity = '';
 		inputValue = '';
@@ -563,6 +667,7 @@
 		agentState = null;
 		ontologyLoaded = false;
 		ontologySummary = null;
+		contextUsage = null;
 		pendingToolResults.clear();
 		resetMutationTracking();
 		voiceErrorMessage = '';
@@ -1022,6 +1127,7 @@
 				showProjectActionSelector = false;
 				lastPrewarmKey = null;
 				prewarmedContext = null;
+				cancelSessionBootstrap();
 				if (sessionLoadController) {
 					sessionLoadController.abort();
 					sessionLoadController = null;
@@ -1091,6 +1197,7 @@
 	$effect(() => {
 		if (!ENABLE_V2_PREWARM) return;
 		if (!browser || !isOpen || !selectedContextType) return;
+		if (isPreparingSession) return;
 		const prewarmEntityId = selectedEntityId ?? resolvedProjectFocus?.projectId;
 		if (isProjectContext(selectedContextType) && !prewarmEntityId) return;
 		const key = buildFastChatContextCacheKey({
@@ -1104,26 +1211,39 @@
 			isFastChatContextCacheFresh(prewarmedContext);
 		if (!key || (key === lastPrewarmKey && hasFreshMatchingPrewarm)) return;
 		lastPrewarmKey = key;
+		const controller = new AbortController();
 
 		void (async () => {
-			const warmed = await prewarmAgentContext({
-				session_id: currentSession?.id ?? undefined,
-				context_type: selectedContextType,
-				entity_id: prewarmEntityId,
-				projectFocus: resolvedProjectFocus
-			});
+			try {
+				const warmed = await prewarmAgentContext(
+					{
+						session_id: currentSession?.id ?? undefined,
+						context_type: selectedContextType,
+						entity_id: prewarmEntityId,
+						projectFocus: resolvedProjectFocus
+					},
+					{ signal: controller.signal }
+				);
 
-			if (warmed?.session) {
-				currentSession = warmed.session;
-			}
-			if (
-				warmed?.prewarmedContext &&
-				warmed.prewarmedContext.key === key &&
-				isFastChatContextCacheFresh(warmed.prewarmedContext)
-			) {
-				prewarmedContext = warmed.prewarmedContext;
+				if (controller.signal.aborted) return;
+				if (warmed?.session) {
+					hydrateSessionFromEvent(warmed.session);
+				}
+				if (
+					warmed?.prewarmedContext &&
+					warmed.prewarmedContext.key === key &&
+					isFastChatContextCacheFresh(warmed.prewarmedContext)
+				) {
+					prewarmedContext = warmed.prewarmedContext;
+				}
+			} catch (err) {
+				if ((err as DOMException)?.name !== 'AbortError' && dev) {
+					console.warn('[AgentChat] Background prewarm failed:', err);
+				}
 			}
 		})();
+
+		return () => controller.abort();
 	});
 
 	$effect(() => {
@@ -1234,6 +1354,7 @@
 	async function loadChatSession(sessionId: string) {
 		sessionLoadRequestId += 1;
 		const requestId = sessionLoadRequestId;
+		cancelSessionBootstrap();
 		if (sessionLoadController) {
 			sessionLoadController.abort();
 		}
@@ -1266,8 +1387,8 @@
 
 			// Set session and context
 			currentSession = session;
-			resolveSessionHydrationWaiters(Boolean(session.id));
 			lastLoadedSessionId = sessionId;
+			contextUsage = null;
 
 			// Map context type - handle 'general' alias
 			const contextType =
@@ -2946,6 +3067,7 @@
 	function handleClose() {
 		finalizeSession('close');
 		stopVoiceInput();
+		cancelSessionBootstrap();
 		if (currentStreamController && isStreaming) {
 			void handleStopGeneration('user_cancelled');
 		} else if (currentStreamController) {
@@ -3035,13 +3157,43 @@
 			error = 'Select a focus before starting the conversation.';
 			return;
 		}
+		if (isLoadingSession) {
+			error = 'Wait for the existing session to finish loading.';
+			return;
+		}
 
 		if (isStreaming) {
-			const awaitingSessionHandoff = !currentSession?.id;
 			await handleStopGeneration('superseded', { awaitCancelHint: true });
-			if (awaitingSessionHandoff) {
-				await waitForSessionHydration();
+		}
+
+		const requestContextType = selectedContextType;
+		const requestEntityId = selectedEntityId;
+		const requestProjectFocus = resolvedProjectFocus;
+		let sessionForTurn = currentSession;
+		if (!sessionForTurn?.id) {
+			try {
+				sessionForTurn = await ensureSessionReady(
+					buildSessionBootstrapTarget(
+						requestContextType,
+						requestEntityId,
+						requestProjectFocus
+					)
+				);
+			} catch (sessionError) {
+				if ((sessionError as DOMException)?.name === 'AbortError') {
+					return;
+				}
+				error =
+					sessionError instanceof Error
+						? sessionError.message
+						: 'Unable to prepare a chat session right now.';
+				return;
 			}
+		}
+
+		if (!sessionForTurn?.id) {
+			error = 'Unable to prepare a chat session right now.';
+			return;
 		}
 
 		const now = new Date();
@@ -3050,7 +3202,7 @@
 		// Add user message
 		const userMessage: UIMessage = {
 			id: crypto.randomUUID(),
-			session_id: currentSession?.id,
+			session_id: sessionForTurn.id,
 			user_id: undefined, // Will be set by backend
 			type: senderType as UIMessage['type'],
 			role: 'user' as ChatRole,
@@ -3113,15 +3265,15 @@
 				| 'risk'
 				| 'requirement'
 				| undefined;
-			if (resolvedProjectFocus && resolvedProjectFocus.focusType !== 'project-wide') {
-				ontologyEntityType = resolvedProjectFocus.focusType;
+			if (requestProjectFocus && requestProjectFocus.focusType !== 'project-wide') {
+				ontologyEntityType = requestProjectFocus.focusType;
 			}
 			const prewarmCacheKey =
-				selectedContextType &&
+				requestContextType &&
 				buildFastChatContextCacheKey({
-					contextType: selectedContextType,
-					entityId: selectedEntityId ?? resolvedProjectFocus?.projectId ?? null,
-					projectFocus: resolvedProjectFocus
+					contextType: requestContextType,
+					entityId: requestEntityId ?? requestProjectFocus?.projectId ?? null,
+					projectFocus: requestProjectFocus
 				});
 			const matchingPrewarmedContext =
 				prewarmCacheKey &&
@@ -3139,11 +3291,11 @@
 				signal: streamController.signal,
 				body: JSON.stringify({
 					message: trimmed,
-					session_id: currentSession?.id,
-					context_type: selectedContextType,
-					entity_id: selectedEntityId,
+					session_id: sessionForTurn.id,
+					context_type: requestContextType,
+					entity_id: requestEntityId,
 					ontologyEntityType: ontologyEntityType, // Pass entity type for ontology loading
-					projectFocus: resolvedProjectFocus,
+					projectFocus: requestProjectFocus,
 					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity
 					stream_run_id: runId,
 					client_turn_id: clientTurnId,
@@ -3272,7 +3424,6 @@
 		if (metadataFocus) {
 			projectFocus = metadataFocus;
 		}
-		resolveSessionHydrationWaiters(Boolean(sessionEvent.id));
 	}
 
 	function handleSSEMessage(event: AgentSSEMessage) {
@@ -3285,6 +3436,10 @@
 				if (event.session) {
 					hydrateSessionFromEvent(event.session);
 				}
+				break;
+
+			case 'context_usage':
+				contextUsage = event.usage ?? null;
 				break;
 
 			case 'last_turn_context':
@@ -3633,6 +3788,16 @@
 				recordDataMutation(resolvedToolName, resolvedArgs, success, toolResult);
 				break;
 			}
+
+			case 'skill_activity':
+				if (dev) {
+					addActivityToThinkingBlock(
+						`${event.action === 'requested' ? 'Skill requested' : 'Skill loaded'}: ${event.path}`,
+						'general',
+						{ skillActivity: event }
+					);
+				}
+				break;
 
 			case 'operation': {
 				const operationPayload =
@@ -4199,6 +4364,7 @@
 			sessionLoadController.abort();
 			sessionLoadController = null;
 		}
+		cancelSessionBootstrap();
 		finalizeSession('destroy');
 		stopVoiceInput();
 		if (currentStreamController && isStreaming) {
@@ -4218,17 +4384,48 @@
 		<!-- Embedded chat content area -->
 		<div class="relative z-10 flex flex-1 flex-col overflow-hidden bg-card">
 			<div class="flex h-full min-h-0 flex-col">
-				<AgentMessageList
-					{messages}
-					{displayContextLabel}
-					onToggleThinkingBlock={toggleThinkingBlockCollapse}
-					bind:container={messagesContainer}
-					onScroll={handleScroll}
-					{voiceNotesByGroupId}
-					onDeleteVoiceNote={removeVoiceNoteFromGroup}
-				/>
+				{#if isSessionBusy && messages.length === 0}
+					<div class="flex flex-1 items-center justify-center px-6 text-center">
+						<div class="max-w-sm space-y-2">
+							<div
+								class="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted"
+							>
+								<span
+									class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent text-muted-foreground"
+								></span>
+							</div>
+							<p class="text-sm font-semibold text-foreground">
+								{sessionStatusLabel}
+							</p>
+							<p class="text-xs text-muted-foreground">
+								Restoring the conversation before the next turn.
+							</p>
+						</div>
+					</div>
+				{:else if sessionLoadError && messages.length === 0}
+					<div class="flex flex-1 items-center justify-center px-6 text-center">
+						<div
+							class="max-w-sm space-y-2 rounded-xl border border-red-600/20 bg-red-50 p-4 dark:bg-red-950/20"
+						>
+							<p class="text-sm font-semibold text-red-700 dark:text-red-300">
+								Unable to load this chat
+							</p>
+							<p class="text-xs text-red-600 dark:text-red-400">{sessionLoadError}</p>
+						</div>
+					</div>
+				{:else}
+					<AgentMessageList
+						{messages}
+						{displayContextLabel}
+						onToggleThinkingBlock={toggleThinkingBlockCollapse}
+						bind:container={messagesContainer}
+						onScroll={handleScroll}
+						{voiceNotesByGroupId}
+						onDeleteVoiceNote={removeVoiceNoteFromGroup}
+					/>
+				{/if}
 
-				{#if error}
+				{#if error && !(sessionLoadError && messages.length === 0)}
 					<div
 						class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
 						role="alert"
@@ -4256,6 +4453,8 @@
 						{isSendDisabled}
 						allowSendWhileStreaming={isTouchDevice}
 						{displayContextLabel}
+						mode="chat"
+						disabled={isSessionBusy}
 						vocabularyTerms={resolvedProjectFocus?.projectName ?? displayContextLabel}
 						onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
 						onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
@@ -4298,6 +4497,8 @@
 					{ontologyLoaded}
 					hasActiveThinkingBlock={!!currentThinkingBlockId}
 					{currentActivity}
+					{sessionStatusLabel}
+					{contextUsage}
 				/>
 			</div>
 		{/snippet}
@@ -4373,6 +4574,8 @@
 									bind:voiceErrorMessage
 									bind:voiceRecordingDuration
 									bind:voiceSupportsLiveTranscript
+									mode="braindump"
+									disabled={isSessionBusy}
 									isStreaming={false}
 									isSendDisabled={!inputValue.trim() ||
 										isVoiceRecording ||
@@ -4465,6 +4668,46 @@
 								← Edit braindump
 							</button>
 						</div>
+					{:else if shouldShowSessionLoadingState}
+						<div class="flex flex-1 items-center justify-center px-6 text-center">
+							<div class="max-w-sm space-y-2">
+								<div
+									class="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted"
+								>
+									<span
+										class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent text-muted-foreground"
+									></span>
+								</div>
+								<p class="text-sm font-semibold text-foreground">
+									{sessionStatusLabel}
+								</p>
+								<p class="text-xs text-muted-foreground">
+									Restoring the conversation before the next turn.
+								</p>
+							</div>
+						</div>
+					{:else if shouldShowSessionLoadErrorState}
+						<div class="flex flex-1 items-center justify-center px-6 text-center">
+							<div
+								class="max-w-sm space-y-3 rounded-xl border border-red-600/20 bg-red-50 p-4 dark:bg-red-950/20"
+							>
+								<p class="text-sm font-semibold text-red-700 dark:text-red-300">
+									Unable to load this chat
+								</p>
+								<p class="text-xs text-red-600 dark:text-red-400">
+									{sessionLoadError}
+								</p>
+								{#if initialChatSessionId}
+									<button
+										type="button"
+										class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
+										onclick={() => loadChatSession(initialChatSessionId)}
+									>
+										Try again
+									</button>
+								{/if}
+							</div>
+						</div>
 					{:else}
 						<AgentMessageList
 							{messages}
@@ -4477,7 +4720,7 @@
 						/>
 					{/if}
 
-					{#if !showContextSelection && !showProjectActionSelector && error}
+					{#if !showContextSelection && !showProjectActionSelector && error && !shouldShowSessionLoadErrorState}
 						<!-- INKPRINT error message with Static texture -->
 						<div
 							class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
@@ -4594,6 +4837,8 @@
 								{isSendDisabled}
 								allowSendWhileStreaming={isTouchDevice}
 								{displayContextLabel}
+								mode="chat"
+								disabled={isSessionBusy}
 								vocabularyTerms={resolvedProjectFocus?.projectName ??
 									displayContextLabel}
 								onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}

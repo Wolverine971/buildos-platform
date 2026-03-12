@@ -31,6 +31,11 @@
 			"components": ["DailyBriefModal", "BriefChatModal", "OverdueTaskTriageModal"]
 		},
 		{
+			"file": "src/lib/components/layout/Navigation.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
 			"type": "component",
 			"components": [
@@ -49,11 +54,6 @@
 				"CalendarAnalysisModalContent",
 				"TimeBlockModalContent"
 			]
-		},
-		{
-			"file": "src/lib/components/layout/Navigation.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/ontology/DocumentModal.svelte",
@@ -145,6 +145,11 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -153,11 +158,6 @@
 				"ProjectInsightRail",
 				"ProjectModalsHost"
 			]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -771,6 +771,19 @@
 			"exports": ["isThinkingBlockMessage", "findThinkingBlockById"]
 		},
 		{
+			"file": "src/lib/components/agent/project-entity-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_ENTITY_RESULT_LIMIT",
+				"MAX_PROJECT_ENTITY_RESULT_LIMIT",
+				"PROJECT_ENTITY_SEARCH_DEBOUNCE_MS",
+				"fetchProjectEntities",
+				"normalizeEntitySearch",
+				"normalizeEntityLimit"
+			]
+		},
+		{
 			"file": "src/lib/components/project/project-page-data-controller.ts",
 			"type": "component",
 			"components": [],
@@ -802,6 +815,12 @@
 				"preserveInsertedVoiceSpacing",
 				"canReplaceInsertedVoiceRange"
 			]
+		},
+		{
+			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["createDragDropState"]
 		},
 		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
@@ -892,12 +911,6 @@
 				"formatRelationshipLabel",
 				"getFilteredSections"
 			]
-		},
-		{
-			"file": "src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-			"type": "component",
-			"components": [],
-			"exports": ["createDragDropState"]
 		},
 		{
 			"file": "src/lib/components/ui/codemirror/extensions.ts",
@@ -1016,23 +1029,24 @@
 	},
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
+		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
-		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
+		"src/lib/components/agent/project-entity-browser.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
+		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
 		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",

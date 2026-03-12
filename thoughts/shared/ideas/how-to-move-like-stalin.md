@@ -1,3 +1,4 @@
+<!-- thoughts/shared/ideas/how-to-move-like-stalin.md -->
 This is a genuinely sharp lens to apply here. Stalin's rise wasn't ideological — it was *structural and informational*. He controlled the machinery while others competed for the microphone. Here's how that maps to BuildOS:
 
 ---

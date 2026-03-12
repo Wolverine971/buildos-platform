@@ -1945,7 +1945,10 @@
 					const treeData = payload.data as GetDocTreeResponse;
 					docTreeStructure = treeData.structure;
 					docTreeDocuments = treeData.documents;
-					if (projectId === requestedProjectId && activeDocumentId === requestedDocumentId) {
+					if (
+						projectId === requestedProjectId &&
+						activeDocumentId === requestedDocumentId
+					) {
 						lastDocTreeLoadKey = loadKey;
 					}
 				}
@@ -3410,7 +3413,9 @@
 							{/if}
 						</button>
 						{#if showComments}
-							<div class="max-h-[25vh] overflow-hidden transition-[max-height] duration-200">
+							<div
+								class="max-h-[25vh] overflow-hidden transition-[max-height] duration-200"
+							>
 								<div class="overflow-y-auto" style:max-height="25vh">
 									<EntityCommentsSection
 										{projectId}

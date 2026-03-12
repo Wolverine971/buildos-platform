@@ -42,7 +42,7 @@ Related APIs used by the modal:
 - `GET /api/chat/sessions/[id]` (resume existing session)
 - `POST /api/chat/sessions/[id]/close` (session finalize + classification trigger)
 - `POST /api/chat/sessions/[id]/classify` (fallback classification queue)
-- `POST /api/agent/prewarm` (implemented, currently disabled in modal by `ENABLE_V2_PREWARM = false`)
+- `POST /api/agent/v2/prewarm` (enabled in modal; warms prompt context and can ensure a session before first stream turn)
 
 ## 3. V2 Request/Response Contract
 
@@ -65,9 +65,26 @@ Behavior notes:
 - Sends `agent_state: thinking` immediately.
 - Validates access for project and daily brief contexts before doing heavy work.
 - Creates or resolves `chat_sessions`.
+- First-turn session identity is now stabilized by `POST /api/agent/v2/prewarm` with `ensure_session: true` before the modal opens a cancellable V2 stream when no session exists yet.
 - Loads recent `chat_messages` (last N, default 10) and composes compressed history when needed.
 - Streams text/tool events over SSE.
 - Persists user + assistant messages (idempotent by `client_turn_id` keys).
+
+### 3.3 `POST /api/agent/v2/prewarm`
+
+Request body:
+
+- `session_id`
+- `context_type`
+- `entity_id`
+- `projectFocus`
+- `ensure_session` (optional)
+
+Behavior:
+
+- Warms prompt context for the active focus and returns `prewarmed_context`.
+- Reuses a fresh session cache when available.
+- When `ensure_session: true`, resolves or creates the matching `chat_session` up front and returns it to the modal.
 
 ### 3.2 `POST /api/agent/v2/stream/cancel`
 
@@ -122,6 +139,7 @@ Notes:
 
 - UI still handles additional event types (`operation`, `entity_patch`, planner/plan events) for compatibility with legacy path.
 - Current V2 route defines operation helpers but does not actively emit `operation` events.
+- The modal consumes `context_usage` to surface lightweight header warnings when the active context is near the token budget or over it.
 
 ## 6. Context, Caching, and History
 

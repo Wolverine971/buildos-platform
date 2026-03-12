@@ -11,7 +11,21 @@ import {
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 
-export const GET: RequestHandler = async ({ locals }) => {
+const DEFAULT_PROJECT_LIST_LIMIT = 24;
+const MAX_PROJECT_LIST_LIMIT = 100;
+
+function normalizeProjectListLimit(value: string | null): number | null {
+	if (!value) return null;
+	const parsed = Number.parseInt(value, 10);
+	if (!Number.isFinite(parsed)) return null;
+	return Math.min(MAX_PROJECT_LIST_LIMIT, Math.max(1, parsed));
+}
+
+function normalizeProjectSearch(value: string | null): string {
+	return value?.trim().toLowerCase() ?? '';
+}
+
+export const GET: RequestHandler = async ({ locals, url }) => {
 	try {
 		const { user } = await locals.safeGetSession();
 		if (!user) {
@@ -38,8 +52,31 @@ export const GET: RequestHandler = async ({ locals }) => {
 			return ApiResponse.error('Failed to fetch ontology projects', 500);
 		}
 
+		const search = normalizeProjectSearch(url.searchParams.get('search'));
+		const limit =
+			normalizeProjectListLimit(url.searchParams.get('limit')) ?? DEFAULT_PROJECT_LIST_LIMIT;
+
+		let filteredSummaries = summaries;
+		if (search) {
+			filteredSummaries = summaries.filter((project) => {
+				const haystack = [
+					project.name,
+					project.description,
+					project.facet_context,
+					project.facet_scale,
+					project.facet_stage
+				]
+					.filter(
+						(value): value is string => typeof value === 'string' && value.length > 0
+					)
+					.join(' ')
+					.toLowerCase();
+				return haystack.includes(search);
+			});
+		}
+
 		return ApiResponse.success({
-			projects: summaries
+			projects: filteredSummaries.slice(0, limit)
 		});
 	} catch (err) {
 		console.error('[Ontology API] Unexpected error:', err);

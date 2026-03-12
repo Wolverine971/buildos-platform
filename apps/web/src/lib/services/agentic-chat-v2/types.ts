@@ -2,6 +2,7 @@
 import type {
 	ChatContextType,
 	ChatSession,
+	SkillActivityEvent,
 	ChatToolCall,
 	ChatToolResult,
 	ContextShiftPayload,
@@ -29,6 +30,14 @@ export type FastAgentStreamRequest = {
 	prewarmed_context?: FastChatContextCache | null;
 };
 
+export type FastAgentPrewarmRequest = {
+	session_id?: string;
+	context_type?: ChatContextType;
+	entity_id?: string;
+	projectFocus?: ProjectFocus | null;
+	ensure_session?: boolean;
+};
+
 export type FastAgentCancelReason = 'user_cancelled' | 'superseded';
 
 export type FastAgentCancelRequest = {
@@ -45,6 +54,7 @@ export type FastAgentStreamUsage = {
 };
 
 export type FastAgentStreamEvent =
+	| SkillActivityEvent
 	| { type: 'context_usage'; usage: ContextUsageSnapshot }
 	| { type: 'session'; session: ChatSession }
 	| { type: 'last_turn_context'; context: LastTurnContext }

@@ -13,6 +13,8 @@
 		isSendDisabled: boolean;
 		allowSendWhileStreaming?: boolean;
 		displayContextLabel: string;
+		mode?: 'chat' | 'braindump';
+		disabled?: boolean;
 		vocabularyTerms?: string;
 		voiceInputRef: TextareaWithVoiceComponent | null;
 		isVoiceRecording: boolean;
@@ -35,6 +37,8 @@
 		isSendDisabled,
 		allowSendWhileStreaming = false,
 		displayContextLabel,
+		mode = 'chat',
+		disabled = false,
 		vocabularyTerms = '',
 		voiceInputRef = $bindable(),
 		isVoiceRecording = $bindable(),
@@ -51,14 +55,33 @@
 		onStop
 	}: Props = $props();
 
+	const placeholder = $derived.by(() => {
+		if (mode === 'braindump') {
+			return 'Capture whatever is on your mind...';
+		}
+		const label = displayContextLabel.trim().toLowerCase();
+		return label ? `Ask about ${label}...` : 'Ask BuildOS anything...';
+	});
+
+	const initialRows = $derived(mode === 'braindump' ? 8 : 1);
+	const maxRows = $derived(mode === 'braindump' ? 18 : 6);
+	const isVoiceBlocked = $derived(isStreaming || disabled);
+	const resolvedVoiceBlockedLabel = $derived(
+		disabled ? 'Chat is still loading...' : 'Wait for BuildOS...'
+	);
+
 	function handleSubmit(event: Event) {
 		event.preventDefault();
+		if (disabled) return;
 		onSend?.(); // ✅ Svelte 5: Call callback instead of dispatching event
 	}
 </script>
 
 <!-- INKPRINT form with compact spacing and Grain texture for active input workspace -->
-<form onsubmit={handleSubmit} class="space-y-2 tx tx-grain tx-weak rounded-lg">
+<form
+	onsubmit={handleSubmit}
+	class={`space-y-2 tx tx-grain tx-weak rounded-lg ${mode === 'braindump' ? 'h-full' : ''}`}
+>
 	<TextareaWithVoice
 		bind:this={voiceInputRef}
 		bind:value={inputValue}
@@ -73,15 +96,17 @@
 		{onVoiceNoteSegmentSaved}
 		{onVoiceNoteSegmentError}
 		class="w-full"
-		containerClass="rounded border border-border bg-background shadow-ink-inner"
+		containerClass={`rounded border border-border bg-background shadow-ink-inner ${
+			mode === 'braindump' ? 'h-full' : ''
+		}`}
 		textareaClass="border-none bg-transparent px-3 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-4 sm:py-3"
-		placeholder={`Brain dump about ${displayContextLabel.toLowerCase()}...`}
+		{placeholder}
 		autoResize
-		rows={1}
-		maxRows={6}
-		disabled={false}
-		voiceBlocked={isStreaming}
-		voiceBlockedLabel="Wait for BuildOS..."
+		rows={initialRows}
+		{maxRows}
+		{disabled}
+		voiceBlocked={isVoiceBlocked}
+		voiceBlockedLabel={resolvedVoiceBlockedLabel}
 		voiceButtonLabel="Record voice note"
 		listeningLabel="Listening"
 		transcribingLabel="Transcribing..."
@@ -113,7 +138,7 @@
 						style="-webkit-tap-highlight-color: transparent;"
 						aria-label="Send & stop"
 						title="Send & stop"
-						disabled={isSendDisabled}
+						disabled={disabled || isSendDisabled}
 					>
 						<Send class="h-3.5 w-3.5" />
 					</button>
@@ -125,7 +150,7 @@
 					class="flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none disabled:cursor-not-allowed dark:focus-visible:ring-offset-background"
 					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Send message"
-					disabled={isSendDisabled}
+					disabled={disabled || isSendDisabled}
 				>
 					<Send class="h-3.5 w-3.5" />
 				</button>

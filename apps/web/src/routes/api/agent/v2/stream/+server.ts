@@ -10,6 +10,7 @@
  */
 
 import type { RequestHandler } from './$types';
+import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
@@ -52,6 +53,11 @@ import {
 	streamFastChat,
 	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
+import {
+	getLoadedSkillActivity,
+	getRequestedSkillActivity,
+	type SkillActivityEvent
+} from '$lib/services/agentic-chat-v2/skill-activity';
 import {
 	FASTCHAT_CONTEXT_CACHE_VERSION,
 	buildFastChatContextCacheEntry,
@@ -962,6 +968,17 @@ function emitToolResult(
 	const payload = buildToolResultEventPayload(toolCall, result);
 	void agentStream.sendMessage({ type: 'tool_result', result: payload }).catch((error) => {
 		logger.warn('Failed to emit tool_result', { error, toolCall });
+		onError?.(error);
+	});
+}
+
+function emitSkillActivity(
+	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
+	event: SkillActivityEvent,
+	onError?: (error: unknown) => void
+): void {
+	void agentStream.sendMessage(event).catch((error) => {
+		logger.warn('Failed to emit skill_activity', { error, event });
 		onError?.(error);
 	});
 }
@@ -2538,6 +2555,26 @@ export const POST: RequestHandler = async ({
 								}
 							});
 						});
+						if (dev) {
+							const skillActivity = getRequestedSkillActivity(patchedCall);
+							if (skillActivity) {
+								emitSkillActivity(agentStream, skillActivity, (error) => {
+									logFastChatError({
+										error,
+										operationType: 'fastchat_stream_emit_skill_activity',
+										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+										metadata: {
+											sessionId: session.id,
+											contextType: effectiveContextType,
+											toolName: patchedCall.function.name,
+											toolCallId: patchedCall.id,
+											action: skillActivity.action,
+											path: skillActivity.path
+										}
+									});
+								});
+							}
+						}
 					},
 					onToolResult: async ({ toolCall, result }) => {
 						try {
@@ -2555,6 +2592,27 @@ export const POST: RequestHandler = async ({
 									}
 								});
 							});
+							if (dev) {
+								const skillActivity = getLoadedSkillActivity(patchedCall, result);
+								if (skillActivity) {
+									emitSkillActivity(agentStream, skillActivity, (error) => {
+										logFastChatError({
+											error,
+											operationType: 'fastchat_stream_emit_skill_activity',
+											projectId:
+												effectiveProjectIdForTools ?? projectIdForLogs,
+											metadata: {
+												sessionId: session.id,
+												contextType: effectiveContextType,
+												toolName: patchedCall.function.name,
+												toolCallId: patchedCall.id,
+												action: skillActivity.action,
+												path: skillActivity.path
+											}
+										});
+									});
+								}
+							}
 							if (!result.success) {
 								const toolFailureMetadata = {
 									sessionId: session.id,

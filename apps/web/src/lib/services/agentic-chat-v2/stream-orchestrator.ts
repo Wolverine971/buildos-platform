@@ -1567,11 +1567,14 @@ function buildToolValidationRepairInstruction(
 	];
 	if (hasGatewayExecIssue) {
 		lines.push(
-			'Gateway pattern: choose targeted tool_help by intent: onto.<entity>, onto.task.docs, cal.skill, util.profile, util.contact, util.web, util.buildos, util.schema; use root only when namespace is unknown.'
+			'Gateway pattern: choose targeted tool_help by intent: onto.<entity>, onto.task.docs, cal.skill, onto.document.skill, onto.plan.skill, util.profile, util.contact, util.web, util.buildos, util.schema; use root only when namespace is unknown.'
+		);
+		lines.push(
+			'Fetch a skill only when the workflow is multi-step, stateful, or easy to get wrong.'
 		);
 		lines.push('tool_help can return a directory, a skill playbook, or an exact op schema.');
 		lines.push(
-			'For calendar workflows, call tool_help({ path: "cal.skill" }) before calendar tool_exec calls.'
+			'Useful skill entry points: cal.skill for calendar/event work, onto.document.skill for project doc tree or task docs, and onto.plan.skill for plan creation or restructuring.'
 		);
 		lines.push(
 			'Gateway payload contract: tool_help({ path: "<path>", format?: "short|full", include_schemas?: boolean }) and tool_exec({ op: "<canonical op>", args: { ... } }).'

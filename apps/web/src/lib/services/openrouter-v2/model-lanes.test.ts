@@ -43,8 +43,8 @@ describe('resolveLaneModels', () => {
 
 		const result = resolveLaneModels({ lane: 'text' });
 
-		expect(result[0]).toBe('openrouter/hunter-alpha');
-		expect(result).toContain('openrouter/healer-alpha');
+		expect(result[0]).toBe('google/gemini-3.1-flash-lite-preview');
+		expect(result).toContain('inception/mercury-2');
 	});
 
 	it('returns default tool lane models when exacto is disabled', () => {
@@ -52,8 +52,19 @@ describe('resolveLaneModels', () => {
 
 		const result = resolveLaneModels({ lane: 'tool_calling', exactoToolsEnabled: false });
 
-		expect(result[0]).toBe('openrouter/hunter-alpha');
+		expect(result[0]).toBe('minimax/minimax-m2.5');
 		expect(result).toContain('x-ai/grok-4.1-fast');
+		expect(result).toContain('deepseek/deepseek-v3.2');
+	});
+
+	it('returns upgraded JSON lane defaults', () => {
+		delete process.env.OPENROUTER_V2_LANE_JSON_MODELS;
+
+		const result = resolveLaneModels({ lane: 'json' });
+
+		expect(result[0]).toBe('deepseek/deepseek-v3.2');
+		expect(result).toContain('google/gemini-3.1-flash-lite-preview');
+		expect(result).toContain('minimax/minimax-m2.5');
 	});
 
 	it('uses exacto defaults for tool lane when enabled', () => {

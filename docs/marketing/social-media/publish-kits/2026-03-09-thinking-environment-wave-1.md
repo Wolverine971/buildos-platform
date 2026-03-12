@@ -197,37 +197,49 @@ What I Mean by Thinking Environment
 ### Final copy
 
 ```text
-Most software for creators is built around one artifact.
+I do not think the real problem for creators is "needing better productivity tools."
 
-One tool helps you write.
-One tool helps you plan.
-One tool helps you store notes.
-One tool helps you talk to AI.
+I think the real problem is fragmented context.
 
-But real creative work is not one artifact.
+An idea is in Apple Notes.
+The draft is in a Google Doc.
+A source you want to cite is buried in a YouTube video.
+Feedback is in email or DMs.
+Useful thinking is spread across old ChatGPT and Claude threads.
+The task list lives somewhere else.
 
-Books, YouTube channels, podcasts, and courses are living systems with drafts, references, decisions, feedback, and next steps all affecting each other.
+At that point, the hard part is not the work itself.
+
+The hard part is remembering:
+where the note is
+which AI chat had the good answer
+what source you wanted to reference
+which version is current
+and what the next move actually is
 
 That is why I like the phrase "thinking environment" for BuildOS.
 
 Not another AI tool.
 Not another productivity app.
 
-A place where rough thinking becomes structured work, and where the project remembers what matters over time.
+A place where notes, sources, chats, decisions, and next steps stay attached to the project.
 
-Curious whether this framing resonates more than "AI productivity tool."
+That feels much closer to the real job.
 ```
 
 ### Recommended image
 
 - none required
 - text-only is fine for authenticity
-- optional: simple screenshot of the homepage hero
+- optional: fragmented-workflow visual
+- avoid using a generic homepage screenshot for this one
 
 ### First comment
 
 ```text
-What I keep coming back to is that creators do not need more places to type. They need fewer places to think.
+The failure mode I keep seeing is not lack of ideas.
+
+It is context getting split across notes, docs, sources, and AI chats until the project stops holding together.
 ```
 
 ### Goal

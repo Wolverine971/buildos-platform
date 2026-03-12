@@ -73,6 +73,10 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		}
 
 		const search = url.searchParams.get('search');
+		const requestedLimit = Number.parseInt(url.searchParams.get('limit') ?? '', 10);
+		const limit = Number.isFinite(requestedLimit)
+			? Math.min(50, Math.max(1, requestedLimit))
+			: 24;
 		const { table, select, searchField } = ENTITY_CONFIG[typeParam];
 
 		let query = supabase
@@ -80,7 +84,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			.select(select)
 			.eq('project_id', projectId)
 			.is('deleted_at', null)
-			.limit(50);
+			.limit(limit);
 
 		// Sanitize search input to prevent SQL injection (security fix: 2026-01-03)
 		if (search) {

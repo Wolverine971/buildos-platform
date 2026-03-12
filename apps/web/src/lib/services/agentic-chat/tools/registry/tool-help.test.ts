@@ -85,13 +85,17 @@ describe('getToolHelp', () => {
 
 		expect(help.type).toBe('skill');
 		expect(help.path).toBe('cal.skill');
+		expect(Array.isArray(help.when_to_use)).toBe(true);
 		expect(Array.isArray(help.workflow)).toBe(true);
-		expect(Array.isArray(help.ops?.read)).toBe(true);
-		expect(Array.isArray(help.ops?.write)).toBe(true);
-		expect(help.ops.read.map((item: any) => item.op)).toContain('cal.event.list');
-		expect(help.ops.write.map((item: any) => item.op)).toContain('cal.event.create');
-		expect(help.ops.write.map((item: any) => item.op)).toContain('cal.event.update');
-		expect(help.ops.write.map((item: any) => item.op)).toContain('cal.event.delete');
+		expect(Array.isArray(help.related_ops)).toBe(true);
+		expect(help.related_ops).toContain('cal.event.list');
+		expect(help.related_ops).toContain('cal.event.create');
+		expect(help.related_ops).toContain('cal.event.update');
+		expect(help.related_ops).toContain('cal.event.delete');
+		expect(Array.isArray(help.guardrails)).toBe(true);
+		expect(help.guardrails.join(' ')).toContain('onto_event_id');
+		expect(Array.isArray(help.notes)).toBe(true);
+		expect(help.notes.join(' ')).toContain('time zone normalization');
 	});
 
 	it('lists calendar skill under cal namespace', () => {
@@ -104,6 +108,66 @@ describe('getToolHelp', () => {
 		expect(help.path).toBe('cal');
 		expect(Array.isArray(help.items)).toBe(true);
 		expect(help.items.map((item: any) => item.name)).toContain('cal.skill');
+	});
+
+	it('returns document skill playbook for onto.document.skill', () => {
+		const help = getToolHelp('onto.document.skill', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('skill');
+		expect(help.path).toBe('onto.document.skill');
+		expect(Array.isArray(help.when_to_use)).toBe(true);
+		expect(help.when_to_use.join(' ')).toContain('task workspace');
+		expect(Array.isArray(help.related_ops)).toBe(true);
+		expect(help.related_ops).toContain('onto.document.create');
+		expect(help.related_ops).toContain('onto.task.docs.create_or_attach');
+		expect(help.workflow.join(' ')).toContain('project_id, title, and description');
+		expect(Array.isArray(help.guardrails)).toBe(true);
+		expect(help.guardrails.join(' ')).toContain('document_id');
+	});
+
+	it('lists document skill under onto.document namespace', () => {
+		const help = getToolHelp('onto.document', {
+			format: 'short',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('directory');
+		expect(help.path).toBe('onto.document');
+		expect(Array.isArray(help.items)).toBe(true);
+		expect(help.items.map((item: any) => item.name)).toContain('onto.document.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('onto.document.create');
+	});
+
+	it('returns plan skill playbook for onto.plan.skill', () => {
+		const help = getToolHelp('onto.plan.skill', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('skill');
+		expect(help.path).toBe('onto.plan.skill');
+		expect(Array.isArray(help.related_ops)).toBe(true);
+		expect(help.related_ops).toContain('onto.plan.create');
+		expect(help.related_ops).toContain('onto.task.create');
+		expect(help.workflow.join(' ')).toContain('todo, in_progress, blocked, or done');
+		expect(Array.isArray(help.notes)).toBe(true);
+		expect(help.notes.join(' ')).toContain('exact task and plan relationships');
+	});
+
+	it('lists plan skill under onto.plan namespace', () => {
+		const help = getToolHelp('onto.plan', {
+			format: 'short',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('directory');
+		expect(help.path).toBe('onto.plan');
+		expect(Array.isArray(help.items)).toBe(true);
+		expect(help.items.map((item: any) => item.name)).toContain('onto.plan.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('onto.plan.create');
 	});
 
 	it('supports profile overview op discovery', () => {
