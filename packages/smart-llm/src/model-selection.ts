@@ -103,15 +103,18 @@ export function selectModelsByRequirements(
 
 	// Calculate value score for each model
 	const scored = eligible.map((model) => {
+		// OpenRouter alpha and promotional models can be temporarily listed as free.
+		// Keep them strongly favored without producing Infinity scores.
+		const costDenominator = model.cost > 0 ? model.cost : 0.01;
 		let score: number;
 
 		if (type === 'json') {
 			// For JSON: prioritize accuracy and speed
-			score = (model.smartness * 2 + model.speed) / model.cost;
+			score = (model.smartness * 2 + model.speed) / costDenominator;
 		} else {
 			// For text: balance all factors
 			const creativity = model.creativity || model.smartness;
-			score = (model.smartness + model.speed + creativity) / model.cost;
+			score = (model.smartness + model.speed + creativity) / costDenominator;
 		}
 
 		return { model, score };

@@ -19,8 +19,6 @@
 		Clock,
 		RotateCcw,
 		GitCompare,
-		ChevronDown,
-		ChevronUp,
 		User,
 		Filter,
 		Search,
@@ -30,7 +28,6 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
@@ -134,12 +131,6 @@
 	// ============================================================
 	// EFFECTS
 	// ============================================================
-	$effect(() => {
-		if (documentId && !hasLoaded) {
-			loadVersions();
-		}
-	});
-
 	// Reset when document changes
 	$effect(() => {
 		if (documentId) {
@@ -177,7 +168,6 @@
 
 			// Apply time filter to API
 			if (timeFilter !== 'all') {
-				const now = new Date();
 				const from = new Date();
 				if (timeFilter === '24h') {
 					from.setHours(from.getHours() - 24);

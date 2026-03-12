@@ -17,6 +17,7 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 	const entityId = url.searchParams.get('entity_id');
 	const rootId = url.searchParams.get('root_id');
 	const includeDeleted = url.searchParams.get('include_deleted') === 'true';
+	const countOnly = url.searchParams.get('count_only') === 'true';
 
 	const limit = Math.min(
 		Math.max(Number(url.searchParams.get('limit')) || DEFAULT_LIMIT, 1),
@@ -116,6 +117,44 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 
 		if (!project.is_public && !hasAccess) {
 			return ApiResponse.forbidden('Access denied');
+		}
+
+		if (countOnly) {
+			let countQuery = supabase
+				.from('onto_comments')
+				.select('id', { count: 'exact', head: true })
+				.eq('project_id', projectId)
+				.eq('entity_type', entityType)
+				.eq('entity_id', entityId);
+
+			if (rootId) {
+				countQuery = countQuery.eq('root_id', rootId);
+			}
+
+			if (!includeDeleted) {
+				countQuery = countQuery.is('deleted_at', null);
+			}
+
+			const { count, error } = await countQuery;
+
+			if (error) {
+				await logOntologyApiError({
+					supabase,
+					error,
+					endpoint: '/api/onto/comments',
+					method: 'GET',
+					projectId,
+					entityType,
+					entityId,
+					operation: 'comments_count_fetch',
+					tableName: 'onto_comments'
+				});
+				return ApiResponse.databaseError(error);
+			}
+
+			return ApiResponse.success({
+				count: count ?? 0
+			});
 		}
 
 		let query = supabase

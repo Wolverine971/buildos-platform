@@ -29,6 +29,23 @@ export const JSON_MODELS: Record<string, ModelProfile> = {
 		bestFor: ['best-value', 'structured-output', 'multilingual', 'coding', 'tool-calling'],
 		limitations: []
 	},
+	'openrouter/hunter-alpha': {
+		id: 'openrouter/hunter-alpha',
+		name: 'Hunter Alpha',
+		speed: 4.6,
+		smartness: 4.6,
+		cost: 0,
+		outputCost: 0,
+		provider: 'openrouter',
+		bestFor: [
+			'agentic-workflows',
+			'fast-reasoning',
+			'task-execution',
+			'search-heavy-workflows',
+			'128k-context'
+		],
+		limitations: ['alpha-model', 'pricing-may-change']
+	},
 	// ============================================
 	// Fast tier (2-3s) - Good value options
 	// ============================================
@@ -115,6 +132,23 @@ export const JSON_MODELS: Record<string, ModelProfile> = {
 			'terminal-bench-90%+'
 		],
 		limitations: []
+	},
+	'openrouter/healer-alpha': {
+		id: 'openrouter/healer-alpha',
+		name: 'Healer Alpha',
+		speed: 3.7,
+		smartness: 4.8,
+		cost: 0,
+		outputCost: 0,
+		provider: 'openrouter',
+		bestFor: [
+			'deep-reflection',
+			'complex-instruction-following',
+			'advanced-search-workflows',
+			'multimodal-reasoning',
+			'128k-context'
+		],
+		limitations: ['alpha-model', 'pricing-may-change']
 	},
 
 	// ============================================
@@ -279,6 +313,24 @@ export const TEXT_MODELS: Record<string, ModelProfile> = {
 		provider: 'qwen',
 		bestFor: ['best-value', 'multilingual', 'coding', 'tool-calling', 'creative-writing']
 	},
+	'openrouter/hunter-alpha': {
+		id: 'openrouter/hunter-alpha',
+		name: 'Hunter Alpha',
+		speed: 4.6,
+		smartness: 4.6,
+		creativity: 4.1,
+		cost: 0,
+		outputCost: 0,
+		provider: 'openrouter',
+		bestFor: [
+			'agentic-workflows',
+			'fast-reasoning',
+			'task-execution',
+			'search-heavy-workflows',
+			'128k-context'
+		],
+		limitations: ['alpha-model', 'pricing-may-change']
+	},
 	// ============================================
 	// Fast tier (1-2s) - Good value options
 	// ============================================
@@ -349,6 +401,24 @@ export const TEXT_MODELS: Record<string, ModelProfile> = {
 		outputCost: 1.5,
 		provider: 'z-ai',
 		bestFor: ['coding', 'long-content', 'reasoning', 'refined-writing', 'terminal-bench-90%+']
+	},
+	'openrouter/healer-alpha': {
+		id: 'openrouter/healer-alpha',
+		name: 'Healer Alpha',
+		speed: 3.7,
+		smartness: 4.8,
+		creativity: 4.6,
+		cost: 0,
+		outputCost: 0,
+		provider: 'openrouter',
+		bestFor: [
+			'deep-reflection',
+			'complex-instruction-following',
+			'advanced-search-workflows',
+			'multimodal-reasoning',
+			'128k-context'
+		],
+		limitations: ['alpha-model', 'pricing-may-change']
 	},
 
 	// ============================================
@@ -494,6 +564,7 @@ export const TOOL_CALLING_MODEL_ORDER = [
 	'anthropic/claude-sonnet-4',
 	'openai/gpt-4o',
 	'minimax/minimax-m2.1',
+	'openrouter/hunter-alpha',
 	'qwen/qwen3-32b',
 	'deepseek/deepseek-chat',
 	'deepseek/deepseek-r1',
@@ -522,21 +593,23 @@ export const EMERGENCY_TEXT_FALLBACKS = [
 export const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 	fast: [
 		'google/gemini-2.5-flash-lite', // Ultra-fast + ultra-low cost: $0.10/$0.40
+		'openrouter/hunter-alpha', // Free alpha model geared toward fast agentic execution
 		'qwen/qwen3-32b', // Best value + good JSON: $0.08/$0.24
 		'openai/gpt-4o-mini', // Reliable fallback with JSON mode: $0.15/$0.60
 		'deepseek/deepseek-chat' // Native JSON mode + good value: $0.27/$1.10
 	],
 	balanced: [
-		// 'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, 1500 tools, multimodal: $0.60/$0.30
+		'openrouter/hunter-alpha', // Free alpha model optimized for fast agentic execution
 		'qwen/qwen3-32b', // Best value + native JSON: $0.08/$0.24
+		'deepseek/deepseek-chat', // Good value + native JSON: $0.27/$1.10
+		'openrouter/healer-alpha', // Free alpha model for deeper instruction following and reflection
 		'x-ai/grok-4.1-fast', // Best tool-calling + fast: $0.20/$0.50
 		'minimax/minimax-m2.1', // Strong agentic + structured output: 87% τ²-Bench: $0.27/$1.12
-		'deepseek/deepseek-chat', // Good value + native JSON: $0.27/$1.10
 		'anthropic/claude-haiku-4.5', // Excellent tool calling, extended thinking: $1/$5
 		'google/gemini-2.5-flash' // Hybrid reasoning model: $0.30/$2.50
 	],
 	powerful: [
-		// 'moonshotai/kimi-k2.5', // Best agentic: agent swarm, 262K ctx, multimodal: $0.60/$0.30
+		'openrouter/healer-alpha', // Free alpha model for deep reflection + complex instructions
 		'deepseek/deepseek-r1', // Native JSON + good reasoning: $0.55/$1.68
 		'minimax/minimax-m2.1', // Strong agentic: 87% τ²-Bench, 72.5% SWE-bench-multilingual
 		'openai/gpt-4o', // Strong general purpose + native JSON: $2.50/$10
@@ -556,13 +629,14 @@ export const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 
 export const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 	speed: [
+		'openrouter/hunter-alpha', // Free alpha model tuned for fast execution and signal hunting
 		'google/gemini-2.5-flash-lite', // Ultra-fast + ultra-low cost: $0.10/$0.40
 		'qwen/qwen3-32b', // Best value + fast: $0.08/$0.24
 		'openai/gpt-4o-mini', // Reliable fallback: $0.15/$0.60
 		'anthropic/claude-haiku-4.5' // Fast with extended thinking: $1/$5
 	],
 	balanced: [
-		// 'moonshotai/kimi-k2.5', // Best agentic value: agent swarm, multimodal, 262K ctx: $0.60/$0.30
+		'openrouter/hunter-alpha', // Free alpha model for agentic execution and fast reasoning
 		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
 		'qwen/qwen3-32b', // Best value: $0.08/$0.24, smartness 4.5
 		'deepseek/deepseek-chat', // Good value: $0.27/$1.10, smartness 4.5
@@ -571,14 +645,15 @@ export const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 		'openai/gpt-4o-mini' // Reliable fallback: $0.15/$0.60
 	],
 	quality: [
-		// 'moonshotai/kimi-k2.5', // Superior agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
-		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
+		'openrouter/healer-alpha', // Free alpha model for deep reflection and complex instructions
+		'openrouter/hunter-alpha', // Free alpha model for decisive execution
 		'deepseek/deepseek-r1', // Good reasoning, excellent for technical content: $0.55/$1.68
 		'anthropic/claude-haiku-4.5', // Excellent tool-calling, parallel tools: $1/$5
 		'minimax/minimax-m2.1', // 87% τ²-Bench, excellent coding: $0.27/$1.12
 		'openai/gpt-4o' // Reliable fallback: $2.50/$10
 	],
 	creative: [
+		'openrouter/healer-alpha', // Free alpha model with reflective, instruction-heavy writing strength
 		'anthropic/claude-opus-4.5', // Best creative: highest creativity (4.8): $5/$25
 		'anthropic/claude-sonnet-4.5', // Strong creative: creativity 4.7: $3/$15
 		'anthropic/claude-sonnet-4', // Strong creative: creativity 4.6: $3/$15

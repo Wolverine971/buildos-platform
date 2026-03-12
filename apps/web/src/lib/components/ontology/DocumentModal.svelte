@@ -95,7 +95,7 @@
 		Clock
 	} from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-	import { untrack, type Component } from 'svelte';
+	import { type Component } from 'svelte';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
@@ -453,7 +453,7 @@
 
 	// Left panel collapsible sections
 	let showLinkedEntities = $state(true);
-	let showImages = $state(true);
+	let showImages = $state(false);
 	let showVersionHistory = $state(false);
 	let showVoiceNotes = $state(false);
 	let showActivityLog = $state(false);
@@ -474,6 +474,7 @@
 	let latestVersionNumber = $state(0);
 	let versionHistoryPanelRef = $state<{ refresh: () => void } | null>(null);
 	let isAdminUser = $state(false);
+	let lastAdminAccessProjectId = $state<string | null>(null);
 
 	// Inline comparison mode state
 	let comparisonMode = $state(false);
@@ -487,6 +488,7 @@
 	let showMoveModal = $state(false);
 	let treeLoading = $state(false);
 	let lastDocTreeLoadKey = $state<string | null>(null);
+	let lastDocumentViewKey = $state<string | null>(null);
 	const activeDocTreeNode = $derived.by(() => {
 		if (!activeDocumentId || !docTreeStructure?.root) return null;
 		return findNodeById(docTreeStructure.root, activeDocumentId)?.node ?? null;
@@ -499,6 +501,12 @@
 	};
 	let voiceNotesPanelRef = $state<VoiceNotesPanelRef | null>(null);
 	let voiceNotesPanelMobileRef = $state<VoiceNotesPanelRef | null>(null);
+	let publicPageStateLoaded = $state(false);
+
+	let cancelCommentsCountLoad = () => {};
+	let cancelPublicPageLoad = () => {};
+	let cancelDocTreeLoad = () => {};
+	let docTreeLoadPromise: Promise<void> | null = null;
 
 	// Build focus for chat about this document
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -718,17 +726,133 @@
 		window.open(urlPath, '_blank', 'noopener,noreferrer');
 	}
 
+	function clearDeferredDocumentLoads() {
+		cancelCommentsCountLoad();
+		cancelPublicPageLoad();
+		cancelDocTreeLoad();
+		cancelCommentsCountLoad = () => {};
+		cancelPublicPageLoad = () => {};
+		cancelDocTreeLoad = () => {};
+	}
+
+	function scheduleDeferredDocumentLoad(task: () => void, fallbackDelayMs: number): () => void {
+		if (!browser) return () => {};
+
+		if ('requestIdleCallback' in window) {
+			const idleWindow = window as Window & {
+				requestIdleCallback?: (
+					callback: IdleRequestCallback,
+					options?: IdleRequestOptions
+				) => number;
+				cancelIdleCallback?: (handle: number) => void;
+			};
+			const handle = idleWindow.requestIdleCallback?.(() => task(), {
+				timeout: Math.max(1000, fallbackDelayMs * 4)
+			});
+			return () => {
+				if (handle !== undefined) {
+					idleWindow.cancelIdleCallback?.(handle);
+				}
+			};
+		}
+
+		const timeoutId = window.setTimeout(task, fallbackDelayMs);
+		return () => window.clearTimeout(timeoutId);
+	}
+
+	function resetDocumentPanels() {
+		activeMobileTab = null;
+		showImages = false;
+		showVersionHistory = false;
+		showVoiceNotes = false;
+		showActivityLog = false;
+		showComments = false;
+		showMoveModal = false;
+		showImageInsertModal = false;
+		showExportMenu = false;
+		comparisonMode = false;
+	}
+
+	function resetDocumentAncillaryState() {
+		clearDeferredDocumentLoads();
+		resetDocumentPanels();
+		commentsCount = 0;
+		publicPageState = null;
+		publicPageLoading = false;
+		publicPageStateLoaded = false;
+		publicPageActionLoading = false;
+		showPublicPageConfirmModal = false;
+		publicPagePreview = null;
+		publicPageDraft = null;
+		latestPublicPageReview = null;
+		isAdminUser = false;
+		lastAdminAccessProjectId = null;
+		lastDocTreeLoadKey = null;
+	}
+
+	async function loadCommentsCount(documentId: string) {
+		try {
+			const params = new URLSearchParams({
+				project_id: projectId,
+				entity_type: 'document',
+				entity_id: documentId,
+				include_deleted: 'true',
+				count_only: 'true'
+			});
+			const response = await fetch(`/api/onto/comments?${params.toString()}`);
+			const payload = await response.json().catch(() => null);
+
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to load comment count');
+			}
+
+			if (!isOpen || activeDocumentId !== documentId) return;
+			commentsCount = Number(payload?.data?.count ?? 0);
+		} catch (error) {
+			void logOntologyClientError(error, {
+				endpoint: '/api/onto/comments',
+				method: 'GET',
+				projectId,
+				entityType: 'document',
+				entityId: documentId,
+				operation: 'document_comments_count_load'
+			});
+		}
+	}
+
+	function queueDeferredDocumentLoads(documentId: string) {
+		clearDeferredDocumentLoads();
+
+		cancelCommentsCountLoad = scheduleDeferredDocumentLoad(() => {
+			if (!isOpen || activeDocumentId !== documentId) return;
+			void loadCommentsCount(documentId);
+		}, 120);
+
+		cancelPublicPageLoad = scheduleDeferredDocumentLoad(() => {
+			if (!isOpen || activeDocumentId !== documentId) return;
+			void loadPublicPageState(documentId);
+		}, 220);
+
+		cancelDocTreeLoad = scheduleDeferredDocumentLoad(() => {
+			if (!isOpen || activeDocumentId !== documentId) return;
+			void loadDocTree();
+		}, 360);
+	}
+
 	async function loadPublicPageState(documentId: string) {
 		try {
 			publicPageLoading = true;
+			publicPageStateLoaded = false;
 			const response = await fetch(`/api/onto/documents/${documentId}/public-page`);
 			const payload = await response.json().catch(() => null);
 			if (!response.ok) {
 				throw new Error(payload?.error || 'Failed to load public page state');
 			}
+			if (!isOpen || activeDocumentId !== documentId) return;
 			publicPageState = normalizePublicPageState(payload?.data?.publicPage);
 			latestPublicPageReview = normalizePublicPageReview(payload?.data?.latestReview);
 		} catch (error) {
+			if (!isOpen || activeDocumentId !== documentId) return;
 			publicPageState = null;
 			latestPublicPageReview = null;
 			void logOntologyClientError(error, {
@@ -740,7 +864,9 @@
 				operation: 'document_public_page_state_load'
 			});
 		} finally {
+			if (!isOpen || activeDocumentId !== documentId) return;
 			publicPageLoading = false;
+			publicPageStateLoaded = true;
 		}
 	}
 
@@ -976,17 +1102,7 @@
 		saveStatus = 'idle';
 		lastSavePublishedLive = false;
 		clearAutosaveTimers();
-		// Reset comments panel
-		showComments = false;
-		commentsCount = 0;
-		showImageInsertModal = false;
-		publicPageState = null;
-		publicPageLoading = false;
-		publicPageActionLoading = false;
-		showPublicPageConfirmModal = false;
-		publicPagePreview = null;
-		publicPageDraft = null;
-		latestPublicPageReview = null;
+		resetDocumentAncillaryState();
 		discardChangesModalOpen = false;
 		editorIsRecording = false;
 		editorIsTranscribing = false;
@@ -1042,7 +1158,7 @@
 			captureSnapshot();
 			saveStatus = 'idle';
 			lastSavePublishedLive = false;
-			void loadPublicPageState(id);
+			queueDeferredDocumentLoads(id);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to load document';
 			void logOntologyClientError(error, {
@@ -1084,11 +1200,24 @@
 		}
 	});
 
+	$effect(() => {
+		if (!isOpen) {
+			lastDocumentViewKey = null;
+			clearDeferredDocumentLoads();
+			return;
+		}
+
+		const nextKey = activeDocumentId ?? '__new__';
+		if (lastDocumentViewKey === nextKey) return;
+		lastDocumentViewKey = nextKey;
+		resetDocumentAncillaryState();
+	});
+
 	function closeModal() {
 		clearAutosaveTimers();
-		showImageInsertModal = false;
+		clearDeferredDocumentLoads();
+		resetDocumentPanels();
 		showPublicPageConfirmModal = false;
-		showExportMenu = false;
 		discardChangesModalOpen = false;
 		isOpen = false;
 		onClose?.();
@@ -1731,6 +1860,30 @@
 		}
 	}
 
+	function handleCommentsCountChange(count: number) {
+		commentsCount = count;
+	}
+
+	function toggleVersionHistory() {
+		const nextOpen = !showVersionHistory;
+		showVersionHistory = nextOpen;
+		if (nextOpen) {
+			void ensureAdminAccessChecked();
+		}
+	}
+
+	function toggleDesktopComments() {
+		showComments = !showComments;
+	}
+
+	function toggleMobileTab(tab: Exclude<MobileTab, null>) {
+		const nextTab = activeMobileTab === tab ? null : tab;
+		activeMobileTab = nextTab;
+		if (nextTab === 'history') {
+			void ensureAdminAccessChecked();
+		}
+	}
+
 	// Check admin access for restore permission
 	// Since we don't have a dedicated access check endpoint, we'll be optimistic
 	// and show the restore button. The API will enforce permissions anyway.
@@ -1756,51 +1909,56 @@
 		}
 	}
 
-	// Check admin access when document loads
-	$effect(() => {
-		if (activeDocumentId && projectId) {
-			checkAdminAccess();
+	async function ensureAdminAccessChecked() {
+		if (!projectId) {
+			isAdminUser = false;
+			lastAdminAccessProjectId = null;
+			return;
 		}
-	});
+		if (lastAdminAccessProjectId === projectId) return;
+		lastAdminAccessProjectId = projectId;
+		await checkAdminAccess();
+	}
 
 	// Load document tree for breadcrumb and move functionality
 	async function loadDocTree() {
-		if (!projectId || treeLoading) return;
-		try {
-			treeLoading = true;
-			const response = await fetch(
-				`/api/onto/projects/${projectId}/doc-tree?include_content=false`
-			);
-			const payload = await response.json().catch(() => null);
+		if (!projectId || !activeDocumentId) return;
 
-			if (response.ok && payload?.data) {
-				const treeData = payload.data as GetDocTreeResponse;
-				docTreeStructure = treeData.structure;
-				docTreeDocuments = treeData.documents;
-			}
-		} catch (error) {
-			console.error('[DocumentModal] Failed to load doc tree:', error);
-		} finally {
-			treeLoading = false;
-		}
-	}
-
-	// Load tree when editing an existing document
-	$effect(() => {
-		if (!isOpen || !activeDocumentId || !projectId) {
-			lastDocTreeLoadKey = null;
+		const loadKey = `${projectId}:${activeDocumentId}`;
+		if (lastDocTreeLoadKey === loadKey && docTreeStructure) return;
+		if (docTreeLoadPromise) {
+			await docTreeLoadPromise;
 			return;
 		}
 
-		const loadKey = `${projectId}:${activeDocumentId}`;
-		if (lastDocTreeLoadKey === loadKey) return;
-		lastDocTreeLoadKey = loadKey;
+		const requestedProjectId = projectId;
+		const requestedDocumentId = activeDocumentId;
+		docTreeLoadPromise = (async () => {
+			try {
+				treeLoading = true;
+				const response = await fetch(
+					`/api/onto/projects/${requestedProjectId}/doc-tree?include_content=false`
+				);
+				const payload = await response.json().catch(() => null);
 
-		// Avoid tracking treeLoading reads inside loadDocTree, which can cause effect churn.
-		untrack(() => {
-			void loadDocTree();
-		});
-	});
+				if (response.ok && payload?.data && projectId === requestedProjectId) {
+					const treeData = payload.data as GetDocTreeResponse;
+					docTreeStructure = treeData.structure;
+					docTreeDocuments = treeData.documents;
+					if (projectId === requestedProjectId && activeDocumentId === requestedDocumentId) {
+						lastDocTreeLoadKey = loadKey;
+					}
+				}
+			} catch (error) {
+				console.error('[DocumentModal] Failed to load doc tree:', error);
+			} finally {
+				treeLoading = false;
+				docTreeLoadPromise = null;
+			}
+		})();
+
+		await docTreeLoadPromise;
+	}
 
 	// Compute breadcrumb path from document tree
 	const breadcrumbPath = $derived.by(() => {
@@ -1838,10 +1996,17 @@
 	});
 
 	// Handle move modal
-	function openMoveModal() {
+	async function openMoveModal() {
 		if (onMoveRequested) {
 			onMoveRequested();
 		} else {
+			if (!docTreeStructure) {
+				await loadDocTree();
+				if (!docTreeStructure) {
+					toastService.error('Failed to load document tree');
+					return;
+				}
+			}
 			showMoveModal = true;
 		}
 	}
@@ -1870,6 +2035,7 @@
 			toastService.success('Document moved');
 			showMoveModal = false;
 			// Reload tree to get updated structure
+			lastDocTreeLoadKey = null;
 			await loadDocTree();
 			onSaved?.();
 		} catch (error) {
@@ -2189,7 +2355,7 @@
 								<!-- Public Page -->
 								{#if isEditing && activeDocumentId}
 									<div class="pt-2 border-t border-border space-y-2">
-										{#if publicPageLoading}
+										{#if !publicPageStateLoaded || publicPageLoading}
 											<div
 												class="flex items-center gap-2 text-xs text-muted-foreground"
 											>
@@ -2483,8 +2649,7 @@
 									<div class="pt-2 border-t border-border">
 										<button
 											type="button"
-											onclick={() =>
-												(showVersionHistory = !showVersionHistory)}
+											onclick={toggleVersionHistory}
 											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
 										>
 											<span class="micro-label text-foreground"
@@ -2761,9 +2926,7 @@
 									<!-- Details tab -->
 									<button
 										type="button"
-										onclick={() =>
-											(activeMobileTab =
-												activeMobileTab === 'details' ? null : 'details')}
+										onclick={() => toggleMobileTab('details')}
 										class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
 										'details'
 											? 'bg-card shadow-ink text-foreground'
@@ -2777,9 +2940,7 @@
 									{#if isEditing && activeDocumentId}
 										<button
 											type="button"
-											onclick={() =>
-												(activeMobileTab =
-													activeMobileTab === 'links' ? null : 'links')}
+											onclick={() => toggleMobileTab('links')}
 											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
 											'links'
 												? 'bg-card shadow-ink text-foreground'
@@ -2799,9 +2960,7 @@
 										<!-- Media tab -->
 										<button
 											type="button"
-											onclick={() =>
-												(activeMobileTab =
-													activeMobileTab === 'media' ? null : 'media')}
+											onclick={() => toggleMobileTab('media')}
 											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
 											'media'
 												? 'bg-card shadow-ink text-foreground'
@@ -2814,11 +2973,7 @@
 										<!-- History tab -->
 										<button
 											type="button"
-											onclick={() =>
-												(activeMobileTab =
-													activeMobileTab === 'history'
-														? null
-														: 'history')}
+											onclick={() => toggleMobileTab('history')}
 											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
 											'history'
 												? 'bg-card shadow-ink text-foreground'
@@ -2831,11 +2986,7 @@
 										<!-- Comments tab -->
 										<button
 											type="button"
-											onclick={() =>
-												(activeMobileTab =
-													activeMobileTab === 'comments'
-														? null
-														: 'comments')}
+											onclick={() => toggleMobileTab('comments')}
 											class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap transition-all pressable {activeMobileTab ===
 											'comments'
 												? 'bg-card shadow-ink text-foreground'
@@ -2898,7 +3049,7 @@
 
 											{#if isEditing && activeDocumentId}
 												<div class="pt-2 border-t border-border space-y-2">
-													{#if publicPageLoading}
+													{#if !publicPageStateLoaded || publicPageLoading}
 														<div
 															class="flex items-center gap-2 text-xs text-muted-foreground"
 														>
@@ -3176,8 +3327,7 @@
 													{projectId}
 													entityType="document"
 													entityId={activeDocumentId}
-													onCountChange={(count) =>
-														(commentsCount = count)}
+													onCountChange={handleCommentsCountChange}
 												/>
 											{/if}
 										{/if}
@@ -3233,7 +3383,7 @@
 						<!-- Collapsible comments toggle -->
 						<button
 							type="button"
-							onclick={() => (showComments = !showComments)}
+							onclick={toggleDesktopComments}
 							class="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/50 transition-colors pressable group"
 						>
 							<span class="flex items-center gap-2">
@@ -3259,24 +3409,18 @@
 								/>
 							{/if}
 						</button>
-						<!-- Always render to fetch count; hide body when collapsed -->
-						<div
-							class="{showComments
-								? 'max-h-[25vh]'
-								: 'max-h-0'} overflow-hidden transition-[max-height] duration-200"
-						>
-							<div
-								class="overflow-y-auto"
-								style:max-height={showComments ? '25vh' : undefined}
-							>
-								<EntityCommentsSection
-									{projectId}
-									entityType="document"
-									entityId={activeDocumentId}
-									onCountChange={(count) => (commentsCount = count)}
-								/>
+						{#if showComments}
+							<div class="max-h-[25vh] overflow-hidden transition-[max-height] duration-200">
+								<div class="overflow-y-auto" style:max-height="25vh">
+									<EntityCommentsSection
+										{projectId}
+										entityType="document"
+										entityId={activeDocumentId}
+										onCountChange={handleCommentsCountChange}
+									/>
+								</div>
 							</div>
-						</div>
+						{/if}
 					</div>
 				{/if}
 			{/if}

@@ -3,11 +3,14 @@
 import type { ModelLane } from './types';
 
 const DEFAULT_TEXT_MODELS = [
+	'openrouter/hunter-alpha',
 	'openai/gpt-4o-mini',
-	'x-ai/grok-4.1-fast',
-	'anthropic/claude-haiku-4.5'
+	'openrouter/healer-alpha'
 ] as const;
 
+// Keep the v2 JSON lane on models with verified native json_object support.
+// Hunter/Healer are available through shared profile routing, but their native
+// JSON-mode compatibility was not confirmed from the official OpenRouter pages.
 const DEFAULT_JSON_MODELS = [
 	'openai/gpt-4o-mini',
 	'deepseek/deepseek-chat',
@@ -15,10 +18,10 @@ const DEFAULT_JSON_MODELS = [
 ] as const;
 
 const DEFAULT_TOOL_MODELS = [
+	'openrouter/hunter-alpha',
 	'openai/gpt-4o-mini',
 	'x-ai/grok-4.1-fast',
-	'anthropic/claude-haiku-4.5',
-	'deepseek/deepseek-chat'
+	'anthropic/claude-haiku-4.5'
 ] as const;
 
 const DEFAULT_TOOL_MODELS_EXACTO = [

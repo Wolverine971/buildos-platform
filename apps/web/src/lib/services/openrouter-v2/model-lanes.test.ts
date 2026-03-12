@@ -43,8 +43,17 @@ describe('resolveLaneModels', () => {
 
 		const result = resolveLaneModels({ lane: 'text' });
 
-		expect(result[0]).toBe('openai/gpt-4o-mini');
-		expect(result).toContain('anthropic/claude-haiku-4.5');
+		expect(result[0]).toBe('openrouter/hunter-alpha');
+		expect(result).toContain('openrouter/healer-alpha');
+	});
+
+	it('returns default tool lane models when exacto is disabled', () => {
+		delete process.env.OPENROUTER_V2_LANE_TOOL_MODELS;
+
+		const result = resolveLaneModels({ lane: 'tool_calling', exactoToolsEnabled: false });
+
+		expect(result[0]).toBe('openrouter/hunter-alpha');
+		expect(result).toContain('x-ai/grok-4.1-fast');
 	});
 
 	it('uses exacto defaults for tool lane when enabled', () => {
