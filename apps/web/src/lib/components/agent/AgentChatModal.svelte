@@ -431,6 +431,14 @@
 		return true;
 	});
 
+	const canPrimeActiveChatSession = $derived.by(() => {
+		if (!selectedContextType || !isOpen || currentSession?.id) return false;
+		if (showContextSelection || showProjectActionSelector) return false;
+		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
+		if (isBraindumpContext && braindumpMode !== 'chat') return false;
+		return true;
+	});
+
 	function cancelSessionBootstrap() {
 		sessionBootstrapRequestId += 1;
 		if (sessionBootstrapController) {
@@ -1200,6 +1208,13 @@
 		if (isPreparingSession) return;
 		const prewarmEntityId = selectedEntityId ?? resolvedProjectFocus?.projectId;
 		if (isProjectContext(selectedContextType) && !prewarmEntityId) return;
+		const shouldPrimeSessionNow =
+			canPrimeActiveChatSession &&
+			(inputValue.trim().length > 0 ||
+				isVoiceRecording ||
+				isVoiceInitializing ||
+				isVoiceTranscribing ||
+				pendingSendAfterTranscription);
 		const key = buildFastChatContextCacheKey({
 			contextType: selectedContextType,
 			entityId: prewarmEntityId ?? null,
@@ -1209,7 +1224,28 @@
 			prewarmedContext &&
 			prewarmedContext.key === key &&
 			isFastChatContextCacheFresh(prewarmedContext);
-		if (!key || (key === lastPrewarmKey && hasFreshMatchingPrewarm)) return;
+		if (!key) return;
+
+		if (!currentSession?.id && shouldPrimeSessionNow) {
+			void ensureSessionReady(
+				buildSessionBootstrapTarget(
+					selectedContextType,
+					selectedEntityId,
+					resolvedProjectFocus
+				)
+			).catch((err) => {
+				if ((err as DOMException)?.name !== 'AbortError' && dev) {
+					console.warn('[AgentChat] Deferred session bootstrap failed:', err);
+				}
+			});
+			return;
+		}
+
+		if (!currentSession?.id) {
+			return;
+		}
+
+		if (key === lastPrewarmKey && hasFreshMatchingPrewarm) return;
 		lastPrewarmKey = key;
 		const controller = new AbortController();
 
