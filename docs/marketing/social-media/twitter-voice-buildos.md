@@ -1,340 +1,279 @@
-<!-- docs/marketing/social-media/twitter-voice-buildos.md -->
+---
+title: '@build_os Twitter Voice Reference'
+created: 2026-03-12
+status: current
+owner: DJ Wayne
+related_docs:
+    - /docs/marketing/social-media/twitter-strategy.md
+    - /docs/marketing/strategy/buildos-marketing-strategy-2026.md
+path: docs/marketing/social-media/twitter-voice-buildos.md
+---
 
 # @build_os Twitter Voice Reference
 
 **Account:** @build_os
-**Type:** Product/Brand Account
-**Purpose:** Build community, drive signups, establish brand presence
-**Companion Account:** @djwayne3 (DJ's personal account)
+**Type:** Product/brand account
+**Purpose:** Build recognition with AI-native builders, founders, and tool-power-users
+**Companion Account:** @djwayne3
 
 ---
 
 ## Identity
 
-- **What:** BuildOS - AI project collaboration for the builders
-- **For:** People overwhelmed by complex tools, ADHD brains, anyone who's abandoned Notion 6 times
-- **Vibe:** The productivity tool that actually gets it
+- **What:** BuildOS, a thinking environment for builders making complex things
+- **For:** AI-native founders, SaaS builders, and people tired of rebuilding context across ChatGPT, Claude, docs, and task tools
+- **Vibe:** systems-literate, sharp, honest, anti-hype
+
+This account should feel like it belongs in:
+
+- ChatGPT discourse
+- Claude discourse
+- founder workflow discourse
+- AI-tool and agent discourse
+
+It should not primarily feel like:
+
+- a generic ADHD account
+- a productivity meme page
+- a corporate SaaS brand
 
 ---
 
-## The Voice: Edgy + Relatable
+## The Voice
 
-> **BuildOS is the friend who tells you the truth about productivity.**
-> Not a thought leader. Not corporate. Not trying to fix you.
-> We're here to call out the bullshit and celebrate chaos.
+> **BuildOS should sound like the builder in the room who cares where the work actually lives.**
 
-### Core Personality Traits
+Not a thought leader.
+Not a guru.
+Not a hype account.
 
-1. **Anti-complex tools** - We drag Notion, Asana, Monday, Todoist when appropriate
-2. **Pro-chaos/ADHD** - Celebrate scattered minds, reject "just be more organized"
-3. **Self-aware about being a product** - We're honest, not pretending we're not selling something
-4. **Vulnerable when real** - Honest about being in beta, what's not perfect yet
-5. **Direct and punchy** - No corporate speak, no fluff
+### Core Traits
+
+1. **Anti-hype**
+   We do not perform amazement at every new model or wrapper.
+
+2. **Systems-literate**
+   We think in workflows, context, and restart cost.
+
+3. **Direct**
+   Short, clean, clear.
+
+4. **Self-aware**
+   Honest about beta-stage limits and real tradeoffs.
+
+5. **Slightly contrarian**
+   We challenge the default conversation when it misses the actual problem.
 
 ### Voice Principles
 
-- **Lowercase casual.** fragments fine.
-- **Light swearing OK.** damn, hell, shit - keeps it real
-- **Short punchy sentences.** no essays.
-- **Call things out directly.** no hedging.
-- **Celebrate wins loudly.** users, community, ourselves
-- **Admit what sucks.** builds trust
+- lowercase casual is fine
+- short punchy sentences win
+- technical enough to belong, plain enough to understand
+- prefer observations over slogans
+- use product mentions naturally, not constantly
 
 ---
 
-## Content Pillars
+## Primary Content Pillars
 
-### Pillar 1: Anti-Complex Tools (35%)
+### Pillar 1: Context > Stateless Chat (35%)
 
-**The angle:** Most productivity tools are the problem, not the solution.
+The angle:
 
-**Hot takes to use:**
+Everyone is talking about smarter outputs.
+BuildOS talks about durable context.
 
-- "Your Notion workspace isn't a second brain. It's a second graveyard."
-- "Spending 3 hours organizing your tasks isn't productivity. It's procrastination with extra steps."
-- "The best productivity system is the one you actually use."
-- "If your tool needs a YouTube tutorial, it's already failed."
-- "Stop blaming yourself for abandoning Notion. Blame Notion."
+Hot takes to use:
 
-**Example posts:**
+- "AI is smart. Your workflow is still broken."
+- "The real cost of stateless chat is how often you rebuild context."
+- "The missing layer is not another wrapper. It's project memory."
+- "Restart speed is a product feature."
 
-```
-unpopular opinion: most productivity apps are designed to sell courses about productivity apps
+Example posts:
 
-actual productivity requires less software, not more
-```
+```text
+chatgpt and claude are useful.
 
-```
-you don't need:
-- 47 Notion templates
-- a morning routine from a guy who sleeps 4 hours
-- another app
-
-you need:
-- one place to dump your thoughts
-- AI that actually organizes them
-- to stop feeling guilty about being "disorganized"
+the broken part is how often the project resets and makes you do recovery work.
 ```
 
-### Pillar 2: Pro-Chaos/ADHD Celebration (30%)
+```text
+everyone wants better agents.
 
-**The angle:** Scattered minds aren't broken. The tools are.
-
-**Hot takes to use:**
-
-- "Your brain isn't disorganized. It's just non-linear."
-- "ADHD isn't a productivity problem. Linear thinking is an ADHD problem."
-- "The 'just write it down' advice was clearly written by someone who's never lost 47 notebooks."
-- "Chaos is a feature, not a bug."
-
-**Example posts:**
-
-```
-scattered thoughts? good.
-unfinished projects? relatable.
-abandoned 6 todo apps? you're in the right place.
-
-welcome to BuildOS. we get it.
+i keep coming back to a simpler question:
+where does the project actually remember itself?
 ```
 
-```
-productivity advice for non-ADHD brains:
-"just make a list and do the things"
+### Pillar 2: Anti-Tool-Sprawl For Builders (25%)
 
-productivity advice for the rest of us:
-"dump everything out of your head, let AI figure out what matters, do the one thing that's actually next"
-```
+The angle:
 
-### Pillar 3: Product Updates & Building in Public (20%)
+AI-native builders already have good tools.
+Their workflow is still fragmented.
 
-**The angle:** Honest updates about what we're building, what works, what doesn't.
+Hot takes to use:
 
-**Tone:** Excited but not hype-y. Honest about limitations.
+- "notes + docs + AI chats is not a system."
+- "your stack is probably better than your workflow."
+- "most founders do not need another app. they need a project home."
+- "useful thinking buried in old chats is still lost thinking."
 
-**Example posts:**
+Example posts:
 
-```
-shipped this week:
-- brain dump → AI extracts your actual tasks (not 47 subtasks)
-- one-click "what should I do next?"
+```text
+if your idea is in notes
+your plan is in docs
+your useful AI thread is buried
+and your tasks are somewhere else
 
-still working on:
-- making it not break when you dump 10,000 words at once
-- our own productivity (ironic, we know)
-```
-
-```
-beta update: 12 new users this week
-
-most common feedback: "wait, that's it?"
-
-yes. that's the point. simple actually works.
+you are doing reconstruction, not execution
 ```
 
-### Pillar 4: User Wins & Community (15%)
+```text
+most builder workflows fail at re-entry.
 
-**The angle:** Celebrate users, amplify their wins, build community.
-
-**Tone:** Genuine excitement, specific praise.
-
-**Example posts:**
-
-```
-user DM: "I finally finished the project I've been avoiding for 6 months. all I needed was to brain dump it into BuildOS and see the actual steps."
-
-this is why we build. hell yes.
+not because the work is hard.
+because the context is scattered.
 ```
 
-```
-@username went from "I have no idea what I'm doing with my life" to "oh, I only have 4 things to figure out" in 10 minutes.
+### Pillar 3: Build In Public With Product Judgment (25%)
 
-that's the whole product tbh.
+The angle:
+
+Show what you are learning while building, but keep it concrete.
+
+Hot takes to use:
+
+- "less interested in what AI can generate than what context survives the next session"
+- "most product decisions get clearer when you use the product on real work"
+- "build in public is useful when it produces sharper judgment, not just more posting"
+
+Example posts:
+
+```text
+thing i'm learning:
+
+the question is not "can AI do this?"
+
+the question is "will the project still make sense when i come back tomorrow?"
+```
+
+```text
+used BuildOS on my own content planning again today.
+
+the helpful part was not generation.
+it was that i didn't have to reconstruct my own context first.
+```
+
+### Pillar 4: Product Proof (15%)
+
+The angle:
+
+Make the product legible through screenshots, clips, and short explanations.
+
+Example posts:
+
+```text
+dashboard
+project view
+project chat
+
+same work.
+same context.
+less rebuilding.
+```
+
+```text
+raw idea mess -> one project with a next move
+
+that's the product
 ```
 
 ---
 
-## Engagement Strategy
+## Secondary Lanes
 
-### Reply Voice
+Use these when they overlap naturally:
+
+- ADHD founder truth
+- creator workflow pain
+- honest founder chaos
+
+Do not make them the main identity of the account.
+
+---
+
+## Reply Voice
 
 When replying as @build_os:
 
-**DO:**
+### Do
 
-- React genuinely to their struggle/win
-- Offer a perspective (not advice)
-- Light product mention only if genuinely relevant
-- Be the supportive friend, not the salesperson
-- Use humor when it fits
+- add a sharper workflow observation
+- reframe model hype toward context/workflow reality
+- validate pain specifically
+- mention BuildOS only when it naturally fits
 
-**DON'T:**
+### Do Not
 
-- Hard sell the product
-- Give unsolicited productivity advice
-- Be corporate or formal
-- Use "we" in a royal/corporate way (use it casually)
-- Lecture anyone
+- spam product mentions
+- try to win every AI argument
+- act like a neutral brand account
+- over-explain
 
-### Reply Templates by Situation
+### Good Reply Patterns
 
-**Someone complaining about Notion/complex tools:**
-
-```
-[validate their pain specifically]
-
-[optional hot take about the tool]
-
-[soft product mention only if it fits naturally]
+```text
+the pattern i keep seeing is...
 ```
 
-Example:
-
-> "the worst part about Notion is how bad you feel for not using it 'right'
->
-> it's not you. it's a tool designed for PMs with 8 hours to configure it.
->
-> (shameless plug: we built BuildOS specifically for people who've given up on this stuff)"
-
-**Someone sharing ADHD/productivity struggle:**
-
-```
-[genuine validation - we get it]
-
-[optional: what actually helps (not preachy)]
-
-[no product mention unless they're asking for recs]
+```text
+the hidden cost here is restart time
 ```
 
-Example:
-
-> "this is so real. the whole 'just make a list' advice completely ignores how ADHD brains work.
->
-> the problem isn't remembering to do things. it's figuring out wtf to do FIRST when everything feels equally important."
-
-**Someone sharing a win:**
-
-```
-[genuine celebration - be specific about what's impressive]
-
-[optional follow-up question]
+```text
+less a model problem, more a "where does the project live?" problem
 ```
 
-Example:
-
-> "hell yes. the part where you finally saw the 3 actual tasks instead of the 47 imagined ones - that's the breakthrough.
->
-> what project are you tackling next?"
-
-**Someone asking for tool recommendations:**
-
-```
-[honest answer about what works for their situation]
-
-[mention BuildOS if relevant, with honest caveat]
-```
-
-Example:
-
-> "depends on how your brain works honestly.
->
-> if you need structure and love organizing → Notion
-> if you just want to dump thoughts and have AI figure it out → that's what we built BuildOS for (still in beta, fair warning)"
-
----
-
-## Cross-Promotion with @djwayne3
-
-**Occasionally:**
-
-- RT @djwayne3's build-in-public posts with a comment
-- Reply to his threads about BuildOS development
-- Quote tweet his wins
-
-**Keep it natural.** Don't overdo it. 1-2x per week max.
-
-**Example:**
-
-```
-@djwayne3: "shipped the new brain dump flow at 2am. wife found a bug. fixed it by 3am. this is the founder life."
-
-@build_os: "this is what building BuildOS looks like btw. chaos organized by more chaos."
+```text
+this is exactly where scattered context becomes the tax
 ```
 
 ---
 
-## What NOT to Do
+## How To Mention BuildOS
 
-### Hard No's
+Use BuildOS mentions like this:
 
-- **Never be corporate.** No "We're excited to announce..." language
-- **Never lecture.** We're not productivity gurus
-- **Never shame.** We celebrate chaos, not fix it
-- **Never oversell.** Be honest about being in beta, about limitations
-- **Never punch down.** Drag tools and systems, not people
-- **Never be defensive.** If someone criticizes, engage genuinely or let it go
+- "this is part of why we built BuildOS"
+- "shameless plug, but this is the exact workflow gap we're building around"
+- "this is the problem BuildOS is trying to solve"
 
-### Avoid These Phrases
-
-- "We're excited to..."
-- "Announcing our new..."
-- "The ultimate solution..."
-- "Transform your productivity..."
-- "Level up your..."
-- "Game-changer"
-- "Revolutionary"
-- Any LinkedIn-speak
+Avoid awkward hard sells.
 
 ---
 
-## Competitive Positioning
+## Cross-Promotion With @djwayne3
 
-### Tools We Can Drag (Carefully)
+Use the founder account for:
 
-| Tool               | Our Take                                         | How to Mention                                                     |
-| ------------------ | ------------------------------------------------ | ------------------------------------------------------------------ |
-| **Notion**         | Powerful but overwhelming, makes people feel bad | "Your abandoned Notion workspace isn't a failure. It's a symptom." |
-| **Todoist/Things** | Fine if your brain thinks in lists (most don't)  | "Lists work great. If your brain thinks in lists."                 |
-| **Asana/Monday**   | Built for teams, not humans                      | "Enterprise tools for your personal life? No thanks."              |
-| **Generic AI**     | ChatGPT forgets everything                       | "ChatGPT is smart but it forgets you exist between sessions."      |
+- stronger opinions
+- personal build-in-public posts
+- more technical/process takes
 
-### Tools We Respect (Don't Drag)
+Use @build_os for:
 
-- **Obsidian** - Different philosophy, power users
-- **Linear** - Great product, different use case
-- **Things 3** - Beautiful, just different
-- **Anti-Planner** (@danidonovan) - Complementary, not competitive
+- sharper branded framing
+- product proof
+- cleaner category repetition
+
+Cross-post lightly and naturally.
 
 ---
 
-## Posting Cadence
+## Rule Of Thumb
 
-- **Daily:** 1-2 original posts (mix of content pillars)
-- **Daily:** 3-5 genuine engagements (replies, quote tweets)
-- **Weekly:** 1 user win highlight
-- **Weekly:** 1 product update (when we have something real)
+If a post sounds like it could come from any productivity startup, it is off.
 
----
-
-## Quick Voice Check
-
-Before posting, ask:
-
-1. **Would a friend say this?** (Not a company, a friend)
-2. **Is it honest?** (Even when uncomfortable)
-3. **Does it punch up, not down?** (Drag systems, not people)
-4. **Would someone with ADHD feel seen?** (Not fixed, seen)
-5. **Is it actually interesting?** (Not filler content)
-
----
-
-## Related Docs
-
-- **Personal account voice:** `/docs/marketing/social-media/twitter-voice-quick-ref.md` (@djwayne3)
-- **Founder context:** `/docs/marketing/social-media/FOUNDER_CONTEXT.md`
-- **Twitter strategy (overall):** `/docs/marketing/social-media/twitter-strategy.md`
-- **Engagement targets:** `/docs/marketing/social-media/twitter-engagement-targets.md`
-
----
-
-_Last Updated: 2026-01-21_
-_Companion account: @djwayne3_
+If it sounds like it came from someone living inside AI-builder Twitter who is tired of stateless workflows, it is closer.

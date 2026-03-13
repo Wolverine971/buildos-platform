@@ -8,6 +8,7 @@
 
 ## 🎯 Quick Navigation
 
+- [Current 2026 Docs](#-current-2026-docs-start-here)
 - [Brand Strategy & Development](#-brand-strategy--development)
 - [Customer Research & Language](#-customer-research--language)
 - [Fundraising & Investor Relations](#-fundraising--investor-relations)
@@ -17,14 +18,41 @@
 
 ---
 
+## 🚨 Current 2026 Docs (Start Here)
+
+- **[BuildOS Marketing Strategy 2026](strategy/buildos-marketing-strategy-2026.md)** ⭐
+    - Current master marketing strategy
+    - Positioning, wedge, channel roles, and solo-founder operating model
+
+- **[BuildOS Brand Guide](brand/brand-guide-1-pager.md)** ⭐
+    - Current quick reference for messaging, voice, and visual direction
+    - Category, promise, differentiator, terms to use and avoid
+
+- **[BuildOS Guerrilla Content Doctrine](strategy/buildos-guerrilla-content-doctrine.md)** ⭐
+    - Strategic logic behind the current move
+    - Content doctrine, sequencing, and positioning tradeoffs
+
+- **[6-Week Guerrilla Seed Campaign](social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)** ⭐
+    - Current cross-platform content campaign
+    - Weekly theses, hooks, demos, and rough post angles
+
+---
+
 ## 🎨 Brand Strategy & Development
 
 ### 🎯 Strategic Documents (Start Here)
 
+- **[BuildOS Marketing Strategy 2026](strategy/buildos-marketing-strategy-2026.md)** ⭐ **CURRENT**
+    - Current source of truth for BuildOS marketing
+    - Consolidates positioning, audience order, channel roles, and execution model
+
+- **[BuildOS Guerrilla Content Doctrine](strategy/buildos-guerrilla-content-doctrine.md)** ⭐ **CURRENT**
+    - Strategic doctrine for BuildOS marketing and content
+    - Explains the logic behind the current positioning and sequencing
+
 - **[Brand Strategy 2025](brand/BRAND_STRATEGY_2025.md)** ⭐ **NEW**
-    - **Master brand strategy document** - comprehensive 2025 positioning
-    - Context-first messaging, Jab/Hook content model, competitive positioning
-    - Value proposition hierarchy, audience messaging, content strategy
+    - Historical strategy reference
+    - Useful for earlier thinking, but no longer the current source of truth
 
 - **[Zoom Messaging Guide](brand/ZOOM_MESSAGING_GUIDE.md)** ⭐ **NEW**
     - How to communicate the "zoom in / zoom out" concept
@@ -34,9 +62,8 @@
 ### ✅ Completed Documents
 
 - **[Brand Guide (1-Pager)](brand/brand-guide-1-pager.md)** ✅
-    - Core brand positioning, messaging, and visual identity
-    - Quick reference for team alignment
-    - **Updated January 2025** to align with Brand Strategy 2025
+    - Current quick reference for brand positioning, messaging, voice, and visuals
+    - Updated March 2026 to align with the current strategy
 
 - **[Brand Building Worksheet](brand/brand-building-worksheet.md)** ✅
     - Comprehensive toolkit with frameworks and implementation phases

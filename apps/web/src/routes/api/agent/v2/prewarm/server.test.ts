@@ -1,4 +1,4 @@
-// apps/web/src/routes/api/agent/v2/prewarm/+server.test.ts
+// apps/web/src/routes/api/agent/v2/prewarm/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { resolveSessionMock, loadPromptContextMock, mergeRpcMock } = vi.hoisted(() => ({

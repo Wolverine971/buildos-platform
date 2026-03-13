@@ -1,183 +1,282 @@
-<!-- docs/marketing/brand/brand-guide-1-pager.md -->
+---
+title: 'BuildOS Brand Guide'
+created: 2026-03-12
+status: current
+owner: DJ Wayne
+related_docs:
+    - /docs/marketing/strategy/buildos-marketing-strategy-2026.md
+    - /docs/marketing/strategy/buildos-guerrilla-content-doctrine.md
+    - /docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md
+path: docs/marketing/brand/brand-guide-1-pager.md
+---
 
 # BuildOS Brand Guide
 
 ## Core Identity
 
-**Tagline:** "Build context. Compound intelligence."
+### Category
 
-**Mission:** Transform scattered minds into organized action by building persistent context that compounds over time—making AI actually useful for YOUR work.
+**Thinking environment for people making complex things**
 
-**Brand Promise:** BuildOS is context infrastructure for the AI era—the one place where your projects have memory, your AI knows your work, and every conversation builds on the last.
+### Core Promise
+
+**Turn messy thinking into structured work.**
+
+### Differentiator
+
+**The project remembers what matters.**
+
+### Moat
+
+**The more context you build, the more useful BuildOS becomes.**
+
+### Strategic Enemy
+
+BuildOS stands against:
+
+- tool sprawl
+- stateless chat
+- blank-page chaos
+- productivity theater
+- disconnected creator workflows
 
 ---
 
 ## Positioning Statement
 
-For **people with ADHD and scattered minds** who struggle with traditional productivity tools, **BuildOS** is **context infrastructure** that **builds rich, persistent context on your projects—goals, plans, tasks, and documents—all connected**. Unlike stateless AI (ChatGPT) or complex systems (Notion), **we make context automatic so your AI actually knows your work**.
+BuildOS is a thinking environment for people making complex things.
+
+It helps creators and builders turn rough notes, voice dumps, scattered research, and fragmented AI chats into structured projects with memory.
+
+Unlike traditional productivity tools that expect the user to maintain the system, or AI chats that forget everything, BuildOS keeps the work connected so the next move is easier to see.
 
 ---
 
-## Brand Personality
+## Audience Order
 
-**Energetic Realist** - We get shit done without the drill sergeant attitude
+### Lead With
 
-### Personality Traits:
+1. authors
+2. YouTubers
 
-- **Energetic** but not overwhelming
-- **Contrarian** but not cynical
-- **Practical** but not boring
-- **Supportive** but not coddling
-- **Clear** but not oversimplified
+### Expand To
 
-### Voice Principles:
+- podcasters
+- newsletter operators
+- course creators
+- founder-creators
 
-- Acknowledge the struggle is real (despite all the "solutions" out there)
-- Focus on momentum, not perfection
-- Celebrate small wins and next steps
-- Keep it conversational and human
-- Cut through the complexity
+### Keep As Supporting Affinity Lanes
 
----
-
-## Value Proposition Hierarchy
-
-### 1. **Build Context That Compounds**
-
-"Your projects deserve memory. BuildOS accumulates context that makes everything else work."
-
-### 2. **Contextual AI Conversation (Project Lens)**
-
-"Chat with AI that actually knows your projects. Zoom in to any task. Zoom out to see connections. Not generic answers—YOUR answers."
-
-### 3. **Rich Context Architecture (Ontology)**
-
-"Goals, plans, tasks, documents—all connected. The full picture, not just a task list."
-
-### 4. **Natural Context Capture (Brain Dump)**
-
-"Just talk. Your thinking becomes searchable, structured context automatically."
-
-### 5. **Contextual Intelligence (Daily Brief)**
-
-"AI recommendations powered by your full history. Finally, a brief that actually helps."
+- ADHD and scattered minds
+- founders
+- indie builders
 
 ---
 
-## Key Messages by Audience
+## Message Hierarchy
 
-### ADHD Users (Primary)
+### First Contact
 
-**Hook:** "Your AI should remember. Ours does."
-**Message:** Finally, a productivity tool that works with your brain, not against it. Build context once, use it forever. Project Lens stays focused so you don't have to—zoom in on one task without the rest creeping in.
+**BuildOS is a thinking environment for people making complex things.**
 
-### Overwhelmed Professionals
+### Fast Promise
 
-**Hook:** "Context infrastructure for the AI era"
-**Message:** Stop explaining your projects to AI every time. BuildOS remembers your goals, your constraints, your history. One system, compounding context.
+**Turn messy thinking into structured work.**
 
-### ChatGPT Power Users
+### Proof Layer
 
-**Hook:** "Stop starting from scratch"
-**Message:** ChatGPT is powerful but stateless. BuildOS builds context that compounds—every brain dump makes your AI smarter about YOUR projects.
+**Talk through the work. BuildOS turns it into a project with memory.**
 
-### Writers/Creatives
+### Contrast Layer
 
-**Hook:** "Capture inspiration before it escapes"
-**Message:** Brain dump your ideas, see connections emerge through the ontology, and chat with AI that knows your entire creative history.
+**Notes, docs, task lists, and AI chats scattered everywhere is not a system.**
 
----
+### Moat Layer
 
-## Brand Differentiators
-
-### What We Stand FOR:
-
-- **Context over statelessness** - AI should remember your work, not start fresh every time
-- **Human-centered AI** - Technology amplifies your thinking, doesn't replace it
-- **Rich context architecture** - Goals, plans, tasks, documents—all connected
-- **Compounding value** - Every day you use BuildOS, your AI gets smarter about YOUR work
-- **Progress over perfection** - Next step matters more than grand plans
-
-### What We Stand AGAINST:
-
-- **Stateless AI** - Starting from scratch every conversation is broken
-- **Agent hype** - AI should enhance judgment, not replace it (context-first, not agent-first)
-- **Productivity theater** - Looking organized vs. actually moving forward
-- **Feature bloat** - More features ≠ more productivity
-- **Flat task lists** - Tasks without goals, plans, and context are just busywork
+**The context compounds. The project gets easier to restart.**
 
 ---
 
-## Messaging Framework
+## What We Are And What We Are Not
 
-### Elevator Pitch (15 seconds)
+### We Are
 
-"BuildOS is context infrastructure for the AI era. Build context on your projects—goals, plans, tasks, documents—and that context compounds. Your AI finally remembers. Your thinking is never lost."
+- calm but not sleepy
+- direct but not harsh
+- systems-minded but human
+- practical but not boring
+- slightly contrarian but not performative
+- honest about what works and what still needs work
 
-### Problem-Solution (30 seconds)
+### We Are Not
 
-"Every time you open ChatGPT, you start from zero. Every project you've explained, every constraint you've mentioned—gone. BuildOS changes that. Brain dump once, and that context compounds. Chat with AI that actually knows your projects. See daily briefs powered by your full history. This is what productivity looks like when AI has context."
-
-### Emotional Journey
-
-**Before BuildOS:** "I'm explaining the same project to AI for the 50th time"
-**With BuildOS:** "I zoomed into that task and the AI already knew everything"
-**After BuildOS:** "My context compounds every day—starting now beats starting later"
-
----
-
-## Proof Points
-
-- Built by someone with ADHD who struggled with organization and tried everything else
-- Context compounds: Day 1 is helpful, Day 100 is like having a chief of staff
-- "It's the only tool that actually remembers my projects" - Beta user
-- Stop repeating context: brain dump once, use it everywhere
-- From scattered thoughts to structured context in under 60 seconds
+- AI hype merchants
+- productivity guilt merchants
+- enterprise PM software in disguise
+- guru-branded self-optimization theater
+- abstract, jargon-heavy, or over-explained
 
 ---
 
-## Brand Application Guidelines
+## Voice Guide
 
-### Website Copy Style:
+### Core Voice Traits
 
-- Lead with the problem they feel
-- Show the simple solution
-- Prove it works
-- Make starting easy
+1. **Grounded**
+   Speak from use, evidence, and lived frustration.
 
-### Social Media Voice:
+2. **Clear**
+   Prefer concrete examples over abstract language.
 
-- Share real struggles and wins
-- Anti-perfectionist productivity tips
-- Behind-the-scenes building in public
-- Celebrate user victories
+3. **Relieving**
+   The user should feel less judged and more capable.
 
-### Visual Direction:
+4. **Contrarian**
+   Challenge broken defaults, but do it with substance.
 
-- Clean but not sterile
-- Energetic but not chaotic
-- Accessible colors (ADHD-friendly)
-- Show the transformation (mess → clarity)
+5. **Systems-Literate**
+   Understand complex work without sounding like corporate software.
 
----
+### Voice Principles
 
-## The BuildOS Way
-
-_"We believe productivity isn't about doing more—it's about building context that makes everything else work. In a world obsessed with AI agents and stateless chat, we're building something different: context infrastructure where your projects have memory, your AI knows your work, and every day compounds on the last. Context-first. Human-in-the-loop. Yours."_
+- show the workflow, then explain the idea
+- use plain language first
+- keep claims honest and specific
+- focus on progress and relief
+- do not over-narrate the technology
 
 ---
 
-## Quick Reference: Key Terminology
+## Channel Adaptation
 
-| Internal Term       | User-Facing Term            | Use When                        |
-| ------------------- | --------------------------- | ------------------------------- |
-| Ontology            | Rich context / Full picture | Describing the connected system |
-| Agentic Chat        | Project Lens                | Describing the chat feature     |
-| Scoped Conversation | Zoom in / Zoom out          | Describing how focus works      |
-| Entity              | Goal, Plan, Task, Document  | Being specific about types      |
-| Context Compounding | "Your context compounds"    | Explaining long-term value      |
+### LinkedIn
+
+Use a thoughtful founder-operator voice.
+
+- more reflective
+- more strategic
+- still concrete
+- less snark, more judgment
+
+### X
+
+Use the sharpest version of the brand.
+
+- shorter
+- punchier
+- more contrast
+- more anti-bullshit energy
+
+### Instagram
+
+Use the most visual and emotionally relieving version of the brand.
+
+- transformation first
+- workflow visuals
+- calmer execution
+- less theory, more feeling
 
 ---
 
-_Last Updated: January 2025_
-_See also: [Brand Strategy 2025](BRAND_STRATEGY_2025.md) for complete strategy | [Zoom Messaging Guide](ZOOM_MESSAGING_GUIDE.md) for feature language_
+## Terms To Use
+
+Prefer:
+
+- thinking environment
+- messy thinking
+- structured work
+- project memory
+- one system
+- next move
+- replace scattered tools
+- raw input -> organized plan
+- the project remembers
+- context compounds
+
+Use carefully:
+
+- builder operating system
+- external brain
+- founder OS
+- ADHD-friendly
+
+These can work in the right context, but should not replace the main category.
+
+---
+
+## Terms To Avoid At First Contact
+
+Avoid leading with:
+
+- context infrastructure
+- ontology
+- agentic orchestration
+- AI-powered productivity
+- multi-agent workflow layer
+- knowledge operating fabric
+
+These make BuildOS sound more complex than it needs to.
+
+---
+
+## Proof Themes
+
+When in doubt, show one of these:
+
+- raw brain dump -> structured project
+- chapter problem -> revision plan
+- video idea mess -> production workflow
+- scattered stack -> one working system
+- founder using BuildOS on real work
+
+If the proof is weak, the message will feel weak.
+
+---
+
+## Visual Direction
+
+### Show
+
+- working surfaces
+- real notes
+- project maps
+- before/after cards
+- one current focus area
+- connected assets inside a project
+
+### Avoid
+
+- robot imagery
+- sparkle-AI tropes
+- sterile dashboards
+- generic KPI graphics
+- feature grids with no story
+
+The product should feel like a place to work, not a sales diagram.
+
+---
+
+## Quick Reference
+
+### One-Liner
+
+**BuildOS turns messy thinking into structured work.**
+
+### 15-Second Version
+
+**BuildOS is a thinking environment for people making complex things. Talk through the work, and it becomes a project with memory.**
+
+### 30-Second Version
+
+**Most creative work breaks because the context gets split across notes, docs, tasks, and AI chats. BuildOS brings that back into one environment, turns rough input into structure, and keeps the project connected so you are not starting from zero every time.**
+
+---
+
+## Source Of Truth
+
+Use this guide with:
+
+- [BuildOS Marketing Strategy 2026](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-marketing-strategy-2026.md)
+- [BuildOS Guerrilla Content Doctrine](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-guerrilla-content-doctrine.md)
+- [6-Week Guerrilla Seed Campaign](/Users/djwayne/buildos-platform/docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)

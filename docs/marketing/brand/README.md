@@ -2,102 +2,60 @@
 
 # Brand Documentation Hub
 
-> **Start Here:** [Brand Strategy 2025](BRAND_STRATEGY_2025.md) is the master strategy document. All other brand docs support and reference it.
+> **Start Here:** [BuildOS Marketing Strategy 2026](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-marketing-strategy-2026.md) for strategy and [BuildOS Brand Guide](/Users/djwayne/buildos-platform/docs/marketing/brand/brand-guide-1-pager.md) for day-to-day messaging.
 
 ---
 
-## Document Hierarchy
+## Current Document Hierarchy
 
 ```
-BRAND_STRATEGY_2025.md          ← Master Strategy (Start Here)
-├── brand-guide-1-pager.md      ← Quick Reference
-├── ZOOM_MESSAGING_GUIDE.md     ← Feature Messaging
-├── buildos-brand-personality-profile.md ← Voice & Tone
-├── communication-guide.md      ← DJ's Preferences
-└── Templates/Worksheets        ← Planning Tools
+docs/marketing/strategy/buildos-marketing-strategy-2026.md
+docs/marketing/brand/brand-guide-1-pager.md
+docs/marketing/strategy/buildos-guerrilla-content-doctrine.md
+docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md
 ```
+
+Use the four docs above as the current operating stack.
+
+Keep older brand documents as reference, not source of truth.
 
 ---
 
 ## Core Documents
 
-### Strategy & Positioning
+### Current Strategy And Positioning
 
-| Document                                            | Purpose                | When to Use                              |
-| --------------------------------------------------- | ---------------------- | ---------------------------------------- |
-| [**Brand Strategy 2025**](BRAND_STRATEGY_2025.md)   | Master brand strategy  | Strategic decisions, messaging alignment |
-| [**Brand Guide 1-Pager**](brand-guide-1-pager.md)   | Quick reference        | Day-to-day messaging, team alignment     |
-| [**Zoom Messaging Guide**](ZOOM_MESSAGING_GUIDE.md) | Project Lens messaging | Product marketing, feature communication |
+| Document                                                                                                                                                     | Purpose                 | When to Use                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- | -------------------------------------------- |
+| [**BuildOS Marketing Strategy 2026**](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-marketing-strategy-2026.md)                            | Current master strategy | Positioning, audience order, channel roles   |
+| [**BuildOS Brand Guide**](brand-guide-1-pager.md)                                                                                                            | Current quick reference | Messaging, terms, tone, visual direction     |
+| [**BuildOS Guerrilla Content Doctrine**](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-guerrilla-content-doctrine.md)                      | Strategic logic         | Solo-founder doctrine, sequencing, tradeoffs |
+| [**6-Week Guerrilla Seed Campaign**](/Users/djwayne/buildos-platform/docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) | Current execution plan  | Weekly content planning and posting          |
 
-### Voice & Personality
+### Supporting Brand Documents
 
-| Document                                                              | Purpose                                | When to Use                           |
-| --------------------------------------------------------------------- | -------------------------------------- | ------------------------------------- |
-| [**Brand Personality Profile**](buildos-brand-personality-profile.md) | 7 personality traits, voice guidelines | Content creation, communication style |
-| [**Communication Guide**](communication-guide.md)                     | DJ's personal preferences              | Team communication, founder voice     |
+| Document                                                              | Purpose                           | When to Use                              |
+| --------------------------------------------------------------------- | --------------------------------- | ---------------------------------------- |
+| [**Zoom Messaging Guide**](ZOOM_MESSAGING_GUIDE.md)                   | Feature-specific language         | Product marketing and feature copy       |
+| [**Brand Personality Profile**](buildos-brand-personality-profile.md) | Voice and personality depth       | Content refinement and tone checks       |
+| [**Communication Guide**](communication-guide.md)                     | Founder communication preferences | Founder-facing content and collaboration |
 
-### Planning Templates
+### Historical Reference
 
-| Document                                                            | Purpose             | When to Use                   |
-| ------------------------------------------------------------------- | ------------------- | ----------------------------- |
-| [**Brand Activating Planner**](brand-activating-planner.md)         | Campaign planning   | Launching new initiatives     |
-| [**Brand Building Worksheet**](brand-building-worksheet.md)         | Strategic questions | Brand development             |
-| [**Brand Evolution Roadmap**](brand-evolution-roadmap-worksheet.md) | 2-3 year planning   | Long-term brand strategy      |
-| [**Brand Personality Framework**](brand-personality.md)             | Generic framework   | Creating new personality docs |
-| [**Personal Brand Questionnaire**](personal-brand-questionnaire.md) | DJ's personal brand | Founder storytelling          |
+| Document                                          | Purpose                 | When to Use                             |
+| ------------------------------------------------- | ----------------------- | --------------------------------------- |
+| [**Brand Strategy 2025**](BRAND_STRATEGY_2025.md) | Prior strategy baseline | Reviewing earlier positioning decisions |
 
 ---
 
-## Key Concepts (From Brand Strategy 2025)
+## Current Messaging Hierarchy
 
-### Value Proposition Hierarchy
+1. **Thinking environment** as the public category
+2. **Turn messy thinking into structured work** as the core promise
+3. **The project remembers** as the differentiator
+4. **Context compounds** as the moat
 
-1. **Build Context That Compounds** — Primary value
-2. **Contextual AI Conversation (Project Lens)** — Core feature
-3. **Rich Context Architecture (Ontology)** — Technical differentiator
-4. **Natural Context Capture (Brain Dump)** — Input method
-5. **Contextual Intelligence (Daily Brief)** — Output value
-
-### Core Messaging
-
-| Internal Term       | User-Facing Term            |
-| ------------------- | --------------------------- |
-| Ontology            | Rich context / Full picture |
-| Agentic Chat        | Project Lens                |
-| Scoped Conversation | Zoom in / Zoom out          |
-| Entity              | Goal, Plan, Task, Document  |
-| Context Compounding | "Your context compounds"    |
-
-### Brand Personality (7 Traits)
-
-1. Energetic Realist
-2. No-Shame Guide
-3. Momentum over Perfection
-4. Empathetic Challenger
-5. Practical Visionary
-6. Accessible Expert
-7. Optimistic Pragmatist
-
----
-
-## Related Documentation
-
-### Content Strategy
-
-- [Content Strategy README](/apps/web/docs/content/README.md)
-- [Blog Update Master Plan](/apps/web/docs/content/BLOG_UPDATE_MASTER_PLAN.md)
-- [Blog Drafts](/apps/web/docs/content/)
-
-### Marketing Index
-
-- [Full Marketing Documentation](/docs/marketing/INDEX.md)
-- [Customer Language Analysis](/docs/marketing/customer-lingo-adhd.md)
-- [User Segments](/docs/marketing/user-segments/)
-
-### Published Blogs
-
-- [Getting Started](/apps/web/src/content/blogs/getting-started/)
-- [Productivity Tips](/apps/web/src/content/blogs/productivity-tips/)
+If a message breaks that order without a good reason, check the newer docs before shipping it.
 
 ---
 
@@ -105,24 +63,30 @@ BRAND_STRATEGY_2025.md          ← Master Strategy (Start Here)
 
 ### For Content Creation
 
-1. Start with [Brand Strategy 2025](BRAND_STRATEGY_2025.md) for messaging alignment
-2. Check [Zoom Messaging Guide](ZOOM_MESSAGING_GUIDE.md) for feature language
-3. Review [Brand Personality Profile](buildos-brand-personality-profile.md) for voice/tone
-4. Use [Brand Guide 1-Pager](brand-guide-1-pager.md) as quick reference
+1. Start with [BuildOS Marketing Strategy 2026](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-marketing-strategy-2026.md)
+2. Use [BuildOS Brand Guide](brand-guide-1-pager.md) as the quick reference
+3. Use the [6-Week Guerrilla Seed Campaign](/Users/djwayne/buildos-platform/docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) for hook and asset planning
+4. Check [Zoom Messaging Guide](ZOOM_MESSAGING_GUIDE.md) only for feature-level copy
 
-### For Product Marketing
+### For Strategy Decisions
 
-1. Use [Zoom Messaging Guide](ZOOM_MESSAGING_GUIDE.md) for Project Lens
-2. Follow value proposition hierarchy from [Brand Strategy 2025](BRAND_STRATEGY_2025.md)
-3. Match audience messaging to user segments
+1. Start with [BuildOS Marketing Strategy 2026](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-marketing-strategy-2026.md)
+2. Use [Guerrilla Content Doctrine](/Users/djwayne/buildos-platform/docs/marketing/strategy/buildos-guerrilla-content-doctrine.md) when a tradeoff or sequencing question comes up
 
-### For Team Alignment
+### For Voice Consistency
 
-1. Share [Brand Guide 1-Pager](brand-guide-1-pager.md) for quick onboarding
-2. Reference [Brand Personality Profile](buildos-brand-personality-profile.md) for voice consistency
-3. Use [Communication Guide](communication-guide.md) for founder voice
+1. Use [BuildOS Brand Guide](brand-guide-1-pager.md)
+2. Check [Brand Personality Profile](buildos-brand-personality-profile.md)
+3. Check [Communication Guide](communication-guide.md) for founder voice specifics
 
 ---
 
-_Last Updated: January 2025_
-_See also: [Marketing Index](/docs/marketing/INDEX.md) | [Content Strategy](/apps/web/docs/content/README.md)_
+## Related Documentation
+
+- [Marketing Index](/Users/djwayne/buildos-platform/docs/marketing/INDEX.md)
+- [Customer Language Analysis](/Users/djwayne/buildos-platform/docs/marketing/customer-lingo-adhd.md)
+- [Writer Customer Language Analysis](/Users/djwayne/buildos-platform/docs/marketing/customer-lingo-writer.md)
+
+---
+
+_Last Updated: March 12, 2026_

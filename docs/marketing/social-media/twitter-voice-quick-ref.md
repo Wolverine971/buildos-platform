@@ -62,9 +62,9 @@
 | Pillar                 | Your Angle                                                          |
 | ---------------------- | ------------------------------------------------------------------- |
 | **Context/Memory**     | "AI has amnesia. Context that compounds > intelligence that resets" |
-| **Productivity**       | "Clarity > time management. Complex tools slow you down."           |
-| **Building in Public** | Marines (sparingly), solo founder journey, real struggles           |
-| **AI Tools**           | Daily Claude Code user, Curri integrations, context engineering     |
+| **AI Workflows**       | "notes + docs + chats is not a system. restart cost is the tax"     |
+| **Building in Public** | solo founder journey, real struggles, product judgment              |
+| **AI Tools**           | Claude/ChatGPT workflows, tool-use, integrations, context layer     |
 
 ---
 
@@ -162,6 +162,7 @@ When sharing a value reply on a topic you have experience with:
 | --------------------- | --------------------------------------------------------------- |
 | **AI/LLM**            | @simonw, @emollick, @hwchase17, @karpathy (monitor)             |
 | **Indie Hackers**     | @arvidkahl, @tdinh_me, @robwalling, @csallen, @thepatwalls      |
+| **AI Builders/Tools** | builders shipping bots, wrappers, agents, AI coding workflows   |
 | **ADHD/Productivity** | @danidonovan, @ADHD_Alien, @HowtoADHD, @fortelabs               |
 | **PKM**               | @TfTHacker, @NicoleVDH, @saboristudio                           |
 | **Creator Economy**   | @businessbarista, @gregisenberg, @thejustinwelsh, @david_perell |
@@ -191,11 +192,11 @@ Scan your Following feed to find new accounts worth adding to tiers:
 ## Search Topics
 
 - AI forgetting context / memory problems
-- ChatGPT / Claude frustrations
-- ADHD productivity struggles
-- Notion abandoned / overwhelming
-- Brain dump / mental clarity
-- Productivity tool fatigue
+- ChatGPT / Claude workflow frustrations
+- agent and tool-use fatigue
+- AI coding workflow pain
+- Notion / Linear / docs fragmentation
+- productivity tool fatigue in builder workflows
 
 ---
 

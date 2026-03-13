@@ -1,405 +1,417 @@
-<!-- docs/marketing/social-media/twitter-strategy.md -->
+---
+title: 'BuildOS Twitter/X Strategy'
+created: 2026-03-12
+status: current
+owner: DJ Wayne
+related_docs:
+    - /docs/marketing/strategy/buildos-marketing-strategy-2026.md
+    - /docs/marketing/social-media/buildos-platform-growth-plan-2026.md
+    - /docs/marketing/social-media/twitter-voice-buildos.md
+    - /docs/marketing/social-media/twitter-voice-quick-ref.md
+path: docs/marketing/social-media/twitter-strategy.md
+---
 
 # BuildOS Twitter/X Strategy
 
+## Purpose
+
+X is not the place to lead with broad productivity messaging.
+
+For BuildOS, X should be treated as an:
+
+**AI-native builder network**
+
+That means the primary audience is:
+
+- SaaS founders
+- indie hackers
+- AI-tool builders
+- people deep in ChatGPT / Claude / AI workflow discourse
+- people building or using bots, wrappers, agents, and automations
+
+Secondary audiences still matter, but they are not the main frame:
+
+- ADHD builders
+- productivity tool switchers
+- creator-founders
+
+---
+
+## The X Position
+
+On X, BuildOS should feel like:
+
+**the thinking environment for builders who are tired of stateless AI and fragmented workflows**
+
+This audience does not need to be convinced that AI is useful.
+
+They already know that.
+
+What they need to hear is:
+
+- AI is smart but stateless
+- workflows break when context is scattered
+- the missing layer is project memory
+- agents are not enough if the work has no durable context
+
+---
+
+## What X Is Good For
+
+Use X to:
+
+- test hooks quickly
+- sharpen the contrast with stateless chat
+- meet AI-native founders where they already talk
+- react to product and workflow discourse
+- build recognition through repetition
+
+Do not use X as your softest platform.
+Use it as your sharpest platform.
+
+---
+
+## Audience Breakdown
+
+### Primary
+
+- founders building AI SaaS
+- indie hackers shipping fast
+- people using Claude and ChatGPT daily for work
+- people experimenting with agents, tool use, bots, wrappers, and coding workflows
+- people publicly frustrated by losing context across chats and tools
+
+### Secondary
+
+- founders with tool-sprawl problems
+- creator-founders building with AI
+- ADHD builders who already overlap with AI/productivity Twitter
+
+### What They Already Believe
+
+- AI is useful
+- models matter
+- tools move fast
+- building in public is normal
+- everyone is trying to find a better workflow
+
+### What BuildOS Should Add
+
+- memory matters more than novelty
+- context matters more than another wrapper
+- one project home beats a scattered toolchain
+- restart speed is a real product value
+
+---
+
 ## Profile Setup
 
-### Bio
+### Bio Options
 
-**Primary:** "The productivity tool for scattered minds 🧠 | Talk → Organize → Execute | Built by someone who struggled with chaos"
+**Option 1**
 
-**Alternative:** "Your home base for getting shit done | Brain dump → AI organizes → You execute | Built for minds that move fast ⚡"
+`building BuildOS | thinking environment for builders | your projects shouldn't reset every chat`
+
+**Option 2**
+
+`BuildOS: messy thinking -> structured work | project memory for AI-native builders | beta ↓`
+
+**Option 3**
+
+`for founders building with ChatGPT, Claude, and too many tabs | BuildOS keeps the project together`
 
 ### Header Image
 
-Visual showing: Chaotic thoughts (left) → BuildOS logo (center) → Organized checklist (right)
+Visual direction:
 
-### Pinned Tweet
+- fragmented notes/docs/chats on one side
+- one connected project on the other
+- no generic productivity graphics
 
-"I tried Notion 6 times. Abandoned it 6 times.
+### Pinned Post Direction
 
-Built BuildOS because disorganized minds need different tools.
+Use a pinned post that says:
 
-Just talk. AI organizes. You execute.
+- AI is smart
+- stateless chat is still broken for real projects
+- BuildOS exists to hold the context together
 
-It's that simple.
+Example:
 
-Join beta → [link]"
+```text
+chatgpt and claude are useful.
 
----
+but if every project starts from zero,
+every good thread gets buried,
+and your notes/tasks/docs live in separate places,
+you still do too much work just reconstructing context.
 
-## Content Pillars & Examples
+that is why i'm building BuildOS.
 
-### 1. Reality Checks (25%)
-
-**Purpose:** Challenge productivity myths, validate struggles
-
-**Tweet Examples:**
-
-"Your Notion workspace is abandoned because you're not lazy.
-
-You're overwhelmed.
-
-Complex tools make scattered minds more scattered.
-
-You need simplicity, not more features."
-
----
-
-"Hot take: AI agents won't save your productivity.
-
-You still need to decide what matters.
-You still need to take action.
-You still need to think.
-
-AI should organize, not replace."
+a thinking environment for builders:
+messy thinking -> structured work
+the project remembers
+```
 
 ---
 
-"That productivity guru's morning routine?
+## Content Pillars
 
-- 5am wake up
-- 2 hour deep work
-- Perfect time blocking
+### 1. Context > Stateless Chat (30%)
 
-Your ADHD brain: 'lol no'
+Purpose:
 
-Build systems for your brain, not theirs."
+Own the "AI has amnesia" conversation.
 
-### 2. Building in Public (25%)
+Angles:
 
-**Purpose:** Transparency, relatability, trust-building
+- the hidden cost of stateless chat
+- why context beats one-off prompting
+- why project memory matters
+- why restart speed matters
 
-**Tweet Examples:**
+Example posts:
 
-"Today's ADHD moment:
+```text
+claude is good.
+chatgpt is good.
 
-Spent 2 hours building a feature.
-Realized I built it last week.
-Found 3 better ideas while looking for the old code.
+but if the project resets every conversation,
+you are still paying a tax just to get back to where you already were.
 
-This is why BuildOS has a 'what did I already do?' feature 😅"
+that tax is the workflow problem.
+```
 
----
+```text
+everyone is racing to build smarter agents.
 
-"User feedback: 'Can you make it yell at me to focus?'
+the more obvious gap to me is simpler:
+where does the project actually remember itself?
+```
 
-Me: No, but what if it just... showed you the next tiny step?
+### 2. Anti-Tool-Sprawl For Builders (25%)
 
-Them: 'Oh. Yeah. That's better.'
+Purpose:
 
-Gentle momentum > harsh motivation"
+Make fragmented AI-native workflows feel broken.
 
----
+Angles:
 
-"Revenue update: $1,847 MRR
+- notes + docs + AI chats is not a system
+- most builders have good tools but weak workflow architecture
+- "another wrapper" is not the answer if context still scatters
 
-New users: 23
-Churned: 2 (both said 'too simple')
+Example posts:
 
-I'll take 'too simple' over 'too overwhelming' every day."
+```text
+your stack is not:
+"claude + chatgpt + linear + notion + docs"
 
-### 3. Mini Wins & User Stories (25%)
+your stack is:
+"wherever the project fell apart last"
+```
 
-**Purpose:** Social proof, celebration, community building
+```text
+if the useful thinking is in one chat
+the plan is in another tool
+the tasks are somewhere else
+and the docs live in a third place
 
-**Tweet Examples:**
+you do not have an AI workflow.
+you have recovery work.
+```
 
-"@user just went from 47 scattered notes to 3 clear projects with next steps in 5 minutes.
+### 3. Build In Public, But With Real Product Judgment (25%)
 
-Their message: 'Holy shit, I can see what to do now.'
+Purpose:
 
-This is why we build 🚀"
+Show that you are actually building and thinking, not just riffing on trends.
 
----
+Angles:
 
-"BuildOS user for 2 weeks:
+- what you are learning from building BuildOS
+- what AI-native users actually struggle with
+- what features or workflows are proving real
+- what hype you are ignoring
 
-Week 1: 'This feels too simple'
-Week 2: 'Wait, I'm actually doing things'
-Week 3: 'This is my home base now'
+Example posts:
 
-Simple + consistent > complex + abandoned"
+```text
+thing i'm becoming more convinced of:
 
----
+builders do not need more generation.
+they need better re-entry.
 
-"Student using BuildOS:
+the hardest part of many projects is just coming back in and knowing where you are.
+```
 
-'Dumped my entire semester panic into it.
-It showed me I only have 6 actual things to do.
-Not 600.
-Just 6.
-I might actually pass.'
+```text
+every time i use BuildOS on real work,
+the useful question is less "what can AI produce?"
+and more "what context should still be attached when i come back?"
+```
 
-Clarity changes everything."
+### 4. Product Proof And Use Cases (20%)
 
-### 4. ADHD Productivity Tips (25%)
+Purpose:
 
-**Purpose:** Value-first content, build authority
+Make the product concrete.
 
-**Tweet Examples:**
+Angles:
 
-"ADHD productivity hack:
+- dashboard -> project -> project chat
+- raw input -> structured project
+- one project home replacing fragmented tools
+- how BuildOS helps with real founder or creator work
 
-Stop organizing when you're avoiding.
-Start executing when you have clarity.
+Example posts:
 
-The organization IS the procrastination.
+```text
+most AI product demos are:
+"look what it can generate"
 
-Talk it out. See the next step. Do it."
+my favorite BuildOS demos are:
+"look how little context i had to reconstruct"
+```
 
----
+```text
+dashboard
+project view
+project chat
 
-"Your brain dump doesn't need categories.
-It doesn't need tags.
-It doesn't need a perfect system.
-
-It needs to GET OUT OF YOUR HEAD.
-
-Then let AI figure out the structure."
-
----
-
-"Thread: Why your ADHD brain hates most productivity tools 🧵
-
-1/ They require you to think linearly (you don't)
-2/ They demand consistent structure (you're dynamic)
-3/ They punish context switching (you're multi-track)
-4/ They assume executive function (yours varies)
-
-/5"
+same work.
+same context.
+less rebuilding.
+```
 
 ---
 
 ## Engagement Strategy
 
-### Reply Strategy
+### Where To Engage
 
-- Respond to productivity struggles with empathy + gentle BuildOS mention
-- Share quick tips under viral ADHD content
-- Support other ADHD founders and creators
+Reply under posts about:
 
-### Quote Tweet Templates
+- ChatGPT and Claude workflow pain
+- model comparisons when the real issue is workflow
+- agents, wrappers, bots, and AI tools
+- founder/operator systems
+- Notion/Linear/toolchain frustration
+- AI coding and project-memory pain
 
-- Add reality checks to toxic productivity advice
-- Celebrate user wins with added context
-- Build on ADHD community discussions
+### How To Add Value
 
-### Community Building
+Add one of these:
 
-- #ADHDproductivity hashtag participation
-- Host "Sunday Brain Dump" sessions
-- Feature user transformations every Friday
+- a sharper framing
+- a workflow observation
+- a lived product lesson
+- a systems insight
+
+Do not reply like a growth hacker.
+Reply like a builder who has seen the same failure mode repeatedly.
+
+### Good Reply Moves
+
+- "the pattern i keep seeing is..."
+- "this is where the workflow breaks for me..."
+- "the hidden cost is restart time..."
+- "the issue is less the model and more where the context lives..."
+
+### Bad Reply Moves
+
+- generic hype
+- preachy "here's the answer"
+- dropping BuildOS in every thread
+- trying to win model debates you do not need
 
 ---
 
 ## Growth Tactics
 
-### Follow Strategy
+### Hook Testing
 
-Target followers of:
+Test 2-3 versions of the same thought:
 
-- @adhd_couple
-- @danidonovan (ADHD comics)
-- @HowtoADHD
-- Notion frustrated users
-- Productivity tool switchers
+- one hard contrast
+- one calmer observation
+- one proof-led version
 
-### Thread Ideas
+### Repetition
 
-1. "I tried every productivity app with ADHD. Here's what actually works:"
-2. "Building a startup with ADHD (the real version):"
-3. "Why 'just use Notion' is terrible advice for scattered minds:"
-4. "The hidden cost of complex productivity systems:"
-5. "What your abandoned apps are trying to tell you:"
+If a hook works, reuse it.
 
-### Campaign Hashtags
+Examples of reusable X hooks:
 
-- #HomeBaseProductivity
-- #BrainDumpToAction
-- #ADHDproductivity
-- #ScatteredMinds
-- #JustTalkItOut
+- AI is smart. your workflow is the bottleneck.
+- the real problem is not generation. it is re-entry.
+- notes + docs + chat threads is not a system.
+- the project should not reset every conversation.
+- most builders do not need another wrapper. they need project memory.
 
----
+### Proof Loop
 
-## Content Calendar Structure
+Turn strong tweets into:
 
-### Monday
+- screenshot posts
+- short demo clips
+- Instagram carousels
+- LinkedIn posts
 
-**Motivation Monday** - But realistic
-"Your goal this week: Use one tool consistently. That's it. Complexity is not productivity."
+### Conversation Targets
 
-### Tuesday
+Look for people who post about:
 
-**Tool Tip Tuesday**
-Quick BuildOS feature highlights or general ADHD productivity tips
+- Claude / ChatGPT workflows
+- agent and tool-use experiments
+- AI coding and context switching
+- founder systems
+- product management and execution pain
 
-### Wednesday
-
-**Win Wednesday**
-Share user success stories and transformations
-
-### Thursday
-
-**Thoughts Thursday**
-Deeper insights on productivity, ADHD, or building BuildOS
-
-### Friday
-
-**Freedom Friday**
-Celebrate the week's progress, share brain dump prompts
-
-### Weekend
-
-More casual, behind-the-scenes, or community engagement
+Do not optimize for huge accounts only.
+Smaller high-alignment practitioners are often better.
 
 ---
 
-## Voice Guidelines
+## Weekly Cadence
 
-### DO:
+Minimum:
 
-- Be real about struggles
-- Celebrate small wins
-- Use humor (self-deprecating ok)
-- Share actual numbers
-- Admit when wrong
-- Use simple language
+- 4 posts
+- 10 relevant replies
 
-### DON'T:
+Good operating level:
 
-- Shame productivity struggles
-- Promote hustle culture
-- Promise miraculous fixes
-- Use corporate speak
-- Hide behind perfection
-- Overwhelm with features
+- 5-7 posts
+- 15-20 relevant replies
 
----
+Weekly structure:
 
-## Reply & Engagement Voice (Updated Jan 2026)
-
-This section captures the authentic DJ voice for replies - learned from real engagement, not theory.
-
-### Core Philosophy
-
-**Be an insider sharing what's working, not a guru dispensing wisdom.**
-
-You're in the trenches building with AI daily. You see what smart people are doing. Share that perspective directly without the preachy setup.
-
-### The 3 Rules (Every Reply Must Pass)
-
-1. **Can I visualize it?** - Use specific details, not abstract concepts
-2. **Can I falsify it?** - Is this your real experience? Could you defend it if challenged?
-3. **Can nobody else say this?** - Use your marines background, solo founder journey, ADHD brain
-
-### Voice Principles
-
-- Lowercase casual. perfect grammar not required.
-- Short punchy sentences. fragments fine.
-- Start with observation or reaction, not "I think..."
-- Be direct. cut filler words.
-- Longer replies are fine when you have real substance.
-
-### How to Plug BuildOS
-
-**Be self-aware about it.** Don't sneak it in. Call it out.
-
-✅ Good:
-
-- "**shameless plug incoming** - this is literally why i built build-os"
-- "**shameless plug:** this is why i built build-os 😅"
-- "a good place to do this is in build-os 😉"
-
-❌ Bad:
-
-- "this is why i'm building context infrastructure..." (sounds like thought leader speak)
-- "your projects deserve to be remembered" (preachy, vague)
-- Sneaking it in hoping people don't notice
-
-### How to State Insights
-
-**Lead with what smart people are already doing.** Position yourself as an insider observer, not a teacher.
-
-✅ Good:
-
-- "everyone across the board, if they are smart, is creating context by creating a ton of markdown files..."
-- "this is exactly the pattern. everyone figures this out eventually..."
-- "been building with claude code daily for 6 months. the pattern is clear..."
-
-❌ Bad:
-
-- "here's what's actually expensive..." (preachy setup)
-- "this is why i'm obsessed with X over Y" (generic thought leader phrase)
-- "the bottleneck isn't intelligence. it's memory." (sounds like a LinkedIn post)
-
-### Playful Language
-
-Use casual, vivid language when it fits. Makes you sound human, not like a content machine.
-
-- "slurping up all that yummy slack context"
-- "way too long to figure this out"
-- "going for help billionaire status over here"
-
-### Engaging Big Accounts
-
-When replying to people like Shaan, Lenny, etc:
-
-1. **Reference their content** - Show you actually follow them (pinned tweets, past themes)
-2. **Ask direct questions** - "who should i be trying to impress with build-os.com?"
-3. **Tie to their frameworks** - Use their language/concepts back at them
-4. **Be cheeky, not sycophantic** - No "love this" or "great insight"
-
-**Example (Shaan reply using his "Help Billionaire" concept):**
-
-> ok but who should i be trying to impress?
->
-> building build-os.com for scattered ADHD brains. going for "help billionaire" status over here.
->
-> who's the right audience to care about?
-
-### What NOT to Do
-
-- Open with "love this" or "this resonated"
-- Say "great post!" or generic praise
-- Use phrases like "obsessed with X over Y"
-- Sound preachy or lecture-y
-- Hedge with "I think..." or "in my experience..."
-- Write something that could've been written by anyone
+- 2 hook/contrast posts
+- 1 proof post
+- 1 build-in-public post
+- 1 optional extra post from whatever got traction
 
 ---
 
-## Key Metrics to Track
+## Metrics That Matter
 
-- Mentions of "home base" in replies
-- Screenshots shared by users
-- DMs asking for beta access
-- Follower growth rate
-- Engagement on ADHD content vs general
-- Conversion from Twitter to beta signups
+Track:
 
----
+- profile visits
+- follows from non-followers
+- replies from AI-native founders/builders
+- bookmarks
+- link clicks or DMs
 
-## Crisis Management
-
-### If users complain about simplicity:
-
-"We chose simple on purpose. Complex tools exist. They're abandoned. We're building for people who need to execute, not organize forever."
-
-### If competitors attack:
-
-Don't engage directly. Share user success stories instead.
-
-### If features are requested:
-
-"Noted! But first: are you using what exists? We add features only when current ones are fully loved."
+Do not overvalue impressions without qualified response.
 
 ---
 
-## Success Indicators
+## X Rules
 
-**Month 1:** 1,000 followers, 50 beta signups from Twitter
-**Month 3:** 5,000 followers, being mentioned as "home base"
-**Month 6:** 15,000 followers, recognized voice in ADHD productivity
-**Year 1:** Go-to alternative to complex tools, community-driven growth
+1. Sound like you belong in the AI-builder conversation.
+2. Do not sound like a generic productivity account.
+3. Keep ADHD as a supporting lane, not the main lane.
+4. Prefer concrete workflow takes over abstract philosophy.
+5. Use proof whenever possible.

@@ -30,38 +30,38 @@
 	let exampleGraphLoading = $state(false);
 	const featuredPublicExampleProjectId = '44444444-4444-4444-4444-444444444444';
 
-	const thinkingEnvironmentVisuals = [
+	const replacementStack = [
 		{
-			eyebrow: 'Capture surface',
-			title: 'A place for rough thinking',
+			eyebrow: 'Replaces your notes app',
+			title: 'Capture that actually sticks',
 			description:
-				'Voice notes, chapter fragments, scene ideas, hook drafts, and research all land in one working surface before they disappear.',
+				'Voice notes, rough ideas, and research land in one place instead of scattered across apps, chats, and docs.',
 			texture: 'tx tx-frame tx-weak',
 			tags: ['voice notes', 'research', 'rough ideas']
 		},
 		{
-			eyebrow: 'Working map',
-			title: 'Projects with visible shape',
+			eyebrow: 'Replaces your task manager',
+			title: 'Tasks with real context',
 			description:
-				'Chapters, episodes, sources, deadlines, assets, and risks stop living in separate tools and start connecting in one environment.',
+				'Tasks that know which project, goal, and deadline they belong to — not orphaned items in a disconnected list.',
 			texture: 'tx tx-grain tx-weak',
-			tags: ['episodes', 'chapters', 'assets']
+			tags: ['projects', 'goals', 'deadlines']
 		},
 		{
-			eyebrow: 'Focus window',
-			title: 'One active thread at a time',
+			eyebrow: 'Replaces scattered docs',
+			title: 'Documents attached to the work',
 			description:
-				'Zoom into the current scene, script, or task without losing the rest of the project around it.',
+				'Scripts, outlines, research, and references stay connected to the project instead of floating in a separate app.',
 			texture: 'tx tx-thread tx-weak',
-			tags: ['current scene', 'next move', 'deep work']
+			tags: ['scripts', 'outlines', 'references']
 		},
 		{
-			eyebrow: 'Memory layer',
-			title: 'Context that stays warm',
+			eyebrow: 'Replaces stateless AI chats',
+			title: 'Context that persists',
 			description:
-				'Rules, references, prior decisions, and feedback remain attached to the work, so you stop starting from scratch.',
+				'Your project history stays warm. Stop re-explaining everything every time you open a new chat thread.',
 			texture: 'tx tx-bloom tx-weak',
-			tags: ['feedback', 'references', 'project memory']
+			tags: ['project memory', 'history', 'no re-explaining']
 		}
 	] as const;
 
@@ -121,37 +121,37 @@
 			label: 'Authors',
 			title: 'Books, series, and messy creative arcs',
 			description:
-				'Great fit when a project has chapters, world rules, character notes, feedback, and long-lived context.'
+				'For writers whose world-building notes, character arcs, and revision plans live in six different apps.'
 		},
 		{
 			label: 'YouTubers',
 			title: 'Research-heavy video systems',
 			description:
-				'Great fit when each video turns into scripts, examples, B-roll, sponsor notes, clips, and follow-on content.'
+				'For creators whose video ideas turn into scripts, B-roll lists, sponsor notes, and repurposing plans.'
 		},
 		{
 			label: 'Newsletter operators',
 			title: 'Recurring content with deep research',
 			description:
-				'Great fit when ideas, references, drafts, and publishing cadence need to stay connected week after week.'
+				'For writers whose ideas, references, drafts, and publishing cadence need to stay connected week after week.'
 		},
 		{
 			label: 'Podcasters',
 			title: 'Episodes with many moving pieces',
 			description:
-				'Great fit when booking, prep, recording, editing, clips, and show notes all need one home base.'
+				'For hosts juggling booking, prep, recording, editing, clips, and show notes across too many tabs.'
 		},
 		{
 			label: 'Course creators',
 			title: 'Content plus launch operations',
 			description:
-				'Great fit when curriculum, assets, emails, and launch tasks have to move as one project.'
+				'For builders shipping curriculum, assets, launch emails, and student questions as one project.'
 		},
 		{
 			label: 'SaaS builders',
 			title: 'Product work tied to content',
 			description:
-				'Great fit when shipping the product and telling the story around it happen in the same week.'
+				'For founders shipping the product and telling the story around it in the same week.'
 		}
 	] as const;
 
@@ -160,7 +160,7 @@
 		'@type': 'SoftwareApplication',
 		name: 'BuildOS',
 		description:
-			'BuildOS is a thinking environment that transforms rough notes, scripts, chapters, and research into structured projects with persistent context.',
+			'Dump rough ideas, scripts, and research. BuildOS turns them into structured projects with tasks, documents, and a clear next step.',
 		applicationCategory: 'ProductivityApplication',
 		operatingSystem: 'Web',
 		offers: {
@@ -257,10 +257,10 @@
 </script>
 
 <svelte:head>
-	<title>BuildOS - A Thinking Environment for Authors, YouTubers, and Builders</title>
+	<title>BuildOS — Turn Brain Dumps into Organized Plans</title>
 	<meta
 		name="description"
-		content="BuildOS is a thinking environment for authors, YouTubers, and builders. Dump rough ideas, scripts, chapters, and research. BuildOS turns them into structured projects that keep context warm over time."
+		content="Dump rough ideas, scripts, and research. BuildOS turns them into structured projects with tasks, documents, and a clear next step. Replace scattered notes and task lists."
 	/>
 
 	<meta
@@ -302,13 +302,10 @@
 	<!-- Open Graph / Facebook -->
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://build-os.com/" />
-	<meta
-		property="og:title"
-		content="BuildOS - A Thinking Environment for Authors, YouTubers, and Builders"
-	/>
+	<meta property="og:title" content="BuildOS — Turn Brain Dumps into Organized Plans" />
 	<meta
 		property="og:description"
-		content="BuildOS turns rough thoughts into structured work. Built for authors, YouTubers, and builders with complex projects that need more than a task list."
+		content="Dump rough ideas, scripts, and research. Get back projects, tasks, and a clear next step. Replace scattered notes, task lists, and AI chats."
 	/>
 	<meta property="og:image" content="https://build-os.com/brain-bolt.png" />
 
@@ -324,13 +321,10 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:site" content="@build_os" />
 	<meta name="twitter:creator" content="@djwayne3" />
-	<meta
-		name="twitter:title"
-		content="BuildOS - A Thinking Environment for Authors, YouTubers, and Builders"
-	/>
+	<meta name="twitter:title" content="BuildOS — Turn Brain Dumps into Organized Plans" />
 	<meta
 		name="twitter:description"
-		content="Dump ideas, scripts, chapters, and research. BuildOS turns them into structured projects that keep context warm over time."
+		content="Dump rough ideas, scripts, and research. Get back projects, tasks, and a clear next step."
 	/>
 	<meta name="twitter:image" content="https://build-os.com/twitter_card_light.webp" />
 	<meta
@@ -379,17 +373,16 @@
 					</a>
 
 					<h1 class="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">
-						A <span class="relative">
-							thinking environment
+						Turn messy ideas into an <span class="relative">
+							organized plan
 							<span
 								class="absolute inset-x-0 bottom-1 -z-10 h-[0.65em] tx tx-bloom tx-med rounded"
 							></span>
-						</span> for people making complex things
+						</span>
 					</h1>
 
 					<p class="text-sm sm:text-base text-muted-foreground max-w-xl">
-						Dump rough ideas, chapters, scripts, research, and launch notes. BuildOS
-						turns them into structured projects that stay connected as the work grows.
+						Dump a brain dump. Get back projects, tasks, and a clear next step.
 					</p>
 
 					<div class="flex flex-wrap gap-2 sm:gap-3 items-center">
@@ -397,13 +390,13 @@
 							href="/auth/register"
 							class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						>
-							Get started free
+							Try your brain dump
 						</a>
 						<a
 							class="text-xs text-muted-foreground hover:text-accent underline underline-offset-4 transition-colors px-2 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
-							href="#thinking-environment"
+							href="#how"
 						>
-							See the environment →
+							See how it works →
 						</a>
 					</div>
 				</div>
@@ -414,7 +407,7 @@
 					<div
 						class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
 					>
-						Thinking environment • creator work
+						Brain dump → organized plan
 					</div>
 					<div class="p-3 sm:p-4 space-y-3">
 						<div class="grid sm:grid-cols-2 gap-2 sm:gap-3">
@@ -500,28 +493,28 @@
 			</div>
 		</section>
 
-		<section id="thinking-environment" class="border-b border-border">
+		<section id="replace" class="border-b border-border">
 			<div class="mx-auto max-w-6xl px-4 py-8 sm:py-10 space-y-6">
 				<div class="flex items-end justify-between gap-4 flex-wrap">
 					<div>
 						<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
-							What a thinking environment looks like.
+							Replace your scattered stack.
 						</h2>
 						<p class="mt-2 text-sm text-muted-foreground max-w-2xl">
-							Not a blank document. Not a disconnected task list. A working surface
-							where capture, structure, focus, and memory live together.
+							Stop bouncing between notes apps, task managers, docs, and AI chats. One
+							place to capture, organize, and move forward.
 						</p>
 					</div>
 					<a
 						href="#examples"
 						class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
 					>
-						See grounded examples →
+						See real examples →
 					</a>
 				</div>
 
 				<div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-					{#each thinkingEnvironmentVisuals as visual}
+					{#each replacementStack as visual}
 						<article
 							class={`rounded-lg border border-border bg-card shadow-ink p-4 ${visual.texture}`}
 						>
@@ -560,8 +553,7 @@
 							From raw thinking to shipped work.
 						</h2>
 						<p class="mt-2 text-sm text-muted-foreground max-w-xl">
-							BuildOS helps authors, YouTubers, and builders move from messy inputs to
-							clear next moves without rebuilding context every time.
+							Three steps. No manual setup. No rebuilding context every time.
 						</p>
 					</div>
 					<a
@@ -599,11 +591,11 @@
 							02 • Shape
 						</div>
 						<h3 class="mt-2 text-sm font-semibold text-foreground">
-							Carve structure out of noise.
+							Get structure back.
 						</h3>
 						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-							BuildOS turns the mess into projects, documents, tasks, milestones, and
-							working context that match the project you are actually building.
+							BuildOS turns the mess into projects, tasks, documents, and milestones
+							that match what you are actually building.
 						</p>
 					</article>
 
@@ -616,11 +608,11 @@
 							03 • Drive
 						</div>
 						<h3 class="mt-2 text-sm font-semibold text-foreground">
-							Stay in flow. The OS remembers.
+							Pick up where you left off.
 						</h3>
 						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-							Open the current chapter, episode, or launch task with the rest of the
-							work still connected around it.
+							Open the current chapter, episode, or launch task. The rest of the
+							project stays connected around it.
 						</p>
 					</article>
 				</div>
@@ -633,11 +625,11 @@
 				<div class="flex items-end justify-between gap-4 flex-wrap">
 					<div>
 						<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
-							What the environment holds.
+							Everything your project needs. One place.
 						</h2>
 						<p class="mt-2 text-sm text-muted-foreground max-w-xl">
-							A real thinking environment needs more than tasks. It needs work,
-							context, drafts, timing, progress, and open loops in one place.
+							Most tools give you tasks or documents. Not both. Not connected. Not
+							with context.
 						</p>
 					</div>
 					<a
@@ -754,7 +746,7 @@
 				<div class="flex items-end justify-between gap-4 flex-wrap">
 					<div>
 						<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
-							Grounded creator projects.
+							See it in action.
 						</h2>
 						<p class="mt-2 text-sm text-muted-foreground max-w-2xl">
 							Real projects where the transformation from dump to structure is obvious
@@ -853,22 +845,81 @@
 			{/if}
 		</div>
 
+		<!-- honest comparison frame -->
+		<section class="border-b border-border">
+			<div class="mx-auto max-w-6xl px-4 py-8 sm:py-10 space-y-6">
+				<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
+					You have three options.
+				</h2>
+				<div class="grid md:grid-cols-3 gap-3 sm:gap-4">
+					<article
+						class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-4"
+					>
+						<div
+							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
+						>
+							Option 1
+						</div>
+						<h3 class="mt-2 text-sm font-semibold text-foreground">
+							Keep managing the sprawl.
+						</h3>
+						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+							Notes in one app, tasks in another, context in a chat thread you will
+							never find again.
+						</p>
+					</article>
+
+					<article
+						class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
+					>
+						<div
+							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
+						>
+							Option 2
+						</div>
+						<h3 class="mt-2 text-sm font-semibold text-foreground">
+							Wait for the perfect tool.
+						</h3>
+						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+							There is always a better one coming. Meanwhile, your ideas keep piling
+							up unstructured.
+						</p>
+					</article>
+
+					<article
+						class="rounded-lg border border-accent/30 bg-accent/5 shadow-ink tx tx-bloom tx-weak p-4"
+					>
+						<div class="text-[0.65rem] uppercase tracking-[0.18em] text-accent">
+							Option 3
+						</div>
+						<h3 class="mt-2 text-sm font-semibold text-foreground">
+							Start building context now.
+						</h3>
+						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+							Your system gets better with every brain dump. The value compounds from
+							day one.
+						</p>
+					</article>
+				</div>
+			</div>
+		</section>
+
 		<!-- final CTA -->
 		<section class="py-10 sm:py-12">
 			<div class="mx-auto max-w-6xl px-4 text-center">
 				<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-3">
-					Ready to work inside a thinking environment?
+					Start building context now.
 				</h2>
 				<p class="text-sm text-muted-foreground mb-6 max-w-lg mx-auto">
-					Start with a book, a video series, a newsletter system, or a product launch. The
-					context compounds from day one.
+					You can keep waiting for the perfect tool, or you can start building context
+					today. Begin with a book, a video series, or a product launch.
 				</p>
 				<div class="flex flex-wrap justify-center gap-2 sm:gap-3">
 					<a
 						href="/auth/register"
 						class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity"
 					>
-						Get started free
+						Try your brain dump
 					</a>
 					<a
 						href="/blogs/getting-started/how-buildos-works"

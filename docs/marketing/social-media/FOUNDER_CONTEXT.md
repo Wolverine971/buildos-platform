@@ -14,6 +14,7 @@
 | --------------------- | ------------------------------------------------------------ |
 | **Name**              | DJ                                                           |
 | **Twitter**           | @djwayne3                                                    |
+| **Instagram**         | @djwayne3                                                    |
 | **Company**           | BuildOS                                                      |
 | **Role**              | Solo Founder                                                 |
 | **Started BuildOS**   | ~May 2025                                                    |
@@ -86,13 +87,13 @@ When you don't have expertise to add, but want to engage:
 
 ### Platform Differences
 
-| Aspect       | Twitter                          | LinkedIn                             |
-| ------------ | -------------------------------- | ------------------------------------ |
-| **Tone**     | lowercase casual, fragments fine | Professional but authentic           |
-| **Length**   | Short, punchy                    | Longer-form, 1,000-3,000 chars       |
-| **Depth**    | Quick takes, hot takes           | More nuanced, storytelling           |
-| **Audience** | Indie hackers, builders          | Tech professionals, founders, VCs    |
-| **Swearing** | OK in moderation                 | Avoid professionally (occasional OK) |
+| Aspect       | Twitter                          | LinkedIn                             | Instagram                                   |
+| ------------ | -------------------------------- | ------------------------------------ | ------------------------------------------- |
+| **Tone**     | lowercase casual, fragments fine | Professional but authentic           | Warm, personal, authentic                   |
+| **Length**   | Short, punchy                    | Longer-form, 1,000-3,000 chars       | 1-3 sentences for comments                  |
+| **Depth**    | Quick takes, hot takes           | More nuanced, storytelling           | Genuine, community-oriented                 |
+| **Audience** | Indie hackers, builders          | Tech professionals, founders, VCs    | ADHD community, creators, gen Z/millennials |
+| **Swearing** | OK in moderation                 | Avoid professionally (occasional OK) | Casual OK, match community energy           |
 
 ### How DJ Explains BuildOS
 
@@ -603,7 +604,8 @@ The integration work at Curri (connecting Uber, Lyft, DoorDash APIs based on int
 ### Workflows Using This Document
 
 - **[Twitter Warmup](/.claude/commands/twitter-warmup.md)** - Daily Twitter engagement
-- **LinkedIn Warmup** - LinkedIn content
+- **[LinkedIn Warmup](/.claude/commands/linkedin-warmup.md)** - Daily LinkedIn engagement
+- **[Instagram Warmup](/.claude/commands/instagram-warmup.md)** - Daily Instagram engagement
 
 ---
 
