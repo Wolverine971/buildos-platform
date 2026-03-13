@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { Brain, Zap, Target, Mail, ArrowRight, Mic, Database, TrendingUp } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { DEFAULT_ORGANIZATION_LOGO_URL } from '$lib/constants/seo';
 
 	let innerWidth: number;
 </script>
@@ -16,7 +17,7 @@
 		'@type': 'Organization',
 		name: 'BuildOS',
 		url: 'https://build-os.com',
-		logo: 'https://build-os.com/brain-bolt.png',
+		logo: DEFAULT_ORGANIZATION_LOGO_URL,
 		description:
 			'AI-native productivity platform built for the agent economy. Features voice-first design, transparent context engine, and AI-native architecture.',
 		founder: {

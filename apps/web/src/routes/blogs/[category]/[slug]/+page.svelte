@@ -1,6 +1,16 @@
 <!-- apps/web/src/routes/blogs/[category]/[slug]/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import {
+		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_SOCIAL_IMAGE_ALT,
+		DEFAULT_SOCIAL_IMAGE_HEIGHT,
+		DEFAULT_SOCIAL_IMAGE_TYPE,
+		DEFAULT_SOCIAL_IMAGE_URL,
+		DEFAULT_SOCIAL_IMAGE_WIDTH,
+		DEFAULT_TWITTER_CREATOR,
+		DEFAULT_TWITTER_SITE
+	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
 	import type { ComponentType } from 'svelte';
 	import { format } from 'date-fns';
@@ -22,7 +32,7 @@
 		'@type': 'BlogPosting',
 		headline: data.post.title,
 		description: data.post.description,
-		image: `https://build-os.com/og-blog-${data.post.category}-${data.post.slug}.jpg`,
+		image: DEFAULT_SOCIAL_IMAGE_URL,
 		url: `https://build-os.com/blogs/${data.post.category}/${data.post.slug}`,
 		datePublished: data.post.date,
 		dateModified: data.post.lastmod || data.post.date,
@@ -35,7 +45,7 @@
 			name: 'BuildOS',
 			logo: {
 				'@type': 'ImageObject',
-				url: 'https://build-os.com/brain-bolt.png'
+				url: DEFAULT_ORGANIZATION_LOGO_URL
 			}
 		},
 		mainEntityOfPage: {
@@ -87,11 +97,15 @@
 	/>
 	<meta property="og:title" content="{data.post.title} - BuildOS Blog" />
 	<meta property="og:description" content={data.post.description} />
-	<meta
-		property="og:image"
-		content="https://build-os.com/og-blog-{data.post.category}-{data.post.slug}.jpg"
-	/>
+	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta property="og:image:type" content={DEFAULT_SOCIAL_IMAGE_TYPE} />
+	<meta property="og:image:width" content={String(DEFAULT_SOCIAL_IMAGE_WIDTH)} />
+	<meta property="og:image:height" content={String(DEFAULT_SOCIAL_IMAGE_HEIGHT)} />
+	<meta property="og:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 	<meta property="og:site_name" content="BuildOS" />
+	<meta property="og:locale" content="en_US" />
+	<link rel="image_src" href={DEFAULT_SOCIAL_IMAGE_URL} />
 
 	<!-- Article specific Open Graph -->
 	<meta property="article:author" content={data.post.author || 'BuildOS Team'} />
@@ -103,18 +117,17 @@
 	{/each}
 
 	<!-- Twitter -->
-	<meta property="twitter:card" content="summary_large_image" />
+	<meta name="twitter:card" content="summary_large_image" />
 	<meta
-		property="twitter:url"
+		name="twitter:url"
 		content="https://build-os.com/blogs/{data.post.category}/{data.post.slug}"
 	/>
-	<meta property="twitter:title" content="{data.post.title} - BuildOS Blog" />
-	<meta property="twitter:description" content={data.post.description} />
-	<meta
-		property="twitter:image"
-		content="https://build-os.com/og-blog-{data.post.category}-{data.post.slug}.jpg"
-	/>
-	<meta property="twitter:creator" content="@buildos_app" />
+	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
+	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
+	<meta name="twitter:title" content="{data.post.title} - BuildOS Blog" />
+	<meta name="twitter:description" content={data.post.description} />
+	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 
 	<!-- Additional Meta Tags -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />

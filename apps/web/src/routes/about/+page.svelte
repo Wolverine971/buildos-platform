@@ -10,6 +10,7 @@
 		Coffee
 	} from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { DEFAULT_ORGANIZATION_LOGO_URL } from '$lib/constants/seo';
 	import { onMount } from 'svelte';
 
 	let prefersReducedMotion = $state(false);
@@ -40,7 +41,7 @@
 		'@type': 'Organization',
 		name: 'BuildOS',
 		url: 'https://build-os.com',
-		logo: 'https://build-os.com/brain-bolt.png',
+		logo: DEFAULT_ORGANIZATION_LOGO_URL,
 		description:
 			'AI-powered productivity platform that transforms unstructured thoughts into actionable plans.',
 		foundingDate: '2025-11-01',

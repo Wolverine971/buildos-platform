@@ -9,6 +9,15 @@
 	import { page } from '$app/state';
 	import { toastService } from '$lib/stores/toast.store';
 	import { invalidateAll, replaceState } from '$app/navigation';
+	import {
+		DEFAULT_SOCIAL_IMAGE_ALT,
+		DEFAULT_SOCIAL_IMAGE_HEIGHT,
+		DEFAULT_SOCIAL_IMAGE_TYPE,
+		DEFAULT_SOCIAL_IMAGE_URL,
+		DEFAULT_SOCIAL_IMAGE_WIDTH,
+		DEFAULT_TWITTER_CREATOR,
+		DEFAULT_TWITTER_SITE
+	} from '$lib/constants/seo';
 	import AnalyticsDashboard from '$lib/components/dashboard/AnalyticsDashboard.svelte';
 	import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 	// Canonical data model icons (consistent with InsightPanels on /projects/[id])
@@ -307,7 +316,15 @@
 		property="og:description"
 		content="Dump rough ideas, scripts, and research. Get back projects, tasks, and a clear next step. Replace scattered notes, task lists, and AI chats."
 	/>
-	<meta property="og:image" content="https://build-os.com/brain-bolt.png" />
+	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta property="og:image:type" content={DEFAULT_SOCIAL_IMAGE_TYPE} />
+	<meta property="og:image:width" content={String(DEFAULT_SOCIAL_IMAGE_WIDTH)} />
+	<meta property="og:image:height" content={String(DEFAULT_SOCIAL_IMAGE_HEIGHT)} />
+	<meta property="og:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
+	<meta property="og:site_name" content="BuildOS" />
+	<meta property="og:locale" content="en_US" />
+	<link rel="image_src" href={DEFAULT_SOCIAL_IMAGE_URL} />
 
 	<!-- PERFORMANCE: Conditional preloads based on auth state -->
 	{#if isAuthenticated}
@@ -319,18 +336,15 @@
 
 	<!-- Twitter/X Card Tags (using name attribute as per X documentation) -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:site" content="@build_os" />
-	<meta name="twitter:creator" content="@djwayne3" />
+	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
+	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
 	<meta name="twitter:title" content="BuildOS — Turn Brain Dumps into Organized Plans" />
 	<meta
 		name="twitter:description"
 		content="Dump rough ideas, scripts, and research. Get back projects, tasks, and a clear next step."
 	/>
-	<meta name="twitter:image" content="https://build-os.com/twitter_card_light.webp" />
-	<meta
-		name="twitter:image:alt"
-		content="BuildOS - A Thinking Environment for Complex Creative Work"
-	/>
+	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 
 	<!-- Additional Meta Tags -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />

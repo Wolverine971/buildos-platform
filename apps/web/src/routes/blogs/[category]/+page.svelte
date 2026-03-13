@@ -1,5 +1,14 @@
 <!-- apps/web/src/routes/blogs/[category]/+page.svelte -->
 <script lang="ts">
+	import {
+		DEFAULT_SOCIAL_IMAGE_ALT,
+		DEFAULT_SOCIAL_IMAGE_HEIGHT,
+		DEFAULT_SOCIAL_IMAGE_TYPE,
+		DEFAULT_SOCIAL_IMAGE_URL,
+		DEFAULT_SOCIAL_IMAGE_WIDTH,
+		DEFAULT_TWITTER_CREATOR,
+		DEFAULT_TWITTER_SITE
+	} from '$lib/constants/seo';
 	import { page } from '$app/stores';
 	import { format } from 'date-fns';
 	import {
@@ -111,18 +120,29 @@
 		content="{data.category.description} - {data.posts
 			.length} articles to help you master your personal operating system."
 	/>
-	<meta property="og:image" content="https://build-os.com/og-blog-{categoryKey}.jpg" />
+	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta property="og:image:type" content={DEFAULT_SOCIAL_IMAGE_TYPE} />
+	<meta property="og:image:width" content={String(DEFAULT_SOCIAL_IMAGE_WIDTH)} />
+	<meta property="og:image:height" content={String(DEFAULT_SOCIAL_IMAGE_HEIGHT)} />
+	<meta property="og:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
+	<meta property="og:site_name" content="BuildOS" />
+	<meta property="og:locale" content="en_US" />
+	<link rel="image_src" href={DEFAULT_SOCIAL_IMAGE_URL} />
 
 	<!-- Twitter -->
-	<meta property="twitter:card" content="summary_large_image" />
-	<meta property="twitter:url" content="https://build-os.com/blogs/{categoryKey}" />
-	<meta property="twitter:title" content="{data.category.name} - BuildOS Blog" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:url" content="https://build-os.com/blogs/{categoryKey}" />
+	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
+	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
+	<meta name="twitter:title" content="{data.category.name} - BuildOS Blog" />
 	<meta
-		property="twitter:description"
+		name="twitter:description"
 		content="{data.category
 			.description} - Expert insights and practical guides for AI-native productivity."
 	/>
-	<meta property="twitter:image" content="https://build-os.com/og-blog-{categoryKey}.jpg" />
+	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 
 	<!-- Additional Meta Tags -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />

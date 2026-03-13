@@ -1,5 +1,15 @@
 <!-- apps/web/src/routes/blogs/+page.svelte -->
 <script lang="ts">
+	import {
+		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_SOCIAL_IMAGE_ALT,
+		DEFAULT_SOCIAL_IMAGE_HEIGHT,
+		DEFAULT_SOCIAL_IMAGE_TYPE,
+		DEFAULT_SOCIAL_IMAGE_URL,
+		DEFAULT_SOCIAL_IMAGE_WIDTH,
+		DEFAULT_TWITTER_CREATOR,
+		DEFAULT_TWITTER_SITE
+	} from '$lib/constants/seo';
 	import { format } from 'date-fns';
 	import {
 		Brain,
@@ -58,7 +68,7 @@
 				name: 'BuildOS',
 				logo: {
 					'@type': 'ImageObject',
-					url: 'https://build-os.com/brain-bolt.png'
+					url: DEFAULT_ORGANIZATION_LOGO_URL
 				}
 			},
 			blogPost: recentPosts.map((post: any) => ({
@@ -117,17 +127,28 @@
 		property="og:description"
 		content="Master your personal operating system with practical guides, productivity insights, and the latest updates from BuildOS team."
 	/>
-	<meta property="og:image" content="https://build-os.com/og-blog.jpg" />
+	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta property="og:image:type" content={DEFAULT_SOCIAL_IMAGE_TYPE} />
+	<meta property="og:image:width" content={String(DEFAULT_SOCIAL_IMAGE_WIDTH)} />
+	<meta property="og:image:height" content={String(DEFAULT_SOCIAL_IMAGE_HEIGHT)} />
+	<meta property="og:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
+	<meta property="og:site_name" content="BuildOS" />
+	<meta property="og:locale" content="en_US" />
+	<link rel="image_src" href={DEFAULT_SOCIAL_IMAGE_URL} />
 
 	<!-- Twitter -->
-	<meta property="twitter:card" content="summary_large_image" />
-	<meta property="twitter:url" content="https://build-os.com/blogs" />
-	<meta property="twitter:title" content="Blog - BuildOS | AI-Native Productivity Insights" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<meta name="twitter:url" content="https://build-os.com/blogs" />
+	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
+	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
+	<meta name="twitter:title" content="Blog - BuildOS | AI-Native Productivity Insights" />
 	<meta
-		property="twitter:description"
+		name="twitter:description"
 		content="Expert insights and practical guides for mastering AI-native productivity with BuildOS."
 	/>
-	<meta property="twitter:image" content="https://build-os.com/og-blog.jpg" />
+	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
+	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 
 	<!-- Additional Meta Tags -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />

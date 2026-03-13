@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { CircleCheck, Wrench, Calendar, Sparkles, Users, MessageCircle } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { DEFAULT_ORGANIZATION_LOGO_URL } from '$lib/constants/seo';
 
 	let innerWidth = $state(0);
 	let isMobile = $derived(innerWidth < 768);
@@ -27,7 +28,7 @@
 			name: 'BuildOS',
 			logo: {
 				'@type': 'ImageObject',
-				url: 'https://build-os.com/brain-bolt.png'
+				url: DEFAULT_ORGANIZATION_LOGO_URL
 			}
 		},
 		datePublished: '2025-07-21',
