@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/onto/projects/[id]/entities/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { verifyProjectAccess, sanitizeSearchQuery } from '$lib/utils/api-helpers';
+import { sanitizeSearchQuery } from '$lib/utils/api-helpers';
 import type { FocusEntitySummary } from '@buildos/shared-types';
 
 type FocusEntityType = 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'risk' | 'requirement';
@@ -47,6 +47,24 @@ const ENTITY_CONFIG: Record<
 	}
 };
 
+async function verifyProjectReadAccess(supabase: any, projectId: string): Promise<Response | null> {
+	const { data: hasAccess, error } = await supabase.rpc('current_actor_has_project_access', {
+		p_project_id: projectId,
+		p_required_access: 'read'
+	});
+
+	if (error) {
+		console.error('[FocusEntitiesAPI] Failed to check project access:', error);
+		return ApiResponse.error('Failed to check project access', 500);
+	}
+
+	if (!hasAccess) {
+		return ApiResponse.forbidden('You do not have access to this project');
+	}
+
+	return null;
+}
+
 export const GET: RequestHandler = async ({ params, url, locals }) => {
 	try {
 		const session = await locals.safeGetSession();
@@ -61,10 +79,9 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
 		const supabase = locals.supabase;
 
-		// Verify user has access to this project (security fix: 2026-01-03)
-		const authResult = await verifyProjectAccess(supabase, projectId, session.user.id);
-		if (!authResult.authorized) {
-			return authResult.error!;
+		const accessError = await verifyProjectReadAccess(supabase, projectId);
+		if (accessError) {
+			return accessError;
 		}
 
 		const typeParam = (url.searchParams.get('type') ?? 'task') as FocusEntityType;

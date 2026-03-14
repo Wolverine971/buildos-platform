@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import ProjectActionSelector from './ProjectActionSelector.svelte';
+import { clearProjectEntityBrowserCache } from './project-entity-browser';
 
 function okJson(payload: unknown) {
 	return Promise.resolve({
@@ -14,6 +15,7 @@ function okJson(payload: unknown) {
 
 describe('ProjectActionSelector', () => {
 	beforeEach(() => {
+		clearProjectEntityBrowserCache();
 		global.fetch = vi.fn((input: RequestInfo | URL) => {
 			const url = new URL(String(input), 'http://localhost');
 			const search = url.searchParams.get('search');
@@ -53,5 +55,33 @@ describe('ProjectActionSelector', () => {
 		expect(String((global.fetch as any).mock.calls.at(-1)[0])).toContain(
 			'/api/onto/projects/project-1/entities?type=task&search=roadmap&limit=50'
 		);
+	});
+
+	it('reuses cached entity results across remounts', async () => {
+		const first = render(ProjectActionSelector, {
+			props: {
+				projectId: 'project-1',
+				projectName: 'Apollo',
+				onSelectAction: vi.fn(),
+				onSelectFocus: vi.fn()
+			}
+		});
+
+		await screen.findByText('Kickoff');
+		expect(global.fetch).toHaveBeenCalledTimes(1);
+
+		first.unmount();
+
+		render(ProjectActionSelector, {
+			props: {
+				projectId: 'project-1',
+				projectName: 'Apollo',
+				onSelectAction: vi.fn(),
+				onSelectFocus: vi.fn()
+			}
+		});
+
+		await screen.findByText('Kickoff');
+		expect(global.fetch).toHaveBeenCalledTimes(1);
 	});
 });

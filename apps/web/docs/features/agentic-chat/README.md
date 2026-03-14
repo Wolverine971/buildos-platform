@@ -69,6 +69,7 @@ Behavior notes:
 - Loads recent `chat_messages` (last N, default 10) and composes compressed history when needed.
 - Streams text/tool events over SSE.
 - Persists user + assistant messages (idempotent by `client_turn_id` keys).
+- Emits a lightweight `timing` event before terminal `done` and asynchronously records turn metrics in `timing_metrics`.
 
 ### 3.3 `POST /api/agent/v2/prewarm`
 
@@ -131,6 +132,7 @@ Events sent by `/api/agent/v2/stream`:
 | `tool_call`         | V2 stream orchestrator | Tool invocation                                           |
 | `tool_result`       | V2 stream orchestrator | Tool result payload                                       |
 | `context_shift`     | V2 route               | Emitted when tool result includes context shift           |
+| `timing`           | V2 route               | Server-side latency summary for the just-completed turn   |
 | `last_turn_context` | V2 route               | Turn continuity snapshot                                  |
 | `error`             | V2 route               | Terminal error path                                       |
 | `done`              | V2 route               | Terminal event (`finished_reason` included in V2 payload) |
@@ -140,6 +142,7 @@ Notes:
 - UI still handles additional event types (`operation`, `entity_patch`, planner/plan events) for compatibility with legacy path.
 - Current V2 route defines operation helpers but does not actively emit `operation` events.
 - The modal consumes `context_usage` to surface lightweight header warnings when the active context is near the token budget or over it.
+- The modal also records client-perceived stream timings (first event, first text, done, close) and can compare them with the server `timing` summary in dev tooling.
 
 ## 6. Context, Caching, and History
 
@@ -204,6 +207,7 @@ Primary tables written/read in the active path:
 - `chat_sessions`
 - `chat_messages`
 - `chat_tool_executions`
+- `timing_metrics`
 
 Common message metadata written by V2:
 

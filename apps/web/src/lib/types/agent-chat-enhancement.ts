@@ -457,6 +457,7 @@ export type AgentSSEEvent =
 	| { type: 'text'; content: string }
 	| { type: 'tool_call'; tool_call: any }
 	| { type: 'tool_result'; result: any }
+	| { type: 'timing'; timing: Record<string, any> }
 	| {
 			type: 'context_shift';
 			context_shift: {
@@ -476,7 +477,7 @@ export type AgentSSEEvent =
 			};
 	  }
 	| TemplateCreationEvent
-	| { type: 'done' }
+	| { type: 'done'; finished_reason?: string }
 	| { type: 'error'; error: string };
 
 // ============================================

@@ -21,20 +21,14 @@
 		X
 	} from 'lucide-svelte';
 	import type { ChatContextType } from '@buildos/shared-types';
-
-	interface OntologyProjectSummary {
-		id: string;
-		name: string;
-		description: string | null;
-		typeKey: string;
-		stateKey: string;
-		facetContext: string | null;
-		facetScale: string | null;
-		facetStage: string | null;
-		createdAt: string;
-		updatedAt: string;
-		taskCount: number;
-	}
+	import {
+		DEFAULT_PROJECT_SELECTOR_LIMIT,
+		MAX_PROJECT_SELECTOR_LIMIT,
+		PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS,
+		fetchProjectSelectionSummaries,
+		normalizeProjectSelectionSearch,
+		type ProjectSelectionSummary
+	} from './project-selector-browser';
 
 	export interface ContextSelection {
 		contextType: ChatContextType | 'agent_to_agent';
@@ -53,7 +47,7 @@
 
 	// State
 	let selectedView: 'primary' | 'project-selection' = $state('primary');
-	let projects = $state<OntologyProjectSummary[]>([]);
+	let projects = $state<ProjectSelectionSummary[]>([]);
 	let isLoadingProjects = $state(false);
 	let projectsError = $state<string | null>(null);
 	let hasLoadedProjects = $state(false);
@@ -64,17 +58,16 @@
 	let projectListRequestId = 0;
 
 	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'completed', 'retired', 'closed']);
-	const PROJECT_LIST_LIMIT = 24;
-	const PROJECT_SEARCH_LIMIT = 50;
-	const PROJECT_SEARCH_DEBOUNCE_MS = 180;
-	const normalizedProjectSearch = $derived(projectSearchTerm.trim());
+	const PROJECT_LIST_LIMIT = DEFAULT_PROJECT_SELECTOR_LIMIT;
+	const PROJECT_SEARCH_LIMIT = MAX_PROJECT_SELECTOR_LIMIT;
+	const normalizedProjectSearch = $derived(normalizeProjectSelectionSearch(projectSearchTerm));
 	const isProjectSearchActive = $derived(normalizedProjectSearch.length > 0);
 
 	async function loadProjects(
 		options: { force?: boolean; search?: string; limit?: number } = {}
 	) {
 		const { force = false } = options;
-		const search = (options.search ?? projectSearchTerm).trim();
+		const search = normalizeProjectSelectionSearch(options.search ?? projectSearchTerm);
 		const limit = options.limit ?? (search ? PROJECT_SEARCH_LIMIT : PROJECT_LIST_LIMIT);
 		if (
 			!force &&
@@ -97,51 +90,17 @@
 		projectsError = null;
 
 		try {
-			const params = new URLSearchParams();
-			params.set('limit', String(limit));
-			if (search) {
-				params.set('search', search);
-			}
-
-			const response = await fetch(`/api/onto/projects?${params.toString()}`, {
-				method: 'GET',
-				credentials: 'same-origin',
-				cache: 'no-store',
-				signal: projectListController.signal,
-				headers: {
-					Accept: 'application/json'
-				}
+			const fetchedProjects = await fetchProjectSelectionSummaries({
+				search,
+				limit,
+				signal: projectListController.signal
 			});
-			const payload = await response.json();
 
 			if (requestId !== projectListRequestId) {
 				return;
 			}
 
-			if (!response.ok || payload?.success === false) {
-				projectsError = payload?.error || 'Failed to load ontology projects';
-				projects = [];
-				hasLoadedProjects = true;
-				return;
-			}
-
-			const fetchedProjects = payload?.data?.projects ?? payload?.projects ?? [];
-			const processedProjects: OntologyProjectSummary[] = fetchedProjects.map(
-				(project: any) => ({
-					id: project.id,
-					name: project.name ?? 'Untitled project',
-					description: project.description ?? null,
-					typeKey: project.type_key ?? project.typeKey ?? 'project.generic',
-					stateKey: project.state_key ?? project.stateKey ?? 'planning',
-					facetContext: project.facet_context ?? project.facetContext ?? null,
-					facetScale: project.facet_scale ?? project.facetScale ?? null,
-					facetStage: project.facet_stage ?? project.facetStage ?? null,
-					createdAt: project.created_at ?? project.createdAt ?? '',
-					updatedAt: project.updated_at ?? project.updatedAt ?? '',
-					taskCount: project.task_count ?? project.taskCount ?? 0
-				})
-			);
-			projects = processedProjects;
+			projects = fetchedProjects;
 			hasLoadedProjects = true;
 			lastProjectQuery = search;
 			lastProjectLimit = limit;
@@ -165,7 +124,7 @@
 		if (selectedView !== 'project-selection') return;
 		const timeoutId = setTimeout(
 			() => void loadProjects({ search: projectSearchTerm }),
-			normalizedProjectSearch ? PROJECT_SEARCH_DEBOUNCE_MS : 0
+			normalizedProjectSearch ? PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS : 0
 		);
 		return () => clearTimeout(timeoutId);
 	});
@@ -204,7 +163,7 @@
 	}
 
 	// Project selection - Svelte 5 callback pattern
-	function selectProject(project: OntologyProjectSummary) {
+	function selectProject(project: ProjectSelectionSummary) {
 		onSelect?.({
 			contextType: 'project',
 			entityId: project.id,
@@ -237,7 +196,7 @@
 			.join(' ');
 	}
 
-	function getFacetSummary(project: OntologyProjectSummary) {
+	function getFacetSummary(project: ProjectSelectionSummary) {
 		return [project.facetContext, project.facetScale, project.facetStage]
 			.filter(Boolean)
 			.map((value) => formatKeyLabel(value))

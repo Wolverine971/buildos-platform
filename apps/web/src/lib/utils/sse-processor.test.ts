@@ -23,6 +23,7 @@ describe('SSEProcessor', () => {
 			buildSseResponse([
 				{ type: 'session', session: { id: 'session-1' } },
 				{ type: 'context_usage', usage: { status: 'near_limit', usagePercent: 82 } },
+				{ type: 'timing', timing: { request_started_at: '2026-03-12T00:00:00.000Z', phases: {} } },
 				{ type: 'context_shift', context_shift: { new_context: 'project' } },
 				{ type: 'operation', operation: { type: 'tool', message: 'ran op' } },
 				{ type: 'done', finished_reason: 'stop' }
@@ -32,6 +33,7 @@ describe('SSEProcessor', () => {
 
 		expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ type: 'session' }));
 		expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ type: 'context_usage' }));
+		expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ type: 'timing' }));
 		expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ type: 'context_shift' }));
 		expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ type: 'operation' }));
 		expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));

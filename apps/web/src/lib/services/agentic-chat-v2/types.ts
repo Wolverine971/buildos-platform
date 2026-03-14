@@ -8,7 +8,8 @@ import type {
 	ContextShiftPayload,
 	ContextUsageSnapshot,
 	LastTurnContext,
-	OperationEventPayload
+	OperationEventPayload,
+	AgentTimingSummary
 } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { FastChatContextCache } from './context-cache';
@@ -70,6 +71,7 @@ export type FastAgentStreamEvent =
 			};
 	  }
 	| { type: 'context_shift'; context_shift: ContextShiftPayload }
+	| { type: 'timing'; timing: AgentTimingSummary }
 	| {
 			type: 'agent_state';
 			state: 'thinking' | 'executing_plan' | 'waiting_on_user';

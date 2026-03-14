@@ -423,6 +423,45 @@ export type SkillActivityEvent = {
   via: 'tool_help';
 };
 
+export interface AgentTimingSummary {
+  request_started_at: string;
+  session_resolved_at?: string | null;
+  history_loaded_at?: string | null;
+  history_composed_at?: string | null;
+  context_ready_at?: string | null;
+  first_event_at?: string | null;
+  first_response_at?: string | null;
+  assistant_persisted_at?: string | null;
+  done_emitted_at?: string | null;
+  cache_source?:
+    | 'not_requested'
+    | 'session_cache'
+    | 'request_prewarm'
+    | 'fresh_load'
+    | 'context_build_failed';
+  cache_age_seconds?: number | null;
+  bypassed_context_cache?: boolean;
+  history_strategy?: string | null;
+  history_compressed?: boolean;
+  raw_history_count?: number | null;
+  history_for_model_count?: number | null;
+  finished_reason?: string | null;
+  phases: {
+    session_resolve_ms?: number;
+    history_load_ms?: number;
+    history_compose_ms?: number;
+    tool_selection_ms?: number;
+    context_build_ms?: number;
+    request_to_context_ready_ms?: number;
+    time_to_first_event_ms?: number;
+    time_to_first_response_ms?: number;
+    response_generation_ms?: number;
+    assistant_persist_ms?: number;
+    finalization_ms?: number;
+    total_request_ms?: number;
+  };
+}
+
 export type AgentSSEMessage =
   | { type: 'context_usage'; usage: ContextUsageSnapshot }
   | { type: 'session'; session?: ChatSession; sessionId?: string }
@@ -462,11 +501,13 @@ export type AgentSSEMessage =
   | SkillActivityEvent
   | { type: 'context_shift'; context_shift: ContextShiftPayload }
   | { type: 'entity_patch'; patch: Record<string, any> }
+  | { type: 'timing'; timing: AgentTimingSummary }
   | TemplateCreationEvent
   | { type: 'error'; error: string }
   | {
       type: 'done';
       usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
+      finished_reason?: string;
     }
   | LegacyAgentSSEMessage;
 

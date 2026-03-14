@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import ContextSelectionScreen from './ContextSelectionScreen.svelte';
+import { clearProjectSelectionBrowserCache } from './project-selector-browser';
 
 function okJson(payload: Record<string, unknown>) {
 	return Promise.resolve({
@@ -14,6 +15,7 @@ function okJson(payload: Record<string, unknown>) {
 
 describe('ContextSelectionScreen', () => {
 	beforeEach(() => {
+		clearProjectSelectionBrowserCache();
 		global.fetch = vi.fn((input: RequestInfo | URL) => {
 			const url = new URL(String(input), 'http://localhost');
 			const search = url.searchParams.get('search');
@@ -76,5 +78,21 @@ describe('ContextSelectionScreen', () => {
 		expect(String((global.fetch as any).mock.calls.at(-1)[0])).toContain(
 			'/api/onto/projects?limit=50&search=apollo'
 		);
+	});
+
+	it('reuses the cached default project list across remounts', async () => {
+		const first = render(ContextSelectionScreen);
+
+		await fireEvent.click(screen.getByRole('button', { name: /project chat/i }));
+		await screen.findByText('Apollo');
+		expect(global.fetch).toHaveBeenCalledTimes(1);
+
+		first.unmount();
+
+		render(ContextSelectionScreen);
+		await fireEvent.click(screen.getByRole('button', { name: /project chat/i }));
+		await screen.findByText('Apollo');
+
+		expect(global.fetch).toHaveBeenCalledTimes(1);
 	});
 });

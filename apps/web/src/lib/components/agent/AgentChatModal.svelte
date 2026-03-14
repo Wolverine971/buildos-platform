@@ -28,7 +28,8 @@
 		ChatRole,
 		AgentSSEMessage,
 		AgentPlan,
-		ContextUsageSnapshot
+		ContextUsageSnapshot,
+		AgentTimingSummary
 	} from '@buildos/shared-types';
 	import {
 		requestAgentToAgentMessage,
@@ -108,6 +109,19 @@
 		contextType: ChatContextType;
 		entityId?: string;
 		projectFocus?: ProjectFocus | null;
+	}
+
+	interface ClientStreamTimingState {
+		runId: number;
+		sendStartedAtMs: number;
+		firstEventAtMs: number | null;
+		firstTextAtMs: number | null;
+		lastTextAtMs: number | null;
+		doneEventAtMs: number | null;
+		streamClosedAtMs: number | null;
+		terminalState: 'completed' | 'error' | 'cancelled' | 'aborted' | null;
+		cancelReason: 'user_cancelled' | 'superseded' | 'error' | null;
+		serverTiming: AgentTimingSummary | null;
 	}
 
 	let {
@@ -321,6 +335,100 @@
 	let ontologyLoaded = $state(false);
 	let ontologySummary = $state<string | null>(null);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
+	let activeStreamTiming = $state<ClientStreamTimingState | null>(null);
+	let _lastCompletedStreamTiming = $state<ClientStreamTimingState | null>(null);
+
+	function buildClientStreamTimingState(runId: number): ClientStreamTimingState {
+		return {
+			runId,
+			sendStartedAtMs: Date.now(),
+			firstEventAtMs: null,
+			firstTextAtMs: null,
+			lastTextAtMs: null,
+			doneEventAtMs: null,
+			streamClosedAtMs: null,
+			terminalState: null,
+			cancelReason: null,
+			serverTiming: null
+		};
+	}
+
+	function diffMs(start: number | null, end: number | null): number | null {
+		if (typeof start !== 'number' || typeof end !== 'number') return null;
+		return Math.max(0, end - start);
+	}
+
+	function recordClientStreamEvent(
+		runId: number,
+		eventType: AgentSSEMessage['type'] | 'transport_error'
+	) {
+		if (!activeStreamTiming || activeStreamTiming.runId !== runId) return;
+
+		const now = Date.now();
+		let next = activeStreamTiming;
+		if (next.firstEventAtMs === null) {
+			next = { ...next, firstEventAtMs: now };
+		}
+		if (eventType === 'text' || eventType === 'text_delta') {
+			next = {
+				...next,
+				firstTextAtMs: next.firstTextAtMs ?? now,
+				lastTextAtMs: now
+			};
+		}
+		if (eventType === 'done' && next.doneEventAtMs === null) {
+			next = { ...next, doneEventAtMs: now };
+		}
+		activeStreamTiming = next;
+	}
+
+	function attachServerTiming(runId: number, timing: AgentTimingSummary) {
+		if (!activeStreamTiming || activeStreamTiming.runId !== runId) return;
+		activeStreamTiming = {
+			...activeStreamTiming,
+			serverTiming: timing
+		};
+	}
+
+	function summarizeClientStreamTiming(timing: ClientStreamTimingState) {
+		return {
+			runId: timing.runId,
+			timeToFirstStreamEventMs: diffMs(timing.sendStartedAtMs, timing.firstEventAtMs),
+			timeToFirstTextMs: diffMs(timing.sendStartedAtMs, timing.firstTextAtMs),
+			timeFromFirstEventToFirstTextMs: diffMs(
+				timing.firstEventAtMs,
+				timing.firstTextAtMs
+			),
+			timeFromLastTextToDoneMs: diffMs(timing.lastTextAtMs, timing.doneEventAtMs),
+			timeToDoneMs: diffMs(timing.sendStartedAtMs, timing.doneEventAtMs),
+			totalStreamMs: diffMs(
+				timing.sendStartedAtMs,
+				timing.streamClosedAtMs ?? timing.doneEventAtMs
+			),
+			terminalState: timing.terminalState,
+			cancelReason: timing.cancelReason,
+			serverTiming: timing.serverTiming
+		};
+	}
+
+	function finalizeClientStreamTiming(
+		runId: number,
+		terminalState: ClientStreamTimingState['terminalState'],
+		cancelReason: ClientStreamTimingState['cancelReason'] = null
+	) {
+		if (!activeStreamTiming || activeStreamTiming.runId !== runId) return;
+		const finalized: ClientStreamTimingState = {
+			...activeStreamTiming,
+			streamClosedAtMs: Date.now(),
+			terminalState,
+			cancelReason
+		};
+		_lastCompletedStreamTiming = finalized;
+		activeStreamTiming = null;
+		if (dev) {
+			console.debug('[AgentChat] Stream timing', summarizeClientStreamTiming(finalized));
+		}
+	}
 
 	// ✅ Svelte 5: Remove duplicate type declaration (imported from agent-chat.types.ts)
 	const AGENT_STATE_MESSAGES: Record<AgentLoopState, string> = {
@@ -676,6 +784,8 @@
 		ontologyLoaded = false;
 		ontologySummary = null;
 		contextUsage = null;
+		activeStreamTiming = null;
+		_lastCompletedStreamTiming = null;
 		pendingToolResults.clear();
 		resetMutationTracking();
 		voiceErrorMessage = '';
@@ -3265,6 +3375,7 @@
 		activeStreamRunId = activeStreamRunId + 1;
 		const runId = activeStreamRunId;
 		activeClientTurnId = clientTurnId;
+		activeStreamTiming = buildClientStreamTimingState(runId);
 
 		isStreaming = true;
 		pendingToolResults.clear();
@@ -3353,10 +3464,12 @@
 						return;
 					}
 					receivedStreamEvent = true;
+					recordClientStreamEvent(runId, (data?.type as AgentSSEMessage['type']) ?? 'text');
 					handleSSEMessage(data as AgentSSEMessage);
 				},
 				onError: (err) => {
 					if (runId !== activeStreamRunId) return;
+					recordClientStreamEvent(runId, 'transport_error');
 					console.error('SSE error:', err);
 					error =
 						typeof err === 'string' ? err : 'Connection error occurred while streaming';
@@ -3368,6 +3481,7 @@
 					finalizeThinkingBlock('error');
 					flushAssistantText();
 					finalizeAssistantMessage();
+					finalizeClientStreamTiming(runId, 'error', 'error');
 				},
 				onComplete: () => {
 					if (runId !== activeStreamRunId) return;
@@ -3382,6 +3496,7 @@
 					finalizeThinkingBlock('completed');
 					flushAssistantText();
 					finalizeAssistantMessage();
+					finalizeClientStreamTiming(runId, error ? 'error' : 'completed');
 				}
 			};
 
@@ -3404,6 +3519,7 @@
 				finalizeThinkingBlock('interrupted', 'Stopped');
 				flushAssistantText();
 				finalizeAssistantMessage();
+				finalizeClientStreamTiming(runId, 'aborted');
 				return;
 			}
 
@@ -3416,6 +3532,7 @@
 			finalizeThinkingBlock('error'); // Ensure thinking block is closed on error
 			flushAssistantText();
 			finalizeAssistantMessage();
+			finalizeClientStreamTiming(runId, 'error', 'error');
 
 			// Remove user message on error
 			messages = messages.filter((m) => m.id !== userMessage.id);
@@ -3476,6 +3593,10 @@
 
 			case 'context_usage':
 				contextUsage = event.usage ?? null;
+				break;
+
+			case 'timing':
+				attachServerTiming(activeStreamRunId, event.timing);
 				break;
 
 			case 'last_turn_context':
@@ -4283,6 +4404,11 @@
 		// Flush any buffered tokens first so interruption metadata lands on the final visible partial.
 		flushAssistantText();
 		markAssistantInterrupted(reason, runId);
+		finalizeClientStreamTiming(
+			runId,
+			'cancelled',
+			reason === 'user_cancelled' || reason === 'superseded' ? reason : null
+		);
 		// Invalidate the active run id so late SSE chunks are dropped
 		activeStreamRunId = activeStreamRunId + 1;
 		activeClientTurnId = null;

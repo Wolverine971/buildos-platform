@@ -1,14 +1,14 @@
 // apps/web/src/routes/api/onto/projects/+server.ts
 /**
  * GET /api/onto/projects
- * Returns project summaries with basic counts for dashboard views
+ * Returns lightweight project summaries for selection and browsing surfaces
  */
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import {
 	ensureActorId,
-	fetchProjectSummaries
+	fetchProjectSelectorSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 
 const DEFAULT_PROJECT_LIST_LIMIT = 24;
@@ -22,7 +22,7 @@ function normalizeProjectListLimit(value: string | null): number | null {
 }
 
 function normalizeProjectSearch(value: string | null): string {
-	return value?.trim().toLowerCase() ?? '';
+	return value?.trim() ?? '';
 }
 
 export const GET: RequestHandler = async ({ locals, url }) => {
@@ -44,39 +44,25 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			return ApiResponse.error('Failed to resolve user actor', 500);
 		}
 
-		let summaries;
+		const search = normalizeProjectSearch(url.searchParams.get('search'));
+		const limit =
+			normalizeProjectListLimit(url.searchParams.get('limit')) ?? DEFAULT_PROJECT_LIST_LIMIT;
+
+		let projects;
 		try {
-			summaries = await fetchProjectSummaries(supabase, actorId, locals.serverTiming);
+			projects = await fetchProjectSelectorSummaries(
+				supabase,
+				actorId,
+				{ search, limit },
+				locals.serverTiming
+			);
 		} catch (summaryError) {
 			console.error('[Ontology API] Failed to fetch projects:', summaryError);
 			return ApiResponse.error('Failed to fetch ontology projects', 500);
 		}
 
-		const search = normalizeProjectSearch(url.searchParams.get('search'));
-		const limit =
-			normalizeProjectListLimit(url.searchParams.get('limit')) ?? DEFAULT_PROJECT_LIST_LIMIT;
-
-		let filteredSummaries = summaries;
-		if (search) {
-			filteredSummaries = summaries.filter((project) => {
-				const haystack = [
-					project.name,
-					project.description,
-					project.facet_context,
-					project.facet_scale,
-					project.facet_stage
-				]
-					.filter(
-						(value): value is string => typeof value === 'string' && value.length > 0
-					)
-					.join(' ')
-					.toLowerCase();
-				return haystack.includes(search);
-			});
-		}
-
 		return ApiResponse.success({
-			projects: filteredSummaries.slice(0, limit)
+			projects
 		});
 	} catch (err) {
 		console.error('[Ontology API] Unexpected error:', err);

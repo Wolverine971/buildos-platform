@@ -425,31 +425,44 @@
 
 		{#if overdueTasks > 0}
 			<div
-				class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-accent/20 bg-accent/5 text-xs"
+				class="rounded-lg border border-border bg-card shadow-ink tx tx-pulse tx-weak wt-card"
 			>
-				<AlertTriangle class="h-3 w-3 text-accent shrink-0" />
-				<span class="text-muted-foreground">{overdueLabel}</span>
-				<button
-					type="button"
-					onclick={openOverdueTaskTriage}
-					disabled={isOpeningOverdueTriage}
-					class="ml-auto shrink-0 font-semibold text-accent hover:underline underline-offset-2 disabled:opacity-60"
-				>
-					{#if isOpeningOverdueTriage}
-						<span class="inline-flex items-center gap-1">
-							<LoaderCircle class="h-3 w-3 animate-spin" />
-							Opening...
-						</span>
-					{:else}
-						Triage now
-					{/if}
-				</button>
-				<a
-					href="/projects"
-					class="shrink-0 text-muted-foreground hover:text-accent transition-colors"
-				>
-					View &rarr;
-				</a>
+				<div class="flex items-center gap-2.5 px-3 py-2">
+					<div
+						class="flex items-center justify-center h-7 w-7 rounded-md bg-red-500/10 shrink-0"
+					>
+						<AlertTriangle class="h-3.5 w-3.5 text-red-500" />
+					</div>
+					<span class="text-sm font-semibold text-foreground flex-1 min-w-0 truncate">
+						{overdueLabel}
+					</span>
+					<div class="flex items-center gap-1.5 shrink-0">
+						<button
+							type="button"
+							onclick={openOverdueTaskTriage}
+							disabled={isOpeningOverdueTriage}
+							class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold
+								rounded-md bg-red-600 text-white shadow-ink pressable
+								hover:bg-red-700 transition-colors
+								disabled:opacity-60 disabled:pointer-events-none
+								focus:outline-none focus:ring-1 focus:ring-ring"
+						>
+							{#if isOpeningOverdueTriage}
+								<LoaderCircle class="h-3 w-3 animate-spin" />
+								<span class="hidden sm:inline">Opening...</span>
+							{:else}
+								Triage now
+							{/if}
+						</button>
+						<a
+							href="/projects"
+							class="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs
+								text-muted-foreground hover:text-accent transition-colors rounded-md"
+						>
+							View <ArrowRight class="h-3 w-3" />
+						</a>
+					</div>
+				</div>
 			</div>
 		{/if}
 

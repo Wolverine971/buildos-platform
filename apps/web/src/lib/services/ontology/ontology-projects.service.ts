@@ -3,10 +3,11 @@
  * Shared helpers for ontology project data used across API routes and page loads.
  */
 
-import { Json } from '@buildos/shared-types';
+import { Database, Json } from '@buildos/shared-types';
 import type { ServerTiming } from '$lib/server/server-timing';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { sanitizeProjectPropsForClient } from '$lib/utils/project-props-sanitizer';
+import { buildSearchFilter } from '$lib/utils/api-helpers';
 
 export interface OntologyProjectSummary {
 	id: string;
@@ -40,6 +41,20 @@ export interface OntologyProjectSummary {
 	next_step_updated_at: string | null;
 }
 
+export interface OntologyProjectSelectorSummary {
+	id: string;
+	name: string;
+	description: string | null;
+	type_key: string;
+	state_key: string;
+	facet_context: string | null;
+	facet_scale: string | null;
+	facet_stage: string | null;
+	created_at: string;
+	updated_at: string;
+	task_count: number;
+}
+
 type ProjectSummaryRpcRow = {
 	id: string;
 	name: string;
@@ -71,6 +86,25 @@ type ProjectSummaryRpcRow = {
 	next_step_updated_at: string | null;
 };
 
+type ProjectSelectorRow = Pick<
+	Database['public']['Tables']['onto_projects']['Row'],
+	| 'id'
+	| 'name'
+	| 'description'
+	| 'type_key'
+	| 'state_key'
+	| 'facet_context'
+	| 'facet_scale'
+	| 'facet_stage'
+	| 'created_at'
+	| 'updated_at'
+> & {
+	onto_tasks?: Array<{ count: number | string | null }> | null;
+};
+
+const PROJECT_SELECTOR_DEFAULT_LIMIT = 24;
+const PROJECT_SELECTOR_MAX_LIMIT = 50;
+
 function toInteger(value: number | string | null | undefined): number {
 	if (typeof value === 'number' && Number.isFinite(value)) {
 		return Math.max(0, Math.floor(value));
@@ -82,6 +116,29 @@ function toInteger(value: number | string | null | undefined): number {
 		}
 	}
 	return 0;
+}
+
+function sortSelectorProjectsByUpdatedAt(
+	a: OntologyProjectSelectorSummary,
+	b: OntologyProjectSelectorSummary
+): number {
+	return Date.parse(b.updated_at) - Date.parse(a.updated_at);
+}
+
+function mapProjectSelectorRow(row: ProjectSelectorRow): OntologyProjectSelectorSummary {
+	return {
+		id: row.id,
+		name: row.name,
+		description: row.description ?? null,
+		type_key: row.type_key,
+		state_key: row.state_key,
+		facet_context: row.facet_context ?? null,
+		facet_scale: row.facet_scale ?? null,
+		facet_stage: row.facet_stage ?? null,
+		created_at: row.created_at,
+		updated_at: row.updated_at,
+		task_count: toInteger(row.onto_tasks?.[0]?.count ?? 0)
+	};
 }
 
 /**
@@ -377,4 +434,118 @@ export async function fetchProjectSummaries(
 		next_step_source: project.next_step_source ?? null,
 		next_step_updated_at: project.next_step_updated_at ?? null
 	}));
+}
+
+export async function fetchProjectSelectorSummaries(
+	client: TypedSupabaseClient,
+	actorId: string,
+	options: {
+		search?: string | null;
+		limit?: number | null;
+	} = {},
+	timing?: ServerTiming
+): Promise<OntologyProjectSelectorSummary[]> {
+	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
+		timing ? timing.measure(name, fn) : fn();
+	const normalizedSearch = typeof options.search === 'string' ? options.search.trim() : '';
+	const normalizedLimit = Number.isFinite(options.limit)
+		? Math.min(
+				PROJECT_SELECTOR_MAX_LIMIT,
+				Math.max(1, Math.floor(options.limit as number))
+			)
+		: PROJECT_SELECTOR_DEFAULT_LIMIT;
+	const searchFilter = normalizedSearch
+		? buildSearchFilter(normalizedSearch, [
+				'name',
+				'description',
+				'facet_context',
+				'facet_scale',
+				'facet_stage'
+			])
+		: null;
+
+	const { data: memberRows, error: memberError } = await measure(
+		'db.project_members.selector_ids',
+		() =>
+			client
+				.from('onto_project_members')
+				.select('project_id')
+				.eq('actor_id', actorId)
+				.is('removed_at', null)
+	);
+
+	if (memberError) {
+		throw new Error(memberError.message);
+	}
+
+	const memberProjectIds = Array.from(
+		new Set(
+			(memberRows ?? [])
+				.map((row) => row?.project_id)
+				.filter((value): value is string => typeof value === 'string' && value.length > 0)
+		)
+	);
+
+	const buildBaseQuery = () => {
+		let query = client
+			.from('onto_projects')
+			.select(
+				`
+				id,
+				name,
+				description,
+				type_key,
+				state_key,
+				facet_context,
+				facet_scale,
+				facet_stage,
+				created_at,
+				updated_at,
+				onto_tasks(count)
+			`
+			)
+			.is('deleted_at', null)
+			.is('onto_tasks.deleted_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(normalizedLimit);
+
+		if (searchFilter) {
+			query = query.or(searchFilter);
+		}
+
+		return query;
+	};
+
+	const ownedProjectsPromise = measure('db.projects.selector_owned', () =>
+		buildBaseQuery().eq('created_by', actorId)
+	);
+	const sharedProjectsPromise =
+		memberProjectIds.length > 0
+			? measure('db.projects.selector_shared', () => buildBaseQuery().in('id', memberProjectIds))
+			: Promise.resolve({ data: [] as ProjectSelectorRow[], error: null });
+
+	const [ownedProjectsRes, sharedProjectsRes] = await Promise.all([
+		ownedProjectsPromise,
+		sharedProjectsPromise
+	]);
+
+	if (ownedProjectsRes.error) {
+		throw new Error(ownedProjectsRes.error.message);
+	}
+	if (sharedProjectsRes.error) {
+		throw new Error(sharedProjectsRes.error.message);
+	}
+
+	const merged = new Map<string, OntologyProjectSelectorSummary>();
+	for (const row of [
+		...((ownedProjectsRes.data ?? []) as ProjectSelectorRow[]),
+		...((sharedProjectsRes.data ?? []) as ProjectSelectorRow[])
+	]) {
+		if (!row?.id || merged.has(row.id)) continue;
+		merged.set(row.id, mapProjectSelectorRow(row));
+	}
+
+	return Array.from(merged.values())
+		.sort(sortSelectorProjectsByUpdatedAt)
+		.slice(0, normalizedLimit);
 }
