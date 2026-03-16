@@ -52,8 +52,10 @@
 	}
 </script>
 
-<div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-	<div class="px-6 py-4 border-b border-red-200 dark:border-red-800">
+<div
+	class="bg-card rounded-lg shadow-ink border border-border overflow-hidden tx tx-static tx-weak"
+>
+	<div class="px-3 py-2.5 border-b border-border">
 		<div class="flex items-center">
 			<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
 			<h3 class="text-lg font-semibold text-red-800 dark:text-red-200">
@@ -66,7 +68,7 @@
 		<div class="p-6 space-y-3">
 			{#each Array(3) as _}
 				<div class="animate-pulse">
-					<div class="h-16 bg-red-100 dark:bg-red-900/40 rounded"></div>
+					<div class="h-16 bg-muted rounded"></div>
 				</div>
 			{/each}
 		</div>
@@ -74,56 +76,56 @@
 		<div class="p-6 text-center text-muted-foreground">No failed deliveries</div>
 	{:else}
 		<div class="overflow-x-auto">
-			<table class="min-w-full divide-y divide-red-200 dark:divide-red-800">
-				<thead class="bg-red-100 dark:bg-red-900/40">
+			<table class="min-w-full divide-y divide-border">
+				<thead class="bg-muted">
 					<tr>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
 						>
 							Time
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
 						>
 							Event Type
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
 						>
 							Channel
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
 						>
 							Recipient
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
 						>
 							Error
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
 						>
 							Attempts
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
 						>
 							Actions
 						</th>
 					</tr>
 				</thead>
-				<tbody class="bg-card divide-y divide-red-200 dark:divide-red-800">
+				<tbody class="bg-card divide-y divide-border">
 					{#each data as delivery}
 						<tr class="hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{formatDate(delivery.created_at)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{delivery.event_type}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap">
+							<td class="px-3 py-2.5 whitespace-nowrap">
 								<span
 									class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getChannelBadgeColor(
 										delivery.channel
@@ -132,10 +134,10 @@
 									{delivery.channel}
 								</span>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{delivery.recipient_email}
 							</td>
-							<td class="px-6 py-4 text-sm max-w-xs">
+							<td class="px-3 py-2.5 text-sm max-w-xs">
 								<button
 									type="button"
 									class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline decoration-dotted cursor-pointer text-left truncate block w-full"
@@ -145,10 +147,10 @@
 									{delivery.last_error}
 								</button>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{delivery.attempts}/{delivery.max_attempts}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm space-x-2">
 								{#if delivery.attempts < delivery.max_attempts}
 									<Button
 										size="sm"

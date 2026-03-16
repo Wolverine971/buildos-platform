@@ -6,6 +6,13 @@
 **Version**: 1.0
 **Purpose**: Comprehensive pitch reference for accelerators, investors, and fundraising
 
+**Related Docs:**
+
+- [Business Documentation Hub](./README.md)
+- [BuildOS Marketing Strategy 2026](../marketing/strategy/buildos-marketing-strategy-2026.md)
+- [BuildOS Welcome Sequence](../marketing/strategy/buildos-welcome-sequence.md)
+- [Why I Built BuildOS](../marketing/content/drafts/why-i-built-buildos.md)
+
 ---
 
 ## Table of Contents
@@ -175,7 +182,7 @@ While competitors focus on AI agents that take actions, we're building the conte
 
 ### Version D: Problem-First
 
-"Do you know that feeling when you have a great idea, but by the time you open Notion to write it down, you've forgotten half of it? Or when you spend 10 minutes explaining your project to ChatGPT for the third time this week? That's the problem I built BuildOS to solve. I have ADHD, and I was drowning in scattered thoughts across 12 different apps. BuildOS lets you brain dump everything—voice or text, zero structure—and AI automatically organizes it into projects and tasks. Then we bridge that to execution with one-click calendar scheduling. We've validated with ADHD users first: 83 signups at $3 CAC, 77% retention—7x better than industry standard. Now we're expanding to all overwhelmed professionals who feel the same pain."
+"Do you know that feeling when you have a great idea, but by the time you open Notion to write it down, you've forgotten half of it? Or when you spend 10 minutes explaining your project to ChatGPT for the third time this week? That's the problem I built BuildOS to solve. I was drowning in scattered thoughts across notes apps, chat threads, and disconnected tools. BuildOS lets you brain dump everything—voice or text, zero structure—and AI automatically organizes it into projects and tasks. Then we bridge that to execution with one-click calendar scheduling. We've validated with ADHD users first: 83 signups at $3 CAC, 77% retention—7x better than industry standard. Now we're expanding to all overwhelmed professionals who feel the same pain."
 
 **Delivery notes**:
 
@@ -230,7 +237,7 @@ Happy to answer questions."
 
 I'm DJ, co-founder of BuildOS, and we're building on a different insight: AI can't help you without understanding you first. Everyone's focused on what AI can do. We're focused on what AI needs to know.
 
-Let me explain with a personal story. I have ADHD. I'm a former Marine Scout Sniper turned YC-backed engineer. Every productivity tool I tried—Notion, Asana, everything—failed me. Not because they weren't powerful. Because they were designed for neurotypical brains that think linearly. My brain doesn't work that way.
+Let me explain with a personal story. I'm a former Marine Scout Sniper turned YC-backed engineer. Every productivity tool I tried—Notion, Asana, everything—fell apart for me. Not because they weren't powerful. Because they required too much maintenance and too much manual context keeping.
 
 So I built BuildOS. You brain dump your thoughts—voice or text, zero structure—and AI organizes everything automatically. Projects, tasks, phases, context. All extracted from your chaos. Then we bridge that to execution with one-click calendar scheduling.
 
@@ -342,7 +349,7 @@ I'm happy to answer any questions."
 
 ### Competitive Advantages
 
-1. **Founder-market fit**: Built by someone with ADHD, for ADHD minds
+1. **Founder-market fit**: Built by someone who lived the problem of scattered context, validated first with ADHD users
 2. **Community trust**: Authenticity can't be copied by big players
 3. **AI-native**: Not bolting AI onto old architecture like Notion
 4. **Timing window**: 12-18 months before market gets crowded

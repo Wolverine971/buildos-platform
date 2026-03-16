@@ -127,9 +127,9 @@
 	}
 </script>
 
-<div class="bg-card rounded-lg shadow overflow-hidden">
+<div class="bg-card rounded-lg shadow-ink border border-border overflow-hidden">
 	{#if loading}
-		<div class="p-6 space-y-3">
+		<div class="p-3 space-y-2">
 			{#each Array(5) as _}
 				<div class="animate-pulse">
 					<div class="h-20 bg-muted rounded"></div>
@@ -137,53 +137,53 @@
 			{/each}
 		</div>
 	{:else if deliveries.length === 0}
-		<div class="p-6 text-center text-muted-foreground">No deliveries found</div>
+		<div class="p-4 text-center text-sm text-muted-foreground">No deliveries found</div>
 	{:else}
 		<div class="overflow-x-auto">
-			<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Event Type
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Channel
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Recipient
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Status
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Timeline
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Performance
 						</th>
 						<th
-							class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Actions
 						</th>
 					</tr>
 				</thead>
-				<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
+				<tbody class="bg-card divide-y divide-border">
 					{#each deliveries as delivery}
 						<tr class="hover:bg-muted transition-colors">
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{#if delivery.notification_events}
 									{delivery.notification_events.event_type
 										.replace(/_/g, ' ')
@@ -192,7 +192,7 @@
 									N/A
 								{/if}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap">
+							<td class="px-3 py-2.5 whitespace-nowrap">
 								<span
 									class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getChannelBadgeColor(
 										delivery.channel
@@ -201,7 +201,7 @@
 									{delivery.channel.toUpperCase()}
 								</span>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{#if delivery.users}
 									<div>
 										<div class="font-medium">
@@ -215,7 +215,7 @@
 									<span class="text-muted-foreground">N/A</span>
 								{/if}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap">
+							<td class="px-3 py-2.5 whitespace-nowrap">
 								<span
 									class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getStatusBadgeColor(
 										delivery.status
@@ -231,7 +231,7 @@
 									</div>
 								{/if}
 							</td>
-							<td class="px-6 py-4">
+							<td class="px-3 py-2.5">
 								<div class="flex items-center space-x-2">
 									{#each Object.entries(delivery.timeline) as [stage, timestamp]}
 										{#if stage !== 'created'}
@@ -254,7 +254,7 @@
 									{/each}
 								</div>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-muted-foreground">
 								<div class="text-xs space-y-1">
 									<div>Send: {formatDuration(delivery.durations.to_send)}</div>
 									<div>
@@ -267,7 +267,9 @@
 									{/if}
 								</div>
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+							<td
+								class="px-3 py-2.5 whitespace-nowrap text-right text-sm font-medium"
+							>
 								<div class="flex justify-end space-x-2">
 									{#if onViewDetails}
 										<Button

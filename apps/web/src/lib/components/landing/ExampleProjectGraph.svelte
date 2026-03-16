@@ -339,7 +339,9 @@
 					<div
 						class="px-4 sm:px-6 py-3 border-b border-border bg-background/50 overflow-x-auto"
 					>
-						<div class="flex items-center gap-4 sm:gap-6 text-xs min-w-max">
+						<div
+							class="flex flex-wrap items-center gap-x-4 gap-y-1.5 sm:gap-x-6 text-xs"
+						>
 							<div class="flex items-center gap-1.5">
 								<Target class="w-3.5 h-3.5 text-amber-500" />
 								<span class="text-muted-foreground">{stats.totalGoals} Goals</span>

@@ -2,11 +2,19 @@
 
 # User Segment Messaging - ADHD Users
 
+Use this doc as the ADHD segment messaging layer.
+
+It should be informed by:
+
+- [ADHD Customer Language Decoder](../customer-lingo-adhd.md)
+- [DJ's Founder Context](../social-media/FOUNDER_CONTEXT.md)
+- [BuildOS Welcome Sequence](../strategy/buildos-welcome-sequence.md)
+
 ## Core Understanding
 
 **Their Reality:** Traditional productivity tools are built for neurotypical brains. ADHD users don't need more features - they need different approaches.
 
-**Our Message:** BuildOS is built FOR people with ADHD (and anyone who struggles with organization). We get it because we've experienced the pain of tools that don't match how chaotic minds work.
+**Our Message:** BuildOS is built FOR people with ADHD (and anyone who struggles with organization). It is designed around the reality that chaotic minds need less setup, less maintenance, and more usable structure.
 
 ---
 
@@ -33,7 +41,7 @@
 
 They all worked... for about 3 days.
 
-Now you have 47 abandoned productivity apps and feel worse than when you started.
+Now you have a trail of abandoned productivity systems and feel worse than when you started.
 
 You're not lazy. You're not broken. You just need different tools."
 
@@ -43,7 +51,7 @@ You're not lazy. You're not broken. You just need different tools."
 
 Brain dump when you're overwhelmed. Get clear next steps. Schedule them with one click. That's it.
 
-No setup. No maintenance. No 47-step workflows.
+No setup marathon. No complicated workflow to maintain.
 
 Just clarity when you need it."
 
@@ -62,10 +70,10 @@ That's not a fantasy. That's just Tuesday with BuildOS."
 **Subject Lines:**
 
 - "Your ADHD brain is not the problem"
-- "I abandoned Notion 6 times too"
+- "If you've bounced between tools, you're not alone"
 - "From chaos to clarity (in under 60 seconds)"
 - "The productivity tool that doesn't judge your 2am brain dumps"
-- "Built by someone with ADHD who gets it"
+- "Built by someone who understands tool sprawl and scattered work"
 
 **Email Body Template:**
 
@@ -90,7 +98,7 @@ That's it. That's the whole system.
 
 Built by someone who struggled with disorganization and needed a better way.
 
-[Try BuildOS free - no 47-step setup required]
+[Try BuildOS free - no setup marathon required]
 
 P.S. You can literally just voice record your chaos and we'll handle the rest.
 ```
@@ -118,7 +126,7 @@ Your ADHD brain doesn't need more systems. It needs the RIGHT system.
 
 BuildOS: Dump thoughts → Get clarity → Actually do things
 
-Built by someone who struggled with organization and tried all the planners too 🧠"
+Built by someone who struggled with organization and got tired of bouncing between systems 🧠"
 
 **TikTok Hook:**
 "If you have ADHD and have abandoned Notion at least twice, this is for you..."
@@ -158,7 +166,7 @@ BuildOS is different.
 ### Reddit Community Posts
 
 **r/ADHD:**
-"I built a productivity tool specifically for ADHD brains (because I have ADHD and nothing else worked)"
+"I built a productivity tool specifically for ADHD brains because existing tools kept asking people to be organized before they could get help."
 
 "Not here to spam, but I genuinely built this because I was tired of:
 
@@ -244,10 +252,10 @@ Small wins are still wins. What's your win today?"
 
 "I'm DJ, and I've struggled with organization my whole life. I've:
 
-- Abandoned Notion 6 times
-- Bought 47 planners
-- Tried every productivity system
-- Failed at all of them
+- kept bouncing between tools
+- lost ideas across notes, chats, and task lists
+- tried systems that felt good for a week and then fell apart
+- needed something I could actually come back to
 
 I built BuildOS because I needed it to exist. Not as a business idea, but as a tool to help me get organized. It's built by someone who understands the chaos, for people who need clarity. I use it every day to build itself."
 

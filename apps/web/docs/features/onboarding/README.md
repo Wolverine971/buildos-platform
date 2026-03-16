@@ -2,7 +2,7 @@
 
 # Onboarding Feature
 
-**Last Updated**: February 16, 2026
+**Last Updated**: March 16, 2026
 **Status**: Active (V3 Complete, V2 Deprecated)
 **Category**: Feature
 **Location**: `/apps/web/docs/features/onboarding/`
@@ -79,6 +79,23 @@ Shows stats (projects, tasks, goals created), next action suggestions, and "Go t
 1. Marks onboarding complete on `users` and `user_context` tables
 2. Seeds the behavioral profile via `seedProfileFromOnboarding()`
 3. Queues onboarding analysis job
+
+---
+
+## Welcome Sequence Integration
+
+New-account onboarding and the welcome email sequence are now intentionally linked.
+
+- Account creation starts the welcome sequence as soon as the app has created the matching `public.users` row for a real new trial user.
+- Later welcome emails branch using the same product state onboarding writes:
+    - `users.onboarding_intent`
+    - `users.onboarding_completed_at`
+    - project presence in `onto_projects`
+    - daily brief and notification flags in `user_brief_preferences` and `user_notification_preferences`
+    - SMS readiness in `user_sms_preferences`
+    - calendar connection in `user_calendar_tokens`
+- Email 4 only sends when the user still needs follow-through setup: incomplete onboarding, no daily brief, no verified SMS path, and no connected calendar.
+- The marketing source of truth for the sequence lives in `/docs/marketing/strategy/buildos-welcome-sequence.md`. Keep product docs aligned to that doc and the implementation in `welcome-sequence.service.ts`.
 
 ---
 
@@ -214,4 +231,4 @@ From the spec (§5, §9):
 ---
 
 **Document Author**: Claude
-**Last Major Update**: February 16, 2026 - V3 Complete
+**Last Major Update**: March 16, 2026 - Welcome sequence integration documented

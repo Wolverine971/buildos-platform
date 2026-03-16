@@ -66,7 +66,7 @@
 
 				<!-- Brief Content -->
 				<div
-					class="prose prose-sm max-w-none overflow-x-auto
+					class="prose prose-sm max-w-none overflow-x-auto break-words
 						prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
 						prose-strong:text-foreground prose-a:text-accent prose-blockquote:text-muted-foreground
 						prose-hr:border-border"

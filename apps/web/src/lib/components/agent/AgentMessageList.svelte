@@ -201,7 +201,7 @@
 				</div>
 			{:else if message.type === 'agent_peer'}
 				<!-- INKPRINT agent peer message with Thread texture -->
-				<div class="flex gap-2 sm:gap-3">
+				<div class="flex min-w-0 gap-2 sm:gap-3">
 					<div
 						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-600/30 bg-amber-50 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 shadow-ink tx tx-thread tx-weak dark:bg-amber-950/30 dark:text-amber-400 sm:h-9 sm:w-9"
 					>
@@ -234,7 +234,7 @@
 				/>
 			{:else if message.type === 'clarification'}
 				<!-- INKPRINT clarification message with Bloom texture -->
-				<div class="flex gap-2 sm:gap-3">
+				<div class="flex min-w-0 gap-2 sm:gap-3">
 					<div
 						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-600/30 bg-emerald-50 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-emerald-700 shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/30 dark:text-emerald-400 sm:h-9 sm:w-9"
 					>

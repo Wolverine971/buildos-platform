@@ -11590,6 +11590,83 @@ export type Database = {
         }
         Relationships: []
       }
+      welcome_email_sequences: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          email_1_sent_at: string | null
+          email_1_skipped_at: string | null
+          email_2_sent_at: string | null
+          email_2_skipped_at: string | null
+          email_3_sent_at: string | null
+          email_3_skipped_at: string | null
+          email_4_sent_at: string | null
+          email_4_skipped_at: string | null
+          email_5_sent_at: string | null
+          email_5_skipped_at: string | null
+          last_evaluated_at: string | null
+          sequence_version: string
+          signup_method: string
+          started_at: string
+          status: string
+          trigger_source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          email_1_sent_at?: string | null
+          email_1_skipped_at?: string | null
+          email_2_sent_at?: string | null
+          email_2_skipped_at?: string | null
+          email_3_sent_at?: string | null
+          email_3_skipped_at?: string | null
+          email_4_sent_at?: string | null
+          email_4_skipped_at?: string | null
+          email_5_sent_at?: string | null
+          email_5_skipped_at?: string | null
+          last_evaluated_at?: string | null
+          sequence_version?: string
+          signup_method?: string
+          started_at?: string
+          status?: string
+          trigger_source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          email_1_sent_at?: string | null
+          email_1_skipped_at?: string | null
+          email_2_sent_at?: string | null
+          email_2_skipped_at?: string | null
+          email_3_sent_at?: string | null
+          email_3_skipped_at?: string | null
+          email_4_sent_at?: string | null
+          email_4_skipped_at?: string | null
+          email_5_sent_at?: string | null
+          email_5_skipped_at?: string | null
+          last_evaluated_at?: string | null
+          sequence_version?: string
+          signup_method?: string
+          started_at?: string
+          status?: string
+          trigger_source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "welcome_email_sequences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       admin_llm_cost_analytics: {

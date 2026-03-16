@@ -6,6 +6,16 @@
 >
 > **Last Updated:** 2026-01-07
 
+Use this doc before writing founder-facing copy, social posts in DJ's voice, or long-form founder storytelling.
+
+Related docs:
+
+- [Social Media Documentation Hub](./README.md)
+- [Why I Built BuildOS](../content/drafts/why-i-built-buildos.md)
+- [Founder Deep-Dive Interview - Round 2](./FOUNDER_DEEP_DIVE_INTERVIEW_R2.md)
+- [DJ's Life Story Interview](./FOUNDER_LIFE_STORY_INTERVIEW.md)
+- [Founder Interview for LinkedIn Content](./LINKEDIN_FOUNDER_INTERVIEW.md)
+
 ---
 
 ## Quick Reference

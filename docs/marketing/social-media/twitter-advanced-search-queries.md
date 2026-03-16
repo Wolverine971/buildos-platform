@@ -444,7 +444,7 @@ ADHD productivity -is:retweet lang:en since:2026-01-04
 
 **For Notion frustration:**
 
-> "I abandoned Notion 6 times. The problem isn't you - complex tools make scattered minds more scattered. What specifically made you give up?"
+> "I kept bouncing off Notion. The problem isn't you - complex tools make scattered minds more scattered. What specifically made you give up?"
 
 **For AI context problems:**
 

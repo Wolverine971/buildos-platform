@@ -9,6 +9,8 @@
 ## 🎯 Quick Navigation
 
 - [Current 2026 Docs](#-current-2026-docs-start-here)
+- [Lifecycle & Activation](#-lifecycle--activation)
+- [Founder & Narrative](#-founder--narrative)
 - [Brand Strategy & Development](#-brand-strategy--development)
 - [Customer Research & Language](#-customer-research--language)
 - [Fundraising & Investor Relations](#-fundraising--investor-relations)
@@ -20,9 +22,17 @@
 
 ## 🚨 Current 2026 Docs (Start Here)
 
+- **[Marketing Strategy Hub](strategy/README.md)** ⭐
+    - Folder-level guide for current strategy docs
+    - Fastest way to find positioning, lifecycle, and supporting strategy docs
+
 - **[BuildOS Marketing Strategy 2026](strategy/buildos-marketing-strategy-2026.md)** ⭐
     - Current master marketing strategy
     - Positioning, wedge, channel roles, and solo-founder operating model
+
+- **[BuildOS Welcome Sequence](strategy/buildos-welcome-sequence.md)** ⭐
+    - Current signup-to-activation lifecycle sequence
+    - Source of truth for welcome messaging and onboarding-email structure
 
 - **[BuildOS Brand Guide](brand/brand-guide-1-pager.md)** ⭐
     - Current quick reference for messaging, voice, and visual direction
@@ -38,9 +48,55 @@
 
 ---
 
+## ✉️ Lifecycle & Activation
+
+- **[BuildOS Welcome Sequence](strategy/buildos-welcome-sequence.md)** ✅
+    - Current source of truth for new-user welcome emails
+    - Covers first brain dump, onboarding completion, second session, and follow-through setup
+
+- **[Why I Built BuildOS](content/drafts/why-i-built-buildos.md)** ✅
+    - Founder-story draft used for narrative consistency
+    - Useful for podcast prep, founder copy, and onboarding/contextual messaging
+
+- **[Getting Started with BuildOS](../user-guide/getting-started.md)** ✅
+    - Product-side view of the actual onboarding flow
+    - Useful when marketing and lifecycle messaging need to match the in-app experience
+
+- **[Onboarding Feature README](../../apps/web/docs/features/onboarding/README.md)** ✅
+    - Technical source of truth for the current onboarding flow
+    - Useful when writing activation copy that depends on product behavior
+
+---
+
+## 👤 Founder & Narrative
+
+- **[Social Media Documentation Hub](social-media/README.md)** ✅
+    - Folder-level guide for founder voice, platform strategy, and raw interview sources
+
+- **[DJ's Founder Context](social-media/FOUNDER_CONTEXT.md)** ✅
+    - Current source of truth for founder voice, background, and positioning constraints
+
+- **[Why I Built BuildOS](content/drafts/why-i-built-buildos.md)** ✅
+    - Distilled founder-story draft for narrative reuse
+
+- **[Founder Deep-Dive Interview - Round 2](social-media/FOUNDER_DEEP_DIVE_INTERVIEW_R2.md)** ✅
+    - Raw long-form founder source material
+
+- **[DJ's Life Story Interview](social-media/FOUNDER_LIFE_STORY_INTERVIEW.md)** ✅
+    - Structured life-story source material
+
+- **[Founder Interview for LinkedIn Content](social-media/LINKEDIN_FOUNDER_INTERVIEW.md)** ✅
+    - Product-origin and founder-experience source material
+
+---
+
 ## 🎨 Brand Strategy & Development
 
 ### 🎯 Strategic Documents (Start Here)
+
+- **[Marketing Strategy Hub](strategy/README.md)** ⭐ **CURRENT**
+    - Folder-level map for current strategy docs
+    - Best place to start if you are not sure which strategy doc to open
 
 - **[BuildOS Marketing Strategy 2026](strategy/buildos-marketing-strategy-2026.md)** ⭐ **CURRENT**
     - Current source of truth for BuildOS marketing
@@ -225,6 +281,9 @@ Personalized email templates for investor introductions:
 
 ### Platform-Specific Strategies
 
+- **[Social Media Documentation Hub](social-media/README.md)** ✅
+    - Folder-level guide for founder voice, platform strategy, and raw interview sources
+
 - **[Twitter Strategy](social-media/twitter-strategy.md)**
     - Core Twitter engagement and content strategy
 
@@ -246,6 +305,9 @@ Personalized email templates for investor introductions:
 
 ### Target User Analysis
 
+- **[User Segment Documentation Hub](user-segments/README.md)** ✅
+    - Folder-level guide for segment messaging docs and research inputs
+
 - **[ADHD Users](user-segments/users-adhd.md)**
     - Deep dive into ADHD user needs and preferences
     - **Cross-reference:** [ADHD Customer Language Analysis](customer-lingo-adhd.md)
@@ -266,16 +328,18 @@ Personalized email templates for investor introductions:
 ### Brand Strategy Hierarchy
 
 ```
-Brand Strategy 2025 (Master Document)
+Marketing Strategy 2026 (Master Strategy)
+├── Welcome Sequence (Lifecycle Messaging)
 ├── Brand Guide 1-Pager (Quick Reference)
-├── Zoom Messaging Guide (Feature Messaging)
-├── Brand Personality Profile (Voice & Tone)
-└── Communication Guide (DJ's Preferences)
+├── Guerrilla Content Doctrine (Content Logic)
+└── Anti-AI Show-Don't-Tell (Positioning Support)
 ```
 
 ### Brand ↔ Content Strategy
 
-- [Brand Strategy 2025](brand/BRAND_STRATEGY_2025.md) defines content themes for [Blog Content](/apps/web/docs/content/)
+- [BuildOS Marketing Strategy 2026](strategy/buildos-marketing-strategy-2026.md) defines the current content direction
+- [BuildOS Welcome Sequence](strategy/buildos-welcome-sequence.md) defines lifecycle messaging for new users
+- [Why I Built BuildOS](content/drafts/why-i-built-buildos.md) provides reusable founder-story narrative
 - [Zoom Messaging Guide](brand/ZOOM_MESSAGING_GUIDE.md) informs Project Lens blog content
 - Blog CTAs follow brand messaging hierarchy
 
@@ -286,7 +350,7 @@ Brand Strategy 2025 (Master Document)
 
 ### Fundraising ↔ Brand Strategy
 
-- [Fundraising Strategy](investors/buildos-fundraising-strategy.md) leverages [Brand Strategy 2025](brand/BRAND_STRATEGY_2025.md) positioning
+- [Fundraising Strategy](investors/buildos-fundraising-strategy.md) should align to [BuildOS Marketing Strategy 2026](strategy/buildos-marketing-strategy-2026.md) and the current brand guide
 - [Investor Messaging](investors/investor-optimists.md) incorporates [Brand Personality Profile](brand/buildos-brand-personality-profile.md)
 
 ### Growth ↔ Social Media
@@ -343,5 +407,5 @@ Brand Strategy 2025 (Master Document)
 
 ---
 
-_Last Updated: January 2025_
+_Last Updated: March 2026_
 _Related: [Documentation Hub](../README.md) | [Business Strategy](../business/) | [Content Strategy](/apps/web/docs/content/)_

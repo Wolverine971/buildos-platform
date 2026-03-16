@@ -8,7 +8,7 @@
 
 **Traits evident in current communications:**
 
-- **Authentic Empathy**: Evidence: "I'm DJ, and I have ADHD. I've abandoned Notion 6 times, bought 47 planners, tried every productivity system, failed at all of them"
+- **Authentic Empathy**: Evidence: "I wanted a thing I could just talk to, and it understands where I'm coming from"
 - **Practical Realism**: Evidence: "Your ADHD brain isn't broken. Your tools are" and "It works even on your worst brain days"
 - **Intelligent Simplicity**: Evidence: "60-Second Clarity," "From chaos to clarity in under 60 seconds"
 - **Anti-Establishment Confidence**: Evidence: "Stop fighting your brain. Start working with it" and challenging productivity myths
@@ -183,7 +183,7 @@
 
 **Email communication:**
 
-- "Real talk: How many productivity apps have you abandoned this year? (No judgment - I've abandoned Notion 6 times myself.)"
+- "Real talk: if you've bounced between notes apps, task tools, and chat threads, you're not the problem."
 
 **Social media post:**
 

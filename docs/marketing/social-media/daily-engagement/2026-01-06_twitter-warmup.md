@@ -129,7 +129,7 @@ Classic Shaan wisdom post. You can tie this to the solo founder journey and who 
 
 > real question: who should i be trying to impress with build-os?
 >
-> building for scattered ADHD minds who abandoned Notion 6 times. feels like the right audience but always second-guessing.
+> building for scattered ADHD minds who keep bouncing off complex tools. feels like the right audience but always second-guessing.
 
 **Suggested Reply Option 2 (Insight from experience):**
 

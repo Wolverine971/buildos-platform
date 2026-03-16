@@ -132,7 +132,7 @@ Events sent by `/api/agent/v2/stream`:
 | `tool_call`         | V2 stream orchestrator | Tool invocation                                           |
 | `tool_result`       | V2 stream orchestrator | Tool result payload                                       |
 | `context_shift`     | V2 route               | Emitted when tool result includes context shift           |
-| `timing`           | V2 route               | Server-side latency summary for the just-completed turn   |
+| `timing`            | V2 route               | Server-side latency summary for the just-completed turn   |
 | `last_turn_context` | V2 route               | Turn continuity snapshot                                  |
 | `error`             | V2 route               | Terminal error path                                       |
 | `done`              | V2 route               | Terminal event (`finished_reason` included in V2 payload) |

@@ -193,6 +193,7 @@
 					size="sm"
 					variant="outline"
 					class="h-7 px-2 text-xs pressable"
+					aria-label="Upload image"
 					onclick={() => (showUploadModal = true)}
 				>
 					<Upload class="h-3.5 w-3.5" />
@@ -298,7 +299,8 @@
 								<button
 									class="rounded p-0.5 hover:bg-muted transition-colors"
 									onclick={() => openAssetDetail(asset.id)}
-									title="View details"
+									aria-label="View image details"
+									title="View image details"
 								>
 									<Eye class="h-3.5 w-3.5 text-muted-foreground" />
 								</button>

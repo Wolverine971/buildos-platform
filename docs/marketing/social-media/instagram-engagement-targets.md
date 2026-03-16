@@ -5,7 +5,7 @@
 **Account:** @djwayne3
 **Current Followers:** _[UPDATE AFTER FIRST SCAN]_
 **Target Range for Peer Accounts:** Accounts with similar or slightly larger followings
-**Last Updated:** 2026-03-12
+**Last Updated:** 2026-03-15 (added new accounts from discovery scan, updated follower counts)
 
 ---
 
@@ -33,15 +33,20 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 > The ADHD community on Instagram is massive, tight-knit, and highly engaged. This is where BuildOS's audience lives.
 
-| Account              | Followers | Content Focus                     | Engagement Angle                                       |
-| -------------------- | --------- | --------------------------------- | ------------------------------------------------------ |
-| @danidonovan         | ~130K     | ADHD comics, Anti-Planner         | Peer (she's also a competitor - respect, don't attack) |
-| @connor.dewolfe      | ~900K     | ADHD awareness, relatable content | Big account but very community-oriented                |
-| @howtoadhd           | ~300K     | ADHD education, Jessica McCabe    | Educational, supportive community                      |
-| @adhd_alien          | ~200K     | ADHD comics and illustrations     | Visual ADHD content, relatable                         |
-| @the.mini.adhd.coach | ~600K     | ADHD tips, visual guides          | Infographic-style ADHD education                       |
-| @adhd.memetherapy    | ~50K      | ADHD humor, memes                 | Relatable content, casual engagement                   |
-| @domesticblisters    | ~400K     | ADHD home management, KC Davis    | "Struggle care" approach to productivity               |
+| Account                | Followers | Content Focus                                             | Engagement Angle                                                                                                                                                                                                                         | Verified   |
+| ---------------------- | --------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| @danidonovan           | ~130K     | ADHD comics, Anti-Planner                                 | Peer (also a competitor - respect, don't attack)                                                                                                                                                                                         | 2026-03-12 |
+| @howtoadhd             | 260K      | ADHD education, Jessica McCabe                            | Educational, supportive community. Bio: "Building a toolbox of techniques for tackling ADHD"                                                                                                                                             | 2026-03-12 |
+| @the_mini_adhd_coach   | 633K      | ADHD explained with cute doodles                          | Infographic-style ADHD education. Diagnosed at 29. NEW Book: ADHD & Emotion                                                                                                                                                              | 2026-03-12 |
+| @adhd_alien            | 137K      | ADHD comics and illustrations (Pina, she/they)            | Visual ADHD content, relatable. Book releasing Sept 2026. Followed by the_mini_adhd_coach                                                                                                                                                | 2026-03-15 |
+| @strugglecare          | 450K      | ADHD home management, KC Davis                            | "Struggle care" approach. Author of How to Keep House While Drowning. TikTok is @domesticblisters                                                                                                                                        | 2026-03-12 |
+| @connor.dewolfe        | 817K      | ADHD awareness, Actor, "w/ adhd DAVE"                     | Big account, very community-oriented. Active Stories regularly. Story reply = DM relationship opportunity                                                                                                                                | 2026-03-15 |
+| @the_adhd_entrepreneur | 144K      | ADHD Business Builder (Ari Scott)                         | Verified. "Scale your ADHD owned business." Followed by @adhd_alien                                                                                                                                                                      | 2026-03-12 |
+| @adhdcoachsheila       | 117K      | ADHD Coach, Neurodiversity Educator (Sheila Henson)       | Verified. "Shame-free support for minds that work differently." Highlights: Task Initiation, AuDHD, Time Agnosia                                                                                                                         | 2026-03-12 |
+| @an.nalogy             | 82K       | ADHD Productivity & Lifestyle (Anna)                      | "For the ambitious but overwhelmed." MSc Neuroscience + ADHD. Neuroscience-informed tools                                                                                                                                                | 2026-03-12 |
+| @carenmagill           | 11.3K     | ADHD Coach, Productivity & Planning                       | "I help busy ADHD brains plan + follow through." 951 posts, very active. Peer-level size                                                                                                                                                 | 2026-03-12 |
+| @adhdjesse             | 127K      | ADHD Motivation Mastery, Author (Jesse J. Anderson)       | Author of "Extra Focus: The Quick Start Guide to Adult ADHD." Followed by adhd_alien, the_mini_adhd_coach, themindgeek. Very aligned with BuildOS philosophy (momentum > willpower). 0 comments on recent posts = engagement opportunity | 2026-03-15 |
+| @adhd_understood       | 155K      | ADHD & Neuro-Educational Consultant (Donna Giachino M.Sc) | Strength-based ADHD education. Followed by connor.dewolfe and the_mini_adhd_coach. Has "Apps" Story highlight - may review ADHD productivity tools. Clinical authority                                                                   | 2026-03-15 |
 
 **How to engage:**
 
@@ -52,22 +57,20 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 ### Productivity & Organization Creators
 
-| Account       | Followers | Content Focus                            | Engagement Angle                                     |
-| ------------- | --------- | ---------------------------------------- | ---------------------------------------------------- |
-| @mattdavella  | ~1.5M     | Minimalism, productivity, habits         | Big but posts high-quality discussion-worthy content |
-| @aliabdaal    | ~500K     | Productivity, content creation           | Adjacent audience, potential partnership             |
-| @thomasjfrank | ~200K     | Notion, productivity systems             | Tool space - can discuss context vs structure        |
-| @notionhq     | ~300K     | Notion product account                   | Monitor competitor UX and community sentiment        |
-| @todaborrego  | ~100K     | Digital organization, aesthetic planning | Visual productivity content                          |
+| Account      | Followers | Content Focus                    | Engagement Angle                                                                                  | Verified           |
+| ------------ | --------- | -------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------ |
+| @notionhq    | ~300K     | Notion product account           | Monitor competitor UX and community sentiment. Bio: "The AI workspace that works while you sleep" | 2026-03-12         |
+| @mattdavella | ~1.5M     | Minimalism, productivity, habits | Big but posts high-quality discussion-worthy content                                              | From original list |
+| @aliabdaal   | ~500K     | Productivity, content creation   | Adjacent audience, potential partnership                                                          | From original list |
 
 ### Solo Founders / Building in Public
 
-| Account        | Followers | Content Focus                   | Engagement Angle             |
-| -------------- | --------- | ------------------------------- | ---------------------------- |
-| @levelsio      | ~100K     | Indie hacker, nomad, building   | Peer founder, mutual respect |
-| @gregisenberg  | ~150K     | Startup ideas, community        | Business strategy, building  |
-| @sahillavingia | ~50K      | Gumroad, solopreneur philosophy | Solo founder energy          |
-| @danshipper    | ~20K      | Every, AI productivity writing  | Direct competitor space      |
+| Account          | Followers | Content Focus                                  | Engagement Angle                                                                                       | Verified           |
+| ---------------- | --------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------ |
+| @gregisenberg    | 102K      | Startup ideas in the AI age, CEO @latecheckout | Verified. Already followed by djwayne3. Business strategy, building                                    | 2026-03-12         |
+| @sahillavingia   | ~50K      | Gumroad, solopreneur philosophy                | Solo founder energy                                                                                    | From original list |
+| @danshipper      | ~20K      | Every, AI productivity writing                 | Direct competitor space                                                                                | From original list |
+| @chloedigital.ai | 1.7K      | AI Tips & Productivity (Chloe)                 | Founder @ Roleefy/Inddie. Posts about Claude, AI tools, "Vibe Coding to 6 Figures." Peer-level, active | 2026-03-12         |
 
 ---
 
@@ -75,11 +78,10 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 ### AI & Tech Creators
 
-| Account       | Followers | Content Focus       | Engagement Angle                          |
-| ------------- | --------- | ------------------- | ----------------------------------------- |
-| @openai       | ~5M       | AI product updates  | Monitor, engage on relevant announcements |
-| @anthropicai  | ~200K     | Claude, AI safety   | Monitor, engage on productivity angles    |
-| @firaboratory | ~50K      | AI tools, tutorials | AI tool discussions                       |
+| Account      | Followers | Content Focus      | Engagement Angle                          | Verified           |
+| ------------ | --------- | ------------------ | ----------------------------------------- | ------------------ |
+| @openai      | ~5M       | AI product updates | Monitor, engage on relevant announcements | From original list |
+| @anthropicai | ~200K     | Claude, AI safety  | Monitor, engage on productivity angles    | From original list |
 
 ### Mental Health & Wellness (Adjacent to ADHD)
 
@@ -89,12 +91,19 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 | @lisaoliveratherapy | ~500K     | Therapy insights          | Mental health awareness                |
 | @themindgeek        | ~100K     | Psychology, neuroscience  | Brain science, neurodivergent adjacent |
 
-### Student & Academic Productivity
+### ADHD Humor & Community
 
-| Account      | Followers | Content Focus                  | Engagement Angle                   |
-| ------------ | --------- | ------------------------------ | ---------------------------------- |
-| @studywithme | varies    | Study techniques, organization | Younger demographic, ADHD students |
-| @studytee    | ~100K     | Study motivation, productivity | Student audience                   |
+| Account           | Followers | Content Focus              | Engagement Angle                                                                | Verified   |
+| ----------------- | --------- | -------------------------- | ------------------------------------------------------------------------------- | ---------- |
+| @adhd_memetherapy | 1.9M      | ADHD Meme Therapy (Behrad) | Mega account. Already followed by djwayne3. Engage selectively on viral content | 2026-03-12 |
+
+### ADHD Adjacent & AuDHD (Monitor)
+
+| Account           | Followers | Content Focus                                     | Engagement Angle                                                                                                    | Verified   |
+| ----------------- | --------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------- |
+| @the.adhd.friend  | 173K      | AuDHD awareness, neurodivergent (The ADHD Friend) | Currently ON HIATUS. Followed by adhd_alien and the_mini_adhd_coach. Monitor for return - high engagement potential | 2026-03-15 |
+| @adhdadultjourney | TBD       | ADHD Adult Journey                                | Adult ADHD content. Suggested via @adhdcoachsheila similar accounts                                                 | 2026-03-15 |
+| @shimmer.care     | TBD       | Shimmer - ADHD Coaching platform                  | Appears to be an ADHD coaching tech product/app. Potential competitor or partnership. Investigate further           | 2026-03-15 |
 
 ---
 
@@ -109,12 +118,29 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 ### Competitor Monitoring
 
-| Account          | Product      | Why Monitor                  | Strategy                           |
-| ---------------- | ------------ | ---------------------------- | ---------------------------------- |
-| @danidonovan     | Anti-Planner | ADHD competing philosophy    | Respect, learn, don't attack       |
-| @notionhq        | Notion       | Productivity tool competitor | Watch for frustrated users         |
-| @todoistofficial | Todoist      | Task management              | Watch for "too complex" complaints |
-| @clickaboratorio | ClickUp      | PM tool                      | Watch for overwhelm posts          |
+| Account          | Product                                             | Why Monitor                                                                                                                        | Strategy                                                                                       | Verified   |
+| ---------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------- |
+| @danidonovan     | Anti-Planner                                        | ADHD competing philosophy                                                                                                          | Respect, learn, don't attack                                                                   | 2026-03-12 |
+| @notionhq        | Notion                                              | Productivity tool competitor. Launched "Custom Agents" (March 2026) — directly competes with BuildOS daily briefs                  | Watch for frustrated users, monitor AI features                                                | 2026-03-12 |
+| @todoistofficial | Todoist (31K followers)                             | Task management. Very low IG engagement rate                                                                                       | Watch for "too complex" complaints. Low competition in comments                                | 2026-03-12 |
+| @theadhdtools    | ADHD Operating System (62K followers, Ezra Dewolfe) | Verified. Running IG ads: "Operating System used by 3,000+ business owners to eliminate ADHD chaos." DIRECT competitor positioning | Already followed by djwayne3. Monitor closely — ad spend, content strategy, community response | 2026-03-12 |
+
+---
+
+## Removed Accounts (Broken/Inactive on IG)
+
+| Account              | Reason                                                       | Date Removed |
+| -------------------- | ------------------------------------------------------------ | ------------ |
+| @the.mini.adhd.coach | Wrong handle — correct is @the_mini_adhd_coach (underscores) | 2026-03-12   |
+| @domesticblisters    | That's KC Davis's TikTok handle. IG is @strugglecare         | 2026-03-12   |
+| @adhd.memetherapy    | Wrong handle — correct is @adhd_memetherapy (underscore)     | 2026-03-12   |
+| @levelsio            | 0 posts on IG, completely inactive                           | 2026-03-12   |
+| @thomasjfrank        | Page not available                                           | 2026-03-12   |
+| @todaborrego         | Account not found                                            | 2026-03-12   |
+| @studywithme         | Not a real active account                                    | 2026-03-12   |
+| @studytee            | Not a real active account                                    | 2026-03-12   |
+| @clickaboratorio     | Suspect handle, not found as ClickUp                         | 2026-03-12   |
+| @firaboratory        | Suspect handle                                               | 2026-03-12   |
 
 ---
 
@@ -209,7 +235,7 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 
 ---
 
-_Last updated: 2026-03-12_
+_Last updated: 2026-03-15_
 _Used by: `/.claude/commands/instagram-warmup.md`_
 _Related: `docs/marketing/social-media/instagram-strategy.md`_
 _Related: `docs/marketing/social-media/instagram-voice-quick-ref.md`_

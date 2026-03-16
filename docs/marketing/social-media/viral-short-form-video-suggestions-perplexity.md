@@ -19,13 +19,13 @@ To grab massive engagement for BuildOS, the short-form video concepts must empat
 
 ### Viral Video Content Examples
 
-| Concept Name                | Format & Hook Example (30 seconds)                                                             | Engagement Driver                |
-| --------------------------- | :--------------------------------------------------------------------------------------------- | :------------------------------- |
-| ADHD Speedrun Challenge     | “Can you go from chaos to clarity in 60 seconds? Here’s how my ADHD mind did it with BuildOS!” | Timed challenge, relatability    |
-| The Productivity Graveyard  | “I bought 47 planners... ended up in a pile. Here’s my last attempt 🪦”                        | Visual humor, fails-to-wins      |
-| Split-Screen “Before/After” | Left: frantic multitasking, Right: BuildOS showing one clear step and small win animation.     | Visual transformation, quick cut |
-| Real User Reaction Duet     | Duet reaction of a creator using BuildOS, genuine surprise/shock, live dopamine rush.          | Authentic emotion, testimonial   |
-| Meme Remix – ADHD Edition   | Remix popular meme formats: “How my brain sees my to-do list vs. what BuildOS shows me”        | Humor, cultural relevance        |
+| Concept Name                | Format & Hook Example (30 seconds)                                                                         | Engagement Driver                |
+| --------------------------- | :--------------------------------------------------------------------------------------------------------- | :------------------------------- |
+| ADHD Speedrun Challenge     | “Can you go from chaos to clarity in 60 seconds? Here’s how my ADHD mind did it with BuildOS!”             | Timed challenge, relatability    |
+| The Productivity Graveyard  | “I kept trying new systems and ending up with the same pile of abandoned tools. Here’s my last attempt 🪦” | Visual humor, fails-to-wins      |
+| Split-Screen “Before/After” | Left: frantic multitasking, Right: BuildOS showing one clear step and small win animation.                 | Visual transformation, quick cut |
+| Real User Reaction Duet     | Duet reaction of a creator using BuildOS, genuine surprise/shock, live dopamine rush.                      | Authentic emotion, testimonial   |
+| Meme Remix – ADHD Edition   | Remix popular meme formats: “How my brain sees my to-do list vs. what BuildOS shows me”                    | Humor, cultural relevance        |
 
 ---
 

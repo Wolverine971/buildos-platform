@@ -8,6 +8,10 @@
 >
 > **Format:** Answer each chapter in 2-5 paragraphs. Write like you're telling a story to a friend over drinks. Don't worry about being polished.
 
+This is raw source material, not the founder-voice source of truth.
+
+Use [DJ's Founder Context](./FOUNDER_CONTEXT.md) for the distilled version and [Why I Built BuildOS](../content/drafts/why-i-built-buildos.md) for reusable founder narrative.
+
 ---
 
 ## Chapter 1: Origins (Birth - High School)

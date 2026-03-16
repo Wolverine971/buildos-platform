@@ -4,12 +4,13 @@
 
 This document explains how BuildOS persists and tracks outgoing email, the tables involved, and the service layer APIs you should use.
 
-**Last Updated**: 2025-10-06
+**Last Updated**: 2026-03-16
 
 ## Quick Links
 
 - **Email Tracking Flow**: See [Notification Tracking Integration](#notification-tracking-integration)
 - **Click Tracking**: See [Email Click Tracking](#email-click-tracking)
+- **Welcome Sequence**: See [Welcome Sequence Integration](#welcome-sequence-integration)
 - **Research Docs**: [`thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md`](/thoughts/shared/research/2025-10-06_22-45-00_email-tracking-reuse-assessment.md)
 
 ## Data Model
@@ -79,6 +80,21 @@ await emailService.sendEmail({
 ### Scheduled/Admin sends
 
 - Admin UI saves content into `emails` first, then calls `/api/admin/emails/[id]/send` which loops through recipients, dispatches via Gmail, emits `email_tracking_events`, and relies on the shared HTML renderer to append the pixel.
+
+## Welcome Sequence Integration
+
+The BuildOS welcome sequence uses the same tracking and persistence pipeline as every other shared email flow.
+
+- Orchestration lives in `/apps/web/src/lib/server/welcome-sequence.service.ts`.
+- Content and branching live in `/apps/web/src/lib/server/welcome-sequence.logic.ts`.
+- State lives in `public.welcome_email_sequences`, which records one row per user plus sent and skipped timestamps for each of the five welcome emails.
+- Trigger points are the real registration paths:
+    - `/apps/web/src/routes/api/auth/register/+server.ts`
+    - `/apps/web/src/lib/utils/google-oauth.ts`
+- Scheduling for Emails 2-5 runs through `/api/cron/welcome-sequence` on an hourly Vercel cron.
+- Delivery still happens through `EmailService.sendEmail`, not the notification webhook path. This is intentional: welcome emails are transactional lifecycle emails and should not depend on `user_notification_preferences.email_enabled`, which defaults off.
+- Metadata tags for welcome emails include `category`, `campaign`, `campaign_type`, `sequence_name`, `sequence_step`, `sequence_version`, `branch_key`, CTA details, and the product-state booleans used for branch analytics.
+- Sent-step recovery uses `email_logs.metadata` so the sequence can rehydrate already-sent steps if state rows are out of sync after a partial failure.
 
 ## Best Practices
 

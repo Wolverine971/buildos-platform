@@ -6,6 +6,7 @@ import type { Database } from '@buildos/shared-types';
 import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -426,6 +427,32 @@ export class GoogleOAuthHandler {
 				303,
 				`/auth/login?message=${encodeURIComponent('Account already exists. Please sign in instead.')}`
 			);
+		}
+
+		if (config.isRegistration && authResult.isNewUser) {
+			try {
+				const adminClient = createAdminSupabaseClient();
+				await new WelcomeSequenceService(adminClient).startSequenceForUser({
+					userId: authResult.user.id,
+					signupMethod: 'google_oauth'
+				});
+			} catch (welcomeError) {
+				console.error(
+					'Failed to start welcome sequence after Google registration:',
+					welcomeError
+				);
+				const errorLogger = ErrorLoggerService.getInstance(this.supabase);
+				await errorLogger.logError(welcomeError, {
+					userId: authResult.user.id,
+					endpoint: '/auth/google/callback',
+					httpMethod: 'GET',
+					operationType: 'welcome_sequence_start',
+					metadata: {
+						flow: 'google_oauth',
+						isRegistration: true
+					}
+				});
+			}
 		}
 
 		// Step 4: Add delay to ensure everything propagates

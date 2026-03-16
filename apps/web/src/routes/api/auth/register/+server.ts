@@ -5,6 +5,7 @@ import { validateEmail } from '$lib/utils/email-validation';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
 
 function getEmailDomain(value: string): string | null {
 	const trimmed = value.trim().toLowerCase();
@@ -316,6 +317,28 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				emailDomain,
 				hasSession
 			});
+		}
+
+		if (profileUser?.id) {
+			try {
+				const adminClient = createAdminSupabaseClient();
+				await new WelcomeSequenceService(adminClient).startSequenceForUser({
+					userId: profileUser.id,
+					signupMethod: 'email'
+				});
+			} catch (welcomeError) {
+				console.error('Failed to start welcome sequence after registration:', welcomeError);
+				await errorLogger.logError(welcomeError, {
+					endpoint: '/api/auth/register',
+					httpMethod: 'POST',
+					operationType: 'welcome_sequence_start',
+					metadata: {
+						emailDomain,
+						flow: 'password',
+						userId: profileUser.id
+					}
+				});
+			}
 		}
 
 		// Check if email confirmation is required

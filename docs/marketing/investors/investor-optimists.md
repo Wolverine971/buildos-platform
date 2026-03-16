@@ -111,7 +111,7 @@ This is a $100B market in 10 years. The winner takes 30%+."
 
 ## Founder-Market Fit Story
 
-"I have ADHD. I've abandoned Notion 6 times. I've tried every tool.
+"I've bounced between Notion, notes apps, and chat threads. I've tried every tool that promised clarity.
 
 But more importantly: I've shipped 3 products, sold a startup, and learned how to build for neurodivergent minds. I'm not just solving my problem - I'm solving it for millions like me.
 

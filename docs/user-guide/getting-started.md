@@ -1,78 +1,95 @@
 <!-- docs/user-guide/getting-started.md -->
 
-﻿# Getting Started with BuildOS
+# Getting Started with BuildOS
 
-BuildOS launches every new account into an onboarding flow that captures your priorities, syncs the right data sources, and enables accountability loops in under five minutes. This guide explains every step, the data that is stored, and how to restart or skip parts of the flow.
+BuildOS starts new accounts with a short onboarding flow and a follow-up welcome email sequence. The goal is to help you get one real brain dump into the system, finish enough setup to stay in motion, and make it easy to come back for a second session.
 
 ---
 
-## 1. Before You Sign Up
+## 1. Create Your Account
 
-- **Device:** Desktop Chrome or Edge is required for the guided experience (mobile read-only works but lacks voice input).
-- **Google account:** Needed if you plan to sync calendar data during onboarding.
-- **Phone number (optional):** Required only if you want SMS nudges or daily text recaps.
+- **Device:** Desktop Chrome or Edge is still the best experience for onboarding and capture.
+- **Google account:** Optional, but useful if you want calendar sync.
+- **Phone number:** Optional, only needed if you want SMS follow-through.
 
 ### Account creation options
 
-| Method           | Where it happens       | What to expect                                                                                                       |
-| ---------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Email + password | `/auth/register`       | Strong-password check, optional name field, and immediate redirect to the app if email confirmation is not required. |
-| Google OAuth     | Same UI, Google button | Uses the Google consent screen, then returns to `/auth/google/register-callback` before redirecting into the app.    |
+| Method           | Where it happens       | What to expect                                                                                           |
+| ---------------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| Email + password | `/auth/register`       | Strong-password check, optional name field, and immediate sign-in unless email confirmation is required. |
+| Google OAuth     | Same UI, Google button | Google consent flow, then return through `/auth/google/register-callback` into the app.                  |
 
-Behind the scenes both paths create a Supabase Auth user, insert a matching `public.users` row, and trigger `handle_new_user_trial()` which starts your 14 day trial and flags the account for onboarding by appending `?onboarding=true` to the first redirect.
+Behind the scenes both paths create a Supabase Auth user, insert a matching `public.users` row, and start the 14 day trial. That same account-creation event also starts the welcome email sequence.
 
----
+### Welcome emails
 
-## 2. Guided Onboarding Flow
-
-The onboarding modal appears on the homepage until you finish or skip each segment. Progress auto-saves every roughly 1.5 seconds in `user_context`, so you can close the tab at any point and resume from the same step.
-
-| Step                      | What you do                                                                                    | What BuildOS configures                                                                            | Status      |
-| ------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------- |
-| Welcome                   | Review how brain dumps, calendar sync, and reminders work; start the flow.                     | Flags `onboarding_v2_started` and captures skipped steps for analytics.                            | Live        |
-| Capture work              | Brain dump current projects, optionally import from Calendar, and let AI auto-create projects. | Auto-accepts brain dump output into Projects + Phases, stores examples for future reference.       | Live        |
-| Notifications             | Verify a phone number, toggle SMS reminders, and pick email daily brief settings.              | Writes to `/api/sms/preferences` and `/api/brief-preferences`, enables SMS webhooks when verified. | Live        |
-| Archetypes and challenges | Select archetype, top blockers, and focus areas (guides prompt tuning).                        | Populates `onboarding_archetypes` plus `productivity_challenges`.                                  | Rolling out |
-| Summary and finish        | Review what was created, connect missing integrations, and jump into the dashboard.            | Marks `completed_onboarding_at`, clears modal flag.                                                | Planned     |
-
-### Step-by-step detail
-
-1. **Welcome screen**
-    - Highlights brain dump, calendar sync, and smart reminders.
-    - "Start Setting Up" drops you into the capture step without leaving the modal.
-
-2. **Capture current projects**
-    - Speak or paste a detailed brain dump (20+ characters required to run).
-    - Auto-accept mode immediately creates projects and phases without the manual review queue.
-    - "Use my calendar" opens the Calendar Analysis modal so you can mine existing events for projects before you have even connected anything else.
-
-3. **Notification preferences**
-    - Phone verification uses `smsService.verifyPhoneNumber()` and a six-digit confirmation; once verified we enable Morning Kickoff plus Event Reminders by default.
-    - Email toggles call `/api/brief-preferences` (see [Daily Briefs](features/daily-briefs.md) for details). You can revisit both choices later from Settings -> Notifications.
-
-4. **(Upcoming) Archetypes and challenges**
-    - Coming releases add archetype selection, productivity challenges, and a summary step. These are already scaffolded in `onboarding-v2.service.ts`; you might see placeholders if you are on the beta channel.
-
-### Auto-save and resume rules
-
-- You can dismiss the modal, but it reappears on `/` until either every required field is complete or `onboarding_v2_force_skip` is toggled.
-- Users who close the modal before 25 percent progress keep seeing it on login; once you cross that threshold you only see it after updates (for example, when the notifications step ships new options).
+- Email 1 sends immediately after account creation.
+- Later emails only send if they still match your product state.
+- The sequence looks at whether you created a first project, finished onboarding, enabled a daily brief or SMS, connected calendar, and came back for another session.
 
 ---
 
-## 3. After Onboarding
+## 2. Complete Onboarding
 
-1. **Connect Google Calendar** - follow [Calendar Sync Setup](features/calendar-sync.md) to pull events, enable free/busy lookups, and unlock the Phase Scheduling modal.
-2. **Schedule your first Daily Brief** - see [Daily Briefs Configuration](features/daily-briefs.md) to pick time-of-day, timezone, and delivery channels.
-3. **Drop a voice brain dump** - start in `/brain-dump`, enable auto-accept if you liked the onboarding experience, and keep training BuildOS with more context.
+The current onboarding flow has four steps and usually takes about 3 to 6 minutes.
+
+| Step            | What you do                                                          | What BuildOS stores or sets up                                                     |
+| --------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Intent + stakes | Tell BuildOS why you are here and how important the current work is. | Saves `onboarding_intent` and `onboarding_stakes` on your user record.             |
+| Brain dump      | Paste or speak the messy version of what you are working on.         | Creates real project data from the capture flow instead of collecting preferences. |
+| Notifications   | Turn on email daily brief and optionally verify SMS.                 | Updates daily brief and notification preferences.                                  |
+| Ready           | Review what was created and move into the app.                       | Marks onboarding complete and seeds the initial behavioral profile.                |
+
+### What each step is for
+
+1. **Intent + stakes**
+   BuildOS asks for the few things behavior cannot reveal on its own: what kind of help you want and how high-stakes the work feels.
+
+2. **Brain dump**
+   This is the first value moment. You do not need a polished plan. You can start with rough notes, loose ends, blockers, and half-formed ideas.
+
+3. **Notifications**
+   You can turn on the email daily brief, enable SMS if you want it, or skip both and configure them later.
+
+4. **Ready**
+   BuildOS shows what it created and hands you into the main product with a real starting point.
+
+### Resume behavior
+
+- If you leave partway through onboarding, the flow resumes the next time you come back.
+- You can revisit notification preferences later from Settings.
 
 ---
 
-## 4. Troubleshooting and FAQs
+## 3. What The Welcome Sequence Uses
 
-- **Onboarding modal keeps re-opening.** Make sure every text area has content and you clicked "Save & Continue." You can confirm completion by checking Settings -> Account -> Onboarding progress.
-- **SMS verification never arrives.** Double-check that your number includes the country code; the verification service rejects numbers shorter than 10 digits.
-- **Google OAuth loops back to the register page.** This happens if Google blocks consent or the callback fails; refresh, ensure you allow the requested scopes, or fall back to email sign-up.
-- **Need to restart onboarding.** Contact support via the in-app chat and ask them to reset `completed_onboarding_at` for your user ID; the modal will appear again on your next login.
+The welcome sequence is not a generic blast. It branches off live product state:
 
-Once these steps are complete you have the full BuildOS workspace: projects seeded from your own data, calendar-aware scheduling, and proactive notifications tuned to your preferences.
+- whether you created a first project
+- whether onboarding is complete
+- whether the email daily brief is enabled
+- whether SMS is verified and active
+- whether calendar is connected
+- whether you appear to have come back for another session
+
+That means later emails can shift from "start your first brain dump" to "finish setup," "re-open your project," or "turn on one follow-through channel" depending on what you actually did.
+
+---
+
+## 4. After Onboarding
+
+1. Open the project you started and add what changed.
+2. Configure your [Daily Brief](features/daily-briefs.md) if you want email follow-through.
+3. Connect Google Calendar if time and deadlines matter to your workflow.
+4. Keep using brain dumps as new work, decisions, or loose notes show up.
+
+---
+
+## 5. Troubleshooting
+
+- **Onboarding keeps reappearing.** Finish the required steps, especially the final Ready step that marks onboarding complete.
+- **I did not get the welcome email.** Check spam first. If your workspace requires email confirmation, you may receive the confirmation email and the welcome email separately.
+- **SMS verification never arrives.** Double-check that your phone number includes the country code and that you completed the verification step.
+- **Google sign-up loops back.** Retry the consent flow and make sure you allow the requested scopes.
+
+Once these steps are complete, you have a real BuildOS starting point: one project in motion, onboarding state saved, and at least one path for the product to help you follow through.

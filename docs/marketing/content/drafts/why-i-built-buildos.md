@@ -11,7 +11,7 @@ target_audiences:
     - Overwhelmed professionals
     - AI productivity seekers
 key_themes:
-    - ADHD founder journey
+    - founder journey through tool sprawl
     - Marine discipline meets scattered mind
     - Context engineering philosophy
     - AI that actually helps
@@ -23,6 +23,13 @@ path: docs/marketing/content/drafts/why-i-built-buildos.md
 ---
 
 # Why I Built BuildOS
+
+Use this doc as the distilled founder-story draft.
+
+If you need current founder facts or voice constraints first, start with:
+
+- [DJ's Founder Context](../../social-media/FOUNDER_CONTEXT.md)
+- [BuildOS Welcome Sequence](../../strategy/buildos-welcome-sequence.md)
 
 ## The Founder Story Draft
 
@@ -38,7 +45,7 @@ This document contains the narrative elements for DJ's founder story. Use this t
 
 ### Option 2: The Graveyard
 
-> My phone has a graveyard of 47 productivity apps. Notion (abandoned after 3 weeks). Todoist (guilt-inducing red badges). Bullet journals (beautiful for 4 days). I built BuildOS because I was tired of feeling broken.
+> My work was scattered across chat threads, notes apps, and half-built systems. I built BuildOS because I wanted one place that could hold context and help me move forward.
 
 ### Option 3: The Realization
 

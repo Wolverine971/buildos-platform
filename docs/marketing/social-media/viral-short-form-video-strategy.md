@@ -15,7 +15,7 @@
 
 - People with ADHD and neurodivergent minds
 - Overwhelmed professionals drowning in tools and thoughts
-- Serial productivity-app abandoners (tried Notion 6+ times, bought 47 planners)
+- Serial productivity-app abandoners who keep bouncing between tools
 - Creative thinkers who struggle with execution
 - People experiencing "bad brain days" where nothing sticks
 - Those feeling constant failure at organization
@@ -52,7 +52,7 @@ short-form video content that will go viral.
 TARGET AUDIENCE:
 - People with ADHD and neurodivergent minds
 - Overwhelmed professionals drowning in tools and thoughts
-- Serial productivity-app abandoners (tried Notion 6+ times, bought 47 planners)
+- Serial productivity-app abandoners who keep bouncing between tools
 - Creative thinkers who can't execute
 - People who have "bad brain days" where nothing sticks
 - Those who feel like they're constantly failing at organization
@@ -78,7 +78,7 @@ audience? Show examples/give frameworks.
 
 **Examples:**
 
-- "How many productivity apps have you abandoned this year? (No judgment - I've abandoned Notion 6 times myself)"
+- "How many productivity apps have you abandoned this year? No judgment."
 - "If you've bought more than 5 planners this year, this is for you"
 - "POV: You're reading productivity advice at 2am because you can't turn your brain off"
 
@@ -150,7 +150,7 @@ audience? Show examples/give frameworks.
 
 - "Stop trying to use neurotypical productivity tools. Here's why they'll never work for your ADHD brain..."
 - "Your ADHD brain isn't broken. Your tools are. Let me show you what I mean."
-- "I have ADHD. I built this because everything else failed me. Here's what's different..."
+- "I built this because everything else kept asking people to be organized before they could get help. Here's what's different..."
 
 **Why It Works:** Founder authenticity + authority from lived experience
 
@@ -253,8 +253,8 @@ audience? Show examples/give frameworks.
 
 **Example Script:**
 
-> "I have ADHD. I've abandoned Notion 6 times."
-> "Bought 47 planners. Tried every system."
+> "I've bounced between Notion, notes apps, and task tools."
+> "Tried system after system."
 > "The problem wasn't me. It was the tools."
 > "They're built for brains that think in straight lines."
 > "My brain thinks in explosions."

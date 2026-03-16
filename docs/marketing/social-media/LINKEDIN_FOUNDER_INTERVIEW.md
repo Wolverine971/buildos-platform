@@ -6,6 +6,10 @@
 >
 > **Instructions:** Answer each section in your own voice. Write like you talk. Short answers are fine. Skip questions that don't resonate. Add anything I didn't ask about.
 
+This is raw source material for founder content.
+
+Use [DJ's Founder Context](./FOUNDER_CONTEXT.md) for the current source of truth and [Why I Built BuildOS](../content/drafts/why-i-built-buildos.md) for the distilled founder story.
+
 ---
 
 ## Section 1: Your Origin Story

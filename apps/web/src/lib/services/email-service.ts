@@ -96,39 +96,57 @@ export class EmailService {
 				replyTo: data.replyTo
 			});
 
-			const emailRecordId = await this.logRichEmailData({
-				recipientEmail: data.to,
-				recipientId: data.userId ?? null,
-				subject: data.subject,
-				html: htmlBody,
-				sentAt,
-				trackingEnabled,
-				trackingId,
-				emailId: data.emailId,
-				createdBy: data.createdBy,
-				metadata: data.metadata,
-				sender
-			});
+			try {
+				const emailRecordId = await this.logRichEmailData({
+					recipientEmail: data.to,
+					recipientId: data.userId ?? null,
+					subject: data.subject,
+					html: htmlBody,
+					sentAt,
+					trackingEnabled,
+					trackingId,
+					emailId: data.emailId,
+					createdBy: data.createdBy,
+					metadata: data.metadata,
+					sender
+				});
 
-			await this.supabase.from('email_logs').insert({
-				to_email: data.to,
-				subject: data.subject,
-				body: textBody,
-				cc: data.cc,
-				bcc: data.bcc,
-				reply_to: data.replyTo,
-				status: 'sent',
-				sent_at: sentAt,
-				user_id: data.userId ?? null,
-				metadata: {
-					...data.metadata,
-					message_id: info.messageId,
-					sender_type: senderType,
-					tracking_id: trackingId,
-					email_id: emailRecordId,
-					user_id: data.userId ?? null
-				}
-			});
+				await this.supabase.from('email_logs').insert({
+					to_email: data.to,
+					subject: data.subject,
+					body: textBody,
+					cc: data.cc,
+					bcc: data.bcc,
+					reply_to: data.replyTo,
+					status: 'sent',
+					sent_at: sentAt,
+					user_id: data.userId ?? null,
+					metadata: {
+						...data.metadata,
+						message_id: info.messageId,
+						sender_type: senderType,
+						tracking_id: trackingId,
+						email_id: emailRecordId,
+						user_id: data.userId ?? null
+					}
+				});
+			} catch (loggingError) {
+				console.error('Email sent but failed to persist tracking data:', loggingError);
+				await this.errorLogger.logError(loggingError, {
+					endpoint: '/api/email/send',
+					httpMethod: 'POST',
+					userId: data.userId ?? undefined,
+					operationType: 'persist_sent_email',
+					metadata: {
+						emailAlreadySent: true,
+						recipientEmail: data.to,
+						subject: data.subject,
+						senderType,
+						trackingEnabled,
+						messageId: info.messageId
+					}
+				});
+			}
 
 			console.log('Email sent:', {
 				to: data.to,

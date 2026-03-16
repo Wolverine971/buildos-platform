@@ -32,7 +32,7 @@ Every design decision should trace back to who DJ is and what BuildOS represents
 | **Scout Sniper Background**              | Precision, clean sight lines, high information density   | Snipers process complex terrain quickly; BuildOS users scan project landscapes |
 | **Blue Collar Software Engineering**     | Tactile textures, tool-like UI, mechanical reliability   | "I tinker, I work, I build" — not polished theory                              |
 | **Integration Engineer at Curri**        | Connected systems, visible relationships, graph thinking | He built systems that connect; BuildOS connects your thinking                  |
-| **Failed 6x at Notion, 47 planners**     | No shame design, validates mess before organizing        | UI acknowledges chaos as starting point                                        |
+| **Tool sprawl and abandoned systems**    | No shame design, validates mess before organizing        | UI acknowledges chaos as starting point                                        |
 | **"Mechanic who works on cars for fun"** | Workshop aesthetic, components feel handled              | Not clinical SaaS — a workspace with character                                 |
 | **Enneagram 8**                          | Confident, direct, no apologetic design                  | Bold statements, not hedging                                                   |
 

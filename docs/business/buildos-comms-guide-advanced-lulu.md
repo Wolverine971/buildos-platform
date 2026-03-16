@@ -115,15 +115,15 @@ Most founders think they're competing on features. Lulu knows you're competing o
 
 1. **The Call:** "I was drowning despite trying every productivity system"
 2. **The Refusal:** "I thought the problem was me, not the tools"
-3. **The Mentor:** "My ADHD diagnosis revealed the truth"
+3. **The Mentor:** "I realized the problem was the tools, not my effort"
 4. **The Threshold:** "I built BuildOS for myself at 3am, crying"
 5. **The Transformation:** "Now 200 people have their cognitive sovereignty back"
 6. **The Return:** "I'm here to burn down the productivity industrial complex"
 
 ### The Vulnerability Ladder
 
-**Level 1:** "I have ADHD" (fact)
-**Level 2:** "I've failed with 47 different productivity apps" (specificity)
+**Level 1:** "I struggle with organization" (fact)
+**Level 2:** "I kept bouncing between notes, task tools, and chat threads" (specificity)
 **Level 3:** "I once forgot my own product launch because it wasn't in the right system" (embarrassing specificity)
 **Level 4:** "I built BuildOS while procrastinating on my actual job" (radical honesty)
 **Level 5:** "Sometimes I still struggle, but now I struggle forward" (ongoing humanity)

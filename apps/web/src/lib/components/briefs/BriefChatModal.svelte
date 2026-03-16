@@ -309,12 +309,12 @@
 							class="flex-col overflow-y-auto border-r border-border bg-card
 								brief-scroll brief-pane
 								{activeTab === 'brief' ? 'flex' : 'hidden'} md:flex
-								md:flex-1 md:min-w-[400px]"
+								md:flex-1"
 							style="touch-action: pan-y;"
 						>
-							<div class="px-3 py-4 md:px-6 md:py-6">
+							<div class="px-3 py-3 md:px-4 md:py-4">
 								<div
-									class="prose prose-base md:prose-sm max-w-none overflow-x-auto
+									class="prose prose-sm max-w-none overflow-x-auto break-words
 										prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
 										prose-strong:text-foreground prose-a:text-accent prose-blockquote:text-muted-foreground
 										prose-blockquote:border-border prose-code:bg-muted prose-code:text-foreground

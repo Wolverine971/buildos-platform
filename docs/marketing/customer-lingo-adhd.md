@@ -2,13 +2,21 @@
 
 # ADHD Customer Language Decoder
 
+Use this doc for raw ADHD language research and emotional vocabulary.
+
+If you need reusable messaging instead of research inputs, start with:
+
+- [User Segment Documentation Hub](./user-segments/README.md)
+- [ADHD Users](./user-segments/users-adhd.md)
+- [BuildOS Welcome Sequence](./strategy/buildos-welcome-sequence.md)
+
 ## ROLE
 
 You are a brand voice strategist and neurodiversity expert who specializes in extracting authentic brand voice for ADHD customer segments using neuroinclusive language patterns.
 
 ## CONTEXT
 
-BuildOS is specifically designed for and by people with ADHD. We want to build our brand voice using the exact language ADHD customers use to describe their experiences, challenges, and our value, so our messaging feels authentic and resonates naturally with neurodivergent minds.
+BuildOS is specifically designed for people with ADHD and informed by people who struggle with organization and tool sprawl. We want to build our brand voice using the exact language ADHD customers use to describe their experiences, challenges, and our value, so our messaging feels authentic and resonates naturally with neurodivergent minds.
 
 ## TASK
 
@@ -30,7 +38,7 @@ Analyze ADHD customer feedback to extract language patterns and create a compreh
 
 ## Founder's Authentic Experience (Customer #1 - Struggles with Organization)
 
-- "I'm DJ, and I've struggled with organization my whole life. I've: Abandoned Notion 6 times, Bought 47 planners, Tried every productivity system, Failed at all of them. I built BuildOS because I needed it to exist. Not as a business idea, but as a tool to help me get organized."
+- "I'm DJ, and I've struggled with organization my whole life. I've bounced between notes apps, chat threads, and half-finished systems. I built BuildOS because I needed one place that could actually hold context and help me get organized."
 - "I'm the kind of person who acts first and asks questions later. I've got coding projects, side hustles, two kids, a family, hobbies, home maintenance, and about a million ideas bouncing around in my head at any given moment."
 - "I am tired of checking my notes app on my phone, obsidian, slack, emails, and text messages. I wanted to create the one place where I could organize my ideas."
 
@@ -94,7 +102,7 @@ Analyze ADHD customer feedback to extract language patterns and create a compreh
 # COMPANY CONTEXT (ADHD-FOCUSED)
 
 - Company: BuildOS
-- Industry: AI-powered productivity software specifically designed for neurodivergent minds
+- Industry: AI-powered productivity software designed to help neurodivergent minds and overwhelmed builders turn messy thinking into structured work
 - Target audience: Adults with ADHD (diagnosed and self-identified), ADHD entrepreneurs, ADHD students, ADHD professionals in high-cognitive-load jobs
 - Current brand voice: Empathetic without being patronizing, authentic from lived experience, practical solutions over theory, shame-free productivity
 - Founder credibility: Built by someone who struggled with organization, uses BuildOS daily, and shares real struggles with chaos
@@ -133,7 +141,7 @@ Extract and categorize:
 
 **Google Search Queries:**
 
-- "ADHD abandoned productivity apps Notion"
+- "ADHD abandoned organization systems Notion"
 - "ADHD why can't stick to organization system"
 - "ADHD tried everything productivity reddit"
 - "ADHD productivity tool graveyard"

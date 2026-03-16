@@ -36,13 +36,13 @@
 	}
 </script>
 
-<div class="bg-card rounded-lg shadow overflow-hidden">
-	<div class="px-6 py-4 border-b border-border">
+<div class="bg-card rounded-lg shadow-ink border border-border overflow-hidden">
+	<div class="px-3 py-2.5 border-b border-border">
 		<h3 class="text-lg font-semibold text-foreground">Event Type Breakdown</h3>
 	</div>
 
 	{#if loading}
-		<div class="p-6 space-y-3">
+		<div class="p-3 space-y-2">
 			{#each Array(5) as _}
 				<div class="animate-pulse">
 					<div class="h-10 bg-muted rounded"></div>
@@ -50,53 +50,53 @@
 			{/each}
 		</div>
 	{:else if data.length === 0}
-		<div class="p-6 text-center text-muted-foreground">No event data available</div>
+		<div class="p-4 text-center text-sm text-muted-foreground">No event data available</div>
 	{:else}
 		<div class="overflow-x-auto">
-			<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Event Type
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Events
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Deliveries
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Subscribers
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Avg Delivery Time
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Open Rate
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Click Rate
 						</th>
 					</tr>
 				</thead>
-				<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
+				<tbody class="bg-card divide-y divide-border">
 					{#each data as event}
 						<tr class="hover:bg-muted transition-colors">
-							<td class="px-6 py-4 whitespace-nowrap">
+							<td class="px-3 py-2.5 whitespace-nowrap">
 								<span
 									class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getEventTypeBadgeColor(
 										event.event_type
@@ -106,25 +106,25 @@
 								</span>
 							</td>
 							<td
-								class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground"
+								class="px-3 py-2.5 whitespace-nowrap text-sm font-medium text-foreground"
 							>
 								{formatNumber(event.total_events)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{formatNumber(event.total_deliveries)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{formatNumber(event.unique_subscribers)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{event.avg_delivery_time_seconds != null
 									? `${event.avg_delivery_time_seconds.toFixed(2)}s`
 									: 'N/A'}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{formatPercentage(event.open_rate)}
 							</td>
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{formatPercentage(event.click_rate)}
 							</td>
 						</tr>

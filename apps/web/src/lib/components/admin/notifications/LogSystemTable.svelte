@@ -136,9 +136,9 @@
 	}
 </script>
 
-<div class="bg-card rounded-lg shadow overflow-hidden">
+<div class="bg-card rounded-lg shadow-ink border border-border overflow-hidden">
 	{#if loading}
-		<div class="p-6 space-y-3">
+		<div class="p-3 space-y-2">
 			{#each Array(10) as _}
 				<div class="animate-pulse">
 					<div class="h-12 bg-muted rounded"></div>
@@ -146,46 +146,46 @@
 			{/each}
 		</div>
 	{:else if logs.length === 0}
-		<div class="p-6 text-center text-muted-foreground">No system logs found</div>
+		<div class="p-4 text-center text-sm text-muted-foreground">No system logs found</div>
 	{:else}
 		<div class="overflow-x-auto">
-			<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
-						<th class="px-4 py-3 w-8"></th>
+						<th class="px-3 py-2 w-8"></th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Time
 						</th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Level
 						</th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Namespace
 						</th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Message
 						</th>
 						<th
-							class="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Correlation ID
 						</th>
 						<th
-							class="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Actions
 						</th>
 					</tr>
 				</thead>
-				<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
+				<tbody class="bg-card divide-y divide-border">
 					{#each logs as log}
 						{@const Level = getLevelIcon(log.level)}
 						<tr
@@ -207,12 +207,12 @@
 								</button>
 							</td>
 							<td
-								class="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground"
+								class="px-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground"
 								title={formatDate(log.created_at)}
 							>
 								{formatShortDate(log.created_at)}
 							</td>
-							<td class="px-4 py-3 whitespace-nowrap">
+							<td class="px-3 py-2.5 whitespace-nowrap">
 								<div class="flex items-center space-x-1">
 									<Level class="w-4 h-4 {getLevelTextColor(log.level)}" />
 									<span
@@ -224,10 +224,10 @@
 									</span>
 								</div>
 							</td>
-							<td class="px-4 py-3 text-xs font-mono text-muted-foreground">
+							<td class="px-3 py-2.5 text-xs font-mono text-muted-foreground">
 								{log.namespace || 'N/A'}
 							</td>
-							<td class="px-4 py-3 text-sm text-foreground max-w-md">
+							<td class="px-3 py-2.5 text-sm text-foreground max-w-md">
 								<div class="truncate" title={log.message}>
 									{log.message}
 								</div>
@@ -237,7 +237,7 @@
 									</div>
 								{/if}
 							</td>
-							<td class="px-4 py-3 whitespace-nowrap">
+							<td class="px-3 py-2.5 whitespace-nowrap">
 								<button
 									onclick={() => copyToClipboard(log.correlation_id)}
 									class="font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline"
@@ -246,7 +246,9 @@
 									{truncateCorrelationId(log.correlation_id)}
 								</button>
 							</td>
-							<td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+							<td
+								class="px-3 py-2.5 whitespace-nowrap text-right text-sm font-medium"
+							>
 								<div class="flex justify-end space-x-2">
 									{#if onViewCorrelation}
 										<Button
@@ -273,7 +275,7 @@
 						<!-- Expanded Row - Full Context -->
 						{#if expandedRows.has(log.id)}
 							<tr class="bg-muted">
-								<td colspan="7" class="px-4 py-4">
+								<td colspan="7" class="px-3 py-3">
 									<div class="space-y-3">
 										<!-- Full Message -->
 										<div>

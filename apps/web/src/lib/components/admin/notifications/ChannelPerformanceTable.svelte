@@ -49,8 +49,8 @@
 	}
 </script>
 
-<div class="bg-card rounded-lg shadow overflow-hidden">
-	<div class="px-6 py-4 border-b border-border">
+<div class="bg-card rounded-lg shadow-ink border border-border overflow-hidden">
+	<div class="px-3 py-2.5 border-b border-border">
 		<h3 class="text-lg font-semibold text-foreground">Channel Performance</h3>
 		<p class="mt-1 text-sm text-muted-foreground">
 			Track notification delivery metrics across channels. <span class="font-medium"
@@ -62,7 +62,7 @@
 	</div>
 
 	{#if loading}
-		<div class="p-6 space-y-3">
+		<div class="p-3 space-y-2">
 			{#each Array(4) as _}
 				<div class="animate-pulse">
 					<div class="h-10 bg-muted rounded"></div>
@@ -70,64 +70,64 @@
 			{/each}
 		</div>
 	{:else if data.length === 0}
-		<div class="p-6 text-center text-muted-foreground">No channel data available</div>
+		<div class="p-4 text-center text-sm text-muted-foreground">No channel data available</div>
 	{:else}
 		<div class="overflow-x-auto">
-			<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+			<table class="min-w-full divide-y divide-border">
 				<thead class="bg-muted">
 					<tr>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Channel
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Total
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Sent
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Delivered
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Success Rate
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Delivery Rate
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Open Rate
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Click Rate
 						</th>
 						<th
-							class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider"
 						>
 							Avg Time
 						</th>
 					</tr>
 				</thead>
-				<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
+				<tbody class="bg-card divide-y divide-border">
 					{#each data as channel}
 						<tr class="hover:bg-muted transition-colors">
 							<!-- Channel -->
-							<td class="px-6 py-4 whitespace-nowrap">
+							<td class="px-3 py-2.5 whitespace-nowrap">
 								<span
 									class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {getChannelBadgeColor(
 										channel.channel
@@ -137,7 +137,7 @@
 								</span>
 							</td>
 							<!-- Total (all notifications) -->
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								<div>
 									<div class="font-medium">
 										{formatNumber(channel.total_sent)}
@@ -148,13 +148,13 @@
 								</div>
 							</td>
 							<!-- Sent (status='sent') -->
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								<div class="font-medium">
 									{formatNumber(channel.sent)}
 								</div>
 							</td>
 							<!-- Delivered (status='delivered') -->
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								<div>
 									<div class="font-medium">
 										{formatNumber(channel.delivered)}
@@ -163,7 +163,7 @@
 								</div>
 							</td>
 							<!-- Success Rate (% sent successfully) -->
-							<td class="px-6 py-4 whitespace-nowrap">
+							<td class="px-3 py-2.5 whitespace-nowrap">
 								<div class="flex items-center">
 									<div class="flex-1">
 										<div
@@ -183,7 +183,7 @@
 								</div>
 							</td>
 							<!-- Delivery Rate (% of sent that were delivered) - NEW -->
-							<td class="px-6 py-4 whitespace-nowrap">
+							<td class="px-3 py-2.5 whitespace-nowrap">
 								<div class="flex items-center">
 									<div class="flex-1">
 										<div
@@ -203,7 +203,7 @@
 								</div>
 							</td>
 							<!-- Open Rate -->
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								<div>
 									<div>{formatPercentage(channel.open_rate)}</div>
 									<div class="text-xs text-muted-foreground">
@@ -212,7 +212,7 @@
 								</div>
 							</td>
 							<!-- Click Rate -->
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								<div>
 									<div>{formatPercentage(channel.click_rate)}</div>
 									<div class="text-xs text-muted-foreground">
@@ -221,7 +221,7 @@
 								</div>
 							</td>
 							<!-- Avg Delivery Time -->
-							<td class="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{formatTime(channel.avg_delivery_time_ms)}
 							</td>
 						</tr>

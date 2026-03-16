@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-03-16T16:44:52.579Z
+// Generated on: 2026-03-16T20:23:12.053Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2785,6 +2785,28 @@ export type DatabaseSchema = {
 		processed_at: string | null;
 		status: string;
 	};
+	welcome_email_sequences: {
+		completed_at: string | null;
+		created_at: string;
+		email_1_sent_at: string | null;
+		email_1_skipped_at: string | null;
+		email_2_sent_at: string | null;
+		email_2_skipped_at: string | null;
+		email_3_sent_at: string | null;
+		email_3_skipped_at: string | null;
+		email_4_sent_at: string | null;
+		email_4_skipped_at: string | null;
+		email_5_sent_at: string | null;
+		email_5_skipped_at: string | null;
+		last_evaluated_at: string | null;
+		sequence_version: string;
+		signup_method: string;
+		started_at: string;
+		status: string;
+		trigger_source: string;
+		updated_at: string;
+		user_id: string;
+	};
 };
 
 export const tableNames = [
@@ -2968,5 +2990,6 @@ export const tableNames = [
 	'voice_note_groups',
 	'voice_notes',
 	'web_page_visits',
-	'webhook_events'
+	'webhook_events',
+	'welcome_email_sequences'
 ] as const;

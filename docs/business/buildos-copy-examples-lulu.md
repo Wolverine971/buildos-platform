@@ -30,75 +30,25 @@ _Whispered below:_
 
 ## The Onboarding Email Sequence
 
-### Email 1: The Validation
+This section is a historical brainstorming artifact, not approved BuildOS email copy.
 
-**Subject:** "Your invitation is ready (but are you?)"
+It included invented founder specifics, unsupported social proof, and over-stylized positioning that should not be reused as source-of-truth messaging.
 
-**Body:**
-"You're about to join 200 people who've stopped pretending their brains work like spreadsheets.
+For the active BuildOS welcome sequence, use:
 
-This isn't another productivity tool.
-It's permission to think the way you actually think.
+- [BuildOS Welcome Sequence](../marketing/strategy/buildos-welcome-sequence.md)
 
-Tomorrow, I'll tell you why I built this at 3am while avoiding my actual job.
+### What still matters from this brainstorm
 
-For now, just know: Your chaos is about to become your superpower.
+- validation-first tone
+- clear invitation to start with a brain dump
+- product as relief, not productivity theater
 
-– Anna
-Founder, BuildOS
-(Diagnosed ADHD, 2019. Built this tool, 2024. Never looked back.)"
+### What to avoid
 
-### Email 2: The Vulnerability
-
-**Subject:** "I've failed with 47 productivity apps. Here's #48."
-
-**Body:**
-"Notion (3 weeks)
-Asana (2 days)
-Monday.com (1 painful month)
-Roam (felt like homework)
-Obsidian (for people smarter than me)
-... 42 others I've memory-holed
-
-Each time, I thought I was the problem.
-Plot twist: The tools were built for robots, not brains.
-
-BuildOS is different because I built it for my brain.
-The chaotic, ADHD, 'why-can't-I-just-be-normal' brain.
-
-Turns out, that brain is more common than we think.
-
-Your first brain dump awaits. No setup. No tutorial. Just talk.
-
-[Button: "Start Your First Download"]
-
-P.S. If this doesn't work for you, you're only out 10 minutes. But 77% of people never leave. Just saying."
-
-### Email 3: The Social Proof (But Make It Emotional)
-
-**Subject:** "Sarah cried. Then she scheduled her entire week."
-
-**Body:**
-"Sarah DM'd me this yesterday:
-
-'I literally cried when BuildOS organized my brain dump.
-For the first time, a tool didn't make me feel stupid.
-It made me feel understood.
-I went from chaos to calendar in 4 minutes.
-I've been trying to do that for 4 years.'
-
-Sarah is a VP at Google.
-She has two degrees.
-She manages 50 people.
-She thought she was failing.
-
-She wasn't. Her tools were.
-
-Ready to stop fighting your brain?
-
-[Button: "Join Sarah and 199 Others"]
-
-P.S. We call ourselves 'citizens' not users. Because this is a movement, not a product."
+- fake founder specificity
+- made-up metrics or testimonials
+- "movement" language in place of product clarity
 
 ---
 
@@ -158,7 +108,7 @@ BuildOS: For brains that work differently."
 
 **Your productivity app is gaslighting you.**
 
-For 10 years, I thought I was broken. ADHD diagnosis. Executive dysfunction. The works.
+For years, I thought I was the problem. Scattered notes. Half-finished systems. Constant context loss.
 
 I tried everything:
 ✓ GTD (lasted 3 days)
@@ -211,8 +161,7 @@ Who else is tired of pretending their brain works like Excel?
 **"What if the tools were broken, not the people?"**
 
 _Founder photo with caption:_
-"I failed with 47 productivity apps before building #48 for my ADHD brain.
-Turns out, millions of brains work like mine."
+"I kept bouncing between notes, task tools, and stateless chats until I built something that could hold context the way I actually work."
 
 ### Slide 4: The Solution (One Line)
 
