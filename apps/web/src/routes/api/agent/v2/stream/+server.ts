@@ -2872,7 +2872,8 @@ export const POST: RequestHandler = async ({
 										logFastChatError({
 											error,
 											operationType: 'fastchat_stream_emit_skill_activity',
-											projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+											projectId:
+												effectiveProjectIdForTools ?? projectIdForLogs,
 											metadata: {
 												sessionId: session.id,
 												contextType: effectiveContextType,
@@ -2918,7 +2919,8 @@ export const POST: RequestHandler = async ({
 										onError: (error) => {
 											logFastChatError({
 												error,
-												operationType: 'fastchat_stream_emit_skill_activity',
+												operationType:
+													'fastchat_stream_emit_skill_activity',
 												projectId:
 													effectiveProjectIdForTools ?? projectIdForLogs,
 												metadata: {

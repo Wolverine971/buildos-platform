@@ -449,10 +449,7 @@ export async function fetchProjectSelectorSummaries(
 		timing ? timing.measure(name, fn) : fn();
 	const normalizedSearch = typeof options.search === 'string' ? options.search.trim() : '';
 	const normalizedLimit = Number.isFinite(options.limit)
-		? Math.min(
-				PROJECT_SELECTOR_MAX_LIMIT,
-				Math.max(1, Math.floor(options.limit as number))
-			)
+		? Math.min(PROJECT_SELECTOR_MAX_LIMIT, Math.max(1, Math.floor(options.limit as number)))
 		: PROJECT_SELECTOR_DEFAULT_LIMIT;
 	const searchFilter = normalizedSearch
 		? buildSearchFilter(normalizedSearch, [
@@ -521,7 +518,9 @@ export async function fetchProjectSelectorSummaries(
 	);
 	const sharedProjectsPromise =
 		memberProjectIds.length > 0
-			? measure('db.projects.selector_shared', () => buildBaseQuery().in('id', memberProjectIds))
+			? measure('db.projects.selector_shared', () =>
+					buildBaseQuery().in('id', memberProjectIds)
+				)
 			: Promise.resolve({ data: [] as ProjectSelectorRow[], error: null });
 
 	const [ownedProjectsRes, sharedProjectsRes] = await Promise.all([

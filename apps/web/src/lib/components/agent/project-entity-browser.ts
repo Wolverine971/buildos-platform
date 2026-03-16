@@ -105,10 +105,9 @@ export async function fetchProjectEntities(
 	}
 	query.set('limit', String(normalizedLimit));
 
-	const request = fetch(
-		`/api/onto/projects/${params.projectId}/entities?${query.toString()}`,
-		{}
-	)
+	const request = fetch(`/api/onto/projects/${params.projectId}/entities?${query.toString()}`, {
+		signal: params.signal
+	})
 		.then(async (response) => {
 			if (!response.ok) {
 				throw new Error(`Failed with status ${response.status}`);

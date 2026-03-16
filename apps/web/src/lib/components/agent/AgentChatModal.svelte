@@ -395,10 +395,7 @@
 			runId: timing.runId,
 			timeToFirstStreamEventMs: diffMs(timing.sendStartedAtMs, timing.firstEventAtMs),
 			timeToFirstTextMs: diffMs(timing.sendStartedAtMs, timing.firstTextAtMs),
-			timeFromFirstEventToFirstTextMs: diffMs(
-				timing.firstEventAtMs,
-				timing.firstTextAtMs
-			),
+			timeFromFirstEventToFirstTextMs: diffMs(timing.firstEventAtMs, timing.firstTextAtMs),
 			timeFromLastTextToDoneMs: diffMs(timing.lastTextAtMs, timing.doneEventAtMs),
 			timeToDoneMs: diffMs(timing.sendStartedAtMs, timing.doneEventAtMs),
 			totalStreamMs: diffMs(
@@ -3464,7 +3461,10 @@
 						return;
 					}
 					receivedStreamEvent = true;
-					recordClientStreamEvent(runId, (data?.type as AgentSSEMessage['type']) ?? 'text');
+					recordClientStreamEvent(
+						runId,
+						(data?.type as AgentSSEMessage['type']) ?? 'text'
+					);
 					handleSSEMessage(data as AgentSSEMessage);
 				},
 				onError: (err) => {

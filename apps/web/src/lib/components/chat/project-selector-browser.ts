@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/chat/project-selector-browser.ts
 export interface ProjectSelectionSummary {
 	id: string;
 	name: string;
@@ -65,10 +66,7 @@ function isFresh(timestamp: number): boolean {
 	return Date.now() - timestamp <= PROJECT_SELECTION_CACHE_TTL_MS;
 }
 
-function buildProjectSelectionCacheKey(params: {
-	search: string;
-	limit: number;
-}): string {
+function buildProjectSelectionCacheKey(params: { search: string; limit: number }): string {
 	return `${params.search}|${params.limit}`;
 }
 
@@ -100,10 +98,7 @@ export function normalizeProjectSelectionLimit(value?: number | null): number {
 		return DEFAULT_PROJECT_SELECTOR_LIMIT;
 	}
 
-	return Math.min(
-		MAX_PROJECT_SELECTOR_LIMIT,
-		Math.max(1, Math.floor(value as number))
-	);
+	return Math.min(MAX_PROJECT_SELECTOR_LIMIT, Math.max(1, Math.floor(value as number)));
 }
 
 export function clearProjectSelectionBrowserCache(): void {
@@ -137,6 +132,7 @@ export async function fetchProjectSelectionSummaries(params: {
 		method: 'GET',
 		credentials: 'same-origin',
 		cache: 'no-store',
+		signal: params.signal,
 		headers: {
 			Accept: 'application/json'
 		}
