@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-03-16T20:23:12.053Z
+// Generated on: 2026-03-16T21:29:32.820Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2042,6 +2042,39 @@ export type DatabaseSchema = {
 		session_id: string;
 		snippet: string | null;
 	};
+	retargeting_founder_pilot_members: {
+		batch_id: string | null;
+		campaign_id: string;
+		cohort_frozen_at: string;
+		cohort_id: string;
+		cohort_size: number;
+		conversion_window_days: number;
+		created_at: string;
+		email: string;
+		first_14d_activity_count: number;
+		first_activity_at: string | null;
+		holdout: boolean;
+		id: string;
+		last_meaningful_activity_at: string | null;
+		last_outbound_email_at: string | null;
+		last_seen_at: string | null;
+		lifetime_activity_count: number;
+		manual_stop: boolean;
+		manual_stop_at: string | null;
+		manual_stop_reason: string | null;
+		name: string | null;
+		notes: string | null;
+		pilot_segment: string;
+		prioritized_rank: number;
+		reply_recorded_at: string | null;
+		reply_status: string;
+		touch_1_sent_at: string | null;
+		touch_2_sent_at: string | null;
+		touch_3_sent_at: string | null;
+		updated_at: string;
+		user_id: string;
+		variant: string;
+	};
 	scheduled_sms_messages: {
 		calendar_event_id: string | null;
 		cancelled_at: string | null;
@@ -2947,6 +2980,7 @@ export const tableNames = [
 	'recurring_task_instances',
 	'recurring_task_migration_log',
 	'research_artifact_refs',
+	'retargeting_founder_pilot_members',
 	'scheduled_sms_messages',
 	'security_logs',
 	'sms_alert_history',

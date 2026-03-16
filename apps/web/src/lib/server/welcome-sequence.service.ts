@@ -256,7 +256,7 @@ export class WelcomeSequenceService {
 
 				result.sent += 1;
 				if (action.step === 'email_5') {
-						result.completed += 1;
+					result.completed += 1;
 				}
 			} catch (error) {
 				await this.safeMarkEvaluated(originalRow.user_id, now.toISOString());
@@ -365,7 +365,11 @@ export class WelcomeSequenceService {
 		}
 	}
 
-	private async claimStep(userId: string, step: WelcomeSequenceStep, claimedAt: string): Promise<boolean> {
+	private async claimStep(
+		userId: string,
+		step: WelcomeSequenceStep,
+		claimedAt: string
+	): Promise<boolean> {
 		const sentField = stepTimestampField(step, 'sent');
 		const skippedField = stepTimestampField(step, 'skipped');
 		const claimCutoff = new Date(

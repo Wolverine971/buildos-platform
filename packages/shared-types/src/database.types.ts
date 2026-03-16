@@ -8544,6 +8544,116 @@ export type Database = {
         }
         Relationships: []
       }
+      retargeting_founder_pilot_members: {
+        Row: {
+          batch_id: string | null
+          campaign_id: string
+          cohort_frozen_at: string
+          cohort_id: string
+          cohort_size: number
+          conversion_window_days: number
+          created_at: string
+          email: string
+          first_14d_activity_count: number
+          first_activity_at: string | null
+          holdout: boolean
+          id: string
+          last_meaningful_activity_at: string | null
+          last_outbound_email_at: string | null
+          last_seen_at: string | null
+          lifetime_activity_count: number
+          manual_stop: boolean
+          manual_stop_at: string | null
+          manual_stop_reason: string | null
+          name: string | null
+          notes: string | null
+          pilot_segment: string
+          prioritized_rank: number
+          reply_recorded_at: string | null
+          reply_status: string
+          touch_1_sent_at: string | null
+          touch_2_sent_at: string | null
+          touch_3_sent_at: string | null
+          updated_at: string
+          user_id: string
+          variant: string
+        }
+        Insert: {
+          batch_id?: string | null
+          campaign_id: string
+          cohort_frozen_at: string
+          cohort_id: string
+          cohort_size: number
+          conversion_window_days?: number
+          created_at?: string
+          email: string
+          first_14d_activity_count?: number
+          first_activity_at?: string | null
+          holdout?: boolean
+          id?: string
+          last_meaningful_activity_at?: string | null
+          last_outbound_email_at?: string | null
+          last_seen_at?: string | null
+          lifetime_activity_count?: number
+          manual_stop?: boolean
+          manual_stop_at?: string | null
+          manual_stop_reason?: string | null
+          name?: string | null
+          notes?: string | null
+          pilot_segment: string
+          prioritized_rank: number
+          reply_recorded_at?: string | null
+          reply_status?: string
+          touch_1_sent_at?: string | null
+          touch_2_sent_at?: string | null
+          touch_3_sent_at?: string | null
+          updated_at?: string
+          user_id: string
+          variant?: string
+        }
+        Update: {
+          batch_id?: string | null
+          campaign_id?: string
+          cohort_frozen_at?: string
+          cohort_id?: string
+          cohort_size?: number
+          conversion_window_days?: number
+          created_at?: string
+          email?: string
+          first_14d_activity_count?: number
+          first_activity_at?: string | null
+          holdout?: boolean
+          id?: string
+          last_meaningful_activity_at?: string | null
+          last_outbound_email_at?: string | null
+          last_seen_at?: string | null
+          lifetime_activity_count?: number
+          manual_stop?: boolean
+          manual_stop_at?: string | null
+          manual_stop_reason?: string | null
+          name?: string | null
+          notes?: string | null
+          pilot_segment?: string
+          prioritized_rank?: number
+          reply_recorded_at?: string | null
+          reply_status?: string
+          touch_1_sent_at?: string | null
+          touch_2_sent_at?: string | null
+          touch_3_sent_at?: string | null
+          updated_at?: string
+          user_id?: string
+          variant?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retargeting_founder_pilot_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_sms_messages: {
         Row: {
           calendar_event_id: string | null
@@ -12177,6 +12287,57 @@ export type Database = {
           status: string
         }[]
       }
+      freeze_retargeting_founder_pilot_cohort: {
+        Args: {
+          p_batch_size?: number
+          p_campaign_id: string
+          p_cohort_frozen_at?: string
+          p_cohort_id: string
+          p_conversion_window_days?: number
+          p_holdout_pct_if_large?: number
+          p_holdout_users_if_small?: number
+          p_replace_existing?: boolean
+        }
+        Returns: {
+          batch_id: string | null
+          campaign_id: string
+          cohort_frozen_at: string
+          cohort_id: string
+          cohort_size: number
+          conversion_window_days: number
+          created_at: string
+          email: string
+          first_14d_activity_count: number
+          first_activity_at: string | null
+          holdout: boolean
+          id: string
+          last_meaningful_activity_at: string | null
+          last_outbound_email_at: string | null
+          last_seen_at: string | null
+          lifetime_activity_count: number
+          manual_stop: boolean
+          manual_stop_at: string | null
+          manual_stop_reason: string | null
+          name: string | null
+          notes: string | null
+          pilot_segment: string
+          prioritized_rank: number
+          reply_recorded_at: string | null
+          reply_status: string
+          touch_1_sent_at: string | null
+          touch_2_sent_at: string | null
+          touch_3_sent_at: string | null
+          updated_at: string
+          user_id: string
+          variant: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "retargeting_founder_pilot_members"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       generate_recurring_instances: {
         Args: { p_end_date: string; p_start_date: string; p_task_id: string }
         Returns: {
@@ -12460,6 +12621,46 @@ export type Database = {
       get_project_statistics: {
         Args: { p_project_id: string; p_user_id: string }
         Returns: Json
+      }
+      get_retargeting_founder_pilot_member_metrics: {
+        Args: {
+          p_campaign_id: string
+          p_cohort_id: string
+          p_report_run_at?: string
+        }
+        Returns: {
+          active_days_30d: number
+          anchor_at: string
+          any_click: boolean
+          any_open: boolean
+          attributed_step: string
+          attribution_type: string
+          batch_id: string
+          campaign_id: string
+          cohort_frozen_at: string
+          cohort_id: string
+          conversion_window_days: number
+          email: string
+          first_action_at: string
+          first_post_send_action_at: string
+          first_post_send_activity_at: string
+          first_send_at: string
+          holdout: boolean
+          last_send_at: string
+          manual_stop: boolean
+          member_id: string
+          name: string
+          pilot_segment: string
+          reply_status: string
+          return_session_at: string
+          touch_1_clicked: boolean
+          touch_1_opened: boolean
+          touch_1_sent_at: string
+          touch_2_sent_at: string
+          touch_3_sent_at: string
+          user_id: string
+          variant: string
+        }[]
       }
       get_revenue_metrics: {
         Args: never
