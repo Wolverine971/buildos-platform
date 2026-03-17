@@ -155,7 +155,8 @@
       "mcp__plugin_compound-engineering_context7__resolve-library-id",
       "mcp__plugin_compound-engineering_context7__query-docs",
       "Bash(xxd:*)",
-      "Bash(git -C /Users/djwayne/buildos-platform ls-files:*)"
+      "Bash(git -C /Users/djwayne/buildos-platform ls-files:*)",
+      "Bash(sips:*)"
     ],
     "deny": [],
     "ask": []

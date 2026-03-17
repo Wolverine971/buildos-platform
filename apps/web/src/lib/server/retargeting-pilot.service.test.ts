@@ -263,6 +263,7 @@ describe('RetargetingPilotService', () => {
 			step: 'touch_2',
 			sentByUserId: 'admin-1',
 			batchId: 'batch_01',
+			demoUrl: 'https://example.com/demo',
 			dryRun: true
 		});
 
@@ -272,6 +273,27 @@ describe('RetargetingPilotService', () => {
 			failed: 0
 		});
 		expect(sendEmailMock).not.toHaveBeenCalled();
+	});
+
+	it('requires a batch id for retargeting sends', async () => {
+		const state: MockState = {
+			frozenMembers: [],
+			members: {},
+			metricRows: []
+		};
+
+		const { RetargetingPilotService } = await import('./retargeting-pilot.service');
+		const service = new RetargetingPilotService(createMockSupabase(state) as any);
+
+		await expect(
+			service.sendStep({
+				cohortId: 'founder-pilot-2026-03',
+				step: 'touch_2',
+				sentByUserId: 'admin-1',
+				batchId: '   ',
+				demoUrl: 'https://example.com/demo'
+			})
+		).rejects.toThrow('batch_id is required for retargeting sends');
 	});
 
 	it('sends Touch 1 through EmailService and updates member state', async () => {
@@ -311,5 +333,23 @@ describe('RetargetingPilotService', () => {
 			})
 		);
 		expect(state.members['member-1'].touch_1_sent_at).toMatch(/2026|20\d{2}/);
+	});
+
+	it('rejects empty member updates', async () => {
+		const member = createMember();
+		const state: MockState = {
+			frozenMembers: [],
+			members: {
+				[member.id]: member
+			},
+			metricRows: []
+		};
+
+		const { RetargetingPilotService } = await import('./retargeting-pilot.service');
+		const service = new RetargetingPilotService(createMockSupabase(state) as any);
+
+		await expect(service.updateMember(member.id, {})).rejects.toThrow(
+			'At least one retargeting member field must be updated'
+		);
 	});
 });

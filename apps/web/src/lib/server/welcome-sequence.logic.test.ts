@@ -153,4 +153,19 @@ describe('welcome sequence logic', () => {
 		expect(email.ctaUrl).toBe('https://build-os.com/projects/project-123');
 		expect(email.body).toContain('reply to this email');
 	});
+
+	it('keeps plain-text greetings unescaped while escaping HTML greetings', () => {
+		const email = buildWelcomeEmailContent(
+			'email_1',
+			createProgress(),
+			createState({
+				name: "D'Angelo Builder"
+			}),
+			'https://build-os.com'
+		);
+
+		expect(email.body).toContain("Hi D'Angelo,");
+		expect(email.body).not.toContain('D&#39;Angelo');
+		expect(email.html).toContain('<p>Hi D&#39;Angelo,</p>');
+	});
 });

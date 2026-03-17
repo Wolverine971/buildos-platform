@@ -92,7 +92,12 @@ function firstName(name: string | null): string | null {
 	return trimmed.split(/\s+/)[0] ?? null;
 }
 
-function getGreeting(name: string | null): string {
+function getPlainGreeting(name: string | null): string {
+	const resolvedFirstName = firstName(name);
+	return resolvedFirstName ? `Hi ${resolvedFirstName},` : 'Hi,';
+}
+
+function getHtmlGreeting(name: string | null): string {
 	const resolvedFirstName = firstName(name);
 	return resolvedFirstName ? `Hi ${escapeHtml(resolvedFirstName)},` : 'Hi,';
 }
@@ -300,7 +305,8 @@ function buildEmail1(state: WelcomeSequenceProductState, baseUrl: string): Welco
 	const ctaLabel = 'Start your first brain dump';
 	const ctaUrl = getWelcomeUrls(baseUrl, state).start;
 	const subject = 'Welcome to BuildOS';
-	const greeting = getGreeting(state.name);
+	const greeting = getPlainGreeting(state.name);
+	const htmlGreeting = getHtmlGreeting(state.name);
 	const body = `${greeting}
 
 Welcome to BuildOS.
@@ -329,7 +335,7 @@ DJ`;
 	const html = wrapEmailHtml(
 		subject,
 		`
-			<p>${greeting}</p>
+			<p>${htmlGreeting}</p>
 			<p>Welcome to BuildOS.</p>
 			<p>The best way to understand it is not by reading about it. It is by using it once.</p>
 			<p>Start with the mess in your head:</p>
@@ -364,7 +370,8 @@ function buildEmail2(state: WelcomeSequenceProductState, baseUrl: string): Welco
 	const ctaUrl = getWelcomeUrls(baseUrl, state).openApp;
 	const intentHook = getIntentHook(state.onboardingIntent);
 	const subject = 'What to put in your first brain dump';
-	const greeting = getGreeting(state.name);
+	const greeting = getPlainGreeting(state.name);
+	const htmlGreeting = getHtmlGreeting(state.name);
 	const intentLine = intentHook
 		? `If you came to BuildOS to ${intentHook}, use that as your starting point.`
 		: 'Use the thing you most need to move forward as your starting point.';
@@ -395,7 +402,7 @@ DJ`;
 	const html = wrapEmailHtml(
 		subject,
 		`
-			<p>${greeting}</p>
+			<p>${htmlGreeting}</p>
 			<p>If you opened BuildOS and thought "I should come back when I can explain this better," do not do that.</p>
 			<p>A good first brain dump sounds more like this:</p>
 			<blockquote>
@@ -429,7 +436,8 @@ DJ`;
 function buildEmail3(state: WelcomeSequenceProductState, baseUrl: string): WelcomeEmailContent {
 	const branchKey = getEmail3Branch(state);
 	const urls = getWelcomeUrls(baseUrl, state);
-	const greeting = getGreeting(state.name);
+	const greeting = getPlainGreeting(state.name);
+	const htmlGreeting = getHtmlGreeting(state.name);
 
 	if (branchKey === 'no_project') {
 		const ctaLabel = 'Open BuildOS';
@@ -456,7 +464,7 @@ DJ`;
 		const html = wrapEmailHtml(
 			subject,
 			`
-				<p>${greeting}</p>
+				<p>${htmlGreeting}</p>
 				<p>Most tools make you start from zero.</p>
 				<p>You open a blank workspace, stare at it for a minute, and then put the work off because you are still the one responsible for turning the mess into structure.</p>
 				<p>That is the part BuildOS is trying to remove.</p>
@@ -502,7 +510,7 @@ DJ`;
 		const html = wrapEmailHtml(
 			subject,
 			`
-				<p>${greeting}</p>
+				<p>${htmlGreeting}</p>
 				<p>You already got something into BuildOS. Good.</p>
 				<p>The next step is finishing the setup that keeps you from starting from zero again.</p>
 				<p>When you come back to a project, the point is not to generate text once.</p>
@@ -553,7 +561,7 @@ DJ`;
 	const html = wrapEmailHtml(
 		subject,
 		`
-			<p>${greeting}</p>
+			<p>${htmlGreeting}</p>
 			<p>Most tools make you maintain the system.</p>
 			<p>You write notes in one place, tasks in another, talk to AI in another, and then you become the person responsible for stitching all of it back together.</p>
 			<p>That is the part BuildOS is trying to remove.</p>
@@ -585,7 +593,8 @@ DJ`;
 function buildEmail4(state: WelcomeSequenceProductState, baseUrl: string): WelcomeEmailContent {
 	const branch = getEmail4Branch(state).branchKey;
 	const urls = getWelcomeUrls(baseUrl, state);
-	const greeting = getGreeting(state.name);
+	const greeting = getPlainGreeting(state.name);
+	const htmlGreeting = getHtmlGreeting(state.name);
 
 	if (branch === 'finish_setup') {
 		const ctaLabel = 'Finish setup';
@@ -610,7 +619,7 @@ DJ`;
 		const html = wrapEmailHtml(
 			subject,
 			`
-				<p>${greeting}</p>
+				<p>${htmlGreeting}</p>
 				<p>Getting your ideas out is step one.</p>
 				<p>Making sure BuildOS can keep showing up for the work after that is step two.</p>
 				<p>If you still have onboarding left, finish it now so the project you started does not turn into another thing you have to remember on your own.</p>
@@ -674,7 +683,7 @@ DJ`;
 	const html = wrapEmailHtml(
 		subject,
 		`
-			<p>${greeting}</p>
+			<p>${htmlGreeting}</p>
 			<p>Getting your ideas out is step one.</p>
 			<p>Following through without having to remember everything yourself is step two.</p>
 			<p>That is where the rest of setup matters.</p>
@@ -712,7 +721,8 @@ function buildEmail5(
 	const ctaLabel = returned ? 'Open BuildOS' : 'Open BuildOS';
 	const ctaUrl = state.projectCount > 0 ? urls.project : urls.openApp;
 	const subject = 'What are you building right now?';
-	const greeting = getGreeting(state.name);
+	const greeting = getPlainGreeting(state.name);
+	const htmlGreeting = getHtmlGreeting(state.name);
 
 	const opening = returned
 		? 'You have already been back in BuildOS at least once, which is usually when it starts to click.'
@@ -743,7 +753,7 @@ DJ`;
 	const html = wrapEmailHtml(
 		subject,
 		`
-			<p>${greeting}</p>
+			<p>${htmlGreeting}</p>
 			<p>${escapeHtml(opening)}</p>
 			<p>If you are still in the second group, reply and tell me what you are trying to move forward.</p>
 			<p>BuildOS tends to click fastest for people who need to:</p>

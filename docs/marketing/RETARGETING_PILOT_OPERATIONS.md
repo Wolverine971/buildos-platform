@@ -103,9 +103,10 @@ Touch 2 send requires a real demo URL:
 
 Behavior:
 
+- every send requires an explicit `batch_id`
 - `touch_1` sends to unsent, non-holdout members in the requested batch
-- `touch_2` only targets members sent Touch 1 at least 72 hours ago with no tracked post-send activity
-- `touch_3` only targets engaged non-converters at least 7 days after Touch 1
+- `touch_2` only targets members in that batch who were sent Touch 1 at least 72 hours ago and still have no tracked post-send activity
+- `touch_3` only targets engaged non-converters in that batch at least 7 days after Touch 1
 
 ### Review outcomes
 

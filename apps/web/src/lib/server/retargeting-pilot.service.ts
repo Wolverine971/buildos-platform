@@ -4,6 +4,7 @@ import type { Database } from '@buildos/shared-types';
 import { dev } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { EmailService } from '$lib/services/email-service';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import {
 	buildRetargetingEmailContent,
 	listRetargetingStepCandidates,
@@ -37,7 +38,7 @@ interface SendRetargetingStepInput {
 	cohortId: string;
 	step: RetargetingPilotStep;
 	sentByUserId: string;
-	batchId?: string | null;
+	batchId: string;
 	variant?: string | null;
 	demoUrl?: string | null;
 	dryRun?: boolean;
@@ -65,10 +66,12 @@ function stepSentField(
 
 export class RetargetingPilotService {
 	private readonly emailService: EmailService;
+	private readonly errorLogger: ErrorLoggerService;
 	private readonly baseUrl: string;
 
 	constructor(private readonly supabase: TypedSupabaseClient) {
 		this.emailService = new EmailService(supabase);
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 		this.baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 	}
 
@@ -205,8 +208,13 @@ export class RetargetingPilotService {
 
 	async sendStep(input: SendRetargetingStepInput) {
 		const campaignId = input.campaignId || RETARGETING_DEFAULT_CAMPAIGN_ID;
-		if (input.step === 'touch_1' && !input.batchId) {
-			throw new Error('batchId is required for Touch 1 sends');
+		const batchId = input.batchId.trim();
+		if (!batchId) {
+			throw new Error('batch_id is required for retargeting sends');
+		}
+
+		if (input.step === 'touch_2' && !input.demoUrl?.trim()) {
+			throw new Error('demo_url is required for Touch 2 sends');
 		}
 
 		const members = await this.getMetricRows({
@@ -216,7 +224,7 @@ export class RetargetingPilotService {
 
 		const candidates = listRetargetingStepCandidates(members, {
 			step: input.step,
-			batchId: input.batchId,
+			batchId,
 			now: new Date()
 		});
 
@@ -225,7 +233,7 @@ export class RetargetingPilotService {
 				campaignId,
 				cohortId: input.cohortId,
 				step: input.step,
-				batchId: input.batchId ?? null,
+				batchId,
 				dryRun: true,
 				counts: {
 					candidates: candidates.length,
@@ -302,6 +310,25 @@ export class RetargetingPilotService {
 
 				sentMemberIds.push(member.id);
 			} catch (error) {
+				await this.errorLogger.logError(error, {
+					userId: member.user_id,
+					endpoint: '/api/admin/retargeting/send',
+					httpMethod: 'POST',
+					operationType: 'retargeting_pilot_send_member',
+					tableName: 'retargeting_founder_pilot_members',
+					recordId: member.id,
+					operationPayload: {
+						campaignId,
+						cohortId: input.cohortId,
+						batchId: member.batch_id,
+						step: input.step,
+						variant: input.variant ?? member.variant ?? RETARGETING_DEFAULT_VARIANT
+					},
+					metadata: {
+						memberEmail: member.email,
+						sentByUserId: input.sentByUserId
+					}
+				});
 				errors.push({
 					memberId: member.id,
 					email: member.email,
@@ -314,7 +341,7 @@ export class RetargetingPilotService {
 			campaignId,
 			cohortId: input.cohortId,
 			step: input.step,
-			batchId: input.batchId ?? null,
+			batchId,
 			dryRun: false,
 			counts: {
 				candidates: candidates.length,
@@ -350,6 +377,10 @@ export class RetargetingPilotService {
 
 		if (typeof input.notes !== 'undefined') {
 			updates.notes = input.notes ?? null;
+		}
+
+		if (Object.keys(updates).length === 0) {
+			throw new Error('At least one retargeting member field must be updated');
 		}
 
 		const { data, error } = await this.membersTable()
