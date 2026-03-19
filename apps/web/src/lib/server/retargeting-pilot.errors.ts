@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/retargeting-pilot.errors.ts
 export function getRetargetingValidationMessage(error: unknown): string | null {
 	if (!(error instanceof Error)) {
 		return null;

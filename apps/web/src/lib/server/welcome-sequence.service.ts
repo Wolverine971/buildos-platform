@@ -30,6 +30,16 @@ type SequenceTimestampKey =
 
 const WELCOME_STEP_CLAIM_WINDOW_MS = 10 * 60 * 1000;
 
+function isMissingLastEvaluatedAtError(error: unknown): boolean {
+	const err = error as { code?: string; message?: string; details?: string } | undefined;
+	const message = `${err?.message ?? ''} ${err?.details ?? ''}`.toLowerCase();
+	return (
+		(err?.code === '42703' && message.includes('last_evaluated_at')) ||
+		message.includes('welcome_email_sequences.last_evaluated_at') ||
+		message.includes('column last_evaluated_at does not exist')
+	);
+}
+
 interface WelcomeSequenceRow {
 	user_id: string;
 	sequence_version: string;
@@ -114,6 +124,7 @@ function applyRowUpdate(
 export class WelcomeSequenceService {
 	private readonly emailService: EmailService;
 	private readonly baseUrl: string;
+	private supportsLastEvaluatedAtColumn = true;
 
 	constructor(private readonly supabase: TypedSupabaseClient) {
 		this.emailService = new EmailService(supabase);
@@ -274,6 +285,31 @@ export class WelcomeSequenceService {
 		return (this.supabase as any).from('welcome_email_sequences');
 	}
 
+	private markLastEvaluatedAtColumnUnavailable(error: unknown): boolean {
+		if (!isMissingLastEvaluatedAtError(error)) {
+			return false;
+		}
+
+		this.supportsLastEvaluatedAtColumn = false;
+		return true;
+	}
+
+	private toLegacySafeUpdates(updates: Partial<WelcomeSequenceRow>): Partial<WelcomeSequenceRow> {
+		if (!('last_evaluated_at' in updates)) {
+			return updates;
+		}
+
+		const { last_evaluated_at, ...rest } = updates;
+		if (typeof last_evaluated_at === 'string' && !('updated_at' in rest)) {
+			return {
+				...rest,
+				updated_at: last_evaluated_at
+			};
+		}
+
+		return rest;
+	}
+
 	private async ensureSequenceRow(
 		input: WelcomeSequenceStartInput
 	): Promise<WelcomeSequenceRow | null> {
@@ -345,7 +381,24 @@ export class WelcomeSequenceService {
 		userId: string,
 		updates: Partial<WelcomeSequenceRow>
 	): Promise<void> {
-		const { error } = await this.sequenceTable().update(updates).eq('user_id', userId);
+		const initialUpdates = this.supportsLastEvaluatedAtColumn
+			? updates
+			: this.toLegacySafeUpdates(updates);
+		if (Object.keys(initialUpdates).length === 0) {
+			return;
+		}
+
+		let { error } = await this.sequenceTable().update(initialUpdates).eq('user_id', userId);
+		if (error && this.markLastEvaluatedAtColumnUnavailable(error)) {
+			const fallbackUpdates = this.toLegacySafeUpdates(updates);
+			if (Object.keys(fallbackUpdates).length === 0) {
+				return;
+			}
+
+			const retry = await this.sequenceTable().update(fallbackUpdates).eq('user_id', userId);
+			error = retry.error;
+		}
+
 		if (error) {
 			throw new Error(`Failed to update welcome sequence: ${error.message}`);
 		}
@@ -376,16 +429,38 @@ export class WelcomeSequenceService {
 			new Date(claimedAt).getTime() - WELCOME_STEP_CLAIM_WINDOW_MS
 		).toISOString();
 
-		const { data, error } = await this.sequenceTable()
-			.update({
-				last_evaluated_at: claimedAt
-			})
+		const claimField = this.supportsLastEvaluatedAtColumn ? 'last_evaluated_at' : 'updated_at';
+		const claimPayload = this.supportsLastEvaluatedAtColumn
+			? { last_evaluated_at: claimedAt }
+			: { updated_at: claimedAt };
+
+		let { data, error } = await this.sequenceTable()
+			.update(claimPayload)
 			.eq('user_id', userId)
 			.is(sentField, null)
 			.is(skippedField, null)
-			.or(`last_evaluated_at.is.null,last_evaluated_at.lt.${claimCutoff}`)
+			.or(`${claimField}.is.null,${claimField}.lt.${claimCutoff}`)
 			.select('user_id')
 			.maybeSingle();
+
+		if (
+			error &&
+			this.supportsLastEvaluatedAtColumn &&
+			this.markLastEvaluatedAtColumnUnavailable(error)
+		) {
+			const fallback = await this.sequenceTable()
+				.update({
+					updated_at: claimedAt
+				})
+				.eq('user_id', userId)
+				.is(sentField, null)
+				.is(skippedField, null)
+				.or(`updated_at.is.null,updated_at.lt.${claimCutoff}`)
+				.select('user_id')
+				.maybeSingle();
+			data = fallback.data;
+			error = fallback.error;
+		}
 
 		if (error) {
 			throw new Error(`Failed to claim welcome sequence step: ${error.message}`);

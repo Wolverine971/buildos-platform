@@ -15,25 +15,39 @@ interface MockState {
 	updates: Array<{ userId: string; updates: Record<string, any> }>;
 	failRpc: boolean;
 	failFullUserLoad?: boolean;
+	legacySequenceSchema?: boolean;
+	actorId?: string;
+	projectsByActorId?: Record<string, Array<Record<string, any>>>;
+	briefPreferencesByUserId?: Record<string, Record<string, any>>;
+	notificationPreferencesByUserId?: Record<string, Record<string, any>>;
+	smsPreferencesByUserId?: Record<string, Record<string, any>>;
+	calendarTokensByUserId?: Record<string, number>;
+	emailLogsByUserId?: Record<string, Array<Record<string, any>>>;
 }
 
-class QueryBuilderMock {
+class QueryBuilderMock implements PromiseLike<any> {
 	private action: 'select' | 'insert' | 'update' | null = null;
+	private resultMode: 'many' | 'maybeSingle' | 'single' = 'many';
 	private selectedColumns: string | undefined;
+	private selectOptions: Record<string, any> | undefined;
 	private insertPayload: Record<string, any> | null = null;
 	private updatePayload: Record<string, any> | null = null;
-	private filters = new Map<string, any>();
+	private filters: Array<{ operator: 'eq' | 'is'; field: string; value: any }> = [];
+	private orExpression: string | null = null;
+	private containsFilter: { field: string; value: Record<string, any> } | null = null;
+	private limitValue: number | null = null;
 
 	constructor(
 		private readonly table: string,
 		private readonly state: MockState
 	) {}
 
-	select(columns?: string) {
+	select(columns?: string, options?: Record<string, any>) {
 		if (!this.action) {
 			this.action = 'select';
 		}
 		this.selectedColumns = columns;
+		this.selectOptions = options;
 		return this;
 	}
 
@@ -50,10 +64,17 @@ class QueryBuilderMock {
 	}
 
 	eq(field: string, value: any) {
-		this.filters.set(field, value);
-		if (this.action === 'update') {
-			return Promise.resolve(this.executeUpdate());
-		}
+		this.filters.push({ operator: 'eq', field, value });
+		return this;
+	}
+
+	is(field: string, value: any) {
+		this.filters.push({ operator: 'is', field, value });
+		return this;
+	}
+
+	or(expression: string) {
+		this.orExpression = expression;
 		return this;
 	}
 
@@ -61,33 +82,63 @@ class QueryBuilderMock {
 		return this;
 	}
 
-	limit() {
-		return Promise.resolve(this.executeSelectMany());
+	limit(value: number) {
+		this.limitValue = value;
+		return this;
 	}
 
-	contains() {
-		return Promise.resolve({ data: [], error: null });
+	contains(field: string, value: Record<string, any>) {
+		this.containsFilter = { field, value };
+		return this;
 	}
 
 	maybeSingle() {
-		return Promise.resolve(this.executeMaybeSingle());
+		this.resultMode = 'maybeSingle';
+		return this;
 	}
 
 	single() {
-		return Promise.resolve(this.executeSingle());
+		this.resultMode = 'single';
+		return this;
 	}
 
-	private executeMaybeSingle() {
+	then<TResult1 = any, TResult2 = never>(
+		onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null | undefined,
+		onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null | undefined
+	): PromiseLike<TResult1 | TResult2> {
+		return Promise.resolve(this.execute()).then(onfulfilled, onrejected);
+	}
+
+	private execute() {
+		switch (this.action) {
+			case 'insert':
+				return this.executeInsert();
+			case 'update':
+				return this.executeUpdate();
+			case 'select':
+			default:
+				return this.executeSelect();
+		}
+	}
+
+	private executeSelect() {
 		if (this.table === 'welcome_email_sequences') {
-			const userId = this.filters.get('user_id');
+			const rows = this.filterWelcomeRows();
+			if (this.resultMode === 'maybeSingle' || this.resultMode === 'single') {
+				return {
+					data: rows[0] ?? null,
+					error: null
+				};
+			}
+
 			return {
-				data: userId ? (this.state.welcomeRows[userId] ?? null) : null,
+				data: this.limitValue ? rows.slice(0, this.limitValue) : rows,
 				error: null
 			};
 		}
 
 		if (this.table === 'users') {
-			const userId = this.filters.get('id');
+			const userId = this.getFilterValue('eq', 'id');
 			const user = userId ? (this.state.users[userId] ?? null) : null;
 			if (!user) {
 				return { data: null, error: null };
@@ -113,10 +164,83 @@ class QueryBuilderMock {
 			return { data: user, error: null };
 		}
 
-		return { data: null, error: null };
+		if (this.table === 'onto_projects') {
+			const actorId = this.getFilterValue('eq', 'created_by');
+			const rows = (this.state.projectsByActorId?.[actorId] ?? []).filter(
+				(project) => project.deleted_at == null
+			);
+			return {
+				data: this.limitValue ? rows.slice(0, this.limitValue) : rows,
+				count: rows.length,
+				error: null
+			};
+		}
+
+		if (this.table === 'user_brief_preferences') {
+			const userId = this.getFilterValue('eq', 'user_id');
+			return {
+				data: userId ? (this.state.briefPreferencesByUserId?.[userId] ?? null) : null,
+				error: null
+			};
+		}
+
+		if (this.table === 'user_notification_preferences') {
+			const userId = this.getFilterValue('eq', 'user_id');
+			return {
+				data: userId
+					? (this.state.notificationPreferencesByUserId?.[userId] ?? null)
+					: null,
+				error: null
+			};
+		}
+
+		if (this.table === 'user_sms_preferences') {
+			const userId = this.getFilterValue('eq', 'user_id');
+			return {
+				data: userId ? (this.state.smsPreferencesByUserId?.[userId] ?? null) : null,
+				error: null
+			};
+		}
+
+		if (this.table === 'user_calendar_tokens') {
+			const userId = this.getFilterValue('eq', 'user_id');
+			const count = userId ? (this.state.calendarTokensByUserId?.[userId] ?? 0) : 0;
+			return {
+				data: this.selectOptions?.head
+					? null
+					: Array.from({ length: count }, () => ({ user_id: userId })),
+				count,
+				error: null
+			};
+		}
+
+		if (this.table === 'email_logs') {
+			const userId = this.getFilterValue('eq', 'user_id');
+			const status = this.getFilterValue('eq', 'status');
+			const rows = (this.state.emailLogsByUserId?.[userId] ?? []).filter((row) => {
+				if (status && row.status !== status) {
+					return false;
+				}
+
+				if (!this.containsFilter) {
+					return true;
+				}
+
+				const metadata = row[this.containsFilter.field] as Record<string, any> | undefined;
+				return Object.entries(this.containsFilter.value).every(
+					([key, value]) => metadata?.[key] === value
+				);
+			});
+			return { data: rows, error: null };
+		}
+
+		return {
+			data: this.resultMode === 'many' ? [] : null,
+			error: null
+		};
 	}
 
-	private executeSingle() {
+	private executeInsert() {
 		if (
 			this.table === 'welcome_email_sequences' &&
 			this.action === 'insert' &&
@@ -151,34 +275,120 @@ class QueryBuilderMock {
 		return { data: null, error: null };
 	}
 
-	private executeSelectMany() {
-		if (this.table === 'welcome_email_sequences') {
-			const status = this.filters.get('status');
-			const rows = Object.values(this.state.welcomeRows).filter((row: any) =>
-				status ? row.status === status : true
-			);
-			return { data: rows, error: null };
-		}
-
-		return { data: [], error: null };
-	}
-
 	private executeUpdate() {
 		if (this.table === 'welcome_email_sequences' && this.updatePayload) {
-			const userId = this.filters.get('user_id');
-			if (userId && this.state.welcomeRows[userId]) {
-				this.state.welcomeRows[userId] = {
-					...this.state.welcomeRows[userId],
-					...this.updatePayload
+			if (this.shouldSimulateMissingLastEvaluatedAtError()) {
+				return {
+					data: null,
+					error: {
+						code: '42703',
+						message: 'column welcome_email_sequences.last_evaluated_at does not exist'
+					}
 				};
-				this.state.updates.push({
-					userId,
-					updates: this.updatePayload
-				});
 			}
+
+			const rows = this.filterWelcomeRows();
+			const row = rows[0] ?? null;
+			if (!row) {
+				return {
+					data: this.resultMode === 'many' ? [] : null,
+					error: null
+				};
+			}
+
+			const nextRow = {
+				...row,
+				...this.updatePayload
+			};
+			this.state.welcomeRows[row.user_id] = nextRow;
+			this.state.updates.push({
+				userId: row.user_id,
+				updates: this.updatePayload
+			});
+
+			return {
+				data:
+					this.resultMode === 'maybeSingle' || this.resultMode === 'single'
+						? this.projectSelectedColumns(nextRow)
+						: null,
+				error: null
+			};
 		}
 
 		return { error: null };
+	}
+
+	private getFilterValue(operator: 'eq' | 'is', field: string) {
+		return this.filters.find((filter) => filter.operator === operator && filter.field === field)
+			?.value;
+	}
+
+	private filterWelcomeRows() {
+		return Object.values(this.state.welcomeRows).filter((row: any) => {
+			const matchesFilters = this.filters.every((filter) => {
+				if (filter.operator === 'eq') {
+					return row[filter.field] === filter.value;
+				}
+				if (filter.value === null) {
+					return row[filter.field] === null;
+				}
+				return row[filter.field] === filter.value;
+			});
+
+			if (!matchesFilters) {
+				return false;
+			}
+
+			if (!this.orExpression) {
+				return true;
+			}
+
+			return this.orExpression.split(',').some((clause) => this.matchesOrClause(row, clause));
+		});
+	}
+
+	private matchesOrClause(row: Record<string, any>, clause: string): boolean {
+		const trimmed = clause.trim();
+		if (trimmed.endsWith('.is.null')) {
+			const field = trimmed.slice(0, -'.is.null'.length);
+			return row[field] == null;
+		}
+
+		const ltIndex = trimmed.indexOf('.lt.');
+		if (ltIndex === -1) {
+			return false;
+		}
+
+		const field = trimmed.slice(0, ltIndex);
+		const value = trimmed.slice(ltIndex + 4);
+		if (row[field] == null) {
+			return false;
+		}
+
+		return new Date(row[field]).getTime() < new Date(value).getTime();
+	}
+
+	private shouldSimulateMissingLastEvaluatedAtError(): boolean {
+		if (!this.state.legacySequenceSchema) {
+			return false;
+		}
+
+		return (
+			Object.hasOwn(this.updatePayload ?? {}, 'last_evaluated_at') ||
+			Boolean(this.orExpression?.includes('last_evaluated_at'))
+		);
+	}
+
+	private projectSelectedColumns(row: Record<string, any>) {
+		if (!this.selectedColumns || this.selectedColumns === '*') {
+			return row;
+		}
+
+		const projected: Record<string, any> = {};
+		for (const column of this.selectedColumns.split(',').map((value) => value.trim())) {
+			projected[column] = row[column];
+		}
+		return projected;
 	}
 }
 
@@ -214,7 +424,7 @@ function createMockSupabase(state: MockState) {
 			if (fn === 'ensure_actor_for_user') {
 				return state.failRpc
 					? { data: null, error: { message: 'rpc unavailable' } }
-					: { data: 'actor-1', error: null };
+					: { data: state.actorId ?? 'actor-1', error: null };
 			}
 
 			return { data: null, error: null };
@@ -307,6 +517,59 @@ describe('WelcomeSequenceService failure recovery', () => {
 					userId: 'user-1',
 					updates: expect.objectContaining({
 						last_evaluated_at: '2026-03-01T11:00:00.000Z'
+					})
+				})
+			])
+		);
+	});
+
+	it('falls back to updated_at when the legacy sequence table is missing last_evaluated_at', async () => {
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'user@example.com',
+					name: 'Alex Builder',
+					created_at: '2026-03-01T10:00:00.000Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'UTC'
+				}
+			},
+			welcomeRows: {
+				'user-1': createSequenceRow('user-1')
+			},
+			updates: [],
+			failRpc: false,
+			legacySequenceSchema: true
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+
+		await expect(
+			service.startSequenceForUser({
+				userId: 'user-1',
+				signupMethod: 'google_oauth'
+			})
+		).resolves.toBeUndefined();
+
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
+		expect(state.welcomeRows['user-1']?.email_1_sent_at).toEqual(expect.any(String));
+		expect(state.updates).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					userId: 'user-1',
+					updates: expect.objectContaining({
+						updated_at: expect.any(String)
+					})
+				}),
+				expect.objectContaining({
+					userId: 'user-1',
+					updates: expect.objectContaining({
+						email_1_sent_at: expect.any(String),
+						updated_at: expect.any(String)
 					})
 				})
 			])

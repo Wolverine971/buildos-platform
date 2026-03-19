@@ -120,10 +120,10 @@ BEGIN
             target_date,
             completed_at,
             updated_at,
-            lower(btrim(COALESCE(state_key, ''))) AS state_norm,
+            lower(btrim(COALESCE(state_key::text, ''))) AS state_norm,
             (
               completed_at IS NOT NULL
-              OR lower(btrim(COALESCE(state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
+              OR lower(btrim(COALESCE(state_key::text, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
             ) AS is_completed
           FROM onto_goals
           WHERE project_id = ANY(v_project_ids)
@@ -181,10 +181,10 @@ BEGIN
             due_at,
             completed_at,
             updated_at,
-            lower(btrim(COALESCE(state_key, ''))) AS state_norm,
+            lower(btrim(COALESCE(state_key::text, ''))) AS state_norm,
             (
               completed_at IS NOT NULL
-              OR lower(btrim(COALESCE(state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
+              OR lower(btrim(COALESCE(state_key::text, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
             ) AS is_completed
           FROM onto_milestones
           WHERE project_id = ANY(v_project_ids)
@@ -228,8 +228,8 @@ BEGIN
             description,
             state_key,
             updated_at,
-            lower(btrim(COALESCE(state_key, ''))) AS state_norm,
-            lower(btrim(COALESCE(state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled') AS is_completed
+            lower(btrim(COALESCE(state_key::text, ''))) AS state_norm,
+            lower(btrim(COALESCE(state_key::text, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled') AS is_completed
           FROM onto_plans
           WHERE project_id = ANY(v_project_ids)
             AND deleted_at IS NULL
@@ -310,10 +310,10 @@ BEGIN
         g.completed_at,
         g.updated_at,
         count(*) OVER () AS total_count,
-        lower(btrim(COALESCE(g.state_key, ''))) AS state_norm,
+        lower(btrim(COALESCE(g.state_key::text, ''))) AS state_norm,
         (
           g.completed_at IS NOT NULL
-          OR lower(btrim(COALESCE(g.state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
+          OR lower(btrim(COALESCE(g.state_key::text, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
         ) AS is_completed
       FROM onto_goals g
       WHERE g.project_id = p_project_id
@@ -358,10 +358,10 @@ BEGIN
         m.completed_at,
         m.updated_at,
         count(*) OVER () AS total_count,
-        lower(btrim(COALESCE(m.state_key, ''))) AS state_norm,
+        lower(btrim(COALESCE(m.state_key::text, ''))) AS state_norm,
         (
           m.completed_at IS NOT NULL
-          OR lower(btrim(COALESCE(m.state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
+          OR lower(btrim(COALESCE(m.state_key::text, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
         ) AS is_completed
       FROM onto_milestones m
       WHERE m.project_id = p_project_id
@@ -405,8 +405,8 @@ BEGIN
         pl.state_key,
         pl.updated_at,
         count(*) OVER () AS total_count,
-        lower(btrim(COALESCE(pl.state_key, ''))) AS state_norm,
-        lower(btrim(COALESCE(pl.state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled') AS is_completed
+        lower(btrim(COALESCE(pl.state_key::text, ''))) AS state_norm,
+        lower(btrim(COALESCE(pl.state_key::text, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled') AS is_completed
       FROM onto_plans pl
       WHERE pl.project_id = p_project_id
         AND pl.deleted_at IS NULL
@@ -454,10 +454,10 @@ BEGIN
         t.completed_at,
         t.updated_at,
         count(*) OVER () AS total_count,
-        lower(btrim(COALESCE(t.state_key, ''))) AS state_norm,
+        lower(btrim(COALESCE(t.state_key::text, ''))) AS state_norm,
         (
           t.completed_at IS NOT NULL
-          OR lower(btrim(COALESCE(t.state_key, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
+          OR lower(btrim(COALESCE(t.state_key::text, ''))) IN ('done', 'completed', 'closed', 'archived', 'cancelled', 'canceled')
         ) AS is_completed
       FROM onto_tasks t
       WHERE t.project_id = p_project_id
