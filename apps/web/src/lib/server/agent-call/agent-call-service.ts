@@ -21,7 +21,7 @@ import {
 } from '$lib/services/ontology/ontology-projects.service';
 import { AgentCallAuthError, authenticateExternalAgentCaller } from './caller-auth';
 import { AgentCallCalleeError, resolveCalleeForCaller } from './callee-resolution';
-import { executeBuildosAgentPublicTool } from './public-tool-executor';
+import { executeBuildosAgentGatewayTool } from './external-tool-gateway';
 import { getPublicBuildosAgentTools } from './public-tool-registry';
 
 const READ_ONLY_SCOPE: AgentCallScope = {
@@ -200,14 +200,7 @@ function normalizeToolArguments(args: unknown): Record<string, unknown> | undefi
 }
 
 function ensureToolName(value: unknown): BuildosAgentToolsCallParams['name'] {
-	if (
-		value !== 'list_projects' &&
-		value !== 'get_project_snapshot' &&
-		value !== 'search_entities' &&
-		value !== 'list_project_tasks' &&
-		value !== 'list_project_documents' &&
-		value !== 'get_document'
-	) {
+	if (value !== 'tool_help' && value !== 'tool_exec') {
 		throw new AgentCallServiceError('Unsupported tool name', 400, -32602);
 	}
 
@@ -324,7 +317,7 @@ export class BuildosAgentCallService {
 			'tools/call'
 		);
 		const toolName = ensureToolName(params.name);
-		const result = await executeBuildosAgentPublicTool({
+		const result = await executeBuildosAgentGatewayTool({
 			admin: this.admin,
 			userId: session.user_id,
 			scope: normalizeScope(session.granted_scope, 'granted_scope'),

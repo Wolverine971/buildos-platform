@@ -5,13 +5,8 @@ export type UserBuildosAgentStatus = 'active' | 'paused' | 'revoked';
 export type ExternalAgentCallerStatus = 'trusted' | 'pending' | 'revoked';
 export type AgentCallSessionStatus = 'accepted' | 'rejected' | 'active' | 'ended';
 export type AgentCallDirection = 'inbound' | 'outbound';
-export type BuildosAgentPublicToolName =
-	| 'list_projects'
-	| 'get_project_snapshot'
-	| 'search_entities'
-	| 'list_project_tasks'
-	| 'list_project_documents'
-	| 'get_document';
+export type BuildosAgentGatewayToolName = 'tool_help' | 'tool_exec';
+export type BuildosAgentPublicToolName = BuildosAgentGatewayToolName;
 
 export interface AgentCallScope {
 	mode: 'read_only';
@@ -39,7 +34,7 @@ export interface BuildosAgentToolsListParams {
 
 export interface BuildosAgentToolsCallParams {
 	call_id: string;
-	name: BuildosAgentPublicToolName;
+	name: BuildosAgentGatewayToolName;
 	arguments?: Record<string, unknown>;
 }
 

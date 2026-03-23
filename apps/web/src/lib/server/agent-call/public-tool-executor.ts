@@ -1,12 +1,20 @@
 // apps/web/src/lib/server/agent-call/public-tool-executor.ts
 import { isValidUUID } from '@buildos/shared-types';
-import type { AgentCallScope, BuildosAgentPublicToolName } from '@buildos/shared-types';
+import type { AgentCallScope } from '@buildos/shared-types';
 import { buildSearchFilter } from '$lib/utils/api-helpers';
 import {
 	ensureActorId,
 	fetchProjectSummaries,
 	type OntologyProjectSummary
 } from '$lib/services/ontology/ontology-projects.service';
+
+type LegacyBuildosAgentPublicToolName =
+	| 'list_projects'
+	| 'get_project_snapshot'
+	| 'search_entities'
+	| 'list_project_tasks'
+	| 'list_project_documents'
+	| 'get_document';
 
 type ToolExecutionContext = {
 	admin: any;
@@ -357,7 +365,7 @@ export async function executeBuildosAgentPublicTool(params: {
 	admin: any;
 	userId: string;
 	scope: AgentCallScope;
-	toolName: BuildosAgentPublicToolName;
+	toolName: LegacyBuildosAgentPublicToolName;
 	arguments?: Record<string, unknown>;
 }): Promise<Record<string, unknown>> {
 	const context: ToolExecutionContext = {

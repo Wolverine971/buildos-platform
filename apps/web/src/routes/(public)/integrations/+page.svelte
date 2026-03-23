@@ -51,10 +51,10 @@
 			icon: MessageSquare
 		},
 		{
-			title: 'Use scoped read-only tools',
+			title: 'Use the BuildOS gateway progressively',
 			description:
-				'After the call is accepted, OpenClaw can list tools and call only the BuildOS capabilities allowed for that session.',
-			detail: 'In v1 this is read-only access for projects, project snapshots, tasks, documents, and search.',
+				'After the call is accepted, OpenClaw gets a tiny tool surface and discovers BuildOS operations progressively.',
+			detail: 'In this slice, OpenClaw starts with tool_help and tool_exec, then discovers allowed read-only onto.* operations like project, task, document, and search commands.',
 			icon: Target
 		}
 	];
@@ -88,28 +88,14 @@
 
 	const availableTools = [
 		{
-			name: 'list_projects',
-			description: 'List the projects visible to the user and allowed by the call scope.'
+			name: 'tool_help',
+			description:
+				'Discover the next layer of BuildOS commands, namespaces, and exact op schemas without loading the full tool catalog into context.'
 		},
 		{
-			name: 'get_project_snapshot',
-			description: 'Load compact project context from BuildOS for one project.'
-		},
-		{
-			name: 'search_entities',
-			description: 'Search tasks, goals, plans, and documents in allowed projects.'
-		},
-		{
-			name: 'list_project_tasks',
-			description: 'List tasks for one project.'
-		},
-		{
-			name: 'list_project_documents',
-			description: 'List documents for one project.'
-		},
-		{
-			name: 'get_document',
-			description: 'Load one document body and metadata within the allowed scope.'
+			name: 'tool_exec',
+			description:
+				'Execute an allowed canonical BuildOS op after discovering it through tool_help.'
 		}
 	];
 
@@ -117,7 +103,7 @@
 		'OpenClaw gets a BuildOS-issued key, not the user browser session.',
 		'Calls are user-scoped. A caller cannot dial another user BuildOS agent.',
 		'Project scoping is enforced before tools run.',
-		'The v1 bridge is read-only.',
+		'The current external gateway is read-only, even though it now uses canonical onto.* op discovery.',
 		'Keys can be rotated or revoked from Profile > Agent Keys.'
 	];
 
@@ -146,8 +132,9 @@ Content-Type: application/json
 
 // then:
 // 1. tools/list
-// 2. tools/call
-// 3. call.hangup`;
+// 2. tools/call name=tool_help arguments={ "path": "root" }
+// 3. tools/call name=tool_exec arguments={ "op": "onto.project.list", "args": {} }
+// 4. call.hangup`;
 
 	async function copySnippet(target: Exclude<CopyTarget, null>, value: string) {
 		if (typeof navigator === 'undefined') return;

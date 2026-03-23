@@ -31,7 +31,7 @@ function buildInstructionsUrl(baseUrl: string, setupToken: string): string {
 function buildFollowUpPrompt(): string {
 	return [
 		'Use the configured BuildOS credentials.',
-		'Connect to BuildOS, accept the call if available, list the BuildOS tools, and then list the visible projects.',
+		'Connect to BuildOS, list the available gateway tools, call tool_help for root, and then use tool_exec to list the visible projects.',
 		'Do not ask the user to paste secrets into chat.',
 		'If configuration is incomplete, say exactly which file, env var, or secret location still needs to be updated.'
 	].join(' ');
@@ -272,7 +272,10 @@ export class AgentCallBootstrapLinkService {
 					'If a BuildOS connector or plugin exists, use it.',
 					'If no connector exists, use exec plus curl to POST to the BuildOS gateway.',
 					'Authenticate with Authorization: Bearer <BUILDOS_AGENT_TOKEN>.',
-					'First call method call.dial, then tools/list, then tools/call, then call.hangup.',
+					'First call method call.dial, then tools/list.',
+					'Use tool_help with path root or a narrow namespace like onto.task to discover allowed ops.',
+					'Use tool_exec with a canonical op like onto.project.list to execute BuildOS reads.',
+					'When finished, call call.hangup.',
 					'If you cannot update config directly, tell the user exactly which file or config screen must be updated.'
 				],
 				follow_up_prompt: buildFollowUpPrompt()

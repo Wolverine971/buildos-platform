@@ -10,7 +10,8 @@ const authenticateExternalAgentCallerMock = vi.fn();
 const resolveCalleeForCallerMock = vi.fn();
 const ensureActorIdMock = vi.fn();
 const fetchProjectSummariesMock = vi.fn();
-const executeBuildosAgentPublicToolMock = vi.fn();
+const executeBuildosAgentGatewayToolMock = vi.fn();
+const getBuildosAgentGatewayToolsMock = vi.fn();
 
 vi.mock('./caller-auth', () => ({
 	AgentCallAuthError: class AgentCallAuthError extends Error {
@@ -45,8 +46,9 @@ vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	fetchProjectSummaries: fetchProjectSummariesMock
 }));
 
-vi.mock('./public-tool-executor', () => ({
-	executeBuildosAgentPublicTool: executeBuildosAgentPublicToolMock
+vi.mock('./external-tool-gateway', () => ({
+	executeBuildosAgentGatewayTool: executeBuildosAgentGatewayToolMock,
+	getBuildosAgentGatewayTools: getBuildosAgentGatewayToolsMock
 }));
 
 type SessionState = {
@@ -241,7 +243,19 @@ describe('BuildosAgentCallService', () => {
 				name: 'Project One'
 			}
 		]);
-		executeBuildosAgentPublicToolMock.mockResolvedValue({
+		getBuildosAgentGatewayToolsMock.mockReturnValue([
+			{
+				name: 'tool_help',
+				description: 'Discover gateway commands.',
+				inputSchema: { type: 'object', properties: { path: { type: 'string' } } }
+			},
+			{
+				name: 'tool_exec',
+				description: 'Execute a gateway op.',
+				inputSchema: { type: 'object', properties: { op: { type: 'string' } } }
+			}
+		]);
+		executeBuildosAgentGatewayToolMock.mockResolvedValue({
 			ok: true
 		});
 	});
@@ -341,11 +355,11 @@ describe('BuildosAgentCallService', () => {
 			}
 		);
 
-		expect(response.tools).toHaveLength(6);
+		expect(response.tools).toHaveLength(2);
 		expect(state.sessions['33333333-3333-3333-3333-333333333333']?.status).toBe('active');
 	});
 
-	it('executes a public tool against an active session', async () => {
+	it('executes a gateway tool against an active session', async () => {
 		const state: SessionState = {
 			sessions: {
 				'33333333-3333-3333-3333-333333333333': createSessionRow({
@@ -364,20 +378,24 @@ describe('BuildosAgentCallService', () => {
 			}),
 			{
 				call_id: '33333333-3333-3333-3333-333333333333',
-				name: 'list_projects',
-				arguments: {}
+				name: 'tool_help',
+				arguments: {
+					path: 'root'
+				}
 			}
 		);
 
-		expect(executeBuildosAgentPublicToolMock).toHaveBeenCalledWith({
+		expect(executeBuildosAgentGatewayToolMock).toHaveBeenCalledWith({
 			admin,
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			scope: {
 				mode: 'read_only',
 				project_ids: ['44444444-4444-4444-4444-444444444444']
 			},
-			toolName: 'list_projects',
-			arguments: {}
+			toolName: 'tool_help',
+			arguments: {
+				path: 'root'
+			}
 		});
 		expect(response.structuredContent).toEqual({ ok: true });
 		expect(response.content[0]?.type).toBe('text');

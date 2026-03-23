@@ -262,6 +262,10 @@ describe('AgentCallBootstrapLinkService', () => {
 		expect(document.openclaw.setup_steps).toContain(
 			'If no connector exists, use exec plus curl to POST to the BuildOS gateway.'
 		);
+		expect(document.openclaw.setup_steps).toContain(
+			'Use tool_help with path root or a narrow namespace like onto.task to discover allowed ops.'
+		);
+		expect(document.openclaw.follow_up_prompt).toContain('tool_help for root');
 		expect(serializeBootstrapDocumentAsText(document)).toContain(
 			'BuildOS OpenClaw Bootstrap Instructions'
 		);

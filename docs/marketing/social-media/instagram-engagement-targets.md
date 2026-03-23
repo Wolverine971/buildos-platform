@@ -5,7 +5,7 @@
 **Account:** @djwayne3
 **Current Followers:** _[UPDATE AFTER FIRST SCAN]_
 **Target Range for Peer Accounts:** Accounts with similar or slightly larger followings
-**Last Updated:** 2026-03-15 (added new accounts from discovery scan, updated follower counts)
+**Last Updated:** 2026-03-22 (expanded beyond ADHD niche — added solo founder, PKM, AI, solopreneur accounts + watering hole strategy)
 
 ---
 
@@ -57,24 +57,58 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 ### Productivity & Organization Creators
 
-| Account      | Followers | Content Focus                    | Engagement Angle                                                                                  | Verified           |
-| ------------ | --------- | -------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------ |
-| @notionhq    | ~300K     | Notion product account           | Monitor competitor UX and community sentiment. Bio: "The AI workspace that works while you sleep" | 2026-03-12         |
-| @mattdavella | ~1.5M     | Minimalism, productivity, habits | Big but posts high-quality discussion-worthy content                                              | From original list |
-| @aliabdaal   | ~500K     | Productivity, content creation   | Adjacent audience, potential partnership                                                          | From original list |
+| Account      | Followers | Content Focus                                     | Engagement Angle                                                                                                                | Verified           |
+| ------------ | --------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| @notionhq    | 443K      | Notion, AI workspace features                     | Competitor + watering hole. 318 posts. Mine comment sections for PKM people. Bio: "The AI workspace that works while you sleep" | 2026-03-22         |
+| @aliabdaal   | 1.1M      | Productivity, LifeOS, Feel-Good Productivity book | Watering hole. Has "LifeOS" product (parallel to BuildOS). Huge comment section of tool-curious people                          | 2026-03-22         |
+| @mattdavella | ~1.5M     | Minimalism, productivity, habits                  | Big but posts high-quality discussion-worthy content                                                                            | From original list |
 
 ### Solo Founders / Building in Public
 
-| Account          | Followers | Content Focus                                  | Engagement Angle                                                                                       | Verified           |
-| ---------------- | --------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------ |
-| @gregisenberg    | 102K      | Startup ideas in the AI age, CEO @latecheckout | Verified. Already followed by djwayne3. Business strategy, building                                    | 2026-03-12         |
-| @sahillavingia   | ~50K      | Gumroad, solopreneur philosophy                | Solo founder energy                                                                                    | From original list |
-| @danshipper      | ~20K      | Every, AI productivity writing                 | Direct competitor space                                                                                | From original list |
-| @chloedigital.ai | 1.7K      | AI Tips & Productivity (Chloe)                 | Founder @ Roleefy/Inddie. Posts about Claude, AI tools, "Vibe Coding to 6 Figures." Peer-level, active | 2026-03-12         |
+| Account          | Followers | Content Focus                                          | Engagement Angle                                                                                       | Verified           |
+| ---------------- | --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------ |
+| @dickiebush      | 24.3K     | Digital writing, Ship 30, AI writing, personal growth  | Sweet spot. Already followed by djwayne3. 877 posts. Highlights: Ship 30, AI Writing                   | 2026-03-22         |
+| @leaturnerholt   | 22.1K     | Solopreneur tips, small business community             | Sweet spot. 451 posts. Owns @theholtcommunity. Has podcast, events, active community                   | 2026-03-22         |
+| @justyn.ai       | 92.2K     | AI automation for solo founders, Reels, ChatGPT agents | Verified. "Helping entrepreneurs save 10+ hrs/wk with AI." Comment section full of solo founders       | 2026-03-22         |
+| @thesamparr      | 87.8K     | Founder stories, Hampton Founders peer groups          | Verified. 1,009 posts, very active. Owns @hamptonfounders. Comment section = startup founders          | 2026-03-22         |
+| @startuprules    | 1.4K      | Startup growth, founder tips, 3x founder / 1 exit      | Peer-level. 163 posts with Reels. Open to collabs (DM me in bio). Good for authentic engagement        | 2026-03-22         |
+| @chloedigital.ai | 1.7K      | AI Tips & Productivity (Chloe)                         | Founder @ Roleefy/Inddie. Posts about Claude, AI tools, "Vibe Coding to 6 Figures." Peer-level, active | 2026-03-12         |
+| @danshipper      | ~20K      | Every, AI productivity writing                         | Direct competitor space                                                                                | From original list |
+
+### Solopreneur / Creator Economy
+
+| Account        | Followers | Content Focus                       | Engagement Angle                                                                      | Verified   |
+| -------------- | --------- | ----------------------------------- | ------------------------------------------------------------------------------------- | ---------- |
+| @leaturnerholt | 22.1K     | Solopreneur tips, community founder | Sweet spot. Owns @theholtcommunity. Podcast + events. Audience = solo business owners | 2026-03-22 |
+| @startuprules  | 1.4K      | Startup growth, 3x founder, Reels   | Peer-level, open to collabs. Comment authentically about building                     | 2026-03-22 |
+
+### PKM / Second Brain / Notion (NEW NICHE)
+
+| Account        | Followers | Content Focus                            | Engagement Angle                                                                       | Verified   |
+| -------------- | --------- | ---------------------------------------- | -------------------------------------------------------------------------------------- | ---------- |
+| @_obsidian.md_ | 1,085     | Obsidian tips, note-making, second brain | Small but niche-perfect. Your Obsidian origin story lands here. Run by @shuvangkar_das | 2026-03-22 |
+
+### AI for Entrepreneurs (NEW NICHE)
+
+| Account    | Followers | Content Focus                                          | Engagement Angle                                                                                  | Verified   |
+| ---------- | --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | ---------- |
+| @justyn.ai | 92.2K     | AI automation for solo founders, ChatGPT agents, Reels | Verified. Cross-niche (solo founder + AI). "Context > prompts" angle fits. Active comment section | 2026-03-22 |
 
 ---
 
 ## Tier 2 - Strategic Engagement
+
+### Watering Holes (mine comment sections — don't engage the account directly)
+
+> These accounts are too big for direct engagement to matter, but their comment sections are full of exactly the people BuildOS should reach. Visit their latest posts weekly, engage with the _commenters_, not the account.
+
+| Account       | Followers | Where to find your people                                                                 | Verified   |
+| ------------- | --------- | ----------------------------------------------------------------------------------------- | ---------- |
+| @thedankoe    | 1.7M      | Solo builders, one-person business people. Building @edendotso + @drink.sonder            | 2026-03-22 |
+| @gregisenberg | 105K      | Startup founders, AI-age builders. CEO @latecheckout. Already followed by djwayne3        | 2026-03-22 |
+| @aliabdaal    | 1.1M      | Productivity tool enthusiasts, PKM people. Has "LifeOS" product                           | 2026-03-22 |
+| @notionhq     | 443K      | PKM/second brain enthusiasts. Your "second brain graveyard" story lands in these comments | 2026-03-22 |
+| @garyvee      | ~15M      | Multi-project hustlers, creative entrepreneurs. Engage the commenters, not Gary           | 2026-03-22 |
 
 ### AI & Tech Creators
 
@@ -111,10 +145,10 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 ### Creator Economy
 
-| Account   | Followers | Content Focus                | Why Monitor                                |
-| --------- | --------- | ---------------------------- | ------------------------------------------ |
-| @garyvee  | ~15M      | Entrepreneurship, content    | Trends, but too big for regular engagement |
-| @thefutur | ~2M       | Design, business, creativity | Creative professionals                     |
+| Account    | Followers | Content Focus                         | Why Monitor                                                            |
+| ---------- | --------- | ------------------------------------- | ---------------------------------------------------------------------- |
+| @garyvee   | ~15M      | Entrepreneurship, content             | Moved to Tier 2 watering holes — mine his comment section for hustlers |
+| @thedankoe | 1.7M      | One-person business, digital leverage | Moved to Tier 2 watering holes — comment section full of solo builders |
 
 ### Competitor Monitoring
 
@@ -134,13 +168,19 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 | @the.mini.adhd.coach | Wrong handle — correct is @the_mini_adhd_coach (underscores) | 2026-03-12   |
 | @domesticblisters    | That's KC Davis's TikTok handle. IG is @strugglecare         | 2026-03-12   |
 | @adhd.memetherapy    | Wrong handle — correct is @adhd_memetherapy (underscore)     | 2026-03-12   |
-| @levelsio            | 0 posts on IG, completely inactive                           | 2026-03-12   |
+| @levelsio            | 0 posts on IG, completely inactive (lives on X/Twitter)      | 2026-03-12   |
 | @thomasjfrank        | Page not available                                           | 2026-03-12   |
 | @todaborrego         | Account not found                                            | 2026-03-12   |
 | @studywithme         | Not a real active account                                    | 2026-03-12   |
 | @studytee            | Not a real active account                                    | 2026-03-12   |
 | @clickaboratorio     | Suspect handle, not found as ClickUp                         | 2026-03-12   |
 | @firaboratory        | Suspect handle                                               | 2026-03-12   |
+| @sahillavingia       | Page not available — lives on X/Twitter, not on IG           | 2026-03-22   |
+| @marc_louvion        | 0 posts, 2 followers — not active on IG, lives on X          | 2026-03-22   |
+| @jaborshi            | Page not available — account doesn't exist                   | 2026-03-22   |
+| @liam.ottley         | Fake reseller account (9 followers) — real Liam on YouTube   | 2026-03-22   |
+| @thefutur            | Wrong account (89 followers, random content, not Chris Do)   | 2026-03-22   |
+| @femke.design        | Wrong account (38 followers, graphic design portfolio)       | 2026-03-22   |
 
 ---
 
@@ -150,7 +190,7 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 
 ### Must-Haves
 
-- Post about ADHD, productivity, AI tools, or building
+- Post about ADHD, productivity, AI tools, building, solopreneurship, or PKM/second brain
 - Have authentic engagement (real comments, not bots)
 - Post consistently (2+ times per week)
 - Content aligns with at least one of BuildOS's pillars
@@ -191,10 +231,15 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 - #executivedysfunction
 - #adhdentrepreneur
 - #solofounder
+- #solopreneur
+- #onepersonbusiness
 - #aitools
 - #digitalorganization
 - #secondbrain
 - #notiontips
+- #notiontemplate
+- #obsidian
+- #pkm
 
 ### Monthly Check (Trend Monitoring)
 
@@ -202,6 +247,10 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 - #aiproductivity
 - #futureofwork
 - #indiemaker
+- #microSaaS
+- #lifeos
+- #buildinpublic
+- #founderstories
 
 ---
 
@@ -235,7 +284,7 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 
 ---
 
-_Last updated: 2026-03-15_
+_Last updated: 2026-03-22_
 _Used by: `/.claude/commands/instagram-warmup.md`_
 _Related: `docs/marketing/social-media/instagram-strategy.md`_
 _Related: `docs/marketing/social-media/instagram-voice-quick-ref.md`_
