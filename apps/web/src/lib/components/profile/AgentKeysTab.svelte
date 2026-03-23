@@ -5,12 +5,15 @@
 	import { page } from '$app/stores';
 	import { CircleCheck, Copy, Key, Plus, RefreshCw, Trash2, ExternalLink } from 'lucide-svelte';
 	import type {
+		BuildosAgentAllowedOp,
 		BuildosAgentAvailableProject,
 		BuildosAgentCallerListResponse,
 		BuildosAgentCallerProvisionResponse,
 		BuildosAgentCallerSummary,
-		BuildosAgentIdentitySummary
+		BuildosAgentIdentitySummary,
+		BuildosAgentScopeMode
 	} from '@buildos/shared-types';
+	import { BUILDOS_AGENT_READ_OPS, BUILDOS_AGENT_WRITE_OPS } from '@buildos/shared-types';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -26,6 +29,24 @@
 	}
 
 	type ProviderMode = 'openclaw' | 'custom';
+	type WritePermissionOption = {
+		op: BuildosAgentAllowedOp;
+		label: string;
+		description: string;
+	};
+
+	const WRITE_PERMISSION_OPTIONS: WritePermissionOption[] = [
+		{
+			op: 'onto.task.create',
+			label: 'Create tasks',
+			description: 'Allow the agent to add new tasks in permitted projects.'
+		},
+		{
+			op: 'onto.task.update',
+			label: 'Update tasks',
+			description: 'Allow the agent to change task fields like title, status, and due date.'
+		}
+	];
 
 	let { onsuccess, onerror }: Props = $props();
 
@@ -38,6 +59,7 @@
 	let latestProvisioned = $state<BuildosAgentCallerProvisionResponse | null>(null);
 	let pendingRevokeCaller = $state<BuildosAgentCallerSummary | null>(null);
 	let revokingCallerId = $state<string | null>(null);
+	let editingCaller = $state<BuildosAgentCallerSummary | null>(null);
 
 	// Modal state
 	let showGenerateModal = $state(false);
@@ -48,6 +70,8 @@
 	let customProvider = $state('');
 	let installationName = $state('');
 	let selectedProjectIds = $state<string[]>([]);
+	let scopeMode = $state<BuildosAgentScopeMode>('read_only');
+	let selectedWriteOps = $state<BuildosAgentAllowedOp[]>([]);
 
 	let allProjectsSelected = $derived(
 		availableProjects.length > 0 && selectedProjectIds.length === availableProjects.length
@@ -170,6 +194,39 @@
 		return `${caller.allowed_project_ids.length} projects`;
 	}
 
+	function accessModeLabel(caller: BuildosAgentCallerSummary): string {
+		return caller.scope_mode === 'read_write' ? 'Read & write' : 'Read only';
+	}
+
+	function selectedAllowedOps(): BuildosAgentAllowedOp[] | undefined {
+		if (scopeMode === 'read_only') {
+			return undefined;
+		}
+
+		return [...BUILDOS_AGENT_READ_OPS, ...selectedWriteOps];
+	}
+
+	function enabledWriteOps(caller: BuildosAgentCallerSummary): BuildosAgentAllowedOp[] {
+		return (caller.allowed_ops ?? []).filter((op) =>
+			(BUILDOS_AGENT_WRITE_OPS as readonly string[]).includes(op)
+		) as BuildosAgentAllowedOp[];
+	}
+
+	function writePermissionLabels(caller: BuildosAgentCallerSummary): string[] {
+		return enabledWriteOps(caller).map(
+			(op) => WRITE_PERMISSION_OPTIONS.find((option) => option.op === op)?.label ?? op
+		);
+	}
+
+	function toggleWriteOp(op: BuildosAgentAllowedOp) {
+		if (selectedWriteOps.includes(op)) {
+			selectedWriteOps = selectedWriteOps.filter((entry) => entry !== op);
+			return;
+		}
+
+		selectedWriteOps = [...selectedWriteOps, op];
+	}
+
 	function toggleProject(projectId: string) {
 		if (selectedProjectIds.includes(projectId)) {
 			selectedProjectIds = selectedProjectIds.filter((id) => id !== projectId);
@@ -188,14 +245,28 @@
 	}
 
 	function clearForm() {
+		editingCaller = null;
 		installationName = '';
 		selectedProjectIds = [];
 		providerMode = 'openclaw';
 		customProvider = '';
+		scopeMode = 'read_only';
+		selectedWriteOps = [];
 	}
 
 	function openGenerateModal() {
 		clearForm();
+		showGenerateModal = true;
+	}
+
+	function openEditModal(caller: BuildosAgentCallerSummary) {
+		editingCaller = caller;
+		providerMode = caller.provider === 'openclaw' ? 'openclaw' : 'custom';
+		customProvider = caller.provider === 'openclaw' ? '' : caller.provider;
+		installationName = installationDisplayName(caller);
+		selectedProjectIds = [...(caller.allowed_project_ids ?? [])];
+		scopeMode = caller.scope_mode;
+		selectedWriteOps = enabledWriteOps(caller);
 		showGenerateModal = true;
 	}
 
@@ -255,20 +326,26 @@
 		return provisioned.bootstrap?.instructions_url ?? null;
 	}
 
-	async function provisionCaller(existingCaller?: BuildosAgentCallerSummary) {
+	async function provisionCaller() {
 		if (saving) return;
 
 		let provider: string;
 		let callerKey: string;
 		let metadata: Record<string, unknown>;
 		let allowedProjectIds: string[] | undefined;
+		let allowedOps: BuildosAgentAllowedOp[] | undefined;
+		const existingCaller = editingCaller;
 
 		try {
 			if (existingCaller) {
 				provider = existingCaller.provider;
 				callerKey = existingCaller.caller_key;
-				metadata = existingCaller.metadata ?? {};
-				allowedProjectIds = existingCaller.allowed_project_ids;
+				metadata = {
+					...(existingCaller.metadata ?? {}),
+					installation_name:
+						installationName.trim() || installationDisplayName(existingCaller)
+				};
+				allowedProjectIds = selectedProjectIds.length > 0 ? selectedProjectIds : undefined;
 			} else {
 				provider = requireValidProvider(currentProvider());
 				if (!provider) {
@@ -283,6 +360,14 @@
 				};
 				allowedProjectIds = selectedProjectIds.length > 0 ? selectedProjectIds : undefined;
 			}
+
+			if (scopeMode === 'read_write' && selectedWriteOps.length === 0) {
+				throw new Error(
+					'Choose at least one write permission or switch the key to read only'
+				);
+			}
+
+			allowedOps = selectedAllowedOps();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Invalid agent configuration';
 			toastService.error(message);
@@ -301,6 +386,8 @@
 				body: JSON.stringify({
 					provider,
 					caller_key: callerKey,
+					scope_mode: scopeMode,
+					allowed_ops: allowedOps,
 					allowed_project_ids: allowedProjectIds,
 					metadata
 				})
@@ -311,15 +398,12 @@
 			await loadCallers();
 
 			const message = existingCaller
-				? `Rotated BuildOS key for ${installationDisplayName(existingCaller)}.`
+				? `Updated permissions and rotated the BuildOS key for ${installationDisplayName(existingCaller)}.`
 				: 'Generated a new BuildOS agent key.';
 			toastService.success(message);
 			onsuccess?.({ message });
-
-			if (!existingCaller) {
-				showGenerateModal = false;
-				showKeyCreatedModal = true;
-			}
+			showGenerateModal = false;
+			showKeyCreatedModal = true;
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : 'Failed to provision agent key';
@@ -489,6 +573,10 @@
 											{scopeLabel(caller)}
 										</p>
 										<p>
+											<span class="font-medium text-foreground">Access:</span>
+											{accessModeLabel(caller)}
+										</p>
+										<p>
 											<span class="font-medium text-foreground"
 												>Last used:</span
 											>
@@ -502,11 +590,11 @@
 										variant="outline"
 										size="sm"
 										icon={RefreshCw}
-										loading={saving}
+										loading={saving && editingCaller?.id === caller.id}
 										disabled={saving}
-										onclick={() => provisionCaller(caller)}
+										onclick={() => openEditModal(caller)}
 									>
-										{caller.status === 'revoked' ? 'New Key' : 'Rotate'}
+										{caller.status === 'revoked' ? 'Reissue' : 'Edit'}
 									</Button>
 									{#if caller.status !== 'revoked'}
 										<Button
@@ -536,6 +624,21 @@
 									</div>
 								</div>
 							{/if}
+
+							{#if writePermissionLabels(caller).length > 0}
+								<div class="mt-3 pt-3 border-t border-border">
+									<div
+										class="text-xs uppercase tracking-wider text-muted-foreground mb-1.5"
+									>
+										Write Permissions
+									</div>
+									<div class="flex flex-wrap gap-1.5">
+										{#each writePermissionLabels(caller) as label (label)}
+											<Badge variant="accent">{label}</Badge>
+										{/each}
+									</div>
+								</div>
+							{/if}
 						</div>
 					{/each}
 				</div>
@@ -557,8 +660,11 @@
 <!-- Generate Key Modal -->
 <Modal
 	isOpen={showGenerateModal}
-	onClose={() => (showGenerateModal = false)}
-	title="Generate BuildOS Key"
+	onClose={() => {
+		showGenerateModal = false;
+		clearForm();
+	}}
+	title={editingCaller ? 'Edit Agent Key' : 'Generate BuildOS Key'}
 	size="md"
 >
 	{#snippet children()}
@@ -602,6 +708,62 @@
 						placeholder="custom-agent"
 					/>
 				</FormField>
+			{/if}
+
+			<div class="grid gap-4 sm:grid-cols-2">
+				<FormField
+					label="Access Level"
+					labelFor="agent-scope-mode"
+					hint="Choose whether this key can only read or can also update tasks."
+				>
+					<Select id="agent-scope-mode" bind:value={scopeMode}>
+						<option value="read_only">Read only</option>
+						<option value="read_write">Read & write</option>
+					</Select>
+				</FormField>
+
+				<div class="rounded-lg border border-border bg-muted/20 px-3 py-2">
+					<div class="text-xs uppercase tracking-wider text-muted-foreground">
+						Included by default
+					</div>
+					<p class="mt-1 text-sm text-foreground">
+						Project, task, document, and search reads are always available.
+					</p>
+				</div>
+			</div>
+
+			{#if scopeMode === 'read_write'}
+				<div class="space-y-2">
+					<div class="flex items-center justify-between gap-3">
+						<h4 class="text-sm font-semibold text-foreground">Write Permissions</h4>
+						<Badge variant="warning">{selectedWriteOps.length} enabled</Badge>
+					</div>
+					<p class="text-xs text-muted-foreground">
+						Choose exactly which BuildOS write actions this key can perform.
+					</p>
+					<div class="space-y-2 rounded-lg border border-border p-2">
+						{#each WRITE_PERMISSION_OPTIONS as option (option.op)}
+							<label
+								class="flex items-start gap-2.5 rounded-md px-2.5 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
+							>
+								<input
+									type="checkbox"
+									class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+									checked={selectedWriteOps.includes(option.op)}
+									onchange={() => toggleWriteOp(option.op)}
+								/>
+								<div>
+									<div class="text-sm font-medium text-foreground">
+										{option.label}
+									</div>
+									<div class="text-xs text-muted-foreground">
+										{option.description}
+									</div>
+								</div>
+							</label>
+						{/each}
+					</div>
+				</div>
 			{/if}
 
 			<div class="space-y-2">
@@ -666,7 +828,10 @@
 			<Button
 				variant="secondary"
 				size="md"
-				onclick={() => (showGenerateModal = false)}
+				onclick={() => {
+					showGenerateModal = false;
+					clearForm();
+				}}
 				disabled={saving}
 				class="w-full sm:w-auto"
 			>
@@ -678,10 +843,10 @@
 				icon={Key}
 				loading={saving}
 				disabled={saving || !installationName.trim()}
-				onclick={() => provisionCaller()}
+				onclick={provisionCaller}
 				class="w-full sm:w-auto"
 			>
-				Generate Key
+				{editingCaller ? 'Save + Rotate Key' : 'Generate Key'}
 			</Button>
 		</div>
 	{/snippet}
@@ -690,8 +855,11 @@
 <!-- Key Created Modal -->
 <Modal
 	isOpen={showKeyCreatedModal}
-	onClose={() => (showKeyCreatedModal = false)}
-	title="Key Generated"
+	onClose={() => {
+		showKeyCreatedModal = false;
+		editingCaller = null;
+	}}
+	title={editingCaller ? 'Key Updated' : 'Key Generated'}
 	size="md"
 >
 	{#snippet children()}
@@ -702,10 +870,30 @@
 						<CircleCheck class="w-5 h-5 text-emerald-500" />
 					</div>
 					<div>
-						<p class="text-sm font-medium text-foreground">Your new key is ready.</p>
+						<p class="text-sm font-medium text-foreground">
+							{editingCaller
+								? 'Your updated key is ready.'
+								: 'Your new key is ready.'}
+						</p>
 						<p class="text-xs text-muted-foreground mt-0.5">
 							Copy it now — this secret is shown only once.
 						</p>
+					</div>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+					<div class="text-xs uppercase tracking-wider text-muted-foreground">
+						Granted Permissions
+					</div>
+					<div class="flex flex-wrap gap-1.5">
+						<Badge variant="default">
+							{latestProvisioned.caller.scope_mode === 'read_write'
+								? 'Read & write'
+								: 'Read only'}
+						</Badge>
+						{#each writePermissionLabels(latestProvisioned.caller) as label (label)}
+							<Badge variant="accent">{label}</Badge>
+						{/each}
 					</div>
 				</div>
 
@@ -826,7 +1014,14 @@
 
 	{#snippet footer()}
 		<div class="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/30">
-			<Button variant="primary" size="md" onclick={() => (showKeyCreatedModal = false)}>
+			<Button
+				variant="primary"
+				size="md"
+				onclick={() => {
+					showKeyCreatedModal = false;
+					clearForm();
+				}}
+			>
 				Done
 			</Button>
 		</div>

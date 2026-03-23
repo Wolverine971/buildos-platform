@@ -133,15 +133,6 @@
 		general: { icon: 'ℹ️', color: 'text-muted-foreground', prefix: 'INFO' }
 	};
 
-	function formatTime(date: Date): string {
-		return date.toLocaleTimeString('en-US', {
-			hour: '2-digit',
-			minute: '2-digit',
-			second: '2-digit',
-			hour12: false
-		});
-	}
-
 	function getActivityStyle(type: ActivityType) {
 		return ACTIVITY_STYLES[type] || ACTIVITY_STYLES.general;
 	}

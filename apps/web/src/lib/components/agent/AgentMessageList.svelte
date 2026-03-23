@@ -9,7 +9,6 @@
 	import VoiceNoteGroupPanel from '$lib/components/voice-notes/VoiceNoteGroupPanel.svelte';
 	import type { VoiceNote } from '$lib/types/voice-notes';
 
-	// ✅ Svelte 5: Use $bindable() for two-way binding
 	interface Props {
 		messages: UIMessage[];
 		onToggleThinkingBlock: (blockId: string) => void;

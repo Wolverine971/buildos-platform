@@ -25,8 +25,7 @@
 		normalizeEntitySearch,
 		type FocusEntityType
 	} from './project-entity-browser';
-
-	type ProjectAction = 'workspace';
+	import type { ProjectAction } from './agent-chat.types';
 
 	interface Props {
 		projectId: string;

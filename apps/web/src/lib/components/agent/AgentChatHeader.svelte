@@ -93,12 +93,7 @@
 		<img
 			src="/brain-bolt.png"
 			alt="BuildOS Assistant"
-			class="h-7 w-7 rounded-lg object-cover shadow-ink dark:hidden"
-		/>
-		<img
-			src="/brain-bolt.png"
-			alt="BuildOS Assistant"
-			class="hidden h-7 w-7 rounded-lg object-cover shadow-ink dark:block"
+			class="h-7 w-7 rounded-lg object-cover shadow-ink"
 		/>
 	</div>
 

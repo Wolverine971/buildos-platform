@@ -2,14 +2,7 @@
 <!-- INKPRINT Design System: Automation wizard with Thread texture -->
 <script lang="ts">
 	import { Sparkles, ChevronRight } from 'lucide-svelte';
-
-	type AgentToAgentStep = 'agent' | 'project' | 'goal' | 'chat';
-
-	interface AgentProjectSummary {
-		id: string;
-		name: string;
-		description: string | null;
-	}
+	import type { AgentToAgentStep, AgentProjectSummary } from './agent-chat.types';
 
 	interface Props {
 		step: AgentToAgentStep;

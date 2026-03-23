@@ -35,7 +35,6 @@
 		requestAgentToAgentMessage,
 		type AgentToAgentMessageHistory
 	} from '$lib/services/agentic-chat/agent-to-agent-service';
-	// Add ontology integration imports
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import {
@@ -48,7 +47,10 @@
 		type ActivityEntry,
 		type ActivityType,
 		type AgentLoopState,
+		type AgentProjectSummary,
+		type AgentToAgentStep,
 		type DataMutationSummary,
+		type ProjectAction,
 		type ThinkingBlockMessage,
 		type UIMessage
 	} from './agent-chat.types';
@@ -66,8 +68,6 @@
 		type FastChatContextCache
 	} from '$lib/services/agentic-chat-v2/context-cache';
 	import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
-
-	type ProjectAction = 'workspace';
 
 	interface AutoInitProjectConfig {
 		projectId: string;
@@ -291,10 +291,7 @@
 	// Device detection for mobile UX
 	// On mobile/touch devices, Enter should not send messages (allows natural line breaks)
 	const isTouchDevice = $derived(
-		browser &&
-			('ontouchstart' in window ||
-				navigator.maxTouchPoints > 0 ||
-				(navigator as any).msMaxTouchPoints > 0)
+		browser && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 	);
 
 	// Conversation state
@@ -314,7 +311,7 @@
 	let currentAssistantMessageIndex = $state<number | null>(null);
 	let pendingAssistantText = '';
 	let pendingAssistantTextFlushHandle: number | null = null;
-	let currentThinkingBlockId = $state<string | null>(null); // NEW: Track current thinking block
+	let currentThinkingBlockId = $state<string | null>(null);
 	let hasSentMessage = $state(false);
 	const pendingToolResults = new Map<
 		string,
@@ -427,7 +424,6 @@
 		}
 	}
 
-	// ✅ Svelte 5: Remove duplicate type declaration (imported from agent-chat.types.ts)
 	const AGENT_STATE_MESSAGES: Record<AgentLoopState, string> = {
 		thinking: 'BuildOS is thinking...',
 		executing_plan: 'BuildOS is executing...',
@@ -436,14 +432,6 @@
 
 	// Actionable Insight agent identifier (used for agent-to-agent bridge)
 	const RESEARCH_AGENT_ID = 'actionable_insight_agent';
-
-	type AgentToAgentStep = 'agent' | 'project' | 'goal' | 'chat';
-
-	interface AgentProjectSummary {
-		id: string;
-		name: string;
-		description: string | null;
-	}
 
 	let agentToAgentMode = $state(false);
 	let agentToAgentStep = $state<AgentToAgentStep | null>(null);
@@ -535,6 +523,13 @@
 		}
 		return true;
 	});
+
+	const shouldShowComposer = $derived(
+		!showContextSelection &&
+			!showProjectActionSelector &&
+			!agentToAgentMode &&
+			!(isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options'))
+	);
 
 	const canPrimeActiveChatSession = $derived.by(() => {
 		if (!selectedContextType || !isOpen || currentSession?.id) return false;
@@ -693,7 +688,6 @@
 		contextSelectionView = view;
 	}
 
-	// ✅ Svelte 5: Use $derived for computed values
 	// Note: isVoiceRecording is NOT included - clicking send while recording will
 	// stop the recording and auto-send after transcription completes.
 	// Streaming only blocks send on non-touch devices (touch uses Send & Stop).
@@ -773,7 +767,7 @@
 		userHasScrolled = false;
 		currentAssistantMessageId = null;
 		currentAssistantMessageIndex = null;
-		currentThinkingBlockId = null; // NEW: Reset thinking block tracking
+		currentThinkingBlockId = null;
 		isStreaming = false;
 		// Reset ontology state
 		lastTurnContext = null;
@@ -903,7 +897,6 @@
 		pendingBraindumpContent = '';
 	}
 
-	// ✅ Svelte 5: Callback pattern for ContextSelectionScreen
 	function handleContextSelect(selection: ContextSelectionDetail) {
 		resetConversation();
 		autoInitDismissed = true;
@@ -2811,7 +2804,6 @@
 		messages = nextMessages;
 	}
 
-	// ✅ Svelte 5: Properly create new array reference for reactivity
 	function addActivityToThinkingBlock(
 		content: string,
 		activityType: ActivityType,
@@ -3259,7 +3251,6 @@
 		}
 	}
 
-	// ✅ Svelte 5: Wrapper function for AgentComposer callback
 	// Handles "send while recording" - stops recording and auto-sends after transcription
 	async function handleSendMessage() {
 		// Haptic feedback for message send action (mobile)
@@ -3378,7 +3369,6 @@
 		pendingToolResults.clear();
 		hiddenToolCallIds.clear();
 
-		// NEW: Create thinking block for agent activity
 		createThinkingBlock();
 
 		currentActivity = 'Analyzing request...';
@@ -4101,7 +4091,7 @@
 				currentActivity = '';
 				agentState = null;
 				finalizeAssistantMessage();
-				finalizeThinkingBlock(); // NEW: Close thinking block
+				finalizeThinkingBlock();
 				// Note: isStreaming will be set to false by onComplete callback
 				// But we can also set it here for immediate UI response
 				isStreaming = false;
@@ -4150,17 +4140,6 @@
 		addActivityToThinkingBlock(`${action}: ${details}`, 'context_shift', {
 			focus
 		});
-	}
-
-	function addPlanMessage(plan: any) {
-		const planMessage: UIMessage = {
-			id: crypto.randomUUID(),
-			type: 'plan',
-			content: `Plan created with ${plan.steps?.length || 0} steps`,
-			data: plan,
-			timestamp: new Date()
-		};
-		messages = [...messages, planMessage];
 	}
 
 	function addPlanStatusAssistantMessage(content: string) {
@@ -4274,7 +4253,6 @@
 		addOrUpdateAssistantMessage(payload);
 	}
 
-	// ✅ Svelte 5: Properly reassign array for reactivity
 	function addOrUpdateAssistantMessage(content: unknown) {
 		const normalizedContent = normalizeMessageContent(content);
 
@@ -4302,7 +4280,7 @@
 			});
 			currentAssistantMessageIndex = updatedIndex;
 		} else {
-			// ✅ Create new assistant message - uses spread for new array reference
+			// Create new assistant message
 			currentAssistantMessageId = crypto.randomUUID();
 			const assistantMessage: UIMessage = {
 				id: currentAssistantMessageId,
@@ -4979,8 +4957,8 @@
 								</p>
 							{/if}
 						</div>
-					{:else if !showContextSelection && !showProjectActionSelector && !(isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options'))}
-						<!-- INKPRINT composer footer - hidden for braindump input/options modes -->
+					{:else if shouldShowComposer}
+						<!-- INKPRINT composer footer -->
 						<div
 							bind:this={composerContainer}
 							class="border-t border-border bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-2.5 tx tx-grain tx-weak"
@@ -5070,22 +5048,8 @@
 		background: hsl(var(--accent));
 	}
 
-	/* ==================== Landscape Orientation Support ==================== */
-
 	/* Compact spacing for landscape mobile (short viewport) */
 	@media (orientation: landscape) and (max-height: 500px) {
-		/* Reduce header padding in landscape */
-		:global(.agent-chat-header) {
-			padding-top: 0.25rem;
-			padding-bottom: 0.25rem;
-		}
-
-		/* Compact composer in landscape */
-		:global(.agent-chat-composer) {
-			padding: 0.375rem;
-		}
-
-		/* Smaller scrollbar in landscape to maximize content */
 		:global(.agent-chat-scroll::-webkit-scrollbar) {
 			width: 4px;
 		}

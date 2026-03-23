@@ -62,6 +62,16 @@ export interface ThinkingBlockMessage extends UIMessage {
 	isCollapsed?: boolean;
 }
 
+export type ProjectAction = 'workspace';
+
+export type AgentToAgentStep = 'agent' | 'project' | 'goal' | 'chat';
+
+export interface AgentProjectSummary {
+	id: string;
+	name: string;
+	description: string | null;
+}
+
 export interface DataMutationSummary {
 	/** Whether any successful data mutation occurred */
 	hasChanges: boolean;

@@ -5,6 +5,7 @@ import type {
 	ExternalAgentCallerRecord,
 	UserBuildosAgentRecord
 } from '@buildos/shared-types';
+import { BUILDOS_AGENT_READ_OPS } from '@buildos/shared-types';
 
 const ensureUserBuildosAgentMock = vi.fn();
 const ensureActorIdMock = vi.fn();
@@ -301,6 +302,8 @@ describe('CallerProvisioningService', () => {
 			provider: 'openclaw',
 			caller_key: 'openclaw:workspace:test',
 			status: 'trusted',
+			scope_mode: 'read_only',
+			allowed_ops: BUILDOS_AGENT_READ_OPS,
 			allowed_project_ids: ['44444444-4444-4444-4444-444444444444']
 		});
 		expect(response.credentials.auth_scheme).toBe('Bearer');
@@ -339,6 +342,43 @@ describe('CallerProvisioningService', () => {
 		).rejects.toBeInstanceOf(CallerProvisioningError);
 	});
 
+	it('rejects write ops when the caller scope is read only', async () => {
+		const state: State = { callerRows: [], bootstrapRows: [] };
+		const { CallerProvisioningService, CallerProvisioningError } = await import(
+			'./caller-provisioning.service'
+		);
+		const service = new CallerProvisioningService(createAdminMock(state));
+
+		await expect(
+			service.provisionForUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
+				provider: 'openclaw',
+				caller_key: 'openclaw:workspace:test',
+				scope_mode: 'read_only',
+				allowed_ops: ['onto.task.update']
+			})
+		).rejects.toBeInstanceOf(CallerProvisioningError);
+	});
+
+	it('provisions read_write callers with explicit allowed ops', async () => {
+		const state: State = { callerRows: [], bootstrapRows: [] };
+		const { CallerProvisioningService } = await import('./caller-provisioning.service');
+		const service = new CallerProvisioningService(createAdminMock(state));
+
+		const response = await service.provisionForUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', {
+			provider: 'openclaw',
+			caller_key: 'openclaw:workspace:test',
+			scope_mode: 'read_write',
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create', 'onto.task.update']
+		});
+
+		expect(response.caller.scope_mode).toBe('read_write');
+		expect(response.caller.allowed_ops).toEqual([
+			...BUILDOS_AGENT_READ_OPS,
+			'onto.task.create',
+			'onto.task.update'
+		]);
+	});
+
 	it('lists existing callers without returning bearer tokens', async () => {
 		const state: State = {
 			callerRows: [
@@ -370,7 +410,9 @@ describe('CallerProvisioningService', () => {
 			expect.objectContaining({
 				provider: 'openclaw',
 				caller_key: 'openclaw:workspace:test',
-				token_prefix: 'boca_123456'
+				token_prefix: 'boca_123456',
+				scope_mode: 'read_only',
+				allowed_ops: BUILDOS_AGENT_READ_OPS
 			})
 		]);
 		expect(response.available_projects).toEqual([

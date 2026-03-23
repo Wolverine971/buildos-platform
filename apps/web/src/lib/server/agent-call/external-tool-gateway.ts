@@ -2,7 +2,9 @@
 import { isValidUUID } from '@buildos/shared-types';
 import type {
 	AgentCallScope,
+	BuildosAgentAllowedOp,
 	BuildosAgentGatewayToolName,
+	BuildosAgentScopeMode,
 	BuildosAgentToolDefinition
 } from '@buildos/shared-types';
 import { buildSearchFilter } from '$lib/utils/api-helpers';
@@ -12,7 +14,6 @@ import {
 	type OntologyProjectSummary
 } from '$lib/services/ontology/ontology-projects.service';
 import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
-import { getToolHelp } from '$lib/services/agentic-chat/tools/registry/tool-help';
 import {
 	getToolRegistry,
 	type RegistryOp
@@ -21,6 +22,13 @@ import {
 	normalizeGatewayHelpPath,
 	normalizeGatewayOpName
 } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import {
+	defaultAllowedOpsForMode,
+	isSupportedOp,
+	isWriteOp,
+	requiredScopeModeForOp
+} from './agent-call-policy';
+import { normalizeTaskStateInput } from '../../../routes/api/onto/shared/task-state';
 
 type ToolExecutionContext = {
 	admin: any;
@@ -34,6 +42,7 @@ type VisibleProjectContext = {
 };
 
 type ExternalGatewayRegistryEntry = RegistryOp & {
+	required_scope_mode: BuildosAgentScopeMode;
 	handler: (
 		context: ToolExecutionContext,
 		args: Record<string, unknown>
@@ -58,21 +67,97 @@ const EXTERNAL_GATEWAY_TOOL_NAMES = new Set<BuildosAgentGatewayToolName>([
 	'tool_exec'
 ]);
 
-const EXTERNAL_READ_ONLY_OPS = [
-	'onto.project.list',
-	'onto.project.search',
-	'onto.project.get',
-	'onto.task.list',
-	'onto.task.search',
-	'onto.task.get',
-	'onto.document.list',
-	'onto.document.search',
-	'onto.document.get',
-	'onto.search'
-] as const;
+const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<string, unknown>>> = {
+	'onto.task.create': {
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			project_id: {
+				type: 'string',
+				description: 'Project UUID for the new task.'
+			},
+			title: {
+				type: 'string',
+				description: 'Task title.'
+			},
+			description: {
+				type: 'string',
+				description: 'Optional task description.'
+			},
+			type_key: {
+				type: 'string',
+				description: 'Optional task type key.'
+			},
+			state_key: {
+				type: 'string',
+				description: 'Initial task state: todo, in_progress, blocked, or done.'
+			},
+			priority: {
+				type: 'number',
+				description: 'Optional priority from 1-5.'
+			},
+			start_at: {
+				type: ['string', 'null'],
+				description: 'Optional ISO start date.'
+			},
+			due_at: {
+				type: ['string', 'null'],
+				description: 'Optional ISO due date.'
+			},
+			props: {
+				type: 'object',
+				description: 'Optional JSON props merged onto the task.'
+			}
+		},
+		required: ['project_id', 'title']
+	},
+	'onto.task.update': {
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			task_id: {
+				type: 'string',
+				description: 'Task UUID.'
+			},
+			title: {
+				type: 'string',
+				description: 'Optional replacement title.'
+			},
+			description: {
+				type: ['string', 'null'],
+				description: 'Optional replacement description. Use null to clear.'
+			},
+			type_key: {
+				type: 'string',
+				description: 'Optional replacement type key.'
+			},
+			state_key: {
+				type: 'string',
+				description: 'Optional state update: todo, in_progress, blocked, or done.'
+			},
+			priority: {
+				type: ['number', 'null'],
+				description: 'Optional priority from 1-5. Use null to clear.'
+			},
+			start_at: {
+				type: ['string', 'null'],
+				description: 'Optional ISO start date. Use null to clear.'
+			},
+			due_at: {
+				type: ['string', 'null'],
+				description: 'Optional ISO due date. Use null to clear.'
+			},
+			props: {
+				type: 'object',
+				description: 'Optional JSON props merged onto the task.'
+			}
+		},
+		required: ['task_id']
+	}
+};
 
 const EXTERNAL_OP_HANDLERS: Record<
-	(string & (typeof EXTERNAL_READ_ONLY_OPS)[number]) | (typeof EXTERNAL_READ_ONLY_OPS)[number],
+	BuildosAgentAllowedOp,
 	(
 		context: ToolExecutionContext,
 		args: Record<string, unknown>
@@ -84,6 +169,8 @@ const EXTERNAL_OP_HANDLERS: Record<
 	'onto.task.list': listTasks,
 	'onto.task.search': searchTasks,
 	'onto.task.get': getTask,
+	'onto.task.create': createTask,
+	'onto.task.update': updateTask,
 	'onto.document.list': listDocuments,
 	'onto.document.search': searchDocuments,
 	'onto.document.get': getDocument,
@@ -183,6 +270,99 @@ async function loadVisibleProjects(context: ToolExecutionContext): Promise<Visib
 		projects: Array.from(projectMap.values()),
 		projectMap
 	};
+}
+
+function assertProjectWriteAccess(project: OntologyProjectSummary): void {
+	if (project.access_level !== 'write' && project.access_level !== 'admin') {
+		throw new Error('Write access is not available for this project');
+	}
+}
+
+function requireTrimmedString(
+	value: unknown,
+	fieldName: string,
+	options?: { allowEmpty?: boolean; allowNull?: boolean }
+): string | null {
+	if (value === null && options?.allowNull) {
+		return null;
+	}
+
+	if (typeof value !== 'string') {
+		throw new Error(`${fieldName} must be a string`);
+	}
+
+	const normalized = value.trim();
+	if (!normalized && options?.allowEmpty !== true) {
+		throw new Error(`${fieldName} is required`);
+	}
+
+	return normalized;
+}
+
+function normalizeOptionalDate(value: unknown, fieldName: string): string | null | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	if (value === null || value === '') {
+		return null;
+	}
+
+	if (typeof value !== 'string') {
+		throw new Error(`${fieldName} must be a string or null`);
+	}
+
+	const normalized = value.trim();
+	if (!normalized) {
+		return null;
+	}
+
+	const parsed = Date.parse(normalized);
+	if (Number.isNaN(parsed)) {
+		throw new Error(`${fieldName} must be a valid ISO date`);
+	}
+
+	return normalized;
+}
+
+function normalizePriority(
+	value: unknown,
+	fieldName: string,
+	options?: { allowNull?: boolean }
+): number | null | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	if (value === null) {
+		if (options?.allowNull) {
+			return null;
+		}
+		throw new Error(`${fieldName} must be a number`);
+	}
+
+	if (typeof value !== 'number' || !Number.isFinite(value)) {
+		throw new Error(`${fieldName} must be a number`);
+	}
+
+	const normalized = Math.floor(value);
+	if (normalized < 1 || normalized > 5) {
+		throw new Error(`${fieldName} must be between 1 and 5`);
+	}
+
+	return normalized;
+}
+
+function normalizeProps(value: unknown, fieldName: string): Record<string, unknown> | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		throw new Error(`${fieldName} must be an object`);
+	}
+
+	return value as Record<string, unknown>;
 }
 
 async function listProjects(context: ToolExecutionContext, args: Record<string, unknown>) {
@@ -364,6 +544,204 @@ async function getTask(context: ToolExecutionContext, args: Record<string, unkno
 	}
 
 	const project = assertVisibleEntityProject(visible.projectMap, data.project_id);
+
+	return {
+		task: {
+			...data,
+			project_name: project.name
+		}
+	};
+}
+
+async function createTask(context: ToolExecutionContext, args: Record<string, unknown>) {
+	const visible = await loadVisibleProjects(context);
+	const project = assertAccessibleProject(visible.projectMap, args.project_id);
+	assertProjectWriteAccess(project);
+
+	const title = requireTrimmedString(args.title, 'title');
+	const description =
+		args.description === undefined
+			? undefined
+			: requireTrimmedString(args.description, 'description', { allowEmpty: true });
+	const stateKeyInput =
+		args.state_key === undefined
+			? undefined
+			: requireTrimmedString(args.state_key, 'state_key');
+	const stateKey = stateKeyInput === undefined ? 'todo' : normalizeTaskStateInput(stateKeyInput);
+
+	if (!stateKey) {
+		throw new Error('state_key must be one of: todo, in_progress, blocked, done');
+	}
+
+	const typeKey =
+		args.type_key === undefined
+			? 'task.execute'
+			: (requireTrimmedString(args.type_key, 'type_key') ?? 'task.execute');
+	const priority = normalizePriority(args.priority, 'priority');
+	const startAt = normalizeOptionalDate(args.start_at, 'start_at');
+	const dueAt = normalizeOptionalDate(args.due_at, 'due_at');
+	const props = normalizeProps(args.props, 'props');
+	const actorId = await ensureActorId(context.admin, context.userId);
+
+	const insertPayload: Record<string, unknown> = {
+		project_id: project.id,
+		title,
+		description: description ?? null,
+		type_key: typeKey,
+		state_key: stateKey,
+		created_by: actorId,
+		start_at: startAt ?? null,
+		due_at: dueAt ?? null,
+		props: props ?? {}
+	};
+
+	if (priority !== undefined) {
+		insertPayload.priority = priority;
+	}
+
+	if (stateKey === 'done') {
+		insertPayload.completed_at = new Date().toISOString();
+	}
+
+	const { data, error } = await context.admin
+		.from('onto_tasks')
+		.insert(insertPayload)
+		.select(
+			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at'
+		)
+		.single();
+
+	if (error || !data) {
+		throw new Error(error?.message || 'Failed to create task');
+	}
+
+	return {
+		task: {
+			...data,
+			project_name: project.name
+		}
+	};
+}
+
+async function updateTask(context: ToolExecutionContext, args: Record<string, unknown>) {
+	const taskId = args.task_id;
+	if (typeof taskId !== 'string' || !isValidUUID(taskId)) {
+		throw new Error('task_id must be a valid UUID');
+	}
+
+	const visible = await loadVisibleProjects(context);
+	if (visible.projects.length === 0) {
+		throw new Error('Task not found');
+	}
+
+	const { data: existingTask, error: existingTaskError } = await context.admin
+		.from('onto_tasks')
+		.select(
+			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at'
+		)
+		.eq('id', taskId)
+		.in(
+			'project_id',
+			visible.projects.map((project) => project.id)
+		)
+		.is('deleted_at', null)
+		.maybeSingle();
+
+	if (existingTaskError) {
+		throw new Error(existingTaskError.message || 'Failed to load task');
+	}
+
+	if (!existingTask) {
+		throw new Error('Task not found');
+	}
+
+	const project = assertVisibleEntityProject(visible.projectMap, existingTask.project_id);
+	assertProjectWriteAccess(project);
+
+	const updateData: Record<string, unknown> = {
+		updated_at: new Date().toISOString()
+	};
+	let changedFieldCount = 0;
+
+	if (args.title !== undefined) {
+		updateData.title = requireTrimmedString(args.title, 'title');
+		changedFieldCount += 1;
+	}
+
+	if (args.description !== undefined) {
+		if (args.description === null) {
+			updateData.description = null;
+		} else {
+			updateData.description = requireTrimmedString(args.description, 'description', {
+				allowEmpty: true
+			});
+		}
+		changedFieldCount += 1;
+	}
+
+	if (args.type_key !== undefined) {
+		updateData.type_key = requireTrimmedString(args.type_key, 'type_key');
+		changedFieldCount += 1;
+	}
+
+	if (args.priority !== undefined) {
+		updateData.priority = normalizePriority(args.priority, 'priority', { allowNull: true });
+		changedFieldCount += 1;
+	}
+
+	const startAt = normalizeOptionalDate(args.start_at, 'start_at');
+	if (startAt !== undefined) {
+		updateData.start_at = startAt;
+		changedFieldCount += 1;
+	}
+
+	const dueAt = normalizeOptionalDate(args.due_at, 'due_at');
+	if (dueAt !== undefined) {
+		updateData.due_at = dueAt;
+		changedFieldCount += 1;
+	}
+
+	if (args.props !== undefined) {
+		const props = normalizeProps(args.props, 'props');
+		updateData.props = {
+			...((existingTask.props as Record<string, unknown> | null) ?? {}),
+			...(props ?? {})
+		};
+		changedFieldCount += 1;
+	}
+
+	if (args.state_key !== undefined) {
+		const normalizedStateInput = requireTrimmedString(args.state_key, 'state_key');
+		const normalizedState = normalizeTaskStateInput(normalizedStateInput);
+		if (!normalizedState) {
+			throw new Error('state_key must be one of: todo, in_progress, blocked, done');
+		}
+
+		updateData.state_key = normalizedState;
+		if (existingTask.state_key !== 'done' && normalizedState === 'done') {
+			updateData.completed_at = new Date().toISOString();
+		} else if (existingTask.state_key === 'done' && normalizedState !== 'done') {
+			updateData.completed_at = null;
+		}
+		changedFieldCount += 1;
+	}
+
+	if (changedFieldCount === 0) {
+		throw new Error('At least one writable task field is required');
+	}
+
+	const { data, error } = await context.admin
+		.from('onto_tasks')
+		.update(updateData)
+		.eq('id', taskId)
+		.select(
+			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at'
+		)
+		.single();
+
+	if (error || !data) {
+		throw new Error(error?.message || 'Failed to update task');
+	}
 
 	return {
 		task: {
@@ -637,7 +1015,9 @@ async function searchEntitiesByType(
 
 function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayRegistry {
 	const internalRegistry = getToolRegistry();
-	const allowedOps = scope.mode === 'read_only' ? EXTERNAL_READ_ONLY_OPS : [];
+	const allowedOps = (scope.allowed_ops ?? defaultAllowedOpsForMode(scope.mode)).filter((op) =>
+		scope.mode === 'read_write' ? true : !isWriteOp(op)
+	);
 	const ops: Record<string, ExternalGatewayRegistryEntry> = {};
 
 	for (const op of allowedOps) {
@@ -646,6 +1026,8 @@ function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayReg
 		if (!entry || !handler) continue;
 		ops[op] = {
 			...entry,
+			parameters_schema: EXTERNAL_WRITE_OP_SCHEMAS[op] ?? entry.parameters_schema,
+			required_scope_mode: isWriteOp(op) ? 'read_write' : 'read_only',
 			handler
 		};
 	}
@@ -654,6 +1036,86 @@ function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayReg
 		version: buildRegistryVersion(Object.keys(ops).sort()),
 		ops
 	};
+}
+
+function buildMinimalArgsTemplate(schema: Record<string, any>): Record<string, unknown> {
+	const properties = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
+	const required = new Set(Array.isArray(schema.required) ? (schema.required as string[]) : []);
+	const template: Record<string, unknown> = {};
+
+	for (const [name, definition] of Object.entries(properties)) {
+		if (!required.has(name)) {
+			continue;
+		}
+
+		const type = Array.isArray(definition.type) ? definition.type[0] : definition.type;
+		if (name.endsWith('_id')) {
+			template[name] = `<${name}>`;
+			continue;
+		}
+
+		if (type === 'number' || type === 'integer') {
+			template[name] = 1;
+			continue;
+		}
+
+		if (type === 'object') {
+			template[name] = {};
+			continue;
+		}
+
+		template[name] = `<${name}>`;
+	}
+
+	return template;
+}
+
+function buildExternalOpHelp(
+	entry: ExternalGatewayRegistryEntry,
+	format: ToolHelpFormat,
+	includeSchemas: boolean,
+	includeExamples: boolean
+): Record<string, unknown> {
+	const schema = entry.parameters_schema ?? { type: 'object', properties: {} };
+	const properties = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
+	const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
+	const args = Object.entries(properties).map(([name, definition]) => ({
+		name,
+		type: Array.isArray(definition.type)
+			? definition.type.join(' | ')
+			: (definition.type ?? 'any'),
+		required: required.includes(name),
+		description: definition.description
+	}));
+	const minimalArgs = buildMinimalArgsTemplate(schema);
+
+	const help: Record<string, unknown> = {
+		type: 'op',
+		op: entry.op,
+		kind: entry.kind,
+		summary: summarizeDescription(entry.description),
+		usage: `tool_exec({ op: "${entry.op}", args: { ... } })`,
+		required_scope_mode: entry.required_scope_mode,
+		required_args: required,
+		args
+	};
+
+	if (includeSchemas) {
+		help.schema = schema;
+	}
+
+	if (includeExamples) {
+		help.example_tool_exec = {
+			op: entry.op,
+			args: minimalArgs
+		};
+	}
+
+	if (format === 'full') {
+		help.description = entry.description;
+	}
+
+	return help;
 }
 
 function listDirectoryChildren(
@@ -730,7 +1192,8 @@ function buildRootHelp(
 				critical_rules: [
 					'Use tool_help before first-time or uncertain operations.',
 					'Use canonical op names from tool_help.',
-					'Discover exact IDs with list/search ops before get/update flows.'
+					'Discover exact IDs with list/search ops before get/update flows.',
+					'If tool_exec returns FORBIDDEN, inspect the granted scope mode and allowed ops before retrying.'
 				]
 			}
 		},
@@ -743,7 +1206,7 @@ function buildRootHelp(
 	};
 
 	if (includeExamples) {
-		rootHelp.examples = [
+		const examples: Array<Record<string, unknown>> = [
 			{
 				description: 'Inspect task list operations',
 				tool_help: { path: 'onto.task', format: 'short' }
@@ -756,6 +1219,15 @@ function buildRootHelp(
 				}
 			}
 		];
+
+		if (Object.values(registry.ops).some((entry) => entry.kind === 'write')) {
+			examples.push({
+				description: 'Inspect a write op before mutating tasks',
+				tool_help: { path: 'onto.task.update', format: 'full', include_schemas: true }
+			});
+		}
+
+		rootHelp.examples = examples;
 	}
 
 	return rootHelp;
@@ -776,12 +1248,22 @@ function getExternalToolHelp(
 		return buildRootHelp(registry, format, includeExamples);
 	}
 
-	if (registry.ops[normalized]) {
-		return getToolHelp(normalized, {
+	const exactEntry = registry.ops[normalized];
+	if (exactEntry) {
+		return buildExternalOpHelp(exactEntry, format, includeSchemas, includeExamples);
+	}
+
+	if (isSupportedOp(normalized)) {
+		return {
+			type: 'forbidden',
+			path: normalized,
 			format,
-			include_examples: includeExamples,
-			include_schemas: includeSchemas
-		});
+			version: registry.version,
+			message: 'This op exists, but it is not available in the current BuildOS call scope.',
+			required_scope_mode: requiredScopeModeForOp(normalized),
+			granted_scope_mode: scope.mode,
+			allowed_ops: scope.allowed_ops ?? defaultAllowedOpsForMode(scope.mode)
+		};
 	}
 
 	const items = listDirectoryChildren(normalized, registry.ops);
@@ -814,11 +1296,25 @@ function validateRequiredArgs(
 	return required.filter((field) => args[field] === undefined);
 }
 
+function validateUnexpectedArgs(
+	schema: Record<string, any>,
+	args: Record<string, unknown>
+): string[] {
+	if (schema.additionalProperties !== false) {
+		return [];
+	}
+
+	const properties = (schema.properties ?? {}) as Record<string, unknown>;
+	const allowed = new Set(Object.keys(properties));
+	return Object.keys(args).filter((field) => !allowed.has(field));
+}
+
 function buildExecError(
 	requestedOp: string,
 	code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'INTERNAL',
 	message: string,
-	helpPath?: string
+	helpPath?: string,
+	details?: Record<string, unknown>
 ) {
 	return {
 		op: requestedOp,
@@ -826,7 +1322,8 @@ function buildExecError(
 		error: {
 			code,
 			message,
-			...(helpPath ? { help_path: helpPath } : {})
+			...(helpPath ? { help_path: helpPath } : {}),
+			...(details ? { details } : {})
 		}
 	};
 }
@@ -846,14 +1343,24 @@ async function executeGatewayOp(params: {
 	}
 
 	const canonicalOp = normalizeGatewayOpName(requestedOp);
+	const allowedOps = params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode);
 	const entry = registry.ops[canonicalOp];
 	if (!entry) {
-		return buildExecError(
-			requestedOp,
-			'NOT_FOUND',
-			`Unknown or disallowed op: ${requestedOp}`,
-			'root'
-		);
+		if (isSupportedOp(canonicalOp)) {
+			return buildExecError(
+				requestedOp,
+				'FORBIDDEN',
+				`Op ${canonicalOp} is outside the granted BuildOS call scope`,
+				canonicalOp,
+				{
+					granted_scope_mode: params.scope.mode,
+					required_scope_mode: requiredScopeModeForOp(canonicalOp),
+					allowed_ops: allowedOps
+				}
+			);
+		}
+
+		return buildExecError(requestedOp, 'NOT_FOUND', `Unknown op: ${requestedOp}`, 'root');
 	}
 
 	const opArgs =
@@ -870,15 +1377,45 @@ async function executeGatewayOp(params: {
 		);
 	}
 
+	const unexpectedArgs = validateUnexpectedArgs(entry.parameters_schema, opArgs);
+	if (unexpectedArgs.length > 0) {
+		return buildExecError(
+			requestedOp,
+			'VALIDATION_ERROR',
+			`Unsupported parameter${unexpectedArgs.length === 1 ? '' : 's'}: ${unexpectedArgs.join(', ')}`,
+			canonicalOp
+		);
+	}
+
 	const warnings: string[] = [];
 	if (canonicalOp !== requestedOp) {
 		warnings.push(`Normalized legacy op "${requestedOp}" to "${canonicalOp}".`);
 	}
-	if (input.dry_run === true) {
+	if (input.dry_run === true && !isWriteOp(canonicalOp)) {
 		warnings.push('dry_run ignored for read-only external gateway operations.');
 	}
-	if (typeof input.idempotency_key === 'string' && input.idempotency_key.trim()) {
+	if (
+		typeof input.idempotency_key === 'string' &&
+		input.idempotency_key.trim() &&
+		!isWriteOp(canonicalOp)
+	) {
 		warnings.push('idempotency_key ignored for read-only external gateway operations.');
+	}
+
+	if (input.dry_run === true && isWriteOp(canonicalOp)) {
+		return {
+			op: requestedOp,
+			ok: true,
+			result: {
+				dry_run: true,
+				op: canonicalOp,
+				args: opArgs
+			},
+			meta: {
+				...(canonicalOp !== requestedOp ? { executed_op: canonicalOp } : {}),
+				...(warnings.length > 0 ? { warnings } : {})
+			}
+		};
 	}
 
 	try {
@@ -907,10 +1444,6 @@ async function executeGatewayOp(params: {
 }
 
 export function getBuildosAgentGatewayTools(scope: AgentCallScope): BuildosAgentToolDefinition[] {
-	if (scope.mode !== 'read_only') {
-		return [];
-	}
-
 	return GATEWAY_TOOL_DEFINITIONS.filter((tool) =>
 		EXTERNAL_GATEWAY_TOOL_NAMES.has(tool.function.name as BuildosAgentGatewayToolName)
 	).map((tool) => ({

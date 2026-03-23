@@ -19,6 +19,16 @@ import {
 	ensureActorId,
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
+import {
+	defaultAllowedOpsForMode,
+	extractAllowedOpsFromPolicy,
+	extractScopeModeFromPolicy,
+	intersectAllowedOps,
+	minimumScopeMode,
+	normalizeAllowedOps,
+	normalizeScopeMode,
+	requiredScopeModeForOp
+} from './agent-call-policy';
 import { AgentCallAuthError, authenticateExternalAgentCaller } from './caller-auth';
 import { AgentCallCalleeError, resolveCalleeForCaller } from './callee-resolution';
 import { executeBuildosAgentGatewayTool } from './external-tool-gateway';
@@ -69,9 +79,15 @@ function normalizeScope(value: unknown, fieldName: string): AgentCallScope {
 		throw new AgentCallServiceError(`${fieldName} must be an object`, 400, -32602);
 	}
 
-	if (value.mode !== 'read_only') {
+	let mode: AgentCallScope['mode'];
+	let allowedOps: AgentCallScope['allowed_ops'];
+
+	try {
+		mode = normalizeScopeMode(value.mode, `${fieldName}.mode`);
+		allowedOps = normalizeAllowedOps(value.allowed_ops, `${fieldName}.allowed_ops`, mode);
+	} catch (error) {
 		throw new AgentCallServiceError(
-			'Only read_only call scope is supported in v1',
+			error instanceof Error ? error.message : 'Invalid call scope',
 			400,
 			-32602
 		);
@@ -79,9 +95,11 @@ function normalizeScope(value: unknown, fieldName: string): AgentCallScope {
 
 	const projectIds = normalizeProjectIds(value.project_ids, `${fieldName}.project_ids`);
 
-	return projectIds === undefined
-		? READ_ONLY_SCOPE
-		: { mode: 'read_only', project_ids: projectIds };
+	return {
+		mode,
+		...(projectIds === undefined ? {} : { project_ids: projectIds }),
+		...(allowedOps === undefined ? {} : { allowed_ops: allowedOps })
+	};
 }
 
 function extractAllowedProjectIds(policy: unknown, fieldName: string): string[] | null {
@@ -105,6 +123,49 @@ function intersectProjectIds(currentIds: string[], allowedIds: string[] | null):
 
 	const allowedSet = new Set(allowedIds);
 	return currentIds.filter((projectId) => allowedSet.has(projectId));
+}
+
+function buildScopeRejection(params: {
+	requestedScope: AgentCallScope;
+	callerPolicy: unknown;
+	agentPolicy: unknown;
+	visibleProjectIds: string[];
+	disallowedProjectIds?: string[];
+	disallowedOps?: string[];
+	maxScopeMode?: AgentCallScope['mode'];
+}) {
+	const callerScopeMode = extractScopeModeFromPolicy(params.callerPolicy);
+	const agentScopeMode = extractScopeModeFromPolicy(params.agentPolicy, 'read_write');
+	const allowedProjectIds =
+		extractAllowedProjectIds(params.callerPolicy, 'caller_policy') ??
+		extractAllowedProjectIds(params.agentPolicy, 'agent_policy') ??
+		params.visibleProjectIds;
+	const allowedOps = intersectAllowedOps(
+		extractAllowedOpsFromPolicy(params.callerPolicy, callerScopeMode),
+		extractAllowedOpsFromPolicy(
+			params.agentPolicy,
+			minimumScopeMode(callerScopeMode, agentScopeMode)
+		)
+	);
+
+	return {
+		reason: 'scope_not_allowed',
+		details: {
+			requested_scope: params.requestedScope,
+			caller_scope_mode: callerScopeMode,
+			agent_scope_mode: agentScopeMode,
+			max_scope_mode:
+				params.maxScopeMode ?? minimumScopeMode(callerScopeMode, agentScopeMode),
+			allowed_project_ids: allowedProjectIds,
+			allowed_ops: allowedOps,
+			...(params.disallowedProjectIds && params.disallowedProjectIds.length > 0
+				? { disallowed_project_ids: params.disallowedProjectIds }
+				: {}),
+			...(params.disallowedOps && params.disallowedOps.length > 0
+				? { disallowed_ops: params.disallowedOps }
+				: {})
+		}
+	};
 }
 
 function ensureObjectParams<T>(params: unknown, method: string): T {
@@ -144,9 +205,64 @@ function normalizeGrantedScope(params: {
 	visibleProjectIds: string[];
 	callerPolicy: unknown;
 	agentPolicy: unknown;
-}): AgentCallScope | null {
+}):
+	| {
+			grantedScope: AgentCallScope;
+	  }
+	| {
+			rejection: {
+				reason: string;
+				details: Record<string, unknown>;
+			};
+	  } {
 	const callerProjectIds = extractAllowedProjectIds(params.callerPolicy, 'caller_policy');
 	const agentProjectIds = extractAllowedProjectIds(params.agentPolicy, 'agent_policy');
+	const callerScopeMode = extractScopeModeFromPolicy(params.callerPolicy);
+	const agentScopeMode = extractScopeModeFromPolicy(params.agentPolicy, 'read_write');
+	const maxScopeMode = minimumScopeMode(callerScopeMode, agentScopeMode);
+
+	if (params.requestedScope.mode === 'read_write' && maxScopeMode !== 'read_write') {
+		return {
+			rejection: buildScopeRejection({
+				requestedScope: params.requestedScope,
+				callerPolicy: params.callerPolicy,
+				agentPolicy: params.agentPolicy,
+				visibleProjectIds: params.visibleProjectIds,
+				maxScopeMode
+			})
+		};
+	}
+
+	const grantedMode =
+		params.requestedScope.mode === 'read_write' && maxScopeMode === 'read_write'
+			? 'read_write'
+			: 'read_only';
+
+	const callerAllowedOps = extractAllowedOpsFromPolicy(params.callerPolicy, callerScopeMode);
+	const agentAllowedOps = extractAllowedOpsFromPolicy(params.agentPolicy, agentScopeMode);
+	let grantedAllowedOps = intersectAllowedOps(callerAllowedOps, agentAllowedOps).filter((op) =>
+		grantedMode === 'read_write' ? true : requiredScopeModeForOp(op) === 'read_only'
+	);
+
+	if (params.requestedScope.allowed_ops !== undefined) {
+		const grantedOpSet = new Set(grantedAllowedOps);
+		const disallowedOps = params.requestedScope.allowed_ops.filter(
+			(op) => !grantedOpSet.has(op)
+		);
+		if (disallowedOps.length > 0) {
+			return {
+				rejection: buildScopeRejection({
+					requestedScope: params.requestedScope,
+					callerPolicy: params.callerPolicy,
+					agentPolicy: params.agentPolicy,
+					visibleProjectIds: params.visibleProjectIds,
+					disallowedOps
+				})
+			};
+		}
+
+		grantedAllowedOps = params.requestedScope.allowed_ops;
+	}
 
 	let grantedProjectIds = [...params.visibleProjectIds];
 	grantedProjectIds = intersectProjectIds(grantedProjectIds, callerProjectIds);
@@ -155,11 +271,24 @@ function normalizeGrantedScope(params: {
 	if (params.requestedScope.project_ids !== undefined) {
 		const requestedSet = new Set(params.requestedScope.project_ids);
 		const grantedSet = new Set(grantedProjectIds);
+		const disallowedProjectIds: string[] = [];
 
 		for (const projectId of params.requestedScope.project_ids) {
 			if (!grantedSet.has(projectId)) {
-				return null;
+				disallowedProjectIds.push(projectId);
 			}
+		}
+
+		if (disallowedProjectIds.length > 0) {
+			return {
+				rejection: buildScopeRejection({
+					requestedScope: params.requestedScope,
+					callerPolicy: params.callerPolicy,
+					agentPolicy: params.agentPolicy,
+					visibleProjectIds: params.visibleProjectIds,
+					disallowedProjectIds
+				})
+			};
 		}
 
 		grantedProjectIds = grantedProjectIds.filter((projectId) => requestedSet.has(projectId));
@@ -170,12 +299,22 @@ function normalizeGrantedScope(params: {
 		grantedProjectIds.length === 0 &&
 		params.requestedScope.project_ids === undefined
 	) {
-		return null;
+		return {
+			rejection: buildScopeRejection({
+				requestedScope: params.requestedScope,
+				callerPolicy: params.callerPolicy,
+				agentPolicy: params.agentPolicy,
+				visibleProjectIds: params.visibleProjectIds
+			})
+		};
 	}
 
 	return {
-		mode: 'read_only',
-		project_ids: grantedProjectIds
+		grantedScope: {
+			mode: grantedMode,
+			project_ids: grantedProjectIds,
+			allowed_ops: grantedAllowedOps
+		}
 	};
 }
 
@@ -247,14 +386,14 @@ export class BuildosAgentCallService {
 
 		const requestedScope = normalizeScope(params.requested_scope, 'requested_scope');
 		const visibleProjects = await this.loadVisibleProjects(caller.user_id);
-		const grantedScope = normalizeGrantedScope({
+		const scopeResolution = normalizeGrantedScope({
 			requestedScope,
 			visibleProjectIds: visibleProjects.map((project) => project.id),
 			callerPolicy: caller.policy,
 			agentPolicy: buildosAgent.default_policy
 		});
 
-		if (!grantedScope) {
+		if ('rejection' in scopeResolution) {
 			const rejectedCall = await this.insertCallSession({
 				userId: caller.user_id,
 				buildosAgent,
@@ -262,17 +401,28 @@ export class BuildosAgentCallService {
 				status: 'rejected',
 				requestedScope,
 				grantedScope: null,
-				rejectionReason: 'scope_not_allowed'
+				rejectionReason: scopeResolution.rejection.reason,
+				rejectionDetails: scopeResolution.rejection.details
 			});
 
 			return {
 				call: {
 					id: rejectedCall.id,
 					status: 'rejected',
-					reason: rejectedCall.rejection_reason ?? 'scope_not_allowed'
+					reason: rejectedCall.rejection_reason ?? 'scope_not_allowed',
+					details:
+						rejectedCall.metadata &&
+						typeof rejectedCall.metadata === 'object' &&
+						!Array.isArray(rejectedCall.metadata)
+							? ((rejectedCall.metadata.rejection_details as
+									| Record<string, unknown>
+									| undefined) ?? scopeResolution.rejection.details)
+							: scopeResolution.rejection.details
 				}
 			};
 		}
+
+		const grantedScope = scopeResolution.grantedScope;
 
 		const acceptedCall = await this.insertCallSession({
 			userId: caller.user_id,
@@ -391,6 +541,7 @@ export class BuildosAgentCallService {
 		requestedScope: AgentCallScope;
 		grantedScope: AgentCallScope | null;
 		rejectionReason?: string;
+		rejectionDetails?: Record<string, unknown>;
 	}): Promise<AgentCallSessionRecord> {
 		const { data, error } = await this.admin
 			.from('agent_call_sessions')
@@ -405,7 +556,10 @@ export class BuildosAgentCallService {
 				rejection_reason: params.rejectionReason ?? null,
 				metadata: {
 					provider: params.caller.provider,
-					caller_key: params.caller.caller_key
+					caller_key: params.caller.caller_key,
+					...(params.rejectionDetails
+						? { rejection_details: params.rejectionDetails }
+						: {})
 				}
 			})
 			.select('*')

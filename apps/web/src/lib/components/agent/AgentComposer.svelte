@@ -6,7 +6,6 @@
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import type { VoiceNote } from '$lib/types/voice-notes';
 
-	// ✅ Svelte 5: Use callback props and $bindable() for two-way binding
 	interface Props {
 		inputValue: string;
 		isStreaming: boolean;
@@ -27,7 +26,7 @@
 		onVoiceNoteSegmentSaved?: (voiceNote: VoiceNote) => void;
 		onVoiceNoteSegmentError?: (error: string) => void;
 		onKeyDownHandler?: (event: KeyboardEvent) => void;
-		onSend?: () => void; // ✅ Svelte 5: Callback instead of event
+		onSend?: () => void;
 		onStop?: () => void;
 	}
 
@@ -73,7 +72,7 @@
 	function handleSubmit(event: Event) {
 		event.preventDefault();
 		if (disabled) return;
-		onSend?.(); // ✅ Svelte 5: Call callback instead of dispatching event
+		onSend?.();
 	}
 </script>
 

@@ -26,26 +26,6 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/routes/dashboard/calendar/+page.svelte",
-			"type": "page",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"MobileCommandCenter",
-				"ProjectDocumentsSection",
-				"ProjectInsightRail",
-				"ProjectModalsHost"
-			]
-		},
-		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
 			"type": "component",
 			"components": ["DailyBriefModal", "BriefChatModal", "OverdueTaskTriageModal"]
@@ -160,14 +140,29 @@
 			]
 		},
 		{
+			"file": "src/routes/dashboard/calendar/+page.svelte",
+			"type": "page",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"MobileCommandCenter",
+				"ProjectDocumentsSection",
+				"ProjectInsightRail",
+				"ProjectModalsHost"
+			]
+		},
+		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
 			"type": "page",
 			"components": ["SvelteFlowGraph", "G6Graph"]
-		},
-		{
-			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
-			"type": "page",
-			"components": ["DocumentModal", "GoalEditModal", "PlanEditModal", "MilestoneEditModal"]
 		},
 		{
 			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",
@@ -178,6 +173,11 @@
 				"SuccessView",
 				"OperationEditModal"
 			]
+		},
+		{
+			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
+			"type": "page",
+			"components": ["DocumentModal", "GoalEditModal", "PlanEditModal", "MilestoneEditModal"]
 		},
 		{
 			"file": "src/lib/services/agent-context-service.ts",
@@ -838,36 +838,6 @@
 			"exports": ["createDragDropState"]
 		},
 		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
-			]
-		},
-		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 			"type": "component",
 			"components": [],
@@ -925,6 +895,36 @@
 				"getTaskPersonRelevanceScore",
 				"taskMatchesPersonFocusFilter",
 				"getTaskPersonRelevanceLabel"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"linkEntities",
+				"deleteEdge",
+				"unlinkEntity",
+				"filterEntities"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"ALLOWED_LINKS",
+				"canLink",
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"getAllowedTargetKinds",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel",
+				"getFilteredSections"
 			]
 		},
 		{
@@ -995,14 +995,6 @@
 		}
 	],
 	"dependencies": {
-		"src/routes/dashboard/calendar/+page.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectInsightRail.svelte",
-			"src/lib/components/project/ProjectModalsHost.svelte"
-		],
 		"src/lib/components/notifications/NotificationModal.svelte": [
 			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
 		],
@@ -1035,6 +1027,14 @@
 			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
 		],
+		"src/routes/dashboard/calendar/+page.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectInsightRail.svelte",
+			"src/lib/components/project/ProjectModalsHost.svelte"
+		],
 		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
@@ -1057,12 +1057,12 @@
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",

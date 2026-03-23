@@ -5,6 +5,7 @@ import type {
 	ExternalAgentCallerRecord,
 	UserBuildosAgentRecord
 } from '@buildos/shared-types';
+import { BUILDOS_AGENT_READ_OPS } from '@buildos/shared-types';
 
 const authenticateExternalAgentCallerMock = vi.fn();
 const resolveCalleeForCallerMock = vi.fn();
@@ -220,7 +221,8 @@ function createSessionRow(overrides: Partial<AgentCallSessionRecord> = {}): Agen
 		requested_scope: { mode: 'read_only' },
 		granted_scope: {
 			mode: 'read_only',
-			project_ids: ['44444444-4444-4444-4444-444444444444']
+			project_ids: ['44444444-4444-4444-4444-444444444444'],
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 		},
 		rejection_reason: null,
 		started_at: '2026-04-28T00:00:00.000Z',
@@ -284,7 +286,8 @@ describe('BuildosAgentCallService', () => {
 			callee_handle: 'buildos:user:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			granted_scope: {
 				mode: 'read_only',
-				project_ids: ['44444444-4444-4444-4444-444444444444']
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 			}
 		});
 		expect(Object.values(state.sessions)).toHaveLength(1);
@@ -292,7 +295,8 @@ describe('BuildosAgentCallService', () => {
 			status: 'accepted',
 			granted_scope: {
 				mode: 'read_only',
-				project_ids: ['44444444-4444-4444-4444-444444444444']
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 			}
 		});
 	});
@@ -327,11 +331,87 @@ describe('BuildosAgentCallService', () => {
 		expect(response.call).toEqual({
 			id: '00000000-0000-0000-0000-000000000001',
 			status: 'rejected',
-			reason: 'scope_not_allowed'
+			reason: 'scope_not_allowed',
+			details: expect.objectContaining({
+				disallowed_project_ids: ['55555555-5555-5555-5555-555555555555']
+			})
 		});
 		expect(Object.values(state.sessions)[0]).toMatchObject({
 			status: 'rejected',
 			rejection_reason: 'scope_not_allowed'
+		});
+	});
+
+	it('rejects a read_write call when the caller token is read only', async () => {
+		const state: SessionState = { sessions: {}, nextId: 1 };
+		const admin = createAdminMock(state);
+		const { BuildosAgentCallService } = await import('./agent-call-service');
+		const service = new BuildosAgentCallService(admin);
+
+		const response = await service.dial(
+			new Request('https://example.com', {
+				headers: { authorization: 'Bearer token' }
+			}),
+			{
+				callee_handle: 'buildos:user:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+				requested_scope: {
+					mode: 'read_write'
+				}
+			}
+		);
+
+		expect(response.call).toEqual({
+			id: '00000000-0000-0000-0000-000000000001',
+			status: 'rejected',
+			reason: 'scope_not_allowed',
+			details: expect.objectContaining({
+				max_scope_mode: 'read_only',
+				requested_scope: expect.objectContaining({ mode: 'read_write' })
+			})
+		});
+	});
+
+	it('grants read_write when caller and agent policy allow it', async () => {
+		const state: SessionState = { sessions: {}, nextId: 1 };
+		const admin = createAdminMock(state);
+		authenticateExternalAgentCallerMock.mockResolvedValue(
+			createCaller({
+				policy: {
+					scope_mode: 'read_write',
+					allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create', 'onto.task.update']
+				}
+			})
+		);
+		resolveCalleeForCallerMock.mockResolvedValue(
+			createBuildosAgent({
+				default_policy: {
+					scope_mode: 'read_write',
+					allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
+				}
+			})
+		);
+
+		const { BuildosAgentCallService } = await import('./agent-call-service');
+		const service = new BuildosAgentCallService(admin);
+
+		const response = await service.dial(
+			new Request('https://example.com', {
+				headers: { authorization: 'Bearer token' }
+			}),
+			{
+				callee_handle: 'buildos:user:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+				requested_scope: {
+					mode: 'read_write'
+				}
+			}
+		);
+
+		expect(response.call).toMatchObject({
+			status: 'accepted',
+			granted_scope: {
+				mode: 'read_write',
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
+			}
 		});
 	});
 
@@ -390,7 +470,8 @@ describe('BuildosAgentCallService', () => {
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			scope: {
 				mode: 'read_only',
-				project_ids: ['44444444-4444-4444-4444-444444444444']
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 			},
 			toolName: 'tool_help',
 			arguments: {

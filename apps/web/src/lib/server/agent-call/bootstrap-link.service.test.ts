@@ -6,6 +6,7 @@ import type {
 	ExternalAgentCallerRecord,
 	UserBuildosAgentRecord
 } from '@buildos/shared-types';
+import { BUILDOS_AGENT_READ_OPS } from '@buildos/shared-types';
 
 const ensureUserBuildosAgentMock = vi.fn();
 
@@ -258,9 +259,14 @@ describe('AgentCallBootstrapLinkService', () => {
 
 		expect(document.buildos.agent_token).toBe('boca_test_secret');
 		expect(document.buildos.dial_url).toBe('https://build-os.com/api/agent-call/buildos');
+		expect(document.buildos.scope_mode).toBe('read_only');
+		expect(document.buildos.allowed_ops).toEqual([...BUILDOS_AGENT_READ_OPS]);
 		expect(document.openclaw.env_block).toContain('BUILDOS_AGENT_TOKEN=boca_test_secret');
 		expect(document.openclaw.setup_steps).toContain(
 			'If no connector exists, use exec plus curl to POST to the BuildOS gateway.'
+		);
+		expect(document.openclaw.setup_steps).toContain(
+			'Request read_only during call.dial unless you only need less access for this session.'
 		);
 		expect(document.openclaw.setup_steps).toContain(
 			'Use tool_help with path root or a narrow namespace like onto.task to discover allowed ops.'

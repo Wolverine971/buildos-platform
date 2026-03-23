@@ -14,6 +14,14 @@ import {
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import {
+	buildCallerPolicy,
+	defaultAllowedOpsForMode,
+	extractAllowedOpsFromPolicy,
+	extractScopeModeFromPolicy,
+	normalizeAllowedOps,
+	normalizeScopeMode
+} from './agent-call-policy';
 import { AgentCallBootstrapLinkService } from './bootstrap-link.service';
 import { ensureUserBuildosAgent } from './callee-resolution';
 import { hashAgentCallerToken } from './caller-auth';
@@ -100,9 +108,24 @@ function parseProvisionRequest(body: unknown): BuildosAgentCallerProvisionReques
 		throw new CallerProvisioningError('Request body must be an object', 400);
 	}
 
+	let scopeMode: BuildosAgentCallerProvisionRequest['scope_mode'];
+	let allowedOps: BuildosAgentCallerProvisionRequest['allowed_ops'];
+
+	try {
+		scopeMode = normalizeScopeMode(body.scope_mode, 'scope_mode');
+		allowedOps = normalizeAllowedOps(body.allowed_ops, 'allowed_ops', scopeMode);
+	} catch (error) {
+		throw new CallerProvisioningError(
+			error instanceof Error ? error.message : 'Invalid caller permissions',
+			400
+		);
+	}
+
 	return {
 		provider: normalizeProviderField(body.provider),
 		caller_key: validateStringField(body.caller_key, 'caller_key', 255),
+		scope_mode: scopeMode,
+		allowed_ops: allowedOps,
 		allowed_project_ids: normalizeAllowedProjectIds(body.allowed_project_ids),
 		metadata: normalizeMetadata(body.metadata)
 	};
@@ -118,6 +141,8 @@ function generateBearerToken(): { token: string; tokenPrefix: string } {
 }
 
 function mapCallerSummary(record: ExternalAgentCallerRecord): BuildosAgentCallerSummary {
+	const scopeMode = extractScopeModeFromPolicy(record.policy);
+	const allowedOps = extractAllowedOpsFromPolicy(record.policy, scopeMode);
 	const allowedProjectIds = Array.isArray(record.policy?.allowed_project_ids)
 		? record.policy.allowed_project_ids.filter(
 				(value): value is string => typeof value === 'string'
@@ -130,6 +155,8 @@ function mapCallerSummary(record: ExternalAgentCallerRecord): BuildosAgentCaller
 		caller_key: record.caller_key,
 		status: record.status,
 		token_prefix: record.token_prefix,
+		scope_mode: scopeMode,
+		allowed_ops: allowedOps,
 		allowed_project_ids: allowedProjectIds,
 		metadata: record.metadata ?? {},
 		last_used_at: record.last_used_at,
@@ -165,10 +192,15 @@ export class CallerProvisioningService {
 			userId,
 			request.allowed_project_ids
 		);
+		const scopeMode = request.scope_mode ?? 'read_only';
+		const allowedOps = request.allowed_ops ?? defaultAllowedOpsForMode(scopeMode);
 		const { token, tokenPrefix } = generateBearerToken();
 		const tokenHash = hashAgentCallerToken(token);
-		const policy =
-			allowedProjectIds === undefined ? {} : { allowed_project_ids: allowedProjectIds };
+		const policy = buildCallerPolicy({
+			scopeMode,
+			allowedProjectIds,
+			allowedOps
+		});
 
 		const { data, error } = await this.admin
 			.from('external_agent_callers')

@@ -7,10 +7,36 @@ export type AgentCallSessionStatus = 'accepted' | 'rejected' | 'active' | 'ended
 export type AgentCallDirection = 'inbound' | 'outbound';
 export type BuildosAgentGatewayToolName = 'tool_help' | 'tool_exec';
 export type BuildosAgentPublicToolName = BuildosAgentGatewayToolName;
+export type BuildosAgentScopeMode = 'read_only' | 'read_write';
+
+export const BUILDOS_AGENT_READ_OPS = [
+	'onto.project.list',
+	'onto.project.search',
+	'onto.project.get',
+	'onto.task.list',
+	'onto.task.search',
+	'onto.task.get',
+	'onto.document.list',
+	'onto.document.search',
+	'onto.document.get',
+	'onto.search'
+] as const;
+
+export const BUILDOS_AGENT_WRITE_OPS = ['onto.task.create', 'onto.task.update'] as const;
+
+export const BUILDOS_AGENT_SUPPORTED_OPS = [
+	...BUILDOS_AGENT_READ_OPS,
+	...BUILDOS_AGENT_WRITE_OPS
+] as const;
+
+export type BuildosAgentReadOp = (typeof BUILDOS_AGENT_READ_OPS)[number];
+export type BuildosAgentWriteOp = (typeof BUILDOS_AGENT_WRITE_OPS)[number];
+export type BuildosAgentAllowedOp = (typeof BUILDOS_AGENT_SUPPORTED_OPS)[number];
 
 export interface AgentCallScope {
-	mode: 'read_only';
+	mode: BuildosAgentScopeMode;
 	project_ids?: string[];
+	allowed_ops?: BuildosAgentAllowedOp[];
 }
 
 export interface AgentCallerDescriptor {
@@ -84,6 +110,7 @@ export interface BuildosAgentCallRejectedResponse {
 		id: string;
 		status: 'rejected';
 		reason: string;
+		details?: Record<string, unknown>;
 	};
 }
 
@@ -117,6 +144,8 @@ export interface BuildosAgentErrorResponse {
 export interface BuildosAgentCallerProvisionRequest {
 	provider: string;
 	caller_key: string;
+	scope_mode?: BuildosAgentScopeMode;
+	allowed_ops?: BuildosAgentAllowedOp[];
 	allowed_project_ids?: string[];
 	metadata?: Record<string, unknown>;
 }
@@ -127,6 +156,8 @@ export interface BuildosAgentCallerSummary {
 	caller_key: string;
 	status: ExternalAgentCallerStatus;
 	token_prefix: string;
+	scope_mode: BuildosAgentScopeMode;
+	allowed_ops?: BuildosAgentAllowedOp[];
 	allowed_project_ids?: string[];
 	metadata: Record<string, unknown>;
 	last_used_at: string | null;
@@ -188,6 +219,8 @@ export interface BuildosAgentBootstrapDocument {
 		agent_token: string;
 		callee_handle: string;
 		caller_key: string;
+		scope_mode: BuildosAgentScopeMode;
+		allowed_ops: BuildosAgentAllowedOp[];
 	};
 	openclaw: {
 		env_block: string;
