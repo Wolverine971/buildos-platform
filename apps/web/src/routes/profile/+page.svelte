@@ -10,6 +10,7 @@
 		Users,
 		CircleCheck,
 		Rocket,
+		Key,
 		Settings,
 		Sparkles,
 		Calendar,
@@ -38,6 +39,7 @@
 	import ContactsTab from '$lib/components/profile/ContactsTab.svelte';
 	import NotificationsTab from '$lib/components/profile/NotificationsTab.svelte';
 	import PreferencesTab from '$lib/components/profile/PreferencesTab.svelte';
+	import AgentKeysTab from '$lib/components/profile/AgentKeysTab.svelte';
 
 	interface Props {
 		data: PageData;
@@ -98,6 +100,7 @@
 					'briefs',
 					'calendar',
 					'notifications',
+					'agent-keys',
 					'billing'
 				].includes(urlTab)
 			) {
@@ -113,6 +116,7 @@
 		{ id: 'briefs', label: 'Brief Settings', icon: Bell },
 		{ id: 'calendar', label: 'Calendar', icon: Calendar },
 		{ id: 'notifications', label: 'Notifications', icon: Bell },
+		{ id: 'agent-keys', label: 'Agent Keys', icon: Key },
 		...(data.stripeEnabled ? [{ id: 'billing', label: 'Billing', icon: CreditCard }] : [])
 	]);
 
@@ -414,6 +418,8 @@
 		{:else if activeTab === 'notifications'}
 			<!-- Use the new NotificationsTab component -->
 			<NotificationsTab userId={data.user.id} />
+		{:else if activeTab === 'agent-keys'}
+			<AgentKeysTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
 		{:else if activeTab === 'billing' && data.stripeEnabled}
 			<!-- Billing/Subscription Tab -->
 			<div class="space-y-4 sm:space-y-6">

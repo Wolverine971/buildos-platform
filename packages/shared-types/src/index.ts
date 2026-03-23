@@ -31,6 +31,9 @@ export * from './project-activity.types';
 // Export Tree Agent orchestration types
 export * from './tree-agent.types';
 
+// Export external agent call gateway types
+export * from './agent-call.types';
+
 // Legacy types kept for backward compatibility (will be deprecated)
 export interface BriefGenerationJob {
 	id: string;

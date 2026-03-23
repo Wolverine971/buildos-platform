@@ -166,8 +166,31 @@ Navigate to LinkedIn home feed and scroll through recent posts to discover:
 - Post text (full content, first 500 chars if very long)
 - Post age (how long ago)
 - Current engagement (comments, reactions)
-- Link to post
+- **Direct post link (REQUIRED)** - The actual post URL, not a search URL
 - Why it's relevant (which content pillar it matches)
+
+### How to Get Direct Post Links (CRITICAL)
+
+**You MUST capture the actual post URL for every post you recommend.** Search URLs and profile activity URLs are useless - DJ needs to click one link and land on the exact post.
+
+**Method 1 - From profile activity pages:**
+When viewing a post on someone's activity page, click into the post (click on the post timestamp or "X comments" link) to open the individual post page. The URL will look like:
+- `https://www.linkedin.com/feed/update/urn:li:activity:XXXXXXXXXXXX/`
+- `https://www.linkedin.com/posts/username_slug-activity-XXXXXXXXXXXX-XXXX/`
+Copy that URL.
+
+**Method 2 - From search results:**
+When you find a post in search results, click into the post to get the direct URL. Use the post's timestamp link, the comments count link, or the author's post content to navigate to the individual post page.
+
+**Method 3 - Using read_page to find post links:**
+Look for `href` attributes on timestamp elements, comment count buttons, or post content links that contain `/feed/update/` or `/posts/` patterns. These are the direct post URLs.
+
+**What NOT to use as a post link:**
+- Search result page URLs (e.g., `/search/results/content/?keywords=...`)
+- Profile activity page URLs (e.g., `/in/username/recent-activity/all/`)
+- Generic "Search for X on LinkedIn" instructions
+
+**If you cannot get a direct link**, at minimum provide the author's profile URL (`/in/username/`) and describe which post (e.g., "most recent post, 4h ago about X"). But always try to get the direct link first.
 
 ### Selection Criteria
 
@@ -230,135 +253,74 @@ Use when you don't have specific expertise but want to engage.
 
 ### Comment Generation Rules
 
-1. **Decide your mode first** - Do you have value to add, or are you here to support?
-2. **Be genuinely curious** - Ask questions that show real interest, not just "great point!"
-3. **Celebrate specifically** - If cheering someone on, reference exactly what impressed you
-4. **Use specific experience when relevant** - Curri integrations, solo founder journey, Marines (sparingly)
-5. **Context engineering angle** - When discussing AI, frame around memory/context IF relevant
-6. **Teammate energy, not teaching** - "What I'm finding..." not "Here's how to do it..."
-7. **BuildOS mentions** - Only when genuinely relevant, be transparent about it
-8. **2-4 sentences minimum** - LinkedIn rewards thoughtful comments
-9. **It's okay to just encourage** - Sometimes the most valuable thing is genuine support
+> **THE #1 RULE: Read each comment back and ask "Would a real person type this on their phone in 30 seconds?" If no, it's too polished. Cut it down.**
 
-### Comment Templates by Topic
+1. **Default to cheerleader mode** - Most comments should just be supportive, encouraging, good energy. You don't need to add your two cents every time.
+2. **Keep it SHORT** - 1-3 sentences is usually enough. Not every comment needs to be a paragraph. Match the energy and length of the original post.
+3. **Vary the lengths** - Mix it up. Some comments are one line. Some are two sentences. Rarely go past 3-4 sentences. NEVER write a wall of text.
+4. **Sound like a human, not a copywriter** - No structured templates. No observation-then-experience-then-question formula. Just react naturally.
+5. **Don't always try to be smart** - "This is dope, been thinking about the same thing" is a perfectly valid comment. You don't need to prove expertise every time.
+6. **One idea per comment** - Pick ONE thing that stood out. React to that. Don't try to address the whole post.
+7. **Questions are optional** - Not every comment needs to end with a question. Sometimes a statement is more natural.
+8. **BuildOS mentions** - Rarely. Only when someone is literally describing the problem you solve. Be transparent when you do.
+9. **Don't stack your resume** - Never mention Curri + Marines + BuildOS in the same comment. Pick one detail max if relevant.
+10. **Match the post's vibe** - Casual post? Casual comment. Technical post? Can be slightly more detailed. Win post? Just hype them up.
 
-**AI/Context Posts - Value Mode:**
+### What Organic Comments Actually Sound Like
+
+**Short cheerleader (most common - use this 60% of the time):**
 ```
-[Observation about the context/memory problem]
-
-[Your experience - Curri integrations or BuildOS building]
-
-[Question or extension of their point]
-
-[Optional: soft BuildOS mention if natural - be transparent]
+This is really cool. The part about [specific detail] is something I haven't seen anyone talk about.
 ```
-
-**AI/Context Posts - Cheerleader Mode:**
 ```
-[Genuine reaction to what they shared]
-
-[Specific thing that stood out to you]
-
-[Curious question about their approach/experience]
+Hell yes. 3 products in a month is no joke.
+```
+```
+Been thinking about this exact thing lately. Glad someone put it into words.
 ```
 
-**Productivity/Tool Posts - Value Mode:**
+**Medium value-add (use sparingly - 30% of the time):**
 ```
-[Validate with specific experience - "I hit this same wall with..."]
-
-[What actually works / what you've learned]
-
-[Tie to clarity > time management philosophy]
-
-[Question to open dialogue]
+The [specific thing] resonates. I hit the same wall building AI tools - the context you give the AI matters way more than the model you pick.
+```
+```
+"[short quote from their post]" - this is the part nobody wants to hear right now. I keep seeing the same pattern from the builder side.
 ```
 
-**Productivity/Tool Posts - Cheerleader Mode:**
+**Longer only when you genuinely have something unique to say (10% of the time):**
 ```
-[Validate their struggle/insight genuinely]
-
-[Ask about their experience - what's working for them?]
-
-[Encouraging note - we're all figuring this out together]
+This connects to something I've been wrestling with. [1-2 sentences of genuine personal experience, not a mini-essay]. Curious if you've seen the same thing.
 ```
 
-**Building/Founder Posts - Value Mode:**
-```
-[Direct reaction - acknowledge their insight]
+### What to NEVER Do
 
-[Add your experience - solo founder, what you're learning]
-
-[Extend with your angle or contrarian perspective]
-
-[Optional: ask about their approach]
-```
-
-**Building/Founder Posts - Cheerleader Mode:**
-```
-[Genuine excitement for their win/progress]
-
-[Specific thing about their journey that impressed you]
-
-[Encouraging question or note of support]
-
-[The "we're all rowing the same boat" energy]
-```
-
-**Someone Sharing a Win - Cheerleader Mode:**
-```
-Hell yes. [Specific thing about the win that impressed you].
-
-[Curious question about how they did it / what's next]
-```
-
-**AI Agents Posts (Contrarian) - Value Mode:**
-```
-[Acknowledge the point, but...]
-
-[Share your "context > agents" perspective from building]
-
-["I was doing tool use at Curri before AI made it trendy" angle]
-
-[Question about their experience with context/memory]
-```
-
-**Big Account Engagement:**
-```
-[Reference their past content, framework, or specific work]
-
-[Add unique angle from your experience OR genuine curiosity]
-
-[Ask a direct question - not generic praise]
-
-[Show you've actually thought about their ideas]
-```
+- **No walls of text** - If your comment is longer than the original post, delete half of it
+- **No template feel** - If it reads like [observation] → [my experience] → [question], rewrite it
+- **No stacking credentials** - "When I was connecting Uber/Lyft/DoorDash APIs at my YC-backed logistics company before AI tool use was trendy..." sounds like a LinkedIn thought leader. Just say the one thing that's relevant.
+- **No forced questions** - "What's your take on X?" at the end of every comment is a pattern. Break it.
+- **No "This resonated with me"** - or "Great post!" or "Love this!" - hollow
+- **No teaching** - You're not here to educate anyone. You're here to vibe.
+- **No preachy setups** - "Most people don't realize..." / "The thing nobody talks about is..."
+- **No AI-sounding structure** - Real comments are messy. They start mid-thought sometimes. They use sentence fragments. They don't have perfect paragraph breaks.
 
 ### Voice Reminders
 
-**The Philosophy:** Interesting guy + cheerleader. NOT a thought leader.
+**The Philosophy:** Interesting guy + cheerleader. NOT a thought leader. Good energy, not proving you're smart.
 
-**DO (Value Mode):**
-- Lead with observation or insight from experience
-- Be specific - use real examples
-- Ask questions that show expertise
-- "What I'm finding..." / "In my experience building..."
-- Teammate energy, not teaching
+**What DJ actually sounds like:**
+- "That's dope"
+- "Hell yes"
+- "This is the thing right here"
+- "Been building in this space and yeah, this is real"
+- "The [specific detail] part hits different"
+- Sentence fragments are fine
+- Casual but not sloppy
+- Professional LinkedIn tone but still human
 
-**DO (Cheerleader Mode):**
-- Genuine excitement for their work/win
-- Specific praise - what exactly impressed you
-- Curious questions about their journey
-- "Hell yes" and "this is awesome" when you mean it
-- "We're all rowing the same boat" energy
-
-**DON'T:**
-- "Love this!" / "Great post!" (hollow)
-- Generic observations anyone could make
-- Preachy setups ("Most people don't realize...")
-- Teaching when you're just supporting
-- Sycophantic praise
-- Making it about you/BuildOS when cheering someone on
-- Thought leader energy
+**The litmus test for every comment:**
+- Would you actually say this to someone at a coffee shop?
+- Does it sound like a person or a press release?
+- Are you adding energy or extracting attention?
 
 ---
 
@@ -388,7 +350,9 @@ Hell yes. [Specific thing about the win that impressed you].
 
 ## 1. [Author Name] - [Topic]
 
-**Post Link:** [full URL]
+**Post Link:** [DIRECT URL to the specific post - REQUIRED, must be a clickable link that goes straight to the post]
+Example format: https://www.linkedin.com/feed/update/urn:li:activity:XXXXXXXXXXXX/
+Or: https://www.linkedin.com/posts/username_slug-activity-XXXXXXXXXXXX-XXXX/
 
 **Author:** [Name] | [Headline] | [Follower count]
 
@@ -400,14 +364,11 @@ Hell yes. [Specific thing about the win that impressed you].
 **Why This Post:**
 [1-2 sentences on why this is a good engagement opportunity - pillar alignment, author relevance, timing]
 
-**Suggested Comment Option 1 ([angle]):**
-> [comment text - 2-4 sentences]
+**Option A:**
+> [short, organic comment - 1-3 sentences max]
 
-**Suggested Comment Option 2 ([angle]):**
-> [comment text - 2-4 sentences]
-
-**Suggested Comment Option 3 ([angle]):**
-> [comment text - 2-4 sentences]
+**Option B:**
+> [different angle - 1-3 sentences max]
 
 ---
 

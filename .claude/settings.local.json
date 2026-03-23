@@ -156,7 +156,9 @@
       "mcp__plugin_compound-engineering_context7__query-docs",
       "Bash(xxd:*)",
       "Bash(git -C /Users/djwayne/buildos-platform ls-files:*)",
-      "Bash(sips:*)"
+      "Bash(sips:*)",
+      "Bash(which agent-browser:*)",
+      "Bash(npx agent-browser:*)"
     ],
     "deny": [],
     "ask": []

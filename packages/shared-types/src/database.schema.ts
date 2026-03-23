@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-03-19T22:55:35.389Z
+// Generated on: 2026-03-23T03:28:42.382Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -16,6 +16,21 @@ export type DatabaseSchema = {
 		created_at: string;
 		granted_at: string | null;
 		granted_by: string | null;
+		user_id: string;
+	};
+	agent_call_sessions: {
+		direction: string;
+		ended_at: string | null;
+		external_agent_caller_id: string;
+		granted_scope: Json;
+		id: string;
+		metadata: Json;
+		rejection_reason: string | null;
+		requested_scope: Json;
+		started_at: string;
+		status: string;
+		updated_at: string;
+		user_buildos_agent_id: string;
 		user_id: string;
 	};
 	agent_chat_messages: {
@@ -764,6 +779,20 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_agent: string | null;
 		user_id: string | null;
+	};
+	external_agent_callers: {
+		caller_key: string;
+		created_at: string;
+		id: string;
+		last_used_at: string | null;
+		metadata: Json;
+		policy: Json;
+		provider: string;
+		status: string;
+		token_hash: string;
+		token_prefix: string;
+		updated_at: string;
+		user_id: string;
 	};
 	failed_payments: {
 		amount_due: number;
@@ -2425,6 +2454,16 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
+	user_buildos_agents: {
+		agent_handle: string;
+		created_at: string;
+		default_policy: Json;
+		id: string;
+		metadata: Json;
+		status: string;
+		updated_at: string;
+		user_id: string;
+	};
 	user_calendar_preferences: {
 		created_at: string;
 		default_task_duration_minutes: number | null;
@@ -2845,6 +2884,7 @@ export type DatabaseSchema = {
 export const tableNames = [
 	'admin_analytics',
 	'admin_users',
+	'agent_call_sessions',
 	'agent_chat_messages',
 	'agent_chat_sessions',
 	'agent_executions',
@@ -2890,6 +2930,7 @@ export const tableNames = [
 	'email_tracking_events',
 	'emails',
 	'error_logs',
+	'external_agent_callers',
 	'failed_payments',
 	'feature_flags',
 	'feedback',
@@ -3003,6 +3044,7 @@ export const tableNames = [
 	'user_activity_logs',
 	'user_behavioral_profiles',
 	'user_brief_preferences',
+	'user_buildos_agents',
 	'user_calendar_preferences',
 	'user_calendar_tokens',
 	'user_contact_access_audit',

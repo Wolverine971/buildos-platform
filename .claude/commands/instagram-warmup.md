@@ -101,6 +101,25 @@ Instagram is much more aggressive about rate limiting than Twitter or LinkedIn. 
 
 ---
 
+## Pre-Flight: Verify Active Instagram Account
+
+**CRITICAL — Do this FIRST before any scanning.**
+
+The user has multiple Instagram accounts. You MUST confirm you're on the **BuildOS account (@djwayne3)** before proceeding.
+
+1. Navigate to `https://www.instagram.com/`
+2. Check the logged-in username displayed in the sidebar (bottom-left profile link or top of sidebar)
+3. **If the account is NOT @djwayne3:**
+   - Click the profile icon/username in the sidebar
+   - Look for an account switcher option
+   - Switch to the @djwayne3 account
+   - Verify the switch was successful
+4. **If you cannot confirm the account or switch fails**, STOP and ask the user to manually switch to @djwayne3 before continuing.
+
+**Do NOT proceed to Phase 0 until you have confirmed you are on @djwayne3.**
+
+---
+
 ## Phase 0: Check Notifications & Stories FIRST
 
 **ALWAYS START HERE - This shows real-time activity from accounts that matter.**

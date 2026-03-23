@@ -1,0 +1,221 @@
+// packages/shared-types/src/agent-call.types.ts
+export type BuildosAgentCallMethod =
+	| 'call.dial'
+	| 'tools/list'
+	| 'tools/call'
+	| 'call.hangup';
+
+export type UserBuildosAgentStatus = 'active' | 'paused' | 'revoked';
+export type ExternalAgentCallerStatus = 'trusted' | 'pending' | 'revoked';
+export type AgentCallSessionStatus = 'accepted' | 'rejected' | 'active' | 'ended';
+export type AgentCallDirection = 'inbound' | 'outbound';
+export type BuildosAgentPublicToolName =
+	| 'list_projects'
+	| 'get_project_snapshot'
+	| 'search_entities'
+	| 'list_project_tasks'
+	| 'list_project_documents'
+	| 'get_document';
+
+export interface AgentCallScope {
+	mode: 'read_only';
+	project_ids?: string[];
+}
+
+export interface AgentCallerDescriptor {
+	provider: string;
+	caller_key: string;
+}
+
+export interface BuildosAgentDialParams {
+	callee_handle: string;
+	requested_scope?: AgentCallScope;
+	client?: AgentCallerDescriptor;
+}
+
+export interface BuildosAgentHangupParams {
+	call_id: string;
+}
+
+export interface BuildosAgentToolsListParams {
+	call_id: string;
+}
+
+export interface BuildosAgentToolsCallParams {
+	call_id: string;
+	name: BuildosAgentPublicToolName;
+	arguments?: Record<string, unknown>;
+}
+
+export interface BuildosAgentDialRequest {
+	method: 'call.dial';
+	params: BuildosAgentDialParams;
+}
+
+export interface BuildosAgentToolsListRequest {
+	method: 'tools/list';
+	params: BuildosAgentToolsListParams;
+}
+
+export interface BuildosAgentToolsCallRequest {
+	method: 'tools/call';
+	params: BuildosAgentToolsCallParams;
+}
+
+export interface BuildosAgentHangupRequest {
+	method: 'call.hangup';
+	params: BuildosAgentHangupParams;
+}
+
+export type BuildosAgentRequest =
+	| BuildosAgentDialRequest
+	| BuildosAgentToolsListRequest
+	| BuildosAgentToolsCallRequest
+	| BuildosAgentHangupRequest;
+
+export interface BuildosAgentToolDefinition {
+	name: BuildosAgentPublicToolName;
+	description: string;
+	inputSchema: Record<string, unknown>;
+}
+
+export interface BuildosAgentCallAcceptedResponse {
+	call: {
+		id: string;
+		status: 'accepted';
+		callee_handle: string;
+		granted_scope: AgentCallScope;
+	};
+}
+
+export interface BuildosAgentCallRejectedResponse {
+	call: {
+		id: string;
+		status: 'rejected';
+		reason: string;
+	};
+}
+
+export interface BuildosAgentToolsListResponse {
+	tools: BuildosAgentToolDefinition[];
+}
+
+export interface BuildosAgentToolCallResponse {
+	content: Array<{
+		type: 'text';
+		text: string;
+	}>;
+	structuredContent: Record<string, unknown>;
+}
+
+export interface BuildosAgentHangupResponse {
+	call: {
+		id: string;
+		status: 'ended';
+	};
+}
+
+export interface BuildosAgentErrorResponse {
+	error: {
+		code: number;
+		message: string;
+		data?: unknown;
+	};
+}
+
+export interface BuildosAgentCallerProvisionRequest {
+	provider: string;
+	caller_key: string;
+	allowed_project_ids?: string[];
+	metadata?: Record<string, unknown>;
+}
+
+export interface BuildosAgentCallerSummary {
+	id: string;
+	provider: string;
+	caller_key: string;
+	status: ExternalAgentCallerStatus;
+	token_prefix: string;
+	allowed_project_ids?: string[];
+	metadata: Record<string, unknown>;
+	last_used_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface BuildosAgentIdentitySummary {
+	id: string;
+	handle: string;
+	status: UserBuildosAgentStatus;
+}
+
+export interface BuildosAgentAvailableProject {
+	id: string;
+	name: string;
+	description: string | null;
+}
+
+export interface BuildosAgentCallerProvisionResponse {
+	buildos_agent: BuildosAgentIdentitySummary;
+	caller: BuildosAgentCallerSummary;
+	credentials: {
+		auth_scheme: 'Bearer';
+		bearer_token: string;
+	};
+}
+
+export interface BuildosAgentCallerListResponse {
+	buildos_agent: BuildosAgentIdentitySummary;
+	callers: BuildosAgentCallerSummary[];
+	available_projects: BuildosAgentAvailableProject[];
+}
+
+export interface BuildosAgentCallerRevokeRequest {
+	caller_id: string;
+}
+
+export interface BuildosAgentCallerRevokeResponse {
+	caller: BuildosAgentCallerSummary;
+}
+
+export interface UserBuildosAgentRecord {
+	id: string;
+	user_id: string;
+	agent_handle: string;
+	status: UserBuildosAgentStatus;
+	default_policy: Record<string, unknown>;
+	metadata: Record<string, unknown>;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface ExternalAgentCallerRecord {
+	id: string;
+	user_id: string;
+	provider: string;
+	caller_key: string;
+	token_prefix: string;
+	token_hash: string;
+	status: ExternalAgentCallerStatus;
+	policy: Record<string, unknown>;
+	metadata: Record<string, unknown>;
+	last_used_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface AgentCallSessionRecord {
+	id: string;
+	user_id: string;
+	user_buildos_agent_id: string;
+	external_agent_caller_id: string;
+	direction: AgentCallDirection;
+	status: AgentCallSessionStatus;
+	requested_scope: Record<string, unknown>;
+	granted_scope: Record<string, unknown>;
+	rejection_reason: string | null;
+	started_at: string;
+	ended_at: string | null;
+	metadata: Record<string, unknown>;
+	updated_at: string;
+}

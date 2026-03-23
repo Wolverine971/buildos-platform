@@ -77,6 +77,76 @@ export type Database = {
           },
         ]
       }
+      agent_call_sessions: {
+        Row: {
+          direction: string
+          ended_at: string | null
+          external_agent_caller_id: string
+          granted_scope: Json
+          id: string
+          metadata: Json
+          rejection_reason: string | null
+          requested_scope: Json
+          started_at: string
+          status: string
+          updated_at: string
+          user_buildos_agent_id: string
+          user_id: string
+        }
+        Insert: {
+          direction?: string
+          ended_at?: string | null
+          external_agent_caller_id: string
+          granted_scope?: Json
+          id?: string
+          metadata?: Json
+          rejection_reason?: string | null
+          requested_scope?: Json
+          started_at?: string
+          status: string
+          updated_at?: string
+          user_buildos_agent_id: string
+          user_id: string
+        }
+        Update: {
+          direction?: string
+          ended_at?: string | null
+          external_agent_caller_id?: string
+          granted_scope?: Json
+          id?: string
+          metadata?: Json
+          rejection_reason?: string | null
+          requested_scope?: Json
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_buildos_agent_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_call_sessions_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_call_sessions_user_buildos_agent_id_fkey"
+            columns: ["user_buildos_agent_id"]
+            isOneToOne: false
+            referencedRelation: "user_buildos_agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_call_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       agent_chat_messages: {
         Row: {
           agent_session_id: string
@@ -3132,6 +3202,59 @@ export type Database = {
           },
           {
             foreignKeyName: "error_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      external_agent_callers: {
+        Row: {
+          caller_key: string
+          created_at: string
+          id: string
+          last_used_at: string | null
+          metadata: Json
+          policy: Json
+          provider: string
+          status: string
+          token_hash: string
+          token_prefix: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caller_key: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json
+          policy?: Json
+          provider: string
+          status?: string
+          token_hash: string
+          token_prefix: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caller_key?: string
+          created_at?: string
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json
+          policy?: Json
+          provider?: string
+          status?: string
+          token_hash?: string
+          token_prefix?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_agent_callers_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "user_migration_stats"
@@ -10115,6 +10238,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "user_brief_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      user_buildos_agents: {
+        Row: {
+          agent_handle: string
+          created_at: string
+          default_policy: Json
+          id: string
+          metadata: Json
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_handle: string
+          created_at?: string
+          default_policy?: Json
+          id?: string
+          metadata?: Json
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_handle?: string
+          created_at?: string
+          default_policy?: Json
+          id?: string
+          metadata?: Json
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_buildos_agents_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "user_migration_stats"
