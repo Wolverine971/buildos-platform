@@ -14,6 +14,7 @@ import {
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { AgentCallBootstrapLinkService } from './bootstrap-link.service';
 import { ensureUserBuildosAgent } from './callee-resolution';
 import { hashAgentCallerToken } from './caller-auth';
 
@@ -153,7 +154,10 @@ export class CallerProvisioningService {
 
 	async provisionForUser(
 		userId: string,
-		body: unknown
+		body: unknown,
+		options?: {
+			baseUrl?: string;
+		}
 	): Promise<BuildosAgentCallerProvisionResponse> {
 		const request = parseProvisionRequest(body);
 		const buildosAgent = await ensureUserBuildosAgent(this.admin, userId);
@@ -195,6 +199,15 @@ export class CallerProvisioningService {
 		}
 
 		const caller = data as ExternalAgentCallerRecord;
+		const bootstrap =
+			typeof options?.baseUrl === 'string' && options.baseUrl.trim()
+				? await new AgentCallBootstrapLinkService(this.admin).createBootstrap({
+						userId,
+						baseUrl: options.baseUrl,
+						caller,
+						bearerToken: token
+					})
+				: undefined;
 
 		return {
 			buildos_agent: {
@@ -206,7 +219,8 @@ export class CallerProvisioningService {
 			credentials: {
 				auth_scheme: 'Bearer',
 				bearer_token: token
-			}
+			},
+			bootstrap
 		};
 	}
 

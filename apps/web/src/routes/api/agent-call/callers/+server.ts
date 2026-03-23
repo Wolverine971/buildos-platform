@@ -60,7 +60,11 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 
 	try {
 		const service = new CallerProvisioningService();
-		return json(await service.provisionForUser(user.id, body));
+		return json(
+			await service.provisionForUser(user.id, body, {
+				baseUrl: new URL(request.url).origin
+			})
+		);
 	} catch (error) {
 		const { status, body: errorBody } = toErrorResponse(error);
 		if (status >= 500) {

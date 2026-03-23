@@ -1,6 +1,10 @@
 // apps/web/src/lib/server/agent-call/caller-provisioning.service.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ExternalAgentCallerRecord, UserBuildosAgentRecord } from '@buildos/shared-types';
+import type {
+	AgentCallBootstrapLinkRecord,
+	ExternalAgentCallerRecord,
+	UserBuildosAgentRecord
+} from '@buildos/shared-types';
 
 const ensureUserBuildosAgentMock = vi.fn();
 const ensureActorIdMock = vi.fn();
@@ -22,6 +26,7 @@ vi.mock('./caller-auth', () => ({
 
 type State = {
 	callerRows: ExternalAgentCallerRecord[];
+	bootstrapRows: AgentCallBootstrapLinkRecord[];
 };
 
 class ExternalAgentCallersQueryBuilderMock {
@@ -132,11 +137,114 @@ class ExternalAgentCallersQueryBuilderMock {
 	}
 }
 
+class AgentCallBootstrapLinksQueryBuilderMock {
+	private action: 'select' | 'insert' | 'update' | 'delete' | null = null;
+	private filters = new Map<string, unknown>();
+	private insertPayload: Record<string, unknown> | null = null;
+	private updatePayload: Record<string, unknown> | null = null;
+
+	constructor(private readonly state: State) {}
+
+	select() {
+		if (!this.action) {
+			this.action = 'select';
+		}
+
+		return this;
+	}
+
+	insert(payload: Record<string, unknown>) {
+		this.action = 'insert';
+		this.insertPayload = payload;
+		return this;
+	}
+
+	update(payload: Record<string, unknown>) {
+		this.action = 'update';
+		this.updatePayload = payload;
+		return this;
+	}
+
+	delete() {
+		this.action = 'delete';
+		return this;
+	}
+
+	eq(field: string, value: unknown) {
+		this.filters.set(field, value);
+		return this;
+	}
+
+	maybeSingle() {
+		if (this.action === 'select') {
+			const row =
+				this.state.bootstrapRows.find((entry) =>
+					Array.from(this.filters.entries()).every(
+						([field, value]) =>
+							entry[field as keyof AgentCallBootstrapLinkRecord] === value
+					)
+				) ?? null;
+
+			return Promise.resolve({ data: row, error: null });
+		}
+
+		return Promise.resolve({ data: null, error: null });
+	}
+
+	then(resolve: (value: { data: unknown; error: null }) => unknown) {
+		if (this.action === 'delete') {
+			this.state.bootstrapRows = this.state.bootstrapRows.filter(
+				(entry) =>
+					!Array.from(this.filters.entries()).every(
+						([field, value]) =>
+							entry[field as keyof AgentCallBootstrapLinkRecord] === value
+					)
+			);
+
+			return Promise.resolve(resolve({ data: null, error: null }));
+		}
+
+		if (this.action === 'insert' && this.insertPayload) {
+			this.state.bootstrapRows.push({
+				id: '99999999-9999-9999-9999-999999999999',
+				user_id: String(this.insertPayload.user_id),
+				external_agent_caller_id: String(this.insertPayload.external_agent_caller_id),
+				setup_token_hash: String(this.insertPayload.setup_token_hash),
+				payload: (this.insertPayload.payload ?? {}) as Record<string, unknown>,
+				expires_at: String(this.insertPayload.expires_at),
+				last_accessed_at: null,
+				created_at: '2026-04-28T00:00:00.000Z',
+				updated_at: '2026-04-28T00:00:00.000Z'
+			});
+
+			return Promise.resolve(resolve({ data: null, error: null }));
+		}
+
+		if (this.action === 'update' && this.updatePayload) {
+			const row = this.state.bootstrapRows.find((entry) =>
+				Array.from(this.filters.entries()).every(
+					([field, value]) => entry[field as keyof AgentCallBootstrapLinkRecord] === value
+				)
+			);
+
+			if (row) {
+				Object.assign(row, this.updatePayload);
+			}
+		}
+
+		return Promise.resolve(resolve({ data: null, error: null }));
+	}
+}
+
 function createAdminMock(state: State) {
 	return {
 		from: vi.fn((table: string) => {
 			if (table === 'external_agent_callers') {
 				return new ExternalAgentCallersQueryBuilderMock(state);
+			}
+
+			if (table === 'agent_call_bootstrap_links') {
+				return new AgentCallBootstrapLinksQueryBuilderMock(state);
 			}
 
 			throw new Error(`Unexpected table ${table}`);
@@ -175,7 +283,7 @@ describe('CallerProvisioningService', () => {
 	});
 
 	it('provisions a trusted caller and returns bearer credentials', async () => {
-		const state: State = { callerRows: [] };
+		const state: State = { callerRows: [], bootstrapRows: [] };
 		const { CallerProvisioningService } = await import('./caller-provisioning.service');
 		const service = new CallerProvisioningService(createAdminMock(state));
 
@@ -201,7 +309,7 @@ describe('CallerProvisioningService', () => {
 	});
 
 	it('rejects provisioning when allowed projects are outside the user workspace', async () => {
-		const state: State = { callerRows: [] };
+		const state: State = { callerRows: [], bootstrapRows: [] };
 		const { CallerProvisioningService, CallerProvisioningError } = await import(
 			'./caller-provisioning.service'
 		);
@@ -217,7 +325,7 @@ describe('CallerProvisioningService', () => {
 	});
 
 	it('rejects provisioning when provider is not a safe slug', async () => {
-		const state: State = { callerRows: [] };
+		const state: State = { callerRows: [], bootstrapRows: [] };
 		const { CallerProvisioningService, CallerProvisioningError } = await import(
 			'./caller-provisioning.service'
 		);
@@ -250,7 +358,8 @@ describe('CallerProvisioningService', () => {
 					created_at: '2026-04-28T00:00:00.000Z',
 					updated_at: '2026-04-28T00:00:00.000Z'
 				}
-			]
+			],
+			bootstrapRows: []
 		};
 		const { CallerProvisioningService } = await import('./caller-provisioning.service');
 		const service = new CallerProvisioningService(createAdminMock(state));
@@ -291,7 +400,8 @@ describe('CallerProvisioningService', () => {
 					created_at: '2026-04-28T00:00:00.000Z',
 					updated_at: '2026-04-28T00:00:00.000Z'
 				}
-			]
+			],
+			bootstrapRows: []
 		};
 		const { CallerProvisioningService } = await import('./caller-provisioning.service');
 		const service = new CallerProvisioningService(createAdminMock(state));
@@ -303,5 +413,34 @@ describe('CallerProvisioningService', () => {
 
 		expect(response.caller.status).toBe('revoked');
 		expect(state.callerRows[0]?.status).toBe('revoked');
+	});
+
+	it('returns a bootstrap setup prompt and URL when a base URL is provided', async () => {
+		const state: State = { callerRows: [], bootstrapRows: [] };
+		const { CallerProvisioningService } = await import('./caller-provisioning.service');
+		const service = new CallerProvisioningService(createAdminMock(state));
+
+		const response = await service.provisionForUser(
+			'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			{
+				provider: 'openclaw',
+				caller_key: 'openclaw:workspace:test',
+				metadata: { installation_name: 'Test Workspace' }
+			},
+			{
+				baseUrl: 'https://build-os.com'
+			}
+		);
+
+		expect(response.bootstrap?.instructions_url).toMatch(
+			/^https:\/\/build-os\.com\/api\/agent-call\/bootstrap\/bocs_/
+		);
+		expect(response.bootstrap?.paste_prompt).toContain(
+			response.bootstrap?.instructions_url ?? ''
+		);
+		expect(state.bootstrapRows).toHaveLength(1);
+		expect(state.bootstrapRows[0]?.payload).toMatchObject({
+			bearer_token: response.credentials.bearer_token
+		});
 	});
 });

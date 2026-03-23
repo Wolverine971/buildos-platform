@@ -1,9 +1,5 @@
 // packages/shared-types/src/agent-call.types.ts
-export type BuildosAgentCallMethod =
-	| 'call.dial'
-	| 'tools/list'
-	| 'tools/call'
-	| 'call.hangup';
+export type BuildosAgentCallMethod = 'call.dial' | 'tools/list' | 'tools/call' | 'call.hangup';
 
 export type UserBuildosAgentStatus = 'active' | 'paused' | 'revoked';
 export type ExternalAgentCallerStatus = 'trusted' | 'pending' | 'revoked';
@@ -155,6 +151,12 @@ export interface BuildosAgentAvailableProject {
 	description: string | null;
 }
 
+export interface BuildosAgentCallerBootstrapSummary {
+	instructions_url: string;
+	expires_at: string;
+	paste_prompt: string;
+}
+
 export interface BuildosAgentCallerProvisionResponse {
 	buildos_agent: BuildosAgentIdentitySummary;
 	caller: BuildosAgentCallerSummary;
@@ -162,6 +164,7 @@ export interface BuildosAgentCallerProvisionResponse {
 		auth_scheme: 'Bearer';
 		bearer_token: string;
 	};
+	bootstrap?: BuildosAgentCallerBootstrapSummary;
 }
 
 export interface BuildosAgentCallerListResponse {
@@ -176,6 +179,31 @@ export interface BuildosAgentCallerRevokeRequest {
 
 export interface BuildosAgentCallerRevokeResponse {
 	caller: BuildosAgentCallerSummary;
+}
+
+export interface BuildosAgentBootstrapDocument {
+	provider: string;
+	instructions_version: 'openclaw_bootstrap_v1';
+	expires_at: string;
+	summary: string;
+	buildos: {
+		base_url: string;
+		dial_url: string;
+		auth_scheme: 'Bearer';
+		agent_token: string;
+		callee_handle: string;
+		caller_key: string;
+	};
+	openclaw: {
+		env_block: string;
+		storage_targets: string[];
+		setup_steps: string[];
+		follow_up_prompt: string;
+	};
+	gateway: {
+		first_method: 'call.dial';
+		next_methods: Array<'tools/list' | 'tools/call' | 'call.hangup'>;
+	};
 }
 
 export interface UserBuildosAgentRecord {
@@ -217,5 +245,17 @@ export interface AgentCallSessionRecord {
 	started_at: string;
 	ended_at: string | null;
 	metadata: Record<string, unknown>;
+	updated_at: string;
+}
+
+export interface AgentCallBootstrapLinkRecord {
+	id: string;
+	user_id: string;
+	external_agent_caller_id: string;
+	setup_token_hash: string;
+	payload: Record<string, unknown>;
+	expires_at: string;
+	last_accessed_at: string | null;
+	created_at: string;
 	updated_at: string;
 }

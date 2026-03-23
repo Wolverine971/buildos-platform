@@ -77,6 +77,57 @@ export type Database = {
           },
         ]
       }
+      agent_call_bootstrap_links: {
+        Row: {
+          created_at: string
+          expires_at: string
+          external_agent_caller_id: string
+          id: string
+          last_accessed_at: string | null
+          payload: Json
+          setup_token_hash: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          external_agent_caller_id: string
+          id?: string
+          last_accessed_at?: string | null
+          payload?: Json
+          setup_token_hash: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          external_agent_caller_id?: string
+          id?: string
+          last_accessed_at?: string | null
+          payload?: Json
+          setup_token_hash?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_call_bootstrap_links_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_call_bootstrap_links_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       agent_call_sessions: {
         Row: {
           direction: string

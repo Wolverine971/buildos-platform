@@ -245,6 +245,16 @@
 		].join('\n');
 	}
 
+	function openClawBootstrapPrompt(
+		provisioned: BuildosAgentCallerProvisionResponse
+	): string | null {
+		return provisioned.bootstrap?.paste_prompt ?? null;
+	}
+
+	function openClawBootstrapUrl(provisioned: BuildosAgentCallerProvisionResponse): string | null {
+		return provisioned.bootstrap?.instructions_url ?? null;
+	}
+
 	async function provisionCaller(existingCaller?: BuildosAgentCallerSummary) {
 		if (saving) return;
 
@@ -747,6 +757,69 @@
 							>{openClawEnvSnippet(latestProvisioned)}</code
 						></pre>
 				</div>
+
+				{#if openClawBootstrapUrl(latestProvisioned)}
+					<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+						<div class="flex items-center justify-between">
+							<div class="text-xs uppercase tracking-wider text-muted-foreground">
+								OpenClaw Setup URL
+							</div>
+							<Button
+								variant="ghost"
+								size="sm"
+								icon={copiedId === 'bootstrap-url' ? CircleCheck : Copy}
+								onclick={() =>
+									copyToClipboard(
+										'bootstrap-url',
+										openClawBootstrapUrl(latestProvisioned) ?? '',
+										'Setup URL copied'
+									)}
+							>
+								{copiedId === 'bootstrap-url' ? 'Copied' : 'Copy'}
+							</Button>
+						</div>
+						<p class="text-xs text-muted-foreground">
+							Paste the prompt below into OpenClaw. It will fetch this URL to get the
+							next-step BuildOS instructions and secure config values.
+						</p>
+						<pre
+							class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground"><code
+								>{openClawBootstrapUrl(latestProvisioned)}</code
+							></pre>
+					</div>
+				{/if}
+
+				{#if openClawBootstrapPrompt(latestProvisioned)}
+					<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+						<div class="flex items-center justify-between">
+							<div class="text-xs uppercase tracking-wider text-muted-foreground">
+								Paste Into OpenClaw
+							</div>
+							<Button
+								variant="ghost"
+								size="sm"
+								icon={copiedId === 'bootstrap-prompt' ? CircleCheck : Copy}
+								onclick={() =>
+									copyToClipboard(
+										'bootstrap-prompt',
+										openClawBootstrapPrompt(latestProvisioned) ?? '',
+										'OpenClaw prompt copied'
+									)}
+							>
+								{copiedId === 'bootstrap-prompt' ? 'Copied' : 'Copy'}
+							</Button>
+						</div>
+						<p class="text-xs text-muted-foreground">
+							This is the non-technical handoff prompt for OpenClaw. It tells the
+							agent to fetch the setup URL, store the config safely, and then connect
+							to BuildOS.
+						</p>
+						<pre
+							class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+								>{openClawBootstrapPrompt(latestProvisioned)}</code
+							></pre>
+					</div>
+				{/if}
 			</div>
 		{/if}
 	{/snippet}
