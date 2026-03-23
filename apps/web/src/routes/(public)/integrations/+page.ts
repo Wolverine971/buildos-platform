@@ -11,18 +11,19 @@ export const load = async () => {
 	return {
 		// Static page data - can be enhanced with dynamic content later
 		meta: {
-			title: 'BuildOS Integrations - Connect Your Tools',
+			title: 'BuildOS Integrations - OpenClaw Agent Bridge',
 			description:
-				'Integrate with BuildOS to access AI-powered project insights, automate workflows, and sync with your favorite tools.',
+				'Connect OpenClaw to BuildOS with user-scoped agent keys, accepted call sessions, and scoped read-only tools.',
 			keywords: [
 				'BuildOS integrations',
-				'API',
-				'webhooks',
-				'project management API',
+				'OpenClaw',
+				'agent key',
 				'AI agents',
-				'productivity API',
-				'real-time updates',
-				'OAuth integration'
+				'BuildOS API',
+				'external agent auth',
+				'agent call gateway',
+				'project management API',
+				'read-only agent tools'
 			]
 		}
 	};

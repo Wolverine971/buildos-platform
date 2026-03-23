@@ -3,16 +3,7 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
-	import {
-		Bot,
-		CircleCheck,
-		Copy,
-		Key,
-		RefreshCw,
-		Shield,
-		Trash2,
-		ExternalLink
-	} from 'lucide-svelte';
+	import { CircleCheck, Copy, Key, Plus, RefreshCw, Trash2, ExternalLink } from 'lucide-svelte';
 	import type {
 		BuildosAgentAvailableProject,
 		BuildosAgentCallerListResponse,
@@ -24,6 +15,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -47,10 +39,19 @@
 	let pendingRevokeCaller = $state<BuildosAgentCallerSummary | null>(null);
 	let revokingCallerId = $state<string | null>(null);
 
+	// Modal state
+	let showGenerateModal = $state(false);
+	let showKeyCreatedModal = $state(false);
+
+	// Form state
 	let providerMode = $state<ProviderMode>('openclaw');
 	let customProvider = $state('');
 	let installationName = $state('');
 	let selectedProjectIds = $state<string[]>([]);
+
+	let allProjectsSelected = $derived(
+		availableProjects.length > 0 && selectedProjectIds.length === availableProjects.length
+	);
 
 	onMount(() => {
 		void loadCallers();
@@ -156,17 +157,17 @@
 
 	function scopeLabel(caller: BuildosAgentCallerSummary): string {
 		if (!caller.allowed_project_ids || caller.allowed_project_ids.length === 0) {
-			return 'All visible projects';
+			return 'All projects';
 		}
 
 		if (caller.allowed_project_ids.length === 1) {
 			const project = availableProjects.find(
 				(entry) => entry.id === caller.allowed_project_ids?.[0]
 			);
-			return project?.name || '1 selected project';
+			return project?.name || '1 project';
 		}
 
-		return `${caller.allowed_project_ids.length} selected projects`;
+		return `${caller.allowed_project_ids.length} projects`;
 	}
 
 	function toggleProject(projectId: string) {
@@ -178,12 +179,24 @@
 		selectedProjectIds = [...selectedProjectIds, projectId];
 	}
 
+	function toggleAllProjects() {
+		if (allProjectsSelected) {
+			selectedProjectIds = [];
+		} else {
+			selectedProjectIds = availableProjects.map((p) => p.id);
+		}
+	}
+
 	function clearForm() {
 		installationName = '';
 		selectedProjectIds = [];
-		if (providerMode === 'custom') {
-			customProvider = '';
-		}
+		providerMode = 'openclaw';
+		customProvider = '';
+	}
+
+	function openGenerateModal() {
+		clearForm();
+		showGenerateModal = true;
 	}
 
 	async function loadCallers() {
@@ -230,19 +243,6 @@
 			`BUILDOS_CALLEE_HANDLE=${provisioned.buildos_agent.handle}`,
 			`BUILDOS_CALLER_KEY=${provisioned.caller.caller_key}`
 		].join('\n');
-	}
-
-	function previewCallerKey(): string | null {
-		if (!installationName.trim()) {
-			return null;
-		}
-
-		const provider = currentProvider();
-		if (!provider || !isValidProvider(provider)) {
-			return null;
-		}
-
-		return buildCallerKey(provider, installationName);
 	}
 
 	async function provisionCaller(existingCaller?: BuildosAgentCallerSummary) {
@@ -307,7 +307,8 @@
 			onsuccess?.({ message });
 
 			if (!existingCaller) {
-				clearForm();
+				showGenerateModal = false;
+				showKeyCreatedModal = true;
 			}
 		} catch (error) {
 			const message =
@@ -368,364 +369,110 @@
 	}
 </script>
 
-<div class="space-y-6">
+<div class="space-y-4">
+	<!-- Header -->
 	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="p-4 sm:p-6 space-y-4">
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-				<div class="space-y-2">
-					<div class="flex items-center gap-2">
-						<div class="p-2 rounded-lg bg-accent/10 text-accent">
-							<Key class="w-5 h-5" />
-						</div>
-						<div>
-							<h2 class="text-lg font-semibold text-foreground">
-								External Agent Keys
-							</h2>
-							<p class="text-sm text-muted-foreground">
-								Create a BuildOS key for OpenClaw or another registered agent
-								installation.
-							</p>
-						</div>
-					</div>
-					<p class="text-sm text-muted-foreground max-w-3xl">
-						Each key identifies one external caller. The secret is shown once, stored
-						hashed in BuildOS, and can be scoped to specific projects.
-					</p>
-				</div>
-
-				<Button
-					variant="outline"
-					size="sm"
-					icon={RefreshCw}
-					onclick={loadCallers}
-					disabled={loading}
-				>
-					Refresh
-				</Button>
-			</div>
-
-			<div class="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
-				<div class="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-					<div class="flex items-center gap-2 text-sm font-semibold text-foreground">
-						<Shield class="w-4 h-4 text-accent" />
-						User BuildOS Agent
-					</div>
-					{#if buildosAgent}
-						<div class="rounded-lg border border-border bg-card p-3 shadow-ink-inner">
-							<div
-								class="text-xs uppercase tracking-wider text-muted-foreground mb-2"
-							>
-								Callee Handle
-							</div>
-							<div
-								class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-							>
-								<code class="text-sm text-foreground break-all"
-									>{buildosAgent.handle}</code
-								>
-								<Button
-									variant="outline"
-									size="sm"
-									icon={copiedId === 'callee-handle' ? CircleCheck : Copy}
-									onclick={() =>
-										copyToClipboard(
-											'callee-handle',
-											buildosAgent.handle,
-											'BuildOS callee handle copied'
-										)}
-								>
-									{copiedId === 'callee-handle' ? 'Copied' : 'Copy'}
-								</Button>
-							</div>
-						</div>
-					{:else if loading}
-						<p class="text-sm text-muted-foreground">
-							Loading BuildOS agent identity...
-						</p>
-					{:else}
-						<p class="text-sm text-muted-foreground">
-							BuildOS agent handle unavailable.
-						</p>
-					{/if}
-				</div>
-
-				<div class="rounded-lg border border-border bg-accent/5 p-4 space-y-3">
-					<div class="flex items-center gap-2 text-sm font-semibold text-foreground">
-						<Bot class="w-4 h-4 text-accent" />
-						OpenClaw Setup
-					</div>
-					<p class="text-sm text-muted-foreground">
-						Generate a key, paste it into your OpenClaw plugin or env config, then let
-						the plugin call BuildOS with bearer auth.
-					</p>
-					<a
-						href="/integrations"
-						class="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
-					>
-						View integration docs
-						<ExternalLink class="w-4 h-4" />
-					</a>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="p-4 sm:p-6 space-y-5">
-			<div>
-				<h3 class="text-lg font-semibold text-foreground">Generate a Key</h3>
-				<p class="text-sm text-muted-foreground mt-1">
-					Use a human-readable installation name. Reusing the same installation name
-					rotates the existing key for that caller identity.
-				</p>
-			</div>
-
-			<div class="grid gap-4 md:grid-cols-2">
-				<FormField
-					label="Agent Type"
-					labelFor="agent-provider-mode"
-					hint="OpenClaw is the default integration path."
-				>
-					<Select id="agent-provider-mode" bind:value={providerMode}>
-						<option value="openclaw">OpenClaw</option>
-						<option value="custom">Custom Agent</option>
-					</Select>
-				</FormField>
-
-				<FormField
-					label="Installation Name"
-					labelFor="agent-installation-name"
-					required={true}
-					hint="Example: Research Workspace or OpenClaw Main."
-				>
-					<TextInput
-						id="agent-installation-name"
-						bind:value={installationName}
-						placeholder="OpenClaw Main"
-					/>
-				</FormField>
-			</div>
-
-			{#if providerMode === 'custom'}
-				<FormField
-					label="Provider Key"
-					labelFor="agent-custom-provider"
-					required={true}
-					hint="Lowercase provider identifier used for BuildOS routing."
-				>
-					<TextInput
-						id="agent-custom-provider"
-						bind:value={customProvider}
-						placeholder="custom-agent"
-					/>
-				</FormField>
-			{/if}
-
-			<div class="space-y-3">
-				<div class="flex items-center justify-between gap-3">
-					<div>
-						<h4 class="text-sm font-semibold text-foreground uppercase tracking-wider">
-							Allowed Projects
-						</h4>
-						<p class="text-sm text-muted-foreground">
-							Leave everything unchecked to allow all projects visible to you.
-						</p>
-					</div>
-					{#if selectedProjectIds.length > 0}
-						<Button variant="ghost" size="sm" onclick={() => (selectedProjectIds = [])}>
-							Clear Scope
-						</Button>
-					{/if}
-				</div>
-
-				{#if availableProjects.length === 0}
-					<div
-						class="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
-					>
-						No projects found yet. This key will cover your future visible projects
-						unless you scope it later.
-					</div>
-				{:else}
-					<div class="grid gap-3 md:grid-cols-2">
-						{#each availableProjects as project (project.id)}
-							<label
-								class="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 cursor-pointer hover:border-accent/40 transition-colors"
-							>
-								<input
-									type="checkbox"
-									class="mt-1 h-4 w-4 rounded border-border text-accent focus:ring-accent"
-									checked={selectedProjectIds.includes(project.id)}
-									onchange={() => toggleProject(project.id)}
-								/>
-								<div class="min-w-0">
-									<div class="text-sm font-medium text-foreground">
-										{project.name}
-									</div>
-									{#if project.description}
-										<p class="text-xs text-muted-foreground mt-1">
-											{project.description}
-										</p>
-									{/if}
-								</div>
-							</label>
-						{/each}
-					</div>
-				{/if}
-			</div>
-
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
-				<div class="text-xs text-muted-foreground">
-					Caller key preview:
-					<code class="text-foreground">
-						{#if previewCallerKey()}
-							{previewCallerKey()}
-						{:else}
-							generated after you choose a provider and installation name
-						{/if}
-					</code>
-				</div>
-				<Button
-					variant="primary"
-					size="md"
-					icon={Key}
-					loading={saving}
-					disabled={saving}
-					onclick={() => provisionCaller()}
-				>
-					Generate BuildOS Key
-				</Button>
-			</div>
-		</div>
-	</div>
-
-	{#if latestProvisioned}
-		<div class="bg-card rounded-lg shadow-ink border border-accent/30 tx tx-grain tx-weak">
-			<div class="p-4 sm:p-6 space-y-4">
-				<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-					<div>
-						<h3 class="text-lg font-semibold text-foreground">Key Created</h3>
-						<p class="text-sm text-muted-foreground">
-							This secret is shown once. Copy it into OpenClaw now.
-						</p>
-					</div>
-					<Badge variant="accent">One-Time Secret</Badge>
-				</div>
-
-				<div class="rounded-lg border border-border bg-background/70 p-4 space-y-3">
-					<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<div class="text-xs uppercase tracking-wider text-muted-foreground">
-								BuildOS Agent Key
-							</div>
-							<code class="text-sm text-foreground break-all">
-								{latestProvisioned.credentials.bearer_token}
-							</code>
-						</div>
-						<Button
-							variant="outline"
-							size="sm"
-							icon={copiedId === 'latest-token' ? CircleCheck : Copy}
-							onclick={() =>
-								copyToClipboard(
-									'latest-token',
-									latestProvisioned.credentials.bearer_token,
-									'BuildOS agent key copied'
-								)}
-						>
-							{copiedId === 'latest-token' ? 'Copied' : 'Copy Key'}
-						</Button>
-					</div>
-				</div>
-
-				<div class="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
-					<div class="flex items-center justify-between gap-3">
-						<div>
-							<div class="text-xs uppercase tracking-wider text-muted-foreground">
-								OpenClaw Env Snippet
-							</div>
-							<p class="text-sm text-muted-foreground">
-								Paste this into your OpenClaw plugin or secret configuration.
-							</p>
-						</div>
-						<Button
-							variant="outline"
-							size="sm"
-							icon={copiedId === 'env-snippet' ? CircleCheck : Copy}
-							onclick={() =>
-								copyToClipboard(
-									'env-snippet',
-									openClawEnvSnippet(latestProvisioned),
-									'OpenClaw configuration copied'
-								)}
-						>
-							{copiedId === 'env-snippet' ? 'Copied' : 'Copy Config'}
-						</Button>
-					</div>
-					<pre
-						class="overflow-x-auto rounded-lg border border-border bg-card p-3 text-xs text-foreground shadow-ink-inner"><code
-							>{openClawEnvSnippet(latestProvisioned)}</code
-						></pre>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="p-4 sm:p-6 space-y-4">
-			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+		<div class="p-4 sm:p-6">
+			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h3 class="text-lg font-semibold text-foreground">Registered Callers</h3>
-					<p class="text-sm text-muted-foreground">
-						Rotate keys without changing caller identity, or revoke callers you no
-						longer trust.
+					<h2 class="text-lg font-semibold text-foreground">Agent Keys</h2>
+					<p class="text-sm text-muted-foreground mt-1">
+						Manage API keys for external agents like OpenClaw to access your BuildOS
+						data.
 					</p>
 				</div>
-				<Badge variant="info"
-					>{callers.length} caller{callers.length === 1 ? '' : 's'}</Badge
+				<div class="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						icon={RefreshCw}
+						onclick={loadCallers}
+						disabled={loading}
+					>
+						Refresh
+					</Button>
+					<Button variant="primary" size="sm" icon={Plus} onclick={openGenerateModal}>
+						Generate Key
+					</Button>
+				</div>
+			</div>
+
+			{#if buildosAgent}
+				<div
+					class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-border bg-muted/30 px-3 py-2"
 				>
+					<div class="flex items-center gap-2 text-sm text-muted-foreground">
+						<span class="font-medium text-foreground">Your agent handle:</span>
+						<code class="text-xs">{buildosAgent.handle}</code>
+					</div>
+					<Button
+						variant="ghost"
+						size="sm"
+						icon={copiedId === 'callee-handle' ? CircleCheck : Copy}
+						onclick={() =>
+							copyToClipboard(
+								'callee-handle',
+								buildosAgent.handle,
+								'Agent handle copied'
+							)}
+					>
+						{copiedId === 'callee-handle' ? 'Copied' : 'Copy'}
+					</Button>
+				</div>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Registered Callers -->
+	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
+		<div class="p-4 sm:p-6 space-y-4">
+			<div class="flex items-center justify-between">
+				<h3 class="text-base font-semibold text-foreground">Registered Keys</h3>
+				<Badge variant="info">
+					{callers.length} key{callers.length === 1 ? '' : 's'}
+				</Badge>
 			</div>
 
 			{#if loading}
 				<div
-					class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground"
+					class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground text-center"
 				>
-					Loading external callers...
+					Loading...
 				</div>
 			{:else if callers.length === 0}
-				<div
-					class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground"
-				>
-					No external callers registered yet. Generate your first BuildOS key above.
+				<div class="rounded-lg border border-dashed border-border p-6 text-center">
+					<Key class="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+					<p class="text-sm text-muted-foreground">
+						No keys yet. Generate your first key to connect an external agent.
+					</p>
 				</div>
 			{:else}
 				<div class="space-y-3">
 					{#each callers as caller (caller.id)}
-						<div class="rounded-lg border border-border bg-muted/20 p-4 space-y-4">
+						<div class="rounded-lg border border-border bg-muted/20 p-4">
 							<div
-								class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+								class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 							>
-								<div class="space-y-2 min-w-0">
+								<div class="space-y-1.5 min-w-0">
 									<div class="flex flex-wrap items-center gap-2">
-										<h4 class="text-base font-semibold text-foreground">
+										<h4 class="text-sm font-semibold text-foreground">
 											{installationDisplayName(caller)}
 										</h4>
 										<Badge variant={statusVariant(caller.status)}>
 											{caller.status}
 										</Badge>
-										<Badge variant="default"
-											>{displayProvider(caller.provider)}</Badge
-										>
+										<Badge variant="default">
+											{displayProvider(caller.provider)}
+										</Badge>
 									</div>
-									<div class="text-sm text-muted-foreground space-y-1">
+									<div class="text-xs text-muted-foreground space-y-0.5">
 										<p>
-											<span class="font-medium text-foreground"
-												>Caller key:</span
-											> <code>{caller.caller_key}</code>
+											<span class="font-medium text-foreground">Key:</span>
+											<code>{caller.caller_key}</code>
 										</p>
 										<p>
-											<span class="font-medium text-foreground"
-												>Token prefix:</span
-											> <code>{caller.token_prefix}</code>
+											<span class="font-medium text-foreground">Prefix:</span>
+											<code>{caller.token_prefix}</code>
 										</p>
 										<p>
 											<span class="font-medium text-foreground">Scope:</span>
@@ -740,7 +487,7 @@
 									</div>
 								</div>
 
-								<div class="flex flex-wrap gap-2">
+								<div class="flex flex-wrap gap-2 flex-shrink-0">
 									<Button
 										variant="outline"
 										size="sm"
@@ -749,9 +496,7 @@
 										disabled={saving}
 										onclick={() => provisionCaller(caller)}
 									>
-										{caller.status === 'revoked'
-											? 'Generate New Key'
-											: 'Rotate Key'}
+										{caller.status === 'revoked' ? 'New Key' : 'Rotate'}
 									</Button>
 									{#if caller.status !== 'revoked'}
 										<Button
@@ -768,13 +513,13 @@
 							</div>
 
 							{#if caller.allowed_project_ids && caller.allowed_project_ids.length > 0}
-								<div class="rounded-lg border border-border bg-card p-3">
+								<div class="mt-3 pt-3 border-t border-border">
 									<div
-										class="text-xs uppercase tracking-wider text-muted-foreground mb-2"
+										class="text-xs uppercase tracking-wider text-muted-foreground mb-1.5"
 									>
 										Scoped Projects
 									</div>
-									<div class="flex flex-wrap gap-2">
+									<div class="flex flex-wrap gap-1.5">
 										{#each caller.allowed_project_ids as projectId (projectId)}
 											<Badge variant="accent">{projectName(projectId)}</Badge>
 										{/each}
@@ -785,13 +530,240 @@
 					{/each}
 				</div>
 			{/if}
+
+			<div class="pt-2 border-t border-border">
+				<a
+					href="/integrations"
+					class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-accent transition-colors"
+				>
+					Integration docs
+					<ExternalLink class="w-3.5 h-3.5" />
+				</a>
+			</div>
 		</div>
 	</div>
 </div>
 
+<!-- Generate Key Modal -->
+<Modal
+	isOpen={showGenerateModal}
+	onClose={() => (showGenerateModal = false)}
+	title="Generate BuildOS Key"
+	size="md"
+>
+	{#snippet children()}
+		<div class="p-4 sm:p-6 space-y-5">
+			<div class="grid gap-4 sm:grid-cols-2">
+				<FormField
+					label="Agent Type"
+					labelFor="agent-provider-mode"
+					hint="OpenClaw is the default integration."
+				>
+					<Select id="agent-provider-mode" bind:value={providerMode}>
+						<option value="openclaw">OpenClaw</option>
+						<option value="custom">Custom Agent</option>
+					</Select>
+				</FormField>
+
+				<FormField
+					label="Installation Name"
+					labelFor="agent-installation-name"
+					required={true}
+					hint="e.g. Research Workspace"
+				>
+					<TextInput
+						id="agent-installation-name"
+						bind:value={installationName}
+						placeholder="OpenClaw Main"
+					/>
+				</FormField>
+			</div>
+
+			{#if providerMode === 'custom'}
+				<FormField
+					label="Provider Key"
+					labelFor="agent-custom-provider"
+					required={true}
+					hint="Lowercase identifier for routing."
+				>
+					<TextInput
+						id="agent-custom-provider"
+						bind:value={customProvider}
+						placeholder="custom-agent"
+					/>
+				</FormField>
+			{/if}
+
+			<div class="space-y-2">
+				<div class="flex items-center justify-between gap-3">
+					<h4 class="text-sm font-semibold text-foreground">Allowed Projects</h4>
+					<div class="flex items-center gap-2">
+						{#if availableProjects.length > 0}
+							<Button variant="ghost" size="sm" onclick={toggleAllProjects}>
+								{allProjectsSelected ? 'Deselect All' : 'Select All'}
+							</Button>
+						{/if}
+						{#if selectedProjectIds.length > 0}
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => (selectedProjectIds = [])}
+							>
+								Clear
+							</Button>
+						{/if}
+					</div>
+				</div>
+				<p class="text-xs text-muted-foreground">
+					Leave unchecked to allow access to all your projects.
+				</p>
+
+				{#if availableProjects.length === 0}
+					<div
+						class="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
+					>
+						No projects found. The key will cover future projects.
+					</div>
+				{:else}
+					<div
+						class="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto rounded-lg border border-border p-2"
+					>
+						{#each availableProjects as project (project.id)}
+							<label
+								class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+							>
+								<input
+									type="checkbox"
+									class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+									checked={selectedProjectIds.includes(project.id)}
+									onchange={() => toggleProject(project.id)}
+								/>
+								<span class="text-sm text-foreground truncate">
+									{project.name}
+								</span>
+							</label>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/snippet}
+
+	{#snippet footer()}
+		<div
+			class="flex flex-col sm:flex-row gap-3 sm:justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
+		>
+			<Button
+				variant="secondary"
+				size="md"
+				onclick={() => (showGenerateModal = false)}
+				disabled={saving}
+				class="w-full sm:w-auto"
+			>
+				Cancel
+			</Button>
+			<Button
+				variant="primary"
+				size="md"
+				icon={Key}
+				loading={saving}
+				disabled={saving || !installationName.trim()}
+				onclick={() => provisionCaller()}
+				class="w-full sm:w-auto"
+			>
+				Generate Key
+			</Button>
+		</div>
+	{/snippet}
+</Modal>
+
+<!-- Key Created Modal -->
+<Modal
+	isOpen={showKeyCreatedModal}
+	onClose={() => (showKeyCreatedModal = false)}
+	title="Key Generated"
+	size="md"
+>
+	{#snippet children()}
+		{#if latestProvisioned}
+			<div class="p-4 sm:p-6 space-y-4">
+				<div class="flex items-start gap-3">
+					<div class="p-1.5 rounded-full bg-emerald-500/10">
+						<CircleCheck class="w-5 h-5 text-emerald-500" />
+					</div>
+					<div>
+						<p class="text-sm font-medium text-foreground">Your new key is ready.</p>
+						<p class="text-xs text-muted-foreground mt-0.5">
+							Copy it now — this secret is shown only once.
+						</p>
+					</div>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+					<div class="text-xs uppercase tracking-wider text-muted-foreground">
+						BuildOS Agent Key
+					</div>
+					<div class="flex items-center gap-2">
+						<code class="text-sm text-foreground break-all flex-1">
+							{latestProvisioned.credentials.bearer_token}
+						</code>
+						<Button
+							variant="outline"
+							size="sm"
+							icon={copiedId === 'latest-token' ? CircleCheck : Copy}
+							onclick={() =>
+								copyToClipboard(
+									'latest-token',
+									latestProvisioned.credentials.bearer_token,
+									'Key copied'
+								)}
+						>
+							{copiedId === 'latest-token' ? 'Copied' : 'Copy'}
+						</Button>
+					</div>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+					<div class="flex items-center justify-between">
+						<div class="text-xs uppercase tracking-wider text-muted-foreground">
+							Env Configuration
+						</div>
+						<Button
+							variant="ghost"
+							size="sm"
+							icon={copiedId === 'env-snippet' ? CircleCheck : Copy}
+							onclick={() =>
+								copyToClipboard(
+									'env-snippet',
+									openClawEnvSnippet(latestProvisioned),
+									'Configuration copied'
+								)}
+						>
+							{copiedId === 'env-snippet' ? 'Copied' : 'Copy'}
+						</Button>
+					</div>
+					<pre
+						class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground"><code
+							>{openClawEnvSnippet(latestProvisioned)}</code
+						></pre>
+				</div>
+			</div>
+		{/if}
+	{/snippet}
+
+	{#snippet footer()}
+		<div class="flex justify-end px-4 sm:px-6 py-3 sm:py-4 border-t border-border bg-muted/30">
+			<Button variant="primary" size="md" onclick={() => (showKeyCreatedModal = false)}>
+				Done
+			</Button>
+		</div>
+	{/snippet}
+</Modal>
+
+<!-- Revoke Confirmation -->
 <ConfirmationModal
 	isOpen={pendingRevokeCaller !== null}
-	title="Revoke BuildOS Agent Key?"
+	title="Revoke Agent Key?"
 	confirmText="Revoke Key"
 	cancelText="Keep Active"
 	confirmVariant="danger"
@@ -804,12 +776,11 @@
 	{#snippet content()}
 		<p class="text-sm text-muted-foreground">
 			{#if pendingRevokeCaller}
-				Revoke the BuildOS key for
+				Revoke the key for
 				<span class="font-semibold text-foreground">
 					{installationDisplayName(pendingRevokeCaller)}
-				</span>
-				? The caller will no longer be able to dial your BuildOS agent until you generate a new
-				key.
+				</span>? The caller won't be able to reach your BuildOS agent until you generate a
+				new key.
 			{/if}
 		</p>
 	{/snippet}
