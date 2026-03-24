@@ -5,10 +5,10 @@ import { supabase } from '../../lib/supabase';
 import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import type {
+	Json,
 	NextStepGenerationContext,
 	ProjectLogEntityType,
-	ProjectLogInsert,
-	Json
+	ProjectLogInsert
 } from '@buildos/shared-types';
 
 // =============================================================================

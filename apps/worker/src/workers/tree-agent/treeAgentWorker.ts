@@ -7,16 +7,16 @@ import { supabase } from '../../lib/supabase';
 import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import {
+	type TreeAgentContextType,
 	getDefaultToolNamesForContextType,
-	getToolGuideForContextType,
-	type TreeAgentContextType
+	getToolGuideForContextType
 } from './tools/treeAgentToolRegistry';
 import {
+	type TreeAgentToolCall,
+	type TreeAgentToolContext,
 	createTreeAgentToolContext,
 	executeTreeAgentToolCalls,
-	summarizeToolResults,
-	type TreeAgentToolCall,
-	type TreeAgentToolContext
+	summarizeToolResults
 } from './tools/treeAgentToolExecutor';
 
 const TREE_AGENT_SCRATCHPAD_TYPE = 'document.tree_agent.scratchpad';

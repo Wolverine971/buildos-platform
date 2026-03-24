@@ -78,14 +78,15 @@ Instagram sits between Twitter's casual brevity and LinkedIn's professional dept
 
 ## Content Pillars (What to Engage With)
 
-| Pillar                  | % Focus | Your Angle                                                                |
-| ----------------------- | ------- | ------------------------------------------------------------------------- |
-| **ADHD/Neurodivergent** | 35%     | "Complex tools slow you down. Simple + consistent > complex + abandoned." |
-| **Building in Public**  | 25%     | Solo founder, the grind, behind the scenes, real talk                     |
-| **AI + Productivity**   | 20%     | Clarity > time management. Context > prompts.                             |
-| **Context Engineering** | 20%     | "AI has amnesia. Context that compounds > intelligence that resets"       |
+| Pillar                          | % Focus | Your Angle                                                                |
+| ------------------------------- | ------- | ------------------------------------------------------------------------- |
+| **ADHD/Neurodivergent**         | 25%     | "Complex tools slow you down. Simple + consistent > complex + abandoned." |
+| **Solo Founders / Solopreneurs**| 25%     | Building journey, chaos of solo building, brain dump as natural workflow   |
+| **Building in Public**          | 20%     | The grind, behind the scenes, real talk, shipping fast                    |
+| **AI + Productivity / PKM**     | 15%     | Clarity > time management. Context > prompts. Second brain graveyard.    |
+| **Context Engineering**         | 15%     | "AI has amnesia. Context that compounds > intelligence that resets"       |
 
-> **Instagram skews ADHD/neurodivergent heavy.** This community is massive and highly engaged on Instagram. Lean into it more than on Twitter/LinkedIn.
+> **Instagram engagement is expanding beyond ADHD.** The ADHD community remains core, but solo founders, solopreneurs, and PKM/Notion audiences are equally engaged on Instagram. The "watering hole" strategy (engaging commenters on big accounts like @gregisenberg, @notionhq, @thefuturishere) is key for reaching these niches.
 
 ---
 
@@ -228,6 +229,6 @@ Instagram sits between Twitter's casual brevity and LinkedIn's professional dept
 
 ---
 
-_Last updated: 2026-03-12_
+_Last updated: 2026-03-24_
 _Full context: `docs/marketing/social-media/FOUNDER_CONTEXT.md`_
 _Used by: instagram-warmup.md_

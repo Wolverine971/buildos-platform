@@ -107,8 +107,11 @@ BuildOS's core audience. These creators have massive reach in the ADHD productiv
 | **Matt Jarman, PhD**  | Productivity Psychologist, ADHD Coach | "Fast change beats slow change for ADHD brains" - active poster           | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=matt%20jarman%20adhd) |
 | **Pina (ADHD Alien)** | ADHD Alien Comics, book 2026          | 185K Twitter, massive ADHD audience                                       | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=pina%20adhd%20alien)  |
 | **Chalene Johnson**   | Lifestyle/ADHD, 84K Twitter           | "ADHD is a superpower for entrepreneurs"                                  | [Search LinkedIn](https://www.linkedin.com/in/chalenejohnson/)                                   |
+| **Josh Coote**        | Founder, re-RIGHT neurodiversity platform | Building leading ND support platform, actively raising. ADHD audience overlap. | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=josh%20coote%20re-right) |
 
 > **FOUND:** Dani Donovan & Jessica McCabe are both active on LinkedIn. Also discovered Matt Jarman, PhD posting about ADHD productivity. Run `#ADHDproductivity` search for fresh engagement opportunities.
+>
+> **Added 2026-03-24:** Josh Coote (re-RIGHT) discovered via ADHD productivity search. Building neurodiversity support platform, currently fundraising. "The issue isn't effort - it's that systems create barriers." Directly overlapping audience with BuildOS.
 
 ### VCs Talking About AI
 
@@ -156,6 +159,15 @@ BuildOS's core audience. These creators have massive reach in the ADHD productiv
 | **Mem**       | AI note-taking             | Context positioning     |
 | **Rewind.ai** | Memory/context angle       | How they explain memory |
 | **Dust**      | Context engineering        | Technical positioning   |
+
+### AI Builders & Practitioners
+
+| Account        | Role                                       | Why Monitor                                            |
+| -------------- | ------------------------------------------ | ------------------------------------------------------ |
+| **Okkar Kyaw** | UX + Agentic AI + Full-Stack               | Small teams shipping, Claude Code/MCP content           |
+| **Bryan Lin**  | Product Owner & COO @ Aloa, Startup Co-Founder | AI adoption insights, workflow friction expertise     |
+
+> **Added 2026-03-24:** Okkar Kyaw and Bryan Lin discovered via LinkedIn search. Okkar posts about the exact tools DJ uses (MCP, Claude Skills). Bryan had a strong insight about AI tool adoption dying from workflow friction.
 
 ### Industry Accounts
 
@@ -410,11 +422,23 @@ LinkedIn has a growing community of solo founders and indie hackers. Action item
 ---
 
 _Document created: 2026-01-06_
-_Last updated: 2026-02-09 (Added Simon Willison to Tier 1, Mitchell Hashimoto to Tier 2)_
+_Last updated: 2026-03-24 (Added Josh Coote to Tier 2 ADHD, Okkar Kyaw + Bryan Lin to Tier 3)_
 
 ---
 
 ## Change Log
+
+### 2026-03-24 - New Accounts from LinkedIn Warmup
+
+**Source:** Daily LinkedIn warmup scan
+
+**Added:**
+
+- **Josh Coote** added to **Tier 2** (ADHD/Neurodivergent Community) - Founder of re-RIGHT, building a neurodiversity support platform. Currently raising. "The issue isn't effort - it's that systems create barriers." Directly overlapping audience with BuildOS ADHD target market.
+- **Okkar Kyaw** added to **Tier 3** (AI Builders & Practitioners - new category) - Posts about small teams shipping with Claude Code, MCP, Claude Skills. Solo builder mindset aligned with DJ's approach.
+- **Bryan Lin** added to **Tier 3** (AI Builders & Practitioners) - Product Owner & COO @ Aloa. Strong insight on AI tool adoption friction: "You're competing against muscle memory." Workflow design expertise.
+
+---
 
 ### 2026-02-09 - Tier Updates from LinkedIn Warmup
 

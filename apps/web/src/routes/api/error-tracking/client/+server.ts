@@ -14,8 +14,10 @@ type ClientErrorPayload = {
 	metadata?: unknown;
 };
 
-function normalizeKind(value: unknown): 'runtime' | 'fetch_network' {
-	return value === 'fetch_network' ? 'fetch_network' : 'runtime';
+function normalizeKind(value: unknown): 'runtime' | 'fetch_network' | 'fetch_http' {
+	if (value === 'fetch_network') return 'fetch_network';
+	if (value === 'fetch_http') return 'fetch_http';
+	return 'runtime';
 }
 
 function normalizeEndpoint(value: unknown): string {
@@ -88,7 +90,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		error: buildClientError(payload, kind),
 		endpoint,
 		method,
-		operation: kind === 'fetch_network' ? 'client_fetch_network' : 'client_runtime',
+		operation:
+			kind === 'fetch_network'
+				? 'client_fetch_network'
+				: kind === 'fetch_http'
+					? 'client_fetch_http'
+					: 'client_runtime',
 		userId: user?.id,
 		requestId: getRequestIdFromHeaders(request.headers),
 		severity: status !== undefined && status < 500 ? 'warning' : 'error',

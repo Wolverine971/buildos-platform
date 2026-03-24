@@ -188,6 +188,19 @@ app.post('/classify/ontology', async (req, res) => {
 		return res.status(202).json({ success: true });
 	} catch (error: any) {
 		console.error('[Ontology Classification] Failed:', error);
+		await logWorkerError(error, {
+			userId: req.body?.userId,
+			endpoint: '/classify/ontology',
+			httpMethod: 'POST',
+			operationType: 'ontology_classification',
+			errorType: 'api_error',
+			severity: 'error',
+			metadata: {
+				entityType: req.body?.entityType,
+				entityId: req.body?.entityId,
+				classificationSource: req.body?.classificationSource
+			}
+		});
 		return res.status(500).json({
 			error: 'Failed to classify ontology entity',
 			message: error.message
@@ -295,6 +308,20 @@ app.post('/queue/brief', async (req, res) => {
 		});
 	} catch (error: any) {
 		console.error('Error queueing brief:', error);
+		await logWorkerError(error, {
+			userId: req.body?.userId,
+			endpoint: '/queue/brief',
+			httpMethod: 'POST',
+			operationType: 'queue_brief',
+			errorType: 'api_error',
+			severity: 'error',
+			metadata: {
+				scheduledFor: req.body?.scheduledFor,
+				briefDate: req.body?.briefDate,
+				forceImmediate: req.body?.forceImmediate ?? false,
+				forceRegenerate: req.body?.forceRegenerate ?? false
+			}
+		});
 		return res.status(500).json({
 			error: 'Failed to queue brief generation',
 			message: error.message
@@ -346,6 +373,17 @@ app.post('/queue/onboarding', async (req, res) => {
 		});
 	} catch (error: any) {
 		console.error('Error queueing onboarding analysis:', error);
+		await logWorkerError(error, {
+			userId: req.body?.userId,
+			endpoint: '/queue/onboarding',
+			httpMethod: 'POST',
+			operationType: 'queue_onboarding_analysis',
+			errorType: 'api_error',
+			severity: 'error',
+			metadata: {
+				forceRegenerate: req.body?.options?.forceRegenerate ?? false
+			}
+		});
 		return res.status(500).json({
 			error: 'Failed to queue onboarding analysis',
 			message: error.message
@@ -414,6 +452,17 @@ app.post('/queue/chat/classify', async (req, res) => {
 		});
 	} catch (error: any) {
 		console.error('Error queueing chat classification:', error);
+		await logWorkerError(error, {
+			userId: req.body?.userId,
+			endpoint: '/queue/chat/classify',
+			httpMethod: 'POST',
+			operationType: 'queue_chat_classification',
+			errorType: 'api_error',
+			severity: 'error',
+			metadata: {
+				sessionId: req.body?.sessionId
+			}
+		});
 		return res.status(500).json({
 			error: 'Failed to queue chat classification',
 			message: error.message
@@ -482,6 +531,17 @@ app.post('/queue/braindump/process', async (req, res) => {
 		});
 	} catch (error: any) {
 		console.error('Error queueing braindump processing:', error);
+		await logWorkerError(error, {
+			userId: req.body?.userId,
+			endpoint: '/queue/braindump/process',
+			httpMethod: 'POST',
+			operationType: 'queue_braindump_processing',
+			errorType: 'api_error',
+			severity: 'error',
+			metadata: {
+				braindumpId: req.body?.braindumpId
+			}
+		});
 		return res.status(500).json({
 			error: 'Failed to queue braindump processing',
 			message: error.message
@@ -503,6 +563,16 @@ app.get('/jobs/:jobId', async (req, res) => {
 		return res.json(job);
 	} catch (error: any) {
 		console.error('Error fetching job:', error);
+		await logWorkerError(error, {
+			endpoint: '/jobs/:jobId',
+			httpMethod: 'GET',
+			operationType: 'queue_job_lookup',
+			errorType: 'api_error',
+			severity: 'error',
+			metadata: {
+				jobId: req.params?.jobId
+			}
+		});
 		return res.status(500).json({
 			error: 'Failed to fetch job',
 			message: error.message
@@ -527,6 +597,19 @@ app.get('/users/:userId/jobs', async (req, res) => {
 		});
 	} catch (error: any) {
 		console.error('Error fetching user jobs:', error);
+		await logWorkerError(error, {
+			userId: req.params?.userId,
+			endpoint: '/users/:userId/jobs',
+			httpMethod: 'GET',
+			operationType: 'queue_user_jobs_lookup',
+			errorType: 'api_error',
+			severity: 'error',
+			metadata: {
+				type: req.query?.type,
+				status: req.query?.status,
+				limit: req.query?.limit
+			}
+		});
 		res.status(500).json({
 			error: 'Failed to fetch user jobs',
 			message: error.message
@@ -541,6 +624,13 @@ app.get('/queue/stats', async (_req, res) => {
 		res.json({ stats });
 	} catch (error: any) {
 		console.error('Error fetching queue stats:', error);
+		await logWorkerError(error, {
+			endpoint: '/queue/stats',
+			httpMethod: 'GET',
+			operationType: 'queue_stats_lookup',
+			errorType: 'api_error',
+			severity: 'error'
+		});
 		res.status(500).json({
 			error: 'Failed to fetch queue stats',
 			message: error.message
@@ -573,6 +663,17 @@ app.get('/queue/stale-stats', async (req, res) => {
 		});
 	} catch (error: any) {
 		console.error('Error fetching stale job stats:', error);
+		await logWorkerError(error, {
+			endpoint: '/queue/stale-stats',
+			httpMethod: 'GET',
+			operationType: 'queue_stale_stats_lookup',
+			errorType: 'api_error',
+			severity: 'error',
+			metadata: {
+				thresholdHours: req.query?.thresholdHours,
+				completedRetentionDays: req.query?.completedRetentionDays
+			}
+		});
 		res.status(500).json({
 			error: 'Failed to fetch stale job stats',
 			message: error.message

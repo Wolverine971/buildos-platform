@@ -8,7 +8,7 @@ const REPORT_DEDUPE_WINDOW_MS = 30_000;
 const recentReportFingerprints = new Map<string, number>();
 
 export type ClientErrorReport = {
-	kind: 'runtime' | 'fetch_network';
+	kind: 'runtime' | 'fetch_network' | 'fetch_http';
 	error: unknown;
 	endpoint?: string;
 	method?: string;
@@ -20,6 +20,29 @@ export type ClientErrorReport = {
 
 export function isClientErrorReportEndpoint(pathname?: string | null): boolean {
 	return pathname === CLIENT_ERROR_REPORT_ENDPOINT;
+}
+
+export function shouldTrackFailedClientResponse(
+	pathname: string | null | undefined,
+	status: number
+): boolean {
+	if (!pathname || isClientErrorReportEndpoint(pathname)) return false;
+
+	if (status >= 500 && (pathname.startsWith('/api/') || pathname.startsWith('/auth/'))) {
+		return true;
+	}
+
+	if (
+		status >= 400 &&
+		(pathname.startsWith('/api/auth/') ||
+			pathname.startsWith('/auth/') ||
+			pathname.startsWith('/api/agent') ||
+			pathname.startsWith('/api/agentic-chat'))
+	) {
+		return true;
+	}
+
+	return false;
 }
 
 export function isAbortLikeClientError(error: unknown): boolean {
@@ -97,6 +120,31 @@ function normalizeClientError(error: unknown): Record<string, unknown> {
 	};
 }
 
+async function extractResponseErrorMetadata(response: Response): Promise<Record<string, unknown>> {
+	const contentType = response.headers.get('content-type')?.toLowerCase() ?? '';
+	if (!contentType.includes('application/json') && !contentType.startsWith('text/')) {
+		return {};
+	}
+
+	try {
+		const bodyText = await response.text();
+		if (!bodyText.trim()) return {};
+
+		if (contentType.includes('application/json')) {
+			const parsed = JSON.parse(bodyText) as Record<string, unknown>;
+			return {
+				responseBody: sanitizeLogData(parsed)
+			};
+		}
+
+		return {
+			responseBodyText: sanitizeLogData(bodyText)
+		};
+	} catch {
+		return {};
+	}
+}
+
 export async function reportClientError(
 	report: ClientErrorReport,
 	transport: typeof fetch = fetch
@@ -142,4 +190,34 @@ export async function reportClientError(
 	} catch (error) {
 		console.error('[ClientErrorReporting] Failed to report client error:', error);
 	}
+}
+
+export async function reportClientHttpError(
+	params: {
+		response: Response;
+		endpoint?: string;
+		method?: string;
+		url?: string;
+		metadata?: Record<string, unknown>;
+	},
+	transport: typeof fetch = fetch
+): Promise<void> {
+	const responseMetadata = await extractResponseErrorMetadata(params.response);
+
+	await reportClientError(
+		{
+			kind: 'fetch_http',
+			error: new Error(`Request failed with status ${params.response.status}`),
+			endpoint: params.endpoint,
+			method: params.method,
+			url: params.url,
+			status: params.response.status,
+			statusText: params.response.statusText,
+			metadata: {
+				...(params.metadata ?? {}),
+				...responseMetadata
+			}
+		},
+		transport
+	);
 }

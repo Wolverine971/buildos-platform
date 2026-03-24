@@ -21,30 +21,6 @@ interface MCPListToolsRequest {
 
 type MCPRequest = MCPToolCallRequest | MCPListToolsRequest;
 
-// MCP-compatible response types
-interface MCPToolsListResponse {
-	tools: Array<{
-		name: string;
-		description: string;
-		inputSchema: Record<string, any>;
-	}>;
-}
-
-interface MCPToolCallResponse {
-	content: Array<{
-		type: string;
-		text: string;
-	}>;
-}
-
-interface MCPErrorResponse {
-	error: {
-		code: number;
-		message: string;
-		data?: any;
-	};
-}
-
 export const POST: RequestHandler = async ({ request, locals }) => {
 	let userId: string | undefined;
 

@@ -45,6 +45,7 @@ Instagram is much more aggressive about rate limiting than Twitter or LinkedIn. 
 
 **Cross-Links (Read for Full Context):**
 - `/docs/marketing/social-media/instagram-strategy.md` - Full Instagram strategy (content pillars, visual identity, posting calendar)
+- `/docs/marketing/social-media/instagram-niche-expansion-research.md` - Niche expansion research (solo founders, PKM, freelancers, AI creators)
 - `/docs/marketing/strategy/adhd-productivity-os-strategy.md` - ADHD market positioning
 - `/docs/marketing/social-media/instagram/` - Instagram content templates
 
@@ -64,17 +65,18 @@ Instagram is much more aggressive about rate limiting than Twitter or LinkedIn. 
 | Account | Product/Focus | Why Monitor | Strategy |
 |---------|---------------|-------------|----------|
 | @danidonovan (~130K) | Anti-Planner, ADHD comics | Direct ADHD competitor | Respect, engage genuinely, don't attack |
-| @notionhq (~300K) | Notion product | Productivity tool competitor | Watch for frustrated users in comments |
-| @todoistofficial (~100K) | Todoist task management | PM tool competitor | Watch for "too complex" sentiment |
+| @theadhdtools (62K) | ADHD Operating System (Ezra Dewolfe) | DIRECT competitor — running IG ads | Monitor ad spend, content strategy, community response |
+| @notionhq (443K) | Notion product, "Custom Agents" | Productivity tool competitor + watering hole for PKM people | Watch for frustrated users, mine comments for PKM enthusiasts |
+| @todoistofficial (31K) | Todoist task management | PM tool competitor, very low IG engagement | Watch for "too complex" sentiment |
 
 ### ADHD Space Leaders
 
 | Account | Focus | Why Monitor | Strategy |
 |---------|-------|-------------|----------|
-| @connor.dewolfe (~900K) | ADHD awareness | Massive ADHD community | Engage genuinely, learn content patterns |
-| @the.mini.adhd.coach (~600K) | ADHD education | Visual ADHD content | Study what resonates with community |
-| @howtoadhd (~300K) | ADHD education, Jessica McCabe | OG ADHD creator | Engage on educational content |
-| @domesticblisters (~400K) | ADHD home management | "Struggle care" approach | Adjacent philosophy to BuildOS |
+| @connor.dewolfe (817K) | ADHD awareness, actor | Massive ADHD community, active Stories | Engage genuinely, learn content patterns, reply to Stories |
+| @the_mini_adhd_coach (633K) | ADHD education, doodles | Visual ADHD content, new book: ADHD & Emotion | Study what resonates with community |
+| @howtoadhd (260K) | ADHD education, Jessica McCabe | OG ADHD creator | Engage on educational content |
+| @strugglecare (450K) | ADHD home management, KC Davis | "Struggle care" approach, author | Adjacent philosophy to BuildOS |
 
 ### What to Look For
 
@@ -188,18 +190,30 @@ These are BuildOS's core audience on Instagram.
 - Check their Reels tab for recent Reels
 - Note engagement levels (comments, likes, saves if visible)
 
-**Round 2: Tier 1 Productivity Creators**
-Scan profiles for posts in last 24h.
+**Round 2: Tier 1 Solo Founders / Solopreneurs / AI Creators**
+The strongest niche outside ADHD. Scan these accounts for building-related posts:
+- @dickiebush, @leaturnerholt, @justyn.ai, @thesamparr, @chloedigital.ai, @startuprules
 
-**Round 3: Tier 1 Solo Founders / Building in Public**
-Scan for building-related posts.
+**Round 3: Tier 1 PKM / Second Brain**
+Scan for productivity system and tool-related content:
+- @_obsidian.md_
 
-**Round 4: Competitors**
+**Round 4: Watering Holes (Mine Comment Sections)**
+Visit latest posts from these large accounts and engage with the COMMENTERS, not the account:
+- @gregisenberg (105K) — startup founders in comments
+- @notionhq (443K) — PKM enthusiasts in comments
+- @thefuturishere (528K) — freelancers and creative business in comments
+- @thedankoe (1.7M) — solo builders in comments
+- @aliabdaal (1.1M) — tool-curious productivity people in comments
+- @flux.academy (55.2K) — web design freelancers in comments
+- @garyvee (~15M) — multi-project hustlers in comments
+
+**Round 5: Competitors**
 Check competitor accounts for new content.
 - Read through comments for user sentiment
 - Note any changes in their content strategy
 
-**Round 5: Hashtag Scanning (Discovery)**
+**Round 6: Hashtag Scanning (Discovery)**
 Navigate to hashtag explore pages and check "Recent" tab:
 
 *ADHD (Primary):*
@@ -208,27 +222,36 @@ Navigate to hashtag explore pages and check "Recent" tab:
 - `https://www.instagram.com/explore/tags/executivedysfunction/`
 - `https://www.instagram.com/explore/tags/adhdentrepreneur/`
 
-*Productivity:*
+*Productivity & PKM:*
 - `https://www.instagram.com/explore/tags/braindump/`
 - `https://www.instagram.com/explore/tags/productivitytips/`
 - `https://www.instagram.com/explore/tags/digitalorganization/`
+- `https://www.instagram.com/explore/tags/secondbrain/`
+- `https://www.instagram.com/explore/tags/notiontemplate/`
+- `https://www.instagram.com/explore/tags/productivitysystem/`
 
-*Building:*
+*Building & Solopreneur:*
 - `https://www.instagram.com/explore/tags/buildinpublic/`
 - `https://www.instagram.com/explore/tags/solofounder/`
-- `https://www.instagram.com/explore/tags/indiemaker/`
+- `https://www.instagram.com/explore/tags/solopreneur/`
+- `https://www.instagram.com/explore/tags/onepersonbusiness/`
 
 *AI:*
 - `https://www.instagram.com/explore/tags/aitools/`
 - `https://www.instagram.com/explore/tags/aiproductivity/`
+- `https://www.instagram.com/explore/tags/contextengineering/`
 
-**Round 6: Explore Page Discovery (New Accounts)**
+*Freelancer/Creative Business:*
+- `https://www.instagram.com/explore/tags/freelancelife/`
+- `https://www.instagram.com/explore/tags/creativebusiness/`
+
+**Round 7: Explore Page Discovery (New Accounts)**
 Navigate to `https://www.instagram.com/explore/` to discover:
 - New accounts posting relevant content
 - Trending content in your niche
 - Potential engagement opportunities from unknown accounts
 
-**Round 7: Reels Feed**
+**Round 8: Reels Feed**
 Navigate to `https://www.instagram.com/reels/` and scroll through:
 - Reels related to ADHD, productivity, building
 - Fresh Reels with low comment counts (opportunity to be early)
@@ -243,7 +266,7 @@ Navigate to `https://www.instagram.com/reels/` and scroll through:
 - Current engagement (comments, likes)
 - Link to post
 - Why it's relevant (which content pillar it matches)
-- **Opportunity type:** One of: `ADHD community` | `Productivity tip` | `Tool frustration` | `Building in public` | `AI/context` | `Founder win` | `Competitor intel` | `Community support`
+- **Opportunity type:** One of: `ADHD community` | `Productivity tip` | `Tool frustration` | `Building in public` | `AI/context` | `Founder win` | `Competitor intel` | `Community support` | `PKM/second brain` | `Freelancer/agency` | `Solopreneur`
 
 **IMPORTANT: Write each post to the document as you find it. Don't wait.**
 
@@ -564,11 +587,14 @@ For each post, add this to the document:
 
 **Flag immediately if you see:**
 
-1. **@danidonovan launches new ADHD product** or digital tool
+1. **@danidonovan or @theadhdtools launches new product** or digital tool
 2. **Major ADHD creator mentions AI productivity** in any form
 3. **Viral Reel about productivity tool frustration** (especially Notion/Todoist complaints)
 4. **New ADHD creator blowing up** (10K+ followers gained recently)
 5. **Any creator mentions "brain dump" or "context"** in productivity context
+6. **Solo founder/solopreneur creator posts about project chaos** or juggling too many things
+7. **PKM/Notion creator posts about "second brain" maintenance fatigue** or system abandonment
+8. **Freelancer posts about context switching pain** across client projects
 
 **Action for Strategic Alerts:**
 1. Note in daily engagement doc with HIGH PRIORITY flag
@@ -578,8 +604,9 @@ For each post, add this to the document:
 
 ---
 
-*Last Updated: 2026-03-12*
+*Last Updated: 2026-03-24*
 *Engagement Targets: `/docs/marketing/social-media/instagram-engagement-targets.md`*
+*Niche Expansion Research: `/docs/marketing/social-media/instagram-niche-expansion-research.md`*
 *Voice Reference: `/docs/marketing/social-media/instagram-voice-quick-ref.md`*
 *Instagram Strategy: `/docs/marketing/social-media/instagram-strategy.md`*
 *Founder Context: `/docs/marketing/social-media/FOUNDER_CONTEXT.md`*

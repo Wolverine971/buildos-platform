@@ -4,7 +4,9 @@ import { browser } from '$app/environment';
 import {
 	isAbortLikeClientError,
 	isClientErrorReportEndpoint,
-	reportClientError
+	reportClientError,
+	reportClientHttpError,
+	shouldTrackFailedClientResponse
 } from '$lib/utils/client-error-reporting';
 
 let rawBrowserFetch: typeof window.fetch | null = null;
@@ -77,7 +79,29 @@ if (browser) {
 		}
 
 		try {
-			return await originalFetch(input, requestInit);
+			const response = await originalFetch(input, requestInit);
+
+			if (
+				request.sameOrigin &&
+				!isClientErrorReportEndpoint(request.pathname) &&
+				shouldTrackFailedClientResponse(request.pathname, response.status)
+			) {
+				void reportClientHttpError(
+					{
+						response: response.clone(),
+						endpoint: request.pathname ?? undefined,
+						method,
+						url: request.url,
+						metadata: {
+							source: 'hooks.client.fetch',
+							sameOrigin: request.sameOrigin
+						}
+					},
+					originalFetch
+				);
+			}
+
+			return response;
 		} catch (error) {
 			if (
 				request.sameOrigin &&
