@@ -441,3 +441,74 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 		expect((requestBodies[0]?.model as string).startsWith('moonshotai/kimi')).toBe(false);
 	});
 });
+
+describe('SmartLLMService model failover', () => {
+	it('falls back to the next model when the primary stream model is unavailable', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			if (requestBodies.length === 1) {
+				return new Response(
+					JSON.stringify({
+						error: {
+							message: 'Model x-ai/grok-4.1-fast is no longer available.'
+						}
+					}),
+					{
+						status: 404,
+						headers: {
+							'content-type': 'application/json'
+						}
+					}
+				);
+			}
+
+			return buildSSE([
+				JSON.stringify({
+					id: 'chatcmpl-fallback',
+					object: 'chat.completion.chunk',
+					created: 0,
+					model: 'qwen/qwen3-32b',
+					choices: [
+						{
+							index: 0,
+							delta: { content: 'Recovered response.' },
+							finish_reason: 'stop'
+						}
+					]
+				}),
+				'[DONE]'
+			]);
+		});
+
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const events: Array<{ type: string; [key: string]: unknown }> = [];
+		for await (const event of llm.streamText({
+			messages: [{ role: 'user', content: 'Say hello.' }],
+			profile: 'balanced',
+			userId: 'user-1',
+			sessionId: 'session-fallback',
+			chatSessionId: 'chat-fallback',
+			operationType: 'test_stream'
+		})) {
+			events.push(event);
+			if (event.type === 'done' || event.type === 'error') {
+				break;
+			}
+		}
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(requestBodies[0]?.model).toBe('x-ai/grok-4.1-fast');
+		expect(requestBodies[1]?.model).toBe('qwen/qwen3-32b');
+		expect(events.some((event) => event.type === 'error')).toBe(false);
+		expect(events.some((event) => event.type === 'text')).toBe(true);
+		expect(events.find((event) => event.type === 'done')).toBeDefined();
+	});
+});

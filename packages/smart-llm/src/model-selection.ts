@@ -94,17 +94,20 @@ export function selectModelsByRequirements(
 	const models = Object.values(modelPool);
 
 	// Filter by requirements
-	let eligible = models.filter((model) => {
+	const eligible = models.filter((model) => {
 		if (requirements.maxCost && model.cost > requirements.maxCost) return false;
 		if (requirements.minAccuracy && model.smartness < requirements.minAccuracy) return false;
 		if (requirements.minQuality && model.smartness < requirements.minQuality) return false;
 		return true;
 	});
+	const stableEligible = eligible.filter(
+		(model) => !model.limitations?.includes('alpha-model')
+	);
+	const rankedPool = stableEligible.length > 0 ? stableEligible : eligible;
 
 	// Calculate value score for each model
-	const scored = eligible.map((model) => {
-		// OpenRouter alpha and promotional models can be temporarily listed as free.
-		// Keep them strongly favored without producing Infinity scores.
+	const scored = rankedPool.map((model) => {
+		// Zero-cost models should score highly without producing Infinity values.
 		const costDenominator = model.cost > 0 ? model.cost : 0.01;
 		let score: number;
 

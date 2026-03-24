@@ -148,3 +148,44 @@ Prefix conventions: `PUBLIC_` for client-accessible, `PRIVATE_` for server-only.
 - `docs/` — Cross-cutting docs (architecture diagrams, integrations, operations)
 - `apps/web/docs/technical/architecture/` — Architecture decisions (ADRs), system flows
 - `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` — Design system reference
+
+## Marketing Documentation
+
+**Start here:** `docs/marketing/START_HERE.md` — Single entry point for all marketing work with reading order and status tracking.
+
+### Positioning & Strategy
+
+BuildOS uses an **anti-AI marketing strategy**: do not lead with AI, lead with relief. The public category is **"thinking environment for people making complex things"** with the core promise **"turn messy thinking into structured work."**
+
+Key strategy docs (read in order):
+
+1. `docs/marketing/strategy/buildos-marketing-strategy-2026.md` — Master strategy (positioning, audience, channels)
+2. `docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md` — Anti-AI positioning thesis
+3. `docs/marketing/strategy/thinking-environment-creator-strategy.md` — Creator audience strategy (authors + YouTubers as primary wedge)
+4. `docs/marketing/strategy/buildos-guerrilla-content-doctrine.md` — Content operating doctrine for solo founder
+5. `docs/marketing/brand/brand-guide-1-pager.md` — Quick reference for voice, messaging, visual direction
+
+### Content Campaigns
+
+- `docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md` — Current 6-week campaign with weekly theses, hooks, and platform-specific angles
+- `docs/marketing/social-media/publish-kits/` — Execution docs and asset templates
+
+### Instagram Carousels
+
+- `docs/marketing/social-media/instagram/COLLABORATION_PIVOT_CAROUSEL.md` — Full 9-slide carousel draft ("I Changed One Word")
+- Carousel seeds for weeks 1-6 live in the guerrilla seed campaign doc under each week's "Instagram Angles"
+- `docs/marketing/social-media/instagram-strategy.md` — Full Instagram strategy (note: ADHD-heavy, being reconciled with thinking-environment positioning)
+- `docs/marketing/social-media/instagram-voice-quick-ref.md` — Daily engagement voice reference
+
+### Platform Strategies
+
+- `docs/marketing/social-media/` — Twitter, LinkedIn, Instagram strategies and engagement docs
+- `docs/marketing/social-media/FOUNDER_CONTEXT.md` — Source of truth for founder voice
+
+### Published Anti-AI Content
+
+- `apps/web/src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md` — Published blog on context engineering vs agent engineering
+
+### Marketing Index
+
+- `docs/marketing/INDEX.md` — Full marketing documentation index (brand, investors, growth, social, segments)

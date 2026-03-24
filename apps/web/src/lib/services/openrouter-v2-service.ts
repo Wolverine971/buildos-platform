@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/openrouter-v2-service.ts
 
 import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
+import { shouldFailoverToNextOpenRouterModel } from '@buildos/smart-llm';
 import {
 	SmartLLMService,
 	type JSONRequestOptions,
@@ -321,7 +322,15 @@ export class OpenRouterV2Service extends SmartLLMService {
 				return parsed;
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
-				if (!options.validation?.retryOnParseError || attempt >= maxAttempts - 1) {
+				const shouldRetryParseError =
+					lastError instanceof SyntaxError && options.validation?.retryOnParseError === true;
+				const shouldFailoverModel =
+					lastError.message === 'OpenRouter V2 returned empty JSON content' ||
+					shouldFailoverToNextOpenRouterModel(lastError);
+				if (
+					attempt >= maxAttempts - 1 ||
+					(!shouldRetryParseError && !shouldFailoverModel)
+				) {
 					break;
 				}
 			}

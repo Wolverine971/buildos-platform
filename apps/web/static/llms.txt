@@ -1,0 +1,55 @@
+# BuildOS
+
+> BuildOS is an AI-powered productivity operating system for ambitious thinkers, builders, and creators. Users capture unstructured thoughts through brain dumps (voice, text, or rough notes) and AI automatically organizes them into projects, tasks, and contextual relationships. Unlike stateless AI tools, BuildOS maintains compounding context—the system learns and sharpens over time as users engage with it. Key capabilities include brain dump processing, daily AI briefs, intelligent calendar integration, agentic project-aware chat, ontology-driven project management, and external agent integration. BuildOS is built for founders, creative professionals, ADHD minds, and polymaths managing complex, interconnected work.
+
+- Website: https://build-os.com
+- Contact: dj@build-os.com
+- Pricing: 14-day free trial, then $20/month
+
+## Getting Started
+
+- [How BuildOS Works](https://build-os.com/blogs/getting-started/how-buildos-works): Overview of the platform's core mechanics and how AI organizes your thinking
+- [Who Is BuildOS For](https://build-os.com/blogs/getting-started/who-is-buildos-for): Target users and use cases—founders, creators, ADHD minds, polymaths
+- [Effective Brain Dumping](https://build-os.com/blogs/getting-started/effective-brain-dumping): Guide to capturing thoughts naturally and letting AI structure them
+- [Daily Brief Guide](https://build-os.com/blogs/getting-started/daily-brief-guide): How personalized AI morning briefs work and how to get the most from them
+- [First Project Setup](https://build-os.com/blogs/getting-started/first-project-setup): Step-by-step walkthrough for creating your first project
+- [Understanding Life Goals](https://build-os.com/blogs/getting-started/understanding-life-goals): How BuildOS connects daily tasks to higher-level goals
+- [Under the Hood](https://build-os.com/blogs/getting-started/under-the-hood): Technical overview of what happens when you brain dump
+
+## Core Product Pages
+
+- [Home](https://build-os.com/): Landing page with product overview and feature highlights
+- [Pricing](https://build-os.com/pricing): Plans and pricing details
+- [Beta](https://build-os.com/beta): Early access signup
+- [Integrations](https://build-os.com/integrations): External agent integration via OpenClaw with BuildOS Agent Keys
+- [Roadmap](https://build-os.com/road-map): Product direction and upcoming features
+- [Help](https://build-os.com/help): Support and documentation hub
+- [Blog](https://build-os.com/blogs): All articles organized by category
+
+## Philosophy
+
+- [Your Vision Deserves a Better Operating System](https://build-os.com/blogs/vision-deserves-better-operating-system): Founding philosophy—why existing tools fail ambitious thinkers
+- [Context Engineering, Not Agent Engineering](https://build-os.com/blogs/philosophy/agentic-vrs-context-engineering): Why context preservation matters more than agentic AI
+- [The Anti-AI Assistant Execution Engine](https://build-os.com/blogs/philosophy/anti-ai-assistant-execution-engine): BuildOS philosophy of AI as engine, not headline
+- [Compound Engineering for Your Life](https://build-os.com/blogs/philosophy/compound-engineering-for-your-life): How context compounds over time to make you more effective
+- [Future of Personal Knowledge Management](https://build-os.com/blogs/philosophy/future-of-personal-knowledge-management): Where PKM is headed and how BuildOS fits in
+
+## Comparisons
+
+- [BuildOS vs ChatGPT: Context That Compounds](https://build-os.com/blogs/buildos-vs-chatgpt-context-that-compounds): Why projects need more than memory—context vs stateless chat
+- [BuildOS vs Notion: Which Is Better for ADHD Minds?](https://build-os.com/blogs/buildos-vs-notion-adhd-minds): Tool comparison for complex thinkers
+- [Notion Recurring Tasks Complexity](https://build-os.com/blogs/notion-recurring-tasks-complexity): Why complex task workflows break in Notion
+
+## Productivity
+
+- [Context Engineering 101](https://build-os.com/blogs/productivity-tips/context-engineering-101): Introduction to context engineering as a productivity practice
+- [Task Management Best Practices](https://build-os.com/blogs/productivity-tips/task-management-best-practices): How BuildOS approaches task management differently
+- [The Evolution of Note-Taking](https://build-os.com/blogs/productivity-tips/evolution-of-note-taking): From notebooks to AI-powered thought organization
+
+## Optional
+
+- [Troubleshooting Common Issues](https://build-os.com/blogs/advanced-guides/troubleshooting-common-issues): Solutions for frequent problems
+- [Contact](https://build-os.com/contact): Get in touch with the BuildOS team
+- [Privacy Policy](https://build-os.com/privacy): Data privacy and handling policies
+- [Terms of Service](https://build-os.com/terms): Terms and conditions
+- [Feedback](https://build-os.com/feedback): Submit product feedback

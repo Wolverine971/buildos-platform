@@ -1,12 +1,14 @@
 <!-- docs/marketing/INDEX.md -->
 
-# 📱 Marketing Documentation Index
+# Marketing Documentation Index
 
 > **Complete guide to BuildOS marketing strategy, brand development, fundraising, and customer acquisition**
 
+**New here? Read [START_HERE.md](START_HERE.md) first** — it links all positioning, carousel, and content strategy docs in reading order.
+
 ---
 
-## 🎯 Quick Navigation
+## Quick Navigation
 
 - [Current 2026 Docs](#-current-2026-docs-start-here)
 - [Lifecycle & Activation](#-lifecycle--activation)
@@ -20,7 +22,7 @@
 
 ---
 
-## 🚨 Current 2026 Docs (Start Here)
+## Current 2026 Docs (Start Here)
 
 - **[Marketing Strategy Hub](strategy/README.md)** ⭐
     - Folder-level guide for current strategy docs

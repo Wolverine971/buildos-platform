@@ -340,10 +340,10 @@ This connects to something I've been wrestling with. [1-2 sentences of genuine p
 
 ## Priority Summary
 
-| Priority | Author | Post Topic | Age | Comments | Why |
-|----------|--------|------------|-----|----------|-----|
-| 1 | [Name] | [brief topic] | Xh | X | [reason] |
-| 2 | ... | ... | ... | ... | ... |
+| Priority | Author | Post Topic | Link | Age | Comments | Why |
+|----------|--------|------------|------|-----|----------|-----|
+| 1 | [Name] | [brief topic] | [direct post URL] | Xh | X | [reason] |
+| 2 | ... | ... | [direct post URL] | ... | ... | ... |
 [5-7 rows]
 
 ---
@@ -463,9 +463,9 @@ LinkedIn warmup complete for [date].
 - [count] from feed discovery
 
 Top opportunities:
-1. [Author] - [topic] (Xh ago, Y comments)
-2. [Author] - [topic] (Xh ago, Y comments)
-3. [Author] - [topic] (Xh ago, Y comments)
+1. [Author] - [topic] (Xh ago, Y comments) → [direct post URL]
+2. [Author] - [topic] (Xh ago, Y comments) → [direct post URL]
+3. [Author] - [topic] (Xh ago, Y comments) → [direct post URL]
 
 ## New Accounts Discovered: X
 

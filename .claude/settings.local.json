@@ -159,7 +159,19 @@
       "Bash(sips:*)",
       "Bash(which agent-browser:*)",
       "Bash(npx agent-browser:*)",
-      "Bash(2)"
+      "Bash(2)",
+      "WebFetch(domain:apmic.org)",
+      "WebFetch(domain:refactoring.fm)",
+      "WebFetch(domain:onlinepmcourses.com)",
+      "WebFetch(domain:www.bulaev.net)",
+      "WebFetch(domain:handlewithcare.dev)",
+      "WebFetch(domain:speakwiseapp.com)",
+      "WebFetch(domain:agilelie.com)",
+      "WebFetch(domain:www.epicflow.com)",
+      "WebFetch(domain:www.apm.org.uk)",
+      "WebFetch(domain:www.easyagile.com)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:blog.goldstandardcertifications.com)"
     ],
     "deny": [],
     "ask": []

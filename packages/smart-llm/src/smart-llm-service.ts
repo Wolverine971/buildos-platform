@@ -25,7 +25,7 @@ import {
 import {
 	OpenRouterEmptyContentError,
 	buildOpenRouterEmptyContentError,
-	isRetryableOpenRouterError
+	shouldFailoverToNextOpenRouterModel
 } from './errors';
 import {
 	analyzeComplexity,
@@ -851,7 +851,7 @@ export class SmartLLMService {
 					const shouldRetry =
 						error instanceof OpenRouterEmptyContentError ||
 						error instanceof SyntaxError ||
-						isRetryableOpenRouterError(error);
+						shouldFailoverToNextOpenRouterModel(error);
 
 					if (attempt < maxAttempts - 1 && shouldRetry) {
 						console.warn('OpenRouter JSON response retrying after failure', {
@@ -1879,7 +1879,7 @@ export class SmartLLMService {
 				} catch (error) {
 					lastError = error as Error;
 					attemptedModels.add(requestedModel);
-					if (attempt < maxAttempts - 1 && isRetryableOpenRouterError(error)) {
+					if (attempt < maxAttempts - 1 && shouldFailoverToNextOpenRouterModel(error)) {
 						console.warn(`${providerLabel} stream retrying after fetch error`, {
 							attempt: attempt + 1,
 							maxAttempts,
@@ -1911,7 +1911,10 @@ export class SmartLLMService {
 				lastErrorText = errorText;
 				attemptedModels.add(requestedModel);
 
-				if (attempt < maxAttempts - 1 && isRetryableOpenRouterError(statusError)) {
+				if (
+					attempt < maxAttempts - 1 &&
+					shouldFailoverToNextOpenRouterModel(statusError)
+				) {
 					console.warn(`${providerLabel} stream retrying after failure`, {
 						attempt: attempt + 1,
 						maxAttempts,

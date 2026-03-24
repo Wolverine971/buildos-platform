@@ -159,3 +159,220 @@ No notable competitor activity observed. Monday morning scan showed no new posts
 **Created:** 2026-03-24
 **Stage 1 Completed:** 2026-03-24
 **Stage 2 Completed:** 2026-03-24
+
+---
+---
+
+# Afternoon Scan - March 24, 2026
+
+**Scan Time:** ~Afternoon EST (Monday)
+**Status:** STAGE 2 COMPLETE
+
+---
+
+## Notifications & Stories Activity (Afternoon)
+
+**Notifications Checked:** Not re-checked (morning scan covered). No new niche-relevant activity expected.
+**Stories Viewed:** No Tier 1 ADHD/productivity Stories active during scan.
+**Feed Highlights:** Feed still dominated by personal content. Direct profile visits remain necessary.
+
+---
+
+## Afternoon Priority Summary
+
+| Priority | Account | Content Type | Topic | Age | Comments | Opp Type | Score | Why |
+|----------|---------|--------------|-------|-----|----------|----------|-------|-----|
+| 1 | @adhdcoachsheila | Feed Post | AuDHD & Earning Existence | 18h | 0 | ADHD community | 90 | 117K verified, 0 comments on 63 likes, emotionally resonant, explicit engagement hook |
+| 2 | @adhdjesse | Carousel | ADHD Clockless Mind | 22h | 0 | ADHD / Productivity | 86 | 127K account, 0 comments, time blindness = core ADHD topic, connects to BuildOS thesis |
+| 3 | @dickiebush | Carousel | 7 Mentor Questions | 1d | 1 | Building / Founder | 68 | 24.3K, already following, fresh, curiosity/learning angle fits DJ's personality |
+
+---
+
+## Afternoon Post Opportunities
+
+### 1. @adhdjesse - ADHD & The Clockless Mind (22h)
+
+**Post Link:** https://www.instagram.com/p/DWPVW4Tjj37/
+**Content Type:** Carousel (book excerpt + illustration)
+
+**The Post:**
+> Reply "BOOK" to get the link for my book, Extra Focus: The Quick Start Guide to Adult ADHD
+
+**Visual:** Quote card with brain illustration featuring a broken/missing clock inside. Quote: "People with ADHD have a complicated relationship with time... the minutes, hours, and days often blend together. It's like we don't have any internal clock or sense of time. We have a clockless mind." Bottom: "read more at extrafocusbook.com"
+
+**Stats:** 22 likes, 0 comments (22h ago)
+**Opportunity Type:** ADHD community / Productivity
+
+**Why This Post:**
+127K account with 22 likes and ZERO comments at 22h old. The "clockless mind" concept is deeply relatable and connects directly to why external structure/systems matter (BuildOS thesis). Time blindness is one of the most discussed ADHD topics. Being the FIRST commenter on a 127K account post = massive visibility. NOT in seen list. Fresh content from an account that was last scanned 2 days ago with the headphones/task initiation post.
+
+**Engagement Mode:** Value — validate the clockless mind concept, share relatable experience
+
+**Suggested Comment Option 1 (value - time blindness as external structure problem):**
+
+> the clockless mind thing is so real. the worst part is you don't even realize how much time has passed until someone points it out. it's why I've become obsessive about building external systems to track what I'm working on — my brain will never do it on its own
+
+**Suggested Comment Option 2 (value - relatable personal experience):**
+
+> "minutes, hours, and days blend together" — yep. I'll sit down to code something quick and look up and it's been 6 hours. the internal clock just doesn't exist. external structure is the only thing that's ever worked for me
+
+**Suggested Comment Option 3 (cheerleader - appreciating the framing):**
+
+> "clockless mind" is such a perfect way to put it. most people try to explain time blindness and it doesn't land — this framing actually captures what it feels like from the inside
+
+**Product mention?** No
+**Story reply opportunity?** No - no active Story on this topic
+
+---
+
+### 2. @dickiebush - 7 Questions to Ask Your Mentors (1d)
+
+**Post Link:** https://www.instagram.com/p/DWPHqNtlVVp/
+**Content Type:** Carousel (10 slides)
+
+**The Post:**
+> The single most powerful shortcut to accelerating your career: Learning from people already ahead of you. But asking "Can I pick your brain?" is how you get: - Seen as another time-waster - Forced to learn every lesson the hard way - Left behind while others fast-track their careers. Instead, ask your mentors these 7 questions: 1. What is something most people think is important that I can skip entirely?...
+
+**Visual:** Text-based carousel with 7 mentor questions. Clean design, dark background.
+
+**Stats:** 16 likes, 1 comment (1d ago)
+**Opportunity Type:** Building in public / Founder wisdom
+
+**Why This Post:**
+24.3K account DJ already follows. 16 likes and only 1 comment. The mentor/learning framing connects to DJ's curiosity-driven builder personality. Question #1 ("What can I skip entirely?") resonates with BuildOS's "clarity > time management" philosophy — knowing what NOT to do is as important as knowing what to do. NOT in seen list.
+
+**Engagement Mode:** Value — connect one of the 7 questions to personal founder experience
+
+**Suggested Comment Option 1 (value - "what can I skip" resonates with building):**
+
+> question 1 is the one I keep coming back to. as a solo founder I spent months building features nobody asked for because I thought they were "important." the best mentors I've had basically just told me what to stop doing
+
+**Suggested Comment Option 2 (value - curiosity + specific question):**
+
+> genuinely curious which of these gets the most surprising answers. I feel like "what would you do differently if starting over" always reveals the real stuff people don't put in their content
+
+**Suggested Comment Option 3 (cheerleader - validates the framing):**
+
+> the shift from "can I pick your brain" to specific questions is such an underrated skill. people are way more generous with their time when you show up with real questions instead of vague asks
+
+**Product mention?** No
+**Story reply opportunity?** No
+
+---
+
+### 3. @adhdcoachsheila - AuDHD & Earning Your Existence (18h)
+
+**Post Link:** https://www.instagram.com/p/DWPwxF3iTZd/
+**Content Type:** Feed Post (quote image)
+
+**The Post:**
+> "Why did I feel like I needed to get straight As in order to be valid? Why did I feel like I had to be the perfect kid in order to be valid? Why do I feel like I have to earn my existence?" - my AuDHD client. Can you relate?
+
+**Visual:** Illustrated woman with dark hair, quote overlay about earning validity. "AuDHD client" attribution. @adhdcoachsheila watermark.
+
+**Stats:** 63 likes, 0 comments (18h ago) — "No comments yet. Start the conversation."
+**Opportunity Type:** ADHD community / Community support
+
+**Why This Post:**
+117K verified ADHD Coach account with 63 likes and ZERO comments at 18h. The perfectionism/earning-validation topic is one of the most emotionally resonant themes in the ADHD/AuDHD community. The "Can you relate?" caption is an explicit engagement hook. Being the FIRST commenter on a verified 117K account post = extremely high visibility. NOT in any previous scan.
+
+**Engagement Mode:** Cheerleader — validate the emotional weight of the question, be a genuine community member
+
+**Suggested Comment Option 1 (cheerleader - validate the weight of the question):**
+
+> "earn my existence" — that one hits. the overachieving isn't ambition, it's survival mode. took a long time to separate the two
+
+**Suggested Comment Option 2 (cheerleader - specific + vulnerable):**
+
+> the straight A thing is so deeply wired in. even as an adult I catch myself measuring my worth by how productive I was that day. like if I didn't do enough, I don't deserve to rest. wild how deep that goes
+
+**Suggested Comment Option 3 (cheerleader - brief + genuine):**
+
+> this is the conversation that needs to be louder. the perfectionism isn't a flex, it's a coping mechanism. glad you're giving it space here
+
+**Product mention?** No
+**Story reply opportunity?** No - no active Story on this topic
+
+---
+
+## Accounts Scanned (Afternoon)
+
+| Account | Latest Post Age | Fresh? | Notes |
+|---------|----------------|--------|-------|
+| @the_mini_adhd_coach | ~24h+ (ADHD & Anger) | No new since morning | Already captured in morning scan |
+| @connor.dewolfe | 4d+ | No | Collab with @dorm_s305, no solo content |
+| @adhdjesse | 22h | YES - NEW POST | Clockless Mind carousel — top find |
+| @an.nalogy | >1 week | No | All DV-prefix posts |
+| @strugglecare | Recent Reels | Borderline | 30+ comments on fresh Reel — too crowded |
+| @justyn.ai | ~hours old | YES - 2 NEW Reels | But both have 78+ and 164 comments — too crowded |
+| @dickiebush | 1d | YES - NEW POST | 7 Mentor Questions carousel — solid find |
+| @leaturnerholt | Multiple fresh | YES | 30 comments on newest Reel — borderline crowded |
+| @adhdcoachsheila | 18h | YES - NEW POST | AuDHD validation post, 0 comments — top find |
+| @theadhdtools | 6d+ (time blindness) | No | No new posts, 65.2K followers (+500 from 3/23) |
+| @chloedigital.ai | Not checked in detail | — | 1.7K peer-level account |
+
+---
+
+## Competitor Intelligence (Afternoon)
+
+### @theadhdtools (Ezra Dewolfe - ADHD Business Coach)
+**Followers:** 65.2K (up from 64.7K on March 23 — ~500/day growth continues)
+**Activity:** No new posts since the time blindness Reel (now ~6d old, 0 comments still)
+**Implications:** Consistent follower growth despite low posting frequency. Zero-comment pattern persists. Still an engagement opportunity if the time blindness post hasn't been commented on.
+
+### @justyn.ai
+**Activity:** Two new Reels today — "Is Claude Code human?" (79 likes, 164 comments) and "Which Claude Code setup is best for you?" (63 likes, 78 comments). Very active poster.
+**Implications:** CTA-based engagement model generating high comment counts but mostly just keyword drops ("HELP", "AGENT"). Real engagement remains low. Not worth competing in those comment sections.
+
+---
+
+## Afternoon Strategy Observations
+
+- **Monday afternoon produced 3x more opportunities than Monday morning.** Morning found 2 posts (both already aging). Afternoon found 3 fresh posts with exceptional engagement ratios.
+- **Two ZERO-comment posts on large accounts** — @adhdcoachsheila (117K, 0 comments on 63 likes at 18h) and @adhdjesse (127K, 0 comments on 22 likes at 22h). These are the most extreme visibility opportunities yet. Being first commenter on verified accounts is gold.
+- **@adhdcoachsheila is a new high-value discovery.** 117K verified account, posts frequently (multiple DW-prefix posts), and the ADHD coaching audience is perfect for BuildOS. Should be added to regular scan rotation.
+- **@adhdjesse continues the underengaged pattern.** 127K followers, author, consistently gets 0-1 real comments per post. Building a relationship here through steady commenting is a long-term play.
+- **@justyn.ai's growth is making comments less viable.** Both new Reels have 78+ comments (mostly CTA spam). The window for genuine engagement on his posts is narrowing as the account grows.
+- **The ADHD time perception / clockless mind topic bridges both ADHD and productivity pillars.** @adhdjesse's post directly connects ADHD experience to the need for external structure/systems — the exact problem BuildOS solves.
+
+---
+
+## Afternoon Posting Strategy
+
+**Recommended order (freshest / lowest competition first):**
+
+1. **@adhdcoachsheila** (Option 1 or 2) — 0 comments at 18h, highest score (90), first commenter on verified 117K account. Maximum visibility.
+2. **@adhdjesse** (Option 1 or 2) — 0 comments at 22h, 127K account, time blindness bridges ADHD + productivity pillars.
+3. **@dickiebush** (Option 2 or 3) — 1 comment at 1d, already following, lower urgency but good relationship-building.
+
+**Timing window:** Post between 7-9 PM EST tonight (Monday evening Instagram peak)
+**Spacing:** 15+ minutes between each comment (Instagram is stricter than Twitter/LinkedIn on rate limiting)
+**Product mentions:** 0 today — all three posts are pure community/value engagement. No natural product mention angle.
+**Story replies:** None available — no Tier 1 accounts had active Stories on related topics.
+
+---
+
+## Afternoon Strategy Recommendations
+
+**Today's observations:**
+- Monday afternoon is significantly better than Monday morning for Instagram scanning. Morning produced 2 posts; afternoon produced 3 with far better engagement ratios (two zero-comment posts on 100K+ accounts).
+- The ADHD emotional/identity content (earning existence, clockless mind) consistently outperforms tactical/tip content in like-to-comment ratios. These posts get lots of quiet resonance but very few people are brave enough to comment. Being that first commenter is high-value.
+- The builder/founder niche (Dickie Bush) has lower follower counts on Instagram compared to Twitter/LinkedIn, but the engagement is more personal and relationship-driven.
+
+**Content themes performing well:**
+- ADHD emotional dysregulation and identity (anger, perfectionism, time blindness) — consistently high likes, very low comments
+- AI agent orchestration — growing on Instagram but still CTA-dominated comment sections
+- Mentor/learning content from Twitter-native creators expanding to Instagram
+
+**Accounts worth deepening engagement with:**
+- **@adhdcoachsheila** — New discovery, 117K verified, posts frequently, consistently underengaged in comments. Add to Tier 1 regular scan rotation immediately.
+- **@adhdjesse** — 127K author account, persistent zero-comment pattern. Steady commenting here builds a visible relationship over time.
+- **@dickiebush** — Already following. Low-key relationship building on Instagram complements any Twitter/LinkedIn engagement.
+
+**Strategy update needed?** Minor tweak — Add @adhdcoachsheila to the Tier 1 scan list. Also consider permanently shifting Monday scans to afternoon-only (or doing a single afternoon scan instead of morning + afternoon) given the consistent low yield from Monday mornings.
+
+---
+
+**Afternoon Stage 1 Completed:** 2026-03-24
+**Afternoon Stage 2 Completed:** 2026-03-24
+**Status:** STAGE 2 COMPLETE

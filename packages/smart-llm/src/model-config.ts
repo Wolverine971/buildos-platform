@@ -564,7 +564,6 @@ export const TOOL_CALLING_MODEL_ORDER = [
 	'anthropic/claude-sonnet-4',
 	'openai/gpt-4o',
 	'minimax/minimax-m2.1',
-	'openrouter/hunter-alpha',
 	'qwen/qwen3-32b',
 	'deepseek/deepseek-chat',
 	'deepseek/deepseek-r1',
@@ -589,27 +588,26 @@ export const EMERGENCY_TEXT_FALLBACKS = [
 // ============================================
 // PROFILE MAPPINGS
 // ============================================
+// Default production profiles avoid preview/alpha aliases because OpenRouter can
+// retire or remap them without notice, which has caused 404s in chat flows.
 
 export const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 	fast: [
 		'google/gemini-2.5-flash-lite', // Ultra-fast + ultra-low cost: $0.10/$0.40
-		'openrouter/hunter-alpha', // Free alpha model geared toward fast agentic execution
 		'qwen/qwen3-32b', // Best value + good JSON: $0.08/$0.24
 		'openai/gpt-4o-mini', // Reliable fallback with JSON mode: $0.15/$0.60
+		'x-ai/grok-4.1-fast', // Fast stable fallback with strong structured output: $0.20/$0.50
 		'deepseek/deepseek-chat' // Native JSON mode + good value: $0.27/$1.10
 	],
 	balanced: [
-		'openrouter/hunter-alpha', // Free alpha model optimized for fast agentic execution
+		'x-ai/grok-4.1-fast', // Best tool-calling + fast: $0.20/$0.50
 		'qwen/qwen3-32b', // Best value + native JSON: $0.08/$0.24
 		'deepseek/deepseek-chat', // Good value + native JSON: $0.27/$1.10
-		'openrouter/healer-alpha', // Free alpha model for deeper instruction following and reflection
-		'x-ai/grok-4.1-fast', // Best tool-calling + fast: $0.20/$0.50
 		'minimax/minimax-m2.1', // Strong agentic + structured output: 87% τ²-Bench: $0.27/$1.12
 		'anthropic/claude-haiku-4.5', // Excellent tool calling, extended thinking: $1/$5
 		'google/gemini-2.5-flash' // Hybrid reasoning model: $0.30/$2.50
 	],
 	powerful: [
-		'openrouter/healer-alpha', // Free alpha model for deep reflection + complex instructions
 		'deepseek/deepseek-r1', // Native JSON + good reasoning: $0.55/$1.68
 		'minimax/minimax-m2.1', // Strong agentic: 87% τ²-Bench, 72.5% SWE-bench-multilingual
 		'openai/gpt-4o', // Strong general purpose + native JSON: $2.50/$10
@@ -629,14 +627,13 @@ export const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
 
 export const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 	speed: [
-		'openrouter/hunter-alpha', // Free alpha model tuned for fast execution and signal hunting
 		'google/gemini-2.5-flash-lite', // Ultra-fast + ultra-low cost: $0.10/$0.40
+		'x-ai/grok-4.1-fast', // Fast stable fallback for agentic execution: $0.20/$0.50
 		'qwen/qwen3-32b', // Best value + fast: $0.08/$0.24
 		'openai/gpt-4o-mini', // Reliable fallback: $0.15/$0.60
 		'anthropic/claude-haiku-4.5' // Fast with extended thinking: $1/$5
 	],
 	balanced: [
-		'openrouter/hunter-alpha', // Free alpha model for agentic execution and fast reasoning
 		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
 		'qwen/qwen3-32b', // Best value: $0.08/$0.24, smartness 4.5
 		'deepseek/deepseek-chat', // Good value: $0.27/$1.10, smartness 4.5
@@ -645,15 +642,13 @@ export const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
 		'openai/gpt-4o-mini' // Reliable fallback: $0.15/$0.60
 	],
 	quality: [
-		'openrouter/healer-alpha', // Free alpha model for deep reflection and complex instructions
-		'openrouter/hunter-alpha', // Free alpha model for decisive execution
 		'deepseek/deepseek-r1', // Good reasoning, excellent for technical content: $0.55/$1.68
+		'anthropic/claude-sonnet-4', // Strong nuanced writing and reasoning: $3/$15
 		'anthropic/claude-haiku-4.5', // Excellent tool-calling, parallel tools: $1/$5
 		'minimax/minimax-m2.1', // 87% τ²-Bench, excellent coding: $0.27/$1.12
 		'openai/gpt-4o' // Reliable fallback: $2.50/$10
 	],
 	creative: [
-		'openrouter/healer-alpha', // Free alpha model with reflective, instruction-heavy writing strength
 		'anthropic/claude-opus-4.5', // Best creative: highest creativity (4.8): $5/$25
 		'anthropic/claude-sonnet-4.5', // Strong creative: creativity 4.7: $3/$15
 		'anthropic/claude-sonnet-4', // Strong creative: creativity 4.6: $3/$15

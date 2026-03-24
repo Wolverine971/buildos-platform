@@ -306,3 +306,39 @@ That's what BuildOS is building. Not a better chatbot. Context infrastructure th
 **Stop explaining. Start building context.**
 
 [**Get started free →**](/auth/register)
+
+---
+
+<!-- REVIEW COMMENTS — remove before publishing -->
+
+<!--
+READER FEEDBACK (reading as a normal person, not a marketer):
+
+**What's missing / could be expanded:**
+
+1. **The Custom GPTs elephant in the room.** You never mention Custom GPTs or Projects in ChatGPT. A lot of people reading this will immediately think "but I already upload my docs to a Custom GPT and it remembers my project." You need to address this head-on or you'll lose credibility with anyone who's already doing that. Even a short paragraph acknowledging it and explaining why it's still not the same thing (manual uploads, no relational structure, no execution) would go a long way.
+
+2. **The "Real Example" section needs a before/after that feels more personal.** The product launch example is fine but generic. It reads like a marketing demo script. A real-world messy scenario — like juggling a side project, a freelance client, and a job search simultaneously — would land harder and make it feel less like you're selling to PMs at a startup.
+
+3. **What happens when I STOP using BuildOS?** You talk about compounding but never address lock-in anxiety. Is my data exportable? Can I get my stuff out? Normal people think about this. Even one sentence helps.
+
+4. **The brain dump concept is never explained.** You reference "brain dumps" twice but never explain what that actually means in BuildOS. A new reader has no idea what that is. One sentence: "Just type whatever's on your mind — BuildOS turns it into structured projects and tasks automatically."
+
+**What's overdone / could be trimmed:**
+
+1. **You say "chief of staff" three times.** Once is a great metaphor. Three times and it starts sounding like a tagline you're forcing. Keep the one in the comparison table row (Month 6) and cut or rephrase the other two.
+
+2. **The "Use Both" section is too long.** The two bullet lists (Use ChatGPT for / Use BuildOS for) are repetitive of points already made earlier. You could cut this section in half — the reader already gets the distinction by this point.
+
+3. **"One More Thing" section feels tacked on.** It restates the thesis you already nailed in "The Bottom Line." Having two closing sections dilutes the ending. Pick one. The "Bottom Line" section is stronger — I'd cut "One More Thing" entirely or fold the best line ("The future of AI-assisted work isn't smarter AI — it's AI with better context") into the Bottom Line.
+
+4. **The comparison table and the "Context That Compounds vs Memory That Forgets" table cover a lot of the same ground.** Two tables back-to-back with overlapping info slows the read down. Consider merging them or cutting one.
+
+**What works well (keep this):**
+
+- The opening tone is great. Complimenting ChatGPT first is the right call — doesn't feel like a hit piece.
+- "Explanation tax" is a sticky concept. Really effective framing.
+- The zoom in/zoom out section is the strongest differentiation point. That's the "aha" moment.
+- The ChatGPT dialogue example in "The Repetition Problem" is instantly relatable.
+-->
+

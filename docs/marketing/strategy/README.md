@@ -4,6 +4,8 @@
 
 Use this folder for current positioning, audience, content doctrine, and lifecycle strategy.
 
+**For the full marketing start-here guide (positioning + carousels + content), see [START_HERE.md](../START_HERE.md).**
+
 ## Start Here
 
 1. [BuildOS Marketing Strategy 2026](./buildos-marketing-strategy-2026.md)

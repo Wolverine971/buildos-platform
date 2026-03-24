@@ -740,7 +740,10 @@ async function getProject(context: ToolExecutionContext, args: Record<string, un
 	});
 
 	if (error) {
-		throw new Error(error.message || 'Failed to load project snapshot');
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			error.message || 'Failed to load project snapshot'
+		);
 	}
 
 	return {
@@ -793,7 +796,7 @@ async function listTasks(context: ToolExecutionContext, args: Record<string, unk
 
 	const { data, error, count } = await query;
 	if (error) {
-		throw new Error(error.message || 'Failed to list tasks');
+		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to list tasks');
 	}
 
 	const tasks = (data ?? []).map((task: Record<string, unknown>) => ({
@@ -1116,7 +1119,7 @@ async function listDocuments(context: ToolExecutionContext, args: Record<string,
 
 	const { data, error, count } = await query;
 	if (error) {
-		throw new Error(error.message || 'Failed to list documents');
+		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to list documents');
 	}
 
 	const documents = (data ?? []).map((document: Record<string, unknown>) => ({
@@ -1279,7 +1282,10 @@ async function searchEntitiesByType(
 
 	for (const result of [tasks, plans, goals, documents]) {
 		if (result.error) {
-			throw new Error(result.error.message || 'Failed to search ontology');
+			throw new ExternalToolGatewayError(
+				'INTERNAL',
+				result.error.message || 'Failed to search ontology'
+			);
 		}
 	}
 

@@ -38,13 +38,20 @@ export function parseOpenRouterErrorMetadata(error: unknown): OpenRouterErrorMet
 		status?: number;
 		message?: string;
 		openrouter?: unknown;
+		details?: unknown;
 	};
 	const openrouter = isRecord(maybeError.openrouter)
 		? (maybeError.openrouter as Record<string, unknown>)
 		: null;
+	const detailsRoot = isRecord(maybeError.details)
+		? (maybeError.details as Record<string, unknown>)
+		: null;
+	const detailsError = isRecord(detailsRoot?.error)
+		? (detailsRoot.error as Record<string, unknown>)
+		: detailsRoot;
 	const errorObject = isRecord(openrouter?.error)
 		? (openrouter?.error as Record<string, unknown>)
-		: null;
+		: detailsError;
 	const metadata = isRecord(errorObject?.metadata)
 		? (errorObject?.metadata as Record<string, unknown>)
 		: isRecord(openrouter?.metadata)
@@ -139,6 +146,41 @@ export function isRetryableOpenRouterError(error: unknown): boolean {
 	}
 
 	return false;
+}
+
+const MODEL_FAILOVER_MESSAGE_PATTERNS = [
+	/\bmodel\b.*\b(not found|unknown|unavailable|deprecated|retired|disabled)\b/i,
+	/\bmodel\b.*\bdoes not exist\b/i,
+	/\bnot a valid model\b/i,
+	/\bno endpoints found\b/i,
+	/\bno provider.*available\b/i,
+	/\bnot available for your account\b/i,
+	/\baccess to model\b.*\bdenied\b/i,
+	/\bprovider does not serve\b.*\bmodel\b/i
+];
+
+export function isOpenRouterModelAvailabilityError(error: unknown): boolean {
+	const metadata = parseOpenRouterErrorMetadata(error);
+	const status = metadata.status;
+	const message = typeof metadata.message === 'string' ? metadata.message : '';
+	const normalizedMessage = message.toLowerCase();
+
+	if (status === 404 || status === 410) {
+		return true;
+	}
+
+	if (
+		MODEL_FAILOVER_MESSAGE_PATTERNS.some((pattern) => pattern.test(normalizedMessage)) &&
+		status !== 401
+	) {
+		return true;
+	}
+
+	return false;
+}
+
+export function shouldFailoverToNextOpenRouterModel(error: unknown): boolean {
+	return isRetryableOpenRouterError(error) || isOpenRouterModelAvailabilityError(error);
 }
 
 export function summarizeOpenRouterMessageContent(

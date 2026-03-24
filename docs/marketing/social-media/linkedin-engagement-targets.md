@@ -54,12 +54,15 @@
 
 ### Founders Building in Public
 
-| Name              | Role                     | Why Engage                 | Topics They Cover             |
-| ----------------- | ------------------------ | -------------------------- | ----------------------------- |
-| **Pieter Levels** | Nomad List, indie hacker | Massive indie following    | Solo founder, shipping        |
-| **Shaan Puri**    | My First Million         | Startup wisdom, accessible | Business ideas, founder takes |
-| **Jack Butcher**  | Visualize Value          | Design + ideas             | Visual thinking, business     |
-| **Arvid Kahl**    | Bootstrapper             | Indie hackers, authentic   | Building products, audience   |
+| Name                 | Role                                    | Why Engage                                                                         | Topics They Cover                    |
+| -------------------- | --------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------ |
+| **Pieter Levels**    | Nomad List, indie hacker                | Massive indie following                                                            | Solo founder, shipping               |
+| **Shaan Puri**       | My First Million                        | Startup wisdom, accessible                                                         | Business ideas, founder takes        |
+| **Jack Butcher**     | Visualize Value                         | Design + ideas                                                                     | Visual thinking, business            |
+| **Arvid Kahl**       | Bootstrapper                            | Indie hackers, authentic                                                           | Building products, audience          |
+| **Blaise Pascual** ⭐ | The Autonomous Founder, USMC Veteran   | Fellow Marine turned solo founder. Authentic builder voice, AI engineering focus.   | Veteran entrepreneur, AI, shipping   |
+
+> **Added 2026-03-24:** Blaise Pascual discovered via LinkedIn feed. Fellow USMC veteran building with AI as a solo founder. Dropped out of engineering program with 4.0 GPA because "the curriculum was already behind what I was shipping." Blue collar engineering energy. 1st connection — genuine relationship building opportunity.
 
 ### Solo Founders & Indie Hackers
 
@@ -164,10 +167,14 @@ BuildOS's core audience. These creators have massive reach in the ADHD productiv
 
 | Account        | Role                                       | Why Monitor                                            |
 | -------------- | ------------------------------------------ | ------------------------------------------------------ |
-| **Okkar Kyaw** | UX + Agentic AI + Full-Stack               | Small teams shipping, Claude Code/MCP content           |
-| **Bryan Lin**  | Product Owner & COO @ Aloa, Startup Co-Founder | AI adoption insights, workflow friction expertise     |
+| **Okkar Kyaw**    | UX + Agentic AI + Full-Stack                   | Small teams shipping, Claude Code/MCP content           |
+| **Bryan Lin**     | Product Owner & COO @ Aloa, Startup Co-Founder | AI adoption insights, workflow friction expertise        |
+| **Vikas Bansal**  | Sr Staff@ServiceNow, Staff@Atlassian           | Claude Code velocity praise, senior eng credibility     |
+| **Tehmina Naz**   | Agentic AI & Python Developer                  | Claude Code advanced patterns, CLAUDE.md content        |
 
 > **Added 2026-03-24:** Okkar Kyaw and Bryan Lin discovered via LinkedIn search. Okkar posts about the exact tools DJ uses (MCP, Claude Skills). Bryan had a strong insight about AI tool adoption dying from workflow friction.
+>
+> **Added 2026-03-24 (PM):** Vikas Bansal (Sr Staff at ServiceNow/Atlassian) noted Claude Code's shipping velocity "should be a case study." Tehmina Naz actively sharing Claude Code Advanced Patterns webinar takeaways including CLAUDE.md for large codebases.
 
 ### Industry Accounts
 
@@ -422,13 +429,23 @@ LinkedIn has a growing community of solo founders and indie hackers. Action item
 ---
 
 _Document created: 2026-01-06_
-_Last updated: 2026-03-24 (Added Josh Coote to Tier 2 ADHD, Okkar Kyaw + Bryan Lin to Tier 3)_
+_Last updated: 2026-03-24 (Added Blaise Pascual to Tier 1 Founders, Vikas Bansal + Tehmina Naz to Tier 3)_
 
 ---
 
 ## Change Log
 
-### 2026-03-24 - New Accounts from LinkedIn Warmup
+### 2026-03-24 - New Accounts from LinkedIn Warmup (PM)
+
+**Source:** Daily LinkedIn warmup scan (afternoon refresh)
+
+**Added:**
+
+- **Blaise Pascual** added to **Tier 1** (Founders Building in Public) - Fellow USMC veteran turned solo founder ("The Autonomous Founder"). Dropped out of engineering with 4.0 GPA: "the curriculum was already behind what I was shipping to clients." Blue collar engineering energy. 1st connection. Genuine relationship building opportunity.
+- **Vikas Bansal** added to **Tier 3** (AI Builders & Practitioners) - Senior Staff at ServiceNow/Atlassian. Called Claude Code's shipping velocity "a case study." Senior eng credibility.
+- **Tehmina Naz** added to **Tier 3** (AI Builders & Practitioners) - Agentic AI developer sharing Claude Code Advanced Patterns webinar takeaways, including CLAUDE.md for large codebases.
+
+### 2026-03-24 - New Accounts from LinkedIn Warmup (AM)
 
 **Source:** Daily LinkedIn warmup scan
 
