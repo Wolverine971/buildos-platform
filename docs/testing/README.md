@@ -35,6 +35,8 @@ The BuildOS monorepo uses **Vitest** as its primary testing framework across all
 - **[📋 Coverage Matrix](./COVERAGE_MATRIX.md)** - Complete reference table for all components
 - **[🔬 Research Document](../../thoughts/shared/research/2025-10-06_18-44-32_testing-infrastructure-audit.md)** - Full audit findings
 
+Keep durable audit summaries in this folder. Do not keep one-off raw run artifacts under `docs/testing/artifacts/`; regenerate them locally when needed.
+
 ---
 
 ## Quick Start

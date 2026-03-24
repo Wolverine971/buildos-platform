@@ -5,6 +5,7 @@ import type { RequestHandler } from './$types';
 import { CalendarService, CalendarConnectionError } from '$lib/services/calendar-service';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';
+import { logServerError } from '$lib/server/error-tracking';
 // MCP-compatible request types
 interface MCPToolCallRequest {
 	method: 'tools/call';
@@ -45,6 +46,8 @@ interface MCPErrorResponse {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
+	let userId: string | undefined;
+
 	try {
 		// Check authentication
 		const { user } = await locals.safeGetSession();
@@ -59,6 +62,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				{ status: 401 }
 			);
 		}
+		userId = user.id;
 
 		// Parse MCP request
 		const mcpRequest = (await request.json()) as MCPRequest;
@@ -130,6 +134,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			message = 'Calendar or event not found.';
 			code = -32404;
 		}
+
+		await logServerError({
+			error,
+			endpoint: '/api/agent/google-calendar',
+			method: 'POST',
+			operation: 'agent_google_calendar',
+			userId,
+			severity: code === -32429 ? 'warning' : 'error',
+			metadata: {
+				mcpErrorCode: code,
+				responseMessage: message
+			}
+		});
 
 		return json(
 			{

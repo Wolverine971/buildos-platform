@@ -5,7 +5,7 @@
 **Account:** @djwayne3
 **Current Followers:** _[UPDATE AFTER FIRST SCAN]_
 **Target Range for Peer Accounts:** Accounts with similar or slightly larger followings
-**Last Updated:** 2026-03-22 (expanded beyond ADHD niche — added solo founder, PKM, AI, solopreneur accounts + watering hole strategy)
+**Last Updated:** 2026-03-23 (verified all accounts, added @thefuturishere + @flux.academy as watering holes, removed dead accounts, corrected @themindgeek follower count, removed @danshipper)
 
 ---
 
@@ -65,15 +65,15 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 ### Solo Founders / Building in Public
 
-| Account          | Followers | Content Focus                                          | Engagement Angle                                                                                       | Verified           |
-| ---------------- | --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------------ |
-| @dickiebush      | 24.3K     | Digital writing, Ship 30, AI writing, personal growth  | Sweet spot. Already followed by djwayne3. 877 posts. Highlights: Ship 30, AI Writing                   | 2026-03-22         |
-| @leaturnerholt   | 22.1K     | Solopreneur tips, small business community             | Sweet spot. 451 posts. Owns @theholtcommunity. Has podcast, events, active community                   | 2026-03-22         |
-| @justyn.ai       | 92.2K     | AI automation for solo founders, Reels, ChatGPT agents | Verified. "Helping entrepreneurs save 10+ hrs/wk with AI." Comment section full of solo founders       | 2026-03-22         |
-| @thesamparr      | 87.8K     | Founder stories, Hampton Founders peer groups          | Verified. 1,009 posts, very active. Owns @hamptonfounders. Comment section = startup founders          | 2026-03-22         |
-| @startuprules    | 1.4K      | Startup growth, founder tips, 3x founder / 1 exit      | Peer-level. 163 posts with Reels. Open to collabs (DM me in bio). Good for authentic engagement        | 2026-03-22         |
-| @chloedigital.ai | 1.7K      | AI Tips & Productivity (Chloe)                         | Founder @ Roleefy/Inddie. Posts about Claude, AI tools, "Vibe Coding to 6 Figures." Peer-level, active | 2026-03-12         |
-| @danshipper      | ~20K      | Every, AI productivity writing                         | Direct competitor space                                                                                | From original list |
+| Account          | Followers | Content Focus                                          | Engagement Angle                                                                                       | Verified   |
+| ---------------- | --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ---------- |
+| @dickiebush      | 24.3K     | Digital writing, Ship 30, AI writing, personal growth  | Sweet spot. Already followed by djwayne3. 877 posts. Highlights: Ship 30, AI Writing                   | 2026-03-22 |
+| @leaturnerholt   | 22.1K     | Solopreneur tips, small business community             | Sweet spot. 451 posts. Owns @theholtcommunity. Has podcast, events, active community                   | 2026-03-22 |
+| @justyn.ai       | 92.2K     | AI automation for solo founders, Reels, ChatGPT agents | Verified. "Helping entrepreneurs save 10+ hrs/wk with AI." Comment section full of solo founders       | 2026-03-22 |
+| @thesamparr      | 87.8K     | Founder stories, Hampton Founders peer groups          | Verified. 1,009 posts, very active. Owns @hamptonfounders. Comment section = startup founders          | 2026-03-22 |
+| @startuprules    | 1.4K      | Startup growth, founder tips, 3x founder / 1 exit      | Peer-level. 163 posts with Reels. Open to collabs (DM me in bio). Good for authentic engagement        | 2026-03-22 |
+| @chloedigital.ai | 1.7K      | AI Tips & Productivity (Chloe)                         | Founder @ Roleefy/Inddie. Posts about Claude, AI tools, "Vibe Coding to 6 Figures." Peer-level, active | 2026-03-12 |
+| ~~@danshipper~~  | 467       | Private account, not active on IG                      | **REMOVED** — only 467 followers, private. Lives on X/Substack.                                        | 2026-03-23 |
 
 ### Solopreneur / Creator Economy
 
@@ -102,13 +102,15 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 > These accounts are too big for direct engagement to matter, but their comment sections are full of exactly the people BuildOS should reach. Visit their latest posts weekly, engage with the _commenters_, not the account.
 
-| Account       | Followers | Where to find your people                                                                 | Verified   |
-| ------------- | --------- | ----------------------------------------------------------------------------------------- | ---------- |
-| @thedankoe    | 1.7M      | Solo builders, one-person business people. Building @edendotso + @drink.sonder            | 2026-03-22 |
-| @gregisenberg | 105K      | Startup founders, AI-age builders. CEO @latecheckout. Already followed by djwayne3        | 2026-03-22 |
-| @aliabdaal    | 1.1M      | Productivity tool enthusiasts, PKM people. Has "LifeOS" product                           | 2026-03-22 |
-| @notionhq     | 443K      | PKM/second brain enthusiasts. Your "second brain graveyard" story lands in these comments | 2026-03-22 |
-| @garyvee      | ~15M      | Multi-project hustlers, creative entrepreneurs. Engage the commenters, not Gary           | 2026-03-22 |
+| Account         | Followers | Where to find your people                                                                     | Verified   |
+| --------------- | --------- | --------------------------------------------------------------------------------------------- | ---------- |
+| @thedankoe      | 1.7M      | Solo builders, one-person business people. Building @edendotso + @drink.sonder                | 2026-03-22 |
+| @gregisenberg   | 105K      | Startup founders, AI-age builders. CEO @latecheckout. Already followed by djwayne3            | 2026-03-22 |
+| @aliabdaal      | 1.1M      | Productivity tool enthusiasts, PKM people. Has "LifeOS" product                               | 2026-03-22 |
+| @notionhq       | 443K      | PKM/second brain enthusiasts. Your "second brain graveyard" story lands in these comments     | 2026-03-22 |
+| @garyvee        | ~15M      | Multi-project hustlers, creative entrepreneurs. Engage the commenters, not Gary               | 2026-03-22 |
+| @thefuturishere | 528K      | Chris Do's "The Futur" — creative business education. Freelancers + agency owners in comments | 2026-03-23 |
+| @flux.academy   | 55.2K     | Web design school. Freelancer audience. 858 posts.                                            | 2026-03-23 |
 
 ### AI & Tech Creators
 
@@ -119,11 +121,11 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 ### Mental Health & Wellness (Adjacent to ADHD)
 
-| Account             | Followers | Content Focus             | Engagement Angle                       |
-| ------------------- | --------- | ------------------------- | -------------------------------------- |
-| @nedratawwab        | ~1.5M     | Boundaries, mental health | Adjacent audience, respect the space   |
-| @lisaoliveratherapy | ~500K     | Therapy insights          | Mental health awareness                |
-| @themindgeek        | ~100K     | Psychology, neuroscience  | Brain science, neurodivergent adjacent |
+| Account             | Followers | Content Focus                         | Engagement Angle                                                                         |
+| ------------------- | --------- | ------------------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
+| @nedratawwab        | ~1.5M     | Boundaries, mental health             | Adjacent audience, respect the space                                                     |
+| @lisaoliveratherapy | ~500K     | Therapy insights                      | Mental health awareness                                                                  |
+| @themindgeek        | 313K      | Sarah Crosby, psychotherapist, author | Verified. Already followed by build.os. Too big for peer engagement — watering hole only | 2026-03-23 |
 
 ### ADHD Humor & Community
 
@@ -163,24 +165,33 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 
 ## Removed Accounts (Broken/Inactive on IG)
 
-| Account              | Reason                                                       | Date Removed |
-| -------------------- | ------------------------------------------------------------ | ------------ |
-| @the.mini.adhd.coach | Wrong handle — correct is @the_mini_adhd_coach (underscores) | 2026-03-12   |
-| @domesticblisters    | That's KC Davis's TikTok handle. IG is @strugglecare         | 2026-03-12   |
-| @adhd.memetherapy    | Wrong handle — correct is @adhd_memetherapy (underscore)     | 2026-03-12   |
-| @levelsio            | 0 posts on IG, completely inactive (lives on X/Twitter)      | 2026-03-12   |
-| @thomasjfrank        | Page not available                                           | 2026-03-12   |
-| @todaborrego         | Account not found                                            | 2026-03-12   |
-| @studywithme         | Not a real active account                                    | 2026-03-12   |
-| @studytee            | Not a real active account                                    | 2026-03-12   |
-| @clickaboratorio     | Suspect handle, not found as ClickUp                         | 2026-03-12   |
-| @firaboratory        | Suspect handle                                               | 2026-03-12   |
-| @sahillavingia       | Page not available — lives on X/Twitter, not on IG           | 2026-03-22   |
-| @marc_louvion        | 0 posts, 2 followers — not active on IG, lives on X          | 2026-03-22   |
-| @jaborshi            | Page not available — account doesn't exist                   | 2026-03-22   |
-| @liam.ottley         | Fake reseller account (9 followers) — real Liam on YouTube   | 2026-03-22   |
-| @thefutur            | Wrong account (89 followers, random content, not Chris Do)   | 2026-03-22   |
-| @femke.design        | Wrong account (38 followers, graphic design portfolio)       | 2026-03-22   |
+| Account              | Reason                                                        | Date Removed |
+| -------------------- | ------------------------------------------------------------- | ------------ |
+| @the.mini.adhd.coach | Wrong handle — correct is @the_mini_adhd_coach (underscores)  | 2026-03-12   |
+| @domesticblisters    | That's KC Davis's TikTok handle. IG is @strugglecare          | 2026-03-12   |
+| @adhd.memetherapy    | Wrong handle — correct is @adhd_memetherapy (underscore)      | 2026-03-12   |
+| @levelsio            | 0 posts on IG, completely inactive (lives on X/Twitter)       | 2026-03-12   |
+| @thomasjfrank        | Page not available                                            | 2026-03-12   |
+| @todaborrego         | Account not found                                             | 2026-03-12   |
+| @studywithme         | Not a real active account                                     | 2026-03-12   |
+| @studytee            | Not a real active account                                     | 2026-03-12   |
+| @clickaboratorio     | Suspect handle, not found as ClickUp                          | 2026-03-12   |
+| @firaboratory        | Suspect handle                                                | 2026-03-12   |
+| @sahillavingia       | Page not available — lives on X/Twitter, not on IG            | 2026-03-22   |
+| @marc_louvion        | 0 posts, 2 followers — not active on IG, lives on X           | 2026-03-22   |
+| @jaborshi            | Page not available — account doesn't exist                    | 2026-03-22   |
+| @liam.ottley         | Fake reseller account (9 followers) — real Liam on YouTube    | 2026-03-22   |
+| @thefutur            | Wrong account (89 followers, random content, not Chris Do)    | 2026-03-22   |
+| @femke.design        | Wrong account (38 followers, graphic design portfolio)        | 2026-03-22   |
+| @vanaborshi          | Page not available — account doesn't exist                    | 2026-03-23   |
+| @jasminasby          | Page not available — account doesn't exist                    | 2026-03-23   |
+| @maboroshi.ai        | 6 posts, 1 follower — dead account                            | 2026-03-23   |
+| @ai.advancing        | 0 posts, 8 followers — dead account                           | 2026-03-23   |
+| @thedesignkidz       | 0 posts, 0 followers — dead account                           | 2026-03-23   |
+| @august.bradley      | Wrong account (33 followers, health/beauty — not PPV creator) | 2026-03-23   |
+| @taborbuilds         | Page not available                                            | 2026-03-23   |
+| @marieoulis          | Page not available                                            | 2026-03-23   |
+| @danshipper          | Private account, 467 followers — not active on IG             | 2026-03-23   |
 
 ---
 
@@ -284,7 +295,7 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 
 ---
 
-_Last updated: 2026-03-22_
+_Last updated: 2026-03-23_
 _Used by: `/.claude/commands/instagram-warmup.md`_
 _Related: `docs/marketing/social-media/instagram-strategy.md`_
 _Related: `docs/marketing/social-media/instagram-voice-quick-ref.md`_

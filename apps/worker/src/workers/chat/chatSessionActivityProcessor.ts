@@ -2,11 +2,12 @@
 // Extension to chat classification that generates activity logs and next steps for projects
 
 import { supabase } from '../../lib/supabase';
+import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import type {
+	NextStepGenerationContext,
 	ProjectLogEntityType,
 	ProjectLogInsert,
-	NextStepGenerationContext,
 	Json
 } from '@buildos/shared-types';
 
@@ -217,6 +218,17 @@ export async function processSessionActivityAndNextSteps(
 		}
 	} catch (error) {
 		console.error(`⚠️ Failed to generate next steps:`, error);
+		void logWorkerError(error, {
+			userId,
+			tableName: 'onto_projects',
+			recordId: projectId,
+			operationType: 'chat_next_step_generation',
+			severity: 'warning',
+			metadata: {
+				sessionId,
+				nonFatal: true
+			}
+		});
 		// Don't fail the whole process if next step generation fails
 	}
 
@@ -265,6 +277,15 @@ async function getSessionOperations(sessionId: string): Promise<ChatOperation[]>
 
 	if (error) {
 		console.error('Error fetching chat operations:', error);
+		void logWorkerError(error, {
+			tableName: 'chat_operations',
+			recordId: sessionId,
+			operationType: 'chat_session_operations_lookup',
+			severity: 'warning',
+			metadata: {
+				sessionId
+			}
+		});
 		return [];
 	}
 
@@ -373,6 +394,14 @@ async function insertActivityLogs(logs: ProjectLogInsert[]): Promise<number> {
 
 	if (error) {
 		console.error('Error inserting activity logs:', error);
+		void logWorkerError(error, {
+			tableName: 'onto_project_logs',
+			operationType: 'chat_activity_log_insert',
+			severity: 'warning',
+			metadata: {
+				logCount: logs.length
+			}
+		});
 		return 0;
 	}
 
@@ -497,6 +526,16 @@ async function generateNextSteps(
 		};
 	} catch (error) {
 		console.error('LLM next step generation failed:', error);
+		void logWorkerError(error, {
+			userId,
+			tableName: 'onto_projects',
+			recordId: projectId,
+			operationType: 'chat_next_step_llm_generation',
+			severity: 'warning',
+			metadata: {
+				sessionId
+			}
+		});
 		return null;
 	}
 }
@@ -675,7 +714,7 @@ const VALID_ENTITY_REFERENCE_TYPES = new Set([
 ]);
 
 function formatEntityReference(type: string, id: string, displayText: string): string {
-	const sanitizedText = (displayText || '').replace(/[\[\]|]/g, '').trim();
+	const sanitizedText = (displayText || '').replace(/[[\]|]/g, '').trim();
 	const normalizedType = type.toLowerCase();
 	if (!VALID_ENTITY_REFERENCE_TYPES.has(normalizedType)) {
 		return sanitizedText || `${normalizedType}:${id}`;
@@ -838,9 +877,29 @@ async function fetchTaskGoalLinks(projectId: string, taskIds: string[]): Promise
 
 	if (srcResult.error) {
 		console.error('Error fetching task goal edges (src):', srcResult.error);
+		void logWorkerError(srcResult.error, {
+			tableName: 'onto_edges',
+			recordId: projectId,
+			operationType: 'task_goal_edge_lookup_src',
+			severity: 'warning',
+			metadata: {
+				projectId,
+				taskCount: taskIds.length
+			}
+		});
 	}
 	if (dstResult.error) {
 		console.error('Error fetching task goal edges (dst):', dstResult.error);
+		void logWorkerError(dstResult.error, {
+			tableName: 'onto_edges',
+			recordId: projectId,
+			operationType: 'task_goal_edge_lookup_dst',
+			severity: 'warning',
+			metadata: {
+				projectId,
+				taskCount: taskIds.length
+			}
+		});
 	}
 
 	const edges = [

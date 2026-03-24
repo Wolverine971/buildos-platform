@@ -12,13 +12,7 @@ Result summary:
 - Timed out: 0
 - Total tests: 156 passed
 
-Artifacts:
-
-- `docs/testing/artifacts/test-audit-2026-02-27/web-results.tsv`
-- `docs/testing/artifacts/test-audit-2026-02-27/web-test-counts.tsv`
-- `docs/testing/artifacts/test-audit-2026-02-27/web-pass-files.txt`
-- `docs/testing/artifacts/test-audit-2026-02-27/web-fail-files.txt`
-- `docs/testing/artifacts/test-audit-2026-02-27/web-timeout-files.txt`
+Raw per-file outputs for this targeted rerun were removed on 2026-03-24 during docs cleanup. Keep this file as the summary snapshot and regenerate the raw outputs only when a new audit needs them.
 
 Notes:
 

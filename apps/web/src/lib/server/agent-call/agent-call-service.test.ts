@@ -342,6 +342,58 @@ describe('BuildosAgentCallService', () => {
 		});
 	});
 
+	it('reports the effective project intersection in scope rejection details', async () => {
+		const state: SessionState = { sessions: {}, nextId: 1 };
+		const admin = createAdminMock(state);
+		fetchProjectSummariesMock.mockResolvedValue([
+			{
+				id: '44444444-4444-4444-4444-444444444444',
+				name: 'Project One'
+			},
+			{
+				id: '55555555-5555-5555-5555-555555555555',
+				name: 'Project Two'
+			}
+		]);
+		authenticateExternalAgentCallerMock.mockResolvedValue(
+			createCaller({
+				policy: {
+					allowed_project_ids: ['44444444-4444-4444-4444-444444444444']
+				}
+			})
+		);
+		resolveCalleeForCallerMock.mockResolvedValue(
+			createBuildosAgent({
+				default_policy: {
+					allowed_project_ids: ['55555555-5555-5555-5555-555555555555']
+				}
+			})
+		);
+
+		const { BuildosAgentCallService } = await import('./agent-call-service');
+		const service = new BuildosAgentCallService(admin);
+
+		const response = await service.dial(
+			new Request('https://example.com', {
+				headers: { authorization: 'Bearer token' }
+			}),
+			{
+				callee_handle: 'buildos:user:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+				requested_scope: {
+					mode: 'read_only'
+				}
+			}
+		);
+
+		expect(response.call).toMatchObject({
+			status: 'rejected',
+			reason: 'scope_not_allowed',
+			details: expect.objectContaining({
+				allowed_project_ids: []
+			})
+		});
+	});
+
 	it('rejects a read_write call when the caller token is read only', async () => {
 		const state: SessionState = { sessions: {}, nextId: 1 };
 		const admin = createAdminMock(state);
@@ -468,6 +520,8 @@ describe('BuildosAgentCallService', () => {
 		expect(executeBuildosAgentGatewayToolMock).toHaveBeenCalledWith({
 			admin,
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '33333333-3333-3333-3333-333333333333',
 			scope: {
 				mode: 'read_only',
 				project_ids: ['44444444-4444-4444-4444-444444444444'],

@@ -1,9 +1,10 @@
 // apps/web/src/hooks.server.ts
 import { json, redirect } from '@sveltejs/kit';
-import type { Handle, HandleServerError } from '@sveltejs/kit';
+import type { Handle, HandleServerError, RequestEvent } from '@sveltejs/kit';
 import { createSupabaseServer } from '$lib/supabase';
 import { createServerTiming } from '$lib/server/server-timing';
 import { dev } from '$app/environment';
+import type { ErrorSeverity } from '$lib/types/error-logging';
 import {
 	CONSUMPTION_AUTO_POWER_UPGRADE_ENABLED,
 	CONSUMPTION_BILLING_GUARD_ENABLED,
@@ -13,11 +14,13 @@ import {
 	shouldGuardMutationForConsumptionBilling
 } from '$lib/server/consumption-billing';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { getRequestIdFromHeaders, logServerError } from '$lib/server/error-tracking';
 import { StripeService } from '$lib/services/stripe-service';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
 
 const LEGACY_FEATURE_PATHS = new Set(['/features', '/features/']);
 const LEGACY_BLOG_MARKDOWN_PATH = /^\/src\/content\/blogs\/([^/]+)\/([^/]+?)(?:\.md)?\/?$/;
+const CLIENT_ERROR_REPORT_ENDPOINT = '/api/error-tracking/client';
 
 function getLegacyRedirectPath(pathname: string): string | null {
 	if (LEGACY_FEATURE_PATHS.has(pathname)) {
@@ -36,6 +39,54 @@ function getLegacyRedirectPath(pathname: string): string | null {
 
 	const slug = rawSlug.replace(/\.md$/i, '');
 	return `/blogs/${category}/${slug}`;
+}
+
+function shouldTrackResponseFailure(pathname: string, status: number): boolean {
+	if (pathname === CLIENT_ERROR_REPORT_ENDPOINT) return false;
+
+	if (status >= 500 && (pathname.startsWith('/api/') || pathname.startsWith('/auth/'))) {
+		return true;
+	}
+
+	if (
+		status >= 400 &&
+		(pathname.startsWith('/api/auth/') ||
+			pathname.startsWith('/auth/') ||
+			pathname.startsWith('/api/agent') ||
+			pathname.startsWith('/api/agentic-chat'))
+	) {
+		return true;
+	}
+
+	return false;
+}
+
+function logHookError(
+	event: RequestEvent,
+	error: unknown,
+	operation: string,
+	options: {
+		userId?: string | null;
+		projectId?: string | null;
+		severity?: ErrorSeverity;
+		metadata?: Record<string, unknown>;
+	} = {}
+): Promise<void> {
+	return logServerError({
+		error,
+		endpoint: event.url.pathname,
+		method: event.request.method,
+		operation,
+		userId: options.userId ?? event.locals.user?.id,
+		projectId: options.projectId,
+		requestId: getRequestIdFromHeaders(event.request.headers),
+		severity: options.severity,
+		metadata: {
+			routeId: event.route.id ?? null,
+			params: event.params,
+			...(options.metadata ?? {})
+		}
+	});
 }
 
 // Rate limiting handle
@@ -215,6 +266,18 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					// User exists in auth but not in public.users table
 					// This is handled properly during registration/login
 					console.error('User data not found for authenticated user:', authUser.id);
+					void logHookError(
+						event,
+						dbError,
+						'hooks.safe_get_session.user_profile_lookup',
+						{
+							userId: authUser.id,
+							severity: 'warning',
+							metadata: {
+								authUserId: authUser.id
+							}
+						}
+					);
 					return { session, user: null };
 				}
 
@@ -224,6 +287,9 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				};
 			} catch (error) {
 				console.error('Error in safeGetSession:', error);
+				void logHookError(event, error, 'hooks.safe_get_session', {
+					severity: 'error'
+				});
 				return { session: null, user: null };
 			}
 		})();
@@ -289,6 +355,9 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			};
 		} catch (error) {
 			console.error('Error fetching calendar tokens:', error);
+			void logHookError(event, error, 'hooks.get_calendar_tokens', {
+				severity: 'warning'
+			});
 			return null;
 		}
 	};
@@ -317,6 +386,9 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			}
 		} catch (error) {
 			console.error('Error loading session in hooks:', error);
+			void logHookError(event, error, 'hooks.load_session', {
+				severity: 'error'
+			});
 			// Continue with null session/user - don't throw
 		}
 	}
@@ -351,6 +423,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 
 			if (gateError) {
 				console.error('Failed to evaluate consumption billing gate (pre):', gateError);
+				void logHookError(event, gateError, 'hooks.consumption_gate_pre', {
+					userId: user.id,
+					severity: 'warning'
+				});
 			} else {
 				const gateRow = Array.isArray(gateData) ? gateData[0] : gateData;
 				const isFrozen = Boolean(
@@ -412,6 +488,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					'Failed to evaluate consumption billing gate (post):',
 					gateResult.error
 				);
+				void logHookError(event, gateResult.error, 'hooks.consumption_gate_post', {
+					userId: mutationGuardUserId,
+					severity: 'warning'
+				});
 			} else {
 				const row = Array.isArray(gateResult?.data) ? gateResult.data[0] : gateResult?.data;
 				if (row && typeof row === 'object') {
@@ -420,6 +500,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 			}
 		} catch (error) {
 			console.error('Failed to evaluate consumption billing gate (post):', error);
+			void logHookError(event, error, 'hooks.consumption_gate_post', {
+				userId: mutationGuardUserId,
+				severity: 'warning'
+			});
 		}
 	}
 
@@ -462,6 +546,10 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				}
 			} catch (error) {
 				console.error('Failed auto-upgrade check (Pro -> Power):', error);
+				void logHookError(event, error, 'hooks.billing_auto_upgrade', {
+					userId: mutationGuardUserId,
+					severity: 'warning'
+				});
 			}
 		}
 	}
@@ -487,6 +575,23 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
 	}
 
+	if (shouldTrackResponseFailure(pathname, response.status)) {
+		void logHookError(
+			event,
+			new Error(`Request failed with status ${response.status}`),
+			'hooks.response_status',
+			{
+				severity: response.status >= 500 ? 'error' : 'warning',
+				metadata: {
+					status: response.status,
+					statusText: response.statusText,
+					redirected: response.redirected,
+					location: response.headers.get('location')
+				}
+			}
+		);
+	}
+
 	return response;
 };
 
@@ -494,9 +599,24 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 export const handle = handleSupabase;
 
 // PERFORMANCE: Optimized error handler with minimal logging overhead
-export const handleError: HandleServerError = ({ error, event }) => {
+export const handleError: HandleServerError = async ({ error, event }) => {
 	const errorId = Math.random().toString(36).substr(2, 9);
 	const errorMessage = error instanceof Error ? error.message : String(error);
+
+	await logServerError({
+		error,
+		endpoint: event.url.pathname,
+		method: event.request.method,
+		operation: 'hooks.handle_error',
+		userId: event.locals.user?.id,
+		requestId: getRequestIdFromHeaders(event.request.headers),
+		severity: 'error',
+		metadata: {
+			errorId,
+			routeId: event.route.id ?? null,
+			params: event.params
+		}
+	});
 
 	if (dev) {
 		console.error(`[${errorId}] Server error:`, {

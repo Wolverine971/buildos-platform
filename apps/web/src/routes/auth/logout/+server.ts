@@ -2,10 +2,17 @@
 import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
+import { logServerError } from '$lib/server/error-tracking';
 
-export const POST: RequestHandler = async ({ locals: { supabase }, cookies, url }) => {
+export const POST: RequestHandler = async ({
+	locals: { supabase, safeGetSession },
+	cookies,
+	url
+}) => {
 	const redirectTo = url.searchParams.get('redirect') || '/auth/login';
 	const isApiCall = url.searchParams.get('api') === 'true';
+	const { user } = await safeGetSession();
+	const userId = user?.id;
 
 	try {
 		// Sign out from Supabase
@@ -13,6 +20,18 @@ export const POST: RequestHandler = async ({ locals: { supabase }, cookies, url 
 
 		if (error) {
 			console.error('Supabase signOut error:', error);
+			await logServerError({
+				error,
+				endpoint: '/auth/logout',
+				method: 'POST',
+				operation: 'auth_logout_signout',
+				userId,
+				severity: 'warning',
+				metadata: {
+					redirectTo,
+					isApiCall
+				}
+			});
 		}
 
 		// Clear all Supabase-related cookies
@@ -73,6 +92,18 @@ export const POST: RequestHandler = async ({ locals: { supabase }, cookies, url 
 		}
 
 		console.error('Logout error:', error);
+		await logServerError({
+			error,
+			endpoint: '/auth/logout',
+			method: 'POST',
+			operation: 'auth_logout',
+			userId,
+			severity: 'error',
+			metadata: {
+				redirectTo,
+				isApiCall
+			}
+		});
 
 		if (isApiCall) {
 			return json(

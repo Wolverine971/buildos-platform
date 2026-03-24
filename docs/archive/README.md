@@ -18,3 +18,8 @@ This directory stores superseded, deprecated, or misfiled documentation moved ou
 - `docs/archive/marketing/social-media/LINKEDIN_FOUNDER_CONTEXT.md`
 - `docs/archive/apps-web/docs/technical/design-system/SCRATCHPAD_OPS_SPEC.md`
 - `docs/archive/apps-web/docs/features/onboarding-v2/calendar-connection-cta-spec.md`
+
+## Recent Moves (Batch 2)
+
+- Archived pre-2026-03-20 social warmups to `docs/archive/marketing/social-media/daily-engagement/2026-q1/`
+- Removed raw `docs/testing/artifacts/` outputs after preserving the human-readable summaries in `docs/testing/` and `docs/technical/`

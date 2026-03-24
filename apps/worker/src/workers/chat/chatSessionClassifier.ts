@@ -3,6 +3,7 @@
 // Also handles activity logging and next step generation for project-related sessions
 
 import { supabase } from '../../lib/supabase';
+import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import {
 	ChatClassificationJobData,
@@ -359,6 +360,17 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		} catch (activityError) {
 			// Don't fail the classification job if activity processing fails
 			console.error(`⚠️ Activity processing failed (non-fatal):`, activityError);
+			void logWorkerError(activityError, {
+				userId: validatedData.userId,
+				tableName: 'chat_sessions',
+				recordId: validatedData.sessionId,
+				operationType: 'chat_activity_processing',
+				severity: 'warning',
+				metadata: {
+					jobId: job.id,
+					nonFatal: true
+				}
+			});
 		}
 
 		let profileSignalResult: Awaited<ReturnType<typeof processProfileSignals>> = {
@@ -387,6 +399,17 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			}
 		} catch (profileError) {
 			console.error(`⚠️ Profile signal extraction failed (non-fatal):`, profileError);
+			void logWorkerError(profileError, {
+				userId: validatedData.userId,
+				tableName: 'chat_sessions',
+				recordId: validatedData.sessionId,
+				operationType: 'chat_profile_signal_processing',
+				severity: 'warning',
+				metadata: {
+					jobId: job.id,
+					nonFatal: true
+				}
+			});
 		}
 
 		let contactSignalResult: Awaited<ReturnType<typeof processContactSignals>> = {
@@ -417,6 +440,17 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			}
 		} catch (contactError) {
 			console.error(`⚠️ Contact signal extraction failed (non-fatal):`, contactError);
+			void logWorkerError(contactError, {
+				userId: validatedData.userId,
+				tableName: 'chat_sessions',
+				recordId: validatedData.sessionId,
+				operationType: 'chat_contact_signal_processing',
+				severity: 'warning',
+				metadata: {
+					jobId: job.id,
+					nonFatal: true
+				}
+			});
 		}
 
 		await updateJobStatus(job.id, 'completed', 'chat_classification');
@@ -437,6 +471,16 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		};
 	} catch (error: any) {
 		console.error(`❌ Chat classification job ${job.id} failed:`, error.message);
+		await logWorkerError(error, {
+			userId: job.data.userId,
+			tableName: 'chat_sessions',
+			recordId: job.data.sessionId,
+			operationType: 'chat_classification',
+			severity: 'error',
+			metadata: {
+				jobId: job.id
+			}
+		});
 		await updateJobStatus(job.id, 'failed', 'chat_classification', error.message);
 		throw error;
 	}

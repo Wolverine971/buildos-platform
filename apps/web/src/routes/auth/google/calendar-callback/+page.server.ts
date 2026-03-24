@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
+import { logServerError } from '$lib/server/error-tracking';
 
 export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supabase } }) => {
 	const { user } = await safeGetSession();
@@ -35,6 +36,11 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 
 	const buildCalendarRedirect = (path: string, params: Record<string, string>) =>
 		buildRedirectTarget(path, { calendar: '1', ...params });
+	const baseErrorContext = {
+		endpoint: '/auth/google/calendar-callback',
+		method: 'GET',
+		userId: user.id
+	} as const;
 
 	console.log('Calendar OAuth callback received:', {
 		hasCode: !!code,
@@ -46,6 +52,17 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 	// Handle OAuth errors
 	if (error) {
 		console.error('Calendar OAuth error:', error);
+		await logServerError({
+			error: new Error(`Calendar OAuth error: ${error}`),
+			...baseErrorContext,
+			operation: 'google_calendar_oauth_callback',
+			severity: 'warning',
+			metadata: {
+				oauthError: error,
+				stateMatchesUser,
+				resolvedRedirectPath
+			}
+		});
 		const errorDescriptions: Record<string, string> = {
 			access_denied: 'User denied access to Google Calendar',
 			invalid_request: 'Invalid OAuth request',
@@ -65,6 +82,16 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 
 	if (!code) {
 		console.error('No authorization code received');
+		await logServerError({
+			error: new Error('No authorization code received'),
+			...baseErrorContext,
+			operation: 'google_calendar_oauth_callback_missing_code',
+			severity: 'warning',
+			metadata: {
+				stateMatchesUser,
+				resolvedRedirectPath
+			}
+		});
 		const target = buildCalendarRedirect(resolvedRedirectPath, {
 			error: 'no_authorization_code'
 		});
@@ -76,6 +103,17 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 		console.error('State mismatch in calendar OAuth:', {
 			expected: user.id,
 			received: stateUserId || stateParam
+		});
+		await logServerError({
+			error: new Error('Calendar OAuth state mismatch'),
+			...baseErrorContext,
+			operation: 'google_calendar_oauth_callback_state_mismatch',
+			severity: 'warning',
+			metadata: {
+				expectedUserId: user.id,
+				receivedStateUserId: stateUserId,
+				stateParam
+			}
 		});
 		throw redirect(
 			303,
@@ -93,6 +131,16 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 
 	if (!result.success) {
 		console.error('Token exchange failed:', result.error);
+		await logServerError({
+			error: new Error(result.error || 'Calendar OAuth token exchange failed'),
+			...baseErrorContext,
+			operation: 'google_calendar_oauth_token_exchange',
+			severity: 'error',
+			metadata: {
+				redirectUri,
+				resolvedRedirectPath
+			}
+		});
 		const target = buildCalendarRedirect(resolvedRedirectPath, {
 			error: result.error || 'token_exchange_failed'
 		});
@@ -112,10 +160,28 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 			console.log('Webhook registered successfully for user:', user.id);
 		} else {
 			console.error('Failed to register webhook:', webhookResult.error);
+			await logServerError({
+				error: new Error(webhookResult.error || 'Calendar webhook registration failed'),
+				...baseErrorContext,
+				operation: 'google_calendar_webhook_register',
+				severity: 'warning',
+				metadata: {
+					webhookUrl
+				}
+			});
 			// Don't fail the whole flow if webhook registration fails
 		}
 	} catch (webhookError) {
 		console.error('Error registering webhook:', webhookError);
+		await logServerError({
+			error: webhookError,
+			...baseErrorContext,
+			operation: 'google_calendar_webhook_register',
+			severity: 'warning',
+			metadata: {
+				webhookUrl: `${url.origin}/webhooks/calendar-events`
+			}
+		});
 		// Continue anyway - webhook is not critical for basic functionality
 	}
 

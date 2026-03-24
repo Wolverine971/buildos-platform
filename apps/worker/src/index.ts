@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 
 import { supabase } from './lib/supabase';
+import { logWorkerError } from './lib/errorLogger';
 import { registerEmailTrackingRoute } from './routes/email-tracking';
 import smsScheduledRoutes from './routes/sms/scheduled';
 import { startScheduler } from './scheduler';
@@ -133,7 +134,7 @@ app.get('/health', async (_req, res) => {
 			queue: 'supabase',
 			stats: stats || { error: 'Stats unavailable' }
 		});
-	} catch (error) {
+	} catch {
 		// Still return healthy even if stats fail
 		res.json({
 			status: 'healthy',
@@ -613,6 +614,16 @@ app.post('/queue/cleanup', async (req, res) => {
 		});
 	} catch (error: any) {
 		console.error('Error during manual cleanup:', error);
+		await logWorkerError(error, {
+			endpoint: '/queue/cleanup',
+			httpMethod: 'POST',
+			operationType: 'manual_cleanup',
+			errorType: 'api_error',
+			severity: 'error',
+			metadata: {
+				dryRun: req.body?.dryRun ?? false
+			}
+		});
 		res.status(500).json({
 			error: 'Failed to run cleanup',
 			message: error.message
@@ -627,28 +638,44 @@ async function start() {
 		process.on('uncaughtException', (error) => {
 			console.error('🚨 CRITICAL: Uncaught Exception', error);
 			console.error('Stack:', error.stack);
-			// Gracefully shutdown queue
-			try {
-				queue.stop();
-			} catch (e) {
-				console.error('Failed to stop queue:', e);
-			}
-			// Exit to allow restart
-			process.exit(1);
+			void logWorkerError(error, {
+				operationType: 'worker_uncaught_exception',
+				severity: 'critical',
+				metadata: {
+					source: 'process.on'
+				}
+			}).finally(() => {
+				// Gracefully shutdown queue
+				try {
+					queue.stop();
+				} catch (e) {
+					console.error('Failed to stop queue:', e);
+				}
+				// Exit to allow restart
+				process.exit(1);
+			});
 		});
 
 		process.on('unhandledRejection', (reason, promise) => {
 			console.error('🚨 CRITICAL: Unhandled Rejection');
 			console.error('Promise:', promise);
 			console.error('Reason:', reason);
-			// Gracefully shutdown queue
-			try {
-				queue.stop();
-			} catch (e) {
-				console.error('Failed to stop queue:', e);
-			}
-			// Exit to allow restart
-			process.exit(1);
+			void logWorkerError(reason, {
+				operationType: 'worker_unhandled_rejection',
+				severity: 'critical',
+				metadata: {
+					source: 'process.on'
+				}
+			}).finally(() => {
+				// Gracefully shutdown queue
+				try {
+					queue.stop();
+				} catch (e) {
+					console.error('Failed to stop queue:', e);
+				}
+				// Exit to allow restart
+				process.exit(1);
+			});
 		});
 
 		// Start the worker
@@ -665,6 +692,13 @@ async function start() {
 		});
 	} catch (error) {
 		console.error('Failed to start server:', error);
+		await logWorkerError(error, {
+			operationType: 'worker_startup',
+			severity: 'critical',
+			metadata: {
+				phase: 'start'
+			}
+		});
 		process.exit(1);
 	}
 }

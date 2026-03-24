@@ -136,10 +136,11 @@ function buildScopeRejection(params: {
 }) {
 	const callerScopeMode = extractScopeModeFromPolicy(params.callerPolicy);
 	const agentScopeMode = extractScopeModeFromPolicy(params.agentPolicy, 'read_write');
-	const allowedProjectIds =
-		extractAllowedProjectIds(params.callerPolicy, 'caller_policy') ??
-		extractAllowedProjectIds(params.agentPolicy, 'agent_policy') ??
-		params.visibleProjectIds;
+	const callerProjectIds = extractAllowedProjectIds(params.callerPolicy, 'caller_policy');
+	const agentProjectIds = extractAllowedProjectIds(params.agentPolicy, 'agent_policy');
+	let allowedProjectIds = [...params.visibleProjectIds];
+	allowedProjectIds = intersectProjectIds(allowedProjectIds, callerProjectIds);
+	allowedProjectIds = intersectProjectIds(allowedProjectIds, agentProjectIds);
 	const allowedOps = intersectAllowedOps(
 		extractAllowedOpsFromPolicy(params.callerPolicy, callerScopeMode),
 		extractAllowedOpsFromPolicy(
@@ -470,6 +471,8 @@ export class BuildosAgentCallService {
 		const result = await executeBuildosAgentGatewayTool({
 			admin: this.admin,
 			userId: session.user_id,
+			callerId: caller.id,
+			callSessionId: session.id,
 			scope: normalizeScope(session.granted_scope, 'granted_scope'),
 			toolName,
 			arguments: normalizeToolArguments(params.arguments)

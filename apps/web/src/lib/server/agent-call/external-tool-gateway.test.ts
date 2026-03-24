@@ -4,10 +4,31 @@ import { BUILDOS_AGENT_READ_OPS } from '@buildos/shared-types';
 
 const ensureActorIdMock = vi.fn();
 const fetchProjectSummariesMock = vi.fn();
+const logCreateAsyncMock = vi.fn();
+const logUpdateAsyncMock = vi.fn();
+const syncTaskEventsMock = vi.fn();
+const resolveEntityMentionUserIdsMock = vi.fn();
+const notifyEntityMentionsAddedMock = vi.fn();
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: ensureActorIdMock,
 	fetchProjectSummaries: fetchProjectSummariesMock
+}));
+
+vi.mock('$lib/services/async-activity-logger', () => ({
+	logCreateAsync: logCreateAsyncMock,
+	logUpdateAsync: logUpdateAsyncMock
+}));
+
+vi.mock('$lib/services/ontology/task-event-sync.service', () => ({
+	TaskEventSyncService: class TaskEventSyncService {
+		syncTaskEvents = syncTaskEventsMock;
+	}
+}));
+
+vi.mock('$lib/server/entity-mention-notification.service', () => ({
+	resolveEntityMentionUserIds: resolveEntityMentionUserIdsMock,
+	notifyEntityMentionsAdded: notifyEntityMentionsAddedMock
 }));
 
 type DocumentRow = {
@@ -44,7 +65,9 @@ type TaskRow = {
 type State = {
 	documents: DocumentRow[];
 	tasks: TaskRow[];
+	toolExecutions: Array<Record<string, unknown>>;
 	nextTaskId: number;
+	nextToolExecutionId: number;
 };
 
 class OntoDocumentsQueryBuilderMock {
@@ -268,6 +291,189 @@ class OntoTasksQueryBuilderMock {
 	}
 }
 
+class AgentCallToolExecutionsQueryBuilderMock {
+	private action: 'select' | 'insert' | 'update' | null = null;
+	private filters = new Map<string, unknown>();
+	private insertPayload: Record<string, unknown> | null = null;
+	private updatePayload: Record<string, unknown> | null = null;
+	private orderBy: { field: string; ascending: boolean } | null = null;
+	private rowLimit: number | null = null;
+	private shouldReturnSelection = false;
+
+	constructor(private readonly state: State) {}
+
+	select() {
+		this.shouldReturnSelection = true;
+		if (!this.action) {
+			this.action = 'select';
+		}
+
+		return this;
+	}
+
+	insert(payload: Record<string, unknown>) {
+		this.action = 'insert';
+		this.insertPayload = payload;
+		return this;
+	}
+
+	update(payload: Record<string, unknown>) {
+		this.action = 'update';
+		this.updatePayload = payload;
+		return this;
+	}
+
+	eq(field: string, value: unknown) {
+		this.filters.set(field, value);
+		return this;
+	}
+
+	order(field: string, options?: { ascending?: boolean }) {
+		this.orderBy = { field, ascending: options?.ascending !== false };
+		return this;
+	}
+
+	limit(value: number) {
+		this.rowLimit = value;
+		return this;
+	}
+
+	maybeSingle() {
+		return Promise.resolve(this.executeSingle(false));
+	}
+
+	single() {
+		return Promise.resolve(this.executeSingle(true));
+	}
+
+	then<TResult1 = any, TResult2 = never>(
+		onfulfilled?:
+			| ((value: {
+					data: Record<string, unknown> | null;
+					error: any;
+			  }) => TResult1 | PromiseLike<TResult1>)
+			| null,
+		onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+	) {
+		return Promise.resolve(this.executeSingle(false)).then(onfulfilled, onrejected);
+	}
+
+	private matches(row: Record<string, unknown>): boolean {
+		return Array.from(this.filters.entries()).every(([field, value]) => row[field] === value);
+	}
+
+	private executeSingle(requireRow: boolean) {
+		if (this.action === 'insert' && this.insertPayload) {
+			const idempotencyKey = this.insertPayload.idempotency_key;
+			if (typeof idempotencyKey === 'string' && idempotencyKey.length > 0) {
+				const duplicate = this.state.toolExecutions.find(
+					(row) =>
+						row.external_agent_caller_id ===
+							this.insertPayload?.external_agent_caller_id &&
+						row.op === this.insertPayload?.op &&
+						row.idempotency_key === idempotencyKey &&
+						(row.status === 'pending' || row.status === 'succeeded')
+				);
+				if (duplicate) {
+					return {
+						data: null,
+						error: {
+							code: '23505',
+							message: 'duplicate key value violates unique constraint'
+						}
+					};
+				}
+			}
+
+			const id = `99999999-9999-9999-9999-${String(this.state.nextToolExecutionId).padStart(12, '0')}`;
+			this.state.nextToolExecutionId += 1;
+			const now = '2026-04-28T00:00:00.000Z';
+			const row = {
+				id,
+				agent_call_session_id: String(this.insertPayload.agent_call_session_id),
+				external_agent_caller_id: String(this.insertPayload.external_agent_caller_id),
+				user_id: String(this.insertPayload.user_id),
+				op: String(this.insertPayload.op),
+				idempotency_key:
+					typeof this.insertPayload.idempotency_key === 'string'
+						? this.insertPayload.idempotency_key
+						: null,
+				status:
+					typeof this.insertPayload.status === 'string'
+						? this.insertPayload.status
+						: 'pending',
+				args: ((this.insertPayload.args ?? {}) as Record<string, unknown>) ?? {},
+				response_payload:
+					this.insertPayload.response_payload &&
+					typeof this.insertPayload.response_payload === 'object'
+						? (this.insertPayload.response_payload as Record<string, unknown>)
+						: null,
+				error_payload:
+					this.insertPayload.error_payload &&
+					typeof this.insertPayload.error_payload === 'object'
+						? (this.insertPayload.error_payload as Record<string, unknown>)
+						: null,
+				entity_kind:
+					typeof this.insertPayload.entity_kind === 'string'
+						? this.insertPayload.entity_kind
+						: null,
+				entity_id:
+					typeof this.insertPayload.entity_id === 'string'
+						? this.insertPayload.entity_id
+						: null,
+				started_at:
+					typeof this.insertPayload.started_at === 'string'
+						? this.insertPayload.started_at
+						: now,
+				completed_at:
+					typeof this.insertPayload.completed_at === 'string'
+						? this.insertPayload.completed_at
+						: null,
+				created_at: now,
+				updated_at:
+					typeof this.insertPayload.updated_at === 'string'
+						? this.insertPayload.updated_at
+						: now
+			};
+			this.state.toolExecutions.push(row);
+			return { data: this.shouldReturnSelection ? row : null, error: null };
+		}
+
+		if (this.action === 'update' && this.updatePayload) {
+			const index = this.state.toolExecutions.findIndex((row) => this.matches(row));
+			if (index < 0) {
+				return { data: null, error: requireRow ? new Error('Execution not found') : null };
+			}
+
+			const updated = {
+				...this.state.toolExecutions[index],
+				...this.updatePayload
+			};
+			this.state.toolExecutions[index] = updated;
+			return { data: this.shouldReturnSelection ? updated : null, error: null };
+		}
+
+		let rows = this.state.toolExecutions.filter((row) => this.matches(row));
+		if (this.orderBy) {
+			rows = [...rows].sort((a, b) => {
+				const left = String(a[this.orderBy?.field] ?? '');
+				const right = String(b[this.orderBy?.field] ?? '');
+				return this.orderBy?.ascending
+					? left.localeCompare(right)
+					: right.localeCompare(left);
+			});
+		}
+		if (typeof this.rowLimit === 'number') {
+			rows = rows.slice(0, this.rowLimit);
+		}
+
+		return {
+			data: rows[0] ?? null,
+			error: rows[0] || !requireRow ? null : new Error('Row not found')
+		};
+	}
+}
+
 function createAdminMock(state: State) {
 	return {
 		from: vi.fn((table: string) => {
@@ -277,6 +483,10 @@ function createAdminMock(state: State) {
 
 			if (table === 'onto_tasks') {
 				return new OntoTasksQueryBuilderMock(state);
+			}
+
+			if (table === 'agent_call_tool_executions') {
+				return new AgentCallToolExecutionsQueryBuilderMock(state);
 			}
 
 			throw new Error(`Unexpected table ${table}`);
@@ -289,6 +499,9 @@ describe('external tool gateway', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		ensureActorIdMock.mockResolvedValue('actor-1');
+		resolveEntityMentionUserIdsMock.mockResolvedValue([]);
+		notifyEntityMentionsAddedMock.mockResolvedValue({ notifiedUserIds: [] });
+		syncTaskEventsMock.mockResolvedValue(undefined);
 		fetchProjectSummariesMock.mockResolvedValue([
 			{
 				id: '44444444-4444-4444-4444-444444444444',
@@ -301,6 +514,7 @@ describe('external tool gateway', () => {
 				goal_count: 1,
 				plan_count: 2,
 				document_count: 4,
+				owner_actor_id: 'actor-owner-1',
 				access_role: 'owner',
 				access_level: 'write'
 			}
@@ -322,7 +536,13 @@ describe('external tool gateway', () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 
 		const result = await executeBuildosAgentGatewayTool({
-			admin: createAdminMock({ documents: [], tasks: [], nextTaskId: 1 }),
+			admin: createAdminMock({
+				documents: [],
+				tasks: [],
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
+			}),
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
 			toolName: 'tool_help',
@@ -340,7 +560,13 @@ describe('external tool gateway', () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 
 		const result = await executeBuildosAgentGatewayTool({
-			admin: createAdminMock({ documents: [], tasks: [], nextTaskId: 1 }),
+			admin: createAdminMock({
+				documents: [],
+				tasks: [],
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
+			}),
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
 			toolName: 'tool_exec',
@@ -368,11 +594,19 @@ describe('external tool gateway', () => {
 
 	it('creates a task through tool_exec when read_write access is granted', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
-		const state: State = { documents: [], tasks: [], nextTaskId: 1 };
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
 
 		const result = await executeBuildosAgentGatewayTool({
 			admin: createAdminMock(state),
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
 			scope: {
 				mode: 'read_write',
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
@@ -401,6 +635,11 @@ describe('external tool gateway', () => {
 		});
 		expect(state.tasks).toHaveLength(1);
 		expect(state.tasks[0]?.created_by).toBe('actor-1');
+		expect(syncTaskEventsMock).toHaveBeenCalledTimes(1);
+		expect(logCreateAsyncMock).toHaveBeenCalledTimes(1);
+		expect(notifyEntityMentionsAddedMock).toHaveBeenCalledTimes(1);
+		expect(state.toolExecutions).toHaveLength(1);
+		expect(state.toolExecutions[0]?.status).toBe('succeeded');
 	});
 
 	it('updates a task through tool_exec when read_write access is granted', async () => {
@@ -425,12 +664,16 @@ describe('external tool gateway', () => {
 					deleted_at: null
 				}
 			],
-			nextTaskId: 2
+			toolExecutions: [],
+			nextTaskId: 2,
+			nextToolExecutionId: 1
 		};
 
 		const result = await executeBuildosAgentGatewayTool({
 			admin: createAdminMock(state),
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
 			scope: {
 				mode: 'read_write',
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.update']
@@ -459,6 +702,149 @@ describe('external tool gateway', () => {
 		});
 		expect(state.tasks[0]?.state_key).toBe('done');
 		expect(state.tasks[0]?.completed_at).toBeTruthy();
+		expect(syncTaskEventsMock).toHaveBeenCalledTimes(1);
+		expect(logUpdateAsyncMock).toHaveBeenCalledTimes(1);
+		expect(notifyEntityMentionsAddedMock).toHaveBeenCalledTimes(1);
+		expect(state.toolExecutions).toHaveLength(1);
+		expect(state.toolExecutions[0]?.status).toBe('succeeded');
+	});
+
+	it('normalizes blank task descriptions to null on external writes', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
+			},
+			toolName: 'tool_exec',
+			arguments: {
+				op: 'onto.task.create',
+				args: {
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Whitespace description',
+					description: '   '
+				}
+			}
+		});
+
+		expect(state.tasks[0]?.description).toBeNull();
+	});
+
+	it('replays a prior idempotent write response instead of duplicating the task', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+		const request = {
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write' as const,
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
+			},
+			toolName: 'tool_exec' as const,
+			arguments: {
+				op: 'onto.task.create',
+				idempotency_key: 'task-create-1',
+				args: {
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Idempotent task'
+				}
+			}
+		};
+
+		const first = await executeBuildosAgentGatewayTool(request);
+		const second = await executeBuildosAgentGatewayTool(request);
+
+		expect(first).toMatchObject({ ok: true });
+		expect(second).toMatchObject({
+			ok: true,
+			meta: {
+				replayed: true
+			}
+		});
+		expect(state.tasks).toHaveLength(1);
+		expect(state.toolExecutions).toHaveLength(1);
+	});
+
+	it('returns CONFLICT when a matching idempotent write is still pending', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [
+				{
+					id: '99999999-9999-9999-9999-000000000001',
+					agent_call_session_id: '22222222-2222-2222-2222-222222222222',
+					external_agent_caller_id: '11111111-1111-1111-1111-111111111111',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					op: 'onto.task.create',
+					idempotency_key: 'task-create-pending',
+					status: 'pending',
+					args: {},
+					response_payload: null,
+					error_payload: null,
+					entity_kind: null,
+					entity_id: null,
+					started_at: '2026-04-28T00:00:00.000Z',
+					completed_at: null,
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z'
+				}
+			],
+			nextTaskId: 1,
+			nextToolExecutionId: 2
+		};
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
+			},
+			toolName: 'tool_exec',
+			arguments: {
+				op: 'onto.task.create',
+				idempotency_key: 'task-create-pending',
+				args: {
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Pending task'
+				}
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.task.create',
+			ok: false,
+			error: {
+				code: 'CONFLICT'
+			}
+		});
+		expect(state.tasks).toHaveLength(0);
 	});
 
 	it('does not reveal the existence of scoped-out documents through canonical ops', async () => {
@@ -481,7 +867,9 @@ describe('external tool gateway', () => {
 					}
 				],
 				tasks: [],
-				nextTaskId: 1
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
 			}),
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			scope: {
@@ -502,7 +890,7 @@ describe('external tool gateway', () => {
 			op: 'onto.document.get',
 			ok: false,
 			error: {
-				code: 'INTERNAL',
+				code: 'NOT_FOUND',
 				message: 'Document not found'
 			}
 		});

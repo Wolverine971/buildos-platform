@@ -19,14 +19,7 @@ Method:
     - `routes/onboarding/**`
     - root route/layout files under `routes/`
 
-Artifacts:
-
-- `docs/testing/artifacts/test-prune-2026-02-25/dead-code-file-usage.tsv`
-- `docs/testing/artifacts/test-prune-2026-02-25/dead-code-zero-imports.tsv`
-- `docs/testing/artifacts/test-prune-2026-02-25/dead-code-zero-imports-components.txt`
-- `docs/testing/artifacts/test-prune-2026-02-25/dead-code-zero-imports-services.txt`
-- `docs/testing/artifacts/test-prune-2026-02-25/dead-code-import-graph.json`
-- `docs/testing/artifacts/test-prune-2026-02-25/core-route-reachability.json`
+The raw graph and zero-import artifacts used for this audit were removed on 2026-03-24 during docs cleanup. Re-run the scan if you need the machine-generated files again.
 
 ## Executive Summary
 

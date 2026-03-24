@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
+import { logWorkerError } from '../../lib/errorLogger';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import {
 	getDefaultToolNamesForContextType,
@@ -235,6 +236,16 @@ async function insertEvent(runId: string, nodeId: string, type: string, payload:
 	});
 	if (error) {
 		console.error('[TreeAgent] Failed to insert event', type, error.message);
+		void logWorkerError(error, {
+			operationType: 'tree_agent_event_insert',
+			tableName: 'tree_agent_events',
+			recordId: runId,
+			severity: 'warning',
+			metadata: {
+				nodeId,
+				eventType: type
+			}
+		});
 	}
 }
 
@@ -498,7 +509,6 @@ async function persistArtifacts(params: {
 	const artifactIds: string[] = [];
 	const documentIds: string[] = [];
 	const labelToArtifactId: Record<string, string> = {};
-	const adminSb = supabase as any;
 
 	for (const artifact of artifacts ?? []) {
 		if (!artifact?.label) continue;
@@ -1029,7 +1039,7 @@ async function collectChildSummaries(params: {
 	runId: string;
 	children: Array<{ nodeId: string; result?: TreeAgentResult }>;
 }) {
-	const { runId, children } = params;
+	const { children } = params;
 	const adminSb = supabase as any;
 	const childIds = children.map((c) => c.nodeId);
 	const resultsMap = new Map(children.map((c) => [c.nodeId, c.result]));

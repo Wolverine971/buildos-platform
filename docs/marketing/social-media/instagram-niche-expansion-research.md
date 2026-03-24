@@ -2,9 +2,10 @@
 
 # Instagram Niche Expansion — Account Discovery Research
 
-> **Purpose:** Find new Instagram accounts to engage with outside the ADHD niche. Take this doc to Instagram, search these terms, browse these hashtags, and log accounts worth following/engaging with below.
+> **Purpose:** Find new Instagram accounts to engage with outside the ADHD niche. Identifies which niches are viable on Instagram and which accounts are worth engaging with.
 >
-> **Date:** 2026-03-22
+> **Original Research:** 2026-03-22
+> **Last Verified:** 2026-03-23 (all accounts re-verified on Instagram)
 
 ---
 
@@ -17,88 +18,58 @@
 
 ---
 
-## Niche 1: Solo Founders & Indie Hackers (TOP PRIORITY)
+## Niche 1: Solo Founders & Solopreneurs (TOP PRIORITY)
 
 **Why they're ideal:** Already paying for tools, building daily, brain dump naturally, share openly, high engagement rates on Instagram Reels.
 
-**What to search:**
+**Status: STRONGEST niche on Instagram.** Most active creators, best comment sections, right audience for BuildOS.
 
-- Search terms: `solo founder`, `indie hacker`, `build in public`, `solopreneur`, `one person business`, `micro saas`
-- Hashtags to browse: #solofounder, #indiehacker, #buildinpublic, #solopreneur, #microSaaS, #onepersonbusiness, #founderstories, #startuplife, #shipfast
-- Reels keywords: "day in the life founder", "what I'm building", "solo founder routine", "building my startup"
-
-**What good accounts look like:**
-
-- Posting about what they're building, shipping updates, founder lifestyle
-- 1K–50K followers (peer-level, comments actually get seen)
-- Posting Reels or carousels, not just static quotes
-- Comments section has real conversation, not just emoji spam
+**Search terms:** `solo founder`, `build in public`, `solopreneur`, `one person business`, `startup tips`
+**Hashtags:** #solofounder, #buildinpublic, #solopreneur, #onepersonbusiness, #founderstories, #startuplife
 
 **Your angle in their comments:**
 
 - Share your own building experience (Marines → bootcamp → BuildOS)
 - Relate to the chaos of solo building
-- "Brain dump" framing fits naturally here — you don't need to pitch, just describe how you work
+- "Brain dump" framing fits naturally — you don't need to pitch, just describe how you work
 
-**Seed accounts to find first (search these names):**
+### Verified engagement targets
 
-- @gregisenberg — startup ideas, community building
-- @sahillavingia — Gumroad founder, solopreneur philosophy
-- @levelsio — Pieter Levels, nomad + indie hacker icon
-- @marc_louvion — ships micro-SaaS products publicly
-- @thedankoe — one-person business, digital leverage
-- @dickiebush — writing + shipping in public
-- @thesamparr — hustle culture, founder stories (high engagement Reels)
-- @jaborshi — solopreneur content
+| Handle           | Followers | What they post                                        | Engagement quality                                                                      | Verdict                                 |
+| ---------------- | --------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------- |
+| @dickiebush      | 24.3K     | Digital writing, Ship 30, AI writing, personal growth | 878 posts, heavy carousels, already followed by djwayne3                                | **KEEP — sweet spot peer-level**        |
+| @leaturnerholt   | 22.1K     | Solopreneur tips, community building                  | 454 posts, Reels + carousels, owns @theholtcommunity, has podcast/events                | **KEEP — sweet spot peer-level**        |
+| @justyn.ai       | 93.1K     | AI automation for solo founders, ChatGPT agents       | 273 posts, heavy Reels + carousels, comment section full of solo founders               | **KEEP — strong engagement target**     |
+| @thesamparr      | 87.8K     | Founder stories, Hampton Founders peer groups         | Verified blue check, 1,010 posts, owns @hamptonfounders                                 | **KEEP — active founder community**     |
+| @startuprules    | 1.4K      | Startup growth, founder tips, 3x founder / 1 exit     | 163 posts, all Reels, open to collabs. Follow ratio slightly inverted (1,544 following) | **KEEP — peer-level, collab potential** |
+| @chloedigital.ai | 1,756     | AI tips, "Vibe Coding to 6 Figures"                   | 81 posts, Reels + carousels, co-founder @coreli.ai                                      | **KEEP — peer-level AI + founder**      |
 
-### Accounts found:
+### Watering holes (mine comment sections)
 
-<!-- Searched 2026-03-22 via BuildOS Instagram account -->
+| Handle        | Followers | Why mine their comments                                                            |
+| ------------- | --------- | ---------------------------------------------------------------------------------- |
+| @gregisenberg | 105K      | Startup founders, AI-age builders. CEO @latecheckout. Already followed by djwayne3 |
+| @thedankoe    | 1.7M      | Solo builders, one-person business people. Building @edendotso                     |
 
-**Direct engagement targets (sweet spot 1K–100K):**
+### Dead seed accounts (confirmed not on Instagram)
 
-| Handle         | Followers | What they post                                         | Notes                                                                                                  |
-| -------------- | --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| @justyn.ai     | 92.2K     | AI automation for solo founders, Reels, ChatGPT agents | Verified. "Helping entrepreneurs save 10+ hrs/wk with AI." Great comment section full of solo founders |
-| @dickiebush    | 24.3K     | Digital writing, Ship 30, AI writing, personal growth  | Sweet spot. Already followed by djwayne3. Active poster (877 posts). Highlights: Ship 30, AI Writing   |
-| @thesamparr    | 87.8K     | Founder stories, Hampton Founders peer groups          | Verified. 1,009 posts, very active. Owns @hamptonfounders. Comment section = startup founders          |
-| @leaturnerholt | 22.1K     | Solopreneur tips, small business community             | Sweet spot. 451 posts. Owns @theholtcommunity. Has podcast, events, active community                   |
-| @startuprules  | 1.4K      | Startup growth, founder tips, 3x founder / 1 exit      | Peer-level. 163 posts with Reels. Open to collabs (DM me in bio). Good for authentic engagement        |
-
-**Watering holes (too big to engage directly — mine their comment sections):**
-
-| Handle        | Followers | What they post                                 | Notes                                                                   |
-| ------------- | --------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
-| @gregisenberg | 105K      | Startup ideas in AI age, community building    | Verified. CEO @latecheckout. Already followed by djwayne3. 594 posts    |
-| @thedankoe    | 1.7M      | One-person business, digital leverage, writing | Verified. Building @edendotso. Comment section is full of solo builders |
-
-**Seed accounts NOT on Instagram (remove from future searches):**
-
-| Handle         | Status                 | Notes                        |
-| -------------- | ---------------------- | ---------------------------- |
-| @sahillavingia | Page not available     | Primarily on X/Twitter       |
-| @levelsio      | 0 posts, 228 followers | Not active on IG, lives on X |
-| @marc_louvion  | 0 posts, 2 followers   | Not active on IG, lives on X |
-| @jaborshi      | Page not available     | Account doesn't exist        |
+| Handle         | Status                 | Notes                              |
+| -------------- | ---------------------- | ---------------------------------- |
+| @sahillavingia | Page not available     | Gumroad founder lives on X/Twitter |
+| @levelsio      | 0 posts, 228 followers | Pieter Levels not active on IG     |
+| @marc_louvion  | 0 posts, 2 followers   | Lives on X                         |
+| @jaborshi      | Page not available     | Account doesn't exist              |
 
 ---
 
-## Niche 2: Freelancers & Agency Owners
+## Niche 2: Freelancers & Creative Business
 
-**Why they're ideal:** Juggling 5–10 client projects, drowning in context switching, already spending on productivity tools, understand the pain of lost context between projects.
+**Why they're ideal:** Juggling 5-10 client projects, drowning in context switching, already spending on productivity tools, understand the pain of lost context between projects.
 
-**What to search:**
+**Status: THIN on Instagram.** Most freelancer/design process creators are on YouTube. The niche exists but through education accounts, not individual freelancers. Best approached through watering holes.
 
-- Search terms: `freelance designer`, `agency owner`, `creative freelancer`, `freelance developer`, `studio vlog`, `client work`
-- Hashtags to browse: #freelancelife, #agencylife, #freelancedesigner, #creativebusiness, #clientwork, #studiolife, #freelancetips, #designagency, #webdesigner
-- Reels keywords: "day in the life freelancer", "studio vlog", "client project walkthrough", "freelancer workflow"
-
-**What good accounts look like:**
-
-- Showing their actual workflow, not just portfolio shots
-- Talking about managing multiple clients/projects
-- Posting process content (how they organize, plan, deliver)
-- Complaining about context switching, lost notes, or project chaos
+**Search terms:** `freelance designer`, `agency owner`, `creative business`, `studio vlog`, `client work`
+**Hashtags:** #freelancelife, #agencylife, #creativebusiness, #freelancetips, #studiolife
 
 **Your angle in their comments:**
 
@@ -106,30 +77,31 @@
 - Share how you handle context across projects
 - "I keep a running brain dump for each project" type comments land well here
 
-**Seed accounts to find first:**
+### Verified engagement targets
 
-- @thefutur — Chris Do, design business education (huge comment section, meet other freelancers there)
-- @studiovlog accounts — search "studio vlog" in Reels
-- @flux.academy — web design freelancing
-- @thedesignkidz — design career content
-- @femke.design — product design process
+| Handle        | Followers | What they post                                  | Engagement quality                   | Verdict                                  |
+| ------------- | --------- | ----------------------------------------------- | ------------------------------------ | ---------------------------------------- |
+| @flux.academy | 55.2K     | Web design school, freelance business education | 858 posts, courses/community focused | **KEEP — watering hole for freelancers** |
 
-### Accounts found:
+### Watering holes (mine comment sections)
 
-<!-- Searched 2026-03-22 — this niche is harder on Instagram, many are YouTube/portfolio-only -->
+| Handle          | Followers | Why mine their comments                                                                                                   |
+| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------- |
+| @thefuturishere | 528K      | Chris Do's "The Futur" — creative business education. 1,328 posts. Comment sections full of freelancers and agency owners |
 
-| Handle | Followers | What they post | Notes |
-| ------ | --------- | -------------- | ----- |
-|        |           |                |       |
+### Dead seed accounts (confirmed not on Instagram)
 
-**Seed accounts NOT on Instagram or wrong accounts:**
+| Handle         | Status                                       | Notes                                                                               |
+| -------------- | -------------------------------------------- | ----------------------------------------------------------------------------------- |
+| @thefutur      | Wrong account (89 followers, random content) | Correct handle is @thefuturishere                                                   |
+| @femke.design  | Wrong account (38 followers)                 | Femke van Schoonhoven has a personal private account, not active for design content |
+| @thedesignkidz | 0 posts, 0 followers                         | Dead account                                                                        |
+| @taborbuilds   | Page not available                           | Dead                                                                                |
+| @marieoulis    | Page not available                           | Dead                                                                                |
 
-| Handle        | Status                                                 | Notes                                                                               |
-| ------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| @thefutur     | Wrong account (89 followers, random content)           | Chris Do's main business account handle unclear — try searching "Chris Do" directly |
-| @femke.design | Wrong account (38 followers, graphic design portfolio) | The product designer Femke van Schoonhoven may use a different handle               |
+### Gap analysis
 
-**Action:** Search "studio vlog" and "freelancer workflow" in Reels to find active mid-size creators in this niche. Also browse @thefutur comment sections once correct handle is found.
+This niche needs more discovery. Best approach: search "studio vlog" and "freelancer workflow" in Reels to find mid-size creators (5K-30K) showing actual process content. Also mine @thefuturishere and @flux.academy comment sections for active freelancers worth following.
 
 ---
 
@@ -137,18 +109,10 @@
 
 **Why they're ideal:** They already believe in capturing ideas and building systems. Many are frustrated their systems went stale — that's literally your Obsidian origin story. They want something that actually turns notes into action.
 
-**What to search:**
+**Status: INSTAGRAM-NATIVE.** People love showing their Notion setups and productivity systems. Comment sections are full of tool-curious people. But most mid-size PKM creators haven't been discovered yet.
 
-- Search terms: `second brain`, `notion setup`, `obsidian notes`, `pkm system`, `digital organization`, `productivity system`, `life os`, `notion template`
-- Hashtags to browse: #secondbrain, #pkm, #notiontemplate, #obsidian, #productivitysystem, #lifeos, #digitalplanner, #notionsetup, #buildingasecondbrainin
-- Reels keywords: "my notion setup", "how I organize my life", "second brain tour", "productivity system setup"
-
-**What good accounts look like:**
-
-- Showing their systems (Notion dashboards, Obsidian vaults, etc.)
-- Talking about the struggle of maintaining systems
-- Audience comments say things like "I tried this but couldn't keep it up"
-- They're tool-curious — their audience tries new things
+**Search terms:** `second brain`, `notion setup`, `obsidian notes`, `productivity system`, `life os`, `notion template`
+**Hashtags:** #secondbrain, #pkm, #notiontemplate, #obsidian, #productivitysystem, #lifeos, #digitalplanner
 
 **Your angle in their comments:**
 
@@ -156,84 +120,65 @@
 - The problem isn't capture, it's turning notes into action
 - Don't trash their tool, relate to the maintenance burden
 
-**Seed accounts to find first:**
+### Verified engagement targets
 
-- @notionhq — monitor their comment section for active PKM people
-- @taborbuilds — Notion/productivity content
-- @marieoulis — productivity + Notion
-- @august.bradley — PPV/life design system (Notion-based)
-- @aliabdaal — productivity, tools, systems (huge comment section)
-- Search "notion" or "obsidian" in Reels for smaller creators
+| Handle         | Followers | What they post                                  | Engagement quality                                | Verdict                                 |
+| -------------- | --------- | ----------------------------------------------- | ------------------------------------------------- | --------------------------------------- |
+| @_obsidian.md_ | 1,087     | Obsidian tips, note-making, second brain setups | Only 18 posts (all Reels), run by @shuvangkar_das | **KEEP — niche-perfect but low output** |
 
-### Accounts found:
+### Watering holes (mine comment sections)
 
-<!-- Searched 2026-03-22 -->
+| Handle     | Followers | Why mine their comments                                                                         |
+| ---------- | --------- | ----------------------------------------------------------------------------------------------- |
+| @notionhq  | 443K      | Official Notion. 318 posts. Comment section = PKM enthusiasts                                   |
+| @aliabdaal | 1.1M      | Productivity, LifeOS product (parallel to BuildOS). Huge comment section of tool-curious people |
 
-**Direct engagement targets:**
+### Dead seed accounts (confirmed not on Instagram)
 
-| Handle         | Followers | What they post                                  | Notes                                                                                  |
-| -------------- | --------- | ----------------------------------------------- | -------------------------------------------------------------------------------------- |
-| @_obsidian.md_ | 1,085     | Obsidian tips, note-making, second brain setups | Small but niche-perfect. Your Obsidian origin story lands here. Run by @shuvangkar_das |
+| Handle          | Status                                      | Notes                                 |
+| --------------- | ------------------------------------------- | ------------------------------------- |
+| @august.bradley | Wrong account (33 followers, health/beauty) | PPV system creator is on YouTube only |
+| @taborbuilds    | Page not available                          | Dead                                  |
+| @marieoulis     | Page not available                          | Dead                                  |
 
-**Watering holes (mine comment sections for PKM people):**
+### Gap analysis
 
-| Handle     | Followers | What they post                                    | Notes                                                                                                         |
-| ---------- | --------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| @notionhq  | 443K      | Official Notion, AI workspace features            | Verified. 318 posts. Followed by the_mini_adhd_coach. Comment section = PKM enthusiasts                       |
-| @aliabdaal | 1.1M      | Productivity, LifeOS, Feel-Good Productivity book | Verified. Has "LifeOS" product (interesting parallel to BuildOS). Huge comment section of tool-curious people |
-
-**Action:** Search "notion template" and "productivity system" in Reels to find smaller creators (5K–30K range) showing their setups. These mid-size PKM creators are the best engagement targets — their audiences are tool-curious and your "second brain graveyard" story resonates hard.
+Biggest opportunity gap. Need to search "notion template" and "productivity system" in Reels to find smaller creators (5K-30K) showing their setups. These mid-size PKM creators would be the best engagement targets — their audiences are tool-curious and your "second brain graveyard" story resonates hard.
 
 ---
 
 ## Niche 4: AI-Native Creators & AI Tool Users
 
-**Why they're ideal:** Already using AI daily, understand context problems firsthand (pasting docs into ChatGPT), interested in workflow optimization, early adopter mindset.
+**Why they're ideal:** Already using AI daily, understand context problems firsthand, interested in workflow optimization, early adopter mindset.
 
-**What to search:**
+**Status: WEAK on Instagram.** Most AI tool creators live on X/YouTube. Instagram AI accounts are overwhelmingly engagement bait ("top 10 AI tools" listicles) or generic guru accounts. Better to reach AI-curious people through the solopreneur niche (Niche 1).
 
-- Search terms: `ai tools`, `ai productivity`, `ai workflow`, `chatgpt tips`, `ai for business`, `prompt engineering`, `ai automation`
-- Hashtags to browse: #aitools, #aitips, #chatgpt, #aiproductivity, #promptengineering, #aiforbusiness, #aiautomation, #contextengineering, #aiworkflow
-- Reels keywords: "ai tools you need", "how I use ai", "ai workflow", "chatgpt hack", "ai productivity"
-
-**What good accounts look like:**
-
-- Demonstrating actual AI workflows, not just "top 10 AI tools" lists
-- Talking about limitations of AI (context windows, hallucination, etc.)
-- Small-to-mid audience (under 50K) — the big AI accounts are all engagement bait
-- Posting tutorials or walkthroughs, not just hype
+**Search terms:** `ai tools`, `ai productivity`, `ai workflow`, `chatgpt tips`
+**Hashtags:** #aitools, #chatgpt, #aiproductivity, #contextengineering
 
 **Your angle in their comments:**
 
-- "Context > prompts" framing — this is your sharpest take for this audience
+- "Context > prompts" framing — your sharpest take for this audience
 - "AI has amnesia" — everyone pasting into ChatGPT feels this
-- Share what you're building without pitching — "I'm working on something for this exact problem" when genuinely relevant
 
-**Seed accounts to find first:**
+### Verified engagement targets
 
-- @maboroshi.ai — AI creative tools
-- @liam.ottley — AI agency building
-- @ai.advancing — AI tips and tools
-- Search "ai workflow" and "chatgpt" in Reels for emerging creators
-- Browse #contextengineering (small but growing)
+| Handle           | Followers | What they post                                              | Engagement quality                   | Verdict                            |
+| ---------------- | --------- | ----------------------------------------------------------- | ------------------------------------ | ---------------------------------- |
+| @justyn.ai       | 93.1K     | AI automation for solo founders (cross-listed with Niche 1) | Best AI + entrepreneur account on IG | **KEEP — primary AI niche target** |
+| @chloedigital.ai | 1,756     | AI tips, vibe coding (cross-listed with Niche 1)            | Peer-level, active posting           | **KEEP — peer-level AI target**    |
 
-### Accounts found:
+### Dead seed accounts (confirmed not on Instagram)
 
-<!-- Searched 2026-03-22 -->
+| Handle        | Status                              | Notes                            |
+| ------------- | ----------------------------------- | -------------------------------- |
+| @maboroshi.ai | 6 posts, 1 follower                 | Dead account                     |
+| @ai.advancing | 0 posts, 8 followers                | Dead account                     |
+| @liam.ottley  | Fake reseller account (9 followers) | Real Liam Ottley on YouTube only |
 
-**Direct engagement targets:**
+### Recommendation
 
-| Handle     | Followers | What they post                                              | Notes                                                                                           |
-| ---------- | --------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| @justyn.ai | 92.2K     | AI automation for solo founders (cross-listed with Niche 1) | Also fits here — his audience is AI-curious entrepreneurs. "Context > prompts" angle lands well |
-
-**Seed accounts NOT on Instagram:**
-
-| Handle       | Status                              | Notes                                          |
-| ------------ | ----------------------------------- | ---------------------------------------------- |
-| @liam.ottley | Fake reseller account (9 followers) | Real Liam Ottley not active on IG, try YouTube |
-
-**Action:** This niche is still emerging on Instagram. Most AI tool creators are on X/YouTube. Best approach: search "ai workflow" and "chatgpt" in Reels to find smaller creators (under 50K) who are demonstrating actual workflows, not just "top 10 tools" lists. Also browse #contextengineering.
+**Don't invest heavily in this niche on Instagram.** The AI creator community lives on X and YouTube. Instead, catch AI-curious people where they already are on IG — in the solopreneur and PKM comment sections. When @justyn.ai or @chloedigital.ai post AI workflow content, engage there. Browse #contextengineering occasionally for emerging creators.
 
 ---
 
@@ -241,90 +186,79 @@
 
 **Why they're ideal:** Running a podcast AND a course AND a newsletter AND a side project. They have too many ideas and not enough structure. Brain dump is their natural mode.
 
-**What to search:**
+**Status: OVERLAPS HEAVILY WITH NICHE 1.** Most multi-project creators are solopreneurs. This niche doesn't have its own distinct community on Instagram — it's a lens, not a separate audience.
 
-- Search terms: `creative entrepreneur`, `multi-passionate`, `side project`, `creator economy`, `content creator workflow`, `multiple businesses`
-- Hashtags to browse: #creativeentrepreneur, #multipassionate, #creatorbusiness, #creatoreconomy, #sidehustle, #contentcreator, #multiplebusinesses
-- Reels keywords: "running multiple businesses", "creator workflow", "how I manage everything", "multi-passionate entrepreneur"
+**Search terms:** `creative entrepreneur`, `multi-passionate`, `creator economy`, `multiple businesses`
+**Hashtags:** #creativeentrepreneur, #multipassionate, #creatorbusiness, #creatoreconomy
 
-**What good accounts look like:**
+### Watering holes
 
-- Openly talking about managing multiple projects
-- Showing their planning/organization process
-- Their audience comments are full of "how do you manage it all?"
-- Not just motivational content — actual process/behind-the-scenes
+| Handle   | Followers | Why mine their comments                                                                                                   |
+| -------- | --------- | ------------------------------------------------------------------------------------------------------------------------- |
+| @garyvee | ~15M      | Already in your stories circle. Massive comment sections full of multi-project hustlers. Engage the commenters, not Gary. |
 
-**Your angle in their comments:**
+### Dead seed accounts (confirmed not on Instagram)
 
-- You're also multi-project (BuildOS + marketing + content)
-- The "too many ideas, not enough clarity" framing
-- Building in public resonates here
+| Handle      | Status             | Notes                 |
+| ----------- | ------------------ | --------------------- |
+| @vanaborshi | Page not available | Account doesn't exist |
+| @jasminasby | Page not available | Account doesn't exist |
 
-**Seed accounts to find first:**
+### Recommendation
 
-- @garyvee — his comment section is a goldmine for meeting hustlers (don't engage Gary directly, engage the commenters)
-- @vanaborshi — creative business content
-- @jasminasby — creative entrepreneur lifestyle
-- Search "multiple businesses" or "multi-passionate" in Reels
-
-### Accounts found:
-
-<!-- Searched 2026-03-22 — @garyvee already in your stories circle -->
-
-| Handle   | Followers | What they post             | Notes                                                                           |
-| -------- | --------- | -------------------------- | ------------------------------------------------------------------------------- |
-| @garyvee | Massive   | Hustle, multi-project life | Already in your stories circle. Watering hole — engage the commenters, not Gary |
-
-**Seed accounts NOT on Instagram:**
-
-| Handle      | Status           | Notes          |
-| ----------- | ---------------- | -------------- |
-| @vanaborshi | Not searched yet | Need to verify |
-| @jasminasby | Not searched yet | Need to verify |
-
-**Action:** Search "running multiple businesses" and "multi-passionate" in Reels. This niche overlaps heavily with Niche 1 (solopreneurs) — many of the same creators fit both. Focus on accounts that show process/planning, not just motivational content.
+**Merge this into Niche 1.** Don't treat "creative entrepreneurs" as a separate engagement track. The same accounts and comment sections that work for solopreneurs (Niche 1) also capture multi-project people. Use @garyvee as a watering hole and focus energy on the Niche 1 accounts.
 
 ---
 
-## Key findings from 2026-03-22 search session
+## Accounts to remove from engagement targets
 
-### What worked
+These accounts were listed in `instagram-engagement-targets.md` but should be removed or corrected:
 
-- **Solo founder / solopreneur niche is the strongest on Instagram** — most active creators, best comment sections, right audience
-- **PKM/Notion niche is very Instagram-native** — people love showing their setups, and the comment sections are full of tool-curious people
-- **Watering hole strategy confirmed** — the big accounts (@thedankoe 1.7M, @aliabdaal 1.1M, @notionhq 443K, @gregisenberg 105K) have comment sections full of the exact people you want to reach
+| Account      | Issue                                                            | Action                                            |
+| ------------ | ---------------------------------------------------------------- | ------------------------------------------------- |
+| @danshipper  | Private account, 467 followers. Not active on IG.                | **REMOVE** from Tier 1                            |
+| @mattdavella | 360K followers. Too big for peer engagement.                     | **MOVE** to watering holes (if relevant)          |
+| @themindgeek | Listed as ~100K but actually 313K. Already followed by build.os. | **UPDATE** follower count, move to watering holes |
 
-### What didn't work
+---
 
-- **Indie hacker / micro-SaaS community lives on X, not Instagram** — @levelsio, @sahillavingia, @marc_louvion, @jaborshi all dead/missing on IG
-- **AI tools niche is still nascent on Instagram** — mostly tiny accounts or engagement bait. Better to catch AI-curious people via the solopreneur niche
-- **Many seed account handles were wrong** — @thefutur, @femke.design, @liam.ottley all led to wrong or fake accounts
+## Summary: What's actually worth doing
 
-### Recommended priority for BuildOS engagement
+### Final priority ranking (all niches combined)
 
-**Tier 1 — Follow and engage weekly (sweet spot accounts):**
+**Tier 1 — Engage weekly (peer-level, your comments get seen):**
 
-1. @dickiebush (24.3K) — digital writing, AI, shipping
-2. @leaturnerholt (22.1K) — solopreneur community
-3. @justyn.ai (92.2K) — AI for solo founders
-4. @thesamparr (87.8K) — founder stories
-5. @startuprules (1.4K) — peer-level founder, open to collabs
-6. @_obsidian.md_ (1,085) — Obsidian tips, your origin story resonates
+| Priority | Account          | Followers | Niche             | Why                                                                |
+| -------- | ---------------- | --------- | ----------------- | ------------------------------------------------------------------ |
+| 1        | @dickiebush      | 24.3K     | Solo founder      | Sweet spot. Already following. Digital writing + AI.               |
+| 2        | @leaturnerholt   | 22.1K     | Solopreneur       | Sweet spot. Community-oriented, has podcast/events.                |
+| 3        | @justyn.ai       | 93.1K     | Solo founder + AI | Best AI-for-founders account. Comment section full of your people. |
+| 4        | @thesamparr      | 87.8K     | Founder           | Verified. Hampton Founders community. Active poster.               |
+| 5        | @chloedigital.ai | 1,756     | AI + founder      | Peer-level. Vibe coding, AI tips. Growing.                         |
+| 6        | @startuprules    | 1.4K      | Founder           | Peer-level. Open to collabs. All Reels.                            |
+| 7        | @_obsidian.md_   | 1,087     | PKM               | Niche-perfect for Obsidian origin story. Small but targeted.       |
 
 **Tier 2 — Mine comment sections weekly (watering holes):**
 
-1. @notionhq (443K) — find PKM people in comments
-2. @gregisenberg (105K) — find startup founders in comments
-3. @thedankoe (1.7M) — find solo builders in comments
-4. @aliabdaal (1.1M) — find productivity tool people in comments
-5. @garyvee — find multi-project hustlers in comments
+| Priority | Account         | Followers | What you find in their comments            |
+| -------- | --------------- | --------- | ------------------------------------------ |
+| 1        | @gregisenberg   | 105K      | Startup founders. Already following.       |
+| 2        | @notionhq       | 443K      | PKM enthusiasts, productivity tool users.  |
+| 3        | @thefuturishere | 528K      | Freelancers, creative business owners.     |
+| 4        | @thedankoe      | 1.7M      | Solo builders, one-person business people. |
+| 5        | @aliabdaal      | 1.1M      | Tool-curious productivity people.          |
+| 6        | @flux.academy   | 55.2K     | Web design freelancers.                    |
+| 7        | @garyvee        | ~15M      | Multi-project hustlers.                    |
 
-**Still needed:**
+### Still needed (future discovery sessions)
 
-- More mid-size accounts (5K–30K) in the PKM/Notion niche
-- More mid-size accounts in the freelancer/agency niche
-- Verify @vanaborshi, @jasminasby for Niche 5
-- Search Reels for "studio vlog", "notion template", "ai workflow" to find emerging creators
+1. **More mid-size PKM/Notion creators (5K-30K)** — search "notion template" and "productivity system" in Reels
+2. **More freelancer/agency workflow creators** — search "studio vlog" and "client workflow" in Reels, mine @thefuturishere comments
+3. **Emerging AI workflow creators** — browse #contextengineering, search "ai workflow" in Reels (avoid guru/hype accounts)
+
+### Key insight from verification
+
+**The indie hacker / micro-SaaS community does NOT live on Instagram.** Most of the seed accounts for this audience (@levelsio, @sahillavingia, @marc_louvion) are dead or inactive on IG. They live on X/Twitter. The solopreneur/creative business crowd IS on Instagram though — so focus on that adjacent audience rather than trying to find the X-native builders on IG.
 
 ---
 
@@ -332,33 +266,16 @@
 
 Before adding someone to your engagement rotation, check:
 
-- [ ] **Follower range:** 1K–100K (peer level, your comments get seen)
+- [ ] **Follower range:** 1K-100K (peer level, your comments get seen)
 - [ ] **Posts in last 7 days:** At least 2 (active account)
-- [ ] **Comment quality:** Real conversations happening, not just "fire emoji" spam
+- [ ] **Comment quality:** Real conversations happening, not just emoji spam
 - [ ] **Content type:** Reels or carousels (higher reach than static posts)
-- [ ] **Relevance:** Their audience would understand "brain dump → action" without explanation
+- [ ] **Relevance:** Their audience would understand "brain dump -> action" without explanation
 - [ ] **Engagement ratio:** Comments-to-likes above 1:100 (shows their audience talks, not just scrolls)
 - [ ] **Your story fits:** You can comment authentically from your experience, not just cheerleading
+- [ ] **Follow ratio healthy:** Followers > following (not follow-for-follow behavior)
 
 ---
 
-## Search session workflow
-
-1. Open Instagram on your phone/browser
-2. Go niche by niche — spend 10–15 min per niche
-3. Start with the seed accounts — visit their profiles, check who they follow, check who comments on their posts
-4. Browse 2–3 hashtags per niche — look at Recent, not Top
-5. Search Reels keywords — Reels surface smaller creators better than feed
-6. For every promising account: add to the table above with handle, follower count, what they post, and any notes
-7. Follow accounts that pass the checklist (max 10–15 new follows per session to avoid Instagram flags)
-
----
-
-## After research: next steps
-
-Once you've filled in the tables above:
-
-1. Pick your top 15–20 accounts across all niches
-2. Update `instagram-engagement-targets.md` with the new accounts organized by tier
-3. Update `instagram-strategy.md` content pillars to reflect the niche shift
-4. Start engaging — same warmup process, new targets
+_Last verified: 2026-03-23_
+_Related: `instagram-engagement-targets.md`, `instagram-strategy.md`_

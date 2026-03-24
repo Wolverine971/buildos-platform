@@ -12,13 +12,7 @@ This audit covered all monorepo Vitest suites I could run locally in this enviro
 - `@buildos/worker` (unit/default suite and integration script)
 - `@buildos/web` (default suite behavior + deterministic per-file audit for non-LLM tests)
 
-Raw per-file web results are saved at:
-
-- `docs/testing/artifacts/test-audit-2026-02-25/web-results.tsv`
-- `docs/testing/artifacts/test-audit-2026-02-25/web-test-counts.tsv`
-- `docs/testing/artifacts/test-audit-2026-02-25/web-pass-files.txt`
-- `docs/testing/artifacts/test-audit-2026-02-25/web-fail-files.txt`
-- `docs/testing/artifacts/test-audit-2026-02-25/web-timeout-files.txt`
+The raw per-file web outputs for this snapshot were removed on 2026-03-24 during docs cleanup. This file is the durable summary; rerun the audit locally if you need the machine-generated detail again.
 
 ## Executive Summary
 

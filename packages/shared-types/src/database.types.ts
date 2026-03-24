@@ -198,6 +198,78 @@ export type Database = {
           },
         ]
       }
+      agent_call_tool_executions: {
+        Row: {
+          agent_call_session_id: string
+          args: Json
+          completed_at: string | null
+          created_at: string
+          entity_id: string | null
+          entity_kind: string | null
+          error_payload: Json | null
+          external_agent_caller_id: string
+          id: string
+          idempotency_key: string | null
+          op: string
+          response_payload: Json | null
+          started_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agent_call_session_id: string
+          args?: Json
+          completed_at?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_kind?: string | null
+          error_payload?: Json | null
+          external_agent_caller_id: string
+          id?: string
+          idempotency_key?: string | null
+          op: string
+          response_payload?: Json | null
+          started_at?: string
+          status: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agent_call_session_id?: string
+          args?: Json
+          completed_at?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_kind?: string | null
+          error_payload?: Json | null
+          external_agent_caller_id?: string
+          id?: string
+          idempotency_key?: string | null
+          op?: string
+          response_payload?: Json | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_call_tool_executions_agent_call_session_id_fkey"
+            columns: ["agent_call_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_call_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_call_tool_executions_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_chat_messages: {
         Row: {
           agent_session_id: string

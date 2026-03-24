@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-03-23T22:52:28.851Z
+// Generated on: 2026-03-24T15:08:52.812Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -42,6 +42,24 @@ export type DatabaseSchema = {
 		status: string;
 		updated_at: string;
 		user_buildos_agent_id: string;
+		user_id: string;
+	};
+	agent_call_tool_executions: {
+		agent_call_session_id: string;
+		args: Json;
+		completed_at: string | null;
+		created_at: string;
+		entity_id: string | null;
+		entity_kind: string | null;
+		error_payload: Json | null;
+		external_agent_caller_id: string;
+		id: string;
+		idempotency_key: string | null;
+		op: string;
+		response_payload: Json | null;
+		started_at: string;
+		status: string;
+		updated_at: string;
 		user_id: string;
 	};
 	agent_chat_messages: {
@@ -2897,6 +2915,7 @@ export const tableNames = [
 	'admin_users',
 	'agent_call_bootstrap_links',
 	'agent_call_sessions',
+	'agent_call_tool_executions',
 	'agent_chat_messages',
 	'agent_chat_sessions',
 	'agent_executions',

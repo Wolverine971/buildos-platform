@@ -8,11 +8,13 @@ import type {
 	BuildosAgentToolDefinition
 } from '@buildos/shared-types';
 import { buildSearchFilter } from '$lib/utils/api-helpers';
+import { logCreateAsync, logUpdateAsync } from '$lib/services/async-activity-logger';
 import {
 	ensureActorId,
 	fetchProjectSummaries,
 	type OntologyProjectSummary
 } from '$lib/services/ontology/ontology-projects.service';
+import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
 import {
 	getToolRegistry,
@@ -28,11 +30,24 @@ import {
 	isWriteOp,
 	requiredScopeModeForOp
 } from './agent-call-policy';
+import {
+	AgentCallWritePendingError,
+	AgentCallWriteReplayError,
+	recordWriteExecutionFailure,
+	recordWriteExecutionSuccess,
+	reserveWriteExecution
+} from './agent-call-write-audit.service';
+import {
+	notifyEntityMentionsAdded,
+	resolveEntityMentionUserIds
+} from '$lib/server/entity-mention-notification.service';
 import { normalizeTaskStateInput } from '../../../routes/api/onto/shared/task-state';
 
 type ToolExecutionContext = {
 	admin: any;
 	userId: string;
+	callerId?: string;
+	callSessionId?: string;
 	scope: AgentCallScope;
 };
 
@@ -66,6 +81,22 @@ const EXTERNAL_GATEWAY_TOOL_NAMES = new Set<BuildosAgentGatewayToolName>([
 	'tool_help',
 	'tool_exec'
 ]);
+
+class ExternalToolGatewayError extends Error {
+	constructor(
+		public readonly code:
+			| 'NOT_FOUND'
+			| 'VALIDATION_ERROR'
+			| 'FORBIDDEN'
+			| 'CONFLICT'
+			| 'INTERNAL',
+		message: string,
+		public readonly details?: Record<string, unknown>
+	) {
+		super(message);
+		this.name = 'ExternalToolGatewayError';
+	}
+}
 
 const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<string, unknown>>> = {
 	'onto.task.create': {
@@ -229,12 +260,15 @@ function assertAccessibleProject(
 	projectId: unknown
 ): OntologyProjectSummary {
 	if (typeof projectId !== 'string' || !isValidUUID(projectId)) {
-		throw new Error('project_id must be a valid UUID');
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'project_id must be a valid UUID');
 	}
 
 	const project = projectMap.get(projectId);
 	if (!project) {
-		throw new Error('Project is outside the allowed call scope');
+		throw new ExternalToolGatewayError(
+			'FORBIDDEN',
+			'Project is outside the allowed call scope'
+		);
 	}
 
 	return project;
@@ -245,12 +279,12 @@ function assertVisibleEntityProject(
 	projectId: unknown
 ): OntologyProjectSummary {
 	if (typeof projectId !== 'string' || !isValidUUID(projectId)) {
-		throw new Error('Entity project_id is invalid');
+		throw new ExternalToolGatewayError('INTERNAL', 'Entity project_id is invalid');
 	}
 
 	const project = projectMap.get(projectId);
 	if (!project) {
-		throw new Error('Entity is outside the allowed call scope');
+		throw new ExternalToolGatewayError('FORBIDDEN', 'Entity is outside the allowed call scope');
 	}
 
 	return project;
@@ -274,7 +308,15 @@ async function loadVisibleProjects(context: ToolExecutionContext): Promise<Visib
 
 function assertProjectWriteAccess(project: OntologyProjectSummary): void {
 	if (project.access_level !== 'write' && project.access_level !== 'admin') {
-		throw new Error('Write access is not available for this project');
+		throw new ExternalToolGatewayError(
+			'FORBIDDEN',
+			'Write access is not available for this project',
+			{
+				project_id: project.id,
+				project_name: project.name,
+				project_access_level: project.access_level
+			}
+		);
 	}
 }
 
@@ -288,12 +330,12 @@ function requireTrimmedString(
 	}
 
 	if (typeof value !== 'string') {
-		throw new Error(`${fieldName} must be a string`);
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', `${fieldName} must be a string`);
 	}
 
 	const normalized = value.trim();
 	if (!normalized && options?.allowEmpty !== true) {
-		throw new Error(`${fieldName} is required`);
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', `${fieldName} is required`);
 	}
 
 	return normalized;
@@ -309,7 +351,10 @@ function normalizeOptionalDate(value: unknown, fieldName: string): string | null
 	}
 
 	if (typeof value !== 'string') {
-		throw new Error(`${fieldName} must be a string or null`);
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`${fieldName} must be a string or null`
+		);
 	}
 
 	const normalized = value.trim();
@@ -319,7 +364,10 @@ function normalizeOptionalDate(value: unknown, fieldName: string): string | null
 
 	const parsed = Date.parse(normalized);
 	if (Number.isNaN(parsed)) {
-		throw new Error(`${fieldName} must be a valid ISO date`);
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`${fieldName} must be a valid ISO date`
+		);
 	}
 
 	return normalized;
@@ -338,16 +386,19 @@ function normalizePriority(
 		if (options?.allowNull) {
 			return null;
 		}
-		throw new Error(`${fieldName} must be a number`);
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', `${fieldName} must be a number`);
 	}
 
 	if (typeof value !== 'number' || !Number.isFinite(value)) {
-		throw new Error(`${fieldName} must be a number`);
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', `${fieldName} must be a number`);
 	}
 
 	const normalized = Math.floor(value);
 	if (normalized < 1 || normalized > 5) {
-		throw new Error(`${fieldName} must be between 1 and 5`);
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`${fieldName} must be between 1 and 5`
+		);
 	}
 
 	return normalized;
@@ -359,10 +410,259 @@ function normalizeProps(value: unknown, fieldName: string): Record<string, unkno
 	}
 
 	if (!value || typeof value !== 'object' || Array.isArray(value)) {
-		throw new Error(`${fieldName} must be an object`);
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', `${fieldName} must be an object`);
 	}
 
 	return value as Record<string, unknown>;
+}
+
+function toNullableText(value: string | null | undefined): string | null {
+	if (typeof value !== 'string') {
+		return value ?? null;
+	}
+
+	return value.trim().length > 0 ? value : null;
+}
+
+function ensureWriteExecutionContext(
+	context: ToolExecutionContext,
+	op: BuildosAgentAllowedOp
+): { callerId: string; callSessionId: string } {
+	if (!context.callerId || !context.callSessionId) {
+		throw new ExternalToolGatewayError('INTERNAL', `Missing write execution context for ${op}`);
+	}
+
+	return {
+		callerId: context.callerId,
+		callSessionId: context.callSessionId
+	};
+}
+
+function normalizeGatewayError(error: unknown): ExternalToolGatewayError {
+	if (error instanceof ExternalToolGatewayError) {
+		return error;
+	}
+
+	if (error instanceof AgentCallWritePendingError) {
+		return new ExternalToolGatewayError(
+			'CONFLICT',
+			'An idempotent write with this key is already in progress'
+		);
+	}
+
+	if (error instanceof AgentCallWriteReplayError) {
+		return new ExternalToolGatewayError('INTERNAL', error.message);
+	}
+
+	return new ExternalToolGatewayError(
+		'INTERNAL',
+		error instanceof Error ? error.message : 'Tool execution failed'
+	);
+}
+
+function extractWriteEntityMeta(params: {
+	op: BuildosAgentAllowedOp;
+	result: Record<string, unknown>;
+}): { entityKind?: string; entityId?: string } {
+	if (params.op.startsWith('onto.task.')) {
+		const task = params.result.task;
+		if (task && typeof task === 'object' && !Array.isArray(task)) {
+			const taskId = (task as { id?: unknown }).id;
+			if (typeof taskId === 'string' && isValidUUID(taskId)) {
+				return {
+					entityKind: 'task',
+					entityId: taskId
+				};
+			}
+		}
+	}
+
+	return {};
+}
+
+function buildGatewayResponseMeta(params: {
+	requestedOp: string;
+	canonicalOp: string;
+	warnings: string[];
+	extra?: Record<string, unknown>;
+}): Record<string, unknown> | undefined {
+	const meta: Record<string, unknown> = {
+		...(params.canonicalOp !== params.requestedOp ? { executed_op: params.canonicalOp } : {}),
+		...(params.warnings.length > 0 ? { warnings: params.warnings } : {}),
+		...(params.extra ?? {})
+	};
+
+	return Object.keys(meta).length > 0 ? meta : undefined;
+}
+
+function buildGatewaySuccessResponse(params: {
+	requestedOp: string;
+	canonicalOp: string;
+	result: Record<string, unknown>;
+	warnings: string[];
+	meta?: Record<string, unknown>;
+}): Record<string, unknown> {
+	const responseMeta = buildGatewayResponseMeta({
+		requestedOp: params.requestedOp,
+		canonicalOp: params.canonicalOp,
+		warnings: params.warnings,
+		extra: params.meta
+	});
+
+	return {
+		op: params.requestedOp,
+		ok: true,
+		result: params.result,
+		...(responseMeta ? { meta: responseMeta } : {})
+	};
+}
+
+async function syncCreatedTaskSideEffects(params: {
+	context: ToolExecutionContext;
+	project: OntologyProjectSummary;
+	actorId: string;
+	task: Record<string, unknown>;
+}): Promise<void> {
+	const actorDisplayName = 'BuildOS agent';
+	const mentionUserIds = await resolveEntityMentionUserIds({
+		supabase: params.context.admin,
+		projectId: params.project.id,
+		projectOwnerActorId: params.project.owner_actor_id,
+		actorUserId: params.context.userId,
+		nextTextValues: [
+			typeof params.task.title === 'string' ? params.task.title : null,
+			typeof params.task.description === 'string' ? params.task.description : null
+		]
+	});
+
+	await notifyEntityMentionsAdded({
+		supabase: params.context.admin,
+		projectId: params.project.id,
+		projectName: params.project.name,
+		entityType: 'task',
+		entityId: String(params.task.id),
+		entityTitle: typeof params.task.title === 'string' ? params.task.title : null,
+		actorUserId: params.context.userId,
+		actorDisplayName,
+		mentionedUserIds: mentionUserIds,
+		source: 'agent_ping'
+	});
+
+	try {
+		const taskEventSync = new TaskEventSyncService(params.context.admin);
+		await taskEventSync.syncTaskEvents(
+			params.context.userId,
+			params.actorId,
+			params.task as any
+		);
+	} catch (eventError) {
+		console.warn('[External Tool Gateway] Failed to sync task events on create:', eventError);
+	}
+
+	logCreateAsync(
+		params.context.admin,
+		params.project.id,
+		'task',
+		String(params.task.id),
+		{
+			title: params.task.title,
+			type_key: params.task.type_key,
+			state_key: params.task.state_key
+		},
+		params.context.userId,
+		'api'
+	);
+}
+
+async function syncUpdatedTaskSideEffects(params: {
+	context: ToolExecutionContext;
+	project: OntologyProjectSummary;
+	actorId: string;
+	existingTask: Record<string, unknown>;
+	updatedTask: Record<string, unknown>;
+	changedArgs: Record<string, unknown>;
+}): Promise<void> {
+	const isTransitioningToDone =
+		params.changedArgs.state_key !== undefined &&
+		params.existingTask.state_key !== 'done' &&
+		params.updatedTask.state_key === 'done';
+	const isTransitioningFromDone =
+		params.changedArgs.state_key !== undefined &&
+		params.existingTask.state_key === 'done' &&
+		params.updatedTask.state_key !== 'done';
+	const hasSchedulingEdit =
+		params.changedArgs.start_at !== undefined || params.changedArgs.due_at !== undefined;
+	const shouldSyncFromTitleEdit =
+		params.changedArgs.title !== undefined && !isTransitioningFromDone;
+	const shouldSyncEvents = shouldSyncFromTitleEdit || hasSchedulingEdit || isTransitioningToDone;
+
+	if (shouldSyncEvents) {
+		try {
+			const taskEventSync = new TaskEventSyncService(params.context.admin);
+			await taskEventSync.syncTaskEvents(
+				params.context.userId,
+				params.actorId,
+				params.updatedTask as any
+			);
+		} catch (eventError) {
+			console.warn(
+				'[External Tool Gateway] Failed to sync task events on update:',
+				eventError
+			);
+		}
+	}
+
+	const actorDisplayName = 'BuildOS agent';
+	const mentionUserIds = await resolveEntityMentionUserIds({
+		supabase: params.context.admin,
+		projectId: params.project.id,
+		projectOwnerActorId: params.project.owner_actor_id,
+		actorUserId: params.context.userId,
+		nextTextValues: [
+			typeof params.updatedTask.title === 'string' ? params.updatedTask.title : null,
+			typeof params.updatedTask.description === 'string'
+				? params.updatedTask.description
+				: null
+		],
+		previousTextValues: [
+			typeof params.existingTask.title === 'string' ? params.existingTask.title : null,
+			typeof params.existingTask.description === 'string'
+				? params.existingTask.description
+				: null
+		]
+	});
+
+	await notifyEntityMentionsAdded({
+		supabase: params.context.admin,
+		projectId: params.project.id,
+		projectName: params.project.name,
+		entityType: 'task',
+		entityId: String(params.updatedTask.id),
+		entityTitle: typeof params.updatedTask.title === 'string' ? params.updatedTask.title : null,
+		actorUserId: params.context.userId,
+		actorDisplayName,
+		mentionedUserIds: mentionUserIds,
+		source: 'agent_ping'
+	});
+
+	logUpdateAsync(
+		params.context.admin,
+		params.project.id,
+		'task',
+		String(params.updatedTask.id),
+		{
+			title: params.existingTask.title,
+			state_key: params.existingTask.state_key,
+			props: params.existingTask.props
+		},
+		{
+			title: params.updatedTask.title,
+			state_key: params.updatedTask.state_key,
+			props: params.updatedTask.props
+		},
+		params.context.userId,
+		'api'
+	);
 }
 
 async function listProjects(context: ToolExecutionContext, args: Record<string, unknown>) {
@@ -401,7 +701,7 @@ async function listProjects(context: ToolExecutionContext, args: Record<string, 
 async function searchProjects(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const query = typeof args.query === 'string' ? args.query.trim().toLowerCase() : '';
 	if (!query) {
-		throw new Error('query is required');
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'query is required');
 	}
 
 	const limit = clampLimit(args.limit, 12, 1, 20);
@@ -514,12 +814,12 @@ async function searchTasks(context: ToolExecutionContext, args: Record<string, u
 async function getTask(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const taskId = args.task_id;
 	if (typeof taskId !== 'string' || !isValidUUID(taskId)) {
-		throw new Error('task_id must be a valid UUID');
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'task_id must be a valid UUID');
 	}
 
 	const visible = await loadVisibleProjects(context);
 	if (visible.projects.length === 0) {
-		throw new Error('Task not found');
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
 	}
 
 	const { data, error } = await context.admin
@@ -536,11 +836,11 @@ async function getTask(context: ToolExecutionContext, args: Record<string, unkno
 		.maybeSingle();
 
 	if (error) {
-		throw new Error(error.message || 'Failed to load task');
+		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to load task');
 	}
 
 	if (!data) {
-		throw new Error('Task not found');
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
 	}
 
 	const project = assertVisibleEntityProject(visible.projectMap, data.project_id);
@@ -570,13 +870,16 @@ async function createTask(context: ToolExecutionContext, args: Record<string, un
 	const stateKey = stateKeyInput === undefined ? 'todo' : normalizeTaskStateInput(stateKeyInput);
 
 	if (!stateKey) {
-		throw new Error('state_key must be one of: todo, in_progress, blocked, done');
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'state_key must be one of: todo, in_progress, blocked, done'
+		);
 	}
 
 	const typeKey =
 		args.type_key === undefined
-			? 'task.execute'
-			: (requireTrimmedString(args.type_key, 'type_key') ?? 'task.execute');
+			? 'task.default'
+			: (requireTrimmedString(args.type_key, 'type_key') ?? 'task.default');
 	const priority = normalizePriority(args.priority, 'priority');
 	const startAt = normalizeOptionalDate(args.start_at, 'start_at');
 	const dueAt = normalizeOptionalDate(args.due_at, 'due_at');
@@ -586,7 +889,7 @@ async function createTask(context: ToolExecutionContext, args: Record<string, un
 	const insertPayload: Record<string, unknown> = {
 		project_id: project.id,
 		title,
-		description: description ?? null,
+		description: toNullableText(description),
 		type_key: typeKey,
 		state_key: stateKey,
 		created_by: actorId,
@@ -612,8 +915,15 @@ async function createTask(context: ToolExecutionContext, args: Record<string, un
 		.single();
 
 	if (error || !data) {
-		throw new Error(error?.message || 'Failed to create task');
+		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create task');
 	}
+
+	await syncCreatedTaskSideEffects({
+		context,
+		project,
+		actorId,
+		task: data as Record<string, unknown>
+	});
 
 	return {
 		task: {
@@ -626,12 +936,12 @@ async function createTask(context: ToolExecutionContext, args: Record<string, un
 async function updateTask(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const taskId = args.task_id;
 	if (typeof taskId !== 'string' || !isValidUUID(taskId)) {
-		throw new Error('task_id must be a valid UUID');
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'task_id must be a valid UUID');
 	}
 
 	const visible = await loadVisibleProjects(context);
 	if (visible.projects.length === 0) {
-		throw new Error('Task not found');
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
 	}
 
 	const { data: existingTask, error: existingTaskError } = await context.admin
@@ -648,15 +958,19 @@ async function updateTask(context: ToolExecutionContext, args: Record<string, un
 		.maybeSingle();
 
 	if (existingTaskError) {
-		throw new Error(existingTaskError.message || 'Failed to load task');
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			existingTaskError.message || 'Failed to load task'
+		);
 	}
 
 	if (!existingTask) {
-		throw new Error('Task not found');
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
 	}
 
 	const project = assertVisibleEntityProject(visible.projectMap, existingTask.project_id);
 	assertProjectWriteAccess(project);
+	const actorId = await ensureActorId(context.admin, context.userId);
 
 	const updateData: Record<string, unknown> = {
 		updated_at: new Date().toISOString()
@@ -672,9 +986,11 @@ async function updateTask(context: ToolExecutionContext, args: Record<string, un
 		if (args.description === null) {
 			updateData.description = null;
 		} else {
-			updateData.description = requireTrimmedString(args.description, 'description', {
-				allowEmpty: true
-			});
+			updateData.description = toNullableText(
+				requireTrimmedString(args.description, 'description', {
+					allowEmpty: true
+				})
+			);
 		}
 		changedFieldCount += 1;
 	}
@@ -714,7 +1030,10 @@ async function updateTask(context: ToolExecutionContext, args: Record<string, un
 		const normalizedStateInput = requireTrimmedString(args.state_key, 'state_key');
 		const normalizedState = normalizeTaskStateInput(normalizedStateInput);
 		if (!normalizedState) {
-			throw new Error('state_key must be one of: todo, in_progress, blocked, done');
+			throw new ExternalToolGatewayError(
+				'VALIDATION_ERROR',
+				'state_key must be one of: todo, in_progress, blocked, done'
+			);
 		}
 
 		updateData.state_key = normalizedState;
@@ -727,7 +1046,10 @@ async function updateTask(context: ToolExecutionContext, args: Record<string, un
 	}
 
 	if (changedFieldCount === 0) {
-		throw new Error('At least one writable task field is required');
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'At least one writable task field is required'
+		);
 	}
 
 	const { data, error } = await context.admin
@@ -740,8 +1062,17 @@ async function updateTask(context: ToolExecutionContext, args: Record<string, un
 		.single();
 
 	if (error || !data) {
-		throw new Error(error?.message || 'Failed to update task');
+		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to update task');
 	}
+
+	await syncUpdatedTaskSideEffects({
+		context,
+		project,
+		actorId,
+		existingTask: existingTask as Record<string, unknown>,
+		updatedTask: data as Record<string, unknown>,
+		changedArgs: args
+	});
 
 	return {
 		task: {
@@ -806,14 +1137,14 @@ async function searchDocuments(context: ToolExecutionContext, args: Record<strin
 async function getDocument(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const documentId = args.document_id;
 	if (typeof documentId !== 'string' || !isValidUUID(documentId)) {
-		throw new Error('document_id must be a valid UUID');
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'document_id must be a valid UUID');
 	}
 
 	const maxChars = normalizeMaxChars(args.max_chars);
 	const visible = await loadVisibleProjects(context);
 
 	if (visible.projects.length === 0) {
-		throw new Error('Document not found');
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
 	}
 
 	const { data, error } = await context.admin
@@ -830,11 +1161,11 @@ async function getDocument(context: ToolExecutionContext, args: Record<string, u
 		.maybeSingle();
 
 	if (error) {
-		throw new Error(error.message || 'Failed to load document');
+		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to load document');
 	}
 
 	if (!data) {
-		throw new Error('Document not found');
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
 	}
 
 	const project = assertVisibleEntityProject(visible.projectMap, data.project_id);
@@ -861,7 +1192,7 @@ async function searchEntitiesByType(
 ) {
 	const query = typeof args.query === 'string' ? args.query.trim() : '';
 	if (!query) {
-		throw new Error('query is required');
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'query is required');
 	}
 
 	const limit = clampLimit(args.limit, 12, 1, 20);
@@ -1311,7 +1642,7 @@ function validateUnexpectedArgs(
 
 function buildExecError(
 	requestedOp: string,
-	code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'INTERNAL',
+	code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'CONFLICT' | 'INTERNAL',
 	message: string,
 	helpPath?: string,
 	details?: Record<string, unknown>
@@ -1331,6 +1662,8 @@ function buildExecError(
 async function executeGatewayOp(params: {
 	admin: any;
 	userId: string;
+	callerId?: string;
+	callSessionId?: string;
 	scope: AgentCallScope;
 	arguments?: Record<string, unknown>;
 }): Promise<Record<string, unknown>> {
@@ -1403,19 +1736,97 @@ async function executeGatewayOp(params: {
 	}
 
 	if (input.dry_run === true && isWriteOp(canonicalOp)) {
-		return {
-			op: requestedOp,
-			ok: true,
+		return buildGatewaySuccessResponse({
+			requestedOp,
+			canonicalOp,
 			result: {
 				dry_run: true,
 				op: canonicalOp,
 				args: opArgs
 			},
-			meta: {
-				...(canonicalOp !== requestedOp ? { executed_op: canonicalOp } : {}),
-				...(warnings.length > 0 ? { warnings } : {})
+			warnings
+		});
+	}
+
+	let executionContext: { callerId: string; callSessionId: string } | null = null;
+	if (isWriteOp(canonicalOp)) {
+		try {
+			executionContext = ensureWriteExecutionContext(
+				{
+					admin: params.admin,
+					userId: params.userId,
+					callerId: params.callerId,
+					callSessionId: params.callSessionId,
+					scope: params.scope
+				},
+				canonicalOp
+			);
+		} catch (error) {
+			const normalized = normalizeGatewayError(error);
+			return buildExecError(
+				requestedOp,
+				normalized.code,
+				normalized.message,
+				canonicalOp,
+				normalized.details
+			);
+		}
+	}
+	const rawIdempotencyKey =
+		typeof input.idempotency_key === 'string' ? input.idempotency_key.trim() : '';
+	const idempotencyKey = rawIdempotencyKey.length > 0 ? rawIdempotencyKey : undefined;
+	let executionId: string | null = null;
+
+	if (isWriteOp(canonicalOp) && executionContext) {
+		try {
+			const reservation = await reserveWriteExecution({
+				admin: params.admin,
+				callSessionId: executionContext.callSessionId,
+				callerId: executionContext.callerId,
+				userId: params.userId,
+				op: canonicalOp,
+				args: opArgs,
+				idempotencyKey
+			});
+			executionId = reservation.executionId;
+		} catch (error) {
+			if (error instanceof AgentCallWriteReplayError) {
+				const replayedResponse = error.responsePayload;
+				const replayedMeta =
+					replayedResponse.meta &&
+					typeof replayedResponse.meta === 'object' &&
+					!Array.isArray(replayedResponse.meta)
+						? (replayedResponse.meta as Record<string, unknown>)
+						: {};
+
+				return {
+					...replayedResponse,
+					meta: {
+						...replayedMeta,
+						replayed: true
+					}
+				};
 			}
-		};
+
+			if (error instanceof AgentCallWritePendingError) {
+				return buildExecError(
+					requestedOp,
+					'CONFLICT',
+					error.message,
+					canonicalOp,
+					idempotencyKey ? { idempotency_key: idempotencyKey } : undefined
+				);
+			}
+
+			const normalized = normalizeGatewayError(error);
+			return buildExecError(
+				requestedOp,
+				normalized.code,
+				normalized.message,
+				canonicalOp,
+				normalized.details
+			);
+		}
 	}
 
 	try {
@@ -1423,23 +1834,76 @@ async function executeGatewayOp(params: {
 			{
 				admin: params.admin,
 				userId: params.userId,
+				callerId: params.callerId,
+				callSessionId: params.callSessionId,
 				scope: params.scope
 			},
 			opArgs
 		);
-
-		return {
-			op: requestedOp,
-			ok: true,
+		const response = buildGatewaySuccessResponse({
+			requestedOp,
+			canonicalOp,
 			result,
-			meta: {
-				...(canonicalOp !== requestedOp ? { executed_op: canonicalOp } : {}),
-				...(warnings.length > 0 ? { warnings } : {})
+			warnings
+		});
+
+		if (isWriteOp(canonicalOp) && executionContext) {
+			const entityMeta = extractWriteEntityMeta({ op: canonicalOp, result });
+			try {
+				await recordWriteExecutionSuccess({
+					admin: params.admin,
+					executionId,
+					callSessionId: executionContext.callSessionId,
+					callerId: executionContext.callerId,
+					userId: params.userId,
+					op: canonicalOp,
+					idempotencyKey,
+					args: opArgs,
+					responsePayload: response,
+					entityKind: entityMeta.entityKind,
+					entityId: entityMeta.entityId
+				});
+			} catch (auditError) {
+				console.error(
+					'[External Tool Gateway] Failed to record write success:',
+					auditError
+				);
 			}
-		};
+		}
+
+		return response;
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'Tool execution failed';
-		return buildExecError(requestedOp, 'INTERNAL', message, canonicalOp);
+		const normalized = normalizeGatewayError(error);
+		const response = buildExecError(
+			requestedOp,
+			normalized.code,
+			normalized.message,
+			canonicalOp,
+			normalized.details
+		);
+
+		if (isWriteOp(canonicalOp) && executionContext) {
+			try {
+				await recordWriteExecutionFailure({
+					admin: params.admin,
+					executionId,
+					callSessionId: executionContext.callSessionId,
+					callerId: executionContext.callerId,
+					userId: params.userId,
+					op: canonicalOp,
+					idempotencyKey,
+					args: opArgs,
+					errorPayload: response.error
+				});
+			} catch (auditError) {
+				console.error(
+					'[External Tool Gateway] Failed to record write failure:',
+					auditError
+				);
+			}
+		}
+
+		return response;
 	}
 }
 
@@ -1456,6 +1920,8 @@ export function getBuildosAgentGatewayTools(scope: AgentCallScope): BuildosAgent
 export async function executeBuildosAgentGatewayTool(params: {
 	admin: any;
 	userId: string;
+	callerId?: string;
+	callSessionId?: string;
 	scope: AgentCallScope;
 	toolName: BuildosAgentGatewayToolName;
 	arguments?: Record<string, unknown>;

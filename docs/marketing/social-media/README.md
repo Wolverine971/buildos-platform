@@ -16,6 +16,11 @@ If you need founder voice, start with `FOUNDER_CONTEXT.md`.
 
 If you need platform execution, start with the platform strategy docs.
 
+## Execution Logs
+
+- Use [`./daily-engagement/`](./daily-engagement/README.md) as the current working set for dated warmups.
+- Move older dated warmups into `docs/archive/marketing/social-media/daily-engagement/` once they are no longer actively in use.
+
 ## Founder Narrative Stack
 
 ### Current Source Of Truth
@@ -61,5 +66,6 @@ Use the raw interview docs as inputs, not as final messaging source of truth.
 
 - Put founder raw interviews here.
 - Put platform strategy and voice references here.
+- Keep `daily-engagement/` limited to active execution notes; archive older dated warmups.
 - Put distilled founder-story drafts in `../content/drafts/`.
 - If a founder fact changes, update `FOUNDER_CONTEXT.md` first and then adjust downstream docs.
