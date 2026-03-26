@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/dashboard/AnalyticsDashboard.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import {
 		ArrowRight,
@@ -22,6 +23,7 @@
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
+	import type { OverdueProjectBatch } from '$lib/types/overdue-triage';
 
 	type User = {
 		id: string;
@@ -82,6 +84,13 @@
 	let OverdueTaskTriageModal = $state<any>(null);
 	let showOverdueTaskTriageModal = $state(false);
 	let isOpeningOverdueTriage = $state(false);
+	let selectedOverdueProjectId = $state<string | null>(null);
+	let overdueProjectBatches = $state<OverdueProjectBatch[]>([]);
+	let overdueProjectBatchTotal = $state(0);
+	let overdueProjectTaskTotal = $state(0);
+	let isLoadingOverdueProjectBatches = $state(false);
+	let overdueProjectBatchError = $state<string | null>(null);
+	let overdueProjectBatchRequestToken = 0;
 
 	// Brief chat state
 	let showBriefChatModal = $state(false);
@@ -91,8 +100,15 @@
 	const displayName = $derived(user?.name ?? user?.email?.split('@')[0] ?? 'there');
 
 	const overdueTasks = $derived(analytics.attention.overdueTasks);
+	const overdueProjectTaskCount = $derived(overdueProjectTaskTotal || overdueTasks);
+	const overdueProjectBatchCount = $derived(
+		overdueProjectBatchTotal || overdueProjectBatches.length
+	);
 	const overdueLabel = $derived(
 		`${overdueTasks} overdue ${overdueTasks === 1 ? 'task' : 'tasks'}`
+	);
+	const overdueProjectBatchSummary = $derived(
+		`${overdueProjectBatchCount} ${overdueProjectBatchCount === 1 ? 'project' : 'projects'} · ${overdueProjectTaskCount} overdue ${overdueProjectTaskCount === 1 ? 'task' : 'tasks'}`
 	);
 
 	const TERMINAL_PROJECT_STATES = new Set([
@@ -208,6 +224,14 @@
 		const date = new Date(value);
 		if (Number.isNaN(date.getTime())) return 'No due date';
 		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+	}
+
+	function formatOverdueAge(value: string | null): string {
+		if (!value) return 'No due date';
+		const dueMs = Date.parse(value);
+		if (Number.isNaN(dueMs)) return 'No due date';
+		const diffDays = Math.max(1, Math.floor((Date.now() - dueMs) / (1000 * 60 * 60 * 24)));
+		return `${diffDays}d overdue`;
 	}
 
 	function formatStateLabel(state: string): string {
@@ -334,9 +358,66 @@
 		briefChatSessionId = null;
 	}
 
-	async function openOverdueTaskTriage() {
+	async function loadOverdueProjectBatchPreview() {
+		const requestToken = ++overdueProjectBatchRequestToken;
+		isLoadingOverdueProjectBatches = true;
+		overdueProjectBatchError = null;
+
+		try {
+			const response = await fetch(
+				'/api/onto/tasks/overdue/batches?limit=3&include_tasks=false'
+			);
+			const payload = (await response.json()) as {
+				success?: boolean;
+				error?: string;
+				data?: {
+					batches?: OverdueProjectBatch[];
+					totalProjects?: number;
+					totalTasks?: number;
+				};
+			};
+
+			if (!response.ok || !payload.success) {
+				throw new Error(payload.error || 'Failed to load overdue project batches');
+			}
+
+			if (requestToken !== overdueProjectBatchRequestToken) return;
+			overdueProjectBatches = payload.data?.batches ?? [];
+			overdueProjectBatchTotal = payload.data?.totalProjects ?? overdueProjectBatches.length;
+			overdueProjectTaskTotal = payload.data?.totalTasks ?? overdueTasks;
+		} catch (err) {
+			console.error('[Dashboard] Failed to load overdue project batches:', err);
+			if (requestToken !== overdueProjectBatchRequestToken) return;
+			overdueProjectBatchError =
+				err instanceof Error ? err.message : 'Failed to load overdue project batches';
+			overdueProjectBatches = [];
+			overdueProjectBatchTotal = 0;
+			overdueProjectTaskTotal = overdueTasks;
+		} finally {
+			if (requestToken === overdueProjectBatchRequestToken) {
+				isLoadingOverdueProjectBatches = false;
+			}
+		}
+	}
+
+	$effect(() => {
+		if (!browser) return;
+		if (overdueTasks <= 0) {
+			overdueProjectBatches = [];
+			overdueProjectBatchTotal = 0;
+			overdueProjectTaskTotal = 0;
+			overdueProjectBatchError = null;
+			isLoadingOverdueProjectBatches = false;
+			return;
+		}
+
+		void loadOverdueProjectBatchPreview();
+	});
+
+	async function openOverdueTaskTriage(projectId: string | null = null) {
 		if (isOpeningOverdueTriage) return;
 		isOpeningOverdueTriage = true;
+		selectedOverdueProjectId = projectId ?? overdueProjectBatches[0]?.project_id ?? null;
 
 		try {
 			if (!OverdueTaskTriageModal) {
@@ -354,8 +435,13 @@
 
 	function handleOverdueTaskTriageClose(summary?: { hasChanges: boolean; changedCount: number }) {
 		showOverdueTaskTriageModal = false;
+		selectedOverdueProjectId = null;
 		if (summary?.hasChanges && refreshHandler) {
-			void refreshHandler();
+			void Promise.resolve(refreshHandler()).finally(() => {
+				if (browser) {
+					void loadOverdueProjectBatchPreview();
+				}
+			});
 		}
 	}
 
@@ -424,22 +510,29 @@
 		</header>
 
 		{#if overdueTasks > 0}
-			<div
-				class="rounded-lg border border-border bg-card shadow-ink tx tx-pulse tx-weak wt-card"
+			<section
+				class="rounded-lg border border-border bg-card shadow-ink wt-card overflow-hidden"
 			>
-				<div class="flex items-center gap-2.5 px-3 py-2">
-					<div
-						class="flex items-center justify-center h-7 w-7 rounded-md bg-red-500/10 shrink-0"
-					>
-						<AlertTriangle class="h-3.5 w-3.5 text-red-500" />
+				<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
+					<div class="min-w-0 flex items-start gap-2.5">
+						<div
+							class="flex items-center justify-center h-8 w-8 rounded-md bg-red-500/10 shrink-0"
+						>
+							<AlertTriangle class="h-4 w-4 text-red-500" />
+						</div>
+						<div class="min-w-0">
+							<p class="text-sm font-semibold text-foreground">
+								Overdue project batches
+							</p>
+							<p class="text-xs text-muted-foreground mt-0.5">
+								{overdueProjectBatchSummary}
+							</p>
+						</div>
 					</div>
-					<span class="text-sm font-semibold text-foreground flex-1 min-w-0 truncate">
-						{overdueLabel}
-					</span>
 					<div class="flex items-center gap-1.5 shrink-0">
 						<button
 							type="button"
-							onclick={openOverdueTaskTriage}
+							onclick={() => openOverdueTaskTriage()}
 							disabled={isOpeningOverdueTriage}
 							class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold
 								rounded-md bg-red-600 text-white shadow-ink pressable
@@ -451,7 +544,7 @@
 								<LoaderCircle class="h-3 w-3 animate-spin" />
 								<span class="hidden sm:inline">Opening...</span>
 							{:else}
-								Triage now
+								Batch triage
 							{/if}
 						</button>
 						<a
@@ -459,11 +552,77 @@
 							class="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs
 								text-muted-foreground hover:text-accent transition-colors rounded-md"
 						>
-							View <ArrowRight class="h-3 w-3" />
+							View all <ArrowRight class="h-3 w-3" />
 						</a>
 					</div>
 				</div>
-			</div>
+
+				<div class="border-t border-border bg-background/40">
+					{#if isLoadingOverdueProjectBatches}
+						<div class="px-3 py-3 text-xs text-muted-foreground">
+							Loading overdue project batches...
+						</div>
+					{:else if overdueProjectBatchError}
+						<div class="px-3 py-3 flex flex-wrap items-center justify-between gap-2">
+							<p class="text-xs text-muted-foreground">{overdueLabel}</p>
+							<button
+								type="button"
+								class="text-xs font-medium text-accent hover:underline underline-offset-2"
+								onclick={loadOverdueProjectBatchPreview}
+							>
+								Retry
+							</button>
+						</div>
+					{:else if overdueProjectBatches.length > 0}
+						<div class="divide-y divide-border">
+							{#each overdueProjectBatches as batch (batch.project_id)}
+								<button
+									type="button"
+									onclick={() => openOverdueTaskTriage(batch.project_id)}
+									class="w-full px-3 py-3 text-left transition-colors hover:bg-muted/40 focus:outline-none focus:bg-muted/40"
+								>
+									<div class="flex items-start justify-between gap-3">
+										<div class="min-w-0">
+											<div class="flex flex-wrap items-center gap-2">
+												<p
+													class="text-sm font-semibold text-foreground truncate"
+												>
+													{batch.project_name}
+												</p>
+												{#if batch.project_is_collaborative}
+													<span
+														class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent"
+													>
+														<Share2 class="h-2.5 w-2.5" />
+														Shared
+													</span>
+												{/if}
+											</div>
+											<p class="mt-1 text-[11px] text-muted-foreground">
+												{batch.overdue_count} overdue
+												{#if batch.assigned_to_me_count > 0}
+													· {batch.assigned_to_me_count} mine
+												{/if}
+												{#if batch.oldest_due_at}
+													· oldest {formatOverdueAge(batch.oldest_due_at)}
+												{/if}
+											</p>
+										</div>
+										<span
+											class="inline-flex items-center gap-1 text-xs font-medium text-accent shrink-0"
+										>
+											Review
+											<ArrowRight class="h-3 w-3" />
+										</span>
+									</div>
+								</button>
+							{/each}
+						</div>
+					{:else}
+						<div class="px-3 py-3 text-xs text-muted-foreground">{overdueLabel}</div>
+					{/if}
+				</div>
+			</section>
 		{/if}
 
 		<!-- Daily Brief -->
@@ -837,6 +996,7 @@
 {#if OverdueTaskTriageModal && showOverdueTaskTriageModal}
 	<OverdueTaskTriageModal
 		isOpen={showOverdueTaskTriageModal}
+		initialProjectId={selectedOverdueProjectId}
 		onClose={handleOverdueTaskTriageClose}
 	/>
 {/if}
