@@ -28,25 +28,32 @@ Allow: /terms
 Allow: /privacy
 Allow: /beta
 Allow: /feedback
+Allow: /integrations
 Allow: /road-map
 Allow: /investors
+Crawl-delay: 1
 
 # Common AI crawlers
 User-agent: GPTBot
 Allow: /
 
+User-agent: OAI-SearchBot
+Allow: /
+
 User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
 Allow: /
 
 User-agent: CCBot
 Allow: /
 
-User-agent: Claude-Web
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
 Allow: /
 
 # Sitemap location
 Sitemap: https://build-os.com/sitemap.xml
-
-# Crawl-delay for respectful crawling
-User-agent: *
-Crawl-delay: 1

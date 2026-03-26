@@ -1,9 +1,5 @@
 // packages/smart-llm/src/errors.test.ts
-import {
-	describe,
-	expect,
-	it
-} from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
 	isOpenRouterModelAvailabilityError,
 	isRetryableOpenRouterError,
@@ -46,8 +42,7 @@ describe('isRetryableOpenRouterError', () => {
 	it('treats explicit model availability denials as failover-worthy', () => {
 		const error = {
 			status: 403,
-			message:
-				'OpenRouter API error: 403 - This model is not available for your account.'
+			message: 'OpenRouter API error: 403 - This model is not available for your account.'
 		};
 
 		expect(isOpenRouterModelAvailabilityError(error)).toBe(true);

@@ -1911,10 +1911,7 @@ export class SmartLLMService {
 				lastErrorText = errorText;
 				attemptedModels.add(requestedModel);
 
-				if (
-					attempt < maxAttempts - 1 &&
-					shouldFailoverToNextOpenRouterModel(statusError)
-				) {
+				if (attempt < maxAttempts - 1 && shouldFailoverToNextOpenRouterModel(statusError)) {
 					console.warn(`${providerLabel} stream retrying after failure`, {
 						attempt: attempt + 1,
 						maxAttempts,

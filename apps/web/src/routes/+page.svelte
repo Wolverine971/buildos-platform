@@ -10,13 +10,19 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { invalidateAll, replaceState } from '$app/navigation';
 	import {
+		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
 		DEFAULT_SOCIAL_IMAGE_ALT,
 		DEFAULT_SOCIAL_IMAGE_HEIGHT,
 		DEFAULT_SOCIAL_IMAGE_TYPE,
 		DEFAULT_SOCIAL_IMAGE_URL,
 		DEFAULT_SOCIAL_IMAGE_WIDTH,
 		DEFAULT_TWITTER_CREATOR,
-		DEFAULT_TWITTER_SITE
+		DEFAULT_TWITTER_SITE,
+		HOME_PAGE_LAST_MODIFIED,
+		SITE_DESCRIPTION,
+		SITE_NAME,
+		SITE_URL
 	} from '$lib/constants/seo';
 	import AnalyticsDashboard from '$lib/components/dashboard/AnalyticsDashboard.svelte';
 	import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
@@ -164,26 +170,45 @@
 		}
 	] as const;
 
-	const landingJsonLd = JSON.stringify({
+	function formatCategoryLabel(category: string) {
+		return category
+			.split('-')
+			.map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+			.join(' ');
+	}
+
+	const landingStructuredData = JSON.stringify({
 		'@context': 'https://schema.org',
 		'@type': 'SoftwareApplication',
-		name: 'BuildOS',
-		description:
-			'Dump rough ideas, scripts, and research. BuildOS turns them into structured projects with tasks, documents, and a clear next step.',
+		'@id': `${SITE_URL}/#software-application`,
+		name: SITE_NAME,
+		description: SITE_DESCRIPTION,
 		applicationCategory: 'ProductivityApplication',
 		operatingSystem: 'Web',
 		offers: {
-			'@type': 'Offer',
-			price: '0',
+			'@type': 'AggregateOffer',
+			lowPrice: '20.00',
+			highPrice: '20.00',
+			offerCount: '1',
 			priceCurrency: 'USD',
-			description: '14-day free trial'
+			offers: [
+				{
+					'@type': 'Offer',
+					price: '20.00',
+					priceCurrency: 'USD',
+					availability: 'https://schema.org/InStock',
+					url: `${SITE_URL}/pricing`,
+					description: 'BuildOS Pro monthly plan with a 14-day free trial.'
+				}
+			]
 		},
 		author: {
-			'@type': 'Organization',
-			name: 'BuildOS',
-			url: 'https://build-os.com'
+			'@id': DEFAULT_ORGANIZATION_ID
 		},
-		screenshot: 'https://build-os.com/brain-bolt.png',
+		publisher: {
+			'@id': DEFAULT_ORGANIZATION_ID
+		},
+		image: DEFAULT_SOCIAL_IMAGE_URL,
 		featureList: [
 			'Brain dump to project structure',
 			'Persistent project context',
@@ -194,8 +219,10 @@
 			'Google Calendar synchronization',
 			'Project memory that compounds over time'
 		],
-		url: 'https://build-os.com',
-		sameAs: ['https://twitter.com/build_os']
+		url: SITE_URL,
+		sameAs: DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
+		dateModified: HOME_PAGE_LAST_MODIFIED,
+		mainEntityOfPage: SITE_URL
 	});
 
 	let isAuthenticated = $derived(!!data?.user);
@@ -326,14 +353,6 @@
 	<meta property="og:locale" content="en_US" />
 	<link rel="image_src" href={DEFAULT_SOCIAL_IMAGE_URL} />
 
-	<!-- PERFORMANCE: Conditional preloads based on auth state -->
-	{#if isAuthenticated}
-		<!-- No preload needed - saves bandwidth for users who don't scroll -->
-	{:else}
-		<!-- Preload critical landing page resources -->
-		<link rel="preload" href="/s-brain-bolt.webp" as="image" type="image/webp" />
-	{/if}
-
 	<!-- Twitter/X Card Tags (using name attribute as per X documentation) -->
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
@@ -347,12 +366,11 @@
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 
 	<!-- Additional Meta Tags -->
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<meta name="robots" content="index, follow" />
 	<meta name="author" content="DJ Wayne" />
 
 	<!-- Structured Data (JSON-LD) for better SEO -->
-	{@html `<script type="application/ld+json">${landingJsonLd}</script>`}
+	{@html `<script type="application/ld+json">${landingStructuredData}</script>`}
 </svelte:head>
 
 {#if isAuthenticated && data.user}
@@ -396,7 +414,20 @@
 					</h1>
 
 					<p class="text-sm sm:text-base text-muted-foreground max-w-xl">
-						Dump a brain dump. Get back projects, tasks, and a clear next step.
+						BuildOS is an AI-powered productivity platform that transforms unstructured
+						brain dumps into structured projects with tasks, documents, and a clear next
+						step. It gives authors, creators, and builders one place where project
+						context compounds instead of getting scattered across notes apps, task
+						managers, and stateless AI chats.
+					</p>
+
+					<p class="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">
+						Built by <a
+							href="/about"
+							class="text-foreground underline underline-offset-4">DJ Wayne</a
+						>, a former USMC Scout Sniper turned software engineer, BuildOS is for work
+						that generic productivity tools flatten: books, videos, research, product
+						launches, and everything else that depends on preserved context.
 					</p>
 
 					<div class="flex flex-wrap gap-2 sm:gap-3 items-center">
@@ -858,6 +889,56 @@
 				</section>
 			{/if}
 		</div>
+
+		{#if data.featuredBlogPosts?.length}
+			<section class="border-b border-border">
+				<div class="mx-auto max-w-6xl px-4 py-8 sm:py-10 space-y-6">
+					<div class="flex items-end justify-between gap-4 flex-wrap">
+						<div>
+							<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
+								Start with these guides.
+							</h2>
+							<p class="mt-2 text-sm text-muted-foreground max-w-2xl">
+								The fastest way to understand BuildOS is to see how context gets
+								captured, organized, and turned into a working system.
+							</p>
+						</div>
+						<a
+							href="/blogs"
+							class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
+						>
+							Browse the full blog →
+						</a>
+					</div>
+
+					<div class="grid md:grid-cols-3 gap-3 sm:gap-4">
+						{#each data.featuredBlogPosts as post}
+							<article
+								class="rounded-lg border border-border bg-card shadow-ink p-4 tx tx-frame tx-weak"
+							>
+								<div
+									class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
+								>
+									{formatCategoryLabel(post.category)}
+								</div>
+								<h3 class="mt-2 text-base font-semibold text-foreground">
+									{post.title}
+								</h3>
+								<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+									{post.description}
+								</p>
+								<a
+									href="/blogs/{post.category}/{post.slug}"
+									class="mt-4 inline-flex text-sm font-semibold text-accent underline underline-offset-4"
+								>
+									Read guide →
+								</a>
+							</article>
+						{/each}
+					</div>
+				</div>
+			</section>
+		{/if}
 
 		<!-- honest comparison frame -->
 		<section class="border-b border-border">

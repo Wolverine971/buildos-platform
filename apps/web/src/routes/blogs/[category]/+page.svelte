@@ -24,6 +24,7 @@
 		Lightbulb
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
+	import type { BlogCategory } from '$lib/utils/blog';
 
 	let { data }: { data: PageData } = $props();
 
@@ -36,8 +37,8 @@
 		philosophy: Lightbulb
 	};
 
-	let categoryKey = $derived($page.params.category);
-	let IconComponent = $derived(categoryIcons[categoryKey as keyof typeof categoryIcons]);
+	let categoryKey = $derived(($page.params.category ?? 'getting-started') as BlogCategory);
+	let IconComponent = $derived(categoryIcons[categoryKey]);
 
 	function getCategoryColorClasses(category: string) {
 		const isPrimary = category === 'getting-started';
@@ -145,7 +146,6 @@
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 
 	<!-- Additional Meta Tags -->
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<meta name="robots" content="index, follow" />
 	<meta name="author" content="BuildOS Team" />
 

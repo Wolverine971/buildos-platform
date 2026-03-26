@@ -24,7 +24,7 @@ pic: 'daily-briefs-guide'
 path: apps/web/src/content/blogs/getting-started/daily-brief-guide.md
 ---
 
-Your daily brief is **contextual intelligence**—a personalized report that draws from everything you've put into Build OS: goals, plans, tasks, and documents. It understands the relationships between your work, your objectives, and your patterns.
+A BuildOS daily brief is an AI-generated report that uses your goals, plans, tasks, documents, and recent project changes to tell you what matters today. It turns the context you have already built inside BuildOS into a prioritized view of your day instead of another disconnected notification.
 
 **The richer your context, the smarter your briefs become.** Day 1 briefs are helpful. Day 100 briefs—after you've built real context—feel like having an executive assistant who actually knows your work.
 
@@ -40,21 +40,24 @@ Every morning, Build OS analyzes your projects overnight and delivers a brief ta
 > You have 4 tasks due today across 2 active projects. The website redesign is on track—the design review milestone is 80% complete. Your content calendar has 2 overdue items from last week that are starting to block the launch timeline.
 >
 > **Today's Focus**
-> 1. *Finalize homepage wireframes* — This clears the design review milestone and unblocks the dev team. High priority.
-> 2. *Write Q2 blog outline* — Overdue by 3 days. Tied to your "grow organic traffic 30%" goal.
-> 3. *Review contractor proposals* — Decision needed by Thursday to keep the redesign on schedule.
+>
+> 1. _Finalize homepage wireframes_ — This clears the design review milestone and unblocks the dev team. High priority.
+> 2. _Write Q2 blog outline_ — Overdue by 3 days. Tied to your "grow organic traffic 30%" goal.
+> 3. _Review contractor proposals_ — Decision needed by Thursday to keep the redesign on schedule.
 >
 > **Attention Required**
+>
 > - The blog content pipeline has stalled—no new drafts in 8 days. This puts your March publishing target at risk.
 > - Your "launch MVP by April" goal is 62% complete with 6 weeks remaining. Current pace suggests you'll hit it, but there's no slack if anything slips.
 >
 > **Project Health**
+>
 > - Website Redesign: On track. 3 of 4 milestones complete.
 > - Content Marketing: Needs attention. 2 overdue tasks, publishing cadence broken.
 
 The brief is split into two parts: **here's what's happening** and **here's what to do about it**. It connects your tasks to your goals, flags what's falling behind, and tells you where your attention matters most today.
 
-The key difference from a task list? Your brief knows *why* things matter. It doesn't just say "write blog outline"—it tells you that outline is overdue and tied to a specific growth goal that's at risk.
+The key difference from a task list? Your brief knows _why_ things matter. It doesn't just say "write blog outline"—it tells you that outline is overdue and tied to a specific growth goal that's at risk.
 
 ## Setting Up Your Brief
 
@@ -64,7 +67,7 @@ Getting your first brief takes about 30 seconds.
 
 - **Toggle it on** — flip "Keep me updated" to active
 - **Pick your time** — choose when you want the brief delivered (e.g., 7:00 AM)
-- **Set your timezone** — so "7:00 AM" means *your* 7:00 AM, not UTC
+- **Set your timezone** — so "7:00 AM" means _your_ 7:00 AM, not UTC
 - **Choose frequency** — daily or weekly (daily recommended to start)
 - **Choose delivery** — in-app notification, email, or both. SMS is available too if you've verified a phone number.
 
@@ -78,7 +81,7 @@ This is the loop that makes briefs feel almost magical once it clicks.
 
 You do a brain dump—stream of consciousness, messy, unstructured. You write "feeling overwhelmed about the launch, need to figure out the pricing page, also Dave mentioned something about the API docs being wrong, and I should probably start thinking about Q2 hiring."
 
-Build OS extracts that into structured data: tasks get created, projects get updated, goals get connected. Then your next morning brief *reflects all of that back to you*, organized and prioritized.
+Build OS extracts that into structured data: tasks get created, projects get updated, goals get connected. Then your next morning brief _reflects all of that back to you_, organized and prioritized.
 
 The brief might say: "New task from yesterday's brain dump—investigate API docs issue Dave flagged. This connects to your developer experience goal." You didn't file a ticket. You didn't organize anything. You just thought out loud, and the system did the rest.
 

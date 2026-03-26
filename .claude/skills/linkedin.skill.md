@@ -121,7 +121,47 @@ https://www.linkedin.com/search/results/people/?keywords={query}&origin=SWITCH_S
 
 ---
 
-### 6. Interact with Posts in Feed
+### 6. Extract Direct Post URL (CRITICAL for warmup scans)
+
+**Why this matters:** Every post recommended in warmup docs MUST include a clickable direct URL. Never output search instructions or "how to find" text.
+
+**Method A - Click the timestamp:**
+1. Find the post in the feed, search results, or profile activity page
+2. Look for the timestamp text (e.g., "2h", "1d", "3w") — it's usually a clickable link
+3. Click the timestamp — it navigates to the individual post page
+4. The browser URL is now the direct post URL (e.g., `https://www.linkedin.com/feed/update/urn:li:activity:7309XXXXXXXXX/`)
+5. Capture that URL
+
+**Method B - Click "X comments" link:**
+1. Find the post
+2. Click the "X comments" or engagement summary text below the post
+3. This opens the post's detail view
+4. Capture the URL from the browser
+
+**Method C - Three-dot menu → Copy link:**
+1. Click the three dots (⋯) on any post
+2. Look for "Copy link to post" option
+3. Click it — the direct URL is now in the clipboard
+4. Note: This may not always be available
+
+**Method D - Extract from page HTML (fallback):**
+1. Use `read_page` on the current page
+2. Search for `href` values containing `/feed/update/` or `/posts/`
+3. Match the href to the specific post by checking surrounding text/author name
+4. These embedded links are the direct post URLs
+
+**Valid post URL formats:**
+- `https://www.linkedin.com/feed/update/urn:li:activity:7309XXXXXXXXX/`
+- `https://www.linkedin.com/posts/username_slug-activity-7309XXXXXXXXX-XXXX/`
+
+**Invalid — never use these:**
+- Profile activity URLs (`/in/username/recent-activity/all/`)
+- Search result URLs (`/search/results/content/?keywords=...`)
+- Text instructions ("Search for X → click Y")
+
+---
+
+### 7. Interact with Posts in Feed
 
 **Like a post:**
 - Click "Like" button under post (thumbs up icon)

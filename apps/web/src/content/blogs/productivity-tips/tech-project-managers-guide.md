@@ -1,39 +1,40 @@
 ---
-title: "Stop Managing Tickets, Start Managing Thinking: A Workflow Architecture for Tech PMs"
-description: "Why your projects are failing between tools — and the workflow patterns that actually fix it. A practical guide for tech project managers drowning in context fragmentation."
-slug: "tech-pm-workflow-architecture"
-author: "DJ Wayne"
-category: "Productivity"
+title: 'Stop Managing Tickets, Start Managing Thinking: A Workflow Architecture for Tech PMs'
+description: 'Why your projects are failing between tools — and the workflow patterns that actually fix it. A practical guide for tech project managers drowning in context fragmentation.'
+slug: 'tech-pm-workflow-architecture'
+author: 'DJ Wayne'
+category: 'Productivity'
 tags:
     [
-        "project-management",
-        "workflow",
-        "tech-pm",
-        "context-engineering",
-        "productivity",
-        "tools",
-        "sprint-planning",
-        "technical-debt",
+        'project-management',
+        'workflow',
+        'tech-pm',
+        'context-engineering',
+        'productivity',
+        'tools',
+        'sprint-planning',
+        'technical-debt'
     ]
 featured: true
 draft: true
 seo:
-    title: "Tech PM Workflow Architecture: Stop Managing Tickets, Start Managing Thinking"
+    title: 'Tech PM Workflow Architecture: Stop Managing Tickets, Start Managing Thinking'
     description: "The #1 reason tech projects stall isn't bad engineers or bad tools — it's scattered thinking. Here's how to fix your workflow architecture."
     keywords:
         [
-            "tech project manager workflow",
-            "context switching productivity",
-            "sprint planning problems",
-            "project management tools",
-            "technical project management",
-            "shape up methodology",
-            "engineering team productivity",
+            'tech project manager workflow',
+            'context switching productivity',
+            'sprint planning problems',
+            'project management tools',
+            'technical project management',
+            'shape up methodology',
+            'engineering team productivity'
         ]
 readingTime: 18
+path: apps/web/src/content/blogs/productivity-tips/tech-project-managers-guide.md
 ---
 
-Here's an uncomfortable truth: your projects aren't failing because your engineers are slow. They're not failing because you picked the wrong sprint methodology or the wrong issue tracker. They're failing because the *thinking* behind the project is scattered across seven tools and fifteen Slack threads, and nobody — including you — can point to one place where it all lives.
+Here's an uncomfortable truth: your projects aren't failing because your engineers are slow. They're not failing because you picked the wrong sprint methodology or the wrong issue tracker. They're failing because the _thinking_ behind the project is scattered across seven tools and fifteen Slack threads, and nobody — including you — can point to one place where it all lives.
 
 You know this. You feel it every Monday morning when you spend the first 90 minutes reconstructing context you already had last Friday. You feel it when a stakeholder asks "why are we building this?" and you have to go on a scavenger hunt through Confluence, Slack, Jira, a Google Doc from March, and that one whiteboard photo on someone's phone.
 
@@ -55,7 +56,7 @@ This happens constantly. Slack is where decisions go to die.
 
 ### The Context Gap
 
-Your issue tracker — Jira, Linear, Asana, whatever — manages *what* you're building. It has no concept of *why*. The goal-to-task linkage lives in your head, and the architecture decision that shaped the approach is in a Confluence page last updated eight months ago. The tracker manages execution, not thinking.
+Your issue tracker — Jira, Linear, Asana, whatever — manages _what_ you're building. It has no concept of _why_. The goal-to-task linkage lives in your head, and the architecture decision that shaped the approach is in a Confluence page last updated eight months ago. The tracker manages execution, not thinking.
 
 Here's where every tool stack actually breaks:
 
@@ -101,7 +102,7 @@ Your weekly status meeting is a waste of everyone's time. You know it. They know
 
 Here's the replacement: **decision logs.**
 
-The Project Management Institute said it plainly: "The weekly meeting should not be used to *report* status — it may be used to *discuss* status." When team members go person-by-person saying "last week I worked on what I was supposed to work on," you're burning 30 minutes of everyone's time to learn nothing.
+The Project Management Institute said it plainly: "The weekly meeting should not be used to _report_ status — it may be used to _discuss_ status." When team members go person-by-person saying "last week I worked on what I was supposed to work on," you're burning 30 minutes of everyone's time to learn nothing.
 
 A decision log captures the thing that actually matters: **the choices your team made and why.** Not task completion percentages. Not burndown charts. The actual thinking.
 
@@ -124,11 +125,11 @@ Decision logs do three things status updates never will:
 2. **They prevent relitigating.** "We already decided this, here's why, here's the context." No 45-minute meeting to re-derive the same conclusion.
 3. **They compound.** After six months of logging decisions, you have an intellectual history of the project that makes every future decision faster.
 
-Amazon figured this out years ago with their PR/FAQ process — write down the *thinking* before you build. The decision log is the lightweight version of this that works for any team.
+Amazon figured this out years ago with their PR/FAQ process — write down the _thinking_ before you build. The decision log is the lightweight version of this that works for any team.
 
 ### Pattern 3: Impact Mapping for Goal-Task Linkage
 
-The most dangerous moment in any project is when engineers lose sight of *why* they're building something. This is when you get gold-plated solutions to the wrong problems, scope creep that "seemed like a good idea," and perfectly executed features that nobody uses.
+The most dangerous moment in any project is when engineers lose sight of _why_ they're building something. This is when you get gold-plated solutions to the wrong problems, scope creep that "seemed like a good idea," and perfectly executed features that nobody uses.
 
 Impact mapping (from Gojko Adzic) fixes this with a simple chain: **Goal → Actors → Impacts → Deliverables.**
 
@@ -185,9 +186,9 @@ Write a one-page project brief that answers three questions:
 
 3. **What do we recommend and why?** (Option B — we ship value in 1 week instead of 3, payment processing stays stable on the legacy system, and we do the payment migration with dedicated focus rather than as the tail end of an overrun project.)
 
-Send that brief *before* the Thursday meeting. Your skip-level reads it in 5 minutes. The meeting becomes a 15-minute decision conversation instead of a 45-minute status update where you're ambushed with questions you're not prepared for.
+Send that brief _before_ the Thursday meeting. Your skip-level reads it in 5 minutes. The meeting becomes a 15-minute decision conversation instead of a 45-minute status update where you're ambushed with questions you're not prepared for.
 
-This is what "managing thinking" looks like. You didn't manage the timeline — you managed the *decision* about what to do with new information.
+This is what "managing thinking" looks like. You didn't manage the timeline — you managed the _decision_ about what to do with new information.
 
 ### The "When Will It Ship?" Stakeholder
 
@@ -197,7 +198,7 @@ This is what "managing thinking" looks like. You didn't manage the timeline — 
 
 **What actually works:**
 
-She's not asking about the date. She's asking because she has no visibility into the *progress*. A date without context is just a number she can't do anything with.
+She's not asking about the date. She's asking because she has no visibility into the _progress_. A date without context is just a number she can't do anything with.
 
 Give her a living document — one page, updated weekly — that shows:
 
@@ -238,7 +239,7 @@ It happens. Even a 225% ROI argument gets shot down when the product roadmap is 
 
 **The strangler fig.** Martin Fowler named this pattern after Queensland rainforest vines that slowly envelop a host tree. Instead of a dedicated refactor sprint, you wrap new functionality around the legacy code and replace it piece by piece as you build new features. Every feature that touches the payment module improves it slightly. No separate line item on the roadmap. Shopify used this approach to dismantle a 3,000-line God Object — extracting it into bounded contexts service by service, with every step reversible and monitored.
 
-**The 20% rule.** Marty Cagan's principle from *Inspired*: product management takes 20% of engineering capacity off the top and gives it to engineering for technical health. It's not a negotiation each sprint — it's a standing allocation. Cagan says he gets nervous when teams think they can get away with much less. This works because it removes the "feature vs. refactor" framing entirely. Engineering capacity for technical health is a given, like keeping the lights on.
+**The 20% rule.** Marty Cagan's principle from _Inspired_: product management takes 20% of engineering capacity off the top and gives it to engineering for technical health. It's not a negotiation each sprint — it's a standing allocation. Cagan says he gets nervous when teams think they can get away with much less. This works because it removes the "feature vs. refactor" framing entirely. Engineering capacity for technical health is a given, like keeping the lights on.
 
 **Document the "no."** When leadership declines a tech debt remediation request, write it down formally: who decided, when, what the known risks are, and the projected consequences. Put it in a technical debt register alongside other project risks. This isn't passive-aggressive — it's professional. When the predicted incident or slowdown occurs (and it will), the decision trail is clear. More importantly, the act of documenting the risk sometimes changes the decision itself. Nobody wants to sign their name next to "accepted the risk of payment system failure."
 
@@ -279,7 +280,7 @@ This is the layer that prevents relitigating. Every "why did we choose X?" quest
 **Layer 3: The What (Tasks + Deliverables)**
 Concrete work items. Milestones. Dependencies. Blockers.
 
-This is the layer your issue tracker handles. But it should *link back* to Layer 1 and Layer 2 — every task connected to a goal, every technical approach traceable to a decision.
+This is the layer your issue tracker handles. But it should _link back_ to Layer 1 and Layer 2 — every task connected to a goal, every technical approach traceable to a decision.
 
 **Layer 4: The Context (Research + Learning)**
 User interviews. Competitive analysis. Performance benchmarks. Post-mortems. Things we learned along the way.
@@ -327,7 +328,7 @@ Only **32% of organizations** have integrated AI tools into PM workflows. Most o
 
 ### What actually works:
 
-**Reporting compression.** AI that condenses scattered updates into decision-ready summaries. This directly addresses the #1 PM time sink — not the *generating* of status updates, but the *synthesizing* of information from multiple sources into something a stakeholder can act on.
+**Reporting compression.** AI that condenses scattered updates into decision-ready summaries. This directly addresses the #1 PM time sink — not the _generating_ of status updates, but the _synthesizing_ of information from multiple sources into something a stakeholder can act on.
 
 **Meeting capture.** Automated transcription with action item extraction. Meetings become structured outputs — decisions, next steps, risks, owners — without manual note-taking. This is real value.
 
@@ -351,7 +352,7 @@ There's a meta-insight that separates tech PMs who manage tickets from tech PMs 
 
 **Your job is not to track execution. Your job is to create clarity.**
 
-When the thinking is clear — the goal is sharp, the decisions are logged, the scope is shaped, the context is accessible — execution follows naturally. Engineers build faster because they understand *why*. Stakeholders relax because they can see *what's happening*. You spend less time in meetings because the writing does the communicating.
+When the thinking is clear — the goal is sharp, the decisions are logged, the scope is shaped, the context is accessible — execution follows naturally. Engineers build faster because they understand _why_. Stakeholders relax because they can see _what's happening_. You spend less time in meetings because the writing does the communicating.
 
 The PMs who write well win. Amazon figured this out with their six-page memos. Shape Up figured it out with pitches. The best tech PMs I've encountered figured it out by keeping a decision log that makes every conversation shorter and every onboarding faster.
 
@@ -361,4 +362,4 @@ Stop shuffling tickets. Start managing thinking. The clarity compounds.
 
 ---
 
-*What's the biggest context gap in your current workflow? Where does project thinking go to die on your team? [I'd love to hear about it](mailto:dj@buildos.dev) — I'm always curious how this shows up on different teams.*
+_What's the biggest context gap in your current workflow? Where does project thinking go to die on your team? [I'd love to hear about it](mailto:dj@buildos.dev) — I'm always curious how this shows up on different teams._

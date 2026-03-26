@@ -14,7 +14,7 @@ pic: 'first-project-setup'
 path: apps/web/src/content/blogs/getting-started/first-project-setup.md
 ---
 
-Creating a project in BuildOS works how software should work: you tell it what you want to build. No forms. No templates. No structure to define upfront. You can say things a form could never capture, like "I want to write a novel, probably literary fiction, maybe 60k words, exploring themes of memory and identity" — and BuildOS just works with that.
+Creating your first project in BuildOS starts with a natural conversation about what you want to build. Instead of filling out forms or choosing templates, you describe the work in plain language and BuildOS turns that input into a project with the right goals, tasks, documents, and plans. You can say things a form could never capture, like "I want to write a novel, probably literary fiction, maybe 60k words, exploring themes of memory and identity" — and BuildOS just works with that.
 
 Open the chat, describe your project, and BuildOS figures out the rest.
 

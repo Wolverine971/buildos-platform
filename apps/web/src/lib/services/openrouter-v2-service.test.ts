@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/openrouter-v2-service.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('$env/static/private', () => ({

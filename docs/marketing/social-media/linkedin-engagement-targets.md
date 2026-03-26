@@ -54,13 +54,13 @@
 
 ### Founders Building in Public
 
-| Name                 | Role                                    | Why Engage                                                                         | Topics They Cover                    |
-| -------------------- | --------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------ |
-| **Pieter Levels**    | Nomad List, indie hacker                | Massive indie following                                                            | Solo founder, shipping               |
-| **Shaan Puri**       | My First Million                        | Startup wisdom, accessible                                                         | Business ideas, founder takes        |
-| **Jack Butcher**     | Visualize Value                         | Design + ideas                                                                     | Visual thinking, business            |
-| **Arvid Kahl**       | Bootstrapper                            | Indie hackers, authentic                                                           | Building products, audience          |
-| **Blaise Pascual** ⭐ | The Autonomous Founder, USMC Veteran   | Fellow Marine turned solo founder. Authentic builder voice, AI engineering focus.   | Veteran entrepreneur, AI, shipping   |
+| Name                  | Role                                 | Why Engage                                                                        | Topics They Cover                  |
+| --------------------- | ------------------------------------ | --------------------------------------------------------------------------------- | ---------------------------------- |
+| **Pieter Levels**     | Nomad List, indie hacker             | Massive indie following                                                           | Solo founder, shipping             |
+| **Shaan Puri**        | My First Million                     | Startup wisdom, accessible                                                        | Business ideas, founder takes      |
+| **Jack Butcher**      | Visualize Value                      | Design + ideas                                                                    | Visual thinking, business          |
+| **Arvid Kahl**        | Bootstrapper                         | Indie hackers, authentic                                                          | Building products, audience        |
+| **Blaise Pascual** ⭐ | The Autonomous Founder, USMC Veteran | Fellow Marine turned solo founder. Authentic builder voice, AI engineering focus. | Veteran entrepreneur, AI, shipping |
 
 > **Added 2026-03-24:** Blaise Pascual discovered via LinkedIn feed. Fellow USMC veteran building with AI as a solo founder. Dropped out of engineering program with 4.0 GPA because "the curriculum was already behind what I was shipping." Blue collar engineering energy. 1st connection — genuine relationship building opportunity.
 
@@ -103,13 +103,13 @@ These accounts focus specifically on context engineering and AI memory - your co
 
 BuildOS's core audience. These creators have massive reach in the ADHD productivity space.
 
-| Name                  | Role                                  | Why Engage                                                                | LinkedIn Profile                                                                                 |
-| --------------------- | ------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| **Dani Donovan** ⭐   | "Anti-Planner" creator                | ADHD comics, NYT/WashPo/Guardian featured - directly competing philosophy | [Profile](https://www.linkedin.com/in/danidonovan/)                                              |
-| **Jessica McCabe** ⭐ | How to ADHD (1M+ YouTube subs)        | NYT Bestseller author, ADHD "toolbox" philosophy = BuildOS                | [Profile](https://www.linkedin.com/in/jessica-mccabe-9868ab1ab/)                                 |
-| **Matt Jarman, PhD**  | Productivity Psychologist, ADHD Coach | "Fast change beats slow change for ADHD brains" - active poster           | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=matt%20jarman%20adhd) |
-| **Pina (ADHD Alien)** | ADHD Alien Comics, book 2026          | 185K Twitter, massive ADHD audience                                       | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=pina%20adhd%20alien)  |
-| **Chalene Johnson**   | Lifestyle/ADHD, 84K Twitter           | "ADHD is a superpower for entrepreneurs"                                  | [Search LinkedIn](https://www.linkedin.com/in/chalenejohnson/)                                   |
+| Name                  | Role                                      | Why Engage                                                                     | LinkedIn Profile                                                                                    |
+| --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| **Dani Donovan** ⭐   | "Anti-Planner" creator                    | ADHD comics, NYT/WashPo/Guardian featured - directly competing philosophy      | [Profile](https://www.linkedin.com/in/danidonovan/)                                                 |
+| **Jessica McCabe** ⭐ | How to ADHD (1M+ YouTube subs)            | NYT Bestseller author, ADHD "toolbox" philosophy = BuildOS                     | [Profile](https://www.linkedin.com/in/jessica-mccabe-9868ab1ab/)                                    |
+| **Matt Jarman, PhD**  | Productivity Psychologist, ADHD Coach     | "Fast change beats slow change for ADHD brains" - active poster                | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=matt%20jarman%20adhd)    |
+| **Pina (ADHD Alien)** | ADHD Alien Comics, book 2026              | 185K Twitter, massive ADHD audience                                            | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=pina%20adhd%20alien)     |
+| **Chalene Johnson**   | Lifestyle/ADHD, 84K Twitter               | "ADHD is a superpower for entrepreneurs"                                       | [Search LinkedIn](https://www.linkedin.com/in/chalenejohnson/)                                      |
 | **Josh Coote**        | Founder, re-RIGHT neurodiversity platform | Building leading ND support platform, actively raising. ADHD audience overlap. | [Search LinkedIn](https://www.linkedin.com/search/results/people/?keywords=josh%20coote%20re-right) |
 
 > **FOUND:** Dani Donovan & Jessica McCabe are both active on LinkedIn. Also discovered Matt Jarman, PhD posting about ADHD productivity. Run `#ADHDproductivity` search for fresh engagement opportunities.
@@ -165,12 +165,12 @@ BuildOS's core audience. These creators have massive reach in the ADHD productiv
 
 ### AI Builders & Practitioners
 
-| Account        | Role                                       | Why Monitor                                            |
-| -------------- | ------------------------------------------ | ------------------------------------------------------ |
-| **Okkar Kyaw**    | UX + Agentic AI + Full-Stack                   | Small teams shipping, Claude Code/MCP content           |
-| **Bryan Lin**     | Product Owner & COO @ Aloa, Startup Co-Founder | AI adoption insights, workflow friction expertise        |
-| **Vikas Bansal**  | Sr Staff@ServiceNow, Staff@Atlassian           | Claude Code velocity praise, senior eng credibility     |
-| **Tehmina Naz**   | Agentic AI & Python Developer                  | Claude Code advanced patterns, CLAUDE.md content        |
+| Account          | Role                                           | Why Monitor                                         |
+| ---------------- | ---------------------------------------------- | --------------------------------------------------- |
+| **Okkar Kyaw**   | UX + Agentic AI + Full-Stack                   | Small teams shipping, Claude Code/MCP content       |
+| **Bryan Lin**    | Product Owner & COO @ Aloa, Startup Co-Founder | AI adoption insights, workflow friction expertise   |
+| **Vikas Bansal** | Sr Staff@ServiceNow, Staff@Atlassian           | Claude Code velocity praise, senior eng credibility |
+| **Tehmina Naz**  | Agentic AI & Python Developer                  | Claude Code advanced patterns, CLAUDE.md content    |
 
 > **Added 2026-03-24:** Okkar Kyaw and Bryan Lin discovered via LinkedIn search. Okkar posts about the exact tools DJ uses (MCP, Claude Skills). Bryan had a strong insight about AI tool adoption dying from workflow friction.
 >

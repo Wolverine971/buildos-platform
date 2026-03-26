@@ -10,7 +10,11 @@
 		Coffee
 	} from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
-	import { DEFAULT_ORGANIZATION_LOGO_URL } from '$lib/constants/seo';
+	import {
+		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_ORGANIZATION_SOCIAL_PROFILES
+	} from '$lib/constants/seo';
 	import { onMount } from 'svelte';
 
 	let prefersReducedMotion = $state(false);
@@ -39,6 +43,7 @@
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Organization',
+		'@id': DEFAULT_ORGANIZATION_ID,
 		name: 'BuildOS',
 		url: 'https://build-os.com',
 		logo: DEFAULT_ORGANIZATION_LOGO_URL,
@@ -53,7 +58,7 @@
 				'Former USMC Scout Sniper turned software engineer with 8 years of experience building software.',
 			sameAs: ['https://twitter.com/djwayne3']
 		},
-		sameAs: ['https://twitter.com/build_os'],
+		sameAs: DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
 		contactPoint: {
 			'@type': 'ContactPoint',
 			email: 'dj@build-os.com',

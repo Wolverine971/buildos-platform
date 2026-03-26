@@ -1,9 +1,10 @@
 // apps/web/src/routes/blogs/+page.server.ts
 import type { PageServerLoad } from './$types';
-import { loadBlogPosts, BLOG_CATEGORIES, type BlogCategory } from '$lib/utils/blog';
+import { loadBlogPosts, BLOG_CATEGORIES } from '$lib/utils/blog';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ url }) => {
 	const allPosts = await loadBlogPosts();
+	const initialQuery = url.searchParams.get('q')?.trim() ?? '';
 
 	// Group posts by category, showing 5 latest per category unless <10 total posts
 	const categorizedPosts: Record<string, typeof allPosts> = {};
@@ -18,8 +19,10 @@ export const load: PageServerLoad = async () => {
 	}
 
 	return {
+		allPosts,
 		categorizedPosts,
 		categories: BLOG_CATEGORIES,
-		totalPosts: allPosts.length
+		totalPosts: allPosts.length,
+		initialQuery
 	};
 };

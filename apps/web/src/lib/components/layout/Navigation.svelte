@@ -27,6 +27,7 @@
 	import { logout } from '$lib/utils/auth';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import { browser, dev } from '$app/environment';
+	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 	import type { ChatContextType } from '@buildos/shared-types';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 
@@ -340,9 +341,12 @@
 							onclick={() => handleMenuItemClick('/')}
 						>
 							<img
-								src="/brain-bolt.png"
+								src={DEFAULT_APP_ICON_URL}
 								alt="BuildOS"
 								class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover"
+								width="40"
+								height="40"
+								decoding="async"
 							/>
 							<div>
 								<div

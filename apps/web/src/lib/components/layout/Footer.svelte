@@ -19,6 +19,7 @@
 	} from 'lucide-svelte';
 	import LinkedinIcon from 'lucide-svelte/icons/linkedin';
 	import XIcon from 'lucide-svelte/icons/twitter';
+	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 
 	// Svelte 5 props
 	let { user = null }: { user: any | null } = $props();
@@ -94,10 +95,13 @@
 					<div class="flex items-center justify-between">
 						<a href="/" class="flex items-center space-x-2 group">
 							<img
-								src="/brain-bolt.png"
+								src={DEFAULT_APP_ICON_URL}
 								alt="BuildOS"
 								class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-80"
 								loading="lazy"
+								width="24"
+								height="24"
+								decoding="async"
 							/>
 							<span class="text-lg font-black tracking-tight text-foreground">
 								BuildOS
@@ -197,10 +201,13 @@
 						<div class="flex items-center space-x-8">
 							<a href="/" class="flex items-center space-x-2 group">
 								<img
-									src="/brain-bolt.png"
+									src={DEFAULT_APP_ICON_URL}
 									alt="BuildOS"
 									class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-80"
 									loading="lazy"
+									width="24"
+									height="24"
+									decoding="async"
 								/>
 								<span class="text-lg font-black tracking-tight text-foreground">
 									BuildOS
@@ -285,10 +292,13 @@
 						<a href="/" class="inline-flex items-center space-x-2 group">
 							<div class="relative">
 								<img
-									src="/brain-bolt.png"
+									src={DEFAULT_APP_ICON_URL}
 									alt="BuildOS"
 									class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-80"
 									loading="lazy"
+									width="32"
+									height="32"
+									decoding="async"
 								/>
 							</div>
 							<span class="text-xl font-black tracking-tight text-foreground">
@@ -402,10 +412,13 @@
 							<a href="/" class="inline-flex items-center space-x-2 group">
 								<div class="relative">
 									<img
-										src="/brain-bolt.png"
+										src={DEFAULT_APP_ICON_URL}
 										alt="BuildOS"
 										class="w-8 h-8 rounded-md transition-opacity duration-200 group-hover:opacity-80"
 										loading="lazy"
+										width="32"
+										height="32"
+										decoding="async"
 									/>
 								</div>
 								<span class="text-xl font-bold text-foreground">BuildOS</span>

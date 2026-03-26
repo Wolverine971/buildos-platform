@@ -11,6 +11,15 @@
 	import Navigation from '$lib/components/layout/Navigation.svelte';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import IOSSplashScreens from '$lib/components/layout/IOSSplashScreens.svelte';
+	import {
+		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
+		DEFAULT_WEBSITE_ID,
+		SITE_DESCRIPTION,
+		SITE_NAME,
+		SITE_URL
+	} from '$lib/constants/seo';
 	import { initializePWAEnhancements, setupInstallPrompt } from '$lib/utils/pwa-enhancements';
 	import type { LayoutData } from './$types';
 	// Static import: TrialBanner must be in the SSR pass to prevent layout shift
@@ -40,7 +49,7 @@
 	// Vercel Analytics & Speed Insights
 	import { injectSpeedInsights } from '@vercel/speed-insights/sveltekit';
 	import type { Snippet } from 'svelte';
-	import type { AuthChangeEvent } from '@supabase/supabase-js';
+	import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 	import { LOGOUT_REDIRECT_STORAGE_KEY } from '$lib/utils/auth';
 
 	// Initialize Speed Insights in production
@@ -594,13 +603,15 @@
 		if (supabase) {
 			const {
 				data: { subscription }
-			} = supabase.auth.onAuthStateChange(async (event, session) => {
-				try {
-					await handleAuthStateChange(event, session);
-				} catch (error) {
-					console.error('Auth state change listener error:', error);
+			} = supabase.auth.onAuthStateChange(
+				async (event: AuthChangeEvent, session: Session | null) => {
+					try {
+						await handleAuthStateChange(event, session);
+					} catch (error) {
+						console.error('Auth state change listener error:', error);
+					}
 				}
-			});
+			);
 
 			authSubscriptionCleanup = () => subscription.unsubscribe();
 		}
@@ -743,6 +754,52 @@
 		isOpen: showOnboardingModal || animatingDismiss,
 		onDismiss: handleModalDismiss
 	}));
+	const siteStructuredData = JSON.stringify([
+		{
+			'@context': 'https://schema.org',
+			'@type': 'Organization',
+			'@id': DEFAULT_ORGANIZATION_ID,
+			name: SITE_NAME,
+			url: SITE_URL,
+			logo: {
+				'@type': 'ImageObject',
+				url: DEFAULT_ORGANIZATION_LOGO_URL
+			},
+			description: SITE_DESCRIPTION,
+			founder: {
+				'@type': 'Person',
+				name: 'DJ Wayne',
+				jobTitle: 'Founder & CEO',
+				description:
+					'Former USMC Scout Sniper turned software engineer with 8 years of experience building software.'
+			},
+			contactPoint: {
+				'@type': 'ContactPoint',
+				email: 'dj@build-os.com',
+				contactType: 'customer support'
+			},
+			sameAs: DEFAULT_ORGANIZATION_SOCIAL_PROFILES
+		},
+		{
+			'@context': 'https://schema.org',
+			'@type': 'WebSite',
+			'@id': DEFAULT_WEBSITE_ID,
+			url: SITE_URL,
+			name: SITE_NAME,
+			description: SITE_DESCRIPTION,
+			publisher: {
+				'@id': DEFAULT_ORGANIZATION_ID
+			},
+			potentialAction: {
+				'@type': 'SearchAction',
+				target: {
+					'@type': 'EntryPoint',
+					urlTemplate: `${SITE_URL}/blogs?q={search_term_string}`
+				},
+				'query-input': 'required name=search_term_string'
+			}
+		}
+	]);
 
 	// Handle payment warning dismissal
 	async function handlePaymentWarningDismiss(event: CustomEvent) {
@@ -768,9 +825,9 @@
 
 <svelte:head>
 	<title>BuildOS - Your Personal Operating System</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 
 	<!-- PERFORMANCE: System fonts used — no external font loading needed -->
+	{@html `<script type="application/ld+json">${siteStructuredData}</script>`}
 </svelte:head>
 
 <ModeWatcher />

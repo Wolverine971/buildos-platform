@@ -169,28 +169,40 @@ Navigate to LinkedIn home feed and scroll through recent posts to discover:
 - **Direct post link (REQUIRED)** - The actual post URL, not a search URL
 - Why it's relevant (which content pillar it matches)
 
-### How to Get Direct Post Links (CRITICAL)
+### How to Get Direct Post Links (HARD REQUIREMENT)
 
-**You MUST capture the actual post URL for every post you recommend.** Search URLs and profile activity URLs are useless - DJ needs to click one link and land on the exact post.
+**EVERY post in the output MUST have a direct clickable URL.** No exceptions. If you cannot get the URL for a post, DO NOT include that post in the output. DJ needs to click one link and land on the exact post.
 
-**Method 1 - From profile activity pages:**
-When viewing a post on someone's activity page, click into the post (click on the post timestamp or "X comments" link) to open the individual post page. The URL will look like:
-- `https://www.linkedin.com/feed/update/urn:li:activity:XXXXXXXXXXXX/`
-- `https://www.linkedin.com/posts/username_slug-activity-XXXXXXXXXXXX-XXXX/`
-Copy that URL.
+**A direct post URL looks like:**
+- `https://www.linkedin.com/feed/update/urn:li:activity:7309XXXXXXXXX/`
+- `https://www.linkedin.com/posts/username_slug-activity-7309XXXXXXXXX-XXXX/`
 
-**Method 2 - From search results:**
-When you find a post in search results, click into the post to get the direct URL. Use the post's timestamp link, the comments count link, or the author's post content to navigate to the individual post page.
+**Step-by-step URL extraction workflow (follow this for EVERY post):**
 
-**Method 3 - Using read_page to find post links:**
-Look for `href` attributes on timestamp elements, comment count buttons, or post content links that contain `/feed/update/` or `/posts/` patterns. These are the direct post URLs.
+1. **When you find a post you want to include**, you MUST click into it to open it as a standalone page before moving on.
+2. **From a profile's activity page or feed:** Click the post's timestamp (e.g., "2h", "1d"), OR click "X comments", OR click the three dots menu (⋯) and look for "Copy link to post". Any of these should navigate to or reveal the direct post URL.
+3. **From search results:** Click into the post the same way - timestamp or comments link.
+4. **After clicking into the post:** The browser URL bar now contains the direct post URL. Use `read_page` or check the current page URL. It will be a `/feed/update/urn:li:activity:...` or `/posts/...` URL.
+5. **Copy that URL** and use it as the Post Link.
 
-**What NOT to use as a post link:**
-- Search result page URLs (e.g., `/search/results/content/?keywords=...`)
-- Profile activity page URLs (e.g., `/in/username/recent-activity/all/`)
-- Generic "Search for X on LinkedIn" instructions
+**Alternative: Use the share/copy link feature:**
+- Click the three dots (⋯) on any post
+- Look for "Copy link to post" or "Copy link"
+- This gives you the direct URL without navigating away
 
-**If you cannot get a direct link**, at minimum provide the author's profile URL (`/in/username/`) and describe which post (e.g., "most recent post, 4h ago about X"). But always try to get the direct link first.
+**Alternative: Extract URLs from page HTML:**
+- Use `read_page` on the current page
+- Search for `href` values containing `/feed/update/` or `/posts/`
+- These are direct post URLs embedded in timestamp links and share buttons
+
+**REJECTED formats - NEVER use these as a Post Link:**
+- ❌ `Search "Claude Code shipping" → Latest → Vikas Bansal post`
+- ❌ `Visible in DJ's LinkedIn feed - click into post for direct URL`
+- ❌ `/in/username/recent-activity/all/` (this is a profile page, not a post)
+- ❌ Any instruction telling DJ how to find the post
+- ❌ Any URL that is not a direct link to a single specific post
+
+**If you truly cannot extract the URL after trying all methods above**, use the author's profile URL as a last resort: `https://www.linkedin.com/in/username/` — but this should be rare. Do NOT include search instructions or "how to find it" text.
 
 ### Selection Criteria
 
@@ -340,19 +352,18 @@ This connects to something I've been wrestling with. [1-2 sentences of genuine p
 
 ## Priority Summary
 
-| Priority | Author | Post Topic | Link | Age | Comments | Why |
-|----------|--------|------------|------|-----|----------|-----|
-| 1 | [Name] | [brief topic] | [direct post URL] | Xh | X | [reason] |
-| 2 | ... | ... | [direct post URL] | ... | ... | ... |
-[5-7 rows]
+| # | Author | Topic | Post URL | Age | Comments | Why |
+|---|--------|-------|----------|-----|----------|-----|
+| 1 | [Name] | [topic] | [https://linkedin.com/feed/update/urn:li:activity:...](URL) | Xh | X | [reason] |
+| 2 | ... | ... | [link](URL) | ... | ... | ... |
+[5-7 rows — every row MUST have a clickable post URL, never search instructions]
 
 ---
 
 ## 1. [Author Name] - [Topic]
 
-**Post Link:** [DIRECT URL to the specific post - REQUIRED, must be a clickable link that goes straight to the post]
-Example format: https://www.linkedin.com/feed/update/urn:li:activity:XXXXXXXXXXXX/
-Or: https://www.linkedin.com/posts/username_slug-activity-XXXXXXXXXXXX-XXXX/
+**Post Link:** https://www.linkedin.com/feed/update/urn:li:activity:7309XXXXXXXXX/
+(MUST be a real clickable URL — never search instructions or "how to find" text)
 
 **Author:** [Name] | [Headline] | [Follower count]
 

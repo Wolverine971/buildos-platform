@@ -100,9 +100,7 @@ export function selectModelsByRequirements(
 		if (requirements.minQuality && model.smartness < requirements.minQuality) return false;
 		return true;
 	});
-	const stableEligible = eligible.filter(
-		(model) => !model.limitations?.includes('alpha-model')
-	);
+	const stableEligible = eligible.filter((model) => !model.limitations?.includes('alpha-model'));
 	const rankedPool = stableEligible.length > 0 ? stableEligible : eligible;
 
 	// Calculate value score for each model

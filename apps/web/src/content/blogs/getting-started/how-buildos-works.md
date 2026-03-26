@@ -1,6 +1,6 @@
 ---
 title: 'How BuildOS Works'
-description: 'I hated repeating myself in different chats. I wanted to build context on my projects that AI could actually use. That is why I built BuildOS.'
+description: 'BuildOS works by turning unstructured conversations and brain dumps into connected project context that AI can use across goals, plans, tasks, and documents.'
 author: 'DJ Wayne'
 date: '2025-12-17'
 lastmod: '2025-12-31'
@@ -17,10 +17,12 @@ tags:
         'project-lens'
     ]
 readingTime: 7
-excerpt: 'I hated repeating myself in different chats. I wanted to build context on my projects that compounds over time. That is why I built BuildOS.'
+excerpt: 'BuildOS turns unstructured conversations and brain dumps into connected project context that compounds across goals, plans, tasks, and documents.'
 pic: 'how-buildos-works'
 path: apps/web/src/content/blogs/getting-started/how-buildos-works.md
 ---
+
+BuildOS works by turning unstructured conversations and brain dumps into connected project context that AI can use across goals, plans, tasks, and documents. Instead of starting from zero in every chat, you build a system that remembers what you are trying to do, why it matters, and what should happen next.
 
 ## Why I Built BuildOS
 

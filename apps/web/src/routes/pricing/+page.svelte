@@ -5,6 +5,7 @@
 	import type { PageData } from './$types';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 
 	export let data: PageData;
@@ -51,18 +52,19 @@
 
 <SEOHead
 	title="Pricing - BuildOS | AI-Powered Productivity Plans"
-	description="Choose the perfect BuildOS plan. Start free or unlock unlimited AI-powered organization for $12/month. 14-day free trial, no credit card required."
+	description="Choose the BuildOS plan. Start with a 14-day free trial, then unlock unlimited AI-powered organization for $20/month."
 	canonical="https://build-os.com/pricing"
 	keywords="BuildOS pricing, productivity app pricing, AI task management cost, project management pricing, brain dump app plans"
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Product',
 		name: 'BuildOS Pro',
-		description: 'AI-powered project collaboration platform',
+		description: 'AI-powered project organization platform with a 14-day free trial.',
 		offers: {
 			'@type': 'Offer',
-			price: '12.00',
+			price: '20.00',
 			priceCurrency: 'USD',
+			url: 'https://build-os.com/pricing',
 			availability: 'https://schema.org/InStock'
 		}
 	}}
@@ -77,7 +79,14 @@
 					<div
 						class="rounded-lg border border-border bg-card shadow-ink w-16 h-16 rounded-sm flex items-center justify-center"
 					>
-						<img src="/brain-bolt.png" alt="BuildOS Icon" class="w-12 h-12" />
+						<img
+							src={DEFAULT_APP_ICON_URL}
+							alt="BuildOS Icon"
+							class="w-12 h-12"
+							width="48"
+							height="48"
+							decoding="async"
+						/>
 					</div>
 				</div>
 				<h1

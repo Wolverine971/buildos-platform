@@ -10,6 +10,22 @@ import type { PageServerLoad } from './$types';
 import { getUserDashboardAnalytics } from '$lib/services/dashboard/user-dashboard-analytics.service';
 import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { loadBlogPosts } from '$lib/utils/blog';
+
+const FEATURED_GUIDE_SLUGS = [
+	'how-buildos-works',
+	'first-project-setup',
+	'daily-brief-guide'
+] as const;
+
+async function loadFeaturedBlogPosts() {
+	const order = new Map<string, number>(FEATURED_GUIDE_SLUGS.map((slug, index) => [slug, index]));
+	const allPosts = await loadBlogPosts();
+
+	return allPosts
+		.filter((post) => order.has(post.slug))
+		.sort((left, right) => (order.get(left.slug) ?? 99) - (order.get(right.slug) ?? 99));
+}
 
 async function hasAnyProjects(
 	supabase: Parameters<PageServerLoad>[0]['locals']['supabase'],
@@ -65,7 +81,8 @@ export const load: PageServerLoad = async ({
 	if (!user) {
 		return {
 			user: null,
-			dashboard: null
+			dashboard: null,
+			featuredBlogPosts: await measure('landing.featured_guides', loadFeaturedBlogPosts)
 		};
 	}
 

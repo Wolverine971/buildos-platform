@@ -2,7 +2,11 @@
 <script lang="ts">
 	import { Brain, Zap, Target, Mail, ArrowRight, Mic, Database, TrendingUp } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
-	import { DEFAULT_ORGANIZATION_LOGO_URL } from '$lib/constants/seo';
+	import {
+		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_ORGANIZATION_SOCIAL_PROFILES
+	} from '$lib/constants/seo';
 
 	let innerWidth: number;
 </script>
@@ -15,6 +19,7 @@
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Organization',
+		'@id': DEFAULT_ORGANIZATION_ID,
 		name: 'BuildOS',
 		url: 'https://build-os.com',
 		logo: DEFAULT_ORGANIZATION_LOGO_URL,
@@ -32,7 +37,7 @@
 			email: 'dj@build-os.com',
 			contactType: 'Business Inquiries'
 		},
-		sameAs: ['https://twitter.com/build_os', 'https://twitter.com/djwayne3']
+		sameAs: [...DEFAULT_ORGANIZATION_SOCIAL_PROFILES, 'https://twitter.com/djwayne3']
 	}}
 />
 

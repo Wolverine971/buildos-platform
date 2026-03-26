@@ -323,7 +323,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
 				const shouldRetryParseError =
-					lastError instanceof SyntaxError && options.validation?.retryOnParseError === true;
+					lastError instanceof SyntaxError &&
+					options.validation?.retryOnParseError === true;
 				const shouldFailoverModel =
 					lastError.message === 'OpenRouter V2 returned empty JSON content' ||
 					shouldFailoverToNextOpenRouterModel(lastError);

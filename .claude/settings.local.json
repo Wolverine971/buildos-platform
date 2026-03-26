@@ -171,7 +171,15 @@
       "WebFetch(domain:www.apm.org.uk)",
       "WebFetch(domain:www.easyagile.com)",
       "WebFetch(domain:dev.to)",
-      "WebFetch(domain:blog.goldstandardcertifications.com)"
+      "WebFetch(domain:blog.goldstandardcertifications.com)",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "Bash(claude install:*)",
+      "WebFetch(domain:llmstxt.org)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:vercel.com)",
+      "Bash(ls -la /Users/djwayne/buildos-platform/apps/web/src/routes/\\\\\\(public\\\\\\)/ 2>/dev/null)",
+      "Bash(ls /Users/djwayne/buildos-platform/apps/web/src/routes/\\\\\\(public\\\\\\)/)"
     ],
     "deny": [],
     "ask": []

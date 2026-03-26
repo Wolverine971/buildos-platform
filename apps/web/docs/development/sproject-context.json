@@ -145,11 +145,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -158,6 +153,11 @@
 				"ProjectInsightRail",
 				"ProjectModalsHost"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -627,12 +627,6 @@
 			]
 		},
 		{
-			"file": "src/lib/stores/brainDumpPreferences.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["brainDumpAutoAccept"]
-		},
-		{
 			"file": "src/lib/stores/briefChatSession.store.ts",
 			"type": "store",
 			"components": [],
@@ -649,12 +643,6 @@
 			"type": "store",
 			"components": [],
 			"exports": ["dashboardStore"]
-		},
-		{
-			"file": "src/lib/stores/modal.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["modalStore"]
 		},
 		{
 			"file": "src/lib/stores/navigation.store.ts",
@@ -700,12 +688,6 @@
 				"hasNavigationData",
 				"clearNavigationData"
 			]
-		},
-		{
-			"file": "src/lib/stores/searchStore.ts",
-			"type": "store",
-			"components": [],
-			"exports": ["searchStore", "totalResultCount"]
 		},
 		{
 			"file": "src/lib/stores/timeBlocksStore.ts",

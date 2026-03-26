@@ -25,6 +25,7 @@
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import type { BlogCategory, BlogPost } from '$lib/utils/blog';
 
 	let { data }: { data: PageData } = $props();
 
@@ -92,17 +93,59 @@
 		return JSON.stringify(jsonLd, null, 2);
 	}
 
-	let searchQuery = $state('');
+	function getCategory(categoryKey: string) {
+		return data.categories[categoryKey as BlogCategory];
+	}
+
+	function getCategoryIcon(categoryKey: string) {
+		return categoryIcons[categoryKey as BlogCategory] ?? Brain;
+	}
+
+	function matchesSearch(post: BlogPost, query: string) {
+		if (!query) return true;
+
+		const haystack = [
+			post.title,
+			post.description,
+			post.excerpt ?? '',
+			post.category,
+			...(post.tags ?? [])
+		]
+			.join(' ')
+			.toLowerCase();
+
+		return haystack.includes(query);
+	}
+
+	let searchQuery = $state(data.initialQuery ?? '');
+	let normalizedSearchQuery = $derived(searchQuery.trim().toLowerCase());
+	let hasActiveSearch = $derived(normalizedSearchQuery.length > 0);
 
 	let allPosts = $derived(
-		data.totalPosts < 10
-			? Object.values(data.categorizedPosts)
-					.flat()
-					.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-			: []
+		data.allPosts
+			.slice()
+			.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+	);
+	let filteredAllPosts = $derived(
+		hasActiveSearch
+			? allPosts.filter((post) => matchesSearch(post, normalizedSearchQuery))
+			: allPosts
+	);
+	let filteredCategorizedPosts = $derived.by(
+		() =>
+			Object.fromEntries(
+				(Object.entries(data.categorizedPosts) as [BlogCategory, BlogPost[]][]).map(
+					([categoryKey, posts]) => [
+						categoryKey,
+						hasActiveSearch
+							? posts.filter((post) => matchesSearch(post, normalizedSearchQuery))
+							: posts
+					]
+				)
+			) as Record<BlogCategory, BlogPost[]>
 	);
 
-	let showDirectPosts = $derived(data.totalPosts < 10);
+	let showDirectPosts = $derived(data.totalPosts < 10 || hasActiveSearch);
 
 	let jsonLdString = $derived(generateBlogJsonLd(data.categorizedPosts));
 </script>
@@ -151,7 +194,6 @@
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 
 	<!-- Additional Meta Tags -->
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<meta name="robots" content="index, follow" />
 	<meta name="author" content="BuildOS Team" />
 
@@ -195,11 +237,25 @@
 		<!-- Direct Posts Display (< 10 total posts) -->
 		<section class="py-8 sm:py-12">
 			<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-				{#if allPosts.length > 0}
+				{#if hasActiveSearch}
+					<div class="text-center mb-8">
+						<h2 class="text-2xl font-bold text-foreground mb-2">
+							Search results for "{searchQuery}"
+						</h2>
+						<p class="text-sm text-muted-foreground">
+							{filteredAllPosts.length} article{filteredAllPosts.length !== 1
+								? 's'
+								: ''}
+							matched your query.
+						</p>
+					</div>
+				{/if}
+
+				{#if filteredAllPosts.length > 0}
 					<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-						{#each allPosts as post}
+						{#each filteredAllPosts as post}
 							{@const colors = getCategoryColorClasses(post.category)}
-							{@const categoryName = data.categories[post.category].name}
+							{@const categoryName = getCategory(post.category).name}
 
 							<article class="group">
 								<a
@@ -264,9 +320,13 @@
 						>
 							<Brain class="w-6 h-6 text-muted-foreground" />
 						</div>
-						<h3 class="text-lg font-semibold text-foreground mb-1">No articles yet</h3>
+						<h3 class="text-lg font-semibold text-foreground mb-1">
+							{hasActiveSearch ? 'No matching articles' : 'No articles yet'}
+						</h3>
 						<p class="text-sm text-muted-foreground">
-							We're working on creating valuable content. Check back soon!
+							{hasActiveSearch
+								? 'Try a different keyword or browse the categories below.'
+								: "We're working on creating valuable content. Check back soon!"}
 						</p>
 					</div>
 				{/if}
@@ -284,9 +344,9 @@
 				</div>
 
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-					{#each Object.entries(data.categorizedPosts) as [categoryKey, posts]}
-						{@const category = data.categories[categoryKey]}
-						{@const IconComponent = categoryIcons[categoryKey]}
+					{#each Object.entries(filteredCategorizedPosts) as [categoryKey, posts]}
+						{@const category = getCategory(categoryKey)}
+						{@const IconComponent = getCategoryIcon(categoryKey)}
 						{@const colors = getCategoryColorClasses(categoryKey)}
 
 						{#if posts?.length}
@@ -326,8 +386,8 @@
 		<!-- Recent Posts by Category -->
 		<section class="py-8 sm:py-12 bg-muted/30 border-t border-border">
 			<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-				{#each Object.entries(data.categorizedPosts) as [categoryKey, posts]}
-					{@const category = data.categories[categoryKey]}
+				{#each Object.entries(filteredCategorizedPosts) as [categoryKey, posts]}
+					{@const category = getCategory(categoryKey)}
 					{@const colors = getCategoryColorClasses(categoryKey)}
 
 					{#if posts.length > 0}
