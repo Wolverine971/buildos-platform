@@ -179,7 +179,14 @@
       "WebFetch(domain:docs.anthropic.com)",
       "WebFetch(domain:vercel.com)",
       "Bash(ls -la /Users/djwayne/buildos-platform/apps/web/src/routes/\\\\\\(public\\\\\\)/ 2>/dev/null)",
-      "Bash(ls /Users/djwayne/buildos-platform/apps/web/src/routes/\\\\\\(public\\\\\\)/)"
+      "Bash(ls /Users/djwayne/buildos-platform/apps/web/src/routes/\\\\\\(public\\\\\\)/)",
+      "WebFetch(domain:thecadretraining.com)",
+      "WebFetch(domain:www.franciscomoretti.com)",
+      "WebFetch(domain:blog.opendigerati.com)",
+      "WebFetch(domain:www.htmhell.dev)",
+      "WebFetch(domain:saricden.com)",
+      "WebFetch(domain:mathix.dev)",
+      "WebFetch(domain:stripearmy.medium.com)"
     ],
     "deny": [],
     "ask": []
