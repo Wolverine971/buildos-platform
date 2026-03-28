@@ -737,6 +737,20 @@
 			]
 		},
 		{
+			"file": "src/lib/components/agent/agent-chat-session.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"isProjectContext",
+				"buildProjectWideFocus",
+				"normalizeProjectFocusClient",
+				"deriveSessionTitle",
+				"prewarmAgentContext",
+				"buildAgentChatSessionSnapshot",
+				"loadAgentChatSessionSnapshot"
+			]
+		},
+		{
 			"file": "src/lib/components/agent/agent-chat.constants.ts",
 			"type": "component",
 			"components": [],
@@ -1031,6 +1045,7 @@
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/lib/components/agent/agent-chat-formatters.ts",
+		"src/lib/components/agent/agent-chat-session.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",

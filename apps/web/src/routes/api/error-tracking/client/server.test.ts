@@ -1,3 +1,4 @@
+// apps/web/src/routes/api/error-tracking/client/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { logServerErrorMock, shouldPersistGenericErrorEventMock } = vi.hoisted(() => ({

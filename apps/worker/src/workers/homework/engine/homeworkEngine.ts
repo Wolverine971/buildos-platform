@@ -751,7 +751,10 @@ async function executeToolCall(params: {
 					.is('deleted_at', null)
 					.single();
 				if (error) throw error;
-				return { name: tool.name, ok: true, result: data };
+				const result = data
+					? (({ search_vector: _searchVector, ...projectData }) => projectData)(data)
+					: null;
+				return { name: tool.name, ok: true, result };
 			}
 			case 'list_onto_documents': {
 				const limit = safeLimit(args.limit, 20);

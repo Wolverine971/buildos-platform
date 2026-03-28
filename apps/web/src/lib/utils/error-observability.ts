@@ -1,3 +1,4 @@
+// apps/web/src/lib/utils/error-observability.ts
 const CLIENT_ERROR_REPORT_ENDPOINT = '/api/error-tracking/client';
 
 const KNOWN_NON_ACTIONABLE_PATHS = new Set([

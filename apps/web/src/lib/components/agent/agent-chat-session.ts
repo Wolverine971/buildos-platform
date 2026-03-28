@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/agent-chat-session.ts
 import { dev } from '$app/environment';
 import type { ChatContextType, ChatRole, ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';

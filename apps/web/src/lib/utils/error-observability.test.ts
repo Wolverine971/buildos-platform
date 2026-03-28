@@ -1,3 +1,4 @@
+// apps/web/src/lib/utils/error-observability.test.ts
 import { describe, expect, it } from 'vitest';
 import {
 	getErrorStatus,

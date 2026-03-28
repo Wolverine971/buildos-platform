@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/agent-chat-session.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
