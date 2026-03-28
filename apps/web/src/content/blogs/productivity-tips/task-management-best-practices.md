@@ -1,6 +1,6 @@
 ---
 title: 'Task Management Best Practices: Beyond To-Do Lists'
-description: 'Learn how to manage tasks within Build OS rich context system—where tasks connect to goals, plans, and documents. Master advanced techniques plus how to zoom into any task with Project Lens.'
+description: 'Learn how to manage tasks within BuildOS rich context system—where tasks connect to goals, plans, and documents. Master advanced techniques plus how to zoom into any task with Project Lens.'
 author: 'DJ Wayne'
 date: '2025-06-28'
 lastmod: '2025-12-31'
@@ -28,11 +28,11 @@ Most task management advice misses the point. It treats tasks as isolated checkb
 
 **Isolated tasks fail.** A task without context is just an item on a list you'll probably ignore. A task connected to a goal, informed by related documents, with clear dependencies? That's intelligence you can act on.
 
-Build OS treats tasks as part of a connected system: Goals → Plans → Tasks → Documents. This guide shows you how to work within that system and stop fighting against scattered to-do lists.
+BuildOS treats tasks as part of a connected system: Goals → Plans → Tasks → Documents. This guide shows you how to work within that system and stop fighting against scattered to-do lists.
 
-## How Build OS Thinks About Tasks
+## How BuildOS Thinks About Tasks
 
-Every task in Build OS knows four things:
+Every task in BuildOS knows four things:
 
 1. **Which goal it serves** so you understand why it matters
 2. **Which plan it belongs to** so you see dependencies and sequence
@@ -43,7 +43,7 @@ This sounds simple, but it changes everything. When you look at a task, you see 
 
 Traditional task management asks: "Did you complete it?"
 
-Build OS asks: "Did completing it move you toward what matters?"
+BuildOS asks: "Did completing it move you toward what matters?"
 
 ## Writing Tasks That Actually Get Done
 
@@ -85,7 +85,7 @@ Not all tasks are created equal. Some require your sharpest thinking; others can
 
 ## The Project-Phase-Task Hierarchy
 
-Build OS organizes work in three levels:
+BuildOS organizes work in three levels:
 
 **Project:** "Launch Productivity Podcast"
 **Phase:** "Content Creation Phase"
@@ -99,11 +99,11 @@ Some tasks must happen in sequence. "Finalize script" comes before "Record podca
 
 Other tasks can run in parallel. "Design website header" and "Write homepage copy" don't depend on each other. Work on whichever fits your current energy.
 
-Build OS tracks these dependencies automatically. When you complete a blocking task, the next one becomes actionable. When something's stuck, you can see exactly what's in the way.
+BuildOS tracks these dependencies automatically. When you complete a blocking task, the next one becomes actionable. When something's stuck, you can see exactly what's in the way.
 
 ## Project Lens: Zoom Into Any Task
 
-This is where Build OS task management becomes genuinely useful. **Project Lens** lets you zoom into any task and get AI intelligence about that specific piece of work.
+This is where BuildOS task management becomes genuinely useful. **Project Lens** lets you zoom into any task and get AI intelligence about that specific piece of work.
 
 When you focus on a task, the AI loads everything relevant: the goal and plan it serves, what's blocking it, related documents, previous conversations. You're not getting generic productivity advice. You're getting intelligence grounded in your context.
 
@@ -144,9 +144,9 @@ Time blocking works. But most people do it wrong by treating all hours equally.
 
 **Planning blocks** (30-60 minutes): Weekly review, goal alignment, system tuning. These prevent the chaos that makes everything else harder.
 
-### How Build OS Schedules
+### How BuildOS Schedules
 
-When Build OS suggests timing for tasks, it considers:
+When BuildOS suggests timing for tasks, it considers:
 
 - **Priority:** High-priority tasks get your best hours
 - **Energy match:** Complex tasks go where you're sharpest
@@ -244,11 +244,11 @@ Don't try to implement everything at once. That's a recipe for abandoning the wh
 
 **Week 4:** Add weekly reviews. Start learning from your data.
 
-Build OS helps with all of this, but the system only works if you show up consistently. Start small. Build momentum.
+BuildOS helps with all of this, but the system only works if you show up consistently. Start small. Build momentum.
 
 ## Context Compounds Over Time
 
-Here's why Build OS task management gets better the longer you use it: **context compounds**.
+Here's why BuildOS task management gets better the longer you use it: **context compounds**.
 
 Every task you create adds to your context. Every completion teaches the system about your patterns. Over time:
 

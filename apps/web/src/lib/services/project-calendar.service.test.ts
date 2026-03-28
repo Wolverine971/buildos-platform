@@ -274,6 +274,12 @@ describe('ProjectCalendarService sync health and retries', () => {
 						project_id: 'project-1',
 						user_id: 'user-2'
 					}
+				],
+				queue_jobs: [
+					{
+						id: 'queue-123',
+						queue_job_id: 'sync_calendar_public_123'
+					}
 				]
 			},
 			rpcAddQueueJob: { data: 'queue-123', error: null }
@@ -288,7 +294,7 @@ describe('ProjectCalendarService sync health and retries', () => {
 
 		const payload = await response.json();
 		expect(payload.success).toBe(true);
-		expect(payload.data.queue_job_id).toBe('queue-123');
+		expect(payload.data.queue_job_id).toBe('sync_calendar_public_123');
 
 		expect(rpc).toHaveBeenCalledWith(
 			'add_queue_job',

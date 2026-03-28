@@ -1,6 +1,6 @@
 ---
 title: 'Goals vs Projects: Why Most Productivity Systems Get This Wrong'
-description: 'Learn how goals sit at the top of Build OS ontology—connecting to plans, tasks, and documents. Discover how strategic alignment becomes automatic when context is structured.'
+description: 'Learn how goals sit at the top of BuildOS connected structure—linking to plans, tasks, and documents. Discover how strategic alignment becomes automatic when context is structured.'
 author: 'DJ Wayne'
 date: '2025-06-27'
 lastmod: '2026-01-24'
@@ -20,7 +20,7 @@ tags:
         'zoom'
     ]
 readingTime: 8
-excerpt: 'Master how goals connect to plans, tasks, and documents in Build OS rich context architecture. When your context is structured, strategic alignment becomes automatic.'
+excerpt: 'Master how goals connect to plans, tasks, and documents in BuildOS rich context architecture. When your context is structured, strategic alignment becomes automatic.'
 pic: 'goals-vs-projects'
 path: apps/web/src/content/blogs/getting-started/understanding-life-goals.md
 ---
@@ -31,11 +31,11 @@ So why does it feel like you're running in place?
 
 The problem isn't effort. It's that your projects aren't connected to anything larger. You're winning battles without knowing which war you're fighting.
 
-Build OS solves this by putting goals at the top of everything. Not as aspirational statements you ignore, but as living context that flows down through every plan, task, and decision you make.
+BuildOS solves this by putting goals at the top of everything. Not as aspirational statements you ignore, but as living context that flows down through every plan, task, and decision you make.
 
-## Goals in the Build OS Ontology
+## How Goals Work in BuildOS
 
-In Build OS, goals aren't isolated aspirations. They're the top-level entities in a connected architecture: Goals → Plans → Tasks → Documents. (See [Under the Hood](/blog/under-the-hood) for the full technical picture.)
+In BuildOS, goals aren't isolated aspirations. They're the top-level entities in a connected architecture: Goals → Plans → Tasks → Documents. (See [Under the Hood](/blog/under-the-hood) for the full technical picture.)
 
 This hierarchy creates automatic alignment:
 
@@ -83,7 +83,7 @@ You have a clear vision but no execution. Constantly planning, rarely doing. Goa
 **Disconnected Goals and Projects**
 You're working hard on projects that don't serve larger purposes. Goals feel separate from daily work. Progress in projects doesn't feel meaningful because the connection is missing.
 
-Build OS solves alignment through **structured context**. The ontology ensures every piece of work connects to larger purposes:
+BuildOS solves alignment through **structured context**. This connected structure ensures every piece of work connects to larger purposes:
 
 - **Goals → Plans → Tasks → Documents**: Clear hierarchy from strategy to action
 - **Automatic context inheritance**: Tasks know which goals they serve
@@ -230,23 +230,23 @@ Here's what most people miss: **goal context compounds**.
 
 Every brain dump, every task completion, every decision connects to your goals. Day 1 goals are definitions. Day 100 goals, enriched by projects, completed tasks, and documented decisions, become strategic intelligence.
 
-Goals in Build OS aren't static statements. They're living context that grows with every piece of work you add. (For more on how context compounding works, see [Context Engineering 101](/blog/context-engineering-101).)
+Goals in BuildOS aren't static statements. They're living context that grows with every piece of work you add. (For more on how context compounding works, see [Context Engineering 101](/blog/context-engineering-101).)
 
 ## The Power of Structured Context
 
-Build OS maintains clear alignment between your daily actions and life vision automatically. When your context is structured (Goals → Plans → Tasks → Documents), you don't have to manually track alignment. The system shows you:
+BuildOS maintains clear alignment between your daily actions and life vision automatically. When your context is structured (Goals → Plans → Tasks → Documents), you don't have to manually track alignment. The system shows you:
 
 - Which tasks serve which goals
 - Where progress is stalling
 - What's missing from your strategic picture
 - How daily work connects to long-term vision
 
-Start by clarifying your 3-5 most important life goals, then let Build OS structure the context around them. This foundation transforms routine productivity into purposeful progress toward the life you want to create.
+Start by clarifying your 3-5 most important life goals, then let BuildOS structure the context around them. This foundation transforms routine productivity into purposeful progress toward the life you want to create.
 
 ---
 
 **Ready to connect your goals to action?**
 
-Your goals deserve more than a list. Define your 3-5 life goals today and let Build OS structure the context around them.
+Your goals deserve more than a list. Define your 3-5 life goals today and let BuildOS structure the context around them.
 
 [Start with your first goal →](/)

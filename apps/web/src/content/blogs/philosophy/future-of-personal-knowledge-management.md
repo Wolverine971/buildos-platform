@@ -210,7 +210,7 @@ We're moving from passive preservation to active execution. From manual curation
 
 The goal isn't smarter filing cabinets. It's systems that understand what you're trying to accomplish and help you accomplish it. Systems that reduce overhead and amplify output. Systems that meet you where you are, in chaos, and help you find clarity and action.
 
-This shift is already happening. Notion added AI. Startups like Mem focus on effortless capture. Community discussions on Twitter, Reddit, and IndieHackers are one long frustration session about loving shiny PKM tools but hating the overhead.
+This shift is already happening. Notion added AI. New tools focus on effortless capture. Community discussions on Twitter, Reddit, and IndieHackers are one long frustration session about loving shiny PKM tools but hating the overhead.
 
 The demand is clear: **less setup, less maintenance, more results.**
 
@@ -220,4 +220,4 @@ The question isn't whether this future is coming. It's whether you're ready to t
 
 ---
 
-_DJ Wayne is the founder of BuildOS, an AI-powered productivity platform designed for ADHD minds. He believes the best productivity systems are the ones you actually use._
+_DJ Wayne is the founder of BuildOS, a thinking environment that turns messy thinking into structured work. He believes the best productivity systems are the ones you actually use._

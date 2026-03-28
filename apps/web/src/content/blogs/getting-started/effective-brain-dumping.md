@@ -1,6 +1,6 @@
 ---
 title: 'Brain Dumping That Actually Works: From Chaos to Compounding Context'
-description: "Your brain dump doesn't have to become another abandoned note. Here's how Build OS transforms scattered thoughts into goals, plans, and tasks that actually connect."
+description: "Your brain dump doesn't have to become another abandoned note. Here's how BuildOS transforms scattered thoughts into goals, plans, and tasks that actually connect."
 author: 'DJ Wayne'
 date: '2025-06-28'
 lastmod: '2025-12-31'
@@ -18,22 +18,22 @@ tags:
         'zoom'
     ]
 readingTime: 8
-excerpt: "Your brain dump doesn't have to become another abandoned note. Here's how Build OS transforms scattered thoughts into goals, plans, and tasks that actually connect."
+excerpt: "Your brain dump doesn't have to become another abandoned note. Here's how BuildOS transforms scattered thoughts into goals, plans, and tasks that actually connect."
 pic: 'brain-dumping-guide'
 path: apps/web/src/content/blogs/getting-started/effective-brain-dumping.md
 ---
 
 Most productivity advice tells you to "just write it all down." So you brain dump into Notion, Apple Notes, or a random doc. And then? Nothing changes. You've moved chaos from your head to a file. The dump sits there, unorganized and unusable, while your brain stays just as overwhelmed.
 
-Build OS approaches brain dumping differently. Here, you're not just getting thoughts out of your head. You're **building rich context** that your AI can actually use. Not just tasks. Goals, plans, tasks, and documents, all connected and compounding over time.
+BuildOS approaches brain dumping differently. Here, you're not just getting thoughts out of your head. You're **building rich context** that your AI can actually use. Not just tasks. Goals, plans, tasks, and documents, all connected and compounding over time.
 
-## What Makes Build OS Brain Dumping Different
+## What Makes BuildOS Brain Dumping Different
 
-Traditional brain dumping tools treat your thoughts like isolated data points. Build OS recognizes that your thoughts exist in relationships: projects connect to goals, tasks depend on resources, and ideas evolve into structured plans.
+Traditional brain dumping tools treat your thoughts like isolated data points. BuildOS recognizes that your thoughts exist in relationships: projects connect to goals, tasks depend on resources, and ideas evolve into structured plans.
 
 ### The Intelligence Layer
 
-When you brain dump in Build OS, you're not just creating a text file. You're feeding an intelligent system that:
+When you brain dump in BuildOS, you're not just creating a text file. You're feeding an intelligent system that:
 
 - **Identifies project boundaries** from scattered thoughts
 - **Extracts actionable tasks** from abstract ideas
@@ -41,11 +41,11 @@ When you brain dump in Build OS, you're not just creating a text file. You're fe
 - **Organizes information** into the optimal hierarchy
 - **Suggests next steps** based on your patterns
 
-## The Build OS Brain Dump Method
+## The BuildOS Brain Dump Method
 
 ### 1. Create the Right Environment
 
-Block 20-45 minutes. No notifications, no tabs, no "quick checks." Open Build OS and create a new brain dump session. Don't worry about organization yet; focus on complete capture.
+Block 20-45 minutes. No notifications, no tabs, no "quick checks." Open BuildOS and create a new brain dump session. Don't worry about organization yet; focus on complete capture.
 
 ### 2. Use Stream-of-Consciousness Capture
 
@@ -69,7 +69,7 @@ Help the AI understand your thoughts by including context:
 
 ## From Chaos to Rich Context: The Parsing Process
 
-After you hit submit, Build OS parses your chaos into connected context:
+After you hit submit, BuildOS parses your chaos into connected context:
 
 ```
 Your Brain Dump
@@ -84,7 +84,7 @@ Your Brain Dump
 
 ### Goal Identification
 
-Build OS looks for strategic objectives:
+BuildOS looks for strategic objectives:
 
 - "I want to improve my health" → Goal with success criteria
 - "Grow the business to $1M ARR" → Strategic goal with metrics
@@ -108,7 +108,7 @@ Actionable items get converted to specific tasks, connected to their parent goal
 
 ### Document Creation
 
-Build OS also creates documents to capture knowledge:
+BuildOS also creates documents to capture knowledge:
 
 - Research findings that inform decisions
 - Decision logs explaining "why" choices were made
@@ -116,7 +116,7 @@ Build OS also creates documents to capture knowledge:
 
 ### Dynamic Context Generation
 
-Based on your brain dump content, Build OS creates custom context fields for each project:
+Based on your brain dump content, BuildOS creates custom context fields for each project:
 
 - Software projects get fields like `technical_architecture` and `deployment_timeline`
 - Creative projects get `artistic_vision` and `audience_requirements`
@@ -142,7 +142,7 @@ Include your emotional relationship to tasks and projects:
 - "Excited about the design possibilities"
 - "Frustrated with the slow approval process"
 
-This emotional context helps Build OS suggest optimal timing and approaches for different activities.
+This emotional context helps BuildOS suggest optimal timing and approaches for different activities.
 
 ### Multi-Modal Capture
 
@@ -156,11 +156,11 @@ Combine different input methods:
 
 ### Over-Editing During Capture
 
-Don't organize while you capture. Your job is complete extraction. Let Build OS handle the structure. Editing breaks your flow and causes you to miss important connections.
+Don't organize while you capture. Your job is complete extraction. Let BuildOS handle the structure. Editing breaks your flow and causes you to miss important connections.
 
 ### Avoiding "Negative" Thoughts
 
-Include worries, frustrations, and concerns. These aren't just emotional noise. They're project intelligence that helps Build OS understand risks and dependencies.
+Include worries, frustrations, and concerns. These aren't just emotional noise. They're project intelligence that helps BuildOS understand risks and dependencies.
 
 ### Stopping Too Early
 
@@ -308,7 +308,7 @@ Blockers:
 - Guilty about letting things slide
 ```
 
-## Integration with Your Build OS Workflow
+## Integration with Your BuildOS Workflow
 
 ### Daily Brief Integration
 
@@ -320,12 +320,12 @@ As projects evolve, periodic brain dumps help refine context fields and identify
 
 ### Pattern Recognition
 
-Over time, Build OS learns from your brain dump patterns to suggest better project structures and catch common blind spots in your planning.
+Over time, BuildOS learns from your brain dump patterns to suggest better project structures and catch common blind spots in your planning.
 
-## Getting Started: Your First Build OS Brain Dump
+## Getting Started: Your First BuildOS Brain Dump
 
 1. **Schedule 30 minutes** of uninterrupted time
-2. **Open Build OS** and create a new brain dump session
+2. **Open BuildOS** and create a new brain dump session
 3. **Set a timer** and write continuously for 20 minutes
 4. **Include everything**: projects, tasks, worries, ideas, context
 5. **Submit for parsing** and review the suggested organization
@@ -356,7 +356,7 @@ Once you've mastered basic brain dumping, explore these advanced features:
 - **Recurring brain dump sessions** for ongoing project maintenance
 - **Cross-project zoom outs** to identify themes and patterns in your work
 
-Brain dumping in Build OS isn't just about getting organized. It's about building context infrastructure for the AI era. Your hundredth conversation is like having a partner who knows everything.
+Brain dumping in BuildOS isn't just about getting organized. It's about building context infrastructure for the AI era. Your hundredth conversation is like having a partner who knows everything.
 
 Master this skill, and everything else becomes more effective.
 
@@ -366,4 +366,4 @@ Master this skill, and everything else becomes more effective.
 
 Your first brain dump will be rough. That's the point. Start now, refine later.
 
-[Create your first brain dump →](/)
+[Create your first brain dump →](/auth/register)

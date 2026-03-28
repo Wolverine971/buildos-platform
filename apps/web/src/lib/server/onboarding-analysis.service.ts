@@ -2,6 +2,7 @@
 import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 import { PRIVATE_RAILWAY_WORKER_TOKEN } from '$env/static/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 
 const WORKER_URL = PUBLIC_RAILWAY_WORKER_URL;
 const REQUEST_TIMEOUT_MS = 8000;
@@ -25,22 +26,23 @@ async function queueOnboardingAnalysisDirect(params: {
 }): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
 	try {
 		const supabase = createAdminSupabaseClient();
-		const { data, error } = await supabase.rpc('add_queue_job', {
+		const dedupKey = params.options?.forceRegenerate
+			? `onboarding-analysis-${params.userId}-${Date.now()}`
+			: `onboarding-analysis-${params.userId}`;
+		const { queueJobId } = await addQueueJobWithPublicId(supabase, {
 			p_user_id: params.userId,
 			p_job_type: 'onboarding_analysis',
 			p_metadata: {
-				userContext: params.userContext,
+				userId: params.userId,
+				userContext: params.userContext ?? {},
 				options: params.options
 			},
 			p_priority: 1,
-			p_scheduled_for: new Date().toISOString()
+			p_scheduled_for: new Date().toISOString(),
+			p_dedup_key: dedupKey
 		});
 
-		if (error) {
-			return { queued: false, reason: error.message };
-		}
-
-		return { queued: true, jobId: data as string, reason: 'direct_queue' };
+		return { queued: true, jobId: queueJobId, reason: 'direct_queue' };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Direct queue failed';
 		return { queued: false, reason: message };

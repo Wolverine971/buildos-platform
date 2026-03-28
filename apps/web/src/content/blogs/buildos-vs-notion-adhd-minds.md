@@ -17,7 +17,7 @@ path: apps/web/src/content/blogs/buildos-vs-notion-adhd-minds.md
 
 There's a silent crisis happening in creative studios and startup offices around the world.
 
-ADHD founders and creators are spending **73% of their "productivity" time learning, configuring, and maintaining their Notion workspaces** instead of actually creating.
+ADHD founders and creators are spending most of their "productivity" time learning, configuring, and maintaining their Notion workspaces instead of actually creating.
 
 They're not lazy. They're not disorganized. They're trapped in tools designed for neurotypical brains that thrive on complex systems.
 
@@ -33,9 +33,9 @@ _"My Notion has 47 databases and I can't find anything."_
 
 _"I need a tutorial to use my own productivity system."_
 
-The average ADHD professional loses **15 hours per month** to what we call the "complexity tax"-time spent learning, organizing, and maintaining their productivity tools instead of doing actual work.
+ADHD professionals lose significant time every month to what we call the "complexity tax" — time spent learning, organizing, and maintaining their productivity tools instead of doing actual work.
 
-**That's almost two full working days. Every month. Forever.**
+**Hours that should go to creating. Gone to configuring.**
 
 ---
 
@@ -137,7 +137,7 @@ What we discovered changed everything: **Disorganized minds don't need better or
 
 Just open BuildOS and start talking. The AI handles everything else.
 
-Our early users report capturing **18x more ideas** than with traditional tools. Not because they have more ideas, but because they finally have a way to catch them.
+Our early users report capturing dramatically more ideas than with traditional tools. Not because they have more ideas, but because they finally have a way to catch them before the moment passes.
 
 ### The Brain Dump Revolution
 
@@ -257,12 +257,12 @@ Here's the part that changes everything for ADHD minds:
 
 **BuildOS is context that compounds.** Every brain dump adds to your context. Every conversation builds on your history. Every day, your AI gets smarter about YOUR work.
 
-| Time Using  | Notion                  | BuildOS                          |
-| ----------- | ----------------------- | -------------------------------- |
-| **Day 1**   | Setting up databases    | Brain dumping, getting organized |
-| **Week 1**  | Still learning features | AI knows your projects           |
-| **Month 1** | Abandoned 47 templates  | Context is compounding           |
-| **Month 6** | Started over... again   | AI is like a chief of staff      |
+| Time Using  | Notion                  | BuildOS                               |
+| ----------- | ----------------------- | ------------------------------------- |
+| **Day 1**   | Setting up databases    | Brain dumping, getting organized      |
+| **Week 1**  | Still learning features | AI knows your projects                |
+| **Month 1** | Abandoned 47 templates  | Context is compounding                |
+| **Month 6** | Started over... again   | AI knows your work better than you do |
 
 **The compound effect is ADHD's secret weapon.** You don't need perfect organization. You need context that grows automatically—even when you're inconsistent, even when you disappear for a week, even on your worst brain days.
 
@@ -294,12 +294,9 @@ But their output is noticeable. Their stress is lower. Their creative flow is re
 
 Let's do the math:
 
-**15 hours/month lost to Notion complexity**
+**Hours lost to Notion complexity every month**
 × **12 months**
-= **180 hours/year**
-= **4.5 work weeks**
-
-**That's a full month of productive time. Gone. Every year.**
+= **Weeks of productive time. Gone. Every year.**
 
 What could you create with an extra month?
 What projects are dying in your Notion graveyard?

@@ -28,6 +28,8 @@ pic: 'context-vs-agentic'
 path: apps/web/src/content/blogs/philosophy/agentic-vrs-context-engineering.md
 ---
 
+> **Deep dive:** This post explores a technical distinction between two approaches to AI systems. If you’re new to BuildOS, start with [First Project Setup](/blog/first-project-setup) or [How BuildOS Works](/blog/how-buildos-works) instead.
+
 Right now, everyone’s talking about **AI agents** - autonomous programs that can chain together reasoning steps, call APIs, operate tools, and act on your behalf. The hype is about _capability_:
 
 - “Look, it can browse the web!”
@@ -139,7 +141,7 @@ This loop runs constantly in a well-designed agent, keeping its context relevant
 
 For context engineering to work, you need structured context—not just a pile of notes.
 
-Build OS organizes your context into a connected architecture:
+BuildOS organizes your context into a connected architecture:
 
 ```
 Goals (Why you're doing this)
@@ -161,7 +163,7 @@ When these entities are connected, the context loop becomes more powerful. The A
 
 ### **Project Lens: Context Engineering in Action**
 
-Here's where theory becomes practice. **Project Lens** is Build OS's scoped conversation feature—and it's context engineering in its purest form.
+Here's where theory becomes practice. **Project Lens** is BuildOS's scoped conversation feature—and it's context engineering in its purest form.
 
 When you use Project Lens, you're not just chatting with an AI. You're providing **precise, relevant context** through focus:
 
@@ -190,9 +192,9 @@ This is judgment at the right moment. Not an agent deciding for you—but AI pro
 
 ---
 
-### **Context Engineering in Practice: Build OS**
+### **Context Engineering in Practice: BuildOS**
 
-Beyond Project Lens, the entire Build OS system embodies context engineering:
+Beyond Project Lens, the entire BuildOS system embodies context engineering:
 
 - **Brain Dumps** gather raw thoughts and information → **Gather**
 - **Rich Context Architecture** (goals, plans, tasks, docs) → **Structure**
@@ -223,7 +225,7 @@ Here's the irony: as AI agents become more powerful, context engineering becomes
 
 A capable agent with poor context is dangerous—it can do the wrong thing faster and with more confidence. A capable agent with rich, structured context becomes genuinely useful—it provides intelligence, not just action.
 
-Build OS bets on this future:
+BuildOS bets on this future:
 
 - **Rich Context Architecture** gives the AI structured knowledge
 - **Project Lens** delivers that context through scoped conversation
@@ -245,10 +247,10 @@ If you found this post valuable, you might also enjoy:
 
 ### **Build Your Own Context Engineering System**
 
-Ready to put context engineering into practice? [Build OS](/) is context infrastructure for the AI era.
+Ready to put context engineering into practice? [BuildOS](/) is context infrastructure for the AI era.
 
 Your projects get rich context. Project Lens delivers that context through scoped conversation. And everything compounds over time.
 
 **Stop teaching AI new capabilities. Start giving it the right context.**
 
-[Try Build OS →](https://buildos.dev)
+[Try BuildOS →](/auth/register)

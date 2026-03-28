@@ -37,11 +37,16 @@ export type BriefGenerationStep =
 export interface DailyBriefJobMetadata {
 	briefDate: string; // YYYY-MM-DD format
 	timezone: string; // IANA timezone
-	forceRegenerate?: boolean;
-	includeProjects?: string[];
-	excludeProjects?: string[];
-	customTemplate?: string;
-	requestedBriefDate?: string;
+	options?: {
+		forceRegenerate?: boolean;
+		includeProjects?: string[];
+		excludeProjects?: string[];
+		customTemplate?: string;
+		requestedBriefDate?: string;
+		useOntology?: boolean;
+		isReengagement?: boolean;
+		daysSinceLastLogin?: number;
+	};
 	generation_progress?: BriefGenerationProgress;
 	notificationScheduledFor?: string; // ISO 8601 timestamp for when to send notification
 }
@@ -67,8 +72,16 @@ export interface PhaseGenerationJobMetadata {
 
 export interface OnboardingAnalysisJobMetadata {
 	userId: string;
-	step: 'initial' | 'preferences' | 'complete';
-	responses?: Record<string, unknown>;
+	userContext?: {
+		input_projects?: string | null;
+		input_work_style?: string | null;
+		input_challenges?: string | null;
+		input_help_focus?: string | null;
+	};
+	options?: {
+		forceRegenerate?: boolean;
+		maxQuestions?: number;
+	};
 }
 
 export interface LegacyCalendarSyncJobMetadata {
@@ -536,10 +549,7 @@ function isPhaseGenerationMetadata(obj: unknown): obj is PhaseGenerationJobMetad
 function isOnboardingAnalysisMetadata(obj: unknown): obj is OnboardingAnalysisJobMetadata {
 	if (!obj || typeof obj !== 'object') return false;
 	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.userId === 'string' &&
-		(!meta.step || ['initial', 'preferences', 'complete'].includes(meta.step as string))
-	);
+	return typeof meta.userId === 'string';
 }
 
 function isCalendarSyncMetadata(obj: unknown): obj is CalendarSyncJobMetadata {

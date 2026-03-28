@@ -24,6 +24,8 @@ pic: 'under-the-hood'
 path: apps/web/src/content/blogs/getting-started/under-the-hood.md
 ---
 
+> **Deep dive:** This post explains the technical architecture behind BuildOS. If you're new here, start with [First Project Setup](/blog/first-project-setup) or [Daily Brief Guide](/blog/daily-brief-guide) instead.
+
 ## The Problem with Templates
 
 Most productivity tools love templates. "Pick a template for your project!" they say. Software project? Use this one. Book writing? That one. Marketing campaign? Another.

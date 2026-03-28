@@ -280,7 +280,7 @@ BuildOS is for anyone with:
 3. Projects that need memory (context that compounds over time)
 4. The desire to chat with AI that actually knows your work
 
-Your context compounds every day. Day 1 is helpful. Day 100 is like having a chief of staff who's been with you from the start.
+Your context compounds every day. Day 1 is helpful. Day 100 is like having a thinking partner who's been with you from the start.
 
 If you've made it this far, you're definitely our people.
 

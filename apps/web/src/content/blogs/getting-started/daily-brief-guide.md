@@ -28,11 +28,11 @@ A BuildOS daily brief is an AI-generated report that uses your goals, plans, tas
 
 **The richer your context, the smarter your briefs become.** Day 1 briefs are helpful. Day 100 briefs—after you've built real context—feel like having an executive assistant who actually knows your work.
 
-![Build OS Daily Brief Dashboard](/blogs/s-dashboard.webp 'Build OS Dashboard')
+![BuildOS Daily Brief Dashboard](/blogs/s-dashboard.webp 'BuildOS Dashboard')
 
 ## What a Daily Brief Actually Looks Like
 
-Every morning, Build OS analyzes your projects overnight and delivers a brief tailored to your day. Here's what you'll see:
+Every morning, BuildOS analyzes your projects overnight and delivers a brief tailored to your day. Here's what you'll see:
 
 > **Good morning. Here's your brief for Tuesday, March 18.**
 >
@@ -73,7 +73,7 @@ Getting your first brief takes about 30 seconds.
 
 That's it. Your first brief generates at your chosen time, and it'll draw from whatever context you've already built—projects, goals, tasks, brain dumps.
 
-If you're brand new and your brief feels thin, that's normal. The fix is simple: use Build OS more. Every brain dump, every task, every document makes tomorrow's brief sharper.
+If you're brand new and your brief feels thin, that's normal. The fix is simple: use BuildOS more. Every brain dump, every task, every document makes tomorrow's brief sharper.
 
 ## The Brain Dump Connection
 
@@ -81,7 +81,7 @@ This is the loop that makes briefs feel almost magical once it clicks.
 
 You do a brain dump—stream of consciousness, messy, unstructured. You write "feeling overwhelmed about the launch, need to figure out the pricing page, also Dave mentioned something about the API docs being wrong, and I should probably start thinking about Q2 hiring."
 
-Build OS extracts that into structured data: tasks get created, projects get updated, goals get connected. Then your next morning brief _reflects all of that back to you_, organized and prioritized.
+BuildOS extracts that into structured data: tasks get created, projects get updated, goals get connected. Then your next morning brief _reflects all of that back to you_, organized and prioritized.
 
 The brief might say: "New task from yesterday's brain dump—investigate API docs issue Dave flagged. This connects to your developer experience goal." You didn't file a ticket. You didn't organize anything. You just thought out loud, and the system did the rest.
 
@@ -177,7 +177,7 @@ Make sure your project statuses are current. The brief reflects what it knows—
 
 ---
 
-Your daily brief is your most direct line to Build OS intelligence. It's not a task list—it's a lens on your work that gets sharper every day.
+Your daily brief is your most direct line to BuildOS intelligence. It's not a task list—it's a lens on your work that gets sharper every day.
 
 Start with one week. Read the brief each morning, follow a suggestion or two, do a brain dump when something's on your mind. By day 7, you'll start to feel the difference.
 

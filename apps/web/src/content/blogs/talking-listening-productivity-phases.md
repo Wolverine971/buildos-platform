@@ -226,7 +226,7 @@ Most people discover they've been constantly interrupting themselves, switching 
 
 ---
 
-_What's your natural tendency - do you get stuck talking or stuck listening? How do current productivity tools help or hurt your natural thinking process? [Share your experience](mailto:hello@buildos.com) - understanding how different minds work helps us build better tools._
+_What's your natural tendency - do you get stuck talking or stuck listening? How do current productivity tools help or hurt your natural thinking process? [Share your experience](mailto:dj@build-os.com) - understanding how different minds work helps us build better tools._
 
 <!-- Additional research directions for future content:
 - The neuroscience of expressive vs receptive cognitive modes

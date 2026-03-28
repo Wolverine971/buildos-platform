@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/voice-note-transcription.service.ts
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 
 export async function queueVoiceNoteTranscription(params: {
 	voiceNoteId: string;
@@ -7,7 +8,7 @@ export async function queueVoiceNoteTranscription(params: {
 }): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
 	try {
 		const supabase = createAdminSupabaseClient();
-		const { data, error } = await supabase.rpc('add_queue_job', {
+		const { queueJobId } = await addQueueJobWithPublicId(supabase, {
 			p_user_id: params.userId,
 			p_job_type: 'transcribe_voice_note',
 			p_metadata: { voiceNoteId: params.voiceNoteId, userId: params.userId },
@@ -16,11 +17,7 @@ export async function queueVoiceNoteTranscription(params: {
 			p_dedup_key: `transcribe-voice-note-${params.voiceNoteId}`
 		});
 
-		if (error) {
-			return { queued: false, reason: error.message };
-		}
-
-		return { queued: true, jobId: data as string };
+		return { queued: true, jobId: queueJobId };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Failed to queue transcription';
 		return { queued: false, reason: message };

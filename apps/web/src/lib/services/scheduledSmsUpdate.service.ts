@@ -204,6 +204,10 @@ export class ScheduledSmsUpdateService {
 							updated_at: new Date().toISOString()
 						})
 						.eq('id', smsMessages.id);
+					await this.cancelSMSJobsInQueue(
+						[smsMessages.id],
+						'Cancelled due to event reschedule to a past time'
+					);
 					updatedCount++;
 					continue;
 				}
@@ -229,8 +233,8 @@ export class ScheduledSmsUpdateService {
 				);
 				updatedCount++;
 
-				// Note: The worker will automatically pick up the new scheduled_for time
-				// when it processes send_sms jobs
+				// Deferred: changing scheduled_sms_messages.scheduled_for does not move the
+				// already-enqueued send_sms job. That requires requeueing, not just updating the row.
 			}
 
 			console.log(`[SMSUpdate] Successfully rescheduled ${updatedCount} SMS messages`);
@@ -287,54 +291,47 @@ export class ScheduledSmsUpdateService {
 	/**
 	 * Cancel pending send_sms jobs in the worker queue
 	 */
-	private async cancelSMSJobsInQueue(smsMessageIds: string[]): Promise<void> {
+	private async cancelSMSJobsInQueue(
+		smsMessageIds: string[],
+		reason: string = 'Cancelled due to event deletion'
+	): Promise<void> {
 		try {
-			// Query queue_jobs for pending send_sms jobs with these message IDs
-			const { data: jobs, error } = await this.supabase
-				.from('queue_jobs')
-				.select('id, metadata')
-				.eq('job_type', 'send_sms')
-				.eq('status', 'pending');
+			let cancelledCount = 0;
 
-			if (error || !jobs) {
-				console.warn('[SMSUpdate] Could not fetch queue jobs:', error);
-				return;
-			}
+			for (const scheduledSmsId of smsMessageIds) {
+				const { data: jobs, error } = await this.supabase
+					.from('queue_jobs')
+					.select('id')
+					.eq('job_type', 'send_sms')
+					.eq('status', 'pending')
+					.eq('metadata->>scheduled_sms_id', scheduledSmsId);
 
-			// Filter jobs that match our SMS message IDs
-			const jobsToCancel = jobs.filter((job) => {
-				try {
-					const metadata =
-						typeof job.metadata === 'string' ? JSON.parse(job.metadata) : job.metadata;
-					return (
-						metadata.scheduledSmsId && smsMessageIds.includes(metadata.scheduledSmsId)
-					);
-				} catch {
-					return false;
+				if (error) {
+					console.warn('[SMSUpdate] Could not fetch queue jobs:', error);
+					continue;
 				}
-			});
 
-			if (jobsToCancel.length === 0) {
-				return;
+				for (const job of jobs || []) {
+					const { error: cancelError } = await this.supabase.rpc(
+						'cancel_job_with_reason',
+						{
+							p_job_id: job.id,
+							p_reason: reason,
+							p_allow_processing: false
+						}
+					);
+
+					if (cancelError) {
+						console.error('[SMSUpdate] Error cancelling queue job:', cancelError);
+						continue;
+					}
+
+					cancelledCount += 1;
+				}
 			}
 
-			console.log(`[SMSUpdate] Cancelling ${jobsToCancel.length} send_sms jobs in queue`);
-
-			// Update job status to cancelled
-			const { error: cancelError } = await this.supabase
-				.from('queue_jobs')
-				.update({
-					status: 'failed',
-					error: 'Cancelled due to event deletion',
-					updated_at: new Date().toISOString()
-				})
-				.in(
-					'id',
-					jobsToCancel.map((j) => j.id)
-				);
-
-			if (cancelError) {
-				console.error('[SMSUpdate] Error cancelling queue jobs:', cancelError);
+			if (cancelledCount > 0) {
+				console.log(`[SMSUpdate] Cancelled ${cancelledCount} send_sms jobs in queue`);
 			}
 		} catch (error) {
 			console.error('[SMSUpdate] Error in cancelSMSJobsInQueue:', error);

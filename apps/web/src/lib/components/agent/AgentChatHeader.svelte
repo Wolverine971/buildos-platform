@@ -195,7 +195,8 @@
 				href={projectUrl}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="flex h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				style="-webkit-tap-highlight-color: transparent;"
 				title="Open project in new tab"
 			>
 				<ExternalLink class="h-3.5 w-3.5 shrink-0" />

@@ -104,35 +104,91 @@ export function validateDailyBriefMetadata(metadata: unknown): DailyBriefJobMeta
 		throw new ValidationError('timezone', meta.timezone, 'valid IANA timezone');
 	}
 
-	// Optional fields
-	if (meta.forceRegenerate !== undefined && typeof meta.forceRegenerate !== 'boolean') {
-		throw new ValidationError('forceRegenerate', meta.forceRegenerate, 'boolean');
-	}
+	if (meta.options !== undefined) {
+		if (!meta.options || typeof meta.options !== 'object') {
+			throw new ValidationError('options', meta.options, 'object');
+		}
 
-	if (meta.includeProjects !== undefined) {
+		const options = meta.options as Record<string, unknown>;
+
+		if (options.forceRegenerate !== undefined && typeof options.forceRegenerate !== 'boolean') {
+			throw new ValidationError(
+				'options.forceRegenerate',
+				options.forceRegenerate,
+				'boolean'
+			);
+		}
+
+		if (options.includeProjects !== undefined) {
+			if (
+				!Array.isArray(options.includeProjects) ||
+				!options.includeProjects.every((id) => typeof id === 'string')
+			) {
+				throw new ValidationError(
+					'options.includeProjects',
+					options.includeProjects,
+					'string[]'
+				);
+			}
+		}
+
+		if (options.excludeProjects !== undefined) {
+			if (
+				!Array.isArray(options.excludeProjects) ||
+				!options.excludeProjects.every((id) => typeof id === 'string')
+			) {
+				throw new ValidationError(
+					'options.excludeProjects',
+					options.excludeProjects,
+					'string[]'
+				);
+			}
+		}
+
+		if (options.customTemplate !== undefined && typeof options.customTemplate !== 'string') {
+			throw new ValidationError('options.customTemplate', options.customTemplate, 'string');
+		}
+
 		if (
-			!Array.isArray(meta.includeProjects) ||
-			!meta.includeProjects.every((id) => typeof id === 'string')
+			options.requestedBriefDate !== undefined &&
+			typeof options.requestedBriefDate !== 'string'
 		) {
-			throw new ValidationError('includeProjects', meta.includeProjects, 'string[]');
+			throw new ValidationError(
+				'options.requestedBriefDate',
+				options.requestedBriefDate,
+				'string'
+			);
+		}
+
+		if (options.useOntology !== undefined && typeof options.useOntology !== 'boolean') {
+			throw new ValidationError('options.useOntology', options.useOntology, 'boolean');
+		}
+
+		if (options.isReengagement !== undefined && typeof options.isReengagement !== 'boolean') {
+			throw new ValidationError('options.isReengagement', options.isReengagement, 'boolean');
+		}
+
+		if (
+			options.daysSinceLastLogin !== undefined &&
+			typeof options.daysSinceLastLogin !== 'number'
+		) {
+			throw new ValidationError(
+				'options.daysSinceLastLogin',
+				options.daysSinceLastLogin,
+				'number'
+			);
 		}
 	}
 
-	if (meta.excludeProjects !== undefined) {
-		if (
-			!Array.isArray(meta.excludeProjects) ||
-			!meta.excludeProjects.every((id) => typeof id === 'string')
-		) {
-			throw new ValidationError('excludeProjects', meta.excludeProjects, 'string[]');
-		}
-	}
-
-	if (meta.customTemplate !== undefined && typeof meta.customTemplate !== 'string') {
-		throw new ValidationError('customTemplate', meta.customTemplate, 'string');
-	}
-
-	if (meta.requestedBriefDate !== undefined && typeof meta.requestedBriefDate !== 'string') {
-		throw new ValidationError('requestedBriefDate', meta.requestedBriefDate, 'string');
+	if (
+		meta.notificationScheduledFor !== undefined &&
+		typeof meta.notificationScheduledFor !== 'string'
+	) {
+		throw new ValidationError(
+			'notificationScheduledFor',
+			meta.notificationScheduledFor,
+			'ISO timestamp string'
+		);
 	}
 
 	// Validate generation_progress if present
@@ -226,10 +282,42 @@ export function validateOnboardingAnalysisMetadata(
 		throw new ValidationError('userId', meta.userId, 'string');
 	}
 
-	if (meta.step !== undefined) {
-		const validSteps = ['initial', 'preferences', 'complete'];
-		if (!validSteps.includes(meta.step as string)) {
-			throw new ValidationError('step', meta.step, 'initial|preferences|complete');
+	if (meta.userContext !== undefined) {
+		if (!meta.userContext || typeof meta.userContext !== 'object') {
+			throw new ValidationError('userContext', meta.userContext, 'object');
+		}
+
+		const userContext = meta.userContext as Record<string, unknown>;
+		const contextFields = [
+			'input_projects',
+			'input_work_style',
+			'input_challenges',
+			'input_help_focus'
+		] as const;
+
+		for (const field of contextFields) {
+			const value = userContext[field];
+			if (value !== undefined && value !== null && typeof value !== 'string') {
+				throw new ValidationError(`userContext.${field}`, value, 'string|null');
+			}
+		}
+	}
+
+	if (meta.options !== undefined) {
+		if (!meta.options || typeof meta.options !== 'object') {
+			throw new ValidationError('options', meta.options, 'object');
+		}
+
+		const options = meta.options as Record<string, unknown>;
+		if (options.forceRegenerate !== undefined && typeof options.forceRegenerate !== 'boolean') {
+			throw new ValidationError(
+				'options.forceRegenerate',
+				options.forceRegenerate,
+				'boolean'
+			);
+		}
+		if (options.maxQuestions !== undefined && typeof options.maxQuestions !== 'number') {
+			throw new ValidationError('options.maxQuestions', options.maxQuestions, 'number');
 		}
 	}
 

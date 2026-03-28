@@ -297,7 +297,7 @@ _"The fact that recurring tasks are this hard in Notion is insane. BuildOS just 
 
 Want to see how simple recurring tasks should be?
 
-[**Try BuildOS free for 14 days →**](https://buildos.com/signup)
+[**Try BuildOS free →**](/auth/register)
 
 Create a recurring task in one sentence. No formulas. No properties. No tutorial required.
 
@@ -323,56 +323,4 @@ That's what we're building at BuildOS.
 
 Come see the difference.
 
-[**Start your free trial →**](https://buildos.com/signup)
-
----
-
-## Development Notes
-
-### Content Strategy
-
-This blog post directly addresses a viral pain point: the absurd complexity of recurring tasks in Notion, as demonstrated by Thomas Frank's tutorial. It positions BuildOS as the simple, ADHD-friendly alternative.
-
-### Key Differentiators Highlighted
-
-1. **Complexity vs. Simplicity**: 5 properties + formulas vs. one sentence
-2. **Manual vs. Automated**: Manual date updates vs. full automation
-3. **Technical vs. Natural**: Formula expertise vs. plain language
-4. **Exclusive vs. Inclusive**: Database skills required vs. accessible to all
-
-### SEO Optimization
-
-- **Primary Keywords**: "Notion recurring tasks", "Thomas Frank Notion", "recurring tasks app"
-- **Long-tail**: "How to create recurring tasks without formulas", "simple recurring task app"
-- **Target Audience**: Notion users frustrated with complexity, ADHD productivity seekers
-
-### Social Media Angles
-
-**Twitter/X Thread Starter**:
-"Thomas Frank needs 5 database properties and a 15+ operation formula to create recurring tasks in Notion. I just asked BuildOS 'create a recurring task for X' and it was done in 5 seconds. This is the difference between complexity theater and actual productivity."
-
-**LinkedIn Post**:
-"When the world's top Notion expert needs a comprehensive tutorial to explain recurring tasks, maybe the problem isn't user education. Maybe it's product design. Here's why simple beats complex for real productivity: [link]"
-
-**Reddit r/Notion**:
-"Honest question: Should recurring tasks really require formulas? [Discussion about Thomas Frank's tutorial and alternative approaches]"
-
-### Conversion Funnel
-
-1. **Discovery**: Users searching for Notion recurring task help find this post
-2. **Pain Recognition**: "Wait, this _is_ unnecessarily complex"
-3. **Solution Awareness**: "There's a simpler way?"
-4. **Action**: Try BuildOS free trial
-5. **Retention**: Experience the simplicity, never go back
-
-### Related Content to Link
-
-- [BuildOS vs Notion for ADHD Minds](buildos-vs-notion-adhd-minds.md)
-- Effective Brain Dumping guide
-- Daily Brief feature overview
-
-### Future Content Ideas
-
-- "I Migrated My Notion Recurring Tasks to BuildOS: Here's What Happened"
-- "The Thomas Frank Effect: When Tool Complexity Creates an Expert Industry"
-- "5 Things That Should Never Require Formulas in Productivity Tools"
+[**Start your free trial →**](/auth/register)

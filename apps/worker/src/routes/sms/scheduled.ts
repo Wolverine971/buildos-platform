@@ -247,46 +247,32 @@ router.get('/user/:userId', async (req: Request, res: Response) => {
  */
 async function cancelQueueJob(scheduledSmsId: string): Promise<void> {
 	try {
-		// Find pending send_sms jobs for this message
 		const { data: jobs, error } = await supabase
 			.from('queue_jobs')
-			.select('id, metadata')
+			.select('id')
 			.eq('job_type', 'send_sms')
-			.eq('status', 'pending');
+			.eq('status', 'pending')
+			.eq('metadata->>scheduled_sms_id', scheduledSmsId);
 
 		if (error || !jobs) {
 			return;
 		}
 
-		// Filter jobs that match this SMS
-		const jobsToCancel = jobs.filter((job) => {
-			try {
-				const metadata =
-					typeof job.metadata === 'string' ? JSON.parse(job.metadata) : job.metadata;
-				return metadata.scheduledSmsId === scheduledSmsId;
-			} catch {
-				return false;
-			}
-		});
-
-		if (jobsToCancel.length === 0) {
+		if (jobs.length === 0) {
 			return;
 		}
 
-		// Update job status to failed/cancelled
-		await supabase
-			.from('queue_jobs')
-			.update({
-				status: 'failed',
-				error: 'SMS message was cancelled',
-				updated_at: new Date().toISOString()
-			})
-			.in(
-				'id',
-				jobsToCancel.map((j) => j.id)
-			);
+		await Promise.allSettled(
+			jobs.map((job) =>
+				supabase.rpc('cancel_job_with_reason', {
+					p_job_id: job.id,
+					p_reason: 'SMS message was cancelled',
+					p_allow_processing: false
+				})
+			)
+		);
 
-		console.log(`[API] Cancelled ${jobsToCancel.length} queue jobs for SMS ${scheduledSmsId}`);
+		console.log(`[API] Cancelled ${jobs.length} queue jobs for SMS ${scheduledSmsId}`);
 	} catch (error) {
 		console.error('[API] Error cancelling queue jobs:', error);
 	}

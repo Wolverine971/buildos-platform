@@ -172,7 +172,7 @@ Let's build it.
 
 **BuildOS: The operating system for ambitious thought.**
 
-_Turn your grand vision into a working system. [Join the early access list →](https://buildos.com/signup)_
+_Turn your grand vision into a working system. [Get started free →](/auth/register)_
 
 ---
 
@@ -236,4 +236,4 @@ Everyone sees not just _what_ to do, but _why_. The project has living memory. Y
 
 _Your vision is too big for traditional productivity tools. BuildOS is purpose-built infrastructure for empire builders._
 
-_[Start building →](https://buildos.com/signup)_
+_[Start building →](/auth/register)_

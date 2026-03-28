@@ -333,23 +333,27 @@ app.post('/queue/brief', async (req, res) => {
 app.post('/queue/onboarding', async (req, res) => {
 	try {
 		const { userId, userContext, options } = req.body;
+		const forceRegenerate = options?.forceRegenerate === true;
 
 		if (!userId) {
 			return res.status(400).json({ error: 'userId is required' });
 		}
 
 		// Check for existing jobs unless forcing regenerate
-		if (!options?.forceRegenerate) {
+		if (!forceRegenerate) {
 			const { data: existingJobs } = await supabase
 				.from('queue_jobs')
-				.select('*')
+				.select('queue_job_id')
 				.eq('user_id', userId)
 				.eq('job_type', 'onboarding_analysis')
-				.in('status', ['pending', 'processing']);
+				.in('status', ['pending', 'processing'])
+				.order('created_at', { ascending: false })
+				.limit(1);
 
 			if (existingJobs && existingJobs.length > 0) {
 				return res.status(409).json({
-					error: 'Onboarding analysis already in progress'
+					error: 'Onboarding analysis already in progress',
+					existingJobId: existingJobs[0].queue_job_id
 				});
 			}
 		}
@@ -359,11 +363,15 @@ app.post('/queue/onboarding', async (req, res) => {
 			'onboarding_analysis',
 			userId,
 			{
-				userContext,
+				userId,
+				userContext: userContext ?? {},
 				options
 			},
 			{
-				priority: 1 // High priority for onboarding
+				priority: 1, // High priority for onboarding
+				dedupKey: forceRegenerate
+					? `onboarding-analysis-${userId}-${Date.now()}`
+					: `onboarding-analysis-${userId}`
 			}
 		);
 

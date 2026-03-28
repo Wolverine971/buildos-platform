@@ -214,7 +214,7 @@ BuildOS removes the cognitive overhead of project setup, while Monday.com requir
 
 The choice isn't really Monday.com vs BuildOS - it's understanding which phase of work you're optimizing for.
 
-If you're struggling with the **thinking and planning phase** - organizing scattered thoughts, processing complex information, or managing individual productivity - [try BuildOS](https://buildos.com/signup).
+If you're struggling with the **thinking and planning phase** - organizing scattered thoughts, processing complex information, or managing individual productivity - [try BuildOS](/auth/register).
 
 If you need **team execution and coordination** - tracking shared projects, automating workflows, or reporting to stakeholders - Monday.com is likely your best bet.
 
@@ -222,7 +222,7 @@ And if you're responsible for both phases? Consider how both tools might work to
 
 ---
 
-_How does your team currently bridge individual planning and project execution? What tools do you use for the "thinking phase" before work becomes trackable? [Share your workflow](mailto:hello@buildos.com) - we'd love to learn from your experience._
+_How does your team currently bridge individual planning and project execution? What tools do you use for the "thinking phase" before work becomes trackable? [Share your workflow](mailto:dj@build-os.com) - we'd love to learn from your experience._
 
 <!-- Additional questions for follow-up content:
 Q8: Customer support experience comparison

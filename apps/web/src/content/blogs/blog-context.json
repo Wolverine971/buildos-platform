@@ -422,7 +422,7 @@
 				},
 				"effective-brain-dumping": {
 					"title": "Brain Dumping That Actually Works: From Chaos to Compounding Context",
-					"description": "Your brain dump doesn't have to become another abandoned note. Here's how Build OS transforms scattered thoughts into goals, plans, and tasks that actually connect.",
+					"description": "Your brain dump doesn't have to become another abandoned note. Here's how BuildOS transforms scattered thoughts into goals, plans, and tasks that actually connect.",
 					"author": "DJ Wayne",
 					"date": "2025-06-28",
 					"lastmod": "2025-12-31",
@@ -439,7 +439,7 @@
 						"zoom"
 					],
 					"readingTime": 8,
-					"excerpt": "Your brain dump doesn't have to become another abandoned note. Here's how Build OS transforms scattered thoughts into goals, plans, and tasks that actually connect.",
+					"excerpt": "Your brain dump doesn't have to become another abandoned note. Here's how BuildOS transforms scattered thoughts into goals, plans, and tasks that actually connect.",
 					"pic": "brain-dumping-guide",
 					"path": "apps/web/src/content/blogs/getting-started/effective-brain-dumping.md",
 					"slug": "effective-brain-dumping",
@@ -523,7 +523,7 @@
 				},
 				"understanding-life-goals": {
 					"title": "Goals vs Projects: Why Most Productivity Systems Get This Wrong",
-					"description": "Learn how goals sit at the top of Build OS ontology—connecting to plans, tasks, and documents. Discover how strategic alignment becomes automatic when context is structured.",
+					"description": "Learn how goals sit at the top of BuildOS connected structure—linking to plans, tasks, and documents. Discover how strategic alignment becomes automatic when context is structured.",
 					"author": "DJ Wayne",
 					"date": "2025-06-27",
 					"lastmod": "2026-01-24",
@@ -542,7 +542,7 @@
 						"zoom"
 					],
 					"readingTime": 8,
-					"excerpt": "Master how goals connect to plans, tasks, and documents in Build OS rich context architecture. When your context is structured, strategic alignment becomes automatic.",
+					"excerpt": "Master how goals connect to plans, tasks, and documents in BuildOS rich context architecture. When your context is structured, strategic alignment becomes automatic.",
 					"pic": "goals-vs-projects",
 					"path": "apps/web/src/content/blogs/getting-started/understanding-life-goals.md",
 					"slug": "understanding-life-goals",
@@ -608,11 +608,11 @@
 					"filePath": "src/content/blogs/philosophy/agentic-vrs-context-engineering.md"
 				},
 				"anti-ai-assistant-execution-engine": {
-					"title": "Build OS: The Anti-AI-Assistant That Actually Helps You Ship",
-					"description": "Why Build OS refuses to do everything for you, and why that makes it work. How context engineering beats autonomous agents for actually shipping products.",
+					"title": "BuildOS: The Anti-AI-Assistant That Actually Helps You Ship",
+					"description": "Why BuildOS refuses to do everything for you, and why that makes it work. How context engineering beats autonomous agents for actually shipping products.",
 					"author": "DJ Wayne",
 					"date": "2025-08-24",
-					"lastmod": "2025-12-31",
+					"lastmod": "2026-03-28",
 					"changefreq": "monthly",
 					"priority": "0.9",
 					"published": true,
@@ -633,7 +633,7 @@
 						"human-in-the-loop"
 					],
 					"readingTime": 9,
-					"excerpt": "Everyone races to build AI that does everything for you. Build OS takes the opposite approach: AI that helps you see clearly so you can do what matters. Clarity beats automation for actually shipping products.",
+					"excerpt": "Everyone races to build AI that does everything for you. BuildOS takes the opposite approach: AI that helps you see clearly so you can do what matters. Context engineering beats autonomous agents for actually shipping products.",
 					"pic": "ai-clarity-execution",
 					"path": "apps/web/src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md",
 					"slug": "anti-ai-assistant-execution-engine",
@@ -1105,7 +1105,7 @@
 				},
 				"evolution-of-note-taking": {
 					"title": "The Evolution of Note-Taking: From Paper to AI-Powered Organization",
-					"description": "Explore the progression from traditional note-taking to AI-native systems with rich context architecture. See how BuildOS ontology makes notes connected, actionable, and compounding.",
+					"description": "Explore the progression from traditional note-taking to AI-powered systems with rich context architecture. See how BuildOS makes notes connected, actionable, and compounding.",
 					"author": "DJ Wayne",
 					"date": "2025-07-08",
 					"lastmod": "2026-01-24",
@@ -1124,7 +1124,7 @@
 						"ontology"
 					],
 					"readingTime": 8,
-					"excerpt": "From GTD to Notion to AI-native systems: how note-taking evolved from manual organization to rich context architecture. Discover why BuildOS ontology solves problems that traditional systems never could.",
+					"excerpt": "From GTD to Notion to AI-powered systems: how note-taking evolved from manual organization to rich context architecture. Discover why BuildOS solves problems that traditional systems never could.",
 					"pic": "note-taking-evolution",
 					"path": "apps/web/src/content/blogs/productivity-tips/evolution-of-note-taking.md",
 					"slug": "evolution-of-note-taking",
@@ -1219,7 +1219,7 @@
 				},
 				"task-management-best-practices": {
 					"title": "Task Management Best Practices: Beyond To-Do Lists",
-					"description": "Learn how to manage tasks within Build OS rich context system—where tasks connect to goals, plans, and documents. Master advanced techniques plus how to zoom into any task with Project Lens.",
+					"description": "Learn how to manage tasks within BuildOS rich context system—where tasks connect to goals, plans, and documents. Master advanced techniques plus how to zoom into any task with Project Lens.",
 					"author": "DJ Wayne",
 					"date": "2025-06-28",
 					"lastmod": "2025-12-31",
@@ -1247,7 +1247,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-03-28T19:47:06.663Z",
+	"generatedAt": "2026-03-28T20:52:25.866Z",
 	"totalPosts": 52,
 	"totalCategories": 6
 }

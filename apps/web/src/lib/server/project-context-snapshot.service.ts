@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/project-context-snapshot.service.ts
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 import { createLogger } from '$lib/utils/logger';
 
 const logger = createLogger('ProjectContextSnapshot');
@@ -12,7 +13,7 @@ export async function queueProjectContextSnapshot(params: {
 }): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
 	try {
 		const supabase = createAdminSupabaseClient();
-		const { data, error } = await supabase.rpc('add_queue_job', {
+		const { queueJobId } = await addQueueJobWithPublicId(supabase, {
 			p_user_id: params.userId,
 			p_job_type: 'build_project_context_snapshot',
 			p_metadata: {
@@ -25,15 +26,7 @@ export async function queueProjectContextSnapshot(params: {
 			p_dedup_key: `project-context-snapshot-${params.projectId}`
 		});
 
-		if (error) {
-			logger.warn('Failed to queue project snapshot job', {
-				error,
-				projectId: params.projectId
-			});
-			return { queued: false, reason: error.message };
-		}
-
-		return { queued: true, jobId: data as string, reason: 'queued' };
+		return { queued: true, jobId: queueJobId, reason: 'queued' };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Queue failed';
 		logger.warn('Queue project snapshot job failed', {

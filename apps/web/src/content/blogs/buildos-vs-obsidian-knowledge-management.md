@@ -295,13 +295,13 @@ The choice comes down to where you want to spend your mental energy:
 
 If you're a researcher, academic, or knowledge worker who loves building comprehensive reference systems, [Obsidian](https://obsidian.md) is likely your best choice.
 
-If you're an overwhelmed professional, creative, or anyone who wants to get scattered thoughts organized into actionable next steps without the overhead of manual knowledge management, [try BuildOS](https://buildos.com/signup).
+If you're an overwhelmed professional, creative, or anyone who wants to get scattered thoughts organized into actionable next steps without the overhead of manual knowledge management, [try BuildOS](/auth/register).
 
 The tools aren't really competitors - they're optimized for different types of minds and different outcomes. The question isn't which tool is better; it's which approach matches how you actually want to work.
 
 ---
 
-_Do you prefer building knowledge systems manually or having AI discover connections automatically? What's your biggest challenge with current knowledge management approaches? [Share your experience](mailto:hello@buildos.com) - your insights help us understand how different minds organize information._
+_Do you prefer building knowledge systems manually or having AI discover connections automatically? What's your biggest challenge with current knowledge management approaches? [Share your experience](mailto:dj@build-os.com) - your insights help us understand how different minds organize information._
 
 <!-- Additional questions for follow-up content:
 Q7: Latest Obsidian features and competitive updates

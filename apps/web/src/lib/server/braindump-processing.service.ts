@@ -2,6 +2,7 @@
 import { PUBLIC_RAILWAY_WORKER_URL } from '$env/static/public';
 import { PRIVATE_RAILWAY_WORKER_TOKEN } from '$env/static/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 
 const WORKER_URL = PUBLIC_RAILWAY_WORKER_URL;
 const REQUEST_TIMEOUT_MS = 8000;
@@ -12,7 +13,7 @@ async function queueBraindumpProcessingDirect(params: {
 }): Promise<{ queued: boolean; jobId?: string; reason?: string }> {
 	try {
 		const supabase = createAdminSupabaseClient();
-		const { data, error } = await supabase.rpc('add_queue_job', {
+		const { queueJobId } = await addQueueJobWithPublicId(supabase, {
 			p_user_id: params.userId,
 			p_job_type: 'process_onto_braindump',
 			p_metadata: { braindumpId: params.braindumpId, userId: params.userId },
@@ -21,11 +22,7 @@ async function queueBraindumpProcessingDirect(params: {
 			p_dedup_key: `process-onto-braindump-${params.braindumpId}`
 		});
 
-		if (error) {
-			return { queued: false, reason: error.message };
-		}
-
-		return { queued: true, jobId: data as string, reason: 'direct_queue' };
+		return { queued: true, jobId: queueJobId, reason: 'direct_queue' };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Direct queue failed';
 		return { queued: false, reason: message };

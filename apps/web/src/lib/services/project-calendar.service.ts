@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/project-calendar.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
+import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
 import { CalendarService } from './calendar-service';
 import { ApiResponse } from '$lib/utils/api-response';
 import { GOOGLE_CALENDAR_COLORS, type GoogleColorId } from '$lib/config/calendar-colors';
@@ -925,19 +926,18 @@ export class ProjectCalendarService {
 				Date.now().toString()
 			].join(':');
 
-			const { data: queueJobId, error: enqueueError } = await this.supabase.rpc(
-				'add_queue_job',
-				{
+			let queueJobId: string;
+			try {
+				const queued = await addQueueJobWithPublicId(this.supabase, {
 					p_user_id: input.targetUserId,
 					p_job_type: 'sync_calendar',
 					p_metadata: metadata as unknown as Json,
 					p_priority: 4,
 					p_scheduled_for: new Date().toISOString(),
 					p_dedup_key: dedupKey
-				}
-			);
-
-			if (enqueueError || !queueJobId) {
+				});
+				queueJobId = queued.queueJobId;
+			} catch {
 				return ApiResponse.error('Failed to enqueue sync retry', 500);
 			}
 
