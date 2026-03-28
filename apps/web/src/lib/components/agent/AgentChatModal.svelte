@@ -1642,22 +1642,18 @@
 		return scrollHeight - scrollPosition < threshold;
 	}
 
-	// Helper: Scroll to bottom without jarring shifts during streaming
-	// Uses requestAnimationFrame for smooth updates and avoids layout thrashing
+	// Helper: Scroll to bottom without jarring shifts.
+	// Called from $effect after messageCount changes (not during streaming
+	// content updates), so layout thrashing isn't a concern here.
+	// Scrolling synchronously in the effect (which runs after DOM update
+	// but before paint) eliminates the one-frame jump that rAF would cause.
 	function scrollToBottomIfNeeded() {
 		if (!messagesContainer) return;
 
 		// Only auto-scroll if user hasn't manually scrolled up
 		// This allows users to freely read earlier messages during streaming
 		if (!userHasScrolled) {
-			// Use requestAnimationFrame to batch with browser's paint cycle
-			// This prevents layout thrashing during rapid streaming updates
-			requestAnimationFrame(() => {
-				if (messagesContainer) {
-					// Use instant scroll during streaming to avoid animation lag
-					messagesContainer.scrollTop = messagesContainer.scrollHeight;
-				}
-			});
+			messagesContainer.scrollTop = messagesContainer.scrollHeight;
 		}
 	}
 

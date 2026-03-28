@@ -356,10 +356,13 @@
 </div>
 
 <style>
-	/* Skip rendering off-screen chat messages for scroll performance */
+	/* Skip rendering off-screen chat messages for scroll performance.
+	   `auto 120px` tells the browser to remember the last rendered height
+	   (falling back to 120px for never-rendered items), which prevents
+	   layout estimation jumps when messages first appear on screen. */
 	.agent-chat-scroll > :global(*) {
 		content-visibility: auto;
-		contain-intrinsic-size: 0 120px;
+		contain-intrinsic-size: auto 120px;
 	}
 
 	.user-message-content-collapsed {

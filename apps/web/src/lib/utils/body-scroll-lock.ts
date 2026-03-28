@@ -22,12 +22,16 @@ function handleFocusIn(e: FocusEvent) {
 	if (!isInputElement(e.target) || lockCount === 0) return;
 	inputFocused = true;
 	// Switch from position:fixed to overflow:hidden so iOS keyboard
-	// can properly adjust the viewport
+	// can properly adjust the viewport.
+	// Restore scroll position immediately to prevent the background from
+	// jumping to the top (visible through the semi-transparent backdrop).
+	const savedY = lockedScrollY;
 	document.body.style.position = '';
 	document.body.style.top = '';
 	document.body.style.width = '';
 	document.body.style.overflow = 'hidden';
 	document.documentElement.style.overflow = 'hidden';
+	window.scrollTo(0, savedY);
 }
 
 function handleFocusOut(e: FocusEvent) {

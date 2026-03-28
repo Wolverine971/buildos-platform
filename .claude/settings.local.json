@@ -191,7 +191,8 @@
       "WebFetch(domain:medium.com)",
       "WebFetch(domain:gist.github.com)",
       "WebFetch(domain:atlaspeakresearch.com)",
-      "WebFetch(domain:www.codestudy.net)"
+      "WebFetch(domain:www.codestudy.net)",
+      "Bash(find /Users/djwayne/buildos-platform/apps/web/src/routes -path \"*\\(app\\)*\" -name \"+page.svelte\")"
     ],
     "deny": [],
     "ask": []
