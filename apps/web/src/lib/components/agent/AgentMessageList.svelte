@@ -73,7 +73,7 @@
 <div
 	bind:this={container}
 	onscroll={onScroll}
-	class="agent-chat-scroll flex-1 min-h-0 space-y-2 overflow-y-auto overscroll-contain bg-muted p-3 sm:p-4 lg:px-6 lg:py-4"
+	class="agent-chat-scroll flex-1 min-h-0 space-y-3 overflow-y-auto overscroll-contain bg-muted p-3 sm:p-4 lg:px-6 lg:py-4"
 	style="overflow-anchor: none; -webkit-overflow-scrolling: touch;"
 >
 	{#if messages.length === 0}

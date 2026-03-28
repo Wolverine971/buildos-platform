@@ -37,11 +37,7 @@
 	} from '$lib/services/agentic-chat/agent-to-agent-service';
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
-	import {
-		CONTEXT_BADGE_CLASSES,
-		CONTEXT_DESCRIPTORS,
-		DEFAULT_CONTEXT_BADGE_CLASS
-	} from './agent-chat.constants';
+	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 	import {
 		findThinkingBlockById,
 		type ActivityEntry,
@@ -54,7 +50,6 @@
 		type ThinkingBlockMessage,
 		type UIMessage
 	} from './agent-chat.types';
-	import { formatTime, shouldRenderAsMarkdown } from './agent-chat-formatters';
 	import { toastService } from '$lib/stores/toast.store';
 	import { haptic } from '$lib/utils/haptic';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
@@ -67,7 +62,13 @@
 		isFastChatContextCacheFresh,
 		type FastChatContextCache
 	} from '$lib/services/agentic-chat-v2/context-cache';
-	import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
+	import {
+		buildProjectWideFocus,
+		deriveSessionTitle,
+		isProjectContext,
+		loadAgentChatSessionSnapshot,
+		prewarmAgentContext
+	} from './agent-chat-session';
 
 	interface AutoInitProjectConfig {
 		projectId: string;
@@ -168,30 +169,6 @@
 		return contextDescriptor?.subtitle ?? '';
 	});
 
-	const isProjectContext = (context: ChatContextType | null | undefined) =>
-		context === 'project' || context === 'project_audit' || context === 'project_forecast';
-
-	function buildProjectWideFocus(projectId: string, projectName?: string | null): ProjectFocus {
-		return {
-			focusType: 'project-wide',
-			focusEntityId: null,
-			focusEntityName: null,
-			projectId,
-			projectName: projectName ?? 'Project'
-		};
-	}
-
-	function normalizeProjectFocusClient(focus?: ProjectFocus | null): ProjectFocus | null {
-		if (!focus || !focus.projectId) return null;
-		return {
-			focusType: focus.focusType ?? 'project-wide',
-			focusEntityId: focus.focusEntityId ?? null,
-			focusEntityName: focus.focusEntityName ?? null,
-			projectId: focus.projectId,
-			projectName: focus.projectName ?? 'Project'
-		};
-	}
-
 	const defaultProjectFocus = $derived.by<ProjectFocus | null>(() => {
 		if (isProjectContext(selectedContextType) && selectedEntityId) {
 			return buildProjectWideFocus(selectedEntityId, selectedContextLabel);
@@ -205,88 +182,6 @@
 		}
 		return projectFocus ?? defaultProjectFocus;
 	});
-
-	async function prewarmAgentContext(
-		payload: FastAgentPrewarmRequest,
-		options: { signal?: AbortSignal } = {}
-	): Promise<{
-		session: ChatSession | null;
-		prewarmedContext: FastChatContextCache | null;
-	} | null> {
-		try {
-			const response = await fetch('/api/agent/v2/prewarm', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				signal: options.signal,
-				body: JSON.stringify(payload)
-			});
-			if (!response.ok) {
-				return null;
-			}
-
-			const result = await response.json();
-			if (!result?.success) {
-				return null;
-			}
-
-			const session = result?.data?.session ?? null;
-			const prewarmedContext = result?.data?.prewarmed_context ?? null;
-			return {
-				session: session as ChatSession | null,
-				prewarmedContext: prewarmedContext as FastChatContextCache | null
-			};
-		} catch (err) {
-			if ((err as DOMException)?.name === 'AbortError') {
-				throw err;
-			}
-			if (dev) {
-				console.warn('[AgentChat] Prewarm failed:', err);
-			}
-			return null;
-		}
-	}
-
-	// Chat session title helpers - avoid showing placeholder titles when auto titles exist
-	const DEFAULT_CHAT_SESSION_TITLES = [
-		'Agent Session',
-		'Project Assistant',
-		'Calendar Assistant',
-		'Brief Chat',
-		'General Assistant',
-		'New Project Creation',
-		'Project Audit',
-		'Project Forecast',
-		'Daily Brief Settings',
-		'Chat session',
-		'Untitled Chat'
-	].map((title) => title.toLowerCase());
-
-	function isPlaceholderSessionTitle(title?: string | null): boolean {
-		const normalized = title?.trim().toLowerCase();
-		if (!normalized) return true;
-		return DEFAULT_CHAT_SESSION_TITLES.includes(normalized);
-	}
-
-	function deriveSessionTitle(session: ChatSession | null | undefined): string | null {
-		if (!session) return null;
-		const rawTitle = session.title?.trim() ?? '';
-		const autoTitle = session.auto_title?.trim() ?? '';
-
-		// Prefer user/custom titles that are not placeholders
-		if (rawTitle && !isPlaceholderSessionTitle(rawTitle)) {
-			return rawTitle;
-		}
-
-		// Fall back to auto-generated title when the stored title is generic
-		if (autoTitle) {
-			return autoTitle;
-		}
-
-		// As a last resort return whatever raw title exists (even if placeholder)
-		return rawTitle || null;
-	}
 
 	// Device detection for mobile UX
 	// On mobile/touch devices, Enter should not send messages (allows natural line breaks)
@@ -330,7 +225,6 @@
 	// Ontology integration state
 	let lastTurnContext = $state<LastTurnContext | null>(null);
 	let ontologyLoaded = $state(false);
-	let ontologySummary = $state<string | null>(null);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
 	let activeStreamTiming = $state<ClientStreamTimingState | null>(null);
 	let _lastCompletedStreamTiming = $state<ClientStreamTimingState | null>(null);
@@ -445,8 +339,6 @@
 	let agentProjectsError = $state<string | null>(null);
 	let agentProjectsLoading = $state(false);
 
-	let agentState = $state<AgentLoopState | null>(null);
-
 	let voiceInputRef = $state<TextareaWithVoiceComponent | null>(null);
 	let isVoiceRecording = $state(false);
 	let isVoiceInitializing = $state(false);
@@ -529,6 +421,10 @@
 			!showProjectActionSelector &&
 			!agentToAgentMode &&
 			!(isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options'))
+	);
+
+	const chatComposerVocabularyTerms = $derived(
+		resolvedProjectFocus?.projectName ?? displayContextLabel
 	);
 
 	const canPrimeActiveChatSession = $derived.by(() => {
@@ -771,9 +667,7 @@
 		isStreaming = false;
 		// Reset ontology state
 		lastTurnContext = null;
-		agentState = null;
 		ontologyLoaded = false;
-		ontologySummary = null;
 		contextUsage = null;
 		activeStreamTiming = null;
 		_lastCompletedStreamTiming = null;
@@ -1495,120 +1389,23 @@
 		resetConversation({ preserveContext: false });
 
 		try {
-			const response = await fetch(`/api/chat/sessions/${sessionId}?includeVoiceNotes=1`, {
+			const snapshot = await loadAgentChatSessionSnapshot(sessionId, {
 				signal: controller.signal
 			});
-			const result = await response.json().catch(() => null);
 
 			if (requestId !== sessionLoadRequestId) {
 				return;
 			}
 
-			if (!response.ok || !result?.success) {
-				throw new Error(result?.error || 'Failed to load chat session');
-			}
-
-			const { session, messages: loadedMessages, truncated, voiceNotes = [] } = result.data;
-
-			// Set session and context
-			currentSession = session;
+			currentSession = snapshot.session;
 			lastLoadedSessionId = sessionId;
 			contextUsage = null;
-
-			// Map context type - handle 'general' alias
-			const contextType =
-				session.context_type === 'general' ? 'global' : session.context_type;
-			selectedContextType = contextType as ChatContextType;
-			selectedEntityId = session.entity_id || undefined;
-			const sessionTitle = deriveSessionTitle(session);
-			selectedContextLabel = sessionTitle || 'Resumed Chat';
-
-			const metadataFocus = normalizeProjectFocusClient(
-				(session.agent_metadata as { focus?: ProjectFocus | null })?.focus
-			);
-
-			// Set up project focus if applicable (prefer stored metadata focus)
-			if (isProjectContext(selectedContextType)) {
-				if (metadataFocus) {
-					projectFocus = metadataFocus;
-					selectedEntityId = metadataFocus.projectId || selectedEntityId;
-				} else if (selectedEntityId) {
-					projectFocus = buildProjectWideFocus(selectedEntityId, selectedContextLabel);
-				} else {
-					projectFocus = null;
-				}
-			} else {
-				projectFocus = null;
-			}
-
-			// Note: showContextSelection and showProjectActionSelector were already
-			// set to false at the start of loadChatSession to prevent flash
-
-			// Convert loaded messages to UIMessages
-			const filteredMessages = (loadedMessages || []).filter(
-				(msg: any) => msg.role === 'user' || msg.role === 'assistant'
-			);
-
-			const restoredMessages: UIMessage[] = filteredMessages.map((msg: any) => ({
-				id: msg.id,
-				session_id: msg.session_id,
-				user_id: msg.user_id,
-				type: msg.role === 'user' ? 'user' : 'assistant',
-				role: msg.role as ChatRole,
-				content: msg.content,
-				timestamp: new Date(msg.created_at),
-				created_at: msg.created_at,
-				metadata: msg.metadata as Record<string, any> | undefined,
-				tool_calls: msg.tool_calls,
-				tool_call_id: msg.tool_call_id
-			}));
-
-			messages = restoredMessages;
-
-			const notesByGroup: Record<string, VoiceNote[]> = {};
-			for (const note of voiceNotes as VoiceNote[]) {
-				if (!note.group_id) continue;
-				const existing = notesByGroup[note.group_id] ?? [];
-				existing.push(note);
-				notesByGroup[note.group_id] = existing;
-			}
-			for (const groupId of Object.keys(notesByGroup)) {
-				notesByGroup[groupId] = notesByGroup[groupId]!.sort((a, b) => {
-					const aIndex = a.segment_index ?? 0;
-					const bIndex = b.segment_index ?? 0;
-					if (aIndex !== bIndex) return aIndex - bIndex;
-					return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-				});
-			}
-			voiceNotesByGroupId = notesByGroup;
-
-			// Add a system message if conversation was truncated
-			if (truncated) {
-				const truncationNote: UIMessage = {
-					id: crypto.randomUUID(),
-					type: 'activity',
-					role: 'system' as ChatRole,
-					content:
-						'Note: This conversation has been truncated to show the most recent messages.',
-					timestamp: new Date(),
-					created_at: new Date().toISOString()
-				};
-				messages = [truncationNote, ...messages];
-			}
-
-			// Add a welcome-back message
-			const welcomeMessage: UIMessage = {
-				id: crypto.randomUUID(),
-				type: 'assistant',
-				// System role keeps this out of future conversation_history payloads
-				role: 'system' as ChatRole,
-				content: session.summary
-					? `Resuming your conversation. Here's where we left off:\n\n**Summary:** ${session.summary}\n\nHow can I help you continue?`
-					: "Welcome back! I've restored your previous conversation. How can I help you continue?",
-				timestamp: new Date(),
-				created_at: new Date().toISOString()
-			};
-			messages = [...messages, welcomeMessage];
+			selectedContextType = snapshot.contextType;
+			selectedEntityId = snapshot.selectedEntityId;
+			selectedContextLabel = snapshot.selectedContextLabel;
+			projectFocus = snapshot.projectFocus;
+			messages = snapshot.messages;
+			voiceNotesByGroupId = snapshot.voiceNotesByGroupId;
 		} catch (err: any) {
 			if (controller.signal.aborted || requestId !== sessionLoadRequestId) {
 				return;
@@ -3368,7 +3165,6 @@
 		createThinkingBlock();
 
 		currentActivity = 'Analyzing request...';
-		agentState = 'thinking';
 		updateThinkingBlockState('thinking', 'BuildOS is processing your request...');
 
 		currentPlan = null;
@@ -3463,7 +3259,6 @@
 					currentActivity = '';
 					currentStreamController = null;
 					activeClientTurnId = null;
-					agentState = null;
 					finalizeThinkingBlock('error');
 					flushAssistantText();
 					finalizeAssistantMessage();
@@ -3475,7 +3270,6 @@
 					currentActivity = '';
 					currentStreamController = null;
 					activeClientTurnId = null;
-					agentState = null;
 					if (!receivedStreamEvent && !error) {
 						error = 'BuildOS did not return a response. Please try again.';
 					}
@@ -3501,7 +3295,6 @@
 				isStreaming = false;
 				currentActivity = '';
 				activeClientTurnId = null;
-				agentState = null;
 				finalizeThinkingBlock('interrupted', 'Stopped');
 				flushAssistantText();
 				finalizeAssistantMessage();
@@ -3514,7 +3307,6 @@
 			isStreaming = false;
 			currentActivity = '';
 			activeClientTurnId = null;
-			agentState = null;
 			finalizeThinkingBlock('error'); // Ensure thinking block is closed on error
 			flushAssistantText();
 			finalizeAssistantMessage();
@@ -3604,7 +3396,6 @@
 
 			case 'agent_state': {
 				const state = event.state as AgentLoopState;
-				agentState = state;
 				updateThinkingBlockState(state, event.details);
 				if (event.details) {
 					addActivityToThinkingBlock(event.details, 'state_change', {
@@ -3644,7 +3435,6 @@
 						}
 					);
 					currentActivity = 'Waiting on your clarifications to continue...';
-					agentState = 'waiting_on_user';
 					updateThinkingBlockState(
 						'waiting_on_user',
 						'Waiting on your clarifications to continue...'
@@ -3657,7 +3447,6 @@
 				// Plan created with steps - enrich metadata for visualization
 				currentPlan = event.plan;
 				currentActivity = `Executing plan with ${event.plan?.steps?.length || 0} steps...`;
-				agentState = 'executing_plan';
 				updateThinkingBlockState('executing_plan', currentActivity);
 
 				// Extract rich metadata for enhanced visualization
@@ -3716,7 +3505,6 @@
 					`I drafted a ${event.plan?.steps?.length || 0}-step plan. Review it and say "run it" or suggest changes.`
 				);
 				currentActivity = 'Waiting on your feedback about the plan...';
-				agentState = 'waiting_on_user';
 				updateThinkingBlockState('waiting_on_user', summary);
 				break;
 			}
@@ -3735,7 +3523,6 @@
 			case 'executor_spawned':
 				// Executor agent spawned
 				currentActivity = `Executor working on task...`;
-				agentState = 'executing_plan';
 				updateThinkingBlockState('executing_plan', currentActivity);
 				addActivityToThinkingBlock(
 					`Executor started for: ${event.task?.description}`,
@@ -3762,10 +3549,8 @@
 						? 'Executing approved plan...'
 						: 'Waiting on plan revisions...';
 				if (event.verdict === 'approved') {
-					agentState = 'executing_plan';
 					updateThinkingBlockState('executing_plan', currentActivity);
 				} else {
-					agentState = 'waiting_on_user';
 					updateThinkingBlockState('waiting_on_user', currentActivity);
 				}
 				break;
@@ -4085,7 +3870,6 @@
 			case 'done':
 				// All done - clear activity and re-enable input
 				currentActivity = '';
-				agentState = null;
 				finalizeAssistantMessage();
 				finalizeThinkingBlock();
 				// Note: isStreaming will be set to false by onComplete callback
@@ -4108,7 +3892,6 @@
 				error = streamErrorMessage;
 				isStreaming = false;
 				currentActivity = '';
-				agentState = null;
 				if (currentThinkingBlockId) {
 					addActivityToThinkingBlock(
 						streamErrorMessage,
@@ -4412,7 +4195,6 @@
 
 		isStreaming = false;
 		currentActivity = '';
-		agentState = null;
 	}
 
 	// ========================================================================
@@ -4514,91 +4296,113 @@
 	});
 </script>
 
+{#snippet chatConversationPane(showSessionLoadingState, showSessionLoadErrorState, retrySessionId)}
+	{#if showSessionLoadingState}
+		<div class="flex flex-1 items-center justify-center px-6 text-center">
+			<div class="max-w-sm space-y-2">
+				<div
+					class="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted"
+				>
+					<span
+						class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent text-muted-foreground"
+					></span>
+				</div>
+				<p class="text-sm font-semibold text-foreground">
+					{sessionStatusLabel}
+				</p>
+				<p class="text-xs text-muted-foreground">
+					Restoring the conversation before the next turn.
+				</p>
+			</div>
+		</div>
+	{:else if showSessionLoadErrorState}
+		<div class="flex flex-1 items-center justify-center px-6 text-center">
+			<div
+				class="max-w-sm space-y-3 rounded-xl border border-red-600/20 bg-red-50 p-4 dark:bg-red-950/20"
+			>
+				<p class="text-sm font-semibold text-red-700 dark:text-red-300">
+					Unable to load this chat
+				</p>
+				<p class="text-xs text-red-600 dark:text-red-400">
+					{sessionLoadError}
+				</p>
+				{#if retrySessionId}
+					<button
+						type="button"
+						class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
+						onclick={() => loadChatSession(retrySessionId)}
+					>
+						Try again
+					</button>
+				{/if}
+			</div>
+		</div>
+	{:else}
+		<AgentMessageList
+			{messages}
+			{displayContextLabel}
+			onToggleThinkingBlock={toggleThinkingBlockCollapse}
+			bind:container={messagesContainer}
+			onScroll={handleScroll}
+			{voiceNotesByGroupId}
+			onDeleteVoiceNote={removeVoiceNoteFromGroup}
+		/>
+	{/if}
+
+	{#if error && !showSessionLoadErrorState}
+		<div
+			class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
+			role="alert"
+			aria-live="assertive"
+		>
+			{error}
+		</div>
+	{/if}
+{/snippet}
+
+{#snippet chatComposerFooter()}
+	<div
+		bind:this={composerContainer}
+		class="flex-shrink-0 border-t border-border bg-card px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-2.5 tx tx-grain tx-weak"
+	>
+		<AgentComposer
+			bind:voiceInputRef
+			bind:inputValue
+			bind:isVoiceRecording
+			bind:isVoiceInitializing
+			bind:isVoiceTranscribing
+			bind:voiceErrorMessage
+			bind:voiceRecordingDuration
+			bind:voiceSupportsLiveTranscript
+			bind:voiceNoteGroupId
+			{isStreaming}
+			{isSendDisabled}
+			allowSendWhileStreaming={isTouchDevice}
+			{displayContextLabel}
+			mode="chat"
+			disabled={isSessionBusy}
+			vocabularyTerms={chatComposerVocabularyTerms}
+			onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
+			onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
+			onKeyDownHandler={handleKeyDown}
+			onSend={handleSendMessage}
+			onStop={() => void handleStopGeneration('user_cancelled')}
+		/>
+	</div>
+{/snippet}
+
 {#if embedded}
 	<!-- Embedded mode: render chat content directly without Modal wrapper -->
 	<div class="flex h-full flex-col overflow-hidden bg-card">
 		<!-- Embedded chat content area -->
 		<div class="relative z-10 flex flex-1 flex-col overflow-hidden bg-card">
 			<div class="flex h-full min-h-0 flex-col">
-				{#if isSessionBusy && messages.length === 0}
-					<div class="flex flex-1 items-center justify-center px-6 text-center">
-						<div class="max-w-sm space-y-2">
-							<div
-								class="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted"
-							>
-								<span
-									class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent text-muted-foreground"
-								></span>
-							</div>
-							<p class="text-sm font-semibold text-foreground">
-								{sessionStatusLabel}
-							</p>
-							<p class="text-xs text-muted-foreground">
-								Restoring the conversation before the next turn.
-							</p>
-						</div>
-					</div>
-				{:else if sessionLoadError && messages.length === 0}
-					<div class="flex flex-1 items-center justify-center px-6 text-center">
-						<div
-							class="max-w-sm space-y-2 rounded-xl border border-red-600/20 bg-red-50 p-4 dark:bg-red-950/20"
-						>
-							<p class="text-sm font-semibold text-red-700 dark:text-red-300">
-								Unable to load this chat
-							</p>
-							<p class="text-xs text-red-600 dark:text-red-400">{sessionLoadError}</p>
-						</div>
-					</div>
-				{:else}
-					<AgentMessageList
-						{messages}
-						{displayContextLabel}
-						onToggleThinkingBlock={toggleThinkingBlockCollapse}
-						bind:container={messagesContainer}
-						onScroll={handleScroll}
-						{voiceNotesByGroupId}
-						onDeleteVoiceNote={removeVoiceNoteFromGroup}
-					/>
-				{/if}
-
-				{#if error && !(sessionLoadError && messages.length === 0)}
-					<div
-						class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
-						role="alert"
-						aria-live="assertive"
-					>
-						{error}
-					</div>
-				{/if}
-
-				<div
-					bind:this={composerContainer}
-					class="border-t border-border bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-2.5 tx tx-grain tx-weak"
-				>
-					<AgentComposer
-						bind:voiceInputRef
-						bind:inputValue
-						bind:isVoiceRecording
-						bind:isVoiceInitializing
-						bind:isVoiceTranscribing
-						bind:voiceErrorMessage
-						bind:voiceRecordingDuration
-						bind:voiceSupportsLiveTranscript
-						bind:voiceNoteGroupId
-						{isStreaming}
-						{isSendDisabled}
-						allowSendWhileStreaming={isTouchDevice}
-						{displayContextLabel}
-						mode="chat"
-						disabled={isSessionBusy}
-						vocabularyTerms={resolvedProjectFocus?.projectName ?? displayContextLabel}
-						onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
-						onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
-						onKeyDownHandler={handleKeyDown}
-						onSend={handleSendMessage}
-						onStop={() => void handleStopGeneration('user_cancelled')}
-					/>
-				</div>
+				{@render chatConversationPane(
+					isSessionBusy && messages.length === 0,
+					!!sessionLoadError && messages.length === 0,
+					null
+				)}
+				{@render chatComposerFooter()}
 			</div>
 		</div>
 	</div>
@@ -4807,67 +4611,12 @@
 								← Edit braindump
 							</button>
 						</div>
-					{:else if shouldShowSessionLoadingState}
-						<div class="flex flex-1 items-center justify-center px-6 text-center">
-							<div class="max-w-sm space-y-2">
-								<div
-									class="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted"
-								>
-									<span
-										class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent text-muted-foreground"
-									></span>
-								</div>
-								<p class="text-sm font-semibold text-foreground">
-									{sessionStatusLabel}
-								</p>
-								<p class="text-xs text-muted-foreground">
-									Restoring the conversation before the next turn.
-								</p>
-							</div>
-						</div>
-					{:else if shouldShowSessionLoadErrorState}
-						<div class="flex flex-1 items-center justify-center px-6 text-center">
-							<div
-								class="max-w-sm space-y-3 rounded-xl border border-red-600/20 bg-red-50 p-4 dark:bg-red-950/20"
-							>
-								<p class="text-sm font-semibold text-red-700 dark:text-red-300">
-									Unable to load this chat
-								</p>
-								<p class="text-xs text-red-600 dark:text-red-400">
-									{sessionLoadError}
-								</p>
-								{#if initialChatSessionId}
-									<button
-										type="button"
-										class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
-										onclick={() => loadChatSession(initialChatSessionId)}
-									>
-										Try again
-									</button>
-								{/if}
-							</div>
-						</div>
 					{:else}
-						<AgentMessageList
-							{messages}
-							{displayContextLabel}
-							onToggleThinkingBlock={toggleThinkingBlockCollapse}
-							bind:container={messagesContainer}
-							onScroll={handleScroll}
-							{voiceNotesByGroupId}
-							onDeleteVoiceNote={removeVoiceNoteFromGroup}
-						/>
-					{/if}
-
-					{#if !showContextSelection && !showProjectActionSelector && error && !shouldShowSessionLoadErrorState}
-						<!-- INKPRINT error message with Static texture -->
-						<div
-							class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
-							role="alert"
-							aria-live="assertive"
-						>
-							{error}
-						</div>
+						{@render chatConversationPane(
+							shouldShowSessionLoadingState,
+							shouldShowSessionLoadErrorState,
+							initialChatSessionId
+						)}
 					{/if}
 
 					{#if !showContextSelection && !showProjectActionSelector && agentToAgentMode}
@@ -4958,35 +4707,7 @@
 						</div>
 					{:else if shouldShowComposer}
 						<!-- INKPRINT composer footer -->
-						<div
-							bind:this={composerContainer}
-							class="border-t border-border bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-2.5 tx tx-grain tx-weak"
-						>
-							<AgentComposer
-								bind:voiceInputRef
-								bind:inputValue
-								bind:isVoiceRecording
-								bind:isVoiceInitializing
-								bind:isVoiceTranscribing
-								bind:voiceErrorMessage
-								bind:voiceRecordingDuration
-								bind:voiceSupportsLiveTranscript
-								bind:voiceNoteGroupId
-								{isStreaming}
-								{isSendDisabled}
-								allowSendWhileStreaming={isTouchDevice}
-								{displayContextLabel}
-								mode="chat"
-								disabled={isSessionBusy}
-								vocabularyTerms={resolvedProjectFocus?.projectName ??
-									displayContextLabel}
-								onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
-								onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
-								onKeyDownHandler={handleKeyDown}
-								onSend={handleSendMessage}
-								onStop={() => void handleStopGeneration('user_cancelled')}
-							/>
-						</div>
+						{@render chatComposerFooter()}
 					{/if}
 				</div>
 			</div>
