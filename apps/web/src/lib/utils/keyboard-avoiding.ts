@@ -2,9 +2,15 @@
 /**
  * Keyboard Avoiding Utility
  *
- * Uses the visualViewport API to handle mobile keyboard appearance/disappearance
- * more smoothly than CSS-only solutions. This provides real-time viewport updates
- * as the keyboard animates in/out.
+ * Uses the visualViewport API to handle mobile keyboard appearance/disappearance.
+ * Sets a --keyboard-height CSS custom property on documentElement so any element
+ * can react via calc(100dvh - var(--keyboard-height, 0px)).
+ *
+ * Why this approach:
+ * - iOS Safari does NOT resize the layout viewport when the keyboard opens
+ * - dvh/svh units do NOT respond to the keyboard on iOS
+ * - position:fixed elements get pushed behind the keyboard on iOS
+ * - The only reliable iOS approach is visualViewport API + CSS custom property
  *
  * @see https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport
  */
@@ -20,6 +26,8 @@ export interface KeyboardAvoidingOptions {
 	minHeightChange?: number;
 	/** Whether to apply transform to element (default: true) */
 	applyTransform?: boolean;
+	/** Whether to set --keyboard-height CSS custom property on documentElement (default: true) */
+	setCSSProperty?: boolean;
 }
 
 export interface KeyboardAvoidingState {
@@ -51,59 +59,69 @@ export function initKeyboardAvoiding(options: KeyboardAvoidingOptions): () => vo
 		return () => {};
 	}
 
-	const { element, onKeyboardChange, minHeightChange = 100, applyTransform = true } = options;
+	const {
+		element,
+		onKeyboardChange,
+		minHeightChange = 100,
+		applyTransform = true,
+		setCSSProperty = true
+	} = options;
 
-	// Store initial viewport height to detect keyboard
-	let initialViewportHeight = window.visualViewport.height;
 	let isKeyboardVisible = false;
 
 	function handleViewportResize() {
 		if (!window.visualViewport) return;
 
 		const currentHeight = window.visualViewport.height;
-		const heightDiff = initialViewportHeight - currentHeight;
+		// Use window.innerHeight as reference — it's the layout viewport height,
+		// which stays constant on iOS when the keyboard opens.
+		// This is more reliable than a stored initial value which can become stale
+		// after orientation changes or address bar state changes.
+		const keyboardHeight = window.innerHeight - currentHeight;
+		const keyboardNowVisible = keyboardHeight > minHeightChange;
 
-		// Detect keyboard visibility based on significant height change
-		const keyboardNowVisible = heightDiff > minHeightChange;
+		// Set CSS custom property on every resize event (not just state changes)
+		// so height tracks smoothly during keyboard animation
+		if (setCSSProperty) {
+			document.documentElement.style.setProperty(
+				'--keyboard-height',
+				keyboardNowVisible ? `${keyboardHeight}px` : '0px'
+			);
+		}
 
-		// Only update if state changed
 		if (keyboardNowVisible !== isKeyboardVisible) {
 			isKeyboardVisible = keyboardNowVisible;
 
 			if (applyTransform) {
 				if (isKeyboardVisible) {
-					// Keyboard is visible - adjust element position
-					// The visualViewport.offsetTop gives us the offset from layout viewport
 					const offsetTop = window.visualViewport.offsetTop || 0;
 					element.style.transform = `translateY(${-offsetTop}px)`;
 					element.style.transition = 'transform 100ms ease-out';
 				} else {
-					// Keyboard hidden - reset position
 					element.style.transform = '';
 					element.style.transition = 'transform 150ms ease-out';
 				}
 			}
 
-			onKeyboardChange?.(isKeyboardVisible, isKeyboardVisible ? heightDiff : 0);
+			onKeyboardChange?.(isKeyboardVisible, isKeyboardVisible ? keyboardHeight : 0);
 		}
 	}
 
 	function handleViewportScroll() {
 		if (!window.visualViewport || !isKeyboardVisible || !applyTransform) return;
 
-		// When viewport scrolls (user scrolling while keyboard is open), adjust position
 		const offsetTop = window.visualViewport.offsetTop || 0;
 		element.style.transform = `translateY(${-offsetTop}px)`;
 	}
 
-	// Reset initial height on orientation change
 	function handleOrientationChange() {
-		// Delay to allow viewport to settle
 		setTimeout(() => {
 			if (window.visualViewport) {
-				initialViewportHeight = window.visualViewport.height;
 				isKeyboardVisible = false;
 				element.style.transform = '';
+				if (setCSSProperty) {
+					document.documentElement.style.setProperty('--keyboard-height', '0px');
+				}
 			}
 		}, 100);
 	}
@@ -120,6 +138,9 @@ export function initKeyboardAvoiding(options: KeyboardAvoidingOptions): () => vo
 		window.removeEventListener('orientationchange', handleOrientationChange);
 		element.style.transform = '';
 		element.style.transition = '';
+		if (setCSSProperty) {
+			document.documentElement.style.setProperty('--keyboard-height', '0px');
+		}
 	};
 }
 

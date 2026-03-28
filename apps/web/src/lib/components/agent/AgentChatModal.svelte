@@ -1706,10 +1706,11 @@
 		}
 	});
 
-	// Keyboard avoiding for mobile - keeps composer visible when keyboard opens
+	// Keyboard avoiding for mobile - sets --keyboard-height CSS var so the modal
+	// container shrinks via calc(100dvh - var(--keyboard-height, 0px)), keeping the
+	// composer visible above the iOS keyboard.
 	$effect(() => {
 		if (!browser || !isOpen || !composerContainer) {
-			// Cleanup when modal closes or container unavailable
 			if (keyboardAvoidingCleanup) {
 				keyboardAvoidingCleanup();
 				keyboardAvoidingCleanup = null;
@@ -1717,14 +1718,12 @@
 			return;
 		}
 
-		// Initialize keyboard avoiding when composer is mounted
 		keyboardAvoidingCleanup = initKeyboardAvoiding({
 			element: composerContainer,
-			applyTransform: false, // Don't transform, just track state
+			applyTransform: false,
+			setCSSProperty: true,
 			onKeyboardChange: (isVisible) => {
-				// When keyboard appears, scroll messages to bottom to keep input visible
 				if (isVisible && messagesContainer) {
-					// Small delay to let layout settle
 					setTrackedTimeout(() => {
 						messagesContainer?.scrollTo({
 							top: messagesContainer.scrollHeight,
@@ -4617,7 +4616,7 @@
 		closeOnBackdrop={false}
 		showCloseButton={false}
 		ariaLabel="BuildOS chat assistant dialog"
-		customClasses="lg:!max-w-6xl xl:!max-w-7xl !max-h-[100dvh] !h-[100dvh] sm:!h-[90dvh] sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg"
+		customClasses="lg:!max-w-6xl xl:!max-w-7xl !max-h-[calc(100dvh_-_var(--keyboard-height,0px))] !h-[calc(100dvh_-_var(--keyboard-height,0px))] sm:!h-[90dvh] sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg !overscroll-none"
 	>
 		{#snippet header()}
 			<!-- INKPRINT header bar with Frame texture -->

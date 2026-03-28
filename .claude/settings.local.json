@@ -186,7 +186,12 @@
       "WebFetch(domain:www.htmhell.dev)",
       "WebFetch(domain:saricden.com)",
       "WebFetch(domain:mathix.dev)",
-      "WebFetch(domain:stripearmy.medium.com)"
+      "WebFetch(domain:stripearmy.medium.com)",
+      "WebFetch(domain:www.atlaspeakresearch.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:atlaspeakresearch.com)",
+      "WebFetch(domain:www.codestudy.net)"
     ],
     "deny": [],
     "ask": []
