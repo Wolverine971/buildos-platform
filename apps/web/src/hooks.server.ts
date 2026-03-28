@@ -16,12 +16,11 @@ import {
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { getRequestIdFromHeaders, logServerError } from '$lib/server/error-tracking';
 import { StripeService } from '$lib/services/stripe-service';
+import { shouldTrackServerResponseFailure } from '$lib/utils/error-observability';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
 
 const LEGACY_FEATURE_PATHS = new Set(['/features', '/features/']);
 const LEGACY_BLOG_MARKDOWN_PATH = /^\/src\/content\/blogs\/([^/]+)\/([^/]+?)(?:\.md)?\/?$/;
-const CLIENT_ERROR_REPORT_ENDPOINT = '/api/error-tracking/client';
-
 function getLegacyRedirectPath(pathname: string): string | null {
 	if (LEGACY_FEATURE_PATHS.has(pathname)) {
 		return '/';
@@ -39,26 +38,6 @@ function getLegacyRedirectPath(pathname: string): string | null {
 
 	const slug = rawSlug.replace(/\.md$/i, '');
 	return `/blogs/${category}/${slug}`;
-}
-
-function shouldTrackResponseFailure(pathname: string, status: number): boolean {
-	if (pathname === CLIENT_ERROR_REPORT_ENDPOINT) return false;
-
-	if (status >= 500 && (pathname.startsWith('/api/') || pathname.startsWith('/auth/'))) {
-		return true;
-	}
-
-	if (
-		status >= 400 &&
-		(pathname.startsWith('/api/auth/') ||
-			pathname.startsWith('/auth/') ||
-			pathname.startsWith('/api/agent') ||
-			pathname.startsWith('/api/agentic-chat'))
-	) {
-		return true;
-	}
-
-	return false;
 }
 
 function logHookError(
@@ -575,7 +554,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
 	}
 
-	if (shouldTrackResponseFailure(pathname, response.status)) {
+	if (shouldTrackServerResponseFailure(pathname, response.status)) {
 		void logHookError(
 			event,
 			new Error(`Request failed with status ${response.status}`),

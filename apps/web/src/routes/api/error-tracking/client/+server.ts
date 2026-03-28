@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/error-tracking/client/+server.ts
 import type { RequestHandler } from './$types';
 import { getRequestIdFromHeaders, logServerError } from '$lib/server/error-tracking';
+import { shouldPersistGenericErrorEvent } from '$lib/utils/error-observability';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 
 type ClientErrorPayload = {
@@ -33,7 +34,10 @@ function normalizeStatus(value: unknown): number | undefined {
 	return value;
 }
 
-function buildClientError(payload: ClientErrorPayload, kind: 'runtime' | 'fetch_network'): Error {
+function buildClientError(
+	payload: ClientErrorPayload,
+	kind: 'runtime' | 'fetch_network' | 'fetch_http'
+): Error {
 	const candidate = payload.error;
 	const fallbackMessage =
 		kind === 'fetch_network' ? 'Client network request failed' : 'Client runtime error';
@@ -85,17 +89,28 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const statusText = typeof payload.statusText === 'string' ? payload.statusText : undefined;
 	const url = typeof payload.url === 'string' ? payload.url : undefined;
 	const { user } = await locals.safeGetSession();
+	const operation =
+		kind === 'fetch_network'
+			? 'client_fetch_network'
+			: kind === 'fetch_http'
+				? 'client_fetch_http'
+				: 'client_runtime';
+
+	if (
+		!shouldPersistGenericErrorEvent({
+			operation,
+			pathname: endpoint,
+			status
+		})
+	) {
+		return new Response(null, { status: 204 });
+	}
 
 	await logServerError({
 		error: buildClientError(payload, kind),
 		endpoint,
 		method,
-		operation:
-			kind === 'fetch_network'
-				? 'client_fetch_network'
-				: kind === 'fetch_http'
-					? 'client_fetch_http'
-					: 'client_runtime',
+		operation,
 		userId: user?.id,
 		requestId: getRequestIdFromHeaders(request.headers),
 		severity: status !== undefined && status < 500 ? 'warning' : 'error',

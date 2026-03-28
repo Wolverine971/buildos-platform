@@ -1705,8 +1705,10 @@
 	// Keyboard avoiding for mobile - sets --keyboard-height CSS var so the modal
 	// container shrinks via calc(100dvh - var(--keyboard-height, 0px)), keeping the
 	// composer visible above the iOS keyboard.
+	// In embedded mode, isOpen may stay false — treat embedded as always "open".
 	$effect(() => {
-		if (!browser || !isOpen || !composerContainer) {
+		const isActive = embedded || isOpen;
+		if (!browser || !isActive || !composerContainer) {
 			if (keyboardAvoidingCleanup) {
 				keyboardAvoidingCleanup();
 				keyboardAvoidingCleanup = null;
@@ -4580,7 +4582,7 @@
 
 				<div
 					bind:this={composerContainer}
-					class="border-t border-border bg-card p-2 sm:p-2.5 tx tx-grain tx-weak"
+					class="border-t border-border bg-card px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-4 sm:py-2.5 tx tx-grain tx-weak"
 				>
 					<AgentComposer
 						bind:voiceInputRef
@@ -4624,7 +4626,10 @@
 	>
 		{#snippet header()}
 			<!-- INKPRINT header bar with Frame texture -->
-			<div class="border-b border-border bg-card tx tx-frame tx-weak">
+			<!-- pt safe-area-inset-top keeps the header below the notch/Dynamic Island on fullscreen mobile -->
+			<div
+				class="border-b border-border bg-card pt-[env(safe-area-inset-top,0px)] sm:pt-0 tx tx-frame tx-weak"
+			>
 				<AgentChatHeader
 					{selectedContextType}
 					{displayContextLabel}

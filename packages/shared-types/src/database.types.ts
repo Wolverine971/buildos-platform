@@ -6321,6 +6321,7 @@ export type Database = {
           next_step_updated_at: string | null
           org_id: string | null
           props: Json
+          search_vector: unknown
           start_at: string | null
           state_key: Database["public"]["Enums"]["project_state"]
           type_key: string
@@ -6350,6 +6351,7 @@ export type Database = {
           next_step_updated_at?: string | null
           org_id?: string | null
           props?: Json
+          search_vector?: unknown
           start_at?: string | null
           state_key?: Database["public"]["Enums"]["project_state"]
           type_key: string
@@ -6379,6 +6381,7 @@ export type Database = {
           next_step_updated_at?: string | null
           org_id?: string | null
           props?: Json
+          search_vector?: unknown
           start_at?: string | null
           state_key?: Database["public"]["Enums"]["project_state"]
           type_key?: string
@@ -13248,8 +13251,10 @@ export type Database = {
           project_name: string
           score: number
           snippet: string
+          state_key: string
           title: string
           type: string
+          type_key: string
         }[]
       }
       prune_stale_profile_fragments: {

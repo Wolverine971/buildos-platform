@@ -9,6 +9,7 @@ import type {
 	LLMMetadata
 } from '$lib/types/error-logging';
 import { browser } from '$app/environment';
+import { shouldDisplayPersistedErrorLog } from '$lib/utils/error-observability';
 
 export class ErrorLoggerService {
 	private static instances = new WeakMap<SupabaseClient<Database>, ErrorLoggerService>();
@@ -543,7 +544,7 @@ export class ErrorLoggerService {
 			.from('error_logs')
 			.select('*')
 			.order('created_at', { ascending: false })
-			.limit(limit);
+			.limit(Math.max(limit * 5, 100));
 
 		if (actualUserId) {
 			query = query.eq('user_id', actualUserId);
@@ -572,8 +573,15 @@ export class ErrorLoggerService {
 			return [];
 		}
 
+		const visibleErrors = errors.filter((entry) =>
+			shouldDisplayPersistedErrorLog(entry as any)
+		);
+		if (visibleErrors.length === 0) {
+			return [];
+		}
+
 		// Extract unique user IDs from the errors
-		const userIds = [...new Set(errors.filter((e) => e.user_id).map((e) => e.user_id!))];
+		const userIds = [...new Set(visibleErrors.filter((e) => e.user_id).map((e) => e.user_id!))];
 
 		// Fetch user data for all unique user IDs
 		let usersMap: Record<string, any> = {};
@@ -595,7 +603,7 @@ export class ErrorLoggerService {
 		}
 
 		// Attach user data to each error
-		const enrichedErrors = errors.map((error) => ({
+		const enrichedErrors = visibleErrors.slice(0, limit).map((error) => ({
 			...error,
 			user: error.user_id ? usersMap[error.user_id] : undefined
 		}));

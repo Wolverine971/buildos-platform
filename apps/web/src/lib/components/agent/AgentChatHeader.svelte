@@ -79,7 +79,8 @@
 	{#if showBackButton}
 		<button
 			type="button"
-			class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			class="inline-flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition touch-manipulation pressable hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			style="-webkit-tap-highlight-color: transparent;"
 			onclick={onBack}
 			disabled={isStreaming}
 			aria-label="Go back"
@@ -142,32 +143,38 @@
 	</div>
 
 	<!-- Right side: Status pills, Project link, Close button -->
-	<div class="flex shrink-0 items-center gap-2">
+	<div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
 		<!-- INKPRINT status pills with micro-label styling -->
+		<!-- On mobile: show only spinner (when loading) and activity dot to prevent overflow -->
+		<!-- On sm+: show full text-based pills -->
 		{#if sessionStatusLabel || contextUsageBadge || ontologyLoaded || (currentActivity && !hasActiveThinkingBlock)}
-			<div class="flex items-center gap-2">
+			<div class="flex items-center gap-1.5 sm:gap-2">
 				{#if sessionStatusLabel}
+					<!-- Mobile: spinner only. sm+: spinner + text -->
 					<span
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted px-1.5 py-1.5 sm:px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+						title={sessionStatusLabel}
 					>
 						<LoaderCircle class="h-3 w-3 animate-spin" />
-						{sessionStatusLabel}
+						<span class="hidden sm:inline">{sessionStatusLabel}</span>
 					</span>
 				{/if}
 
 				{#if contextUsageBadge}
+					<!-- Mobile: icon only. sm+: icon + text -->
 					<span
-						class={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] ${contextUsageBadge.className}`}
+						class={`inline-flex items-center gap-1.5 rounded-lg border px-1.5 py-1.5 sm:px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] ${contextUsageBadge.className}`}
 						title={contextUsageBadge.title}
 					>
 						<AlertTriangle class="h-3 w-3" />
-						{contextUsageBadge.label}
+						<span class="hidden sm:inline">{contextUsageBadge.label}</span>
 					</span>
 				{/if}
 
 				{#if ontologyLoaded}
+					<!-- Hidden on mobile, visible on sm+ -->
 					<span
-						class="micro-label rounded-lg border border-purple-600/30 bg-purple-50 px-2.5 py-1.5 text-purple-700 tx tx-thread tx-weak dark:bg-purple-950/30 dark:text-purple-400"
+						class="micro-label hidden rounded-lg border border-purple-600/30 bg-purple-50 px-2.5 py-1.5 text-purple-700 tx tx-thread tx-weak sm:inline-flex dark:bg-purple-950/30 dark:text-purple-400"
 					>
 						ONTO
 					</span>
@@ -201,7 +208,8 @@
 			<button
 				type="button"
 				onclick={onClose}
-				class="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
+				class="flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
+				style="-webkit-tap-highlight-color: transparent;"
 				aria-label="Close modal"
 			>
 				<X class="h-4 w-4" />

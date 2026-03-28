@@ -117,7 +117,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('project_id is required for search_project');
 		}
 
-		const limit = Math.min(args.limit ?? 10, 25);
+		const requestedLimit =
+			typeof args.limit === 'number' && Number.isFinite(args.limit) && args.limit > 0
+				? args.limit
+				: 10;
+		const limit = Math.min(requestedLimit, 25);
 		const data = await this.apiRequest('/api/onto/search', {
 			method: 'POST',
 			body: JSON.stringify({
@@ -1025,7 +1029,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Query is required for search_ontology');
 		}
 
-		const limit = Math.min(args.limit ?? 50, 50);
+		const requestedLimit =
+			typeof args.limit === 'number' && Number.isFinite(args.limit) && args.limit > 0
+				? args.limit
+				: 50;
+		const limit = Math.min(requestedLimit, 50);
 		const data = await this.apiRequest('/api/onto/search', {
 			method: 'POST',
 			body: JSON.stringify({

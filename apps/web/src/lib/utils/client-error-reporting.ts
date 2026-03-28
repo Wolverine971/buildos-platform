@@ -1,5 +1,6 @@
 // apps/web/src/lib/utils/client-error-reporting.ts
 import { browser } from '$app/environment';
+import { shouldTrackFailedClientResponse as shouldTrackClientHttpResponse } from '$lib/utils/error-observability';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 
 export const CLIENT_ERROR_REPORT_ENDPOINT = '/api/error-tracking/client';
@@ -26,23 +27,7 @@ export function shouldTrackFailedClientResponse(
 	pathname: string | null | undefined,
 	status: number
 ): boolean {
-	if (!pathname || isClientErrorReportEndpoint(pathname)) return false;
-
-	if (status >= 500 && (pathname.startsWith('/api/') || pathname.startsWith('/auth/'))) {
-		return true;
-	}
-
-	if (
-		status >= 400 &&
-		(pathname.startsWith('/api/auth/') ||
-			pathname.startsWith('/auth/') ||
-			pathname.startsWith('/api/agent') ||
-			pathname.startsWith('/api/agentic-chat'))
-	) {
-		return true;
-	}
-
-	return false;
+	return shouldTrackClientHttpResponse(pathname, status);
 }
 
 export function isAbortLikeClientError(error: unknown): boolean {

@@ -1,5 +1,41 @@
--- packages/shared-types/src/functions/onto_search_entities.sql
--- Source of truth for the ontology cross-entity search RPC used by agentic chat.
+-- supabase/migrations/20260428000014_agentic_buildos_search_phase1.sql
+-- Phase 1 agentic BuildOS search:
+-- - add project/risk search vectors and indexes
+-- - unify onto_search_entities coverage for project/task/goal/plan/milestone/document/risk/requirement/image
+
+ALTER TABLE onto_projects
+	ADD COLUMN IF NOT EXISTS search_vector tsvector GENERATED ALWAYS AS (
+		setweight(to_tsvector('english', COALESCE(name, '')), 'A') ||
+		setweight(to_tsvector('english', COALESCE(description, '')), 'B') ||
+		setweight(jsonb_to_tsvector('english', props, '["string"]'), 'C')
+	) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_onto_projects_search_vector
+	ON onto_projects USING gin(search_vector);
+
+CREATE INDEX IF NOT EXISTS idx_onto_projects_props_trgm
+	ON onto_projects USING gin ((props::text) gin_trgm_ops);
+
+ALTER TABLE onto_risks
+	ADD COLUMN IF NOT EXISTS search_vector tsvector GENERATED ALWAYS AS (
+		setweight(to_tsvector('english', COALESCE(title, '')), 'A') ||
+		setweight(to_tsvector('english', COALESCE(content, '')), 'B') ||
+		setweight(jsonb_to_tsvector('english', props, '["string"]'), 'C')
+	) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_onto_risks_search_vector
+	ON onto_risks USING gin(search_vector);
+
+CREATE INDEX IF NOT EXISTS idx_onto_risks_title_trgm
+	ON onto_risks USING gin (title gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_onto_risks_content_trgm
+	ON onto_risks USING gin (content gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_onto_risks_props_trgm
+	ON onto_risks USING gin ((props::text) gin_trgm_ops);
+
+DROP FUNCTION IF EXISTS onto_search_entities(uuid, text, uuid, text[], int);
 
 CREATE OR REPLACE FUNCTION public.onto_search_entities(
 	p_actor_id uuid,
@@ -35,7 +71,6 @@ begin
 	with params as (select v_query as tsq)
 	select *
 	from (
-		-- Projects
 		select
 			'project'::text as type,
 			p.id,
@@ -69,7 +104,6 @@ begin
 
 		union all
 
-		-- Tasks
 		select
 			'task'::text as type,
 			t.id,
@@ -110,7 +144,6 @@ begin
 
 		union all
 
-		-- Plans
 		select
 			'plan'::text as type,
 			pl.id,
@@ -151,7 +184,6 @@ begin
 
 		union all
 
-		-- Goals
 		select
 			'goal'::text as type,
 			g.id,
@@ -192,7 +224,6 @@ begin
 
 		union all
 
-		-- Milestones
 		select
 			'milestone'::text as type,
 			m.id,
@@ -233,7 +264,6 @@ begin
 
 		union all
 
-		-- Documents
 		select
 			'document'::text as type,
 			d.id,
@@ -274,7 +304,6 @@ begin
 
 		union all
 
-		-- Risks
 		select
 			'risk'::text as type,
 			rk.id,
@@ -315,7 +344,6 @@ begin
 
 		union all
 
-		-- Images
 		select
 			'image'::text as type,
 			a.id,
@@ -359,7 +387,6 @@ begin
 
 		union all
 
-		-- Requirements
 		select
 			'requirement'::text as type,
 			r.id,

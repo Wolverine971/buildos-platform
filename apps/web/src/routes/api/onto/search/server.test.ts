@@ -19,7 +19,13 @@ function createSupabase() {
 					{
 						id: 'task-1',
 						type: 'task',
-						title: 'Cadre content ops task'
+						title: 'Cadre content ops task',
+						project_id: '31021625-1377-4715-9fb4-f93102974628',
+						project_name: 'Cadre',
+						snippet: 'Cadre content ops task',
+						score: 0.94,
+						state_key: 'in_progress',
+						type_key: 'task.execution'
 					}
 				],
 				error: null
@@ -79,6 +85,26 @@ describe('/api/onto/search', () => {
 
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
+		expect(payload.data).toMatchObject({
+			query: 'Cadre content operations',
+			search_scope: 'workspace',
+			project_id: null,
+			total_returned: 1,
+			maybe_more: false,
+			total: 1
+		});
+		expect(payload.data.results).toEqual([
+			expect.objectContaining({
+				type: 'task',
+				id: 'task-1',
+				project_id: '31021625-1377-4715-9fb4-f93102974628',
+				project_name: 'Cadre',
+				state_key: 'in_progress',
+				type_key: 'task.execution',
+				matched_fields: ['title', 'description', 'props'],
+				path: 'project:31021625-1377-4715-9fb4-f93102974628/task:task-1'
+			})
+		]);
 		expect(event.locals.supabase.rpc).toHaveBeenCalledTimes(1);
 		expect(event.locals.supabase.rpc).toHaveBeenCalledWith(
 			'onto_search_entities',
@@ -103,5 +129,29 @@ describe('/api/onto/search', () => {
 		expect(payload.success).toBe(false);
 		expect(payload.error).toBe('Invalid project_id');
 		expect(event.locals.supabase.rpc).not.toHaveBeenCalled();
+	});
+
+	it('accepts expanded phase-1 types including project and risk', async () => {
+		const event = createEvent({
+			query: 'onboarding',
+			project_id: '31021625-1377-4715-9fb4-f93102974628',
+			types: ['project', 'risk', 'document']
+		});
+
+		const response = await POST(event as any);
+		const payload = await response.json();
+
+		expect(response.status).toBe(200);
+		expect(payload.success).toBe(true);
+		expect(event.locals.supabase.rpc).toHaveBeenCalledWith(
+			'onto_search_entities',
+			expect.objectContaining({
+				p_types: ['project', 'risk', 'document']
+			})
+		);
+		expect(payload.data).toMatchObject({
+			search_scope: 'project',
+			project_id: '31021625-1377-4715-9fb4-f93102974628'
+		});
 	});
 });
