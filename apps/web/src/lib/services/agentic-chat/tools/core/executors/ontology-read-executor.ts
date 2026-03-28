@@ -15,7 +15,9 @@ import type {
 	ExecutorContext,
 	ListOntoProjectsArgs,
 	SearchOntoProjectsArgs,
+	SearchBuildosArgs,
 	ListOntoTasksArgs,
+	SearchProjectArgs,
 	SearchOntoTasksArgs,
 	ListOntoGoalsArgs,
 	ListOntoPlansArgs,
@@ -47,6 +49,18 @@ import type {
  * All methods return structured data with a message field for LLM consumption.
  */
 export class OntologyReadExecutor extends BaseExecutor {
+	private static readonly AGENTIC_SEARCH_TYPES = new Set([
+		'project',
+		'task',
+		'goal',
+		'plan',
+		'milestone',
+		'document',
+		'risk',
+		'requirement',
+		'image'
+	]);
+
 	constructor(context: ExecutorContext) {
 		super(context);
 	}
@@ -56,6 +70,90 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 	private resolveSearchTerm(args: { query?: string; search?: string }): string {
 		return this.prepareSearchTerm(args.query ?? args.search);
+	}
+
+	private normalizeAgenticSearchTypes(types?: string[]): string[] | undefined {
+		if (!Array.isArray(types) || types.length === 0) {
+			return undefined;
+		}
+
+		const normalized = Array.from(
+			new Set(
+				types
+					.map((type) => (typeof type === 'string' ? type.trim().toLowerCase() : ''))
+					.filter((type) => OntologyReadExecutor.AGENTIC_SEARCH_TYPES.has(type))
+			)
+		);
+
+		return normalized.length > 0 ? normalized : undefined;
+	}
+
+	private async runAgenticSearch(args: {
+		query: string;
+		project_id?: string;
+		types?: string[];
+		limit?: number;
+		scope: 'workspace' | 'project';
+	}): Promise<{
+		query: string;
+		search_scope: 'workspace' | 'project';
+		project_id: string | null;
+		total_returned: number;
+		maybe_more: boolean;
+		results: any[];
+		total: number;
+		message: string;
+	}> {
+		const query = this.prepareSearchTerm(args.query);
+		if (!query) {
+			throw new Error(
+				args.scope === 'project'
+					? 'Query is required for search_project'
+					: 'Query is required for search_buildos'
+			);
+		}
+
+		if (args.scope === 'project' && !args.project_id) {
+			throw new Error('project_id is required for search_project');
+		}
+
+		const limit = Math.min(args.limit ?? 10, 25);
+		const data = await this.apiRequest('/api/onto/search', {
+			method: 'POST',
+			body: JSON.stringify({
+				query,
+				project_id: args.project_id,
+				types: this.normalizeAgenticSearchTypes(args.types),
+				limit
+			})
+		});
+
+		const results = Array.isArray((data as any)?.results)
+			? (data as any).results
+			: Array.isArray(data)
+				? (data as any[])
+				: [];
+		const totalReturned =
+			typeof (data as any)?.total_returned === 'number'
+				? (data as any).total_returned
+				: results.length;
+		const maybeMore =
+			typeof (data as any)?.maybe_more === 'boolean'
+				? (data as any).maybe_more
+				: results.length >= limit;
+
+		return {
+			query: (data as any)?.query ?? query,
+			search_scope: (data as any)?.search_scope ?? args.scope,
+			project_id: (data as any)?.project_id ?? args.project_id ?? null,
+			total_returned: totalReturned,
+			maybe_more: maybeMore,
+			results,
+			total: typeof (data as any)?.total === 'number' ? (data as any).total : totalReturned,
+			message:
+				(data as any)?.message ??
+				`Found ${results.length} BuildOS matches. Use get_onto_*_details to load full records.`
+		};
 	}
 
 	private summarizeDocumentForList(document: Record<string, any>): Record<string, any> {
@@ -875,7 +973,49 @@ export class OntologyReadExecutor extends BaseExecutor {
 		};
 	}
 
+	async searchBuildos(args: SearchBuildosArgs): Promise<{
+		query: string;
+		search_scope: 'workspace' | 'project';
+		project_id: string | null;
+		total_returned: number;
+		maybe_more: boolean;
+		results: any[];
+		total: number;
+		message: string;
+	}> {
+		return this.runAgenticSearch({
+			query: args.query,
+			types: args.types,
+			limit: args.limit,
+			scope: 'workspace'
+		});
+	}
+
+	async searchProject(args: SearchProjectArgs): Promise<{
+		query: string;
+		search_scope: 'workspace' | 'project';
+		project_id: string | null;
+		total_returned: number;
+		maybe_more: boolean;
+		results: any[];
+		total: number;
+		message: string;
+	}> {
+		return this.runAgenticSearch({
+			project_id: args.project_id,
+			query: args.query,
+			types: args.types,
+			limit: args.limit,
+			scope: 'project'
+		});
+	}
+
 	async searchOntology(args: SearchOntologyArgs): Promise<{
+		query: string;
+		search_scope: 'workspace' | 'project';
+		project_id: string | null;
+		total_returned: number;
+		maybe_more: boolean;
 		results: any[];
 		total: number;
 		message: string;
@@ -886,13 +1026,12 @@ export class OntologyReadExecutor extends BaseExecutor {
 		}
 
 		const limit = Math.min(args.limit ?? 50, 50);
-
 		const data = await this.apiRequest('/api/onto/search', {
 			method: 'POST',
 			body: JSON.stringify({
 				query,
 				project_id: args.project_id,
-				types: args.types,
+				types: this.normalizeAgenticSearchTypes(args.types),
 				limit
 			})
 		});
@@ -902,12 +1041,23 @@ export class OntologyReadExecutor extends BaseExecutor {
 			: Array.isArray(data)
 				? (data as any[])
 				: [];
-
-		const total = (data as any)?.total ?? results.length ?? 0;
+		const totalReturned =
+			typeof (data as any)?.total_returned === 'number'
+				? (data as any).total_returned
+				: results.length;
 
 		return {
+			query: (data as any)?.query ?? query,
+			search_scope:
+				(data as any)?.search_scope ?? (args.project_id ? 'project' : 'workspace'),
+			project_id: (data as any)?.project_id ?? args.project_id ?? null,
+			total_returned: totalReturned,
+			maybe_more:
+				typeof (data as any)?.maybe_more === 'boolean'
+					? (data as any).maybe_more
+					: results.length >= limit,
 			results,
-			total,
+			total: typeof (data as any)?.total === 'number' ? (data as any).total : totalReturned,
 			message:
 				(data as any)?.message ??
 				`Found ${results.length} ontology matches. Use get_onto_*_details to load full records.`

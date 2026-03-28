@@ -28,6 +28,8 @@ export type ToolRegistry = {
 };
 
 const OP_EXCEPTIONS: Record<string, string> = {
+	search_buildos: 'x.search.buildos',
+	search_project: 'x.search.project',
 	search_ontology: 'onto.search',
 	get_document_tree: 'onto.document.tree.get',
 	move_document_in_tree: 'onto.document.tree.move',

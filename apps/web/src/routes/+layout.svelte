@@ -754,52 +754,55 @@
 		isOpen: showOnboardingModal || animatingDismiss,
 		onDismiss: handleModalDismiss
 	}));
-	const siteStructuredData = JSON.stringify([
-		{
-			'@context': 'https://schema.org',
-			'@type': 'Organization',
-			'@id': DEFAULT_ORGANIZATION_ID,
-			name: SITE_NAME,
-			url: SITE_URL,
-			logo: {
-				'@type': 'ImageObject',
-				url: DEFAULT_ORGANIZATION_LOGO_URL
-			},
-			description: SITE_DESCRIPTION,
-			founder: {
-				'@type': 'Person',
-				name: 'DJ Wayne',
-				jobTitle: 'Founder & CEO',
-				description:
-					'Former USMC Scout Sniper turned software engineer with 8 years of experience building software.'
-			},
-			contactPoint: {
-				'@type': 'ContactPoint',
-				email: 'dj@build-os.com',
-				contactType: 'customer support'
-			},
-			sameAs: DEFAULT_ORGANIZATION_SOCIAL_PROFILES
-		},
-		{
-			'@context': 'https://schema.org',
-			'@type': 'WebSite',
-			'@id': DEFAULT_WEBSITE_ID,
-			url: SITE_URL,
-			name: SITE_NAME,
-			description: SITE_DESCRIPTION,
-			publisher: {
-				'@id': DEFAULT_ORGANIZATION_ID
-			},
-			potentialAction: {
-				'@type': 'SearchAction',
-				target: {
-					'@type': 'EntryPoint',
-					urlTemplate: `${SITE_URL}/blogs?q={search_term_string}`
+	const siteStructuredData = JSON.stringify({
+		'@context': 'https://schema.org',
+		'@graph': [
+			{
+				'@type': 'Organization',
+				'@id': DEFAULT_ORGANIZATION_ID,
+				name: SITE_NAME,
+				url: SITE_URL,
+				logo: {
+					'@type': 'ImageObject',
+					url: DEFAULT_ORGANIZATION_LOGO_URL,
+					width: 512,
+					height: 512
 				},
-				'query-input': 'required name=search_term_string'
+				description: SITE_DESCRIPTION,
+				founder: {
+					'@type': 'Person',
+					name: 'DJ Wayne',
+					jobTitle: 'Founder & CEO',
+					description:
+						'Former USMC Scout Sniper turned software engineer with 8 years of experience building software.'
+				},
+				contactPoint: {
+					'@type': 'ContactPoint',
+					email: 'dj@build-os.com',
+					contactType: 'customer support'
+				},
+				sameAs: DEFAULT_ORGANIZATION_SOCIAL_PROFILES
+			},
+			{
+				'@type': 'WebSite',
+				'@id': DEFAULT_WEBSITE_ID,
+				url: SITE_URL,
+				name: SITE_NAME,
+				description: SITE_DESCRIPTION,
+				publisher: {
+					'@id': DEFAULT_ORGANIZATION_ID
+				},
+				potentialAction: {
+					'@type': 'SearchAction',
+					target: {
+						'@type': 'EntryPoint',
+						urlTemplate: `${SITE_URL}/blogs?q={search_term_string}`
+					},
+					'query-input': 'required name=search_term_string'
+				}
 			}
-		}
-	]);
+		]
+	});
 
 	// Handle payment warning dismissal
 	async function handlePaymentWarningDismiss(event: CustomEvent) {

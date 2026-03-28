@@ -2,8 +2,8 @@
 title: 'BuildOS Troubleshooting Guide: Fix Common Issues Fast'
 description: 'Quick fixes for the most common BuildOS problems. Calendar sync not working? Brain dump not parsing right? Projects feeling off? Start here.'
 author: 'DJ Wayne'
-date: '2025-6-27'
-lastmod: '2025-6-27'
+date: '2025-06-27'
+lastmod: '2025-06-27'
 changefreq: 'weekly'
 priority: '0.6'
 published: true

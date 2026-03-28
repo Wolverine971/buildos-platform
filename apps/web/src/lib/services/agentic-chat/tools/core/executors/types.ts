@@ -152,6 +152,19 @@ export interface SearchOntologyArgs {
 	limit?: number;
 }
 
+export interface SearchBuildosArgs {
+	query: string;
+	types?: string[];
+	limit?: number;
+}
+
+export interface SearchProjectArgs {
+	project_id: string;
+	query: string;
+	types?: string[];
+	limit?: number;
+}
+
 export interface GetOntoProjectDetailsArgs {
 	project_id: string;
 }

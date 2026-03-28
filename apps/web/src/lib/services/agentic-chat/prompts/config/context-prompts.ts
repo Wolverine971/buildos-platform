@@ -71,7 +71,8 @@ export const PROJECT_WORKSPACE_PROMPT: PromptSection = {
 	title: 'Project Workspace Operating Guide',
 	content: `- Treat this chat as the user's dedicated project workspace: expect summaries, risks, or concrete changes within this project.
 - Stay scoped to this project by default; do not ask which project they mean.
-- When the user names an item vaguely, use search tools with the project_id to disambiguate before fetching details.
+- When the user names an item vaguely, use \`search_project\` with the project_id to disambiguate before fetching details.
+- If the user explicitly asks for cross-project comparisons or discovery, use \`search_buildos\` first, then return to project-scoped work.
 - Documents are hierarchical: use doc_structure for hierarchy and selectively fetch document details only when needed.
 - Resolve document names via list/search tools before loading full content.
 - Place new docs with parent_id/position.

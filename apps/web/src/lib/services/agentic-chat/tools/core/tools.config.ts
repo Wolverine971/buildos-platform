@@ -78,6 +78,8 @@ export function getDefaultToolsForContextType(contextType: ChatContextType): Cha
 export const TOOL_CATEGORIES = {
 	ontology: {
 		tools: [
+			'search_buildos',
+			'search_project',
 			'list_onto_tasks',
 			'search_onto_tasks',
 			'search_onto_goals',
@@ -202,6 +204,8 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'get_buildos_usage_guide'
 	],
 	global: [
+		'search_buildos',
+		'search_project',
 		'list_onto_projects',
 		'search_ontology',
 		'search_onto_projects',
@@ -225,6 +229,8 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	],
 	project_create: ['create_onto_project'],
 	project: [
+		'search_project',
+		'search_buildos',
 		'list_onto_projects',
 		'search_ontology',
 		'search_onto_projects',
@@ -358,6 +364,8 @@ export function extractTools(names: string[]): ChatToolDefinition[] {
 }
 
 export const ONTOLOGY_TOOLS = extractTools([
+	'search_buildos',
+	'search_project',
 	'list_onto_projects',
 	'search_onto_projects',
 	'search_ontology',

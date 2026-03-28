@@ -2331,6 +2331,14 @@
 			action: 'Searching workspace',
 			target: args?.query || args?.search
 		}),
+		search_buildos: (args) => ({
+			action: 'Searching BuildOS',
+			target: args?.query || args?.search
+		}),
+		search_project: (args) => ({
+			action: 'Searching project',
+			target: args?.query || args?.search
+		}),
 		list_onto_projects: (args) => ({
 			action: 'Listing projects',
 			target: args?.search

@@ -328,6 +328,12 @@ export class ChatToolExecutor {
 			case 'search_onto_projects':
 				return this.readExecutor.searchOntoProjects(args);
 
+			case 'search_buildos':
+				return this.readExecutor.searchBuildos(args);
+
+			case 'search_project':
+				return this.readExecutor.searchProject(args);
+
 			case 'list_onto_tasks':
 				return this.readExecutor.listOntoTasks(args);
 

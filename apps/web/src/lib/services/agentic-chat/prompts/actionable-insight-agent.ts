@@ -20,7 +20,7 @@ export function buildActionableInsightSystemPrompt(input: ActionableInsightPromp
 - User Goal: ${goal}
 
 ## Read-Only Rules
-- Use list/search tools first, then detail tools only where needed.
+- Use search_project first inside this project, then detail tools only where needed.
 - Stay scoped to this project.
 - Cite IDs or titles for traceability.
 - If data is missing, say what you need and which read tool you would call next.

@@ -156,8 +156,10 @@
 	function adjustHeight() {
 		if (!textareaElement) return;
 
-		// Reset height to recalculate
-		textareaElement.style.height = 'auto';
+		// Temporarily collapse to measure true content height.
+		// Disable transitions so this never animates (prevents mobile layout jumps).
+		textareaElement.style.transition = 'none';
+		textareaElement.style.height = '0';
 
 		// Calculate new height
 		const scrollHeight = textareaElement.scrollHeight;
@@ -172,12 +174,20 @@
 			textareaElement.style.height = `${scrollHeight}px`;
 			textareaElement.style.overflowY = 'hidden';
 		}
+
+		// Re-enable transitions after layout settles
+		textareaElement.offsetHeight; // force reflow
+		textareaElement.style.transition = '';
 	}
 
-	// Adjust min-height for placeholder on mount and when value changes
+	// Adjust placeholder min-height and auto-resize in a single effect so that
+	// clearing minHeight and setting the new height happen atomically (one paint).
+	// This prevents the textarea from visibly collapsing on the first keystroke on mobile.
 	$effect(() => {
-		if (textareaElement) {
-			adjustForPlaceholder();
+		if (!textareaElement) return;
+		adjustForPlaceholder();
+		if (autoResize && value) {
+			adjustHeight();
 		}
 	});
 
@@ -188,13 +198,6 @@
 		const handleResize = () => adjustForPlaceholder();
 		window.addEventListener('resize', handleResize);
 		return () => window.removeEventListener('resize', handleResize);
-	});
-
-	// Auto-resize for content
-	$effect(() => {
-		if (autoResize && textareaElement && value) {
-			adjustHeight();
-		}
 	});
 
 	// Expose focus method for parent components
@@ -263,11 +266,6 @@
 		-webkit-appearance: none;
 		-moz-appearance: none;
 		appearance: none;
-	}
-
-	/* Smooth height transitions for auto-resize */
-	textarea {
-		transition: height 0.1s ease-out;
 	}
 
 	/* Bottom-only focus indicator */

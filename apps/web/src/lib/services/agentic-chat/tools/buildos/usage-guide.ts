@@ -54,7 +54,7 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 			'Once the right mode is selected, guide productive conversations using progressive disclosure and tool-assisted reasoning.',
 		highlights: [
 			'The chat system loads abbreviated data first (~400 tokens) and only fetches detailed records when the user drills deeper, so mention this when promising responsiveness.',
-			'Tool groups cover list/search/detail/action operations—pick the smallest tool that answers the question (e.g., `list_onto_projects` before `get_onto_project_details`).',
+			'Tool groups cover list/search/detail/action operations. For discovery, prefer `search_buildos` across projects and `search_project` inside one project before loading details.',
 			'Streaming responses keep the user informed while long-running tools execute, so set expectations about partial updates.',
 			'In project mode, reference the project context document narrative when planning—it captures why the project matters and what success looks like.',
 			'When focused on a specific entity (task, goal, etc.), use that focus to provide targeted answers without loading unrelated data.'

@@ -30,7 +30,8 @@ const EXECUTION_GUIDELINES: PromptSection = {
 	id: 'execution-guidelines',
 	title: 'Guidelines',
 	content: `- Use only the tools provided; honor constraints (if read-only, do not call write tools)
-- Only call \`search_ontology\` with a non-empty \`query\`; if missing, skip the call and note the missing input in results
+- Prefer \`search_project\` when a project_id is known; otherwise prefer \`search_buildos\`
+- Only call \`search_buildos\`, \`search_project\`, or \`search_ontology\` with a non-empty \`query\`; if missing, skip the call and note the missing input in results
 - Minimize tool calls
 - If a tool fails or data is missing, return partial results and the next read action
 - Never guess or fabricate IDs. Never truncate, abbreviate, or elide IDs (no "...", prefixes, or short forms). If an ID is missing or uncertain, do not call update/delete tools; report the missing ID and the next read tool to use

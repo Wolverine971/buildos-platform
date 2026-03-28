@@ -180,12 +180,13 @@
 		</script>
 
 		<!-- Fallback pixel for users with JavaScript disabled (only in production) -->
-		<script>
-			if (!isDev) {
-				document.write(
-					'<noscript><img height="1" width="1" style="display: none" src="https://www.facebook.com/tr?id=1295810581888875&ev=PageView&noscript=1" /></noscript>'
-				);
-			}
-		</script>
+		<noscript>
+			<img
+				height="1"
+				width="1"
+				style="display: none"
+				src="https://www.facebook.com/tr?id=1295810581888875&ev=PageView&noscript=1"
+			/>
+		</noscript>
 	</body>
 </html>

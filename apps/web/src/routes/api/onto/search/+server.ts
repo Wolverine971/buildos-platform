@@ -1,8 +1,8 @@
 // apps/web/src/routes/api/onto/search/+server.ts
 /**
  * POST /api/onto/search
- * Cross-entity ontology search (tasks, plans, goals, milestones, documents, images)
- * Returns typed results with snippets for agentic chat discovery.
+ * Cross-entity ontology search across BuildOS projects.
+ * Returns a stable, agent-friendly result envelope for both broad and project-scoped search.
  */
 
 import type { RequestHandler } from './$types';
@@ -10,14 +10,47 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
-const ALLOWED_TYPES = new Set(['task', 'plan', 'goal', 'milestone', 'document', 'image']);
+const ALLOWED_TYPES = new Set([
+	'project',
+	'task',
+	'goal',
+	'plan',
+	'milestone',
+	'document',
+	'risk',
+	'requirement',
+	'image'
+]);
 const NULLISH_PROJECT_ID_SENTINELS = new Set(['none', 'null', 'undefined']);
+const SEARCHABLE_FIELDS_BY_TYPE: Record<string, string[]> = {
+	project: ['name', 'description', 'props'],
+	task: ['title', 'description', 'props'],
+	goal: ['name', 'description', 'props'],
+	plan: ['name', 'description', 'props'],
+	milestone: ['title', 'description', 'props'],
+	document: ['title', 'description', 'content', 'props'],
+	risk: ['title', 'content', 'props'],
+	requirement: ['text', 'props'],
+	image: ['caption', 'alt_text', 'extraction_summary', 'extracted_text']
+};
 
 type SearchRequest = {
 	query?: string;
 	project_id?: string;
 	types?: string[];
 	limit?: number;
+};
+
+type SearchRow = {
+	type?: string | null;
+	id?: string | null;
+	project_id?: string | null;
+	project_name?: string | null;
+	title?: string | null;
+	snippet?: string | null;
+	score?: number | null;
+	state_key?: string | null;
+	type_key?: string | null;
 };
 
 function normalizeOptionalProjectId(value: unknown): string | null | 'invalid' {
@@ -35,6 +68,58 @@ function normalizeOptionalProjectId(value: unknown): string | null | 'invalid' {
 	}
 
 	return isValidUUID(trimmed) ? trimmed : 'invalid';
+}
+
+function buildResultPath(result: SearchRow): string | null {
+	const type = typeof result.type === 'string' ? result.type : null;
+	const id = typeof result.id === 'string' ? result.id : null;
+	const projectId = typeof result.project_id === 'string' ? result.project_id : null;
+	if (!type || !id) {
+		return null;
+	}
+	if (type === 'project') {
+		return `project:${id}`;
+	}
+	if (projectId) {
+		return `project:${projectId}/${type}:${id}`;
+	}
+	return `${type}:${id}`;
+}
+
+function normalizeSearchResult(result: SearchRow) {
+	const type = typeof result.type === 'string' ? result.type : 'unknown';
+	const matchedFields = SEARCHABLE_FIELDS_BY_TYPE[type] ?? ['title'];
+	const normalizedProjectId =
+		typeof result.project_id === 'string'
+			? result.project_id
+			: type === 'project' && typeof result.id === 'string'
+				? result.id
+				: null;
+	const normalizedProjectName =
+		typeof result.project_name === 'string'
+			? result.project_name
+			: type === 'project' && typeof result.title === 'string'
+				? result.title
+				: null;
+
+	return {
+		type,
+		id: typeof result.id === 'string' ? result.id : null,
+		project_id: normalizedProjectId,
+		project_name: normalizedProjectName,
+		title: typeof result.title === 'string' ? result.title : null,
+		snippet: typeof result.snippet === 'string' ? result.snippet : null,
+		score: Number.isFinite(Number(result.score)) ? Number(result.score) : 0,
+		state_key: typeof result.state_key === 'string' ? result.state_key : null,
+		type_key: typeof result.type_key === 'string' ? result.type_key : null,
+		matched_fields: matchedFields,
+		path: buildResultPath({
+			...result,
+			type,
+			project_id: normalizedProjectId
+		}),
+		why_matched: `Matched indexed ${matchedFields.join(', ')} fields for ${type}.`
+	};
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -131,12 +216,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.databaseError(error);
 		}
 
-		const results = (data as any[]) ?? [];
+		const rawResults = ((data as SearchRow[] | null) ?? []).filter(Boolean);
+		const results = rawResults.map((result) => normalizeSearchResult(result));
+		const searchScope = projectId ? 'project' : 'workspace';
+		const maybeMore = results.length >= limit;
 
 		return ApiResponse.success({
+			query,
+			search_scope: searchScope,
+			project_id: projectId,
+			total_returned: results.length,
+			maybe_more: maybeMore,
 			results,
 			total: results.length,
-			message: `Found ${results.length} ontology matches.`
+			message:
+				searchScope === 'project'
+					? `Found ${results.length} BuildOS matches in this project.`
+					: `Found ${results.length} BuildOS matches across accessible projects.`
 		});
 	} catch (err) {
 		console.error('[Ontology Search API] Unexpected error:', err);

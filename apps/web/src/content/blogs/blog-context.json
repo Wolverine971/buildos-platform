@@ -183,8 +183,8 @@
 					"title": "BuildOS Troubleshooting Guide: Fix Common Issues Fast",
 					"description": "Quick fixes for the most common BuildOS problems. Calendar sync not working? Brain dump not parsing right? Projects feeling off? Start here.",
 					"author": "DJ Wayne",
-					"date": "2025-6-27",
-					"lastmod": "2025-6-27",
+					"date": "2025-06-27",
+					"lastmod": "2025-06-27",
 					"changefreq": "weekly",
 					"priority": "0.6",
 					"published": true,
@@ -397,7 +397,7 @@
 					"title": "Using Daily Briefs Effectively: Your Personal Intelligence System",
 					"description": "Make the most of your daily AI-generated briefs—contextual intelligence that draws from your goals, plans, tasks, and documents to provide personalized strategic guidance.",
 					"author": "DJ Wayne",
-					"date": "2025-6-26",
+					"date": "2025-06-26",
 					"lastmod": "2026-03-24",
 					"changefreq": "monthly",
 					"priority": "0.8",
@@ -450,8 +450,8 @@
 					"title": "Creating Your First Project in BuildOS: Just Start Talking",
 					"description": "Learn how to create your first project in BuildOS by simply having a conversation. No forms, no templates, just tell BuildOS what you want to build.",
 					"author": "DJ Wayne",
-					"date": "2025-6-26",
-					"lastmod": "2026-3-24",
+					"date": "2025-06-26",
+					"lastmod": "2026-03-24",
 					"changefreq": "monthly",
 					"priority": "0.8",
 					"published": true,
@@ -525,7 +525,7 @@
 					"title": "Goals vs Projects: Why Most Productivity Systems Get This Wrong",
 					"description": "Learn how goals sit at the top of Build OS ontology—connecting to plans, tasks, and documents. Discover how strategic alignment becomes automatic when context is structured.",
 					"author": "DJ Wayne",
-					"date": "2025-6-27",
+					"date": "2025-06-27",
 					"lastmod": "2026-01-24",
 					"changefreq": "monthly",
 					"priority": "0.8",
@@ -1247,7 +1247,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-03-28T00:14:58.259Z",
+	"generatedAt": "2026-03-28T03:44:49.078Z",
 	"totalPosts": 52,
 	"totalCategories": 6
 }

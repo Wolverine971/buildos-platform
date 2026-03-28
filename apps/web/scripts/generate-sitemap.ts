@@ -45,95 +45,102 @@ const DEFAULT_LASTMOD = '2025-10-05'; // Static fallback date for empty categori
 const STATIC_URLS: SitemapUrl[] = [
 	{
 		loc: `${BASE_URL}/`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'weekly',
 		priority: '1.0'
 	},
 	{
 		loc: `${BASE_URL}/about`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'monthly',
 		priority: '0.8'
 	},
 	{
 		loc: `${BASE_URL}/pricing`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'weekly',
 		priority: '0.8'
 	},
 	{
 		loc: `${BASE_URL}/blogs`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'weekly',
 		priority: '0.7'
 	},
 	{
 		loc: `${BASE_URL}/contact`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'monthly',
 		priority: '0.6'
 	},
 	{
 		loc: `${BASE_URL}/beta`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'weekly',
 		priority: '0.9'
 	},
 	{
 		loc: `${BASE_URL}/road-map`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'weekly',
 		priority: '0.9'
 	},
 	{
 		loc: `${BASE_URL}/help`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'weekly',
 		priority: '0.9'
 	},
 	{
 		loc: `${BASE_URL}/investors`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'monthly',
 		priority: '0.6'
 	},
 	{
 		loc: `${BASE_URL}/integrations`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'monthly',
 		priority: '0.7'
 	},
 	{
 		loc: `${BASE_URL}/feedback`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'monthly',
 		priority: '0.7'
 	},
 	{
 		loc: `${BASE_URL}/privacy`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'monthly',
 		priority: '0.5'
 	},
 	{
 		loc: `${BASE_URL}/terms`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'monthly',
 		priority: '0.5'
 	},
 	{
 		loc: `${BASE_URL}/docs`,
-		lastmod: '2025-12-19',
+		lastmod: '2026-03-27',
 		changefreq: 'weekly',
 		priority: '0.7'
 	}
 ];
 
 function formatDateToYYYYMMDD(dateString: string): string {
+	// If already in YYYY-MM-DD format, normalize padding and return directly
+	// (avoids timezone bugs from new Date() interpreting YYYY-MM-DD as UTC midnight)
+	const parts = dateString.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+	if (parts) {
+		return `${parts[1]}-${parts[2].padStart(2, '0')}-${parts[3].padStart(2, '0')}`;
+	}
+	// Fallback for other date formats
 	const date = new Date(dateString);
-	const year = date.getFullYear();
-	const month = (date.getMonth() + 1).toString().padStart(2, '0');
-	const day = date.getDate().toString().padStart(2, '0');
+	const year = date.getUTCFullYear();
+	const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+	const day = date.getUTCDate().toString().padStart(2, '0');
 	return `${year}-${month}-${day}`;
 }
 

@@ -2,7 +2,7 @@
 title: 'Goals vs Projects: Why Most Productivity Systems Get This Wrong'
 description: 'Learn how goals sit at the top of Build OS ontology—connecting to plans, tasks, and documents. Discover how strategic alignment becomes automatic when context is structured.'
 author: 'DJ Wayne'
-date: '2025-6-27'
+date: '2025-06-27'
 lastmod: '2026-01-24'
 changefreq: 'monthly'
 priority: '0.8'

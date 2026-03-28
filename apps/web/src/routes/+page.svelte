@@ -186,21 +186,12 @@
 		applicationCategory: 'ProductivityApplication',
 		operatingSystem: 'Web',
 		offers: {
-			'@type': 'AggregateOffer',
-			lowPrice: '20.00',
-			highPrice: '20.00',
-			offerCount: '1',
+			'@type': 'Offer',
+			price: '20.00',
 			priceCurrency: 'USD',
-			offers: [
-				{
-					'@type': 'Offer',
-					price: '20.00',
-					priceCurrency: 'USD',
-					availability: 'https://schema.org/InStock',
-					url: `${SITE_URL}/pricing`,
-					description: 'BuildOS Pro monthly plan with a 14-day free trial.'
-				}
-			]
+			availability: 'https://schema.org/InStock',
+			url: `${SITE_URL}/pricing`,
+			description: 'BuildOS Pro monthly plan with a 14-day free trial.'
 		},
 		author: {
 			'@id': DEFAULT_ORGANIZATION_ID

@@ -2,7 +2,7 @@
 title: 'Using Daily Briefs Effectively: Your Personal Intelligence System'
 description: 'Make the most of your daily AI-generated briefs—contextual intelligence that draws from your goals, plans, tasks, and documents to provide personalized strategic guidance.'
 author: 'DJ Wayne'
-date: '2025-6-26'
+date: '2025-06-26'
 lastmod: '2026-03-24'
 changefreq: 'monthly'
 priority: '0.8'

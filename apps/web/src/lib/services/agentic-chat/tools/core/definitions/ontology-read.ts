@@ -236,6 +236,97 @@ Do not call for plain task metadata updates (title/state/priority) unless docume
 	{
 		type: 'function',
 		function: {
+			name: 'search_buildos',
+			description: `Primary agent search across accessible BuildOS projects. Use this broad search when the project is unknown or the user is asking a cross-project question.
+Returns typed ontology matches with snippets so you can quickly shortlist items before loading details.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description:
+							'Search text to match across accessible BuildOS projects (required)'
+					},
+					types: {
+						type: 'array',
+						description: 'Optional entity type filters for narrowing results',
+						items: {
+							type: 'string',
+							enum: [
+								'project',
+								'task',
+								'goal',
+								'plan',
+								'milestone',
+								'document',
+								'risk',
+								'requirement',
+								'image'
+							]
+						}
+					},
+					limit: {
+						type: 'number',
+						default: 10,
+						maximum: 25,
+						description: 'Maximum number of results (capped at 25)'
+					}
+				},
+				required: ['query']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'search_project',
+			description: `Primary agent search inside one BuildOS project. Use this when a project_id is known or the chat is already scoped to a project.
+Returns typed ontology matches with snippets so you can quickly shortlist items before loading details.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Project ID to scope the search to (required)'
+					},
+					query: {
+						type: 'string',
+						description: 'Search text to match inside the specified project (required)'
+					},
+					types: {
+						type: 'array',
+						description: 'Optional entity type filters for narrowing results',
+						items: {
+							type: 'string',
+							enum: [
+								'project',
+								'task',
+								'goal',
+								'plan',
+								'milestone',
+								'document',
+								'risk',
+								'requirement',
+								'image'
+							]
+						}
+					},
+					limit: {
+						type: 'number',
+						default: 10,
+						maximum: 25,
+						description: 'Maximum number of results (capped at 25)'
+					}
+				},
+				required: ['project_id', 'query']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
 			name: 'search_onto_tasks',
 			description: `Search tasks across all ontology projects using keywords. Returns concise task matches with project context.
 Use when the user references a task by name or description but the project is unknown.`,
@@ -471,7 +562,8 @@ Use get_onto_document_details when full document content is needed.`,
 		type: 'function',
 		function: {
 			name: 'search_ontology',
-			description: `Fuzzy search across ontology entities (tasks, plans, goals, milestones, documents). Returns typed matches with snippets so you can load details with get_onto_* tools.`,
+			description: `Compatibility search across ontology entities. Prefer search_buildos for broad search and search_project for project-scoped search.
+Returns typed matches with snippets so you can load details with get_onto_* tools.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -488,7 +580,17 @@ Use get_onto_document_details when full document content is needed.`,
 						description: 'Optional entity type filters',
 						items: {
 							type: 'string',
-							enum: ['task', 'plan', 'goal', 'milestone', 'document']
+							enum: [
+								'project',
+								'task',
+								'goal',
+								'plan',
+								'milestone',
+								'document',
+								'risk',
+								'requirement',
+								'image'
+							]
 						}
 					},
 					limit: {

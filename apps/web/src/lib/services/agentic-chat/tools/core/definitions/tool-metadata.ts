@@ -13,6 +13,26 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	// ONTOLOGY READ TOOLS
 	// ============================================
 
+	search_buildos: {
+		summary: 'Primary broad BuildOS search across accessible projects.',
+		capabilities: [
+			'Returns one typed result shape across core ontology entities',
+			'Best first step when project scope is unknown'
+		],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		timeoutMs: 45000,
+		category: 'search'
+	},
+	search_project: {
+		summary: 'Primary scoped search inside one project.',
+		capabilities: [
+			'Uses project_id for faster, narrower retrieval',
+			'Returns one typed result shape across core ontology entities'
+		],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		timeoutMs: 45000,
+		category: 'search'
+	},
 	list_onto_tasks: {
 		summary: 'Browse recent ontology tasks with status and owning project context.',
 		capabilities: [
@@ -109,9 +129,9 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'search'
 	},
 	search_ontology: {
-		summary: 'Fuzzy search across all ontology entities with snippets.',
+		summary: 'Compatibility fuzzy search across ontology entities with snippets.',
 		capabilities: [
-			'Scans tasks/plans/goals/milestones/documents',
+			'Prefer search_buildos or search_project first',
 			'Accepts project scope and type filters'
 		],
 		contexts: ['global', 'project', 'project_audit', 'project_forecast'],

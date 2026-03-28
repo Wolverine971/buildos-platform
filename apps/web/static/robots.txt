@@ -15,7 +15,6 @@ Disallow: /projects/
 Disallow: /brain-dump
 Disallow: /briefs
 Disallow: /history
-Disallow: /_app/
 
 # Allow specific public pages
 Allow: /about
