@@ -40,7 +40,11 @@ function buildClientError(
 ): Error {
 	const candidate = payload.error;
 	const fallbackMessage =
-		kind === 'fetch_network' ? 'Client network request failed' : 'Client runtime error';
+		kind === 'fetch_network'
+			? 'Client network request failed'
+			: kind === 'fetch_http'
+				? 'Client HTTP request failed'
+				: 'Client runtime error';
 
 	if (candidate instanceof Error) {
 		return candidate;

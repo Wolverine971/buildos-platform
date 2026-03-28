@@ -1308,7 +1308,7 @@
 		if (isPreparingSession) return;
 		const prewarmEntityId = selectedEntityId ?? resolvedProjectFocus?.projectId;
 		if (isProjectContext(selectedContextType) && !prewarmEntityId) return;
-		const shouldPrimeSessionNow =
+		const shouldPrewarmDraftContext =
 			canPrimeActiveChatSession &&
 			(inputValue.trim().length > 0 ||
 				isVoiceRecording ||
@@ -1326,22 +1326,10 @@
 			isFastChatContextCacheFresh(prewarmedContext);
 		if (!key) return;
 
-		if (!currentSession?.id && shouldPrimeSessionNow) {
-			void ensureSessionReady(
-				buildSessionBootstrapTarget(
-					selectedContextType,
-					selectedEntityId,
-					resolvedProjectFocus
-				)
-			).catch((err) => {
-				if ((err as DOMException)?.name !== 'AbortError' && dev) {
-					console.warn('[AgentChat] Deferred session bootstrap failed:', err);
-				}
-			});
-			return;
-		}
-
-		if (!currentSession?.id) {
+		// Keep draft-time prewarm cache-only. Creating a session while the user is typing
+		// briefly disabled the composer, which caused mobile blur/keyboard thrash on the
+		// first character. Session creation still happens on send.
+		if (!currentSession?.id && !shouldPrewarmDraftContext) {
 			return;
 		}
 
@@ -1356,7 +1344,8 @@
 						session_id: currentSession?.id ?? undefined,
 						context_type: selectedContextType,
 						entity_id: prewarmEntityId,
-						projectFocus: resolvedProjectFocus
+						projectFocus: resolvedProjectFocus,
+						ensure_session: currentSession?.id ? undefined : false
 					},
 					{ signal: controller.signal }
 				);
@@ -1721,14 +1710,16 @@
 			applyTransform: false,
 			setCSSProperty: true,
 			onKeyboardChange: (isVisible) => {
-				if (isVisible && messagesContainer) {
-					setTrackedTimeout(() => {
-						messagesContainer?.scrollTo({
-							top: messagesContainer.scrollHeight,
-							behavior: 'smooth'
-						});
-					}, 100);
+				if (!isVisible || !messagesContainer || userHasScrolled) return;
+				const syncScrollToBottom = () => {
+					if (!messagesContainer || userHasScrolled) return;
+					messagesContainer.scrollTop = messagesContainer.scrollHeight;
+				};
+				if (typeof requestAnimationFrame === 'function') {
+					requestAnimationFrame(syncScrollToBottom);
+					return;
 				}
+				setTrackedTimeout(syncScrollToBottom, 0);
 			}
 		});
 
