@@ -41,6 +41,7 @@
 		errorMessage?: string;
 		enableVoice?: boolean;
 		showStatusRow?: boolean;
+		hintText?: string;
 		showLiveTranscriptPreview?: boolean;
 		voiceBlocked?: boolean;
 		voiceBlockedLabel?: string;
@@ -99,6 +100,7 @@
 		enableVoice = true,
 		showStatusRow = true,
 		showLiveTranscriptPreview = true,
+		hintText = undefined,
 		voiceBlocked = false,
 		voiceBlockedLabel = 'Recording unavailable right now',
 		transcriptionEndpoint = '/api/transcribe',
@@ -990,14 +992,10 @@
 
 	<!-- Mobile action bar: Visible only on portrait phones (< 480px) -->
 	<!-- z-10 ensures buttons are ALWAYS clickable above any overlays -->
-	<div class="relative z-10 mt-2 flex items-center gap-2 xs:hidden">
+	<div class="relative z-10 mt-1.5 flex items-center gap-2 xs:hidden">
 		<!-- Mobile hint text (left-aligned, pushes buttons right) -->
-		<span class="flex-1 text-xs text-muted-foreground p-2">
-			{#if enableVoice && !voiceBlocked}
-				Tap send or use voice
-			{:else}
-				Tap send
-			{/if}
+		<span class="flex-1 text-xs text-muted-foreground px-1">
+			{hintText ?? (enableVoice && !voiceBlocked ? 'Type or speak' : 'Tap to send')}
 		</span>
 
 		<!-- Voice recording button for mobile (larger touch target) -->
@@ -1028,8 +1026,8 @@
 	</div>
 
 	{#if showStatusRow}
-		<!-- Status row: hints, status indicators, and action buttons -->
-		<div class="mt-1 px-1 pb-1">
+		<!-- Status row: hints, status indicators, and action buttons (hidden on portrait phones where mobile action bar handles it) -->
+		<div class="mt-1 px-1 pb-0.5 hidden xs:block">
 			<div class="flex flex-wrap items-center justify-between gap-2">
 				<!-- Left side: Status indicators and keyboard hints -->
 				<div class="flex flex-wrap items-center gap-1.5">
@@ -1072,11 +1070,9 @@
 						<span class="text-xs font-medium text-muted-foreground"
 							>Voice unavailable</span
 						>
-					{:else if enableVoice && voiceBlocked}
-						<!-- Blocked: warning state -->
-						<span class="text-xs font-medium text-amber-600 dark:text-amber-500"
-							>{voiceBlockedLabel}</span
-						>
+					{:else if hintText}
+						<!-- Context-aware hint from parent (replaces all default hints) -->
+						<span class="text-xs text-muted-foreground">{hintText}</span>
 					{:else}
 						<!-- Idle hint: keyboard shortcuts (desktop only - hidden on mobile) -->
 						<span
@@ -1096,11 +1092,7 @@
 						</span>
 						<!-- Mobile hint: visible between xs and md (below xs it's in the mobile action bar) -->
 						<span class="hidden text-xs text-muted-foreground xs:inline md:hidden">
-							{#if enableVoice && !voiceBlocked}
-								Tap send or use voice
-							{:else}
-								Tap send
-							{/if}
+							{enableVoice && !voiceBlocked ? 'Type or speak' : 'Tap to send'}
 						</span>
 					{/if}
 

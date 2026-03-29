@@ -136,11 +136,11 @@
 								{isUserMessageExpanded(message.id) ? 'Less' : 'More'}
 							</button>
 						{/if}
-						<!-- INKPRINT: Timestamp -->
-						<div
-							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent"
-						>
-							{formatTime(message.timestamp)}
+						<!-- INKPRINT: Timestamp pinned bottom-right -->
+						<div class="mt-1 flex justify-end">
+							<span class="text-[0.6rem] font-medium tabular-nums text-accent/70">
+								{formatTime(message.timestamp)}
+							</span>
 						</div>
 					</div>
 					<!-- Voice notes panel (outside bubble, can take full width when expanded) -->
@@ -191,11 +191,13 @@
 							Response interrupted
 						</div>
 					{/if}
-					<!-- INKPRINT micro-label timestamp -->
-					<div
-						class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
-					>
-						{formatTime(message.timestamp)}
+					<!-- INKPRINT micro-label timestamp pinned bottom-left -->
+					<div class="mt-1 flex justify-start">
+						<span
+							class="text-[0.6rem] font-medium tabular-nums text-muted-foreground/70"
+						>
+							{formatTime(message.timestamp)}
+						</span>
 					</div>
 				</div>
 			{:else if message.type === 'agent_peer'}
@@ -218,11 +220,13 @@
 								{message.content}
 							</div>
 						{/if}
-						<!-- INKPRINT micro-label timestamp -->
-						<div
-							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
-						>
-							{formatTime(message.timestamp)}
+						<!-- INKPRINT micro-label timestamp pinned bottom-left -->
+						<div class="mt-1 flex justify-start">
+							<span
+								class="text-[0.6rem] font-medium tabular-nums text-amber-600/70 dark:text-amber-400/70"
+							>
+								{formatTime(message.timestamp)}
+							</span>
 						</div>
 					</div>
 				</div>
@@ -272,10 +276,12 @@
 						>
 							Share the answers in your next message to continue
 						</p>
-						<div
-							class="mt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-emerald-600 dark:text-emerald-400"
-						>
-							{formatTime(message.timestamp)}
+						<div class="mt-1 flex justify-start">
+							<span
+								class="text-[0.6rem] font-medium tabular-nums text-emerald-600/70 dark:text-emerald-400/70"
+							>
+								{formatTime(message.timestamp)}
+							</span>
 						</div>
 					</div>
 				</div>

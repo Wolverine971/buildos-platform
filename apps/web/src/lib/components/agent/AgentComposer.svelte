@@ -65,9 +65,11 @@
 	const initialRows = $derived(mode === 'braindump' ? 8 : 1);
 	const maxRows = $derived(mode === 'braindump' ? 18 : 6);
 	const isVoiceBlocked = $derived(isStreaming || disabled);
-	const resolvedVoiceBlockedLabel = $derived(
-		disabled ? 'Chat is still loading...' : 'Wait for BuildOS...'
-	);
+	const composerHint = $derived.by(() => {
+		if (disabled) return 'Loading...';
+		if (isStreaming) return 'Responding...';
+		return undefined;
+	});
 
 	function handleSubmit(event: Event) {
 		event.preventDefault();
@@ -105,7 +107,7 @@
 		{maxRows}
 		{disabled}
 		voiceBlocked={isVoiceBlocked}
-		voiceBlockedLabel={resolvedVoiceBlockedLabel}
+		hintText={composerHint}
 		voiceButtonLabel="Record voice note"
 		listeningLabel="Listening"
 		transcribingLabel="Transcribing..."
