@@ -1,6 +1,11 @@
 // apps/web/src/lib/utils/blog.ts
 import { error } from '@sveltejs/kit';
 
+export interface BlogFaqItem {
+	q: string;
+	a: string;
+}
+
 export interface BlogPost {
 	slug: string;
 	category: string;
@@ -16,6 +21,7 @@ export interface BlogPost {
 	readingTime: number;
 	pic?: string;
 	excerpt?: string;
+	faq?: BlogFaqItem[];
 }
 
 export const BLOG_CATEGORIES = {
@@ -35,8 +41,8 @@ export const BLOG_CATEGORIES = {
 		color: 'green'
 	},
 	'case-studies': {
-		name: 'Case Studies',
-		description: 'Real user stories and success examples',
+		name: 'Comparisons',
+		description: 'How BuildOS stacks up against other tools',
 		color: 'orange'
 	},
 	'advanced-guides': {
@@ -108,7 +114,8 @@ export async function loadBlogPosts(): Promise<BlogPost[]> {
 					published: metadata.published,
 					tags: metadata.tags || [],
 					pic: metadata.pic,
-					excerpt: metadata.excerpt || metadata.description
+					excerpt: metadata.excerpt || metadata.description,
+					faq: metadata.faq
 				});
 			}
 		}
@@ -168,7 +175,8 @@ export async function loadBlogPostMetadata(category: string, slug: string): Prom
 		published: metadata.published,
 		tags: metadata.tags || [],
 		pic: metadata.pic,
-		excerpt: metadata.excerpt || metadata.description
+		excerpt: metadata.excerpt || metadata.description,
+		faq: metadata.faq
 	};
 }
 

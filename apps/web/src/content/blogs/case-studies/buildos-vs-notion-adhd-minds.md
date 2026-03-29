@@ -12,7 +12,7 @@ tags: ['adhd', 'notion', 'productivity', 'comparison', 'context-engineering']
 readingTime: 12
 excerpt: "Notion's flexibility is a feature for neurotypical brains—and kryptonite for ADHD ones. A new approach to productivity is emerging that prioritizes context over complexity."
 pic: 'buildos-vs-notion-adhd-minds'
-path: apps/web/src/content/blogs/buildos-vs-notion-adhd-minds.md
+path: apps/web/src/content/blogs/case-studies/buildos-vs-notion-adhd-minds.md
 ---
 
 There's a silent crisis happening in creative studios and startup offices around the world.

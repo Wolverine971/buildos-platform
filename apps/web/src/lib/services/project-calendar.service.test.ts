@@ -1,5 +1,16 @@
 // apps/web/src/lib/services/project-calendar.service.test.ts
 import { describe, expect, it, vi } from 'vitest';
+
+const { adminSupabaseState } = vi.hoisted(() => ({
+	adminSupabaseState: {
+		current: null as any
+	}
+}));
+
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: vi.fn(() => adminSupabaseState.current)
+}));
+
 import { ProjectCalendarService } from './project-calendar.service';
 
 type Fixtures = {
@@ -274,16 +285,21 @@ describe('ProjectCalendarService sync health and retries', () => {
 						project_id: 'project-1',
 						user_id: 'user-2'
 					}
-				],
+				]
+			},
+			rpcAddQueueJob: { data: 'queue-123', error: null }
+		});
+		const { supabase: adminSupabase } = createSupabaseMock({
+			tables: {
 				queue_jobs: [
 					{
 						id: 'queue-123',
 						queue_job_id: 'sync_calendar_public_123'
 					}
 				]
-			},
-			rpcAddQueueJob: { data: 'queue-123', error: null }
+			}
 		});
+		adminSupabaseState.current = adminSupabase;
 
 		const service = new ProjectCalendarService(supabase as any);
 		const response = await service.retryProjectEventSyncTarget('project-1', 'user-1', {

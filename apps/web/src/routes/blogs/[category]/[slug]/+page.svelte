@@ -3,13 +3,17 @@
 	import { onMount } from 'svelte';
 	import {
 		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
 		DEFAULT_SOCIAL_IMAGE_ALT,
 		DEFAULT_SOCIAL_IMAGE_HEIGHT,
 		DEFAULT_SOCIAL_IMAGE_TYPE,
 		DEFAULT_SOCIAL_IMAGE_URL,
 		DEFAULT_SOCIAL_IMAGE_WIDTH,
 		DEFAULT_TWITTER_CREATOR,
-		DEFAULT_TWITTER_SITE
+		DEFAULT_TWITTER_SITE,
+		SITE_URL,
+		SITE_NAME
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
 	import type { ComponentType } from 'svelte';
@@ -27,40 +31,107 @@
 		.replace('-', ' ')
 		.replace(/\b\w/g, (l) => l.toUpperCase());
 
-	const jsonLd = {
-		'@context': 'https://schema.org',
-		'@type': 'BlogPosting',
-		headline: data.post.title,
-		description: data.post.description,
-		image: DEFAULT_SOCIAL_IMAGE_URL,
-		url: `https://build-os.com/blogs/${data.post.category}/${data.post.slug}`,
-		datePublished: data.post.date,
-		dateModified: data.post.lastmod || data.post.date,
-		author: {
-			'@type': 'Person',
-			name: data.post.author || 'BuildOS Team'
-		},
-		publisher: {
-			'@type': 'Organization',
-			name: 'BuildOS',
-			logo: {
+	const articleUrl = `${SITE_URL}/blogs/${data.post.category}/${data.post.slug}`;
+
+	const graphItems: Record<string, unknown>[] = [
+		{
+			'@type': 'BlogPosting',
+			'@id': `${articleUrl}#article`,
+			headline: data.post.title,
+			description: data.post.description,
+			image: {
 				'@type': 'ImageObject',
-				url: DEFAULT_ORGANIZATION_LOGO_URL
+				url: DEFAULT_SOCIAL_IMAGE_URL,
+				width: DEFAULT_SOCIAL_IMAGE_WIDTH,
+				height: DEFAULT_SOCIAL_IMAGE_HEIGHT
+			},
+			url: articleUrl,
+			datePublished: data.post.date,
+			dateModified: data.post.lastmod || data.post.date,
+			author: {
+				'@type': 'Person',
+				name: data.post.author || 'BuildOS Team',
+				url: `${SITE_URL}/about`,
+				sameAs: ['https://twitter.com/djwayne3', 'https://www.linkedin.com/in/djwayne3']
+			},
+			publisher: {
+				'@type': 'Organization',
+				'@id': DEFAULT_ORGANIZATION_ID,
+				name: SITE_NAME,
+				url: SITE_URL,
+				logo: {
+					'@type': 'ImageObject',
+					url: DEFAULT_ORGANIZATION_LOGO_URL
+				},
+				sameAs: [...DEFAULT_ORGANIZATION_SOCIAL_PROFILES]
+			},
+			mainEntityOfPage: {
+				'@type': 'WebPage',
+				'@id': articleUrl
+			},
+			keywords: data.post.tags.join(', '),
+			wordCount: data.post.readingTime * 200,
+			timeRequired: `PT${data.post.readingTime}M`,
+			articleSection: categoryDisplayName,
+			inLanguage: 'en-US',
+			copyrightYear: new Date(data.post.date).getFullYear(),
+			copyrightHolder: {
+				'@id': DEFAULT_ORGANIZATION_ID
+			},
+			speakable: {
+				'@type': 'SpeakableSpecification',
+				cssSelector: ['[data-speakable="headline"]', '[data-speakable="description"]']
+			},
+			isPartOf: {
+				'@type': 'Blog',
+				'@id': `${SITE_URL}/blogs#blog`,
+				name: `${SITE_NAME} Blog`,
+				url: `${SITE_URL}/blogs`
 			}
 		},
-		mainEntityOfPage: {
-			'@type': 'WebPage',
-			'@id': `https://build-os.com/blogs/${data.post.category}/${data.post.slug}`
-		},
-		keywords: data.post.tags.join(', '),
-		wordCount: data.post.readingTime * 200,
-		timeRequired: `PT${data.post.readingTime}M`,
-		articleSection: categoryDisplayName,
-		isPartOf: {
-			'@type': 'Blog',
-			name: 'BuildOS Blog',
-			url: 'https://build-os.com/blogs'
+		{
+			'@type': 'BreadcrumbList',
+			'@id': `${articleUrl}#breadcrumb`,
+			itemListElement: [
+				{
+					'@type': 'ListItem',
+					position: 1,
+					name: 'Blog',
+					item: `${SITE_URL}/blogs`
+				},
+				{
+					'@type': 'ListItem',
+					position: 2,
+					name: categoryDisplayName,
+					item: `${SITE_URL}/blogs/${data.post.category}`
+				},
+				{
+					'@type': 'ListItem',
+					position: 3,
+					name: data.post.title
+				}
+			]
 		}
+	];
+
+	if (data.post.faq?.length) {
+		graphItems.push({
+			'@type': 'FAQPage',
+			'@id': `${articleUrl}#faq`,
+			mainEntity: data.post.faq.map((item) => ({
+				'@type': 'Question',
+				name: item.q,
+				acceptedAnswer: {
+					'@type': 'Answer',
+					text: item.a
+				}
+			}))
+		});
+	}
+
+	const jsonLd = {
+		'@context': 'https://schema.org',
+		'@graph': graphItems
 	};
 
 	onMount(async () => {
@@ -169,11 +240,15 @@
 
 			<h1
 				class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight"
+				data-speakable="headline"
 			>
 				{data.post.title}
 			</h1>
 
-			<p class="mt-3 text-base sm:text-lg text-muted-foreground leading-relaxed">
+			<p
+				class="mt-3 text-base sm:text-lg text-muted-foreground leading-relaxed"
+				data-speakable="description"
+			>
 				{data.post.description}
 			</p>
 

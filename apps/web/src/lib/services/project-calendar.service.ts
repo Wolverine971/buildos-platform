@@ -1,7 +1,8 @@
 // apps/web/src/lib/services/project-calendar.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
-import { addQueueJobWithPublicId } from '$lib/server/queue-job-id';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { resolveQueueJobPublicId } from '$lib/server/queue-job-id';
 import { CalendarService } from './calendar-service';
 import { ApiResponse } from '$lib/utils/api-response';
 import { GOOGLE_CALENDAR_COLORS, type GoogleColorId } from '$lib/config/calendar-colors';
@@ -928,15 +929,28 @@ export class ProjectCalendarService {
 
 			let queueJobId: string;
 			try {
-				const queued = await addQueueJobWithPublicId(this.supabase, {
-					p_user_id: input.targetUserId,
-					p_job_type: 'sync_calendar',
-					p_metadata: metadata as unknown as Json,
-					p_priority: 4,
-					p_scheduled_for: new Date().toISOString(),
-					p_dedup_key: dedupKey
-				});
-				queueJobId = queued.queueJobId;
+				const { data: queueRecordId, error: queueError } = await this.supabase.rpc(
+					'add_queue_job',
+					{
+						p_user_id: input.targetUserId,
+						p_job_type: 'sync_calendar',
+						p_metadata: metadata as unknown as Json,
+						p_priority: 4,
+						p_scheduled_for: new Date().toISOString(),
+						p_dedup_key: dedupKey
+					}
+				);
+
+				if (queueError || typeof queueRecordId !== 'string' || queueRecordId.length === 0) {
+					return ApiResponse.error('Failed to enqueue sync retry', 500);
+				}
+
+				// This route runs with a user-scoped client but queues work for the target user,
+				// so resolve the public queue_job_id with a service-role client to avoid RLS misses.
+				queueJobId = await resolveQueueJobPublicId(
+					createAdminSupabaseClient(),
+					queueRecordId
+				);
 			} catch {
 				return ApiResponse.error('Failed to enqueue sync retry', 500);
 			}

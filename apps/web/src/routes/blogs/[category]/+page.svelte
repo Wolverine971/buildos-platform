@@ -20,7 +20,7 @@
 		Target,
 		FolderOpen,
 		TrendingUp,
-		Users,
+		GitCompareArrows,
 		Lightbulb
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
@@ -32,7 +32,7 @@
 		'getting-started': Brain,
 		'productivity-tips': TrendingUp,
 		'product-updates': FolderOpen,
-		'case-studies': Users,
+		'case-studies': GitCompareArrows,
 		'advanced-guides': Target,
 		philosophy: Lightbulb
 	};

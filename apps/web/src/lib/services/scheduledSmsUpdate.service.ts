@@ -233,8 +233,7 @@ export class ScheduledSmsUpdateService {
 				);
 				updatedCount++;
 
-				// Deferred: changing scheduled_sms_messages.scheduled_for does not move the
-				// already-enqueued send_sms job. That requires requeueing, not just updating the row.
+				await this.rescheduleSMSJobsInQueue(smsMessages.id, newScheduledFor.toISOString());
 			}
 
 			console.log(`[SMSUpdate] Successfully rescheduled ${updatedCount} SMS messages`);
@@ -285,6 +284,51 @@ export class ScheduledSmsUpdateService {
 		} catch (error) {
 			console.error('[SMSUpdate] Error in regenerateSMSForEvents:', error);
 			return 0;
+		}
+	}
+
+	/**
+	 * Move pending/retrying send_sms jobs to a new scheduled time after event reschedule
+	 */
+	private async rescheduleSMSJobsInQueue(
+		scheduledSmsId: string,
+		newScheduledFor: string
+	): Promise<void> {
+		try {
+			const { data: jobs, error } = await this.supabase
+				.from('queue_jobs')
+				.select('id')
+				.eq('job_type', 'send_sms')
+				.in('status', ['pending', 'retrying'])
+				.eq('metadata->>scheduled_sms_id', scheduledSmsId);
+
+			if (error || !jobs || jobs.length === 0) {
+				if (error) {
+					console.warn('[SMSUpdate] Could not fetch queue jobs for reschedule:', error);
+				}
+				return;
+			}
+
+			const { error: updateError } = await this.supabase
+				.from('queue_jobs')
+				.update({
+					scheduled_for: newScheduledFor,
+					updated_at: new Date().toISOString()
+				})
+				.in(
+					'id',
+					jobs.map((job) => job.id)
+				)
+				.in('status', ['pending', 'retrying']);
+
+			if (updateError) {
+				console.error('[SMSUpdate] Error rescheduling queue jobs:', updateError);
+				return;
+			}
+
+			console.log(`[SMSUpdate] Rescheduled ${jobs.length} send_sms queue jobs`);
+		} catch (error) {
+			console.error('[SMSUpdate] Error in rescheduleSMSJobsInQueue:', error);
 		}
 	}
 

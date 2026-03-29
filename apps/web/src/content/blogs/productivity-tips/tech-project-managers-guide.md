@@ -3,6 +3,8 @@ title: 'Stop Managing Tickets, Start Managing Thinking: A Workflow Architecture 
 description: 'Why your projects are failing between tools — and the workflow patterns that actually fix it. A practical guide for tech project managers drowning in context fragmentation.'
 slug: 'tech-pm-workflow-architecture'
 author: 'DJ Wayne'
+date: '2026-03-28'
+lastmod: '2026-03-29'
 category: 'Productivity'
 tags:
     [
@@ -32,6 +34,17 @@ seo:
         ]
 readingTime: 15
 path: apps/web/src/content/blogs/productivity-tips/tech-project-managers-guide.md
+faq:
+    - q: 'What is the biggest productivity killer for tech project managers?'
+      a: 'Context fragmentation — project thinking scattered across multiple tools like Slack, Jira, Confluence, and Google Docs. Research shows knowledge workers toggle between apps 1,200 times per day, and it takes roughly 23 minutes to refocus after each interruption.'
+    - q: 'What are appetites in project management and how do they replace estimates?'
+      a: 'Appetites come from Basecamp''s Shape Up methodology. Instead of asking "how long will this take?" you ask "how much time is this problem worth?" Time becomes a design constraint that drives creative scoping decisions, rather than a deadline imposed after estimation theater.'
+    - q: 'How do decision logs improve engineering team productivity?'
+      a: 'Decision logs capture the choices your team made and why — not task completion percentages. They survive people leaving, prevent teams from re-deriving the same conclusions, and compound over time into an intellectual history that makes every future decision faster.'
+    - q: 'What is impact mapping and how does it connect goals to engineering tasks?'
+      a: "Impact mapping (from Gojko Adzic) creates a chain from Goal to Actors to Impacts to Deliverables. Every ticket traces back to an actor and a behavior change, so engineers understand why they're building something — not just what to build."
+    - q: 'How do you get an engineering team to start writing things down?'
+      a: "Start by being the scribe yourself — write the decision records after meetings, and the team's only job is to correct inaccuracies. Find the question that gets asked three times a week, write one document answering it, and share the link next time someone asks. Frame documentation as meeting elimination, not more writing."
 ---
 
 Here's an uncomfortable truth: your projects aren't failing because your engineers are slow. They're not failing because you picked the wrong sprint methodology or the wrong issue tracker. They're failing because the _thinking_ behind the project is scattered across seven tools and fifteen Slack threads, and nobody — including you — can point to one place where it all lives.

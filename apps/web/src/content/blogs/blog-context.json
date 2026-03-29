@@ -255,6 +255,88 @@
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/academic-researcher-time-management.md"
 				},
+				"buildos-vs-chatgpt-context-that-compounds": {
+					"title": "BuildOS vs ChatGPT: Why Your Projects Need More Than Memory",
+					"description": "ChatGPT is incredibly powerful. But it doesn't know your projects. Here's why context that compounds beats memory that forgets.",
+					"slug": "buildos-vs-chatgpt-context-that-compounds",
+					"author": "DJ Wayne",
+					"date": "2026-01-01",
+					"lastmod": "2026-03-28",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": ["chatgpt", "ai", "productivity", "comparison", "context-engineering"],
+					"readingTime": 8,
+					"excerpt": "ChatGPT remembers your name. BuildOS remembers your projects. Here's why that difference changes everything about AI-assisted work.",
+					"pic": "buildos-vs-chatgpt",
+					"path": "apps/web/src/content/blogs/buildos-vs-chatgpt-context-that-compounds.md",
+					"category": "case-studies",
+					"filePath": "src/content/blogs/case-studies/buildos-vs-chatgpt-context-that-compounds.md"
+				},
+				"buildos-vs-monday-thought-organization": {
+					"title": "Monday.com vs BuildOS: Project Execution vs Thought Organization",
+					"description": "Monday.com manages projects brilliantly. But it assumes you already know what to build. Here's what happens before tasks hit the board.",
+					"slug": "buildos-vs-monday-thought-organization",
+					"author": "DJ Wayne",
+					"date": "2026-03-29",
+					"lastmod": "2026-03-29",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"monday.com",
+						"project-management",
+						"team-productivity",
+						"comparison",
+						"workflow"
+					],
+					"readingTime": 8,
+					"excerpt": "Monday.com tracks what your team is doing. BuildOS figures out what you should be doing. Here's why the thinking phase matters more than you think.",
+					"pic": "buildos-vs-monday",
+					"path": "apps/web/src/content/blogs/buildos-vs-monday-thought-organization.md",
+					"faq": [
+						{
+							"q": "Does Monday.com have AI features?",
+							"a": "Yes. monday AI can summarize conversations, generate text for updates, auto-fill column values, and query board data in natural language. However, it operates within your existing board structure — it helps you work with data that is already organized, but cannot create structure from unstructured thoughts or brain dumps."
+						},
+						{
+							"q": "How much does Monday.com cost for one person?",
+							"a": "All paid Monday.com plans require a minimum of 3 seats. On the Standard plan at roughly $14 per seat per month, a solo user pays approximately $42 per month. On the Pro plan at roughly $27 per seat per month, that comes to approximately $81 per month — even if only one person is using it."
+						},
+						{
+							"q": "Can I use Monday.com and BuildOS together?",
+							"a": "Yes, and many knowledge workers benefit from using both. Use BuildOS for the thinking phase — processing scattered thoughts, organizing ideas, and figuring out what to build. Then move well-defined projects into Monday.com for team execution, tracking, and collaboration."
+						},
+						{
+							"q": "What is the difference between project management and thought organization?",
+							"a": "Project management tools like Monday.com assume you already know what needs to be done and help you coordinate execution. Thought organization tools like BuildOS help you process scattered ideas, concerns, and half-formed plans into clear projects and tasks — the thinking phase that happens before project management begins."
+						},
+						{
+							"q": "Is Monday.com good for individuals or solo workers?",
+							"a": "Monday.com is primarily designed for team coordination. Its core strengths — shared boards, dependency tracking, workload views, and stakeholder dashboards — serve teams of 3 or more. Solo users can use it, but the 3-seat minimum pricing and team-focused features make it less ideal for individual productivity."
+						}
+					],
+					"category": "case-studies",
+					"filePath": "src/content/blogs/case-studies/buildos-vs-monday-thought-organization.md"
+				},
+				"buildos-vs-notion-adhd-minds": {
+					"title": "BuildOS vs Notion: Which is Better for ADHD Minds?",
+					"description": "Notion is powerful but complex. For ADHD minds, that complexity is kryptonite. Here's why context that compounds beats pages that scatter.",
+					"slug": "buildos-vs-notion-adhd-minds",
+					"author": "DJ Wayne",
+					"date": "2025-09-16",
+					"lastmod": "2026-01-01",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": ["adhd", "notion", "productivity", "comparison", "context-engineering"],
+					"readingTime": 12,
+					"excerpt": "Notion's flexibility is a feature for neurotypical brains—and kryptonite for ADHD ones. A new approach to productivity is emerging that prioritizes context over complexity.",
+					"pic": "buildos-vs-notion-adhd-minds",
+					"path": "apps/web/src/content/blogs/buildos-vs-notion-adhd-minds.md",
+					"category": "case-studies",
+					"filePath": "src/content/blogs/case-studies/buildos-vs-notion-adhd-minds.md"
+				},
 				"creative-professional-project-organization-interview": {
 					"title": "Blog Guide: Creative Professional Case Study",
 					"description": "Planning guide for the Creative Professional Project Organization case study.",
@@ -1243,11 +1325,70 @@
 					"slug": "task-management-best-practices",
 					"category": "productivity-tips",
 					"filePath": "src/content/blogs/productivity-tips/task-management-best-practices.md"
+				},
+				"tech-project-managers-guide": {
+					"title": "Stop Managing Tickets, Start Managing Thinking: A Workflow Architecture for Tech PMs",
+					"description": "Why your projects are failing between tools — and the workflow patterns that actually fix it. A practical guide for tech project managers drowning in context fragmentation.",
+					"slug": "tech-project-managers-guide",
+					"author": "DJ Wayne",
+					"date": "2026-03-28",
+					"lastmod": "2026-03-29",
+					"category": "productivity-tips",
+					"tags": [
+						"project-management",
+						"workflow",
+						"tech-pm",
+						"context-engineering",
+						"productivity",
+						"tools",
+						"sprint-planning",
+						"technical-debt"
+					],
+					"featured": true,
+					"published": true,
+					"seo": {
+						"title": "Tech PM Workflow Architecture: Stop Managing Tickets, Start Managing Thinking",
+						"description": "The #1 reason tech projects stall isn't bad engineers or bad tools — it's scattered thinking. Here's how to fix your workflow architecture.",
+						"keywords": [
+							"tech project manager workflow",
+							"context switching productivity",
+							"sprint planning problems",
+							"project management tools",
+							"technical project management",
+							"shape up methodology",
+							"engineering team productivity"
+						]
+					},
+					"readingTime": 15,
+					"path": "apps/web/src/content/blogs/productivity-tips/tech-project-managers-guide.md",
+					"faq": [
+						{
+							"q": "What is the biggest productivity killer for tech project managers?",
+							"a": "Context fragmentation — project thinking scattered across multiple tools like Slack, Jira, Confluence, and Google Docs. Research shows knowledge workers toggle between apps 1,200 times per day, and it takes roughly 23 minutes to refocus after each interruption."
+						},
+						{
+							"q": "What are appetites in project management and how do they replace estimates?",
+							"a": "Appetites come from Basecamp's Shape Up methodology. Instead of asking \"how long will this take?\" you ask \"how much time is this problem worth?\" Time becomes a design constraint that drives creative scoping decisions, rather than a deadline imposed after estimation theater."
+						},
+						{
+							"q": "How do decision logs improve engineering team productivity?",
+							"a": "Decision logs capture the choices your team made and why — not task completion percentages. They survive people leaving, prevent teams from re-deriving the same conclusions, and compound over time into an intellectual history that makes every future decision faster."
+						},
+						{
+							"q": "What is impact mapping and how does it connect goals to engineering tasks?",
+							"a": "Impact mapping (from Gojko Adzic) creates a chain from Goal to Actors to Impacts to Deliverables. Every ticket traces back to an actor and a behavior change, so engineers understand why they're building something — not just what to build."
+						},
+						{
+							"q": "How do you get an engineering team to start writing things down?",
+							"a": "Start by being the scribe yourself — write the decision records after meetings, and the team's only job is to correct inaccuracies. Find the question that gets asked three times a week, write one document answering it, and share the link next time someone asks. Frame documentation as meeting elimination, not more writing."
+						}
+					],
+					"filePath": "src/content/blogs/productivity-tips/tech-project-managers-guide.md"
 				}
 			}
 		}
 	},
-	"generatedAt": "2026-03-29T02:26:33.201Z",
-	"totalPosts": 52,
+	"generatedAt": "2026-03-29T18:56:00.051Z",
+	"totalPosts": 56,
 	"totalCategories": 6
 }

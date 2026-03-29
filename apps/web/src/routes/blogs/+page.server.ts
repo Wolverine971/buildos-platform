@@ -6,22 +6,16 @@ export const load: PageServerLoad = async ({ url }) => {
 	const allPosts = await loadBlogPosts();
 	const initialQuery = url.searchParams.get('q')?.trim() ?? '';
 
-	// Group posts by category, showing 5 latest per category unless <10 total posts
-	const categorizedPosts: Record<string, typeof allPosts> = {};
-
-	for (const categoryKey of Object.keys(BLOG_CATEGORIES)) {
-		const categoryPosts = allPosts.filter((post) => post.category === categoryKey);
-
-		// If total posts < 10, show all posts. Otherwise show 5 latest per category
-		const postsToShow = allPosts.length < 10 ? categoryPosts : categoryPosts.slice(0, 5);
-
-		categorizedPosts[categoryKey] = postsToShow;
+	// Count posts per category (for filter pill counts)
+	const categoryCounts: Record<string, number> = {};
+	for (const key of Object.keys(BLOG_CATEGORIES)) {
+		categoryCounts[key] = allPosts.filter((p) => p.category === key).length;
 	}
 
 	return {
 		allPosts,
-		categorizedPosts,
 		categories: BLOG_CATEGORIES,
+		categoryCounts,
 		totalPosts: allPosts.length,
 		initialQuery
 	};

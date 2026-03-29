@@ -16,6 +16,24 @@
     <priority>0.9</priority>
   </url>
   <url>
+    <loc>https://build-os.com/blogs/case-studies/buildos-vs-chatgpt-context-that-compounds</loc>
+    <lastmod>2026-03-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/case-studies/buildos-vs-monday-thought-organization</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/case-studies/buildos-vs-notion-adhd-minds</loc>
+    <lastmod>2026-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/blogs/getting-started/how-buildos-works</loc>
     <lastmod>2025-12-31</lastmod>
     <changefreq>monthly</changefreq>
@@ -119,7 +137,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs</loc>
-    <lastmod>2026-03-28</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -160,6 +178,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://build-os.com/blogs/case-studies</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/blogs/getting-started</loc>
     <lastmod>2026-03-24</lastmod>
     <changefreq>weekly</changefreq>
@@ -173,8 +197,14 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs/productivity-tips</loc>
-    <lastmod>2026-01-24</lastmod>
+    <lastmod>2026-03-29</lastmod>
     <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/productivity-tips/tech-project-managers-guide</loc>
+    <lastmod>2026-03-29</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
