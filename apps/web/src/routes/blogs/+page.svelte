@@ -10,11 +10,10 @@
 		DEFAULT_TWITTER_CREATOR,
 		DEFAULT_TWITTER_SITE
 	} from '$lib/constants/seo';
-	import { format } from 'date-fns';
 	import { Calendar, Clock, ArrowRight, Search } from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import type { BlogCategory, BlogPost } from '$lib/utils/blog';
+	import { formatBlogDate, type BlogCategory, type BlogPost } from '$lib/utils/blog';
 
 	let { data }: { data: PageData } = $props();
 
@@ -239,7 +238,7 @@
 							</span>
 							<span class="flex items-center gap-1">
 								<Calendar class="w-3 h-3" />
-								{format(new Date(featuredPost.date), 'MMM dd, yyyy')}
+								{formatBlogDate(featuredPost.date)}
 							</span>
 							<span class="flex items-center gap-1">
 								<Clock class="w-3 h-3" />
@@ -291,7 +290,7 @@
 										</span>
 										<span class="flex items-center gap-1">
 											<Calendar class="w-3 h-3" />
-											{format(new Date(post.date), 'MMM dd, yyyy')}
+											{formatBlogDate(post.date)}
 										</span>
 									</div>
 

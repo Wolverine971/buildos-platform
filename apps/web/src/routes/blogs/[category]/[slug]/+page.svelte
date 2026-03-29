@@ -17,8 +17,8 @@
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
 	import type { ComponentType } from 'svelte';
-	import { format } from 'date-fns';
 	import { ArrowLeft, Calendar, Clock, Tag } from 'lucide-svelte';
+	import { formatBlogDate, parseBlogDate } from '$lib/utils/blog';
 
 	let { data }: { data: PageData } = $props();
 
@@ -26,7 +26,8 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
-	const formattedDate = format(new Date(data.post.date), 'MMMM dd, yyyy');
+	const publishedDate = parseBlogDate(data.post.date);
+	const formattedDate = formatBlogDate(data.post.date, 'MMMM dd, yyyy');
 	const categoryDisplayName = data.post.category
 		.replace('-', ' ')
 		.replace(/\b\w/g, (l) => l.toUpperCase());
@@ -74,7 +75,7 @@
 			timeRequired: `PT${data.post.readingTime}M`,
 			articleSection: categoryDisplayName,
 			inLanguage: 'en-US',
-			copyrightYear: new Date(data.post.date).getFullYear(),
+			copyrightYear: publishedDate?.getFullYear(),
 			copyrightHolder: {
 				'@id': DEFAULT_ORGANIZATION_ID
 			},
@@ -356,7 +357,7 @@
 								class="flex items-center gap-1 text-[10px] text-muted-foreground mb-2"
 							>
 								<Calendar class="w-2.5 h-2.5" />
-								{format(new Date(relatedPost.date), 'MMM dd, yyyy')}
+								{formatBlogDate(relatedPost.date)}
 							</span>
 
 							<h3

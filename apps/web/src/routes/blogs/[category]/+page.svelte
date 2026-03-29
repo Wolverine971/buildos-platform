@@ -10,7 +10,6 @@
 		DEFAULT_TWITTER_SITE
 	} from '$lib/constants/seo';
 	import { page } from '$app/stores';
-	import { format } from 'date-fns';
 	import {
 		ArrowLeft,
 		Calendar,
@@ -24,7 +23,7 @@
 		Lightbulb
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
-	import type { BlogCategory } from '$lib/utils/blog';
+	import { formatBlogDate, type BlogCategory } from '$lib/utils/blog';
 
 	let { data }: { data: PageData } = $props();
 
@@ -209,7 +208,7 @@
 									>
 										<span class="flex items-center gap-1">
 											<Calendar class="w-3 h-3" />
-											{format(new Date(post.date), 'MMM dd, yyyy')}
+											{formatBlogDate(post.date)}
 										</span>
 										<span class="flex items-center gap-1">
 											<Clock class="w-3 h-3" />

@@ -1,5 +1,6 @@
 // apps/web/src/lib/utils/blog.ts
 import { error } from '@sveltejs/kit';
+import { format, isValid, parseISO } from 'date-fns';
 
 export interface BlogFaqItem {
 	q: string;
@@ -22,6 +23,149 @@ export interface BlogPost {
 	pic?: string;
 	excerpt?: string;
 	faq?: BlogFaqItem[];
+}
+
+type BlogModule = {
+	default?: unknown;
+	metadata?: unknown;
+};
+
+type BlogMetadata = Partial<BlogPost> &
+	Record<string, unknown> & {
+		readingTime?: unknown;
+		faq?: unknown;
+	};
+
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function isBlogModule(module: unknown): module is BlogModule & { metadata: BlogMetadata } {
+	return typeof module === 'object' && module !== null && 'metadata' in module;
+}
+
+function isBlogFaqItem(value: unknown): value is BlogFaqItem {
+	if (typeof value !== 'object' || value === null) return false;
+
+	const candidate = value as Record<string, unknown>;
+	return typeof candidate.q === 'string' && typeof candidate.a === 'string';
+}
+
+export function parseBlogDate(value: unknown): Date | null {
+	if (value instanceof Date) {
+		return isValid(value) ? value : null;
+	}
+
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		if (!trimmed) return null;
+
+		const parsed =
+			DATE_ONLY_PATTERN.test(trimmed) || trimmed.includes('T') || trimmed.includes('Z')
+				? parseISO(trimmed)
+				: new Date(trimmed);
+
+		return isValid(parsed) ? parsed : null;
+	}
+
+	if (typeof value === 'number') {
+		const parsed = new Date(value);
+		return isValid(parsed) ? parsed : null;
+	}
+
+	return null;
+}
+
+function normalizeBlogDateString(value: unknown): string | null {
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		return parseBlogDate(trimmed) ? trimmed : null;
+	}
+
+	const parsed = parseBlogDate(value);
+	return parsed ? format(parsed, 'yyyy-MM-dd') : null;
+}
+
+export function formatBlogDate(
+	value: unknown,
+	pattern = 'MMM dd, yyyy',
+	fallback = 'Date unavailable'
+): string {
+	const parsed = parseBlogDate(value);
+	return parsed ? format(parsed, pattern) : fallback;
+}
+
+function getBlogSortTimestamp(date: unknown, lastmod: unknown): number {
+	return parseBlogDate(date)?.getTime() ?? parseBlogDate(lastmod)?.getTime() ?? 0;
+}
+
+function warnInvalidBlogDate(path: string, date: unknown, lastmod: unknown) {
+	console.warn('Blog post has invalid date metadata', {
+		path,
+		date,
+		lastmod
+	});
+}
+
+function calculateModuleReadingTime(module: BlogModule, metadata: BlogMetadata): number {
+	const explicitReadingTime =
+		typeof metadata.readingTime === 'number' ? metadata.readingTime : null;
+	if (explicitReadingTime) return explicitReadingTime;
+
+	if (module.default && typeof module.default === 'object') {
+		try {
+			return calculateReadingTime(JSON.stringify(module.default));
+		} catch {
+			return 5;
+		}
+	}
+
+	return 5;
+}
+
+function buildBlogPost(
+	path: string,
+	slug: string,
+	category: string,
+	module: BlogModule & { metadata: BlogMetadata }
+): BlogPost | null {
+	const metadata = module.metadata;
+
+	if (metadata.published !== true) {
+		return null;
+	}
+
+	const normalizedDate =
+		normalizeBlogDateString(metadata.date) ?? normalizeBlogDateString(metadata.lastmod) ?? '';
+	const normalizedLastmod = normalizeBlogDateString(metadata.lastmod) ?? normalizedDate;
+
+	if (!normalizedDate) {
+		warnInvalidBlogDate(path, metadata.date, metadata.lastmod);
+	}
+
+	const description = typeof metadata.description === 'string' ? metadata.description : '';
+	const tags = Array.isArray(metadata.tags)
+		? metadata.tags.filter((tag): tag is string => typeof tag === 'string')
+		: [];
+	const faq = Array.isArray(metadata.faq)
+		? metadata.faq.filter((item): item is BlogFaqItem => isBlogFaqItem(item))
+		: undefined;
+
+	return {
+		slug,
+		category,
+		readingTime: calculateModuleReadingTime(module, metadata),
+		title: typeof metadata.title === 'string' ? metadata.title : slug,
+		description,
+		author: typeof metadata.author === 'string' ? metadata.author : 'BuildOS Team',
+		date: normalizedDate,
+		lastmod: normalizedLastmod,
+		changefreq: typeof metadata.changefreq === 'string' ? metadata.changefreq : 'monthly',
+		priority: typeof metadata.priority === 'string' ? metadata.priority : '0.7',
+		published: true,
+		tags,
+		pic: typeof metadata.pic === 'string' ? metadata.pic : undefined,
+		excerpt: typeof metadata.excerpt === 'string' ? metadata.excerpt : description,
+		faq
+	};
 }
 
 export const BLOG_CATEGORIES = {
@@ -81,47 +225,15 @@ export async function loadBlogPosts(): Promise<BlogPost[]> {
 
 		const slug = filename.replace('.md', '');
 
-		if (module && typeof module === 'object' && 'metadata' in module) {
-			const metadata = module.metadata as BlogPost;
+		if (!isBlogModule(module)) continue;
 
-			if (metadata.published) {
-				// Calculate reading time from the module's default export
-				let readingTime = 5; // default
-				const mod = module as { default?: unknown; metadata: any };
-				if (mod.default && typeof mod.default === 'object') {
-					try {
-						readingTime =
-							metadata.readingTime ||
-							calculateReadingTime(JSON.stringify(mod.default));
-					} catch (e) {
-						readingTime = metadata.readingTime || 5;
-					}
-				} else {
-					readingTime = metadata.readingTime || 5;
-				}
-
-				posts.push({
-					slug,
-					category,
-					readingTime,
-					title: metadata.title,
-					description: metadata.description,
-					author: metadata.author,
-					date: metadata.date,
-					lastmod: metadata.lastmod,
-					changefreq: metadata.changefreq,
-					priority: metadata.priority,
-					published: metadata.published,
-					tags: metadata.tags || [],
-					pic: metadata.pic,
-					excerpt: metadata.excerpt || metadata.description,
-					faq: metadata.faq
-				});
-			}
-		}
+		const post = buildBlogPost(path, slug, category, module);
+		if (post) posts.push(post);
 	}
 
-	return posts.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+	return posts.sort(
+		(a, b) => getBlogSortTimestamp(b.date, b.lastmod) - getBlogSortTimestamp(a.date, a.lastmod)
+	);
 }
 
 // Load posts by category
@@ -140,44 +252,16 @@ export async function loadBlogPostMetadata(category: string, slug: string): Prom
 		throw error(404, 'Post not found');
 	}
 
-	if (typeof module !== 'object' || !('metadata' in module)) {
+	if (!isBlogModule(module)) {
 		throw error(404, 'Invalid post format');
 	}
 
-	const metadata = module.metadata as any;
-
-	if (!metadata?.published) {
+	const post = buildBlogPost(modulePath, slug, category, module);
+	if (!post) {
 		throw error(404, 'Post not found');
 	}
 
-	// Calculate reading time
-	let readingTime = metadata.readingTime || 5;
-	const moduleWithDefault = module as { default?: unknown; metadata: unknown };
-	if (moduleWithDefault.default) {
-		try {
-			readingTime = metadata.readingTime || calculateReadingTime(metadata.description || '');
-		} catch (e) {
-			readingTime = metadata.readingTime || 5;
-		}
-	}
-
-	return {
-		slug,
-		category,
-		readingTime,
-		title: metadata.title,
-		description: metadata.description,
-		author: metadata.author,
-		date: metadata.date,
-		lastmod: metadata.lastmod,
-		changefreq: metadata.changefreq,
-		priority: metadata.priority,
-		published: metadata.published,
-		tags: metadata.tags || [],
-		pic: metadata.pic,
-		excerpt: metadata.excerpt || metadata.description,
-		faq: metadata.faq
-	};
+	return post;
 }
 
 // Get related posts (same category, excluding current post)
