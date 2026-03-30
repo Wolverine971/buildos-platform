@@ -149,6 +149,8 @@ export const TOOL_CATEGORIES = {
 		tools: [
 			'get_field_info',
 			'get_user_profile_overview',
+			'get_workspace_overview',
+			'get_project_overview',
 			'search_user_contacts',
 			'upsert_user_contact',
 			'list_user_contact_candidates',
@@ -191,6 +193,8 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	base: [
 		'get_field_info',
 		'get_user_profile_overview',
+		'get_workspace_overview',
+		'get_project_overview',
 		'search_user_contacts',
 		'upsert_user_contact',
 		'list_user_contact_candidates',

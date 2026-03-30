@@ -2,7 +2,12 @@
 
 import { getToolRegistry } from './tool-registry';
 import { normalizeGatewayHelpPath } from './gateway-op-aliases';
-import { getSkillByPath, listSkillsForDirectory } from '../skills/registry';
+import {
+	buildCapabilityHelpPayload,
+	getCapabilityByPath,
+	listCapabilityDirectoryItems
+} from './capability-catalog';
+import { getSkillByPath, listAllSkills, listSkillsForDirectory } from '../skills/registry';
 import type { SkillDefinition, SkillHelpPayload } from '../skills/types';
 
 export type ToolHelpFormat = 'short' | 'full';
@@ -58,7 +63,13 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 			path: 'root',
 			format,
 			version: registry.version,
-			groups: ['onto', 'util', 'cal'],
+			groups: ['capabilities', 'skills', 'workflow', 'onto', 'util', 'cal'],
+			capabilities: listCapabilityDirectoryItems('available'),
+			skills: listAllSkills().map((skill) => ({
+				name: skill.path,
+				type: 'skill' as const,
+				summary: skill.summary
+			})),
 			command_contract: {
 				tool_help: {
 					required: ['path'],
@@ -80,14 +91,37 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 				}
 			},
 			workflow: [
-				'1) Choose the help path by intent: onto.<entity>, onto.task.docs, cal.skill, onto.document.skill, onto.plan.skill, util.profile, util.contact, util.web, util.buildos, util.schema, or root when namespace is unknown.',
-				'2) If tool_help returns a directory or skill, narrow to the exact op; for first-time/complex writes, inspect exact schema with tool_help({ path: "<exact op>", format: "full", include_schemas: true }).',
-				'3) Execute with tool_exec({ op: "<exact op>", args: { ... } }).',
-				'4) If execution returns error.help_path, call tool_help({ path: help_path }) then retry once.'
+				'1) Choose a capability first when the domain is clear: capabilities.overview, capabilities.calendar, capabilities.documents, capabilities.planning, capabilities.project_graph, capabilities.people_context, capabilities.workflow_audit, capabilities.workflow_forecast, capabilities.web_research, capabilities.buildos_reference, or capabilities.schema_reference.',
+				'2) For routine workspace/project status questions, start with capabilities.overview and use util.workspace.overview or util.project.overview before generic ontology search/list assembly.',
+				'3) If the capability lists a skill entry point, fetch that skill before multi-step or easy-to-get-wrong work. If it has no dedicated skill, go straight to targeted exact-op help. You can also inspect the global skill catalog with tool_help({ path: "skills" }).',
+				'4) If tool_help returns a directory, skill, or capability, narrow to the exact op; for first-time or complex writes, inspect exact schema with tool_help({ path: "<exact op>", format: "full", include_schemas: true }).',
+				'5) Execute with tool_exec({ op: "<exact op>", args: { ... } }).',
+				'6) If execution returns error.help_path, call tool_help({ path: help_path }) then retry once.'
 			]
 		};
 		if (includeExamples) {
 			rootHelp.examples = [
+				{
+					description: 'Inspect the overview capability for status questions',
+					tool_help: { path: 'capabilities.overview', format: 'short' }
+				},
+				{
+					description: 'Get a named project status snapshot',
+					tool_exec: {
+						op: 'util.project.overview',
+						args: {
+							query: '9takes'
+						}
+					}
+				},
+				{
+					description: 'Inspect the calendar capability first',
+					tool_help: { path: 'capabilities.calendar', format: 'short' }
+				},
+				{
+					description: 'Fetch the global skill catalog',
+					tool_help: { path: 'skills', format: 'short' }
+				},
 				{
 					description: 'Inspect task update schema',
 					tool_help: { path: 'onto.task.update', format: 'full', include_schemas: true }
@@ -106,6 +140,16 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 		}
 		return rootHelp;
 	}
+	if (normalized === 'capabilities') {
+		return buildCapabilitiesDirectoryHelp(registry.version, format, includeExamples);
+	}
+	const capability = getCapabilityByPath(normalized);
+	if (capability) {
+		return buildCapabilityHelpPayload(capability, format);
+	}
+	if (normalized === 'skills') {
+		return buildSkillsDirectoryHelp(registry.version, format, includeExamples);
+	}
 	const skill = getSkillByPath(normalized);
 	if (skill) {
 		return buildSkillHelp(skill, registry.version, format, includeExamples);
@@ -120,8 +164,9 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 		...listSkillsForDirectory(normalized),
 		...listChildren(normalized, registry.ops)
 	].sort((a, b) => {
-		if (a.type === 'skill' && b.type !== 'skill') return -1;
-		if (a.type !== 'skill' && b.type === 'skill') return 1;
+		if (sortItemPriority(a.type) !== sortItemPriority(b.type)) {
+			return sortItemPriority(a.type) - sortItemPriority(b.type);
+		}
 		return a.name.localeCompare(b.name);
 	});
 	if (children.length === 0) {
@@ -155,6 +200,75 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 		}
 	}
 	return directoryHelp;
+}
+
+function buildCapabilitiesDirectoryHelp(
+	version: string,
+	format: ToolHelpFormat,
+	includeExamples: boolean
+): Record<string, any> {
+	const items = listCapabilityDirectoryItems('available');
+	const help: Record<string, any> = {
+		type: 'directory',
+		path: 'capabilities',
+		format,
+		version,
+		items,
+		next_step:
+			'Call tool_help({ path: "<capability path>" }) to inspect the capability, then fetch any listed skill path or exact op path.'
+	};
+
+	if (includeExamples) {
+		help.examples = [
+			{
+				description: 'Inspect overview capability details',
+				tool_help: { path: 'capabilities.overview', format: 'full' }
+			}
+		];
+	}
+
+	return help;
+}
+
+function buildSkillsDirectoryHelp(
+	version: string,
+	format: ToolHelpFormat,
+	includeExamples: boolean
+): Record<string, any> {
+	const items = listAllSkills()
+		.map((skill) => ({
+			name: skill.path,
+			type: 'skill' as const,
+			summary: skill.summary
+		}))
+		.sort((a, b) => a.name.localeCompare(b.name));
+
+	const help: Record<string, any> = {
+		type: 'directory',
+		path: 'skills',
+		format,
+		version,
+		items,
+		next_step:
+			'Call tool_help({ path: "<skill path>", format: "full" }) to load the playbook, then inspect the exact op schema only when needed.'
+	};
+
+	if (includeExamples) {
+		help.examples = [
+			{
+				description: 'Load the calendar skill playbook',
+				tool_help: { path: 'cal.skill', format: 'full' }
+			}
+		];
+	}
+
+	return help;
+}
+
+function sortItemPriority(type: string): number {
+	if (type === 'capability') return 0;
+	if (type === 'skill') return 1;
+	return 2;
 }
 
 function normalizePath(path: string): string {
@@ -295,6 +409,20 @@ function buildOpNotes(
 		notes.push('Use this when personalization is relevant; profile context is not preloaded.');
 		notes.push('Start with default args for a lightweight section overview.');
 	}
+	if (op === 'util.workspace.overview') {
+		notes.push(
+			'This is the preferred first read for workspace-wide status questions before generic ontology search/list assembly.'
+		);
+		notes.push('Use args.project_limit only when the user wants a broader or narrower snapshot.');
+	}
+	if (op === 'util.project.overview') {
+		notes.push(
+			'Pass args.project_id when the exact project is already known; otherwise pass args.query with the project name.'
+		);
+		notes.push(
+			'If the result returns match.status="ambiguous", ask one concise clarifying question from the returned candidates instead of guessing.'
+		);
+	}
 	if (op === 'util.contact.search' || op === 'util.contact.candidates.list') {
 		notes.push('Contact methods are redacted by default.');
 		notes.push(
@@ -404,6 +532,41 @@ function buildOpExamples(
 						project_id: '<project_id_uuid>',
 						action: 'update',
 						sync_enabled: true
+					}
+				}
+			}
+		];
+	}
+	if (op === 'util.workspace.overview') {
+		return [
+			{
+				description: 'Get a concise workspace-wide status snapshot',
+				tool_exec: {
+					op,
+					args: {
+						project_limit: 8
+					}
+				}
+			}
+		];
+	}
+	if (op === 'util.project.overview') {
+		return [
+			{
+				description: 'Resolve a project by name and return its status snapshot',
+				tool_exec: {
+					op,
+					args: {
+						query: '9takes'
+					}
+				}
+			},
+			{
+				description: 'Load a project snapshot directly when the project ID is already known',
+				tool_exec: {
+					op,
+					args: {
+						project_id: '<project_id_uuid>'
 					}
 				}
 			}

@@ -15,6 +15,31 @@ pic: 'buildos-vs-notion-adhd-minds'
 path: apps/web/src/content/blogs/case-studies/buildos-vs-notion-adhd-minds.md
 ---
 
+<!--
+BLOG TODO - 2026-03-30
+Priority: High
+
+Why this needs work:
+- This post still performs a useful comparison, but its framing is no longer tightly aligned with the current creator-first homepage positioning.
+- It also makes broad claims about Notion AI that need to reflect current workspace-wide AI positioning.
+- Some quotes/testimonial-style lines feel too polished or too absolute.
+
+What to update:
+- Reframe ADHD from headline-level positioning to a supporting angle unless strategy changes back.
+- Update Notion AI discussion so it does not imply AI is only page-level in the old sense.
+- Replace or qualify quotes/claims that read invented or unsupported.
+- Add more creator-specific examples: authors, YouTubers, content creators, designers.
+
+Things to explore:
+- Is there a better title that preserves search demand without narrowing the audience too early?
+- Should this become two posts: a broader Notion comparison and a separate ADHD-friendly workflow piece?
+- Which claims need external support vs. founder/opinion framing?
+
+Current source checks:
+- https://www.notion.com/help/category/notion-ai
+- Local homepage positioning: apps/web/src/routes/+page.svelte
+-->
+
 There's a silent crisis happening in creative studios and startup offices around the world.
 
 ADHD founders and creators are spending most of their "productivity" time learning, configuring, and maintaining their Notion workspaces instead of actually creating.
@@ -114,9 +139,11 @@ Here's what happens:
 
 **Out of sight, out of mind.** That's not a flaw—it's how ADHD memory works. Notion's pages hide information. Hidden information is forgotten information.
 
-And Notion AI? It works on a page. Just one page at a time. It doesn't know about your other pages, your goals, your deadlines, or how everything connects.
+And Notion AI is more capable than it used to be. It can search, chat, and help across much more of a workspace than the early page-bound versions.
 
-**Page-level intelligence when you need project-level understanding.**
+But the underlying problem is still similar: Notion gives you a powerful workspace, and you still carry a lot of responsibility for shaping and maintaining the system that work lives in.
+
+**A smarter workspace is not the same thing as low-friction project understanding.**
 
 ---
 

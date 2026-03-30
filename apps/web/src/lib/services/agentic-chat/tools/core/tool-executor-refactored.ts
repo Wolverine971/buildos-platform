@@ -259,6 +259,12 @@ export class ChatToolExecutor {
 			case 'get_user_profile_overview':
 				return this.utilityExecutor.getUserProfileOverview(args);
 
+			case 'get_workspace_overview':
+				return this.utilityExecutor.getWorkspaceOverview(args);
+
+			case 'get_project_overview':
+				return this.utilityExecutor.getProjectOverview(args);
+
 			case 'search_user_contacts':
 				return this.utilityExecutor.searchUserContacts(args);
 

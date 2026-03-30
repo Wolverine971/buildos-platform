@@ -27,7 +27,9 @@ import {
 import { createLogger } from '$lib/utils/logger';
 import { dev } from '$app/environment';
 import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
+import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { formatGatewayGuidanceLines } from '$lib/services/agentic-chat/tools/registry/gateway-guidance';
+import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 
 // Import prompt configurations
 import {
@@ -42,6 +44,12 @@ import {
 
 const PROJECT_CONTEXT_DOC_GUIDANCE = generateProjectContextFramework('condensed');
 const logger = createLogger('PromptGenerationService');
+const CAPABILITY_SYSTEM_MARKDOWN = `Think in three layers:
+1. Capability = what BuildOS can do for the user
+2. Skill = workflow guidance for doing that work well
+3. Tool/op = the exact execution surface
+
+Choose the capability first. If that capability has a skill, fetch the skill before complex or error-prone work. If it has no dedicated skill, go straight to targeted exact-op help.`;
 
 export interface PromptGenerationContext {
 	contextType: ChatContextType;
@@ -160,6 +168,10 @@ export class PromptGenerationService {
 		);
 
 		if (isToolGatewayEnabled()) {
+			sections.push(`## BuildOS Capabilities\n\n${this.formatBuildOSCapabilitiesMarkdown()}`);
+			sections.push(`## Capability System\n\n${CAPABILITY_SYSTEM_MARKDOWN}`);
+			sections.push(`## Capability Catalog\n\n${this.formatCapabilityCatalogMarkdown()}`);
+			sections.push(`## Skill Catalog\n\n${this.formatSkillCatalogMarkdown()}`);
 			sections.push(`## Tool Discovery Mode\n\n${formatGatewayGuidanceLines()}`);
 		}
 
@@ -186,6 +198,31 @@ export class PromptGenerationService {
 		sections.push(generateTaskTypeKeyGuidance('short'));
 
 		return sections.join('\n\n');
+	}
+
+	private formatBuildOSCapabilitiesMarkdown(): string {
+		return listCapabilities('available')
+			.map((capability) => `- ${capability.name}: ${capability.summary}`)
+			.join('\n');
+	}
+
+	private formatCapabilityCatalogMarkdown(): string {
+		return listCapabilities('available')
+			.map((capability) => {
+				const skillText =
+					capability.skillPaths.length > 0
+						? `preferred skill: ${capability.skillPaths.join(', ')}`
+						: 'no dedicated skill yet';
+				return `- ${capability.name} -> ${skillText}; direct discovery paths: ${capability.directPaths.join(', ')}`;
+			})
+			.join('\n');
+	}
+
+	private formatSkillCatalogMarkdown(): string {
+		return listAllSkills()
+			.sort((a, b) => a.path.localeCompare(b.path))
+			.map((skill) => `- ${skill.path}: ${skill.summary}`)
+			.join('\n');
 	}
 
 	/**

@@ -11,6 +11,7 @@ import { normalizeFastContextType } from './prompt-builder';
 import { buildMasterPrompt } from './master-prompt-builder';
 import { FASTCHAT_LIMITS } from './limits';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { dev } from '$app/environment';
 import { appendFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -54,7 +55,12 @@ type StreamFastChatParams = {
 type ToolValidationIssue = {
 	toolCall: ChatToolCall;
 	toolName: string;
+	op?: string;
 	errors: string[];
+};
+
+type GatewayValidationContext = {
+	projectId?: string | null;
 };
 
 type GatewayRequiredFieldFailure = {
@@ -87,6 +93,7 @@ type LLMStreamPassMetadata = {
 
 export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	assistantText: string;
+	finalAssistantText: string;
 	usage?: FastAgentStreamUsage;
 	finishedReason?: string;
 	toolExecutions?: FastToolExecution[];
@@ -109,6 +116,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		{ role: 'user', content: message }
 	];
 	let promptDumpPath: string | null = null;
+	let finalAssistantText = '';
 
 	// --- PROMPT DUMP (dev only) ---
 	if (dev) {
@@ -235,6 +243,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let repeatedRoundCount = 0;
 	const repetitionLimit = gatewayModeActive ? 3 : 4;
 	let docOrganizationRecoveryAttempted = false;
+	let toolLeadInEmitted = false;
+	let activeAssistantBuffer = '';
+	let activePendingToolCallCount = 0;
 	const pendingRepairInstructions: string[] = [];
 	const isAbortLikeError = (error: unknown): boolean => {
 		if (!error || typeof error !== 'object') return false;
@@ -416,6 +427,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		const prefix = assistantText.trim().length > 0 ? '\n\n' : '';
 		const delta = `${prefix}${summary}`;
 		assistantText += delta;
+		finalAssistantText = summary;
 		await onDelta(delta);
 		return true;
 	};
@@ -459,6 +471,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		return projectListSucceeded || taskListSucceeded;
 	};
 
+	const emitAssistantDelta = async (content: string): Promise<void> => {
+		const normalized = content.trim();
+		if (!normalized) return;
+		const prefix = assistantText.trim().length > 0 ? '\n\n' : '';
+		const delta = `${prefix}${normalized}`;
+		assistantText += delta;
+		await onDelta(delta);
+	};
+
 	try {
 		while (true) {
 			if (signal?.aborted) {
@@ -467,6 +488,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 			let assistantBuffer = '';
 			const pendingToolCalls: ChatToolCall[] = [];
+			activeAssistantBuffer = '';
+			activePendingToolCallCount = 0;
 			const llmPassMeta: LLMStreamPassMetadata = {
 				pass: llmStreamPasses.length + 1
 			};
@@ -489,11 +512,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			})) {
 				if (event.type === 'text' && event.content) {
 					assistantBuffer += event.content;
-					assistantText += event.content;
-					await onDelta(event.content);
+					activeAssistantBuffer = assistantBuffer;
 				} else if (event.type === 'tool_call' && event.tool_call) {
-					const normalizedToolCall = normalizeToolCallDefaults(event.tool_call);
+					const normalizedToolCall = normalizeToolCallDefaults(
+						event.tool_call,
+						params.projectId ?? undefined
+					);
 					pendingToolCalls.push(normalizedToolCall);
+					activePendingToolCallCount = pendingToolCalls.length;
 					if (params.onToolCall) {
 						await params.onToolCall(normalizedToolCall);
 					}
@@ -578,7 +604,21 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			if (pendingToolCalls.length === 0) {
+				finalAssistantText = sanitizeAssistantFinalText(assistantBuffer);
+				if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
+					await emitAssistantDelta(finalAssistantText);
+				}
+				activeAssistantBuffer = '';
+				activePendingToolCallCount = 0;
 				break;
+			}
+
+			const replayAssistantContent = toolLeadInEmitted
+				? ''
+				: sanitizeToolPassLeadIn(assistantBuffer, message);
+			if (replayAssistantContent) {
+				await emitAssistantDelta(replayAssistantContent);
+				toolLeadInEmitted = true;
 			}
 
 			if (!params.toolExecutor) {
@@ -594,9 +634,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const replayToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
 			messages.push({
 				role: 'assistant',
-				content: assistantBuffer,
+				content: replayAssistantContent,
 				tool_calls: replayToolCalls
 			});
+			activeAssistantBuffer = '';
+			activePendingToolCallCount = 0;
 
 			for (const toolCall of pendingToolCalls) {
 				const anomaly = inspectToolArgumentAnomaly(toolCall);
@@ -608,60 +650,107 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 			}
 
-			const validationIssues = validateToolCalls(pendingToolCalls, tools);
+			const validationProjectId =
+				typeof params.projectId === 'string' && isValidUUID(params.projectId)
+					? params.projectId
+					: typeof entityId === 'string' &&
+						  isValidUUID(entityId) &&
+						  (normalizedContext === 'project' ||
+								normalizedContext === 'project_audit' ||
+								normalizedContext === 'project_forecast')
+						? entityId
+						: null;
+			const validationIssues = validateToolCalls(pendingToolCalls, tools, {
+				projectId: validationProjectId
+			});
+			const validationIssueByToolCallId = new Map(
+				validationIssues.map((issue) => [issue.toolCall.id, issue])
+			);
+			const executableToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
+			const toolCallsToExecute: Array<{ original: ChatToolCall; executable: ChatToolCall }> =
+				[];
 			if (validationIssues.length > 0) {
-				consecutiveValidationIssueRounds += 1;
-				const validationIssueByToolCallId = new Map(
-					validationIssues.map((issue) => [issue.toolCall.id, issue])
-				);
-				for (const toolCall of pendingToolCalls) {
-					const validationIssue = validationIssueByToolCallId.get(toolCall.id);
+				if (hasDocumentOrganizationValidationIssue(validationIssues)) {
+					docOrganizationRecoveryEligible = true;
+					}
+					for (let index = 0; index < pendingToolCalls.length; index += 1) {
+						const toolCall = pendingToolCalls[index];
+						if (!toolCall) {
+							continue;
+						}
+						const validationIssue = validationIssueByToolCallId.get(toolCall.id);
 					const errorMessage = validationIssue
 						? `Tool validation failed: ${validationIssue.errors.join(' ')}`
-						: 'Tool call skipped because another tool call in the same response failed validation. Re-emit corrected tool calls only.';
-					const result: ChatToolResult = {
-						tool_call_id: toolCall.id,
-						result: null,
-						success: false,
-						error: errorMessage
-					};
+						: null;
+					if (errorMessage) {
+						const result: ChatToolResult = {
+							tool_call_id: toolCall.id,
+							result: null,
+							success: false,
+							error: errorMessage
+						};
 
-					toolExecutions.push({ toolCall, result });
-					if (params.onToolResult) {
-						try {
-							await params.onToolResult({ toolCall, result });
-						} catch {
-							// UI/logging callbacks must not crash tool orchestration.
+						toolExecutions.push({ toolCall, result });
+						if (params.onToolResult) {
+							try {
+								await params.onToolResult({ toolCall, result });
+							} catch {
+								// UI/logging callbacks must not crash tool orchestration.
+							}
 						}
+
+						messages.push({
+							role: 'tool',
+							content: JSON.stringify({ error: errorMessage }),
+							tool_call_id: toolCall.id
+						});
+						continue;
+					}
+					const executable = executableToolCalls[index] ?? toolCall;
+					toolCallsToExecute.push({ original: toolCall, executable });
+				}
+
+				if (toolCallsToExecute.length === 0) {
+					consecutiveValidationIssueRounds += 1;
+					if (
+						gatewayModeActive &&
+						allowAutonomousRecovery &&
+						hasDocumentOrganizationValidationIssue(validationIssues) &&
+						consecutiveValidationIssueRounds >= 2 &&
+						(await attemptDocOrganizationRecovery())
+					) {
+						break;
+					}
+					if (consecutiveValidationIssueRounds <= maxValidationRepairRounds) {
+						queueRepairInstruction(
+							buildToolValidationRepairInstruction(validationIssues, gatewayModeActive)
+						);
+						flushRepairInstructions();
+						continue;
 					}
 
-					messages.push({
-						role: 'tool',
-						content: JSON.stringify({ error: errorMessage }),
-						tool_call_id: toolCall.id
-					});
+					markValidationLimitReached();
+					break;
 				}
 
-				if (consecutiveValidationIssueRounds <= maxValidationRepairRounds) {
-					queueRepairInstruction(
-						buildToolValidationRepairInstruction(validationIssues, gatewayModeActive)
-					);
-					flushRepairInstructions();
-					continue;
+				consecutiveValidationIssueRounds = 0;
+				queueRepairInstruction(
+					buildToolValidationRepairInstruction(validationIssues, gatewayModeActive)
+				);
+				} else {
+					consecutiveValidationIssueRounds = 0;
+					for (let index = 0; index < pendingToolCalls.length; index += 1) {
+						const toolCall = pendingToolCalls[index];
+						if (!toolCall) {
+							continue;
+						}
+						const executable = executableToolCalls[index] ?? toolCall;
+						toolCallsToExecute.push({ original: toolCall, executable });
+					}
 				}
 
-				markValidationLimitReached();
-				break;
-			}
-			consecutiveValidationIssueRounds = 0;
-
-			const executableToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
 			const roundExecutions: FastToolExecution[] = [];
-			for (let index = 0; index < pendingToolCalls.length; index += 1) {
-				const toolCall = executableToolCalls[index] ?? pendingToolCalls[index];
-				if (!toolCall) {
-					continue;
-				}
+			for (const { original: originalToolCall, executable: toolCall } of toolCallsToExecute) {
 				if (signal?.aborted) {
 					throw new Error('Request aborted');
 				}
@@ -675,7 +764,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				let result: ChatToolResult;
 				if (!allowedToolNames.has(toolCall.function.name)) {
 					result = {
-						tool_call_id: toolCall.id,
+						tool_call_id: originalToolCall.id,
 						result: null,
 						success: false,
 						error: 'Tool not available in this context'
@@ -683,11 +772,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				} else {
 					try {
 						result = await params.toolExecutor(toolCall);
+						if (result.tool_call_id !== originalToolCall.id) {
+							result = {
+								...result,
+								tool_call_id: originalToolCall.id
+							};
+						}
 					} catch (error) {
 						const message =
 							error instanceof Error ? error.message : 'Tool execution failed';
 						result = {
-							tool_call_id: toolCall.id,
+							tool_call_id: originalToolCall.id,
 							result: null,
 							success: false,
 							error: message
@@ -695,7 +790,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					}
 				}
 
-				const execution: FastToolExecution = { toolCall, result };
+				const execution: FastToolExecution = { toolCall: originalToolCall, result };
 				toolExecutions.push(execution);
 				roundExecutions.push(execution);
 				if (params.onToolResult) {
@@ -706,12 +801,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					}
 				}
 
-				const toolPayload = buildToolPayloadForModel(toolCall, result);
+				const toolPayload = buildToolPayloadForModel(originalToolCall, result);
 				messages.push({
 					role: 'tool',
 					content: JSON.stringify(toolPayload),
-					tool_call_id: toolCall.id
+					tool_call_id: originalToolCall.id
 				});
+			}
+
+			if (toolLimitNotice) {
+				break;
 			}
 
 			const roundPattern = buildRoundToolPattern(pendingToolCalls);
@@ -800,9 +899,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				maxRequiredFieldFailure.count >= 2 &&
 				!gatewaySchemaRepairInjected
 			) {
-				queueRepairInstruction(
-					buildGatewayRequiredFieldRepairInstruction(requiredFieldFailures)
-				);
+					queueRepairInstruction(
+						buildGatewayRequiredFieldRepairInstruction(requiredFieldFailures)
+					);
 				gatewaySchemaRepairInjected = true;
 			}
 
@@ -851,6 +950,15 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	} catch (error) {
 		if (signal?.aborted || isAbortLikeError(error)) {
 			finishedReason = 'cancelled';
+			if (activePendingToolCallCount === 0) {
+				const partialAssistantText = sanitizeAssistantFinalText(activeAssistantBuffer);
+				if (partialAssistantText && partialAssistantText !== assistantText.trim()) {
+					await emitAssistantDelta(partialAssistantText);
+					if (!finalAssistantText) {
+						finalAssistantText = partialAssistantText;
+					}
+				}
+			}
 			if (dev) {
 				appendRuntimeMetadataToPromptDump(promptDumpPath, {
 					llmPasses: llmStreamPasses,
@@ -861,7 +969,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					cancelled: true
 				});
 			}
-			return { assistantText, usage, finishedReason, toolExecutions, cancelled: true };
+			return {
+				assistantText,
+				finalAssistantText: finalAssistantText || assistantText.trim(),
+				usage,
+				finishedReason,
+				toolExecutions,
+				cancelled: true
+			};
 		}
 		throw error;
 	}
@@ -870,6 +985,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		const prefix = assistantText.trim().length > 0 ? '\n\n' : '';
 		const noticeDelta = `${prefix}${toolLimitNotice}`;
 		assistantText += noticeDelta;
+		finalAssistantText = toolLimitNotice;
 		await onDelta(noticeDelta);
 	}
 
@@ -883,7 +999,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		});
 	}
 
-	return { assistantText, usage, finishedReason, toolExecutions };
+	return {
+		assistantText,
+		finalAssistantText: finalAssistantText || assistantText.trim(),
+		usage,
+		finishedReason,
+		toolExecutions
+	};
 }
 
 const UPDATE_TOOL_PREFIX = 'update_onto_';
@@ -1246,7 +1368,7 @@ function parseToolArguments(rawArgs: unknown): { args: Record<string, any>; erro
 	return { args: {}, error: 'Tool arguments must be a JSON object.' };
 }
 
-function normalizeToolCallDefaults(toolCall: ChatToolCall): ChatToolCall {
+function normalizeToolCallDefaults(toolCall: ChatToolCall, projectId?: string): ChatToolCall {
 	const toolName = toolCall.function?.name?.trim() ?? '';
 	if (toolName !== 'tool_help' && toolName !== 'tool_exec') {
 		return toolCall;
@@ -1258,6 +1380,21 @@ function normalizeToolCallDefaults(toolCall: ChatToolCall): ChatToolCall {
 		if (toolName === 'tool_help') {
 			const path = typeof args.path === 'string' ? args.path.trim() : '';
 			const normalizedArgs = path.length > 0 ? { ...args, path } : { ...args, path: 'root' };
+			const serializedArgs = JSON.stringify(normalizedArgs);
+			if (toolCall.function.arguments === serializedArgs) {
+				return toolCall;
+			}
+			return {
+				...toolCall,
+				function: {
+					...toolCall.function,
+					arguments: serializedArgs
+				}
+			};
+		}
+
+		if (toolName === 'tool_exec') {
+			const normalizedArgs = injectGatewayExecutionDefaults(args, projectId);
 			const serializedArgs = JSON.stringify(normalizedArgs);
 			if (toolCall.function.arguments === serializedArgs) {
 				return toolCall;
@@ -1305,6 +1442,7 @@ function normalizeToolCallDefaults(toolCall: ChatToolCall): ChatToolCall {
 		) {
 			fallbackArgs.args = {};
 		}
+		Object.assign(fallbackArgs, injectGatewayExecutionDefaults(fallbackArgs, projectId));
 	}
 
 	const serializedArgs = JSON.stringify(fallbackArgs);
@@ -1318,6 +1456,42 @@ function normalizeToolCallDefaults(toolCall: ChatToolCall): ChatToolCall {
 			...toolCall.function,
 			arguments: serializedArgs
 		}
+	};
+}
+
+function injectGatewayExecutionDefaults(
+	args: Record<string, any>,
+	projectId?: string
+): Record<string, any> {
+	const normalizedOp = typeof args.op === 'string' ? normalizeGatewayOpName(args.op) : '';
+	const rawOpArgs =
+		args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {};
+	const effectiveProjectId =
+		typeof projectId === 'string' && projectId.trim().length > 0 ? projectId.trim() : null;
+
+	if (!normalizedOp || !effectiveProjectId || 'project_id' in rawOpArgs) {
+		return {
+			...args,
+			op: normalizedOp || args.op,
+			args: rawOpArgs
+		};
+	}
+
+	const schema = getToolRegistry().ops[normalizedOp]?.parameters_schema;
+	const requiresProjectId =
+		Array.isArray((schema as Record<string, any> | undefined)?.required) &&
+		((schema as Record<string, any>).required as string[]).includes('project_id');
+	const shouldInjectProjectId = requiresProjectId || normalizedOp === 'util.project.overview';
+
+	return {
+		...args,
+		op: normalizedOp,
+		args: shouldInjectProjectId
+			? {
+					...rawOpArgs,
+					project_id: effectiveProjectId
+				}
+			: rawOpArgs
 	};
 }
 
@@ -1408,6 +1582,157 @@ function sanitizeToolCallsForReplay(toolCalls: ChatToolCall[]): ChatToolCall[] {
 	return mutated ? sanitized : toolCalls;
 }
 
+const SCRATCHPAD_SENTENCE_PATTERNS = [
+	/\btool_(?:help|exec|batch)\b/i,
+	/\bfunction_call\b/i,
+	/<\s*xai:function_call\b/i,
+	/\bcall\s+tool_(?:help|exec|batch)\b/i,
+	/\btool_help\s*\(/i,
+	/\btool_exec\s*\(/i,
+	/\b(?:op|path|query)\s*[:=]/i,
+	/"(?:op|args|path|query)"\s*:/i,
+	/^\s*(?:no\b|no,\s*wait\b|actually\b|correct(?:\s+that)?\b|better\b|to be safe\b|yes\.)/i,
+	/^\s*(?:from|since)\b/i,
+	/^\s*guidelines\b/i,
+	/\bargs?\s+need\b/i,
+	/\bfetch\s+schema\b/i,
+	/^\s*<[^>]+>\s*$/i,
+	/^\s*(?:onto|cal|util)\.[a-z0-9_]+(?:\.[a-z0-9_]+){1,6}\s*$/i
+];
+
+const USER_FACING_LEAD_IN_PATTERNS = [
+	/^(?:i'll|i will|let me|i can|i'm going to|first,\s*i'll)\b/i
+];
+
+function sanitizeToolPassLeadIn(raw: string, message: string): string {
+	const trimmed = raw.trim();
+	if (!trimmed) {
+		return '';
+	}
+
+	const cleanSentences = extractCleanAssistantSentences(trimmed);
+	const preferredLeadIn =
+		cleanSentences.find((sentence) =>
+			USER_FACING_LEAD_IN_PATTERNS.some((pattern) => pattern.test(sentence))
+		) ?? cleanSentences[0];
+
+	if (preferredLeadIn) {
+		return preferredLeadIn;
+	}
+
+	return buildGenericToolLeadIn(message);
+}
+
+function sanitizeAssistantFinalText(raw: string): string {
+	const trimmed = raw.trim();
+	if (!trimmed) {
+		return '';
+	}
+
+	if (!containsScratchpadMarkers(trimmed)) {
+		return trimmed;
+	}
+
+	const cleanSentences = extractCleanAssistantSentences(trimmed);
+	if (cleanSentences.length === 0) {
+		return '';
+	}
+
+	return cleanSentences.join('\n\n');
+}
+
+function buildGenericToolLeadIn(message: string): string {
+	const normalizedMessage = message.trim().toLowerCase();
+	if (normalizedMessage.includes('calendar') || normalizedMessage.includes('event')) {
+		return "I'll check BuildOS and the relevant calendar details.";
+	}
+	if (normalizedMessage.includes('project')) {
+		return "I'll look that up in BuildOS and gather the relevant project details.";
+	}
+	if (normalizedMessage.includes('task')) {
+		return "I'll look that up in BuildOS and gather the relevant task details.";
+	}
+	return "I'll look that up in BuildOS and gather the relevant details.";
+}
+
+function containsScratchpadMarkers(raw: string): boolean {
+	return splitAssistantTextIntoSentences(raw).some((sentence) => looksLikeScratchpadSentence(sentence));
+}
+
+function extractCleanAssistantSentences(raw: string): string[] {
+	const sentences = splitAssistantTextIntoSentences(raw);
+	const cleanSentences: string[] = [];
+	const seen = new Set<string>();
+
+	for (const sentence of sentences) {
+		if (looksLikeScratchpadSentence(sentence)) {
+			continue;
+		}
+
+		const normalized = normalizeAssistantSentence(sentence);
+		if (!normalized || normalized.length < 8) {
+			continue;
+		}
+		if (seen.has(normalized)) {
+			continue;
+		}
+
+		seen.add(normalized);
+		cleanSentences.push(normalized);
+	}
+
+	return cleanSentences;
+}
+
+function splitAssistantTextIntoSentences(raw: string): string[] {
+	return raw
+		.replace(/\r/g, '\n')
+		.split(/\n+/)
+		.flatMap((line) =>
+			line
+				.split(/(?<=[.!?])\s+(?=(?:[A-Z0-9"'`<{]|Let me|I'll|I can|I will|Actually|No))/)
+				.map((segment) => segment.trim())
+		)
+		.filter((segment) => segment.length > 0);
+}
+
+function normalizeAssistantSentence(sentence: string): string {
+	return sentence.replace(/\s+/g, ' ').trim();
+}
+
+function looksLikeScratchpadSentence(sentence: string): boolean {
+	const normalized = normalizeAssistantSentence(sentence);
+	if (!normalized) {
+		return true;
+	}
+
+	if (SCRATCHPAD_SENTENCE_PATTERNS.some((pattern) => pattern.test(normalized))) {
+		return true;
+	}
+
+	if (
+		normalized.toLowerCase().includes('schema') &&
+		(/(?:^from\b|^since\b|^fetch\b)/i.test(normalized) ||
+			/\b(?:tool_|onto\.|cal\.|util\.)/i.test(normalized))
+	) {
+		return true;
+	}
+
+	if ((normalized.includes('{') || normalized.includes('}')) && normalized.includes(':')) {
+		return true;
+	}
+
+	if (/^(?:onto|cal|util)\./i.test(normalized)) {
+		return true;
+	}
+
+	if (/^[<{[]/.test(normalized)) {
+		return true;
+	}
+
+	return false;
+}
+
 function getValueByPath(value: Record<string, any>, path: string): unknown {
 	const parts = path.split('.');
 	let cursor: any = value;
@@ -1485,9 +1810,11 @@ function validateUuidArgs(toolName: string, args: Record<string, any>, errors: s
 
 function validateToolCalls(
 	toolCalls: ChatToolCall[],
-	toolDefs: ChatToolDefinition[]
+	toolDefs: ChatToolDefinition[],
+	validationContext: GatewayValidationContext = {}
 ): ToolValidationIssue[] {
 	const issues: ToolValidationIssue[] = [];
+	const registry = getToolRegistry();
 	const toolMap = new Map<string, ChatToolDefinition>();
 	for (const tool of toolDefs) {
 		const name = tool.function?.name;
@@ -1532,12 +1859,205 @@ function validateToolCalls(
 			validateUpdateToolArgs(toolName, args, errors);
 		}
 
+		const normalizedOp =
+			toolName === 'tool_exec'
+				? validateGatewayExecArgs(args, errors, registry, validationContext)
+				: undefined;
+
 		if (errors.length > 0) {
-			issues.push({ toolCall, toolName, errors });
+			issues.push({ toolCall, toolName, op: normalizedOp, errors });
 		}
 	}
 
 	return issues;
+}
+
+function validateGatewayExecArgs(
+	args: Record<string, any>,
+	errors: string[],
+	registry: ReturnType<typeof getToolRegistry>,
+	validationContext: GatewayValidationContext
+): string | undefined {
+	const addErrorOnce = (message: string) => {
+		if (!errors.includes(message)) {
+			errors.push(message);
+		}
+	};
+
+	const rawOp = typeof args.op === 'string' ? args.op.trim() : '';
+	if (!rawOp) {
+		return undefined;
+	}
+
+	const normalizedOp = normalizeGatewayOpName(rawOp);
+	const registryOp = registry.ops[normalizedOp];
+	if (!registryOp) {
+		addErrorOnce(`Unknown canonical op: ${normalizedOp}`);
+		return normalizedOp;
+	}
+
+	const rawOpArgs =
+		args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {};
+	const opArgs = applyGatewayValidationContext(normalizedOp, rawOpArgs, validationContext);
+	const paramSchema =
+		registryOp.parameters_schema && typeof registryOp.parameters_schema === 'object'
+			? registryOp.parameters_schema
+			: {};
+	const requiredParams = Array.isArray((paramSchema as Record<string, any>).required)
+		? ((paramSchema as Record<string, any>).required as string[])
+		: [];
+
+	for (const required of requiredParams) {
+		const value = getValueByPath(opArgs, required);
+		if (value === undefined || value === null) {
+			addErrorOnce(`Missing required parameter: ${required}`);
+			continue;
+		}
+		if (typeof value === 'string' && value.trim().length === 0) {
+			addErrorOnce(`Missing required parameter: ${required}`);
+		}
+	}
+
+	for (const [key, value] of Object.entries(opArgs)) {
+		if (!UUID_ARG_KEYS.has(key)) continue;
+		if (typeof value !== 'string') continue;
+		const trimmed = value.trim();
+		if (!trimmed) continue;
+		const requiresStrictUuid = STRICT_UUID_ARG_KEYS.has(key);
+		const looksTruncated = trimmed.includes('...') || /^[0-9a-f]{8}$/i.test(trimmed);
+		if (looksTruncated || (requiresStrictUuid && !isValidUUID(trimmed))) {
+			addErrorOnce(`Invalid ${key}: expected UUID`);
+		}
+	}
+
+	if (/^onto\.[a-z_]+\.update$/.test(normalizedOp)) {
+		const entity = normalizedOp.split('.')[1];
+		if (entity) {
+			validateCanonicalUpdateArgs(normalizedOp, entity, opArgs, errors);
+		}
+	}
+
+	if (normalizedOp === 'util.project.overview') {
+		const hasProjectId =
+			typeof opArgs.project_id === 'string' && opArgs.project_id.trim().length > 0;
+		const hasQuery = typeof opArgs.query === 'string' && opArgs.query.trim().length > 0;
+		if (!hasProjectId && !hasQuery) {
+			addErrorOnce('Missing required parameter: project_id or query');
+		}
+	}
+
+	if (normalizedOp === 'cal.event.update') {
+		validateCanonicalCalendarUpdateArgs(opArgs, errors);
+	}
+
+	return normalizedOp;
+}
+
+function applyGatewayValidationContext(
+	op: string,
+	args: Record<string, any>,
+	validationContext: GatewayValidationContext
+): Record<string, any> {
+	const effectiveProjectId =
+		typeof validationContext.projectId === 'string' &&
+		validationContext.projectId.trim().length > 0
+			? validationContext.projectId.trim()
+			: null;
+	if (!effectiveProjectId) {
+		return args;
+	}
+
+	if ('project_id' in args) {
+		return args;
+	}
+
+	if (op === 'util.project.overview') {
+		return {
+			...args,
+			project_id: effectiveProjectId
+		};
+	}
+
+	const schema = getToolRegistry().ops[op]?.parameters_schema;
+	const requiresProjectId =
+		Array.isArray((schema as Record<string, any> | undefined)?.required) &&
+		((schema as Record<string, any>).required as string[]).includes('project_id');
+	if (!requiresProjectId) {
+		return args;
+	}
+
+	return {
+		...args,
+		project_id: effectiveProjectId
+	};
+}
+
+function validateCanonicalUpdateArgs(
+	op: string,
+	entity: string,
+	args: Record<string, any>,
+	errors: string[]
+): void {
+	const addErrorOnce = (message: string) => {
+		if (!errors.includes(message)) {
+			errors.push(message);
+		}
+	};
+
+	const idKey = `${entity}_id`;
+	const rawId = args[idKey];
+	const trimmedId = typeof rawId === 'string' ? rawId.trim() : rawId;
+	if (!trimmedId || typeof trimmedId !== 'string') {
+		addErrorOnce(`Missing required parameter: ${idKey}`);
+	} else if (!isValidUUID(trimmedId)) {
+		addErrorOnce(`Invalid ${idKey}: expected UUID`);
+	}
+
+	const ignoredKeys = new Set<string>([idKey, 'update_strategy', 'merge_instructions']);
+	const hasUpdateField = Object.entries(args).some(([key, value]) => {
+		if (ignoredKeys.has(key)) return false;
+		if (value === undefined) return false;
+		if (typeof value === 'string') {
+			return value.trim().length > 0;
+		}
+		return true;
+	});
+
+	if (!hasUpdateField) {
+		addErrorOnce(`No update fields provided for ${op}. Include at least one field to change.`);
+	}
+}
+
+function validateCanonicalCalendarUpdateArgs(
+	args: Record<string, any>,
+	errors: string[]
+): void {
+	const addErrorOnce = (message: string) => {
+		if (!errors.includes(message)) {
+			errors.push(message);
+		}
+	};
+
+	const hasOntoEventId =
+		typeof args.onto_event_id === 'string' && args.onto_event_id.trim().length > 0;
+	const hasEventId = typeof args.event_id === 'string' && args.event_id.trim().length > 0;
+	if (!hasOntoEventId && !hasEventId) {
+		addErrorOnce('Missing required parameter: onto_event_id or event_id');
+	}
+
+	const ignoredKeys = new Set<string>(['onto_event_id', 'event_id']);
+	const hasUpdateField = Object.entries(args).some(([key, value]) => {
+		if (ignoredKeys.has(key)) return false;
+		if (value === undefined) return false;
+		if (typeof value === 'string') {
+			return value.trim().length > 0;
+		}
+		return true;
+	});
+
+	if (!hasUpdateField) {
+		addErrorOnce('No update fields provided for cal.event.update. Include at least one field to change.');
+	}
 }
 
 function buildToolValidationRepairInstruction(
@@ -1566,15 +2086,30 @@ function buildToolValidationRepairInstruction(
 		'If a required value is missing, ask a clarifying question instead of calling a tool.'
 	];
 	if (hasGatewayExecIssue) {
-		lines.push(
-			'Gateway pattern: choose targeted tool_help by intent: onto.<entity>, onto.task.docs, cal.skill, onto.document.skill, onto.plan.skill, util.profile, util.contact, util.web, util.buildos, util.schema; use root only when namespace is unknown.'
+		const exactHelpPaths = Array.from(
+			new Set(
+				issues
+					.map((issue) => issue.op)
+					.filter((op): op is string => typeof op === 'string' && op.length > 0)
+			)
 		);
 		lines.push(
-			'Fetch a skill only when the workflow is multi-step, stateful, or easy to get wrong.'
+			'Gateway pattern: think in three layers: capability -> skill -> exact op. Start with capabilities.<domain> or a targeted namespace path; use root only when the domain is unknown.'
 		);
-		lines.push('tool_help can return a directory, a skill playbook, or an exact op schema.');
 		lines.push(
-			'Useful skill entry points: cal.skill for calendar/event work, onto.document.skill for project doc tree or task docs, and onto.plan.skill for plan creation or restructuring.'
+			'For routine status questions, prefer the overview path first: capabilities.overview -> util.workspace.overview or util.project.overview.'
+		);
+		lines.push(
+			'If the chosen capability has a skill and the work is multi-step, stateful, or easy to get wrong, fetch that skill first. The global skill catalog is available at tool_help({ path: "skills" }).'
+		);
+		lines.push(
+			'tool_help can return a directory, a capability summary, a skill playbook, or an exact op schema.'
+		);
+		lines.push(
+			'Do not use tool_exec speculatively or "just to try." Only call it when you know the exact canonical op and have concrete args that satisfy that op schema.'
+		);
+		lines.push(
+			'Examples of valid discovery paths: capabilities.overview -> util.workspace.overview or util.project.overview, capabilities.calendar -> cal.skill, capabilities.planning -> onto.task.skill or onto.plan.skill, capabilities.documents -> onto.document.skill, capabilities.people_context -> util.people.skill, capabilities.workflow_audit -> workflow.audit.skill, capabilities.workflow_forecast -> workflow.forecast.skill.'
 		);
 		lines.push(
 			'Gateway payload contract: tool_help({ path: "<path>", format?: "short|full", include_schemas?: boolean }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
@@ -1610,8 +2145,18 @@ function buildToolValidationRepairInstruction(
 			'If a tool_exec result has _fallback for missing *_id, use list/tree candidates and retry with exact *_id.'
 		);
 		lines.push(
-			'For first-time or complex writes, call tool_help("<exact op>", { format: "full", include_schemas: true }) before retrying tool_exec.'
+			'A missing required parameter means you are not ready to call that op yet. Stop, inspect the exact op schema, resolve missing IDs with list/search/get/tree tools, then retry once with complete args.'
 		);
+		lines.push(
+			'For create/update/delete ops and calendar mutations, call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) before retrying tool_exec unless that exact schema is already known in-turn.'
+		);
+		if (exactHelpPaths.length > 0) {
+			lines.push(
+				`Load exact-op help before retrying: ${exactHelpPaths
+					.map((path) => `tool_help({ path: "${path}", format: "full", include_schemas: true })`)
+					.join(', ')}.`
+			);
+		}
 		if (hasGatewayEnvelopeFailure) {
 			lines.push(
 				'Never call tool_exec with {}. You must include both op and args, or ask one concise clarifying question.'
@@ -1954,14 +2499,28 @@ function buildGatewayRequiredFieldRepairInstruction(
 	const labels = failures.map((failure) => `${failure.op} -> ${failure.field}`).join(', ');
 	return [
 		`Repeated required-field validation failures detected: ${labels}.`,
+		'Do not use tools willy-nilly. A missing required parameter means you do not understand that op well enough to execute it yet.',
+		'For routine status questions, prefer util.workspace.overview or util.project.overview instead of repeating empty search/list calls.',
 		'Do not call write ops with args:{}.',
 		'For search ops, include args.query (for example onto.project.search, onto.task.search, onto.search).',
 		'If query is unclear, ask one concise clarifying question instead of repeating empty search args.',
+		'Before retrying any create/update/delete op, call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) and follow that schema exactly.',
+		'Resolve required IDs with list/search/get/tree tools before any write. Never retry the same write until you have the exact *_id.',
 		'For onto.<entity>.update, include args.<entity>_id and at least one concrete field to change.',
 		'For onto.<entity>.delete, include args.<entity>_id.',
+		'For cal.event.update, include args.event_id or args.onto_event_id plus at least one concrete field to change.',
 		'For document organization, get IDs from onto.document.tree.get result.unlinked/documents and pass exact args.document_id for delete/move.',
 		'If IDs are still unclear, ask one concise clarifying question instead of repeating failed writes.'
 	].join(' ');
+}
+
+function hasDocumentOrganizationValidationIssue(issues: ToolValidationIssue[]): boolean {
+	return issues.some((issue) => {
+		if (issue.toolName !== 'tool_exec') return false;
+		const op = issue.op ?? '';
+		if (op !== 'onto.document.delete' && op !== 'onto.document.tree.move') return false;
+		return issue.errors.some((error) => error.includes('Missing required parameter: document_id'));
+	});
 }
 
 type RoundToolPattern = {
@@ -2180,13 +2739,13 @@ function buildReadLoopRepairInstruction(readOps: string[]): string {
 
 function buildRootHelpLoopRepairInstruction(fallbackExecuted: boolean): string {
 	const fallbackLine = fallbackExecuted
-		? 'Project/task listings were already fetched via tool_exec(onto.project.list) and tool_exec(onto.task.list).'
-		: 'Immediately call tool_exec for onto.project.list and onto.task.list instead of calling tool_help("root") again.';
+		? 'Use the data already fetched, and for status questions prefer util.workspace.overview or util.project.overview instead of more root help.'
+		: 'Do not call tool_help("root") again. For status questions, call util.workspace.overview or util.project.overview; otherwise use targeted list/search ops.';
 	return [
 		'Repeated tool_help("root") detected. Do not call tool_help("root") again in this turn.',
 		fallbackLine,
 		'Use the returned listing data to continue, or ask one precise clarifying question.',
-		'If you need schema details, use targeted tool_help("onto.project.list") or tool_help("onto.task.list"), never root.'
+		'If you need schema details, use targeted tool_help("util.workspace.overview"), tool_help("util.project.overview"), or the exact op path you actually need, never root.'
 	].join(' ');
 }
 

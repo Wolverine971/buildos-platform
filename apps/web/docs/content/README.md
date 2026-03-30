@@ -8,12 +8,16 @@
 
 ## Quick Navigation
 
-| Document                                              | Purpose                              | Status      |
-| ----------------------------------------------------- | ------------------------------------ | ----------- |
-| [Agentic Chat Positioning](#agentic-chat-positioning) | Product positioning for Project Lens | Active      |
-| [Blog Update Master Plan](#blog-update-master-plan)   | Strategic blog content plan          | Active      |
-| [Blog Audit 2025](#blog-audit-2025)                   | Content audit and improvements       | Reference   |
-| [Blog Drafts](#blog-drafts)                           | Unpublished blog content             | In Progress |
+| Document                                                            | Purpose                                               | Status      |
+| ------------------------------------------------------------------- | ----------------------------------------------------- | ----------- |
+| [Agentic Chat Positioning](#agentic-chat-positioning)               | Product positioning for Project Lens                  | Active      |
+| [AI Agent Capability System Plan](#ai-agent-capability-system-plan) | Scalable model for skills, tools, plugins, and stacks | Active      |
+| [AI Agent Editorial Roadmap](#ai-agent-editorial-roadmap)           | Starter path and publishing progression               | Active      |
+| [AI Agent Skills Library Plan](#ai-agent-skills-library-plan)       | Infrastructure and publishing plan                    | Active      |
+| [AI Agent Skills Brainstorm](#ai-agent-skills-brainstorm)           | Prioritized skill backlog                             | Active      |
+| [Blog Update Master Plan](#blog-update-master-plan)                 | Strategic blog content plan                           | Active      |
+| [Blog Audit 2025](#blog-audit-2025)                                 | Content audit and improvements                        | Reference   |
+| [Blog Drafts](#blog-drafts)                                         | Unpublished blog content                              | In Progress |
 
 ---
 
@@ -30,6 +34,57 @@ Product positioning document for BuildOS's agentic chat feature (Project Lens). 
 - User-facing messaging
 
 **Related:** [Zoom Messaging Guide](/docs/marketing/brand/ZOOM_MESSAGING_GUIDE.md) | [Brand Strategy 2025](/docs/marketing/brand/BRAND_STRATEGY_2025.md)
+
+---
+
+### AI Agent Skills Library Plan
+
+**File:** `AI_AGENT_SKILLS_LIBRARY_PLAN.md`
+
+Planning document for a public BuildOS skills library aimed at AI agents and technical operators. Covers:
+
+- infrastructure recommendations using the existing blog system
+- article structure and metadata strategy
+- freshness and screenshot workflow
+- phased rollout from blog category to dedicated skills hub
+
+---
+
+### AI Agent Capability System Plan
+
+**File:** `AI_AGENT_CAPABILITY_SYSTEM_PLAN.md`
+
+Architecture document for scaling the public library beyond skill articles. Covers:
+
+- distinction between skills, tools, plugins, and stacks
+- capability-surface framing for tool design
+- plugin packaging and ecosystem integration
+- metadata and taxonomy needed for scalable publishing
+
+---
+
+### AI Agent Editorial Roadmap
+
+**File:** `AI_AGENT_EDITORIAL_ROADMAP.md`
+
+Execution plan for how to publish the capability system as an actual content program. Covers:
+
+- the recommended starter guide path
+- the progression from first cluster to later clusters
+- a 90-day publishing sequence
+- how blog production should feed DJ and Ali's social workflow
+
+---
+
+### AI Agent Skills Brainstorm
+
+**File:** `AI_AGENT_SKILLS_BRAINSTORM.md`
+
+Prioritized backlog of stackable skill topics to publish. Covers:
+
+- foundational skills such as OAuth, webhooks, and browser handoff
+- provider skill clusters such as Google Workspace, Slack, Linear, Stripe, and HubSpot
+- compound stack recipes that connect external tools back into BuildOS
 
 ---
 
@@ -65,10 +120,13 @@ Comprehensive audit of existing blog content. Covers:
 
 Unpublished blog content ready for review:
 
-| Draft                                          | Topic                                | Status           |
-| ---------------------------------------------- | ------------------------------------ | ---------------- |
-| `BLOG_DRAFT_10_REASONS_SCOPED_CONVERSATION.md` | Scoped conversation benefits         | Ready for review |
-| `BLOG_DRAFT_ZOOM_IN_OUT.md`                    | Zoom as a skill (thought leadership) | Ready for review |
+| Draft                                                 | Topic                                      | Status           |
+| ----------------------------------------------------- | ------------------------------------------ | ---------------- |
+| `BLOG_DRAFT_10_REASONS_SCOPED_CONVERSATION.md`        | Scoped conversation benefits               | Ready for review |
+| `BLOG_DRAFT_ZOOM_IN_OUT.md`                           | Zoom as a skill (thought leadership)       | Ready for review |
+| `BLOG_DRAFT_HOW_TO_DO_SMART_AI_RESEARCH.md`           | AI research workflows and tooling          | Ready for review |
+| `BLOG_DRAFT_HOW_TO_GET_AI_TO_DO_MARKETING_FOR_YOU.md` | AI marketing strategy and operating system | Ready for review |
+| `BLOG_DRAFT_HOW_AI_AGENTS_SHOULD_USE_OAUTH.md`        | OAuth for agent integrations               | Ready for review |
 
 ---
 

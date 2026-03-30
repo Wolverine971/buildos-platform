@@ -536,6 +536,26 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		category: 'read'
 	},
+	get_workspace_overview: {
+		summary: 'Return a BuildOS-native workspace status summary across accessible projects.',
+		capabilities: [
+			'Highlights active, blocked, overdue, and due-soon work across projects',
+			'Includes next milestones, upcoming events, and recent changes per project',
+			'Preferred first step for broad workspace status questions'
+		],
+		contexts: ['base', 'global', 'project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
+	get_project_overview: {
+		summary: 'Return a BuildOS-native status summary for one project by ID or name query.',
+		capabilities: [
+			'Resolves a named project when the exact ID is not yet known',
+			'Highlights top active tasks, milestones, risks, upcoming events, and recent changes',
+			'Preferred first step for project status questions'
+		],
+		contexts: ['base', 'global', 'project', 'project_audit', 'project_forecast'],
+		category: 'read'
+	},
 	search_user_contacts: {
 		summary: 'Search user-owned contact memory by name, relationship, and method metadata.',
 		capabilities: [

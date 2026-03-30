@@ -571,6 +571,15 @@ export interface GetUserProfileOverviewArgs {
 	limit?: number;
 }
 
+export interface GetWorkspaceOverviewArgs {
+	project_limit?: number;
+}
+
+export interface GetProjectOverviewArgs {
+	project_id?: string;
+	query?: string;
+}
+
 export interface GetEntityRelationshipsArgs {
 	entity_id: string;
 	direction?: 'outgoing' | 'incoming' | 'both';

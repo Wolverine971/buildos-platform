@@ -49,6 +49,59 @@ function createProjectRpcSupabaseMock(payload: Record<string, unknown>) {
 	return { rpc, from } as any;
 }
 
+function createGlobalFallbackSupabaseMock(config: {
+	actorId?: string;
+	projectSummaries: Array<Record<string, any>>;
+	goals: QueryResult;
+	milestones: QueryResult;
+	plans: QueryResult;
+	logs: QueryResult;
+}) {
+	const rpc = vi.fn().mockImplementation((fn: string) => {
+		if (fn === 'ensure_actor_for_user') {
+			return Promise.resolve({ data: config.actorId ?? 'actor-1', error: null });
+		}
+		if (fn === 'get_onto_project_summaries_v1') {
+			return Promise.resolve({ data: config.projectSummaries, error: null });
+		}
+		return Promise.resolve({ data: null, error: null });
+	});
+	const from = vi.fn().mockImplementation((table: string) => {
+		if (table === 'onto_goals') {
+			const is = vi.fn().mockResolvedValue(config.goals);
+			const inFn = vi.fn().mockReturnValue({ is });
+			const select = vi.fn().mockReturnValue({ in: inFn });
+			return { select };
+		}
+
+		if (table === 'onto_milestones') {
+			const is = vi.fn().mockResolvedValue(config.milestones);
+			const inFn = vi.fn().mockReturnValue({ is });
+			const select = vi.fn().mockReturnValue({ in: inFn });
+			return { select };
+		}
+
+		if (table === 'onto_plans') {
+			const is = vi.fn().mockResolvedValue(config.plans);
+			const inFn = vi.fn().mockReturnValue({ is });
+			const select = vi.fn().mockReturnValue({ in: inFn });
+			return { select };
+		}
+
+		if (table === 'onto_project_logs') {
+			const limit = vi.fn().mockResolvedValue(config.logs);
+			const order = vi.fn().mockReturnValue({ limit });
+			const inFn = vi.fn().mockReturnValue({ order });
+			const select = vi.fn().mockReturnValue({ in: inFn });
+			return { select };
+		}
+
+		throw new Error(`Unexpected table in global fallback mock: ${table}`);
+	});
+
+	return { rpc, from } as any;
+}
+
 afterEach(() => {
 	vi.useRealTimers();
 });
@@ -168,7 +221,7 @@ describe('loadFastChatPromptContext daily_brief', () => {
 });
 
 describe('loadFastChatPromptContext global', () => {
-	it('builds compact portfolio summaries with per-project limits and no doc_structure', async () => {
+	it('builds compact portfolio summaries from the fallback loader with per-project limits and no doc_structure', async () => {
 		vi.useFakeTimers();
 		const now = new Date('2026-02-15T20:07:18.308Z');
 		vi.setSystemTime(now);
@@ -177,194 +230,246 @@ describe('loadFastChatPromptContext global', () => {
 		const isoFromDays = (daysFromNow: number): string =>
 			new Date(now.getTime() + daysFromNow * dayMs).toISOString();
 
-		const supabase = createProjectRpcSupabaseMock({
-			projects: [
+		const supabase = createGlobalFallbackSupabaseMock({
+			projectSummaries: [
 				{
 					id: 'proj-1',
 					name: 'Project One',
-					state_key: 'active',
 					description: 'Project one',
-					start_at: null,
-					end_at: null,
+					icon_svg: null,
+					icon_concept: null,
+					icon_generated_at: null,
+					icon_generation_source: null,
+					icon_generation_prompt: null,
+					type_key: 'software',
+					state_key: 'active',
+					props: {},
+					facet_context: null,
+					facet_scale: null,
+					facet_stage: null,
+					created_at: isoFromDays(-10),
+					updated_at: isoFromDays(0),
+					task_count: 0,
+					goal_count: 5,
+					plan_count: 5,
+					document_count: 0,
+					owner_actor_id: 'actor-1',
+					access_role: 'owner',
+					access_level: 'admin',
+					is_shared: false,
 					next_step_short: null,
-					updated_at: isoFromDays(0)
+					next_step_long: null,
+					next_step_source: null,
+					next_step_updated_at: null
 				},
 				{
 					id: 'proj-2',
 					name: 'Project Two',
-					state_key: 'active',
 					description: 'Project two',
-					start_at: null,
-					end_at: null,
+					icon_svg: null,
+					icon_concept: null,
+					icon_generated_at: null,
+					icon_generation_source: null,
+					icon_generation_prompt: null,
+					type_key: 'software',
+					state_key: 'active',
+					props: {},
+					facet_context: null,
+					facet_scale: null,
+					facet_stage: null,
+					created_at: isoFromDays(-20),
+					updated_at: isoFromDays(-1),
+					task_count: 0,
+					goal_count: 1,
+					plan_count: 0,
+					document_count: 0,
+					owner_actor_id: 'actor-2',
+					access_role: 'editor',
+					access_level: 'write',
+					is_shared: true,
 					next_step_short: null,
-					updated_at: isoFromDays(-1)
+					next_step_long: null,
+					next_step_source: null,
+					next_step_updated_at: null
 				}
 			],
-			goals: [
-				{
-					id: 'goal-completed',
+			goals: {
+				data: [
+					{
+						id: 'goal-completed',
+						project_id: 'proj-1',
+						name: 'Completed Goal',
+						description: null,
+						state_key: 'completed',
+						target_date: isoFromDays(1),
+						completed_at: isoFromDays(-1),
+						updated_at: isoFromDays(0)
+					},
+					{
+						id: 'goal-overdue',
+						project_id: 'proj-1',
+						name: 'Overdue Goal',
+						description: null,
+						state_key: 'active',
+						target_date: isoFromDays(-1),
+						completed_at: null,
+						updated_at: isoFromDays(-2)
+					},
+					{
+						id: 'goal-due-soon',
+						project_id: 'proj-1',
+						name: 'Soon Goal',
+						description: null,
+						state_key: 'active',
+						target_date: isoFromDays(2),
+						completed_at: null,
+						updated_at: isoFromDays(-3)
+					},
+					{
+						id: 'goal-future',
+						project_id: 'proj-1',
+						name: 'Future Goal',
+						description: null,
+						state_key: 'active',
+						target_date: isoFromDays(14),
+						completed_at: null,
+						updated_at: isoFromDays(-4)
+					},
+					{
+						id: 'goal-no-date',
+						project_id: 'proj-1',
+						name: 'No Date Goal',
+						description: null,
+						state_key: 'active',
+						target_date: null,
+						completed_at: null,
+						updated_at: isoFromDays(-5)
+					},
+					{
+						id: 'goal-proj-2',
+						project_id: 'proj-2',
+						name: 'Project Two Goal',
+						description: null,
+						state_key: 'active',
+						target_date: null,
+						completed_at: null,
+						updated_at: isoFromDays(-2)
+					}
+				],
+				error: null
+			},
+			milestones: {
+				data: [
+					{
+						id: 'milestone-overdue',
+						project_id: 'proj-1',
+						title: 'Overdue Milestone',
+						description: null,
+						state_key: 'pending',
+						due_at: isoFromDays(-1),
+						completed_at: null,
+						updated_at: isoFromDays(-2)
+					},
+					{
+						id: 'milestone-soon',
+						project_id: 'proj-1',
+						title: 'Soon Milestone',
+						description: null,
+						state_key: 'in_progress',
+						due_at: isoFromDays(2),
+						completed_at: null,
+						updated_at: isoFromDays(-3)
+					},
+					{
+						id: 'milestone-future',
+						project_id: 'proj-1',
+						title: 'Future Milestone',
+						description: null,
+						state_key: 'pending',
+						due_at: isoFromDays(14),
+						completed_at: null,
+						updated_at: isoFromDays(-4)
+					},
+					{
+						id: 'milestone-no-date',
+						project_id: 'proj-1',
+						title: 'No Date Milestone',
+						description: null,
+						state_key: 'pending',
+						due_at: null,
+						completed_at: null,
+						updated_at: isoFromDays(-5)
+					},
+					{
+						id: 'milestone-completed',
+						project_id: 'proj-1',
+						title: 'Completed Milestone',
+						description: null,
+						state_key: 'completed',
+						due_at: isoFromDays(1),
+						completed_at: isoFromDays(-1),
+						updated_at: isoFromDays(0)
+					}
+				],
+				error: null
+			},
+			plans: {
+				data: [
+					{
+						id: 'plan-active',
+						project_id: 'proj-1',
+						name: 'Active Plan',
+						description: null,
+						state_key: 'active',
+						updated_at: isoFromDays(-8)
+					},
+					{
+						id: 'plan-blocked',
+						project_id: 'proj-1',
+						name: 'Blocked Plan',
+						description: null,
+						state_key: 'blocked',
+						updated_at: isoFromDays(-1)
+					},
+					{
+						id: 'plan-todo',
+						project_id: 'proj-1',
+						name: 'Todo Plan',
+						description: null,
+						state_key: 'todo',
+						updated_at: isoFromDays(-2)
+					},
+					{
+						id: 'plan-draft',
+						project_id: 'proj-1',
+						name: 'Draft Plan',
+						description: null,
+						state_key: 'draft',
+						updated_at: isoFromDays(-3)
+					},
+					{
+						id: 'plan-completed',
+						project_id: 'proj-1',
+						name: 'Completed Plan',
+						description: null,
+						state_key: 'completed',
+						updated_at: isoFromDays(0)
+					}
+				],
+				error: null
+			},
+			logs: {
+				data: Array.from({ length: 8 }, (_, index) => ({
 					project_id: 'proj-1',
-					name: 'Completed Goal',
-					description: null,
-					state_key: 'completed',
-					target_date: isoFromDays(1),
-					completed_at: isoFromDays(-1),
-					updated_at: isoFromDays(0)
-				},
-				{
-					id: 'goal-overdue',
-					project_id: 'proj-1',
-					name: 'Overdue Goal',
-					description: null,
-					state_key: 'active',
-					target_date: isoFromDays(-1),
-					completed_at: null,
-					updated_at: isoFromDays(-2)
-				},
-				{
-					id: 'goal-due-soon',
-					project_id: 'proj-1',
-					name: 'Soon Goal',
-					description: null,
-					state_key: 'active',
-					target_date: isoFromDays(2),
-					completed_at: null,
-					updated_at: isoFromDays(-3)
-				},
-				{
-					id: 'goal-future',
-					project_id: 'proj-1',
-					name: 'Future Goal',
-					description: null,
-					state_key: 'active',
-					target_date: isoFromDays(14),
-					completed_at: null,
-					updated_at: isoFromDays(-4)
-				},
-				{
-					id: 'goal-no-date',
-					project_id: 'proj-1',
-					name: 'No Date Goal',
-					description: null,
-					state_key: 'active',
-					target_date: null,
-					completed_at: null,
-					updated_at: isoFromDays(-5)
-				},
-				{
-					id: 'goal-proj-2',
-					project_id: 'proj-2',
-					name: 'Project Two Goal',
-					description: null,
-					state_key: 'active',
-					target_date: null,
-					completed_at: null,
-					updated_at: isoFromDays(-2)
-				}
-			],
-			milestones: [
-				{
-					id: 'milestone-overdue',
-					project_id: 'proj-1',
-					title: 'Overdue Milestone',
-					description: null,
-					state_key: 'pending',
-					due_at: isoFromDays(-1),
-					completed_at: null,
-					updated_at: isoFromDays(-2)
-				},
-				{
-					id: 'milestone-soon',
-					project_id: 'proj-1',
-					title: 'Soon Milestone',
-					description: null,
-					state_key: 'in_progress',
-					due_at: isoFromDays(2),
-					completed_at: null,
-					updated_at: isoFromDays(-3)
-				},
-				{
-					id: 'milestone-future',
-					project_id: 'proj-1',
-					title: 'Future Milestone',
-					description: null,
-					state_key: 'pending',
-					due_at: isoFromDays(14),
-					completed_at: null,
-					updated_at: isoFromDays(-4)
-				},
-				{
-					id: 'milestone-no-date',
-					project_id: 'proj-1',
-					title: 'No Date Milestone',
-					description: null,
-					state_key: 'pending',
-					due_at: null,
-					completed_at: null,
-					updated_at: isoFromDays(-5)
-				},
-				{
-					id: 'milestone-completed',
-					project_id: 'proj-1',
-					title: 'Completed Milestone',
-					description: null,
-					state_key: 'completed',
-					due_at: isoFromDays(1),
-					completed_at: isoFromDays(-1),
-					updated_at: isoFromDays(0)
-				}
-			],
-			plans: [
-				{
-					id: 'plan-active',
-					project_id: 'proj-1',
-					name: 'Active Plan',
-					description: null,
-					state_key: 'active',
-					updated_at: isoFromDays(-8)
-				},
-				{
-					id: 'plan-blocked',
-					project_id: 'proj-1',
-					name: 'Blocked Plan',
-					description: null,
-					state_key: 'blocked',
-					updated_at: isoFromDays(-1)
-				},
-				{
-					id: 'plan-todo',
-					project_id: 'proj-1',
-					name: 'Todo Plan',
-					description: null,
-					state_key: 'todo',
-					updated_at: isoFromDays(-2)
-				},
-				{
-					id: 'plan-draft',
-					project_id: 'proj-1',
-					name: 'Draft Plan',
-					description: null,
-					state_key: 'draft',
-					updated_at: isoFromDays(-3)
-				},
-				{
-					id: 'plan-completed',
-					project_id: 'proj-1',
-					name: 'Completed Plan',
-					description: null,
-					state_key: 'completed',
-					updated_at: isoFromDays(0)
-				}
-			],
-			project_logs: Array.from({ length: 8 }, (_, index) => ({
-				project_id: 'proj-1',
-				entity_type: 'task',
-				entity_id: `task-${index + 1}`,
-				action: 'updated',
-				created_at: isoFromDays(-(index + 1) / 10),
-				after_data: { title: `Task ${index + 1}` },
-				before_data: null
-			}))
+					entity_type: 'task',
+					entity_id: `task-${index + 1}`,
+					action: 'updated',
+					created_at: isoFromDays(-(index + 1) / 10),
+					after_data: { title: `Task ${index + 1}` },
+					before_data: null
+				})),
+				error: null
+			}
 		});
 
 		const context = await loadFastChatPromptContext({
@@ -377,7 +482,7 @@ describe('loadFastChatPromptContext global', () => {
 		expect(data.projects).toHaveLength(2);
 		expect(data.projects[0].doc_structure).toBeUndefined();
 		expect(data.context_meta).toMatchObject({
-			source: 'rpc',
+			source: 'fallback',
 			project_count: 2,
 			includes_doc_structure: false,
 			entity_limits_per_project: {
@@ -407,6 +512,10 @@ describe('loadFastChatPromptContext global', () => {
 			'plan-draft'
 		]);
 		expect(data.project_recent_activity['proj-1']).toHaveLength(6);
+		expect(supabase.rpc.mock.calls.map(([fn]) => fn)).toEqual([
+			'ensure_actor_for_user',
+			'get_onto_project_summaries_v1'
+		]);
 	});
 });
 

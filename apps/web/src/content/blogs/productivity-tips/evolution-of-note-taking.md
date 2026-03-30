@@ -25,6 +25,29 @@ pic: 'note-taking-evolution'
 path: apps/web/src/content/blogs/productivity-tips/evolution-of-note-taking.md
 ---
 
+<!--
+BLOG TODO - 2026-03-30
+Priority: High
+
+Why this needs work:
+- This post is structurally fine, but it contains stale BuildOS pricing.
+- Some of the product/category language also feels older than the current homepage voice.
+- This is a relatively quick win compared with the heavier comparison rewrites.
+
+What to update:
+- Change BuildOS pricing references from `$12/mo` to the current `$20/month` with `14-day free trial`.
+- Re-scan for older "AI-powered organization" / heavier ontology language that no longer matches the cleaner landing-page messaging.
+- Refresh tool descriptions where needed so the Notion / AI sections feel current.
+
+Things to explore:
+- Does this piece need a stronger creator-centered conclusion?
+- Should the comparison table be simplified to avoid generic productivity-history energy?
+- Is the current title still the best framing for search and positioning?
+
+Current source checks:
+- Local pricing page: apps/web/src/routes/pricing/+page.svelte
+-->
+
 You've tried the systems. GTD, Notion, Obsidian. Maybe even a bullet journal phase. And yet here you are, with ideas scattered across six apps and a nagging feeling that something important is buried in a note you'll never find.
 
 The fundamental problem hasn't changed: how do we capture, organize, and build upon our ideas effectively?
@@ -192,15 +215,15 @@ Traditional productivity systems assumed humans would do all the cognitive work.
 
 ## Choosing Your System
 
-| If You...             | Best System    | Setup Time | Monthly Cost    |
-| --------------------- | -------------- | ---------- | --------------- |
-| Love manual control   | Bullet Journal | 30 min     | ~$10 (notebook) |
-| Need team features    | Notion         | 4-6 hours  | $10-20/user     |
-| Want linking/graphs   | Obsidian       | 2-3 hours  | $0-8            |
-| Work offline often    | GTD + Paper    | 2 hours    | ~$20 (supplies) |
-| Just need quick notes | Apple Notes    | 0 min      | Free            |
-| Hate organizing       | BuildOS        | 5 min      | $12/mo          |
-| Use AI daily          | BuildOS        | 5 min      | $12/mo          |
+| If You...             | Best System    | Setup Time | Monthly Cost               |
+| --------------------- | -------------- | ---------- | -------------------------- |
+| Love manual control   | Bullet Journal | 30 min     | ~$10 (notebook)            |
+| Need team features    | Notion         | 4-6 hours  | $10-20/user                |
+| Want linking/graphs   | Obsidian       | 2-3 hours  | $0-8                       |
+| Work offline often    | GTD + Paper    | 2 hours    | ~$20 (supplies)            |
+| Just need quick notes | Apple Notes    | 0 min      | Free                       |
+| Hate organizing       | BuildOS        | 5 min      | $20/mo after free trial    |
+| Use AI daily          | BuildOS        | 5 min      | $20/mo after free trial    |
 
 There's no universal answer. The right system depends on how you work:
 

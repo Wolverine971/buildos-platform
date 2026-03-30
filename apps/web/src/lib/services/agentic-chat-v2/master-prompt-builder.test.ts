@@ -24,23 +24,81 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		});
 
 		expect(prompt).toContain('Canonical ontology CRUD/search family');
+		expect(prompt).toContain('<buildos_capabilities>');
+		expect(prompt).toContain(
+			'Workspace and project overviews: Get BuildOS-native status snapshots for the whole workspace or one project without assembling generic ontology reads by hand.'
+		);
+		expect(prompt).toContain(
+			'Calendar management: Check the calendar, create or reschedule events, cancel events, and manage project calendar mapping.'
+		);
+		expect(prompt).toContain('<capability_system>');
+		expect(prompt).toContain('<overview_guidance>');
+		expect(prompt).toContain('Workspace-wide status -> util.workspace.overview');
+		expect(prompt).toContain('Named or in-scope project status -> util.project.overview');
+		expect(prompt).toContain('Think in three layers:');
+		expect(prompt).toContain('1) Capability = what BuildOS can do for the user.');
+		expect(prompt).toContain(
+			'If it does not have a dedicated skill, go straight to targeted exact-op help.'
+		);
+		expect(prompt).toContain('<capability_catalog>');
+		expect(prompt).toContain(
+			'Workspace and project overviews -> no dedicated skill yet; direct discovery paths: util.workspace.overview, util.project.overview'
+		);
+		expect(prompt).toContain(
+			'Calendar management -> preferred skill: cal.skill; direct discovery paths: cal.event, cal.project'
+		);
+		expect(prompt).toContain(
+			'People and profile context -> preferred skill: util.people.skill; direct discovery paths: util.profile, util.contact'
+		);
+		expect(prompt).toContain(
+			'Workflow audit -> preferred skill: workflow.audit.skill; direct discovery paths: onto.project.graph, onto.task, onto.plan, onto.goal, onto.milestone, onto.risk, onto.document.tree, cal.event'
+		);
+		expect(prompt).toContain('<skill_catalog>');
+		expect(prompt).toContain(
+			'cal.skill: Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes, scope decisions, and project calendar mapping.'
+		);
+		expect(prompt).toContain(
+			'onto.task.skill: Task workflow playbook for deciding when work should become a task and how to manage task scope, ownership, schedule, and relationships safely.'
+		);
+		expect(prompt).toContain(
+			'onto.document.skill: Project document hierarchy playbook for doc tree operations, unlinked docs, task docs, and document CRUD rules.'
+		);
+		expect(prompt).toContain(
+			'onto.plan.skill: Plan workflow playbook for deciding when to create plans, structuring them well, and connecting plans to tasks, goals, milestones, and documents.'
+		);
+		expect(prompt).toContain(
+			'util.people.skill: People context playbook for profile lookup, contact search and updates, candidate resolution, and safe handling of sensitive contact values.'
+		);
+		expect(prompt).toContain('workflow.audit.skill: Project health audit playbook');
+		expect(prompt).toContain('workflow.forecast.skill: Project forecast playbook');
 		expect(prompt).toContain('In tool_exec.op, use only canonical ops.');
 		expect(prompt).toContain('Never use legacy op strings in tool_exec.op');
 		expect(prompt).toContain(
-			'Use targeted discovery first unless the exact op and args are already known in-turn.'
+			'Use the capability catalog in the prompt to choose the right BuildOS domain first.'
 		);
-		expect(prompt).toContain('task docs / task workspace docs -> onto.task.docs');
 		expect(prompt).toContain(
-			'contacts -> util.contact, web/current info/URLs -> util.web, BuildOS product/docs/workflows -> util.buildos, field/schema questions -> util.schema, unknown namespace -> root.'
+			'For routine status questions about the workspace or a named project, prefer capabilities.overview first.'
+		);
+		expect(prompt).toContain(
+			'For workspace-wide status questions like "what is happening with my projects?", prefer util.workspace.overview instead of generic ontology search/list assembly.'
+		);
+		expect(prompt).toContain(
+			'For one-project status questions like "what is going on with 9takes?", prefer util.project.overview with args.project_id when known or args.query when the name must be resolved.'
 		);
 		expect(prompt).toContain(
 			'tool_help can return a directory, a skill playbook, or an exact op schema.'
 		);
 		expect(prompt).toContain(
-			'Fetch a skill only when the workflow is multi-step, stateful, or easy to get wrong.'
+			'If the chosen capability has a skill and the work is multi-step, stateful, or easy to get wrong, fetch that skill first.'
 		);
 		expect(prompt).toContain(
-			'Good skill entry points: calendar/event work or project calendar mapping -> cal.skill; project document tree, unlinked docs, or task docs -> onto.document.skill; plan creation or plan restructuring -> onto.plan.skill.'
+			'Do not use tool_exec speculatively or "just to try." Only call it when you know the exact canonical op and have concrete args that satisfy that op schema.'
+		);
+		expect(prompt).toContain(
+			'A missing required parameter means you are not ready to call that op yet.'
+		);
+		expect(prompt).toContain(
+			'If a capability has no dedicated skill, go straight to targeted exact-op help instead of hunting for a skill that does not exist.'
 		);
 		expect(prompt).toContain(
 			'User profile context is NOT preloaded. If personalization is needed, call tool_help({ path: "util.profile" }) and then util.profile.overview.'
@@ -89,6 +147,8 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'For "link unlinked docs" requests, call onto.document.tree.get once, then issue onto.document.tree.move for each unlinked document ID.'
 		);
 		expect(prompt).not.toContain('Common ops you can often use directly');
+		expect(prompt).not.toContain('Path heuristic:');
+		expect(prompt).not.toContain('Good skill entry points:');
 	});
 
 	it('omits the tool discovery block when gateway mode is disabled', () => {
@@ -101,7 +161,18 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		});
 
 		expect(prompt).not.toContain('<tool_discovery>');
+		expect(prompt).not.toContain('<capability_system>');
+		expect(prompt).not.toContain('<overview_guidance>');
+		expect(prompt).not.toContain('<capability_catalog>');
+		expect(prompt).not.toContain('<skill_catalog>');
 		expect(prompt).not.toContain('Canonical ontology CRUD/search family');
+		expect(prompt).toContain('<buildos_capabilities>');
+		expect(prompt).toContain(
+			'Web research: Search the web, inspect URLs, and pull in current external information when needed.'
+		);
+		expect(prompt).toContain(
+			'Workflow audit: Review project health, structure, blockers, stale work, and missing coverage using BuildOS project data.'
+		);
 	});
 
 	it('falls back project_id to entity_id for project context', () => {
@@ -132,6 +203,9 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		expect(prompt).toContain(
 			'Never pass strings like "none", "null", or "undefined" as any *_id or entity_id value.'
 		);
+		expect(prompt).toContain(
+			'Do not use tools speculatively or "just to try." If you do not yet know the exact op schema or the required IDs/fields, fetch tool_help or read/list/search first.'
+		);
 	});
 
 	it('includes member role planning guardrails', () => {
@@ -161,5 +235,49 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		});
 
 		expect(prompt).not.toContain('<user_profile>');
+	});
+
+	it('compacts agent_state entities and linked documents at prompt time', () => {
+		const prompt = buildMasterPrompt({
+			contextType: 'project',
+			projectId: 'proj-1',
+			entityId: 'proj-1',
+			agentState: JSON.stringify({
+				sessionId: 'session-1',
+				items: [],
+				assumptions: [],
+				expectations: [],
+				tentative_hypotheses: [],
+				current_understanding: {
+					entities: [{ id: 'goal-1', kind: 'goal', name: 'Goal One' }],
+					dependencies: []
+				}
+			}),
+			data: {
+				doc_structure: {
+					version: 1,
+					root: [{ id: 'doc-linked', order: 0, title: 'Linked Doc' }]
+				},
+				documents: [
+					{
+						id: 'doc-linked',
+						title: 'Linked Doc',
+						in_doc_structure: true,
+						is_unlinked: false
+					},
+					{
+						id: 'doc-unlinked',
+						title: 'Unlinked Doc',
+						in_doc_structure: false,
+						is_unlinked: true
+					}
+				]
+			}
+		});
+
+		expect(prompt).not.toContain('"sessionId"');
+		expect(prompt).not.toContain('"entities"');
+		expect(prompt).toContain('"id": "doc-unlinked"');
+		expect(prompt).not.toContain('"in_doc_structure": true');
 	});
 });

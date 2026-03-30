@@ -97,7 +97,7 @@
 		{onVoiceNoteSegmentSaved}
 		{onVoiceNoteSegmentError}
 		class="w-full"
-		containerClass={`rounded-lg border border-border bg-background shadow-ink-inner ${
+		containerClass={`rounded-lg border border-border bg-card shadow-ink focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/30 transition-all ${
 			mode === 'braindump' ? 'h-full' : ''
 		}`}
 		textareaClass="border-none bg-transparent px-3 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-4 sm:py-3"

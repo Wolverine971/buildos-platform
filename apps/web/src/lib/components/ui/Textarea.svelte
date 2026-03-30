@@ -51,7 +51,7 @@
 
 	// Wrapper classes - Inkprint design with GRID texture
 	// Per Inkprint Design System: "Grid = Input, editable, writable"
-	let wrapperClasses = 'relative overflow-hidden tx tx-grid tx-weak bg-card';
+	let wrapperClasses = 'relative overflow-hidden tx tx-grid tx-weak bg-card rounded-lg ';
 
 	let textareaClasses = $derived(
 		twMerge(

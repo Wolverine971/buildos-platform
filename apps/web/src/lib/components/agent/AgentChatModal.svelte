@@ -4363,7 +4363,7 @@
 {#snippet chatComposerFooter()}
 	<div
 		bind:this={composerContainer}
-		class="flex-shrink-0 border-t border-border bg-card px-3 pt-2 pb-[max(0.25rem,env(safe-area-inset-bottom))] sm:px-4 sm:pt-2.5 tx tx-grain tx-weak"
+		class="flex-shrink-0 overflow-visible bg-background/60 px-4 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3"
 	>
 		<AgentComposer
 			bind:voiceInputRef

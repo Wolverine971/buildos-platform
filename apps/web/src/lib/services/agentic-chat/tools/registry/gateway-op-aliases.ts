@@ -42,7 +42,16 @@ const GATEWAY_HELP_PATH_ALIASES: Record<string, string> = {
 	'onto_projects.doc_structure.path': 'onto.document.path',
 	'calendar.skill': 'cal.skill',
 	'calendar.skills': 'cal.skill',
-	'cal.skills': 'cal.skill'
+	'cal.skills': 'cal.skill',
+	'task.skill': 'onto.task.skill',
+	'tasks.skill': 'onto.task.skill',
+	'people.skill': 'util.people.skill',
+	'contacts.skill': 'util.people.skill',
+	'profile.skill': 'util.people.skill',
+	'audit.skill': 'workflow.audit.skill',
+	'forecast.skill': 'workflow.forecast.skill',
+	'workflow.audit': 'workflow.audit.skill',
+	'workflow.forecast': 'workflow.forecast.skill'
 };
 
 export function normalizeGatewayOpName(op: string): string {

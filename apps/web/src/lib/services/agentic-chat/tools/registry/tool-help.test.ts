@@ -8,13 +8,112 @@ describe('getToolHelp', () => {
 
 		expect(help.type).toBe('directory');
 		expect(help.path).toBe('root');
+		expect(help.groups).toContain('capabilities');
+		expect(help.groups).toContain('skills');
+		expect(help.groups).toContain('workflow');
+		expect(Array.isArray(help.capabilities)).toBe(true);
+		expect(help.capabilities.map((item: any) => item.name)).toContain('capabilities.overview');
+		expect(help.capabilities.map((item: any) => item.name)).toContain('capabilities.calendar');
+		expect(help.capabilities.map((item: any) => item.name)).toContain(
+			'capabilities.workflow_audit'
+		);
+		expect(Array.isArray(help.skills)).toBe(true);
+		expect(help.skills.map((item: any) => item.name)).toContain('cal.skill');
+		expect(help.skills.map((item: any) => item.name)).toContain('onto.task.skill');
+		expect(help.skills.map((item: any) => item.name)).toContain('util.people.skill');
 		expect(help.command_contract?.tool_exec?.required).toEqual(['op', 'args']);
 		expect(Array.isArray(help.workflow)).toBe(true);
-		expect(help.workflow.join(' ')).toContain('util.contact');
-		expect(help.workflow.join(' ')).toContain('util.web');
+		expect(help.workflow.join(' ')).toContain('capabilities.overview');
+		expect(help.workflow.join(' ')).toContain('util.workspace.overview');
+		expect(help.workflow.join(' ')).toContain('util.project.overview');
+		expect(help.workflow.join(' ')).toContain('capabilities.calendar');
+		expect(help.workflow.join(' ')).toContain('capabilities.workflow_audit');
+		expect(help.workflow.join(' ')).toContain('tool_help({ path: "skills" })');
 		expect(help.workflow.join(' ')).toContain('tool_help({ path: help_path })');
 		expect(Array.isArray(help.examples)).toBe(true);
 		expect(help.examples.length).toBeGreaterThan(0);
+	});
+
+	it('lists the capability catalog at the top level', () => {
+		const help = getToolHelp('capabilities', { format: 'short', include_examples: true });
+
+		expect(help.type).toBe('directory');
+		expect(help.path).toBe('capabilities');
+		expect(Array.isArray(help.items)).toBe(true);
+		expect(help.items.map((item: any) => item.name)).toContain('capabilities.overview');
+		expect(help.items.map((item: any) => item.name)).toContain('capabilities.calendar');
+		expect(help.items.map((item: any) => item.name)).toContain('capabilities.documents');
+		expect(help.items.map((item: any) => item.name)).toContain(
+			'capabilities.workflow_forecast'
+		);
+	});
+
+	it('returns overview capability detail with direct overview paths', () => {
+		const help = getToolHelp('capabilities.overview', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('capability');
+		expect(help.path).toBe('capabilities.overview');
+		expect(help.skill_entrypoints).toEqual([]);
+		expect(help.direct_paths).toContain('util.workspace.overview');
+		expect(help.direct_paths).toContain('util.project.overview');
+		expect(help.notes.join(' ')).toContain('what is happening with my projects');
+	});
+
+	it('returns capability detail with skill entrypoints', () => {
+		const help = getToolHelp('capabilities.calendar', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('capability');
+		expect(help.path).toBe('capabilities.calendar');
+		expect(help.skill_entrypoints).toContain('cal.skill');
+		expect(help.direct_paths).toContain('cal.event');
+		expect(help.what_you_can_do.join(' ')).toContain('Create, update, and delete events');
+	});
+
+	it('returns workflow capability detail with workflow skill entrypoints', () => {
+		const help = getToolHelp('capabilities.workflow_audit', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('capability');
+		expect(help.path).toBe('capabilities.workflow_audit');
+		expect(help.skill_entrypoints).toContain('workflow.audit.skill');
+		expect(help.direct_paths).toContain('onto.project.graph');
+	});
+
+	it('lists the global skill catalog', () => {
+		const help = getToolHelp('skills', { format: 'short', include_examples: true });
+
+		expect(help.type).toBe('directory');
+		expect(help.path).toBe('skills');
+		expect(Array.isArray(help.items)).toBe(true);
+		expect(help.items.map((item: any) => item.name)).toContain('cal.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('onto.task.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('onto.document.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('onto.plan.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('util.people.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('workflow.audit.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('workflow.forecast.skill');
+	});
+
+	it('returns task skill playbook for onto.task.skill', () => {
+		const help = getToolHelp('onto.task.skill', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('skill');
+		expect(help.path).toBe('onto.task.skill');
+		expect(help.related_ops).toContain('onto.task.create');
+		expect(help.related_ops).toContain('onto.task.update');
+		expect(help.notes.join(' ')).toContain('future human work');
+		expect(help.guardrails.join(' ')).toContain('do now in chat');
 	});
 
 	it('returns op help with required args and concrete example template', () => {
@@ -35,6 +134,36 @@ describe('getToolHelp', () => {
 		expect(Object.keys(help.example_tool_exec?.args ?? {}).length).toBeGreaterThan(1);
 		expect(Array.isArray(help.examples)).toBe(true);
 		expect(help.examples.length).toBeGreaterThan(0);
+	});
+
+	it('returns workspace overview op guidance for status questions', () => {
+		const help = getToolHelp('util.workspace.overview', {
+			format: 'full',
+			include_examples: true,
+			include_schemas: true
+		});
+
+		expect(help.type).toBe('op');
+		expect(help.op).toBe('util.workspace.overview');
+		expect(Array.isArray(help.notes)).toBe(true);
+		expect(help.notes.join(' ')).toContain('workspace-wide status questions');
+		expect(help.examples[0]?.tool_exec?.args?.project_limit).toBe(8);
+	});
+
+	it('returns project overview op guidance for named project status questions', () => {
+		const help = getToolHelp('util.project.overview', {
+			format: 'full',
+			include_examples: true,
+			include_schemas: true
+		});
+
+		expect(help.type).toBe('op');
+		expect(help.op).toBe('util.project.overview');
+		expect(Array.isArray(help.notes)).toBe(true);
+		expect(help.notes.join(' ')).toContain('args.project_id');
+		expect(help.notes.join(' ')).toContain('args.query');
+		expect(help.examples[0]?.tool_exec?.args?.query).toBe('9takes');
+		expect(help.examples[1]?.tool_exec?.args?.project_id).toBe('<project_id_uuid>');
 	});
 
 	it('includes query guidance for search ops', () => {
@@ -170,6 +299,20 @@ describe('getToolHelp', () => {
 		expect(help.items.map((item: any) => item.name)).toContain('onto.plan.create');
 	});
 
+	it('returns people skill playbook for util.people.skill', () => {
+		const help = getToolHelp('util.people.skill', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('skill');
+		expect(help.path).toBe('util.people.skill');
+		expect(help.related_ops).toContain('util.contact.search');
+		expect(help.related_ops).toContain('util.profile.overview');
+		expect(help.guardrails.join(' ')).toContain('redacted');
+		expect(help.notes.join(' ')).toContain('silent merging');
+	});
+
 	it('supports profile overview op discovery', () => {
 		const help = getToolHelp('util.profile.overview', {
 			format: 'short',
@@ -218,5 +361,43 @@ describe('getToolHelp', () => {
 		expect(Array.isArray(help.items)).toBe(true);
 		expect(help.items.map((item: any) => item.name)).toContain('util.contact.search');
 		expect(help.items.map((item: any) => item.name)).toContain('util.contact.upsert');
+	});
+
+	it('lists people skill under util namespace and supports alias lookup', () => {
+		const utilHelp = getToolHelp('util', {
+			format: 'short',
+			include_examples: true
+		});
+		const aliasHelp = getToolHelp('people.skill', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(utilHelp.type).toBe('directory');
+		expect(utilHelp.items.map((item: any) => item.name)).toContain('util.people.skill');
+		expect(aliasHelp.type).toBe('skill');
+		expect(aliasHelp.path).toBe('util.people.skill');
+	});
+
+	it('lists workflow skill namespace and forecast playbook', () => {
+		const workflowHelp = getToolHelp('workflow', {
+			format: 'short',
+			include_examples: true
+		});
+		const forecastHelp = getToolHelp('workflow.forecast.skill', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(workflowHelp.type).toBe('directory');
+		expect(workflowHelp.path).toBe('workflow');
+		expect(workflowHelp.items.map((item: any) => item.name)).toContain('workflow.audit.skill');
+		expect(workflowHelp.items.map((item: any) => item.name)).toContain(
+			'workflow.forecast.skill'
+		);
+		expect(forecastHelp.type).toBe('skill');
+		expect(forecastHelp.path).toBe('workflow.forecast.skill');
+		expect(forecastHelp.related_ops).toContain('cal.event.list');
+		expect(forecastHelp.guardrails.join(' ')).toContain('Do not invent dates');
 	});
 });

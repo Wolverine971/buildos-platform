@@ -24,17 +24,42 @@ seo:
 path: apps/web/src/content/blogs/notion-recurring-tasks-complexity.md
 ---
 
+<!--
+BLOG TODO - 2026-03-30
+Priority: Highest
+
+Why this needs work:
+- This post currently overstates Notion's limitations around recurring tasks.
+- Current Notion docs now include database automations and recurring-template behavior.
+- The "Notion still cannot really automate this" framing is no longer reliable enough for a live comparison post.
+
+What to update:
+- Reframe from "Notion cannot do recurring tasks" to "Notion can do them, but the setup/maintenance cost is still much higher than BuildOS."
+- Re-check every sentence that implies impossible / unsupported / not automatable.
+- Keep the simplicity argument, but make it honest against current Notion capabilities.
+- Verify that every BuildOS recurrence example used here is supported exactly as written.
+
+Things to explore:
+- Is the strongest angle now setup friction, maintenance burden, or natural-language scheduling?
+- Should Thomas Frank remain the lead hook, or should this become a broader "recurring tasks should not feel like system design" article?
+- Would a comparison against current Notion automations be more credible than centering an older tutorial?
+
+Current source checks:
+- https://www.notion.com/en-gb/help/database-automations?nxtPslug=database-automations
+- https://www.notion.com/help/category/notion-ai
+-->
+
 I watched [Thomas Frank's YouTube short](https://youtube.com/shorts/yYNbf__-gx4) on creating recurring tasks in Notion.
 
 And I felt **physical pain**.
 
-Not because Thomas did anything wrong. He's brilliant. But because what he's explaining (the _minimum viable setup_ for recurring tasks in Notion) is **absurdly, unnecessarily complex**.
+Not because Thomas did anything wrong. He's brilliant. But because what he's explaining is the kind of workaround-heavy setup Notion users have often had to build for something that should feel much simpler.
 
 Let me show you what I mean.
 
-## The Notion Way: A 5-Property, Multi-Formula Journey to Insanity
+## One Notion Way: A 5-Property, Multi-Formula Journey to Insanity
 
-According to [Thomas Frank's comprehensive tutorial](https://thomasjfrank.com/how-to-create-recurring-tasks-repeat-due-dates-in-notion/), here's what you need to create recurring tasks in Notion:
+According to [Thomas Frank's comprehensive tutorial](https://thomasjfrank.com/how-to-create-recurring-tasks-repeat-due-dates-in-notion/), here's one common way users have set up recurring tasks in Notion:
 
 ### Required Database Properties (5 of them)
 
@@ -63,15 +88,15 @@ According to [Thomas Frank's comprehensive tutorial](https://thomasjfrank.com/ho
 5. Set Recur Interval for recurring tasks
 6. **Manually update Due dates after completion** ⚠️
 
-### The Critical Limitation
+### The Critical Limitation In This Workflow
 
 Here's Thomas Frank's own words:
 
 > "It's not possible to automate checkbox completion with date updates because Notion properties cannot be changed by both manual editing and formulas/automation simultaneously."
 
-**Translation: You have to manually update the due date every time you complete a recurring task.**
+**Translation: in this workflow, you have to manually update the due date every time you complete a recurring task.**
 
-Even with all this complexity, **Notion still can't actually automate recurring tasks**.
+Notion has added newer automation features since this tutorial, but the broader problem remains: recurring tasks in Notion still tend to push users toward building and maintaining a system instead of simply stating what they want.
 
 ## This Is Not a Power User Feature. This Is Product Failure.
 

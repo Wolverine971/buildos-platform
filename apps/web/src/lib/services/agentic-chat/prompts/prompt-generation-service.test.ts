@@ -22,20 +22,39 @@ describe('PromptGenerationService gateway tool instructions', () => {
 			contextType: 'global'
 		});
 
+		expect(prompt).toContain('## BuildOS Capabilities');
+		expect(prompt).toContain('## Capability System');
+		expect(prompt).toContain('## Capability Catalog');
+		expect(prompt).toContain('## Skill Catalog');
 		expect(prompt).toContain('## Tool Discovery Mode');
+		expect(prompt).toContain('Think in three layers:');
+		expect(prompt).toContain('1. Capability = what BuildOS can do for the user');
+		expect(prompt).toContain(
+			'Planning and task structuring -> preferred skill: onto.task.skill, onto.plan.skill; direct discovery paths: onto.plan, onto.task, onto.goal, onto.milestone, onto.edge'
+		);
+		expect(prompt).toContain(
+			'util.people.skill: People context playbook for profile lookup, contact search and updates, candidate resolution, and safe handling of sensitive contact values.'
+		);
 		expect(prompt).toContain('Canonical ontology CRUD/search family');
 		expect(prompt).toContain('In tool_exec.op, use only canonical ops.');
 		expect(prompt).toContain('Never use legacy op strings in tool_exec.op');
 		expect(prompt).toContain(
-			'Use targeted discovery first unless the exact op and args are already known in-turn.'
+			'Use the capability catalog in the prompt to choose the right BuildOS domain first.'
 		);
 		expect(prompt).toContain(
-			'Fetch a skill only when the workflow is multi-step, stateful, or easy to get wrong.'
+			'If the chosen capability has a skill and the work is multi-step, stateful, or easy to get wrong, fetch that skill first.'
 		);
 		expect(prompt).toContain(
-			'Good skill entry points: calendar/event work or project calendar mapping -> cal.skill; project document tree, unlinked docs, or task docs -> onto.document.skill; plan creation or plan restructuring -> onto.plan.skill.'
+			'Do not use tool_exec speculatively or "just to try." Only call it when you know the exact canonical op and have concrete args that satisfy that op schema.'
 		);
-		expect(prompt).toContain('contacts -> util.contact');
+		expect(prompt).toContain(
+			'A missing required parameter means you are not ready to call that op yet.'
+		);
+		expect(prompt).toContain(
+			'If a capability has no dedicated skill, go straight to targeted exact-op help instead of hunting for a skill that does not exist.'
+		);
+		expect(prompt).not.toContain('Path heuristic:');
+		expect(prompt).not.toContain('Good skill entry points:');
 		expect(prompt).toContain(
 			'User profile context is NOT preloaded. If personalization is needed, call tool_help({ path: "util.profile" }) and then util.profile.overview.'
 		);
@@ -68,6 +87,7 @@ describe('PromptGenerationService gateway tool instructions', () => {
 		});
 
 		expect(prompt).not.toContain('## Tool Discovery Mode');
+		expect(prompt).not.toContain('## Capability Catalog');
 		expect(prompt).not.toContain('Canonical ontology CRUD/search family');
 	});
 });

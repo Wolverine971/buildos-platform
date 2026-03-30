@@ -269,7 +269,7 @@
 					"readingTime": 8,
 					"excerpt": "ChatGPT remembers your name. BuildOS remembers your projects. Here's why that difference changes everything about AI-assisted work.",
 					"pic": "buildos-vs-chatgpt",
-					"path": "apps/web/src/content/blogs/buildos-vs-chatgpt-context-that-compounds.md",
+					"path": "apps/web/src/content/blogs/case-studies/buildos-vs-chatgpt-context-that-compounds.md",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/buildos-vs-chatgpt-context-that-compounds.md"
 				},
@@ -293,7 +293,7 @@
 					"readingTime": 8,
 					"excerpt": "Monday.com tracks what your team is doing. BuildOS figures out what you should be doing. Here's why the thinking phase matters more than you think.",
 					"pic": "buildos-vs-monday",
-					"path": "apps/web/src/content/blogs/buildos-vs-monday-thought-organization.md",
+					"path": "apps/web/src/content/blogs/case-studies/buildos-vs-monday-thought-organization.md",
 					"faq": [
 						{
 							"q": "Does Monday.com have AI features?",
@@ -333,7 +333,7 @@
 					"readingTime": 12,
 					"excerpt": "Notion's flexibility is a feature for neurotypical brains—and kryptonite for ADHD ones. A new approach to productivity is emerging that prioritizes context over complexity.",
 					"pic": "buildos-vs-notion-adhd-minds",
-					"path": "apps/web/src/content/blogs/buildos-vs-notion-adhd-minds.md",
+					"path": "apps/web/src/content/blogs/case-studies/buildos-vs-notion-adhd-minds.md",
 					"category": "case-studies",
 					"filePath": "src/content/blogs/case-studies/buildos-vs-notion-adhd-minds.md"
 				},
@@ -1388,7 +1388,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-03-29T18:56:00.051Z",
+	"generatedAt": "2026-03-30T04:05:26.392Z",
 	"totalPosts": 56,
 	"totalCategories": 6
 }

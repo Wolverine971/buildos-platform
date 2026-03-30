@@ -17,7 +17,7 @@ faq:
     - q: 'Does Monday.com have AI features?'
       a: 'Yes. monday AI can summarize conversations, generate text for updates, auto-fill column values, and query board data in natural language. However, it operates within your existing board structure — it helps you work with data that is already organized, but cannot create structure from unstructured thoughts or brain dumps.'
     - q: 'How much does Monday.com cost for one person?'
-      a: 'All paid Monday.com plans require a minimum of 3 seats. On the Standard plan at roughly $14 per seat per month, a solo user pays approximately $42 per month. On the Pro plan at roughly $27 per seat per month, that comes to approximately $81 per month — even if only one person is using it.'
+      a: 'Monday.com has a free plan for up to 2 seats. Paid plans use seat bundles that start at 3 seats. At current annual list pricing, Standard is about $12 per seat per month and Pro is about $19 per seat per month, so a solo user effectively starts around $36/month on Standard or about $57/month on Pro.'
     - q: 'Can I use Monday.com and BuildOS together?'
       a: 'Yes, and many knowledge workers benefit from using both. Use BuildOS for the thinking phase — processing scattered thoughts, organizing ideas, and figuring out what to build. Then move well-defined projects into Monday.com for team execution, tracking, and collaboration.'
     - q: 'What is the difference between project management and thought organization?'
@@ -25,6 +25,33 @@ faq:
     - q: 'Is Monday.com good for individuals or solo workers?'
       a: 'Monday.com is primarily designed for team coordination. Its core strengths — shared boards, dependency tracking, workload views, and stakeholder dashboards — serve teams of 3 or more. Solo users can use it, but the 3-seat minimum pricing and team-focused features make it less ideal for individual productivity.'
 ---
+
+<!--
+BLOG TODO - 2026-03-30
+Priority: Highest
+
+Why this needs work:
+- This post is live and contains stale pricing/plan claims.
+- It currently says BuildOS has a free tier with 5 projects, which conflicts with the current BuildOS pricing page.
+- Monday.com's current pricing and seat packaging have changed enough that the pricing section needs a full refresh.
+
+What to update:
+- Refresh Monday.com pricing using current official plan data.
+- Refresh the seat minimum language using Monday's current bucket-pricing support docs.
+- Remove or replace the "free tier - 5 projects" BuildOS line.
+- Align every BuildOS pricing/trial claim with the current `/pricing` page.
+- Re-check whether manual export / CSV / no direct integration wording still matches product reality.
+
+Things to explore:
+- Should this post lead less with pricing and more with "team execution vs solo thought organization"?
+- Is Monday.com still a strategically useful competitor for current creator-first positioning?
+- Would this post be stronger if it explicitly framed Monday as complementary after BuildOS thinking work?
+
+Current source checks:
+- https://monday.com/pricing
+- https://support.monday.com/hc/en-us/articles/4405633151634-Plans-and-pricing-for-monday-com
+- Local BuildOS pricing page: apps/web/src/routes/pricing/+page.svelte
+-->
 
 Let's start with something important:
 
@@ -79,11 +106,11 @@ monday AI makes an already-organized system more efficient. It doesn't help you 
 Monday.com's pricing tells you exactly who it's built for:
 
 - **Free**: 2 seats, 3 boards — enough to look around
-- **Basic** (~$12/seat/mo): Unlimited boards, no automations
-- **Standard** (~$14/seat/mo): Automations and Gantt views, capped at 250 actions/month
-- **Pro** (~$27/seat/mo): 25K automations, time tracking, formula columns
+- **Basic** (~$9/seat/mo billed annually): Unlimited items, 1-board dashboard
+- **Standard** (~$12/seat/mo billed annually): Timeline, calendar, guest access, 250 automations/integrations
+- **Pro** (~$19/seat/mo billed annually): 25K automations/integrations, time tracking, formula columns
 
-The catch: **all paid plans require a minimum of 3 seats.** A solo user on Standard pays ~$42/month for a tool designed to coordinate teams. That's not a bug — it's a signal. Monday.com is built for teams, priced for teams, and optimized for teams.
+The catch: **paid plans start at a minimum of 3 seats.** A solo user effectively starts around ~$36/month on Standard for a tool designed to coordinate teams. That's not a bug — it's a signal. Monday.com is built for teams, priced for teams, and optimized for teams.
 
 If you're an individual wrestling with complex projects, you're paying a team tax for features you'll never use.
 
@@ -157,7 +184,7 @@ It also won't replace your calendar app, your Slack, or your CRM. It's specifica
 | **Starting point**    | You structure first, then work               | You think freely, AI structures           |
 | **Input model**       | Create item → assign to board → fill columns | Brain dump → AI extracts projects & tasks |
 | **AI role**           | Query/summarize existing structure           | Create structure from unstructured input  |
-| **Minimum cost**      | ~$42/mo (3-seat minimum)                     | Free tier, individual pricing             |
+| **Minimum cost**      | Free for up to 2 seats; paid plans start at 3-seat bundles | 14-day free trial, then $20/mo |
 | **Collaboration**     | Built for teams (3+ people)                  | Built for individuals                     |
 | **Automation**        | Powerful (250–25K actions/mo)                | AI-driven, no cap                         |
 | **Integrations**      | 200+ (Slack, Google, Jira, etc.)             | Calendar, SMS, growing                    |
@@ -190,7 +217,7 @@ Monday.com assumes clarity exists. BuildOS helps you create it.
 
 ## Start Turning Messy Thinking Into Structured Work
 
-BuildOS has a free tier — 5 projects, no team-seat tax, no credit card required.
+BuildOS offers a 14-day free trial, no team-seat tax, and no credit card required to start.
 
 Your data stays yours. Everything you put into BuildOS is accessible and exportable.
 

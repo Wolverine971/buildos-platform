@@ -25,6 +25,7 @@ import type {
 } from './context-models';
 import { buildDocStructureSummary, collectDocStructureIds } from './context-models';
 import type { MasterPromptContext } from './master-prompt-builder';
+import { ensureActorId, fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
 
 const logger = createLogger('FastChatContext');
 
@@ -1330,15 +1331,22 @@ async function loadGlobalContextData(
 	userId: string,
 	onError?: LoadContextParams['onError']
 ): Promise<GlobalContextData> {
-	const { data: projects, error } = await supabase
-		.from('onto_projects')
-		.select('id, name, state_key, description, start_at, end_at, next_step_short, updated_at')
-		.eq('created_by', userId)
-		.is('deleted_at', null)
-		.order('updated_at', { ascending: false });
+	let projectSummaries:
+		| Array<{
+				id: string;
+				name: string;
+				state_key: string;
+				description: string | null;
+				next_step_short: string | null;
+				updated_at: string;
+		  }>
+		| null = null;
 
-	if (error) {
-		logger.warn('Failed to load global projects', { error });
+	try {
+		const actorId = await ensureActorId(supabase as any, userId);
+		projectSummaries = await fetchProjectSummaries(supabase as any, actorId);
+	} catch (error) {
+		logger.warn('Failed to load global project summaries', { error });
 		reportContextLoadError(onError, 'query.global.projects', error, { userId });
 		return {
 			projects: [],
@@ -1353,12 +1361,22 @@ async function loadGlobalContextData(
 		};
 	}
 
-	const projectRows = projects ?? [];
-	const lightProjects = projectRows.map((row) =>
-		mapProject(row, {
-			includeDocStructure: false
+	const lightProjects = [...(projectSummaries ?? [])]
+		.sort((a, b) => {
+			const aTs = a.updated_at ? Date.parse(a.updated_at) : Number.NEGATIVE_INFINITY;
+			const bTs = b.updated_at ? Date.parse(b.updated_at) : Number.NEGATIVE_INFINITY;
+			return bTs - aTs;
 		})
-	);
+		.map((row) => ({
+			id: row.id,
+			name: row.name,
+			state_key: row.state_key,
+			description: truncateText(row.description, PROJECT_DESCRIPTION_MAX_CHARS),
+			start_at: null,
+			end_at: null,
+			next_step_short: normalizeOptionalText(row.next_step_short) ?? null,
+			updated_at: row.updated_at
+		}));
 	const projectIds = lightProjects.map((project) => project.id);
 	const nowMs = Date.now();
 
@@ -1891,14 +1909,9 @@ export async function loadFastChatPromptContext(
 	}
 
 	const rpcContextType = resolveRpcContextType(contextType, projectFocus);
-	if (rpcContextType) {
+	if (rpcContextType && rpcContextType !== 'global') {
 		const rpcPayload = await loadFastChatContextViaRpc(params);
 		if (rpcPayload) {
-			if (rpcContextType === 'global') {
-				const data = buildGlobalContextFromRpc(rpcPayload);
-				return { ...baseContext, data };
-			}
-
 			const projectContext = buildProjectContextFromRpc(rpcPayload, eventWindow);
 			if (projectContext) {
 				const resolvedProjectName =

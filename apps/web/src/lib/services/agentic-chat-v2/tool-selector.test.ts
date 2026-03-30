@@ -7,7 +7,7 @@ vi.mock('$env/dynamic/private', () => ({
 	env: mockEnv
 }));
 
-import { selectFastChatTools, shouldEnableCalendarTools } from './tool-selector';
+import { selectFastChatTools } from './tool-selector';
 
 afterEach(() => {
 	delete mockEnv['AGENTIC_CHAT_TOOL_GATEWAY'];
@@ -17,10 +17,7 @@ describe('selectFastChatTools', () => {
 	it('returns only gateway tools when gateway flag is enabled', () => {
 		mockEnv['AGENTIC_CHAT_TOOL_GATEWAY'] = 'true';
 
-		const tools = selectFastChatTools({
-			contextType: 'global',
-			message: 'what is going on with my projects'
-		});
+		const tools = selectFastChatTools({ contextType: 'global' });
 		const names = tools.map((tool) => tool.function?.name);
 
 		expect(names).toEqual(['tool_help', 'tool_exec']);
@@ -29,10 +26,7 @@ describe('selectFastChatTools', () => {
 	it('returns legacy tools when gateway flag is disabled', () => {
 		mockEnv['AGENTIC_CHAT_TOOL_GATEWAY'] = 'false';
 
-		const tools = selectFastChatTools({
-			contextType: 'global',
-			message: 'what is going on with my projects'
-		});
+		const tools = selectFastChatTools({ contextType: 'global' });
 		const names = tools.map((tool) => tool.function?.name).filter(Boolean);
 
 		expect(names.length).toBeGreaterThan(3);
@@ -40,17 +34,16 @@ describe('selectFastChatTools', () => {
 		expect(names).not.toContain('tool_exec');
 		expect(names).toContain('web_search');
 		expect(names).toContain('web_visit');
+		expect(names).toContain('list_calendar_events');
+		expect(names).not.toContain('get_project_calendar');
+		expect(names).not.toContain('set_project_calendar');
 	});
 
-	it('does not enable calendar tools for generic time/date phrasing in global context', () => {
-		expect(
-			shouldEnableCalendarTools('global', 'It will take time to complete by a later date')
-		).toBe(false);
-	});
+	it('keeps project calendar mapping tools available in project context', () => {
+		const tools = selectFastChatTools({ contextType: 'project' });
+		const names = tools.map((tool) => tool.function?.name).filter(Boolean);
 
-	it('enables calendar tools for explicit calendar intent', () => {
-		expect(shouldEnableCalendarTools('global', "What's on my calendar for tomorrow?")).toBe(
-			true
-		);
+		expect(names).toContain('get_project_calendar');
+		expect(names).toContain('set_project_calendar');
 	});
 });

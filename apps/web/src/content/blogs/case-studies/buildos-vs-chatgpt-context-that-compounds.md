@@ -15,6 +15,31 @@ pic: 'buildos-vs-chatgpt'
 path: apps/web/src/content/blogs/case-studies/buildos-vs-chatgpt-context-that-compounds.md
 ---
 
+<!--
+BLOG TODO - 2026-03-30
+Priority: High
+
+Why this needs work:
+- The post is strong overall, but some comparison details are already behind current ChatGPT capabilities.
+- ChatGPT Projects now have built-in memory and broader context features than this post suggests.
+- The memory section should be updated so the post reads as current, not defensive.
+
+What to update:
+- Rewrite the "ChatGPT has memory" section to match current OpenAI docs on saved memories, chat history, and project memory.
+- Rewrite the Projects section to acknowledge current capabilities without losing the BuildOS argument.
+- Keep the main BuildOS distinction focused on relational structure, execution, and durable project state.
+- Tighten the "use both" framing so it sounds current and confident.
+
+Things to explore:
+- Is "more than memory" still the best framing, or is "project graph vs smart workspace" more accurate now?
+- Should this post explicitly mention project sharing, files, and app links so readers do not feel obvious omissions?
+- Which differences are product-shape differences vs. differences that may narrow over time?
+
+Current source checks:
+- https://help.openai.com/en/articles/10169521-using-projects-in-chatgpt
+- https://help.openai.com/en/articles/8983136-what-is-memory%23.gz
+-->
+
 Let's start with something important:
 
 **ChatGPT is incredible.**
@@ -58,7 +83,7 @@ Yes, it does. And it's genuinely useful for remembering things like:
 - Your communication preferences
 - Facts you've explicitly told it to remember
 
-But here's what ChatGPT's memory actually stores: **about 1,200-1,400 words of facts and preferences**. That's it.
+But here's the important distinction: ChatGPT memory is built to remember useful details, preferences, and relevant prior context. It is not the same thing as having a structured, relational model of your work.
 
 It doesn't store:
 
@@ -68,7 +93,7 @@ It doesn't store:
 - Your documents and their context
 - The relationships between everything
 
-ChatGPT memory is personalization. It's not project context.
+ChatGPT memory is personalization and continuity. It's not the same as project structure.
 
 **There's a massive difference between "remembers you like concise answers" and "knows your Q2 revenue goal has 3 blockers, one of which is a pricing task that's been stuck for 2 days."**
 
@@ -80,7 +105,7 @@ Fair point. ChatGPT has evolved beyond just memory:
 
 **Custom GPTs** let you upload documents and set custom instructions. Genuinely useful — you can create a "Marketing Strategy GPT" with your brand docs loaded in.
 
-**ChatGPT Projects** let you group conversations, attach files, and set project-level instructions. A real improvement over the old flat conversation list.
+**ChatGPT Projects** now go further: they let you group conversations, attach files, add project instructions, save sources, and work with built-in project memory. That's a real improvement over the old flat conversation list.
 
 But here's what neither can do:
 
@@ -89,7 +114,7 @@ But here's what neither can do:
 - **No cross-project awareness.** Your "Marketing GPT" knows nothing about your "Product GPT." In reality, those projects affect each other constantly.
 - **No execution.** A Custom GPT can tell you what to do. It can't actually create a task, update a deadline, or track what's done.
 
-Custom GPTs and Projects are better filing cabinets for conversations. That's valuable. But a filing cabinet isn't a project management system — no matter how well-organized the folders are.
+Custom GPTs and Projects are much better workspaces than the old flat chat list. But a smart workspace still isn't a project execution system — no matter how well-organized the files and chats are.
 
 ---
 
@@ -187,8 +212,8 @@ ChatGPT can tell you what to do. BuildOS can do it for you—with full context a
 | -------------------------- | -------------------------------- | ------------------------------------- |
 | **World knowledge**        | Incredible                       | Uses LLMs for reasoning               |
 | **YOUR project knowledge** | None (you explain each time)     | Complete (goals, plans, tasks, docs)  |
-| **Memory**                 | ~1,400 words of facts            | Unlimited project context             |
-| **Memory type**            | Preferences and facts            | Structured project data               |
+| **Memory**                 | Saved memories + chat/project continuity | Unlimited project context             |
+| **Memory type**            | Preferences, history, and workspace context | Structured project data               |
 | **Context scope**          | Conversation-level               | Entity-level (zoom in/out)            |
 | **Relationships**          | None                             | Tasks → Plans → Goals (all connected) |
 | **Execution**              | Suggestions only                 | Real database operations              |

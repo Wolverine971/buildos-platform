@@ -77,6 +77,54 @@ Use this only when personalization is needed; user profile context is not preloa
 	{
 		type: 'function',
 		function: {
+			name: 'get_workspace_overview',
+			description: `Get a BuildOS-native workspace status summary across accessible projects.
+Use this for questions like:
+- "What is happening with my projects?"
+- "What is blocked across my workspace?"
+- "Give me a quick overview of what needs attention."
+This is the preferred high-level retrieval path for workspace status questions before generic search/list assembly.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_limit: {
+						type: 'number',
+						default: 8,
+						maximum: 20,
+						description: 'Maximum number of projects to summarize (1-20).'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'get_project_overview',
+			description: `Get a BuildOS-native status summary for one project.
+Use this for questions like:
+- "What's going on with 9takes?"
+- "Give me the current status of this project."
+- "What is blocked or due soon in this project?"
+Pass project_id when known. If the user names a project but the ID is unknown, pass query and this op will try to resolve the project or return candidates.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					project_id: {
+						type: 'string',
+						description: 'Exact project UUID when already known.'
+					},
+					query: {
+						type: 'string',
+						description: 'Project name query when project_id is not yet known.'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
 			name: 'search_user_contacts',
 			description: `Search the current user's contact memory by name, relationship, and method metadata.
 Contact method values are redacted by default. Set include_sensitive_values=true only when the user explicitly asks for exact phone/email details and confirm with user_confirmed_sensitive=true.`,

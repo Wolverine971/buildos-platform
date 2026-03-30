@@ -2543,7 +2543,7 @@ export const POST: RequestHandler = async ({
 					});
 			const gatewayEnabled = isToolGatewayEnabled();
 			const toolSelectionStartedAtMs = Date.now();
-			const tools = selectFastChatTools({ contextType, message });
+			const tools = selectFastChatTools({ contextType });
 			toolSelectionMs = Math.max(0, Date.now() - toolSelectionStartedAtMs);
 			const toolsRequiringProjectId = getToolsRequiringProjectId(tools);
 			let effectiveContextType: ChatContextType = contextType;
@@ -2783,74 +2783,127 @@ export const POST: RequestHandler = async ({
 				{ role: 'user', content: message }
 			] as ServiceContext['conversationHistory'];
 
-			const { assistantText, usage, finishedReason, toolExecutions, cancelled } =
-				await streamFastChat({
-					llm,
-					userId,
-					sessionId: session.id,
-					contextType,
-					entityId,
-					projectId:
-						projectFocus?.projectId ??
-						(contextType === 'project' ? (entityId ?? null) : null),
-					history: historyForModel,
-					message,
-					signal: request.signal,
-					systemPrompt,
-					maxToolRounds: gatewayEnabled ? Math.max(1, gatewayRoundCap) : undefined,
-					allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
-					tools,
-					debugContext: {
-						gatewayEnabled,
-						historyStrategy: historyComposition.strategy,
-						historyCompressed: historyComposition.compressed,
-						rawHistoryCount: historyComposition.rawHistoryCount,
-						historyForModelCount: historyForModel.length,
-						tailMessagesKept: historyComposition.tailMessagesKept,
-						continuityHintUsed: historyComposition.continuityHintUsed
-					},
-					toolExecutor: toolExecutionService
-						? async (toolCall) => {
-								const contextScope = effectiveProjectIdForTools
-									? {
-											projectId: effectiveProjectIdForTools,
-											projectName: promptContext?.projectName ?? undefined
-										}
-									: undefined;
-								const serviceContext: ServiceContext = {
+			const {
+				assistantText,
+				finalAssistantText,
+				usage,
+				finishedReason,
+				toolExecutions,
+				cancelled
+			} = await streamFastChat({
+				llm,
+				userId,
+				sessionId: session.id,
+				contextType,
+				entityId,
+				projectId:
+					projectFocus?.projectId ??
+					(contextType === 'project' ? (entityId ?? null) : null),
+				history: historyForModel,
+				message,
+				signal: request.signal,
+				systemPrompt,
+				maxToolRounds: gatewayEnabled ? Math.max(1, gatewayRoundCap) : undefined,
+				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
+				tools,
+				debugContext: {
+					gatewayEnabled,
+					historyStrategy: historyComposition.strategy,
+					historyCompressed: historyComposition.compressed,
+					rawHistoryCount: historyComposition.rawHistoryCount,
+					historyForModelCount: historyForModel.length,
+					tailMessagesKept: historyComposition.tailMessagesKept,
+					continuityHintUsed: historyComposition.continuityHintUsed
+				},
+				toolExecutor: toolExecutionService
+					? async (toolCall) => {
+							const contextScope = effectiveProjectIdForTools
+								? {
+										projectId: effectiveProjectIdForTools,
+										projectName: promptContext?.projectName ?? undefined
+									}
+								: undefined;
+							const serviceContext: ServiceContext = {
+								sessionId: session.id,
+								userId,
+								contextType: effectiveContextType,
+								entityId: effectiveEntityId ?? undefined,
+								conversationHistory: conversationHistoryForTools,
+								contextScope
+							};
+							const result = await toolExecutionService.executeTool(
+								toolCall,
+								serviceContext,
+								tools,
+								{ abortSignal: request.signal }
+							);
+							return {
+								tool_call_id: result.toolCallId,
+								result: result.data ?? null,
+								success: result.success,
+								error:
+									typeof result.error === 'string'
+										? result.error
+										: result.error?.message
+							};
+						}
+					: toolExecutorInstance
+						? (toolCall) => toolExecutorInstance.execute(patchToolCall(toolCall))
+						: undefined,
+				onToolCall: async (toolCall) => {
+					const patchedCall = patchToolCall(toolCall);
+					emitToolCall(agentStream, patchedCall, {
+						onError: (error) => {
+							logFastChatError({
+								error,
+								operationType: 'fastchat_stream_emit_tool_call',
+								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+								metadata: {
 									sessionId: session.id,
-									userId,
 									contextType: effectiveContextType,
-									entityId: effectiveEntityId ?? undefined,
-									conversationHistory: conversationHistoryForTools,
-									contextScope
-								};
-								const result = await toolExecutionService.executeTool(
-									toolCall,
-									serviceContext,
-									tools,
-									{ abortSignal: request.signal }
-								);
-								return {
-									tool_call_id: result.toolCallId,
-									result: result.data ?? null,
-									success: result.success,
-									error:
-										typeof result.error === 'string'
-											? result.error
-											: result.error?.message
-								};
-							}
-						: toolExecutorInstance
-							? (toolCall) => toolExecutorInstance.execute(patchToolCall(toolCall))
-							: undefined,
-					onToolCall: async (toolCall) => {
+									toolName: patchedCall.function.name,
+									toolCallId: patchedCall.id
+								}
+							});
+						},
+						onMessageSent: () => {
+							markStreamEventSent('tool_call');
+						}
+					});
+					if (dev) {
+						const skillActivity = getRequestedSkillActivity(patchedCall);
+						if (skillActivity) {
+							emitSkillActivity(agentStream, skillActivity, {
+								onError: (error) => {
+									logFastChatError({
+										error,
+										operationType: 'fastchat_stream_emit_skill_activity',
+										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+										metadata: {
+											sessionId: session.id,
+											contextType: effectiveContextType,
+											toolName: patchedCall.function.name,
+											toolCallId: patchedCall.id,
+											action: skillActivity.action,
+											path: skillActivity.path
+										}
+									});
+								},
+								onMessageSent: () => {
+									markStreamEventSent('skill_activity');
+								}
+							});
+						}
+					}
+				},
+				onToolResult: async ({ toolCall, result }) => {
+					try {
 						const patchedCall = patchToolCall(toolCall);
-						emitToolCall(agentStream, patchedCall, {
+						emitToolResult(agentStream, patchedCall, result, {
 							onError: (error) => {
 								logFastChatError({
 									error,
-									operationType: 'fastchat_stream_emit_tool_call',
+									operationType: 'fastchat_stream_emit_tool_result',
 									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 									metadata: {
 										sessionId: session.id,
@@ -2861,11 +2914,11 @@ export const POST: RequestHandler = async ({
 								});
 							},
 							onMessageSent: () => {
-								markStreamEventSent('tool_call');
+								markStreamEventSent('tool_result');
 							}
 						});
 						if (dev) {
-							const skillActivity = getRequestedSkillActivity(patchedCall);
+							const skillActivity = getLoadedSkillActivity(patchedCall, result);
 							if (skillActivity) {
 								emitSkillActivity(agentStream, skillActivity, {
 									onError: (error) => {
@@ -2890,188 +2943,137 @@ export const POST: RequestHandler = async ({
 								});
 							}
 						}
-					},
-					onToolResult: async ({ toolCall, result }) => {
-						try {
-							const patchedCall = patchToolCall(toolCall);
-							emitToolResult(agentStream, patchedCall, result, {
+						if (!result.success) {
+							const toolFailureMetadata = {
+								sessionId: session.id,
+								contextType: effectiveContextType,
+								entityId: effectiveEntityId,
+								toolName: patchedCall.function.name,
+								toolCallId: patchedCall.id,
+								toolError: result.error
+							};
+							if (isExpectedToolValidationFailure(result.error)) {
+								logger.warn('FastChat tool validation failure', {
+									...toolFailureMetadata,
+									toolArgsRaw: patchedCall.function.arguments,
+									toolArgsPreview: previewToolArguments(
+										patchedCall.function.arguments
+									)
+								});
+								logFastChatError({
+									error: new Error(
+										result.error ?? 'FastChat tool validation failed'
+									),
+									operationType: 'tool_execution',
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+									metadata: {
+										...toolFailureMetadata,
+										failureStage: 'fastchat_tool_validation',
+										toolArgsPreview: previewToolArguments(
+											patchedCall.function.arguments
+										)
+									}
+								});
+							} else {
+								logFastChatError({
+									error: new Error(
+										result.error ?? 'FastChat tool execution failed'
+									),
+									operationType: 'fastchat_tool_result_failure',
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+									metadata: toolFailureMetadata
+								});
+							}
+						}
+
+						const contextShift = extractContextShiftPayload(result);
+						if (contextShift) {
+							effectiveContextType = contextShift.new_context;
+							effectiveEntityId = contextShift.entity_id;
+							latestContextShift = contextShift;
+							if (isProjectScopedContext(contextShift.new_context)) {
+								effectiveProjectIdForTools = contextShift.entity_id;
+							}
+							void updateAgentMetadata(
+								supabase,
+								session.id,
+								{
+									fastchat_last_context_shift: {
+										context_type: contextShift.new_context,
+										entity_id: contextShift.entity_id ?? null,
+										project_id: isProjectScopedContext(contextShift.new_context)
+											? (contextShift.entity_id ?? null)
+											: null,
+										shifted_at: new Date().toISOString()
+									}
+								},
+								{
+									errorLogger,
+									userId,
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs
+								}
+							);
+							await emitContextShift(agentStream, contextShift, {
 								onError: (error) => {
 									logFastChatError({
 										error,
-										operationType: 'fastchat_stream_emit_tool_result',
-										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+										operationType: 'fastchat_stream_emit_context_shift',
+										projectId: contextShift.entity_id,
 										metadata: {
 											sessionId: session.id,
-											contextType: effectiveContextType,
-											toolName: patchedCall.function.name,
-											toolCallId: patchedCall.id
+											contextType: contextShift.new_context,
+											entityId: contextShift.entity_id
 										}
 									});
 								},
 								onMessageSent: () => {
-									markStreamEventSent('tool_result');
+									markStreamEventSent('context_shift');
 								}
 							});
-							if (dev) {
-								const skillActivity = getLoadedSkillActivity(patchedCall, result);
-								if (skillActivity) {
-									emitSkillActivity(agentStream, skillActivity, {
-										onError: (error) => {
-											logFastChatError({
-												error,
-												operationType:
-													'fastchat_stream_emit_skill_activity',
-												projectId:
-													effectiveProjectIdForTools ?? projectIdForLogs,
-												metadata: {
-													sessionId: session.id,
-													contextType: effectiveContextType,
-													toolName: patchedCall.function.name,
-													toolCallId: patchedCall.id,
-													action: skillActivity.action,
-													path: skillActivity.path
-												}
-											});
-										},
-										onMessageSent: () => {
-											markStreamEventSent('skill_activity');
-										}
-									});
-								}
+						}
+					} catch (error) {
+						logger.warn('FastChat onToolResult callback failed', {
+							error,
+							sessionId: session.id
+						});
+						logFastChatError({
+							error,
+							operationType: 'fastchat_stream_on_tool_result',
+							projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								contextType: effectiveContextType,
+								entityId: effectiveEntityId,
+								toolName: toolCall.function.name,
+								toolCallId: toolCall.id
 							}
-							if (!result.success) {
-								const toolFailureMetadata = {
-									sessionId: session.id,
-									contextType: effectiveContextType,
-									entityId: effectiveEntityId,
-									toolName: patchedCall.function.name,
-									toolCallId: patchedCall.id,
-									toolError: result.error
-								};
-								if (isExpectedToolValidationFailure(result.error)) {
-									logger.warn('FastChat tool validation failure', {
-										...toolFailureMetadata,
-										toolArgsRaw: patchedCall.function.arguments,
-										toolArgsPreview: previewToolArguments(
-											patchedCall.function.arguments
-										)
-									});
-									logFastChatError({
-										error: new Error(
-											result.error ?? 'FastChat tool validation failed'
-										),
-										operationType: 'tool_execution',
-										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-										metadata: {
-											...toolFailureMetadata,
-											failureStage: 'fastchat_tool_validation',
-											toolArgsPreview: previewToolArguments(
-												patchedCall.function.arguments
-											)
-										}
-									});
-								} else {
-									logFastChatError({
-										error: new Error(
-											result.error ?? 'FastChat tool execution failed'
-										),
-										operationType: 'fastchat_tool_result_failure',
-										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-										metadata: toolFailureMetadata
-									});
-								}
-							}
-
-							const contextShift = extractContextShiftPayload(result);
-							if (contextShift) {
-								effectiveContextType = contextShift.new_context;
-								effectiveEntityId = contextShift.entity_id;
-								latestContextShift = contextShift;
-								if (isProjectScopedContext(contextShift.new_context)) {
-									effectiveProjectIdForTools = contextShift.entity_id;
-								}
-								void updateAgentMetadata(
-									supabase,
-									session.id,
-									{
-										fastchat_last_context_shift: {
-											context_type: contextShift.new_context,
-											entity_id: contextShift.entity_id ?? null,
-											project_id: isProjectScopedContext(
-												contextShift.new_context
-											)
-												? (contextShift.entity_id ?? null)
-												: null,
-											shifted_at: new Date().toISOString()
-										}
-									},
-									{
-										errorLogger,
-										userId,
-										projectId: effectiveProjectIdForTools ?? projectIdForLogs
-									}
-								);
-								await emitContextShift(agentStream, contextShift, {
-									onError: (error) => {
-										logFastChatError({
-											error,
-											operationType: 'fastchat_stream_emit_context_shift',
-											projectId: contextShift.entity_id,
-											metadata: {
-												sessionId: session.id,
-												contextType: contextShift.new_context,
-												entityId: contextShift.entity_id
-											}
-										});
-									},
-									onMessageSent: () => {
-										markStreamEventSent('context_shift');
-									}
-								});
-							}
-						} catch (error) {
-							logger.warn('FastChat onToolResult callback failed', {
-								error,
-								sessionId: session.id
-							});
-							logFastChatError({
-								error,
-								operationType: 'fastchat_stream_on_tool_result',
+						});
+					}
+				},
+				onDelta: async (delta) => {
+					try {
+						await sendTimedMessage(
+							{ type: 'text_delta', content: delta },
+							{
+								operationType: 'fastchat_stream_emit_delta',
 								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 								metadata: {
 									sessionId: session.id,
-									contextType: effectiveContextType,
-									entityId: effectiveEntityId,
-									toolName: toolCall.function.name,
-									toolCallId: toolCall.id
+									contextType: effectiveContextType
 								}
+							}
+						);
+					} catch (error) {
+						if (!request.signal.aborted) {
+							logger.warn('Failed to emit text delta', {
+								error,
+								sessionId: session.id
 							});
 						}
-					},
-					onDelta: async (delta) => {
-						try {
-							await sendTimedMessage(
-								{ type: 'text_delta', content: delta },
-								{
-									operationType: 'fastchat_stream_emit_delta',
-									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-									metadata: {
-										sessionId: session.id,
-										contextType: effectiveContextType
-									}
-								}
-							);
-						} catch (error) {
-							if (!request.signal.aborted) {
-								logger.warn('Failed to emit text delta', {
-									error,
-									sessionId: session.id
-								});
-							}
-							throw error;
-						}
+						throw error;
 					}
-				});
+				}
+			});
 			const normalizedExecutions = toolExecutions ?? [];
 			const persistedUserMessagePromise = userMessagePromise.catch((error) => {
 				logger.warn('Failed to persist user message', { error, sessionId: session.id });
@@ -3255,12 +3257,13 @@ export const POST: RequestHandler = async ({
 
 			const persistedToolTrace = buildPersistedToolTrace(normalizedExecutions);
 			const persistedToolTraceSummary = buildPersistedToolTraceSummary(persistedToolTrace);
+			const persistedAssistantContent = finalAssistantText.trim() || assistantText.trim();
 			assistantPersistStartedAtMs = Date.now();
 			const assistantMessage = await sessionService.persistMessage({
 				sessionId: session.id,
 				userId,
 				role: 'assistant',
-				content: assistantText.trim(),
+				content: persistedAssistantContent,
 				metadata:
 					persistedToolTrace.length > 0
 						? {
@@ -3308,7 +3311,7 @@ export const POST: RequestHandler = async ({
 			});
 
 			const lastTurnContext = buildLastTurnContext({
-				assistantText: assistantText.trim(),
+				assistantText: persistedAssistantContent,
 				userMessage: message,
 				contextType: effectiveContextType,
 				entityId: effectiveEntityId,
@@ -3351,7 +3354,7 @@ export const POST: RequestHandler = async ({
 					normalizedExecutions,
 					executionToolSummaries
 				),
-				{ role: 'assistant', content: assistantText.trim() }
+				{ role: 'assistant', content: persistedAssistantContent }
 			];
 			const toolSummaries = [
 				...buildContextToolSummary({

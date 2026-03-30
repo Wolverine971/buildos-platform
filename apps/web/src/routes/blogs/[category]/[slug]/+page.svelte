@@ -17,7 +17,7 @@
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
 	import type { ComponentType } from 'svelte';
-	import { ArrowLeft, Calendar, Clock, Tag } from 'lucide-svelte';
+	import { ArrowLeft, Calendar, Clock, History, Tag } from 'lucide-svelte';
 	import { formatBlogDate, parseBlogDate } from '$lib/utils/blog';
 
 	let { data }: { data: PageData } = $props();
@@ -28,6 +28,8 @@
 
 	const publishedDate = parseBlogDate(data.post.date);
 	const formattedDate = formatBlogDate(data.post.date, 'MMMM dd, yyyy');
+	const formattedLastmod = formatBlogDate(data.post.lastmod || data.post.date, 'MMMM dd, yyyy');
+	const showUpdatedDate = (data.post.lastmod || data.post.date) !== data.post.date;
 	const categoryDisplayName = data.post.category
 		.replace('-', ' ')
 		.replace(/\b\w/g, (l) => l.toUpperCase());
@@ -231,7 +233,12 @@
 				</span>
 				<span class="flex items-center gap-1">
 					<Calendar class="w-3 h-3" />
-					{formattedDate}
+					Published {formattedDate}
+				</span>
+				<span class="flex items-center gap-1">
+					<History class="w-3 h-3" />
+					{showUpdatedDate ? 'Updated' : 'Last reviewed'}
+					{formattedLastmod}
 				</span>
 				<span class="flex items-center gap-1">
 					<Clock class="w-3 h-3" />

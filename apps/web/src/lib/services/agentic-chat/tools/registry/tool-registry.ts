@@ -47,6 +47,8 @@ const OP_EXCEPTIONS: Record<string, string> = {
 const UTIL_OPS: Record<string, string> = {
 	get_field_info: 'util.schema.field_info',
 	get_user_profile_overview: 'util.profile.overview',
+	get_workspace_overview: 'util.workspace.overview',
+	get_project_overview: 'util.project.overview',
 	search_user_contacts: 'util.contact.search',
 	upsert_user_contact: 'util.contact.upsert',
 	list_user_contact_candidates: 'util.contact.candidates.list',

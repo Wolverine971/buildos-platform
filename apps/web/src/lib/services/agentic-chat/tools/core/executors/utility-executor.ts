@@ -11,6 +11,7 @@
 import { BaseExecutor } from './base-executor';
 import { ENTITY_FIELD_INFO } from '../tools.config';
 import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
+import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
 import {
 	formatLinkedEntitiesFullDetail,
 	getLinkedEntitiesSummary
@@ -27,7 +28,9 @@ import type { OntologyEntityType } from '$lib/types/agent-chat-enhancement';
 import type {
 	ExecutorContext,
 	GetFieldInfoArgs,
+	GetProjectOverviewArgs,
 	GetUserProfileOverviewArgs,
+	GetWorkspaceOverviewArgs,
 	GetEntityRelationshipsArgs,
 	GetLinkedEntitiesArgs,
 	LinkUserContactArgs,
@@ -36,6 +39,18 @@ import type {
 	SearchUserContactsArgs,
 	UpsertUserContactArgs
 } from './types';
+import {
+	buildProjectOverviewPayload,
+	buildWorkspaceOverviewPayload,
+	resolveProjectMatch,
+	type EventRow,
+	type MilestoneRow,
+	type PlanRow,
+	type ProjectLogRow,
+	type ProjectRow,
+	type RiskRow,
+	type TaskRow
+} from './overview-helper';
 
 type ProfileDocTreeNode = {
 	id: string;
@@ -51,6 +66,26 @@ type ProfileDocStructure = {
 };
 
 const PROFILE_SUMMARY_EXCERPT_MAX_CHARS = 180;
+
+function mapProjectSummaryToOverviewRow(summary: {
+	id: string;
+	name: string;
+	state_key: string;
+	description: string | null;
+	next_step_short: string | null;
+	updated_at: string;
+}): ProjectRow {
+	return {
+		id: summary.id,
+		name: summary.name,
+		state_key: summary.state_key,
+		description: summary.description ?? null,
+		start_at: null,
+		end_at: null,
+		next_step_short: summary.next_step_short ?? null,
+		updated_at: summary.updated_at ?? null
+	};
+}
 
 function truncateText(value: string | null | undefined, maxChars: number): string | null {
 	if (typeof value !== 'string') return null;
@@ -389,6 +424,242 @@ export class UtilityExecutor extends BaseExecutor {
 			sections,
 			message: `Loaded user profile overview with ${chapters.length} chapter(s).`
 		};
+	}
+
+	private async loadOverviewProjectRows(params: {
+		projectLimit: number;
+		query?: string;
+		projectId?: string;
+	}): Promise<{ projects: ProjectRow[]; maybeMore: boolean }> {
+		const actorId = await this.getActorId();
+		const projectSummaries = await fetchProjectSummaries(this.supabase as any, actorId);
+		const sortedProjects = [...projectSummaries]
+			.sort((a, b) => {
+				const aTs = a.updated_at ? Date.parse(a.updated_at) : Number.NEGATIVE_INFINITY;
+				const bTs = b.updated_at ? Date.parse(b.updated_at) : Number.NEGATIVE_INFINITY;
+				return bTs - aTs;
+			})
+			.map((summary) => mapProjectSummaryToOverviewRow(summary));
+
+		if (params.projectId) {
+			const project = sortedProjects.find((row) => row.id === params.projectId);
+			return {
+				projects: project ? [project] : [],
+				maybeMore: false
+			};
+		}
+
+		const normalizedQuery =
+			typeof params.query === 'string' && params.query.trim().length > 0
+				? params.query.trim().toLocaleLowerCase()
+				: null;
+		const rows = normalizedQuery
+			? sortedProjects.filter((row) => row.name.toLocaleLowerCase().includes(normalizedQuery))
+			: sortedProjects;
+
+		return {
+			projects: rows.slice(0, params.projectLimit),
+			maybeMore: rows.length > params.projectLimit
+		};
+	}
+
+	private async loadOverviewProjectData(projectIds: string[]): Promise<{
+		tasks: TaskRow[];
+		milestones: MilestoneRow[];
+		plans: PlanRow[];
+		risks: RiskRow[];
+		events: EventRow[];
+		projectLogs: ProjectLogRow[];
+	}> {
+		if (projectIds.length === 0) {
+			return {
+				tasks: [],
+				milestones: [],
+				plans: [],
+				risks: [],
+				events: [],
+				projectLogs: []
+			};
+		}
+
+		const supabaseAny = this.supabase as any;
+		const now = new Date();
+		const eventStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+		const eventEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+		const [tasksRes, milestonesRes, plansRes, risksRes, eventsRes, logsRes] = await Promise.all([
+			supabaseAny
+				.from('onto_tasks')
+				.select(
+					'id, project_id, title, state_key, priority, due_at, completed_at, updated_at'
+				)
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			supabaseAny
+				.from('onto_milestones')
+				.select('id, project_id, title, state_key, due_at, completed_at, updated_at')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			supabaseAny
+				.from('onto_plans')
+				.select('id, project_id, name, state_key, updated_at')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			supabaseAny
+				.from('onto_risks')
+				.select('id, project_id, title, state_key, impact, updated_at')
+				.in('project_id', projectIds)
+				.is('deleted_at', null),
+			supabaseAny
+				.from('onto_events')
+				.select('id, project_id, title, state_key, start_at, end_at, updated_at')
+				.in('project_id', projectIds)
+				.is('deleted_at', null)
+				.gte('start_at', eventStart)
+				.lte('start_at', eventEnd),
+			supabaseAny
+				.from('onto_project_logs')
+				.select('project_id, entity_type, entity_id, action, created_at, after_data, before_data')
+				.in('project_id', projectIds)
+				.order('created_at', { ascending: false })
+				.limit(Math.max(12, projectIds.length * 6))
+		]);
+
+		const failures = [
+			['tasks', tasksRes.error],
+			['milestones', milestonesRes.error],
+			['plans', plansRes.error],
+			['risks', risksRes.error],
+			['events', eventsRes.error],
+			['project activity', logsRes.error]
+		].filter((entry) => entry[1]);
+		if (failures.length > 0) {
+			const [label, error] = failures[0]!;
+			throw new Error(`Failed to load ${label} for overview: ${error.message}`);
+		}
+
+		return {
+			tasks: Array.isArray(tasksRes.data) ? tasksRes.data : [],
+			milestones: Array.isArray(milestonesRes.data) ? milestonesRes.data : [],
+			plans: Array.isArray(plansRes.data) ? plansRes.data : [],
+			risks: Array.isArray(risksRes.data) ? risksRes.data : [],
+			events: Array.isArray(eventsRes.data) ? eventsRes.data : [],
+			projectLogs: Array.isArray(logsRes.data) ? logsRes.data : []
+		};
+	}
+
+	async getWorkspaceOverview(args: GetWorkspaceOverviewArgs = {}): Promise<Record<string, any>> {
+		const projectLimit = Math.max(1, Math.min(20, Math.floor(args.project_limit ?? 8)));
+		const { projects, maybeMore } = await this.loadOverviewProjectRows({ projectLimit });
+		if (projects.length === 0) {
+			return buildWorkspaceOverviewPayload({
+				projects: [],
+				tasks: [],
+				milestones: [],
+				plans: [],
+				risks: [],
+				events: [],
+				projectLogs: [],
+				maybeMore: false
+			});
+		}
+
+		const projectIds = projects.map((project) => String(project.id));
+		const related = await this.loadOverviewProjectData(projectIds);
+		return buildWorkspaceOverviewPayload({
+			projects,
+			tasks: related.tasks,
+			milestones: related.milestones,
+			plans: related.plans,
+			risks: related.risks,
+			events: related.events,
+			projectLogs: related.projectLogs,
+			maybeMore
+		});
+	}
+
+	async getProjectOverview(args: GetProjectOverviewArgs = {}): Promise<Record<string, any>> {
+		const directProjectId =
+			typeof args.project_id === 'string' && args.project_id.trim().length > 0
+				? args.project_id.trim()
+				: undefined;
+		const query =
+			typeof args.query === 'string' && args.query.trim().length > 0 ? args.query.trim() : '';
+
+		if (!directProjectId && !query) {
+			throw new Error('get_project_overview requires project_id or query');
+		}
+
+		const { projects } = await this.loadOverviewProjectRows({
+			projectLimit: directProjectId ? 1 : 6,
+			query: directProjectId ? undefined : query,
+			projectId: directProjectId
+		});
+
+		if (directProjectId) {
+			const project = projects[0];
+			if (!project) {
+				return {
+					generated_at: new Date().toISOString(),
+					scope: 'project',
+					match: {
+						status: 'not_found',
+						query: directProjectId,
+						candidates: []
+					},
+					message: 'No accessible project matched that project_id.'
+				};
+			}
+
+			const related = await this.loadOverviewProjectData([String(project.id)]);
+			return buildProjectOverviewPayload({
+				project,
+				tasks: related.tasks,
+				milestones: related.milestones,
+				plans: related.plans,
+				risks: related.risks,
+				events: related.events,
+				projectLogs: related.projectLogs
+			});
+		}
+
+		const match = resolveProjectMatch(projects, query);
+		if (match.status === 'not_found') {
+			return {
+				generated_at: new Date().toISOString(),
+				scope: 'project',
+				match: {
+					status: 'not_found',
+					query,
+					candidates: []
+				},
+				message: `No accessible project matched "${query}".`
+			};
+		}
+		if (match.status === 'ambiguous') {
+			return {
+				generated_at: new Date().toISOString(),
+				scope: 'project',
+				match: {
+					status: 'ambiguous',
+					query,
+					candidates: match.candidates
+				},
+				message: `Multiple accessible projects matched "${query}".`
+			};
+		}
+
+		const related = await this.loadOverviewProjectData([match.project.id]);
+		return buildProjectOverviewPayload({
+			project: match.project,
+			query,
+			tasks: related.tasks,
+			milestones: related.milestones,
+			plans: related.plans,
+			risks: related.risks,
+			events: related.events,
+			projectLogs: related.projectLogs
+		});
 	}
 
 	// ============================================
