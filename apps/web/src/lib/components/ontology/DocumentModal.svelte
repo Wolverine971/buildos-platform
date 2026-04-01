@@ -2097,7 +2097,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header with strip texture -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak wt-paper"
+			class="document-modal-header flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak wt-paper"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -3942,6 +3942,12 @@
 		:global(.document-modal-container .modal-content) {
 			overflow-y: auto;
 			-webkit-overflow-scrolling: touch;
+		}
+	}
+
+	@media (max-width: 639px) {
+		:global(.document-modal-container .document-modal-header) {
+			padding-top: max(0.375rem, env(safe-area-inset-top, 0px));
 		}
 	}
 </style>
