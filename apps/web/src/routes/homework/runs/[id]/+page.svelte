@@ -1393,14 +1393,15 @@
 	<!-- Live View Modal -->
 	{#if showLiveModal}
 		<div
-			class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+			class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
 			role="dialog"
 			aria-modal="true"
+			tabindex="-1"
 			onclick={() => (showLiveModal = false)}
 			onkeydown={(e) => e.key === 'Escape' && (showLiveModal = false)}
 		>
 			<div
-				class="bg-card border border-border rounded-lg shadow-ink-strong tx tx-frame tx-weak wt-plate w-full max-w-3xl max-h-[85vh] overflow-auto"
+				class="bg-card border border-border rounded-lg shadow-ink-strong tx tx-frame tx-weak wt-plate w-full max-w-3xl max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-auto"
 				role="document"
 				onclick={(e) => e.stopPropagation()}
 				onkeydown={(e) => e.stopPropagation()}

@@ -178,18 +178,18 @@ It also won't replace your calendar app, your Slack, or your CRM. It's specifica
 
 ## The Head-to-Head
 
-| Capability            | Monday.com                                   | BuildOS                                   |
-| --------------------- | -------------------------------------------- | ----------------------------------------- |
-| **Best for**          | Team project execution                       | Individual thinking → action              |
-| **Starting point**    | You structure first, then work               | You think freely, AI structures           |
-| **Input model**       | Create item → assign to board → fill columns | Brain dump → AI extracts projects & tasks |
-| **AI role**           | Query/summarize existing structure           | Create structure from unstructured input  |
-| **Minimum cost**      | Free for up to 2 seats; paid plans start at 3-seat bundles | 14-day free trial, then $20/mo |
-| **Collaboration**     | Built for teams (3+ people)                  | Built for individuals                     |
-| **Automation**        | Powerful (250–25K actions/mo)                | AI-driven, no cap                         |
-| **Integrations**      | 200+ (Slack, Google, Jira, etc.)             | Calendar, SMS, growing                    |
-| **Context over time** | Tracks current project state                 | Context compounds daily                   |
-| **Relationships**     | Dependencies within boards                   | Tasks → Plans → Goals (all connected)     |
+| Capability            | Monday.com                                                 | BuildOS                                   |
+| --------------------- | ---------------------------------------------------------- | ----------------------------------------- |
+| **Best for**          | Team project execution                                     | Individual thinking → action              |
+| **Starting point**    | You structure first, then work                             | You think freely, AI structures           |
+| **Input model**       | Create item → assign to board → fill columns               | Brain dump → AI extracts projects & tasks |
+| **AI role**           | Query/summarize existing structure                         | Create structure from unstructured input  |
+| **Minimum cost**      | Free for up to 2 seats; paid plans start at 3-seat bundles | 14-day free trial, then $20/mo            |
+| **Collaboration**     | Built for teams (3+ people)                                | Built for individuals                     |
+| **Automation**        | Powerful (250–25K actions/mo)                              | AI-driven, no cap                         |
+| **Integrations**      | 200+ (Slack, Google, Jira, etc.)                           | Calendar, SMS, growing                    |
+| **Context over time** | Tracks current project state                               | Context compounds daily                   |
+| **Relationships**     | Dependencies within boards                                 | Tasks → Plans → Goals (all connected)     |
 
 ---
 

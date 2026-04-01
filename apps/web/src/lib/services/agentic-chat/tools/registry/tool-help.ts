@@ -413,7 +413,9 @@ function buildOpNotes(
 		notes.push(
 			'This is the preferred first read for workspace-wide status questions before generic ontology search/list assembly.'
 		);
-		notes.push('Use args.project_limit only when the user wants a broader or narrower snapshot.');
+		notes.push(
+			'Use args.project_limit only when the user wants a broader or narrower snapshot.'
+		);
 	}
 	if (op === 'util.project.overview') {
 		notes.push(
@@ -562,7 +564,8 @@ function buildOpExamples(
 				}
 			},
 			{
-				description: 'Load a project snapshot directly when the project ID is already known',
+				description:
+					'Load a project snapshot directly when the project ID is already known',
 				tool_exec: {
 					op,
 					args: {

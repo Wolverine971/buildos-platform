@@ -215,15 +215,15 @@ Traditional productivity systems assumed humans would do all the cognitive work.
 
 ## Choosing Your System
 
-| If You...             | Best System    | Setup Time | Monthly Cost               |
-| --------------------- | -------------- | ---------- | -------------------------- |
-| Love manual control   | Bullet Journal | 30 min     | ~$10 (notebook)            |
-| Need team features    | Notion         | 4-6 hours  | $10-20/user                |
-| Want linking/graphs   | Obsidian       | 2-3 hours  | $0-8                       |
-| Work offline often    | GTD + Paper    | 2 hours    | ~$20 (supplies)            |
-| Just need quick notes | Apple Notes    | 0 min      | Free                       |
-| Hate organizing       | BuildOS        | 5 min      | $20/mo after free trial    |
-| Use AI daily          | BuildOS        | 5 min      | $20/mo after free trial    |
+| If You...             | Best System    | Setup Time | Monthly Cost            |
+| --------------------- | -------------- | ---------- | ----------------------- |
+| Love manual control   | Bullet Journal | 30 min     | ~$10 (notebook)         |
+| Need team features    | Notion         | 4-6 hours  | $10-20/user             |
+| Want linking/graphs   | Obsidian       | 2-3 hours  | $0-8                    |
+| Work offline often    | GTD + Paper    | 2 hours    | ~$20 (supplies)         |
+| Just need quick notes | Apple Notes    | 0 min      | Free                    |
+| Hate organizing       | BuildOS        | 5 min      | $20/mo after free trial |
+| Use AI daily          | BuildOS        | 5 min      | $20/mo after free trial |
 
 There's no universal answer. The right system depends on how you work:
 

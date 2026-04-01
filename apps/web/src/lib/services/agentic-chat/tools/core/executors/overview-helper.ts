@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/core/executors/overview-helper.ts
 export type ProjectRow = {
 	id: string;
 	name: string;
@@ -225,10 +226,7 @@ function parseTimestamp(value: string | null | undefined): number | null {
 	return Number.isFinite(parsed) ? parsed : null;
 }
 
-function isCompleted(
-	stateKey: string | null | undefined,
-	completedAt?: string | null
-): boolean {
+function isCompleted(stateKey: string | null | undefined, completedAt?: string | null): boolean {
 	return Boolean(completedAt) || COMPLETED_STATE_KEYS.has(normalizeStateKey(stateKey));
 }
 
@@ -300,7 +298,8 @@ function buildProjectCounts(params: {
 }): OverviewProjectCounts {
 	const { tasks, milestones, plans, risks, events, nowMs } = params;
 	return {
-		active_tasks: tasks.filter((task) => !isCompleted(task.state_key, task.completed_at)).length,
+		active_tasks: tasks.filter((task) => !isCompleted(task.state_key, task.completed_at))
+			.length,
 		blocked_tasks: tasks.filter(
 			(task) => !isCompleted(task.state_key, task.completed_at) && isBlocked(task.state_key)
 		).length,
@@ -339,8 +338,10 @@ function sortTasks(tasks: TaskRow[], nowMs: number): TaskRow[] {
 			const bDueSoon = isDueSoon(b.due_at, nowMs);
 			if (aDueSoon !== bDueSoon) return aDueSoon ? -1 : 1;
 
-			const aPriority = typeof a.priority === 'number' ? a.priority : Number.NEGATIVE_INFINITY;
-			const bPriority = typeof b.priority === 'number' ? b.priority : Number.NEGATIVE_INFINITY;
+			const aPriority =
+				typeof a.priority === 'number' ? a.priority : Number.NEGATIVE_INFINITY;
+			const bPriority =
+				typeof b.priority === 'number' ? b.priority : Number.NEGATIVE_INFINITY;
 			if (aPriority !== bPriority) return bPriority - aPriority;
 		}
 
@@ -444,7 +445,9 @@ export function buildWorkspaceOverviewPayload(
 			nowMs
 		});
 		const nextMilestone = sortMilestones(
-			milestones.filter((milestone) => !isCompleted(milestone.state_key, milestone.completed_at)),
+			milestones.filter(
+				(milestone) => !isCompleted(milestone.state_key, milestone.completed_at)
+			),
 			nowMs
 		)[0];
 		const nextEvent = sortEvents(events)[0];
@@ -528,7 +531,9 @@ export function resolveProjectMatch(
 		return { status: 'not_found', candidates: [] };
 	}
 
-	const exactMatches = projects.filter((project) => project.name.trim().toLowerCase() === normalizedQuery);
+	const exactMatches = projects.filter(
+		(project) => project.name.trim().toLowerCase() === normalizedQuery
+	);
 	if (exactMatches.length === 1) {
 		return { status: 'resolved', project: exactMatches[0]! };
 	}
@@ -596,7 +601,9 @@ export function buildProjectOverviewPayload(
 			updated_at: task.updated_at ?? null
 		}));
 	const milestones = sortMilestones(
-		params.milestones.filter((milestone) => !isCompleted(milestone.state_key, milestone.completed_at)),
+		params.milestones.filter(
+			(milestone) => !isCompleted(milestone.state_key, milestone.completed_at)
+		),
 		nowMs
 	)
 		.slice(0, PROJECT_MILESTONE_LIMIT)

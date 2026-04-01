@@ -208,17 +208,17 @@ ChatGPT can tell you what to do. BuildOS can do it for you—with full context a
 
 ## The Head-to-Head Comparison
 
-| Capability                 | ChatGPT                          | BuildOS                               |
-| -------------------------- | -------------------------------- | ------------------------------------- |
-| **World knowledge**        | Incredible                       | Uses LLMs for reasoning               |
-| **YOUR project knowledge** | None (you explain each time)     | Complete (goals, plans, tasks, docs)  |
-| **Memory**                 | Saved memories + chat/project continuity | Unlimited project context             |
+| Capability                 | ChatGPT                                     | BuildOS                               |
+| -------------------------- | ------------------------------------------- | ------------------------------------- |
+| **World knowledge**        | Incredible                                  | Uses LLMs for reasoning               |
+| **YOUR project knowledge** | None (you explain each time)                | Complete (goals, plans, tasks, docs)  |
+| **Memory**                 | Saved memories + chat/project continuity    | Unlimited project context             |
 | **Memory type**            | Preferences, history, and workspace context | Structured project data               |
-| **Context scope**          | Conversation-level               | Entity-level (zoom in/out)            |
-| **Relationships**          | None                             | Tasks → Plans → Goals (all connected) |
-| **Execution**              | Suggestions only                 | Real database operations              |
-| **Learning over time**     | Remembers preferences            | Context compounds daily               |
-| **Best for**               | General questions, brainstorming | YOUR specific projects                |
+| **Context scope**          | Conversation-level                          | Entity-level (zoom in/out)            |
+| **Relationships**          | None                                        | Tasks → Plans → Goals (all connected) |
+| **Execution**              | Suggestions only                            | Real database operations              |
+| **Learning over time**     | Remembers preferences                       | Context compounds daily               |
+| **Best for**               | General questions, brainstorming            | YOUR specific projects                |
 
 ---
 

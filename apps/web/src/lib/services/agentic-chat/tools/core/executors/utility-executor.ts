@@ -487,43 +487,47 @@ export class UtilityExecutor extends BaseExecutor {
 		const eventStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 		const eventEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-		const [tasksRes, milestonesRes, plansRes, risksRes, eventsRes, logsRes] = await Promise.all([
-			supabaseAny
-				.from('onto_tasks')
-				.select(
-					'id, project_id, title, state_key, priority, due_at, completed_at, updated_at'
-				)
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			supabaseAny
-				.from('onto_milestones')
-				.select('id, project_id, title, state_key, due_at, completed_at, updated_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			supabaseAny
-				.from('onto_plans')
-				.select('id, project_id, name, state_key, updated_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			supabaseAny
-				.from('onto_risks')
-				.select('id, project_id, title, state_key, impact, updated_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null),
-			supabaseAny
-				.from('onto_events')
-				.select('id, project_id, title, state_key, start_at, end_at, updated_at')
-				.in('project_id', projectIds)
-				.is('deleted_at', null)
-				.gte('start_at', eventStart)
-				.lte('start_at', eventEnd),
-			supabaseAny
-				.from('onto_project_logs')
-				.select('project_id, entity_type, entity_id, action, created_at, after_data, before_data')
-				.in('project_id', projectIds)
-				.order('created_at', { ascending: false })
-				.limit(Math.max(12, projectIds.length * 6))
-		]);
+		const [tasksRes, milestonesRes, plansRes, risksRes, eventsRes, logsRes] = await Promise.all(
+			[
+				supabaseAny
+					.from('onto_tasks')
+					.select(
+						'id, project_id, title, state_key, priority, due_at, completed_at, updated_at'
+					)
+					.in('project_id', projectIds)
+					.is('deleted_at', null),
+				supabaseAny
+					.from('onto_milestones')
+					.select('id, project_id, title, state_key, due_at, completed_at, updated_at')
+					.in('project_id', projectIds)
+					.is('deleted_at', null),
+				supabaseAny
+					.from('onto_plans')
+					.select('id, project_id, name, state_key, updated_at')
+					.in('project_id', projectIds)
+					.is('deleted_at', null),
+				supabaseAny
+					.from('onto_risks')
+					.select('id, project_id, title, state_key, impact, updated_at')
+					.in('project_id', projectIds)
+					.is('deleted_at', null),
+				supabaseAny
+					.from('onto_events')
+					.select('id, project_id, title, state_key, start_at, end_at, updated_at')
+					.in('project_id', projectIds)
+					.is('deleted_at', null)
+					.gte('start_at', eventStart)
+					.lte('start_at', eventEnd),
+				supabaseAny
+					.from('onto_project_logs')
+					.select(
+						'project_id, entity_type, entity_id, action, created_at, after_data, before_data'
+					)
+					.in('project_id', projectIds)
+					.order('created_at', { ascending: false })
+					.limit(Math.max(12, projectIds.length * 6))
+			]
+		);
 
 		const failures = [
 			['tasks', tasksRes.error],

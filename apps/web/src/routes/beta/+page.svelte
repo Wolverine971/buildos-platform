@@ -458,16 +458,16 @@
 	<!-- Beta Signup Form Modal -->
 	{#if showSignupForm}
 		<div
-			class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+			class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="signup-modal-title"
 		>
 			<div
-				class="rounded-lg border border-border bg-card max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-ink-strong tx tx-grain tx-weak"
+				class="rounded-lg border border-border bg-card max-w-2xl w-full max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-y-auto shadow-ink-strong tx tx-grain tx-weak"
 			>
-				<div class="p-8">
-					<header class="flex justify-between items-center mb-6">
+				<div class="p-5 sm:p-8">
+					<header class="mb-5 flex items-center justify-between sm:mb-6">
 						<h2 id="signup-modal-title" class="text-2xl font-bold text-foreground">
 							Join BuildOS Beta
 						</h2>

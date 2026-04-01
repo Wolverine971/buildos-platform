@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/core/executors/utility-executor.overview.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { UtilityExecutor } from './utility-executor';
 
@@ -254,10 +255,9 @@ describe('UtilityExecutor overview scoping', () => {
 
 		expect(payload.scope).toBe('workspace');
 		expect(payload.projects_returned).toBe(2);
-		expect(payload.projects.map((project: { project_id: string }) => project.project_id)).toEqual([
-			'proj-owned',
-			'proj-shared'
-		]);
+		expect(
+			payload.projects.map((project: { project_id: string }) => project.project_id)
+		).toEqual(['proj-owned', 'proj-shared']);
 		expect(payload.projects.map((project: { name: string }) => project.name)).toEqual([
 			'9takes',
 			'Shared Alpha'

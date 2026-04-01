@@ -63,16 +63,18 @@
 	></div>
 
 	<!-- Content Container -->
-	<div class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+	<div
+		class="fixed inset-0 z-[100] flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
+	>
 		<div
-			class="relative w-full max-w-md bg-card rounded-2xl shadow-ink-strong border border-border overflow-hidden"
+			class="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-y-auto bg-card rounded-2xl shadow-ink-strong border border-border"
 			transition:fade={{ duration: 300, delay: 100 }}
 		>
 			<!-- Decorative gradient top bar -->
 			<div class="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
 
 			<!-- Content -->
-			<div class="px-8 py-10 sm:px-10 sm:py-12 text-center">
+			<div class="px-5 py-6 sm:px-10 sm:py-12 text-center">
 				<!-- Icon Container with subtle animation -->
 				<div class="flex justify-center mb-6">
 					<div class="relative">

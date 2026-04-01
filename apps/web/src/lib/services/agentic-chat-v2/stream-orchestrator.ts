@@ -672,13 +672,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (validationIssues.length > 0) {
 				if (hasDocumentOrganizationValidationIssue(validationIssues)) {
 					docOrganizationRecoveryEligible = true;
+				}
+				for (let index = 0; index < pendingToolCalls.length; index += 1) {
+					const toolCall = pendingToolCalls[index];
+					if (!toolCall) {
+						continue;
 					}
-					for (let index = 0; index < pendingToolCalls.length; index += 1) {
-						const toolCall = pendingToolCalls[index];
-						if (!toolCall) {
-							continue;
-						}
-						const validationIssue = validationIssueByToolCallId.get(toolCall.id);
+					const validationIssue = validationIssueByToolCallId.get(toolCall.id);
 					const errorMessage = validationIssue
 						? `Tool validation failed: ${validationIssue.errors.join(' ')}`
 						: null;
@@ -723,7 +723,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					}
 					if (consecutiveValidationIssueRounds <= maxValidationRepairRounds) {
 						queueRepairInstruction(
-							buildToolValidationRepairInstruction(validationIssues, gatewayModeActive)
+							buildToolValidationRepairInstruction(
+								validationIssues,
+								gatewayModeActive
+							)
 						);
 						flushRepairInstructions();
 						continue;
@@ -737,17 +740,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				queueRepairInstruction(
 					buildToolValidationRepairInstruction(validationIssues, gatewayModeActive)
 				);
-				} else {
-					consecutiveValidationIssueRounds = 0;
-					for (let index = 0; index < pendingToolCalls.length; index += 1) {
-						const toolCall = pendingToolCalls[index];
-						if (!toolCall) {
-							continue;
-						}
-						const executable = executableToolCalls[index] ?? toolCall;
-						toolCallsToExecute.push({ original: toolCall, executable });
+			} else {
+				consecutiveValidationIssueRounds = 0;
+				for (let index = 0; index < pendingToolCalls.length; index += 1) {
+					const toolCall = pendingToolCalls[index];
+					if (!toolCall) {
+						continue;
 					}
+					const executable = executableToolCalls[index] ?? toolCall;
+					toolCallsToExecute.push({ original: toolCall, executable });
 				}
+			}
 
 			const roundExecutions: FastToolExecution[] = [];
 			for (const { original: originalToolCall, executable: toolCall } of toolCallsToExecute) {
@@ -899,9 +902,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				maxRequiredFieldFailure.count >= 2 &&
 				!gatewaySchemaRepairInjected
 			) {
-					queueRepairInstruction(
-						buildGatewayRequiredFieldRepairInstruction(requiredFieldFailures)
-					);
+				queueRepairInstruction(
+					buildGatewayRequiredFieldRepairInstruction(requiredFieldFailures)
+				);
 				gatewaySchemaRepairInjected = true;
 			}
 
@@ -1656,7 +1659,9 @@ function buildGenericToolLeadIn(message: string): string {
 }
 
 function containsScratchpadMarkers(raw: string): boolean {
-	return splitAssistantTextIntoSentences(raw).some((sentence) => looksLikeScratchpadSentence(sentence));
+	return splitAssistantTextIntoSentences(raw).some((sentence) =>
+		looksLikeScratchpadSentence(sentence)
+	);
 }
 
 function extractCleanAssistantSentences(raw: string): string[] {
@@ -2028,10 +2033,7 @@ function validateCanonicalUpdateArgs(
 	}
 }
 
-function validateCanonicalCalendarUpdateArgs(
-	args: Record<string, any>,
-	errors: string[]
-): void {
+function validateCanonicalCalendarUpdateArgs(args: Record<string, any>, errors: string[]): void {
 	const addErrorOnce = (message: string) => {
 		if (!errors.includes(message)) {
 			errors.push(message);
@@ -2056,7 +2058,9 @@ function validateCanonicalCalendarUpdateArgs(
 	});
 
 	if (!hasUpdateField) {
-		addErrorOnce('No update fields provided for cal.event.update. Include at least one field to change.');
+		addErrorOnce(
+			'No update fields provided for cal.event.update. Include at least one field to change.'
+		);
 	}
 }
 
@@ -2153,7 +2157,10 @@ function buildToolValidationRepairInstruction(
 		if (exactHelpPaths.length > 0) {
 			lines.push(
 				`Load exact-op help before retrying: ${exactHelpPaths
-					.map((path) => `tool_help({ path: "${path}", format: "full", include_schemas: true })`)
+					.map(
+						(path) =>
+							`tool_help({ path: "${path}", format: "full", include_schemas: true })`
+					)
 					.join(', ')}.`
 			);
 		}
@@ -2519,7 +2526,9 @@ function hasDocumentOrganizationValidationIssue(issues: ToolValidationIssue[]): 
 		if (issue.toolName !== 'tool_exec') return false;
 		const op = issue.op ?? '';
 		if (op !== 'onto.document.delete' && op !== 'onto.document.tree.move') return false;
-		return issue.errors.some((error) => error.includes('Missing required parameter: document_id'));
+		return issue.errors.some((error) =>
+			error.includes('Missing required parameter: document_id')
+		);
 	});
 }
 

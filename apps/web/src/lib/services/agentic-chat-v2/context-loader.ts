@@ -25,7 +25,10 @@ import type {
 } from './context-models';
 import { buildDocStructureSummary, collectDocStructureIds } from './context-models';
 import type { MasterPromptContext } from './master-prompt-builder';
-import { ensureActorId, fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
+import {
+	ensureActorId,
+	fetchProjectSummaries
+} from '$lib/services/ontology/ontology-projects.service';
 
 const logger = createLogger('FastChatContext');
 
@@ -1331,16 +1334,14 @@ async function loadGlobalContextData(
 	userId: string,
 	onError?: LoadContextParams['onError']
 ): Promise<GlobalContextData> {
-	let projectSummaries:
-		| Array<{
-				id: string;
-				name: string;
-				state_key: string;
-				description: string | null;
-				next_step_short: string | null;
-				updated_at: string;
-		  }>
-		| null = null;
+	let projectSummaries: Array<{
+		id: string;
+		name: string;
+		state_key: string;
+		description: string | null;
+		next_step_short: string | null;
+		updated_at: string;
+	}> | null = null;
 
 	try {
 		const actorId = await ensureActorId(supabase as any, userId);

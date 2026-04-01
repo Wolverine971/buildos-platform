@@ -301,7 +301,7 @@
 						},
 						{
 							"q": "How much does Monday.com cost for one person?",
-							"a": "All paid Monday.com plans require a minimum of 3 seats. On the Standard plan at roughly $14 per seat per month, a solo user pays approximately $42 per month. On the Pro plan at roughly $27 per seat per month, that comes to approximately $81 per month — even if only one person is using it."
+							"a": "Monday.com has a free plan for up to 2 seats. Paid plans use seat bundles that start at 3 seats. At current annual list pricing, Standard is about $12 per seat per month and Pro is about $19 per seat per month, so a solo user effectively starts around $36/month on Standard or about $57/month on Pro."
 						},
 						{
 							"q": "Can I use Monday.com and BuildOS together?",
@@ -1388,7 +1388,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-03-30T04:05:26.392Z",
+	"generatedAt": "2026-04-01T20:45:03.709Z",
 	"totalPosts": 56,
 	"totalCategories": 6
 }
