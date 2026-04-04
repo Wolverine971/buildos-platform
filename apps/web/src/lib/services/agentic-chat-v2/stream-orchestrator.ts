@@ -12,6 +12,10 @@ import { buildMasterPrompt } from './master-prompt-builder';
 import { FASTCHAT_LIMITS } from './limits';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
+import {
+	normalizeProjectCreateArgs,
+	validateProjectCreateArgs
+} from '$lib/services/agentic-chat/tools/core/project-create-args';
 import { dev } from '$app/environment';
 import { appendFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -233,6 +237,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let consecutiveValidationIssueRounds = 0;
 	let toolLimitNotice: string | null = null;
 	let hasWriteAttempt = false;
+	let projectCreateStopRepairInjected = false;
 	let readOnlyRoundCount = 0;
 	let lastReadOpSetKey: string | null = null;
 	let repeatedReadOpSetCount = 0;
@@ -607,7 +612,25 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			if (pendingToolCalls.length === 0) {
-				finalAssistantText = sanitizeAssistantFinalText(assistantBuffer);
+				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
+				if (
+					shouldRepairProjectCreateNoExecution({
+						contextType: normalizedContext,
+						finalText: candidateFinalText,
+						toolExecutions,
+						repairAlreadyInjected: projectCreateStopRepairInjected
+					})
+				) {
+					projectCreateStopRepairInjected = true;
+					queueRepairInstruction(buildProjectCreateNoExecutionRepairInstruction());
+					flushRepairInstructions();
+					continue;
+				}
+
+				finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
+					contextType: normalizedContext,
+					toolExecutions
+				});
 				if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
 					await emitAssistantDelta(finalAssistantText);
 				}
@@ -1653,6 +1676,73 @@ function sanitizeAssistantFinalText(raw: string): string {
 	return cleanSentences.join('\n\n');
 }
 
+function shouldRepairProjectCreateNoExecution(params: {
+	contextType: string;
+	finalText: string;
+	toolExecutions: FastToolExecution[];
+	repairAlreadyInjected: boolean;
+}): boolean {
+	if (params.contextType !== 'project_create') return false;
+	if (params.repairAlreadyInjected) return false;
+	if (didSuccessfulGatewayOpExecute(params.toolExecutions, 'onto.project.create')) return false;
+
+	const finalText = params.finalText.trim();
+	if (!finalText) return true;
+	if (looksLikeClarifyingQuestion(finalText)) return false;
+	return true;
+}
+
+function buildProjectCreateNoExecutionRepairInstruction(): string {
+	return [
+		'You are in project_create context and no successful onto.project.create call has happened yet.',
+		'Do not end the turn with a success summary unless onto.project.create has actually succeeded.',
+		'You already have enough guidance to continue. Do not call more project creation help paths unless a new schema detail is genuinely missing.',
+		'Your next response must do one of two things only: emit a valid tool_exec for onto.project.create with complete args, or ask one concise clarifying question if critical information is still missing.',
+		'Minimal valid create shape: tool_exec({ op: "onto.project.create", args: { project: { name: "Project Name", type_key: "project.business.initiative" }, entities: [], relationships: [] } }).',
+		'If the user stated an outcome, add one goal. If they stated concrete actions, add only those tasks. Keep the payload minimal.'
+	].join(' ');
+}
+
+function enforceMutationOutcomeIntegrity(
+	finalText: string,
+	params: { contextType: string; toolExecutions: FastToolExecution[] }
+): string {
+	if (!finalText) return finalText;
+
+	if (params.contextType === 'project_create') {
+		const projectCreateSucceeded = didSuccessfulGatewayOpExecute(
+			params.toolExecutions,
+			'onto.project.create'
+		);
+		if (!projectCreateSucceeded && looksLikeProjectCreateSuccessClaim(finalText)) {
+			const attemptedProjectCreate = didGatewayOpExecute(
+				params.toolExecutions,
+				'onto.project.create'
+			);
+			return attemptedProjectCreate
+				? "I couldn't create the project because the create payload never validated. I need to retry with a complete project payload."
+				: "I haven't created the project yet. I loaded the project creation guidance, but the create call did not run.";
+		}
+	}
+
+	return finalText;
+}
+
+function looksLikeClarifyingQuestion(text: string): boolean {
+	return text.includes('?');
+}
+
+function looksLikeProjectCreateSuccessClaim(text: string): boolean {
+	const normalized = text.toLowerCase();
+	return (
+		/\bproject\b/.test(normalized) &&
+		(/\bcreated successfully\b/.test(normalized) ||
+			/\bi created\b/.test(normalized) ||
+			/\bcreated the project\b/.test(normalized) ||
+			/\bproject .* created\b/.test(normalized))
+	);
+}
+
 function buildGenericToolLeadIn(message: string): string {
 	const normalizedMessage = message.trim().toLowerCase();
 	if (normalizedMessage.includes('calendar') || normalizedMessage.includes('event')) {
@@ -1912,7 +2002,10 @@ function validateGatewayExecArgs(
 
 	const rawOpArgs =
 		args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {};
-	const opArgs = applyGatewayValidationContext(normalizedOp, rawOpArgs, validationContext);
+	let opArgs = applyGatewayValidationContext(normalizedOp, rawOpArgs, validationContext);
+	if (normalizedOp === 'onto.project.create') {
+		opArgs = normalizeProjectCreateArgs(opArgs);
+	}
 	const paramSchema =
 		registryOp.parameters_schema && typeof registryOp.parameters_schema === 'object'
 			? registryOp.parameters_schema
@@ -1964,6 +2057,12 @@ function validateGatewayExecArgs(
 		validateCanonicalCalendarUpdateArgs(opArgs, errors);
 	}
 
+	if (normalizedOp === 'onto.project.create') {
+		for (const error of validateProjectCreateArgs(opArgs)) {
+			addErrorOnce(error);
+		}
+	}
+
 	return normalizedOp;
 }
 
@@ -1978,18 +2077,19 @@ function applyGatewayValidationContext(
 			? validationContext.projectId.trim()
 			: null;
 	if (!effectiveProjectId) {
-		return args;
+		return op === 'onto.project.create' ? normalizeProjectCreateArgs(args) : args;
 	}
 
 	if ('project_id' in args) {
-		return args;
+		return op === 'onto.project.create' ? normalizeProjectCreateArgs(args) : args;
 	}
 
 	if (op === 'util.project.overview') {
-		return {
+		const withProjectId = {
 			...args,
 			project_id: effectiveProjectId
 		};
+		return op === 'onto.project.create' ? normalizeProjectCreateArgs(withProjectId) : withProjectId;
 	}
 
 	const schema = getToolRegistry().ops[op]?.parameters_schema;
@@ -1997,13 +2097,14 @@ function applyGatewayValidationContext(
 		Array.isArray((schema as Record<string, any> | undefined)?.required) &&
 		((schema as Record<string, any>).required as string[]).includes('project_id');
 	if (!requiresProjectId) {
-		return args;
+		return op === 'onto.project.create' ? normalizeProjectCreateArgs(args) : args;
 	}
 
-	return {
+	const withProjectId = {
 		...args,
 		project_id: effectiveProjectId
 	};
+	return op === 'onto.project.create' ? normalizeProjectCreateArgs(withProjectId) : withProjectId;
 }
 
 function validateCanonicalUpdateArgs(
@@ -2090,6 +2191,19 @@ function buildToolValidationRepairInstruction(
 						error.includes('Missing required parameter: args')
 				)
 		);
+	const hasProjectCreateIssue =
+		gatewayModeActive &&
+		issues.some(
+			(issue) => issue.toolName === 'tool_exec' && issue.op === 'onto.project.create'
+		);
+	const hasProjectCreateRelationshipIssue =
+		hasProjectCreateIssue &&
+		issues.some(
+			(issue) =>
+				issue.toolName === 'tool_exec' &&
+				issue.op === 'onto.project.create' &&
+				issue.errors.some((error) => error.includes('relationships['))
+		);
 	const lines = [
 		'One or more tool calls failed validation.',
 		'Do not guess or fabricate IDs. Never use placeholders.',
@@ -2113,6 +2227,9 @@ function buildToolValidationRepairInstruction(
 			'For routine status questions, prefer the overview path first: capabilities.overview -> util.workspace.overview or util.project.overview.'
 		);
 		lines.push(
+			'For project creation, especially in project_create context, prefer capabilities.project_creation -> onto.project.create.skill -> onto.project.create.'
+		);
+		lines.push(
 			'If the chosen capability has a skill and the work is multi-step, stateful, or easy to get wrong, fetch that skill first. The global skill catalog is available at tool_help({ path: "skills" }).'
 		);
 		lines.push(
@@ -2122,7 +2239,7 @@ function buildToolValidationRepairInstruction(
 			'Do not use tool_exec speculatively or "just to try." Only call it when you know the exact canonical op and have concrete args that satisfy that op schema.'
 		);
 		lines.push(
-			'Examples of valid discovery paths: capabilities.overview -> util.workspace.overview or util.project.overview, capabilities.calendar -> cal.skill, capabilities.planning -> onto.task.skill or onto.plan.skill, capabilities.documents -> onto.document.skill, capabilities.people_context -> util.people.skill, capabilities.workflow_audit -> workflow.audit.skill, capabilities.workflow_forecast -> workflow.forecast.skill.'
+			'Examples of valid discovery paths: capabilities.overview -> util.workspace.overview or util.project.overview, capabilities.project_creation -> onto.project.create.skill, capabilities.calendar -> cal.skill, capabilities.planning -> onto.task.skill or onto.plan.skill, capabilities.documents -> onto.document.skill, capabilities.people_context -> util.people.skill, capabilities.workflow_audit -> workflow.audit.skill, capabilities.workflow_forecast -> workflow.forecast.skill.'
 		);
 		lines.push(
 			'Gateway payload contract: tool_help({ path: "<path>", format?: "short|full", include_schemas?: boolean }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
@@ -2163,6 +2280,25 @@ function buildToolValidationRepairInstruction(
 		lines.push(
 			'For create/update/delete ops and calendar mutations, call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) before retrying tool_exec unless that exact schema is already known in-turn.'
 		);
+		if (hasProjectCreateIssue) {
+			lines.push(
+				'onto.project.create requires args.project, args.entities, and args.relationships. args.project must include name and type_key.'
+			);
+			lines.push(
+				'Minimal valid example: tool_exec({ op: "onto.project.create", args: { project: { name: "Project Name", type_key: "project.business.initiative" }, entities: [], relationships: [] } }).'
+			);
+			lines.push(
+				'Keep project creation minimal. Add one goal only if the user stated the outcome, add tasks only for concrete actions mentioned, and use clarifications[] only when critical information cannot be inferred.'
+			);
+			if (hasProjectCreateRelationshipIssue) {
+				lines.push(
+					'Project-create relationships must use entity refs with temp_id and kind. Valid forms are [ { temp_id, kind }, { temp_id, kind } ] or { from: { temp_id, kind }, to: { temp_id, kind } }.'
+				);
+				lines.push(
+					'Do not use raw string pairs like ["g1","t1"] unless the runtime can infer both kinds from args.entities; prefer the explicit object form.'
+				);
+			}
+		}
 		if (exactHelpPaths.length > 0) {
 			lines.push(
 				`Load exact-op help before retrying: ${exactHelpPaths
@@ -2212,6 +2348,10 @@ function buildToolPayloadForModel(toolCall: ChatToolCall, result: ChatToolResult
 	}
 
 	const toolName = toolCall.function?.name?.trim();
+	if (toolName === 'tool_help') {
+		return compactToolHelpPayload(basePayload);
+	}
+
 	if (toolName === 'tool_exec') {
 		const parsed = parseToolArguments(toolCall.function?.arguments);
 		const op = typeof parsed.args.op === 'string' ? parsed.args.op.trim() : '';
@@ -2223,6 +2363,115 @@ function buildToolPayloadForModel(toolCall: ChatToolCall, result: ChatToolResult
 	}
 
 	return applyToolPayloadSizeGuard(basePayload);
+}
+
+function compactToolHelpPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object') {
+		return payload;
+	}
+
+	const record = payload as Record<string, any>;
+	const type = typeof record.type === 'string' ? record.type : '';
+	if (!type) {
+		return applyToolPayloadSizeGuard(payload);
+	}
+
+	if (type === 'op') {
+		const args = Array.isArray(record.args)
+			? record.args.slice(0, 24).map((arg: Record<string, any>) => ({
+					name: arg?.name,
+					type: arg?.type,
+					required: arg?.required,
+					description:
+						typeof arg?.description === 'string'
+							? toTextPreview(arg.description, 160)
+							: undefined
+				}))
+			: [];
+		return applyToolPayloadSizeGuard({
+			type,
+			op: record.op,
+			tool_name: record.tool_name,
+			summary: record.summary,
+			usage: record.usage,
+			required_args: Array.isArray(record.required_args) ? record.required_args : [],
+			id_args: Array.isArray(record.id_args) ? record.id_args : [],
+			args,
+			notes: Array.isArray(record.notes) ? record.notes.slice(0, 12) : [],
+			policy:
+				record.policy && typeof record.policy === 'object'
+					? {
+							do: Array.isArray(record.policy.do) ? record.policy.do.slice(0, 6) : [],
+							dont: Array.isArray(record.policy.dont)
+								? record.policy.dont.slice(0, 6)
+								: [],
+							edge_cases: Array.isArray(record.policy.edge_cases)
+								? record.policy.edge_cases.slice(0, 4)
+								: []
+						}
+					: undefined,
+			example_tool_exec:
+				record.example_tool_exec && typeof record.example_tool_exec === 'object'
+					? record.example_tool_exec
+					: undefined,
+			examples: Array.isArray(record.examples) ? record.examples.slice(0, 4) : []
+		});
+	}
+
+	if (type === 'skill') {
+		return applyToolPayloadSizeGuard({
+			type,
+			path: record.path,
+			name: record.name,
+			summary: record.summary,
+			when_to_use: Array.isArray(record.when_to_use) ? record.when_to_use.slice(0, 8) : [],
+			workflow: Array.isArray(record.workflow) ? record.workflow.slice(0, 10) : [],
+			related_ops: Array.isArray(record.related_ops) ? record.related_ops.slice(0, 12) : [],
+			guardrails: Array.isArray(record.guardrails) ? record.guardrails.slice(0, 8) : [],
+			examples: Array.isArray(record.examples) ? record.examples.slice(0, 4) : [],
+			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : []
+		});
+	}
+
+	if (type === 'capability') {
+		return applyToolPayloadSizeGuard({
+			type,
+			path: record.path,
+			name: record.name,
+			status: record.status,
+			summary: record.summary,
+			what_you_can_do: Array.isArray(record.what_you_can_do)
+				? record.what_you_can_do.slice(0, 8)
+				: [],
+			skill_entrypoints: Array.isArray(record.skill_entrypoints)
+				? record.skill_entrypoints.slice(0, 8)
+				: [],
+			direct_paths: Array.isArray(record.direct_paths) ? record.direct_paths.slice(0, 12) : [],
+			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : []
+		});
+	}
+
+	if (type === 'directory') {
+		return applyToolPayloadSizeGuard({
+			type,
+			path: record.path,
+			groups: Array.isArray(record.groups) ? record.groups : undefined,
+			items: Array.isArray(record.items) ? record.items.slice(0, MAX_TOOL_LIST_ITEMS) : [],
+			capabilities: Array.isArray(record.capabilities)
+				? record.capabilities.slice(0, MAX_TOOL_LIST_ITEMS)
+				: [],
+			skills: Array.isArray(record.skills) ? record.skills.slice(0, MAX_TOOL_LIST_ITEMS) : [],
+			workflow: Array.isArray(record.workflow) ? record.workflow.slice(0, 8) : [],
+			next_step: record.next_step,
+			command_contract:
+				record.command_contract && typeof record.command_contract === 'object'
+					? record.command_contract
+					: undefined,
+			examples: Array.isArray(record.examples) ? record.examples.slice(0, 4) : []
+		});
+	}
+
+	return applyToolPayloadSizeGuard(payload);
 }
 
 function compactGatewayExecPayload(op: string, payload: unknown): unknown {
@@ -2513,6 +2762,9 @@ function buildGatewayRequiredFieldRepairInstruction(
 	failures: GatewayRequiredFieldFailure[]
 ): string {
 	const labels = failures.map((failure) => `${failure.op} -> ${failure.field}`).join(', ');
+	const hasProjectCreateFailure = failures.some(
+		(failure) => failure.op === 'onto.project.create'
+	);
 	return [
 		`Repeated required-field validation failures detected: ${labels}.`,
 		'Do not use tools willy-nilly. A missing required parameter means you do not understand that op well enough to execute it yet.',
@@ -2525,6 +2777,13 @@ function buildGatewayRequiredFieldRepairInstruction(
 		'For onto.<entity>.update, include args.<entity>_id and at least one concrete field to change.',
 		'For onto.<entity>.delete, include args.<entity>_id.',
 		'For cal.event.update, include args.event_id or args.onto_event_id plus at least one concrete field to change.',
+		...(hasProjectCreateFailure
+			? [
+					'For onto.project.create, include args.project with project.name and project.type_key, plus args.entities and args.relationships arrays.',
+					'Minimal valid project creation shape: { project: { name, type_key }, entities: [], relationships: [] }.',
+					'If the user gave an outcome, add one goal. If the user gave explicit actions, add only those tasks. If critical detail is missing, include clarifications[] and still send the project skeleton.'
+				]
+			: []),
 		'For document organization, get IDs from onto.document.tree.get result.unlinked/documents and pass exact args.document_id for delete/move.',
 		'If IDs are still unclear, ask one concise clarifying question instead of repeating failed writes.'
 	].join(' ');
@@ -2825,6 +3084,26 @@ function didGatewayExecSucceed(execution: FastToolExecution | null): boolean {
 		return true;
 	}
 	return payload.ok === true;
+}
+
+function getGatewayExecOp(execution: FastToolExecution): string | null {
+	const toolName = execution.toolCall.function?.name?.trim();
+	if (toolName !== 'tool_exec') return null;
+	const parsed = parseToolArguments(execution.toolCall.function?.arguments);
+	const op = typeof parsed.args.op === 'string' ? normalizeGatewayOpName(parsed.args.op) : '';
+	return op || null;
+}
+
+function didGatewayOpExecute(toolExecutions: FastToolExecution[], op: string): boolean {
+	const normalizedTarget = normalizeGatewayOpName(op);
+	return toolExecutions.some((execution) => getGatewayExecOp(execution) === normalizedTarget);
+}
+
+function didSuccessfulGatewayOpExecute(toolExecutions: FastToolExecution[], op: string): boolean {
+	const normalizedTarget = normalizeGatewayOpName(op);
+	return toolExecutions.some(
+		(execution) => getGatewayExecOp(execution) === normalizedTarget && didGatewayExecSucceed(execution)
+	);
 }
 
 function stableStringify(value: unknown): string {

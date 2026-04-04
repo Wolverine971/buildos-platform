@@ -32,6 +32,16 @@ Choose the capability first. If that capability has a skill, fetch the skill bef
 const OVERVIEW_GUIDANCE = `For routine status questions about the workspace or a single project, prefer the overview retrieval path first instead of generic ontology discovery:
 - Workspace-wide status -> util.workspace.overview
 - Named or in-scope project status -> util.project.overview`;
+const PROJECT_CREATE_WORKFLOW = `You are already in project_create context. The default workflow here is:
+1) Prefer capabilities.project_creation, then load onto.project.create.skill before the first create call.
+2) Build the smallest valid onto.project.create payload.
+3) Infer project.name and project.type_key from the user's message whenever reasonably possible.
+4) Always include entities: [] and relationships: [] even when the project starts empty.
+5) If the user stated an outcome, add one goal. If the user listed concrete actions, add only those task entities. Add plans or milestones only when the user clearly described workstreams, phases, or date-driven structure.
+6) Extract concrete details into project.description and project.props when they were provided.
+7) If you include relationships, every relationship item must reference entities with temp_id and kind. Never use raw temp_id strings like ["g1", "t1"].
+8) Use clarifications[] only when critical information cannot be reasonably inferred, and still send the project skeleton.
+9) After creation succeeds, continue inside the created project instead of staying in abstract creation mode.`;
 const RESPONSE_PATTERN = `CRITICAL: Always respond to the user with text BEFORE making tool calls. The user sees your response as a live stream. If you go straight to tool calls without saying anything first, they see nothing while waiting. Every turn should start with a brief message describing what you'll do next. Examples:
 - "Got it, let me create that task and link it to the milestone."
 - "I'll update the goal description and check if there are related tasks that need adjusting."
@@ -238,6 +248,9 @@ export function buildMasterPrompt(context: MasterPromptContext): string {
 		wrapTag('operational_guidelines', OPERATIONAL_GUIDELINES),
 		...(isToolGatewayEnabled() ? [wrapTag('capability_system', CAPABILITY_MODEL)] : []),
 		...(isToolGatewayEnabled() ? [wrapTag('overview_guidance', OVERVIEW_GUIDANCE)] : []),
+		...(context.contextType === 'project_create'
+			? [wrapTag('project_create_workflow', PROJECT_CREATE_WORKFLOW)]
+			: []),
 		...(isToolGatewayEnabled()
 			? [wrapTag('capability_catalog', formatCapabilitySystemGuideForPrompt())]
 			: []),

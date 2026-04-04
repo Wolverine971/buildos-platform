@@ -52,6 +52,24 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 		]
 	},
 	{
+		id: 'project_creation',
+		path: 'capabilities.project_creation',
+		name: 'Project creation',
+		status: 'available',
+		summary:
+			'Turn a user idea into the smallest valid BuildOS project payload with inferred name, type, props, and only the initial structure the user actually described.',
+		whatYouCanDo: [
+			'Create a new project from a short brief or rough idea',
+			'Infer project name, type_key, and initial props from the user message',
+			'Start minimal and include only explicit goals, tasks, plans, or milestones when warranted'
+		],
+		skillPaths: ['onto.project.create.skill'],
+		directPaths: ['onto.project.create'],
+		notes: [
+			'In project_create context, prefer this capability first. The create payload must include project, entities, and relationships, even when the entity arrays are empty.'
+		]
+	},
+	{
 		id: 'project_graph',
 		path: 'capabilities.project_graph',
 		name: 'Project graph management',

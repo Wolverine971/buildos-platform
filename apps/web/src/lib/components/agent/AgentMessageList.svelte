@@ -136,12 +136,11 @@
 								{isUserMessageExpanded(message.id) ? 'Less' : 'More'}
 							</button>
 						{/if}
-						<!-- INKPRINT: Timestamp pinned bottom-right -->
-						<div class="mt-1 flex justify-end">
-							<span class="text-[0.6rem] font-medium tabular-nums text-accent/70">
-								{formatTime(message.timestamp)}
-							</span>
-						</div>
+						<span
+							class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-accent/50"
+						>
+							{formatTime(message.timestamp)}
+						</span>
 					</div>
 					<!-- Voice notes panel (outside bubble, can take full width when expanded) -->
 					{#if message.metadata?.voice_note_group_id}
@@ -191,14 +190,11 @@
 							Response interrupted
 						</div>
 					{/if}
-					<!-- INKPRINT micro-label timestamp pinned bottom-left -->
-					<div class="mt-1 flex justify-start">
-						<span
-							class="text-[0.6rem] font-medium tabular-nums text-muted-foreground/70"
-						>
-							{formatTime(message.timestamp)}
-						</span>
-					</div>
+					<span
+						class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-muted-foreground/50"
+					>
+						{formatTime(message.timestamp)}
+					</span>
 				</div>
 			{:else if message.type === 'agent_peer'}
 				<!-- INKPRINT agent peer message with Thread texture -->
@@ -220,14 +216,11 @@
 								{message.content}
 							</div>
 						{/if}
-						<!-- INKPRINT micro-label timestamp pinned bottom-left -->
-						<div class="mt-1 flex justify-start">
-							<span
-								class="text-[0.6rem] font-medium tabular-nums text-amber-600/70 dark:text-amber-400/70"
-							>
-								{formatTime(message.timestamp)}
-							</span>
-						</div>
+						<span
+							class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-amber-600/50 dark:text-amber-400/50"
+						>
+							{formatTime(message.timestamp)}
+						</span>
 					</div>
 				</div>
 			{:else if message.type === 'thinking_block'}
@@ -276,13 +269,9 @@
 						>
 							Share the answers in your next message to continue
 						</p>
-						<div class="mt-1 flex justify-start">
-							<span
-								class="text-[0.6rem] font-medium tabular-nums text-emerald-600/70 dark:text-emerald-400/70"
-							>
-								{formatTime(message.timestamp)}
-							</span>
-						</div>
+						<span class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-emerald-600/50 dark:text-emerald-400/50">
+							{formatTime(message.timestamp)}
+						</span>
 					</div>
 				</div>
 			{:else if message.type === 'plan'}

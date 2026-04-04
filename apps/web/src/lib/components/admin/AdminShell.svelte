@@ -3,7 +3,6 @@
 	import { page } from '$app/stores';
 	import type { Snippet } from 'svelte';
 	import {
-		Menu,
 		X,
 		LayoutDashboard,
 		LineChart,
@@ -219,6 +218,7 @@
 	}
 
 	let pathname = $derived($page.url.pathname);
+	let isWideContentRoute = $derived(pathname === '/admin/chat/sessions');
 
 	const initials = $derived(
 		(user?.name || user?.email || '')
@@ -296,8 +296,12 @@
 						</div>
 					</div>
 				{/if}
-				<div class="px-4 py-6 sm:px-6 lg:px-8">
-					<div class="mx-auto max-w-7xl">
+				<div
+					class={isWideContentRoute
+						? 'px-4 py-4 sm:px-5 lg:px-6 xl:px-8 2xl:px-10'
+						: 'px-4 py-6 sm:px-6 lg:px-8'}
+				>
+					<div class={isWideContentRoute ? 'w-full' : 'mx-auto max-w-7xl'}>
 						{@render children?.()}
 					</div>
 				</div>

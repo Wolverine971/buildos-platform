@@ -21,6 +21,7 @@ category: 'agent-skills'
 tags: ['oauth', 'agent-skills', 'auth', 'security', 'pkce', 'api-integration', 'buildos']
 author: 'DJ Wayne'
 date: '2026-04-01'
+lastmod: '2026-04-03'
 ```
 
 ---
@@ -435,6 +436,106 @@ What does exist is:
 - a clear trend toward narrower permissions, shorter token lifetimes, and more explicit consent boundaries
 
 That is exactly the direction agent builders should already be moving.
+
+---
+
+## THREE CONCRETE OAUTH EXAMPLES
+
+This is where the abstract rules become easier to use.
+
+### Example 1: Connect an agent to a user's Google Calendar
+
+The user wants:
+
+- the agent to read their availability
+- create events on their behalf
+- update their calendar safely
+
+The right shape is:
+
+- authorization code grant
+- PKCE
+- browser handoff to Google
+- delegated scopes
+- token storage on the app side, not in the model context
+
+The wrong shape is:
+
+- ask the user for their Google password
+- use client credentials and pretend that means user consent happened
+
+This is the classic delegated-user case.
+
+The important lesson is:
+
+- the agent is acting for the user
+- the permission should be tied to that user
+- the user should see and approve the consent screen
+
+### Example 2: Let the system call its own backend services
+
+Suppose the agent needs to:
+
+- call an internal scheduling service
+- read app-owned metadata
+- orchestrate backend systems that belong to the same platform
+
+This is usually not a user-delegated OAuth problem.
+
+This is usually:
+
+- client credentials
+- app identity
+- server-to-server access
+
+The important lesson is:
+
+- do not drag the user through a consent flow for app-owned operations
+- do not pretend app-level access is user-level permission
+
+This is one of the cleanest places where teams get confused.
+
+They have a token, so they assume the token means "the agent can do the user thing."
+
+It does not.
+
+It means the app can do the app thing.
+
+### Example 3: Authorize a headless or constrained client
+
+Suppose the agent runtime is:
+
+- a CLI
+- a device with limited input
+- an agent shell that cannot complete a normal browser redirect cleanly
+
+Now device flow may be the better answer.
+
+The right shape is:
+
+- the runtime gets a device/user code
+- the user authorizes in a browser on another device or tab
+- the runtime polls until authorization completes
+
+The lesson here is:
+
+- some runtimes are real OAuth clients even when they do not look like web apps
+- you should choose the flow that matches the trust boundary and UX constraints, not the one you are most familiar with
+
+### The pattern across all three
+
+The real decision is not:
+
+- "Which OAuth flow do I remember?"
+
+It is:
+
+- who is the actor?
+- who owns the authority?
+- where does trust actually live?
+- what client constraints exist?
+
+If you answer those correctly, the right flow usually becomes much clearer.
 
 ---
 

@@ -683,4 +683,82 @@ describe('ToolExecutionService gateway fallback', () => {
 			expect.any(Object)
 		);
 	});
+
+	it('normalizes project create relationship string pairs to entity refs before execution', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: { project_id: PROJECT_ID, counts: { goals: 1, tasks: 3 } }
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.project.create',
+				args: {
+					project: {
+						name: 'Podcast Launch',
+						type_key: 'project.creative.podcast'
+					},
+					entities: [
+						{ temp_id: 'g1', kind: 'goal', name: 'Publish the first 3 episodes' },
+						{ temp_id: 't1', kind: 'task', title: 'Define the show format' },
+						{ temp_id: 't2', kind: 'task', title: 'Book the first 3 guests' }
+					],
+					relationships: [
+						['g1', 't1'],
+						['g1', 't2']
+					]
+				}
+			}),
+			buildContext({ contextType: 'project_create', entityId: null }),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'create_onto_project',
+			expect.objectContaining({
+				project: expect.objectContaining({
+					name: 'Podcast Launch',
+					type_key: 'project.creative.podcast'
+				}),
+				relationships: [
+					[
+						{ temp_id: 'g1', kind: 'goal' },
+						{ temp_id: 't1', kind: 'task' }
+					],
+					[
+						{ temp_id: 'g1', kind: 'goal' },
+						{ temp_id: 't2', kind: 'task' }
+					]
+				]
+			}),
+			expect.any(Object)
+		);
+	});
+
+	it('rejects project create relationship string pairs when temp ids cannot be resolved', async () => {
+		const toolExecutor = vi.fn();
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.project.create',
+				args: {
+					project: {
+						name: 'Podcast Launch',
+						type_key: 'project.creative.podcast'
+					},
+					entities: [{ temp_id: 'g1', kind: 'goal', name: 'Publish the first 3 episodes' }],
+					relationships: [['g1', 't9']]
+				}
+			}),
+			buildContext({ contextType: 'project_create', entityId: null }),
+			[]
+		);
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('relationships[0][1]');
+		expect(result.error).toContain('must match an entity in args.entities');
+		expect(toolExecutor).not.toHaveBeenCalled();
+	});
 });

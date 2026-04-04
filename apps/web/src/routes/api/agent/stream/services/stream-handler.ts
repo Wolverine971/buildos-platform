@@ -61,6 +61,7 @@ import {
 import { createSessionManager } from './session-manager';
 import { createMessagePersister } from './message-persister';
 import { buildDocStructureCacheKey } from '$lib/services/agentic-chat/context-prewarm';
+import { normalizeTimingMetricSessionReference } from '$lib/services/agentic-chat/shared/timing-metrics';
 import { resolveUserContactMergeCandidate } from '$lib/server/user-contact.service';
 
 const logger = createLogger('StreamHandler');
@@ -765,16 +766,22 @@ export class StreamHandler {
 		streamRunId?: number;
 	}): Promise<boolean> {
 		try {
-			const metadata =
-				typeof params.streamRunId === 'number' ? { stream_run_id: params.streamRunId } : {};
+			const timingMetricReference = normalizeTimingMetricSessionReference({
+				source: 'chat_sessions',
+				sessionId: params.sessionId,
+				metadata:
+					typeof params.streamRunId === 'number'
+						? { stream_run_id: params.streamRunId }
+						: {}
+			});
 			const { error } = await this.supabase.from('timing_metrics').insert({
 				id: params.id,
 				user_id: params.userId,
-				session_id: params.sessionId,
+				session_id: timingMetricReference.session_id,
 				context_type: params.contextType,
 				message_length: params.messageLength,
 				message_received_at: params.messageReceivedAt,
-				metadata
+				metadata: timingMetricReference.metadata
 			});
 
 			if (error) {

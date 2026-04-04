@@ -86,17 +86,19 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 					critical_rules: [
 						'Never call tool_exec with {}.',
 						'Never omit args for write operations.',
-						'For onto.<entity>.get|update|delete, pass exact <entity>_id UUIDs.'
+						'For onto.<entity>.get|update|delete, pass exact <entity>_id UUIDs.',
+						'For onto.project.create, include project, entities, and relationships.'
 					]
 				}
 			},
 			workflow: [
-				'1) Choose a capability first when the domain is clear: capabilities.overview, capabilities.calendar, capabilities.documents, capabilities.planning, capabilities.project_graph, capabilities.people_context, capabilities.workflow_audit, capabilities.workflow_forecast, capabilities.web_research, capabilities.buildos_reference, or capabilities.schema_reference.',
+				'1) Choose a capability first when the domain is clear: capabilities.overview, capabilities.project_creation, capabilities.calendar, capabilities.documents, capabilities.planning, capabilities.project_graph, capabilities.people_context, capabilities.workflow_audit, capabilities.workflow_forecast, capabilities.web_research, capabilities.buildos_reference, or capabilities.schema_reference.',
 				'2) For routine workspace/project status questions, start with capabilities.overview and use util.workspace.overview or util.project.overview before generic ontology search/list assembly.',
-				'3) If the capability lists a skill entry point, fetch that skill before multi-step or easy-to-get-wrong work. If it has no dedicated skill, go straight to targeted exact-op help. You can also inspect the global skill catalog with tool_help({ path: "skills" }).',
-				'4) If tool_help returns a directory, skill, or capability, narrow to the exact op; for first-time or complex writes, inspect exact schema with tool_help({ path: "<exact op>", format: "full", include_schemas: true }).',
-				'5) Execute with tool_exec({ op: "<exact op>", args: { ... } }).',
-				'6) If execution returns error.help_path, call tool_help({ path: help_path }) then retry once.'
+				'3) For project_create context or any new-project request, prefer capabilities.project_creation, then load onto.project.create.skill before onto.project.create.',
+				'4) If the capability lists a skill entry point, fetch that skill before multi-step or easy-to-get-wrong work. If it has no dedicated skill, go straight to targeted exact-op help. You can also inspect the global skill catalog with tool_help({ path: "skills" }).',
+				'5) If tool_help returns a directory, skill, or capability, narrow to the exact op; for first-time or complex writes, inspect exact schema with tool_help({ path: "<exact op>", format: "full", include_schemas: true }).',
+				'6) Execute with tool_exec({ op: "<exact op>", args: { ... } }).',
+				'7) If execution returns error.help_path, call tool_help({ path: help_path }) then retry once.'
 			]
 		};
 		if (includeExamples) {
@@ -117,6 +119,10 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 				{
 					description: 'Inspect the calendar capability first',
 					tool_help: { path: 'capabilities.calendar', format: 'short' }
+				},
+				{
+					description: 'Inspect the project creation capability first',
+					tool_help: { path: 'capabilities.project_creation', format: 'short' }
 				},
 				{
 					description: 'Fetch the global skill catalog',
@@ -223,6 +229,10 @@ function buildCapabilitiesDirectoryHelp(
 			{
 				description: 'Inspect overview capability details',
 				tool_help: { path: 'capabilities.overview', format: 'full' }
+			},
+			{
+				description: 'Inspect project creation capability details',
+				tool_help: { path: 'capabilities.project_creation', format: 'full' }
 			}
 		];
 	}
@@ -425,6 +435,20 @@ function buildOpNotes(
 			'If the result returns match.status="ambiguous", ask one concise clarifying question from the returned candidates instead of guessing.'
 		);
 	}
+	if (op === 'onto.project.create') {
+		notes.push(
+			'onto.project.create requires args.project, args.entities, and args.relationships.'
+		);
+		notes.push(
+			'args.project must include project.name and project.type_key. Use entities: [] and relationships: [] when starting minimal.'
+		);
+		notes.push(
+			'Infer project.name and project.type_key from the user message when reasonably possible, and use clarifications[] only for critical missing information.'
+		);
+		notes.push(
+			'If relationships are present, each item must be [ { temp_id, kind }, { temp_id, kind } ] or { from: { temp_id, kind }, to: { temp_id, kind } }. Never use raw string pairs like ["g1", "t1"].'
+		);
+	}
 	if (op === 'util.contact.search' || op === 'util.contact.candidates.list') {
 		notes.push('Contact methods are redacted by default.');
 		notes.push(
@@ -575,6 +599,58 @@ function buildOpExamples(
 			}
 		];
 	}
+	if (op === 'onto.project.create') {
+		return [
+			{
+				description: 'Create a minimal project skeleton',
+				tool_exec: {
+					op,
+					args: buildProjectCreateMinimalArgs()
+				}
+			},
+			{
+				description: 'Create a project with one explicit goal',
+				tool_exec: {
+					op,
+					args: {
+						project: {
+							name: 'Learn Spanish',
+							type_key: 'project.education.skill'
+						},
+						entities: [{ temp_id: 'g1', kind: 'goal', name: 'Conversational fluency' }],
+						relationships: []
+					}
+				}
+			},
+			{
+				description: 'Create a project with one goal and explicit tasks',
+				tool_exec: {
+					op,
+					args: {
+						project: {
+							name: 'Product Launch',
+							type_key: 'project.business.product_launch'
+						},
+						entities: [
+							{ temp_id: 'g1', kind: 'goal', name: 'Launch MVP by Q2' },
+							{ temp_id: 't1', kind: 'task', title: 'Schedule kickoff meeting' },
+							{ temp_id: 't2', kind: 'task', title: 'Review vendor proposals' }
+						],
+						relationships: [
+							{
+								from: { temp_id: 'g1', kind: 'goal' },
+								to: { temp_id: 't1', kind: 'task' }
+							},
+							{
+								from: { temp_id: 'g1', kind: 'goal' },
+								to: { temp_id: 't2', kind: 'task' }
+							}
+						]
+					}
+				}
+			}
+		];
+	}
 
 	const examples: Array<Record<string, unknown>> = [
 		{
@@ -621,6 +697,10 @@ function buildMinimalArgsTemplate(
 	required: string[],
 	properties: Record<string, JsonSchemaProperty>
 ): Record<string, unknown> {
+	if (op === 'onto.project.create') {
+		return buildProjectCreateMinimalArgs();
+	}
+
 	const args: Record<string, unknown> = {};
 	for (const key of required) {
 		args[key] = buildPlaceholderValue(key, properties[key] ?? {});
@@ -651,6 +731,17 @@ function buildMinimalArgsTemplate(
 	}
 
 	return args;
+}
+
+function buildProjectCreateMinimalArgs(): Record<string, unknown> {
+	return {
+		project: {
+			name: '<project name>',
+			type_key: 'project.business.initiative'
+		},
+		entities: [],
+		relationships: []
+	};
 }
 
 function buildSkillHelp(

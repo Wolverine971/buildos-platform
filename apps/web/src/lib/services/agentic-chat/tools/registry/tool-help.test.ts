@@ -13,17 +13,23 @@ describe('getToolHelp', () => {
 		expect(help.groups).toContain('workflow');
 		expect(Array.isArray(help.capabilities)).toBe(true);
 		expect(help.capabilities.map((item: any) => item.name)).toContain('capabilities.overview');
+		expect(help.capabilities.map((item: any) => item.name)).toContain(
+			'capabilities.project_creation'
+		);
 		expect(help.capabilities.map((item: any) => item.name)).toContain('capabilities.calendar');
 		expect(help.capabilities.map((item: any) => item.name)).toContain(
 			'capabilities.workflow_audit'
 		);
 		expect(Array.isArray(help.skills)).toBe(true);
 		expect(help.skills.map((item: any) => item.name)).toContain('cal.skill');
+		expect(help.skills.map((item: any) => item.name)).toContain('onto.project.create.skill');
 		expect(help.skills.map((item: any) => item.name)).toContain('onto.task.skill');
 		expect(help.skills.map((item: any) => item.name)).toContain('util.people.skill');
 		expect(help.command_contract?.tool_exec?.required).toEqual(['op', 'args']);
 		expect(Array.isArray(help.workflow)).toBe(true);
 		expect(help.workflow.join(' ')).toContain('capabilities.overview');
+		expect(help.workflow.join(' ')).toContain('capabilities.project_creation');
+		expect(help.workflow.join(' ')).toContain('onto.project.create.skill');
 		expect(help.workflow.join(' ')).toContain('util.workspace.overview');
 		expect(help.workflow.join(' ')).toContain('util.project.overview');
 		expect(help.workflow.join(' ')).toContain('capabilities.calendar');
@@ -41,6 +47,7 @@ describe('getToolHelp', () => {
 		expect(help.path).toBe('capabilities');
 		expect(Array.isArray(help.items)).toBe(true);
 		expect(help.items.map((item: any) => item.name)).toContain('capabilities.overview');
+		expect(help.items.map((item: any) => item.name)).toContain('capabilities.project_creation');
 		expect(help.items.map((item: any) => item.name)).toContain('capabilities.calendar');
 		expect(help.items.map((item: any) => item.name)).toContain('capabilities.documents');
 		expect(help.items.map((item: any) => item.name)).toContain(
@@ -60,6 +67,19 @@ describe('getToolHelp', () => {
 		expect(help.direct_paths).toContain('util.workspace.overview');
 		expect(help.direct_paths).toContain('util.project.overview');
 		expect(help.notes.join(' ')).toContain('what is happening with my projects');
+	});
+
+	it('returns project creation capability detail with its skill entrypoint', () => {
+		const help = getToolHelp('capabilities.project_creation', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('capability');
+		expect(help.path).toBe('capabilities.project_creation');
+		expect(help.skill_entrypoints).toContain('onto.project.create.skill');
+		expect(help.direct_paths).toContain('onto.project.create');
+		expect(help.notes.join(' ')).toContain('project_create context');
 	});
 
 	it('returns capability detail with skill entrypoints', () => {
@@ -94,6 +114,7 @@ describe('getToolHelp', () => {
 		expect(help.path).toBe('skills');
 		expect(Array.isArray(help.items)).toBe(true);
 		expect(help.items.map((item: any) => item.name)).toContain('cal.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('onto.project.create.skill');
 		expect(help.items.map((item: any) => item.name)).toContain('onto.task.skill');
 		expect(help.items.map((item: any) => item.name)).toContain('onto.document.skill');
 		expect(help.items.map((item: any) => item.name)).toContain('onto.plan.skill');
@@ -116,6 +137,21 @@ describe('getToolHelp', () => {
 		expect(help.guardrails.join(' ')).toContain('do now in chat');
 	});
 
+	it('returns project creation skill playbook for onto.project.create.skill', () => {
+		const help = getToolHelp('onto.project.create.skill', {
+			format: 'full',
+			include_examples: true
+		});
+
+		expect(help.type).toBe('skill');
+		expect(help.path).toBe('onto.project.create.skill');
+		expect(help.related_ops).toContain('onto.project.create');
+		expect(help.workflow.join(' ')).toContain('entities: []');
+		expect(help.workflow.join(' ')).toContain('relationships: []');
+		expect(help.guardrails.join(' ')).toContain('args:{}');
+		expect(help.notes.join(' ')).toContain('Project creation is a minimality exercise');
+	});
+
 	it('returns op help with required args and concrete example template', () => {
 		const help = getToolHelp('onto.task.update', {
 			format: 'full',
@@ -134,6 +170,28 @@ describe('getToolHelp', () => {
 		expect(Object.keys(help.example_tool_exec?.args ?? {}).length).toBeGreaterThan(1);
 		expect(Array.isArray(help.examples)).toBe(true);
 		expect(help.examples.length).toBeGreaterThan(0);
+	});
+
+	it('returns project creation op help with a real minimal payload example', () => {
+		const help = getToolHelp('onto.project.create', {
+			format: 'full',
+			include_examples: true,
+			include_schemas: true
+		});
+
+		expect(help.type).toBe('op');
+		expect(help.op).toBe('onto.project.create');
+		expect(help.required_args).toEqual(
+			expect.arrayContaining(['project', 'entities', 'relationships'])
+		);
+		expect(help.notes.join(' ')).toContain('project.name and project.type_key');
+		expect(help.notes.join(' ')).toContain('Never use raw string pairs');
+		expect(help.example_tool_exec?.args?.project?.name).toBe('<project name>');
+		expect(help.example_tool_exec?.args?.project?.type_key).toBe('project.business.initiative');
+		expect(help.example_tool_exec?.args?.entities).toEqual([]);
+		expect(help.example_tool_exec?.args?.relationships).toEqual([]);
+		expect(help.examples.length).toBeGreaterThanOrEqual(3);
+		expect(help.examples[2]?.tool_exec?.args?.relationships?.[0]?.from?.temp_id).toBe('g1');
 	});
 
 	it('returns workspace overview op guidance for status questions', () => {

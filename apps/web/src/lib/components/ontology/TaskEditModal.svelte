@@ -20,13 +20,28 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Save, Loader, Trash2, ListChecks, X, ChevronDown } from 'lucide-svelte';
+	import {
+		Save,
+		Loader,
+		Trash2,
+		ListChecks,
+		X,
+		ChevronDown,
+		FileText,
+		Users,
+		CalendarRange,
+		Clock3
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import TaskAssigneeSelector from './TaskAssigneeSelector.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
@@ -142,6 +157,107 @@
 	let showChatModal = $state(false);
 	let showActivityLog = $state(false);
 
+	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
+
+	const TASK_STATE_META: Record<
+		string,
+		{ label: string; variant: SurfaceBadgeVariant; note: string }
+	> = {
+		todo: {
+			label: 'To do',
+			variant: 'default',
+			note: 'Ready to be picked up.'
+		},
+		in_progress: {
+			label: 'In progress',
+			variant: 'info',
+			note: 'Actively being worked on.'
+		},
+		blocked: {
+			label: 'Blocked',
+			variant: 'warning',
+			note: 'Waiting on something else first.'
+		},
+		done: {
+			label: 'Done',
+			variant: 'success',
+			note: 'Completed and out of the queue.'
+		}
+	};
+
+	const PRIORITY_META: Record<
+		number,
+		{ label: string; variant: SurfaceBadgeVariant; note: string }
+	> = {
+		1: {
+			label: 'P1 Critical',
+			variant: 'error',
+			note: 'Needs immediate attention.'
+		},
+		2: {
+			label: 'P2 High',
+			variant: 'warning',
+			note: 'Important enough to prioritize soon.'
+		},
+		3: {
+			label: 'P3 Medium',
+			variant: 'info',
+			note: 'Standard working priority.'
+		},
+		4: {
+			label: 'P4 Low',
+			variant: 'default',
+			note: 'Can wait without much risk.'
+		},
+		5: {
+			label: 'P5 Nice to have',
+			variant: 'accent',
+			note: 'Optional work when there is slack.'
+		}
+	};
+
+	function parseDisplayDate(value: Date | string | null | undefined): Date | null {
+		if (!value) return null;
+		const date = value instanceof Date ? value : new Date(value);
+		return Number.isNaN(date.getTime()) ? null : date;
+	}
+
+	function formatSurfaceDate(
+		value: Date | string | null | undefined,
+		pattern: string = 'PPp',
+		fallback: string = 'Not set'
+	): string {
+		const date = parseDisplayDate(value);
+		return date ? format(date, pattern) : fallback;
+	}
+
+	function formatTaskTypeLabel(value: string | null | undefined): string {
+		if (!value || value === 'task.default') return 'General task';
+
+		return value
+			.replace(/^task\./, '')
+			.split(/[._]/)
+			.filter(Boolean)
+			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+			.join(' ');
+	}
+
+	function getStateMeta(value: string) {
+		return (
+			TASK_STATE_META[value] ?? {
+				label: value,
+				variant: 'default' as SurfaceBadgeVariant,
+				note: 'Custom workflow state.'
+			}
+		);
+	}
+
+	function getPriorityMeta(value: number) {
+		return PRIORITY_META[value] ?? PRIORITY_META[3];
+	}
+
+	const detailsFormId = $derived(`task-edit-${taskId}-details`);
+
 	const seriesMeta = $derived.by(() => {
 		if (!task?.props || typeof task.props !== 'object') return null;
 		const meta = (task.props as Record<string, any>).series;
@@ -157,6 +273,74 @@
 
 	const isSeriesMaster = $derived(seriesMeta?.role === 'master');
 	const isSeriesInstance = $derived(seriesMeta?.role === 'instance');
+	const stateMeta = $derived.by(() => getStateMeta(stateKey));
+	const priorityMeta = $derived.by(() => getPriorityMeta(priority));
+	const taskTypeLabel = $derived.by(() => formatTaskTypeLabel(typeKey || task?.type_key));
+	const assigneeSummary = $derived.by(() => {
+		if (assigneeActorIds.length === 0) return 'Unassigned';
+		if (assigneeActorIds.length === 1) return '1 assignee';
+		return `${assigneeActorIds.length} assignees`;
+	});
+	const scheduleSummary = $derived.by(() => {
+		const startDate = parseDisplayDate(startAt || task?.start_at);
+		const dueDate = parseDisplayDate(dueAt || task?.due_at);
+
+		if (startDate && dueDate) {
+			return `${format(startDate, 'EEE, MMM d · p')} to ${format(dueDate, 'EEE, MMM d · p')}`;
+		}
+
+		if (startDate) {
+			return `Starts ${format(startDate, 'EEE, MMM d · p')}`;
+		}
+
+		if (dueDate) {
+			return `Due ${format(dueDate, 'EEE, MMM d · p')}`;
+		}
+
+		return 'No schedule defined yet';
+	});
+	const dueMeta = $derived.by(() => {
+		const dueDate = parseDisplayDate(dueAt || task?.due_at);
+
+		if (!dueDate) return null;
+		if (stateKey === 'done') {
+			return {
+				label: 'Completed',
+				variant: 'success' as SurfaceBadgeVariant,
+				note: completedAt
+					? `Finished ${formatSurfaceDate(completedAt, 'MMM d, p')}`
+					: 'Task is marked complete.'
+			};
+		}
+
+		if (dueDate.getTime() < Date.now()) {
+			return {
+				label: 'Overdue',
+				variant: 'error' as SurfaceBadgeVariant,
+				note: `Deadline passed ${formatSurfaceDate(dueDate, 'MMM d, p')}`
+			};
+		}
+
+		return {
+			label: 'Scheduled',
+			variant: 'info' as SurfaceBadgeVariant,
+			note: `Due ${formatSurfaceDate(dueDate, 'MMM d, p')}`
+		};
+	});
+	const recurrenceSummary = $derived.by(() => {
+		if (isSeriesMaster && seriesMeta) {
+			if (seriesMeta.instance_count) {
+				return `${seriesMeta.instance_count} upcoming instance${seriesMeta.instance_count === 1 ? '' : 's'}`;
+			}
+			return 'Recurring series';
+		}
+
+		if (isSeriesInstance) {
+			return 'Part of a recurring series';
+		}
+
+		return 'Does not repeat';
+	});
 
 	// Build focus for chat about this task
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -542,7 +726,15 @@
 					>
 						{title || task?.title || 'Task'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+					<div class="mt-1 flex flex-wrap items-center gap-1.5">
+						<Badge variant={stateMeta.variant} size="sm">{stateMeta.label}</Badge>
+						<Badge variant={priorityMeta.variant} size="sm">{priorityMeta.label}</Badge>
+						<Badge variant="accent" size="sm">{taskTypeLabel}</Badge>
+						{#if dueMeta}
+							<Badge variant={dueMeta.variant} size="sm">{dueMeta.label}</Badge>
+						{/if}
+					</div>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
 						{#if task?.created_at}Created {new Date(task.created_at).toLocaleDateString(
 								undefined,
 								{ month: 'short', day: 'numeric' }
@@ -585,7 +777,7 @@
 
 	{#snippet children()}
 		<!-- Main content -->
-		<div class="px-2 py-2 sm:px-4 sm:py-3">
+		<div class="px-2 py-2 sm:px-4 sm:py-4">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
@@ -599,235 +791,416 @@
 					<!-- Main Form (Left 2 columns) -->
 					<div class="lg:col-span-2">
 						<form
+							id={detailsFormId}
 							onsubmit={(e) => {
 								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-2.5 sm:space-y-3 tx tx-frame tx-weak wt-paper p-2 sm:p-3"
+							class="space-y-3 sm:space-y-4"
 						>
-							<FormField
-								label="Title"
-								labelFor="title"
-								required={true}
-								error={!title.trim() && error ? 'Required' : ''}
-							>
-								<TextInput
-									id="title"
-									bind:value={title}
-									inputmode="text"
-									enterkeyhint="next"
-									placeholder="Task title..."
-									required={true}
-									disabled={isSaving}
-									error={!title.trim() && error ? true : false}
-								/>
-							</FormField>
-
-							<FormField label="Description" labelFor="description">
-								<Textarea
-									id="description"
-									bind:value={description}
-									enterkeyhint="next"
-									placeholder="Add details..."
-									rows={2}
-									disabled={isSaving}
-									size="md"
-								/>
-							</FormField>
-
-							<div class="grid grid-cols-2 gap-2">
-								<FormField label="State" labelFor="state" required={true}>
-									<Select
-										id="state"
-										bind:value={stateKey}
-										disabled={isSaving}
-										size="sm"
-										placeholder="State"
+							<Card variant="elevated" class="wt-paper">
+								<CardHeader variant="accent" texture="strip">
+									<div
+										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
-										{#each TASK_STATES as state}
-											<option value={state}>
-												{state === 'todo'
-													? 'To Do'
-													: state === 'in_progress'
-														? 'In Progress'
-														: state === 'blocked'
-															? 'Blocked'
-															: state === 'done'
-																? 'Done'
-																: state}
-											</option>
-										{/each}
-									</Select>
-								</FormField>
-
-								<FormField label="Priority" labelFor="priority" required={true}>
-									<Select
-										id="priority"
-										value={priority}
-										disabled={isSaving}
-										size="sm"
-										placeholder="Priority"
-										onchange={(val) => (priority = Number(val))}
-									>
-										<option value={1}>P1 - Critical</option>
-										<option value={2}>P2 - High</option>
-										<option value={3}>P3 - Medium</option>
-										<option value={4}>P4 - Low</option>
-										<option value={5}>P5 - Nice to have</option>
-									</Select>
-								</FormField>
-							</div>
-
-							{#if stateKey === 'done' && completedAt}
-								<p class="text-xs text-muted-foreground">
-									Completed {format(new Date(completedAt), 'PPpp')}
-								</p>
-							{/if}
-
-							<!-- Schedule section: dates + recurrence grouped together -->
-							<div
-								class="border border-border rounded-lg bg-card/50 p-2 sm:p-3 space-y-2"
-							>
-								<p
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
-								>
-									Schedule
-								</p>
-								<div class="grid grid-cols-2 gap-2">
-									<FormField label="Start" labelFor="start-date">
-										<TextInput
-											id="start-date"
-											type="datetime-local"
-											inputmode="numeric"
-											enterkeyhint="next"
-											bind:value={startAt}
-											disabled={isSaving}
-											size="sm"
-										/>
-									</FormField>
-
-									<FormField label="Due" labelFor="due-date">
-										<TextInput
-											id="due-date"
-											type="datetime-local"
-											inputmode="numeric"
-											enterkeyhint="done"
-											bind:value={dueAt}
-											disabled={isSaving}
-											size="sm"
-										/>
-									</FormField>
-								</div>
-
-								<div class="pt-2 border-t border-border/50">
-									<p
-										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
-									>
-										Recurrence
-									</p>
-									{#if isSeriesMaster && seriesMeta}
-										<p class="text-sm text-foreground mb-2">
-											Recurring series{#if seriesMeta.instance_count}&ensp;·&ensp;{seriesMeta.instance_count}
-												instances{/if}
-										</p>
-
-										{#if seriesActionError}
-											<p class="text-xs text-destructive mb-2">
-												{seriesActionError}
+										<div class="min-w-0">
+											<div class="flex items-center gap-2">
+												<FileText class="h-4 w-4 text-accent" />
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
+												>
+													Overview
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												What this task is and what “done” looks like
+											</h3>
+											<p class="mt-1 text-xs text-muted-foreground">
+												Lead with the title and supporting context so the
+												task reads clearly before someone edits workflow
+												details.
 											</p>
-										{/if}
+										</div>
+										<div class="flex flex-wrap items-center gap-1.5">
+											<Badge variant={stateMeta.variant} size="sm"
+												>{stateMeta.label}</Badge
+											>
+											<Badge variant={priorityMeta.variant} size="sm">
+												{priorityMeta.label}
+											</Badge>
+										</div>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<FormField
+										label="Title"
+										labelFor="title"
+										required={true}
+										uppercase={false}
+										showOptional={false}
+										error={!title.trim() && error ? 'Required' : ''}
+									>
+										<TextInput
+											id="title"
+											bind:value={title}
+											inputmode="text"
+											enterkeyhint="next"
+											placeholder="Task title..."
+											required={true}
+											disabled={isSaving}
+											error={!title.trim() && error ? true : false}
+										/>
+									</FormField>
 
-										{#if !showSeriesDeleteConfirm}
+									<FormField
+										label="Description"
+										labelFor="description"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="description"
+											bind:value={description}
+											enterkeyhint="next"
+											placeholder="Add the context, expected outcome, or handoff notes..."
+											rows={4}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+								</CardBody>
+							</Card>
+
+							<Card variant="default" class="wt-paper">
+								<CardHeader variant="transparent" texture="none">
+									<div
+										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+									>
+										<div>
+											<div class="flex items-center gap-2">
+												<Users class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+												>
+													Workflow
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												Ownership and execution state
+											</h3>
+										</div>
+										<p
+											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
+										>
+											Keep the operational controls together so the task’s
+											status is obvious at a glance.
+										</p>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										<FormField
+											label="State"
+											labelFor="state"
+											required={true}
+											uppercase={false}
+											showOptional={false}
+										>
+											<Select
+												id="state"
+												bind:value={stateKey}
+												disabled={isSaving}
+												size="sm"
+												placeholder="State"
+											>
+												{#each TASK_STATES as state}
+													<option value={state}>
+														{state === 'todo'
+															? 'To Do'
+															: state === 'in_progress'
+																? 'In Progress'
+																: state === 'blocked'
+																	? 'Blocked'
+																	: state === 'done'
+																		? 'Done'
+																		: state}
+													</option>
+												{/each}
+											</Select>
+										</FormField>
+
+										<FormField
+											label="Priority"
+											labelFor="priority"
+											required={true}
+											uppercase={false}
+											showOptional={false}
+										>
+											<Select
+												id="priority"
+												value={priority}
+												disabled={isSaving}
+												size="sm"
+												placeholder="Priority"
+												onchange={(val) => (priority = Number(val))}
+											>
+												<option value={1}>P1 - Critical</option>
+												<option value={2}>P2 - High</option>
+												<option value={3}>P3 - Medium</option>
+												<option value={4}>P4 - Low</option>
+												<option value={5}>P5 - Nice to have</option>
+											</Select>
+										</FormField>
+									</div>
+
+									<div
+										class="rounded-lg border border-border/70 bg-muted/30 p-3 sm:p-4"
+									>
+										<div
+											class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+										>
+											<div>
+												<p class="text-sm font-semibold text-foreground">
+													Assignees
+												</p>
+												<p class="text-xs text-muted-foreground">
+													Who owns this task right now.
+												</p>
+											</div>
+											<Badge
+												variant={assigneeActorIds.length > 0
+													? 'accent'
+													: 'default'}
+												size="sm"
+											>
+												{assigneeSummary}
+											</Badge>
+										</div>
+										<div id="task-assignees">
+											<TaskAssigneeSelector
+												{projectId}
+												bind:selectedActorIds={assigneeActorIds}
+												fallbackAssignees={Array.isArray(task?.assignees)
+													? task.assignees
+													: []}
+												disabled={isSaving || isLoading}
+												maxAssignees={10}
+											/>
+										</div>
+									</div>
+
+									{#if stateKey === 'done' && completedAt}
+										<div
+											class="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/10 dark:text-emerald-300"
+										>
+											Completed {format(new Date(completedAt), 'PPpp')}
+										</div>
+									{/if}
+								</CardBody>
+							</Card>
+
+							<Card variant="default" class="wt-paper">
+								<CardHeader variant="transparent" texture="none">
+									<div
+										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+									>
+										<div>
+											<div class="flex items-center gap-2">
+												<CalendarRange
+													class="h-4 w-4 text-muted-foreground"
+												/>
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+												>
+													Schedule
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												Timing, deadlines, and recurrence
+											</h3>
+										</div>
+										<p
+											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
+										>
+											Keep the time window together so it reads like a single
+											plan instead of disconnected fields.
+										</p>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										<FormField
+											label="Start"
+											labelFor="start-date"
+											uppercase={false}
+											showOptional={false}
+										>
+											<TextInput
+												id="start-date"
+												type="datetime-local"
+												inputmode="numeric"
+												enterkeyhint="next"
+												bind:value={startAt}
+												disabled={isSaving}
+												size="sm"
+											/>
+										</FormField>
+
+										<FormField
+											label="Due"
+											labelFor="due-date"
+											uppercase={false}
+											showOptional={false}
+										>
+											<TextInput
+												id="due-date"
+												type="datetime-local"
+												inputmode="numeric"
+												enterkeyhint="done"
+												bind:value={dueAt}
+												disabled={isSaving}
+												size="sm"
+											/>
+										</FormField>
+									</div>
+
+									<div
+										class="rounded-lg border border-border/70 bg-muted/30 p-3 sm:p-4"
+									>
+										<div class="flex items-start gap-3">
+											<div
+												class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground shadow-ink-inner"
+											>
+												<Clock3 class="h-4 w-4" />
+											</div>
+											<div class="min-w-0">
+												<p class="text-sm font-semibold text-foreground">
+													Timeline summary
+												</p>
+												<p class="mt-1 text-sm text-foreground">
+													{scheduleSummary}
+												</p>
+												<p class="mt-1 text-xs text-muted-foreground">
+													{#if dueMeta}
+														{dueMeta.note}
+													{:else}
+														Add a start or due date to make the task
+														easier to scan in lists and calendar views.
+													{/if}
+												</p>
+											</div>
+										</div>
+									</div>
+
+									<div
+										class="rounded-lg border border-border/70 bg-card p-3 sm:p-4"
+									>
+										<div
+											class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+										>
+											<div>
+												<p class="text-sm font-semibold text-foreground">
+													Recurrence
+												</p>
+												<p class="text-xs text-muted-foreground">
+													{recurrenceSummary}
+												</p>
+											</div>
+											{#if isSeriesMaster || isSeriesInstance}
+												<Badge variant="accent" size="sm">Recurring</Badge>
+											{/if}
+										</div>
+
+										{#if isSeriesMaster && seriesMeta}
+											{#if seriesActionError}
+												<p class="mb-3 text-xs text-destructive">
+													{seriesActionError}
+												</p>
+											{/if}
+
+											{#if !showSeriesDeleteConfirm}
+												<Button
+													size="sm"
+													variant="danger"
+													class="w-full"
+													onclick={() => (showSeriesDeleteConfirm = true)}
+												>
+													Delete Series
+												</Button>
+											{:else}
+												<div class="space-y-2">
+													<p class="text-xs text-muted-foreground">
+														Delete this series? Completed instances
+														remain unless you force delete.
+													</p>
+													<Button
+														variant="danger"
+														size="sm"
+														class="w-full"
+														disabled={isDeletingSeries}
+														onclick={() => handleDeleteSeries(false)}
+													>
+														{#if isDeletingSeries}
+															<Loader
+																class="w-3.5 h-3.5 animate-spin"
+															/>
+															Removing…
+														{:else}
+															Delete Upcoming
+														{/if}
+													</Button>
+													<Button
+														variant="danger"
+														size="sm"
+														class="w-full"
+														disabled={isDeletingSeries}
+														onclick={() => handleDeleteSeries(true)}
+													>
+														{#if isDeletingSeries}
+															<Loader
+																class="w-3.5 h-3.5 animate-spin"
+															/>
+															Removing…
+														{:else}
+															Force Delete All
+														{/if}
+													</Button>
+													<Button
+														variant="ghost"
+														size="sm"
+														class="w-full"
+														onclick={() => {
+															showSeriesDeleteConfirm = false;
+															seriesActionError = '';
+														}}
+														disabled={isDeletingSeries}
+													>
+														Cancel
+													</Button>
+												</div>
+											{/if}
+										{:else if isSeriesInstance}
+											<p class="text-sm text-muted-foreground">
+												This task inherits its cadence from the parent
+												series.
+											</p>
+										{:else}
 											<Button
 												size="sm"
-												variant="danger"
-												class="w-full"
-												onclick={() => (showSeriesDeleteConfirm = true)}
+												variant="outline"
+												class="w-full pressable"
+												onclick={openSeriesModal}
 											>
-												Delete Series
+												Make Recurring
 											</Button>
-										{:else}
-											<div class="space-y-1.5 mt-1">
-												<p class="text-xs text-muted-foreground">
-													Delete this series? Completed instances remain
-													unless you force delete.
-												</p>
-												<Button
-													variant="danger"
-													size="sm"
-													class="w-full"
-													disabled={isDeletingSeries}
-													onclick={() => handleDeleteSeries(false)}
-												>
-													{#if isDeletingSeries}
-														<Loader class="w-3.5 h-3.5 animate-spin" />
-														Removing…
-													{:else}
-														Delete Upcoming
-													{/if}
-												</Button>
-												<Button
-													variant="danger"
-													size="sm"
-													class="w-full"
-													disabled={isDeletingSeries}
-													onclick={() => handleDeleteSeries(true)}
-												>
-													{#if isDeletingSeries}
-														<Loader class="w-3.5 h-3.5 animate-spin" />
-														Removing…
-													{:else}
-														Force Delete All
-													{/if}
-												</Button>
-												<Button
-													variant="ghost"
-													size="sm"
-													class="w-full"
-													onclick={() => {
-														showSeriesDeleteConfirm = false;
-														seriesActionError = '';
-													}}
-													disabled={isDeletingSeries}
-												>
-													Cancel
-												</Button>
-											</div>
 										{/if}
-									{:else if isSeriesInstance}
-										<p class="text-sm text-muted-foreground">
-											Part of a recurring series.
-										</p>
-									{:else}
-										<Button
-											size="sm"
-											variant="outline"
-											class="w-full pressable"
-											onclick={openSeriesModal}
-										>
-											Make Recurring
-										</Button>
-									{/if}
-								</div>
-							</div>
-
-							<FormField label="Assignees" labelFor="task-assignees">
-								<div id="task-assignees">
-									<TaskAssigneeSelector
-										{projectId}
-										bind:selectedActorIds={assigneeActorIds}
-										fallbackAssignees={Array.isArray(task?.assignees)
-											? task.assignees
-											: []}
-										disabled={isSaving || isLoading}
-										maxAssignees={10}
-									/>
-								</div>
-							</FormField>
+									</div>
+								</CardBody>
+							</Card>
 
 							{#if error}
 								<div
-									class="p-3 bg-destructive/10 border border-destructive/30 rounded"
+									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
 								>
 									<p class="text-sm text-destructive">{error}</p>
 								</div>
@@ -837,6 +1210,147 @@
 
 					<!-- Sidebar (Right column) -->
 					<div class="space-y-3">
+						<Card variant="elevated" class="wt-card">
+							<CardHeader variant="muted" texture="strip">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p
+											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+										>
+											At a glance
+										</p>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Operational snapshot
+										</h3>
+									</div>
+									<Badge variant={stateMeta.variant} size="sm"
+										>{stateMeta.label}</Badge
+									>
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-3">
+								<div class="grid grid-cols-2 gap-2">
+									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+										>
+											Priority
+										</p>
+										<p class="mt-1 text-sm font-semibold text-foreground">
+											{priorityMeta.label}
+										</p>
+										<p class="mt-1 text-xs text-muted-foreground">
+											{priorityMeta.note}
+										</p>
+									</div>
+									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+										>
+											Assignees
+										</p>
+										<p class="mt-1 text-sm font-semibold text-foreground">
+											{assigneeSummary}
+										</p>
+										<p class="mt-1 text-xs text-muted-foreground">
+											{assigneeActorIds.length > 0
+												? 'Ownership has been assigned.'
+												: 'No owner set yet.'}
+										</p>
+									</div>
+								</div>
+
+								<div class="rounded-lg border border-border/70 bg-card p-3">
+									<div class="space-y-2">
+										<div class="flex items-start justify-between gap-3">
+											<div>
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Timeline
+												</p>
+												<p class="mt-1 text-sm font-medium text-foreground">
+													{scheduleSummary}
+												</p>
+											</div>
+											{#if dueMeta}
+												<Badge variant={dueMeta.variant} size="sm"
+													>{dueMeta.label}</Badge
+												>
+											{/if}
+										</div>
+										<div class="grid grid-cols-1 gap-2 text-sm">
+											<div class="flex items-center justify-between gap-3">
+												<span class="text-muted-foreground">Start</span>
+												<span class="text-right text-foreground">
+													{formatSurfaceDate(
+														startAt || task?.start_at,
+														'MMM d, p',
+														'Not set'
+													)}
+												</span>
+											</div>
+											<div class="flex items-center justify-between gap-3">
+												<span class="text-muted-foreground">Due</span>
+												<span class="text-right text-foreground">
+													{formatSurfaceDate(
+														dueAt || task?.due_at,
+														'MMM d, p',
+														'No deadline'
+													)}
+												</span>
+											</div>
+											<div class="flex items-center justify-between gap-3">
+												<span class="text-muted-foreground">Repeats</span>
+												<span class="text-right text-foreground"
+													>{recurrenceSummary}</span
+												>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
+									<div class="flex items-center gap-2">
+										<Clock3 class="h-4 w-4 text-muted-foreground" />
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+										>
+											Metadata
+										</p>
+									</div>
+									<div class="mt-3 space-y-2 text-sm">
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Type</span>
+											<span class="text-right text-foreground"
+												>{taskTypeLabel}</span
+											>
+										</div>
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Created</span>
+											<span class="text-right text-foreground">
+												{formatSurfaceDate(task?.created_at, 'MMM d, yyyy')}
+											</span>
+										</div>
+										<div class="flex items-center justify-between gap-3">
+											<span class="text-muted-foreground">Updated</span>
+											<span class="text-right text-foreground">
+												{formatSurfaceDate(task?.updated_at, 'MMM d, yyyy')}
+											</span>
+										</div>
+										{#if completedAt}
+											<div class="flex items-center justify-between gap-3">
+												<span class="text-muted-foreground">Completed</span>
+												<span class="text-right text-foreground">
+													{formatSurfaceDate(completedAt, 'MMM d, p')}
+												</span>
+											</div>
+										{/if}
+									</div>
+								</div>
+							</CardBody>
+						</Card>
+
 						<!-- Linked Entities -->
 						<LinkedEntities
 							sourceId={taskId}
@@ -901,7 +1415,9 @@
 					</div>
 				</div>
 
-				<EntityCommentsSection {projectId} entityType="task" entityId={taskId} />
+				<div class="mt-4">
+					<EntityCommentsSection {projectId} entityType="task" entityId={taskId} />
+				</div>
 			{/if}
 		</div>
 	{/snippet}
@@ -937,10 +1453,10 @@
 						Cancel
 					</Button>
 					<Button
-						type="button"
+						type="submit"
+						form={detailsFormId}
 						variant="primary"
 						size="sm"
-						onclick={handleSave}
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
 						class="text-xs h-8 pressable"

@@ -19,6 +19,7 @@ import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { normalizeTimingMetricSessionReference } from '$lib/services/agentic-chat/shared/timing-metrics';
 import type {
 	ChatContextType,
 	ChatToolCall,
@@ -2343,22 +2344,26 @@ export const POST: RequestHandler = async ({
 		}
 		timingMetricQueued = true;
 		timingMetricId = uuidv4();
-		const metadata: Json = {
-			stream_version: 'v2',
-			client_turn_id: clientTurnId ?? null,
-			stream_run_id: streamRunId,
-			project_id: timingProjectId,
-			entity_id: timingEntityId,
-			request_prewarmed_context: Boolean(requestPrewarmedContext),
-			timing_summary: JSON.parse(JSON.stringify(summary)) as Json
-		};
+		const timingMetricReference = normalizeTimingMetricSessionReference({
+			source: 'chat_sessions',
+			sessionId: timingSessionId,
+			metadata: {
+				stream_version: 'v2',
+				client_turn_id: clientTurnId ?? null,
+				stream_run_id: streamRunId,
+				project_id: timingProjectId,
+				entity_id: timingEntityId,
+				request_prewarmed_context: Boolean(requestPrewarmedContext),
+				timing_summary: JSON.parse(JSON.stringify(summary)) as Json
+			}
+		});
 		const nowIso = new Date().toISOString();
 		detachTimingTask(
 			(async () => {
 				const { error } = await supabase.from('timing_metrics').insert({
 					id: timingMetricId,
 					user_id: userId,
-					session_id: timingSessionId,
+					session_id: timingMetricReference.session_id,
 					turn_run_id: turnRunId,
 					context_type: timingContextType,
 					message_length: message.length,
@@ -2369,7 +2374,7 @@ export const POST: RequestHandler = async ({
 					time_to_first_response_ms: summary.phases.time_to_first_response_ms ?? null,
 					context_build_ms: summary.phases.context_build_ms ?? null,
 					tool_selection_ms: summary.phases.tool_selection_ms ?? null,
-					metadata,
+					metadata: timingMetricReference.metadata,
 					created_at: nowIso,
 					updated_at: nowIso
 				});

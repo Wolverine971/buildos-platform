@@ -31,6 +31,13 @@ export type ChatPromptSnapshotInsert =
 	Database['public']['Tables']['chat_prompt_snapshots']['Insert'];
 export type ChatTurnEvent = Database['public']['Tables']['chat_turn_events']['Row'];
 export type ChatTurnEventInsert = Database['public']['Tables']['chat_turn_events']['Insert'];
+export type ChatPromptEvalRun = Database['public']['Tables']['chat_prompt_eval_runs']['Row'];
+export type ChatPromptEvalRunInsert =
+	Database['public']['Tables']['chat_prompt_eval_runs']['Insert'];
+export type ChatPromptEvalAssertion =
+	Database['public']['Tables']['chat_prompt_eval_assertions']['Row'];
+export type ChatPromptEvalAssertionInsert =
+	Database['public']['Tables']['chat_prompt_eval_assertions']['Insert'];
 
 export type ChatContextCache = Database['public']['Tables']['chat_context_cache']['Row'];
 export type ChatContextCacheInsert = Database['public']['Tables']['chat_context_cache']['Insert'];

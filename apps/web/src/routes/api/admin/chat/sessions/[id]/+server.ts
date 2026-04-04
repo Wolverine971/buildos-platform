@@ -13,6 +13,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { buildSessionDetailPayload } from './session-detail-payload';
+import { loadPromptEvalResultsForTurnRuns } from '$lib/services/agentic-chat-v2/prompt-eval-runner';
 
 const isOptionalTableMissing = (error: unknown): boolean => {
 	const maybe = error as { code?: string; message?: string } | null;
@@ -74,7 +75,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			{ data: toolRows, error: toolError },
 			{ data: usageRows, error: usageError },
 			{ data: operationRows, error: operationError },
-			{ data: timingData, error: timingError }
+			{ data: timingData, error: timingError },
+			{ data: turnRunRows, error: turnRunError },
+			{ data: promptSnapshotRows, error: promptSnapshotError },
+			{ data: turnEventRows, error: turnEventError }
 		] = await Promise.all([
 			supabase
 				.from('chat_messages')
@@ -109,8 +113,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
           id,
           session_id,
           message_id,
+          turn_run_id,
+          stream_run_id,
+          client_turn_id,
           tool_name,
           tool_category,
+          gateway_op,
+          help_path,
+          sequence_index,
           arguments,
           result,
           execution_time_ms,
@@ -178,7 +188,90 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.eq('session_id', sessionId)
 				.order('created_at', { ascending: false })
 				.limit(1)
-				.maybeSingle()
+				.maybeSingle(),
+			supabase
+				.from('chat_turn_runs')
+				.select(
+					`
+          id,
+          stream_run_id,
+          client_turn_id,
+          source,
+          context_type,
+          entity_id,
+          project_id,
+          gateway_enabled,
+          request_message,
+          user_message_id,
+          assistant_message_id,
+          status,
+          finished_reason,
+          tool_round_count,
+          tool_call_count,
+          validation_failure_count,
+          llm_pass_count,
+          first_lane,
+          first_help_path,
+          first_skill_path,
+          first_canonical_op,
+          history_strategy,
+          history_compressed,
+          raw_history_count,
+          history_for_model_count,
+          cache_source,
+          cache_age_seconds,
+          request_prewarmed_context,
+          prompt_snapshot_id,
+          timing_metric_id,
+          started_at,
+          finished_at,
+          created_at,
+          updated_at
+        `
+				)
+				.eq('session_id', sessionId)
+				.order('started_at', { ascending: true }),
+			supabase
+				.from('chat_prompt_snapshots')
+				.select(
+					`
+          id,
+          turn_run_id,
+          snapshot_version,
+          system_prompt,
+          model_messages,
+          tool_definitions,
+          request_payload,
+          prompt_sections,
+          context_payload,
+          rendered_dump_text,
+          system_prompt_sha256,
+          messages_sha256,
+          tools_sha256,
+          system_prompt_chars,
+          message_chars,
+          approx_prompt_tokens,
+          created_at
+        `
+				)
+				.eq('session_id', sessionId)
+				.order('created_at', { ascending: true }),
+			supabase
+				.from('chat_turn_events')
+				.select(
+					`
+          id,
+          turn_run_id,
+          stream_run_id,
+          sequence_index,
+          phase,
+          event_type,
+          payload,
+          created_at
+        `
+				)
+				.eq('session_id', sessionId)
+				.order('created_at', { ascending: true })
 		]);
 
 		if (messageError) throw messageError;
@@ -186,6 +279,15 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		if (usageError) throw usageError;
 		if (operationError && !isOptionalTableMissing(operationError)) throw operationError;
 		if (timingError && !isOptionalTableMissing(timingError)) throw timingError;
+		if (turnRunError && !isOptionalTableMissing(turnRunError)) throw turnRunError;
+		if (promptSnapshotError && !isOptionalTableMissing(promptSnapshotError))
+			throw promptSnapshotError;
+		if (turnEventError && !isOptionalTableMissing(turnEventError)) throw turnEventError;
+		const turnRunIds = (turnRunRows ?? []).map((row) => row.id);
+		const { evalRuns, assertions } = await loadPromptEvalResultsForTurnRuns(
+			supabase,
+			turnRunIds
+		);
 
 		const payload = buildSessionDetailPayload({
 			sessionRow,
@@ -193,7 +295,12 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			toolExecutions: toolRows ?? [],
 			llmCalls: usageRows ?? [],
 			operations: operationRows ?? [],
-			timingData: timingData ?? null
+			timingData: timingData ?? null,
+			turnRuns: turnRunRows ?? [],
+			promptSnapshots: promptSnapshotRows ?? [],
+			turnEvents: turnEventRows ?? [],
+			evalRuns,
+			evalAssertions: assertions
 		});
 
 		return ApiResponse.success(payload);

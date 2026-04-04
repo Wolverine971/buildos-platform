@@ -12,6 +12,14 @@ export type ErrorType =
 	| 'calendar_update_error'
 	| 'unknown';
 
+export interface ErrorSummary {
+	total_errors: number;
+	unresolved_errors: number;
+	critical_errors: number;
+	errors_last_24h: number;
+	error_trend: number;
+}
+
 export interface LLMMetadata {
 	provider?: string;
 	model?: string;

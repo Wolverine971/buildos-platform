@@ -45,6 +45,9 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'Workspace and project overviews -> no dedicated skill yet; direct discovery paths: util.workspace.overview, util.project.overview'
 		);
 		expect(prompt).toContain(
+			'Project creation -> preferred skill: onto.project.create.skill; direct discovery paths: onto.project.create'
+		);
+		expect(prompt).toContain(
 			'Calendar management -> preferred skill: cal.skill; direct discovery paths: cal.event, cal.project'
 		);
 		expect(prompt).toContain(
@@ -67,6 +70,9 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'onto.plan.skill: Plan workflow playbook for deciding when to create plans, structuring them well, and connecting plans to tasks, goals, milestones, and documents.'
 		);
 		expect(prompt).toContain(
+			'onto.project.create.skill: Project creation playbook for turning a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described.'
+		);
+		expect(prompt).toContain(
 			'util.people.skill: People context playbook for profile lookup, contact search and updates, candidate resolution, and safe handling of sensitive contact values.'
 		);
 		expect(prompt).toContain('workflow.audit.skill: Project health audit playbook');
@@ -80,10 +86,16 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			'For routine status questions about the workspace or a named project, prefer capabilities.overview first.'
 		);
 		expect(prompt).toContain(
+			'When context_type is project_create, prefer capabilities.project_creation first.'
+		);
+		expect(prompt).toContain(
 			'For workspace-wide status questions like "what is happening with my projects?", prefer util.workspace.overview instead of generic ontology search/list assembly.'
 		);
 		expect(prompt).toContain(
 			'For one-project status questions like "what is going on with 9takes?", prefer util.project.overview with args.project_id when known or args.query when the name must be resolved.'
+		);
+		expect(prompt).toContain(
+			'For project creation, prefer capabilities.project_creation -> onto.project.create.skill -> onto.project.create.'
 		);
 		expect(prompt).toContain(
 			'tool_help can return a directory, a skill playbook, or an exact op schema.'
@@ -109,6 +121,9 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		);
 		expect(prompt).toContain(
 			'Gateway payload contract: tool_help({ path: "<path>", format?: "short|full", include_schemas?: boolean }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
+		);
+		expect(prompt).toContain(
+			'onto.project.create requires args.project with project.name and project.type_key, plus args.entities and args.relationships arrays (use [] when empty).'
 		);
 		expect(prompt).toContain(
 			'CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.'
@@ -185,6 +200,31 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		});
 
 		expect(prompt).toContain('<project_id>05c40ed8-9dbe-4893-bd64-8aeec90eab40</project_id>');
+	});
+
+	it('adds dedicated project creation workflow guidance in project_create context', () => {
+		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+
+		const prompt = buildMasterPrompt({
+			contextType: 'project_create',
+			projectId: null,
+			entityId: null
+		});
+
+		expect(prompt).toContain('<project_create_workflow>');
+		expect(prompt).toContain('You are already in project_create context.');
+		expect(prompt).toContain(
+			'Prefer capabilities.project_creation, then load onto.project.create.skill before the first create call.'
+		);
+		expect(prompt).toContain(
+			'Always include entities: [] and relationships: [] even when the project starts empty.'
+		);
+		expect(prompt).toContain(
+			'Never use raw temp_id strings like ["g1", "t1"].'
+		);
+		expect(prompt).toContain(
+			'Use clarifications[] only when critical information cannot be reasonably inferred'
+		);
 	});
 
 	it('renders absent ID tags as empty values instead of the string none', () => {

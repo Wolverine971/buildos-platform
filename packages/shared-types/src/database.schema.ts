@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-04-04T00:10:00.986Z
+// Generated on: 2026-04-04T05:12:31.906Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -544,6 +544,29 @@ export type DatabaseSchema = {
 		status: string | null;
 		table_name: string;
 		user_id: string;
+	};
+	chat_prompt_eval_assertions: {
+		actual: Json | null;
+		assertion_key: string;
+		created_at: string;
+		details: string | null;
+		eval_run_id: string;
+		expected: Json | null;
+		id: string;
+		status: string;
+	};
+	chat_prompt_eval_runs: {
+		completed_at: string | null;
+		created_at: string;
+		created_by: string | null;
+		id: string;
+		runner_type: string;
+		scenario_slug: string;
+		scenario_version: string;
+		started_at: string;
+		status: string;
+		summary: Json;
+		turn_run_id: string;
 	};
 	chat_prompt_snapshots: {
 		approx_prompt_tokens: number | null;
@@ -3024,6 +3047,8 @@ export const tableNames = [
 	'chat_context_cache',
 	'chat_messages',
 	'chat_operations',
+	'chat_prompt_eval_assertions',
+	'chat_prompt_eval_runs',
 	'chat_prompt_snapshots',
 	'chat_sessions',
 	'chat_sessions_daily_briefs',

@@ -39,6 +39,10 @@
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 	import {
+		buildLiveContextUsageSnapshot,
+		deriveContextOverheadTokens
+	} from './agent-chat-formatters';
+	import {
 		findThinkingBlockById,
 		type ActivityEntry,
 		type ActivityType,
@@ -226,8 +230,30 @@
 	let lastTurnContext = $state<LastTurnContext | null>(null);
 	let ontologyLoaded = $state(false);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
+	let contextUsageOverheadTokens = $state(0);
 	let activeStreamTiming = $state<ClientStreamTimingState | null>(null);
 	let _lastCompletedStreamTiming = $state<ClientStreamTimingState | null>(null);
+
+	const displayContextUsage = $derived.by(() => {
+		if (!selectedContextType) {
+			return null;
+		}
+
+		const hasConversation =
+			messages.some((message) => message.role === 'user' || message.role === 'assistant') ||
+			inputValue.trim().length > 0 ||
+			Boolean(contextUsage);
+		if (!hasConversation) {
+			return null;
+		}
+
+		return buildLiveContextUsageSnapshot({
+			messages,
+			draft: inputValue,
+			serverSnapshot: contextUsage,
+			overheadTokens: contextUsageOverheadTokens
+		});
+	});
 
 	function buildClientStreamTimingState(runId: number): ClientStreamTimingState {
 		return {
@@ -669,6 +695,7 @@
 		lastTurnContext = null;
 		ontologyLoaded = false;
 		contextUsage = null;
+		contextUsageOverheadTokens = 0;
 		activeStreamTiming = null;
 		_lastCompletedStreamTiming = null;
 		pendingToolResults.clear();
@@ -1400,6 +1427,7 @@
 			currentSession = snapshot.session;
 			lastLoadedSessionId = sessionId;
 			contextUsage = null;
+			contextUsageOverheadTokens = 0;
 			selectedContextType = snapshot.contextType;
 			selectedEntityId = snapshot.selectedEntityId;
 			selectedContextLabel = snapshot.selectedContextLabel;
@@ -3371,6 +3399,13 @@
 
 			case 'context_usage':
 				contextUsage = event.usage ?? null;
+				contextUsageOverheadTokens = event.usage
+					? deriveContextOverheadTokens({
+							serverSnapshot: event.usage,
+							messages,
+							draft: inputValue
+						})
+					: 0;
 				break;
 
 			case 'timing':
@@ -4441,7 +4476,7 @@
 					hasActiveThinkingBlock={!!currentThinkingBlockId}
 					{currentActivity}
 					{sessionStatusLabel}
-					{contextUsage}
+					contextUsage={displayContextUsage}
 				/>
 			</div>
 		{/snippet}

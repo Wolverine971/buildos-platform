@@ -28,13 +28,14 @@ export const load: PageServerLoad = async ({ locals: { supabase, safeGetSession 
 	const errorLogger = ErrorLoggerService.getInstance(adminSupabase);
 
 	// Load recent unresolved errors and summary by default
-	const [errors, summary] = await Promise.all([
-		errorLogger.getRecentErrors(50, { resolved: false }), // Only unresolved errors
+	const [{ errors, hasMore }, summary] = await Promise.all([
+		errorLogger.getRecentErrorsPage(1, 50, { resolved: false }), // Only unresolved errors
 		errorLogger.getErrorSummary()
 	]);
 
 	return {
 		errors,
-		summary
+		summary,
+		hasMore
 	};
 };

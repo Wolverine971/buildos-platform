@@ -10,6 +10,7 @@
 
 | Document                                                            | Purpose                                               | Status      |
 | ------------------------------------------------------------------- | ----------------------------------------------------- | ----------- |
+| [AI Agent Content Program Plan](#ai-agent-content-program-plan)     | Master review doc for plan, path, and draft tracker   | Active      |
 | [Agentic Chat Positioning](#agentic-chat-positioning)               | Product positioning for Project Lens                  | Active      |
 | [AI Agent Capability System Plan](#ai-agent-capability-system-plan) | Scalable model for skills, tools, plugins, and stacks | Active      |
 | [AI Agent Editorial Roadmap](#ai-agent-editorial-roadmap)           | Starter path and publishing progression               | Active      |
@@ -22,6 +23,20 @@
 ---
 
 ## Document Descriptions
+
+### AI Agent Content Program Plan
+
+**File:** `AI_AGENT_CONTENT_PROGRAM_PLAN.md`
+
+Master review document for the AI agent content program. Covers:
+
+- the core positioning and system model
+- the publishing metadata standard
+- the current publishing path
+- the current draft tracker with links and statuses
+- the next pieces to create in order
+
+---
 
 ### Agentic Chat Positioning
 
@@ -120,13 +135,14 @@ Comprehensive audit of existing blog content. Covers:
 
 Unpublished blog content ready for review:
 
-| Draft                                                 | Topic                                      | Status           |
-| ----------------------------------------------------- | ------------------------------------------ | ---------------- |
-| `BLOG_DRAFT_10_REASONS_SCOPED_CONVERSATION.md`        | Scoped conversation benefits               | Ready for review |
-| `BLOG_DRAFT_ZOOM_IN_OUT.md`                           | Zoom as a skill (thought leadership)       | Ready for review |
-| `BLOG_DRAFT_HOW_TO_DO_SMART_AI_RESEARCH.md`           | AI research workflows and tooling          | Ready for review |
-| `BLOG_DRAFT_HOW_TO_GET_AI_TO_DO_MARKETING_FOR_YOU.md` | AI marketing strategy and operating system | Ready for review |
-| `BLOG_DRAFT_HOW_AI_AGENTS_SHOULD_USE_OAUTH.md`        | OAuth for agent integrations               | Ready for review |
+| Draft                                                                  | Topic                                      | Status           |
+| ---------------------------------------------------------------------- | ------------------------------------------ | ---------------- |
+| `BLOG_DRAFT_10_REASONS_SCOPED_CONVERSATION.md`                         | Scoped conversation benefits               | Ready for review |
+| `BLOG_DRAFT_ZOOM_IN_OUT.md`                                            | Zoom as a skill (thought leadership)       | Ready for review |
+| `BLOG_DRAFT_HOW_TO_DO_SMART_AI_RESEARCH.md`                            | AI research workflows and tooling          | Ready for review |
+| `BLOG_DRAFT_GOOGLE_CALENDAR_FOR_AI_AGENTS_SEARCH_BEFORE_YOU_CREATE.md` | Google Calendar operations for agents      | Ready for review |
+| `BLOG_DRAFT_HOW_TO_GET_AI_TO_DO_MARKETING_FOR_YOU.md`                  | AI marketing strategy and operating system | Ready for review |
+| `BLOG_DRAFT_HOW_AI_AGENTS_SHOULD_USE_OAUTH.md`                         | OAuth for agent integrations               | Ready for review |
 
 ---
 

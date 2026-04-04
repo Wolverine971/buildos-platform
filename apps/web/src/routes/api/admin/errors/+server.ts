@@ -30,8 +30,11 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const resolved = url.searchParams.get('resolved');
 	const userId = url.searchParams.get('userId');
 	const projectId = url.searchParams.get('projectId');
-	const page = parseInt(url.searchParams.get('page') || '1');
-	const limit = parseInt(url.searchParams.get('limit') || '50');
+	const page = Math.max(parseInt(url.searchParams.get('page') || '1', 10) || 1, 1);
+	const limit = Math.min(
+		Math.max(parseInt(url.searchParams.get('limit') || '50', 10) || 50, 1),
+		100
+	);
 
 	// Build filters
 	const filters: any = {};
@@ -43,8 +46,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	// Fetch errors and summary
 	const errorLogger = ErrorLoggerService.getInstance(adminSupabase);
-	const [errors, summary] = await Promise.all([
-		errorLogger.getRecentErrors(limit, filters),
+	const [{ errors, hasMore }, summary] = await Promise.all([
+		errorLogger.getRecentErrorsPage(page, limit, filters),
 		errorLogger.getErrorSummary()
 	]);
 
@@ -54,7 +57,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		pagination: {
 			page,
 			limit,
-			hasMore: errors.length === limit
+			hasMore
 		}
 	});
 };

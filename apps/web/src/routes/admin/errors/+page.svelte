@@ -2,7 +2,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
-	import type { ErrorLogEntry, ErrorSeverity, ErrorType } from '$lib/types/error-logging';
+	import type {
+		ErrorLogEntry,
+		ErrorSeverity,
+		ErrorType,
+		ErrorSummary
+	} from '$lib/types/error-logging';
 	import Button from '$components/ui/Button.svelte';
 	import Select from '$components/ui/Select.svelte';
 	import TextInput from '$components/ui/TextInput.svelte';
@@ -25,9 +30,19 @@
 	} from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
+	const EMPTY_SUMMARY: ErrorSummary = {
+		total_errors: 0,
+		unresolved_errors: 0,
+		critical_errors: 0,
+		errors_last_24h: 0,
+		error_trend: 0
+	};
 
 	let errors = $state<ErrorLogEntry[]>(data.errors || []);
-	let summary = $state(data.summary || []);
+	let summary = $state<ErrorSummary>({
+		...EMPTY_SUMMARY,
+		...(data.summary || {})
+	});
 	let loading = $state(false);
 	let selectedError = $state<ErrorLogEntry | null>(null);
 	let selectedErrorIds = $state<string[]>([]);
@@ -67,7 +82,7 @@
 	// Pagination
 	let currentPage = $state(1);
 	let itemsPerPage = $state(50);
-	let hasMore = $state(false);
+	let hasMore = $state(Boolean(data.hasMore));
 
 	async function loadErrors() {
 		loading = true;
@@ -86,7 +101,10 @@
 
 			if (result.success) {
 				errors = result.data.errors;
-				summary = result.data.summary;
+				summary = {
+					...EMPTY_SUMMARY,
+					...(result.data.summary || {})
+				};
 				hasMore = result.data.pagination?.hasMore || false;
 				// Reset selection when loading new data
 				selectedErrorIds = [];
@@ -470,7 +488,7 @@
 
 		<AdminPageHeader
 			title="Error Logs"
-			description="Monitor and resolve system errors"
+			description="Monitor and resolve actionable system errors"
 			icon={TriangleAlert}
 			showBack={true}
 			actions={headerActions}
@@ -478,34 +496,53 @@
 
 		<!-- Summary Cards -->
 		<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3 sm:mb-4">
-			{#each summary as item}
-				{@const styles = getSeverityStyles(item.severity)}
-				<div
-					class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak"
-				>
-					<div class="flex items-start justify-between gap-2">
-						<div class="min-w-0 flex-1">
-							<p
-								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5 truncate"
-							>
-								{item.error_type?.replace(/_/g, ' ')}
-							</p>
-							<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
-								{item.error_count}
-							</p>
-						</div>
-						<span
-							class="{styles.badge} px-1.5 py-0.5 rounded text-[0.65rem] font-medium shrink-0"
-						>
-							{item.severity}
-						</span>
-					</div>
-					<div class="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
-						<CircleCheck class="w-3 h-3 text-emerald-500" />
-						<span>{item.resolved_count} resolved</span>
-					</div>
+			<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
+				<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+					Visible Errors
+				</p>
+				<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+					{summary.total_errors}
+				</p>
+				<p class="mt-1.5 text-xs text-muted-foreground">Noise-filtered actionable logs</p>
+			</div>
+
+			<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
+				<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+					Open Errors
+				</p>
+				<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+					{summary.unresolved_errors}
+				</p>
+				<div class="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+					<CircleAlert class="w-3 h-3 text-red-500" />
+					<span>Currently unresolved</span>
 				</div>
-			{/each}
+			</div>
+
+			<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
+				<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+					Critical Open
+				</p>
+				<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+					{summary.critical_errors}
+				</p>
+				<div class="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+					<Bug class="w-3 h-3 text-orange-500" />
+					<span>Needs immediate attention</span>
+				</div>
+			</div>
+
+			<div class="bg-card border border-border rounded-lg shadow-ink p-3 tx tx-frame tx-weak">
+				<p class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-0.5">
+					Last 24 Hours
+				</p>
+				<p class="text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+					{summary.errors_last_24h}
+				</p>
+				<p class="mt-1.5 text-xs text-muted-foreground">
+					{summary.error_trend > 0 ? '+' : ''}{summary.error_trend}% vs previous week avg
+				</p>
+			</div>
 		</div>
 
 		<!-- Filters -->
@@ -841,8 +878,10 @@
 			{#if errors.length === 0}
 				<div class="text-center py-8 px-4">
 					<CircleCheck class="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-					<p class="text-sm text-muted-foreground">No errors found</p>
-					<p class="text-xs text-muted-foreground mt-1">All clear!</p>
+					<p class="text-sm text-muted-foreground">No actionable errors found</p>
+					<p class="text-xs text-muted-foreground mt-1">
+						The visible error log is clear for this filter set.
+					</p>
 				</div>
 			{/if}
 		</div>

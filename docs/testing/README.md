@@ -33,6 +33,8 @@ The BuildOS monorepo uses **Vitest** as its primary testing framework across all
 
 - **[📊 Web App Detailed Coverage](./WEB_APP_COVERAGE.md)** - Deep dive into what's tested in the web app
 - **[📋 Coverage Matrix](./COVERAGE_MATRIX.md)** - Complete reference table for all components
+- **[🧪 Agentic Chat Prompt Test Plan](./AGENTIC_CHAT_PROMPT_TEST_PLAN.md)** - Prompt-level acceptance scenarios and current agentic chat coverage
+- **[🛠 Agentic Chat Project Creation Flow](./AGENTIC_CHAT_PROJECT_CREATION_MANUAL_FLOW.md)** - Manual acceptance flow for `project_create` mode and post-create context shift
 - **[🔬 Research Document](../../thoughts/shared/research/2025-10-06_18-44-32_testing-infrastructure-audit.md)** - Full audit findings
 
 Keep durable audit summaries in this folder. Do not keep one-off raw run artifacts under `docs/testing/artifacts/`; regenerate them locally when needed.

@@ -2268,6 +2268,104 @@ export type Database = {
           },
         ]
       }
+      chat_prompt_eval_assertions: {
+        Row: {
+          actual: Json | null
+          assertion_key: string
+          created_at: string
+          details: string | null
+          eval_run_id: string
+          expected: Json | null
+          id: string
+          status: string
+        }
+        Insert: {
+          actual?: Json | null
+          assertion_key: string
+          created_at?: string
+          details?: string | null
+          eval_run_id: string
+          expected?: Json | null
+          id?: string
+          status: string
+        }
+        Update: {
+          actual?: Json | null
+          assertion_key?: string
+          created_at?: string
+          details?: string | null
+          eval_run_id?: string
+          expected?: Json | null
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_prompt_eval_assertions_eval_run_id_fkey"
+            columns: ["eval_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_prompt_eval_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_prompt_eval_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          runner_type: string
+          scenario_slug: string
+          scenario_version: string
+          started_at: string
+          status: string
+          summary: Json
+          turn_run_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          runner_type?: string
+          scenario_slug: string
+          scenario_version: string
+          started_at?: string
+          status: string
+          summary?: Json
+          turn_run_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          runner_type?: string
+          scenario_slug?: string
+          scenario_version?: string
+          started_at?: string
+          status?: string
+          summary?: Json
+          turn_run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_prompt_eval_runs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_prompt_eval_runs_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_prompt_snapshots: {
         Row: {
           approx_prompt_tokens: number | null

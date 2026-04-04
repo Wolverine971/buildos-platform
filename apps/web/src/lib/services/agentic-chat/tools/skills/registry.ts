@@ -5,6 +5,7 @@ import { documentSkill } from './document.skill';
 import { workflowForecastSkill } from './forecast.skill';
 import { peopleSkill } from './people.skill';
 import { planSkill } from './plan.skill';
+import { projectCreateSkill } from './project-create.skill';
 import { taskSkill } from './task.skill';
 import type { SkillDefinition } from './types';
 
@@ -12,6 +13,7 @@ const ALL_SKILLS: SkillDefinition[] = [
 	calendarSkill,
 	documentSkill,
 	planSkill,
+	projectCreateSkill,
 	taskSkill,
 	peopleSkill,
 	workflowAuditSkill,

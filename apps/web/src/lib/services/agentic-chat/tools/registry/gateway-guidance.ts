@@ -2,8 +2,12 @@
 export const GATEWAY_TOOL_DISCOVERY_LINES = [
 	'Use the capability catalog in the prompt to choose the right BuildOS domain first.',
 	'For routine status questions about the workspace or a named project, prefer capabilities.overview first.',
+	'When context_type is project_create, prefer capabilities.project_creation first.',
 	'For workspace-wide status questions like "what is happening with my projects?", prefer util.workspace.overview instead of generic ontology search/list assembly.',
 	'For one-project status questions like "what is going on with 9takes?", prefer util.project.overview with args.project_id when known or args.query when the name must be resolved.',
+	'For project creation, prefer capabilities.project_creation -> onto.project.create.skill -> onto.project.create.',
+	'onto.project.create requires args.project with project.name and project.type_key, plus args.entities and args.relationships arrays (use [] when empty).',
+	'Project creation should stay minimal by default: add only the initial goals, tasks, plans, or milestones the user actually described, and use clarifications[] only for critical missing information.',
 	'You only have access to tool_help and tool_exec. tool_help discovers paths and schemas; tool_exec runs canonical ops.',
 	'If the chosen capability has a skill and the work is multi-step, stateful, or easy to get wrong, fetch that skill first.',
 	'If a capability has no dedicated skill, go straight to targeted exact-op help instead of hunting for a skill that does not exist.',

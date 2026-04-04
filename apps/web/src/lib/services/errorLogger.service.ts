@@ -6,10 +6,27 @@ import type {
 	ErrorContext,
 	ErrorType,
 	ErrorSeverity,
-	LLMMetadata
+	LLMMetadata,
+	ErrorSummary
 } from '$lib/types/error-logging';
 import { browser } from '$app/environment';
 import { shouldDisplayPersistedErrorLog } from '$lib/utils/error-observability';
+
+type ErrorLogFilters = {
+	userId?: string;
+	projectId?: string;
+	errorType?: ErrorType;
+	severity?: ErrorSeverity;
+	resolved?: boolean;
+};
+
+const EMPTY_ERROR_SUMMARY: ErrorSummary = {
+	total_errors: 0,
+	unresolved_errors: 0,
+	critical_errors: 0,
+	errors_last_24h: 0,
+	error_trend: 0
+};
 
 export class ErrorLoggerService {
 	private static instances = new WeakMap<SupabaseClient<Database>, ErrorLoggerService>();
@@ -82,6 +99,124 @@ export class ErrorLoggerService {
 			};
 		}
 		return { message: String(error) };
+	}
+
+	private async resolveUserFilter(userId?: string): Promise<string | null | undefined> {
+		if (!userId || !userId.includes('@')) {
+			return userId;
+		}
+
+		const { data: userData } = await this.supabase
+			.from('users')
+			.select('id')
+			.eq('email', userId)
+			.single();
+
+		return userData?.id ?? null;
+	}
+
+	private buildErrorLogsQuery(selectClause: string, filters?: ErrorLogFilters) {
+		let query = this.supabase
+			.from('error_logs')
+			.select(selectClause)
+			.order('created_at', { ascending: false });
+
+		if (filters?.userId) {
+			query = query.eq('user_id', filters.userId);
+		}
+		if (filters?.projectId) {
+			query = query.eq('project_id', filters.projectId);
+		}
+		if (filters?.errorType) {
+			query = query.eq('error_type', filters.errorType);
+		}
+		if (filters?.severity) {
+			query = query.eq('severity', filters.severity);
+		}
+		if (filters?.resolved !== undefined) {
+			query = query.eq('resolved', filters.resolved);
+		}
+
+		return query;
+	}
+
+	private async getVisibleErrorRows(
+		selectClause: string,
+		filters: ErrorLogFilters | undefined,
+		visibleTargetCount: number,
+		batchSize: number
+	): Promise<{ rows: ErrorLogEntry[]; exhausted: boolean }> {
+		const resolvedUserId = await this.resolveUserFilter(filters?.userId);
+		if (resolvedUserId === null) {
+			return { rows: [], exhausted: true };
+		}
+
+		const resolvedFilters =
+			resolvedUserId === filters?.userId ? filters : { ...filters, userId: resolvedUserId };
+		const visibleRows: ErrorLogEntry[] = [];
+		let offset = 0;
+
+		while (visibleRows.length < visibleTargetCount) {
+			const { data, error } = await this.buildErrorLogsQuery(
+				selectClause,
+				resolvedFilters
+			).range(offset, offset + batchSize - 1);
+
+			if (error) {
+				console.error('Failed to fetch error logs:', error);
+				return { rows: [], exhausted: true };
+			}
+
+			if (!data || data.length === 0) {
+				return { rows: visibleRows, exhausted: true };
+			}
+
+			const displayableEntries = (data as unknown as ErrorLogEntry[]).filter((entry) =>
+				shouldDisplayPersistedErrorLog(entry as any)
+			);
+			visibleRows.push(...displayableEntries);
+
+			if (data.length < batchSize) {
+				return { rows: visibleRows, exhausted: true };
+			}
+
+			offset += data.length;
+		}
+
+		return { rows: visibleRows, exhausted: false };
+	}
+
+	private async attachUsersToErrors(errors: ErrorLogEntry[]): Promise<ErrorLogEntry[]> {
+		if (errors.length === 0) {
+			return [];
+		}
+
+		const userIds = [
+			...new Set(errors.filter((error) => error.user_id).map((error) => error.user_id!))
+		];
+		let usersMap: Record<string, { id: string; email: string; name?: string | null }> = {};
+
+		if (userIds.length > 0) {
+			const { data: users } = await this.supabase
+				.from('users')
+				.select('id, email, name')
+				.in('id', userIds);
+
+			if (users) {
+				usersMap = users.reduce(
+					(acc, user) => {
+						acc[user.id] = user;
+						return acc;
+					},
+					{} as Record<string, { id: string; email: string; name?: string | null }>
+				);
+			}
+		}
+
+		return errors.map((error) => ({
+			...error,
+			user: error.user_id ? usersMap[error.user_id] : undefined
+		}));
 	}
 
 	private safeJsonValue(
@@ -513,102 +648,36 @@ export class ErrorLoggerService {
 		}
 	}
 
+	public async getRecentErrorsPage(
+		page: number = 1,
+		limit: number = 50,
+		filters?: ErrorLogFilters
+	): Promise<{ errors: ErrorLogEntry[]; hasMore: boolean }> {
+		const safePage = Math.max(page, 1);
+		const safeLimit = Math.max(limit, 1);
+		const offset = (safePage - 1) * safeLimit;
+		const visibleTargetCount = offset + safeLimit + 1;
+		const batchSize = Math.max(safeLimit * 2, 100);
+		const { rows } = await this.getVisibleErrorRows(
+			'*',
+			filters,
+			visibleTargetCount,
+			batchSize
+		);
+		const pageErrors = rows.slice(offset, offset + safeLimit);
+
+		return {
+			errors: await this.attachUsersToErrors(pageErrors),
+			hasMore: rows.length > offset + safeLimit
+		};
+	}
+
 	public async getRecentErrors(
 		limit: number = 50,
-		filters?: {
-			userId?: string;
-			projectId?: string;
-			errorType?: ErrorType;
-			severity?: ErrorSeverity;
-			resolved?: boolean;
-		}
+		filters?: ErrorLogFilters
 	): Promise<ErrorLogEntry[]> {
-		// If userId looks like an email, first get the user ID
-		let actualUserId = filters?.userId;
-		if (filters?.userId && filters.userId.includes('@')) {
-			const { data: userData } = await this.supabase
-				.from('users')
-				.select('id')
-				.eq('email', filters.userId)
-				.single();
-
-			if (userData) {
-				actualUserId = userData.id;
-			} else {
-				// No user with this email, return empty array
-				return [];
-			}
-		}
-
-		let query = this.supabase
-			.from('error_logs')
-			.select('*')
-			.order('created_at', { ascending: false })
-			.limit(Math.max(limit * 5, 100));
-
-		if (actualUserId) {
-			query = query.eq('user_id', actualUserId);
-		}
-		if (filters?.projectId) {
-			query = query.eq('project_id', filters.projectId);
-		}
-		if (filters?.errorType) {
-			query = query.eq('error_type', filters.errorType);
-		}
-		if (filters?.severity) {
-			query = query.eq('severity', filters.severity);
-		}
-		if (filters?.resolved !== undefined) {
-			query = query.eq('resolved', filters.resolved);
-		}
-
-		const { data: errors, error } = await query;
-
-		if (error) {
-			console.error('Failed to fetch error logs:', error);
-			return [];
-		}
-
-		if (!errors || errors.length === 0) {
-			return [];
-		}
-
-		const visibleErrors = errors.filter((entry) =>
-			shouldDisplayPersistedErrorLog(entry as any)
-		);
-		if (visibleErrors.length === 0) {
-			return [];
-		}
-
-		// Extract unique user IDs from the errors
-		const userIds = [...new Set(visibleErrors.filter((e) => e.user_id).map((e) => e.user_id!))];
-
-		// Fetch user data for all unique user IDs
-		let usersMap: Record<string, any> = {};
-		if (userIds.length > 0) {
-			const { data: users } = await this.supabase
-				.from('users')
-				.select('id, email, name')
-				.in('id', userIds);
-
-			if (users) {
-				usersMap = users.reduce(
-					(acc, user) => {
-						acc[user.id] = user;
-						return acc;
-					},
-					{} as Record<string, any>
-				);
-			}
-		}
-
-		// Attach user data to each error
-		const enrichedErrors = visibleErrors.slice(0, limit).map((error) => ({
-			...error,
-			user: error.user_id ? usersMap[error.user_id] : undefined
-		}));
-
-		return enrichedErrors as ErrorLogEntry[];
+		const { errors } = await this.getRecentErrorsPage(1, limit, filters);
+		return errors;
 	}
 
 	public async resolveError(
@@ -634,71 +703,60 @@ export class ErrorLoggerService {
 		return true;
 	}
 
-	public async getErrorSummary(): Promise<any> {
+	public async getErrorSummary(): Promise<ErrorSummary> {
 		try {
-			// Get aggregated data from error_logs
 			const now = new Date();
 			const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 			const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+			const { rows } = await this.getVisibleErrorRows(
+				'id, endpoint, error_message, metadata, operation_type, severity, resolved, created_at',
+				undefined,
+				Number.POSITIVE_INFINITY,
+				250
+			);
 
-			// Get total errors
-			const { count: totalErrors } = await this.supabase
-				.from('error_logs')
-				.select('*', { count: 'exact', head: true });
+			let totalErrors = 0;
+			let unresolvedErrors = 0;
+			let criticalErrors = 0;
+			let errorsLast24h = 0;
+			let errorsLastWeek = 0;
 
-			// Get unresolved errors
-			const { count: unresolvedErrors } = await this.supabase
-				.from('error_logs')
-				.select('*', { count: 'exact', head: true })
-				.eq('resolved', false);
+			for (const error of rows) {
+				totalErrors += 1;
 
-			// Get critical errors
-			const { count: criticalErrors } = await this.supabase
-				.from('error_logs')
-				.select('*', { count: 'exact', head: true })
-				.eq('severity', 'critical')
-				.eq('resolved', false);
-
-			// Get errors in last 24 hours
-			const { count: errorsLast24h } = await this.supabase
-				.from('error_logs')
-				.select('*', { count: 'exact', head: true })
-				.gte('created_at', yesterday.toISOString());
-
-			// Get errors in last 7 days (for trend)
-			const { count: errorsLastWeek } = await this.supabase
-				.from('error_logs')
-				.select('*', { count: 'exact', head: true })
-				.gte('created_at', lastWeek.toISOString())
-				.lt('created_at', yesterday.toISOString());
-
-			// Calculate error trend (comparing last 24h to previous week average)
-			const weeklyAverage = (errorsLastWeek || 0) / 7;
-			const errorTrend =
-				weeklyAverage > 0
-					? (((errorsLast24h || 0) - weeklyAverage) / weeklyAverage) * 100
-					: 0;
-
-			return [
-				{
-					total_errors: totalErrors || 0,
-					unresolved_errors: unresolvedErrors || 0,
-					critical_errors: criticalErrors || 0,
-					errors_last_24h: errorsLast24h || 0,
-					error_trend: Math.round(errorTrend)
+				if (!error.resolved) {
+					unresolvedErrors += 1;
+					if (error.severity === 'critical') {
+						criticalErrors += 1;
+					}
 				}
-			];
+
+				const createdAt = error.created_at ? new Date(error.created_at) : null;
+				if (!createdAt || Number.isNaN(createdAt.getTime())) {
+					continue;
+				}
+
+				if (createdAt >= yesterday) {
+					errorsLast24h += 1;
+				} else if (createdAt >= lastWeek) {
+					errorsLastWeek += 1;
+				}
+			}
+
+			const weeklyAverage = errorsLastWeek / 7;
+			const errorTrend =
+				weeklyAverage > 0 ? ((errorsLast24h - weeklyAverage) / weeklyAverage) * 100 : 0;
+
+			return {
+				total_errors: totalErrors,
+				unresolved_errors: unresolvedErrors,
+				critical_errors: criticalErrors,
+				errors_last_24h: errorsLast24h,
+				error_trend: Math.round(errorTrend)
+			};
 		} catch (error) {
 			console.error('Failed to fetch error summary:', error);
-			return [
-				{
-					total_errors: 0,
-					unresolved_errors: 0,
-					critical_errors: 0,
-					errors_last_24h: 0,
-					error_trend: 0
-				}
-			];
+			return { ...EMPTY_ERROR_SUMMARY };
 		}
 	}
 

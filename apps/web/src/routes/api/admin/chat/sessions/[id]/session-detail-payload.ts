@@ -7,7 +7,11 @@ type TimelineType =
 	| 'llm_call'
 	| 'operation'
 	| 'context_shift'
-	| 'timing';
+	| 'timing'
+	| 'turn_run'
+	| 'prompt_snapshot'
+	| 'turn_event'
+	| 'eval_run';
 
 export interface TimelineEvent {
 	id: string;
@@ -67,8 +71,14 @@ export interface MessageRow {
 export interface ToolExecutionRow {
 	id: string;
 	message_id?: string | null;
+	turn_run_id?: string | null;
+	stream_run_id?: string | null;
+	client_turn_id?: string | null;
 	tool_name?: string | null;
 	tool_category?: string | null;
+	gateway_op?: string | null;
+	help_path?: string | null;
+	sequence_index?: number | string | null;
 	arguments?: unknown;
 	result?: unknown;
 	execution_time_ms?: number | string | null;
@@ -122,6 +132,148 @@ export interface TimingDataRow extends Record<string, unknown> {
 	created_at?: string | null;
 	time_to_first_response_ms?: number | string | null;
 	time_to_first_event_ms?: number | string | null;
+}
+
+export interface TurnRunRow {
+	id: string;
+	stream_run_id?: string | null;
+	client_turn_id?: string | null;
+	source?: string | null;
+	context_type?: string | null;
+	entity_id?: string | null;
+	project_id?: string | null;
+	gateway_enabled?: boolean | null;
+	request_message?: string | null;
+	user_message_id?: string | null;
+	assistant_message_id?: string | null;
+	status?: string | null;
+	finished_reason?: string | null;
+	tool_round_count?: number | string | null;
+	tool_call_count?: number | string | null;
+	validation_failure_count?: number | string | null;
+	llm_pass_count?: number | string | null;
+	first_lane?: string | null;
+	first_help_path?: string | null;
+	first_skill_path?: string | null;
+	first_canonical_op?: string | null;
+	history_strategy?: string | null;
+	history_compressed?: boolean | null;
+	raw_history_count?: number | string | null;
+	history_for_model_count?: number | string | null;
+	cache_source?: string | null;
+	cache_age_seconds?: number | string | null;
+	request_prewarmed_context?: boolean | null;
+	prompt_snapshot_id?: string | null;
+	timing_metric_id?: string | null;
+	started_at?: string | null;
+	finished_at?: string | null;
+	created_at?: string | null;
+	updated_at?: string | null;
+}
+
+export interface PromptSnapshotRow {
+	id: string;
+	turn_run_id?: string | null;
+	snapshot_version?: string | null;
+	system_prompt?: string | null;
+	model_messages?: unknown;
+	tool_definitions?: unknown;
+	request_payload?: unknown;
+	prompt_sections?: unknown;
+	context_payload?: unknown;
+	rendered_dump_text?: string | null;
+	system_prompt_sha256?: string | null;
+	messages_sha256?: string | null;
+	tools_sha256?: string | null;
+	system_prompt_chars?: number | string | null;
+	message_chars?: number | string | null;
+	approx_prompt_tokens?: number | string | null;
+	created_at?: string | null;
+}
+
+export interface TurnEventRow {
+	id: string;
+	turn_run_id?: string | null;
+	stream_run_id?: string | null;
+	sequence_index?: number | string | null;
+	phase?: string | null;
+	event_type?: string | null;
+	payload?: unknown;
+	created_at?: string | null;
+}
+
+export interface PromptEvalRunRow {
+	id: string;
+	turn_run_id?: string | null;
+	scenario_slug?: string | null;
+	scenario_version?: string | null;
+	runner_type?: string | null;
+	status?: string | null;
+	summary?: unknown;
+	started_at?: string | null;
+	completed_at?: string | null;
+	created_by?: string | null;
+	created_at?: string | null;
+}
+
+export interface PromptEvalAssertionRow {
+	id: string;
+	eval_run_id?: string | null;
+	assertion_key?: string | null;
+	status?: string | null;
+	expected?: unknown;
+	actual?: unknown;
+	details?: string | null;
+	created_at?: string | null;
+}
+
+export interface SessionPromptEvalPayload {
+	id: string;
+	scenario_slug: string;
+	scenario_version: string;
+	runner_type: string;
+	status: string;
+	summary: Record<string, unknown>;
+	started_at: string;
+	completed_at: string | null;
+	created_by: string | null;
+	assertions: PromptEvalAssertionRow[];
+}
+
+export interface SessionTurnRunPayload {
+	id: string;
+	turn_index: number;
+	stream_run_id: string | null;
+	client_turn_id: string | null;
+	status: string;
+	finished_reason: string | null;
+	context_type: string;
+	entity_id: string | null;
+	project_id: string | null;
+	gateway_enabled: boolean;
+	request_message: string;
+	user_message_id: string | null;
+	assistant_message_id: string | null;
+	tool_round_count: number;
+	tool_call_count: number;
+	validation_failure_count: number;
+	llm_pass_count: number;
+	first_lane: string | null;
+	first_help_path: string | null;
+	first_skill_path: string | null;
+	first_canonical_op: string | null;
+	history_strategy: string | null;
+	history_compressed: boolean | null;
+	raw_history_count: number;
+	history_for_model_count: number;
+	cache_source: string | null;
+	cache_age_seconds: number;
+	request_prewarmed_context: boolean;
+	started_at: string;
+	finished_at: string | null;
+	prompt_snapshot: PromptSnapshotRow | null;
+	events: TurnEventRow[];
+	eval_runs: SessionPromptEvalPayload[];
 }
 
 const COST_PER_MILLION_TOKENS_USD = 0.21;
@@ -209,6 +361,7 @@ export interface SessionDetailPayload {
 	operations: OperationRow[];
 	timeline: TimelineEvent[];
 	timing_metrics: TimingDataRow | null;
+	turn_runs: SessionTurnRunPayload[];
 }
 
 interface BuildPayloadInput {
@@ -218,6 +371,11 @@ interface BuildPayloadInput {
 	llmCalls: LlmCallRow[];
 	operations: OperationRow[];
 	timingData: TimingDataRow | null;
+	turnRuns: TurnRunRow[];
+	promptSnapshots: PromptSnapshotRow[];
+	turnEvents: TurnEventRow[];
+	evalRuns: PromptEvalRunRow[];
+	evalAssertions: PromptEvalAssertionRow[];
 }
 
 export const buildSessionDetailPayload = ({
@@ -226,7 +384,12 @@ export const buildSessionDetailPayload = ({
 	toolExecutions,
 	llmCalls,
 	operations,
-	timingData
+	timingData,
+	turnRuns,
+	promptSnapshots,
+	turnEvents,
+	evalRuns,
+	evalAssertions
 }: BuildPayloadInput): SessionDetailPayload => {
 	const sessionCreatedAt = toIsoOrFallback(sessionRow.created_at, new Date().toISOString());
 	const userMessageTimestamps = messages
@@ -253,6 +416,100 @@ export const buildSessionDetailPayload = ({
 	const toolCallCount = Number(
 		toolExecutions.length || sessionRow.tool_call_count || toolCallCountFromTrace
 	);
+	const promptSnapshotByTurnRunId = new Map<string, PromptSnapshotRow>();
+	for (const snapshot of promptSnapshots) {
+		if (snapshot.turn_run_id) {
+			promptSnapshotByTurnRunId.set(snapshot.turn_run_id, snapshot);
+		}
+	}
+	const eventsByTurnRunId = new Map<string, TurnEventRow[]>();
+	for (const event of turnEvents) {
+		if (!event.turn_run_id) continue;
+		const existing = eventsByTurnRunId.get(event.turn_run_id) ?? [];
+		existing.push(event);
+		eventsByTurnRunId.set(event.turn_run_id, existing);
+	}
+	for (const entry of eventsByTurnRunId.values()) {
+		entry.sort((a, b) => asNumber(a.sequence_index) - asNumber(b.sequence_index));
+	}
+	const assertionsByEvalRunId = new Map<string, PromptEvalAssertionRow[]>();
+	for (const assertion of evalAssertions) {
+		if (!assertion.eval_run_id) continue;
+		const existing = assertionsByEvalRunId.get(assertion.eval_run_id) ?? [];
+		existing.push(assertion);
+		assertionsByEvalRunId.set(assertion.eval_run_id, existing);
+	}
+	const evalRunsByTurnRunId = new Map<string, SessionPromptEvalPayload[]>();
+	for (const evalRun of evalRuns) {
+		if (!evalRun.turn_run_id) continue;
+		const existing = evalRunsByTurnRunId.get(evalRun.turn_run_id) ?? [];
+		existing.push({
+			id: evalRun.id,
+			scenario_slug: evalRun.scenario_slug ?? 'unknown',
+			scenario_version: evalRun.scenario_version ?? 'unknown',
+			runner_type: evalRun.runner_type ?? 'unknown',
+			status: evalRun.status ?? 'unknown',
+			summary:
+				evalRun.summary &&
+				typeof evalRun.summary === 'object' &&
+				!Array.isArray(evalRun.summary)
+					? (evalRun.summary as Record<string, unknown>)
+					: {},
+			started_at: toIsoOrFallback(evalRun.started_at ?? evalRun.created_at, sessionCreatedAt),
+			completed_at: evalRun.completed_at ?? null,
+			created_by: evalRun.created_by ?? null,
+			assertions: (assertionsByEvalRunId.get(evalRun.id) ?? []).sort((a, b) =>
+				toIsoOrFallback(a.created_at, sessionCreatedAt).localeCompare(
+					toIsoOrFallback(b.created_at, sessionCreatedAt)
+				)
+			)
+		});
+		evalRunsByTurnRunId.set(evalRun.turn_run_id, existing);
+	}
+	const orderedTurnRuns = [...turnRuns].sort((a, b) => {
+		const left = toIsoOrFallback(a.started_at ?? a.created_at, sessionCreatedAt);
+		const right = toIsoOrFallback(b.started_at ?? b.created_at, sessionCreatedAt);
+		if (left === right) return a.id.localeCompare(b.id);
+		return left < right ? -1 : 1;
+	});
+	const sessionTurnRuns: SessionTurnRunPayload[] = orderedTurnRuns.map((turnRun, index) => ({
+		id: turnRun.id,
+		turn_index: index + 1,
+		stream_run_id: turnRun.stream_run_id ?? null,
+		client_turn_id: turnRun.client_turn_id ?? null,
+		status: turnRun.status ?? 'running',
+		finished_reason: turnRun.finished_reason ?? null,
+		context_type: turnRun.context_type ?? sessionRow.context_type ?? 'global',
+		entity_id: turnRun.entity_id ?? null,
+		project_id: turnRun.project_id ?? null,
+		gateway_enabled: turnRun.gateway_enabled === true,
+		request_message: turnRun.request_message ?? '',
+		user_message_id: turnRun.user_message_id ?? null,
+		assistant_message_id: turnRun.assistant_message_id ?? null,
+		tool_round_count: asNumber(turnRun.tool_round_count),
+		tool_call_count: asNumber(turnRun.tool_call_count),
+		validation_failure_count: asNumber(turnRun.validation_failure_count),
+		llm_pass_count: asNumber(turnRun.llm_pass_count),
+		first_lane: turnRun.first_lane ?? null,
+		first_help_path: turnRun.first_help_path ?? null,
+		first_skill_path: turnRun.first_skill_path ?? null,
+		first_canonical_op: turnRun.first_canonical_op ?? null,
+		history_strategy: turnRun.history_strategy ?? null,
+		history_compressed:
+			typeof turnRun.history_compressed === 'boolean' ? turnRun.history_compressed : null,
+		raw_history_count: asNumber(turnRun.raw_history_count),
+		history_for_model_count: asNumber(turnRun.history_for_model_count),
+		cache_source: turnRun.cache_source ?? null,
+		cache_age_seconds: asNumber(turnRun.cache_age_seconds),
+		request_prewarmed_context: turnRun.request_prewarmed_context === true,
+		started_at: toIsoOrFallback(turnRun.started_at ?? turnRun.created_at, sessionCreatedAt),
+		finished_at: turnRun.finished_at ?? null,
+		prompt_snapshot: promptSnapshotByTurnRunId.get(turnRun.id) ?? null,
+		events: eventsByTurnRunId.get(turnRun.id) ?? [],
+		eval_runs: (evalRunsByTurnRunId.get(turnRun.id) ?? []).sort((a, b) =>
+			b.started_at.localeCompare(a.started_at)
+		)
+	}));
 
 	const timeline: TimelineEvent[] = [];
 	timeline.push({
@@ -270,6 +527,166 @@ export const buildSessionDetailPayload = ({
 			status: sessionRow.status
 		}
 	});
+
+	for (const turnRun of sessionTurnRuns) {
+		timeline.push({
+			id: `turn_run:${turnRun.id}`,
+			timestamp: turnRun.started_at,
+			type: 'turn_run',
+			severity:
+				turnRun.status === 'failed'
+					? 'error'
+					: turnRun.status === 'cancelled'
+						? 'warning'
+						: 'info',
+			title: `Turn ${turnRun.turn_index}: ${turnRun.status}`,
+			summary: [
+				turnRun.first_lane ? `lane=${turnRun.first_lane}` : null,
+				turnRun.first_skill_path ? `skill=${turnRun.first_skill_path}` : null,
+				turnRun.first_canonical_op ? `op=${turnRun.first_canonical_op}` : null,
+				`${turnRun.tool_call_count} tool calls`,
+				`${turnRun.llm_pass_count} LLM passes`
+			]
+				.filter(Boolean)
+				.join(' • '),
+			turn_index: turnRun.turn_index,
+			payload: {
+				id: turnRun.id,
+				stream_run_id: turnRun.stream_run_id,
+				client_turn_id: turnRun.client_turn_id,
+				status: turnRun.status,
+				finished_reason: turnRun.finished_reason,
+				context_type: turnRun.context_type,
+				entity_id: turnRun.entity_id,
+				project_id: turnRun.project_id,
+				gateway_enabled: turnRun.gateway_enabled,
+				request_message: turnRun.request_message,
+				tool_round_count: turnRun.tool_round_count,
+				tool_call_count: turnRun.tool_call_count,
+				validation_failure_count: turnRun.validation_failure_count,
+				llm_pass_count: turnRun.llm_pass_count,
+				first_lane: turnRun.first_lane,
+				first_help_path: turnRun.first_help_path,
+				first_skill_path: turnRun.first_skill_path,
+				first_canonical_op: turnRun.first_canonical_op,
+				history_strategy: turnRun.history_strategy,
+				history_compressed: turnRun.history_compressed,
+				raw_history_count: turnRun.raw_history_count,
+				history_for_model_count: turnRun.history_for_model_count,
+				cache_source: turnRun.cache_source,
+				cache_age_seconds: turnRun.cache_age_seconds,
+				request_prewarmed_context: turnRun.request_prewarmed_context,
+				started_at: turnRun.started_at,
+				finished_at: turnRun.finished_at
+			}
+		});
+
+		if (turnRun.prompt_snapshot) {
+			const snapshot = turnRun.prompt_snapshot;
+			const snapshotTimestamp = toIsoOrFallback(snapshot.created_at, turnRun.started_at);
+			timeline.push({
+				id: `prompt_snapshot:${snapshot.id}`,
+				timestamp: snapshotTimestamp,
+				type: 'prompt_snapshot',
+				severity: 'info',
+				title: `Prompt Snapshot: Turn ${turnRun.turn_index}`,
+				summary: `${asNumber(snapshot.approx_prompt_tokens)} est tokens • ${asNumber(snapshot.system_prompt_chars)} system chars • ${asNumber(snapshot.message_chars)} message chars`,
+				turn_index: turnRun.turn_index,
+				payload: {
+					id: snapshot.id,
+					turn_run_id: snapshot.turn_run_id,
+					snapshot_version: snapshot.snapshot_version,
+					approx_prompt_tokens: snapshot.approx_prompt_tokens,
+					system_prompt_chars: snapshot.system_prompt_chars,
+					message_chars: snapshot.message_chars,
+					system_prompt_sha256: snapshot.system_prompt_sha256,
+					messages_sha256: snapshot.messages_sha256,
+					tools_sha256: snapshot.tools_sha256,
+					prompt_sections: snapshot.prompt_sections,
+					request_payload: snapshot.request_payload,
+					context_payload: snapshot.context_payload,
+					rendered_dump_text: snapshot.rendered_dump_text
+				}
+			});
+		}
+
+		for (const event of turnRun.events) {
+			const eventTimestamp = toIsoOrFallback(event.created_at, turnRun.started_at);
+			const payload =
+				event.payload && typeof event.payload === 'object' && !Array.isArray(event.payload)
+					? (event.payload as Record<string, unknown>)
+					: { value: event.payload };
+			const severity: TimelineSeverity =
+				event.event_type === 'tool_call_validation_failed'
+					? 'error'
+					: event.event_type === 'context_shift_emitted'
+						? 'warning'
+						: 'info';
+			timeline.push({
+				id: `turn_event:${event.id}`,
+				timestamp: eventTimestamp,
+				type: 'turn_event',
+				severity,
+				title: `Turn Event: ${event.event_type ?? 'event'}`,
+				summary: summarizeText(
+					[
+						event.phase ? `phase=${event.phase}` : null,
+						payload.path ? `path=${String(payload.path)}` : null,
+						payload.canonical_op ? `op=${String(payload.canonical_op)}` : null,
+						payload.tool_name ? `tool=${String(payload.tool_name)}` : null,
+						payload.error ? `error=${String(payload.error)}` : null
+					]
+						.filter(Boolean)
+						.join(' • '),
+					220
+				),
+				turn_index: turnRun.turn_index,
+				payload: {
+					id: event.id,
+					turn_run_id: event.turn_run_id,
+					stream_run_id: event.stream_run_id,
+					sequence_index: event.sequence_index,
+					phase: event.phase,
+					event_type: event.event_type,
+					payload
+				}
+			});
+		}
+
+		for (const evalRun of turnRun.eval_runs) {
+			timeline.push({
+				id: `eval_run:${evalRun.id}`,
+				timestamp: evalRun.started_at,
+				type: 'eval_run',
+				severity:
+					evalRun.status === 'passed'
+						? 'success'
+						: evalRun.status === 'failed'
+							? 'error'
+							: 'warning',
+				title: `Prompt Eval: ${evalRun.scenario_slug}`,
+				summary: `${evalRun.status} • ${String(
+					(evalRun.summary.assertion_counts as Record<string, unknown> | undefined)
+						?.passed ?? 0
+				)} passed • ${String(
+					(evalRun.summary.assertion_counts as Record<string, unknown> | undefined)
+						?.failed ?? 0
+				)} failed`,
+				turn_index: turnRun.turn_index,
+				payload: {
+					id: evalRun.id,
+					scenario_slug: evalRun.scenario_slug,
+					scenario_version: evalRun.scenario_version,
+					runner_type: evalRun.runner_type,
+					status: evalRun.status,
+					summary: evalRun.summary,
+					started_at: evalRun.started_at,
+					completed_at: evalRun.completed_at,
+					assertions: evalRun.assertions
+				}
+			});
+		}
+	}
 
 	for (const message of messages) {
 		const timestamp = toIsoOrFallback(message.created_at, sessionCreatedAt);
@@ -356,8 +773,14 @@ export const buildSessionDetailPayload = ({
 			payload: {
 				id: tool.id,
 				message_id: tool.message_id,
+				turn_run_id: tool.turn_run_id,
+				stream_run_id: tool.stream_run_id,
+				client_turn_id: tool.client_turn_id,
 				tool_name: tool.tool_name,
 				tool_category: tool.tool_category,
+				gateway_op: tool.gateway_op,
+				help_path: tool.help_path,
+				sequence_index: tool.sequence_index,
 				success: tool.success,
 				execution_time_ms: tool.execution_time_ms,
 				tokens_consumed: tool.tokens_consumed,
@@ -494,7 +917,13 @@ export const buildSessionDetailPayload = ({
 		messages.some((row) => !!row.error_message) ||
 		toolExecutions.some((row) => row.success === false) ||
 		llmCalls.some((row) => row.status !== 'success' || !!row.error_message) ||
-		operations.some((row) => row.status === 'failed' || !!row.error_message);
+		operations.some((row) => row.status === 'failed' || !!row.error_message) ||
+		sessionTurnRuns.some(
+			(row) =>
+				row.status === 'failed' ||
+				row.validation_failure_count > 0 ||
+				row.events.some((event) => event.event_type === 'tool_call_validation_failed')
+		);
 
 	return {
 		session: {
@@ -536,6 +965,7 @@ export const buildSessionDetailPayload = ({
 		llm_calls: llmCalls,
 		operations,
 		timeline,
-		timing_metrics: timingData ?? null
+		timing_metrics: timingData ?? null,
+		turn_runs: sessionTurnRuns
 	};
 };

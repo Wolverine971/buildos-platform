@@ -21,6 +21,7 @@ category: 'agent-skills'
 tags: ['ai-marketing', 'agent-skills', 'brand-strategy', 'marketing-ops', 'positioning', 'buildos']
 author: 'DJ Wayne'
 date: '2026-03-29'
+lastmod: '2026-04-03'
 ```
 
 ---
@@ -205,6 +206,122 @@ And that is where most people break down.
 
 ---
 
+## HOW TO CHOOSE YOUR SETUP
+
+This is where a lot of teams waste time.
+
+They do not just need "AI marketing."
+They need to decide what kind of system they are building.
+
+### Build-your-own stack vs platform
+
+This is one of the first real decisions.
+
+#### Build-your-own stack
+
+This means you assemble your own combination of:
+
+- models
+- research tools
+- writing workflows
+- asset tools
+- storage
+- review loops
+- campaign systems
+
+Best when:
+
+- you want high control
+- your workflow is unusual
+- you already know what your docs and processes should look like
+- you care about ownership, flexibility, and composability
+
+Breaks when:
+
+- the team is disorganized
+- nobody owns the system
+- the docs are weak
+- you underestimate how much orchestration and upkeep this requires
+
+#### Platform
+
+This means you use something more opinionated, like a marketing or GTM platform with AI built in.
+
+Best when:
+
+- you want faster time to value
+- you want more built-in workflow structure
+- you have a team that needs consistency more than maximum flexibility
+
+Breaks when:
+
+- your real workflow does not fit the platform's model
+- you need deeper customization
+- your context lives in too many places outside the platform
+
+### Point tools vs operating system
+
+This is the next distinction.
+
+#### Point tools
+
+Point tools are good at specific jobs:
+
+- generating images
+- drafting posts
+- editing copy
+- creating assets
+
+They are useful.
+They are not a marketing system by themselves.
+
+Breaks when:
+
+- you expect them to carry brand memory
+- you expect them to coordinate campaigns
+- you expect them to preserve strategy across multiple pieces of work
+
+#### Operating system
+
+An operating system approach is different.
+
+It organizes:
+
+- strategy
+- docs
+- source material
+- tasks
+- campaigns
+- outputs
+- approvals
+
+That is much closer to what serious teams eventually need.
+
+### What kind of team each category is best for
+
+Use this rough guide:
+
+- solo founder with messy docs: start by organizing strategy and source material before buying more tools
+- solo founder with strong clarity: general LLM + docs + asset tools can go a long way
+- small team with repeatable campaigns: platform can help if the process is already somewhat defined
+- advanced team with strong ops and unusual workflows: build-your-own stack becomes more attractive
+- any team with multiple campaigns and evolving message architecture: you eventually need an operating system, not just point tools
+
+### My recommendation
+
+Most people should not start by building a giant custom stack.
+
+They should start by:
+
+- clarifying strategy
+- organizing docs
+- using a small set of tools well
+- then deciding whether they need a platform or a deeper custom system
+
+That sequence is much more likely to produce useful marketing than buying six tools and hoping they become a system on their own.
+
+---
+
 ## THE SINGLE PATH: WHAT YOU MUST DEFINE FIRST
 
 This is the cheat sheet.
@@ -342,6 +459,40 @@ You need guardrails:
 - what brand lines should never be crossed
 
 This is how you keep the system usable at scale.
+
+---
+
+## WHAT DOCUMENTS THE AGENT SHOULD ACTUALLY GET
+
+This is the practical handoff layer.
+
+If you want an AI agent to market well for you, it needs a real documentation pack.
+
+At minimum, that pack should include:
+
+- a brand one-pager
+- an audience document
+- a positioning document
+- a value-prop document
+- a message hierarchy
+- content pillars
+- a source-material library
+- a campaign brief template
+- guardrails and approval rules
+
+If you want that to be even more useful, add:
+
+- competitor notes
+- testimonials and customer language
+- founder voice examples
+- past high-performing content
+- common objections and responses
+
+This is one of the biggest quality multipliers in the whole system.
+
+Most bad AI marketing is not bad because the model is weak.
+
+It is bad because the model is operating with almost no real documentation.
 
 ---
 
@@ -498,6 +649,28 @@ This is why the best AI marketing setups feel less like "content generation" and
 
 ---
 
+## THE SIMPLE OPERATING CHEAT SHEET
+
+If you only remember one path, make it this:
+
+1. define the brand
+2. define the audience
+3. define the positioning and value prop
+4. organize source material and proof points
+5. define priorities and campaign goals
+6. give the agent clear rules and review loops
+7. then let AI help with research, writing, assets, and execution
+
+That is the order.
+
+Not:
+
+- open AI
+- ask for posts
+- hope the strategy appears
+
+---
+
 ## WHAT BUILDOS ADDS
 
 This is where BuildOS becomes especially interesting.
@@ -553,14 +726,18 @@ Then scale.
 
 ---
 
+## Research Notes / Current Landscape References
+
+- Jasper official site: <https://www.jasper.ai/>
+- Copy.ai official site: <https://www.copy.ai/>
+- HubSpot Breeze official site: <https://www.hubspot.com/products/artificial-intelligence/breeze-ai-agents>
+- Canva Brand Kit / AI: <https://www.canva.com/pro/brand-kit/>
+
+---
+
 ## Section Notes For Future Expansion
 
-- add direct comparison: build-your-own stack vs platform
-- add direct comparison: point tools vs operating system
-- add a section on where each category breaks
-- add a section on what kind of team each category is best for
 - add a landscape section comparing general LLMs vs Jasper vs Copy.ai vs HubSpot Breeze vs custom stacks
 - add a more explicit "brand documentation checklist"
-- add a "single path" one-page cheat sheet box
 - add examples of campaigns drifting when there is no core documentation
 - add a BuildOS-specific section on brand docs, campaign docs, and strategy memory

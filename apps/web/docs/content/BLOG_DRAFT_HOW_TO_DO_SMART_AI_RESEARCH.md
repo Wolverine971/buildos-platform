@@ -22,6 +22,7 @@ tags:
     ['ai-research', 'agent-skills', 'research', 'tavily', 'perplexity', 'brave-search', 'puppeteer']
 author: 'DJ Wayne'
 date: '2026-03-29'
+lastmod: '2026-04-03'
 ```
 
 ---
@@ -422,6 +423,85 @@ It is working a problem.
 
 ---
 
+## THREE CONCRETE RESEARCH FLOWS
+
+This is where people usually need the most help.
+
+### Example 1: Research a recent product launch
+
+The user says:
+
+> Research the newest AI browser products and tell me which one matters most.
+
+A weak flow is:
+
+- answer from model memory
+- produce a generic ranking
+- fail to separate products released last month from products released two years ago
+
+The smart flow is:
+
+1. explicitly browse first
+2. gather the main products and exact launch or release dates
+3. separate official announcements from commentary
+4. identify what actually changed recently
+5. only then synthesize the landscape
+
+Prompt pattern:
+
+> This topic is recent. Browse first. Give me the lay of the land, exact dates, official links where possible, and the 3 biggest changes in the last 12-24 months before you recommend anything.
+
+### Example 2: Choose a research stack for an agent
+
+The user says:
+
+> Help me choose between Tavily, Perplexity, Brave, and a browser-based setup.
+
+A weak flow is:
+
+- ask which one is "best"
+- get a shallow answer
+
+The smart flow is:
+
+1. start with the categories and jobs
+2. define the decision criteria
+3. compare by task type
+4. identify where each option breaks
+5. then recommend the stack for the actual use case
+
+Prompt pattern:
+
+> First map the space. Then compare these tools by freshness, controllability, source transparency, implementation difficulty, and where each one fails. After that, recommend the best fit for an agent that has to research recent software changes.
+
+### Example 3: Research a sensitive or high-stakes topic
+
+The user says:
+
+> Research the risks and best practices for X security workflow.
+
+This is where the agent needs more discipline.
+
+The smart flow is:
+
+1. expect the model to be more constrained or less direct
+2. prefer primary documentation
+3. separate known facts from inference
+4. ask for uncertainty explicitly
+5. verify the most important claims against primary sources
+
+Prompt pattern:
+
+> This is a sensitive or high-stakes topic. Research primary sources first, separate evidence from interpretation, tell me what remains uncertain, and do not rely on memory alone.
+
+The meta lesson across all three examples is the same:
+
+- the question determines the path
+- the path determines the evidence
+- the evidence determines the answer quality
+
+---
+
 ## HOW TO THINK ABOUT THE TOOL LANDSCAPE
 
 Different research tools are good at different jobs.
@@ -536,6 +616,16 @@ Here are three patterns that help.
 
 > Separate evidence from synthesis. Tell me what you know, what you infer, and what still needs verification.
 
+### Pattern 4: Force the answer to show its work
+
+> Give me:
+>
+> 1. the lay of the land
+> 2. the key decision criteria
+> 3. the strongest sources
+> 4. the biggest open questions
+> 5. your recommendation and why
+
 These instructions force the agent to behave more like an investigator and less like a confident autocomplete engine.
 
 ---
@@ -591,7 +681,7 @@ That is what clarity feels like.
 
 ## Research Notes / Official References
 
-- Tavily docs: search endpoint and product overview
-- Perplexity docs: Sonar search model
-- Brave Search API docs
-- Puppeteer docs: what it is, installation, and browser automation model
+- Tavily docs: <https://docs.tavily.com/documentation/about>
+- Perplexity docs: <https://docs.perplexity.ai/>
+- Brave Search API docs: <https://api.search.brave.com/>
+- Puppeteer docs: <https://pptr.dev/>

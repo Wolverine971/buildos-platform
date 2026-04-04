@@ -34,6 +34,10 @@ import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../tools/core/definitions'
 import { getToolHelp } from '../tools/registry/tool-help';
 import { getToolRegistry } from '../tools/registry/tool-registry';
 import { normalizeGatewayOpName } from '../tools/registry/gateway-op-aliases';
+import {
+	normalizeProjectCreateArgs,
+	validateProjectCreateArgs
+} from '../tools/core/project-create-args';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { dev } from '$app/environment';
 import { createLogger } from '$lib/utils/logger';
@@ -335,6 +339,9 @@ export class ToolExecutionService implements BaseService {
 		args = this.applyContextDefaults(toolName, args, context, availableTools);
 		args = this.applyArgumentAliases(toolName, args, availableTools);
 		args = this.normalizeIdFields(args);
+		if (toolName === 'create_onto_project') {
+			args = normalizeProjectCreateArgs(args);
+		}
 
 		if (toolName === 'create_onto_document') {
 			const description = typeof args.description === 'string' ? args.description.trim() : '';
@@ -997,7 +1004,11 @@ export class ToolExecutionService implements BaseService {
 			CHAT_TOOL_DEFINITIONS
 		);
 		normalizedArgs = this.applyArgumentAliases(toolName, normalizedArgs, CHAT_TOOL_DEFINITIONS);
-		return this.normalizeIdFields(normalizedArgs);
+		normalizedArgs = this.normalizeIdFields(normalizedArgs);
+		if (toolName === 'create_onto_project') {
+			normalizedArgs = normalizeProjectCreateArgs(normalizedArgs);
+		}
+		return normalizedArgs;
 	}
 
 	private resolveGatewayDetailFallback(
@@ -1336,6 +1347,13 @@ export class ToolExecutionService implements BaseService {
 				break;
 			case 'reorganize_onto_project_graph':
 				this.validateReorganizeProjectGraphArgs(args, errors);
+				break;
+			case 'create_onto_project':
+				for (const error of validateProjectCreateArgs(args)) {
+					if (!errors.includes(error)) {
+						errors.push(error);
+					}
+				}
 				break;
 			default:
 				break;

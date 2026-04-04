@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
 import { streamFastChat } from './stream-orchestrator';
 import type { FastChatHistoryMessage } from './types';
+import { getToolHelp } from '$lib/services/agentic-chat/tools/registry/tool-help';
 
 function createGatewayTools(): ChatToolDefinition[] {
 	return [
@@ -327,6 +328,405 @@ describe('streamFastChat repetition guard', () => {
 		);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe('Loaded the 9takes project graph.');
+	});
+
+	it('injects project creation repair guidance after invalid onto.project.create payloads', async () => {
+		let streamInvocation = 0;
+		let secondPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield { type: 'text', content: "I'll create that project." };
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:project-create-missing-payload',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments: JSON.stringify({
+									op: 'onto.project.create',
+									args: {}
+								})
+							}
+						}
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				secondPassMessages = params.messages as FastChatHistoryMessage[];
+				yield { type: 'text', content: 'Need corrected project create args.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project_create',
+			history: [],
+			message: 'Create a new project for launching a creator course',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(secondPassMessages).toBeDefined();
+		const repairMessage = [...(secondPassMessages ?? [])]
+			.reverse()
+			.find(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes('onto.project.create')
+			);
+		expect(repairMessage?.content).toContain(
+			'no successful onto.project.create call has happened yet'
+		);
+		expect(repairMessage?.content).toContain(
+			'Do not end the turn with a success summary unless onto.project.create has actually succeeded.'
+		);
+		expect(repairMessage?.content).toContain(
+			'Minimal valid create shape: tool_exec({ op: "onto.project.create"'
+		);
+		expect(repairMessage?.content).toContain('entities: [], relationships: []');
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe('Need corrected project create args.');
+	});
+
+	it('compacts onto.project.create help payloads so the minimal example reaches the model', async () => {
+		let streamInvocation = 0;
+		let secondPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:project-create',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: JSON.stringify({
+									path: 'onto.project.create',
+									format: 'full',
+									include_schemas: true
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				secondPassMessages = params.messages as FastChatHistoryMessage[];
+				yield { type: 'text', content: 'Reviewed project create guidance.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			const args = JSON.parse(toolCall.function.arguments || '{}');
+			return {
+				tool_call_id: toolCall.id,
+				result: getToolHelp(args.path, {
+					format: args.format,
+					include_schemas: args.include_schemas,
+					include_examples: true
+				}),
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project_create',
+			history: [],
+			message: 'Create a podcast launch project',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(result.finishedReason).toBe('stop');
+		expect(secondPassMessages).toBeDefined();
+		const toolMessage = [...(secondPassMessages ?? [])]
+			.reverse()
+			.find((message) => message.role === 'tool');
+		expect(toolMessage).toBeDefined();
+		const payload = JSON.parse((toolMessage as FastChatHistoryMessage).content || '{}');
+		expect(payload.truncated).not.toBe(true);
+		expect(payload.type).toBe('op');
+		expect(payload.op).toBe('onto.project.create');
+		expect(payload.example_tool_exec?.args?.project?.name).toBe('<project name>');
+		expect(payload.example_tool_exec?.args?.entities).toEqual([]);
+		expect(payload.example_tool_exec?.args?.relationships).toEqual([]);
+		expect(payload.schema).toBeUndefined();
+	});
+
+	it('rejects unresolvable project-create relationship shorthand before execution', async () => {
+		let streamInvocation = 0;
+		let secondPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:project-create-bad-relationship',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments: JSON.stringify({
+									op: 'onto.project.create',
+									args: {
+										project: {
+											name: 'Podcast Launch',
+											type_key: 'project.creative.podcast'
+										},
+										entities: [
+											{
+												temp_id: 'g1',
+												kind: 'goal',
+												name: 'Publish the first 3 episodes'
+											}
+										],
+										relationships: [['g1', 't9']]
+									}
+								})
+							}
+						}
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				secondPassMessages = params.messages as FastChatHistoryMessage[];
+				yield { type: 'text', content: 'Need corrected relationship refs.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => ({
+			tool_call_id: 'unused',
+			result: { ok: true },
+			success: true
+		}));
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project_create',
+			history: [],
+			message: 'Create the project',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(secondPassMessages).toBeDefined();
+		const toolMessage = [...(secondPassMessages ?? [])]
+			.reverse()
+			.find(
+				(message) =>
+					message.role === 'tool' &&
+					message.tool_call_id === 'tool_exec:project-create-bad-relationship'
+			);
+		expect(toolMessage?.content).toContain('relationships[0][1]');
+		expect(toolMessage?.content).toContain('must match an entity in args.entities');
+		expect(result.finalAssistantText).toBe('Need corrected relationship refs.');
+	});
+
+	it('does not allow project_create turns to stop with fake success after help-only discovery', async () => {
+		let streamInvocation = 0;
+		let recoveryPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:project-create-skill',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: JSON.stringify({
+									path: 'onto.project.create.skill',
+									format: 'full'
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_help:project-create-op',
+							type: 'function',
+							function: {
+								name: 'tool_help',
+								arguments: JSON.stringify({
+									path: 'onto.project.create',
+									format: 'full',
+									include_schemas: true
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 3) {
+					yield {
+						type: 'text',
+						content:
+							'Project "Podcast Launch" created successfully with the initial goal and tasks.'
+					};
+					yield { type: 'done', finished_reason: 'stop' };
+					return;
+				}
+
+				if (streamInvocation === 4) {
+					recoveryPassMessages = params.messages as FastChatHistoryMessage[];
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:project-create',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments: JSON.stringify({
+									op: 'onto.project.create',
+									args: {
+										project: {
+											name: 'Podcast Launch',
+											type_key: 'project.creative.podcast'
+										},
+										entities: [
+											{
+												temp_id: 'g1',
+												kind: 'goal',
+												name: 'Publish the first 3 episodes by June 15'
+											},
+											{
+												temp_id: 't1',
+												kind: 'task',
+												title: 'Define the show format'
+											},
+											{
+												temp_id: 't2',
+												kind: 'task',
+												title: 'Book the first 3 guests'
+											},
+											{
+												temp_id: 't3',
+												kind: 'task',
+												title: 'Record the trailer'
+											}
+										],
+										relationships: []
+									}
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield {
+					type: 'text',
+					content:
+						'Project "Podcast Launch" created successfully with the goal and the three initial tasks.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			if (toolCall.function.name === 'tool_help') {
+				const args = JSON.parse(toolCall.function.arguments || '{}');
+				return {
+					tool_call_id: toolCall.id,
+					result: getToolHelp(args.path, {
+						format: args.format,
+						include_schemas: args.include_schemas,
+						include_examples: true
+					}),
+					success: true
+				};
+			}
+
+			return {
+				tool_call_id: toolCall.id,
+				result: {
+					op: 'onto.project.create',
+					ok: true,
+					result: { project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40' }
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project_create',
+			history: [],
+			message:
+				'Create a project called Podcast Launch for BuildOS. The goal is to publish the first 3 episodes by June 15. Tasks I already know about: define the show format, book the first 3 guests, and record the trailer.',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(5);
+		expect(toolExecutor).toHaveBeenCalledTimes(3);
+		expect(recoveryPassMessages).toBeDefined();
+		const repairMessage = [...(recoveryPassMessages ?? [])]
+			.reverse()
+			.find(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes('no successful onto.project.create call has happened yet')
+			);
+		expect(repairMessage?.content).toContain(
+			'Do not end the turn with a success summary unless onto.project.create has actually succeeded.'
+		);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toContain('created successfully');
+		expect(result.toolExecutions?.some((execution) => {
+			const args = JSON.parse(execution.toolCall.function.arguments || '{}');
+			return args.op === 'onto.project.create' && execution.result.success === true;
+		})).toBe(true);
 	});
 
 	it('injects project context into util.project.overview tool_exec calls before execution', async () => {

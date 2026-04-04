@@ -5,6 +5,7 @@
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
 	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+	import { formatTokensEstimate } from './agent-chat-formatters';
 
 	interface Props {
 		selectedContextType: ChatContextType | null;
@@ -54,21 +55,32 @@
 	// Determine project URL based on context
 	const projectUrl = $derived(projectId ? `/projects/${projectId}` : null);
 
-	const contextUsageBadge = $derived.by(() => {
-		if (!contextUsage || contextUsage.status === 'ok') {
+	const contextUsageCounter = $derived.by(() => {
+		if (!contextUsage) {
 			return null;
 		}
 
+		const estimatedLabel = formatTokensEstimate(contextUsage.estimatedTokens);
+		const budgetLabel = formatTokensEstimate(contextUsage.tokenBudget);
+		const tokensOverBudget = Math.max(
+			contextUsage.estimatedTokens - contextUsage.tokenBudget,
+			0
+		);
+
 		return {
-			label:
+			label: `${estimatedLabel} / ${budgetLabel} tok`,
+			mobileLabel: `${estimatedLabel}/${budgetLabel}`,
+			title:
 				contextUsage.status === 'over_budget'
-					? 'Context full'
-					: `Context ${Math.round(contextUsage.usagePercent)}%`,
-			title: `${contextUsage.estimatedTokens}/${contextUsage.tokenBudget} estimated tokens`,
+					? `${contextUsage.estimatedTokens.toLocaleString()} estimated tokens of ${contextUsage.tokenBudget.toLocaleString()} budget (${tokensOverBudget.toLocaleString()} over budget)`
+					: `${contextUsage.estimatedTokens.toLocaleString()} estimated tokens of ${contextUsage.tokenBudget.toLocaleString()} budget (${contextUsage.tokensRemaining.toLocaleString()} left, ${contextUsage.usagePercent}% used)`,
+			showWarningIcon: contextUsage.status !== 'ok',
 			className:
 				contextUsage.status === 'over_budget'
 					? 'border-red-600/30 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300'
-					: 'border-amber-500/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
+					: contextUsage.status === 'near_limit'
+						? 'border-amber-500/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
+						: 'border-border bg-muted text-muted-foreground'
 		};
 	});
 </script>
@@ -147,7 +159,7 @@
 		<!-- INKPRINT status pills with micro-label styling -->
 		<!-- On mobile: show only spinner (when loading) and activity dot to prevent overflow -->
 		<!-- On sm+: show full text-based pills -->
-		{#if sessionStatusLabel || contextUsageBadge || ontologyLoaded || (currentActivity && !hasActiveThinkingBlock)}
+		{#if sessionStatusLabel || contextUsageCounter || ontologyLoaded || (currentActivity && !hasActiveThinkingBlock)}
 			<div class="flex items-center gap-1.5 sm:gap-2">
 				{#if sessionStatusLabel}
 					<!-- Mobile: spinner only. sm+: spinner + text -->
@@ -160,14 +172,16 @@
 					</span>
 				{/if}
 
-				{#if contextUsageBadge}
-					<!-- Mobile: icon only. sm+: icon + text -->
+				{#if contextUsageCounter}
 					<span
-						class={`inline-flex items-center gap-1.5 rounded-lg border px-1.5 py-1.5 sm:px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] ${contextUsageBadge.className}`}
-						title={contextUsageBadge.title}
+						class={`inline-flex items-center gap-1 rounded-lg border px-1.5 py-1.5 sm:px-2.5 text-[0.65rem] font-semibold ${contextUsageCounter.className}`}
+						title={contextUsageCounter.title}
 					>
-						<AlertTriangle class="h-3 w-3" />
-						<span class="hidden sm:inline">{contextUsageBadge.label}</span>
+						{#if contextUsageCounter.showWarningIcon}
+							<AlertTriangle class="h-3 w-3" />
+						{/if}
+						<span class="font-mono sm:hidden">{contextUsageCounter.mobileLabel}</span>
+						<span class="hidden font-mono sm:inline">{contextUsageCounter.label}</span>
 					</span>
 				{/if}
 

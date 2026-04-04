@@ -1136,14 +1136,13 @@ export async function getErrorSummary(client: TypedSupabaseClient) {
 	// Type assertion needed due to module resolution differences between TypedSupabaseClient and SupabaseClient<Database>
 	const errorLogger = ErrorLoggerService.getInstance(client as SupabaseClient<Database>);
 	const summary = await errorLogger.getErrorSummary();
-	const first = summary?.[0];
 
 	return {
-		total_errors: first?.total_errors || 0,
-		unresolved_errors: first?.unresolved_errors || 0,
-		critical_errors: first?.critical_errors || 0,
-		recent_errors_24h: first?.errors_last_24h || 0,
-		error_trend: first?.error_trend || 0
+		total_errors: summary.total_errors || 0,
+		unresolved_errors: summary.unresolved_errors || 0,
+		critical_errors: summary.critical_errors || 0,
+		recent_errors_24h: summary.errors_last_24h || 0,
+		error_trend: summary.error_trend || 0
 	};
 }
 
