@@ -23,6 +23,14 @@ export type ChatMessageUpdate = Database['public']['Tables']['chat_messages']['U
 
 export type ChatToolExecution = Database['public']['Tables']['chat_tool_executions']['Row'];
 export type ChatToolExecutionInsert = Database['public']['Tables']['chat_tool_executions']['Insert'];
+export type ChatTurnRun = Database['public']['Tables']['chat_turn_runs']['Row'];
+export type ChatTurnRunInsert = Database['public']['Tables']['chat_turn_runs']['Insert'];
+export type ChatTurnRunUpdate = Database['public']['Tables']['chat_turn_runs']['Update'];
+export type ChatPromptSnapshot = Database['public']['Tables']['chat_prompt_snapshots']['Row'];
+export type ChatPromptSnapshotInsert =
+	Database['public']['Tables']['chat_prompt_snapshots']['Insert'];
+export type ChatTurnEvent = Database['public']['Tables']['chat_turn_events']['Row'];
+export type ChatTurnEventInsert = Database['public']['Tables']['chat_turn_events']['Insert'];
 
 export type ChatContextCache = Database['public']['Tables']['chat_context_cache']['Row'];
 export type ChatContextCacheInsert = Database['public']['Tables']['chat_context_cache']['Insert'];

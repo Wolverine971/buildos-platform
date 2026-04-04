@@ -97,6 +97,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	usage?: FastAgentStreamUsage;
 	finishedReason?: string;
 	toolExecutions?: FastToolExecution[];
+	llmPasses?: LLMStreamPassMetadata[];
+	toolRounds?: number;
+	toolCallsMade?: number;
 	cancelled?: boolean;
 }> {
 	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
@@ -978,6 +981,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				usage,
 				finishedReason,
 				toolExecutions,
+				llmPasses: llmStreamPasses,
+				toolRounds,
+				toolCallsMade,
 				cancelled: true
 			};
 		}
@@ -1007,7 +1013,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		finalAssistantText: finalAssistantText || assistantText.trim(),
 		usage,
 		finishedReason,
-		toolExecutions
+		toolExecutions,
+		llmPasses: llmStreamPasses,
+		toolRounds,
+		toolCallsMade
 	};
 }
 

@@ -21,11 +21,11 @@
 
 ## Priority Summary
 
-| Priority | Account              | Content Type | Topic                          | Age  | Comments | Opp Type           | Score | Why                                                                      |
-| -------- | -------------------- | ------------ | ------------------------------ | ---- | -------- | ------------------ | ----- | ------------------------------------------------------------------------ |
-| 1        | @dickiebush          | Carousel     | Writing Tech Stack (5 tools)   | 23h  | 0        | Building in public | 48    | ZERO comments, directly connects to brain dump workflow, Notion critique |
-| 2        | @the_mini_adhd_coach | Carousel     | Best ADHD Job                  | 23h  | active   | ADHD community     | 38    | 633K account, fresh, career/interest-hopping connects to BuildOS         |
-| 3        | @thesamparr          | Carousel     | Founder obsession (Dyson)      | 2d   | ~5       | Solopreneur        | 22    | Builder mindset angle, founder persistence, lower priority               |
+| Priority | Account              | Content Type | Topic                        | Age | Comments | Opp Type           | Score | Why                                                                      |
+| -------- | -------------------- | ------------ | ---------------------------- | --- | -------- | ------------------ | ----- | ------------------------------------------------------------------------ |
+| 1        | @dickiebush          | Carousel     | Writing Tech Stack (5 tools) | 23h | 0        | Building in public | 48    | ZERO comments, directly connects to brain dump workflow, Notion critique |
+| 2        | @the_mini_adhd_coach | Carousel     | Best ADHD Job                | 23h | active   | ADHD community     | 38    | 633K account, fresh, career/interest-hopping connects to BuildOS         |
+| 3        | @thesamparr          | Carousel     | Founder obsession (Dyson)    | 2d  | ~5       | Solopreneur        | 22    | Builder mindset angle, founder persistence, lower priority               |
 
 ---
 
@@ -37,6 +37,7 @@
 **Content Type:** Carousel
 
 **The Post:**
+
 > What is your dream job? The jobs I dreamed of doing throughout my life: Surgeon, Wildlife photographer, Criminologist, Film set decorator, Chef
 
 **Visual:** Pink doodle character with "How to Find the Best ADHD Job?" text, classic Mini ADHD Coach illustration style
@@ -50,12 +51,15 @@ Fresh post from major ADHD educator (633K followers). Comments are rich — peop
 **Engagement Mode:** Value — share experience about interest-hopping and finding work that fits ADHD brain
 
 **Suggested Comment Option 1 (mode: value - interest-hopping as a feature):**
+
 > the career list is so relatable. I've bounced from military to census data to logistics to building my own thing and honestly every single one of those "distractions" ended up being useful later. the hopping IS the skill
 
 **Suggested Comment Option 2 (mode: cheerleader - specific praise + question):**
+
 > the comments on this one are gold. genuinely curious how many people in here found their thing by accident vs on purpose
 
 **Suggested Comment Option 3 (mode: value - reframe the struggle):**
+
 > the part about interests changing constantly hits. I stopped fighting it and started treating every new obsession as research for the next thing. way less guilt that way
 
 **Product mention?** No
@@ -69,6 +73,7 @@ Fresh post from major ADHD educator (633K followers). Comments are rich — peop
 **Content Type:** Carousel
 
 **The Post:**
+
 > Writing online is how I built my audience to 154,000 followers and a $20,000,000 digital business. But my writing tech stack is simple. I never start writing without these 5 tools: 1. Pen and paper 2. Apple Notes 3. ChatGPT 4. Typeshare 5. Notion
 
 **Visual:** Photo of Dickie Bush writing in a notebook at a cafe/bookstore with colorful bookshelves. Multi-slide carousel detailing each tool.
@@ -78,22 +83,26 @@ Fresh post from major ADHD educator (633K followers). Comments are rich — peop
 
 **Why This Post:**
 BEST OPPORTUNITY TODAY. 23h old with ZERO comments on a followed account (24.9K followers). Directly relevant to BuildOS:
+
 - Morning journaling = brain dump parallel
 - "Clarify my thoughts & plan the day" = core BuildOS value prop
 - AI as "thought partner" for brainstorming = BuildOS chat angle
 - "Optimizing your Notion dashboard is procrastination disguised as productivity" = validates BuildOS simplicity thesis
 - Raw ideas → structured output = literally BuildOS's workflow
-First comment = maximum visibility on this post.
+  First comment = maximum visibility on this post.
 
 **Engagement Mode:** Value — connect his journaling/brain dump process to personal experience with getting thoughts out of your head
 
 **Suggested Comment Option 1 (mode: value - the morning dump process):**
+
 > pen and paper first thing in the morning is underrated. I do the same thing — just get everything out of my head before I even open the laptop. the "clarify my thoughts" part is the real unlock, not the tools themselves
 
 **Suggested Comment Option 2 (mode: value - the Notion procrastination line):**
+
 > "optimizing your Notion dashboard is procrastination disguised as productivity" needed to hear this. I've been guilty of spending more time organizing my system than actually writing. the simpler the stack the more you ship
 
 **Suggested Comment Option 3 (mode: value - AI as thought partner + soft product mention):**
+
 > the ChatGPT as brainstorm partner piece is so real. I got so hooked on using AI to think through ideas that I ended up building a whole tool around it lol. raw thoughts in, structured output back — that loop is addicting
 
 **Product mention?** Option 3 only — extremely casual, no brand name, just "building a tool"
@@ -107,6 +116,7 @@ First comment = maximum visibility on this post.
 **Content Type:** Carousel
 
 **The Post:**
+
 > James Dyson is the level of founder obsession I aspire to... Spent 14 YEARS and built 5,237 prototypes before his first product launch. Obsession + stubbornness = category creation.
 
 **Visual:** Tweet screenshot carousel with Dyson founder story, Hampton branding
@@ -120,12 +130,15 @@ Founder persistence/obsession theme connects to the solo builder mindset. Commen
 **Engagement Mode:** Value — connect founder obsession to the builder mindset, or engage with commenters discussing patience vs speed
 
 **Suggested Comment Option 1 (mode: value - obsession vs discipline):**
+
 > 5,237 prototypes is insane. people talk about discipline but that's not discipline — that's obsession. you can't grind through 14 years on willpower alone, you have to genuinely love the problem
 
 **Suggested Comment Option 2 (mode: cheerleader - the tension in comments):**
+
 > the "ship fast vs obsess over craft" debate in the comments is interesting. feels like the real answer is obsess over the RIGHT thing and ship everything else fast
 
 **Suggested Comment Option 3 (mode: value - personal connection):**
+
 > this is the content that keeps me going on the hard days. building solo you question everything constantly — but then you remember some guy made 5,237 vacuums before it worked
 
 **Product mention?** No
@@ -135,40 +148,43 @@ Founder persistence/obsession theme connects to the solo builder mindset. Commen
 
 ## New Accounts Discovered
 
-| Account           | Followers | Theme           | Content Type | Engagement Rate | Suggested Tier | Why                                                                 |
-| ----------------- | --------- | --------------- | ------------ | --------------- | -------------- | ------------------------------------------------------------------- |
-| @adhdbraindump    | unknown   | ADHD brain dump | unknown      | unknown         | 2              | Appeared in search results, directly uses "brain dump" in name      |
-| @effortlair       | unknown   | ADHD brain dump | unknown      | unknown         | 3              | "!EFFORT! Adhd Brain Dump" — worth investigating                    |
-| @my_adhd_brain_dump | unknown | ADHD brain dump | unknown      | unknown         | 3              | New discovery from keyword search                                   |
-| @adhd.braindump   | unknown   | ADHD brain dump | unknown      | unknown         | 3              | "ADHD Brain Dump" — new from keyword search                         |
+| Account             | Followers | Theme           | Content Type | Engagement Rate | Suggested Tier | Why                                                            |
+| ------------------- | --------- | --------------- | ------------ | --------------- | -------------- | -------------------------------------------------------------- |
+| @adhdbraindump      | unknown   | ADHD brain dump | unknown      | unknown         | 2              | Appeared in search results, directly uses "brain dump" in name |
+| @effortlair         | unknown   | ADHD brain dump | unknown      | unknown         | 3              | "!EFFORT! Adhd Brain Dump" — worth investigating               |
+| @my_adhd_brain_dump | unknown   | ADHD brain dump | unknown      | unknown         | 3              | New discovery from keyword search                              |
+| @adhd.braindump     | unknown   | ADHD brain dump | unknown      | unknown         | 3              | "ADHD Brain Dump" — new from keyword search                    |
 
 ---
 
 ## Competitor Intelligence
 
 ### @danidonovan (Anti-Planner)
+
 **Activity:** Posted 2 days ago — Anti-Planner coffee shop photo ("Do you like working at coffee shops?"). Back from the 2-week content gap noted in March 27 scan.
 **Content Format:** Photo post with engagement question format, not comics/carousels
 **Community Response:** 83 likes (low for 128K account), comments about body doubling and focus environments
 **Implications:** She's experimenting with simpler content formats (photos with questions vs. her usual comics). Low engagement suggests the new format isn't resonating as well as her illustration posts.
 
 ### @notionhq (Notion)
+
 **Activity:** Most recent post still the Notion 3.4 update (now 2d old, up to 1,473 likes from 1,359 on March 27)
 **Bio:** Still "The AI workspace that works while you sleep." — all-in on AI positioning
 **User Sentiment:** Steady engagement, no signs of user pushback in comments
 **Implications:** No new content since the 3.4 launch. Dickie Bush's comment "Optimizing your Notion dashboard is procrastination disguised as productivity" (in his writing tech stack post) is free validation for BuildOS's simplicity thesis.
 
 ### @theadhdtools (ADHD Operating System)
+
 **Activity:** Not checked this scan — last noted as March 19 post (growing to 66.1K)
 
 ---
 
 ## Hashtag Performance
 
-| Hashtag             | Posts Checked | Quality Posts Found | Notes                                                                    |
-| ------------------- | ------------ | ------------------- | ------------------------------------------------------------------------ |
-| #adhdproductivity   | Top 6        | 0 fresh             | All top posts are months/years old. Hashtag discovery still broken.       |
-| "adhd brain dump"   | Top 3        | 0 fresh             | Keyword search returns old viral posts (Huberman Lab, etc.)              |
+| Hashtag           | Posts Checked | Quality Posts Found | Notes                                                               |
+| ----------------- | ------------- | ------------------- | ------------------------------------------------------------------- |
+| #adhdproductivity | Top 6         | 0 fresh             | All top posts are months/years old. Hashtag discovery still broken. |
+| "adhd brain dump" | Top 3         | 0 fresh             | Keyword search returns old viral posts (Huberman Lab, etc.)         |
 
 **Note:** Instagram hashtag and keyword search discovery continues to be degraded (same as March 27 finding). Both return old "Top" posts, not recent content. Direct account scanning remains the most productive method.
 

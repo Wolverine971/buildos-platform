@@ -2268,6 +2268,94 @@ export type Database = {
           },
         ]
       }
+      chat_prompt_snapshots: {
+        Row: {
+          approx_prompt_tokens: number | null
+          context_payload: Json | null
+          created_at: string
+          id: string
+          message_chars: number
+          messages_sha256: string
+          model_messages: Json
+          prompt_sections: Json | null
+          rendered_dump_text: string | null
+          request_payload: Json | null
+          session_id: string
+          snapshot_version: string
+          system_prompt: string
+          system_prompt_chars: number
+          system_prompt_sha256: string
+          tool_definitions: Json | null
+          tools_sha256: string | null
+          turn_run_id: string
+          user_id: string
+        }
+        Insert: {
+          approx_prompt_tokens?: number | null
+          context_payload?: Json | null
+          created_at?: string
+          id?: string
+          message_chars: number
+          messages_sha256: string
+          model_messages?: Json
+          prompt_sections?: Json | null
+          rendered_dump_text?: string | null
+          request_payload?: Json | null
+          session_id: string
+          snapshot_version: string
+          system_prompt: string
+          system_prompt_chars: number
+          system_prompt_sha256: string
+          tool_definitions?: Json | null
+          tools_sha256?: string | null
+          turn_run_id: string
+          user_id: string
+        }
+        Update: {
+          approx_prompt_tokens?: number | null
+          context_payload?: Json | null
+          created_at?: string
+          id?: string
+          message_chars?: number
+          messages_sha256?: string
+          model_messages?: Json
+          prompt_sections?: Json | null
+          rendered_dump_text?: string | null
+          request_payload?: Json | null
+          session_id?: string
+          snapshot_version?: string
+          system_prompt?: string
+          system_prompt_chars?: number
+          system_prompt_sha256?: string
+          tool_definitions?: Json | null
+          tools_sha256?: string | null
+          turn_run_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_prompt_snapshots_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_prompt_snapshots_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: true
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_prompt_snapshots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_sessions: {
         Row: {
           agent_metadata: Json | null
@@ -2469,48 +2557,66 @@ export type Database = {
       chat_tool_executions: {
         Row: {
           arguments: Json
+          client_turn_id: string | null
           created_at: string | null
           error_message: string | null
           execution_time_ms: number | null
+          gateway_op: string | null
+          help_path: string | null
           id: string
           message_id: string | null
           requires_user_action: boolean | null
           result: Json | null
+          sequence_index: number | null
           session_id: string
+          stream_run_id: string | null
           success: boolean
           tokens_consumed: number | null
           tool_category: string | null
           tool_name: string
+          turn_run_id: string | null
         }
         Insert: {
           arguments: Json
+          client_turn_id?: string | null
           created_at?: string | null
           error_message?: string | null
           execution_time_ms?: number | null
+          gateway_op?: string | null
+          help_path?: string | null
           id?: string
           message_id?: string | null
           requires_user_action?: boolean | null
           result?: Json | null
+          sequence_index?: number | null
           session_id: string
+          stream_run_id?: string | null
           success?: boolean
           tokens_consumed?: number | null
           tool_category?: string | null
           tool_name: string
+          turn_run_id?: string | null
         }
         Update: {
           arguments?: Json
+          client_turn_id?: string | null
           created_at?: string | null
           error_message?: string | null
           execution_time_ms?: number | null
+          gateway_op?: string | null
+          help_path?: string | null
           id?: string
           message_id?: string | null
           requires_user_action?: boolean | null
           result?: Json | null
+          sequence_index?: number | null
           session_id?: string
+          stream_run_id?: string | null
           success?: boolean
           tokens_consumed?: number | null
           tool_category?: string | null
           tool_name?: string
+          turn_run_id?: string | null
         }
         Relationships: [
           {
@@ -2525,6 +2631,220 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_tool_executions_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_turn_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          phase: string
+          sequence_index: number
+          session_id: string
+          stream_run_id: string
+          turn_run_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          phase: string
+          sequence_index: number
+          session_id: string
+          stream_run_id: string
+          turn_run_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          phase?: string
+          sequence_index?: number
+          session_id?: string
+          stream_run_id?: string
+          turn_run_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_turn_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_events_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_turn_runs: {
+        Row: {
+          assistant_message_id: string | null
+          cache_age_seconds: number | null
+          cache_source: string | null
+          client_turn_id: string | null
+          context_type: string
+          created_at: string
+          entity_id: string | null
+          finished_at: string | null
+          finished_reason: string | null
+          first_canonical_op: string | null
+          first_help_path: string | null
+          first_lane: string | null
+          first_skill_path: string | null
+          gateway_enabled: boolean
+          history_compressed: boolean | null
+          history_for_model_count: number | null
+          history_strategy: string | null
+          id: string
+          llm_pass_count: number
+          project_id: string | null
+          prompt_snapshot_id: string | null
+          raw_history_count: number | null
+          request_message: string
+          request_prewarmed_context: boolean | null
+          session_id: string
+          source: string
+          started_at: string
+          status: string
+          stream_run_id: string
+          timing_metric_id: string | null
+          tool_call_count: number
+          tool_round_count: number
+          updated_at: string
+          user_id: string
+          user_message_id: string | null
+          validation_failure_count: number
+        }
+        Insert: {
+          assistant_message_id?: string | null
+          cache_age_seconds?: number | null
+          cache_source?: string | null
+          client_turn_id?: string | null
+          context_type: string
+          created_at?: string
+          entity_id?: string | null
+          finished_at?: string | null
+          finished_reason?: string | null
+          first_canonical_op?: string | null
+          first_help_path?: string | null
+          first_lane?: string | null
+          first_skill_path?: string | null
+          gateway_enabled?: boolean
+          history_compressed?: boolean | null
+          history_for_model_count?: number | null
+          history_strategy?: string | null
+          id?: string
+          llm_pass_count?: number
+          project_id?: string | null
+          prompt_snapshot_id?: string | null
+          raw_history_count?: number | null
+          request_message: string
+          request_prewarmed_context?: boolean | null
+          session_id: string
+          source?: string
+          started_at?: string
+          status?: string
+          stream_run_id: string
+          timing_metric_id?: string | null
+          tool_call_count?: number
+          tool_round_count?: number
+          updated_at?: string
+          user_id: string
+          user_message_id?: string | null
+          validation_failure_count?: number
+        }
+        Update: {
+          assistant_message_id?: string | null
+          cache_age_seconds?: number | null
+          cache_source?: string | null
+          client_turn_id?: string | null
+          context_type?: string
+          created_at?: string
+          entity_id?: string | null
+          finished_at?: string | null
+          finished_reason?: string | null
+          first_canonical_op?: string | null
+          first_help_path?: string | null
+          first_lane?: string | null
+          first_skill_path?: string | null
+          gateway_enabled?: boolean
+          history_compressed?: boolean | null
+          history_for_model_count?: number | null
+          history_strategy?: string | null
+          id?: string
+          llm_pass_count?: number
+          project_id?: string | null
+          prompt_snapshot_id?: string | null
+          raw_history_count?: number | null
+          request_message?: string
+          request_prewarmed_context?: boolean | null
+          session_id?: string
+          source?: string
+          started_at?: string
+          status?: string
+          stream_run_id?: string
+          timing_metric_id?: string | null
+          tool_call_count?: number
+          tool_round_count?: number
+          updated_at?: string
+          user_id?: string
+          user_message_id?: string | null
+          validation_failure_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_turn_runs_assistant_message_id_fkey"
+            columns: ["assistant_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_runs_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_runs_user_message_id_fkey"
+            columns: ["user_message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
             referencedColumns: ["id"]
           },
         ]
@@ -9799,6 +10119,7 @@ export type Database = {
           time_to_first_event_ms: number | null
           time_to_first_response_ms: number | null
           tool_selection_ms: number | null
+          turn_run_id: string | null
           updated_at: string
           user_id: string
         }
@@ -9826,6 +10147,7 @@ export type Database = {
           time_to_first_event_ms?: number | null
           time_to_first_response_ms?: number | null
           tool_selection_ms?: number | null
+          turn_run_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -9853,6 +10175,7 @@ export type Database = {
           time_to_first_event_ms?: number | null
           time_to_first_response_ms?: number | null
           tool_selection_ms?: number | null
+          turn_run_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -9876,6 +10199,13 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "agent_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timing_metrics_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
             referencedColumns: ["id"]
           },
           {

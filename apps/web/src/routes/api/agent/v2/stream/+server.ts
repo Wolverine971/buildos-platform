@@ -55,6 +55,14 @@ import {
 	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
 import {
+	buildPromptSnapshotRow,
+	buildPromptSnapshotSections,
+	buildToolCallEventPayload,
+	buildToolResultEventPayload as buildTurnEventToolResultPayload,
+	deriveFirstLane,
+	extractFastChatToolCallMeta
+} from '$lib/services/agentic-chat-v2/prompt-observability';
+import {
 	getLoadedSkillActivity,
 	getRequestedSkillActivity,
 	type SkillActivityEvent
@@ -1715,8 +1723,14 @@ function buildPersistedToolTraceSummary(trace: PersistedToolTraceEntry[]): strin
 type ToolExecutionInsertRow = {
 	session_id: string;
 	message_id: string | null;
+	turn_run_id: string | null;
+	stream_run_id: string | null;
+	client_turn_id: string | null;
 	tool_name: string;
 	tool_category: string | null;
+	gateway_op: string | null;
+	help_path: string | null;
+	sequence_index: number | null;
 	arguments: Json;
 	result: Json | null;
 	execution_time_ms: number | null;
@@ -1759,30 +1773,45 @@ function normalizeToolResultForPersistence(rawResult: unknown): Json | null {
 function buildToolExecutionInsertRows(params: {
 	sessionId: string;
 	messageId: string | null;
+	turnRunId?: string | null;
+	streamRunId?: string | null;
+	clientTurnId?: string | null;
 	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
 }): ToolExecutionInsertRow[] {
 	if (!Array.isArray(params.executions) || params.executions.length === 0) return [];
-	return params.executions.map(({ toolCall, result }) => ({
-		session_id: params.sessionId,
-		message_id: params.messageId,
-		tool_name: toolCall.function.name,
-		tool_category: getToolCategory(toolCall.function.name) ?? null,
-		arguments: parseToolArgumentsForPersistence(toolCall.function.arguments),
-		result: result.success ? normalizeToolResultForPersistence(result.result) : null,
-		execution_time_ms:
-			typeof result.duration_ms === 'number' && Number.isFinite(result.duration_ms)
-				? result.duration_ms
-				: null,
-		tokens_consumed: null,
-		success: result.success === true,
-		error_message: typeof result.error === 'string' ? result.error : null
-	}));
+	return params.executions.map(({ toolCall, result }, index) => {
+		const meta = extractFastChatToolCallMeta(toolCall);
+		return {
+			session_id: params.sessionId,
+			message_id: params.messageId,
+			turn_run_id: params.turnRunId ?? null,
+			stream_run_id: params.streamRunId ?? null,
+			client_turn_id: params.clientTurnId ?? null,
+			tool_name: toolCall.function.name,
+			tool_category: getToolCategory(toolCall.function.name) ?? null,
+			gateway_op: meta.canonicalOp,
+			help_path: meta.helpPath,
+			sequence_index: index + 1,
+			arguments: parseToolArgumentsForPersistence(toolCall.function.arguments),
+			result: result.success ? normalizeToolResultForPersistence(result.result) : null,
+			execution_time_ms:
+				typeof result.duration_ms === 'number' && Number.isFinite(result.duration_ms)
+					? result.duration_ms
+					: null,
+			tokens_consumed: null,
+			success: result.success === true,
+			error_message: typeof result.error === 'string' ? result.error : null
+		};
+	});
 }
 
 async function persistToolExecutionRows(params: {
 	supabase: any;
 	sessionId: string;
 	messageId: string | null;
+	turnRunId?: string | null;
+	streamRunId?: string | null;
+	clientTurnId?: string | null;
 	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
 	projectId?: string;
 	contextType: ChatContextType;
@@ -1797,6 +1826,9 @@ async function persistToolExecutionRows(params: {
 	const rows = buildToolExecutionInsertRows({
 		sessionId: params.sessionId,
 		messageId: params.messageId,
+		turnRunId: params.turnRunId,
+		streamRunId: params.streamRunId,
+		clientTurnId: params.clientTurnId,
 		executions: params.executions
 	});
 	if (rows.length === 0) return;
@@ -2068,7 +2100,7 @@ export const POST: RequestHandler = async ({
 		typeof clientTurnIdRaw === 'string' && clientTurnIdRaw.trim().length > 0
 			? clientTurnIdRaw.trim()
 			: undefined;
-	const streamRunId = normalizeFastChatStreamRunId(streamRequest.stream_run_id);
+	const streamRunId = normalizeFastChatStreamRunId(streamRequest.stream_run_id) ?? uuidv4();
 	const requestPrewarmedContext = normalizePrewarmedContextCache(
 		streamRequest.prewarmedContext ?? streamRequest.prewarmed_context ?? null
 	);
@@ -2111,6 +2143,17 @@ export const POST: RequestHandler = async ({
 	let contextCacheAgeSecondsForTiming: number | null = null;
 	let bypassedContextCache = false;
 	let timingMetricQueued = false;
+	let timingMetricId: string | null = null;
+	let turnRunId: string | null = null;
+	let promptSnapshotId: string | null = null;
+	let turnEventSequence = 0;
+	let firstHelpPath: string | null = null;
+	let firstHelpSequence: number | null = null;
+	let firstSkillPath: string | null = null;
+	let firstSkillSequence: number | null = null;
+	let firstCanonicalOp: string | null = null;
+	let firstOpSequence: number | null = null;
+	let validationFailureCount = 0;
 
 	const toIsoString = (value: number | null): string | null =>
 		typeof value === 'number' ? new Date(value).toISOString() : null;
@@ -2126,6 +2169,109 @@ export const POST: RequestHandler = async ({
 		if ((eventType === 'text' || eventType === 'text_delta') && firstResponseAtMs === null) {
 			firstResponseAtMs = now;
 		}
+	};
+	const noteFirstHelpPath = (path: string | null, sequenceIndex: number): void => {
+		if (!path || firstHelpPath) return;
+		firstHelpPath = path;
+		firstHelpSequence = sequenceIndex;
+	};
+	const noteFirstSkillPath = (path: string | null, sequenceIndex: number): void => {
+		if (!path || firstSkillPath) return;
+		firstSkillPath = path;
+		firstSkillSequence = sequenceIndex;
+	};
+	const noteFirstCanonicalOp = (op: string | null, sequenceIndex: number): void => {
+		if (!op || firstCanonicalOp) return;
+		firstCanonicalOp = op;
+		firstOpSequence = sequenceIndex;
+	};
+	const queueTurnRunUpdate = (
+		patch: Record<string, unknown>,
+		label: string,
+		metadata?: Record<string, unknown>
+	): void => {
+		if (!turnRunId) return;
+		detachTimingTask(
+			(async () => {
+				const { error } = await supabase
+					.from('chat_turn_runs')
+					.update(patch)
+					.eq('id', turnRunId)
+					.eq('user_id', userId);
+				if (error) throw error;
+			})(),
+			label,
+			metadata
+		);
+	};
+	const recordTurnEvent = (
+		phase: 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize',
+		eventType: string,
+		payload: Json,
+		options?: {
+			helpPath?: string | null;
+			skillPath?: string | null;
+			canonicalOp?: string | null;
+			validationFailed?: boolean;
+		}
+	): void => {
+		if (!turnRunId || !timingSessionId) return;
+		const sequenceIndex = ++turnEventSequence;
+		noteFirstHelpPath(options?.helpPath ?? null, sequenceIndex);
+		noteFirstSkillPath(options?.skillPath ?? null, sequenceIndex);
+		noteFirstCanonicalOp(options?.canonicalOp ?? null, sequenceIndex);
+		if (options?.validationFailed) {
+			validationFailureCount += 1;
+		}
+		detachTimingTask(
+			(async () => {
+				const { error } = await supabase.from('chat_turn_events').insert({
+					turn_run_id: turnRunId,
+					session_id: timingSessionId,
+					user_id: userId,
+					stream_run_id: streamRunId,
+					sequence_index: sequenceIndex,
+					phase,
+					event_type: eventType,
+					payload
+				});
+				if (error) throw error;
+			})(),
+			`insert_turn_event_${eventType}`,
+			{
+				eventType,
+				phase,
+				sequenceIndex
+			}
+		);
+	};
+	const persistTurnRunFinalState = async (
+		patch: Record<string, unknown>,
+		label: string
+	): Promise<void> => {
+		if (!turnRunId) return;
+		const { error } = await supabase
+			.from('chat_turn_runs')
+			.update(patch)
+			.eq('id', turnRunId)
+			.eq('user_id', userId);
+		if (!error) return;
+		logger.warn(`Failed to persist FastChat turn run ${label}`, {
+			error,
+			sessionId: timingSessionId,
+			turnRunId
+		});
+		logFastChatError({
+			error,
+			operationType: 'fastchat_turn_run_update',
+			projectId: timingProjectId ?? undefined,
+			metadata: {
+				label,
+				sessionId: timingSessionId,
+				turnRunId,
+				contextType: timingContextType
+			}
+		});
 	};
 	const detachTimingTask = (
 		promise: Promise<unknown> | PromiseLike<unknown>,
@@ -2196,34 +2342,39 @@ export const POST: RequestHandler = async ({
 			return summary;
 		}
 		timingMetricQueued = true;
+		timingMetricId = uuidv4();
 		const metadata: Json = {
 			stream_version: 'v2',
 			client_turn_id: clientTurnId ?? null,
-			stream_run_id: streamRunId ?? null,
+			stream_run_id: streamRunId,
 			project_id: timingProjectId,
 			entity_id: timingEntityId,
 			request_prewarmed_context: Boolean(requestPrewarmedContext),
-			timing_summary: summary
+			timing_summary: JSON.parse(JSON.stringify(summary)) as Json
 		};
 		const nowIso = new Date().toISOString();
 		detachTimingTask(
-			supabase.from('timing_metrics').insert({
-				id: uuidv4(),
-				user_id: userId,
-				session_id: timingSessionId,
-				context_type: timingContextType,
-				message_length: message.length,
-				message_received_at: new Date(requestStartedAtMs).toISOString(),
-				first_event_at: summary.first_event_at ?? null,
-				first_response_at: summary.first_response_at ?? null,
-				time_to_first_event_ms: summary.phases.time_to_first_event_ms ?? null,
-				time_to_first_response_ms: summary.phases.time_to_first_response_ms ?? null,
-				context_build_ms: summary.phases.context_build_ms ?? null,
-				tool_selection_ms: summary.phases.tool_selection_ms ?? null,
-				metadata,
-				created_at: nowIso,
-				updated_at: nowIso
-			}),
+			(async () => {
+				const { error } = await supabase.from('timing_metrics').insert({
+					id: timingMetricId,
+					user_id: userId,
+					session_id: timingSessionId,
+					turn_run_id: turnRunId,
+					context_type: timingContextType,
+					message_length: message.length,
+					message_received_at: new Date(requestStartedAtMs).toISOString(),
+					first_event_at: summary.first_event_at ?? null,
+					first_response_at: summary.first_response_at ?? null,
+					time_to_first_event_ms: summary.phases.time_to_first_event_ms ?? null,
+					time_to_first_response_ms: summary.phases.time_to_first_response_ms ?? null,
+					context_build_ms: summary.phases.context_build_ms ?? null,
+					tool_selection_ms: summary.phases.tool_selection_ms ?? null,
+					metadata,
+					created_at: nowIso,
+					updated_at: nowIso
+				});
+				if (error) throw error;
+			})(),
 			'insert_turn_timing_metric',
 			{ finishedReason }
 		);
@@ -2529,6 +2680,19 @@ export const POST: RequestHandler = async ({
 					Object.keys(userMessageMetadata).length > 0 ? userMessageMetadata : undefined,
 				idempotencyKey: clientTurnId ? `turn:${clientTurnId}:user` : undefined
 			});
+			void userMessagePromise
+				.then((persistedUserMessage) => {
+					if (persistedUserMessage?.id) {
+						queueTurnRunUpdate(
+							{ user_message_id: persistedUserMessage.id },
+							'link_turn_run_user_message',
+							{ messageId: persistedUserMessage.id }
+						);
+					}
+				})
+				.catch(() => {
+					// User message persistence is already handled later in the route.
+				});
 
 			const llm = FASTCHAT_OPENROUTER_V2_ENABLED
 				? new OpenRouterV2Service({
@@ -2545,6 +2709,54 @@ export const POST: RequestHandler = async ({
 			const toolSelectionStartedAtMs = Date.now();
 			const tools = selectFastChatTools({ contextType });
 			toolSelectionMs = Math.max(0, Date.now() - toolSelectionStartedAtMs);
+			turnRunId = uuidv4();
+			try {
+				const { error: turnRunError } = await supabase.from('chat_turn_runs').insert({
+					id: turnRunId,
+					session_id: session.id,
+					user_id: userId,
+					stream_run_id: streamRunId,
+					client_turn_id: clientTurnId ?? null,
+					source: 'live_ui',
+					context_type: contextType,
+					entity_id: entityId ?? null,
+					project_id: timingProjectId ?? null,
+					gateway_enabled: gatewayEnabled,
+					request_message: message,
+					status: 'running',
+					history_strategy: historyStrategy,
+					history_compressed: historyCompressed,
+					raw_history_count: rawHistoryCount,
+					history_for_model_count: historyForModelCount,
+					request_prewarmed_context: Boolean(requestPrewarmedContext),
+					started_at: new Date(requestStartedAtMs).toISOString()
+				});
+				if (turnRunError) {
+					turnRunId = null;
+					logFastChatError({
+						error: turnRunError,
+						operationType: 'fastchat_turn_run_insert',
+						projectId: projectIdForLogs,
+						metadata: {
+							sessionId: session.id,
+							contextType,
+							entityId
+						}
+					});
+				}
+			} catch (error) {
+				turnRunId = null;
+				logFastChatError({
+					error,
+					operationType: 'fastchat_turn_run_insert',
+					projectId: projectIdForLogs,
+					metadata: {
+						sessionId: session.id,
+						contextType,
+						entityId
+					}
+				});
+			}
 			const toolsRequiringProjectId = getToolsRequiringProjectId(tools);
 			let effectiveContextType: ChatContextType = contextType;
 			let effectiveEntityId: string | null = entityId ?? null;
@@ -2754,6 +2966,92 @@ export const POST: RequestHandler = async ({
 					}
 				});
 				contextReadyAtMs = Date.now();
+				queueTurnRunUpdate(
+					{
+						cache_source: contextCacheSource,
+						cache_age_seconds: contextCacheAgeSecondsForTiming
+					},
+					'update_turn_run_context_cache',
+					{
+						cacheSource: contextCacheSource,
+						cacheAgeSeconds: contextCacheAgeSecondsForTiming
+					}
+				);
+				if (turnRunId) {
+					try {
+						promptSnapshotId = uuidv4();
+						const promptSnapshotRow = buildPromptSnapshotRow({
+							turnRunId,
+							sessionId: session.id,
+							userId,
+							streamRunId,
+							contextType,
+							entityId: promptContext.entityId ?? entityId ?? null,
+							projectId:
+								promptContext.projectId ??
+								projectFocus?.projectId ??
+								(isProjectScopedContext(contextType) ? (entityId ?? null) : null),
+							systemPrompt,
+							history: historyForModel,
+							message,
+							tools,
+							requestPayload: {
+								session_id: session.id,
+								client_turn_id: clientTurnId ?? null,
+								stream_run_id: streamRunId,
+								context_type: contextType,
+								entity_id: entityId ?? null,
+								project_focus: projectFocus ?? null,
+								voice_note_group_id: voiceGroupId ?? null
+							},
+							promptSections: buildPromptSnapshotSections(promptContext),
+							contextPayload: promptContext
+						});
+						const { error: snapshotError } = await supabase
+							.from('chat_prompt_snapshots')
+							.insert({
+								id: promptSnapshotId,
+								...promptSnapshotRow
+							});
+						if (snapshotError) {
+							promptSnapshotId = null;
+							logFastChatError({
+								error: snapshotError,
+								operationType: 'fastchat_prompt_snapshot_insert',
+								projectId: projectIdForLogs,
+								metadata: {
+									sessionId: session.id,
+									contextType,
+									turnRunId
+								}
+							});
+						} else {
+							queueTurnRunUpdate(
+								{ prompt_snapshot_id: promptSnapshotId },
+								'link_turn_run_prompt_snapshot',
+								{ promptSnapshotId }
+							);
+							recordTurnEvent('prompt', 'prompt_snapshot_created', {
+								prompt_snapshot_id: promptSnapshotId,
+								system_prompt_chars: promptSnapshotRow.system_prompt_chars,
+								message_chars: promptSnapshotRow.message_chars,
+								approx_prompt_tokens: promptSnapshotRow.approx_prompt_tokens
+							} as Json);
+						}
+					} catch (error) {
+						promptSnapshotId = null;
+						logFastChatError({
+							error,
+							operationType: 'fastchat_prompt_snapshot_insert',
+							projectId: projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								contextType,
+								turnRunId
+							}
+						});
+					}
+				}
 			} catch (error) {
 				contextCacheSource = 'context_build_failed';
 				contextReadyAtMs = Date.now();
@@ -2789,6 +3087,9 @@ export const POST: RequestHandler = async ({
 				usage,
 				finishedReason,
 				toolExecutions,
+				llmPasses,
+				toolRounds,
+				toolCallsMade,
 				cancelled
 			} = await streamFastChat({
 				llm,
@@ -2852,6 +3153,16 @@ export const POST: RequestHandler = async ({
 						: undefined,
 				onToolCall: async (toolCall) => {
 					const patchedCall = patchToolCall(toolCall);
+					const toolCallMeta = extractFastChatToolCallMeta(patchedCall);
+					recordTurnEvent(
+						'tool',
+						'tool_call_emitted',
+						buildToolCallEventPayload(patchedCall),
+						{
+							helpPath: toolCallMeta.helpPath,
+							canonicalOp: toolCallMeta.canonicalOp
+						}
+					);
 					emitToolCall(agentStream, patchedCall, {
 						onError: (error) => {
 							logFastChatError({
@@ -2870,35 +3181,45 @@ export const POST: RequestHandler = async ({
 							markStreamEventSent('tool_call');
 						}
 					});
-					if (dev) {
-						const skillActivity = getRequestedSkillActivity(patchedCall);
-						if (skillActivity) {
-							emitSkillActivity(agentStream, skillActivity, {
-								onError: (error) => {
-									logFastChatError({
-										error,
-										operationType: 'fastchat_stream_emit_skill_activity',
-										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-										metadata: {
-											sessionId: session.id,
-											contextType: effectiveContextType,
-											toolName: patchedCall.function.name,
-											toolCallId: patchedCall.id,
-											action: skillActivity.action,
-											path: skillActivity.path
-										}
-									});
-								},
-								onMessageSent: () => {
-									markStreamEventSent('skill_activity');
-								}
-							});
-						}
+					const requestedSkillActivity = getRequestedSkillActivity(patchedCall);
+					if (requestedSkillActivity) {
+						recordTurnEvent(
+							'tool',
+							'skill_requested',
+							{
+								path: requestedSkillActivity.path,
+								via: requestedSkillActivity.via
+							} as Json,
+							{ skillPath: requestedSkillActivity.path }
+						);
+					}
+					if (dev && requestedSkillActivity) {
+						emitSkillActivity(agentStream, requestedSkillActivity, {
+							onError: (error) => {
+								logFastChatError({
+									error,
+									operationType: 'fastchat_stream_emit_skill_activity',
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+									metadata: {
+										sessionId: session.id,
+										contextType: effectiveContextType,
+										toolName: patchedCall.function.name,
+										toolCallId: patchedCall.id,
+										action: requestedSkillActivity.action,
+										path: requestedSkillActivity.path
+									}
+								});
+							},
+							onMessageSent: () => {
+								markStreamEventSent('skill_activity');
+							}
+						});
 					}
 				},
 				onToolResult: async ({ toolCall, result }) => {
 					try {
 						const patchedCall = patchToolCall(toolCall);
+						const toolCallMeta = extractFastChatToolCallMeta(patchedCall);
 						emitToolResult(agentStream, patchedCall, result, {
 							onError: (error) => {
 								logFastChatError({
@@ -2917,31 +3238,53 @@ export const POST: RequestHandler = async ({
 								markStreamEventSent('tool_result');
 							}
 						});
-						if (dev) {
-							const skillActivity = getLoadedSkillActivity(patchedCall, result);
-							if (skillActivity) {
-								emitSkillActivity(agentStream, skillActivity, {
-									onError: (error) => {
-										logFastChatError({
-											error,
-											operationType: 'fastchat_stream_emit_skill_activity',
-											projectId:
-												effectiveProjectIdForTools ?? projectIdForLogs,
-											metadata: {
-												sessionId: session.id,
-												contextType: effectiveContextType,
-												toolName: patchedCall.function.name,
-												toolCallId: patchedCall.id,
-												action: skillActivity.action,
-												path: skillActivity.path
-											}
-										});
-									},
-									onMessageSent: () => {
-										markStreamEventSent('skill_activity');
-									}
-								});
+						const validationFailed =
+							!result.success && isExpectedToolValidationFailure(result.error);
+						recordTurnEvent(
+							'tool',
+							validationFailed
+								? 'tool_call_validation_failed'
+								: 'tool_result_received',
+							buildTurnEventToolResultPayload(patchedCall, result),
+							{
+								helpPath: toolCallMeta.helpPath,
+								canonicalOp: toolCallMeta.canonicalOp,
+								validationFailed
 							}
+						);
+						const loadedSkillActivity = getLoadedSkillActivity(patchedCall, result);
+						if (loadedSkillActivity) {
+							recordTurnEvent(
+								'tool',
+								'skill_loaded',
+								{
+									path: loadedSkillActivity.path,
+									via: loadedSkillActivity.via
+								} as Json,
+								{ skillPath: loadedSkillActivity.path }
+							);
+						}
+						if (dev && loadedSkillActivity) {
+							emitSkillActivity(agentStream, loadedSkillActivity, {
+								onError: (error) => {
+									logFastChatError({
+										error,
+										operationType: 'fastchat_stream_emit_skill_activity',
+										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+										metadata: {
+											sessionId: session.id,
+											contextType: effectiveContextType,
+											toolName: patchedCall.function.name,
+											toolCallId: patchedCall.id,
+											action: loadedSkillActivity.action,
+											path: loadedSkillActivity.path
+										}
+									});
+								},
+								onMessageSent: () => {
+									markStreamEventSent('skill_activity');
+								}
+							});
 						}
 						if (!result.success) {
 							const toolFailureMetadata = {
@@ -2988,6 +3331,10 @@ export const POST: RequestHandler = async ({
 
 						const contextShift = extractContextShiftPayload(result);
 						if (contextShift) {
+							recordTurnEvent('tool', 'context_shift_emitted', {
+								new_context: contextShift.new_context,
+								entity_id: contextShift.entity_id ?? null
+							} as Json);
 							effectiveContextType = contextShift.new_context;
 							effectiveEntityId = contextShift.entity_id;
 							latestContextShift = contextShift;
@@ -3075,6 +3422,18 @@ export const POST: RequestHandler = async ({
 				}
 			});
 			const normalizedExecutions = toolExecutions ?? [];
+			for (const pass of llmPasses ?? []) {
+				recordTurnEvent('llm', 'llm_pass_completed', {
+					pass: pass.pass,
+					model: pass.model ?? null,
+					provider: pass.provider ?? null,
+					request_id: pass.requestId ?? null,
+					finished_reason: pass.finishedReason ?? null,
+					prompt_tokens: pass.promptTokens ?? null,
+					completion_tokens: pass.completionTokens ?? null,
+					total_tokens: pass.totalTokens ?? null
+				} as Json);
+			}
 			const persistedUserMessagePromise = userMessagePromise.catch((error) => {
 				logger.warn('Failed to persist user message', { error, sessionId: session.id });
 				logFastChatError({
@@ -3163,6 +3522,9 @@ export const POST: RequestHandler = async ({
 					supabase,
 					sessionId: session.id,
 					messageId: interruptedMessage?.id ?? null,
+					turnRunId,
+					streamRunId,
+					clientTurnId,
 					executions: normalizedExecutions,
 					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 					contextType: effectiveContextType,
@@ -3247,11 +3609,43 @@ export const POST: RequestHandler = async ({
 						}
 					);
 					doneEmittedAtMs = Date.now();
+					recordTurnEvent('finalize', 'done_emitted', {
+						finished_reason: 'cancelled',
+						total_tokens: usage?.total_tokens ?? null
+					} as Json);
 					queueTimingMetric('cancelled');
 				} else {
 					doneEmittedAtMs = Date.now();
 					queueTimingMetric(interruptedReason);
 				}
+				await persistTurnRunFinalState(
+					{
+						assistant_message_id: interruptedMessage?.id ?? null,
+						status: 'cancelled',
+						finished_reason: interruptedReason,
+						tool_round_count: toolRounds ?? 0,
+						tool_call_count: toolCallsMade ?? normalizedExecutions.length,
+						validation_failure_count: validationFailureCount,
+						llm_pass_count: llmPasses?.length ?? 0,
+						first_lane: deriveFirstLane({
+							firstHelpPath,
+							firstHelpSequence,
+							firstSkillPath,
+							firstSkillSequence,
+							firstCanonicalOp,
+							firstOpSequence
+						}),
+						first_help_path: firstHelpPath,
+						first_skill_path: firstSkillPath,
+						first_canonical_op: firstCanonicalOp,
+						prompt_snapshot_id: promptSnapshotId,
+						timing_metric_id: timingMetricId,
+						cache_source: contextCacheSource,
+						cache_age_seconds: contextCacheAgeSecondsForTiming,
+						finished_at: new Date().toISOString()
+					},
+					'cancelled'
+				);
 				return;
 			}
 
@@ -3296,6 +3690,9 @@ export const POST: RequestHandler = async ({
 				supabase,
 				sessionId: session.id,
 				messageId: assistantMessage?.id ?? null,
+				turnRunId,
+				streamRunId,
+				clientTurnId,
 				executions: normalizedExecutions,
 				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
 				contextType: effectiveContextType,
@@ -3435,11 +3832,67 @@ export const POST: RequestHandler = async ({
 				}
 			);
 			doneEmittedAtMs = Date.now();
+			recordTurnEvent('finalize', 'done_emitted', {
+				finished_reason: finishedReason ?? null,
+				total_tokens: usage?.total_tokens ?? null
+			} as Json);
 			queueTimingMetric(finishedReason);
+			await persistTurnRunFinalState(
+				{
+					assistant_message_id: assistantMessage?.id ?? null,
+					status: 'completed',
+					finished_reason: finishedReason ?? null,
+					tool_round_count: toolRounds ?? 0,
+					tool_call_count: toolCallsMade ?? normalizedExecutions.length,
+					validation_failure_count: validationFailureCount,
+					llm_pass_count: llmPasses?.length ?? 0,
+					first_lane: deriveFirstLane({
+						firstHelpPath,
+						firstHelpSequence,
+						firstSkillPath,
+						firstSkillSequence,
+						firstCanonicalOp,
+						firstOpSequence
+					}),
+					first_help_path: firstHelpPath,
+					first_skill_path: firstSkillPath,
+					first_canonical_op: firstCanonicalOp,
+					prompt_snapshot_id: promptSnapshotId,
+					timing_metric_id: timingMetricId,
+					cache_source: contextCacheSource,
+					cache_age_seconds: contextCacheAgeSecondsForTiming,
+					finished_at: new Date().toISOString()
+				},
+				'completed'
+			);
 		} catch (error) {
 			if (request.signal.aborted || isAbortLikeError(error)) {
 				doneEmittedAtMs = doneEmittedAtMs ?? Date.now();
 				queueTimingMetric('cancelled');
+				await persistTurnRunFinalState(
+					{
+						status: 'cancelled',
+						finished_reason: 'cancelled',
+						validation_failure_count: validationFailureCount,
+						first_lane: deriveFirstLane({
+							firstHelpPath,
+							firstHelpSequence,
+							firstSkillPath,
+							firstSkillSequence,
+							firstCanonicalOp,
+							firstOpSequence
+						}),
+						first_help_path: firstHelpPath,
+						first_skill_path: firstSkillPath,
+						first_canonical_op: firstCanonicalOp,
+						prompt_snapshot_id: promptSnapshotId,
+						timing_metric_id: timingMetricId,
+						cache_source: contextCacheSource,
+						cache_age_seconds: contextCacheAgeSecondsForTiming,
+						finished_at: new Date().toISOString()
+					},
+					'aborted'
+				);
 				logger.info('Agent V2 stream cancelled', {
 					sessionId: streamRequest.session_id ?? null,
 					contextType,
@@ -3501,6 +3954,10 @@ export const POST: RequestHandler = async ({
 					}
 				);
 				doneEmittedAtMs = Date.now();
+				recordTurnEvent('finalize', 'done_emitted', {
+					finished_reason: 'error',
+					total_tokens: 0
+				} as Json);
 				queueTimingMetric('error');
 			} catch (sendError) {
 				logFastChatError({
@@ -3514,6 +3971,30 @@ export const POST: RequestHandler = async ({
 					}
 				});
 			}
+			await persistTurnRunFinalState(
+				{
+					status: 'failed',
+					finished_reason: 'error',
+					validation_failure_count: validationFailureCount,
+					first_lane: deriveFirstLane({
+						firstHelpPath,
+						firstHelpSequence,
+						firstSkillPath,
+						firstSkillSequence,
+						firstCanonicalOp,
+						firstOpSequence
+					}),
+					first_help_path: firstHelpPath,
+					first_skill_path: firstSkillPath,
+					first_canonical_op: firstCanonicalOp,
+					prompt_snapshot_id: promptSnapshotId,
+					timing_metric_id: timingMetricId,
+					cache_source: contextCacheSource,
+					cache_age_seconds: contextCacheAgeSecondsForTiming,
+					finished_at: new Date().toISOString()
+				},
+				'failed'
+			);
 		} finally {
 			try {
 				await agentStream.close();

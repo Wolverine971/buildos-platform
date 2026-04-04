@@ -20,7 +20,7 @@ draft: true
 category: 'agent-skills'
 tags: ['oauth', 'agent-skills', 'auth', 'security', 'pkce', 'api-integration', 'buildos']
 author: 'DJ Wayne'
-date: '2026-03-29'
+date: '2026-04-01'
 ```
 
 ---
@@ -316,6 +316,128 @@ The agent should not try to fake trust where trust needs to be explicit.
 
 ---
 
+## WHAT CURRENT PROVIDER GUIDANCE SAYS
+
+As of April 1, 2026, I have not found a broad Google-style document that says, "here is how AI agents should use OAuth."
+
+That is true across most major providers.
+
+Most providers still document OAuth primarily in terms of app types, trust boundaries, and product-specific integration models, not "AI agents."
+
+So in most ecosystems, the best guidance for agents is still:
+
+- follow the provider's current OAuth best practices for your client type
+- then adapt that pattern to agent workflows
+
+That said, there are a few provider-specific points worth calling out because they are either highly relevant to agent systems or directly moving toward agent-aware auth.
+
+### Google
+
+Google does not appear to have a dedicated "OAuth for AI agents" guide yet.
+
+What Google does have is strong OAuth guidance by platform and risk model, and it lines up closely with the safest patterns for agents:
+
+- store client credentials and tokens securely
+- use incremental authorization where supported
+- request the smallest scopes possible
+- prompt for scopes in context, not all up front
+- use secure, full-featured browsers instead of embedded webviews
+
+Google also has some very practical implementation notes that matter:
+
+- PKCE is strongly recommended for installed app flows
+- the `redirect_uri` must exactly match an authorized redirect URI
+- custom URI schemes are no longer supported on Android and Chrome apps because of app impersonation risk
+- loopback redirects are deprecated on some mobile client types
+- manual copy/paste and old out-of-band redirect patterns are no longer supported
+
+For limited-input devices, Google supports the device flow, but notes that it supports only a limited set of scopes and that incremental authorization is not supported for installed apps or devices.
+
+That is a useful reminder for agents: the safest or most convenient runtime pattern may also narrow which scopes and consent patterns are available.
+
+Google also adds an important operational constraint that agent builders should know about:
+
+- if your app requests sensitive or restricted scopes, you should expect OAuth verification requirements
+- restricted scopes can require a security assessment
+- unverified apps can hit new-user caps and warning screens
+
+That matters for agent products because broad Gmail, Drive, or other high-sensitivity integrations are not just a coding problem. They are also a review, compliance, and rollout problem.
+
+### Slack
+
+Slack's OAuth guidance is increasingly opinionated in a way that is good for agents:
+
+- use the v2 OAuth flow
+- prefer granular permissions
+- avoid excessive permissions that make installs harder
+- verify `state` on the callback
+- use token rotation for granular-permission apps
+
+Slack's token rotation guidance is especially relevant. With rotation enabled, access tokens expire every 12 hours and are refreshed through refresh tokens. That is exactly the kind of lifecycle an agent system should already be prepared to handle.
+
+Slack also recently added optional scopes, which is a good fit for agent products that have a core capability set plus extra features that should not block install.
+
+And Slack now has one especially relevant note for agent builders:
+
+- `oauth.v2.user.access` is positioned as working out of the box with MCP authorization flows
+
+Slack specifically calls this out for MCP integrations with desktop IDE clients like Cursor or Claude Code. That is one of the clearest signs that some providers are starting to adapt OAuth docs to agent-shaped tool usage, even if they are not framing the whole thing as "AI agent OAuth" yet.
+
+### GitHub
+
+GitHub's docs are unusually direct here:
+
+- in general, GitHub Apps are preferred over OAuth apps
+
+Why:
+
+- fine-grained permissions
+- more control over which repositories the app can access
+- short-lived tokens
+- ability to act on behalf of a user or as the app itself
+
+For agent builders, that is a very important product-design lesson. Sometimes the right advice is not "use OAuth more carefully." Sometimes the right advice is "use the provider's newer app model instead of a legacy OAuth app."
+
+GitHub also explicitly supports device flow for headless apps, which maps cleanly to CLI-like or headless agent scenarios.
+
+And GitHub is clear that scopes do not grant more permission than the user already has. That is a useful thing to repeat in the blog because people often overestimate what an OAuth scope actually does.
+
+### Microsoft
+
+Microsoft is the clearest exception here because it now has explicit agent-oriented OAuth documentation in Entra Agent ID.
+
+That guidance is useful because it formalizes patterns many agent builders are already moving toward:
+
+- agent auth can involve delegated and autonomous modes
+- agent-specific token exchanges can be multi-stage
+- some agent entities are treated as confidential clients
+- interactive and non-interactive cases should be separated cleanly
+- On-Behalf-Of flows matter for downstream API access
+
+Microsoft also recommends using its approved SDKs instead of trying to hand-roll complex agent token flows manually.
+
+It is also worth noting that this guidance is still tied to Microsoft Entra Agent ID, which is currently in preview. So it is a real signal about where the ecosystem is going, but not yet a universal cross-provider standard.
+
+That is worth mentioning because it generalizes beyond Microsoft:
+
+- if the provider gives you hardened auth libraries, use them
+- manual token plumbing is where a lot of security mistakes happen
+
+### The practical takeaway
+
+There does not seem to be a broad industry standard yet for "OAuth guidance specifically for AI agents" across major providers.
+
+What does exist is:
+
+- strong provider guidance for app types and trust boundaries
+- a few ecosystems that are moving toward more agent-aware identity models
+- a few provider docs that are already adapting OAuth to MCP and agent-like clients
+- a clear trend toward narrower permissions, shorter token lifetimes, and more explicit consent boundaries
+
+That is exactly the direction agent builders should already be moving.
+
+---
+
 ## THE PRACTICAL CHECKLIST
 
 If you are teaching an agent system how to use OAuth, teach it this checklist.
@@ -497,3 +619,22 @@ The goal is to connect it **correctly**.
 - RFC 8628: OAuth 2.0 Device Authorization Grant
 - RFC 8693: OAuth 2.0 Token Exchange
 - RFC 9700: OAuth 2.0 Security Best Current Practice
+- Google OAuth best practices: <https://developers.google.com/identity/protocols/oauth2/resources/best-practices>
+- Google OAuth overview: <https://developers.google.com/identity/protocols/oauth2>
+- Google web server flow redirect validation rules: <https://developers.google.com/identity/protocols/oauth2/web-server>
+- Google loopback migration: <https://developers.google.com/identity/protocols/oauth2/resources/loopback-migration>
+- Google unverified apps and user caps: <https://support.google.com/cloud/answer/7454865?hl=en>
+- Google OAuth app verification help center: <https://support.google.com/cloud/answer/13463073?hl=en>
+- Google limited-input device flow: <https://developers.google.com/identity/protocols/oauth2/limited-input-device>
+- Slack Installing with OAuth: <https://docs.slack.dev/authentication/installing-with-oauth/>
+- Slack token rotation: <https://docs.slack.dev/authentication/using-token-rotation/>
+- Slack optional scopes: <https://docs.slack.dev/changelog/2026/03/16/optional-scopes/>
+- GitHub differences between GitHub Apps and OAuth apps: <https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/differences-between-github-apps-and-oauth-apps>
+- GitHub authorizing OAuth apps: <https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps>
+- GitHub OAuth scopes: <https://docs.github.com/en/developers/apps/scopes-for-oauth-apps>
+- Microsoft Entra Agent ID overview: <https://learn.microsoft.com/en-us/entra/agent-id/identity-professional/what-is-microsoft-entra-agent-id>
+- Microsoft interactive agent delegated auth: <https://learn.microsoft.com/en-us/entra/agent-id/identity-platform/interactive-agent-request-user-authorization>
+- Microsoft interactive agent admin consent: <https://learn.microsoft.com/en-us/entra/agent-id/identity-platform/interactive-agent-request-admin-authorization>
+- Microsoft autonomous app OAuth flow: <https://learn.microsoft.com/en-us/entra/agent-id/identity-platform/agent-autonomous-app-oauth-flow>
+- Microsoft agent OAuth protocols: <https://learn.microsoft.com/en-us/entra/agent-id/identity-platform/agent-oauth-protocols>
+- Microsoft agent On-Behalf-Of flow: <https://learn.microsoft.com/en-us/entra/agent-id/identity-platform/agent-on-behalf-of-oauth-flow>
