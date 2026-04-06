@@ -524,11 +524,13 @@ describe('streamFastChat repetition guard', () => {
 			})
 		} as any;
 
-		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => ({
-			tool_call_id: 'unused',
-			result: { ok: true },
-			success: true
-		}));
+		const toolExecutor = vi.fn(
+			async (): Promise<ChatToolResult> => ({
+				tool_call_id: 'unused',
+				result: { ok: true },
+				success: true
+			})
+		);
 
 		const result = await streamFastChat({
 			llm,
@@ -716,17 +718,21 @@ describe('streamFastChat repetition guard', () => {
 				(message) =>
 					message.role === 'system' &&
 					typeof message.content === 'string' &&
-					message.content.includes('no successful onto.project.create call has happened yet')
+					message.content.includes(
+						'no successful onto.project.create call has happened yet'
+					)
 			);
 		expect(repairMessage?.content).toContain(
 			'Do not end the turn with a success summary unless onto.project.create has actually succeeded.'
 		);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toContain('created successfully');
-		expect(result.toolExecutions?.some((execution) => {
-			const args = JSON.parse(execution.toolCall.function.arguments || '{}');
-			return args.op === 'onto.project.create' && execution.result.success === true;
-		})).toBe(true);
+		expect(
+			result.toolExecutions?.some((execution) => {
+				const args = JSON.parse(execution.toolCall.function.arguments || '{}');
+				return args.op === 'onto.project.create' && execution.result.success === true;
+			})
+		).toBe(true);
 	});
 
 	it('injects project context into util.project.overview tool_exec calls before execution', async () => {

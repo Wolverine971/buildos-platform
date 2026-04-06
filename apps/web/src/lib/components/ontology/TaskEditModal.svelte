@@ -30,7 +30,9 @@
 		FileText,
 		Users,
 		CalendarRange,
-		Clock3
+		Clock3,
+		CircleAlert,
+		Repeat
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -953,20 +955,11 @@
 										</FormField>
 									</div>
 
-									<div
-										class="rounded-lg border border-border/70 bg-muted/30 p-3 sm:p-4"
-									>
-										<div
-											class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
-										>
-											<div>
-												<p class="text-sm font-semibold text-foreground">
-													Assignees
-												</p>
-												<p class="text-xs text-muted-foreground">
-													Who owns this task right now.
-												</p>
-											</div>
+									<div class="space-y-1.5">
+										<div class="flex items-center justify-between gap-2">
+											<p class="text-xs font-medium text-muted-foreground">
+												Assignees
+											</p>
 											<Badge
 												variant={assigneeActorIds.length > 0
 													? 'accent'
@@ -976,17 +969,15 @@
 												{assigneeSummary}
 											</Badge>
 										</div>
-										<div id="task-assignees">
-											<TaskAssigneeSelector
-												{projectId}
-												bind:selectedActorIds={assigneeActorIds}
-												fallbackAssignees={Array.isArray(task?.assignees)
-													? task.assignees
-													: []}
-												disabled={isSaving || isLoading}
-												maxAssignees={10}
-											/>
-										</div>
+										<TaskAssigneeSelector
+											{projectId}
+											bind:selectedActorIds={assigneeActorIds}
+											fallbackAssignees={Array.isArray(task?.assignees)
+												? task.assignees
+												: []}
+											disabled={isSaving || isLoading}
+											maxAssignees={10}
+										/>
 									</div>
 
 									{#if stateKey === 'done' && completedAt}
@@ -999,36 +990,44 @@
 								</CardBody>
 							</Card>
 
-							<Card variant="default" class="wt-paper">
+							<Card
+								variant="default"
+								class={dueMeta?.variant === 'error'
+									? 'wt-paper tx tx-static tx-weak ring-1 ring-destructive/20'
+									: 'wt-paper'}
+							>
 								<CardHeader variant="transparent" texture="none">
-									<div
-										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
-									>
-										<div>
-											<div class="flex items-center gap-2">
-												<CalendarRange
-													class="h-4 w-4 text-muted-foreground"
-												/>
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-												>
-													Schedule
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												Timing, deadlines, and recurrence
-											</h3>
+									<div class="flex items-center justify-between gap-2">
+										<div class="flex items-center gap-2">
+											<CalendarRange class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+											>
+												Schedule
+											</p>
 										</div>
-										<p
-											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
-										>
-											Keep the time window together so it reads like a single
-											plan instead of disconnected fields.
-										</p>
+										{#if dueMeta}
+											<Badge variant={dueMeta.variant} size="sm">
+												{dueMeta.label}
+											</Badge>
+										{/if}
 									</div>
 								</CardHeader>
-								<CardBody class="space-y-4">
-									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+								<CardBody class="space-y-2">
+									{#if dueMeta?.variant === 'error'}
+										<div
+											class="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2"
+										>
+											<CircleAlert
+												class="h-3.5 w-3.5 shrink-0 text-destructive"
+											/>
+											<p class="text-xs font-semibold text-destructive">
+												{dueMeta.note}
+											</p>
+										</div>
+									{/if}
+
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 										<FormField
 											label="Start"
 											labelFor="start-date"
@@ -1064,135 +1063,115 @@
 										</FormField>
 									</div>
 
-									<div
-										class="rounded-lg border border-border/70 bg-muted/30 p-3 sm:p-4"
-									>
-										<div class="flex items-start gap-3">
-											<div
-												class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card text-muted-foreground shadow-ink-inner"
-											>
-												<Clock3 class="h-4 w-4" />
-											</div>
-											<div class="min-w-0">
-												<p class="text-sm font-semibold text-foreground">
-													Timeline summary
-												</p>
-												<p class="mt-1 text-sm text-foreground">
-													{scheduleSummary}
-												</p>
-												<p class="mt-1 text-xs text-muted-foreground">
-													{#if dueMeta}
-														{dueMeta.note}
-													{:else}
-														Add a start or due date to make the task
-														easier to scan in lists and calendar views.
-													{/if}
-												</p>
-											</div>
-										</div>
-									</div>
+									{#if startAt || dueAt}
+										<p class="text-xs text-muted-foreground">
+											{scheduleSummary}
+										</p>
+									{/if}
 
-									<div
-										class="rounded-lg border border-border/70 bg-card p-3 sm:p-4"
-									>
-										<div
-											class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
-										>
-											<div>
-												<p class="text-sm font-semibold text-foreground">
-													Recurrence
-												</p>
-												<p class="text-xs text-muted-foreground">
+									<!-- Recurrence -->
+									<div class="rounded-md border border-border/70 px-3 py-2">
+										<div class="flex items-center justify-between gap-2">
+											<div class="flex items-center gap-2 min-w-0">
+												<Repeat
+													class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+												/>
+												<p
+													class="text-xs font-medium text-foreground truncate"
+												>
 													{recurrenceSummary}
 												</p>
+												{#if isSeriesMaster || isSeriesInstance}
+													<Badge variant="accent" size="sm"
+														>Recurring</Badge
+													>
+												{/if}
 											</div>
-											{#if isSeriesMaster || isSeriesInstance}
-												<Badge variant="accent" size="sm">Recurring</Badge>
+											{#if !isSeriesMaster && !isSeriesInstance}
+												<Button
+													size="sm"
+													variant="ghost"
+													class="shrink-0 text-xs pressable"
+													onclick={openSeriesModal}
+												>
+													Set up
+												</Button>
 											{/if}
 										</div>
 
 										{#if isSeriesMaster && seriesMeta}
-											{#if seriesActionError}
-												<p class="mb-3 text-xs text-destructive">
-													{seriesActionError}
-												</p>
-											{/if}
+											<div class="mt-2 space-y-2">
+												{#if seriesActionError}
+													<p class="text-xs text-destructive">
+														{seriesActionError}
+													</p>
+												{/if}
 
-											{#if !showSeriesDeleteConfirm}
-												<Button
-													size="sm"
-													variant="danger"
-													class="w-full"
-													onclick={() => (showSeriesDeleteConfirm = true)}
-												>
-													Delete Series
-												</Button>
-											{:else}
-												<div class="space-y-2">
+												{#if !showSeriesDeleteConfirm}
+													<Button
+														size="sm"
+														variant="danger"
+														class="w-full"
+														onclick={() =>
+															(showSeriesDeleteConfirm = true)}
+													>
+														Delete Series
+													</Button>
+												{:else}
 													<p class="text-xs text-muted-foreground">
 														Delete this series? Completed instances
 														remain unless you force delete.
 													</p>
-													<Button
-														variant="danger"
-														size="sm"
-														class="w-full"
-														disabled={isDeletingSeries}
-														onclick={() => handleDeleteSeries(false)}
-													>
-														{#if isDeletingSeries}
-															<Loader
-																class="w-3.5 h-3.5 animate-spin"
-															/>
-															Removing…
-														{:else}
-															Delete Upcoming
-														{/if}
-													</Button>
-													<Button
-														variant="danger"
-														size="sm"
-														class="w-full"
-														disabled={isDeletingSeries}
-														onclick={() => handleDeleteSeries(true)}
-													>
-														{#if isDeletingSeries}
-															<Loader
-																class="w-3.5 h-3.5 animate-spin"
-															/>
-															Removing…
-														{:else}
-															Force Delete All
-														{/if}
-													</Button>
-													<Button
-														variant="ghost"
-														size="sm"
-														class="w-full"
-														onclick={() => {
-															showSeriesDeleteConfirm = false;
-															seriesActionError = '';
-														}}
-														disabled={isDeletingSeries}
-													>
-														Cancel
-													</Button>
-												</div>
-											{/if}
+													<div class="mt-1.5 flex flex-wrap gap-1.5">
+														<Button
+															variant="danger"
+															size="sm"
+															disabled={isDeletingSeries}
+															onclick={() =>
+																handleDeleteSeries(false)}
+														>
+															{#if isDeletingSeries}
+																<Loader
+																	class="w-3.5 h-3.5 animate-spin"
+																/>
+																Removing…
+															{:else}
+																Delete Upcoming
+															{/if}
+														</Button>
+														<Button
+															variant="danger"
+															size="sm"
+															disabled={isDeletingSeries}
+															onclick={() => handleDeleteSeries(true)}
+														>
+															{#if isDeletingSeries}
+																<Loader
+																	class="w-3.5 h-3.5 animate-spin"
+																/>
+																Removing…
+															{:else}
+																Force Delete All
+															{/if}
+														</Button>
+														<Button
+															variant="ghost"
+															size="sm"
+															onclick={() => {
+																showSeriesDeleteConfirm = false;
+																seriesActionError = '';
+															}}
+															disabled={isDeletingSeries}
+														>
+															Cancel
+														</Button>
+													</div>
+												{/if}
+											</div>
 										{:else if isSeriesInstance}
-											<p class="text-sm text-muted-foreground">
-												This task inherits its cadence from the parent
-												series.
+											<p class="mt-1 text-xs text-muted-foreground">
+												Cadence inherited from parent series.
 											</p>
-										{:else}
-											<Button
-												size="sm"
-												variant="outline"
-												class="w-full pressable"
-												onclick={openSeriesModal}
-											>
-												Make Recurring
-											</Button>
 										{/if}
 									</div>
 								</CardBody>
@@ -1260,27 +1239,31 @@
 									</div>
 								</div>
 
-								<div class="rounded-lg border border-border/70 bg-card p-3">
+								<div
+									class={dueMeta?.variant === 'error'
+										? 'rounded-lg border border-destructive/30 bg-destructive/5 p-3 tx tx-static tx-weak'
+										: 'rounded-lg border border-border/70 bg-card p-3'}
+								>
 									<div class="space-y-2">
-										<div class="flex items-start justify-between gap-3">
-											<div>
-												<p
-													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-												>
-													Timeline
-												</p>
-												<p class="mt-1 text-sm font-medium text-foreground">
-													{scheduleSummary}
-												</p>
-											</div>
+										<div class="flex items-start justify-between gap-2">
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Timeline
+											</p>
 											{#if dueMeta}
 												<Badge variant={dueMeta.variant} size="sm"
 													>{dueMeta.label}</Badge
 												>
 											{/if}
 										</div>
-										<div class="grid grid-cols-1 gap-2 text-sm">
-											<div class="flex items-center justify-between gap-3">
+										{#if dueMeta?.variant === 'error'}
+											<p class="text-xs font-semibold text-destructive">
+												{dueMeta.note}
+											</p>
+										{/if}
+										<div class="grid grid-cols-1 gap-1.5 text-xs">
+											<div class="flex items-center justify-between gap-2">
 												<span class="text-muted-foreground">Start</span>
 												<span class="text-right text-foreground">
 													{formatSurfaceDate(
@@ -1290,9 +1273,13 @@
 													)}
 												</span>
 											</div>
-											<div class="flex items-center justify-between gap-3">
+											<div class="flex items-center justify-between gap-2">
 												<span class="text-muted-foreground">Due</span>
-												<span class="text-right text-foreground">
+												<span
+													class={dueMeta?.variant === 'error'
+														? 'text-right font-semibold text-destructive'
+														: 'text-right text-foreground'}
+												>
 													{formatSurfaceDate(
 														dueAt || task?.due_at,
 														'MMM d, p',
@@ -1300,7 +1287,7 @@
 													)}
 												</span>
 											</div>
-											<div class="flex items-center justify-between gap-3">
+											<div class="flex items-center justify-between gap-2">
 												<span class="text-muted-foreground">Repeats</span>
 												<span class="text-right text-foreground"
 													>{recurrenceSummary}</span

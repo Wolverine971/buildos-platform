@@ -269,7 +269,9 @@
 						>
 							Share the answers in your next message to continue
 						</p>
-						<span class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-emerald-600/50 dark:text-emerald-400/50">
+						<span
+							class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-emerald-600/50 dark:text-emerald-400/50"
+						>
 							{formatTime(message.timestamp)}
 						</span>
 					</div>

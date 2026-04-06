@@ -4250,22 +4250,22 @@
 
 		switch (contextType) {
 			case 'global':
-				return 'What would you like to know about your projects? I can help you explore tasks, check timelines, or answer questions across your workspace.';
+				return "I've got context across all your projects, tasks, and calendar. What are you working through?";
 
 			case 'project_create':
-				return "What are you working on? Tell me anything — even half-formed ideas — and I'll help you shape it into a project with clear goals, milestones, and next steps.";
+				return "What are you working on? Doesn't have to be clear yet — bring me the rough idea, the half-formed plan, whatever you've got. We'll turn it into something structured.";
 
 			case 'project':
-				return `What would you like to do with ${name}? I can help you explore goals, update tasks, or answer questions about the project.`;
+				return `${name === 'this project' ? 'Project' : name} is loaded up. What do you want to dig into?`;
 
 			case 'calendar':
-				return 'What would you like to plan or review on your calendar?';
+				return "Your calendar's pulled up. What needs sorting out?";
 
 			case 'daily_brief':
-				return 'I have your brief context ready. What would you like to update first?';
+				return "Your brief's ready with today's context. What do you want to tackle first?";
 
 			case 'daily_brief_update':
-				return 'What would you like to adjust in your daily brief settings?';
+				return "What's not landing right in your daily brief? Tell me what to change.";
 
 			default:
 				return null;

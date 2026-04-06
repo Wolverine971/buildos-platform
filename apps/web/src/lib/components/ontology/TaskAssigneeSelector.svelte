@@ -1,8 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/TaskAssigneeSelector.svelte -->
 <script lang="ts">
 	import { Search, X } from 'lucide-svelte';
-	import Button from '$lib/components/ui/Button.svelte';
-	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	const DEFAULT_MAX_ASSIGNEES = 10;
@@ -243,100 +241,100 @@
 	}
 </script>
 
-<div class="rounded-lg border border-border bg-muted/40 p-3 tx tx-frame tx-weak space-y-3">
-	<div class="flex items-center justify-between gap-2">
-		<p class="text-xs text-muted-foreground">
-			{selectedActorIds.length} selected
-		</p>
-		<div class="flex items-center gap-1.5">
-			<Button
-				type="button"
-				variant="ghost"
-				size="sm"
-				disabled={disabled || !canAssignToMe}
-				onclick={assignToMe}
-			>
-				Assign Me
-			</Button>
-			<Button
-				type="button"
-				variant="ghost"
-				size="sm"
-				disabled={disabled || selectedActorIds.length === 0}
-				onclick={clearSelection}
-			>
-				Clear
-			</Button>
-		</div>
-	</div>
-
-	<TextInput
-		type="search"
-		size="sm"
-		icon={Search}
-		placeholder="Search project members..."
-		bind:value={searchQuery}
-		disabled={disabled || isLoading || members.length === 0}
-	/>
-
-	{#if isLoading}
-		<p class="text-xs text-muted-foreground">Loading members...</p>
-	{:else if loadError}
-		<p class="text-xs text-destructive">{loadError}</p>
-	{:else if filteredMembers.length === 0}
-		<p class="text-xs text-muted-foreground">
-			{members.length === 0 ? 'No project members available.' : 'No matching members.'}
-		</p>
-	{:else}
-		<div
-			class="max-h-44 overflow-y-auto rounded border border-border bg-card divide-y divide-border/70"
-		>
-			{#each filteredMembers as member}
-				{@const checked = isSelected(member.actorId)}
-				<button
-					type="button"
-					class="w-full px-3 py-2 text-left flex items-start gap-2 hover:bg-muted/40 transition-colors disabled:opacity-60"
-					{disabled}
-					onclick={() => toggleAssignee(member.actorId)}
-				>
-					<span
-						class="mt-0.5 h-4 w-4 rounded border flex items-center justify-center text-[10px] font-semibold {checked
-							? 'bg-accent border-accent text-accent-foreground'
-							: 'border-border text-transparent'}"
-					>
-						✓
-					</span>
-					<span class="min-w-0 flex-1">
-						<span class="text-sm text-foreground truncate block">
-							{getDisplayLabel(member, member.actorId)}
-						</span>
-						{#if member.email}
-							<span class="text-xs text-muted-foreground truncate block">
-								{member.email}
-							</span>
-						{/if}
-					</span>
-				</button>
-			{/each}
-		</div>
-	{/if}
-
+<div class="space-y-1.5">
 	{#if selectedSummaries.length > 0}
-		<div class="flex flex-wrap gap-1.5">
+		<div class="flex flex-wrap items-center gap-1">
 			{#each selectedSummaries as selected}
 				<button
 					type="button"
 					onclick={() => removeSelected(selected.actorId)}
 					{disabled}
-					class="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-1 text-xs text-foreground hover:border-accent/40 disabled:opacity-60"
+					class="inline-flex items-center gap-0.5 rounded-full border border-border bg-card px-1.5 py-0.5 text-xs text-foreground hover:border-accent/40 pressable disabled:opacity-60"
 					title="Remove {selected.label}"
 				>
-					<span>@{selected.label}</span>
-					<X class="w-3 h-3" />
+					@{selected.label}
+					<X class="w-2.5 h-2.5" />
 				</button>
 			{/each}
+			<button
+				type="button"
+				class="text-[11px] text-muted-foreground hover:text-foreground px-1 disabled:opacity-50"
+				{disabled}
+				onclick={clearSelection}
+			>
+				Clear
+			</button>
 		</div>
 	{/if}
+
+	<div
+		class="rounded-lg border border-border bg-card shadow-ink-inner overflow-hidden tx tx-frame tx-weak"
+	>
+		<div class="flex items-center gap-1.5 border-b border-border/50 px-2 py-1.5">
+			{#if members.length >= 5}
+				<Search class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+				<input
+					type="search"
+					class="flex-1 min-w-0 text-xs bg-transparent text-foreground placeholder:text-muted-foreground outline-none"
+					placeholder="Search members..."
+					bind:value={searchQuery}
+					disabled={disabled || isLoading}
+				/>
+			{:else}
+				<span class="flex-1 text-xs text-muted-foreground">
+					{selectedActorIds.length} of {members.length} selected
+				</span>
+			{/if}
+			{#if canAssignToMe}
+				<button
+					type="button"
+					class="text-[11px] font-medium text-accent hover:underline shrink-0 disabled:opacity-50"
+					{disabled}
+					onclick={assignToMe}
+				>
+					+ Me
+				</button>
+			{/if}
+		</div>
+
+		{#if isLoading}
+			<p class="px-2 py-2 text-xs text-muted-foreground">Loading...</p>
+		{:else if loadError}
+			<p class="px-2 py-2 text-xs text-destructive">{loadError}</p>
+		{:else if filteredMembers.length === 0}
+			<p class="px-2 py-2 text-xs text-muted-foreground">
+				{members.length === 0 ? 'No project members.' : 'No match.'}
+			</p>
+		{:else}
+			<div class="max-h-32 overflow-y-auto divide-y divide-border/40">
+				{#each filteredMembers as member}
+					{@const checked = isSelected(member.actorId)}
+					<button
+						type="button"
+						class="w-full px-2 py-1.5 text-left flex items-center gap-2 hover:bg-muted/40 transition-colors disabled:opacity-60"
+						{disabled}
+						onclick={() => toggleAssignee(member.actorId)}
+					>
+						<span
+							class="h-3.5 w-3.5 shrink-0 rounded border flex items-center justify-center text-[9px] font-bold {checked
+								? 'bg-accent border-accent text-accent-foreground'
+								: 'border-border text-transparent'}"
+						>
+							✓
+						</span>
+						<span class="text-sm text-foreground truncate"
+							>{getDisplayLabel(member, member.actorId)}</span
+						>
+						{#if member.email}
+							<span class="text-[11px] text-muted-foreground truncate ml-auto"
+								>{member.email}</span
+							>
+						{/if}
+					</button>
+				{/each}
+			</div>
+		{/if}
+	</div>
 
 	{#if selectionError}
 		<p class="text-xs text-destructive">{selectionError}</p>

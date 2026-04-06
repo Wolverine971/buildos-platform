@@ -2089,7 +2089,9 @@ function applyGatewayValidationContext(
 			...args,
 			project_id: effectiveProjectId
 		};
-		return op === 'onto.project.create' ? normalizeProjectCreateArgs(withProjectId) : withProjectId;
+		return op === 'onto.project.create'
+			? normalizeProjectCreateArgs(withProjectId)
+			: withProjectId;
 	}
 
 	const schema = getToolRegistry().ops[op]?.parameters_schema;
@@ -2446,7 +2448,9 @@ function compactToolHelpPayload(payload: unknown): unknown {
 			skill_entrypoints: Array.isArray(record.skill_entrypoints)
 				? record.skill_entrypoints.slice(0, 8)
 				: [],
-			direct_paths: Array.isArray(record.direct_paths) ? record.direct_paths.slice(0, 12) : [],
+			direct_paths: Array.isArray(record.direct_paths)
+				? record.direct_paths.slice(0, 12)
+				: [],
 			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : []
 		});
 	}
@@ -3102,7 +3106,8 @@ function didGatewayOpExecute(toolExecutions: FastToolExecution[], op: string): b
 function didSuccessfulGatewayOpExecute(toolExecutions: FastToolExecution[], op: string): boolean {
 	const normalizedTarget = normalizeGatewayOpName(op);
 	return toolExecutions.some(
-		(execution) => getGatewayExecOp(execution) === normalizedTarget && didGatewayExecSucceed(execution)
+		(execution) =>
+			getGatewayExecOp(execution) === normalizedTarget && didGatewayExecSucceed(execution)
 	);
 }
 

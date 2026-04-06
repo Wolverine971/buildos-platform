@@ -45,10 +45,7 @@ import type {
 import { createLogger } from '$lib/utils/logger';
 import { createEntityReference, parseEntityReferences } from '$lib/utils/entity-reference-parser';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
-import {
-	normalizeProjectCreateArgs,
-	validateProjectCreateArgs
-} from '../project-create-args';
+import { normalizeProjectCreateArgs, validateProjectCreateArgs } from '../project-create-args';
 
 const logger = createLogger('OntologyWriteExecutor');
 
@@ -840,7 +837,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			normalizedArgs as Record<string, unknown> as Record<string, any>
 		);
 		if (projectCreateValidationErrors.length > 0) {
-			throw new Error(projectCreateValidationErrors[0] ?? 'Invalid create_onto_project payload');
+			throw new Error(
+				projectCreateValidationErrors[0] ?? 'Invalid create_onto_project payload'
+			);
 		}
 
 		const contextDocument = buildContextDocumentSpec(normalizedArgs);

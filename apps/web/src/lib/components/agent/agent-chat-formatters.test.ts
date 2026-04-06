@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/agent/agent-chat-formatters.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ContextUsageSnapshot } from '@buildos/shared-types';
 import type { UIMessage } from './agent-chat.types';

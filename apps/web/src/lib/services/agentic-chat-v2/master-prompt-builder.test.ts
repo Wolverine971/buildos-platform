@@ -219,9 +219,7 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		expect(prompt).toContain(
 			'Always include entities: [] and relationships: [] even when the project starts empty.'
 		);
-		expect(prompt).toContain(
-			'Never use raw temp_id strings like ["g1", "t1"].'
-		);
+		expect(prompt).toContain('Never use raw temp_id strings like ["g1", "t1"].');
 		expect(prompt).toContain(
 			'Use clarifications[] only when critical information cannot be reasonably inferred'
 		);

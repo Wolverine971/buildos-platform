@@ -748,7 +748,9 @@ describe('ToolExecutionService gateway fallback', () => {
 						name: 'Podcast Launch',
 						type_key: 'project.creative.podcast'
 					},
-					entities: [{ temp_id: 'g1', kind: 'goal', name: 'Publish the first 3 episodes' }],
+					entities: [
+						{ temp_id: 'g1', kind: 'goal', name: 'Publish the first 3 episodes' }
+					],
 					relationships: [['g1', 't9']]
 				}
 			}),

@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/core/executors/ontology-project-create.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
@@ -111,7 +112,9 @@ describe('OntologyWriteExecutor project creation normalization', () => {
 					name: 'Podcast Launch',
 					type_key: 'project.creative.podcast'
 				},
-				entities: [{ temp_id: 'g1', kind: 'goal', name: 'Publish the first 3 episodes' }] as any,
+				entities: [
+					{ temp_id: 'g1', kind: 'goal', name: 'Publish the first 3 episodes' }
+				] as any,
 				relationships: [['g1', 't9']] as any
 			})
 		).rejects.toThrow('relationships[0][1]');

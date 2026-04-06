@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/core/project-create-args.ts
 type JsonRecord = Record<string, any>;
 
 type ProjectCreateRef = {
@@ -51,10 +52,7 @@ function normalizeRelationshipRef(
 	return { temp_id: tempId, kind };
 }
 
-function normalizeRelationshipEntry(
-	value: unknown,
-	entityKindIndex: Map<string, string>
-): unknown {
+function normalizeRelationshipEntry(value: unknown, entityKindIndex: Map<string, string>): unknown {
 	if (Array.isArray(value) && value.length === 2) {
 		const from = normalizeRelationshipRef(value[0], entityKindIndex);
 		const to = normalizeRelationshipRef(value[1], entityKindIndex);
