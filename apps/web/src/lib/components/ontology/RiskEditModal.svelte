@@ -23,7 +23,16 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Save, Loader, Trash2, AlertTriangle, X } from 'lucide-svelte';
+	import {
+		Save,
+		Loader,
+		Trash2,
+		AlertTriangle,
+		X,
+		ChevronDown,
+		FileText,
+		Shield
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -34,10 +43,12 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -98,6 +109,18 @@
 						: 'Closed out'
 	}));
 
+	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
+
+	const RISK_STATE_META: Record<
+		string,
+		{ label: string; variant: SurfaceBadgeVariant }
+	> = {
+		identified: { label: 'Identified', variant: 'warning' },
+		mitigated: { label: 'Mitigated', variant: 'info' },
+		occurred: { label: 'Occurred', variant: 'error' },
+		closed: { label: 'Closed', variant: 'success' }
+	};
+
 	let modalOpen = $state(true);
 	let risk = $state<any>(null);
 	let isLoading = $state(true);
@@ -105,6 +128,7 @@
 	let isDeleting = $state(false);
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
+	let showActivityLog = $state(false);
 
 	// Form fields
 	let title = $state('');
@@ -141,6 +165,10 @@
 
 	// Computed impact badge styling
 	const impactBadge = $derived(IMPACT_OPTIONS.find((o) => o.value === impact));
+	const stateMeta = $derived(
+		RISK_STATE_META[stateKey] ?? { label: stateKey, variant: 'default' as SurfaceBadgeVariant }
+	);
+	const detailsFormId = $derived(`risk-edit-${riskId}-details`);
 
 	// Computed risk score values (moved from template for Svelte 5 compatibility)
 	const riskProb = $derived(parseFloat(probability) || 0.5);
@@ -343,6 +371,7 @@
 	onClose={handleClose}
 	closeOnEscape={!isSaving && !isDeleting}
 	showCloseButton={false}
+	customClasses="wt-plate"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
@@ -361,7 +390,20 @@
 					>
 						{title || risk?.title || 'Risk'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+					<div class="mt-1 flex flex-wrap items-center gap-1.5">
+						<Badge variant={stateMeta.variant} size="sm">{stateMeta.label}</Badge>
+						{#if impactBadge}
+							<Badge
+								variant={impact === 'critical'
+									? 'error'
+									: impact === 'high'
+										? 'warning'
+										: 'default'}
+								size="sm">{impactBadge.label} Impact</Badge
+							>
+						{/if}
+					</div>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
 						{#if risk?.created_at}Created {new Date(risk.created_at).toLocaleDateString(
 								undefined,
 								{ month: 'short', day: 'numeric' }
@@ -404,7 +446,7 @@
 
 	{#snippet children()}
 		<!-- Main content -->
-		<div class="px-2 py-2 sm:px-6 sm:py-4">
+		<div class="px-2 py-2 sm:px-4 sm:py-4">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
@@ -414,144 +456,223 @@
 					<p class="text-destructive">Risk not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 					<!-- Main Form (Left 2 columns) -->
 					<div class="lg:col-span-2">
 						<form
+							id={detailsFormId}
 							onsubmit={(e) => {
 								e.preventDefault();
 								handleSave();
 							}}
 							class="space-y-3 sm:space-y-4"
 						>
-							<FormField
-								label="Risk Title"
-								labelFor="title"
-								required={true}
-								error={!title.trim() && error ? 'Risk title is required' : ''}
-							>
-								<TextInput
-									id="title"
-									bind:value={title}
-									inputmode="text"
-									enterkeyhint="next"
-									placeholder="What could go wrong?"
-									required={true}
-									disabled={isSaving}
-									error={!title.trim() && error ? true : false}
-								/>
-							</FormField>
-
-							<FormField
-								label="Risk Details"
-								labelFor="content"
-								hint="Explain the risk in detail"
-							>
-								<Textarea
-									id="content"
-									bind:value={content}
-									enterkeyhint="next"
-									placeholder="Describe what could happen and why..."
-									rows={3}
-									disabled={isSaving}
-									size="md"
-								/>
-							</FormField>
-
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<FormField
-									label="Impact"
-									labelFor="impact"
-									required={true}
-									hint="Severity if this risk occurs"
-								>
-									<Select
-										id="impact"
-										bind:value={impact}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select impact"
+							<Card variant="elevated" class="wt-paper">
+								<CardHeader variant="accent" texture="strip">
+									<div
+										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
-										{#each IMPACT_OPTIONS as opt}
-											<option value={opt.value}>{opt.label}</option>
-										{/each}
-									</Select>
-								</FormField>
-
-								<FormField
-									label="Probability"
-									labelFor="probability"
-									hint="How likely is this to occur?"
-								>
-									<Select
-										id="probability"
-										bind:value={probability}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select likelihood"
+										<div class="min-w-0">
+											<div class="flex items-center gap-2">
+												<FileText class="h-4 w-4 text-accent" />
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
+												>
+													Risk Overview
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												What could go wrong and how to handle it
+											</h3>
+											<p class="mt-1 text-xs text-muted-foreground">
+												Describe the risk, its severity, and how you plan to
+												mitigate it.
+											</p>
+										</div>
+										<div class="flex flex-wrap items-center gap-1.5">
+											<Badge variant={stateMeta.variant} size="sm"
+												>{stateMeta.label}</Badge
+											>
+										</div>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<FormField
+										label="Risk Title"
+										labelFor="title"
+										required={true}
+										uppercase={false}
+										showOptional={false}
+										error={!title.trim() && error
+											? 'Risk title is required'
+											: ''}
 									>
-										{#each PROBABILITY_OPTIONS as opt}
-											<option value={opt.value}>{opt.label}</option>
-										{/each}
-									</Select>
-								</FormField>
-							</div>
+										<TextInput
+											id="title"
+											bind:value={title}
+											inputmode="text"
+											enterkeyhint="next"
+											placeholder="What could go wrong?"
+											required={true}
+											disabled={isSaving}
+											error={!title.trim() && error ? true : false}
+										/>
+									</FormField>
 
-							<FormField
-								label="Mitigation Strategy"
-								labelFor="mitigation-strategy"
-								hint="How will you prevent or reduce this risk?"
-							>
-								<Textarea
-									id="mitigation-strategy"
-									bind:value={mitigationStrategy}
-									enterkeyhint="next"
-									placeholder="Steps to mitigate or prevent this risk..."
-									rows={3}
-									disabled={isSaving}
-									size="md"
-								/>
-							</FormField>
-
-							<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<FormField
-									label="State"
-									labelFor="state"
-									required={true}
-									hint="Current risk status"
-								>
-									<Select
-										id="state"
-										bind:value={stateKey}
-										disabled={isSaving}
-										size="md"
-										placeholder="Select state"
+									<FormField
+										label="Risk Details"
+										labelFor="content"
+										uppercase={false}
+										showOptional={false}
 									>
-										{#each STATE_OPTIONS as opt}
-											<option value={opt.value}>{opt.label}</option>
-										{/each}
-									</Select>
-								</FormField>
+										<Textarea
+											id="content"
+											bind:value={content}
+											enterkeyhint="next"
+											placeholder="Describe what could happen and why..."
+											rows={3}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
 
-								<FormField
-									label="Owner"
-									labelFor="owner"
-									hint="Who is responsible for this risk?"
-								>
-									<TextInput
-										id="owner"
-										bind:value={owner}
-										inputmode="text"
-										enterkeyhint="done"
-										placeholder="Person responsible..."
-										disabled={isSaving}
-									/>
-								</FormField>
-							</div>
+									<FormField
+										label="Mitigation Strategy"
+										labelFor="mitigation-strategy"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="mitigation-strategy"
+											bind:value={mitigationStrategy}
+											enterkeyhint="next"
+											placeholder="Steps to mitigate or prevent this risk..."
+											rows={3}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+								</CardBody>
+							</Card>
+
+							<Card variant="default" class="wt-paper">
+								<CardHeader variant="transparent" texture="none">
+									<div
+										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+									>
+										<div>
+											<div class="flex items-center gap-2">
+												<Shield
+													class="h-4 w-4 text-muted-foreground"
+												/>
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+												>
+													Assessment
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												Impact, probability, and ownership
+											</h3>
+										</div>
+										<p
+											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
+										>
+											Keep operational controls together so the risk's
+											severity is obvious at a glance.
+										</p>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										<FormField
+											label="Impact"
+											labelFor="impact"
+											required={true}
+											uppercase={false}
+											showOptional={false}
+										>
+											<Select
+												id="impact"
+												bind:value={impact}
+												disabled={isSaving}
+												size="sm"
+												placeholder="Select impact"
+											>
+												{#each IMPACT_OPTIONS as opt}
+													<option value={opt.value}>{opt.label}</option>
+												{/each}
+											</Select>
+										</FormField>
+
+										<FormField
+											label="Probability"
+											labelFor="probability"
+											uppercase={false}
+											showOptional={false}
+										>
+											<Select
+												id="probability"
+												bind:value={probability}
+												disabled={isSaving}
+												size="sm"
+												placeholder="Select likelihood"
+											>
+												{#each PROBABILITY_OPTIONS as opt}
+													<option value={opt.value}
+														>{opt.label}</option
+													>
+												{/each}
+											</Select>
+										</FormField>
+									</div>
+
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										<FormField
+											label="State"
+											labelFor="state"
+											required={true}
+											uppercase={false}
+											showOptional={false}
+										>
+											<Select
+												id="state"
+												bind:value={stateKey}
+												disabled={isSaving}
+												size="sm"
+												placeholder="Select state"
+											>
+												{#each STATE_OPTIONS as opt}
+													<option value={opt.value}
+														>{opt.label}</option
+													>
+												{/each}
+											</Select>
+										</FormField>
+
+										<FormField
+											label="Owner"
+											labelFor="owner"
+											uppercase={false}
+											showOptional={false}
+										>
+											<TextInput
+												id="owner"
+												bind:value={owner}
+												inputmode="text"
+												enterkeyhint="done"
+												placeholder="Person responsible..."
+												disabled={isSaving}
+												size="sm"
+											/>
+										</FormField>
+									</div>
+								</CardBody>
+							</Card>
 
 							{#if error}
 								<div
-									class="p-4 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak"
+									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
 								>
 									<p class="text-sm text-destructive">{error}</p>
 								</div>
@@ -560,7 +681,146 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<div class="space-y-4">
+					<div class="space-y-3">
+						<Card variant="elevated" class="wt-card">
+							<CardHeader variant="muted" texture="strip">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p
+											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+										>
+											At a glance
+										</p>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Risk snapshot
+										</h3>
+									</div>
+									<Badge variant={stateMeta.variant} size="sm"
+										>{stateMeta.label}</Badge
+									>
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-3">
+								<div class="grid grid-cols-2 gap-2">
+									<div
+										class="rounded-lg border border-border/70 bg-muted/30 p-3"
+									>
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+										>
+											Impact
+										</p>
+										<p
+											class="mt-1 text-sm font-semibold text-foreground"
+										>
+											{impactBadge?.label ?? impact}
+										</p>
+									</div>
+									<div
+										class="rounded-lg border border-border/70 bg-muted/30 p-3"
+									>
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+										>
+											Probability
+										</p>
+										<p
+											class="mt-1 text-sm font-semibold text-foreground"
+										>
+											{Math.round(riskProb * 100)}%
+										</p>
+									</div>
+								</div>
+
+								<!-- Risk Score -->
+								<div
+									class="rounded-lg border border-border/70 bg-card p-3 text-center"
+								>
+									<p
+										class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+									>
+										Risk Score
+									</p>
+									<p
+										class="mt-1 text-2xl font-bold {riskScore >= 2
+											? 'text-destructive'
+											: riskScore >= 1
+												? 'text-warning'
+												: 'text-foreground'}"
+									>
+										{riskScore.toFixed(1)}
+									</p>
+									<p class="text-xs text-muted-foreground mt-1">
+										{riskScore >= 2
+											? 'High Priority'
+											: riskScore >= 1
+												? 'Medium Priority'
+												: 'Low Priority'}
+									</p>
+									<p class="text-[10px] text-muted-foreground mt-1">
+										Impact ({riskImpactScore}) x Probability ({Math.round(
+											riskProb * 100
+										)}%)
+									</p>
+								</div>
+
+								<div
+									class="rounded-lg border border-border/70 bg-muted/30 p-3"
+								>
+									<div class="grid grid-cols-1 gap-1.5 text-xs">
+										{#if owner}
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground"
+													>Owner</span
+												>
+												<span class="text-right text-foreground"
+													>{owner}</span
+												>
+											</div>
+										{/if}
+										<div
+											class="flex items-center justify-between gap-2"
+										>
+											<span class="text-muted-foreground"
+												>Created</span
+											>
+											<span class="text-right text-foreground">
+												{risk.created_at
+													? new Date(
+															risk.created_at
+														).toLocaleDateString(undefined, {
+															month: 'short',
+															day: 'numeric',
+															year: 'numeric'
+														})
+													: '—'}
+											</span>
+										</div>
+										<div
+											class="flex items-center justify-between gap-2"
+										>
+											<span class="text-muted-foreground"
+												>Updated</span
+											>
+											<span class="text-right text-foreground">
+												{risk.updated_at
+													? new Date(
+															risk.updated_at
+														).toLocaleDateString(undefined, {
+															month: 'short',
+															day: 'numeric',
+															year: 'numeric'
+														})
+													: '—'}
+											</span>
+										</div>
+									</div>
+								</div>
+							</CardBody>
+						</Card>
+
 						<!-- Linked Entities -->
 						<LinkedEntities
 							sourceId={riskId}
@@ -570,129 +830,72 @@
 							onLinksChanged={loadRisk}
 						/>
 
-						<!-- Tags (from classification) -->
+						<!-- Images -->
+						<ImageAssetsPanel
+							{projectId}
+							entityKind="risk"
+							entityId={riskId}
+							title="Images"
+							compact={true}
+							onChanged={() => {
+								void loadRisk();
+								onUpdated?.();
+							}}
+						/>
+
 						{#if risk?.props?.tags?.length}
-							<Card variant="elevated">
-								<CardHeader variant="default">
-									<h3
-										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-									>
-										<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-										Tags
-									</h3>
-								</CardHeader>
-								<CardBody padding="sm">
-									<TagsDisplay props={risk.props} size="sm" compact={true} />
-								</CardBody>
-							</Card>
+							<div
+								class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink"
+							>
+								<p
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
+								>
+									Tags
+								</p>
+								<TagsDisplay
+									props={risk.props}
+									size="sm"
+									compact={true}
+								/>
+							</div>
 						{/if}
 
-						<!-- Risk Metadata -->
-						<Card variant="elevated">
-							<CardHeader variant="default">
-								<h3
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-								>
-									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-									Risk Information
-								</h3>
-							</CardHeader>
-							<CardBody padding="sm">
-								<div class="space-y-2 text-sm">
-									<div class="flex justify-between items-center">
-										<span class="text-muted-foreground">Impact:</span>
-										{#if impactBadge}
-											<span
-												class="text-xs px-2 py-0.5 rounded-full font-medium {impactBadge.color}"
-											>
-												{impactBadge.label}
-											</span>
-										{/if}
-									</div>
-
-									<div class="flex justify-between">
-										<span class="text-muted-foreground">Probability:</span>
-										<span class="text-foreground">
-											{probability
-												? `${Math.round(parseFloat(probability) * 100)}%`
-												: 'Unknown'}
-										</span>
-									</div>
-
-									<div class="flex justify-between">
-										<span class="text-muted-foreground">State:</span>
-										<span class="text-foreground capitalize">
-											{stateKey.replace(/_/g, ' ')}
-										</span>
-									</div>
-
-									<div class="flex justify-between gap-2">
-										<span class="text-muted-foreground shrink-0">ID:</span>
-										<span
-											class="font-mono text-xs text-muted-foreground break-all text-right"
-											>{risk.id}</span
-										>
-									</div>
-
-									{#if risk.created_at}
-										<div class="flex justify-between">
-											<span class="text-muted-foreground">Created:</span>
-											<span class="text-foreground">
-												{new Date(risk.created_at).toLocaleDateString()}
-											</span>
-										</div>
-									{/if}
+						<!-- Activity Log (collapsible) -->
+						<div
+							class="border border-border rounded-lg bg-card shadow-ink overflow-hidden"
+						>
+							<button
+								type="button"
+								onclick={() => (showActivityLog = !showActivityLog)}
+								class="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:bg-muted/50 transition-colors"
+							>
+								<span>Activity</span>
+								<ChevronDown
+									class="w-3.5 h-3.5 transition-transform {showActivityLog
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+							{#if showActivityLog}
+								<div class="border-t border-border">
+									<EntityActivityLog
+										entityType="risk"
+										entityId={riskId}
+										autoLoad={true}
+									/>
 								</div>
-							</CardBody>
-						</Card>
-
-						<!-- Risk Score (calculated) -->
-						<Card variant="elevated">
-							<CardHeader variant="default">
-								<h3
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-								>
-									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-									Risk Score
-								</h3>
-							</CardHeader>
-							<CardBody padding="sm">
-								<div class="text-center py-2">
-									<div
-										class="text-3xl font-bold {riskScore >= 2
-											? 'text-red-500'
-											: riskScore >= 1
-												? 'text-amber-500'
-												: 'text-emerald-500'}"
-									>
-										{riskScore.toFixed(1)}
-									</div>
-									<p class="text-xs text-muted-foreground mt-1">
-										{riskScore >= 2
-											? 'High Priority'
-											: riskScore >= 1
-												? 'Medium Priority'
-												: 'Low Priority'}
-									</p>
-									<p class="text-[10px] text-muted-foreground mt-2">
-										Impact ({riskImpactScore}) × Probability ({Math.round(
-											riskProb * 100
-										)}%)
-									</p>
-								</div>
-							</CardBody>
-						</Card>
-
-						<!-- Activity Log -->
-						<EntityActivityLog
-							entityType="risk"
-							entityId={riskId}
-							autoLoad={!isLoading}
-						/>
+							{/if}
+						</div>
 					</div>
 				</div>
 
-				<EntityCommentsSection {projectId} entityType="risk" entityId={riskId} />
+				<div class="mt-4">
+					<EntityCommentsSection
+						{projectId}
+						entityType="risk"
+						entityId={riskId}
+					/>
+				</div>
 			{/if}
 		</div>
 	{/snippet}
@@ -728,10 +931,10 @@
 						Cancel
 					</Button>
 					<Button
-						type="button"
+						type="submit"
+						form={detailsFormId}
 						variant="primary"
 						size="sm"
-						onclick={handleSave}
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
 						class="text-xs h-8 pressable"

@@ -14,7 +14,16 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { ChevronDown, Clock, Loader, Save, Trash2, X } from 'lucide-svelte';
+	import {
+		ChevronDown,
+		Clock,
+		Loader,
+		Save,
+		Trash2,
+		X,
+		FileText,
+		CalendarRange
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -22,10 +31,15 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import { PLAN_STATES, type Plan } from '$lib/types/onto';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
@@ -85,6 +99,26 @@
 	let selectedDocumentIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
 	let showActivityLog = $state(false);
+
+	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
+
+	const PLAN_STATE_META: Record<
+		string,
+		{ label: string; variant: SurfaceBadgeVariant; note: string }
+	> = {
+		draft: { label: 'Draft', variant: 'default', note: 'Not yet started.' },
+		active: { label: 'Active', variant: 'info', note: 'Currently in execution.' },
+		completed: { label: 'Completed', variant: 'success', note: 'Plan fulfilled.' }
+	};
+
+	const stateMeta = $derived(
+		PLAN_STATE_META[stateKey] ?? {
+			label: stateKey,
+			variant: 'default' as SurfaceBadgeVariant,
+			note: ''
+		}
+	);
+	const detailsFormId = $derived(`plan-edit-${planId}-details`);
 
 	// Build focus for chat about this plan
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -308,32 +342,37 @@
 	onClose={handleClose}
 	closeOnEscape={!isSaving && !isDeleting}
 	showCloseButton={false}
+	customClasses="wt-plate"
 >
 	{#snippet header()}
-		<!-- Dense Inkprint header (Mode A) -->
+		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 flex items-center justify-between gap-2 tx tx-strip tx-weak wt-paper sp-block"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
-			<div class="flex items-center gap-2 min-w-0 flex-1">
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-8 w-8 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
-					<Clock class="w-4 h-4" />
+					<Clock class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<h2 class="text-sm font-semibold leading-tight truncate text-foreground">
+					<h2
+						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+					>
 						{name || plan?.name || 'Plan'}
 					</h2>
-					<p class="micro-label mt-0.5">
-						{#if plan?.created_at}CREATED {new Date(plan.created_at)
-								.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-								.toUpperCase()}{/if}{#if plan?.updated_at && plan.updated_at !== plan.created_at}
-							· UPDATED {new Date(plan.updated_at)
-								.toLocaleDateString(undefined, {
-									month: 'short',
-									day: 'numeric'
-								})
-								.toUpperCase()}{/if}
+					<div class="mt-1 flex flex-wrap items-center gap-1.5">
+						<Badge variant={stateMeta.variant} size="sm">{stateMeta.label}</Badge>
+					</div>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
+						{#if plan?.created_at}Created {new Date(plan.created_at).toLocaleDateString(
+								undefined,
+								{ month: 'short', day: 'numeric' }
+							)}{/if}{#if plan?.updated_at && plan.updated_at !== plan.created_at}
+							· Updated {new Date(plan.updated_at).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}
 					</p>
 				</div>
 			</div>
@@ -343,7 +382,7 @@
 					type="button"
 					onclick={openChatAbout}
 					disabled={isLoading || isSaving || !plan}
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					title="Chat about this plan"
 				>
 					<img
@@ -357,125 +396,219 @@
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
 					aria-label="Close modal"
 				>
-					<X class="w-4 h-4" />
+					<X class="w-5 h-5" />
 				</button>
 			</div>
 		</div>
 	{/snippet}
 
 	{#snippet children()}
-		<!-- Main content - Dense Mode A spacing -->
-		<div class="p-3">
+		<!-- Main content -->
+		<div class="px-2 py-2 sm:px-4 sm:py-4">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
-					<Loader class="w-6 h-6 animate-spin text-muted-foreground" />
+					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
 				</div>
 			{:else if !plan}
-				<div class="text-center py-12">
-					<p class="text-sm text-destructive">Plan not found</p>
+				<div class="text-center py-8">
+					<p class="text-destructive">Plan not found</p>
 				</div>
 			{:else}
-				<div class="grid gap-3 lg:grid-cols-3">
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+					<!-- Main Form (Left 2 columns) -->
 					<div class="lg:col-span-2">
 						<form
-							onsubmit={(event) => {
-								event.preventDefault();
+							id={detailsFormId}
+							onsubmit={(e) => {
+								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-2.5 sm:space-y-3 tx tx-frame tx-weak wt-paper p-2 sm:p-3"
+							class="space-y-3 sm:space-y-4"
 						>
-							<FormField
-								label="Name"
-								labelFor="plan-name"
-								required
-								error={!name.trim() && error ? 'Required' : ''}
-							>
-								<TextInput
-									id="plan-name"
-									bind:value={name}
-									inputmode="text"
-									enterkeyhint="next"
-									placeholder="Plan name..."
-									required
-									disabled={formDisabled}
-								/>
-							</FormField>
-
-							<FormField label="Description" labelFor="plan-description">
-								<Textarea
-									id="plan-description"
-									bind:value={description}
-									enterkeyhint="next"
-									rows={2}
-									placeholder="Objectives and target outcomes..."
-									disabled={formDisabled}
-								/>
-							</FormField>
-
-							<FormField label="Details" labelFor="plan-details">
-								<Textarea
-									id="plan-details"
-									bind:value={planDetails}
-									enterkeyhint="next"
-									rows={2}
-									placeholder="Execution outline, milestones, runbook..."
-									disabled={formDisabled}
-								/>
-							</FormField>
-
-							<div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-								<FormField label="State" labelFor="plan-state">
-									<Select
-										id="plan-state"
-										bind:value={stateKey}
-										disabled={formDisabled}
-										size="sm"
+							<Card variant="elevated" class="wt-paper">
+								<CardHeader variant="accent" texture="strip">
+									<div
+										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
-										{#each PLAN_STATES as state}
-											<option value={state}>
-												{state === 'draft'
-													? 'Draft'
-													: state === 'active'
-														? 'Active'
-														: state === 'completed'
-															? 'Completed'
-															: state}
-											</option>
-										{/each}
-									</Select>
-								</FormField>
+										<div class="min-w-0">
+											<div class="flex items-center gap-2">
+												<FileText class="h-4 w-4 text-accent" />
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
+												>
+													Overview
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												What this plan covers and its expected outcome
+											</h3>
+											<p class="mt-1 text-xs text-muted-foreground">
+												Lead with the name and context so the plan reads
+												clearly before adjusting execution details.
+											</p>
+										</div>
+										<Badge variant={stateMeta.variant} size="sm"
+											>{stateMeta.label}</Badge
+										>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<FormField
+										label="Name"
+										labelFor="plan-name"
+										required={true}
+										uppercase={false}
+										showOptional={false}
+										error={!name.trim() && error ? 'Required' : ''}
+									>
+										<TextInput
+											id="plan-name"
+											bind:value={name}
+											inputmode="text"
+											enterkeyhint="next"
+											placeholder="Plan name..."
+											required={true}
+											disabled={formDisabled}
+											error={!name.trim() && error ? true : false}
+										/>
+									</FormField>
 
-								<FormField label="Start" labelFor="plan-start">
-									<TextInput
-										id="plan-start"
-										bind:value={startDate}
-										type="date"
-										inputmode="numeric"
-										enterkeyhint="next"
-										disabled={formDisabled}
-										size="sm"
-									/>
-								</FormField>
+									<FormField
+										label="Description"
+										labelFor="plan-description"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="plan-description"
+											bind:value={description}
+											enterkeyhint="next"
+											rows={3}
+											placeholder="Objectives and target outcomes..."
+											disabled={formDisabled}
+											size="md"
+										/>
+									</FormField>
 
-								<FormField label="End" labelFor="plan-end" error={dateError}>
-									<TextInput
-										id="plan-end"
-										bind:value={endDate}
-										type="date"
-										inputmode="numeric"
-										enterkeyhint="done"
-										disabled={formDisabled}
-										size="sm"
-									/>
-								</FormField>
-							</div>
+									<FormField
+										label="Details"
+										labelFor="plan-details"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="plan-details"
+											bind:value={planDetails}
+											enterkeyhint="next"
+											rows={2}
+											placeholder="Execution outline, milestones, runbook..."
+											disabled={formDisabled}
+											size="md"
+										/>
+									</FormField>
+								</CardBody>
+							</Card>
+
+							<Card variant="default" class="wt-paper">
+								<CardHeader variant="transparent" texture="none">
+									<div
+										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+									>
+										<div>
+											<div class="flex items-center gap-2">
+												<CalendarRange
+													class="h-4 w-4 text-muted-foreground"
+												/>
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+												>
+													Execution
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												State and timeline
+											</h3>
+										</div>
+										<p
+											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
+										>
+											Keep the schedule and state together so progress is
+											obvious at a glance.
+										</p>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+										<FormField
+											label="State"
+											labelFor="plan-state"
+											uppercase={false}
+											showOptional={false}
+										>
+											<Select
+												id="plan-state"
+												bind:value={stateKey}
+												disabled={formDisabled}
+												size="sm"
+											>
+												{#each PLAN_STATES as state}
+													<option value={state}>
+														{state === 'draft'
+															? 'Draft'
+															: state === 'active'
+																? 'Active'
+																: state === 'completed'
+																	? 'Completed'
+																	: state}
+													</option>
+												{/each}
+											</Select>
+										</FormField>
+
+										<FormField
+											label="Start"
+											labelFor="plan-start"
+											uppercase={false}
+											showOptional={false}
+										>
+											<TextInput
+												id="plan-start"
+												bind:value={startDate}
+												type="date"
+												inputmode="numeric"
+												enterkeyhint="next"
+												disabled={formDisabled}
+												size="sm"
+											/>
+										</FormField>
+
+										<FormField
+											label="End"
+											labelFor="plan-end"
+											error={dateError}
+											uppercase={false}
+											showOptional={false}
+										>
+											<TextInput
+												id="plan-end"
+												bind:value={endDate}
+												type="date"
+												inputmode="numeric"
+												enterkeyhint="done"
+												disabled={formDisabled}
+												size="sm"
+											/>
+										</FormField>
+									</div>
+								</CardBody>
+							</Card>
 
 							{#if error}
 								<div
-									class="p-3 bg-destructive/10 border border-destructive/30 rounded"
+									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
 								>
 									<p class="text-sm text-destructive">{error}</p>
 								</div>
@@ -483,7 +616,121 @@
 						</form>
 					</div>
 
+					<!-- Sidebar (Right column) -->
 					<div class="space-y-3">
+						<Card variant="elevated" class="wt-card">
+							<CardHeader variant="muted" texture="strip">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p
+											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+										>
+											At a glance
+										</p>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Plan snapshot
+										</h3>
+									</div>
+									<Badge variant={stateMeta.variant} size="sm"
+										>{stateMeta.label}</Badge
+									>
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-3">
+								<div
+									class="rounded-lg border border-border/70 bg-muted/30 p-3"
+								>
+									<p
+										class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+									>
+										State
+									</p>
+									<p class="mt-1 text-sm font-semibold text-foreground">
+										{stateMeta.label}
+									</p>
+									<p class="mt-1 text-xs text-muted-foreground">
+										{stateMeta.note}
+									</p>
+								</div>
+
+								<div class="rounded-lg border border-border/70 bg-card p-3">
+									<div class="space-y-2">
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+										>
+											Timeline
+										</p>
+										<div class="grid grid-cols-1 gap-1.5 text-xs">
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground">Start</span>
+												<span class="text-right text-foreground">
+													{startDate
+														? new Date(
+																startDate + 'T00:00:00'
+															).toLocaleDateString(undefined, {
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															})
+														: 'Not set'}
+												</span>
+											</div>
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground">End</span>
+												<span class="text-right text-foreground">
+													{endDate
+														? new Date(
+																endDate + 'T00:00:00'
+															).toLocaleDateString(undefined, {
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															})
+														: 'Not set'}
+												</span>
+											</div>
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground">Created</span>
+												<span class="text-right text-foreground">
+													{plan.created_at
+														? new Date(
+																plan.created_at
+															).toLocaleDateString(undefined, {
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															})
+														: '—'}
+												</span>
+											</div>
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground">Updated</span>
+												<span class="text-right text-foreground">
+													{plan.updated_at
+														? new Date(
+																plan.updated_at
+															).toLocaleDateString(undefined, {
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															})
+														: '—'}
+												</span>
+											</div>
+										</div>
+									</div>
+								</div>
+							</CardBody>
+						</Card>
+
 						<LinkedEntities
 							sourceId={planId}
 							sourceKind="plan"
@@ -491,6 +738,19 @@
 							initialLinkedEntities={linkedEntities}
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={handleLinksChanged}
+						/>
+
+						<!-- Images -->
+						<ImageAssetsPanel
+							{projectId}
+							entityKind="plan"
+							entityId={planId}
+							title="Images"
+							compact={true}
+							onChanged={() => {
+								void loadPlan();
+								onUpdated?.();
+							}}
 						/>
 
 						{#if plan?.props?.tags?.length}
@@ -535,7 +795,9 @@
 					</div>
 				</div>
 
-				<EntityCommentsSection {projectId} entityType="plan" entityId={planId} />
+				<div class="mt-4">
+					<EntityCommentsSection {projectId} entityType="plan" entityId={planId} />
+				</div>
 			{/if}
 		</div>
 	{/snippet}
@@ -571,10 +833,10 @@
 						Cancel
 					</Button>
 					<Button
-						type="button"
+						type="submit"
+						form={detailsFormId}
 						variant="primary"
 						size="sm"
-						onclick={handleSave}
 						loading={isSaving}
 						disabled={formDisabled || !name.trim()}
 						class="text-xs h-8 pressable"

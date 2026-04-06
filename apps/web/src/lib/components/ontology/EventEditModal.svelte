@@ -20,7 +20,17 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { format } from 'date-fns';
-	import { Loader, Save, Trash2, Calendar, X, ExternalLink } from 'lucide-svelte';
+	import {
+		Loader,
+		Save,
+		Trash2,
+		Calendar,
+		X,
+		ExternalLink,
+		ChevronDown,
+		FileText,
+		MapPin
+	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -29,9 +39,11 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
@@ -106,6 +118,8 @@
 	let endAt = $state('');
 	let allDay = $state(false);
 	let syncToCalendar = $state(true);
+
+	let showActivityLog = $state(false);
 
 	// Track which date field was last modified by user interaction (not programmatic changes)
 	let dateFieldLastChanged = $state<'start' | 'end' | null>(null);
@@ -406,6 +420,7 @@
 	onClose={handleClose}
 	closeOnEscape={!isSaving}
 	showCloseButton={false}
+	customClasses="wt-plate"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
@@ -424,7 +439,15 @@
 					>
 						{title || event?.title || 'Event'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+					<div class="mt-1 flex flex-wrap items-center gap-1.5">
+						{#if hasCalendarLink}
+							<Badge variant="success" size="sm">Synced</Badge>
+						{/if}
+						{#if allDay}
+							<Badge variant="accent" size="sm">All Day</Badge>
+						{/if}
+					</div>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
 						{#if event?.created_at}Created {new Date(
 								event.created_at
 							).toLocaleDateString(undefined, {
@@ -466,196 +489,347 @@
 	{/snippet}
 
 	{#snippet children()}
-		{#if isLoading}
-			<div class="flex items-center justify-center py-16 px-6">
-				<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
-			</div>
-		{:else if !event}
-			<div class="text-center py-12 px-6">
-				<p class="text-destructive">Event not found</p>
-			</div>
-		{:else}
-			<div class="px-2 py-2 sm:px-6 sm:py-4">
-				<!-- Two-column layout -->
-				<form
-					class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 p-2"
-					id={detailsFormId}
-					onsubmit={handleSave}
-				>
+		<!-- Main content -->
+		<div class="px-2 py-2 sm:px-4 sm:py-4">
+			{#if isLoading}
+				<div class="flex items-center justify-center py-12">
+					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
+				</div>
+			{:else if !event}
+				<div class="text-center py-8">
+					<p class="text-destructive">Event not found</p>
+				</div>
+			{:else}
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 					<!-- Main Form (Left 2 columns) -->
-					<div class="lg:col-span-2 space-y-6">
-						<!-- Event Title -->
-						<FormField
-							label="Event Title"
-							labelFor="title"
-							required={true}
-							error={!title.trim() && error ? 'Event title is required' : ''}
+					<div class="lg:col-span-2">
+						<form
+							id={detailsFormId}
+							onsubmit={handleSave}
+							class="space-y-3 sm:space-y-4"
 						>
-							<TextInput
-								id="title"
-								bind:value={title}
-								inputmode="text"
-								enterkeyhint="next"
-								placeholder="Enter event title..."
-								required={true}
-								disabled={isSaving}
-								error={!title.trim() && error ? true : false}
-								size="md"
-							/>
-						</FormField>
-
-						<!-- Description -->
-						<FormField
-							label="Description"
-							labelFor="description"
-							hint="Provide additional context about this event"
-						>
-							<Textarea
-								id="description"
-								bind:value={description}
-								enterkeyhint="next"
-								placeholder="Describe the event..."
-								rows={4}
-								disabled={isSaving}
-								size="md"
-							/>
-						</FormField>
-
-						<!-- Location -->
-						<FormField label="Location" labelFor="location">
-							<TextInput
-								id="location"
-								bind:value={location}
-								inputmode="text"
-								enterkeyhint="next"
-								placeholder="Enter location or meeting link..."
-								disabled={isSaving}
-								size="md"
-							/>
-						</FormField>
-
-						<!-- All Day Toggle -->
-						<label
-							class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
-						>
-							<input
-								type="checkbox"
-								bind:checked={allDay}
-								class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
-							/>
-							<span class="group-hover:text-foreground transition-colors"
-								>All-day event</span
-							>
-						</label>
-
-						<!-- Calendar Sync Toggle -->
-						<label
-							class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
-						>
-							<input
-								type="checkbox"
-								bind:checked={syncToCalendar}
-								class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
-							/>
-							<span class="group-hover:text-foreground transition-colors">
-								Sync changes to calendar
-								{#if hasCalendarLink}
-									<span class="text-xs text-green-600 dark:text-green-400 ml-1"
-										>(linked)</span
+							<Card variant="elevated" class="wt-paper">
+								<CardHeader variant="accent" texture="strip">
+									<div
+										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
-								{/if}
-							</span>
-						</label>
+										<div class="min-w-0">
+											<div class="flex items-center gap-2">
+												<FileText class="h-4 w-4 text-accent" />
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
+												>
+													Event Details
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												What this event is about
+											</h3>
+											<p class="mt-1 text-xs text-muted-foreground">
+												Title, description, and location for the event.
+											</p>
+										</div>
+										<div class="flex flex-wrap items-center gap-1.5">
+											{#if hasCalendarLink}
+												<Badge variant="success" size="sm"
+													>Synced</Badge
+												>
+											{/if}
+										</div>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<FormField
+										label="Event Title"
+										labelFor="title"
+										required={true}
+										uppercase={false}
+										showOptional={false}
+										error={!title.trim() && error
+											? 'Event title is required'
+											: ''}
+									>
+										<TextInput
+											id="title"
+											bind:value={title}
+											inputmode="text"
+											enterkeyhint="next"
+											placeholder="Enter event title..."
+											required={true}
+											disabled={isSaving}
+											error={!title.trim() && error ? true : false}
+										/>
+									</FormField>
 
-						{#if error}
-							<div
-								class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
-							>
-								<p class="text-sm text-destructive">
-									{error}
-								</p>
-							</div>
-						{/if}
+									<FormField
+										label="Description"
+										labelFor="description"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="description"
+											bind:value={description}
+											enterkeyhint="next"
+											placeholder="Describe the event..."
+											rows={3}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+
+									<FormField
+										label="Location"
+										labelFor="location"
+										uppercase={false}
+										showOptional={false}
+									>
+										<TextInput
+											id="location"
+											bind:value={location}
+											inputmode="text"
+											enterkeyhint="next"
+											placeholder="Enter location or meeting link..."
+											disabled={isSaving}
+										/>
+									</FormField>
+								</CardBody>
+							</Card>
+
+							<Card variant="default" class="wt-paper">
+								<CardHeader variant="transparent" texture="none">
+									<div
+										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+									>
+										<div>
+											<div class="flex items-center gap-2">
+												<Calendar
+													class="h-4 w-4 text-muted-foreground"
+												/>
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+												>
+													Schedule & Sync
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												Time, duration, and calendar options
+											</h3>
+										</div>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										<FormField
+											label="Start"
+											labelFor="start-date"
+											required={true}
+											uppercase={false}
+											showOptional={false}
+										>
+											<TextInput
+												id="start-date"
+												type="datetime-local"
+												inputmode="numeric"
+												enterkeyhint="next"
+												bind:value={startAt}
+												oninput={handleStartDateChange}
+												disabled={isSaving}
+												size="sm"
+												required={true}
+											/>
+										</FormField>
+
+										<FormField
+											label="End"
+											labelFor="end-date"
+											uppercase={false}
+											showOptional={false}
+										>
+											<TextInput
+												id="end-date"
+												type="datetime-local"
+												inputmode="numeric"
+												enterkeyhint="done"
+												bind:value={endAt}
+												oninput={handleEndDateChange}
+												disabled={isSaving}
+												size="sm"
+											/>
+										</FormField>
+									</div>
+
+									<div class="space-y-2">
+										<label
+											class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
+										>
+											<input
+												type="checkbox"
+												bind:checked={allDay}
+												class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
+											/>
+											<span
+												class="group-hover:text-foreground transition-colors"
+												>All-day event</span
+											>
+										</label>
+
+										<label
+											class="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer group"
+										>
+											<input
+												type="checkbox"
+												bind:checked={syncToCalendar}
+												class="h-4 w-4 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0 cursor-pointer"
+											/>
+											<span
+												class="group-hover:text-foreground transition-colors"
+											>
+												Sync changes to calendar
+												{#if hasCalendarLink}
+													<span
+														class="text-xs text-accent ml-1"
+														>(linked)</span
+													>
+												{/if}
+											</span>
+										</label>
+									</div>
+								</CardBody>
+							</Card>
+
+							{#if error}
+								<div
+									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+								>
+									<p class="text-sm text-destructive">{error}</p>
+								</div>
+							{/if}
+						</form>
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<div class="space-y-4">
-						<!-- Schedule Card -->
-						<Card variant="elevated">
-							<CardHeader variant="accent">
-								<h3
-									class="text-xs font-semibold uppercase tracking-wide flex items-center gap-2"
-								>
-									<span class="text-base">📅</span>
-									Schedule
-								</h3>
-							</CardHeader>
-							<CardBody padding="sm">
-								<div class="space-y-3">
+					<div class="space-y-3">
+						<Card variant="elevated" class="wt-card">
+							<CardHeader variant="muted" texture="strip">
+								<div class="flex items-center justify-between gap-3">
 									<div>
-										<label
-											for="sidebar-start-date"
-											class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5"
+										<p
+											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 										>
-											Start
-										</label>
-										<TextInput
-											id="sidebar-start-date"
-											type="datetime-local"
-											inputmode="numeric"
-											enterkeyhint="next"
-											bind:value={startAt}
-											oninput={handleStartDateChange}
-											disabled={isSaving}
-											size="sm"
-											required={true}
-											class="border-border bg-card focus:ring-2 focus:ring-accent w-full"
-										/>
-										{#if startAt}
-											<p class="mt-1.5 text-xs text-muted-foreground">
-												{new Date(startAt).toLocaleString('en-US', {
-													weekday: 'short',
-													month: 'short',
-													day: 'numeric',
-													hour: 'numeric',
-													minute: '2-digit'
-												})}
-											</p>
-										{/if}
+											At a glance
+										</p>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Event snapshot
+										</h3>
 									</div>
-									<div>
-										<label
-											for="sidebar-end-date"
-											class="block text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5"
+									{#if hasCalendarLink}
+										<Badge variant="success" size="sm">Synced</Badge>
+									{/if}
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-3">
+								<div
+									class="rounded-lg border border-border/70 bg-card p-3"
+								>
+									<div class="space-y-2">
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
 										>
-											End
-										</label>
-										<TextInput
-											id="sidebar-end-date"
-											type="datetime-local"
-											inputmode="numeric"
-											enterkeyhint="done"
-											bind:value={endAt}
-											oninput={handleEndDateChange}
-											disabled={isSaving}
-											size="sm"
-											class="border-border bg-card focus:ring-2 focus:ring-accent w-full"
-										/>
-										{#if endAt}
-											<p class="mt-1.5 text-xs text-muted-foreground">
-												{new Date(endAt).toLocaleString('en-US', {
-													weekday: 'short',
-													month: 'short',
-													day: 'numeric',
-													hour: 'numeric',
-													minute: '2-digit'
-												})}
-											</p>
-										{:else}
-											<p class="mt-1.5 text-xs text-muted-foreground italic">
-												No end time set
-											</p>
-										{/if}
+											Schedule
+										</p>
+										<div class="grid grid-cols-1 gap-1.5 text-xs">
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground">Start</span>
+												<span class="text-right text-foreground">
+													{startAt
+														? new Date(startAt).toLocaleString(
+																'en-US',
+																{
+																	weekday: 'short',
+																	month: 'short',
+																	day: 'numeric',
+																	hour: 'numeric',
+																	minute: '2-digit'
+																}
+															)
+														: 'Not set'}
+												</span>
+											</div>
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground">End</span>
+												<span class="text-right text-foreground">
+													{endAt
+														? new Date(endAt).toLocaleString(
+																'en-US',
+																{
+																	weekday: 'short',
+																	month: 'short',
+																	day: 'numeric',
+																	hour: 'numeric',
+																	minute: '2-digit'
+																}
+															)
+														: 'Not set'}
+												</span>
+											</div>
+											{#if location}
+												<div
+													class="flex items-center justify-between gap-2"
+												>
+													<span class="text-muted-foreground"
+														>Location</span
+													>
+													<span
+														class="text-right text-foreground truncate max-w-[150px]"
+														>{location}</span
+													>
+												</div>
+											{/if}
+										</div>
+									</div>
+								</div>
+
+								<div
+									class="rounded-lg border border-border/70 bg-muted/30 p-3"
+								>
+									<div class="grid grid-cols-1 gap-1.5 text-xs">
+										<div
+											class="flex items-center justify-between gap-2"
+										>
+											<span class="text-muted-foreground">Created</span>
+											<span class="text-right text-foreground">
+												{event.created_at
+													? new Date(
+															event.created_at
+														).toLocaleDateString(undefined, {
+															month: 'short',
+															day: 'numeric',
+															year: 'numeric'
+														})
+													: '—'}
+											</span>
+										</div>
+										<div
+											class="flex items-center justify-between gap-2"
+										>
+											<span class="text-muted-foreground">Updated</span>
+											<span class="text-right text-foreground">
+												{event.updated_at
+													? new Date(
+															event.updated_at
+														).toLocaleDateString(undefined, {
+															month: 'short',
+															day: 'numeric',
+															year: 'numeric'
+														})
+													: '—'}
+											</span>
+										</div>
 									</div>
 								</div>
 							</CardBody>
@@ -670,22 +844,62 @@
 							onLinksChanged={loadEvent}
 						/>
 
-						<!-- Activity Log -->
-						<EntityActivityLog
-							entityType="event"
+						<!-- Images -->
+						<ImageAssetsPanel
+							{projectId}
+							entityKind="event"
 							entityId={eventId}
-							autoLoad={!isLoading}
+							title="Images"
+							compact={true}
+							onChanged={() => {
+								void loadEvent();
+								onUpdated?.();
+							}}
 						/>
-					</div>
-				</form>
 
-				<EntityCommentsSection {projectId} entityType="event" entityId={eventId} />
-			</div>
-		{/if}
+						<!-- Activity Log (collapsible) -->
+						<div
+							class="border border-border rounded-lg bg-card shadow-ink overflow-hidden"
+						>
+							<button
+								type="button"
+								onclick={() => (showActivityLog = !showActivityLog)}
+								class="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:bg-muted/50 transition-colors"
+							>
+								<span>Activity</span>
+								<ChevronDown
+									class="w-3.5 h-3.5 transition-transform {showActivityLog
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+							{#if showActivityLog}
+								<div class="border-t border-border">
+									<EntityActivityLog
+										entityType="event"
+										entityId={eventId}
+										autoLoad={true}
+									/>
+								</div>
+							{/if}
+						</div>
+					</div>
+				</div>
+
+				<div class="mt-4">
+					<EntityCommentsSection
+						{projectId}
+						entityType="event"
+						entityId={eventId}
+					/>
+				</div>
+			{/if}
+		</div>
 	{/snippet}
 
 	<!-- Footer Actions -->
 	{#snippet footer()}
+		{#if !isLoading && event}
 		<div
 			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
 		>
@@ -727,6 +941,7 @@
 				</Button>
 			</div>
 		</div>
+		{/if}
 	{/snippet}
 </Modal>
 

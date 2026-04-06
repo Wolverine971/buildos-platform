@@ -2097,7 +2097,7 @@
 	{#snippet header()}
 		<!-- Compact Inkprint header with strip texture -->
 		<div
-			class="document-modal-header flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak wt-paper"
+			class="document-modal-header flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-3 sm:py-2 flex items-center justify-between gap-2 tx tx-strip tx-weak wt-paper"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
@@ -2112,7 +2112,7 @@
 							class="flex items-center gap-1 text-xs text-muted-foreground mb-0.5 overflow-hidden"
 						>
 							{#each breadcrumbPath as crumb, i}
-								<span class="truncate max-w-[100px]" title={crumb.title}
+								<span class="truncate max-w-[100px] sm:max-w-none" title={crumb.title}
 									>{crumb.title}</span
 								>
 								{#if i < breadcrumbPath.length - 1}
@@ -2297,9 +2297,9 @@
 						<div
 							class="hidden lg:flex lg:flex-col lg:w-60 xl:w-76 flex-shrink-0 lg:border-r border-border bg-muted overflow-y-auto tx tx-frame tx-weak"
 						>
-							<div class="p-3 space-y-2">
+							<div class="p-3 pr-4 space-y-2">
 								<!-- Settings Section - Always expanded -->
-								<div class="space-y-3">
+								<div class="space-y-2">
 									<!-- Title field -->
 									<FormField
 										label="Title"
@@ -2367,7 +2367,7 @@
 											</div>
 										{:else if isLiveDocument && publicPageState}
 											<div
-												class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2.5 py-2 space-y-2 tx tx-grain tx-weak wt-paper"
+												class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2 py-1.5 space-y-1.5 tx tx-grain tx-weak wt-paper"
 											>
 												<div class="flex items-start gap-2">
 													<Globe
@@ -2467,7 +2467,7 @@
 
 										{#if hasFlaggedPublicPageReview && latestPublicPageReview}
 											<div
-												class="rounded-md border border-red-300/70 bg-red-50/70 px-2.5 py-2 space-y-1.5 tx tx-grain tx-weak wt-paper"
+												class="rounded-md border border-red-300/70 bg-red-50/70 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
 											>
 												<p class="micro-label text-red-900">
 													CONTENT REVIEW FLAGGED
@@ -2787,8 +2787,8 @@
 								/>
 							{:else}
 								<!-- Content editor - the main focus -->
-								<div class="px-3 pt-2 pb-1 flex-1 flex flex-col min-h-0">
-									<div class="lg:hidden mb-2 shrink-0 space-y-1">
+								<div class="px-3 pt-1.5 pb-1 flex-1 flex flex-col min-h-0">
+									<div class="lg:hidden mb-1.5 shrink-0 space-y-1">
 										<label
 											for="document-title-mobile-inline"
 											class="micro-label text-muted-foreground/70"
@@ -3011,7 +3011,7 @@
 								<!-- Tab content panel -->
 								{#if activeMobileTab}
 									<div
-										class="max-h-[40vh] overflow-y-auto border-t border-border/50 p-3 space-y-3 tx tx-frame tx-weak"
+										class="max-h-[40vh] overflow-y-auto border-t border-border/50 p-2.5 space-y-2 tx tx-frame tx-weak"
 									>
 										<!-- Details tab content -->
 										{#if activeMobileTab === 'details'}
@@ -3064,7 +3064,7 @@
 														</div>
 													{:else if isLiveDocument && publicPageState}
 														<div
-															class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2.5 py-2 space-y-1.5"
+															class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2 py-1.5 space-y-1.5"
 														>
 															<p class="micro-label text-emerald-900">
 																LIVE DOCUMENT
@@ -3151,7 +3151,7 @@
 
 													{#if hasFlaggedPublicPageReview && latestPublicPageReview}
 														<div
-															class="rounded-md border border-red-300/70 bg-red-50/70 px-2.5 py-2 space-y-1.5"
+															class="rounded-md border border-red-300/70 bg-red-50/70 px-2 py-1.5 space-y-1"
 														>
 															<p class="micro-label text-red-900">
 																CONTENT REVIEW FLAGGED
@@ -3293,7 +3293,7 @@
 													onChanged={() => onSaved?.()}
 												/>
 
-												<div class="pt-3 border-t border-border">
+												<div class="pt-2 border-t border-border">
 													<DocumentVoiceNotesPanel
 														bind:this={voiceNotesPanelMobileRef}
 														documentId={activeDocumentId}
@@ -3314,7 +3314,7 @@
 													onCompareRequested={handleEnterComparison}
 												/>
 
-												<div class="pt-3 border-t border-border">
+												<div class="pt-2 border-t border-border">
 													<EntityActivityLog
 														entityType="document"
 														entityId={activeDocumentId}
@@ -3342,7 +3342,7 @@
 
 					{#if saveStatus === 'conflict'}
 						<div
-							class="mx-3 mb-3 flex flex-col sm:flex-row items-start sm:items-center gap-2 px-3 py-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg"
+							class="mx-3 mb-2 flex flex-col sm:flex-row items-start sm:items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg tx tx-static tx-weak"
 						>
 							<div class="flex items-center gap-2 flex-1 min-w-0">
 								<AlertTriangle
@@ -3373,7 +3373,7 @@
 
 					{#if globalFormError}
 						<div
-							class="mx-3 mb-3 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak wt-card"
+							class="mx-3 mb-2 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak wt-card"
 						>
 							<span class="text-sm text-destructive">{globalFormError}</span>
 						</div>
@@ -3433,7 +3433,7 @@
 	{/snippet}
 	{#snippet footer()}
 		<div
-			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
+			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 border-t border-border bg-muted/50 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 flex-wrap">
 				{#if activeDocumentId}
@@ -3573,10 +3573,10 @@
 		onClose={() => (showImageInsertModal = false)}
 	>
 		{#snippet children()}
-			<div class="p-3 sm:p-4">
-				<p class="text-xs text-muted-foreground mb-3">
-					Choose a project image or upload a new one. The selected image will be inserted
-					as markdown and linked inline to this document.
+			<div class="p-3">
+				<p class="text-xs text-muted-foreground mb-2">
+					Choose a project image or upload a new one. It will be inserted as inline
+					markdown.
 				</p>
 				<ImageAssetsPanel
 					{projectId}
@@ -3606,15 +3606,14 @@
 		closeOnBackdrop={!publicPageActionLoading}
 	>
 		{#snippet children()}
-			<div class="p-3 sm:p-4 space-y-4">
-				<p class="text-sm text-muted-foreground">
-					Review this preview, then confirm to publish this document as a public page. A
-					content review will run on publish (document text plus embedded image
-					metadata/OCR).
+			<div class="p-3 space-y-3">
+				<p class="text-xs text-muted-foreground">
+					Review this preview, then confirm to publish. A content review will run on
+					publish.
 				</p>
 				{#if hasFlaggedPublicPageReview && latestPublicPageReview}
 					<div
-						class="rounded-md border border-red-300/70 bg-red-50/70 px-3 py-2 space-y-1.5 tx tx-grain tx-weak wt-paper"
+						class="rounded-md border border-red-300/70 bg-red-50/70 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
 					>
 						<p class="micro-label text-red-900">LAST REVIEW WAS FLAGGED</p>
 						{#if latestPublicPageReview.summary}
@@ -3653,7 +3652,7 @@
 					</div>
 				{/if}
 
-				<div class="grid gap-3 sm:grid-cols-2">
+				<div class="grid gap-2 sm:grid-cols-2">
 					<FormField
 						label="Public URL"
 						labelFor="public-page-slug-base"
@@ -3750,7 +3749,7 @@
 						</Select>
 					</FormField>
 
-					<div class="space-y-2 self-end pb-1">
+					<div class="space-y-1.5 self-end pb-0.5">
 						<label class="flex items-center gap-2 text-xs text-foreground">
 							<input
 								type="checkbox"
@@ -3793,7 +3792,7 @@
 									: `https://build-os.com/p/${preview.slug}`)}
 						</span>
 					</div>
-					<div class="p-3 max-h-[50vh] overflow-y-auto space-y-3">
+					<div class="p-3 max-h-[50vh] overflow-y-auto space-y-2">
 						<div>
 							<h3 class="text-lg font-semibold text-foreground">
 								{draft.title.trim() || preview.title}

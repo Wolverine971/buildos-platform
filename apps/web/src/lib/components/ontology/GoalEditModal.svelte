@@ -22,7 +22,16 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Save, Loader, Trash2, Target, X } from 'lucide-svelte';
+	import {
+		Save,
+		Loader,
+		Trash2,
+		Target,
+		X,
+		ChevronDown,
+		FileText,
+		CalendarRange
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -33,10 +42,12 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import { GOAL_STATES } from '$lib/types/onto';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { ComponentType } from 'svelte';
@@ -101,9 +112,47 @@
 	let showMilestoneCreateModal = $state(false);
 	let showMilestoneEditModal = $state(false);
 	let editingMilestoneId = $state<string | null>(null);
+	let showActivityLog = $state(false);
 
 	// Extract milestones from linkedEntities for the dedicated section
 	const milestones = $derived(linkedEntities?.milestones ?? []);
+
+	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
+
+	const GOAL_STATE_META: Record<
+		string,
+		{ label: string; variant: SurfaceBadgeVariant; note: string }
+	> = {
+		draft: { label: 'Draft', variant: 'default', note: 'Not yet committed to.' },
+		active: { label: 'Active', variant: 'info', note: 'Actively being pursued.' },
+		achieved: { label: 'Achieved', variant: 'success', note: 'Goal met.' },
+		abandoned: { label: 'Abandoned', variant: 'warning', note: 'No longer pursued.' }
+	};
+
+	const PRIORITY_META: Record<
+		string,
+		{ label: string; variant: SurfaceBadgeVariant; note: string }
+	> = {
+		high: { label: 'High', variant: 'error', note: 'Needs focus now.' },
+		medium: { label: 'Medium', variant: 'info', note: 'Standard priority.' },
+		low: { label: 'Low', variant: 'default', note: 'Can wait.' }
+	};
+
+	const stateMeta = $derived(
+		GOAL_STATE_META[stateKey] ?? {
+			label: stateKey,
+			variant: 'default' as SurfaceBadgeVariant,
+			note: ''
+		}
+	);
+	const priorityMeta = $derived(
+		PRIORITY_META[priority] ?? {
+			label: priority,
+			variant: 'default' as SurfaceBadgeVariant,
+			note: ''
+		}
+	);
+	const detailsFormId = $derived(`goal-edit-${goalId}-details`);
 
 	// Build focus for chat about this goal
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -382,240 +431,440 @@
 	onClose={handleClose}
 	closeOnEscape={!isSaving && !isDeleting}
 	showCloseButton={false}
+	customClasses="wt-plate"
 >
 	{#snippet header()}
-		<!-- Header: Frame texture (structural authority) + Plate weight (system authority) -->
+		<!-- Compact Inkprint header -->
 		<div
-			class="flex-shrink-0 bg-muted border-b border-border px-4 py-2.5 flex items-center justify-between gap-2.5 tx tx-frame tx-weak wt-plate sp-block"
+			class="flex-shrink-0 bg-muted border-b border-border px-2 py-1.5 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
-			<div class="flex items-center gap-2.5 min-w-0 flex-1">
+			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
 				<div
-					class="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent shrink-0 shadow-ink-inner"
+					class="flex h-9 w-9 items-center justify-center rounded bg-accent/10 text-accent shrink-0"
 				>
 					<Target class="w-5 h-5" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<h2 class="text-base font-semibold leading-none truncate text-foreground">
+					<h2
+						class="text-sm sm:text-base font-semibold leading-tight truncate text-foreground"
+					>
 						{name || goal?.name || 'Goal'}
 					</h2>
-					<p
-						class="text-[10px] text-muted-foreground mt-1 leading-none uppercase tracking-wide"
-					>
-						{#if goal?.created_at}CREATED: {new Date(goal.created_at)
-								.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-								.toUpperCase()}{/if}{#if goal?.updated_at && goal.updated_at !== goal.created_at}
-							· UPDATED: {new Date(goal.updated_at)
-								.toLocaleDateString('en-US', {
-									month: 'short',
-									day: 'numeric'
-								})
-								.toUpperCase()}{/if}
+					<div class="mt-1 flex flex-wrap items-center gap-1.5">
+						<Badge variant={stateMeta.variant} size="sm">{stateMeta.label}</Badge>
+						<Badge variant={priorityMeta.variant} size="sm">{priorityMeta.label}</Badge>
+					</div>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
+						{#if goal?.created_at}Created {new Date(goal.created_at).toLocaleDateString(
+								undefined,
+								{ month: 'short', day: 'numeric' }
+							)}{/if}{#if goal?.updated_at && goal.updated_at !== goal.created_at}
+							· Updated {new Date(goal.updated_at).toLocaleDateString(undefined, {
+								month: 'short',
+								day: 'numeric'
+							})}{/if}
 					</p>
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
-				<!-- Chat about this goal -->
+				<!-- Chat about this goal button -->
 				<button
 					type="button"
 					onclick={openChatAbout}
 					disabled={isLoading || isSaving || !goal}
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card border border-border text-muted-foreground shadow-ink transition-all duration-150 pressable hover:border-accent/50 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					title="Chat about this goal"
 				>
-					<img src="/brain-bolt.png" alt="Chat" class="w-4 h-4 rounded object-cover" />
+					<img
+						src="/brain-bolt.png"
+						alt="Chat about this goal"
+						class="w-6 h-6 rounded object-cover"
+					/>
 				</button>
 				<!-- Close button -->
 				<button
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-card border border-border text-muted-foreground shadow-ink transition-all duration-150 pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
-					aria-label="Close"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					aria-label="Close modal"
 				>
-					<X class="w-4 h-4" />
+					<X class="w-5 h-5" />
 				</button>
 			</div>
 		</div>
 	{/snippet}
 
 	{#snippet children()}
-		<!-- Main content: Maximum information density (Mode A: tight spacing) -->
-		<div class="px-3 py-2.5 tx tx-grain tx-weak">
+		<!-- Main content -->
+		<div class="px-2 py-2 sm:px-4 sm:py-4">
 			{#if isLoading}
-				<div
-					class="flex items-center justify-center py-12 rounded-lg bg-muted/30 tx tx-pulse tx-weak sp-block"
-				>
+				<div class="flex items-center justify-center py-12">
 					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
 				</div>
 			{:else if !goal}
-				<div
-					class="flex items-center justify-center py-8 rounded-lg border-2 border-dashed border-destructive/30 bg-destructive/5 tx tx-static tx-weak sp-block"
-				>
-					<p class="text-xs font-semibold text-destructive">Goal not found</p>
+				<div class="text-center py-8">
+					<p class="text-destructive">Goal not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-					<!-- Main Form: Paper weight for standard working state -->
-					<div class="lg:col-span-2 wt-paper sp-block p-2">
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+					<!-- Main Form (Left 2 columns) -->
+					<div class="lg:col-span-2">
 						<form
+							id={detailsFormId}
 							onsubmit={(e) => {
 								e.preventDefault();
 								handleSave();
 							}}
-							class="space-y-2"
+							class="space-y-3 sm:space-y-4"
 						>
-							<FormField
-								label="Goal Name"
-								labelFor="name"
-								required={true}
-								uppercase={false}
-								error={!name.trim() && error ? 'Goal name is required' : ''}
-							>
-								<TextInput
-									id="name"
-									bind:value={name}
-									inputmode="text"
-									enterkeyhint="next"
-									placeholder="Enter goal name..."
-									required={true}
-									disabled={isSaving}
-									error={!name.trim() && error ? true : false}
-								/>
-							</FormField>
-
-							<FormField label="Description" labelFor="description" uppercase={false}>
-								<Textarea
-									id="description"
-									bind:value={description}
-									enterkeyhint="next"
-									placeholder="Describe what you want to achieve..."
-									rows={2}
-									disabled={isSaving}
-									size="sm"
-								/>
-							</FormField>
-
-							<FormField
-								label="Goal Details"
-								labelFor="goal-details"
-								uppercase={false}
-							>
-								<Textarea
-									id="goal-details"
-									bind:value={goalDetails}
-									enterkeyhint="next"
-									placeholder="Add context or structured goal notes..."
-									rows={2}
-									disabled={isSaving}
-									size="sm"
-								/>
-							</FormField>
-
-							<!-- Priority + State: Compact row (8px gap) -->
-							<div class="grid grid-cols-2 gap-2">
-								<FormField
-									label="Priority"
-									labelFor="priority"
-									required={true}
-									uppercase={false}
-									showOptional={false}
-								>
-									<Select
-										id="priority"
-										bind:value={priority}
-										disabled={isSaving}
-										size="sm"
-										placeholder="Priority"
+							<Card variant="elevated" class="wt-paper">
+								<CardHeader variant="accent" texture="strip">
+									<div
+										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
-										<option value="high">High</option>
-										<option value="medium">Medium</option>
-										<option value="low">Low</option>
-									</Select>
-								</FormField>
-
-								<FormField
-									label="State"
-									labelFor="state"
-									required={true}
-									uppercase={false}
-									showOptional={false}
-								>
-									<Select
-										id="state"
-										bind:value={stateKey}
-										disabled={isSaving}
-										size="sm"
-										placeholder="State"
+										<div class="min-w-0">
+											<div class="flex items-center gap-2">
+												<FileText class="h-4 w-4 text-accent" />
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
+												>
+													Overview
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												What this goal is and what "achieved" looks like
+											</h3>
+											<p class="mt-1 text-xs text-muted-foreground">
+												Lead with the name and supporting context so the
+												goal reads clearly at a glance.
+											</p>
+										</div>
+										<div class="flex flex-wrap items-center gap-1.5">
+											<Badge variant={stateMeta.variant} size="sm"
+												>{stateMeta.label}</Badge
+											>
+											<Badge variant={priorityMeta.variant} size="sm">
+												{priorityMeta.label}
+											</Badge>
+										</div>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<FormField
+										label="Goal Name"
+										labelFor="name"
+										required={true}
+										uppercase={false}
+										showOptional={false}
+										error={!name.trim() && error
+											? 'Goal name is required'
+											: ''}
 									>
-										{#each GOAL_STATES as state}
-											<option value={state}>
-												{state === 'draft'
-													? 'Draft'
-													: state === 'active'
-														? 'Active'
-														: state === 'achieved'
-															? 'Achieved'
-															: state === 'abandoned'
-																? 'Abandoned'
-																: state}
-											</option>
-										{/each}
-									</Select>
-								</FormField>
-							</div>
+										<TextInput
+											id="name"
+											bind:value={name}
+											inputmode="text"
+											enterkeyhint="next"
+											placeholder="Enter goal name..."
+											required={true}
+											disabled={isSaving}
+											error={!name.trim() && error ? true : false}
+										/>
+									</FormField>
 
-							<FormField label="Target Date" labelFor="target-date" uppercase={false}>
-								<TextInput
-									type="date"
-									inputmode="numeric"
-									enterkeyhint="next"
-									id="target-date"
-									bind:value={targetDate}
-									disabled={isSaving}
-								/>
-							</FormField>
+									<FormField
+										label="Description"
+										labelFor="description"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="description"
+											bind:value={description}
+											enterkeyhint="next"
+											placeholder="Describe what you want to achieve..."
+											rows={3}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
 
-							<FormField
-								label="Success Criteria"
-								labelFor="measurement-criteria"
-								uppercase={false}
-							>
-								<Textarea
-									id="measurement-criteria"
-									bind:value={measurementCriteria}
-									enterkeyhint="done"
-									placeholder="How will you measure success..."
-									rows={2}
-									disabled={isSaving}
-									size="sm"
-								/>
-							</FormField>
+									<FormField
+										label="Goal Details"
+										labelFor="goal-details"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="goal-details"
+											bind:value={goalDetails}
+											enterkeyhint="next"
+											placeholder="Add context or structured goal notes..."
+											rows={2}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+								</CardBody>
+							</Card>
+
+							<Card variant="default" class="wt-paper">
+								<CardHeader variant="transparent" texture="none">
+									<div
+										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+									>
+										<div>
+											<div class="flex items-center gap-2">
+												<CalendarRange
+													class="h-4 w-4 text-muted-foreground"
+												/>
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+												>
+													Tracking
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												Priority, state, and timeline
+											</h3>
+										</div>
+										<p
+											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
+										>
+											Keep the operational controls together so the goal's
+											status is obvious at a glance.
+										</p>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										<FormField
+											label="Priority"
+											labelFor="priority"
+											required={true}
+											uppercase={false}
+											showOptional={false}
+										>
+											<Select
+												id="priority"
+												bind:value={priority}
+												disabled={isSaving}
+												size="sm"
+												placeholder="Priority"
+											>
+												<option value="high">High</option>
+												<option value="medium">Medium</option>
+												<option value="low">Low</option>
+											</Select>
+										</FormField>
+
+										<FormField
+											label="State"
+											labelFor="state"
+											required={true}
+											uppercase={false}
+											showOptional={false}
+										>
+											<Select
+												id="state"
+												bind:value={stateKey}
+												disabled={isSaving}
+												size="sm"
+												placeholder="State"
+											>
+												{#each GOAL_STATES as state}
+													<option value={state}>
+														{state === 'draft'
+															? 'Draft'
+															: state === 'active'
+																? 'Active'
+																: state === 'achieved'
+																	? 'Achieved'
+																	: state === 'abandoned'
+																		? 'Abandoned'
+																		: state}
+													</option>
+												{/each}
+											</Select>
+										</FormField>
+									</div>
+
+									<FormField
+										label="Target Date"
+										labelFor="target-date"
+										uppercase={false}
+										showOptional={false}
+									>
+										<TextInput
+											type="date"
+											inputmode="numeric"
+											enterkeyhint="next"
+											id="target-date"
+											bind:value={targetDate}
+											disabled={isSaving}
+											size="sm"
+										/>
+									</FormField>
+
+									<FormField
+										label="Success Criteria"
+										labelFor="measurement-criteria"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="measurement-criteria"
+											bind:value={measurementCriteria}
+											enterkeyhint="done"
+											placeholder="How will you measure success..."
+											rows={2}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+								</CardBody>
+							</Card>
 
 							{#if error}
 								<div
-									class="px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg shadow-ink-inner tx tx-static tx-weak"
+									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
 								>
-									<p class="text-xs font-medium text-destructive leading-tight">
-										{error}
-									</p>
+									<p class="text-sm text-destructive">{error}</p>
 								</div>
 							{/if}
 						</form>
 					</div>
 
-					<!-- Sidebar: Card weight (important elevation) -->
-					<div class="space-y-2 wt-card sp-block">
-						<!-- Linked Entities (Thread texture for relationships) -->
-						<LinkedEntities
-							sourceId={goalId}
-							sourceKind="goal"
-							{projectId}
-							initialLinkedEntities={linkedEntities}
-							onEntityClick={handleLinkedEntityClick}
-							onLinksChanged={handleLinksChanged}
-						/>
+					<!-- Sidebar (Right column) -->
+					<div class="space-y-3">
+						<Card variant="elevated" class="wt-card">
+							<CardHeader variant="muted" texture="strip">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p
+											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+										>
+											At a glance
+										</p>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Goal snapshot
+										</h3>
+									</div>
+									<Badge variant={stateMeta.variant} size="sm"
+										>{stateMeta.label}</Badge
+									>
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-3">
+								<div class="grid grid-cols-2 gap-2">
+									<div
+										class="rounded-lg border border-border/70 bg-muted/30 p-3"
+									>
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+										>
+											Priority
+										</p>
+										<p
+											class="mt-1 text-sm font-semibold text-foreground"
+										>
+											{priorityMeta.label}
+										</p>
+										<p class="mt-1 text-xs text-muted-foreground">
+											{priorityMeta.note}
+										</p>
+									</div>
+									<div
+										class="rounded-lg border border-border/70 bg-muted/30 p-3"
+									>
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+										>
+											State
+										</p>
+										<p
+											class="mt-1 text-sm font-semibold text-foreground"
+										>
+											{stateMeta.label}
+										</p>
+										<p class="mt-1 text-xs text-muted-foreground">
+											{stateMeta.note}
+										</p>
+									</div>
+								</div>
 
-						<!-- Milestones (Grain texture for execution) -->
+								<div
+									class="rounded-lg border border-border/70 bg-card p-3"
+								>
+									<div class="space-y-2">
+										<p
+											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+										>
+											Timeline
+										</p>
+										<div class="grid grid-cols-1 gap-1.5 text-xs">
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground"
+													>Target</span
+												>
+												<span class="text-right text-foreground">
+													{targetDate
+														? new Date(
+																targetDate + 'T00:00:00'
+															).toLocaleDateString(undefined, {
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															})
+														: 'No target date'}
+												</span>
+											</div>
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground"
+													>Created</span
+												>
+												<span class="text-right text-foreground">
+													{goal.created_at
+														? new Date(
+																goal.created_at
+															).toLocaleDateString(undefined, {
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															})
+														: '—'}
+												</span>
+											</div>
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground"
+													>Updated</span
+												>
+												<span class="text-right text-foreground">
+													{goal.updated_at
+														? new Date(
+																goal.updated_at
+															).toLocaleDateString(undefined, {
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															})
+														: '—'}
+												</span>
+											</div>
+										</div>
+									</div>
+								</div>
+							</CardBody>
+						</Card>
+
+						<!-- Milestones -->
 						<GoalMilestonesSidebarSection
 							{milestones}
 							{goalId}
@@ -628,87 +877,81 @@
 							onToggleMilestoneComplete={handleToggleMilestoneComplete}
 						/>
 
-						<!-- Tags (Frame + Card) -->
+						<!-- Linked Entities -->
+						<LinkedEntities
+							sourceId={goalId}
+							sourceKind="goal"
+							{projectId}
+							initialLinkedEntities={linkedEntities}
+							onEntityClick={handleLinkedEntityClick}
+							onLinksChanged={handleLinksChanged}
+						/>
+
+						<!-- Images -->
+						<ImageAssetsPanel
+							{projectId}
+							entityKind="goal"
+							entityId={goalId}
+							title="Images"
+							compact={true}
+							onChanged={() => {
+								void loadGoal();
+								onUpdated?.();
+							}}
+						/>
+
 						{#if goal?.props?.tags?.length}
-							<Card variant="elevated" texture="frame" weight="card">
-								<CardHeader variant="compact">
-									<h3 class="micro-label font-semibold flex items-center gap-1.5">
-										<span class="w-1 h-1 bg-accent rounded-full"></span>
-										Tags
-									</h3>
-								</CardHeader>
-								<CardBody padding="sm">
-									<TagsDisplay props={goal.props} size="sm" compact={true} />
-								</CardBody>
-							</Card>
+							<div
+								class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink"
+							>
+								<p
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
+								>
+									Tags
+								</p>
+								<TagsDisplay
+									props={goal.props}
+									size="sm"
+									compact={true}
+								/>
+							</div>
 						{/if}
 
-						<!-- Metadata (Frame + Card) -->
-						<Card variant="elevated" texture="frame" weight="card">
-							<CardHeader variant="compact">
-								<h3 class="micro-label font-semibold flex items-center gap-1.5">
-									<span class="w-1 h-1 bg-accent rounded-full"></span>
-									Metadata
-								</h3>
-							</CardHeader>
-							<CardBody padding="sm">
-								<dl class="space-y-0.5">
-									<div class="flex justify-between gap-2 items-start">
-										<dt class="micro-label shrink-0">ID</dt>
-										<dd
-											class="font-mono text-[9px] text-muted-foreground break-all text-right leading-tight"
-										>
-											{goal.id}
-										</dd>
-									</div>
-
-									{#if goal.created_at}
-										<div class="flex justify-between gap-2">
-											<dt class="micro-label">Created</dt>
-											<dd class="text-[10px] text-foreground">
-												{new Date(goal.created_at).toLocaleDateString(
-													undefined,
-													{
-														month: 'short',
-														day: 'numeric',
-														year: '2-digit'
-													}
-												)}
-											</dd>
-										</div>
-									{/if}
-
-									{#if goal.updated_at}
-										<div class="flex justify-between gap-2">
-											<dt class="micro-label">Updated</dt>
-											<dd class="text-[10px] text-foreground">
-												{new Date(goal.updated_at).toLocaleDateString(
-													undefined,
-													{
-														month: 'short',
-														day: 'numeric',
-														year: '2-digit'
-													}
-												)}
-											</dd>
-										</div>
-									{/if}
-								</dl>
-							</CardBody>
-						</Card>
-
-						<!-- Activity Log -->
-						<EntityActivityLog
-							entityType="goal"
-							entityId={goalId}
-							autoLoad={!isLoading}
-						/>
+						<!-- Activity Log (collapsible) -->
+						<div
+							class="border border-border rounded-lg bg-card shadow-ink overflow-hidden"
+						>
+							<button
+								type="button"
+								onclick={() => (showActivityLog = !showActivityLog)}
+								class="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:bg-muted/50 transition-colors"
+							>
+								<span>Activity</span>
+								<ChevronDown
+									class="w-3.5 h-3.5 transition-transform {showActivityLog
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+							{#if showActivityLog}
+								<div class="border-t border-border">
+									<EntityActivityLog
+										entityType="goal"
+										entityId={goalId}
+										autoLoad={true}
+									/>
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
 
-				<!-- Comments (Thread texture for collaboration) -->
-				<div class="mt-3 pt-3 border-t border-border/80 tx tx-thread tx-weak sp-block">
-					<EntityCommentsSection {projectId} entityType="goal" entityId={goalId} />
+				<div class="mt-4">
+					<EntityCommentsSection
+						{projectId}
+						entityType="goal"
+						entityId={goalId}
+					/>
 				</div>
 			{/if}
 		</div>
@@ -745,10 +988,10 @@
 						Cancel
 					</Button>
 					<Button
-						type="button"
+						type="submit"
+						form={detailsFormId}
 						variant="primary"
 						size="sm"
-						onclick={handleSave}
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !name.trim()}
 						class="text-xs h-8 pressable"

@@ -23,7 +23,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Save, Loader, Trash2, Flag, Calendar, Clock, X } from 'lucide-svelte';
+	import { Save, Loader, Trash2, Flag, Calendar, Clock, X, ChevronDown, FileText } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -34,10 +34,12 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import LinkedEntities from './linked-entities/LinkedEntities.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
+	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -120,6 +122,27 @@
 	let showRiskModal = $state(false);
 	let selectedRiskIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
+	let showActivityLog = $state(false);
+
+	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
+
+	const MILESTONE_STATE_META: Record<
+		string,
+		{ label: string; variant: SurfaceBadgeVariant }
+	> = {
+		pending: { label: 'Pending', variant: 'default' },
+		in_progress: { label: 'In Progress', variant: 'info' },
+		completed: { label: 'Completed', variant: 'success' },
+		missed: { label: 'Missed', variant: 'error' }
+	};
+
+	const milestoneStateMeta = $derived(
+		MILESTONE_STATE_META[stateKey] ?? {
+			label: stateKey,
+			variant: 'default' as SurfaceBadgeVariant
+		}
+	);
+	const detailsFormId = $derived(`milestone-edit-${milestoneId}-details`);
 
 	// Build focus for chat about this milestone
 	const entityFocus = $derived.by((): ProjectFocus | null => {
@@ -381,6 +404,7 @@
 	onClose={handleClose}
 	closeOnEscape={!isSaving && !isDeleting}
 	showCloseButton={false}
+	customClasses="wt-plate"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header -->
@@ -399,7 +423,17 @@
 					>
 						{title || milestone?.title || 'Milestone'}
 					</h2>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
+					<div class="mt-1 flex flex-wrap items-center gap-1.5">
+						<Badge variant={milestoneStateMeta.variant} size="sm"
+							>{milestoneStateMeta.label}</Badge
+						>
+						{#if dueDateStatus === 'overdue'}
+							<Badge variant="error" size="sm">Overdue</Badge>
+						{:else if dueDateStatus === 'today'}
+							<Badge variant="warning" size="sm">Due Today</Badge>
+						{/if}
+					</div>
+					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
 						{#if milestone?.due_at}Due {formatDueDate(milestone.due_at)}{/if}
 					</p>
 				</div>
@@ -435,7 +469,7 @@
 
 	{#snippet children()}
 		<!-- Main content -->
-		<div class="px-2 py-2 sm:px-6 sm:py-4">
+		<div class="px-2 py-2 sm:px-4 sm:py-4">
 			{#if isLoading}
 				<div class="flex items-center justify-center py-12">
 					<Loader class="w-8 h-8 animate-spin text-muted-foreground" />
@@ -445,113 +479,178 @@
 					<p class="text-destructive">Milestone not found</p>
 				</div>
 			{:else}
-				<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+				<div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
 					<!-- Main Form (Left 2 columns) -->
 					<div class="lg:col-span-2">
 						<form
+							id={detailsFormId}
 							onsubmit={(e) => {
 								e.preventDefault();
 								handleSave();
 							}}
 							class="space-y-3 sm:space-y-4"
 						>
-							<FormField
-								label="Milestone Title"
-								labelFor="title"
-								required={true}
-								error={!title.trim() && error ? 'Milestone title is required' : ''}
-							>
-								<TextInput
-									id="title"
-									bind:value={title}
-									inputmode="text"
-									enterkeyhint="next"
-									placeholder="What needs to be achieved?"
-									required={true}
-									disabled={isSaving}
-									error={!title.trim() && error ? true : false}
-								/>
-							</FormField>
-
-							<FormField
-								label="Due Date (optional)"
-								labelFor="due_at"
-								required={false}
-								error={error && error.toLowerCase().includes('date') ? error : ''}
-							>
-								<div class="relative">
-									<Calendar
-										class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none"
-									/>
-									<input
-										type="date"
-										id="due_at"
-										bind:value={dueAt}
-										class="w-full pl-10 pr-3 py-2.5 rounded-lg border bg-background text-foreground
-											{error && error.toLowerCase().includes('date') ? 'border-destructive' : 'border-border'}
-											focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500
-											disabled:opacity-50 disabled:cursor-not-allowed"
-										disabled={isSaving}
-									/>
-								</div>
-							</FormField>
-
-							<FormField
-								label="Description"
-								labelFor="description"
-								hint="Describe what this milestone represents"
-							>
-								<Textarea
-									id="description"
-									bind:value={description}
-									enterkeyhint="next"
-									placeholder="What does achieving this milestone mean for the project?"
-									rows={3}
-									disabled={isSaving}
-									size="md"
-								/>
-							</FormField>
-
-							<FormField
-								label="Milestone Details"
-								labelFor="milestone-details"
-								hint="Optional extended milestone notes"
-							>
-								<Textarea
-									id="milestone-details"
-									bind:value={milestoneDetails}
-									enterkeyhint="next"
-									placeholder="Add any additional milestone context or criteria..."
-									rows={3}
-									disabled={isSaving}
-									size="md"
-								/>
-							</FormField>
-
-							<FormField
-								label="State"
-								labelFor="state"
-								required={true}
-								hint="Current milestone status"
-							>
-								<Select
-									id="state"
-									bind:value={stateKey}
-									disabled={isSaving}
-									size="md"
-									placeholder="Select state"
-								>
-									{#each STATE_OPTIONS as opt}
-										<option value={opt.value}
-											>{opt.label} - {opt.description}</option
+							<Card variant="elevated" class="wt-paper">
+								<CardHeader variant="accent" texture="strip">
+									<div
+										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+									>
+										<div class="min-w-0">
+											<div class="flex items-center gap-2">
+												<FileText class="h-4 w-4 text-accent" />
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
+												>
+													Overview
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												What this milestone marks and when it's due
+											</h3>
+											<p class="mt-1 text-xs text-muted-foreground">
+												Define the milestone and its deadline so
+												progress is trackable.
+											</p>
+										</div>
+										<Badge variant={milestoneStateMeta.variant} size="sm"
+											>{milestoneStateMeta.label}</Badge
 										>
-									{/each}
-								</Select>
-							</FormField>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<FormField
+										label="Milestone Title"
+										labelFor="title"
+										required={true}
+										uppercase={false}
+										showOptional={false}
+										error={!title.trim() && error
+											? 'Milestone title is required'
+											: ''}
+									>
+										<TextInput
+											id="title"
+											bind:value={title}
+											inputmode="text"
+											enterkeyhint="next"
+											placeholder="What needs to be achieved?"
+											required={true}
+											disabled={isSaving}
+											error={!title.trim() && error ? true : false}
+										/>
+									</FormField>
+
+									<FormField
+										label="Description"
+										labelFor="description"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="description"
+											bind:value={description}
+											enterkeyhint="next"
+											placeholder="What does achieving this milestone mean for the project?"
+											rows={3}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+
+									<FormField
+										label="Milestone Details"
+										labelFor="milestone-details"
+										uppercase={false}
+										showOptional={false}
+									>
+										<Textarea
+											id="milestone-details"
+											bind:value={milestoneDetails}
+											enterkeyhint="next"
+											placeholder="Add any additional milestone context or criteria..."
+											rows={2}
+											disabled={isSaving}
+											size="md"
+										/>
+									</FormField>
+								</CardBody>
+							</Card>
+
+							<Card variant="default" class="wt-paper">
+								<CardHeader variant="transparent" texture="none">
+									<div
+										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+									>
+										<div>
+											<div class="flex items-center gap-2">
+												<Calendar
+													class="h-4 w-4 text-muted-foreground"
+												/>
+												<p
+													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+												>
+													Schedule & State
+												</p>
+											</div>
+											<h3 class="mt-1 text-sm font-semibold text-foreground">
+												Due date and current status
+											</h3>
+										</div>
+									</div>
+								</CardHeader>
+								<CardBody class="space-y-4">
+									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										<FormField
+											label="Due Date"
+											labelFor="due_at"
+											uppercase={false}
+											showOptional={false}
+											error={error && error.toLowerCase().includes('date')
+												? error
+												: ''}
+										>
+											<TextInput
+												type="date"
+												id="due_at"
+												bind:value={dueAt}
+												inputmode="numeric"
+												enterkeyhint="next"
+												disabled={isSaving}
+												size="sm"
+												error={error && error.toLowerCase().includes('date')
+													? true
+													: false}
+											/>
+										</FormField>
+
+										<FormField
+											label="State"
+											labelFor="state"
+											required={true}
+											uppercase={false}
+											showOptional={false}
+										>
+											<Select
+												id="state"
+												bind:value={stateKey}
+												disabled={isSaving}
+												size="sm"
+												placeholder="Select state"
+											>
+												{#each STATE_OPTIONS as opt}
+													<option value={opt.value}
+														>{opt.label}</option
+													>
+												{/each}
+											</Select>
+										</FormField>
+									</div>
+								</CardBody>
+							</Card>
 
 							{#if error}
 								<div
-									class="p-4 bg-destructive/10 border border-destructive/30 rounded tx tx-static tx-weak"
+									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
 								>
 									<p class="text-sm text-destructive">{error}</p>
 								</div>
@@ -560,7 +659,129 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<div class="space-y-4">
+					<div class="space-y-3">
+						<Card variant="elevated" class="wt-card">
+							<CardHeader variant="muted" texture="strip">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p
+											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+										>
+											At a glance
+										</p>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Milestone snapshot
+										</h3>
+									</div>
+									<Badge variant={milestoneStateMeta.variant} size="sm"
+										>{milestoneStateMeta.label}</Badge
+									>
+								</div>
+							</CardHeader>
+							<CardBody class="space-y-3">
+								<!-- Due Date Display -->
+								<div
+									class="rounded-lg border border-border/70 {dueDateStatus === 'overdue'
+										? 'bg-destructive/5'
+										: 'bg-muted/30'} p-3 text-center"
+								>
+									<p
+										class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+									>
+										Due Date
+									</p>
+									{#if dueDate}
+										{@const days = daysUntilDue}
+										{@const status = dueDateStatus}
+										<p
+											class="mt-1 text-xl font-bold {status === 'overdue' ||
+											status === 'missed'
+												? 'text-destructive'
+												: status === 'today'
+													? 'text-warning'
+													: status === 'completed'
+														? 'text-foreground'
+														: 'text-foreground'}"
+										>
+											{#if status === 'completed'}
+												Done
+											{:else if status === 'missed'}
+												Missed
+											{:else if days === 0}
+												Today
+											{:else if days === 1}
+												Tomorrow
+											{:else if days === -1}
+												Yesterday
+											{:else if days !== null && days < 0}
+												{Math.abs(days)} days ago
+											{:else if days !== null}
+												{days} days
+											{/if}
+										</p>
+										<p class="text-xs text-muted-foreground mt-1">
+											{formatDueDate(dueAt)}
+										</p>
+									{:else}
+										<p
+											class="mt-1 text-sm text-muted-foreground"
+										>
+											No due date set
+										</p>
+									{/if}
+								</div>
+
+								<div
+									class="rounded-lg border border-border/70 bg-muted/30 p-3"
+								>
+									<div class="grid grid-cols-1 gap-1.5 text-xs">
+										<div
+											class="flex items-center justify-between gap-2"
+										>
+											<span class="text-muted-foreground">State</span>
+											<span class="text-right text-foreground">
+												{milestoneStateMeta.label}
+											</span>
+										</div>
+										<div
+											class="flex items-center justify-between gap-2"
+										>
+											<span class="text-muted-foreground">Created</span>
+											<span class="text-right text-foreground">
+												{milestone.created_at
+													? new Date(
+															milestone.created_at
+														).toLocaleDateString(undefined, {
+															month: 'short',
+															day: 'numeric',
+															year: 'numeric'
+														})
+													: '—'}
+											</span>
+										</div>
+										{#if milestone.updated_at}
+											<div
+												class="flex items-center justify-between gap-2"
+											>
+												<span class="text-muted-foreground"
+													>Updated</span
+												>
+												<span class="text-right text-foreground">
+													{new Date(
+														milestone.updated_at
+													).toLocaleDateString(undefined, {
+														month: 'short',
+														day: 'numeric',
+														year: 'numeric'
+													})}
+												</span>
+											</div>
+										{/if}
+									</div>
+								</div>
+							</CardBody>
+						</Card>
+
 						<!-- Linked Entities -->
 						<LinkedEntities
 							sourceId={milestoneId}
@@ -570,146 +791,72 @@
 							onLinksChanged={loadMilestone}
 						/>
 
-						<!-- Tags (from classification) -->
+						<!-- Images -->
+						<ImageAssetsPanel
+							{projectId}
+							entityKind="milestone"
+							entityId={milestoneId}
+							title="Images"
+							compact={true}
+							onChanged={() => {
+								void loadMilestone();
+								onUpdated?.();
+							}}
+						/>
+
 						{#if milestone?.props?.tags?.length}
-							<Card variant="elevated">
-								<CardHeader variant="default">
-									<h3
-										class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-									>
-										<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-										Tags
-									</h3>
-								</CardHeader>
-								<CardBody padding="sm">
-									<TagsDisplay props={milestone.props} size="sm" compact={true} />
-								</CardBody>
-							</Card>
+							<div
+								class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink"
+							>
+								<p
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
+								>
+									Tags
+								</p>
+								<TagsDisplay
+									props={milestone.props}
+									size="sm"
+									compact={true}
+								/>
+							</div>
 						{/if}
 
-						<!-- Due Date Card -->
-						<Card variant="elevated">
-							<CardHeader variant="default">
-								<h3
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-								>
-									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-									Due Date
-								</h3>
-							</CardHeader>
-							<CardBody padding="sm">
-								<div class="text-center py-2">
-									{#if dueDate}
-										{@const days = daysUntilDue}
-										{@const status = dueDateStatus}
-										<div class="flex items-center justify-center gap-2 mb-2">
-											<Clock
-												class="w-5 h-5 {status === 'overdue' ||
-												status === 'missed'
-													? 'text-red-500'
-													: status === 'today'
-														? 'text-amber-500'
-														: status === 'achieved'
-															? 'text-emerald-500'
-															: 'text-muted-foreground'}"
-											/>
-											<span
-												class="text-2xl font-bold {status === 'overdue' ||
-												status === 'missed'
-													? 'text-red-500'
-													: status === 'today'
-														? 'text-amber-500'
-														: status === 'achieved'
-															? 'text-emerald-500'
-															: 'text-foreground'}"
-											>
-												{#if status === 'achieved'}
-													Done
-												{:else if status === 'missed'}
-													Missed
-												{:else if days === 0}
-													Today
-												{:else if days === 1}
-													Tomorrow
-												{:else if days === -1}
-													Yesterday
-												{:else if days !== null && days < 0}
-													{Math.abs(days)} days ago
-												{:else if days !== null}
-													{days} days
-												{/if}
-											</span>
-										</div>
-										<p class="text-sm text-muted-foreground">
-											{formatDueDate(dueAt)}
-										</p>
-										{#if status === 'overdue' && stateKey !== 'achieved' && stateKey !== 'missed'}
-											<p class="text-xs text-red-500 mt-2">
-												This milestone is overdue
-											</p>
-										{/if}
-									{:else}
-										<p class="text-sm text-muted-foreground">No due date set</p>
-									{/if}
+						<!-- Activity Log (collapsible) -->
+						<div
+							class="border border-border rounded-lg bg-card shadow-ink overflow-hidden"
+						>
+							<button
+								type="button"
+								onclick={() => (showActivityLog = !showActivityLog)}
+								class="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:bg-muted/50 transition-colors"
+							>
+								<span>Activity</span>
+								<ChevronDown
+									class="w-3.5 h-3.5 transition-transform {showActivityLog
+										? 'rotate-180'
+										: ''}"
+								/>
+							</button>
+							{#if showActivityLog}
+								<div class="border-t border-border">
+									<EntityActivityLog
+										entityType="milestone"
+										entityId={milestoneId}
+										autoLoad={true}
+									/>
 								</div>
-							</CardBody>
-						</Card>
-
-						<!-- Milestone Metadata -->
-						<Card variant="elevated">
-							<CardHeader variant="default">
-								<h3
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-								>
-									<span class="w-1.5 h-1.5 bg-accent rounded-full"></span>
-									Milestone Information
-								</h3>
-							</CardHeader>
-							<CardBody padding="sm">
-								<div class="space-y-2 text-sm">
-									<div class="flex justify-between items-center">
-										<span class="text-muted-foreground">State:</span>
-										{#if stateBadge}
-											<span
-												class="text-xs px-2 py-0.5 rounded-full font-medium {stateBadge.color}"
-											>
-												{stateBadge.label}
-											</span>
-										{/if}
-									</div>
-
-									<div class="flex justify-between gap-2">
-										<span class="text-muted-foreground shrink-0">ID:</span>
-										<span
-											class="font-mono text-xs text-muted-foreground break-all text-right"
-											>{milestone.id}</span
-										>
-									</div>
-
-									{#if milestone.created_at}
-										<div class="flex justify-between">
-											<span class="text-muted-foreground">Created:</span>
-											<span class="text-foreground">
-												{new Date(
-													milestone.created_at
-												).toLocaleDateString()}
-											</span>
-										</div>
-									{/if}
-								</div>
-							</CardBody>
-						</Card>
-
-						<!-- Activity Log -->
-						<EntityActivityLog
-							entityType="milestone"
-							entityId={milestoneId}
-							autoLoad={!isLoading}
-						/>
+							{/if}
+						</div>
 					</div>
 				</div>
 
-				<EntityCommentsSection {projectId} entityType="milestone" entityId={milestoneId} />
+				<div class="mt-4">
+					<EntityCommentsSection
+						{projectId}
+						entityType="milestone"
+						entityId={milestoneId}
+					/>
+				</div>
 			{/if}
 		</div>
 	{/snippet}
@@ -745,10 +892,10 @@
 						Cancel
 					</Button>
 					<Button
-						type="button"
+						type="submit"
+						form={detailsFormId}
 						variant="primary"
 						size="sm"
-						onclick={handleSave}
 						loading={isSaving}
 						disabled={isSaving || isDeleting || !title.trim()}
 						class="text-xs h-8 pressable"

@@ -461,13 +461,6 @@
 													onclick={() => onEditGoal(goal.id)}
 													class="flex-1 min-w-0"
 												/>
-												{#if goalMilestones.length > 0}
-													<span
-														class="px-2 py-2 text-[10px] text-muted-foreground shrink-0"
-													>
-														{completedCount}/{goalMilestones.length}
-													</span>
-												{/if}
 											</div>
 
 											<GoalMilestonesSection
