@@ -58,7 +58,9 @@
 	type DocumentModalLazy = typeof import('./DocumentModal.svelte').default | null;
 	type GoalEditModalLazy = typeof import('./GoalEditModal.svelte').default | null;
 	type PlanEditModalLazy = typeof import('./PlanEditModal.svelte').default | null;
-	type AgentChatModalLazy = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	type AgentChatModalLazy =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
 	let TaskSeriesModalComponent = $state<TaskSeriesModalLazy>(null);
 	let DocumentModalComponent = $state<DocumentModalLazy>(null);
 	let GoalEditModalComponent = $state<GoalEditModalLazy>(null);

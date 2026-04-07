@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/next-step-generation.service.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('$env/static/private', () => ({

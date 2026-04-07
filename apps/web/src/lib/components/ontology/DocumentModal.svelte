@@ -98,7 +98,9 @@
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	// Lazy-loaded AgentChatModal for better initial load performance
 
-	type LazyComponent = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	type LazyComponent =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
 	let AgentChatModalComponent = $state<LazyComponent>(null);
 
 	async function loadAgentChatModal() {
@@ -2115,8 +2117,9 @@
 							class="flex items-center gap-1 text-xs text-muted-foreground mb-0.5 overflow-hidden"
 						>
 							{#each breadcrumbPath as crumb, i}
-								<span class="truncate max-w-[100px] sm:max-w-none" title={crumb.title}
-									>{crumb.title}</span
+								<span
+									class="truncate max-w-[100px] sm:max-w-none"
+									title={crumb.title}>{crumb.title}</span
 								>
 								{#if i < breadcrumbPath.length - 1}
 									<ChevronRight class="w-3 h-3 shrink-0" />

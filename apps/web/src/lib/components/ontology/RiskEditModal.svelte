@@ -60,7 +60,9 @@
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
-	type AgentChatModalLazy = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	type AgentChatModalLazy =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 
 	async function loadAgentChatModal() {
@@ -111,10 +113,7 @@
 
 	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
 
-	const RISK_STATE_META: Record<
-		string,
-		{ label: string; variant: SurfaceBadgeVariant }
-	> = {
+	const RISK_STATE_META: Record<string, { label: string; variant: SurfaceBadgeVariant }> = {
 		identified: { label: 'Identified', variant: 'warning' },
 		mitigated: { label: 'Mitigated', variant: 'info' },
 		occurred: { label: 'Occurred', variant: 'error' },
@@ -562,9 +561,7 @@
 									>
 										<div>
 											<div class="flex items-center gap-2">
-												<Shield
-													class="h-4 w-4 text-muted-foreground"
-												/>
+												<Shield class="h-4 w-4 text-muted-foreground" />
 												<p
 													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 												>
@@ -619,9 +616,7 @@
 												placeholder="Select likelihood"
 											>
 												{#each PROBABILITY_OPTIONS as opt}
-													<option value={opt.value}
-														>{opt.label}</option
-													>
+													<option value={opt.value}>{opt.label}</option>
 												{/each}
 											</Select>
 										</FormField>
@@ -643,9 +638,7 @@
 												placeholder="Select state"
 											>
 												{#each STATE_OPTIONS as opt}
-													<option value={opt.value}
-														>{opt.label}</option
-													>
+													<option value={opt.value}>{opt.label}</option>
 												{/each}
 											</Select>
 										</FormField>
@@ -702,31 +695,23 @@
 							</CardHeader>
 							<CardBody class="space-y-3">
 								<div class="grid grid-cols-2 gap-2">
-									<div
-										class="rounded-lg border border-border/70 bg-muted/30 p-3"
-									>
+									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
 										<p
 											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
 										>
 											Impact
 										</p>
-										<p
-											class="mt-1 text-sm font-semibold text-foreground"
-										>
+										<p class="mt-1 text-sm font-semibold text-foreground">
 											{impactBadge?.label ?? impact}
 										</p>
 									</div>
-									<div
-										class="rounded-lg border border-border/70 bg-muted/30 p-3"
-									>
+									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
 										<p
 											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
 										>
 											Probability
 										</p>
-										<p
-											class="mt-1 text-sm font-semibold text-foreground"
-										>
+										<p class="mt-1 text-sm font-semibold text-foreground">
 											{Math.round(riskProb * 100)}%
 										</p>
 									</div>
@@ -764,55 +749,43 @@
 									</p>
 								</div>
 
-								<div
-									class="rounded-lg border border-border/70 bg-muted/30 p-3"
-								>
+								<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
 									<div class="grid grid-cols-1 gap-1.5 text-xs">
 										{#if owner}
-											<div
-												class="flex items-center justify-between gap-2"
-											>
-												<span class="text-muted-foreground"
-													>Owner</span
-												>
+											<div class="flex items-center justify-between gap-2">
+												<span class="text-muted-foreground">Owner</span>
 												<span class="text-right text-foreground"
 													>{owner}</span
 												>
 											</div>
 										{/if}
-										<div
-											class="flex items-center justify-between gap-2"
-										>
-											<span class="text-muted-foreground"
-												>Created</span
-											>
+										<div class="flex items-center justify-between gap-2">
+											<span class="text-muted-foreground">Created</span>
 											<span class="text-right text-foreground">
 												{risk.created_at
-													? new Date(
-															risk.created_at
-														).toLocaleDateString(undefined, {
-															month: 'short',
-															day: 'numeric',
-															year: 'numeric'
-														})
+													? new Date(risk.created_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
 													: '—'}
 											</span>
 										</div>
-										<div
-											class="flex items-center justify-between gap-2"
-										>
-											<span class="text-muted-foreground"
-												>Updated</span
-											>
+										<div class="flex items-center justify-between gap-2">
+											<span class="text-muted-foreground">Updated</span>
 											<span class="text-right text-foreground">
 												{risk.updated_at
-													? new Date(
-															risk.updated_at
-														).toLocaleDateString(undefined, {
-															month: 'short',
-															day: 'numeric',
-															year: 'numeric'
-														})
+													? new Date(risk.updated_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
 													: '—'}
 											</span>
 										</div>
@@ -852,11 +825,7 @@
 								>
 									Tags
 								</p>
-								<TagsDisplay
-									props={risk.props}
-									size="sm"
-									compact={true}
-								/>
+								<TagsDisplay props={risk.props} size="sm" compact={true} />
 							</div>
 						{/if}
 
@@ -890,11 +859,7 @@
 				</div>
 
 				<div class="mt-4">
-					<EntityCommentsSection
-						{projectId}
-						entityType="risk"
-						entityId={riskId}
-					/>
+					<EntityCommentsSection {projectId} entityType="risk" entityId={riskId} />
 				</div>
 			{/if}
 		</div>

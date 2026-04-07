@@ -80,10 +80,9 @@ describe('project-page-data-controller', () => {
 	});
 
 	it('fetchProjectEvents returns events list', async () => {
-		(global.fetch as any)
-			.mockImplementationOnce(() =>
-				mockJsonResponse({ body: successBody({ events: [{ id: 'evt-1' }] }) })
-			);
+		(global.fetch as any).mockImplementationOnce(() =>
+			mockJsonResponse({ body: successBody({ events: [{ id: 'evt-1' }] }) })
+		);
 
 		await expect(fetchProjectEvents('project-1')).resolves.toHaveLength(1);
 	});
@@ -245,9 +244,7 @@ describe('project-page-data-controller', () => {
 			.mockImplementationOnce(() =>
 				mockJsonResponse({ body: successBody({ structure: { root: [] } }) })
 			)
-			.mockImplementationOnce(() =>
-				mockJsonResponse({ body: successBody({ id: 'doc-1' }) })
-			)
+			.mockImplementationOnce(() => mockJsonResponse({ body: successBody({ id: 'doc-1' }) }))
 			.mockImplementationOnce(() =>
 				mockJsonResponse({ body: successBody({ id: 'milestone-1' }) })
 			)

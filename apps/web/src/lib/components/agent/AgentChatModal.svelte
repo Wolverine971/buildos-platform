@@ -3417,9 +3417,9 @@
 				lastTurnContext = event.context;
 				if (dev) {
 					console.debug(
-					'[AgentChat] Stored last turn context:',
-					$state.snapshot(lastTurnContext)
-				);
+						'[AgentChat] Stored last turn context:',
+						$state.snapshot(lastTurnContext)
+					);
 				}
 				break;
 

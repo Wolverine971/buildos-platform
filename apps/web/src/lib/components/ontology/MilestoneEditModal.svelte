@@ -23,7 +23,17 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Save, Loader, Trash2, Flag, Calendar, Clock, X, ChevronDown, FileText } from 'lucide-svelte';
+	import {
+		Save,
+		Loader,
+		Trash2,
+		Flag,
+		Calendar,
+		Clock,
+		X,
+		ChevronDown,
+		FileText
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -63,7 +73,9 @@
 	};
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	type AgentChatModalLazy = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	type AgentChatModalLazy =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 
 	async function loadAgentChatModal() {
@@ -137,10 +149,7 @@
 
 	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
 
-	const MILESTONE_STATE_META: Record<
-		string,
-		{ label: string; variant: SurfaceBadgeVariant }
-	> = {
+	const MILESTONE_STATE_META: Record<string, { label: string; variant: SurfaceBadgeVariant }> = {
 		pending: { label: 'Pending', variant: 'default' },
 		in_progress: { label: 'In Progress', variant: 'info' },
 		completed: { label: 'Completed', variant: 'success' },
@@ -519,8 +528,8 @@
 												What this milestone marks and when it's due
 											</h3>
 											<p class="mt-1 text-xs text-muted-foreground">
-												Define the milestone and its deadline so
-												progress is trackable.
+												Define the milestone and its deadline so progress is
+												trackable.
 											</p>
 										</div>
 										<Badge variant={milestoneStateMeta.variant} size="sm"
@@ -594,9 +603,7 @@
 									>
 										<div>
 											<div class="flex items-center gap-2">
-												<Calendar
-													class="h-4 w-4 text-muted-foreground"
-												/>
+												<Calendar class="h-4 w-4 text-muted-foreground" />
 												<p
 													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 												>
@@ -649,9 +656,7 @@
 												placeholder="Select state"
 											>
 												{#each STATE_OPTIONS as opt}
-													<option value={opt.value}
-														>{opt.label}</option
-													>
+													<option value={opt.value}>{opt.label}</option>
 												{/each}
 											</Select>
 										</FormField>
@@ -692,7 +697,8 @@
 							<CardBody class="space-y-3">
 								<!-- Due Date Display -->
 								<div
-									class="rounded-lg border border-border/70 {dueDateStatus === 'overdue'
+									class="rounded-lg border border-border/70 {dueDateStatus ===
+									'overdue'
 										? 'bg-destructive/5'
 										: 'bg-muted/30'} p-3 text-center"
 								>
@@ -734,29 +740,21 @@
 											{formatDueDate(dueAt)}
 										</p>
 									{:else}
-										<p
-											class="mt-1 text-sm text-muted-foreground"
-										>
+										<p class="mt-1 text-sm text-muted-foreground">
 											No due date set
 										</p>
 									{/if}
 								</div>
 
-								<div
-									class="rounded-lg border border-border/70 bg-muted/30 p-3"
-								>
+								<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
 									<div class="grid grid-cols-1 gap-1.5 text-xs">
-										<div
-											class="flex items-center justify-between gap-2"
-										>
+										<div class="flex items-center justify-between gap-2">
 											<span class="text-muted-foreground">State</span>
 											<span class="text-right text-foreground">
 												{milestoneStateMeta.label}
 											</span>
 										</div>
-										<div
-											class="flex items-center justify-between gap-2"
-										>
+										<div class="flex items-center justify-between gap-2">
 											<span class="text-muted-foreground">Created</span>
 											<span class="text-right text-foreground">
 												{milestone.created_at
@@ -771,12 +769,8 @@
 											</span>
 										</div>
 										{#if milestone.updated_at}
-											<div
-												class="flex items-center justify-between gap-2"
-											>
-												<span class="text-muted-foreground"
-													>Updated</span
-												>
+											<div class="flex items-center justify-between gap-2">
+												<span class="text-muted-foreground">Updated</span>
 												<span class="text-right text-foreground">
 													{new Date(
 														milestone.updated_at
@@ -824,11 +818,7 @@
 								>
 									Tags
 								</p>
-								<TagsDisplay
-									props={milestone.props}
-									size="sm"
-									compact={true}
-								/>
+								<TagsDisplay props={milestone.props} size="sm" compact={true} />
 							</div>
 						{/if}
 

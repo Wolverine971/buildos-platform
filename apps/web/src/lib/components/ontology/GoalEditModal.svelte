@@ -58,7 +58,9 @@
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	type AgentChatModalLazy = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	type AgentChatModalLazy =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 
 	async function loadAgentChatModal() {
@@ -557,9 +559,7 @@
 										required={true}
 										uppercase={false}
 										showOptional={false}
-										error={!name.trim() && error
-											? 'Goal name is required'
-											: ''}
+										error={!name.trim() && error ? 'Goal name is required' : ''}
 									>
 										<TextInput
 											id="name"
@@ -758,34 +758,26 @@
 							</CardHeader>
 							<CardBody class="space-y-3">
 								<div class="grid grid-cols-2 gap-2">
-									<div
-										class="rounded-lg border border-border/70 bg-muted/30 p-3"
-									>
+									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
 										<p
 											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
 										>
 											Priority
 										</p>
-										<p
-											class="mt-1 text-sm font-semibold text-foreground"
-										>
+										<p class="mt-1 text-sm font-semibold text-foreground">
 											{priorityMeta.label}
 										</p>
 										<p class="mt-1 text-xs text-muted-foreground">
 											{priorityMeta.note}
 										</p>
 									</div>
-									<div
-										class="rounded-lg border border-border/70 bg-muted/30 p-3"
-									>
+									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
 										<p
 											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
 										>
 											State
 										</p>
-										<p
-											class="mt-1 text-sm font-semibold text-foreground"
-										>
+										<p class="mt-1 text-sm font-semibold text-foreground">
 											{stateMeta.label}
 										</p>
 										<p class="mt-1 text-xs text-muted-foreground">
@@ -794,9 +786,7 @@
 									</div>
 								</div>
 
-								<div
-									class="rounded-lg border border-border/70 bg-card p-3"
-								>
+								<div class="rounded-lg border border-border/70 bg-card p-3">
 									<div class="space-y-2">
 										<p
 											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
@@ -804,12 +794,8 @@
 											Timeline
 										</p>
 										<div class="grid grid-cols-1 gap-1.5 text-xs">
-											<div
-												class="flex items-center justify-between gap-2"
-											>
-												<span class="text-muted-foreground"
-													>Target</span
-												>
+											<div class="flex items-center justify-between gap-2">
+												<span class="text-muted-foreground">Target</span>
 												<span class="text-right text-foreground">
 													{targetDate
 														? new Date(
@@ -822,12 +808,8 @@
 														: 'No target date'}
 												</span>
 											</div>
-											<div
-												class="flex items-center justify-between gap-2"
-											>
-												<span class="text-muted-foreground"
-													>Created</span
-												>
+											<div class="flex items-center justify-between gap-2">
+												<span class="text-muted-foreground">Created</span>
 												<span class="text-right text-foreground">
 													{goal.created_at
 														? new Date(
@@ -840,12 +822,8 @@
 														: '—'}
 												</span>
 											</div>
-											<div
-												class="flex items-center justify-between gap-2"
-											>
-												<span class="text-muted-foreground"
-													>Updated</span
-												>
+											<div class="flex items-center justify-between gap-2">
+												<span class="text-muted-foreground">Updated</span>
 												<span class="text-right text-foreground">
 													{goal.updated_at
 														? new Date(
@@ -909,11 +887,7 @@
 								>
 									Tags
 								</p>
-								<TagsDisplay
-									props={goal.props}
-									size="sm"
-									compact={true}
-								/>
+								<TagsDisplay props={goal.props} size="sm" compact={true} />
 							</div>
 						{/if}
 
@@ -947,11 +921,7 @@
 				</div>
 
 				<div class="mt-4">
-					<EntityCommentsSection
-						{projectId}
-						entityType="goal"
-						entityId={goalId}
-					/>
+					<EntityCommentsSection {projectId} entityType="goal" entityId={goalId} />
 				</div>
 			{/if}
 		</div>
@@ -1083,7 +1053,7 @@
 	{#await import('./MilestoneEditModal.svelte') then { default: MilestoneEditModal }}
 		<MilestoneEditModal
 			milestoneId={editingMilestoneId}
-			projectId={projectId}
+			{projectId}
 			onClose={() => {
 				showMilestoneEditModal = false;
 				editingMilestoneId = null;

@@ -63,7 +63,9 @@
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
-	type AgentChatModalLazy = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	type AgentChatModalLazy =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
 	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 
 	async function loadAgentChatModal() {
@@ -650,9 +652,7 @@
 								</div>
 							</CardHeader>
 							<CardBody class="space-y-3">
-								<div
-									class="rounded-lg border border-border/70 bg-muted/30 p-3"
-								>
+								<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
 									<p
 										class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
 									>
@@ -674,9 +674,7 @@
 											Timeline
 										</p>
 										<div class="grid grid-cols-1 gap-1.5 text-xs">
-											<div
-												class="flex items-center justify-between gap-2"
-											>
+											<div class="flex items-center justify-between gap-2">
 												<span class="text-muted-foreground">Start</span>
 												<span class="text-right text-foreground">
 													{startDate
@@ -690,9 +688,7 @@
 														: 'Not set'}
 												</span>
 											</div>
-											<div
-												class="flex items-center justify-between gap-2"
-											>
+											<div class="flex items-center justify-between gap-2">
 												<span class="text-muted-foreground">End</span>
 												<span class="text-right text-foreground">
 													{endDate
@@ -706,9 +702,7 @@
 														: 'Not set'}
 												</span>
 											</div>
-											<div
-												class="flex items-center justify-between gap-2"
-											>
+											<div class="flex items-center justify-between gap-2">
 												<span class="text-muted-foreground">Created</span>
 												<span class="text-right text-foreground">
 													{plan.created_at
@@ -722,9 +716,7 @@
 														: '—'}
 												</span>
 											</div>
-											<div
-												class="flex items-center justify-between gap-2"
-											>
+											<div class="flex items-center justify-between gap-2">
 												<span class="text-muted-foreground">Updated</span>
 												<span class="text-right text-foreground">
 													{plan.updated_at

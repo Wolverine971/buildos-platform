@@ -187,7 +187,10 @@ describe('ErrorLoggerService', () => {
 			vi.setSystemTime(now);
 			const service = createService([
 				makeNoiseError('noise-1', new Date(now.getTime() - 1_000).toISOString()),
-				makeVisibleError('visible-open', new Date(now.getTime() - 5 * 60 * 1000).toISOString()),
+				makeVisibleError(
+					'visible-open',
+					new Date(now.getTime() - 5 * 60 * 1000).toISOString()
+				),
 				makeVisibleError(
 					'visible-critical',
 					new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),

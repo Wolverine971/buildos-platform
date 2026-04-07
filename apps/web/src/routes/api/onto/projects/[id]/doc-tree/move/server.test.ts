@@ -14,15 +14,18 @@ describe('POST /api/onto/projects/[id]/doc-tree/move', () => {
 	it('rejects invalid new_parent_id type', async () => {
 		const { POST } = await import('./+server');
 
-		const request = new Request(`http://localhost/api/onto/projects/${PROJECT_ID}/doc-tree/move`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				document_id: DOCUMENT_ID,
-				new_parent_id: 42,
-				new_position: 0
-			})
-		});
+		const request = new Request(
+			`http://localhost/api/onto/projects/${PROJECT_ID}/doc-tree/move`,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					document_id: DOCUMENT_ID,
+					new_parent_id: 42,
+					new_position: 0
+				})
+			}
+		);
 
 		const response = await POST({
 			params: { id: PROJECT_ID },
@@ -41,15 +44,18 @@ describe('POST /api/onto/projects/[id]/doc-tree/move', () => {
 	it('rejects negative new_position', async () => {
 		const { POST } = await import('./+server');
 
-		const request = new Request(`http://localhost/api/onto/projects/${PROJECT_ID}/doc-tree/move`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				document_id: DOCUMENT_ID,
-				new_parent_id: null,
-				new_position: -1
-			})
-		});
+		const request = new Request(
+			`http://localhost/api/onto/projects/${PROJECT_ID}/doc-tree/move`,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					document_id: DOCUMENT_ID,
+					new_parent_id: null,
+					new_position: -1
+				})
+			}
+		);
 
 		const response = await POST({
 			params: { id: PROJECT_ID },
@@ -95,15 +101,18 @@ describe('POST /api/onto/projects/[id]/doc-tree/move', () => {
 	it('rejects invalid document ids', async () => {
 		const { POST } = await import('./+server');
 
-		const request = new Request(`http://localhost/api/onto/projects/${PROJECT_ID}/doc-tree/move`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				document_id: 'doc-1',
-				new_parent_id: PARENT_ID,
-				new_position: 0
-			})
-		});
+		const request = new Request(
+			`http://localhost/api/onto/projects/${PROJECT_ID}/doc-tree/move`,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					document_id: 'doc-1',
+					new_parent_id: PARENT_ID,
+					new_position: 0
+				})
+			}
+		);
 
 		const response = await POST({
 			params: { id: PROJECT_ID },

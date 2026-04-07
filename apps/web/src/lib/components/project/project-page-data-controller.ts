@@ -351,18 +351,14 @@ export async function archiveProjectDocument(options: {
 	mode: 'archive_children' | 'promote_children' | 'unlink_children';
 }): Promise<JsonRecord> {
 	const { documentId, mode } = options;
-	return requestApiDataRecord(
-		`/api/onto/documents/${documentId}`,
-		'Failed to archive document',
-		{
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				action: 'archive',
-				archive_children_mode: mode
-			})
-		}
-	);
+	return requestApiDataRecord(`/api/onto/documents/${documentId}`, 'Failed to archive document', {
+		method: 'PATCH',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({
+			action: 'archive',
+			archive_children_mode: mode
+		})
+	});
 }
 
 export async function updateProjectMilestoneState(options: {

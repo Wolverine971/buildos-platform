@@ -532,9 +532,7 @@
 										</div>
 										<div class="flex flex-wrap items-center gap-1.5">
 											{#if hasCalendarLink}
-												<Badge variant="success" size="sm"
-													>Synced</Badge
-												>
+												<Badge variant="success" size="sm">Synced</Badge>
 											{/if}
 										</div>
 									</div>
@@ -604,9 +602,7 @@
 									>
 										<div>
 											<div class="flex items-center gap-2">
-												<Calendar
-													class="h-4 w-4 text-muted-foreground"
-												/>
+												<Calendar class="h-4 w-4 text-muted-foreground" />
 												<p
 													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 												>
@@ -688,8 +684,7 @@
 											>
 												Sync changes to calendar
 												{#if hasCalendarLink}
-													<span
-														class="text-xs text-accent ml-1"
+													<span class="text-xs text-accent ml-1"
 														>(linked)</span
 													>
 												{/if}
@@ -730,9 +725,7 @@
 								</div>
 							</CardHeader>
 							<CardBody class="space-y-3">
-								<div
-									class="rounded-lg border border-border/70 bg-card p-3"
-								>
+								<div class="rounded-lg border border-border/70 bg-card p-3">
 									<div class="space-y-2">
 										<p
 											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
@@ -740,9 +733,7 @@
 											Schedule
 										</p>
 										<div class="grid grid-cols-1 gap-1.5 text-xs">
-											<div
-												class="flex items-center justify-between gap-2"
-											>
+											<div class="flex items-center justify-between gap-2">
 												<span class="text-muted-foreground">Start</span>
 												<span class="text-right text-foreground">
 													{startAt
@@ -759,22 +750,17 @@
 														: 'Not set'}
 												</span>
 											</div>
-											<div
-												class="flex items-center justify-between gap-2"
-											>
+											<div class="flex items-center justify-between gap-2">
 												<span class="text-muted-foreground">End</span>
 												<span class="text-right text-foreground">
 													{endAt
-														? new Date(endAt).toLocaleString(
-																'en-US',
-																{
-																	weekday: 'short',
-																	month: 'short',
-																	day: 'numeric',
-																	hour: 'numeric',
-																	minute: '2-digit'
-																}
-															)
+														? new Date(endAt).toLocaleString('en-US', {
+																weekday: 'short',
+																month: 'short',
+																day: 'numeric',
+																hour: 'numeric',
+																minute: '2-digit'
+															})
 														: 'Not set'}
 												</span>
 											</div>
@@ -795,39 +781,35 @@
 									</div>
 								</div>
 
-								<div
-									class="rounded-lg border border-border/70 bg-muted/30 p-3"
-								>
+								<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
 									<div class="grid grid-cols-1 gap-1.5 text-xs">
-										<div
-											class="flex items-center justify-between gap-2"
-										>
+										<div class="flex items-center justify-between gap-2">
 											<span class="text-muted-foreground">Created</span>
 											<span class="text-right text-foreground">
 												{event.created_at
-													? new Date(
-															event.created_at
-														).toLocaleDateString(undefined, {
-															month: 'short',
-															day: 'numeric',
-															year: 'numeric'
-														})
+													? new Date(event.created_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
 													: '—'}
 											</span>
 										</div>
-										<div
-											class="flex items-center justify-between gap-2"
-										>
+										<div class="flex items-center justify-between gap-2">
 											<span class="text-muted-foreground">Updated</span>
 											<span class="text-right text-foreground">
 												{event.updated_at
-													? new Date(
-															event.updated_at
-														).toLocaleDateString(undefined, {
-															month: 'short',
-															day: 'numeric',
-															year: 'numeric'
-														})
+													? new Date(event.updated_at).toLocaleDateString(
+															undefined,
+															{
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															}
+														)
 													: '—'}
 											</span>
 										</div>
@@ -888,11 +870,7 @@
 				</div>
 
 				<div class="mt-4">
-					<EntityCommentsSection
-						{projectId}
-						entityType="event"
-						entityId={eventId}
-					/>
+					<EntityCommentsSection {projectId} entityType="event" entityId={eventId} />
 				</div>
 			{/if}
 		</div>
@@ -901,47 +879,47 @@
 	<!-- Footer Actions -->
 	{#snippet footer()}
 		{#if !isLoading && event}
-		<div
-			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
-		>
-			<div class="flex items-center gap-1">
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onclick={() => (showDeleteConfirm = true)}
-					disabled={isDeleting || isSaving}
-					class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
-				>
-					<Trash2 class="w-3.5 h-3.5" />
-					<span class="hidden sm:inline ml-1">Delete</span>
-				</Button>
+			<div
+				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-3 border-t border-border bg-muted/50"
+			>
+				<div class="flex items-center gap-1">
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onclick={() => (showDeleteConfirm = true)}
+						disabled={isDeleting || isSaving}
+						class="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs px-2 h-8 pressable"
+					>
+						<Trash2 class="w-3.5 h-3.5" />
+						<span class="hidden sm:inline ml-1">Delete</span>
+					</Button>
+				</div>
+				<div class="flex items-center gap-2">
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onclick={handleClose}
+						disabled={isSaving || isDeleting}
+						class="text-xs h-8 pressable"
+					>
+						Cancel
+					</Button>
+					<Button
+						type="submit"
+						form={detailsFormId}
+						variant="primary"
+						size="sm"
+						loading={isSaving}
+						disabled={isSaving || isDeleting || !title.trim()}
+						class="text-xs h-8 pressable"
+					>
+						<Save class="w-3.5 h-3.5" />
+						<span class="ml-1">Save</span>
+					</Button>
+				</div>
 			</div>
-			<div class="flex items-center gap-2">
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onclick={handleClose}
-					disabled={isSaving || isDeleting}
-					class="text-xs h-8 pressable"
-				>
-					Cancel
-				</Button>
-				<Button
-					type="submit"
-					form={detailsFormId}
-					variant="primary"
-					size="sm"
-					loading={isSaving}
-					disabled={isSaving || isDeleting || !title.trim()}
-					class="text-xs h-8 pressable"
-				>
-					<Save class="w-3.5 h-3.5" />
-					<span class="ml-1">Save</span>
-				</Button>
-			</div>
-		</div>
 		{/if}
 	{/snippet}
 </Modal>

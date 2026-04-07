@@ -365,7 +365,6 @@
 	// ==================== Lifecycle Management ====================
 
 	async function handleModalOpen() {
-		
 		if (unlockRafId !== null) {
 			cancelAnimationFrame(unlockRafId);
 			unlockRafId = null;

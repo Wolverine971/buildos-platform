@@ -41,7 +41,9 @@
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
-	type LazyComponent = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	type LazyComponent =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
 	let AgentChatModalComponent = $state<LazyComponent>(null);
 
 	async function loadAgentChatModal() {
