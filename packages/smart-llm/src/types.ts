@@ -21,6 +21,8 @@ export interface JSONRequestOptions<T = unknown> {
 	userPrompt: string;
 	userId?: string; // Made optional to match LLMService interface expectations
 	profile?: JSONProfile;
+	model?: string;
+	models?: string[];
 	temperature?: number;
 	timeoutMs?: number;
 	validation?: {

@@ -20,6 +20,7 @@
 	} from 'lucide-svelte';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import ProjectBriefModal from '$lib/components/briefs/ProjectBriefModal.svelte';
+	import { fetchProjectBriefs } from '$lib/components/project/project-page-data-controller';
 	import type { ProjectDailyBrief } from '$lib/types/daily-brief';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
@@ -35,12 +36,6 @@
 		daily_brief_id: string | null;
 		executive_summary: string | null;
 		priority_actions: string[] | null;
-	}
-
-	interface BriefsResponse {
-		briefs: ProjectBrief[];
-		total: number;
-		hasMore: boolean;
 	}
 
 	// ============================================================
@@ -83,16 +78,11 @@
 		error = null;
 
 		try {
-			const response = await fetch(
-				`/api/onto/projects/${projectId}/briefs?limit=${INITIAL_LIMIT}&offset=${offset}`
-			);
-			const payload = await response.json();
-
-			if (!response.ok) {
-				throw new Error(payload?.error || 'Failed to fetch briefs');
-			}
-
-			const data = payload.data as BriefsResponse;
+			const data = await fetchProjectBriefs({
+				projectId,
+				limit: INITIAL_LIMIT,
+				offset
+			});
 
 			if (append) {
 				briefs = [...briefs, ...data.briefs];

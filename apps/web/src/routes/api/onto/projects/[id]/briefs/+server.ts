@@ -8,6 +8,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { validatePaginationCustom, verifyProjectAccess } from '$lib/utils/api-helpers';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 export const GET: RequestHandler = async ({ params, url, locals }) => {
 	try {
@@ -19,6 +20,9 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		const { id: projectId } = params;
 		if (!projectId) {
 			return ApiResponse.badRequest('Project ID required');
+		}
+		if (!isValidUUID(projectId)) {
+			return ApiResponse.badRequest('Invalid project ID');
 		}
 
 		// Validate pagination params (security fix: 2026-01-03)

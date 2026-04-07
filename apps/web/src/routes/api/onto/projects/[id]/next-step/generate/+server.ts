@@ -18,6 +18,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { generateProjectNextStep } from '$lib/services/next-step-generation.service';
 import { logOntologyApiError } from '../../../../shared/error-logging';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 export const POST: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -29,6 +30,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		const { id: projectId } = params;
 		if (!projectId) {
 			return ApiResponse.badRequest('Project ID required');
+		}
+		if (!isValidUUID(projectId)) {
+			return ApiResponse.badRequest('Invalid project ID');
 		}
 
 		const supabase = locals.supabase;

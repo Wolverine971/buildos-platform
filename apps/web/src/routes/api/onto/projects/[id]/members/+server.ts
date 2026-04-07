@@ -8,6 +8,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 type MemberWithRole = {
 	role_key: string | null;
@@ -36,6 +37,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const projectId = params.id;
 		if (!projectId) {
 			return ApiResponse.badRequest('Project ID required');
+		}
+		if (!isValidUUID(projectId)) {
+			return ApiResponse.badRequest('Invalid project ID');
 		}
 
 		const supabase = locals.supabase;

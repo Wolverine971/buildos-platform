@@ -31,6 +31,7 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 import type { Database } from '@buildos/shared-types';
 import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
 import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
 import {
 	attachLastChangedByActorToTasks,
@@ -86,6 +87,9 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 	if (!id) {
 		throw error(400, 'Project ID required');
+	}
+	if (!isValidUUID(id)) {
+		throw error(400, 'Invalid project ID');
 	}
 
 	const supabase = locals.supabase;

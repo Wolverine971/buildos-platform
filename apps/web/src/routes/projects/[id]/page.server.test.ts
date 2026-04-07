@@ -11,6 +11,8 @@ vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 
 import { load } from './+page.server';
 
+const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
+
 type HarnessOptions = {
 	userId?: string | null;
 	skeletonData?: Record<string, unknown> | null;
@@ -28,7 +30,7 @@ function createHarness(options: HarnessOptions = {}) {
 	const skeletonData =
 		options.skeletonData === undefined
 			? {
-					id: 'project-1',
+					id: PROJECT_ID,
 					name: 'Project 1',
 					description: null,
 					state_key: 'active',
@@ -121,7 +123,7 @@ function createHarness(options: HarnessOptions = {}) {
 		);
 
 	const event = {
-		params: { id: 'project-1' },
+		params: { id: PROJECT_ID },
 		locals: {
 			supabase: { rpc, from },
 			safeGetSession,
@@ -269,5 +271,15 @@ describe('projects/[id] +page.server load', () => {
 		expect(timingLabels).toEqual(
 			expect.arrayContaining(['db.project_skeleton', 'db.project_access.resolve'])
 		);
+	});
+
+	it('rejects invalid project ids before making API calls', async () => {
+		const { event, operations, from } = createHarness();
+		event.params.id = 'project-1';
+
+		await expect(load(event)).rejects.toMatchObject({ status: 400 });
+		expect(operations).toEqual([]);
+		expect(from).not.toHaveBeenCalled();
+		expect(ensureActorIdMock).not.toHaveBeenCalled();
 	});
 });

@@ -10,6 +10,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 interface ProjectNotificationSettingsRow {
 	project_id: string;
@@ -72,6 +73,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (!projectId) {
 			return ApiResponse.badRequest('Project ID required');
 		}
+		if (!isValidUUID(projectId)) {
+			return ApiResponse.badRequest('Invalid project ID');
+		}
 
 		const supabase = locals.supabase;
 		await ensureActorId(supabase, user.id);
@@ -122,6 +126,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const projectId = params.id;
 		if (!projectId) {
 			return ApiResponse.badRequest('Project ID required');
+		}
+		if (!isValidUUID(projectId)) {
+			return ApiResponse.badRequest('Invalid project ID');
 		}
 
 		const body = await request.json().catch(() => null);

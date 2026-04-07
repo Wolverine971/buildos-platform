@@ -2,12 +2,13 @@
 /**
  * GET /api/onto/projects/[id]/logs
  * Fetch paginated activity logs for a project
- * test
  */
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import { validatePaginationCustom } from '$lib/utils/api-helpers';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 export const GET: RequestHandler = async ({ params, url, locals }) => {
 	try {
@@ -20,12 +21,17 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		if (!projectId) {
 			return ApiResponse.badRequest('Project ID required');
 		}
+		if (!isValidUUID(projectId)) {
+			return ApiResponse.badRequest('Invalid project ID');
+		}
 
-		// Parse pagination params
-		const parsedLimit = Number.parseInt(url.searchParams.get('limit') ?? '10', 10);
-		const parsedOffset = Number.parseInt(url.searchParams.get('offset') ?? '0', 10);
-		const limit = Number.isNaN(parsedLimit) ? 10 : Math.min(Math.max(parsedLimit, 1), 50);
-		const offset = Number.isNaN(parsedOffset) ? 0 : Math.max(parsedOffset, 0);
+		const { limit, offset } = validatePaginationCustom(
+			{
+				limit: url.searchParams.get('limit'),
+				offset: url.searchParams.get('offset')
+			},
+			{ defaultLimit: 10, maxLimit: 50 }
+		);
 
 		const supabase = locals.supabase;
 
@@ -33,10 +39,11 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			.from('onto_projects')
 			.select('id')
 			.eq('id', projectId)
-			.single();
+			.is('deleted_at', null)
+			.maybeSingle();
 
 		if (projectError || !project) {
-			return ApiResponse.notFound('Project not found');
+			return ApiResponse.notFound('Project');
 		}
 
 		const memberAccessResult = await supabase.rpc('current_actor_is_project_member', {

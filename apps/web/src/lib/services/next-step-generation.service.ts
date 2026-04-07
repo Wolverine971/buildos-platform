@@ -18,8 +18,9 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
+import { parseOpenRouterErrorMetadata } from '@buildos/smart-llm';
+import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { createEntityReference } from '$lib/utils/entity-reference-parser';
-import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
 
 // =============================================================================
 // Types
@@ -111,6 +112,8 @@ interface LLMNextStepResponse {
 	reasoning?: string;
 }
 
+type NextStepLLMClient = Pick<OpenRouterV2Service, 'getJSONResponse'>;
+
 // =============================================================================
 // Constants
 // =============================================================================
@@ -152,6 +155,19 @@ Rules:
 - If all tasks are done, suggest reviewing goals or celebrating progress
 - Be encouraging but direct`;
 
+const NEXT_STEP_MODEL_CANDIDATES = [
+	'deepseek/deepseek-v3.2',
+	'google/gemini-3.1-flash-lite-preview',
+	'minimax/minimax-m2.5'
+] as const;
+
+function createNextStepLLMClient(): NextStepLLMClient {
+	return new OpenRouterV2Service({
+		httpReferer: 'https://buildos.com',
+		appName: 'BuildOS Next Step Generator'
+	});
+}
+
 // =============================================================================
 // Main Generation Function
 // =============================================================================
@@ -175,7 +191,10 @@ export async function generateProjectNextStep(
 		const userPrompt = buildAnalysisPrompt(context);
 
 		// 3. Call LLM for generation
-		const llmResponse = await callLLM(userPrompt);
+		const llmResponse = await generateNextStepRecommendationFromPrompt(userPrompt, {
+			userId,
+			projectId
+		});
 		if (!llmResponse) {
 			return { success: false, error: 'Failed to generate recommendation' };
 		}
@@ -505,68 +524,69 @@ function buildAnalysisPrompt(context: GenerationContext): string {
 // LLM Interaction
 // =============================================================================
 
-async function callLLM(userPrompt: string): Promise<string | null> {
+export async function generateNextStepRecommendationFromPrompt(
+	userPrompt: string,
+	options: {
+		userId?: string;
+		projectId?: string;
+		llmClient?: NextStepLLMClient;
+	} = {}
+): Promise<LLMNextStepResponse | null> {
 	try {
-		const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${PRIVATE_OPENROUTER_API_KEY}`,
-				'Content-Type': 'application/json',
-				'HTTP-Referer': 'https://build-os.com',
-				'X-Title': 'BuildOS Next Step Generator'
-			},
-			body: JSON.stringify({
-				model: 'deepseek/deepseek-chat',
-				messages: [
-					{ role: 'system', content: SYSTEM_PROMPT },
-					{ role: 'user', content: userPrompt }
-				],
-				temperature: 0.4,
-				max_tokens: 1000,
-				response_format: { type: 'json_object' }
-			})
+		const llmClient = options.llmClient ?? createNextStepLLMClient();
+		return await llmClient.getJSONResponse<LLMNextStepResponse>({
+			systemPrompt: SYSTEM_PROMPT,
+			userPrompt,
+			userId: options.userId,
+			projectId: options.projectId,
+			operationType: 'project_next_step_generate',
+			model: NEXT_STEP_MODEL_CANDIDATES[0],
+			models: [...NEXT_STEP_MODEL_CANDIDATES.slice(1)],
+			temperature: 0.4,
+			timeoutMs: 45000,
+			validation: {
+				retryOnParseError: true
+			}
 		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			console.error('[NextStep] LLM API error:', response.status, errorText);
-			return null;
-		}
-
-		const data = await response.json();
-		const content = data.choices?.[0]?.message?.content;
-
-		if (!content) {
-			console.error('[NextStep] No content in LLM response');
-			return null;
-		}
-
-		return content;
 	} catch (error) {
-		console.error('[NextStep] LLM call failed:', error);
+		const metadata = parseOpenRouterErrorMetadata(error);
+		console.error('[NextStep] LLM call failed:', {
+			status: metadata.status,
+			provider: metadata.providerName,
+			message: metadata.message,
+			requestedModels: NEXT_STEP_MODEL_CANDIDATES
+		});
 		return null;
 	}
 }
 
-function parseAndValidateLLMResponse(content: string): LLMNextStepResponse | null {
+function parseAndValidateLLMResponse(content: unknown): LLMNextStepResponse | null {
 	try {
-		const parsed = JSON.parse(content);
+		const parsed =
+			typeof content === 'string'
+				? (JSON.parse(content) as Record<string, unknown>)
+				: content && typeof content === 'object'
+					? (content as Record<string, unknown>)
+					: null;
+		if (!parsed) {
+			console.error('[NextStep] LLM response was not a JSON object');
+			return null;
+		}
 
-		if (!parsed.short || typeof parsed.short !== 'string') {
+		const short = typeof parsed.short === 'string' ? parsed.short.trim() : '';
+		if (!short) {
 			console.error('[NextStep] Missing or invalid "short" field');
 			return null;
 		}
 
-		if (!parsed.long || typeof parsed.long !== 'string') {
-			console.error('[NextStep] Missing or invalid "long" field');
-			return null;
-		}
+		const longCandidate = typeof parsed.long === 'string' ? parsed.long.trim() : '';
+		const long = longCandidate || short;
 
 		// Enforce length limits
 		return {
-			short: parsed.short.slice(0, 100),
-			long: parsed.long.slice(0, 500),
-			reasoning: parsed.reasoning
+			short: short.slice(0, 100),
+			long: long.slice(0, 500),
+			reasoning: typeof parsed.reasoning === 'string' ? parsed.reasoning : undefined
 		};
 	} catch (error) {
 		console.error('[NextStep] Failed to parse LLM response:', error, content);

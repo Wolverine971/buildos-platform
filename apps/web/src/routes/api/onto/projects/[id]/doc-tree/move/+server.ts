@@ -7,6 +7,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { moveDocument } from '$lib/services/ontology/doc-structure.service';
 import { logOntologyApiError } from '../../../../shared/error-logging';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -18,6 +19,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		const { id } = params;
 		if (!id) {
 			return ApiResponse.badRequest('Project ID required');
+		}
+		if (!isValidUUID(id)) {
+			return ApiResponse.badRequest('Invalid project ID');
 		}
 
 		const body = await request.json().catch(() => null);
@@ -32,6 +36,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		if (!documentId) {
 			return ApiResponse.badRequest('document_id is required');
 		}
+		if (!isValidUUID(documentId)) {
+			return ApiResponse.badRequest('document_id must be a valid UUID');
+		}
 
 		const newParentId =
 			newParentIdRaw === null || newParentIdRaw === undefined || newParentIdRaw === ''
@@ -42,6 +49,9 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		if (newParentId === undefined) {
 			return ApiResponse.badRequest('new_parent_id must be a string or null');
+		}
+		if (newParentId !== null && !isValidUUID(newParentId)) {
+			return ApiResponse.badRequest('new_parent_id must be a valid UUID or null');
 		}
 
 		if (

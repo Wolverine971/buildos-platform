@@ -18,8 +18,10 @@
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Zap, RefreshCw, LoaderCircle } from 'lucide-svelte';
 	import { parseEntityReferences } from '$lib/utils/entity-reference-parser';
+	import { generateProjectNextStep } from '$lib/components/project/project-page-data-controller';
 	import type { EntityReference } from '@buildos/shared-types';
 	import { toastService } from '$lib/stores/toast.store';
+	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Helper to escape HTML special characters
 	function escapeHtml(value: string): string {
@@ -101,28 +103,26 @@
 
 		isGenerating = true;
 		try {
-			const response = await fetch(`/api/onto/projects/${projectId}/next-step/generate`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' }
-			});
-
-			const result = await response.json();
-
-			if (!response.ok) {
-				throw new Error(result.error || 'Failed to generate next step');
-			}
+			const result = await generateProjectNextStep(projectId);
 
 			toastService.success('Next step generated!');
 
 			// Notify parent component of the new next step
-			if (onNextStepGenerated && result.data) {
+			if (onNextStepGenerated) {
 				onNextStepGenerated({
-					short: result.data.next_step_short,
-					long: result.data.next_step_long
+					short: result.next_step_short,
+					long: result.next_step_long
 				});
 			}
 		} catch (error) {
 			console.error('Failed to generate next step:', error);
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/projects/${projectId}/next-step/generate`,
+				method: 'POST',
+				projectId,
+				entityType: 'project',
+				operation: 'project_next_step_generate'
+			});
 			toastService.error(
 				error instanceof Error ? error.message : 'Failed to generate next step'
 			);

@@ -12,6 +12,8 @@ vi.mock('../../../shared/error-logging', () => ({
 
 import { GET } from './+server';
 
+const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
+
 const createEvent = (): RequestEvent => {
 	const supabase = {
 		rpc: vi.fn(),
@@ -19,7 +21,7 @@ const createEvent = (): RequestEvent => {
 	};
 
 	return {
-		params: { id: 'project-1' },
+		params: { id: PROJECT_ID },
 		locals: {
 			supabase,
 			safeGetSession: vi.fn().mockResolvedValue({
@@ -39,7 +41,7 @@ describe('GET /api/onto/projects/[id]/members', () => {
 		const rows = [
 			{
 				id: 'm-viewer',
-				project_id: 'project-1',
+				project_id: PROJECT_ID,
 				actor_id: 'actor-viewer',
 				role_key: 'viewer',
 				access: 'read',
@@ -49,7 +51,7 @@ describe('GET /api/onto/projects/[id]/members', () => {
 			},
 			{
 				id: 'm-owner-late',
-				project_id: 'project-1',
+				project_id: PROJECT_ID,
 				actor_id: 'actor-owner-2',
 				role_key: 'owner',
 				access: 'admin',
@@ -59,7 +61,7 @@ describe('GET /api/onto/projects/[id]/members', () => {
 			},
 			{
 				id: 'm-editor-late',
-				project_id: 'project-1',
+				project_id: PROJECT_ID,
 				actor_id: 'actor-editor-2',
 				role_key: 'editor',
 				access: 'write',
@@ -69,7 +71,7 @@ describe('GET /api/onto/projects/[id]/members', () => {
 			},
 			{
 				id: 'm-owner-early',
-				project_id: 'project-1',
+				project_id: PROJECT_ID,
 				actor_id: 'actor-owner-1',
 				role_key: 'owner',
 				access: 'admin',
@@ -79,7 +81,7 @@ describe('GET /api/onto/projects/[id]/members', () => {
 			},
 			{
 				id: 'm-editor-early',
-				project_id: 'project-1',
+				project_id: PROJECT_ID,
 				actor_id: 'actor-editor-1',
 				role_key: 'editor',
 				access: 'write',
@@ -121,5 +123,16 @@ describe('GET /api/onto/projects/[id]/members', () => {
 			role_name: 'Project Owner',
 			role_description: 'Owns decisions.'
 		});
+	});
+
+	it('rejects invalid project ids', async () => {
+		const event = createEvent();
+		event.params.id = 'project-1';
+
+		const response = await GET(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(payload.error).toBe('Invalid project ID');
 	});
 });

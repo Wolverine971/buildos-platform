@@ -226,6 +226,11 @@ function extractTextFromResponse(response: OpenRouterChatResponse): string {
 	return contentToText(messageContent);
 }
 
+type JSONRequestWithFallbackModels<T = any> = JSONRequestOptions<T> & {
+	model?: string;
+	models?: string[];
+};
+
 export class OpenRouterV2Service extends SmartLLMService {
 	private client: OpenRouterV2Client;
 	private exactoToolsEnabled: boolean;
@@ -274,8 +279,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 		return timeoutMs ?? this.v2DefaultTimeoutMs;
 	}
 
-	async getJSONResponse<T = any>(options: JSONRequestOptions<T>): Promise<T> {
-		const laneModels = this.resolveModels('json');
+	async getJSONResponse<T = any>(options: JSONRequestWithFallbackModels<T>): Promise<T> {
+		const laneModels = this.resolveModels('json', options.model, options.models);
 		const messages: OpenRouterChatMessage[] = [
 			{ role: 'system', content: options.systemPrompt },
 			{ role: 'user', content: options.userPrompt }

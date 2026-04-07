@@ -80,11 +80,15 @@
 	import ProjectInsightRailSkeleton from '$lib/components/project/ProjectInsightRailSkeleton.svelte';
 	import ProjectHistorySection from '$lib/components/project/ProjectHistorySection.svelte';
 	import {
+		archiveProjectDocument,
+		deleteProject,
 		fetchProjectEvents,
 		fetchProjectFullData,
 		fetchProjectMembers,
 		fetchProjectNotificationSettings,
 		fetchProjectSnapshot,
+		moveProjectDocument,
+		updateProjectMilestoneState,
 		updateProjectNotificationSettings,
 		type OntoEventWithSync,
 		type ProjectNotificationSettings
@@ -974,11 +978,10 @@
 		isNotificationSettingsSaving = true;
 
 		try {
-			const updatedSettings = await updateProjectNotificationSettings({
+			projectNotificationSettings = await updateProjectNotificationSettings({
 				projectId: project.id,
 				memberEnabled: nextEnabled
 			});
-			projectNotificationSettings = updatedSettings ?? projectNotificationSettings;
 
 			toastService.success(
 				nextEnabled
@@ -1123,25 +1126,25 @@
 		if (!moveDocumentId || !project?.id) return;
 
 		try {
-			const res = await fetch(`/api/onto/projects/${project.id}/doc-tree/move`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					document_id: moveDocumentId,
-					new_parent_id: newParentId,
-					new_position: 0
-				})
+			await moveProjectDocument({
+				projectId: project.id,
+				documentId: moveDocumentId,
+				newParentId,
+				newPosition: 0
 			});
-
-			if (!res.ok) {
-				const data = await res.json().catch(() => ({}));
-				throw new Error(data.error || 'Failed to move document');
-			}
 
 			toastService.success('Document moved');
 			docTreeViewRef?.refresh();
 		} catch (error) {
 			console.error('[Project] Failed to move document:', error);
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/projects/${project.id}/doc-tree/move`,
+				method: 'POST',
+				projectId: project.id,
+				entityType: 'document',
+				entityId: moveDocumentId,
+				operation: 'project_document_move'
+			});
 			toastService.error(error instanceof Error ? error.message : 'Failed to move document');
 		} finally {
 			showMoveDocModal = false;
@@ -1157,19 +1160,10 @@
 		const docIdToArchive = deleteDocumentId;
 
 		try {
-			const res = await fetch(`/api/onto/documents/${docIdToArchive}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					action: 'archive',
-					archive_children_mode: mode
-				})
+			await archiveProjectDocument({
+				documentId: docIdToArchive,
+				mode
 			});
-
-			if (!res.ok) {
-				const data = await res.json().catch(() => ({}));
-				throw new Error(data.error || 'Failed to archive document');
-			}
 
 			showDeleteDocConfirmModal = false;
 			deleteDocumentId = null;
@@ -1178,6 +1172,14 @@
 			docTreeViewRef?.refresh();
 		} catch (error) {
 			console.error('[Project] Failed to archive document:', error);
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${docIdToArchive}`,
+				method: 'PATCH',
+				projectId: project.id,
+				entityType: 'document',
+				entityId: docIdToArchive,
+				operation: 'project_document_archive'
+			});
 			toastService.error(
 				error instanceof Error ? error.message : 'Failed to archive document'
 			);
@@ -1323,16 +1325,10 @@
 		const newState: MilestoneState = currentState === 'completed' ? 'pending' : 'completed';
 
 		try {
-			const response = await fetch(`/api/onto/milestones/${milestoneId}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ state_key: newState })
+			await updateProjectMilestoneState({
+				milestoneId,
+				stateKey: newState
 			});
-
-			if (!response.ok) {
-				const payload = await response.json().catch(() => null);
-				throw new Error(payload?.error || 'Failed to update milestone');
-			}
 
 			// Optimistic update
 			milestones = milestones.map((m) => {
@@ -1398,11 +1394,7 @@
 		deleteProjectError = null;
 
 		try {
-			const response = await fetch(`/api/onto/projects/${project.id}`, { method: 'DELETE' });
-			const payload = await response.json().catch(() => null);
-			if (!response.ok) {
-				throw new Error(payload?.error || 'Failed to delete project');
-			}
+			await deleteProject(project.id);
 			toastService.success('Project deleted');
 			showDeleteProjectModal = false;
 			goto('/projects');

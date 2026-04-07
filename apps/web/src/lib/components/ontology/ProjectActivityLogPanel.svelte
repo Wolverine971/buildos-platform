@@ -11,6 +11,7 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 	import { History, ChevronDown, Plus, Pencil, Trash2, LoaderCircle, Clock } from 'lucide-svelte';
+	import { fetchProjectLogs } from '$lib/components/project/project-page-data-controller';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import type { ProjectLogEntryWithMeta, ProjectLogEntityType } from '@buildos/shared-types';
 
@@ -18,12 +19,6 @@
 	// TYPES
 	// ============================================================
 	type EnrichedLogEntry = ProjectLogEntryWithMeta;
-
-	interface LogsResponse {
-		logs: EnrichedLogEntry[];
-		total: number;
-		hasMore: boolean;
-	}
 
 	// ============================================================
 	// PROPS
@@ -68,19 +63,7 @@
 		}
 
 		try {
-			const response = await fetch(
-				`/api/onto/projects/${projectId}/logs?limit=${limit}&offset=${offset}`
-			);
-			const payload = await response.json();
-
-			if (!response.ok) {
-				throw new Error(payload?.error || 'Failed to fetch logs');
-			}
-
-			const data = payload.data as LogsResponse | undefined;
-			if (!data) {
-				throw new Error('Invalid response: missing data');
-			}
+			const data = await fetchProjectLogs({ projectId, limit, offset });
 
 			// Sort logs by most recent first
 			const sortByMostRecent = (entries: EnrichedLogEntry[]) =>
@@ -114,7 +97,7 @@
 				projectId,
 				entityType: 'project',
 				operation: 'project_logs_load',
-				metadata: { offset, limit: INITIAL_LIMIT }
+				metadata: { offset, limit }
 			});
 			if (!silent) {
 				error = err instanceof Error ? err.message : 'Failed to load activity log';

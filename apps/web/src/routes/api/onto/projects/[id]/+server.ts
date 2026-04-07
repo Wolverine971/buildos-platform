@@ -21,6 +21,7 @@ import {
 	sanitizeProjectForClient,
 	sanitizeProjectPropsPatchInput
 } from '$lib/utils/project-props-sanitizer';
+import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
 import {
 	attachLastChangedByActorToTasks,
@@ -38,6 +39,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		if (!id) {
 			return ApiResponse.badRequest('Project ID required');
+		}
+		if (!isValidUUID(id)) {
+			return ApiResponse.badRequest('Invalid project ID');
 		}
 
 		const supabase = locals.supabase;
@@ -320,6 +324,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const { id } = params;
 		if (!id) {
 			return ApiResponse.badRequest('Project ID required');
+		}
+		if (!isValidUUID(id)) {
+			return ApiResponse.badRequest('Invalid project ID');
 		}
 
 		const body = await request.json().catch(() => null);
@@ -644,6 +651,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		const { id } = params;
 		if (!id) {
 			return ApiResponse.badRequest('Project ID required');
+		}
+		if (!isValidUUID(id)) {
+			return ApiResponse.badRequest('Invalid project ID');
 		}
 
 		const supabase = locals.supabase;
