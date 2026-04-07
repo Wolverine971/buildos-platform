@@ -2089,9 +2089,7 @@ function applyGatewayValidationContext(
 			...args,
 			project_id: effectiveProjectId
 		};
-		return op === 'onto.project.create'
-			? normalizeProjectCreateArgs(withProjectId)
-			: withProjectId;
+		return withProjectId;
 	}
 
 	const schema = getToolRegistry().ops[op]?.parameters_schema;

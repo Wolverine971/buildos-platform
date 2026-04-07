@@ -153,7 +153,7 @@ export class OntoEventSyncService {
 		this.calendarService = new CalendarService(supabase);
 		this.projectCalendarService = new ProjectCalendarService(supabase);
 		this.googleOAuthService = new GoogleOAuthService(supabase);
-		this.errorLogger = new ErrorLoggerService(supabase);
+		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 
 	private async logGoogleDeleteFailure(params: {

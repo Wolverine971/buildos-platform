@@ -61,6 +61,7 @@
 	import type { VoiceNote } from '$lib/types/voice-notes';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { formatDateForDisplay } from '$lib/utils/date-utils';
 	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
 	import {
 		exportDocumentAsDocx,
@@ -95,11 +96,9 @@
 		Clock
 	} from 'lucide-svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-	import { type Component } from 'svelte';
-
 	// Lazy-loaded AgentChatModal for better initial load performance
 
-	type LazyComponent = Component<any, any, any> | null;
+	type LazyComponent = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
 	let AgentChatModalComponent = $state<LazyComponent>(null);
 
 	async function loadAgentChatModal() {
@@ -738,14 +737,14 @@
 	function scheduleDeferredDocumentLoad(task: () => void, fallbackDelayMs: number): () => void {
 		if (!browser) return () => {};
 
-		if ('requestIdleCallback' in window) {
-			const idleWindow = window as Window & {
-				requestIdleCallback?: (
-					callback: IdleRequestCallback,
-					options?: IdleRequestOptions
-				) => number;
-				cancelIdleCallback?: (handle: number) => void;
-			};
+		const idleWindow = window as Window & {
+			requestIdleCallback?: (
+				callback: IdleRequestCallback,
+				options?: IdleRequestOptions
+			) => number;
+			cancelIdleCallback?: (handle: number) => void;
+		};
+		if (typeof idleWindow.requestIdleCallback === 'function') {
 			const handle = idleWindow.requestIdleCallback?.(() => task(), {
 				timeout: Math.max(1000, fallbackDelayMs * 4)
 			});
@@ -756,8 +755,12 @@
 			};
 		}
 
-		const timeoutId = window.setTimeout(task, fallbackDelayMs);
-		return () => window.clearTimeout(timeoutId);
+		const timeoutId = globalThis.setTimeout(task, fallbackDelayMs);
+		return () => globalThis.clearTimeout(timeoutId);
+	}
+
+	function formatDate(dateString: string | null | undefined): string {
+		return formatDateForDisplay(dateString) || 'Unknown date';
 	}
 
 	function resetDocumentPanels() {
@@ -2212,6 +2215,7 @@
 							class="fixed z-[10000] w-40 overflow-hidden rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak"
 							style="top: {exportMenuPos.top}px; right: {exportMenuPos.right}px;"
 							role="menu"
+							tabindex="-1"
 							onclick={(event) => event.stopPropagation()}
 							onkeydown={(event) => {
 								if (event.key === 'Escape') {

@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockGetUserDashboardAnalytics = vi.fn();
+const mockLoadBlogPosts = vi.fn();
 const mockCreateEmptyDashboard = vi.fn(() => ({
 	snapshot: { totalProjects: 0 },
 	recent: { projects: [], tasks: [], goals: [], documents: [], chatSessions: [] },
@@ -21,6 +22,10 @@ vi.mock('$lib/types/dashboard-analytics', () => ({
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: mockEnsureActorId,
 	fetchProjectSummaries: mockFetchProjectSummaries
+}));
+
+vi.mock('$lib/utils/blog', () => ({
+	loadBlogPosts: mockLoadBlogPosts
 }));
 
 const mockUser = {
@@ -43,6 +48,12 @@ describe('Authenticated Pages', () => {
 		vi.clearAllMocks();
 		mockEnsureActorId.mockResolvedValue('actor-1');
 		mockFetchProjectSummaries.mockResolvedValue([{ id: 'proj-1', name: 'Test project' }]);
+		mockLoadBlogPosts.mockResolvedValue([
+			{ slug: 'how-buildos-works', title: 'How BuildOS Works' },
+			{ slug: 'first-project-setup', title: 'First Project Setup' },
+			{ slug: 'daily-brief-guide', title: 'Daily Brief Guide' },
+			{ slug: 'not-featured', title: 'Ignore Me' }
+		]);
 	});
 
 	describe('Homepage (/) - Dashboard', () => {
@@ -59,7 +70,15 @@ describe('Authenticated Pages', () => {
 				depends
 			} as any);
 
-			expect(result).toEqual({ user: null, dashboard: null });
+			expect(result).toEqual({
+				user: null,
+				dashboard: null,
+				featuredBlogPosts: [
+					{ slug: 'how-buildos-works', title: 'How BuildOS Works' },
+					{ slug: 'first-project-setup', title: 'First Project Setup' },
+					{ slug: 'daily-brief-guide', title: 'Daily Brief Guide' }
+				]
+			});
 			expect(depends).toHaveBeenCalledWith('app:auth');
 			expect(depends).toHaveBeenCalledWith('dashboard:analytics');
 		});

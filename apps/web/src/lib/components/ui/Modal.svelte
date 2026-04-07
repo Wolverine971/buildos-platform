@@ -365,10 +365,7 @@
 	// ==================== Lifecycle Management ====================
 
 	async function handleModalOpen() {
-		if (import.meta.env.DEV) {
-			console.log('[Modal] Opening:', { title, variant, size });
-		}
-
+		
 		if (unlockRafId !== null) {
 			cancelAnimationFrame(unlockRafId);
 			unlockRafId = null;
@@ -398,10 +395,6 @@
 	}
 
 	function handleModalClose() {
-		if (import.meta.env.DEV) {
-			console.log('[Modal] Closing:', { title });
-		}
-
 		if (focusTrapCleanup) {
 			focusTrapCleanup();
 			focusTrapCleanup = null;

@@ -9,12 +9,68 @@ vi.mock('$lib/services/ontology/task-event-sync.service', () => ({
 	}))
 }));
 
+vi.mock('$lib/services/ontology/onto-event-sync.service', () => ({
+	OntoEventSyncService: vi.fn().mockImplementation(() => ({
+		deleteEvent: vi.fn()
+	}))
+}));
+
+vi.mock('$lib/services/ontology/auto-organizer.service', () => ({
+	AutoOrganizeError: class AutoOrganizeError extends Error {
+		status = 400;
+	},
+	ENTITY_TABLES: {
+		project: 'onto_projects',
+		plan: 'onto_plans',
+		goal: 'onto_goals',
+		milestone: 'onto_milestones',
+		task: 'onto_tasks',
+		document: 'onto_documents'
+	},
+	autoOrganizeConnections: vi.fn(),
+	assertEntityRefsInProject: vi.fn(),
+	toParentRefs: vi.fn(() => [])
+}));
+
 vi.mock('$lib/services/async-activity-logger', () => ({
 	logUpdateAsync: vi.fn(),
 	logDeleteAsync: vi.fn(),
 	getChangeSourceFromRequest: vi.fn(() => 'ui'),
 	getChatSessionIdFromRequest: vi.fn(() => null)
 }));
+
+vi.mock('../../shared/error-logging', () => ({
+	logOntologyApiError: vi.fn()
+}));
+
+vi.mock('$lib/server/task-assignment.service', () => ({
+	TaskAssignmentValidationError: class TaskAssignmentValidationError extends Error {
+		status: number;
+		constructor(message: string, status = 400) {
+			super(message);
+			this.status = status;
+		}
+	},
+	parseAssigneeActorIds: vi.fn(() => ({
+		hasInput: false,
+		assigneeActorIds: []
+	})),
+	validateAssigneesAreProjectEligible: vi.fn(async () => {}),
+	syncTaskAssignees: vi.fn(async () => ({ addedActorIds: [] })),
+	notifyTaskAssignmentAdded: vi.fn(async () => ({ recipientUserIds: [] })),
+	fetchTaskAssigneesMap: vi.fn(async () => new Map()),
+	attachAssigneesToTask: vi.fn((task: Record<string, unknown>) => ({
+		...task,
+		assignees: []
+	}))
+}));
+
+vi.mock('$lib/server/entity-mention-notification.service', () => ({
+	resolveEntityMentionUserIds: vi.fn(async () => []),
+	notifyEntityMentionsAdded: vi.fn(async () => ({ notifiedUserIds: [] }))
+}));
+
+const routeModule = import('./+server');
 
 class QueryBuilderMock {
 	private action: 'select' | 'update' | null = null;
@@ -96,6 +152,7 @@ function createSupabaseMock(fixtures: { existingTask: any; updatedTask?: any }) 
 describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 	beforeEach(() => {
 		syncTaskEventsMock.mockReset();
+		syncTaskEventsMock.mockResolvedValue(undefined);
 	});
 
 	it('syncs task events when transitioning to done', async () => {
@@ -119,7 +176,7 @@ describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 			}
 		});
 
-		const { PATCH } = await import('./+server');
+		const { PATCH } = await routeModule;
 		const request = new Request('http://localhost/api/onto/tasks/task1', {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
@@ -164,7 +221,7 @@ describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 			}
 		});
 
-		const { PATCH } = await import('./+server');
+		const { PATCH } = await routeModule;
 		const request = new Request('http://localhost/api/onto/tasks/task1', {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
@@ -208,7 +265,7 @@ describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 			}
 		});
 
-		const { PATCH } = await import('./+server');
+		const { PATCH } = await routeModule;
 		const request = new Request('http://localhost/api/onto/tasks/task1', {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },
@@ -252,7 +309,7 @@ describe('PATCH /api/onto/tasks/[id] completion sync behavior', () => {
 			}
 		});
 
-		const { PATCH } = await import('./+server');
+		const { PATCH } = await routeModule;
 		const request = new Request('http://localhost/api/onto/tasks/task1', {
 			method: 'PATCH',
 			headers: { 'Content-Type': 'application/json' },

@@ -492,15 +492,17 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		const exactTitleMatches = documents.filter(
 			(doc) => doc.title && doc.title.trim().toLowerCase() === normalizedIdentifier
 		);
-		if (exactTitleMatches.length === 1) {
-			return { id: exactTitleMatches[0].id, matchedBy: 'title_exact' };
+		const exactTitleMatch = exactTitleMatches[0];
+		if (exactTitleMatches.length === 1 && exactTitleMatch) {
+			return { id: exactTitleMatch.id, matchedBy: 'title_exact' };
 		}
 
 		const containsMatches = documents.filter((doc) =>
 			doc.title ? doc.title.trim().toLowerCase().includes(normalizedIdentifier) : false
 		);
-		if (containsMatches.length === 1) {
-			return { id: containsMatches[0].id, matchedBy: 'title_contains' };
+		const containsMatch = containsMatches[0];
+		if (containsMatches.length === 1 && containsMatch) {
+			return { id: containsMatch.id, matchedBy: 'title_contains' };
 		}
 
 		return null;
@@ -834,7 +836,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		};
 		normalizedArgs = normalizeProjectCreateArgs(normalizedArgs) as CreateOntoProjectArgs;
 		const projectCreateValidationErrors = validateProjectCreateArgs(
-			normalizedArgs as Record<string, unknown> as Record<string, any>
+			normalizedArgs as unknown as Record<string, any>
 		);
 		if (projectCreateValidationErrors.length > 0) {
 			throw new Error(

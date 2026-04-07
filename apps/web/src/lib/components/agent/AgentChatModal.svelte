@@ -3416,7 +3416,10 @@
 				// Store last turn context for next message
 				lastTurnContext = event.context;
 				if (dev) {
-					console.debug('[AgentChat] Stored last turn context:', lastTurnContext);
+					console.debug(
+					'[AgentChat] Stored last turn context:',
+					$state.snapshot(lastTurnContext)
+				);
 				}
 				break;
 
@@ -4331,7 +4334,11 @@
 	});
 </script>
 
-{#snippet chatConversationPane(showSessionLoadingState, showSessionLoadErrorState, retrySessionId)}
+{#snippet chatConversationPane(
+	showSessionLoadingState: boolean,
+	showSessionLoadErrorState: boolean,
+	retrySessionId: string | null
+)}
 	{#if showSessionLoadingState}
 		<div class="flex flex-1 items-center justify-center px-6 text-center">
 			<div class="max-w-sm space-y-2">

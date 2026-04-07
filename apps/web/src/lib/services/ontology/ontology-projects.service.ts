@@ -19,7 +19,7 @@ export interface OntologyProjectSummary {
 	icon_generation_source: 'auto' | 'manual' | null;
 	icon_generation_prompt: string | null;
 	type_key: string;
-	state_key: string;
+	state_key: Database['public']['Tables']['onto_projects']['Row']['state_key'];
 	props: Json;
 	facet_context: string | null;
 	facet_scale: string | null;
@@ -46,7 +46,7 @@ export interface OntologyProjectSelectorSummary {
 	name: string;
 	description: string | null;
 	type_key: string;
-	state_key: string;
+	state_key: Database['public']['Tables']['onto_projects']['Row']['state_key'];
 	facet_context: string | null;
 	facet_scale: string | null;
 	facet_stage: string | null;
@@ -190,7 +190,8 @@ export async function fetchProjectSummaries(
 					: null,
 			icon_generation_prompt: row.icon_generation_prompt ?? null,
 			type_key: row.type_key,
-			state_key: row.state_key,
+			state_key:
+				row.state_key as Database['public']['Tables']['onto_projects']['Row']['state_key'],
 			props: sanitizeProjectPropsForClient(
 				(row.props ?? {}) as Record<string, unknown>
 			) as Json,

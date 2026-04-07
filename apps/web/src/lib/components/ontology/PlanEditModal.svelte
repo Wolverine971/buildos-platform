@@ -42,21 +42,34 @@
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import { PLAN_STATES, type Plan } from '$lib/types/onto';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
-	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import GoalEditModal from './GoalEditModal.svelte';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
+	type PlanModalProps = Plan['props'] & {
+		description?: string;
+		plan?: string;
+		start_date?: string;
+		end_date?: string;
+		tags?: string[];
+	};
+
+	type LoadedPlan = Omit<Plan, 'props'> & {
+		props: PlanModalProps;
+		project?: { name?: string | null } | null;
+	};
+
 	// Lazy-loaded AgentChatModal for better initial load performance
 
-	let AgentChatModalComponent = $state<Component<any> | null>(null);
+	type AgentChatModalLazy = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
 			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
-			AgentChatModalComponent = mod.default as Component<any>;
+			AgentChatModalComponent = mod.default;
 		}
 		return AgentChatModalComponent;
 	}
@@ -72,7 +85,7 @@
 	let { planId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
 
 	let modalOpen = $state(true);
-	let plan = $state<Plan | null>(null);
+	let plan = $state<LoadedPlan | null>(null);
 	let linkedEntities = $state<LinkedEntitiesResult | undefined>(undefined);
 	let isLoading = $state(true);
 	let isSaving = $state(false);
@@ -160,7 +173,7 @@
 			if (!response.ok) throw new Error('Failed to load plan');
 
 			const data = await response.json();
-			plan = data.data?.plan;
+			plan = (data.data?.plan ?? null) as LoadedPlan | null;
 			linkedEntities = data.data?.linkedEntities;
 
 			if (plan) {

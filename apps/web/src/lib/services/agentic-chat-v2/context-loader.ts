@@ -1337,7 +1337,7 @@ async function loadGlobalContextData(
 	let projectSummaries: Array<{
 		id: string;
 		name: string;
-		state_key: string;
+		state_key: LightProject['state_key'];
 		description: string | null;
 		next_step_short: string | null;
 		updated_at: string;
@@ -1371,7 +1371,7 @@ async function loadGlobalContextData(
 		.map((row) => ({
 			id: row.id,
 			name: row.name,
-			state_key: row.state_key,
+			state_key: row.state_key as LightProject['state_key'],
 			description: truncateText(row.description, PROJECT_DESCRIPTION_MAX_CHARS),
 			start_at: null,
 			end_at: null,

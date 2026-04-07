@@ -28,8 +28,7 @@
 		X,
 		ExternalLink,
 		ChevronDown,
-		FileText,
-		MapPin
+		FileText
 	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -47,16 +46,18 @@
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
-	import type { Component } from 'svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded modal components for linked entity navigation
 
-	type LazyComponent = Component<any, any, any> | null;
-	let TaskEditModalComponent = $state<LazyComponent>(null);
-	let GoalEditModalComponent = $state<LazyComponent>(null);
-	let PlanEditModalComponent = $state<LazyComponent>(null);
-	let DocumentModalComponent = $state<LazyComponent>(null);
+	type TaskEditModalLazy = typeof import('./TaskEditModal.svelte').default | null;
+	type GoalEditModalLazy = typeof import('./GoalEditModal.svelte').default | null;
+	type PlanEditModalLazy = typeof import('./PlanEditModal.svelte').default | null;
+	type DocumentModalLazy = typeof import('./DocumentModal.svelte').default | null;
+	let TaskEditModalComponent = $state<TaskEditModalLazy>(null);
+	let GoalEditModalComponent = $state<GoalEditModalLazy>(null);
+	let PlanEditModalComponent = $state<PlanEditModalLazy>(null);
+	let DocumentModalComponent = $state<DocumentModalLazy>(null);
 
 	async function loadTaskEditModal() {
 		if (!TaskEditModalComponent) {

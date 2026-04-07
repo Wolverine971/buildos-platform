@@ -35,14 +35,13 @@
 	import TagsDisplay from './TagsDisplay.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import { PROJECT_STATES, type Project, type Document } from '$lib/types/onto';
-	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import { hasEntityReferences } from '$lib/utils/entity-reference-parser';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
-	type LazyComponent = Component<any, any, any> | null;
+	type LazyComponent = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
 	let AgentChatModalComponent = $state<LazyComponent>(null);
 
 	async function loadAgentChatModal() {

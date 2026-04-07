@@ -50,7 +50,6 @@
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
-	import type { Component } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -61,12 +60,13 @@
 
 	// Lazy-loaded AgentChatModal for better initial load performance
 
-	let AgentChatModalComponent = $state<Component<any> | null>(null);
+	type AgentChatModalLazy = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
 			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
-			AgentChatModalComponent = mod.default as Component<any>;
+			AgentChatModalComponent = mod.default;
 		}
 		return AgentChatModalComponent;
 	}

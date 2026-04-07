@@ -53,15 +53,17 @@
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
-	import type { Component } from 'svelte';
-
 	// Lazy-loaded modal components for better initial load performance
-	type LazyComponent = Component<any, any, any> | null;
-	let TaskSeriesModalComponent = $state<LazyComponent>(null);
-	let DocumentModalComponent = $state<LazyComponent>(null);
-	let GoalEditModalComponent = $state<LazyComponent>(null);
-	let PlanEditModalComponent = $state<LazyComponent>(null);
-	let AgentChatModalComponent = $state<LazyComponent>(null);
+	type TaskSeriesModalLazy = typeof import('./TaskSeriesModal.svelte').default | null;
+	type DocumentModalLazy = typeof import('./DocumentModal.svelte').default | null;
+	type GoalEditModalLazy = typeof import('./GoalEditModal.svelte').default | null;
+	type PlanEditModalLazy = typeof import('./PlanEditModal.svelte').default | null;
+	type AgentChatModalLazy = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	let TaskSeriesModalComponent = $state<TaskSeriesModalLazy>(null);
+	let DocumentModalComponent = $state<DocumentModalLazy>(null);
+	let GoalEditModalComponent = $state<GoalEditModalLazy>(null);
+	let PlanEditModalComponent = $state<PlanEditModalLazy>(null);
+	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 
 	async function loadTaskSeriesModal() {
 		if (!TaskSeriesModalComponent) {
@@ -255,7 +257,14 @@
 	}
 
 	function getPriorityMeta(value: number) {
-		return PRIORITY_META[value] ?? PRIORITY_META[3];
+		return (
+			PRIORITY_META[value] ??
+			PRIORITY_META[3] ?? {
+				label: 'P3 Medium',
+				variant: 'info' as SurfaceBadgeVariant,
+				note: 'Standard working priority.'
+			}
+		);
 	}
 
 	const detailsFormId = $derived(`task-edit-${taskId}-details`);

@@ -50,7 +50,6 @@
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
 	import { GOAL_STATES } from '$lib/types/onto';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
-	import type { ComponentType } from 'svelte';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import TaskEditModal from './TaskEditModal.svelte';
 	import PlanEditModal from './PlanEditModal.svelte';
@@ -59,7 +58,8 @@
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
 	// Lazy-loaded AgentChatModal for better initial load performance
-	let AgentChatModalComponent = $state<ComponentType<any> | null>(null);
+	type AgentChatModalLazy = typeof import('$lib/components/agent/AgentChatModal.svelte').default | null;
+	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
 
 	async function loadAgentChatModal() {
 		if (!AgentChatModalComponent) {
@@ -1083,6 +1083,7 @@
 	{#await import('./MilestoneEditModal.svelte') then { default: MilestoneEditModal }}
 		<MilestoneEditModal
 			milestoneId={editingMilestoneId}
+			projectId={projectId}
 			onClose={() => {
 				showMilestoneEditModal = false;
 				editingMilestoneId = null;

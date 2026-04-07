@@ -1,5 +1,5 @@
 // apps/web/src/lib/services/errorLogger.service.test.ts
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { ErrorLoggerService } from './errorLogger.service';
@@ -181,31 +181,41 @@ describe('ErrorLoggerService', () => {
 	});
 
 	it('counts only displayable errors in the summary', async () => {
-		const now = Date.parse('2026-04-03T12:00:00.000Z');
-		const service = createService([
-			makeNoiseError('noise-1', new Date(now - 1_000).toISOString()),
-			makeVisibleError('visible-open', new Date(now - 5 * 60 * 1000).toISOString()),
-			makeVisibleError('visible-critical', new Date(now - 2 * 60 * 60 * 1000).toISOString(), {
-				severity: 'critical'
-			}),
-			makeVisibleError(
-				'visible-resolved',
-				new Date(now - 10 * 24 * 60 * 60 * 1000).toISOString(),
-				{
-					resolved: true,
-					severity: 'warning'
-				}
-			)
-		]);
+		vi.useFakeTimers();
+		try {
+			const now = new Date('2026-04-03T12:00:00.000Z');
+			vi.setSystemTime(now);
+			const service = createService([
+				makeNoiseError('noise-1', new Date(now.getTime() - 1_000).toISOString()),
+				makeVisibleError('visible-open', new Date(now.getTime() - 5 * 60 * 1000).toISOString()),
+				makeVisibleError(
+					'visible-critical',
+					new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+					{
+						severity: 'critical'
+					}
+				),
+				makeVisibleError(
+					'visible-resolved',
+					new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+					{
+						resolved: true,
+						severity: 'warning'
+					}
+				)
+			]);
 
-		const summary = await service.getErrorSummary();
+			const summary = await service.getErrorSummary();
 
-		expect(summary).toEqual({
-			total_errors: 3,
-			unresolved_errors: 2,
-			critical_errors: 1,
-			errors_last_24h: 2,
-			error_trend: 0
-		});
+			expect(summary).toEqual({
+				total_errors: 3,
+				unresolved_errors: 2,
+				critical_errors: 1,
+				errors_last_24h: 2,
+				error_trend: 0
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

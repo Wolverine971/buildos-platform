@@ -1,3 +1,5 @@
+<!-- chat-session-audit-quick-chat-de33b476-a1a3-4d-2026-04-04.md -->
+
 # Chat Session Audit: Quick chat
 
 - Exported At: 2026-04-04T05:44:54.279Z
@@ -48,28 +50,28 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "1d8b69dd-2998-4176-817a-b02b4a1867dd",
-  "session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-  "user_id": "255735ad-a34b-4ca9-942c-397ed8cc1435",
-  "role": "user",
-  "content": "Create a project called Podcast Launch for BuildOS. The goal is to publish the first 3 episodes by June 15. Tasks I already know about: define the show format, book the first 3 guests, and record the trailer.",
-  "created_at": "2026-04-04T05:43:49.116555+00:00",
-  "metadata": {
-    "stream_run_id": "1",
-    "client_turn_id": "8cae166c-6d63-4f15-a470-e987f06ed633",
-    "idempotency_key": "turn:8cae166c-6d63-4f15-a470-e987f06ed633:user"
-  },
-  "tool_call_id": null,
-  "tool_calls": null,
-  "tool_name": null,
-  "tool_result": null,
-  "prompt_tokens": null,
-  "completion_tokens": null,
-  "total_tokens": null,
-  "message_type": "assistant_message",
-  "error_message": null,
-  "error_code": null,
-  "operation_ids": null
+	"id": "1d8b69dd-2998-4176-817a-b02b4a1867dd",
+	"session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+	"user_id": "255735ad-a34b-4ca9-942c-397ed8cc1435",
+	"role": "user",
+	"content": "Create a project called Podcast Launch for BuildOS. The goal is to publish the first 3 episodes by June 15. Tasks I already know about: define the show format, book the first 3 guests, and record the trailer.",
+	"created_at": "2026-04-04T05:43:49.116555+00:00",
+	"metadata": {
+		"stream_run_id": "1",
+		"client_turn_id": "8cae166c-6d63-4f15-a470-e987f06ed633",
+		"idempotency_key": "turn:8cae166c-6d63-4f15-a470-e987f06ed633:user"
+	},
+	"tool_call_id": null,
+	"tool_calls": null,
+	"tool_name": null,
+	"tool_result": null,
+	"prompt_tokens": null,
+	"completion_tokens": null,
+	"total_tokens": null,
+	"message_type": "assistant_message",
+	"error_message": null,
+	"error_code": null,
+	"operation_ids": null
 }
 ```
 
@@ -87,10 +89,10 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-  "context_type": "project_create",
-  "entity_id": null,
-  "status": "active"
+	"session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+	"context_type": "project_create",
+	"entity_id": null,
+	"status": "active"
 }
 ```
 
@@ -106,30 +108,30 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "14cb1e90-ea6d-4082-adb4-7ba88bab8c3f",
-  "operation_type": "agentic_chat_v2_stream",
-  "model_requested": "x-ai/grok-4.1-fast",
-  "model_used": "x-ai/grok-4.1-fast",
-  "provider": "x-ai",
-  "status": "success",
-  "error_message": null,
-  "prompt_tokens": 4702,
-  "completion_tokens": 489,
-  "total_tokens": 5191,
-  "total_cost_usd": 0.0011849,
-  "response_time_ms": 4673,
-  "request_started_at": "2026-04-04T05:43:49.024+00:00",
-  "request_completed_at": "2026-04-04T05:43:53.697+00:00",
-  "openrouter_request_id": null,
-  "openrouter_cache_status": null,
-  "streaming": true,
-  "metadata": {
-    "hasTools": true,
-    "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "contextType": "project_create",
-    "modelResolvedFromStream": true,
-    "providerResolvedFromStream": true
-  }
+	"id": "14cb1e90-ea6d-4082-adb4-7ba88bab8c3f",
+	"operation_type": "agentic_chat_v2_stream",
+	"model_requested": "x-ai/grok-4.1-fast",
+	"model_used": "x-ai/grok-4.1-fast",
+	"provider": "x-ai",
+	"status": "success",
+	"error_message": null,
+	"prompt_tokens": 4702,
+	"completion_tokens": 489,
+	"total_tokens": 5191,
+	"total_cost_usd": 0.0011849,
+	"response_time_ms": 4673,
+	"request_started_at": "2026-04-04T05:43:49.024+00:00",
+	"request_completed_at": "2026-04-04T05:43:53.697+00:00",
+	"openrouter_request_id": null,
+	"openrouter_cache_status": null,
+	"streaming": true,
+	"metadata": {
+		"hasTools": true,
+		"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"contextType": "project_create",
+		"modelResolvedFromStream": true,
+		"providerResolvedFromStream": true
+	}
 }
 ```
 
@@ -145,25 +147,25 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "1d8b69dd-2998-4176-817a-b02b4a1867dd",
-  "role": "user",
-  "content": "Create a project called Podcast Launch for BuildOS. The goal is to publish the first 3 episodes by June 15. Tasks I already know about: define the show format, book the first 3 guests, and record the trailer.",
-  "message_type": "assistant_message",
-  "total_tokens": null,
-  "prompt_tokens": null,
-  "completion_tokens": null,
-  "tool_call_id": null,
-  "tool_name": null,
-  "tool_calls": null,
-  "tool_result": null,
-  "error_message": null,
-  "error_code": null,
-  "operation_ids": null,
-  "metadata": {
-    "stream_run_id": "1",
-    "client_turn_id": "8cae166c-6d63-4f15-a470-e987f06ed633",
-    "idempotency_key": "turn:8cae166c-6d63-4f15-a470-e987f06ed633:user"
-  }
+	"id": "1d8b69dd-2998-4176-817a-b02b4a1867dd",
+	"role": "user",
+	"content": "Create a project called Podcast Launch for BuildOS. The goal is to publish the first 3 episodes by June 15. Tasks I already know about: define the show format, book the first 3 guests, and record the trailer.",
+	"message_type": "assistant_message",
+	"total_tokens": null,
+	"prompt_tokens": null,
+	"completion_tokens": null,
+	"tool_call_id": null,
+	"tool_name": null,
+	"tool_calls": null,
+	"tool_result": null,
+	"error_message": null,
+	"error_code": null,
+	"operation_ids": null,
+	"metadata": {
+		"stream_run_id": "1",
+		"client_turn_id": "8cae166c-6d63-4f15-a470-e987f06ed633",
+		"idempotency_key": "turn:8cae166c-6d63-4f15-a470-e987f06ed633:user"
+	}
 }
 ```
 
@@ -179,30 +181,30 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "b9548576-b476-4529-b9c2-ec6c02314382",
-  "operation_type": "agentic_chat_v2_stream",
-  "model_requested": "x-ai/grok-4.1-fast",
-  "model_used": "x-ai/grok-4.1-fast",
-  "provider": "x-ai",
-  "status": "success",
-  "error_message": null,
-  "prompt_tokens": 5319,
-  "completion_tokens": 833,
-  "total_tokens": 6152,
-  "total_cost_usd": 0.0014803,
-  "response_time_ms": 9159,
-  "request_started_at": "2026-04-04T05:43:53.723+00:00",
-  "request_completed_at": "2026-04-04T05:44:02.882+00:00",
-  "openrouter_request_id": null,
-  "openrouter_cache_status": null,
-  "streaming": true,
-  "metadata": {
-    "hasTools": true,
-    "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "contextType": "project_create",
-    "modelResolvedFromStream": true,
-    "providerResolvedFromStream": true
-  }
+	"id": "b9548576-b476-4529-b9c2-ec6c02314382",
+	"operation_type": "agentic_chat_v2_stream",
+	"model_requested": "x-ai/grok-4.1-fast",
+	"model_used": "x-ai/grok-4.1-fast",
+	"provider": "x-ai",
+	"status": "success",
+	"error_message": null,
+	"prompt_tokens": 5319,
+	"completion_tokens": 833,
+	"total_tokens": 6152,
+	"total_cost_usd": 0.0014803,
+	"response_time_ms": 9159,
+	"request_started_at": "2026-04-04T05:43:53.723+00:00",
+	"request_completed_at": "2026-04-04T05:44:02.882+00:00",
+	"openrouter_request_id": null,
+	"openrouter_cache_status": null,
+	"streaming": true,
+	"metadata": {
+		"hasTools": true,
+		"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"contextType": "project_create",
+		"modelResolvedFromStream": true,
+		"providerResolvedFromStream": true
+	}
 }
 ```
 
@@ -218,30 +220,30 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "078adc0c-adc2-4687-b4d3-35d14711d3a8",
-  "operation_type": "agentic_chat_v2_stream",
-  "model_requested": "x-ai/grok-4.1-fast",
-  "model_used": "x-ai/grok-4.1-fast",
-  "provider": "x-ai",
-  "status": "success",
-  "error_message": null,
-  "prompt_tokens": 6087,
-  "completion_tokens": 326,
-  "total_tokens": 6413,
-  "total_cost_usd": 0.0013804,
-  "response_time_ms": 4919,
-  "request_started_at": "2026-04-04T05:44:02.893+00:00",
-  "request_completed_at": "2026-04-04T05:44:07.812+00:00",
-  "openrouter_request_id": null,
-  "openrouter_cache_status": null,
-  "streaming": true,
-  "metadata": {
-    "hasTools": true,
-    "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "contextType": "project_create",
-    "modelResolvedFromStream": true,
-    "providerResolvedFromStream": true
-  }
+	"id": "078adc0c-adc2-4687-b4d3-35d14711d3a8",
+	"operation_type": "agentic_chat_v2_stream",
+	"model_requested": "x-ai/grok-4.1-fast",
+	"model_used": "x-ai/grok-4.1-fast",
+	"provider": "x-ai",
+	"status": "success",
+	"error_message": null,
+	"prompt_tokens": 6087,
+	"completion_tokens": 326,
+	"total_tokens": 6413,
+	"total_cost_usd": 0.0013804,
+	"response_time_ms": 4919,
+	"request_started_at": "2026-04-04T05:44:02.893+00:00",
+	"request_completed_at": "2026-04-04T05:44:07.812+00:00",
+	"openrouter_request_id": null,
+	"openrouter_cache_status": null,
+	"streaming": true,
+	"metadata": {
+		"hasTools": true,
+		"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"contextType": "project_create",
+		"modelResolvedFromStream": true,
+		"providerResolvedFromStream": true
+	}
 }
 ```
 
@@ -257,30 +259,30 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "1afd540d-b548-4eae-beea-32f28afa3ae0",
-  "operation_type": "agentic_chat_v2_stream",
-  "model_requested": "x-ai/grok-4.1-fast",
-  "model_used": "x-ai/grok-4.1-fast",
-  "provider": "x-ai",
-  "status": "success",
-  "error_message": null,
-  "prompt_tokens": 6256,
-  "completion_tokens": 471,
-  "total_tokens": 6727,
-  "total_cost_usd": 0.0014867,
-  "response_time_ms": 5525,
-  "request_started_at": "2026-04-04T05:44:07.816+00:00",
-  "request_completed_at": "2026-04-04T05:44:13.341+00:00",
-  "openrouter_request_id": null,
-  "openrouter_cache_status": null,
-  "streaming": true,
-  "metadata": {
-    "hasTools": true,
-    "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "contextType": "project_create",
-    "modelResolvedFromStream": true,
-    "providerResolvedFromStream": true
-  }
+	"id": "1afd540d-b548-4eae-beea-32f28afa3ae0",
+	"operation_type": "agentic_chat_v2_stream",
+	"model_requested": "x-ai/grok-4.1-fast",
+	"model_used": "x-ai/grok-4.1-fast",
+	"provider": "x-ai",
+	"status": "success",
+	"error_message": null,
+	"prompt_tokens": 6256,
+	"completion_tokens": 471,
+	"total_tokens": 6727,
+	"total_cost_usd": 0.0014867,
+	"response_time_ms": 5525,
+	"request_started_at": "2026-04-04T05:44:07.816+00:00",
+	"request_completed_at": "2026-04-04T05:44:13.341+00:00",
+	"openrouter_request_id": null,
+	"openrouter_cache_status": null,
+	"streaming": true,
+	"metadata": {
+		"hasTools": true,
+		"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"contextType": "project_create",
+		"modelResolvedFromStream": true,
+		"providerResolvedFromStream": true
+	}
 }
 ```
 
@@ -296,69 +298,60 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "8d543acb-2b3e-4559-bf17-b78e0f6ec8e3",
-  "message_id": null,
-  "turn_run_id": null,
-  "stream_run_id": null,
-  "client_turn_id": null,
-  "tool_name": "create_onto_project",
-  "tool_category": "ontology_action",
-  "gateway_op": null,
-  "help_path": null,
-  "sequence_index": null,
-  "success": false,
-  "execution_time_ms": 563,
-  "tokens_consumed": null,
-  "error_message": "Tool 'create_onto_project' failed: API POST /api/onto/projects/instantiate failed: Invalid ProjectSpec ({\"errors\":[\"relationships.0: Invalid input\",\"relationships.1: Invalid input\",\"relationships.2: Invalid input\"]})",
-  "requires_user_action": false,
-  "arguments": {
-    "project": {
-      "name": "Podcast Launch",
-      "type_key": "project.media.podcast",
-      "description": "Launch a new podcast with the goal of publishing the first 3 episodes by June 15."
-    },
-    "entities": [
-      {
-        "kind": "goal",
-        "name": "Publish the first 3 episodes by June 15",
-        "temp_id": "g1",
-        "description": "Outcome: first 3 episodes live by June 15."
-      },
-      {
-        "kind": "task",
-        "title": "Define the show format",
-        "temp_id": "t1",
-        "description": "Define podcast format."
-      },
-      {
-        "kind": "task",
-        "title": "Book the first 3 guests",
-        "temp_id": "t2",
-        "description": "Secure guests for episodes 1-3."
-      },
-      {
-        "kind": "task",
-        "title": "Record the trailer",
-        "temp_id": "t3",
-        "description": "Record and produce the podcast trailer."
-      }
-    ],
-    "relationships": [
-      [
-        "g1",
-        "t1"
-      ],
-      [
-        "g1",
-        "t2"
-      ],
-      [
-        "g1",
-        "t3"
-      ]
-    ]
-  },
-  "result": null
+	"id": "8d543acb-2b3e-4559-bf17-b78e0f6ec8e3",
+	"message_id": null,
+	"turn_run_id": null,
+	"stream_run_id": null,
+	"client_turn_id": null,
+	"tool_name": "create_onto_project",
+	"tool_category": "ontology_action",
+	"gateway_op": null,
+	"help_path": null,
+	"sequence_index": null,
+	"success": false,
+	"execution_time_ms": 563,
+	"tokens_consumed": null,
+	"error_message": "Tool 'create_onto_project' failed: API POST /api/onto/projects/instantiate failed: Invalid ProjectSpec ({\"errors\":[\"relationships.0: Invalid input\",\"relationships.1: Invalid input\",\"relationships.2: Invalid input\"]})",
+	"requires_user_action": false,
+	"arguments": {
+		"project": {
+			"name": "Podcast Launch",
+			"type_key": "project.media.podcast",
+			"description": "Launch a new podcast with the goal of publishing the first 3 episodes by June 15."
+		},
+		"entities": [
+			{
+				"kind": "goal",
+				"name": "Publish the first 3 episodes by June 15",
+				"temp_id": "g1",
+				"description": "Outcome: first 3 episodes live by June 15."
+			},
+			{
+				"kind": "task",
+				"title": "Define the show format",
+				"temp_id": "t1",
+				"description": "Define podcast format."
+			},
+			{
+				"kind": "task",
+				"title": "Book the first 3 guests",
+				"temp_id": "t2",
+				"description": "Secure guests for episodes 1-3."
+			},
+			{
+				"kind": "task",
+				"title": "Record the trailer",
+				"temp_id": "t3",
+				"description": "Record and produce the podcast trailer."
+			}
+		],
+		"relationships": [
+			["g1", "t1"],
+			["g1", "t2"],
+			["g1", "t3"]
+		]
+	},
+	"result": null
 }
 ```
 
@@ -374,30 +367,30 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "680f450f-2d44-4ac1-8908-25d766c790ea",
-  "operation_type": "agentic_chat_v2_stream",
-  "model_requested": "x-ai/grok-4.1-fast",
-  "model_used": "x-ai/grok-4.1-fast",
-  "provider": "x-ai",
-  "status": "success",
-  "error_message": null,
-  "prompt_tokens": 6560,
-  "completion_tokens": 1336,
-  "total_tokens": 7896,
-  "total_cost_usd": 0.00198,
-  "response_time_ms": 11593,
-  "request_started_at": "2026-04-04T05:44:14.038+00:00",
-  "request_completed_at": "2026-04-04T05:44:25.632+00:00",
-  "openrouter_request_id": null,
-  "openrouter_cache_status": null,
-  "streaming": true,
-  "metadata": {
-    "hasTools": true,
-    "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "contextType": "project_create",
-    "modelResolvedFromStream": true,
-    "providerResolvedFromStream": true
-  }
+	"id": "680f450f-2d44-4ac1-8908-25d766c790ea",
+	"operation_type": "agentic_chat_v2_stream",
+	"model_requested": "x-ai/grok-4.1-fast",
+	"model_used": "x-ai/grok-4.1-fast",
+	"provider": "x-ai",
+	"status": "success",
+	"error_message": null,
+	"prompt_tokens": 6560,
+	"completion_tokens": 1336,
+	"total_tokens": 7896,
+	"total_cost_usd": 0.00198,
+	"response_time_ms": 11593,
+	"request_started_at": "2026-04-04T05:44:14.038+00:00",
+	"request_completed_at": "2026-04-04T05:44:25.632+00:00",
+	"openrouter_request_id": null,
+	"openrouter_cache_status": null,
+	"streaming": true,
+	"metadata": {
+		"hasTools": true,
+		"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"contextType": "project_create",
+		"modelResolvedFromStream": true,
+		"providerResolvedFromStream": true
+	}
 }
 ```
 
@@ -413,30 +406,30 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "64de8eba-3e88-408d-922c-0add914d26f1",
-  "operation_type": "agentic_chat_v2_stream",
-  "model_requested": "x-ai/grok-4.1-fast",
-  "model_used": "x-ai/grok-4.1-fast",
-  "provider": "x-ai",
-  "status": "success",
-  "error_message": null,
-  "prompt_tokens": 7564,
-  "completion_tokens": 1068,
-  "total_tokens": 8632,
-  "total_cost_usd": 0.0020468,
-  "response_time_ms": 8066,
-  "request_started_at": "2026-04-04T05:44:25.637+00:00",
-  "request_completed_at": "2026-04-04T05:44:33.703+00:00",
-  "openrouter_request_id": null,
-  "openrouter_cache_status": null,
-  "streaming": true,
-  "metadata": {
-    "hasTools": true,
-    "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "contextType": "project_create",
-    "modelResolvedFromStream": true,
-    "providerResolvedFromStream": true
-  }
+	"id": "64de8eba-3e88-408d-922c-0add914d26f1",
+	"operation_type": "agentic_chat_v2_stream",
+	"model_requested": "x-ai/grok-4.1-fast",
+	"model_used": "x-ai/grok-4.1-fast",
+	"provider": "x-ai",
+	"status": "success",
+	"error_message": null,
+	"prompt_tokens": 7564,
+	"completion_tokens": 1068,
+	"total_tokens": 8632,
+	"total_cost_usd": 0.0020468,
+	"response_time_ms": 8066,
+	"request_started_at": "2026-04-04T05:44:25.637+00:00",
+	"request_completed_at": "2026-04-04T05:44:33.703+00:00",
+	"openrouter_request_id": null,
+	"openrouter_cache_status": null,
+	"streaming": true,
+	"metadata": {
+		"hasTools": true,
+		"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"contextType": "project_create",
+		"modelResolvedFromStream": true,
+		"providerResolvedFromStream": true
+	}
 }
 ```
 
@@ -452,30 +445,30 @@ Create a project called Podcast Launch for BuildOS. The goal is to publish the f
 
 ```json
 {
-  "id": "3035cac4-9645-450b-8026-453b561d479f",
-  "operation_type": "agentic_chat_v2_stream",
-  "model_requested": "x-ai/grok-4.1-fast",
-  "model_used": "x-ai/grok-4.1-fast",
-  "provider": "x-ai",
-  "status": "success",
-  "error_message": null,
-  "prompt_tokens": 8569,
-  "completion_tokens": 570,
-  "total_tokens": 9139,
-  "total_cost_usd": 0.0019988,
-  "response_time_ms": 7120,
-  "request_started_at": "2026-04-04T05:44:33.71+00:00",
-  "request_completed_at": "2026-04-04T05:44:40.83+00:00",
-  "openrouter_request_id": null,
-  "openrouter_cache_status": null,
-  "streaming": true,
-  "metadata": {
-    "hasTools": true,
-    "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "contextType": "project_create",
-    "modelResolvedFromStream": true,
-    "providerResolvedFromStream": true
-  }
+	"id": "3035cac4-9645-450b-8026-453b561d479f",
+	"operation_type": "agentic_chat_v2_stream",
+	"model_requested": "x-ai/grok-4.1-fast",
+	"model_used": "x-ai/grok-4.1-fast",
+	"provider": "x-ai",
+	"status": "success",
+	"error_message": null,
+	"prompt_tokens": 8569,
+	"completion_tokens": 570,
+	"total_tokens": 9139,
+	"total_cost_usd": 0.0019988,
+	"response_time_ms": 7120,
+	"request_started_at": "2026-04-04T05:44:33.71+00:00",
+	"request_completed_at": "2026-04-04T05:44:40.83+00:00",
+	"openrouter_request_id": null,
+	"openrouter_cache_status": null,
+	"streaming": true,
+	"metadata": {
+		"hasTools": true,
+		"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"contextType": "project_create",
+		"modelResolvedFromStream": true,
+		"providerResolvedFromStream": true
+	}
 }
 ```
 
@@ -489,73 +482,64 @@ _No turn runs recorded._
 
 ```json
 [
-  {
-    "id": "8d543acb-2b3e-4559-bf17-b78e0f6ec8e3",
-    "session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "message_id": null,
-    "turn_run_id": null,
-    "stream_run_id": null,
-    "client_turn_id": null,
-    "tool_name": "create_onto_project",
-    "tool_category": "ontology_action",
-    "gateway_op": null,
-    "help_path": null,
-    "sequence_index": null,
-    "arguments": {
-      "project": {
-        "name": "Podcast Launch",
-        "type_key": "project.media.podcast",
-        "description": "Launch a new podcast with the goal of publishing the first 3 episodes by June 15."
-      },
-      "entities": [
-        {
-          "kind": "goal",
-          "name": "Publish the first 3 episodes by June 15",
-          "temp_id": "g1",
-          "description": "Outcome: first 3 episodes live by June 15."
-        },
-        {
-          "kind": "task",
-          "title": "Define the show format",
-          "temp_id": "t1",
-          "description": "Define podcast format."
-        },
-        {
-          "kind": "task",
-          "title": "Book the first 3 guests",
-          "temp_id": "t2",
-          "description": "Secure guests for episodes 1-3."
-        },
-        {
-          "kind": "task",
-          "title": "Record the trailer",
-          "temp_id": "t3",
-          "description": "Record and produce the podcast trailer."
-        }
-      ],
-      "relationships": [
-        [
-          "g1",
-          "t1"
-        ],
-        [
-          "g1",
-          "t2"
-        ],
-        [
-          "g1",
-          "t3"
-        ]
-      ]
-    },
-    "result": null,
-    "execution_time_ms": 563,
-    "tokens_consumed": null,
-    "success": false,
-    "error_message": "Tool 'create_onto_project' failed: API POST /api/onto/projects/instantiate failed: Invalid ProjectSpec ({\"errors\":[\"relationships.0: Invalid input\",\"relationships.1: Invalid input\",\"relationships.2: Invalid input\"]})",
-    "requires_user_action": false,
-    "created_at": "2026-04-04T05:44:13.979842+00:00"
-  }
+	{
+		"id": "8d543acb-2b3e-4559-bf17-b78e0f6ec8e3",
+		"session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"message_id": null,
+		"turn_run_id": null,
+		"stream_run_id": null,
+		"client_turn_id": null,
+		"tool_name": "create_onto_project",
+		"tool_category": "ontology_action",
+		"gateway_op": null,
+		"help_path": null,
+		"sequence_index": null,
+		"arguments": {
+			"project": {
+				"name": "Podcast Launch",
+				"type_key": "project.media.podcast",
+				"description": "Launch a new podcast with the goal of publishing the first 3 episodes by June 15."
+			},
+			"entities": [
+				{
+					"kind": "goal",
+					"name": "Publish the first 3 episodes by June 15",
+					"temp_id": "g1",
+					"description": "Outcome: first 3 episodes live by June 15."
+				},
+				{
+					"kind": "task",
+					"title": "Define the show format",
+					"temp_id": "t1",
+					"description": "Define podcast format."
+				},
+				{
+					"kind": "task",
+					"title": "Book the first 3 guests",
+					"temp_id": "t2",
+					"description": "Secure guests for episodes 1-3."
+				},
+				{
+					"kind": "task",
+					"title": "Record the trailer",
+					"temp_id": "t3",
+					"description": "Record and produce the podcast trailer."
+				}
+			],
+			"relationships": [
+				["g1", "t1"],
+				["g1", "t2"],
+				["g1", "t3"]
+			]
+		},
+		"result": null,
+		"execution_time_ms": 563,
+		"tokens_consumed": null,
+		"success": false,
+		"error_message": "Tool 'create_onto_project' failed: API POST /api/onto/projects/instantiate failed: Invalid ProjectSpec ({\"errors\":[\"relationships.0: Invalid input\",\"relationships.1: Invalid input\",\"relationships.2: Invalid input\"]})",
+		"requires_user_action": false,
+		"created_at": "2026-04-04T05:44:13.979842+00:00"
+	}
 ]
 ```
 
@@ -563,202 +547,202 @@ _No turn runs recorded._
 
 ```json
 [
-  {
-    "id": "14cb1e90-ea6d-4082-adb4-7ba88bab8c3f",
-    "chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "operation_type": "agentic_chat_v2_stream",
-    "model_requested": "x-ai/grok-4.1-fast",
-    "model_used": "x-ai/grok-4.1-fast",
-    "provider": "x-ai",
-    "status": "success",
-    "error_message": null,
-    "prompt_tokens": 4702,
-    "completion_tokens": 489,
-    "total_tokens": 5191,
-    "total_cost_usd": 0.0011849,
-    "response_time_ms": 4673,
-    "request_started_at": "2026-04-04T05:43:49.024+00:00",
-    "request_completed_at": "2026-04-04T05:43:53.697+00:00",
-    "created_at": "2026-04-04T05:43:53.773915+00:00",
-    "metadata": {
-      "hasTools": true,
-      "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-      "contextType": "project_create",
-      "modelResolvedFromStream": true,
-      "providerResolvedFromStream": true
-    },
-    "openrouter_request_id": null,
-    "openrouter_cache_status": null,
-    "streaming": true
-  },
-  {
-    "id": "b9548576-b476-4529-b9c2-ec6c02314382",
-    "chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "operation_type": "agentic_chat_v2_stream",
-    "model_requested": "x-ai/grok-4.1-fast",
-    "model_used": "x-ai/grok-4.1-fast",
-    "provider": "x-ai",
-    "status": "success",
-    "error_message": null,
-    "prompt_tokens": 5319,
-    "completion_tokens": 833,
-    "total_tokens": 6152,
-    "total_cost_usd": 0.0014803,
-    "response_time_ms": 9159,
-    "request_started_at": "2026-04-04T05:43:53.723+00:00",
-    "request_completed_at": "2026-04-04T05:44:02.882+00:00",
-    "created_at": "2026-04-04T05:44:02.992931+00:00",
-    "metadata": {
-      "hasTools": true,
-      "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-      "contextType": "project_create",
-      "modelResolvedFromStream": true,
-      "providerResolvedFromStream": true
-    },
-    "openrouter_request_id": null,
-    "openrouter_cache_status": null,
-    "streaming": true
-  },
-  {
-    "id": "078adc0c-adc2-4687-b4d3-35d14711d3a8",
-    "chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "operation_type": "agentic_chat_v2_stream",
-    "model_requested": "x-ai/grok-4.1-fast",
-    "model_used": "x-ai/grok-4.1-fast",
-    "provider": "x-ai",
-    "status": "success",
-    "error_message": null,
-    "prompt_tokens": 6087,
-    "completion_tokens": 326,
-    "total_tokens": 6413,
-    "total_cost_usd": 0.0013804,
-    "response_time_ms": 4919,
-    "request_started_at": "2026-04-04T05:44:02.893+00:00",
-    "request_completed_at": "2026-04-04T05:44:07.812+00:00",
-    "created_at": "2026-04-04T05:44:07.925233+00:00",
-    "metadata": {
-      "hasTools": true,
-      "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-      "contextType": "project_create",
-      "modelResolvedFromStream": true,
-      "providerResolvedFromStream": true
-    },
-    "openrouter_request_id": null,
-    "openrouter_cache_status": null,
-    "streaming": true
-  },
-  {
-    "id": "1afd540d-b548-4eae-beea-32f28afa3ae0",
-    "chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "operation_type": "agentic_chat_v2_stream",
-    "model_requested": "x-ai/grok-4.1-fast",
-    "model_used": "x-ai/grok-4.1-fast",
-    "provider": "x-ai",
-    "status": "success",
-    "error_message": null,
-    "prompt_tokens": 6256,
-    "completion_tokens": 471,
-    "total_tokens": 6727,
-    "total_cost_usd": 0.0014867,
-    "response_time_ms": 5525,
-    "request_started_at": "2026-04-04T05:44:07.816+00:00",
-    "request_completed_at": "2026-04-04T05:44:13.341+00:00",
-    "created_at": "2026-04-04T05:44:13.500511+00:00",
-    "metadata": {
-      "hasTools": true,
-      "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-      "contextType": "project_create",
-      "modelResolvedFromStream": true,
-      "providerResolvedFromStream": true
-    },
-    "openrouter_request_id": null,
-    "openrouter_cache_status": null,
-    "streaming": true
-  },
-  {
-    "id": "680f450f-2d44-4ac1-8908-25d766c790ea",
-    "chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "operation_type": "agentic_chat_v2_stream",
-    "model_requested": "x-ai/grok-4.1-fast",
-    "model_used": "x-ai/grok-4.1-fast",
-    "provider": "x-ai",
-    "status": "success",
-    "error_message": null,
-    "prompt_tokens": 6560,
-    "completion_tokens": 1336,
-    "total_tokens": 7896,
-    "total_cost_usd": 0.00198,
-    "response_time_ms": 11593,
-    "request_started_at": "2026-04-04T05:44:14.038+00:00",
-    "request_completed_at": "2026-04-04T05:44:25.632+00:00",
-    "created_at": "2026-04-04T05:44:25.724643+00:00",
-    "metadata": {
-      "hasTools": true,
-      "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-      "contextType": "project_create",
-      "modelResolvedFromStream": true,
-      "providerResolvedFromStream": true
-    },
-    "openrouter_request_id": null,
-    "openrouter_cache_status": null,
-    "streaming": true
-  },
-  {
-    "id": "64de8eba-3e88-408d-922c-0add914d26f1",
-    "chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "operation_type": "agentic_chat_v2_stream",
-    "model_requested": "x-ai/grok-4.1-fast",
-    "model_used": "x-ai/grok-4.1-fast",
-    "provider": "x-ai",
-    "status": "success",
-    "error_message": null,
-    "prompt_tokens": 7564,
-    "completion_tokens": 1068,
-    "total_tokens": 8632,
-    "total_cost_usd": 0.0020468,
-    "response_time_ms": 8066,
-    "request_started_at": "2026-04-04T05:44:25.637+00:00",
-    "request_completed_at": "2026-04-04T05:44:33.703+00:00",
-    "created_at": "2026-04-04T05:44:33.754235+00:00",
-    "metadata": {
-      "hasTools": true,
-      "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-      "contextType": "project_create",
-      "modelResolvedFromStream": true,
-      "providerResolvedFromStream": true
-    },
-    "openrouter_request_id": null,
-    "openrouter_cache_status": null,
-    "streaming": true
-  },
-  {
-    "id": "3035cac4-9645-450b-8026-453b561d479f",
-    "chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-    "operation_type": "agentic_chat_v2_stream",
-    "model_requested": "x-ai/grok-4.1-fast",
-    "model_used": "x-ai/grok-4.1-fast",
-    "provider": "x-ai",
-    "status": "success",
-    "error_message": null,
-    "prompt_tokens": 8569,
-    "completion_tokens": 570,
-    "total_tokens": 9139,
-    "total_cost_usd": 0.0019988,
-    "response_time_ms": 7120,
-    "request_started_at": "2026-04-04T05:44:33.71+00:00",
-    "request_completed_at": "2026-04-04T05:44:40.83+00:00",
-    "created_at": "2026-04-04T05:44:40.929526+00:00",
-    "metadata": {
-      "hasTools": true,
-      "sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
-      "contextType": "project_create",
-      "modelResolvedFromStream": true,
-      "providerResolvedFromStream": true
-    },
-    "openrouter_request_id": null,
-    "openrouter_cache_status": null,
-    "streaming": true
-  }
+	{
+		"id": "14cb1e90-ea6d-4082-adb4-7ba88bab8c3f",
+		"chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"operation_type": "agentic_chat_v2_stream",
+		"model_requested": "x-ai/grok-4.1-fast",
+		"model_used": "x-ai/grok-4.1-fast",
+		"provider": "x-ai",
+		"status": "success",
+		"error_message": null,
+		"prompt_tokens": 4702,
+		"completion_tokens": 489,
+		"total_tokens": 5191,
+		"total_cost_usd": 0.0011849,
+		"response_time_ms": 4673,
+		"request_started_at": "2026-04-04T05:43:49.024+00:00",
+		"request_completed_at": "2026-04-04T05:43:53.697+00:00",
+		"created_at": "2026-04-04T05:43:53.773915+00:00",
+		"metadata": {
+			"hasTools": true,
+			"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+			"contextType": "project_create",
+			"modelResolvedFromStream": true,
+			"providerResolvedFromStream": true
+		},
+		"openrouter_request_id": null,
+		"openrouter_cache_status": null,
+		"streaming": true
+	},
+	{
+		"id": "b9548576-b476-4529-b9c2-ec6c02314382",
+		"chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"operation_type": "agentic_chat_v2_stream",
+		"model_requested": "x-ai/grok-4.1-fast",
+		"model_used": "x-ai/grok-4.1-fast",
+		"provider": "x-ai",
+		"status": "success",
+		"error_message": null,
+		"prompt_tokens": 5319,
+		"completion_tokens": 833,
+		"total_tokens": 6152,
+		"total_cost_usd": 0.0014803,
+		"response_time_ms": 9159,
+		"request_started_at": "2026-04-04T05:43:53.723+00:00",
+		"request_completed_at": "2026-04-04T05:44:02.882+00:00",
+		"created_at": "2026-04-04T05:44:02.992931+00:00",
+		"metadata": {
+			"hasTools": true,
+			"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+			"contextType": "project_create",
+			"modelResolvedFromStream": true,
+			"providerResolvedFromStream": true
+		},
+		"openrouter_request_id": null,
+		"openrouter_cache_status": null,
+		"streaming": true
+	},
+	{
+		"id": "078adc0c-adc2-4687-b4d3-35d14711d3a8",
+		"chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"operation_type": "agentic_chat_v2_stream",
+		"model_requested": "x-ai/grok-4.1-fast",
+		"model_used": "x-ai/grok-4.1-fast",
+		"provider": "x-ai",
+		"status": "success",
+		"error_message": null,
+		"prompt_tokens": 6087,
+		"completion_tokens": 326,
+		"total_tokens": 6413,
+		"total_cost_usd": 0.0013804,
+		"response_time_ms": 4919,
+		"request_started_at": "2026-04-04T05:44:02.893+00:00",
+		"request_completed_at": "2026-04-04T05:44:07.812+00:00",
+		"created_at": "2026-04-04T05:44:07.925233+00:00",
+		"metadata": {
+			"hasTools": true,
+			"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+			"contextType": "project_create",
+			"modelResolvedFromStream": true,
+			"providerResolvedFromStream": true
+		},
+		"openrouter_request_id": null,
+		"openrouter_cache_status": null,
+		"streaming": true
+	},
+	{
+		"id": "1afd540d-b548-4eae-beea-32f28afa3ae0",
+		"chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"operation_type": "agentic_chat_v2_stream",
+		"model_requested": "x-ai/grok-4.1-fast",
+		"model_used": "x-ai/grok-4.1-fast",
+		"provider": "x-ai",
+		"status": "success",
+		"error_message": null,
+		"prompt_tokens": 6256,
+		"completion_tokens": 471,
+		"total_tokens": 6727,
+		"total_cost_usd": 0.0014867,
+		"response_time_ms": 5525,
+		"request_started_at": "2026-04-04T05:44:07.816+00:00",
+		"request_completed_at": "2026-04-04T05:44:13.341+00:00",
+		"created_at": "2026-04-04T05:44:13.500511+00:00",
+		"metadata": {
+			"hasTools": true,
+			"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+			"contextType": "project_create",
+			"modelResolvedFromStream": true,
+			"providerResolvedFromStream": true
+		},
+		"openrouter_request_id": null,
+		"openrouter_cache_status": null,
+		"streaming": true
+	},
+	{
+		"id": "680f450f-2d44-4ac1-8908-25d766c790ea",
+		"chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"operation_type": "agentic_chat_v2_stream",
+		"model_requested": "x-ai/grok-4.1-fast",
+		"model_used": "x-ai/grok-4.1-fast",
+		"provider": "x-ai",
+		"status": "success",
+		"error_message": null,
+		"prompt_tokens": 6560,
+		"completion_tokens": 1336,
+		"total_tokens": 7896,
+		"total_cost_usd": 0.00198,
+		"response_time_ms": 11593,
+		"request_started_at": "2026-04-04T05:44:14.038+00:00",
+		"request_completed_at": "2026-04-04T05:44:25.632+00:00",
+		"created_at": "2026-04-04T05:44:25.724643+00:00",
+		"metadata": {
+			"hasTools": true,
+			"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+			"contextType": "project_create",
+			"modelResolvedFromStream": true,
+			"providerResolvedFromStream": true
+		},
+		"openrouter_request_id": null,
+		"openrouter_cache_status": null,
+		"streaming": true
+	},
+	{
+		"id": "64de8eba-3e88-408d-922c-0add914d26f1",
+		"chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"operation_type": "agentic_chat_v2_stream",
+		"model_requested": "x-ai/grok-4.1-fast",
+		"model_used": "x-ai/grok-4.1-fast",
+		"provider": "x-ai",
+		"status": "success",
+		"error_message": null,
+		"prompt_tokens": 7564,
+		"completion_tokens": 1068,
+		"total_tokens": 8632,
+		"total_cost_usd": 0.0020468,
+		"response_time_ms": 8066,
+		"request_started_at": "2026-04-04T05:44:25.637+00:00",
+		"request_completed_at": "2026-04-04T05:44:33.703+00:00",
+		"created_at": "2026-04-04T05:44:33.754235+00:00",
+		"metadata": {
+			"hasTools": true,
+			"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+			"contextType": "project_create",
+			"modelResolvedFromStream": true,
+			"providerResolvedFromStream": true
+		},
+		"openrouter_request_id": null,
+		"openrouter_cache_status": null,
+		"streaming": true
+	},
+	{
+		"id": "3035cac4-9645-450b-8026-453b561d479f",
+		"chat_session_id": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+		"operation_type": "agentic_chat_v2_stream",
+		"model_requested": "x-ai/grok-4.1-fast",
+		"model_used": "x-ai/grok-4.1-fast",
+		"provider": "x-ai",
+		"status": "success",
+		"error_message": null,
+		"prompt_tokens": 8569,
+		"completion_tokens": 570,
+		"total_tokens": 9139,
+		"total_cost_usd": 0.0019988,
+		"response_time_ms": 7120,
+		"request_started_at": "2026-04-04T05:44:33.71+00:00",
+		"request_completed_at": "2026-04-04T05:44:40.83+00:00",
+		"created_at": "2026-04-04T05:44:40.929526+00:00",
+		"metadata": {
+			"hasTools": true,
+			"sessionId": "de33b476-a1a3-4ddc-9b3d-8b96ba0ca391",
+			"contextType": "project_create",
+			"modelResolvedFromStream": true,
+			"providerResolvedFromStream": true
+		},
+		"openrouter_request_id": null,
+		"openrouter_cache_status": null,
+		"streaming": true
+	}
 ]
 ```
 
@@ -772,29 +756,29 @@ _No turn runs recorded._
 
 ```json
 {
-  "fastchat_context_cache": {
-    "key": "v2|project_create|none|none|none",
-    "context": {
-      "data": null,
-      "entityId": null,
-      "projectId": null,
-      "contextType": "project_create",
-      "projectName": null,
-      "focusEntityId": null,
-      "focusEntityName": null,
-      "focusEntityType": null
-    },
-    "version": 1,
-    "created_at": "2026-04-04T05:43:48.163Z"
-  },
-  "fastchat_cancel_hints_v1": {
-    "1": {
-      "reason": "user_cancelled",
-      "source": "client_cancel_endpoint",
-      "created_at": "2026-04-04T05:44:41.191Z",
-      "stream_run_id": "1",
-      "client_turn_id": "8cae166c-6d63-4f15-a470-e987f06ed633"
-    }
-  }
+	"fastchat_context_cache": {
+		"key": "v2|project_create|none|none|none",
+		"context": {
+			"data": null,
+			"entityId": null,
+			"projectId": null,
+			"contextType": "project_create",
+			"projectName": null,
+			"focusEntityId": null,
+			"focusEntityName": null,
+			"focusEntityType": null
+		},
+		"version": 1,
+		"created_at": "2026-04-04T05:43:48.163Z"
+	},
+	"fastchat_cancel_hints_v1": {
+		"1": {
+			"reason": "user_cancelled",
+			"source": "client_cancel_endpoint",
+			"created_at": "2026-04-04T05:44:41.191Z",
+			"stream_run_id": "1",
+			"client_turn_id": "8cae166c-6d63-4f15-a470-e987f06ed633"
+		}
+	}
 }
 ```
