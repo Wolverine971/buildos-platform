@@ -40,6 +40,16 @@ function isMissingLastEvaluatedAtError(error: unknown): boolean {
 	);
 }
 
+function isMissingUpdatedAtError(error: unknown): boolean {
+	const err = error as { code?: string; message?: string; details?: string } | undefined;
+	const message = `${err?.message ?? ''} ${err?.details ?? ''}`.toLowerCase();
+	return (
+		(err?.code === '42703' && message.includes('updated_at')) ||
+		message.includes('welcome_email_sequences.updated_at') ||
+		message.includes('column updated_at does not exist')
+	);
+}
+
 interface WelcomeSequenceRow {
 	user_id: string;
 	sequence_version: string;
@@ -57,10 +67,10 @@ interface WelcomeSequenceRow {
 	email_4_skipped_at: string | null;
 	email_5_sent_at: string | null;
 	email_5_skipped_at: string | null;
-	last_evaluated_at: string | null;
+	last_evaluated_at?: string | null;
 	completed_at: string | null;
 	created_at: string;
-	updated_at: string;
+	updated_at?: string | null;
 }
 
 interface WelcomeSequenceStartInput {
@@ -125,6 +135,7 @@ export class WelcomeSequenceService {
 	private readonly emailService: EmailService;
 	private readonly baseUrl: string;
 	private supportsLastEvaluatedAtColumn = true;
+	private supportsUpdatedAtColumn = true;
 
 	constructor(private readonly supabase: TypedSupabaseClient) {
 		this.emailService = new EmailService(supabase);
@@ -294,20 +305,37 @@ export class WelcomeSequenceService {
 		return true;
 	}
 
-	private toLegacySafeUpdates(updates: Partial<WelcomeSequenceRow>): Partial<WelcomeSequenceRow> {
-		if (!('last_evaluated_at' in updates)) {
-			return updates;
+	private markUpdatedAtColumnUnavailable(error: unknown): boolean {
+		if (!isMissingUpdatedAtError(error)) {
+			return false;
 		}
 
-		const { last_evaluated_at, ...rest } = updates;
-		if (typeof last_evaluated_at === 'string' && !('updated_at' in rest)) {
-			return {
-				...rest,
-				updated_at: last_evaluated_at
-			};
+		this.supportsUpdatedAtColumn = false;
+		return true;
+	}
+
+	private toCompatibleUpdates(updates: Partial<WelcomeSequenceRow>): Partial<WelcomeSequenceRow> {
+		const compatible: Partial<WelcomeSequenceRow> = {
+			...updates
+		};
+
+		if (!this.supportsLastEvaluatedAtColumn) {
+			const lastEvaluatedAt = compatible.last_evaluated_at;
+			delete compatible.last_evaluated_at;
+			if (
+				typeof lastEvaluatedAt === 'string' &&
+				this.supportsUpdatedAtColumn &&
+				!('updated_at' in compatible)
+			) {
+				compatible.updated_at = lastEvaluatedAt;
+			}
 		}
 
-		return rest;
+		if (!this.supportsUpdatedAtColumn) {
+			delete compatible.updated_at;
+		}
+
+		return compatible;
 	}
 
 	private async ensureSequenceRow(
@@ -381,26 +409,30 @@ export class WelcomeSequenceService {
 		userId: string,
 		updates: Partial<WelcomeSequenceRow>
 	): Promise<void> {
-		const initialUpdates = this.supportsLastEvaluatedAtColumn
-			? updates
-			: this.toLegacySafeUpdates(updates);
-		if (Object.keys(initialUpdates).length === 0) {
+		let compatibleUpdates = this.toCompatibleUpdates(updates);
+		if (Object.keys(compatibleUpdates).length === 0) {
 			return;
 		}
 
-		let { error } = await this.sequenceTable().update(initialUpdates).eq('user_id', userId);
-		if (error && this.markLastEvaluatedAtColumnUnavailable(error)) {
-			const fallbackUpdates = this.toLegacySafeUpdates(updates);
-			if (Object.keys(fallbackUpdates).length === 0) {
+		for (;;) {
+			const { error } = await this.sequenceTable()
+				.update(compatibleUpdates)
+				.eq('user_id', userId);
+			if (!error) {
 				return;
 			}
 
-			const retry = await this.sequenceTable().update(fallbackUpdates).eq('user_id', userId);
-			error = retry.error;
-		}
+			const schemaChanged =
+				this.markLastEvaluatedAtColumnUnavailable(error) ||
+				this.markUpdatedAtColumnUnavailable(error);
+			if (!schemaChanged) {
+				throw new Error(`Failed to update welcome sequence: ${error.message}`);
+			}
 
-		if (error) {
-			throw new Error(`Failed to update welcome sequence: ${error.message}`);
+			compatibleUpdates = this.toCompatibleUpdates(updates);
+			if (Object.keys(compatibleUpdates).length === 0) {
+				return;
+			}
 		}
 	}
 
@@ -429,44 +461,65 @@ export class WelcomeSequenceService {
 			new Date(claimedAt).getTime() - WELCOME_STEP_CLAIM_WINDOW_MS
 		).toISOString();
 
-		const claimField = this.supportsLastEvaluatedAtColumn ? 'last_evaluated_at' : 'updated_at';
-		const claimPayload = this.supportsLastEvaluatedAtColumn
-			? { last_evaluated_at: claimedAt }
-			: { updated_at: claimedAt };
+		for (;;) {
+			const claimField = this.supportsLastEvaluatedAtColumn
+				? 'last_evaluated_at'
+				: this.supportsUpdatedAtColumn
+					? 'updated_at'
+					: null;
+			if (!claimField) {
+				return this.bestEffortClaimStep(userId, sentField, skippedField);
+			}
 
-		let { data, error } = await this.sequenceTable()
-			.update(claimPayload)
-			.eq('user_id', userId)
-			.is(sentField, null)
-			.is(skippedField, null)
-			.or(`${claimField}.is.null,${claimField}.lt.${claimCutoff}`)
-			.select('user_id')
-			.maybeSingle();
+			const claimPayload =
+				claimField === 'last_evaluated_at'
+					? { last_evaluated_at: claimedAt }
+					: { updated_at: claimedAt };
 
-		if (
-			error &&
-			this.supportsLastEvaluatedAtColumn &&
-			this.markLastEvaluatedAtColumnUnavailable(error)
-		) {
-			const fallback = await this.sequenceTable()
-				.update({
-					updated_at: claimedAt
-				})
+			const { data, error } = await this.sequenceTable()
+				.update(claimPayload)
 				.eq('user_id', userId)
 				.is(sentField, null)
 				.is(skippedField, null)
-				.or(`updated_at.is.null,updated_at.lt.${claimCutoff}`)
+				.or(`${claimField}.is.null,${claimField}.lt.${claimCutoff}`)
 				.select('user_id')
 				.maybeSingle();
-			data = fallback.data;
-			error = fallback.error;
+			if (!error) {
+				return Boolean((data as { user_id?: string } | null)?.user_id);
+			}
+
+			const schemaChanged =
+				this.markLastEvaluatedAtColumnUnavailable(error) ||
+				this.markUpdatedAtColumnUnavailable(error);
+			if (!schemaChanged) {
+				throw new Error(`Failed to claim welcome sequence step: ${error.message}`);
+			}
 		}
+	}
+
+	private async bestEffortClaimStep(
+		userId: string,
+		sentField: SequenceTimestampKey,
+		skippedField: SequenceTimestampKey
+	): Promise<boolean> {
+		// Legacy tables without either timestamp column cannot support an atomic claim.
+		const { data, error } = await this.sequenceTable()
+			.select(`user_id, ${sentField}, ${skippedField}`)
+			.eq('user_id', userId)
+			.maybeSingle();
 
 		if (error) {
-			throw new Error(`Failed to claim welcome sequence step: ${error.message}`);
+			throw new Error(
+				`Failed to read welcome sequence for best-effort claim: ${error.message}`
+			);
 		}
 
-		return Boolean((data as { user_id?: string } | null)?.user_id);
+		const row = data as ({ user_id?: string } & Partial<WelcomeSequenceRow>) | null;
+		if (!row?.user_id) {
+			return false;
+		}
+
+		return row[sentField] == null && row[skippedField] == null;
 	}
 
 	private async loadUserState(userId: string): Promise<WelcomeSequenceProductState | null> {

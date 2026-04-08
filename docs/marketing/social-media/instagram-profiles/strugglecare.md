@@ -47,10 +47,10 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                  | Post Link | Action   | Status | What We Said / Planned                                 | Outcome       | Source                         |
-| ---------- | ------- | -------------------------------------- | --------- | -------- | ------ | ------------------------------------------------------ | ------------- | ------------------------------ |
-| 2026-03-22 | Profile | Personal/home Reel, 41+ comments       | N/A       | Reviewed | Logged | Too crowded for visibility                             | No engagement | 2026-03-22_instagram-warmup.md |
-| 2026-03-24 | Profile | Recent Reels with 30+ comments         | N/A       | Reviewed | Logged | Borderline crowded, not prioritized                    | No engagement | 2026-03-24_instagram-warmup.md |
+| Date       | Surface | Topic                            | Post Link | Action   | Status | What We Said / Planned              | Outcome       | Source                         |
+| ---------- | ------- | -------------------------------- | --------- | -------- | ------ | ----------------------------------- | ------------- | ------------------------------ |
+| 2026-03-22 | Profile | Personal/home Reel, 41+ comments | N/A       | Reviewed | Logged | Too crowded for visibility          | No engagement | 2026-03-22_instagram-warmup.md |
+| 2026-03-24 | Profile | Recent Reels with 30+ comments   | N/A       | Reviewed | Logged | Borderline crowded, not prioritized | No engagement | 2026-03-24_instagram-warmup.md |
 
 ## Open Loops
 

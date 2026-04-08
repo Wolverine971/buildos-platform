@@ -47,9 +47,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                             | Post Link                                | Action | Status                  | What We Said / Planned                                | Outcome | Source                          |
-| ---------- | ------- | --------------------------------- | ---------------------------------------- | ------ | ----------------------- | ----------------------------------------------------- | ------- | ------------------------------- |
-| 2026-04-04 | Post    | "Intrinsic Motivation & ADHD"     | https://www.instagram.com/p/DWrLMDrDQjd/ | Queued | No posting confirmation | "Momentum through interest and curiosity" co-sign     | Unknown | 2026-04-04_instagram-warmup.md  |
+| Date       | Surface | Topic                         | Post Link                                | Action | Status                  | What We Said / Planned                            | Outcome | Source                         |
+| ---------- | ------- | ----------------------------- | ---------------------------------------- | ------ | ----------------------- | ------------------------------------------------- | ------- | ------------------------------ |
+| 2026-04-04 | Post    | "Intrinsic Motivation & ADHD" | https://www.instagram.com/p/DWrLMDrDQjd/ | Queued | No posting confirmation | "Momentum through interest and curiosity" co-sign | Unknown | 2026-04-04_instagram-warmup.md |
 
 ## Open Loops
 

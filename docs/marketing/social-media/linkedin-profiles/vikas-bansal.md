@@ -48,9 +48,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                | Post Link                       | Action | Status                  | What We Said / Planned                              | Outcome              | Source                        |
-| ---------- | ------- | ------------------------------------ | ------------------------------- | ------ | ----------------------- | --------------------------------------------------- | -------------------- | ----------------------------- |
-| 2026-03-24 | Post    | Claude Code shipping velocity        | Legacy warmup did not capture direct post URL | Queued | No posting confirmation | Confirm the velocity from daily BuildOS use         | Unknown              | 2026-03-24_linkedin-warmup.md |
+| Date       | Surface | Topic                         | Post Link                                     | Action | Status                  | What We Said / Planned                      | Outcome | Source                        |
+| ---------- | ------- | ----------------------------- | --------------------------------------------- | ------ | ----------------------- | ------------------------------------------- | ------- | ----------------------------- |
+| 2026-03-24 | Post    | Claude Code shipping velocity | Legacy warmup did not capture direct post URL | Queued | No posting confirmation | Confirm the velocity from daily BuildOS use | Unknown | 2026-03-24_linkedin-warmup.md |
 
 ## Open Loops
 

@@ -23,7 +23,10 @@
 		min-height: 100dvh;
 		overflow-x: hidden;
 		text-rendering: optimizeLegibility;
-		font-family: system-ui, -apple-system, sans-serif;
+		font-family:
+			system-ui,
+			-apple-system,
+			sans-serif;
 	}
 
 	*,

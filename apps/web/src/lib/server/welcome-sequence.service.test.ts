@@ -16,6 +16,7 @@ interface MockState {
 	failRpc: boolean;
 	failFullUserLoad?: boolean;
 	legacySequenceSchema?: boolean;
+	missingUpdatedAtColumn?: boolean;
 	actorId?: string;
 	projectsByActorId?: Record<string, Array<Record<string, any>>>;
 	briefPreferencesByUserId?: Record<string, Record<string, any>>;
@@ -287,6 +288,16 @@ class QueryBuilderMock implements PromiseLike<any> {
 				};
 			}
 
+			if (this.shouldSimulateMissingUpdatedAtError()) {
+				return {
+					data: null,
+					error: {
+						code: '42703',
+						message: 'column welcome_email_sequences.updated_at does not exist'
+					}
+				};
+			}
+
 			const rows = this.filterWelcomeRows();
 			const row = rows[0] ?? null;
 			if (!row) {
@@ -376,6 +387,17 @@ class QueryBuilderMock implements PromiseLike<any> {
 		return (
 			Object.hasOwn(this.updatePayload ?? {}, 'last_evaluated_at') ||
 			Boolean(this.orExpression?.includes('last_evaluated_at'))
+		);
+	}
+
+	private shouldSimulateMissingUpdatedAtError(): boolean {
+		if (!this.state.missingUpdatedAtColumn) {
+			return false;
+		}
+
+		return (
+			Object.hasOwn(this.updatePayload ?? {}, 'updated_at') ||
+			Boolean(this.orExpression?.includes('updated_at'))
 		);
 	}
 
@@ -574,5 +596,51 @@ describe('WelcomeSequenceService failure recovery', () => {
 				})
 			])
 		);
+	});
+
+	it('best-effort sends when the legacy sequence table is missing both evaluation columns', async () => {
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'user@example.com',
+					name: 'Alex Builder',
+					created_at: '2026-03-01T10:00:00.000Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'UTC'
+				}
+			},
+			welcomeRows: {
+				'user-1': createSequenceRow('user-1')
+			},
+			updates: [],
+			failRpc: false,
+			legacySequenceSchema: true,
+			missingUpdatedAtColumn: true
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+
+		await expect(
+			service.startSequenceForUser({
+				userId: 'user-1',
+				signupMethod: 'google_oauth'
+			})
+		).resolves.toBeUndefined();
+
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
+		expect(state.welcomeRows['user-1']?.email_1_sent_at).toEqual(expect.any(String));
+		expect(state.updates).toHaveLength(1);
+		expect(state.updates[0]).toMatchObject({
+			userId: 'user-1',
+			updates: {
+				email_1_sent_at: expect.any(String)
+			}
+		});
+		expect(state.updates[0]?.updates).not.toHaveProperty('last_evaluated_at');
+		expect(state.updates[0]?.updates).not.toHaveProperty('updated_at');
 	});
 });

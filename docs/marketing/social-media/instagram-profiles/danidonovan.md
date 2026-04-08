@@ -47,12 +47,12 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                     | Post Link | Action   | Status                  | What We Said / Planned                                     | Outcome                 | Source                         |
-| ---------- | ------- | ----------------------------------------- | --------- | -------- | ----------------------- | ---------------------------------------------------------- | ----------------------- | ------------------------------ |
-| 2026-03-22 | Profile | Low posting cadence, inactive             | N/A       | Reviewed | Logged                  | No new posts to engage with                                | Competitor intel logged | 2026-03-22_instagram-warmup.md |
-| 2026-03-27 | Profile | 2-week content gap noted                  | N/A       | Reviewed | Logged                  | Still stale as of 2026-03-27                               | Competitor intel logged | 2026-03-27_instagram-warmup.md |
-| 2026-03-29 | Post    | Anti-Planner coffee shop photo (new format)| N/A       | Reviewed | Logged                  | 83 likes — new photo format underperforming vs comics      | Competitor intel logged | 2026-03-29_instagram-warmup.md |
-| 2026-04-04 | Profile | Still light posting, stale grid          | N/A       | Reviewed | Logged                  | No competition in IG ADHD space from her right now         | Competitor intel logged | 2026-04-04_instagram-warmup.md |
+| Date       | Surface | Topic                                       | Post Link | Action   | Status | What We Said / Planned                                | Outcome                 | Source                         |
+| ---------- | ------- | ------------------------------------------- | --------- | -------- | ------ | ----------------------------------------------------- | ----------------------- | ------------------------------ |
+| 2026-03-22 | Profile | Low posting cadence, inactive               | N/A       | Reviewed | Logged | No new posts to engage with                           | Competitor intel logged | 2026-03-22_instagram-warmup.md |
+| 2026-03-27 | Profile | 2-week content gap noted                    | N/A       | Reviewed | Logged | Still stale as of 2026-03-27                          | Competitor intel logged | 2026-03-27_instagram-warmup.md |
+| 2026-03-29 | Post    | Anti-Planner coffee shop photo (new format) | N/A       | Reviewed | Logged | 83 likes — new photo format underperforming vs comics | Competitor intel logged | 2026-03-29_instagram-warmup.md |
+| 2026-04-04 | Profile | Still light posting, stale grid             | N/A       | Reviewed | Logged | No competition in IG ADHD space from her right now    | Competitor intel logged | 2026-04-04_instagram-warmup.md |
 
 ## Open Loops
 

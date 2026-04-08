@@ -151,6 +151,46 @@ export function normalizeFastChatStreamRunId(value: unknown): string | null {
 	return null;
 }
 
+export function isLegacyFastChatStreamRunId(value: string): boolean {
+	return /^\d+$/.test(value);
+}
+
+export function resolveFastChatStreamRunId(params: {
+	requestedStreamRunId: unknown;
+	clientTurnId?: string | null;
+	createFallbackId: () => string;
+}): string {
+	const requestedStreamRunId = normalizeFastChatStreamRunId(params.requestedStreamRunId);
+	if (requestedStreamRunId && !isLegacyFastChatStreamRunId(requestedStreamRunId)) {
+		return requestedStreamRunId;
+	}
+
+	const clientTurnId =
+		typeof params.clientTurnId === 'string' && params.clientTurnId.trim().length > 0
+			? params.clientTurnId.trim()
+			: null;
+	if (clientTurnId) {
+		return clientTurnId;
+	}
+
+	return requestedStreamRunId ?? params.createFallbackId();
+}
+
+export function listFastChatCorrelationIds(params: {
+	streamRunId: string;
+	clientTurnId?: string | null;
+}): string[] {
+	const ids = [params.streamRunId];
+	const clientTurnId =
+		typeof params.clientTurnId === 'string' && params.clientTurnId.trim().length > 0
+			? params.clientTurnId.trim()
+			: null;
+	if (clientTurnId && clientTurnId !== params.streamRunId) {
+		ids.push(clientTurnId);
+	}
+	return ids;
+}
+
 export function createFastChatCancelHint(params: {
 	reason: FastChatCancelReason;
 	streamRunId: string;

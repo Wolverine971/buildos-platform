@@ -46,13 +46,13 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                             | Post Link                               | Action   | Status                  | What We Said / Planned                                  | Outcome              | Source                         |
-| ---------- | ------- | --------------------------------- | --------------------------------------- | -------- | ----------------------- | ------------------------------------------------------- | -------------------- | ------------------------------ |
-| 2026-03-22 | Post    | Why ADHD entrepreneurs can't estimate time | https://www.instagram.com/p/DWEGkceEgQk/ | Queued   | No posting confirmation | Agree with external-structure framing from builder angle | Unknown             | 2026-03-22_instagram-warmup.md |
-| 2026-03-24 | Profile | Follower growth + no new post     | N/A                                     | Reviewed | Logged                  | No fresh content; account up to ~65.2K                  | Competitor intel logged | 2026-03-24_instagram-warmup.md |
-| 2026-04-04 | Profile | Paid growth acceleration          | N/A                                     | Reviewed | Logged                  | Up ~6.8K in 3 weeks; monitor ads and content strategy   | Competitor intel logged | 2026-04-04_instagram-warmup.md |
-| 2026-04-05 | Profile | Paid growth without fresh content | N/A                                     | Reviewed | Logged                  | +7K in ~3.5 weeks; no new organic content               | Competitor intel logged | 2026-04-05_instagram-warmup.md |
-| 2026-04-06 | Feed Ad  | Sponsored ad in DJ's feed         | N/A                                     | Reviewed | Logged                  | Ad: "If ADHD is sabotaging your business growth..."     | Competitor ad observed | 2026-04-06_instagram-warmup.md |
+| Date       | Surface | Topic                                      | Post Link                                | Action   | Status                  | What We Said / Planned                                   | Outcome                 | Source                         |
+| ---------- | ------- | ------------------------------------------ | ---------------------------------------- | -------- | ----------------------- | -------------------------------------------------------- | ----------------------- | ------------------------------ |
+| 2026-03-22 | Post    | Why ADHD entrepreneurs can't estimate time | https://www.instagram.com/p/DWEGkceEgQk/ | Queued   | No posting confirmation | Agree with external-structure framing from builder angle | Unknown                 | 2026-03-22_instagram-warmup.md |
+| 2026-03-24 | Profile | Follower growth + no new post              | N/A                                      | Reviewed | Logged                  | No fresh content; account up to ~65.2K                   | Competitor intel logged | 2026-03-24_instagram-warmup.md |
+| 2026-04-04 | Profile | Paid growth acceleration                   | N/A                                      | Reviewed | Logged                  | Up ~6.8K in 3 weeks; monitor ads and content strategy    | Competitor intel logged | 2026-04-04_instagram-warmup.md |
+| 2026-04-05 | Profile | Paid growth without fresh content          | N/A                                      | Reviewed | Logged                  | +7K in ~3.5 weeks; no new organic content                | Competitor intel logged | 2026-04-05_instagram-warmup.md |
+| 2026-04-06 | Feed Ad | Sponsored ad in DJ's feed                  | N/A                                      | Reviewed | Logged                  | Ad: "If ADHD is sabotaging your business growth..."      | Competitor ad observed  | 2026-04-06_instagram-warmup.md |
 
 ## Open Loops
 

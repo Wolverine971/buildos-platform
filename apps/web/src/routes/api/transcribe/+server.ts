@@ -6,6 +6,12 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import {
+	estimateTranscriptionReservation,
+	expensiveOperationLimiter,
+	type ExpensiveOperationLease,
+	withRateLimitHeaders
+} from '$lib/server/expensive-operation-limiter';
 
 const openai = new OpenAI({
 	apiKey: PRIVATE_OPENAI_API_KEY
@@ -159,6 +165,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 	let audioFile: File | null = null;
 	let customVocabulary: string | null = null;
 	let userId: string | null = null;
+	let operationLease: ExpensiveOperationLease | null = null;
 
 	try {
 		// Authentication check
@@ -176,6 +183,22 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		if (!audioFile || audioFile.size === 0) {
 			return ApiResponse.badRequest('No audio data received');
 		}
+
+		const operationDecision = expensiveOperationLimiter.acquire({
+			userId,
+			policyKey: 'transcribe',
+			estimatedCost: estimateTranscriptionReservation(audioFile.size)
+		});
+		if (!operationDecision.allowed) {
+			return withRateLimitHeaders(
+				ApiResponse.error(operationDecision.message, 429, 'RATE_LIMITED', {
+					retryAfter: operationDecision.retryAfterSeconds,
+					reason: operationDecision.reason
+				}),
+				operationDecision.headers
+			);
+		}
+		operationLease = operationDecision.lease;
 
 		// Log received file details and model being used
 		console.log(
@@ -228,6 +251,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 						maxRetries: MAX_RETRIES,
 						initialRetryDelayMs: INITIAL_RETRY_DELAY_MS
 					});
+					operationLease.recordCost(audioFile.size);
 
 					return ApiResponse.success({
 						transcript: openrouterResult.text,
@@ -341,6 +365,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		const duration = Date.now() - startTime;
 
 		if (transcription?.text) {
+			operationLease.recordCost(audioFile.size);
 			return ApiResponse.success({
 				transcript: transcription.text,
 				duration_ms: duration,
@@ -423,5 +448,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 			error,
 			`Transcription failed: ${error.message || 'Unknown server error'}`
 		);
+	} finally {
+		operationLease?.release();
 	}
 };

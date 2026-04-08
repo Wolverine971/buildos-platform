@@ -48,10 +48,10 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                    | Post Link                                                           | Action   | Status                  | What We Said / Planned                                  | Outcome              | Source                        |
-| ---------- | ------- | ------------------------ | ------------------------------------------------------------------- | -------- | ----------------------- | ------------------------------------------------------- | -------------------- | ----------------------------- |
-| 2026-03-26 | Post    | Plus Ones OpenClaw launch | https://www.linkedin.com/feed/update/urn:li:activity:7442953865685286914/ | Queued   | No posting confirmation | Pre-loaded skills and workflows reduce setup friction   | Unknown              | 2026-03-26_linkedin-warmup.md |
-| 2026-04-07 | Profile | Hiring post              | N/A                                                                 | Reviewed | Logged                  | Hiring promo; skipped as a comment target               | Skip logged          | 2026-04-07_linkedin-warmup.md |
+| Date       | Surface | Topic                     | Post Link                                                                 | Action   | Status                  | What We Said / Planned                                | Outcome     | Source                        |
+| ---------- | ------- | ------------------------- | ------------------------------------------------------------------------- | -------- | ----------------------- | ----------------------------------------------------- | ----------- | ----------------------------- |
+| 2026-03-26 | Post    | Plus Ones OpenClaw launch | https://www.linkedin.com/feed/update/urn:li:activity:7442953865685286914/ | Queued   | No posting confirmation | Pre-loaded skills and workflows reduce setup friction | Unknown     | 2026-03-26_linkedin-warmup.md |
+| 2026-04-07 | Profile | Hiring post               | N/A                                                                       | Reviewed | Logged                  | Hiring promo; skipped as a comment target             | Skip logged | 2026-04-07_linkedin-warmup.md |
 
 ## Open Loops
 

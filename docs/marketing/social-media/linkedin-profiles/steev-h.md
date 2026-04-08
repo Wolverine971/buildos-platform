@@ -48,9 +48,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                        | Post Link                                                           | Action | Status                  | What We Said / Planned                                  | Outcome              | Source                        |
-| ---------- | ------- | ---------------------------- | ------------------------------------------------------------------- | ------ | ----------------------- | ------------------------------------------------------- | -------------------- | ----------------------------- |
-| 2026-04-07 | Post    | Notes app graveyard / ideas vanish | https://www.linkedin.com/feed/update/urn:li:activity:7447014836808560641/ | Queued | No posting confirmation | Capture is easy; retrieval and resurfacing are the real problem | Unknown        | 2026-04-07_linkedin-warmup.md |
+| Date       | Surface | Topic                              | Post Link                                                                 | Action | Status                  | What We Said / Planned                                          | Outcome | Source                        |
+| ---------- | ------- | ---------------------------------- | ------------------------------------------------------------------------- | ------ | ----------------------- | --------------------------------------------------------------- | ------- | ----------------------------- |
+| 2026-04-07 | Post    | Notes app graveyard / ideas vanish | https://www.linkedin.com/feed/update/urn:li:activity:7447014836808560641/ | Queued | No posting confirmation | Capture is easy; retrieval and resurfacing are the real problem | Unknown | 2026-04-07_linkedin-warmup.md |
 
 ## Open Loops
 

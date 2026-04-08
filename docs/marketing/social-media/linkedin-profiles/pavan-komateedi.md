@@ -48,9 +48,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                  | Post Link                                                           | Action | Status                  | What We Said / Planned                                       | Outcome              | Source                        |
-| ---------- | ------- | -------------------------------------- | ------------------------------------------------------------------- | ------ | ----------------------- | ------------------------------------------------------------ | -------------------- | ----------------------------- |
-| 2026-04-07 | Post    | Context is everything / Claude has no memory | https://www.linkedin.com/feed/update/urn:li:activity:7447458740875735040/ | Queued | No posting confirmation | Prompts get demos; architecture and carried context get products | Unknown          | 2026-04-07_linkedin-warmup.md |
+| Date       | Surface | Topic                                        | Post Link                                                                 | Action | Status                  | What We Said / Planned                                           | Outcome | Source                        |
+| ---------- | ------- | -------------------------------------------- | ------------------------------------------------------------------------- | ------ | ----------------------- | ---------------------------------------------------------------- | ------- | ----------------------------- |
+| 2026-04-07 | Post    | Context is everything / Claude has no memory | https://www.linkedin.com/feed/update/urn:li:activity:7447458740875735040/ | Queued | No posting confirmation | Prompts get demos; architecture and carried context get products | Unknown | 2026-04-07_linkedin-warmup.md |
 
 ## Open Loops
 

@@ -47,9 +47,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                       | Post Link | Action   | Status | What We Said / Planned                                 | Outcome       | Source                               |
-| ---------- | ------- | --------------------------- | --------- | -------- | ------ | ------------------------------------------------------ | ------------- | ------------------------------------ |
-| 2026-04-08 | Profile | Initial profile creation    | N/A       | Reviewed | Logged | Already followed by @djwayne3, untapped watering hole  | No engagement | `instagram-engagement-targets.md`    |
+| Date       | Surface | Topic                    | Post Link | Action   | Status | What We Said / Planned                                | Outcome       | Source                            |
+| ---------- | ------- | ------------------------ | --------- | -------- | ------ | ----------------------------------------------------- | ------------- | --------------------------------- |
+| 2026-04-08 | Profile | Initial profile creation | N/A       | Reviewed | Logged | Already followed by @djwayne3, untapped watering hole | No engagement | `instagram-engagement-targets.md` |
 
 ## Open Loops
 

@@ -48,11 +48,11 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                            | Post Link                                                           | Action | Status                  | What We Said / Planned                                      | Outcome              | Source                        |
-| ---------- | ------- | -------------------------------- | ------------------------------------------------------------------- | ------ | ----------------------- | ----------------------------------------------------------- | -------------------- | ----------------------------- |
-| 2026-03-20 | Post    | AI idea diversity via priming    | https://www.linkedin.com/feed/update/urn:li:activity:7441162199160705025/ | Queued | No posting confirmation | Practical reaction to priming and idea generation            | Unknown              | 2026-03-20_linkedin-warmup.md |
-| 2026-03-26 | Post    | Coding agent built a Rust webcam app | https://www.linkedin.com/feed/update/urn:li:activity:7443092465009651714/ | Queued | No posting confirmation | Overnight coding-agent iteration from a solo-builder angle   | Unknown              | 2026-03-26_linkedin-warmup.md |
-| 2026-04-07 | Post    | Claude Mythos red team / cybersecurity | https://www.linkedin.com/feed/update/urn:li:activity:7447345299989217281/ | Queued | No posting confirmation | Builder reaction to red-team docs and SDK-layer reality      | Unknown              | 2026-04-07_linkedin-warmup.md |
+| Date       | Surface | Topic                                  | Post Link                                                                 | Action | Status                  | What We Said / Planned                                     | Outcome | Source                        |
+| ---------- | ------- | -------------------------------------- | ------------------------------------------------------------------------- | ------ | ----------------------- | ---------------------------------------------------------- | ------- | ----------------------------- |
+| 2026-03-20 | Post    | AI idea diversity via priming          | https://www.linkedin.com/feed/update/urn:li:activity:7441162199160705025/ | Queued | No posting confirmation | Practical reaction to priming and idea generation          | Unknown | 2026-03-20_linkedin-warmup.md |
+| 2026-03-26 | Post    | Coding agent built a Rust webcam app   | https://www.linkedin.com/feed/update/urn:li:activity:7443092465009651714/ | Queued | No posting confirmation | Overnight coding-agent iteration from a solo-builder angle | Unknown | 2026-03-26_linkedin-warmup.md |
+| 2026-04-07 | Post    | Claude Mythos red team / cybersecurity | https://www.linkedin.com/feed/update/urn:li:activity:7447345299989217281/ | Queued | No posting confirmation | Builder reaction to red-team docs and SDK-layer reality    | Unknown | 2026-04-07_linkedin-warmup.md |
 
 ## Open Loops
 

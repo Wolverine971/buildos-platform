@@ -47,11 +47,11 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                             | Post Link                                | Action   | Status                  | What We Said / Planned                                  | Outcome              | Source                         |
-| ---------- | ------- | --------------------------------- | ---------------------------------------- | -------- | ----------------------- | ------------------------------------------------------- | -------------------- | ------------------------------ |
-| 2026-03-22 | Post    | Graphic novel "finished!" reveal  | https://www.instagram.com/p/DWKS5QRjq08/ | Queued   | No posting confirmation | 5-year persistence + finished-with-ADHD celebration     | Unknown              | 2026-03-22_instagram-warmup.md |
-| 2026-03-23 | Profile | Carryover strong ratio (664:1)    | N/A                                      | Reviewed | Logged                  | Noted as still viable engagement                        | No engagement        | 2026-03-23_instagram-warmup.md |
-| 2026-03-24 | Post    | B&N pre-order event (25% off)     | https://www.instagram.com/p/DWRmNzHiPI3/ | Queued   | No posting confirmation | Milestone cheerleading + pre-order hype                 | Unknown              | 2026-03-24_instagram-warmup.md |
+| Date       | Surface | Topic                            | Post Link                                | Action   | Status                  | What We Said / Planned                              | Outcome       | Source                         |
+| ---------- | ------- | -------------------------------- | ---------------------------------------- | -------- | ----------------------- | --------------------------------------------------- | ------------- | ------------------------------ |
+| 2026-03-22 | Post    | Graphic novel "finished!" reveal | https://www.instagram.com/p/DWKS5QRjq08/ | Queued   | No posting confirmation | 5-year persistence + finished-with-ADHD celebration | Unknown       | 2026-03-22_instagram-warmup.md |
+| 2026-03-23 | Profile | Carryover strong ratio (664:1)   | N/A                                      | Reviewed | Logged                  | Noted as still viable engagement                    | No engagement | 2026-03-23_instagram-warmup.md |
+| 2026-03-24 | Post    | B&N pre-order event (25% off)    | https://www.instagram.com/p/DWRmNzHiPI3/ | Queued   | No posting confirmation | Milestone cheerleading + pre-order hype             | Unknown       | 2026-03-24_instagram-warmup.md |
 
 ## Open Loops
 

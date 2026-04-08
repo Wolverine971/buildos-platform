@@ -24,9 +24,13 @@ import {
 import { SSEResponse } from '$lib/utils/sse-response';
 import { validateSynthesisResult } from '$lib/services/prompts/core/validations';
 import { BrainDumpValidator } from '$lib/utils/braindump-validation';
-import { rateLimiter, RATE_LIMITS } from '$lib/utils/rate-limiter';
 import { instantiateProject } from '$lib/services/ontology/instantiation.service';
 import { convertBrainDumpToProjectSpec } from '$lib/services/ontology/braindump-to-ontology-adapter';
+import {
+	estimateBrainDumpReservation,
+	expensiveOperationLimiter,
+	withRateLimitHeaders
+} from '$lib/server/expensive-operation-limiter';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -37,29 +41,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const { user } = await safeGetSession();
 		if (!user) {
 			return SSEResponse.unauthorized();
-		}
-
-		// Apply rate limiting to prevent DoS attacks (expensive AI operation)
-		const rateLimitResult = rateLimiter.check(user.id, RATE_LIMITS.API_AI);
-		if (!rateLimitResult.allowed) {
-			const retryAfter = Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000);
-			return new Response(
-				JSON.stringify({
-					error: 'Rate limit exceeded. Please wait before creating another brain dump.',
-					retryAfter,
-					resetTime: new Date(rateLimitResult.resetTime).toISOString()
-				}),
-				{
-					status: 429,
-					headers: {
-						'Content-Type': 'application/json',
-						'Retry-After': retryAfter.toString(),
-						'X-RateLimit-Limit': RATE_LIMITS.API_AI.requests.toString(),
-						'X-RateLimit-Remaining': '0',
-						'X-RateLimit-Reset': Math.ceil(rateLimitResult.resetTime / 1000).toString()
-					}
-				}
-			);
 		}
 
 		// Parse request body
@@ -82,11 +63,23 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			);
 		}
 
+		const operationDecision = expensiveOperationLimiter.acquire({
+			userId: user.id,
+			policyKey: 'braindump_stream',
+			estimatedCost: estimateBrainDumpReservation(content)
+		});
+		if (!operationDecision.allowed) {
+			return withRateLimitHeaders(
+				SSEResponse.error(operationDecision.message, 429, 'RATE_LIMITED'),
+				operationDecision.headers
+			);
+		}
+
 		// Create a TransformStream for SSE
 		const { response, writer, encoder } = SSEResponse.createStream();
 
 		// Process in background
-		processBrainDumpWithStreaming({
+		void processBrainDumpWithStreaming({
 			content,
 			selectedProjectId,
 			brainDumpId,
@@ -97,7 +90,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			supabase,
 			options,
 			autoAccept: !!autoAccept,
-			processingDateTime
+			processingDateTime,
+			operationLease: operationDecision.lease
 		});
 
 		// Return SSE response
@@ -118,7 +112,8 @@ async function processBrainDumpWithStreaming({
 	supabase,
 	options,
 	autoAccept,
-	processingDateTime
+	processingDateTime,
+	operationLease
 }: {
 	content: string;
 	selectedProjectId?: string;
@@ -131,6 +126,11 @@ async function processBrainDumpWithStreaming({
 	options: BrainDumpOptions | undefined;
 	autoAccept: boolean;
 	processingDateTime: string;
+	operationLease: {
+		recordCost(actualCost: number): void;
+		cancel(): void;
+		release(): void;
+	};
 }) {
 	const processor = new BrainDumpProcessor(supabase);
 	const activityLogger = new ActivityLogger(supabase);
@@ -687,6 +687,8 @@ async function processBrainDumpWithStreaming({
 		};
 		await sendSSEMessage(writer, encoder, errorMessage);
 	} finally {
+		operationLease.recordCost(estimateBrainDumpReservation(content));
+		operationLease.release();
 		await SSEResponse.close(writer);
 	}
 }

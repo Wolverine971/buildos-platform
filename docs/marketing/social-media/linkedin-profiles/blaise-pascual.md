@@ -48,9 +48,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                   | Post Link                       | Action | Status                  | What We Said / Planned                                  | Outcome              | Source                        |
-| ---------- | ------- | --------------------------------------- | ------------------------------- | ------ | ----------------------- | ------------------------------------------------------- | -------------------- | ----------------------------- |
-| 2026-03-24 | Post    | Dropped out with a 4.0 because AI moved faster | Legacy warmup did not capture direct post URL | Queued | No posting confirmation | Marines-to-builder parallel; shipping beats curriculum | Unknown              | 2026-03-24_linkedin-warmup.md |
+| Date       | Surface | Topic                                          | Post Link                                     | Action | Status                  | What We Said / Planned                                 | Outcome | Source                        |
+| ---------- | ------- | ---------------------------------------------- | --------------------------------------------- | ------ | ----------------------- | ------------------------------------------------------ | ------- | ----------------------------- |
+| 2026-03-24 | Post    | Dropped out with a 4.0 because AI moved faster | Legacy warmup did not capture direct post URL | Queued | No posting confirmation | Marines-to-builder parallel; shipping beats curriculum | Unknown | 2026-03-24_linkedin-warmup.md |
 
 ## Open Loops
 

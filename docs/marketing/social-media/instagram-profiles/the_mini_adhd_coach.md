@@ -46,15 +46,15 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                    | Post Link                               | Action | Status                  | What We Said / Planned                             | Outcome                      | Source                               |
-| ---------- | ------- | ------------------------ | --------------------------------------- | ------ | ----------------------- | -------------------------------------------------- | ---------------------------- | ------------------------------------ |
-| 2026-03-22 | Post    | ADHD & Talking Fast      | https://www.instagram.com/p/DWKSo0PDWCu/ | Queued | No posting confirmation | Validate the self-consciousness around fast talking | Unknown                      | 2026-03-22_instagram-warmup.md       |
-| 2026-03-22 | Post    | ADHD & Forgetting        | https://www.instagram.com/p/DWH0r3XDebr/ | Queued | No posting confirmation | Share a forgetting story and the "brain betrayal" angle | Unknown                  | 2026-03-22_instagram-warmup.md       |
-| 2026-03-24 | Post    | ADHD & Anger             | https://www.instagram.com/p/DWPVXtMEilh/ | Queued | No posting confirmation | Emotional dysregulation angle with relational impact | Unknown                    | 2026-03-24_instagram-warmup.md       |
-| 2026-03-24 | Post    | ADHD & Impulse Buying    | https://www.instagram.com/p/DWR6Iv8D2x-/ | Queued | No posting confirmation | Side-project impulse-buying / shiny-object anecdote | Unknown                    | 2026-03-24_instagram-warmup.md       |
-| 2026-04-04 | Post    | ADHD & Imposter Syndrome | https://www.instagram.com/p/DWrw912Gel6/ | Queued | No posting confirmation | Solo-founder impostor syndrome without product mention | Unknown                  | 2026-04-04_instagram-warmup.md       |
-| 2026-04-05 | Post    | Losing Things            | https://www.instagram.com/p/DWuIDHPgcnD/ | Queued | No posting confirmation | Browser-tabs / digital-chaos answer to the 1-10 prompt | Unknown                  | 2026-04-05_instagram-warmup.md       |
-| 2026-04-06 | Post    | Adult ADHD diagnosis     | https://www.instagram.com/p/DWwzrbjiPnt/ | Reviewed | Logged                | Strong fit, but Stage 2 was not run                | No comment confirmed         | 2026-04-06_instagram-warmup.md       |
+| Date       | Surface | Topic                    | Post Link                                | Action   | Status                  | What We Said / Planned                                  | Outcome              | Source                         |
+| ---------- | ------- | ------------------------ | ---------------------------------------- | -------- | ----------------------- | ------------------------------------------------------- | -------------------- | ------------------------------ |
+| 2026-03-22 | Post    | ADHD & Talking Fast      | https://www.instagram.com/p/DWKSo0PDWCu/ | Queued   | No posting confirmation | Validate the self-consciousness around fast talking     | Unknown              | 2026-03-22_instagram-warmup.md |
+| 2026-03-22 | Post    | ADHD & Forgetting        | https://www.instagram.com/p/DWH0r3XDebr/ | Queued   | No posting confirmation | Share a forgetting story and the "brain betrayal" angle | Unknown              | 2026-03-22_instagram-warmup.md |
+| 2026-03-24 | Post    | ADHD & Anger             | https://www.instagram.com/p/DWPVXtMEilh/ | Queued   | No posting confirmation | Emotional dysregulation angle with relational impact    | Unknown              | 2026-03-24_instagram-warmup.md |
+| 2026-03-24 | Post    | ADHD & Impulse Buying    | https://www.instagram.com/p/DWR6Iv8D2x-/ | Queued   | No posting confirmation | Side-project impulse-buying / shiny-object anecdote     | Unknown              | 2026-03-24_instagram-warmup.md |
+| 2026-04-04 | Post    | ADHD & Imposter Syndrome | https://www.instagram.com/p/DWrw912Gel6/ | Queued   | No posting confirmation | Solo-founder impostor syndrome without product mention  | Unknown              | 2026-04-04_instagram-warmup.md |
+| 2026-04-05 | Post    | Losing Things            | https://www.instagram.com/p/DWuIDHPgcnD/ | Queued   | No posting confirmation | Browser-tabs / digital-chaos answer to the 1-10 prompt  | Unknown              | 2026-04-05_instagram-warmup.md |
+| 2026-04-06 | Post    | Adult ADHD diagnosis     | https://www.instagram.com/p/DWwzrbjiPnt/ | Reviewed | Logged                  | Strong fit, but Stage 2 was not run                     | No comment confirmed | 2026-04-06_instagram-warmup.md |
 
 ## Open Loops
 

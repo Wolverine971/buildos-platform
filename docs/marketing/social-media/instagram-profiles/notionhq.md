@@ -47,11 +47,11 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                             | Post Link                                | Action    | Status     | What We Said / Planned                                 | Outcome                          | Source                         |
-| ---------- | ------- | --------------------------------- | ---------------------------------------- | --------- | ---------- | ------------------------------------------------------ | -------------------------------- | ------------------------------ |
-| 2026-03-22 | Profile | Office tour + AI ads Reel         | N/A                                      | Reviewed  | Logged     | Noted 443K, AI workspace bio, no engagement            | Competitor intel logged          | 2026-03-22_instagram-warmup.md |
-| 2026-03-27 | Post    | Notion 3.4 AI update launch       | https://www.instagram.com/p/DWXAfUCCGG6/ | Queued    | No posting | Watering hole — reply to commenters, not the post      | Unknown                          | 2026-03-27_instagram-warmup.md |
-| 2026-03-29 | Profile | 3.4 launch carryover              | https://www.instagram.com/p/DWXAfUCCGG6/ | Reviewed  | Logged     | Steady engagement, no pushback in comments             | Competitor intel logged          | 2026-03-29_instagram-warmup.md |
+| Date       | Surface | Topic                       | Post Link                                | Action   | Status     | What We Said / Planned                            | Outcome                 | Source                         |
+| ---------- | ------- | --------------------------- | ---------------------------------------- | -------- | ---------- | ------------------------------------------------- | ----------------------- | ------------------------------ |
+| 2026-03-22 | Profile | Office tour + AI ads Reel   | N/A                                      | Reviewed | Logged     | Noted 443K, AI workspace bio, no engagement       | Competitor intel logged | 2026-03-22_instagram-warmup.md |
+| 2026-03-27 | Post    | Notion 3.4 AI update launch | https://www.instagram.com/p/DWXAfUCCGG6/ | Queued   | No posting | Watering hole — reply to commenters, not the post | Unknown                 | 2026-03-27_instagram-warmup.md |
+| 2026-03-29 | Profile | 3.4 launch carryover        | https://www.instagram.com/p/DWXAfUCCGG6/ | Reviewed | Logged     | Steady engagement, no pushback in comments        | Competitor intel logged | 2026-03-29_instagram-warmup.md |
 
 ## Open Loops
 

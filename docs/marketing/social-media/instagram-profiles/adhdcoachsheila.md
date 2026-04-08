@@ -47,9 +47,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                 | Post Link                                | Action | Status                  | What We Said / Planned                           | Outcome       | Source                         |
-| ---------- | ------- | ------------------------------------- | ---------------------------------------- | ------ | ----------------------- | ------------------------------------------------ | ------------- | ------------------------------ |
-| 2026-03-24 | Post    | "AuDHD & Earning Your Existence"      | https://www.instagram.com/p/DWPwxF3iTZd/ | Queued | No posting confirmation | Validate weight of "earn my existence" quote     | Unknown       | 2026-03-24_instagram-warmup.md |
+| Date       | Surface | Topic                            | Post Link                                | Action | Status                  | What We Said / Planned                       | Outcome | Source                         |
+| ---------- | ------- | -------------------------------- | ---------------------------------------- | ------ | ----------------------- | -------------------------------------------- | ------- | ------------------------------ |
+| 2026-03-24 | Post    | "AuDHD & Earning Your Existence" | https://www.instagram.com/p/DWPwxF3iTZd/ | Queued | No posting confirmation | Validate weight of "earn my existence" quote | Unknown | 2026-03-24_instagram-warmup.md |
 
 ## Open Loops
 

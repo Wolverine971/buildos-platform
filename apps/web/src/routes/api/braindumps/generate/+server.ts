@@ -5,9 +5,13 @@ import { OperationsExecutor } from '$utils/operations-executor';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { LLMMetadata } from '$lib/types/error-logging';
-import { rateLimiter, RATE_LIMITS } from '$lib/utils/rate-limiter';
 import { instantiateProject } from '$lib/services/ontology/instantiation.service';
 import { convertBrainDumpToProjectSpec } from '$lib/services/ontology/braindump-to-ontology-adapter';
+import {
+	estimateBrainDumpReservation,
+	expensiveOperationLimiter,
+	withRateLimitHeaders
+} from '$lib/server/expensive-operation-limiter';
 // Improved cache implementation using WeakMap for automatic garbage collection
 // WeakMap allows processor instances to be garbage collected when no longer referenced
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes TTL
@@ -114,29 +118,6 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			return ApiResponse.unauthorized();
 		}
 
-		// Apply rate limiting to prevent DoS attacks (expensive AI operation)
-		const rateLimitResult = rateLimiter.check(user.id, RATE_LIMITS.API_AI);
-		if (!rateLimitResult.allowed) {
-			const retryAfter = Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000);
-			return new Response(
-				JSON.stringify({
-					error: 'Rate limit exceeded. Please wait before processing another brain dump.',
-					retryAfter,
-					resetTime: new Date(rateLimitResult.resetTime).toISOString()
-				}),
-				{
-					status: 429,
-					headers: {
-						'Content-Type': 'application/json',
-						'Retry-After': retryAfter.toString(),
-						'X-RateLimit-Limit': RATE_LIMITS.API_AI.requests.toString(),
-						'X-RateLimit-Remaining': '0',
-						'X-RateLimit-Reset': Math.ceil(rateLimitResult.resetTime / 1000).toString()
-					}
-				}
-			);
-		}
-
 		// Parse and validate request body
 		const body = await parseRequestBody(request);
 		if (!body || !body.action) {
@@ -204,117 +185,134 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					);
 				}
 
-				// Process brain dump with timeout
-				const parseStartTime = Date.now();
-				let parseResult;
-				let llmMetadata: LLMMetadata = {};
-
-				try {
-					parseResult = await processor.processBrainDump({
-						brainDump: text,
-						userId: user.id,
-						selectedProjectId: selectedProjectId,
-						displayedQuestions: displayedQuestions,
-						options: {
-							autoExecute: options?.autoExecute || false, // Use client's autoExecute preference
-							streamResults: options?.streamResults,
-							useDualProcessing: options?.useDualProcessing,
-							retryAttempts: options?.retryAttempts || 3
-						},
-						brainDumpId: effectiveBrainDumpId
-					});
-
-					// Track LLM metrics
-					llmMetadata = {
-						responseTimeMs: Date.now() - parseStartTime,
-						provider: options?.llmProvider || 'openai',
-						model: options?.llmModel || 'gpt-4'
-					};
-				} catch (parseError) {
-					// Log parsing error
-					await errorLogger.logBrainDumpError(
-						parseError,
-						effectiveBrainDumpId,
-						{
-							...llmMetadata,
-							responseTimeMs: Date.now() - parseStartTime
-						},
-						{
-							userId: user.id,
-							projectId: selectedProjectId,
-							endpoint: '/api/braindumps/generate',
-							httpMethod: 'POST',
-							requestId,
-							operationType: 'parse',
-							metadata: {
-								textLength: text.length,
-								options
-							}
-						}
+				const operationDecision = expensiveOperationLimiter.acquire({
+					userId: user.id,
+					policyKey: 'braindump_parse',
+					estimatedCost: estimateBrainDumpReservation(text)
+				});
+				if (!operationDecision.allowed) {
+					return withRateLimitHeaders(
+						ApiResponse.error(operationDecision.message, 429, 'RATE_LIMITED', {
+							retryAfter: operationDecision.retryAfterSeconds,
+							reason: operationDecision.reason
+						}),
+						operationDecision.headers
 					);
-					throw parseError;
 				}
 
 				try {
-					// IMPORTANT: Validate the parse results before storing
-					if (
-						!parseResult ||
-						!parseResult.operations ||
-						!Array.isArray(parseResult.operations)
-					) {
-						console.error('Invalid parse results structure:', parseResult);
-						throw new Error('Invalid parse results');
+					// Process brain dump with timeout
+					const parseStartTime = Date.now();
+					let parseResult;
+					let llmMetadata: LLMMetadata = {};
+
+					try {
+						parseResult = await processor.processBrainDump({
+							brainDump: text,
+							userId: user.id,
+							selectedProjectId: selectedProjectId,
+							displayedQuestions: displayedQuestions,
+							options: {
+								autoExecute: options?.autoExecute || false,
+								streamResults: options?.streamResults,
+								useDualProcessing: options?.useDualProcessing,
+								retryAttempts: options?.retryAttempts || 3
+							},
+							brainDumpId: effectiveBrainDumpId
+						});
+
+						llmMetadata = {
+							responseTimeMs: Date.now() - parseStartTime,
+							provider: options?.llmProvider || 'openai',
+							model: options?.llmModel || 'gpt-4'
+						};
+					} catch (parseError) {
+						await errorLogger.logBrainDumpError(
+							parseError,
+							effectiveBrainDumpId,
+							{
+								...llmMetadata,
+								responseTimeMs: Date.now() - parseStartTime
+							},
+							{
+								userId: user.id,
+								projectId: selectedProjectId,
+								endpoint: '/api/braindumps/generate',
+								httpMethod: 'POST',
+								requestId,
+								operationType: 'parse',
+								metadata: {
+									textLength: text.length,
+									options
+								}
+							}
+						);
+						throw parseError;
 					}
 
-					// Update status based on whether operations were auto-executed
-					const newStatus = parseResult.executionResult ? 'saved' : 'parsed';
-
-					await supabase
-						.from('brain_dumps')
-						.update({
-							title:
-								parseResult.title ||
-								`Brain Dump - ${new Date().toLocaleDateString()}`,
-							status: newStatus,
-							project_id: selectedProjectId,
-							ai_insights: parseResult.insights, // Store actual AI insights
-							ai_summary: parseResult.summary,
-							parsed_results: JSON.stringify(parseResult), // Store complete parse results
-							tags: parseResult.tags,
-							updated_at: new Date().toISOString()
-						})
-						.eq('id', brainDumpId)
-						.eq('user_id', user.id);
-
-					console.log(
-						`Brain dump ${effectiveBrainDumpId} status updated to ${newStatus}`
-					);
-				} catch (updateError) {
-					console.warn('Failed to update brain dump status after parsing:', updateError);
-
-					// Log database update error
-					await errorLogger.logDatabaseError(
-						updateError,
-						'update',
-						'brain_dumps',
-						brainDumpId,
-						{
-							title: parseResult.title,
-							status: parseResult.executionResult ? 'saved' : 'parsed',
-							project_id: selectedProjectId,
-							ai_insights: parseResult.insights,
-							ai_summary: parseResult.summary,
-							parsed_results: JSON.stringify(parseResult)
+					try {
+						if (
+							!parseResult ||
+							!parseResult.operations ||
+							!Array.isArray(parseResult.operations)
+						) {
+							console.error('Invalid parse results structure:', parseResult);
+							throw new Error('Invalid parse results');
 						}
-					);
-					// Don't fail the parse request if status update fails
-				}
 
-				// Include brainDumpId in the response for background processing
-				return ApiResponse.success({
-					...parseResult,
-					brainDumpId: effectiveBrainDumpId
-				});
+						const newStatus = parseResult.executionResult ? 'saved' : 'parsed';
+
+						await supabase
+							.from('brain_dumps')
+							.update({
+								title:
+									parseResult.title ||
+									`Brain Dump - ${new Date().toLocaleDateString()}`,
+								status: newStatus,
+								project_id: selectedProjectId,
+								ai_insights: parseResult.insights,
+								ai_summary: parseResult.summary,
+								parsed_results: JSON.stringify(parseResult),
+								tags: parseResult.tags,
+								updated_at: new Date().toISOString()
+							})
+							.eq('id', brainDumpId)
+							.eq('user_id', user.id);
+
+						console.log(
+							`Brain dump ${effectiveBrainDumpId} status updated to ${newStatus}`
+						);
+					} catch (updateError) {
+						console.warn(
+							'Failed to update brain dump status after parsing:',
+							updateError
+						);
+
+						await errorLogger.logDatabaseError(
+							updateError,
+							'update',
+							'brain_dumps',
+							brainDumpId,
+							{
+								title: parseResult.title,
+								status: parseResult.executionResult ? 'saved' : 'parsed',
+								project_id: selectedProjectId,
+								ai_insights: parseResult.insights,
+								ai_summary: parseResult.summary,
+								parsed_results: JSON.stringify(parseResult)
+							}
+						);
+					}
+
+					operationDecision.lease.recordCost(estimateBrainDumpReservation(text));
+
+					return ApiResponse.success({
+						...parseResult,
+						brainDumpId: effectiveBrainDumpId
+					});
+				} finally {
+					operationDecision.lease.release();
+				}
 			}
 
 			case 'save': {

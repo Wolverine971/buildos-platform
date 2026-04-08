@@ -199,6 +199,7 @@
 	let isStreaming = $state(false);
 	let currentStreamController: AbortController | null = null;
 	let activeStreamRunId = $state(0);
+	let activeTransportStreamRunId = $state<string | null>(null);
 	let activeClientTurnId = $state<string | null>(null);
 	let inputValue = $state('');
 	let error = $state<string | null>(null);
@@ -3029,6 +3030,7 @@
 		} else if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;
+			activeTransportStreamRunId = null;
 			activeClientTurnId = null;
 		}
 		cleanupVoiceInput();
@@ -3153,6 +3155,7 @@
 
 		const now = new Date();
 		const clientTurnId = crypto.randomUUID();
+		const transportStreamRunId = crypto.randomUUID();
 
 		// Add user message
 		const userMessage: UIMessage = {
@@ -3166,7 +3169,8 @@
 			created_at: now.toISOString(),
 			metadata: {
 				...(activeVoiceNoteGroupId ? { voice_note_group_id: activeVoiceNoteGroupId } : {}),
-				client_turn_id: clientTurnId
+				client_turn_id: clientTurnId,
+				stream_run_id: transportStreamRunId
 			}
 		};
 
@@ -3183,6 +3187,7 @@
 		// Increment run id for stale-stream guard
 		activeStreamRunId = activeStreamRunId + 1;
 		const runId = activeStreamRunId;
+		activeTransportStreamRunId = transportStreamRunId;
 		activeClientTurnId = clientTurnId;
 		activeStreamTiming = buildClientStreamTimingState(runId);
 
@@ -3251,7 +3256,7 @@
 					ontologyEntityType: ontologyEntityType, // Pass entity type for ontology loading
 					projectFocus: requestProjectFocus,
 					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity
-					stream_run_id: runId,
+					stream_run_id: transportStreamRunId,
 					client_turn_id: clientTurnId,
 					voiceNoteGroupId: activeVoiceNoteGroupId,
 					prewarmedContext: matchingPrewarmedContext
@@ -3286,6 +3291,7 @@
 					isStreaming = false;
 					currentActivity = '';
 					currentStreamController = null;
+					activeTransportStreamRunId = null;
 					activeClientTurnId = null;
 					finalizeThinkingBlock('error');
 					flushAssistantText();
@@ -3301,6 +3307,7 @@
 					if (!receivedStreamEvent && !error) {
 						error = 'BuildOS did not return a response. Please try again.';
 					}
+					activeTransportStreamRunId = null;
 					finalizeThinkingBlock('completed');
 					flushAssistantText();
 					finalizeAssistantMessage();
@@ -3322,6 +3329,7 @@
 				}
 				isStreaming = false;
 				currentActivity = '';
+				activeTransportStreamRunId = null;
 				activeClientTurnId = null;
 				finalizeThinkingBlock('interrupted', 'Stopped');
 				flushAssistantText();
@@ -3334,6 +3342,7 @@
 			error = 'Failed to send message. Please try again.';
 			isStreaming = false;
 			currentActivity = '';
+			activeTransportStreamRunId = null;
 			activeClientTurnId = null;
 			finalizeThinkingBlock('error'); // Ensure thinking block is closed on error
 			flushAssistantText();
@@ -4119,7 +4128,7 @@
 
 	function markAssistantInterrupted(
 		reason: 'user_cancelled' | 'superseded' | 'error',
-		runId = activeStreamRunId
+		streamRunId = activeTransportStreamRunId
 	) {
 		if (!currentAssistantMessageId) return;
 		messages = messages.map((msg) =>
@@ -4130,7 +4139,7 @@
 							...msg.metadata,
 							interrupted: true,
 							interrupted_reason: reason,
-							stream_run_id: runId
+							...(streamRunId ? { stream_run_id: streamRunId } : {})
 						}
 					}
 				: msg
@@ -4139,12 +4148,12 @@
 
 	async function reportStreamCancellationReason(
 		reason: 'user_cancelled' | 'superseded',
-		runId: number,
+		streamRunId: string,
 		options: { awaitAck?: boolean } = {}
 	): Promise<void> {
 		const payload = {
 			session_id: currentSession?.id,
-			stream_run_id: runId,
+			stream_run_id: streamRunId,
 			client_turn_id: activeClientTurnId ?? undefined,
 			reason
 		};
@@ -4189,16 +4198,18 @@
 		}
 
 		const runId = activeStreamRunId;
+		const streamRunId = activeTransportStreamRunId;
 		const shouldReportReason = reason === 'user_cancelled' || reason === 'superseded';
-		const cancellationReasonPromise = shouldReportReason
-			? reportStreamCancellationReason(reason, runId, {
-					awaitAck: Boolean(options.awaitCancelHint)
-				})
-			: null;
+		const cancellationReasonPromise =
+			shouldReportReason && streamRunId
+				? reportStreamCancellationReason(reason, streamRunId, {
+						awaitAck: Boolean(options.awaitCancelHint)
+					})
+				: null;
 
 		// Flush any buffered tokens first so interruption metadata lands on the final visible partial.
 		flushAssistantText();
-		markAssistantInterrupted(reason, runId);
+		markAssistantInterrupted(reason, streamRunId);
 		finalizeClientStreamTiming(
 			runId,
 			'cancelled',
@@ -4206,6 +4217,7 @@
 		);
 		// Invalidate the active run id so late SSE chunks are dropped
 		activeStreamRunId = activeStreamRunId + 1;
+		activeTransportStreamRunId = null;
 		activeClientTurnId = null;
 
 		if (cancellationReasonPromise && options.awaitCancelHint) {
@@ -4328,6 +4340,7 @@
 		} else if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;
+			activeTransportStreamRunId = null;
 			activeClientTurnId = null;
 		}
 		cleanupVoiceInput();

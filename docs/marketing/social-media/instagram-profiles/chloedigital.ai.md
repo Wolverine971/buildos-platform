@@ -47,9 +47,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                  | Post Link                                | Action   | Status                  | What We Said / Planned                                  | Outcome       | Source                         |
-| ---------- | ------- | -------------------------------------- | ---------------------------------------- | -------- | ----------------------- | ------------------------------------------------------- | ------------- | ------------------------------ |
-| 2026-03-27 | Stories | Active Stories                          | N/A                                      | Reviewed | Logged                  | No topic fit for reply                                  | No engagement | 2026-03-27_instagram-warmup.md |
+| Date       | Surface | Topic                                    | Post Link                                | Action   | Status                  | What We Said / Planned                                  | Outcome       | Source                         |
+| ---------- | ------- | ---------------------------------------- | ---------------------------------------- | -------- | ----------------------- | ------------------------------------------------------- | ------------- | ------------------------------ |
+| 2026-03-27 | Stories | Active Stories                           | N/A                                      | Reviewed | Logged                  | No topic fit for reply                                  | No engagement | 2026-03-27_instagram-warmup.md |
 | 2026-04-05 | Post    | "6 Claude prompts to build your startup" | https://www.instagram.com/p/DWg2GF5ApuQ/ | Queued   | No posting confirmation | Validate-before-you-build plus light product nod option | Unknown       | 2026-04-05_instagram-warmup.md |
 
 ## Open Loops

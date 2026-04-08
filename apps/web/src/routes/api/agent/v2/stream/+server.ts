@@ -77,7 +77,7 @@ import {
 } from '$lib/services/agentic-chat-v2/context-cache';
 import {
 	consumeTransientFastChatCancelHint,
-	normalizeFastChatStreamRunId,
+	resolveFastChatStreamRunId,
 	readFastChatCancelReasonFromMetadata,
 	type FastChatCancelReason
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
@@ -2101,7 +2101,11 @@ export const POST: RequestHandler = async ({
 		typeof clientTurnIdRaw === 'string' && clientTurnIdRaw.trim().length > 0
 			? clientTurnIdRaw.trim()
 			: undefined;
-	const streamRunId = normalizeFastChatStreamRunId(streamRequest.stream_run_id) ?? uuidv4();
+	const streamRunId = resolveFastChatStreamRunId({
+		requestedStreamRunId: streamRequest.stream_run_id,
+		clientTurnId,
+		createFallbackId: uuidv4
+	});
 	const requestPrewarmedContext = normalizePrewarmedContextCache(
 		streamRequest.prewarmedContext ?? streamRequest.prewarmed_context ?? null
 	);

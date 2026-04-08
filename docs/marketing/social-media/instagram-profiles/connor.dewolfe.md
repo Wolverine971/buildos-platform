@@ -47,13 +47,13 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                  | Post Link | Action   | Status | What We Said / Planned                                  | Outcome       | Source                         |
-| ---------- | ------- | -------------------------------------- | --------- | -------- | ------ | ------------------------------------------------------- | ------------- | ------------------------------ |
-| 2026-03-22 | Profile | Variety show collab, entertainment     | N/A       | Reviewed | Logged | Feed content too crowded / entertainment-mode           | No engagement | 2026-03-22_instagram-warmup.md |
-| 2026-03-22 | Stories | Active Stories (entertainment/personal)| N/A       | Reviewed | Logged | No ADHD-topic Stories to reply to                       | No engagement | 2026-03-22_instagram-warmup.md |
-| 2026-03-24 | Profile | 4d+ stale, collab still pinned         | N/A       | Reviewed | Logged | No fresh solo content                                   | No engagement | 2026-03-24_instagram-warmup.md |
-| 2026-03-24 | Stories | Active Stories                         | N/A       | Reviewed | Logged | No ADHD-topic reply opportunity                         | No engagement | 2026-03-24_instagram-warmup.md |
-| 2026-03-27 | Stories | Active Stories                         | N/A       | Reviewed | Logged | No topic fit                                            | No engagement | 2026-03-27_instagram-warmup.md |
+| Date       | Surface | Topic                                   | Post Link | Action   | Status | What We Said / Planned                        | Outcome       | Source                         |
+| ---------- | ------- | --------------------------------------- | --------- | -------- | ------ | --------------------------------------------- | ------------- | ------------------------------ |
+| 2026-03-22 | Profile | Variety show collab, entertainment      | N/A       | Reviewed | Logged | Feed content too crowded / entertainment-mode | No engagement | 2026-03-22_instagram-warmup.md |
+| 2026-03-22 | Stories | Active Stories (entertainment/personal) | N/A       | Reviewed | Logged | No ADHD-topic Stories to reply to             | No engagement | 2026-03-22_instagram-warmup.md |
+| 2026-03-24 | Profile | 4d+ stale, collab still pinned          | N/A       | Reviewed | Logged | No fresh solo content                         | No engagement | 2026-03-24_instagram-warmup.md |
+| 2026-03-24 | Stories | Active Stories                          | N/A       | Reviewed | Logged | No ADHD-topic reply opportunity               | No engagement | 2026-03-24_instagram-warmup.md |
+| 2026-03-27 | Stories | Active Stories                          | N/A       | Reviewed | Logged | No topic fit                                  | No engagement | 2026-03-27_instagram-warmup.md |
 
 ## Open Loops
 

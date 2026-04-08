@@ -47,12 +47,12 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                             | Post Link                                | Action   | Status                  | What We Said / Planned                                  | Outcome              | Source                         |
-| ---------- | ------- | --------------------------------- | ---------------------------------------- | -------- | ----------------------- | ------------------------------------------------------- | -------------------- | ------------------------------ |
-| 2026-03-24 | Profile | Fresh Reels, 30+ comments         | N/A                                      | Reviewed | Logged                  | Noted as borderline crowded                              | No engagement        | 2026-03-24_instagram-warmup.md |
-| 2026-03-27 | Stories | Active Stories (no ADHD topic)    | N/A                                      | Reviewed | Logged                  | No reply opportunity                                     | No engagement        | 2026-03-27_instagram-warmup.md |
-| 2026-04-05 | Post    | "Solo AuDHD mum" Reel              | https://www.instagram.com/p/DWtDVVfxdge/ | Queued   | No posting confirmation | Solo-founder brain-won't-shut-off angle                  | Unknown              | 2026-04-05_instagram-warmup.md |
-| 2026-04-05 | Post    | "Son trolled me with a potato"    | https://www.instagram.com/p/DWv1bZYDEck/ | Queued   | No posting confirmation | Warm personal reaction, relationship-building            | Unknown              | 2026-04-05_instagram-warmup.md |
+| Date       | Surface | Topic                          | Post Link                                | Action   | Status                  | What We Said / Planned                        | Outcome       | Source                         |
+| ---------- | ------- | ------------------------------ | ---------------------------------------- | -------- | ----------------------- | --------------------------------------------- | ------------- | ------------------------------ |
+| 2026-03-24 | Profile | Fresh Reels, 30+ comments      | N/A                                      | Reviewed | Logged                  | Noted as borderline crowded                   | No engagement | 2026-03-24_instagram-warmup.md |
+| 2026-03-27 | Stories | Active Stories (no ADHD topic) | N/A                                      | Reviewed | Logged                  | No reply opportunity                          | No engagement | 2026-03-27_instagram-warmup.md |
+| 2026-04-05 | Post    | "Solo AuDHD mum" Reel          | https://www.instagram.com/p/DWtDVVfxdge/ | Queued   | No posting confirmation | Solo-founder brain-won't-shut-off angle       | Unknown       | 2026-04-05_instagram-warmup.md |
+| 2026-04-05 | Post    | "Son trolled me with a potato" | https://www.instagram.com/p/DWv1bZYDEck/ | Queued   | No posting confirmation | Warm personal reaction, relationship-building | Unknown       | 2026-04-05_instagram-warmup.md |
 
 ## Open Loops
 

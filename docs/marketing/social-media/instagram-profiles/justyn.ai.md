@@ -46,14 +46,14 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                               | Post Link                                   | Action | Status                  | What We Said / Planned                                  | Outcome              | Source                         |
-| ---------- | ------- | ----------------------------------- | ------------------------------------------- | ------ | ----------------------- | ------------------------------------------------------- | -------------------- | ------------------------------ |
-| 2026-03-22 | Post    | Claude Code kills Zapier / n8n      | https://www.instagram.com/p/DWMeby9Djm1/     | Queued | No posting confirmation | Real builder take on replacing no-code automations      | Unknown              | 2026-03-22_instagram-warmup.md |
-| 2026-03-23 | Post    | Claude Skills can be dangerous      | https://www.instagram.com/p/DWKOEDijwdB/     | Queued | No posting confirmation | Firsthand context and skills curation angle             | Unknown              | 2026-03-23_instagram-warmup.md |
-| 2026-03-24 | Post    | AI agent teams working together     | https://www.instagram.com/reel/DWPGBIKCYZv/  | Queued | No posting confirmation | Agent specialization and team-leader pattern            | Unknown              | 2026-03-24_instagram-warmup.md |
-| 2026-03-24 | Post    | Claude Code setup methods           | https://www.instagram.com/p/DWRqcnCjsVW/     | Queued | No posting confirmation | Terminal preference and setup-friction angle            | Unknown              | 2026-03-24_instagram-warmup.md |
-| 2026-04-04 | Post    | Claude Code killed ClickFunnels     | https://www.instagram.com/p/DWrZZfAjpr1/     | Queued | No posting confirmation | MCP setup plus research-first workflow angle            | Unknown              | 2026-04-04_instagram-warmup.md |
-| 2026-04-05 | Post    | Claude Code killed web designers    | https://www.instagram.com/reel/DWor6OdDh4t/  | Queued | No posting confirmation | Anti-vibe-coded quality and context-for-design angle    | Unknown              | 2026-04-05_instagram-warmup.md |
+| Date       | Surface | Topic                            | Post Link                                   | Action | Status                  | What We Said / Planned                               | Outcome | Source                         |
+| ---------- | ------- | -------------------------------- | ------------------------------------------- | ------ | ----------------------- | ---------------------------------------------------- | ------- | ------------------------------ |
+| 2026-03-22 | Post    | Claude Code kills Zapier / n8n   | https://www.instagram.com/p/DWMeby9Djm1/    | Queued | No posting confirmation | Real builder take on replacing no-code automations   | Unknown | 2026-03-22_instagram-warmup.md |
+| 2026-03-23 | Post    | Claude Skills can be dangerous   | https://www.instagram.com/p/DWKOEDijwdB/    | Queued | No posting confirmation | Firsthand context and skills curation angle          | Unknown | 2026-03-23_instagram-warmup.md |
+| 2026-03-24 | Post    | AI agent teams working together  | https://www.instagram.com/reel/DWPGBIKCYZv/ | Queued | No posting confirmation | Agent specialization and team-leader pattern         | Unknown | 2026-03-24_instagram-warmup.md |
+| 2026-03-24 | Post    | Claude Code setup methods        | https://www.instagram.com/p/DWRqcnCjsVW/    | Queued | No posting confirmation | Terminal preference and setup-friction angle         | Unknown | 2026-03-24_instagram-warmup.md |
+| 2026-04-04 | Post    | Claude Code killed ClickFunnels  | https://www.instagram.com/p/DWrZZfAjpr1/    | Queued | No posting confirmation | MCP setup plus research-first workflow angle         | Unknown | 2026-04-04_instagram-warmup.md |
+| 2026-04-05 | Post    | Claude Code killed web designers | https://www.instagram.com/reel/DWor6OdDh4t/ | Queued | No posting confirmation | Anti-vibe-coded quality and context-for-design angle | Unknown | 2026-04-05_instagram-warmup.md |
 
 ## Open Loops
 

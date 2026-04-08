@@ -211,9 +211,7 @@ ORDER BY created_at DESC;
 ### Custom Session ID
 
 ```svelte
-<ChatModal
-  sessionId={existingSessionId}  // Continue previous conversation
-/>
+<ChatModal sessionId={existingSessionId} />
 ```
 
 ### Custom Styling

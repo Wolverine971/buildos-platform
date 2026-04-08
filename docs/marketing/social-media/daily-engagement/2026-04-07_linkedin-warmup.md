@@ -9,13 +9,13 @@
 
 ## Priority Summary
 
-| #   | Author                       | Topic                                                | Post URL                                                                          | Age   | Comments | Score | Why                                                  |
-| --- | ---------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------- | ----- | -------- | ----- | ---------------------------------------------------- |
-| 1   | Pavan Komateedi              | "Context is everything" / Claude has no memory       | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447458740875735040/) | ~10m  | 0        | 96    | Ultra fresh, BuildOS thesis in his words, 0 comments |
-| 2   | Jenica Norris, MBA, PMP      | ADHD overwhelm protocol starts with "The Brain Dump" | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447341411332657152/) | ~7h   | 3        | 92    | Literally names the BuildOS pattern, 2nd connection  |
-| 3   | Steev H. (DOSE)              | "Notes app graveyard" — ADHD ideas that vanish       | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447014836808560641/) | ~1d   | 0        | 88    | ADHD founder, perfect competitor space, 7 reactions  |
-| 4   | Ethan Mollick                | Claude Mythos red team / cybersecurity report        | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447345299989217281/) | ~7h   | 13       | 78    | Tier 1 visibility, lower competition than other post |
-| 5   | Banu Ozkaya-Akbay (Toozy.ai) | "Vibe coding does not create the end product"        | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447310166586359808/) | ~10h  | 0        | 75    | 2nd connection, 6 reactions, AI maintenance angle    |
+| #   | Author                       | Topic                                                | Post URL                                                                          | Age  | Comments | Score | Why                                                  |
+| --- | ---------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------- | ---- | -------- | ----- | ---------------------------------------------------- |
+| 1   | Pavan Komateedi              | "Context is everything" / Claude has no memory       | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447458740875735040/) | ~10m | 0        | 96    | Ultra fresh, BuildOS thesis in his words, 0 comments |
+| 2   | Jenica Norris, MBA, PMP      | ADHD overwhelm protocol starts with "The Brain Dump" | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447341411332657152/) | ~7h  | 3        | 92    | Literally names the BuildOS pattern, 2nd connection  |
+| 3   | Steev H. (DOSE)              | "Notes app graveyard" — ADHD ideas that vanish       | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447014836808560641/) | ~1d  | 0        | 88    | ADHD founder, perfect competitor space, 7 reactions  |
+| 4   | Ethan Mollick                | Claude Mythos red team / cybersecurity report        | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447345299989217281/) | ~7h  | 13       | 78    | Tier 1 visibility, lower competition than other post |
+| 5   | Banu Ozkaya-Akbay (Toozy.ai) | "Vibe coding does not create the end product"        | [Link](https://www.linkedin.com/feed/update/urn:li:activity:7447310166586359808/) | ~10h | 0        | 75    | 2nd connection, 6 reactions, AI maintenance angle    |
 
 ---
 
@@ -27,7 +27,7 @@
 
 **The Post:**
 
-> I just completed my Claude 101 certification from Anthropic. The most valuable part wasn't learning what Claude can do. It was understanding *why* it works the way it does, and what that means for how we build with it.
+> I just completed my Claude 101 certification from Anthropic. The most valuable part wasn't learning what Claude can do. It was understanding _why_ it works the way it does, and what that means for how we build with it.
 >
 > A few things that stuck with me:
 >
@@ -67,10 +67,9 @@ This is THE post for DJ today. "Context is everything. Claude doesn't have memor
 > After 12+ years in operations at companies like Microsoft, Zillow, and Gates Ventures, and now coaching ADHD founders full-time, here's the overwhelm protocol I actually use — and teach:
 >
 > 1. The Brain Dump
-> Get everything out of your head — onto paper or a doc. No filtering, no organizing. Just out. ADHD brains aren't designed to hold large amounts in working memory without creating static. The brain dump clears the static so you can actually think.
->
+>    Get everything out of your head — onto paper or a doc. No filtering, no organizing. Just out. ADHD brains aren't designed to hold large amounts in working memory without creating static. The brain dump clears the static so you can actually think.
 > 2. The Quick Close
-> Scan your brain dump. Anything that takes two minutes or less — do it now...
+>    Scan your brain dump. Anything that takes two minutes or less — do it now...
 
 **Stats:** 2 reactions, 3 comments (~7h old)
 
@@ -206,13 +205,13 @@ Tier 1 visibility with relatively low comment competition (13 — compared to hi
 
 ## New Accounts Discovered
 
-| Account                  | Followers     | Theme                                            | Suggested Tier | Why                                                                                                          |
-| ------------------------ | ------------- | ------------------------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------ |
-| Pavan Komateedi          | Unknown       | AI program management, context engineering       | 3              | Posted DJ's exact thesis on context > prompts; fresh poster from UT Austin                                   |
-| Jenica Norris, MBA, PMP  | Unknown (2nd) | ADHD entrepreneurs coaching, brain dump protocol | **2**          | ADHD coach who literally names the brain dump pattern; ex-Microsoft/Zillow/Gates Ventures; 2nd connection    |
-| Steev H. (DOSE)          | Unknown       | ADHD productivity tool, ADHD founder building    | **2**          | Founder of DOSE (GetDOSE.app), certified ADHD coach. Direct competitor space + peer relationship potential   |
-| Banu Ozkaya-Akbay        | 547 (Toozy)   | Agentic AI for restaurant industry, founder      | 3              | 2nd connection, vertical agentic AI founder, posts on AI engineering vs vibe coding                          |
-| Fast Code AI (company)   | 31K           | AI memory frameworks, RAG/Mem0/Zep analysis      | 3              | Posts thoughtful technical takes on AI memory landscape (Mem0, Zep, MemPalace). Worth tracking for context.  |
+| Account                 | Followers     | Theme                                            | Suggested Tier | Why                                                                                                         |
+| ----------------------- | ------------- | ------------------------------------------------ | -------------- | ----------------------------------------------------------------------------------------------------------- |
+| Pavan Komateedi         | Unknown       | AI program management, context engineering       | 3              | Posted DJ's exact thesis on context > prompts; fresh poster from UT Austin                                  |
+| Jenica Norris, MBA, PMP | Unknown (2nd) | ADHD entrepreneurs coaching, brain dump protocol | **2**          | ADHD coach who literally names the brain dump pattern; ex-Microsoft/Zillow/Gates Ventures; 2nd connection   |
+| Steev H. (DOSE)         | Unknown       | ADHD productivity tool, ADHD founder building    | **2**          | Founder of DOSE (GetDOSE.app), certified ADHD coach. Direct competitor space + peer relationship potential  |
+| Banu Ozkaya-Akbay       | 547 (Toozy)   | Agentic AI for restaurant industry, founder      | 3              | 2nd connection, vertical agentic AI founder, posts on AI engineering vs vibe coding                         |
+| Fast Code AI (company)  | 31K           | AI memory frameworks, RAG/Mem0/Zep analysis      | 3              | Posts thoughtful technical takes on AI memory landscape (Mem0, Zep, MemPalace). Worth tracking for context. |
 
 ### Account Details
 
@@ -250,20 +249,20 @@ Posted DJ's exact "context > prompts" thesis. Worth tracking posting frequency b
 
 ## Tier 1 Account Scan Summary
 
-| Account         | Latest Post                                      | Age      | Status                                            |
-| --------------- | ------------------------------------------------ | -------- | ------------------------------------------------- |
-| Ethan Mollick   | "Dads replaced" Claude Mythos post               | 6h       | Too crowded (45 comments)                         |
-| Ethan Mollick   | Claude Mythos red team / cybersecurity           | 7h       | **Engageable** (13 comments) — Post #4            |
-| swyx            | Reposts only (AI Engineer Singapore)             | 2w       | No original content                               |
-| Dan Shipper     | Hiring 5 new roles at Every                      | 1d       | Hiring promo, 16 comments — skip                  |
-| Lenny Rachitsky | Wife's children's book launch                    | 7h       | Not relevant (41 comments)                        |
-| Sahil Lavingia  | Gumroad office open house                        | 2w       | Stale                                             |
-| Greg Isenberg   | Wrong profile (food researcher)                  | N/A      | Need correct profile URL                          |
-| Simon Willison  | Year-in-LLMs roundup                             | 3mo      | Stale, very infrequent on LinkedIn                |
-| Dexter Horthy   | Reposts (Jens Bodal MLOps event, Vaibhav Gupta)  | 1d       | Reposts only                                      |
-| Blaise Pascual  | "30-agent AI squads will fail" / Mirror App      | 6d       | Stale                                             |
-| Dani Donovan    | "people-pleaser" / async StairMaster             | 3h / 12h | Low engagement, weak BuildOS fit                  |
-| Jessica McCabe  | Morning derailers YouTube video                  | 1w       | Stale                                             |
+| Account         | Latest Post                                     | Age      | Status                                 |
+| --------------- | ----------------------------------------------- | -------- | -------------------------------------- |
+| Ethan Mollick   | "Dads replaced" Claude Mythos post              | 6h       | Too crowded (45 comments)              |
+| Ethan Mollick   | Claude Mythos red team / cybersecurity          | 7h       | **Engageable** (13 comments) — Post #4 |
+| swyx            | Reposts only (AI Engineer Singapore)            | 2w       | No original content                    |
+| Dan Shipper     | Hiring 5 new roles at Every                     | 1d       | Hiring promo, 16 comments — skip       |
+| Lenny Rachitsky | Wife's children's book launch                   | 7h       | Not relevant (41 comments)             |
+| Sahil Lavingia  | Gumroad office open house                       | 2w       | Stale                                  |
+| Greg Isenberg   | Wrong profile (food researcher)                 | N/A      | Need correct profile URL               |
+| Simon Willison  | Year-in-LLMs roundup                            | 3mo      | Stale, very infrequent on LinkedIn     |
+| Dexter Horthy   | Reposts (Jens Bodal MLOps event, Vaibhav Gupta) | 1d       | Reposts only                           |
+| Blaise Pascual  | "30-agent AI squads will fail" / Mirror App     | 6d       | Stale                                  |
+| Dani Donovan    | "people-pleaser" / async StairMaster            | 3h / 12h | Low engagement, weak BuildOS fit       |
+| Jessica McCabe  | Morning derailers YouTube video                 | 1w       | Stale                                  |
 
 ---
 
@@ -286,6 +285,7 @@ Posted DJ's exact "context > prompts" thesis. Worth tracking posting frequency b
 ### The Litmus Test
 
 For each comment before you hit send:
+
 - Would you actually say this at a coffee shop?
 - Is it under 4 sentences?
 - Are you adding energy or extracting attention?

@@ -6,6 +6,7 @@ import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import {
 	createFastChatCancelHint,
 	isFastChatCancelReason,
+	listFastChatCorrelationIds,
 	mergeFastChatCancelHintIntoMetadata,
 	normalizeFastChatStreamRunId,
 	recordTransientFastChatCancelHint
@@ -50,13 +51,19 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		typeof body.client_turn_id === 'string' && body.client_turn_id.trim().length > 0
 			? body.client_turn_id.trim()
 			: undefined;
-
-	recordTransientFastChatCancelHint({
-		userId: user.id,
+	const correlationIds = listFastChatCorrelationIds({
 		streamRunId,
-		reason: body.reason,
 		clientTurnId
 	});
+
+	for (const correlationId of correlationIds) {
+		recordTransientFastChatCancelHint({
+			userId: user.id,
+			streamRunId: correlationId,
+			reason: body.reason,
+			clientTurnId
+		});
+	}
 
 	if (!sessionId) {
 		return ApiResponse.success({ accepted: true, persisted: false });
@@ -87,16 +94,18 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		return ApiResponse.success({ accepted: true, persisted: false });
 	}
 
-	const hint = createFastChatCancelHint({
-		reason: body.reason,
-		streamRunId,
-		clientTurnId
-	});
-	const nextMetadata = mergeFastChatCancelHintIntoMetadata({
-		agentMetadata: session.agent_metadata,
-		streamRunId,
-		hint
-	});
+	let nextMetadata = session.agent_metadata;
+	for (const correlationId of correlationIds) {
+		nextMetadata = mergeFastChatCancelHintIntoMetadata({
+			agentMetadata: nextMetadata,
+			streamRunId: correlationId,
+			hint: createFastChatCancelHint({
+				reason: body.reason,
+				streamRunId: correlationId,
+				clientTurnId
+			})
+		});
+	}
 
 	const { error: updateError } = await supabase
 		.from('chat_sessions')

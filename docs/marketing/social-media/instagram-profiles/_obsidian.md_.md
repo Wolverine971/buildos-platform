@@ -47,9 +47,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                       | Post Link | Action   | Status | What We Said / Planned                        | Outcome       | Source                                       |
-| ---------- | ------- | --------------------------- | --------- | -------- | ------ | ---------------------------------------------- | ------------- | -------------------------------------------- |
-| 2026-04-08 | Profile | Initial profile creation    | N/A       | Reviewed | Logged | Niche-perfect PKM target, no prior engagement  | No engagement | `instagram-niche-expansion-research.md`      |
+| Date       | Surface | Topic                    | Post Link | Action   | Status | What We Said / Planned                        | Outcome       | Source                                  |
+| ---------- | ------- | ------------------------ | --------- | -------- | ------ | --------------------------------------------- | ------------- | --------------------------------------- |
+| 2026-04-08 | Profile | Initial profile creation | N/A       | Reviewed | Logged | Niche-perfect PKM target, no prior engagement | No engagement | `instagram-niche-expansion-research.md` |
 
 ## Open Loops
 

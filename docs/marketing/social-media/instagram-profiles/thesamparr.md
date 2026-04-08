@@ -47,11 +47,11 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                  | Post Link                                | Action    | Status                  | What We Said / Planned                                 | Outcome                      | Source                         |
-| ---------- | ------- | -------------------------------------- | ---------------------------------------- | --------- | ----------------------- | ------------------------------------------------------ | ---------------------------- | ------------------------------ |
-| 2026-03-29 | Post    | Founder obsession (James Dyson)        | https://www.instagram.com/p/DWY2iieDtFQ/ | Queued    | No posting confirmation | Obsession vs discipline angle                          | Unknown                      | 2026-03-29_instagram-warmup.md |
-| 2026-04-04 | Post    | Founder origin story w/ @ken_rideout   | https://www.instagram.com/p/DWrM9J0Ca46/ | Commented | Posted via @build.os    | "Lost phase before success" vulnerability co-sign      | 1 like by 2026-04-05         | 2026-04-04_instagram-warmup.md |
-| 2026-04-05 | Post    | Same origin story follow-up            | https://www.instagram.com/p/DWrM9J0Ca46/ | Reviewed  | Logged                  | @build.os comment confirmed landing                    | Reinforced                   | 2026-04-05_instagram-warmup.md |
+| Date       | Surface | Topic                                | Post Link                                | Action    | Status                  | What We Said / Planned                            | Outcome              | Source                         |
+| ---------- | ------- | ------------------------------------ | ---------------------------------------- | --------- | ----------------------- | ------------------------------------------------- | -------------------- | ------------------------------ |
+| 2026-03-29 | Post    | Founder obsession (James Dyson)      | https://www.instagram.com/p/DWY2iieDtFQ/ | Queued    | No posting confirmation | Obsession vs discipline angle                     | Unknown              | 2026-03-29_instagram-warmup.md |
+| 2026-04-04 | Post    | Founder origin story w/ @ken_rideout | https://www.instagram.com/p/DWrM9J0Ca46/ | Commented | Posted via @build.os    | "Lost phase before success" vulnerability co-sign | 1 like by 2026-04-05 | 2026-04-04_instagram-warmup.md |
+| 2026-04-05 | Post    | Same origin story follow-up          | https://www.instagram.com/p/DWrM9J0Ca46/ | Reviewed  | Logged                  | @build.os comment confirmed landing               | Reinforced           | 2026-04-05_instagram-warmup.md |
 
 ## Open Loops
 

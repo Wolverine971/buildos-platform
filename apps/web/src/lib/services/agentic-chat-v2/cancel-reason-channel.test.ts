@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
 	consumeTransientFastChatCancelHint,
 	createFastChatCancelHint,
+	isLegacyFastChatStreamRunId,
+	listFastChatCorrelationIds,
 	mergeFastChatCancelHintIntoMetadata,
 	normalizeFastChatStreamRunId,
 	readFastChatCancelReasonFromMetadata,
-	recordTransientFastChatCancelHint
+	recordTransientFastChatCancelHint,
+	resolveFastChatStreamRunId
 } from './cancel-reason-channel';
 
 describe('cancel reason channel', () => {
@@ -16,6 +19,50 @@ describe('cancel reason channel', () => {
 		expect(normalizeFastChatStreamRunId('')).toBeNull();
 		expect(normalizeFastChatStreamRunId(null)).toBeNull();
 		expect(normalizeFastChatStreamRunId(undefined)).toBeNull();
+	});
+
+	it('detects legacy numeric stream run ids', () => {
+		expect(isLegacyFastChatStreamRunId('42')).toBe(true);
+		expect(isLegacyFastChatStreamRunId('run-42')).toBe(false);
+	});
+
+	it('resolves legacy numeric stream run ids to the client turn id', () => {
+		expect(
+			resolveFastChatStreamRunId({
+				requestedStreamRunId: 7,
+				clientTurnId: 'turn_abc',
+				createFallbackId: () => 'fallback_run'
+			})
+		).toBe('turn_abc');
+		expect(
+			resolveFastChatStreamRunId({
+				requestedStreamRunId: 'run-123',
+				clientTurnId: 'turn_abc',
+				createFallbackId: () => 'fallback_run'
+			})
+		).toBe('run-123');
+		expect(
+			resolveFastChatStreamRunId({
+				requestedStreamRunId: null,
+				clientTurnId: null,
+				createFallbackId: () => 'fallback_run'
+			})
+		).toBe('fallback_run');
+	});
+
+	it('lists stream correlation ids without duplicates', () => {
+		expect(
+			listFastChatCorrelationIds({
+				streamRunId: 'run-123',
+				clientTurnId: 'turn_abc'
+			})
+		).toEqual(['run-123', 'turn_abc']);
+		expect(
+			listFastChatCorrelationIds({
+				streamRunId: 'run-123',
+				clientTurnId: 'run-123'
+			})
+		).toEqual(['run-123']);
 	});
 
 	it('merges and reads cancel reason metadata by stream run id', () => {

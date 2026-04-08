@@ -48,9 +48,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                         | Post Link                                                           | Action | Status                  | What We Said / Planned                                        | Outcome              | Source                        |
-| ---------- | ------- | ----------------------------- | ------------------------------------------------------------------- | ------ | ----------------------- | ------------------------------------------------------------- | -------------------- | ----------------------------- |
-| 2026-04-07 | Post    | ADHD overwhelm starts with the brain dump | https://www.linkedin.com/feed/update/urn:li:activity:7447341411332657152/ | Queued | No posting confirmation | Brain dump is the right first move; BuildOS-light angle possible | Unknown            | 2026-04-07_linkedin-warmup.md |
+| Date       | Surface | Topic                                     | Post Link                                                                 | Action | Status                  | What We Said / Planned                                           | Outcome | Source                        |
+| ---------- | ------- | ----------------------------------------- | ------------------------------------------------------------------------- | ------ | ----------------------- | ---------------------------------------------------------------- | ------- | ----------------------------- |
+| 2026-04-07 | Post    | ADHD overwhelm starts with the brain dump | https://www.linkedin.com/feed/update/urn:li:activity:7447341411332657152/ | Queued | No posting confirmation | Brain dump is the right first move; BuildOS-light angle possible | Unknown | 2026-04-07_linkedin-warmup.md |
 
 ## Open Loops
 

@@ -47,10 +47,10 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                  | Post Link                                | Action    | Status                  | What We Said / Planned                                  | Outcome                              | Source                         |
-| ---------- | ------- | -------------------------------------- | ---------------------------------------- | --------- | ----------------------- | ------------------------------------------------------- | ------------------------------------ | ------------------------------ |
-| 2026-03-27 | Post    | "Simple Habits That Change Your Life"  | https://www.instagram.com/p/DWWrzUUlOLM/ | Queued    | No posting confirmation | Watering hole — reply to commenters on habit stickiness | Unknown                              | 2026-03-27_instagram-warmup.md |
-| 2026-03-29 | Profile | "Simple Habits" carryover              | https://www.instagram.com/p/DWWrzUUlOLM/ | Commented | Confirmed via @build.os | @build.os comment visible on post (22h ago)             | Engagement landed                    | 2026-03-29_instagram-warmup.md |
+| Date       | Surface | Topic                                 | Post Link                                | Action    | Status                  | What We Said / Planned                                  | Outcome           | Source                         |
+| ---------- | ------- | ------------------------------------- | ---------------------------------------- | --------- | ----------------------- | ------------------------------------------------------- | ----------------- | ------------------------------ |
+| 2026-03-27 | Post    | "Simple Habits That Change Your Life" | https://www.instagram.com/p/DWWrzUUlOLM/ | Queued    | No posting confirmation | Watering hole — reply to commenters on habit stickiness | Unknown           | 2026-03-27_instagram-warmup.md |
+| 2026-03-29 | Profile | "Simple Habits" carryover             | https://www.instagram.com/p/DWWrzUUlOLM/ | Commented | Confirmed via @build.os | @build.os comment visible on post (22h ago)             | Engagement landed | 2026-03-29_instagram-warmup.md |
 
 ## Open Loops
 
