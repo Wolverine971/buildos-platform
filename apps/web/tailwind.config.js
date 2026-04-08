@@ -156,35 +156,12 @@ export default {
 			},
 
 			// ============================================
-			// Spacing (8px grid with dense options)
+			// Spacing (8px grid)
 			// ============================================
 			spacing: {
 				18: '4.5rem',
 				88: '22rem',
-				120: '30rem',
-				// Dense spacing scale for high information density
-				'dense-3': '0.5rem', // 8px
-				'dense-4': '0.625rem', // 10px
-				'dense-5': '0.75rem', // 12px
-				'dense-6': '0.875rem', // 14px
-				'dense-8': '1rem', // 16px
-				'dense-12': '1.5rem', // 24px
-				'dense-14': '2rem', // 32px
-				'dense-16': '2.25rem', // 36px
-				'dense-20': '2.5rem' // 40px
-			},
-
-			// Max width for dense layouts
-			maxWidth: {
-				'dense-7xl': '64rem'
-			},
-
-			// ============================================
-			// Transition Timing
-			// ============================================
-			transitionTimingFunction: {
-				ink: 'cubic-bezier(0.4, 0, 0.2, 1)',
-				snap: 'cubic-bezier(0.2, 1, 0.2, 1)'
+				120: '30rem'
 			},
 
 			// ============================================
@@ -286,10 +263,7 @@ export default {
 
 			// Backdrop filters
 			backdropBlur: {
-				xs: '2px',
 				sm: '4px',
-				md: '8px',
-				lg: '12px',
 				xl: '16px'
 			}
 		}

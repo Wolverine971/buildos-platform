@@ -3,9 +3,6 @@
 
 /* Inkprint first: defines CSS variables used by other files */
 @import './lib/styles/inkprint.css';
-@import './lib/styles/performance-optimizations.css';
-@import './lib/styles/animation-utils.css';
-@import './lib/styles/containment.css';
 
 @tailwind base;
 @tailwind components;
