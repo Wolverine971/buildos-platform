@@ -491,13 +491,6 @@ p-2   /* 8px - compact */
 p-3   /* 12px - default */
 p-4   /* 16px - comfortable */
 p-6   /* 24px - spacious */
-
-/* Dense spacing scale (available in tailwind.config.js) */
-dense-3   /* 8px */
-dense-4   /* 10px */
-dense-5   /* 12px */
-dense-8   /* 16px */
-dense-12  /* 24px */
 ```
 
 ### 8.3 Surface Levels (Paper Stack)

@@ -2,8 +2,10 @@
 
 # Dithering Stacking Context Fix
 
+> 📌 **Update 2026-04-08:** Two of the offending sources documented here — `containment.css` and `animation-utils.css` — were **deleted in the dead-weight cleanup**. Their classes were never used outside the inline patterns in `Modal.svelte` and `dashboard.css`. The remaining stacking-context risk now lives only in component-local styles (`Card.svelte`), which is the easiest place to manage it.
+
 **Date:** November 21, 2025
-**Status:** ✅ Fixed
+**Status:** ✅ Fixed (root causes simplified — see banner above)
 **Issue:** Dithering effects not visible after animation performance optimizations
 **Root Cause:** Multiple sources of `transform: translateZ(0)` creating stacking contexts
 

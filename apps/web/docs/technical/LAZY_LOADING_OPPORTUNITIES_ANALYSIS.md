@@ -490,7 +490,7 @@ Then in each admin route:
 {#if featureEnabled}
 	{#await import('./HeavyFeatureComponent.svelte')}
 		<!-- Loading skeleton matching component layout -->
-		<div class="skeleton-loader h-full"></div>
+		<div class="h-full animate-pulse rounded-md bg-muted"></div>
 	{:then { default: FeatureComponent }}
 		<svelte:component this={FeatureComponent} />
 	{:catch}

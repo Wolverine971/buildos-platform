@@ -62,7 +62,6 @@ This document provides a comprehensive matrix of all major components, services,
 | **Other Services**                                           |         |                                                          |          |
 | `google-oauth-service.ts`                                    | 🟢 Good | `__tests__/google-oauth-service.test.ts`                 | -        | OAuth flows tested                       |
 | `recurrence-pattern.ts`                                      | 🟢 Good | `__tests__/recurrence-pattern.test.ts`                   | -        | Recurring tasks tested                   |
-| `dashboardData.service.ts`                                   | 🟢 Good | `dashboardData.service.test.ts`                          | -        | Race condition tests                     |
 | `synthesis/task-synthesis-prompt.ts`                         | 🟢 Good | `__tests__/task-synthesis-prompt.test.ts`                | -        | Prompt generation                        |
 | `stripe-service.ts`                                          | 🔴 None | -                                                        | **P0**   | **Payment processing**                   |
 | `email-service.ts`                                           | 🔴 None | -                                                        | P1       | Email sending                            |

@@ -10,23 +10,13 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { OntologyGraphService } from '$lib/components/ontology/graph/lib/graph.service';
+import { loadProjectGraphData } from '$lib/services/ontology/project-graph-loader';
 import type {
 	GraphSourceData,
 	GraphStats,
 	ViewMode
 } from '$lib/components/ontology/graph/lib/graph.types';
-import type {
-	OntoProject,
-	OntoPlan,
-	OntoTask,
-	OntoGoal,
-	OntoMilestone,
-	OntoDocument,
-	OntoRisk,
-	OntoEdge
-} from '$lib/types/onto-api';
 
 const DEFAULT_NODE_LIMIT = 600;
 const VIEW_MODES: ViewMode[] = ['full', 'projects'];
@@ -45,7 +35,7 @@ function parseLimit(raw: string | null): number | null {
 	return parsed;
 }
 
-export const GET: RequestHandler = async ({ params, url }) => {
+export const GET: RequestHandler = async ({ params, url, locals }) => {
 	try {
 		const { id } = params;
 
@@ -63,50 +53,30 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			return ApiResponse.badRequest('Invalid limit parameter');
 		}
 
-		// Use admin client to bypass RLS and fetch public projects
-		const supabase = createAdminSupabaseClient();
-
-		// Verify project exists and is public
-		const { data: project, error: projectError } = await supabase
+		// Keep this route public-only even for authenticated users.
+		const { data: project, error: projectError } = await locals.supabase
 			.from('onto_projects')
-			.select('*')
+			.select('id, is_public')
 			.eq('id', id)
-			.eq('is_public', true)
-			.single();
+			.is('deleted_at', null)
+			.maybeSingle();
 
-		if (projectError || !project) {
+		if (projectError || !project?.is_public) {
 			return ApiResponse.notFound('Public project not found');
 		}
 
-		// Load all project data using efficient parallel queries
-		const [
-			plansResult,
-			tasksResult,
-			goalsResult,
-			milestonesResult,
-			documentsResult,
-			risksResult,
-			edgesResult
-		] = await Promise.all([
-			supabase.from('onto_plans').select('*').eq('project_id', id),
-			supabase.from('onto_tasks').select('*').eq('project_id', id),
-			supabase.from('onto_goals').select('*').eq('project_id', id),
-			supabase.from('onto_milestones').select('*').eq('project_id', id),
-			supabase.from('onto_documents').select('*').eq('project_id', id),
-			supabase.from('onto_risks').select('*').eq('project_id', id),
-			supabase.from('onto_edges').select('*').eq('project_id', id)
-		]);
+		const data = await loadProjectGraphData(locals.supabase, id);
 
 		// Build source data for graph service
 		const sourceData: GraphSourceData = {
-			projects: [project as OntoProject],
-			edges: (edgesResult.data ?? []) as OntoEdge[],
-			tasks: (tasksResult.data ?? []) as OntoTask[],
-			documents: (documentsResult.data ?? []) as OntoDocument[],
-			plans: (plansResult.data ?? []) as OntoPlan[],
-			goals: (goalsResult.data ?? []) as OntoGoal[],
-			milestones: (milestonesResult.data ?? []) as OntoMilestone[],
-			risks: (risksResult.data ?? []) as OntoRisk[]
+			projects: [data.project],
+			edges: data.edges,
+			tasks: data.tasks,
+			documents: data.documents,
+			plans: data.plans,
+			goals: data.goals,
+			milestones: data.milestones,
+			risks: data.risks
 		};
 
 		// Filter out template edges
@@ -134,14 +104,14 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
 		const stats: GraphStats = {
 			totalProjects: 1,
-			activeProjects: project.state_key === 'active' ? 1 : 0,
+			activeProjects: data.project.state_key === 'active' ? 1 : 0,
 			totalEdges: sourceData.edges.length,
-			totalTasks: (tasksResult.data ?? []).length,
-			totalDocuments: (documentsResult.data ?? []).length,
-			totalPlans: (plansResult.data ?? []).length,
-			totalGoals: (goalsResult.data ?? []).length,
-			totalMilestones: (milestonesResult.data ?? []).length,
-			totalRisks: (risksResult.data ?? []).length
+			totalTasks: data.tasks.length,
+			totalDocuments: data.documents.length,
+			totalPlans: data.plans.length,
+			totalGoals: data.goals.length,
+			totalMilestones: data.milestones.length,
+			totalRisks: data.risks.length
 		};
 
 		return ApiResponse.success({
@@ -149,17 +119,17 @@ export const GET: RequestHandler = async ({ params, url }) => {
 			graph: graphData,
 			stats,
 			project: {
-				id: project.id,
-				name: project.name,
-				description: project.description,
-				props: project.props,
-				state_key: project.state_key,
-				start_at: project.start_at,
-				end_at: project.end_at
+				id: data.project.id,
+				name: data.project.name,
+				description: data.project.description,
+				props: data.project.props,
+				state_key: data.project.state_key,
+				start_at: data.project.start_at,
+				end_at: data.project.end_at
 			},
 			metadata: {
 				viewMode,
-				projectId: project.id,
+				projectId: data.project.id,
 				isPublic: true,
 				generatedAt: new Date().toISOString()
 			}

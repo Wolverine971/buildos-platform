@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/onto/assets/[id]/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ensureAssetAccess } from '../shared';
 
 type UpdateAssetRequest = {
@@ -143,8 +142,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	// Best-effort cleanup for links and storage object.
 	await (locals.supabase as any).from('onto_asset_links').delete().eq('asset_id', assetId);
 
-	const adminSupabase = createAdminSupabaseClient();
-	await adminSupabase.storage.from(asset.storage_bucket).remove([asset.storage_path]);
+	await locals.supabase.storage.from(asset.storage_bucket).remove([asset.storage_path]);
 
 	return ApiResponse.success({ deleted: true });
 };

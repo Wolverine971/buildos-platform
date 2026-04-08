@@ -2,6 +2,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { logServerError } from '$lib/server/error-tracking';
+import { getAuthUserCreatedAt, inferAuthUserJustCreated } from '$lib/utils/auth-profile';
 
 export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	const code = url.searchParams.get('code');
@@ -105,7 +106,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	console.log('Gmail OAuth successful for user:', data.user.id);
 
 	// Check and create user record if not exists
-	let isNewUser = false;
+	const isNewUser = inferAuthUserJustCreated(data.user);
 
 	const { data: _existingUser, error: fetchError } = await supabase
 		.from('users')
@@ -116,7 +117,6 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 	if (fetchError && fetchError.code === 'PGRST116') {
 		// User doesn't exist, create them
 		console.log('Creating new user record...');
-		isNewUser = true;
 
 		const { error: insertError } = await supabase.from('users').insert({
 			id: data.user.id,
@@ -127,7 +127,7 @@ export const load: PageServerLoad = async ({ url, locals: { supabase } }) => {
 				data.user.email?.split('@')[0] ||
 				'User',
 			is_admin: false,
-			created_at: new Date().toISOString(),
+			created_at: getAuthUserCreatedAt(data.user),
 			updated_at: new Date().toISOString()
 		});
 

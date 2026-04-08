@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/onto/assets/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ensureProjectAccess, getFileExtension, isEntityKind, parsePositiveInt } from './shared';
 
 const MAX_IMAGE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB
@@ -178,8 +177,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.databaseError(insertError);
 	}
 
-	const adminSupabase = createAdminSupabaseClient();
-	const { data: uploadData, error: uploadError } = await adminSupabase.storage
+	const { data: uploadData, error: uploadError } = await locals.supabase.storage
 		.from('onto-assets')
 		.createSignedUploadUrl(storagePath);
 

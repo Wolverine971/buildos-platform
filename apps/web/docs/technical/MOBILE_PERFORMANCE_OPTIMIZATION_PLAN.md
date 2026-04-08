@@ -18,7 +18,7 @@ Based on a thorough analysis of the BuildOS codebase, I've identified **high-imp
 | Component                | Status             | Impact                                      |
 | ------------------------ | ------------------ | ------------------------------------------- |
 | **Modal Base Component** | ✅ Excellent       | GPU-optimized, touch gestures, safe areas   |
-| **Animation Framework**  | ✅ Good            | animation-utils.css comprehensive           |
+| **Animation Framework**  | ⚠️ Component-local | Per-component GPU patterns (no shared util) |
 | **Lazy Loading**         | ⚠️ Partial         | ~40/74 modals lazy loaded (54%)             |
 | **Form Mobile UX**       | ⚠️ Partial         | Only ~15 files optimized                    |
 | **Bundle Size**          | ❌ Unknown         | Need analysis                               |
@@ -197,9 +197,11 @@ src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte
 
 #### Good Base Already in Place ✅
 
-- `animation-utils.css` has comprehensive GPU utilities
-- `Modal.svelte` uses GPU-optimized animations
-- `will-change` auto-cleanup implemented
+- `Modal.svelte` uses GPU-optimized animations (component-local CSS)
+- `dashboard.css` GPU-accelerates fade-in / pulse / float keyframes
+- `will-change` auto-cleanup implemented inline where needed
+
+> ⚠️ The previous shared `animation-utils.css` was removed in the 2026-04-08 dead-weight cleanup — its classes were never used outside `Modal.svelte` and `dashboard.css`, which now own their own GPU patterns.
 
 #### Files to Audit for Non-GPU Animations
 
@@ -238,7 +240,11 @@ grep -r "@keyframes.*left:" src/
 
 ```css
 .card {
-	@apply transition-transform-gpu;
+	transition-property: transform;
+	transition-duration: 200ms;
+	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	transform: translateZ(0);
+	will-change: transform;
 }
 .card:hover {
 	transform: scale(1.05) translateZ(0);

@@ -2,11 +2,11 @@
 export const SITE_URL = 'https://build-os.com';
 export const SITE_NAME = 'BuildOS';
 export const SITE_DESCRIPTION =
-	'BuildOS is an AI-powered productivity platform that transforms unstructured brain dumps into structured projects with tasks, documents, and a clear next step.';
+	'BuildOS is a thinking environment for people making complex things. Turn rough notes, voice dumps, and scattered research into structured projects with memory and a clear next move.';
 
 export const DEFAULT_SOCIAL_IMAGE_URL = `${SITE_URL}/twitter_card_light.png`;
 export const DEFAULT_SOCIAL_IMAGE_ALT =
-	'BuildOS social preview showing the brain-bolt logo and the message Turn chaos into clarity.';
+	'BuildOS social preview showing the BuildOS logo and the message Turn messy thinking into structured work.';
 export const DEFAULT_SOCIAL_IMAGE_WIDTH = 1200;
 export const DEFAULT_SOCIAL_IMAGE_HEIGHT = 628;
 export const DEFAULT_SOCIAL_IMAGE_TYPE = 'image/png';

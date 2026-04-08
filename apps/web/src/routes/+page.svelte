@@ -284,15 +284,15 @@
 </script>
 
 <svelte:head>
-	<title>BuildOS — Turn Brain Dumps into Organized Plans</title>
+	<title>BuildOS — Turn Messy Thinking into Structured Work</title>
 	<meta
 		name="description"
-		content="Dump rough ideas, scripts, and research. BuildOS turns them into structured projects with tasks, documents, and a clear next step. Replace scattered notes and task lists."
+		content="BuildOS is a thinking environment for people making complex things. Brain dump rough ideas, notes, and research, then turn them into structured projects with memory and a clear next move."
 	/>
 
 	<meta
 		name="keywords"
-		content="AI project management, thinking environment, brain dump app, task organization, Google Calendar sync, daily briefs, voice notes, context management, creator productivity"
+		content="thinking environment, brain dump app, project memory, creator workflow, author workflow, YouTube workflow, task organization, daily briefs, voice notes"
 	/>
 	<link rel="canonical" href="https://build-os.com/" />
 
@@ -329,10 +329,10 @@
 	<!-- Open Graph / Facebook -->
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content="https://build-os.com/" />
-	<meta property="og:title" content="BuildOS — Turn Brain Dumps into Organized Plans" />
+	<meta property="og:title" content="BuildOS — Turn Messy Thinking into Structured Work" />
 	<meta
 		property="og:description"
-		content="Dump rough ideas, scripts, and research. Get back projects, tasks, and a clear next step. Replace scattered notes, task lists, and AI chats."
+		content="BuildOS is a thinking environment for people making complex things. Turn rough ideas, notes, and research into structured projects with memory and a clear next move."
 	/>
 	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
@@ -348,10 +348,10 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
-	<meta name="twitter:title" content="BuildOS — Turn Brain Dumps into Organized Plans" />
+	<meta name="twitter:title" content="BuildOS — Turn Messy Thinking into Structured Work" />
 	<meta
 		name="twitter:description"
-		content="Dump rough ideas, scripts, and research. Get back projects, tasks, and a clear next step."
+		content="BuildOS is a thinking environment for people making complex things. Turn rough ideas into structured work."
 	/>
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
@@ -396,8 +396,8 @@
 					</a>
 
 					<h1 class="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">
-						Turn messy ideas into an <span class="relative">
-							organized plan
+						Turn messy thinking into <span class="relative">
+							structured work
 							<span
 								class="absolute inset-x-0 bottom-1 -z-10 h-[0.65em] tx tx-bloom tx-med rounded"
 							></span>
@@ -405,11 +405,11 @@
 					</h1>
 
 					<p class="text-sm sm:text-base text-muted-foreground max-w-xl">
-						BuildOS is an AI-powered productivity platform that transforms unstructured
-						brain dumps into structured projects with tasks, documents, and a clear next
-						step. It gives authors, creators, and builders one place where project
-						context compounds instead of getting scattered across notes apps, task
-						managers, and stateless AI chats.
+						BuildOS is a thinking environment for people making complex things. Brain
+						dump rough ideas, notes, voice memos, and research, then turn them into
+						structured projects with memory and a clear next move. Keep the work
+						connected instead of scattered across notes apps, task lists, and stateless
+						AI chats.
 					</p>
 
 					<p class="text-xs sm:text-sm text-muted-foreground max-w-xl leading-relaxed">

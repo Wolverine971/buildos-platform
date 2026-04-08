@@ -1,9 +1,12 @@
 // apps/web/src/routes/api/auth/login/+server.ts
 import type { RequestHandler } from './$types';
 import type { User } from '@supabase/supabase-js';
+import {
+	buildUserProfilePayload,
+	ensureUserProfileWithAuthenticatedSession
+} from '$lib/server/auth-user-profile';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 function getEmailDomain(value: string): string | null {
 	const trimmed = value.trim().toLowerCase();
@@ -41,118 +44,11 @@ function isEmailNotConfirmedError(error: { message?: string } | null | undefined
 	return message.includes('email not confirmed') || message.includes('email not verified');
 }
 
-function buildProfilePayload(authUser: User) {
-	const now = new Date().toISOString();
-	return {
-		id: authUser.id,
-		email: authUser.email as string,
-		name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-		is_admin: false,
-		created_at: now,
-		updated_at: now
-	};
-}
-
 function buildFallbackUser(authUser: User) {
 	return {
-		...buildProfilePayload(authUser),
+		...buildUserProfilePayload(authUser),
 		timezone: 'UTC'
 	};
-}
-
-async function ensureUserProfile(
-	authUser: User,
-	locals: App.Locals,
-	errorLogger: ErrorLoggerService,
-	emailDomain: string | null
-) {
-	const profilePayload = buildProfilePayload(authUser);
-	const sessionClient = locals.supabase;
-
-	const fetchWithClient = async (client: App.Locals['supabase'], source: 'session' | 'admin') => {
-		const { data, error } = await client
-			.from('users')
-			.select('*')
-			.eq('id', authUser.id)
-			.maybeSingle();
-
-		if (error && error.code !== 'PGRST116') {
-			await errorLogger.logError(error, {
-				endpoint: '/api/auth/login',
-				httpMethod: 'POST',
-				operationType: 'auth_login_profile_fetch',
-				metadata: {
-					emailDomain,
-					flow: 'password',
-					source,
-					userId: authUser.id
-				}
-			});
-			return null;
-		}
-
-		return data ?? null;
-	};
-
-	const insertWithClient = async (
-		client: App.Locals['supabase'],
-		source: 'session' | 'admin'
-	) => {
-		const { data, error } = await client.from('users').insert(profilePayload).select().single();
-
-		if (!error) {
-			return data;
-		}
-
-		if (error.code === '23505') {
-			return fetchWithClient(client, source);
-		}
-
-		await errorLogger.logError(error, {
-			endpoint: '/api/auth/login',
-			httpMethod: 'POST',
-			operationType: 'auth_login_profile_insert',
-			metadata: {
-				emailDomain,
-				flow: 'password',
-				source,
-				userId: authUser.id
-			}
-		});
-		return null;
-	};
-
-	const existing = await fetchWithClient(sessionClient, 'session');
-	if (existing) {
-		return existing;
-	}
-
-	const inserted = await insertWithClient(sessionClient, 'session');
-	if (inserted) {
-		return inserted;
-	}
-
-	try {
-		const adminClient = createAdminSupabaseClient();
-		const adminExisting = await fetchWithClient(adminClient, 'admin');
-		if (adminExisting) {
-			return adminExisting;
-		}
-
-		return await insertWithClient(adminClient, 'admin');
-	} catch (error) {
-		await errorLogger.logError(error, {
-			endpoint: '/api/auth/login',
-			httpMethod: 'POST',
-			operationType: 'auth_login_profile_admin_fallback',
-			metadata: {
-				emailDomain,
-				flow: 'password',
-				userId: authUser.id
-			}
-		});
-		return null;
-	}
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -296,7 +192,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		let profileUser = null;
 		if (data.user) {
-			profileUser = await ensureUserProfile(data.user, locals, errorLogger, emailDomain);
+			profileUser = await ensureUserProfileWithAuthenticatedSession({
+				authUser: data.user,
+				accessToken: data.session.access_token,
+				sessionClient: locals.supabase,
+				errorLogger,
+				endpoint: '/api/auth/login',
+				fetchOperationType: 'auth_login_profile_fetch',
+				insertOperationType: 'auth_login_profile_insert',
+				metadata: {
+					emailDomain,
+					flow: 'password'
+				}
+			});
 
 			// If profile resolution failed in ensureUserProfile, retry through the
 			// normal session path once before downgrading to a fallback payload.

@@ -1,6 +1,7 @@
 # Dependencies
 node_modules
 .pnpm-store
+apps/*/pnpm-lock.yaml
 
 # Build outputs
 dist

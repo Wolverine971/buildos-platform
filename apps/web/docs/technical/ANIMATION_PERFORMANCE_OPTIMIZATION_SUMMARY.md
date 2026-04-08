@@ -2,8 +2,10 @@
 
 # Animation Performance Optimization Summary
 
+> ⚠️ **HISTORICAL — utility files removed 2026-04-08.** This doc describes work completed Nov 2025, but the shared `animation-utils.css`, `containment.css`, and `performance-optimizations.css` files documented below were **deleted in the 2026-04-08 dead-weight cleanup** because their classes were never used outside `Modal.svelte` and `dashboard.css` (which carry their own GPU patterns inline). The optimization principles are still valid; the shared utility layer is gone.
+
 **Date:** 2025-11-21
-**Status:** ✅ Completed
+**Status:** ✅ Completed (utilities since removed — see banner above)
 **Impact:** High - Mobile animation performance significantly improved
 
 ## Overview

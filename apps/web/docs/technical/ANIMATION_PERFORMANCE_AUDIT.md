@@ -2,8 +2,10 @@
 
 # Animation Performance Audit & Optimization Plan
 
+> ⚠️ **HISTORICAL — references deleted utilities.** The `.gpu-accelerate`, `.hover-scale`, `.transition-*-gpu`, `.fade-transition` and similar utility classes referenced throughout this document lived in `animation-utils.css`, which was **removed in the 2026-04-08 dead-weight cleanup**. The audit's principles (use specific transitions, GPU-accelerate sparingly, manage `will-change`) remain valid, but the shared utility layer is gone — apply patterns inline per component.
+
 **Created**: November 21, 2025
-**Status**: Ready for Implementation
+**Status**: Historical (utilities removed, principles still valid)
 **Priority**: 🔴 Critical - Mobile Performance Impact
 **Estimated Impact**: 20-50% smoother animations, better battery life, 60fps on mobile
 

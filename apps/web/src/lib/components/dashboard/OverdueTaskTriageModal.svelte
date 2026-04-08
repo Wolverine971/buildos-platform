@@ -30,6 +30,7 @@
 		sortBatchTasks,
 		sortOverdueProjectBatches
 	} from '$lib/utils/overdue-task-batches';
+	import { resolveNextOverdueProjectSelection } from '$lib/utils/overdue-triage-selection';
 
 	type ReschedulePreset = 'today' | 'tomorrow' | 'plus3' | 'nextWeek';
 	type RescheduleSlot = {
@@ -199,20 +200,15 @@
 
 	function setBatches(
 		nextBatches: OverdueProjectBatch[],
-		preferredProjectId: string | null = null
+		fallbackProjectId: string | null = null
 	) {
+		const currentProjectId = activeProjectId;
 		batches = sortOverdueProjectBatches(nextBatches.map(normalizeBatch));
-		if (
-			preferredProjectId &&
-			batches.some((batch) => batch.project_id === preferredProjectId)
-		) {
-			activeProjectId = preferredProjectId;
-			return;
-		}
-		if (activeProjectId && batches.some((batch) => batch.project_id === activeProjectId)) {
-			return;
-		}
-		activeProjectId = batches[0]?.project_id ?? null;
+		activeProjectId = resolveNextOverdueProjectSelection(
+			batches,
+			currentProjectId,
+			fallbackProjectId
+		);
 	}
 
 	function recomputeBatch(tasks: OverdueTask[]): OverdueProjectBatch | null {

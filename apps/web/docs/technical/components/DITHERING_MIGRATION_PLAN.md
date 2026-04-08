@@ -211,7 +211,7 @@ The dithering system provides:
 - [ ] `dashboard.css` (4 usages) - Dashboard styles
 - [ ] `history/history.css` (4 usages) - History styles
 - [ ] `pwa.css` (2 usages) - PWA styles
-- [ ] `performance-optimizations.css` (2 usages) - Shimmer effects
+- [x] ~~`performance-optimizations.css`~~ — file removed in 2026-04-08 dead-weight cleanup (zero callers)
 - **Priority**: MEDIUM - global styling
 
 ## Migration Phases

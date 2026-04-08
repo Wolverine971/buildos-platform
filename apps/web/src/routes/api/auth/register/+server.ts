@@ -1,6 +1,9 @@
 // apps/web/src/routes/api/auth/register/+server.ts
 import type { RequestHandler } from './$types';
-import type { User } from '@supabase/supabase-js';
+import {
+	ensureUserProfileWithAuthenticatedSession,
+	ensureUserProfileWithClient
+} from '$lib/server/auth-user-profile';
 import { validateEmail } from '$lib/utils/email-validation';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
@@ -14,141 +17,65 @@ function getEmailDomain(value: string): string | null {
 	return trimmed.slice(atIndex + 1);
 }
 
-function buildProfilePayload(authUser: User, name?: string) {
-	const now = new Date().toISOString();
-	return {
-		id: authUser.id,
-		email: authUser.email as string,
-		name: name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-		is_admin: false,
-		created_at: now,
-		updated_at: now
-	};
-}
-
 async function ensureUserProfileForRegistration({
 	authUser,
 	profileName,
 	supabase,
 	errorLogger,
 	emailDomain,
-	hasSession
+	hasSession,
+	accessToken
 }: {
-	authUser: User;
+	authUser: Parameters<typeof ensureUserProfileWithClient>[0]['authUser'];
 	profileName?: string;
 	supabase: App.Locals['supabase'];
 	errorLogger: ErrorLoggerService;
 	emailDomain: string | null;
 	hasSession: boolean;
+	accessToken: string | null | undefined;
 }) {
-	const payload = buildProfilePayload(authUser, profileName);
-	let primaryClient: App.Locals['supabase'] = supabase;
-
-	if (!hasSession) {
-		try {
-			primaryClient = createAdminSupabaseClient();
-		} catch (error) {
-			await errorLogger.logError(error, {
-				endpoint: '/api/auth/register',
-				httpMethod: 'POST',
-				operationType: 'auth_register_profile_admin_client_init',
-				metadata: {
-					emailDomain,
-					userId: authUser.id,
-					hasSession
-				}
-			});
-		}
-	}
-
-	const fetchWithClient = async (client: App.Locals['supabase'], source: 'session' | 'admin') => {
-		const { data, error } = await client
-			.from('users')
-			.select('*')
-			.eq('id', authUser.id)
-			.maybeSingle();
-
-		if (!error) {
-			return { user: data ?? null, error: null };
-		}
-
-		if (error.code === 'PGRST116') {
-			return { user: null, error: null };
-		}
-
-		await errorLogger.logError(error, {
-			endpoint: '/api/auth/register',
-			httpMethod: 'POST',
-			operationType: 'auth_register_profile_check',
-			metadata: {
-				emailDomain,
-				userId: authUser.id,
-				hasSession,
-				source
-			}
-		});
-
-		return { user: null, error };
+	const metadata = {
+		emailDomain,
+		hasSession
 	};
 
-	const insertWithClient = async (
-		client: App.Locals['supabase'],
-		source: 'session' | 'admin'
-	) => {
-		const { data, error } = await client.from('users').insert(payload).select().single();
-
-		if (!error) {
-			return data;
-		}
-
-		if (error.code === '23505') {
-			const { user } = await fetchWithClient(client, source);
-			return user;
-		}
-
-		await errorLogger.logError(error, {
+	if (hasSession) {
+		return ensureUserProfileWithAuthenticatedSession({
+			authUser,
+			accessToken,
+			sessionClient: supabase,
+			errorLogger,
 			endpoint: '/api/auth/register',
-			httpMethod: 'POST',
-			operationType: 'auth_register_profile_insert',
-			metadata: {
-				emailDomain,
-				userId: authUser.id,
-				hasSession,
-				source
-			}
+			fetchOperationType: 'auth_register_profile_check',
+			insertOperationType: 'auth_register_profile_insert',
+			metadata,
+			profileName
 		});
-		return null;
-	};
-
-	const { user: existingUser } = await fetchWithClient(
-		primaryClient,
-		hasSession ? 'session' : 'admin'
-	);
-	if (existingUser) {
-		return existingUser;
 	}
 
-	const insertedUser = await insertWithClient(primaryClient, hasSession ? 'session' : 'admin');
-	if (insertedUser || !hasSession) {
-		return insertedUser;
-	}
-
+	// Email-confirmation signups still have no user session to scope against.
+	// Leave this admin path in place until profile creation moves post-confirmation.
 	try {
 		const adminClient = createAdminSupabaseClient();
-		const { user: adminExisting } = await fetchWithClient(adminClient, 'admin');
-		if (adminExisting) {
-			return adminExisting;
-		}
-		return await insertWithClient(adminClient, 'admin');
+		return ensureUserProfileWithClient({
+			authUser,
+			client: adminClient,
+			source: 'admin',
+			errorLogger,
+			endpoint: '/api/auth/register',
+			fetchOperationType: 'auth_register_profile_check',
+			insertOperationType: 'auth_register_profile_insert',
+			metadata,
+			profileName
+		});
 	} catch (error) {
 		await errorLogger.logError(error, {
 			endpoint: '/api/auth/register',
 			httpMethod: 'POST',
-			operationType: 'auth_register_profile_admin_fallback',
+			operationType: 'auth_register_profile_admin_client_init',
 			metadata: {
-				emailDomain,
-				userId: authUser.id,
-				hasSession
+				...metadata,
+				userId: authUser.id
 			}
 		});
 		return null;
@@ -315,7 +242,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				supabase,
 				errorLogger,
 				emailDomain,
-				hasSession
+				hasSession,
+				accessToken: data.session?.access_token
 			});
 		}
 

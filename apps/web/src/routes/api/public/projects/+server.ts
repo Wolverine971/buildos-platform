@@ -18,18 +18,15 @@
  */
 
 import type { RequestHandler } from './$types';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse } from '$lib/utils/api-response';
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async ({ locals }) => {
 	try {
-		// Use admin client to bypass RLS and fetch public projects
-		const supabase = createAdminSupabaseClient();
-
-		const { data: projects, error } = await supabase
+		const { data: projects, error } = await locals.supabase
 			.from('onto_projects')
 			.select('id, name, description, props, start_at, end_at')
 			.eq('is_public', true)
+			.is('deleted_at', null)
 			.order('name');
 
 		if (error) {

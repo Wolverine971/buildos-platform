@@ -1,17 +1,12 @@
 // apps/web/src/routes/api/onto/assets/[id]/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureAssetAccessMock, createAdminSupabaseClientMock } = vi.hoisted(() => ({
-	ensureAssetAccessMock: vi.fn(),
-	createAdminSupabaseClientMock: vi.fn()
+const { ensureAssetAccessMock } = vi.hoisted(() => ({
+	ensureAssetAccessMock: vi.fn()
 }));
 
 vi.mock('../shared', () => ({
 	ensureAssetAccess: ensureAssetAccessMock
-}));
-
-vi.mock('$lib/supabase/admin', () => ({
-	createAdminSupabaseClient: createAdminSupabaseClientMock
 }));
 
 import { DELETE, GET, PATCH } from './+server';
@@ -74,7 +69,12 @@ function createDeleteSupabase() {
 			if (table === 'onto_assets') return { update: softDeleteUpdate };
 			if (table === 'onto_asset_links') return { delete: deleteLinks };
 			throw new Error(`Unexpected table: ${table}`);
-		})
+		}),
+		storage: {
+			from: vi.fn(() => ({
+				remove: vi.fn().mockResolvedValue({ data: null, error: null })
+			}))
+		}
 	};
 }
 
@@ -82,13 +82,6 @@ describe('/api/onto/assets/[id]', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		ensureAssetAccessMock.mockResolvedValue({ asset: BASE_ASSET, actorId: 'actor-1' });
-		createAdminSupabaseClientMock.mockReturnValue({
-			storage: {
-				from: vi.fn(() => ({
-					remove: vi.fn().mockResolvedValue({ data: null, error: null })
-				}))
-			}
-		});
 	});
 
 	it('GET returns 401 when unauthenticated', async () => {
@@ -157,15 +150,15 @@ describe('/api/onto/assets/[id]', () => {
 	it('DELETE soft-deletes the row and removes storage object', async () => {
 		const removeMock = vi.fn().mockResolvedValue({ data: null, error: null });
 		const storageFromMock = vi.fn(() => ({ remove: removeMock }));
-		createAdminSupabaseClientMock.mockReturnValue({
-			storage: {
-				from: storageFromMock
-			}
-		});
 
 		const response = await DELETE({
 			params: { id: 'asset-1' },
-			locals: createSessionLocals(createDeleteSupabase())
+			locals: createSessionLocals({
+				...createDeleteSupabase(),
+				storage: {
+					from: storageFromMock
+				}
+			})
 		} as any);
 		const payload = await response.json();
 

@@ -10,12 +10,12 @@
 		DEFAULT_TWITTER_SITE
 	} from '$lib/constants/seo';
 
-	export let title = 'BuildOS - AI Project Collaboration for the builders';
+	export let title = 'BuildOS - Turn Messy Thinking into Structured Work';
 	export let description =
-		'Brain dump and let AI build structure. Perfect for ADHD minds, founders, and creators. Calendar sync, project phases, daily briefs. Try 14 days free.';
+		'BuildOS is a thinking environment for people making complex things. Brain dump rough ideas, notes, and research, then turn them into structured projects with memory and a clear next move.';
 	export let canonical = 'https://build-os.com/';
 	export let keywords =
-		'AI project management, ADHD productivity tool, brain dump app, task organization, Google Calendar sync, daily briefs, voice notes, context management';
+		'thinking environment, brain dump app, project memory, creator workflow, author workflow, YouTube workflow, task organization, daily briefs, voice notes';
 	export let ogType = 'website';
 	export let ogImage = DEFAULT_SOCIAL_IMAGE_URL;
 	export let ogImageAlt = DEFAULT_SOCIAL_IMAGE_ALT;

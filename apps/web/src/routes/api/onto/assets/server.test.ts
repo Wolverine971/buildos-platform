@@ -1,13 +1,10 @@
 // apps/web/src/routes/api/onto/assets/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureProjectAccessMock, getFileExtensionMock, createAdminSupabaseClientMock } = vi.hoisted(
-	() => ({
-		ensureProjectAccessMock: vi.fn(),
-		getFileExtensionMock: vi.fn(() => 'png'),
-		createAdminSupabaseClientMock: vi.fn()
-	})
-);
+const { ensureProjectAccessMock, getFileExtensionMock } = vi.hoisted(() => ({
+	ensureProjectAccessMock: vi.fn(),
+	getFileExtensionMock: vi.fn(() => 'png')
+}));
 
 vi.mock('./shared', () => ({
 	ensureProjectAccess: ensureProjectAccessMock,
@@ -18,10 +15,6 @@ vi.mock('./shared', () => ({
 		if (!Number.isFinite(parsed)) return fallback;
 		return Math.max(1, Math.floor(parsed));
 	})
-}));
-
-vi.mock('$lib/supabase/admin', () => ({
-	createAdminSupabaseClient: createAdminSupabaseClientMock
 }));
 
 import { GET, POST } from './+server';
@@ -80,7 +73,19 @@ function createCreateSupabase(insertedAsset: AssetRow) {
 		from: vi.fn((table: string) => {
 			if (table === 'onto_assets') return assetsTable;
 			throw new Error(`Unexpected table: ${table}`);
-		})
+		}),
+		storage: {
+			from: vi.fn(() => ({
+				createSignedUploadUrl: vi.fn().mockResolvedValue({
+					data: {
+						signedUrl: 'https://storage.example/upload',
+						path: insertedAsset.storage_path,
+						token: 'upload-token'
+					},
+					error: null
+				})
+			}))
+		}
 	};
 }
 
@@ -146,21 +151,6 @@ describe('/api/onto/assets', () => {
 			storage_bucket: 'onto-assets',
 			storage_path: 'projects/project-1/assets/asset-created/original.png'
 		};
-
-		createAdminSupabaseClientMock.mockReturnValue({
-			storage: {
-				from: vi.fn(() => ({
-					createSignedUploadUrl: vi.fn().mockResolvedValue({
-						data: {
-							signedUrl: 'https://storage.example/upload',
-							path: insertedAsset.storage_path,
-							token: 'upload-token'
-						},
-						error: null
-					})
-				}))
-			}
-		});
 
 		const request = new Request('http://localhost/api/onto/assets', {
 			method: 'POST',

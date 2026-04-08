@@ -421,41 +421,6 @@ it('should clean up tracking IDs after completion', async () => {
 
 ---
 
-#### Test: `dashboardData.service.test.ts`
-
-**Location**: `/apps/web/src/lib/services/dashboardData.service.test.ts`
-
-**What It Tests**:
-
-**Race Condition Prevention**:
-
-```typescript
-it('should capture project_id before state changes', async () => {
-	let capturedProjectId: string | undefined;
-
-	const optimisticUpdate = () => {
-		capturedProjectId = store.getCurrentProjectId();
-		// State change happens here
-	};
-
-	// ✅ Verifies data captured BEFORE state mutation
-	expect(capturedProjectId).toBeDefined();
-});
-```
-
-**Optimistic Updates**:
-
-```typescript
-it('should handle optimistic dashboard updates', async () => {
-	// ✅ Tests dashboard data updates
-	// ✅ Tests real-time sync with Supabase
-});
-```
-
-**Coverage**: 🟢 **Good** - Focused race condition tests
-
----
-
 ### 4. Security Testing ✅ (1 test file - **EXCELLENT**)
 
 #### Test: `server.test.ts` (Brain Dump Stream)

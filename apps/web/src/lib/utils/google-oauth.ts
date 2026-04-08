@@ -7,6 +7,7 @@ import { normalizeRedirectPath } from '$lib/utils/auth-redirect';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
+import { getAuthUserCreatedAt, inferAuthUserJustCreated } from '$lib/utils/auth-profile';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -76,8 +77,9 @@ export class GoogleOAuthHandler {
 	private async ensurePublicUserProfile(
 		authUser: any,
 		tokens: GoogleTokens
-	): Promise<{ dbUser: any; isNewUser: boolean }> {
+	): Promise<{ dbUser: any }> {
 		const errorLogger = ErrorLoggerService.getInstance(this.supabase);
+		const now = new Date().toISOString();
 
 		const fetchWithClient = async (
 			client: SupabaseClient<Database>,
@@ -126,8 +128,8 @@ export class GoogleOAuthHandler {
 			email: authUser.email as string,
 			name: profile?.name || authUser.user_metadata?.name || 'User',
 			is_admin: false,
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString()
+			created_at: getAuthUserCreatedAt(authUser),
+			updated_at: now
 		};
 
 		const insertWithClient = async (
@@ -164,13 +166,13 @@ export class GoogleOAuthHandler {
 
 		const existingSessionUser = await fetchWithClient(this.supabase, 'session');
 		if (existingSessionUser.user) {
-			return { dbUser: existingSessionUser.user, isNewUser: false };
+			return { dbUser: existingSessionUser.user };
 		}
 
 		if (existingSessionUser.missing) {
 			const insertedSessionUser = await insertWithClient(this.supabase, 'session');
 			if (insertedSessionUser.user) {
-				return { dbUser: insertedSessionUser.user, isNewUser: insertedSessionUser.created };
+				return { dbUser: insertedSessionUser.user };
 			}
 		}
 
@@ -178,12 +180,12 @@ export class GoogleOAuthHandler {
 			const adminClient = createAdminSupabaseClient();
 			const existingAdminUser = await fetchWithClient(adminClient, 'admin');
 			if (existingAdminUser.user) {
-				return { dbUser: existingAdminUser.user, isNewUser: false };
+				return { dbUser: existingAdminUser.user };
 			}
 
 			const insertedAdminUser = await insertWithClient(adminClient, 'admin');
 			if (insertedAdminUser.user) {
-				return { dbUser: insertedAdminUser.user, isNewUser: insertedAdminUser.created };
+				return { dbUser: insertedAdminUser.user };
 			}
 		} catch (error) {
 			await errorLogger.logError(error, {
@@ -201,6 +203,19 @@ export class GoogleOAuthHandler {
 			'profile_setup_failed',
 			'/auth/login'
 		);
+	}
+
+	private async clearAuthSession(): Promise<void> {
+		try {
+			await this.supabase.auth.signOut({ scope: 'local' });
+		} catch (error) {
+			console.warn('Failed to clear local auth session after OAuth flow issue:', error);
+		}
+
+		if (this.locals) {
+			this.locals.session = null;
+			this.locals.user = null;
+		}
 	}
 
 	/**
@@ -329,7 +344,8 @@ export class GoogleOAuthHandler {
 			}
 		}
 
-		const { dbUser, isNewUser } = await this.ensurePublicUserProfile(data.user, tokens);
+		const isNewUser = inferAuthUserJustCreated(data.user);
+		const { dbUser } = await this.ensurePublicUserProfile(data.user, tokens);
 
 		// CRITICAL: Update server-side locals if available
 		// This ensures immediate recognition of the authenticated state
@@ -414,6 +430,7 @@ export class GoogleOAuthHandler {
 			);
 		} catch (error: any) {
 			console.error('Supabase authentication failed:', error);
+			await this.clearAuthSession();
 			const errorMessage =
 				error instanceof GoogleOAuthError
 					? error.message
@@ -423,6 +440,7 @@ export class GoogleOAuthHandler {
 
 		// Step 3: Handle registration-specific logic
 		if (config.isRegistration && !authResult.isNewUser) {
+			await this.clearAuthSession();
 			throw redirect(
 				303,
 				`/auth/login?message=${encodeURIComponent('Account already exists. Please sign in instead.')}`

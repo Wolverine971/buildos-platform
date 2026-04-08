@@ -1,7 +1,6 @@
 // apps/web/src/routes/api/onto/assets/[id]/render/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ensureAssetAccess } from '../../shared';
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30; // 30 minutes
@@ -41,8 +40,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 		transform.format = format;
 	}
 
-	const adminSupabase = createAdminSupabaseClient();
-	const { data, error } = await (adminSupabase.storage as any)
+	const { data, error } = await (locals.supabase.storage as any)
 		.from(String(asset.storage_bucket))
 		.createSignedUrl(String(asset.storage_path), SIGNED_URL_TTL_SECONDS, {
 			transform: Object.keys(transform).length ? transform : undefined

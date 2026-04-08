@@ -2,7 +2,6 @@
 import type { RequestHandler } from './$types';
 import { buildAssetOcrFailedUpdate, buildAssetOcrPendingUpdate } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ensureAssetAccess } from '../../shared';
 import { queueAssetOcrExtraction } from '$lib/server/asset-ocr-queue.service';
 
@@ -37,8 +36,7 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		return ApiResponse.badRequest('Invalid storage path');
 	}
 
-	const adminSupabase = createAdminSupabaseClient();
-	const { data: listed, error: listError } = await adminSupabase.storage
+	const { data: listed, error: listError } = await locals.supabase.storage
 		.from(String(asset.storage_bucket))
 		.list(folder, { limit: 1, search: filename });
 
