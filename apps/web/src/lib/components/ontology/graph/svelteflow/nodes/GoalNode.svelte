@@ -33,6 +33,6 @@
 
 <style>
 	.goal-node {
-		font-family: 'Inter', system-ui, sans-serif;
+		font-family: system-ui, sans-serif;
 	}
 </style>

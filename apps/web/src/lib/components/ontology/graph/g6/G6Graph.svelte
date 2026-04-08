@@ -104,7 +104,7 @@
 						labelFontSize: node.labelCfg?.style?.fontSize ?? 11,
 						labelFontWeight:
 							node.nodeType === 'project' || node.nodeType === 'goal' ? 600 : 400,
-						labelFontFamily: 'Inter, system-ui, sans-serif',
+						labelFontFamily: 'system-ui, sans-serif',
 						labelPlacement: 'center',
 						labelMaxWidth: node.nodeType === 'project' ? 110 : 80,
 						labelWordWrap: true,
@@ -283,7 +283,7 @@
 					labelFontSize: node.labelCfg?.style?.fontSize ?? 11,
 					labelFontWeight:
 						node.nodeType === 'project' || node.nodeType === 'goal' ? 600 : 400,
-					labelFontFamily: 'Inter, system-ui, sans-serif',
+					labelFontFamily: 'system-ui, sans-serif',
 					labelPlacement: 'center',
 					labelMaxWidth: node.nodeType === 'project' ? 110 : 80,
 					labelWordWrap: true,

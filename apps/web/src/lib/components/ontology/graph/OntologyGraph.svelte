@@ -131,7 +131,7 @@
 					// Label styling
 					label: 'data(label)' as any,
 					'font-size': 'data(fontSize)' as any,
-					'font-family': 'Inter, system-ui, sans-serif',
+					'font-family': 'system-ui, sans-serif',
 					'font-weight': 'data(fontWeight)' as any,
 					'text-valign': 'data(labelValign)' as any,
 					'text-halign': 'center',

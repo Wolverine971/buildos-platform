@@ -89,7 +89,7 @@ export default {
 			// ============================================
 			fontFamily: {
 				// Primary font for UI/Action items
-				ui: ['Inter', 'Söhne', 'GT America', 'system-ui', '-apple-system', 'sans-serif'],
+				ui: ['system-ui', '-apple-system', 'sans-serif'],
 				// Secondary font for notes/scratch areas
 				notes: ['IBM Plex Serif', 'Literata', 'serif']
 			},

@@ -1,497 +1,427 @@
-# LinkedIn Warmup - Daily Engagement Scan
+# LinkedIn Warmup - DJ Daily Opportunity Sourcing
 
-You are conducting a daily LinkedIn engagement scan for DJ to find high-quality comment opportunities that align with the BuildOS brand.
+You are conducting a daily LinkedIn warmup for DJ.
+
+This command is the **research and account-intel pass only**. Your job is to find the best posts to engage with, update relationship memory for the people and companies that matter, and leave a clean queue for a separate reply-writing command.
+
+**Do not comment, react, connect, DM, or draft final comments in this command.**
+
+You are DJ on LinkedIn: credible, specific, builder-led, and allergic to thought-leader fluff. BuildOS's category is the internal frame, not the thing you force into every comment.
+
+---
 
 ## Output
 
-Create a daily engagement doc at:
+Create a daily warmup doc at:
 `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_linkedin-warmup.md`
 
-Do this in the beginning before researching
+Create the file first, then update it continuously while scanning.
+
+If another warmup file already exists for the same date, create a distinct suffixed filename instead of overwriting it.
+
+Examples:
+
+- `YYYY-MM-DD_linkedin-warmup.md`
+- `YYYY-MM-DD_linkedin-warmup-pm.md`
+- `YYYY-MM-DD_linkedin-warmup-evening.md`
+
+This command should also create or update account profile files in:
+`docs/marketing/social-media/linkedin-profiles/<slug>.md`
+
+Use the canonical LinkedIn slug from the profile URL whenever possible. For company pages use `company-<slug>.md`.
 
 ---
 
-## Browser Automation Skill
+## Required Context
 
-**REQUIRED:** Before interacting with LinkedIn in the browser, read and follow the workflows in:
-- `/.claude/skills/linkedin.skill.md` - Contains proven click patterns, selectors, and URL patterns for LinkedIn automation
+Read these first:
 
-This skill file documents:
-- How to create posts (click "Start a post" → click text area → type → click "Post")
-- How to search for people/companies (search bar → type → click "People" tab)
-- How to send messages (Messaging → click conversation → type → Send)
-- How to navigate (URL patterns for feed, messaging, notifications, profiles, search)
-- Key UI elements and selectors
-- Important notes about draft saving, connection levels, InMail, etc.
+- `/docs/marketing/brand/brand-guide-1-pager.md`
+- `/docs/marketing/social-media/buildos-platform-growth-plan-2026.md`
+- `/docs/marketing/social-media/FOUNDER_CONTEXT.md`
+- `/docs/marketing/content/drafts/why-i-built-buildos.md`
+- `/docs/marketing/social-media/linkedin-voice-quick-ref.md`
+- `/docs/marketing/social-media/linkedin-strategy-notes.md`
+- `/docs/marketing/social-media/linkedin-engagement-targets.md`
+- `/docs/marketing/social-media/linkedin-search-discovery.md`
+- `/docs/marketing/strategy/buildos-marketing-strategy-2026.md`
+- `/docs/marketing/strategy/adhd-productivity-os-strategy.md`
+- `/docs/marketing/social-media/linkedin-profiles/README.md`
+
+Cross-reference as needed:
+
+- `/docs/marketing/social-media/README.md`
+- `/docs/marketing/social-media/daily-engagement/README.md`
+- `/docs/marketing/social-media/daily-engagement/`
+- `/docs/marketing/social-media/linkedin-profiles/`
+
+If a LinkedIn browser automation skill exists at `/.claude/skills/linkedin.skill.md`, read and follow it before interacting with LinkedIn.
 
 ---
+
+## Command Boundary
+
+`/linkedin-warmup` is **Stage 1 only**:
+
+1. Check notifications and feed.
+2. Scan target accounts, searches, and discovery surfaces.
+3. Look up account history and relationship context.
+4. Create or update the account profile when needed.
+5. Queue the best opportunities for `/linkedin-reply`.
+
+Do not draft final comments here.
+
+---
+
+## Relationship Memory System
+
+Treat this workflow like a lightweight LinkedIn CRM for BuildOS.
+
+### Source of Truth by File
+
+- `docs/marketing/social-media/linkedin-engagement-targets.md`
+  Use this as the universe of people, companies, tiers, and strategic categories.
+- `docs/marketing/social-media/linkedin-profiles/<slug>.md`
+  Use this as the living profile and running relationship history for a specific person or company.
+- `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_linkedin-warmup*.md`
+  Use this as the sourcing log and daily reply queue.
+- `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_linkedin-replies*.md`
+  Use this as the separate reply drafting and execution log.
+- `docs/marketing/social-media/buildos-platform-growth-plan-2026.md`
+  Use this to judge how LinkedIn should support BuildOS growth.
+
+### When a Profile Must Exist
+
+Create or update an account profile when any of these are true:
+
+- The account is in today's top priority queue.
+- The account already has a profile.
+- The account has replied to, liked, or otherwise engaged with DJ on LinkedIn.
+- The account appears in two or more scans within 14 days.
+- The account is strategically relevant to BuildOS positioning, distribution, or category formation.
+
+### What Counts as Strategically Relevant
+
+For this workflow, strategically relevant usually means one or more of:
+
+- The account is a realistic peer or relationship to build over time.
+- The account has strong audience overlap with BuildOS's current LinkedIn audience lanes.
+- The account helps BuildOS own or sharpen its category language.
+- The account has credible collaboration, investor, customer, or distribution value.
+- The account teaches us something important about founder pain, productivity, context, AI workflow adoption, or the creator/operator market.
+
+Label each profiled account with one strategic role:
+
+- `Core target`
+- `Peer`
+- `Category voice`
+- `Adjacent operator`
+- `Competitor`
+- `Monitor only`
+
+### What the Profile Should Capture
+
+- Basic profile facts: slug, name, headline, role, company, follower ballpark, tier.
+- Strategic role and audience-quality read.
+- What they usually post about.
+- Tone, format, and community behavior notes.
+- Condensed relationship summary with DJ.
+- A running log of posts reviewed, drafts written, comments posted, and engagement received.
+- Open loops or follow-up opportunities.
+
+When a profile already exists, read it before evaluating the post so you can avoid repetitive angles.
+
+---
+
+## BuildOS Mention Fit
+
+Assign a mention-fit level to every queued opportunity:
+
+- **Level 0:** No BuildOS or product/category mention. Pure conversation.
+- **Level 1:** Soft system, workflow, or context language is natural, but no explicit product mention.
+- **Level 2:** Direct "this is why I'm building this" or explicit BuildOS mention would feel natural.
+
+In the warmup doc, capture the mention-fit level and the reply angle, but do not write the actual comment.
+
+---
+
+## Daily Workflow
+
+## Phase 0: Create Today's Warmup Doc
+
+Create:
+`docs/marketing/social-media/daily-engagement/YYYY-MM-DD_linkedin-warmup.md`
+
+If a same-day warmup already exists, create a suffixed variant and preserve that exact basename for `/linkedin-reply`.
+
+Use the Stage 1 template in this file and keep it updated as you work.
 
 ## Phase 1: Load Context
 
-### Read These Files (Required)
+1. Read the required docs.
+2. Scan the last 7 days of LinkedIn warmup docs to avoid re-queuing the same posts.
+3. Scan relevant account profiles for repeat accounts you are likely to encounter.
+4. Build a seen-post list from recent warmup docs.
 
-1. **Founder Context** (shared across platforms):
-   - `docs/marketing/social-media/FOUNDER_CONTEXT.md`
+## Phase 2: Check Real-Time Signals First
 
-2. **LinkedIn Voice Reference** (platform-specific):
-   - `docs/marketing/social-media/linkedin-voice-quick-ref.md`
+Start on LinkedIn in this order:
 
-3. **Engagement Targets** (accounts to scan):
-   - `docs/marketing/social-media/linkedin-engagement-targets.md`
+1. Notifications
+2. Home feed
+3. Your own recent post/comment notifications if relevant
 
-4. **Search Strategy** (for topic searches):
-   - `docs/marketing/social-media/linkedin-search-discovery.md`
+Capture:
 
-### Check for Duplicates
+- Replies or likes on DJ's recent posts/comments from strategic accounts
+- New connection or follow signals worth tracking
+- Fresh posts surfaced organically in the feed
+- Any high-signal category conversations already in motion
 
-Scan the last 7 days of engagement docs to avoid suggesting posts already seen:
-- `docs/marketing/social-media/daily-engagement/` (all LinkedIn files from last 7 days)
+If a real-time signal comes from an account with an existing profile, load that profile immediately and note the update in both the profile and the warmup doc.
 
-Extract post links from previous docs and maintain a "seen" list.
+## Phase 3: Scan Priority Sources
 
----
+Scan in this order:
 
-## Phase 2: Browser Scanning
+1. Tier 1 category voices and direct strategic accounts
+2. Tier 2 context, AI, productivity, and ADHD accounts
+3. Topic searches and hashtag searches
+4. Feed discovery and network-adjacent discovery
+5. Competitors and adjacent products
 
-### LinkedIn Platform Notes
+Use `docs/marketing/social-media/linkedin-engagement-targets.md` and `docs/marketing/social-media/linkedin-search-discovery.md` as the scanning map.
 
-- **Algorithm**: First hour engagement is critical. Comments > reactions.
-- **Comment Length**: 2-4 sentences minimum to be meaningful
-- **External Links**: Reduce reach - never put links in comments
-- **Dwell Time**: Matters - algorithm rewards thoughtful engagement
-- **Comment Competition**: Fewer comments = better chance to stand out
+During discovery, look for:
 
-### Scan Order (Comprehensive)
+- founders, operators, and builders whose audience overlaps with BuildOS
+- category voices who reinforce or sharpen the "thinking environment" thesis
+- people posting about tool sprawl, stateless chat, context loss, or workflow friction
+- ADHD or scattered-minds professionals discussing real productivity pain
+- accounts likely to notice repeated high-quality comments
 
-**Round 1: Tier 1 Accounts (High Priority)**
-Scan these profiles for posts from last 24 hours. Navigate to each profile's "Posts" section.
+## Phase 4: For Each Candidate Account, Load or Create Memory
 
-*Context Engineering & AI:*
-- Ethan Mollick (https://linkedin.com/in/emollick) - AI applications, Wharton
-- swyx / Shawn Wang (https://linkedin.com/in/shawnswyxwang) - AI Engineer, Latent Space
-- Dan Shipper (https://linkedin.com/in/danshipper) - Every, AI productivity
+Before you queue a post, do this:
 
-*Founders & Building:*
-- Lenny Rachitsky (https://linkedin.com/in/lennyrachitsky) - Product leadership
-- Sahil Lavingia (https://linkedin.com/in/sahillavingia) - Gumroad, Minimalist Entrepreneur
-- Greg Isenberg (https://linkedin.com/in/gregisenberg) - Startup Ideas, community building
+1. Canonicalize the slug from the profile URL.
+2. Check for `docs/marketing/social-media/linkedin-profiles/<slug>.md`.
+3. If the file exists, read the condensed summary plus the most recent relationship-history rows.
+4. If the file does not exist and the account meets a profile trigger, create it from the profile template.
+5. Refresh the profile with current headline, role, company, content themes, strategic role, audience-quality notes, and any strategic notes that changed.
+6. Add a relationship-history row for today's scan, even if the action is only `Reviewed` or `Queued`.
 
-**Round 2: Tier 2 Accounts (AI/LLM)**
-- Simon Willison (https://linkedin.com/in/simonwillison) - Datasette, LLM writing
-- Harrison Chase (https://linkedin.com/in/harrison-chase-961287118) - LangChain
-- Relevant AI founders posting about context, agents, memory
+## Phase 5: Capture the Opportunity
 
-**Round 3: Tier 2 Accounts (Productivity/PKM)**
-- Tiago Forte (https://linkedin.com/in/taborte) - Building a Second Brain
-- Ali Abdaal (https://linkedin.com/in/aliabdaal) - Productivity, content creation
-- Productivity tool founders and thought leaders
+For every post you want to keep, write it into the warmup doc immediately.
 
-**Round 4: Tier 2 Accounts (Indie Hackers/Solopreneurs)**
-- Justin Welsh (https://linkedin.com/in/justinwelsh) - Solopreneur, content
-- Arvid Kahl (https://linkedin.com/in/arvidkahl) - Bootstrapped founder
-- Other solo founders building in public
+Capture:
 
-**Round 5: Topic Searches**
-Use LinkedIn's search bar → Filter by "Posts" → Sort by "Latest":
+- Author name and handle/slug
+- Direct post URL
+- Post topic
+- Age
+- Comment/reaction counts
+- Opportunity type
+- Connected BuildOS angle, if any
+- Profile file path
+- Profile status: `Existing` or `Created today`
+- Strategic role
+- Why this account is strategically relevant now
+- Relationship intel
+- Past touchpoints summary
+- BuildOS mention fit
+- Reply angle for `/linkedin-reply`
+- Queue status
 
-*Context & AI Memory:*
-- `context engineering AI`
-- `AI memory problem`
-- `context window limitation`
-- `LLM context`
-- `RAG knowledge base`
+## Phase 5.5: Direct Post URL Hard Requirement
 
-*AI Productivity:*
-- `AI productivity workflow`
-- `ChatGPT workflow`
-- `AI assistant productivity`
-- `using AI at work`
+**Every queued item must have a direct clickable post URL.**
 
-*Productivity Tool Frustration:*
-- `productivity app overwhelm`
-- `Notion complicated`
-- `too many productivity tools`
-- `task management frustration`
+Accepted formats:
 
-*Building in Public:*
-- `building in public`
-- `founder journey`
-- `startup lessons learned`
-- `indie hacker`
+- `https://www.linkedin.com/feed/update/urn:li:activity:.../`
+- `https://www.linkedin.com/posts/...`
 
-*AI Agents (Contrarian):*
-- `AI agents`
-- `autonomous AI`
-- `AI agent limitations`
+Rejected formats:
 
-**Round 6: Hashtag Scanning**
-Check recent posts under these hashtags:
+- Search instructions
+- Profile activity pages as the only link
+- "Visible in feed" notes without a clickable post URL
 
-| Hashtag                 | Why                    |
-| ----------------------- | ---------------------- |
-| #ArtificialIntelligence | Broad AI discussions   |
-| #Productivity           | Productivity tips      |
-| #FutureOfWork           | AI + work intersection |
-| #BuildingInPublic       | Founder community      |
-| #FounderLife            | Startup content        |
-| #KnowledgeManagement    | PKM space              |
+Use this extraction workflow for every queued post:
 
-**Round 7: Feed Discovery (New Accounts)**
-Navigate to LinkedIn home feed and scroll through recent posts to discover:
-- Accounts posting relevant content that aren't in Tier 1/2/3 lists
-- Fresh voices with good engagement who align with BuildOS themes
-- People discussing context, AI memory, productivity frustrations
+1. Click the timestamp, comments link, or share menu on the post.
+2. If available, use "Copy link to post" from the three-dots menu.
+3. Confirm the resulting URL is a single-post URL, not a profile or search page.
+4. If the post only opens in feed context, inspect the current URL again after the click and capture the direct `/feed/update/` or `/posts/` URL.
 
-### New Account Discovery Criteria
+If you cannot extract the direct post URL after trying the normal timestamp/share-link flow, do not queue that post.
 
-**Flag accounts for potential Tier addition if they:**
-- Post about AI tools, context, productivity, or building
-- Have 5K-100K followers (engagement sweet spot for LinkedIn)
-- Post consistently (multiple times per week)
-- Have good engagement ratios (comments relative to followers)
-- Write in an authentic voice (not generic thought leader content)
-- Are builders, founders, or practitioners
+## Phase 6: Prioritize
 
-**Capture for each discovered account:**
-- Name and headline
-- Follower count
-- Bio summary
-- Why they're relevant (content themes)
-- Recent post that caught your attention
-- Suggested tier placement (1, 2, or 3)
+Score using these factors:
 
-### For Each Potential Post, Capture:
+| Factor              | Weight | Criteria                                  |
+| ------------------- | ------ | ----------------------------------------- |
+| Freshness           | 3x     | First hour gets extra value               |
+| Natural fit         | 3x     | Clear way to add value                    |
+| Category fit        | 2x     | Helps BuildOS's real category position    |
+| Comment competition | 2x     | Lower is better                           |
+| Relationship value  | 2x     | Worth building over time                  |
+| Mention fit         | 1x     | Is a BuildOS angle naturally there?       |
 
-- Author name and headline
-- Post text (full content, first 500 chars if very long)
-- Post age (how long ago)
-- Current engagement (comments, reactions)
-- **Direct post link (REQUIRED)** - The actual post URL, not a search URL
-- Why it's relevant (which content pillar it matches)
-
-### How to Get Direct Post Links (HARD REQUIREMENT)
-
-**EVERY post in the output MUST have a direct clickable URL.** No exceptions. If you cannot get the URL for a post, DO NOT include that post in the output. DJ needs to click one link and land on the exact post.
-
-**A direct post URL looks like:**
-- `https://www.linkedin.com/feed/update/urn:li:activity:7309XXXXXXXXX/`
-- `https://www.linkedin.com/posts/username_slug-activity-7309XXXXXXXXX-XXXX/`
-
-**Step-by-step URL extraction workflow (follow this for EVERY post):**
-
-1. **When you find a post you want to include**, you MUST click into it to open it as a standalone page before moving on.
-2. **From a profile's activity page or feed:** Click the post's timestamp (e.g., "2h", "1d"), OR click "X comments", OR click the three dots menu (⋯) and look for "Copy link to post". Any of these should navigate to or reveal the direct post URL.
-3. **From search results:** Click into the post the same way - timestamp or comments link.
-4. **After clicking into the post:** The browser URL bar now contains the direct post URL. Use `read_page` or check the current page URL. It will be a `/feed/update/urn:li:activity:...` or `/posts/...` URL.
-5. **Copy that URL** and use it as the Post Link.
-
-**Alternative: Use the share/copy link feature:**
-- Click the three dots (⋯) on any post
-- Look for "Copy link to post" or "Copy link"
-- This gives you the direct URL without navigating away
-
-**Alternative: Extract URLs from page HTML:**
-- Use `read_page` on the current page
-- Search for `href` values containing `/feed/update/` or `/posts/`
-- These are direct post URLs embedded in timestamp links and share buttons
-
-**REJECTED formats - NEVER use these as a Post Link:**
-- ❌ `Search "Claude Code shipping" → Latest → Vikas Bansal post`
-- ❌ `Visible in DJ's LinkedIn feed - click into post for direct URL`
-- ❌ `/in/username/recent-activity/all/` (this is a profile page, not a post)
-- ❌ Any instruction telling DJ how to find the post
-- ❌ Any URL that is not a direct link to a single specific post
-
-**If you truly cannot extract the URL after trying all methods above**, use the author's profile URL as a last resort: `https://www.linkedin.com/in/username/` — but this should be rare. Do NOT include search instructions or "how to find it" text.
-
-### Selection Criteria
-
-**Include posts that are:**
-- From last 24 hours (prioritize <6h for freshness - first hour engagement matters most)
-- Relevant to: AI/context, productivity, building in public, tool frustration
-- Low-to-moderate existing comments (<30 comments is ideal)
-- NOT already in the "seen" list from previous 7 days
-
-**Skip posts that:**
-- Are promotional/ads
-- Already have 50+ comments (too crowded, hard to stand out)
-- Are just announcements with no discussion angle
-- You've already seen in previous docs
-- Are from mega-influencers with 500K+ followers (too much noise)
+Select the top 5-7 opportunities for the reply queue.
 
 ---
 
-## Phase 3: Prioritize & Score
+## Selection Rules
 
-Score each post opportunity (1-10):
+### Include
 
-| Factor | Weight | Criteria |
-|--------|--------|----------|
-| Freshness | 3x | <1h = 10, 1-4h = 8, 4-12h = 6, 12-24h = 4 |
-| Brand Fit | 3x | How aligned with BuildOS messaging/pillars |
-| Author Relevance | 2x | Tier 1 = 10, Tier 2 = 7, Tier 3 = 5, Discovery = 6 |
-| Comment Competition | 2x | <10 comments = 10, 10-20 = 7, 20-30 = 5, 30+ = 3 |
+- Posts from the last 24 hours, with preference for `<6h`
+- Low-to-moderate comment competition
+- Strong fit with BuildOS's category, founder, or audience lanes
+- People worth repeated engagement over time
+- Comments where DJ can sound credible, specific, and native to the room
 
-Select **top 5-7 opportunities** based on total score.
+### Skip
 
----
+- Posts already queued in the last 7 days
+- Posts where the only angle is generic applause
+- Highly crowded posts where a new comment has little visibility value
+- Pure promotional posts with no conversation angle
+- Any post without a direct URL
 
-## Phase 4: Generate Comments
+### Discovery Rule
 
-For each selected post, create 2-3 comment options following DJ's voice:
+If a newly discovered account is clearly worth repeated attention:
 
-### The Core Philosophy: Interesting Guy + Cheerleader
+1. Create or update a profile
+2. Add it to `New Accounts Discovered`
+3. Note whether `linkedin-engagement-targets.md` should be updated later
 
-> **NOT a thought leader.** Everyone is trying to be a thought leader. That's overdone and inauthentic.
-> **The goal:** Come across as an interesting person who has interesting things to say, OR as a genuine supporter when you don't have specific expertise.
-
-### Two Modes of Engagement
-
-**Mode 1: Add Value (When You Have Something)**
-Use when the topic touches your actual experience - Curri integrations, BuildOS, Marines, context engineering, solo founder journey.
-- Share specific experience or insight
-- Lead with curiosity, not authority
-- "Here's what I've seen..." not "The answer is..."
-- Offer a perspective others might not have considered
-- Ask questions that show expertise
-
-**Mode 2: Cheerleader (When You Don't)**
-Use when you don't have specific expertise but want to engage.
-- Genuine encouragement and support - this is valid!
-- Ask curious questions that show you're actually interested
-- Celebrate their wins like they're your wins
-- Hype them up authentically
-- "We're all rowing the same boat toward our goals" energy
-
-### Comment Generation Rules
-
-> **THE #1 RULE: Read each comment back and ask "Would a real person type this on their phone in 30 seconds?" If no, it's too polished. Cut it down.**
-
-1. **Default to cheerleader mode** - Most comments should just be supportive, encouraging, good energy. You don't need to add your two cents every time.
-2. **Keep it SHORT** - 1-3 sentences is usually enough. Not every comment needs to be a paragraph. Match the energy and length of the original post.
-3. **Vary the lengths** - Mix it up. Some comments are one line. Some are two sentences. Rarely go past 3-4 sentences. NEVER write a wall of text.
-4. **Sound like a human, not a copywriter** - No structured templates. No observation-then-experience-then-question formula. Just react naturally.
-5. **Don't always try to be smart** - "This is dope, been thinking about the same thing" is a perfectly valid comment. You don't need to prove expertise every time.
-6. **One idea per comment** - Pick ONE thing that stood out. React to that. Don't try to address the whole post.
-7. **Questions are optional** - Not every comment needs to end with a question. Sometimes a statement is more natural.
-8. **BuildOS mentions** - Rarely. Only when someone is literally describing the problem you solve. Be transparent when you do.
-9. **Don't stack your resume** - Never mention Curri + Marines + BuildOS in the same comment. Pick one detail max if relevant.
-10. **Match the post's vibe** - Casual post? Casual comment. Technical post? Can be slightly more detailed. Win post? Just hype them up.
-
-### What Organic Comments Actually Sound Like
-
-**Short cheerleader (most common - use this 60% of the time):**
-```
-This is really cool. The part about [specific detail] is something I haven't seen anyone talk about.
-```
-```
-Hell yes. 3 products in a month is no joke.
-```
-```
-Been thinking about this exact thing lately. Glad someone put it into words.
-```
-
-**Medium value-add (use sparingly - 30% of the time):**
-```
-The [specific thing] resonates. I hit the same wall building AI tools - the context you give the AI matters way more than the model you pick.
-```
-```
-"[short quote from their post]" - this is the part nobody wants to hear right now. I keep seeing the same pattern from the builder side.
-```
-
-**Longer only when you genuinely have something unique to say (10% of the time):**
-```
-This connects to something I've been wrestling with. [1-2 sentences of genuine personal experience, not a mini-essay]. Curious if you've seen the same thing.
-```
-
-### What to NEVER Do
-
-- **No walls of text** - If your comment is longer than the original post, delete half of it
-- **No template feel** - If it reads like [observation] → [my experience] → [question], rewrite it
-- **No stacking credentials** - "When I was connecting Uber/Lyft/DoorDash APIs at my YC-backed logistics company before AI tool use was trendy..." sounds like a LinkedIn thought leader. Just say the one thing that's relevant.
-- **No forced questions** - "What's your take on X?" at the end of every comment is a pattern. Break it.
-- **No "This resonated with me"** - or "Great post!" or "Love this!" - hollow
-- **No teaching** - You're not here to educate anyone. You're here to vibe.
-- **No preachy setups** - "Most people don't realize..." / "The thing nobody talks about is..."
-- **No AI-sounding structure** - Real comments are messy. They start mid-thought sometimes. They use sentence fragments. They don't have perfect paragraph breaks.
-
-### Voice Reminders
-
-**The Philosophy:** Interesting guy + cheerleader. NOT a thought leader. Good energy, not proving you're smart.
-
-**What DJ actually sounds like:**
-- "That's dope"
-- "Hell yes"
-- "This is the thing right here"
-- "Been building in this space and yeah, this is real"
-- "The [specific detail] part hits different"
-- Sentence fragments are fine
-- Casual but not sloppy
-- Professional LinkedIn tone but still human
-
-**The litmus test for every comment:**
-- Would you actually say this to someone at a coffee shop?
-- Does it sound like a person or a press release?
-- Are you adding energy or extracting attention?
+Do not force a target-doc update during the scan unless the fit is obvious.
 
 ---
 
-## Phase 5: Output Document
+## Warmup Doc Template
 
-### Document Format
+Use this structure:
 
 ```markdown
-<!-- docs/marketing/social-media/daily-engagement/YYYY-MM-DD_linkedin-warmup.md -->
+<!-- docs/marketing/social-media/daily-engagement/YYYY-MM-DD_linkedin-warmup*.md -->
 
 # LinkedIn Warmup - [Date in words]
 
 **Date:** [YYYY-MM-DD]
 **Scan Time:** [timestamp]
+**Status:** STAGE 1 COMPLETE - Ready for /linkedin-reply
+
+---
+
+## Notifications & Feed Activity
+
+**Notifications Checked:** [Yes/No - notable activity]
+**Feed Highlights:** [Fresh conversations or discovery notes]
+**Relationship Signals:** [Who engaged with DJ, who replied, who liked a recent comment]
 
 ---
 
 ## Priority Summary
 
-| # | Author | Topic | Post URL | Age | Comments | Why |
-|---|--------|-------|----------|-----|----------|-----|
-| 1 | [Name] | [topic] | [https://linkedin.com/feed/update/urn:li:activity:...](URL) | Xh | X | [reason] |
-| 2 | ... | ... | [link](URL) | ... | ... | ... |
-[5-7 rows — every row MUST have a clickable post URL, never search instructions]
+| # | Author | Topic | Post URL | Age | Comments | Mention Fit | Score | Profile | Queue |
+|---|--------|-------|----------|-----|----------|-------------|-------|---------|-------|
+| 1 | [Name] | [topic] | [URL] | Xh | X | [0/1/2] | XX | [path] | Queued |
 
 ---
 
-## 1. [Author Name] - [Topic]
+## Reply Queue
 
-**Post Link:** https://www.linkedin.com/feed/update/urn:li:activity:7309XXXXXXXXX/
-(MUST be a real clickable URL — never search instructions or "how to find" text)
+| # | Author | Topic | Post URL | Opp Type | Strategic Role | Mention Fit | Profile | Reply Angle |
+|---|--------|-------|----------|----------|----------------|-------------|---------|-------------|
+| 1 | [Name] | [topic] | [URL] | [type] | [role] | [0/1/2] | [path] | [brief angle] |
 
-**Author:** [Name] | [Headline] | [Follower count]
+---
+
+## Post Opportunities
+
+### 1. [Author Name] - [Topic]
+
+**Post Link:** [URL]
+**Author:** [Name] | [Headline]
+**Stats:** [comments/reactions] ([age])
+**Opportunity Type:** [Context / AI workflow / Founder / ADHD / Productivity / Competitor intel / etc.]
+**Connected BuildOS Angle:** [none / brief note]
+**Profile File:** [path]
+**Profile Status:** [Existing / Created today]
+**Strategic Role:** [role]
 
 **The Post:**
-> [post text - first 500 chars if very long]
-
-**Stats:** X comments, Y reactions ([age])
+> [brief summary or excerpt]
 
 **Why This Post:**
-[1-2 sentences on why this is a good engagement opportunity - pillar alignment, author relevance, timing]
+[1-2 short paragraphs on why this is a good opportunity]
 
-**Option A:**
-> [short, organic comment - 1-3 sentences max]
+**Why This Account Matters Now:**
+[why this relationship matters strategically]
 
-**Option B:**
-> [different angle - 1-3 sentences max]
+**Relationship Intel:**
 
----
+- [signal]
+- [signal]
 
-[Repeat for all 5-7 posts]
+**Past Touchpoints:**
 
----
+- [recent interaction or none]
 
-## Commenting Strategy
+**BuildOS Mention Fit:** [0/1/2]
 
-**Recommended Order:**
-1. [Freshest post with lowest competition]
-2. [Tier 1 account post]
-3. [Best brand fit]
-...
+**Reply Angle for `/linkedin-reply`:**
 
-**Timing Notes:**
-- Posts <1h old: Comment ASAP (first hour is critical on LinkedIn)
-- Posts 1-4h old: Still good, comment within the hour
-- Posts 12h+: Only if exceptional fit and low competition
+- [angle 1]
+- [angle 2]
+- [what to avoid]
 
-**Spacing:** 15-30 min between comments (less critical than Twitter, but still good practice)
+**Queue Status:** Queued for `/linkedin-reply`
 
 ---
 
 ## New Accounts Discovered
 
-Accounts from feed worth adding to engagement tiers:
-
-| Account | Followers | Theme | Suggested Tier | Why |
-|---------|-----------|-------|----------------|-----|
-| [Name] | Xk | [AI/Productivity/Building] | [1/2/3] | [brief reason] |
-
-### Account Details
-
-#### [Name] - [Headline]
-**Followers:** X,XXX
-**Bio/About:** [summary]
-**Content Themes:** [what they post about]
-**Recent Post That Stood Out:**
-> [post text excerpt]
-
-**Why Add to Tier [X]:**
-[1-2 sentences on why this account is worth engaging with regularly]
+| Account | Theme | Suggested Tier | Strategic Role | Why |
+|---------|-------|----------------|----------------|-----|
+| [Name] | [theme] | [1/2/3] | [role] | [brief reason] |
 
 ---
 
-## Voice Reminder
+## Strategy Observations
 
-### The 3 Rules (From Twitter, Applies Here Too)
-1. Can I visualize it? (Specific details, not abstractions)
-2. Can I falsify it? (Real experience you could defend)
-3. Can nobody else say this? (Use your unique experience)
-
-### LinkedIn-Specific
-- Longer, more nuanced than Twitter
-- Professional but authentic
-- Learning voice, not authoritative
-- 2-4 sentence comments minimum
-- Ask questions to open dialogue
+- [observation]
+- [observation]
 
 ---
 
-**Created:** [timestamp]
-**Next Scan:** [tomorrow's date]
+## Relationship Memory Updates
+
+| Account | Profile | Update |
+|---------|---------|--------|
+| [Name] | [path] | [Created / Refreshed / Logged new touchpoint] |
 ```
-
----
-
-## Execution Notes
-
-1. **Take screenshots** of relevant posts for reference
-2. **Wait 2 seconds** after page loads before capturing
-3. **Use "Latest" sorting** for searches to get fresh content
-4. **Check for previous engagement** - don't suggest same posts twice
-5. **Quality over quantity** - better to find 5 great opportunities than 10 mediocre ones
-6. **First hour matters** - prioritize very fresh posts (<1-2 hours)
 
 ---
 
 ## When Complete
 
-Present a summary to the user:
+Present a concise summary to the user:
 
-```
+```text
 LinkedIn warmup complete for [date].
 
-## Engagement Opportunities Found: X
+Opportunities queued: X
+Profiles created or updated: X
+New accounts discovered: X
 
-- [count] from Tier 1 accounts
-- [count] from Tier 2/3 accounts
-- [count] from topic/hashtag searches
-- [count] from feed discovery
-
-Top opportunities:
-1. [Author] - [topic] (Xh ago, Y comments) → [direct post URL]
-2. [Author] - [topic] (Xh ago, Y comments) → [direct post URL]
-3. [Author] - [topic] (Xh ago, Y comments) → [direct post URL]
-
-## New Accounts Discovered: X
-
-Worth adding to your engagement tiers:
-- [Name] ([followers]) - [theme] → Suggested: Tier [X]
-- [Name] ([followers]) - [theme] → Suggested: Tier [X]
-
-Full doc: docs/marketing/social-media/daily-engagement/[filename]
-
-Ready to engage? Start with [recommendation] - it's the freshest with lowest competition.
-```
-
-### After Each Scan
-
-If new accounts are discovered, ask the user:
-```
-I found X new accounts worth engaging with regularly. Should I update your engagement targets doc (linkedin-engagement-targets.md) to add them to the appropriate tiers?
+Warmup doc: docs/marketing/social-media/daily-engagement/[filename]
+Next command: /linkedin-reply [same filename or date]
 ```

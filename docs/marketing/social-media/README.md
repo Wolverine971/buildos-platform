@@ -21,6 +21,14 @@ If you need platform execution, start with the platform strategy docs.
 - Use [`./daily-engagement/`](./daily-engagement/README.md) as the current working set for dated warmups.
 - Move older dated warmups into `docs/archive/marketing/social-media/daily-engagement/` once they are no longer actively in use.
 
+## Relationship Memory
+
+- Use [`./twitter-profiles/`](./twitter-profiles/INDEX.md) for the deeper Twitter profile database.
+- Use [`./instagram-profiles/`](./instagram-profiles/README.md) for Instagram account research and reply history.
+- Use [`./linkedin-profiles/`](./linkedin-profiles/README.md) for LinkedIn account research and reply history.
+- Use the platform engagement-targets docs as the tier/source-of-truth layer and the profile directories as the CRM layer.
+- Use [`./profile-seeding-task-prompts.md`](./profile-seeding-task-prompts.md) when you want one-off research tasks to seed or refresh profile files without doing live engagement.
+
 ## Founder Narrative Stack
 
 ### Current Source Of Truth
