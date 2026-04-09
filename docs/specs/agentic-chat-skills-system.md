@@ -1,5 +1,8 @@
 <!-- docs/specs/agentic-chat-skills-system.md -->
 
+> Superseded by [Agentic Chat Skill + Tool Architecture V2](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skill-tool-architecture-v2.md).
+> This document reflects the earlier design that routed skills through `tool_help`.
+
 # Agentic Chat Skills System - Design Spec
 
 **Status:** Draft  

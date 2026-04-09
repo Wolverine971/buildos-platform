@@ -103,7 +103,7 @@ describe('resolveLaneReasoning', () => {
 	});
 
 	it('returns low effort for tool lane', () => {
-		expect(resolveLaneReasoning('tool_calling')).toEqual({ effort: 'low' });
+		expect(resolveLaneReasoning('tool_calling')).toEqual({ effort: 'low', exclude: true });
 	});
 
 	it('returns undefined for json lane', () => {

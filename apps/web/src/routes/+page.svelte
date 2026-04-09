@@ -34,8 +34,7 @@
 		ListChecks,
 		Flag,
 		FileText,
-		AlertTriangle,
-		Sparkles
+		AlertTriangle
 	} from 'lucide-svelte';
 
 	let { data } = $props();
@@ -75,7 +74,7 @@
 			title: 'Context that persists',
 			description:
 				'Your project history stays warm. Stop re-explaining everything every time you open a new chat thread.',
-			texture: 'tx tx-bloom tx-weak',
+			texture: 'tx tx-thread tx-weak',
 			tags: ['project memory', 'history', 'no re-explaining']
 		}
 	] as const;
@@ -201,8 +200,9 @@
 		},
 		image: DEFAULT_SOCIAL_IMAGE_URL,
 		featureList: [
-			'Brain dump to project structure',
+			'Rough input to project structure',
 			'Persistent project context',
+			'Chat-based project organization',
 			'Voice note capture',
 			'Task and milestone organization',
 			'Research and document organization',
@@ -287,12 +287,12 @@
 	<title>BuildOS — Turn Messy Thinking into Structured Work</title>
 	<meta
 		name="description"
-		content="BuildOS is a thinking environment for people making complex things. Brain dump rough ideas, notes, and research, then turn them into structured projects with memory and a clear next move."
+		content="BuildOS is a thinking environment for people making complex things. Start in chat with rough ideas, notes, and research, then turn them into structured projects with memory and a clear next move."
 	/>
 
 	<meta
 		name="keywords"
-		content="thinking environment, brain dump app, project memory, creator workflow, author workflow, YouTube workflow, task organization, daily briefs, voice notes"
+		content="thinking environment, project chat, project memory, creator workflow, author workflow, YouTube workflow, task organization, daily briefs, voice notes"
 	/>
 	<link rel="canonical" href="https://build-os.com/" />
 
@@ -405,8 +405,8 @@
 					</h1>
 
 					<p class="text-sm sm:text-base text-muted-foreground max-w-xl">
-						BuildOS is a thinking environment for people making complex things. Brain
-						dump rough ideas, notes, voice memos, and research, then turn them into
+						BuildOS is a thinking environment for people making complex things. Start in
+						chat with rough ideas, notes, voice memos, and research, then turn them into
 						structured projects with memory and a clear next move. Keep the work
 						connected instead of scattered across notes apps, task lists, and stateless
 						AI chats.
@@ -426,7 +426,7 @@
 							href="/auth/register"
 							class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						>
-							Try your brain dump
+							Start in chat
 						</a>
 						<a
 							class="text-xs text-muted-foreground hover:text-accent underline underline-offset-4 transition-colors px-2 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
@@ -443,7 +443,7 @@
 					<div
 						class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
 					>
-						Brain dump → organized plan
+						Rough brief → organized plan
 					</div>
 					<div class="p-3 sm:p-4 space-y-3">
 						<div class="grid sm:grid-cols-2 gap-2 sm:gap-3">
@@ -453,7 +453,7 @@
 								<div
 									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
 								>
-									Author dump
+									Author brief
 								</div>
 								<p class="text-[0.8rem] text-muted-foreground leading-relaxed">
 									"Chapter 12 drags, I need to fix Maya's motivation, track my
@@ -484,7 +484,7 @@
 								<div
 									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
 								>
-									YouTube dump
+									YouTube brief
 								</div>
 								<p class="text-[0.8rem] text-muted-foreground leading-relaxed">
 									"Need a better hook for the AI fatigue episode, a source list,
@@ -521,7 +521,7 @@
 								class="pressable rounded-full border border-border bg-accent text-accent-foreground px-3 py-1.5 text-xs font-semibold shadow-ink shrink-0 hover:opacity-90 transition-opacity"
 								aria-label="Sign up to use BuildOS"
 							>
-								Try it now
+								Start in chat
 							</a>
 						</div>
 					</div>
@@ -607,14 +607,14 @@
 						<div
 							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
 						>
-							01 • Capture
+							01 • Start
 						</div>
 						<h3 class="mt-2 text-sm font-semibold text-foreground">
-							Dump everything in your head.
+							Bring the project in as-is.
 						</h3>
 						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-							Talk, type, or paste ideas, scenes, scripts, research, or launch notes
-							without stopping to organize them first.
+							Start in chat with rough notes, scenes, scripts, research, or launch
+							plans without stopping to organize everything first.
 						</p>
 					</article>
 
@@ -760,12 +760,13 @@
 						</p>
 					</div>
 					<div
-						class="rounded-lg border border-accent/20 bg-accent/5 shadow-ink tx tx-bloom tx-weak p-3"
+						class="rounded-lg border border-border bg-card shadow-ink tx tx-strip tx-weak p-3"
 					>
 						<div class="flex items-center gap-2 mb-1">
-							<Sparkles class="w-3.5 h-3.5 text-accent" />
-							<span class="text-[0.65rem] uppercase tracking-[0.15em] text-accent"
-								>Flexible Props</span
+							<FolderKanban class="w-3.5 h-3.5 text-muted-foreground" />
+							<span
+								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+								>Flexible Structure</span
 							>
 						</div>
 						<p class="text-sm text-foreground">
@@ -785,8 +786,8 @@
 							See it in action.
 						</h2>
 						<p class="mt-2 text-sm text-muted-foreground max-w-2xl">
-							Real projects where the transformation from dump to structure is obvious
-							in seconds.
+							Real projects where the transformation from rough input to structure is
+							obvious in seconds.
 						</p>
 					</div>
 					<a
@@ -982,8 +983,8 @@
 							Start building context now.
 						</h3>
 						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-							Your system gets better with every brain dump. The value compounds from
-							day one.
+							Your system gets better with every conversation, note, and project
+							update. The value compounds from day one.
 						</p>
 					</article>
 				</div>
@@ -1005,7 +1006,7 @@
 						href="/auth/register"
 						class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity"
 					>
-						Try your brain dump
+						Start in chat
 					</a>
 					<a
 						href="/blogs/getting-started/how-buildos-works"

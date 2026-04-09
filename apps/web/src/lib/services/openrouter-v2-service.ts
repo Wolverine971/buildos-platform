@@ -10,6 +10,10 @@ import {
 	type TextGenerationUsage,
 	type WebSmartLLMConfig
 } from '$lib/services/smart-llm-service';
+import {
+	extractVisibleText,
+	normalizeStreamingContent
+} from '$lib/services/smart-llm/response-parsing';
 import { OpenRouterV2Client } from '$lib/services/openrouter-v2/client';
 import { resolveLaneModels, resolveLaneReasoning } from '$lib/services/openrouter-v2/model-lanes';
 import {
@@ -35,34 +39,7 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
 }
 
 function contentToText(content: unknown): string {
-	if (typeof content === 'string') {
-		return content;
-	}
-	if (Array.isArray(content)) {
-		const parts = content
-			.map((part) => {
-				if (typeof part === 'string') return part;
-				if (!part || typeof part !== 'object') return '';
-				const record = part as Record<string, unknown>;
-				if (typeof record.text === 'string') return record.text;
-				if (record.text && typeof record.text === 'object') {
-					const nested = record.text as Record<string, unknown>;
-					if (typeof nested.value === 'string') return nested.value;
-				}
-				if (typeof record.content === 'string') return record.content;
-				if (typeof record.value === 'string') return record.value;
-				return '';
-			})
-			.filter((part) => part.length > 0);
-		return parts.join('');
-	}
-	if (content && typeof content === 'object') {
-		const record = content as Record<string, unknown>;
-		if (typeof record.text === 'string') return record.text;
-		if (typeof record.content === 'string') return record.content;
-		if (typeof record.value === 'string') return record.value;
-	}
-	return '';
+	return extractVisibleText(content) ?? '';
 }
 
 function normalizeMessageContent(content: unknown): string {
@@ -218,12 +195,16 @@ function extractTextFromResponse(response: OpenRouterChatResponse): string {
 	const firstChoice = response.choices?.[0];
 	if (!firstChoice) return '';
 
-	if (typeof firstChoice.text === 'string') {
-		return firstChoice.text;
+	const messageText = contentToText(firstChoice.message?.content);
+	if (messageText.trim().length > 0) {
+		return messageText;
 	}
 
-	const messageContent = firstChoice.message?.content;
-	return contentToText(messageContent);
+	if (typeof firstChoice.text === 'string') {
+		return contentToText(firstChoice.text);
+	}
+
+	return '';
 }
 
 type JSONRequestWithFallbackModels<T = any> = JSONRequestOptions<T> & {
@@ -543,6 +524,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const decoder = new TextDecoder();
 		const assembler = new ToolCallAssembler();
 		let buffer = '';
+		let inThinkingBlock = false;
 		let usage: OpenRouterUsage | undefined;
 		let terminalFinishReason: string | undefined;
 		let streamRequestId = requestId;
@@ -630,7 +612,12 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 					const delta = choice.delta;
 					if (delta?.content !== undefined) {
-						const text = contentToText(delta.content);
+						const normalizedChunk = normalizeStreamingContent(
+							delta.content,
+							inThinkingBlock
+						);
+						inThinkingBlock = normalizedChunk.inThinkingBlock;
+						const text = normalizedChunk.text;
 						if (text.length > 0) {
 							yield { type: 'text', content: text };
 						}

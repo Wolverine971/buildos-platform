@@ -1,27 +1,4 @@
 <!-- apps/web/src/routes/beta/+page.svelte -->
-<script module lang="ts">
-	declare global {
-		interface Window {
-			grecaptcha?: {
-				render: (
-					container: string | HTMLElement,
-					options: {
-						sitekey: string;
-						callback: (token: string) => void;
-						'expired-callback'?: () => void;
-						'error-callback'?: () => void;
-						theme?: 'light' | 'dark';
-					}
-				) => number;
-				reset: (widgetId?: number) => void;
-				getResponse: (widgetId?: number) => string;
-				ready: (callback: () => void) => void;
-			};
-			onRecaptchaLoad?: () => void;
-		}
-	}
-</script>
-
 <script lang="ts">
 	import {
 		Users,
@@ -32,29 +9,29 @@
 		Gift,
 		Send,
 		AlertTriangle,
-		LoaderCircle,
-		X
+		X,
+		Sparkles,
+		Clock3
 	} from 'lucide-svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { validateEmailClient } from '$lib/utils/client-email-validation';
 	import { requireApiData, requireApiSuccess } from '$lib/utils/api-client-helpers';
-	import { PUBLIC_RECAPTCHA_SITE_KEY } from '$env/static/public';
 
 	// Form state
 	let email = '';
 	let fullName = '';
 	let jobTitle = '';
 	let companyName = '';
-	let whyInterested = '';
+	let applicationNote = '';
 	let productivityTools: string[] = [];
-	let biggestChallenge = '';
 	let referralSource = '';
 	let wantsWeeklyCalls = true;
 	let wantsCommunityAccess = true;
@@ -67,15 +44,6 @@
 	let submitError = '';
 	let existingSignupStatus = '';
 	let emailError = '';
-
-	// reCAPTCHA state
-	let recaptchaToken = '';
-	let recaptchaWidgetId: number | null = null;
-	let recaptchaLoaded = false;
-	let recaptchaError = '';
-
-	// Check if reCAPTCHA is required (only when site key is configured)
-	const recaptchaRequired = !!PUBLIC_RECAPTCHA_SITE_KEY;
 
 	// Check if user already signed up
 	onMount(async () => {
@@ -93,22 +61,12 @@
 		'Google Docs',
 		'Apple Notes',
 		'Todoist',
-		'ClickUp',
 		'Asana',
-		'Monday.com',
-		'Trello',
+		'ClickUp',
 		'Linear',
 		'Slack',
 		'Discord',
-		'Roam Research',
-		'LogSeq',
-		'Evernote',
-		'OneNote',
-		'Bear',
-		'Things',
-		'OmniFocus',
-		'TickTick',
-		'Any.do',
+		'Trello',
 		'Other'
 	];
 
@@ -166,27 +124,35 @@
 		}
 	}
 
+	function inferNameFromEmail(inputEmail: string): string {
+		const localPart = inputEmail.split('@')[0] ?? '';
+		const cleaned = localPart
+			.replace(/\+.*$/, '')
+			.replace(/[._-]+/g, ' ')
+			.replace(/\d+/g, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
+
+		if (cleaned.length < 2) {
+			return 'BuildOS Beta User';
+		}
+
+		return cleaned
+			.split(' ')
+			.slice(0, 3)
+			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+			.join(' ');
+	}
+
 	function validateForm(): string | null {
 		if (honeypot.trim() !== '') return 'Spam detected';
 		if (!email.trim()) return 'Email is required';
-		if (!fullName.trim()) return 'Full name is required';
-		if (!whyInterested.trim()) return "Please tell us why you're interested";
-		if (!biggestChallenge.trim()) return 'Please describe your biggest productivity challenge';
-
-		if (whyInterested.length < 20)
-			return "Please provide more detail about why you're interested (minimum 20 characters)";
-		if (biggestChallenge.length < 10) return 'Please describe your challenge in more detail';
 
 		// Email validation (enhanced security)
 		const emailValidation = validateEmailClient(email.trim());
 		if (!emailValidation.valid) {
 			emailError = emailValidation.error || 'Invalid email address';
 			return emailValidation.error || 'Please provide a valid email address';
-		}
-
-		// reCAPTCHA validation (only required if configured)
-		if (recaptchaRequired && PUBLIC_RECAPTCHA_SITE_KEY && !recaptchaToken) {
-			return 'Please complete the reCAPTCHA verification';
 		}
 
 		return null;
@@ -213,18 +179,16 @@
 				},
 				body: JSON.stringify({
 					email: email.trim(),
-					full_name: fullName.trim(),
+					full_name: fullName.trim() || inferNameFromEmail(email.trim()),
 					job_title: jobTitle.trim() || undefined,
 					company_name: companyName.trim() || undefined,
-					why_interested: whyInterested.trim(),
+					why_interested: applicationNote.trim() || undefined,
 					productivity_tools: productivityTools,
-					biggest_challenge: biggestChallenge.trim(),
 					referral_source: referralSource || undefined,
 					wants_weekly_calls: wantsWeeklyCalls,
 					wants_community_access: wantsCommunityAccess,
 					user_timezone: userTimezone,
-					honeypot: honeypot,
-					recaptcha_token: recaptchaToken || undefined
+					honeypot: honeypot
 				})
 			});
 
@@ -237,8 +201,6 @@
 			const emailParam = encodeURIComponent(email.trim());
 			goto(`/beta/thank-you?email=${emailParam}`);
 		} catch (error) {
-			// Signup error - reset reCAPTCHA so user can try again
-			resetRecaptcha();
 			submitError =
 				error instanceof Error
 					? error.message
@@ -249,117 +211,13 @@
 	}
 
 	function openSignupForm() {
+		submitError = '';
 		showSignupForm = true;
-		// Initialize reCAPTCHA after DOM updates
-		setTimeout(initRecaptcha, 0);
 	}
 
 	function closeSignupForm() {
+		submitError = '';
 		showSignupForm = false;
-		// Reset reCAPTCHA state when closing
-		resetRecaptcha();
-	}
-
-	// reCAPTCHA functions
-	function loadRecaptchaScript(): Promise<void> {
-		return new Promise((resolve, reject) => {
-			// If already loaded, resolve immediately
-			if (window.grecaptcha?.render) {
-				resolve();
-				return;
-			}
-
-			// Check if script is already being loaded
-			const existingScript = document.querySelector(
-				'script[src*="recaptcha/api.js"]'
-			) as HTMLScriptElement;
-			if (existingScript) {
-				// Wait for it to load
-				existingScript.onload = () => resolve();
-				existingScript.onerror = () => reject(new Error('Failed to load reCAPTCHA'));
-				return;
-			}
-
-			// Create and load the script
-			const script = document.createElement('script');
-			script.src =
-				'https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit';
-			script.async = true;
-			script.defer = true;
-
-			window.onRecaptchaLoad = () => {
-				recaptchaLoaded = true;
-				resolve();
-			};
-
-			script.onerror = () => {
-				recaptchaError = 'Failed to load reCAPTCHA. Please refresh the page.';
-				reject(new Error('Failed to load reCAPTCHA'));
-			};
-
-			document.head.appendChild(script);
-		});
-	}
-
-	function renderRecaptcha() {
-		const container = document.getElementById('recaptcha-container');
-		if (!container || !window.grecaptcha?.render) return;
-
-		// Don't render if already rendered
-		if (recaptchaWidgetId !== null) return;
-
-		try {
-			recaptchaWidgetId = window.grecaptcha.render(container, {
-				sitekey: PUBLIC_RECAPTCHA_SITE_KEY,
-				callback: onRecaptchaSuccess,
-				'expired-callback': onRecaptchaExpired,
-				'error-callback': onRecaptchaError,
-				theme: 'light' // Could be dynamic based on dark mode
-			});
-		} catch (error) {
-			console.error('Failed to render reCAPTCHA:', error);
-			recaptchaError = 'Failed to display reCAPTCHA. Please refresh the page.';
-		}
-	}
-
-	function onRecaptchaSuccess(token: string) {
-		recaptchaToken = token;
-		recaptchaError = '';
-	}
-
-	function onRecaptchaExpired() {
-		recaptchaToken = '';
-		recaptchaError = 'reCAPTCHA expired. Please verify again.';
-	}
-
-	function onRecaptchaError() {
-		recaptchaToken = '';
-		recaptchaError = 'reCAPTCHA error. Please try again.';
-	}
-
-	function resetRecaptcha() {
-		recaptchaToken = '';
-		recaptchaError = '';
-		if (recaptchaWidgetId !== null && window.grecaptcha?.reset) {
-			try {
-				window.grecaptcha.reset(recaptchaWidgetId);
-			} catch (error) {
-				console.error('Failed to reset reCAPTCHA:', error);
-			}
-		}
-	}
-
-	// Initialize reCAPTCHA when form opens
-	async function initRecaptcha() {
-		if (!recaptchaRequired || !PUBLIC_RECAPTCHA_SITE_KEY) return;
-
-		try {
-			await loadRecaptchaScript();
-			// Small delay to ensure DOM is ready
-			setTimeout(renderRecaptcha, 100);
-		} catch (error) {
-			console.error('Failed to initialize reCAPTCHA:', error);
-		}
 	}
 </script>
 
@@ -456,48 +314,148 @@
 	</section>
 
 	<!-- Beta Signup Form Modal -->
-	{#if showSignupForm}
-		<div
-			class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="signup-modal-title"
-		>
-			<div
-				class="rounded-lg border border-border bg-card max-w-2xl w-full max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-y-auto shadow-ink-strong tx tx-grain tx-weak"
-			>
-				<div class="p-5 sm:p-8">
-					<header class="mb-5 flex items-center justify-between sm:mb-6">
-						<h2 id="signup-modal-title" class="text-2xl font-bold text-foreground">
-							Join BuildOS Beta
-						</h2>
-						<button
-							onclick={closeSignupForm}
-							class="p-2 hover:bg-muted rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-							aria-label="Close signup form"
-						>
-							<X class="w-5 h-5 text-muted-foreground" aria-hidden="true" />
-						</button>
-					</header>
+	<Modal
+		bind:isOpen={showSignupForm}
+		onClose={closeSignupForm}
+		size="xl"
+		showCloseButton={false}
+		ariaLabel="Join BuildOS beta"
+		customClasses="max-w-[960px] border-border/80 bg-card shadow-[0_30px_90px_rgba(15,23,42,0.24)]"
+	>
+		{#snippet children()}
+			<div class="grid overflow-hidden md:grid-cols-[0.95fr_1.05fr]">
+				<section
+					class="relative overflow-hidden border-b border-border bg-muted/55 p-6 sm:p-8 md:border-b-0 md:border-r"
+				>
+					<div
+						class="absolute -left-14 top-0 h-40 w-40 rounded-full bg-accent/20 blur-3xl"
+					></div>
+					<div
+						class="absolute -bottom-12 right-0 h-32 w-32 rounded-full bg-foreground/5 blur-2xl"
+					></div>
 
+					<div class="relative flex h-full flex-col">
+						<div class="flex items-start justify-between gap-4">
+							<div
+								class="inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+							>
+								<Sparkles class="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+								Fast beta signup
+							</div>
+							<button
+								type="button"
+								onclick={closeSignupForm}
+								class="rounded-full border border-border/70 bg-background/80 p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+								aria-label="Close signup form"
+							>
+								<X class="h-4 w-4" aria-hidden="true" />
+							</button>
+						</div>
+
+						<div class="mt-8 space-y-4">
+							<h2
+								class="max-w-sm text-3xl font-semibold tracking-tight text-foreground"
+							>
+								Get early access without the friction.
+							</h2>
+							<p class="max-w-md text-base leading-7 text-muted-foreground">
+								Start with your email. Everything else is optional, and one short
+								note is plenty if you want to give a little context.
+							</p>
+						</div>
+
+						<div class="mt-8 grid gap-3">
+							<div
+								class="rounded-2xl border border-border/80 bg-background/80 p-4 shadow-sm"
+							>
+								<div class="flex items-start gap-3">
+									<div
+										class="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-accent/10"
+									>
+										<Clock3 class="h-4 w-4 text-accent" aria-hidden="true" />
+									</div>
+									<div>
+										<p class="text-sm font-semibold text-foreground">
+											Quick review
+										</p>
+										<p class="mt-1 text-sm text-muted-foreground">
+											I read every signup personally and keep the follow-up
+											simple.
+										</p>
+									</div>
+								</div>
+							</div>
+
+							<div
+								class="rounded-2xl border border-border/80 bg-background/80 p-4 shadow-sm"
+							>
+								<div class="flex items-start gap-3">
+									<div
+										class="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-accent/10"
+									>
+										<MessageCircle
+											class="h-4 w-4 text-accent"
+											aria-hidden="true"
+										/>
+									</div>
+									<div>
+										<p class="text-sm font-semibold text-foreground">
+											Direct line
+										</p>
+										<p class="mt-1 text-sm text-muted-foreground">
+											If you're thoughtful with feedback, it goes straight
+											into the product.
+										</p>
+									</div>
+								</div>
+							</div>
+
+							<div
+								class="rounded-2xl border border-border/80 bg-background/80 p-4 shadow-sm"
+							>
+								<div class="flex items-start gap-3">
+									<div
+										class="flex h-10 w-10 items-center justify-center rounded-2xl border border-border/70 bg-accent/10"
+									>
+										<Gift class="h-4 w-4 text-accent" aria-hidden="true" />
+									</div>
+									<div>
+										<p class="text-sm font-semibold text-foreground">
+											Free in beta
+										</p>
+										<p class="mt-1 text-sm text-muted-foreground">
+											Join early, shape the product, and lock in beta pricing
+											later.
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<p class="mt-8 text-sm text-muted-foreground">
+							You do not need a long application. An email is enough to start.
+						</p>
+					</div>
+				</section>
+
+				<section class="bg-background p-6 sm:p-8">
 					{#if submitError}
 						<div
-							class="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 p-4"
+							class="mb-6 rounded-2xl border border-destructive/40 bg-destructive/10 p-4"
 							role="alert"
 							aria-live="polite"
 						>
-							<div class="flex items-center">
+							<div class="flex items-start gap-3">
 								<AlertTriangle
-									class="w-5 h-5 text-destructive mr-3"
+									class="mt-0.5 h-5 w-5 text-destructive"
 									aria-hidden="true"
 								/>
-								<p class="text-destructive">{submitError}</p>
+								<p class="text-sm text-destructive">{submitError}</p>
 							</div>
 						</div>
 					{/if}
 
 					<form onsubmit={handleSubmit} class="space-y-6" novalidate>
-						<!-- Honeypot field -->
 						<div class="hidden">
 							<label for="honeypot">Don't fill this out</label>
 							<TextInput
@@ -510,89 +468,125 @@
 							/>
 						</div>
 
-						<!-- Email and Name -->
-						<fieldset class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<legend class="sr-only">Personal Information</legend>
-							<FormField label="Email Address" required>
-								<TextInput
-									id="email"
-									type="email"
-									bind:value={email}
-									placeholder="your@email.com"
-									required
-									aria-required="true"
-									size="md"
-									onblur={validateEmail}
-								/>
-								{#if emailError}
-									<p class="mt-1 text-sm text-destructive">
-										{emailError}
-									</p>
-								{/if}
-							</FormField>
-							<FormField label="Full Name" required>
+						<FormField
+							label="Work email"
+							labelFor="email"
+							required
+							uppercase={false}
+							error={emailError}
+						>
+							<TextInput
+								id="email"
+								type="email"
+								bind:value={email}
+								placeholder="you@company.com"
+								required
+								aria-required="true"
+								autocomplete="email"
+								autofocus
+								size="md"
+								error={!!emailError}
+								onblur={validateEmail}
+							/>
+						</FormField>
+
+						<fieldset class="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<legend class="sr-only">Profile details</legend>
+							<FormField
+								label="Name"
+								labelFor="fullName"
+								hint="Optional. If you skip it, I’ll infer one from your email."
+								uppercase={false}
+								showOptional={false}
+							>
 								<TextInput
 									id="fullName"
 									type="text"
 									bind:value={fullName}
-									placeholder="Your full name"
-									required
-									aria-required="true"
+									placeholder="Your name"
+									autocomplete="name"
 									size="md"
 								/>
 							</FormField>
-						</fieldset>
-
-						<!-- Role and Company -->
-						<fieldset class="grid grid-cols-1 md:grid-cols-2 gap-4">
-							<legend class="sr-only">Professional Information</legend>
-							<FormField label="Current Role">
+							<FormField
+								label="Role"
+								labelFor="jobTitle"
+								uppercase={false}
+								showOptional={false}
+							>
 								<TextInput
 									id="jobTitle"
 									type="text"
 									bind:value={jobTitle}
-									placeholder="e.g., Startup Founder, Product Manager"
-									size="md"
-								/>
-							</FormField>
-							<FormField label="Company (Optional)">
-								<TextInput
-									id="companyName"
-									type="text"
-									bind:value={companyName}
-									placeholder="Your company name"
+									placeholder="Founder, operator, student..."
+									autocomplete="organization-title"
 									size="md"
 								/>
 							</FormField>
 						</fieldset>
 
-						<!-- Why Interested -->
+						<fieldset class="grid grid-cols-1 gap-4 md:grid-cols-2">
+							<legend class="sr-only">Company details</legend>
+							<FormField
+								label="Company"
+								labelFor="companyName"
+								uppercase={false}
+								showOptional={false}
+							>
+								<TextInput
+									id="companyName"
+									type="text"
+									bind:value={companyName}
+									placeholder="Company or team"
+									autocomplete="organization"
+									size="md"
+								/>
+							</FormField>
+							<FormField
+								label="How did you hear about BuildOS?"
+								labelFor="referralSource"
+								uppercase={false}
+								showOptional={false}
+							>
+								<Select id="referralSource" bind:value={referralSource} size="md">
+									<option value="">Select an option</option>
+									{#each referralSources as source}
+										<option value={source}>{source}</option>
+									{/each}
+								</Select>
+							</FormField>
+						</fieldset>
+
 						<FormField
-							label="Why are you interested in BuildOS?"
-							labelFor="whyInterested"
-							required
-							hint="{whyInterested.length} characters (minimum 20)"
+							label="What are you hoping BuildOS helps with?"
+							labelFor="applicationNote"
+							hint="Optional. A sentence or two is enough."
+							uppercase={false}
+							showOptional={false}
 						>
 							<Textarea
-								id="whyInterested"
-								bind:value={whyInterested}
-								rows={3}
+								id="applicationNote"
+								bind:value={applicationNote}
+								rows={4}
 								size="md"
-								placeholder="Tell me what excites you about BuildOS and how you hope to use it..."
-								required
-								aria-required="true"
+								autoResize
+								placeholder="Examples: turning messy notes into projects, staying organized across work and life, or replacing a scattered tool stack."
 							/>
 						</FormField>
 
-						<!-- Current Tools -->
-						<fieldset>
-							<legend class="block text-sm font-medium text-foreground mb-3">
-								What productivity tools do you currently use?
+						<fieldset class="space-y-3">
+							<legend class="flex items-center justify-between gap-3">
+								<span class="text-sm font-semibold text-foreground">
+									Current tools
+								</span>
+								<span class="text-xs font-normal text-muted-foreground">
+									Optional
+								</span>
 							</legend>
 							<div
-								class="grid grid-cols-2 md:grid-cols-3 gap-2"
+								class="flex flex-wrap gap-2"
 								role="group"
-								aria-label="Productivity tools selection"
+								aria-label="Current tools"
 							>
 								{#each productivityToolOptions as tool}
 									<Button
@@ -603,10 +597,9 @@
 											: 'outline'}
 										size="sm"
 										class={productivityTools.includes(tool)
-											? 'bg-accent/10 border-accent text-accent'
-											: ''}
+											? 'border-accent bg-accent text-accent-foreground shadow-ink'
+											: 'rounded-full border-border/80 bg-background/80 text-muted-foreground hover:text-foreground'}
 										aria-pressed={productivityTools.includes(tool)}
-										aria-label="Toggle {tool} selection"
 									>
 										{tool}
 									</Button>
@@ -614,114 +607,84 @@
 							</div>
 						</fieldset>
 
-						<!-- Biggest Challenge -->
-						<FormField
-							label="What's your biggest productivity challenge?"
-							labelFor="biggestChallenge"
-							required
-						>
-							<Textarea
-								id="biggestChallenge"
-								bind:value={biggestChallenge}
-								rows={3}
-								size="md"
-								placeholder="Describe what frustrates you most about staying organized and productive..."
-								required
-								aria-required="true"
-							/>
-						</FormField>
+						<fieldset class="space-y-3">
+							<legend class="text-sm font-semibold text-foreground">
+								Keep me in the loop
+							</legend>
 
-						<!-- Referral Source -->
-						<FormField label="How did you hear about us?" labelFor="referralSource">
-							<Select id="referralSource" bind:value={referralSource} size="md">
-								<option value="">Select an option</option>
-								{#each referralSources as source}
-									<option value={source}>{source}</option>
-								{/each}
-							</Select>
-						</FormField>
-
-						<!-- Preferences -->
-						<fieldset class="space-y-4">
-							<legend class="text-sm font-medium text-foreground">Preferences</legend>
-							<div class="flex items-center">
+							<label
+								for="weeklyCalls"
+								class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-muted/35 p-4 transition-colors hover:border-accent/40 hover:bg-muted/60"
+							>
 								<input
 									id="weeklyCalls"
 									type="checkbox"
 									bind:checked={wantsWeeklyCalls}
-									class="w-4 h-4 text-accent border-border rounded focus:ring-ring"
+									class="mt-1 h-4 w-4 rounded border-border text-accent focus:ring-ring"
 								/>
-								<label for="weeklyCalls" class="ml-3 text-sm text-muted-foreground">
-									I'm interested in joining calls with the founder
-								</label>
-							</div>
-							<div class="flex items-center">
+								<span>
+									<span class="block text-sm font-medium text-foreground">
+										Founder calls
+									</span>
+									<span class="mt-1 block text-sm text-muted-foreground">
+										I'm open to small-group calls and direct feedback sessions.
+									</span>
+								</span>
+							</label>
+
+							<label
+								for="communityAccess"
+								class="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-muted/35 p-4 transition-colors hover:border-accent/40 hover:bg-muted/60"
+							>
 								<input
 									id="communityAccess"
 									type="checkbox"
 									bind:checked={wantsCommunityAccess}
-									class="w-4 h-4 text-accent border-border rounded focus:ring-ring"
+									class="mt-1 h-4 w-4 rounded border-border text-accent focus:ring-ring"
 								/>
-								<label
-									for="communityAccess"
-									class="ml-3 text-sm text-muted-foreground"
-								>
-									I'd like to connect with other beta users
-								</label>
-							</div>
+								<span>
+									<span class="block text-sm font-medium text-foreground">
+										Beta community
+									</span>
+									<span class="mt-1 block text-sm text-muted-foreground">
+										Send me invites if you open a space for beta users to
+										compare notes.
+									</span>
+								</span>
+							</label>
 						</fieldset>
 
-						<!-- reCAPTCHA -->
-						{#if recaptchaRequired && PUBLIC_RECAPTCHA_SITE_KEY}
-							<div class="space-y-2">
-								<div
-									id="recaptcha-container"
-									class="flex justify-center"
-									aria-label="reCAPTCHA verification"
-								></div>
-								{#if recaptchaError}
-									<p class="text-sm text-destructive text-center" role="alert">
-										{recaptchaError}
-									</p>
-								{/if}
-							</div>
-						{/if}
-
-						<!-- Submit Button -->
-						<div class="flex gap-4" role="group" aria-label="Form actions">
-							<button
+						<div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+							<Button
 								type="button"
+								variant="outline"
+								size="md"
+								class="justify-center sm:w-auto"
 								onclick={closeSignupForm}
-								class="flex-1 px-6 py-3 text-foreground border border-border hover:bg-muted rounded-lg transition-colors font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 							>
-								Cancel
-							</button>
-							<button
+								Not now
+							</Button>
+							<Button
 								type="submit"
-								disabled={isSubmitting}
-								class="flex-1 px-6 py-3 font-semibold rounded-lg bg-accent text-accent-foreground shadow-ink hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-								aria-describedby="submit-help"
+								variant="primary"
+								size="md"
+								class="w-full justify-center sm:flex-1"
+								loading={isSubmitting}
+								icon={Send}
 							>
-								{#if isSubmitting}
-									<LoaderCircle
-										class="w-5 h-5 inline mr-2 animate-spin"
-										aria-hidden="true"
-									/>
-									Submitting...
-								{:else}
-									<Send class="w-5 h-5 inline mr-2" aria-hidden="true" />
-									Join Beta Program
-								{/if}
-							</button>
+								{isSubmitting ? 'Joining beta...' : 'Join the beta'}
+							</Button>
 						</div>
-						<p id="submit-help" class="text-xs text-muted-foreground text-center">
-							By submitting, you agree to our beta program terms.
+
+						<p class="text-xs leading-5 text-muted-foreground">
+							Free during beta. Once you’re in, I’ll follow up by email with next
+							steps.
 						</p>
 					</form>
-				</div>
+				</section>
 			</div>
-		</div>
-	{/if}
+		{/snippet}
+	</Modal>
 
 	<!-- What You Get -->
 	<section id="what-you-get" class="py-12 sm:py-14 bg-muted" aria-labelledby="benefits-heading">

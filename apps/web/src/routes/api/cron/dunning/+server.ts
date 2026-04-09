@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/cron/dunning/+server.ts
 import type { RequestHandler } from './$types';
 import { DunningService } from '$lib/services/dunning-service';
+import { env } from '$env/dynamic/private';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { isAuthorizedCronRequest } from '$lib/utils/security';
@@ -9,7 +10,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 // Vercel cron jobs use GET requests
 export const GET: RequestHandler = async ({ request }) => {
 	// Verify cron secret (Vercel adds this header)
-	if (!isAuthorizedCronRequest(request, PRIVATE_CRON_SECRET)) {
+	if (!isAuthorizedCronRequest(request, [env.CRON_SECRET, PRIVATE_CRON_SECRET])) {
 		return ApiResponse.unauthorized();
 	}
 

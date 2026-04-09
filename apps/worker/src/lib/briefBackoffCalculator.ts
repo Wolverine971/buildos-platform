@@ -17,6 +17,12 @@ interface LastBriefSent {
 	generation_completed_at: string | null;
 }
 
+interface LatestOntologyDailyBriefRow {
+	user_id: string;
+	brief_date: string;
+	generation_completed_at: string | null;
+}
+
 /**
  * BriefBackoffCalculator - Pure function calculator for determining
  * whether to send daily briefs based on user engagement.
@@ -31,6 +37,16 @@ export class BriefBackoffCalculator {
 		SECOND_REENGAGEMENT: 10,
 		THIRD_REENGAGEMENT: 31,
 		RECURRING_INTERVAL: 31
+	};
+
+	private readonly latestBriefRpcClient = supabase as typeof supabase & {
+		rpc(
+			fn: 'get_latest_ontology_daily_briefs',
+			args: { user_ids: string[] }
+		): Promise<{
+			data: LatestOntologyDailyBriefRow[] | null;
+			error: { message: string } | null;
+		}>;
 	};
 
 	/**
@@ -67,7 +83,7 @@ export class BriefBackoffCalculator {
 			});
 
 			// BATCH QUERY 2: Fetch most recent brief for each user via RPC
-			const { data: briefsData, error: briefsError } = await (supabase as any).rpc(
+			const { data: briefsData, error: briefsError } = await this.latestBriefRpcClient.rpc(
 				'get_latest_ontology_daily_briefs',
 				{ user_ids: userIds }
 			);
@@ -83,12 +99,7 @@ export class BriefBackoffCalculator {
 				string,
 				{ brief_date: string; generation_completed_at: string | null }
 			>();
-			const typedBriefs =
-				(briefsData as Array<{
-					user_id: string;
-					brief_date: string;
-					generation_completed_at: string | null;
-				}>) || [];
+			const typedBriefs = briefsData || [];
 			typedBriefs.forEach((brief) => {
 				userLastBriefMap.set(brief.user_id, {
 					brief_date: brief.brief_date,

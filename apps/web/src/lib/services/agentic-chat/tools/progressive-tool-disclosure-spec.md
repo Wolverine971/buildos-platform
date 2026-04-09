@@ -1,5 +1,8 @@
 <!-- apps/web/src/lib/services/agentic-chat/tools/progressive-tool-disclosure-spec.md -->
 
+> Superseded by [Agentic Chat Skill + Tool Architecture V2](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skill-tool-architecture-v2.md).
+> This document describes the earlier `tool_help` / `tool_exec` gateway model.
+
 # Progressive Tool Disclosure Gateway Spec
 
 Status: Draft

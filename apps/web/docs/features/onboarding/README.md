@@ -2,7 +2,7 @@
 
 # Onboarding Feature
 
-**Last Updated**: March 16, 2026
+**Last Updated**: April 8, 2026
 **Status**: Active (V3 Complete, V2 Deprecated)
 **Category**: Feature
 **Location**: `/apps/web/docs/features/onboarding/`
@@ -19,13 +19,14 @@ The onboarding system helps new users get started with BuildOS in under 5 minute
 
 ## Documentation in This Folder
 
-| Document                                                                   | Purpose                                |
-| -------------------------------------------------------------------------- | -------------------------------------- |
-| [README.md](./README.md)                                                   | This file - Overview and navigation    |
-| [ONBOARDING_V2_UPDATE_ASSESSMENT.md](./ONBOARDING_V2_UPDATE_ASSESSMENT.md) | V2 implementation spec (deprecated)    |
-| [ONBOARDING_V2_UPDATED_SPEC.md](./ONBOARDING_V2_UPDATED_SPEC.md)           | Detailed V2 specification (deprecated) |
-| [ONBOARDING_FLOW_ANALYSIS.md](./ONBOARDING_FLOW_ANALYSIS.md)               | Original flow analysis                 |
-| [ONBOARDING_ASSETS_CHECKLIST.md](./ONBOARDING_ASSETS_CHECKLIST.md)         | Asset requirements checklist           |
+| Document                                                                                   | Purpose                                                    |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| [README.md](./README.md)                                                                   | This file - Overview and navigation                        |
+| [ONBOARDING_FIRST_BRAINDUMP_REBUILD_SPEC.md](./ONBOARDING_FIRST_BRAINDUMP_REBUILD_SPEC.md) | Spec for rebuilding the Step 2 first-brain-dump experience |
+| [ONBOARDING_V2_UPDATE_ASSESSMENT.md](./ONBOARDING_V2_UPDATE_ASSESSMENT.md)                 | V2 implementation spec (deprecated)                        |
+| [ONBOARDING_V2_UPDATED_SPEC.md](./ONBOARDING_V2_UPDATED_SPEC.md)                           | Detailed V2 specification (deprecated)                     |
+| [ONBOARDING_FLOW_ANALYSIS.md](./ONBOARDING_FLOW_ANALYSIS.md)                               | Original flow analysis                                     |
+| [ONBOARDING_ASSETS_CHECKLIST.md](./ONBOARDING_ASSETS_CHECKLIST.md)                         | Asset requirements checklist                               |
 
 ### Specs (in `/docs/specs/`)
 

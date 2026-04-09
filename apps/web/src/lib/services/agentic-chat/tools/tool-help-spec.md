@@ -1,5 +1,8 @@
 <!-- apps/web/src/lib/services/agentic-chat/tools/tool-help-spec.md -->
 
+> Superseded by [Agentic Chat Skill + Tool Architecture V2](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skill-tool-architecture-v2.md).
+> This document describes the earlier `tool.help` / `tool.exec` design.
+
 # Spec v2: Progressive Tool Disclosure for BuildOS Ontology + Utility Tools
 
 ## 0) Objective

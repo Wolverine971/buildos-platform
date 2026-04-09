@@ -2,6 +2,10 @@
 
 # BuildOS Messaging Pivot: AI Project Collaboration
 
+> **Status Note (April 2026):** Historical positioning pivot.
+> Use this only as campaign / experience framing.
+> The current public category is defined in `BUILDOS_BRAND_ARCHITECTURE.md` and remains **thinking environment for people making complex things**.
+
 Last updated: 2026-02-26
 
 ## Pivot Goal

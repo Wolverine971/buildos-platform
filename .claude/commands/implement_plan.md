@@ -23,7 +23,8 @@ Before starting ANY implementation:
 2. **Read referenced tickets/docs** - Get full context (use full reads, no limit/offset)
 3. **Check current state** - Verify assumptions in the plan still hold
 4. **Review relevant docs**:
-    - UI work? Read `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
+    - UI work? Read `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`
+    - User-facing UI or onboarding/chat work? Also read `/docs/marketing/brand/BUILDOS_BRAND_ARCHITECTURE.md`
     - API work? Read `/apps/web/docs/technical/api/README.md`
     - Worker jobs? Read `/apps/worker/docs/README.md`
     - Database? Read `/packages/shared-types/src/database.schema.ts`
@@ -52,7 +53,7 @@ For each phase in the plan:
 1. **Implement the changes**:
     - Follow BuildOS conventions strictly
     - Use Svelte 5 runes ($state, $derived, $effect) for components
-    - Ensure dark mode support (dark: prefixes)
+    - Use semantic design tokens and avoid manual `dark:` overrides unless necessary
     - Maintain mobile responsiveness
     - Use ApiResponse wrapper for all API routes
 
@@ -91,7 +92,7 @@ For each phase in the plan:
   });
 </script>
 
-<div class="container mx-auto px-4 dark:bg-gray-900">
+<div class="container mx-auto px-4 bg-background text-foreground">
   <!-- Mobile-first, responsive design -->
 </div>
 ```
@@ -223,6 +224,6 @@ Maintain visibility of progress:
 | Type check      | `pnpm typecheck --filter=[app]`                              |
 | Test            | `pnpm test:run --filter=[app]`                               |
 | Full validation | `pnpm pre-push --filter=[app]`                               |
-| Style guide     | `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md` |
+| Style guide     | `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` |
 | API patterns    | `/apps/web/docs/technical/api/`                              |
 | Database schema | `/packages/shared-types/src/database.schema.ts`              |

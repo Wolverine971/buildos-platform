@@ -114,7 +114,7 @@ export function resolveLaneReasoning(lane: ModelLane):
 		return { exclude: true };
 	}
 	if (lane === 'tool_calling') {
-		return { effort: 'low' };
+		return { effort: 'low', exclude: true };
 	}
 	return undefined;
 }

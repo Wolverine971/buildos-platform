@@ -12,7 +12,9 @@ import {
 	getMilestoneStatus,
 	calculatePlanProgress,
 	findUnblockingTasks,
-	getWorkMode
+	getWorkMode,
+	buildProjectAccessFilter,
+	findMissingOwnerMembershipProjectIds
 } from '../src/workers/brief/ontologyBriefDataLoader';
 import type {
 	OntoTask,
@@ -205,6 +207,64 @@ describe('getWorkMode', () => {
 	it('should return null for unknown type keys', () => {
 		expect(getWorkMode('unknown_type')).toBeNull();
 		expect(getWorkMode('random')).toBeNull();
+	});
+});
+
+describe('buildProjectAccessFilter', () => {
+	it('includes actor ownership, legacy user ownership, and memberships', () => {
+		expect(
+			buildProjectAccessFilter({
+				actorId: 'actor-1',
+				userId: 'user-1',
+				memberProjectIds: ['project-1', 'project-2']
+			})
+		).toBe('created_by.eq.actor-1,created_by.eq.user-1,id.in.(project-1,project-2)');
+	});
+
+	it('omits membership clause when there are no memberships', () => {
+		expect(
+			buildProjectAccessFilter({
+				actorId: 'actor-1',
+				userId: 'user-1',
+				memberProjectIds: []
+			})
+		).toBe('created_by.eq.actor-1,created_by.eq.user-1');
+	});
+});
+
+describe('findMissingOwnerMembershipProjectIds', () => {
+	it('flags owned projects missing membership rows for reconciliation', () => {
+		const projects = [
+			createMockProject({ id: 'project-1', created_by: 'actor-1' }),
+			createMockProject({ id: 'project-2', created_by: 'user-1' }),
+			createMockProject({ id: 'project-3', created_by: 'actor-2' }),
+			createMockProject({ id: 'project-4', created_by: 'actor-1' })
+		];
+
+		expect(
+			findMissingOwnerMembershipProjectIds({
+				projects,
+				actorId: 'actor-1',
+				userId: 'user-1',
+				memberProjectIds: ['project-4']
+			})
+		).toEqual(['project-1', 'project-2']);
+	});
+
+	it('ignores projects already covered by memberships or other owners', () => {
+		const projects = [
+			createMockProject({ id: 'project-1', created_by: 'actor-1' }),
+			createMockProject({ id: 'project-2', created_by: 'actor-2' })
+		];
+
+		expect(
+			findMissingOwnerMembershipProjectIds({
+				projects,
+				actorId: 'actor-1',
+				userId: 'user-1',
+				memberProjectIds: ['project-1']
+			})
+		).toEqual([]);
 	});
 });
 

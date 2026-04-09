@@ -11,6 +11,34 @@ vi.mock('$env/dynamic/private', () => ({
 
 import { OpenRouterV2Service } from './openrouter-v2-service';
 
+function createService() {
+	return new OpenRouterV2Service({
+		apiKey: 'openrouter-test-key',
+		httpReferer: 'https://buildos.test',
+		appName: 'OpenRouter V2 Test'
+	});
+}
+
+function createSseResponse(payloads: string[], headers?: Record<string, string>) {
+	const encoder = new TextEncoder();
+	const stream = new ReadableStream({
+		start(controller) {
+			for (const payload of payloads) {
+				controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+			}
+			controller.close();
+		}
+	});
+
+	return new Response(stream, {
+		status: 200,
+		headers: {
+			'content-type': 'text/event-stream',
+			...headers
+		}
+	});
+}
+
 describe('OpenRouterV2Service model failover', () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
@@ -71,11 +99,7 @@ describe('OpenRouterV2Service model failover', () => {
 
 		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
 
-		const service = new OpenRouterV2Service({
-			apiKey: 'openrouter-test-key',
-			httpReferer: 'https://buildos.test',
-			appName: 'OpenRouter V2 Test'
-		});
+		const service = createService();
 
 		const result = await service.getJSONResponse<{ ok: boolean }>({
 			systemPrompt: 'Return valid JSON.',
@@ -86,5 +110,136 @@ describe('OpenRouterV2Service model failover', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestBodies[0]?.model).toBe('deepseek/deepseek-v3.2');
 		expect(requestBodies[1]?.model).toBe('google/gemini-3.1-flash-lite-preview');
+	});
+});
+
+describe('OpenRouterV2Service visible text filtering', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('strips reasoning content from non-streaming completions', async () => {
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						id: 'chatcmpl-visible-text',
+						model: 'x-ai/grok-4.1-fast',
+						choices: [
+							{
+								index: 0,
+								message: {
+									role: 'assistant',
+									content: [
+										{ type: 'reasoning', text: 'internal only' },
+										{ type: 'text', text: 'Visible answer' }
+									]
+								},
+								finish_reason: 'stop'
+							}
+						],
+						usage: {
+							prompt_tokens: 8,
+							completion_tokens: 3,
+							total_tokens: 11
+						}
+					}),
+					{
+						status: 200,
+						headers: {
+							'content-type': 'application/json'
+						}
+					}
+				)
+		);
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const result = await service.generateTextDetailed({
+			systemPrompt: 'You are concise.',
+			prompt: 'Answer visibly.'
+		});
+
+		expect(result.text).toBe('Visible answer');
+	});
+
+	it('suppresses streamed reasoning text while preserving reasoning token metadata', async () => {
+		const fetchMock = vi.fn(async () =>
+			createSseResponse(
+				[
+					JSON.stringify({
+						id: 'stream-visible-text',
+						model: 'x-ai/grok-4.1-fast',
+						choices: [
+							{
+								delta: {
+									content: [
+										{ type: 'reasoning', text: 'hidden reasoning' },
+										{ type: 'text', text: 'Visible start' }
+									]
+								}
+							}
+						]
+					}),
+					JSON.stringify({
+						choices: [
+							{
+								delta: {
+									content: '<think>hidden'
+								}
+							}
+						]
+					}),
+					JSON.stringify({
+						choices: [
+							{
+								delta: {
+									content: ' still hidden</think> Visible end'
+								}
+							}
+						],
+						usage: {
+							prompt_tokens: 12,
+							completion_tokens: 6,
+							total_tokens: 18,
+							completion_tokens_details: {
+								reasoning_tokens: 4
+							}
+						}
+					}),
+					'[DONE]'
+				],
+				{
+					'x-openrouter-model': 'x-ai/grok-4.1-fast'
+				}
+			)
+		);
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const events = [];
+
+		for await (const event of service.streamText({
+			messages: [{ role: 'user', content: 'hello' }],
+			userId: 'user_1'
+		})) {
+			events.push(event);
+		}
+
+		const streamedText = events
+			.filter((event) => event.type === 'text')
+			.map((event) => event.content)
+			.join('');
+		const doneEvent = events.find((event) => event.type === 'done');
+
+		expect(streamedText).toBe('Visible start Visible end');
+		expect(doneEvent).toMatchObject({
+			type: 'done',
+			reasoning_tokens: 4,
+			reasoningTokens: 4,
+			model: 'x-ai/grok-4.1-fast'
+		});
 	});
 });

@@ -2,6 +2,10 @@
 
 # BuildOS Instagram Strategy
 
+> **Status Note (April 2026):** Historical / partial strategy.
+> This document contains useful format ideas, but its ADHD-first front door and blue/yellow visual system are not current canon.
+> Check `../brand/BUILDOS_BRAND_ARCHITECTURE.md`, `../brand/brand-guide-1-pager.md`, and `../START_HERE.md` before reusing this directly.
+
 ## Profile Setup
 
 ### Bio

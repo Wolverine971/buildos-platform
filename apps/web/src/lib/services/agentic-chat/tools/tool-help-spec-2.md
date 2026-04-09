@@ -1,5 +1,8 @@
 <!-- apps/web/src/lib/services/agentic-chat/tools/tool-help-spec-2.md -->
 
+> Superseded by [Agentic Chat Skill + Tool Architecture V2](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skill-tool-architecture-v2.md).
+> This document is supporting material for the older tool-help gateway design.
+
 Below is a **registry op mapping table** you can drop in as `registry.op-map.json` (or generate at runtime). It includes **everything you pasted** (ontology read + write + utility) and it’s structured so you can easily extend it when you add “other tools / other things.”
 
 I’m also including a **standard extension pattern** for “unknown/other tools” so your agent can ingest more definitions later without changing the gateway protocol.

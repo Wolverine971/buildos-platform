@@ -1,5 +1,5 @@
 // apps/web/src/lib/server/welcome-sequence.service.test.ts
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const sendEmailMock = vi.fn();
 
@@ -14,10 +14,12 @@ interface MockState {
 	welcomeRows: Record<string, any>;
 	updates: Array<{ userId: string; updates: Record<string, any> }>;
 	failRpc: boolean;
+	failActorFallback?: boolean;
 	failFullUserLoad?: boolean;
 	legacySequenceSchema?: boolean;
 	missingUpdatedAtColumn?: boolean;
 	actorId?: string;
+	fallbackActorId?: string;
 	projectsByActorId?: Record<string, Array<Record<string, any>>>;
 	briefPreferencesByUserId?: Record<string, Record<string, any>>;
 	notificationPreferencesByUserId?: Record<string, Record<string, any>>;
@@ -27,7 +29,7 @@ interface MockState {
 }
 
 class QueryBuilderMock implements PromiseLike<any> {
-	private action: 'select' | 'insert' | 'update' | null = null;
+	private action: 'select' | 'insert' | 'update' | 'upsert' | null = null;
 	private resultMode: 'many' | 'maybeSingle' | 'single' = 'many';
 	private selectedColumns: string | undefined;
 	private selectOptions: Record<string, any> | undefined;
@@ -61,6 +63,12 @@ class QueryBuilderMock implements PromiseLike<any> {
 	update(payload: Record<string, any>) {
 		this.action = 'update';
 		this.updatePayload = payload;
+		return this;
+	}
+
+	upsert(payload: Record<string, any>) {
+		this.action = 'upsert';
+		this.insertPayload = payload;
 		return this;
 	}
 
@@ -114,6 +122,8 @@ class QueryBuilderMock implements PromiseLike<any> {
 		switch (this.action) {
 			case 'insert':
 				return this.executeInsert();
+			case 'upsert':
+				return this.executeUpsert();
 			case 'update':
 				return this.executeUpdate();
 			case 'select':
@@ -271,6 +281,26 @@ class QueryBuilderMock implements PromiseLike<any> {
 			};
 			this.state.welcomeRows[row.user_id] = row;
 			return { data: row, error: null };
+		}
+
+		return { data: null, error: null };
+	}
+
+	private executeUpsert() {
+		if (this.table === 'onto_actors' && this.insertPayload) {
+			if (this.state.failActorFallback) {
+				return {
+					data: null,
+					error: { message: 'onto_actors upsert failed' }
+				};
+			}
+
+			const actorId = this.state.fallbackActorId ?? 'actor-fallback';
+			this.state.actorId = actorId;
+			return {
+				data: { id: actorId },
+				error: null
+			};
 		}
 
 		return { data: null, error: null };
@@ -460,6 +490,10 @@ describe('WelcomeSequenceService failure recovery', () => {
 		sendEmailMock.mockResolvedValue({ success: true, messageId: 'msg-1' });
 	});
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('creates a sequence row before full state loading so cron can recover later', async () => {
 		const state: MockState = {
 			users: {
@@ -522,7 +556,8 @@ describe('WelcomeSequenceService failure recovery', () => {
 				'user-1': createSequenceRow('user-1')
 			},
 			updates: [],
-			failRpc: true
+			failRpc: true,
+			failActorFallback: true
 		};
 
 		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
@@ -543,6 +578,120 @@ describe('WelcomeSequenceService failure recovery', () => {
 				})
 			])
 		);
+	});
+
+	it('falls back to direct actor creation when actor RPC fails', async () => {
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'user@example.com',
+					name: null,
+					created_at: '2026-03-01T10:00:00.000Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'UTC'
+				}
+			},
+			welcomeRows: {},
+			updates: [],
+			failRpc: true,
+			fallbackActorId: 'actor-fallback'
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+
+		await expect(
+			service.startSequenceForUser({
+				userId: 'user-1',
+				signupMethod: 'email'
+			})
+		).resolves.toBeUndefined();
+
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
+		expect(state.welcomeRows['user-1']?.email_1_sent_at).toEqual(expect.any(String));
+	});
+
+	it('sends email_1 immediately when sequence start is slightly ahead of app time', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-01T10:00:00.000Z'));
+
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'user@example.com',
+					name: 'Alex Builder',
+					created_at: '2026-03-01T10:00:00.050Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'UTC'
+				}
+			},
+			welcomeRows: {},
+			updates: [],
+			failRpc: false
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+
+		await expect(
+			service.startSequenceForUser({
+				userId: 'user-1',
+				signupMethod: 'email'
+			})
+		).resolves.toBeUndefined();
+
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
+		expect(state.welcomeRows['user-1']?.email_1_sent_at).toBe('2026-03-01T10:00:00.050Z');
+	});
+
+	it('counts legacy user-owned projects when deciding later welcome steps', async () => {
+		const row = createSequenceRow('user-1');
+		row.email_1_sent_at = '2026-03-01T10:01:00.000Z';
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'user@example.com',
+					name: 'Alex Builder',
+					created_at: '2026-03-01T10:00:00.000Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'UTC'
+				}
+			},
+			welcomeRows: {
+				'user-1': row
+			},
+			updates: [],
+			failRpc: false,
+			actorId: 'actor-1',
+			projectsByActorId: {
+				'user-1': [
+					{
+						id: 'project-legacy',
+						updated_at: '2026-03-01T12:00:00.000Z',
+						deleted_at: null
+					}
+				]
+			}
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+		const result = await service.processDueSequences({
+			now: new Date('2026-03-02T10:30:00.000Z')
+		});
+
+		expect(result.skipped).toBe(1);
+		expect(sendEmailMock).not.toHaveBeenCalled();
+		expect(state.welcomeRows['user-1']?.email_2_skipped_at).toEqual('2026-03-02T10:30:00.000Z');
 	});
 
 	it('falls back to updated_at when the legacy sequence table is missing last_evaluated_at', async () => {

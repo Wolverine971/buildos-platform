@@ -2,6 +2,10 @@
 
 # BuildOS LinkedIn Strategy
 
+> **Status Note (April 2026):** Historical / partial strategy.
+> This document is still useful for founder voice and thought-leadership tactics, but its context-engineering-first framing is not the current public category.
+> Check `../brand/BUILDOS_BRAND_ARCHITECTURE.md`, `../brand/brand-guide-1-pager.md`, and `../START_HERE.md` before using it as source-of-truth.
+
 > **Purpose:** Position DJ as a thought leader in context engineering and AI productivity while building awareness for BuildOS
 
 **Last Updated:** 2026-01-06

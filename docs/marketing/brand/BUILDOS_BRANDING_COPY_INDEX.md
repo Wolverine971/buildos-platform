@@ -2,6 +2,11 @@
 
 # BuildOS Branding Copy Index
 
+> **Status Note (April 2026):** Historical migration log.
+> This documents a previous copy pass around collaboration-first wording.
+> It is not the current source of truth for category language.
+> Current source-of-truth lives in `BUILDOS_BRAND_ARCHITECTURE.md` and `brand-guide-1-pager.md`.
+
 Last updated: 2026-02-26
 
 Scope: places where BuildOS category/positioning language appears, especially around "AI-first project organization" vs "AI project collaboration."

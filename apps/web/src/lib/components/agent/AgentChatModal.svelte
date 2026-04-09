@@ -29,7 +29,8 @@
 		AgentSSEMessage,
 		AgentPlan,
 		ContextUsageSnapshot,
-		AgentTimingSummary
+		AgentTimingSummary,
+		SkillActivityEvent
 	} from '@buildos/shared-types';
 	import {
 		requestAgentToAgentMessage,
@@ -73,6 +74,7 @@
 		loadAgentChatSessionSnapshot,
 		prewarmAgentContext
 	} from './agent-chat-session';
+	import { upsertSkillActivityEntries } from './agent-chat-skill-activity';
 
 	interface AutoInitProjectConfig {
 		projectId: string;
@@ -2419,11 +2421,22 @@
 	};
 
 	const TOOL_ACTION_PAST_TENSE: Record<string, string> = {
-		Running: 'Ran'
+		Running: 'Ran',
+		Setting: 'Set'
 	};
 
 	const TOOL_ACTION_BASE_FORM: Record<string, string> = {
-		Running: 'run'
+		Running: 'run',
+		Creating: 'create',
+		Updating: 'update',
+		Deleting: 'delete',
+		Executing: 'execute',
+		Loading: 'load',
+		Checking: 'check',
+		Searching: 'search',
+		Listing: 'list',
+		Reading: 'read',
+		Setting: 'set'
 	};
 
 	function toPastTenseAction(action: string): string {
@@ -2645,6 +2658,14 @@
 		updateThinkingBlock(blockId, (block) => ({
 			...block,
 			activities: [...block.activities, activity]
+		}));
+	}
+
+	function upsertSkillActivityInThinkingBlock(event: SkillActivityEvent) {
+		const blockId = ensureThinkingBlock();
+		updateThinkingBlock(blockId, (block) => ({
+			...block,
+			activities: upsertSkillActivityEntries(block.activities, event)
 		}));
 	}
 
@@ -3766,11 +3787,7 @@
 
 			case 'skill_activity':
 				if (dev) {
-					addActivityToThinkingBlock(
-						`${event.action === 'requested' ? 'Skill requested' : 'Skill loaded'}: ${event.path}`,
-						'general',
-						{ skillActivity: event }
-					);
+					upsertSkillActivityInThinkingBlock(event);
 				}
 				break;
 

@@ -2,13 +2,14 @@
 import { ApiResponse } from '$lib/utils/api-response';
 import type { RequestHandler } from './$types';
 import { CalendarService } from '$lib/services/calendar-service';
+import { env } from '$env/dynamic/private';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';
 import { isAuthorizedCronRequest } from '$lib/utils/security';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 // Optional: Vercel Cron Job for processing failed calendar operations
 export const GET: RequestHandler = async ({ request }) => {
-	if (!isAuthorizedCronRequest(request, PRIVATE_CRON_SECRET)) {
+	if (!isAuthorizedCronRequest(request, [env.CRON_SECRET, PRIVATE_CRON_SECRET])) {
 		return ApiResponse.unauthorized();
 	}
 

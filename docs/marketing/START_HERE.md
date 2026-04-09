@@ -31,11 +31,13 @@ These define what BuildOS is, who it's for, and how to talk about it.
 
 ## 2. Brand & Voice
 
-| Document                                                     | What It Does                                                               |
-| ------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| [Brand Guide 1-Pager](brand/brand-guide-1-pager.md)          | Quick reference for messaging, voice, visual direction, terms to use/avoid |
-| [Brand Aesthetic](brand/BUILDOS_BRAND_AESTHETIC_COMPLETE.md) | Full visual identity reference                                             |
-| [Zoom Messaging Guide](brand/ZOOM_MESSAGING_GUIDE.md)        | Project Lens positioning and "zoom in/out" concept                         |
+| Document                                                        | What It Does                                                               |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [Brand Architecture](brand/BUILDOS_BRAND_ARCHITECTURE.md)       | Canonical category, phrase roles, anti-AI posture, campaign abstraction    |
+| [Brand Guide 1-Pager](brand/brand-guide-1-pager.md)             | Quick reference for messaging, voice, visual direction, terms to use/avoid |
+| [Brand Audit Framework](brand/BUILDOS_BRAND_AUDIT_FRAMEWORK.md) | Internal brand audit workflow and remediation order                        |
+| [Brand Aesthetic](brand/BUILDOS_BRAND_AESTHETIC_COMPLETE.md)    | Full visual identity reference                                             |
+| [Zoom Messaging Guide](brand/ZOOM_MESSAGING_GUIDE.md)           | Project Lens positioning and "zoom in/out" concept                         |
 
 ---
 
@@ -53,9 +55,9 @@ These define what BuildOS is, who it's for, and how to talk about it.
 
 ### Existing carousel drafts
 
-| Document                                                                               | Status                                           | Description                                                               |
-| -------------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------- |
-| [Collaboration Pivot Carousel](social-media/instagram/COLLABORATION_PIVOT_CAROUSEL.md) | Full draft (9 slides, caption, visual direction) | "I Changed One Word" — messaging pivot from organization to collaboration |
+| Document                                                                               | Status                                           | Description                                                                                  |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| [Collaboration Pivot Carousel](social-media/instagram/COLLABORATION_PIVOT_CAROUSEL.md) | Full draft (9 slides, caption, visual direction) | Campaign / format reference only. Do not treat collaboration as the current company category |
 
 ### Carousel seeds from the 6-Week Campaign
 
@@ -137,12 +139,13 @@ These are outlined in the [Guerrilla Seed Campaign](social-media/publish-kits/20
 If starting from scratch, read in this order:
 
 1. This doc (you're here)
-2. Marketing Strategy 2026
-3. Anti-AI Show-Don't-Tell Strategy
-4. Brand Guide 1-Pager
-5. Guerrilla Content Doctrine
-6. 6-Week Guerrilla Seed Campaign
-7. Collaboration Pivot Carousel (for carousel format reference)
+2. Brand Architecture
+3. Marketing Strategy 2026
+4. Anti-AI Show-Don't-Tell Strategy
+5. Brand Guide 1-Pager
+6. Guerrilla Content Doctrine
+7. 6-Week Guerrilla Seed Campaign
+8. Collaboration Pivot Carousel (for format reference only)
 
 ---
 

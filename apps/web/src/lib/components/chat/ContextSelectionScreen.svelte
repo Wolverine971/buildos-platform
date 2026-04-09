@@ -14,7 +14,6 @@
 		FolderPlus,
 		FolderOpen,
 		ChevronRight,
-		Sparkles,
 		LoaderCircle,
 		PenLine,
 		Search,
@@ -143,19 +142,19 @@
 
 	// Primary actions - Svelte 5 callback pattern
 	function selectGlobal() {
-		onSelect?.({ contextType: 'global', label: 'General Chat' });
+		onSelect?.({ contextType: 'global', label: 'General chat' });
 	}
 
 	function selectAgentToAgent() {
-		onSelect?.({ contextType: 'agent_to_agent', label: 'Agent to BuildOS chat' });
+		onSelect?.({ contextType: 'agent_to_agent', label: 'Agent handoff' });
 	}
 
 	function selectProjectCreate() {
-		onSelect?.({ contextType: 'project_create', label: 'New project flow' });
+		onSelect?.({ contextType: 'project_create', label: 'Project setup' });
 	}
 
 	function selectBraindump() {
-		onSelect?.({ contextType: 'brain_dump', label: 'Brain Dump' });
+		onSelect?.({ contextType: 'brain_dump', label: 'Quick capture' });
 	}
 
 	function goToProjectSelection() {
@@ -213,6 +212,16 @@
 	const isNewUser = $derived(
 		hasLoadedProjects && lastProjectQuery === '' && !hasProjects && !projectsError
 	);
+	const optionCardBaseClasses =
+		'group flex flex-col rounded-lg border border-border bg-card p-3 text-left shadow-ink pressable transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-4';
+	const primaryChatCardClasses = `${optionCardBaseClasses} tx tx-frame tx-weak hover:border-accent/40`;
+	const projectChatCardClasses = `${optionCardBaseClasses} tx tx-thread tx-weak hover:border-accent/40`;
+	const setupCardClasses = `${optionCardBaseClasses} tx tx-strip tx-weak hover:border-accent/30`;
+	const captureCardClasses = `${optionCardBaseClasses} tx tx-bloom tx-weak hover:border-accent/30`;
+	const projectListItemClasses =
+		'group flex flex-col rounded-lg border border-border bg-card p-3 text-left shadow-ink tx tx-frame tx-weak pressable transition-colors duration-150 hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-3';
+	const optionIconClasses =
+		'flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-foreground shadow-ink-inner sm:h-10 sm:w-10';
 </script>
 
 <div class="flex h-full min-h-0 flex-col overflow-hidden bg-background">
@@ -225,265 +234,255 @@
 					<h2
 						class="mb-1 text-lg font-semibold tracking-tight text-foreground sm:text-2xl sm:mb-1.5"
 					>
-						Welcome to BuildOS
+						Start with your first project
 					</h2>
 					<p class="text-xs text-muted-foreground sm:text-sm">
-						Create your first project to unlock the full assistant.
+						Set up the project once, then return here for focused project chat and
+						workspace-wide help.
 					</p>
 				{:else}
 					<h2
 						class="mb-1 text-lg font-semibold tracking-tight text-foreground sm:text-2xl sm:mb-1.5"
 					>
-						How would you like to work today?
+						Choose a working context
 					</h2>
 					<p class="text-xs text-muted-foreground sm:text-sm">
-						Pick a focus and we'll tailor the assistant around it.
+						Start in general chat, work inside a project, or use a lighter setup or
+						capture flow.
 					</p>
 				{/if}
 			</div>
 
 			{#if isNewUser}
 				<!-- NEW USER: No projects yet — guide to first project creation -->
-				<div class="flex flex-col items-center gap-5 sm:gap-6">
+				<div class="flex flex-col items-center gap-4 sm:gap-5">
 					<!-- Primary CTA: Create first project -->
 					<button
 						onclick={selectProjectCreate}
-						class="group w-full max-w-md flex flex-col rounded-xl border-2 border-purple-400/40 bg-card p-4 text-left shadow-ink-strong transition-all duration-200 hover:border-purple-500 hover:shadow-ink-strong active:scale-[0.99] dark:border-purple-500/30 sm:p-5 sm:hover:-translate-y-0.5"
+						class={`${setupCardClasses} w-full max-w-xl`}
 					>
-						<div class="flex items-center gap-3">
-							<div
-								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400"
-							>
+						<div class="flex items-start gap-3">
+							<div class={optionIconClasses}>
 								<FolderPlus class="h-5 w-5" />
 							</div>
 							<div class="min-w-0 flex-1">
+								<p class="micro-label mb-1">SETUP</p>
 								<h3 class="text-base font-semibold text-foreground">
-									Create your first project
+									Start your first project
 								</h3>
-								<p class="mt-0.5 text-xs text-muted-foreground">
-									Guided setup to define goals, milestones, and structure.
+								<p
+									class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
+								>
+									Define the objective, create the project shell, and give the
+									assistant something stable to work with.
 								</p>
 							</div>
-							<ChevronRight
-								class="h-5 w-5 shrink-0 text-purple-500 transition-transform group-hover:translate-x-1"
-							/>
+							<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
 						</div>
 					</button>
 
-					<!-- Disabled options with explanation -->
-					<div class="w-full max-w-md">
-						<p
-							class="mb-2.5 text-center text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
-						>
-							Available after your first project
-						</p>
-						<div class="flex flex-col gap-1.5 pointer-events-none opacity-40">
+					<div
+						class="w-full max-w-xl rounded-lg border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak"
+					>
+						<p class="micro-label mb-2">AVAILABLE AFTER SETUP</p>
+						<div class="grid gap-2 sm:grid-cols-2">
 							<div
-								class="flex items-center gap-2.5 rounded-lg border border-border bg-card p-2.5"
+								class="flex items-center gap-2.5 rounded-lg border border-border bg-background p-2.5 text-muted-foreground"
 							>
 								<div
-									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent"
+									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted"
 								>
 									<MessagesSquare class="h-3.5 w-3.5" />
 								</div>
-								<span class="text-sm text-foreground">General Chat</span>
+								<div>
+									<p class="text-sm font-medium text-foreground">General chat</p>
+									<p class="text-[11px] leading-snug">
+										Workspace-wide questions and planning.
+									</p>
+								</div>
 							</div>
 							<div
-								class="flex items-center gap-2.5 rounded-lg border border-border bg-card p-2.5"
+								class="flex items-center gap-2.5 rounded-lg border border-border bg-background p-2.5 text-muted-foreground"
 							>
 								<div
-									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400"
+									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted"
 								>
-									<PenLine class="h-3.5 w-3.5" />
+									<FolderOpen class="h-3.5 w-3.5" />
 								</div>
-								<span class="text-sm text-foreground">Brain Dump</span>
+								<div>
+									<p class="text-sm font-medium text-foreground">Project chat</p>
+									<p class="text-[11px] leading-snug">
+										Focused work inside a single project.
+									</p>
+								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 			{:else}
-				<!-- Mobile: compact stacked list | Desktop: 2x2 grid -->
-				<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-4">
-					<!-- General Chat — multi-project, open scope -->
-					<button
-						onclick={selectGlobal}
-						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
-					>
-						<div class="flex items-center gap-2 sm:gap-3">
-							<div
-								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent/10 text-accent sm:h-10 sm:w-10 sm:rounded-lg"
-							>
-								<MessagesSquare class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-							</div>
-							<h3 class="flex-1 text-sm font-semibold text-foreground">
-								General Chat
-							</h3>
-							<ChevronRight
-								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:hidden"
-							/>
+				<div class="space-y-4">
+					<div class="space-y-2">
+						<div class="flex items-center justify-between gap-3">
+							<p class="micro-label">PRIMARY</p>
+							<p class="text-xs text-muted-foreground">Start in chat</p>
 						</div>
-						<p
-							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-						>
-							Talk across all your projects, calendar, and tasks — no specific focus
-							needed.
-						</p>
-						<div
-							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-accent sm:flex"
-						>
-							<span>Open conversation</span>
-							<ChevronRight
-								class="h-4 w-4 transition-transform group-hover:translate-x-1"
-							/>
-						</div>
-					</button>
-
-					<!-- Project Chat — pick a project, chat about it -->
-					<button
-						onclick={goToProjectSelection}
-						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-emerald-500/50 hover:shadow-ink-strong active:scale-[0.99] disabled:opacity-60 disabled:shadow-ink sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5 sm:disabled:translate-y-0"
-					>
-						<div class="flex items-center gap-2 sm:gap-3">
-							<div
-								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:h-10 sm:w-10 sm:rounded-lg"
-							>
-								<FolderOpen class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-							</div>
-							<h3 class="flex-1 text-sm font-semibold text-foreground">
-								Project Chat
-							</h3>
-							<ChevronRight
-								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-500 sm:hidden"
-							/>
-						</div>
-						<p
-							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-						>
-							Pick a project and get focused help — plan, update, or review.
-						</p>
-						<div
-							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:flex"
-						>
-							<span
-								>{#if hasLoadedProjects && hasProjects}{activeProjects.length} active
-									projects{:else}Browse projects{/if}</span
-							>
-							<ChevronRight
-								class="h-4 w-4 transition-transform group-hover:translate-x-1"
-							/>
-						</div>
-					</button>
-
-					<!-- Agent to BuildOS chat (dev only) -->
-					{#if dev}
-						<button
-							onclick={selectAgentToAgent}
-							class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
-						>
-							<div class="flex items-center gap-2 sm:gap-3">
-								<div
-									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:h-10 sm:w-10 sm:rounded-lg"
-								>
-									<Sparkles class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+						<div class="grid gap-2 sm:grid-cols-2 sm:gap-3">
+							<button onclick={selectGlobal} class={primaryChatCardClasses}>
+								<div class="flex items-start gap-3">
+									<div class={optionIconClasses}>
+										<MessagesSquare class="h-4 w-4 sm:h-5 sm:w-5" />
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="micro-label mb-1">GENERAL CHAT</p>
+										<h3
+											class="text-sm font-semibold text-foreground sm:text-base"
+										>
+											Open-ended chat
+										</h3>
+										<p
+											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
+										>
+											Work across your workspace when you do not need to start
+											inside one project.
+										</p>
+									</div>
+									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
 								</div>
-								<h3 class="flex-1 text-sm font-semibold text-foreground">
-									Agent to BuildOS
-								</h3>
-								<ChevronRight
-									class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
-								/>
-							</div>
-							<p
-								class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-							>
-								Hand the BuildOS chat to another AI agent with a clear goal.
-							</p>
-							<div
-								class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-violet-600 dark:text-violet-400 sm:flex"
-							>
-								<span>Agent-to-BuildOS</span>
-								<ChevronRight
-									class="h-4 w-4 transition-transform group-hover:translate-x-1"
-								/>
-							</div>
-						</button>
-					{/if}
+								<div
+									class="mt-3 border-t border-border pt-2 text-xs text-muted-foreground"
+								>
+									Best for questions, planning, and cross-project context.
+								</div>
+							</button>
 
-					<!-- Start a Project — guided creation -->
-					<button
-						onclick={selectProjectCreate}
-						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-purple-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
-					>
-						<div class="flex items-center gap-2 sm:gap-3">
-							<div
-								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 sm:h-10 sm:w-10 sm:rounded-lg"
-							>
-								<FolderPlus class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-							</div>
-							<h3 class="flex-1 text-sm font-semibold text-foreground">
-								Start a Project
-							</h3>
-							<ChevronRight
-								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-purple-500 sm:hidden"
-							/>
-						</div>
-						<p
-							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-						>
-							Guided setup to define goals, milestones, and structure.
-						</p>
-						<div
-							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-purple-600 dark:text-purple-400 sm:flex"
-						>
-							<span>New project</span>
-							<ChevronRight
-								class="h-4 w-4 transition-transform group-hover:translate-x-1"
-							/>
-						</div>
-					</button>
-
-					<!-- Brain Dump — one-way capture -->
-					<button
-						onclick={selectBraindump}
-						class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-violet-500/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-4 sm:hover:-translate-y-0.5"
-					>
-						<div class="flex items-center gap-2 sm:gap-3">
-							<div
-								class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:h-10 sm:w-10 sm:rounded-lg"
-							>
-								<PenLine class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
-							</div>
-							<h3 class="flex-1 text-sm font-semibold text-foreground">Brain Dump</h3>
-							<ChevronRight
-								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 sm:hidden"
-							/>
-						</div>
-						<p
-							class="mt-1.5 text-xs leading-snug text-muted-foreground pl-9 sm:pl-0 sm:mt-2"
-						>
-							Jot down thoughts or ideas — quick notes, no conversation needed.
-						</p>
-						<div
-							class="hidden items-center justify-between pt-3 mt-auto text-xs font-medium text-violet-600 dark:text-violet-400 sm:flex"
-						>
-							<span>Quick capture</span>
-							<ChevronRight
-								class="h-4 w-4 transition-transform group-hover:translate-x-1"
-							/>
-						</div>
-					</button>
-				</div>
-
-				{#if hasProjects}
-					<div
-						class="mt-4 flex items-center justify-center gap-4 text-xs text-muted-foreground sm:mt-6"
-					>
-						<div class="flex items-center gap-2">
-							<div class="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-							<span>{activeProjects.length} projects ready for deep work</span>
+							<button onclick={goToProjectSelection} class={projectChatCardClasses}>
+								<div class="flex items-start gap-3">
+									<div class={optionIconClasses}>
+										<FolderOpen class="h-4 w-4 sm:h-5 sm:w-5" />
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="micro-label mb-1">PROJECT CHAT</p>
+										<h3
+											class="text-sm font-semibold text-foreground sm:text-base"
+										>
+											Work inside a project
+										</h3>
+										<p
+											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
+										>
+											Choose a project and get focused help with planning,
+											reviewing, and next steps.
+										</p>
+									</div>
+									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
+								</div>
+								<div
+									class="mt-3 border-t border-border pt-2 text-xs text-muted-foreground"
+								>
+									{#if hasLoadedProjects && hasProjects}
+										{activeProjects.length} active project{activeProjects.length !==
+										1
+											? 's'
+											: ''} ready
+									{:else}
+										Browse your current project list
+									{/if}
+								</div>
+							</button>
 						</div>
 					</div>
-				{/if}
+
+					<div class="space-y-2">
+						<div class="flex items-center justify-between gap-3">
+							<p class="micro-label">SECONDARY</p>
+							<p class="text-xs text-muted-foreground">Setup or capture</p>
+						</div>
+						<div
+							class={`grid gap-2 sm:gap-3 ${dev ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
+						>
+							<button onclick={selectProjectCreate} class={setupCardClasses}>
+								<div class="flex items-start gap-3">
+									<div class={optionIconClasses}>
+										<FolderPlus class="h-4 w-4 sm:h-5 sm:w-5" />
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="micro-label mb-1">PROJECT SETUP</p>
+										<h3
+											class="text-sm font-semibold text-foreground sm:text-base"
+										>
+											Start a project
+										</h3>
+										<p
+											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
+										>
+											Create structure first, then move into focused work.
+										</p>
+									</div>
+									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
+								</div>
+							</button>
+
+							<button onclick={selectBraindump} class={captureCardClasses}>
+								<div class="flex items-start gap-3">
+									<div class={optionIconClasses}>
+										<PenLine class="h-4 w-4 sm:h-5 sm:w-5" />
+									</div>
+									<div class="min-w-0 flex-1">
+										<p class="micro-label mb-1">QUICK CAPTURE</p>
+										<h3
+											class="text-sm font-semibold text-foreground sm:text-base"
+										>
+											Capture loose notes
+										</h3>
+										<p
+											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
+										>
+											Drop in rough notes when you want speed more than
+											conversation.
+										</p>
+									</div>
+									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
+								</div>
+							</button>
+
+							{#if dev}
+								<button onclick={selectAgentToAgent} class={setupCardClasses}>
+									<div class="flex items-start gap-3">
+										<div class={optionIconClasses}>
+											<MessagesSquare class="h-4 w-4 sm:h-5 sm:w-5" />
+										</div>
+										<div class="min-w-0 flex-1">
+											<p class="micro-label mb-1">DEV TOOL</p>
+											<h3
+												class="text-sm font-semibold text-foreground sm:text-base"
+											>
+												Agent handoff
+											</h3>
+											<p
+												class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
+											>
+												Hand the conversation to another agent with a
+												defined goal.
+											</p>
+										</div>
+										<ChevronRight
+											class="h-4 w-4 shrink-0 text-muted-foreground"
+										/>
+									</div>
+								</button>
+							{/if}
+						</div>
+					</div>
+
+					{#if hasProjects}
+						<div
+							class="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-ink tx tx-strip tx-weak"
+						>
+							<div class="h-1.5 w-1.5 rounded-full bg-accent"></div>
+							<span>{activeProjects.length} projects ready for focused chat</span>
+						</div>
+					{/if}
+				</div>
 			{/if}
 		</div>
 	{/if}
@@ -492,9 +491,11 @@
 	{#if selectedView === 'project-selection'}
 		<div class="flex h-full min-h-0 flex-col">
 			<!-- Header - compact on mobile -->
-			<div class="border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-sm sm:p-4">
-				<h2 class="text-base font-semibold text-foreground sm:text-lg">Select a Project</h2>
-				<p class="text-xs text-muted-foreground">Choose which project to work with</p>
+			<div class="border-b border-border bg-card px-3 py-2.5 tx tx-strip tx-weak sm:p-4">
+				<h2 class="text-base font-semibold text-foreground sm:text-lg">
+					Choose a project context
+				</h2>
+				<p class="text-xs text-muted-foreground">Start chat inside a specific project</p>
 				<div class="relative mt-3">
 					<Search
 						class="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
@@ -548,7 +549,7 @@
 							{@const facetSummary = getFacetSummary(project)}
 							<button
 								onclick={() => selectProject(project)}
-								class="group flex flex-col rounded-lg border border-border bg-card p-2.5 text-left shadow-ink transition-all duration-200 hover:border-accent/50 hover:shadow-ink-strong active:scale-[0.99] sm:rounded-xl sm:p-3 sm:hover:-translate-y-0.5"
+								class={projectListItemClasses}
 							>
 								<!-- Mobile: title row with chevron -->
 								<div class="flex items-center gap-2">
@@ -558,9 +559,7 @@
 									>
 										{project.name}
 									</h3>
-									<ChevronRight
-										class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent"
-									/>
+									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
 								</div>
 								<!-- Metadata row - compact -->
 								{#if project.stateKey || project.typeKey}
@@ -617,14 +616,13 @@
 						<h3
 							class="mb-1.5 text-base font-semibold text-foreground sm:text-lg sm:mb-2"
 						>
-							{#if isProjectSearchActive}No matching projects{:else}No Ontology
-								Projects{/if}
+							{#if isProjectSearchActive}No matching projects{:else}No projects yet{/if}
 						</h3>
 						<p class="max-w-xs text-xs text-muted-foreground sm:text-sm">
 							{#if isProjectSearchActive}
 								No projects match "{normalizedProjectSearch}".
 							{:else}
-								Instantiate your first ontology project to get started
+								Start a project first, then return here for focused project chat.
 							{/if}
 						</p>
 						{#if isProjectSearchActive}

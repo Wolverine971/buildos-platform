@@ -9,13 +9,15 @@
 ## Current Document Hierarchy
 
 ```
+docs/marketing/brand/BUILDOS_BRAND_ARCHITECTURE.md
 docs/marketing/strategy/buildos-marketing-strategy-2026.md
 docs/marketing/brand/brand-guide-1-pager.md
+docs/marketing/brand/BUILDOS_BRAND_AUDIT_FRAMEWORK.md
 docs/marketing/strategy/buildos-guerrilla-content-doctrine.md
 docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md
 ```
 
-Use the four docs above as the current operating stack.
+Use the docs above as the current operating stack.
 
 Keep older brand documents as reference, not source of truth.
 
@@ -25,12 +27,14 @@ Keep older brand documents as reference, not source of truth.
 
 ### Current Strategy And Positioning
 
-| Document                                                                                                         | Purpose                 | When to Use                                  |
-| ---------------------------------------------------------------------------------------------------------------- | ----------------------- | -------------------------------------------- |
-| [**BuildOS Marketing Strategy 2026**](../strategy/buildos-marketing-strategy-2026.md)                            | Current master strategy | Positioning, audience order, channel roles   |
-| [**BuildOS Brand Guide**](brand-guide-1-pager.md)                                                                | Current quick reference | Messaging, terms, tone, visual direction     |
-| [**BuildOS Guerrilla Content Doctrine**](../strategy/buildos-guerrilla-content-doctrine.md)                      | Strategic logic         | Solo-founder doctrine, sequencing, tradeoffs |
-| [**6-Week Guerrilla Seed Campaign**](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) | Current execution plan  | Weekly content planning and posting          |
+| Document                                                                                                         | Purpose                 | When to Use                                   |
+| ---------------------------------------------------------------------------------------------------------------- | ----------------------- | --------------------------------------------- |
+| [**BuildOS Brand Architecture**](BUILDOS_BRAND_ARCHITECTURE.md)                                                  | Canonical hierarchy     | Category, phrase roles, anti-AI posture       |
+| [**BuildOS Marketing Strategy 2026**](../strategy/buildos-marketing-strategy-2026.md)                            | Current master strategy | Positioning, audience order, channel roles    |
+| [**BuildOS Brand Guide**](brand-guide-1-pager.md)                                                                | Current quick reference | Messaging, terms, tone, visual direction      |
+| [**BuildOS Brand Audit Framework**](BUILDOS_BRAND_AUDIT_FRAMEWORK.md)                                            | Alignment workflow      | Surface audits, remediation order, governance |
+| [**BuildOS Guerrilla Content Doctrine**](../strategy/buildos-guerrilla-content-doctrine.md)                      | Strategic logic         | Solo-founder doctrine, sequencing, tradeoffs  |
+| [**6-Week Guerrilla Seed Campaign**](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) | Current execution plan  | Weekly content planning and posting           |
 
 ### Supporting Brand Documents
 
@@ -62,6 +66,8 @@ Keep older brand documents as reference, not source of truth.
 3. **The project remembers** as the differentiator
 4. **Context compounds** as the moat
 
+Phrase roles and anti-AI interpretation now live in [BuildOS Brand Architecture](BUILDOS_BRAND_ARCHITECTURE.md).
+
 If a message breaks that order without a good reason, check the newer docs before shipping it.
 
 ---
@@ -71,14 +77,16 @@ If a message breaks that order without a good reason, check the newer docs befor
 ### For Content Creation
 
 1. Start with [BuildOS Marketing Strategy 2026](../strategy/buildos-marketing-strategy-2026.md)
-2. Use [BuildOS Brand Guide](brand-guide-1-pager.md) as the quick reference
-3. Use the [6-Week Guerrilla Seed Campaign](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) for hook and asset planning
-4. Check [Zoom Messaging Guide](ZOOM_MESSAGING_GUIDE.md) only for feature-level copy
+2. Check [BuildOS Brand Architecture](BUILDOS_BRAND_ARCHITECTURE.md) for phrase roles and hierarchy
+3. Use [BuildOS Brand Guide](brand-guide-1-pager.md) as the quick reference
+4. Use the [6-Week Guerrilla Seed Campaign](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) for hook and asset planning
+5. Check [Zoom Messaging Guide](ZOOM_MESSAGING_GUIDE.md) only for feature-level copy
 
 ### For Strategy Decisions
 
 1. Start with [BuildOS Marketing Strategy 2026](../strategy/buildos-marketing-strategy-2026.md)
-2. Use [Guerrilla Content Doctrine](../strategy/buildos-guerrilla-content-doctrine.md) when a tradeoff or sequencing question comes up
+2. Use [BuildOS Brand Architecture](BUILDOS_BRAND_ARCHITECTURE.md) to resolve phrase conflicts
+3. Use [Guerrilla Content Doctrine](../strategy/buildos-guerrilla-content-doctrine.md) when a tradeoff or sequencing question comes up
 
 ### For Voice Consistency
 

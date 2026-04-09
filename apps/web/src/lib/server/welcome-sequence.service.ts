@@ -121,6 +121,11 @@ function toProgress(row: WelcomeSequenceRow): WelcomeSequenceProgress {
 	};
 }
 
+interface WelcomeProjectLookup {
+	count: number;
+	latestProject: { id: string; updated_at: string | null } | null;
+}
+
 function applyRowUpdate(
 	row: WelcomeSequenceRow,
 	updates: Partial<WelcomeSequenceRow>
@@ -163,7 +168,8 @@ export class WelcomeSequenceService {
 		const hydratedRow = await this.hydrateSentStepsFromEmailLogs(row);
 
 		const progress = toProgress(hydratedRow);
-		const action = determineNextWelcomeAction(progress, state, new Date());
+		const immediateNow = this.resolveImmediateEvaluationTime(hydratedRow.started_at);
+		const action = determineNextWelcomeAction(progress, state, immediateNow);
 		if (action.action !== 'send' || action.step !== 'email_1') {
 			return;
 		}
@@ -174,7 +180,8 @@ export class WelcomeSequenceService {
 				progress,
 				state,
 				action.step,
-				action.branchKey || 'welcome'
+				action.branchKey || 'welcome',
+				immediateNow
 			);
 		} catch (error) {
 			await this.safeMarkEvaluated(input.userId, new Date().toISOString());
@@ -436,6 +443,16 @@ export class WelcomeSequenceService {
 		}
 	}
 
+	private resolveImmediateEvaluationTime(startedAt: string): Date {
+		const now = new Date();
+		const startedAtMs = Date.parse(startedAt);
+		if (Number.isNaN(startedAtMs)) {
+			return now;
+		}
+
+		return new Date(Math.max(now.getTime(), startedAtMs));
+	}
+
 	private async safeMarkEvaluated(userId: string, evaluatedAt: string): Promise<void> {
 		try {
 			await this.updateSequenceRow(userId, {
@@ -539,31 +556,16 @@ export class WelcomeSequenceService {
 			return null;
 		}
 
-		const { data: actorId, error: actorError } = await this.supabase.rpc(
-			'ensure_actor_for_user',
-			{
-				p_user_id: userId
-			}
-		);
-
-		if (actorError || !actorId) {
-			throw new Error(`Failed to resolve actor for welcome sequence: ${actorError?.message}`);
-		}
+		const actorId = await this.resolveActorIdForUser(userId, user);
 
 		const [
-			projectsResult,
+			projectLookup,
 			briefPrefsResult,
 			notificationPrefsResult,
 			smsPrefsResult,
 			calendarTokensResult
 		] = await Promise.all([
-			this.supabase
-				.from('onto_projects')
-				.select('id, updated_at', { count: 'exact' })
-				.eq('created_by', actorId)
-				.is('deleted_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(1),
+			this.loadWelcomeProjects(userId, actorId),
 			this.supabase
 				.from('user_brief_preferences')
 				.select('is_active')
@@ -587,12 +589,6 @@ export class WelcomeSequenceService {
 				.eq('user_id', userId)
 		]);
 
-		const projectCount = projectsResult.count ?? 0;
-		if (projectsResult.error) {
-			throw new Error(
-				`Failed to load projects for welcome sequence: ${projectsResult.error.message}`
-			);
-		}
 		if (briefPrefsResult.error) {
 			throw new Error(
 				`Failed to load brief preferences for welcome sequence: ${briefPrefsResult.error.message}`
@@ -614,7 +610,6 @@ export class WelcomeSequenceService {
 			);
 		}
 
-		const latestProject = projectsResult.data?.[0] ?? null;
 		const briefActive = briefPrefsResult.data?.is_active === true;
 		const emailDailyBriefEnabled =
 			briefActive && notificationPrefsResult.data?.should_email_daily_brief === true;
@@ -633,12 +628,115 @@ export class WelcomeSequenceService {
 			timezone: user.timezone,
 			onboardingIntent: user.onboarding_intent,
 			onboardingCompleted: Boolean(user.onboarding_completed_at),
-			projectCount,
-			latestProjectId: latestProject?.id ?? null,
+			projectCount: projectLookup.count,
+			latestProjectId: projectLookup.latestProject?.id ?? null,
 			emailDailyBriefEnabled,
 			smsChannelEnabled,
 			calendarConnected: (calendarTokensResult.count ?? 0) > 0,
 			lastVisit: user.last_visit
+		};
+	}
+
+	private async resolveActorIdForUser(
+		userId: string,
+		user?: { name?: string | null; email?: string | null } | null
+	): Promise<string> {
+		const { data: actorId, error: actorError } = await this.supabase.rpc(
+			'ensure_actor_for_user',
+			{
+				p_user_id: userId
+			}
+		);
+
+		if (!actorError && actorId) {
+			return actorId as string;
+		}
+
+		let resolvedUser = user ?? null;
+		if (!resolvedUser) {
+			const { data: fallbackUser, error: fallbackUserError } = await this.supabase
+				.from('users')
+				.select('name, email')
+				.eq('id', userId)
+				.maybeSingle();
+
+			if (fallbackUserError) {
+				throw new Error(
+					`Failed to resolve actor for welcome sequence: ${fallbackUserError.message}`
+				);
+			}
+
+			resolvedUser = fallbackUser;
+		}
+
+		const fallbackName =
+			resolvedUser?.name?.trim() || resolvedUser?.email?.trim() || 'BuildOS User';
+
+		const { data: createdActor, error: createdActorError } = await (this.supabase as any)
+			.from('onto_actors')
+			.upsert(
+				{
+					user_id: userId,
+					kind: 'human',
+					name: fallbackName,
+					email: resolvedUser?.email ?? null
+				},
+				{ onConflict: 'user_id' }
+			)
+			.select('id')
+			.single();
+
+		if (createdActorError || !createdActor?.id) {
+			throw new Error(
+				`Failed to resolve actor for welcome sequence: ${createdActorError?.message || actorError?.message || 'unknown actor error'}`
+			);
+		}
+
+		return createdActor.id as string;
+	}
+
+	private async loadWelcomeProjects(
+		userId: string,
+		actorId: string
+	): Promise<WelcomeProjectLookup> {
+		const ownerIds = Array.from(new Set([actorId, userId].filter(Boolean)));
+		const projects = new Map<string, { id: string; updated_at: string | null }>();
+
+		for (const ownerId of ownerIds) {
+			const { data, error } = await this.supabase
+				.from('onto_projects')
+				.select('id, updated_at')
+				.eq('created_by', ownerId)
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false });
+
+			if (error) {
+				throw new Error(`Failed to load projects for welcome sequence: ${error.message}`);
+			}
+
+			for (const project of data || []) {
+				if (!project?.id || projects.has(project.id)) {
+					continue;
+				}
+
+				projects.set(project.id, {
+					id: project.id,
+					updated_at: project.updated_at ?? null
+				});
+			}
+		}
+
+		const sortedProjects = Array.from(projects.values()).sort((left, right) => {
+			const leftTs = left.updated_at ? Date.parse(left.updated_at) : Number.NEGATIVE_INFINITY;
+			const rightTs = right.updated_at
+				? Date.parse(right.updated_at)
+				: Number.NEGATIVE_INFINITY;
+			return rightTs - leftTs;
+		});
+
+		return {
+			count: sortedProjects.length,
+			latestProject: sortedProjects[0] ?? null
 		};
 	}
 

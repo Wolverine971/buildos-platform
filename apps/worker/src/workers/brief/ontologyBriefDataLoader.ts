@@ -299,6 +299,55 @@ export function getWorkMode(typeKey: string | null): string | null {
 	return null;
 }
 
+/**
+ * Build a project visibility filter that tolerates migration-era data.
+ *
+ * Some older ontology projects still store `created_by` as the auth user id
+ * instead of the canonical actor id, and some are missing owner membership rows.
+ * The brief loader must include both shapes until the data is fully reconciled.
+ */
+export function buildProjectAccessFilter(params: {
+	actorId: string;
+	userId: string;
+	memberProjectIds: Iterable<string>;
+}): string {
+	const memberProjectIds = Array.from(
+		new Set(Array.from(params.memberProjectIds).filter((id): id is string => Boolean(id)))
+	);
+	const filters = [`created_by.eq.${params.actorId}`, `created_by.eq.${params.userId}`];
+
+	if (memberProjectIds.length > 0) {
+		filters.push(`id.in.(${memberProjectIds.join(',')})`);
+	}
+
+	return filters.join(',');
+}
+
+/**
+ * Find accessible owned projects that still lack an owner membership row.
+ * This self-heals migration seams the next time the brief worker touches them.
+ */
+export function findMissingOwnerMembershipProjectIds(params: {
+	projects: Array<Pick<OntoProject, 'id' | 'created_by'>>;
+	actorId: string;
+	userId: string;
+	memberProjectIds: Iterable<string>;
+}): string[] {
+	const memberProjectIds = new Set(
+		Array.from(params.memberProjectIds).filter((id): id is string => Boolean(id))
+	);
+
+	return params.projects
+		.filter((project) => {
+			if (!project?.id || memberProjectIds.has(project.id)) {
+				return false;
+			}
+
+			return project.created_by === params.actorId || project.created_by === params.userId;
+		})
+		.map((project) => project.id);
+}
+
 // ============================================================================
 // GOAL PROGRESS UTILITIES
 // ============================================================================
@@ -621,16 +670,22 @@ export class OntologyBriefDataLoader {
 			.filter((id): id is string => Boolean(id));
 
 		if (memberProjectIds.length === 0) {
-			console.log('[OntologyBriefDataLoader] No active projects found');
-			return [];
+			console.log(
+				'[OntologyBriefDataLoader] No membership rows found, falling back to owned project lookup'
+			);
 		}
 
+		const projectAccessFilter = buildProjectAccessFilter({
+			actorId,
+			userId,
+			memberProjectIds
+		});
 		const { data: projectsData, error: projectsError } = await this.supabase
 			.from('onto_projects')
 			.select(
 				'id, name, state_key, type_key, description, next_step_short, next_step_long, updated_at, created_by'
 			)
-			.in('id', memberProjectIds)
+			.or(projectAccessFilter)
 			.in('state_key', ['planning', 'active'])
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false });
@@ -645,6 +700,41 @@ export class OntologyBriefDataLoader {
 		if (projects.length === 0) {
 			console.log('[OntologyBriefDataLoader] No active projects found');
 			return [];
+		}
+
+		const missingOwnerMembershipProjectIds = findMissingOwnerMembershipProjectIds({
+			projects,
+			actorId,
+			userId,
+			memberProjectIds
+		});
+
+		if (missingOwnerMembershipProjectIds.length > 0) {
+			const { error: membershipRepairError } = await this.supabase
+				.from('onto_project_members')
+				.upsert(
+					missingOwnerMembershipProjectIds.map((projectId) => ({
+						project_id: projectId,
+						actor_id: actorId,
+						role_key: 'owner',
+						access: 'admin',
+						added_by_actor_id: actorId,
+						removed_at: null,
+						removed_by_actor_id: null
+					})),
+					{ onConflict: 'project_id,actor_id' }
+				);
+
+			if (membershipRepairError) {
+				console.warn(
+					'[OntologyBriefDataLoader] Failed to reconcile owner memberships:',
+					membershipRepairError
+				);
+			} else {
+				console.log(
+					`[OntologyBriefDataLoader] Reconciled ${missingOwnerMembershipProjectIds.length} missing owner membership(s)`
+				);
+			}
 		}
 
 		const projectIds = projects.map((p) => p.id);
@@ -953,18 +1043,60 @@ export class OntologyBriefDataLoader {
 	 * Get actor ID for a user
 	 */
 	async getActorIdForUser(userId: string): Promise<string | null> {
-		const { data: actor, error } = await this.supabase
-			.from('onto_actors')
-			.select('id')
-			.eq('user_id', userId)
-			.eq('kind', 'human')
+		const { data, error } = await this.supabase.rpc('ensure_actor_for_user', {
+			p_user_id: userId
+		});
+
+		if (!error && data) {
+			return data as string;
+		}
+
+		console.warn(
+			'[OntologyBriefDataLoader] RPC actor resolution failed, attempting direct fallback:',
+			userId,
+			error
+		);
+
+		const { data: user, error: userError } = await this.supabase
+			.from('users')
+			.select('id, name, email')
+			.eq('id', userId)
 			.single();
 
-		if (error || !actor) {
-			console.warn('[OntologyBriefDataLoader] No actor found for user:', userId);
+		if (userError || !user) {
+			console.warn(
+				'[OntologyBriefDataLoader] Failed to load user for actor fallback:',
+				userId,
+				userError
+			);
 			return null;
 		}
 
+		const fallbackName = user.name?.trim() || user.email?.trim() || 'BuildOS User';
+		const { data: actor, error: actorError } = await this.supabase
+			.from('onto_actors')
+			.upsert(
+				{
+					user_id: userId,
+					kind: 'human',
+					name: fallbackName,
+					email: user.email ?? null
+				},
+				{ onConflict: 'user_id' }
+			)
+			.select('id')
+			.single();
+
+		if (actorError || !actor?.id) {
+			console.warn(
+				'[OntologyBriefDataLoader] Failed to create actor via fallback:',
+				userId,
+				actorError
+			);
+			return null;
+		}
+
+		console.log('[OntologyBriefDataLoader] Created missing actor via fallback:', actor.id);
 		return actor.id;
 	}
 

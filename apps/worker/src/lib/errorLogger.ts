@@ -57,11 +57,15 @@ function extractErrorInfo(error: unknown): { message: string; stack?: string; co
 	return { message: String(error) };
 }
 
+function getErrorMessage(error: unknown): string {
+	return extractErrorInfo(error).message;
+}
+
 function inferErrorType(error: unknown, context?: WorkerErrorContext): ErrorType {
 	if (context?.errorType) return context.errorType;
 	if (context?.llmProvider || context?.llmModel) return 'llm_error';
 
-	const message = typeof error === 'string' ? error : (error as any)?.message || '';
+	const message = getErrorMessage(error);
 	const lowered = message.toLowerCase();
 
 	if (
@@ -94,7 +98,7 @@ function inferErrorType(error: unknown, context?: WorkerErrorContext): ErrorType
 }
 
 function inferSeverity(error: unknown, errorType: ErrorType): ErrorSeverity {
-	const message = typeof error === 'string' ? error : (error as any)?.message || '';
+	const message = getErrorMessage(error);
 	const lowered = message.toLowerCase();
 
 	if (

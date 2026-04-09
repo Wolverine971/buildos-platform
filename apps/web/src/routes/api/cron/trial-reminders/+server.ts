@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/cron/trial-reminders/+server.ts
 import type { RequestHandler } from './$types';
+import { env } from '$env/dynamic/private';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { TRIAL_CONFIG } from '$lib/config/trial';
@@ -9,7 +10,7 @@ import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notif
 
 export const GET: RequestHandler = async ({ request }) => {
 	// Verify cron secret
-	if (!isAuthorizedCronRequest(request, PRIVATE_CRON_SECRET)) {
+	if (!isAuthorizedCronRequest(request, [env.CRON_SECRET, PRIVATE_CRON_SECRET])) {
 		return ApiResponse.unauthorized();
 	}
 

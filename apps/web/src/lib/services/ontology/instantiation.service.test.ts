@@ -97,7 +97,7 @@ describe('validateProjectSpec', () => {
 		);
 	});
 
-	it('requires relationships when multiple entities exist', () => {
+	it('allows multiple entities without explicit relationships', () => {
 		const { valid, errors } = validateProjectSpec({
 			project: {
 				name: 'Relationship Test',
@@ -110,9 +110,7 @@ describe('validateProjectSpec', () => {
 			relationships: []
 		});
 
-		expect(valid).toBe(false);
-		expect(
-			errors.some((error) => error.includes('relationships must include at least one pair'))
-		).toBe(true);
+		expect(valid).toBe(true);
+		expect(errors).toHaveLength(0);
 	});
 });

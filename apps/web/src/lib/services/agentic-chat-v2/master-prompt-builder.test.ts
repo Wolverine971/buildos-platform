@@ -35,6 +35,9 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		expect(prompt).toContain('<overview_guidance>');
 		expect(prompt).toContain('Workspace-wide status -> util.workspace.overview');
 		expect(prompt).toContain('Named or in-scope project status -> util.project.overview');
+		expect(prompt).toContain(
+			'If structured project context already includes a clear next_step_short or equivalent status summary, answer from that context instead of loading audit skills or repeating project graph reads.'
+		);
 		expect(prompt).toContain('Think in three layers:');
 		expect(prompt).toContain('1) Capability = what BuildOS can do for the user.');
 		expect(prompt).toContain(
@@ -219,6 +222,9 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 		expect(prompt).toContain(
 			'Always include entities: [] and relationships: [] even when the project starts empty.'
 		);
+		expect(prompt).toContain(
+			'For goal entities, use dedicated fields like target_date and measurement_criteria instead of burying them only in props.'
+		);
 		expect(prompt).toContain('Never use raw temp_id strings like ["g1", "t1"].');
 		expect(prompt).toContain(
 			'Use clarifications[] only when critical information cannot be reasonably inferred'
@@ -282,7 +288,17 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 			entityId: 'proj-1',
 			agentState: JSON.stringify({
 				sessionId: 'session-1',
-				items: [],
+				items: [
+					{
+						id: 'agent-item-1',
+						kind: 'task',
+						title: 'Define the show format',
+						status: 'active',
+						relatedEntityIds: ['proj-1'],
+						createdAt: '2026-04-08T20:53:16.420Z',
+						updatedAt: '2026-04-08T20:53:16.420Z'
+					}
+				],
 				assumptions: [],
 				expectations: [],
 				tentative_hypotheses: [],
@@ -315,6 +331,10 @@ describe('buildMasterPrompt gateway tool instructions', () => {
 
 		expect(prompt).not.toContain('"sessionId"');
 		expect(prompt).not.toContain('"entities"');
+		expect(prompt).not.toContain('"agent-item-1"');
+		expect(prompt).not.toContain('"createdAt"');
+		expect(prompt).not.toContain('"updatedAt"');
+		expect(prompt).toContain('"title":"Define the show format"');
 		expect(prompt).toContain('"id": "doc-unlinked"');
 		expect(prompt).not.toContain('"in_doc_structure": true');
 	});

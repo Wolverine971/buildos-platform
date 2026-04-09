@@ -28,9 +28,14 @@ export function constantTimeCompare(a: string | null, b: string | null): boolean
  * Verify an incoming cron request using a shared bearer secret.
  * Keeps comparisons in constant time to protect against timing attacks.
  */
-export function isAuthorizedCronRequest(request: Request, secret: string): boolean {
+export function isAuthorizedCronRequest(
+	request: Request,
+	secret: string | Array<string | null | undefined>
+): boolean {
 	const authHeader = request.headers.get('authorization');
-	const expectedAuth = `Bearer ${secret}`;
+	const secrets = (Array.isArray(secret) ? secret : [secret]).filter(
+		(value): value is string => typeof value === 'string' && value.length > 0
+	);
 
-	return constantTimeCompare(authHeader, expectedAuth);
+	return secrets.some((candidate) => constantTimeCompare(authHeader, `Bearer ${candidate}`));
 }

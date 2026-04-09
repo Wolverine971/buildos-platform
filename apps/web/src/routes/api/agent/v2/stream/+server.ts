@@ -3437,7 +3437,10 @@ export const POST: RequestHandler = async ({
 					model: pass.model ?? null,
 					provider: pass.provider ?? null,
 					request_id: pass.requestId ?? null,
+					system_fingerprint: pass.systemFingerprint ?? null,
 					finished_reason: pass.finishedReason ?? null,
+					cache_status: pass.cacheStatus ?? null,
+					reasoning_tokens: pass.reasoningTokens ?? null,
 					prompt_tokens: pass.promptTokens ?? null,
 					completion_tokens: pass.completionTokens ?? null,
 					total_tokens: pass.totalTokens ?? null

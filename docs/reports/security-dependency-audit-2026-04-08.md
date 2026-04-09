@@ -63,23 +63,22 @@ Notes:
 
 ### Post-remediation snapshot
 
-After package updates and root overrides:
+After package updates, lockfile cleanup, and route hardening:
 
-- Production dependencies: 628
-- Advisories: 4
+- Production dependencies: 625
+- Advisories: 2
 - High: 0
-- Moderate: 1
-- Low: 3
+- Moderate: 0
+- Low: 2
 
 Remaining advisories:
 
-- `nodemailer@7.0.11`: 1 moderate + 1 low advisory; audit recommends `8.0.5+`.
 - `webpack@5.103.0` in the `@antv/g6` workerize path: 2 low advisories.
 
 Interpretation:
 
 - The original high-severity web/worker graph issues are substantially reduced.
-- The remaining moderate item is tied to the current Gmail/Nodemailer delivery path, which is still an explicit follow-up decision.
+- `nodemailer` was upgraded to `8.0.5`, which cleared the remaining moderate advisory tied to the Gmail SMTP path.
 - The remaining webpack issues are low-severity build-time findings in a transitive visualization dependency tree.
 
 ## Lockfile State
@@ -87,19 +86,16 @@ Interpretation:
 Current repo state includes:
 
 - Root lockfile: `/Users/djwayne/buildos-platform/pnpm-lock.yaml`
-- Nested lockfile: `/Users/djwayne/buildos-platform/apps/web/pnpm-lock.yaml`
-- Nested lockfile: `/Users/djwayne/buildos-platform/apps/worker/pnpm-lock.yaml`
 
 Observed drift:
 
-- Root lock resolves newer package versions than the nested app lockfiles.
 - Vercel root config installs from the workspace root with `pnpm install --frozen-lockfile`, so the root lockfile is the effective deploy artifact.
-- The nested lockfiles are now misleading for audits and local reasoning.
+- The previously committed nested app lockfiles were misleading for audits and local reasoning.
 
 Decision status:
 
-- Do not delete nested lockfiles until the team explicitly agrees on the policy.
-- Treat the root lockfile as the authoritative deployment lockfile for this remediation pass.
+- Treat the root lockfile as the authoritative deployment lockfile.
+- Remove nested app lockfiles from the repo and ignore `apps/*/pnpm-lock.yaml` going forward.
 
 ## Package Hygiene
 
@@ -142,7 +138,7 @@ Checked but intentionally kept:
 
 Counts captured during this pass:
 
-- `createAdminSupabaseClient(...)` in `apps/web/src`: 78 call sites
+- `createAdminSupabaseClient(...)` runtime call sites in `apps/web/src`: 64
 - `createServiceClient(...)` in runtime code: 19 call sites
 
 ### Safe / Expected Categories
@@ -160,19 +156,27 @@ Counts captured during this pass:
     - homework runs
     - tree-agent runs
 
-### Needs Follow-Up
+### Reduced In This Pass
 
-- Public endpoints using admin bypass:
+- Public project endpoints now use `locals.supabase` instead of the service role:
     - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/public/projects/+server.ts`
     - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/public/projects/[id]/graph/+server.ts`
-- User-triggered auth flows with admin fallback:
-    - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/auth/login/+server.ts`
-    - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/auth/register/+server.ts`
-- Asset and OCR routes using admin storage/database access after user input:
+- Asset and OCR routes now use the authenticated session client plus storage RLS instead of the service role:
     - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/onto/assets/+server.ts`
     - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/onto/assets/[id]/+server.ts`
     - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/onto/assets/[id]/render/+server.ts`
     - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/onto/assets/[id]/complete/+server.ts`
+- Password login profile repair now uses an access-token scoped anon client plus session fallback instead of the service role:
+    - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/auth/login/+server.ts`
+- Password registration with an auto-created session now uses an access-token scoped anon client instead of the service role:
+    - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/auth/register/+server.ts`
+
+### Needs Follow-Up
+
+- User-triggered auth flows that still need a constrained post-confirmation design:
+    - `/Users/djwayne/buildos-platform/apps/web/src/routes/api/auth/register/+server.ts`
+        - The no-session email-confirmation branch still needs admin profile creation because there is no authenticated user session yet.
+    - `/Users/djwayne/buildos-platform/apps/web/src/lib/utils/google-oauth.ts`
 - Agent/tooling server services with embedded admin clients:
     - `/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/executors/base-executor.ts`
     - `/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts`
@@ -238,12 +242,13 @@ Behavioral changes:
 Current status:
 
 - Gmail app-password delivery is still active in web and worker code paths.
-- This remains operationally weaker than scoped API-based delivery with vendor-side auditing and key isolation.
+- `nodemailer` was upgraded from `7.0.11` to `8.0.5` during this pass.
+- Gmail app-password delivery remains operationally weaker than scoped API-based delivery with vendor-side auditing and key isolation.
 
 Decision status:
 
-- Do not replace in this pass without explicit product direction.
-- Keep this as an open security/operations follow-up.
+- Do not replace Gmail SMTP in this pass without explicit product direction.
+- Keep SMTP/provider migration as an open security/operations follow-up, separate from the dependency remediation.
 
 ## Work Log
 
@@ -252,16 +257,20 @@ Completed:
 - Mapped runtime external dependencies and trust boundaries.
 - Ran a live production dependency audit.
 - Counted and classified privileged Supabase client usage.
-- Confirmed lockfile drift between root and nested app lockfiles.
+- Removed nested app lockfiles so the root lockfile is the only committed deployment lockfile.
+- Upgraded `nodemailer` to `8.0.5` in web and worker and refreshed the root lockfile.
+- Reran `pnpm audit --prod --json` and reduced remaining findings to the low-severity `webpack` transitive path.
+- Removed service-role usage from the public project and authenticated asset storage routes.
+- Removed service-role fallback from password login and from password registration when a user session already exists.
 - Confirmed the current rate limiter is too blunt for safe global rollout.
 
 In progress:
 
-- Service-role review follow-up on the highest-risk public and user-triggered admin call paths.
+- Service-role review follow-up on the remaining user-triggered auth fallback and embedded tool/service paths.
 
 Pending:
 
-- Tighten a few high-risk service-role call paths or record specific follow-up items.
+- Tighten a few remaining high-risk service-role call paths or record specific follow-up items.
 
 Verification:
 

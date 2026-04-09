@@ -437,12 +437,6 @@ export const ProjectSpecSchema = z
 				message: 'relationships require at least one entity'
 			});
 		}
-		if (spec.entities.length > 1 && spec.relationships.length === 0) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: 'relationships must include at least one pair when multiple entities exist'
-			});
-		}
 	});
 
 export type ProjectSpec = z.infer<typeof ProjectSpecSchema>;

@@ -134,7 +134,7 @@ status: complete
 **Implementation Details**:
 
 - Uses Svelte 5 runes pattern with $state and $derived
-- Implements dark mode with dark: prefixes
+- Uses semantic design tokens with automatic theme support
 - Follows ApiResponse pattern for endpoints
 
 **Code Example**:
@@ -234,13 +234,13 @@ Would you like me to:
 2. **Start with documentation** - often faster than code diving
 3. **Check thoughts/shared/research/** for existing related research
 4. **Focus on patterns over individual files** when possible
-5. **Reference the style guide** for UI/UX questions
+5. **Reference the Inkprint design system** for UI/UX questions
 
 ## Quick Reference for BuildOS Research
 
 | Research Area | Primary Sources                                              |
 | ------------- | ------------------------------------------------------------ |
-| UI Patterns   | `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md` |
+| UI Patterns   | `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` |
 | API Design    | `/apps/web/docs/technical/api/`                              |
 | Features      | `/apps/web/docs/features/[feature]/`                         |
 | Architecture  | `/docs/architecture/diagrams/`                               |

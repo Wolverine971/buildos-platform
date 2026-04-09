@@ -2,6 +2,19 @@
 
 import type { OpenRouterResponse } from './types';
 
+const HIDDEN_CONTENT_TYPES = new Set(['reasoning', 'analysis', 'thinking', 'system']);
+
+function isHiddenContentPartType(type: unknown): boolean {
+	return typeof type === 'string' && HIDDEN_CONTENT_TYPES.has(type.toLowerCase());
+}
+
+function normalizeVisibleTextChunk(text: string): string {
+	return text
+		.replace(/[\u3164\u200B\uFEFF]/g, '')
+		.replace(/\u00A0/g, ' ')
+		.replace(/\r\n?/g, '\n');
+}
+
 export function coerceContentToString(content: unknown): string | null {
 	if (content === undefined || content === null) {
 		return null;
@@ -30,8 +43,7 @@ export function coerceContentToString(content: unknown): string | null {
 				value?: string;
 				content?: string;
 			};
-			const partType = typeof partValue.type === 'string' ? partValue.type.toLowerCase() : '';
-			if (partType && ['reasoning', 'analysis', 'thinking', 'system'].includes(partType)) {
+			if (isHiddenContentPartType(partValue.type)) {
 				continue;
 			}
 
@@ -51,10 +63,14 @@ export function coerceContentToString(content: unknown): string | null {
 
 	if (content && typeof content === 'object') {
 		const partValue = content as {
+			type?: string;
 			text?: string | { value?: string };
 			value?: string;
 			content?: string;
 		};
+		if (isHiddenContentPartType(partValue.type)) {
+			return null;
+		}
 
 		if (typeof partValue.text === 'string') {
 			return partValue.text;
@@ -73,17 +89,34 @@ export function coerceContentToString(content: unknown): string | null {
 	return null;
 }
 
+export function sanitizeVisibleText(
+	text: string,
+	inThinkingBlock = false
+): { text: string; inThinkingBlock: boolean } {
+	return filterThinkingTokens(normalizeVisibleTextChunk(text), inThinkingBlock);
+}
+
+export function extractVisibleText(content: unknown): string | null {
+	const raw = coerceContentToString(content);
+	if (raw === null) {
+		return null;
+	}
+
+	return sanitizeVisibleText(raw).text;
+}
+
 export function extractTextFromChoice(choice?: OpenRouterResponse['choices'][0]): string | null {
 	if (!choice) {
 		return null;
 	}
 
-	const messageContent = coerceContentToString(choice.message?.content);
+	const messageContent = extractVisibleText(choice.message?.content);
 	if (messageContent !== null && messageContent.trim().length > 0) {
 		return messageContent;
 	}
 
-	const choiceText = typeof choice.text === 'string' ? choice.text : null;
+	const choiceText =
+		typeof choice.text === 'string' ? sanitizeVisibleText(choice.text).text : null;
 	if (choiceText !== null) {
 		return choiceText;
 	}
@@ -185,15 +218,8 @@ export function normalizeStreamingContent(
 		return { text: '', inThinkingBlock };
 	}
 
-	let combined = textParts.join('');
-
-	// Strip invisible padding and normalize whitespace without collapsing intentional spacing
-	combined = combined.replace(/[\u3164\u200B\uFEFF]/g, '');
-	combined = combined.replace(/\u00A0/g, ' ');
-	combined = combined.replace(/\r\n?/g, '\n');
-
-	const { text, inThinkingBlock: thinkingState } = filterThinkingTokens(
-		combined,
+	const { text, inThinkingBlock: thinkingState } = sanitizeVisibleText(
+		textParts.join(''),
 		inThinkingBlock
 	);
 

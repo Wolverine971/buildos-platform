@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/cron/billing-ops-monitoring/+server.ts
 import type { RequestHandler } from './$types';
+import { env } from '$env/dynamic/private';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { isAuthorizedCronRequest } from '$lib/utils/security';
@@ -73,7 +74,7 @@ function anomalyNotificationPayload(
 }
 
 export const GET: RequestHandler = async ({ request, url }) => {
-	if (!isAuthorizedCronRequest(request, PRIVATE_CRON_SECRET)) {
+	if (!isAuthorizedCronRequest(request, [env.CRON_SECRET, PRIVATE_CRON_SECRET])) {
 		return ApiResponse.unauthorized();
 	}
 

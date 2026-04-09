@@ -31,7 +31,8 @@ const CAPABILITY_MODEL = `Think in three layers:
 Choose the capability first. If that capability has a skill, fetch the skill before complex, stateful, or easy-to-get-wrong work. If it does not have a dedicated skill, go straight to targeted exact-op help. Inspect the exact op schema only when needed.`;
 const OVERVIEW_GUIDANCE = `For routine status questions about the workspace or a single project, prefer the overview retrieval path first instead of generic ontology discovery:
 - Workspace-wide status -> util.workspace.overview
-- Named or in-scope project status -> util.project.overview`;
+- Named or in-scope project status -> util.project.overview
+- If structured project context already includes a clear next_step_short or equivalent status summary, answer from that context instead of loading audit skills or repeating project graph reads.`;
 const PROJECT_CREATE_WORKFLOW = `You are already in project_create context. The default workflow here is:
 1) Prefer capabilities.project_creation, then load onto.project.create.skill before the first create call.
 2) Build the smallest valid onto.project.create payload.
@@ -39,9 +40,10 @@ const PROJECT_CREATE_WORKFLOW = `You are already in project_create context. The 
 4) Always include entities: [] and relationships: [] even when the project starts empty.
 5) If the user stated an outcome, add one goal. If the user listed concrete actions, add only those task entities. Add plans or milestones only when the user clearly described workstreams, phases, or date-driven structure.
 6) Extract concrete details into project.description and project.props when they were provided.
-7) If you include relationships, every relationship item must reference entities with temp_id and kind. Never use raw temp_id strings like ["g1", "t1"].
-8) Use clarifications[] only when critical information cannot be reasonably inferred, and still send the project skeleton.
-9) After creation succeeds, continue inside the created project instead of staying in abstract creation mode.`;
+7) For goal entities, use dedicated fields like target_date and measurement_criteria instead of burying them only in props. If the user gives a month/day without a year, infer the next plausible future date in the user's locale.
+8) If you include relationships, every relationship item must reference entities with temp_id and kind. Never use raw temp_id strings like ["g1", "t1"].
+9) Use clarifications[] only when critical information cannot be reasonably inferred, and still send the project skeleton.
+10) After creation succeeds, continue inside the created project instead of staying in abstract creation mode.`;
 const RESPONSE_PATTERN = `CRITICAL: Always respond to the user with text BEFORE making tool calls. The user sees your response as a live stream. If you go straight to tool calls without saying anything first, they see nothing while waiting. Every turn should start with a brief message describing what you'll do next. Examples:
 - "Got it, let me create that task and link it to the milestone."
 - "I'll update the goal description and check if there are related tasks that need adjusting."
@@ -49,7 +51,7 @@ const RESPONSE_PATTERN = `CRITICAL: Always respond to the user with text BEFORE 
 Keep the lead-in short (1-2 sentences), then make your tool calls.
 Never output scratchpad/self-correction text (for example: "No, fix args", partial JSON, or internal notes).
 After tool calls complete, summarize what happened and surface any follow-ups.`;
-const OPERATIONAL_GUIDELINES = `Use tools for data retrieval and mutations. Always pass valid tool arguments; do not guess. Reuse provided context and agent_state to avoid redundant tool calls. Never truncate, abbreviate, or elide IDs in tool arguments (no "...", prefixes, or short forms). For any *_id or entity_id argument, pass the full exact UUID returned by tools. When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.
+const OPERATIONAL_GUIDELINES = `Use tools for data retrieval and mutations. Always pass valid tool arguments; do not guess. Reuse provided context and agent_state to avoid redundant tool calls. When both structured context data and agent_state are present, treat the structured data block as authoritative for ontology entity IDs and fields; agent_state is only working-memory summary. Never truncate, abbreviate, or elide IDs in tool arguments (no "...", prefixes, or short forms). For any *_id or entity_id argument, pass the full exact UUID returned by tools. When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.
 Tool calls are executed exactly as emitted. Arguments must be strict JSON with concrete final values.
 Do not use tools speculatively or "just to try." If you do not yet know the exact op schema or the required IDs/fields, fetch tool_help or read/list/search first.
 Never use placeholders or symbolic tokens in arguments (for example "__TASK_ID_FROM_ABOVE__", "<task_id_uuid>", "REPLACE_ME", "TBD").
@@ -173,6 +175,19 @@ function compactAgentStateRecord(agentState: JsonRecord, hasStructuredData: bool
 		} else {
 			compacted.current_understanding = currentUnderstanding;
 		}
+	}
+
+	if (Array.isArray(compacted.items)) {
+		compacted.items = compacted.items.map((item) => {
+			if (!isJsonRecord(item)) return item;
+			const nextItem = { ...item };
+			delete nextItem.createdAt;
+			delete nextItem.updatedAt;
+			if (hasStructuredData) {
+				delete nextItem.id;
+			}
+			return nextItem;
+		});
 	}
 
 	return compacted;

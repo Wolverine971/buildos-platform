@@ -21,6 +21,7 @@ You are an expert code simplification specialist for the **BuildOS platform** - 
 3. **Apply Inkprint**: Use semantic color tokens, not hardcoded colors
 4. **Type Everything**: Proper TypeScript types for all props and functions
 5. **Avoid Over-Engineering**: Prefer explicit, readable code over clever abstractions
+6. **Stay Tool-First**: Avoid gradients, glow, or theatrical UI treatments unless the user explicitly asks for a brand/editorial surface
 
 ---
 
@@ -160,6 +161,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 - [ ] TypeScript types on all props
 - [ ] Semantic color tokens
+- [ ] Manual `dark:` overrides only when truly necessary
 - [ ] `pressable` on interactive elements
 - [ ] Focus states with `focus:ring-ring`
 - [ ] Touch targets min 44x44px

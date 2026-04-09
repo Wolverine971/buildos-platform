@@ -4,71 +4,133 @@ import type { RequestHandler } from './$types';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate.js';
 import { createGmailTransporter, getDefaultSender } from '$lib/utils/email-config';
 import { validateEmail } from '$lib/utils/email-validation';
-import { verifyRecaptcha } from '$lib/utils/recaptcha';
-import { env } from '$env/dynamic/private';
-import { dev } from '$app/environment';
 
 interface BetaSignupRequest {
 	email: string;
-	full_name: string;
+	full_name?: string;
 	job_title?: string;
 	company_name?: string;
-	why_interested: string;
-	productivity_tools: string[];
-	biggest_challenge: string;
+	why_interested?: string;
+	productivity_tools?: string[];
+	biggest_challenge?: string;
 	referral_source?: string;
-	wants_weekly_calls: boolean;
-	wants_community_access: boolean;
+	wants_weekly_calls?: boolean;
+	wants_community_access?: boolean;
 	user_timezone?: string;
 	honeypot?: string;
-	recaptcha_token?: string;
 }
 
-function validateSignupData(data: BetaSignupRequest): string | null {
-	// Check honeypot
+interface NormalizedBetaSignupRequest {
+	email: string;
+	full_name: string;
+	job_title: string | null;
+	company_name: string | null;
+	why_interested: string | null;
+	productivity_tools: string[];
+	biggest_challenge: string | null;
+	referral_source: string | null;
+	wants_weekly_calls: boolean;
+	wants_community_access: boolean;
+	user_timezone: string;
+}
+
+function normalizeSingleLine(value?: string | null): string | null {
+	if (!value) return null;
+
+	const normalized = value.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+	return normalized || null;
+}
+
+function normalizeMultiline(value?: string | null): string | null {
+	const normalized = value?.trim();
+	return normalized ? normalized : null;
+}
+
+function inferFullNameFromEmail(email: string): string {
+	const localPart = email.split('@')[0] ?? '';
+	const cleaned = localPart
+		.replace(/\+.*$/, '')
+		.replace(/[._-]+/g, ' ')
+		.replace(/\d+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+
+	if (cleaned.length < 2) {
+		return 'BuildOS Beta User';
+	}
+
+	return cleaned
+		.split(' ')
+		.slice(0, 3)
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(' ');
+}
+
+function escapeHtml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+function containsSpamPattern(text: string): boolean {
+	const linkMatches = text.match(/https?:\/\/[^\s]+/gi) ?? [];
+	if (linkMatches.length > 1) {
+		return true;
+	}
+
+	return /(.)\1{14,}/.test(text);
+}
+
+function normalizeSignupData(
+	data: BetaSignupRequest
+): { data?: NormalizedBetaSignupRequest; error?: string } {
 	if (data.honeypot && data.honeypot.trim() !== '') {
-		return 'Spam detected';
+		return { error: 'Spam detected' };
 	}
 
-	// Validate required fields
-	if (!data.email || !data.full_name || !data.why_interested || !data.biggest_challenge) {
-		return 'Please fill in all required fields';
+	if (!data.email?.trim()) {
+		return { error: 'Email is required' };
 	}
 
-	// Validate email format (enhanced security)
 	const emailValidation = validateEmail(data.email);
-	if (!emailValidation.success) {
-		return emailValidation.error || 'Please provide a valid email address';
+	if (!emailValidation.success || !emailValidation.email) {
+		return { error: emailValidation.error || 'Please provide a valid email address' };
 	}
 
-	// Validate field lengths
-	if (data.full_name.length < 2) {
-		return 'Please provide your full name';
+	const fullName = normalizeSingleLine(data.full_name) ?? inferFullNameFromEmail(emailValidation.email);
+	const whyInterested = normalizeMultiline(data.why_interested);
+	const biggestChallenge = normalizeMultiline(data.biggest_challenge);
+	const combinedNote = [whyInterested, biggestChallenge].filter(Boolean).join('\n');
+
+	if (combinedNote.length > 2000) {
+		return { error: 'Please keep your note under 2000 characters.' };
 	}
 
-	if (data.why_interested.length < 20) {
-		return "Please provide more detail about why you're interested (minimum 20 characters)";
+	if (combinedNote && containsSpamPattern(combinedNote)) {
+		return { error: 'Your note looks like spam. Please trim it down and try again.' };
 	}
 
-	if (data.biggest_challenge.length < 10) {
-		return 'Please describe your productivity challenge in more detail';
-	}
-
-	// Check for spam patterns
-	const spamPatterns = [
-		/https?:\/\/[^\s]+/gi,
-		/\b(bitcoin|crypto|investment|loan|money)\b/gi,
-		/(.)\1{10,}/g
-	];
-
-	const textToCheck = `${data.why_interested} ${data.biggest_challenge}`;
-	for (const pattern of spamPatterns) {
-		if (pattern.test(textToCheck)) {
-			return 'Your message appears to contain spam. Please revise and try again.';
+	return {
+		data: {
+			email: emailValidation.email,
+			full_name: fullName,
+			job_title: normalizeSingleLine(data.job_title),
+			company_name: normalizeSingleLine(data.company_name),
+			why_interested: whyInterested,
+			productivity_tools: (data.productivity_tools ?? [])
+				.map((tool) => normalizeSingleLine(tool))
+				.filter((tool): tool is string => Boolean(tool))
+				.slice(0, 20),
+			biggest_challenge: biggestChallenge,
+			referral_source: normalizeSingleLine(data.referral_source),
+			wants_weekly_calls: data.wants_weekly_calls ?? true,
+			wants_community_access: data.wants_community_access ?? true,
+			user_timezone: normalizeSingleLine(data.user_timezone) || 'America/New_York'
 		}
-	}
-
-	return null;
+	};
 }
 
 function getClientIP(request: Request): string {
@@ -102,12 +164,14 @@ async function sendBetaWelcomeEmail(signupData: any) {
 	try {
 		const transporter = createGmailTransporter();
 
-		// Get first name for personalization
-		const firstName = signupData.full_name.split(' ')[0];
+		const firstName = signupData.full_name.split(' ')[0] || 'there';
+		const safeFirstName = escapeHtml(firstName);
+		const safeEmail = escapeHtml(signupData.email);
+		const safeJobTitle = signupData.job_title ? escapeHtml(signupData.job_title) : null;
+		const safeCompanyName = signupData.company_name ? escapeHtml(signupData.company_name) : null;
 
-		// Create personalized email content
 		const emailContent = `
-			<h2>Welcome to BuildOS, ${firstName}! 🎉</h2>
+			<h2>Welcome to BuildOS, ${safeFirstName}! 🎉</h2>
 
 			<p>I'm <strong>so excited</strong> you signed up for the beta program! Your application just came through, and I wanted to reach out personally to say thanks.</p>
 
@@ -124,7 +188,7 @@ async function sendBetaWelcomeEmail(signupData: any) {
 
 			<p>We're creating BuildOS to help people get their life organized so they can spend more time on what actually matters (and maybe touch some grass while you're at it 😄).</p>
 
-			<p>On a serious note - I'm a builder, and I want to help other people build. The fact that you took the time to sign up and share your productivity challenges means the world to me. I can't wait to show you what we've been working on and get your feedback on how to make it even better.</p>
+			<p>On a serious note - I'm a builder, and I want to help other people build. The fact that you took the time to sign up means the world to me. I can't wait to show you what we've been working on and get your feedback on how to make it even better.</p>
 
 			${
 				signupData.wants_weekly_calls
@@ -153,20 +217,18 @@ async function sendBetaWelcomeEmail(signupData: any) {
 
 			<div style="font-size: 14px; color: #6F6E75;">
 				<p><strong>Your beta application details:</strong></p>
-				<p>📧 Email: ${signupData.email}<br>
-				${signupData.job_title ? `💼 Role: ${signupData.job_title}<br>` : ''}
-				${signupData.company_name ? `🏢 Company: ${signupData.company_name}<br>` : ''}
+				<p>📧 Email: ${safeEmail}<br>
+				${safeJobTitle ? `💼 Role: ${safeJobTitle}<br>` : ''}
+				${safeCompanyName ? `🏢 Company: ${safeCompanyName}<br>` : ''}
 				📅 Applied: ${new Date(signupData.created_at).toLocaleDateString()}</p>
 			</div>
 		`;
 
-		// Generate the email HTML using our template
 		const emailHTML = generateMinimalEmailHTML({
 			subject: `Welcome to BuildOS Beta, ${firstName}!`,
 			content: emailContent
 		});
 
-		// Send welcome email to the user
 		const mailOptions = {
 			from: `"DJ from BuildOS" <${defaultSender.email}>`,
 			to: signupData.email,
@@ -178,52 +240,77 @@ async function sendBetaWelcomeEmail(signupData: any) {
 		await transporter.sendMail(mailOptions);
 		console.log(`Welcome email sent to: ${signupData.email}`);
 
-		// Also notify admins about the new signup
 		await sendBetaSignupNotification(signupData);
 	} catch (error) {
 		console.error('Failed to send welcome email:', error);
-		// Don't throw error - we don't want email failures to break signup
 	}
 }
 
-// Admin notification for new beta signups
 async function sendBetaSignupNotification(signupData: any) {
 	try {
 		const defaultSender = getDefaultSender();
 		const transporter = createGmailTransporter();
+		const safeName = escapeHtml(signupData.full_name);
+		const safeEmail = escapeHtml(signupData.email);
+		const safeJobTitle = signupData.job_title ? escapeHtml(signupData.job_title) : null;
+		const safeCompanyName = signupData.company_name ? escapeHtml(signupData.company_name) : null;
+		const safeReferralSource = signupData.referral_source
+			? escapeHtml(signupData.referral_source)
+			: null;
+		const safeWhyInterested = signupData.why_interested
+			? escapeHtml(signupData.why_interested)
+			: null;
+		const safeBiggestChallenge = signupData.biggest_challenge
+			? escapeHtml(signupData.biggest_challenge)
+			: null;
+		const safeProductivityTools =
+			signupData.productivity_tools && signupData.productivity_tools.length > 0
+				? signupData.productivity_tools.map((tool: string) => escapeHtml(tool)).join(', ')
+				: null;
 
-		// Create admin notification content
 		const notificationContent = `
-			<h2>New Beta Signup: ${signupData.full_name}</h2>
+			<h2>New Beta Signup: ${safeName}</h2>
 
 			<div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">
 				<h3>Applicant Details</h3>
-				<p><strong>Name:</strong> ${signupData.full_name}</p>
-				<p><strong>Email:</strong> ${signupData.email}</p>
-				${signupData.job_title ? `<p><strong>Role:</strong> ${signupData.job_title}</p>` : ''}
-				${signupData.company_name ? `<p><strong>Company:</strong> ${signupData.company_name}</p>` : ''}
+				<p><strong>Name:</strong> ${safeName}</p>
+				<p><strong>Email:</strong> ${safeEmail}</p>
+				${safeJobTitle ? `<p><strong>Role:</strong> ${safeJobTitle}</p>` : ''}
+				${safeCompanyName ? `<p><strong>Company:</strong> ${safeCompanyName}</p>` : ''}
 				<p><strong>Signed up:</strong> ${new Date(signupData.created_at).toLocaleString()}</p>
 				<p><strong>Wants calls:</strong> ${signupData.wants_weekly_calls ? 'Yes' : 'No'}</p>
 				<p><strong>Wants community:</strong> ${signupData.wants_community_access ? 'Yes' : 'No'}</p>
-				${signupData.referral_source ? `<p><strong>Heard about us:</strong> ${signupData.referral_source}</p>` : ''}
-			</div>
-
-			<div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; padding: 16px; border-radius: 8px; margin: 16px 0;">
-				<h3>Why they're interested:</h3>
-				<p style="font-style: italic;">"${signupData.why_interested}"</p>
-			</div>
-
-			<div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; padding: 16px; border-radius: 8px; margin: 16px 0;">
-				<h3>Their biggest challenge:</h3>
-				<p style="font-style: italic;">"${signupData.biggest_challenge}"</p>
+				${safeReferralSource ? `<p><strong>Heard about us:</strong> ${safeReferralSource}</p>` : ''}
 			</div>
 
 			${
-				signupData.productivity_tools && signupData.productivity_tools.length > 0
+				safeWhyInterested
+					? `
+				<div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; padding: 16px; border-radius: 8px; margin: 16px 0;">
+					<h3>What they're hoping BuildOS helps with:</h3>
+					<p style="font-style: italic;">"${safeWhyInterested}"</p>
+				</div>
+			`
+					: ''
+			}
+
+			${
+				safeBiggestChallenge
+					? `
+				<div style="background-color: #FAF9F7; border: 1px solid #DCD9D1; padding: 16px; border-radius: 8px; margin: 16px 0;">
+					<h3>Their biggest challenge:</h3>
+					<p style="font-style: italic;">"${safeBiggestChallenge}"</p>
+				</div>
+			`
+					: ''
+			}
+
+			${
+				safeProductivityTools
 					? `
 				<div style="background-color: #FAF9F7; padding: 16px; border-radius: 8px; margin: 16px 0;">
 					<h3>Tools they currently use:</h3>
-					<p>${signupData.productivity_tools.join(', ')}</p>
+					<p>${safeProductivityTools}</p>
 				</div>
 			`
 					: ''
@@ -241,7 +328,6 @@ async function sendBetaSignupNotification(signupData: any) {
 			content: notificationContent
 		});
 
-		// Send to both admins
 		const adminEmails = ['dj@build-os.com'];
 
 		for (const adminEmail of adminEmails) {
@@ -263,45 +349,23 @@ async function sendBetaSignupNotification(signupData: any) {
 
 export const POST: RequestHandler = async ({ request, locals: { supabase } }) => {
 	try {
-		// Parse request body
 		const data: BetaSignupRequest = await request.json();
-
 		const clientIP = getClientIP(request);
-		const recaptchaEnabled = !!env.PRIVATE_RECAPTCHA_SECRET_KEY || dev;
-		if (recaptchaEnabled) {
-			// Verify reCAPTCHA token (if provided)
-			const isRecaptchaValid = await verifyRecaptcha(data.recaptcha_token || '', clientIP);
-			if (!isRecaptchaValid) {
-				return ApiResponse.badRequest(
-					'reCAPTCHA verification failed. Please try again or refresh the page.'
-				);
-			}
-		} else {
-			console.warn('[Beta Signup] reCAPTCHA not configured; skipping verification.');
+		const normalized = normalizeSignupData(data);
+		if (normalized.error || !normalized.data) {
+			return ApiResponse.badRequest(normalized.error || 'Invalid signup payload.');
 		}
+		const signupData = normalized.data;
 
-		// Validate input data
-		const validationError = validateSignupData(data);
-		if (validationError) {
-			return ApiResponse.badRequest(validationError);
-		}
-
-		// Normalize email (validation already passed, so this should always succeed)
-		const emailValidation = validateEmail(data.email);
-		const normalizedEmail = emailValidation.email!;
-
-		// Get client info
 		const userAgent = request.headers.get('user-agent') || 'unknown';
 
-		// Check if email already exists
 		const { data: existingSignup, error: checkError } = await supabase
 			.from('beta_signups')
 			.select('id, signup_status')
-			.eq('email', normalizedEmail)
+			.eq('email', signupData.email)
 			.single();
 
 		if (checkError && checkError.code !== 'PGRST116') {
-			// PGRST116 = no rows found
 			console.error('Error checking existing signup:', checkError);
 			return ApiResponse.internalError(
 				checkError,
@@ -318,21 +382,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 			);
 		}
 
-		// Insert beta signup (use normalized email)
 		const { data: insertData, error: insertError } = await supabase
 			.from('beta_signups')
 			.insert({
-				email: normalizedEmail,
-				full_name: data.full_name.trim(),
-				job_title: data.job_title?.trim() || null,
-				company_name: data.company_name?.trim() || null,
-				why_interested: data.why_interested.trim(),
-				productivity_tools: data.productivity_tools || [],
-				biggest_challenge: data.biggest_challenge.trim(),
-				referral_source: data.referral_source?.trim() || null,
-				wants_weekly_calls: data.wants_weekly_calls,
-				wants_community_access: data.wants_community_access,
-				user_timezone: data.user_timezone || 'America/New_York',
+				email: signupData.email,
+				full_name: signupData.full_name,
+				job_title: signupData.job_title,
+				company_name: signupData.company_name,
+				why_interested: signupData.why_interested,
+				productivity_tools: signupData.productivity_tools,
+				biggest_challenge: signupData.biggest_challenge,
+				referral_source: signupData.referral_source,
+				wants_weekly_calls: signupData.wants_weekly_calls,
+				wants_community_access: signupData.wants_community_access,
+				user_timezone: signupData.user_timezone,
 				ip_address: clientIP !== 'unknown' ? clientIP : null,
 				user_agent: userAgent
 			})
@@ -347,10 +410,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase } }) =>
 			);
 		}
 
-		// Log successful signup
-		console.log(`New beta signup: ${insertData.id} - ${data.email} from ${clientIP}`);
+		console.log(`New beta signup: ${insertData.id} - ${signupData.email} from ${clientIP}`);
 
-		// Send welcome email!
 		await sendBetaWelcomeEmail(insertData);
 
 		return ApiResponse.created(

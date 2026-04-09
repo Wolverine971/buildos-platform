@@ -26,7 +26,7 @@ I'll trace the root cause and implement a fix following BuildOS conventions.
 2. **Check obvious places first**:
     - Error logs in browser console or terminal
     - Recent commits in affected area: `git log --oneline -10 apps/[area]`
-    - Related TODO/FIXME comments: `grep -r "TODO\|FIXME" apps/[area] --include="*.ts" --include="*.svelte"`
+    - Related TODO/FIXME comments: `rg -n "TODO|FIXME" apps/[area] -g "*.ts" -g "*.svelte"`
 
 ### Phase 2: Targeted Investigation
 
@@ -34,11 +34,12 @@ Based on the bug type, check specific locations:
 
 **UI/Component Issues:**
 
-- Check `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md`
+- Check `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`
+- For user-facing surfaces, also check `/docs/marketing/brand/BUILDOS_BRAND_ARCHITECTURE.md`
 - Verify Svelte 5 runes usage ($state, $derived, $effect)
-- Check dark mode support with `dark:` prefixes
+- Verify semantic tokens and automatic theme support
 - Verify responsive design
-- Make sure there is proper margin and padding
+- Make sure spacing stays dense and purposeful
 
 **API/Backend Issues:**
 
@@ -132,7 +133,7 @@ Always verify:
 
 - ✅ Using `pnpm` (never npm)
 - ✅ Svelte 5 runes syntax ($state, $derived, $effect)
-- ✅ Dark mode support (dark: prefixes)
+- ✅ Semantic tokens with minimal manual `dark:` overrides
 - ✅ Mobile responsiveness
 - ✅ ApiResponse wrapper for API routes
 - ✅ Proper TypeScript types from @buildos/shared-types
@@ -141,7 +142,7 @@ Always verify:
 
 | Issue Type   | Check These First                                            |
 | ------------ | ------------------------------------------------------------ |
-| UI/Style     | `/apps/web/docs/technical/components/BUILDOS_STYLE_GUIDE.md` |
+| UI/Style     | `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` |
 | API          | `/apps/web/docs/technical/api/`                              |
 | Database     | `/packages/shared-types/src/database.schema.ts`              |
 | Queue        | `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`           |

@@ -51,6 +51,57 @@ function createGatewayTools(): ChatToolDefinition[] {
 	] as ChatToolDefinition[];
 }
 
+describe('streamFastChat final text sanitization', () => {
+	it('strips transcript-style scratchpad leakage from final assistant text', async () => {
+		const llm = {
+			streamText: vi.fn(async function* () {
+				yield {
+					type: 'text',
+					content: [
+						'Assistant: First, the response pattern: always respond before tool calls.',
+						'The input is the full history.',
+						'Looking back, the conversation flow:',
+						'Human: what is next for this?',
+						'The user\'s question: "what is next for this?"',
+						'The drafted response is good.',
+						'Next for the Podcast Launch project: define due dates and owners.'
+					].join('\n')
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const deltas: string[] = [];
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			projectId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			history: [],
+			message: 'what is next for this?',
+			tools: createGatewayTools(),
+			onDelta: async (delta) => {
+				deltas.push(delta);
+			}
+		});
+
+		expect(result.assistantText).toBe(
+			'Next for the Podcast Launch project: define due dates and owners.'
+		);
+		expect(result.finalAssistantText).toBe(
+			'Next for the Podcast Launch project: define due dates and owners.'
+		);
+		expect(result.finalAssistantText).not.toContain('Assistant:');
+		expect(result.finalAssistantText).not.toContain("The user's question");
+		expect(deltas).toEqual([
+			'Next for the Podcast Launch project: define due dates and owners.'
+		]);
+	});
+});
+
 describe('streamFastChat repetition guard', () => {
 	it('stops repeated identical gateway rounds with tool_repetition_limit', async () => {
 		let streamInvocation = 0;
@@ -403,8 +454,88 @@ describe('streamFastChat repetition guard', () => {
 			'Minimal valid create shape: tool_exec({ op: "onto.project.create"'
 		);
 		expect(repairMessage?.content).toContain('entities: [], relationships: []');
+		expect(repairMessage?.content).toContain(
+			'Never replace a prior complete create payload with args:{}.'
+		);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe('Need corrected project create args.');
+	});
+
+	it('allows a clarifying question after invalid gateway update args', async () => {
+		let streamInvocation = 0;
+		let secondPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield { type: 'text', content: "I'll update the task." };
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:task-update-empty',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments: JSON.stringify({
+									op: 'onto.task.update',
+									args: {}
+								})
+							}
+						}
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				secondPassMessages = params.messages as FastChatHistoryMessage[];
+				yield {
+					type: 'text',
+					content: 'What due dates do you want for these tasks?'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			projectId: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+			history: [],
+			message: 'Add due dates and owners.',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(2);
+		expect(toolExecutor).not.toHaveBeenCalled();
+		const repairMessage = [...(secondPassMessages ?? [])]
+			.reverse()
+			.find(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes('One or more tool calls failed validation.')
+			);
+		expect(repairMessage?.content).toContain(
+			'If the fix is fully determined from the current context, return only corrected tool calls with arguments.'
+		);
+		expect(repairMessage?.content).toContain(
+			'If a required user value is still missing, do not call a tool; ask one concise clarifying question.'
+		);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe('What due dates do you want for these tasks?');
 	});
 
 	it('compacts onto.project.create help payloads so the minimal example reaches the model', async () => {

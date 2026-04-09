@@ -10,6 +10,7 @@ import type { FastChatHistoryMessage, FastAgentStreamUsage } from './types';
 import { normalizeFastContextType } from './prompt-builder';
 import { buildMasterPrompt } from './master-prompt-builder';
 import { FASTCHAT_LIMITS } from './limits';
+import { pruneLocalPromptDumps, shouldWriteLocalPromptDump } from './prompt-dump-files';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import {
@@ -125,12 +126,21 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let promptDumpPath: string | null = null;
 	let finalAssistantText = '';
 
-	// --- PROMPT DUMP (dev only) ---
-	if (dev) {
+	// --- LOCAL PROMPT DUMP (dev/debug only, policy-gated) ---
+	if (
+		shouldWriteLocalPromptDump({
+			dev,
+			sessionId,
+			historyCount: history.length,
+			message
+		})
+	) {
 		try {
 			const dumpDir = join(process.cwd(), '.prompt-dumps');
+			pruneLocalPromptDumps({ dumpDir });
 			mkdirSync(dumpDir, { recursive: true });
-			const ts = new Date().toISOString().replace(/[:.]/g, '-');
+			const dumpTimestamp = new Date();
+			const ts = dumpTimestamp.toISOString().replace(/[:.]/g, '-');
 			const dumpPath = join(dumpDir, `fastchat-${ts}.txt`);
 			promptDumpPath = dumpPath;
 
@@ -139,7 +149,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const lines: string[] = [
 				`========================================`,
 				`FASTCHAT V2 PROMPT DUMP`,
-				`Timestamp: ${new Date().toISOString()}`,
+				`Timestamp: ${dumpTimestamp.toISOString()}`,
 				`Session:   ${sessionId}`,
 				`Context:   ${normalizedContext}`,
 				`Entity ID: ${entityId ?? 'none'}`,
@@ -1631,6 +1641,17 @@ const SCRATCHPAD_SENTENCE_PATTERNS = [
 	/^\s*guidelines\b/i,
 	/\bargs?\s+need\b/i,
 	/\bfetch\s+schema\b/i,
+	/\bthe user's question\b/i,
+	/\bthe last assistant message\b/i,
+	/\bthe drafted response\b/i,
+	/\bmy output should be\b/i,
+	/\bthe task is to generate the next response\b/i,
+	/\bthe prompt is set up\b/i,
+	/\bthe input is the full history\b/i,
+	/\blooking back,\s*the conversation flow\b/i,
+	/\brespond as if this is the continuation\b/i,
+	/\binternal thought\b/i,
+	/^\s*(?:human|assistant|system)\s*:/i,
 	/^\s*<[^>]+>\s*$/i,
 	/^\s*(?:onto|cal|util)\.[a-z0-9_]+(?:\.[a-z0-9_]+){1,6}\s*$/i
 ];
@@ -1699,6 +1720,7 @@ function buildProjectCreateNoExecutionRepairInstruction(): string {
 		'You already have enough guidance to continue. Do not call more project creation help paths unless a new schema detail is genuinely missing.',
 		'Your next response must do one of two things only: emit a valid tool_exec for onto.project.create with complete args, or ask one concise clarifying question if critical information is still missing.',
 		'Minimal valid create shape: tool_exec({ op: "onto.project.create", args: { project: { name: "Project Name", type_key: "project.business.initiative" }, entities: [], relationships: [] } }).',
+		'If a previous onto.project.create attempt already included a full payload, reuse that payload and patch only the failing fields. Never replace a prior complete create payload with args:{}.',
 		'If the user stated an outcome, add one goal. If they stated concrete actions, add only those tasks. Keep the payload minimal.'
 	].join(' ');
 }
@@ -1811,6 +1833,22 @@ function looksLikeScratchpadSentence(sentence: string): boolean {
 	}
 
 	if (SCRATCHPAD_SENTENCE_PATTERNS.some((pattern) => pattern.test(normalized))) {
+		return true;
+	}
+
+	if (
+		/\b(?:prompt|history|conversation)\b/i.test(normalized) &&
+		/\b(?:next turn|continuation|tool calls?|last assistant message|user's question)\b/i.test(
+			normalized
+		)
+	) {
+		return true;
+	}
+
+	if (
+		/\b(?:human|assistant|system)\b/i.test(normalized) &&
+		/\b(?:prompt|history|conversation|tool calls?)\b/i.test(normalized)
+	) {
 		return true;
 	}
 
@@ -2209,8 +2247,9 @@ function buildToolValidationRepairInstruction(
 		'Do not guess or fabricate IDs. Never use placeholders.',
 		'Never truncate, abbreviate, or elide IDs (no "...", prefixes, or short forms).',
 		'Tool calls are executed exactly as emitted. Return strict JSON arguments with concrete final values only.',
-		'Return only corrected tool calls with arguments. Do not include prose.',
-		'If a required value is missing, ask a clarifying question instead of calling a tool.'
+		'If exact IDs are already present in the current structured context, reuse them directly instead of re-listing or reloading the same entities.',
+		'If the fix is fully determined from the current context, return only corrected tool calls with arguments.',
+		'If a required user value is still missing, do not call a tool; ask one concise clarifying question.'
 	];
 	if (hasGatewayExecIssue) {
 		const exactHelpPaths = Array.from(
@@ -2289,6 +2328,9 @@ function buildToolValidationRepairInstruction(
 			);
 			lines.push(
 				'Keep project creation minimal. Add one goal only if the user stated the outcome, add tasks only for concrete actions mentioned, and use clarifications[] only when critical information cannot be inferred.'
+			);
+			lines.push(
+				'If a previous onto.project.create attempt already included a full payload, reuse that payload and patch only the failing fields. Never replace a prior complete create payload with args:{}.'
 			);
 			if (hasProjectCreateRelationshipIssue) {
 				lines.push(
@@ -2775,7 +2817,8 @@ function buildGatewayRequiredFieldRepairInstruction(
 		'For search ops, include args.query (for example onto.project.search, onto.task.search, onto.search).',
 		'If query is unclear, ask one concise clarifying question instead of repeating empty search args.',
 		'Before retrying any create/update/delete op, call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) and follow that schema exactly.',
-		'Resolve required IDs with list/search/get/tree tools before any write. Never retry the same write until you have the exact *_id.',
+		'If exact IDs are already present in the current structured context, reuse them directly. Otherwise resolve required IDs with list/search/get/tree tools before any write.',
+		'If the missing value is user input rather than an ID, ask one concise clarifying question instead of calling a tool.',
 		'For onto.<entity>.update, include args.<entity>_id and at least one concrete field to change.',
 		'For onto.<entity>.delete, include args.<entity>_id.',
 		'For cal.event.update, include args.event_id or args.onto_event_id plus at least one concrete field to change.',
@@ -2783,7 +2826,8 @@ function buildGatewayRequiredFieldRepairInstruction(
 			? [
 					'For onto.project.create, include args.project with project.name and project.type_key, plus args.entities and args.relationships arrays.',
 					'Minimal valid project creation shape: { project: { name, type_key }, entities: [], relationships: [] }.',
-					'If the user gave an outcome, add one goal. If the user gave explicit actions, add only those tasks. If critical detail is missing, include clarifications[] and still send the project skeleton.'
+					'If the user gave an outcome, add one goal. If the user gave explicit actions, add only those tasks. If critical detail is missing, include clarifications[] and still send the project skeleton.',
+					'If a previous onto.project.create attempt already included a full payload, reuse that payload and patch only the failing fields. Never replace a prior complete create payload with args:{}.'
 				]
 			: []),
 		'For document organization, get IDs from onto.document.tree.get result.unlinked/documents and pass exact args.document_id for delete/move.',
