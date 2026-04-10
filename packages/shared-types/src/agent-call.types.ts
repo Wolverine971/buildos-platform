@@ -5,7 +5,13 @@ export type UserBuildosAgentStatus = 'active' | 'paused' | 'revoked';
 export type ExternalAgentCallerStatus = 'trusted' | 'pending' | 'revoked';
 export type AgentCallSessionStatus = 'accepted' | 'rejected' | 'active' | 'ended';
 export type AgentCallDirection = 'inbound' | 'outbound';
-export type BuildosAgentGatewayToolName = 'tool_help' | 'tool_exec';
+export type BuildosAgentGatewayToolName =
+	| 'skill_load'
+	| 'tool_search'
+	| 'tool_schema'
+	| 'buildos_call'
+	| 'tool_help'
+	| 'tool_exec';
 export type BuildosAgentPublicToolName = BuildosAgentGatewayToolName;
 export type BuildosAgentScopeMode = 'read_only' | 'read_write';
 

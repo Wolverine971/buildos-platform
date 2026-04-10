@@ -24,57 +24,46 @@ describe('PromptGenerationService gateway tool instructions', () => {
 
 		expect(prompt).toContain('## BuildOS Capabilities');
 		expect(prompt).toContain('## Capability System');
-		expect(prompt).toContain('## Capability Catalog');
 		expect(prompt).toContain('## Skill Catalog');
 		expect(prompt).toContain('## Tool Discovery Mode');
 		expect(prompt).toContain('Think in three layers:');
 		expect(prompt).toContain('1. Capability = what BuildOS can do for the user');
 		expect(prompt).toContain(
-			'Planning and task structuring -> preferred skill: onto.task.skill, onto.plan.skill; direct discovery paths: onto.plan, onto.task, onto.goal, onto.milestone, onto.edge'
+			'project_creation: Project creation playbook for turning a user idea into the smallest valid BuildOS project payload with inferred name, type_key, props, and only the initial structure the user actually described.'
 		);
 		expect(prompt).toContain(
-			'util.people.skill: People context playbook for profile lookup, contact search and updates, candidate resolution, and safe handling of sensitive contact values.'
-		);
-		expect(prompt).toContain('Canonical ontology CRUD/search family');
-		expect(prompt).toContain('In tool_exec.op, use only canonical ops.');
-		expect(prompt).toContain('Never use legacy op strings in tool_exec.op');
-		expect(prompt).toContain(
-			'Use the capability catalog in the prompt to choose the right BuildOS domain first.'
+			'people_context: People context playbook for profile lookup, contact search and updates, candidate resolution, and safe handling of sensitive contact values.'
 		);
 		expect(prompt).toContain(
-			'If the chosen capability has a skill and the work is multi-step, stateful, or easy to get wrong, fetch that skill first.'
+			'Start with the current context, BuildOS capabilities, and skill metadata to choose the most likely path before searching.'
 		);
 		expect(prompt).toContain(
-			'Do not use tool_exec speculatively or "just to try." Only call it when you know the exact canonical op and have concrete args that satisfy that op schema.'
+			'If the workflow is multi-step or easy to get wrong, load the relevant skill first.'
 		);
 		expect(prompt).toContain(
-			'A missing required parameter means you are not ready to call that op yet.'
+			'If the skill or current context already identifies the exact op, skip tool_search and go straight to tool_schema or buildos_call.'
 		);
 		expect(prompt).toContain(
-			'If a capability has no dedicated skill, go straight to targeted exact-op help instead of hunting for a skill that does not exist.'
+			'Use tool_search only when the exact op is still unknown after context and skill guidance. Search for the operation you need, not workspace data.'
+		);
+		expect(prompt).toContain(
+			'Good examples: {"capability":"overview"}, {"entity":"task","kind":"write","query":"update existing task state"}, or {"group":"onto","entity":"document","kind":"write","query":"move document in tree"}.'
+		);
+		expect(prompt).toContain(
+			'Once you have an exact op, use tool_schema({ op: "<canonical op>" }) when the op is new in-turn or any write arguments are uncertain.'
+		);
+		expect(prompt).toContain(
+			'Execute only through buildos_call({ op: "<canonical op>", args: { ... } }) once the canonical op and concrete args are known.'
+		);
+		expect(prompt).toContain('Reuse exact IDs from context and prior tool results.');
+		expect(prompt).toContain(
+			'If required IDs or fields are still missing, resolve them with read/search ops or ask one concise question instead of guessing or sending incomplete writes.'
 		);
 		expect(prompt).not.toContain('Path heuristic:');
 		expect(prompt).not.toContain('Good skill entry points:');
-		expect(prompt).toContain(
-			'User profile context is NOT preloaded. If personalization is needed, call tool_help({ path: "util.profile" }) and then util.profile.overview.'
-		);
-		expect(prompt).toContain('Contact method values are sensitive and redacted by default.');
-		expect(prompt).toContain(
-			'For first-time or complex writes in a turn, call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) before tool_exec.'
-		);
-		expect(prompt).toContain(
-			'Gateway payload contract: tool_help({ path: "<path>", format?: "short|full", include_schemas?: boolean }) and tool_exec({ op: "<canonical op>", args: { ... } }).'
-		);
-		expect(prompt).toContain(
-			'CRUD ID contract: onto.<entity>.get|update|delete require args.<entity>_id as an exact UUID.'
-		);
-		expect(prompt).toContain(
-			'Example update task: tool_exec({ op: "onto.task.update", args: { task_id: "11111111-1111-4111-8111-111111111111", title: "Updated title" } }).'
-		);
-		expect(prompt).toContain(
-			'For any onto.*.search op (including onto.search), always pass args.query and include args.project_id when known.'
-		);
-		expect(prompt).toContain('Calendar ops are under cal.event.* and cal.project.*');
+		expect(prompt).not.toContain('Canonical ontology CRUD/search family');
+		expect(prompt).not.toContain('Gateway payload contract:');
+		expect(prompt).not.toContain('Example update task:');
 		expect(prompt).not.toContain('tool_batch');
 	});
 
@@ -87,7 +76,8 @@ describe('PromptGenerationService gateway tool instructions', () => {
 		});
 
 		expect(prompt).not.toContain('## Tool Discovery Mode');
-		expect(prompt).not.toContain('## Capability Catalog');
-		expect(prompt).not.toContain('Canonical ontology CRUD/search family');
+		expect(prompt).not.toContain(
+			'Use tool_search only when the exact op is still unknown after context and skill guidance.'
+		);
 	});
 });

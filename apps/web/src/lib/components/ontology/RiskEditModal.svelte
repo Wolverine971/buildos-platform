@@ -851,6 +851,7 @@
 										entityType="risk"
 										entityId={riskId}
 										autoLoad={true}
+										embedded={true}
 									/>
 								</div>
 							{/if}

@@ -44,7 +44,48 @@ function buildContext(overrides: Partial<ServiceContext> = {}): ServiceContext {
 }
 
 describe('ToolExecutionService gateway fallback', () => {
-	it('falls back onto.plan.get without plan_id to list_onto_plans', async () => {
+	it('falls back onto.plan.get without plan_id to search_onto_plans when a query can be inferred', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				plans: [{ id: PLAN_ID, name: 'Execution Plan' }]
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({ op: 'onto.plan.get', args: {} }),
+			buildContext({
+				conversationHistory: [
+					{
+						role: 'user',
+						content: 'Show me the execution plan'
+					} as any
+				]
+			}),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'search_onto_plans',
+			expect.objectContaining({
+				project_id: PROJECT_ID,
+				query: 'Show me the execution plan'
+			}),
+			expect.any(Object)
+		);
+		expect((result.data as any)?.op).toBe('onto.plan.get');
+		expect((result.data as any)?.result?._fallback?.reason).toBe('missing_required_id');
+		expect((result.data as any)?.meta?.executed_op).toBe('onto.plan.search');
+		expect((result.data as any)?.meta?.warnings).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining('executed onto.plan.search'),
+				expect.stringContaining('called without args.query; inferred query')
+			])
+		);
+	});
+
+	it('falls back onto.plan.get without plan_id to list_onto_plans when no query is available', async () => {
 		const toolExecutor = vi.fn().mockResolvedValue({
 			data: {
 				plans: [{ id: PLAN_ID, name: 'Execution Plan' }]
@@ -66,9 +107,44 @@ describe('ToolExecutionService gateway fallback', () => {
 			}),
 			expect.any(Object)
 		);
-		expect((result.data as any)?.op).toBe('onto.plan.get');
-		expect((result.data as any)?.result?._fallback?.reason).toBe('missing_required_id');
 		expect((result.data as any)?.meta?.executed_op).toBe('onto.plan.list');
+		expect((result.data as any)?.meta?.warnings).toEqual(
+			expect.arrayContaining([expect.stringContaining('executed onto.plan.list')])
+		);
+	});
+
+	it('falls back onto.project.get without project_id to search_onto_projects when a query can be inferred', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				projects: [{ id: PROJECT_ID, name: '9takes' }]
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({ op: 'onto.project.get', args: {} }),
+			buildContext({
+				contextType: 'global',
+				entityId: undefined,
+				conversationHistory: [
+					{
+						role: 'user',
+						content: 'Open the 9takes project'
+					} as any
+				]
+			}),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'search_onto_projects',
+			expect.objectContaining({
+				query: 'Open the 9takes project'
+			}),
+			expect.any(Object)
+		);
+		expect((result.data as any)?.meta?.executed_op).toBe('onto.project.search');
 	});
 
 	it('executes onto.plan.get directly when plan_id is provided', async () => {
@@ -498,7 +574,8 @@ describe('ToolExecutionService gateway fallback', () => {
 
 		expect(result.success).toBe(true);
 		expect((result.data as any)?.type).toBe('skill');
-		expect((result.data as any)?.path).toBe('cal.skill');
+		expect((result.data as any)?.id).toBe('calendar_management');
+		expect((result.data as any)?.legacy_paths).toContain('cal.skill');
 	});
 
 	it('sanitizes malformed op wrappers and still executes canonical op', async () => {

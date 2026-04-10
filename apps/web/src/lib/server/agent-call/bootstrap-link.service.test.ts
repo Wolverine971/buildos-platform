@@ -269,9 +269,14 @@ describe('AgentCallBootstrapLinkService', () => {
 			'Request read_only during call.dial unless you only need less access for this session.'
 		);
 		expect(document.openclaw.setup_steps).toContain(
-			'Use tool_help with path root or a narrow namespace like onto.task to discover allowed ops.'
+			'Use tool_search to discover candidate ops when the exact op is not known.'
 		);
-		expect(document.openclaw.follow_up_prompt).toContain('tool_help for root');
+		expect(document.openclaw.setup_steps).toContain(
+			'Use tool_schema with the exact op to load required args and examples before first-time or uncertain writes.'
+		);
+		expect(document.openclaw.follow_up_prompt).toContain(
+			'use tool_search to discover candidate ops'
+		);
 		expect(serializeBootstrapDocumentAsText(document)).toContain(
 			'BuildOS OpenClaw Bootstrap Instructions'
 		);

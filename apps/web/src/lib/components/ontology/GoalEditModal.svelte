@@ -913,6 +913,7 @@
 										entityType="goal"
 										entityId={goalId}
 										autoLoad={true}
+										embedded={true}
 									/>
 								</div>
 							{/if}

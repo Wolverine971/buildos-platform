@@ -8,6 +8,7 @@ import {
 	listCapabilityDirectoryItems
 } from './capability-catalog';
 import { getSkillByPath, listAllSkills, listSkillsForDirectory } from '../skills/registry';
+import { buildSkillLoadPayload } from '../skills/skill-load';
 import type { SkillDefinition, SkillHelpPayload } from '../skills/types';
 
 export type ToolHelpFormat = 'short' | 'full';
@@ -66,7 +67,7 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 			groups: ['capabilities', 'skills', 'workflow', 'onto', 'util', 'cal'],
 			capabilities: listCapabilityDirectoryItems('available'),
 			skills: listAllSkills().map((skill) => ({
-				name: skill.path,
+				name: skill.id,
 				type: 'skill' as const,
 				summary: skill.summary
 			})),
@@ -247,7 +248,7 @@ function buildSkillsDirectoryHelp(
 ): Record<string, any> {
 	const items = listAllSkills()
 		.map((skill) => ({
-			name: skill.path,
+			name: skill.id,
 			type: 'skill' as const,
 			summary: skill.summary
 		}))
@@ -750,31 +751,7 @@ function buildSkillHelp(
 	format: ToolHelpFormat,
 	includeExamples: boolean
 ): SkillHelpPayload {
-	const payload: SkillHelpPayload = {
-		type: 'skill',
-		path: skill.path,
-		name: skill.name,
-		format,
-		version,
-		summary: skill.summary,
-		when_to_use: skill.whenToUse,
-		workflow: skill.workflow.map((step, index) => `${index + 1}) ${step}`),
-		related_ops: skill.relatedOps
-	};
-
-	if (skill.guardrails?.length) {
-		payload.guardrails = skill.guardrails;
-	}
-
-	if (includeExamples && skill.examples?.length) {
-		payload.examples = skill.examples;
-	}
-
-	if (format === 'full' && skill.notes?.length) {
-		payload.notes = skill.notes;
-	}
-
-	return payload;
+	return buildSkillLoadPayload(skill, version, format, includeExamples);
 }
 
 function buildPlaceholderValue(name: string, def: JsonSchemaProperty): unknown {

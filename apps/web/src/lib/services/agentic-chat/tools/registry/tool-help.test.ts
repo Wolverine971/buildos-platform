@@ -21,10 +21,10 @@ describe('getToolHelp', () => {
 			'capabilities.workflow_audit'
 		);
 		expect(Array.isArray(help.skills)).toBe(true);
-		expect(help.skills.map((item: any) => item.name)).toContain('cal.skill');
-		expect(help.skills.map((item: any) => item.name)).toContain('onto.project.create.skill');
-		expect(help.skills.map((item: any) => item.name)).toContain('onto.task.skill');
-		expect(help.skills.map((item: any) => item.name)).toContain('util.people.skill');
+		expect(help.skills.map((item: any) => item.name)).toContain('calendar_management');
+		expect(help.skills.map((item: any) => item.name)).toContain('project_creation');
+		expect(help.skills.map((item: any) => item.name)).toContain('task_management');
+		expect(help.skills.map((item: any) => item.name)).toContain('people_context');
 		expect(help.command_contract?.tool_exec?.required).toEqual(['op', 'args']);
 		expect(Array.isArray(help.workflow)).toBe(true);
 		expect(help.workflow.join(' ')).toContain('capabilities.overview');
@@ -77,7 +77,7 @@ describe('getToolHelp', () => {
 
 		expect(help.type).toBe('capability');
 		expect(help.path).toBe('capabilities.project_creation');
-		expect(help.skill_entrypoints).toContain('onto.project.create.skill');
+		expect(help.skill_entrypoints).toContain('project_creation');
 		expect(help.direct_paths).toContain('onto.project.create');
 		expect(help.notes.join(' ')).toContain('project_create context');
 	});
@@ -90,7 +90,7 @@ describe('getToolHelp', () => {
 
 		expect(help.type).toBe('capability');
 		expect(help.path).toBe('capabilities.calendar');
-		expect(help.skill_entrypoints).toContain('cal.skill');
+		expect(help.skill_entrypoints).toContain('calendar_management');
 		expect(help.direct_paths).toContain('cal.event');
 		expect(help.what_you_can_do.join(' ')).toContain('Create, update, and delete events');
 	});
@@ -103,7 +103,7 @@ describe('getToolHelp', () => {
 
 		expect(help.type).toBe('capability');
 		expect(help.path).toBe('capabilities.workflow_audit');
-		expect(help.skill_entrypoints).toContain('workflow.audit.skill');
+		expect(help.skill_entrypoints).toContain('workflow_audit');
 		expect(help.direct_paths).toContain('onto.project.graph');
 	});
 
@@ -113,14 +113,14 @@ describe('getToolHelp', () => {
 		expect(help.type).toBe('directory');
 		expect(help.path).toBe('skills');
 		expect(Array.isArray(help.items)).toBe(true);
-		expect(help.items.map((item: any) => item.name)).toContain('cal.skill');
-		expect(help.items.map((item: any) => item.name)).toContain('onto.project.create.skill');
-		expect(help.items.map((item: any) => item.name)).toContain('onto.task.skill');
-		expect(help.items.map((item: any) => item.name)).toContain('onto.document.skill');
-		expect(help.items.map((item: any) => item.name)).toContain('onto.plan.skill');
-		expect(help.items.map((item: any) => item.name)).toContain('util.people.skill');
-		expect(help.items.map((item: any) => item.name)).toContain('workflow.audit.skill');
-		expect(help.items.map((item: any) => item.name)).toContain('workflow.forecast.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('calendar_management');
+		expect(help.items.map((item: any) => item.name)).toContain('project_creation');
+		expect(help.items.map((item: any) => item.name)).toContain('task_management');
+		expect(help.items.map((item: any) => item.name)).toContain('document_workspace');
+		expect(help.items.map((item: any) => item.name)).toContain('plan_management');
+		expect(help.items.map((item: any) => item.name)).toContain('people_context');
+		expect(help.items.map((item: any) => item.name)).toContain('workflow_audit');
+		expect(help.items.map((item: any) => item.name)).toContain('workflow_forecast');
 	});
 
 	it('returns task skill playbook for onto.task.skill', () => {
@@ -130,7 +130,7 @@ describe('getToolHelp', () => {
 		});
 
 		expect(help.type).toBe('skill');
-		expect(help.path).toBe('onto.task.skill');
+		expect(help.id).toBe('task_management');
 		expect(help.related_ops).toContain('onto.task.create');
 		expect(help.related_ops).toContain('onto.task.update');
 		expect(help.notes.join(' ')).toContain('future human work');
@@ -144,7 +144,7 @@ describe('getToolHelp', () => {
 		});
 
 		expect(help.type).toBe('skill');
-		expect(help.path).toBe('onto.project.create.skill');
+		expect(help.id).toBe('project_creation');
 		expect(help.related_ops).toContain('onto.project.create');
 		expect(help.workflow.join(' ')).toContain('entities: []');
 		expect(help.workflow.join(' ')).toContain('relationships: []');
@@ -271,7 +271,7 @@ describe('getToolHelp', () => {
 		});
 
 		expect(help.type).toBe('skill');
-		expect(help.path).toBe('cal.skill');
+		expect(help.id).toBe('calendar_management');
 		expect(Array.isArray(help.when_to_use)).toBe(true);
 		expect(Array.isArray(help.workflow)).toBe(true);
 		expect(Array.isArray(help.related_ops)).toBe(true);
@@ -294,7 +294,7 @@ describe('getToolHelp', () => {
 		expect(help.type).toBe('directory');
 		expect(help.path).toBe('cal');
 		expect(Array.isArray(help.items)).toBe(true);
-		expect(help.items.map((item: any) => item.name)).toContain('cal.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('calendar_management');
 	});
 
 	it('returns document skill playbook for onto.document.skill', () => {
@@ -304,7 +304,7 @@ describe('getToolHelp', () => {
 		});
 
 		expect(help.type).toBe('skill');
-		expect(help.path).toBe('onto.document.skill');
+		expect(help.id).toBe('document_workspace');
 		expect(Array.isArray(help.when_to_use)).toBe(true);
 		expect(help.when_to_use.join(' ')).toContain('task workspace');
 		expect(Array.isArray(help.related_ops)).toBe(true);
@@ -324,7 +324,7 @@ describe('getToolHelp', () => {
 		expect(help.type).toBe('directory');
 		expect(help.path).toBe('onto.document');
 		expect(Array.isArray(help.items)).toBe(true);
-		expect(help.items.map((item: any) => item.name)).toContain('onto.document.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('document_workspace');
 		expect(help.items.map((item: any) => item.name)).toContain('onto.document.create');
 	});
 
@@ -335,7 +335,7 @@ describe('getToolHelp', () => {
 		});
 
 		expect(help.type).toBe('skill');
-		expect(help.path).toBe('onto.plan.skill');
+		expect(help.id).toBe('plan_management');
 		expect(Array.isArray(help.related_ops)).toBe(true);
 		expect(help.related_ops).toContain('onto.plan.create');
 		expect(help.related_ops).toContain('onto.task.create');
@@ -353,7 +353,7 @@ describe('getToolHelp', () => {
 		expect(help.type).toBe('directory');
 		expect(help.path).toBe('onto.plan');
 		expect(Array.isArray(help.items)).toBe(true);
-		expect(help.items.map((item: any) => item.name)).toContain('onto.plan.skill');
+		expect(help.items.map((item: any) => item.name)).toContain('plan_management');
 		expect(help.items.map((item: any) => item.name)).toContain('onto.plan.create');
 	});
 
@@ -364,7 +364,7 @@ describe('getToolHelp', () => {
 		});
 
 		expect(help.type).toBe('skill');
-		expect(help.path).toBe('util.people.skill');
+		expect(help.id).toBe('people_context');
 		expect(help.related_ops).toContain('util.contact.search');
 		expect(help.related_ops).toContain('util.profile.overview');
 		expect(help.guardrails.join(' ')).toContain('redacted');
@@ -432,9 +432,9 @@ describe('getToolHelp', () => {
 		});
 
 		expect(utilHelp.type).toBe('directory');
-		expect(utilHelp.items.map((item: any) => item.name)).toContain('util.people.skill');
+		expect(utilHelp.items.map((item: any) => item.name)).toContain('people_context');
 		expect(aliasHelp.type).toBe('skill');
-		expect(aliasHelp.path).toBe('util.people.skill');
+		expect(aliasHelp.id).toBe('people_context');
 	});
 
 	it('lists workflow skill namespace and forecast playbook', () => {
@@ -449,12 +449,10 @@ describe('getToolHelp', () => {
 
 		expect(workflowHelp.type).toBe('directory');
 		expect(workflowHelp.path).toBe('workflow');
-		expect(workflowHelp.items.map((item: any) => item.name)).toContain('workflow.audit.skill');
-		expect(workflowHelp.items.map((item: any) => item.name)).toContain(
-			'workflow.forecast.skill'
-		);
+		expect(workflowHelp.items.map((item: any) => item.name)).toContain('workflow_audit');
+		expect(workflowHelp.items.map((item: any) => item.name)).toContain('workflow_forecast');
 		expect(forecastHelp.type).toBe('skill');
-		expect(forecastHelp.path).toBe('workflow.forecast.skill');
+		expect(forecastHelp.id).toBe('workflow_forecast');
 		expect(forecastHelp.related_ops).toContain('cal.event.list');
 		expect(forecastHelp.guardrails.join(' ')).toContain('Do not invent dates');
 	});

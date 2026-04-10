@@ -20,10 +20,12 @@ import {
 	getToolRegistry,
 	type RegistryOp
 } from '$lib/services/agentic-chat/tools/registry/tool-registry';
+import { searchToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-search';
 import {
 	normalizeGatewayHelpPath,
 	normalizeGatewayOpName
 } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import { loadSkill } from '$lib/services/agentic-chat/tools/skills/skill-load';
 import {
 	defaultAllowedOpsForMode,
 	isSupportedOp,
@@ -78,6 +80,10 @@ type ExternalToolHelpOptions = {
 };
 
 const EXTERNAL_GATEWAY_TOOL_NAMES = new Set<BuildosAgentGatewayToolName>([
+	'skill_load',
+	'tool_search',
+	'tool_schema',
+	'buildos_call',
 	'tool_help',
 	'tool_exec'
 ]);
@@ -1431,7 +1437,7 @@ function buildExternalOpHelp(
 		op: entry.op,
 		kind: entry.kind,
 		summary: summarizeDescription(entry.description),
-		usage: `tool_exec({ op: "${entry.op}", args: { ... } })`,
+		usage: `buildos_call({ op: "${entry.op}", args: { ... } })`,
 		required_scope_mode: entry.required_scope_mode,
 		required_args: required,
 		args
@@ -1442,7 +1448,7 @@ function buildExternalOpHelp(
 	}
 
 	if (includeExamples) {
-		help.example_tool_exec = {
+		help.example_buildos_call = {
 			op: entry.op,
 			args: minimalArgs
 		};
@@ -1453,6 +1459,39 @@ function buildExternalOpHelp(
 	}
 
 	return help;
+}
+
+function rewriteGatewayPayloadForBuildosCall(value: unknown): unknown {
+	if (typeof value === 'string') {
+		return value.replace(/\btool_exec\b/g, 'buildos_call');
+	}
+
+	if (Array.isArray(value)) {
+		return value.map((entry) => rewriteGatewayPayloadForBuildosCall(entry));
+	}
+
+	if (!value || typeof value !== 'object') {
+		return value;
+	}
+
+	const record = value as Record<string, unknown>;
+	const output: Record<string, unknown> = {};
+	for (const [key, entry] of Object.entries(record)) {
+		const nextKey =
+			key === 'tool_exec'
+				? 'buildos_call'
+				: key === 'example_tool_exec'
+					? 'example_buildos_call'
+					: key;
+		output[nextKey] = rewriteGatewayPayloadForBuildosCall(entry);
+	}
+	return output;
+}
+
+function rewriteGatewayRecordPayloadForBuildosCall(
+	value: Record<string, unknown>
+): Record<string, unknown> {
+	return rewriteGatewayPayloadForBuildosCall(value) as Record<string, unknown>;
 }
 
 function listDirectoryChildren(
@@ -1514,11 +1553,19 @@ function buildRootHelp(
 		version: registry.version,
 		groups: ['onto'],
 		command_contract: {
-			tool_help: {
-				required: ['path'],
-				shape: { path: '<help path>', format: 'short|full', include_schemas: false }
+			skill_load: {
+				required: ['skill'],
+				shape: { skill: '<skill_id>', format: 'short|full', include_examples: true }
 			},
-			tool_exec: {
+			tool_search: {
+				required: [],
+				shape: { query: '<what you need>', group: 'onto|util|cal', kind: 'read|write' }
+			},
+			tool_schema: {
+				required: ['op'],
+				shape: { op: '<canonical op>', include_schema: true, include_examples: true }
+			},
+			buildos_call: {
 				required: ['op', 'args'],
 				shape: {
 					op: '<canonical op>',
@@ -1527,30 +1574,30 @@ function buildRootHelp(
 					}
 				},
 				critical_rules: [
-					'Use tool_help before first-time or uncertain operations.',
-					'Use canonical op names from tool_help.',
+					'Use tool_search when the exact op is unknown.',
+					'Use tool_schema before first-time or uncertain writes.',
 					'Discover exact IDs with list/search ops before get/update flows.',
-					'If tool_exec returns FORBIDDEN, inspect the granted scope mode and allowed ops before retrying.'
+					'If buildos_call returns FORBIDDEN, inspect the granted scope mode and allowed ops before retrying.'
 				]
 			}
 		},
 		items: listDirectoryChildren('root', registry.ops),
 		workflow: [
-			'1) Start with tool_help("root") or a narrow namespace like "onto.task".',
-			'2) If an exact op is needed, inspect it with tool_help({ path: "<exact op>", format: "full", include_schemas: true }).',
-			'3) Execute with tool_exec({ op: "<exact op>", args: { ... } }).'
+			'1) Use tool_search to discover candidate ops when the exact op is not already known.',
+			'2) Inspect the chosen exact op with tool_schema({ op: "<exact op>", include_schema: true }).',
+			'3) Execute with buildos_call({ op: "<exact op>", args: { ... } }).'
 		]
 	};
 
 	if (includeExamples) {
 		const examples: Array<Record<string, unknown>> = [
 			{
-				description: 'Inspect task list operations',
-				tool_help: { path: 'onto.task', format: 'short' }
+				description: 'Find task list operations',
+				tool_search: { query: 'list tasks for a project', group: 'onto', kind: 'read' }
 			},
 			{
 				description: 'List tasks for a project',
-				tool_exec: {
+				buildos_call: {
 					op: 'onto.task.list',
 					args: { project_id: '<project_id_uuid>', limit: 20 }
 				}
@@ -1560,7 +1607,11 @@ function buildRootHelp(
 		if (Object.values(registry.ops).some((entry) => entry.kind === 'write')) {
 			examples.push({
 				description: 'Inspect a write op before mutating tasks',
-				tool_help: { path: 'onto.task.update', format: 'full', include_schemas: true }
+				tool_schema: {
+					op: 'onto.task.update',
+					include_schema: true,
+					include_examples: true
+				}
 			});
 		}
 
@@ -1933,6 +1984,102 @@ export async function executeBuildosAgentGatewayTool(params: {
 	arguments?: Record<string, unknown>;
 }): Promise<Record<string, unknown>> {
 	switch (params.toolName) {
+		case 'skill_load':
+			return loadSkill(
+				typeof params.arguments?.skill === 'string'
+					? params.arguments.skill
+					: typeof params.arguments?.id === 'string'
+						? params.arguments.id
+						: typeof params.arguments?.path === 'string'
+							? params.arguments.path
+							: '',
+				{
+					format: params.arguments?.format === 'full' ? 'full' : 'short',
+					include_examples: params.arguments?.include_examples !== false
+				}
+			) as Record<string, unknown>;
+		case 'tool_search': {
+			const registry = buildExternalGatewayRegistry(params.scope);
+			const payload = searchToolRegistry({
+				query:
+					typeof params.arguments?.query === 'string'
+						? params.arguments.query
+						: undefined,
+				capability:
+					typeof params.arguments?.capability === 'string'
+						? params.arguments.capability
+						: undefined,
+				group:
+					params.arguments?.group === 'onto' ||
+					params.arguments?.group === 'util' ||
+					params.arguments?.group === 'cal'
+						? (params.arguments.group as 'onto' | 'util' | 'cal')
+						: undefined,
+				kind:
+					params.arguments?.kind === 'read' || params.arguments?.kind === 'write'
+						? (params.arguments.kind as 'read' | 'write')
+						: undefined,
+				entity:
+					typeof params.arguments?.entity === 'string'
+						? params.arguments.entity
+						: undefined,
+				limit:
+					typeof params.arguments?.limit === 'number' ? params.arguments.limit : undefined
+			}) as Record<string, unknown>;
+			const matches = Array.isArray(payload.matches)
+				? payload.matches.filter((match) => {
+						const op =
+							typeof (match as { op?: unknown }).op === 'string'
+								? (match as { op: string }).op
+								: '';
+						return Boolean(op) && Boolean(registry.ops[op]);
+					})
+				: [];
+			return {
+				...payload,
+				total_matches: matches.length,
+				matches
+			};
+		}
+		case 'tool_schema': {
+			const requestedOp =
+				typeof params.arguments?.op === 'string'
+					? params.arguments.op
+					: typeof params.arguments?.path === 'string'
+						? params.arguments.path
+						: '';
+			const canonicalOp = normalizeGatewayOpName(requestedOp);
+			const registry = buildExternalGatewayRegistry(params.scope);
+			const entry = registry.ops[canonicalOp];
+			if (!entry) {
+				return buildExecError(
+					requestedOp,
+					isSupportedOp(canonicalOp) ? 'FORBIDDEN' : 'NOT_FOUND',
+					isSupportedOp(canonicalOp)
+						? `Op ${canonicalOp} is outside the granted BuildOS call scope`
+						: `Unknown op: ${requestedOp}`,
+					isSupportedOp(canonicalOp) ? canonicalOp : 'root'
+				);
+			}
+			return {
+				...rewriteGatewayRecordPayloadForBuildosCall(
+					buildExternalOpHelp(
+						entry,
+						'full',
+						params.arguments?.include_schema !== false,
+						params.arguments?.include_examples !== false
+					)
+				),
+				type: 'tool_schema'
+			} as Record<string, unknown>;
+		}
+		case 'buildos_call':
+			return executeGatewayOp({
+				...params,
+				arguments: {
+					...(params.arguments ?? {})
+				}
+			});
 		case 'tool_help':
 			return getExternalToolHelp(
 				params.scope,

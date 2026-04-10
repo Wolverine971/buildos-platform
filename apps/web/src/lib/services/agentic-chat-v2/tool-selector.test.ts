@@ -20,7 +20,7 @@ describe('selectFastChatTools', () => {
 		const tools = selectFastChatTools({ contextType: 'global' });
 		const names = tools.map((tool) => tool.function?.name);
 
-		expect(names).toEqual(['tool_help', 'tool_exec']);
+		expect(names).toEqual(['skill_load', 'tool_search', 'tool_schema', 'buildos_call']);
 	});
 
 	it('returns legacy tools when gateway flag is disabled', () => {
@@ -30,8 +30,8 @@ describe('selectFastChatTools', () => {
 		const names = tools.map((tool) => tool.function?.name).filter(Boolean);
 
 		expect(names.length).toBeGreaterThan(3);
-		expect(names).not.toContain('tool_help');
-		expect(names).not.toContain('tool_exec');
+		expect(names).not.toContain('skill_load');
+		expect(names).not.toContain('buildos_call');
 		expect(names).toContain('web_search');
 		expect(names).toContain('web_visit');
 		expect(names).toContain('list_calendar_events');

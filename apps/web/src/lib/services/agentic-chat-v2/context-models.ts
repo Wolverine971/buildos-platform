@@ -154,6 +154,14 @@ export type LightRecentActivity = {
 	updated_at: string;
 };
 
+export type GlobalContextProjectBundle = {
+	project: LightProject;
+	recent_activity: LightRecentActivity[];
+	goals: LightGoal[];
+	milestones: LightMilestone[];
+	plans: LightPlan[];
+};
+
 export type LinkedEdge = {
 	src_kind: string;
 	src_id: string;
@@ -163,17 +171,17 @@ export type LinkedEdge = {
 };
 
 export type GlobalContextData = {
-	projects: LightProject[];
-	project_recent_activity: Record<string, LightRecentActivity[]>;
-	project_goals: Record<string, LightGoal[]>;
-	project_milestones: Record<string, LightMilestone[]>;
-	project_plans: Record<string, LightPlan[]>;
+	projects: GlobalContextProjectBundle[];
 	context_meta?: {
 		generated_at: string;
 		source: 'rpc' | 'fallback';
 		cache_age_seconds?: number;
 		project_count: number;
+		projects_returned: number;
+		project_limit: number | null;
 		includes_doc_structure: boolean;
+		recent_activity_window_days: number;
+		recent_activity_max_lookback_days: number;
 		entity_limits_per_project: {
 			recent_activity: number | null;
 			goals: number | null;

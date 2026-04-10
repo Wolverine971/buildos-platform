@@ -8,7 +8,7 @@ export interface CapabilityDefinition {
 	status: CapabilityStatus;
 	summary: string;
 	whatYouCanDo: string[];
-	skillPaths: string[];
+	skillIds: string[];
 	directPaths: string[];
 	notes?: string[];
 }
@@ -45,7 +45,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Check what is blocked, overdue, or due soon',
 			'Get a concise named-project snapshot with recent activity and upcoming events'
 		],
-		skillPaths: [],
+		skillIds: [],
 		directPaths: ['util.workspace.overview', 'util.project.overview'],
 		notes: [
 			'Use this first for routine status questions like "what is happening with my projects?" or "what is going on with 9takes?" before generic search/list/project-graph discovery.'
@@ -63,7 +63,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Infer project name, type_key, and initial props from the user message',
 			'Start minimal and include only explicit goals, tasks, plans, or milestones when warranted'
 		],
-		skillPaths: ['onto.project.create.skill'],
+		skillIds: ['project_creation'],
 		directPaths: ['onto.project.create'],
 		notes: [
 			'In project_create context, prefer this capability first. The create payload must include project, entities, and relationships, even when the entity arrays are empty.'
@@ -81,7 +81,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Inspect project graphs and linked relationships',
 			'Search across a project or across the portfolio'
 		],
-		skillPaths: [],
+		skillIds: [],
 		directPaths: [
 			'onto.project',
 			'onto.goal',
@@ -108,7 +108,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Break a plan into tasks and keep them aligned',
 			'Refine stale plans and reconnect execution details'
 		],
-		skillPaths: ['onto.task.skill', 'onto.plan.skill'],
+		skillIds: ['task_management', 'plan_management'],
 		directPaths: ['onto.plan', 'onto.task', 'onto.goal', 'onto.milestone', 'onto.edge']
 	},
 	{
@@ -123,7 +123,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Reorganize the document tree and link unlinked docs',
 			'Attach documentation to task workspaces'
 		],
-		skillPaths: ['onto.document.skill'],
+		skillIds: ['document_workspace'],
 		directPaths: ['onto.document', 'onto.document.tree', 'onto.document.path', 'onto.task.docs']
 	},
 	{
@@ -138,7 +138,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Create, update, and delete events',
 			'Inspect or set project calendar mappings'
 		],
-		skillPaths: ['cal.skill'],
+		skillIds: ['calendar_management'],
 		directPaths: ['cal.event', 'cal.project']
 	},
 	{
@@ -153,7 +153,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Search or update contacts',
 			'Resolve contact candidates and link known people'
 		],
-		skillPaths: ['util.people.skill'],
+		skillIds: ['people_context'],
 		directPaths: ['util.profile', 'util.contact'],
 		notes: [
 			'Use util.people.skill when contact resolution, privacy handling, or linking judgment matters.'
@@ -171,7 +171,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Identify blockers, stale work, or missing planning layers',
 			'Recommend next cleanup or correction actions'
 		],
-		skillPaths: ['workflow.audit.skill'],
+		skillIds: ['workflow_audit'],
 		directPaths: [
 			'onto.project.graph',
 			'onto.task',
@@ -195,7 +195,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Identify likely slippage and schedule risk',
 			'Connect risks, blocked work, and milestones into a forward-looking view'
 		],
-		skillPaths: ['workflow.forecast.skill'],
+		skillIds: ['workflow_forecast'],
 		directPaths: [
 			'onto.project.graph',
 			'onto.task',
@@ -218,7 +218,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Visit URLs and inspect page content',
 			'Use current external information when the user asks for it'
 		],
-		skillPaths: [],
+		skillIds: [],
 		directPaths: ['util.web'],
 		notes: [
 			'No dedicated skill exists yet. Go straight to util.web unless a future research skill is added.'
@@ -235,7 +235,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Explain BuildOS concepts and workflows',
 			'Answer BuildOS product questions from internal reference material'
 		],
-		skillPaths: [],
+		skillIds: [],
 		directPaths: ['util.buildos']
 	},
 	{
@@ -249,7 +249,7 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 			'Look up field metadata',
 			'Use schema guidance to prepare exact tool arguments'
 		],
-		skillPaths: [],
+		skillIds: [],
 		directPaths: ['util.schema']
 	}
 ];
@@ -283,7 +283,7 @@ export function buildCapabilityHelpPayload(
 		status: capability.status,
 		summary: capability.summary,
 		what_you_can_do: capability.whatYouCanDo,
-		skill_entrypoints: capability.skillPaths,
+		skill_entrypoints: capability.skillIds,
 		direct_paths: capability.directPaths
 	};
 

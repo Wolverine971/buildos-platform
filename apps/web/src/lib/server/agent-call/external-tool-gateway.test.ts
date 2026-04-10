@@ -529,7 +529,12 @@ describe('external tool gateway', () => {
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
 		});
 
-		expect(tools.map((tool) => tool.name)).toEqual(['tool_help', 'tool_exec']);
+		expect(tools.map((tool) => tool.name)).toEqual([
+			'skill_load',
+			'tool_search',
+			'tool_schema',
+			'buildos_call'
+		]);
 	});
 
 	it('returns filtered root help instead of the flat public tool list', async () => {

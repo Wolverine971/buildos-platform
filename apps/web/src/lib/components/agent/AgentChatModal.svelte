@@ -12,6 +12,7 @@
 
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { page } from '$app/stores';
 	import { browser, dev } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
@@ -75,6 +76,10 @@
 		prewarmAgentContext
 	} from './agent-chat-session';
 	import { upsertSkillActivityEntries } from './agent-chat-skill-activity';
+	import {
+		downloadChatSessionAuditMarkdown,
+		fetchChatSessionAuditPayload
+	} from '$lib/services/admin/chat-session-audit-export';
 
 	interface AutoInitProjectConfig {
 		projectId: string;
@@ -198,6 +203,7 @@
 	// Conversation state
 	let messages = $state<UIMessage[]>([]);
 	let currentSession = $state<ChatSession | null>(null);
+	let isExportingAudit = $state(false);
 	let isStreaming = $state(false);
 	let currentStreamController: AbortController | null = null;
 	let activeStreamRunId = $state(0);
@@ -236,6 +242,18 @@
 	let contextUsageOverheadTokens = $state(0);
 	let activeStreamTiming = $state<ClientStreamTimingState | null>(null);
 	let _lastCompletedStreamTiming = $state<ClientStreamTimingState | null>(null);
+
+	const isAdminUser = $derived(Boolean($page.data?.user?.is_admin));
+
+	const adminSessionHref = $derived.by(() => {
+		const sessionId = currentSession?.id;
+		if (!sessionId) return null;
+		return `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId)}`;
+	});
+
+	const showAdminDebugActions = $derived.by(
+		() => isAdminUser && Boolean(currentSession?.id) && Boolean(adminSessionHref)
+	);
 
 	const displayContextUsage = $derived.by(() => {
 		if (!selectedContextType) {
@@ -3076,6 +3094,30 @@
 		if (onClose) onClose(summary);
 	}
 
+	async function exportCurrentSessionAudit() {
+		if (!browser) return;
+
+		const sessionId = currentSession?.id;
+		if (!sessionId) {
+			toastService.error('Start or resume a chat session before exporting the audit.');
+			return;
+		}
+
+		isExportingAudit = true;
+		try {
+			const payload = await fetchChatSessionAuditPayload(sessionId);
+			downloadChatSessionAuditMarkdown(payload);
+			toastService.success('Session audit exported as markdown');
+		} catch (err) {
+			console.error('Failed exporting current session audit', err);
+			toastService.error(
+				err instanceof Error ? err.message : 'Failed to export session audit markdown'
+			);
+		} finally {
+			isExportingAudit = false;
+		}
+	}
+
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && isStreaming) {
 			event.preventDefault();
@@ -4514,6 +4556,10 @@
 					{currentActivity}
 					{sessionStatusLabel}
 					contextUsage={displayContextUsage}
+					{showAdminDebugActions}
+					{adminSessionHref}
+					onExportAudit={exportCurrentSessionAudit}
+					{isExportingAudit}
 				/>
 			</div>
 		{/snippet}

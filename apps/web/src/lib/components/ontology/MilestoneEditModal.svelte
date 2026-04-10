@@ -844,6 +844,7 @@
 										entityType="milestone"
 										entityId={milestoneId}
 										autoLoad={true}
+										embedded={true}
 									/>
 								</div>
 							{/if}

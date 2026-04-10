@@ -2747,6 +2747,7 @@
 													entityType="document"
 													entityId={activeDocumentId}
 													autoLoad={!loading}
+													embedded={true}
 												/>
 											</div>
 										{/if}

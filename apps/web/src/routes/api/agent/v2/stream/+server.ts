@@ -56,6 +56,14 @@ import {
 	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
 import {
+	buildEntityResolutionHint,
+	extractExplicitEntityMentionsFromText
+} from '$lib/services/agentic-chat-v2/entity-resolution';
+import {
+	normalizeExactEntityId,
+	shouldCollectExactEntityReferencesFromToolName
+} from '$lib/services/agentic-chat-v2/exact-entity-id';
+import {
 	buildPromptSnapshotRow,
 	buildPromptSnapshotSections,
 	buildToolCallEventPayload,
@@ -1188,10 +1196,12 @@ function extractEntityPreview(
 	description?: string;
 } {
 	if (!value || typeof value !== 'object') {
-		return { id: fallbackId };
+		return { id: normalizeExactEntityId(fallbackId) };
 	}
 	const record = value as Record<string, unknown>;
-	const id = normalizeTextValue(record.id ?? record.entity_id ?? record.entityId ?? fallbackId);
+	const id = normalizeExactEntityId(
+		record.id ?? record.entity_id ?? record.entityId ?? fallbackId
+	);
 	const name =
 		truncateEntityText(record.name, 80) ??
 		truncateEntityText(record.title, 80) ??
@@ -1209,7 +1219,7 @@ function upsertLastTurnEntity(
 	entityType: LastTurnEntityType,
 	preview: { id?: string; name?: string; description?: string }
 ): void {
-	const id = normalizeTextValue(preview.id);
+	const id = normalizeExactEntityId(preview.id);
 	if (!id) return;
 
 	const listKey = LAST_TURN_ENTITY_LIST_KEY[entityType];
@@ -1295,7 +1305,7 @@ function assignLastTurnEntityByPrefix(
 function extractEntityIdFromRecord(value: unknown): string | undefined {
 	if (!value || typeof value !== 'object') return undefined;
 	const record = value as Record<string, unknown>;
-	return normalizeTextValue(record.id ?? record.entity_id ?? record.entityId);
+	return normalizeExactEntityId(record.id ?? record.entity_id ?? record.entityId);
 }
 
 function collectLastTurnEntitiesFromValue(
@@ -1410,6 +1420,11 @@ function formatLastTurnEntityReferences(entities: LastTurnContext['entities']): 
 	const refs: string[] = [];
 	const formatItems = (items: Array<{ id: string; name?: string }>): string =>
 		items
+			.map((item) => ({
+				...item,
+				id: normalizeExactEntityId(item.id)
+			}))
+			.filter((item): item is { id: string; name?: string } => Boolean(item.id))
 			.slice(0, 4)
 			.map((item) => (item.name ? `${item.name} (${item.id})` : item.id))
 			.join(',');
@@ -1421,13 +1436,23 @@ function formatLastTurnEntityReferences(entities: LastTurnContext['entities']): 
 
 	// Backward-compat with stored legacy contexts.
 	if (refs.length === 0) {
-		if (entities.project_id) refs.push(`project:${entities.project_id}`);
-		if (entities.plan_id) refs.push(`plan:${entities.plan_id}`);
-		if (entities.document_id) refs.push(`document:${entities.document_id}`);
-		if (entities.task_ids?.length)
-			refs.push(`tasks:${entities.task_ids.slice(0, 4).join(',')}`);
-		if (entities.goal_ids?.length)
-			refs.push(`goals:${entities.goal_ids.slice(0, 4).join(',')}`);
+		const projectId = normalizeExactEntityId(entities.project_id);
+		const planId = normalizeExactEntityId(entities.plan_id);
+		const documentId = normalizeExactEntityId(entities.document_id);
+		const taskIds = (entities.task_ids ?? [])
+			.map((id) => normalizeExactEntityId(id))
+			.filter((id): id is string => Boolean(id))
+			.slice(0, 4);
+		const goalIds = (entities.goal_ids ?? [])
+			.map((id) => normalizeExactEntityId(id))
+			.filter((id): id is string => Boolean(id))
+			.slice(0, 4);
+
+		if (projectId) refs.push(`project:${projectId}`);
+		if (planId) refs.push(`plan:${planId}`);
+		if (documentId) refs.push(`document:${documentId}`);
+		if (taskIds.length > 0) refs.push(`tasks:${taskIds.join(',')}`);
+		if (goalIds.length > 0) refs.push(`goals:${goalIds.join(',')}`);
 	}
 	return refs;
 }
@@ -1482,12 +1507,37 @@ function buildLastTurnContext(params: {
 	const entities: LastTurnContext['entities'] = {};
 	const toolsUsed = new Set<string>();
 
+	for (const mention of extractExplicitEntityMentionsFromText(params.assistantText)) {
+		assignLastTurnEntity(
+			entities,
+			mention.entityType,
+			mention.id,
+			mention.name ? { id: mention.id, name: mention.name } : { id: mention.id }
+		);
+	}
+
+	for (const mention of extractExplicitEntityMentionsFromText(params.userMessage)) {
+		assignLastTurnEntity(
+			entities,
+			mention.entityType,
+			mention.id,
+			mention.name ? { id: mention.id, name: mention.name } : { id: mention.id }
+		);
+	}
+
 	for (const execution of params.toolExecutions) {
 		const toolName = normalizeTextValue(execution.toolCall.function?.name);
 		if (toolName) {
 			toolsUsed.add(toolName);
 		}
-		collectLastTurnEntitiesFromValue(execution.result, entities);
+		if (!shouldCollectExactEntityReferencesFromToolName(toolName)) {
+			continue;
+		}
+		const entitySource =
+			execution.result && typeof execution.result === 'object' && 'result' in execution.result
+				? (execution.result as Record<string, unknown>).result
+				: execution.result;
+		collectLastTurnEntitiesFromValue(entitySource, entities);
 	}
 
 	if (params.contextShift) {
@@ -2850,7 +2900,6 @@ export const POST: RequestHandler = async ({
 						focusEntityType?: string | null;
 						focusEntityId?: string | null;
 						focusEntityName?: string | null;
-						agentState?: string | null;
 						conversationSummary?: string | null;
 						data?: Record<string, unknown> | string | null;
 				  }
@@ -2945,13 +2994,9 @@ export const POST: RequestHandler = async ({
 				annotateContextMetaCacheAge(promptContext?.data, contextCacheAgeSeconds);
 				contextCacheAgeSecondsForTiming = contextCacheAgeSeconds;
 
-				const rawAgentState =
-					(sessionMetadata.agent_state as AgentState | undefined) ??
-					buildEmptyAgentState(session.id);
-				const agentState = sanitizeAgentStateForPrompt(rawAgentState);
-
-				promptContext.agentState = JSON.stringify(agentState);
 				promptContext.conversationSummary = conversationSummary;
+				promptContext.entityResolutionHint =
+					buildEntityResolutionHint(requestLastTurnContext);
 
 				systemPrompt = buildMasterPrompt(promptContext);
 

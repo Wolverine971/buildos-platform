@@ -67,6 +67,11 @@ declare module 'svelte' {
 	}
 }
 
+declare module '*.md?raw' {
+	const value: string;
+	export default value;
+}
+
 export interface CalendarTokens {
 	access_token: string;
 	refresh_token: string;

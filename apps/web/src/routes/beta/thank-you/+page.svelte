@@ -34,7 +34,7 @@
 
 	function shareOnX() {
 		const text =
-			'Just joined the BuildOS beta! Excited to help shape the future of AI-powered productivity 🚀';
+			'Just signed up for the BuildOS beta. Excited to see what they are building for AI-powered productivity 🚀';
 		const url = window.location.origin + '/beta';
 		window.open(
 			`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
@@ -44,10 +44,10 @@
 </script>
 
 <svelte:head>
-	<title>Welcome to BuildOS Beta - Thank You</title>
+	<title>BuildOS Beta - Application Received</title>
 	<meta
 		name="description"
-		content="Thank you for joining the BuildOS beta program! Here's what happens next."
+		content="Your BuildOS beta application is in. Here's what happens next."
 	/>
 	<meta name="robots" content="noindex" />
 </svelte:head>
@@ -74,10 +74,12 @@
 				</div>
 
 				<div class="space-y-4 {animateIn ? 'animate-fade-in' : 'opacity-0'}">
-					<h1 class="text-4xl md:text-5xl font-bold text-foreground">🎉 You're In!</h1>
+					<h1 class="text-4xl md:text-5xl font-bold text-foreground">
+						Thanks, your application is in.
+					</h1>
 					<p class="text-xl text-muted-foreground max-w-2xl mx-auto">
-						Welcome to the BuildOS beta program. I'm personally excited to work with you
-						to build the future of AI-powered productivity.
+						I’ll review your beta signup personally and follow up by email if it looks
+						like a fit.
 					</p>
 					{#if email}
 						<p class="text-sm text-muted-foreground">
@@ -108,9 +110,9 @@
 						>
 							<Clock class="w-6 h-6 text-accent" />
 						</div>
-						<h3 class="font-semibold text-foreground mb-2">Within 24 Hours</h3>
+						<h3 class="font-semibold text-foreground mb-2">Within 48 Hours</h3>
 						<p class="text-sm text-muted-foreground">
-							Personal welcome email with beta access details
+							Personal review and a follow-up on next steps
 						</p>
 					</div>
 
@@ -120,9 +122,9 @@
 						>
 							<Mail class="w-6 h-6 text-foreground" />
 						</div>
-						<h3 class="font-semibold text-foreground mb-2">Setup Instructions</h3>
+						<h3 class="font-semibold text-foreground mb-2">If You're Accepted</h3>
 						<p class="text-sm text-muted-foreground">
-							Step-by-step guide to get BuildOS running
+							Access details and a quick setup guide
 						</p>
 					</div>
 
@@ -159,8 +161,10 @@
 					: 'opacity-0 translate-y-8'}"
 			>
 				<div class="text-center mb-6">
-					<h2 class="text-2xl font-bold mb-2">Your Beta Benefits</h2>
-					<p class="opacity-90">As a beta member, you get exclusive access and perks</p>
+					<h2 class="text-2xl font-bold mb-2">If It's a Fit</h2>
+					<p class="opacity-90">
+						Approved beta users get early access and a direct feedback loop
+					</p>
 				</div>
 
 				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">

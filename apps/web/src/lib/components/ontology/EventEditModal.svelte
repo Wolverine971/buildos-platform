@@ -862,6 +862,7 @@
 										entityType="event"
 										entityId={eventId}
 										autoLoad={true}
+										embedded={true}
 									/>
 								</div>
 							{/if}

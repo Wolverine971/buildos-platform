@@ -1406,6 +1406,7 @@
 										entityType="task"
 										entityId={taskId}
 										autoLoad={true}
+										embedded={true}
 									/>
 								</div>
 							{/if}

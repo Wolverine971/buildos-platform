@@ -51,9 +51,10 @@
 		entityType: ProjectLogEntityType;
 		entityId: string;
 		autoLoad?: boolean;
+		embedded?: boolean;
 	}
 
-	let { entityType, entityId, autoLoad = true }: Props = $props();
+	let { entityType, entityId, autoLoad = true, embedded = false }: Props = $props();
 
 	// ============================================================
 	// STATE
@@ -270,20 +271,26 @@
 	}
 </script>
 
-<Card variant="elevated">
-	<CardHeader variant="default">
-		<h3
-			class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
-		>
-			<History class="w-3.5 h-3.5" />
-			Activity
-			{#if hasLoaded && total > 0}
-				<span class="font-normal normal-case text-muted-foreground/70">
-					({total})
-				</span>
-			{/if}
-		</h3>
-	</CardHeader>
+<Card
+	variant={embedded ? 'ghost' : 'elevated'}
+	texture={embedded ? 'none' : undefined}
+	weight={embedded ? 'ghost' : undefined}
+>
+	{#if !embedded}
+		<CardHeader variant="default">
+			<h3
+				class="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2"
+			>
+				<History class="w-3.5 h-3.5" />
+				Activity
+				{#if hasLoaded && total > 0}
+					<span class="font-normal normal-case text-muted-foreground/70">
+						({total})
+					</span>
+				{/if}
+			</h3>
+		</CardHeader>
+	{/if}
 	<CardBody padding="none">
 		{#if isLoading}
 			<div class="flex items-center justify-center py-6">

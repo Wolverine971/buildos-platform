@@ -20,7 +20,7 @@ describe('skill activity helpers', () => {
 		expect(event).toEqual({
 			type: 'skill_activity',
 			action: 'requested',
-			path: 'cal.skill',
+			path: 'calendar_management',
 			via: 'tool_help'
 		});
 	});
@@ -35,14 +35,14 @@ describe('skill activity helpers', () => {
 			success: true,
 			result: {
 				type: 'skill',
-				path: 'onto.document.skill',
-				name: 'document'
+				id: 'document_workspace',
+				name: 'Document Workspace'
 			}
 		} as ChatToolResult;
 		expect(getLoadedSkillActivity(buildToolCall('onto.document.skill'), result)).toEqual({
 			type: 'skill_activity',
 			action: 'loaded',
-			path: 'onto.document.skill',
+			path: 'document_workspace',
 			via: 'tool_help'
 		});
 	});

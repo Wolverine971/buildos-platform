@@ -33,11 +33,14 @@ import type { ChatMessage, ChatToolCall, ChatToolDefinition } from '@buildos/sha
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../tools/core/definitions';
 import { getToolHelp } from '../tools/registry/tool-help';
 import { getToolRegistry } from '../tools/registry/tool-registry';
+import { searchToolRegistry } from '../tools/registry/tool-search';
+import { getToolSchema } from '../tools/registry/tool-schema';
 import { normalizeGatewayOpName } from '../tools/registry/gateway-op-aliases';
 import {
 	normalizeProjectCreateArgs,
 	validateProjectCreateArgs
 } from '../tools/core/project-create-args';
+import { loadSkill } from '../tools/skills/skill-load';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { dev } from '$app/environment';
 import { createLogger } from '$lib/utils/logger';
@@ -45,7 +48,15 @@ import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 
 const logger = createLogger('ToolExecutionService');
-const GATEWAY_TOOL_NAMES = new Set(['tool_help', 'tool_exec', 'tool_batch']);
+const GATEWAY_TOOL_NAMES = new Set([
+	'skill_load',
+	'tool_search',
+	'tool_schema',
+	'buildos_call',
+	'tool_help',
+	'tool_exec',
+	'tool_batch'
+]);
 
 /**
  * Tool execution options
@@ -651,6 +662,51 @@ export class ToolExecutionService implements BaseService {
 		availableTools: ChatToolDefinition[],
 		options: ToolExecutionOptions
 	): Promise<ToolExecutionResult> {
+		if (toolName === 'skill_load') {
+			const skill =
+				typeof args.skill === 'string'
+					? args.skill
+					: typeof args.id === 'string'
+						? args.id
+						: typeof args.path === 'string'
+							? args.path
+							: '';
+			const result = loadSkill(skill, {
+				format: args.format === 'full' ? 'full' : 'short',
+				include_examples: args.include_examples !== false
+			});
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'tool_search') {
+			const result = searchToolRegistry({
+				query: typeof args.query === 'string' ? args.query : undefined,
+				capability: typeof args.capability === 'string' ? args.capability : undefined,
+				group:
+					args.group === 'onto' || args.group === 'util' || args.group === 'cal'
+						? args.group
+						: undefined,
+				kind: args.kind === 'read' || args.kind === 'write' ? args.kind : undefined,
+				entity: typeof args.entity === 'string' ? args.entity : undefined,
+				limit: typeof args.limit === 'number' ? args.limit : undefined
+			});
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'tool_schema') {
+			const op =
+				typeof args.op === 'string'
+					? args.op
+					: typeof args.path === 'string'
+						? args.path
+						: '';
+			const result = getToolSchema(op, {
+				include_examples: args.include_examples !== false,
+				include_schema: args.include_schema !== false
+			});
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
 		if (toolName === 'tool_help') {
 			const path = typeof args.path === 'string' ? args.path : 'root';
 			const help = getToolHelp(path, {
@@ -661,8 +717,8 @@ export class ToolExecutionService implements BaseService {
 			return { success: true, data: help, toolName, toolCallId: 'gateway' };
 		}
 
-		if (toolName === 'tool_exec') {
-			return this.executeGatewayExec(args, context, options);
+		if (toolName === 'buildos_call' || toolName === 'tool_exec') {
+			return this.executeGatewayExec(args, context, options, toolName);
 		}
 
 		if (toolName === 'tool_batch') {
@@ -765,12 +821,20 @@ export class ToolExecutionService implements BaseService {
 	private async executeGatewayExec(
 		args: Record<string, any>,
 		context: ServiceContext,
-		options: ToolExecutionOptions
+		options: ToolExecutionOptions,
+		gatewayToolName = 'tool_exec'
 	): Promise<ToolExecutionResult> {
 		const requestedOpRaw = typeof args.op === 'string' ? args.op.trim() : '';
 		const registry = getToolRegistry();
 		if (!requestedOpRaw) {
-			return this.buildGatewayErrorResult(requestedOpRaw, 'VALIDATION_ERROR', 'Missing op');
+			return this.buildGatewayErrorResult(
+				requestedOpRaw,
+				'VALIDATION_ERROR',
+				'Missing op',
+				undefined,
+				undefined,
+				gatewayToolName
+			);
 		}
 
 		const requestedOp =
@@ -783,7 +847,9 @@ export class ToolExecutionService implements BaseService {
 				requestedOpRaw || requestedOp,
 				'NOT_FOUND',
 				`Unknown op: ${requestedOpRaw || requestedOp}`,
-				'root'
+				'root',
+				undefined,
+				gatewayToolName
 			);
 		}
 
@@ -857,7 +923,8 @@ export class ToolExecutionService implements BaseService {
 				'VALIDATION_ERROR',
 				validation.errors.join('; '),
 				effectiveOp,
-				details
+				details,
+				gatewayToolName
 			);
 		}
 
@@ -881,7 +948,7 @@ export class ToolExecutionService implements BaseService {
 					},
 					meta
 				},
-				toolName: 'tool_exec',
+				toolName: gatewayToolName,
 				toolCallId: 'gateway'
 			};
 		}
@@ -945,7 +1012,7 @@ export class ToolExecutionService implements BaseService {
 					: undefined,
 				tokensUsed,
 				metadata: executionMetadata,
-				toolName: 'tool_exec',
+				toolName: gatewayToolName,
 				toolCallId: 'gateway'
 			};
 		} catch (error) {
@@ -966,7 +1033,7 @@ export class ToolExecutionService implements BaseService {
 							help_path: effectiveOp
 						}
 					},
-					toolName: 'tool_exec',
+					toolName: gatewayToolName,
 					toolCallId: 'gateway'
 				};
 			}
@@ -985,7 +1052,7 @@ export class ToolExecutionService implements BaseService {
 					ok: false,
 					error: { code: 'INTERNAL', message: normalizedError, help_path: effectiveOp }
 				},
-				toolName: 'tool_exec',
+				toolName: gatewayToolName,
 				toolCallId: 'gateway'
 			};
 		}
@@ -1017,7 +1084,9 @@ export class ToolExecutionService implements BaseService {
 		context: ServiceContext,
 		registry: ReturnType<typeof getToolRegistry>
 	): GatewayDetailFallback | null {
-		const detailMatch = op.match(/^onto\.(task|goal|plan|document|milestone|risk)\.get$/);
+		const detailMatch = op.match(
+			/^onto\.(project|task|goal|plan|document|milestone|risk)\.get$/
+		);
 		if (!detailMatch) {
 			return null;
 		}
@@ -1030,15 +1099,38 @@ export class ToolExecutionService implements BaseService {
 			return null;
 		}
 
+		const fallbackArgs: Record<string, any> = {};
+		if (typeof args.limit === 'number' && Number.isFinite(args.limit)) {
+			fallbackArgs.limit = args.limit;
+		}
+
+		const inferredQuery = this.resolveGatewayEntityLookupQuery(args, context);
+		const searchOp = `onto.${entity}.search`;
+		const searchEntry = registry.ops[searchOp];
+		if (searchEntry && inferredQuery) {
+			if (typeof args.query === 'string' && args.query.trim().length > 0) {
+				fallbackArgs.query = args.query.trim();
+			} else if (typeof args.search === 'string' && args.search.trim().length > 0) {
+				fallbackArgs.search = args.search.trim();
+			}
+
+			return {
+				op: searchOp,
+				entry: searchEntry,
+				args: this.normalizeGatewayArgsForTool(
+					searchEntry.tool_name,
+					fallbackArgs,
+					context
+				),
+				requiredIdKey,
+				warning: `${op} requires ${requiredIdKey}; executed ${searchOp} to search for candidate IDs first.`
+			};
+		}
+
 		const fallbackOp = `onto.${entity}.list`;
 		const fallbackEntry = registry.ops[fallbackOp];
 		if (!fallbackEntry) {
 			return null;
-		}
-
-		const fallbackArgs: Record<string, any> = {};
-		if (typeof args.limit === 'number' && Number.isFinite(args.limit)) {
-			fallbackArgs.limit = args.limit;
 		}
 
 		return {
@@ -1048,6 +1140,22 @@ export class ToolExecutionService implements BaseService {
 			requiredIdKey,
 			warning: `${op} requires ${requiredIdKey}; executed ${fallbackOp} to fetch candidate IDs first.`
 		};
+	}
+
+	private resolveGatewayEntityLookupQuery(
+		args: Record<string, any>,
+		context: ServiceContext
+	): string | null {
+		const directCandidates = [args.query, args.search, args.name, args.title];
+		for (const candidate of directCandidates) {
+			if (typeof candidate !== 'string') continue;
+			const normalized = candidate.replace(/\s+/g, ' ').trim();
+			if (!normalized) continue;
+			if (this.isLowSignalSearchQuery(normalized)) continue;
+			return normalized.slice(0, 220);
+		}
+
+		return this.inferSearchQueryFromHistory(context.conversationHistory);
 	}
 
 	private resolveGatewaySearchQueryFallback(
@@ -1135,7 +1243,8 @@ export class ToolExecutionService implements BaseService {
 		code: string,
 		message: string,
 		helpPath?: string,
-		details?: Record<string, any>
+		details?: Record<string, any>,
+		toolName = 'tool_exec'
 	): ToolExecutionResult {
 		return {
 			success: false,
@@ -1151,7 +1260,7 @@ export class ToolExecutionService implements BaseService {
 					help_path: helpPath ?? op
 				}
 			},
-			toolName: 'tool_exec',
+			toolName,
 			toolCallId: 'gateway'
 		};
 	}

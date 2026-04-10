@@ -1071,15 +1071,15 @@ No documented responses
 ```typescript
 interface BetaSignupRequest {
 	email: string;
-	full_name: string;
+	full_name?: string;
 	job_title?: string;
 	company_name?: string;
-	why_interested: string;
-	productivity_tools: string[];
-	biggest_challenge: string;
+	why_interested?: string;
+	productivity_tools?: string[];
+	biggest_challenge?: string;
 	referral_source?: string;
-	wants_weekly_calls: boolean;
-	wants_community_access: boolean;
+	wants_weekly_calls?: boolean;
+	wants_community_access?: boolean;
 	user_timezone?: string;
 	honeypot?: string;
 }

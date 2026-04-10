@@ -37,7 +37,10 @@ interface NormalizedBetaSignupRequest {
 function normalizeSingleLine(value?: string | null): string | null {
 	if (!value) return null;
 
-	const normalized = value.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+	const normalized = value
+		.replace(/[\r\n\t]+/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
 	return normalized || null;
 }
 
@@ -84,9 +87,10 @@ function containsSpamPattern(text: string): boolean {
 	return /(.)\1{14,}/.test(text);
 }
 
-function normalizeSignupData(
-	data: BetaSignupRequest
-): { data?: NormalizedBetaSignupRequest; error?: string } {
+function normalizeSignupData(data: BetaSignupRequest): {
+	data?: NormalizedBetaSignupRequest;
+	error?: string;
+} {
 	if (data.honeypot && data.honeypot.trim() !== '') {
 		return { error: 'Spam detected' };
 	}
@@ -100,7 +104,8 @@ function normalizeSignupData(
 		return { error: emailValidation.error || 'Please provide a valid email address' };
 	}
 
-	const fullName = normalizeSingleLine(data.full_name) ?? inferFullNameFromEmail(emailValidation.email);
+	const fullName =
+		normalizeSingleLine(data.full_name) ?? inferFullNameFromEmail(emailValidation.email);
 	const whyInterested = normalizeMultiline(data.why_interested);
 	const biggestChallenge = normalizeMultiline(data.biggest_challenge);
 	const combinedNote = [whyInterested, biggestChallenge].filter(Boolean).join('\n');
@@ -168,7 +173,9 @@ async function sendBetaWelcomeEmail(signupData: any) {
 		const safeFirstName = escapeHtml(firstName);
 		const safeEmail = escapeHtml(signupData.email);
 		const safeJobTitle = signupData.job_title ? escapeHtml(signupData.job_title) : null;
-		const safeCompanyName = signupData.company_name ? escapeHtml(signupData.company_name) : null;
+		const safeCompanyName = signupData.company_name
+			? escapeHtml(signupData.company_name)
+			: null;
 
 		const emailContent = `
 			<h2>Welcome to BuildOS, ${safeFirstName}! 🎉</h2>
@@ -253,7 +260,9 @@ async function sendBetaSignupNotification(signupData: any) {
 		const safeName = escapeHtml(signupData.full_name);
 		const safeEmail = escapeHtml(signupData.email);
 		const safeJobTitle = signupData.job_title ? escapeHtml(signupData.job_title) : null;
-		const safeCompanyName = signupData.company_name ? escapeHtml(signupData.company_name) : null;
+		const safeCompanyName = signupData.company_name
+			? escapeHtml(signupData.company_name)
+			: null;
 		const safeReferralSource = signupData.referral_source
 			? escapeHtml(signupData.referral_source)
 			: null;

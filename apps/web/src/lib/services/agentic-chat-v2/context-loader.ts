@@ -11,6 +11,7 @@ import type {
 	EntityContextData,
 	FastChatEventWindow,
 	GlobalContextData,
+	GlobalContextProjectBundle,
 	LightDocument,
 	LightEvent,
 	LightGoal,
@@ -34,10 +35,13 @@ const logger = createLogger('FastChatContext');
 
 const PROJECT_CONTEXTS = new Set<ChatContextType>(['project', 'project_audit', 'project_forecast']);
 
-const RECENT_ACTIVITY_PER_PROJECT = 6;
-const GLOBAL_CONTEXT_GOAL_LIMIT = 4;
-const GLOBAL_CONTEXT_MILESTONE_LIMIT = 4;
-const GLOBAL_CONTEXT_PLAN_LIMIT = 4;
+const GLOBAL_CONTEXT_PROJECT_LIMIT = 8;
+const GLOBAL_CONTEXT_RECENT_ACTIVITY_LIMIT = 3;
+const GLOBAL_CONTEXT_RECENT_ACTIVITY_WINDOW_DAYS = 7;
+const GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS = 21;
+const GLOBAL_CONTEXT_GOAL_LIMIT = 2;
+const GLOBAL_CONTEXT_MILESTONE_LIMIT = 2;
+const GLOBAL_CONTEXT_PLAN_LIMIT = 2;
 const FASTCHAT_CONTEXT_RPC = 'load_fastchat_context';
 const FASTCHAT_EVENT_WINDOW_PAST_DAYS = 7;
 const FASTCHAT_EVENT_WINDOW_FUTURE_DAYS = 14;
@@ -854,6 +858,29 @@ function limitPlansForContext(rows: PlanRow[], limit: number): PlanRow[] {
 		.slice(0, Math.max(0, limit));
 }
 
+function limitGlobalGoalsForContext(rows: GoalRow[], nowMs: number): GoalRow[] {
+	return limitGoalsForContext(
+		rows.filter((row) => !isGoalCompleted(row)),
+		GLOBAL_CONTEXT_GOAL_LIMIT,
+		nowMs
+	);
+}
+
+function limitGlobalMilestonesForContext(rows: MilestoneRow[], nowMs: number): MilestoneRow[] {
+	return limitMilestonesForContext(
+		rows.filter((row) => !isMilestoneCompleted(row)),
+		GLOBAL_CONTEXT_MILESTONE_LIMIT,
+		nowMs
+	);
+}
+
+function limitGlobalPlansForContext(rows: PlanRow[]): PlanRow[] {
+	return limitPlansForContext(
+		rows.filter((row) => !isPlanCompleted(row)),
+		GLOBAL_CONTEXT_PLAN_LIMIT
+	);
+}
+
 function limitDocumentsForContext(
 	rows: ContextDocumentRow[],
 	linkedDocIds: Set<string>,
@@ -1098,26 +1125,154 @@ function extractTitle(payload: unknown): string | null {
 	if (!payload || typeof payload !== 'object') return null;
 	const record = payload as Record<string, unknown>;
 	const candidate = record.title ?? record.name ?? record.text ?? record.summary;
-	return typeof candidate === 'string' ? candidate : null;
+	return normalizeOptionalText(candidate);
 }
 
-function mapRecentActivity(rows: ProjectLogRow[]): Record<string, LightRecentActivity[]> {
+type RecentActivityCandidate = LightRecentActivity & {
+	has_specific_title: boolean;
+	timestamp_ms: number;
+	entity_bucket: number;
+};
+
+function formatEntityTypeLabel(entityType: string): string {
+	const normalized = normalizeOptionalText(entityType)?.replace(/[_-]+/g, ' ') ?? 'Activity';
+	return normalized.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function recentActivityEntityBucket(entityType: string): number {
+	switch (normalizeOptionalText(entityType)?.toLowerCase()) {
+		case 'task':
+			return 0;
+		case 'document':
+			return 1;
+		case 'plan':
+			return 2;
+		case 'milestone':
+			return 3;
+		case 'goal':
+			return 4;
+		case 'project':
+			return 5;
+		default:
+			return 6;
+	}
+}
+
+function resolveRecentActivityTitle(row: ProjectLogRow): {
+	title: string;
+	hasSpecificTitle: boolean;
+} {
+	const specificTitle = extractTitle(row.after_data) ?? extractTitle(row.before_data);
+	return {
+		title: specificTitle ?? formatEntityTypeLabel(row.entity_type),
+		hasSpecificTitle: Boolean(specificTitle)
+	};
+}
+
+function compareRecentActivityLogRows(a: ProjectLogRow, b: ProjectLogRow): number {
+	const timeDelta = toTimestamp(b.created_at) - toTimestamp(a.created_at);
+	if (timeDelta !== 0) return timeDelta;
+
+	const entityDelta =
+		recentActivityEntityBucket(a.entity_type) - recentActivityEntityBucket(b.entity_type);
+	if (entityDelta !== 0) return entityDelta;
+
+	return a.entity_id.localeCompare(b.entity_id);
+}
+
+function compareRecentActivityCandidates(
+	a: RecentActivityCandidate,
+	b: RecentActivityCandidate
+): number {
+	if (a.has_specific_title !== b.has_specific_title) {
+		return a.has_specific_title ? -1 : 1;
+	}
+
+	const timeDelta = b.timestamp_ms - a.timestamp_ms;
+	if (timeDelta !== 0) return timeDelta;
+
+	const entityDelta = a.entity_bucket - b.entity_bucket;
+	if (entityDelta !== 0) return entityDelta;
+
+	return a.entity_id.localeCompare(b.entity_id);
+}
+
+function mapRecentActivity(params: {
+	rows: ProjectLogRow[];
+	projectIds: string[];
+	nowMs: number;
+}): Record<string, LightRecentActivity[]> {
 	const result: Record<string, LightRecentActivity[]> = {};
+	const projectIdSet = new Set(params.projectIds);
+	const recentCutoffMs = params.nowMs - GLOBAL_CONTEXT_RECENT_ACTIVITY_WINDOW_DAYS * DAY_IN_MS;
+	const oldestCutoffMs =
+		params.nowMs - GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS * DAY_IN_MS;
+	const grouped = new Map<string, ProjectLogRow[]>();
 
-	for (const row of rows) {
+	for (const row of params.rows) {
 		if (row.action !== 'created' && row.action !== 'updated') continue;
-		const action = row.action as 'created' | 'updated';
-		const bucket = (result[row.project_id] ??= []);
-		if (bucket.length >= RECENT_ACTIVITY_PER_PROJECT) continue;
+		if (!projectIdSet.has(row.project_id)) continue;
 
-		const title = extractTitle(row.after_data) ?? extractTitle(row.before_data);
-		bucket.push({
-			entity_type: row.entity_type,
-			entity_id: row.entity_id,
-			title,
-			action,
-			updated_at: row.created_at
-		});
+		const timestampMs = toTimestamp(row.created_at);
+		if (timestampMs < oldestCutoffMs) continue;
+
+		const bucket = grouped.get(row.project_id);
+		if (bucket) {
+			bucket.push(row);
+			continue;
+		}
+		grouped.set(row.project_id, [row]);
+	}
+
+	for (const projectId of params.projectIds) {
+		const rows = grouped.get(projectId);
+		if (!rows || rows.length === 0) continue;
+
+		const latestByEntity = new Map<string, RecentActivityCandidate>();
+
+		for (const row of [...rows].sort(compareRecentActivityLogRows)) {
+			const key = `${row.entity_type}:${row.entity_id}`;
+			const resolvedTitle = resolveRecentActivityTitle(row);
+			const action = row.action as 'created' | 'updated';
+			const existing = latestByEntity.get(key);
+			if (existing) {
+				if (!existing.has_specific_title && resolvedTitle.hasSpecificTitle) {
+					existing.title = resolvedTitle.title;
+					existing.has_specific_title = true;
+				}
+				continue;
+			}
+
+			latestByEntity.set(key, {
+				entity_type: row.entity_type,
+				entity_id: row.entity_id,
+				title: resolvedTitle.title,
+				action,
+				updated_at: row.created_at,
+				has_specific_title: resolvedTitle.hasSpecificTitle,
+				timestamp_ms: toTimestamp(row.created_at),
+				entity_bucket: recentActivityEntityBucket(row.entity_type)
+			});
+		}
+
+		const deduped = Array.from(latestByEntity.values()).sort(compareRecentActivityCandidates);
+		const recentItems = deduped.filter((item) => item.timestamp_ms >= recentCutoffMs);
+		const fallbackItems = deduped.filter((item) => item.timestamp_ms >= oldestCutoffMs);
+		const selected = (recentItems.length > 0 ? recentItems : fallbackItems).slice(
+			0,
+			GLOBAL_CONTEXT_RECENT_ACTIVITY_LIMIT
+		);
+
+		if (selected.length === 0) continue;
+
+		result[projectId] = selected.map(
+			({
+				has_specific_title: _hasSpecificTitle,
+				timestamp_ms: _timestampMs,
+				entity_bucket: _bucket,
+				...activity
+			}) => activity
+		);
 	}
 
 	return result;
@@ -1126,20 +1281,41 @@ function mapRecentActivity(rows: ProjectLogRow[]): Record<string, LightRecentAct
 function buildGlobalContextMeta(params: {
 	source: 'rpc' | 'fallback';
 	projectCount: number;
+	projectsReturned: number;
 }): NonNullable<GlobalContextData['context_meta']> {
 	return {
 		generated_at: new Date().toISOString(),
 		source: params.source,
 		cache_age_seconds: 0,
 		project_count: params.projectCount,
+		projects_returned: params.projectsReturned,
+		project_limit: GLOBAL_CONTEXT_PROJECT_LIMIT,
 		includes_doc_structure: false,
+		recent_activity_window_days: GLOBAL_CONTEXT_RECENT_ACTIVITY_WINDOW_DAYS,
+		recent_activity_max_lookback_days: GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS,
 		entity_limits_per_project: {
-			recent_activity: RECENT_ACTIVITY_PER_PROJECT,
+			recent_activity: GLOBAL_CONTEXT_RECENT_ACTIVITY_LIMIT,
 			goals: GLOBAL_CONTEXT_GOAL_LIMIT,
 			milestones: GLOBAL_CONTEXT_MILESTONE_LIMIT,
 			plans: GLOBAL_CONTEXT_PLAN_LIMIT
 		}
 	};
+}
+
+function buildGlobalProjectBundles(params: {
+	projects: LightProject[];
+	recentActivityByProject: Record<string, LightRecentActivity[]>;
+	goalsByProject: Record<string, LightGoal[]>;
+	milestonesByProject: Record<string, LightMilestone[]>;
+	plansByProject: Record<string, LightPlan[]>;
+}): GlobalContextProjectBundle[] {
+	return params.projects.map((project) => ({
+		project,
+		recent_activity: params.recentActivityByProject[project.id] ?? [],
+		goals: params.goalsByProject[project.id] ?? [],
+		milestones: params.milestonesByProject[project.id] ?? [],
+		plans: params.plansByProject[project.id] ?? []
+	}));
 }
 
 function limitAndMapByProject<T extends { project_id: string }, U>(params: {
@@ -1168,23 +1344,22 @@ function limitAndMapByProject<T extends { project_id: string }, U>(params: {
 }
 
 function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalContextData {
-	const projects = asArray<ProjectSelectRow>(payload.projects);
-	const lightProjects = projects.map((row) =>
-		mapProject(row, {
-			includeDocStructure: false
-		})
-	);
+	const allProjects = asArray<ProjectSelectRow>(payload.projects)
+		.map((row) =>
+			mapProject(row, {
+				includeDocStructure: false
+			})
+		)
+		.sort((a, b) => toTimestamp(b.updated_at) - toTimestamp(a.updated_at));
+	const lightProjects = allProjects.slice(0, GLOBAL_CONTEXT_PROJECT_LIMIT);
 
-	if (lightProjects.length === 0) {
+	if (allProjects.length === 0) {
 		return {
-			projects: lightProjects,
-			project_recent_activity: {},
-			project_goals: {},
-			project_milestones: {},
-			project_plans: {},
+			projects: [],
 			context_meta: buildGlobalContextMeta({
 				source: 'rpc',
-				projectCount: 0
+				projectCount: 0,
+				projectsReturned: 0
 			})
 		};
 	}
@@ -1192,40 +1367,54 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 	const projectIds = lightProjects.map((project) => project.id);
 	const nowMs = Date.now();
 	const goals = asArray<GoalRow & { project_id?: string }>(payload.goals).filter(
-		(row): row is GoalRow & { project_id: string } => typeof row.project_id === 'string'
+		(row): row is GoalRow & { project_id: string } =>
+			typeof row.project_id === 'string' && projectIds.includes(row.project_id)
 	);
 	const milestones = asArray<MilestoneRow & { project_id?: string }>(payload.milestones).filter(
-		(row): row is MilestoneRow & { project_id: string } => typeof row.project_id === 'string'
+		(row): row is MilestoneRow & { project_id: string } =>
+			typeof row.project_id === 'string' && projectIds.includes(row.project_id)
 	);
 	const plans = asArray<PlanRow & { project_id?: string }>(payload.plans).filter(
-		(row): row is PlanRow & { project_id: string } => typeof row.project_id === 'string'
+		(row): row is PlanRow & { project_id: string } =>
+			typeof row.project_id === 'string' && projectIds.includes(row.project_id)
 	);
 
+	const goalsByProject = limitAndMapByProject({
+		rows: goals,
+		projectIds,
+		limitRows: (rows) => limitGlobalGoalsForContext(rows, nowMs),
+		mapper: mapGoal
+	});
+	const milestonesByProject = limitAndMapByProject({
+		rows: milestones,
+		projectIds,
+		limitRows: (rows) => limitGlobalMilestonesForContext(rows, nowMs),
+		mapper: mapMilestone
+	});
+	const plansByProject = limitAndMapByProject({
+		rows: plans,
+		projectIds,
+		limitRows: (rows) => limitGlobalPlansForContext(rows),
+		mapper: mapPlan
+	});
+	const recentActivityByProject = mapRecentActivity({
+		rows: asArray<ProjectLogRow>(payload.project_logs),
+		projectIds,
+		nowMs
+	});
+
 	return {
-		projects: lightProjects,
-		project_recent_activity: mapRecentActivity(asArray<ProjectLogRow>(payload.project_logs)),
-		project_goals: limitAndMapByProject({
-			rows: goals,
-			projectIds,
-			limitRows: (rows) => limitGoalsForContext(rows, GLOBAL_CONTEXT_GOAL_LIMIT, nowMs),
-			mapper: mapGoal
-		}),
-		project_milestones: limitAndMapByProject({
-			rows: milestones,
-			projectIds,
-			limitRows: (rows) =>
-				limitMilestonesForContext(rows, GLOBAL_CONTEXT_MILESTONE_LIMIT, nowMs),
-			mapper: mapMilestone
-		}),
-		project_plans: limitAndMapByProject({
-			rows: plans,
-			projectIds,
-			limitRows: (rows) => limitPlansForContext(rows, GLOBAL_CONTEXT_PLAN_LIMIT),
-			mapper: mapPlan
+		projects: buildGlobalProjectBundles({
+			projects: lightProjects,
+			recentActivityByProject,
+			goalsByProject,
+			milestonesByProject,
+			plansByProject
 		}),
 		context_meta: buildGlobalContextMeta({
 			source: 'rpc',
-			projectCount: lightProjects.length
+			projectCount: allProjects.length,
+			projectsReturned: lightProjects.length
 		})
 	};
 }
@@ -1351,18 +1540,15 @@ async function loadGlobalContextData(
 		reportContextLoadError(onError, 'query.global.projects', error, { userId });
 		return {
 			projects: [],
-			project_recent_activity: {},
-			project_goals: {},
-			project_milestones: {},
-			project_plans: {},
 			context_meta: buildGlobalContextMeta({
 				source: 'fallback',
-				projectCount: 0
+				projectCount: 0,
+				projectsReturned: 0
 			})
 		};
 	}
 
-	const lightProjects = [...(projectSummaries ?? [])]
+	const allProjects = [...(projectSummaries ?? [])]
 		.sort((a, b) => {
 			const aTs = a.updated_at ? Date.parse(a.updated_at) : Number.NEGATIVE_INFINITY;
 			const bTs = b.updated_at ? Date.parse(b.updated_at) : Number.NEGATIVE_INFINITY;
@@ -1378,22 +1564,24 @@ async function loadGlobalContextData(
 			next_step_short: normalizeOptionalText(row.next_step_short) ?? null,
 			updated_at: row.updated_at
 		}));
+	const lightProjects = allProjects.slice(0, GLOBAL_CONTEXT_PROJECT_LIMIT);
 	const projectIds = lightProjects.map((project) => project.id);
 	const nowMs = Date.now();
 
 	if (projectIds.length === 0) {
 		return {
-			projects: lightProjects,
-			project_recent_activity: {},
-			project_goals: {},
-			project_milestones: {},
-			project_plans: {},
+			projects: [],
 			context_meta: buildGlobalContextMeta({
 				source: 'fallback',
-				projectCount: lightProjects.length
+				projectCount: allProjects.length,
+				projectsReturned: 0
 			})
 		};
 	}
+
+	const oldestActivityIso = new Date(
+		nowMs - GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS * DAY_IN_MS
+	).toISOString();
 
 	const [goalsRes, milestonesRes, plansRes, logsRes] = await Promise.all([
 		supabase
@@ -1421,8 +1609,8 @@ async function loadGlobalContextData(
 				'project_id, entity_type, entity_id, action, created_at, after_data, before_data'
 			)
 			.in('project_id', projectIds)
+			.gte('created_at', oldestActivityIso)
 			.order('created_at', { ascending: false })
-			.limit(projectIds.length * RECENT_ACTIVITY_PER_PROJECT)
 	]);
 
 	if (goalsRes.error) {
@@ -1452,35 +1640,42 @@ async function loadGlobalContextData(
 		});
 	}
 
-	const project_goals = limitAndMapByProject({
+	const goalsByProject = limitAndMapByProject({
 		rows: (goalsRes.data ?? []) as Array<GoalRow & { project_id: string }>,
 		projectIds,
-		limitRows: (rows) => limitGoalsForContext(rows, GLOBAL_CONTEXT_GOAL_LIMIT, nowMs),
+		limitRows: (rows) => limitGlobalGoalsForContext(rows, nowMs),
 		mapper: mapGoal
 	});
-	const project_milestones = limitAndMapByProject({
+	const milestonesByProject = limitAndMapByProject({
 		rows: (milestonesRes.data ?? []) as Array<MilestoneRow & { project_id: string }>,
 		projectIds,
-		limitRows: (rows) => limitMilestonesForContext(rows, GLOBAL_CONTEXT_MILESTONE_LIMIT, nowMs),
+		limitRows: (rows) => limitGlobalMilestonesForContext(rows, nowMs),
 		mapper: mapMilestone
 	});
-	const project_plans = limitAndMapByProject({
+	const plansByProject = limitAndMapByProject({
 		rows: (plansRes.data ?? []) as Array<PlanRow & { project_id: string }>,
 		projectIds,
-		limitRows: (rows) => limitPlansForContext(rows, GLOBAL_CONTEXT_PLAN_LIMIT),
+		limitRows: (rows) => limitGlobalPlansForContext(rows),
 		mapper: mapPlan
 	});
-	const project_recent_activity = mapRecentActivity((logsRes.data ?? []) as ProjectLogRow[]);
+	const recentActivityByProject = mapRecentActivity({
+		rows: (logsRes.data ?? []) as ProjectLogRow[],
+		projectIds,
+		nowMs
+	});
 
 	return {
-		projects: lightProjects,
-		project_recent_activity,
-		project_goals,
-		project_milestones,
-		project_plans,
+		projects: buildGlobalProjectBundles({
+			projects: lightProjects,
+			recentActivityByProject,
+			goalsByProject,
+			milestonesByProject,
+			plansByProject
+		}),
 		context_meta: buildGlobalContextMeta({
 			source: 'fallback',
-			projectCount: lightProjects.length
+			projectCount: allProjects.length,
+			projectsReturned: lightProjects.length
 		})
 	};
 }

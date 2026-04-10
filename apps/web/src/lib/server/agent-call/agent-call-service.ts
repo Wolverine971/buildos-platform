@@ -340,7 +340,14 @@ function normalizeToolArguments(args: unknown): Record<string, unknown> | undefi
 }
 
 function ensureToolName(value: unknown): BuildosAgentToolsCallParams['name'] {
-	if (value !== 'tool_help' && value !== 'tool_exec') {
+	if (
+		value !== 'skill_load' &&
+		value !== 'tool_search' &&
+		value !== 'tool_schema' &&
+		value !== 'buildos_call' &&
+		value !== 'tool_help' &&
+		value !== 'tool_exec'
+	) {
 		throw new AgentCallServiceError('Unsupported tool name', 400, -32602);
 	}
 

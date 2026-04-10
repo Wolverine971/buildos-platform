@@ -4,6 +4,7 @@ import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/
 import { streamFastChat } from './stream-orchestrator';
 import type { FastChatHistoryMessage } from './types';
 import { getToolHelp } from '$lib/services/agentic-chat/tools/registry/tool-help';
+import { getToolSchema } from '$lib/services/agentic-chat/tools/registry/tool-schema';
 
 function createGatewayTools(): ChatToolDefinition[] {
 	return [
@@ -45,6 +46,61 @@ function createGatewayTools(): ChatToolDefinition[] {
 						ops: { type: 'array' }
 					},
 					required: ['ops']
+				}
+			}
+		}
+	] as ChatToolDefinition[];
+}
+
+function createProgressiveGatewayTools(): ChatToolDefinition[] {
+	return [
+		{
+			type: 'function',
+			function: {
+				name: 'skill_load',
+				description: 'Skill load',
+				parameters: {
+					type: 'object',
+					properties: { skill: { type: 'string' } },
+					required: ['skill']
+				}
+			}
+		},
+		{
+			type: 'function',
+			function: {
+				name: 'tool_search',
+				description: 'Tool search',
+				parameters: {
+					type: 'object',
+					properties: { query: { type: 'string' } }
+				}
+			}
+		},
+		{
+			type: 'function',
+			function: {
+				name: 'tool_schema',
+				description: 'Tool schema',
+				parameters: {
+					type: 'object',
+					properties: { op: { type: 'string' } },
+					required: ['op']
+				}
+			}
+		},
+		{
+			type: 'function',
+			function: {
+				name: 'buildos_call',
+				description: 'BuildOS call',
+				parameters: {
+					type: 'object',
+					properties: {
+						op: { type: 'string' },
+						args: { type: 'object' }
+					},
+					required: ['op', 'args']
 				}
 			}
 		}
@@ -99,6 +155,139 @@ describe('streamFastChat final text sanitization', () => {
 		expect(deltas).toEqual([
 			'Next for the Podcast Launch project: define due dates and owners.'
 		]);
+	});
+
+	it('does not allow failed task updates to be narrated as completed', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:update-task',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments: JSON.stringify({
+									op: 'onto.task.update',
+									args: {
+										task_id: '3cdf0778-5301-43da-a899-a67561b4fa73',
+										state_key: 'done'
+									}
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield {
+					type: 'text',
+					content:
+						'**Updates confirmed:** - **Invite Phil to BuildOS** (`3cdf0778-5301-43da-a899-a67561b4fa73`) marked done.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: null,
+				success: false,
+				error: 'Tool validation failed: task write did not execute'
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'mark invite phil task done',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe(
+			"I couldn't complete that update because no write call succeeded. I need to retry with the exact ID and valid arguments."
+		);
+		expect(result.finalAssistantText).not.toContain('marked done');
+	});
+
+	it('preserves successful task update summaries', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:update-task-success',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments: JSON.stringify({
+									op: 'onto.task.update',
+									args: {
+										task_id: '3cdf0778-5301-43da-a899-a67561b4fa73',
+										state_key: 'done'
+									}
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield {
+					type: 'text',
+					content:
+						'**Updates confirmed:** - **Invite Phil to BuildOS** (`3cdf0778-5301-43da-a899-a67561b4fa73`) marked done.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (toolCall: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: {
+					op: 'onto.task.update',
+					ok: true,
+					result: {
+						task: {
+							id: '3cdf0778-5301-43da-a899-a67561b4fa73',
+							state_key: 'done'
+						}
+					}
+				},
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'mark invite phil task done',
+			tools: createGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toContain('marked done');
 	});
 });
 
@@ -451,7 +640,7 @@ describe('streamFastChat repetition guard', () => {
 			'Do not end the turn with a success summary unless onto.project.create has actually succeeded.'
 		);
 		expect(repairMessage?.content).toContain(
-			'Minimal valid create shape: tool_exec({ op: "onto.project.create"'
+			'Minimal valid create shape: buildos_call({ op: "onto.project.create"'
 		);
 		expect(repairMessage?.content).toContain('entities: [], relationships: []');
 		expect(repairMessage?.content).toContain(
@@ -605,10 +794,253 @@ describe('streamFastChat repetition guard', () => {
 		expect(payload.truncated).not.toBe(true);
 		expect(payload.type).toBe('op');
 		expect(payload.op).toBe('onto.project.create');
-		expect(payload.example_tool_exec?.args?.project?.name).toBe('<project name>');
-		expect(payload.example_tool_exec?.args?.entities).toEqual([]);
-		expect(payload.example_tool_exec?.args?.relationships).toEqual([]);
+		expect(payload.example_buildos_call?.args?.project?.name).toBe('<project name>');
+		expect(payload.example_buildos_call?.args?.entities).toEqual([]);
+		expect(payload.example_buildos_call?.args?.relationships).toEqual([]);
 		expect(payload.schema).toBeUndefined();
+	});
+
+	it('does not execute onto.project.create in the same pass as tool_schema for that exact op', async () => {
+		let streamInvocation = 0;
+		let secondPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield { type: 'text', content: "I'll load the project schema first." };
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_schema:project-create',
+							type: 'function',
+							function: {
+								name: 'tool_schema',
+								arguments: JSON.stringify({
+									op: 'onto.project.create',
+									include_schema: true
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'buildos_call:project-create-empty',
+							type: 'function',
+							function: {
+								name: 'buildos_call',
+								arguments: JSON.stringify({
+									op: 'onto.project.create',
+									args: {}
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 2) {
+					secondPassMessages = params.messages as FastChatHistoryMessage[];
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'buildos_call:project-create-corrected',
+							type: 'function',
+							function: {
+								name: 'buildos_call',
+								arguments: JSON.stringify({
+									op: 'onto.project.create',
+									args: {
+										project: {
+											name: 'The Last Ember',
+											type_key: 'project.creative.book'
+										},
+										entities: [],
+										relationships: []
+									}
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield {
+					type: 'text',
+					content: 'Created "The Last Ember" as a new project.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			if (toolCall.function.name === 'tool_schema') {
+				const args = JSON.parse(toolCall.function.arguments || '{}');
+				return {
+					tool_call_id: toolCall.id,
+					result: getToolSchema(args.op, {
+						include_schema: args.include_schema,
+						include_examples: true
+					}),
+					success: true
+				};
+			}
+
+			const args = JSON.parse(toolCall.function.arguments || '{}');
+			return {
+				tool_call_id: toolCall.id,
+				result: {
+					op: 'onto.project.create',
+					ok: true,
+					result: {
+						project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+						args
+					}
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project_create',
+			history: [],
+			message: 'Create a project for my fantasy novel The Last Ember',
+			tools: createProgressiveGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
+		expect(toolExecutor).toHaveBeenCalledTimes(2);
+		expect(toolExecutor).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				function: expect.objectContaining({ name: 'tool_schema' })
+			})
+		);
+		expect(toolExecutor).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({
+				function: expect.objectContaining({ name: 'buildos_call' })
+			})
+		);
+		expect(secondPassMessages).toBeDefined();
+		const blockedExecToolMessage = [...(secondPassMessages ?? [])]
+			.reverse()
+			.find(
+				(message) =>
+					message.role === 'tool' &&
+					message.tool_call_id === 'buildos_call:project-create-empty'
+			);
+		expect(blockedExecToolMessage?.content).toContain(
+			'Do not call buildos_call for onto.project.create in the same response as tool_schema'
+		);
+		expect(blockedExecToolMessage?.content).toContain(
+			'Wait for the discovery result, then retry buildos_call in the next response.'
+		);
+		expect(secondPassMessages?.some((message) => message.role === 'tool')).toBe(true);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toContain('Created "The Last Ember"');
+	});
+
+	it('injects task-specific repair guidance after repeated missing task fields', async () => {
+		let streamInvocation = 0;
+		let thirdPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation <= 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: `buildos_call:task-create-missing-title-${streamInvocation}`,
+							type: 'function',
+							function: {
+								name: 'buildos_call',
+								arguments: JSON.stringify({
+									op: 'onto.task.create',
+									args: {
+										project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70'
+									}
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				thirdPassMessages = params.messages as FastChatHistoryMessage[];
+				yield {
+					type: 'text',
+					content: 'Need a concrete task title before creating the task.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (): Promise<ChatToolResult> => ({
+				tool_call_id: 'unused',
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'finished chapter 2 and need follow-up tasks',
+			tools: createProgressiveGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(thirdPassMessages).toBeDefined();
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'Repeated required-field validation failures detected: onto.task.create -> title.'
+					)
+			)
+		).toBe(true);
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'For onto.task.create, do not emit a blank create. Include a concrete title taken from the user request'
+					)
+			)
+		).toBe(true);
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'tool' &&
+					typeof message.content === 'string' &&
+					message.content.includes('"help_path":"onto.task.create"') &&
+					message.content.includes('"field_errors":["Missing required parameter: title"]')
+			)
+		).toBe(true);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe(
+			'Need a concrete task title before creating the task.'
+		);
 	});
 
 	it('rejects unresolvable project-create relationship shorthand before execution', async () => {

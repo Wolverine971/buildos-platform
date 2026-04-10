@@ -106,7 +106,7 @@
 			if (result?.status && result.status !== 'not_found') {
 				existingSignupStatus = result.status;
 			}
-		} catch (error) {
+		} catch (_error) {
 			// Error checking signup status
 		}
 	}

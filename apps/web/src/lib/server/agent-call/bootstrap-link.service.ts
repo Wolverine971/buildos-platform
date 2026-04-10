@@ -36,7 +36,7 @@ function buildInstructionsUrl(baseUrl: string, setupToken: string): string {
 function buildFollowUpPrompt(): string {
 	return [
 		'Use the configured BuildOS credentials.',
-		'Connect to BuildOS, list the available gateway tools, call tool_help for root, and then use tool_exec to discover and execute the allowed BuildOS operations.',
+		'Connect to BuildOS, list the available gateway tools, then use tool_search to discover candidate ops, tool_schema for exact contracts, and buildos_call to execute the allowed BuildOS operations.',
 		'Do not ask the user to paste secrets into chat.',
 		'If configuration is incomplete, say exactly which file, env var, or secret location still needs to be updated.'
 	].join(' ');
@@ -284,8 +284,9 @@ export class AgentCallBootstrapLinkService {
 					'Authenticate with Authorization: Bearer <BUILDOS_AGENT_TOKEN>.',
 					`Request ${scopeMode} during call.dial unless you only need less access for this session.`,
 					'First call method call.dial, then tools/list.',
-					'Use tool_help with path root or a narrow namespace like onto.task to discover allowed ops.',
-					'Use tool_exec with a canonical op like onto.project.list to execute BuildOS reads.',
+					'Use tool_search to discover candidate ops when the exact op is not known.',
+					'Use tool_schema with the exact op to load required args and examples before first-time or uncertain writes.',
+					'Use buildos_call with a canonical op like onto.project.list to execute BuildOS reads and writes.',
 					'If a write op returns FORBIDDEN, inspect the granted scope and allowed ops before retrying.',
 					'When finished, call call.hangup.',
 					'If you cannot update config directly, tell the user exactly which file or config screen must be updated.'

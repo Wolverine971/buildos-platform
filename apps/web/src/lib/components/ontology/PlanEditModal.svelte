@@ -793,6 +793,7 @@
 										entityType="plan"
 										entityId={planId}
 										autoLoad={true}
+										embedded={true}
 									/>
 								</div>
 							{/if}

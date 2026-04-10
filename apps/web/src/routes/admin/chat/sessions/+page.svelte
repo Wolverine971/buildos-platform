@@ -17,11 +17,20 @@
 		XCircle
 	} from 'lucide-svelte';
 	import { browser } from '$app/environment';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/stores';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import { toastService } from '$lib/stores/toast.store';
-	import { downloadChatSessionAuditMarkdown } from '$lib/services/admin/chat-session-audit-export';
+	import {
+		downloadChatSessionAuditMarkdown,
+		fetchChatSessionAuditPayload,
+		type AuditTimelineEvent as TimelineEvent,
+		type AuditTimelineSeverity as TimelineSeverity,
+		type AuditTimelineType as TimelineType,
+		type ChatSessionAuditPayload as SessionDetailPayload
+	} from '$lib/services/admin/chat-session-audit-export';
 
 	type SessionListItem = {
 		id: string;
@@ -45,79 +54,6 @@
 		last_message_at: string | null;
 	};
 
-	type TimelineType =
-		| 'session'
-		| 'message'
-		| 'tool_execution'
-		| 'llm_call'
-		| 'operation'
-		| 'context_shift'
-		| 'timing'
-		| 'turn_run'
-		| 'prompt_snapshot'
-		| 'turn_event'
-		| 'eval_run';
-
-	type TimelineSeverity = 'info' | 'success' | 'warning' | 'error';
-
-	type TimelineEvent = {
-		id: string;
-		timestamp: string;
-		type: TimelineType;
-		severity: TimelineSeverity;
-		title: string;
-		summary: string;
-		turn_index: number | null;
-		payload: Record<string, unknown>;
-	};
-
-	type SessionTurnRun = {
-		id: string;
-		turn_index: number;
-		stream_run_id: string | null;
-		client_turn_id: string | null;
-		status: string;
-		finished_reason: string | null;
-		context_type: string;
-		entity_id: string | null;
-		project_id: string | null;
-		gateway_enabled: boolean;
-		request_message: string;
-		user_message_id: string | null;
-		assistant_message_id: string | null;
-		tool_round_count: number;
-		tool_call_count: number;
-		validation_failure_count: number;
-		llm_pass_count: number;
-		first_lane: string | null;
-		first_help_path: string | null;
-		first_skill_path: string | null;
-		first_canonical_op: string | null;
-		history_strategy: string | null;
-		history_compressed: boolean | null;
-		raw_history_count: number;
-		history_for_model_count: number;
-		cache_source: string | null;
-		cache_age_seconds: number;
-		request_prewarmed_context: boolean;
-		started_at: string;
-		finished_at: string | null;
-		prompt_snapshot: Record<string, unknown> | null;
-		events: Array<Record<string, unknown>>;
-		eval_runs: Array<{
-			id: string;
-			scenario_slug: string;
-			scenario_version: string;
-			runner_type: string;
-			status: string;
-			summary: Record<string, unknown>;
-			started_at: string;
-			completed_at: string | null;
-			created_by: string | null;
-			assertions: Array<Record<string, unknown>>;
-		}>;
-	};
-
 	type PromptEvalScenario = {
 		slug: string;
 		version: string;
@@ -131,45 +67,11 @@
 		};
 	};
 
-	type SessionDetailPayload = {
-		session: {
-			id: string;
-			title: string;
-			user: { id: string; email: string; name: string };
-			context_type: string;
-			context_id: string | null;
-			status: string;
-			message_count: number;
-			total_tokens: number;
-			tool_call_count: number;
-			llm_call_count: number;
-			cost_estimate: number;
-			has_errors: boolean;
-			created_at: string;
-			updated_at: string;
-			last_message_at: string | null;
-			agent_metadata: Record<string, unknown>;
-		};
-		metrics: {
-			total_tokens: number;
-			total_cost_usd: number;
-			tool_calls: number;
-			tool_failures: number;
-			llm_calls: number;
-			llm_failures: number;
-			messages: number;
-		};
-		messages: Array<Record<string, unknown>>;
-		tool_executions: Array<Record<string, unknown>>;
-		llm_calls: Array<Record<string, unknown>>;
-		operations: Array<Record<string, unknown>>;
-		timeline: TimelineEvent[];
-		timing_metrics: Record<string, unknown> | null;
-		turn_runs: SessionTurnRun[];
-	};
-
 	const PAGE_SIZE = 25;
+	const CHAT_SESSION_QUERY_PARAM = 'chat_session_id';
 
+	let hasInitializedFromUrl = $state(false);
+	let lastUrlSessionIdWritten = $state<string | null>(null);
 	let isLoadingSessions = $state(true);
 	let sessionsError = $state<string | null>(null);
 	let sessions = $state<SessionListItem[]>([]);
@@ -223,6 +125,23 @@
 
 	$effect(() => {
 		if (!browser) return;
+		const urlSessionId = $page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
+
+		if (!hasInitializedFromUrl) {
+			selectedSessionId = urlSessionId;
+			lastUrlSessionIdWritten = urlSessionId;
+			hasInitializedFromUrl = true;
+			return;
+		}
+
+		if (urlSessionId !== lastUrlSessionIdWritten && urlSessionId !== selectedSessionId) {
+			selectedSessionId = urlSessionId;
+		}
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		if (!hasInitializedFromUrl) return;
 		selectedTimeframe;
 		selectedStatus;
 		selectedContextType;
@@ -240,6 +159,23 @@
 			return;
 		}
 		loadSessionDetail(selectedSessionId);
+	});
+
+	$effect(() => {
+		if (!browser || !hasInitializedFromUrl) return;
+		const url = new URL($page.url);
+		const currentSessionId = url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
+		if (currentSessionId === selectedSessionId) {
+			lastUrlSessionIdWritten = currentSessionId;
+			return;
+		}
+		if (selectedSessionId) {
+			url.searchParams.set(CHAT_SESSION_QUERY_PARAM, selectedSessionId);
+		} else {
+			url.searchParams.delete(CHAT_SESSION_QUERY_PARAM);
+		}
+		lastUrlSessionIdWritten = selectedSessionId;
+		replaceState(url.toString(), {});
 	});
 
 	$effect(() => {
@@ -292,8 +228,13 @@
 
 			sessions = result.data.sessions ?? [];
 			totalSessions = result.data.total ?? 0;
+			const requestedSessionId =
+				$page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
 
 			if (sessions.length === 0) {
+				if (selectedSessionId && selectedSessionId === requestedSessionId) {
+					return;
+				}
 				selectedSessionId = null;
 				sessionDetail = null;
 				return;
@@ -302,7 +243,7 @@
 			const stillExists =
 				selectedSessionId && sessions.some((session) => session.id === selectedSessionId);
 			const firstSession = sessions[0];
-			if (!stillExists && firstSession) {
+			if (!stillExists && firstSession && selectedSessionId !== requestedSessionId) {
 				selectedSessionId = firstSession.id;
 			}
 		} catch (err) {
@@ -319,15 +260,7 @@
 		expandedEventIds = new Set();
 
 		try {
-			const response = await fetch(`/api/admin/chat/sessions/${sessionId}`);
-			if (!response.ok) throw new Error('Failed to load session detail');
-
-			const result = await response.json();
-			if (!result.success) {
-				throw new Error(result.message || 'Failed to load session detail');
-			}
-
-			sessionDetail = result.data as SessionDetailPayload;
+			sessionDetail = await fetchChatSessionAuditPayload(sessionId);
 			if (evalScenarios.length > 0) {
 				const nextSelections = { ...selectedEvalScenarioByTurnId };
 				for (const run of sessionDetail.turn_runs ?? []) {

@@ -7,6 +7,8 @@
 
 This is the canonical documentation for the chat system currently running in the web app.
 
+For the canonical operating model and strategy, see [Agentic Chat Operating Model](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-operating-model.md).
+
 ## 1. What Is Live
 
 Primary production path:

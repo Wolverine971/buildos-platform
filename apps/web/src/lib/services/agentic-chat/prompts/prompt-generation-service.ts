@@ -49,7 +49,7 @@ const CAPABILITY_SYSTEM_MARKDOWN = `Think in three layers:
 2. Skill = workflow guidance for doing that work well
 3. Tool/op = the exact execution surface
 
-Choose the capability first. If that capability has a skill, fetch the skill before complex or error-prone work. If it has no dedicated skill, go straight to targeted exact-op help.`;
+Use capabilities to orient yourself. Skills are preloaded only as name-description metadata; load a skill when the workflow matters. Discover tools and inspect exact schemas on demand.`;
 
 export interface PromptGenerationContext {
 	contextType: ChatContextType;
@@ -170,7 +170,6 @@ export class PromptGenerationService {
 		if (isToolGatewayEnabled()) {
 			sections.push(`## BuildOS Capabilities\n\n${this.formatBuildOSCapabilitiesMarkdown()}`);
 			sections.push(`## Capability System\n\n${CAPABILITY_SYSTEM_MARKDOWN}`);
-			sections.push(`## Capability Catalog\n\n${this.formatCapabilityCatalogMarkdown()}`);
 			sections.push(`## Skill Catalog\n\n${this.formatSkillCatalogMarkdown()}`);
 			sections.push(`## Tool Discovery Mode\n\n${formatGatewayGuidanceLines()}`);
 		}
@@ -206,22 +205,10 @@ export class PromptGenerationService {
 			.join('\n');
 	}
 
-	private formatCapabilityCatalogMarkdown(): string {
-		return listCapabilities('available')
-			.map((capability) => {
-				const skillText =
-					capability.skillPaths.length > 0
-						? `preferred skill: ${capability.skillPaths.join(', ')}`
-						: 'no dedicated skill yet';
-				return `- ${capability.name} -> ${skillText}; direct discovery paths: ${capability.directPaths.join(', ')}`;
-			})
-			.join('\n');
-	}
-
 	private formatSkillCatalogMarkdown(): string {
 		return listAllSkills()
-			.sort((a, b) => a.path.localeCompare(b.path))
-			.map((skill) => `- ${skill.path}: ${skill.summary}`)
+			.sort((a, b) => a.id.localeCompare(b.id))
+			.map((skill) => `- ${skill.id}: ${skill.summary}`)
 			.join('\n');
 	}
 

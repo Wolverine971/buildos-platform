@@ -178,7 +178,7 @@ export class ToolSelectionService {
 				primary_strategy: ChatStrategy.PLANNER_STREAM,
 				confidence: 0.9,
 				reasoning:
-					'Tool gateway enabled; use tool_help/tool_exec for discovery and execution.',
+					'Tool gateway enabled; use skill_load/tool_search/tool_schema/buildos_call for discovery and execution.',
 				needs_clarification: false,
 				estimated_steps: 1,
 				required_tools: toolNames,

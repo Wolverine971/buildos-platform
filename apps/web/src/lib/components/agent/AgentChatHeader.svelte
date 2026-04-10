@@ -1,7 +1,14 @@
 <!-- apps/web/src/lib/components/agent/AgentChatHeader.svelte -->
 <!-- INKPRINT Design System: Header component with Frame texture -->
 <script lang="ts">
-	import { X, ExternalLink, ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-svelte';
+	import {
+		X,
+		ExternalLink,
+		ArrowLeft,
+		LoaderCircle,
+		AlertTriangle,
+		Download
+	} from 'lucide-svelte';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
 	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -24,6 +31,10 @@
 		currentActivity: string;
 		sessionStatusLabel?: string | null;
 		contextUsage?: ContextUsageSnapshot | null;
+		showAdminDebugActions?: boolean;
+		adminSessionHref?: string | null;
+		onExportAudit?: (() => void) | null;
+		isExportingAudit?: boolean;
 	}
 
 	let {
@@ -42,7 +53,11 @@
 		hasActiveThinkingBlock,
 		currentActivity,
 		sessionStatusLabel = null,
-		contextUsage = null
+		contextUsage = null,
+		showAdminDebugActions = false,
+		adminSessionHref = null,
+		onExportAudit = null,
+		isExportingAudit = false
 	}: Props = $props();
 
 	const isProjectContext = $derived.by(
@@ -216,6 +231,38 @@
 				<ExternalLink class="h-3.5 w-3.5 shrink-0" />
 				<span class="hidden sm:inline">View</span>
 			</a>
+		{/if}
+
+		{#if showAdminDebugActions && adminSessionHref}
+			<a
+				href={adminSessionHref}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				style="-webkit-tap-highlight-color: transparent;"
+				title="Open this chat session in admin audit logs"
+			>
+				<ExternalLink class="h-3.5 w-3.5 shrink-0" />
+				<span class="hidden sm:inline">Logs</span>
+			</a>
+		{/if}
+
+		{#if showAdminDebugActions && onExportAudit}
+			<button
+				type="button"
+				onclick={onExportAudit}
+				disabled={isExportingAudit}
+				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+				style="-webkit-tap-highlight-color: transparent;"
+				title="Export this chat session as markdown"
+			>
+				{#if isExportingAudit}
+					<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
+				{:else}
+					<Download class="h-3.5 w-3.5 shrink-0" />
+				{/if}
+				<span class="hidden sm:inline">Export</span>
+			</button>
 		{/if}
 
 		<!-- INKPRINT close button -->

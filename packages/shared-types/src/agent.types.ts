@@ -420,7 +420,7 @@ export type SkillActivityEvent = {
   type: 'skill_activity';
   action: 'requested' | 'loaded';
   path: string;
-  via: 'tool_help';
+  via: 'tool_help' | 'skill_load';
 };
 
 export interface AgentTimingSummary {

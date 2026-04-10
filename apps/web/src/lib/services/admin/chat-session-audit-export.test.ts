@@ -1,9 +1,10 @@
 // apps/web/src/lib/services/admin/chat-session-audit-export.test.ts
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildSessionDetailPayload } from '../../../routes/api/admin/chat/sessions/[id]/session-detail-payload';
 import {
 	buildChatSessionAuditFilename,
-	buildChatSessionAuditMarkdown
+	buildChatSessionAuditMarkdown,
+	fetchChatSessionAuditPayload
 } from './chat-session-audit-export';
 
 describe('chat-session-audit-export', () => {
@@ -256,5 +257,51 @@ describe('chat-session-audit-export', () => {
 		expect(filename).toMatch(
 			/^chat-session-audit-session-title-session-1-\d{4}-\d{2}-\d{2}\.md$/
 		);
+	});
+
+	it('loads a session audit payload from the admin session detail endpoint', async () => {
+		const payload = buildSessionDetailPayload({
+			sessionRow: {
+				id: 'session-2',
+				user_id: 'user-2',
+				title: 'Loaded session',
+				status: 'active',
+				context_type: 'global',
+				entity_id: null,
+				message_count: 0,
+				total_tokens_used: 0,
+				tool_call_count: 0,
+				created_at: '2026-04-03T12:00:00.000Z',
+				updated_at: '2026-04-03T12:00:00.000Z',
+				last_message_at: null,
+				agent_metadata: {},
+				users: {
+					id: 'user-2',
+					email: 'admin@example.com',
+					name: 'Admin User'
+				}
+			},
+			messages: [],
+			toolExecutions: [],
+			llmCalls: [],
+			operations: [],
+			timingData: null,
+			turnRuns: [],
+			promptSnapshots: [],
+			turnEvents: [],
+			evalRuns: [],
+			evalAssertions: []
+		});
+
+		const fetcher = vi.fn<typeof fetch>().mockResolvedValue({
+			ok: true,
+			json: async () => ({
+				success: true,
+				data: payload
+			})
+		} as Response);
+
+		await expect(fetchChatSessionAuditPayload('session-2', fetcher)).resolves.toEqual(payload);
+		expect(fetcher).toHaveBeenCalledWith('/api/admin/chat/sessions/session-2');
 	});
 });

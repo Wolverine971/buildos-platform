@@ -89,9 +89,9 @@ function createGlobalFallbackSupabaseMock(config: {
 		}
 
 		if (table === 'onto_project_logs') {
-			const limit = vi.fn().mockResolvedValue(config.logs);
-			const order = vi.fn().mockReturnValue({ limit });
-			const inFn = vi.fn().mockReturnValue({ order });
+			const order = vi.fn().mockResolvedValue(config.logs);
+			const gte = vi.fn().mockReturnValue({ order });
+			const inFn = vi.fn().mockReturnValue({ gte, order });
 			const select = vi.fn().mockReturnValue({ in: inFn });
 			return { select };
 		}
@@ -480,42 +480,212 @@ describe('loadFastChatPromptContext global', () => {
 
 		const data = context.data as Record<string, any>;
 		expect(data.projects).toHaveLength(2);
-		expect(data.projects[0].doc_structure).toBeUndefined();
+		expect(data.projects[0].project.doc_structure).toBeUndefined();
 		expect(data.context_meta).toMatchObject({
 			source: 'fallback',
 			project_count: 2,
+			projects_returned: 2,
+			project_limit: 8,
 			includes_doc_structure: false,
+			recent_activity_window_days: 7,
+			recent_activity_max_lookback_days: 21,
 			entity_limits_per_project: {
-				recent_activity: 6,
-				goals: 4,
-				milestones: 4,
-				plans: 4
+				recent_activity: 3,
+				goals: 2,
+				milestones: 2,
+				plans: 2
 			}
 		});
 
-		expect(data.project_goals['proj-1'].map((goal: { id: string }) => goal.id)).toEqual([
+		const projectOne = data.projects.find(
+			(bundle: { project: { id: string } }) => bundle.project.id === 'proj-1'
+		);
+		const projectTwo = data.projects.find(
+			(bundle: { project: { id: string } }) => bundle.project.id === 'proj-2'
+		);
+		if (!projectOne || !projectTwo) {
+			throw new Error('Expected bundled global projects to include proj-1 and proj-2');
+		}
+
+		expect(projectOne.goals.map((goal: { id: string }) => goal.id)).toEqual([
 			'goal-overdue',
-			'goal-due-soon',
-			'goal-future',
-			'goal-no-date'
+			'goal-due-soon'
 		]);
-		expect(data.project_goals['proj-2'].map((goal: { id: string }) => goal.id)).toEqual([
-			'goal-proj-2'
+		expect(projectTwo.goals.map((goal: { id: string }) => goal.id)).toEqual(['goal-proj-2']);
+		expect(projectOne.milestones.map((milestone: { id: string }) => milestone.id)).toEqual([
+			'milestone-overdue',
+			'milestone-soon'
+		]);
+		expect(projectOne.plans.map((plan: { id: string }) => plan.id)).toEqual([
+			'plan-active',
+			'plan-blocked'
 		]);
 		expect(
-			data.project_milestones['proj-1'].map((milestone: { id: string }) => milestone.id)
-		).toEqual(['milestone-overdue', 'milestone-soon', 'milestone-future', 'milestone-no-date']);
-		expect(data.project_plans['proj-1'].map((plan: { id: string }) => plan.id)).toEqual([
-			'plan-active',
-			'plan-blocked',
-			'plan-todo',
-			'plan-draft'
-		]);
-		expect(data.project_recent_activity['proj-1']).toHaveLength(6);
+			projectOne.recent_activity.map((item: { entity_id: string }) => item.entity_id)
+		).toEqual(['task-1', 'task-2', 'task-3']);
 		expect(supabase.rpc.mock.calls.map(([fn]) => fn)).toEqual([
 			'ensure_actor_for_user',
 			'get_onto_project_summaries_v1'
 		]);
+	});
+
+	it('prefers the last 7 days of activity, dedupes repeated entities, and only falls back when needed', async () => {
+		vi.useFakeTimers();
+		const now = new Date('2026-02-15T20:07:18.308Z');
+		vi.setSystemTime(now);
+
+		const dayMs = 24 * 60 * 60 * 1000;
+		const isoFromDays = (daysFromNow: number): string =>
+			new Date(now.getTime() + daysFromNow * dayMs).toISOString();
+
+		const supabase = createGlobalFallbackSupabaseMock({
+			projectSummaries: [
+				{
+					id: 'proj-1',
+					name: 'Project One',
+					state_key: 'active',
+					description: 'First project',
+					next_step_short: 'Ship project one',
+					updated_at: isoFromDays(-1)
+				},
+				{
+					id: 'proj-2',
+					name: 'Project Two',
+					state_key: 'planning',
+					description: 'Second project',
+					next_step_short: 'Ship project two',
+					updated_at: isoFromDays(-2)
+				},
+				{
+					id: 'proj-3',
+					name: 'Project Three',
+					state_key: 'planning',
+					description: 'Third project',
+					next_step_short: 'Ship project three',
+					updated_at: isoFromDays(-3)
+				}
+			],
+			goals: { data: [], error: null },
+			milestones: { data: [], error: null },
+			plans: { data: [], error: null },
+			logs: {
+				data: [
+					{
+						project_id: 'proj-1',
+						entity_type: 'task',
+						entity_id: 'task-a',
+						action: 'updated',
+						created_at: isoFromDays(-1),
+						after_data: { title: 'Task A' },
+						before_data: null
+					},
+					{
+						project_id: 'proj-1',
+						entity_type: 'task',
+						entity_id: 'task-a',
+						action: 'updated',
+						created_at: isoFromDays(-2),
+						after_data: { title: 'Task A (older)' },
+						before_data: null
+					},
+					{
+						project_id: 'proj-1',
+						entity_type: 'goal',
+						entity_id: 'goal-g',
+						action: 'created',
+						created_at: isoFromDays(-1.5),
+						after_data: {},
+						before_data: null
+					},
+					{
+						project_id: 'proj-1',
+						entity_type: 'document',
+						entity_id: 'doc-b',
+						action: 'updated',
+						created_at: isoFromDays(-5),
+						after_data: { title: 'Doc B' },
+						before_data: null
+					},
+					{
+						project_id: 'proj-1',
+						entity_type: 'document',
+						entity_id: 'doc-c',
+						action: 'updated',
+						created_at: isoFromDays(-8),
+						after_data: { title: 'Doc C' },
+						before_data: null
+					},
+					{
+						project_id: 'proj-2',
+						entity_type: 'project',
+						entity_id: 'proj-2',
+						action: 'created',
+						created_at: isoFromDays(-8),
+						after_data: {},
+						before_data: null
+					},
+					{
+						project_id: 'proj-2',
+						entity_type: 'task',
+						entity_id: 'task-b',
+						action: 'updated',
+						created_at: isoFromDays(-10),
+						after_data: { title: 'Task B' },
+						before_data: null
+					},
+					{
+						project_id: 'proj-2',
+						entity_type: 'document',
+						entity_id: 'doc-z',
+						action: 'updated',
+						created_at: isoFromDays(-15),
+						after_data: { title: 'Doc Z' },
+						before_data: null
+					},
+					{
+						project_id: 'proj-3',
+						entity_type: 'task',
+						entity_id: 'task-old',
+						action: 'updated',
+						created_at: isoFromDays(-25),
+						after_data: { title: 'Too Old' },
+						before_data: null
+					}
+				],
+				error: null
+			}
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'global'
+		});
+
+		const data = context.data as Record<string, any>;
+		const projectOne = data.projects.find(
+			(bundle: { project: { id: string } }) => bundle.project.id === 'proj-1'
+		);
+		const projectTwo = data.projects.find(
+			(bundle: { project: { id: string } }) => bundle.project.id === 'proj-2'
+		);
+		const projectThree = data.projects.find(
+			(bundle: { project: { id: string } }) => bundle.project.id === 'proj-3'
+		);
+		if (!projectOne || !projectTwo || !projectThree) {
+			throw new Error('Expected bundled global projects to include test projects');
+		}
+
+		expect(
+			projectOne.recent_activity.map((item: { entity_id: string }) => item.entity_id)
+		).toEqual(['task-a', 'doc-b', 'goal-g']);
+		expect(
+			projectOne.recent_activity.every((item: { title: string | null }) => item.title)
+		).toBe(true);
+		expect(
+			projectTwo.recent_activity.map((item: { entity_id: string }) => item.entity_id)
+		).toEqual(['task-b', 'doc-z', 'proj-2']);
+		expect(projectThree.recent_activity).toEqual([]);
 	});
 });
 

@@ -113,6 +113,12 @@ export interface ChatSessionAuditPayload {
 	turn_runs: AuditTurnRun[];
 }
 
+type ChatSessionAuditResponse = {
+	success?: boolean;
+	message?: string;
+	data?: ChatSessionAuditPayload;
+};
+
 const stringOrDash = (value: unknown): string => {
 	if (value === null || value === undefined) return '-';
 	if (typeof value === 'string') {
@@ -323,6 +329,27 @@ export const buildChatSessionAuditMarkdown = (payload: ChatSessionAuditPayload):
 	lines.push(...buildRawCollectionsSection(payload));
 
 	return lines.join('\n').trimEnd() + '\n';
+};
+
+export const fetchChatSessionAuditPayload = async (
+	sessionId: string,
+	fetcher: typeof fetch = fetch
+): Promise<ChatSessionAuditPayload> => {
+	const trimmedSessionId = sessionId.trim();
+	if (!trimmedSessionId) {
+		throw new Error('Chat session ID is required');
+	}
+
+	const response = await fetcher(
+		`/api/admin/chat/sessions/${encodeURIComponent(trimmedSessionId)}`
+	);
+	const result = (await response.json().catch(() => null)) as ChatSessionAuditResponse | null;
+
+	if (!response.ok || !result?.success || !result.data) {
+		throw new Error(result?.message || 'Failed to load session audit');
+	}
+
+	return result.data;
 };
 
 export const downloadChatSessionAuditMarkdown = (payload: ChatSessionAuditPayload): string => {
