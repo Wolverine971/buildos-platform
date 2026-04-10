@@ -1,9 +1,9 @@
 <!-- apps/web/src/routes/admin/users/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import {
 		Users,
-		Search,
 		Shield,
 		ShieldOff,
 		Eye,
@@ -26,7 +26,6 @@
 	import UserActivityModal from '$lib/components/admin/UserActivityModal.svelte';
 	import EmailComposerModal from '$lib/components/admin/EmailComposerModal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
-	import FormField from '$lib/components/ui/FormField.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 
@@ -52,6 +51,7 @@
 	let sortOrder = $state('desc');
 	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	let rawUsers = $state<any[]>([]); // Store raw data for client-side sorting
+	let initialFiltersReady = $state(false);
 
 	const clientSortableFields = [
 		'project_count',
@@ -116,11 +116,13 @@
 
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		searchQuery = $page.url.searchParams.get('search')?.trim() || '';
+		initialFiltersReady = true;
 	});
 
 	// Load users on mount and when filters change
 	$effect(() => {
-		if (!browser) return;
+		if (!browser || !initialFiltersReady) return;
 		// Track all filter dependencies
 		searchQuery;
 		filterByAdmin;
@@ -257,13 +259,6 @@
 		}
 	}
 
-	function getDailyBriefCountColor(count: number): string {
-		if (count >= 50) return 'text-emerald-600 dark:text-emerald-400';
-		if (count >= 20) return 'text-accent';
-		if (count >= 5) return 'text-amber-600 dark:text-amber-400';
-		return 'text-muted-foreground';
-	}
-
 	function getLastVisitColor(dateString: string | null): string {
 		if (!dateString) return 'text-muted-foreground/50';
 
@@ -339,7 +334,7 @@
 				<TextInput
 					type="text"
 					bind:value={searchQuery}
-					placeholder="Search users by email or name..."
+					placeholder="Search users by email, name, or ID..."
 					size="md"
 				/>
 			</div>

@@ -52,16 +52,16 @@ Plan workflow playbook for deciding when to create plans, structuring them well,
 
 - Confirm the outcome the plan supports and whether a plan is actually warranted.
 - If the create shape is unclear, call `tool_schema({ op: "onto.plan.create" })`.
-- Then call `buildos_call({ op: "onto.plan.create", args: { ... } })`, followed by `buildos_call({ op: "onto.task.create", args: { ... } })` for a small set of tasks with `plan_id`.
+- Then call `create_onto_plan({ ... })`, followed by `create_onto_task({ ... })` for a small set of tasks with `plan_id`.
 
 ### Refine an existing plan that drifted out of date
 
 - Read the existing plan and current tasks first.
 - If the update shape is unclear, call `tool_schema({ op: "onto.plan.update" })`.
-- Then update the plan metadata with `buildos_call({ op: "onto.plan.update", args: { ... } })` as needed.
+- Then update the plan metadata with `update_onto_plan({ ... })` as needed.
 - Add, adjust, or retire tasks so the plan matches the current approach.
 
 ## Notes
 
 - Plans are useful when work needs coordination or structure, not as a mandatory layer for every request.
-- If the model already knows the exact task and plan relationships in-turn, it can go straight to tool_schema or buildos_call.
+- If the model already knows the exact task and plan relationships in-turn, it can go straight to `tool_schema` or the direct create/update tool.

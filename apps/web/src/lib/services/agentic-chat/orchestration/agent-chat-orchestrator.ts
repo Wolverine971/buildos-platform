@@ -66,6 +66,14 @@ import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 import { dev } from '$app/environment';
 import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
+import {
+	extractGatewayMaterializedToolNames,
+	materializeGatewayTools
+} from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	isGatewayExecToolName,
+	readGatewayExecInput
+} from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
 
 const logger = createLogger('AgentChatOrchestrator');
 
@@ -1077,6 +1085,24 @@ export class AgentChatOrchestrator {
 				};
 				messages.push(toolMessage);
 
+				if (isToolGatewayEnabled() && result.success) {
+					const materialized = this.materializeGatewayDiscoveredTools({
+						plannerContext: currentPlannerContext,
+						serviceContext,
+						request,
+						toolNames: extractGatewayMaterializedToolNames(result.data)
+					});
+					if (materialized) {
+						currentPlannerContext = materialized.plannerContext;
+						currentTools = materialized.tools;
+						currentVirtualHandlers = materialized.virtualHandlers;
+						messages.push({
+							role: 'system',
+							content: `Discovery loaded additional direct tools for this turn: ${materialized.addedToolNames.join(', ')}. Call them directly by name.`
+						});
+					}
+				}
+
 				if (result.errorType === 'validation_error' && !validationRetryUsed) {
 					validationRetryUsed = true;
 					messages.push({
@@ -1138,8 +1164,8 @@ export class AgentChatOrchestrator {
 			error.match(/Invalid ([a-z_]+_id): expected UUID/i);
 		const idKey = missingIdMatch?.[1];
 		let isUpdateTool = toolName.startsWith('update_onto_');
+		const registryEntry = helpPath ? getToolRegistry().ops[helpPath] : undefined;
 		if (!isUpdateTool && helpPath) {
-			const registryEntry = getToolRegistry().ops[helpPath];
 			if (registryEntry?.tool_name?.startsWith('update_onto_')) {
 				isUpdateTool = true;
 			}
@@ -1167,7 +1193,9 @@ export class AgentChatOrchestrator {
 		}
 
 		if (helpPath) {
-			guidance.push(`Call tool_help("${helpPath}") to verify required args, then retry.`);
+			guidance.push(
+				`Call tool_schema({ op: "${helpPath}" }) to verify required args, then retry with the direct tool ${registryEntry?.tool_name ?? 'named by the schema'}.`
+			);
 		}
 
 		if (idKey) {
@@ -1206,10 +1234,23 @@ export class AgentChatOrchestrator {
 		const { request, serviceContext, plannerContext, messages, missedToolName } = params;
 
 		if (isToolGatewayEnabled()) {
+			const materialized = this.materializeGatewayDiscoveredTools({
+				plannerContext,
+				serviceContext,
+				request,
+				toolNames: [missedToolName]
+			});
+			if (materialized) {
+				messages.push({
+					role: 'system',
+					content: `Tool "${missedToolName}" was not preloaded. It is now available for this turn as a direct tool; replan and call it directly by name.`
+				});
+				return materialized;
+			}
 			messages.push({
 				role: 'system',
 				content:
-					'Tool gateway is enabled. Use tool_help("root") to discover ops, then call tool_exec with the exact args.'
+					'Use the preloaded direct tools first. If the exact tool is still unknown, use tool_search to find it and tool_schema to inspect exact arguments before calling the direct tool by name.'
 			});
 
 			return {
@@ -1248,6 +1289,46 @@ export class AgentChatOrchestrator {
 				plannerContext: expandedPlannerContext,
 				serviceContext
 			})
+		};
+	}
+
+	private materializeGatewayDiscoveredTools(params: {
+		plannerContext: PlannerContext;
+		serviceContext: ServiceContext;
+		request: AgentChatRequest;
+		toolNames: string[];
+	}): {
+		plannerContext: PlannerContext;
+		tools: ChatToolDefinition[];
+		virtualHandlers: Record<string, VirtualToolHandler>;
+		addedToolNames: string[];
+	} | null {
+		const materialized = materializeGatewayTools(
+			params.plannerContext.availableTools,
+			params.toolNames
+		);
+		if (materialized.addedToolNames.length === 0) {
+			return null;
+		}
+
+		const nextPlannerContext: PlannerContext = {
+			...params.plannerContext,
+			availableTools: materialized.tools
+		};
+
+		return {
+			plannerContext: nextPlannerContext,
+			tools: this.appendVirtualTools({
+				plannerContext: nextPlannerContext,
+				serviceContext: params.serviceContext,
+				request: params.request
+			}),
+			virtualHandlers: this.createVirtualToolHandlers({
+				request: params.request,
+				plannerContext: nextPlannerContext,
+				serviceContext: params.serviceContext
+			}),
+			addedToolNames: materialized.addedToolNames
 		};
 	}
 
@@ -1773,12 +1854,9 @@ export class AgentChatOrchestrator {
 			return toolCall;
 		}
 
-		if (toolName === 'tool_exec') {
+		if (isGatewayExecToolName(toolName)) {
 			const op = typeof args.op === 'string' ? args.op.trim() : '';
-			const opArgs =
-				args.args && typeof args.args === 'object' && !Array.isArray(args.args)
-					? (args.args as Record<string, any>)
-					: null;
+			const opArgs = readGatewayExecInput(args);
 			if (!op || !opArgs) {
 				return toolCall;
 			}
@@ -2113,12 +2191,9 @@ export class AgentChatOrchestrator {
 		let entityType = this.resolveOperationEntityType(toolName);
 		let entityArgs = args;
 
-		if (toolName === 'tool_exec' && args) {
+		if (isGatewayExecToolName(toolName) && args) {
 			const op = typeof args.op === 'string' ? args.op.trim() : '';
-			const opArgs =
-				args.args && typeof args.args === 'object' && !Array.isArray(args.args)
-					? (args.args as Record<string, any>)
-					: undefined;
+			const opArgs = readGatewayExecInput(args);
 			action = this.resolveOperationActionFromOp(op);
 			entityType = this.resolveOperationEntityTypeFromOp(op);
 			entityArgs = opArgs ?? args;

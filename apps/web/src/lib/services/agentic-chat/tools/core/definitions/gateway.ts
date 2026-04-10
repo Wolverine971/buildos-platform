@@ -108,34 +108,5 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 				required: ['op']
 			}
 		}
-	},
-	{
-		type: 'function',
-		function: {
-			name: 'buildos_call',
-			description:
-				'Execute a canonical BuildOS op after you know the exact op and argument shape. Required shape: { op, args }. Focus on concrete op plus args. Do not call with empty {}.',
-			parameters: {
-				type: 'object',
-				properties: {
-					op: {
-						type: 'string',
-						minLength: 1,
-						description:
-							'Canonical operation name from tool_search or tool_schema, such as "onto.task.list" or "onto.task.update".'
-					},
-					args: {
-						type: 'object',
-						description:
-							'Arguments object for the op. Must match the exact required fields from tool_schema for that op.'
-					},
-					dry_run: {
-						type: 'boolean',
-						description: 'If true, return a simulated response without mutating data.'
-					}
-				},
-				required: ['op', 'args']
-			}
-		}
 	}
 ];

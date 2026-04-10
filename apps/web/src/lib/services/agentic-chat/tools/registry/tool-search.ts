@@ -140,7 +140,7 @@ export function searchToolRegistry(options: ToolSearchOptions = {}): Record<stri
 		total_matches: matches.length,
 		matches,
 		next_step:
-			'Pick the best candidate op, then call tool_schema({ op: "<canonical op>" }) before buildos_call for first-time or complex writes.'
+			'Pick the best candidate op/tool. If it is not already loaded, this search makes the direct tool available for the next response. Call tool_schema({ op: "<canonical op>" }) before first-time or complex writes, then call the direct tool by name.'
 	};
 }
 

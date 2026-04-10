@@ -28,7 +28,7 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 3. Use timezone-safe ISO 8601 values for start_at and end_at, or supply timezone.
 4. For project calendar mapping questions, check cal.project.get before assuming a project calendar exists.
 5. For update/delete, discover and pass exact onto_event_id or event_id.
-6. For first-time or complex writes, inspect the exact tool schema with tool_schema before buildos_call.
+6. For first-time or complex writes, inspect the exact tool schema with `tool_schema` before calling the direct calendar tool.
 7. After execution, tell the user what changed and mention sync implications when they matter.
 
 ## Related Tools
@@ -53,13 +53,13 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 ### Schedule a project work session tied to a task
 
 - If the exact args are unclear, call `tool_schema({ op: "cal.event.create" })`.
-- Then call `buildos_call({ op: "cal.event.create", args: { ... } })` with title, start_at, project_id, calendar_scope="project", and task_id when relevant.
+- Then call `create_calendar_event({ ... })` with title, start_at, project_id, `calendar_scope: "project"`, and task_id when relevant.
 
 ### Reschedule an existing event safely
 
 - Use cal.event.list or cal.event.get to discover the exact onto_event_id or event_id.
 - If the update shape is unclear, call `tool_schema({ op: "cal.event.update" })`.
-- Then call `buildos_call({ op: "cal.event.update", args: { ... } })` with the exact identifier and updated fields.
+- Then call `update_calendar_event({ ... })` with the exact identifier and updated fields.
 
 ## Notes
 

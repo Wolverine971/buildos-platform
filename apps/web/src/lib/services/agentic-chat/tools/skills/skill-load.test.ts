@@ -42,6 +42,6 @@ describe('skill loading', () => {
 		);
 		expect(result.markdown).toContain("Draft chapter 3: Elena's first magical forging attempt");
 		expect(result.markdown).toContain('task_id: "440c2639-9000-4111-aeea-ee374f8fb925"');
-		expect(result.markdown).toContain('Never emit `onto.task.update` with `args: {}`.');
+		expect(result.markdown).toContain('Never emit `update_onto_task({})`.');
 	});
 });

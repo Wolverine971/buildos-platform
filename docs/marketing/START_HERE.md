@@ -6,6 +6,19 @@ This is the single entry point for all BuildOS marketing work. Read in order.
 
 ---
 
+## 0. Growth Audit (Read This If Returning)
+
+| Document                                                                                 | What It Does                                                                                                               |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [Growth Audit — April 2026](growth/growth-audit-2026-04-09.md)                           | Full-funnel audit. Activation collapse (72% drop), broken email pipeline, missing proof apparatus. Prioritized fix list.   |
+| [Lead Gen Operating System — April 2026](growth/lead-gen-operating-system-2026-04-10.md) | Companion path to activation repair. Defines the narrow manual lead-gen system, campaign layer, and Legion agent/commands. |
+
+This audit is the current source of truth for where BuildOS stands on growth. Read it before planning any marketing or product work.
+
+The lead-gen operating system is the current source of truth for how to run manual campaigns while activation is being repaired.
+
+---
+
 ## 1. Positioning & Strategy (Read These First)
 
 These define what BuildOS is, who it's for, and how to talk about it.
@@ -139,14 +152,15 @@ These are outlined in the [Guerrilla Seed Campaign](social-media/publish-kits/20
 If starting from scratch, read in this order:
 
 1. This doc (you're here)
-2. Brand Architecture
-3. Marketing Strategy 2026
-4. Anti-AI Show-Don't-Tell Strategy
-5. Brand Guide 1-Pager
-6. Guerrilla Content Doctrine
-7. 6-Week Guerrilla Seed Campaign
-8. Collaboration Pivot Carousel (for format reference only)
+2. **Growth Audit — April 2026** (current state of the funnel)
+3. Brand Architecture
+4. Marketing Strategy 2026
+5. Anti-AI Show-Don't-Tell Strategy
+6. Brand Guide 1-Pager
+7. Guerrilla Content Doctrine
+8. 6-Week Guerrilla Seed Campaign
+9. Collaboration Pivot Carousel (for format reference only)
 
 ---
 
-_Last updated: 2026-03-24_
+_Last updated: 2026-04-10_

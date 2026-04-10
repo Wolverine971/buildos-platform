@@ -703,14 +703,14 @@ export class ErrorLoggerService {
 		return true;
 	}
 
-	public async getErrorSummary(): Promise<ErrorSummary> {
+	public async getErrorSummary(filters?: ErrorLogFilters): Promise<ErrorSummary> {
 		try {
 			const now = new Date();
 			const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 			const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 			const { rows } = await this.getVisibleErrorRows(
 				'id, endpoint, error_message, metadata, operation_type, severity, resolved, created_at',
-				undefined,
+				filters,
 				Number.POSITIVE_INFINITY,
 				250
 			);

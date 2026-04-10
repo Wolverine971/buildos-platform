@@ -29,7 +29,7 @@ Project health audit playbook for reviewing structure, blockers, stale work, ris
 5. Separate observations from recommendations: first report what is true, then suggest what should change.
 6. Order findings by severity and user impact rather than by entity type.
 7. Call out missing data or time-window limits when they materially affect the audit.
-8. If the user asks you to fix issues after the audit, switch from analysis to the appropriate skill, then use `tool_schema` and `buildos_call` for the concrete writes.
+8. If the user asks you to fix issues after the audit, switch from analysis to the appropriate skill, then use `tool_schema` and the direct tool named by that schema for the concrete writes.
 
 ## Related Tools
 

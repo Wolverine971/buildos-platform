@@ -1,6 +1,14 @@
 <!-- apps/web/src/lib/components/admin/ActivityTimelineChart.svelte -->
 <script lang="ts">
-	import { FileText, FolderOpen, CheckSquare, StickyNote, Brain, Calendar } from 'lucide-svelte';
+	import {
+		FileText,
+		FolderOpen,
+		CheckSquare,
+		StickyNote,
+		Brain,
+		Calendar,
+		MessageSquare
+	} from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { onMount } from 'svelte';
@@ -32,7 +40,7 @@
 			.slice(0, 20) // Show last 20 activities
 	);
 
-	function getActivityIcon(type: string, action: string) {
+	function getActivityIcon(type: string, _action: string) {
 		switch (type) {
 			case 'brief':
 				return FileText;
@@ -47,6 +55,8 @@
 				return Brain;
 			case 'calendar':
 				return Calendar;
+			case 'chat':
+				return MessageSquare;
 			default:
 				return FileText;
 		}
@@ -70,6 +80,8 @@
 				return 'text-indigo-600 dark:text-indigo-400 bg-indigo-500/10';
 			case 'calendar':
 				return 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10';
+			case 'chat':
+				return 'text-blue-600 dark:text-blue-400 bg-blue-500/10';
 			default:
 				return 'text-muted-foreground bg-muted';
 		}
@@ -137,11 +149,15 @@
 				</div>
 				<div class="flex items-center text-xs">
 					<div class="w-2.5 h-2.5 bg-teal-500 rounded mr-1"></div>
-					<span class="text-muted-foreground">Notes</span>
+					<span class="text-muted-foreground">Documents</span>
 				</div>
 				<div class="flex items-center text-xs">
 					<div class="w-2.5 h-2.5 bg-indigo-500 rounded mr-1"></div>
 					<span class="text-muted-foreground">Brain Dumps</span>
+				</div>
+				<div class="flex items-center text-xs">
+					<div class="w-2.5 h-2.5 bg-blue-500 rounded mr-1"></div>
+					<span class="text-muted-foreground">Chat</span>
 				</div>
 			</div>
 

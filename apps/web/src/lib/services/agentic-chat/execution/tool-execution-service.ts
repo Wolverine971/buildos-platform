@@ -37,6 +37,12 @@ import { searchToolRegistry } from '../tools/registry/tool-search';
 import { getToolSchema } from '../tools/registry/tool-schema';
 import { normalizeGatewayOpName } from '../tools/registry/gateway-op-aliases';
 import {
+	ALL_GATEWAY_EXEC_TOOL_NAMES,
+	PRIMARY_GATEWAY_EXEC_TOOL_NAME,
+	isGatewayExecToolName,
+	readGatewayExecInput
+} from '../tools/core/gateway-exec-utils';
+import {
 	normalizeProjectCreateArgs,
 	validateProjectCreateArgs
 } from '../tools/core/project-create-args';
@@ -52,11 +58,13 @@ const GATEWAY_TOOL_NAMES = new Set([
 	'skill_load',
 	'tool_search',
 	'tool_schema',
-	'buildos_call',
 	'tool_help',
-	'tool_exec',
 	'tool_batch'
 ]);
+
+for (const toolName of ALL_GATEWAY_EXEC_TOOL_NAMES) {
+	GATEWAY_TOOL_NAMES.add(toolName);
+}
 
 /**
  * Tool execution options
@@ -717,7 +725,7 @@ export class ToolExecutionService implements BaseService {
 			return { success: true, data: help, toolName, toolCallId: 'gateway' };
 		}
 
-		if (toolName === 'buildos_call' || toolName === 'tool_exec') {
+		if (isGatewayExecToolName(toolName)) {
 			return this.executeGatewayExec(args, context, options, toolName);
 		}
 
@@ -754,12 +762,13 @@ export class ToolExecutionService implements BaseService {
 					const execResult = await this.executeGatewayExec(
 						{
 							op: entry.op,
-							args: entry.args ?? {},
+							input: entry.input ?? entry.args ?? {},
 							idempotency_key: entry.idempotency_key,
 							dry_run: entry.dry_run
 						},
 						context,
-						options
+						options,
+						PRIMARY_GATEWAY_EXEC_TOOL_NAME
 					);
 					const normalizedExecResult: Record<string, any> = {
 						type: 'exec',
@@ -822,7 +831,7 @@ export class ToolExecutionService implements BaseService {
 		args: Record<string, any>,
 		context: ServiceContext,
 		options: ToolExecutionOptions,
-		gatewayToolName = 'tool_exec'
+		gatewayToolName: string = PRIMARY_GATEWAY_EXEC_TOOL_NAME
 	): Promise<ToolExecutionResult> {
 		const requestedOpRaw = typeof args.op === 'string' ? args.op.trim() : '';
 		const registry = getToolRegistry();
@@ -853,7 +862,7 @@ export class ToolExecutionService implements BaseService {
 			);
 		}
 
-		const opArgs = args.args && typeof args.args === 'object' ? args.args : {};
+		const opArgs = readGatewayExecInput(args);
 		let effectiveOp = canonicalOp;
 		let effectiveEntry = entry;
 		let normalizedArgs = this.normalizeGatewayArgsForTool(entry.tool_name, opArgs, context);
@@ -944,7 +953,7 @@ export class ToolExecutionService implements BaseService {
 					result: {
 						dry_run: true,
 						tool_name: effectiveEntry.tool_name,
-						args: normalizedArgs
+						input: normalizedArgs
 					},
 					meta
 				},
@@ -1244,7 +1253,7 @@ export class ToolExecutionService implements BaseService {
 		message: string,
 		helpPath?: string,
 		details?: Record<string, any>,
-		toolName = 'tool_exec'
+		toolName: string = PRIMARY_GATEWAY_EXEC_TOOL_NAME
 	): ToolExecutionResult {
 		return {
 			success: false,

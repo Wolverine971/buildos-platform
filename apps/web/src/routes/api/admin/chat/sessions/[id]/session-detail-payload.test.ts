@@ -199,6 +199,14 @@ describe('buildSessionDetailPayload', () => {
 			approx_prompt_tokens: 1030
 		});
 		expect(payload.turn_runs[0].events).toHaveLength(2);
+		expect(payload.turn_runs[0].events[1]?.payload).toMatchObject({
+			tool_result: { ok: true },
+			tool_arguments: {
+				op: 'util.project.overview',
+				args: { query: '9takes' }
+			},
+			tool_result_source: 'chat_tool_executions'
+		});
 		expect(payload.turn_runs[0].eval_runs).toHaveLength(1);
 		expect(payload.turn_runs[0].eval_runs[0]).toMatchObject({
 			id: 'eval-1',
@@ -218,6 +226,19 @@ describe('buildSessionDetailPayload', () => {
 		const promptEvent = payload.timeline.find((event) => event.type === 'prompt_snapshot');
 		expect(promptEvent?.payload).toMatchObject({
 			rendered_dump_text: 'FASTCHAT V2 PROMPT SNAPSHOT'
+		});
+
+		const toolResultEvent = payload.timeline.find(
+			(event) => event.type === 'turn_event' && event.id === 'turn_event:event-2'
+		);
+		expect(toolResultEvent?.payload).toMatchObject({
+			tool_name: 'tool_exec',
+			result: { ok: true },
+			arguments: {
+				op: 'util.project.overview',
+				args: { query: '9takes' }
+			},
+			tool_result_source: 'chat_tool_executions'
 		});
 	});
 });

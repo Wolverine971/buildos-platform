@@ -50,15 +50,15 @@ Project document hierarchy playbook for doc tree operations, unlinked docs, task
 
 ### Organize unlinked project documents
 
-- Call `buildos_call({ op: "onto.document.tree.get", args: { ... } })` once with `include_documents=true`.
+- Call `get_document_tree({ ... })` once with `include_documents=true`.
 - Identify unlinked or misplaced documents from that result.
-- Issue targeted `buildos_call({ op: "onto.document.tree.move", args: { ... } })` calls without repeating tree.get unless a move fails.
+- Issue targeted `move_document_in_tree({ ... })` calls without repeating `get_document_tree` unless a move fails.
 
 ### Attach documentation to a specific task
 
 - Decide whether the document should live in the task workspace rather than the project doc tree.
 - If the exact args are unclear, call `tool_schema({ op: "onto.task.docs.create_or_attach" })`.
-- Then use `buildos_call({ op: "onto.task.docs.create_or_attach", args: { ... } })` instead of project doc tree ops.
+- Then use the direct tool named by the schema instead of project doc tree ops.
 
 ## Notes
 

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
 import { streamFastChat } from './stream-orchestrator';
 import type { FastChatHistoryMessage } from './types';
+import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { getToolHelp } from '$lib/services/agentic-chat/tools/registry/tool-help';
 import { getToolSchema } from '$lib/services/agentic-chat/tools/registry/tool-schema';
 
@@ -53,58 +54,20 @@ function createGatewayTools(): ChatToolDefinition[] {
 }
 
 function createProgressiveGatewayTools(): ChatToolDefinition[] {
-	return [
-		{
-			type: 'function',
-			function: {
-				name: 'skill_load',
-				description: 'Skill load',
-				parameters: {
-					type: 'object',
-					properties: { skill: { type: 'string' } },
-					required: ['skill']
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: 'tool_search',
-				description: 'Tool search',
-				parameters: {
-					type: 'object',
-					properties: { query: { type: 'string' } }
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: 'tool_schema',
-				description: 'Tool schema',
-				parameters: {
-					type: 'object',
-					properties: { op: { type: 'string' } },
-					required: ['op']
-				}
-			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: 'buildos_call',
-				description: 'BuildOS call',
-				parameters: {
-					type: 'object',
-					properties: {
-						op: { type: 'string' },
-						args: { type: 'object' }
-					},
-					required: ['op', 'args']
-				}
-			}
-		}
-	] as ChatToolDefinition[];
+	return materializeGatewayTools(
+		[],
+		[
+			'skill_load',
+			'tool_search',
+			'tool_schema',
+			'create_onto_project',
+			'create_onto_task',
+			'create_onto_goal',
+			'create_onto_milestone',
+			'create_onto_plan',
+			'update_onto_goal'
+		]
+	).tools;
 }
 
 describe('streamFastChat final text sanitization', () => {
@@ -640,11 +603,11 @@ describe('streamFastChat repetition guard', () => {
 			'Do not end the turn with a success summary unless onto.project.create has actually succeeded.'
 		);
 		expect(repairMessage?.content).toContain(
-			'Minimal valid create shape: buildos_call({ op: "onto.project.create"'
+			'Minimal valid create shape: create_onto_project({ project: { name: "Project Name", type_key: "project.business.initiative" }, entities: [], relationships: [] }).'
 		);
 		expect(repairMessage?.content).toContain('entities: [], relationships: []');
 		expect(repairMessage?.content).toContain(
-			'Never replace a prior complete create payload with args:{}.'
+			'Never replace a prior complete create payload with input:{}.'
 		);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe('Need corrected project create args.');
@@ -794,9 +757,9 @@ describe('streamFastChat repetition guard', () => {
 		expect(payload.truncated).not.toBe(true);
 		expect(payload.type).toBe('op');
 		expect(payload.op).toBe('onto.project.create');
-		expect(payload.example_buildos_call?.args?.project?.name).toBe('<project name>');
-		expect(payload.example_buildos_call?.args?.entities).toEqual([]);
-		expect(payload.example_buildos_call?.args?.relationships).toEqual([]);
+		expect(payload.example_execute_op?.input?.project?.name).toBe('<project name>');
+		expect(payload.example_execute_op?.input?.entities).toEqual([]);
+		expect(payload.example_execute_op?.input?.relationships).toEqual([]);
 		expect(payload.schema).toBeUndefined();
 	});
 
@@ -825,14 +788,11 @@ describe('streamFastChat repetition guard', () => {
 					yield {
 						type: 'tool_call',
 						tool_call: {
-							id: 'buildos_call:project-create-empty',
+							id: 'create_onto_project:project-create-empty',
 							type: 'function',
 							function: {
-								name: 'buildos_call',
-								arguments: JSON.stringify({
-									op: 'onto.project.create',
-									args: {}
-								})
+								name: 'create_onto_project',
+								arguments: JSON.stringify({})
 							}
 						} satisfies ChatToolCall
 					};
@@ -845,20 +805,17 @@ describe('streamFastChat repetition guard', () => {
 					yield {
 						type: 'tool_call',
 						tool_call: {
-							id: 'buildos_call:project-create-corrected',
+							id: 'create_onto_project:project-create-corrected',
 							type: 'function',
 							function: {
-								name: 'buildos_call',
+								name: 'create_onto_project',
 								arguments: JSON.stringify({
-									op: 'onto.project.create',
-									args: {
-										project: {
-											name: 'The Last Ember',
-											type_key: 'project.creative.book'
-										},
-										entities: [],
-										relationships: []
-									}
+									project: {
+										name: 'The Last Ember',
+										type_key: 'project.creative.book'
+									},
+									entities: [],
+									relationships: []
 								})
 							}
 						} satisfies ChatToolCall
@@ -926,7 +883,7 @@ describe('streamFastChat repetition guard', () => {
 		expect(toolExecutor).toHaveBeenNthCalledWith(
 			2,
 			expect.objectContaining({
-				function: expect.objectContaining({ name: 'buildos_call' })
+				function: expect.objectContaining({ name: 'create_onto_project' })
 			})
 		);
 		expect(secondPassMessages).toBeDefined();
@@ -935,13 +892,13 @@ describe('streamFastChat repetition guard', () => {
 			.find(
 				(message) =>
 					message.role === 'tool' &&
-					message.tool_call_id === 'buildos_call:project-create-empty'
+					message.tool_call_id === 'create_onto_project:project-create-empty'
 			);
 		expect(blockedExecToolMessage?.content).toContain(
-			'Do not call buildos_call for onto.project.create in the same response as tool_schema'
+			'Do not call create_onto_project for onto.project.create in the same response as tool_schema'
 		);
 		expect(blockedExecToolMessage?.content).toContain(
-			'Wait for the discovery result, then retry buildos_call in the next response.'
+			'Wait for the discovery result, then retry create_onto_project in the next response.'
 		);
 		expect(secondPassMessages?.some((message) => message.role === 'tool')).toBe(true);
 		expect(result.finishedReason).toBe('stop');
@@ -958,15 +915,12 @@ describe('streamFastChat repetition guard', () => {
 					yield {
 						type: 'tool_call',
 						tool_call: {
-							id: `buildos_call:task-create-missing-title-${streamInvocation}`,
+							id: `create_onto_task:missing-title-${streamInvocation}`,
 							type: 'function',
 							function: {
-								name: 'buildos_call',
+								name: 'create_onto_task',
 								arguments: JSON.stringify({
-									op: 'onto.task.create',
-									args: {
-										project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70'
-									}
+									project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70'
 								})
 							}
 						} satisfies ChatToolCall
@@ -1040,6 +994,478 @@ describe('streamFastChat repetition guard', () => {
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe(
 			'Need a concrete task title before creating the task.'
+		);
+	});
+
+	it('injects goal and milestone create guidance after repeated missing create fields', async () => {
+		let streamInvocation = 0;
+		let thirdPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation <= 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: `create_onto_goal:missing-name-${streamInvocation}`,
+							type: 'function',
+							function: {
+								name: 'create_onto_goal',
+								arguments: JSON.stringify({
+									project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70'
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: `create_onto_milestone:missing-title-${streamInvocation}`,
+							type: 'function',
+							function: {
+								name: 'create_onto_milestone',
+								arguments: JSON.stringify({
+									project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70'
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				thirdPassMessages = params.messages as FastChatHistoryMessage[];
+				yield {
+					type: 'text',
+					content: 'Need concrete goal and milestone titles before creating them.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (): Promise<ChatToolResult> => ({
+				tool_call_id: 'unused',
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Set up monthly writing milestones and the draft goal.',
+			tools: createProgressiveGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(thirdPassMessages).toBeDefined();
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'Repeated required-field validation failures detected: onto.goal.create -> name, onto.milestone.create -> title.'
+					)
+			)
+		).toBe(true);
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'For onto.goal.create, include project_id and name. Goal titles use name, not title.'
+					)
+			)
+		).toBe(true);
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'For onto.milestone.create, include project_id and title. Milestone titles use title, not name.'
+					)
+			)
+		).toBe(true);
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'tool' &&
+					typeof message.content === 'string' &&
+					message.content.includes('"help_path":"onto.goal.create"') &&
+					message.content.includes('"field_errors":["Missing required parameter: name"]')
+			)
+		).toBe(true);
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'tool' &&
+					typeof message.content === 'string' &&
+					message.content.includes('"help_path":"onto.milestone.create"') &&
+					message.content.includes('"field_errors":["Missing required parameter: title"]')
+			)
+		).toBe(true);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe(
+			'Need concrete goal and milestone titles before creating them.'
+		);
+	});
+
+	it('injects a hard no-progress repair when blank milestone creates repeat in one response', async () => {
+		let streamInvocation = 0;
+		let secondPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					for (let index = 0; index < 3; index += 1) {
+						yield {
+							type: 'tool_call',
+							tool_call: {
+								id: `create_onto_milestone:missing-title-burst-${index + 1}`,
+								type: 'function',
+								function: {
+									name: 'create_onto_milestone',
+									arguments: JSON.stringify({
+										project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70'
+									})
+								}
+							} satisfies ChatToolCall
+						};
+					}
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				secondPassMessages = params.messages as FastChatHistoryMessage[];
+				yield {
+					type: 'text',
+					content: 'Need a concrete milestone title before creating it.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (): Promise<ChatToolResult> => ({
+				tool_call_id: 'unused',
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Set up January, February, and March milestones for the draft.',
+			tools: createProgressiveGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(secondPassMessages).toBeDefined();
+		expect(
+			(secondPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'You are repeating create ops without the required user-facing title/name field.'
+					)
+			)
+		).toBe(true);
+		expect(
+			(secondPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'For onto.milestone.create, use a concrete milestone title from the user message, for example "Complete chapters 1-10".'
+					)
+			)
+		).toBe(true);
+		expect(
+			(secondPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'Your next response must do one of two things only: emit valid direct create-tool calls with concrete title/name values'
+					)
+			)
+		).toBe(true);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe(
+			'Need a concrete milestone title before creating it.'
+		);
+	});
+
+	it('repairs mutation-intent turns that stop after schema discovery only', async () => {
+		let streamInvocation = 0;
+		let thirdPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_schema:milestone-create',
+							type: 'function',
+							function: {
+								name: 'tool_schema',
+								arguments: JSON.stringify({
+									op: 'onto.milestone.create',
+									include_schema: true
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_schema:task-create',
+							type: 'function',
+							function: {
+								name: 'tool_schema',
+								arguments: JSON.stringify({
+									op: 'onto.task.create',
+									include_schema: true
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					yield {
+						type: 'text',
+						content: 'I mapped out the write operations I need next.'
+					};
+					yield { type: 'done', finished_reason: 'stop' };
+					return;
+				}
+
+				thirdPassMessages = params.messages as FastChatHistoryMessage[];
+				yield {
+					type: 'text',
+					content: 'Need to actually execute the writes.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			if (toolCall.function.name === 'tool_schema') {
+				const args = JSON.parse(toolCall.function.arguments || '{}');
+				return {
+					tool_call_id: toolCall.id,
+					result: getToolSchema(args.op, {
+						include_schema: args.include_schema,
+						include_examples: true
+					}),
+					success: true
+				};
+			}
+			return {
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Set up monthly milestones and supporting writing tasks.',
+			tools: createProgressiveGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
+		expect(thirdPassMessages).toBeDefined();
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes('You have not completed any write yet.')
+			)
+		).toBe(true);
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'Do not stop after schema discovery or failed writes without either retrying correctly or asking a concise blocker question.'
+					)
+			)
+		).toBe(true);
+		expect(
+			(thirdPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'Write ops already identified: onto.milestone.create, onto.task.create.'
+					)
+			)
+		).toBe(true);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe('Need to actually execute the writes.');
+	});
+
+	it('repairs failed update turns that stop without retrying or asking a blocker question', async () => {
+		let streamInvocation = 0;
+		let fourthPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_schema:goal-update',
+							type: 'function',
+							function: {
+								name: 'tool_schema',
+								arguments: JSON.stringify({
+									op: 'onto.goal.update',
+									include_schema: true
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'update_onto_goal:empty',
+							type: 'function',
+							function: {
+								name: 'update_onto_goal',
+								arguments: JSON.stringify({})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 3) {
+					yield {
+						type: 'text',
+						content: 'I still need to finish applying this.'
+					};
+					yield { type: 'done', finished_reason: 'stop' };
+					return;
+				}
+
+				fourthPassMessages = params.messages as FastChatHistoryMessage[];
+				yield {
+					type: 'text',
+					content: 'Need the exact goal update fields before I can finish.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			if (toolCall.function.name === 'tool_schema') {
+				const args = JSON.parse(toolCall.function.arguments || '{}');
+				return {
+					tool_call_id: toolCall.id,
+					result: getToolSchema(args.op, {
+						include_schema: args.include_schema,
+						include_examples: true
+					}),
+					success: true
+				};
+			}
+			return {
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Update the draft goal to reflect the new writing schedule.',
+			tools: createProgressiveGatewayTools(),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(4);
+		expect(fourthPassMessages).toBeDefined();
+		expect(
+			(fourthPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'For update ops, reuse exact *_id values already present in structured context and include at least one concrete field to change. Never emit empty argument objects.'
+					)
+			)
+		).toBe(true);
+		expect(
+			(fourthPassMessages ?? []).some(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes(
+						'For onto.goal.update, copy the exact goal_id from structured context and include a concrete field such as name, description, state_key, or target_date.'
+					)
+			)
+		).toBe(true);
+		expect(
+			(fourthPassMessages ?? []).some(
+				(message) =>
+					message.role === 'tool' &&
+					typeof message.content === 'string' &&
+					message.content.includes('"help_path":"onto.goal.update"') &&
+					message.content.includes('Missing required parameter: goal_id') &&
+					message.content.includes(
+						'No update fields provided for onto.goal.update. Include at least one field to change.'
+					)
+			)
+		).toBe(true);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe(
+			'Need the exact goal update fields before I can finish.'
 		);
 	});
 

@@ -11,6 +11,7 @@ import {
 	normalizeGatewayHelpPath,
 	normalizeGatewayOpName
 } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import { isGatewayExecToolName } from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
 import { estimateTokensFromText } from './context-usage';
 import type { FastChatHistoryMessage } from './types';
 
@@ -279,7 +280,8 @@ export function extractFastChatToolCallMeta(toolCall: ChatToolCall): FastChatToo
 	return {
 		toolName,
 		helpPath: toolName === 'tool_help' && rawPath ? normalizeGatewayHelpPath(rawPath) : null,
-		canonicalOp: toolName === 'tool_exec' && rawOp ? normalizeGatewayOpName(rawOp) : null,
+		canonicalOp:
+			isGatewayExecToolName(toolName) && rawOp ? normalizeGatewayOpName(rawOp) : null,
 		args: parsed.args,
 		argsParseError: parsed.error
 	};

@@ -76,17 +76,17 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 					required: ['path'],
 					shape: { path: '<help path>', format: 'short|full', include_schemas: false }
 				},
-				tool_exec: {
-					required: ['op', 'args'],
+				execute_op: {
+					required: ['op', 'input'],
 					shape: {
 						op: '<canonical op>',
-						args: {
+						input: {
 							/* required fields */
 						}
 					},
 					critical_rules: [
-						'Never call tool_exec with {}.',
-						'Never omit args for write operations.',
+						'Never call execute_op with input: {} for writes.',
+						'Never omit input for write operations.',
 						'For onto.<entity>.get|update|delete, pass exact <entity>_id UUIDs.',
 						'For onto.project.create, include project, entities, and relationships.'
 					]
@@ -98,7 +98,7 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 				'3) For project_create context or any new-project request, prefer capabilities.project_creation, then load onto.project.create.skill before onto.project.create.',
 				'4) If the capability lists a skill entry point, fetch that skill before multi-step or easy-to-get-wrong work. If it has no dedicated skill, go straight to targeted exact-op help. You can also inspect the global skill catalog with tool_help({ path: "skills" }).',
 				'5) If tool_help returns a directory, skill, or capability, narrow to the exact op; for first-time or complex writes, inspect exact schema with tool_help({ path: "<exact op>", format: "full", include_schemas: true }).',
-				'6) Execute with tool_exec({ op: "<exact op>", args: { ... } }).',
+				'6) Execute with execute_op({ op: "<exact op>", input: { ... } }).',
 				'7) If execution returns error.help_path, call tool_help({ path: help_path }) then retry once.'
 			]
 		};
@@ -110,9 +110,9 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 				},
 				{
 					description: 'Get a named project status snapshot',
-					tool_exec: {
+					execute_op: {
 						op: 'util.project.overview',
-						args: {
+						input: {
 							query: '9takes'
 						}
 					}
@@ -135,9 +135,9 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 				},
 				{
 					description: 'Valid update call shape',
-					tool_exec: {
+					execute_op: {
 						op: 'onto.task.update',
-						args: {
+						input: {
 							task_id: '<task_id_uuid>',
 							title: 'Updated task title'
 						}
@@ -193,7 +193,7 @@ export function getToolHelp(path: string, options: ToolHelpOptions = {}): Record
 		version: registry.version,
 		items: children,
 		next_step:
-			'Call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) before tool_exec for writes.'
+			'Call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) before execute_op for writes.'
 	};
 	if (includeExamples) {
 		const firstOp = children.find((child) => child.type === 'op');
@@ -307,7 +307,7 @@ function buildOpHelp(
 	}));
 	const idArgs = Object.keys(properties).filter((name) => name.endsWith('_id'));
 
-	const usage = `tool_exec({ op: "${op.op}", args: { ... } })`;
+	const usage = `execute_op({ op: "${op.op}", input: { ... } })`;
 	const summary = summarize(op.description);
 	const notes = buildOpNotes(op.op, required, properties);
 	const minimalArgs = buildMinimalArgsTemplate(op.op, required, properties);
@@ -330,9 +330,9 @@ function buildOpHelp(
 
 	if (includeExamples) {
 		help.examples = buildOpExamples(op.op, minimalArgs, required, properties);
-		help.example_tool_exec = {
+		help.example_execute_op = {
 			op: op.op,
-			args: minimalArgs
+			input: minimalArgs
 		};
 	}
 
@@ -365,54 +365,72 @@ function buildOpNotes(
 	const notes: string[] = [];
 	if (op === 'cal.event.list') {
 		notes.push(
-			'Prefer args.timeMin/timeMax (or args.time_min/time_max) to inspect an exact future/history window.'
+			'Prefer input.timeMin/timeMax (or input.time_min/time_max) to inspect an exact future/history window.'
 		);
 		notes.push(
-			'Use args.limit (or args.max_results) plus args.offset to page through long timelines.'
+			'Use input.limit (or input.max_results) plus input.offset to page through long timelines.'
 		);
 	}
 	if (op === 'cal.event.get') {
 		notes.push(
-			'Prefer args.onto_event_id when available; otherwise pass args.event_id (+ scope/calendar hints when needed).'
+			'Prefer input.onto_event_id when available; otherwise pass input.event_id (+ scope/calendar hints when needed).'
 		);
 	}
 	if (op === 'cal.event.create' || op === 'cal.event.update') {
 		notes.push(
-			'Use timezone-safe ISO 8601 for args.start_at/args.end_at (include offset/Z, or pass args.timezone).'
+			'Use timezone-safe ISO 8601 for input.start_at/input.end_at (include offset/Z, or pass input.timezone).'
 		);
 	}
 	if (op === 'cal.event.update' || op === 'cal.event.delete') {
-		notes.push('Pass args.onto_event_id or args.event_id.');
+		notes.push('Pass input.onto_event_id or input.event_id.');
 	}
 	if (op.startsWith('cal.event.')) {
 		notes.push(
-			'When args.calendar_scope="project", include args.project_id so the correct project calendar is resolved.'
+			'When input.calendar_scope="project", include input.project_id so the correct project calendar is resolved.'
 		);
 	}
 	if (op === 'cal.project.get' || op === 'cal.project.set') {
-		notes.push('Pass args.project_id as an exact UUID.');
+		notes.push('Pass input.project_id as an exact UUID.');
+	}
+	if (op === 'onto.goal.create') {
+		notes.push('Use input.name for the goal title; goals use name, not title.');
+		notes.push(
+			'Include input.project_id and input.name. Add input.description when the user already stated the outcome or success criteria.'
+		);
+	}
+	if (op === 'onto.milestone.create') {
+		notes.push('Use input.title for the milestone title; milestones use title, not name.');
+		notes.push(
+			'Include input.project_id and input.title. Add input.goal_id when the milestone belongs to a known goal.'
+		);
+	}
+	if (op === 'onto.plan.create') {
+		notes.push('Use input.name for the plan title; plans use name, not title.');
+		notes.push(
+			'Include input.project_id and input.name. Add input.goal_id or input.milestone_id when the plan belongs under one of them.'
+		);
 	}
 
 	const updateMatch = op.match(/^onto\.([a-z_]+)\.update$/);
 	if (updateMatch) {
 		const idKey = `${updateMatch[1]}_id`;
 		if (required.includes(idKey) || idKey in properties) {
-			notes.push(`${op} requires args.${idKey} and at least one field to update.`);
+			notes.push(`${op} requires input.${idKey} and at least one field to update.`);
 		}
 	}
 
 	if (/^onto\.[a-z_]+\.(get|delete)$/.test(op)) {
 		const entity = op.split('.')[1];
-		notes.push(`${op} requires args.${entity}_id as an exact UUID.`);
+		notes.push(`${op} requires input.${entity}_id as an exact UUID.`);
 	}
 
 	if (op === 'onto.search' || /^onto\.[a-z_]+\.search$/.test(op)) {
-		notes.push('Search ops require args.query (and include args.project_id when known).');
+		notes.push('Search ops require input.query (and include input.project_id when known).');
 	}
 
 	if (op === 'onto.document.tree.move') {
 		notes.push(
-			'Pass args.document_id and args.new_position. Use args.new_parent_id only when nesting under a parent.'
+			'Pass input.document_id and input.new_position. Use input.new_parent_id only when nesting under a parent.'
 		);
 	}
 
@@ -425,12 +443,12 @@ function buildOpNotes(
 			'This is the preferred first read for workspace-wide status questions before generic ontology search/list assembly.'
 		);
 		notes.push(
-			'Use args.project_limit only when the user wants a broader or narrower snapshot.'
+			'Use input.project_limit only when the user wants a broader or narrower snapshot.'
 		);
 	}
 	if (op === 'util.project.overview') {
 		notes.push(
-			'Pass args.project_id when the exact project is already known; otherwise pass args.query with the project name.'
+			'Pass input.project_id when the exact project is already known; otherwise pass input.query with the project name.'
 		);
 		notes.push(
 			'If the result returns match.status="ambiguous", ask one concise clarifying question from the returned candidates instead of guessing.'
@@ -438,10 +456,10 @@ function buildOpNotes(
 	}
 	if (op === 'onto.project.create') {
 		notes.push(
-			'onto.project.create requires args.project, args.entities, and args.relationships.'
+			'onto.project.create requires input.project, input.entities, and input.relationships.'
 		);
 		notes.push(
-			'args.project must include project.name and project.type_key. Use entities: [] and relationships: [] when starting minimal.'
+			'input.project must include project.name and project.type_key. Use entities: [] and relationships: [] when starting minimal.'
 		);
 		notes.push(
 			'Infer project.name and project.type_key from the user message when reasonably possible, and use clarifications[] only for critical missing information.'
@@ -466,7 +484,7 @@ function buildOpNotes(
 	}
 
 	if (notes.length === 0) {
-		notes.push('Match args exactly to required fields in this schema.');
+		notes.push('Match input exactly to required fields in this schema.');
 	}
 
 	return notes;
@@ -482,9 +500,9 @@ function buildOpExamples(
 		return [
 			{
 				description: 'List a specific future window',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						time_min: '2026-03-01',
 						time_max: '2026-04-01',
 						limit: 100
@@ -493,9 +511,9 @@ function buildOpExamples(
 			},
 			{
 				description: 'Page to the next chunk in the same window',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						time_min: '2026-03-01',
 						time_max: '2026-04-01',
 						limit: 100,
@@ -509,9 +527,9 @@ function buildOpExamples(
 		return [
 			{
 				description: 'Create a project-scoped event',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						title: 'Design review',
 						start_at: '2026-03-10T18:00:00.000Z',
 						end_at: '2026-03-10T19:00:00.000Z',
@@ -526,9 +544,9 @@ function buildOpExamples(
 		return [
 			{
 				description: 'Update an event by ontology event id',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						onto_event_id: '<onto_event_id_uuid>',
 						title: 'Updated title'
 					}
@@ -540,9 +558,9 @@ function buildOpExamples(
 		return [
 			{
 				description: 'Delete an event by ontology event id',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						onto_event_id: '<onto_event_id_uuid>'
 					}
 				}
@@ -553,9 +571,9 @@ function buildOpExamples(
 		return [
 			{
 				description: 'Link or update a project calendar mapping',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						project_id: '<project_id_uuid>',
 						action: 'update',
 						sync_enabled: true
@@ -568,9 +586,9 @@ function buildOpExamples(
 		return [
 			{
 				description: 'Get a concise workspace-wide status snapshot',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						project_limit: 8
 					}
 				}
@@ -581,9 +599,9 @@ function buildOpExamples(
 		return [
 			{
 				description: 'Resolve a project by name and return its status snapshot',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						query: '9takes'
 					}
 				}
@@ -591,9 +609,9 @@ function buildOpExamples(
 			{
 				description:
 					'Load a project snapshot directly when the project ID is already known',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						project_id: '<project_id_uuid>'
 					}
 				}
@@ -604,16 +622,16 @@ function buildOpExamples(
 		return [
 			{
 				description: 'Create a minimal project skeleton',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: buildProjectCreateMinimalArgs()
+					input: buildProjectCreateMinimalArgs()
 				}
 			},
 			{
 				description: 'Create a project with one explicit goal',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						project: {
 							name: 'Learn Spanish',
 							type_key: 'project.education.skill'
@@ -625,9 +643,9 @@ function buildOpExamples(
 			},
 			{
 				description: 'Create a project with one goal and explicit tasks',
-				tool_exec: {
+				execute_op: {
 					op,
-					args: {
+					input: {
 						project: {
 							name: 'Product Launch',
 							type_key: 'project.business.product_launch'
@@ -652,13 +670,94 @@ function buildOpExamples(
 			}
 		];
 	}
+	if (op === 'onto.goal.create') {
+		return [
+			{
+				description: 'Create a project goal with the required name field',
+				execute_op: {
+					op,
+					input: {
+						project_id: '<project_id_uuid>',
+						name: 'Finish first draft by March 31st',
+						description:
+							'Complete the first draft with a consistent weekday writing routine and monthly checkpoints.'
+					}
+				}
+			},
+			{
+				description: 'Create a smaller supporting goal',
+				execute_op: {
+					op,
+					input: {
+						project_id: '<project_id_uuid>',
+						name: 'Submit chapter 1 to beta readers by January 15th'
+					}
+				}
+			}
+		];
+	}
+	if (op === 'onto.milestone.create') {
+		return [
+			{
+				description: 'Create a milestone linked to a known goal',
+				execute_op: {
+					op,
+					input: {
+						project_id: '<project_id_uuid>',
+						goal_id: '<goal_id_uuid>',
+						title: 'Complete chapters 1-10',
+						due_at: '2026-01-31T23:59:00.000Z',
+						description: 'Reach 30,000 words and finish the January chapter target.'
+					}
+				}
+			},
+			{
+				description: 'Create a standalone checkpoint',
+				execute_op: {
+					op,
+					input: {
+						project_id: '<project_id_uuid>',
+						title: 'Research fantasy literary agents'
+					}
+				}
+			}
+		];
+	}
+	if (op === 'onto.plan.create') {
+		return [
+			{
+				description: 'Create a plan nested under a milestone',
+				execute_op: {
+					op,
+					input: {
+						project_id: '<project_id_uuid>',
+						milestone_id: '<milestone_id_uuid>',
+						name: 'Weekday drafting routine',
+						description: 'Daily drafting blocks plus weekend revision and planning.',
+						state_key: 'active'
+					}
+				}
+			},
+			{
+				description: 'Create a supporting plan under a goal',
+				execute_op: {
+					op,
+					input: {
+						project_id: '<project_id_uuid>',
+						goal_id: '<goal_id_uuid>',
+						name: 'Beta reader outreach'
+					}
+				}
+			}
+		];
+	}
 
 	const examples: Array<Record<string, unknown>> = [
 		{
 			description: 'Minimal valid call',
-			tool_exec: {
+			execute_op: {
 				op,
-				args: minimalArgs
+				input: minimalArgs
 			}
 		}
 	];
@@ -673,14 +772,14 @@ function buildOpExamples(
 				sequence: [
 					{
 						op: `onto.${entity}.list`,
-						args: {
+						input: {
 							project_id: '<project_id_uuid>',
 							limit: 20
 						}
 					},
 					{
 						op,
-						args: {
+						input: {
 							...minimalArgs,
 							[idKey]: `<${idKey}_uuid>`
 						}

@@ -24,6 +24,11 @@
 
 ## Current 2026 Docs (Start Here)
 
+- **[Growth Audit — April 2026](growth/growth-audit-2026-04-09.md)** ⭐ **NEW**
+    - Full-funnel growth audit grounded in live database evidence (94 users)
+    - Activation collapse (72% drop), broken email pipeline, missing proof apparatus
+    - Prioritized 8-item fix list and quick wins checklist
+
 - **[Marketing Strategy Hub](strategy/README.md)** ⭐
     - Folder-level guide for current strategy docs
     - Fastest way to find positioning, lifecycle, and supporting strategy docs
@@ -51,6 +56,11 @@
 ---
 
 ## ✉️ Lifecycle & Activation
+
+- **[Growth Audit — April 2026](growth/growth-audit-2026-04-09.md)** ⭐ **NEW**
+    - Full activation funnel analysis, retention audit, lifecycle messaging gaps
+    - Welcome email pipeline diagnosis, trial conversion analysis, reactivation mechanisms
+    - **Cross-reference:** Activation (sections 1-3), Retention (sections 5-6), Lifecycle (sections 7-9)
 
 - **[BuildOS Welcome Sequence](strategy/buildos-welcome-sequence.md)** ✅
     - Current source of truth for new-user welcome emails
@@ -261,6 +271,12 @@ Personalized email templates for investor introductions:
 
 ## 📈 Growth & Viral Marketing
 
+### Audits & Analysis
+
+- **[Growth Audit — April 2026](growth/growth-audit-2026-04-09.md)** ⭐ **NEW**
+    - Full-funnel audit: acquisition, activation, retention, monetization, distribution
+    - Loop map, proof-asset inventory, creator wedge assessment, prioritized recommendations
+
 ### Strategy Documents
 
 - **[Viral Plan Notes](growth/viral-plan-notes.md)**
@@ -331,6 +347,7 @@ Personalized email templates for investor introductions:
 
 ```
 Marketing Strategy 2026 (Master Strategy)
+├── Growth Audit April 2026 (Current State Assessment)
 ├── Welcome Sequence (Lifecycle Messaging)
 ├── Brand Guide 1-Pager (Quick Reference)
 ├── Guerrilla Content Doctrine (Content Logic)
@@ -409,5 +426,5 @@ Marketing Strategy 2026 (Master Strategy)
 
 ---
 
-_Last Updated: March 2026_
+_Last Updated: April 2026_
 _Related: [Documentation Hub](../README.md) | [Business Strategy](../business/) | [Content Strategy](/apps/web/docs/content/)_

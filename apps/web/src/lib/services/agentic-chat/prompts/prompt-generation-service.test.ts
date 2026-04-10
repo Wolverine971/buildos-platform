@@ -41,7 +41,7 @@ describe('PromptGenerationService gateway tool instructions', () => {
 			'If the workflow is multi-step or easy to get wrong, load the relevant skill first.'
 		);
 		expect(prompt).toContain(
-			'If the skill or current context already identifies the exact op, skip tool_search and go straight to tool_schema or buildos_call.'
+			'Use the preloaded direct tools first whenever one already fits the job.'
 		);
 		expect(prompt).toContain(
 			'Use tool_search only when the exact op is still unknown after context and skill guidance. Search for the operation you need, not workspace data.'
@@ -53,7 +53,7 @@ describe('PromptGenerationService gateway tool instructions', () => {
 			'Once you have an exact op, use tool_schema({ op: "<canonical op>" }) when the op is new in-turn or any write arguments are uncertain.'
 		);
 		expect(prompt).toContain(
-			'Execute only through buildos_call({ op: "<canonical op>", args: { ... } }) once the canonical op and concrete args are known.'
+			'After tool_schema, call the direct tool by name with concrete arguments. Do not route normal work through a generic executor.'
 		);
 		expect(prompt).toContain('Reuse exact IDs from context and prior tool results.');
 		expect(prompt).toContain(

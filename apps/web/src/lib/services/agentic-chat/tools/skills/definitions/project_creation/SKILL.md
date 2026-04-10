@@ -34,7 +34,7 @@ Project creation playbook for turning a user idea into the smallest valid BuildO
 
 ## Guardrails
 
-- Do not call buildos_call for onto.project.create with args:{}.
+- Do not call `create_onto_project({})` or omit the required project payload.
 - Do not omit project, entities, or relationships from the payload.
 - Do not leave project.name or project.type_key blank when they can be inferred from the user message.
 - Do not add goals, plans, milestones, risks, or documents the user did not mention.
@@ -47,7 +47,7 @@ Project creation playbook for turning a user idea into the smallest valid BuildO
 
 - Infer the project name and type_key from the message.
 - If the exact args are unclear, call `tool_schema({ op: "onto.project.create" })`.
-- Then call `buildos_call({ op: "onto.project.create", args: { ... } })` with project plus empty entities and relationships arrays.
+- Then call `create_onto_project({ ... })` with project plus empty entities and relationships arrays.
 - Only ask a clarifying question if the request is too vague to classify at all.
 
 ### Create a project with one outcome and a few explicit actions

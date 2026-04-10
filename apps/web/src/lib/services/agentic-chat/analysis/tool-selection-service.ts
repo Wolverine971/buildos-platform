@@ -37,7 +37,7 @@ import {
 	getDefaultToolsForContextType,
 	isWriteToolName
 } from '$lib/services/agentic-chat/tools/core/tools.config';
-import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
+import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
 import { createLogger } from '$lib/utils/logger';
@@ -71,7 +71,7 @@ export class ToolSelectionService {
 	 */
 	getDefaultToolPool(contextType: ChatContextType): ChatToolDefinition[] {
 		if (isToolGatewayEnabled()) {
-			return [...GATEWAY_TOOL_DEFINITIONS];
+			return getGatewaySurfaceForContextType(contextType);
 		}
 		const normalized = normalizeContextType(contextType);
 		const defaultTools = getDefaultToolsForContextType(normalized);
@@ -171,14 +171,22 @@ export class ToolSelectionService {
 		lastTurnContext?: LastTurnContext;
 		toolCatalog?: ChatToolDefinition[];
 	}): Promise<ToolSelectionResult> {
+		const {
+			message,
+			plannerContext,
+			serviceContext,
+			lastTurnContext,
+			toolCatalog = ALL_TOOLS
+		} = params;
+
 		if (isToolGatewayEnabled()) {
-			const tools = [...GATEWAY_TOOL_DEFINITIONS];
+			const tools = getGatewaySurfaceForContextType(serviceContext.contextType);
 			const toolNames = extractToolNamesFromDefinitions(tools);
 			const analysis: StrategyAnalysis = {
 				primary_strategy: ChatStrategy.PLANNER_STREAM,
 				confidence: 0.9,
 				reasoning:
-					'Tool gateway enabled; use skill_load/tool_search/tool_schema/buildos_call for discovery and execution.',
+					'Hybrid gateway mode enabled; use the preloaded direct tools first, then use skill_load/tool_search/tool_schema when you need workflow guidance or a long-tail tool.',
 				needs_clarification: false,
 				estimated_steps: 1,
 				required_tools: toolNames,
@@ -204,13 +212,6 @@ export class ToolSelectionService {
 				}
 			};
 		}
-		const {
-			message,
-			plannerContext,
-			serviceContext,
-			lastTurnContext,
-			toolCatalog = ALL_TOOLS
-		} = params;
 
 		const llmSelectionDisabled =
 			typeof process !== 'undefined' &&

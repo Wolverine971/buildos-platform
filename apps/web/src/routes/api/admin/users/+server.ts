@@ -2,6 +2,8 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 type OntologyCounts = {
 	tasks: number;
 	goals: number;
@@ -62,8 +64,16 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		if (search) {
 			// Sanitize search input to prevent SQL injection
 			// Escape special characters: %, _, \
-			const sanitizedSearch = search.replace(/[\\%_]/g, '\\$&');
-			query = query.or(`email.ilike.%${sanitizedSearch}%,name.ilike.%${sanitizedSearch}%`);
+			const trimmedSearch = search.trim();
+			const sanitizedSearch = trimmedSearch.replace(/[\\%_]/g, '\\$&');
+			const searchFilters = [
+				`email.ilike.%${sanitizedSearch}%`,
+				`name.ilike.%${sanitizedSearch}%`
+			];
+			if (UUID_PATTERN.test(trimmedSearch)) {
+				searchFilters.unshift(`id.eq.${trimmedSearch}`);
+			}
+			query = query.or(searchFilters.join(','));
 		}
 
 		if (adminFilter === 'admin') {

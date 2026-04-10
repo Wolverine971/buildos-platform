@@ -26,7 +26,8 @@
 		CircleAlert,
 		CircleCheck,
 		Bug,
-		Zap
+		Zap,
+		ArrowUpRight
 	} from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -322,6 +323,15 @@
 		if (!str) return '';
 		if (str.length <= length) return str;
 		return str.substring(0, length) + '...';
+	}
+
+	function getErrorUserId(error: ErrorLogEntry | null | undefined): string | undefined {
+		return error?.user?.id || error?.user_id || error?.userId;
+	}
+
+	function getAdminUserHref(error: ErrorLogEntry | null | undefined): string | undefined {
+		const userId = getErrorUserId(error);
+		return userId ? `/admin/users?search=${encodeURIComponent(userId)}` : undefined;
 	}
 
 	function getMetadataRecord(metadata: unknown): Record<string, any> | undefined {
@@ -966,6 +976,7 @@
 	{@const toolTimeoutMs = getMetadataValue(metadata, 'timeoutMs', 'timeout_ms')}
 	{@const toolDurationMs = getMetadataValue(metadata, 'durationMs', 'duration_ms')}
 	{@const toolArgs = getMetadataValue(metadata, 'args', 'arguments') ?? operationPayload}
+	{@const userAdminHref = getAdminUserHref(selectedError)}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
@@ -1077,6 +1088,17 @@
 								<p class="text-xs text-foreground font-mono">
 									{selectedError.user_id || selectedError.userId}
 								</p>
+							{/if}
+							{#if userAdminHref}
+								<div class="mt-3 pt-3 border-t border-blue-500/20">
+									<a
+										href={userAdminHref}
+										class="inline-flex items-center gap-1.5 rounded-md border border-blue-500/30 bg-background px-2.5 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-500/10 dark:text-blue-300"
+									>
+										<span>Open in Users</span>
+										<ArrowUpRight class="w-3.5 h-3.5" />
+									</a>
+								</div>
 							{/if}
 						</div>
 					{/if}

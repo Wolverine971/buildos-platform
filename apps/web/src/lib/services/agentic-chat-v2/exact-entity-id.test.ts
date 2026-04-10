@@ -18,6 +18,7 @@ describe('exact-entity-id helpers', () => {
 	});
 
 	it('does not mine referents from schema/search/skill meta-tools', () => {
+		expect(shouldCollectExactEntityReferencesFromToolName('execute_op')).toBe(true);
 		expect(shouldCollectExactEntityReferencesFromToolName('buildos_call')).toBe(true);
 		expect(shouldCollectExactEntityReferencesFromToolName('tool_exec')).toBe(true);
 		expect(shouldCollectExactEntityReferencesFromToolName('tool_batch')).toBe(true);

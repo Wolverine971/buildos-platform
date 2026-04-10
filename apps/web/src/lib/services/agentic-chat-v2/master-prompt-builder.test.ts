@@ -49,20 +49,23 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(instructionsBlock).toContain('### Tools');
 		expect(instructionsBlock).toContain('```json');
 		expect(instructionsBlock).toContain('"name": "skill_load"');
-		expect(instructionsBlock).toContain('"name": "buildos_call"');
-		expect(instructionsBlock).not.toContain('"idempotency_key"');
+		expect(instructionsBlock).not.toContain('"name": "execute_op"');
+		expect(instructionsBlock).toContain('"name": "get_workspace_overview"');
+		expect(instructionsBlock).toContain('"name": "search_buildos"');
 		expect(instructionsBlock).toContain('## Execution Protocol');
 		expect(instructionsBlock).toContain(
 			'If the workflow is multi-step or easy to get wrong, load the relevant skill first.'
 		);
 		expect(instructionsBlock).toContain(
-			'If the skill or current context already identifies the exact op, skip `tool_search`'
+			'If a preloaded direct tool already fits the job, call it directly.'
 		);
+		expect(instructionsBlock).toContain('### Direct tool protocol');
+		expect(instructionsBlock).toContain('The callable surface is the direct tool name');
 		expect(instructionsBlock).toContain(
 			'Good examples: `{"capability":"overview"}`, `{"entity":"task","kind":"write","query":"update existing task state"}`'
 		);
 		expect(instructionsBlock).toContain(
-			'`tool_search` is for discovering which op to use. Query for operations like `"update existing task state"` or `"move document in tree"`'
+			'`tool_search` is for discovering which op/tool to use. Query for operations like `"update existing task state"` or `"move document in tree"`'
 		);
 		expect(instructionsBlock).toContain(
 			'Only call `onto.<entity>.get`, `onto.<entity>.update`, or `onto.<entity>.delete` when you have the exact `*_id`.'
@@ -84,11 +87,12 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(instructionsBlock).not.toContain('<skill_catalog>');
 		expect(instructionsBlock).not.toContain('<entity_resolution>');
 		expect(instructionsBlock).not.toContain('<tool_discovery>');
+		expect(contextBlock).toContain('<context_description>');
+		expect(contextBlock).toContain('Context type: global.');
+		expect(prompt).not.toContain('<data>');
 		expect(contextBlock).toContain('<overview_guidance>');
 		expect(instructionsBlock).not.toContain('<overview_guidance>');
-		expect(contextBlock).toContain(
-			'Workspace-wide status -> buildos_call({ op: "util.workspace.overview", args: {} })'
-		);
+		expect(contextBlock).toContain('Workspace-wide status -> get_workspace_overview({})');
 	});
 
 	it('omits overview guidance outside global context', () => {
@@ -142,6 +146,45 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(prompt).toContain('<project_id>05c40ed8-9dbe-4893-bd64-8aeec90eab40</project_id>');
 	});
 
+	it('nests project scope and project data inside the context block', () => {
+		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+
+		const prompt = buildMasterPrompt({
+			contextType: 'project',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectName: 'The Last Ember',
+			data: {
+				goals: [
+					{
+						id: '34268cc1-eeda-468c-87d2-3791af8b48ca',
+						name: 'Finish first draft by March 31st'
+					}
+				],
+				plans: [],
+				tasks: [],
+				project: {
+					id: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+					name: 'The Last Ember'
+				}
+			}
+		});
+		const contextBlock = extractTagBlock(prompt, 'context');
+
+		expect(contextBlock).toContain('Context type: project.');
+		expect(contextBlock).toContain('<project>');
+		expect(contextBlock).toContain(
+			'<project_id>4cfdbed1-840a-4fe4-9751-77c7884daa70</project_id>'
+		);
+		expect(contextBlock).toContain('<project_name>The Last Ember</project_name>');
+		expect(contextBlock).toContain('"goals": [');
+		expect(contextBlock).toContain('"plans": []');
+		expect(contextBlock).toContain('"tasks": []');
+		expect(contextBlock).toContain('"project": {');
+		expect(prompt).not.toContain('<data>');
+		expect(prompt).not.toContain('<json>');
+	});
+
 	it('adds dedicated project creation workflow guidance in project_create context', () => {
 		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
 
@@ -180,7 +223,7 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(instructionsBlock).not.toContain('<project_create_workflow>');
 	});
 
-	it('renders absent ID tags as empty values instead of the string none', () => {
+	it('omits absent scope tags instead of rendering empty or none placeholders', () => {
 		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
 
 		const prompt = buildMasterPrompt({
@@ -190,15 +233,40 @@ describe('buildMasterPrompt instruction rewrite', () => {
 			focusEntityId: null
 		});
 		const instructionsBlock = extractTagBlock(prompt, 'instructions');
+		const contextBlock = extractTagBlock(prompt, 'context');
 
-		expect(prompt).toContain('<project_id></project_id>');
-		expect(prompt).toContain('<entity_id></entity_id>');
-		expect(prompt).toContain('<focus_entity_id></focus_entity_id>');
+		expect(contextBlock).not.toContain('<project>');
+		expect(contextBlock).not.toContain('<focus_entity>');
+		expect(prompt).not.toContain('<project_id></project_id>');
+		expect(prompt).not.toContain('<entity_id></entity_id>');
+		expect(prompt).not.toContain('<focus_entity_id></focus_entity_id>');
 		expect(prompt).not.toContain('<project_id>none</project_id>');
 		expect(prompt).not.toContain('<entity_id>none</entity_id>');
+		expect(prompt).not.toContain('<focus_entity_type>none</focus_entity_type>');
 		expect(instructionsBlock).toContain(
 			'Do not pass `"__TASK_ID_FROM_ABOVE__"`, `"<task_id_uuid>"`, `"REPLACE_ME"`, `"TBD"`, `"none"`, `"null"`, or `"undefined"` in any `*_id` field.'
 		);
+	});
+
+	it('renders focused entity details only when they exist', () => {
+		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+
+		const prompt = buildMasterPrompt({
+			contextType: 'project',
+			projectId: 'project-1',
+			entityId: 'project-1',
+			projectName: 'The Last Ember',
+			focusEntityType: 'task',
+			focusEntityId: 'task-123',
+			focusEntityName: 'Outline chapter 7'
+		});
+		const contextBlock = extractTagBlock(prompt, 'context');
+
+		expect(contextBlock).toContain('Context type: project entity focus.');
+		expect(contextBlock).toContain('<focus_entity>');
+		expect(contextBlock).toContain('<focus_entity_type>task</focus_entity_type>');
+		expect(contextBlock).toContain('<focus_entity_id>task-123</focus_entity_id>');
+		expect(contextBlock).toContain('<focus_entity_name>Outline chapter 7</focus_entity_name>');
 	});
 
 	it('does not inject user profile data into the system prompt by default', () => {

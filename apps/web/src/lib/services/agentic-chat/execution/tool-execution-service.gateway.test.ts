@@ -19,7 +19,7 @@ function buildToolCall(args: Record<string, any>): ChatToolCall {
 }
 
 function buildGatewayToolCall(
-	name: 'tool_help' | 'tool_exec' | 'tool_batch',
+	name: 'tool_help' | 'tool_exec' | 'tool_batch' | 'execute_op',
 	args: Record<string, any>
 ): ChatToolCall {
 	return {
@@ -44,6 +44,40 @@ function buildContext(overrides: Partial<ServiceContext> = {}): ServiceContext {
 }
 
 describe('ToolExecutionService gateway fallback', () => {
+	it('executes execute_op payloads with nested input', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: {
+				id: '3cdf0778-5301-43da-a899-a67561b4fa73',
+				title: 'Rename chapter outline'
+			}
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildGatewayToolCall('execute_op', {
+				op: 'onto.task.update',
+				input: {
+					task_id: '3cdf0778-5301-43da-a899-a67561b4fa73',
+					title: 'Rename chapter outline'
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'update_onto_task',
+			expect.objectContaining({
+				project_id: PROJECT_ID,
+				task_id: '3cdf0778-5301-43da-a899-a67561b4fa73',
+				title: 'Rename chapter outline'
+			}),
+			expect.any(Object)
+		);
+		expect((result.data as any)?.ok).toBe(true);
+	});
+
 	it('falls back onto.plan.get without plan_id to search_onto_plans when a query can be inferred', async () => {
 		const toolExecutor = vi.fn().mockResolvedValue({
 			data: {

@@ -25,7 +25,7 @@ describe('getToolHelp', () => {
 		expect(help.skills.map((item: any) => item.name)).toContain('project_creation');
 		expect(help.skills.map((item: any) => item.name)).toContain('task_management');
 		expect(help.skills.map((item: any) => item.name)).toContain('people_context');
-		expect(help.command_contract?.tool_exec?.required).toEqual(['op', 'args']);
+		expect(help.command_contract?.execute_op?.required).toEqual(['op', 'input']);
 		expect(Array.isArray(help.workflow)).toBe(true);
 		expect(help.workflow.join(' ')).toContain('capabilities.overview');
 		expect(help.workflow.join(' ')).toContain('capabilities.project_creation');
@@ -148,7 +148,7 @@ describe('getToolHelp', () => {
 		expect(help.related_ops).toContain('onto.project.create');
 		expect(help.workflow.join(' ')).toContain('entities: []');
 		expect(help.workflow.join(' ')).toContain('relationships: []');
-		expect(help.guardrails.join(' ')).toContain('args:{}');
+		expect(help.guardrails.join(' ')).toContain('create_onto_project({})');
 		expect(help.notes.join(' ')).toContain('Project creation is a minimality exercise');
 	});
 
@@ -165,9 +165,9 @@ describe('getToolHelp', () => {
 		expect(help.required_args).toContain('task_id');
 		expect(Array.isArray(help.notes)).toBe(true);
 		expect(help.notes.join(' ')).toContain('task_id');
-		expect(help.example_tool_exec?.op).toBe('onto.task.update');
-		expect(help.example_tool_exec?.args?.task_id).toBe('<task_id_uuid>');
-		expect(Object.keys(help.example_tool_exec?.args ?? {}).length).toBeGreaterThan(1);
+		expect(help.example_execute_op?.op).toBe('onto.task.update');
+		expect(help.example_execute_op?.input?.task_id).toBe('<task_id_uuid>');
+		expect(Object.keys(help.example_execute_op?.input ?? {}).length).toBeGreaterThan(1);
 		expect(Array.isArray(help.examples)).toBe(true);
 		expect(help.examples.length).toBeGreaterThan(0);
 	});
@@ -186,12 +186,48 @@ describe('getToolHelp', () => {
 		);
 		expect(help.notes.join(' ')).toContain('project.name and project.type_key');
 		expect(help.notes.join(' ')).toContain('Never use raw string pairs');
-		expect(help.example_tool_exec?.args?.project?.name).toBe('<project name>');
-		expect(help.example_tool_exec?.args?.project?.type_key).toBe('project.business.initiative');
-		expect(help.example_tool_exec?.args?.entities).toEqual([]);
-		expect(help.example_tool_exec?.args?.relationships).toEqual([]);
+		expect(help.example_execute_op?.input?.project?.name).toBe('<project name>');
+		expect(help.example_execute_op?.input?.project?.type_key).toBe(
+			'project.business.initiative'
+		);
+		expect(help.example_execute_op?.input?.entities).toEqual([]);
+		expect(help.example_execute_op?.input?.relationships).toEqual([]);
 		expect(help.examples.length).toBeGreaterThanOrEqual(3);
-		expect(help.examples[2]?.tool_exec?.args?.relationships?.[0]?.from?.temp_id).toBe('g1');
+		expect(help.examples[2]?.execute_op?.input?.relationships?.[0]?.from?.temp_id).toBe('g1');
+	});
+
+	it('returns concrete creation guidance for goals, milestones, and plans', () => {
+		const goalHelp = getToolHelp('onto.goal.create', {
+			format: 'full',
+			include_examples: true,
+			include_schemas: true
+		});
+		const milestoneHelp = getToolHelp('onto.milestone.create', {
+			format: 'full',
+			include_examples: true,
+			include_schemas: true
+		});
+		const planHelp = getToolHelp('onto.plan.create', {
+			format: 'full',
+			include_examples: true,
+			include_schemas: true
+		});
+
+		expect(goalHelp.notes.join(' ')).toContain('input.name');
+		expect(goalHelp.notes.join(' ')).toContain('not title');
+		expect(goalHelp.examples[0]?.execute_op?.input?.name).toBe(
+			'Finish first draft by March 31st'
+		);
+
+		expect(milestoneHelp.notes.join(' ')).toContain('input.title');
+		expect(milestoneHelp.notes.join(' ')).toContain('not name');
+		expect(milestoneHelp.examples[0]?.execute_op?.input?.goal_id).toBe('<goal_id_uuid>');
+		expect(milestoneHelp.examples[0]?.execute_op?.input?.title).toBe('Complete chapters 1-10');
+
+		expect(planHelp.notes.join(' ')).toContain('input.name');
+		expect(planHelp.notes.join(' ')).toContain('milestone_id');
+		expect(planHelp.examples[0]?.execute_op?.input?.milestone_id).toBe('<milestone_id_uuid>');
+		expect(planHelp.examples[0]?.execute_op?.input?.name).toBe('Weekday drafting routine');
 	});
 
 	it('returns workspace overview op guidance for status questions', () => {
@@ -205,7 +241,7 @@ describe('getToolHelp', () => {
 		expect(help.op).toBe('util.workspace.overview');
 		expect(Array.isArray(help.notes)).toBe(true);
 		expect(help.notes.join(' ')).toContain('workspace-wide status questions');
-		expect(help.examples[0]?.tool_exec?.args?.project_limit).toBe(8);
+		expect(help.examples[0]?.execute_op?.input?.project_limit).toBe(8);
 	});
 
 	it('returns project overview op guidance for named project status questions', () => {
@@ -218,10 +254,10 @@ describe('getToolHelp', () => {
 		expect(help.type).toBe('op');
 		expect(help.op).toBe('util.project.overview');
 		expect(Array.isArray(help.notes)).toBe(true);
-		expect(help.notes.join(' ')).toContain('args.project_id');
-		expect(help.notes.join(' ')).toContain('args.query');
-		expect(help.examples[0]?.tool_exec?.args?.query).toBe('9takes');
-		expect(help.examples[1]?.tool_exec?.args?.project_id).toBe('<project_id_uuid>');
+		expect(help.notes.join(' ')).toContain('input.project_id');
+		expect(help.notes.join(' ')).toContain('input.query');
+		expect(help.examples[0]?.execute_op?.input?.query).toBe('9takes');
+		expect(help.examples[1]?.execute_op?.input?.project_id).toBe('<project_id_uuid>');
 	});
 
 	it('includes query guidance for search ops', () => {
@@ -231,9 +267,9 @@ describe('getToolHelp', () => {
 		});
 
 		expect(help.type).toBe('op');
-		expect(help.example_tool_exec?.args?.query).toBe('<search query>');
+		expect(help.example_execute_op?.input?.query).toBe('<search query>');
 		expect(Array.isArray(help.notes)).toBe(true);
-		expect(help.notes.join(' ')).toContain('args.query');
+		expect(help.notes.join(' ')).toContain('input.query');
 	});
 
 	it('includes explicit range and paging guidance for calendar list ops', () => {
@@ -247,8 +283,8 @@ describe('getToolHelp', () => {
 		expect(help.notes.join(' ')).toContain('timeMin/timeMax');
 		expect(help.notes.join(' ')).toContain('limit');
 		expect(Array.isArray(help.examples)).toBe(true);
-		expect(help.examples[0]?.tool_exec?.args?.time_min).toBe('2026-03-01');
-		expect(help.examples[1]?.tool_exec?.args?.offset).toBe(100);
+		expect(help.examples[0]?.execute_op?.input?.time_min).toBe('2026-03-01');
+		expect(help.examples[1]?.execute_op?.input?.offset).toBe(100);
 	});
 
 	it('includes required identifier guidance for calendar update ops', () => {
@@ -259,9 +295,9 @@ describe('getToolHelp', () => {
 
 		expect(help.type).toBe('op');
 		expect(Array.isArray(help.notes)).toBe(true);
-		expect(help.notes.join(' ')).toContain('onto_event_id or args.event_id');
-		expect(help.example_tool_exec?.args?.onto_event_id).toBe('<onto_event_id_uuid>');
-		expect(help.example_tool_exec?.args?.title).toBe('<title>');
+		expect(help.notes.join(' ')).toContain('onto_event_id or input.event_id');
+		expect(help.example_execute_op?.input?.onto_event_id).toBe('<onto_event_id_uuid>');
+		expect(help.example_execute_op?.input?.title).toBe('<title>');
 	});
 
 	it('returns calendar skill playbook for cal.skill', () => {
@@ -381,7 +417,7 @@ describe('getToolHelp', () => {
 		expect(help.op).toBe('util.profile.overview');
 		expect(Array.isArray(help.notes)).toBe(true);
 		expect(help.notes.join(' ')).toContain('not preloaded');
-		expect(help.example_tool_exec?.args).toEqual({});
+		expect(help.example_execute_op?.input).toEqual({});
 	});
 
 	it('lists util.profile namespace with profile overview op', () => {

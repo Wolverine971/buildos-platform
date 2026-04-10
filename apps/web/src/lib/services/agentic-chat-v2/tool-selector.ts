@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
-import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
+import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import {
 	getToolsForContextType,
 	resolveToolName
@@ -27,7 +27,7 @@ export function selectFastChatTools(params: {
 	contextType: ChatContextType;
 }): ChatToolDefinition[] {
 	if (isToolGatewayEnabled()) {
-		return [...GATEWAY_TOOL_DEFINITIONS];
+		return getGatewaySurfaceForContextType(params.contextType);
 	}
 
 	const normalized = normalizeFastContextType(params.contextType);

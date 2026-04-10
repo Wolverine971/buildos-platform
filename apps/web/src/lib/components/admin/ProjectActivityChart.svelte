@@ -3,65 +3,73 @@
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 
-	// Using $props() for Svelte 5 runes mode
 	let { projects = [] }: { projects?: any[] } = $props();
 
-	// Reactive state using $state() - required in runes mode for reactivity
 	let hoveredBar = $state<any>(null);
 
-	// Transform projects data for the chart - Using $derived for automatic memoization
 	let chartData = $derived(
 		projects
 			.filter((project) => project.name)
-			.slice(0, 8) // Show top 8 projects to fit better
-			.map((project) => ({
-				name:
-					project.name.length > 12 ? project.name.substring(0, 12) + '...' : project.name,
-				fullName: project.name,
-				tasks: project.task_count || 0,
-				notes: project.notes_count || 0,
-				completed_tasks: project.completed_task_count || 0,
-				status: project.status || 'unknown'
-			}))
-			.sort((a, b) => b.tasks + b.notes - (a.tasks + a.notes))
+			.map((project) => {
+				const completedTasks = project.completed_task_count || 0;
+				const totalTasks = project.task_count || 0;
+				const openTasks = Math.max(
+					project.open_task_count ?? totalTasks - completedTasks,
+					0
+				);
+				const chatSessions = project.chat_session_count || 0;
+
+				return {
+					name:
+						project.name.length > 12
+							? `${project.name.substring(0, 12)}...`
+							: project.name,
+					fullName: project.name,
+					openTasks,
+					completedTasks,
+					chatSessions,
+					status: project.status || 'unknown',
+					totalSignal: openTasks + completedTasks + chatSessions
+				};
+			})
+			.sort((a, b) => b.totalSignal - a.totalSignal)
+			.slice(0, 8)
 	);
 
-	// Calculate max value for chart scaling - Using $derived
 	let maxValue = $derived(
-		Math.max(...chartData.map((d) => Math.max(d.tasks, d.notes, d.completed_tasks)), 1)
+		Math.max(
+			...chartData.map((item) =>
+				Math.max(item.openTasks, item.completedTasks, item.chatSessions)
+			),
+			1
+		)
 	);
 
-	// Calculate bar width based on number of items - Using $derived
 	let barWidth = $derived(
-		chartData?.length
-			? Math.max(80, (400 - (chartData.length - 1) * 10) / chartData.length)
-			: 80
+		chartData.length ? Math.max(80, (400 - (chartData.length - 1) * 10) / chartData.length) : 80
 	);
 </script>
 
-{#if chartData?.length}
+{#if chartData.length}
 	<Card variant="default">
 		<CardBody padding="md" class="w-full">
-			<!-- Legend -->
-			<div class="flex justify-center space-x-6 mb-4">
+			<div class="flex flex-wrap justify-center gap-4 mb-4">
 				<div class="flex items-center">
-					<div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
-					<span class="text-sm text-muted-foreground">Tasks</span>
+					<div class="w-4 h-4 bg-sky-500 rounded mr-2"></div>
+					<span class="text-sm text-muted-foreground">Open Tasks</span>
 				</div>
 				<div class="flex items-center">
-					<div class="w-4 h-4 bg-green-500 rounded mr-2"></div>
-					<span class="text-sm text-muted-foreground">Notes</span>
+					<div class="w-4 h-4 bg-emerald-500 rounded mr-2"></div>
+					<span class="text-sm text-muted-foreground">Done Tasks</span>
 				</div>
 				<div class="flex items-center">
-					<div class="w-4 h-4 bg-purple-500 rounded mr-2"></div>
-					<span class="text-sm text-muted-foreground">Completed</span>
+					<div class="w-4 h-4 bg-amber-500 rounded mr-2"></div>
+					<span class="text-sm text-muted-foreground">BuildOS Chats</span>
 				</div>
 			</div>
 
-			<!-- Chart Container -->
 			<div class="relative">
 				<svg class="w-full h-64" viewBox="0 0 500 250">
-					<!-- Grid lines -->
 					{#each Array(6) as _, i}
 						<line
 							x1="50"
@@ -83,91 +91,102 @@
 						</text>
 					{/each}
 
-					<!-- Bars -->
 					{#each chartData as project, i}
 						{@const x = 70 + i * (barWidth + 10)}
-						{@const tasksHeight = (project.tasks / maxValue) * 175}
-						{@const notesHeight = (project.notes / maxValue) * 175}
-						{@const completedHeight = (project.completed_tasks / maxValue) * 175}
+						{@const openTasksHeight = (project.openTasks / maxValue) * 175}
+						{@const completedTasksHeight = (project.completedTasks / maxValue) * 175}
+						{@const chatSessionsHeight = (project.chatSessions / maxValue) * 175}
 
-						<!-- Tasks bar -->
 						<rect
 							{x}
-							y={215 - tasksHeight}
+							y={215 - openTasksHeight}
 							width={barWidth / 3 - 2}
-							height={tasksHeight}
-							fill="#3b82f6"
+							height={openTasksHeight}
+							fill="#0ea5e9"
 							rx="2"
 							class="hover:opacity-80 cursor-pointer"
 							role="button"
 							tabindex="0"
-							aria-label="{project.tasks} tasks in {project.fullName}"
-							onmouseenter={() =>
-								(hoveredBar = { type: 'tasks', project, value: project.tasks })}
-							onmouseleave={() => (hoveredBar = null)}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
-									hoveredBar = { type: 'tasks', project, value: project.tasks };
-								}
-							}}
-						/>
-
-						<!-- Notes bar -->
-						<rect
-							x={x + barWidth / 3}
-							y={215 - notesHeight}
-							width={barWidth / 3 - 2}
-							height={notesHeight}
-							fill="#10b981"
-							rx="2"
-							class="hover:opacity-80 cursor-pointer"
-							role="button"
-							tabindex="0"
-							aria-label="{project.notes} notes in {project.fullName}"
-							onmouseenter={() =>
-								(hoveredBar = { type: 'notes', project, value: project.notes })}
-							onmouseleave={() => (hoveredBar = null)}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
-									hoveredBar = { type: 'notes', project, value: project.notes };
-								}
-							}}
-						/>
-
-						<!-- Completed bar -->
-						<rect
-							x={x + (barWidth / 3) * 2}
-							y={215 - completedHeight}
-							width={barWidth / 3 - 2}
-							height={completedHeight}
-							fill="#8b5cf6"
-							rx="2"
-							class="hover:opacity-80 cursor-pointer"
-							role="button"
-							tabindex="0"
-							aria-label="{project.completed_tasks} completed tasks in {project.fullName}"
+							aria-label="{project.openTasks} open tasks in {project.fullName}"
 							onmouseenter={() =>
 								(hoveredBar = {
-									type: 'completed',
+									type: 'open tasks',
 									project,
-									value: project.completed_tasks
+									value: project.openTasks
 								})}
 							onmouseleave={() => (hoveredBar = null)}
-							onkeydown={(e) => {
-								if (e.key === 'Enter' || e.key === ' ') {
-									e.preventDefault();
+							onkeydown={(event) => {
+								if (event.key === 'Enter' || event.key === ' ') {
+									event.preventDefault();
 									hoveredBar = {
-										type: 'completed',
+										type: 'open tasks',
 										project,
-										value: project.completed_tasks
+										value: project.openTasks
 									};
 								}
 							}}
 						/>
 
-						<!-- Project name -->
+						<rect
+							x={x + barWidth / 3}
+							y={215 - completedTasksHeight}
+							width={barWidth / 3 - 2}
+							height={completedTasksHeight}
+							fill="#10b981"
+							rx="2"
+							class="hover:opacity-80 cursor-pointer"
+							role="button"
+							tabindex="0"
+							aria-label="{project.completedTasks} completed tasks in {project.fullName}"
+							onmouseenter={() =>
+								(hoveredBar = {
+									type: 'done tasks',
+									project,
+									value: project.completedTasks
+								})}
+							onmouseleave={() => (hoveredBar = null)}
+							onkeydown={(event) => {
+								if (event.key === 'Enter' || event.key === ' ') {
+									event.preventDefault();
+									hoveredBar = {
+										type: 'done tasks',
+										project,
+										value: project.completedTasks
+									};
+								}
+							}}
+						/>
+
+						<rect
+							x={x + (barWidth / 3) * 2}
+							y={215 - chatSessionsHeight}
+							width={barWidth / 3 - 2}
+							height={chatSessionsHeight}
+							fill="#f59e0b"
+							rx="2"
+							class="hover:opacity-80 cursor-pointer"
+							role="button"
+							tabindex="0"
+							aria-label="{project.chatSessions} BuildOS chats in {project.fullName}"
+							onmouseenter={() =>
+								(hoveredBar = {
+									type: 'BuildOS chats',
+									project,
+									value: project.chatSessions
+								})}
+							onmouseleave={() => (hoveredBar = null)}
+							onkeydown={(event) => {
+								if (event.key === 'Enter' || event.key === ' ') {
+									event.preventDefault();
+									hoveredBar = {
+										type: 'BuildOS chats',
+										project,
+										value: project.chatSessions
+									};
+								}
+							}}
+						/>
+
 						<text
 							x={x + barWidth / 2}
 							y="235"
@@ -181,15 +200,12 @@
 					{/each}
 				</svg>
 
-				<!-- Tooltip -->
 				{#if hoveredBar}
 					<div
 						class="absolute bg-card border border-border rounded-lg shadow-ink-strong p-3 pointer-events-none z-10"
 						style="top: 10px; left: 10px;"
 					>
-						<p class="font-medium text-foreground">
-							{hoveredBar.project.fullName}
-						</p>
+						<p class="font-medium text-foreground">{hoveredBar.project.fullName}</p>
 						<p class="text-sm text-muted-foreground capitalize">
 							Status: {hoveredBar.project.status}
 						</p>
@@ -200,25 +216,24 @@
 				{/if}
 			</div>
 
-			<!-- Summary Stats -->
 			<div class="grid grid-cols-3 gap-4 mt-4">
 				<div class="text-center">
-					<div class="text-lg font-bold text-blue-600">
-						{chartData.reduce((sum, p) => sum + p.tasks, 0)}
+					<div class="text-lg font-bold text-sky-600">
+						{chartData.reduce((sum, project) => sum + project.openTasks, 0)}
 					</div>
-					<div class="text-xs text-muted-foreground">Total Tasks</div>
+					<div class="text-xs text-muted-foreground">Open Tasks</div>
 				</div>
 				<div class="text-center">
-					<div class="text-lg font-bold text-green-600">
-						{chartData.reduce((sum, p) => sum + p.notes, 0)}
+					<div class="text-lg font-bold text-emerald-600">
+						{chartData.reduce((sum, project) => sum + project.completedTasks, 0)}
 					</div>
-					<div class="text-xs text-muted-foreground">Total Notes</div>
+					<div class="text-xs text-muted-foreground">Done Tasks</div>
 				</div>
 				<div class="text-center">
-					<div class="text-lg font-bold text-purple-600">
-						{chartData.reduce((sum, p) => sum + p.completed_tasks, 0)}
+					<div class="text-lg font-bold text-amber-600">
+						{chartData.reduce((sum, project) => sum + project.chatSessions, 0)}
 					</div>
-					<div class="text-xs text-muted-foreground">Completed</div>
+					<div class="text-xs text-muted-foreground">BuildOS Chats</div>
 				</div>
 			</div>
 		</CardBody>
@@ -238,7 +253,7 @@
 				></path>
 			</svg>
 			<p class="text-lg font-medium">No Project Data</p>
-			<p class="text-sm text-center">This user hasn't created any projects yet</p>
+			<p class="text-sm text-center">This user has not created any project activity yet</p>
 		</CardBody>
 	</Card>
 {/if}

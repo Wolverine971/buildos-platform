@@ -3,7 +3,7 @@ import type { ChatContextType } from '@buildos/shared-types';
 import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
-import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
+import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 
 export type MasterPromptContext = {
 	contextType: ChatContextType;
@@ -21,10 +21,10 @@ export type MasterPromptContext = {
 type JsonRecord = Record<string, unknown>;
 
 const OVERVIEW_GUIDANCE = `For routine status questions about the workspace or a single project, prefer the overview retrieval path first instead of generic ontology discovery:
-- In gateway mode, overview ops are canonical op ids, not top-level callable tools. Execute them through buildos_call.
-- Workspace-wide status -> buildos_call({ op: "util.workspace.overview", args: {} })
-- Named or in-scope project status -> buildos_call({ op: "util.project.overview", args: { project_id: "<uuid>" } }) when the project_id is known, otherwise buildos_call({ op: "util.project.overview", args: { query: "<project name>" } })
-- If structured project context already includes a clear next_step_short or equivalent status summary, answer from that context instead of loading audit skills or repeating project graph reads.`;
+	- In gateway mode, overview retrieval is available as direct tools, not through a generic executor.
+	- Workspace-wide status -> get_workspace_overview({})
+	- Named or in-scope project status -> get_project_overview({ project_id: "<uuid>" }) when the project_id is known, otherwise get_project_overview({ query: "<project name>" })
+	- If structured project context already includes a clear next_step_short or equivalent status summary, answer from that context instead of loading audit skills or repeating project graph reads.`;
 const PROJECT_CREATE_WORKFLOW = `You are already in project_create context. The default workflow here is:
 1) Prefer the project creation capability, then load skill_load({ skill: "project_creation" }) before the first create call.
 2) Build the smallest valid onto.project.create payload.
@@ -46,14 +46,15 @@ function wrapTag(tag: string, content: string): string {
 	return `<${tag}>\n${content}\n</${tag}>`;
 }
 
-function formatTagLine(tag: string, value?: string | null): string {
-	if (!value) return `<${tag}>none</${tag}>`;
+function formatConditionalTagLine(tag: string, value?: string | null): string | null {
+	if (!value) return null;
 	return `<${tag}>${value}</${tag}>`;
 }
 
-function formatOptionalTagLine(tag: string, value?: string | null): string {
-	if (!value) return `<${tag}></${tag}>`;
-	return `<${tag}>${value}</${tag}>`;
+function wrapConditionalBlock(tag: string, lines: Array<string | null | undefined>): string | null {
+	const content = lines.filter((line): line is string => Boolean(line)).join('\n');
+	if (!content) return null;
+	return wrapTag(tag, content);
 }
 
 function formatContextGuidanceTags(params: {
@@ -77,8 +78,8 @@ function formatContextGuidanceTags(params: {
 	];
 }
 
-function serializeData(data?: Record<string, unknown> | string | null): string {
-	if (!data) return 'none';
+function serializeData(data?: Record<string, unknown> | string | null): string | null {
+	if (!data) return null;
 	if (typeof data === 'string') return data;
 	return JSON.stringify(compactPromptData(data), null, 2);
 }
@@ -116,6 +117,56 @@ function shouldApplyDailyBriefGuardrails(data?: Record<string, unknown> | string
 	);
 }
 
+function buildContextDescription(params: {
+	contextType: ChatContextType;
+	projectName?: string | null;
+	projectId?: string | null;
+	focusEntityType?: string | null;
+	focusEntityName?: string | null;
+	focusEntityId?: string | null;
+}): string {
+	const projectLabel = params.projectName
+		? `the project "${params.projectName}"`
+		: params.projectId
+			? `the project with id ${params.projectId}`
+			: 'the current project';
+	const focusLabel = params.focusEntityName
+		? `${params.focusEntityType ?? 'focused'} "${params.focusEntityName}"`
+		: params.focusEntityId
+			? `${params.focusEntityType ?? 'focused entity'} (${params.focusEntityId})`
+			: (params.focusEntityType ?? 'focused entity');
+
+	switch (params.contextType) {
+		case 'global':
+			return 'Context type: global. The assistant is working across the workspace, so it should reason across projects and narrow scope only when the user or current data clearly points to one project.';
+		case 'project':
+			if (params.focusEntityType) {
+				return `Context type: project entity focus. The assistant is working inside ${projectLabel} and should prioritize the ${focusLabel}, its linked records, and the surrounding project data.`;
+			}
+			return `Context type: project. The assistant is working inside ${projectLabel} and should prioritize that project's entities, relationships, and next steps.`;
+		case 'calendar':
+			return 'Context type: calendar. The assistant should prioritize calendar events, scheduling constraints, and project timing implications.';
+		case 'daily_brief':
+			return 'Context type: daily brief. The assistant should use the brief as the primary working set and treat the briefed projects and entities as the default scope.';
+		case 'general':
+			return 'Context type: general. The assistant can work broadly across the workspace while still using any provided structured data as grounding.';
+		case 'project_create':
+			return 'Context type: project creation. The assistant should turn the user request into the smallest valid project structure and avoid inventing extra hierarchy.';
+		case 'project_audit':
+			return `Context type: project audit. The assistant should inspect ${projectLabel} critically, identify meaningful risks or gaps, and ground every claim in the provided context.`;
+		case 'project_forecast':
+			return `Context type: project forecast. The assistant should estimate likely outcomes for ${projectLabel} using the available project evidence and state uncertainty clearly.`;
+		case 'daily_brief_update':
+			return 'Context type: daily brief update. The assistant should focus on adjusting daily brief preferences, rules, or generation behavior.';
+		case 'ontology':
+			return 'Context type: ontology. The assistant should prioritize ontology-aware reasoning about entities, fields, and relationships.';
+		case 'brain_dump':
+			return 'Context type: brain dump. The assistant should capture all user details, organize them into the right entities, and avoid dropping specifics.';
+		default:
+			return `Context type: ${params.contextType}. The assistant should treat the provided structured context as the source of truth for scope.`;
+	}
+}
+
 function formatBuildOSCapabilitiesForPrompt(): string {
 	return listCapabilities('available')
 		.map((capability) => `- ${capability.name}: ${capability.summary}`)
@@ -129,11 +180,11 @@ function formatSkillCatalogForPrompt(): string {
 		.join('\n');
 }
 
-function formatGatewayToolsForPrompt(): string {
-	return JSON.stringify(GATEWAY_TOOL_DEFINITIONS, null, 2);
+function formatGatewayToolsForPrompt(contextType: ChatContextType): string {
+	return JSON.stringify(getGatewaySurfaceForContextType(contextType), null, 2);
 }
 
-function buildInstructionsMarkdown(gatewayEnabled: boolean): string {
+function buildInstructionsMarkdown(gatewayEnabled: boolean, contextType: ChatContextType): string {
 	const sections: string[] = [
 		'# BuildOS Agent System Prompt',
 		'',
@@ -169,10 +220,10 @@ function buildInstructionsMarkdown(gatewayEnabled: boolean): string {
 			'',
 			'### Tools',
 			'',
-			'Tools are discovered on demand. Use the tools below to find and execute the right op.',
+			'The current context already has a small set of direct tools preloaded. Use those first. Use discovery only when the exact direct tool is still missing.',
 			'',
 			'```json',
-			formatGatewayToolsForPrompt(),
+			formatGatewayToolsForPrompt(contextType),
 			'```',
 			'',
 			'## Execution Protocol',
@@ -183,10 +234,18 @@ function buildInstructionsMarkdown(gatewayEnabled: boolean): string {
 			'',
 			'1. Start with current context, capabilities, and skill metadata to orient before searching.',
 			'2. If the workflow is multi-step or easy to get wrong, load the relevant skill first.',
-			'3. If the skill or current context already identifies the exact op, skip `tool_search` and go straight to `tool_schema` or `buildos_call`.',
+			'3. If a preloaded direct tool already fits the job, call it directly.',
 			'4. Use `tool_search` only when the exact op is still unknown after context and skill guidance. Search for the operation you need, not workspace data. Good examples: `{"capability":"overview"}`, `{"entity":"task","kind":"write","query":"update existing task state"}`, and `{"group":"onto","entity":"document","kind":"write","query":"move document in tree"}`.',
-			'5. Use `tool_schema` when an op is new in-turn or any write arguments are uncertain.',
-			'6. Execute only through `buildos_call` once the canonical op and concrete args are confirmed.',
+			'5. `tool_search` returns canonical ops plus direct tool names. If a search result is not already loaded, it becomes available as a direct tool for the next response in the same turn.',
+			'6. Use `tool_schema` when an op is new in-turn or any write arguments are uncertain.',
+			'7. After `tool_schema`, call the direct tool by name with concrete arguments. Do not route normal work through a generic executor.',
+			'',
+			'### Direct tool protocol',
+			'',
+			'1. The callable surface is the direct tool name, for example `update_onto_task({ task_id, state_key })` or `get_project_overview({ project_id })`.',
+			'2. `tool_search` and `tool_schema` help you identify the exact tool and exact arguments, but they are not the final action for normal reads and writes.',
+			'3. Put dynamic fields such as `task_id`, `project_id`, `title`, `state_key`, or `parent_id` directly in the tool arguments.',
+			'4. If any required field is missing, do not execute. Ask one concise question or resolve it with a read op first.',
 			'',
 			'### Safe execution rules',
 			'',
@@ -198,7 +257,7 @@ function buildInstructionsMarkdown(gatewayEnabled: boolean): string {
 			"- Before any update or delete, confirm the entity's exact UUID from current structured context and copy it directly into the args.",
 			'- When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.',
 			'- Do not use tools speculatively. If you do not yet know the schema or required fields, run `tool_schema` first.',
-			'- `tool_search` is for discovering which op to use. Query for operations like `"update existing task state"` or `"move document in tree"`, not workspace entities by name. Use ontology search/list/get ops to find actual projects, tasks, documents, goals, plans, milestones, and risks.',
+			'- `tool_search` is for discovering which op/tool to use. Query for operations like `"update existing task state"` or `"move document in tree"`, not workspace entities by name. Use ontology search/list/get ops to find actual projects, tasks, documents, goals, plans, milestones, and risks.',
 			'- Only call `onto.<entity>.get`, `onto.<entity>.update`, or `onto.<entity>.delete` when you have the exact `*_id`.',
 			'',
 			'### Entity resolution order',
@@ -293,29 +352,42 @@ export function buildMasterPrompt(context: MasterPromptContext): string {
 	const effectiveProjectId =
 		context.projectId ??
 		(context.contextType === 'project' ? (context.entityId ?? null) : null);
-	const instructions = buildInstructionsMarkdown(gatewayEnabled);
+	const instructions = buildInstructionsMarkdown(gatewayEnabled, context.contextType);
+	const serializedData = serializeData(context.data);
 
 	const contextBlock = [
-		formatTagLine('context_type', context.contextType),
-		formatOptionalTagLine('project_id', effectiveProjectId),
-		formatTagLine('project_name', context.projectName ?? null),
-		formatOptionalTagLine('entity_id', context.entityId ?? null),
-		formatTagLine('focus_entity_type', context.focusEntityType ?? null),
-		formatOptionalTagLine('focus_entity_id', context.focusEntityId ?? null),
-		formatTagLine('focus_entity_name', context.focusEntityName ?? null),
-		formatTagLine('conversation_summary', context.conversationSummary ?? null),
+		wrapTag(
+			'context_description',
+			buildContextDescription({
+				contextType: context.contextType,
+				projectName: context.projectName ?? null,
+				projectId: effectiveProjectId,
+				focusEntityType: context.focusEntityType ?? null,
+				focusEntityName: context.focusEntityName ?? null,
+				focusEntityId: context.focusEntityId ?? null
+			})
+		),
+		wrapConditionalBlock('project', [
+			formatConditionalTagLine('project_id', effectiveProjectId),
+			formatConditionalTagLine('project_name', context.projectName ?? null)
+		]),
+		wrapConditionalBlock('focus_entity', [
+			formatConditionalTagLine('focus_entity_type', context.focusEntityType ?? null),
+			formatConditionalTagLine('focus_entity_id', context.focusEntityId ?? null),
+			formatConditionalTagLine('focus_entity_name', context.focusEntityName ?? null)
+		]),
+		context.conversationSummary
+			? wrapTag('conversation_summary', context.conversationSummary)
+			: null,
+		serializedData,
 		...formatContextGuidanceTags({
 			contextType: context.contextType,
 			entityResolutionHint: context.entityResolutionHint,
 			includeDailyBriefGuardrails
 		})
-	].join('\n');
+	]
+		.filter((section): section is string => Boolean(section))
+		.join('\n\n');
 
-	const dataBlock = wrapTag('json', serializeData(context.data));
-
-	return [
-		wrapTag('instructions', instructions),
-		wrapTag('context', contextBlock),
-		wrapTag('data', dataBlock)
-	].join('\n\n');
+	return [wrapTag('instructions', instructions), wrapTag('context', contextBlock)].join('\n\n');
 }

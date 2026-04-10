@@ -276,6 +276,11 @@ export interface SessionTurnRunPayload {
 	eval_runs: SessionPromptEvalPayload[];
 }
 
+interface LinkedTurnToolArtifacts {
+	toolExecution: ToolExecutionRow | null;
+	toolMessage: MessageRow | null;
+}
+
 const COST_PER_MILLION_TOKENS_USD = 0.21;
 
 const asNumber = (value: unknown): number => {
@@ -325,6 +330,197 @@ const parseToolTraceFromMessageMetadata = (metadata: unknown): Array<Record<stri
 				(entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object'
 			)
 		: [];
+};
+
+const isToolOutcomeTurnEvent = (event: TurnEventRow): boolean =>
+	event.event_type === 'tool_result_received' ||
+	event.event_type === 'tool_call_validation_failed';
+
+const compareToolExecutions = (a: ToolExecutionRow, b: ToolExecutionRow): number => {
+	const sequenceDiff = asNumber(a.sequence_index) - asNumber(b.sequence_index);
+	if (sequenceDiff !== 0) return sequenceDiff;
+
+	const left = toIsoOrFallback(a.created_at, '');
+	const right = toIsoOrFallback(b.created_at, '');
+	if (left !== right) return left < right ? -1 : 1;
+
+	return a.id.localeCompare(b.id);
+};
+
+const normalizeTurnEventPayload = (payload: unknown): Record<string, unknown> =>
+	payload && typeof payload === 'object' && !Array.isArray(payload)
+		? (payload as Record<string, unknown>)
+		: { value: payload };
+
+const stringRecordField = (record: Record<string, unknown>, key: string): string | null => {
+	const value = record[key];
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+};
+
+const toLinkedToolExecutionPayload = (
+	toolExecution: ToolExecutionRow
+): Record<string, unknown> => ({
+	id: toolExecution.id,
+	message_id: toolExecution.message_id ?? null,
+	turn_run_id: toolExecution.turn_run_id ?? null,
+	stream_run_id: toolExecution.stream_run_id ?? null,
+	client_turn_id: toolExecution.client_turn_id ?? null,
+	tool_name: toolExecution.tool_name ?? null,
+	tool_category: toolExecution.tool_category ?? null,
+	gateway_op: toolExecution.gateway_op ?? null,
+	help_path: toolExecution.help_path ?? null,
+	sequence_index: toolExecution.sequence_index ?? null,
+	success: toolExecution.success ?? null,
+	execution_time_ms: toolExecution.execution_time_ms ?? null,
+	tokens_consumed: toolExecution.tokens_consumed ?? null,
+	error_message: toolExecution.error_message ?? null,
+	requires_user_action: toolExecution.requires_user_action ?? null,
+	arguments: toolExecution.arguments ?? null,
+	result: toolExecution.result ?? null,
+	created_at: toolExecution.created_at ?? null
+});
+
+const toLinkedToolMessagePayload = (message: MessageRow): Record<string, unknown> => ({
+	id: message.id,
+	role: message.role ?? null,
+	content: message.content ?? null,
+	message_type: message.message_type ?? null,
+	tool_call_id: message.tool_call_id ?? null,
+	tool_name: message.tool_name ?? null,
+	tool_result: message.tool_result ?? null,
+	error_message: message.error_message ?? null,
+	created_at: message.created_at ?? null
+});
+
+const enrichTurnToolArtifacts = (
+	payload: Record<string, unknown>,
+	artifacts: LinkedTurnToolArtifacts
+): Record<string, unknown> => {
+	const toolResultSource = artifacts.toolExecution
+		? 'chat_tool_executions'
+		: artifacts.toolMessage?.tool_result !== undefined
+			? 'chat_messages'
+			: null;
+
+	return {
+		...payload,
+		...(artifacts.toolExecution
+			? {
+					tool_execution_id: artifacts.toolExecution.id,
+					tool_execution_time_ms: artifacts.toolExecution.execution_time_ms ?? null,
+					tool_execution_error: artifacts.toolExecution.error_message ?? null,
+					tool_arguments: artifacts.toolExecution.arguments ?? null,
+					tool_result: artifacts.toolExecution.result ?? null,
+					linked_tool_execution: toLinkedToolExecutionPayload(artifacts.toolExecution)
+				}
+			: {}),
+		...(artifacts.toolMessage
+			? {
+					tool_message_id: artifacts.toolMessage.id,
+					linked_tool_message: toLinkedToolMessagePayload(artifacts.toolMessage)
+				}
+			: {}),
+		...(toolResultSource ? { tool_result_source: toolResultSource } : {})
+	};
+};
+
+const linkToolArtifactsToTurnEvents = (params: {
+	events: TurnEventRow[];
+	toolExecutions: ToolExecutionRow[];
+	toolMessagesByToolCallId: Map<string, MessageRow>;
+}): TurnEventRow[] => {
+	const usedToolExecutionIds = new Set<string>();
+	let toolOutcomeOrdinal = 0;
+
+	return params.events.map((event) => {
+		if (!isToolOutcomeTurnEvent(event)) return event;
+
+		toolOutcomeOrdinal += 1;
+		const payload = normalizeTurnEventPayload(event.payload);
+		const toolCallId = stringRecordField(payload, 'tool_call_id');
+		const toolName = stringRecordField(payload, 'tool_name');
+		const canonicalOp = stringRecordField(payload, 'canonical_op');
+		const toolMessage = toolCallId
+			? (params.toolMessagesByToolCallId.get(toolCallId) ?? null)
+			: null;
+		const toolExecution = selectMatchingToolExecution(
+			params.toolExecutions,
+			usedToolExecutionIds,
+			{
+				ordinal: toolOutcomeOrdinal,
+				toolName,
+				canonicalOp
+			}
+		);
+
+		if (toolExecution) {
+			usedToolExecutionIds.add(toolExecution.id);
+		}
+
+		if (!toolExecution && !toolMessage) {
+			return {
+				...event,
+				payload
+			};
+		}
+
+		return {
+			...event,
+			payload: enrichTurnToolArtifacts(payload, {
+				toolExecution,
+				toolMessage
+			})
+		};
+	});
+};
+
+const selectMatchingToolExecution = (
+	candidates: ToolExecutionRow[],
+	usedToolExecutionIds: Set<string>,
+	params: {
+		ordinal: number;
+		toolName: string | null;
+		canonicalOp: string | null;
+	}
+): ToolExecutionRow | null => {
+	const unusedCandidates = candidates.filter(
+		(candidate) => !usedToolExecutionIds.has(candidate.id)
+	);
+	if (!unusedCandidates.length) return null;
+
+	const sequenceMatch = unusedCandidates.find((candidate) => {
+		if (asNumber(candidate.sequence_index) !== params.ordinal) return false;
+		if (params.toolName && candidate.tool_name && candidate.tool_name !== params.toolName) {
+			return false;
+		}
+		if (
+			params.canonicalOp &&
+			candidate.gateway_op &&
+			candidate.gateway_op !== params.canonicalOp
+		) {
+			return false;
+		}
+		return true;
+	});
+	if (sequenceMatch) return sequenceMatch;
+
+	if (params.toolName) {
+		const toolNameMatch = unusedCandidates.find(
+			(candidate) => candidate.tool_name === params.toolName
+		);
+		if (toolNameMatch) return toolNameMatch;
+	}
+
+	if (params.canonicalOp) {
+		const opMatch = unusedCandidates.find(
+			(candidate) => candidate.gateway_op === params.canonicalOp
+		);
+		if (opMatch) return opMatch;
+	}
+
+	return unusedCandidates[0] ?? null;
 };
 
 export interface SessionDetailPayload {
@@ -422,6 +618,24 @@ export const buildSessionDetailPayload = ({
 			promptSnapshotByTurnRunId.set(snapshot.turn_run_id, snapshot);
 		}
 	}
+	const toolExecutionsByTurnRunId = new Map<string, ToolExecutionRow[]>();
+	for (const toolExecution of toolExecutions) {
+		if (!toolExecution.turn_run_id) continue;
+		const existing = toolExecutionsByTurnRunId.get(toolExecution.turn_run_id) ?? [];
+		existing.push(toolExecution);
+		toolExecutionsByTurnRunId.set(toolExecution.turn_run_id, existing);
+	}
+	for (const entry of toolExecutionsByTurnRunId.values()) {
+		entry.sort(compareToolExecutions);
+	}
+	const toolMessagesByToolCallId = new Map<string, MessageRow>();
+	for (const message of messages) {
+		if (!message.tool_call_id) continue;
+		const existing = toolMessagesByToolCallId.get(message.tool_call_id);
+		if (!existing || existing.role !== 'tool' || message.role === 'tool') {
+			toolMessagesByToolCallId.set(message.tool_call_id, message);
+		}
+	}
 	const eventsByTurnRunId = new Map<string, TurnEventRow[]>();
 	for (const event of turnEvents) {
 		if (!event.turn_run_id) continue;
@@ -429,8 +643,16 @@ export const buildSessionDetailPayload = ({
 		existing.push(event);
 		eventsByTurnRunId.set(event.turn_run_id, existing);
 	}
-	for (const entry of eventsByTurnRunId.values()) {
+	for (const [turnRunId, entry] of eventsByTurnRunId.entries()) {
 		entry.sort((a, b) => asNumber(a.sequence_index) - asNumber(b.sequence_index));
+		eventsByTurnRunId.set(
+			turnRunId,
+			linkToolArtifactsToTurnEvents({
+				events: entry,
+				toolExecutions: toolExecutionsByTurnRunId.get(turnRunId) ?? [],
+				toolMessagesByToolCallId
+			})
+		);
 	}
 	const assertionsByEvalRunId = new Map<string, PromptEvalAssertionRow[]>();
 	for (const assertion of evalAssertions) {
@@ -648,6 +870,39 @@ export const buildSessionDetailPayload = ({
 					sequence_index: event.sequence_index,
 					phase: event.phase,
 					event_type: event.event_type,
+					tool_call_id: stringRecordField(payload, 'tool_call_id'),
+					tool_name: stringRecordField(payload, 'tool_name'),
+					canonical_op: stringRecordField(payload, 'canonical_op'),
+					success: typeof payload.success === 'boolean' ? payload.success : null,
+					error: typeof payload.error === 'string' ? payload.error : null,
+					duration_ms:
+						typeof payload.duration_ms === 'number' ? payload.duration_ms : null,
+					arguments: Object.prototype.hasOwnProperty.call(payload, 'tool_arguments')
+						? payload.tool_arguments
+						: Object.prototype.hasOwnProperty.call(payload, 'args')
+							? payload.args
+							: null,
+					result: Object.prototype.hasOwnProperty.call(payload, 'tool_result')
+						? payload.tool_result
+						: Object.prototype.hasOwnProperty.call(payload, 'result')
+							? payload.result
+							: null,
+					tool_result_source:
+						typeof payload.tool_result_source === 'string'
+							? payload.tool_result_source
+							: null,
+					linked_tool_execution:
+						payload.linked_tool_execution &&
+						typeof payload.linked_tool_execution === 'object' &&
+						!Array.isArray(payload.linked_tool_execution)
+							? payload.linked_tool_execution
+							: null,
+					linked_tool_message:
+						payload.linked_tool_message &&
+						typeof payload.linked_tool_message === 'object' &&
+						!Array.isArray(payload.linked_tool_message)
+							? payload.linked_tool_message
+							: null,
 					payload
 				}
 			});
