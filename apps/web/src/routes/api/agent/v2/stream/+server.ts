@@ -3171,7 +3171,7 @@ export const POST: RequestHandler = async ({
 					continuityHintUsed: historyComposition.continuityHintUsed
 				},
 				toolExecutor: toolExecutionService
-					? async (toolCall) => {
+					? async (toolCall, availableToolsForExecution = tools) => {
 							const contextScope = effectiveProjectIdForTools
 								? {
 										projectId: effectiveProjectIdForTools,
@@ -3189,7 +3189,7 @@ export const POST: RequestHandler = async ({
 							const result = await toolExecutionService.executeTool(
 								toolCall,
 								serviceContext,
-								tools,
+								availableToolsForExecution,
 								{ abortSignal: request.signal }
 							);
 							return {

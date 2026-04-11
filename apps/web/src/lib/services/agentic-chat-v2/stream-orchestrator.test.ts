@@ -71,6 +71,299 @@ function createProgressiveGatewayTools(): ChatToolDefinition[] {
 }
 
 describe('streamFastChat final text sanitization', () => {
+	it('passes dynamically materialized gateway tools to the executor', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_search:milestone-create',
+							type: 'function',
+							function: {
+								name: 'tool_search',
+								arguments: JSON.stringify({
+									query: 'create milestone',
+									entity: 'milestone'
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'create_onto_milestone:january',
+							type: 'function',
+							function: {
+								name: 'create_onto_milestone',
+								arguments: JSON.stringify({
+									project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+									title: 'January: Complete chapters 1-10'
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Created the January milestone.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (
+				toolCall: ChatToolCall,
+				availableTools?: ChatToolDefinition[]
+			): Promise<ChatToolResult> => {
+				if (toolCall.function.name === 'tool_search') {
+					return {
+						tool_call_id: toolCall.id,
+						result: {
+							type: 'tool_search_results',
+							matches: [
+								{
+									op: 'onto.milestone.create',
+									tool_name: 'create_onto_milestone'
+								}
+							]
+						},
+						success: true
+					};
+				}
+
+				const availableToolNames = new Set(
+					(availableTools ?? [])
+						.map((tool) => tool.function?.name)
+						.filter((name): name is string => Boolean(name))
+				);
+				const isKnownTool = availableToolNames.has(toolCall.function.name);
+				return {
+					tool_call_id: toolCall.id,
+					result: { ok: isKnownTool },
+					success: isKnownTool,
+					error: isKnownTool ? undefined : `Unknown tool: ${toolCall.function.name}`
+				};
+			}
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Create a January milestone.',
+			tools: materializeGatewayTools([], ['skill_load', 'tool_search', 'tool_schema']).tools,
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		const milestoneExecutionCall = toolExecutor.mock.calls.find(
+			([toolCall]) => toolCall.function.name === 'create_onto_milestone'
+		);
+		const executionToolNames = new Set(
+			((milestoneExecutionCall?.[1] as ChatToolDefinition[] | undefined) ?? [])
+				.map((tool) => tool.function?.name)
+				.filter((name): name is string => Boolean(name))
+		);
+
+		expect(milestoneExecutionCall).toBeDefined();
+		expect(executionToolNames.has('create_onto_milestone')).toBe(true);
+		expect(result.finalAssistantText).toBe('Created the January milestone.');
+	});
+
+	it('repairs global schema-only write success claims even with follow-up questions', async () => {
+		let streamInvocation = 0;
+		let recoveryPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_schema:project-create-global',
+							type: 'function',
+							function: {
+								name: 'tool_schema',
+								arguments: JSON.stringify({
+									op: 'onto.project.create',
+									include_schema: true
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 2) {
+					yield {
+						type: 'text',
+						content:
+							'Great, I\'ve created the "The Last Ember" project. Which task should we tackle first?'
+					};
+					yield { type: 'done', finished_reason: 'stop' };
+					return;
+				}
+
+				if (streamInvocation === 3) {
+					recoveryPassMessages = params.messages as FastChatHistoryMessage[];
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'create_onto_project:last-ember',
+							type: 'function',
+							function: {
+								name: 'create_onto_project',
+								arguments: JSON.stringify({
+									project: {
+										name: 'The Last Ember',
+										type_key: 'project.creative.book'
+									},
+									entities: [],
+									relationships: []
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Created "The Last Ember" as a new project.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			if (toolCall.function.name === 'tool_schema') {
+				const args = JSON.parse(toolCall.function.arguments || '{}');
+				return {
+					tool_call_id: toolCall.id,
+					result: getToolSchema(args.op, {
+						include_schema: args.include_schema,
+						include_examples: true
+					}),
+					success: true
+				};
+			}
+
+			return {
+				tool_call_id: toolCall.id,
+				result: {
+					op: 'onto.project.create',
+					ok: true,
+					result: { project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40' }
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Create a project for my fantasy novel The Last Ember.',
+			tools: materializeGatewayTools([], ['skill_load', 'tool_search', 'tool_schema']).tools,
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(4);
+		expect(toolExecutor).toHaveBeenCalledTimes(2);
+		expect(recoveryPassMessages).toBeDefined();
+		const repairMessage = [...(recoveryPassMessages ?? [])]
+			.reverse()
+			.find(
+				(message) =>
+					message.role === 'system' &&
+					typeof message.content === 'string' &&
+					message.content.includes('You have not completed any write yet.')
+			);
+		expect(repairMessage?.content).toContain(
+			'Write ops already identified: onto.project.create'
+		);
+		expect(result.finalAssistantText).toBe('Created "The Last Ember" as a new project.');
+		expect(
+			result.toolExecutions?.some(
+				(execution) =>
+					execution.toolCall.function.name === 'create_onto_project' &&
+					execution.result.success === true
+			)
+		).toBe(true);
+	});
+
+	it('allows global schema-only write turns to ask a pure clarification', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_schema:project-create-clarify',
+							type: 'function',
+							function: {
+								name: 'tool_schema',
+								arguments: JSON.stringify({
+									op: 'onto.project.create',
+									include_schema: true
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'What should we call this project?' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (toolCall: ChatToolCall): Promise<ChatToolResult> => {
+			const args = JSON.parse(toolCall.function.arguments || '{}');
+			return {
+				tool_call_id: toolCall.id,
+				result: getToolSchema(args.op, {
+					include_schema: args.include_schema,
+					include_examples: true
+				}),
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Create a new project.',
+			tools: materializeGatewayTools([], ['skill_load', 'tool_search', 'tool_schema']).tools,
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(2);
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(result.finalAssistantText).toBe('What should we call this project?');
+	});
+
 	it('strips transcript-style scratchpad leakage from final assistant text', async () => {
 		const llm = {
 			streamText: vi.fn(async function* () {
@@ -874,14 +1167,12 @@ describe('streamFastChat repetition guard', () => {
 
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 		expect(toolExecutor).toHaveBeenCalledTimes(2);
-		expect(toolExecutor).toHaveBeenNthCalledWith(
-			1,
+		expect(toolExecutor.mock.calls[0]?.[0]).toEqual(
 			expect.objectContaining({
 				function: expect.objectContaining({ name: 'tool_schema' })
 			})
 		);
-		expect(toolExecutor).toHaveBeenNthCalledWith(
-			2,
+		expect(toolExecutor.mock.calls[1]?.[0]).toEqual(
 			expect.objectContaining({
 				function: expect.objectContaining({ name: 'create_onto_project' })
 			})

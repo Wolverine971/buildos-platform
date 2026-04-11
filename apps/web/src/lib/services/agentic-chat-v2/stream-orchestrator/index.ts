@@ -78,7 +78,10 @@ type StreamFastChatParams = {
 	onDelta: (delta: string) => Promise<void> | void;
 	systemPrompt?: string;
 	tools?: ChatToolDefinition[];
-	toolExecutor?: (toolCall: ChatToolCall) => Promise<ChatToolResult>;
+	toolExecutor?: (
+		toolCall: ChatToolCall,
+		availableTools?: ChatToolDefinition[]
+	) => Promise<ChatToolResult>;
 	onToolCall?: (toolCall: ChatToolCall) => Promise<void> | void;
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
 	maxToolRounds?: number;
@@ -832,7 +835,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					};
 				} else {
 					try {
-						result = await params.toolExecutor(toolCall);
+						result = await params.toolExecutor(toolCall, tools);
 						if (result.tool_call_id !== originalToolCall.id) {
 							result = {
 								...result,

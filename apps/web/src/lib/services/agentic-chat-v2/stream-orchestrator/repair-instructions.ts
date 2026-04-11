@@ -24,7 +24,7 @@ export function shouldRepairProjectCreateNoExecution(params: {
 
 	const finalText = params.finalText.trim();
 	if (!finalText) return true;
-	if (looksLikeClarifyingQuestion(finalText)) return false;
+	if (looksLikePureClarifyingQuestion(finalText)) return false;
 	return true;
 }
 
@@ -53,12 +53,16 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 
 	const finalText = params.finalText.trim();
 	if (!finalText) return true;
-	if (looksLikeClarifyingQuestion(finalText)) return false;
 
 	const mutationOutcomes = summarizeMutationOutcomes(params.toolExecutions);
 	if (mutationOutcomes.succeeded > 0) return false;
 
-	return collectGatewayWriteIntentOps(params.toolExecutions).length > 0;
+	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
+	if (writeIntentOps.length === 0) return false;
+
+	if (looksLikePureClarifyingQuestion(finalText)) return false;
+
+	return true;
 }
 
 export function buildGatewayMutationNoExecutionRepairInstruction(
@@ -132,6 +136,20 @@ export function enforceMutationOutcomeIntegrity(
 		if (mutationOutcomes.succeeded === 0 && looksLikeMutationSuccessClaim(finalText)) {
 			return buildMutationFailureMessage(mutationOutcomes);
 		}
+	}
+
+	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
+	if (
+		mutationOutcomes.succeeded === 0 &&
+		writeIntentOps.length > 0 &&
+		looksLikeActionSuccessClaim(finalText)
+	) {
+		return buildMutationFailureMessage({
+			attempted: writeIntentOps.length,
+			succeeded: 0,
+			failed: writeIntentOps.length,
+			writeOps: writeIntentOps
+		});
 	}
 
 	if (params.contextType === 'project_create') {
@@ -479,13 +497,40 @@ function collectGatewayWriteIntentOps(toolExecutions: FastToolExecution[]): stri
 				ops.add(normalizedOp);
 			}
 		}
+
+		if (toolName === 'tool_search') {
+			const payload = execution.result.result;
+			const matches =
+				payload &&
+				typeof payload === 'object' &&
+				Array.isArray((payload as Record<string, unknown>).matches)
+					? ((payload as Record<string, unknown>).matches as Array<
+							Record<string, unknown>
+						>)
+					: [];
+			for (const match of matches) {
+				const rawOp = typeof match?.op === 'string' ? match.op.trim() : '';
+				const normalizedOp = rawOp ? normalizeGatewayOpName(rawOp) : '';
+				if (normalizedOp && isWriteLikeOperation(normalizedOp)) {
+					ops.add(normalizedOp);
+				}
+			}
+		}
 	}
 
 	return Array.from(ops).sort();
 }
 
-function looksLikeClarifyingQuestion(text: string): boolean {
-	return text.includes('?');
+function looksLikePureClarifyingQuestion(text: string): boolean {
+	return text.includes('?') && !looksLikeActionSuccessClaim(text);
+}
+
+function looksLikeActionSuccessClaim(text: string): boolean {
+	return (
+		looksLikeMutationSuccessClaim(text) ||
+		looksLikeBulkMutationSuccessClaim(text) ||
+		looksLikeProjectCreateSuccessClaim(text)
+	);
 }
 
 function looksLikeProjectCreateSuccessClaim(text: string): boolean {
@@ -493,9 +538,10 @@ function looksLikeProjectCreateSuccessClaim(text: string): boolean {
 	return (
 		/\bproject\b/.test(normalized) &&
 		(/\bcreated successfully\b/.test(normalized) ||
-			/\bi created\b/.test(normalized) ||
+			/\bi(?:'ve| have)?\s+created\b/.test(normalized) ||
 			/\bcreated the project\b/.test(normalized) ||
-			/\bproject .* created\b/.test(normalized))
+			/\bcreated\b[^.?!]*\bproject\b/.test(normalized) ||
+			/\bproject\b[^.?!]*\bcreated\b/.test(normalized))
 	);
 }
 
@@ -559,7 +605,7 @@ const BULK_MUTATION_SUCCESS_CLAIM_PATTERNS = [
 
 const MUTATION_SUCCESS_CLAIM_PATTERNS = [
 	/\bmarked(?:\s+\w+){0,4}\s+(?:done|complete|completed)\b/i,
-	/\b(?:i|we)\s+(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set)\b/i,
+	/\b(?:i|we)(?:'ve| have)?\s+(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set)\b/i,
 	/\b(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set)\s+successfully\b/i,
 	/\b(?:has|have|was|were)\s+been\s+(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set|marked)\b/i,
 	/\bis\s+now\s+(?:done|complete|completed|updated|scheduled|rescheduled)\b/i
