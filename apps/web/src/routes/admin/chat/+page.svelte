@@ -3,7 +3,6 @@
 	import {
 		MessageSquare,
 		Bot,
-		Users,
 		DollarSign,
 		Zap,
 		TrendingUp,
@@ -19,12 +18,17 @@
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
+	import LlmUsageStatsPanel from '$lib/components/admin/chat/LlmUsageStatsPanel.svelte';
 	import { browser } from '$app/environment';
+
+	type DashboardTimeframe = '24h' | '7d' | '30d' | '90d' | '365d';
 
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
-	let selectedTimeframe = $state<'24h' | '7d' | '30d'>('7d');
+	let selectedTimeframe = $state<DashboardTimeframe>('7d');
 	let autoRefresh = $state(false);
+	let llmRefreshKey = $state(0);
+	let llmDays = $derived(timeframeToDays(selectedTimeframe));
 
 	// Dashboard KPIs
 	let dashboardKPIs = $state({
@@ -98,10 +102,31 @@
 	$effect(() => {
 		if (!browser) return;
 		if (autoRefresh) {
-			const interval = setInterval(loadDashboard, 30000); // 30 seconds
+			const interval = setInterval(refreshDashboard, 30000); // 30 seconds
 			return () => clearInterval(interval);
 		}
 	});
+
+	function timeframeToDays(timeframe: DashboardTimeframe): string {
+		switch (timeframe) {
+			case '24h':
+				return '1';
+			case '90d':
+				return '90';
+			case '365d':
+				return '365';
+			case '30d':
+				return '30';
+			case '7d':
+			default:
+				return '7';
+		}
+	}
+
+	async function refreshDashboard() {
+		llmRefreshKey += 1;
+		await loadDashboard();
+	}
 
 	async function loadDashboard() {
 		if (!browser) return;
@@ -214,59 +239,73 @@
 	<!-- Header -->
 	<AdminPageHeader
 		title="Chat Monitoring"
-		description="AI Chat System Analytics & Performance"
+		description="AI chat activity, model usage, cost, tokens, and system health"
 		icon={MessageSquare}
 		showBack={true}
 	>
-		<div slot="actions" class="flex flex-wrap items-center gap-3">
-			<!-- Auto Refresh -->
-			<label class="flex items-center gap-2 cursor-pointer">
-				<input
-					type="checkbox"
-					bind:checked={autoRefresh}
-					class="h-4 w-4 rounded border-border bg-background text-accent focus:ring-ring focus:ring-2 cursor-pointer"
-					aria-label="Enable auto refresh"
-				/>
-				<span class="text-sm text-muted-foreground">Auto Refresh</span>
-			</label>
+		{#snippet actions()}
+			<div class="flex flex-wrap items-center gap-3">
+				<!-- Auto Refresh -->
+				<label class="flex items-center gap-2 cursor-pointer">
+					<input
+						type="checkbox"
+						bind:checked={autoRefresh}
+						class="h-4 w-4 rounded border-border bg-background text-accent focus:ring-ring focus:ring-2 cursor-pointer"
+						aria-label="Enable auto refresh"
+					/>
+					<span class="text-sm text-muted-foreground">Auto Refresh</span>
+				</label>
 
-			<!-- Timeframe -->
-			<Select
-				bind:value={selectedTimeframe}
-				onchange={(value) => (selectedTimeframe = String(value))}
-				size="md"
-				placeholder="Last 7 Days"
-				aria-label="Select time range"
-			>
-				<option value="24h">Last 24 Hours</option>
-				<option value="7d">Last 7 Days</option>
-				<option value="30d">Last 30 Days</option>
-			</Select>
+				<!-- Timeframe -->
+				<Select
+					bind:value={selectedTimeframe}
+					onchange={(value) => {
+						if (
+							value === '24h' ||
+							value === '7d' ||
+							value === '30d' ||
+							value === '90d' ||
+							value === '365d'
+						) {
+							selectedTimeframe = value;
+						}
+					}}
+					size="md"
+					placeholder="Last 7 Days"
+					aria-label="Select time range"
+				>
+					<option value="24h">Last 24 Hours</option>
+					<option value="7d">Last 7 Days</option>
+					<option value="30d">Last 30 Days</option>
+					<option value="90d">Last 90 Days</option>
+					<option value="365d">Last Year</option>
+				</Select>
 
-			<!-- Export -->
-			<Button
-				onclick={exportData}
-				variant="primary"
-				size="sm"
-				icon={Download}
-				class="pressable"
-			>
-				Export
-			</Button>
+				<!-- Export -->
+				<Button
+					onclick={exportData}
+					variant="primary"
+					size="sm"
+					icon={Download}
+					class="pressable"
+				>
+					Export
+				</Button>
 
-			<!-- Refresh -->
-			<Button
-				onclick={loadDashboard}
-				disabled={isLoading}
-				variant="secondary"
-				size="sm"
-				icon={RefreshCw}
-				loading={isLoading}
-				class="pressable"
-			>
-				Refresh
-			</Button>
-		</div>
+				<!-- Refresh -->
+				<Button
+					onclick={refreshDashboard}
+					disabled={isLoading}
+					variant="secondary"
+					size="sm"
+					icon={RefreshCw}
+					loading={isLoading}
+					class="pressable"
+				>
+					Refresh
+				</Button>
+			</div>
+		{/snippet}
 	</AdminPageHeader>
 
 	<!-- Navigation Cards -->
@@ -624,4 +663,8 @@
 			{/if}
 		</div>
 	{/if}
+
+	<div class="mt-8">
+		<LlmUsageStatsPanel days={llmDays} refreshKey={llmRefreshKey} />
+	</div>
 </div>

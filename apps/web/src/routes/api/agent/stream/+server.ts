@@ -6,8 +6,8 @@
  * with planner-executor coordination, database persistence, and tool execution.
  *
  * Architecture:
- * - Planner Agent (deepseek-chat, read-write) orchestrates complex queries
- * - Executor Agents (deepseek-coder, read-only) perform specific tasks
+ * - Planner Agent (qwen/qwen3.6-plus, read-write) orchestrates complex queries
+ * - Executor Agents (x-ai/grok-4.1-fast, read-only) perform specific tasks
  * - Full database persistence for agents, plans, sessions, messages, executions
  *
  * REFACTORED: This file is now a thin orchestrator that delegates to services.

@@ -8,6 +8,15 @@
 > **Campaign window:** April 10 - April 17, 2026 (7 days)
 > **Check-in date:** April 17, 2026
 
+## Campaign Suite
+
+- **Campaign brief** (this file)
+- [Execution checklist](./2026-04-10_author-workflow-teardown_checklist.md) -- day-by-day tasks
+- [Target list research handoff](./2026-04-10_author-target-list_handoff.md) -- research brief that defined the buckets
+- [Target list -- 20 people](./2026-04-10_author-target-list.md) -- final LinkedIn-only target list (Buckets A, B, C)
+- [LinkedIn post drafts](./2026-04-10_author-workflow-teardown_linkedin-post-drafts.md) -- three hook-angle drafts + reply guide
+- [Lead Campaigns README](./README.md) -- folder index
+
 ---
 
 ## Campaign Summary

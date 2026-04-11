@@ -132,6 +132,12 @@ export class OpenRouterV2Client {
 		if (request.provider) body.provider = request.provider;
 		if (Array.isArray(request.tools) && request.tools.length > 0) body.tools = request.tools;
 		if (request.tool_choice) body.tool_choice = request.tool_choice;
+		if (request.stream === true) {
+			body.stream_options = {
+				include_usage: true,
+				...(request.stream_options ?? {})
+			};
+		}
 
 		if (Array.isArray(request.models) && request.models.length > 1) {
 			body.extra_body = {

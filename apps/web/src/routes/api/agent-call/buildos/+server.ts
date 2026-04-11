@@ -8,6 +8,7 @@ import {
 	AgentCallServiceError,
 	toBuildosAgentErrorResponse
 } from '$lib/server/agent-call/agent-call-service';
+import { getSecurityEventLogOptions } from '$lib/server/security-event-logger';
 
 function isBuildosAgentRequest(value: unknown): value is BuildosAgentRequest {
 	return (
@@ -33,8 +34,11 @@ async function readBuildosAgentRequest(request: Request): Promise<BuildosAgentRe
 	return body;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
-	const service = new BuildosAgentCallService(createAdminSupabaseClient());
+export const POST: RequestHandler = async ({ request, platform }) => {
+	const service = new BuildosAgentCallService(
+		createAdminSupabaseClient(),
+		getSecurityEventLogOptions(platform)
+	);
 
 	try {
 		const body = await readBuildosAgentRequest(request);

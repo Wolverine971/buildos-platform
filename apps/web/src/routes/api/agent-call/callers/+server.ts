@@ -6,6 +6,7 @@ import {
 	CallerProvisioningError,
 	CallerProvisioningService
 } from '$lib/server/agent-call/caller-provisioning.service';
+import { getSecurityEventLogOptions } from '$lib/server/security-event-logger';
 
 function toErrorResponse(error: unknown) {
 	if (error instanceof CallerProvisioningError) {
@@ -44,7 +45,7 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession } }) => {
 	}
 };
 
-export const POST: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
+export const POST: RequestHandler = async ({ request, platform, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return json({ error: 'Not authenticated' }, { status: 401 });
@@ -59,7 +60,10 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	}
 
 	try {
-		const service = new CallerProvisioningService();
+		const service = new CallerProvisioningService(
+			undefined,
+			getSecurityEventLogOptions(platform)
+		);
 		return json(
 			await service.provisionForUser(user.id, body, {
 				baseUrl: new URL(request.url).origin
@@ -74,7 +78,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	}
 };
 
-export const DELETE: RequestHandler = async ({ request, locals: { safeGetSession } }) => {
+export const DELETE: RequestHandler = async ({ request, platform, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return json({ error: 'Not authenticated' }, { status: 401 });
@@ -94,7 +98,10 @@ export const DELETE: RequestHandler = async ({ request, locals: { safeGetSession
 	}
 
 	try {
-		const service = new CallerProvisioningService();
+		const service = new CallerProvisioningService(
+			undefined,
+			getSecurityEventLogOptions(platform)
+		);
 		return json(await service.revokeForUser(user.id, callerId));
 	} catch (error) {
 		const { status, body: errorBody } = toErrorResponse(error);

@@ -1,349 +1,149 @@
 // packages/smart-llm/src/model-config.ts
 
-import type { JSONProfile, ModelProfile, TextProfile } from './types';
+import type { JSONProfile, ModelCapabilities, ModelProfile, TextProfile } from './types';
 
-export const JSON_MODELS: Record<string, ModelProfile> = {
-	// ============================================
-	// Ultra-fast tier (1-2s) - Budget options
-	// Updated: 2026-01-15 based on OpenRouter pricing
-	// ============================================
+export const MODEL_CATALOG: Record<string, ModelProfile> = {
 	'google/gemini-2.5-flash-lite': {
 		id: 'google/gemini-2.5-flash-lite',
 		name: 'Gemini 2.5 Flash Lite',
 		speed: 4.5,
 		smartness: 4.2,
+		creativity: 4,
 		cost: 0.1,
 		outputCost: 0.4,
 		provider: 'google',
 		bestFor: ['ultra-fast', 'json-mode', 'classification', 'autocomplete', 'ultra-low-cost'],
-		limitations: ['reasoning-disabled-by-default']
+		limitations: ['reasoning-disabled-by-default'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
 	},
-	'qwen/qwen3-32b': {
-		id: 'qwen/qwen3-32b',
-		name: 'Qwen 3 32B',
-		speed: 4,
+	'google/gemini-3.1-flash-lite-preview': {
+		id: 'google/gemini-3.1-flash-lite-preview',
+		name: 'Gemini 3.1 Flash Lite Preview',
+		speed: 4.7,
 		smartness: 4.5,
-		cost: 0.08,
-		outputCost: 0.24,
-		provider: 'qwen',
-		bestFor: ['best-value', 'structured-output', 'multilingual', 'coding', 'tool-calling'],
-		limitations: []
-	},
-	'openrouter/hunter-alpha': {
-		id: 'openrouter/hunter-alpha',
-		name: 'Hunter Alpha',
-		speed: 4.6,
-		smartness: 4.6,
-		cost: 0,
-		outputCost: 0,
-		provider: 'openrouter',
+		creativity: 4.2,
+		cost: 0.25,
+		outputCost: 1.5,
+		provider: 'google',
 		bestFor: [
-			'agentic-workflows',
-			'fast-reasoning',
-			'task-execution',
-			'search-heavy-workflows',
-			'128k-context'
+			'ultra-fast',
+			'high-volume-text',
+			'json-mode',
+			'tool-calling',
+			'classification',
+			'lightweight-routing',
+			'1m-context'
 		],
-		limitations: ['alpha-model', 'pricing-may-change']
+		limitations: ['preview-model', 'provider-availability-variable'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
 	},
-	// ============================================
-	// Fast tier (2-3s) - Good value options
-	// ============================================
+	'qwen/qwen3.5-flash-02-23': {
+		id: 'qwen/qwen3.5-flash-02-23',
+		name: 'Qwen 3.5 Flash',
+		speed: 4.8,
+		smartness: 4.55,
+		creativity: 4.2,
+		cost: 0.065,
+		outputCost: 0.26,
+		provider: 'qwen',
+		bestFor: [
+			'cheap-long-context',
+			'fast-multimodal',
+			'json-mode',
+			'structured-output',
+			'tool-calling',
+			'classification',
+			'routing',
+			'1m-context'
+		],
+		limitations: ['single-provider-alibaba'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
 	'openai/gpt-4o-mini': {
 		id: 'openai/gpt-4o-mini',
 		name: 'GPT-4o Mini',
 		speed: 4,
 		smartness: 4,
+		creativity: 4,
 		cost: 0.15,
 		outputCost: 0.6,
 		provider: 'openai',
 		bestFor: ['json-mode', 'cost-effective', 'structured-output', 'general-purpose'],
-		limitations: []
+		capabilities: { jsonMode: true, structuredOutputs: true, tools: true, multimodal: true }
 	},
-	'x-ai/grok-4.1-fast': {
-		id: 'x-ai/grok-4.1-fast',
-		name: 'Grok 4.1 Fast',
-		speed: 4.5,
-		smartness: 4.5,
-		cost: 0.2,
-		outputCost: 0.5,
-		provider: 'x-ai',
-		bestFor: [
-			'tool-calling',
-			'json-mode',
-			'agentic-workflows',
-			'2m-context',
-			'tau2-bench-100%'
-		],
-		limitations: []
-	},
-	'google/gemini-2.5-flash': {
-		id: 'google/gemini-2.5-flash',
-		name: 'Gemini 2.5 Flash',
-		speed: 4.5,
-		smartness: 4.5,
-		cost: 0.3,
-		outputCost: 2.5,
-		provider: 'google',
-		bestFor: ['hybrid-reasoning', 'json-mode', 'structured-output', 'thinking-model'],
-		limitations: ['thinking-tokens-expensive', 'deprecated-june-2026']
-	},
-	'deepseek/deepseek-chat': {
-		id: 'deepseek/deepseek-chat',
-		name: 'DeepSeek Chat V3',
-		speed: 3.5,
-		smartness: 4.5,
-		cost: 0.27,
-		outputCost: 1.1,
-		provider: 'deepseek',
-		bestFor: ['complex-json', 'instruction-following', 'nested-structures', 'best-value'],
-		limitations: []
-	},
-	'minimax/minimax-m2.1': {
-		id: 'minimax/minimax-m2.1',
-		name: 'MiniMax M2.1',
-		speed: 3.5,
-		smartness: 4.6,
-		cost: 0.27,
-		outputCost: 1.12,
-		provider: 'minimax',
-		bestFor: [
-			'agentic-workflows',
-			'tool-calling',
-			'coding',
-			'swe-bench-multilingual-72.5%',
-			'tau-bench-87%'
-		],
-		limitations: ['verbose-output', 'requires-reasoning-tokens']
-	},
-	'z-ai/glm-4.7': {
-		id: 'z-ai/glm-4.7',
-		name: 'GLM 4.7',
-		speed: 3.5,
-		smartness: 4.6,
-		cost: 0.4,
-		outputCost: 1.5,
-		provider: 'z-ai',
-		bestFor: [
-			'coding',
-			'long-context',
-			'reasoning',
-			'structured-output',
-			'terminal-bench-90%+'
-		],
-		limitations: []
-	},
-	'openrouter/healer-alpha': {
-		id: 'openrouter/healer-alpha',
-		name: 'Healer Alpha',
-		speed: 3.7,
-		smartness: 4.8,
-		cost: 0,
-		outputCost: 0,
-		provider: 'openrouter',
-		bestFor: [
-			'deep-reflection',
-			'complex-instruction-following',
-			'advanced-search-workflows',
-			'multimodal-reasoning',
-			'128k-context'
-		],
-		limitations: ['alpha-model', 'pricing-may-change']
-	},
-
-	// ============================================
-	// Balanced tier (3-4s) - Quality + Speed
-	// ============================================
-	'anthropic/claude-haiku-4.5': {
-		id: 'anthropic/claude-haiku-4.5',
-		name: 'Claude Haiku 4.5',
-		speed: 4.5,
+	'openai/gpt-4.1-nano': {
+		id: 'openai/gpt-4.1-nano',
+		name: 'GPT-4.1 Nano',
+		speed: 4.7,
 		smartness: 4.3,
-		cost: 1.0,
-		outputCost: 5.0,
-		provider: 'anthropic',
-		bestFor: [
-			'fast-json',
-			'excellent-tool-calling',
-			'parallel-tools',
-			'agent-chat',
-			'extended-thinking'
-		],
-		limitations: ['no-native-json-mode']
-	},
-
-	// ============================================
-	// Powerful tier (4-5s) - High quality
-	// ============================================
-	'anthropic/claude-sonnet-4': {
-		id: 'anthropic/claude-sonnet-4',
-		name: 'Claude Sonnet 4',
-		speed: 2.5,
-		smartness: 4.8,
-		cost: 3.0,
-		outputCost: 15.0,
-		provider: 'anthropic',
-		bestFor: ['complex-reasoning', 'nuanced-instructions', 'tool-calling-92%', '1m-context'],
-		limitations: ['no-native-json-mode']
-	},
-	'deepseek/deepseek-r1': {
-		id: 'deepseek/deepseek-r1',
-		name: 'DeepSeek R1',
-		speed: 3.5,
-		smartness: 4.9,
-		cost: 0.55,
-		outputCost: 1.68,
-		provider: 'deepseek',
-		bestFor: ['complex-reasoning', 'math', 'coding', 'tool-calling', 'best-reasoning-value'],
-		limitations: ['slower-than-chat', 'verbose-output']
-	},
-	'moonshotai/kimi-k2.5': {
-		id: 'moonshotai/kimi-k2.5',
-		name: 'Kimi K2.5',
-		speed: 3.5,
-		smartness: 4.9,
-		cost: 0.6,
-		outputCost: 0.3,
-		provider: 'moonshotai',
-		bestFor: [
-			'agentic-workflows',
-			'visual-coding',
-			'multimodal',
-			'agent-swarm-100-agents',
-			'1500-parallel-tool-calls',
-			'office-productivity',
-			'262k-context',
-			'cost-effective-reasoning'
-		],
-		limitations: []
-	},
-	'moonshotai/kimi-k2-thinking': {
-		id: 'moonshotai/kimi-k2-thinking',
-		name: 'Kimi K2 Thinking',
-		speed: 2.5,
-		smartness: 4.9,
-		cost: 0.57,
-		outputCost: 2.42,
-		provider: 'moonshotai',
-		bestFor: [
-			'agentic-workflows',
-			'tau2-bench-93%',
-			'intelligence-index-67',
-			'multi-tool-200-300-calls',
-			'256k-context',
-			'agentic-index-rank-2'
-		],
-		limitations: [
-			'mandatory-reasoning-tokens',
-			'verbose-2.5x-tokens',
-			'slower-for-simple-tasks',
-			'deprecated-replaced-by-k2.5'
-		]
-	},
-	'openai/gpt-4o': {
-		id: 'openai/gpt-4o',
-		name: 'GPT-4o',
-		speed: 2.5,
-		smartness: 4.5,
-		cost: 2.5,
-		outputCost: 10.0,
-		provider: 'openai',
-		bestFor: ['json-mode', 'general-purpose', 'reliable-fallback', '128k-context'],
-		limitations: []
-	},
-
-	// ============================================
-	// Maximum tier (5-7s) - Best quality
-	// ============================================
-	'anthropic/claude-sonnet-4.5': {
-		id: 'anthropic/claude-sonnet-4.5',
-		name: 'Claude Sonnet 4.5',
-		speed: 2,
-		smartness: 4.9,
-		cost: 3.0,
-		outputCost: 15.0,
-		provider: 'anthropic',
-		bestFor: ['extended-thinking', 'osworld-61.4%', 'complex-reasoning', 'nuanced-tasks'],
-		limitations: ['no-native-json-mode']
-	},
-	'anthropic/claude-opus-4.5': {
-		id: 'anthropic/claude-opus-4.5',
-		name: 'Claude Opus 4.5',
-		speed: 1.5,
-		smartness: 5.0,
-		cost: 5.0,
-		outputCost: 25.0,
-		provider: 'anthropic',
-		bestFor: [
-			'best-coding-swe-bench-80.9%',
-			'agents',
-			'computer-use',
-			'deep-research',
-			'complex-reasoning'
-		],
-		limitations: ['no-native-json-mode', 'expensive']
-	}
-};
-
-export const TEXT_MODELS: Record<string, ModelProfile> = {
-	// ============================================
-	// Ultra-speed tier (<1s) - Budget options
-	// Updated: 2026-01-15 based on OpenRouter pricing
-	// ============================================
-	'google/gemini-2.5-flash-lite': {
-		id: 'google/gemini-2.5-flash-lite',
-		name: 'Gemini 2.5 Flash Lite',
-		speed: 4.5,
-		smartness: 4.2,
 		creativity: 4,
 		cost: 0.1,
 		outputCost: 0.4,
-		provider: 'google',
-		bestFor: ['ultra-low-latency', 'lightweight-reasoning', 'cost-efficient'],
-		limitations: []
-	},
-	'qwen/qwen3-32b': {
-		id: 'qwen/qwen3-32b',
-		name: 'Qwen 3 32B',
-		speed: 4,
-		smartness: 4.5,
-		creativity: 4.3,
-		cost: 0.08,
-		outputCost: 0.24,
-		provider: 'qwen',
-		bestFor: ['best-value', 'multilingual', 'coding', 'tool-calling', 'creative-writing']
-	},
-	'openrouter/hunter-alpha': {
-		id: 'openrouter/hunter-alpha',
-		name: 'Hunter Alpha',
-		speed: 4.6,
-		smartness: 4.6,
-		creativity: 4.1,
-		cost: 0,
-		outputCost: 0,
-		provider: 'openrouter',
-		bestFor: [
-			'agentic-workflows',
-			'fast-reasoning',
-			'task-execution',
-			'search-heavy-workflows',
-			'128k-context'
-		],
-		limitations: ['alpha-model', 'pricing-may-change']
-	},
-	// ============================================
-	// Fast tier (1-2s) - Good value options
-	// ============================================
-	'openai/gpt-4o-mini': {
-		id: 'openai/gpt-4o-mini',
-		name: 'GPT-4o Mini',
-		speed: 4,
-		smartness: 4,
-		creativity: 4,
-		cost: 0.15,
-		outputCost: 0.6,
 		provider: 'openai',
-		bestFor: ['cost-effective', 'general-purpose', 'balanced-quality']
+		bestFor: [
+			'low-latency',
+			'classification',
+			'autocomplete',
+			'stable-provider-fallback',
+			'structured-output',
+			'tool-calling',
+			'1m-context'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
+	'openai/gpt-oss-120b': {
+		id: 'openai/gpt-oss-120b',
+		name: 'GPT-OSS 120B',
+		speed: 4.1,
+		smartness: 4.65,
+		creativity: 4.2,
+		cost: 0.039,
+		outputCost: 0.19,
+		provider: 'openai',
+		bestFor: [
+			'ultra-low-cost-reasoning',
+			'agentic-workflows',
+			'json-mode',
+			'structured-output',
+			'tool-calling',
+			'multi-provider-fallback',
+			'131k-context'
+		],
+		limitations: ['open-weight-provider-variance', 'text-only'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			longContext: true
+		}
 	},
 	'x-ai/grok-4.1-fast': {
 		id: 'x-ai/grok-4.1-fast',
@@ -354,76 +154,71 @@ export const TEXT_MODELS: Record<string, ModelProfile> = {
 		cost: 0.2,
 		outputCost: 0.5,
 		provider: 'x-ai',
-		bestFor: ['tool-calling', 'agentic-workflows', '2m-context', 'tau2-bench-100%']
-	},
-	'deepseek/deepseek-chat': {
-		id: 'deepseek/deepseek-chat',
-		name: 'DeepSeek Chat V3',
-		speed: 3.5,
-		smartness: 4.5,
-		creativity: 4,
-		cost: 0.27,
-		outputCost: 1.1,
-		provider: 'deepseek',
-		bestFor: ['briefs', 'reports', 'structured-content', 'best-value']
-	},
-	'minimax/minimax-m2.1': {
-		id: 'minimax/minimax-m2.1',
-		name: 'MiniMax M2.1',
-		speed: 3.5,
-		smartness: 4.6,
-		creativity: 4.3,
-		cost: 0.27,
-		outputCost: 1.12,
-		provider: 'minimax',
-		bestFor: ['agentic-workflows', 'tool-calling', 'coding', 'swe-bench-multilingual-72.5%'],
-		limitations: ['verbose-output', 'requires-reasoning-tokens']
-	},
-	'google/gemini-2.5-flash': {
-		id: 'google/gemini-2.5-flash',
-		name: 'Gemini 2.5 Flash',
-		speed: 4.5,
-		smartness: 4.5,
-		creativity: 4.3,
-		cost: 0.3,
-		outputCost: 2.5,
-		provider: 'google',
-		bestFor: ['hybrid-reasoning', 'thinking-model', 'fast-quality', 'multimodal'],
-		limitations: ['deprecated-june-2026']
-	},
-	'z-ai/glm-4.7': {
-		id: 'z-ai/glm-4.7',
-		name: 'GLM 4.7',
-		speed: 3.5,
-		smartness: 4.6,
-		creativity: 4.4,
-		cost: 0.4,
-		outputCost: 1.5,
-		provider: 'z-ai',
-		bestFor: ['coding', 'long-content', 'reasoning', 'refined-writing', 'terminal-bench-90%+']
-	},
-	'openrouter/healer-alpha': {
-		id: 'openrouter/healer-alpha',
-		name: 'Healer Alpha',
-		speed: 3.7,
-		smartness: 4.8,
-		creativity: 4.6,
-		cost: 0,
-		outputCost: 0,
-		provider: 'openrouter',
 		bestFor: [
-			'deep-reflection',
-			'complex-instruction-following',
-			'advanced-search-workflows',
-			'multimodal-reasoning',
-			'128k-context'
+			'best-agentic-tool-calling',
+			'tool-calling',
+			'json-mode',
+			'agentic-workflows',
+			'deep-research',
+			'2m-context',
+			'tau2-bench-100%'
 		],
-		limitations: ['alpha-model', 'pricing-may-change']
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
 	},
-
-	// ============================================
-	// Balanced tier (2-3s) - Quality + Speed
-	// ============================================
+	'deepseek/deepseek-v3.2': {
+		id: 'deepseek/deepseek-v3.2',
+		name: 'DeepSeek V3.2',
+		speed: 3.6,
+		smartness: 4.7,
+		creativity: 4.2,
+		cost: 0.26,
+		outputCost: 0.38,
+		provider: 'deepseek',
+		bestFor: [
+			'complex-json',
+			'structured-output',
+			'instruction-following',
+			'tool-calling',
+			'agentic-tool-use',
+			'best-value'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			longContext: true
+		}
+	},
+	'minimax/minimax-m2.7': {
+		id: 'minimax/minimax-m2.7',
+		name: 'MiniMax M2.7',
+		speed: 3.4,
+		smartness: 4.8,
+		creativity: 4.4,
+		cost: 0.3,
+		outputCost: 1.2,
+		provider: 'minimax',
+		bestFor: [
+			'agentic-workflows',
+			'tool-calling',
+			'autonomous-productivity',
+			'multi-agent-workflows',
+			'live-debugging',
+			'root-cause-analysis',
+			'long-output',
+			'204k-context'
+		],
+		limitations: ['reasoning-tokens-can-increase-cost'],
+		capabilities: { jsonMode: true, tools: true, reasoning: true, longContext: true }
+	},
 	'anthropic/claude-haiku-4.5': {
 		id: 'anthropic/claude-haiku-4.5',
 		name: 'Claude Haiku 4.5',
@@ -439,22 +234,72 @@ export const TEXT_MODELS: Record<string, ModelProfile> = {
 			'agent-chat',
 			'briefs',
 			'extended-thinking'
-		]
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
 	},
-
-	// ============================================
-	// Quality tier (3-5s) - High quality
-	// ============================================
-	'deepseek/deepseek-r1': {
-		id: 'deepseek/deepseek-r1',
-		name: 'DeepSeek R1',
+	'qwen/qwen3.6-plus': {
+		id: 'qwen/qwen3.6-plus',
+		name: 'Qwen 3.6 Plus',
+		speed: 3.3,
+		smartness: 4.95,
+		creativity: 4.6,
+		cost: 0.325,
+		outputCost: 1.95,
+		provider: 'qwen',
+		bestFor: [
+			'agentic-coding',
+			'repo-level-problem-solving',
+			'front-end-development',
+			'3d-scenes-games',
+			'complex-reasoning',
+			'multimodal',
+			'structured-output',
+			'tool-calling',
+			'1m-context',
+			'swe-bench-verified-78.8%'
+		],
+		limitations: ['reasoning-tokens-can-increase-cost'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
+	'deepseek/deepseek-v3.1-terminus:exacto': {
+		id: 'deepseek/deepseek-v3.1-terminus:exacto',
+		name: 'DeepSeek V3.1 Terminus Exacto',
 		speed: 3.5,
-		smartness: 4.9,
-		creativity: 4.4,
-		cost: 0.55,
-		outputCost: 1.68,
+		smartness: 4.6,
+		creativity: 4.1,
+		cost: 0.21,
+		outputCost: 0.79,
 		provider: 'deepseek',
-		bestFor: ['reasoning', 'analysis', 'technical-writing', 'complex-content', 'coding']
+		bestFor: ['exacto-tool-calling', 'provider-pinned-routing', 'argument-fidelity'],
+		limitations: ['route-only', 'exacto-provider-pinned'],
+		capabilities: { jsonMode: true, structuredOutputs: true, tools: true, reasoning: true }
+	},
+	'qwen/qwen3-coder:exacto': {
+		id: 'qwen/qwen3-coder:exacto',
+		name: 'Qwen 3 Coder Exacto',
+		speed: 3.8,
+		smartness: 4.6,
+		creativity: 4.2,
+		cost: 0.22,
+		outputCost: 1,
+		provider: 'qwen',
+		bestFor: ['exacto-tool-calling', 'coding-tools', 'provider-pinned-routing'],
+		limitations: ['route-only', 'exacto-provider-pinned'],
+		capabilities: { jsonMode: true, structuredOutputs: true, tools: true }
 	},
 	'moonshotai/kimi-k2.5': {
 		id: 'moonshotai/kimi-k2.5',
@@ -462,8 +307,8 @@ export const TEXT_MODELS: Record<string, ModelProfile> = {
 		speed: 3.5,
 		smartness: 4.9,
 		creativity: 4.6,
-		cost: 0.6,
-		outputCost: 0.3,
+		cost: 0.3827,
+		outputCost: 1.72,
 		provider: 'moonshotai',
 		bestFor: [
 			'agentic-workflows',
@@ -476,102 +321,284 @@ export const TEXT_MODELS: Record<string, ModelProfile> = {
 			'262k-context',
 			'cost-effective-reasoning'
 		],
-		limitations: []
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
 	},
-	'moonshotai/kimi-k2-thinking': {
-		id: 'moonshotai/kimi-k2-thinking',
-		name: 'Kimi K2 Thinking',
-		speed: 2.5,
-		smartness: 4.9,
-		creativity: 4.5,
-		cost: 0.57,
-		outputCost: 2.42,
+	'moonshotai/kimi-k2-0905:exacto': {
+		id: 'moonshotai/kimi-k2-0905:exacto',
+		name: 'Kimi K2 0905 Exacto',
+		speed: 3.4,
+		smartness: 4.7,
+		creativity: 4.4,
+		cost: 0.4,
+		outputCost: 2,
 		provider: 'moonshotai',
+		bestFor: ['exacto-tool-calling', 'agentic-workflows', 'provider-pinned-routing'],
+		limitations: ['route-only', 'exacto-provider-pinned'],
+		capabilities: { jsonMode: true, structuredOutputs: true, tools: true, longContext: true }
+	},
+	'nvidia/nemotron-3-super-120b-a12b:free': {
+		id: 'nvidia/nemotron-3-super-120b-a12b:free',
+		name: 'NVIDIA Nemotron 3 Super Free',
+		speed: 3.2,
+		smartness: 4.6,
+		creativity: 4.1,
+		cost: 0,
+		outputCost: 0,
+		provider: 'nvidia',
 		bestFor: [
+			'zero-cost-long-context',
+			'multi-agent-workflows',
 			'agentic-reasoning',
-			'tau2-bench-93%',
-			'intelligence-index-67',
-			'research-workflows',
-			'multi-tool-200-300-calls',
-			'256k-context'
+			'structured-output',
+			'tool-calling',
+			'262k-context',
+			'long-output'
 		],
 		limitations: [
-			'mandatory-reasoning-tokens',
-			'verbose-2.5x-tokens',
-			'slower-for-simple-tasks',
-			'deprecated-replaced-by-k2.5'
-		]
+			'free-tier-rate-limits',
+			'provider-availability-variable',
+			'text-only',
+			'explicit-free-tier-only',
+			'not-default-production-routing'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			longContext: true
+		}
 	},
-	'openai/gpt-4o': {
-		id: 'openai/gpt-4o',
-		name: 'GPT-4o',
-		speed: 2.5,
-		smartness: 4.5,
-		creativity: 4.5,
-		cost: 2.5,
-		outputCost: 10.0,
-		provider: 'openai',
-		bestFor: ['general-purpose', 'reliable-fallback', 'multimodal', '128k-context']
-	},
-	'anthropic/claude-sonnet-4': {
-		id: 'anthropic/claude-sonnet-4',
-		name: 'Claude Sonnet 4',
-		speed: 2.5,
-		smartness: 4.8,
-		creativity: 4.6,
-		cost: 3.0,
-		outputCost: 15.0,
-		provider: 'anthropic',
-		bestFor: ['high-quality-writing', 'complex-content', 'nuanced-text', 'tool-calling']
-	},
-
-	// ============================================
-	// Maximum tier - Best quality
-	// ============================================
-	'anthropic/claude-sonnet-4.5': {
-		id: 'anthropic/claude-sonnet-4.5',
-		name: 'Claude Sonnet 4.5',
+	'anthropic/claude-sonnet-4.6': {
+		id: 'anthropic/claude-sonnet-4.6',
+		name: 'Claude Sonnet 4.6',
 		speed: 2,
-		smartness: 4.9,
+		smartness: 4.95,
 		creativity: 4.7,
 		cost: 3.0,
 		outputCost: 15.0,
 		provider: 'anthropic',
-		bestFor: ['extended-thinking', 'complex-reasoning', 'creative-writing', 'osworld-61.4%']
+		bestFor: [
+			'extended-thinking',
+			'complex-reasoning',
+			'creative-writing',
+			'agentic-workflows',
+			'1m-context'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
 	},
-	'anthropic/claude-opus-4.5': {
-		id: 'anthropic/claude-opus-4.5',
-		name: 'Claude Opus 4.5',
+	'anthropic/claude-opus-4.6': {
+		id: 'anthropic/claude-opus-4.6',
+		name: 'Claude Opus 4.6',
 		speed: 1.5,
 		smartness: 5.0,
 		creativity: 4.8,
 		cost: 5.0,
 		outputCost: 25.0,
 		provider: 'anthropic',
-		bestFor: ['best-coding-swe-bench-80.9%', 'agents', 'computer-use', 'deep-research'],
-		limitations: ['expensive']
+		bestFor: [
+			'best-coding',
+			'agents',
+			'computer-use',
+			'deep-research',
+			'frontier-reasoning',
+			'1m-context'
+		],
+		limitations: ['expensive'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
 	}
 };
 
-// Models that have reliable tool-calling support when routed through OpenRouter.
-// The order doubles as our fallback priority list whenever we must guarantee tool support.
-// Updated 2026-02-22 with production argument-fidelity observations.
-// Priority: argument reliability first; cost/speed second.
-export const TOOL_CALLING_MODEL_ORDER = [
-	'openai/gpt-4o-mini',
-	'anthropic/claude-haiku-4.5',
-	'x-ai/grok-4.1-fast',
-	'anthropic/claude-sonnet-4',
-	'openai/gpt-4o',
-	'minimax/minimax-m2.1',
-	'qwen/qwen3-32b',
-	'deepseek/deepseek-chat',
-	'deepseek/deepseek-r1',
-	'z-ai/glm-4.7',
-	'google/gemini-2.5-flash',
-	'moonshotai/kimi-k2.5',
-	'moonshotai/kimi-k2-thinking'
-] as const;
+export function modelSupportsCapability(
+	modelId: string,
+	capability: keyof ModelCapabilities
+): boolean {
+	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
+}
+
+export const JSON_MODELS: Record<string, ModelProfile> = MODEL_CATALOG;
+export const TEXT_MODELS: Record<string, ModelProfile> = MODEL_CATALOG;
+
+const MODEL_ROUTES = {
+	openRouterV2: {
+		text: [
+			'qwen/qwen3.5-flash-02-23',
+			'google/gemini-3.1-flash-lite-preview',
+			'openai/gpt-4.1-nano'
+		],
+		json: [
+			'qwen/qwen3.6-plus',
+			'deepseek/deepseek-v3.2',
+			'openai/gpt-oss-120b',
+			'openai/gpt-4.1-nano'
+		],
+		toolCalling: [
+			'x-ai/grok-4.1-fast',
+			'minimax/minimax-m2.7',
+			'qwen/qwen3.6-plus',
+			'openai/gpt-oss-120b'
+		],
+		toolCallingExacto: [
+			'deepseek/deepseek-v3.1-terminus:exacto',
+			'qwen/qwen3-coder:exacto',
+			'moonshotai/kimi-k2-0905:exacto',
+			'openai/gpt-4o-mini'
+		]
+	},
+	tasks: {
+		projectNextStep: [
+			'qwen/qwen3.5-flash-02-23',
+			'deepseek/deepseek-v3.2',
+			'qwen/qwen3.6-plus',
+			'openai/gpt-oss-120b',
+			'openai/gpt-4.1-nano'
+		]
+	},
+	agentRecommendations: {
+		brainDumps: {
+			contextExtraction: ['qwen/qwen3.5-flash-02-23', 'openai/gpt-4.1-nano'],
+			taskExtraction: ['deepseek/deepseek-v3.2', 'openai/gpt-oss-120b'],
+			clarification: ['qwen/qwen3.6-plus', 'openai/gpt-oss-120b']
+		},
+		agentChat: {
+			planner: {
+				simple: ['x-ai/grok-4.1-fast', 'qwen/qwen3.5-flash-02-23'],
+				complex: ['qwen/qwen3.6-plus', 'deepseek/deepseek-v3.2', 'openai/gpt-oss-120b'],
+				toolHeavy: ['x-ai/grok-4.1-fast', 'minimax/minimax-m2.7', 'qwen/qwen3.6-plus']
+			},
+			executor: {
+				default: ['qwen/qwen3.5-flash-02-23', 'openai/gpt-4.1-nano'],
+				toolHeavy: ['x-ai/grok-4.1-fast', 'minimax/minimax-m2.7', 'openai/gpt-oss-120b']
+			},
+			synthesis: {
+				simple: ['qwen/qwen3.5-flash-02-23', 'openai/gpt-oss-120b'],
+				complex: ['qwen/qwen3.6-plus', 'deepseek/deepseek-v3.2', 'openai/gpt-oss-120b']
+			}
+		},
+		dailyBriefs: {
+			generation: ['qwen/qwen3.6-plus', 'deepseek/deepseek-v3.2', 'openai/gpt-oss-120b'],
+			summary: ['qwen/qwen3.5-flash-02-23', 'openai/gpt-4.1-nano']
+		}
+	},
+	toolCalling: [
+		'x-ai/grok-4.1-fast',
+		'minimax/minimax-m2.7',
+		'qwen/qwen3.6-plus',
+		'deepseek/deepseek-v3.2',
+		'openai/gpt-oss-120b',
+		'openai/gpt-4.1-nano',
+		'qwen/qwen3.5-flash-02-23',
+		'openai/gpt-4o-mini',
+		'anthropic/claude-haiku-4.5',
+		'moonshotai/kimi-k2.5',
+		'anthropic/claude-sonnet-4.6',
+		'anthropic/claude-opus-4.6'
+	],
+	emergencyTextFallbacks: [
+		'openai/gpt-4.1-nano',
+		'openai/gpt-4o-mini',
+		'anthropic/claude-haiku-4.5'
+	],
+	jsonProfiles: {
+		fast: [
+			'qwen/qwen3.5-flash-02-23',
+			'openai/gpt-4.1-nano',
+			'google/gemini-2.5-flash-lite',
+			'openai/gpt-4o-mini',
+			'openai/gpt-oss-120b'
+		],
+		balanced: [
+			'qwen/qwen3.6-plus',
+			'deepseek/deepseek-v3.2',
+			'openai/gpt-oss-120b',
+			'x-ai/grok-4.1-fast',
+			'qwen/qwen3.5-flash-02-23',
+			'minimax/minimax-m2.7',
+			'anthropic/claude-haiku-4.5'
+		],
+		powerful: [
+			'qwen/qwen3.6-plus',
+			'deepseek/deepseek-v3.2',
+			'openai/gpt-oss-120b',
+			'minimax/minimax-m2.7',
+			'moonshotai/kimi-k2.5',
+			'anthropic/claude-sonnet-4.6'
+		],
+		maximum: [
+			'anthropic/claude-opus-4.6',
+			'qwen/qwen3.6-plus',
+			'anthropic/claude-sonnet-4.6',
+			'moonshotai/kimi-k2.5',
+			'deepseek/deepseek-v3.2'
+		]
+	},
+	textProfiles: {
+		speed: [
+			'qwen/qwen3.5-flash-02-23',
+			'openai/gpt-4.1-nano',
+			'google/gemini-2.5-flash-lite',
+			'x-ai/grok-4.1-fast',
+			'openai/gpt-4o-mini',
+			'openai/gpt-oss-120b'
+		],
+		balanced: [
+			'x-ai/grok-4.1-fast',
+			'qwen/qwen3.5-flash-02-23',
+			'qwen/qwen3.6-plus',
+			'openai/gpt-oss-120b',
+			'deepseek/deepseek-v3.2',
+			'minimax/minimax-m2.7',
+			'anthropic/claude-haiku-4.5',
+			'openai/gpt-4.1-nano'
+		],
+		quality: [
+			'qwen/qwen3.6-plus',
+			'deepseek/deepseek-v3.2',
+			'openai/gpt-oss-120b',
+			'minimax/minimax-m2.7',
+			'moonshotai/kimi-k2.5',
+			'anthropic/claude-sonnet-4.6',
+			'anthropic/claude-haiku-4.5'
+		],
+		creative: [
+			'anthropic/claude-opus-4.6',
+			'anthropic/claude-sonnet-4.6',
+			'qwen/qwen3.6-plus',
+			'moonshotai/kimi-k2.5',
+			'anthropic/claude-haiku-4.5'
+		]
+	}
+} as const;
+
+export const OPENROUTER_V2_TEXT_MODELS = [...MODEL_ROUTES.openRouterV2.text];
+export const OPENROUTER_V2_JSON_MODELS = [...MODEL_ROUTES.openRouterV2.json];
+export const OPENROUTER_V2_TOOL_MODELS = [...MODEL_ROUTES.openRouterV2.toolCalling];
+export const OPENROUTER_V2_TOOL_MODELS_EXACTO = [...MODEL_ROUTES.openRouterV2.toolCallingExacto];
+export const PROJECT_NEXT_STEP_MODELS = [...MODEL_ROUTES.tasks.projectNextStep];
+export const AGENTIC_MODEL_RECOMMENDATIONS = MODEL_ROUTES.agentRecommendations;
+
+export const TOOL_CALLING_MODEL_ORDER = [...MODEL_ROUTES.toolCalling];
 export const TOOL_CALLING_MODEL_SET = new Set<string>(TOOL_CALLING_MODEL_ORDER);
 
 export const EMPTY_CONTENT_RETRY_INSTRUCTION =
@@ -579,81 +606,20 @@ export const EMPTY_CONTENT_RETRY_INSTRUCTION =
 export const EMPTY_CONTENT_RETRY_MIN_TOKENS = 1200;
 export const EMPTY_CONTENT_RETRY_BUFFER_TOKENS = 256;
 export const EMPTY_CONTENT_RETRY_MAX_TOKENS = 2048;
-export const EMERGENCY_TEXT_FALLBACKS = [
-	'openai/gpt-4o-mini',
-	'anthropic/claude-haiku-4.5',
-	'openai/gpt-4o'
-] as const;
-
-// ============================================
-// PROFILE MAPPINGS
-// ============================================
-// Default production profiles avoid preview/alpha aliases because OpenRouter can
-// retire or remap them without notice, which has caused 404s in chat flows.
+export const EMERGENCY_TEXT_FALLBACKS = [...MODEL_ROUTES.emergencyTextFallbacks];
 
 export const JSON_PROFILE_MODELS: Record<JSONProfile, string[]> = {
-	fast: [
-		'google/gemini-2.5-flash-lite', // Ultra-fast + ultra-low cost: $0.10/$0.40
-		'qwen/qwen3-32b', // Best value + good JSON: $0.08/$0.24
-		'openai/gpt-4o-mini', // Reliable fallback with JSON mode: $0.15/$0.60
-		'x-ai/grok-4.1-fast', // Fast stable fallback with strong structured output: $0.20/$0.50
-		'deepseek/deepseek-chat' // Native JSON mode + good value: $0.27/$1.10
-	],
-	balanced: [
-		'x-ai/grok-4.1-fast', // Best tool-calling + fast: $0.20/$0.50
-		'qwen/qwen3-32b', // Best value + native JSON: $0.08/$0.24
-		'deepseek/deepseek-chat', // Good value + native JSON: $0.27/$1.10
-		'minimax/minimax-m2.1', // Strong agentic + structured output: 87% τ²-Bench: $0.27/$1.12
-		'anthropic/claude-haiku-4.5', // Excellent tool calling, extended thinking: $1/$5
-		'google/gemini-2.5-flash' // Hybrid reasoning model: $0.30/$2.50
-	],
-	powerful: [
-		'deepseek/deepseek-r1', // Native JSON + good reasoning: $0.55/$1.68
-		'minimax/minimax-m2.1', // Strong agentic: 87% τ²-Bench, 72.5% SWE-bench-multilingual
-		'openai/gpt-4o', // Strong general purpose + native JSON: $2.50/$10
-		'z-ai/glm-4.7', // Strong coding + native JSON, terminal-bench 90%+: $0.40/$1.50
-		'moonshotai/kimi-k2-thinking', // Best agentic (legacy): 93% τ²-Bench, 256K ctx: $0.57/$2.42
-		'anthropic/claude-sonnet-4' // Best tool calling ~92%: $3/$15
-	],
-	maximum: [
-		'anthropic/claude-opus-4.5', // Best coding: 80.9% SWE-bench: $5/$25
-		// 'moonshotai/kimi-k2.5', // Best agentic: agent swarm, multimodal, 262K ctx: $0.60/$0.30
-		'anthropic/claude-sonnet-4.5', // Best overall: 61.4% OSWorld, extended thinking: $3/$15
-		'deepseek/deepseek-r1', // Native JSON + good for pure reasoning: $0.55/$1.68
-		'openai/gpt-4o' // Reliable fallback with native JSON: $2.50/$10
-	],
-	custom: [] // Will be determined by requirements
+	fast: [...MODEL_ROUTES.jsonProfiles.fast],
+	balanced: [...MODEL_ROUTES.jsonProfiles.balanced],
+	powerful: [...MODEL_ROUTES.jsonProfiles.powerful],
+	maximum: [...MODEL_ROUTES.jsonProfiles.maximum],
+	custom: []
 };
 
 export const TEXT_PROFILE_MODELS: Record<TextProfile, string[]> = {
-	speed: [
-		'google/gemini-2.5-flash-lite', // Ultra-fast + ultra-low cost: $0.10/$0.40
-		'x-ai/grok-4.1-fast', // Fast stable fallback for agentic execution: $0.20/$0.50
-		'qwen/qwen3-32b', // Best value + fast: $0.08/$0.24
-		'openai/gpt-4o-mini', // Reliable fallback: $0.15/$0.60
-		'anthropic/claude-haiku-4.5' // Fast with extended thinking: $1/$5
-	],
-	balanced: [
-		'x-ai/grok-4.1-fast', // Best tool-calling: 100% τ²-Bench, 2M context: $0.20/$0.50
-		'qwen/qwen3-32b', // Best value: $0.08/$0.24, smartness 4.5
-		'deepseek/deepseek-chat', // Good value: $0.27/$1.10, smartness 4.5
-		'minimax/minimax-m2.1', // Strong agentic, smartness 4.6: $0.27/$1.12
-		'anthropic/claude-haiku-4.5', // Good for agents, extended thinking: $1/$5
-		'openai/gpt-4o-mini' // Reliable fallback: $0.15/$0.60
-	],
-	quality: [
-		'deepseek/deepseek-r1', // Good reasoning, excellent for technical content: $0.55/$1.68
-		'anthropic/claude-sonnet-4', // Strong nuanced writing and reasoning: $3/$15
-		'anthropic/claude-haiku-4.5', // Excellent tool-calling, parallel tools: $1/$5
-		'minimax/minimax-m2.1', // 87% τ²-Bench, excellent coding: $0.27/$1.12
-		'openai/gpt-4o' // Reliable fallback: $2.50/$10
-	],
-	creative: [
-		'anthropic/claude-opus-4.5', // Best creative: highest creativity (4.8): $5/$25
-		'anthropic/claude-sonnet-4.5', // Strong creative: creativity 4.7: $3/$15
-		'anthropic/claude-sonnet-4', // Strong creative: creativity 4.6: $3/$15
-		'openai/gpt-4o', // Good creative: creativity 4.5: $2.50/$10
-		'deepseek/deepseek-r1' // Good for creative reasoning: $0.55/$1.68
-	],
+	speed: [...MODEL_ROUTES.textProfiles.speed],
+	balanced: [...MODEL_ROUTES.textProfiles.balanced],
+	quality: [...MODEL_ROUTES.textProfiles.quality],
+	creative: [...MODEL_ROUTES.textProfiles.creative],
 	custom: []
 };

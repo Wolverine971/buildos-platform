@@ -115,12 +115,12 @@ describe('LLMRateLimiter', () => {
 
 describe('estimateMigrationCost', () => {
 	it('should calculate cost for projects', () => {
-		const estimate = estimateMigrationCost(10, 8, 2, 'deepseek-chat');
+		const estimate = estimateMigrationCost(10, 8, 2, 'deepseek/deepseek-v3.2');
 
 		expect(estimate.tokens).toBeGreaterThan(0);
 		expect(estimate.cost).toBeGreaterThan(0);
 		expect(estimate.estimatedDuration).toBeTruthy();
-		expect(estimate.model).toBe('deepseek-chat');
+		expect(estimate.model).toBe('deepseek/deepseek-v3.2');
 	});
 
 	it('should include token breakdown', () => {
@@ -141,13 +141,13 @@ describe('estimateMigrationCost', () => {
 	});
 
 	it('should use different rates for different models', () => {
-		const deepseekEstimate = estimateMigrationCost(10, 8, 2, 'deepseek-chat');
-		const gpt4oEstimate = estimateMigrationCost(10, 8, 2, 'gpt-4o');
+		const cheapEstimate = estimateMigrationCost(10, 8, 2, 'openai/gpt-oss-120b');
+		const stableEstimate = estimateMigrationCost(10, 8, 2, 'openai/gpt-4.1-nano');
 
-		// GPT-4o is more expensive
-		expect(gpt4oEstimate.cost).toBeGreaterThan(deepseekEstimate.cost);
+		// GPT-4.1 Nano is more expensive than GPT-OSS 120B.
+		expect(stableEstimate.cost).toBeGreaterThan(cheapEstimate.cost);
 		// Same tokens for same entity count
-		expect(gpt4oEstimate.tokens).toBe(deepseekEstimate.tokens);
+		expect(stableEstimate.tokens).toBe(cheapEstimate.tokens);
 	});
 
 	it('should return zero for zero projects', () => {
@@ -198,10 +198,10 @@ describe('estimateCostForEntities', () => {
 
 describe('createLLMUsageMetadata', () => {
 	it('should create metadata with correct structure', () => {
-		const metadata = createLLMUsageMetadata('openai', 'gpt-4o', 1000, 500, 2500);
+		const metadata = createLLMUsageMetadata('openai', 'openai/gpt-4.1-nano', 1000, 500, 2500);
 
 		expect(metadata.provider).toBe('openai');
-		expect(metadata.model).toBe('gpt-4o');
+		expect(metadata.model).toBe('openai/gpt-4.1-nano');
 		expect(metadata.inputTokens).toBe(1000);
 		expect(metadata.outputTokens).toBe(500);
 		expect(metadata.totalTokens).toBe(1500);
@@ -209,11 +209,17 @@ describe('createLLMUsageMetadata', () => {
 	});
 
 	it('should calculate estimated cost', () => {
-		const metadata = createLLMUsageMetadata('deepseek', 'deepseek-chat', 1000, 500, 1000);
+		const metadata = createLLMUsageMetadata(
+			'deepseek',
+			'deepseek/deepseek-v3.2',
+			1000,
+			500,
+			1000
+		);
 
-		// DeepSeek costs: $0.00014/1K input, $0.00028/1K output
-		// Cost = (1000/1000 * 0.00014) + (500/1000 * 0.00028) = 0.00014 + 0.00014 = 0.00028
-		expect(metadata.estimatedCost).toBeCloseTo(0.00028, 4);
+		// DeepSeek V3.2 costs: $0.00026/1K input, $0.00038/1K output
+		// Cost = 0.00045, rounded by metadata to 4 decimal places.
+		expect(metadata.estimatedCost).toBe(0.0005);
 	});
 });
 
@@ -243,9 +249,9 @@ describe('getAvailableModels', () => {
 		}
 	});
 
-	it('should include deepseek-chat as recommended', () => {
+	it('should include DeepSeek V3.2 as recommended', () => {
 		const models = getAvailableModels();
-		const deepseek = models.find((m) => m.id === 'deepseek-chat');
+		const deepseek = models.find((m) => m.id === 'deepseek/deepseek-v3.2');
 
 		expect(deepseek).toBeDefined();
 		expect(deepseek?.recommended).toBe(true);

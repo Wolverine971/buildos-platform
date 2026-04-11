@@ -25,6 +25,7 @@ import {
 import { AgentCallBootstrapLinkService } from './bootstrap-link.service';
 import { ensureUserBuildosAgent } from './callee-resolution';
 import { hashAgentCallerToken } from './caller-auth';
+import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -177,7 +178,10 @@ export class CallerProvisioningError extends Error {
 }
 
 export class CallerProvisioningService {
-	constructor(private readonly admin: any = createAdminSupabaseClient()) {}
+	constructor(
+		private readonly admin: any = createAdminSupabaseClient(),
+		private readonly securityEventOptions: SecurityEventLogOptions = {}
+	) {}
 
 	async provisionForUser(
 		userId: string,
@@ -240,6 +244,29 @@ export class CallerProvisioningService {
 						bearerToken: token
 					})
 				: undefined;
+
+		await logSecurityEvent(
+			{
+				eventType: 'agent.caller.provisioned',
+				category: 'agent',
+				outcome: 'success',
+				severity: 'medium',
+				actorType: 'user',
+				actorUserId: userId,
+				externalAgentCallerId: caller.id,
+				targetType: 'external_agent_caller',
+				targetId: caller.id,
+				metadata: {
+					provider: caller.provider,
+					callerKey: caller.caller_key,
+					scopeMode,
+					allowedOpsCount: allowedOps.length,
+					projectCount: Array.isArray(allowedProjectIds) ? allowedProjectIds.length : 0,
+					bootstrapLinkCreated: Boolean(bootstrap)
+				}
+			},
+			{ ...this.securityEventOptions, supabase: this.admin }
+		);
 
 		return {
 			buildos_agent: {
@@ -315,6 +342,25 @@ export class CallerProvisioningService {
 		if (!data) {
 			throw new CallerProvisioningError('External caller not found', 404);
 		}
+
+		await logSecurityEvent(
+			{
+				eventType: 'agent.caller.revoked',
+				category: 'agent',
+				outcome: 'success',
+				severity: 'medium',
+				actorType: 'user',
+				actorUserId: userId,
+				externalAgentCallerId: callerId,
+				targetType: 'external_agent_caller',
+				targetId: callerId,
+				metadata: {
+					provider: (data as ExternalAgentCallerRecord).provider,
+					callerKey: (data as ExternalAgentCallerRecord).caller_key
+				}
+			},
+			{ ...this.securityEventOptions, supabase: this.admin }
+		);
 
 		return {
 			caller: mapCallerSummary(data as ExternalAgentCallerRecord)

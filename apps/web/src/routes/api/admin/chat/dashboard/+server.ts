@@ -40,6 +40,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		case '30d':
 			startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 			break;
+		case '90d':
+			startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+			break;
+		case '365d':
+			startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+			break;
 		case '7d':
 		default:
 			startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

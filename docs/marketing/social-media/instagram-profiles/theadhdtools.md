@@ -11,7 +11,7 @@
 **Relationship Status:** Monitor only
 **Audience Quality:** Medium
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-04-11
 **Last Engaged:** Never
 **Source of First Discovery:** `instagram-engagement-targets.md` plus backfill from daily engagement logs
 

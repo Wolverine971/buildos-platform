@@ -8,6 +8,7 @@ import {
 	didGatewayExecSucceed,
 	didGatewayOpExecute,
 	didSuccessfulGatewayOpExecute,
+	extractGatewayRequiredFieldFailuresFromValidationIssues,
 	getGatewayExecOp,
 	isWriteLikeOperation
 } from './round-analysis';
@@ -636,42 +637,6 @@ function buildMutationFailureMessage(summary: MutationOutcomeSummary): string {
 	}
 
 	return 'Some requested changes did not go through. I need to verify the final state before I confirm any updates.';
-}
-
-function extractGatewayRequiredFieldFailuresFromValidationIssues(
-	issues: ToolValidationIssue[]
-): GatewayRequiredFieldFailure[] {
-	const failures = new Map<string, GatewayRequiredFieldFailure>();
-
-	for (const issue of issues) {
-		if (!issue.op) continue;
-		for (const error of issue.errors) {
-			addGatewayRequiredFieldFailure(failures, issue.op, error);
-		}
-	}
-
-	return Array.from(failures.values());
-}
-
-function addGatewayRequiredFieldFailure(
-	failures: Map<string, GatewayRequiredFieldFailure>,
-	op: unknown,
-	errorMessage: unknown
-): void {
-	const requiredFieldPattern = /Missing required parameter:\s*([a-zA-Z0-9_.-]+)/i;
-	const opName = typeof op === 'string' && op.trim().length > 0 ? normalizeGatewayOpName(op) : '';
-	const errorText = typeof errorMessage === 'string' ? errorMessage : '';
-	if (!opName || !errorText) return;
-	const match = errorText.match(requiredFieldPattern);
-	if (!match || !match[1]) return;
-	const field = match[1];
-	const key = `${opName}|${field}`;
-	const existing = failures.get(key);
-	if (existing) {
-		existing.occurrences += 1;
-		return;
-	}
-	failures.set(key, { op: opName, field, occurrences: 1 });
 }
 
 function buildGatewayCreateFieldRepairLines(failures: GatewayRequiredFieldFailure[]): string[] {

@@ -55,7 +55,7 @@ import {
 	isRetryableTranscriptionError,
 	sleep
 } from './transcription-utils';
-import { LLMUsageLogger, type UsageLogger } from './usage-logger';
+import { LLMUsageLogger, type UsageLogger, type UsageLogParams } from './usage-logger';
 
 export type {
 	AudioInput,
@@ -104,15 +104,17 @@ type ProviderRoute = {
 
 const DEFAULT_MOONSHOT_API_URL = 'https://api.moonshot.ai/v1/chat/completions';
 const DEFAULT_MOONSHOT_MODEL_MAP: Record<string, string> = {
-	'moonshotai/kimi-k2.5': 'kimi-k2.5',
-	'moonshotai/kimi-k2-thinking': 'kimi-k2-thinking'
+	'moonshotai/kimi-k2.5': 'kimi-k2.5'
 };
 const MOONSHOT_REASONING_CONTENT_FALLBACK = '[reasoning omitted]';
 const CANONICAL_MODEL_ALIASES: Record<string, string> = {
 	'kimi-k2.5': 'moonshotai/kimi-k2.5',
 	'kimi-k2-5': 'moonshotai/kimi-k2.5',
-	'kimi-k2-thinking': 'moonshotai/kimi-k2-thinking',
-	'kimi-k2-thinking-turbo': 'moonshotai/kimi-k2-thinking'
+	'qwen3.5-flash': 'qwen/qwen3.5-flash-02-23',
+	'qwen-3.5-flash': 'qwen/qwen3.5-flash-02-23',
+	'qwen/qwen3.6-plus-04-02': 'qwen/qwen3.6-plus',
+	'gpt-4.1-nano': 'openai/gpt-4.1-nano',
+	'gpt-oss-120b': 'openai/gpt-oss-120b'
 };
 
 // ============================================
@@ -213,6 +215,14 @@ export class SmartLLMService {
 				supabase: this.supabase,
 				errorLogger: this.errorLogger
 			});
+	}
+
+	protected logUsageToDatabase(params: UsageLogParams): Promise<void> {
+		return this.usageLogger.logUsageToDatabase(params);
+	}
+
+	protected hasUsageLoggingBackend(): boolean {
+		return Boolean(this.supabase);
 	}
 
 	private async yieldToEventLoop(): Promise<void> {
@@ -644,8 +654,12 @@ export class SmartLLMService {
 							);
 
 							let cleanedRetry = ''; // Declare outside try block for error logging
-							let retryModel = 'anthropic/claude-sonnet-4';
-							const retryModels = ['anthropic/claude-sonnet-4', 'openai/gpt-4o'];
+							let retryModel = 'anthropic/claude-sonnet-4.6';
+							const retryModels = [
+								'anthropic/claude-sonnet-4.6',
+								'qwen/qwen3.6-plus',
+								'openai/gpt-oss-120b'
+							];
 							try {
 								// Try again with powerful profile
 								const retryCompletion = await this.callChatCompletions({
@@ -824,6 +838,9 @@ export class SmartLLMService {
 							agentSessionId: options.agentSessionId,
 							agentPlanId: options.agentPlanId,
 							agentExecutionId: options.agentExecutionId,
+							turnRunId: options.turnRunId,
+							streamRunId: options.streamRunId,
+							clientTurnId: options.clientTurnId,
 							openrouterRequestId: responseForLogging.id,
 							openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
 							metadata: {
@@ -942,6 +959,9 @@ export class SmartLLMService {
 					agentSessionId: options.agentSessionId,
 					agentPlanId: options.agentPlanId,
 					agentExecutionId: options.agentExecutionId,
+					turnRunId: options.turnRunId,
+					streamRunId: options.streamRunId,
+					clientTurnId: options.clientTurnId,
 					metadata: {
 						...options.metadata,
 						complexity,
@@ -1131,6 +1151,9 @@ export class SmartLLMService {
 							agentSessionId: options.agentSessionId,
 							agentPlanId: options.agentPlanId,
 							agentExecutionId: options.agentExecutionId,
+							turnRunId: options.turnRunId,
+							streamRunId: options.streamRunId,
+							clientTurnId: options.clientTurnId,
 							openrouterRequestId: attemptResponse.id,
 							openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
 							metadata: {
@@ -1311,6 +1334,9 @@ export class SmartLLMService {
 					agentSessionId: options.agentSessionId,
 					agentPlanId: options.agentPlanId,
 					agentExecutionId: options.agentExecutionId,
+					turnRunId: options.turnRunId,
+					streamRunId: options.streamRunId,
+					clientTurnId: options.clientTurnId,
 					metadata: {
 						...options.metadata,
 						estimatedLength,
@@ -1743,6 +1769,9 @@ export class SmartLLMService {
 		agentSessionId?: string;
 		agentPlanId?: string;
 		agentExecutionId?: string;
+		turnRunId?: string;
+		streamRunId?: string;
+		clientTurnId?: string;
 		signal?: AbortSignal;
 		operationType?: string;
 		// Context tracking for usage logging
@@ -1850,6 +1879,9 @@ export class SmartLLMService {
 
 				if (route.provider === 'openrouter' && transforms && transforms.length > 0) {
 					body.transforms = transforms;
+				}
+				if (route.provider === 'openrouter') {
+					body.stream_options = { include_usage: true };
 				}
 				if (route.provider === 'moonshot') {
 					if (this.moonshotStreamIncludeUsage) {
@@ -1986,8 +2018,14 @@ export class SmartLLMService {
 						agentSessionId: options.agentSessionId,
 						agentPlanId: options.agentPlanId,
 						agentExecutionId: options.agentExecutionId,
+						turnRunId: options.turnRunId,
+						streamRunId: options.streamRunId,
+						clientTurnId: options.clientTurnId,
 						metadata: {
 							sessionId: options.sessionId,
+							turnRunId: options.turnRunId,
+							streamRunId: options.streamRunId,
+							clientTurnId: options.clientTurnId,
 							messageId: options.messageId,
 							contextType: options.contextType,
 							entityId: options.entityId,
@@ -2085,8 +2123,14 @@ export class SmartLLMService {
 						agentSessionId: options.agentSessionId,
 						agentPlanId: options.agentPlanId,
 						agentExecutionId: options.agentExecutionId,
+						turnRunId: options.turnRunId,
+						streamRunId: options.streamRunId,
+						clientTurnId: options.clientTurnId,
 						metadata: {
 							sessionId: options.sessionId,
+							turnRunId: options.turnRunId,
+							streamRunId: options.streamRunId,
+							clientTurnId: options.clientTurnId,
 							messageId: options.messageId,
 							contextType: options.contextType,
 							entityId: options.entityId,
@@ -2204,8 +2248,14 @@ export class SmartLLMService {
 									agentSessionId: options.agentSessionId,
 									agentPlanId: options.agentPlanId,
 									agentExecutionId: options.agentExecutionId,
+									turnRunId: options.turnRunId,
+									streamRunId: options.streamRunId,
+									clientTurnId: options.clientTurnId,
 									metadata: {
 										sessionId: options.sessionId,
+										turnRunId: options.turnRunId,
+										streamRunId: options.streamRunId,
+										clientTurnId: options.clientTurnId,
 										messageId: options.messageId,
 										hasTools: !!options.tools,
 										contextType: options.contextType,
@@ -2412,8 +2462,14 @@ export class SmartLLMService {
 					agentSessionId: options.agentSessionId,
 					agentPlanId: options.agentPlanId,
 					agentExecutionId: options.agentExecutionId,
+					turnRunId: options.turnRunId,
+					streamRunId: options.streamRunId,
+					clientTurnId: options.clientTurnId,
 					metadata: {
 						sessionId: options.sessionId,
+						turnRunId: options.turnRunId,
+						streamRunId: options.streamRunId,
+						clientTurnId: options.clientTurnId,
 						messageId: options.messageId,
 						contextType: options.contextType,
 						entityId: options.entityId,

@@ -1029,7 +1029,7 @@ export class AgentExecutorService {
 		const agent: AgentInsert = {
 			type: 'executor',
 			name: `Executor-${Date.now()}`,
-			model_preference: 'deepseek/deepseek-coder',
+			model_preference: 'x-ai/grok-4.1-fast',
 			available_tools: availableTools.map((t) => t.function.name),
 			permissions: 'read_only',
 			system_prompt: systemPrompt,
@@ -1157,7 +1157,7 @@ export class AgentExecutorService {
 			tool_calls: toolCalls ?? undefined,
 			tool_call_id: toolCallId ?? undefined,
 			tokens_used: tokensUsed || 0,
-			model_used: 'deepseek/deepseek-coder',
+			model_used: 'x-ai/grok-4.1-fast',
 			parent_user_session_id: parentSessionId,
 			user_id: userId
 		};

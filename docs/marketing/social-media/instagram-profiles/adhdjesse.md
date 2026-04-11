@@ -11,7 +11,7 @@
 **Relationship Status:** Prospect
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-04-11
 **Last Engaged:** Never
 **Source of First Discovery:** `instagram-engagement-targets.md` plus backfill from daily engagement logs
 
@@ -46,10 +46,11 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                        | Post Link                                | Action | Status                  | What We Said / Planned                               | Outcome | Source                         |
-| ---------- | ------- | ---------------------------- | ---------------------------------------- | ------ | ----------------------- | ---------------------------------------------------- | ------- | ------------------------------ |
-| 2026-03-22 | Post    | Task initiation / headphones | https://www.instagram.com/p/DWFCNvFjmxy/ | Queued | No posting confirmation | Headphones/podcast as "make the start smaller" angle | Unknown | 2026-03-22_instagram-warmup.md |
-| 2026-03-24 | Post    | The clockless mind           | https://www.instagram.com/p/DWPVW4Tjj37/ | Queued | No posting confirmation | Time blindness and the need for external systems     | Unknown | 2026-03-24_instagram-warmup.md |
+| Date       | Surface | Topic                        | Post Link                                | Action | Status                   | What We Said / Planned                               | Outcome | Source                         |
+| ---------- | ------- | ---------------------------- | ---------------------------------------- | ------ | ------------------------ | ---------------------------------------------------- | ------- | ------------------------------ |
+| 2026-03-22 | Post    | Task initiation / headphones | https://www.instagram.com/p/DWFCNvFjmxy/ | Queued | No posting confirmation  | Headphones/podcast as "make the start smaller" angle | Unknown | 2026-03-22_instagram-warmup.md |
+| 2026-03-24 | Post    | The clockless mind           | https://www.instagram.com/p/DWPVW4Tjj37/ | Queued | No posting confirmation  | Time blindness and the need for external systems     | Unknown | 2026-03-24_instagram-warmup.md |
+| 2026-04-11 | Post    | ADHD & discounting past wins | https://www.instagram.com/p/DW7G5x8Ds3K/ | Queued | Pending /instagram-reply | Builder perspective on forgetting progress           | Pending | 2026-04-11_instagram-warmup.md |
 
 ## Open Loops
 

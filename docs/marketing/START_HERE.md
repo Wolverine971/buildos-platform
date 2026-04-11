@@ -17,6 +17,17 @@ This audit is the current source of truth for where BuildOS stands on growth. Re
 
 The lead-gen operating system is the current source of truth for how to run manual campaigns while activation is being repaired.
 
+### Active Campaign: Author Workflow Teardown (April 10 -- April 17, 2026)
+
+| Document                                                                                                  | What It Does                                                                         |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| [Campaign brief](growth/lead-campaigns/2026-04-10_author-workflow-teardown_campaign.md)                   | Pain thesis, CTA, channel plan, 7-day plan, scorecard                                |
+| [Execution checklist](growth/lead-campaigns/2026-04-10_author-workflow-teardown_checklist.md)             | Day-by-day task list                                                                 |
+| [Target list research handoff](growth/lead-campaigns/2026-04-10_author-target-list_handoff.md)            | Research brief that defined Buckets A / B / C                                        |
+| [Target list — 20 people](growth/lead-campaigns/2026-04-10_author-target-list.md)                         | Completed 2026-04-10. 20 LinkedIn profiles with pain signals, split across 3 buckets |
+| [LinkedIn post drafts](growth/lead-campaigns/2026-04-10_author-workflow-teardown_linkedin-post-drafts.md) | Three hook-angle drafts + comment reply guide                                        |
+| [Lead Campaigns folder](growth/lead-campaigns/README.md)                                                  | Index + file-type conventions for the campaigns folder                               |
+
 ---
 
 ## 1. Positioning & Strategy (Read These First)

@@ -5,7 +5,15 @@
 > **Campaign:** Author Workflow Teardown
 > **Start date:** April 10, 2026
 > **Check-in date:** April 17, 2026
-> **Brief:** [Campaign brief](./2026-04-10_author-workflow-teardown_campaign.md)
+
+## Campaign Suite
+
+- [Campaign brief](./2026-04-10_author-workflow-teardown_campaign.md) -- pain thesis, CTA, channel plan, scorecard
+- **Execution checklist** (this file)
+- [Target list research handoff](./2026-04-10_author-target-list_handoff.md) -- research brief
+- [Target list -- 20 people](./2026-04-10_author-target-list.md) -- **use this for warmup touches and DM outreach**
+- [LinkedIn post drafts](./2026-04-10_author-workflow-teardown_linkedin-post-drafts.md) -- pick one for Day 2 publish
+- [Lead Campaigns README](./README.md)
 
 ---
 

@@ -197,10 +197,12 @@
 		totalSessions: 0,
 		totalMessages: 0,
 		totalTokens: 0,
+		uniqueUsers: 0,
 		avgMessagesPerSession: 0,
 		avgTokensPerSession: 0,
 		plannerSessions: 0,
 		executorSessions: 0,
+		toolSessions: 0,
 		failedSessions: 0,
 		failureRate: 0
 	});
@@ -431,12 +433,6 @@
 						: null
 			},
 			{
-				title: 'LLM Usage',
-				description: 'AI costs & performance',
-				href: '/admin/llm-usage',
-				icon: Zap
-			},
-			{
 				title: 'Errors',
 				description: 'System error logs',
 				href: '/admin/errors',
@@ -542,10 +538,17 @@
 				footnote: `Avg ${formatNumber(agentChatUsage.avgTokensPerSession)} per session`
 			},
 			{
-				label: `Planner / Executor`,
-				value: `${formatNumber(agentChatUsage.plannerSessions)} / ${formatNumber(agentChatUsage.executorSessions)}`,
-				icon: Workflow,
+				label: `Active Users · ${timeframeRangeLabel}`,
+				value: agentChatUsage.uniqueUsers,
+				icon: Users,
 				tone: 'success' as const,
+				footnote: 'Users with chat activity'
+			},
+			{
+				label: `Tools / Failed`,
+				value: `${formatNumber(agentChatUsage.toolSessions)} / ${formatNumber(agentChatUsage.failedSessions)}`,
+				icon: Workflow,
+				tone: 'warning' as const,
 				footnote: `${formatPercentage(agentChatUsage.failureRate)} failure rate`
 			}
 		];

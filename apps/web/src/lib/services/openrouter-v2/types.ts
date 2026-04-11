@@ -128,6 +128,9 @@ export type OpenRouterChatRequest = {
 	response_format?: { type: 'json_object' } | Record<string, unknown>;
 	reasoning?: OpenRouterReasoningConfig;
 	provider?: OpenRouterProviderConfig;
+	stream_options?: {
+		include_usage?: boolean;
+	};
 	stream?: boolean;
 	timeoutMs?: number;
 	signal?: AbortSignal;

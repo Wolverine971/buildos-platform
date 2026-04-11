@@ -1,38 +1,12 @@
 // apps/web/src/lib/services/openrouter-v2/model-lanes.ts
 
+import {
+	OPENROUTER_V2_JSON_MODELS,
+	OPENROUTER_V2_TEXT_MODELS,
+	OPENROUTER_V2_TOOL_MODELS,
+	OPENROUTER_V2_TOOL_MODELS_EXACTO
+} from '@buildos/smart-llm';
 import type { ModelLane } from './types';
-
-const DEFAULT_TEXT_MODELS = [
-	// Mature, high-volume defaults for general text generation.
-	'google/gemini-3.1-flash-lite-preview',
-	'inception/mercury-2',
-	'openai/gpt-4o-mini'
-] as const;
-
-// Prefer mature models with explicit response_format / structured output support.
-// Hunter/Healer remain available in the wider registry, but their official pages
-// mark prompts/completions as provider-logged alpha traffic, so they are not the
-// default production choice for machine-parseable workflows.
-const DEFAULT_JSON_MODELS = [
-	'deepseek/deepseek-v3.2',
-	'google/gemini-3.1-flash-lite-preview',
-	'minimax/minimax-m2.5'
-] as const;
-
-// V2 currently attempts at most 3 lane models, so keep the default list to 3
-// meaningful fallbacks rather than carrying unreachable entries.
-const DEFAULT_TOOL_MODELS = [
-	'minimax/minimax-m2.5',
-	'x-ai/grok-4.1-fast',
-	'deepseek/deepseek-v3.2'
-] as const;
-
-const DEFAULT_TOOL_MODELS_EXACTO = [
-	'deepseek/deepseek-v3.1-terminus:exacto',
-	'qwen/qwen3-coder:exacto',
-	'moonshotai/kimi-k2-0905:exacto',
-	'openai/gpt-4o-mini'
-] as const;
 
 function parseModelList(raw: string | undefined): string[] {
 	if (!raw) return [];
@@ -62,13 +36,15 @@ function getLaneEnvOverrides(lane: ModelLane): string[] {
 function laneDefaults(lane: ModelLane, exactoToolsEnabled: boolean): string[] {
 	switch (lane) {
 		case 'text':
-			return [...DEFAULT_TEXT_MODELS];
+			return [...OPENROUTER_V2_TEXT_MODELS];
 		case 'json':
-			return [...DEFAULT_JSON_MODELS];
+			return [...OPENROUTER_V2_JSON_MODELS];
 		case 'tool_calling':
-			return exactoToolsEnabled ? [...DEFAULT_TOOL_MODELS_EXACTO] : [...DEFAULT_TOOL_MODELS];
+			return exactoToolsEnabled
+				? [...OPENROUTER_V2_TOOL_MODELS_EXACTO]
+				: [...OPENROUTER_V2_TOOL_MODELS];
 		default:
-			return [...DEFAULT_TEXT_MODELS];
+			return [...OPENROUTER_V2_TEXT_MODELS];
 	}
 }
 

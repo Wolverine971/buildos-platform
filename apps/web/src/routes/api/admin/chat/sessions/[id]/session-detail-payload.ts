@@ -91,6 +91,9 @@ export interface ToolExecutionRow {
 
 export interface LlmCallRow {
 	id: string;
+	turn_run_id?: string | null;
+	stream_run_id?: string | null;
+	client_turn_id?: string | null;
 	operation_type?: string | null;
 	model_requested?: string | null;
 	model_used?: string | null;
@@ -732,6 +735,9 @@ export const buildSessionDetailPayload = ({
 			b.started_at.localeCompare(a.started_at)
 		)
 	}));
+	const turnIndexByTurnRunId = new Map<string, number>(
+		sessionTurnRuns.map((turnRun) => [turnRun.id, turnRun.turn_index])
+	);
 
 	const timeline: TimelineEvent[] = [];
 	timeline.push({
@@ -1063,13 +1069,19 @@ export const buildSessionDetailPayload = ({
 			severity,
 			title: `LLM Call: ${usage.model_used || usage.model_requested || 'unknown model'}`,
 			summary: `${tokenCount} tokens • ${formatCost(cost)}${responseMs > 0 ? ` • ${Math.round(responseMs)}ms` : ''}`,
-			turn_index: resolveTurnIndex(timestamp, userMessageTimestamps),
+			turn_index: usage.turn_run_id
+				? (turnIndexByTurnRunId.get(usage.turn_run_id) ??
+					resolveTurnIndex(timestamp, userMessageTimestamps))
+				: resolveTurnIndex(timestamp, userMessageTimestamps),
 			payload: {
 				id: usage.id,
 				operation_type: usage.operation_type,
 				model_requested: usage.model_requested,
 				model_used: usage.model_used,
 				provider: usage.provider,
+				turn_run_id: usage.turn_run_id,
+				stream_run_id: usage.stream_run_id,
+				client_turn_id: usage.client_turn_id,
 				status: usage.status,
 				error_message: usage.error_message,
 				prompt_tokens: usage.prompt_tokens,

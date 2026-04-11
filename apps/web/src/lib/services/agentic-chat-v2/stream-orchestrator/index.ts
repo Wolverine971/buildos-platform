@@ -72,6 +72,9 @@ type StreamFastChatParams = {
 	contextType: ChatContextType;
 	entityId?: string | null;
 	projectId?: string | null;
+	turnRunId?: string | null;
+	streamRunId?: string | null;
+	clientTurnId?: string | null;
 	history: FastChatHistoryMessage[];
 	message: string;
 	signal?: AbortSignal;
@@ -481,6 +484,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				userId,
 				sessionId,
 				chatSessionId: sessionId,
+				turnRunId: params.turnRunId ?? undefined,
+				streamRunId: params.streamRunId ?? undefined,
+				clientTurnId: params.clientTurnId ?? undefined,
 				profile: 'balanced',
 				operationType: 'agentic_chat_v2_stream',
 				contextType: normalizedContext,

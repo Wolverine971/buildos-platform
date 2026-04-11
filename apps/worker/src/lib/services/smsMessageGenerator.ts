@@ -3,7 +3,7 @@
  * SMS Message Generator Service
  *
  * Generates intelligent, context-aware SMS reminders for calendar events
- * using LLM (DeepSeek) with template fallback for reliability.
+ * using LLM generation with template fallback for reliability.
  */
 
 import { SmartLLMService } from './smart-llm-service';
@@ -93,17 +93,24 @@ export class SMSMessageGenerator {
 				`🤖 [SMSMessageGenerator] Generating ${messageType} reminder for: ${event.title}`
 			);
 
-			const content = await this.llmService.generateText({
+			const result = await this.llmService.generateTextDetailed({
 				prompt: userPrompt,
 				userId,
-				profile: 'balanced', // Use DeepSeek for cost-effective quality
+				profile: 'speed',
 				systemPrompt,
 				temperature: 0.6, // Balanced creativity
 				maxTokens: 100 // Short SMS messages
 			});
 
 			// Validate and clean the response
-			const cleanedContent = this.validateAndTruncate(content);
+			const cleanedContent = this.validateAndTruncate(result.text);
+			const metadata = result.usage
+				? {
+						promptTokens: result.usage.promptTokens,
+						completionTokens: result.usage.completionTokens,
+						totalTokens: result.usage.totalTokens
+					}
+				: undefined;
 
 			console.log(
 				`✅ [SMSMessageGenerator] LLM generated (${cleanedContent.length} chars): "${cleanedContent}"`
@@ -112,11 +119,8 @@ export class SMSMessageGenerator {
 			return {
 				content: cleanedContent,
 				generatedVia: 'llm',
-				model: 'deepseek/deepseek-chat', // Primary model in balanced profile
-				metadata: {
-					// Note: SmartLLMService doesn't return usage stats directly
-					// We could enhance it to return this data if needed
-				}
+				model: result.model || 'qwen/qwen3.5-flash-02-23',
+				...(metadata ? { metadata } : {})
 			};
 		} catch (error) {
 			console.error('[SMSMessageGenerator] LLM generation failed, using template:', error);

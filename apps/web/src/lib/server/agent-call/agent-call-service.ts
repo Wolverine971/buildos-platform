@@ -33,6 +33,11 @@ import { AgentCallAuthError, authenticateExternalAgentCaller } from './caller-au
 import { AgentCallCalleeError, resolveCalleeForCaller } from './callee-resolution';
 import { executeBuildosAgentGatewayTool } from './external-tool-gateway';
 import { getPublicBuildosAgentTools } from './public-tool-registry';
+import {
+	getSecurityRequestContext,
+	logSecurityEvent,
+	type SecurityEventLogOptions
+} from '$lib/server/security-event-logger';
 
 const READ_ONLY_SCOPE: AgentCallScope = {
 	mode: 'read_only'
@@ -358,6 +363,10 @@ function errorMessage(error: unknown, fallback: string): string {
 	return error instanceof Error && error.message ? error.message : fallback;
 }
 
+function hasSecurityEventOptions(options: SecurityEventLogOptions): boolean {
+	return Boolean(options.waitUntil || options.supabase || options.delivery || options.timeoutMs);
+}
+
 export class AgentCallServiceError extends Error {
 	constructor(
 		message: string,
@@ -371,13 +380,21 @@ export class AgentCallServiceError extends Error {
 }
 
 export class BuildosAgentCallService {
-	constructor(private readonly admin: any) {}
+	constructor(
+		private readonly admin: any,
+		private readonly securityEventOptions: SecurityEventLogOptions = {}
+	) {}
 
 	async dial(
 		request: Request,
 		rawParams: unknown
 	): Promise<BuildosAgentCallAcceptedResponse | BuildosAgentCallRejectedResponse> {
-		const caller = await authenticateExternalAgentCaller(this.admin, request);
+		const caller = await authenticateExternalAgentCaller(
+			this.admin,
+			request,
+			this.securityEventOptions
+		);
+		const requestContext = getSecurityRequestContext(request);
 		const params = ensureObjectParams<BuildosAgentDialParams>(rawParams, 'call.dial');
 
 		if (typeof params.callee_handle !== 'string' || !params.callee_handle.trim()) {
@@ -413,6 +430,21 @@ export class BuildosAgentCallService {
 				rejectionDetails: scopeResolution.rejection.details
 			});
 
+			await this.logAgentSessionEvent({
+				eventType: 'agent.session.rejected',
+				outcome: 'denied',
+				severity: 'medium',
+				caller,
+				session: rejectedCall,
+				requestContext,
+				reason: rejectedCall.rejection_reason ?? scopeResolution.rejection.reason,
+				metadata: {
+					calleeHandle: buildosAgent.agent_handle,
+					requestedScopeMode: requestedScope.mode,
+					rejectionDetails: scopeResolution.rejection.details
+				}
+			});
+
 			return {
 				call: {
 					id: rejectedCall.id,
@@ -441,6 +473,26 @@ export class BuildosAgentCallService {
 			grantedScope
 		});
 
+		await this.logAgentSessionEvent({
+			eventType: 'agent.session.started',
+			outcome: 'success',
+			severity: 'info',
+			caller,
+			session: acceptedCall,
+			requestContext,
+			metadata: {
+				calleeHandle: buildosAgent.agent_handle,
+				requestedScopeMode: requestedScope.mode,
+				grantedScopeMode: grantedScope.mode,
+				projectCount: Array.isArray(grantedScope.project_ids)
+					? grantedScope.project_ids.length
+					: 0,
+				allowedOpsCount: (
+					grantedScope.allowed_ops ?? defaultAllowedOpsForMode(grantedScope.mode)
+				).length
+			}
+		});
+
 		return {
 			call: {
 				id: acceptedCall.id,
@@ -452,7 +504,11 @@ export class BuildosAgentCallService {
 	}
 
 	async listTools(request: Request, rawParams: unknown): Promise<BuildosAgentToolsListResponse> {
-		const caller = await authenticateExternalAgentCaller(this.admin, request);
+		const caller = await authenticateExternalAgentCaller(
+			this.admin,
+			request,
+			this.securityEventOptions
+		);
 		const params = ensureObjectParams<BuildosAgentToolsListParams>(rawParams, 'tools/list');
 		const session = await this.loadUsableCallSession(
 			caller,
@@ -467,7 +523,11 @@ export class BuildosAgentCallService {
 	}
 
 	async callTool(request: Request, rawParams: unknown): Promise<BuildosAgentToolCallResponse> {
-		const caller = await authenticateExternalAgentCaller(this.admin, request);
+		const caller = await authenticateExternalAgentCaller(
+			this.admin,
+			request,
+			this.securityEventOptions
+		);
 		const params = ensureObjectParams<BuildosAgentToolsCallParams>(rawParams, 'tools/call');
 		const session = await this.loadUsableCallSession(
 			caller,
@@ -482,7 +542,10 @@ export class BuildosAgentCallService {
 			callSessionId: session.id,
 			scope: normalizeScope(session.granted_scope, 'granted_scope'),
 			toolName,
-			arguments: normalizeToolArguments(params.arguments)
+			arguments: normalizeToolArguments(params.arguments),
+			...(hasSecurityEventOptions(this.securityEventOptions)
+				? { securityEventOptions: this.securityEventOptions }
+				: {})
 		});
 
 		return {
@@ -497,7 +560,11 @@ export class BuildosAgentCallService {
 	}
 
 	async hangup(request: Request, rawParams: unknown): Promise<BuildosAgentHangupResponse> {
-		const caller = await authenticateExternalAgentCaller(this.admin, request);
+		const caller = await authenticateExternalAgentCaller(
+			this.admin,
+			request,
+			this.securityEventOptions
+		);
 		const params = ensureObjectParams<BuildosAgentHangupParams>(rawParams, 'call.hangup');
 		const callId = ensureCallId(params.call_id);
 		const session = await this.loadCallSessionForCaller(caller, callId);
@@ -529,6 +596,15 @@ export class BuildosAgentCallService {
 				-32603
 			);
 		}
+
+		await this.logAgentSessionEvent({
+			eventType: 'agent.session.ended',
+			outcome: 'success',
+			severity: 'info',
+			caller,
+			session: data as AgentCallSessionRecord,
+			requestContext: getSecurityRequestContext(request)
+		});
 
 		return {
 			call: {
@@ -673,7 +749,64 @@ export class BuildosAgentCallService {
 			);
 		}
 
+		await this.logAgentSessionEvent({
+			eventType: 'agent.session.activated',
+			outcome: 'success',
+			severity: 'info',
+			caller,
+			session: data as AgentCallSessionRecord
+		});
+
 		return data as AgentCallSessionRecord;
+	}
+
+	private async logAgentSessionEvent(params: {
+		eventType: string;
+		outcome: 'success' | 'failure' | 'blocked' | 'allowed' | 'denied' | 'info';
+		severity: 'info' | 'low' | 'medium' | 'high' | 'critical';
+		caller: ExternalAgentCallerRecord;
+		session: AgentCallSessionRecord;
+		requestContext?: ReturnType<typeof getSecurityRequestContext>;
+		reason?: string | null;
+		metadata?: Record<string, unknown>;
+	}): Promise<void> {
+		try {
+			const grantedScope = normalizeScope(params.session.granted_scope, 'granted_scope');
+
+			await logSecurityEvent(
+				{
+					eventType: params.eventType,
+					category: 'agent',
+					outcome: params.outcome,
+					severity: params.severity,
+					actorType: 'external_agent',
+					actorUserId: params.caller.user_id,
+					externalAgentCallerId: params.caller.id,
+					sessionId: params.session.id,
+					reason: params.reason ?? null,
+					...(params.requestContext ?? {}),
+					metadata: {
+						provider: params.caller.provider,
+						callerKey: params.caller.caller_key,
+						sessionStatus: params.session.status,
+						scopeMode: grantedScope.mode,
+						projectCount: Array.isArray(grantedScope.project_ids)
+							? grantedScope.project_ids.length
+							: 0,
+						allowedOpsCount: (
+							grantedScope.allowed_ops ?? defaultAllowedOpsForMode(grantedScope.mode)
+						).length,
+						...(params.metadata ?? {})
+					}
+				},
+				{ ...this.securityEventOptions, supabase: this.admin }
+			);
+		} catch (error) {
+			console.warn('[AgentCallService] Failed to log agent session security event', {
+				eventType: params.eventType,
+				error
+			});
+		}
 	}
 }
 

@@ -139,6 +139,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 					`
           id,
           chat_session_id,
+          turn_run_id,
+          stream_run_id,
+          client_turn_id,
           operation_type,
           model_requested,
           model_used,

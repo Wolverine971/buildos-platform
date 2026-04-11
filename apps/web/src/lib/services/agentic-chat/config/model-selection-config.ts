@@ -2,15 +2,16 @@
 /**
  * Model Selection Configuration for Agentic Chat
  *
- * Optimized model selection based on January 2025 OpenRouter analysis
+ * Optimized model selection based on April 2026 OpenRouter analysis
  * Prioritizes:
- * 1. Claude models for tool-calling reliability (~92% success rate)
- * 2. DeepSeek models for cost-effective reasoning
- * 3. Context-aware profile selection for different operations
+ * 1. Qwen 3.6 Plus for repo-scale coding, front-end work, and structured reasoning
+ * 2. MiniMax M2.7 for autonomous agentic workflows and tool-heavy execution
+ * 3. Proven fallbacks for cost, speed, and production reliability
  */
 
 import type { TextProfile, JSONProfile } from '$lib/services/smart-llm-service';
 import type { ChatContextType } from '@buildos/shared-types';
+import { AGENTIC_MODEL_RECOMMENDATIONS } from '@buildos/smart-llm';
 
 /**
  * Operation types for fine-grained model selection
@@ -36,7 +37,7 @@ export function getOptimalTextProfile(
 ): TextProfile {
 	// Speed-critical operations
 	if (operationType === 'speed_critical' || operationType === 'executor_task') {
-		return 'speed'; // Uses Gemini 2.5 Flash Lite ($0.07/$0.30)
+		return 'speed';
 	}
 
 	// Tool-heavy operations need reliable tool calling
@@ -51,10 +52,10 @@ export function getOptimalTextProfile(
 			case 'project_audit':
 			case 'project_forecast':
 			case 'project_create':
-				return 'quality'; // Claude 3.5 Sonnet for complex planning
+				return 'quality';
 			case 'calendar':
 			case 'global':
-				return 'balanced'; // DeepSeek-Chat + Claude Haiku mix
+				return 'balanced';
 			default:
 				return 'balanced';
 		}
@@ -62,12 +63,12 @@ export function getOptimalTextProfile(
 
 	// Reasoning-heavy operations
 	if (operationType === 'reasoning_heavy' || operationType === 'plan_generation') {
-		return 'quality'; // DeepSeek R1 primary
+		return 'quality';
 	}
 
 	// Cost-sensitive operations
 	if (operationType === 'cost_sensitive' || operationType === 'simple_response') {
-		return 'speed'; // Gemini 2.5 Flash Lite
+		return 'speed';
 	}
 
 	// Complex synthesis needs quality
@@ -112,7 +113,7 @@ export function getOptimalJSONProfile(
 
 	// Tool-heavy operations need reliable parsing
 	if (operationType === 'tool_heavy') {
-		return 'balanced'; // DeepSeek-Chat is best value
+		return 'balanced';
 	}
 
 	// Cost-sensitive operations
@@ -133,40 +134,9 @@ export function getOptimalJSONProfile(
 
 /**
  * Model selection recommendations for specific use cases
- * Updated 2025-12-26: Prioritizing x-ai/grok-4.1-fast for tool-calling (93% τ²-Bench)
+ * Centralized in @buildos/smart-llm so model IDs live with the shared model catalog.
  */
-export const MODEL_RECOMMENDATIONS = {
-	// High-volume operations (optimize for cost)
-	brainDumps: {
-		contextExtraction: ['google/gemini-2.5-flash-lite', 'anthropic/claude-haiku-4.5'],
-		taskExtraction: ['deepseek/deepseek-chat', 'anthropic/claude-haiku-4.5'],
-		clarification: ['deepseek/deepseek-r1', 'x-ai/grok-4.1-fast']
-	},
-
-	// Agent chat (balance speed, reliability, cost)
-	// Prioritizing grok-4.1-fast: 93% τ²-Bench, $0.30/$1.00, 2M context
-	agentChat: {
-		planner: {
-			simple: ['x-ai/grok-4.1-fast', 'anthropic/claude-haiku-4.5'],
-			complex: ['x-ai/grok-4.1-fast', 'deepseek/deepseek-r1'],
-			toolHeavy: ['x-ai/grok-4.1-fast', 'anthropic/claude-haiku-4.5']
-		},
-		executor: {
-			default: ['google/gemini-2.5-flash-lite', 'openai/gpt-4o-mini'],
-			toolHeavy: ['x-ai/grok-4.1-fast', 'anthropic/claude-haiku-4.5']
-		},
-		synthesis: {
-			simple: ['google/gemini-2.5-flash-lite', 'deepseek/deepseek-chat'],
-			complex: ['deepseek/deepseek-chat', 'x-ai/grok-4.1-fast']
-		}
-	},
-
-	// Daily briefs (optimize for quality at scale)
-	dailyBriefs: {
-		generation: ['deepseek/deepseek-chat', 'anthropic/claude-haiku-4.5'],
-		summary: ['google/gemini-2.5-flash-lite', 'deepseek/deepseek-chat']
-	}
-};
+export const MODEL_RECOMMENDATIONS = AGENTIC_MODEL_RECOMMENDATIONS;
 
 /**
  * Temperature recommendations by operation

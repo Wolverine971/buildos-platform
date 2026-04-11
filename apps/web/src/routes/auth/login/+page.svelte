@@ -193,7 +193,6 @@
 						status: responseStatus,
 						code: responseCode,
 						emailDomain,
-						attemptedEmail: normalizedEmail,
 						flow: 'password'
 					}
 				});
@@ -221,7 +220,6 @@
 					status: responseStatus,
 					code: responseCode,
 					emailDomain,
-					attemptedEmail: normalizedEmail,
 					flow: 'password',
 					timedOut: isTimeout
 				}

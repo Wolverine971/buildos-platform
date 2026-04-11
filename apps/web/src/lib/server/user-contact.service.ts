@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
 import { createLogger } from '$lib/utils/logger';
+import { logSecurityEvent } from '$lib/server/security-event-logger';
 import type {
 	ContactImportCommitResult,
 	ContactImportNormalizedInput,
@@ -1717,5 +1718,25 @@ export async function insertUserContactAuditEvent(params: {
 			accessType,
 			error
 		});
+		return;
 	}
+
+	await logSecurityEvent({
+		eventType: `access.contact.${accessType}`,
+		category: 'access',
+		outcome: 'success',
+		severity: metadata?.exposed_sensitive_values ? 'medium' : 'info',
+		actorType: 'system',
+		targetType: 'user_contact',
+		targetId: contactId ?? userId,
+		reason: reason ?? null,
+		metadata: {
+			userId,
+			actorId,
+			contactId,
+			accessType,
+			contextType,
+			...(metadata ?? {})
+		}
+	});
 }

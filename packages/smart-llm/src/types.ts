@@ -3,6 +3,15 @@
 export type JSONProfile = 'fast' | 'balanced' | 'powerful' | 'maximum' | 'custom';
 export type TextProfile = 'speed' | 'balanced' | 'quality' | 'creative' | 'custom';
 
+export interface ModelCapabilities {
+	jsonMode?: boolean;
+	structuredOutputs?: boolean;
+	tools?: boolean;
+	reasoning?: boolean;
+	multimodal?: boolean;
+	longContext?: boolean;
+}
+
 export interface ModelProfile {
 	id: string;
 	name: string;
@@ -14,6 +23,7 @@ export interface ModelProfile {
 	provider: string;
 	bestFor: string[];
 	limitations?: string[];
+	capabilities?: ModelCapabilities;
 }
 
 export interface JSONRequestOptions<T = unknown> {
@@ -46,6 +56,9 @@ export interface JSONRequestOptions<T = unknown> {
 	agentSessionId?: string;
 	agentPlanId?: string;
 	agentExecutionId?: string;
+	turnRunId?: string;
+	streamRunId?: string;
+	clientTurnId?: string;
 	metadata?: Record<string, unknown>;
 	onUsage?: (event: {
 		model: string;
@@ -82,6 +95,9 @@ export interface TextGenerationOptions {
 	agentSessionId?: string;
 	agentPlanId?: string;
 	agentExecutionId?: string;
+	turnRunId?: string;
+	streamRunId?: string;
+	clientTurnId?: string;
 	metadata?: Record<string, unknown>;
 	onUsage?: (event: {
 		model: string;

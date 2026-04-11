@@ -65,15 +65,17 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			// Sanitize search input to prevent SQL injection
 			// Escape special characters: %, _, \
 			const trimmedSearch = search.trim();
-			const sanitizedSearch = trimmedSearch.replace(/[\\%_]/g, '\\$&');
-			const searchFilters = [
-				`email.ilike.%${sanitizedSearch}%`,
-				`name.ilike.%${sanitizedSearch}%`
-			];
-			if (UUID_PATTERN.test(trimmedSearch)) {
-				searchFilters.unshift(`id.eq.${trimmedSearch}`);
+			if (trimmedSearch.length > 0) {
+				const sanitizedSearch = trimmedSearch.replace(/[\\%_]/g, '\\$&');
+				const searchFilters = [
+					`email.ilike.%${sanitizedSearch}%`,
+					`name.ilike.%${sanitizedSearch}%`
+				];
+				if (UUID_PATTERN.test(trimmedSearch)) {
+					searchFilters.unshift(`id.eq.${trimmedSearch}`);
+				}
+				query = query.or(searchFilters.join(','));
 			}
-			query = query.or(searchFilters.join(','));
 		}
 
 		if (adminFilter === 'admin') {

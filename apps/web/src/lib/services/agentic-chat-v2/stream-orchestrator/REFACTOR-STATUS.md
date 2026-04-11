@@ -2,13 +2,13 @@
 
 # Stream Orchestrator Refactor Status
 
-Updated: 2026-04-10
+Updated: 2026-04-11
 
 ## Summary
 
 The refactor has moved `streamFastChat` out of the original single-file layout and into a contained `stream-orchestrator/` folder while preserving the public import path.
 
-The main orchestrator implementation in `index.ts` is now `1063` lines, down from the original `3979` lines.
+The main orchestrator implementation in `index.ts` is now `1103` lines, down from the original `3979` lines.
 
 ## Improvements Completed
 
@@ -85,7 +85,14 @@ The main orchestrator implementation in `index.ts` is now `1063` lines, down fro
 - Focused orchestrator suite:
   `npm run test -- src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts`
 - Current result:
-  `35/35` tests passing
+  `38/38` orchestrator tests passing
+
+- Direct helper suites:
+  `repair-instructions.test.ts` and `round-analysis.test.ts`
+- Current focused refactor result:
+  `46/46` tests passing across the orchestrator suite and direct helper suites
+- Broader `agentic-chat-v2` service result:
+  `112/112` tests passing across `18` test files
 
 - Broader app check:
   `npm run check`
@@ -94,6 +101,9 @@ The main orchestrator implementation in `index.ts` is now `1063` lines, down fro
 
 - Refactor-area validation:
   after fixing the extracted-module type issues, the filtered `check` output no longer reported the `stream-orchestrator` refactor files.
+
+- Current broader app check:
+  `pnpm --dir apps/web check` still reports existing repo-wide `svelte-check` diagnostics outside the extracted orchestrator modules.
 
 ## What I Advise Doing Next
 

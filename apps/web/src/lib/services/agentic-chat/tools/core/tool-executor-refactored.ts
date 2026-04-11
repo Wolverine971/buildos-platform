@@ -59,6 +59,7 @@ export class ChatToolExecutor {
 	private fetchFn: typeof fetch;
 	private llmService?: SmartLLMService;
 	private errorLogger: ErrorLoggerService;
+	private logExecutions: boolean;
 
 	// Cached values
 	private _actorId?: string;
@@ -76,12 +77,14 @@ export class ChatToolExecutor {
 		private userId: string,
 		sessionId?: string,
 		fetchFn?: typeof fetch,
-		llmService?: SmartLLMService
+		llmService?: SmartLLMService,
+		options?: { logExecutions?: boolean }
 	) {
 		this.sessionId = sessionId;
 		this.fetchFn = fetchFn || fetch;
 		this.llmService = llmService;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase as any);
+		this.logExecutions = options?.logExecutions ?? true;
 	}
 
 	setSessionId(sessionId: string): void {
@@ -576,6 +579,8 @@ export class ChatToolExecutor {
 		parsedArgs?: Record<string, any>,
 		tokensConsumed?: number
 	): Promise<void> {
+		if (!this.logExecutions) return;
+
 		if (!this.sessionId) {
 			logger.warn('Tool execution log skipped: session_id not set', {
 				toolName: toolCall.function.name

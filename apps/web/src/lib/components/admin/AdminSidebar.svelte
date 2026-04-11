@@ -1,11 +1,13 @@
 <!-- apps/web/src/lib/components/admin/AdminSidebar.svelte -->
-<script lang="ts">
+<script module lang="ts">
 	import type { ComponentType } from 'svelte';
+
+	type AdminNavIcon = ComponentType;
 
 	export type AdminNavItem = {
 		title: string;
 		href: string;
-		icon: ComponentType<{ class?: string }>;
+		icon: AdminNavIcon;
 		description?: string;
 		badge?: string;
 		children?: AdminNavItem[];
@@ -15,7 +17,9 @@
 		title: string;
 		items: AdminNavItem[];
 	};
+</script>
 
+<script lang="ts">
 	interface Props {
 		groups: AdminNavGroup[];
 		pathname: string;

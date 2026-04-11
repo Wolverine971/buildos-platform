@@ -1,14 +1,20 @@
 <!-- apps/web/src/lib/components/admin/AdminPageHeader.svelte -->
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { ArrowLeft } from 'lucide-svelte';
 	import type { ComponentType, Snippet } from 'svelte';
+	import {
+		CHAT_ADMIN_ROOT,
+		CHAT_ADMIN_TITLE,
+		isChatAdminSubpath
+	} from '$lib/components/admin/adminRoutes';
 
 	let {
 		title,
 		description = '',
 		icon = null,
-		backHref = '/admin',
-		backLabel = 'Admin Dashboard',
+		backHref,
+		backLabel,
 		showBack = true,
 		actions,
 		controls
@@ -22,6 +28,14 @@
 		actions?: Snippet;
 		controls?: Snippet;
 	} = $props();
+
+	let pathname = $derived($page.url.pathname);
+	let resolvedBackHref = $derived(
+		backHref ?? (isChatAdminSubpath(pathname) ? CHAT_ADMIN_ROOT : '/admin')
+	);
+	let resolvedBackLabel = $derived(
+		backLabel ?? (isChatAdminSubpath(pathname) ? CHAT_ADMIN_TITLE : 'Admin Dashboard')
+	);
 </script>
 
 <div class="space-y-4">
@@ -31,11 +45,11 @@
 				{#if showBack}
 					<div>
 						<a
-							href={backHref}
+							href={resolvedBackHref}
 							class="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground transition-all duration-200 hover:border-accent hover:bg-muted hover:text-foreground shadow-ink pressable"
 						>
 							<ArrowLeft class="h-3 w-3 shrink-0" />
-							<span class="hidden sm:inline">{backLabel}</span>
+							<span class="hidden sm:inline">{resolvedBackLabel}</span>
 							<span class="sm:hidden">Back</span>
 						</a>
 					</div>

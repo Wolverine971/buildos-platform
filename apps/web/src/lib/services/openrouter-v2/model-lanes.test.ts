@@ -43,8 +43,9 @@ describe('resolveLaneModels', () => {
 
 		const result = resolveLaneModels({ lane: 'text' });
 
-		expect(result[0]).toBe('google/gemini-3.1-flash-lite-preview');
-		expect(result).toContain('inception/mercury-2');
+		expect(result[0]).toBe('qwen/qwen3.5-flash-02-23');
+		expect(result).toContain('google/gemini-3.1-flash-lite-preview');
+		expect(result).toContain('openai/gpt-4.1-nano');
 	});
 
 	it('returns default tool lane models when exacto is disabled', () => {
@@ -52,9 +53,10 @@ describe('resolveLaneModels', () => {
 
 		const result = resolveLaneModels({ lane: 'tool_calling', exactoToolsEnabled: false });
 
-		expect(result[0]).toBe('minimax/minimax-m2.5');
-		expect(result).toContain('x-ai/grok-4.1-fast');
-		expect(result).toContain('deepseek/deepseek-v3.2');
+		expect(result[0]).toBe('x-ai/grok-4.1-fast');
+		expect(result).toContain('minimax/minimax-m2.7');
+		expect(result).toContain('qwen/qwen3.6-plus');
+		expect(result).toContain('openai/gpt-oss-120b');
 	});
 
 	it('returns upgraded JSON lane defaults', () => {
@@ -62,9 +64,10 @@ describe('resolveLaneModels', () => {
 
 		const result = resolveLaneModels({ lane: 'json' });
 
-		expect(result[0]).toBe('deepseek/deepseek-v3.2');
-		expect(result).toContain('google/gemini-3.1-flash-lite-preview');
-		expect(result).toContain('minimax/minimax-m2.5');
+		expect(result[0]).toBe('qwen/qwen3.6-plus');
+		expect(result).toContain('deepseek/deepseek-v3.2');
+		expect(result).toContain('openai/gpt-oss-120b');
+		expect(result).toContain('openai/gpt-4.1-nano');
 	});
 
 	it('uses exacto defaults for tool lane when enabled', () => {

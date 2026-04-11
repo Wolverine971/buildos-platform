@@ -97,3 +97,6 @@ The legacy import path remains `../stream-orchestrator.ts`, which is now a thin 
 - Current status after Phase 2 safe pass: `35/35` tests passing.
 - Current status after Phase 3 validation pass: `35/35` tests passing.
 - Current status after repair/round-analysis extraction pass: `35/35` tests passing.
+- Current baseline freeze status: `38/38` orchestrator tests passing.
+- Current focused baseline with direct helper coverage: `46/46` tests passing across `stream-orchestrator.test.ts`, `repair-instructions.test.ts`, and `round-analysis.test.ts`.
+- Broader `agentic-chat-v2` service baseline: `112/112` tests passing across `18` test files.

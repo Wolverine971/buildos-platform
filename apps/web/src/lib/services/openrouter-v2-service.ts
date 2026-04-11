@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/openrouter-v2-service.ts
 
 import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
-import { shouldFailoverToNextOpenRouterModel } from '@buildos/smart-llm';
+import { JSON_MODELS, TEXT_MODELS, shouldFailoverToNextOpenRouterModel } from '@buildos/smart-llm';
 import {
 	SmartLLMService,
 	type JSONRequestOptions,
@@ -260,7 +260,94 @@ export class OpenRouterV2Service extends SmartLLMService {
 		return timeoutMs ?? this.v2DefaultTimeoutMs;
 	}
 
+	private getModelConfig(model: string, lane: ModelLane) {
+		return lane === 'json'
+			? (JSON_MODELS[model] ?? TEXT_MODELS[model])
+			: (TEXT_MODELS[model] ?? JSON_MODELS[model]);
+	}
+
+	private calculateUsageCost(model: string, lane: ModelLane, usage: OpenRouterUsage | undefined) {
+		const modelConfig = this.getModelConfig(model, lane);
+		const inputCost = modelConfig
+			? ((usage?.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
+			: 0;
+		const outputCost = modelConfig
+			? ((usage?.completion_tokens || 0) / 1_000_000) * modelConfig.outputCost
+			: 0;
+		return {
+			inputCost,
+			outputCost,
+			totalCost: inputCost + outputCost
+		};
+	}
+
+	private logOpenRouterV2Usage(params: {
+		lane: ModelLane;
+		options: JSONRequestWithFallbackModels | TextGenerationOptions;
+		response: OpenRouterChatResponse;
+		requestedModel: string;
+		requestStartedAt: Date;
+		startTime: number;
+		maxTokens?: number;
+		defaultOperationType: string;
+		metadata?: Record<string, unknown>;
+	}): void {
+		if (!params.response.usage || !this.hasUsageLoggingBackend()) return;
+
+		const actualModel = params.response.model || params.requestedModel;
+		const modelConfig = this.getModelConfig(actualModel, params.lane);
+		const { inputCost, outputCost, totalCost } = this.calculateUsageCost(
+			actualModel,
+			params.lane,
+			params.response.usage
+		);
+		const optionsRecord = params.options as JSONRequestWithFallbackModels &
+			TextGenerationOptions;
+
+		this.logUsageToDatabase({
+			userId: optionsRecord.userId,
+			operationType: optionsRecord.operationType || params.defaultOperationType,
+			modelRequested: params.requestedModel,
+			modelUsed: actualModel,
+			provider: params.response.provider || modelConfig?.provider,
+			promptTokens: params.response.usage.prompt_tokens || 0,
+			completionTokens: params.response.usage.completion_tokens || 0,
+			totalTokens: params.response.usage.total_tokens || 0,
+			inputCost,
+			outputCost,
+			totalCost,
+			responseTimeMs: Math.round(performance.now() - params.startTime),
+			requestStartedAt: params.requestStartedAt,
+			requestCompletedAt: new Date(),
+			status: 'success',
+			temperature: optionsRecord.temperature,
+			maxTokens: params.maxTokens,
+			profile: optionsRecord.profile,
+			streaming: false,
+			projectId: optionsRecord.projectId,
+			brainDumpId: optionsRecord.brainDumpId,
+			taskId: optionsRecord.taskId,
+			briefId: optionsRecord.briefId,
+			chatSessionId: optionsRecord.chatSessionId,
+			agentSessionId: optionsRecord.agentSessionId,
+			agentPlanId: optionsRecord.agentPlanId,
+			agentExecutionId: optionsRecord.agentExecutionId,
+			turnRunId: optionsRecord.turnRunId,
+			streamRunId: optionsRecord.streamRunId,
+			clientTurnId: optionsRecord.clientTurnId,
+			openrouterRequestId: params.response.id,
+			openrouterCacheStatus: resolveCacheStatus(params.response.usage),
+			metadata: {
+				...optionsRecord.metadata,
+				...params.metadata,
+				lane: params.lane
+			}
+		}).catch((error) => console.error('Failed to log OpenRouter V2 usage:', error));
+	}
+
 	async getJSONResponse<T = any>(options: JSONRequestWithFallbackModels<T>): Promise<T> {
+		const requestStartedAt = new Date();
+		const startTime = performance.now();
 		const laneModels = this.resolveModels('json', options.model, options.models);
 		const messages: OpenRouterChatMessage[] = [
 			{ role: 'system', content: options.systemPrompt },
@@ -294,17 +381,33 @@ export class OpenRouterV2Service extends SmartLLMService {
 				}
 
 				const parsed = JSON.parse(content) as T;
+				const actualModel = response.model || model;
+				const usageCost = this.calculateUsageCost(actualModel, 'json', response.usage);
 				if (typeof options.onUsage === 'function') {
 					await options.onUsage({
-						model: response.model || model,
+						model: actualModel,
 						promptTokens: response.usage?.prompt_tokens || 0,
 						completionTokens: response.usage?.completion_tokens || 0,
 						totalTokens: response.usage?.total_tokens || 0,
-						inputCost: 0,
-						outputCost: 0,
-						totalCost: 0
+						inputCost: usageCost.inputCost,
+						outputCost: usageCost.outputCost,
+						totalCost: usageCost.totalCost
 					});
 				}
+				this.logOpenRouterV2Usage({
+					lane: 'json',
+					options,
+					response,
+					requestedModel: model,
+					requestStartedAt,
+					startTime,
+					maxTokens: 8192,
+					defaultOperationType: 'other',
+					metadata: {
+						models,
+						attempts: attempt + 1
+					}
+				});
 				return parsed;
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
@@ -359,6 +462,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 	}
 
 	async generateTextDetailed(options: TextGenerationOptions): Promise<TextGenerationResult> {
+		const requestStartedAt = new Date();
+		const startTime = performance.now();
 		const laneModels = this.resolveModels('text');
 		const systemPrompt =
 			typeof options.systemPrompt === 'string' && options.systemPrompt.trim().length > 0
@@ -395,22 +500,39 @@ export class OpenRouterV2Service extends SmartLLMService {
 					throw new Error('OpenRouter V2 returned empty text content');
 				}
 
+				const actualModel = response.model || model;
+				const usageCost = this.calculateUsageCost(actualModel, 'text', response.usage);
 				if (typeof options.onUsage === 'function') {
 					await options.onUsage({
-						model: response.model || model,
+						model: actualModel,
 						promptTokens: response.usage?.prompt_tokens || 0,
 						completionTokens: response.usage?.completion_tokens || 0,
 						totalTokens: response.usage?.total_tokens || 0,
-						inputCost: 0,
-						outputCost: 0,
-						totalCost: 0
+						inputCost: usageCost.inputCost,
+						outputCost: usageCost.outputCost,
+						totalCost: usageCost.totalCost
 					});
 				}
+				this.logOpenRouterV2Usage({
+					lane: 'text',
+					options,
+					response,
+					requestedModel: model,
+					requestStartedAt,
+					startTime,
+					maxTokens: options.maxTokens ?? 4096,
+					defaultOperationType: 'other',
+					metadata: {
+						models,
+						attempts: attempt + 1,
+						contentLength: text.length
+					}
+				});
 
 				return {
 					text,
 					usage: mapUsage(response.usage),
-					model: response.model || model
+					model: actualModel
 				};
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
@@ -443,6 +565,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 		agentSessionId?: string;
 		agentPlanId?: string;
 		agentExecutionId?: string;
+		turnRunId?: string;
+		streamRunId?: string;
+		clientTurnId?: string;
 		signal?: AbortSignal;
 		operationType?: string;
 		contextType?: string;
@@ -457,6 +582,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 		let streamResponse: Response | null = null;
 		let resolvedModel = laneModels[0] || 'openai/gpt-4o-mini';
 		let resolvedProvider: string | undefined;
+		const requestStartedAt = new Date();
+		const startTime = performance.now();
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
 			const model = laneModels[attempt] || laneModels[0] || 'openai/gpt-4o-mini';
@@ -529,6 +656,63 @@ export class OpenRouterV2Service extends SmartLLMService {
 		let terminalFinishReason: string | undefined;
 		let streamRequestId = requestId;
 		let streamSystemFingerprint = responseSystemFingerprint;
+		let usageLogged = false;
+		const logUsage = (usageForLog: OpenRouterUsage | undefined): void => {
+			if (!usageForLog || usageLogged || !this.hasUsageLoggingBackend()) return;
+			usageLogged = true;
+			const actualModel = resolvedModel || laneModels[0] || 'openai/gpt-4o-mini';
+			const modelConfig = TEXT_MODELS[actualModel];
+			const inputCost = modelConfig
+				? ((usageForLog.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
+				: 0;
+			const outputCost = modelConfig
+				? ((usageForLog.completion_tokens || 0) / 1_000_000) * modelConfig.outputCost
+				: 0;
+			const requestCompletedAt = new Date();
+
+			this.logUsageToDatabase({
+				userId: options.userId,
+				operationType: options.operationType || 'agentic_chat_v2_stream',
+				modelRequested: laneModels[0] || actualModel,
+				modelUsed: actualModel,
+				provider: modelConfig?.provider ?? resolvedProvider,
+				promptTokens: usageForLog.prompt_tokens || 0,
+				completionTokens: usageForLog.completion_tokens || 0,
+				totalTokens: usageForLog.total_tokens || 0,
+				inputCost,
+				outputCost,
+				totalCost: inputCost + outputCost,
+				responseTimeMs: Math.round(performance.now() - startTime),
+				requestStartedAt,
+				requestCompletedAt,
+				status: 'success',
+				temperature: options.temperature,
+				maxTokens: options.maxTokens,
+				profile: options.profile,
+				streaming: true,
+				projectId: options.projectId,
+				chatSessionId: options.chatSessionId || options.sessionId,
+				agentSessionId: options.agentSessionId,
+				agentPlanId: options.agentPlanId,
+				agentExecutionId: options.agentExecutionId,
+				turnRunId: options.turnRunId,
+				streamRunId: options.streamRunId,
+				clientTurnId: options.clientTurnId,
+				openrouterRequestId: streamRequestId,
+				openrouterCacheStatus: resolveCacheStatus(usageForLog),
+				metadata: {
+					sessionId: options.sessionId,
+					messageId: options.messageId,
+					turnRunId: options.turnRunId,
+					streamRunId: options.streamRunId,
+					clientTurnId: options.clientTurnId,
+					contextType: options.contextType,
+					entityId: options.entityId,
+					hasTools: needsTools,
+					lane
+				}
+			}).catch((error) => console.error('Failed to log OpenRouter V2 usage:', error));
+		};
 
 		try {
 			while (true) {
@@ -552,6 +736,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 						const reasoningTokens = resolveReasoningTokens(usage);
 						const cacheStatus = resolveCacheStatus(usage);
+						logUsage(usage);
 						yield {
 							type: 'done',
 							usage,
@@ -650,6 +835,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 			const reasoningTokens = resolveReasoningTokens(usage);
 			const cacheStatus = resolveCacheStatus(usage);
+			logUsage(usage);
 			yield {
 				type: 'done',
 				usage,

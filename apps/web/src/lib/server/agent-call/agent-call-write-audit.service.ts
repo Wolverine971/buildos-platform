@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/agent-call/agent-call-write-audit.service.ts
 import type { BuildosAgentAllowedOp } from '@buildos/shared-types';
+import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
 
 export type AgentCallWriteExecutionStatus = 'pending' | 'succeeded' | 'failed';
 
@@ -67,6 +68,7 @@ export async function reserveWriteExecution(params: {
 	op: BuildosAgentAllowedOp;
 	args: Record<string, unknown>;
 	idempotencyKey?: string;
+	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<{ executionId: string | null }> {
 	if (!params.idempotencyKey) {
 		return { executionId: null };
@@ -90,10 +92,35 @@ export async function reserveWriteExecution(params: {
 		.single();
 
 	if (!error && data) {
+		await logAgentWriteSecurityEvent(params.admin, {
+			eventType: 'agent.write.reserved',
+			outcome: 'info',
+			severity: 'info',
+			callerId: params.callerId,
+			userId: params.userId,
+			callSessionId: params.callSessionId,
+			op: params.op,
+			idempotencyKeyPresent: true,
+			argumentKeys: Object.keys(params.args),
+			securityEventOptions: params.securityEventOptions
+		});
 		return { executionId: String((data as AgentCallWriteExecutionRecord).id) };
 	}
 
 	if (error?.code !== '23505') {
+		await logAgentWriteSecurityEvent(params.admin, {
+			eventType: 'agent.write.reserve_failed',
+			outcome: 'failure',
+			severity: 'medium',
+			callerId: params.callerId,
+			userId: params.userId,
+			callSessionId: params.callSessionId,
+			op: params.op,
+			idempotencyKeyPresent: true,
+			reason: error?.message || 'reserve_failed',
+			argumentKeys: Object.keys(params.args),
+			securityEventOptions: params.securityEventOptions
+		});
 		throw new Error(error?.message || 'Failed to reserve idempotent write execution');
 	}
 
@@ -105,9 +132,36 @@ export async function reserveWriteExecution(params: {
 	});
 
 	if (existing?.status === 'succeeded' && existing.response_payload) {
+		await logAgentWriteSecurityEvent(params.admin, {
+			eventType: 'agent.write.replayed',
+			outcome: 'allowed',
+			severity: 'low',
+			callerId: params.callerId,
+			userId: params.userId,
+			callSessionId: params.callSessionId,
+			op: params.op,
+			idempotencyKeyPresent: true,
+			targetType: existing.entity_kind ?? null,
+			targetId: existing.entity_id ?? null,
+			argumentKeys: Object.keys(params.args),
+			securityEventOptions: params.securityEventOptions
+		});
 		throw new AgentCallWriteReplayError(existing.response_payload);
 	}
 
+	await logAgentWriteSecurityEvent(params.admin, {
+		eventType: 'agent.write.pending_conflict',
+		outcome: 'denied',
+		severity: 'medium',
+		callerId: params.callerId,
+		userId: params.userId,
+		callSessionId: params.callSessionId,
+		op: params.op,
+		idempotencyKeyPresent: true,
+		reason: 'pending_idempotent_write',
+		argumentKeys: Object.keys(params.args),
+		securityEventOptions: params.securityEventOptions
+	});
 	throw new AgentCallWritePendingError();
 }
 
@@ -123,6 +177,7 @@ export async function recordWriteExecutionSuccess(params: {
 	responsePayload: Record<string, unknown>;
 	entityKind?: string;
 	entityId?: string;
+	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<void> {
 	const completedAt = new Date().toISOString();
 
@@ -144,6 +199,20 @@ export async function recordWriteExecutionSuccess(params: {
 			throw new Error(error.message || 'Failed to finalize write execution');
 		}
 
+		await logAgentWriteSecurityEvent(params.admin, {
+			eventType: 'agent.write.succeeded',
+			outcome: 'success',
+			severity: 'info',
+			callerId: params.callerId,
+			userId: params.userId,
+			callSessionId: params.callSessionId,
+			op: params.op,
+			idempotencyKeyPresent: Boolean(params.idempotencyKey),
+			targetType: params.entityKind ?? null,
+			targetId: params.entityId ?? null,
+			argumentKeys: Object.keys(params.args),
+			securityEventOptions: params.securityEventOptions
+		});
 		return;
 	}
 
@@ -167,6 +236,21 @@ export async function recordWriteExecutionSuccess(params: {
 	if (error) {
 		throw new Error(error.message || 'Failed to record write execution');
 	}
+
+	await logAgentWriteSecurityEvent(params.admin, {
+		eventType: 'agent.write.succeeded',
+		outcome: 'success',
+		severity: 'info',
+		callerId: params.callerId,
+		userId: params.userId,
+		callSessionId: params.callSessionId,
+		op: params.op,
+		idempotencyKeyPresent: Boolean(params.idempotencyKey),
+		targetType: params.entityKind ?? null,
+		targetId: params.entityId ?? null,
+		argumentKeys: Object.keys(params.args),
+		securityEventOptions: params.securityEventOptions
+	});
 }
 
 export async function recordWriteExecutionFailure(params: {
@@ -179,6 +263,7 @@ export async function recordWriteExecutionFailure(params: {
 	idempotencyKey?: string;
 	args: Record<string, unknown>;
 	errorPayload: Record<string, unknown>;
+	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<void> {
 	const completedAt = new Date().toISOString();
 
@@ -197,6 +282,19 @@ export async function recordWriteExecutionFailure(params: {
 			throw new Error(error.message || 'Failed to record write failure');
 		}
 
+		await logAgentWriteSecurityEvent(params.admin, {
+			eventType: 'agent.write.failed',
+			outcome: 'failure',
+			severity: 'medium',
+			callerId: params.callerId,
+			userId: params.userId,
+			callSessionId: params.callSessionId,
+			op: params.op,
+			idempotencyKeyPresent: Boolean(params.idempotencyKey),
+			reason: extractErrorReason(params.errorPayload),
+			argumentKeys: Object.keys(params.args),
+			securityEventOptions: params.securityEventOptions
+		});
 		return;
 	}
 
@@ -218,4 +316,64 @@ export async function recordWriteExecutionFailure(params: {
 	if (error) {
 		throw new Error(error.message || 'Failed to record write failure');
 	}
+
+	await logAgentWriteSecurityEvent(params.admin, {
+		eventType: 'agent.write.failed',
+		outcome: 'failure',
+		severity: 'medium',
+		callerId: params.callerId,
+		userId: params.userId,
+		callSessionId: params.callSessionId,
+		op: params.op,
+		idempotencyKeyPresent: Boolean(params.idempotencyKey),
+		reason: extractErrorReason(params.errorPayload),
+		argumentKeys: Object.keys(params.args),
+		securityEventOptions: params.securityEventOptions
+	});
+}
+
+async function logAgentWriteSecurityEvent(
+	admin: any,
+	params: {
+		eventType: string;
+		outcome: 'success' | 'failure' | 'blocked' | 'allowed' | 'denied' | 'info';
+		severity: 'info' | 'low' | 'medium' | 'high' | 'critical';
+		callerId: string;
+		userId: string;
+		callSessionId: string;
+		op: BuildosAgentAllowedOp;
+		idempotencyKeyPresent: boolean;
+		targetType?: string | null;
+		targetId?: string | null;
+		reason?: string | null;
+		argumentKeys: string[];
+		securityEventOptions?: SecurityEventLogOptions;
+	}
+): Promise<void> {
+	await logSecurityEvent(
+		{
+			eventType: params.eventType,
+			category: 'agent',
+			outcome: params.outcome,
+			severity: params.severity,
+			actorType: 'external_agent',
+			actorUserId: params.userId,
+			externalAgentCallerId: params.callerId,
+			sessionId: params.callSessionId,
+			targetType: params.targetType ?? null,
+			targetId: params.targetId ?? null,
+			reason: params.reason ?? null,
+			metadata: {
+				op: params.op,
+				idempotencyKeyPresent: params.idempotencyKeyPresent,
+				argumentKeys: params.argumentKeys
+			}
+		},
+		{ ...(params.securityEventOptions ?? {}), supabase: admin }
+	);
+}
+
+function extractErrorReason(errorPayload: Record<string, unknown>): string | null {
+	const message = errorPayload.message ?? errorPayload.code ?? errorPayload.error;
+	return typeof message === 'string' ? message : null;
 }

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-04-10T20:20:17.222Z
+// Generated on: 2026-04-11T15:42:06.307Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1055,6 +1055,7 @@ export type DatabaseSchema = {
 		brain_dump_id: string | null;
 		brief_id: string | null;
 		chat_session_id: string | null;
+		client_turn_id: string | null;
 		completion_tokens: number;
 		created_at: string;
 		error_message: string | null;
@@ -1077,11 +1078,13 @@ export type DatabaseSchema = {
 		request_started_at: string;
 		response_time_ms: number;
 		status: string;
+		stream_run_id: string | null;
 		streaming: boolean | null;
 		task_id: string | null;
 		temperature: number | null;
 		total_cost_usd: number;
 		total_tokens: number;
+		turn_run_id: string | null;
 		user_id: string;
 	};
 	llm_usage_summary: {
@@ -2260,6 +2263,26 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 		user_id: string;
 	};
+	security_events: {
+		actor_type: string;
+		actor_user_id: string | null;
+		category: string;
+		created_at: string;
+		event_type: string;
+		external_agent_caller_id: string | null;
+		id: string;
+		ip_address: unknown;
+		metadata: Json;
+		outcome: string;
+		reason: string | null;
+		request_id: string | null;
+		risk_score: number | null;
+		session_id: string | null;
+		severity: string;
+		target_id: string | null;
+		target_type: string | null;
+		user_agent: string | null;
+	};
 	security_logs: {
 		content: string;
 		created_at: string;
@@ -3161,6 +3184,7 @@ export const tableNames = [
 	'research_artifact_refs',
 	'retargeting_founder_pilot_members',
 	'scheduled_sms_messages',
+	'security_events',
 	'security_logs',
 	'sms_alert_history',
 	'sms_alert_thresholds',

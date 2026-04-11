@@ -8,6 +8,8 @@ import {
 } from '$lib/services/ontology/migration-llm.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
+const DEFAULT_MIGRATION_MODEL = 'deepseek/deepseek-v3.2';
+
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
@@ -21,7 +23,7 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 	// Get parameters
 	const userId = url.searchParams.get('userId');
 	const projectIds = url.searchParams.get('projectIds')?.split(',').filter(Boolean);
-	const model = url.searchParams.get('model') || 'deepseek-chat';
+	const model = url.searchParams.get('model') || DEFAULT_MIGRATION_MODEL;
 	const includeCompleted = url.searchParams.get('includeCompleted') === 'true';
 
 	const supabase = createAdminSupabaseClient();
@@ -173,7 +175,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	const projects = typeof body?.projects === 'number' ? body.projects : 0;
 	const tasks = typeof body?.tasks === 'number' ? body.tasks : 0;
 	const phases = typeof body?.phases === 'number' ? body.phases : 0;
-	const model = typeof body?.model === 'string' ? body.model : 'deepseek-chat';
+	const model = typeof body?.model === 'string' ? body.model : DEFAULT_MIGRATION_MODEL;
 
 	try {
 		const estimate = estimateCostForEntities({

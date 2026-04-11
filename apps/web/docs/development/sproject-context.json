@@ -145,11 +145,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -158,6 +153,11 @@
 				"ProjectInsightRail",
 				"ProjectModalsHost"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -720,6 +720,17 @@
 			"exports": ["userContextStore"]
 		},
 		{
+			"file": "src/lib/components/admin/adminRoutes.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"CHAT_ADMIN_ROOT",
+				"CHAT_ADMIN_TITLE",
+				"CHAT_ADMIN_NAV_ITEMS",
+				"isChatAdminSubpath"
+			]
+		},
+		{
 			"file": "src/lib/components/agent/agent-chat-formatters.ts",
 			"type": "component",
 			"components": [],
@@ -846,6 +857,36 @@
 			"exports": ["createDragDropState"]
 		},
 		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"linkEntities",
+				"deleteEdge",
+				"unlinkEntity",
+				"filterEntities"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"ALLOWED_LINKS",
+				"canLink",
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"getAllowedTargetKinds",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel",
+				"getFilteredSections"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 			"type": "component",
 			"components": [],
@@ -903,36 +944,6 @@
 				"getTaskPersonRelevanceScore",
 				"taskMatchesPersonFocusFilter",
 				"getTaskPersonRelevanceLabel"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
 			]
 		},
 		{
@@ -1056,6 +1067,7 @@
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
+		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-session.ts",
 		"src/lib/components/agent/agent-chat-skill-activity.ts",
@@ -1067,12 +1079,12 @@
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",

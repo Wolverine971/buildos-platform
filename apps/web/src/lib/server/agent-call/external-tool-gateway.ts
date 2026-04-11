@@ -44,6 +44,7 @@ import {
 	resolveEntityMentionUserIds
 } from '$lib/server/entity-mention-notification.service';
 import { normalizeTaskStateInput } from '../../../routes/api/onto/shared/task-state';
+import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
 
 type ToolExecutionContext = {
 	admin: any;
@@ -1723,6 +1724,7 @@ async function executeGatewayOp(params: {
 	callSessionId?: string;
 	scope: AgentCallScope;
 	arguments?: Record<string, unknown>;
+	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<Record<string, unknown>> {
 	const registry = buildExternalGatewayRegistry(params.scope);
 	const input = params.arguments ?? {};
@@ -1737,6 +1739,27 @@ async function executeGatewayOp(params: {
 	const entry = registry.ops[canonicalOp];
 	if (!entry) {
 		if (isSupportedOp(canonicalOp)) {
+			await logSecurityEvent(
+				{
+					eventType: 'agent.tool.denied',
+					category: 'agent',
+					outcome: 'denied',
+					severity: 'medium',
+					actorType: 'external_agent',
+					actorUserId: params.userId,
+					externalAgentCallerId: params.callerId ?? null,
+					sessionId: params.callSessionId ?? null,
+					reason: 'op_outside_granted_scope',
+					metadata: {
+						requestedOp,
+						canonicalOp,
+						grantedScopeMode: params.scope.mode,
+						requiredScopeMode: requiredScopeModeForOp(canonicalOp),
+						allowedOps
+					}
+				},
+				{ ...(params.securityEventOptions ?? {}), supabase: params.admin }
+			);
 			return buildExecError(
 				requestedOp,
 				'FORBIDDEN',
@@ -1843,7 +1866,8 @@ async function executeGatewayOp(params: {
 				userId: params.userId,
 				op: canonicalOp,
 				args: opArgs,
-				idempotencyKey
+				idempotencyKey,
+				securityEventOptions: params.securityEventOptions
 			});
 			executionId = reservation.executionId;
 		} catch (error) {
@@ -1918,7 +1942,8 @@ async function executeGatewayOp(params: {
 					args: opArgs,
 					responsePayload: response,
 					entityKind: entityMeta.entityKind,
-					entityId: entityMeta.entityId
+					entityId: entityMeta.entityId,
+					securityEventOptions: params.securityEventOptions
 				});
 			} catch (auditError) {
 				console.error(
@@ -1931,6 +1956,29 @@ async function executeGatewayOp(params: {
 		return response;
 	} catch (error) {
 		const normalized = normalizeGatewayError(error);
+		if (normalized.code === 'FORBIDDEN') {
+			await logSecurityEvent(
+				{
+					eventType: 'agent.tool.denied',
+					category: 'agent',
+					outcome: 'denied',
+					severity: 'medium',
+					actorType: 'external_agent',
+					actorUserId: params.userId,
+					externalAgentCallerId: params.callerId ?? null,
+					sessionId: params.callSessionId ?? null,
+					reason: normalized.message,
+					metadata: {
+						requestedOp,
+						canonicalOp,
+						grantedScopeMode: params.scope.mode,
+						errorCode: normalized.code,
+						details: normalized.details ?? null
+					}
+				},
+				{ ...(params.securityEventOptions ?? {}), supabase: params.admin }
+			);
+		}
 		const response = buildExecError(
 			requestedOp,
 			normalized.code,
@@ -1950,7 +1998,8 @@ async function executeGatewayOp(params: {
 					op: canonicalOp,
 					idempotencyKey,
 					args: opArgs,
-					errorPayload: response.error
+					errorPayload: response.error,
+					securityEventOptions: params.securityEventOptions
 				});
 			} catch (auditError) {
 				console.error(
@@ -1982,6 +2031,7 @@ export async function executeBuildosAgentGatewayTool(params: {
 	scope: AgentCallScope;
 	toolName: BuildosAgentGatewayToolName;
 	arguments?: Record<string, unknown>;
+	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<Record<string, unknown>> {
 	switch (params.toolName) {
 		case 'skill_load':

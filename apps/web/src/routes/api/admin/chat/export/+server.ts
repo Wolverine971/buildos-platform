@@ -7,6 +7,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { getAdminLlmUsageStats } from '$lib/server/admin-llm-usage-analytics';
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	// Check authentication
@@ -40,10 +41,27 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		case '30d':
 			startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 			break;
+		case '90d':
+			startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+			break;
+		case '365d':
+			startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+			break;
 		case '7d':
 		default:
 			startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 	}
+
+	const lookbackDays =
+		timeframe === '24h'
+			? 1
+			: timeframe === '90d'
+				? 90
+				: timeframe === '365d'
+					? 365
+					: timeframe === '30d'
+						? 30
+						: 7;
 
 	try {
 		const countToolCalls = (toolCalls: unknown): number => {
@@ -128,6 +146,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			);
 		});
 
+		const llmUsageStats =
+			format === 'json' ? await getAdminLlmUsageStats(supabase, lookbackDays) : null;
+
 		const exportData = {
 			export_date: now.toISOString(),
 			timeframe,
@@ -135,6 +156,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			agent_chat_messages: agentChatMessagesData,
 			agent_executions: agentExecutionsData,
 			agent_plans: plansData,
+			llm_usage_stats: llmUsageStats,
 			summary: {
 				total_agent_sessions: agentSessionsData?.length || 0,
 				total_agent_messages: agentChatMessagesData?.length || 0,

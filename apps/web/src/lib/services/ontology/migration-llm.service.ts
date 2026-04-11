@@ -27,7 +27,7 @@ export interface CostEstimate {
 }
 
 export interface LLMUsageMetadata {
-	provider: 'openai' | 'deepseek';
+	provider: 'openai' | 'deepseek' | 'qwen';
 	model: string;
 	inputTokens: number;
 	outputTokens: number;
@@ -36,14 +36,15 @@ export interface LLMUsageMetadata {
 	durationMs: number;
 }
 
-// Token costs per 1000 tokens (as of Dec 2025)
+const DEFAULT_MIGRATION_MODEL = 'deepseek/deepseek-v3.2';
+
+// Token costs per 1000 tokens (OpenRouter pricing checked April 2026)
 const TOKEN_COSTS: Record<string, TokenCosts> = {
-	'gpt-4o': { input: 0.0025, output: 0.01 },
-	'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
-	'gpt-4-turbo': { input: 0.01, output: 0.03 },
-	'gpt-3.5-turbo': { input: 0.0005, output: 0.0015 },
-	'deepseek-chat': { input: 0.00014, output: 0.00028 },
-	'deepseek-coder': { input: 0.00014, output: 0.00028 }
+	'deepseek/deepseek-v3.2': { input: 0.00026, output: 0.00038 },
+	'qwen/qwen3.5-flash-02-23': { input: 0.000065, output: 0.00026 },
+	'openai/gpt-oss-120b': { input: 0.000039, output: 0.00019 },
+	'openai/gpt-4.1-nano': { input: 0.0001, output: 0.0004 },
+	'openai/gpt-4o-mini': { input: 0.00015, output: 0.0006 }
 };
 
 // Estimated tokens per entity type (based on typical prompt/response sizes)
@@ -204,9 +205,9 @@ export function estimateMigrationCost(
 	projectCount: number,
 	avgTasksPerProject: number = 8,
 	avgPhasesPerProject: number = 2,
-	model: string = 'deepseek-chat'
+	model: string = DEFAULT_MIGRATION_MODEL
 ): CostEstimate {
-	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS['deepseek-chat']!;
+	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS[DEFAULT_MIGRATION_MODEL]!;
 
 	// Calculate total tokens
 	const projectInputTokens = projectCount * TOKENS_PER_ENTITY.project.input;
@@ -260,8 +261,8 @@ export function estimateCostForEntities(counts: {
 	phases: number;
 	model?: string;
 }): CostEstimate {
-	const model = counts.model || 'deepseek-chat';
-	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS['deepseek-chat']!;
+	const model = counts.model || DEFAULT_MIGRATION_MODEL;
+	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS[DEFAULT_MIGRATION_MODEL]!;
 
 	const projectInputTokens = counts.projects * TOKENS_PER_ENTITY.project.input;
 	const projectOutputTokens = counts.projects * TOKENS_PER_ENTITY.project.output;
@@ -319,13 +320,13 @@ function formatDuration(ms: number): string {
  * Create LLM usage metadata for migration log
  */
 export function createLLMUsageMetadata(
-	provider: 'openai' | 'deepseek',
+	provider: 'openai' | 'deepseek' | 'qwen',
 	model: string,
 	inputTokens: number,
 	outputTokens: number,
 	durationMs: number
 ): LLMUsageMetadata {
-	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS['deepseek-chat']!;
+	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS[DEFAULT_MIGRATION_MODEL]!;
 	const estimatedCost = (inputTokens / 1000) * costs.input + (outputTokens / 1000) * costs.output;
 
 	return {
@@ -350,27 +351,33 @@ export function getAvailableModels(): Array<{
 }> {
 	return [
 		{
-			id: 'deepseek-chat',
-			name: 'DeepSeek Chat',
-			costs: TOKEN_COSTS['deepseek-chat']!,
+			id: 'deepseek/deepseek-v3.2',
+			name: 'DeepSeek V3.2',
+			costs: TOKEN_COSTS['deepseek/deepseek-v3.2']!,
 			recommended: true
 		},
 		{
-			id: 'gpt-4o-mini',
+			id: 'qwen/qwen3.5-flash-02-23',
+			name: 'Qwen 3.5 Flash',
+			costs: TOKEN_COSTS['qwen/qwen3.5-flash-02-23']!,
+			recommended: true
+		},
+		{
+			id: 'openai/gpt-oss-120b',
+			name: 'GPT-OSS 120B',
+			costs: TOKEN_COSTS['openai/gpt-oss-120b']!,
+			recommended: false
+		},
+		{
+			id: 'openai/gpt-4.1-nano',
+			name: 'GPT-4.1 Nano',
+			costs: TOKEN_COSTS['openai/gpt-4.1-nano']!,
+			recommended: false
+		},
+		{
+			id: 'openai/gpt-4o-mini',
 			name: 'GPT-4o Mini',
-			costs: TOKEN_COSTS['gpt-4o-mini']!,
-			recommended: false
-		},
-		{
-			id: 'gpt-4o',
-			name: 'GPT-4o',
-			costs: TOKEN_COSTS['gpt-4o']!,
-			recommended: false
-		},
-		{
-			id: 'gpt-4-turbo',
-			name: 'GPT-4 Turbo',
-			costs: TOKEN_COSTS['gpt-4-turbo']!,
+			costs: TOKEN_COSTS['openai/gpt-4o-mini']!,
 			recommended: false
 		}
 	];

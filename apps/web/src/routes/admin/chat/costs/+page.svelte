@@ -6,28 +6,34 @@
 		TrendingUp,
 		TrendingDown,
 		Zap,
-		Users,
 		MessageSquare,
 		Bot,
 		AlertCircle,
-		Sparkles
+		ArrowRight,
+		BarChart3
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import { browser } from '$app/environment';
 
+	type Timeframe = '24h' | '7d' | '30d';
+
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
-	let selectedTimeframe = $state<'24h' | '7d' | '30d'>('7d');
+	let selectedTimeframe = $state<Timeframe>('7d');
 
 	// Dashboard data
 	let dashboardData = $state<any>({
 		overview: {},
 		by_model: [],
 		top_sessions: [],
+		top_turns: [],
 		top_users: [],
 		cost_trends: [],
+		cost_by_turn_index: [],
+		growth_summary: {},
+		data_quality: {},
 		compression_savings: {},
 		pricing: {}
 	});
@@ -79,12 +85,71 @@
 		}).format(num);
 	}
 
+	function formatPreciseCurrency(num: number): string {
+		return new Intl.NumberFormat('en-US', {
+			style: 'currency',
+			currency: 'USD',
+			minimumFractionDigits: 4,
+			maximumFractionDigits: 6
+		}).format(num || 0);
+	}
+
 	function formatDate(dateString: string): string {
+		if (!dateString) return '-';
 		return new Date(dateString).toLocaleDateString();
 	}
 
 	function formatPercentage(num: number): string {
 		return `${num.toFixed(1)}%`;
+	}
+
+	function formatRatio(num: number | null | undefined): string {
+		if (!num || !Number.isFinite(num)) return '-';
+		return `${num.toFixed(2)}x`;
+	}
+
+	function truncateText(value: string | null | undefined, max = 180): string {
+		const normalized = (value || '').replace(/\s+/g, ' ').trim();
+		if (!normalized) return 'No prompt captured';
+		if (normalized.length <= max) return normalized;
+		return `${normalized.slice(0, Math.max(0, max - 3)).trimEnd()}...`;
+	}
+
+	function sessionHref(sessionId: string): string {
+		return `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId)}`;
+	}
+
+	function growthLabel(shape: string | null | undefined): string {
+		switch (shape) {
+			case 'compounding':
+				return 'Costs are compounding across turns';
+			case 'rising':
+				return 'Costs rise as sessions get longer';
+			case 'stable':
+				return 'Costs are mostly stable by turn';
+			default:
+				return 'Need more turn data';
+		}
+	}
+
+	function attributionLabel(value: string | null | undefined): string {
+		return value === 'inferred' ? 'inferred' : 'exact';
+	}
+
+	function handleTimeframeChange(value: string | number) {
+		if (value === '24h' || value === '7d' || value === '30d') {
+			selectedTimeframe = value;
+		}
+	}
+
+	function maxTurnAverageCost(): number {
+		const rows = Array.isArray(dashboardData.cost_by_turn_index)
+			? dashboardData.cost_by_turn_index
+			: [];
+		return Math.max(
+			...rows.map((turnData: { avg_cost?: number }) => turnData.avg_cost || 0),
+			0.000001
+		);
 	}
 
 	function getCostTrend(): { direction: 'up' | 'down'; value: number } {
@@ -121,33 +186,35 @@
 		icon={DollarSign}
 		showBack={true}
 	>
-		<div slot="actions" class="flex flex-wrap items-center gap-3">
-			<!-- Timeframe -->
-			<Select
-				bind:value={selectedTimeframe}
-				onchange={(value) => (selectedTimeframe = String(value))}
-				size="md"
-				placeholder="Last 7 Days"
-				aria-label="Select time range"
-			>
-				<option value="24h">Last 24 Hours</option>
-				<option value="7d">Last 7 Days</option>
-				<option value="30d">Last 30 Days</option>
-			</Select>
+		{#snippet actions()}
+			<div class="flex flex-wrap items-center gap-3">
+				<!-- Timeframe -->
+				<Select
+					bind:value={selectedTimeframe}
+					onchange={handleTimeframeChange}
+					size="md"
+					placeholder="Last 7 Days"
+					aria-label="Select time range"
+				>
+					<option value="24h">Last 24 Hours</option>
+					<option value="7d">Last 7 Days</option>
+					<option value="30d">Last 30 Days</option>
+				</Select>
 
-			<!-- Refresh -->
-			<Button
-				onclick={loadDashboard}
-				disabled={isLoading}
-				variant="secondary"
-				size="sm"
-				icon={RefreshCw}
-				loading={isLoading}
-				class="pressable"
-			>
-				Refresh
-			</Button>
-		</div>
+				<!-- Refresh -->
+				<Button
+					onclick={loadDashboard}
+					disabled={isLoading}
+					variant="secondary"
+					size="sm"
+					icon={RefreshCw}
+					loading={isLoading}
+					class="pressable"
+				>
+					Refresh
+				</Button>
+			</div>
+		{/snippet}
 	</AdminPageHeader>
 
 	{#if error}
@@ -202,6 +269,10 @@
 						<span class="text-muted-foreground ml-1">from previous</span>
 					</div>
 				{/if}
+				<div class="mt-2 text-xs text-muted-foreground">
+					{formatNumber(dashboardData.overview.session_count || 0)} sessions • avg/session
+					{formatPreciseCurrency(dashboardData.overview.avg_cost_per_session || 0)}
+				</div>
 			</div>
 
 			<!-- Total Tokens -->
@@ -232,39 +303,60 @@
 						<p
 							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
 						>
-							Chat Cost
+							Avg Cost / Turn
 						</p>
 						<p class="text-2xl font-bold text-purple-500 mt-1">
-							{formatCurrency(dashboardData.overview.chat_cost || 0)}
+							{formatPreciseCurrency(dashboardData.overview.avg_cost_per_turn || 0)}
 						</p>
 					</div>
 					<MessageSquare class="h-7 w-7 text-purple-500 shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
-					{formatNumber(dashboardData.overview.chat_tokens || 0)} tokens
+					{formatNumber(dashboardData.overview.turn_count || 0)} attributed turns
 				</div>
 			</div>
 
-			<!-- Agent Cost -->
+			<!-- P95 Turn Cost -->
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak">
 				<div class="flex items-center justify-between">
 					<div class="flex-1 min-w-0">
 						<p
 							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
 						>
-							Agent Cost
+							P95 Turn Cost
 						</p>
 						<p class="text-2xl font-bold text-indigo-500 mt-1">
-							{formatCurrency(dashboardData.overview.agent_cost || 0)}
+							{formatPreciseCurrency(dashboardData.overview.p95_turn_cost || 0)}
 						</p>
 					</div>
 					<Bot class="h-7 w-7 text-indigo-500 shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
-					{formatNumber(dashboardData.overview.agent_tokens || 0)} tokens
+					Max {formatPreciseCurrency(dashboardData.overview.max_turn_cost || 0)}
 				</div>
 			</div>
 		</div>
+
+		{#if dashboardData.data_quality}
+			<div
+				class="mb-6 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground shadow-ink"
+			>
+				<span class="font-medium text-foreground">Attribution:</span>
+				exact {formatPreciseCurrency(
+					dashboardData.data_quality.exact_attribution_cost || 0
+				)}
+				• inferred {formatPreciseCurrency(
+					dashboardData.data_quality.inferred_attribution_cost || 0
+				)}
+				• unattributed {formatPreciseCurrency(
+					dashboardData.data_quality.unattributed_cost || 0
+				)}
+				{#if dashboardData.data_quality.is_truncated}
+					• limited to {formatNumber(dashboardData.data_quality.usage_row_limit || 0)}
+					usage rows
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Input vs Output Costs -->
 		<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
@@ -330,24 +422,74 @@
 				</div>
 			</div>
 
-			<!-- Compression Savings -->
+			<!-- Turn Growth Summary -->
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-grain tx-weak">
-				<h3 class="text-sm font-semibold text-foreground mb-4">Compression Savings</h3>
+				<h3 class="text-sm font-semibold text-foreground mb-4">Turn Cost Growth</h3>
 				<div class="flex items-center justify-center py-6">
-					<Sparkles class="h-12 w-12 text-emerald-500 mr-4 shrink-0" />
+					<BarChart3 class="h-12 w-12 text-emerald-500 mr-4 shrink-0" />
 					<div>
-						<div class="text-2xl font-bold text-emerald-500">
-							{formatCurrency(dashboardData.compression_savings.cost_saved || 0)}
+						<div class="text-lg font-bold text-foreground">
+							{growthLabel(dashboardData.growth_summary.shape)}
 						</div>
-						<div class="text-sm text-muted-foreground mt-1">Saved by compression</div>
+						<div class="text-sm text-muted-foreground mt-1">
+							First turn avg {formatPreciseCurrency(
+								dashboardData.growth_summary.first_turn_avg_cost || 0
+							)}
+							• latest avg {formatPreciseCurrency(
+								dashboardData.growth_summary.last_turn_avg_cost || 0
+							)}
+						</div>
 						<div class="text-xs text-muted-foreground mt-1">
-							{formatNumber(dashboardData.compression_savings.tokens_saved || 0)} tokens
-							saved
+							Avg turn-to-turn ratio {formatRatio(
+								dashboardData.growth_summary.average_growth_ratio
+							)}
+							• max ratio {formatRatio(dashboardData.growth_summary.max_growth_ratio)}
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
+
+		<!-- Cost by Turn Index -->
+		{#if dashboardData.cost_by_turn_index && dashboardData.cost_by_turn_index.length > 0}
+			<div
+				class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak"
+			>
+				<h3 class="text-sm font-semibold text-foreground mb-4">Cost by Turn Number</h3>
+				<div class="space-y-3">
+					{#each dashboardData.cost_by_turn_index.slice(0, 20) as turnData}
+						<div class="grid grid-cols-[4rem_1fr_auto] items-center gap-3">
+							<div class="text-sm font-semibold text-foreground">
+								Turn {turnData.turn_index}
+							</div>
+							<div class="min-w-0">
+								<div class="h-3 rounded bg-muted overflow-hidden">
+									<div
+										class="h-3 rounded bg-emerald-500"
+										style="width: {Math.max(
+											4,
+											((turnData.avg_cost || 0) / maxTurnAverageCost()) * 100
+										)}%"
+									></div>
+								</div>
+								<div class="mt-1 text-xs text-muted-foreground">
+									{formatNumber(turnData.turn_count || 0)} turns • median {formatPreciseCurrency(
+										turnData.median_cost || 0
+									)}
+									• p90 {formatPreciseCurrency(turnData.p90_cost || 0)}
+								</div>
+							</div>
+							<div class="text-right">
+								<div class="text-sm font-bold text-emerald-500">
+									{formatPreciseCurrency(turnData.avg_cost || 0)}
+								</div>
+								<div class="text-xs text-muted-foreground">avg</div>
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
 
 		<!-- Cost by Model -->
 		{#if dashboardData.by_model && dashboardData.by_model.length > 0}
@@ -357,23 +499,101 @@
 				<h3 class="text-sm font-semibold text-foreground mb-4">Cost by Model</h3>
 				<div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
 					{#each dashboardData.by_model as modelData}
-						<div class="flex items-center justify-between">
+						<div class="grid grid-cols-[1fr_auto] gap-3">
 							<div class="flex-1 min-w-0">
 								<div class="text-sm font-medium text-foreground truncate">
 									{modelData.model || 'unknown'}
 								</div>
 								<div class="text-xs text-muted-foreground">
-									{formatNumber(modelData.tokens)} tokens
+									{formatNumber(modelData.turn_count || 0)} turns •
+									{formatNumber(modelData.requests || 0)} calls •
+									{formatNumber(modelData.tokens || 0)} tokens
 								</div>
+								<div class="text-xs text-muted-foreground mt-1">
+									Avg/turn {formatPreciseCurrency(
+										modelData.avg_cost_per_turn || 0
+									)}
+									• p95/turn {formatPreciseCurrency(
+										modelData.p95_cost_per_turn || 0
+									)}
+								</div>
+								{#if modelData.unattributed_cost}
+									<div class="text-xs text-muted-foreground mt-1">
+										Unattributed {formatPreciseCurrency(
+											modelData.unattributed_cost || 0
+										)}
+									</div>
+								{/if}
 							</div>
-							<div class="text-sm font-bold text-blue-500 shrink-0">
-								{formatCurrency(modelData.cost)}
+							<div class="text-right text-sm font-bold text-blue-500 shrink-0">
+								{formatCurrency(modelData.cost || 0)}
 							</div>
 						</div>
 					{/each}
 				</div>
 			</div>
 		{/if}
+
+		<!-- Most Expensive Turns -->
+		<div
+			class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6 tx tx-frame tx-weak"
+		>
+			<h3 class="text-sm font-semibold text-foreground mb-4">
+				Most Expensive Turns & Prompts
+			</h3>
+			{#if dashboardData.top_turns && dashboardData.top_turns.length > 0}
+				<div class="space-y-3 max-h-96 overflow-y-auto scrollbar-thin">
+					{#each dashboardData.top_turns as turn}
+						<a
+							href={turn.details_url || sessionHref(turn.session_id)}
+							class="block rounded-lg bg-muted/50 p-3 transition hover:bg-muted"
+						>
+							<div class="flex items-start justify-between gap-4">
+								<div class="min-w-0 flex-1">
+									<div class="flex flex-wrap items-center gap-2">
+										<span class="text-sm font-semibold text-foreground">
+											Turn {turn.turn_index}
+										</span>
+										<span
+											class="rounded bg-background px-2 py-0.5 text-xs text-muted-foreground"
+										>
+											{attributionLabel(turn.attribution)}
+										</span>
+										<span class="text-xs text-muted-foreground truncate">
+											{turn.primary_model || 'unknown model'}
+										</span>
+									</div>
+									<div class="mt-1 text-sm text-foreground">
+										{truncateText(
+											turn.prompt_preview || turn.request_message,
+											240
+										)}
+									</div>
+									<div class="mt-2 text-xs text-muted-foreground">
+										{turn.user_email} • {turn.session_title} •
+										{formatNumber(turn.prompt_tokens || 0)} prompt tokens •
+										{formatNumber(turn.completion_tokens || 0)} output tokens •
+										{formatNumber(turn.llm_calls || 0)} LLM calls
+									</div>
+								</div>
+								<div class="shrink-0 text-right">
+									<div class="text-sm font-bold text-emerald-500">
+										{formatPreciseCurrency(turn.cost || 0)}
+									</div>
+									<div
+										class="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground"
+									>
+										Drill in <ArrowRight class="h-3 w-3" />
+									</div>
+								</div>
+							</div>
+						</a>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-muted-foreground text-center py-8 text-sm">No turn data found</p>
+			{/if}
+		</div>
 
 		<!-- Top Sessions by Cost -->
 		<div
@@ -383,14 +603,32 @@
 			{#if dashboardData.top_sessions && dashboardData.top_sessions.length > 0}
 				<div class="space-y-3 max-h-64 overflow-y-auto scrollbar-thin">
 					{#each dashboardData.top_sessions as session}
-						<div class="flex items-start justify-between p-3 bg-muted/50 rounded-lg">
+						<a
+							href={session.details_url || sessionHref(session.id)}
+							class="flex items-start justify-between p-3 bg-muted/50 rounded-lg transition hover:bg-muted"
+						>
 							<div class="flex-1 min-w-0">
 								<div class="text-sm font-medium text-foreground truncate">
 									{session.title}
 								</div>
 								<div class="text-xs text-muted-foreground mt-1">
-									{session.user_email} • {formatDate(session.created_at)}
+									{session.user_email} • {formatDate(session.created_at)} •
+									{session.primary_model || 'unknown model'}
 								</div>
+								<div class="text-xs text-muted-foreground mt-1">
+									{formatNumber(session.turn_count || 0)} turns • avg/turn {formatPreciseCurrency(
+										session.avg_cost_per_turn || 0
+									)}
+									• max turn {formatPreciseCurrency(session.max_turn_cost || 0)}
+								</div>
+								{#if session.max_turn_prompt_preview}
+									<div class="text-xs text-muted-foreground mt-2">
+										Expensive prompt: {truncateText(
+											session.max_turn_prompt_preview,
+											140
+										)}
+									</div>
+								{/if}
 							</div>
 							<div class="text-right ml-4 shrink-0">
 								<div class="text-sm font-bold text-emerald-500">
@@ -399,8 +637,13 @@
 								<div class="text-xs text-muted-foreground">
 									{formatNumber(session.tokens)} tokens
 								</div>
+								<div
+									class="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground"
+								>
+									Open <ArrowRight class="h-3 w-3" />
+								</div>
 							</div>
-						</div>
+						</a>
 					{/each}
 				</div>
 			{:else}

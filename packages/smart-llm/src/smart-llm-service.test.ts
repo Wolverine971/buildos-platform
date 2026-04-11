@@ -471,7 +471,7 @@ describe('SmartLLMService model failover', () => {
 					id: 'chatcmpl-fallback',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: 'qwen/qwen3-32b',
+					model: 'qwen/qwen3.5-flash-02-23',
 					choices: [
 						{
 							index: 0,
@@ -506,7 +506,7 @@ describe('SmartLLMService model failover', () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestBodies[0]?.model).toBe('x-ai/grok-4.1-fast');
-		expect(requestBodies[1]?.model).toBe('qwen/qwen3-32b');
+		expect(requestBodies[1]?.model).toBe('qwen/qwen3.5-flash-02-23');
 		expect(events.some((event) => event.type === 'error')).toBe(false);
 		expect(events.some((event) => event.type === 'text')).toBe(true);
 		expect(events.find((event) => event.type === 'done')).toBeDefined();

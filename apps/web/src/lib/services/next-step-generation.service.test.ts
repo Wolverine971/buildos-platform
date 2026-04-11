@@ -30,8 +30,8 @@ describe('next-step generation model fallback', () => {
 							message: 'Provider returned error',
 							code: 429,
 							metadata: {
-								raw: 'deepseek/deepseek-v3.2 is temporarily rate-limited upstream',
-								provider_name: 'DeepInfra'
+								raw: 'qwen/qwen3.5-flash-02-23 is temporarily rate-limited upstream',
+								provider_name: 'Alibaba'
 							}
 						}
 					}),
@@ -47,7 +47,7 @@ describe('next-step generation model fallback', () => {
 			return new Response(
 				JSON.stringify({
 					id: 'chatcmpl-next-step-fallback',
-					model: 'google/gemini-3.1-flash-lite-preview',
+					model: 'deepseek/deepseek-v3.2',
 					choices: [
 						{
 							index: 0,
@@ -89,10 +89,15 @@ describe('next-step generation model fallback', () => {
 			long: 'Draft [[task:task-1|the brief]] to move the project forward.'
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(requestBodies[0]?.model).toBe('deepseek/deepseek-v3.2');
+		expect(requestBodies[0]?.model).toBe('qwen/qwen3.5-flash-02-23');
 		expect(requestBodies[0]?.extra_body).toEqual({
-			models: ['google/gemini-3.1-flash-lite-preview', 'minimax/minimax-m2.5']
+			models: [
+				'deepseek/deepseek-v3.2',
+				'qwen/qwen3.6-plus',
+				'openai/gpt-oss-120b',
+				'openai/gpt-4.1-nano'
+			]
 		});
-		expect(requestBodies[1]?.model).toBe('google/gemini-3.1-flash-lite-preview');
+		expect(requestBodies[1]?.model).toBe('deepseek/deepseek-v3.2');
 	});
 });

@@ -4,9 +4,21 @@ import { redirect } from '@sveltejs/kit';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { logServerError } from '$lib/server/error-tracking';
+import {
+	getSecurityEventLogOptions,
+	getSecurityRequestContext,
+	logSecurityEvent
+} from '$lib/server/security-event-logger';
 
-export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supabase } }) => {
+export const load: PageServerLoad = async ({
+	url,
+	request,
+	platform,
+	locals: { safeGetSession, supabase }
+}) => {
 	const { user } = await safeGetSession();
+	const requestContext = getSecurityRequestContext(request);
+	const securityEventOptions = getSecurityEventLogOptions(platform);
 
 	if (!user) {
 		console.log('No user found, redirecting to login');
@@ -45,13 +57,32 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 	console.log('Calendar OAuth callback received:', {
 		hasCode: !!code,
 		hasError: !!error,
-		state: stateParam,
+		hasState: !!stateParam,
 		userId: user.id
 	});
 
 	// Handle OAuth errors
 	if (error) {
 		console.error('Calendar OAuth error:', error);
+		await logSecurityEvent(
+			{
+				eventType: 'integration.calendar.oauth_failed',
+				category: 'integration',
+				outcome: 'failure',
+				severity: 'low',
+				actorType: 'user',
+				actorUserId: user.id,
+				reason: error,
+				...requestContext,
+				metadata: {
+					provider: 'google_calendar',
+					oauthError: error,
+					stateMatchesUser,
+					resolvedRedirectPath
+				}
+			},
+			securityEventOptions
+		);
 		await logServerError({
 			error: new Error(`Calendar OAuth error: ${error}`),
 			...baseErrorContext,
@@ -82,6 +113,24 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 
 	if (!code) {
 		console.error('No authorization code received');
+		await logSecurityEvent(
+			{
+				eventType: 'integration.calendar.oauth_failed',
+				category: 'integration',
+				outcome: 'failure',
+				severity: 'low',
+				actorType: 'user',
+				actorUserId: user.id,
+				reason: 'missing_authorization_code',
+				...requestContext,
+				metadata: {
+					provider: 'google_calendar',
+					stateMatchesUser,
+					resolvedRedirectPath
+				}
+			},
+			securityEventOptions
+		);
 		await logServerError({
 			error: new Error('No authorization code received'),
 			...baseErrorContext,
@@ -102,8 +151,26 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 	if (!stateMatchesUser) {
 		console.error('State mismatch in calendar OAuth:', {
 			expected: user.id,
-			received: stateUserId || stateParam
+			receivedStateUserId: stateUserId,
+			hasState: !!stateParam
 		});
+		await logSecurityEvent(
+			{
+				eventType: 'integration.calendar.oauth_state_mismatch',
+				category: 'integration',
+				outcome: 'blocked',
+				severity: 'medium',
+				actorType: 'user',
+				actorUserId: user.id,
+				reason: 'state_mismatch',
+				...requestContext,
+				metadata: {
+					provider: 'google_calendar',
+					hasStateUserId: Boolean(stateUserId)
+				}
+			},
+			securityEventOptions
+		);
 		await logServerError({
 			error: new Error('Calendar OAuth state mismatch'),
 			...baseErrorContext,
@@ -112,7 +179,7 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 			metadata: {
 				expectedUserId: user.id,
 				receivedStateUserId: stateUserId,
-				stateParam
+				hasState: Boolean(stateParam)
 			}
 		});
 		throw redirect(
@@ -131,6 +198,23 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 
 	if (!result.success) {
 		console.error('Token exchange failed:', result.error);
+		await logSecurityEvent(
+			{
+				eventType: 'integration.calendar.connect_failed',
+				category: 'integration',
+				outcome: 'failure',
+				severity: 'medium',
+				actorType: 'user',
+				actorUserId: user.id,
+				reason: result.error || 'token_exchange_failed',
+				...requestContext,
+				metadata: {
+					provider: 'google_calendar',
+					stage: 'token_exchange'
+				}
+			},
+			securityEventOptions
+		);
 		await logServerError({
 			error: new Error(result.error || 'Calendar OAuth token exchange failed'),
 			...baseErrorContext,
@@ -158,8 +242,41 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 
 		if (webhookResult.success) {
 			console.log('Webhook registered successfully for user:', user.id);
+			await logSecurityEvent(
+				{
+					eventType: 'integration.calendar.webhook.registered',
+					category: 'integration',
+					outcome: 'success',
+					severity: 'info',
+					actorType: 'user',
+					actorUserId: user.id,
+					...requestContext,
+					metadata: {
+						provider: 'google_calendar',
+						calendarId: 'primary'
+					}
+				},
+				securityEventOptions
+			);
 		} else {
 			console.error('Failed to register webhook:', webhookResult.error);
+			await logSecurityEvent(
+				{
+					eventType: 'integration.calendar.webhook.failed',
+					category: 'integration',
+					outcome: 'failure',
+					severity: 'low',
+					actorType: 'user',
+					actorUserId: user.id,
+					reason: webhookResult.error || 'webhook_registration_failed',
+					...requestContext,
+					metadata: {
+						provider: 'google_calendar',
+						calendarId: 'primary'
+					}
+				},
+				securityEventOptions
+			);
 			await logServerError({
 				error: new Error(webhookResult.error || 'Calendar webhook registration failed'),
 				...baseErrorContext,
@@ -173,6 +290,23 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 		}
 	} catch (webhookError) {
 		console.error('Error registering webhook:', webhookError);
+		await logSecurityEvent(
+			{
+				eventType: 'integration.calendar.webhook.failed',
+				category: 'integration',
+				outcome: 'failure',
+				severity: 'low',
+				actorType: 'user',
+				actorUserId: user.id,
+				reason: webhookError instanceof Error ? webhookError.message : 'webhook_error',
+				...requestContext,
+				metadata: {
+					provider: 'google_calendar',
+					calendarId: 'primary'
+				}
+			},
+			securityEventOptions
+		);
 		await logServerError({
 			error: webhookError,
 			...baseErrorContext,
@@ -184,6 +318,23 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 		});
 		// Continue anyway - webhook is not critical for basic functionality
 	}
+
+	await logSecurityEvent(
+		{
+			eventType: 'integration.calendar.connected',
+			category: 'integration',
+			outcome: 'success',
+			severity: 'info',
+			actorType: 'user',
+			actorUserId: user.id,
+			...requestContext,
+			metadata: {
+				provider: 'google_calendar',
+				resolvedRedirectPath
+			}
+		},
+		securityEventOptions
+	);
 
 	// Success! Redirect back to settings with success message
 	throw redirect(

@@ -33,6 +33,9 @@ export type UsageLogParams = {
 	agentSessionId?: string;
 	agentPlanId?: string;
 	agentExecutionId?: string;
+	turnRunId?: string;
+	streamRunId?: string;
+	clientTurnId?: string;
 	openrouterRequestId?: string;
 	openrouterCacheStatus?: string;
 	rateLimitRemaining?: number;
@@ -86,6 +89,9 @@ export class LLMUsageLogger {
 			const agentExecutionId = this.normalizeOptionalIdForLogging(
 				params.agentExecutionId || this.getMetadataId(params.metadata, 'executionId')
 			);
+			const turnRunId = this.normalizeOptionalIdForLogging(
+				params.turnRunId || this.getMetadataId(params.metadata, 'turnRunId')
+			);
 			const payload = {
 				user_id: sanitizedUserId,
 				operation_type: params.operationType,
@@ -112,6 +118,11 @@ export class LLMUsageLogger {
 				agent_session_id: agentSessionId ?? undefined,
 				agent_plan_id: agentPlanId ?? undefined,
 				agent_execution_id: agentExecutionId ?? undefined,
+				turn_run_id: turnRunId ?? undefined,
+				stream_run_id:
+					params.streamRunId || this.getMetadataId(params.metadata, 'streamRunId'),
+				client_turn_id:
+					params.clientTurnId || this.getMetadataId(params.metadata, 'clientTurnId'),
 				brain_dump_id: params.brainDumpId,
 				task_id: params.taskId,
 				brief_id: params.briefId,

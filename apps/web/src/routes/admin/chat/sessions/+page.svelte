@@ -17,6 +17,7 @@
 		XCircle
 	} from 'lucide-svelte';
 	import { browser } from '$app/environment';
+	import { untrack } from 'svelte';
 	import { replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
@@ -111,8 +112,6 @@
 	const PAGE_SIZE = 25;
 	const CHAT_SESSION_QUERY_PARAM = 'chat_session_id';
 
-	let hasInitializedFromUrl = $state(false);
-	let lastUrlSessionIdWritten = $state<string | null>(null);
 	let isLoadingSessions = $state(true);
 	let sessionsError = $state<string | null>(null);
 	let sessions = $state<SessionListItem[]>([]);
@@ -168,22 +167,14 @@
 	$effect(() => {
 		if (!browser) return;
 		const urlSessionId = $page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
-
-		if (!hasInitializedFromUrl) {
-			selectedSessionId = urlSessionId;
-			lastUrlSessionIdWritten = urlSessionId;
-			hasInitializedFromUrl = true;
-			return;
-		}
-
-		if (urlSessionId !== lastUrlSessionIdWritten && urlSessionId !== selectedSessionId) {
+		const currentSessionId = untrack(() => selectedSessionId);
+		if (urlSessionId !== currentSessionId) {
 			selectedSessionId = urlSessionId;
 		}
 	});
 
 	$effect(() => {
 		if (!browser) return;
-		if (!hasInitializedFromUrl) return;
 		selectedTimeframe;
 		selectedStatus;
 		selectedContextType;
@@ -203,23 +194,6 @@
 			return;
 		}
 		loadSessionDetail(selectedSessionId);
-	});
-
-	$effect(() => {
-		if (!browser || !hasInitializedFromUrl) return;
-		const url = new URL($page.url);
-		const currentSessionId = url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
-		if (currentSessionId === selectedSessionId) {
-			lastUrlSessionIdWritten = currentSessionId;
-			return;
-		}
-		if (selectedSessionId) {
-			url.searchParams.set(CHAT_SESSION_QUERY_PARAM, selectedSessionId);
-		} else {
-			url.searchParams.delete(CHAT_SESSION_QUERY_PARAM);
-		}
-		lastUrlSessionIdWritten = selectedSessionId;
-		replaceState(url.toString(), {});
 	});
 
 	$effect(() => {
@@ -335,8 +309,7 @@
 				if (selectedSessionId && selectedSessionId === requestedSessionId) {
 					return;
 				}
-				selectedSessionId = null;
-				sessionDetail = null;
+				clearSessionDetailSelection();
 				return;
 			}
 
@@ -345,8 +318,7 @@
 				!requestedSessionId &&
 				!sessions.some((session) => session.id === selectedSessionId)
 			) {
-				selectedSessionId = null;
-				sessionDetail = null;
+				clearSessionDetailSelection();
 			}
 		} catch (err) {
 			console.error('Failed loading sessions', err);
@@ -480,8 +452,7 @@
 			};
 			await loadSessions();
 			if (sessionId) {
-				selectedSessionId = sessionId;
-				await loadSessionDetail(sessionId);
+				selectSessionDetail(sessionId);
 			}
 		} catch (err) {
 			console.error('Failed replaying prompt scenario', err);
@@ -497,12 +468,45 @@
 		loadSessions();
 	}
 
-	function openSessionDetail(sessionId: string) {
+	function sessionDetailUrl(sessionId: string | null) {
+		const url = new URL($page.url);
+		if (sessionId) {
+			url.searchParams.set(CHAT_SESSION_QUERY_PARAM, sessionId);
+		} else {
+			url.searchParams.delete(CHAT_SESSION_QUERY_PARAM);
+		}
+		return `${url.pathname}${url.search}${url.hash}`;
+	}
+
+	function syncSessionDetailUrl(sessionId: string | null) {
+		if (!browser) return;
+		const currentSessionId =
+			$page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
+		if (currentSessionId === sessionId) return;
+		try {
+			replaceState(sessionDetailUrl(sessionId), $page.state);
+		} catch (err) {
+			console.error('Failed syncing chat session detail URL', err);
+		}
+	}
+
+	function selectSessionDetail(sessionId: string) {
 		selectedSessionId = sessionId;
+		syncSessionDetailUrl(sessionId);
+	}
+
+	function clearSessionDetailSelection() {
+		selectedSessionId = null;
+		sessionDetail = null;
+		syncSessionDetailUrl(null);
+	}
+
+	function openSessionDetail(sessionId: string) {
+		selectSessionDetail(sessionId);
 	}
 
 	function closeSessionDetail() {
-		selectedSessionId = null;
+		clearSessionDetailSelection();
 	}
 
 	function previousPage() {

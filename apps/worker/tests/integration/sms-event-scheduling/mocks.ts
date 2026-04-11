@@ -191,7 +191,7 @@ export class MockLLMService {
 
 			return {
 				text: response,
-				model: 'deepseek/deepseek-chat',
+				model: 'qwen/qwen3.5-flash-02-23',
 				costUsd: 0.0001,
 				metadata: {
 					tokens: {

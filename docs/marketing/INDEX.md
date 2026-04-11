@@ -277,6 +277,21 @@ Personalized email templates for investor introductions:
     - Full-funnel audit: acquisition, activation, retention, monetization, distribution
     - Loop map, proof-asset inventory, creator wedge assessment, prioritized recommendations
 
+### Lead Generation Operating System
+
+- **[Lead Gen Operating System — April 2026](growth/lead-gen-operating-system-2026-04-10.md)** ⭐ **NEW**
+    - Manual, narrow, reviewable lead-gen system for the solo-founder stage
+    - Defines the Legion agent, campaign layer, and decision rules
+
+### Active Campaign: Author Workflow Teardown (April 10–17, 2026)
+
+- **[Lead Campaigns folder README](growth/lead-campaigns/README.md)** — folder index + conventions
+- **[Campaign brief](growth/lead-campaigns/2026-04-10_author-workflow-teardown_campaign.md)** — pain thesis, CTA, 7-day plan, scorecard
+- **[Execution checklist](growth/lead-campaigns/2026-04-10_author-workflow-teardown_checklist.md)** — day-by-day tasks
+- **[Target list research handoff](growth/lead-campaigns/2026-04-10_author-target-list_handoff.md)** — research brief that defined Buckets A/B/C
+- **[Target list — 20 LinkedIn people](growth/lead-campaigns/2026-04-10_author-target-list.md)** — final list with profile URLs + pain signals
+- **[LinkedIn post drafts](growth/lead-campaigns/2026-04-10_author-workflow-teardown_linkedin-post-drafts.md)** — three hook angles + comment reply guide
+
 ### Strategy Documents
 
 - **[Viral Plan Notes](growth/viral-plan-notes.md)**

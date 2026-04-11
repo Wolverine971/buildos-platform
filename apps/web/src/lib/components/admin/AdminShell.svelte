@@ -11,19 +11,13 @@
 		MessageSquare,
 		Sparkles,
 		GitBranch,
-		Cpu,
 		Workflow,
 		AlertTriangle,
 		ShieldCheck,
-		Bot,
-		Coins,
-		History,
-		Wrench,
 		BellRing,
 		ListTree,
 		MessageCircle,
 		TestTube,
-		BarChart3,
 		Layers,
 		Activity,
 		Database,
@@ -31,6 +25,7 @@
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import AdminSidebar, { type AdminNavGroup } from '$lib/components/admin/AdminSidebar.svelte';
+	import { CHAT_ADMIN_NAV_ITEMS, CHAT_ADMIN_ROOT } from '$lib/components/admin/adminRoutes';
 
 	let {
 		user,
@@ -102,36 +97,10 @@
 				},
 				{
 					title: 'Chat Intelligence',
-					href: '/admin/chat',
+					href: CHAT_ADMIN_ROOT,
 					icon: MessageCircle,
 					description: 'Agent performance',
-					children: [
-						{
-							title: 'Overview',
-							href: '/admin/chat',
-							icon: BarChart3
-						},
-						{
-							title: 'Agents',
-							href: '/admin/chat/agents',
-							icon: Bot
-						},
-						{
-							title: 'Costs',
-							href: '/admin/chat/costs',
-							icon: Coins
-						},
-						{
-							title: 'Sessions',
-							href: '/admin/chat/sessions',
-							icon: History
-						},
-						{
-							title: 'Tools',
-							href: '/admin/chat/tools',
-							icon: Wrench
-						}
-					]
+					children: CHAT_ADMIN_NAV_ITEMS
 				},
 				{
 					title: 'Notifications',
@@ -160,12 +129,6 @@
 							icon: TestTube
 						}
 					]
-				},
-				{
-					title: 'LLM Usage',
-					href: '/admin/llm-usage',
-					icon: Cpu,
-					description: 'Model cost & quality'
 				},
 				{
 					title: 'Ontology',

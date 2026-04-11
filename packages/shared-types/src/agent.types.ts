@@ -719,7 +719,7 @@ export interface Agent {
   name: string;
 
   // Capabilities
-  model_preference: string; // e.g., 'deepseek-chat' (planner), 'deepseek-coder' (executor)
+  model_preference: string; // e.g., 'qwen/qwen3.6-plus' (planner), 'x-ai/grok-4.1-fast' (executor)
   available_tools: Json | null; // Tool names this agent can use
   permissions: AgentPermission; // 'read_only' (executor) or 'read_write' (planner)
 
@@ -926,14 +926,14 @@ export interface ExecutorTaskDefinition {
  */
 export const AGENT_MODEL_PREFERENCES = {
   planner: {
-    primary: 'deepseek/deepseek-chat', // Smart, expensive
-    fallback: 'openai/gpt-4o',
+    primary: 'qwen/qwen3.6-plus',
+    fallback: 'deepseek/deepseek-v3.2',
     temperature: 0.7,
     maxTokens: 2000
   },
   executor: {
-    primary: 'deepseek/deepseek-coder', // Fast, cheap
-    fallback: 'openai/gpt-3.5-turbo',
+    primary: 'x-ai/grok-4.1-fast',
+    fallback: 'openai/gpt-oss-120b',
     temperature: 0.3,
     maxTokens: 1500
   }

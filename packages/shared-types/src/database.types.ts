@@ -4314,6 +4314,7 @@ export type Database = {
           brain_dump_id: string | null
           brief_id: string | null
           chat_session_id: string | null
+          client_turn_id: string | null
           completion_tokens: number
           created_at: string
           error_message: string | null
@@ -4336,11 +4337,13 @@ export type Database = {
           request_started_at: string
           response_time_ms: number
           status: Database["public"]["Enums"]["llm_request_status"]
+          stream_run_id: string | null
           streaming: boolean | null
           task_id: string | null
           temperature: number | null
           total_cost_usd: number
           total_tokens: number
+          turn_run_id: string | null
           user_id: string
         }
         Insert: {
@@ -4350,6 +4353,7 @@ export type Database = {
           brain_dump_id?: string | null
           brief_id?: string | null
           chat_session_id?: string | null
+          client_turn_id?: string | null
           completion_tokens: number
           created_at?: string
           error_message?: string | null
@@ -4372,11 +4376,13 @@ export type Database = {
           request_started_at: string
           response_time_ms: number
           status?: Database["public"]["Enums"]["llm_request_status"]
+          stream_run_id?: string | null
           streaming?: boolean | null
           task_id?: string | null
           temperature?: number | null
           total_cost_usd: number
           total_tokens: number
+          turn_run_id?: string | null
           user_id: string
         }
         Update: {
@@ -4386,6 +4392,7 @@ export type Database = {
           brain_dump_id?: string | null
           brief_id?: string | null
           chat_session_id?: string | null
+          client_turn_id?: string | null
           completion_tokens?: number
           created_at?: string
           error_message?: string | null
@@ -4408,11 +4415,13 @@ export type Database = {
           request_started_at?: string
           response_time_ms?: number
           status?: Database["public"]["Enums"]["llm_request_status"]
+          stream_run_id?: string | null
           streaming?: boolean | null
           task_id?: string | null
           temperature?: number | null
           total_cost_usd?: number
           total_tokens?: number
+          turn_run_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -4477,6 +4486,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_usage_logs_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
             referencedColumns: ["id"]
           },
           {
@@ -9414,6 +9430,84 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "user_migration_stats"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      security_events: {
+        Row: {
+          actor_type: string
+          actor_user_id: string | null
+          category: string
+          created_at: string
+          event_type: string
+          external_agent_caller_id: string | null
+          id: string
+          ip_address: unknown
+          metadata: Json
+          outcome: string
+          reason: string | null
+          request_id: string | null
+          risk_score: number | null
+          session_id: string | null
+          severity: string
+          target_id: string | null
+          target_type: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          actor_type?: string
+          actor_user_id?: string | null
+          category: string
+          created_at?: string
+          event_type: string
+          external_agent_caller_id?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json
+          outcome: string
+          reason?: string | null
+          request_id?: string | null
+          risk_score?: number | null
+          session_id?: string | null
+          severity?: string
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          actor_type?: string
+          actor_user_id?: string | null
+          category?: string
+          created_at?: string
+          event_type?: string
+          external_agent_caller_id?: string | null
+          id?: string
+          ip_address?: unknown
+          metadata?: Json
+          outcome?: string
+          reason?: string | null
+          request_id?: string | null
+          risk_score?: number | null
+          session_id?: string | null
+          severity?: string
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "security_events_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
           },
         ]
       }

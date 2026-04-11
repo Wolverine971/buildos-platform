@@ -11,7 +11,7 @@
 **Relationship Status:** Prospect
 **Audience Quality:** Medium
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-04-11
 **Last Engaged:** Never
 **Source of First Discovery:** `instagram-niche-expansion-research.md` (peer-level AI creator)
 
@@ -26,7 +26,7 @@
 ## Bio Snapshot
 
 - **Bio:** AI tips, "Vibe Coding to 6 Figures"; co-founder @coreli.ai / Inddie
-- **Followers:** ~1.8K
+- **Followers:** ~1,790 (up from 1,756)
 - **Offer / link:** Co-founded AI startup, AI prompt content
 - **Formats:** Reels, carousels
 - **Audience vibe:** Small and quiet — early comments will stand out and likely get noticed by Chloé directly
@@ -47,10 +47,11 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                    | Post Link                                | Action   | Status                  | What We Said / Planned                                  | Outcome       | Source                         |
-| ---------- | ------- | ---------------------------------------- | ---------------------------------------- | -------- | ----------------------- | ------------------------------------------------------- | ------------- | ------------------------------ |
-| 2026-03-27 | Stories | Active Stories                           | N/A                                      | Reviewed | Logged                  | No topic fit for reply                                  | No engagement | 2026-03-27_instagram-warmup.md |
-| 2026-04-05 | Post    | "6 Claude prompts to build your startup" | https://www.instagram.com/p/DWg2GF5ApuQ/ | Queued   | No posting confirmation | Validate-before-you-build plus light product nod option | Unknown       | 2026-04-05_instagram-warmup.md |
+| Date       | Surface | Topic                                    | Post Link                                | Action   | Status                   | What We Said / Planned                                  | Outcome       | Source                         |
+| ---------- | ------- | ---------------------------------------- | ---------------------------------------- | -------- | ------------------------ | ------------------------------------------------------- | ------------- | ------------------------------ |
+| 2026-03-27 | Stories | Active Stories                           | N/A                                      | Reviewed | Logged                   | No topic fit for reply                                  | No engagement | 2026-03-27_instagram-warmup.md |
+| 2026-04-05 | Post    | "6 Claude prompts to build your startup" | https://www.instagram.com/p/DWg2GF5ApuQ/ | Queued   | No posting confirmation  | Validate-before-you-build plus light product nod option | Unknown       | 2026-04-05_instagram-warmup.md |
+| 2026-04-11 | Post    | Claude + Meta data analysis for strategy | https://www.instagram.com/p/DW9iKsEjkkn/ | Queued   | Pending /instagram-reply | Context > raw prompts angle, data-driven strategy       | Pending       | 2026-04-11_instagram-warmup.md |
 
 ## Open Loops
 

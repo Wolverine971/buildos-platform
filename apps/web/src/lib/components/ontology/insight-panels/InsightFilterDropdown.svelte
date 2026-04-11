@@ -6,7 +6,7 @@
 	Follows Inkprint design system with semantic colors and textures.
 -->
 <script lang="ts">
-	import { Filter, Check, ChevronDown, X } from 'lucide-svelte';
+	import { Filter, Check, ChevronDown } from 'lucide-svelte';
 	import { scale } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import type { FilterGroup } from './insight-panel-config';
@@ -144,7 +144,7 @@
 	<!-- Dropdown -->
 	{#if isOpen}
 		<div
-			class="absolute left-0 top-full mt-1 z-50 w-56 max-h-80 overflow-auto
+			class="absolute left-0 top-full mt-1 z-50 flex max-h-80 w-56 flex-col overflow-hidden
 				bg-card border border-border rounded-lg shadow-ink-strong
 				tx tx-frame tx-weak"
 			role="menu"
@@ -158,80 +158,82 @@
 			}}
 		>
 			<!-- Filter Groups -->
-			{#each filterGroups as group}
-				<div class="border-b border-border last:border-b-0">
-					<!-- Group Header -->
-					<div class="flex items-center justify-between px-3 py-2 bg-muted/30">
-						<span class="text-xs font-semibold text-foreground">{group.label}</span>
-						{#if group.multiSelect}
-							<div class="flex items-center gap-1">
-								<button
-									type="button"
-									onclick={() => selectAll(group.id)}
-									class="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-								>
-									All
-								</button>
-								<span class="text-muted-foreground/50">·</span>
-								<button
-									type="button"
-									onclick={() => clearGroup(group.id)}
-									class="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-								>
-									None
-								</button>
-							</div>
-						{/if}
-					</div>
-
-					<!-- Options -->
-					<div class="py-1">
-						{#each group.options as option}
-							{@const selected = isSelected(group.id, option.value)}
-							<button
-								type="button"
-								onclick={() => toggleOption(group.id, option.value)}
-								class="w-full flex items-center gap-2 px-3 py-1.5 text-left
-									hover:bg-muted/50 transition-colors"
-								role="menuitemcheckbox"
-								aria-checked={selected}
-							>
-								<!-- Checkbox -->
-								<div
-									class="w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors
-										{selected ? 'bg-accent border-accent' : 'border-border hover:border-accent/50'}"
-								>
-									{#if selected}
-										<Check class="w-2.5 h-2.5 text-accent-foreground" />
-									{/if}
+			<div class="min-h-0 flex-1 overflow-y-auto">
+				{#each filterGroups as group}
+					<div class="border-b border-border last:border-b-0">
+						<!-- Group Header -->
+						<div class="flex items-center justify-between px-3 py-2 bg-muted/30">
+							<span class="text-xs font-semibold text-foreground">{group.label}</span>
+							{#if group.multiSelect}
+								<div class="flex items-center gap-1">
+									<button
+										type="button"
+										onclick={() => selectAll(group.id)}
+										class="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+									>
+										All
+									</button>
+									<span class="text-muted-foreground/50">·</span>
+									<button
+										type="button"
+										onclick={() => clearGroup(group.id)}
+										class="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+									>
+										None
+									</button>
 								</div>
+							{/if}
+						</div>
 
-								<!-- Icon (if present) -->
-								{#if option.icon}
-									{@const OptionIcon = option.icon}
-									<OptionIcon
-										class="w-3.5 h-3.5 flex-shrink-0 {option.color ||
-											'text-muted-foreground'}"
-									/>
-								{/if}
-
-								<!-- Label -->
-								<span
-									class="text-xs {selected
-										? 'text-foreground font-medium'
-										: 'text-muted-foreground'}"
+						<!-- Options -->
+						<div class="py-1">
+							{#each group.options as option}
+								{@const selected = isSelected(group.id, option.value)}
+								<button
+									type="button"
+									onclick={() => toggleOption(group.id, option.value)}
+									class="w-full flex items-center gap-2 px-3 py-1.5 text-left
+										hover:bg-muted/50 transition-colors"
+									role="menuitemcheckbox"
+									aria-checked={selected}
 								>
-									{option.label}
-								</span>
-							</button>
-						{/each}
+									<!-- Checkbox -->
+									<div
+										class="w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 transition-colors
+											{selected ? 'bg-accent border-accent' : 'border-border hover:border-accent/50'}"
+									>
+										{#if selected}
+											<Check class="w-2.5 h-2.5 text-accent-foreground" />
+										{/if}
+									</div>
+
+									<!-- Icon (if present) -->
+									{#if option.icon}
+										{@const OptionIcon = option.icon}
+										<OptionIcon
+											class="w-3.5 h-3.5 flex-shrink-0 {option.color ||
+												'text-muted-foreground'}"
+										/>
+									{/if}
+
+									<!-- Label -->
+									<span
+										class="text-xs {selected
+											? 'text-foreground font-medium'
+											: 'text-muted-foreground'}"
+									>
+										{option.label}
+									</span>
+								</button>
+							{/each}
+						</div>
 					</div>
-				</div>
-			{/each}
+				{/each}
+			</div>
 
 			<!-- Footer -->
 			<div
-				class="flex items-center justify-between gap-2 px-3 py-2 bg-muted/30 border-t border-border"
+				class="flex shrink-0 items-center justify-between gap-2 px-3 py-2 bg-muted/30 border-t border-border"
 			>
 				<button
 					type="button"

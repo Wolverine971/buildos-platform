@@ -51,7 +51,7 @@ export interface ExecutorCoordinatorOptions {
 	maxConcurrency?: number;
 }
 
-const DEFAULT_EXECUTOR_MODEL = 'deepseek/deepseek-coder';
+const DEFAULT_EXECUTOR_MODEL = 'x-ai/grok-4.1-fast';
 const DEFAULT_EXECUTOR_PROMPT =
 	'You are a BuildOS executor agent focused on completing a single, well-defined task. Use only the provided tools and return concise, structured results.';
 const DEFAULT_EXECUTOR_CONCURRENCY = 5;

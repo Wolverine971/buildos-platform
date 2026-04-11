@@ -5,11 +5,19 @@ import {
 	EMERGENCY_TEXT_FALLBACKS,
 	JSON_MODELS,
 	JSON_PROFILE_MODELS,
+	modelSupportsCapability,
 	TEXT_MODELS,
 	TEXT_PROFILE_MODELS,
 	TOOL_CALLING_MODEL_ORDER,
 	TOOL_CALLING_MODEL_SET
 } from './model-config';
+
+const REQUIREMENT_SELECTION_EXCLUDED_LIMITATIONS = new Set([
+	'alpha-model',
+	'no-active-endpoints',
+	'not-default-production-routing',
+	'route-only'
+]);
 
 export function analyzeComplexity(text: string): 'simple' | 'moderate' | 'complex' {
 	const length = text.length;
@@ -48,7 +56,7 @@ export function selectJSONModels(
 		models = [...JSON_PROFILE_MODELS.balanced];
 	} else if (complexity === 'simple' && profile === 'powerful') {
 		// Can use faster models for simple tasks
-		models = ['deepseek/deepseek-chat', ...models];
+		models = ['openai/gpt-oss-120b', ...models];
 	}
 
 	return models;
@@ -80,7 +88,7 @@ export function selectTextModels(
 		models = [...TEXT_PROFILE_MODELS.balanced];
 	} else if (estimatedLength < 500 && profile === 'quality') {
 		// Can use faster models for short content
-		models = ['deepseek/deepseek-chat', ...models];
+		models = ['openai/gpt-oss-120b', ...models];
 	}
 
 	return models;
@@ -100,8 +108,13 @@ export function selectModelsByRequirements(
 		if (requirements.minQuality && model.smartness < requirements.minQuality) return false;
 		return true;
 	});
-	const stableEligible = eligible.filter((model) => !model.limitations?.includes('alpha-model'));
-	const rankedPool = stableEligible.length > 0 ? stableEligible : eligible;
+	const deployableEligible = eligible.filter(
+		(model) =>
+			!model.limitations?.some((limitation) =>
+				REQUIREMENT_SELECTION_EXCLUDED_LIMITATIONS.has(limitation)
+			)
+	);
+	const rankedPool = deployableEligible.length > 0 ? deployableEligible : eligible;
 
 	// Calculate value score for each model
 	const scored = rankedPool.map((model) => {
@@ -127,32 +140,7 @@ export function selectModelsByRequirements(
 }
 
 export function supportsJsonMode(modelId: string): boolean {
-	// Models that support native JSON mode (response_format: { type: 'json_object' })
-	// Updated 2025-12-23 with latest model support
-	const jsonModeModels = [
-		// OpenAI models - excellent JSON mode support
-		'openai/gpt-4o',
-		'openai/gpt-4o-mini',
-		// DeepSeek models
-		'deepseek/deepseek-chat',
-		'deepseek/deepseek-r1',
-		// Qwen models
-		'qwen/qwen3-32b', // Excellent structured output
-		// Google Gemini models
-		'google/gemini-2.5-flash', // Hybrid reasoning with JSON support
-		'google/gemini-2.5-flash-lite',
-		'google/gemini-2.0-flash-001',
-		// xAI Grok models
-		'x-ai/grok-4.1-fast', // Tool-calling optimized, excellent JSON support
-		// Other models
-		'z-ai/glm-4.7', // Good structured output (updated from glm-4.6)
-		'minimax/minimax-m2.1', // Supports structured outputs
-		'moonshotai/kimi-k2-thinking' // Supports structured outputs (reasoning tokens separate)
-		// Note: Anthropic Claude models do NOT support native JSON mode
-		// They require prompt-based JSON instructions
-	];
-
-	return jsonModeModels.includes(modelId);
+	return modelSupportsCapability(modelId, 'jsonMode');
 }
 
 export function estimateResponseLength(prompt: string): number {

@@ -3,16 +3,25 @@ import { json, redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
 import { logServerError } from '$lib/server/error-tracking';
+import {
+	getSecurityEventLogOptions,
+	getSecurityRequestContext,
+	logSecurityEvent
+} from '$lib/server/security-event-logger';
 
 export const POST: RequestHandler = async ({
 	locals: { supabase, safeGetSession },
 	cookies,
-	url
+	url,
+	platform,
+	request
 }) => {
 	const redirectTo = url.searchParams.get('redirect') || '/auth/login';
 	const isApiCall = url.searchParams.get('api') === 'true';
 	const { user } = await safeGetSession();
 	const userId = user?.id;
+	const requestContext = getSecurityRequestContext(request);
+	const securityEventOptions = getSecurityEventLogOptions(platform);
 
 	try {
 		// Sign out from Supabase
@@ -20,6 +29,25 @@ export const POST: RequestHandler = async ({
 
 		if (error) {
 			console.error('Supabase signOut error:', error);
+			await logSecurityEvent(
+				{
+					eventType: 'auth.logout.failed',
+					category: 'auth',
+					outcome: 'failure',
+					severity: 'low',
+					actorType: userId ? 'user' : 'anonymous',
+					actorUserId: userId ?? null,
+					reason: error.message,
+					...requestContext,
+					metadata: {
+						redirectTo,
+						isApiCall,
+						authProviderErrorCode: error.code,
+						authProviderStatus: error.status
+					}
+				},
+				securityEventOptions
+			);
 			await logServerError({
 				error,
 				endpoint: '/auth/logout',
@@ -74,6 +102,25 @@ export const POST: RequestHandler = async ({
 			}
 		}
 
+		if (!error) {
+			await logSecurityEvent(
+				{
+					eventType: 'auth.logout.succeeded',
+					category: 'auth',
+					outcome: 'success',
+					severity: 'info',
+					actorType: userId ? 'user' : 'anonymous',
+					actorUserId: userId ?? null,
+					...requestContext,
+					metadata: {
+						redirectTo,
+						isApiCall
+					}
+				},
+				securityEventOptions
+			);
+		}
+
 		// For API calls, return JSON response
 		if (isApiCall) {
 			return json({
@@ -92,6 +139,23 @@ export const POST: RequestHandler = async ({
 		}
 
 		console.error('Logout error:', error);
+		await logSecurityEvent(
+			{
+				eventType: 'auth.logout.error',
+				category: 'auth',
+				outcome: 'failure',
+				severity: 'medium',
+				actorType: userId ? 'user' : 'anonymous',
+				actorUserId: userId ?? null,
+				reason: error instanceof Error ? error.message : 'logout_error',
+				...requestContext,
+				metadata: {
+					redirectTo,
+					isApiCall
+				}
+			},
+			securityEventOptions
+		);
 		await logServerError({
 			error,
 			endpoint: '/auth/logout',

@@ -575,7 +575,13 @@ Use the new Claude agent:
 ## Immediate Next Steps
 
 1. Pick the first campaign. My recommendation is the **Author Workflow Teardown** campaign.
-    - Current brief: [Author Workflow Teardown Campaign](./lead-campaigns/2026-04-10_author-workflow-teardown_campaign.md)
+    - **Active campaign suite** (all files, started 2026-04-10):
+        - [Campaign brief](./lead-campaigns/2026-04-10_author-workflow-teardown_campaign.md)
+        - [Execution checklist](./lead-campaigns/2026-04-10_author-workflow-teardown_checklist.md)
+        - [Target list research handoff](./lead-campaigns/2026-04-10_author-target-list_handoff.md)
+        - [Target list -- 20 people on LinkedIn](./lead-campaigns/2026-04-10_author-target-list.md)
+        - [LinkedIn post drafts](./lead-campaigns/2026-04-10_author-workflow-teardown_linkedin-post-drafts.md)
+        - [Lead Campaigns folder README](./lead-campaigns/README.md)
 2. Use Legion to refine and update the first campaign brief as the target list and asset come into focus.
 3. Build a target list small enough to run manually.
 4. Choose one hero asset before posting or outreaching.

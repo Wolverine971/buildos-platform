@@ -316,7 +316,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 				timezone: userTimezone,
 				status: 'scheduled',
 				generated_via: generatedMessage.generatedVia, // 'llm' or 'template'
-				llm_model: generatedMessage.model, // e.g., "deepseek/deepseek-chat"
+				llm_model: generatedMessage.model, // e.g., "qwen/qwen3.5-flash-02-23"
 				generation_cost_usd: generatedMessage.costUsd || null
 			});
 

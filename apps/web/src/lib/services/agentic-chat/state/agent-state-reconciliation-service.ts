@@ -60,6 +60,9 @@ export interface AgentStateReconciliationInput {
 	toolResults: AgentStateToolSummary[];
 	agentState: AgentState;
 	httpReferer?: string;
+	turnRunId?: string | null;
+	streamRunId?: string | null;
+	clientTurnId?: string | null;
 }
 
 interface LLMService {
@@ -71,6 +74,9 @@ interface LLMService {
 		userId?: string;
 		operationType?: string;
 		chatSessionId?: string;
+		turnRunId?: string;
+		streamRunId?: string;
+		clientTurnId?: string;
 		validation?: {
 			retryOnParseError?: boolean;
 			validateSchema?: boolean;
@@ -86,6 +92,9 @@ interface LLMService {
 		userId?: string;
 		operationType?: string;
 		chatSessionId?: string;
+		turnRunId?: string;
+		streamRunId?: string;
+		clientTurnId?: string;
 	}): Promise<string>;
 }
 
@@ -119,6 +128,9 @@ export class AgentStateReconciliationService {
 					userId: input.userId,
 					operationType: 'agent_state_reconciliation',
 					chatSessionId: input.sessionId,
+					turnRunId: input.turnRunId ?? undefined,
+					streamRunId: input.streamRunId ?? undefined,
+					clientTurnId: input.clientTurnId ?? undefined,
 					validation: {
 						retryOnParseError: true,
 						maxRetries: 2,
@@ -133,7 +145,10 @@ export class AgentStateReconciliationService {
 					maxTokens: 800,
 					userId: input.userId,
 					operationType: 'agent_state_reconciliation',
-					chatSessionId: input.sessionId
+					chatSessionId: input.sessionId,
+					turnRunId: input.turnRunId ?? undefined,
+					streamRunId: input.streamRunId ?? undefined,
+					clientTurnId: input.clientTurnId ?? undefined
 				});
 			}
 		} catch (error) {

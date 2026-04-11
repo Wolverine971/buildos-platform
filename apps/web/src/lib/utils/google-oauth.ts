@@ -8,6 +8,7 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { WelcomeSequenceService } from '$lib/server/welcome-sequence.service';
 import { getAuthUserCreatedAt, inferAuthUserJustCreated } from '$lib/utils/auth-profile';
+import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
 
 export interface GoogleOAuthConfig {
 	redirectUri: string;
@@ -71,7 +72,8 @@ function decodeOAuthRedirect(state: string | null): string | null {
 export class GoogleOAuthHandler {
 	constructor(
 		private supabase: SupabaseClient<Database>,
-		private locals?: App.Locals
+		private locals?: App.Locals,
+		private securityEventOptions: SecurityEventLogOptions = {}
 	) {}
 
 	private async ensurePublicUserProfile(
@@ -379,25 +381,58 @@ export class GoogleOAuthHandler {
 		const error = url.searchParams.get('error');
 		const state = url.searchParams.get('state');
 		const stateRedirect = decodeOAuthRedirect(state);
+		const flow = config.isRegistration ? 'register' : 'login';
 
-		console.log(
-			`Google ${config.isRegistration ? 'registration' : 'login'} callback received:`,
-			{
-				hasCode: !!code,
-				hasError: !!error,
-				state
-			}
-		);
+		console.log(`Google ${flow} callback received:`, {
+			hasCode: !!code,
+			hasError: !!error,
+			hasState: !!state
+		});
 
 		// Handle OAuth errors
 		if (error) {
 			console.error('Google OAuth error:', error);
 			const errorMsg = ERROR_DESCRIPTIONS[error] || `Authentication failed: ${error}`;
+			await logSecurityEvent(
+				{
+					eventType: config.isRegistration
+						? 'auth.oauth.register.failed'
+						: 'auth.oauth.login.failed',
+					category: 'auth',
+					outcome: 'failure',
+					severity: 'low',
+					actorType: 'anonymous',
+					reason: error,
+					metadata: {
+						provider: 'google',
+						flow,
+						oauthError: error
+					}
+				},
+				this.securityEventOptions
+			);
 			throw redirect(303, `${config.redirectPath}?error=${encodeURIComponent(errorMsg)}`);
 		}
 
 		if (!code) {
 			console.error('No authorization code received');
+			await logSecurityEvent(
+				{
+					eventType: config.isRegistration
+						? 'auth.oauth.register.failed'
+						: 'auth.oauth.login.failed',
+					category: 'auth',
+					outcome: 'failure',
+					severity: 'low',
+					actorType: 'anonymous',
+					reason: 'missing_authorization_code',
+					metadata: {
+						provider: 'google',
+						flow
+					}
+				},
+				this.securityEventOptions
+			);
 			throw redirect(
 				303,
 				`${config.redirectPath}?error=${encodeURIComponent('No authorization code received')}`
@@ -418,6 +453,24 @@ export class GoogleOAuthHandler {
 				error instanceof GoogleOAuthError
 					? error.message
 					: 'Failed to exchange authorization code';
+			await logSecurityEvent(
+				{
+					eventType: config.isRegistration
+						? 'auth.oauth.register.failed'
+						: 'auth.oauth.login.failed',
+					category: 'auth',
+					outcome: 'failure',
+					severity: 'medium',
+					actorType: 'anonymous',
+					reason: errorMessage,
+					metadata: {
+						provider: 'google',
+						flow,
+						stage: 'token_exchange'
+					}
+				},
+				this.securityEventOptions
+			);
 			throw redirect(303, `${config.redirectPath}?error=${encodeURIComponent(errorMessage)}`);
 		}
 
@@ -435,12 +488,47 @@ export class GoogleOAuthHandler {
 				error instanceof GoogleOAuthError
 					? error.message
 					: 'Authentication failed. Please try again.';
+			await logSecurityEvent(
+				{
+					eventType: config.isRegistration
+						? 'auth.oauth.register.failed'
+						: 'auth.oauth.login.failed',
+					category: 'auth',
+					outcome: 'failure',
+					severity: 'medium',
+					actorType: 'anonymous',
+					reason: errorMessage,
+					metadata: {
+						provider: 'google',
+						flow,
+						stage: 'supabase_auth'
+					}
+				},
+				this.securityEventOptions
+			);
 			throw redirect(303, `${config.redirectPath}?error=${encodeURIComponent(errorMessage)}`);
 		}
 
 		// Step 3: Handle registration-specific logic
 		if (config.isRegistration && !authResult.isNewUser) {
 			await this.clearAuthSession();
+			await logSecurityEvent(
+				{
+					eventType: 'auth.oauth.register_denied',
+					category: 'auth',
+					outcome: 'denied',
+					severity: 'low',
+					actorType: 'user',
+					actorUserId: authResult.user?.id ?? null,
+					reason: 'account_already_exists',
+					metadata: {
+						provider: 'google',
+						flow,
+						isNewUser: authResult.isNewUser
+					}
+				},
+				this.securityEventOptions
+			);
 			throw redirect(
 				303,
 				`/auth/login?message=${encodeURIComponent('Account already exists. Please sign in instead.')}`
@@ -541,6 +629,26 @@ export class GoogleOAuthHandler {
 				);
 			}
 		}
+
+		await logSecurityEvent(
+			{
+				eventType: config.isRegistration
+					? 'auth.oauth.register.succeeded'
+					: 'auth.oauth.login.succeeded',
+				category: 'auth',
+				outcome: 'success',
+				severity: 'info',
+				actorType: 'user',
+				actorUserId: authResult.user?.id ?? null,
+				metadata: {
+					provider: 'google',
+					flow,
+					isNewUser: authResult.isNewUser,
+					redirectPath: redirectUrl.pathname
+				}
+			},
+			this.securityEventOptions
+		);
 
 		console.log('Redirecting to:', redirectUrl.pathname + redirectUrl.search);
 		throw redirect(303, redirectUrl.pathname + redirectUrl.search);

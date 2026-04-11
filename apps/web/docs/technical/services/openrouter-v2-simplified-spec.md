@@ -171,13 +171,16 @@ Initial lane lists should be short (max 4 per lane) and reviewed weekly.
 
 Example initial config (candidate set, to validate in staging):
 
-- `text`: `google/gemini-3-flash-preview`, `openai/gpt-4o-mini`, `x-ai/grok-4.1-fast`
-- `json`: `openai/gpt-4o-mini`, `deepseek/deepseek-chat`, `google/gemini-3-flash-preview`
-- `tool_calling`: `deepseek/deepseek-v3.1-terminus:exacto`, `qwen/qwen3-coder:exacto`, `moonshotai/kimi-k2-0905:exacto`, `openai/gpt-4o-mini`
+- `text`: `qwen/qwen3.5-flash-02-23`, `google/gemini-3.1-flash-lite-preview`, `openai/gpt-4.1-nano`
+- `json`: `qwen/qwen3.6-plus`, `deepseek/deepseek-v3.2`, `openai/gpt-oss-120b`, `openai/gpt-4.1-nano`
+- `tool_calling`: `x-ai/grok-4.1-fast`, `minimax/minimax-m2.7`, `qwen/qwen3.6-plus`, `openai/gpt-oss-120b`
+- `tool_calling` with Exacto enabled: `deepseek/deepseek-v3.1-terminus:exacto`, `qwen/qwen3-coder:exacto`, `moonshotai/kimi-k2-0905:exacto`, `openai/gpt-4o-mini`
 
 Notes:
 
 - Exacto model IDs above come directly from OpenRouter Exacto docs examples.
+- Free aliases are not added to the registry until OpenRouter reports an active endpoint.
+- `nvidia/nemotron-3-super-120b-a12b:free` is available in the shared model registry for explicit free-tier long-context use, but default lanes and generic fallbacks avoid free-tier availability risk.
 - Use `models` fallback list in each request. Primary model is first; fallbacks follow.
 - Keep lane list editable by env override without code deploy.
 

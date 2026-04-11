@@ -2440,7 +2440,7 @@ export class AgentChatOrchestrator {
 		const agentData = {
 			type: 'planner' as const,
 			name: `Planner-${request.sessionId.slice(0, 8)}`,
-			model_preference: 'deepseek/deepseek-chat',
+			model_preference: 'qwen/qwen3.6-plus',
 			available_tools: plannerContext.availableTools.map((tool) => this.getToolName(tool)),
 			permissions: 'read_write' as const,
 			system_prompt: plannerContext.systemPrompt,

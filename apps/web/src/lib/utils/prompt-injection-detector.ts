@@ -2,6 +2,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { logSecurityEvent } from '$lib/server/security-event-logger';
 
 export type SuspiciousSeverity = 'low' | 'medium' | 'high';
 export type PatternCategory =
@@ -234,7 +235,7 @@ export class PromptInjectionDetector {
 
 	/**
 	 * Stage 2: Validate with LLM using secure prompt structure
-	 * Uses cheap, fast model (gpt-4o-mini or deepseek-chat)
+	 * Uses cheap, fast model (GPT-4o Mini or Qwen 3.5 Flash)
 	 */
 	async validateWithLLM(
 		content: string,
@@ -474,6 +475,40 @@ Analyze the content above and respond with valid JSON only.`;
 			} else {
 				console.log(`[Security] Logged ${eventType} for user ${userId}`);
 			}
+
+			await logSecurityEvent({
+				eventType: wasBlocked
+					? 'detection.prompt_injection.blocked'
+					: llmResult?.isMalicious
+						? 'detection.prompt_injection.detected'
+						: 'detection.prompt_injection.false_positive',
+				category: 'detection',
+				outcome: wasBlocked ? 'blocked' : 'allowed',
+				severity: securityEventSeverityForPatterns(patterns, wasBlocked),
+				actorType: 'user',
+				actorUserId: userId,
+				riskScore: wasBlocked ? 90 : llmResult?.isMalicious ? 70 : 15,
+				reason: llmResult?.reason ?? null,
+				metadata: {
+					...metadata,
+					legacyEventType: eventType,
+					contentLength: content.length,
+					patterns: patterns.map((pattern) => ({
+						pattern: pattern.pattern,
+						severity: pattern.severity,
+						category: pattern.category,
+						position: pattern.position
+					})),
+					llmValidation: llmResult
+						? {
+								isMalicious: llmResult.isMalicious,
+								confidence: llmResult.confidence,
+								shouldBlock: llmResult.shouldBlock,
+								matchedPatternCount: llmResult.matchedPatterns.length
+							}
+						: null
+				}
+			});
 		} catch (error) {
 			console.error('[Security] Exception logging security event:', error);
 		}
@@ -508,8 +543,36 @@ Analyze the content above and respond with valid JSON only.`;
 			if (error) {
 				console.error('[Security] Failed to log rate limit event:', error);
 			}
+
+			await logSecurityEvent({
+				eventType: 'detection.rate_limit.exceeded',
+				category: 'detection',
+				outcome: 'blocked',
+				severity: 'medium',
+				actorType: 'user',
+				actorUserId: userId,
+				riskScore: 90,
+				reason: 'rate_limit_exceeded',
+				metadata: {
+					...metadata,
+					attemptsInWindow,
+					rateLimit: {
+						maxAttempts: PromptInjectionDetector.RATE_LIMIT_MAX_ATTEMPTS,
+						windowMs: PromptInjectionDetector.RATE_LIMIT_WINDOW_MS
+					}
+				}
+			});
 		} catch (error) {
 			console.error('[Security] Exception logging rate limit event:', error);
 		}
 	}
+}
+
+function securityEventSeverityForPatterns(
+	patterns: SuspiciousPattern[],
+	wasBlocked: boolean
+): 'low' | 'medium' | 'high' {
+	if (wasBlocked || patterns.some((pattern) => pattern.severity === 'high')) return 'high';
+	if (patterns.some((pattern) => pattern.severity === 'medium')) return 'medium';
+	return 'low';
 }

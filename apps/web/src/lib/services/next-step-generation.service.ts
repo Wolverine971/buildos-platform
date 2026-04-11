@@ -18,7 +18,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { parseOpenRouterErrorMetadata } from '@buildos/smart-llm';
+import { parseOpenRouterErrorMetadata, PROJECT_NEXT_STEP_MODELS } from '@buildos/smart-llm';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { createEntityReference } from '$lib/utils/entity-reference-parser';
 
@@ -155,11 +155,7 @@ Rules:
 - If all tasks are done, suggest reviewing goals or celebrating progress
 - Be encouraging but direct`;
 
-const NEXT_STEP_MODEL_CANDIDATES = [
-	'deepseek/deepseek-v3.2',
-	'google/gemini-3.1-flash-lite-preview',
-	'minimax/minimax-m2.5'
-] as const;
+const NEXT_STEP_MODEL_CANDIDATES = PROJECT_NEXT_STEP_MODELS;
 
 function createNextStepLLMClient(): NextStepLLMClient {
 	return new OpenRouterV2Service({

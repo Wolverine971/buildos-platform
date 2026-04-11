@@ -7,37 +7,12 @@ import {
 } from '$lib/server/auth-user-profile';
 import { ApiResponse, ErrorCode, HttpStatus } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
-
-function getEmailDomain(value: string): string | null {
-	const trimmed = value.trim().toLowerCase();
-	const atIndex = trimmed.lastIndexOf('@');
-	if (atIndex <= 0 || atIndex === trimmed.length - 1) return null;
-	return trimmed.slice(atIndex + 1);
-}
-
-function getClientIp(headers: Headers): string | null {
-	const cfConnectingIp = headers.get('cf-connecting-ip')?.trim();
-	if (cfConnectingIp) return cfConnectingIp;
-
-	const realIp = headers.get('x-real-ip')?.trim();
-	if (realIp) return realIp;
-
-	const forwardedFor = headers.get('x-forwarded-for');
-	if (!forwardedFor) return null;
-
-	const [firstIp] = forwardedFor.split(',');
-	const candidate = firstIp?.trim();
-	return candidate || null;
-}
-
-function getRequestId(headers: Headers): string | undefined {
-	return (
-		headers.get('x-request-id') ||
-		headers.get('x-vercel-id') ||
-		headers.get('x-amzn-trace-id') ||
-		undefined
-	);
-}
+import {
+	getEmailDomain,
+	getSecurityEventLogOptions,
+	getSecurityRequestContext,
+	logSecurityEvent
+} from '$lib/server/security-event-logger';
 
 function isEmailNotConfirmedError(error: { message?: string } | null | undefined): boolean {
 	const message = (error?.message || '').toLowerCase();
@@ -51,7 +26,7 @@ function buildFallbackUser(authUser: User) {
 	};
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, platform, locals }) => {
 	const { supabase } = locals;
 	let payload: { email?: string; password?: string };
 
@@ -87,15 +62,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const normalizedEmail = email.trim().toLowerCase();
 	const emailDomain = getEmailDomain(normalizedEmail);
-	const requestId = getRequestId(request.headers);
-	const clientIp = getClientIp(request.headers);
-	const clientUserAgent = request.headers.get('user-agent') || null;
+	const requestContext = getSecurityRequestContext(request);
+	const securityEventOptions = getSecurityEventLogOptions(platform);
+	const requestId = requestContext.requestId ?? undefined;
 	const attemptMetadata = {
-		attemptedEmail: normalizedEmail,
 		emailDomain,
-		flow: 'password',
-		clientIp,
-		clientUserAgent
+		flow: 'password'
 	};
 
 	try {
@@ -109,6 +81,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (error) {
 			const emailNotConfirmed = isEmailNotConfirmedError(error);
+			await logSecurityEvent(
+				{
+					eventType: 'auth.login.failed',
+					category: 'auth',
+					outcome: 'failure',
+					severity: emailNotConfirmed ? 'low' : 'medium',
+					actorType: 'anonymous',
+					reason: emailNotConfirmed ? 'email_not_confirmed' : 'login_failed',
+					...requestContext,
+					metadata: {
+						...attemptMetadata,
+						authProviderErrorCode: error.code,
+						authProviderStatus: error.status
+					}
+				},
+				securityEventOptions
+			);
 			await errorLogger.logError(
 				error,
 				{
@@ -142,6 +131,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (!data.session) {
+			await logSecurityEvent(
+				{
+					eventType: 'auth.login.failed',
+					category: 'auth',
+					outcome: 'failure',
+					severity: 'medium',
+					actorType: 'anonymous',
+					reason: 'session_missing',
+					...requestContext,
+					metadata: attemptMetadata
+				},
+				securityEventOptions
+			);
 			await errorLogger.logError(
 				new Error('Login failed - no session created'),
 				{
@@ -183,6 +185,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					}
 				},
 				'warning'
+			);
+			await logSecurityEvent(
+				{
+					eventType: 'auth.session.set_failed',
+					category: 'auth',
+					outcome: 'failure',
+					severity: 'low',
+					actorType: 'user',
+					actorUserId: data.user?.id ?? null,
+					reason: 'set_session_failed',
+					...requestContext,
+					metadata: {
+						...attemptMetadata,
+						authProviderErrorCode: setSessionError.code,
+						authProviderStatus: setSessionError.status
+					}
+				},
+				securityEventOptions
 			);
 		}
 
@@ -242,6 +262,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			locals.user = profileUser as any;
 		}
 
+		await logSecurityEvent(
+			{
+				eventType: 'auth.login.succeeded',
+				category: 'auth',
+				outcome: 'success',
+				severity: 'info',
+				actorType: 'user',
+				actorUserId: data.user?.id ?? null,
+				...requestContext,
+				metadata: {
+					...attemptMetadata,
+					profileHydrated: Boolean(profileUser)
+				}
+			},
+			securityEventOptions
+		);
+
 		// Return success with user data
 		return ApiResponse.success(
 			{
@@ -251,6 +288,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		);
 	} catch (err: any) {
 		console.error('Server login error:', err);
+		await logSecurityEvent(
+			{
+				eventType: 'auth.login.error',
+				category: 'auth',
+				outcome: 'failure',
+				severity: 'medium',
+				actorType: 'anonymous',
+				reason: err instanceof Error ? err.message : 'login_error',
+				...requestContext,
+				metadata: attemptMetadata
+			},
+			securityEventOptions
+		);
 		const errorLogger = ErrorLoggerService.getInstance(supabase);
 		await errorLogger.logError(err, {
 			endpoint: '/api/auth/login',

@@ -127,10 +127,12 @@ const DEFAULT_AGENT_CHAT_USAGE = {
 	totalSessions: 0,
 	totalMessages: 0,
 	totalTokens: 0,
+	uniqueUsers: 0,
 	avgMessagesPerSession: 0,
 	avgTokensPerSession: 0,
 	plannerSessions: 0,
 	executorSessions: 0,
+	toolSessions: 0,
 	failedSessions: 0,
 	failureRate: 0
 };
@@ -202,6 +204,179 @@ const coerceNumber = (value: unknown, fallback: number = 0): number => {
 	return fallback;
 };
 
+type CurrentChatSessionAnalyticsRow = {
+	id: string | null;
+	user_id: string | null;
+	status: string | null;
+	message_count?: number | string | null;
+	total_tokens_used?: number | string | null;
+	tool_call_count?: number | string | null;
+};
+
+type CurrentChatMessageAnalyticsRow = {
+	session_id: string | null;
+	user_id: string | null;
+	total_tokens?: number | string | null;
+	error_message?: string | null;
+};
+
+type CurrentChatUsageAnalyticsRow = {
+	chat_session_id: string | null;
+	user_id: string | null;
+	total_tokens?: number | string | null;
+	status?: string | null;
+	error_message?: string | null;
+	operation_type?: string | null;
+};
+
+type CurrentChatToolAnalyticsRow = {
+	session_id: string | null;
+	success: boolean | null;
+};
+
+const PAGE_SIZE = 1000;
+const MAX_ADMIN_ANALYTICS_ROWS = 50_000;
+
+async function fetchPaginatedRows<T>(
+	buildQuery: (from: number, to: number) => unknown,
+	label: string
+): Promise<T[]> {
+	const rows: T[] = [];
+
+	for (let offset = 0; offset < MAX_ADMIN_ANALYTICS_ROWS; offset += PAGE_SIZE) {
+		const { data, error } = (await buildQuery(offset, offset + PAGE_SIZE - 1)) as {
+			data: T[] | null;
+			error: any;
+		};
+		if (error) {
+			throw new Error(error.message || `Failed to load ${label}`);
+		}
+
+		const page = data ?? [];
+		rows.push(...page);
+		if (page.length < PAGE_SIZE) {
+			break;
+		}
+	}
+
+	if (rows.length >= MAX_ADMIN_ANALYTICS_ROWS) {
+		console.warn(
+			`[Admin Analytics] ${label} reached ${MAX_ADMIN_ANALYTICS_ROWS} row cap; dashboard aggregate may be partial`
+		);
+	}
+
+	return rows;
+}
+
+export function buildAgentChatUsage(params: {
+	sessions: CurrentChatSessionAnalyticsRow[];
+	messages: CurrentChatMessageAnalyticsRow[];
+	usageLogs: CurrentChatUsageAnalyticsRow[];
+	toolExecutions: CurrentChatToolAnalyticsRow[];
+}): typeof DEFAULT_AGENT_CHAT_USAGE {
+	const sessionIds = new Set<string>();
+	const userIds = new Set<string>();
+	const plannerSessionIds = new Set<string>();
+	const executorSessionIds = new Set<string>();
+	const toolSessionIds = new Set<string>();
+	const failedSessionIds = new Set<string>();
+
+	for (const session of params.sessions) {
+		if (!session.id) continue;
+		sessionIds.add(session.id);
+		if (session.user_id) {
+			userIds.add(session.user_id);
+		}
+
+		const status = (session.status || '').toLowerCase();
+		if (status === 'failed' || status === 'error') {
+			failedSessionIds.add(session.id);
+		}
+
+		if (coerceNumber(session.tool_call_count, 0) > 0) {
+			toolSessionIds.add(session.id);
+			executorSessionIds.add(session.id);
+		}
+	}
+
+	for (const message of params.messages) {
+		if (message.session_id) {
+			sessionIds.add(message.session_id);
+			if (message.error_message) {
+				failedSessionIds.add(message.session_id);
+			}
+		}
+		if (message.user_id) {
+			userIds.add(message.user_id);
+		}
+	}
+
+	for (const usage of params.usageLogs) {
+		if (usage.chat_session_id) {
+			sessionIds.add(usage.chat_session_id);
+			const operation = (usage.operation_type || '').toLowerCase();
+			if (operation.includes('planner') || operation.startsWith('plan_')) {
+				plannerSessionIds.add(usage.chat_session_id);
+			}
+			if (
+				operation.includes('executor') ||
+				operation.includes('tool') ||
+				operation.includes('gateway')
+			) {
+				executorSessionIds.add(usage.chat_session_id);
+			}
+			if ((usage.status && usage.status !== 'success') || usage.error_message) {
+				failedSessionIds.add(usage.chat_session_id);
+			}
+		}
+		if (usage.user_id) {
+			userIds.add(usage.user_id);
+		}
+	}
+
+	for (const execution of params.toolExecutions) {
+		if (!execution.session_id) continue;
+		sessionIds.add(execution.session_id);
+		toolSessionIds.add(execution.session_id);
+		executorSessionIds.add(execution.session_id);
+		if (execution.success === false) {
+			failedSessionIds.add(execution.session_id);
+		}
+	}
+
+	const totalSessions = sessionIds.size;
+	const totalMessages = params.messages.length;
+	const usageTokenTotal = params.usageLogs.reduce(
+		(sum, row) => sum + coerceNumber(row.total_tokens, 0),
+		0
+	);
+	const messageTokenTotal = params.messages.reduce(
+		(sum, row) => sum + coerceNumber(row.total_tokens, 0),
+		0
+	);
+	const totalTokens = usageTokenTotal > 0 ? usageTokenTotal : messageTokenTotal;
+	const failedSessions = failedSessionIds.size;
+	const avgMessagesPerSession =
+		totalSessions > 0 ? Math.round((totalMessages / totalSessions) * 100) / 100 : 0;
+	const avgTokensPerSession =
+		totalSessions > 0 ? Math.round((totalTokens / totalSessions) * 100) / 100 : 0;
+	const failureRate = totalSessions > 0 ? (failedSessions / totalSessions) * 100 : 0;
+
+	return {
+		totalSessions,
+		totalMessages,
+		totalTokens,
+		uniqueUsers: userIds.size,
+		avgMessagesPerSession,
+		avgTokensPerSession,
+		plannerSessions: plannerSessionIds.size,
+		executorSessions: executorSessionIds.size,
+		toolSessions: toolSessionIds.size,
+		failedSessions,
+		failureRate
+	};
+}
+
 const normalizeNumericRecord = <T extends Record<string, number>>(
 	defaults: T,
 	value: unknown
@@ -242,6 +417,17 @@ function buildDateTimeRange(range: DateRange) {
 	return {
 		startDateTime: `${range.startDate}T00:00:00Z`,
 		endDateTime: `${range.endDate}T23:59:59Z`
+	};
+}
+
+function resolveTrailingDateTimeRange(timeframe: AnalyticsTimeframe) {
+	const days = timeframe === '7d' ? 7 : timeframe === '90d' ? 90 : 30;
+	const endDate = new Date();
+	const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+
+	return {
+		startDateTime: startDate.toISOString(),
+		endDateTime: endDate.toISOString()
 	};
 }
 
@@ -1150,77 +1336,66 @@ export async function getAgentChatUsage(
 	client: TypedSupabaseClient,
 	timeframe: AnalyticsTimeframe
 ): Promise<typeof DEFAULT_AGENT_CHAT_USAGE> {
-	// Align filtering with existing admin chat analytics endpoints
-	const endDate = new Date();
-	const startDate = new Date();
-	switch (timeframe) {
-		case '7d':
-			startDate.setDate(startDate.getDate() - 7);
-			break;
-		case '90d':
-			startDate.setDate(startDate.getDate() - 90);
-			break;
-		default:
-			startDate.setDate(startDate.getDate() - 30);
-	}
+	const { startDateTime, endDateTime } = resolveTrailingDateTimeRange(timeframe);
 
-	const thirtyDaysAgo = new Date();
-	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-	const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+	const [sessions, messages, usageLogs, toolExecutions] = await Promise.all([
+		fetchPaginatedRows<CurrentChatSessionAnalyticsRow>(
+			(from, to) =>
+				client
+					.from('chat_sessions')
+					.select(
+						'id, user_id, status, message_count, total_tokens_used, tool_call_count, created_at, last_message_at'
+					)
+					.or(`created_at.gte.${startDateTime},last_message_at.gte.${startDateTime}`)
+					.lte('created_at', endDateTime)
+					.order('created_at', { ascending: false })
+					.range(from, to),
+			'current chat sessions'
+		),
+		fetchPaginatedRows<CurrentChatMessageAnalyticsRow>(
+			(from, to) =>
+				client
+					.from('chat_messages')
+					.select('session_id, user_id, total_tokens, error_message, created_at')
+					.gte('created_at', startDateTime)
+					.lte('created_at', endDateTime)
+					.order('created_at', { ascending: false })
+					.range(from, to),
+			'current chat messages'
+		),
+		fetchPaginatedRows<CurrentChatUsageAnalyticsRow>(
+			(from, to) =>
+				client
+					.from('llm_usage_logs')
+					.select(
+						'chat_session_id, user_id, total_tokens, status, error_message, operation_type, created_at'
+					)
+					.not('chat_session_id', 'is', null)
+					.gte('created_at', startDateTime)
+					.lte('created_at', endDateTime)
+					.order('created_at', { ascending: false })
+					.range(from, to),
+			'current chat usage logs'
+		),
+		fetchPaginatedRows<CurrentChatToolAnalyticsRow>(
+			(from, to) =>
+				client
+					.from('chat_tool_executions')
+					.select('session_id, success, created_at')
+					.gte('created_at', startDateTime)
+					.lte('created_at', endDateTime)
+					.order('created_at', { ascending: false })
+					.range(from, to),
+			'current chat tool executions'
+		)
+	]);
 
-	const { data: sessions, error: sessionsError } = await client
-		.from('agent_chat_sessions')
-		.select('id, session_type, status, message_count, created_at')
-		.gte('created_at', startDate.toISOString());
-	// .lte('created_at', endDate.toISOString());
-
-	if (sessionsError) {
-		throw new Error(sessionsError.message);
-	}
-
-	const sessionIds = sessions?.map((s) => s.id) ?? [];
-
-	const { data: messages, error: messagesError } =
-		sessionIds.length > 0
-			? await client
-					.from('agent_chat_messages')
-					.select('agent_session_id, tokens_used')
-					.in('agent_session_id', sessionIds)
-			: { data: [], error: null };
-
-	if (messagesError) {
-		throw new Error(messagesError.message);
-	}
-
-	const totalSessions = sessions?.length || 0;
-	const totalMessages = messages?.length || 0;
-	const totalTokens =
-		messages?.reduce((sum, message) => sum + coerceNumber(message.tokens_used, 0), 0) || 0;
-
-	const plannerSessions =
-		sessions?.filter((s) => (s.session_type || '').includes('planner')).length || 0;
-	const executorSessions =
-		sessions?.filter((s) => (s.session_type || '').includes('executor')).length || 0;
-	const failedSessions =
-		sessions?.filter((s) => (s.status || '').toLowerCase() === 'failed').length || 0;
-
-	const avgMessagesPerSession =
-		totalSessions > 0 ? Math.round((totalMessages / totalSessions) * 100) / 100 : 0;
-	const avgTokensPerSession =
-		totalSessions > 0 ? Math.round((totalTokens / totalSessions) * 100) / 100 : 0;
-	const failureRate = totalSessions > 0 ? (failedSessions / totalSessions) * 100 : 0;
-
-	return {
-		totalSessions,
-		totalMessages,
-		totalTokens,
-		avgMessagesPerSession,
-		avgTokensPerSession,
-		plannerSessions,
-		executorSessions,
-		failedSessions,
-		failureRate
-	};
+	return buildAgentChatUsage({
+		sessions,
+		messages,
+		usageLogs,
+		toolExecutions
+	});
 }
 
 export async function getBriefDeliveryStats(

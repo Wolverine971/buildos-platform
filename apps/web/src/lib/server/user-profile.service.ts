@@ -2,6 +2,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
 import { createLogger } from '$lib/utils/logger';
+import { logSecurityEvent } from '$lib/server/security-event-logger';
 
 const logger = createLogger('UserProfileService');
 
@@ -768,5 +769,24 @@ export async function insertProfileAuditEvent(params: {
 			accessType,
 			error
 		});
+		return;
 	}
+
+	await logSecurityEvent({
+		eventType: `access.profile.${accessType}`,
+		category: 'access',
+		outcome: 'success',
+		severity: accessType === 'prompt_injection' ? 'medium' : 'info',
+		actorType: 'system',
+		targetType: 'user_profile',
+		targetId: profileId,
+		reason: reason ?? null,
+		metadata: {
+			profileId,
+			actorId,
+			accessType,
+			contextType,
+			documentCount: Array.isArray(documentIds) ? documentIds.length : 0
+		}
+	});
 }

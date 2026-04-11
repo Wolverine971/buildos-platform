@@ -17,6 +17,7 @@
 		"gen:types": "node --import tsx scripts/generate-types.ts",
 		"gen:schema": "node --import tsx scripts/extract-database-schema.ts",
 		"gen:web": "pnpm --filter=web gen:web",
+		"gen": "node --import tsx scripts/run-gen.ts",
 		"gen:all": "pnpm run gen:types -- --allow-stale && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm run label-paths && pnpm format && pnpm typecheck",
 		"label-paths": "node --import tsx scripts/labelFilePaths.ts"
 	},

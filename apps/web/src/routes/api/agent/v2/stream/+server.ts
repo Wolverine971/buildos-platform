@@ -5,7 +5,7 @@
  * Minimal SSE path optimized for speed:
  * - Lightweight prompt builder
  * - Last-N message history
- * - Streaming LLM only (no tools/planner)
+ * - Streaming LLM with direct/gateway tools, but no planner loop
  * - Async persistence
  */
 
@@ -1849,7 +1849,14 @@ function buildToolExecutionInsertRows(params: {
 				typeof result.duration_ms === 'number' && Number.isFinite(result.duration_ms)
 					? result.duration_ms
 					: null,
-			tokens_consumed: null,
+			tokens_consumed:
+				typeof (result as ChatToolResult & { tokens_consumed?: number }).tokens_consumed ===
+					'number' &&
+				Number.isFinite(
+					(result as ChatToolResult & { tokens_consumed?: number }).tokens_consumed
+				)
+					? (result as ChatToolResult & { tokens_consumed?: number }).tokens_consumed!
+					: null,
 			success: result.success === true,
 			error_message: typeof result.error === 'string' ? result.error : null
 		};
@@ -2830,7 +2837,9 @@ export const POST: RequestHandler = async ({
 					: undefined);
 			const toolExecutorInstance =
 				tools.length > 0
-					? new ChatToolExecutor(supabase, userId, session.id, fetch, llm)
+					? new ChatToolExecutor(supabase, userId, session.id, fetch, llm, {
+							logExecutions: false
+						})
 					: undefined;
 			const sharedToolExecutor =
 				toolExecutorInstance &&
@@ -3154,6 +3163,9 @@ export const POST: RequestHandler = async ({
 				projectId:
 					projectFocus?.projectId ??
 					(contextType === 'project' ? (entityId ?? null) : null),
+				turnRunId,
+				streamRunId,
+				clientTurnId,
 				history: historyForModel,
 				message,
 				signal: request.signal,
@@ -3192,6 +3204,16 @@ export const POST: RequestHandler = async ({
 								availableToolsForExecution,
 								{ abortSignal: request.signal }
 							);
+							const durationMs =
+								typeof result.metadata?.durationMs === 'number' &&
+								Number.isFinite(result.metadata.durationMs)
+									? Math.round(result.metadata.durationMs)
+									: undefined;
+							const tokensConsumed =
+								typeof result.tokensUsed === 'number' &&
+								Number.isFinite(result.tokensUsed)
+									? result.tokensUsed
+									: undefined;
 							return {
 								tool_call_id: result.toolCallId,
 								result: result.data ?? null,
@@ -3199,7 +3221,11 @@ export const POST: RequestHandler = async ({
 								error:
 									typeof result.error === 'string'
 										? result.error
-										: result.error?.message
+										: result.error?.message,
+								...(durationMs !== undefined ? { duration_ms: durationMs } : {}),
+								...(tokensConsumed !== undefined
+									? { tokens_consumed: tokensConsumed }
+									: {})
 							};
 						}
 					: toolExecutorInstance
@@ -3833,7 +3859,10 @@ export const POST: RequestHandler = async ({
 					messages: summarizerMessages,
 					toolResults: toolSummaries,
 					agentState: currentState,
-					httpReferer: request.headers.get('referer') ?? undefined
+					httpReferer: request.headers.get('referer') ?? undefined,
+					turnRunId,
+					streamRunId,
+					clientTurnId
 				});
 
 				if (!updated) return;

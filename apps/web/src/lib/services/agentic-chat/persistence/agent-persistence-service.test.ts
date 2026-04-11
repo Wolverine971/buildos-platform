@@ -65,7 +65,7 @@ describe('AgentPersistenceService', () => {
 					type: 'planner' as const,
 					status: 'active' as const,
 					name: 'Test Planner',
-					model: 'deepseek-chat',
+					model: 'qwen/qwen3.6-plus',
 					system_prompt: 'You are a planner',
 					available_tools: ['tool1', 'tool2']
 				};
@@ -101,7 +101,7 @@ describe('AgentPersistenceService', () => {
 					type: 'executor' as const,
 					status: 'active' as const,
 					name: 'Test Executor',
-					model: 'deepseek-coder',
+					model: 'x-ai/grok-4.1-fast',
 					parent_agent_id: 'parent_123',
 					max_tokens: 1500,
 					temperature: 0.7,

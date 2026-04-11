@@ -53,7 +53,7 @@ describe('ExecutorCoordinator', () => {
 		coordinator = new ExecutorCoordinator(
 			mockExecutorService as unknown as AgentExecutorService,
 			mockPersistence,
-			{ defaultExecutorModel: 'deepseek/deepseek-coder' }
+			{ defaultExecutorModel: 'x-ai/grok-4.1-fast' }
 		);
 
 		baseContext = {

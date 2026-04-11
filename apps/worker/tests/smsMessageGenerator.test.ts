@@ -18,7 +18,8 @@ vi.mock('../src/lib/services/smart-llm-service', () => {
 	return {
 		SmartLLMService: vi.fn().mockImplementation(() => {
 			return {
-				generateText: vi.fn().mockRejectedValue(new Error('LLM mock error'))
+				generateText: vi.fn().mockRejectedValue(new Error('LLM mock error')),
+				generateTextDetailed: vi.fn().mockRejectedValue(new Error('LLM mock error'))
 			};
 		})
 	};
