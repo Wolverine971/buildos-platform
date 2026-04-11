@@ -34,6 +34,7 @@
 		linkEntities,
 		unlinkEntity
 	} from './linked-entities.service';
+	import { Check, ChevronDown, Pencil } from 'lucide-svelte';
 	import LinkedEntitiesSection from './LinkedEntitiesSection.svelte';
 	import LinkPickerModal from './LinkPickerModal.svelte';
 
@@ -47,6 +48,9 @@
 		onLinksChanged?: () => void;
 		allowedEntityTypes?: EntityKind[];
 		readOnly?: boolean;
+		compactEditToggle?: boolean;
+		collapsible?: boolean;
+		defaultExpanded?: boolean;
 	}
 
 	let {
@@ -57,7 +61,10 @@
 		onEntityClick,
 		onLinksChanged,
 		allowedEntityTypes,
-		readOnly = false
+		readOnly = false,
+		compactEditToggle = false,
+		collapsible = false,
+		defaultExpanded = true
 	}: Props = $props();
 
 	// State
@@ -87,6 +94,8 @@
 		requirement: []
 	});
 	let loadingAvailableKind = $state<EntityKind | null>(null);
+	let linksEditMode = $state(false);
+	let linkExpansionOverride = $state<boolean | null>(null);
 
 	// Link picker modal state
 	let showLinkPicker = $state(false);
@@ -153,6 +162,8 @@
 	// Load data on mount and when source changes
 	$effect(() => {
 		if (sourceId && sourceKind && projectId) {
+			linksEditMode = false;
+			linkExpansionOverride = null;
 			// Reset available entities cache when source changes
 			loadedAvailableKinds = new Set();
 			availableEntitiesCache = {
@@ -315,65 +326,153 @@
 
 	// Reactive getter for available entities (used by modal)
 	const availableForSelectedKind = $derived(availableEntitiesCache[linkPickerKind] || []);
+	const effectiveReadOnly = $derived(readOnly || (compactEditToggle && !linksEditMode));
+	const contentVisible = $derived(!collapsible || (linkExpansionOverride ?? defaultExpanded));
+	const linkedTotal = $derived.by(() => {
+		return visibleSections.reduce((total, section) => {
+			return total + (entitiesByKind[section.kind]?.length ?? 0);
+		}, 0);
+	});
+	const linkedTypeSummary = $derived.by(() => {
+		if (error) return 'Links unavailable';
+
+		const summaries: string[] = [];
+
+		for (const section of visibleSections) {
+			const count = entitiesByKind[section.kind]?.length ?? 0;
+			if (count === 0) continue;
+			summaries.push(`${count} ${count === 1 ? section.label : section.labelPlural}`);
+		}
+
+		if (summaries.length === 0) return 'No linked entities';
+
+		const visibleSummaries = summaries.slice(0, 3);
+		const extraCount = summaries.length - visibleSummaries.length;
+		return `${linkedTotal} linked · ${visibleSummaries.join(', ')}${extraCount > 0 ? ` +${extraCount} more` : ''}`;
+	});
+
+	function toggleContent() {
+		if (!collapsible) return;
+		const nextExpanded = !contentVisible;
+		linkExpansionOverride = nextExpanded;
+		if (!nextExpanded) {
+			linksEditMode = false;
+		}
+	}
 </script>
 
 <div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden">
 	<!-- Header -->
 	<div class="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-border bg-muted">
-		<h3
-			class="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 sm:gap-2"
-		>
-			<span class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-accent rounded-full"></span>
-			Linked Entities
-		</h3>
+		<div class="flex items-center justify-between gap-2">
+			{#if collapsible}
+				<button
+					type="button"
+					class="min-w-0 flex-1 rounded text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+					onclick={toggleContent}
+					aria-expanded={contentVisible}
+				>
+					<span class="flex min-w-0 items-center gap-1.5 sm:gap-2">
+						<ChevronDown
+							class="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform {contentVisible
+								? ''
+								: '-rotate-90'}"
+						/>
+						<span class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-accent rounded-full"></span>
+						<span
+							class="truncate text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide"
+						>
+							Linked Entities
+						</span>
+					</span>
+					<span class="mt-0.5 block truncate text-[11px] text-muted-foreground">
+						{isLoading ? 'Loading links...' : linkedTypeSummary}
+					</span>
+				</button>
+			{:else}
+				<h3
+					class="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5 sm:gap-2"
+				>
+					<span class="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-accent rounded-full"></span>
+					Linked Entities
+				</h3>
+			{/if}
+
+			{#if compactEditToggle && !readOnly && contentVisible}
+				<button
+					type="button"
+					class="inline-flex h-7 items-center gap-1 rounded border border-border bg-card px-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring pressable"
+					onclick={() => (linksEditMode = !linksEditMode)}
+					aria-pressed={linksEditMode}
+				>
+					{#if linksEditMode}
+						<Check class="h-3 w-3" />
+						Done
+					{:else}
+						<Pencil class="h-3 w-3" />
+						Edit
+					{/if}
+				</button>
+			{/if}
+		</div>
 	</div>
 
 	<!-- Content -->
-	<div class="divide-y divide-border">
-		{#if isLoading}
-			<!-- Skeleton Loading State -->
-			{#each visibleSections as section, i (section.kind)}
-				<div
-					class="px-3 py-2 flex items-center justify-between tx tx-pulse tx-weak"
-					style="animation-delay: {i * 50}ms"
-				>
-					<div class="flex items-center gap-2">
-						<div class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded bg-muted animate-pulse"></div>
-						<div class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded bg-muted animate-pulse"></div>
-						<div class="h-3 sm:h-4 w-14 sm:w-16 rounded bg-muted animate-pulse"></div>
-						<div class="h-2.5 sm:h-3 w-5 sm:w-6 rounded bg-muted animate-pulse"></div>
+	{#if contentVisible}
+		<div class="divide-y divide-border">
+			{#if isLoading}
+				<!-- Skeleton Loading State -->
+				{#each visibleSections as section, i (section.kind)}
+					<div
+						class="px-3 py-2 flex items-center justify-between tx tx-pulse tx-weak"
+						style="animation-delay: {i * 50}ms"
+					>
+						<div class="flex items-center gap-2">
+							<div
+								class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded bg-muted animate-pulse"
+							></div>
+							<div
+								class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded bg-muted animate-pulse"
+							></div>
+							<div
+								class="h-3 sm:h-4 w-14 sm:w-16 rounded bg-muted animate-pulse"
+							></div>
+							<div
+								class="h-2.5 sm:h-3 w-5 sm:w-6 rounded bg-muted animate-pulse"
+							></div>
+						</div>
+						<div class="w-4 h-4 sm:w-5 sm:h-5 rounded bg-muted animate-pulse"></div>
 					</div>
-					<div class="w-4 h-4 sm:w-5 sm:h-5 rounded bg-muted animate-pulse"></div>
+				{/each}
+			{:else if error}
+				<!-- Error State -->
+				<div class="px-3 sm:px-4 py-4 sm:py-6 text-center tx tx-static tx-weak">
+					<p class="text-xs sm:text-sm text-destructive">{error}</p>
+					<button
+						type="button"
+						class="mt-2 text-[10px] sm:text-xs text-accent hover:underline pressable"
+						onclick={() => loadData()}
+					>
+						Try again
+					</button>
 				</div>
-			{/each}
-		{:else if error}
-			<!-- Error State -->
-			<div class="px-3 sm:px-4 py-4 sm:py-6 text-center tx tx-static tx-weak">
-				<p class="text-xs sm:text-sm text-destructive">{error}</p>
-				<button
-					type="button"
-					class="mt-2 text-[10px] sm:text-xs text-accent hover:underline pressable"
-					onclick={() => loadData()}
-				>
-					Try again
-				</button>
-			</div>
-		{:else}
-			<!-- Loaded State -->
-			{#each visibleSections as section (section.kind)}
-				<LinkedEntitiesSection
-					config={section}
-					entities={entitiesByKind[section.kind]}
-					availableToLinkCount={availableCountByKind[section.kind]}
-					isLoadingAvailable={loadingAvailableKind === section.kind}
-					{readOnly}
-					onAdd={handleAddClick}
-					onRemove={handleRemoveLink}
-					{onEntityClick}
-				/>
-			{/each}
-		{/if}
-	</div>
+			{:else}
+				<!-- Loaded State -->
+				{#each visibleSections as section (section.kind)}
+					<LinkedEntitiesSection
+						config={section}
+						entities={entitiesByKind[section.kind]}
+						availableToLinkCount={availableCountByKind[section.kind]}
+						isLoadingAvailable={loadingAvailableKind === section.kind}
+						readOnly={effectiveReadOnly}
+						onAdd={handleAddClick}
+						onRemove={handleRemoveLink}
+						{onEntityClick}
+					/>
+				{/each}
+			{/if}
+		</div>
+	{/if}
 </div>
 
 <!-- Link Picker Modal -->

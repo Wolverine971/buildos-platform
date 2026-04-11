@@ -739,24 +739,6 @@
 					>
 						{title || task?.title || 'Task'}
 					</h2>
-					<div class="mt-1 flex flex-wrap items-center gap-1.5">
-						<Badge variant={stateMeta.variant} size="sm">{stateMeta.label}</Badge>
-						<Badge variant={priorityMeta.variant} size="sm">{priorityMeta.label}</Badge>
-						<Badge variant="accent" size="sm">{taskTypeLabel}</Badge>
-						{#if dueMeta}
-							<Badge variant={dueMeta.variant} size="sm">{dueMeta.label}</Badge>
-						{/if}
-					</div>
-					<p class="text-[10px] sm:text-xs text-muted-foreground mt-1">
-						{#if task?.created_at}Created {new Date(task.created_at).toLocaleDateString(
-								undefined,
-								{ month: 'short', day: 'numeric' }
-							)}{/if}{#if task?.updated_at && task.updated_at !== task.created_at}
-							· Updated {new Date(task.updated_at).toLocaleDateString(undefined, {
-								month: 'short',
-								day: 'numeric'
-							})}{/if}
-					</p>
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
@@ -813,9 +795,7 @@
 						>
 							<Card variant="elevated" class="wt-paper">
 								<CardHeader variant="accent" texture="strip">
-									<div
-										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-									>
+									<div class="flex items-start justify-between gap-3">
 										<div class="min-w-0">
 											<div class="flex items-center gap-2">
 												<FileText class="h-4 w-4 text-accent" />
@@ -828,19 +808,6 @@
 											<h3 class="mt-1 text-sm font-semibold text-foreground">
 												What this task is and what “done” looks like
 											</h3>
-											<p class="mt-1 text-xs text-muted-foreground">
-												Lead with the title and supporting context so the
-												task reads clearly before someone edits workflow
-												details.
-											</p>
-										</div>
-										<div class="flex flex-wrap items-center gap-1.5">
-											<Badge variant={stateMeta.variant} size="sm"
-												>{stateMeta.label}</Badge
-											>
-											<Badge variant={priorityMeta.variant} size="sm">
-												{priorityMeta.label}
-											</Badge>
 										</div>
 									</div>
 								</CardHeader>
@@ -884,220 +851,251 @@
 								</CardBody>
 							</Card>
 
-							<Card variant="default" class="wt-paper">
-								<CardHeader variant="transparent" texture="none">
-									<div
-										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+							{#if error}
+								<div
+									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
+								>
+									<p class="text-sm text-destructive">{error}</p>
+								</div>
+							{/if}
+						</form>
+
+						<div class="mt-3 sm:mt-4">
+							<EntityCommentsSection
+								{projectId}
+								entityType="task"
+								entityId={taskId}
+							/>
+						</div>
+					</div>
+
+					<!-- Sidebar (Right column) -->
+					<div class="space-y-3">
+						<Card variant="elevated" class="wt-card">
+							<CardHeader variant="muted" texture="strip">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p
+											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+										>
+											Controls
+										</p>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Task operations
+										</h3>
+									</div>
+								</div>
+							</CardHeader>
+							<CardBody padding="none">
+								<div class="divide-y divide-border/70">
+									<section
+										class="px-3 py-3 sm:px-4"
+										aria-label="Workflow: {stateMeta.label}, {priorityMeta.label}, {assigneeSummary}"
 									>
-										<div>
-											<div class="flex items-center gap-2">
-												<Users class="h-4 w-4 text-muted-foreground" />
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+										<div class="flex items-center gap-2">
+											<Users class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Workflow
+											</p>
+										</div>
+
+										<div class="mt-2 space-y-2">
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="state"
+													class="text-xs font-medium text-muted-foreground"
 												>
-													Workflow
+													State
+												</label>
+												<Select
+													id="state"
+													bind:value={stateKey}
+													disabled={isSaving}
+													size="sm"
+													placeholder="State"
+												>
+													{#each TASK_STATES as state}
+														<option value={state}>
+															{state === 'todo'
+																? 'To Do'
+																: state === 'in_progress'
+																	? 'In Progress'
+																	: state === 'blocked'
+																		? 'Blocked'
+																		: state === 'done'
+																			? 'Done'
+																			: state}
+														</option>
+													{/each}
+												</Select>
+											</div>
+
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="priority"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Priority
+												</label>
+												<Select
+													id="priority"
+													value={priority}
+													disabled={isSaving}
+													size="sm"
+													placeholder="Priority"
+													onchange={(val) => (priority = Number(val))}
+												>
+													<option value={1}>P1 - Critical</option>
+													<option value={2}>P2 - High</option>
+													<option value={3}>P3 - Medium</option>
+													<option value={4}>P4 - Low</option>
+													<option value={5}>P5 - Nice to have</option>
+												</Select>
+											</div>
+
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-start gap-2"
+												aria-label="Assignees: {assigneeSummary}"
+											>
+												<p
+													class="pt-3 text-xs font-medium text-muted-foreground"
+												>
+													Assignees
+												</p>
+												<div class="min-w-0">
+													<TaskAssigneeSelector
+														{projectId}
+														bind:selectedActorIds={assigneeActorIds}
+														fallbackAssignees={Array.isArray(
+															task?.assignees
+														)
+															? task.assignees
+															: []}
+														disabled={isSaving || isLoading}
+														maxAssignees={10}
+													/>
+												</div>
+											</div>
+
+											{#if stateKey === 'done' && completedAt}
+												<div
+													class="rounded-md border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/10 dark:text-emerald-300"
+												>
+													Completed {format(
+														new Date(completedAt),
+														'PPpp'
+													)}
+												</div>
+											{/if}
+										</div>
+									</section>
+
+									<section
+										class={dueMeta?.variant === 'error'
+											? 'px-3 py-3 sm:px-4 tx tx-static tx-weak'
+											: 'px-3 py-3 sm:px-4'}
+										aria-label="Timeline: {scheduleSummary}"
+									>
+										<div class="flex items-center justify-between gap-2">
+											<div class="flex items-center gap-2">
+												<CalendarRange
+													class="h-4 w-4 text-muted-foreground"
+												/>
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Timeline
 												</p>
 											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												Ownership and execution state
-											</h3>
+											{#if dueMeta}
+												<Badge variant={dueMeta.variant} size="sm"
+													>{dueMeta.label}</Badge
+												>
+											{/if}
 										</div>
-										<p
-											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
-										>
-											Keep the operational controls together so the task’s
-											status is obvious at a glance.
-										</p>
-									</div>
-								</CardHeader>
-								<CardBody class="space-y-4">
-									<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-										<FormField
-											label="State"
-											labelFor="state"
-											required={true}
-											uppercase={false}
-											showOptional={false}
-										>
-											<Select
-												id="state"
-												bind:value={stateKey}
-												disabled={isSaving}
-												size="sm"
-												placeholder="State"
-											>
-												{#each TASK_STATES as state}
-													<option value={state}>
-														{state === 'todo'
-															? 'To Do'
-															: state === 'in_progress'
-																? 'In Progress'
-																: state === 'blocked'
-																	? 'Blocked'
-																	: state === 'done'
-																		? 'Done'
-																		: state}
-													</option>
-												{/each}
-											</Select>
-										</FormField>
 
-										<FormField
-											label="Priority"
-											labelFor="priority"
-											required={true}
-											uppercase={false}
-											showOptional={false}
-										>
-											<Select
-												id="priority"
-												value={priority}
-												disabled={isSaving}
-												size="sm"
-												placeholder="Priority"
-												onchange={(val) => (priority = Number(val))}
+										{#if dueMeta?.variant === 'error'}
+											<div
+												class="mt-2 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2"
 											>
-												<option value={1}>P1 - Critical</option>
-												<option value={2}>P2 - High</option>
-												<option value={3}>P3 - Medium</option>
-												<option value={4}>P4 - Low</option>
-												<option value={5}>P5 - Nice to have</option>
-											</Select>
-										</FormField>
-									</div>
-
-									<div class="space-y-1.5">
-										<div class="flex items-center justify-between gap-2">
-											<p class="text-xs font-medium text-muted-foreground">
-												Assignees
-											</p>
-											<Badge
-												variant={assigneeActorIds.length > 0
-													? 'accent'
-													: 'default'}
-												size="sm"
-											>
-												{assigneeSummary}
-											</Badge>
-										</div>
-										<TaskAssigneeSelector
-											{projectId}
-											bind:selectedActorIds={assigneeActorIds}
-											fallbackAssignees={Array.isArray(task?.assignees)
-												? task.assignees
-												: []}
-											disabled={isSaving || isLoading}
-											maxAssignees={10}
-										/>
-									</div>
-
-									{#if stateKey === 'done' && completedAt}
-										<div
-											class="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/10 dark:text-emerald-300"
-										>
-											Completed {format(new Date(completedAt), 'PPpp')}
-										</div>
-									{/if}
-								</CardBody>
-							</Card>
-
-							<Card
-								variant="default"
-								class={dueMeta?.variant === 'error'
-									? 'wt-paper tx tx-static tx-weak ring-1 ring-destructive/20'
-									: 'wt-paper'}
-							>
-								<CardHeader variant="transparent" texture="none">
-									<div class="flex items-center justify-between gap-2">
-										<div class="flex items-center gap-2">
-											<CalendarRange class="h-4 w-4 text-muted-foreground" />
-											<p
-												class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-											>
-												Schedule
-											</p>
-										</div>
-										{#if dueMeta}
-											<Badge variant={dueMeta.variant} size="sm">
-												{dueMeta.label}
-											</Badge>
+												<CircleAlert
+													class="h-3.5 w-3.5 shrink-0 text-destructive"
+												/>
+												<p class="text-xs font-semibold text-destructive">
+													{dueMeta.note}
+												</p>
+											</div>
 										{/if}
-									</div>
-								</CardHeader>
-								<CardBody class="space-y-2">
-									{#if dueMeta?.variant === 'error'}
-										<div
-											class="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2"
-										>
-											<CircleAlert
-												class="h-3.5 w-3.5 shrink-0 text-destructive"
-											/>
-											<p class="text-xs font-semibold text-destructive">
-												{dueMeta.note}
-											</p>
+
+										<div class="mt-2 grid grid-cols-1 gap-2">
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="start-date"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Start
+												</label>
+												<TextInput
+													id="start-date"
+													type="datetime-local"
+													inputmode="numeric"
+													enterkeyhint="next"
+													bind:value={startAt}
+													disabled={isSaving}
+													size="sm"
+												/>
+											</div>
+
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="due-date"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Due
+												</label>
+												<TextInput
+													id="due-date"
+													type="datetime-local"
+													inputmode="numeric"
+													enterkeyhint="done"
+													bind:value={dueAt}
+													disabled={isSaving}
+													size="sm"
+												/>
+											</div>
 										</div>
-									{/if}
 
-									<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-										<FormField
-											label="Start"
-											labelFor="start-date"
-											uppercase={false}
-											showOptional={false}
+										<div
+											class="mt-2 flex items-center justify-between gap-2 border-t border-border/60 pt-2"
 										>
-											<TextInput
-												id="start-date"
-												type="datetime-local"
-												inputmode="numeric"
-												enterkeyhint="next"
-												bind:value={startAt}
-												disabled={isSaving}
-												size="sm"
-											/>
-										</FormField>
-
-										<FormField
-											label="Due"
-											labelFor="due-date"
-											uppercase={false}
-											showOptional={false}
-										>
-											<TextInput
-												id="due-date"
-												type="datetime-local"
-												inputmode="numeric"
-												enterkeyhint="done"
-												bind:value={dueAt}
-												disabled={isSaving}
-												size="sm"
-											/>
-										</FormField>
-									</div>
-
-									{#if startAt || dueAt}
-										<p class="text-xs text-muted-foreground">
-											{scheduleSummary}
-										</p>
-									{/if}
-
-									<!-- Recurrence -->
-									<div class="rounded-md border border-border/70 px-3 py-2">
-										<div class="flex items-center justify-between gap-2">
-											<div class="flex items-center gap-2 min-w-0">
+											<div class="flex min-w-0 items-center gap-2">
 												<Repeat
 													class="h-3.5 w-3.5 shrink-0 text-muted-foreground"
 												/>
-												<p
-													class="text-xs font-medium text-foreground truncate"
-												>
-													{recurrenceSummary}
-												</p>
-												{#if isSeriesMaster || isSeriesInstance}
-													<Badge variant="accent" size="sm"
-														>Recurring</Badge
+												<div class="min-w-0">
+													<p
+														class="text-xs font-medium text-muted-foreground"
 													>
-												{/if}
+														Repeat
+													</p>
+													<p
+														class="truncate text-sm font-medium text-foreground"
+													>
+														{recurrenceSummary}
+													</p>
+												</div>
 											</div>
+
 											{#if !isSeriesMaster && !isSeriesInstance}
 												<Button
 													size="sm"
@@ -1107,6 +1105,8 @@
 												>
 													Set up
 												</Button>
+											{:else}
+												<Badge variant="accent" size="sm">Recurring</Badge>
 											{/if}
 										</div>
 
@@ -1180,171 +1180,48 @@
 												{/if}
 											</div>
 										{:else if isSeriesInstance}
-											<p class="mt-1 text-xs text-muted-foreground">
+											<p class="mt-2 text-xs text-muted-foreground">
 												Cadence inherited from parent series.
 											</p>
 										{/if}
-									</div>
-								</CardBody>
-							</Card>
+									</section>
 
-							{#if error}
-								<div
-									class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 shadow-ink-inner"
-								>
-									<p class="text-sm text-destructive">{error}</p>
-								</div>
-							{/if}
-						</form>
-					</div>
-
-					<!-- Sidebar (Right column) -->
-					<div class="space-y-3">
-						<Card variant="elevated" class="wt-card">
-							<CardHeader variant="muted" texture="strip">
-								<div class="flex items-center justify-between gap-3">
-									<div>
-										<p
-											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-										>
-											At a glance
-										</p>
-										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Operational snapshot
-										</h3>
-									</div>
-									<Badge variant={stateMeta.variant} size="sm"
-										>{stateMeta.label}</Badge
-									>
-								</div>
-							</CardHeader>
-							<CardBody class="space-y-3">
-								<div class="grid grid-cols-2 gap-2">
-									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
-										<p
-											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-										>
-											Priority
-										</p>
-										<p class="mt-1 text-sm font-semibold text-foreground">
-											{priorityMeta.label}
-										</p>
-										<p class="mt-1 text-xs text-muted-foreground">
-											{priorityMeta.note}
-										</p>
-									</div>
-									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
-										<p
-											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-										>
-											Assignees
-										</p>
-										<p class="mt-1 text-sm font-semibold text-foreground">
-											{assigneeSummary}
-										</p>
-										<p class="mt-1 text-xs text-muted-foreground">
-											{assigneeActorIds.length > 0
-												? 'Ownership has been assigned.'
-												: 'No owner set yet.'}
-										</p>
-									</div>
-								</div>
-
-								<div
-									class={dueMeta?.variant === 'error'
-										? 'rounded-lg border border-destructive/30 bg-destructive/5 p-3 tx tx-static tx-weak'
-										: 'rounded-lg border border-border/70 bg-card p-3'}
-								>
-									<div class="space-y-2">
-										<div class="flex items-start justify-between gap-2">
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2">
+											<Clock3 class="h-4 w-4 text-muted-foreground" />
 											<p
 												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
 											>
-												Timeline
+												Record
 											</p>
-											{#if dueMeta}
-												<Badge variant={dueMeta.variant} size="sm"
-													>{dueMeta.label}</Badge
-												>
-											{/if}
 										</div>
-										{#if dueMeta?.variant === 'error'}
-											<p class="text-xs font-semibold text-destructive">
-												{dueMeta.note}
-											</p>
-										{/if}
-										<div class="grid grid-cols-1 gap-1.5 text-xs">
-											<div class="flex items-center justify-between gap-2">
-												<span class="text-muted-foreground">Start</span>
-												<span class="text-right text-foreground">
-													{formatSurfaceDate(
-														startAt || task?.start_at,
-														'MMM d, p',
-														'Not set'
-													)}
-												</span>
-											</div>
-											<div class="flex items-center justify-between gap-2">
-												<span class="text-muted-foreground">Due</span>
-												<span
-													class={dueMeta?.variant === 'error'
-														? 'text-right font-semibold text-destructive'
-														: 'text-right text-foreground'}
-												>
-													{formatSurfaceDate(
-														dueAt || task?.due_at,
-														'MMM d, p',
-														'No deadline'
-													)}
-												</span>
-											</div>
-											<div class="flex items-center justify-between gap-2">
-												<span class="text-muted-foreground">Repeats</span>
-												<span class="text-right text-foreground"
-													>{recurrenceSummary}</span
-												>
-											</div>
-										</div>
-									</div>
-								</div>
-
-								<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
-									<div class="flex items-center gap-2">
-										<Clock3 class="h-4 w-4 text-muted-foreground" />
-										<p
-											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-										>
-											Metadata
-										</p>
-									</div>
-									<div class="mt-3 space-y-2 text-sm">
-										<div class="flex items-center justify-between gap-3">
-											<span class="text-muted-foreground">Type</span>
-											<span class="text-right text-foreground"
-												>{taskTypeLabel}</span
-											>
-										</div>
-										<div class="flex items-center justify-between gap-3">
-											<span class="text-muted-foreground">Created</span>
-											<span class="text-right text-foreground">
-												{formatSurfaceDate(task?.created_at, 'MMM d, yyyy')}
-											</span>
-										</div>
-										<div class="flex items-center justify-between gap-3">
-											<span class="text-muted-foreground">Updated</span>
-											<span class="text-right text-foreground">
-												{formatSurfaceDate(task?.updated_at, 'MMM d, yyyy')}
-											</span>
-										</div>
-										{#if completedAt}
+										<div class="mt-2 space-y-1.5 text-sm">
 											<div class="flex items-center justify-between gap-3">
-												<span class="text-muted-foreground">Completed</span>
+												<span class="text-muted-foreground">Type</span>
+												<span class="text-right text-foreground"
+													>{taskTypeLabel}</span
+												>
+											</div>
+											<div class="flex items-center justify-between gap-3">
+												<span class="text-muted-foreground">Created</span>
 												<span class="text-right text-foreground">
-													{formatSurfaceDate(completedAt, 'MMM d, p')}
+													{formatSurfaceDate(
+														task?.created_at,
+														'MMM d, yyyy'
+													)}
 												</span>
 											</div>
-										{/if}
-									</div>
+											<div class="flex items-center justify-between gap-3">
+												<span class="text-muted-foreground">Updated</span>
+												<span class="text-right text-foreground">
+													{formatSurfaceDate(
+														task?.updated_at,
+														'MMM d, yyyy'
+													)}
+												</span>
+											</div>
+										</div>
+									</section>
 								</div>
 							</CardBody>
 						</Card>
@@ -1354,6 +1231,9 @@
 							sourceId={taskId}
 							sourceKind="task"
 							projectId={task.project_id}
+							compactEditToggle={true}
+							collapsible={true}
+							defaultExpanded={false}
 							onEntityClick={handleLinkedEntityClick}
 							onLinksChanged={handleLinksChanged}
 						/>
@@ -1412,10 +1292,6 @@
 							{/if}
 						</div>
 					</div>
-				</div>
-
-				<div class="mt-4">
-					<EntityCommentsSection {projectId} entityType="task" entityId={taskId} />
 				</div>
 			{/if}
 		</div>
