@@ -200,7 +200,7 @@ Families: outcome, metric, behavior, learning. Default: goal.outcome.project`
 		function: {
 			name: 'create_onto_plan',
 			description: `Create a new plan in the ontology system.
-Plans are logical groupings of tasks within a project.`,
+Plans are execution structures that turn a goal or milestone into a taskable timeline.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -214,7 +214,12 @@ Plans are logical groupings of tasks within a project.`,
 					},
 					description: {
 						type: 'string',
-						description: 'Plan description'
+						description: 'Short plan synopsis'
+					},
+					plan: {
+						type: 'string',
+						description:
+							'Detailed plan body. Use this for the durable source-of-truth plan: objective, scope, success criteria, timeline, dependencies, risks, and task breakdown.'
 					},
 					type_key: {
 						type: 'string',
@@ -1325,7 +1330,7 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 		function: {
 			name: 'update_onto_plan',
 			description: `Update an existing ontology plan.
-Use for edits to plan names, dates, status, or metadata.`,
+Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 			parameters: {
 				type: 'object',
 				additionalProperties: false,
@@ -1340,13 +1345,18 @@ Use for edits to plan names, dates, status, or metadata.`,
 					},
 					description: {
 						type: 'string',
-						description: 'Plan description'
+						description: 'Short plan synopsis'
+					},
+					plan: {
+						type: 'string',
+						description:
+							'Detailed plan body. Use this for the durable source-of-truth plan: objective, scope, success criteria, timeline, dependencies, risks, and task breakdown.'
 					},
 					update_strategy: {
 						type: 'string',
 						enum: ['replace', 'append', 'merge_llm'],
 						description:
-							"How to apply description updates: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing description."
+							"How to apply text updates to description or plan body: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing text."
 					},
 					merge_instructions: {
 						type: 'string',

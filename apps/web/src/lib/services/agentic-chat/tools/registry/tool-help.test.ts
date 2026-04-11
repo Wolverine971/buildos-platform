@@ -375,9 +375,13 @@ describe('getToolHelp', () => {
 		expect(Array.isArray(help.related_ops)).toBe(true);
 		expect(help.related_ops).toContain('onto.plan.create');
 		expect(help.related_ops).toContain('onto.task.create');
-		expect(help.workflow.join(' ')).toContain('todo, in_progress, blocked, or done');
+		expect(help.workflow.join(' ')).toContain('Prefer a milestone-scoped plan');
+		expect(Array.isArray(help.guardrails)).toBe(true);
+		expect(help.guardrails.join(' ')).toContain(
+			'description is the synopsis; plan is the detailed body'
+		);
 		expect(Array.isArray(help.notes)).toBe(true);
-		expect(help.notes.join(' ')).toContain('exact task and plan relationships');
+		expect(help.notes.join(' ')).toContain('goal -> milestone -> plan -> tasks');
 	});
 
 	it('lists plan skill under onto.plan namespace', () => {

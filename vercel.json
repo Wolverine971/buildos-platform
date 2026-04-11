@@ -18,6 +18,10 @@
 		{
 			"path": "/api/cron/welcome-sequence",
 			"schedule": "0 * * * *"
+		},
+		{
+			"path": "/api/cron/security-events-retention",
+			"schedule": "30 4 * * *"
 		}
 	],
 	"headers": [

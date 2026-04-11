@@ -315,8 +315,12 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	create_onto_plan: {
-		summary: 'Add execution plans that group related tasks.',
-		capabilities: ['Assigns type/state', 'Accepts props for richer context'],
+		summary: 'Add execution plans that turn goals or milestones into taskable timelines.',
+		capabilities: [
+			'Assigns type/state',
+			'Stores a detailed plan body',
+			'Accepts props for richer context'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},
@@ -418,11 +422,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	update_onto_plan: {
-		summary: 'Modify plan details (state, dates, metadata).',
+		summary: 'Modify plan details (body, state, dates, metadata).',
 		capabilities: [
 			'Supports partial updates',
 			'Validates ownership',
-			'Append or LLM-merge description updates safely'
+			'Append or LLM-merge description/body updates safely'
 		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'

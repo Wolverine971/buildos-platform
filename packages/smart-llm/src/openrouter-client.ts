@@ -1,6 +1,7 @@
 // packages/smart-llm/src/openrouter-client.ts
 
 import type { ErrorLogger, OpenRouterResponse } from './types';
+import { buildOpenRouterChatCompletionBody } from './openrouter-request';
 
 export class OpenRouterClient {
 	private apiKey: string;
@@ -46,32 +47,16 @@ export class OpenRouterClient {
 			'X-Title': this.appName
 		};
 
-		// Build request body following OpenRouter API v1 spec
-		// See: https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request
-		const body: any = {
+		const body = buildOpenRouterChatCompletionBody({
 			model: params.model,
 			messages: params.messages,
 			temperature: params.temperature,
 			max_tokens: params.max_tokens,
-			stream: params.stream || false
-		};
-
-		// Add response format if supported (e.g., json_object for compatible models)
-		if (params.response_format) {
-			body.response_format = params.response_format;
-		}
-
-		// Add fallback models using extra_body (OpenRouter convention)
-		// The primary model is in 'model', fallbacks go in extra_body.models
-		if (params.models && params.models.length > 1) {
-			body.extra_body = {
-				models: params.models.slice(1) // All models except the first (primary)
-			};
-		}
-
-		if (params.transforms && params.transforms.length > 0) {
-			body.transforms = params.transforms;
-		}
+			stream: params.stream || false,
+			response_format: params.response_format,
+			models: params.models,
+			transforms: params.transforms
+		});
 
 		try {
 			const timeoutMs = params.timeoutMs ?? 120000;
@@ -219,13 +204,13 @@ export class OpenRouterClient {
 			'X-Title': this.appName
 		};
 
-		const body = {
+		const body = buildOpenRouterChatCompletionBody({
 			model: params.model,
 			messages: params.messages,
 			temperature: params.temperature,
 			max_tokens: params.max_tokens,
 			stream: false
-		};
+		});
 
 		try {
 			const response = await this.fetchImpl(this.apiUrl, {

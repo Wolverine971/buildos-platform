@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SmartLLMService } from './smart-llm-service';
 
-function buildSSE(payloads: string[]): Response {
+function buildSSE(payloads: string[], headers?: Record<string, string>): Response {
 	const encoder = new TextEncoder();
 	const body = payloads.map((payload) => `data: ${payload}\n\n`).join('');
 	const stream = new ReadableStream<Uint8Array>({
@@ -14,7 +14,8 @@ function buildSSE(payloads: string[]): Response {
 	return new Response(stream, {
 		status: 200,
 		headers: {
-			'content-type': 'text/event-stream'
+			'content-type': 'text/event-stream',
+			...headers
 		}
 	});
 }
@@ -445,6 +446,9 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 describe('SmartLLMService model failover', () => {
 	it('falls back to the next model when the primary stream model is unavailable', async () => {
 		const requestBodies: any[] = [];
+		const usageLogger = {
+			logUsageToDatabase: vi.fn(async () => undefined)
+		};
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
 				requestBodies.push(JSON.parse(init.body));
@@ -466,26 +470,45 @@ describe('SmartLLMService model failover', () => {
 				);
 			}
 
-			return buildSSE([
-				JSON.stringify({
-					id: 'chatcmpl-fallback',
-					object: 'chat.completion.chunk',
-					created: 0,
-					model: 'qwen/qwen3.5-flash-02-23',
-					choices: [
-						{
-							index: 0,
-							delta: { content: 'Recovered response.' },
-							finish_reason: 'stop'
+			return buildSSE(
+				[
+					JSON.stringify({
+						id: 'chatcmpl-fallback',
+						object: 'chat.completion.chunk',
+						created: 0,
+						model: 'qwen/qwen3.5-flash-02-23',
+						choices: [
+							{
+								index: 0,
+								delta: { content: 'Recovered response.' },
+								finish_reason: 'stop'
+							}
+						]
+					}),
+					JSON.stringify({
+						id: 'chatcmpl-fallback',
+						object: 'chat.completion.chunk',
+						created: 0,
+						model: 'qwen/qwen3.5-flash-02-23',
+						choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
+						usage: {
+							prompt_tokens: 15,
+							completion_tokens: 4,
+							total_tokens: 19
 						}
-					]
-				}),
-				'[DONE]'
-			]);
+					}),
+					'[DONE]'
+				],
+				{
+					'x-openrouter-model': 'qwen/qwen3.5-flash-02-23',
+					'x-openrouter-provider': 'qwen-resolved'
+				}
+			);
 		});
 
 		const llm = new SmartLLMService({
 			apiKey: 'openrouter-test-key',
+			usageLogger,
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
@@ -506,9 +529,25 @@ describe('SmartLLMService model failover', () => {
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestBodies[0]?.model).toBe('x-ai/grok-4.1-fast');
+		expect(requestBodies[0]?.models).toContain('qwen/qwen3.5-flash-02-23');
 		expect(requestBodies[1]?.model).toBe('qwen/qwen3.5-flash-02-23');
 		expect(events.some((event) => event.type === 'error')).toBe(false);
 		expect(events.some((event) => event.type === 'text')).toBe(true);
 		expect(events.find((event) => event.type === 'done')).toBeDefined();
+		await vi.waitFor(() => expect(usageLogger.logUsageToDatabase).toHaveBeenCalledTimes(1));
+		expect(usageLogger.logUsageToDatabase.mock.calls[0]?.[0]).toMatchObject({
+			modelRequested: 'qwen/qwen3.5-flash-02-23',
+			modelUsed: 'qwen/qwen3.5-flash-02-23',
+			provider: 'qwen-resolved',
+			promptTokens: 15,
+			completionTokens: 4,
+			totalTokens: 19,
+			streaming: true,
+			metadata: {
+				modelRequested: 'qwen/qwen3.5-flash-02-23',
+				modelsAttempted: expect.arrayContaining(['qwen/qwen3.5-flash-02-23']),
+				attempts: 2
+			}
+		});
 	});
 });

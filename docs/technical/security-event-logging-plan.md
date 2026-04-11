@@ -80,6 +80,7 @@ Auth events:
 - `auth.oauth.login.failed`
 - `auth.oauth.register.succeeded`
 - `auth.oauth.register.failed`
+- `auth.oauth.register_denied`
 - `auth.oauth.state_mismatch`
 - `auth.oauth.connect.succeeded`
 - `auth.oauth.connect.failed`
@@ -120,6 +121,8 @@ Detection and data-access events:
 - `access.contact.search`
 - `access.contact.method_read`
 - `access.contact.method_write`
+- `access.contact.merge`
+- `access.contact.link`
 - `access.contact.prompt_injection`
 - `access.contact.action_prepare`
 - `access.sensitive_contact.requested`
@@ -153,6 +156,32 @@ Security event logging should not add unbounded database latency to user-facing 
 - Callers that truly require durable persistence before continuing can use explicit blocking delivery.
 - Route handlers should pass platform `waitUntil` support when available so background writes can outlive the response safely.
 
+## Recommended Retention Policy
+
+Security events include account IDs, request metadata, IP addresses, user agents, and integration/agent decisions. Treat the raw stream as operational security data, not a permanent product history.
+
+Recommended default:
+
+- Retain raw `security_events` for 180 days.
+- Retain high-signal raw events for 400 days: `blocked`, `denied`, `high`, `critical`, `agent.auth.failed`, `agent.tool.denied`, `agent.write.failed`, OAuth state mismatch, and password-reset completion/failure events.
+- Retain daily aggregate counts for 2 years with no user IDs, IP addresses, user agents, request IDs, or session IDs.
+- Keep existing domain audit tables under their own product policies; `security_events` is the security posture stream and should not replace durable feature audit records.
+- Pause deletion during an active incident or legal hold.
+
+Implementation path:
+
+1. Add a `security_event_daily_rollups` table keyed by day, category, event type, outcome, and severity.
+2. Add a scheduled rollup job that aggregates yesterday's events.
+3. Add a scheduled cleanup job that deletes low-signal raw events older than 180 days and high-signal raw events older than 400 days.
+4. Keep `/admin/security` focused on the raw window plus rollup summaries for older trends.
+
+Current implementation:
+
+- SQL migration: `supabase/migrations/20260428000023_add_security_event_retention.sql`
+- Cron route: `/api/cron/security-events-retention`
+- Vercel schedule: daily at 04:30 UTC
+- Manual dry run: call `/api/cron/security-events-retention?dryRun=true` with the cron bearer secret.
+
 ## Dashboard Requirements
 
 The admin security page should include:
@@ -175,5 +204,10 @@ The browser view should receive only sanitized fields.
 - [x] Add server-side logging helper.
 - [x] Instrument password login, logout, password reset, Google OAuth, calendar OAuth, prompt injection, sensitive contact/profile access, and external agent sessions/writes.
 - [x] Update `/admin/security` to use `security_events` as the primary event stream.
+- [x] Apply `security_events` migration in each target Supabase environment.
+- [x] Add background/waitUntil delivery for low-risk security events.
+- [x] Add rollup and cleanup migration plus scheduled cron route for the retention policy.
+- [ ] Apply `security_event_daily_rollups` / retention migration in each target Supabase environment.
+- [ ] Run first retention cron call as `dryRun=true` and inspect candidate counts.
+- [ ] Smoke-test live event writes and dashboard refresh in the deployed environment.
 - [ ] Backfill historical security events from legacy `security_logs` if needed.
-- [ ] Add retention policy once product policy is finalized.

@@ -38,6 +38,7 @@ import {
 	supportsJsonMode
 } from './model-selection';
 import { OpenRouterClient } from './openrouter-client';
+import { buildOpenRouterChatCompletionBody } from './openrouter-request';
 import { MoonshotClient } from './moonshot-client';
 import {
 	cleanJSONResponse,
@@ -542,7 +543,7 @@ export class SmartLLMService {
 		const maxRetries = options.validation?.maxRetries || 2;
 		const allowTruncatedJsonRecovery = options.validation?.allowTruncatedJsonRecovery === true;
 		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
-		const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 4);
+		const maxAttempts = Math.max(preferredModels.length, 1);
 		const attemptedModels = new Set<string>();
 		let lastResponse: OpenRouterResponse | null = null;
 		let lastRequestedModel = baseModel;
@@ -1010,7 +1011,7 @@ export class SmartLLMService {
 
 		// Make the OpenRouter API call with model routing
 		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
-		const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 3);
+		const maxAttempts = Math.max(preferredModels.length, 1);
 		const attemptedModels = new Set<string>();
 		let lastResponse: OpenRouterResponse | null = null;
 		let lastFinishReason: string | undefined;
@@ -1829,9 +1830,14 @@ export class SmartLLMService {
 		let providerResolvedFromStream = false;
 		let lastRequestApiUrl = this.apiUrl;
 		let lastRouteProvider: ProviderRoute['provider'] = 'openrouter';
+		let lastRequestedModel = baseModel;
+		let lastRoutingModels = [...preferredModels];
+		let requestModelForStartedStream = baseModel;
+		let routingModelsForStartedStream = [...preferredModels];
+		let startedStreamAttempt = 0;
 
 		try {
-			const maxAttempts = Math.min(Math.max(preferredModels.length, 1), 3);
+			const maxAttempts = Math.max(preferredModels.length, 1);
 			const attemptedModels = new Set<string>();
 			let response: Response | null = null;
 			let lastError: Error | null = null;
@@ -1846,6 +1852,8 @@ export class SmartLLMService {
 					requestedModel,
 					...remainingModels.filter((model) => model !== requestedModel)
 				];
+				lastRequestedModel = requestedModel;
+				lastRoutingModels = routingModels;
 				const route = this.resolveProviderRoute(requestedModel, {
 					forceOpenRouter: needsToolSupport
 				});
@@ -1862,27 +1870,25 @@ export class SmartLLMService {
 					options.temperature,
 					0.7
 				);
-				const body: any = {
-					model: route.requestModel,
-					messages: messagesForRequest,
-					temperature: requestTemperature,
-					max_tokens: options.maxTokens ?? 2000,
-					stream: true
-				};
-
-				// OpenRouter supports server-side fallback routing. Moonshot direct does not.
-				if (route.provider === 'openrouter' && routingModels.length > 1) {
-					body.extra_body = {
-						models: routingModels.slice(1)
-					};
-				}
-
-				if (route.provider === 'openrouter' && transforms && transforms.length > 0) {
-					body.transforms = transforms;
-				}
-				if (route.provider === 'openrouter') {
-					body.stream_options = { include_usage: true };
-				}
+				const body: any =
+					route.provider === 'openrouter'
+						? buildOpenRouterChatCompletionBody({
+								model: route.requestModel,
+								messages: messagesForRequest,
+								temperature: requestTemperature,
+								max_tokens: options.maxTokens ?? 2000,
+								stream: true,
+								models: routingModels,
+								transforms,
+								stream_options: { include_usage: true }
+							})
+						: {
+								model: route.requestModel,
+								messages: messagesForRequest,
+								temperature: requestTemperature,
+								max_tokens: options.maxTokens ?? 2000,
+								stream: true
+							};
 				if (route.provider === 'moonshot') {
 					if (this.moonshotStreamIncludeUsage) {
 						body.stream_options = { include_usage: true };
@@ -1924,6 +1930,9 @@ export class SmartLLMService {
 				}
 
 				if (response.ok) {
+					requestModelForStartedStream = requestedModel;
+					routingModelsForStartedStream = routingModels;
+					startedStreamAttempt = attempt + 1;
 					resolvedModel = this.canonicalizeModelId(requestedModel);
 					resolvedProvider =
 						route.provider === 'moonshot'
@@ -1994,8 +2003,8 @@ export class SmartLLMService {
 					.logUsageToDatabase({
 						userId: options.userId,
 						operationType,
-						modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-						modelUsed: resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini',
+						modelRequested: lastRequestedModel,
+						modelUsed: resolvedModel || lastRequestedModel,
 						promptTokens: 0,
 						completionTokens: 0,
 						totalTokens: 0,
@@ -2031,6 +2040,8 @@ export class SmartLLMService {
 							entityId: options.entityId,
 							modelResolvedFromStream,
 							providerResolvedFromStream,
+							modelRequested: lastRequestedModel,
+							modelsAttempted: lastRoutingModels,
 							statusCode: (lastError as any)?.status ?? response?.status,
 							errorText: lastErrorText ?? null
 						}
@@ -2101,8 +2112,8 @@ export class SmartLLMService {
 					.logUsageToDatabase({
 						userId: options.userId,
 						operationType,
-						modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-						modelUsed: resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini',
+						modelRequested: requestModelForStartedStream,
+						modelUsed: resolvedModel || requestModelForStartedStream,
 						promptTokens: 0,
 						completionTokens: 0,
 						totalTokens: 0,
@@ -2135,7 +2146,10 @@ export class SmartLLMService {
 							contextType: options.contextType,
 							entityId: options.entityId,
 							modelResolvedFromStream,
-							providerResolvedFromStream
+							providerResolvedFromStream,
+							modelRequested: requestModelForStartedStream,
+							modelsAttempted: routingModelsForStartedStream,
+							attempts: startedStreamAttempt || 1
 						}
 					})
 					.catch((err) => console.error('Failed to log error:', err));
@@ -2214,7 +2228,7 @@ export class SmartLLMService {
 								? ((usage.completion_tokens || 0) / 1_000_000) *
 									modelConfig.outputCost
 								: 0;
-							const provider = modelConfig?.provider ?? resolvedProvider;
+							const provider = resolvedProvider ?? modelConfig?.provider;
 
 							// Log to database (async, non-blocking)
 							// Build operation type with context: chat_stream_${contextType}
@@ -2226,7 +2240,7 @@ export class SmartLLMService {
 								.logUsageToDatabase({
 									userId: options.userId,
 									operationType,
-									modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
+									modelRequested: requestModelForStartedStream,
 									modelUsed: actualModel,
 									provider,
 									promptTokens: usage.prompt_tokens || 0,
@@ -2261,7 +2275,10 @@ export class SmartLLMService {
 										contextType: options.contextType,
 										entityId: options.entityId,
 										modelResolvedFromStream,
-										providerResolvedFromStream
+										providerResolvedFromStream,
+										modelRequested: requestModelForStartedStream,
+										modelsAttempted: routingModelsForStartedStream,
+										attempts: startedStreamAttempt || 1
 									}
 								})
 								.catch((err) => console.error('Failed to log usage:', err));
@@ -2435,13 +2452,17 @@ export class SmartLLMService {
 			// Log failure with context-aware operation type
 			const operationType =
 				options.operationType || this.buildChatStreamOperationType(options.contextType);
+			const requestModelForFailureLog =
+				startedStreamAttempt > 0 ? requestModelForStartedStream : lastRequestedModel;
+			const routingModelsForFailureLog =
+				startedStreamAttempt > 0 ? routingModelsForStartedStream : lastRoutingModels;
 
 			this.usageLogger
 				.logUsageToDatabase({
 					userId: options.userId,
 					operationType,
-					modelRequested: preferredModels[0] || 'openai/gpt-4o-mini',
-					modelUsed: resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini',
+					modelRequested: requestModelForFailureLog,
+					modelUsed: resolvedModel || requestModelForFailureLog,
 					promptTokens: 0,
 					completionTokens: 0,
 					totalTokens: 0,
@@ -2474,7 +2495,10 @@ export class SmartLLMService {
 						contextType: options.contextType,
 						entityId: options.entityId,
 						modelResolvedFromStream,
-						providerResolvedFromStream
+						providerResolvedFromStream,
+						modelRequested: requestModelForFailureLog,
+						modelsAttempted: routingModelsForFailureLog,
+						attempts: startedStreamAttempt || 1
 					}
 				})
 				.catch((err) => console.error('Failed to log error:', err));

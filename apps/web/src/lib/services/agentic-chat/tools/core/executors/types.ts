@@ -256,6 +256,7 @@ export interface CreateOntoPlanArgs {
 	project_id: string;
 	name: string;
 	description?: string;
+	plan?: string;
 	type_key?: string;
 	state_key?: string;
 	props?: Record<string, unknown>;
@@ -479,6 +480,7 @@ export interface UpdateOntoPlanArgs {
 	plan_id: string;
 	name?: string;
 	description?: string;
+	plan?: string;
 	update_strategy?: 'replace' | 'append' | 'merge_llm';
 	merge_instructions?: string;
 	start_date?: string;

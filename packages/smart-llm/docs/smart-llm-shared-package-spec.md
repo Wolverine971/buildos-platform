@@ -38,7 +38,7 @@ Reviewed the following sources to identify overlaps and divergences:
 
 - Modularized into `smart-llm/*` submodules.
 - Advanced error handling with `OpenRouterEmptyContentError` and retry logic.
-- Uses `OpenRouterClient` with `extra_body.models` for fallback routing.
+- Uses `OpenRouterClient` with the top-level `models` field for fallback routing.
 - Supports streaming (`streamText`) with tool calls and SSE parsing.
 - Supports audio transcription (`transcribeAudio`) with OpenRouter audio input.
 - Uses `LLMUsageLogger` with Supabase and ErrorLoggerService integration.
@@ -61,8 +61,9 @@ Reviewed the following sources to identify overlaps and divergences:
     - Worker has a smaller, older list (updated 2026-01-01) and different profile mappings.
 
 2. **OpenRouter Request Format**
-    - Web uses `extra_body.models` for fallback.
-    - Worker uses `models` + `route` + `provider` fields (OpenRouter API no longer guarantees provider routing).
+    - Web and worker should share one request builder.
+    - Fallbacks should be sent through the top-level `models` field.
+    - Provider preferences and the legacy `route` field should not be used unless reconfirmed.
 
 3. **Error Handling and Retries**
     - Web has robust empty-content detection, parse retry paths, and error metadata capture.
@@ -193,7 +194,7 @@ Keep the existing entrypoints as thin wrappers:
 
 ## OpenRouter Request Strategy
 
-- Standardize on `extra_body.models` fallback (per current OpenRouter spec).
+- Standardize on the top-level `models` fallback field.
 - Deprecate provider routing preferences and `route` field unless we confirm supported behavior.
 - Apply `transforms: ['middle-out']` conditionally for extremely long prompts (see rule below).
 
@@ -224,7 +225,7 @@ Keep the existing entrypoints as thin wrappers:
 
 ## Decisions (from review)
 
-1. **Fallback routing:** Standardize on a single fallback style. Use `extra_body.models` consistently.
+1. **Fallback routing:** Standardize on a single fallback style. Use the top-level `models` field consistently.
 2. **User ID:** Enforce `userId` for worker calls as well. The worker should always pass the end-user ID when making LLM calls.
 3. **Model list:** Use the web model list as the authoritative source of truth.
 4. **Audio input:** Proceed with the proposed `AudioInput` union.

@@ -12,13 +12,14 @@
  *
  * Request Body:
  * - project_id: string (required) - Project UUID
- * - type_key: string (ignored; auto-classified) - Template type key
+ * - type_key?: string - Plan type key
  * - name: string (required) - Plan name
- * - description?: string - Plan description
+ * - description?: string - Short plan synopsis
+ * - plan?: string - Detailed plan body
  * - state_key?: string - Initial state (draft, active, completed)
  * - start_date?: string - Start date ISO string
  * - end_date?: string - End date ISO string
- * - props?: object (ignored; auto-classified)
+ * - props?: object - Additional metadata
  *
  * Related Files:
  * - UI Component: /apps/web/src/lib/components/ontology/PlanCreateModal.svelte
@@ -65,11 +66,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const {
 			project_id,
 			name,
+			type_key,
 			plan,
 			description,
 			state_key = 'draft',
 			start_date,
 			end_date,
+			props,
 			goal_id,
 			milestone_id,
 			parent,
@@ -86,6 +89,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (state_key && !PLAN_STATES.includes(state_key)) {
 			return ApiResponse.badRequest(`state_key must be one of: ${PLAN_STATES.join(', ')}`);
 		}
+
+		const normalizedTypeKey =
+			typeof type_key === 'string' && type_key.trim().length > 0
+				? type_key.trim()
+				: 'plan.default';
+		const incomingProps =
+			props && typeof props === 'object' && !Array.isArray(props)
+				? (props as Record<string, unknown>)
+				: {};
 
 		// Get user's actor ID
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -196,13 +208,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create the plan
 		const planData = {
 			project_id,
-			type_key: 'plan.default',
+			type_key: normalizedTypeKey,
 			name,
 			state_key,
 			plan: plan || null,
 			description: description || null, // Use dedicated column
 			created_by: actorId,
 			props: {
+				...incomingProps,
 				// Maintain backwards compatibility by also storing in props
 				plan: plan || null,
 				description: description || null,

@@ -44,4 +44,17 @@ describe('skill loading', () => {
 		expect(result.markdown).toContain('task_id: "440c2639-9000-4111-aeea-ee374f8fb925"');
 		expect(result.markdown).toContain('Never emit `update_onto_task({})`.');
 	});
+
+	it('includes durable source-of-truth guidance in the plan management skill', () => {
+		const result = loadSkill('plan_management', {
+			format: 'full',
+			include_examples: true
+		}) as Record<string, unknown>;
+
+		expect(result.type).toBe('skill');
+		expect(typeof result.markdown).toBe('string');
+		expect(result.markdown).toContain('Prefer a milestone-scoped plan');
+		expect(result.markdown).toContain('description is the synopsis; plan is the detailed body');
+		expect(result.markdown).toContain('create_onto_plan({ project_id: "<project_id>"');
+	});
 });

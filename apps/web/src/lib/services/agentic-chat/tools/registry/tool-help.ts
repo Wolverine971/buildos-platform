@@ -409,6 +409,14 @@ function buildOpNotes(
 		notes.push(
 			'Include input.project_id and input.name. Add input.goal_id or input.milestone_id when the plan belongs under one of them.'
 		);
+		notes.push(
+			'Use input.description for the short synopsis and input.plan for the detailed execution body.'
+		);
+	}
+	if (op === 'onto.plan.update') {
+		notes.push(
+			'Use input.description for synopsis edits and input.plan for detailed source-of-truth plan body edits.'
+		);
 	}
 
 	const updateMatch = op.match(/^onto\.([a-z_]+)\.update$/);
@@ -734,6 +742,7 @@ function buildOpExamples(
 						milestone_id: '<milestone_id_uuid>',
 						name: 'Weekday drafting routine',
 						description: 'Daily drafting blocks plus weekend revision and planning.',
+						plan: 'Objective: reach the chapter milestone through weekday drafting blocks, weekend revision, and a Sunday checkpoint. Timeline: draft Monday-Friday, revise Saturday, plan the next week Sunday. Tasks: create the weekday draft block tasks and the weekend revision task under this plan.',
 						state_key: 'active'
 					}
 				}
@@ -745,7 +754,9 @@ function buildOpExamples(
 					input: {
 						project_id: '<project_id_uuid>',
 						goal_id: '<goal_id_uuid>',
-						name: 'Beta reader outreach'
+						name: 'Beta reader outreach',
+						description: 'Execution plan for recruiting and coordinating beta readers.',
+						plan: 'Objective: recruit the right beta readers and collect usable feedback. Timeline: define reader criteria, build the outreach list, send invitations, confirm readers, then schedule feedback checkpoints. Tasks: draft invitation copy, shortlist candidates, send outreach, and create the feedback form.'
 					}
 				}
 			}

@@ -2627,6 +2627,14 @@ export class ToolExecutionService implements BaseService {
 					'summary',
 					'plan.description'
 				]);
+				mapAlias('plan', [
+					'plan_body',
+					'plan_content',
+					'plan_details',
+					'body',
+					'content',
+					'plan.plan'
+				]);
 				break;
 			case 'create_onto_goal':
 				mapAlias('name', ['title', 'goal_name', 'goal_title', 'goal.title', 'goal.name']);
@@ -2653,8 +2661,15 @@ export class ToolExecutionService implements BaseService {
 					'plan_description',
 					'details',
 					'summary',
-					'content',
 					'plan.description'
+				]);
+				mapAlias('plan', [
+					'plan_body',
+					'plan_content',
+					'plan_details',
+					'body',
+					'content',
+					'plan.plan'
 				]);
 				break;
 			case 'update_onto_goal':

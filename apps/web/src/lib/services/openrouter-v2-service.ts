@@ -1,7 +1,13 @@
 // apps/web/src/lib/services/openrouter-v2-service.ts
 
 import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
-import { JSON_MODELS, TEXT_MODELS, shouldFailoverToNextOpenRouterModel } from '@buildos/smart-llm';
+import {
+	analyzeComplexity,
+	estimateResponseLength,
+	JSON_MODELS,
+	TEXT_MODELS,
+	shouldFailoverToNextOpenRouterModel
+} from '@buildos/smart-llm';
 import {
 	SmartLLMService,
 	type JSONRequestOptions,
@@ -212,6 +218,11 @@ type JSONRequestWithFallbackModels<T = any> = JSONRequestOptions<T> & {
 	models?: string[];
 };
 
+type TextRequestWithFallbackModels = TextGenerationOptions & {
+	model?: string;
+	models?: string[];
+};
+
 export class OpenRouterV2Service extends SmartLLMService {
 	private client: OpenRouterV2Client;
 	private exactoToolsEnabled: boolean;
@@ -247,12 +258,24 @@ export class OpenRouterV2Service extends SmartLLMService {
 		});
 	}
 
-	private resolveModels(lane: ModelLane, model?: string, models?: string[]): string[] {
+	private resolveModels(
+		lane: ModelLane,
+		model?: string,
+		models?: string[],
+		selection?: {
+			profile?: JSONRequestOptions['profile'] | TextGenerationOptions['profile'];
+			estimatedLength?: number;
+			complexity?: 'simple' | 'moderate' | 'complex';
+		}
+	): string[] {
 		return resolveLaneModels({
 			lane,
 			model,
 			models,
-			exactoToolsEnabled: this.exactoToolsEnabled
+			exactoToolsEnabled: this.exactoToolsEnabled,
+			profile: selection?.profile,
+			estimatedLength: selection?.estimatedLength,
+			complexity: selection?.complexity
 		});
 	}
 
@@ -348,13 +371,16 @@ export class OpenRouterV2Service extends SmartLLMService {
 	async getJSONResponse<T = any>(options: JSONRequestWithFallbackModels<T>): Promise<T> {
 		const requestStartedAt = new Date();
 		const startTime = performance.now();
-		const laneModels = this.resolveModels('json', options.model, options.models);
+		const laneModels = this.resolveModels('json', options.model, options.models, {
+			profile: options.profile,
+			complexity: analyzeComplexity(options.userPrompt)
+		});
 		const messages: OpenRouterChatMessage[] = [
 			{ role: 'system', content: options.systemPrompt },
 			{ role: 'user', content: options.userPrompt }
 		];
 
-		const maxAttempts = Math.min(Math.max(laneModels.length, 1), 3);
+		const maxAttempts = Math.max(laneModels.length, 1);
 		let lastError: Error | null = null;
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -431,7 +457,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		);
 	}
 
-	async generateText(options: TextGenerationOptions): Promise<string>;
+	async generateText(options: TextRequestWithFallbackModels): Promise<string>;
 	async generateText(params: {
 		systemPrompt: string;
 		prompt: string;
@@ -441,9 +467,11 @@ export class OpenRouterV2Service extends SmartLLMService {
 		userId?: string;
 		operationType?: string;
 		profile?: TextGenerationOptions['profile'];
+		model?: string;
+		models?: string[];
 	}): Promise<string>;
 	async generateText(optionsOrParams: any): Promise<string> {
-		const normalized: TextGenerationOptions =
+		const normalized: TextRequestWithFallbackModels =
 			'systemPrompt' in optionsOrParams
 				? {
 						prompt: optionsOrParams.prompt,
@@ -453,7 +481,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 						timeoutMs: optionsOrParams.timeoutMs,
 						userId: optionsOrParams.userId,
 						operationType: optionsOrParams.operationType,
-						profile: optionsOrParams.profile
+						profile: optionsOrParams.profile,
+						model: optionsOrParams.model,
+						models: optionsOrParams.models
 					}
 				: optionsOrParams;
 
@@ -461,10 +491,15 @@ export class OpenRouterV2Service extends SmartLLMService {
 		return detailed.text;
 	}
 
-	async generateTextDetailed(options: TextGenerationOptions): Promise<TextGenerationResult> {
+	async generateTextDetailed(
+		options: TextRequestWithFallbackModels
+	): Promise<TextGenerationResult> {
 		const requestStartedAt = new Date();
 		const startTime = performance.now();
-		const laneModels = this.resolveModels('text');
+		const laneModels = this.resolveModels('text', options.model, options.models, {
+			profile: options.profile,
+			estimatedLength: estimateResponseLength(options.prompt)
+		});
 		const systemPrompt =
 			typeof options.systemPrompt === 'string' && options.systemPrompt.trim().length > 0
 				? options.systemPrompt
@@ -474,7 +509,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 			{ role: 'user', content: options.prompt }
 		];
 
-		const maxAttempts = Math.min(Math.max(laneModels.length, 1), 3);
+		const maxAttempts = Math.max(laneModels.length, 1);
 		let lastError: Error | null = null;
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -568,6 +603,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 		turnRunId?: string;
 		streamRunId?: string;
 		clientTurnId?: string;
+		model?: string;
+		models?: string[];
 		signal?: AbortSignal;
 		operationType?: string;
 		contextType?: string;
@@ -576,12 +613,24 @@ export class OpenRouterV2Service extends SmartLLMService {
 	}): AsyncGenerator<OpenRouterStreamEvent> {
 		const needsTools = Array.isArray(options.tools) && options.tools.length > 0;
 		const lane: ModelLane = needsTools ? 'tool_calling' : 'text';
-		const laneModels = this.resolveModels(lane);
-		const maxAttempts = Math.min(Math.max(laneModels.length, 1), 3);
+		const totalInputLength = options.messages.reduce(
+			(sum, message) => sum + (message.content?.length || 0),
+			0
+		);
+		const laneModels = this.resolveModels(lane, options.model, options.models, {
+			profile: options.profile,
+			estimatedLength: estimateResponseLength(
+				totalInputLength > 0 ? 'x'.repeat(Math.min(totalInputLength, 5001)) : ''
+			)
+		});
+		const maxAttempts = Math.max(laneModels.length, 1);
 		let lastError: Error | null = null;
 		let streamResponse: Response | null = null;
 		let resolvedModel = laneModels[0] || 'openai/gpt-4o-mini';
 		let resolvedProvider: string | undefined;
+		let requestModelForStartedStream = resolvedModel;
+		let routingModelsForStartedStream = [...laneModels];
+		let startedStreamAttempt = 0;
 		const requestStartedAt = new Date();
 		const startTime = performance.now();
 
@@ -606,6 +655,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 					timeoutMs: this.resolveTimeout(undefined),
 					signal: options.signal
 				});
+				requestModelForStartedStream = model;
+				routingModelsForStartedStream = models;
+				startedStreamAttempt = attempt + 1;
 				break;
 			} catch (error) {
 				if (isAbortError(error)) {
@@ -660,7 +712,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const logUsage = (usageForLog: OpenRouterUsage | undefined): void => {
 			if (!usageForLog || usageLogged || !this.hasUsageLoggingBackend()) return;
 			usageLogged = true;
-			const actualModel = resolvedModel || laneModels[0] || 'openai/gpt-4o-mini';
+			const actualModel = resolvedModel || requestModelForStartedStream;
 			const modelConfig = TEXT_MODELS[actualModel];
 			const inputCost = modelConfig
 				? ((usageForLog.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
@@ -673,9 +725,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 			this.logUsageToDatabase({
 				userId: options.userId,
 				operationType: options.operationType || 'agentic_chat_v2_stream',
-				modelRequested: laneModels[0] || actualModel,
+				modelRequested: requestModelForStartedStream,
 				modelUsed: actualModel,
-				provider: modelConfig?.provider ?? resolvedProvider,
+				provider: resolvedProvider ?? modelConfig?.provider,
 				promptTokens: usageForLog.prompt_tokens || 0,
 				completionTokens: usageForLog.completion_tokens || 0,
 				totalTokens: usageForLog.total_tokens || 0,
@@ -709,7 +761,10 @@ export class OpenRouterV2Service extends SmartLLMService {
 					contextType: options.contextType,
 					entityId: options.entityId,
 					hasTools: needsTools,
-					lane
+					lane,
+					modelRequested: requestModelForStartedStream,
+					modelsAttempted: routingModelsForStartedStream,
+					attempts: startedStreamAttempt || 1
 				}
 			}).catch((error) => console.error('Failed to log OpenRouter V2 usage:', error));
 		};

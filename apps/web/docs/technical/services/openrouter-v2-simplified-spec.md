@@ -60,7 +60,7 @@ This design is grounded in OpenRouter docs linked by product:
 - Streaming SSE behavior (`data: ...`, `[DONE]`, stream cancellation/error events)
 - Tool-calling request format (`tools`, `tool_choice`) and tool-call assembly from deltas
 - Responses API (`/responses`) for basic, reasoning, and tool-calling workflows
-- Model fallback routing (`models` array / `extra_body.models` for OpenAI SDK compatibility)
+- Model fallback routing with the top-level `models` array.
 - Model variant pinning via `:exacto`
 - Reasoning token controls (`reasoning.effort`, `reasoning.max_tokens`, `reasoning.exclude`)
 
@@ -250,7 +250,7 @@ Rules from docs:
     - `OPENROUTER_V2_ENABLED`
     - `OPENROUTER_V2_RESPONSES_ENABLED`
     - `OPENROUTER_V2_EXACTO_TOOLS_ENABLED`
-    - `OPENROUTER_V2_LANE_*` (optional overrides)
+    - `OPENROUTER_V2_TIMEOUT_MS`
 
 ### Phase 1: Build V2 Service
 

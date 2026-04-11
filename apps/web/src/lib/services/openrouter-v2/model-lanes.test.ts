@@ -1,46 +1,10 @@
 // apps/web/src/lib/services/openrouter-v2/model-lanes.test.ts
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { resolveLaneModels, resolveLaneReasoning } from './model-lanes';
 
-const ORIGINAL_ENV = {
-	OPENROUTER_V2_DEFAULT_MODELS: process.env.OPENROUTER_V2_DEFAULT_MODELS,
-	OPENROUTER_V2_LANE_TEXT_MODELS: process.env.OPENROUTER_V2_LANE_TEXT_MODELS,
-	OPENROUTER_V2_LANE_JSON_MODELS: process.env.OPENROUTER_V2_LANE_JSON_MODELS,
-	OPENROUTER_V2_LANE_TOOL_MODELS: process.env.OPENROUTER_V2_LANE_TOOL_MODELS
-};
-
-afterEach(() => {
-	if (ORIGINAL_ENV.OPENROUTER_V2_DEFAULT_MODELS === undefined) {
-		delete process.env.OPENROUTER_V2_DEFAULT_MODELS;
-	} else {
-		process.env.OPENROUTER_V2_DEFAULT_MODELS = ORIGINAL_ENV.OPENROUTER_V2_DEFAULT_MODELS;
-	}
-
-	if (ORIGINAL_ENV.OPENROUTER_V2_LANE_TEXT_MODELS === undefined) {
-		delete process.env.OPENROUTER_V2_LANE_TEXT_MODELS;
-	} else {
-		process.env.OPENROUTER_V2_LANE_TEXT_MODELS = ORIGINAL_ENV.OPENROUTER_V2_LANE_TEXT_MODELS;
-	}
-
-	if (ORIGINAL_ENV.OPENROUTER_V2_LANE_JSON_MODELS === undefined) {
-		delete process.env.OPENROUTER_V2_LANE_JSON_MODELS;
-	} else {
-		process.env.OPENROUTER_V2_LANE_JSON_MODELS = ORIGINAL_ENV.OPENROUTER_V2_LANE_JSON_MODELS;
-	}
-
-	if (ORIGINAL_ENV.OPENROUTER_V2_LANE_TOOL_MODELS === undefined) {
-		delete process.env.OPENROUTER_V2_LANE_TOOL_MODELS;
-	} else {
-		process.env.OPENROUTER_V2_LANE_TOOL_MODELS = ORIGINAL_ENV.OPENROUTER_V2_LANE_TOOL_MODELS;
-	}
-});
-
 describe('resolveLaneModels', () => {
-	it('returns default text lane models when no overrides are provided', () => {
-		delete process.env.OPENROUTER_V2_DEFAULT_MODELS;
-		delete process.env.OPENROUTER_V2_LANE_TEXT_MODELS;
-
+	it('returns default text lane models when no explicit selection is provided', () => {
 		const result = resolveLaneModels({ lane: 'text' });
 
 		expect(result[0]).toBe('qwen/qwen3.5-flash-02-23');
@@ -49,8 +13,6 @@ describe('resolveLaneModels', () => {
 	});
 
 	it('returns default tool lane models when exacto is disabled', () => {
-		delete process.env.OPENROUTER_V2_LANE_TOOL_MODELS;
-
 		const result = resolveLaneModels({ lane: 'tool_calling', exactoToolsEnabled: false });
 
 		expect(result[0]).toBe('x-ai/grok-4.1-fast');
@@ -60,8 +22,6 @@ describe('resolveLaneModels', () => {
 	});
 
 	it('returns upgraded JSON lane defaults', () => {
-		delete process.env.OPENROUTER_V2_LANE_JSON_MODELS;
-
 		const result = resolveLaneModels({ lane: 'json' });
 
 		expect(result[0]).toBe('qwen/qwen3.6-plus');
@@ -71,32 +31,58 @@ describe('resolveLaneModels', () => {
 	});
 
 	it('uses exacto defaults for tool lane when enabled', () => {
-		delete process.env.OPENROUTER_V2_LANE_TOOL_MODELS;
-
 		const result = resolveLaneModels({ lane: 'tool_calling', exactoToolsEnabled: true });
 
 		expect(result[0]).toBe('deepseek/deepseek-v3.1-terminus:exacto');
 		expect(result).toContain('openai/gpt-4o-mini');
 	});
 
-	it('prioritizes explicit model and keeps unique ordering', () => {
+	it('prioritizes explicit compatible models and keeps unique ordering', () => {
+		const result = resolveLaneModels({
+			lane: 'json',
+			model: 'deepseek/deepseek-v3.2',
+			models: ['deepseek/deepseek-v3.2', 'openai/gpt-4o-mini']
+		});
+
+		expect(result[0]).toBe('deepseek/deepseek-v3.2');
+		expect(result.filter((entry) => entry === 'deepseek/deepseek-v3.2')).toHaveLength(1);
+	});
+
+	it('filters explicit unknown or lane-incompatible models before defaults', () => {
 		const result = resolveLaneModels({
 			lane: 'json',
 			model: 'custom/model',
-			models: ['custom/model', 'openai/gpt-4o-mini']
+			models: ['custom/model', 'nvidia/nemotron-3-super-120b-a12b:free']
 		});
 
-		expect(result[0]).toBe('custom/model');
-		expect(result.filter((entry) => entry === 'custom/model')).toHaveLength(1);
+		expect(result).not.toContain('custom/model');
+		expect(result[0]).toBe('nvidia/nemotron-3-super-120b-a12b:free');
 	});
 
-	it('includes lane overrides from env', () => {
-		process.env.OPENROUTER_V2_LANE_JSON_MODELS = 'override/json-a, override/json-b';
+	it('honors text profile hints before text lane defaults', () => {
+		const result = resolveLaneModels({ lane: 'text', profile: 'quality' });
 
-		const result = resolveLaneModels({ lane: 'json' });
+		expect(result[0]).toBe('qwen/qwen3.6-plus');
+		expect(result).toContain('qwen/qwen3.5-flash-02-23');
+	});
 
-		expect(result).toContain('override/json-a');
-		expect(result).toContain('override/json-b');
+	it('honors JSON profile hints with JSON-capable models only', () => {
+		const result = resolveLaneModels({ lane: 'json', profile: 'fast' });
+
+		expect(result[0]).toBe('qwen/qwen3.5-flash-02-23');
+		expect(result).not.toContain('custom/model');
+	});
+
+	it('keeps tool lane defaults ahead of broad profile fallbacks', () => {
+		const result = resolveLaneModels({
+			lane: 'tool_calling',
+			profile: 'balanced',
+			exactoToolsEnabled: false
+		});
+
+		expect(result[0]).toBe('x-ai/grok-4.1-fast');
+		expect(result[1]).toBe('minimax/minimax-m2.7');
+		expect(result).toContain('qwen/qwen3.5-flash-02-23');
 	});
 });
 

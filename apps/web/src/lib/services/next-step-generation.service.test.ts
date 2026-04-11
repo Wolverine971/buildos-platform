@@ -90,14 +90,12 @@ describe('next-step generation model fallback', () => {
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestBodies[0]?.model).toBe('qwen/qwen3.5-flash-02-23');
-		expect(requestBodies[0]?.extra_body).toEqual({
-			models: [
-				'deepseek/deepseek-v3.2',
-				'qwen/qwen3.6-plus',
-				'openai/gpt-oss-120b',
-				'openai/gpt-4.1-nano'
-			]
-		});
+		expect(requestBodies[0]?.models).toEqual([
+			'deepseek/deepseek-v3.2',
+			'qwen/qwen3.6-plus',
+			'openai/gpt-oss-120b',
+			'openai/gpt-4.1-nano'
+		]);
 		expect(requestBodies[1]?.model).toBe('deepseek/deepseek-v3.2');
 	});
 });

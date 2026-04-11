@@ -788,5 +788,142 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				})
 			);
 		});
+
+		it('should create plans with a detailed body and concrete type key', async () => {
+			mockFetch = vi.fn().mockImplementation((url, options) => {
+				if (url.includes('/api/onto/plans/create') && options?.method === 'POST') {
+					const body = JSON.parse(options.body as string);
+
+					return Promise.resolve({
+						ok: true,
+						json: () =>
+							Promise.resolve({
+								success: true,
+								plan: {
+									id: 'plan-123',
+									project_id: body.project_id,
+									name: body.name,
+									plan: body.plan,
+									description: body.description,
+									type_key: body.type_key,
+									state_key: body.state_key
+								}
+							})
+					});
+				}
+				return Promise.resolve({ ok: false });
+			});
+
+			const executor = new ChatToolExecutor(
+				mockSupabase,
+				userId,
+				sessionId,
+				mockFetch,
+				mockLLMService
+			);
+
+			const toolCall: ChatToolCall = {
+				id: 'call-14',
+				type: 'function',
+				function: {
+					name: 'create_onto_plan',
+					arguments: JSON.stringify({
+						project_id: 'project-123',
+						name: 'Milestone execution plan',
+						description: 'Short synopsis',
+						plan: 'Detailed source-of-truth body',
+						type_key: 'plan.phase.launch',
+						state_key: 'active'
+					})
+				}
+			} as ChatToolCall;
+
+			const result = await executor.execute(toolCall);
+
+			expect(result.success).toBe(true);
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining('/api/onto/plans/create'),
+				expect.objectContaining({
+					method: 'POST',
+					body: expect.stringContaining('"plan":"Detailed source-of-truth body"')
+				})
+			);
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining('/api/onto/plans/create'),
+				expect.objectContaining({
+					body: expect.stringContaining('"type_key":"plan.phase.launch"')
+				})
+			);
+		});
+
+		it('should update the detailed plan body separately from the synopsis', async () => {
+			mockFetch = vi.fn().mockImplementation((url, options) => {
+				if (
+					url.includes('/api/onto/plans/') &&
+					(!options?.method || options.method === 'GET')
+				) {
+					return Promise.resolve({
+						ok: true,
+						json: () =>
+							Promise.resolve({
+								success: true,
+								plan: {
+									id: 'plan-123',
+									project_id: 'project-123',
+									name: 'Test Plan',
+									plan: 'Existing detailed plan',
+									description: 'Short synopsis',
+									props: {}
+								}
+							})
+					});
+				}
+				if (url.includes('/api/onto/plans/') && options?.method === 'PATCH') {
+					return Promise.resolve({
+						ok: true,
+						json: () =>
+							Promise.resolve({
+								success: true,
+								plan: { id: 'plan-123', name: 'Test Plan' }
+							})
+					});
+				}
+				return Promise.resolve({ ok: false });
+			});
+
+			const executor = new ChatToolExecutor(
+				mockSupabase,
+				userId,
+				sessionId,
+				mockFetch,
+				mockLLMService
+			);
+
+			const toolCall: ChatToolCall = {
+				id: 'call-15',
+				type: 'function',
+				function: {
+					name: 'update_onto_plan',
+					arguments: JSON.stringify({
+						plan_id: 'plan-123',
+						plan: 'New timeline and dependency notes',
+						update_strategy: 'append'
+					})
+				}
+			} as ChatToolCall;
+
+			const result = await executor.execute(toolCall);
+
+			expect(result.success).toBe(true);
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining('/api/onto/plans/plan-123'),
+				expect.objectContaining({
+					method: 'PATCH',
+					body: expect.stringContaining(
+						'Existing detailed plan\\n\\nNew timeline and dependency notes'
+					)
+				})
+			);
+		});
 	});
 });

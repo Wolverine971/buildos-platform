@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/openrouter-v2/client.ts
 
 import type { OpenRouterChatRequest, OpenRouterChatResponse, OpenRouterV2Config } from './types';
+import { buildOpenRouterChatCompletionBody } from '@buildos/smart-llm';
 
 const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 const CHAT_COMPLETIONS_PATH = '/chat/completions';
@@ -119,31 +120,26 @@ export class OpenRouterV2Client {
 
 	private async requestChatCompletions(request: OpenRouterChatRequest): Promise<Response> {
 		const url = `${this.baseUrl}${CHAT_COMPLETIONS_PATH}`;
-		const body: Record<string, unknown> = {
+		const body = buildOpenRouterChatCompletionBody({
 			model: request.model,
 			messages: request.messages,
-			stream: request.stream === true
-		};
-
-		if (typeof request.temperature === 'number') body.temperature = request.temperature;
-		if (typeof request.max_tokens === 'number') body.max_tokens = request.max_tokens;
-		if (request.response_format) body.response_format = request.response_format;
-		if (request.reasoning) body.reasoning = request.reasoning;
-		if (request.provider) body.provider = request.provider;
-		if (Array.isArray(request.tools) && request.tools.length > 0) body.tools = request.tools;
-		if (request.tool_choice) body.tool_choice = request.tool_choice;
-		if (request.stream === true) {
-			body.stream_options = {
-				include_usage: true,
-				...(request.stream_options ?? {})
-			};
-		}
-
-		if (Array.isArray(request.models) && request.models.length > 1) {
-			body.extra_body = {
-				models: request.models.slice(1)
-			};
-		}
+			models: request.models,
+			temperature: request.temperature,
+			max_tokens: request.max_tokens,
+			response_format: request.response_format,
+			reasoning: request.reasoning,
+			provider: request.provider,
+			tools: request.tools,
+			tool_choice: request.tool_choice,
+			stream: request.stream === true,
+			stream_options:
+				request.stream === true
+					? {
+							include_usage: true,
+							...(request.stream_options ?? {})
+						}
+					: request.stream_options
+		});
 
 		const { signal, cleanup } = buildMergedAbortSignal({
 			external: request.signal,

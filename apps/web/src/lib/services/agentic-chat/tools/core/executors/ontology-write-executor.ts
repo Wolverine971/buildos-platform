@@ -965,8 +965,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		const payload = {
 			project_id: args.project_id,
 			name: args.name,
+			plan: args.plan ?? null,
 			description: args.description ?? null,
-			type_key: args.type_key ?? 'plan.phase.base',
+			type_key: args.type_key ?? 'plan.phase.project',
 			state_key: args.state_key ?? 'draft',
 			props: args.props ?? {},
 			goal_id: args.goal_id,
@@ -1457,6 +1458,24 @@ export class OntologyWriteExecutor extends BaseExecutor {
 					const raw =
 						details?.plan?.description ??
 						(details?.plan?.props as Record<string, unknown>)?.description;
+					return {
+						text: typeof raw === 'string' ? raw : '',
+						projectId: details?.plan?.project_id as string | undefined
+					};
+				}
+			});
+		}
+		if (args.plan !== undefined) {
+			updateData.plan = await this.resolveTextWithStrategy({
+				strategy,
+				newContent: args.plan ?? '',
+				instructions: args.merge_instructions,
+				entityLabel: `plan:${args.plan_id}`,
+				existingLoader: async () => {
+					const details = await getPlanDetails(args.plan_id);
+					const raw =
+						details?.plan?.plan ??
+						(details?.plan?.props as Record<string, unknown>)?.plan;
 					return {
 						text: typeof raw === 'string' ? raw : '',
 						projectId: details?.plan?.project_id as string | undefined

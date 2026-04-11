@@ -710,7 +710,8 @@ describe('ToolExecutionService gateway fallback', () => {
 				args: {
 					plan_id: PLAN_ID,
 					plan_name: 'Updated plan',
-					plan_description: 'Expanded execution details'
+					plan_description: 'Short plan synopsis',
+					plan_body: 'Expanded execution details'
 				}
 			}),
 			buildContext(),
@@ -723,7 +724,37 @@ describe('ToolExecutionService gateway fallback', () => {
 			expect.objectContaining({
 				plan_id: PLAN_ID,
 				name: 'Updated plan',
-				description: 'Expanded execution details'
+				description: 'Short plan synopsis',
+				plan: 'Expanded execution details'
+			}),
+			expect.any(Object)
+		);
+	});
+
+	it('maps generic plan content aliases to detailed plan body', async () => {
+		const toolExecutor = vi.fn().mockResolvedValue({
+			data: { plan: { id: PLAN_ID, name: 'Updated plan' } }
+		} satisfies ToolExecutorResponse);
+		const service = new ToolExecutionService(toolExecutor);
+
+		const result = await service.executeTool(
+			buildToolCall({
+				op: 'onto.plan.update',
+				args: {
+					plan_id: PLAN_ID,
+					content: 'Detailed body from a generic content alias'
+				}
+			}),
+			buildContext(),
+			[]
+		);
+
+		expect(result.success).toBe(true);
+		expect(toolExecutor).toHaveBeenCalledWith(
+			'update_onto_plan',
+			expect.objectContaining({
+				plan_id: PLAN_ID,
+				plan: 'Detailed body from a generic content alias'
 			}),
 			expect.any(Object)
 		);

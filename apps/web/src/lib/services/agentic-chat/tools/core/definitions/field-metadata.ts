@@ -252,6 +252,13 @@ Examples: goal.outcome.project, goal.metric.revenue, goal.behavior.cadence, goal
 			required: false,
 			example: 'First quarter sprint focusing on core feature development'
 		},
+		plan: {
+			type: 'string',
+			description:
+				'Detailed plan body stored in onto_plans.plan. Use for objective, scope, success criteria, timeline, dependencies, risks, and task breakdown.',
+			required: false,
+			example: '## Objective\nShip the MVP onboarding flow by the launch milestone.'
+		},
 		type_key: {
 			type: 'string',
 			description: `Plan type taxonomy. Format: plan.{family}[.{variant}]

@@ -688,7 +688,7 @@ Use after listing goals to retrieve the full record for editing or auditing.`,
 		type: 'function',
 		function: {
 			name: 'get_onto_plan_details',
-			description: `Get complete details for a specific ontology plan including properties and metadata.
+			description: `Get complete details for a specific ontology plan including the detailed plan body, properties, and metadata.
 Use after listing plans to retrieve the full record for editing or auditing.`,
 			parameters: {
 				type: 'object',
