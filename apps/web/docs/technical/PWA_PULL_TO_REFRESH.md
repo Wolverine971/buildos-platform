@@ -10,6 +10,8 @@ Mobile browsers already own pull-to-refresh in normal browser tabs. BuildOS shou
 
 Installed PWAs are different: the browser chrome is removed, and native pull-to-refresh is unreliable or unavailable depending on platform. For installed PWAs, BuildOS provides its own gesture on pages where refreshing page data is useful.
 
+The browser's exact native pull-to-refresh control is not exposed as a web API. In standalone PWA mode, BuildOS approximates the native/Instagram pattern by moving the opted-in page surface with resistance, showing a small spinner, holding the surface while the refresh promise runs, and then settling it back.
+
 ## Enabled Pages
 
 Pull-to-refresh should only be mounted on pages with a clear data refresh action:
@@ -48,7 +50,7 @@ Examples:
 This is intentionally small:
 
 - One shared component owns the gesture mechanics.
-- Pages decide whether the gesture exists by mounting or not mounting that component.
+- Pages decide whether the gesture exists by wrapping their refreshable content in that component.
 - Pages keep ownership of their refresh function.
 - There is no root-layout route allowlist.
 - There is no global refresh event bus.
@@ -82,7 +84,7 @@ The shared component should only arm the gesture when:
 When adding pull-to-refresh to another page:
 
 1. Confirm the page has one obvious refresh function.
-2. Mount `PullToRefresh` inside that page or page-level component.
+2. Wrap the refreshable page content in `PullToRefresh`.
 3. Pass all modal/loading state into `disabled`.
 4. Do not add route allowlists to the root layout.
 5. Test browser tab mode and installed PWA mode separately.

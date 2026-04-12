@@ -14,11 +14,10 @@
 	import {
 		BriefClientService,
 		streamingStatus,
-		streamingBriefData,
 		briefGenerationCompleted
 	} from '$lib/services/briefClient.service';
 	import { formatInTimeZone } from 'date-fns-tz';
-	import type { DailyBrief, StreamingStatus, StreamingBriefData } from '$lib/types/daily-brief';
+	import type { DailyBrief, StreamingStatus } from '$lib/types/daily-brief';
 
 	// Props
 	interface Props {
@@ -42,7 +41,6 @@
 
 	// Streaming state from stores
 	let currentStreamingStatus = $state<StreamingStatus | null>(null);
-	let currentStreamingData = $state<StreamingBriefData | null>(null);
 
 	// Computed
 	let isGenerating = $derived(currentStreamingStatus?.isGenerating ?? false);
@@ -76,14 +74,18 @@
 		return stripped.length > 150 ? stripped.slice(0, 150) + '...' : stripped;
 	});
 
+	let mobileBriefLine = $derived.by(() => {
+		const priorityCount = brief?.priority_actions?.length ?? 0;
+		if (priorityCount > 0) {
+			return `${priorityCount} priority ${priorityCount === 1 ? 'action' : 'actions'} ready`;
+		}
+		return briefSnippet || 'Your daily brief is ready';
+	});
+
 	// Subscribe to streaming stores using onMount to avoid repeated subscriptions
 	onMount(() => {
 		const unsubStatus = streamingStatus.subscribe((value) => {
 			currentStreamingStatus = value;
-		});
-
-		const unsubData = streamingBriefData.subscribe((value) => {
-			currentStreamingData = value;
 		});
 
 		const unsubCompletion = briefGenerationCompleted.subscribe((value) => {
@@ -95,7 +97,6 @@
 
 		return () => {
 			unsubStatus();
-			unsubData();
 			unsubCompletion();
 		};
 	});
@@ -257,11 +258,11 @@
 	{:else if error}
 		<!-- Error State - paper weight with static texture -->
 		<div class="flex items-center gap-2 sm:gap-3 wt-paper p-2 sm:p-3 tx tx-static tx-weak">
-			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-red-500/10">
-				<AlertCircle class="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
+			<div class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-destructive/10">
+				<AlertCircle class="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
 			</div>
 			<div class="flex-1">
-				<p class="text-xs sm:text-sm text-red-600 dark:text-red-400">{error}</p>
+				<p class="text-xs sm:text-sm text-destructive">{error}</p>
 			</div>
 			<button
 				onclick={generateBrief}
@@ -278,9 +279,9 @@
 		>
 			<div class="flex items-center sm:items-start gap-2 sm:gap-3">
 				<div
-					class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors flex-shrink-0"
+					class="p-1.5 sm:p-2 rounded-md sm:rounded-lg bg-warning/10 border border-warning/20 group-hover:bg-warning/20 transition-colors flex-shrink-0"
 				>
-					<Sun class="h-3 w-3 sm:h-4 sm:w-4 text-amber-600 dark:text-amber-400" />
+					<Sun class="h-3 w-3 sm:h-4 sm:w-4 text-warning" />
 				</div>
 				<div class="flex-1 min-w-0">
 					<div class="flex items-center justify-between gap-1.5 sm:gap-2">
@@ -306,6 +307,11 @@
 							/>
 						</div>
 					</div>
+					<p
+						class="sm:hidden text-[11px] text-muted-foreground line-clamp-1 leading-snug mt-0.5"
+					>
+						{mobileBriefLine}
+					</p>
 					<!-- Desktop: Show snippet and priority actions -->
 					<p
 						class="hidden sm:block text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1"
@@ -343,7 +349,7 @@
 			</div>
 			<div class="flex-1 text-left min-w-0">
 				<h3 class="text-xs sm:text-sm font-semibold text-foreground">Generate Brief</h3>
-				<p class="hidden sm:block text-xs text-muted-foreground">
+				<p class="text-[11px] sm:text-xs text-muted-foreground line-clamp-1">
 					Get your AI-powered daily overview
 				</p>
 			</div>

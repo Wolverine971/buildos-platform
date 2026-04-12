@@ -720,6 +720,17 @@
 			"exports": ["userContextStore"]
 		},
 		{
+			"file": "src/lib/components/admin/adminRoutes.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"CHAT_ADMIN_ROOT",
+				"CHAT_ADMIN_TITLE",
+				"CHAT_ADMIN_NAV_ITEMS",
+				"isChatAdminSubpath"
+			]
+		},
+		{
 			"file": "src/lib/components/agent/agent-chat-formatters.ts",
 			"type": "component",
 			"components": [],
@@ -783,17 +794,6 @@
 				"fetchProjectEntities",
 				"normalizeEntitySearch",
 				"normalizeEntityLimit"
-			]
-		},
-		{
-			"file": "src/lib/components/admin/adminRoutes.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"CHAT_ADMIN_ROOT",
-				"CHAT_ADMIN_TITLE",
-				"CHAT_ADMIN_NAV_ITEMS",
-				"isChatAdminSubpath"
 			]
 		},
 		{
@@ -1067,13 +1067,13 @@
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
+		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-session.ts",
 		"src/lib/components/agent/agent-chat-skill-activity.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
-		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",

@@ -2858,7 +2858,7 @@ SELECT
 DATE*TRUNC(%L, nd.created_at) AS time_bucket,
 COUNT(\*) FILTER (WHERE nd.status = ''sent'') AS sent,
 COUNT(*) FILTER (WHERE nd.status = ''delivered'') AS delivered,
-COUNT(_) FILTER (WHERE nd.opened*at IS NOT NULL) AS opened,
+COUNT(\_) FILTER (WHERE nd.opened*at IS NOT NULL) AS opened,
 COUNT(*) FILTER (WHERE nd.clicked*at IS NOT NULL) AS clicked,
 COUNT(*) FILTER (WHERE nd.status = ''failed'') AS failed
 FROM notification*deliveries nd
@@ -2904,92 +2904,93 @@ FILTER (WHERE nd.sent_at IS NOT NULL)::NUMERIC,
 ) AS avg_delivery_time_seconds,
 ROUND(
 (
-COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC
-/ NULLIF(COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC, 0)
-* 100
-),
-2
-) AS open_rate,
-ROUND(
-(
-COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC
-/ NULLIF(COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0)
-* 100
-),
-2
-) AS click_rate
-FROM scoped_events se
-LEFT JOIN notification_deliveries nd ON nd.event_id = se.id
-GROUP BY se.event_type_key
-)
-SELECT
-ec.event_type_key AS event_type,
-ec.total_events,
-COALESCE(dm.total_deliveries, 0) AS total_deliveries,
-COALESCE(dm.unique_recipients, 0) AS unique_subscribers,
-dm.avg_delivery_time_seconds,
-dm.open_rate,
-dm.click_rate
-FROM event_counts ec
-LEFT JOIN delivery_metrics dm ON dm.event_type_key = ec.event_type_key
-ORDER BY ec.total_events DESC;
-END;
-$function$
-"
-},
-{
-"args": "p_interval text, p_limit integer",
-"name": "get_notification_failed_deliveries",
-"schema": "public",
-"definition": "CREATE OR REPLACE FUNCTION public.get_notification_failed_deliveries(p_interval text DEFAULT '24 hours'::text, p_limit integer DEFAULT 50)
-RETURNS TABLE(delivery_id uuid, event_id uuid, event_type text, channel text, recipient_user_id uuid, recipient_email text, last_error text, attempts integer, max_attempts integer, created_at timestamp with time zone, failed_at timestamp with time zone)
-LANGUAGE plpgsql
-AS $function$
-BEGIN
-RETURN QUERY
-SELECT
-nd.id AS delivery_id,
-ne.id AS event_id,
-ne.event_type,
-nd.channel,
-nd.recipient_user_id,
-u.email AS recipient_email,
-nd.last_error,
-nd.attempts,
-nd.max_attempts,
-nd.created_at,
-nd.failed_at
-FROM notification_deliveries nd
-JOIN notification_events ne ON ne.id = nd.event_id
-JOIN users u ON u.id = nd.recipient_user_id
-WHERE nd.status = 'failed'
-AND nd.created_at > NOW() - p_interval: :INTERVAL
-ORDER BY nd.created_at DESC
-LIMIT p_limit;
-END;
-$function$
-"
-},
-{
-"args": "p_interval text, p_offset text",
-"name": "get_notification_overview_metrics",
-"schema": "public",
-"definition": "CREATE OR REPLACE FUNCTION public.get_notification_overview_metrics(p_interval text DEFAULT '7 days'::text, p_offset text DEFAULT NULL::text)
-RETURNS TABLE(total_sent bigint, delivery_success_rate numeric, avg_open_rate numeric, avg_click_rate numeric)
-LANGUAGE plpgsql
-AS $function$
-DECLARE
-v_start_time TIMESTAMPTZ;
-v_end_time TIMESTAMPTZ;
-BEGIN
--- Calculate time range
-IF p_offset IS NULL THEN
-v_end_time := NOW();
-v_start_time := NOW() - p_interval: :INTERVAL;
-ELSE
-v_end_time := NOW() - p_offset: :INTERVAL;
-v_start_time := v_end_time - p_interval: :INTERVAL;
-END IF;
+COUNT(_) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC
+/ NULLIF(COUNT(_) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC, 0)
+
+- 100
+  ),
+  2
+  ) AS open_rate,
+  ROUND(
+  (
+  COUNT(_) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC
+  / NULLIF(COUNT(_) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0)
+- 100
+  ),
+  2
+  ) AS click_rate
+  FROM scoped_events se
+  LEFT JOIN notification_deliveries nd ON nd.event_id = se.id
+  GROUP BY se.event_type_key
+  )
+  SELECT
+  ec.event_type_key AS event_type,
+  ec.total_events,
+  COALESCE(dm.total_deliveries, 0) AS total_deliveries,
+  COALESCE(dm.unique_recipients, 0) AS unique_subscribers,
+  dm.avg_delivery_time_seconds,
+  dm.open_rate,
+  dm.click_rate
+  FROM event_counts ec
+  LEFT JOIN delivery_metrics dm ON dm.event_type_key = ec.event_type_key
+  ORDER BY ec.total_events DESC;
+  END;
+  $function$
+  "
+  },
+  {
+  "args": "p_interval text, p_limit integer",
+  "name": "get_notification_failed_deliveries",
+  "schema": "public",
+  "definition": "CREATE OR REPLACE FUNCTION public.get_notification_failed_deliveries(p_interval text DEFAULT '24 hours'::text, p_limit integer DEFAULT 50)
+  RETURNS TABLE(delivery_id uuid, event_id uuid, event_type text, channel text, recipient_user_id uuid, recipient_email text, last_error text, attempts integer, max_attempts integer, created_at timestamp with time zone, failed_at timestamp with time zone)
+  LANGUAGE plpgsql
+  AS $function$
+  BEGIN
+  RETURN QUERY
+  SELECT
+  nd.id AS delivery_id,
+  ne.id AS event_id,
+  ne.event_type,
+  nd.channel,
+  nd.recipient_user_id,
+  u.email AS recipient_email,
+  nd.last_error,
+  nd.attempts,
+  nd.max_attempts,
+  nd.created_at,
+  nd.failed_at
+  FROM notification_deliveries nd
+  JOIN notification_events ne ON ne.id = nd.event_id
+  JOIN users u ON u.id = nd.recipient_user_id
+  WHERE nd.status = 'failed'
+  AND nd.created_at > NOW() - p_interval: :INTERVAL
+  ORDER BY nd.created_at DESC
+  LIMIT p_limit;
+  END;
+  $function$
+  "
+  },
+  {
+  "args": "p_interval text, p_offset text",
+  "name": "get_notification_overview_metrics",
+  "schema": "public",
+  "definition": "CREATE OR REPLACE FUNCTION public.get_notification_overview_metrics(p_interval text DEFAULT '7 days'::text, p_offset text DEFAULT NULL::text)
+  RETURNS TABLE(total_sent bigint, delivery_success_rate numeric, avg_open_rate numeric, avg_click_rate numeric)
+  LANGUAGE plpgsql
+  AS $function$
+  DECLARE
+  v_start_time TIMESTAMPTZ;
+  v_end_time TIMESTAMPTZ;
+  BEGIN
+  -- Calculate time range
+  IF p_offset IS NULL THEN
+  v_end_time := NOW();
+  v_start_time := NOW() - p_interval: :INTERVAL;
+  ELSE
+  v_end_time := NOW() - p_offset: :INTERVAL;
+  v_start_time := v_end_time - p_interval: :INTERVAL;
+  END IF;
 
 RETURN QUERY
 SELECT

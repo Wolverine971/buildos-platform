@@ -86,28 +86,39 @@
 
 /* Dark mode handled automatically by CSS variables */
 
+/* Pull-to-refresh keeps the gesture page-scoped by moving only opted-in page content. */
+.pwa-pull-to-refresh-surface {
+	transform: translate3d(0, 0, 0);
+	will-change: transform;
+}
+
+.pwa-pull-to-refresh-surface.settling {
+	transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 /* Pull to refresh indicator styling */
 .pwa-pull-to-refresh {
 	position: fixed;
 	top: env(safe-area-inset-top, 0px);
 	left: 50%;
-	transform: translateX(-50%) translateY(-100%);
 	display: inline-flex;
 	align-items: center;
-	gap: 0.5rem;
+	justify-content: center;
+	width: 2rem;
+	height: 2rem;
 	transition:
 		transform 160ms ease,
 		opacity 160ms ease;
 	z-index: 9999;
-	padding: 0.5rem 1rem;
-	background: hsl(var(--accent));
-	color: hsl(var(--accent-foreground));
-	border-radius: 0 0 0.5rem 0.5rem;
-	font-size: 0.875rem;
-	font-weight: 600;
-	box-shadow: var(--shadow-ink-strong);
-	opacity: 0.94;
+	background: hsl(var(--background) / 0.94);
+	color: hsl(var(--accent));
+	border: 1px solid hsl(var(--border));
+	border-radius: 9999px;
+	box-shadow: var(--shadow-ink);
+	opacity: 0;
 	pointer-events: none;
+	-webkit-backdrop-filter: blur(8px);
+	backdrop-filter: blur(8px);
 }
 
 .pwa-pull-to-refresh.active {
@@ -120,7 +131,7 @@
 	border: 2px solid currentColor;
 	border-top-color: transparent;
 	border-radius: 9999px;
-	opacity: 0.7;
+	opacity: 0.8;
 }
 
 .pwa-pull-to-refresh.refreshing .pwa-pull-to-refresh__spinner {

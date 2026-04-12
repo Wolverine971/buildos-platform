@@ -3,8 +3,6 @@
 	import Button from '$components/ui/Button.svelte';
 	import {
 		Brain,
-		FolderOpen,
-		StickyNote,
 		Mail,
 		Shield,
 		Heart,
@@ -25,12 +23,6 @@
 	let { user = null }: { user: any | null } = $props();
 
 	const CURRENT_YEAR = new Date().getFullYear();
-
-	// Streamlined navigation for authenticated users
-	const AUTH_LINKS = [
-		{ href: '/projects', label: 'Projects', icon: FolderOpen },
-		{ href: '/history', label: 'History', icon: StickyNote }
-	];
 
 	const SUPPORT_LINKS = [
 		{ href: '/help', label: 'Help', icon: CircleHelp },
@@ -84,202 +76,51 @@
 	let isAuthenticated = $derived(!!user);
 </script>
 
-<footer class="bg-card border-t border-border mt-auto no-print tx tx-frame tx-weak">
+<footer
+	class="bg-card border-t border-border mt-auto no-print {isAuthenticated
+		? ''
+		: 'tx tx-frame tx-weak'}"
+>
 	<div class="max-w-7xl mx-auto">
 		{#if isAuthenticated}
-			<!-- Authenticated User Footer -->
-			<div class="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-				<!-- Mobile Layout -->
-				<div class="lg:hidden space-y-6">
-					<!-- Brand Section -->
-					<div class="flex items-center justify-between">
-						<a href="/" class="flex items-center space-x-2 group">
-							<img
-								src={DEFAULT_APP_ICON_URL}
-								alt="BuildOS"
-								class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-80"
-								loading="lazy"
-								width="24"
-								height="24"
-								decoding="async"
-							/>
-							<span class="text-lg font-black tracking-tight text-foreground">
-								BuildOS
-							</span>
-						</a>
+			<div class="px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+					<div
+						class="flex items-center justify-center gap-2 text-xs font-semibold tracking-tight text-muted-foreground"
+					>
+						<span>© {CURRENT_YEAR} BuildOS</span>
 						{#if user?.is_admin}
-							<span
-								class="px-2 py-1 text-xs font-bold bg-destructive text-destructive-foreground rounded"
+							<span class="text-border">•</span>
+							<a
+								href="/admin"
+								class="inline-flex items-center gap-1 text-destructive hover:text-destructive/80 transition-colors"
 							>
+								<Shield class="w-3.5 h-3.5" />
 								Admin
-							</span>
+							</a>
 						{/if}
 					</div>
-
-					<!-- Quick Links Grid -->
-					<div class="grid grid-cols-2 gap-3">
-						{#each AUTH_LINKS as link}
-							{@const LinkIcon = link.icon}
-							<a
-								href={link.href}
-								class="flex items-center space-x-2 p-3 rounded-lg border border-border bg-card
-									hover:border-accent hover:bg-accent/5 transition-colors group shadow-ink pressable"
-							>
-								<LinkIcon
-									class="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors"
-								/>
-								<span
-									class="text-sm font-semibold tracking-tight text-foreground group-hover:text-accent"
-								>
-									{link.label}
-								</span>
-							</a>
-						{/each}
-					</div>
-
-					<!-- Support Links -->
-					<div class="flex flex-wrap gap-x-4 gap-y-2 justify-center">
+					<nav
+						aria-label="App footer links"
+						class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-semibold tracking-tight"
+					>
 						{#each SUPPORT_LINKS as link}
 							<a
 								href={link.href}
-								class="text-sm font-semibold tracking-tight text-muted-foreground hover:text-accent transition-colors"
+								class="text-muted-foreground hover:text-accent transition-colors"
 							>
 								{link.label}
 							</a>
 						{/each}
-					</div>
-
-					<!-- Social & Legal -->
-					<div class="space-y-4 pt-4 border-t border-border">
-						<!-- Social Icons -->
-						<div class="flex justify-center space-x-4">
-							{#each SOCIAL_LINKS as social}
-								{@const SocialIcon = social.icon}
-								<a
-									href={social.href}
-									class="p-2 text-muted-foreground hover:text-accent transition-colors rounded-lg hover:bg-muted"
-									aria-label={social.label}
-								>
-									<SocialIcon class="w-5 h-5" />
-								</a>
-							{/each}
-						</div>
-
-						<!-- Legal Links -->
-						<div class="flex justify-center space-x-4 text-sm">
-							{#each LEGAL_LINKS as link}
-								<a
-									href={link.href}
-									class="text-muted-foreground hover:text-foreground transition-colors font-semibold tracking-tight"
-								>
-									{link.label}
-								</a>
-							{/each}
-						</div>
-					</div>
-
-					<!-- Admin Link -->
-					{#if user?.is_admin}
-						<div class="pt-4 border-t border-border">
+						{#each LEGAL_LINKS as link}
 							<a
-								href="/admin"
-								class="flex items-center justify-center space-x-2 p-3 text-destructive
-									bg-destructive/10 hover:bg-destructive/15
-									rounded-lg transition-colors shadow-ink pressable"
+								href={link.href}
+								class="text-muted-foreground hover:text-foreground transition-colors"
 							>
-								<Shield class="w-5 h-5" />
-								<span class="font-semibold tracking-tight">Admin Dashboard</span>
+								{link.label}
 							</a>
-						</div>
-					{/if}
-				</div>
-
-				<!-- Desktop Layout -->
-				<div class="hidden lg:block space-y-6">
-					<div class="flex items-center justify-between">
-						<!-- Left: Brand and Navigation -->
-						<div class="flex items-center space-x-8">
-							<a href="/" class="flex items-center space-x-2 group">
-								<img
-									src={DEFAULT_APP_ICON_URL}
-									alt="BuildOS"
-									class="w-6 h-6 rounded-md transition-opacity duration-200 group-hover:opacity-80"
-									loading="lazy"
-									width="24"
-									height="24"
-									decoding="async"
-								/>
-								<span class="text-lg font-black tracking-tight text-foreground">
-									BuildOS
-								</span>
-							</a>
-
-							<!-- Navigation Links -->
-							<nav aria-label="Footer navigation" class="flex items-center space-x-1">
-								{#each [...AUTH_LINKS, ...SUPPORT_LINKS] as link}
-									<a
-										href={link.href}
-										class="inline-flex items-center px-3 py-2 text-sm font-semibold tracking-tight text-muted-foreground
-											hover:text-accent hover:bg-muted rounded-lg transition-colors"
-									>
-										{#if link.icon}
-											{@const Icon = link.icon}
-											<Icon class="w-4 h-4 mr-2" />
-										{/if}
-										{link.label}
-									</a>
-								{/each}
-								{#if user?.is_admin}
-									<a
-										href="/admin"
-										class="inline-flex items-center px-3 py-2 text-sm font-semibold tracking-tight
-											text-destructive hover:bg-destructive/10 rounded-lg transition-colors ml-2"
-									>
-										<Shield class="w-4 h-4 mr-2" />
-										Admin
-									</a>
-								{/if}
-							</nav>
-						</div>
-
-						<!-- Right: Legal and Social -->
-						<div class="flex items-center space-x-6">
-							<nav aria-label="Legal links" class="flex space-x-4">
-								{#each LEGAL_LINKS as link}
-									<a
-										href={link.href}
-										class="text-sm text-muted-foreground hover:text-foreground transition-colors"
-									>
-										{link.label}
-									</a>
-								{/each}
-							</nav>
-							<div class="flex space-x-2">
-								{#each SOCIAL_LINKS as social}
-									{@const SocialIcon = social.icon}
-									<a
-										href={social.href}
-										class="p-2 text-muted-foreground hover:text-accent transition-colors rounded-lg hover:bg-muted"
-										aria-label={social.label}
-									>
-										<SocialIcon class="w-4 h-4" />
-									</a>
-								{/each}
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Copyright -->
-				<div
-					class="flex items-center justify-center space-x-1 text-xs font-semibold tracking-tight text-muted-foreground
-					mt-6 pt-6 border-t border-border"
-				>
-					<span>© {CURRENT_YEAR} BuildOS</span>
-					<span>•</span>
-					<span>Made with</span>
-					<Heart class="w-3 h-3 text-destructive fill-destructive mx-1" />
-					<span>for the builders</span>
+						{/each}
+					</nav>
 				</div>
 			</div>
 		{:else}

@@ -1563,256 +1563,259 @@
 <PullToRefresh
 	onRefresh={refreshProjectFromPull}
 	disabled={hasAnyModalOpen || showMobileMenu || isHydrating || isDeletingProject}
-/>
+>
+	<div class="min-h-screen bg-background overflow-x-hidden">
+		<ProjectHeaderCard
+			{project}
+			{showMobileMenu}
+			onBack={() => goto('/projects')}
+			onOpenMenu={handleHeaderMenuOpen}
+			onEntityClick={handleNextStepEntityClick}
+			onNextStepGenerated={refreshProjectSilently}
+		/>
 
-<div class="min-h-screen bg-background overflow-x-hidden">
-	<ProjectHeaderCard
-		{project}
-		{showMobileMenu}
-		onBack={() => goto('/projects')}
-		onOpenMenu={handleHeaderMenuOpen}
-		onEntityClick={handleNextStepEntityClick}
-		onNextStepGenerated={refreshProjectSilently}
-	/>
-
-	<!-- Main Content -->
-	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
-		<!-- Hydration Error Banner -->
-		{#if hydrationError}
-			<div
-				class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak"
-			>
-				<p class="text-sm text-destructive">
-					Failed to load project data: {hydrationError}
-				</p>
-				<button
-					onclick={() => {
-						hydrationError = null;
-						isHydrating = true;
-						hydrateFullData();
-					}}
-					class="mt-2 text-sm font-medium text-destructive hover:text-destructive/80 pressable"
+		<!-- Main Content -->
+		<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
+			<!-- Hydration Error Banner -->
+			{#if hydrationError}
+				<div
+					class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak"
 				>
-					Try again
-				</button>
-			</div>
-		{/if}
-
-		<!-- Mobile Command Center (shown only on mobile < 640px) -->
-		<div class="sm:hidden mb-2">
-			{#if isHydrating}
-				<div class="space-y-1.5">
-					<!-- Row 1: Goals (full width) -->
-					<div class="w-full h-[52px] bg-muted animate-pulse rounded-lg"></div>
-					<!-- Row 2: Tasks + Plans -->
-					<div class="flex flex-wrap gap-1.5">
-						<div
-							class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-						></div>
-						<div
-							class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-						></div>
-					</div>
-					<!-- Row 3: Risks + Documents -->
-					<div class="flex flex-wrap gap-1.5">
-						<div
-							class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-						></div>
-						<div
-							class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-						></div>
-					</div>
-					<!-- Row 4: Events (full width) -->
-					<div class="w-full h-[52px] bg-muted animate-pulse rounded-lg"></div>
-				</div>
-			{:else}
-				{#await import('$lib/components/project/MobileCommandCenter.svelte') then { default: MobileCommandCenter }}
-					<MobileCommandCenter
-						goals={filteredGoals}
-						milestones={filteredMilestones}
-						tasks={filteredTasks}
-						plans={filteredPlans}
-						risks={filteredRisks}
-						{documents}
-						events={filteredEvents}
-						{milestonesByGoalId}
-						docStructure={docTreeStructure}
-						{docTreeDocuments}
-						projectId={project.id}
-						{canEdit}
-						onAddGoal={() => canEdit && (showGoalCreateModal = true)}
-						onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
-						onAddTask={() => canEdit && (showTaskCreateModal = true)}
-						onAddPlan={() => canEdit && (showPlanCreateModal = true)}
-						onAddRisk={() => canEdit && (showRiskCreateModal = true)}
-						onAddDocument={(parentId) => canEdit && handleCreateDocument(parentId)}
-						onAddEvent={() => canEdit && (showEventCreateModal = true)}
-						onEditGoal={(id) => (editingGoalId = id)}
-						onEditMilestone={(id) => (editingMilestoneId = id)}
-						onEditTask={(id) => (editingTaskId = id)}
-						onEditPlan={(id) => (editingPlanId = id)}
-						onEditRisk={(id) => (editingRiskId = id)}
-						onEditDocument={(id) => {
-							activeDocumentId = id;
-							showDocumentModal = true;
+					<p class="text-sm text-destructive">
+						Failed to load project data: {hydrationError}
+					</p>
+					<button
+						onclick={() => {
+							hydrationError = null;
+							isHydrating = true;
+							hydrateFullData();
 						}}
-						onEditEvent={(id) => (editingEventId = id)}
-						onToggleMilestoneComplete={handleToggleMilestoneComplete}
-						{panelStates}
-						{panelCounts}
-						onFilterChange={updatePanelFilters}
-						onSortChange={updatePanelSort}
-						onToggleChange={updatePanelToggle}
-						{taskFilterGroups}
-					/>
-				{:catch}
-					<div
-						class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+						class="mt-2 text-sm font-medium text-destructive hover:text-destructive/80 pressable"
 					>
-						Unable to load mobile command center.
-					</div>
-				{/await}
-
-				<ProjectHistorySection
-					{canViewLogs}
-					projectId={project.id}
-					projectName={project.name || 'Project'}
-					compact={true}
-					onEntityClick={handleActivityLogEntityClick}
-				/>
+						Try again
+					</button>
+				</div>
 			{/if}
-		</div>
 
-		<!-- Desktop Layout (hidden on mobile) -->
-		<div class="hidden sm:grid lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4">
-			<!-- Left Column: Documents -->
-			{#if isHydrating && skeletonCounts}
-				<!-- Skeleton state - show loading placeholders with counts -->
-				<ProjectContentSkeleton documentCount={skeletonCounts.document_count} />
-			{:else}
-				<!-- Hydrated state - show real content -->
-				<div class="min-w-0 space-y-2 sm:space-y-4">
-					{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
-						<ProjectContentSkeleton
-							documentCount={Math.max(
-								documents.length,
-								skeletonCounts?.document_count ?? 0
-							)}
-						/>
-					{:then { default: ProjectDocumentsSection }}
-						<ProjectDocumentsSection
-							projectId={project.id}
+			<!-- Mobile Command Center (shown only on mobile < 640px) -->
+			<div class="sm:hidden mb-2">
+				{#if isHydrating}
+					<div class="space-y-1.5">
+						<!-- Row 1: Goals (full width) -->
+						<div class="w-full h-[52px] bg-muted animate-pulse rounded-lg"></div>
+						<!-- Row 2: Tasks + Plans -->
+						<div class="flex flex-wrap gap-1.5">
+							<div
+								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+							></div>
+							<div
+								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+							></div>
+						</div>
+						<!-- Row 3: Risks + Documents -->
+						<div class="flex flex-wrap gap-1.5">
+							<div
+								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+							></div>
+							<div
+								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
+							></div>
+						</div>
+						<!-- Row 4: Events (full width) -->
+						<div class="w-full h-[52px] bg-muted animate-pulse rounded-lg"></div>
+					</div>
+				{:else}
+					{#await import('$lib/components/project/MobileCommandCenter.svelte') then { default: MobileCommandCenter }}
+						<MobileCommandCenter
+							goals={filteredGoals}
+							milestones={filteredMilestones}
+							tasks={filteredTasks}
+							plans={filteredPlans}
+							risks={filteredRisks}
 							{documents}
+							events={filteredEvents}
+							{milestonesByGoalId}
+							docStructure={docTreeStructure}
+							{docTreeDocuments}
+							projectId={project.id}
 							{canEdit}
-							{documentsExpanded}
-							{activeDocumentId}
-							onToggleExpanded={() => (documentsExpanded = !documentsExpanded)}
-							onCreateDocument={handleCreateDocument}
-							onOpenDocument={handleOpenDocument}
-							onMoveDocument={canEdit ? handleMoveDocument : undefined}
-							onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
-							onDataLoaded={handleDocTreeDataLoaded}
-							onTreeRefChange={(ref) => {
-								docTreeViewRef = ref;
+							onAddGoal={() => canEdit && (showGoalCreateModal = true)}
+							onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
+							onAddTask={() => canEdit && (showTaskCreateModal = true)}
+							onAddPlan={() => canEdit && (showPlanCreateModal = true)}
+							onAddRisk={() => canEdit && (showRiskCreateModal = true)}
+							onAddDocument={(parentId) => canEdit && handleCreateDocument(parentId)}
+							onAddEvent={() => canEdit && (showEventCreateModal = true)}
+							onEditGoal={(id) => (editingGoalId = id)}
+							onEditMilestone={(id) => (editingMilestoneId = id)}
+							onEditTask={(id) => (editingTaskId = id)}
+							onEditPlan={(id) => (editingPlanId = id)}
+							onEditRisk={(id) => (editingRiskId = id)}
+							onEditDocument={(id) => {
+								activeDocumentId = id;
+								showDocumentModal = true;
+							}}
+							onEditEvent={(id) => (editingEventId = id)}
+							onToggleMilestoneComplete={handleToggleMilestoneComplete}
+							{panelStates}
+							{panelCounts}
+							onFilterChange={updatePanelFilters}
+							onSortChange={updatePanelSort}
+							onToggleChange={updatePanelToggle}
+							{taskFilterGroups}
+						/>
+					{:catch}
+						<div
+							class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+						>
+							Unable to load mobile command center.
+						</div>
+					{/await}
+
+					<ProjectHistorySection
+						{canViewLogs}
+						projectId={project.id}
+						projectName={project.name || 'Project'}
+						compact={true}
+						onEntityClick={handleActivityLogEntityClick}
+					/>
+				{/if}
+			</div>
+
+			<!-- Desktop Layout (hidden on mobile) -->
+			<div class="hidden sm:grid lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4">
+				<!-- Left Column: Documents -->
+				{#if isHydrating && skeletonCounts}
+					<!-- Skeleton state - show loading placeholders with counts -->
+					<ProjectContentSkeleton documentCount={skeletonCounts.document_count} />
+				{:else}
+					<!-- Hydrated state - show real content -->
+					<div class="min-w-0 space-y-2 sm:space-y-4">
+						{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
+							<ProjectContentSkeleton
+								documentCount={Math.max(
+									documents.length,
+									skeletonCounts?.document_count ?? 0
+								)}
+							/>
+						{:then { default: ProjectDocumentsSection }}
+							<ProjectDocumentsSection
+								projectId={project.id}
+								{documents}
+								{canEdit}
+								{documentsExpanded}
+								{activeDocumentId}
+								onToggleExpanded={() => (documentsExpanded = !documentsExpanded)}
+								onCreateDocument={handleCreateDocument}
+								onOpenDocument={handleOpenDocument}
+								onMoveDocument={canEdit ? handleMoveDocument : undefined}
+								onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
+								onDataLoaded={handleDocTreeDataLoaded}
+								onTreeRefChange={(ref) => {
+									docTreeViewRef = ref;
+								}}
+							/>
+						{:catch}
+							<div
+								class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+							>
+								Unable to load documents section.
+							</div>
+						{/await}
+					</div>
+				{/if}
+
+				<!-- Right Column: Insight Panels -->
+				{#if isHydrating && skeletonCounts}
+					<ProjectInsightRailSkeleton
+						{skeletonCounts}
+						{graphHidden}
+						{canViewLogs}
+						onShowGraphModal={() => (showGraphModal = true)}
+					/>
+				{:else}
+					{#await import('$lib/components/project/ProjectInsightRail.svelte')}
+						<ProjectInsightRailSkeleton
+							skeletonCounts={{
+								task_count: Math.max(tasks.length, skeletonCounts?.task_count ?? 0),
+								document_count: Math.max(
+									documents.length,
+									skeletonCounts?.document_count ?? 0
+								),
+								goal_count: Math.max(goals.length, skeletonCounts?.goal_count ?? 0),
+								plan_count: Math.max(plans.length, skeletonCounts?.plan_count ?? 0),
+								milestone_count: Math.max(
+									milestones.length,
+									skeletonCounts?.milestone_count ?? 0
+								),
+								risk_count: Math.max(risks.length, skeletonCounts?.risk_count ?? 0),
+								image_count: Math.max(
+									images.length,
+									skeletonCounts?.image_count ?? 0
+								)
+							}}
+							{graphHidden}
+							{canViewLogs}
+							onShowGraphModal={() => (showGraphModal = true)}
+						/>
+					{:then { default: ProjectInsightRail }}
+						<ProjectInsightRail
+							{isHydrating}
+							{skeletonCounts}
+							{graphHidden}
+							{canViewLogs}
+							{canEdit}
+							projectId={project.id}
+							projectName={project.name || 'Project'}
+							{insightPanels}
+							{expandedPanels}
+							{panelStates}
+							{panelCounts}
+							{filteredTasks}
+							{filteredPlans}
+							{filteredGoals}
+							{filteredRisks}
+							{filteredEvents}
+							{milestonesByGoalId}
+							{getPanelFilterGroups}
+							{getPanelIconStyles}
+							{formatState}
+							{formatTaskAssigneeSummary}
+							{getTaskSortSummary}
+							{formatEventDateCompact}
+							{isEventSynced}
+							onShowGraphModal={() => (showGraphModal = true)}
+							onTogglePanel={togglePanel}
+							onOpenCreateModalForPanel={openCreateModalForPanel}
+							onUpdatePanelFilters={updatePanelFilters}
+							onUpdatePanelSort={updatePanelSort}
+							onUpdatePanelToggle={updatePanelToggle}
+							onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
+							onEditTask={(id) => (editingTaskId = id)}
+							onEditPlan={(id) => (editingPlanId = id)}
+							onEditGoal={(id) => (editingGoalId = id)}
+							onEditRisk={(id) => (editingRiskId = id)}
+							onEditMilestone={(id) => (editingMilestoneId = id)}
+							onEditEvent={(id) => (editingEventId = id)}
+							onToggleMilestoneComplete={handleToggleMilestoneComplete}
+							onHistoryEntityClick={handleActivityLogEntityClick}
+							onRefreshData={refreshProjectSilently}
+							onImageAssetsPanelRefChange={(ref) => {
+								imageAssetsPanelRef = ref;
 							}}
 						/>
 					{:catch}
 						<div
 							class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
 						>
-							Unable to load documents section.
+							Unable to load insight rail.
 						</div>
 					{/await}
-				</div>
-			{/if}
-
-			<!-- Right Column: Insight Panels -->
-			{#if isHydrating && skeletonCounts}
-				<ProjectInsightRailSkeleton
-					{skeletonCounts}
-					{graphHidden}
-					{canViewLogs}
-					onShowGraphModal={() => (showGraphModal = true)}
-				/>
-			{:else}
-				{#await import('$lib/components/project/ProjectInsightRail.svelte')}
-					<ProjectInsightRailSkeleton
-						skeletonCounts={{
-							task_count: Math.max(tasks.length, skeletonCounts?.task_count ?? 0),
-							document_count: Math.max(
-								documents.length,
-								skeletonCounts?.document_count ?? 0
-							),
-							goal_count: Math.max(goals.length, skeletonCounts?.goal_count ?? 0),
-							plan_count: Math.max(plans.length, skeletonCounts?.plan_count ?? 0),
-							milestone_count: Math.max(
-								milestones.length,
-								skeletonCounts?.milestone_count ?? 0
-							),
-							risk_count: Math.max(risks.length, skeletonCounts?.risk_count ?? 0),
-							image_count: Math.max(images.length, skeletonCounts?.image_count ?? 0)
-						}}
-						{graphHidden}
-						{canViewLogs}
-						onShowGraphModal={() => (showGraphModal = true)}
-					/>
-				{:then { default: ProjectInsightRail }}
-					<ProjectInsightRail
-						{isHydrating}
-						{skeletonCounts}
-						{graphHidden}
-						{canViewLogs}
-						{canEdit}
-						projectId={project.id}
-						projectName={project.name || 'Project'}
-						{insightPanels}
-						{expandedPanels}
-						{panelStates}
-						{panelCounts}
-						{filteredTasks}
-						{filteredPlans}
-						{filteredGoals}
-						{filteredRisks}
-						{filteredEvents}
-						{milestonesByGoalId}
-						{getPanelFilterGroups}
-						{getPanelIconStyles}
-						{formatState}
-						{formatTaskAssigneeSummary}
-						{getTaskSortSummary}
-						{formatEventDateCompact}
-						{isEventSynced}
-						onShowGraphModal={() => (showGraphModal = true)}
-						onTogglePanel={togglePanel}
-						onOpenCreateModalForPanel={openCreateModalForPanel}
-						onUpdatePanelFilters={updatePanelFilters}
-						onUpdatePanelSort={updatePanelSort}
-						onUpdatePanelToggle={updatePanelToggle}
-						onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
-						onEditTask={(id) => (editingTaskId = id)}
-						onEditPlan={(id) => (editingPlanId = id)}
-						onEditGoal={(id) => (editingGoalId = id)}
-						onEditRisk={(id) => (editingRiskId = id)}
-						onEditMilestone={(id) => (editingMilestoneId = id)}
-						onEditEvent={(id) => (editingEventId = id)}
-						onToggleMilestoneComplete={handleToggleMilestoneComplete}
-						onHistoryEntityClick={handleActivityLogEntityClick}
-						onRefreshData={refreshProjectSilently}
-						onImageAssetsPanelRefChange={(ref) => {
-							imageAssetsPanelRef = ref;
-						}}
-					/>
-				{:catch}
-					<div
-						class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
-					>
-						Unable to load insight rail.
-					</div>
-				{/await}
-			{/if}
-		</div>
-	</main>
-</div>
+				{/if}
+			</div>
+		</main>
+	</div>
+</PullToRefresh>
 
 {#if hasAnyModalOpen}
 	{#await import('$lib/components/project/ProjectModalsHost.svelte') then { default: ProjectModalsHost }}

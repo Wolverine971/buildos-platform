@@ -470,513 +470,541 @@
 <PullToRefresh
 	onRefresh={handleRefresh}
 	disabled={isRefreshing || showBriefModal || showBriefChatModal || showOverdueTaskTriageModal}
-/>
-
-<main class="min-h-screen bg-background transition-colors rounded-md">
-	<div
-		class="container mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 max-w-7xl space-y-3 sm:space-y-4"
-	>
-		<!-- Header -->
-		<header class="flex items-center justify-between gap-3">
-			<h1 class="text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate">
-				Hi, {displayName}
-			</h1>
-			<div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-				<Button
-					variant="outline"
-					size="sm"
-					onclick={handleRefresh}
-					disabled={isRefreshing}
-					class="px-2"
-				>
-					{#if isRefreshing}
-						<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-					{:else}
-						<RefreshCcw class="h-3.5 w-3.5" />
-					{/if}
-				</Button>
-				<Button
-					variant="outline"
-					size="sm"
-					onclick={openCalendarDashboard}
-					disabled={isOpeningCalendar}
-				>
-					{#if isOpeningCalendar}
-						<LoaderCircle class="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
-						<span class="hidden sm:inline">Opening...</span>
-					{:else}
-						<Calendar class="h-3.5 w-3.5 sm:mr-1.5" />
-						<span class="hidden sm:inline">Calendar</span>
-					{/if}
-				</Button>
-				<Button variant="primary" size="sm" onclick={() => goto('/projects/create')}>
-					New Project
-				</Button>
-			</div>
-		</header>
-
-		{#if overdueTasks > 0}
-			<section
-				class="rounded-lg border border-border bg-card shadow-ink wt-card overflow-hidden"
+>
+	<main class="min-h-screen bg-background transition-colors rounded-md">
+		<div
+			class="container mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 max-w-7xl space-y-3 sm:space-y-4"
+		>
+			<!-- Header -->
+			<header
+				class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
 			>
-				<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
-					<div class="min-w-0 flex items-start gap-2.5">
-						<div
-							class="flex items-center justify-center h-8 w-8 rounded-md bg-red-500/10 shrink-0"
-						>
-							<AlertTriangle class="h-4 w-4 text-red-500" />
-						</div>
-						<div class="min-w-0">
-							<p class="text-sm font-semibold text-foreground">
-								Overdue project batches
-							</p>
-							<p class="text-xs text-muted-foreground mt-0.5">
-								{overdueProjectBatchSummary}
-							</p>
-						</div>
-					</div>
-					<div class="flex items-center gap-1.5 shrink-0">
-						<button
-							type="button"
-							onclick={() => openOverdueTaskTriage()}
-							disabled={isOpeningOverdueTriage}
-							class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold
-								rounded-md bg-red-600 text-white shadow-ink pressable
-								hover:bg-red-700 transition-colors
-								disabled:opacity-60 disabled:pointer-events-none
-								focus:outline-none focus:ring-1 focus:ring-ring"
-						>
-							{#if isOpeningOverdueTriage}
-								<LoaderCircle class="h-3 w-3 animate-spin" />
-								<span class="hidden sm:inline">Opening...</span>
-							{:else}
-								Batch triage
-							{/if}
-						</button>
-						<a
-							href="/projects"
-							class="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs
-								text-muted-foreground hover:text-accent transition-colors rounded-md"
-						>
-							View all <ArrowRight class="h-3 w-3" />
-						</a>
-					</div>
-				</div>
-
-				<div class="border-t border-border bg-background/40">
-					{#if isLoadingOverdueProjectBatches}
-						<div class="px-3 py-3 text-xs text-muted-foreground">
-							Loading overdue project batches...
-						</div>
-					{:else if overdueProjectBatchError}
-						<div class="px-3 py-3 flex flex-wrap items-center justify-between gap-2">
-							<p class="text-xs text-muted-foreground">{overdueLabel}</p>
-							<button
-								type="button"
-								class="text-xs font-medium text-accent hover:underline underline-offset-2"
-								onclick={loadOverdueProjectBatchPreview}
-							>
-								Retry
-							</button>
-						</div>
-					{:else if overdueProjectBatches.length > 0}
-						<div class="divide-y divide-border">
-							{#each overdueProjectBatches as batch (batch.project_id)}
-								<button
-									type="button"
-									onclick={() => openOverdueTaskTriage(batch.project_id)}
-									class="w-full px-3 py-3 text-left transition-colors hover:bg-muted/40 focus:outline-none focus:bg-muted/40"
-								>
-									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											<div class="flex flex-wrap items-center gap-2">
-												<p
-													class="text-sm font-semibold text-foreground truncate"
-												>
-													{batch.project_name}
-												</p>
-												{#if batch.project_is_collaborative}
-													<span
-														class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent"
-													>
-														<Share2 class="h-2.5 w-2.5" />
-														Shared
-													</span>
-												{/if}
-											</div>
-											<p class="mt-1 text-[11px] text-muted-foreground">
-												{batch.overdue_count} overdue
-												{#if batch.assigned_to_me_count > 0}
-													· {batch.assigned_to_me_count} mine
-												{/if}
-												{#if batch.oldest_due_at}
-													· oldest {formatOverdueAge(batch.oldest_due_at)}
-												{/if}
-											</p>
-										</div>
-										<span
-											class="inline-flex items-center gap-1 text-xs font-medium text-accent shrink-0"
-										>
-											Review
-											<ArrowRight class="h-3 w-3" />
-										</span>
-									</div>
-								</button>
-							{/each}
-						</div>
-					{:else}
-						<div class="px-3 py-3 text-xs text-muted-foreground">{overdueLabel}</div>
-					{/if}
-				</div>
-			</section>
-		{/if}
-
-		<!-- Daily Brief -->
-		<section>
-			<DashboardBriefWidget {user} onviewbrief={handleViewBrief} />
-		</section>
-
-		<!-- Active Projects -->
-		<section>
-			<div class="flex items-center justify-between mb-2">
-				<h2 class="text-sm sm:text-base font-semibold text-foreground">
-					{projectSectionTitle}
-				</h2>
-				{#if !hasNoProjects}
-					<a
-						href="/projects"
-						class="text-xs text-muted-foreground hover:text-accent transition-colors"
+				<h1
+					class="min-w-0 text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate"
+				>
+					Hi, {displayName}
+				</h1>
+				<div class="flex w-full items-center gap-1.5 sm:w-auto sm:justify-end sm:gap-2">
+					<Button
+						variant="primary"
+						size="sm"
+						onclick={() => goto('/projects/create')}
+						class="flex-1 sm:flex-none"
 					>
-						All projects &rarr;
-					</a>
-				{/if}
-			</div>
-
-			{#if hasNoProjects}
-				<!-- Brand new user with nothing -->
-				<div
-					class="wt-paper p-5 sm:p-6 tx tx-bloom tx-weak rounded-lg border border-dashed border-accent/40 text-center space-y-3"
-				>
-					<div class="flex justify-center">
-						<img
-							src="/brain-bolt.png"
-							alt="BuildOS"
-							class="w-10 h-10 rounded-md object-cover opacity-80"
-						/>
-					</div>
-					<div>
-						<p class="text-sm font-semibold text-foreground">Welcome to BuildOS!</p>
-						<p class="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-							Create your first project and BuildOS will help you shape goals, tasks,
-							and milestones.
-						</p>
-					</div>
-					<Button variant="primary" size="sm" onclick={() => goto('/projects/create')}>
-						Create your first project
+						New Project
 					</Button>
-				</div>
-			{:else if projectsToDisplay.length === 0}
-				<div
-					class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
-				>
-					<p class="text-sm text-muted-foreground">No projects to show right now.</p>
 					<Button
 						variant="outline"
 						size="sm"
-						onclick={() => goto('/projects')}
-						class="mt-2"
+						onclick={openCalendarDashboard}
+						disabled={isOpeningCalendar}
+						class="shrink-0 px-2.5 sm:px-3"
+						aria-label="Open calendar"
+						title="Calendar"
 					>
-						View all projects
+						{#if isOpeningCalendar}
+							<LoaderCircle class="h-3.5 w-3.5 sm:mr-1.5 animate-spin" />
+							<span class="hidden sm:inline">Opening...</span>
+						{:else}
+							<Calendar class="h-3.5 w-3.5 sm:mr-1.5" />
+							<span class="hidden sm:inline">Calendar</span>
+						{/if}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={handleRefresh}
+						disabled={isRefreshing}
+						class="shrink-0 px-2.5"
+						aria-label="Refresh dashboard"
+						title="Refresh"
+					>
+						{#if isRefreshing}
+							<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+						{:else}
+							<RefreshCcw class="h-3.5 w-3.5" />
+						{/if}
 					</Button>
 				</div>
-			{:else}
-				{#if showingFallbackProjects}
-					<div class="mb-2 text-xs text-muted-foreground px-1">
-						No active projects right now. Showing your most recent projects.
-					</div>
-				{/if}
-				<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
-					{#each projectsToDisplay as project (project.id)}
-						<a
-							href={resolveProjectHref(project)}
-							onclick={(event) => handleProjectCardClick(event, project)}
-							class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
-								hover:border-accent/40 transition-colors pressable {project.is_shared
-								? 'tx tx-thread tx-weak'
-								: 'tx tx-grain tx-weak'}"
-						>
-							<div class="flex items-center justify-between gap-2">
-								<div class="flex items-center gap-2 min-w-0">
-									<FolderKanban
-										class="h-3.5 w-3.5 shrink-0 {project.is_shared
-											? 'text-accent'
-											: isActiveProjectState(project.state_key)
-												? 'text-emerald-500'
-												: 'text-muted-foreground'}"
-									/>
-									<p class="text-sm font-semibold text-foreground truncate">
-										{project.name}
-									</p>
-									{#if project.is_shared}
-										<span
-											class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-accent/15 text-accent border border-accent/20"
-										>
-											<Share2 class="h-2.5 w-2.5" />
-											Shared
-										</span>
-									{/if}
-									{#if !isActiveProjectState(project.state_key)}
-										<span
-											class="shrink-0 text-[10px] font-medium text-muted-foreground"
-										>
-											{formatStateLabel(project.state_key)}
-										</span>
-									{/if}
-								</div>
-								<div class="flex items-center gap-1 shrink-0">
-									<span
-										class="text-[11px] text-muted-foreground whitespace-nowrap"
-									>
-										{formatRelativeTime(project.updated_at)}
-									</span>
-									<ArrowRight
-										class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
-									/>
-								</div>
-							</div>
-							<p class="mt-0.5 text-[11px] text-muted-foreground pl-[22px]">
-								{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
-								docs
-							</p>
-						</a>
-					{/each}
-				</div>
-			{/if}
-		</section>
+			</header>
 
-		<!-- Shared With Me (projects not already in active list) -->
-		{#if sharedNotActive.length > 0 && !showingFallbackProjects}
+			<!-- Daily Brief -->
+			<section>
+				<DashboardBriefWidget {user} onviewbrief={handleViewBrief} />
+			</section>
+
+			{#if overdueTasks > 0}
+				<section
+					class="rounded-lg border border-border bg-card shadow-ink wt-card overflow-hidden"
+				>
+					<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
+						<div class="min-w-0 flex items-start gap-2.5">
+							<div
+								class="flex items-center justify-center h-8 w-8 rounded-md bg-destructive/10 shrink-0"
+							>
+								<AlertTriangle class="h-4 w-4 text-destructive" />
+							</div>
+							<div class="min-w-0">
+								<p class="text-sm font-semibold text-foreground">
+									Overdue project batches
+								</p>
+								<p class="text-xs text-muted-foreground mt-0.5">
+									{overdueProjectBatchSummary}
+								</p>
+							</div>
+						</div>
+						<div class="flex items-center gap-1.5 shrink-0">
+							<button
+								type="button"
+								onclick={() => openOverdueTaskTriage()}
+								disabled={isOpeningOverdueTriage}
+								class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold
+								rounded-md border border-destructive/30 bg-destructive/10 text-destructive shadow-ink pressable
+								hover:bg-destructive/15 hover:border-destructive/50 transition-colors
+								disabled:opacity-60 disabled:pointer-events-none
+								focus:outline-none focus:ring-1 focus:ring-ring"
+							>
+								{#if isOpeningOverdueTriage}
+									<LoaderCircle class="h-3 w-3 animate-spin" />
+									<span class="hidden sm:inline">Opening...</span>
+								{:else}
+									Review overdue
+								{/if}
+							</button>
+							<a
+								href="/projects"
+								class="hidden sm:inline-flex items-center gap-1 px-2 py-1 text-xs
+								text-muted-foreground hover:text-accent transition-colors rounded-md"
+							>
+								View all <ArrowRight class="h-3 w-3" />
+							</a>
+						</div>
+					</div>
+
+					<div class="border-t border-border bg-background/40">
+						{#if isLoadingOverdueProjectBatches}
+							<div class="px-3 py-3 text-xs text-muted-foreground">
+								Loading overdue project batches...
+							</div>
+						{:else if overdueProjectBatchError}
+							<div
+								class="px-3 py-3 flex flex-wrap items-center justify-between gap-2"
+							>
+								<p class="text-xs text-muted-foreground">{overdueLabel}</p>
+								<button
+									type="button"
+									class="text-xs font-medium text-accent hover:underline underline-offset-2"
+									onclick={loadOverdueProjectBatchPreview}
+								>
+									Retry
+								</button>
+							</div>
+						{:else if overdueProjectBatches.length > 0}
+							<div class="divide-y divide-border">
+								{#each overdueProjectBatches as batch (batch.project_id)}
+									<button
+										type="button"
+										onclick={() => openOverdueTaskTriage(batch.project_id)}
+										class="w-full px-3 py-3 text-left transition-colors hover:bg-muted/40 focus:outline-none focus:bg-muted/40"
+									>
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0">
+												<div class="flex flex-wrap items-center gap-2">
+													<p
+														class="text-sm font-semibold text-foreground truncate"
+													>
+														{batch.project_name}
+													</p>
+													{#if batch.project_is_collaborative}
+														<span
+															class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent"
+														>
+															<Share2 class="h-2.5 w-2.5" />
+															Shared
+														</span>
+													{/if}
+												</div>
+												<p class="mt-1 text-[11px] text-muted-foreground">
+													{batch.overdue_count} overdue
+													{#if batch.assigned_to_me_count > 0}
+														· {batch.assigned_to_me_count} mine
+													{/if}
+													{#if batch.oldest_due_at}
+														· oldest {formatOverdueAge(
+															batch.oldest_due_at
+														)}
+													{/if}
+												</p>
+											</div>
+											<span
+												class="inline-flex items-center gap-1 text-xs font-medium text-accent shrink-0"
+											>
+												Review
+												<ArrowRight class="h-3 w-3" />
+											</span>
+										</div>
+									</button>
+								{/each}
+							</div>
+						{:else}
+							<div class="px-3 py-3 text-xs text-muted-foreground">
+								{overdueLabel}
+							</div>
+						{/if}
+					</div>
+				</section>
+			{/if}
+
+			<!-- Active Projects -->
 			<section>
 				<div class="flex items-center justify-between mb-2">
-					<div class="flex items-center gap-2">
-						<h2 class="text-sm sm:text-base font-semibold text-foreground">
-							Shared with me
-						</h2>
-						<span
-							class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-accent/15 text-accent border border-accent/20"
-						>
-							{sharedNotActive.length}
-						</span>
-					</div>
-					<a
-						href="/projects"
-						class="text-xs text-muted-foreground hover:text-accent transition-colors"
-					>
-						View all &rarr;
-					</a>
-				</div>
-
-				<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
-					{#each sharedNotActive as project (project.id)}
+					<h2 class="text-sm sm:text-base font-semibold text-foreground">
+						{projectSectionTitle}
+					</h2>
+					{#if !hasNoProjects}
 						<a
-							href={resolveProjectHref(project)}
-							onclick={(event) => handleProjectCardClick(event, project)}
-							class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
-								hover:border-accent/40 transition-colors pressable tx tx-thread tx-weak"
+							href="/projects"
+							class="text-xs text-muted-foreground hover:text-accent transition-colors"
 						>
-							<div class="flex items-center justify-between gap-2">
-								<div class="flex items-center gap-2 min-w-0">
-									<FolderKanban class="h-3.5 w-3.5 text-accent shrink-0" />
-									<p class="text-sm font-semibold text-foreground truncate">
-										{project.name}
-									</p>
-									<span
-										class="shrink-0 text-[10px] font-medium text-muted-foreground"
-									>
-										{formatStateLabel(project.state_key)}
-									</span>
-								</div>
-								<div class="flex items-center gap-1 shrink-0">
-									<span
-										class="text-[11px] text-muted-foreground whitespace-nowrap"
-									>
-										{formatRelativeTime(project.updated_at)}
-									</span>
-									<ArrowRight
-										class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
-									/>
-								</div>
-							</div>
-							<p class="mt-0.5 text-[11px] text-muted-foreground pl-[22px]">
-								{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
-								docs
-							</p>
+							All projects &rarr;
 						</a>
-					{/each}
+					{/if}
 				</div>
-			</section>
-		{/if}
 
-		<!-- Recent Activity + Recent Chats side by side on desktop -->
-		<div class="grid gap-3 lg:grid-cols-3">
-			<!-- Unified Activity Feed (2/3 width on desktop) -->
-			<section class="lg:col-span-2">
-				<h2 class="text-sm sm:text-base font-semibold text-foreground mb-2">
-					Recent activity
-				</h2>
-
-				{#if unifiedFeed.length === 0}
+				{#if hasNoProjects}
+					<!-- Brand new user with nothing -->
+					<div
+						class="wt-paper p-5 sm:p-6 tx tx-bloom tx-weak rounded-lg border border-dashed border-accent/40 text-center space-y-3"
+					>
+						<div class="flex justify-center">
+							<img
+								src="/brain-bolt.png"
+								alt="BuildOS"
+								class="w-10 h-10 rounded-md object-cover opacity-80"
+							/>
+						</div>
+						<div>
+							<p class="text-sm font-semibold text-foreground">Welcome to BuildOS!</p>
+							<p class="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+								Create your first project and BuildOS will help you shape goals,
+								tasks, and milestones.
+							</p>
+						</div>
+						<Button
+							variant="primary"
+							size="sm"
+							onclick={() => goto('/projects/create')}
+						>
+							Create your first project
+						</Button>
+					</div>
+				{:else if projectsToDisplay.length === 0}
 					<div
 						class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
 					>
-						<p class="text-sm text-muted-foreground">No recent activity yet.</p>
+						<p class="text-sm text-muted-foreground">No projects to show right now.</p>
+						<Button
+							variant="outline"
+							size="sm"
+							onclick={() => goto('/projects')}
+							class="mt-2"
+						>
+							View all projects
+						</Button>
 					</div>
 				{:else}
-					<div
-						class="wt-paper tx tx-frame tx-weak rounded-lg border border-border divide-y divide-border"
-					>
-						{#each unifiedFeed as item (item.kind + '-' + item.id)}
+					{#if showingFallbackProjects}
+						<div class="mb-2 text-xs text-muted-foreground px-1">
+							No active projects right now. Showing your most recent projects.
+						</div>
+					{/if}
+					<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
+						{#each projectsToDisplay as project (project.id)}
 							<a
-								href={item.href}
-								class="group flex items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+								href={resolveProjectHref(project)}
+								onclick={(event) => handleProjectCardClick(event, project)}
+								class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
+								hover:border-accent/40 transition-colors pressable"
 							>
-								<div class="shrink-0 mt-0.5">
-									{#if item.kind === 'task'}
-										<ListChecks class="h-3.5 w-3.5 text-muted-foreground" />
-									{:else if item.kind === 'document'}
-										<FileText class="h-3.5 w-3.5 text-sky-500" />
-									{:else}
-										<Target class="h-3.5 w-3.5 text-amber-500" />
-									{/if}
-								</div>
-
-								<div class="min-w-0 flex-1">
-									<div class="flex items-center gap-2">
-										<p class="text-sm font-medium text-foreground truncate">
-											{item.title}
+								<div class="flex items-center justify-between gap-2">
+									<div class="flex items-center gap-2 min-w-0">
+										<FolderKanban
+											class="h-3.5 w-3.5 shrink-0 {project.is_shared
+												? 'text-accent'
+												: isActiveProjectState(project.state_key)
+													? 'text-success'
+													: 'text-muted-foreground'}"
+										/>
+										<p class="text-sm font-semibold text-foreground truncate">
+											{project.name}
 										</p>
-										{#if item.kind === 'task'}
+										{#if project.is_shared}
 											<span
-												class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border {getTaskStateBadgeClass(
-													item.state_key
-												)}"
+												class="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-accent/15 text-accent border border-accent/20"
 											>
-												{formatStateLabel(item.state_key)}
+												<Share2 class="h-2.5 w-2.5" />
+												Shared
 											</span>
 										{/if}
-									</div>
-									<div class="flex items-center gap-1.5 mt-0.5">
-										<span class="text-[11px] text-muted-foreground truncate"
-											>{item.project_name}</span
-										>
-										{#if item.kind === 'task' && item.due_at}
-											<span class="text-[11px] text-muted-foreground"
-												>· due {formatDueDate(item.due_at)}</span
+										{#if !isActiveProjectState(project.state_key)}
+											<span
+												class="shrink-0 text-[10px] font-medium text-muted-foreground"
 											>
+												{formatStateLabel(project.state_key)}
+											</span>
 										{/if}
-										{#if item.kind === 'goal' && item.target_date}
-											<span class="text-[11px] text-muted-foreground"
-												>· target {formatDueDate(item.target_date)}</span
-											>
-										{/if}
-									</div>
-								</div>
-
-								<div class="flex items-center gap-1 shrink-0">
-									<span
-										class="text-[11px] text-muted-foreground whitespace-nowrap"
-									>
-										{formatRelativeTime(item.updated_at)}
-									</span>
-									<ArrowRight
-										class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
-									/>
-								</div>
-							</a>
-						{/each}
-					</div>
-				{/if}
-			</section>
-
-			<!-- Recent Chats (1/3 width on desktop) -->
-			<section>
-				<div class="flex items-center justify-between mb-2">
-					<h2 class="text-sm sm:text-base font-semibold text-foreground">Recent chats</h2>
-					<a
-						href="/history?type=chats"
-						class="text-xs text-muted-foreground hover:text-accent transition-colors"
-					>
-						All chats &rarr;
-					</a>
-				</div>
-
-				{#if recentChats.length === 0}
-					<div
-						class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
-					>
-						<p class="text-sm text-muted-foreground">No recent chats.</p>
-					</div>
-				{:else}
-					<div
-						class="wt-paper tx tx-frame tx-weak rounded-lg border border-border divide-y divide-border"
-					>
-						{#each recentChats as session (session.id)}
-							<a
-								href="/history?type=chats&id={session.id}&itemType=chat_session"
-								class="group block px-3 py-2.5 hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
-							>
-								<div class="flex items-start justify-between gap-2">
-									<div class="flex items-start gap-2 min-w-0">
-										<MessageSquare
-											class="h-3.5 w-3.5 text-accent shrink-0 mt-0.5"
-										/>
-										<div class="min-w-0">
-											<p class="text-sm font-medium text-foreground truncate">
-												{session.title}
-											</p>
-											<p
-												class="text-[11px] text-muted-foreground truncate mt-0.5"
-											>
-												{#if session.project_name}
-													{session.project_name}
-												{:else}
-													{session.context_label}
-												{/if}
-											</p>
-										</div>
 									</div>
 									<div class="flex items-center gap-1 shrink-0">
 										<span
 											class="text-[11px] text-muted-foreground whitespace-nowrap"
 										>
-											{formatRelativeTime(session.last_activity_at)}
+											{formatRelativeTime(project.updated_at)}
 										</span>
 										<ArrowRight
 											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
 										/>
 									</div>
 								</div>
+								<p class="mt-0.5 text-[11px] text-muted-foreground pl-[22px]">
+									{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
+									docs
+								</p>
 							</a>
 						{/each}
 					</div>
 				{/if}
 			</section>
-		</div>
 
-		<!-- Compact Stats -->
-		<footer
-			class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground px-1"
-		>
-			<span>{analytics.snapshot.totalProjects} projects</span>
-			<span class="text-border">&middot;</span>
-			<span>{analytics.snapshot.totalTasks} tasks</span>
-			<span class="text-border">&middot;</span>
-			<span>{analytics.snapshot.totalGoals} goals</span>
-			<span class="text-border">&middot;</span>
-			<span>{analytics.snapshot.totalDocuments} docs</span>
-		</footer>
-	</div>
-</main>
+			<!-- Shared With Me (projects not already in active list) -->
+			{#if sharedNotActive.length > 0 && !showingFallbackProjects}
+				<section>
+					<div class="flex items-center justify-between mb-2">
+						<div class="flex items-center gap-2">
+							<h2 class="text-sm sm:text-base font-semibold text-foreground">
+								Shared with me
+							</h2>
+							<span
+								class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-accent/15 text-accent border border-accent/20"
+							>
+								{sharedNotActive.length}
+							</span>
+						</div>
+						<a
+							href="/projects"
+							class="text-xs text-muted-foreground hover:text-accent transition-colors"
+						>
+							View all &rarr;
+						</a>
+					</div>
+
+					<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
+						{#each sharedNotActive as project (project.id)}
+							<a
+								href={resolveProjectHref(project)}
+								onclick={(event) => handleProjectCardClick(event, project)}
+								class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
+								hover:border-accent/40 transition-colors pressable"
+							>
+								<div class="flex items-center justify-between gap-2">
+									<div class="flex items-center gap-2 min-w-0">
+										<FolderKanban class="h-3.5 w-3.5 text-accent shrink-0" />
+										<p class="text-sm font-semibold text-foreground truncate">
+											{project.name}
+										</p>
+										<span
+											class="shrink-0 text-[10px] font-medium text-muted-foreground"
+										>
+											{formatStateLabel(project.state_key)}
+										</span>
+									</div>
+									<div class="flex items-center gap-1 shrink-0">
+										<span
+											class="text-[11px] text-muted-foreground whitespace-nowrap"
+										>
+											{formatRelativeTime(project.updated_at)}
+										</span>
+										<ArrowRight
+											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+										/>
+									</div>
+								</div>
+								<p class="mt-0.5 text-[11px] text-muted-foreground pl-[22px]">
+									{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
+									docs
+								</p>
+							</a>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
+			<!-- Recent Activity + Recent Chats side by side on desktop -->
+			<div class="grid gap-3 lg:grid-cols-3">
+				<!-- Unified Activity Feed (2/3 width on desktop) -->
+				<section class="lg:col-span-2">
+					<h2 class="text-sm sm:text-base font-semibold text-foreground mb-2">
+						Recent activity
+					</h2>
+
+					{#if unifiedFeed.length === 0}
+						<div
+							class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
+						>
+							<p class="text-sm text-muted-foreground">No recent activity yet.</p>
+						</div>
+					{:else}
+						<div
+							class="wt-paper rounded-lg border border-border divide-y divide-border"
+						>
+							{#each unifiedFeed as item (item.kind + '-' + item.id)}
+								<a
+									href={item.href}
+									class="group flex items-start gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+								>
+									<div class="shrink-0 mt-0.5">
+										{#if item.kind === 'task'}
+											<ListChecks class="h-3.5 w-3.5 text-muted-foreground" />
+										{:else if item.kind === 'document'}
+											<FileText class="h-3.5 w-3.5 text-info" />
+										{:else}
+											<Target class="h-3.5 w-3.5 text-warning" />
+										{/if}
+									</div>
+
+									<div class="min-w-0 flex-1">
+										<div class="flex items-center gap-2">
+											<p class="text-sm font-medium text-foreground truncate">
+												{item.title}
+											</p>
+											{#if item.kind === 'task'}
+												<span
+													class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border {getTaskStateBadgeClass(
+														item.state_key
+													)}"
+												>
+													{formatStateLabel(item.state_key)}
+												</span>
+											{/if}
+										</div>
+										<div class="flex items-center gap-1.5 mt-0.5">
+											<span class="text-[11px] text-muted-foreground truncate"
+												>{item.project_name}</span
+											>
+											{#if item.kind === 'task' && item.due_at}
+												<span class="text-[11px] text-muted-foreground"
+													>· due {formatDueDate(item.due_at)}</span
+												>
+											{/if}
+											{#if item.kind === 'goal' && item.target_date}
+												<span class="text-[11px] text-muted-foreground"
+													>· target {formatDueDate(
+														item.target_date
+													)}</span
+												>
+											{/if}
+										</div>
+									</div>
+
+									<div class="flex items-center gap-1 shrink-0">
+										<span
+											class="text-[11px] text-muted-foreground whitespace-nowrap"
+										>
+											{formatRelativeTime(item.updated_at)}
+										</span>
+										<ArrowRight
+											class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+										/>
+									</div>
+								</a>
+							{/each}
+						</div>
+					{/if}
+				</section>
+
+				<!-- Recent Chats (1/3 width on desktop) -->
+				<section>
+					<div class="flex items-center justify-between mb-2">
+						<h2 class="text-sm sm:text-base font-semibold text-foreground">
+							Recent chats
+						</h2>
+						<a
+							href="/history?type=chats"
+							class="text-xs text-muted-foreground hover:text-accent transition-colors"
+						>
+							All chats &rarr;
+						</a>
+					</div>
+
+					{#if recentChats.length === 0}
+						<div
+							class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
+						>
+							<p class="text-sm text-muted-foreground">No recent chats.</p>
+						</div>
+					{:else}
+						<div
+							class="wt-paper rounded-lg border border-border divide-y divide-border"
+						>
+							{#each recentChats as session (session.id)}
+								<a
+									href="/history?type=chats&id={session.id}&itemType=chat_session"
+									class="group block px-3 py-2.5 hover:bg-muted/50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+								>
+									<div class="flex items-start justify-between gap-2">
+										<div class="flex items-start gap-2 min-w-0">
+											<MessageSquare
+												class="h-3.5 w-3.5 text-accent shrink-0 mt-0.5"
+											/>
+											<div class="min-w-0">
+												<p
+													class="text-sm font-medium text-foreground truncate"
+												>
+													{session.title}
+												</p>
+												<p
+													class="text-[11px] text-muted-foreground truncate mt-0.5"
+												>
+													{#if session.project_name}
+														{session.project_name}
+													{:else}
+														{session.context_label}
+													{/if}
+												</p>
+											</div>
+										</div>
+										<div class="flex items-center gap-1 shrink-0">
+											<span
+												class="text-[11px] text-muted-foreground whitespace-nowrap"
+											>
+												{formatRelativeTime(session.last_activity_at)}
+											</span>
+											<ArrowRight
+												class="h-3 w-3 text-accent opacity-0 group-hover:opacity-100 transition-opacity"
+											/>
+										</div>
+									</div>
+								</a>
+							{/each}
+						</div>
+					{/if}
+				</section>
+			</div>
+
+			<!-- Compact Stats -->
+			<footer
+				class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground px-1"
+			>
+				<span>{analytics.snapshot.totalProjects} projects</span>
+				<span class="text-border">&middot;</span>
+				<span>{analytics.snapshot.totalTasks} tasks</span>
+				<span class="text-border">&middot;</span>
+				<span>{analytics.snapshot.totalGoals} goals</span>
+				<span class="text-border">&middot;</span>
+				<span>{analytics.snapshot.totalDocuments} docs</span>
+			</footer>
+		</div>
+	</main>
+</PullToRefresh>
 
 <!-- Daily Brief Modal (lazy loaded) -->
 {#if DailyBriefModal && showBriefModal}

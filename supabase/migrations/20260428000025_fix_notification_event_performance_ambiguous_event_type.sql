@@ -1,3 +1,4 @@
+-- supabase/migrations/20260428000025_fix_notification_event_performance_ambiguous_event_type.sql
 -- Fix ambiguous PL/pgSQL output variable references in notification event performance analytics.
 
 CREATE OR REPLACE FUNCTION public.get_notification_event_performance(
