@@ -8,7 +8,7 @@ Scope: Logged-in mobile dashboard home page
 
 ## Current Observations
 
-The logged-in home page is a compact command center with a sticky top navigation, greeting/action row, optional overdue triage panel, daily brief widget, active projects, shared projects, recent activity, recent chats, compact totals, and an authenticated footer.
+The logged-in home page is a compact command center with a sticky top navigation, greeting/action row, daily brief widget, optional overdue triage panel, active projects, shared projects, recent activity, recent chats, compact totals, and an authenticated footer.
 
 The page already has good mobile foundations: tight spacing, single-column stacking, truncation, compact metadata, and accessible touch targets. The active project rows are the strongest part of the page because they are dense, scannable, and useful.
 
@@ -39,6 +39,9 @@ These are the changes to make now:
 7. Simplify the top action area.
    Make "New Project" the primary action and demote calendar/refresh into smaller secondary actions.
 
+8. Avoid duplicate overdue project lists.
+   Keep the overdue panel as a summary and triage entry point, then mark affected project cards with a compact "Has overdue tasks" status pill.
+
 ## Deferred Changes
 
 These were identified but are intentionally not part of this pass:
@@ -67,4 +70,5 @@ Completed in this pass:
 6. The Daily Brief card now shows one line of value on mobile.
 7. The authenticated footer is now a compact support/legal row.
 8. The Daily Brief now appears before overdue task cleanup.
-9. The overdue task action uses a lighter destructive tint instead of a filled destructive button.
+9. The overdue task action uses a warning/attention tint instead of a filled red/destructive button.
+10. The overdue panel no longer repeats project names; active/shared project cards now show a non-clickable "Has overdue tasks" marker when batch metadata reports overdue work.

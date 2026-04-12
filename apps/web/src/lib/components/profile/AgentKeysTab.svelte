@@ -306,7 +306,7 @@
 	}
 
 	function openClawEnvSnippet(provisioned: BuildosAgentCallerProvisionResponse): string {
-		const origin = browser ? window.location.origin : $page.url.origin;
+		const origin = buildosBaseUrl();
 
 		return [
 			`BUILDOS_BASE_URL=${origin}`,
@@ -314,6 +314,130 @@
 			`BUILDOS_CALLEE_HANDLE=${provisioned.buildos_agent.handle}`,
 			`BUILDOS_CALLER_KEY=${provisioned.caller.caller_key}`
 		].join('\n');
+	}
+
+	function buildosBaseUrl(): string {
+		return browser ? window.location.origin : $page.url.origin;
+	}
+
+	function requestedScopeForCaller(caller: BuildosAgentCallerSummary): Record<string, unknown> {
+		const scope: Record<string, unknown> = {
+			mode: caller.scope_mode
+		};
+
+		if (caller.allowed_project_ids && caller.allowed_project_ids.length > 0) {
+			scope.project_ids = caller.allowed_project_ids;
+		}
+
+		if (caller.allowed_ops && caller.allowed_ops.length > 0) {
+			scope.allowed_ops = caller.allowed_ops;
+		}
+
+		return scope;
+	}
+
+	function projectScopeDescription(caller: BuildosAgentCallerSummary): string {
+		if (!caller.allowed_project_ids || caller.allowed_project_ids.length === 0) {
+			return 'All visible BuildOS projects';
+		}
+
+		return caller.allowed_project_ids.map(projectName).join(', ');
+	}
+
+	function allowedOpsDescription(caller: BuildosAgentCallerSummary): string {
+		if (!caller.allowed_ops || caller.allowed_ops.length === 0) {
+			return 'Default read operations';
+		}
+
+		return caller.allowed_ops.join(', ');
+	}
+
+	function buildAgentConnectionPrompt(params: {
+		caller: BuildosAgentCallerSummary;
+		calleeHandle: string;
+		bearerToken: string;
+		includeKey: boolean;
+	}): string {
+		const baseUrl = buildosBaseUrl();
+		const gatewayUrl = `${baseUrl}/api/agent-call/buildos`;
+		const authHeaderToken = params.includeKey ? params.bearerToken : '<BUILDOS_AGENT_TOKEN>';
+		const dialRequest = {
+			method: 'call.dial',
+			params: {
+				callee_handle: params.calleeHandle,
+				client: {
+					provider: params.caller.provider,
+					caller_key: params.caller.caller_key
+				},
+				requested_scope: requestedScopeForCaller(params.caller)
+			}
+		};
+		const listRequest = {
+			method: 'tools/list',
+			params: {
+				call_id: '<CALL_ID_FROM_CALL_DIAL>'
+			}
+		};
+
+		return [
+			'Connect to my BuildOS agent.',
+			'',
+			'BuildOS config:',
+			`BUILDOS_BASE_URL=${baseUrl}`,
+			`BUILDOS_AGENT_TOKEN=${params.bearerToken}`,
+			`BUILDOS_CALLEE_HANDLE=${params.calleeHandle}`,
+			`BUILDOS_CALLER_KEY=${params.caller.caller_key}`,
+			`BUILDOS_CALLER_PROVIDER=${params.caller.provider}`,
+			'',
+			params.includeKey
+				? 'The BuildOS token is included above. Treat it as a secret: do not print it, summarize it, or store it in normal chat memory.'
+				: 'Replace <BUILDOS_AGENT_TOKEN> with the BuildOS Agent Key before making requests. Treat it as a secret: do not print it, summarize it, or store it in normal chat memory.',
+			'',
+			'Connection target:',
+			`POST ${gatewayUrl}`,
+			`Header: Authorization: Bearer ${authHeaderToken}`,
+			'Header: Content-Type: application/json',
+			'',
+			'First request:',
+			JSON.stringify(dialRequest, null, 2),
+			'',
+			'If the call is accepted, save response.call.id as CALL_ID, then list tools:',
+			JSON.stringify(listRequest, null, 2),
+			'',
+			'Operating rules:',
+			`- Requested scope: ${params.caller.scope_mode}.`,
+			`- Project scope: ${projectScopeDescription(params.caller)}.`,
+			`- Allowed ops: ${allowedOpsDescription(params.caller)}.`,
+			'- Use the direct tool names returned by tools/list for BuildOS reads and writes.',
+			'- Use tool_search only when the exact BuildOS tool is unknown.',
+			'- Use tool_schema when write arguments are uncertain, then call the returned direct tool_name.',
+			'- Do not perform writes unless I explicitly ask you to.',
+			'- For a connection ping, stop after call.dial and tools/list, then tell me BuildOS is connected and list up to 5 available tool names.',
+			'- When finished with the session, call call.hangup with the CALL_ID.'
+		].join('\n');
+	}
+
+	function agentConnectionPromptForProvisioned(
+		provisioned: BuildosAgentCallerProvisionResponse,
+		includeKey: boolean
+	): string {
+		return buildAgentConnectionPrompt({
+			caller: provisioned.caller,
+			calleeHandle: provisioned.buildos_agent.handle,
+			bearerToken: includeKey
+				? provisioned.credentials.bearer_token
+				: '<BUILDOS_AGENT_TOKEN>',
+			includeKey
+		});
+	}
+
+	function agentConnectionPromptForCaller(caller: BuildosAgentCallerSummary): string {
+		return buildAgentConnectionPrompt({
+			caller,
+			calleeHandle: buildosAgent?.handle ?? '<BUILDOS_CALLEE_HANDLE>',
+			bearerToken: '<BUILDOS_AGENT_TOKEN>',
+			includeKey: false
+		});
 	}
 
 	function openClawBootstrapPrompt(
@@ -586,6 +710,23 @@
 								</div>
 
 								<div class="flex flex-wrap gap-2 flex-shrink-0">
+									{#if caller.status === 'trusted'}
+										<Button
+											variant="outline"
+											size="sm"
+											icon={copiedId === `agent-prompt-${caller.id}` ? CircleCheck : Copy}
+											onclick={() =>
+												copyToClipboard(
+													`agent-prompt-${caller.id}`,
+													agentConnectionPromptForCaller(caller),
+													'Agent prompt copied'
+												)}
+										>
+											{copiedId === `agent-prompt-${caller.id}`
+												? 'Copied'
+												: 'Copy Prompt'}
+										</Button>
+									{/if}
 									<Button
 										variant="outline"
 										size="sm"
@@ -919,6 +1060,62 @@
 							{copiedId === 'latest-token' ? 'Copied' : 'Copy'}
 						</Button>
 					</div>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<div class="text-xs uppercase tracking-wider text-muted-foreground">
+								Paste Into Any Agent
+							</div>
+							<p class="mt-1 text-xs text-muted-foreground">
+								Use the placeholder prompt when you want to store the key separately.
+								Use the key prompt only for a trusted agent chat.
+							</p>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								icon={copiedId === 'agent-prompt-placeholder' ? CircleCheck : Copy}
+								onclick={() =>
+									copyToClipboard(
+										'agent-prompt-placeholder',
+										agentConnectionPromptForProvisioned(
+											latestProvisioned,
+											false
+										),
+										'Agent prompt copied'
+									)}
+							>
+								{copiedId === 'agent-prompt-placeholder'
+									? 'Copied'
+									: 'Copy Placeholder'}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								icon={copiedId === 'agent-prompt-with-key' ? CircleCheck : Copy}
+								onclick={() =>
+									copyToClipboard(
+										'agent-prompt-with-key',
+										agentConnectionPromptForProvisioned(
+											latestProvisioned,
+											true
+										),
+										'Agent prompt with key copied'
+									)}
+							>
+								{copiedId === 'agent-prompt-with-key'
+									? 'Copied'
+									: 'Copy With Key'}
+							</Button>
+						</div>
+					</div>
+					<pre
+						class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+							>{agentConnectionPromptForProvisioned(latestProvisioned, false)}</code
+						></pre>
 				</div>
 
 				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">

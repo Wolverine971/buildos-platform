@@ -108,9 +108,18 @@
 	const overdueLabel = $derived(
 		`${overdueTasks} overdue ${overdueTasks === 1 ? 'task' : 'tasks'}`
 	);
-	const overdueProjectBatchSummary = $derived(
-		`${overdueProjectBatchCount} ${overdueProjectBatchCount === 1 ? 'project' : 'projects'} · ${overdueProjectTaskCount} overdue ${overdueProjectTaskCount === 1 ? 'task' : 'tasks'}`
-	);
+	const overdueProjectBatchSummary = $derived.by(() => {
+		const taskSummary = `${overdueProjectTaskCount} overdue ${overdueProjectTaskCount === 1 ? 'task' : 'tasks'}`;
+		if (overdueProjectBatchCount <= 0) return taskSummary;
+		return `${overdueProjectBatchCount} ${overdueProjectBatchCount === 1 ? 'project' : 'projects'} · ${taskSummary}`;
+	});
+	const overdueBatchByProjectId = $derived.by(() => {
+		const batchesByProject = new Map<string, OverdueProjectBatch>();
+		for (const batch of overdueProjectBatches) {
+			batchesByProject.set(batch.project_id, batch);
+		}
+		return batchesByProject;
+	});
 
 	const TERMINAL_PROJECT_STATES = new Set([
 		'done',
@@ -227,19 +236,17 @@
 		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 	}
 
-	function formatOverdueAge(value: string | null): string {
-		if (!value) return 'No due date';
-		const dueMs = Date.parse(value);
-		if (Number.isNaN(dueMs)) return 'No due date';
-		const diffDays = Math.max(1, Math.floor((Date.now() - dueMs) / (1000 * 60 * 60 * 24)));
-		return `${diffDays}d overdue`;
-	}
-
 	function formatStateLabel(state: string): string {
 		return state
 			.split('_')
 			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
 			.join(' ');
+	}
+
+	function formatOverdueProjectTitle(batch: OverdueProjectBatch): string {
+		const taskLabel = `${batch.overdue_count} overdue ${batch.overdue_count === 1 ? 'task' : 'tasks'}`;
+		if (batch.assigned_to_me_count <= 0) return taskLabel;
+		return `${taskLabel}, ${batch.assigned_to_me_count} assigned to me`;
 	}
 
 	function resolveProjectHref(project: { id?: string | null }): string {
@@ -359,14 +366,14 @@
 		briefChatSessionId = null;
 	}
 
-	async function loadOverdueProjectBatchPreview() {
+	async function loadOverdueProjectBatches() {
 		const requestToken = ++overdueProjectBatchRequestToken;
 		isLoadingOverdueProjectBatches = true;
 		overdueProjectBatchError = null;
 
 		try {
 			const response = await fetch(
-				'/api/onto/tasks/overdue/batches?limit=3&include_tasks=false'
+				'/api/onto/tasks/overdue/batches?limit=100&include_tasks=false'
 			);
 			const payload = (await response.json()) as {
 				success?: boolean;
@@ -412,7 +419,7 @@
 			return;
 		}
 
-		void loadOverdueProjectBatchPreview();
+		void loadOverdueProjectBatches();
 	});
 
 	async function openOverdueTaskTriage(projectId: string | null = null) {
@@ -440,7 +447,7 @@
 		if (summary?.hasChanges && refreshHandler) {
 			void Promise.resolve(refreshHandler()).finally(() => {
 				if (browser) {
-					void loadOverdueProjectBatchPreview();
+					void loadOverdueProjectBatches();
 				}
 			});
 		}
@@ -540,13 +547,13 @@
 					<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
 						<div class="min-w-0 flex items-start gap-2.5">
 							<div
-								class="flex items-center justify-center h-8 w-8 rounded-md bg-destructive/10 shrink-0"
+								class="flex items-center justify-center h-8 w-8 rounded-md bg-warning/10 shrink-0"
 							>
-								<AlertTriangle class="h-4 w-4 text-destructive" />
+								<AlertTriangle class="h-4 w-4 text-warning" />
 							</div>
 							<div class="min-w-0">
 								<p class="text-sm font-semibold text-foreground">
-									Overdue project batches
+									Overdue tasks need review
 								</p>
 								<p class="text-xs text-muted-foreground mt-0.5">
 									{overdueProjectBatchSummary}
@@ -559,8 +566,8 @@
 								onclick={() => openOverdueTaskTriage()}
 								disabled={isOpeningOverdueTriage}
 								class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold
-								rounded-md border border-destructive/30 bg-destructive/10 text-destructive shadow-ink pressable
-								hover:bg-destructive/15 hover:border-destructive/50 transition-colors
+								rounded-md border border-warning/30 bg-warning/10 text-warning shadow-ink pressable
+								hover:bg-warning/15 hover:border-warning/50 transition-colors
 								disabled:opacity-60 disabled:pointer-events-none
 								focus:outline-none focus:ring-1 focus:ring-ring"
 							>
@@ -581,77 +588,28 @@
 						</div>
 					</div>
 
-					<div class="border-t border-border bg-background/40">
-						{#if isLoadingOverdueProjectBatches}
-							<div class="px-3 py-3 text-xs text-muted-foreground">
-								Loading overdue project batches...
-							</div>
-						{:else if overdueProjectBatchError}
-							<div
-								class="px-3 py-3 flex flex-wrap items-center justify-between gap-2"
-							>
-								<p class="text-xs text-muted-foreground">{overdueLabel}</p>
+					{#if isLoadingOverdueProjectBatches || overdueProjectBatchError}
+						<div
+							class="border-t border-border bg-background/40 px-3 py-2.5 flex flex-wrap items-center justify-between gap-2"
+						>
+							{#if isLoadingOverdueProjectBatches}
+								<p class="text-xs text-muted-foreground">
+									Checking affected projects...
+								</p>
+							{:else if overdueProjectBatchError}
+								<p class="text-xs text-muted-foreground">
+									Project details unavailable. {overdueLabel}.
+								</p>
 								<button
 									type="button"
 									class="text-xs font-medium text-accent hover:underline underline-offset-2"
-									onclick={loadOverdueProjectBatchPreview}
+									onclick={loadOverdueProjectBatches}
 								>
 									Retry
 								</button>
-							</div>
-						{:else if overdueProjectBatches.length > 0}
-							<div class="divide-y divide-border">
-								{#each overdueProjectBatches as batch (batch.project_id)}
-									<button
-										type="button"
-										onclick={() => openOverdueTaskTriage(batch.project_id)}
-										class="w-full px-3 py-3 text-left transition-colors hover:bg-muted/40 focus:outline-none focus:bg-muted/40"
-									>
-										<div class="flex items-start justify-between gap-3">
-											<div class="min-w-0">
-												<div class="flex flex-wrap items-center gap-2">
-													<p
-														class="text-sm font-semibold text-foreground truncate"
-													>
-														{batch.project_name}
-													</p>
-													{#if batch.project_is_collaborative}
-														<span
-															class="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent"
-														>
-															<Share2 class="h-2.5 w-2.5" />
-															Shared
-														</span>
-													{/if}
-												</div>
-												<p class="mt-1 text-[11px] text-muted-foreground">
-													{batch.overdue_count} overdue
-													{#if batch.assigned_to_me_count > 0}
-														· {batch.assigned_to_me_count} mine
-													{/if}
-													{#if batch.oldest_due_at}
-														· oldest {formatOverdueAge(
-															batch.oldest_due_at
-														)}
-													{/if}
-												</p>
-											</div>
-											<span
-												class="inline-flex items-center gap-1 text-xs font-medium text-accent shrink-0"
-											>
-												Review
-												<ArrowRight class="h-3 w-3" />
-											</span>
-										</div>
-									</button>
-								{/each}
-							</div>
-						{:else}
-							<div class="px-3 py-3 text-xs text-muted-foreground">
-								{overdueLabel}
-							</div>
-						{/if}
-					</div>
+							{/if}
+						</div>
+					{/if}
 				</section>
 			{/if}
 
@@ -720,6 +678,7 @@
 					{/if}
 					<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
 						{#each projectsToDisplay as project (project.id)}
+							{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
 							<a
 								href={resolveProjectHref(project)}
 								onclick={(event) => handleProjectCardClick(event, project)}
@@ -769,6 +728,18 @@
 									{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
 									docs
 								</p>
+								{#if overdueBatch}
+									<div class="mt-1 pl-[22px]">
+										<span
+											class="inline-flex max-w-full items-center gap-1 rounded-md border border-warning/25 bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold text-warning"
+											title={formatOverdueProjectTitle(overdueBatch)}
+											aria-label={formatOverdueProjectTitle(overdueBatch)}
+										>
+											<AlertTriangle class="h-2.5 w-2.5 shrink-0" />
+											<span class="truncate">Has overdue tasks</span>
+										</span>
+									</div>
+								{/if}
 							</a>
 						{/each}
 					</div>
@@ -799,6 +770,7 @@
 
 					<div class="grid gap-2 sm:gap-3 lg:grid-cols-2">
 						{#each sharedNotActive as project (project.id)}
+							{@const overdueBatch = overdueBatchByProjectId.get(project.id)}
 							<a
 								href={resolveProjectHref(project)}
 								onclick={(event) => handleProjectCardClick(event, project)}
@@ -832,6 +804,18 @@
 									{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
 									docs
 								</p>
+								{#if overdueBatch}
+									<div class="mt-1 pl-[22px]">
+										<span
+											class="inline-flex max-w-full items-center gap-1 rounded-md border border-warning/25 bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold text-warning"
+											title={formatOverdueProjectTitle(overdueBatch)}
+											aria-label={formatOverdueProjectTitle(overdueBatch)}
+										>
+											<AlertTriangle class="h-2.5 w-2.5 shrink-0" />
+											<span class="truncate">Has overdue tasks</span>
+										</span>
+									</div>
+								{/if}
 							</a>
 						{/each}
 					</div>
