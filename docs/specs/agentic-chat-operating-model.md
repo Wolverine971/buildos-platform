@@ -4,6 +4,7 @@
 
 Status: Canonical
 Date: 2026-04-09
+Last updated: 2026-04-12
 Owner: BuildOS Agentic Chat
 
 Related docs:
@@ -119,12 +120,14 @@ The role of tools is to answer:
 
 ## Canonical Gateway Surface
 
-The default provider-neutral gateway surface is:
+The default provider-neutral gateway surface is a hybrid direct-tool surface:
 
+- a small preloaded set of context-specific direct tools
 - `skill_load`
 - `tool_search`
 - `tool_schema`
-- `buildos_call`
+
+The model-facing gateway surface does not use a catch-all wrapper for normal work. Reads and writes are executed by calling the direct tool name, such as `get_project_overview`, `create_onto_task`, or `update_onto_task`.
 
 ### `skill_load`
 
@@ -144,7 +147,7 @@ Example:
 
 ### `tool_search`
 
-Use `tool_search` when the model does not yet know the exact tool.
+Use `tool_search` when the model does not yet know the exact canonical operation or direct tool.
 
 It answers:
 
@@ -160,7 +163,7 @@ Example:
 
 ### `tool_schema`
 
-Use `tool_schema` when the model knows the exact tool but needs the exact schema, examples, or argument rules.
+Use `tool_schema` when the model knows the canonical operation but needs the exact direct tool name, schema, examples, or argument rules.
 
 It answers:
 
@@ -174,9 +177,9 @@ Example:
 }
 ```
 
-### `buildos_call`
+### Direct Tools
 
-Use `buildos_call` only when the exact tool and concrete arguments are known.
+Use a direct tool when the exact tool and concrete arguments are known.
 
 It answers:
 
@@ -186,15 +189,10 @@ Example:
 
 ```json
 {
-	"op": "onto.project.create",
-	"args": {
-		"project": {
-			"name": "Launch creator CRM",
-			"type_key": "project.business.system"
-		},
-		"entities": [],
-		"relationships": []
-	}
+	"name": "Launch creator CRM",
+	"type_key": "project.business.system",
+	"entities": [],
+	"relationships": []
 }
 ```
 
@@ -206,7 +204,7 @@ The model should generally operate in this order:
 2. If the job is workflow-heavy or easy to misuse, load the relevant skill.
 3. If the exact tool is unknown, use `tool_search`.
 4. If the exact tool is known but the argument contract is not, use `tool_schema`.
-5. Only then call `buildos_call`.
+5. Call the direct tool by name with concrete arguments.
 
 Short version:
 
@@ -214,7 +212,7 @@ Short version:
 - skills teach
 - tool search finds
 - tool schema specifies
-- buildos_call executes
+- direct tools execute
 
 ## When To Use A Skill
 
@@ -333,7 +331,7 @@ If the model is not sure about exact required fields, IDs, or allowed values, it
 
 ### Do not speculate with execution
 
-Do not call `buildos_call` just to probe for shape or see what happens.
+Do not call direct read or write tools just to probe for shape or see what happens.
 
 ## Examples
 
@@ -342,7 +340,7 @@ Do not call `buildos_call` just to probe for shape or see what happens.
 1. Capability orientation: project creation
 2. Load `project_creation`
 3. Inspect `onto.project.create` with `tool_schema` if the exact payload is not already known
-4. Execute with `buildos_call`
+4. Execute with `create_onto_project`
 
 ### Example 2: Update a calendar event
 
@@ -350,7 +348,7 @@ Do not call `buildos_call` just to probe for shape or see what happens.
 2. Load `calendar_management` if the scope, IDs, or write flow are not already clear
 3. Search or inspect the exact calendar tool
 4. Load schema if needed
-5. Execute with `buildos_call`
+5. Execute with the direct calendar tool, such as `update_calendar_event`
 
 ### Example 3: Answer a workspace status question
 

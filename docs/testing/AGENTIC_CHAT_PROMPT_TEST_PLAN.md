@@ -3,7 +3,10 @@
 # Agentic Chat Prompt Test Plan
 
 **Date:** 2026-04-03  
-**Scope:** `apps/web` agentic chat v2 with emphasis on prompt behavior, tool routing, overview retrieval, and gateway-mode skill usage.
+**Last updated:** 2026-04-12
+**Scope:** `apps/web` agentic chat v2 with emphasis on prompt behavior, direct-tool routing, overview retrieval, and gateway-mode skill usage.
+
+For the current hybrid direct-tool acceptance matrix, also use [Agentic Chat Hybrid Tool Surface Prompt Tests](/Users/djwayne/buildos-platform/docs/testing/AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md).
 
 ## Purpose
 
@@ -46,26 +49,27 @@ What it covers:
 - skill catalog is injected
 - overview guidance is present
 - prompt tells the model to prefer `util.workspace.overview` and `util.project.overview` for status questions
-- prompt forbids speculative `tool_exec`
+- prompt tells the model to use preloaded direct tools when they fit
+- prompt forbids routing normal work through a catch-all execution tool
 - prompt includes required-ID guidance
 - prompt excludes removed heuristic sections such as `Path heuristic` and `Good skill entry points`
 - prompt compaction and prompt-time context shaping behavior
 
 ### Tool discovery / skill registry
 
-File:
+Files:
 
 - `/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.test.ts`
+- `/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.test.ts`
+- `/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts`
 
 What it covers:
 
-- `tool_help("root")` returns the command contract
-- top-level capabilities are discoverable
-- skills are discoverable
-- overview capability is discoverable
-- overview ops return guidance for workspace and named-project status questions
-- task, calendar, document, audit, and forecast skills are discoverable
-- exact-op help returns required args and concrete examples
+- `skill_load` returns on-demand workflow playbooks
+- `tool_search` and `tool_schema` support progressive disclosure
+- gateway mode preloads context-specific direct tools
+- direct-tool schemas stay aligned with canonical registry ops
+- legacy compatibility coverage remains only for compatibility paths
 
 ### Runtime repair and tool-loop guardrails
 
@@ -198,11 +202,11 @@ For each scenario, capture:
 
 ### H. Failure Recovery And Safety
 
-| ID  | Prompt                                                    | Expected result                                            | Failure signal                                                                      | Coverage today             |
-| --- | --------------------------------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------- |
-| H1  | Prompt that requires a mutation without an explicit ID    | Chat reads/searches first, then mutates once it has the ID | Repeated `Missing required parameter` failures                                      | Partial automated + manual |
-| H2  | Any normal user prompt                                    | User sees a clean answer or clean tool lead-ins            | Visible scratchpad like `No, wait`, raw `tool_exec`, or XML/function-call fragments | Partial automated + manual |
-| H3  | Prompt that triggers one bad tool call plus one valid one | Valid tool call still runs                                 | Entire batch is skipped because one sibling call failed validation                  | Automated                  |
+| ID  | Prompt                                                    | Expected result                                            | Failure signal                                                                             | Coverage today             |
+| --- | --------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------- |
+| H1  | Prompt that requires a mutation without an explicit ID    | Chat reads/searches first, then mutates once it has the ID | Repeated `Missing required parameter` failures                                             | Partial automated + manual |
+| H2  | Any normal user prompt                                    | User sees a clean answer or clean tool lead-ins            | Visible scratchpad like `No, wait`, raw function-call JSON, or XML/function-call fragments | Partial automated + manual |
+| H3  | Prompt that triggers one bad tool call plus one valid one | Valid tool call still runs                                 | Entire batch is skipped because one sibling call failed validation                         | Automated                  |
 
 ## Manual Test Procedure
 

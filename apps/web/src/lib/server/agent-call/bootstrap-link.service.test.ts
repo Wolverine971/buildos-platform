@@ -269,13 +269,16 @@ describe('AgentCallBootstrapLinkService', () => {
 			'Request read_only during call.dial unless you only need less access for this session.'
 		);
 		expect(document.openclaw.setup_steps).toContain(
-			'Use tool_search to discover candidate ops when the exact op is not known.'
+			'Use the direct tools returned by tools/list for normal BuildOS reads and writes.'
 		);
 		expect(document.openclaw.setup_steps).toContain(
-			'Use tool_schema with the exact op to load required args and examples before first-time or uncertain writes.'
+			'Use tool_search to discover candidate tools when the exact tool is not known.'
+		);
+		expect(document.openclaw.setup_steps).toContain(
+			'Use tool_schema with the exact op to load required args and examples before first-time or uncertain writes, then call the returned direct tool_name.'
 		);
 		expect(document.openclaw.follow_up_prompt).toContain(
-			'use tool_search to discover candidate ops'
+			'call the scoped direct tools by name'
 		);
 		expect(serializeBootstrapDocumentAsText(document)).toContain(
 			'BuildOS OpenClaw Bootstrap Instructions'

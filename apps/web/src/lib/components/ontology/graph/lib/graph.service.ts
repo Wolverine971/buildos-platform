@@ -188,6 +188,9 @@ interface NodeStyleConfig {
 	labelValign: 'top' | 'center' | 'bottom';
 	labelHalign?: 'left' | 'center' | 'right';
 	labelMarginY?: number;
+	labelMaxWidth: number;
+	labelMaxLines: number;
+	labelMaxCharsPerLine: number;
 	borderWidth: number;
 	borderStyle?: 'solid' | 'dashed' | 'dotted';
 }
@@ -199,12 +202,15 @@ interface NodeStyleConfig {
 export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 	project: {
 		shape: 'round-rectangle',
-		baseWidth: 50,
-		baseHeight: 40,
+		baseWidth: 76,
+		baseHeight: 46,
 		fontSize: 11,
 		fontWeight: 600,
 		labelValign: 'center',
 		labelHalign: 'center',
+		labelMaxWidth: 66,
+		labelMaxLines: 2,
+		labelMaxCharsPerLine: 13,
 		borderWidth: 3,
 		borderStyle: 'solid'
 	},
@@ -216,6 +222,9 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		fontWeight: 600,
 		labelValign: 'bottom',
 		labelMarginY: 8,
+		labelMaxWidth: 92,
+		labelMaxLines: 3,
+		labelMaxCharsPerLine: 15,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
@@ -226,16 +235,22 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		fontSize: 9,
 		labelValign: 'bottom',
 		labelMarginY: 6,
+		labelMaxWidth: 88,
+		labelMaxLines: 3,
+		labelMaxCharsPerLine: 15,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
 	plan: {
 		shape: 'round-rectangle',
-		baseWidth: 36,
-		baseHeight: 28,
+		baseWidth: 88,
+		baseHeight: 50,
 		fontSize: 10,
 		labelValign: 'center',
 		labelHalign: 'center',
+		labelMaxWidth: 76,
+		labelMaxLines: 3,
+		labelMaxCharsPerLine: 15,
 		borderWidth: 2,
 		borderStyle: 'dashed'
 	},
@@ -246,6 +261,9 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		fontSize: 8,
 		labelValign: 'bottom',
 		labelMarginY: 4,
+		labelMaxWidth: 88,
+		labelMaxLines: 3,
+		labelMaxCharsPerLine: 15,
 		borderWidth: 1,
 		borderStyle: 'solid'
 	},
@@ -256,6 +274,9 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		fontSize: 9,
 		labelValign: 'bottom',
 		labelMarginY: 6,
+		labelMaxWidth: 92,
+		labelMaxLines: 3,
+		labelMaxCharsPerLine: 15,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
@@ -266,6 +287,9 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		fontSize: 9,
 		labelValign: 'bottom',
 		labelMarginY: 6,
+		labelMaxWidth: 88,
+		labelMaxLines: 3,
+		labelMaxCharsPerLine: 15,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
@@ -276,6 +300,9 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		fontSize: 8,
 		labelValign: 'bottom',
 		labelMarginY: 4,
+		labelMaxWidth: 88,
+		labelMaxLines: 3,
+		labelMaxCharsPerLine: 15,
 		borderWidth: 1,
 		borderStyle: 'dashed'
 	},
@@ -286,6 +313,9 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		fontSize: 9,
 		labelValign: 'bottom',
 		labelMarginY: 6,
+		labelMaxWidth: 88,
+		labelMaxLines: 3,
+		labelMaxCharsPerLine: 15,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	}
@@ -301,6 +331,9 @@ const SCALE_MULTIPLIERS: Record<string, number> = {
 	large: 1.2,
 	epic: 1.4
 };
+
+const FALLBACK_LABEL = 'Untitled';
+const LABEL_OVERFLOW_MARKER = '...';
 
 // ============================================================
 // HELPER FUNCTIONS
@@ -380,6 +413,90 @@ function getStateBorderWidthModifier(state: string): number {
 	}
 }
 
+function splitLongWord(word: string, maxLength: number): string[] {
+	if (word.length <= maxLength) return [word];
+
+	const chunks: string[] = [];
+	for (let index = 0; index < word.length; index += maxLength) {
+		chunks.push(word.slice(index, index + maxLength));
+	}
+	return chunks;
+}
+
+function addOverflowMarker(line: string, maxLength: number): string {
+	if (line.endsWith(LABEL_OVERFLOW_MARKER)) return line;
+	if (line.length + LABEL_OVERFLOW_MARKER.length <= maxLength) {
+		return `${line}${LABEL_OVERFLOW_MARKER}`;
+	}
+
+	const availableLength = Math.max(1, maxLength - LABEL_OVERFLOW_MARKER.length);
+	return `${line.slice(0, availableLength).trimEnd()}${LABEL_OVERFLOW_MARKER}`;
+}
+
+function formatGraphLabel(label: string | null | undefined, config: NodeStyleConfig): string {
+	const normalized = (label ?? FALLBACK_LABEL).replace(/\s+/g, ' ').trim() || FALLBACK_LABEL;
+	const words = normalized.split(' ');
+	const lines: string[] = [];
+	let currentLine = '';
+	let didOverflow = false;
+
+	for (const word of words) {
+		const wordParts = splitLongWord(word, config.labelMaxCharsPerLine);
+
+		for (const wordPart of wordParts) {
+			const candidate = currentLine ? `${currentLine} ${wordPart}` : wordPart;
+
+			if (candidate.length <= config.labelMaxCharsPerLine) {
+				currentLine = candidate;
+				continue;
+			}
+
+			if (currentLine) {
+				lines.push(currentLine);
+				currentLine = wordPart;
+			} else {
+				lines.push(wordPart);
+				currentLine = '';
+			}
+
+			if (lines.length >= config.labelMaxLines) {
+				didOverflow = true;
+				break;
+			}
+		}
+
+		if (didOverflow) break;
+	}
+
+	if (!didOverflow && currentLine) {
+		lines.push(currentLine);
+	}
+
+	if (lines.length > config.labelMaxLines) {
+		lines.length = config.labelMaxLines;
+		didOverflow = true;
+	}
+
+	if (didOverflow && lines.length > 0) {
+		const lastIndex = lines.length - 1;
+		lines[lastIndex] = addOverflowMarker(lines[lastIndex] ?? '', config.labelMaxCharsPerLine);
+	}
+
+	return lines.slice(0, config.labelMaxLines).join('\n');
+}
+
+function getLabelVisualData(label: string | null | undefined, config: NodeStyleConfig) {
+	const isCentered = config.labelValign === 'center';
+
+	return {
+		label: label ?? FALLBACK_LABEL,
+		displayLabel: formatGraphLabel(label, config),
+		labelMaxWidth: config.labelMaxWidth,
+		labelBackgroundOpacity: isCentered ? 0 : 0.86,
+		labelBackgroundPadding: isCentered ? 0 : 2
+	};
+}
+
 // ============================================================
 // NODE TRANSFORMATION METHODS
 // ============================================================
@@ -393,11 +510,12 @@ export class OntologyGraphService {
 			const colors = getStateColors(state, isDark);
 			const scale = project.facet_scale ?? 'medium';
 			const multiplier = SCALE_MULTIPLIERS[scale] ?? 1.0;
+			const labelVisual = getLabelVisualData(project.name, config);
 
 			return {
 				data: {
 					id: project.id,
-					label: project.name,
+					...labelVisual,
 					type: 'project',
 					state,
 					metadata: {
@@ -434,6 +552,7 @@ export class OntologyGraphService {
 
 		return goals.map((goal) => {
 			const state = normalizeState((goal as any).state_key ?? 'active');
+			const labelVisual = getLabelVisualData(goal.name, config);
 
 			// Goals have special state colors
 			let colors = baseColors;
@@ -446,7 +565,7 @@ export class OntologyGraphService {
 			return {
 				data: {
 					id: goal.id,
-					label: goal.name,
+					...labelVisual,
 					type: 'goal',
 					state,
 					metadata: {
@@ -479,11 +598,12 @@ export class OntologyGraphService {
 			const colors = getStateColors(state, isDark);
 			const borderStyle = getStateBorderStyle(state);
 			const borderMod = getStateBorderWidthModifier(state);
+			const labelVisual = getLabelVisualData(task.title, config);
 
 			return {
 				data: {
 					id: task.id,
-					label: task.title,
+					...labelVisual,
 					type: 'task',
 					state,
 					metadata: {
@@ -516,6 +636,7 @@ export class OntologyGraphService {
 
 		return plans.map((plan) => {
 			const state = normalizeState(plan.state_key);
+			const labelVisual = getLabelVisualData(plan.name, config);
 
 			// Plans override colors for complete state
 			let colors = baseColors;
@@ -526,7 +647,7 @@ export class OntologyGraphService {
 			return {
 				data: {
 					id: plan.id,
-					label: plan.name,
+					...labelVisual,
 					type: 'plan',
 					state,
 					metadata: {
@@ -558,11 +679,12 @@ export class OntologyGraphService {
 
 		return documents.map((document) => {
 			const state = normalizeState(document.state_key);
+			const labelVisual = getLabelVisualData(document.title, config);
 
 			return {
 				data: {
 					id: document.id,
-					label: document.title,
+					...labelVisual,
 					type: 'document',
 					state,
 					metadata: {
@@ -596,11 +718,12 @@ export class OntologyGraphService {
 			const propsState = (milestone.props as Record<string, unknown>)?.state_key;
 			const state = normalizeState((propsState as string) ?? 'pending');
 			const colors = getStateColors(state, isDark);
+			const labelVisual = getLabelVisualData(milestone.title, config);
 
 			return {
 				data: {
 					id: milestone.id,
-					label: milestone.title,
+					...labelVisual,
 					type: 'milestone',
 					state,
 					metadata: {
@@ -631,6 +754,7 @@ export class OntologyGraphService {
 
 		return risks.map((risk) => {
 			const state = normalizeState(risk.state_key ?? 'identified');
+			const labelVisual = getLabelVisualData(risk.title, config);
 
 			// Risks use state-based colors
 			let colors = baseColors;
@@ -643,7 +767,7 @@ export class OntologyGraphService {
 			return {
 				data: {
 					id: risk.id,
-					label: risk.title,
+					...labelVisual,
 					type: 'risk',
 					state,
 					metadata: {

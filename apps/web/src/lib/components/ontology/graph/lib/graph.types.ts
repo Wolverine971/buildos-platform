@@ -58,6 +58,7 @@ export interface CytoscapeNode {
 	data: {
 		id: string;
 		label: string;
+		displayLabel?: string;
 		type: NodeType;
 		state?: string;
 		parent?: string;
@@ -75,6 +76,9 @@ export interface CytoscapeNode {
 		fontWeight?: number;
 		labelValign?: 'top' | 'center' | 'bottom';
 		labelMarginY?: number;
+		labelMaxWidth?: number;
+		labelBackgroundOpacity?: number;
+		labelBackgroundPadding?: number;
 	};
 }
 

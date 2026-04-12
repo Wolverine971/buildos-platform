@@ -2,8 +2,9 @@
 
 # Agentic Chat Skill + Tool Architecture V2
 
-Status: In Progress
+Status: Historical design context. Superseded by [Agentic Chat Tool Surface Refactor Plan](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-tool-surface-refactor-plan.md).
 Date: 2026-04-09
+Last updated: 2026-04-12
 Owner: BuildOS Agentic Chat
 Related docs:
 
@@ -19,6 +20,8 @@ Replaces:
 
 ## 1. Executive Summary
 
+Current implementation note: the first phase after this design removed the model-facing catch-all execution tool. Gateway mode now exposes `skill_load`, `tool_search`, `tool_schema`, and context-specific direct tools. References below to `buildos_call`, `tool_exec`, or `tool_help` are historical migration context, not the current model-facing contract.
+
 BuildOS should use four distinct layers:
 
 1. Capabilities
@@ -30,7 +33,7 @@ BuildOS should use four distinct layers:
 4. Tool execution
    The runtime call that actually performs the read or write.
 
-The current gateway collapses layers 2-4 into `tool_help` plus `tool_exec`. That kept the visible tool list small, but it also overloaded one help path with:
+At the time of this design, the gateway collapsed layers 2-4 into `tool_help` plus `tool_exec`. That kept the visible tool list small, but it also overloaded one help path with:
 
 - capability browsing
 - skill browsing
@@ -59,13 +62,13 @@ The result is a simpler mental model:
 
 ## 2. Why Change
 
-### 2.1 Current repo findings
+### 2.1 Repo findings at time of design
 
-Current prompt/runtime behavior:
+Prompt/runtime behavior at the time:
 
 - The prompt preloads `buildos_capabilities`, `capability_catalog`, and `skill_catalog` in both V2 and legacy prompt builders.
-- In gateway mode, the model only sees two callable tools: `tool_help` and `tool_exec`.
-- `tool_help` currently returns capabilities, skills, directories, and exact op help from one generic path tree.
+- In gateway mode, the model only saw two callable tools: `tool_help` and `tool_exec`.
+- `tool_help` returned capabilities, skills, directories, and exact op help from one generic path tree.
 - Runtime recovery logic contains explicit handling for:
     - repeated `tool_help("root")` loops
     - malformed `tool_help` payloads

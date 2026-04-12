@@ -92,7 +92,7 @@
 		} | null;
 		updated_at: string | null;
 	};
-	type TopActiveUser = { email: string; last_brief?: string | null; brief_count: number };
+	type TopActiveUser = { email: string; last_activity: string | null; activity_count: number };
 
 	let { data } = $props();
 	const initialDashboard = (data?.initialDashboard ?? null) as DashboardAnalyticsPayload | null;
@@ -116,7 +116,7 @@
 		active_users_30d: 0,
 		total_briefs: 0,
 		avg_brief_length: 0,
-		top_active_users: []
+		top_active_users: [] as TopActiveUser[]
 	});
 
 	// Comprehensive analytics data
@@ -127,15 +127,15 @@
 			newUsersLast24h: number;
 			newBetaSignupsLast24h: number;
 		};
-		brainDumpMetrics: { total: number; averageLength: number; uniqueUsers: number };
+		agentChatMetrics: { totalSessions: number; totalMessages: number; uniqueUsers: number };
 		projectMetrics: { newProjects: number; updatedProjects: number; uniqueUsers: number };
 		calendarConnections: number;
 		leaderboards: {
-			brainDumps: LeaderboardEntry[];
+			agentChats: LeaderboardEntry[];
+			agentMessages: LeaderboardEntry[];
 			projectUpdates: LeaderboardEntry[];
 			tasksCreated: LeaderboardEntry[];
 			tasksScheduled: LeaderboardEntry[];
-			phasesCreated: LeaderboardEntry[];
 		};
 	}>({
 		userMetrics: {
@@ -144,9 +144,9 @@
 			newUsersLast24h: 0,
 			newBetaSignupsLast24h: 0
 		},
-		brainDumpMetrics: {
-			total: 0,
-			averageLength: 0,
+		agentChatMetrics: {
+			totalSessions: 0,
+			totalMessages: 0,
 			uniqueUsers: 0
 		},
 		projectMetrics: {
@@ -156,11 +156,11 @@
 		},
 		calendarConnections: 0,
 		leaderboards: {
-			brainDumps: [],
+			agentChats: [],
+			agentMessages: [],
 			projectUpdates: [],
 			tasksCreated: [],
-			tasksScheduled: [],
-			phasesCreated: []
+			tasksScheduled: []
 		}
 	});
 
@@ -556,11 +556,11 @@
 	});
 
 	type LeaderboardKey =
-		| 'brainDumps'
+		| 'agentChats'
+		| 'agentMessages'
 		| 'projectUpdates'
 		| 'tasksCreated'
-		| 'tasksScheduled'
-		| 'phasesCreated';
+		| 'tasksScheduled';
 
 	const leaderboardConfigs: Array<{
 		key: LeaderboardKey;
@@ -569,9 +569,15 @@
 		accent: string;
 	}> = [
 		{
-			key: 'brainDumps',
-			title: 'Top Brain Dumpers',
-			icon: FileText,
+			key: 'agentChats',
+			title: 'Agent Chats Started',
+			icon: MessageSquare,
+			accent: 'text-sky-600'
+		},
+		{
+			key: 'agentMessages',
+			title: 'Most Agent Chat Messages',
+			icon: Eye,
 			accent: 'text-indigo-600'
 		},
 		{
@@ -591,12 +597,6 @@
 			title: 'Top Task Schedulers',
 			icon: Globe,
 			accent: 'text-orange-600'
-		},
-		{
-			key: 'phasesCreated',
-			title: 'Top Phase Creators',
-			icon: TrendingUp,
-			accent: 'text-purple-600'
 		}
 	];
 
@@ -642,33 +642,41 @@
 		return cards;
 	});
 
-	let feedbackMetricCards = $derived.by(() => {
-		const cards: any[] = [
-			{
-				label: 'Total Feedback',
-				value: feedbackOverview.overview.total_feedback,
-				icon: MessageSquare,
-				tone: 'info' as const,
-				footnote: `${feedbackOverview.overview.recent_24h} in last 24h`
-			},
-			{
-				label: 'Unresolved Feedback',
-				value: feedbackOverview.overview.unresolved_count,
-				icon: AlertCircle,
-				tone: 'danger' as const,
-				footnote: 'Need attention'
-			},
-			{
-				label: 'Average Rating',
-				value: feedbackOverview.overview.average_rating,
-				icon: Star,
-				tone: 'warning' as const,
-				suffix: ' /5',
-				footnote: 'User satisfaction'
-			}
-		];
-		return cards;
-	});
+	let feedbackStats = $derived.by(() => [
+		{
+			label: 'Total Feedback',
+			value: formatNumber(feedbackOverview.overview.total_feedback),
+			detail: `${formatNumber(feedbackOverview.overview.recent_24h)} in last 24h`
+		},
+		{
+			label: 'Unresolved',
+			value: formatNumber(feedbackOverview.overview.unresolved_count),
+			detail:
+				feedbackOverview.overview.unresolved_count > 0
+					? 'Needs attention'
+					: 'Inbox is clear'
+		},
+		{
+			label: 'Average Rating',
+			value: formatRating(feedbackOverview.overview.average_rating),
+			detail: 'User satisfaction'
+		}
+	]);
+
+	let feedbackCategoryEntries = $derived.by(() =>
+		Object.entries(feedbackOverview.category_breakdown).sort(
+			([, a], [, b]) => Number(b) - Number(a)
+		)
+	);
+	let feedbackStatusEntries = $derived.by(() =>
+		Object.entries(feedbackOverview.status_breakdown).sort(
+			([, a], [, b]) => Number(b) - Number(a)
+		)
+	);
+	let feedbackCategoryMax = $derived.by(() =>
+		Math.max(1, ...feedbackCategoryEntries.map(([, count]) => Number(count)))
+	);
+	let recentFeedbackPreview = $derived(feedbackOverview.recent_feedback.slice(0, 5));
 
 	function applyDashboardPayload(payload: DashboardAnalyticsPayload) {
 		systemOverview = payload.systemOverview;
@@ -805,6 +813,18 @@
 		return `${Math.round(num)}%`;
 	}
 
+	function formatRating(value: number): string {
+		if (!value || value <= 0) return '—';
+		const rounded = Math.round(value * 10) / 10;
+		return `${rounded} /5`;
+	}
+
+	function truncateText(value: string | null | undefined, maxLength: number): string {
+		const text = value?.trim();
+		if (!text) return 'No comment text';
+		return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+	}
+
 	function getSystemHealthColor(value: number, unit: string | null): string {
 		if (unit === 'percentage') {
 			if (value >= 95) return 'text-green-600';
@@ -861,7 +881,7 @@
 			case 'note':
 			case 'document':
 				return FileText;
-			case 'brain_dump':
+			case 'agent_chat':
 				return MessageSquare;
 			default:
 				return Activity;
@@ -970,15 +990,14 @@
 	<div class="admin-page">
 		<!-- Navigation Cards - Ultra-compact grid on mobile -->
 		<div
-			class="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 mb-4 sm:mb-6"
+			class="grid grid-cols-2 gap-1.5 sm:grid-cols-2 sm:gap-2 md:grid-cols-3 lg:grid-cols-4 mb-3 sm:mb-5"
 		>
 			{#each navCards as card (card.href)}
-				<!-- Ultra-compact on mobile, compact on sm+ -->
 				<div class="sm:hidden">
 					<AdminNavCard {...card} ultraCompact />
 				</div>
 				<div class="hidden sm:block">
-					<AdminNavCard {...card} meta="View module" compact />
+					<AdminNavCard {...card} dense />
 				</div>
 			{/each}
 		</div>
@@ -1162,7 +1181,7 @@
 				<!-- Desktop: Full leaderboard cards -->
 				<div class="hidden sm:block">
 					<h2 class="text-lg sm:text-xl font-bold text-foreground mb-4">
-						User Activity Leaderboards
+						Current Activity Leaderboards
 						<span class="text-sm font-normal text-muted-foreground">
 							({timeframeRangeLabel})
 						</span>
@@ -1347,9 +1366,8 @@
 					{/if}
 				</div>
 			{/if}
-			<!-- Feedback Overview - Compact on mobile -->
+			<!-- Feedback - Metrics, categories, and latest submissions together -->
 			<div class="mb-3 sm:mb-6">
-				<!-- Mobile: Compact stats row -->
 				<div class="sm:hidden">
 					<AdminCollapsibleSection
 						title="Feedback"
@@ -1360,18 +1378,249 @@
 							? 'warning'
 							: 'default'}
 					>
-						<div class="grid grid-cols-3 gap-1.5 p-2">
-							{#each feedbackMetricCards as card (card.label)}
-								<AdminStatCard {...card} ultraCompact />
-							{/each}
+						<div class="space-y-3 p-3">
+							<div
+								class="grid grid-cols-3 divide-x divide-border rounded-lg border border-border"
+							>
+								{#each feedbackStats as stat (stat.label)}
+									<div class="px-2 py-2 text-center">
+										<p
+											class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+										>
+											{stat.label}
+										</p>
+										<p class="mt-1 text-base font-bold text-foreground">
+											{stat.value}
+										</p>
+										<p
+											class="mt-0.5 truncate text-[10px] text-muted-foreground"
+										>
+											{stat.detail}
+										</p>
+									</div>
+								{/each}
+							</div>
+
+							{#if feedbackCategoryEntries.length > 0}
+								<div class="space-y-1.5">
+									<p
+										class="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+									>
+										Categories
+									</p>
+									{#each feedbackCategoryEntries as [category, count]}
+										{@const typedCount = Number(count)}
+										<div class="flex items-center justify-between gap-2">
+											<span class="text-xs capitalize text-foreground">
+												{category}
+											</span>
+											<span class="text-xs font-semibold text-accent">
+												{typedCount}
+											</span>
+										</div>
+									{/each}
+								</div>
+							{/if}
+
+							{#if recentFeedbackPreview.length > 0}
+								<div
+									class="divide-y divide-border/60 rounded-lg border border-border"
+								>
+									{#each recentFeedbackPreview as feedback, idx (idx)}
+										<div class="px-2.5 py-2">
+											<div class="flex items-center justify-between gap-2">
+												<span
+													class="text-[10px] font-medium capitalize {getCategoryColor(
+														feedback.category
+													)}"
+												>
+													{feedback.category}
+												</span>
+												<span class="text-[10px] text-muted-foreground">
+													{feedback.rating
+														? `${feedback.rating}/5`
+														: feedback.status}
+												</span>
+											</div>
+											<p class="mt-1 line-clamp-2 text-xs text-foreground">
+												{truncateText(feedback.feedback_text, 80)}
+											</p>
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<p class="py-3 text-center text-xs text-muted-foreground">
+									No recent feedback
+								</p>
+							{/if}
 						</div>
 					</AdminCollapsibleSection>
 				</div>
-				<!-- Desktop -->
-				<div class="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-					{#each feedbackMetricCards as card (card.label)}
-						<AdminStatCard {...card} compact />
-					{/each}
+
+				<div class="hidden sm:block">
+					<AdminCard padding="lg" class="space-y-6">
+						<div
+							class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+						>
+							<div>
+								<h2 class="text-lg sm:text-xl font-bold text-foreground">
+									Feedback
+								</h2>
+								<p class="mt-1 text-sm text-muted-foreground">
+									Latest ratings, open items, and themes from user submissions.
+								</p>
+							</div>
+							<a
+								href="/admin/feedback"
+								class="inline-flex items-center text-sm font-medium text-accent hover:text-accent/80"
+							>
+								View all
+								<ExternalLink class="ml-1 h-4 w-4" />
+							</a>
+						</div>
+
+						<div
+							class="grid grid-cols-3 divide-x divide-border rounded-lg border border-border"
+						>
+							{#each feedbackStats as stat (stat.label)}
+								<div class="px-4 py-3">
+									<p
+										class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+									>
+										{stat.label}
+									</p>
+									<p class="mt-2 text-2xl font-semibold text-foreground">
+										{stat.value}
+									</p>
+									<p class="mt-1 text-xs text-muted-foreground">
+										{stat.detail}
+									</p>
+								</div>
+							{/each}
+						</div>
+
+						<div class="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+							<div class="space-y-5">
+								<div>
+									<h3 class="text-sm font-semibold text-foreground">
+										Categories
+									</h3>
+									{#if feedbackCategoryEntries.length > 0}
+										<div class="mt-3 space-y-3">
+											{#each feedbackCategoryEntries as [category, count]}
+												{@const typedCount = Number(count)}
+												<div>
+													<div
+														class="flex items-center justify-between text-sm"
+													>
+														<span
+															class="font-medium capitalize text-foreground"
+														>
+															{category}
+														</span>
+														<span class="text-muted-foreground">
+															{typedCount}
+														</span>
+													</div>
+													<div class="mt-1.5 h-2 rounded-full bg-muted">
+														<div
+															class="h-2 rounded-full bg-accent"
+															style="width: {Math.min(
+																(typedCount / feedbackCategoryMax) *
+																	100,
+																100
+															)}%"
+														></div>
+													</div>
+												</div>
+											{/each}
+										</div>
+									{:else}
+										<p class="mt-3 text-sm text-muted-foreground">
+											No category data yet.
+										</p>
+									{/if}
+								</div>
+
+								{#if feedbackStatusEntries.length > 0}
+									<div>
+										<h3 class="text-sm font-semibold text-foreground">
+											Status
+										</h3>
+										<div class="mt-3 flex flex-wrap gap-2">
+											{#each feedbackStatusEntries as [status, count]}
+												<span
+													class="rounded-lg border border-border px-2.5 py-1 text-xs capitalize text-muted-foreground"
+												>
+													{status}: {Number(count)}
+												</span>
+											{/each}
+										</div>
+									</div>
+								{/if}
+							</div>
+
+							<div>
+								<div class="flex items-center justify-between">
+									<h3 class="text-sm font-semibold text-foreground">
+										Recent Feedback
+									</h3>
+									<span class="text-xs text-muted-foreground">
+										{feedbackOverview.recent_feedback.length} latest
+									</span>
+								</div>
+								{#if recentFeedbackPreview.length > 0}
+									<div class="mt-3 divide-y divide-border">
+										{#each recentFeedbackPreview as feedback, idx (idx)}
+											<div class="py-3">
+												<div
+													class="flex items-center justify-between gap-3"
+												>
+													<div class="min-w-0">
+														<span
+															class="text-sm font-medium capitalize {getCategoryColor(
+																feedback.category
+															)}"
+														>
+															{feedback.category}
+														</span>
+														<span
+															class="ml-2 text-xs text-muted-foreground"
+														>
+															{feedback.user_email || 'Anonymous'}
+														</span>
+													</div>
+													<div
+														class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground"
+													>
+														{#if feedback.rating}
+															<span class="text-amber-600">
+																{feedback.rating}/5
+															</span>
+														{/if}
+														<span>
+															{new Date(
+																feedback.created_at
+															).toLocaleDateString()}
+														</span>
+													</div>
+												</div>
+												<p
+													class="mt-1 line-clamp-2 text-sm text-foreground"
+												>
+													{truncateText(feedback.feedback_text, 140)}
+												</p>
+											</div>
+										{/each}
+									</div>
+								{:else}
+									<p class="py-8 text-center text-sm text-muted-foreground">
+										No recent feedback
+									</p>
+								{/if}
+							</div>
+						</div>
+					</AdminCard>
 				</div>
 			</div>
 
@@ -1429,28 +1678,39 @@
 					</AdminCollapsibleSection>
 
 					<AdminCollapsibleSection
-						title="Feedback Categories"
-						icon={MessageSquare}
-						iconColor="text-purple-500"
-						badge={Object.keys(feedbackOverview.category_breakdown).length}
+						title="Brief Delivery"
+						icon={Bell}
+						iconColor="text-emerald-500"
+						badge={briefDelivery.emailDelivered + briefDelivery.smsDelivered}
 					>
-						{#if Object.keys(feedbackOverview.category_breakdown).length > 0}
-							<div class="divide-y divide-border/50">
-								{#each Object.entries(feedbackOverview.category_breakdown) as [category, count]}
-									{@const typedCount = Number(count)}
-									<div class="flex items-center justify-between px-2.5 py-1.5">
-										<span class="text-xs text-foreground capitalize truncate">
-											{category}
-										</span>
-										<span class="text-xs font-bold text-accent"
-											>{typedCount}</span
-										>
-									</div>
-								{/each}
+						<div class="divide-y divide-border/50">
+							<div class="flex items-center justify-between px-2.5 py-1.5">
+								<span class="text-xs text-foreground">Generated</span>
+								<span class="text-xs font-bold text-accent">
+									{formatNumber(briefDelivery.briefsGenerated)}
+								</span>
 							</div>
-						{:else}
-							<p class="text-muted-foreground text-center py-3 text-xs">No data</p>
-						{/if}
+							<div class="flex items-center justify-between px-2.5 py-1.5">
+								<span class="text-xs text-foreground">Email delivered</span>
+								<span class="text-xs font-bold text-accent">
+									{formatNumber(briefDelivery.emailDelivered)}
+								</span>
+							</div>
+							<div class="flex items-center justify-between px-2.5 py-1.5">
+								<span class="text-xs text-foreground">SMS delivered</span>
+								<span class="text-xs font-bold text-accent">
+									{formatNumber(briefDelivery.smsDelivered)}
+								</span>
+							</div>
+							<div class="flex items-center justify-between px-2.5 py-1.5">
+								<span class="text-xs text-foreground">Email / SMS opt-in</span>
+								<span class="text-xs font-bold text-accent">
+									{formatNumber(briefDelivery.emailOptIn)} / {formatNumber(
+										briefDelivery.smsOptIn
+									)}
+								</span>
+							</div>
+						</div>
 					</AdminCollapsibleSection>
 				</div>
 
@@ -1499,104 +1759,79 @@
 						{/if}
 					</div>
 
-					<!-- Feedback Category Breakdown -->
+					<!-- Brief Delivery Snapshot -->
 					<div class="admin-panel p-4 sm:p-6">
 						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-lg font-semibold text-foreground">
-								Feedback Categories
-							</h3>
+							<h3 class="text-lg font-semibold text-foreground">Brief Delivery</h3>
 							<a
-								href="/admin/feedback"
+								href="/admin/notifications"
 								class="text-accent hover:text-accent/80 text-sm flex items-center"
 							>
-								View All
+								View notifications
 								<ExternalLink class="ml-1 h-4 w-4" />
 							</a>
 						</div>
-						{#if Object.keys(feedbackOverview.category_breakdown).length > 0}
-							<div class="space-y-3">
-								{#each Object.entries(feedbackOverview.category_breakdown) as [category, count]}
-									{@const typedCount = Number(count)}
-									<div class="flex items-center justify-between">
-										<span
-											class="text-sm font-medium text-foreground capitalize truncate"
-										>
-											{category}
-										</span>
-										<div class="flex items-center ml-2">
-											<div class="w-20 bg-muted rounded-full h-2 mr-2">
-												<div
-													class="bg-accent h-2 rounded-full transition-all duration-300"
-													style="width: {Math.min(
-														(typedCount /
-															Math.max(
-																...Object.values(
-																	feedbackOverview.category_breakdown
-																)
-															)) *
-															100,
-														100
-													)}%"
-												></div>
-											</div>
-											<span
-												class="text-sm font-medium text-foreground w-8 text-right"
-											>
-												{typedCount}
-											</span>
-										</div>
-									</div>
-								{/each}
+						<div class="space-y-4">
+							<div class="grid grid-cols-2 gap-4">
+								<div>
+									<p
+										class="text-xs uppercase tracking-wide text-muted-foreground"
+									>
+										Generated
+									</p>
+									<p class="mt-1 text-2xl font-semibold text-foreground">
+										{formatNumber(briefDelivery.briefsGenerated)}
+									</p>
+								</div>
+								<div>
+									<p
+										class="text-xs uppercase tracking-wide text-muted-foreground"
+									>
+										Opted In
+									</p>
+									<p class="mt-1 text-2xl font-semibold text-foreground">
+										{formatNumber(
+											briefDelivery.emailOptIn + briefDelivery.smsOptIn
+										)}
+									</p>
+								</div>
 							</div>
-						{:else}
-							<p class="text-muted-foreground text-center py-8">No feedback data</p>
-						{/if}
+							<div class="divide-y divide-border">
+								<div class="flex items-center justify-between py-2">
+									<span class="text-sm text-foreground"
+										>Email sent / delivered</span
+									>
+									<span class="text-sm font-semibold text-foreground">
+										{formatNumber(briefDelivery.emailSent)} / {formatNumber(
+											briefDelivery.emailDelivered
+										)}
+									</span>
+								</div>
+								<div class="flex items-center justify-between py-2">
+									<span class="text-sm text-foreground">SMS sent / delivered</span
+									>
+									<span class="text-sm font-semibold text-foreground">
+										{formatNumber(briefDelivery.smsSent)} / {formatNumber(
+											briefDelivery.smsDelivered
+										)}
+									</span>
+								</div>
+								<div class="flex items-center justify-between py-2">
+									<span class="text-sm text-foreground">Ontology briefs</span>
+									<span class="text-sm font-semibold text-foreground">
+										{formatNumber(briefDelivery.ontologyBriefs)}
+									</span>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
 
-			<!-- Recent Content - Collapsible on mobile -->
+			<!-- Beta Program Activity - Collapsible on mobile -->
 			<div class="mb-3 sm:mb-6">
-				<!-- Mobile: Collapsible panels -->
+				<!-- Mobile: Collapsible panel -->
 				<div class="sm:hidden space-y-1.5">
-					<AdminCollapsibleSection
-						title="Recent Feedback"
-						icon={MessageSquare}
-						iconColor="text-purple-500"
-						badge={feedbackOverview.recent_feedback.length}
-					>
-						{#if feedbackOverview.recent_feedback.length > 0}
-							<div class="divide-y divide-border/50">
-								{#each feedbackOverview.recent_feedback.slice(0, 5) as feedback, idx (idx)}
-									{@const typedFeedback = feedback as any}
-									<div class="px-2.5 py-1.5">
-										<div class="flex items-center justify-between">
-											<span
-												class="text-[10px] font-medium {getCategoryColor(
-													typedFeedback.category
-												)} capitalize"
-											>
-												{typedFeedback.category}
-											</span>
-											{#if typedFeedback.rating}
-												<span class="text-[10px] text-amber-500"
-													>{typedFeedback.rating}/5</span
-												>
-											{/if}
-										</div>
-										<p class="text-xs text-foreground line-clamp-1 mt-0.5">
-											{typedFeedback.feedback_text.substring(0, 60)}...
-										</p>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-muted-foreground text-center py-3 text-xs">
-								No feedback
-							</p>
-						{/if}
-					</AdminCollapsibleSection>
-
 					<AdminCollapsibleSection
 						title="Beta Activity"
 						icon={UserPlus}
@@ -1638,62 +1873,8 @@
 					</AdminCollapsibleSection>
 				</div>
 
-				<!-- Desktop: Full panels side by side -->
-				<div class="hidden sm:grid sm:grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-					<!-- Recent Feedback -->
-					<div class="admin-panel p-4 sm:p-6">
-						<div class="flex items-center justify-between mb-4">
-							<h3 class="text-lg font-semibold text-foreground">Recent Feedback</h3>
-							<a
-								href="/admin/feedback"
-								class="text-accent hover:text-accent/80 text-sm flex items-center"
-							>
-								View All <ExternalLink class="ml-1 h-4 w-4" />
-							</a>
-						</div>
-						{#if feedbackOverview.recent_feedback.length > 0}
-							<div class="space-y-3">
-								{#each feedbackOverview.recent_feedback as feedback, idx (idx)}
-									{@const typedFeedback = feedback as any}
-									<div class="border-l-4 border-accent/30 pl-4 py-2">
-										<div class="flex items-center justify-between mb-1">
-											<span
-												class="text-sm font-medium {getCategoryColor(
-													typedFeedback.category
-												)} capitalize"
-											>
-												{typedFeedback.category}
-											</span>
-											<span class="text-xs text-muted-foreground">
-												{new Date(
-													typedFeedback.created_at
-												).toLocaleDateString()}
-											</span>
-										</div>
-										<p class="text-sm text-foreground line-clamp-2">
-											{typedFeedback.feedback_text.substring(0, 100)}...
-										</p>
-										<div class="flex items-center justify-between mt-1">
-											<span class="text-xs text-muted-foreground truncate">
-												{typedFeedback.user_email || 'Anonymous'}
-											</span>
-											{#if typedFeedback.rating}
-												<div class="flex items-center ml-2">
-													<Star class="h-3 w-3 text-yellow-500 mr-1" />
-													<span class="text-xs text-muted-foreground"
-														>{typedFeedback.rating}/5</span
-													>
-												</div>
-											{/if}
-										</div>
-									</div>
-								{/each}
-							</div>
-						{:else}
-							<p class="text-muted-foreground text-center py-8">No recent feedback</p>
-						{/if}
-					</div>
-
+				<!-- Desktop: Full panel -->
+				<div class="hidden sm:block">
 					<!-- Beta Program Activity -->
 					<div class="admin-panel p-4 sm:p-6">
 						<div class="flex items-center justify-between mb-4">

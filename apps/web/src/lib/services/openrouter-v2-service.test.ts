@@ -303,6 +303,65 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		});
 	});
 
+	it('prices provider date-suffixed model ids with the configured base model', async () => {
+		const insertMock = vi.fn(async () => ({ error: null }));
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						id: 'chatcmpl-versioned-model',
+						model: 'deepseek/deepseek-v3.2-20251201',
+						choices: [
+							{
+								index: 0,
+								message: {
+									role: 'assistant',
+									content: '{"ok":true}'
+								},
+								finish_reason: 'stop'
+							}
+						],
+						usage: {
+							prompt_tokens: 1000,
+							completion_tokens: 500,
+							total_tokens: 1500
+						}
+					}),
+					{
+						status: 200,
+						headers: {
+							'content-type': 'application/json'
+						}
+					}
+				)
+		);
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithUsageLogger(insertMock);
+		await service.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.',
+			model: 'deepseek/deepseek-v3.2',
+			models: ['deepseek/deepseek-v3.2'],
+			userId: '11111111-1111-4111-8111-111111111111',
+			chatSessionId: '22222222-2222-4222-8222-222222222222',
+			turnRunId: '33333333-3333-4333-8333-333333333333',
+			operationType: 'agent_state_reconciliation'
+		});
+
+		await vi.waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
+		expect(insertMock.mock.calls[0]?.[0]).toMatchObject({
+			model_used: 'deepseek/deepseek-v3.2-20251201',
+			metadata: {
+				pricingModel: 'deepseek/deepseek-v3.2'
+			}
+		});
+		expect(insertMock.mock.calls[0]?.[0]?.input_cost_usd).toBeCloseTo(0.00026);
+		expect(insertMock.mock.calls[0]?.[0]?.output_cost_usd).toBeCloseTo(0.00019);
+		expect(insertMock.mock.calls[0]?.[0]?.total_cost_usd).toBeCloseTo(0.00045);
+	});
+
 	it('suppresses streamed reasoning text while preserving reasoning token metadata', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {

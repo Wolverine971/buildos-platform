@@ -440,6 +440,43 @@ export function modelSupportsCapability(
 export const JSON_MODELS: Record<string, ModelProfile> = MODEL_CATALOG;
 export const TEXT_MODELS: Record<string, ModelProfile> = MODEL_CATALOG;
 
+const PROVIDER_VERSION_SUFFIX_PATTERNS = [/-\d{8}$/, /-\d{4}-\d{2}-\d{2}$/];
+
+export function normalizeProviderModelIdForPricing(modelId: string): string {
+	let normalized = modelId.trim();
+	for (const pattern of PROVIDER_VERSION_SUFFIX_PATTERNS) {
+		normalized = normalized.replace(pattern, '');
+	}
+	return normalized;
+}
+
+export function resolveModelPricingProfile(
+	modelId: string | null | undefined,
+	fallbackModelIds: Array<string | null | undefined> = []
+): { modelId: string; profile: ModelProfile } | null {
+	const candidates = [modelId, ...fallbackModelIds]
+		.filter((candidate): candidate is string => typeof candidate === 'string')
+		.map((candidate) => candidate.trim())
+		.filter(Boolean);
+
+	for (const candidate of candidates) {
+		const direct = MODEL_CATALOG[candidate];
+		if (direct) {
+			return { modelId: candidate, profile: direct };
+		}
+
+		const normalized = normalizeProviderModelIdForPricing(candidate);
+		if (normalized !== candidate) {
+			const normalizedProfile = MODEL_CATALOG[normalized];
+			if (normalizedProfile) {
+				return { modelId: normalized, profile: normalizedProfile };
+			}
+		}
+	}
+
+	return null;
+}
+
 const MODEL_ROUTES = {
 	openRouterV2: {
 		text: [

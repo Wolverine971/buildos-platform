@@ -4,8 +4,7 @@ import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
 import {
 	analyzeComplexity,
 	estimateResponseLength,
-	JSON_MODELS,
-	TEXT_MODELS,
+	resolveModelPricingProfile,
 	shouldFailoverToNextOpenRouterModel
 } from '@buildos/smart-llm';
 import {
@@ -283,14 +282,17 @@ export class OpenRouterV2Service extends SmartLLMService {
 		return timeoutMs ?? this.v2DefaultTimeoutMs;
 	}
 
-	private getModelConfig(model: string, lane: ModelLane) {
-		return lane === 'json'
-			? (JSON_MODELS[model] ?? TEXT_MODELS[model])
-			: (TEXT_MODELS[model] ?? JSON_MODELS[model]);
+	private getModelConfig(model: string, _lane: ModelLane, fallbackModels: string[] = []) {
+		return resolveModelPricingProfile(model, fallbackModels)?.profile;
 	}
 
-	private calculateUsageCost(model: string, lane: ModelLane, usage: OpenRouterUsage | undefined) {
-		const modelConfig = this.getModelConfig(model, lane);
+	private calculateUsageCost(
+		model: string,
+		lane: ModelLane,
+		usage: OpenRouterUsage | undefined,
+		fallbackModels: string[] = []
+	) {
+		const modelConfig = this.getModelConfig(model, lane, fallbackModels);
 		const inputCost = modelConfig
 			? ((usage?.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
 			: 0;
@@ -318,11 +320,13 @@ export class OpenRouterV2Service extends SmartLLMService {
 		if (!params.response.usage || !this.hasUsageLoggingBackend()) return;
 
 		const actualModel = params.response.model || params.requestedModel;
-		const modelConfig = this.getModelConfig(actualModel, params.lane);
+		const pricing = resolveModelPricingProfile(actualModel, [params.requestedModel]);
+		const modelConfig = pricing?.profile;
 		const { inputCost, outputCost, totalCost } = this.calculateUsageCost(
 			actualModel,
 			params.lane,
-			params.response.usage
+			params.response.usage,
+			[params.requestedModel]
 		);
 		const optionsRecord = params.options as JSONRequestWithFallbackModels &
 			TextGenerationOptions;
@@ -363,7 +367,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 			metadata: {
 				...optionsRecord.metadata,
 				...params.metadata,
-				lane: params.lane
+				lane: params.lane,
+				pricingModel: pricing?.modelId ?? null
 			}
 		}).catch((error) => console.error('Failed to log OpenRouter V2 usage:', error));
 	}
@@ -408,7 +413,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 
 				const parsed = JSON.parse(content) as T;
 				const actualModel = response.model || model;
-				const usageCost = this.calculateUsageCost(actualModel, 'json', response.usage);
+				const usageCost = this.calculateUsageCost(actualModel, 'json', response.usage, [
+					model
+				]);
 				if (typeof options.onUsage === 'function') {
 					await options.onUsage({
 						model: actualModel,
@@ -536,7 +543,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 				}
 
 				const actualModel = response.model || model;
-				const usageCost = this.calculateUsageCost(actualModel, 'text', response.usage);
+				const usageCost = this.calculateUsageCost(actualModel, 'text', response.usage, [
+					model
+				]);
 				if (typeof options.onUsage === 'function') {
 					await options.onUsage({
 						model: actualModel,
@@ -713,7 +722,11 @@ export class OpenRouterV2Service extends SmartLLMService {
 			if (!usageForLog || usageLogged || !this.hasUsageLoggingBackend()) return;
 			usageLogged = true;
 			const actualModel = resolvedModel || requestModelForStartedStream;
-			const modelConfig = TEXT_MODELS[actualModel];
+			const pricing = resolveModelPricingProfile(actualModel, [
+				requestModelForStartedStream,
+				...routingModelsForStartedStream
+			]);
+			const modelConfig = pricing?.profile;
 			const inputCost = modelConfig
 				? ((usageForLog.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
 				: 0;
@@ -764,7 +777,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 					lane,
 					modelRequested: requestModelForStartedStream,
 					modelsAttempted: routingModelsForStartedStream,
-					attempts: startedStreamAttempt || 1
+					attempts: startedStreamAttempt || 1,
+					pricingModel: pricing?.modelId ?? null
 				}
 			}).catch((error) => console.error('Failed to log OpenRouter V2 usage:', error));
 		};

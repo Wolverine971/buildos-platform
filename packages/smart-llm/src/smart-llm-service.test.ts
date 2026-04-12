@@ -494,7 +494,10 @@ describe('SmartLLMService model failover', () => {
 						usage: {
 							prompt_tokens: 15,
 							completion_tokens: 4,
-							total_tokens: 19
+							total_tokens: 19,
+							prompt_tokens_details: {
+								cached_tokens: 3
+							}
 						}
 					}),
 					'[DONE]'
@@ -542,6 +545,7 @@ describe('SmartLLMService model failover', () => {
 			promptTokens: 15,
 			completionTokens: 4,
 			totalTokens: 19,
+			openrouterCacheStatus: '20% cache hit',
 			streaming: true,
 			metadata: {
 				modelRequested: 'qwen/qwen3.5-flash-02-23',

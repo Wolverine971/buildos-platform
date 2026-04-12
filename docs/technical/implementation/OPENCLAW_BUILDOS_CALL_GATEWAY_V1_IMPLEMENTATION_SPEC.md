@@ -2,6 +2,9 @@
 
 # OpenCLAW + BuildOS Call Gateway V1 Implementation Spec
 
+Status: Historical foundation spec. For the current external-agent tool contract, use
+[OpenClaw + BuildOS External Tool Gateway Spec](./OPENCLAW_BUILDOS_EXTERNAL_TOOL_GATEWAY_SPEC.md).
+
 ## Purpose
 
 This document turns the foundation spec into a buildable v1.
@@ -24,8 +27,8 @@ The first implementation slice should support:
 1. a durable internal BuildOS agent identity for each user
 2. an authenticated inbound caller model for OpenCLAW
 3. a call session that can be accepted or rejected
-4. a small read-only capability surface behind an accepted call
-5. optional narrow writes only after the read path is stable
+4. a small scoped direct-tool surface behind an accepted call
+5. optional narrow writes exposed only when explicitly granted
 
 This is enough to prove the abstraction and start integration safely.
 
@@ -64,7 +67,7 @@ That means we are not ready to implement the entire OpenCLAW bridge, but we are 
 4. a call gateway endpoint
 5. accepted-call-scoped `tools/list`
 6. accepted-call-scoped `tools/call`
-7. read-only tools for project and document context
+7. scoped direct tools for project, task, document, and search context
 
 ### Out of Scope
 
@@ -572,7 +575,7 @@ Those belong in phase two.
 
 ## Phase Two After V1
 
-After the inbound call gateway works for read-only tools, the next slice should add:
+After the inbound call gateway works for scoped direct tools, the next slice should add:
 
 1. narrow write tools
 2. human approval model
@@ -591,6 +594,6 @@ The correct next move is:
 
 - build the user BuildOS agent identity
 - build the caller-authenticated inbound call gateway
-- ship the read-only public tool surface
+- ship the scoped direct public tool surface
 
 That gives us a stable substrate for the rest of the system.

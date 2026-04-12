@@ -1,7 +1,7 @@
 // apps/web/src/lib/server/admin-llm-usage-analytics.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
-import { JSON_MODELS, TEXT_MODELS } from '@buildos/smart-llm';
+import { resolveModelPricingProfile } from '@buildos/smart-llm';
 
 type Supabase = SupabaseClient<Database>;
 
@@ -145,7 +145,7 @@ function jsonObject(value: Json | null): Record<string, unknown> {
 }
 
 function getModelCost(model: string, promptTokens: number, completionTokens: number): number {
-	const modelConfig = TEXT_MODELS[model] ?? JSON_MODELS[model];
+	const modelConfig = resolveModelPricingProfile(model)?.profile;
 	if (!modelConfig) return 0;
 	return (
 		(promptTokens / 1_000_000) * modelConfig.cost +
@@ -154,7 +154,7 @@ function getModelCost(model: string, promptTokens: number, completionTokens: num
 }
 
 function getProvider(model: string, fallback?: string | null): string {
-	const modelConfig = TEXT_MODELS[model] ?? JSON_MODELS[model];
+	const modelConfig = resolveModelPricingProfile(model)?.profile;
 	return fallback || modelConfig?.provider || model.split('/')[0] || 'unknown';
 }
 

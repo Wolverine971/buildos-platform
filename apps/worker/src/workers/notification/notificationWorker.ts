@@ -34,6 +34,7 @@ import {
 	type Logger
 } from '@buildos/shared-utils';
 import { checkUserPreferences } from './preferenceChecker.js';
+import { getStaleBriefJobDecision } from '../brief/briefDateGuard.js';
 
 const supabase = createServiceClient();
 const logger = createLogger('worker:notification', supabase);
@@ -161,6 +162,46 @@ async function isPushQuietHours(
 	}
 
 	return inQuietHours;
+}
+
+function getStringPayloadValue(payload: Record<string, any>, key: string): string | undefined {
+	const directValue = payload[key];
+	if (typeof directValue === 'string' && directValue.length > 0) {
+		return directValue;
+	}
+
+	const nestedValue = payload.data?.[key];
+	if (typeof nestedValue === 'string' && nestedValue.length > 0) {
+		return nestedValue;
+	}
+
+	return undefined;
+}
+
+async function getBriefPayloadTimezone(
+	payload: Record<string, any>,
+	recipientUserId: string,
+	jobLogger: Logger
+): Promise<string> {
+	const payloadTimezone = getStringPayloadValue(payload, 'timezone');
+	if (payloadTimezone) {
+		return payloadTimezone;
+	}
+
+	const { data: user, error } = await supabase
+		.from('users')
+		.select('timezone')
+		.eq('id', recipientUserId)
+		.single();
+
+	if (error) {
+		jobLogger.warn('Failed to fetch user timezone for stale brief notification check', {
+			recipientUserId,
+			error: error.message
+		});
+	}
+
+	return user?.timezone || 'UTC';
 }
 
 // =====================================================
@@ -757,9 +798,71 @@ export async function processNotification(
 		const attemptNumber = (delivery.attempts || 0) + 1;
 		const totalAttempts = delivery.max_attempts || 3;
 
+		const eventType = typedDelivery.payload.event_type || 'unknown';
+
+		// Suppress missed daily brief notifications from downtime instead of backfilling them.
+		if (eventType === 'brief.completed' || eventType === 'brief.failed') {
+			const briefDate = getStringPayloadValue(typedDelivery.payload, 'brief_date');
+
+			if (briefDate) {
+				const timezone = await getBriefPayloadTimezone(
+					typedDelivery.payload,
+					typedDelivery.recipient_user_id,
+					jobLogger
+				);
+				const staleBriefDecision = getStaleBriefJobDecision({
+					briefDate,
+					timezone
+				});
+
+				if (staleBriefDecision.shouldSkip) {
+					jobLogger.info('Notification cancelled - stale daily brief date', {
+						briefDate,
+						timezone,
+						reason: staleBriefDecision.reason,
+						channel,
+						eventType
+					});
+
+					const { error: staleCancelError } = await supabase
+						.from('notification_deliveries')
+						.update({
+							status: 'cancelled',
+							failed_at: null,
+							last_error: `Cancelled: ${staleBriefDecision.reason}`,
+							attempts: (delivery.attempts || 0) + 1,
+							updated_at: new Date().toISOString()
+						})
+						.eq('id', delivery_id);
+
+					if (staleCancelError) {
+						jobLogger.error(
+							'Failed to mark stale brief delivery as cancelled',
+							staleCancelError,
+							{
+								notificationDeliveryId: delivery_id,
+								briefDate,
+								timezone
+							}
+						);
+					}
+
+					return;
+				}
+			} else {
+				jobLogger.warn(
+					'Brief notification payload missing brief_date; cannot check staleness',
+					{
+						notificationDeliveryId: delivery_id,
+						channel,
+						eventType
+					}
+				);
+			}
+		}
+
 		// ✅ CHECK USER PREFERENCES BEFORE SENDING
 		// Preferences may have changed since the delivery was queued
-		const eventType = typedDelivery.payload.event_type || 'unknown';
 		const prefCheck = await checkUserPreferences(
 			typedDelivery.recipient_user_id,
 			eventType,

@@ -3,7 +3,7 @@ import { isValidUUID } from '@buildos/shared-types';
 import type {
 	AgentCallScope,
 	BuildosAgentAllowedOp,
-	BuildosAgentGatewayToolName,
+	BuildosAgentDiscoveryToolName,
 	BuildosAgentScopeMode,
 	BuildosAgentToolDefinition
 } from '@buildos/shared-types';
@@ -21,10 +21,7 @@ import {
 	type RegistryOp
 } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { searchToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-search';
-import {
-	normalizeGatewayHelpPath,
-	normalizeGatewayOpName
-} from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { loadSkill } from '$lib/services/agentic-chat/tools/skills/skill-load';
 import {
 	defaultAllowedOpsForMode,
@@ -74,19 +71,10 @@ type ExternalGatewayRegistry = {
 
 type ToolHelpFormat = 'short' | 'full';
 
-type ExternalToolHelpOptions = {
-	format?: ToolHelpFormat;
-	include_examples?: boolean;
-	include_schemas?: boolean;
-};
-
-const EXTERNAL_GATEWAY_TOOL_NAMES = new Set<BuildosAgentGatewayToolName>([
+const EXTERNAL_DISCOVERY_TOOL_NAMES = new Set<BuildosAgentDiscoveryToolName>([
 	'skill_load',
 	'tool_search',
-	'tool_schema',
-	'buildos_call',
-	'tool_help',
-	'tool_exec'
+	'tool_schema'
 ]);
 
 class ExternalToolGatewayError extends Error {
@@ -230,13 +218,6 @@ function summarizeDescription(description: string): string {
 	if (!trimmed) return '';
 	const sentenceEnd = trimmed.indexOf('.');
 	return sentenceEnd === -1 ? trimmed : trimmed.slice(0, sentenceEnd + 1);
-}
-
-function normalizePath(path: string): string {
-	if (!path) return 'root';
-	const trimmed = path.trim();
-	if (!trimmed) return 'root';
-	return trimmed.replace(/^\./, '').replace(/\.$/, '');
 }
 
 function truncateText(content: string | null | undefined, maxChars: number) {
@@ -1420,7 +1401,7 @@ function buildExternalOpHelp(
 	includeSchemas: boolean,
 	includeExamples: boolean
 ): Record<string, unknown> {
-	const schema = entry.parameters_schema ?? { type: 'object', properties: {} };
+	const schema = buildExternalDirectToolSchema(entry);
 	const properties = (schema.properties ?? {}) as Record<string, Record<string, unknown>>;
 	const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
 	const args = Object.entries(properties).map(([name, definition]) => ({
@@ -1436,9 +1417,11 @@ function buildExternalOpHelp(
 	const help: Record<string, unknown> = {
 		type: 'op',
 		op: entry.op,
+		tool_name: entry.tool_name,
+		callable_tool: entry.tool_name,
 		kind: entry.kind,
 		summary: summarizeDescription(entry.description),
-		usage: `buildos_call({ op: "${entry.op}", args: { ... } })`,
+		usage: `${entry.tool_name}({ ... })`,
 		required_scope_mode: entry.required_scope_mode,
 		required_args: required,
 		args
@@ -1449,9 +1432,9 @@ function buildExternalOpHelp(
 	}
 
 	if (includeExamples) {
-		help.example_buildos_call = {
-			op: entry.op,
-			args: minimalArgs
+		help.example_tool_call = {
+			name: entry.tool_name,
+			arguments: minimalArgs
 		};
 	}
 
@@ -1460,221 +1443,6 @@ function buildExternalOpHelp(
 	}
 
 	return help;
-}
-
-function rewriteGatewayPayloadForBuildosCall(value: unknown): unknown {
-	if (typeof value === 'string') {
-		return value.replace(/\btool_exec\b/g, 'buildos_call');
-	}
-
-	if (Array.isArray(value)) {
-		return value.map((entry) => rewriteGatewayPayloadForBuildosCall(entry));
-	}
-
-	if (!value || typeof value !== 'object') {
-		return value;
-	}
-
-	const record = value as Record<string, unknown>;
-	const output: Record<string, unknown> = {};
-	for (const [key, entry] of Object.entries(record)) {
-		const nextKey =
-			key === 'tool_exec'
-				? 'buildos_call'
-				: key === 'example_tool_exec'
-					? 'example_buildos_call'
-					: key;
-		output[nextKey] = rewriteGatewayPayloadForBuildosCall(entry);
-	}
-	return output;
-}
-
-function rewriteGatewayRecordPayloadForBuildosCall(
-	value: Record<string, unknown>
-): Record<string, unknown> {
-	return rewriteGatewayPayloadForBuildosCall(value) as Record<string, unknown>;
-}
-
-function listDirectoryChildren(
-	path: string,
-	ops: Record<string, ExternalGatewayRegistryEntry>
-): Array<Record<string, unknown>> {
-	const childDirectories = new Set<string>();
-	const childOps: Array<Record<string, unknown>> = [];
-	const prefix = path === 'root' ? '' : `${path}.`;
-
-	for (const op of Object.keys(ops).sort()) {
-		if (path !== 'root' && !op.startsWith(prefix)) continue;
-		if (path === 'root') {
-			const rootSegment = op.split('.')[0];
-			if (rootSegment) {
-				childDirectories.add(rootSegment);
-			}
-			continue;
-		}
-
-		const remainder = op.slice(prefix.length);
-		if (!remainder) continue;
-		const parts = remainder.split('.');
-		if (parts.length > 1) {
-			childDirectories.add(`${path}.${parts[0]}`);
-			continue;
-		}
-
-		const entry = ops[op];
-		if (!entry) continue;
-		childOps.push({
-			type: 'op',
-			name: op,
-			summary: summarizeDescription(entry.description),
-			kind: entry.kind
-		});
-	}
-
-	const directories = Array.from(childDirectories)
-		.sort()
-		.map((name) => ({
-			type: 'directory',
-			name,
-			summary: `Inspect ${name} operations.`
-		}));
-
-	return [...directories, ...childOps];
-}
-
-function buildRootHelp(
-	registry: ExternalGatewayRegistry,
-	format: ToolHelpFormat,
-	includeExamples: boolean
-) {
-	const rootHelp: Record<string, unknown> = {
-		type: 'directory',
-		path: 'root',
-		format,
-		version: registry.version,
-		groups: ['onto'],
-		command_contract: {
-			skill_load: {
-				required: ['skill'],
-				shape: { skill: '<skill_id>', format: 'short|full', include_examples: true }
-			},
-			tool_search: {
-				required: [],
-				shape: { query: '<what you need>', group: 'onto|util|cal', kind: 'read|write' }
-			},
-			tool_schema: {
-				required: ['op'],
-				shape: { op: '<canonical op>', include_schema: true, include_examples: true }
-			},
-			buildos_call: {
-				required: ['op', 'args'],
-				shape: {
-					op: '<canonical op>',
-					args: {
-						/* required fields */
-					}
-				},
-				critical_rules: [
-					'Use tool_search when the exact op is unknown.',
-					'Use tool_schema before first-time or uncertain writes.',
-					'Discover exact IDs with list/search ops before get/update flows.',
-					'If buildos_call returns FORBIDDEN, inspect the granted scope mode and allowed ops before retrying.'
-				]
-			}
-		},
-		items: listDirectoryChildren('root', registry.ops),
-		workflow: [
-			'1) Use tool_search to discover candidate ops when the exact op is not already known.',
-			'2) Inspect the chosen exact op with tool_schema({ op: "<exact op>", include_schema: true }).',
-			'3) Execute with buildos_call({ op: "<exact op>", args: { ... } }).'
-		]
-	};
-
-	if (includeExamples) {
-		const examples: Array<Record<string, unknown>> = [
-			{
-				description: 'Find task list operations',
-				tool_search: { query: 'list tasks for a project', group: 'onto', kind: 'read' }
-			},
-			{
-				description: 'List tasks for a project',
-				buildos_call: {
-					op: 'onto.task.list',
-					args: { project_id: '<project_id_uuid>', limit: 20 }
-				}
-			}
-		];
-
-		if (Object.values(registry.ops).some((entry) => entry.kind === 'write')) {
-			examples.push({
-				description: 'Inspect a write op before mutating tasks',
-				tool_schema: {
-					op: 'onto.task.update',
-					include_schema: true,
-					include_examples: true
-				}
-			});
-		}
-
-		rootHelp.examples = examples;
-	}
-
-	return rootHelp;
-}
-
-function getExternalToolHelp(
-	scope: AgentCallScope,
-	path: string,
-	options: ExternalToolHelpOptions = {}
-): Record<string, unknown> {
-	const registry = buildExternalGatewayRegistry(scope);
-	const format: ToolHelpFormat = options.format ?? 'short';
-	const includeExamples = options.include_examples !== false;
-	const includeSchemas = Boolean(options.include_schemas);
-	const normalized = normalizeGatewayHelpPath(normalizePath(path));
-
-	if (!normalized || normalized === 'root') {
-		return buildRootHelp(registry, format, includeExamples);
-	}
-
-	const exactEntry = registry.ops[normalized];
-	if (exactEntry) {
-		return buildExternalOpHelp(exactEntry, format, includeSchemas, includeExamples);
-	}
-
-	if (isSupportedOp(normalized)) {
-		return {
-			type: 'forbidden',
-			path: normalized,
-			format,
-			version: registry.version,
-			message: 'This op exists, but it is not available in the current BuildOS call scope.',
-			required_scope_mode: requiredScopeModeForOp(normalized),
-			granted_scope_mode: scope.mode,
-			allowed_ops: scope.allowed_ops ?? defaultAllowedOpsForMode(scope.mode)
-		};
-	}
-
-	const items = listDirectoryChildren(normalized, registry.ops);
-	if (items.length === 0) {
-		return {
-			type: 'not_found',
-			path: normalized,
-			format,
-			version: registry.version,
-			message: 'No commands found for this path.'
-		};
-	}
-
-	return {
-		type: 'directory',
-		path: normalized,
-		format,
-		version: registry.version,
-		items,
-		next_step:
-			'Call tool_help({ path: "<exact op>", format: "full", include_schemas: true }) before tool_exec if the exact args are unclear.'
-	};
 }
 
 function validateRequiredArgs(
@@ -1805,14 +1573,14 @@ async function executeGatewayOp(params: {
 		warnings.push(`Normalized legacy op "${requestedOp}" to "${canonicalOp}".`);
 	}
 	if (input.dry_run === true && !isWriteOp(canonicalOp)) {
-		warnings.push('dry_run ignored for read-only external gateway operations.');
+		warnings.push('dry_run ignored for external read operations.');
 	}
 	if (
 		typeof input.idempotency_key === 'string' &&
 		input.idempotency_key.trim() &&
 		!isWriteOp(canonicalOp)
 	) {
-		warnings.push('idempotency_key ignored for read-only external gateway operations.');
+		warnings.push('idempotency_key ignored for external read operations.');
 	}
 
 	if (input.dry_run === true && isWriteOp(canonicalOp)) {
@@ -2014,13 +1782,90 @@ async function executeGatewayOp(params: {
 }
 
 export function getBuildosAgentGatewayTools(scope: AgentCallScope): BuildosAgentToolDefinition[] {
-	return GATEWAY_TOOL_DEFINITIONS.filter((tool) =>
-		EXTERNAL_GATEWAY_TOOL_NAMES.has(tool.function.name as BuildosAgentGatewayToolName)
+	const discoveryTools = GATEWAY_TOOL_DEFINITIONS.filter((tool) =>
+		EXTERNAL_DISCOVERY_TOOL_NAMES.has(tool.function.name as BuildosAgentDiscoveryToolName)
 	).map((tool) => ({
-		name: tool.function.name as BuildosAgentGatewayToolName,
+		name: tool.function.name,
 		description: tool.function.description,
 		inputSchema: tool.function.parameters ?? { type: 'object', properties: {} }
 	}));
+
+	const registry = buildExternalGatewayRegistry(scope);
+	const directTools = Object.values(registry.ops).map((entry) => ({
+		name: entry.tool_name,
+		description: entry.description,
+		inputSchema: buildExternalDirectToolSchema(entry)
+	}));
+
+	return [...discoveryTools, ...directTools];
+}
+
+function buildExternalDirectToolSchema(
+	entry: ExternalGatewayRegistryEntry
+): Record<string, unknown> {
+	const schema = cloneSchema(entry.parameters_schema);
+	if (!isWriteOp(entry.op)) {
+		return schema;
+	}
+
+	const properties =
+		schema.properties &&
+		typeof schema.properties === 'object' &&
+		!Array.isArray(schema.properties)
+			? (schema.properties as Record<string, unknown>)
+			: {};
+
+	return {
+		...schema,
+		properties: {
+			...properties,
+			idempotency_key: {
+				type: 'string',
+				description:
+					'Optional stable key for safely retrying the same external write without duplicating it.'
+			},
+			dry_run: {
+				type: 'boolean',
+				description: 'Return the validated write payload without mutating BuildOS.'
+			}
+		}
+	};
+}
+
+function cloneSchema(schema: Record<string, unknown> | undefined): Record<string, unknown> {
+	return JSON.parse(JSON.stringify(schema ?? { type: 'object', properties: {} })) as Record<
+		string,
+		unknown
+	>;
+}
+
+function findExternalDirectTool(
+	scope: AgentCallScope,
+	toolName: string
+): ExternalGatewayRegistryEntry | null {
+	const registry = buildExternalGatewayRegistry(scope);
+	return Object.values(registry.ops).find((entry) => entry.tool_name === toolName) ?? null;
+}
+
+function buildDirectToolGatewayArguments(
+	entry: ExternalGatewayRegistryEntry,
+	args: Record<string, unknown> | undefined
+): Record<string, unknown> {
+	const input = { ...(args ?? {}) };
+	const idempotencyKey =
+		typeof input.idempotency_key === 'string' && input.idempotency_key.trim()
+			? input.idempotency_key.trim()
+			: undefined;
+	const dryRun = input.dry_run === true;
+	delete input.idempotency_key;
+	delete input.dry_run;
+
+	return {
+		op: entry.op,
+		args: input,
+		...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
+		...(dryRun ? { dry_run: true } : {})
+	};
 }
 
 export async function executeBuildosAgentGatewayTool(params: {
@@ -2029,7 +1874,7 @@ export async function executeBuildosAgentGatewayTool(params: {
 	callerId?: string;
 	callSessionId?: string;
 	scope: AgentCallScope;
-	toolName: BuildosAgentGatewayToolName;
+	toolName: string;
 	arguments?: Record<string, unknown>;
 	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<Record<string, unknown>> {
@@ -2087,6 +1932,7 @@ export async function executeBuildosAgentGatewayTool(params: {
 				: [];
 			return {
 				...payload,
+				version: registry.version,
 				total_matches: matches.length,
 				matches
 			};
@@ -2112,42 +1958,47 @@ export async function executeBuildosAgentGatewayTool(params: {
 				);
 			}
 			return {
-				...rewriteGatewayRecordPayloadForBuildosCall(
-					buildExternalOpHelp(
-						entry,
-						'full',
-						params.arguments?.include_schema !== false,
-						params.arguments?.include_examples !== false
-					)
+				...buildExternalOpHelp(
+					entry,
+					'full',
+					params.arguments?.include_schema !== false,
+					params.arguments?.include_examples !== false
 				),
 				type: 'tool_schema'
 			} as Record<string, unknown>;
 		}
-		case 'buildos_call':
-			return executeGatewayOp({
-				...params,
-				arguments: {
-					...(params.arguments ?? {})
-				}
-			});
-		case 'tool_help':
-			return getExternalToolHelp(
-				params.scope,
-				typeof params.arguments?.path === 'string' ? params.arguments.path : 'root',
-				{
-					format: params.arguments?.format === 'full' ? 'full' : 'short',
-					include_examples: params.arguments?.include_examples !== false,
-					include_schemas: Boolean(params.arguments?.include_schemas)
-				}
-			);
-		case 'tool_exec':
-			return executeGatewayOp(params);
 		default:
-			return buildExecError(
-				params.toolName,
-				'NOT_FOUND',
-				`Unsupported gateway tool: ${params.toolName}`,
-				'root'
-			);
+			break;
 	}
+
+	const directEntry = findExternalDirectTool(params.scope, params.toolName);
+	if (directEntry) {
+		return executeGatewayOp({
+			...params,
+			arguments: buildDirectToolGatewayArguments(directEntry, params.arguments)
+		});
+	}
+
+	const registryEntry = getToolRegistry().byToolName[params.toolName];
+	const canonicalOp = registryEntry ? normalizeGatewayOpName(registryEntry.op) : '';
+	if (canonicalOp && isSupportedOp(canonicalOp)) {
+		return buildExecError(
+			canonicalOp,
+			'FORBIDDEN',
+			`Tool ${params.toolName} is outside the granted BuildOS call scope`,
+			canonicalOp,
+			{
+				granted_scope_mode: params.scope.mode,
+				required_scope_mode: requiredScopeModeForOp(canonicalOp),
+				allowed_ops: params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode)
+			}
+		);
+	}
+
+	return buildExecError(
+		params.toolName,
+		'NOT_FOUND',
+		`Unsupported BuildOS tool: ${params.toolName}.`,
+		'root'
+	);
 }

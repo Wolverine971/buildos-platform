@@ -11,6 +11,7 @@ import { queue } from './worker';
 import type { Database } from '@buildos/shared-types';
 import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
 import { smsAlertsService, smsMetricsService, type Alert } from '@buildos/shared-utils';
+import { resolveScheduledBriefDate } from './workers/brief/briefDateGuard';
 
 export type UserBriefPreference = Database['public']['Tables']['user_brief_preferences']['Row'];
 
@@ -58,9 +59,13 @@ async function queueBriefGeneration(
 	// Get user display name (from map if available, otherwise from DB, otherwise use ID)
 	const userName = userNameMap?.get(userId) || user?.name || user?.email || userId;
 
-	// Calculate the brief date based on the scheduled time in the user's timezone
-	const zonedDate = utcToZonedTime(scheduledFor, userTimezone);
-	const briefDate = options?.requestedBriefDate || format(zonedDate, 'yyyy-MM-dd');
+	// Calculate the brief date from the user's notification day, not the pre-generation buffer.
+	const briefDate = resolveScheduledBriefDate({
+		scheduledFor,
+		notificationScheduledFor,
+		timezone: userTimezone,
+		requestedBriefDate: options?.requestedBriefDate
+	});
 
 	console.log(`📅 Queueing brief for user ${userName}:`);
 	console.log(`   - Generation starts (UTC): ${scheduledFor.toISOString()}`);

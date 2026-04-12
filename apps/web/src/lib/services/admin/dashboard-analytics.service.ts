@@ -95,9 +95,9 @@ const DEFAULT_COMPREHENSIVE_ANALYTICS = {
 		newUsersLast24h: 0,
 		newBetaSignupsLast24h: 0
 	},
-	brainDumpMetrics: {
-		total: 0,
-		averageLength: 0,
+	agentChatMetrics: {
+		totalSessions: 0,
+		totalMessages: 0,
 		uniqueUsers: 0
 	},
 	projectMetrics: {
@@ -107,11 +107,11 @@ const DEFAULT_COMPREHENSIVE_ANALYTICS = {
 	},
 	calendarConnections: 0,
 	leaderboards: {
-		brainDumps: [] as Array<{ email: string; count: number }>,
+		agentChats: [] as Array<{ email: string; count: number }>,
+		agentMessages: [] as Array<{ email: string; count: number }>,
 		projectUpdates: [] as Array<{ email: string; count: number }>,
 		tasksCreated: [] as Array<{ email: string; count: number }>,
-		tasksScheduled: [] as Array<{ email: string; count: number }>,
-		phasesCreated: [] as Array<{ email: string; count: number }>
+		tasksScheduled: [] as Array<{ email: string; count: number }>
 	}
 };
 
@@ -438,34 +438,45 @@ async function getTopActiveUsers(
 	const dateRange = resolveDateRange(timeframe);
 	const { startDateTime, endDateTime } = buildDateTimeRange(dateRange);
 
-	const [projectLogsResult, briefResult, braindumpsResult, agentSessionsResult] =
-		await Promise.all([
-			client
-				.from('onto_project_logs')
-				.select('changed_by, created_at')
-				.gte('created_at', startDateTime)
-				.lte('created_at', endDateTime),
-			client
-				.from('ontology_daily_briefs')
-				.select('user_id, created_at')
-				.eq('generation_status', 'completed')
-				.gte('created_at', startDateTime)
-				.lte('created_at', endDateTime),
-			client
-				.from('onto_braindumps')
-				.select('user_id, created_at')
-				.gte('created_at', startDateTime)
-				.lte('created_at', endDateTime),
-			client
-				.from('agent_chat_sessions')
-				.select('user_id, created_at')
-				.gte('created_at', startDateTime)
-				.lte('created_at', endDateTime)
-		]);
+	const [
+		projectLogsResult,
+		briefResult,
+		chatSessionsResult,
+		chatMessagesResult,
+		agentSessionsResult
+	] = await Promise.all([
+		client
+			.from('onto_project_logs')
+			.select('changed_by, created_at')
+			.gte('created_at', startDateTime)
+			.lte('created_at', endDateTime),
+		client
+			.from('ontology_daily_briefs')
+			.select('user_id, created_at')
+			.eq('generation_status', 'completed')
+			.gte('created_at', startDateTime)
+			.lte('created_at', endDateTime),
+		client
+			.from('chat_sessions')
+			.select('user_id, created_at')
+			.gte('created_at', startDateTime)
+			.lte('created_at', endDateTime),
+		client
+			.from('chat_messages')
+			.select('user_id, created_at')
+			.gte('created_at', startDateTime)
+			.lte('created_at', endDateTime),
+		client
+			.from('agent_chat_sessions')
+			.select('user_id, created_at')
+			.gte('created_at', startDateTime)
+			.lte('created_at', endDateTime)
+	]);
 
 	if (projectLogsResult.error) throw new Error(projectLogsResult.error.message);
 	if (briefResult.error) throw new Error(briefResult.error.message);
-	if (braindumpsResult.error) throw new Error(braindumpsResult.error.message);
+	if (chatSessionsResult.error) throw new Error(chatSessionsResult.error.message);
+	if (chatMessagesResult.error) throw new Error(chatMessagesResult.error.message);
 	if (agentSessionsResult.error) throw new Error(agentSessionsResult.error.message);
 
 	const counts = new Map<string, { count: number; lastActivity: string | null }>();
@@ -491,8 +502,12 @@ async function getTopActiveUsers(
 		upsertActivity(brief.user_id, brief.created_at);
 	});
 
-	(braindumpsResult.data || []).forEach((dump) => {
-		upsertActivity(dump.user_id, dump.created_at);
+	(chatSessionsResult.data || []).forEach((session) => {
+		upsertActivity(session.user_id, session.created_at);
+	});
+
+	(chatMessagesResult.data || []).forEach((message) => {
+		upsertActivity(message.user_id, message.created_at);
 	});
 
 	(agentSessionsResult.data || []).forEach((session) => {
@@ -694,7 +709,7 @@ function extractEntityName(activityData: unknown): string | null {
 }
 
 export async function getRecentActivity(client: TypedSupabaseClient) {
-	const [projectLogsResult, briefsResult, braindumpsResult] = await Promise.all([
+	const [projectLogsResult, briefsResult, chatSessionsResult] = await Promise.all([
 		client
 			.from('onto_project_logs')
 			.select(
@@ -709,8 +724,8 @@ export async function getRecentActivity(client: TypedSupabaseClient) {
 			.order('created_at', { ascending: false })
 			.limit(25),
 		client
-			.from('onto_braindumps')
-			.select('id, title, summary, user_id, created_at')
+			.from('chat_sessions')
+			.select('id, title, context_type, user_id, created_at')
 			.order('created_at', { ascending: false })
 			.limit(25)
 	]);
@@ -723,20 +738,20 @@ export async function getRecentActivity(client: TypedSupabaseClient) {
 		throw new Error(briefsResult.error.message);
 	}
 
-	if (braindumpsResult.error) {
-		throw new Error(braindumpsResult.error.message);
+	if (chatSessionsResult.error) {
+		throw new Error(chatSessionsResult.error.message);
 	}
 
 	const projectLogs = projectLogsResult.data || [];
 	const briefs = briefsResult.data || [];
-	const braindumps = braindumpsResult.data || [];
+	const chatSessions = chatSessionsResult.data || [];
 
 	const userIds = Array.from(
 		new Set(
 			[
 				...projectLogs.map((log) => log.changed_by),
 				...briefs.map((brief) => brief.user_id),
-				...braindumps.map((dump) => dump.user_id)
+				...chatSessions.map((session) => session.user_id)
 			].filter(Boolean)
 		)
 	) as string[];
@@ -791,14 +806,15 @@ export async function getRecentActivity(client: TypedSupabaseClient) {
 		});
 	});
 
-	braindumps.forEach((dump) => {
+	chatSessions.forEach((session) => {
+		if (!session.created_at) return;
 		activity.push({
-			source: 'ontology',
-			entity_type: 'brain_dump',
-			action: 'created',
-			created_at: dump.created_at,
-			user_email: userEmailById.get(dump.user_id) || 'Unknown',
-			entity_name: dump.title || 'Brain Dump'
+			source: 'user_activity',
+			entity_type: 'agent_chat',
+			action: 'started',
+			created_at: session.created_at,
+			user_email: userEmailById.get(session.user_id) || 'Unknown',
+			entity_name: session.title || session.context_type || 'Agent Chat'
 		});
 	});
 
@@ -1084,14 +1100,14 @@ export async function getComprehensiveAnalytics(
 		betaUserCounts,
 		newUsersLast24h,
 		newBetaSignupsLast24h,
-		brainDumpStats,
+		agentChatSessions,
+		agentChatMessages,
 		newProjectStats,
 		updatedProjectStats,
 		calendarConnections,
 		projectUpdateLogs,
 		taskCreators,
-		scheduledTaskUsers,
-		phaseCreators
+		scheduledTaskUsers
 	] = await Promise.all([
 		client.from('users').select('id', { count: 'exact', head: true }),
 		client
@@ -1107,8 +1123,13 @@ export async function getComprehensiveAnalytics(
 			.select('id', { count: 'exact', head: true })
 			.gte('created_at', twentyFourHoursAgo.toISOString()),
 		client
-			.from('onto_braindumps')
-			.select('id, content, created_at, user_id')
+			.from('chat_sessions')
+			.select('id, user_id, created_at')
+			.gte('created_at', startDate.toISOString())
+			.lte('created_at', endDate.toISOString()),
+		client
+			.from('chat_messages')
+			.select('id, session_id, user_id, created_at')
 			.gte('created_at', startDate.toISOString())
 			.lte('created_at', endDate.toISOString()),
 		client
@@ -1145,13 +1166,6 @@ export async function getComprehensiveAnalytics(
 			.not('due_at', 'is', null)
 			.gte('due_at', startDate.toISOString())
 			.lte('due_at', endDate.toISOString())
-			.is('deleted_at', null),
-		client
-			.from('onto_plans')
-			.select('created_by, type_key')
-			.eq('type_key', 'plan.phase.project')
-			.gte('created_at', startDate.toISOString())
-			.lte('created_at', endDate.toISOString())
 			.is('deleted_at', null)
 	]);
 
@@ -1160,35 +1174,36 @@ export async function getComprehensiveAnalytics(
 		betaUserCounts.error ||
 		newUsersLast24h.error ||
 		newBetaSignupsLast24h.error ||
-		brainDumpStats.error ||
+		agentChatSessions.error ||
+		agentChatMessages.error ||
 		newProjectStats.error ||
 		updatedProjectStats.error ||
 		calendarConnections.error ||
 		projectUpdateLogs.error ||
 		taskCreators.error ||
-		scheduledTaskUsers.error ||
-		phaseCreators.error
+		scheduledTaskUsers.error
 	) {
 		const errorSource =
 			userCounts.error ||
 			betaUserCounts.error ||
 			newUsersLast24h.error ||
 			newBetaSignupsLast24h.error ||
-			brainDumpStats.error ||
+			agentChatSessions.error ||
+			agentChatMessages.error ||
 			newProjectStats.error ||
 			updatedProjectStats.error ||
 			calendarConnections.error ||
 			projectUpdateLogs.error ||
 			taskCreators.error ||
-			scheduledTaskUsers.error ||
-			phaseCreators.error;
+			scheduledTaskUsers.error;
 		throw new Error(errorSource?.message || 'Failed to load comprehensive analytics');
 	}
 
 	const leaderboardUserIds = Array.from(
 		new Set(
 			[
-				...(brainDumpStats.data || []).map((dump) => dump.user_id),
+				...(agentChatSessions.data || []).map((session) => session.user_id),
+				...(agentChatMessages.data || []).map((message) => message.user_id),
 				...(projectUpdateLogs.data || []).map((log) => log.changed_by)
 			].filter(Boolean)
 		)
@@ -1198,8 +1213,7 @@ export async function getComprehensiveAnalytics(
 		new Set(
 			[
 				...(taskCreators.data || []).map((task) => task.created_by),
-				...(scheduledTaskUsers.data || []).map((task) => task.created_by),
-				...(phaseCreators.data || []).map((plan) => plan.created_by)
+				...(scheduledTaskUsers.data || []).map((task) => task.created_by)
 			].filter(Boolean)
 		)
 	) as string[];
@@ -1270,17 +1284,15 @@ export async function getComprehensiveAnalytics(
 			newUsersLast24h: newUsersLast24h.count || 0,
 			newBetaSignupsLast24h: newBetaSignupsLast24h.count || 0
 		},
-		brainDumpMetrics: {
-			total: brainDumpStats.data?.length || 0,
-			averageLength: brainDumpStats.data
-				? Math.round(
-						brainDumpStats.data.reduce(
-							(sum, dump) => sum + (dump.content?.length || 0),
-							0
-						) / brainDumpStats.data.length
-					)
-				: 0,
-			uniqueUsers: new Set(brainDumpStats.data?.map((dump) => dump.user_id) ?? []).size
+		agentChatMetrics: {
+			totalSessions: agentChatSessions.data?.length || 0,
+			totalMessages: agentChatMessages.data?.length || 0,
+			uniqueUsers: new Set(
+				[
+					...(agentChatSessions.data?.map((session) => session.user_id) ?? []),
+					...(agentChatMessages.data?.map((message) => message.user_id) ?? [])
+				].filter(Boolean)
+			).size
 		},
 		projectMetrics: {
 			newProjects: newProjectStats.data?.length || 0,
@@ -1293,7 +1305,16 @@ export async function getComprehensiveAnalytics(
 		},
 		calendarConnections: calendarConnections.count || 0,
 		leaderboards: {
-			brainDumps: formatLeaderboard(brainDumpStats.data ?? [], 'user_id', resolveUserLabel),
+			agentChats: formatLeaderboard(
+				agentChatSessions.data ?? [],
+				'user_id',
+				resolveUserLabel
+			),
+			agentMessages: formatLeaderboard(
+				agentChatMessages.data ?? [],
+				'user_id',
+				resolveUserLabel
+			),
 			projectUpdates: formatLeaderboard(
 				projectUpdateLogs.data ?? [],
 				'changed_by',
@@ -1306,11 +1327,6 @@ export async function getComprehensiveAnalytics(
 			),
 			tasksScheduled: formatLeaderboard(
 				scheduledTaskUsers.data ?? [],
-				'created_by',
-				resolveActorLabel
-			),
-			phasesCreated: formatLeaderboard(
-				phaseCreators.data ?? [],
 				'created_by',
 				resolveActorLabel
 			)

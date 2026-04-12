@@ -16,7 +16,8 @@
 		active = false,
 		meta = '',
 		compact = false,
-		ultraCompact = false
+		ultraCompact = false,
+		dense = false
 	}: {
 		title: string;
 		description?: string;
@@ -28,6 +29,7 @@
 		meta?: string;
 		compact?: boolean;
 		ultraCompact?: boolean;
+		dense?: boolean;
 	} = $props();
 </script>
 
@@ -40,9 +42,9 @@
 >
 	<AdminCard
 		tone={active ? 'brand' : 'default'}
-		padding={ultraCompact ? 'xs' : compact ? 'sm' : 'md'}
+		padding={ultraCompact || dense ? 'xs' : compact ? 'sm' : 'md'}
 		interactive
-		class="h-full admin-panel--tinted"
+		class={twMerge('h-full admin-panel--tinted', dense && 'shadow-none')}
 	>
 		{#if ultraCompact}
 			<!-- Ultra-compact: Mobile command center style - single row -->
@@ -66,9 +68,54 @@
 					</span>
 				{/if}
 				{#if badge}
-					<Badge variant="info" size="xs">{badge}</Badge>
+					<Badge variant="info" size="sm" class="px-1.5 py-0 text-[10px]">{badge}</Badge>
 				{/if}
 				<ChevronRight class="h-3 w-3 text-muted-foreground shrink-0" />
+			</div>
+		{:else if dense}
+			<div class="flex min-h-12 items-center gap-3">
+				{#if icon}
+					{@const Icon = icon}
+					<span
+						class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+					>
+						<Icon class="h-3.5 w-3.5" />
+					</span>
+				{/if}
+				<div class="min-w-0 flex-1">
+					<div class="flex min-w-0 items-center gap-2">
+						<p
+							class="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-foreground"
+						>
+							{title}
+						</p>
+						{#if stat !== null && stat !== undefined && stat !== ''}
+							<span
+								class="flex-shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none text-foreground"
+							>
+								{stat}
+							</span>
+						{/if}
+					</div>
+					<div class="mt-0.5 flex min-w-0 items-center gap-2">
+						{#if description}
+							<p
+								class="min-w-0 flex-1 truncate text-[0.7rem] leading-tight text-muted-foreground"
+							>
+								{description}
+							</p>
+						{/if}
+						{#if badge}
+							<Badge
+								variant="info"
+								size="sm"
+								class="ml-auto flex-shrink-0 px-1.5 py-0 text-[10px]"
+							>
+								{badge}
+							</Badge>
+						{/if}
+					</div>
+				</div>
 			</div>
 		{:else if compact}
 			<!-- Compact: Vertical stacked layout for better title visibility -->

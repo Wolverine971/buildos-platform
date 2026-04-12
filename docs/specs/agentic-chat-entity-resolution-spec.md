@@ -28,7 +28,7 @@ Typical failure:
 
 - the previous assistant turn already surfaced the exact task id
 - the user follows up with "mark that one done"
-- the model emits `buildos_call({ op: "onto.task.update", args: {} })`
+- the model calls `update_onto_task({})`
 
 The current system has two related gaps:
 
@@ -40,8 +40,8 @@ The current system has two related gaps:
 There are two different search concepts in the current architecture:
 
 1. `tool_search`
-    - finds the right canonical BuildOS op
-    - answers "Which tool/op should I use?"
+    - finds the right canonical BuildOS operation and direct tool name
+    - answers "Which tool should I use?"
 
 2. ontology/entity search ops
     - find actual BuildOS entities
@@ -72,7 +72,7 @@ The prompt and relevant skills should teach this exact rule:
 - Reuse exact ids first.
 - Search only when unresolved.
 - Prefer project-scoped search before workspace-wide search.
-- Use `tool_search` only to discover ops, not entities.
+- Use `tool_search` only to discover tools, not entities.
 
 ## Phase 1 Scope
 
@@ -85,7 +85,7 @@ Add explicit entity-resolution guidance to the master prompt and gateway guidanc
 - reuse exact ids from recent context first
 - if unresolved, search
 - search in project scope first
-- `tool_search` is for ops, not entity instances
+- `tool_search` is for tool discovery, not entity instances
 
 ### 2. Recent referent carry-forward
 
@@ -108,7 +108,7 @@ This is needed because the assistant often tells the user exact task ids in plai
 Tool-result extraction should be conservative:
 
 - mine entity referents from real data-bearing tool results
-- do not mine `tool_schema`, `tool_help`, `tool_search`, or `skill_load` payloads for entity ids
+- do not mine `tool_schema`, `tool_search`, or `skill_load` payloads for entity ids
 
 ### 4. Skill alignment
 

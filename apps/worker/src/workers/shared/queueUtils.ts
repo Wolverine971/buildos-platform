@@ -12,6 +12,7 @@ export interface BriefJobData extends Omit<DailyBriefJobMetadata, 'briefDate' | 
 	timezone?: string; // Made optional for backward compat (worker has fallback logic)
 	notificationScheduledFor?: string; // ISO 8601 timestamp for scheduling notification at user's preferred time
 	options?: {
+		forceRegenerate?: boolean;
 		includeProjects?: string[];
 		excludeProjects?: string[];
 		customTemplate?: string;

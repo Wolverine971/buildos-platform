@@ -30,7 +30,7 @@ Observed status:
 
 - Direct tools are being admitted into the model-facing tool list.
 - The agent is using direct tools for project creation, task updates, task creation, and document creation.
-- The prompt says to call direct tools after `tool_schema` and not route normal work through a generic executor.
+- The prompt says to call direct tools after `tool_schema` and not route normal work through a catch-all execution tool.
 - Older dumps only showed direct tool names in the runtime execution footer. New dumps should include canonical operation labels where the tool registry can resolve them, for example `create_onto_document (onto.document.create) => ok`.
 
 ## Observability Regression Checks
@@ -192,4 +192,4 @@ Legacy compatibility rows may still appear for old persisted sessions or non-gat
 - Add an automated replay harness that sends this matrix through the local chat runtime and asserts tool traces.
 - Promote prompt dump assertions into golden tests for representative context types.
 - Add a UI-level test for tool trace rendering after the admin session page is stable enough for component/e2e coverage.
-- Remove remaining legacy `tool_exec`/`execute_op` compatibility tests once old traces and fallback paths are retired.
+- Remove remaining legacy wrapper compatibility tests once old traces and fallback paths are retired.

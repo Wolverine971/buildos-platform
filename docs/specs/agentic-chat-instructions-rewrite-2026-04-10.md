@@ -3,6 +3,7 @@
 # Agentic Chat Instructions Rewrite
 
 Date: 2026-04-10
+Status: Superseded proposal. The current live prompt uses the hybrid direct-tool surface documented in [Agentic Chat Tool Surface Refactor Plan](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-tool-surface-refactor-plan.md) and implemented in [master-prompt-builder.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts).
 
 Compared against:
 

@@ -20,7 +20,8 @@ import {
 	EMPTY_CONTENT_RETRY_INSTRUCTION,
 	EMPTY_CONTENT_RETRY_MIN_TOKENS,
 	EMPTY_CONTENT_RETRY_BUFFER_TOKENS,
-	EMPTY_CONTENT_RETRY_MAX_TOKENS
+	EMPTY_CONTENT_RETRY_MAX_TOKENS,
+	resolveModelPricingProfile
 } from './model-config';
 import {
 	OpenRouterEmptyContentError,
@@ -768,7 +769,11 @@ export class SmartLLMService {
 					this.trackCost(actualModel, responseForLogging.usage);
 
 					// Calculate costs
-					const modelConfig = JSON_MODELS[actualModel];
+					const pricing = resolveModelPricingProfile(actualModel, [
+						requestedModel,
+						baseModel
+					]);
+					const modelConfig = pricing?.profile;
 					const inputCost = modelConfig
 						? ((responseForLogging.usage?.prompt_tokens || 0) / 1_000_000) *
 							modelConfig.cost
@@ -853,6 +858,7 @@ export class SmartLLMService {
 								modelsAttempted,
 								attempts: attempt + 1,
 								retryModelUsed,
+								pricingModel: pricing?.modelId ?? null,
 								cachedTokens,
 								reasoningTokens:
 									responseForLogging.usage?.completion_tokens_details
@@ -1089,7 +1095,11 @@ export class SmartLLMService {
 					this.trackCost(actualModel, attemptResponse.usage);
 
 					// Calculate costs
-					const modelConfig = TEXT_MODELS[actualModel];
+					const pricing = resolveModelPricingProfile(actualModel, [
+						requestedModel,
+						baseModel
+					]);
+					const modelConfig = pricing?.profile;
 					const inputCost = modelConfig
 						? ((attemptResponse.usage?.prompt_tokens || 0) / 1_000_000) *
 							modelConfig.cost
@@ -1166,6 +1176,7 @@ export class SmartLLMService {
 								attempts: attempt + 1,
 								modelsAttempted,
 								finishReason: attemptResponse.choices?.[0]?.finish_reason ?? null,
+								pricingModel: pricing?.modelId ?? null,
 								reasoningTokens:
 									attemptResponse.usage?.completion_tokens_details
 										?.reasoning_tokens || 0,
@@ -1432,7 +1443,7 @@ export class SmartLLMService {
 	private trackCost(model: string, usage?: any): void {
 		if (!usage) return;
 
-		const modelConfig = JSON_MODELS[model] || TEXT_MODELS[model];
+		const modelConfig = resolveModelPricingProfile(model)?.profile;
 		if (!modelConfig) return;
 
 		const inputCost = ((usage.prompt_tokens || 0) / 1_000_000) * modelConfig.cost;
@@ -1446,7 +1457,7 @@ export class SmartLLMService {
 	private calculateCost(model: string, usage?: any): string {
 		if (!usage) return 'N/A';
 
-		const modelConfig = JSON_MODELS[model] || TEXT_MODELS[model];
+		const modelConfig = resolveModelPricingProfile(model)?.profile;
 		if (!modelConfig) return 'Unknown';
 
 		const inputCost = ((usage.prompt_tokens || 0) / 1_000_000) * modelConfig.cost;
@@ -2220,7 +2231,11 @@ export class SmartLLMService {
 						if (usage) {
 							const actualModel =
 								resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini';
-							const modelConfig = TEXT_MODELS[actualModel];
+							const pricing = resolveModelPricingProfile(actualModel, [
+								requestModelForStartedStream,
+								...routingModelsForStartedStream
+							]);
+							const modelConfig = pricing?.profile;
 							const inputCost = modelConfig
 								? ((usage.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
 								: 0;
@@ -2235,6 +2250,7 @@ export class SmartLLMService {
 							const operationType =
 								options.operationType ||
 								this.buildChatStreamOperationType(options.contextType);
+							const cacheStatus = this.describePromptCacheStatus(usage);
 
 							this.usageLogger
 								.logUsageToDatabase({
@@ -2265,6 +2281,7 @@ export class SmartLLMService {
 									turnRunId: options.turnRunId,
 									streamRunId: options.streamRunId,
 									clientTurnId: options.clientTurnId,
+									openrouterCacheStatus: cacheStatus,
 									metadata: {
 										sessionId: options.sessionId,
 										turnRunId: options.turnRunId,
@@ -2278,7 +2295,8 @@ export class SmartLLMService {
 										providerResolvedFromStream,
 										modelRequested: requestModelForStartedStream,
 										modelsAttempted: routingModelsForStartedStream,
-										attempts: startedStreamAttempt || 1
+										attempts: startedStreamAttempt || 1,
+										pricingModel: pricing?.modelId ?? null
 									}
 								})
 								.catch((err) => console.error('Failed to log usage:', err));

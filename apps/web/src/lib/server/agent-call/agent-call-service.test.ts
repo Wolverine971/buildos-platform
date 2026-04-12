@@ -247,14 +247,14 @@ describe('BuildosAgentCallService', () => {
 		]);
 		getBuildosAgentGatewayToolsMock.mockReturnValue([
 			{
-				name: 'tool_help',
-				description: 'Discover gateway commands.',
-				inputSchema: { type: 'object', properties: { path: { type: 'string' } } }
+				name: 'tool_schema',
+				description: 'Inspect a BuildOS tool schema.',
+				inputSchema: { type: 'object', properties: { op: { type: 'string' } } }
 			},
 			{
-				name: 'tool_exec',
-				description: 'Execute a gateway op.',
-				inputSchema: { type: 'object', properties: { op: { type: 'string' } } }
+				name: 'list_onto_projects',
+				description: 'List visible BuildOS projects.',
+				inputSchema: { type: 'object', properties: {} }
 			}
 		]);
 		executeBuildosAgentGatewayToolMock.mockResolvedValue({
@@ -491,7 +491,7 @@ describe('BuildosAgentCallService', () => {
 		expect(state.sessions['33333333-3333-3333-3333-333333333333']?.status).toBe('active');
 	});
 
-	it('executes a gateway tool against an active session', async () => {
+	it('executes a direct BuildOS tool against an active session', async () => {
 		const state: SessionState = {
 			sessions: {
 				'33333333-3333-3333-3333-333333333333': createSessionRow({
@@ -510,9 +510,9 @@ describe('BuildosAgentCallService', () => {
 			}),
 			{
 				call_id: '33333333-3333-3333-3333-333333333333',
-				name: 'tool_help',
+				name: 'list_onto_projects',
 				arguments: {
-					path: 'root'
+					limit: 10
 				}
 			}
 		);
@@ -527,9 +527,9 @@ describe('BuildosAgentCallService', () => {
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 			},
-			toolName: 'tool_help',
+			toolName: 'list_onto_projects',
 			arguments: {
-				path: 'root'
+				limit: 10
 			}
 		});
 		expect(response.structuredContent).toEqual({ ok: true });

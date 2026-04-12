@@ -225,6 +225,18 @@ app.post('/queue/brief', async (req, res) => {
 			return res.status(400).json({ error: 'userId is required' });
 		}
 
+		const normalizedRequestedBriefDate =
+			typeof requestedBriefDate === 'string' && requestedBriefDate.trim().length > 0
+				? requestedBriefDate.trim()
+				: undefined;
+
+		if (
+			normalizedRequestedBriefDate &&
+			!/^\d{4}-\d{2}-\d{2}$/.test(normalizedRequestedBriefDate)
+		) {
+			return res.status(400).json({ error: 'briefDate must use YYYY-MM-DD format' });
+		}
+
 		// Validate user exists and get timezone from centralized location
 		const { data: user, error: userError } = await supabase
 			.from('users')
@@ -244,7 +256,8 @@ app.post('/queue/brief', async (req, res) => {
 		if (forceRegenerate) {
 			// Use consistent timezone (from preferences or requested)
 			const targetBriefDate =
-				requestedBriefDate || format(utcToZonedTime(new Date(), timezone), 'yyyy-MM-dd');
+				normalizedRequestedBriefDate ||
+				format(utcToZonedTime(new Date(), timezone), 'yyyy-MM-dd');
 
 			// Atomically cancel existing jobs for this date
 			const { count } = await queue.cancelBriefJobsForDate(userId, targetBriefDate);
@@ -273,7 +286,7 @@ app.post('/queue/brief', async (req, res) => {
 
 		// Calculate brief date
 		const zonedDate = utcToZonedTime(scheduleTime, timezone);
-		const briefDate = requestedBriefDate || format(zonedDate, 'yyyy-MM-dd');
+		const briefDate = normalizedRequestedBriefDate || format(zonedDate, 'yyyy-MM-dd');
 
 		// Queue the job using Supabase queue
 		const job = await queue.add(
@@ -284,6 +297,7 @@ app.post('/queue/brief', async (req, res) => {
 				timezone,
 				options: {
 					forceRegenerate,
+					requestedBriefDate: normalizedRequestedBriefDate,
 					useOntology: requestOptions?.useOntology ?? true, // Default to ontology-based briefs
 					includeProjects: requestOptions?.includeProjects,
 					excludeProjects: requestOptions?.excludeProjects

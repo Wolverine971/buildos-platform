@@ -2,7 +2,7 @@
 
 # Agentic Chat (Current Implementation)
 
-> Last updated: 2026-02-27  
+> Last updated: 2026-04-12
 > Scope: Runtime behavior in `apps/web` (UI + APIs + tools + persistence)
 
 This is the canonical documentation for the chat system currently running in the web app.
@@ -35,7 +35,8 @@ The modal currently posts turns to `/api/agent/v2/stream`.
 | V2 history           | `apps/web/src/lib/services/agentic-chat-v2/history-composer.ts`                 | Last-N history + compression strategy                                     |
 | V2 streaming loop    | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.ts`              | LLM streaming + tool loop + limits                                        |
 | Tool dispatch        | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts` | Maps tool names to domain executors                                       |
-| Gateway execution    | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`    | Executes `tool_help`/`tool_exec` in gateway mode                          |
+| Gateway surface      | `apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts`          | Builds the discovery-tool plus direct-tool surface for gateway mode       |
+| Gateway execution    | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`    | Executes discovery tools and registry-backed direct tools in gateway mode |
 | Session service (V2) | `apps/web/src/lib/services/agentic-chat-v2/session-service.ts`                  | Resolve/create session, load/persist messages, update stats               |
 
 Related APIs used by the modal:
@@ -187,14 +188,16 @@ Defaults in `history-composer.ts`:
 Tool selection in V2 (`tool-selector.ts`):
 
 - If `AGENTIC_CHAT_TOOL_GATEWAY` is enabled:
-    - returns gateway tools only: `tool_help`, `tool_exec`
+    - returns `skill_load`, `tool_search`, and `tool_schema`
+    - also returns context-specific direct tools, such as `get_project_overview`, `create_onto_task`, and `update_onto_task`
+    - materializes additional direct tools after `tool_search` or `tool_schema` when needed
 - If disabled:
     - returns context tool set from `tools.config.ts` (write tools included)
     - calendar tools are filtered by context/message heuristics
 
 Tool execution paths:
 
-- Gateway mode: `ToolExecutionService` executes canonical ops via registry.
+- Gateway mode: discovery tools inspect skills/tools, and registry-backed direct tools execute the underlying canonical ops.
 - Direct mode: `ChatToolExecutor` dispatches named tools to domain executors.
 
 Provider selection:

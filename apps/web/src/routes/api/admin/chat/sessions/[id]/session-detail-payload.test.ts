@@ -241,4 +241,85 @@ describe('buildSessionDetailPayload', () => {
 			tool_result_source: 'chat_tool_executions'
 		});
 	});
+
+	it('uses llm_usage_logs totals for billable session tokens', () => {
+		const payload = buildSessionDetailPayload({
+			sessionRow: {
+				id: 'session-usage-ledger',
+				user_id: 'user-1',
+				title: 'Usage ledger session',
+				status: 'active',
+				context_type: 'project',
+				entity_id: null,
+				message_count: 2,
+				total_tokens_used: 76_038,
+				tool_call_count: 0,
+				created_at: '2026-04-11T22:09:18.000Z',
+				updated_at: '2026-04-11T22:19:55.000Z',
+				last_message_at: '2026-04-11T22:18:50.000Z',
+				agent_metadata: {},
+				users: {
+					id: 'user-1',
+					email: 'admin@example.com',
+					name: 'Admin User'
+				}
+			},
+			messages: [
+				{
+					id: 'message-user',
+					role: 'user',
+					content: 'Create the project.',
+					total_tokens: 0,
+					created_at: '2026-04-11T22:09:19.000Z'
+				},
+				{
+					id: 'message-assistant',
+					role: 'assistant',
+					content: 'Done.',
+					total_tokens: 76_038,
+					created_at: '2026-04-11T22:18:50.000Z'
+				}
+			],
+			toolExecutions: [],
+			llmCalls: [
+				{
+					id: 'llm-stream-1',
+					operation_type: 'agentic_chat_v2_stream',
+					model_requested: 'x-ai/grok-4.1-fast',
+					model_used: 'x-ai/grok-4.1-fast',
+					provider: 'openrouter',
+					status: 'success',
+					total_tokens: 76_038,
+					total_cost_usd: 0.0175413,
+					request_started_at: '2026-04-11T22:09:19.000Z',
+					request_completed_at: '2026-04-11T22:18:50.000Z',
+					created_at: '2026-04-11T22:18:50.000Z'
+				},
+				{
+					id: 'llm-reconcile-1',
+					operation_type: 'agent_state_reconciliation',
+					model_requested: 'qwen/qwen3.6-plus',
+					model_used: 'qwen/qwen3.6-plus',
+					provider: 'qwen',
+					status: 'success',
+					total_tokens: 13_618,
+					total_cost_usd: 0.01656623,
+					request_started_at: '2026-04-11T22:18:51.000Z',
+					request_completed_at: '2026-04-11T22:19:55.000Z',
+					created_at: '2026-04-11T22:19:55.000Z'
+				}
+			],
+			operations: [],
+			timingData: null,
+			turnRuns: [],
+			promptSnapshots: [],
+			turnEvents: [],
+			evalRuns: [],
+			evalAssertions: []
+		});
+
+		expect(payload.metrics.total_tokens).toBe(89_656);
+		expect(payload.session.total_tokens).toBe(89_656);
+		expect(payload.metrics.total_cost_usd).toBeCloseTo(0.03410753);
+	});
 });

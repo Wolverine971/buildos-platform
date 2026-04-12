@@ -13,6 +13,7 @@ import {
 import { LegacyJob } from '../shared/jobAdapter';
 import { generateOntologyDailyBrief } from './ontologyBriefGenerator';
 import { generateCorrelationId } from '@buildos/shared-utils';
+import { getStaleBriefJobDecision } from './briefDateGuard';
 
 /**
  * Validates if a timezone string is valid
@@ -77,6 +78,24 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 
 		// At this point, briefDate is guaranteed to be a valid date string
 		const validatedBriefDate: string = briefDate;
+
+		const staleBriefDecision = getStaleBriefJobDecision({
+			briefDate: validatedBriefDate,
+			timezone,
+			options: job.data.options
+		});
+
+		if (staleBriefDecision.shouldSkip) {
+			const reason =
+				staleBriefDecision.reason ||
+				`Brief date ${validatedBriefDate} is stale for ${timezone}`;
+			console.warn(
+				`⏭️ Skipping stale daily brief job ${job.id} for user ${job.data.userId}: ${reason}`
+			);
+			await job.log(reason);
+			await updateJobStatus(job.id, 'completed', 'brief');
+			return;
+		}
 
 		console.log(
 			`📅 Generating brief for date: ${validatedBriefDate} (timezone: ${timezone}, current time: ${new Date().toISOString()})`

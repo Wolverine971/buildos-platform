@@ -112,8 +112,8 @@ OpenClaw needs a BuildOS connector tool or plugin that:
 1. reads the BuildOS env values
 2. calls BuildOS over HTTPS
 3. opens a BuildOS call session
-4. lists BuildOS tools
-5. calls those tools for the model
+4. lists scoped BuildOS tools
+5. registers or proxies those typed tools for the model
 
 Without that connector, OpenClaw only sees raw text and will say something like:
 
@@ -140,7 +140,7 @@ This is the simple version of what the connector must do:
 1. Send a request to BuildOS with the BuildOS key
 2. Ask to dial the user BuildOS agent
 3. If BuildOS accepts the call, ask what tools are available
-4. Use those tools
+4. Use the direct tools returned by BuildOS
 5. Hang up when finished
 
 The BuildOS endpoint is:
@@ -191,7 +191,7 @@ BuildOS connection setup:
    call.dial
 6. After acceptance:
    - tools/list
-   - tools/call
+   - tools/call with the direct tool name returned by tools/list
    - call.hangup
 7. Never ask the user to paste the secret token into normal conversation after setup.
 ```
@@ -204,7 +204,7 @@ Use this user-friendly prompt:
 Use the BuildOS connector.
 
 Connect to my BuildOS workspace using the configured BuildOS credentials.
-If the call is accepted, list the available BuildOS tools and then list my visible projects.
+If the call is accepted, list the available BuildOS tools and then use the direct project-list tool to list my visible projects.
 Do not ask me to paste secrets into chat.
 If BuildOS is not configured yet, tell me exactly which configuration value is missing.
 ```

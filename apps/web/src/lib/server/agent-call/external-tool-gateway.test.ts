@@ -521,7 +521,7 @@ describe('external tool gateway', () => {
 		]);
 	});
 
-	it('returns only gateway primitives for external tools', async () => {
+	it('returns discovery tools plus scoped direct tools for external callers', async () => {
 		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
 
 		const tools = getBuildosAgentGatewayTools({
@@ -529,15 +529,44 @@ describe('external tool gateway', () => {
 			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
 		});
 
+		expect(tools.map((tool) => tool.name)).toEqual(
+			expect.arrayContaining([
+				'skill_load',
+				'tool_search',
+				'tool_schema',
+				'list_onto_projects',
+				'search_onto_projects',
+				'get_onto_project_details',
+				'list_onto_tasks',
+				'search_onto_tasks',
+				'get_onto_task_details',
+				'list_onto_documents',
+				'search_onto_documents',
+				'get_onto_document_details',
+				'search_ontology',
+				'create_onto_task'
+			])
+		);
+		expect(tools.map((tool) => tool.name)).not.toContain('update_onto_task');
+		expect(tools.map((tool) => tool.name)).not.toContain('tool_exec');
+	});
+
+	it('returns only discovery helpers when no scoped direct ops are available', async () => {
+		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
+
+		const tools = getBuildosAgentGatewayTools({
+			mode: 'read_write',
+			allowed_ops: []
+		});
+
 		expect(tools.map((tool) => tool.name)).toEqual([
 			'skill_load',
 			'tool_search',
-			'tool_schema',
-			'buildos_call'
+			'tool_schema'
 		]);
 	});
 
-	it('returns filtered root help instead of the flat public tool list', async () => {
+	it('returns direct tool metadata from tool_schema', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 
 		const result = await executeBuildosAgentGatewayTool({
@@ -550,18 +579,23 @@ describe('external tool gateway', () => {
 			}),
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
-			toolName: 'tool_help',
-			arguments: { path: 'root' }
+			toolName: 'tool_schema',
+			arguments: { op: 'onto.task.list', include_schema: true }
 		});
 
-		expect(result.type).toBe('directory');
-		expect(result.path).toBe('root');
-		expect(JSON.stringify(result)).not.toContain('list_projects');
-		expect(JSON.stringify(result)).toContain('onto.task');
-		expect(JSON.stringify(result)).not.toContain('onto.task.update');
+		expect(result).toMatchObject({
+			type: 'tool_schema',
+			op: 'onto.task.list',
+			tool_name: 'list_onto_tasks',
+			callable_tool: 'list_onto_tasks',
+			example_tool_call: {
+				name: 'list_onto_tasks'
+			}
+		});
+		expect(JSON.stringify(result)).not.toContain('buildos_call');
 	});
 
-	it('returns FORBIDDEN for write ops outside the granted scope', async () => {
+	it('returns FORBIDDEN for direct write tools outside the granted scope', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 
 		const result = await executeBuildosAgentGatewayTool({
@@ -574,13 +608,10 @@ describe('external tool gateway', () => {
 			}),
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
-			toolName: 'tool_exec',
+			toolName: 'create_onto_task',
 			arguments: {
-				op: 'onto.task.create',
-				args: {
-					project_id: '44444444-4444-4444-4444-444444444444',
-					title: 'Write something'
-				}
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Write something'
 			}
 		});
 
@@ -597,7 +628,7 @@ describe('external tool gateway', () => {
 		});
 	});
 
-	it('creates a task through tool_exec when read_write access is granted', async () => {
+	it('creates a task through a direct tool when read_write access is granted', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 		const state: State = {
 			documents: [],
@@ -617,14 +648,11 @@ describe('external tool gateway', () => {
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
 			},
-			toolName: 'tool_exec',
+			toolName: 'create_onto_task',
 			arguments: {
-				op: 'onto.task.create',
-				args: {
-					project_id: '44444444-4444-4444-4444-444444444444',
-					title: 'Draft launch checklist',
-					state_key: 'todo'
-				}
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Draft launch checklist',
+				state_key: 'todo'
 			}
 		});
 
@@ -647,7 +675,7 @@ describe('external tool gateway', () => {
 		expect(state.toolExecutions[0]?.status).toBe('succeeded');
 	});
 
-	it('updates a task through tool_exec when read_write access is granted', async () => {
+	it('updates a task through a direct tool when read_write access is granted', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 		const state: State = {
 			documents: [],
@@ -683,14 +711,11 @@ describe('external tool gateway', () => {
 				mode: 'read_write',
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.update']
 			},
-			toolName: 'tool_exec',
+			toolName: 'update_onto_task',
 			arguments: {
-				op: 'onto.task.update',
-				args: {
-					task_id: '55555555-5555-5555-5555-555555555555',
-					state_key: 'done',
-					title: 'Existing task (done)'
-				}
+				task_id: '55555555-5555-5555-5555-555555555555',
+				state_key: 'done',
+				title: 'Existing task (done)'
 			}
 		});
 
@@ -734,14 +759,11 @@ describe('external tool gateway', () => {
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
 			},
-			toolName: 'tool_exec',
+			toolName: 'create_onto_task',
 			arguments: {
-				op: 'onto.task.create',
-				args: {
-					project_id: '44444444-4444-4444-4444-444444444444',
-					title: 'Whitespace description',
-					description: '   '
-				}
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Whitespace description',
+				description: '   '
 			}
 		});
 
@@ -767,14 +789,11 @@ describe('external tool gateway', () => {
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
 			},
-			toolName: 'tool_exec' as const,
+			toolName: 'create_onto_task' as const,
 			arguments: {
-				op: 'onto.task.create',
 				idempotency_key: 'task-create-1',
-				args: {
-					project_id: '44444444-4444-4444-4444-444444444444',
-					title: 'Idempotent task'
-				}
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Idempotent task'
 			}
 		};
 
@@ -831,14 +850,11 @@ describe('external tool gateway', () => {
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.create']
 			},
-			toolName: 'tool_exec',
+			toolName: 'create_onto_task',
 			arguments: {
-				op: 'onto.task.create',
 				idempotency_key: 'task-create-pending',
-				args: {
-					project_id: '44444444-4444-4444-4444-444444444444',
-					title: 'Pending task'
-				}
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Pending task'
 			}
 		});
 
@@ -882,12 +898,9 @@ describe('external tool gateway', () => {
 				project_ids: ['44444444-4444-4444-4444-444444444444'],
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
 			},
-			toolName: 'tool_exec',
+			toolName: 'get_onto_document_details',
 			arguments: {
-				op: 'onto.document.get',
-				args: {
-					document_id: '55555555-5555-5555-5555-555555555555'
-				}
+				document_id: '55555555-5555-5555-5555-555555555555'
 			}
 		});
 

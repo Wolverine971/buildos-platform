@@ -2,7 +2,8 @@
 /**
  * Gateway Tool Definitions
  *
- * Meta-tools for skill loading, tool discovery, schema lookup, and execution.
+ * Meta-tools for skill loading, tool discovery, and schema lookup.
+ * Normal reads and writes execute through context-specific direct tools.
  */
 
 import type { ChatToolDefinition } from '@buildos/shared-types';

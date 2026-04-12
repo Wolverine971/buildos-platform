@@ -129,15 +129,21 @@
 					'border-color': 'data(borderColor)' as any,
 					'border-width': 'data(borderWidth)' as any,
 					// Label styling
-					label: 'data(label)' as any,
+					label: 'data(displayLabel)' as any,
 					'font-size': 'data(fontSize)' as any,
 					'font-family': 'system-ui, sans-serif',
 					'font-weight': 'data(fontWeight)' as any,
 					'text-valign': 'data(labelValign)' as any,
 					'text-halign': 'center',
 					'text-wrap': 'wrap',
-					'text-max-width': '75px',
+					'text-overflow-wrap': 'anywhere',
+					'text-justification': 'center',
+					'text-max-width': 'data(labelMaxWidth)' as any,
 					'text-margin-y': 'data(labelMarginY)' as any,
+					'text-background-color': labelBg,
+					'text-background-opacity': 'data(labelBackgroundOpacity)' as any,
+					'text-background-padding': 'data(labelBackgroundPadding)' as any,
+					'text-background-shape': 'roundrectangle',
 					color: labelColor
 				}
 			},
@@ -419,8 +425,9 @@
 		const defaultLayout: cytoscape.LayoutOptions = {
 			name: 'dagre',
 			rankDir: 'TB',
-			nodeSep: 60,
-			rankSep: 80,
+			nodeSep: 78,
+			edgeSep: 24,
+			rankSep: 112,
 			animate: true,
 			animationDuration: 400
 		} as any;

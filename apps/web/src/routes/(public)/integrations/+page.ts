@@ -13,7 +13,7 @@ export const load = async () => {
 		meta: {
 			title: 'BuildOS Integrations - OpenClaw Agent Bridge',
 			description:
-				'Connect OpenClaw to BuildOS with user-scoped agent keys, accepted call sessions, and scoped read-only tools.',
+				'Connect OpenClaw to BuildOS with user-scoped agent keys, accepted call sessions, and scoped direct tools.',
 			keywords: [
 				'BuildOS integrations',
 				'OpenClaw',
@@ -23,7 +23,7 @@ export const load = async () => {
 				'external agent auth',
 				'agent call gateway',
 				'project management API',
-				'read-only agent tools'
+				'scoped agent tools'
 			]
 		}
 	};

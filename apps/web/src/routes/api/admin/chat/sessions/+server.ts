@@ -11,6 +11,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
 
 type SessionAggregate = {
 	messageCount: number;
@@ -264,9 +265,11 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					: {};
 
 			const messageCount = Number(session.message_count ?? messageAgg?.messageCount ?? 0);
-			const totalTokens = Number(
-				session.total_tokens_used ?? usageAgg?.totalTokens ?? messageAgg?.messageTokens ?? 0
-			);
+			const totalTokens = resolveBillableTokenTotal({
+				usageTokenTotal: usageAgg?.totalTokens ?? 0,
+				sessionTokenTotal: asNumber(session.total_tokens_used),
+				messageTokenTotal: messageAgg?.messageTokens ?? 0
+			});
 			const toolCallCount = Number(
 				toolAgg?.total ?? session.tool_call_count ?? messageAgg?.toolTraceCount ?? 0
 			);

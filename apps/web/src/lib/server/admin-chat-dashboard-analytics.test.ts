@@ -264,4 +264,110 @@ describe('buildAdminChatDashboardAnalytics', () => {
 		expect(result.kpis.isCostEstimated).toBe(true);
 		expect(result.data_health.hasBillableUsage).toBe(false);
 	});
+
+	it('surfaces stale running turns in status health without mutating rows', () => {
+		const result = buildAdminChatDashboardAnalytics({
+			startIso: '2026-04-01T00:00:00.000Z',
+			endIso: '2026-04-08T00:00:00.000Z',
+			timeframe: '7d',
+			sessions: [],
+			messages: [],
+			turnRuns: [
+				{
+					id: 'turn-stale',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					status: 'running',
+					llm_pass_count: 0,
+					started_at: '2026-04-01T10:00:00.000Z',
+					created_at: '2026-04-01T10:00:00.000Z'
+				}
+			],
+			previousTurnRuns: [],
+			usageRows: [],
+			previousUsageRows: [],
+			llmPassEvents: [],
+			toolExecutions: [],
+			evalRuns: [],
+			users: [{ id: 'user-1', email: 'one@example.com' }]
+		});
+
+		expect(result.kpis.staleTurns).toBe(1);
+		expect(result.data_health.staleRunningTurns).toBe(1);
+		expect(result.runtime_distribution.statuses[0]).toMatchObject({
+			label: 'stale_running',
+			count: 1
+		});
+		expect(result.activity_feed[0]).toMatchObject({
+			type: 'turn_failed',
+			severity: 'warning'
+		});
+	});
+
+	it('attributes usage and event rows through session/user ids when turn rows are absent', () => {
+		const result = buildAdminChatDashboardAnalytics({
+			startIso: '2026-04-01T00:00:00.000Z',
+			endIso: '2026-04-08T00:00:00.000Z',
+			timeframe: '7d',
+			sessions: [
+				{
+					id: 'session-3',
+					user_id: 'user-3',
+					status: 'active',
+					created_at: '2026-04-01T10:00:00.000Z'
+				}
+			],
+			messages: [],
+			turnRuns: [],
+			previousTurnRuns: [],
+			usageRows: [
+				{
+					id: 'usage-3',
+					chat_session_id: 'session-3',
+					operation_type: 'agentic_chat',
+					total_tokens: 200,
+					total_cost_usd: 0.002,
+					status: 'failure',
+					error_message: 'provider timeout',
+					created_at: '2026-04-02T10:00:00.000Z'
+				}
+			],
+			previousUsageRows: [],
+			llmPassEvents: [
+				{
+					id: 'event-4',
+					session_id: 'session-4',
+					user_id: 'user-4',
+					event_type: 'llm_pass_completed',
+					payload: {
+						model: 'openai/gpt-4o-mini',
+						prompt_tokens: 100,
+						completion_tokens: 50,
+						total_tokens: 150
+					},
+					created_at: '2026-04-02T11:00:00.000Z'
+				}
+			],
+			toolExecutions: [],
+			evalRuns: [],
+			users: [
+				{ id: 'user-3', email: 'three@example.com' },
+				{ id: 'user-4', email: 'four@example.com' }
+			]
+		});
+
+		expect(result.kpis.totalSessions).toBe(2);
+		expect(result.kpis.uniqueUsers).toBe(2);
+		expect(result.top_users[0]).toMatchObject({
+			user_id: 'user-3',
+			email: 'three@example.com',
+			total_cost: 0.002,
+			total_tokens: 200
+		});
+		expect(result.activity_feed[0]).toMatchObject({
+			type: 'llm_failed',
+			user_email: 'three@example.com',
+			session_id: 'session-3'
+		});
+	});
 });

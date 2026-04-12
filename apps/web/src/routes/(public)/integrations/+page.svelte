@@ -53,8 +53,8 @@
 		{
 			title: 'Use the BuildOS gateway progressively',
 			description:
-				'After the call is accepted, OpenClaw gets a tiny tool surface and discovers BuildOS operations progressively.',
-			detail: 'In this slice, OpenClaw starts with tool_help and tool_exec, then discovers allowed read-only onto.* operations like project, task, document, and search commands.',
+				'After the call is accepted, OpenClaw lists the scoped BuildOS tools it can use and calls direct tools by name.',
+			detail: 'OpenClaw receives support tools like skill_load, tool_search, and tool_schema, plus direct tools such as list_onto_projects, list_onto_tasks, create_onto_task, or update_onto_task when the key grants them.',
 			icon: Target
 		}
 	];
@@ -88,14 +88,24 @@
 
 	const availableTools = [
 		{
-			name: 'tool_help',
+			name: 'skill_load',
 			description:
-				'Discover the next layer of BuildOS commands, namespaces, and exact op schemas without loading the full tool catalog into context.'
+				'Load a BuildOS skill playbook when the workflow is multi-step, stateful, or easy to get wrong.'
 		},
 		{
-			name: 'tool_exec',
+			name: 'tool_search',
 			description:
-				'Execute an allowed canonical BuildOS op after discovering it through tool_help.'
+				'Discover candidate BuildOS tools when the exact direct tool is not already clear.'
+		},
+		{
+			name: 'tool_schema',
+			description:
+				'Inspect the exact arguments for one canonical BuildOS op before calling the returned direct tool.'
+		},
+		{
+			name: 'direct tools',
+			description:
+				'Execute scoped BuildOS actions directly, such as list_onto_projects, list_onto_tasks, create_onto_task, or update_onto_task.'
 		}
 	];
 
@@ -103,7 +113,7 @@
 		'OpenClaw gets a BuildOS-issued key, not the user browser session.',
 		'Calls are user-scoped. A caller cannot dial another user BuildOS agent.',
 		'Project scoping is enforced before tools run.',
-		'The current external gateway is read-only, even though it now uses canonical onto.* op discovery.',
+		'Read access is included by default; task create/update tools appear only when the key grants read-write access.',
 		'Keys can be rotated or revoked from Profile > Agent Keys.'
 	];
 
@@ -132,9 +142,10 @@ Content-Type: application/json
 
 // then:
 // 1. tools/list
-// 2. tools/call name=tool_help arguments={ "path": "root" }
-// 3. tools/call name=tool_exec arguments={ "op": "onto.project.list", "args": {} }
-// 4. call.hangup`;
+// 2. tools/call name=list_onto_projects arguments={}
+// 3. tools/call name=tool_schema arguments={ "op": "onto.task.update", "include_schema": true }
+// 4. tools/call name=update_onto_task arguments={ "task_id": "...", "state_key": "done" }
+// 5. call.hangup`;
 
 	async function copySnippet(target: Exclude<CopyTarget, null>, value: string) {
 		if (typeof navigator === 'undefined') return;
@@ -178,7 +189,7 @@ Content-Type: application/json
 					class="mb-6 inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-4 py-2 text-sm font-medium text-accent"
 				>
 					<Sparkles class="h-4 w-4" />
-					<span>Live now: OpenClaw v1 read-only bridge</span>
+					<span>Live now: OpenClaw scoped tool bridge</span>
 				</div>
 
 				<h1 class="mb-6 text-3xl font-bold tracking-tight sm:text-4xl lg:text-6xl">
@@ -214,7 +225,7 @@ Content-Type: application/json
 				>
 					<Badge variant="success" size="sm">User-scoped</Badge>
 					<Badge variant="info" size="sm">Revocable</Badge>
-					<Badge variant="default" size="sm">Read-only v1</Badge>
+					<Badge variant="default" size="sm">Scoped direct tools</Badge>
 					<Badge variant="warning" size="sm">Project-scoped</Badge>
 				</div>
 			</div>
@@ -227,7 +238,8 @@ Content-Type: application/json
 				<Alert variant="info" class="mb-8">
 					<p class="text-sm text-foreground">
 						<strong>Current status:</strong> the OpenClaw integration is live as a
-						read-only agent bridge. The user-facing setup lives in
+						scoped agent bridge. Read tools are included by default, and task write
+						tools appear only when granted. The user-facing setup lives in
 						<a
 							href="/profile?tab=agent-keys"
 							class="ml-1 font-medium text-accent hover:underline"
@@ -503,9 +515,9 @@ Content-Type: application/json
 
 				<Alert variant="warning" class="mt-8">
 					<p class="text-sm text-foreground">
-						Write-capable tools, approvals, and long-running delegated runs are not part
-						of the public OpenClaw bridge yet. The v1 surface is read-only so the trust
-						boundary stays clear while the integration matures.
+						Task write tools are opt-in per key. Broader write surfaces, approvals, and
+						long-running delegated runs are still outside this bridge while the trust
+						boundary matures.
 					</p>
 				</Alert>
 			</div>

@@ -3,6 +3,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { ErrorLogger } from './types';
+import { resolveModelPricingProfile } from './model-config';
 
 export type UsageLogParams = {
 	userId?: string; // Made optional to match TextGenerationOptions
@@ -92,18 +93,31 @@ export class LLMUsageLogger {
 			const turnRunId = this.normalizeOptionalIdForLogging(
 				params.turnRunId || this.getMetadataId(params.metadata, 'turnRunId')
 			);
+			const promptTokens = this.normalizeNumber(params.promptTokens);
+			const completionTokens = this.normalizeNumber(params.completionTokens);
+			const totalTokens =
+				this.normalizeNumber(params.totalTokens) || promptTokens + completionTokens;
+			const costValues = this.normalizeCostValues({
+				modelUsed: params.modelUsed,
+				modelRequested: params.modelRequested,
+				promptTokens,
+				completionTokens,
+				inputCost: params.inputCost,
+				outputCost: params.outputCost,
+				totalCost: params.totalCost
+			});
 			const payload = {
 				user_id: sanitizedUserId,
 				operation_type: params.operationType,
 				model_requested: params.modelRequested,
 				model_used: params.modelUsed,
 				provider: params.provider,
-				prompt_tokens: params.promptTokens,
-				completion_tokens: params.completionTokens,
-				total_tokens: params.totalTokens,
-				input_cost_usd: params.inputCost,
-				output_cost_usd: params.outputCost,
-				total_cost_usd: params.totalCost,
+				prompt_tokens: promptTokens,
+				completion_tokens: completionTokens,
+				total_tokens: totalTokens,
+				input_cost_usd: costValues.inputCost,
+				output_cost_usd: costValues.outputCost,
+				total_cost_usd: costValues.totalCost,
 				response_time_ms: params.responseTimeMs,
 				request_started_at: params.requestStartedAt.toISOString(),
 				request_completed_at: params.requestCompletedAt.toISOString(),
@@ -203,5 +217,45 @@ export class LLMUsageLogger {
 		const uuidRegex =
 			/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 		return uuidRegex.test(value);
+	}
+
+	private normalizeNumber(value: unknown): number {
+		if (typeof value === 'number' && Number.isFinite(value)) return value;
+		if (typeof value === 'string' && value.trim().length > 0) {
+			const parsed = Number(value);
+			return Number.isFinite(parsed) ? parsed : 0;
+		}
+		return 0;
+	}
+
+	private normalizeCostValues(params: {
+		modelUsed: string;
+		modelRequested: string;
+		promptTokens: number;
+		completionTokens: number;
+		inputCost: number;
+		outputCost: number;
+		totalCost: number;
+	}): { inputCost: number; outputCost: number; totalCost: number } {
+		let inputCost = this.normalizeNumber(params.inputCost);
+		let outputCost = this.normalizeNumber(params.outputCost);
+		let totalCost = this.normalizeNumber(params.totalCost);
+		const pricing = resolveModelPricingProfile(params.modelUsed, [params.modelRequested]);
+		const profile = pricing?.profile;
+
+		if (profile) {
+			if (inputCost === 0 && params.promptTokens > 0 && profile.cost > 0) {
+				inputCost = (params.promptTokens / 1_000_000) * profile.cost;
+			}
+			if (outputCost === 0 && params.completionTokens > 0 && profile.outputCost > 0) {
+				outputCost = (params.completionTokens / 1_000_000) * profile.outputCost;
+			}
+		}
+
+		if (totalCost === 0 && inputCost + outputCost > 0) {
+			totalCost = inputCost + outputCost;
+		}
+
+		return { inputCost, outputCost, totalCost };
 	}
 }

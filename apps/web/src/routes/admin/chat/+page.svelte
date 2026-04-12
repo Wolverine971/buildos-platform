@@ -33,6 +33,7 @@
 		completedTurns: number;
 		failedTurns: number;
 		cancelledTurns: number;
+		staleTurns: number;
 		turnSuccessRate: number;
 		turnTrend: Trend;
 		totalTokensUsed: number;
@@ -109,6 +110,7 @@
 		completedTurns: 0,
 		failedTurns: 0,
 		cancelledTurns: 0,
+		staleTurns: 0,
 		turnSuccessRate: 0,
 		turnTrend: { direction: 'up' as 'up' | 'down', value: 0 },
 		totalTokensUsed: 0,
@@ -619,6 +621,9 @@
 						dashboardKPIs.failedTurns
 					)}
 					failed • {formatNumber(dashboardKPIs.cancelledTurns)} cancelled
+					{#if dashboardKPIs.staleTurns}
+						• {formatNumber(dashboardKPIs.staleTurns)} stale
+					{/if}
 				</div>
 				<div class="mt-1 flex items-center gap-1 text-xs">
 					{#if dashboardKPIs.turnTrend.direction === 'up'}

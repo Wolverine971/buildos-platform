@@ -1,4 +1,6 @@
 // apps/web/src/routes/api/admin/chat/sessions/[id]/session-detail-payload.ts
+import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
+
 type TimelineSeverity = 'info' | 'success' | 'warning' | 'error';
 type TimelineType =
 	| 'session'
@@ -605,9 +607,11 @@ export const buildSessionDetailPayload = ({
 		return sum + parseToolTraceFromMessageMetadata(row.metadata).length;
 	}, 0);
 
-	const totalTokens = Number(
-		sessionRow.total_tokens_used ?? usageTokenTotal ?? messageTokenTotal ?? 0
-	);
+	const totalTokens = resolveBillableTokenTotal({
+		usageTokenTotal,
+		sessionTokenTotal: asNumber(sessionRow.total_tokens_used),
+		messageTokenTotal
+	});
 	const totalCost =
 		usageCostTotal > 0
 			? usageCostTotal

@@ -1,5 +1,5 @@
 // apps/web/src/lib/server/admin-chat-dashboard-analytics.ts
-import { JSON_MODELS, TEXT_MODELS } from '@buildos/smart-llm';
+import { resolveModelPricingProfile } from '@buildos/smart-llm';
 
 export type ChatDashboardTimeframe = '24h' | '7d' | '30d' | '90d' | '365d';
 
@@ -60,6 +60,7 @@ export type ChatDashboardAnalytics = {
 		completedTurns: number;
 		failedTurns: number;
 		cancelledTurns: number;
+		staleTurns: number;
 		turnSuccessRate: number;
 		turnTrend: Trend;
 		totalTokensUsed: number;
@@ -111,6 +112,7 @@ export type ChatDashboardAnalytics = {
 		truncated: Record<string, boolean>;
 		hasBillableUsage: boolean;
 		hasTurnTelemetry: boolean;
+		staleRunningTurns: number;
 	};
 };
 
@@ -243,6 +245,7 @@ export type BuildChatDashboardAnalyticsInput = {
 const PAGE_SIZE = 1000;
 const MAX_ROWS_PER_TABLE = 50_000;
 const ID_CHUNK_SIZE = 250;
+const STALE_RUNNING_TURN_MS = 10 * 60 * 1000;
 
 function numberValue(value: unknown): number {
 	if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -352,7 +355,7 @@ function parseLlmPassPayload(row: ChatDashboardTurnEventRow) {
 }
 
 function getModelCost(model: string, promptTokens: number, completionTokens: number): number {
-	const modelConfig = TEXT_MODELS[model] ?? JSON_MODELS[model];
+	const modelConfig = resolveModelPricingProfile(model)?.profile;
 	if (!modelConfig) return 0;
 	return (
 		(promptTokens / 1_000_000) * modelConfig.cost +
@@ -375,6 +378,19 @@ function runtimeActionLabel(turn: ChatDashboardTurnRunRow): string {
 	);
 }
 
+function isStaleRunningTurn(
+	turn: Pick<ChatDashboardTurnRunRow, 'status' | 'started_at' | 'created_at'>,
+	nowMs = Date.now()
+): boolean {
+	if (turn.status !== 'running') return false;
+	const started = dateMs(turn.started_at ?? turn.created_at);
+	return started !== null && nowMs - started > STALE_RUNNING_TURN_MS;
+}
+
+function effectiveTurnStatus(turn: ChatDashboardTurnRunRow, nowMs = Date.now()): string {
+	return isStaleRunningTurn(turn, nowMs) ? 'stale_running' : (turn.status ?? 'unknown');
+}
+
 function summarizeText(value: string | null | undefined, maxChars = 110): string {
 	const normalized = (value ?? '').replace(/\s+/g, ' ').trim();
 	if (!normalized) return '';
@@ -393,6 +409,7 @@ function buildDistribution(
 
 	for (const turn of turns) {
 		const label = textValue(getLabel(turn)) ?? 'unknown';
+		const status = effectiveTurnStatus(turn);
 		const group = groups.get(label) ?? {
 			count: 0,
 			completed: 0,
@@ -401,8 +418,8 @@ function buildDistribution(
 			durations: []
 		};
 		group.count += 1;
-		if (turn.status === 'completed') group.completed += 1;
-		if (turn.status === 'failed') group.failed += 1;
+		if (status === 'completed') group.completed += 1;
+		if (status === 'failed' || status === 'stale_running') group.failed += 1;
 		group.toolCalls += numberValue(turn.tool_call_count);
 		const duration = durationMs(turn);
 		if (duration !== null) group.durations.push(duration);
@@ -490,11 +507,30 @@ export function buildAdminChatDashboardAnalytics(
 	for (const usage of params.usageRows) {
 		if (usage.chat_session_id) sessionIds.add(usage.chat_session_id);
 		const turn = usage.turn_run_id ? turnById.get(usage.turn_run_id) : null;
-		if (usage.user_id || turn?.user_id) userIds.add((usage.user_id ?? turn?.user_id) as string);
+		const session = usage.chat_session_id ? sessionsById.get(usage.chat_session_id) : null;
+		if (usage.user_id || turn?.user_id || session?.user_id) {
+			userIds.add((usage.user_id ?? turn?.user_id ?? session?.user_id) as string);
+		}
 	}
 	for (const tool of params.toolExecutions) {
 		if (tool.session_id) sessionIds.add(tool.session_id);
 		const turn = tool.turn_run_id ? turnById.get(tool.turn_run_id) : null;
+		const session = tool.session_id ? sessionsById.get(tool.session_id) : null;
+		if (turn?.user_id || session?.user_id) {
+			userIds.add((turn?.user_id ?? session?.user_id) as string);
+		}
+	}
+	for (const event of params.llmPassEvents) {
+		if (event.session_id) sessionIds.add(event.session_id);
+		const turn = event.turn_run_id ? turnById.get(event.turn_run_id) : null;
+		const session = event.session_id ? sessionsById.get(event.session_id) : null;
+		if (event.user_id || turn?.user_id || session?.user_id) {
+			userIds.add((event.user_id ?? turn?.user_id ?? session?.user_id) as string);
+		}
+	}
+	for (const evalRun of params.evalRuns) {
+		const turn = evalRun.turn_run_id ? turnById.get(evalRun.turn_run_id) : null;
+		if (turn?.session_id) sessionIds.add(turn.session_id);
 		if (turn?.user_id) userIds.add(turn.user_id);
 	}
 
@@ -510,6 +546,7 @@ export function buildAdminChatDashboardAnalytics(
 	const completedTurns = params.turnRuns.filter((turn) => turn.status === 'completed').length;
 	const failedTurns = params.turnRuns.filter((turn) => turn.status === 'failed').length;
 	const cancelledTurns = params.turnRuns.filter((turn) => turn.status === 'cancelled').length;
+	const staleTurns = params.turnRuns.filter((turn) => isStaleRunningTurn(turn, endMs)).length;
 	const turnDurations = params.turnRuns
 		.map(durationMs)
 		.filter((value): value is number => value !== null);
@@ -612,7 +649,12 @@ export function buildAdminChatDashboardAnalytics(
 	}
 	for (const usage of params.usageRows) {
 		const turn = usage.turn_run_id ? turnById.get(usage.turn_run_id) : null;
-		const stat = addUserStat(userStats, userMap, usage.user_id ?? turn?.user_id);
+		const session = usage.chat_session_id ? sessionsById.get(usage.chat_session_id) : null;
+		const stat = addUserStat(
+			userStats,
+			userMap,
+			usage.user_id ?? turn?.user_id ?? session?.user_id
+		);
 		if (!stat) continue;
 		stat.total_cost += numberValue(usage.total_cost_usd);
 		stat.total_tokens += numberValue(usage.total_tokens);
@@ -644,24 +686,25 @@ export function buildAdminChatDashboardAnalytics(
 	for (const turn of params.turnRuns.slice(0, 30)) {
 		const timestamp = rowTimestamp(turn);
 		if (!timestamp) continue;
+		const status = effectiveTurnStatus(turn, endMs);
 		const type =
-			turn.status === 'failed'
+			status === 'failed' || status === 'stale_running'
 				? 'turn_failed'
-				: turn.status === 'cancelled'
+				: status === 'cancelled'
 					? 'turn_cancelled'
 					: 'turn_completed';
 		activityEvents.push({
 			timestamp,
 			type,
 			severity:
-				turn.status === 'failed'
+				status === 'failed'
 					? 'error'
-					: turn.status === 'cancelled'
+					: status === 'stale_running' || status === 'cancelled'
 						? 'warning'
 						: 'success',
 			user_email: emailForUser(turn.user_id),
 			session_id: turn.session_id ?? null,
-			details: `${type === 'turn_completed' ? 'completed' : type === 'turn_failed' ? 'failed' : 'cancelled'} a turn via ${runtimeActionLabel(turn)}`,
+			details: `${status === 'stale_running' ? 'stale running' : type === 'turn_completed' ? 'completed' : type === 'turn_failed' ? 'failed' : 'cancelled'} a turn via ${runtimeActionLabel(turn)}`,
 			tokens_used: undefined
 		});
 	}
@@ -669,6 +712,7 @@ export function buildAdminChatDashboardAnalytics(
 		const timestamp = tool.created_at;
 		if (!timestamp) continue;
 		const turn = tool.turn_run_id ? turnById.get(tool.turn_run_id) : null;
+		const session = tool.session_id ? sessionsById.get(tool.session_id) : null;
 		const label =
 			textValue(tool.gateway_op) ??
 			textValue(tool.help_path) ??
@@ -678,7 +722,7 @@ export function buildAdminChatDashboardAnalytics(
 			timestamp,
 			type: 'tool_failed',
 			severity: 'error',
-			user_email: emailForUser(turn?.user_id),
+			user_email: emailForUser(turn?.user_id ?? session?.user_id),
 			session_id: tool.session_id ?? turn?.session_id ?? null,
 			details: `${label} failed${tool.error_message ? `: ${summarizeText(tool.error_message, 120)}` : ''}`,
 			tokens_used: undefined
@@ -690,11 +734,12 @@ export function buildAdminChatDashboardAnalytics(
 		const timestamp = usage.request_started_at ?? usage.created_at;
 		if (!timestamp) continue;
 		const turn = usage.turn_run_id ? turnById.get(usage.turn_run_id) : null;
+		const session = usage.chat_session_id ? sessionsById.get(usage.chat_session_id) : null;
 		activityEvents.push({
 			timestamp,
 			type: 'llm_failed',
 			severity: 'error',
-			user_email: emailForUser(usage.user_id ?? turn?.user_id),
+			user_email: emailForUser(usage.user_id ?? turn?.user_id ?? session?.user_id),
 			session_id: usage.chat_session_id ?? turn?.session_id ?? null,
 			details: `${usage.operation_type ?? 'LLM request'} failed${usage.error_message ? `: ${summarizeText(usage.error_message, 120)}` : ''}`,
 			tokens_used: numberValue(usage.total_tokens) || undefined
@@ -753,6 +798,7 @@ export function buildAdminChatDashboardAnalytics(
 			completedTurns,
 			failedTurns,
 			cancelledTurns,
+			staleTurns,
 			turnSuccessRate: percent(completedTurns, totalTurns),
 			turnTrend: computeTrend(totalTurns, params.previousTurnRuns.length),
 			totalTokensUsed,
@@ -787,7 +833,9 @@ export function buildAdminChatDashboardAnalytics(
 				0,
 				10
 			),
-			statuses: buildDistribution(params.turnRuns, (turn) => turn.status).slice(0, 10),
+			statuses: buildDistribution(params.turnRuns, (turn) =>
+				effectiveTurnStatus(turn, endMs)
+			).slice(0, 10),
 			cache_sources: buildDistribution(params.turnRuns, (turn) => turn.cache_source).slice(
 				0,
 				10
@@ -812,7 +860,8 @@ export function buildAdminChatDashboardAnalytics(
 			},
 			truncated: params.truncated ?? {},
 			hasBillableUsage: params.usageRows.length > 0,
-			hasTurnTelemetry: params.turnRuns.length > 0
+			hasTurnTelemetry: params.turnRuns.length > 0,
+			staleRunningTurns: staleTurns
 		}
 	};
 }
@@ -1009,7 +1058,8 @@ export async function getAdminChatDashboardAnalytics(
 		...turnRunResult.rows.map((row) => row.session_id),
 		...usageResult.rows.map((row) => row.chat_session_id),
 		...toolResult.rows.map((row) => row.session_id),
-		...messageResult.rows.map((row) => row.session_id)
+		...messageResult.rows.map((row) => row.session_id),
+		...llmPassResult.rows.map((row) => row.session_id)
 	]);
 	const missingSessionIds = sessionIds.filter((sessionId) => !sessionsById.has(sessionId));
 	const extraSessions = await fetchSessionsByIds(supabase, missingSessionIds);
@@ -1023,6 +1073,7 @@ export async function getAdminChatDashboardAnalytics(
 		...turnRunResult.rows.map((row) => row.user_id),
 		...messageResult.rows.map((row) => row.user_id),
 		...usageResult.rows.map((row) => row.user_id),
+		...llmPassResult.rows.map((row) => row.user_id),
 		...usageResult.rows.map((row) =>
 			row.turn_run_id ? turnById.get(row.turn_run_id)?.user_id : null
 		)

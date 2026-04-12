@@ -187,17 +187,21 @@ OpenClaw's own docs emphasize:
 
 So the clean OpenClaw integration is:
 
-- BuildOS plugin registers `buildos_*` tools
+- BuildOS plugin registers or proxies the direct tools returned by BuildOS
 - those tools encapsulate the BuildOS call protocol
 - the model only sees typed BuildOS actions
 
 Examples:
 
-- `buildos_list_projects`
-- `buildos_get_project_snapshot`
-- `buildos_search_entities`
-- `buildos_list_project_tasks`
-- `buildos_get_document`
+- `list_onto_projects`
+- `search_onto_projects`
+- `get_onto_project_details`
+- `list_onto_tasks`
+- `create_onto_task`
+- `update_onto_task`
+
+OpenClaw may prefix those names locally if needed to avoid conflicts, but the BuildOS
+`tools/call` request should use the BuildOS tool name returned by `tools/list`.
 
 The plugin can hide `call.dial` and session reuse internally if desired.
 

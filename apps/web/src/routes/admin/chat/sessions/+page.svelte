@@ -163,14 +163,27 @@
 
 	let hasLoadedEvalScenarios = false;
 	let sessionDetailRequestId = 0;
+	let isSessionDetailModalOpen = $state(false);
+
+	function currentSessionIdFromUrl(): string | null {
+		const sourceUrl = browser ? new URL(window.location.href) : new URL($page.url);
+		return sourceUrl.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
+	}
 
 	$effect(() => {
 		if (!browser) return;
-		const urlSessionId = $page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
+
+		// Shallow replaceState updates the address bar without mutating $page.url.
+		// Track the page store so real navigations rerun this effect, but read the
+		// browser location so modal state follows the actual visible URL.
+		$page.url.href;
+
+		const urlSessionId = currentSessionIdFromUrl();
 		const currentSessionId = untrack(() => selectedSessionId);
 		if (urlSessionId !== currentSessionId) {
 			selectedSessionId = urlSessionId;
 		}
+		isSessionDetailModalOpen = Boolean(urlSessionId);
 	});
 
 	$effect(() => {
@@ -302,8 +315,9 @@
 
 			sessions = result.data.sessions ?? [];
 			totalSessions = result.data.total ?? 0;
-			const requestedSessionId =
-				$page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
+			const requestedSessionId = browser
+				? currentSessionIdFromUrl()
+				: $page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
 
 			if (sessions.length === 0) {
 				if (selectedSessionId && selectedSessionId === requestedSessionId) {
@@ -469,7 +483,7 @@
 	}
 
 	function sessionDetailUrl(sessionId: string | null) {
-		const url = new URL($page.url);
+		const url = browser ? new URL(window.location.href) : new URL($page.url);
 		if (sessionId) {
 			url.searchParams.set(CHAT_SESSION_QUERY_PARAM, sessionId);
 		} else {
@@ -480,8 +494,7 @@
 
 	function syncSessionDetailUrl(sessionId: string | null) {
 		if (!browser) return;
-		const currentSessionId =
-			$page.url.searchParams.get(CHAT_SESSION_QUERY_PARAM)?.trim() || null;
+		const currentSessionId = currentSessionIdFromUrl();
 		if (currentSessionId === sessionId) return;
 		try {
 			replaceState(sessionDetailUrl(sessionId), $page.state);
@@ -492,10 +505,12 @@
 
 	function selectSessionDetail(sessionId: string) {
 		selectedSessionId = sessionId;
+		isSessionDetailModalOpen = true;
 		syncSessionDetailUrl(sessionId);
 	}
 
 	function clearSessionDetailSelection() {
+		isSessionDetailModalOpen = false;
 		selectedSessionId = null;
 		sessionDetail = null;
 		syncSessionDetailUrl(null);
@@ -1519,7 +1534,7 @@
 		</div>
 
 		<Modal
-			isOpen={!!selectedSessionId}
+			bind:isOpen={isSessionDetailModalOpen}
 			title="Chat Session Detail"
 			size="xl"
 			ariaLabel="Chat session detail"

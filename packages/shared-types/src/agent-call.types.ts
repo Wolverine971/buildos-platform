@@ -5,14 +5,9 @@ export type UserBuildosAgentStatus = 'active' | 'paused' | 'revoked';
 export type ExternalAgentCallerStatus = 'trusted' | 'pending' | 'revoked';
 export type AgentCallSessionStatus = 'accepted' | 'rejected' | 'active' | 'ended';
 export type AgentCallDirection = 'inbound' | 'outbound';
-export type BuildosAgentGatewayToolName =
-	| 'skill_load'
-	| 'tool_search'
-	| 'tool_schema'
-	| 'buildos_call'
-	| 'tool_help'
-	| 'tool_exec';
-export type BuildosAgentPublicToolName = BuildosAgentGatewayToolName;
+export type BuildosAgentDiscoveryToolName = 'skill_load' | 'tool_search' | 'tool_schema';
+export type BuildosAgentGatewayToolName = BuildosAgentDiscoveryToolName;
+export type BuildosAgentPublicToolName = string;
 export type BuildosAgentScopeMode = 'read_only' | 'read_write';
 
 export const BUILDOS_AGENT_READ_OPS = [
@@ -66,7 +61,7 @@ export interface BuildosAgentToolsListParams {
 
 export interface BuildosAgentToolsCallParams {
 	call_id: string;
-	name: BuildosAgentGatewayToolName;
+	name: BuildosAgentPublicToolName;
 	arguments?: Record<string, unknown>;
 }
 

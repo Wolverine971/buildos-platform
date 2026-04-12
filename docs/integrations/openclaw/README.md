@@ -17,7 +17,7 @@ Users can:
 - generate a `BuildOS Agent Key`
 - revoke or rotate that key
 - scope access to specific projects
-- expose a read-only BuildOS tool surface to OpenClaw
+- expose a scoped BuildOS direct-tool surface to OpenClaw
 
 The missing piece is the OpenClaw-side connector/plugin that uses those credentials automatically.
 
@@ -26,7 +26,7 @@ That means:
 - BuildOS is ready
 - key generation is ready
 - the public `/integrations` page is updated
-- OpenClaw still needs a BuildOS plugin or wrapper tool before a user can simply say "connect to BuildOS"
+- OpenClaw still needs a BuildOS plugin that registers the returned BuildOS tools before a user can simply say "connect to BuildOS"
 
 ## Important Safety Rule
 
