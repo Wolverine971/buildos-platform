@@ -18,6 +18,7 @@
 		voiceInputRef: TextareaWithVoiceComponent | null;
 		isVoiceRecording: boolean;
 		isVoiceInitializing: boolean;
+		isVoiceStopping: boolean;
 		isVoiceTranscribing: boolean;
 		voiceErrorMessage: string;
 		voiceRecordingDuration: number;
@@ -42,6 +43,7 @@
 		voiceInputRef = $bindable(),
 		isVoiceRecording = $bindable(),
 		isVoiceInitializing = $bindable(),
+		isVoiceStopping = $bindable(),
 		isVoiceTranscribing = $bindable(),
 		voiceErrorMessage = $bindable(),
 		voiceRecordingDuration = $bindable(),
@@ -88,6 +90,7 @@
 		bind:value={inputValue}
 		bind:isRecording={isVoiceRecording}
 		bind:isInitializing={isVoiceInitializing}
+		bind:isStopping={isVoiceStopping}
 		bind:isTranscribing={isVoiceTranscribing}
 		bind:voiceError={voiceErrorMessage}
 		bind:recordingDuration={voiceRecordingDuration}

@@ -49,6 +49,7 @@
 		liveTranscriptLabel?: string;
 		voiceButtonLabel?: string;
 		listeningLabel?: string;
+		stoppingLabel?: string;
 		transcribingLabel?: string;
 		preparingLabel?: string;
 		class?: string;
@@ -57,6 +58,7 @@
 		// Bindable voice state props for parent components
 		isRecording?: boolean;
 		isInitializing?: boolean;
+		isStopping?: boolean;
 		isTranscribing?: boolean;
 		voiceError?: string;
 		recordingDuration?: number;
@@ -74,6 +76,7 @@
 			[
 				{
 					isCurrentlyRecording: boolean;
+					isStopping: boolean;
 					isTranscribing: boolean;
 					recordingDuration: number;
 					voiceError: string;
@@ -107,6 +110,7 @@
 		liveTranscriptLabel = 'Live transcript',
 		voiceButtonLabel = 'Record voice note',
 		listeningLabel = 'Listening',
+		stoppingLabel = 'Stopping...',
 		transcribingLabel = 'Transcribing…',
 		preparingLabel = 'Preparing microphone…',
 		class: className = '',
@@ -115,6 +119,7 @@
 		// Bindable voice state props
 		isRecording = $bindable(false),
 		isInitializing = $bindable(false),
+		isStopping = $bindable(false),
 		isTranscribing = $bindable(false),
 		voiceError = $bindable(''),
 		recordingDuration = $bindable(0),
@@ -136,6 +141,7 @@
 	let isVoiceSupported = $state(false);
 	let isCurrentlyRecording = $state(false);
 	let isInitializingRecording = $state(false);
+	let _isStopping = $state(false);
 	let _isTranscribing = $state(false);
 	let _voiceError = $state('');
 	let _canUseLiveTranscript = $state(false);
@@ -149,6 +155,13 @@
 	let transcriptUnsubscribe: (() => void) | null = null;
 	let voiceInitialized = $state(false);
 	let textareaRef = $state<Textarea | null>(null);
+	const isTouchDevice = $derived(
+		browser &&
+			typeof navigator !== 'undefined' &&
+			('ontouchstart' in window ||
+				navigator.maxTouchPoints > 0 ||
+				(navigator as any).msMaxTouchPoints > 0)
+	);
 
 	type PendingTranscriptUpdate = {
 		transcript?: string;
@@ -184,7 +197,7 @@
 	const uploadQueue: Array<() => Promise<void>> = [];
 	// Captured transcript snapshot for handleAudioCaptured callback
 	// Set in stopVoiceRecording before clearing liveTranscriptPreview for UI
-	let capturedTranscriptForCallback = '';
+	let capturedTranscriptForCallback = $state('');
 	const MAX_CONCURRENT_UPLOADS = 2;
 
 	// Sync internal state with bindable props for parent component access
@@ -194,6 +207,10 @@
 
 	$effect(() => {
 		isInitializing = isInitializingRecording;
+	});
+
+	$effect(() => {
+		isStopping = _isStopping;
 	});
 
 	$effect(() => {
@@ -541,9 +558,26 @@
 		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0 && _canUseLiveTranscript
 	);
 
+	const displayedLiveTranscript = $derived(
+		liveTranscriptPreview.trim() || capturedTranscriptForCallback
+	);
+
+	const showVoiceActivityPanel = $derived(
+		enableVoice &&
+			showLiveTranscriptPreview &&
+			(isCurrentlyRecording || isLiveTranscribing || _isStopping || _isTranscribing)
+	);
+
 	const transcribingStatusLabel = $derived(
 		hadLiveTranscript ? 'Refining transcript…' : transcribingLabel
 	);
+
+	const voiceActivityLabel = $derived.by(() => {
+		if (_isStopping) return stoppingLabel;
+		if (_isTranscribing) return transcribingStatusLabel;
+		if (isCurrentlyRecording && displayedLiveTranscript.length === 0) return listeningLabel;
+		return liveTranscriptLabel;
+	});
 
 	const voiceButtonState = $derived.by(() =>
 		buildVoiceButtonState({
@@ -551,6 +585,7 @@
 			isVoiceSupported,
 			isCurrentlyRecording,
 			isInitializingRecording,
+			isStopping: _isStopping,
 			isTranscribing: _isTranscribing,
 			voiceBlocked,
 			hasAttemptedVoice,
@@ -596,6 +631,7 @@
 		isVoiceSupported: boolean;
 		isCurrentlyRecording: boolean;
 		isInitializingRecording: boolean;
+		isStopping: boolean;
 		isTranscribing: boolean;
 		voiceBlocked: boolean;
 		hasAttemptedVoice: boolean;
@@ -610,6 +646,7 @@
 			isVoiceSupported,
 			isCurrentlyRecording,
 			isInitializingRecording,
+			isStopping,
 			isTranscribing,
 			voiceBlocked,
 			hasAttemptedVoice,
@@ -674,6 +711,16 @@
 			return {
 				icon: LoaderCircle,
 				label: preparingLabel,
+				disabled: true,
+				isLoading: true,
+				variant: 'loading'
+			};
+		}
+
+		if (isStopping) {
+			return {
+				icon: LoaderCircle,
+				label: stoppingLabel,
 				disabled: true,
 				isLoading: true,
 				variant: 'loading'
@@ -757,11 +804,18 @@
 					_voiceError = errorMessage;
 					isCurrentlyRecording = false;
 					isInitializingRecording = false;
+					_isStopping = false;
+					liveTranscriptPreview = '';
 				},
 				onPhaseChange: (phase: 'idle' | 'transcribing') => {
 					_isTranscribing = phase === 'transcribing';
+					if (phase === 'transcribing') {
+						_isStopping = false;
+					}
 					if (phase === 'idle') {
 						hadLiveTranscript = false;
+						_isStopping = false;
+						liveTranscriptPreview = '';
 					}
 				},
 				onPermissionGranted: () => {
@@ -795,6 +849,7 @@
 			voiceBlocked ||
 			isInitializingRecording ||
 			isCurrentlyRecording ||
+			_isStopping ||
 			_isTranscribing ||
 			disabled
 		) {
@@ -811,8 +866,10 @@
 			isInitializingRecording = false;
 			isCurrentlyRecording = true;
 			microphonePermissionGranted = true;
-			// Focus textarea so Space/Enter can stop recording
-			textareaRef?.focus();
+			// Keep desktop keyboard shortcuts, but avoid reopening the mobile keyboard.
+			if (!isTouchDevice) {
+				textareaRef?.focus({ preventScroll: true });
+			}
 		} catch (error) {
 			console.error('Failed to start voice recording:', error);
 			const message =
@@ -835,9 +892,9 @@
 		capturedTranscriptForCallback = liveTranscriptPreview.trim();
 		hadLiveTranscript = capturedTranscriptForCallback.length > 0;
 
-		// Clear recording states IMMEDIATELY so transcribing state can show
+		// Move through an explicit stopping state while MediaRecorder flushes.
 		// This must happen BEFORE the await so the UI updates promptly
-		liveTranscriptPreview = '';
+		_isStopping = true;
 		isCurrentlyRecording = false;
 		isInitializingRecording = false;
 
@@ -850,12 +907,13 @@
 			_voiceError = message;
 		} finally {
 			// Clear captured transcript after callback has had a chance to use it
+			_isStopping = false;
 			capturedTranscriptForCallback = '';
 		}
 	}
 
 	async function toggleVoiceRecording() {
-		if (!enableVoice || !isVoiceSupported) return;
+		if (!enableVoice || !isVoiceSupported || _isStopping) return;
 
 		// Haptic feedback for voice toggle (mobile)
 		haptic('light');
@@ -868,7 +926,7 @@
 	}
 
 	async function stopRecordingInternal() {
-		if (isCurrentlyRecording || isInitializingRecording) {
+		if (isCurrentlyRecording || isInitializingRecording || _isStopping) {
 			await stopVoiceRecording();
 		}
 	}
@@ -885,6 +943,7 @@
 
 		isCurrentlyRecording = false;
 		isInitializingRecording = false;
+		_isStopping = false;
 		_isTranscribing = false;
 		_recordingDuration = 0;
 		liveTranscriptPreview = '';
@@ -945,10 +1004,10 @@
 </script>
 
 <div class={`${containerClass} ${className}`.trim()}>
-	<!-- Live transcript preview: Positioned above textarea as floating box -->
-	{#if enableVoice && showLiveTranscriptPreview && isLiveTranscribing}
+	<!-- Voice activity panel: stays mounted through stopping/transcribing to avoid composer jumps. -->
+	{#if showVoiceActivityPanel}
 		<div
-			class="mb-2 overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink"
+			class="mb-2 min-h-[2.75rem] overflow-hidden rounded-lg border border-accent/50 bg-card shadow-ink"
 			aria-live="polite"
 			aria-atomic="true"
 		>
@@ -957,10 +1016,14 @@
 					class="mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent"
 				>
 					<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-accent"></span>
-					{liveTranscriptLabel}
+					{voiceActivityLabel}
 				</span>
 				<p class="m-0 line-clamp-3 flex-1 text-sm leading-relaxed text-foreground">
-					{liveTranscriptPreview}
+					{_isStopping
+						? 'Finishing capture...'
+						: _isTranscribing
+							? transcribingStatusLabel
+							: displayedLiveTranscript || 'Recording audio...'}
 				</p>
 			</div>
 		</div>
@@ -984,8 +1047,10 @@
 			{...restProps}
 			onkeydown={(e) => {
 				handleTextareaKeyDown(e);
-				// Also call any passed keydown handler from restProps
-				restProps.onkeydown?.(e);
+				// If voice handling consumed Enter/Space, do not let the parent treat it as send.
+				if (!e.defaultPrevented) {
+					restProps.onkeydown?.(e);
+				}
 			}}
 		/>
 	</div>
@@ -1059,6 +1124,12 @@
 							<LoaderCircle class="h-3 w-3 animate-spin" />
 							<span class="text-xs font-medium">{preparingLabel}</span>
 						</span>
+					{:else if enableVoice && _isStopping}
+						<!-- Stopping state: keep UI busy while MediaRecorder flushes audio -->
+						<span class="flex items-center gap-1.5 text-muted-foreground">
+							<LoaderCircle class="h-3 w-3 animate-spin" />
+							<span class="text-xs font-medium">{stoppingLabel}</span>
+						</span>
 					{:else if enableVoice && _isTranscribing}
 						<!-- Transcribing state: accent color for active processing -->
 						<span class="flex items-center gap-1.5 text-accent">
@@ -1121,6 +1192,7 @@
 					{#if status}
 						{@render status({
 							isCurrentlyRecording,
+							isStopping: _isStopping,
 							isTranscribing: _isTranscribing,
 							recordingDuration: _recordingDuration,
 							voiceError: _voiceError

@@ -389,6 +389,7 @@
 	let voiceInputRef = $state<TextareaWithVoiceComponent | null>(null);
 	let isVoiceRecording = $state(false);
 	let isVoiceInitializing = $state(false);
+	let isVoiceStopping = $state(false);
 	let isVoiceTranscribing = $state(false);
 	let voiceErrorMessage = $state('');
 	let voiceSupportsLiveTranscript = $state(false);
@@ -641,6 +642,7 @@
 			(!inputValue.trim() && !isVoiceRecording) || // Allow send if recording (will get transcribed text)
 			(isStreaming && !isTouchDevice) ||
 			isVoiceInitializing ||
+			isVoiceStopping ||
 			isVoiceTranscribing ||
 			pendingSendAfterTranscription // Prevent double-clicks while waiting for transcription
 	);
@@ -722,6 +724,7 @@
 		pendingToolResults.clear();
 		resetMutationTracking();
 		voiceErrorMessage = '';
+		isVoiceStopping = false;
 		voiceNoteGroupId = null;
 		voiceNotesByGroupId = {};
 		pendingSendAfterTranscription = false;
@@ -757,7 +760,15 @@
 	// Braindump handlers
 	function handleBraindumpSubmit() {
 		const trimmed = inputValue.trim();
-		if (!trimmed || isVoiceRecording || isVoiceInitializing || isVoiceTranscribing) return;
+		if (
+			!trimmed ||
+			isVoiceRecording ||
+			isVoiceInitializing ||
+			isVoiceStopping ||
+			isVoiceTranscribing
+		) {
+			return;
+		}
 
 		pendingBraindumpContent = trimmed;
 		braindumpMode = 'options';
@@ -1255,6 +1266,7 @@
 			(inputValue.trim().length > 0 ||
 				isVoiceRecording ||
 				isVoiceInitializing ||
+				isVoiceStopping ||
 				isVoiceTranscribing ||
 				pendingSendAfterTranscription);
 		const key = buildFastChatContextCacheKey({
@@ -3154,7 +3166,9 @@
 	// Auto-send after transcription completes (when user clicked send while recording)
 	$effect(() => {
 		if (!pendingSendAfterTranscription) return;
-		if (isVoiceRecording || isVoiceTranscribing || isVoiceInitializing) return;
+		if (isVoiceRecording || isVoiceStopping || isVoiceTranscribing || isVoiceInitializing) {
+			return;
+		}
 
 		if (inputValue.trim()) {
 			pendingSendAfterTranscription = false;
@@ -3172,7 +3186,7 @@
 		const { senderType = 'user', suppressInputClear = false } = options;
 		const trimmed = (contentOverride ?? inputValue).trim();
 		const activeVoiceNoteGroupId = voiceNoteGroupId;
-		if (!trimmed || isVoiceInitializing || isVoiceTranscribing) return;
+		if (!trimmed || isVoiceInitializing || isVoiceStopping || isVoiceTranscribing) return;
 		if (!selectedContextType) {
 			error = 'Select a focus before starting the conversation.';
 			return;
@@ -4484,6 +4498,7 @@
 			bind:inputValue
 			bind:isVoiceRecording
 			bind:isVoiceInitializing
+			bind:isVoiceStopping
 			bind:isVoiceTranscribing
 			bind:voiceErrorMessage
 			bind:voiceRecordingDuration
@@ -4631,6 +4646,7 @@
 									bind:inputValue
 									bind:isVoiceRecording
 									bind:isVoiceInitializing
+									bind:isVoiceStopping
 									bind:isVoiceTranscribing
 									bind:voiceErrorMessage
 									bind:voiceRecordingDuration
@@ -4641,6 +4657,7 @@
 									isSendDisabled={!inputValue.trim() ||
 										isVoiceRecording ||
 										isVoiceInitializing ||
+										isVoiceStopping ||
 										isVoiceTranscribing}
 									displayContextLabel="your braindump"
 									vocabularyTerms="braindump"

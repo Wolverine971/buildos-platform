@@ -201,8 +201,8 @@
 	});
 
 	// Expose focus method for parent components
-	export function focus() {
-		textareaElement?.focus();
+	export function focus(options?: FocusOptions) {
+		textareaElement?.focus(options);
 	}
 
 	// Expose blur method for parent components

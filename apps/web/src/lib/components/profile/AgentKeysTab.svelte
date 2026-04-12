@@ -596,7 +596,7 @@
 					<h2 class="text-lg font-semibold text-foreground">Agent Keys</h2>
 					<p class="text-sm text-muted-foreground mt-1">
 						Manage API keys for external agents like OpenClaw to access your BuildOS
-						data.
+						data. Full secret keys are shown only when generated or rotated.
 					</p>
 				</div>
 				<div class="flex items-center gap-2">
@@ -651,6 +651,15 @@
 				</Badge>
 			</div>
 
+			<div
+				class="rounded-lg border border-border bg-muted/20 p-3 text-sm text-muted-foreground"
+			>
+				<span class="font-medium text-foreground">Need the full key?</span>
+				For security, BuildOS stores only a hash after creation. Generate a new key, or use Edit
+				/ Rotate on an existing key, then copy the full BuildOS Agent Key from the confirmation
+				modal.
+			</div>
+
 			{#if loading}
 				<div
 					class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground text-center"
@@ -685,12 +694,17 @@
 									</div>
 									<div class="text-xs text-muted-foreground space-y-0.5">
 										<p>
-											<span class="font-medium text-foreground">Key:</span>
+											<span class="font-medium text-foreground"
+												>Caller key:</span
+											>
 											<code>{caller.caller_key}</code>
 										</p>
 										<p>
 											<span class="font-medium text-foreground">Prefix:</span>
 											<code>{caller.token_prefix}</code>
+											<span class="ml-1 text-muted-foreground">
+												secret shown only on generate or rotate
+											</span>
 										</p>
 										<p>
 											<span class="font-medium text-foreground">Scope:</span>
@@ -714,7 +728,9 @@
 										<Button
 											variant="outline"
 											size="sm"
-											icon={copiedId === `agent-prompt-${caller.id}` ? CircleCheck : Copy}
+											icon={copiedId === `agent-prompt-${caller.id}`
+												? CircleCheck
+												: Copy}
 											onclick={() =>
 												copyToClipboard(
 													`agent-prompt-${caller.id}`,
@@ -735,7 +751,9 @@
 										disabled={saving}
 										onclick={() => openEditModal(caller)}
 									>
-										{caller.status === 'revoked' ? 'Reissue' : 'Edit'}
+										{caller.status === 'revoked'
+											? 'Reissue Key'
+											: 'Edit / Rotate'}
 									</Button>
 									{#if caller.status !== 'revoked'}
 										<Button
@@ -1040,8 +1058,12 @@
 
 				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 					<div class="text-xs uppercase tracking-wider text-muted-foreground">
-						BuildOS Agent Key
+						Full BuildOS Agent Key
 					</div>
+					<p class="text-xs text-muted-foreground">
+						Copy this now. After you close this modal, BuildOS will only show the token
+						prefix.
+					</p>
 					<div class="flex items-center gap-2">
 						<code class="text-sm text-foreground break-all flex-1">
 							{latestProvisioned.credentials.bearer_token}
@@ -1057,7 +1079,7 @@
 									'Key copied'
 								)}
 						>
-							{copiedId === 'latest-token' ? 'Copied' : 'Copy'}
+							{copiedId === 'latest-token' ? 'Key Copied' : 'Copy Key'}
 						</Button>
 					</div>
 				</div>
@@ -1069,8 +1091,8 @@
 								Paste Into Any Agent
 							</div>
 							<p class="mt-1 text-xs text-muted-foreground">
-								Use the placeholder prompt when you want to store the key separately.
-								Use the key prompt only for a trusted agent chat.
+								Use the placeholder prompt when you want to store the key
+								separately. Use the key prompt only for a trusted agent chat.
 							</p>
 						</div>
 						<div class="flex flex-wrap gap-2">
@@ -1106,9 +1128,7 @@
 										'Agent prompt with key copied'
 									)}
 							>
-								{copiedId === 'agent-prompt-with-key'
-									? 'Copied'
-									: 'Copy With Key'}
+								{copiedId === 'agent-prompt-with-key' ? 'Copied' : 'Copy With Key'}
 							</Button>
 						</div>
 					</div>

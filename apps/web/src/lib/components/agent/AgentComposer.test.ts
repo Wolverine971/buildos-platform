@@ -13,6 +13,7 @@ function createProps(overrides: Record<string, unknown> = {}) {
 		voiceInputRef: null,
 		isVoiceRecording: false,
 		isVoiceInitializing: false,
+		isVoiceStopping: false,
 		isVoiceTranscribing: false,
 		voiceErrorMessage: '',
 		voiceRecordingDuration: 0,
