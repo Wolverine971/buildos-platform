@@ -2,6 +2,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
 import { resolveModelPricingProfile } from '@buildos/smart-llm';
+import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 
 type Supabase = SupabaseClient<Database>;
 
@@ -264,10 +265,25 @@ export async function getAdminLlmUsageStats(supabase: Supabase, lookbackDays: nu
 				.order('created_at', { ascending: false })
 				.range(from, to)
 		),
-		fetchAllRows<Pick<UsageLogRow, 'total_cost_usd' | 'total_tokens'>>((from, to) =>
+		fetchAllRows<
+			Pick<
+				UsageLogRow,
+				| 'model_requested'
+				| 'model_used'
+				| 'prompt_tokens'
+				| 'completion_tokens'
+				| 'input_cost_usd'
+				| 'output_cost_usd'
+				| 'total_cost_usd'
+				| 'total_tokens'
+				| 'metadata'
+			>
+		>((from, to) =>
 			supabase
 				.from('llm_usage_logs')
-				.select('total_cost_usd, total_tokens')
+				.select(
+					'model_requested, model_used, prompt_tokens, completion_tokens, input_cost_usd, output_cost_usd, total_cost_usd, total_tokens, metadata'
+				)
 				.gte('created_at', previousStartIso)
 				.lt('created_at', previousEndIso)
 				.order('created_at', { ascending: false })
@@ -349,9 +365,10 @@ export async function getAdminLlmUsageStats(supabase: Supabase, lookbackDays: nu
 	let cacheHits = 0;
 
 	for (const row of usageRows) {
-		const cost = numberValue(row.total_cost_usd);
-		const input = numberValue(row.input_cost_usd);
-		const output = numberValue(row.output_cost_usd);
+		const costBreakdown = resolveUsageLogCostBreakdown(row);
+		const cost = costBreakdown.totalCost;
+		const input = costBreakdown.inputCost;
+		const output = costBreakdown.outputCost;
 		const rowPromptTokens = numberValue(row.prompt_tokens);
 		const rowCompletionTokens = numberValue(row.completion_tokens);
 		const rowTotalTokens =
@@ -707,7 +724,7 @@ export async function getAdminLlmUsageStats(supabase: Supabase, lookbackDays: nu
 	}
 
 	const previousTotalCost = previousUsageRows.reduce(
-		(sum, row) => sum + numberValue(row.total_cost_usd),
+		(sum, row) => sum + resolveUsageLogCostBreakdown(row).totalCost,
 		0
 	);
 	const previousTotalTokens = previousUsageRows.reduce(

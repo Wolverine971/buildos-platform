@@ -81,11 +81,22 @@
 		'brief.failed',
 		'brain_dump.processed',
 		'task.due_soon',
+		'task.assigned',
+		'entity.tagged',
+		'comment.mentioned',
 		'project.activity.changed',
 		'project.activity.batched',
 		'project.invite.accepted',
 		'project.phase_scheduled',
-		'calendar.sync_failed'
+		'calendar.sync_failed',
+		'payment.warning',
+		'user.trial_reminder',
+		'billing_ops_anomaly',
+		'homework.run_completed',
+		'homework.run_stopped',
+		'homework.run_failed',
+		'homework.run_canceled',
+		'homework.run_updated'
 	];
 
 	// Status options
@@ -96,7 +107,8 @@
 		'failed',
 		'bounced',
 		'opened',
-		'clicked'
+		'clicked',
+		'cancelled'
 	];
 
 	// Log level options

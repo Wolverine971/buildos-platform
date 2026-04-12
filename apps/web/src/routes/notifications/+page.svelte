@@ -322,6 +322,9 @@
 		}
 		if (rows.length === 1) {
 			const row = rows[0];
+			if (!row) {
+				return getStatusInfo('delivery', null, null, null, null, null);
+			}
 			return getStatusInfo(
 				row.feed_kind,
 				row.status,
@@ -357,6 +360,10 @@
 			if (rankDelta !== 0) return rankDelta;
 			return compareByCreatedAtDesc(a, b);
 		})[0];
+
+		if (!bestRow) {
+			return getStatusInfo('delivery', null, null, null, null, null);
+		}
 
 		return getStatusInfo(
 			bestRow.feed_kind,

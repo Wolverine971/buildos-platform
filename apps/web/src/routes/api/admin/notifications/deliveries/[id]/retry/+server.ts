@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/notifications/deliveries/[id]/retry/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { generateCorrelationId } from '@buildos/shared-utils';
 
 export const POST: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -32,7 +33,7 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 
 		const { data: event, error: eventError } = await supabase
 			.from('notification_events')
-			.select('event_type')
+			.select('event_type, correlation_id')
 			.eq('id', delivery.event_id)
 			.single();
 
@@ -45,12 +46,22 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 			return ApiResponse.badRequest('Maximum retry attempts exceeded');
 		}
 
+		const correlationId =
+			delivery.correlation_id || event.correlation_id || generateCorrelationId();
+
 		// Reset delivery status to pending and queue a new job
 		const { error: updateError } = await supabase
 			.from('notification_deliveries')
 			.update({
 				status: 'pending',
 				last_error: null,
+				failed_at: null,
+				sent_at: null,
+				delivered_at: null,
+				opened_at: null,
+				clicked_at: null,
+				external_id: null,
+				correlation_id: correlationId,
 				updated_at: new Date().toISOString()
 			})
 			.eq('id', deliveryId);
@@ -69,7 +80,8 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 				event_type: event.event_type,
 				delivery_id: deliveryId,
 				channel: delivery.channel,
-				retry: true
+				retry: true,
+				correlationId
 			},
 			p_priority: 10,
 			p_scheduled_for: new Date().toISOString(),

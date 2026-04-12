@@ -9,9 +9,10 @@
 	interface Props {
 		data: SMSStats | null;
 		loading?: boolean;
+		timeframeLabel?: string;
 	}
 
-	let { data, loading = false }: Props = $props();
+	let { data, loading = false, timeframeLabel = '24h' }: Props = $props();
 
 	function formatNumber(num: number): string {
 		return new Intl.NumberFormat().format(num);
@@ -167,7 +168,9 @@
 						>
 							<div class="flex items-center justify-between">
 								<div class="flex-1">
-									<p class="text-xs text-muted-foreground mb-2">Last 24 Hours</p>
+									<p class="text-xs text-muted-foreground mb-2">
+										Selected Period ({timeframeLabel})
+									</p>
 									<div class="flex items-baseline gap-2 mb-3">
 										<p
 											class="text-2xl font-bold text-purple-600 dark:text-purple-400"
@@ -238,7 +241,8 @@
 									<span
 										>SMS delivery rate is {formatPercentage(
 											data.sms_delivery_rate_24h
-										)}. Check for invalid phone numbers or carrier issues.</span
+										)} for {timeframeLabel}. Check for invalid phone numbers or
+										carrier issues.</span
 									>
 								</li>
 							{/if}

@@ -21,11 +21,19 @@
 		Eye
 	} from 'lucide-svelte';
 
+	type EmailType = NonNullable<EmailGenerationContext['emailType']>;
+	type ComposeTemplate = EmailType | 'check-in' | 're-engage' | string;
+	type ComposeKey = string | number | null;
+
 	interface Props {
 		isOpen?: boolean;
 		userId: string;
 		userName?: string | null;
 		userEmail: string;
+		initialTemplate?: ComposeTemplate | null;
+		initialInstructions?: string;
+		initialAutoGenerate?: boolean;
+		initialComposeKey?: ComposeKey;
 		onEmailSent?: (data: { userId: string; email: string }) => void;
 	}
 
@@ -34,6 +42,10 @@
 		userId,
 		userName = null,
 		userEmail,
+		initialTemplate = null,
+		initialInstructions = '',
+		initialAutoGenerate = false,
+		initialComposeKey = null,
 		onEmailSent
 	}: Props = $props();
 
@@ -41,7 +53,7 @@
 	let generatedEmail = $state('');
 	let manualEmail = $state('');
 	let subject = $state('Message from BuildOS');
-	let emailType = $state<EmailGenerationContext['emailType']>('custom');
+	let emailType = $state<EmailType>('custom');
 	let tone = $state<EmailGenerationContext['tone']>('friendly');
 	let isGenerating = $state(false);
 	let isSending = $state(false);
@@ -56,6 +68,11 @@
 	let showEmailHistory = $state(false);
 	let selectedEmailForViewer = $state<any>(null);
 	let EmailHistoryViewerModalOpen = $state(false);
+	let appliedInitialComposeKey = $state<ComposeKey>(null);
+	let generatedInitialComposeKey = $state<ComposeKey>(null);
+	let contextRequestId = 0;
+	let historyRequestId = 0;
+	let generationRequestId = 0;
 
 	const emailTemplates = [
 		{ value: 'custom', label: 'Custom Message' },
@@ -78,6 +95,32 @@
 			loadUserContext();
 			loadEmailHistory();
 		}
+	});
+
+	// Apply quick-email intents passed from admin context panels.
+	$effect(() => {
+		if (!browser || !isOpen) return;
+		initialTemplate;
+		initialInstructions;
+		initialComposeKey;
+		userId;
+		userEmail;
+
+		applyInitialComposeIntent();
+	});
+
+	// Context must be loaded before generation so quick actions use the selected user's data.
+	$effect(() => {
+		if (!browser || !isOpen || !initialAutoGenerate || !userContext) return;
+
+		const key = getInitialComposeKey();
+		if (!key || appliedInitialComposeKey !== key || generatedInitialComposeKey === key) {
+			return;
+		}
+		if (!instructions.trim()) return;
+
+		generatedInitialComposeKey = key;
+		void generateEmail();
 	});
 
 	// Generate default system prompt when context changes
@@ -138,8 +181,100 @@ Guidelines:
 		return context;
 	}
 
+	function normalizeTemplate(template: ComposeTemplate | null | undefined): EmailType {
+		switch (template) {
+			case 'welcome':
+				return 'welcome';
+			case 'check-in':
+			case 'follow-up':
+				return 'follow-up';
+			case 'feedback':
+				return 'feedback';
+			case 'feature':
+				return 'feature';
+			default:
+				return 'custom';
+		}
+	}
+
+	function getTemplateInstructions(template: EmailType): string {
+		switch (template) {
+			case 'welcome':
+				return 'Welcome this new user to BuildOS. Highlight key features that match their interests and encourage them to start their first project.';
+			case 'follow-up':
+				return 'Check in on their progress with BuildOS. Reference their recent activity and offer assistance if needed.';
+			case 'feedback':
+				return "Request feedback on their BuildOS experience. Ask specific questions about features they've used and what improvements they'd like to see.";
+			case 'feature':
+				return 'Announce a new BuildOS feature that would be relevant to their workflow based on their usage patterns.';
+			default:
+				return '';
+		}
+	}
+
+	function getTemplateSubject(template: ComposeTemplate | null | undefined): string {
+		switch (template) {
+			case 'welcome':
+				return 'Welcome to BuildOS';
+			case 'check-in':
+			case 'follow-up':
+				return 'Checking in on BuildOS';
+			case 'feedback':
+				return 'Quick BuildOS feedback request';
+			case 'feature':
+				return 'New in BuildOS';
+			case 're-engage':
+				return 'Can I help with BuildOS?';
+			default:
+				return 'Message from BuildOS';
+		}
+	}
+
+	function getInitialComposeKey(): ComposeKey {
+		if (initialComposeKey !== null && initialComposeKey !== undefined) {
+			return initialComposeKey;
+		}
+		if (!initialTemplate && !initialInstructions) {
+			return null;
+		}
+		return [
+			userId || 'beta-only',
+			userEmail,
+			initialTemplate || 'custom',
+			initialInstructions || ''
+		].join(':');
+	}
+
+	function applyInitialComposeIntent() {
+		const key = getInitialComposeKey();
+		if (!key || appliedInitialComposeKey === key) return;
+
+		const normalizedTemplate = normalizeTemplate(initialTemplate);
+		const trimmedInstructions = initialInstructions.trim();
+
+		emailType = normalizedTemplate;
+		instructions = trimmedInstructions || getTemplateInstructions(normalizedTemplate);
+		subject = getTemplateSubject(initialTemplate || normalizedTemplate);
+		editMode = 'split';
+		generatedEmail = '';
+		manualEmail = '';
+		showEmailHistory = false;
+		EmailHistoryViewerModalOpen = false;
+		selectedEmailForViewer = null;
+		generationRequestId += 1;
+		isGenerating = false;
+		showSystemPrompt = false;
+		contextPanelExpanded = false;
+		defaultSystemPrompt = generateDefaultSystemPrompt();
+		customSystemPrompt = defaultSystemPrompt;
+		appliedInitialComposeKey = key;
+		generatedInitialComposeKey = null;
+	}
+
 	async function loadUserContext() {
+		const requestId = ++contextRequestId;
 		contextLoading = true;
+		userContext = null;
 		try {
 			// Check if this is a beta member without a user account
 			const isBetaOnly = !userId || userId === '';
@@ -161,24 +296,31 @@ Guidelines:
 			const response = await fetch(url);
 			if (!response.ok) throw new Error('Failed to load user context');
 			const data = await response.json();
+			if (requestId !== contextRequestId) return;
 			userContext = data.data;
 		} catch (error) {
+			if (requestId !== contextRequestId) return;
 			console.error('Error loading user context:', error);
 			toastService.error('Failed to load user information');
 		} finally {
+			if (requestId !== contextRequestId) return;
 			contextLoading = false;
 		}
 	}
 
 	async function loadEmailHistory() {
+		const requestId = ++historyRequestId;
+		emailHistory = [];
 		try {
 			const response = await fetch(
 				`/api/admin/emails/history?email=${encodeURIComponent(userEmail)}`
 			);
 			if (!response.ok) throw new Error('Failed to load email history');
 			const data = await response.json();
+			if (requestId !== historyRequestId) return;
 			emailHistory = data.data || [];
 		} catch (error) {
+			if (requestId !== historyRequestId) return;
 			console.error('Error loading email history:', error);
 			emailHistory = [];
 		}
@@ -200,6 +342,7 @@ Guidelines:
 			return;
 		}
 
+		const requestId = ++generationRequestId;
 		isGenerating = true;
 		try {
 			// Use 'beta-only' as userId for beta members without accounts
@@ -224,12 +367,15 @@ Guidelines:
 				throw new Error(result?.error?.[0] || 'Failed to generate email');
 			}
 
+			if (requestId !== generationRequestId) return;
 			generatedEmail = result.data?.email;
 			toastService.success('Email generated successfully');
 		} catch (error) {
+			if (requestId !== generationRequestId) return;
 			console.error('Error generating email:', error);
 			toastService.error(error instanceof Error ? error.message : 'Failed to generate email');
 		} finally {
+			if (requestId !== generationRequestId) return;
 			isGenerating = false;
 		}
 	}
@@ -328,33 +474,25 @@ Guidelines:
 		editMode = 'split';
 		showSystemPrompt = false;
 		customSystemPrompt = '';
+		emailHistory = [];
+		showEmailHistory = false;
+		selectedEmailForViewer = null;
+		EmailHistoryViewerModalOpen = false;
+		appliedInitialComposeKey = null;
+		generatedInitialComposeKey = null;
+		contextRequestId += 1;
+		historyRequestId += 1;
+		generationRequestId += 1;
+		contextLoading = false;
+		isGenerating = false;
 	}
 
 	function handleTemplateChange(e: Event) {
 		const target = e.target as HTMLSelectElement;
-		emailType = target.value as EmailGenerationContext['emailType'];
+		emailType = target.value as EmailType;
 
-		// Set default instructions based on template
-		switch (emailType) {
-			case 'welcome':
-				instructions =
-					'Welcome this new user to BuildOS. Highlight key features that match their interests and encourage them to start their first project.';
-				break;
-			case 'follow-up':
-				instructions =
-					'Check in on their progress with BuildOS. Reference their recent activity and offer assistance if needed.';
-				break;
-			case 'feedback':
-				instructions =
-					"Request feedback on their BuildOS experience. Ask specific questions about features they've used and what improvements they'd like to see.";
-				break;
-			case 'feature':
-				instructions =
-					'Announce a new BuildOS feature that would be relevant to their workflow based on their usage patterns.';
-				break;
-			default:
-				instructions = '';
-		}
+		instructions = getTemplateInstructions(emailType);
+		subject = getTemplateSubject(emailType);
 		// Regenerate system prompt when template changes
 		defaultSystemPrompt = generateDefaultSystemPrompt();
 		if (!showSystemPrompt) {
@@ -493,7 +631,8 @@ Guidelines:
 								expanded={true}
 								on:composeEmail={(e) => {
 									instructions = e.detail.instructions;
-									emailType = 'custom';
+									emailType = normalizeTemplate(e.detail.template);
+									subject = getTemplateSubject(e.detail.template);
 									setTimeout(() => generateEmail(), 100);
 								}}
 							/>

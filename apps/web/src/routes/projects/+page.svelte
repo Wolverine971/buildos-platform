@@ -26,12 +26,14 @@
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
+	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
 
 	let { data } = $props();
 
 	// AgentChatModal state for creating new projects
 	let showChatModal = $state(false);
 	let AgentChatModal = $state<any>(null);
+	let isPullRefreshing = $state(false);
 
 	async function handleCreateProject() {
 		// Lazy load the AgentChatModal
@@ -56,6 +58,17 @@
 				duration: TOAST_DURATION.LONG
 			});
 			invalidateAll();
+		}
+	}
+
+	async function handlePullRefresh() {
+		if (isPullRefreshing || showChatModal) return;
+
+		isPullRefreshing = true;
+		try {
+			await invalidateAll();
+		} finally {
+			isPullRefreshing = false;
 		}
 	}
 
@@ -481,6 +494,11 @@
 <svelte:head>
 	<title>Projects | BuildOS</title>
 </svelte:head>
+
+<PullToRefresh
+	onRefresh={handlePullRefresh}
+	disabled={isPullRefreshing || showChatModal || projectsLoading}
+/>
 
 <div
 	class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-2 sm:space-y-4"

@@ -371,6 +371,116 @@ function transformCriticalError(payload: Record<string, any>): NotificationPaylo
 	};
 }
 
+function buildTrackedPayload(
+	eventType: EventType,
+	payload: Record<string, any>,
+	defaultTitle: string,
+	defaultBody: string,
+	defaultActionUrl = '/'
+): NotificationPayload {
+	return {
+		title: payload.title || defaultTitle,
+		body: payload.body || payload.message || defaultBody,
+		action_url: payload.action_url || payload.url || defaultActionUrl,
+		icon_url: '/AppImages/android/android-launchericon-192-192.png',
+		data: {
+			event_type: eventType,
+			...payload
+		}
+	};
+}
+
+function transformTaskAssigned(payload: Record<string, any>): NotificationPayload {
+	const taskTitle = payload.task_title || payload.entity_title || 'a task';
+	const projectName = payload.project_name || 'your project';
+	return buildTrackedPayload(
+		'task.assigned',
+		payload,
+		'Task assigned to you',
+		`You were assigned ${taskTitle} in ${projectName}.`,
+		payload.task_id && payload.project_id
+			? `/projects/${payload.project_id}/tasks/${payload.task_id}`
+			: '/projects'
+	);
+}
+
+function transformEntityTagged(payload: Record<string, any>): NotificationPayload {
+	const entityType = payload.entity_type || 'item';
+	const projectName = payload.project_name || 'your project';
+	return buildTrackedPayload(
+		'entity.tagged',
+		payload,
+		'You were tagged',
+		`You were tagged in a ${entityType} in ${projectName}.`,
+		payload.project_id ? `/projects/${payload.project_id}` : '/projects'
+	);
+}
+
+function transformCommentMentioned(payload: Record<string, any>): NotificationPayload {
+	const entityType = payload.entity_type || 'item';
+	const projectName = payload.project_name || 'your project';
+	return buildTrackedPayload(
+		'comment.mentioned',
+		payload,
+		'You were mentioned',
+		`You were mentioned in a comment on a ${entityType} in ${projectName}.`,
+		payload.project_id ? `/projects/${payload.project_id}` : '/projects'
+	);
+}
+
+function transformPaymentWarning(payload: Record<string, any>): NotificationPayload {
+	return buildTrackedPayload(
+		'payment.warning',
+		payload,
+		'Payment Method Required',
+		'Your subscription payment needs attention.',
+		'/profile?tab=billing'
+	);
+}
+
+function transformTrialReminder(payload: Record<string, any>): NotificationPayload {
+	const daysUntilEnd =
+		typeof payload.days_until_end === 'number' ? payload.days_until_end : undefined;
+	const defaultBody =
+		daysUntilEnd === undefined
+			? 'Your trial period is ending soon.'
+			: daysUntilEnd <= 0
+				? 'Your trial ends today.'
+				: `Your trial ends in ${daysUntilEnd} day${daysUntilEnd === 1 ? '' : 's'}.`;
+	return buildTrackedPayload(
+		'user.trial_reminder',
+		payload,
+		'Trial Reminder',
+		defaultBody,
+		'/pricing'
+	);
+}
+
+function transformBillingOpsAnomaly(payload: Record<string, any>): NotificationPayload {
+	return buildTrackedPayload(
+		'billing_ops_anomaly',
+		payload,
+		'Billing Ops Alert',
+		'A billing operations anomaly was detected.',
+		'/admin/subscriptions'
+	);
+}
+
+function transformHomeworkRun(
+	eventType: EventType,
+	payload: Record<string, any>
+): NotificationPayload {
+	const status = payload.status || eventType.replace('homework.run_', '').replace(/_/g, ' ');
+	const title = `Homework ${String(status).charAt(0).toUpperCase()}${String(status).slice(1)}`;
+	return buildTrackedPayload(
+		eventType,
+		payload,
+		title,
+		`Your homework run status changed to ${status}.`,
+		payload.run_id ? `/homework/runs/${payload.run_id}` : '/homework'
+	);
+}
+
 // =====================================================
 // MAIN TRANSFORMER
 // =====================================================
@@ -423,6 +533,31 @@ export function transformEventPayload(
 
 			case 'calendar.sync_failed':
 				return transformCalendarSyncFailed(eventPayload as CalendarSyncFailedEventPayload);
+
+			case 'task.assigned':
+				return transformTaskAssigned(eventPayload);
+
+			case 'entity.tagged':
+				return transformEntityTagged(eventPayload);
+
+			case 'comment.mentioned':
+				return transformCommentMentioned(eventPayload);
+
+			case 'payment.warning':
+				return transformPaymentWarning(eventPayload);
+
+			case 'user.trial_reminder':
+				return transformTrialReminder(eventPayload);
+
+			case 'billing_ops_anomaly':
+				return transformBillingOpsAnomaly(eventPayload);
+
+			case 'homework.run_completed':
+			case 'homework.run_stopped':
+			case 'homework.run_failed':
+			case 'homework.run_canceled':
+			case 'homework.run_updated':
+				return transformHomeworkRun(eventType, eventPayload);
 
 			case 'user.signup':
 				return transformUserSignup(eventPayload as UserSignupEventPayload);

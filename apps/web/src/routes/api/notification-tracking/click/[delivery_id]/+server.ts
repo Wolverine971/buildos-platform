@@ -11,8 +11,13 @@ import { ApiResponse } from '$lib/utils/api-response';
  *
  * Also sets opened_at if not already set (click implies open)
  */
-export const POST: RequestHandler = async ({ params, request, locals: { supabase } }) => {
+export const POST: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	try {
+		const { user } = await safeGetSession();
+		if (!user) {
+			return ApiResponse.unauthorized();
+		}
+
 		const delivery_id = params.delivery_id;
 
 		if (!delivery_id) {
@@ -24,13 +29,17 @@ export const POST: RequestHandler = async ({ params, request, locals: { supabase
 		// Get current delivery record
 		const { data: delivery, error: fetchError } = await supabase
 			.from('notification_deliveries')
-			.select('id, clicked_at, opened_at, status, channel')
+			.select('id, recipient_user_id, clicked_at, opened_at, status, channel')
 			.eq('id', delivery_id)
 			.single();
 
 		if (fetchError || !delivery) {
 			console.error(`[NotificationTracking] Delivery not found: ${delivery_id}`, fetchError);
 			return ApiResponse.notFound('Delivery');
+		}
+
+		if (delivery.recipient_user_id !== user.id && !user.is_admin) {
+			return ApiResponse.forbidden('Cannot track another user notification');
 		}
 
 		const now = new Date().toISOString();

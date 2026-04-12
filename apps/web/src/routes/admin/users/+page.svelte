@@ -43,6 +43,10 @@
 	let emailUserId = $state('');
 	let emailUserName = $state('');
 	let emailUserEmail = $state('');
+	let emailInitialTemplate = $state<string | null>(null);
+	let emailInitialInstructions = $state('');
+	let emailInitialAutoGenerate = $state(false);
+	let emailInitialComposeKey = $state(0);
 
 	// Filters
 	let filterByAdmin = $state('all'); // 'all', 'admin', 'regular'
@@ -202,6 +206,20 @@
 			console.error('Error loading user activity:', err);
 			error = err instanceof Error ? err.message : 'Failed to load user activity';
 		}
+	}
+
+	function openEmailComposer(
+		user: { id?: string; name?: string | null; email: string },
+		intent?: { template?: string; instructions?: string; autoGenerate?: boolean }
+	) {
+		emailUserId = user.id || '';
+		emailUserName = user.name || '';
+		emailUserEmail = user.email;
+		emailInitialTemplate = intent?.template ?? null;
+		emailInitialInstructions = intent?.instructions ?? '';
+		emailInitialAutoGenerate = Boolean(intent?.autoGenerate);
+		emailInitialComposeKey += 1;
+		showEmailModal = true;
 	}
 
 	async function toggleAdminStatus(userId: string, currentStatus: boolean) {
@@ -859,12 +877,7 @@
 									<div class="flex items-center justify-end gap-1">
 										<!-- Send Email -->
 										<Button
-											onclick={() => {
-												emailUserId = user.id;
-												emailUserName = user.name;
-												emailUserEmail = user.email;
-												showEmailModal = true;
-											}}
+											onclick={() => openEmailComposer(user)}
 											variant="ghost"
 											size="sm"
 											icon={Mail}
@@ -1154,7 +1167,17 @@
 
 <!-- User Activity Modal -->
 {#if showActivityModal && selectedUser}
-	<UserActivityModal user={selectedUser} onclose={() => (showActivityModal = false)} />
+	<UserActivityModal
+		user={selectedUser}
+		onclose={() => (showActivityModal = false)}
+		onComposeEmail={(payload) => {
+			openEmailComposer(payload.user, {
+				template: payload.template,
+				instructions: payload.instructions,
+				autoGenerate: true
+			});
+		}}
+	/>
 {/if}
 
 <!-- Email Composer Modal -->
@@ -1163,6 +1186,10 @@
 	userId={emailUserId}
 	userName={emailUserName}
 	userEmail={emailUserEmail}
+	initialTemplate={emailInitialTemplate}
+	initialInstructions={emailInitialInstructions}
+	initialAutoGenerate={emailInitialAutoGenerate}
+	initialComposeKey={emailInitialComposeKey}
 	onEmailSent={() => {
 		showEmailModal = false;
 		// Optionally refresh user list or show success message

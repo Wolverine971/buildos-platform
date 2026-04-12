@@ -113,7 +113,7 @@
 	let lastTriggerResult = $state<TriggerResult | null>(null);
 	let jobStatuses = $state(new Map<string, JobStatus>());
 	let isPolling = $state(false);
-	let pollInterval: ReturnType<typeof setInterval> | null = null;
+	let pollInterval: number | null = null;
 	let activeTab = $state<'trigger' | 'results' | 'monitor'>('trigger');
 
 	// Calendar preview state

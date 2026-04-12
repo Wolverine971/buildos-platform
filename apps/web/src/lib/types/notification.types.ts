@@ -93,6 +93,7 @@ export interface BaseNotification {
 export interface BinaryProgress {
 	type: 'binary';
 	message?: string;
+	percentage?: number;
 }
 
 export interface PercentageProgress {
@@ -116,6 +117,8 @@ export interface StepsProgress {
 	currentStep: number;
 	totalSteps: number;
 	steps: StepProgressItem[];
+	message?: string;
+	percentage?: number;
 }
 
 export interface StreamingProgress {
@@ -131,6 +134,7 @@ export interface StreamingProgress {
 export interface IndeterminateProgress {
 	type: 'indeterminate';
 	message?: string;
+	percentage?: number;
 }
 
 export type NotificationProgress =
@@ -165,7 +169,7 @@ export interface BrainDumpNotification extends BaseNotification {
 			id: string;
 			name: string;
 		};
-		processingType: 'dual' | 'background';
+		processingType: 'dual' | 'background' | 'short';
 		streamingState?: {
 			analysisStatus?: 'processing' | 'completed' | 'error' | 'not_needed';
 			contextStatus?: 'processing' | 'completed' | 'error';
@@ -179,8 +183,14 @@ export interface BrainDumpNotification extends BaseNotification {
 		};
 		parseResults?: BrainDumpParseResult;
 		executionResult?: {
-			successful: any[];
-			failed: any[];
+			successful?: any[];
+			failed?: any[];
+			successfulOperations?: number;
+			failedOperations?: number;
+			projectInfo?: any;
+			results?: any[];
+			brainDumpId?: string;
+			[key: string]: any;
 		};
 		error?: string;
 	};

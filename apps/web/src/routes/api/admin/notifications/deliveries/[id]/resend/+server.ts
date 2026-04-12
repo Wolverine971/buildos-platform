@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/admin/notifications/deliveries/[id]/resend/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { generateCorrelationId } from '@buildos/shared-utils';
 
 export const POST: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -26,16 +27,23 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 			return ApiResponse.badRequest('Delivery not found');
 		}
 
+		if (!originalDelivery.event_id) {
+			return ApiResponse.badRequest('Delivery is missing event_id');
+		}
+
 		// Get the event payload
 		const { data: event, error: eventError } = await supabase
 			.from('notification_events')
-			.select('payload, event_type')
-			.eq('id', originalDelivery.event_id!)
+			.select('payload, event_type, correlation_id')
+			.eq('id', originalDelivery.event_id)
 			.single();
 
 		if (eventError || !event) {
 			return ApiResponse.badRequest('Event not found');
 		}
+
+		const correlationId =
+			originalDelivery.correlation_id || event.correlation_id || generateCorrelationId();
 
 		// Create a new delivery record (fresh start, no attempts carried over)
 		const { data: newDelivery, error: createError } = await supabase
@@ -46,10 +54,11 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 				recipient_user_id: originalDelivery.recipient_user_id,
 				channel: originalDelivery.channel,
 				channel_identifier: originalDelivery.channel_identifier,
-				payload: event.payload,
+				payload: originalDelivery.payload || event.payload,
 				status: 'pending',
 				attempts: 0,
-				max_attempts: 3
+				max_attempts: 3,
+				correlation_id: correlationId
 			})
 			.select('id')
 			.single();
@@ -69,7 +78,8 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 				channel: originalDelivery.channel,
 				event_type: event.event_type,
 				resend: true,
-				original_delivery_id: deliveryId
+				original_delivery_id: deliveryId,
+				correlationId
 			},
 			p_priority: 10,
 			p_scheduled_for: new Date().toISOString(),

@@ -22,7 +22,21 @@
 	import { onMount } from 'svelte';
 	import { toastService } from '$lib/stores/toast.store';
 
-	let { user, onclose }: { user: any; onclose?: () => void } = $props();
+	type ComposeEmailPayload = {
+		user: any;
+		template: string;
+		instructions: string;
+	};
+
+	let {
+		user,
+		onclose,
+		onComposeEmail
+	}: {
+		user: any;
+		onclose?: () => void;
+		onComposeEmail?: (payload: ComposeEmailPayload) => void;
+	} = $props();
 
 	let userContext = $state<any>(null);
 	let contextLoading = $state(true);
@@ -73,6 +87,17 @@
 
 	function openErrorDetails(error: ErrorLogEntry) {
 		selectedError = error;
+	}
+
+	function handleComposeEmail(event: CustomEvent<{ template: string; instructions: string }>) {
+		if (!onComposeEmail) return;
+
+		onComposeEmail({
+			user,
+			template: event.detail.template,
+			instructions: event.detail.instructions
+		});
+		handleClose();
 	}
 
 	function humanizeLabel(value: string | null | undefined): string {
@@ -303,7 +328,12 @@
 					</Button>
 				</div>
 			{:else if userContext}
-				<UserContextPanel {userContext} expanded={true} showActions={true} />
+				<UserContextPanel
+					{userContext}
+					expanded={true}
+					showActions={true}
+					on:composeEmail={handleComposeEmail}
+				/>
 			{/if}
 
 			<div class="bg-card rounded border border-border shadow-ink overflow-hidden">

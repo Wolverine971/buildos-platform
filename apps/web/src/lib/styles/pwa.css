@@ -89,20 +89,49 @@
 /* Pull to refresh indicator styling */
 .pwa-pull-to-refresh {
 	position: fixed;
-	top: 0;
+	top: env(safe-area-inset-top, 0px);
 	left: 50%;
 	transform: translateX(-50%) translateY(-100%);
-	transition: transform 0.3s ease;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	transition:
+		transform 160ms ease,
+		opacity 160ms ease;
 	z-index: 9999;
 	padding: 0.5rem 1rem;
 	background: hsl(var(--accent));
 	color: hsl(var(--accent-foreground));
 	border-radius: 0 0 0.5rem 0.5rem;
 	font-size: 0.875rem;
+	font-weight: 600;
+	box-shadow: var(--shadow-ink-strong);
+	opacity: 0.94;
+	pointer-events: none;
 }
 
 .pwa-pull-to-refresh.active {
-	transform: translateX(-50%) translateY(0);
+	opacity: 1;
+}
+
+.pwa-pull-to-refresh__spinner {
+	width: 0.75rem;
+	height: 0.75rem;
+	border: 2px solid currentColor;
+	border-top-color: transparent;
+	border-radius: 9999px;
+	opacity: 0.7;
+}
+
+.pwa-pull-to-refresh.refreshing .pwa-pull-to-refresh__spinner {
+	animation: pwa-refresh-spin 700ms linear infinite;
+	opacity: 1;
+}
+
+@keyframes pwa-refresh-spin {
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 /* iOS bounce effect containment */

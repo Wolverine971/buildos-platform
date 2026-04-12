@@ -132,6 +132,53 @@ export const load: PageServerLoad = async ({ locals }) => {
 	}
 
 	const deliveries = (data ?? []) as NotificationDeliveryRow[];
+	const openedAt = new Date().toISOString();
+	const deliveryIdsToMarkOpened = deliveries
+		.filter(
+			(row) =>
+				(row.channel === 'in_app' || row.channel === 'push') &&
+				!row.opened_at &&
+				(row.status === 'sent' || row.status === 'delivered')
+		)
+		.map((row) => row.id);
+
+	if (deliveryIdsToMarkOpened.length > 0) {
+		const { error: markOpenedError } = await supabase
+			.from('notification_deliveries')
+			.update({
+				opened_at: openedAt,
+				status: 'opened',
+				updated_at: openedAt
+			})
+			.eq('recipient_user_id', user.id)
+			.in('id', deliveryIdsToMarkOpened);
+
+		if (markOpenedError) {
+			console.error('[Notifications] Failed to mark deliveries opened', markOpenedError);
+		} else {
+			for (const row of deliveries) {
+				if (deliveryIdsToMarkOpened.includes(row.id)) {
+					row.opened_at = openedAt;
+					row.status = 'opened';
+					row.updated_at = openedAt;
+				}
+			}
+
+			const { error: userNotificationReadError } = await supabase
+				.from('user_notifications')
+				.update({ read_at: openedAt })
+				.in('delivery_id', deliveryIdsToMarkOpened)
+				.is('read_at', null);
+
+			if (userNotificationReadError) {
+				console.error(
+					'[Notifications] Failed to mark user notification rows read',
+					userNotificationReadError
+				);
+			}
+		}
+	}
+
 	const deliveredEventIds = new Set(
 		deliveries
 			.map((row) => row.notification_events?.id)

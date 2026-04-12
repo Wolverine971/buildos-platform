@@ -23,7 +23,7 @@ BEGIN
     p_level,
     p_message,
     p_namespace,
-    p_correlation_id,
+    COALESCE(p_correlation_id, gen_random_uuid()),
     p_event_id,
     p_delivery_id,
     p_user_id,

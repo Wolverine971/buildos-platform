@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/admin-chat-dashboard-analytics.ts
 import { resolveModelPricingProfile } from '@buildos/smart-llm';
+import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 
 export type ChatDashboardTimeframe = '24h' | '7d' | '30d' | '90d' | '365d';
 
@@ -177,11 +178,14 @@ export type ChatDashboardUsageRow = {
 	prompt_tokens?: number | string | null;
 	completion_tokens?: number | string | null;
 	total_tokens?: number | string | null;
+	input_cost_usd?: number | string | null;
+	output_cost_usd?: number | string | null;
 	total_cost_usd?: number | string | null;
 	response_time_ms?: number | string | null;
 	status?: string | null;
 	error_message?: string | null;
 	openrouter_cache_status?: string | null;
+	metadata?: unknown;
 	created_at?: string | null;
 	request_started_at?: string | null;
 };
@@ -231,7 +235,7 @@ export type BuildChatDashboardAnalyticsInput = {
 	turnRuns: ChatDashboardTurnRunRow[];
 	previousTurnRuns: Pick<ChatDashboardTurnRunRow, 'id' | 'status'>[];
 	usageRows: ChatDashboardUsageRow[];
-	previousUsageRows: Pick<ChatDashboardUsageRow, 'total_tokens' | 'total_cost_usd'>[];
+	previousUsageRows: ChatDashboardUsageRow[];
 	llmPassEvents: ChatDashboardTurnEventRow[];
 	toolExecutions: ChatDashboardToolExecutionRow[];
 	evalRuns: ChatDashboardEvalRunRow[];
@@ -570,8 +574,13 @@ export function buildAdminChatDashboardAnalytics(
 		(turn) => turn.request_prewarmed_context === true
 	).length;
 
+	const usageCostBreakdowns = new Map(
+		params.usageRows.map((row) => [row.id, resolveUsageLogCostBreakdown(row)])
+	);
+	const usageCostFor = (row: ChatDashboardUsageRow) =>
+		usageCostBreakdowns.get(row.id) ?? resolveUsageLogCostBreakdown(row);
 	const totalBillableCost = params.usageRows.reduce(
-		(sum, row) => sum + numberValue(row.total_cost_usd),
+		(sum, row) => sum + usageCostFor(row).totalCost,
 		0
 	);
 	const billableTokens = params.usageRows.reduce(
@@ -579,7 +588,7 @@ export function buildAdminChatDashboardAnalytics(
 		0
 	);
 	const previousBillableCost = params.previousUsageRows.reduce(
-		(sum, row) => sum + numberValue(row.total_cost_usd),
+		(sum, row) => sum + resolveUsageLogCostBreakdown(row).totalCost,
 		0
 	);
 	const previousBillableTokens = params.previousUsageRows.reduce(
@@ -593,7 +602,11 @@ export function buildAdminChatDashboardAnalytics(
 		0
 	);
 	const totalTokensUsed = billableTokens > 0 ? billableTokens : eventTokens;
-	const isCostEstimated = totalBillableCost <= 0 && estimatedEventCost > 0;
+	const hasEstimatedUsageCost = Array.from(usageCostBreakdowns.values()).some(
+		(cost) => cost.wasEstimated
+	);
+	const isCostEstimated =
+		hasEstimatedUsageCost || (totalBillableCost <= 0 && estimatedEventCost > 0);
 	const estimatedCost = totalBillableCost > 0 ? totalBillableCost : estimatedEventCost;
 	const responseTimes = params.usageRows
 		.map((row) => numberValue(row.response_time_ms))
@@ -656,7 +669,7 @@ export function buildAdminChatDashboardAnalytics(
 			usage.user_id ?? turn?.user_id ?? session?.user_id
 		);
 		if (!stat) continue;
-		stat.total_cost += numberValue(usage.total_cost_usd);
+		stat.total_cost += usageCostFor(usage).totalCost;
 		stat.total_tokens += numberValue(usage.total_tokens);
 		updateLastActivity(stat, usage.request_started_at ?? usage.created_at);
 		const sessionId = usage.chat_session_id ?? turn?.session_id;
@@ -981,7 +994,7 @@ export async function getAdminChatDashboardAnalytics(
 			supabase
 				.from('llm_usage_logs')
 				.select(
-					'id, user_id, chat_session_id, turn_run_id, operation_type, model_used, model_requested, provider, prompt_tokens, completion_tokens, total_tokens, total_cost_usd, response_time_ms, status, error_message, openrouter_cache_status, created_at, request_started_at'
+					'id, user_id, chat_session_id, turn_run_id, operation_type, model_used, model_requested, provider, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, response_time_ms, status, error_message, openrouter_cache_status, metadata, created_at, request_started_at'
 				)
 				.or(chatUsageFilter)
 				.gte('created_at', startIso)
@@ -989,10 +1002,12 @@ export async function getAdminChatDashboardAnalytics(
 				.order('created_at', { ascending: false })
 				.range(from, to)
 		),
-		fetchAllRows<Pick<ChatDashboardUsageRow, 'total_tokens' | 'total_cost_usd'>>((from, to) =>
+		fetchAllRows<ChatDashboardUsageRow>((from, to) =>
 			supabase
 				.from('llm_usage_logs')
-				.select('total_tokens, total_cost_usd')
+				.select(
+					'id, model_used, model_requested, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, metadata'
+				)
 				.or(chatUsageFilter)
 				.gte('created_at', previousStartIso)
 				.lt('created_at', startIso)

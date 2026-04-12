@@ -2,13 +2,23 @@
 
 # Notification Tracking System Architecture
 
-**Status**: Phase 1 Partially Complete
-**Last Updated**: 2025-10-06
-**Implementation Approach**: Hybrid (Minimal Fix → Email Click Tracking → Unified API)
+**Status**: Multi-channel tracking implemented; admin analytics remediation in progress
+**Last Updated**: 2026-04-12
+**Implementation Approach**: Channel-specific tracking plus shared delivery lifecycle fields
 
 ## Overview
 
-The BuildOS notification tracking system provides unified analytics across all notification channels (email, SMS, push, in-app). This document describes the current architecture and implementation status.
+The BuildOS notification tracking system provides analytics across notification channels (email, SMS, push, in-app). `notification_deliveries` is the lifecycle source of truth, while channel-specific tables retain provider details.
+
+## Current Implementation Notes (2026-04-12)
+
+- Email opens and clicks use `/api/email-tracking/[tracking_id]` and `/api/email-tracking/[tracking_id]/click`, then update linked `notification_deliveries`.
+- SMS clicks use `/l/[short_code]` rows in `notification_tracking_links`, then update linked `notification_deliveries`.
+- Push clicks use `/api/notification-tracking/click/[delivery_id]` and now require the authenticated recipient session or an admin session.
+- In-app and push deliveries are marked opened when the authenticated recipient views `/notifications`.
+- Clicks imply opens: click tracking sets `clicked_at` and fills `opened_at` when missing.
+- Admin notification analytics use selected timeframes for overview, channels, events, failures, and SMS period metrics.
+- Current remediation tracker: [`/apps/web/docs/features/notifications/admin-notifications-remediation-plan-2026-04-12.md`](/apps/web/docs/features/notifications/admin-notifications-remediation-plan-2026-04-12.md)
 
 ## Quick Links
 
@@ -17,11 +27,11 @@ The BuildOS notification tracking system provides unified analytics across all n
 - **Email System Docs**: [`/apps/web/docs/technical/architecture/email-system.md`](/apps/web/docs/technical/architecture/email-system.md)
 - **SMS Design**: [`/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md`](/docs/architecture/SMS_NOTIFICATION_CHANNEL_DESIGN.md)
 
-## ✅ Implementation Status
+## Implementation Status
 
-### Phase 1: Email Tracking (PARTIALLY COMPLETE)
+### Email Tracking
 
-#### ✅ Implemented (2025-10-06)
+Implemented:
 
 1. **Email Open Tracking**
     - Existing tracking pixel connected to `notification_deliveries`
@@ -35,24 +45,31 @@ The BuildOS notification tracking system provides unified analytics across all n
     - Click implies open logic
     - Status set to 'clicked'
 
-3. **TypeScript Fixes**
-    - SMS adapter type errors resolved
-    - Full compilation verification
+### SMS Tracking
 
-#### ⏳ Pending
+Implemented:
 
-- User testing and dashboard verification
-- Unified tracking API (deferred to Week 2+)
+- Twilio status callbacks update `sms_messages` and linked `notification_deliveries`.
+- Short links in SMS messages update `notification_tracking_links` and linked delivery click/open fields.
+- Admin SMS analytics use the selected dashboard timeframe.
 
-### Phase 2-5: Other Channels (NOT STARTED)
+### Push Tracking
 
-- Push notification click tracking
-- SMS click tracking (requires link shortener)
-- In-app notification tracking
+Implemented:
+
+- Service worker notification clicks post to `/api/notification-tracking/click/[delivery_id]`.
+- The click endpoint requires the authenticated recipient session or an admin session.
+
+### In-App Tracking
+
+Implemented:
+
+- Tracked in-app writers create linked `notification_events`, `notification_deliveries`, and `user_notifications`.
+- Viewing `/notifications` marks visible in-app and push delivery rows opened for the authenticated recipient.
 
 ## Architecture
 
-### Current System (Phase 1)
+### Email Tracking Flow
 
 ```
 ┌─────────────────────────────────────────────────────────┐

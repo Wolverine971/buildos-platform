@@ -11,6 +11,8 @@ Generic stackable notification system for long-running processes with minimized 
 - `NOTIFICATION_SYSTEM_CHECKPOINT.md` - Development checkpoint
 - `NOTIFICATION_SYSTEM_DOCS_MAP.md` - Complete documentation map
 - `NOTIFICATION_SYSTEM_IMPLEMENTATION.md` - Phase 1 implementation summary
+- `admin-notifications-remediation-plan-2026-04-12.md` - Current admin analytics, tracking, and audit remediation tracker
+- `notification-audit.md` - Current multi-channel notification system audit and remediation history
 - `implementation/NOTIFICATION_PHASE3_IMPLEMENTATION.md` - Phase 3: Daily brief notifications + 2025-10-13 refactor
 - `URGENT_NOTIFICATION_BUG.md` - Critical bug documentation
 - `generic-stackable-notification-system-spec.md` - Full technical specification

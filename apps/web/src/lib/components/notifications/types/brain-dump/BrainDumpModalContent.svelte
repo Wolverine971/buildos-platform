@@ -212,7 +212,7 @@
 			console.log('[BrainDumpModalContent] Applying operations for brain dump:', brainDumpId);
 
 			// Call API to save brain dump and execute operations
-			const response = await brainDumpService.saveBrainDump({
+			const response = (await brainDumpService.saveBrainDump({
 				operations: enabledOperations,
 				originalText: inputText,
 				insights: parseResults.insights,
@@ -221,9 +221,9 @@
 				projectQuestions: parseResults.projectQuestions || [],
 				brainDumpId: brainDumpId,
 				selectedProjectId: selectedProject?.id === 'new' ? undefined : selectedProject?.id
-			});
+			})) as { success?: boolean; data?: any; error?: string };
 
-			if (response.success && response.data) {
+			if ((response.success ?? Boolean(response.data)) && response.data) {
 				console.log('[BrainDumpModalContent] Operations applied successfully');
 
 				// Update notification status to success
@@ -776,10 +776,11 @@
 		closeOnEscape={true}
 	>
 		{#snippet children()}
+			{@const projectUpdate = pendingProjectUpdate}
 			<div class="p-6 text-center">
 				<CheckCircle class="w-12 h-12 mx-auto mb-4 text-green-600 dark:text-green-400" />
 				<h3 class="text-lg font-semibold text-foreground mb-2">
-					{pendingProjectUpdate.projectName} has been updated
+					{projectUpdate?.projectName ?? 'Project'} has been updated
 				</h3>
 				<p class="text-muted-foreground mb-6">
 					Your changes have been applied. Refresh the page to see the latest updates.

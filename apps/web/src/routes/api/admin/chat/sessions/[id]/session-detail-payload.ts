@@ -1,5 +1,6 @@
 // apps/web/src/routes/api/admin/chat/sessions/[id]/session-detail-payload.ts
 import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
+import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 
 type TimelineSeverity = 'info' | 'success' | 'warning' | 'error';
 type TimelineType =
@@ -596,13 +597,20 @@ export const buildSessionDetailPayload = ({
 	const userMessageTimestamps = messages
 		.filter((row) => row.role === 'user' && typeof row.created_at === 'string')
 		.map((row) => row.created_at as string);
+	const llmCallsWithEffectiveCost = llmCalls.map((row) => ({
+		...row,
+		total_cost_usd: resolveUsageLogCostBreakdown(row).totalCost
+	}));
 
 	const firstUserMessage = messages.find((row) => row.role === 'user')?.content ?? null;
 	const computedTitle = sessionTitle(sessionRow, firstUserMessage);
 
 	const messageTokenTotal = messages.reduce((sum, row) => sum + asNumber(row.total_tokens), 0);
 	const usageTokenTotal = llmCalls.reduce((sum, row) => sum + asNumber(row.total_tokens), 0);
-	const usageCostTotal = llmCalls.reduce((sum, row) => sum + asNumber(row.total_cost_usd), 0);
+	const usageCostTotal = llmCallsWithEffectiveCost.reduce(
+		(sum, row) => sum + asNumber(row.total_cost_usd),
+		0
+	);
 	const toolCallCountFromTrace = messages.reduce((sum, row) => {
 		return sum + parseToolTraceFromMessageMetadata(row.metadata).length;
 	}, 0);
@@ -1057,7 +1065,7 @@ export const buildSessionDetailPayload = ({
 		});
 	}
 
-	for (const usage of llmCalls) {
+	for (const usage of llmCallsWithEffectiveCost) {
 		const timestamp = toIsoOrFallback(
 			usage.request_started_at ?? usage.created_at,
 			sessionCreatedAt
@@ -1187,7 +1195,7 @@ export const buildSessionDetailPayload = ({
 	const hasErrors =
 		messages.some((row) => !!row.error_message) ||
 		toolExecutions.some((row) => row.success === false) ||
-		llmCalls.some((row) => row.status !== 'success' || !!row.error_message) ||
+		llmCallsWithEffectiveCost.some((row) => row.status !== 'success' || !!row.error_message) ||
 		operations.some((row) => row.status === 'failed' || !!row.error_message) ||
 		sessionTurnRuns.some(
 			(row) =>
@@ -1211,7 +1219,7 @@ export const buildSessionDetailPayload = ({
 			message_count: Number(sessionRow.message_count ?? messages.length),
 			total_tokens: totalTokens,
 			tool_call_count: toolCallCount,
-			llm_call_count: llmCalls.length,
+			llm_call_count: llmCallsWithEffectiveCost.length,
 			cost_estimate: totalCost,
 			has_errors: hasErrors,
 			created_at: sessionCreatedAt,
@@ -1227,13 +1235,14 @@ export const buildSessionDetailPayload = ({
 			total_cost_usd: totalCost,
 			tool_calls: toolCallCount,
 			tool_failures: toolExecutions.filter((row) => row.success === false).length,
-			llm_calls: llmCalls.length,
-			llm_failures: llmCalls.filter((row) => row.status !== 'success').length,
+			llm_calls: llmCallsWithEffectiveCost.length,
+			llm_failures: llmCallsWithEffectiveCost.filter((row) => row.status !== 'success')
+				.length,
 			messages: messages.length
 		},
 		messages,
 		tool_executions: toolExecutions,
-		llm_calls: llmCalls,
+		llm_calls: llmCallsWithEffectiveCost,
 		operations,
 		timeline,
 		timing_metrics: timingData ?? null,

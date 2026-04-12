@@ -161,11 +161,16 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 			logger.warn('Webhook signature missing in development mode');
 		} else {
-			const webhookUrl = `${PUBLIC_APP_URL}/api/webhooks/twilio/status`;
+			const webhookUrl = new URL(request.url);
+			if (PUBLIC_APP_URL) {
+				const publicBaseUrl = new URL(PUBLIC_APP_URL);
+				webhookUrl.protocol = publicBaseUrl.protocol;
+				webhookUrl.host = publicBaseUrl.host;
+			}
 			const isValid = twilio.validateRequest(
 				PRIVATE_TWILIO_AUTH_TOKEN,
 				twilioSignature,
-				webhookUrl,
+				webhookUrl.toString(),
 				Object.fromEntries(params)
 			);
 

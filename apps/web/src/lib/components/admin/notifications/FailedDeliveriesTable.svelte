@@ -8,11 +8,12 @@
 	interface Props {
 		data: FailedDelivery[];
 		loading?: boolean;
+		timeframeLabel?: string;
 		onRetry?: (deliveryId: string) => void;
 		onResend?: (deliveryId: string) => void;
 	}
 
-	let { data, loading = false, onRetry, onResend }: Props = $props();
+	let { data, loading = false, timeframeLabel = '24h', onRetry, onResend }: Props = $props();
 
 	let selectedError = $state<FailedDelivery | null>(null);
 	let showErrorModal = $state(false);
@@ -59,7 +60,7 @@
 		<div class="flex items-center">
 			<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
 			<h3 class="text-lg font-semibold text-red-800 dark:text-red-200">
-				Failed Deliveries (Last 24h)
+				Failed Deliveries ({timeframeLabel})
 			</h3>
 		</div>
 	</div>

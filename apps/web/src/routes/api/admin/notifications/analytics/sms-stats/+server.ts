@@ -2,7 +2,19 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 
-export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession } }) => {
+type Timeframe = '24h' | '7d' | '30d' | '90d';
+
+function getTimeframeInterval(timeframe: Timeframe): string {
+	const intervals = {
+		'24h': '24 hours',
+		'7d': '7 days',
+		'30d': '30 days',
+		'90d': '90 days'
+	};
+	return intervals[timeframe] || '24 hours';
+}
+
+export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user) {
 		return ApiResponse.unauthorized();
@@ -13,7 +25,12 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 
 	try {
-		const { data, error } = await supabase.rpc('get_sms_notification_stats');
+		const timeframe = (url.searchParams.get('timeframe') || '24h') as Timeframe;
+		const interval = getTimeframeInterval(timeframe);
+
+		const { data, error } = await supabase.rpc('get_sms_notification_stats', {
+			p_interval: interval
+		});
 
 		if (error) {
 			console.error('Error fetching SMS notification stats:', error);

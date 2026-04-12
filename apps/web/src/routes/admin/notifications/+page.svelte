@@ -34,8 +34,20 @@
 	let failures = $state<FailedDelivery[]>([]);
 	let smsStats = $state<SMSStats | null>(null);
 
-	onMount(async () => {
-		await loadAnalytics();
+	function formatTimeframeLabel(value: Timeframe): string {
+		const labels: Record<Timeframe, string> = {
+			'24h': '24h',
+			'7d': '7d',
+			'30d': '30d',
+			'90d': '90d'
+		};
+		return labels[value] ?? value;
+	}
+
+	const timeframeLabel = $derived(formatTimeframeLabel(timeframe));
+
+	onMount(() => {
+		void loadAnalytics();
 
 		return () => {
 			if (refreshInterval) {
@@ -47,7 +59,9 @@
 	$effect(() => {
 		if (!browser) return;
 		if (autoRefresh) {
-			refreshInterval = setInterval(loadAnalytics, 30000) as any;
+			if (!refreshInterval) {
+				refreshInterval = setInterval(loadAnalytics, 30000) as any;
+			}
 		} else if (refreshInterval) {
 			clearInterval(refreshInterval);
 			refreshInterval = undefined;
@@ -63,8 +77,8 @@
 				notificationAnalyticsService.getOverview(timeframe),
 				notificationAnalyticsService.getChannelPerformance(timeframe),
 				notificationAnalyticsService.getEventBreakdown(timeframe),
-				notificationAnalyticsService.getFailures('24h', 50),
-				notificationAnalyticsService.getSMSStats()
+				notificationAnalyticsService.getFailures(timeframe, 50),
+				notificationAnalyticsService.getSMSStats(timeframe)
 			]);
 		} catch (err) {
 			console.error('Error loading notification analytics:', err);
@@ -78,7 +92,7 @@
 		try {
 			await notificationTestService.retryDelivery(deliveryId);
 			// Reload failures
-			failures = await notificationAnalyticsService.getFailures('24h', 50);
+			failures = await notificationAnalyticsService.getFailures(timeframe, 50);
 		} catch (err) {
 			console.error('Error retrying delivery:', err);
 			alert(err instanceof Error ? err.message : 'Failed to retry delivery');
@@ -89,7 +103,7 @@
 		try {
 			await notificationTestService.resendDelivery(deliveryId);
 			// Reload failures
-			failures = await notificationAnalyticsService.getFailures('24h', 50);
+			failures = await notificationAnalyticsService.getFailures(timeframe, 50);
 		} catch (err) {
 			console.error('Error resending delivery:', err);
 			alert(err instanceof Error ? err.message : 'Failed to resend delivery');
@@ -110,7 +124,7 @@
 		icon={Bell}
 		showBack={true}
 	>
-		<div slot="actions">
+		{#snippet actions()}
 			<TimeframeSelector
 				bind:value={timeframe}
 				bind:autoRefresh
@@ -118,7 +132,7 @@
 				onRefresh={loadAnalytics}
 				onTimeframeChange={loadAnalytics}
 			/>
-		</div>
+		{/snippet}
 	</AdminPageHeader>
 
 	{#if error}
@@ -132,7 +146,7 @@
 	<!-- Overview Metrics -->
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
 		<MetricCard
-			title="Total Sent (24h)"
+			title={`Total Sent (${timeframeLabel})`}
 			value={overview?.total_sent || 0}
 			trend={overview?.trend_vs_previous_period.sent}
 			loading={isLoading}
@@ -174,6 +188,7 @@
 			<FailedDeliveriesTable
 				data={failures}
 				loading={isLoading}
+				{timeframeLabel}
 				onRetry={handleRetry}
 				onResend={handleResend}
 			/>
@@ -187,7 +202,7 @@
 
 	<!-- SMS Insights -->
 	<div class="mb-6">
-		<SMSInsightsCard data={smsStats} loading={isLoading} />
+		<SMSInsightsCard data={smsStats} loading={isLoading} {timeframeLabel} />
 	</div>
 
 	<!-- Event Type Breakdown -->

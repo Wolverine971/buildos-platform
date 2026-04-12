@@ -141,6 +141,7 @@ self.addEventListener('notificationclick', (event) => {
 				);
 				return fetch(`/api/notification-tracking/click/${deliveryId}`, {
 					method: 'POST',
+					credentials: 'include',
 					headers: {
 						'Content-Type': 'application/json'
 					},

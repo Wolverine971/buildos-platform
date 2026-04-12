@@ -13532,7 +13532,7 @@ export type Database = {
         }[]
       }
       get_sms_notification_stats: {
-        Args: never
+        Args: { p_interval?: string }
         Returns: {
           avg_sms_delivery_time_seconds: number
           opt_out_rate: number

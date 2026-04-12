@@ -11,6 +11,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
 
 type SessionAggregate = {
@@ -186,7 +187,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.in('session_id', sessionIds),
 				supabase
 					.from('llm_usage_logs')
-					.select('chat_session_id, total_tokens, total_cost_usd, status, error_message')
+					.select(
+						'chat_session_id, model_requested, model_used, prompt_tokens, completion_tokens, input_cost_usd, output_cost_usd, total_tokens, total_cost_usd, status, error_message, metadata'
+					)
 					.in('chat_session_id', sessionIds)
 			]);
 
@@ -246,7 +249,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				};
 				current.llmCalls += 1;
 				current.totalTokens += asNumber(row.total_tokens);
-				current.totalCost += asNumber(row.total_cost_usd);
+				current.totalCost += resolveUsageLogCostBreakdown(row).totalCost;
 				if (row.status !== 'success' || row.error_message) {
 					current.failures += 1;
 					sessionsWithErrors.add(sessionId);

@@ -92,7 +92,8 @@
 		<!-- Processing state -->
 		{#if notification.status === 'processing'}
 			<p class="text-xs text-muted-foreground mb-2">
-				{currentStepName} • Step {stepsProgress?.currentStep + 1} of {stepsProgress?.totalSteps}
+				{currentStepName} • Step {stepsProgress ? stepsProgress.currentStep + 1 : 0} of {stepsProgress?.totalSteps ??
+					0}
 			</p>
 
 			<!-- Progress bar -->

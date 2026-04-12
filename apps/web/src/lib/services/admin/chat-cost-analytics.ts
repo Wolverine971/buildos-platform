@@ -1,4 +1,6 @@
 // apps/web/src/lib/services/admin/chat-cost-analytics.ts
+import { resolveUsageLogCostBreakdown } from './llm-usage-costs';
+
 type Attribution = 'exact' | 'inferred';
 
 export type ChatCostUsageRow = {
@@ -9,6 +11,7 @@ export type ChatCostUsageRow = {
 	stream_run_id?: string | null;
 	client_turn_id?: string | null;
 	operation_type?: string | null;
+	model_requested?: string | null;
 	model_used?: string | null;
 	prompt_tokens?: number | string | null;
 	completion_tokens?: number | string | null;
@@ -409,9 +412,10 @@ export const buildChatCostAnalytics = (params: {
 		const promptTokens = asNumber(row.prompt_tokens);
 		const completionTokens = asNumber(row.completion_tokens);
 		const rowTokens = asNumber(row.total_tokens) || promptTokens + completionTokens;
-		const inputCost = asNumber(row.input_cost_usd);
-		const outputCost = asNumber(row.output_cost_usd);
-		const rowCost = asNumber(row.total_cost_usd) || inputCost + outputCost;
+		const costBreakdown = resolveUsageLogCostBreakdown(row);
+		const inputCost = costBreakdown.inputCost;
+		const outputCost = costBreakdown.outputCost;
+		const rowCost = costBreakdown.totalCost;
 		const model = normalizeText(row.model_used) || 'unknown';
 		const session =
 			sessionStats.get(sessionId) ??

@@ -24,6 +24,7 @@
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
 	import type { OverdueProjectBatch } from '$lib/types/overdue-triage';
+	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
 
 	type User = {
 		id: string;
@@ -465,6 +466,11 @@
 		}
 	}
 </script>
+
+<PullToRefresh
+	onRefresh={handleRefresh}
+	disabled={isRefreshing || showBriefModal || showBriefChatModal || showOverdueTaskTriageModal}
+/>
 
 <main class="min-h-screen bg-background transition-colors rounded-md">
 	<div

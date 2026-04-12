@@ -23,8 +23,15 @@
 		onTimeframeChange
 	}: Props = $props();
 
-	function handleTimeframeChange(e: CustomEvent) {
-		value = e.detail as Timeframe;
+	const validTimeframes: Timeframe[] = ['24h', '7d', '30d', '90d'];
+
+	function isTimeframe(value: string | number): value is Timeframe {
+		return typeof value === 'string' && validTimeframes.includes(value as Timeframe);
+	}
+
+	function handleTimeframeChange(nextValue: string | number) {
+		if (!isTimeframe(nextValue)) return;
+		value = nextValue;
 		onTimeframeChange?.(value);
 	}
 

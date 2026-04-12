@@ -39,6 +39,7 @@ export interface EventMetrics {
 	event_type: string;
 	total_events: number;
 	total_deliveries: number;
+	// Legacy RPC field name; value is unique delivery recipients in the selected timeframe.
 	unique_subscribers: number;
 	avg_delivery_time_seconds: number;
 	open_rate: number;
@@ -201,8 +202,10 @@ export class NotificationAnalyticsService {
 	/**
 	 * Get SMS-specific statistics
 	 */
-	async getSMSStats(): Promise<SMSStats> {
-		const response = await fetch('/api/admin/notifications/analytics/sms-stats');
+	async getSMSStats(timeframe: Timeframe = '24h'): Promise<SMSStats> {
+		const response = await fetch(
+			`/api/admin/notifications/analytics/sms-stats?timeframe=${timeframe}`
+		);
 
 		if (!response.ok) {
 			const error = await response.json();

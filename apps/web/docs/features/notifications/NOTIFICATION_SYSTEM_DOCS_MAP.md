@@ -65,6 +65,20 @@ Root Documentation
 - API reference
 - Testing guide
 
+### "I am fixing admin notification analytics, tracking, or audit logs"
+
+👉 Start here: [`admin-notifications-remediation-plan-2026-04-12.md`](./admin-notifications-remediation-plan-2026-04-12.md)
+
+- Current remediation checklist
+- Metric definitions for `/admin/notifications`
+- Tracking and correlation work log
+
+👉 Then read: [`notification-audit.md`](./notification-audit.md)
+
+- System-level audit history
+- Runtime emitter inventory
+- Channel-by-channel tracking flow
+
 ### "I want to understand the original design decisions"
 
 👉 Start here: [`generic-stackable-notification-system-spec.md`](./generic-stackable-notification-system-spec.md)

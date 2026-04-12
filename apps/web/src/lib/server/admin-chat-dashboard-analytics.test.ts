@@ -126,7 +126,7 @@ describe('buildAdminChatDashboardAnalytics', () => {
 					created_at: '2026-04-02T10:00:10.000Z'
 				}
 			],
-			previousUsageRows: [{ total_tokens: 1000, total_cost_usd: 0.01 }],
+			previousUsageRows: [{ id: 'previous-usage', total_tokens: 1000, total_cost_usd: 0.01 }],
 			llmPassEvents: [
 				{
 					id: 'event-1',

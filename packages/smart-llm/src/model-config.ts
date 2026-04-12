@@ -244,6 +244,33 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
+	'qwen/qwen3-32b': {
+		id: 'qwen/qwen3-32b',
+		name: 'Qwen3 32B',
+		speed: 4.1,
+		smartness: 4.4,
+		creativity: 4.1,
+		cost: 0.08,
+		outputCost: 0.24,
+		provider: 'qwen',
+		bestFor: [
+			'cheap-reasoning',
+			'tool-calling',
+			'instruction-following',
+			'multilingual',
+			'medium-context',
+			'fallback-chat'
+		],
+		limitations: ['provider-availability-variable'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: false,
+			longContext: true
+		}
+	},
 	'qwen/qwen3.6-plus': {
 		id: 'qwen/qwen3.6-plus',
 		name: 'Qwen 3.6 Plus',
@@ -440,7 +467,7 @@ export function modelSupportsCapability(
 export const JSON_MODELS: Record<string, ModelProfile> = MODEL_CATALOG;
 export const TEXT_MODELS: Record<string, ModelProfile> = MODEL_CATALOG;
 
-const PROVIDER_VERSION_SUFFIX_PATTERNS = [/-\d{8}$/, /-\d{4}-\d{2}-\d{2}$/];
+const PROVIDER_VERSION_SUFFIX_PATTERNS = [/-\d{8}$/, /-\d{4}-\d{2}-\d{2}$/, /-\d{2}-\d{2}$/];
 
 export function normalizeProviderModelIdForPricing(modelId: string): string {
 	let normalized = modelId.trim();
@@ -470,6 +497,12 @@ export function resolveModelPricingProfile(
 			const normalizedProfile = MODEL_CATALOG[normalized];
 			if (normalizedProfile) {
 				return { modelId: normalized, profile: normalizedProfile };
+			}
+
+			for (const [catalogModelId, catalogProfile] of Object.entries(MODEL_CATALOG)) {
+				if (normalizeProviderModelIdForPricing(catalogModelId) === normalized) {
+					return { modelId: catalogModelId, profile: catalogProfile };
+				}
 			}
 		}
 	}

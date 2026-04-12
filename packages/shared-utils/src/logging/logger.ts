@@ -18,6 +18,7 @@
 // import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient, TypedSupabaseClient } from '@buildos/supabase-client';
 import type { LogLevel, LogContext, LogMetadata, LogEntry, LoggerConfig } from './types.js';
+import { generateCorrelationId } from './correlation.js';
 
 const LOG_LEVELS: Record<LogLevel, number> = {
 	debug: 0,
@@ -119,15 +120,18 @@ export class Logger {
 		metadata?: LogMetadata,
 		error?: { message: string; stack?: string; name?: string; code?: string }
 	): void {
+		const mergedContext = {
+			...this.config.defaultContext,
+			...context
+		};
+		mergedContext.correlationId = mergedContext.correlationId || generateCorrelationId();
+
 		const entry: LogEntry = {
 			level,
 			message,
 			timestamp: new Date(),
 			namespace: this.config.namespace,
-			context: {
-				...this.config.defaultContext,
-				...context
-			},
+			context: mergedContext,
 			metadata,
 			error
 		};

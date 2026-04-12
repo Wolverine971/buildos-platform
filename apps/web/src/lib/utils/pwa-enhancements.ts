@@ -145,39 +145,11 @@ export function initializePWAEnhancements(): (() => void) | void {
 		void requestBadgeSync();
 	};
 
-	// Prevent pull-to-refresh on iOS PWA (optional)
-	let lastTouchY = 0;
-	let preventPullToRefresh = false;
-
-	const handleTouchStart = (e: TouchEvent) => {
-		if (e.touches.length !== 1) return;
-		lastTouchY = e.touches[0]!.clientY;
-		// Skip pull-to-refresh prevention when a modal is open —
-		// body scroll is already locked, and preventing here blocks
-		// scrolling inside modal content.
-		const insideModal = (e.target as HTMLElement)?.closest?.('.modal-root');
-		preventPullToRefresh = window.scrollY === 0 && !insideModal;
-	};
-
-	const handleTouchMove = (e: TouchEvent) => {
-		if (!preventPullToRefresh || e.touches.length !== 1) return;
-
-		const touchY = e.touches[0]!.clientY;
-		const touchYDelta = touchY - lastTouchY;
-		lastTouchY = touchY;
-
-		if (touchYDelta > 0 && window.scrollY === 0 && e.cancelable) {
-			e.preventDefault();
-		}
-	};
-
 	// Add event listeners
 	darkModeMediaQuery.addEventListener('change', handleDarkModeChange);
 	window.addEventListener('storage', handleStorageChange);
 	window.addEventListener('focus', handleWindowFocus);
 	document.addEventListener('visibilitychange', handleVisibilityChange);
-	document.addEventListener('touchstart', handleTouchStart, { passive: false });
-	document.addEventListener('touchmove', handleTouchMove, { passive: false });
 
 	// Add PWA-specific body class for custom styling
 	if (isInstalledPWA()) {
@@ -193,8 +165,6 @@ export function initializePWAEnhancements(): (() => void) | void {
 		window.removeEventListener('storage', handleStorageChange);
 		window.removeEventListener('focus', handleWindowFocus);
 		document.removeEventListener('visibilitychange', handleVisibilityChange);
-		document.removeEventListener('touchstart', handleTouchStart);
-		document.removeEventListener('touchmove', handleTouchMove);
 	};
 }
 

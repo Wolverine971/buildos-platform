@@ -2880,30 +2880,59 @@ LANGUAGE plpgsql
 AS $function$
 BEGIN
 RETURN QUERY
+WITH scoped_events AS (
+SELECT ne.id, ne.event_type AS event_type_key
+FROM notification_events ne
+WHERE ne.created_at > NOW() - p_interval::INTERVAL
+),
+event_counts AS (
 SELECT
-ne.event_type,
-COUNT(DISTINCT ne.id) AS total_events,
+se.event_type_key,
+COUNT(*) AS total_events
+FROM scoped_events se
+GROUP BY se.event_type_key
+),
+delivery_metrics AS (
+SELECT
+se.event_type_key,
 COUNT(nd.id) AS total_deliveries,
-COUNT(DISTINCT ns.user_id) AS unique_subscribers,
--- FIXED: Added explicit NULL filter
+COUNT(DISTINCT nd.recipient_user_id) AS unique_recipients,
 ROUND(
-AVG(EXTRACT(EPOCH FROM (nd.sent_at - nd.created_at))) FILTER (WHERE nd.sent_at IS NOT NULL): :NUMERIC,
+AVG(EXTRACT(EPOCH FROM (nd.sent_at - nd.created_at)))
+FILTER (WHERE nd.sent_at IS NOT NULL)::NUMERIC,
 2
 ) AS avg_delivery_time_seconds,
 ROUND(
-(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.status = 'sent'): :NUMERIC, 0) _ 100),
+(
+COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC
+/ NULLIF(COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC, 0)
+* 100
+),
 2
-) AS open*rate,
+) AS open_rate,
 ROUND(
-(COUNT(*) FILTER (WHERE nd.clicked*at IS NOT NULL): :NUMERIC / NULLIF(COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL): :NUMERIC, 0) * 100),
+(
+COUNT(*) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC
+/ NULLIF(COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0)
+* 100
+),
 2
-) AS click\*rate
-FROM notification_events ne
-LEFT JOIN notification_deliveries nd ON nd.event_id = ne.id
-LEFT JOIN notification_subscriptions ns ON ns.event_type = ne.event_type
-WHERE ne.created_at > NOW() - p_interval: :INTERVAL
-GROUP BY ne.event_type
-ORDER BY total_events DESC;
+) AS click_rate
+FROM scoped_events se
+LEFT JOIN notification_deliveries nd ON nd.event_id = se.id
+GROUP BY se.event_type_key
+)
+SELECT
+ec.event_type_key AS event_type,
+ec.total_events,
+COALESCE(dm.total_deliveries, 0) AS total_deliveries,
+COALESCE(dm.unique_recipients, 0) AS unique_subscribers,
+dm.avg_delivery_time_seconds,
+dm.open_rate,
+dm.click_rate
+FROM event_counts ec
+LEFT JOIN delivery_metrics dm ON dm.event_type_key = ec.event_type_key
+ORDER BY ec.total_events DESC;
 END;
 $function$
 "

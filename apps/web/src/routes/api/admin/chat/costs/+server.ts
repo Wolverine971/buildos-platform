@@ -75,6 +75,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				stream_run_id,
 				client_turn_id,
 				operation_type,
+				model_requested,
 				model_used,
 				prompt_tokens,
 				completion_tokens,

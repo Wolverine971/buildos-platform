@@ -118,7 +118,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 					event_source: 'api_action',
 					actor_user_id: user.id,
 					payload, // Keep original event payload
-					metadata
+					metadata,
+					correlation_id: correlationId
 				})
 				.select('id')
 				.single();
@@ -178,7 +179,8 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 							channel,
 							channel_identifier: channelIdentifier,
 							payload: notificationPayload, // Use transformed payload with title/body
-							status: 'pending'
+							status: 'pending',
+							correlation_id: correlationId
 						})
 						.select('id, channel, recipient_user_id, status')
 						.single();

@@ -2,12 +2,14 @@
 
 # Notification Logging System - Implementation Specification
 
-**Status**: 🔴 Not Started
+**Status**: Historical spec; core logger and notification correlation are implemented
 **Priority**: High
 **Owner**: TBD
 **Estimated Effort**: 2-3 weeks
 **Created**: 2025-10-10
-**Last Updated**: 2025-10-10
+**Last Updated**: 2026-04-12
+
+> 2026-04-12 note: this document is retained as the original logging implementation spec. For the current admin analytics, tracking, and audit remediation work, use [`admin-notifications-remediation-plan-2026-04-12.md`](./admin-notifications-remediation-plan-2026-04-12.md). Current runtime logging uses `packages/shared-utils/src/logging/logger.ts`, `notification_logs`, notification row `correlation_id`, and the `/admin/notifications/nlogs` views.
 
 ## Table of Contents
 

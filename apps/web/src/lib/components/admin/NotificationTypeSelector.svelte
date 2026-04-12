@@ -83,6 +83,27 @@
 			category: 'user'
 		},
 		{
+			value: 'task.assigned',
+			label: 'Task Assigned',
+			description: 'A task was assigned to the recipient',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'entity.tagged',
+			label: 'Entity Tagged',
+			description: 'The recipient was tagged in a task, goal, or document',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'comment.mentioned',
+			label: 'Comment Mentioned',
+			description: 'The recipient was mentioned in a comment',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
 			value: 'project.activity.changed',
 			label: 'Project Activity (Raw)',
 			description: 'Raw project activity event emitted per action',
@@ -114,6 +135,62 @@
 			value: 'calendar.sync_failed',
 			label: 'Calendar Sync Failed',
 			description: 'Calendar synchronization encountered an error',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'payment.warning',
+			label: 'Payment Warning',
+			description: 'Billing action is required for the recipient',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'user.trial_reminder',
+			label: 'Trial Reminder',
+			description: 'The recipient trial period is ending',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'billing_ops_anomaly',
+			label: 'Billing Ops Anomaly',
+			description: 'Admin alert for billing operations anomalies',
+			adminOnly: true,
+			category: 'admin'
+		},
+		{
+			value: 'homework.run_completed',
+			label: 'Homework Completed',
+			description: 'A homework run finished successfully',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'homework.run_stopped',
+			label: 'Homework Stopped',
+			description: 'A homework run stopped',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'homework.run_failed',
+			label: 'Homework Failed',
+			description: 'A homework run failed',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'homework.run_canceled',
+			label: 'Homework Canceled',
+			description: 'A homework run was canceled',
+			adminOnly: false,
+			category: 'user'
+		},
+		{
+			value: 'homework.run_updated',
+			label: 'Homework Updated',
+			description: 'A homework run status changed',
 			adminOnly: false,
 			category: 'user'
 		}

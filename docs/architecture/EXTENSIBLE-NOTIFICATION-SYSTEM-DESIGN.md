@@ -4,8 +4,10 @@
 
 **Status:** Design Specification
 **Version:** 1.0
-**Last Updated:** 2025-10-05
+**Last Updated:** 2026-04-12
 **Author:** Architecture Team
+
+> 2026-04-12 note: this remains the original design specification. Current implementation details for admin analytics, logging, and tracking are maintained in [`/apps/web/docs/features/notifications/notification-audit.md`](/apps/web/docs/features/notifications/notification-audit.md), [`/apps/web/docs/features/notifications/admin-notifications-remediation-plan-2026-04-12.md`](/apps/web/docs/features/notifications/admin-notifications-remediation-plan-2026-04-12.md), and [`/docs/architecture/NOTIFICATION_TRACKING_SYSTEM.md`](/docs/architecture/NOTIFICATION_TRACKING_SYSTEM.md).
 
 ---
 

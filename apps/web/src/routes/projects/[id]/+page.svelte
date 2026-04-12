@@ -122,6 +122,7 @@
 		getTaskPersonRelevanceLabel,
 		resolveTaskPersonFocusActorId
 	} from '$lib/components/ontology/insight-panels/task-person-relevance';
+	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
 
 	// ============================================================
 	// TYPES
@@ -1548,11 +1549,21 @@
 	function refreshProjectSilently() {
 		void refreshData({ showSuccessToast: false });
 	}
+
+	async function refreshProjectFromPull() {
+		await refreshData({ showSuccessToast: false });
+		docTreeViewRef?.refresh();
+	}
 </script>
 
 <svelte:head>
 	<title>{project?.name || 'Project'} | BuildOS</title>
 </svelte:head>
+
+<PullToRefresh
+	onRefresh={refreshProjectFromPull}
+	disabled={hasAnyModalOpen || showMobileMenu || isHydrating || isDeletingProject}
+/>
 
 <div class="min-h-screen bg-background overflow-x-hidden">
 	<ProjectHeaderCard

@@ -75,6 +75,39 @@ Validation run:
 - `pnpm --filter @buildos/web check` rerun after Priority 2 changes showed no diagnostics in modified notification files (`routes/notifications`, project notification settings API, invite accept API, transformer/types).
 - `pnpm --filter @buildos/web check` rerun after tracked in-app migration showed no diagnostics in modified notification files (`task-assignment.service`, `entity-mention-notification.service`, `comment-mentions`, trial/billing/homework notification routes, `routes/notifications`).
 
+## Admin Analytics And Tracking Remediation (2026-04-12)
+
+Current tracker: [`admin-notifications-remediation-plan-2026-04-12.md`](./admin-notifications-remediation-plan-2026-04-12.md)
+
+Items addressed in this pass:
+
+- [x] Fixed event breakdown delivery inflation by removing the delivery/subscription fan-out from `get_notification_event_performance()`.
+    - Implementation: `packages/shared-types/src/functions/get_notification_event_performance.sql`, `supabase/migrations/20260428000024_notification_admin_analytics_audit_fixes.sql`, `supabase/migrations/20260428000025_fix_notification_event_performance_ambiguous_event_type.sql`
+    - Follow-up: `20260428000025` fixes the PL/pgSQL `event_type` ambiguity found during runtime testing by aliasing the internal event type as `event_type_key`.
+- [x] Corrected SMS dashboard semantics so enabled users require verified phone, no opt-out, and an enabled SMS notification path; SMS sent/delivery rates now use lifecycle-safe denominators and the selected dashboard timeframe.
+    - Implementation: `packages/shared-types/src/functions/get_sms_notification_stats.sql`, `apps/web/src/routes/api/admin/notifications/analytics/sms-stats/+server.ts`, `apps/web/src/lib/components/admin/notifications/SMSInsightsCard.svelte`
+- [x] Fixed `/admin/notifications` timeframe wiring and labels.
+    - Implementation: `apps/web/src/lib/components/admin/notifications/TimeframeSelector.svelte`, `apps/web/src/routes/admin/notifications/+page.svelte`
+- [x] Fixed `/admin/notifications` auto-refresh so repeated reactive updates do not create duplicate intervals.
+    - Implementation: `apps/web/src/routes/admin/notifications/+page.svelte`
+- [x] Marked authenticated recipient in-app/push deliveries as opened when `/notifications` is viewed.
+    - Implementation: `apps/web/src/routes/notifications/+page.server.ts`
+- [x] Required recipient authentication for generic push/in-app click tracking while leaving email pixel/click and SMS short-link tracking on their tokenized channel paths.
+    - Implementation: `apps/web/src/routes/api/notification-tracking/click/[delivery_id]/+server.ts`, `apps/web/static/sw.js`
+- [x] Preserved or generated correlation IDs for shared logger database writes and admin test/retry/resend flows.
+    - Implementation: `packages/shared-utils/src/logging/logger.ts`, `packages/shared-types/src/functions/log_notification_event.sql`, `apps/web/src/routes/api/admin/notifications/test/+server.ts`, `apps/web/src/routes/api/admin/notifications/deliveries/[id]/retry/+server.ts`, `apps/web/src/routes/api/admin/notifications/deliveries/[id]/resend/+server.ts`
+- [x] Updated admin event filters/test selector and payload transformer support for the full current event type set.
+    - Implementation: `apps/web/src/lib/components/admin/notifications/LogFilters.svelte`, `apps/web/src/lib/components/admin/NotificationTypeSelector.svelte`, `packages/shared-types/src/payloadTransformer.ts`
+- [x] Reconstructed Twilio signature validation URLs with the actual callback query string and the configured public host.
+    - Implementation: `apps/web/src/routes/api/webhooks/twilio/status/+server.ts`
+
+Validation status:
+
+- `pnpm --filter @buildos/shared-types typecheck` passed.
+- `pnpm --filter @buildos/shared-utils typecheck` passed.
+- `pnpm --filter @buildos/web check` still fails on unrelated repo-wide issues (`171 errors`, `214 warnings`, `101 files`).
+- Filtering the web check output for notification paths returned no remaining notification diagnostics after this pass.
+
 ## Method
 
 Audit approach:
