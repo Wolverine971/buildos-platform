@@ -2,7 +2,7 @@
 
 ﻿# Daily Briefs Configuration
 
-Daily Briefs turn everything BuildOS knows about your projects, calendar, and brain dumps into a concise morning or evening plan. The worker service generates each brief, queues follow-up emails or SMS, and respects the preferences you set in the app. Use this guide to configure delivery, understand timing, and troubleshoot missed briefs.
+Daily Briefs turn BuildOS project context, project calendar events, and recent project activity into a concise morning or evening plan. The worker service generates each brief, queues follow-up emails or SMS, and respects the preferences you set in the app. Use this guide to configure delivery, understand timing, and troubleshoot missed briefs.
 
 ---
 
@@ -11,7 +11,7 @@ Daily Briefs turn everything BuildOS knows about your projects, calendar, and br
 1. **Scheduler** (`/apps/worker/src/scheduler.ts`) runs every hour.
 2. It reads `user_brief_preferences` to find users who opted in (`is_active = true`) and whose chosen time falls within the upcoming hour in their timezone.
 3. Each match becomes a Supabase queue job (`queue_jobs` table) with a deduplication key of `brief-{userId}-{briefDate}` to prevent duplicates.
-4. The `briefWorker` generates your brief, stores it in `daily_briefs`, and instantly notifies the app UI through `notifyUser()`.
+4. The `briefWorker` generates your brief, stores it in `ontology_daily_briefs`, and instantly notifies the app UI.
 5. If `email_daily_brief = true`, a second job (`generate_brief_email`) renders the email and sends it via the email worker. SMS delivery uses the same pattern for `sms_daily_brief`.
 
 Because everything is transactional, pausing or changing preferences immediately affects the next scheduler run.
@@ -41,16 +41,16 @@ Changes save instantly through `/api/brief-preferences` and trigger any necessar
 
 Daily Briefs combine:
 
-- Projects and phases created through brain dumps or manual entry
-- Calendar events synced via Google Calendar
-- Outstanding tasks, completions, and overdue work
-- Recent AI insights (for example, phase synthesis or time block experiments)
+- Active projects, goals, plans, milestones, risks, requirements, and tasks
+- Project calendar events from BuildOS and synced Google Calendar mappings
+- Recently created or updated project records, including documents, goals, plans, tasks, and events
+- Cheap per-project LLM summaries with deterministic fallback content
 
 If you want richer briefs, make sure to:
 
-- Capture detailed brain dumps with auto-accept enabled
+- Keep project goals, plans, documents, and tasks current
 - Finish onboarding notification settings so BuildOS knows how to reach you
-- Keep calendar sync active and define working hours (see [Calendar Sync Setup](calendar-sync.md))
+- Keep calendar sync active for project events (see [Calendar Sync Setup](calendar-sync.md))
 
 ---
 
@@ -75,7 +75,7 @@ If you want richer briefs, make sure to:
 
 ## 6. Where to see past briefs
 
-- **Timeline tab:** Access the "Daily Briefs" section to review, share, or regenerate previous briefs stored in `daily_briefs`.
+- **Timeline tab:** Access the "Daily Briefs" section to review, share, or regenerate previous briefs stored in `ontology_daily_briefs`.
 - **Inbox notifications:** Clearing the in-app notification does not delete the brief itself; it simply marks the alert as read.
 
-Daily Briefs work best when paired with calendar sync and consistent brain dumps. Configure all three and you will receive actionable plans that reflect reality every morning.
+Daily Briefs work best when paired with calendar sync and current project records. Keep both fresh and the brief will reflect reality every morning.

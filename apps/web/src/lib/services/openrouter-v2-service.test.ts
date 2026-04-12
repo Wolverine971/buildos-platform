@@ -183,8 +183,9 @@ describe('OpenRouterV2Service model failover', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(requestBodies[0]?.model).toBe('qwen/qwen3.5-flash-02-23');
+		expect(requestBodies[0]?.model).toBe('openai/gpt-oss-20b');
 		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
+		expect(requestBodies[0]?.models).toContain('qwen/qwen3.5-flash-02-23');
 		expect(requestBodies[0]?.models).toContain('openai/gpt-4.1-nano');
 	});
 });
@@ -444,6 +445,67 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			model: 'x-ai/grok-4.1-fast'
 		});
 		expect(requestBodies[0]?.stream_options).toEqual({ include_usage: true });
+	});
+
+	it('caps OpenRouter fallback models for profiled tool-calling streams', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+			return createSseResponse([
+				JSON.stringify({
+					id: 'stream-tool-profile',
+					model: 'x-ai/grok-4.1-fast',
+					choices: [{ delta: { content: 'Tool-ready answer' } }]
+				}),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'stop' }],
+					usage: {
+						prompt_tokens: 12,
+						completion_tokens: 3,
+						total_tokens: 15
+					}
+				}),
+				'[DONE]'
+			]);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const events = [];
+
+		for await (const event of service.streamText({
+			messages: [{ role: 'user', content: 'hello' }],
+			tools: [
+				{
+					type: 'function',
+					function: {
+						name: 'lookup_project',
+						description: 'Lookup a project.',
+						parameters: { type: 'object', properties: {} }
+					}
+				}
+			],
+			tool_choice: 'auto',
+			userId: 'user_1',
+			profile: 'balanced'
+		})) {
+			events.push(event);
+		}
+
+		expect(events.find((event) => event.type === 'done')).toMatchObject({
+			type: 'done'
+		});
+		expect(requestBodies[0]?.model).toBe('x-ai/grok-4.1-fast');
+		expect(requestBodies[0]?.models).toHaveLength(3);
+		expect(requestBodies[0]?.models).toEqual([
+			'minimax/minimax-m2.7',
+			'qwen/qwen3.6-plus',
+			'openai/gpt-oss-120b'
+		]);
+		expect(requestBodies[0]?.tools).toHaveLength(1);
 	});
 
 	it('logs streaming usage against the started fallback request model and resolved provider', async () => {

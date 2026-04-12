@@ -16,6 +16,18 @@ describe('resolveOpenRouterFallbackModels', () => {
 			])
 		).toEqual(['deepseek/deepseek-v3.2', 'openai/gpt-oss-120b']);
 	});
+
+	it("caps serialized fallbacks to OpenRouter's accepted models array size", () => {
+		expect(
+			resolveOpenRouterFallbackModels('x-ai/grok-4.1-fast', [
+				'minimax/minimax-m2.7',
+				'qwen/qwen3.6-plus',
+				'openai/gpt-oss-120b',
+				'qwen/qwen3.5-flash-02-23',
+				'openai/gpt-4.1-nano'
+			])
+		).toEqual(['minimax/minimax-m2.7', 'qwen/qwen3.6-plus', 'openai/gpt-oss-120b']);
+	});
 });
 
 describe('buildOpenRouterChatCompletionBody', () => {

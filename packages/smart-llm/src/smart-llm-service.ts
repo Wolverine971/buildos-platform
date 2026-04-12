@@ -528,8 +528,15 @@ export class SmartLLMService {
 		// Analyze prompt complexity
 		const complexity = analyzeComplexity(options.systemPrompt + options.userPrompt);
 
-		// Select models based on profile and requirements
-		const preferredModels = selectJSONModels(profile, complexity, options.requirements);
+		// Select models based on explicit request first, then profile and requirements.
+		const requestedModels = [
+			options.model,
+			...(Array.isArray(options.models) ? options.models : [])
+		].filter((model): model is string => Boolean(model?.trim()));
+		const preferredModels =
+			requestedModels.length > 0
+				? Array.from(new Set(requestedModels))
+				: selectJSONModels(profile, complexity, options.requirements);
 
 		// Add JSON-specific instructions to system prompt
 		const enhancedSystemPrompt = enhanceSystemPromptForJSON(options.systemPrompt);
@@ -549,6 +556,7 @@ export class SmartLLMService {
 		let lastResponse: OpenRouterResponse | null = null;
 		let lastRequestedModel = baseModel;
 		let lastRequestApiUrl = this.apiUrl;
+		const maxTokens = options.maxTokens ?? 8192;
 
 		// Make the OpenRouter API call with model routing + local fallbacks
 		try {
@@ -577,7 +585,7 @@ export class SmartLLMService {
 						messages,
 						temperature: options.temperature || 0.2,
 						response_format: useJsonMode ? { type: 'json_object' } : undefined,
-						max_tokens: 8192,
+						max_tokens: maxTokens,
 						timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
 						transforms
 					});
@@ -672,7 +680,7 @@ export class SmartLLMService {
 									response_format: supportsJsonMode(retryModel)
 										? { type: 'json_object' }
 										: undefined,
-									max_tokens: 8192,
+									max_tokens: maxTokens,
 									timeoutMs: options.timeoutMs ?? this.defaultTimeoutMs,
 									transforms
 								});
@@ -833,7 +841,7 @@ export class SmartLLMService {
 							requestCompletedAt,
 							status: 'success',
 							temperature: options.temperature,
-							maxTokens: 8192,
+							maxTokens,
 							profile,
 							streaming: false,
 							projectId: options.projectId,
@@ -955,7 +963,7 @@ export class SmartLLMService {
 					status: lastError.message.includes('timeout') ? 'timeout' : 'failure',
 					errorMessage: lastError.message,
 					temperature: options.temperature,
-					maxTokens: 8192,
+					maxTokens,
 					profile,
 					streaming: false,
 					projectId: options.projectId,

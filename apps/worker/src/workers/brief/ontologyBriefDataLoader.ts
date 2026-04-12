@@ -25,6 +25,7 @@ export const ENTITY_CAPS = {
 	TASKS_RECENT: 10,
 	TASKS_UPCOMING: 5
 } as const;
+
 import type {
 	OntoProject,
 	OntoTask,
@@ -46,8 +47,50 @@ import type {
 	OntologyBriefData,
 	ProjectBriefData,
 	OntologyBriefMetadata,
-	ProjectActivityEntry
+	ProjectActivityEntry,
+	ProjectRecentChange,
+	ProjectRecentChangeKind,
+	CalendarBriefItem,
+	CalendarBriefItemKind,
+	CalendarBriefSection,
+	CalendarBriefCounts,
+	CalendarBriefSource,
+	CalendarBriefSourceLabel
 } from './ontologyBriefTypes.js';
+
+export const CALENDAR_BRIEF_CAPS = {
+	TODAY: 8,
+	UPCOMING: 5,
+	UPCOMING_DAYS: 7,
+	QUERY_LIMIT: 80
+} as const;
+
+type OntoEventSyncRow = Database['public']['Tables']['onto_event_sync']['Row'];
+type TaskCalendarEventRow = Database['public']['Tables']['task_calendar_events']['Row'];
+
+type OntoCalendarEventRow = Pick<
+	Database['public']['Tables']['onto_events']['Row'],
+	| 'id'
+	| 'title'
+	| 'start_at'
+	| 'end_at'
+	| 'all_day'
+	| 'timezone'
+	| 'project_id'
+	| 'owner_entity_type'
+	| 'owner_entity_id'
+	| 'state_key'
+	| 'type_key'
+	| 'props'
+	| 'external_link'
+	| 'sync_status'
+	| 'sync_error'
+	| 'deleted_at'
+	| 'created_at'
+	| 'updated_at'
+> & {
+	onto_event_sync?: OntoEventSyncRow[] | null;
+};
 
 // ============================================================================
 // TIMEZONE UTILITIES
@@ -80,6 +123,545 @@ function addDaysToLocalDate(dateStr: string, days: number, timezone: string): st
  */
 function getTodayInTimezone(timezone: string): string {
 	return formatInTimeZone(new Date(), timezone, 'yyyy-MM-dd');
+}
+
+function getLocalDayUtcBounds(dateStr: string, timezone: string): { start: Date; end: Date } {
+	const start = zonedTimeToUtc(`${dateStr} 00:00:00`, timezone);
+	const nextDateStr = addDaysToLocalDate(dateStr, 1, timezone);
+	const end = zonedTimeToUtc(`${nextDateStr} 00:00:00`, timezone);
+	return { start, end };
+}
+
+function getCalendarBriefWindow(
+	briefDate: string,
+	timezone: string
+): {
+	todayStart: Date;
+	windowEnd: Date;
+} {
+	const today = getLocalDayUtcBounds(briefDate, timezone);
+	const windowEndDate = addDaysToLocalDate(
+		briefDate,
+		CALENDAR_BRIEF_CAPS.UPCOMING_DAYS + 1,
+		timezone
+	);
+	return {
+		todayStart: today.start,
+		windowEnd: zonedTimeToUtc(`${windowEndDate} 00:00:00`, timezone)
+	};
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return {};
+	}
+	return value as Record<string, unknown>;
+}
+
+function getStringProp(record: Record<string, unknown>, key: string): string | null {
+	const value = record[key];
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function isCalendarItemKind(value: string | null): value is CalendarBriefItemKind {
+	return value === 'event' || value === 'range' || value === 'start' || value === 'due';
+}
+
+function getCalendarSourceLabel(source: CalendarBriefSource): CalendarBriefSourceLabel {
+	switch (source) {
+		case 'google':
+			return 'Google Calendar';
+		case 'sync_issue':
+			return 'Google sync issue';
+		case 'internal':
+			return 'Internal only';
+	}
+}
+
+function hasGoogleCalendarLink(value: string | null | undefined): boolean {
+	if (!value) return false;
+	const normalized = value.toLowerCase();
+	return (
+		normalized.includes('calendar.google.com') ||
+		normalized.includes('google.com/calendar') ||
+		normalized.includes('www.google.com/calendar')
+	);
+}
+
+function createCalendarCounts(): CalendarBriefCounts {
+	return {
+		total: 0,
+		google: 0,
+		internal: 0,
+		syncIssue: 0
+	};
+}
+
+function countCalendarItems(items: CalendarBriefItem[]): CalendarBriefCounts {
+	const counts = createCalendarCounts();
+	for (const item of items) {
+		counts.total++;
+		if (item.source === 'google') {
+			counts.google++;
+		} else if (item.source === 'sync_issue') {
+			counts.syncIssue++;
+		} else {
+			counts.internal++;
+		}
+	}
+	return counts;
+}
+
+export function createEmptyCalendarBriefSection(): CalendarBriefSection {
+	return {
+		today: [],
+		upcoming: [],
+		todayTotal: 0,
+		upcomingTotal: 0,
+		hiddenTodayCount: 0,
+		hiddenUpcomingCount: 0,
+		counts: {
+			today: createCalendarCounts(),
+			upcoming: createCalendarCounts(),
+			all: createCalendarCounts()
+		}
+	};
+}
+
+function formatCalendarDisplayTime(
+	startAt: string,
+	endAt: string | null,
+	allDay: boolean,
+	timezone: string
+): string {
+	if (allDay) return 'All day';
+
+	const start = parseISO(startAt);
+	const startLabel = formatInTimeZone(start, timezone, 'h:mm a');
+	if (!endAt) return startLabel;
+
+	const end = parseISO(endAt);
+	if (Number.isNaN(end.getTime()) || end.getTime() <= start.getTime()) {
+		return startLabel;
+	}
+
+	const startDate = formatInTimeZone(start, timezone, 'yyyy-MM-dd');
+	const endDate = formatInTimeZone(end, timezone, 'yyyy-MM-dd');
+	if (startDate !== endDate) {
+		return `${startLabel}-${formatInTimeZone(end, timezone, 'MMM d h:mm a')}`;
+	}
+
+	return `${startLabel}-${formatInTimeZone(end, timezone, 'h:mm a')}`;
+}
+
+function formatCalendarDisplayDate(startAt: string, timezone: string): string {
+	return formatInTimeZone(parseISO(startAt), timezone, 'EEE MMM d');
+}
+
+function getCalendarLocalDate(item: Pick<CalendarBriefItem, 'startAt'>, timezone: string): string {
+	return formatInTimeZone(parseISO(item.startAt), timezone, 'yyyy-MM-dd');
+}
+
+function compareCalendarItems(a: CalendarBriefItem, b: CalendarBriefItem): number {
+	const startDelta = parseISO(a.startAt).getTime() - parseISO(b.startAt).getTime();
+	if (startDelta !== 0) return startDelta;
+
+	if (a.allDay !== b.allDay) {
+		return a.allDay ? 1 : -1;
+	}
+
+	const sourceOrder: Record<CalendarBriefSource, number> = {
+		google: 0,
+		sync_issue: 1,
+		internal: 2
+	};
+	const sourceDelta = sourceOrder[a.source] - sourceOrder[b.source];
+	if (sourceDelta !== 0) return sourceDelta;
+
+	return a.title.localeCompare(b.title);
+}
+
+function getCalendarDedupeKey(item: CalendarBriefItem): string {
+	if (item.googleEventId) {
+		return `google:${item.googleEventId}`;
+	}
+	if (item.eventId) {
+		return `event:${item.eventId}`;
+	}
+	if (item.taskId) {
+		return `task:${item.taskId}:${item.itemKind}:${item.startAt}`;
+	}
+	return `fallback:${item.title.toLowerCase()}:${item.startAt}:${item.endAt ?? ''}`;
+}
+
+function getCalendarDedupePriority(item: CalendarBriefItem): number {
+	if (item.source === 'google') return 0;
+	if (item.source === 'sync_issue') return 1;
+	if (item.eventId) return 2;
+	if (item.taskId) return 3;
+	return 4;
+}
+
+function dedupeCalendarItems(items: CalendarBriefItem[]): CalendarBriefItem[] {
+	const byKey = new Map<string, CalendarBriefItem>();
+	for (const item of items) {
+		const key = getCalendarDedupeKey(item);
+		const existing = byKey.get(key);
+		if (!existing || getCalendarDedupePriority(item) < getCalendarDedupePriority(existing)) {
+			byKey.set(key, item);
+		}
+	}
+	return Array.from(byKey.values());
+}
+
+export function selectCalendarBriefItems(
+	items: CalendarBriefItem[],
+	briefDate: string,
+	timezone: string
+): CalendarBriefSection {
+	if (items.length === 0) {
+		return createEmptyCalendarBriefSection();
+	}
+
+	const upcomingEndDate = addDaysToLocalDate(
+		briefDate,
+		CALENDAR_BRIEF_CAPS.UPCOMING_DAYS,
+		timezone
+	);
+	const deduped = dedupeCalendarItems(items).sort(compareCalendarItems);
+	const todayAll = deduped.filter((item) => getCalendarLocalDate(item, timezone) === briefDate);
+	const upcomingAll = deduped.filter((item) => {
+		const localDate = getCalendarLocalDate(item, timezone);
+		return localDate > briefDate && localDate <= upcomingEndDate;
+	});
+
+	const today = todayAll.slice(0, CALENDAR_BRIEF_CAPS.TODAY);
+	const upcoming = upcomingAll.slice(0, CALENDAR_BRIEF_CAPS.UPCOMING);
+	const allVisible = [...today, ...upcoming];
+	const allInWindow = [...todayAll, ...upcomingAll];
+
+	return {
+		today,
+		upcoming,
+		todayTotal: todayAll.length,
+		upcomingTotal: upcomingAll.length,
+		hiddenTodayCount: Math.max(0, todayAll.length - today.length),
+		hiddenUpcomingCount: Math.max(0, upcomingAll.length - upcoming.length),
+		counts: {
+			today: countCalendarItems(todayAll),
+			upcoming: countCalendarItems(upcomingAll),
+			all: countCalendarItems(allInWindow.length > 0 ? allInWindow : allVisible)
+		}
+	};
+}
+
+function isTaskCompleteOrCancelled(task: OntoTask): boolean {
+	const state = String(task.state_key);
+	return state === 'done' || state === 'cancelled' || state === 'archived';
+}
+
+function isWithinCalendarWindow(timestamp: string | null, start: Date, end: Date): boolean {
+	if (!timestamp) return false;
+	const date = parseISO(timestamp);
+	if (Number.isNaN(date.getTime())) return false;
+	return date >= start && date < end;
+}
+
+function createCalendarItem(params: {
+	id: string;
+	title: string | null;
+	startAt: string;
+	endAt: string | null;
+	allDay?: boolean | null;
+	timezone?: string | null;
+	projectId?: string | null;
+	projectName?: string | null;
+	taskId?: string | null;
+	eventId?: string | null;
+	itemType: 'event' | 'task';
+	itemKind: CalendarBriefItemKind;
+	stateKey?: string | null;
+	source: CalendarBriefSource;
+	googleEventId?: string | null;
+	googleCalendarId?: string | null;
+	externalLink?: string | null;
+	displayTimezone: string;
+}): CalendarBriefItem {
+	return {
+		id: params.id,
+		title: params.title?.trim() || 'Untitled',
+		startAt: params.startAt,
+		endAt: params.endAt,
+		allDay: params.allDay ?? false,
+		timezone: params.timezone ?? null,
+		projectId: params.projectId ?? null,
+		projectName: params.projectName ?? null,
+		taskId: params.taskId ?? null,
+		eventId: params.eventId ?? null,
+		itemType: params.itemType,
+		itemKind: params.itemKind,
+		stateKey: params.stateKey ?? null,
+		source: params.source,
+		sourceLabel: getCalendarSourceLabel(params.source),
+		googleEventId: params.googleEventId ?? null,
+		googleCalendarId: params.googleCalendarId ?? null,
+		externalLink: params.externalLink ?? null,
+		displayTime: formatCalendarDisplayTime(
+			params.startAt,
+			params.endAt,
+			params.allDay ?? false,
+			params.displayTimezone
+		),
+		displayDate: formatCalendarDisplayDate(params.startAt, params.displayTimezone)
+	};
+}
+
+function resolveOntologyEventTaskId(row: OntoCalendarEventRow): string | null {
+	const props = asRecord(row.props);
+	if (row.owner_entity_type === 'task' && row.owner_entity_id) {
+		return row.owner_entity_id;
+	}
+	const propTaskId = getStringProp(props, 'task_id');
+	return propTaskId;
+}
+
+function resolveOntologyEventKind(row: OntoCalendarEventRow): CalendarBriefItemKind {
+	const props = asRecord(row.props);
+	const kind = getStringProp(props, 'task_event_kind');
+	return isCalendarItemKind(kind) ? kind : 'event';
+}
+
+function resolveOntologyEventSource(
+	row: OntoCalendarEventRow,
+	userId: string
+): {
+	source: CalendarBriefSource;
+	googleEventId: string | null;
+	googleCalendarId: string | null;
+} {
+	const props = asRecord(row.props);
+	const syncRows = row.onto_event_sync ?? [];
+	const syncRow =
+		syncRows.find((sync) => sync.user_id === userId && sync.provider === 'google') ??
+		syncRows.find((sync) => !sync.user_id && sync.provider === 'google') ??
+		null;
+
+	const propProvider = getStringProp(props, 'provider');
+	const propExternalEventId = getStringProp(props, 'external_event_id');
+	const propExternalCalendarId = getStringProp(props, 'external_calendar_id');
+	const googleEventId = syncRow?.external_event_id ?? propExternalEventId;
+	const googleCalendarId = propExternalCalendarId ?? syncRow?.calendar_id ?? null;
+	const status = syncRow?.sync_status ?? row.sync_status ?? null;
+	const syncError = syncRow?.sync_error ?? row.sync_error ?? null;
+	const hasGoogleIntent =
+		syncRow !== null ||
+		propProvider === 'google' ||
+		Boolean(googleEventId) ||
+		hasGoogleCalendarLink(row.external_link);
+
+	if (hasGoogleIntent && (status === 'failed' || Boolean(syncError))) {
+		return {
+			source: 'sync_issue',
+			googleEventId,
+			googleCalendarId
+		};
+	}
+
+	if (hasGoogleIntent) {
+		return {
+			source: 'google',
+			googleEventId,
+			googleCalendarId
+		};
+	}
+
+	return {
+		source: 'internal',
+		googleEventId: null,
+		googleCalendarId: null
+	};
+}
+
+function normalizeOntologyCalendarEvent(
+	row: OntoCalendarEventRow,
+	userId: string,
+	projectNameMap: Map<string, string>,
+	timezone: string
+): CalendarBriefItem | null {
+	if (!row.start_at || row.deleted_at || row.state_key === 'cancelled') {
+		return null;
+	}
+
+	const kind = resolveOntologyEventKind(row);
+	const taskId = resolveOntologyEventTaskId(row);
+	const itemType = kind !== 'event' || taskId ? 'task' : 'event';
+	const source = resolveOntologyEventSource(row, userId);
+
+	return createCalendarItem({
+		id: `onto_event:${row.id}`,
+		title: row.title,
+		startAt: row.start_at,
+		endAt: row.end_at,
+		allDay: row.all_day,
+		timezone: row.timezone,
+		projectId: row.project_id,
+		projectName: row.project_id ? (projectNameMap.get(row.project_id) ?? null) : null,
+		taskId,
+		eventId: row.id,
+		itemType,
+		itemKind: kind,
+		stateKey: row.state_key,
+		source: source.source,
+		googleEventId: source.googleEventId,
+		googleCalendarId: source.googleCalendarId,
+		externalLink: row.external_link,
+		displayTimezone: timezone
+	});
+}
+
+function normalizeLegacyTaskCalendarEvent(
+	row: TaskCalendarEventRow,
+	taskProjectMap: Map<string, { projectId: string; projectName: string }>,
+	timezone: string
+): CalendarBriefItem | null {
+	const syncStatus = String(row.sync_status);
+	if (!row.event_start || syncStatus === 'cancelled') {
+		return null;
+	}
+
+	const taskProject = taskProjectMap.get(row.task_id);
+	let source: CalendarBriefSource = 'internal';
+	if (syncStatus === 'synced') {
+		source = 'google';
+	} else if (row.calendar_event_id || row.sync_error) {
+		source = 'sync_issue';
+	}
+
+	return createCalendarItem({
+		id: `legacy_task_calendar:${row.id}`,
+		title: row.event_title,
+		startAt: row.event_start,
+		endAt: row.event_end,
+		allDay: false,
+		timezone: null,
+		projectId: taskProject?.projectId ?? null,
+		projectName: taskProject?.projectName ?? null,
+		taskId: row.task_id,
+		eventId: null,
+		itemType: 'task',
+		itemKind: 'range',
+		stateKey: row.sync_status,
+		source,
+		googleEventId: row.calendar_event_id,
+		googleCalendarId: row.calendar_id,
+		externalLink: row.event_link,
+		displayTimezone: timezone
+	});
+}
+
+function buildSyntheticTaskCalendarItems(
+	tasks: OntoTask[],
+	projectNameMap: Map<string, string>,
+	tasksWithExplicitEvents: Set<string>,
+	windowStart: Date,
+	windowEnd: Date,
+	timezone: string
+): CalendarBriefItem[] {
+	const items: CalendarBriefItem[] = [];
+	const maxRangeMs = 10 * 60 * 60 * 1000;
+
+	for (const task of tasks) {
+		if (tasksWithExplicitEvents.has(task.id) || isTaskCompleteOrCancelled(task)) {
+			continue;
+		}
+
+		const hasStart = isWithinCalendarWindow(task.start_at, windowStart, windowEnd);
+		const hasDue = isWithinCalendarWindow(task.due_at, windowStart, windowEnd);
+		if (!hasStart && !hasDue) {
+			continue;
+		}
+
+		const startDate = task.start_at ? parseISO(task.start_at) : null;
+		const dueDate = task.due_at ? parseISO(task.due_at) : null;
+		const shouldCreateRange =
+			startDate &&
+			dueDate &&
+			dueDate > startDate &&
+			dueDate.getTime() - startDate.getTime() <= maxRangeMs &&
+			isWithinCalendarWindow(task.start_at, windowStart, windowEnd);
+
+		if (shouldCreateRange) {
+			items.push(
+				createCalendarItem({
+					id: `task:${task.id}:range`,
+					title: task.title,
+					startAt: task.start_at!,
+					endAt: task.due_at,
+					allDay: false,
+					timezone: null,
+					projectId: task.project_id,
+					projectName: projectNameMap.get(task.project_id) ?? null,
+					taskId: task.id,
+					eventId: null,
+					itemType: 'task',
+					itemKind: 'range',
+					stateKey: task.state_key,
+					source: 'internal',
+					displayTimezone: timezone
+				})
+			);
+			continue;
+		}
+
+		if (hasStart && task.start_at) {
+			items.push(
+				createCalendarItem({
+					id: `task:${task.id}:start`,
+					title: `Start: ${task.title}`,
+					startAt: task.start_at,
+					endAt: new Date(
+						parseISO(task.start_at).getTime() + 30 * 60 * 1000
+					).toISOString(),
+					allDay: false,
+					timezone: null,
+					projectId: task.project_id,
+					projectName: projectNameMap.get(task.project_id) ?? null,
+					taskId: task.id,
+					eventId: null,
+					itemType: 'task',
+					itemKind: 'start',
+					stateKey: task.state_key,
+					source: 'internal',
+					displayTimezone: timezone
+				})
+			);
+		}
+
+		if (hasDue && task.due_at) {
+			const due = parseISO(task.due_at);
+			items.push(
+				createCalendarItem({
+					id: `task:${task.id}:due`,
+					title: `Due: ${task.title}`,
+					startAt: new Date(due.getTime() - 30 * 60 * 1000).toISOString(),
+					endAt: task.due_at,
+					allDay: false,
+					timezone: null,
+					projectId: task.project_id,
+					projectName: projectNameMap.get(task.project_id) ?? null,
+					taskId: task.id,
+					eventId: null,
+					itemType: 'task',
+					itemKind: 'due',
+					stateKey: task.state_key,
+					source: 'internal',
+					displayTimezone: timezone
+				})
+			);
+		}
+	}
+
+	return items;
 }
 
 // ============================================================================
@@ -538,6 +1120,150 @@ export function findUnblockingTasks(tasks: OntoTask[], edges: OntoEdge[]): Unblo
 // RECENT UPDATES
 // ============================================================================
 
+const RECENT_CHANGE_WINDOW_DAYS = 7;
+
+function parseMaybeDate(timestamp: string | null | undefined): Date | null {
+	if (!timestamp) return null;
+	const parsed = parseISO(timestamp);
+	return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function isRecentTimestamp(
+	timestamp: string | null | undefined,
+	cutoff: Date
+): timestamp is string {
+	const parsed = parseMaybeDate(timestamp);
+	return Boolean(parsed && parsed >= cutoff);
+}
+
+function getEntityChangedAt(entity: { updated_at?: string | null; created_at?: string | null }): {
+	changedAt: string | null;
+	source: 'updated_at' | 'created_at';
+} {
+	if (entity.updated_at) {
+		return { changedAt: entity.updated_at, source: 'updated_at' };
+	}
+	return { changedAt: entity.created_at ?? null, source: 'created_at' };
+}
+
+function normalizeActivityEntityKind(entityType: string): ProjectRecentChangeKind | null {
+	const normalized = entityType.replace(/^onto_/, '').replace(/s$/, '');
+	switch (normalized) {
+		case 'project':
+		case 'task':
+		case 'goal':
+		case 'plan':
+		case 'document':
+		case 'milestone':
+		case 'risk':
+		case 'requirement':
+		case 'event':
+			return normalized;
+		default:
+			return null;
+	}
+}
+
+function addRecentChange(
+	changes: ProjectRecentChange[],
+	seen: Set<string>,
+	change: ProjectRecentChange
+): void {
+	const key = `${change.kind}:${change.id}:${change.action}`;
+	if (seen.has(key)) return;
+	seen.add(key);
+	changes.push(change);
+}
+
+function truncateRecentChangeTitle(title: string): string {
+	const trimmed = title.trim();
+	if (!trimmed) return 'Untitled';
+	return trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
+}
+
+function buildProjectRecentChanges(params: {
+	project: OntoProjectWithRelations;
+	recentTasks: OntoTask[];
+}): ProjectRecentChange[] {
+	const cutoff = subDays(new Date(), RECENT_CHANGE_WINDOW_DAYS);
+	const changes: ProjectRecentChange[] = [];
+	const seen = new Set<string>();
+
+	for (const log of params.project.activityLogs) {
+		const kind = normalizeActivityEntityKind(log.entityType);
+		if (!kind) continue;
+		addRecentChange(changes, seen, {
+			kind,
+			id: log.entityId,
+			title: truncateRecentChangeTitle(log.entityLabel ?? `${kind} ${log.entityId}`),
+			action: log.action,
+			changedAt: log.createdAt,
+			actorName: log.actorName,
+			source: 'activity_log'
+		});
+	}
+
+	for (const task of params.recentTasks) {
+		const { changedAt, source } = getEntityChangedAt(task);
+		if (!changedAt || !isRecentTimestamp(changedAt, cutoff)) continue;
+		addRecentChange(changes, seen, {
+			kind: 'task',
+			id: task.id,
+			title: truncateRecentChangeTitle(task.title),
+			action: source === 'created_at' ? 'created' : 'updated',
+			changedAt,
+			actorName: null,
+			source
+		});
+	}
+
+	for (const goal of params.project.goals) {
+		const { changedAt, source } = getEntityChangedAt(goal);
+		if (!changedAt || !isRecentTimestamp(changedAt, cutoff)) continue;
+		addRecentChange(changes, seen, {
+			kind: 'goal',
+			id: goal.id,
+			title: truncateRecentChangeTitle(goal.name),
+			action: source === 'created_at' ? 'created' : 'updated',
+			changedAt,
+			actorName: null,
+			source
+		});
+	}
+
+	for (const plan of params.project.plans) {
+		const { changedAt, source } = getEntityChangedAt(plan);
+		if (!changedAt || !isRecentTimestamp(changedAt, cutoff)) continue;
+		addRecentChange(changes, seen, {
+			kind: 'plan',
+			id: plan.id,
+			title: truncateRecentChangeTitle(plan.name ?? 'Plan'),
+			action: source === 'created_at' ? 'created' : 'updated',
+			changedAt,
+			actorName: null,
+			source
+		});
+	}
+
+	for (const document of params.project.documents) {
+		const { changedAt, source } = getEntityChangedAt(document);
+		if (!changedAt || !isRecentTimestamp(changedAt, cutoff)) continue;
+		addRecentChange(changes, seen, {
+			kind: 'document',
+			id: document.id,
+			title: truncateRecentChangeTitle(document.title || document.description || 'Document'),
+			action: source === 'created_at' ? 'created' : 'updated',
+			changedAt,
+			actorName: null,
+			source
+		});
+	}
+
+	return changes
+		.sort((a, b) => parseISO(b.changedAt).getTime() - parseISO(a.changedAt).getTime())
+		.slice(0, 10);
+}
+
 /**
  * Get recent updates across all entity types
  */
@@ -551,8 +1277,9 @@ export function getRecentUpdates(
 
 	return {
 		tasks: recentTasks,
-		// Goals do not have updated_at; treat as "recent activity" if created recently OR any supporting task was updated recently.
+		// Goals may have updated_at in newer rows; fall back to created_at or supporting task activity.
 		goals: data.goals.filter((g) => {
+			if (isRecentTimestamp(g.updated_at, cutoff)) return true;
 			if (parseISO(g.created_at) >= cutoff) return true;
 			return data.edges.some(
 				(e) =>
@@ -563,7 +1290,8 @@ export function getRecentUpdates(
 					recentTaskIds.has(e.src_id)
 			);
 		}),
-		documents: data.documents.filter((d) => parseISO(d.updated_at) >= cutoff)
+		documents: data.documents.filter((d) => parseISO(d.updated_at) >= cutoff),
+		plans: data.plans.filter((p) => parseISO(p.updated_at) >= cutoff)
 	};
 }
 
@@ -900,33 +1628,43 @@ export class OntologyBriefDataLoader {
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_goals')
-				.select('id, name, project_id, state_key, created_at, target_date')
+				.select(
+					'id, name, project_id, state_key, created_at, target_date, description, updated_at, completed_at, type_key'
+				)
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_plans')
-				.select('id, project_id, name, state_key, type_key')
+				.select(
+					'id, project_id, name, state_key, type_key, description, created_at, updated_at, facet_context, facet_scale, facet_stage'
+				)
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_milestones')
-				.select('id, project_id, title, due_at, state_key, created_at')
+				.select(
+					'id, project_id, title, due_at, state_key, created_at, description, updated_at, completed_at, type_key'
+				)
 				.in('project_id', projectIds)
 				.is('deleted_at', null)
 				.not('state_key', 'in', '(completed,missed)'), // Only fetch active milestones
 			this.supabase
 				.from('onto_risks')
-				.select('id, project_id, title, impact, state_key, created_at')
+				.select(
+					'id, project_id, title, impact, state_key, created_at, updated_at, probability, content, type_key'
+				)
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_documents')
-				.select('id, project_id, updated_at')
+				.select(
+					'id, project_id, title, description, state_key, type_key, created_at, updated_at'
+				)
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
 				.from('onto_requirements')
-				.select('id, project_id, text, created_at')
+				.select('id, project_id, text, created_at, updated_at, priority, type_key')
 				.in('project_id', projectIds)
 				.is('deleted_at', null),
 			this.supabase
@@ -1037,6 +1775,178 @@ export class OntologyBriefDataLoader {
 				recentUpdates
 			};
 		});
+	}
+
+	/**
+	 * Load compact calendar data for the daily brief.
+	 *
+	 * This intentionally loads a narrow, user-scoped 8-day window and returns capped
+	 * visible rows plus counts. LLM prompts consume the counts and first few items,
+	 * not a raw calendar dump.
+	 */
+	async loadCalendarBriefData(
+		userId: string,
+		actorId: string,
+		projectsData: OntoProjectWithRelations[],
+		briefDate: string,
+		timezone: string
+	): Promise<CalendarBriefSection> {
+		const projectIds = projectsData.map((data) => data.project.id);
+		const projectNameMap = new Map(
+			projectsData.map((data) => [data.project.id, data.project.name || 'Untitled Project'])
+		);
+		const allTasks = projectsData.flatMap((data) => data.tasks);
+		const taskProjectMap = new Map(
+			allTasks.map((task) => [
+				task.id,
+				{
+					projectId: task.project_id,
+					projectName: projectNameMap.get(task.project_id) ?? 'Unknown Project'
+				}
+			])
+		);
+
+		const { todayStart, windowEnd } = getCalendarBriefWindow(briefDate, timezone);
+		const windowStartIso = todayStart.toISOString();
+		const windowEndIso = windowEnd.toISOString();
+		const overlapFilter = `start_at.gte.${windowStartIso},end_at.gte.${windowStartIso}`;
+		const legacyOverlapFilter = `event_start.gte.${windowStartIso},event_end.gte.${windowStartIso}`;
+		const eventSelect = `
+			id,
+			title,
+			start_at,
+			end_at,
+			all_day,
+			timezone,
+			project_id,
+			owner_entity_type,
+			owner_entity_id,
+			state_key,
+			type_key,
+			props,
+			external_link,
+			sync_status,
+			sync_error,
+			deleted_at,
+			created_at,
+			updated_at,
+			onto_event_sync (
+				id,
+				event_id,
+				calendar_id,
+				user_id,
+				provider,
+				external_event_id,
+				sync_status,
+				sync_error,
+				last_synced_at,
+				sync_token,
+				created_at,
+				updated_at
+			)
+		`;
+
+		const eventRows: OntoCalendarEventRow[] = [];
+
+		const appendRows = (
+			rows: unknown[] | null,
+			error: { message?: string } | null,
+			label: string
+		) => {
+			if (error) {
+				console.warn(`[OntologyBriefDataLoader] Failed to load ${label}:`, error);
+				return;
+			}
+			eventRows.push(...((rows ?? []) as OntoCalendarEventRow[]));
+		};
+
+		if (projectIds.length > 0) {
+			const { data, error } = await this.supabase
+				.from('onto_events')
+				.select(eventSelect)
+				.in('project_id', projectIds)
+				.is('deleted_at', null)
+				.lt('start_at', windowEndIso)
+				.or(overlapFilter)
+				.order('start_at', { ascending: true })
+				.limit(CALENDAR_BRIEF_CAPS.QUERY_LIMIT);
+
+			appendRows(data as unknown[] | null, error, 'project calendar events');
+		}
+
+		const { data: actorEvents, error: actorEventsError } = await this.supabase
+			.from('onto_events')
+			.select(eventSelect)
+			.eq('owner_entity_type', 'actor')
+			.eq('owner_entity_id', actorId)
+			.is('deleted_at', null)
+			.lt('start_at', windowEndIso)
+			.or(overlapFilter)
+			.order('start_at', { ascending: true })
+			.limit(CALENDAR_BRIEF_CAPS.QUERY_LIMIT);
+
+		appendRows(actorEvents as unknown[] | null, actorEventsError, 'actor calendar events');
+
+		const { data: standaloneEvents, error: standaloneEventsError } = await this.supabase
+			.from('onto_events')
+			.select(eventSelect)
+			.eq('owner_entity_type', 'standalone')
+			.in('created_by', [actorId, userId])
+			.is('deleted_at', null)
+			.lt('start_at', windowEndIso)
+			.or(overlapFilter)
+			.order('start_at', { ascending: true })
+			.limit(CALENDAR_BRIEF_CAPS.QUERY_LIMIT);
+
+		appendRows(
+			standaloneEvents as unknown[] | null,
+			standaloneEventsError,
+			'standalone calendar events'
+		);
+
+		const ontologyItems = eventRows
+			.map((row) => normalizeOntologyCalendarEvent(row, userId, projectNameMap, timezone))
+			.filter((item): item is CalendarBriefItem => item !== null);
+
+		const { data: legacyRows, error: legacyError } = await this.supabase
+			.from('task_calendar_events')
+			.select('*')
+			.eq('user_id', userId)
+			.lt('event_start', windowEndIso)
+			.or(legacyOverlapFilter)
+			.order('event_start', { ascending: true })
+			.limit(CALENDAR_BRIEF_CAPS.QUERY_LIMIT);
+
+		if (legacyError) {
+			console.warn(
+				'[OntologyBriefDataLoader] Failed to load legacy calendar events:',
+				legacyError
+			);
+		}
+
+		const legacyItems = ((legacyRows ?? []) as TaskCalendarEventRow[])
+			.map((row) => normalizeLegacyTaskCalendarEvent(row, taskProjectMap, timezone))
+			.filter((item): item is CalendarBriefItem => item !== null);
+
+		const tasksWithExplicitEvents = new Set(
+			[...ontologyItems, ...legacyItems]
+				.map((item) => item.taskId)
+				.filter((taskId): taskId is string => Boolean(taskId))
+		);
+		const syntheticTaskItems = buildSyntheticTaskCalendarItems(
+			allTasks,
+			projectNameMap,
+			tasksWithExplicitEvents,
+			todayStart,
+			windowEnd,
+			timezone
+		);
+
+		return selectCalendarBriefItems(
+			[...ontologyItems, ...legacyItems, ...syntheticTaskItems],
+			briefDate,
+			timezone
+		);
 	}
 
 	/**
@@ -1169,7 +2079,8 @@ export class OntologyBriefDataLoader {
 	prepareBriefData(
 		projectsData: OntoProjectWithRelations[],
 		briefDate: string,
-		timezone: string
+		timezone: string,
+		calendar: CalendarBriefSection = createEmptyCalendarBriefSection()
 	): OntologyBriefData {
 		// Aggregate data across all projects
 		const allTasks = projectsData.flatMap((p) => p.tasks);
@@ -1197,6 +2108,28 @@ export class OntologyBriefDataLoader {
 		const upcomingTasksByProject = groupTasksByProject(categorizedTasks.upcomingTasks);
 		const blockedTasksByProject = groupTasksByProject(categorizedTasks.blockedTasks);
 		const recentlyUpdatedByProject = groupTasksByProject(categorizedTasks.recentlyUpdated);
+		const taskProjectIds = new Map(allTasks.map((task) => [task.id, task.project_id]));
+
+		const groupCalendarByProject = (
+			items: CalendarBriefItem[]
+		): Map<string, CalendarBriefItem[]> => {
+			const grouped = new Map<string, CalendarBriefItem[]>();
+			for (const item of items) {
+				const projectId =
+					item.projectId ?? (item.taskId ? taskProjectIds.get(item.taskId) : null);
+				if (!projectId) continue;
+				const list = grouped.get(projectId);
+				if (list) {
+					list.push(item);
+				} else {
+					grouped.set(projectId, [item]);
+				}
+			}
+			return grouped;
+		};
+
+		const calendarTodayByProject = groupCalendarByProject(calendar.today);
+		const calendarUpcomingByProject = groupCalendarByProject(calendar.upcoming);
 
 		// Reuse precomputed goal progress from project data to avoid recomputation
 		const goals: GoalProgress[] = [];
@@ -1225,7 +2158,8 @@ export class OntologyBriefDataLoader {
 		const allRecentUpdates: RecentUpdates = {
 			tasks: projectsData.flatMap((p) => p.recentUpdates.tasks),
 			goals: projectsData.flatMap((p) => p.recentUpdates.goals),
-			documents: projectsData.flatMap((p) => p.recentUpdates.documents)
+			documents: projectsData.flatMap((p) => p.recentUpdates.documents),
+			plans: projectsData.flatMap((p) => p.recentUpdates.plans ?? [])
 		};
 
 		// Tasks by work mode
@@ -1303,6 +2237,8 @@ export class OntologyBriefDataLoader {
 			const projectUpcomingAll = upcomingTasksByProject.get(data.project.id) ?? [];
 			const projectBlockedTasks = blockedTasksByProject.get(data.project.id) ?? [];
 			const projectRecentlyUpdatedAll = recentlyUpdatedByProject.get(data.project.id) ?? [];
+			const projectCalendarToday = calendarTodayByProject.get(data.project.id) ?? [];
+			const projectCalendarUpcoming = calendarUpcomingByProject.get(data.project.id) ?? [];
 
 			// Project-level strategic task splits with deduplication
 			const projectRecentlyUpdated = projectRecentlyUpdatedAll.slice(
@@ -1313,16 +2249,30 @@ export class OntologyBriefDataLoader {
 			const projectUpcoming = projectUpcomingAll
 				.filter((t) => !projectRecentIds.has(t.id))
 				.slice(0, ENTITY_CAPS.TASKS_UPCOMING);
+			const recentChanges = buildProjectRecentChanges({
+				project: data,
+				recentTasks: projectRecentlyUpdated
+			});
 
 			return {
 				project: data.project,
 				isShared: data.isShared,
 				activityLogs: data.activityLogs,
+				recentChanges,
 				goals: projectGoals.slice(0, ENTITY_CAPS.GOALS),
+				plans: data.plans.slice(0, ENTITY_CAPS.PLANS),
 				requirements: projectRequirements.slice(0, ENTITY_CAPS.REQUIREMENTS),
+				documents: [...data.documents]
+					.sort(
+						(a, b) =>
+							parseISO(b.updated_at).getTime() - parseISO(a.updated_at).getTime()
+					)
+					.slice(0, ENTITY_CAPS.DOCUMENTS),
 				nextSteps,
 				nextMilestone: nextMilestone?.title || null,
 				activePlan,
+				calendarToday: projectCalendarToday,
+				calendarUpcoming: projectCalendarUpcoming,
 				todaysTasks: projectTodaysTasks,
 				thisWeekTasks: [...projectTodaysTasks, ...projectUpcomingAll],
 				blockedTasks: projectBlockedTasks,
@@ -1345,6 +2295,7 @@ export class OntologyBriefDataLoader {
 			recentUpdates: allRecentUpdates,
 			tasksByWorkMode,
 			projects,
+			calendar,
 			// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
 			recentlyUpdatedTasks,
 			upcomingTasks
@@ -1395,7 +2346,8 @@ export class OntologyBriefDataLoader {
 		const recentUpdatesCount =
 			briefData.recentUpdates.tasks.length +
 			briefData.recentUpdates.goals.length +
-			briefData.recentUpdates.documents.length;
+			briefData.recentUpdates.documents.length +
+			(briefData.recentUpdates.plans?.length ?? 0);
 
 		return {
 			totalProjects: projectsData.length,
@@ -1410,6 +2362,11 @@ export class OntologyBriefDataLoader {
 			milestonesThisWeek,
 			totalEdges: allEdges.length,
 			dependencyChains,
+			calendarTodayCount: briefData.calendar.todayTotal,
+			calendarUpcomingCount: briefData.calendar.upcomingTotal,
+			calendarGoogleCount: briefData.calendar.counts.all.google,
+			calendarInternalCount: briefData.calendar.counts.all.internal,
+			calendarSyncIssueCount: briefData.calendar.counts.all.syncIssue,
 			generatedVia: 'ontology_v1',
 			timezone
 		};

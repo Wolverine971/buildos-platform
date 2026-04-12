@@ -16,6 +16,8 @@ export type OpenRouterChatCompletionBodyParams = {
 	transforms?: string[];
 };
 
+export const OPENROUTER_MAX_FALLBACK_MODELS = 3;
+
 function uniqueNonEmpty(values: string[]): string[] {
 	return Array.from(
 		new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))
@@ -24,7 +26,9 @@ function uniqueNonEmpty(values: string[]): string[] {
 
 export function resolveOpenRouterFallbackModels(model: string, models?: string[]): string[] {
 	const primary = model.trim();
-	return uniqueNonEmpty(models ?? []).filter((entry) => entry !== primary);
+	return uniqueNonEmpty(models ?? [])
+		.filter((entry) => entry !== primary)
+		.slice(0, OPENROUTER_MAX_FALLBACK_MODELS);
 }
 
 export function buildOpenRouterChatCompletionBody(

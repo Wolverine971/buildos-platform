@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/issues/AGENTIC_CHAT_VOICE_MODAL_JUMPINESS_2026-04-12.md -->
+
 # Agentic Chat Voice Modal Jumpiness
 
 Date: 2026-04-12

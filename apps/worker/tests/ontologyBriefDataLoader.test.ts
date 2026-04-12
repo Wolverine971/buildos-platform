@@ -14,7 +14,9 @@ import {
 	findUnblockingTasks,
 	getWorkMode,
 	buildProjectAccessFilter,
-	findMissingOwnerMembershipProjectIds
+	findMissingOwnerMembershipProjectIds,
+	selectCalendarBriefItems,
+	createEmptyCalendarBriefSection
 } from '../src/workers/brief/ontologyBriefDataLoader';
 import type {
 	OntoTask,
@@ -22,7 +24,8 @@ import type {
 	OntoMilestone,
 	OntoPlan,
 	OntoEdge,
-	OntoProject
+	OntoProject,
+	CalendarBriefItem
 } from '../src/workers/brief/ontologyBriefTypes';
 
 // ============================================================================
@@ -137,6 +140,32 @@ function createMockEdge(overrides: Partial<OntoEdge> = {}): OntoEdge {
 		props: {},
 		...overrides
 	} as OntoEdge;
+}
+
+function createMockCalendarItem(overrides: Partial<CalendarBriefItem> = {}): CalendarBriefItem {
+	return {
+		id: 'calendar-1',
+		title: 'Calendar Item',
+		startAt: '2025-12-17T15:00:00.000Z',
+		endAt: '2025-12-17T16:00:00.000Z',
+		allDay: false,
+		timezone: 'America/New_York',
+		projectId: 'project-1',
+		projectName: 'Test Project',
+		taskId: null,
+		eventId: 'event-1',
+		itemType: 'event',
+		itemKind: 'event',
+		stateKey: 'scheduled',
+		source: 'internal',
+		sourceLabel: 'Internal only',
+		googleEventId: null,
+		googleCalendarId: null,
+		externalLink: null,
+		displayTime: '10:00 AM-11:00 AM',
+		displayDate: 'Wed Dec 17',
+		...overrides
+	};
 }
 
 // ============================================================================
@@ -265,6 +294,123 @@ describe('findMissingOwnerMembershipProjectIds', () => {
 				memberProjectIds: ['project-1']
 			})
 		).toEqual([]);
+	});
+});
+
+describe('calendar brief selection', () => {
+	const timezone = 'America/New_York';
+	const briefDate = '2025-12-17';
+
+	it('returns an empty calendar section when no items are provided', () => {
+		expect(selectCalendarBriefItems([], briefDate, timezone)).toEqual(
+			createEmptyCalendarBriefSection()
+		);
+	});
+
+	it('caps today and upcoming items while preserving total counts', () => {
+		const todayItems = Array.from({ length: 10 }, (_, index) =>
+			createMockCalendarItem({
+				id: `today-${index}`,
+				eventId: `event-today-${index}`,
+				title: `Today ${index}`,
+				startAt: `2025-12-17T${String(13 + index).padStart(2, '0')}:00:00.000Z`,
+				endAt: `2025-12-17T${String(14 + index).padStart(2, '0')}:00:00.000Z`
+			})
+		);
+		const upcomingItems = Array.from({ length: 7 }, (_, index) =>
+			createMockCalendarItem({
+				id: `upcoming-${index}`,
+				eventId: `event-upcoming-${index}`,
+				title: `Upcoming ${index}`,
+				startAt: `2025-12-${18 + index}T15:00:00.000Z`,
+				endAt: `2025-12-${18 + index}T16:00:00.000Z`,
+				displayDate: `Dec ${18 + index}`
+			})
+		);
+
+		const result = selectCalendarBriefItems(
+			[...todayItems, ...upcomingItems],
+			briefDate,
+			timezone
+		);
+
+		expect(result.today).toHaveLength(8);
+		expect(result.upcoming).toHaveLength(5);
+		expect(result.todayTotal).toBe(10);
+		expect(result.upcomingTotal).toBe(7);
+		expect(result.hiddenTodayCount).toBe(2);
+		expect(result.hiddenUpcomingCount).toBe(2);
+	});
+
+	it('tracks source label counts across today and upcoming windows', () => {
+		const result = selectCalendarBriefItems(
+			[
+				createMockCalendarItem({
+					id: 'google',
+					eventId: 'event-google',
+					source: 'google',
+					sourceLabel: 'Google Calendar',
+					googleEventId: 'google-1'
+				}),
+				createMockCalendarItem({
+					id: 'internal',
+					eventId: 'event-internal',
+					source: 'internal',
+					sourceLabel: 'Internal only'
+				}),
+				createMockCalendarItem({
+					id: 'sync-issue',
+					eventId: 'event-sync',
+					source: 'sync_issue',
+					sourceLabel: 'Google sync issue',
+					googleEventId: 'google-2',
+					startAt: '2025-12-18T15:00:00.000Z'
+				})
+			],
+			briefDate,
+			timezone
+		);
+
+		expect(result.counts.today.google).toBe(1);
+		expect(result.counts.today.internal).toBe(1);
+		expect(result.counts.upcoming.syncIssue).toBe(1);
+		expect(result.counts.all.total).toBe(3);
+	});
+
+	it('deduplicates Google mapped items before applying caps', () => {
+		const result = selectCalendarBriefItems(
+			[
+				createMockCalendarItem({
+					id: 'internal-event',
+					eventId: 'event-internal',
+					taskId: 'task-1',
+					source: 'internal',
+					sourceLabel: 'Internal only'
+				}),
+				createMockCalendarItem({
+					id: 'google-event',
+					eventId: null,
+					taskId: 'task-1',
+					source: 'google',
+					sourceLabel: 'Google Calendar',
+					googleEventId: 'google-1'
+				}),
+				createMockCalendarItem({
+					id: 'google-event-duplicate',
+					eventId: null,
+					taskId: 'task-1',
+					source: 'sync_issue',
+					sourceLabel: 'Google sync issue',
+					googleEventId: 'google-1'
+				})
+			],
+			briefDate,
+			timezone
+		);
+
+		expect(result.today).toHaveLength(2);
+		expect(result.today.some((item) => item.id === 'google-event-duplicate')).toBe(false);
+		expect(result.today.some((item) => item.id === 'google-event')).toBe(true);
 	});
 });
 

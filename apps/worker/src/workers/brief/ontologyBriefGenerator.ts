@@ -29,8 +29,11 @@ import type {
 	OntologyProjectBriefRow,
 	GoalProgress,
 	OntoTask,
+	CalendarBriefItem,
+	CalendarBriefSection,
 	ProjectBriefData,
-	ProjectActivityEntry
+	ProjectActivityEntry,
+	ProjectRecentChange
 } from './ontologyBriefTypes.js';
 
 // ============================================================================
@@ -49,6 +52,21 @@ export interface OntologyDailyBriefResult {
 	generationStatus: string;
 	projectBriefIds: string[];
 }
+
+interface ProjectBriefLLMResponse {
+	briefMarkdown?: string;
+	statusLine?: string;
+	recentChangeSummary?: string;
+	calendarSummary?: string;
+	nextAction?: string;
+}
+
+const PROJECT_BRIEF_MODELS = [
+	'openai/gpt-oss-20b',
+	'qwen/qwen3.5-flash-02-23',
+	'openai/gpt-oss-120b',
+	'openai/gpt-4.1-nano'
+] as const;
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -146,6 +164,118 @@ function formatActivityEntry(entry: ProjectActivityEntry): string {
 	return `${actor} ${action} ${entityType}${label}`;
 }
 
+function formatCalendarKindLabel(item: CalendarBriefItem): string | null {
+	if (item.itemType !== 'task') return null;
+	switch (item.itemKind) {
+		case 'range':
+			return 'Task block';
+		case 'start':
+			return 'Task start';
+		case 'due':
+			return 'Task due';
+		case 'event':
+			return 'Task event';
+	}
+}
+
+function formatCalendarBriefItem(item: CalendarBriefItem, includeDate: boolean): string {
+	const timeLabel = includeDate ? `${item.displayDate}, ${item.displayTime}` : item.displayTime;
+	const kindLabel = formatCalendarKindLabel(item);
+	const details = [item.sourceLabel, kindLabel, item.projectName].filter(Boolean);
+	const detailSuffix = details.length > 0 ? ` - ${details.join(' / ')}` : '';
+	return `- ${timeLabel} - ${item.title}${detailSuffix}`;
+}
+
+function formatCalendarCounts(section: CalendarBriefSection, scope: 'today' | 'upcoming'): string {
+	const counts = section.counts[scope];
+	if (counts.total === 0) return '0 items';
+
+	const pieces: string[] = [`${counts.total} item${counts.total === 1 ? '' : 's'}`];
+	if (counts.google > 0) {
+		pieces.push(`${counts.google} Google`);
+	}
+	if (counts.internal > 0) {
+		pieces.push(`${counts.internal} internal`);
+	}
+	if (counts.syncIssue > 0) {
+		pieces.push(`${counts.syncIssue} sync issue${counts.syncIssue === 1 ? '' : 's'}`);
+	}
+	return pieces.join(' / ');
+}
+
+function formatCalendarSection(calendar: CalendarBriefSection): string {
+	let section = `## Calendar\n\n`;
+
+	if (calendar.todayTotal === 0 && calendar.upcomingTotal === 0) {
+		section += `No calendar items today or in the next 7 days.\n\n`;
+		return section;
+	}
+
+	section += `**Today:** ${formatCalendarCounts(calendar, 'today')}\n`;
+	if (calendar.upcomingTotal > 0) {
+		section += `**Upcoming:** ${formatCalendarCounts(calendar, 'upcoming')}\n`;
+	}
+	section += '\n';
+
+	if (calendar.today.length > 0) {
+		section += `### Today\n`;
+		for (const item of calendar.today) {
+			section += `${formatCalendarBriefItem(item, false)}\n`;
+		}
+		if (calendar.hiddenTodayCount > 0) {
+			section += `- ... and ${calendar.hiddenTodayCount} more today\n`;
+		}
+		section += '\n';
+	} else {
+		section += `### Today\nNo calendar items today.\n\n`;
+	}
+
+	if (calendar.upcoming.length > 0) {
+		section += `### Upcoming\n`;
+		for (const item of calendar.upcoming) {
+			section += `${formatCalendarBriefItem(item, true)}\n`;
+		}
+		if (calendar.hiddenUpcomingCount > 0) {
+			section += `- ... and ${calendar.hiddenUpcomingCount} more upcoming\n`;
+		}
+		section += '\n';
+	}
+
+	return section;
+}
+
+function formatProjectCalendarItems(items: CalendarBriefItem[], includeDate: boolean): string {
+	return items
+		.slice(0, 5)
+		.map((item) => formatCalendarBriefItem(item, includeDate))
+		.join('\n');
+}
+
+function formatRecentChangeEntry(change: ProjectRecentChange): string {
+	const actor = change.actorName ? ` by ${change.actorName}` : '';
+	return `- ${change.kind} ${change.action}: ${change.title}${actor}`;
+}
+
+function containsStaleSchedulingLanguage(content: string): boolean {
+	return /\btime\s*blocks?\b/i.test(content);
+}
+
+function normalizeLLMProjectBriefMarkdown(
+	project: ProjectBriefData,
+	response: ProjectBriefLLMResponse
+): string | null {
+	const raw = typeof response.briefMarkdown === 'string' ? response.briefMarkdown.trim() : '';
+	if (!raw || containsStaleSchedulingLanguage(raw)) return null;
+
+	const expectedHeading = `## [${project.project.name}](/projects/${project.project.id})`;
+	if (raw.startsWith('## ')) {
+		return raw;
+	}
+
+	const withoutTopHeading = raw.replace(/^# .+(\r?\n)+/, '').trim();
+	return `${expectedHeading}\n\n${withoutTopHeading}`;
+}
+
 // ============================================================================
 // PROGRESS TRACKING
 // ============================================================================
@@ -218,6 +348,29 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 	}
 	brief += `${statusLine}\n\n`;
 
+	// Calendar - project-specific commitments
+	if (project.calendarToday.length > 0 || project.calendarUpcoming.length > 0) {
+		brief += `### Calendar\n`;
+		if (project.calendarToday.length > 0) {
+			brief += `**Today**\n`;
+			brief += `${formatProjectCalendarItems(project.calendarToday, false)}\n`;
+		}
+		if (project.calendarUpcoming.length > 0) {
+			brief += `${project.calendarToday.length > 0 ? '\n' : ''}**Upcoming**\n`;
+			brief += `${formatProjectCalendarItems(project.calendarUpcoming, true)}\n`;
+		}
+		brief += '\n';
+	}
+
+	// Recent Changes - documents/goals/plans/events/tasks updated in this project
+	if (project.recentChanges.length > 0) {
+		brief += `### Recent Changes\n`;
+		for (const change of project.recentChanges.slice(0, 5)) {
+			brief += `${formatRecentChangeEntry(change)}\n`;
+		}
+		brief += '\n';
+	}
+
 	// Goal Progress Section - only show if there are active goals
 	if (activeGoals.length > 0) {
 		brief += `### Goal Progress\n`;
@@ -234,6 +387,25 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 			const statusPrefix = statusEmoji ? `${statusEmoji} ` : '';
 			const targetSuffix = targetSummary ? ` - ${targetSummary}` : '';
 			brief += `- ${statusPrefix}**${goal.goal.name}**${targetSuffix}\n`;
+		}
+		brief += '\n';
+	}
+
+	const activePlans = project.plans.filter((p) => p.state_key !== 'completed');
+	if (activePlans.length > 0) {
+		brief += `### Active Plans\n`;
+		for (const plan of activePlans.slice(0, 3)) {
+			const description = plan.description ? ` - ${plan.description}` : '';
+			brief += `- **${plan.name}** (${plan.state_key})${description}\n`;
+		}
+		brief += '\n';
+	}
+
+	if (project.documents.length > 0) {
+		brief += `### Recent Documents\n`;
+		for (const document of project.documents.slice(0, 3)) {
+			const description = document.description ? ` - ${document.description}` : '';
+			brief += `- **${document.title || 'Untitled document'}**${description}\n`;
 		}
 		brief += '\n';
 	}
@@ -306,9 +478,75 @@ function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string)
 async function generateOntologyProjectBrief(
 	dailyBriefId: string,
 	project: ProjectBriefData,
-	timezone: string
+	timezone: string,
+	userId: string,
+	briefDate: string
 ): Promise<OntologyProjectBriefRow> {
-	const briefContent = formatOntologyProjectBrief(project, timezone);
+	const fallbackBriefContent = formatOntologyProjectBrief(project, timezone);
+	let briefContent = fallbackBriefContent;
+	let generationMode: 'llm' | 'deterministic_fallback' = 'deterministic_fallback';
+	let llmModelUsed: string | null = null;
+	let llmCost: number | null = null;
+	let llmStatusLine: string | null = null;
+	let llmRecentChangeSummary: string | null = null;
+	let llmCalendarSummary: string | null = null;
+	let llmNextAction: string | null = null;
+
+	try {
+		const llmService = new SmartLLMService({
+			httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
+			appName: 'BuildOS Ontology Brief Worker'
+		});
+
+		const response = await llmService.getJSONResponse<ProjectBriefLLMResponse>({
+			systemPrompt: OntologyProjectBriefPrompt.getSystemPrompt(),
+			userPrompt: OntologyProjectBriefPrompt.buildUserPrompt({
+				date: briefDate,
+				timezone,
+				project
+			}),
+			userId,
+			profile: 'custom',
+			model: PROJECT_BRIEF_MODELS[0],
+			models: [...PROJECT_BRIEF_MODELS],
+			temperature: 0.25,
+			requirements: {
+				maxCost: 0.04,
+				minAccuracy: 4.3
+			},
+			operationType: 'daily_brief_project_brief',
+			projectId: project.project.id,
+			briefId: dailyBriefId,
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 1,
+				allowTruncatedJsonRecovery: true
+			},
+			metadata: {
+				model_policy: 'cheapest_project_brief_paid_default',
+				fallback_model_count: PROJECT_BRIEF_MODELS.length
+			},
+			onUsage: (usage) => {
+				llmModelUsed = usage.model;
+				llmCost = usage.totalCost;
+			}
+		});
+
+		const normalized = normalizeLLMProjectBriefMarkdown(project, response);
+		if (normalized) {
+			briefContent = normalized;
+			generationMode = 'llm';
+			llmStatusLine = response.statusLine?.trim() || null;
+			llmRecentChangeSummary = response.recentChangeSummary?.trim() || null;
+			llmCalendarSummary = response.calendarSummary?.trim() || null;
+			llmNextAction = response.nextAction?.trim() || null;
+		}
+	} catch (error) {
+		console.warn(
+			`[OntologyBrief] Project brief LLM generation failed for project ${project.project.id}; using deterministic fallback`,
+			error
+		);
+	}
 
 	const metadata = {
 		todaysTaskCount: project.todaysTasks.length,
@@ -319,7 +557,22 @@ async function generateOntologyProjectBrief(
 		).length,
 		requirementsCount: project.requirements.length,
 		hasNextMilestone: !!project.nextMilestone,
-		activePlanId: project.activePlan?.id || null
+		activePlanId: project.activePlan?.id || null,
+		calendarTodayCount: project.calendarToday.length,
+		calendarUpcomingCount: project.calendarUpcoming.length,
+		recentChangeCount: project.recentChanges.length,
+		documentCount: project.documents.length,
+		planCount: project.plans.length,
+		generationMode,
+		llmModelUsed,
+		llmCost,
+		llmStatusLine,
+		llmRecentChangeSummary,
+		llmCalendarSummary,
+		llmNextAction,
+		recentChanges: project.recentChanges.slice(0, 8),
+		calendarToday: project.calendarToday.slice(0, 5),
+		calendarUpcoming: project.calendarUpcoming.slice(0, 5)
 	};
 
 	const { data: savedBrief, error } = await supabase
@@ -328,7 +581,7 @@ async function generateOntologyProjectBrief(
 			daily_brief_id: dailyBriefId,
 			project_id: project.project.id,
 			brief_content: briefContent,
-			metadata
+			metadata: metadata as unknown as Json
 		})
 		.select()
 		.single();
@@ -400,6 +653,9 @@ function generateMainBriefMarkdown(
 		}
 		mainBrief += '\n';
 	}
+
+	// Calendar - deterministic, compact, and rendered before LLM summary
+	mainBrief += formatCalendarSection(briefData.calendar);
 
 	// Executive Summary
 	mainBrief += `## Executive Summary\n\n${executiveSummary}\n\n`;
@@ -549,7 +805,8 @@ function generateMainBriefMarkdown(
 	const totalUpdates =
 		briefData.recentUpdates.tasks.length +
 		briefData.recentUpdates.goals.length +
-		briefData.recentUpdates.documents.length;
+		briefData.recentUpdates.documents.length +
+		(briefData.recentUpdates.plans?.length ?? 0);
 
 	const hasSharedProjects = briefData.projects.some((project) => project.isShared);
 	const nonCompletionEntries = activityEntries.filter((e) => e.action !== 'completed');
@@ -765,10 +1022,19 @@ export async function generateOntologyDailyBrief(
 		// Step 3: Prepare brief data
 		await updateProgress(dailyBrief.id, { step: 'preparing_brief_data', progress: 25 }, jobId);
 
-		const briefData = dataLoader.prepareBriefData(
+		const calendar = await dataLoader.loadCalendarBriefData(
+			userId,
+			actorId,
 			projectsData,
 			briefDateInUserTz,
 			userTimezone
+		);
+
+		const briefData = dataLoader.prepareBriefData(
+			projectsData,
+			briefDateInUserTz,
+			userTimezone,
+			calendar
 		);
 		const metadata = dataLoader.calculateMetadata(
 			projectsData,
@@ -786,7 +1052,13 @@ export async function generateOntologyDailyBrief(
 
 		const projectBriefResults = await Promise.allSettled(
 			briefData.projects.map((project) =>
-				generateOntologyProjectBrief(dailyBrief.id, project, userTimezone)
+				generateOntologyProjectBrief(
+					dailyBrief.id,
+					project,
+					userTimezone,
+					userId,
+					briefDateInUserTz
+				)
 			)
 		);
 
@@ -1167,8 +1439,70 @@ async function recordBriefEntities(
 		});
 	}
 
+	for (const goal of briefData.recentUpdates.goals.slice(0, 5)) {
+		entities.push({
+			daily_brief_id: dailyBriefId,
+			project_id: goal.project_id,
+			entity_kind: 'goal',
+			entity_id: goal.id,
+			role: 'recently_updated'
+		});
+	}
+
+	for (const plan of (briefData.recentUpdates.plans ?? []).slice(0, 5)) {
+		entities.push({
+			daily_brief_id: dailyBriefId,
+			project_id: plan.project_id,
+			entity_kind: 'plan',
+			entity_id: plan.id,
+			role: 'recently_updated'
+		});
+	}
+
+	for (const item of briefData.calendar.today.slice(0, 10)) {
+		if (!item.eventId && !item.taskId) continue;
+		entities.push({
+			daily_brief_id: dailyBriefId,
+			project_id: item.projectId,
+			entity_kind: item.eventId ? 'event' : 'task',
+			entity_id: item.eventId ?? item.taskId!,
+			role: 'calendar_today'
+		});
+	}
+
+	for (const item of briefData.calendar.upcoming.slice(0, 10)) {
+		if (!item.eventId && !item.taskId) continue;
+		entities.push({
+			daily_brief_id: dailyBriefId,
+			project_id: item.projectId,
+			entity_kind: item.eventId ? 'event' : 'task',
+			entity_id: item.eventId ?? item.taskId!,
+			role: 'calendar_upcoming'
+		});
+	}
+
+	for (const project of briefData.projects) {
+		for (const change of project.recentChanges.slice(0, 5)) {
+			entities.push({
+				daily_brief_id: dailyBriefId,
+				project_id: project.project.id,
+				entity_kind: change.kind,
+				entity_id: change.id,
+				role: change.action === 'created' ? 'created' : 'recently_updated'
+			});
+		}
+	}
+
 	if (entities.length > 0) {
-		const { error } = await supabase.from('ontology_brief_entities').insert(entities);
+		const dedupedEntities = Array.from(
+			new Map(
+				entities.map((entity) => [
+					`${entity.project_id ?? 'global'}:${entity.entity_kind}:${entity.entity_id}:${entity.role}`,
+					entity
+				])
+			).values()
+		);
+		const { error } = await supabase.from('ontology_brief_entities').insert(dedupedEntities);
 
 		if (error) {
 			console.warn('[OntologyBrief] Failed to record brief entities:', error);

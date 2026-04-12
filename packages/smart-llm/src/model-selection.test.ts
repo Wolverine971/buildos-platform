@@ -209,6 +209,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(supportsJsonMode('qwen/qwen3.6-plus')).toBe(true);
 		expect(supportsJsonMode('deepseek/deepseek-v3.2')).toBe(true);
 		expect(supportsJsonMode('openai/gpt-4.1-nano')).toBe(true);
+		expect(supportsJsonMode('openai/gpt-oss-20b')).toBe(true);
 		expect(supportsJsonMode('openai/gpt-oss-120b')).toBe(true);
 		expect(supportsJsonMode('google/gemini-3.1-flash-lite-preview')).toBe(true);
 		expect(supportsJsonMode('minimax/minimax-m2.7')).toBe(true);

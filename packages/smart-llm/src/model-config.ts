@@ -145,6 +145,31 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
+	'openai/gpt-oss-20b': {
+		id: 'openai/gpt-oss-20b',
+		name: 'GPT-OSS 20B',
+		speed: 4.5,
+		smartness: 4.35,
+		creativity: 4,
+		cost: 0.03,
+		outputCost: 0.11,
+		provider: 'openai',
+		bestFor: [
+			'cheapest-project-briefs',
+			'ultra-low-cost-json',
+			'structured-output',
+			'short-synthesis',
+			'131k-context'
+		],
+		limitations: ['open-weight-provider-variance', 'text-only'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			longContext: true
+		}
+	},
 	'x-ai/grok-4.1-fast': {
 		id: 'x-ai/grok-4.1-fast',
 		name: 'Grok 4.1 Fast',
@@ -539,6 +564,7 @@ const MODEL_ROUTES = {
 	tasks: {
 		projectNextStep: [
 			'qwen/qwen3.5-flash-02-23',
+			'openai/gpt-oss-20b',
 			'deepseek/deepseek-v3.2',
 			'qwen/qwen3.6-plus',
 			'openai/gpt-oss-120b',
@@ -567,6 +593,12 @@ const MODEL_ROUTES = {
 			}
 		},
 		dailyBriefs: {
+			projectBrief: [
+				'openai/gpt-oss-20b',
+				'qwen/qwen3.5-flash-02-23',
+				'openai/gpt-oss-120b',
+				'openai/gpt-4.1-nano'
+			],
 			generation: ['qwen/qwen3.6-plus', 'deepseek/deepseek-v3.2', 'openai/gpt-oss-120b'],
 			summary: ['qwen/qwen3.5-flash-02-23', 'openai/gpt-4.1-nano']
 		}
@@ -592,6 +624,7 @@ const MODEL_ROUTES = {
 	],
 	jsonProfiles: {
 		fast: [
+			'openai/gpt-oss-20b',
 			'qwen/qwen3.5-flash-02-23',
 			'openai/gpt-4.1-nano',
 			'google/gemini-2.5-flash-lite',
@@ -625,6 +658,7 @@ const MODEL_ROUTES = {
 	},
 	textProfiles: {
 		speed: [
+			'openai/gpt-oss-20b',
 			'qwen/qwen3.5-flash-02-23',
 			'openai/gpt-4.1-nano',
 			'google/gemini-2.5-flash-lite',

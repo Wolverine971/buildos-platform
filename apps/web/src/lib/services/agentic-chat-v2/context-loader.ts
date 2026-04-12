@@ -2023,6 +2023,48 @@ async function loadDailyBriefContextData(params: {
 		};
 	});
 
+	const recentChanges = projectBriefs.flatMap((brief) => {
+		const changes = Array.isArray(brief.metadata?.recentChanges)
+			? brief.metadata.recentChanges
+			: [];
+		return changes
+			.filter((change): change is Record<string, unknown> =>
+				Boolean(change && typeof change === 'object' && !Array.isArray(change))
+			)
+			.map((change) => ({
+				...change,
+				project_id: brief.project_id,
+				project_name: brief.project_name
+			}));
+	});
+
+	const calendarEvents = projectBriefs.reduce(
+		(acc, brief) => {
+			const appendItems = (
+				key: 'calendarToday' | 'calendarUpcoming',
+				target: 'today' | 'upcoming'
+			) => {
+				const items = Array.isArray(brief.metadata?.[key]) ? brief.metadata[key] : [];
+				for (const item of items) {
+					if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+					acc[target].push({
+						...(item as Record<string, unknown>),
+						project_id: brief.project_id,
+						project_name: brief.project_name
+					});
+				}
+			};
+
+			appendItems('calendarToday', 'today');
+			appendItems('calendarUpcoming', 'upcoming');
+			return acc;
+		},
+		{
+			today: [] as Array<Record<string, unknown>>,
+			upcoming: [] as Array<Record<string, unknown>>
+		}
+	);
+
 	const mentionedEntitiesFromTable: DailyBriefMentionedEntity[] = (entitiesRes.data ?? []).map(
 		(row) => {
 			const entityRow = row as OntologyBriefEntityRow & {
@@ -2057,6 +2099,8 @@ async function loadDailyBriefContextData(params: {
 		llm_analysis: briefRow.llm_analysis,
 		metadata: asRecord((briefRow as OntologyDailyBriefRow).metadata) ?? null,
 		project_briefs: projectBriefs,
+		recent_changes: recentChanges,
+		calendar_events: calendarEvents,
 		mentioned_entities: mentionedEntities,
 		mentioned_entity_counts: buildMentionedEntityCounts(mentionedEntities)
 	};

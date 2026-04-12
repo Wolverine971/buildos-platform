@@ -12,7 +12,9 @@ import type {
 	OntoTask,
 	OntoRisk,
 	OntoRequirement,
-	ProjectBriefData
+	ProjectBriefData,
+	CalendarBriefItem,
+	ProjectRecentChange
 } from './ontologyBriefTypes.js';
 import { format, parseISO } from 'date-fns';
 import { getWorkMode } from './ontologyBriefDataLoader.js';
@@ -70,6 +72,55 @@ function formatTaskForPrompt(task: OntoTask, projectName?: string): string {
 function formatRisk(risk: OntoRisk): string {
 	const impact = risk.impact || 'medium';
 	return `- **${risk.title}** (Impact: ${impact})`;
+}
+
+function formatCalendarItemForPrompt(item: CalendarBriefItem, includeDate: boolean): string {
+	const when = includeDate ? `${item.displayDate} ${item.displayTime}` : item.displayTime;
+	const project = item.projectName ? ` | ${item.projectName}` : '';
+	return `- ${when}: ${item.title} (${item.sourceLabel}${project})`;
+}
+
+function buildCalendarSummaryForPrompt(briefData: OntologyBriefData): string {
+	const calendar = briefData.calendar;
+	const lines: string[] = [
+		`- Today: ${calendar.todayTotal} item${calendar.todayTotal === 1 ? '' : 's'} (${calendar.counts.today.google} Google, ${calendar.counts.today.internal} internal, ${calendar.counts.today.syncIssue} sync issues)`,
+		`- Upcoming next 7 days: ${calendar.upcomingTotal} item${calendar.upcomingTotal === 1 ? '' : 's'} (${calendar.counts.upcoming.google} Google, ${calendar.counts.upcoming.internal} internal, ${calendar.counts.upcoming.syncIssue} sync issues)`
+	];
+
+	const commitments = [
+		...calendar.today.slice(0, 2).map((item) => formatCalendarItemForPrompt(item, false)),
+		...calendar.upcoming.slice(0, 2).map((item) => formatCalendarItemForPrompt(item, true))
+	];
+
+	if (commitments.length > 0) {
+		lines.push('- Next commitments:');
+		lines.push(...commitments.map((item) => `  ${item}`));
+	}
+
+	if (calendar.hiddenTodayCount > 0 || calendar.hiddenUpcomingCount > 0) {
+		lines.push(
+			`- Hidden from prompt: ${calendar.hiddenTodayCount + calendar.hiddenUpcomingCount} additional calendar item${calendar.hiddenTodayCount + calendar.hiddenUpcomingCount === 1 ? '' : 's'}`
+		);
+	}
+
+	return lines.join('\n');
+}
+
+function formatRecentChangeForPrompt(change: ProjectRecentChange): string {
+	const actor = change.actorName ? ` by ${change.actorName}` : '';
+	return `- ${change.kind} ${change.action}: ${change.title}${actor}`;
+}
+
+function formatPlanForPrompt(plan: ProjectBriefData['plans'][number]): string {
+	const description = plan.description ? ` - ${plan.description}` : '';
+	const facets = [plan.facet_context, plan.facet_scale, plan.facet_stage].filter(Boolean);
+	const facetText = facets.length > 0 ? ` (${facets.join(' / ')})` : '';
+	return `- ${plan.name} [${plan.state_key}${facetText}]${description}`;
+}
+
+function formatDocumentForPrompt(document: ProjectBriefData['documents'][number]): string {
+	const description = document.description ? ` - ${document.description}` : '';
+	return `- ${document.title || 'Untitled document'} [${document.state_key}]${description}`;
 }
 
 // ============================================================================
@@ -139,8 +190,15 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - High Priority Tasks: ${briefData.highPriorityCount}
 - Active Risks: ${briefData.risks.length}
 - Requirements: ${briefData.requirements.length}
+- Calendar Today: ${briefData.calendar.todayTotal}
+- Calendar Upcoming: ${briefData.calendar.upcomingTotal}
 
 `;
+
+		if (briefData.calendar.todayTotal > 0 || briefData.calendar.upcomingTotal > 0) {
+			prompt += `## Calendar Summary\n`;
+			prompt += `${buildCalendarSummaryForPrompt(briefData)}\n\n`;
+		}
 
 		// Goal Progress Section
 		if (briefData.goals.length > 0) {
@@ -397,6 +455,8 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - Blocked: ${briefData.blockedTasks.length}
 - Overdue: ${briefData.overdueTasks.length}
 - Requirements: ${briefData.requirements.length}
+- Calendar Today: ${briefData.calendar.todayTotal}
+- Calendar Upcoming: ${briefData.calendar.upcomingTotal}
 
 ## Goal Status
 - Active Goals: ${activeGoals.length}
@@ -407,6 +467,11 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - Active Risks: ${briefData.risks.length}
 
 `;
+
+		if (briefData.calendar.todayTotal > 0 || briefData.calendar.upcomingTotal > 0) {
+			prompt += `## Calendar Summary\n`;
+			prompt += `${buildCalendarSummaryForPrompt(briefData)}\n\n`;
+		}
 
 		// Requirements (brief)
 		if (briefData.requirements.length > 0) {
@@ -482,23 +547,26 @@ export interface ProjectBriefPromptInput {
 
 export class OntologyProjectBriefPrompt {
 	static getSystemPrompt(): string {
-		return `You are a BuildOS productivity strategist writing a project-specific daily brief.
+		return `You are a BuildOS productivity strategist writing a concise project-specific daily brief.
 
-Focus on:
-- Goal targets within this project
-- Requirements being addressed
-- Today's tasks and their strategic alignment
-- Blockers and risks specific to this project
-- Next steps and upcoming milestones
+Prioritize:
+- Calendar commitments for this project today and over the next 7 days
+- Recently created or updated documents, goals, plans, tasks, and events
+- Active goals, active plans, blockers, milestones, and the next best action
 
-Structure:
-1. **Project Status** (1-2 sentences on overall health)
-2. **Goal Progress** (brief update on each active goal)
-3. **Today's Work** (prioritized tasks)
-4. **Blockers & Risks** (if any)
-5. **Next Steps** (immediate actions)
-
-Keep it concise (150 words max). Use Markdown formatting.`;
+Rules:
+- Use only the provided calendar event information for scheduling context.
+- Do not invent events, documents, goals, plans, or task status.
+- Be concrete and name the work that changed.
+- Keep the briefMarkdown under 220 words.
+- Return JSON only with this shape:
+{
+  "briefMarkdown": "Markdown brief beginning with the project heading",
+  "statusLine": "One-sentence project status",
+  "recentChangeSummary": "One sentence about what changed, or empty string",
+  "calendarSummary": "One sentence about calendar commitments, or empty string",
+  "nextAction": "One concrete next action, or empty string"
+}`;
 	}
 
 	static buildUserPrompt(input: ProjectBriefPromptInput): string {
@@ -510,10 +578,51 @@ Date: ${date}
 Timezone: ${timezone}
 
 ## Project Info
+- Project ID: ${project.project.id}
 - State: ${project.project.state_key}
 - Type: ${project.project.type_key}
 ${project.project.description ? `- Description: ${project.project.description}` : ''}
 
+## Calendar Today (${project.calendarToday.length})
+`;
+
+		if (project.calendarToday.length > 0) {
+			for (const item of project.calendarToday.slice(0, 5)) {
+				prompt += formatCalendarItemForPrompt(item, false) + '\n';
+			}
+		} else {
+			prompt += `No project calendar items today.\n`;
+		}
+
+		if (project.calendarUpcoming.length > 0) {
+			prompt += `\n## Upcoming Calendar (${project.calendarUpcoming.length})\n`;
+			for (const item of project.calendarUpcoming.slice(0, 5)) {
+				prompt += formatCalendarItemForPrompt(item, true) + '\n';
+			}
+		}
+
+		if (project.recentChanges.length > 0) {
+			prompt += `\n## Recent Changes\n`;
+			for (const change of project.recentChanges.slice(0, 8)) {
+				prompt += formatRecentChangeForPrompt(change) + '\n';
+			}
+		}
+
+		if (project.documents.length > 0) {
+			prompt += `\n## Recent Documents\n`;
+			for (const document of project.documents.slice(0, 5)) {
+				prompt += formatDocumentForPrompt(document) + '\n';
+			}
+		}
+
+		if (project.plans.length > 0) {
+			prompt += `\n## Plans\n`;
+			for (const plan of project.plans.slice(0, 5)) {
+				prompt += formatPlanForPrompt(plan) + '\n';
+			}
+		}
+
+		prompt += `
 ## Today's Tasks (${project.todaysTasks.length})
 `;
 
@@ -575,8 +684,26 @@ ${project.project.description ? `- Description: ${project.project.description}` 
 			prompt += `\n## Next Milestone\n- ${project.nextMilestone}\n`;
 		}
 
+		if (project.requirements.length > 0) {
+			prompt += `\n## Requirements\n`;
+			for (const requirement of project.requirements.slice(0, 5)) {
+				prompt += `- ${requirement.text}\n`;
+			}
+		}
+
 		prompt += `
-Write a concise project brief (150 words max) following the system instructions.`;
+Write the JSON response now. The briefMarkdown should use this structure when data exists:
+## [${project.project.name}](/projects/${project.project.id})
+
+### Status
+### Calendar
+### Recent Changes
+### Goal Progress
+### Today's Work
+### Blockers
+### Next Steps
+
+Omit empty sections.`;
 
 		return prompt;
 	}
@@ -650,12 +777,19 @@ Last login: ${lastLoginDate}
 - Pending Tasks: ${briefData.todaysTasks.length + briefData.overdueTasks.length}
 - Overdue: ${briefData.overdueTasks.length}
 - Blocked: ${briefData.blockedTasks.length}
+- Calendar Today: ${briefData.calendar.todayTotal}
+- Calendar Upcoming: ${briefData.calendar.upcomingTotal}
 
 ## Goal Status
 - Active Goals: ${activeGoals.length}
 - Goals at Risk: ${goalsAtRisk.length}
 
 `;
+
+		if (briefData.calendar.todayTotal > 0 || briefData.calendar.upcomingTotal > 0) {
+			prompt += `## Calendar Summary\n`;
+			prompt += `${buildCalendarSummaryForPrompt(briefData)}\n\n`;
+		}
 
 		// Goal details
 		if (activeGoals.length > 0) {

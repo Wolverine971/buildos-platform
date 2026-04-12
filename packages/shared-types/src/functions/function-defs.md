@@ -2888,7 +2888,7 @@ WHERE ne.created_at > NOW() - p_interval::INTERVAL
 event_counts AS (
 SELECT
 se.event_type_key,
-COUNT(*) AS total_events
+COUNT(*) AS total*events
 FROM scoped_events se
 GROUP BY se.event_type_key
 ),
@@ -2904,17 +2904,17 @@ FILTER (WHERE nd.sent_at IS NOT NULL)::NUMERIC,
 ) AS avg_delivery_time_seconds,
 ROUND(
 (
-COUNT(_) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC
-/ NULLIF(COUNT(_) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC, 0)
+COUNT(*) FILTER (WHERE nd.opened*at IS NOT NULL)::NUMERIC
+/ NULLIF(COUNT(*) FILTER (WHERE nd.status IN ('sent', 'delivered', 'opened', 'clicked'))::NUMERIC, 0)
 
 - 100
   ),
   2
-  ) AS open_rate,
+  ) AS open*rate,
   ROUND(
   (
-  COUNT(_) FILTER (WHERE nd.clicked_at IS NOT NULL)::NUMERIC
-  / NULLIF(COUNT(_) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0)
+  COUNT(*) FILTER (WHERE nd.clicked*at IS NOT NULL)::NUMERIC
+  / NULLIF(COUNT(*) FILTER (WHERE nd.opened_at IS NOT NULL)::NUMERIC, 0)
 - 100
   ),
   2

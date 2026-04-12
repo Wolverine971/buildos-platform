@@ -241,6 +241,11 @@ export type DailyBriefContextData = {
 	llm_analysis?: string | null;
 	metadata?: Record<string, unknown> | null;
 	project_briefs: DailyBriefProjectBrief[];
+	recent_changes?: Array<Record<string, unknown>>;
+	calendar_events?: {
+		today: Array<Record<string, unknown>>;
+		upcoming: Array<Record<string, unknown>>;
+	};
 	mentioned_entities: DailyBriefMentionedEntity[];
 	mentioned_entity_counts: Record<string, number>;
 };

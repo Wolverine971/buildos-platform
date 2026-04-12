@@ -34,6 +34,7 @@ export interface JSONRequestOptions<T = unknown> {
 	model?: string;
 	models?: string[];
 	temperature?: number;
+	maxTokens?: number;
 	timeoutMs?: number;
 	validation?: {
 		retryOnParseError?: boolean;

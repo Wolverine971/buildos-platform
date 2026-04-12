@@ -795,7 +795,7 @@ The design prioritizes simplicity, reusability of existing systems, and minimal 
 
 #### LLM Prompts
 
-- **Created** `ReengagementBriefPrompt` in `apps/worker/src/workers/brief/prompts.ts`:
+- **Created** `OntologyReengagementPrompt` in `apps/worker/src/workers/brief/ontologyPrompts.ts`:
     - ✅ Dynamic system prompts based on inactivity level (4/10/31+ days)
     - ✅ Tone adjustment (gentle → motivating → direct with value proposition)
     - ✅ Subject line generation (context-aware)
@@ -892,7 +892,7 @@ ENGAGEMENT_BACKOFF_ENABLED=true
 
 - `apps/worker/src/scheduler.ts` - Integrated backoff calculator with feature flag
 - `apps/worker/src/workers/brief/briefGenerator.ts` - Re-engagement email generation
-- `apps/worker/src/workers/brief/prompts.ts` - Added ReengagementBriefPrompt class
+- `apps/worker/src/workers/brief/ontologyPrompts.ts` - Contains the active ontology re-engagement prompt class
 - `apps/worker/src/lib/services/email-sender.ts` - Custom subject line support
 - `apps/worker/src/workers/shared/queueUtils.ts` - Extended BriefJobData interface
 - `daily-brief-exponential-backoff-spec.md` - Updated with implementation progress

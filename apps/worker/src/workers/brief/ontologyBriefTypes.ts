@@ -88,6 +88,86 @@ export interface RecentUpdates {
 	tasks: OntoTask[];
 	goals: OntoGoal[];
 	documents: OntoDocument[];
+	plans?: OntoPlan[];
+	events?: CalendarBriefItem[];
+}
+
+// ============================================================================
+// CALENDAR BRIEF
+// ============================================================================
+
+export type CalendarBriefItemType = 'event' | 'task';
+export type CalendarBriefItemKind = 'event' | 'range' | 'start' | 'due';
+export type CalendarBriefSource = 'google' | 'internal' | 'sync_issue';
+export type CalendarBriefSourceLabel = 'Google Calendar' | 'Internal only' | 'Google sync issue';
+
+export interface CalendarBriefItem {
+	id: string;
+	title: string;
+	startAt: string;
+	endAt: string | null;
+	allDay: boolean;
+	timezone: string | null;
+	projectId: string | null;
+	projectName: string | null;
+	taskId: string | null;
+	eventId: string | null;
+	itemType: CalendarBriefItemType;
+	itemKind: CalendarBriefItemKind;
+	stateKey: string | null;
+	source: CalendarBriefSource;
+	sourceLabel: CalendarBriefSourceLabel;
+	googleEventId: string | null;
+	googleCalendarId: string | null;
+	externalLink: string | null;
+	displayTime: string;
+	displayDate: string;
+}
+
+export interface CalendarBriefCounts {
+	total: number;
+	google: number;
+	internal: number;
+	syncIssue: number;
+}
+
+export interface CalendarBriefSection {
+	today: CalendarBriefItem[];
+	upcoming: CalendarBriefItem[];
+	todayTotal: number;
+	upcomingTotal: number;
+	hiddenTodayCount: number;
+	hiddenUpcomingCount: number;
+	counts: {
+		today: CalendarBriefCounts;
+		upcoming: CalendarBriefCounts;
+		all: CalendarBriefCounts;
+	};
+}
+
+// ============================================================================
+// PROJECT RECENT CHANGES
+// ============================================================================
+
+export type ProjectRecentChangeKind =
+	| 'project'
+	| 'task'
+	| 'goal'
+	| 'plan'
+	| 'document'
+	| 'milestone'
+	| 'risk'
+	| 'requirement'
+	| 'event';
+
+export interface ProjectRecentChange {
+	kind: ProjectRecentChangeKind;
+	id: string;
+	title: string;
+	action: string;
+	changedAt: string;
+	actorName: string | null;
+	source: 'activity_log' | 'updated_at' | 'created_at' | 'calendar';
 }
 
 // ============================================================================
@@ -230,6 +310,13 @@ export interface OntologyBriefMetadata {
 	totalEdges: number;
 	dependencyChains: number;
 
+	// Calendar
+	calendarTodayCount?: number;
+	calendarUpcomingCount?: number;
+	calendarGoogleCount?: number;
+	calendarInternalCount?: number;
+	calendarSyncIssueCount?: number;
+
 	// Generation info
 	generatedVia: string;
 	timezone: string;
@@ -283,6 +370,7 @@ export interface OntologyBriefData {
 	recentUpdates: RecentUpdates;
 	tasksByWorkMode: Record<string, OntoTask[]>;
 	projects: ProjectBriefData[];
+	calendar: CalendarBriefSection;
 	// Strategic task splits per PROJECT_CONTEXT_ENRICHMENT_SPEC.md
 	recentlyUpdatedTasks: OntoTask[]; // Updated in last 7 days, ordered by updated_at desc, cap 10
 	upcomingTasks: OntoTask[]; // Due/start in next 7 days (deduplicated from recent), cap 5
@@ -292,11 +380,16 @@ export interface ProjectBriefData {
 	project: OntoProject;
 	isShared: boolean;
 	activityLogs: ProjectActivityEntry[];
+	recentChanges: ProjectRecentChange[];
 	goals: GoalProgress[];
+	plans: OntoPlan[];
 	requirements: OntoRequirement[];
+	documents: OntoDocument[];
 	nextSteps: string[];
 	nextMilestone: string | null;
 	activePlan: OntoPlan | null;
+	calendarToday: CalendarBriefItem[];
+	calendarUpcoming: CalendarBriefItem[];
 	todaysTasks: OntoTask[];
 	thisWeekTasks: OntoTask[];
 	blockedTasks: OntoTask[];
