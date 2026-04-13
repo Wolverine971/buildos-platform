@@ -1,3 +1,9 @@
+---
+description: Plan or create a BuildOS lead-generation campaign from a target segment or campaign idea.
+argument-hint: "[segment or campaign idea]"
+disable-model-invocation: true
+---
+
 # Lead Campaign Planner
 
 You are planning or updating a **narrow lead-generation campaign** for BuildOS.
@@ -110,4 +116,3 @@ Avoid campaigns that:
 - depend on polished production before shipping
 - depend on the homepage doing all the persuasion
 - have no path from attention to conversation
-

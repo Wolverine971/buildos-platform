@@ -1,6 +1,8 @@
 ---
 name: code-simplifier
 description: Simplifies and refines BuildOS code for clarity, consistency, and maintainability. Applies Svelte 5 patterns, Inkprint design tokens, and project conventions.
+argument-hint: "[files or scope]"
+disable-model-invocation: true
 model: opus
 path: code-cleanup-agent.md
 ---

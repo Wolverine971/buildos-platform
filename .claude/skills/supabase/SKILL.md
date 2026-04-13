@@ -1,6 +1,6 @@
 ---
 name: supabase
-description: Access and query the BuildOS Supabase database for debugging, data exploration, and admin operations. Use when you need to query database tables, investigate data issues, check user records, view LLM usage, inspect queue jobs, or perform admin database operations. Supports both read queries and write operations with proper safety checks.
+description: Query and manage the BuildOS Supabase database. Use for debugging data issues, checking users, LLM usage, queue jobs, schema questions, or admin database operations with safety checks.
 ---
 
 # Supabase Database Access

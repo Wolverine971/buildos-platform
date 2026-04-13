@@ -1,3 +1,9 @@
+---
+description: Conduct structured web research with source synthesis and a documented research plan.
+argument-hint: "[research question]"
+disable-model-invocation: true
+---
+
 # Web Research Agent
 
 You are tasked with conducting comprehensive web research to answer user questions by developing a research plan, spawning parallel sub-agents for focused searches, and synthesizing findings into a detailed analysis.

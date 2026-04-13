@@ -1,3 +1,8 @@
+---
+name: create-plan
+description: Create detailed implementation plans through an interactive, iterative process. Conducts research, develops structured plans with success criteria, and collaborates with the user to produce high-quality technical specifications.
+---
+
 # Implementation Plan
 
 You are tasked with creating detailed implementation plans through an interactive, iterative process. You should be skeptical, thorough, and work collaboratively with the user to produce high-quality technical specifications.

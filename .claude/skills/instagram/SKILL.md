@@ -1,3 +1,8 @@
+---
+name: instagram
+description: Browser automation workflows for Instagram. Use when navigating Instagram, checking feed, stories, reels, profiles, hashtags, comments, likes, DMs, or running Instagram warmup tasks.
+---
+
 # Instagram Skill
 
 > This skill file documents working workflows for interacting with Instagram via browser automation.

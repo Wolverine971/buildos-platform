@@ -1,3 +1,9 @@
+---
+description: Draft Instagram replies from a queued warmup document using BuildOS voice and relationship context.
+argument-hint: "[warmup-file]"
+disable-model-invocation: true
+---
+
 # Instagram Reply - @djwayne3 Reply Drafting
 
 You are drafting Instagram replies for **@djwayne3** based on a completed warmup queue.

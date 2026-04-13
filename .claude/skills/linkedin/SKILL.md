@@ -1,3 +1,8 @@
+---
+name: linkedin
+description: Browser automation workflows for LinkedIn. Use when navigating LinkedIn, searching posts or profiles, reading notifications, posting, commenting, messaging, or running LinkedIn warmup tasks.
+---
+
 # LinkedIn Skill
 
 > This skill file documents working workflows for interacting with LinkedIn via browser automation.

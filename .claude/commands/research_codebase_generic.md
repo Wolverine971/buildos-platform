@@ -1,3 +1,9 @@
+---
+description: Research the BuildOS codebase and produce a structured findings document.
+argument-hint: "[research question]"
+disable-model-invocation: true
+---
+
 # Research Codebase - BuildOS Platform
 
 You are conducting targeted research in the BuildOS codebase to answer specific questions by efficiently exploring the monorepo structure.
@@ -89,8 +95,8 @@ Spawn focused sub-agents for different aspects:
 
 **For Worker/Queue Research:**
 
-- Job implementations in `/apps/worker/src/jobs/`
-- Queue configuration in `/apps/worker/src/queues/`
+- Worker implementations in `/apps/worker/src/workers/`
+- Worker services and queue utilities in `/apps/worker/src/lib/`
 - Scheduler patterns
 - BullMQ usage patterns
 

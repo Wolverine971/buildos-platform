@@ -1,3 +1,8 @@
+---
+name: twitter
+description: Browser automation workflows for X/Twitter. Use when navigating X, searching posts, reading notifications, drafting or posting tweets, replying, liking, reposting, or running Twitter warmup tasks.
+---
+
 # Twitter/X Skill
 
 > This skill file documents working workflows for interacting with X (Twitter) via browser automation.

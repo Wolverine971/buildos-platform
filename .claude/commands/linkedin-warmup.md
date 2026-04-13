@@ -1,3 +1,9 @@
+---
+description: Run the LinkedIn warmup research pass for DJ and queue high-quality engagement opportunities.
+argument-hint: "[optional focus]"
+disable-model-invocation: true
+---
+
 # LinkedIn Warmup - DJ Daily Opportunity Sourcing
 
 You are conducting a daily LinkedIn warmup for DJ.
@@ -55,7 +61,7 @@ Cross-reference as needed:
 - `/docs/marketing/social-media/daily-engagement/`
 - `/docs/marketing/social-media/linkedin-profiles/`
 
-If a LinkedIn browser automation skill exists at `/.claude/skills/linkedin.skill.md`, read and follow it before interacting with LinkedIn.
+If a LinkedIn browser automation skill exists at `.claude/skills/linkedin/SKILL.md`, read and follow it before interacting with LinkedIn.
 
 ---
 

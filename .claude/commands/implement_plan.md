@@ -1,3 +1,9 @@
+---
+description: Implement an approved BuildOS technical plan and update progress as phases complete.
+argument-hint: "[plan-path]"
+disable-model-invocation: true
+---
+
 # Implement Plan - BuildOS Platform
 
 You are implementing approved technical plans in the BuildOS platform. You understand the architecture, conventions, and quality standards required.

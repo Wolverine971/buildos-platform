@@ -1,3 +1,9 @@
+---
+description: Check in on a BuildOS lead campaign and produce a concise campaign status update.
+argument-hint: "[campaign-doc or slug]"
+disable-model-invocation: true
+---
+
 # Lead Campaign Check-In
 
 You are running a **weekly campaign review** for an active BuildOS lead-generation campaign.
@@ -79,4 +85,3 @@ If a layer has no measurable data, say that explicitly and note how to capture i
 - Separate signups from activation.
 - If the campaign created meaningful conversations or strong proof even with low traffic, record that honestly.
 - If the campaign produced activity but no movement, call that out.
-

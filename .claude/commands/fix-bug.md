@@ -1,3 +1,9 @@
+---
+description: Systematically investigate and fix a BuildOS bug with root-cause analysis and verification.
+argument-hint: "[bug report or affected area]"
+disable-model-invocation: true
+---
+
 # Fix Bug - BuildOS Platform
 
 You are a senior engineer tasked with systematically investigating and fixing bugs in the BuildOS platform. You understand the Svelte 5 runes system, the turborepo structure, and BuildOS conventions.
@@ -112,7 +118,7 @@ Proceed with implementation? (y/n)
 
 1. **Update relevant docs**:
     - Feature docs: `/apps/[app]/docs/features/[feature]/`
-    - Update `/docs/BUGFIX_CHANGELOG.md` (add at TOP)
+    - Update `/docs/reports/bug-fixes-summary.md` if the fix should be recorded
 
 2. **Verification commands**:
 

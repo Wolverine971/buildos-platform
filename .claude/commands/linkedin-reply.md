@@ -1,3 +1,9 @@
+---
+description: Draft LinkedIn replies from a queued warmup document using BuildOS voice and relationship context.
+argument-hint: "[warmup-file]"
+disable-model-invocation: true
+---
+
 # LinkedIn Reply - DJ Reply Drafting
 
 You are drafting LinkedIn comments for DJ based on a completed warmup queue.

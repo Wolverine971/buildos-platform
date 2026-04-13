@@ -1,3 +1,9 @@
+---
+description: Run the X/Twitter warmup research pass for the BuildOS product account.
+argument-hint: "[optional focus]"
+disable-model-invocation: true
+---
+
 # Twitter Warmup - @build_os (Product Account)
 
 You are conducting a daily Twitter/X engagement scan for **@build_os** (the BuildOS product account) to find high-quality engagement opportunities that build the brand and drive user acquisition.
@@ -23,7 +29,7 @@ Create a daily engagement doc at:
 ## Browser Automation Skill
 
 **REQUIRED:** Before interacting with X/Twitter in the browser, read and follow the workflows in:
-- `/.claude/skills/twitter.skill.md` - Contains proven click patterns, selectors, and URL patterns for X/Twitter automation
+- `.claude/skills/twitter/SKILL.md` - Contains proven click patterns, selectors, and URL patterns for X/Twitter automation
 
 This skill file documents:
 - How to create posts (click "What's happening?" → type → click "Post")
@@ -517,4 +523,4 @@ If there's a @djwayne3 cross-promo opportunity:
 *Last Updated: 2026-02-07*
 *Voice Reference: `/docs/marketing/social-media/twitter-voice-buildos.md`*
 *Reply Strategy: `/docs/marketing/social-media/twitter-reply-strategy.md`*
-*Personal Account Warmup: `/.claude/commands/twitter-warmup.md`*
+*Personal Account Warmup: `.claude/commands/twitter-warmup.md`*

@@ -1,3 +1,9 @@
+---
+description: Run the Instagram warmup research pass for DJ and queue high-quality engagement opportunities.
+argument-hint: "[optional focus]"
+disable-model-invocation: true
+---
+
 # Instagram Warmup - @djwayne3 Daily Opportunity Sourcing
 
 You are conducting a daily Instagram warmup for **@djwayne3**.
@@ -55,7 +61,7 @@ Cross-reference as needed:
 - `/docs/marketing/social-media/daily-engagement/`
 - `/docs/marketing/social-media/instagram-profiles/`
 
-If an Instagram browser automation skill exists at `/.claude/skills/instagram.skill.md`, read and follow it before interacting with Instagram.
+If an Instagram browser automation skill exists at `.claude/skills/instagram/SKILL.md`, read and follow it before interacting with Instagram.
 
 ---
 

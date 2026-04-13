@@ -1,3 +1,9 @@
+---
+description: Run the X/Twitter warmup research pass for DJ and queue high-quality engagement opportunities.
+argument-hint: "[optional focus]"
+disable-model-invocation: true
+---
+
 # Twitter Warmup - Daily Engagement Scan
 
 You are conducting a daily Twitter/X engagement scan for @djwayne3 to find high-quality reply opportunities that align with the BuildOS brand.
@@ -21,7 +27,7 @@ Create a daily engagement doc at:
 ## Browser Automation Skill
 
 **REQUIRED:** Before interacting with X/Twitter in the browser, read and follow the workflows in:
-- `/.claude/skills/twitter.skill.md` - Contains proven click patterns, selectors, and URL patterns for X/Twitter automation
+- `.claude/skills/twitter/SKILL.md` - Contains proven click patterns, selectors, and URL patterns for X/Twitter automation
 
 This skill file documents:
 - How to create posts (click "What's happening?" → type → click "Post")
