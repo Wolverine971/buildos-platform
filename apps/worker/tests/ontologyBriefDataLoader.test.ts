@@ -336,10 +336,89 @@ describe('calendar brief selection', () => {
 
 		expect(result.today).toHaveLength(8);
 		expect(result.upcoming).toHaveLength(5);
+		expect(result.allItems).toHaveLength(17);
 		expect(result.todayTotal).toBe(10);
 		expect(result.upcomingTotal).toBe(7);
 		expect(result.hiddenTodayCount).toBe(2);
 		expect(result.hiddenUpcomingCount).toBe(2);
+	});
+
+	it('orders all-day items before timed items on the same local date', () => {
+		const result = selectCalendarBriefItems(
+			[
+				createMockCalendarItem({
+					id: 'all-day',
+					eventId: 'event-all-day',
+					title: 'All-day planning hold',
+					startAt: '2025-12-17T05:00:00.000Z',
+					endAt: '2025-12-18T05:00:00.000Z',
+					allDay: true,
+					displayTime: 'All day'
+				}),
+				createMockCalendarItem({
+					id: 'timed',
+					eventId: 'event-timed',
+					title: 'Morning customer call',
+					startAt: '2025-12-17T14:00:00.000Z',
+					endAt: '2025-12-17T15:00:00.000Z',
+					allDay: false,
+					displayTime: '9:00 AM-10:00 AM'
+				})
+			],
+			briefDate,
+			timezone
+		);
+
+		expect(result.today.map((item) => item.id)).toEqual(['all-day', 'timed']);
+	});
+
+	it('keeps all-day events visible when today is capped', () => {
+		const timedItems = Array.from({ length: 8 }, (_, index) =>
+			createMockCalendarItem({
+				id: `timed-${index}`,
+				eventId: `event-timed-${index}`,
+				title: `Timed ${index}`,
+				startAt: `2025-12-17T${String(13 + index).padStart(2, '0')}:00:00.000Z`,
+				endAt: `2025-12-17T${String(14 + index).padStart(2, '0')}:00:00.000Z`
+			})
+		);
+		const allDay = createMockCalendarItem({
+			id: 'all-day',
+			eventId: 'event-all-day',
+			title: 'Launch Window',
+			startAt: '2025-12-17T05:00:00.000Z',
+			endAt: '2025-12-18T05:00:00.000Z',
+			allDay: true,
+			displayTime: 'All day'
+		});
+
+		const result = selectCalendarBriefItems([...timedItems, allDay], briefDate, timezone);
+
+		expect(result.today).toHaveLength(8);
+		expect(result.today[0]?.id).toBe('all-day');
+		expect(result.today.map((item) => item.id)).toContain('all-day');
+		expect(result.hiddenTodayCount).toBe(1);
+	});
+
+	it('includes multi-day items that overlap the brief date', () => {
+		const result = selectCalendarBriefItems(
+			[
+				createMockCalendarItem({
+					id: 'overnight',
+					eventId: 'event-overnight',
+					title: 'Overnight launch window',
+					startAt: '2025-12-17T01:00:00.000Z',
+					endAt: '2025-12-17T15:00:00.000Z',
+					displayTime: 'Tue Dec 16 8:00 PM-10:00 AM'
+				})
+			],
+			briefDate,
+			timezone
+		);
+
+		expect(result.today).toHaveLength(1);
+		expect(result.today[0].id).toBe('overnight');
+		expect(result.upcoming).toHaveLength(0);
 	});
 
 	it('tracks source label counts across today and upcoming windows', () => {

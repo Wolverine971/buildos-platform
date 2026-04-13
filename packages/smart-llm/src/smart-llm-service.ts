@@ -532,7 +532,9 @@ export class SmartLLMService {
 		const requestedModels = [
 			options.model,
 			...(Array.isArray(options.models) ? options.models : [])
-		].filter((model): model is string => Boolean(model?.trim()));
+		]
+			.map((model) => model?.trim())
+			.filter((model): model is string => Boolean(model));
 		const preferredModels =
 			requestedModels.length > 0
 				? Array.from(new Set(requestedModels))

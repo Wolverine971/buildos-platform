@@ -81,6 +81,7 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 			date: '2025-12-17',
 			timezone: 'America/New_York',
 			briefData: createBriefData({
+				allItems: [...today, ...upcoming],
 				today,
 				upcoming,
 				todayTotal: 10,
@@ -113,7 +114,7 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 		expect(prompt).toContain('- Calendar Today: 10');
 		expect(prompt).toContain('- Calendar Upcoming: 7');
 		expect(prompt).toContain('## Calendar Summary');
-		expect(prompt).toContain('- Today: 10 items (7 Google, 2 internal, 1 sync issues)');
+		expect(prompt).toContain('- Today: 10 items (7 Google, 2 internal, 1 sync issue)');
 		expect(prompt).toContain(
 			'- Upcoming next 7 days: 7 items (3 Google, 4 internal, 0 sync issues)'
 		);
@@ -121,7 +122,7 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 		expect(prompt).toContain('Today Event 1');
 		expect(prompt).toContain('Upcoming Event 0');
 		expect(prompt).toContain('Upcoming Event 1');
-		expect(prompt).toContain('- Hidden from prompt: 9 additional calendar items');
+		expect(prompt).toContain('- Hidden from prompt: 13 additional calendar items');
 		expect(prompt).not.toContain('Today Event 2');
 		expect(prompt).not.toContain('Today Event 3');
 		expect(prompt).not.toContain('Upcoming Event 2');

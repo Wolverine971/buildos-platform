@@ -13,6 +13,7 @@ import type {
 	OntoRisk,
 	OntoRequirement,
 	ProjectBriefData,
+	CalendarBriefCounts,
 	CalendarBriefItem,
 	ProjectRecentChange
 } from './ontologyBriefTypes.js';
@@ -80,16 +81,23 @@ function formatCalendarItemForPrompt(item: CalendarBriefItem, includeDate: boole
 	return `- ${when}: ${item.title} (${item.sourceLabel}${project})`;
 }
 
+function formatCalendarPromptSourceCounts(counts: CalendarBriefCounts): string {
+	const syncIssueLabel = `sync issue${counts.syncIssue === 1 ? '' : 's'}`;
+	return `${counts.google} Google, ${counts.internal} internal, ${counts.syncIssue} ${syncIssueLabel}`;
+}
+
 function buildCalendarSummaryForPrompt(briefData: OntologyBriefData): string {
 	const calendar = briefData.calendar;
 	const lines: string[] = [
-		`- Today: ${calendar.todayTotal} item${calendar.todayTotal === 1 ? '' : 's'} (${calendar.counts.today.google} Google, ${calendar.counts.today.internal} internal, ${calendar.counts.today.syncIssue} sync issues)`,
-		`- Upcoming next 7 days: ${calendar.upcomingTotal} item${calendar.upcomingTotal === 1 ? '' : 's'} (${calendar.counts.upcoming.google} Google, ${calendar.counts.upcoming.internal} internal, ${calendar.counts.upcoming.syncIssue} sync issues)`
+		`- Today: ${calendar.todayTotal} item${calendar.todayTotal === 1 ? '' : 's'} (${formatCalendarPromptSourceCounts(calendar.counts.today)})`,
+		`- Upcoming next 7 days: ${calendar.upcomingTotal} item${calendar.upcomingTotal === 1 ? '' : 's'} (${formatCalendarPromptSourceCounts(calendar.counts.upcoming)})`
 	];
 
+	const promptToday = calendar.today.slice(0, 2);
+	const promptUpcoming = calendar.upcoming.slice(0, 2);
 	const commitments = [
-		...calendar.today.slice(0, 2).map((item) => formatCalendarItemForPrompt(item, false)),
-		...calendar.upcoming.slice(0, 2).map((item) => formatCalendarItemForPrompt(item, true))
+		...promptToday.map((item) => formatCalendarItemForPrompt(item, false)),
+		...promptUpcoming.map((item) => formatCalendarItemForPrompt(item, true))
 	];
 
 	if (commitments.length > 0) {
@@ -97,9 +105,12 @@ function buildCalendarSummaryForPrompt(briefData: OntologyBriefData): string {
 		lines.push(...commitments.map((item) => `  ${item}`));
 	}
 
-	if (calendar.hiddenTodayCount > 0 || calendar.hiddenUpcomingCount > 0) {
+	const hiddenFromPrompt =
+		Math.max(0, calendar.todayTotal - promptToday.length) +
+		Math.max(0, calendar.upcomingTotal - promptUpcoming.length);
+	if (hiddenFromPrompt > 0) {
 		lines.push(
-			`- Hidden from prompt: ${calendar.hiddenTodayCount + calendar.hiddenUpcomingCount} additional calendar item${calendar.hiddenTodayCount + calendar.hiddenUpcomingCount === 1 ? '' : 's'}`
+			`- Hidden from prompt: ${hiddenFromPrompt} additional calendar item${hiddenFromPrompt === 1 ? '' : 's'}`
 		);
 	}
 

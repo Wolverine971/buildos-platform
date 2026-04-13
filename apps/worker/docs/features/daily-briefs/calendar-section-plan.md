@@ -65,3 +65,13 @@ The worker runs with a service-role Supabase client, so it should query explicit
 - [x] Render `## Calendar` in the main brief markdown.
 - [x] Add summary-only calendar facts to LLM prompts.
 - [x] Add tests for relevance caps, source labels, and no raw prompt overload.
+
+## Review Notes and Expansion Recommendations
+
+- Add a pre-brief Google calendar refresh or cache-read step if the requirement is "actual Google Calendar right now" rather than "BuildOS-known calendar data." The current worker intentionally reads internal synced state.
+- Track sync freshness in the brief data, using `onto_event_sync.last_synced_at`, so the brief can distinguish "on Google Calendar" from "last synced 18 hours ago."
+- Tighten Google source labels for shared projects. Prefer a current-user `onto_event_sync.user_id` match before saying an item is on the user's Google Calendar.
+- Add database-backed integration coverage for `loadCalendarBriefData` query shape. Current tests cover selection, ordering, source counts, and prompt budget behavior.
+- Add recurrence expansion if `onto_events.recurrence` can store unmaterialized recurring events. The brief should not rely on only stored event instances if recurring events are not expanded elsewhere.
+- Add a dense-day summary when more items are hidden, grouped by source and project, so the prompt stays compact but the user still sees why a day is packed.
+- Consider surfacing calendar conflicts, first commitment time, last commitment time, and open focus blocks as the next layer of calendar intelligence.

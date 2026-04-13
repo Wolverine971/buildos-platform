@@ -152,7 +152,7 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		smartness: 4.35,
 		creativity: 4,
 		cost: 0.03,
-		outputCost: 0.11,
+		outputCost: 0.14,
 		provider: 'openai',
 		bestFor: [
 			'cheapest-project-briefs',
@@ -162,6 +162,31 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			'131k-context'
 		],
 		limitations: ['open-weight-provider-variance', 'text-only'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			longContext: true
+		}
+	},
+	'openai/gpt-oss-20b:free': {
+		id: 'openai/gpt-oss-20b:free',
+		name: 'GPT-OSS 20B Free',
+		speed: 4.2,
+		smartness: 4.35,
+		creativity: 4,
+		cost: 0,
+		outputCost: 0,
+		provider: 'openai',
+		bestFor: [
+			'zero-cost-project-briefs',
+			'ultra-low-cost-json',
+			'structured-output',
+			'short-synthesis',
+			'131k-context'
+		],
+		limitations: ['free-route-rate-limited', 'open-weight-provider-variance', 'text-only'],
 		capabilities: {
 			jsonMode: true,
 			structuredOutputs: true,
@@ -594,6 +619,7 @@ const MODEL_ROUTES = {
 		},
 		dailyBriefs: {
 			projectBrief: [
+				'openai/gpt-oss-20b:free',
 				'openai/gpt-oss-20b',
 				'qwen/qwen3.5-flash-02-23',
 				'openai/gpt-oss-120b',

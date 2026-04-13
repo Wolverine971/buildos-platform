@@ -62,6 +62,7 @@ interface ProjectBriefLLMResponse {
 }
 
 const PROJECT_BRIEF_MODELS = [
+	'openai/gpt-oss-20b:free',
 	'openai/gpt-oss-20b',
 	'qwen/qwen3.5-flash-02-23',
 	'openai/gpt-oss-120b',

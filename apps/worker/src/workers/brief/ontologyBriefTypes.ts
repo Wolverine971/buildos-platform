@@ -132,6 +132,7 @@ export interface CalendarBriefCounts {
 }
 
 export interface CalendarBriefSection {
+	allItems: CalendarBriefItem[];
 	today: CalendarBriefItem[];
 	upcoming: CalendarBriefItem[];
 	todayTotal: number;

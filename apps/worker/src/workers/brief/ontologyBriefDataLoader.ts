@@ -214,6 +214,7 @@ function countCalendarItems(items: CalendarBriefItem[]): CalendarBriefCounts {
 
 export function createEmptyCalendarBriefSection(): CalendarBriefSection {
 	return {
+		allItems: [],
 		today: [],
 		upcoming: [],
 		todayTotal: 0,
@@ -262,13 +263,53 @@ function getCalendarLocalDate(item: Pick<CalendarBriefItem, 'startAt'>, timezone
 	return formatInTimeZone(parseISO(item.startAt), timezone, 'yyyy-MM-dd');
 }
 
-function compareCalendarItems(a: CalendarBriefItem, b: CalendarBriefItem): number {
-	const startDelta = parseISO(a.startAt).getTime() - parseISO(b.startAt).getTime();
-	if (startDelta !== 0) return startDelta;
+function getCalendarItemEnd(item: Pick<CalendarBriefItem, 'startAt' | 'endAt'>): Date | null {
+	const start = parseISO(item.startAt);
+	if (Number.isNaN(start.getTime())) return null;
+	if (!item.endAt) return start;
+
+	const end = parseISO(item.endAt);
+	if (Number.isNaN(end.getTime()) || end.getTime() <= start.getTime()) {
+		return start;
+	}
+	return end;
+}
+
+function calendarItemOverlapsRange(
+	item: Pick<CalendarBriefItem, 'startAt' | 'endAt'>,
+	rangeStart: Date,
+	rangeEnd: Date
+): boolean {
+	const start = parseISO(item.startAt);
+	const end = getCalendarItemEnd(item);
+	if (Number.isNaN(start.getTime()) || !end) return false;
+	if (end.getTime() === start.getTime()) {
+		return start >= rangeStart && start < rangeEnd;
+	}
+	return start < rangeEnd && end > rangeStart;
+}
+
+function compareCalendarItems(
+	a: CalendarBriefItem,
+	b: CalendarBriefItem,
+	timezone: string
+): number {
+	const aLocalDate = getCalendarLocalDate(a, timezone);
+	const bLocalDate = getCalendarLocalDate(b, timezone);
+	const dateDelta = aLocalDate.localeCompare(bLocalDate);
+	if (dateDelta !== 0) return dateDelta;
 
 	if (a.allDay !== b.allDay) {
-		return a.allDay ? 1 : -1;
+		return a.allDay ? -1 : 1;
 	}
+
+	if (a.allDay && b.allDay) {
+		const titleDelta = a.title.localeCompare(b.title);
+		if (titleDelta !== 0) return titleDelta;
+	}
+
+	const startDelta = parseISO(a.startAt).getTime() - parseISO(b.startAt).getTime();
+	if (startDelta !== 0) return startDelta;
 
 	const sourceOrder: Record<CalendarBriefSource, number> = {
 		google: 0,
@@ -323,16 +364,28 @@ export function selectCalendarBriefItems(
 		return createEmptyCalendarBriefSection();
 	}
 
+	const todayBounds = getLocalDayUtcBounds(briefDate, timezone);
+	const tomorrowDate = addDaysToLocalDate(briefDate, 1, timezone);
 	const upcomingEndDate = addDaysToLocalDate(
 		briefDate,
 		CALENDAR_BRIEF_CAPS.UPCOMING_DAYS,
 		timezone
 	);
-	const deduped = dedupeCalendarItems(items).sort(compareCalendarItems);
-	const todayAll = deduped.filter((item) => getCalendarLocalDate(item, timezone) === briefDate);
+	const upcomingEndBounds = getLocalDayUtcBounds(upcomingEndDate, timezone);
+	const deduped = dedupeCalendarItems(items).sort((a, b) =>
+		compareCalendarItems(a, b, timezone)
+	);
+	const todayAll = deduped.filter((item) =>
+		calendarItemOverlapsRange(item, todayBounds.start, todayBounds.end)
+	);
 	const upcomingAll = deduped.filter((item) => {
+		if (todayAll.includes(item)) return false;
 		const localDate = getCalendarLocalDate(item, timezone);
-		return localDate > briefDate && localDate <= upcomingEndDate;
+		return (
+			localDate >= tomorrowDate &&
+			localDate <= upcomingEndDate &&
+			calendarItemOverlapsRange(item, todayBounds.end, upcomingEndBounds.end)
+		);
 	});
 
 	const today = todayAll.slice(0, CALENDAR_BRIEF_CAPS.TODAY);
@@ -341,6 +394,7 @@ export function selectCalendarBriefItems(
 	const allInWindow = [...todayAll, ...upcomingAll];
 
 	return {
+		allItems: allInWindow,
 		today,
 		upcoming,
 		todayTotal: todayAll.length,
@@ -2128,8 +2182,33 @@ export class OntologyBriefDataLoader {
 			return grouped;
 		};
 
-		const calendarTodayByProject = groupCalendarByProject(calendar.today);
-		const calendarUpcomingByProject = groupCalendarByProject(calendar.upcoming);
+		const allCalendarItems = calendar.allItems.length > 0
+			? calendar.allItems
+			: [...calendar.today, ...calendar.upcoming];
+		const briefDayBounds = getLocalDayUtcBounds(briefDate, timezone);
+		const projectUpcomingEndDate = addDaysToLocalDate(
+			briefDate,
+			CALENDAR_BRIEF_CAPS.UPCOMING_DAYS,
+			timezone
+		);
+		const projectUpcomingEndBounds = getLocalDayUtcBounds(projectUpcomingEndDate, timezone);
+		const projectCalendarTodayItems = allCalendarItems.filter((item) =>
+			calendarItemOverlapsRange(item, briefDayBounds.start, briefDayBounds.end)
+		);
+		const calendarTodayByProject = groupCalendarByProject(
+			projectCalendarTodayItems
+		);
+		const calendarUpcomingByProject = groupCalendarByProject(
+			allCalendarItems.filter(
+				(item) =>
+					!projectCalendarTodayItems.includes(item) &&
+					calendarItemOverlapsRange(
+						item,
+						briefDayBounds.end,
+						projectUpcomingEndBounds.end
+					)
+			)
+		);
 
 		// Reuse precomputed goal progress from project data to avoid recomputation
 		const goals: GoalProgress[] = [];
