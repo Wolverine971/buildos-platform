@@ -440,6 +440,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
 		expect(typeof requestBodies[0]?.model).toBe('string');
 		expect((requestBodies[0]?.model as string).startsWith('moonshotai/kimi')).toBe(false);
+		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: true });
 	});
 });
 

@@ -3197,6 +3197,81 @@ onto.search
 		expect(deltas).toEqual(['Partial answer']);
 	});
 
+	it('emits a clean lead-in before a tool-call pass closes', async () => {
+		let releaseToolCall!: () => void;
+		const toolCallGate = new Promise<void>((resolve) => {
+			releaseToolCall = resolve;
+		});
+		let streamInvocation = 0;
+		const events: string[] = [];
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield { type: 'text', content: "I'll check the project calendar now." };
+					await toolCallGate;
+					yield {
+						type: 'tool_call',
+						tool_call: {
+							id: 'tool_exec:calendar',
+							type: 'function',
+							function: {
+								name: 'tool_exec',
+								arguments: JSON.stringify({
+									op: 'cal.event.list',
+									args: {}
+								})
+							}
+						} satisfies ChatToolCall
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'I found the calendar events.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const resultPromise = streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			history: [],
+			message: 'Check the project calendar.',
+			tools: createGatewayTools(),
+			toolExecutor: async (toolCall): Promise<ChatToolResult> => ({
+				tool_call_id: toolCall.id,
+				result: { ok: true },
+				success: true
+			}),
+			onToolCall: async () => {
+				events.push('tool_call');
+			},
+			onDelta: async (delta) => {
+				events.push(`delta:${delta}`);
+			}
+		});
+
+		await vi.waitFor(() => {
+			expect(events).toEqual(["delta:I'll check the project calendar now."]);
+		});
+
+		releaseToolCall();
+		const result = await resultPromise;
+
+		expect(result.finishedReason).toBe('stop');
+		expect(events).toEqual([
+			"delta:I'll check the project calendar now.",
+			'tool_call',
+			'delta:\n\nI found the calendar events.'
+		]);
+		expect(result.assistantText).toBe(
+			"I'll check the project calendar now.\n\nI found the calendar events."
+		);
+	});
+
 	it('returns cancelled and preserves tool executions gathered before abort', async () => {
 		const abortController = new AbortController();
 		let streamInvocation = 0;

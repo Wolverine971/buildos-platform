@@ -461,6 +461,45 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		await onDelta(delta);
 	};
 
+	const emitAssistantRemainder = async (content: string): Promise<void> => {
+		const normalized = content.trim();
+		if (!normalized) return;
+
+		const alreadyEmitted = assistantText.trim();
+		if (!alreadyEmitted) {
+			await emitAssistantDelta(normalized);
+			return;
+		}
+
+		if (normalized === alreadyEmitted) {
+			return;
+		}
+
+		if (normalized.startsWith(alreadyEmitted)) {
+			const remainder = normalized.slice(alreadyEmitted.length);
+			if (!remainder.trim()) return;
+			assistantText += remainder;
+			await onDelta(remainder);
+			return;
+		}
+
+		await emitAssistantDelta(normalized);
+	};
+
+	const tryEmitEarlyAssistantLeadIn = async (content: string): Promise<void> => {
+		if (toolLeadInEmitted) return;
+
+		const candidate = sanitizeToolPassLeadIn(content, message).trim();
+		if (!candidate || !/[.!?]$/.test(candidate)) return;
+
+		const normalizedBuffer = content.replace(/\s+/g, ' ').trim();
+		const normalizedCandidate = candidate.replace(/\s+/g, ' ').trim();
+		if (!normalizedBuffer.includes(normalizedCandidate)) return;
+
+		await emitAssistantDelta(candidate);
+		toolLeadInEmitted = true;
+	};
+
 	try {
 		while (true) {
 			if (signal?.aborted) {
@@ -497,6 +536,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				if (event.type === 'text' && event.content) {
 					assistantBuffer += event.content;
 					activeAssistantBuffer = assistantBuffer;
+					await tryEmitEarlyAssistantLeadIn(assistantBuffer);
 				} else if (event.type === 'tool_call' && event.tool_call) {
 					const normalizedToolCall = normalizeToolCallDefaults(
 						event.tool_call,
@@ -624,7 +664,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					toolExecutions
 				});
 				if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
-					await emitAssistantDelta(finalAssistantText);
+					await emitAssistantRemainder(finalAssistantText);
 				}
 				activeAssistantBuffer = '';
 				activePendingToolCallCount = 0;
@@ -1037,7 +1077,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (activePendingToolCallCount === 0) {
 				const partialAssistantText = sanitizeAssistantFinalText(activeAssistantBuffer);
 				if (partialAssistantText && partialAssistantText !== assistantText.trim()) {
-					await emitAssistantDelta(partialAssistantText);
+					await emitAssistantRemainder(partialAssistantText);
 					if (!finalAssistantText) {
 						finalAssistantText = partialAssistantText;
 					}

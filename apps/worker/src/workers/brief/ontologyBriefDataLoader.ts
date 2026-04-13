@@ -582,8 +582,7 @@ export function resolveCalendarBriefSource(params: {
 	const currentUserSync =
 		syncRows.find((sync) => sync.user_id === params.userId && sync.provider === 'google') ??
 		null;
-	const legacySync =
-		syncRows.find((sync) => !sync.user_id && sync.provider === 'google') ?? null;
+	const legacySync = syncRows.find((sync) => !sync.user_id && sync.provider === 'google') ?? null;
 	const otherUserSync =
 		syncRows.find(
 			(sync) =>
@@ -629,7 +628,7 @@ export function resolveCalendarBriefSource(params: {
 
 	const lastSyncedAt =
 		selectedSync?.last_synced_at ??
-		(source !== 'internal' ? params.rowLastSyncedAt ?? null : null);
+		(source !== 'internal' ? (params.rowLastSyncedAt ?? null) : null);
 	const freshness = resolveCalendarSyncFreshness({
 		source,
 		lastSyncedAt,

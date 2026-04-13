@@ -109,6 +109,7 @@ const DEFAULT_MOONSHOT_MODEL_MAP: Record<string, string> = {
 	'moonshotai/kimi-k2.5': 'kimi-k2.5'
 };
 const MOONSHOT_REASONING_CONTENT_FALLBACK = '[reasoning omitted]';
+const OPENROUTER_TOOL_STREAM_REASONING = { effort: 'low', exclude: true } as const;
 const CANONICAL_MODEL_ALIASES: Record<string, string> = {
 	'kimi-k2.5': 'moonshotai/kimi-k2.5',
 	'kimi-k2-5': 'moonshotai/kimi-k2.5',
@@ -1900,6 +1901,9 @@ export class SmartLLMService {
 								max_tokens: options.maxTokens ?? 2000,
 								stream: true,
 								models: routingModels,
+								reasoning: needsToolSupport
+									? OPENROUTER_TOOL_STREAM_REASONING
+									: undefined,
 								transforms,
 								stream_options: { include_usage: true }
 							})

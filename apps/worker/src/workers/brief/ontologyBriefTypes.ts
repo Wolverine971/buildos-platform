@@ -110,12 +110,7 @@ export type CalendarBriefSourceLabel =
 	| 'Google link (unconfirmed)'
 	| 'Internal only'
 	| 'Google sync issue';
-export type CalendarBriefSyncFreshness =
-	| 'fresh'
-	| 'stale'
-	| 'unknown'
-	| 'not_synced'
-	| 'failed';
+export type CalendarBriefSyncFreshness = 'fresh' | 'stale' | 'unknown' | 'not_synced' | 'failed';
 
 export interface CalendarBriefItem {
 	id: string;
