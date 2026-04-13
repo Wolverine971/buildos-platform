@@ -1,5 +1,7 @@
 <!-- docs/marketing/social-media/daily-engagement/2026-04-13_instagram-warmup.md -->
 
+<!-- new -->
+
 # Instagram Warmup - April 13, 2026
 
 **Date:** 2026-04-13
@@ -20,17 +22,17 @@
 
 ## Priority Summary
 
-| # | Account | Topic | Age | Comments | Opp Type | Mention Fit | Score | Profile | Queue |
-|---|---------|-------|-----|----------|----------|-------------|-------|---------|-------|
-| _Pending scan_ | | | | | | | | | |
+| #              | Account | Topic | Age | Comments | Opp Type | Mention Fit | Score | Profile | Queue |
+| -------------- | ------- | ----- | --- | -------- | -------- | ----------- | ----- | ------- | ----- |
+| _Pending scan_ |         |       |     |          |          |             |       |         |       |
 
 ---
 
 ## Reply Queue
 
-| # | Account | Topic | Post Link | Opp Type | Strategic Role | Mention Fit | Profile | Reply Angle |
-|---|---------|-------|-----------|----------|----------------|-------------|---------|-------------|
-| _Pending scan_ | | | | | | | | |
+| #              | Account | Topic | Post Link | Opp Type | Strategic Role | Mention Fit | Profile | Reply Angle |
+| -------------- | ------- | ----- | --------- | -------- | -------------- | ----------- | ------- | ----------- |
+| _Pending scan_ |         |       |           |          |                |             |         |             |
 
 ---
 
@@ -43,7 +45,7 @@ _Scanning..._
 ## New Accounts Discovered
 
 | Account | Followers | Theme | Suggested Tier | Strategic Role | Why |
-|---------|-----------|-------|----------------|----------------|-----|
+| ------- | --------- | ----- | -------------- | -------------- | --- |
 
 ---
 
@@ -62,4 +64,4 @@ _Pending scan..._
 ## Relationship Memory Updates
 
 | Account | Profile | Update |
-|---------|---------|--------|
+| ------- | ------- | ------ |

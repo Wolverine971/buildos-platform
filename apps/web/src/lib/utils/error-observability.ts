@@ -23,6 +23,62 @@ const KNOWN_NON_ACTIONABLE_SUBSTRINGS = [
 	'/wordpress/'
 ];
 
+const PRIVATE_CONFIG_PROBE_PREFIXES = [
+	'/.anthropic/',
+	'/.aws/',
+	'/.azure/',
+	'/.claude/',
+	'/.codex/',
+	'/.config/',
+	'/.cursor/',
+	'/.docker/',
+	'/.gcp/',
+	'/.gemini/',
+	'/.git/',
+	'/.npm/',
+	'/.openai/',
+	'/.ssh/',
+	'/.vscode/'
+];
+
+const PRIVATE_CONFIG_PROBE_PATHS = new Set([
+	'/.anthropic',
+	'/.anthropic/config.json',
+	'/.aws',
+	'/.azure',
+	'/.claude',
+	'/.codex',
+	'/.config',
+	'/.cursor',
+	'/.docker',
+	'/.env',
+	'/.env.development',
+	'/.env.local',
+	'/.env.production',
+	'/.gcp',
+	'/.gemini',
+	'/.git',
+	'/.netrc',
+	'/.npm',
+	'/.npmrc',
+	'/.openai',
+	'/.openai/config.json',
+	'/.pypirc',
+	'/.ssh',
+	'/.vscode',
+	'/config.json',
+	'/config.toml',
+	'/config.yaml',
+	'/config.yml',
+	'/credentials.json',
+	'/credentials.yaml',
+	'/credentials.yml',
+	'/secret.json',
+	'/secrets.json',
+	'/token.json',
+	'/tokens.json'
+]);
+
 const FIRST_PARTY_ASSET_EXTENSIONS = new Set([
 	'css',
 	'gif',
@@ -81,11 +137,31 @@ function getPathExtension(pathname: string): string | null {
 	return lastSegment.slice(dotIndex + 1).toLowerCase();
 }
 
+export function isPrivateConfigProbePath(pathname: string | null | undefined): boolean {
+	const normalizedPath = normalizePathname(pathname);
+	if (!normalizedPath) return false;
+
+	const lowerPath = normalizedPath.toLowerCase();
+	if (PRIVATE_CONFIG_PROBE_PATHS.has(lowerPath)) {
+		return true;
+	}
+
+	if (PRIVATE_CONFIG_PROBE_PREFIXES.some((prefix) => lowerPath.startsWith(prefix))) {
+		return true;
+	}
+
+	return /^\/\.env(?:[./_-]|$)/i.test(lowerPath);
+}
+
 export function isIgnorableProbePath(pathname: string | null | undefined): boolean {
 	const normalizedPath = normalizePathname(pathname);
 	if (!normalizedPath) return false;
 
 	const lowerPath = normalizedPath.toLowerCase();
+	if (isPrivateConfigProbePath(lowerPath)) {
+		return true;
+	}
+
 	if (KNOWN_NON_ACTIONABLE_PATHS.has(lowerPath)) {
 		return true;
 	}

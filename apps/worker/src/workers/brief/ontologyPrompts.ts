@@ -83,7 +83,13 @@ function formatCalendarItemForPrompt(item: CalendarBriefItem, includeDate: boole
 
 function formatCalendarPromptSourceCounts(counts: CalendarBriefCounts): string {
 	const syncIssueLabel = `sync issue${counts.syncIssue === 1 ? '' : 's'}`;
-	return `${counts.google} Google, ${counts.internal} internal, ${counts.syncIssue} ${syncIssueLabel}`;
+	const staleLabel =
+		counts.staleGoogle > 0 ? `, ${counts.staleGoogle} stale Google` : '';
+	const unconfirmedLabel =
+		counts.unconfirmedGoogle > 0
+			? `, ${counts.unconfirmedGoogle} unconfirmed Google`
+			: '';
+	return `${counts.google} Google${unconfirmedLabel}, ${counts.internal} internal, ${counts.syncIssue} ${syncIssueLabel}${staleLabel}`;
 }
 
 function buildCalendarSummaryForPrompt(briefData: OntologyBriefData): string {

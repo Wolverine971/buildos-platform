@@ -98,8 +98,24 @@ export interface RecentUpdates {
 
 export type CalendarBriefItemType = 'event' | 'task';
 export type CalendarBriefItemKind = 'event' | 'range' | 'start' | 'due';
-export type CalendarBriefSource = 'google' | 'internal' | 'sync_issue';
-export type CalendarBriefSourceLabel = 'Google Calendar' | 'Internal only' | 'Google sync issue';
+export type CalendarBriefSource =
+	| 'google'
+	| 'google_legacy'
+	| 'google_unconfirmed'
+	| 'internal'
+	| 'sync_issue';
+export type CalendarBriefSourceLabel =
+	| 'Google Calendar'
+	| 'Google Calendar (legacy sync)'
+	| 'Google link (unconfirmed)'
+	| 'Internal only'
+	| 'Google sync issue';
+export type CalendarBriefSyncFreshness =
+	| 'fresh'
+	| 'stale'
+	| 'unknown'
+	| 'not_synced'
+	| 'failed';
 
 export interface CalendarBriefItem {
 	id: string;
@@ -117,6 +133,9 @@ export interface CalendarBriefItem {
 	stateKey: string | null;
 	source: CalendarBriefSource;
 	sourceLabel: CalendarBriefSourceLabel;
+	lastSyncedAt: string | null;
+	syncAgeMinutes: number | null;
+	syncFreshness: CalendarBriefSyncFreshness;
 	googleEventId: string | null;
 	googleCalendarId: string | null;
 	externalLink: string | null;
@@ -129,6 +148,8 @@ export interface CalendarBriefCounts {
 	google: number;
 	internal: number;
 	syncIssue: number;
+	unconfirmedGoogle: number;
+	staleGoogle: number;
 }
 
 export interface CalendarBriefSection {
@@ -317,6 +338,8 @@ export interface OntologyBriefMetadata {
 	calendarGoogleCount?: number;
 	calendarInternalCount?: number;
 	calendarSyncIssueCount?: number;
+	calendarUnconfirmedGoogleCount?: number;
+	calendarStaleGoogleCount?: number;
 
 	// Generation info
 	generatedVia: string;

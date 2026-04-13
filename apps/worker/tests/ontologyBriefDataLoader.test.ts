@@ -16,7 +16,8 @@ import {
 	buildProjectAccessFilter,
 	findMissingOwnerMembershipProjectIds,
 	selectCalendarBriefItems,
-	createEmptyCalendarBriefSection
+	createEmptyCalendarBriefSection,
+	resolveCalendarBriefSource
 } from '../src/workers/brief/ontologyBriefDataLoader';
 import type {
 	OntoTask,
@@ -159,6 +160,9 @@ function createMockCalendarItem(overrides: Partial<CalendarBriefItem> = {}): Cal
 		stateKey: 'scheduled',
 		source: 'internal',
 		sourceLabel: 'Internal only',
+		lastSyncedAt: null,
+		syncAgeMinutes: null,
+		syncFreshness: 'not_synced',
 		googleEventId: null,
 		googleCalendarId: null,
 		externalLink: null,
@@ -300,6 +304,133 @@ describe('findMissingOwnerMembershipProjectIds', () => {
 describe('calendar brief selection', () => {
 	const timezone = 'America/New_York';
 	const briefDate = '2025-12-17';
+	const syncNow = new Date('2025-12-17T18:00:00.000Z');
+
+	it('resolves current-user Google sync with freshness', () => {
+		const result = resolveCalendarBriefSource({
+			userId: 'user-1',
+			now: syncNow,
+			syncRows: [
+				{
+					user_id: 'user-1',
+					provider: 'google',
+					external_event_id: 'google-1',
+					calendar_id: 'primary',
+					sync_status: 'synced',
+					sync_error: null,
+					last_synced_at: '2025-12-17T17:30:00.000Z'
+				}
+			]
+		});
+
+		expect(result.source).toBe('google');
+		expect(result.googleEventId).toBe('google-1');
+		expect(result.lastSyncedAt).toBe('2025-12-17T17:30:00.000Z');
+		expect(result.syncAgeMinutes).toBe(30);
+		expect(result.syncFreshness).toBe('fresh');
+	});
+
+	it('does not label other-user Google sync as current-user Google Calendar', () => {
+		const result = resolveCalendarBriefSource({
+			userId: 'user-1',
+			now: syncNow,
+			syncRows: [
+				{
+					user_id: 'user-2',
+					provider: 'google',
+					external_event_id: 'google-other',
+					calendar_id: 'primary',
+					sync_status: 'synced',
+					sync_error: null,
+					last_synced_at: '2025-12-17T17:30:00.000Z'
+				}
+			]
+		});
+
+		expect(result.source).toBe('google_unconfirmed');
+		expect(result.googleEventId).toBe('google-other');
+		expect(result.syncFreshness).toBe('fresh');
+	});
+
+	it('keeps legacy Google sync distinct from current-user Google Calendar', () => {
+		const result = resolveCalendarBriefSource({
+			userId: 'user-1',
+			now: syncNow,
+			syncRows: [
+				{
+					user_id: null,
+					provider: 'google',
+					external_event_id: 'google-legacy',
+					calendar_id: 'primary',
+					sync_status: 'synced',
+					sync_error: null,
+					last_synced_at: '2025-12-17T17:30:00.000Z'
+				}
+			]
+		});
+
+		expect(result.source).toBe('google_legacy');
+		expect(result.googleEventId).toBe('google-legacy');
+		expect(result.syncFreshness).toBe('fresh');
+	});
+
+	it('treats props-only Google metadata as unconfirmed', () => {
+		const result = resolveCalendarBriefSource({
+			userId: 'user-1',
+			now: syncNow,
+			propProvider: 'google',
+			propExternalEventId: 'google-props',
+			propExternalCalendarId: 'primary'
+		});
+
+		expect(result.source).toBe('google_unconfirmed');
+		expect(result.googleEventId).toBe('google-props');
+		expect(result.googleCalendarId).toBe('primary');
+		expect(result.syncFreshness).toBe('unknown');
+	});
+
+	it('marks stale current-user Google sync', () => {
+		const result = resolveCalendarBriefSource({
+			userId: 'user-1',
+			now: syncNow,
+			syncRows: [
+				{
+					user_id: 'user-1',
+					provider: 'google',
+					external_event_id: 'google-stale',
+					calendar_id: 'primary',
+					sync_status: 'synced',
+					sync_error: null,
+					last_synced_at: '2025-12-17T10:00:00.000Z'
+				}
+			]
+		});
+
+		expect(result.source).toBe('google');
+		expect(result.syncAgeMinutes).toBe(480);
+		expect(result.syncFreshness).toBe('stale');
+	});
+
+	it('marks failed current-user Google sync as a sync issue', () => {
+		const result = resolveCalendarBriefSource({
+			userId: 'user-1',
+			now: syncNow,
+			syncRows: [
+				{
+					user_id: 'user-1',
+					provider: 'google',
+					external_event_id: 'google-failed',
+					calendar_id: 'primary',
+					sync_status: 'failed',
+					sync_error: 'quota exceeded',
+					last_synced_at: '2025-12-17T17:30:00.000Z'
+				}
+			]
+		});
+
+		expect(result.source).toBe('sync_issue');
+		expect(result.syncFreshness).toBe('failed');
+	});
 
 	it('returns an empty calendar section when no items are provided', () => {
 		expect(selectCalendarBriefItems([], briefDate, timezone)).toEqual(
@@ -429,7 +560,8 @@ describe('calendar brief selection', () => {
 					eventId: 'event-google',
 					source: 'google',
 					sourceLabel: 'Google Calendar',
-					googleEventId: 'google-1'
+					googleEventId: 'google-1',
+					syncFreshness: 'stale'
 				}),
 				createMockCalendarItem({
 					id: 'internal',
@@ -444,6 +576,14 @@ describe('calendar brief selection', () => {
 					sourceLabel: 'Google sync issue',
 					googleEventId: 'google-2',
 					startAt: '2025-12-18T15:00:00.000Z'
+				}),
+				createMockCalendarItem({
+					id: 'unconfirmed-google',
+					eventId: 'event-unconfirmed',
+					source: 'google_unconfirmed',
+					sourceLabel: 'Google link (unconfirmed)',
+					googleEventId: 'google-3',
+					startAt: '2025-12-18T16:00:00.000Z'
 				})
 			],
 			briefDate,
@@ -451,9 +591,11 @@ describe('calendar brief selection', () => {
 		);
 
 		expect(result.counts.today.google).toBe(1);
+		expect(result.counts.today.staleGoogle).toBe(1);
 		expect(result.counts.today.internal).toBe(1);
 		expect(result.counts.upcoming.syncIssue).toBe(1);
-		expect(result.counts.all.total).toBe(3);
+		expect(result.counts.upcoming.unconfirmedGoogle).toBe(1);
+		expect(result.counts.all.total).toBe(4);
 	});
 
 	it('deduplicates Google mapped items before applying caps', () => {

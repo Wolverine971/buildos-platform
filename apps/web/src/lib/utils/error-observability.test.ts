@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	getErrorStatus,
 	isIgnorableProbePath,
+	isPrivateConfigProbePath,
 	shouldDisplayPersistedErrorLog,
 	shouldPersistGenericErrorEvent,
 	shouldTrackFailedClientResponse,
@@ -26,8 +27,19 @@ describe('error observability filters', () => {
 		expect(isIgnorableProbePath('/wp-admin/setup-config.php')).toBe(true);
 		expect(isIgnorableProbePath('/wordpress/wp-admin/setup-config.php')).toBe(true);
 		expect(isIgnorableProbePath('/.env')).toBe(true);
+		expect(isIgnorableProbePath('/.openai/config.json')).toBe(true);
+		expect(isIgnorableProbePath('/.anthropic/config.json')).toBe(true);
 		expect(isIgnorableProbePath('/.well-known/assetlinks.json')).toBe(true);
 		expect(isIgnorableProbePath('/brain-bolt-80.png')).toBe(false);
+	});
+
+	it('recognizes private config probe paths without treating normal assets as probes', () => {
+		expect(isPrivateConfigProbePath('/.openai/config.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/.anthropic/config.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/.env.production.local')).toBe(true);
+		expect(isPrivateConfigProbePath('/config.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/openapi.json')).toBe(false);
+		expect(isPrivateConfigProbePath('/brain-bolt-80.png')).toBe(false);
 	});
 
 	it('suppresses generic hook noise but keeps meaningful asset misses', () => {
@@ -60,6 +72,15 @@ describe('error observability filters', () => {
 			shouldPersistGenericErrorEvent({
 				operation: 'hooks.handle_error',
 				pathname: '/totally-missing-page',
+				status: 404,
+				routeId: null
+			})
+		).toBe(false);
+
+		expect(
+			shouldPersistGenericErrorEvent({
+				operation: 'hooks.handle_error',
+				pathname: '/.anthropic/config.json',
 				status: 404,
 				routeId: null
 			})

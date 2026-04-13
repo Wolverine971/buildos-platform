@@ -182,7 +182,10 @@ function formatCalendarKindLabel(item: CalendarBriefItem): string | null {
 function formatCalendarBriefItem(item: CalendarBriefItem, includeDate: boolean): string {
 	const timeLabel = includeDate ? `${item.displayDate}, ${item.displayTime}` : item.displayTime;
 	const kindLabel = formatCalendarKindLabel(item);
-	const details = [item.sourceLabel, kindLabel, item.projectName].filter(Boolean);
+	const syncFreshnessLabel = item.syncFreshness === 'stale' ? 'stale sync' : null;
+	const details = [item.sourceLabel, syncFreshnessLabel, kindLabel, item.projectName].filter(
+		Boolean
+	);
 	const detailSuffix = details.length > 0 ? ` - ${details.join(' / ')}` : '';
 	return `- ${timeLabel} - ${item.title}${detailSuffix}`;
 }
@@ -195,11 +198,17 @@ function formatCalendarCounts(section: CalendarBriefSection, scope: 'today' | 'u
 	if (counts.google > 0) {
 		pieces.push(`${counts.google} Google`);
 	}
+	if (counts.unconfirmedGoogle > 0) {
+		pieces.push(`${counts.unconfirmedGoogle} unconfirmed Google`);
+	}
 	if (counts.internal > 0) {
 		pieces.push(`${counts.internal} internal`);
 	}
 	if (counts.syncIssue > 0) {
 		pieces.push(`${counts.syncIssue} sync issue${counts.syncIssue === 1 ? '' : 's'}`);
+	}
+	if (counts.staleGoogle > 0) {
+		pieces.push(`${counts.staleGoogle} stale Google`);
 	}
 	return pieces.join(' / ');
 }

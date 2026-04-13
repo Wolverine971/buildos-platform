@@ -55,7 +55,8 @@ import type {
 	CalendarBriefSection,
 	CalendarBriefCounts,
 	CalendarBriefSource,
-	CalendarBriefSourceLabel
+	CalendarBriefSourceLabel,
+	CalendarBriefSyncFreshness
 } from './ontologyBriefTypes.js';
 
 export const CALENDAR_BRIEF_CAPS = {
@@ -64,6 +65,8 @@ export const CALENDAR_BRIEF_CAPS = {
 	UPCOMING_DAYS: 7,
 	QUERY_LIMIT: 80
 } as const;
+
+const CALENDAR_SYNC_STALE_AFTER_MINUTES = 6 * 60;
 
 type OntoEventSyncRow = Database['public']['Tables']['onto_event_sync']['Row'];
 type TaskCalendarEventRow = Database['public']['Tables']['task_calendar_events']['Row'];
@@ -85,6 +88,7 @@ type OntoCalendarEventRow = Pick<
 	| 'external_link'
 	| 'sync_status'
 	| 'sync_error'
+	| 'last_synced_at'
 	| 'deleted_at'
 	| 'created_at'
 	| 'updated_at'
@@ -171,6 +175,10 @@ function getCalendarSourceLabel(source: CalendarBriefSource): CalendarBriefSourc
 	switch (source) {
 		case 'google':
 			return 'Google Calendar';
+		case 'google_legacy':
+			return 'Google Calendar (legacy sync)';
+		case 'google_unconfirmed':
+			return 'Google link (unconfirmed)';
 		case 'sync_issue':
 			return 'Google sync issue';
 		case 'internal':
@@ -193,7 +201,9 @@ function createCalendarCounts(): CalendarBriefCounts {
 		total: 0,
 		google: 0,
 		internal: 0,
-		syncIssue: 0
+		syncIssue: 0,
+		unconfirmedGoogle: 0,
+		staleGoogle: 0
 	};
 }
 
@@ -201,12 +211,20 @@ function countCalendarItems(items: CalendarBriefItem[]): CalendarBriefCounts {
 	const counts = createCalendarCounts();
 	for (const item of items) {
 		counts.total++;
-		if (item.source === 'google') {
+		if (item.source === 'google' || item.source === 'google_legacy') {
 			counts.google++;
+		} else if (item.source === 'google_unconfirmed') {
+			counts.unconfirmedGoogle++;
 		} else if (item.source === 'sync_issue') {
 			counts.syncIssue++;
 		} else {
 			counts.internal++;
+		}
+		if (
+			(item.source === 'google' || item.source === 'google_legacy') &&
+			item.syncFreshness === 'stale'
+		) {
+			counts.staleGoogle++;
 		}
 	}
 	return counts;
@@ -313,8 +331,10 @@ function compareCalendarItems(
 
 	const sourceOrder: Record<CalendarBriefSource, number> = {
 		google: 0,
-		sync_issue: 1,
-		internal: 2
+		google_legacy: 1,
+		sync_issue: 2,
+		google_unconfirmed: 3,
+		internal: 4
 	};
 	const sourceDelta = sourceOrder[a.source] - sourceOrder[b.source];
 	if (sourceDelta !== 0) return sourceDelta;
@@ -337,10 +357,12 @@ function getCalendarDedupeKey(item: CalendarBriefItem): string {
 
 function getCalendarDedupePriority(item: CalendarBriefItem): number {
 	if (item.source === 'google') return 0;
-	if (item.source === 'sync_issue') return 1;
-	if (item.eventId) return 2;
-	if (item.taskId) return 3;
-	return 4;
+	if (item.source === 'google_legacy') return 1;
+	if (item.source === 'sync_issue') return 2;
+	if (item.source === 'google_unconfirmed') return 3;
+	if (item.eventId) return 4;
+	if (item.taskId) return 5;
+	return 6;
 }
 
 function dedupeCalendarItems(items: CalendarBriefItem[]): CalendarBriefItem[] {
@@ -372,9 +394,7 @@ export function selectCalendarBriefItems(
 		timezone
 	);
 	const upcomingEndBounds = getLocalDayUtcBounds(upcomingEndDate, timezone);
-	const deduped = dedupeCalendarItems(items).sort((a, b) =>
-		compareCalendarItems(a, b, timezone)
-	);
+	const deduped = dedupeCalendarItems(items).sort((a, b) => compareCalendarItems(a, b, timezone));
 	const todayAll = deduped.filter((item) =>
 		calendarItemOverlapsRange(item, todayBounds.start, todayBounds.end)
 	);
@@ -421,6 +441,43 @@ function isWithinCalendarWindow(timestamp: string | null, start: Date, end: Date
 	return date >= start && date < end;
 }
 
+function hasCalendarSyncFailure(
+	status: string | null | undefined,
+	error: string | null | undefined
+): boolean {
+	return status === 'failed' || status === 'error' || Boolean(error);
+}
+
+function getCalendarSyncAgeMinutes(lastSyncedAt: string | null, now: Date): number | null {
+	if (!lastSyncedAt) return null;
+	const syncedAt = parseISO(lastSyncedAt);
+	if (Number.isNaN(syncedAt.getTime())) return null;
+	return Math.max(0, Math.floor((now.getTime() - syncedAt.getTime()) / 60000));
+}
+
+function resolveCalendarSyncFreshness(params: {
+	source: CalendarBriefSource;
+	lastSyncedAt: string | null;
+	hasFailure?: boolean;
+	now?: Date;
+}): { syncFreshness: CalendarBriefSyncFreshness; syncAgeMinutes: number | null } {
+	if (params.source === 'internal') {
+		return { syncFreshness: 'not_synced', syncAgeMinutes: null };
+	}
+	if (params.hasFailure || params.source === 'sync_issue') {
+		return { syncFreshness: 'failed', syncAgeMinutes: null };
+	}
+
+	const syncAgeMinutes = getCalendarSyncAgeMinutes(params.lastSyncedAt, params.now ?? new Date());
+	if (syncAgeMinutes === null) {
+		return { syncFreshness: 'unknown', syncAgeMinutes: null };
+	}
+	if (syncAgeMinutes >= CALENDAR_SYNC_STALE_AFTER_MINUTES) {
+		return { syncFreshness: 'stale', syncAgeMinutes };
+	}
+	return { syncFreshness: 'fresh', syncAgeMinutes };
+}
+
 function createCalendarItem(params: {
 	id: string;
 	title: string | null;
@@ -436,6 +493,9 @@ function createCalendarItem(params: {
 	itemKind: CalendarBriefItemKind;
 	stateKey?: string | null;
 	source: CalendarBriefSource;
+	lastSyncedAt?: string | null;
+	syncAgeMinutes?: number | null;
+	syncFreshness?: CalendarBriefSyncFreshness;
 	googleEventId?: string | null;
 	googleCalendarId?: string | null;
 	externalLink?: string | null;
@@ -457,6 +517,9 @@ function createCalendarItem(params: {
 		stateKey: params.stateKey ?? null,
 		source: params.source,
 		sourceLabel: getCalendarSourceLabel(params.source),
+		lastSyncedAt: params.lastSyncedAt ?? null,
+		syncAgeMinutes: params.syncAgeMinutes ?? null,
+		syncFreshness: params.syncFreshness ?? 'not_synced',
 		googleEventId: params.googleEventId ?? null,
 		googleCalendarId: params.googleCalendarId ?? null,
 		externalLink: params.externalLink ?? null,
@@ -485,55 +548,121 @@ function resolveOntologyEventKind(row: OntoCalendarEventRow): CalendarBriefItemK
 	return isCalendarItemKind(kind) ? kind : 'event';
 }
 
-function resolveOntologyEventSource(
-	row: OntoCalendarEventRow,
-	userId: string
-): {
+type CalendarBriefSyncSourceRow = Pick<
+	OntoEventSyncRow,
+	| 'calendar_id'
+	| 'user_id'
+	| 'provider'
+	| 'external_event_id'
+	| 'sync_status'
+	| 'sync_error'
+	| 'last_synced_at'
+>;
+
+export function resolveCalendarBriefSource(params: {
+	userId: string;
+	syncRows?: CalendarBriefSyncSourceRow[] | null;
+	propProvider?: string | null;
+	propExternalEventId?: string | null;
+	propExternalCalendarId?: string | null;
+	externalLink?: string | null;
+	rowSyncStatus?: string | null;
+	rowSyncError?: string | null;
+	rowLastSyncedAt?: string | null;
+	now?: Date;
+}): {
 	source: CalendarBriefSource;
 	googleEventId: string | null;
 	googleCalendarId: string | null;
+	lastSyncedAt: string | null;
+	syncAgeMinutes: number | null;
+	syncFreshness: CalendarBriefSyncFreshness;
 } {
-	const props = asRecord(row.props);
-	const syncRows = row.onto_event_sync ?? [];
-	const syncRow =
-		syncRows.find((sync) => sync.user_id === userId && sync.provider === 'google') ??
-		syncRows.find((sync) => !sync.user_id && sync.provider === 'google') ??
+	const syncRows = params.syncRows ?? [];
+	const currentUserSync =
+		syncRows.find((sync) => sync.user_id === params.userId && sync.provider === 'google') ??
 		null;
+	const legacySync =
+		syncRows.find((sync) => !sync.user_id && sync.provider === 'google') ?? null;
+	const otherUserSync =
+		syncRows.find(
+			(sync) =>
+				Boolean(sync.user_id) &&
+				sync.user_id !== params.userId &&
+				sync.provider === 'google'
+		) ?? null;
+	const selectedSync = currentUserSync ?? legacySync ?? otherUserSync ?? null;
 
-	const propProvider = getStringProp(props, 'provider');
-	const propExternalEventId = getStringProp(props, 'external_event_id');
-	const propExternalCalendarId = getStringProp(props, 'external_calendar_id');
-	const googleEventId = syncRow?.external_event_id ?? propExternalEventId;
-	const googleCalendarId = propExternalCalendarId ?? syncRow?.calendar_id ?? null;
-	const status = syncRow?.sync_status ?? row.sync_status ?? null;
-	const syncError = syncRow?.sync_error ?? row.sync_error ?? null;
+	const googleEventId = selectedSync?.external_event_id ?? params.propExternalEventId ?? null;
+	const googleCalendarId = selectedSync?.calendar_id ?? params.propExternalCalendarId ?? null;
+	const selectedFailure = selectedSync
+		? hasCalendarSyncFailure(selectedSync.sync_status, selectedSync.sync_error)
+		: false;
+	const rowFailure = hasCalendarSyncFailure(params.rowSyncStatus, params.rowSyncError);
 	const hasGoogleIntent =
-		syncRow !== null ||
-		propProvider === 'google' ||
+		selectedSync !== null ||
+		params.propProvider === 'google' ||
 		Boolean(googleEventId) ||
-		hasGoogleCalendarLink(row.external_link);
+		hasGoogleCalendarLink(params.externalLink);
 
-	if (hasGoogleIntent && (status === 'failed' || Boolean(syncError))) {
-		return {
-			source: 'sync_issue',
-			googleEventId,
-			googleCalendarId
-		};
+	let source: CalendarBriefSource = 'internal';
+	let hasFailure = false;
+
+	if (currentUserSync) {
+		if (selectedFailure || rowFailure) {
+			source = 'sync_issue';
+			hasFailure = true;
+		} else {
+			source = googleEventId ? 'google' : 'google_unconfirmed';
+		}
+	} else if (legacySync) {
+		if (selectedFailure || rowFailure) {
+			source = 'sync_issue';
+			hasFailure = true;
+		} else {
+			source = googleEventId ? 'google_legacy' : 'google_unconfirmed';
+		}
+	} else if (otherUserSync || hasGoogleIntent) {
+		source = rowFailure ? 'sync_issue' : 'google_unconfirmed';
+		hasFailure = rowFailure;
 	}
 
-	if (hasGoogleIntent) {
-		return {
-			source: 'google',
-			googleEventId,
-			googleCalendarId
-		};
-	}
+	const lastSyncedAt =
+		selectedSync?.last_synced_at ??
+		(source !== 'internal' ? params.rowLastSyncedAt ?? null : null);
+	const freshness = resolveCalendarSyncFreshness({
+		source,
+		lastSyncedAt,
+		hasFailure,
+		now: params.now
+	});
 
 	return {
-		source: 'internal',
-		googleEventId: null,
-		googleCalendarId: null
+		source,
+		googleEventId: source === 'internal' ? null : googleEventId,
+		googleCalendarId: source === 'internal' ? null : googleCalendarId,
+		lastSyncedAt,
+		syncAgeMinutes: freshness.syncAgeMinutes,
+		syncFreshness: freshness.syncFreshness
 	};
+}
+
+function resolveOntologyEventSource(
+	row: OntoCalendarEventRow,
+	userId: string
+): ReturnType<typeof resolveCalendarBriefSource> {
+	const props = asRecord(row.props);
+	return resolveCalendarBriefSource({
+		userId,
+		syncRows: row.onto_event_sync ?? [],
+		propProvider: getStringProp(props, 'provider'),
+		propExternalEventId: getStringProp(props, 'external_event_id'),
+		propExternalCalendarId: getStringProp(props, 'external_calendar_id'),
+		externalLink: row.external_link,
+		rowSyncStatus: row.sync_status,
+		rowSyncError: row.sync_error,
+		rowLastSyncedAt: row.last_synced_at
+	});
 }
 
 function normalizeOntologyCalendarEvent(
@@ -566,6 +695,9 @@ function normalizeOntologyCalendarEvent(
 		itemKind: kind,
 		stateKey: row.state_key,
 		source: source.source,
+		lastSyncedAt: source.lastSyncedAt,
+		syncAgeMinutes: source.syncAgeMinutes,
+		syncFreshness: source.syncFreshness,
 		googleEventId: source.googleEventId,
 		googleCalendarId: source.googleCalendarId,
 		externalLink: row.external_link,
@@ -585,10 +717,22 @@ function normalizeLegacyTaskCalendarEvent(
 
 	const taskProject = taskProjectMap.get(row.task_id);
 	let source: CalendarBriefSource = 'internal';
+	let lastSyncedAt: string | null = null;
+	let syncFreshness: CalendarBriefSyncFreshness = 'not_synced';
+	let syncAgeMinutes: number | null = null;
 	if (syncStatus === 'synced') {
 		source = 'google';
+		lastSyncedAt = row.last_synced_at ?? null;
+		const freshness = resolveCalendarSyncFreshness({
+			source,
+			lastSyncedAt
+		});
+		syncFreshness = freshness.syncFreshness;
+		syncAgeMinutes = freshness.syncAgeMinutes;
 	} else if (row.calendar_event_id || row.sync_error) {
 		source = 'sync_issue';
+		lastSyncedAt = row.last_synced_at ?? null;
+		syncFreshness = 'failed';
 	}
 
 	return createCalendarItem({
@@ -606,6 +750,9 @@ function normalizeLegacyTaskCalendarEvent(
 		itemKind: 'range',
 		stateKey: row.sync_status,
 		source,
+		lastSyncedAt,
+		syncAgeMinutes,
+		syncFreshness,
 		googleEventId: row.calendar_event_id,
 		googleCalendarId: row.calendar_id,
 		externalLink: row.event_link,
@@ -1881,6 +2028,7 @@ export class OntologyBriefDataLoader {
 			external_link,
 			sync_status,
 			sync_error,
+			last_synced_at,
 			deleted_at,
 			created_at,
 			updated_at,
@@ -2182,9 +2330,10 @@ export class OntologyBriefDataLoader {
 			return grouped;
 		};
 
-		const allCalendarItems = calendar.allItems.length > 0
-			? calendar.allItems
-			: [...calendar.today, ...calendar.upcoming];
+		const allCalendarItems =
+			calendar.allItems.length > 0
+				? calendar.allItems
+				: [...calendar.today, ...calendar.upcoming];
 		const briefDayBounds = getLocalDayUtcBounds(briefDate, timezone);
 		const projectUpcomingEndDate = addDaysToLocalDate(
 			briefDate,
@@ -2195,9 +2344,7 @@ export class OntologyBriefDataLoader {
 		const projectCalendarTodayItems = allCalendarItems.filter((item) =>
 			calendarItemOverlapsRange(item, briefDayBounds.start, briefDayBounds.end)
 		);
-		const calendarTodayByProject = groupCalendarByProject(
-			projectCalendarTodayItems
-		);
+		const calendarTodayByProject = groupCalendarByProject(projectCalendarTodayItems);
 		const calendarUpcomingByProject = groupCalendarByProject(
 			allCalendarItems.filter(
 				(item) =>
@@ -2446,6 +2593,8 @@ export class OntologyBriefDataLoader {
 			calendarGoogleCount: briefData.calendar.counts.all.google,
 			calendarInternalCount: briefData.calendar.counts.all.internal,
 			calendarSyncIssueCount: briefData.calendar.counts.all.syncIssue,
+			calendarUnconfirmedGoogleCount: briefData.calendar.counts.all.unconfirmedGoogle,
+			calendarStaleGoogleCount: briefData.calendar.counts.all.staleGoogle,
 			generatedVia: 'ontology_v1',
 			timezone
 		};

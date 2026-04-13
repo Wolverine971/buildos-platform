@@ -9,6 +9,16 @@ Allow: /
 Disallow: /auth/
 Disallow: /api/
 Disallow: /admin/
+Disallow: /.anthropic/
+Disallow: /.claude/
+Disallow: /.codex/
+Disallow: /.cursor/
+Disallow: /.env
+Disallow: /.git/
+Disallow: /.openai/
+Disallow: /.ssh/
+Disallow: /config.json
+Disallow: /credentials.json
 Disallow: /profile
 Disallow: /onboarding
 Disallow: /projects/
@@ -32,27 +42,35 @@ Allow: /road-map
 Allow: /investors
 Crawl-delay: 1
 
-# Common AI crawlers
+# Common AI crawlers - allow public content, keep private/auth/API paths off limits
 User-agent: GPTBot
-Allow: /
-
 User-agent: OAI-SearchBot
-Allow: /
-
 User-agent: ChatGPT-User
-Allow: /
-
 User-agent: PerplexityBot
-Allow: /
-
 User-agent: CCBot
-Allow: /
-
 User-agent: ClaudeBot
-Allow: /
-
 User-agent: anthropic-ai
 Allow: /
+Disallow: /auth/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /.anthropic/
+Disallow: /.claude/
+Disallow: /.codex/
+Disallow: /.cursor/
+Disallow: /.env
+Disallow: /.git/
+Disallow: /.openai/
+Disallow: /.ssh/
+Disallow: /config.json
+Disallow: /credentials.json
+Disallow: /profile
+Disallow: /onboarding
+Disallow: /projects/
+Disallow: /brain-dump
+Disallow: /briefs
+Disallow: /history
+Crawl-delay: 1
 
 # Sitemap location
 Sitemap: https://build-os.com/sitemap.xml

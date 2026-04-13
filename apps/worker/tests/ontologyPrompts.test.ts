@@ -32,6 +32,9 @@ function createCalendarItem(
 		stateKey: 'scheduled',
 		source: 'google',
 		sourceLabel: 'Google Calendar',
+		lastSyncedAt: '2025-12-17T14:30:00.000Z',
+		syncAgeMinutes: 30,
+		syncFreshness: 'fresh',
 		googleEventId: `google-${id}`,
 		googleCalendarId: 'primary',
 		externalLink: null,
@@ -93,19 +96,25 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 						total: 10,
 						google: 7,
 						internal: 2,
-						syncIssue: 1
+						syncIssue: 1,
+						unconfirmedGoogle: 0,
+						staleGoogle: 1
 					},
 					upcoming: {
 						total: 7,
 						google: 3,
 						internal: 4,
-						syncIssue: 0
+						syncIssue: 0,
+						unconfirmedGoogle: 1,
+						staleGoogle: 0
 					},
 					all: {
 						total: 17,
 						google: 10,
 						internal: 6,
-						syncIssue: 1
+						syncIssue: 1,
+						unconfirmedGoogle: 1,
+						staleGoogle: 1
 					}
 				}
 			})
@@ -114,9 +123,11 @@ describe('OntologyAnalysisPrompt calendar summary', () => {
 		expect(prompt).toContain('- Calendar Today: 10');
 		expect(prompt).toContain('- Calendar Upcoming: 7');
 		expect(prompt).toContain('## Calendar Summary');
-		expect(prompt).toContain('- Today: 10 items (7 Google, 2 internal, 1 sync issue)');
 		expect(prompt).toContain(
-			'- Upcoming next 7 days: 7 items (3 Google, 4 internal, 0 sync issues)'
+			'- Today: 10 items (7 Google, 2 internal, 1 sync issue, 1 stale Google)'
+		);
+		expect(prompt).toContain(
+			'- Upcoming next 7 days: 7 items (3 Google, 1 unconfirmed Google, 4 internal, 0 sync issues)'
 		);
 		expect(prompt).toContain('Today Event 0');
 		expect(prompt).toContain('Today Event 1');
