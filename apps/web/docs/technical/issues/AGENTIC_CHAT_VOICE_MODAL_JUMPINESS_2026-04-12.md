@@ -1,5 +1,3 @@
-<!-- apps/web/docs/technical/issues/AGENTIC_CHAT_VOICE_MODAL_JUMPINESS_2026-04-12.md -->
-
 # Agentic Chat Voice Modal Jumpiness
 
 Date: 2026-04-12
@@ -107,3 +105,9 @@ Verification:
 ## Follow-Up Adjustment
 
 After testing the Stop Recording path, the voice activity panel could remain visible because stale live transcript text still existed after recording stopped. The panel now only renders while voice work is active: recording, stopping, or transcribing. During stopping/transcribing it shows a processing state, and on idle/error it clears the live transcript preview so the panel disappears once text has been applied or recording has fully stopped.
+
+## Mobile Keyboard Sheet Anchor Adjustment
+
+The Agentic Chat modal uses a bottom-sheet modal on mobile. When the keyboard opens, the sheet height is reduced with `calc(100dvh - var(--keyboard-height))`. Because the bottom sheet was still anchored to the bottom of the full viewport, reducing its height made the top edge drop down by roughly the keyboard height.
+
+The sheet now adds a matching bottom margin while the keyboard is visible, so the reduced-height modal is anchored above the keyboard instead of behind it. The keyboard height utility also accounts for `visualViewport.offsetTop`, which avoids over-counting browser chrome or viewport panning as keyboard height.

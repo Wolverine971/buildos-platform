@@ -69,25 +69,31 @@ export function initKeyboardAvoiding(options: KeyboardAvoidingOptions): () => vo
 
 	let isKeyboardVisible = false;
 
+	function getKeyboardHeight(): number {
+		if (!window.visualViewport) return 0;
+		const offsetTop = window.visualViewport.offsetTop || 0;
+		return Math.max(0, window.innerHeight - window.visualViewport.height - offsetTop);
+	}
+
+	function setKeyboardHeightProperty(keyboardNowVisible: boolean, keyboardHeight: number) {
+		if (!setCSSProperty) return;
+		document.documentElement.style.setProperty(
+			'--keyboard-height',
+			keyboardNowVisible ? `${keyboardHeight}px` : '0px'
+		);
+	}
+
 	function handleViewportResize() {
 		if (!window.visualViewport) return;
 
-		const currentHeight = window.visualViewport.height;
-		// Use window.innerHeight as reference — it's the layout viewport height,
-		// which stays constant on iOS when the keyboard opens.
-		// This is more reliable than a stored initial value which can become stale
-		// after orientation changes or address bar state changes.
-		const keyboardHeight = window.innerHeight - currentHeight;
+		// visualViewport.offsetTop accounts for browser chrome/viewport panning.
+		// The bottom occlusion is the part of the layout viewport below the visual viewport.
+		const keyboardHeight = getKeyboardHeight();
 		const keyboardNowVisible = keyboardHeight > minHeightChange;
 
 		// Set CSS custom property on every resize event (not just state changes)
 		// so height tracks smoothly during keyboard animation
-		if (setCSSProperty) {
-			document.documentElement.style.setProperty(
-				'--keyboard-height',
-				keyboardNowVisible ? `${keyboardHeight}px` : '0px'
-			);
-		}
+		setKeyboardHeightProperty(keyboardNowVisible, keyboardHeight);
 
 		if (keyboardNowVisible !== isKeyboardVisible) {
 			isKeyboardVisible = keyboardNowVisible;
@@ -108,9 +114,11 @@ export function initKeyboardAvoiding(options: KeyboardAvoidingOptions): () => vo
 	}
 
 	function handleViewportScroll() {
-		if (!window.visualViewport || !isKeyboardVisible || !applyTransform) return;
+		if (!window.visualViewport || !isKeyboardVisible) return;
 
 		const offsetTop = window.visualViewport.offsetTop || 0;
+		setKeyboardHeightProperty(true, getKeyboardHeight());
+		if (!applyTransform) return;
 		element.style.transform = `translateY(${-offsetTop}px)`;
 	}
 
@@ -194,7 +202,8 @@ export function getKeyboardState(): KeyboardAvoidingState {
 
 	const viewportHeight = window.visualViewport.height;
 	const windowHeight = window.innerHeight;
-	const heightDiff = windowHeight - viewportHeight;
+	const offsetTop = window.visualViewport.offsetTop || 0;
+	const heightDiff = Math.max(0, windowHeight - viewportHeight - offsetTop);
 	const isKeyboardVisible = heightDiff > 100;
 
 	return {

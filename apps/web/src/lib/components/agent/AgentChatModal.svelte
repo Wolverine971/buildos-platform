@@ -4546,7 +4546,7 @@
 		closeOnBackdrop={false}
 		showCloseButton={false}
 		ariaLabel="BuildOS chat assistant dialog"
-		customClasses="lg:!max-w-6xl xl:!max-w-7xl !max-h-[calc(100dvh_-_var(--keyboard-height,0px))] !h-[calc(100dvh_-_var(--keyboard-height,0px))] sm:!h-[90dvh] sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg !overscroll-none"
+		customClasses="agent-chat-keyboard-modal lg:!max-w-6xl xl:!max-w-7xl !max-h-[calc(100dvh_-_var(--keyboard-height,0px))] !h-[calc(100dvh_-_var(--keyboard-height,0px))] sm:!h-[90dvh] sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg !overscroll-none"
 	>
 		{#snippet header()}
 			<!-- INKPRINT header bar with Frame texture -->
@@ -4862,6 +4862,16 @@
 {/if}
 
 <style>
+	:global(.agent-chat-keyboard-modal) {
+		margin-bottom: var(--keyboard-height, 0px) !important;
+	}
+
+	@media (min-width: 640px) {
+		:global(.agent-chat-keyboard-modal) {
+			margin-bottom: 1rem !important;
+		}
+	}
+
 	.agent-resp-div p {
 		margin-bottom: 0.2rem;
 	}
