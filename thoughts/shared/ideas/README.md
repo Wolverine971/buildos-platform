@@ -51,4 +51,5 @@ Miscellaneous brainstorm and exploration ideas.
 
 | File | Description | Status | Frontmatter |
 |------|-------------|--------|-------------|
+| [brainstorm-user-profile.md](brainstorm-user-profile.md) | Living user profile knowledge base organized as a document tree | brainstorm | no |
 | [rolling-context-window-llm-game-idea.md](rolling-context-window-llm-game-idea.md) | D&D turn-based game with LLM rolling context window | brainstorm | no |

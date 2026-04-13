@@ -1,4 +1,4 @@
-<!-- docs/blog-priority-audit-2026-03-30.md -->
+<!-- docs/reports/blog-priority-audit-2026-03-30.md -->
 
 # Blog Priority Audit - 2026-03-30
 

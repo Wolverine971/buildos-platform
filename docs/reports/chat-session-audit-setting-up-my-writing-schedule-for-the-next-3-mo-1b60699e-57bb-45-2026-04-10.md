@@ -1,4 +1,4 @@
-<!-- chat-session-audit-setting-up-my-writing-schedule-for-the-next-3-mo-1b60699e-57bb-45-2026-04-10.md -->
+<!-- docs/reports/chat-session-audit-setting-up-my-writing-schedule-for-the-next-3-mo-1b60699e-57bb-45-2026-04-10.md -->
 
 # Chat Session Audit: Setting up my writing schedule for the next 3 months. Goal is to finish first draft by March 31st. Daily writing goal...
 

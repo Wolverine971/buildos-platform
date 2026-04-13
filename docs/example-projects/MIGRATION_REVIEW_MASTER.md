@@ -5,7 +5,7 @@
 **Review Date:** 2025-12-21 (Updated)
 **Reviewed By:** Claude (Automated Analysis)
 **Migration Files Location:** `supabase/migrations/20251220_seed_*.sql`
-**Reference Guide:** `docs/research/EXAMPLE_PROJECT_CREATION_GUIDE.md`
+**Reference Guide:** `docs/example-projects/EXAMPLE_PROJECT_CREATION_GUIDE.md`
 
 ---
 

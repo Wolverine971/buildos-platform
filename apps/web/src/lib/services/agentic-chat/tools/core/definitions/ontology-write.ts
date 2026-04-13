@@ -1227,7 +1227,7 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 		function: {
 			name: 'update_onto_project',
 			description: `Update an existing project in the ontology system.
-Can modify name, description, state, and custom properties.
+Can modify name, description, state, timeline dates, and custom properties.
 Only updates fields that are provided.`,
 			parameters: {
 				type: 'object',
@@ -1259,6 +1259,15 @@ Only updates fields that are provided.`,
 					state_key: {
 						type: 'string',
 						description: 'New state (planning, active, completed, cancelled)'
+					},
+					start_at: {
+						type: ['string', 'null'],
+						description: 'New project start date (ISO format) or null to clear'
+					},
+					end_at: {
+						type: ['string', 'null'],
+						description:
+							'New project end date (ISO format) or null to clear. Use null when the project should have no end date.'
 					},
 					props: {
 						type: 'object',

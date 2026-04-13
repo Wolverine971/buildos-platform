@@ -1,4 +1,4 @@
-<!-- chat-session-audit-finished-chapter-2-today-4-500-words-the-scene-w-ddde5946-e90c-47-2026-04-10.md -->
+<!-- docs/reports/chat-session-audit-finished-chapter-2-today-4-500-words-the-scene-w-ddde5946-e90c-47-2026-04-10.md -->
 
 # Chat Session Audit: Finished chapter 2 today - 4,500 words. The scene where Elena discovers the dragon forge went really well. Issues to ...
 

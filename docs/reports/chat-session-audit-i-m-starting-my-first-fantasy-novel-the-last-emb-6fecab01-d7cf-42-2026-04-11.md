@@ -1,4 +1,4 @@
-<!-- chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-6fecab01-d7cf-42-2026-04-11.md -->
+<!-- docs/reports/chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-6fecab01-d7cf-42-2026-04-11.md -->
 
 # Chat Session Audit: I'm starting my first fantasy novel - 'The Last Ember'. Main plot: A young blacksmith discovers she can forge magical...
 

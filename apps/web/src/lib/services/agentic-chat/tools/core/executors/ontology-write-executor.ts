@@ -1284,7 +1284,16 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (stateValue !== undefined) {
 			updateData.state_key = this.normalizeProjectState(stateValue);
 		}
-		if (args.props !== undefined) updateData.props = args.props;
+		if (args.start_at !== undefined) updateData.start_at = args.start_at;
+		if (args.end_at !== undefined) updateData.end_at = args.end_at;
+		if (
+			args.props &&
+			typeof args.props === 'object' &&
+			!Array.isArray(args.props) &&
+			Object.keys(args.props).length > 0
+		) {
+			updateData.props = args.props;
+		}
 
 		if (Object.keys(updateData).length === 0) {
 			throw new Error('No updates provided for ontology project');

@@ -1,4 +1,4 @@
-<!-- docs/blog-audit-2026-03-28.md -->
+<!-- docs/reports/blog-audit-2026-03-28.md -->
 
 # Blog Content Audit — 2026-03-28
 

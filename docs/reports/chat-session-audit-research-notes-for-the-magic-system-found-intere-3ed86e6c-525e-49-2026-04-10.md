@@ -1,4 +1,4 @@
-<!-- chat-session-audit-research-notes-for-the-magic-system-found-intere-3ed86e6c-525e-49-2026-04-10.md -->
+<!-- docs/reports/chat-session-audit-research-notes-for-the-magic-system-found-intere-3ed86e6c-525e-49-2026-04-10.md -->
 
 # Chat Session Audit: Research notes for the magic system: Found interesting parallels with Japanese sword-making traditions - the idea of ...
 

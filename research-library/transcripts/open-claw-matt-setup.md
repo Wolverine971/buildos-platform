@@ -1,4 +1,4 @@
-<!-- open-claw-matt-setup.md -->
+<!-- research-library/transcripts/open-claw-matt-setup.md -->
 
 # OpenClaw Matt Setup - Timestamped Transcript + Analysis
 

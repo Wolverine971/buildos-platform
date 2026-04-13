@@ -1,4 +1,4 @@
-<!-- docs/seo-audit-buildos-2026-03-27.md -->
+<!-- docs/seo-audits/seo-audit-buildos-2026-03-27.md -->
 
 # SEO Audit: build-os.com
 

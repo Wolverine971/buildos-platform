@@ -1,4 +1,4 @@
-<!-- docs/research/2026-04-10_agentic-tool-schemas-and-openai-tool-pattern-review.md -->
+<!-- docs/technical/2026-04-10_agentic-tool-schemas-and-openai-tool-pattern-review.md -->
 
 # Agentic Tool Schemas and OpenAI Tool Pattern Review
 

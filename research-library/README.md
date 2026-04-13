@@ -10,6 +10,8 @@ Podcast transcript downloads from conversations with designers and builders shap
 
 | File                                                                                                   | Guest               | Source           | Topic                                            |
 | ------------------------------------------------------------------------------------------------------ | ------------------- | ---------------- | ------------------------------------------------ |
+| [lennys-podcast.md](transcripts/lennys-podcast.md)                                                     | Amol Avasare        | Lenny's Podcast  | Anthropic growth, activation, AI-native teams    |
+| [open-claw-matt-setup.md](transcripts/open-claw-matt-setup.md)                                         | Matthew Berman      | YouTube          | OpenClaw workflows and local assistant patterns  |
 | [podcast-geoffrey-litt-malleable-software.md](transcripts/podcast-geoffrey-litt-malleable-software.md) | Geoffrey Litt       | Dialectic Ep. 21 | Malleable software, LLM agency, user empowerment |
 | [podcast-linus-lee-aliveness.md](transcripts/podcast-linus-lee-aliveness.md)                           | Linus Lee           | Dialectic Ep. 24 | Engineering for aliveness, tools for thought     |
 | [podcast-ryo-lu-dialectic.md](transcripts/podcast-ryo-lu-dialectic.md)                                 | Ryo Lu              | Dialectic        | Designing living tools, soulful AI               |
@@ -44,12 +46,13 @@ Academic papers from arXiv relevant to BuildOS architecture (agentic AI, graph m
 
 Distilled takeaways from each key thinker, extracted from their transcripts and writing. Quick reference for applying their ideas to BuildOS.
 
-| File                                                            | Person              | Key Themes                                                 |
-| --------------------------------------------------------------- | ------------------- | ---------------------------------------------------------- |
-| [insights-geoffrey-litt.md](insights/insights-geoffrey-litt.md) | Geoffrey Litt       | Malleable software, user empowerment, end-user programming |
-| [insights-linus-lee.md](insights/insights-linus-lee.md)         | Linus Lee           | Aliveness, tools for thought, romance in technology        |
-| [insights-ryo-lu.md](insights/insights-ryo-lu.md)               | Ryo Lu              | Systems thinking, unify don't fragment, soulful design     |
-| [insights-steph-ango.md](insights/insights-steph-ango.md)       | Steph Ango (Kepano) | Constraints, file-over-app, toolmaking philosophy          |
+| File                                                              | Person              | Key Themes                                                 |
+| ----------------------------------------------------------------- | ------------------- | ---------------------------------------------------------- |
+| [lennys-podcast.analysis.md](insights/lennys-podcast.analysis.md) | Amol Avasare        | AI growth, activation, onboarding, cold outreach           |
+| [insights-geoffrey-litt.md](insights/insights-geoffrey-litt.md)   | Geoffrey Litt       | Malleable software, user empowerment, end-user programming |
+| [insights-linus-lee.md](insights/insights-linus-lee.md)           | Linus Lee           | Aliveness, tools for thought, romance in technology        |
+| [insights-ryo-lu.md](insights/insights-ryo-lu.md)                 | Ryo Lu              | Systems thinking, unify don't fragment, soulful design     |
+| [insights-steph-ango.md](insights/insights-steph-ango.md)         | Steph Ango (Kepano) | Constraints, file-over-app, toolmaking philosophy          |
 
 ## Design Docs
 

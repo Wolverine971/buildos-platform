@@ -1,4 +1,4 @@
-<!-- docs/seo-audit-atlaspeakresearch-2026-03-27.md -->
+<!-- docs/seo-audits/seo-audit-atlaspeakresearch-2026-03-27.md -->
 
 # SEO Audit: atlaspeakresearch.com
 

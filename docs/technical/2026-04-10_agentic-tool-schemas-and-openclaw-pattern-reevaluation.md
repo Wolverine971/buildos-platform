@@ -1,4 +1,4 @@
-<!-- docs/research/2026-04-10_agentic-tool-schemas-and-openclaw-pattern-reevaluation.md -->
+<!-- docs/technical/2026-04-10_agentic-tool-schemas-and-openclaw-pattern-reevaluation.md -->
 
 # Agentic Tool Schemas, BuildOS Audit, and OpenClaw Pattern Reevaluation
 

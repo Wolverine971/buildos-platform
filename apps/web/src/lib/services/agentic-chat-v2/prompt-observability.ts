@@ -13,6 +13,7 @@ import {
 } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { isGatewayExecToolName } from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
 import { estimateTokensFromText } from './context-usage';
+import { buildPromptCostBreakdown, type PromptCostBreakdown } from './prompt-cost-breakdown';
 import type { FastChatHistoryMessage } from './types';
 
 export const FASTCHAT_PROMPT_SNAPSHOT_VERSION = 'fastchat_prompt_v1';
@@ -32,6 +33,7 @@ export type PromptSnapshotSections = {
 	has_agent_state?: boolean;
 	has_conversation_summary?: boolean;
 	data_keys?: string[] | null;
+	cost_breakdown?: Json | null;
 };
 
 export type FastChatToolCallMeta = {
@@ -173,6 +175,7 @@ export function buildPromptSnapshotSections(params: {
 	agentState?: string | null;
 	conversationSummary?: string | null;
 	data?: Record<string, unknown> | string | null;
+	promptCostBreakdown?: PromptCostBreakdown | null;
 }): PromptSnapshotSections {
 	return {
 		context_type: params.contextType,
@@ -187,7 +190,10 @@ export function buildPromptSnapshotSections(params: {
 		data_keys:
 			params.data && typeof params.data === 'object' && !Array.isArray(params.data)
 				? Object.keys(params.data).sort()
-				: null
+				: null,
+		cost_breakdown: params.promptCostBreakdown
+			? (toJsonValue(params.promptCostBreakdown) as Json)
+			: null
 	};
 }
 
@@ -205,6 +211,7 @@ export function buildPromptSnapshotRow(params: {
 	tools?: ChatToolDefinition[];
 	requestPayload?: Record<string, unknown> | null;
 	promptSections?: PromptSnapshotSections | null;
+	promptCostBreakdown?: PromptCostBreakdown | null;
 	contextPayload?: Record<string, unknown> | string | null;
 }): PromptSnapshotRow {
 	const modelMessages: FastChatHistoryMessage[] = [
@@ -217,10 +224,6 @@ export function buildPromptSnapshotRow(params: {
 	const requestPayloadJson =
 		params.requestPayload && Object.keys(params.requestPayload).length > 0
 			? (toJsonRecord(params.requestPayload) as Json)
-			: null;
-	const promptSectionsJson =
-		params.promptSections && Object.keys(params.promptSections).length > 0
-			? (toJsonRecord(params.promptSections as Record<string, unknown>) as Json)
 			: null;
 	const contextPayloadJson =
 		params.contextPayload && typeof params.contextPayload === 'string'
@@ -242,9 +245,30 @@ export function buildPromptSnapshotRow(params: {
 		(sum, entry) => sum + (entry.content?.length ?? 0),
 		0
 	);
+	const costBreakdown =
+		params.promptCostBreakdown ??
+		buildPromptCostBreakdown({
+			systemPrompt: params.systemPrompt,
+			history: params.history,
+			userMessage: params.message,
+			tools: params.tools
+		});
 	const approxPromptTokens = estimateTokensFromText(
 		modelMessages.map((entry) => entry.content).join('\n')
 	);
+	const promptSectionsWithCost =
+		params.promptSections && Object.keys(params.promptSections).length > 0
+			? ({
+					...params.promptSections,
+					cost_breakdown:
+						params.promptSections.cost_breakdown ?? (toJsonValue(costBreakdown) as Json)
+				} satisfies PromptSnapshotSections)
+			: ({
+					cost_breakdown: toJsonValue(costBreakdown) as Json
+				} satisfies PromptSnapshotSections);
+	const promptSectionsWithCostJson = toJsonRecord(
+		promptSectionsWithCost as Record<string, unknown>
+	) as Json;
 
 	return {
 		turn_run_id: params.turnRunId,
@@ -255,7 +279,7 @@ export function buildPromptSnapshotRow(params: {
 		model_messages: messagesJson,
 		tool_definitions: toolsJson,
 		request_payload: requestPayloadJson,
-		prompt_sections: promptSectionsJson,
+		prompt_sections: promptSectionsWithCostJson,
 		context_payload: contextPayloadJson,
 		rendered_dump_text: renderedDumpText,
 		system_prompt_sha256: sha256(params.systemPrompt),

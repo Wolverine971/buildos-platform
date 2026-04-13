@@ -71,6 +71,7 @@ import {
 	deriveFirstLane,
 	extractFastChatToolCallMeta
 } from '$lib/services/agentic-chat-v2/prompt-observability';
+import { buildPromptCostBreakdown } from '$lib/services/agentic-chat-v2/prompt-cost-breakdown';
 import {
 	getLoadedSkillActivity,
 	getRequestedSkillActivity,
@@ -1535,7 +1536,7 @@ function buildLastTurnContext(params: {
 		}
 		const entitySource =
 			execution.result && typeof execution.result === 'object' && 'result' in execution.result
-				? (execution.result as Record<string, unknown>).result
+				? (execution.result as unknown as Record<string, unknown>).result
 				: execution.result;
 		collectLastTurnEntitiesFromValue(entitySource, entities);
 	}
@@ -2910,6 +2911,7 @@ export const POST: RequestHandler = async ({
 						focusEntityId?: string | null;
 						focusEntityName?: string | null;
 						conversationSummary?: string | null;
+						entityResolutionHint?: string | null;
 						data?: Record<string, unknown> | string | null;
 				  }
 				| undefined;
@@ -3043,6 +3045,12 @@ export const POST: RequestHandler = async ({
 				if (turnRunId) {
 					try {
 						promptSnapshotId = uuidv4();
+						const promptCostBreakdown = buildPromptCostBreakdown({
+							systemPrompt,
+							history: historyForModel,
+							userMessage: message,
+							tools
+						});
 						const promptSnapshotRow = buildPromptSnapshotRow({
 							turnRunId,
 							sessionId: session.id,
@@ -3067,7 +3075,11 @@ export const POST: RequestHandler = async ({
 								project_focus: projectFocus ?? null,
 								voice_note_group_id: voiceGroupId ?? null
 							},
-							promptSections: buildPromptSnapshotSections(promptContext),
+							promptSections: buildPromptSnapshotSections({
+								...promptContext,
+								promptCostBreakdown
+							}),
+							promptCostBreakdown,
 							contextPayload: promptContext
 						});
 						const { error: snapshotError } = await supabase
@@ -3098,7 +3110,8 @@ export const POST: RequestHandler = async ({
 								prompt_snapshot_id: promptSnapshotId,
 								system_prompt_chars: promptSnapshotRow.system_prompt_chars,
 								message_chars: promptSnapshotRow.message_chars,
-								approx_prompt_tokens: promptSnapshotRow.approx_prompt_tokens
+								approx_prompt_tokens: promptSnapshotRow.approx_prompt_tokens,
+								prompt_cost_breakdown: promptCostBreakdown
 							} as Json);
 						}
 					} catch (error) {

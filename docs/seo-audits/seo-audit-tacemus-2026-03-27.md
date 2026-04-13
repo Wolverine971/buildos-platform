@@ -1,4 +1,4 @@
-<!-- docs/seo-audit-tacemus-2026-03-27.md -->
+<!-- docs/seo-audits/seo-audit-tacemus-2026-03-27.md -->
 
 # SEO Audit: tacemus.com
 

@@ -1,4 +1,4 @@
-<!-- lennys-podcast.md -->
+<!-- research-library/transcripts/lennys-podcast.md -->
 
 https://www.youtube.com/watch?v=k-H4nsOTuxU
 

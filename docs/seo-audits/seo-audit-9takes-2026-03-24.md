@@ -1,4 +1,4 @@
-<!-- docs/seo-audit-9takes-2026-03-24.md -->
+<!-- docs/seo-audits/seo-audit-9takes-2026-03-24.md -->
 
 # Technical SEO Audit — 9takes.com
 

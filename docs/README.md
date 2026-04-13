@@ -30,7 +30,10 @@ For **package documentation**:
 - `/writing/` - Writing resources and techniques
 - `/operations/` - Monorepo DevOps, CI/CD, monitoring, environment variables
 - `/integrations/` - Shared integrations (Supabase, Stripe, Twilio/SMS)
-- `/research/` - Cross-cutting research
+- `/technical/` - Technical reviews, implementation notes, and engineering research
+- `/reports/` - Audits, assessments, and one-off investigation reports
+- `/seo-audits/` - SEO audit snapshots
+- `/example-projects/` - Example project research and migration review materials
 - `/specs/` - Feature and system specifications
     - `/specs/homework/` - Homework agent orchestration system (Draft)
     - `/specs/tree-agent/` - Tree agent LLM orchestration system (Draft)
@@ -72,6 +75,9 @@ See [Task Index](TASK_INDEX.md) for navigation by "what you want to do"
 ### Research & Design
 
 - **Research Library**: `/research-library/` - Transcripts, blogs, papers, insights, and design thinking
+- **Technical Notes**: `/docs/technical/` - Cross-cutting technical research and implementation notes
+- **Reports**: `/docs/reports/` - Audit reports, assessments, and review artifacts
+- **Example Projects**: `/docs/example-projects/` - Seed project research, guides, and migration reviews
 
 ## Environment Variables
 

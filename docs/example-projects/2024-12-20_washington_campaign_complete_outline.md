@@ -1,4 +1,4 @@
-<!-- docs/research/2024-12-20_washington_campaign_complete_outline.md -->
+<!-- docs/example-projects/2024-12-20_washington_campaign_complete_outline.md -->
 
 # Operation American Independence: Complete Campaign Outline
 

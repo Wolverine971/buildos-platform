@@ -1,4 +1,4 @@
-<!-- docs/research/2026-01-03_admin_recent_activity_ontology_audit.md -->
+<!-- docs/reports/2026-01-03_admin_recent_activity_ontology_audit.md -->
 
 # Admin Recent Activity Ontology Audit (2026-01-03)
 

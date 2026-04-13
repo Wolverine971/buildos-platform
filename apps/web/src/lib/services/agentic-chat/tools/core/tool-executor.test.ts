@@ -128,6 +128,25 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				}
 			}
 
+			if (url.includes('/api/onto/projects/')) {
+				if (options?.method === 'PATCH') {
+					return Promise.resolve({
+						ok: true,
+						json: () =>
+							Promise.resolve({
+								success: true,
+								project: {
+									id: 'project-123',
+									name: body.name || 'Test Project',
+									start_at: body.start_at,
+									end_at: body.end_at,
+									props: body.props
+								}
+							})
+					});
+				}
+			}
+
 			return Promise.resolve({
 				ok: false,
 				json: () => Promise.resolve({ error: 'Not found' })
@@ -468,6 +487,56 @@ describe('ChatToolExecutor - Update Strategies', () => {
 					method: 'PATCH',
 					body: expect.stringContaining('"description":"New description"')
 				})
+			);
+		});
+	});
+
+	describe('Project Update Tools', () => {
+		it('should clear the project end date when end_at is null', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call-project-1',
+				type: 'function',
+				function: {
+					name: 'update_onto_project',
+					arguments: JSON.stringify({
+						project_id: 'project-123',
+						end_at: null
+					})
+				}
+			} as ChatToolCall;
+
+			const result = await toolExecutor.execute(toolCall);
+
+			expect(result.success).toBe(true);
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining('/api/onto/projects/project-123'),
+				expect.objectContaining({
+					method: 'PATCH',
+					body: expect.stringContaining('"end_at":null')
+				})
+			);
+		});
+
+		it('should reject empty project props instead of reporting a no-op update', async () => {
+			const toolCall: ChatToolCall = {
+				id: 'call-project-2',
+				type: 'function',
+				function: {
+					name: 'update_onto_project',
+					arguments: JSON.stringify({
+						project_id: 'project-123',
+						props: {}
+					})
+				}
+			} as ChatToolCall;
+
+			const result = await toolExecutor.execute(toolCall);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('No updates provided for ontology project');
+			expect(mockFetch).not.toHaveBeenCalledWith(
+				expect.stringContaining('/api/onto/projects/project-123'),
+				expect.any(Object)
 			);
 		});
 	});

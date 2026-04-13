@@ -1,4 +1,4 @@
-<!-- docs/research/EXAMPLE_PROJECT_CREATION_GUIDE.md -->
+<!-- docs/example-projects/EXAMPLE_PROJECT_CREATION_GUIDE.md -->
 
 # Example Project Creation Guide
 
@@ -95,7 +95,7 @@ key personnel, key events, and outcomes"
 Create timestamped research doc:
 
 ```
-/docs/research/YYYY-MM-DD_[project_slug]_research.md
+/docs/example-projects/YYYY-MM-DD_[project_slug]_research.md
 ```
 
 **Required Sections:**

@@ -9,7 +9,7 @@ Owner: BuildOS Agentic Chat
 Related:
 
 - [Agentic Chat Skill + Tool Architecture V2](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skill-tool-architecture-v2.md)
-- [Agentic Tool Schemas, BuildOS Audit, and OpenClaw Pattern Reevaluation](/Users/djwayne/buildos-platform/docs/research/2026-04-10_agentic-tool-schemas-and-openclaw-pattern-reevaluation.md)
+- [Agentic Tool Schemas, BuildOS Audit, and OpenClaw Pattern Reevaluation](/Users/djwayne/buildos-platform/docs/technical/2026-04-10_agentic-tool-schemas-and-openclaw-pattern-reevaluation.md)
 
 ## 0. Implementation update: 2026-04-10
 

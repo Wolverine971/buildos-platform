@@ -1,4 +1,4 @@
-<!-- chat-session-audit-quick-chat-de33b476-a1a3-4d-2026-04-04.md -->
+<!-- docs/reports/chat-session-audit-quick-chat-de33b476-a1a3-4d-2026-04-04.md -->
 
 # Chat Session Audit: Quick chat
 

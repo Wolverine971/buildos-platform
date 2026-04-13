@@ -406,8 +406,12 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		category: 'write'
 	},
 	update_onto_project: {
-		summary: 'Update project headline details and facets.',
-		capabilities: ['Change states/facets', 'Accepts partial updates'],
+		summary: 'Update project headline details, state, timeline, and facets.',
+		capabilities: [
+			'Change states/facets',
+			'Clear or set timeline dates',
+			'Accepts partial updates'
+		],
 		contexts: ['project', 'project_audit', 'project_forecast'],
 		category: 'write'
 	},

@@ -1,6 +1,9 @@
 // apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts
 import type { ChatContextType } from '@buildos/shared-types';
-import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
+import {
+	isFastChatCompactToolPromptEnabled,
+	isToolGatewayEnabled
+} from '$lib/services/agentic-chat/tools/registry/gateway-config';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
@@ -184,6 +187,28 @@ function formatGatewayToolsForPrompt(contextType: ChatContextType): string {
 	return JSON.stringify(getGatewaySurfaceForContextType(contextType), null, 2);
 }
 
+function formatGatewayToolSummaryForPrompt(contextType: ChatContextType): string {
+	const tools = getGatewaySurfaceForContextType(contextType);
+	const discoveryToolNames = new Set(['skill_load', 'tool_search', 'tool_schema']);
+	const toolNames = tools
+		.map((tool) => tool.function?.name)
+		.filter((name): name is string => Boolean(name));
+	const discoveryTools = toolNames.filter((name) => discoveryToolNames.has(name));
+	const directTools = toolNames.filter((name) => !discoveryToolNames.has(name));
+
+	return [
+		'Tool schemas are supplied through the model tool definitions. This prompt lists names only to avoid duplicate schema tokens.',
+		'',
+		'Discovery tools:',
+		...discoveryTools.map((name) => `- ${name}`),
+		'',
+		'Preloaded direct tools:',
+		...directTools.map((name) => `- ${name}`),
+		'',
+		'Use direct tools first when they fit. Use `tool_search` only when the exact op is missing; use `tool_schema` for newly discovered writes or uncertain write arguments.'
+	].join('\n');
+}
+
 function buildInstructionsMarkdown(gatewayEnabled: boolean, contextType: ChatContextType): string {
 	const sections: string[] = [
 		'# BuildOS Agent System Prompt',
@@ -208,6 +233,10 @@ function buildInstructionsMarkdown(gatewayEnabled: boolean, contextType: ChatCon
 	];
 
 	if (gatewayEnabled) {
+		const toolPromptLines = isFastChatCompactToolPromptEnabled()
+			? [formatGatewayToolSummaryForPrompt(contextType)]
+			: ['```json', formatGatewayToolsForPrompt(contextType), '```'];
+
 		sections.push(
 			'',
 			'### Skill Catalog',
@@ -222,9 +251,7 @@ function buildInstructionsMarkdown(gatewayEnabled: boolean, contextType: ChatCon
 			'',
 			'The current context already has a small set of direct tools preloaded. Use those first. Use discovery only when the exact direct tool is still missing.',
 			'',
-			'```json',
-			formatGatewayToolsForPrompt(contextType),
-			'```',
+			...toolPromptLines,
 			'',
 			'## Execution Protocol',
 			'',

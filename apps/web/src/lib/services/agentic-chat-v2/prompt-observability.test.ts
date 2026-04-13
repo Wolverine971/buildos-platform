@@ -10,6 +10,7 @@ import {
 	extractFastChatToolCallMeta,
 	FASTCHAT_PROMPT_SNAPSHOT_VERSION
 } from './prompt-observability';
+import { buildPromptCostBreakdown } from './prompt-cost-breakdown';
 
 describe('prompt observability helpers', () => {
 	it('builds a stable prompt snapshot row', () => {
@@ -57,6 +58,74 @@ describe('prompt observability helpers', () => {
 		expect(row.rendered_dump_text).toContain('tool_help');
 		expect(row.message_chars).toBeGreaterThan(0);
 		expect(row.approx_prompt_tokens).toBeGreaterThan(0);
+		expect((row.prompt_sections as Record<string, unknown>).cost_breakdown).toBeDefined();
+	});
+
+	it('estimates costs for prompt sections and provider tool definitions', () => {
+		const tools: ChatToolDefinition[] = [
+			{
+				type: 'function',
+				function: {
+					name: 'update_onto_project',
+					description: 'Update a project',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' },
+							end_at: { type: ['string', 'null'] }
+						}
+					}
+				}
+			}
+		];
+		const systemPrompt = [
+			'<instructions>',
+			'### Capabilities',
+			'',
+			'Project management.',
+			'',
+			'### Skill Catalog',
+			'',
+			'| Skill ID | Description |',
+			'|---|---|',
+			'| `project_update` | Update projects |',
+			'',
+			'### Tools',
+			'',
+			'Full tool schema text here.',
+			'',
+			'## Execution Protocol',
+			'',
+			'Use direct tools first.',
+			'',
+			'## Agent Behavior',
+			'',
+			'Send a lead-in before tools.',
+			'',
+			'## Data Rules',
+			'',
+			'Use exact IDs.',
+			'</instructions>',
+			'',
+			'<context>',
+			'<context_description>Context type: project.</context_description>',
+			'{"project":{"id":"project-123","name":"Launch"}}',
+			'</context>'
+		].join('\n');
+
+		const breakdown = buildPromptCostBreakdown({
+			systemPrompt,
+			history: [{ role: 'assistant', content: 'Previous answer' }],
+			userMessage: 'Remove the project end date',
+			tools
+		});
+
+		expect(breakdown.sections.tools_text_block.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.context_payload.chars).toBeGreaterThan(0);
+		expect(breakdown.tool_definitions.chars).toBeGreaterThan(0);
+		expect(breakdown.provider_payload_estimate.chars).toBeGreaterThan(
+			breakdown.model_messages.chars
+		);
 	});
 
 	it('extracts canonical tool metadata for gateway calls', () => {

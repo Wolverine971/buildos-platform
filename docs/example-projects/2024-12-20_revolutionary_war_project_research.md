@@ -1,4 +1,4 @@
-<!-- docs/research/2024-12-20_revolutionary_war_project_research.md -->
+<!-- docs/example-projects/2024-12-20_revolutionary_war_project_research.md -->
 
 # Revolutionary War Project - Comprehensive Research Document
 

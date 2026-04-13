@@ -461,6 +461,8 @@ export interface UpdateOntoProjectArgs {
 	state_key?: string;
 	/** @deprecated Use state_key instead. */
 	state?: string;
+	start_at?: string | null;
+	end_at?: string | null;
 	props?: Record<string, unknown>;
 }
 

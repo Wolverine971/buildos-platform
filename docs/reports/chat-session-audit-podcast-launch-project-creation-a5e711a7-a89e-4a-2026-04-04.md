@@ -1,4 +1,4 @@
-<!-- chat-session-audit-podcast-launch-project-creation-a5e711a7-a89e-4a-2026-04-04.md -->
+<!-- docs/reports/chat-session-audit-podcast-launch-project-creation-a5e711a7-a89e-4a-2026-04-04.md -->
 
 # Chat Session Audit: Podcast Launch Project Creation
 

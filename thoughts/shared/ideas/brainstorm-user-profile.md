@@ -1,4 +1,4 @@
-<!-- docs/brainstorm-user-profile.md -->
+<!-- thoughts/shared/ideas/brainstorm-user-profile.md -->
 
 # User Profile: Living Knowledge Base
 

@@ -11,6 +11,7 @@ import { buildMasterPrompt } from './master-prompt-builder';
 
 afterEach(() => {
 	delete mockEnv.AGENTIC_CHAT_TOOL_GATEWAY;
+	delete mockEnv.FASTCHAT_COMPACT_TOOL_PROMPT;
 });
 
 function extractTagBlock(prompt: string, tag: string): string {
@@ -132,6 +133,27 @@ describe('buildMasterPrompt instruction rewrite', () => {
 			'Use `tool_search` only when the exact op is unknown'
 		);
 		expect(prompt).not.toContain('<overview_guidance>');
+	});
+
+	it('can render compact gateway tool names without duplicating full schemas', () => {
+		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+		mockEnv.FASTCHAT_COMPACT_TOOL_PROMPT = 'true';
+
+		const prompt = buildMasterPrompt({
+			contextType: 'global',
+			projectId: null,
+			entityId: null
+		});
+		const instructionsBlock = extractTagBlock(prompt, 'instructions');
+
+		expect(instructionsBlock).toContain('### Tools');
+		expect(instructionsBlock).toContain('Discovery tools:');
+		expect(instructionsBlock).toContain('- skill_load');
+		expect(instructionsBlock).toContain('Preloaded direct tools:');
+		expect(instructionsBlock).toContain('- get_workspace_overview');
+		expect(instructionsBlock).not.toContain('```json');
+		expect(instructionsBlock).not.toContain('"name": "skill_load"');
+		expect(instructionsBlock).not.toContain('"parameters"');
 	});
 
 	it('falls back project_id to entity_id for project context', () => {

@@ -1,4 +1,4 @@
-<!-- docs/research/EXAMPLE_PROJECT_IDEAS.md -->
+<!-- docs/example-projects/EXAMPLE_PROJECT_IDEAS.md -->
 
 # Example Project Ideas for BuildOS
 

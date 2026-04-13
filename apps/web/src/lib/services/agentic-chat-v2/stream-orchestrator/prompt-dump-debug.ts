@@ -2,6 +2,11 @@
 import type { ChatToolDefinition } from '@buildos/shared-types';
 import type { FastChatHistoryMessage } from '../types';
 import { pruneLocalPromptDumps, shouldWriteLocalPromptDump } from '../prompt-dump-files';
+import {
+	buildPromptCostBreakdown,
+	type PromptCostBreakdown,
+	type PromptSectionCost
+} from '../prompt-cost-breakdown';
 import { isGatewayExecToolName } from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -41,6 +46,12 @@ export function writeInitialPromptDump(params: {
 		const ts = dumpTimestamp.toISOString().replace(/[:.]/g, '-');
 		const dumpPath = join(dumpDir, `fastchat-${ts}.txt`);
 		const toolNames = (params.tools ?? []).map((tool) => tool.function?.name).filter(Boolean);
+		const promptCostBreakdown = buildPromptCostBreakdown({
+			systemPrompt: params.systemPrompt,
+			history: params.history,
+			userMessage: params.message,
+			tools: params.tools
+		});
 
 		const lines: string[] = [
 			`========================================`,
@@ -68,7 +79,13 @@ export function writeInitialPromptDump(params: {
 			`Continuity hint used: ${params.debugContext?.continuityHintUsed ? 'yes' : 'no'}`,
 			`User message length: ${params.message.length} chars`,
 			`System prompt length: ${params.systemPrompt.length} chars (~${Math.ceil(params.systemPrompt.length / 4)} tokens)`,
+			`Provider payload estimate: ${promptCostBreakdown.provider_payload_estimate.chars} chars (~${promptCostBreakdown.provider_payload_estimate.est_tokens} tokens)`,
 			`========================================`,
+			``,
+			`────────────────────────────────────────`,
+			`PROMPT COST BREAKDOWN (ESTIMATED)`,
+			`────────────────────────────────────────`,
+			...formatPromptCostBreakdown(promptCostBreakdown),
 			``,
 			`────────────────────────────────────────`,
 			`SYSTEM PROMPT`,
@@ -111,6 +128,38 @@ export function writeInitialPromptDump(params: {
 	} catch {
 		return null;
 	}
+}
+
+function formatPromptCostBreakdown(cost: PromptCostBreakdown): string[] {
+	const sectionOrder = [
+		'instructions',
+		'context',
+		'tools_text_block',
+		'context_payload',
+		'skill_catalog',
+		'capabilities',
+		'execution_protocol',
+		'agent_behavior',
+		'data_rules',
+		'history',
+		'user'
+	];
+
+	return [
+		formatPromptCostLine('system_prompt', cost.system_prompt),
+		formatPromptCostLine('model_messages', cost.model_messages),
+		formatPromptCostLine('tool_definitions', cost.tool_definitions),
+		formatPromptCostLine('provider_payload_estimate', cost.provider_payload_estimate),
+		'',
+		'Sections:',
+		...sectionOrder.map((key) =>
+			formatPromptCostLine(`  ${key}`, cost.sections[key] ?? { chars: 0, est_tokens: 0 })
+		)
+	];
+}
+
+function formatPromptCostLine(label: string, cost: PromptSectionCost): string {
+	return `${label}: ${cost.chars} chars (~${cost.est_tokens} tokens)`;
 }
 
 export function appendRuntimeMetadataToPromptDump(

@@ -1,8 +1,8 @@
-<!-- lennys-podcast.analysis.md -->
+<!-- research-library/insights/lennys-podcast.analysis.md -->
 
 # Amol Avasare / Anthropic transcript analysis
 
-Companion to `lennys-podcast.md`.
+Companion to [`lennys-podcast.md`](../transcripts/lennys-podcast.md).
 
 Prepared on April 9, 2026.
 
