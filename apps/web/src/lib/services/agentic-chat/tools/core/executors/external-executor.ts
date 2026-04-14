@@ -18,10 +18,15 @@ import {
 } from '$lib/services/agentic-chat/tools/buildos';
 import { performWebSearch, type WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
 import {
+	type QueryLibriLibraryArgs,
 	type ResolveLibriResourceArgs,
+	type LibriLibraryQueryToolResult,
 	type LibriResolveToolResult
 } from '$lib/services/agentic-chat/tools/libri';
-import { resolveLibriResource } from '$lib/services/agentic-chat/tools/libri/client';
+import {
+	queryLibriLibrary,
+	resolveLibriResource
+} from '$lib/services/agentic-chat/tools/libri/client';
 import {
 	buildExcerpt,
 	clampMaxChars,
@@ -67,6 +72,13 @@ export class ExternalExecutor extends BaseExecutor {
 
 	async resolveLibriResource(args: ResolveLibriResourceArgs): Promise<LibriResolveToolResult> {
 		return resolveLibriResource(args, {
+			fetchFn: this.fetchFn,
+			sessionId: this.sessionId
+		});
+	}
+
+	async queryLibriLibrary(args: QueryLibriLibraryArgs): Promise<LibriLibraryQueryToolResult> {
+		return queryLibriLibrary(args, {
 			fetchFn: this.fetchFn,
 			sessionId: this.sessionId
 		});

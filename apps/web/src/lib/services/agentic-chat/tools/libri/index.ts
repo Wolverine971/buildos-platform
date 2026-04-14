@@ -7,10 +7,13 @@ export {
 export { LIBRI_PERSON_RESOLUTION_GUIDANCE } from './guidance';
 export type {
 	LibriResourceType,
+	LibriLibraryQueryAction,
+	LibriLibraryQueryToolResult,
 	LibriResolveToolResult,
 	LibriResolverRequest,
 	LibriResolverStatus,
 	LibriResponseDepth,
+	QueryLibriLibraryArgs,
 	ResolveLibriResourceArgs,
 	ResolveLibriToolStatus
 } from './types';

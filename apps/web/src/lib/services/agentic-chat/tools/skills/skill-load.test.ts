@@ -1,7 +1,11 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.test.ts
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getSkillById } from './registry';
 import { loadSkill } from './skill-load';
+
+afterEach(() => {
+	vi.unstubAllEnvs();
+});
 
 describe('skill loading', () => {
 	it('parses skill metadata from markdown frontmatter', () => {
@@ -56,5 +60,29 @@ describe('skill loading', () => {
 		expect(result.markdown).toContain('Prefer a milestone-scoped plan');
 		expect(result.markdown).toContain('description is the synopsis; plan is the detailed body');
 		expect(result.markdown).toContain('create_onto_plan({ project_id: "<project_id>"');
+	});
+
+	it('gates the Libri knowledge skill behind the Libri integration flag', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
+		expect(getSkillById('libri_knowledge')).toBeUndefined();
+		expect(loadSkill('libri').type).toBe('not_found');
+
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+		const skill = getSkillById('libri_knowledge');
+		expect(skill).toBeDefined();
+		expect(skill?.summary).toContain('Libri is BuildOS');
+		expect(skill?.legacyPaths).toContain('libri');
+		expect(skill?.relatedOps).toContain('libri.resource.resolve');
+
+		const result = loadSkill('libri', {
+			format: 'full',
+			include_examples: true
+		}) as Record<string, unknown>;
+
+		expect(result.type).toBe('skill');
+		expect(result.id).toBe('libri_knowledge');
+		expect(typeof result.markdown).toBe('string');
+		expect(result.markdown).toContain('Libri is BuildOS');
+		expect(result.markdown).toContain('resolve_libri_resource');
 	});
 });

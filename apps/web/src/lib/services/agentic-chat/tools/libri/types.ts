@@ -5,6 +5,24 @@ export type LibriResponseDepth = 'hit_only' | 'summary' | 'detail';
 
 export type LibriResolverStatus = 'found' | 'queued' | 'pending' | 'needs_input' | 'error';
 
+export type LibriLibraryQueryAction =
+	| 'overview'
+	| 'search'
+	| 'search_books'
+	| 'list_book_categories'
+	| 'list_books_by_category'
+	| 'list_authors'
+	| 'get_author'
+	| 'list_videos'
+	| 'search_videos';
+
+export type LibriLibraryQueryStatus =
+	| 'ok'
+	| 'needs_input'
+	| 'configuration_error'
+	| 'resolver_unavailable'
+	| 'error';
+
 export type ResolveLibriToolStatus =
 	| LibriResolverStatus
 	| 'configuration_error'
@@ -35,6 +53,15 @@ export interface LibriResolverRequest {
 	source: LibriResolveSource;
 }
 
+export interface QueryLibriLibraryArgs {
+	action: LibriLibraryQueryAction;
+	query?: string;
+	category?: string;
+	types?: Array<'book' | 'author' | 'person' | 'youtubeVideo' | 'video'>;
+	limit?: number;
+	response_depth?: LibriResponseDepth;
+}
+
 export interface LibriResolveJob {
 	jobId?: string;
 	kind?: string;
@@ -56,6 +83,24 @@ export interface LibriResolveToolResult {
 		endpoint: 'POST /api/v1/resolve';
 		response_depth?: LibriResponseDepth;
 		types?: LibriResourceType[];
+		app_base_url?: string;
+		fetched_at?: string;
+	};
+}
+
+export interface LibriLibraryQueryToolResult {
+	status: LibriLibraryQueryStatus;
+	code?: string;
+	message: string;
+	action?: LibriLibraryQueryAction;
+	query?: string;
+	category?: string;
+	data?: unknown;
+	http_status?: number;
+	info?: {
+		provider: 'libri';
+		endpoint: string;
+		action?: LibriLibraryQueryAction;
 		app_base_url?: string;
 		fetched_at?: string;
 	};

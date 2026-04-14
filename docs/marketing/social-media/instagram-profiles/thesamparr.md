@@ -11,7 +11,7 @@
 **Relationship Status:** Active
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-04-14
 **Last Engaged:** 2026-04-04 (via @build.os)
 **Source of First Discovery:** `instagram-engagement-targets.md` (Tier 1 Solo Founders)
 
@@ -26,7 +26,7 @@
 ## Bio Snapshot
 
 - **Bio:** Verified founder, Hampton Founders community, The Hustle (exited $20M+)
-- **Followers:** ~87.8K (verified)
+- **Followers:** ~100K (verified)
 - **Offer / link:** @hamptonfounders peer group
 - **Formats:** Reels (interview-style), carousels, text posts
 - **Audience vibe:** Founder-heavy comment section, often CTA-dominated but real comments are easy to see
@@ -47,11 +47,12 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                | Post Link                                | Action    | Status                  | What We Said / Planned                            | Outcome              | Source                         |
-| ---------- | ------- | ------------------------------------ | ---------------------------------------- | --------- | ----------------------- | ------------------------------------------------- | -------------------- | ------------------------------ |
-| 2026-03-29 | Post    | Founder obsession (James Dyson)      | https://www.instagram.com/p/DWY2iieDtFQ/ | Queued    | No posting confirmation | Obsession vs discipline angle                     | Unknown              | 2026-03-29_instagram-warmup.md |
-| 2026-04-04 | Post    | Founder origin story w/ @ken_rideout | https://www.instagram.com/p/DWrM9J0Ca46/ | Commented | Posted via @build.os    | "Lost phase before success" vulnerability co-sign | 1 like by 2026-04-05 | 2026-04-04_instagram-warmup.md |
-| 2026-04-05 | Post    | Same origin story follow-up          | https://www.instagram.com/p/DWrM9J0Ca46/ | Reviewed  | Logged                  | @build.os comment confirmed landing               | Reinforced           | 2026-04-05_instagram-warmup.md |
+| Date       | Surface | Topic                                | Post Link                                | Action            | Status                  | What We Said / Planned                                       | Outcome              | Source                                 |
+| ---------- | ------- | ------------------------------------ | ---------------------------------------- | ----------------- | ----------------------- | ------------------------------------------------------------ | -------------------- | -------------------------------------- |
+| 2026-03-29 | Post    | Founder obsession (James Dyson)      | https://www.instagram.com/p/DWY2iieDtFQ/ | Queued            | No posting confirmation | Obsession vs discipline angle                                | Unknown              | 2026-03-29_instagram-warmup.md         |
+| 2026-04-04 | Post    | Founder origin story w/ @ken_rideout | https://www.instagram.com/p/DWrM9J0Ca46/ | Commented         | Posted via @build.os    | "Lost phase before success" vulnerability co-sign            | 1 like by 2026-04-05 | 2026-04-04_instagram-warmup.md         |
+| 2026-04-05 | Post    | Same origin story follow-up          | https://www.instagram.com/p/DWrM9J0Ca46/ | Reviewed          | Logged                  | @build.os comment confirmed landing                          | Reinforced           | 2026-04-05_instagram-warmup.md         |
+| 2026-04-14 | Reel    | My 96-year-old artist NYC neighbor   | https://www.instagram.com/p/DXDdBiXEfCm/ | Queued (optional) | No posting confirmation | Warm human reaction, no product angle — Mode 2 (cheerleader) | Pending              | 2026-04-14_instagram-warmup-evening.md |
 
 ## Open Loops
 

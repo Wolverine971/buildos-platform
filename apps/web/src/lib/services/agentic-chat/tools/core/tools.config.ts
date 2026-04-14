@@ -162,7 +162,7 @@ export const TOOL_CATEGORIES = {
 		costTier: 'low'
 	},
 	external_knowledge: {
-		tools: ['resolve_libri_resource'],
+		tools: ['resolve_libri_resource', 'query_libri_library'],
 		averageTokens: 250,
 		costTier: 'low'
 	},
@@ -215,6 +215,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	],
 	global: [
 		'resolve_libri_resource',
+		'query_libri_library',
 		'search_buildos',
 		'search_project',
 		'list_onto_projects',
@@ -241,6 +242,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	project_create: ['create_onto_project'],
 	project: [
 		'resolve_libri_resource',
+		'query_libri_library',
 		'search_project',
 		'search_buildos',
 		'list_onto_projects',
@@ -364,6 +366,7 @@ function resolveToolNames(contextType: PlannerContextType, options: GetToolsOpti
 
 	if (!isLibriContext(contextType) || !isLibriIntegrationEnabled()) {
 		names.delete('resolve_libri_resource');
+		names.delete('query_libri_library');
 	}
 
 	return Array.from(names);

@@ -7,7 +7,7 @@ vi.mock('$env/dynamic/private', () => ({
 	env: mockEnv
 }));
 
-import { resolveLibriResource } from './client';
+import { queryLibriLibrary, resolveLibriResource } from './client';
 
 function resetEnv(): void {
 	delete mockEnv.LIBRI_INTEGRATION_ENABLED;
@@ -269,5 +269,94 @@ describe('resolveLibriResource', () => {
 		expect(result.code).toBe('INTERNAL_ERROR');
 		expect(JSON.stringify(result)).not.toContain('libri-secret-key');
 		expect(result.message).toContain('[redacted]');
+	});
+});
+
+describe('queryLibriLibrary', () => {
+	it('calls the structured library books endpoint for category queries', async () => {
+		const fetchFn = vi.fn(async () =>
+			jsonResponse({
+				status: 'ok',
+				kind: 'books',
+				category: 'sales',
+				books: [{ type: 'book', title: 'The Challenger Sale' }]
+			})
+		) as unknown as typeof fetch;
+
+		const result = await queryLibriLibrary(
+			{
+				action: 'list_books_by_category',
+				category: 'sales',
+				limit: 10
+			},
+			{
+				fetchFn,
+				env: configuredEnv(),
+				now: () => new Date('2026-04-13T12:00:00.000Z')
+			}
+		);
+
+		expect(result.status).toBe('ok');
+		expect(result.action).toBe('list_books_by_category');
+		expect(result.data).toEqual(
+			expect.objectContaining({
+				kind: 'books',
+				books: [{ type: 'book', title: 'The Challenger Sale' }]
+			})
+		);
+
+		const [url, init] = vi.mocked(fetchFn).mock.calls[0];
+		expect(url).toBe(
+			'https://libri.example/api/v1/library/books?category=sales&sort=coverage&limit=10'
+		);
+		expect(init?.method).toBe('GET');
+		expect((init?.headers as Record<string, string>).Authorization).toBe(
+			'Bearer libri-secret-key'
+		);
+	});
+
+	it('returns needs_input when a library search query is missing', async () => {
+		const fetchFn = vi.fn() as unknown as typeof fetch;
+
+		const result = await queryLibriLibrary(
+			{
+				action: 'search'
+			},
+			{
+				fetchFn,
+				env: configuredEnv()
+			}
+		);
+
+		expect(result).toEqual({
+			status: 'needs_input',
+			code: 'QUERY_REQUIRED',
+			message: 'A search query is required for Libri library search.',
+			action: 'search'
+		});
+		expect(fetchFn).not.toHaveBeenCalled();
+	});
+
+	it('returns a structured configuration result when library query env is missing', async () => {
+		const fetchFn = vi.fn() as unknown as typeof fetch;
+
+		const result = await queryLibriLibrary(
+			{
+				action: 'overview'
+			},
+			{
+				fetchFn,
+				env: {
+					LIBRI_INTEGRATION_ENABLED: 'true'
+				}
+			}
+		);
+
+		expect(result).toEqual({
+			status: 'configuration_error',
+			code: 'LIBRI_NOT_CONFIGURED',
+			message: 'Libri is not configured for this BuildOS environment.'
+		});
+		expect(fetchFn).not.toHaveBeenCalled();
 	});
 });

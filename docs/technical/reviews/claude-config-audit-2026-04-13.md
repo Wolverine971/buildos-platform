@@ -1,3 +1,5 @@
+<!-- docs/technical/reviews/claude-config-audit-2026-04-13.md -->
+
 # Claude Config Audit And Remediation Plan
 
 **Date:** 2026-04-13  

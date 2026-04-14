@@ -85,6 +85,7 @@ describe('PromptGenerationService gateway tool instructions', () => {
 	it('adds Libri guidance only when Libri is enabled', async () => {
 		const service = new PromptGenerationService();
 
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 		const disabledPrompt = await service.buildPlannerSystemPrompt({
 			contextType: 'global'
 		});
@@ -97,6 +98,7 @@ describe('PromptGenerationService gateway tool instructions', () => {
 		});
 		expect(enabledPrompt).toContain('## Libri Knowledge Source');
 		expect(enabledPrompt).toContain('resolve_libri_resource');
+		expect(enabledPrompt).toContain('skill_load({ skill: "libri_knowledge" })');
 	});
 
 	it('does not add Libri guidance in non-Libri contexts', async () => {

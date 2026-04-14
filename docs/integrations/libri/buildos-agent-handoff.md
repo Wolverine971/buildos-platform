@@ -242,6 +242,18 @@ branching too deeply into BuildOS if Libri can own that behavior.
 
 ## BuildOS Tool Surface
 
+Initial BuildOS skill:
+
+```text
+libri_knowledge
+```
+
+The skill should explain what Libri is, when BuildOS has access to it, and how
+to choose between `resolve_libri_resource` and `web_search`. It should be exposed
+only when `LIBRI_INTEGRATION_ENABLED` is enabled, so BuildOS can answer questions
+like "Do you have access to Libri?" without hardcoding the full Libri playbook in
+the base prompt.
+
 Initial internal BuildOS tool:
 
 ```text
@@ -473,8 +485,9 @@ These decisions answer implementation questions for the first BuildOS agent.
     commit secrets.
 
     If `LIBRI_INTEGRATION_ENABLED` is not enabled, hide Libri prompt guidance and
-    normal tool exposure. Direct internal calls may return a structured disabled
-    configuration result, but the model should not be prompted toward Libri.
+    normal tool exposure, including the `libri_knowledge` skill. Direct internal
+    calls may return a structured disabled configuration result, but the model
+    should not be prompted toward Libri.
 
     If `LIBRI_API_BASE_URL` or `LIBRI_API_KEY` is missing, keep the tool available
     but return a structured configuration result, for example:
@@ -493,6 +506,10 @@ These decisions answer implementation questions for the first BuildOS agent.
 
     First pass: expose `resolve_libri_resource` only in normal knowledge-bearing
     chat contexts, especially global and project contexts.
+
+    Also expose the `libri_knowledge` skill when Libri is enabled. Use the skill
+    to answer Libri access/capability questions and to remind the agent of the
+    person-only resolver flow before it calls tools.
 
     Do not add it to the external agent-call gateway yet. Do not make it a
     project-create or calendar hot-path tool unless the user explicitly asks for

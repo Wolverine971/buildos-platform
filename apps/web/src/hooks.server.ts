@@ -1,6 +1,7 @@
 // apps/web/src/hooks.server.ts
 import { json, redirect } from '@sveltejs/kit';
 import type { Handle, HandleServerError, RequestEvent } from '@sveltejs/kit';
+import { env as privateEnv } from '$env/dynamic/private';
 import { createSupabaseServer } from '$lib/supabase';
 import { createServerTiming } from '$lib/server/server-timing';
 import { dev } from '$app/environment';
@@ -20,7 +21,10 @@ import {
 	isPrivateConfigProbePath,
 	shouldTrackServerResponseFailure
 } from '$lib/utils/error-observability';
+import { configureLibriRuntimeEnv } from '$lib/services/agentic-chat/tools/libri/config';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
+
+configureLibriRuntimeEnv(() => privateEnv);
 
 const LEGACY_FEATURE_PATHS = new Set(['/features', '/features/']);
 const LEGACY_BLOG_MARKDOWN_PATH = /^\/src\/content\/blogs\/([^/]+)\/([^/]+?)(?:\.md)?\/?$/;

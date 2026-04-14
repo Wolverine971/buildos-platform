@@ -75,6 +75,7 @@ describe('selectFastChatTools', () => {
 	});
 
 	it('does not expose Libri when the feature flag is disabled', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 		const names = selectFastChatTools({ contextType: 'global' })
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);

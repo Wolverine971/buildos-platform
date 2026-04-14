@@ -43,7 +43,8 @@ const OP_EXCEPTIONS: Record<string, string> = {
 	unlink_onto_edge: 'onto.edge.unlink',
 	reorganize_onto_project_graph: 'onto.project.graph.reorganize',
 	get_onto_project_graph: 'onto.project.graph.get',
-	resolve_libri_resource: 'libri.resource.resolve'
+	resolve_libri_resource: 'libri.resource.resolve',
+	query_libri_library: 'libri.library.query'
 };
 
 const UTIL_OPS: Record<string, string> = {

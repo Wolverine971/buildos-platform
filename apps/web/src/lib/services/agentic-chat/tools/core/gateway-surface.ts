@@ -11,6 +11,7 @@ const GATEWAY_DISCOVERY_TOOL_NAMES = ['skill_load', 'tool_search', 'tool_schema'
 
 const GLOBAL_DIRECT_TOOL_NAMES = [
 	'resolve_libri_resource',
+	'query_libri_library',
 	'get_workspace_overview',
 	'get_project_overview',
 	'list_onto_projects',
@@ -26,6 +27,7 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 
 const PROJECT_DIRECT_TOOL_NAMES = [
 	'resolve_libri_resource',
+	'query_libri_library',
 	'get_project_overview',
 	'get_onto_project_details',
 	'get_onto_project_graph',

@@ -8,10 +8,12 @@ vi.mock('$env/dynamic/private', () => ({
 }));
 
 import { buildMasterPrompt } from './master-prompt-builder';
+import { configureLibriRuntimeEnv } from '$lib/services/agentic-chat/tools/libri/config';
 
 afterEach(() => {
 	delete mockEnv.AGENTIC_CHAT_TOOL_GATEWAY;
 	delete mockEnv.FASTCHAT_COMPACT_TOOL_PROMPT;
+	configureLibriRuntimeEnv(null);
 	vi.unstubAllEnvs();
 });
 
@@ -95,7 +97,8 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(prompt).not.toContain('<data>');
 		expect(contextBlock).toContain('<overview_guidance>');
 		expect(contextBlock).toContain('<libri_guidance>');
-		expect(contextBlock).toContain('use `resolve_libri_resource` before generic `web_search`');
+		expect(instructionsBlock).toContain('| `libri_knowledge` |');
+		expect(contextBlock).toContain('skill_load({ skill: "libri_knowledge" })');
 		expect(instructionsBlock).not.toContain('<overview_guidance>');
 		expect(contextBlock).toContain('Workspace-wide status -> get_workspace_overview({})');
 	});
@@ -119,6 +122,7 @@ describe('buildMasterPrompt instruction rewrite', () => {
 
 	it('omits Libri guidance when the Libri feature flag is disabled', () => {
 		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 
 		const prompt = buildMasterPrompt({
 			contextType: 'global',
@@ -126,9 +130,31 @@ describe('buildMasterPrompt instruction rewrite', () => {
 			entityId: null
 		});
 		const contextBlock = extractTagBlock(prompt, 'context');
+		const instructionsBlock = extractTagBlock(prompt, 'instructions');
 
 		expect(contextBlock).not.toContain('<libri_guidance>');
+		expect(instructionsBlock).not.toContain('libri_knowledge');
 		expect(prompt).not.toContain('resolve_libri_resource');
+	});
+
+	it('includes Libri in fastchat prompts when server runtime env enables it', () => {
+		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+		configureLibriRuntimeEnv({
+			LIBRI_INTEGRATION_ENABLED: 'true'
+		});
+
+		const prompt = buildMasterPrompt({
+			contextType: 'global',
+			projectId: null,
+			entityId: null
+		});
+		const instructionsBlock = extractTagBlock(prompt, 'instructions');
+		const contextBlock = extractTagBlock(prompt, 'context');
+
+		expect(instructionsBlock).toContain('| `libri_knowledge` |');
+		expect(instructionsBlock).toContain('"name": "resolve_libri_resource"');
+		expect(contextBlock).toContain('<libri_guidance>');
+		expect(contextBlock).toContain('skill_load({ skill: "libri_knowledge" })');
 	});
 
 	it('omits gateway-specific tool sections when gateway mode is disabled', () => {

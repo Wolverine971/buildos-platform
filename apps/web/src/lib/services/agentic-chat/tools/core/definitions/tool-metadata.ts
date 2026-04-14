@@ -660,6 +660,18 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		timeoutMs: 15000,
 		category: 'read'
 	},
+	query_libri_library: {
+		summary:
+			'Query Libri library inventory for books, categories, authors, and YouTube videos.',
+		capabilities: [
+			'Searches Libri structured library data',
+			'Lists book categories/genres and top books by category',
+			'Returns authors and ingested YouTube videos without enqueueing research'
+		],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		timeoutMs: 15000,
+		category: 'read'
+	},
 	web_search: {
 		summary: 'Live web research via Tavily with synthesized answer and cited sources.',
 		capabilities: [

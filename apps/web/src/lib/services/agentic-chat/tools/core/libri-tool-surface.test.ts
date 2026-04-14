@@ -34,17 +34,36 @@ describe('resolve_libri_resource tool surface', () => {
 		expect(JSON.stringify(tool)).not.toContain('youtubeVideo');
 	});
 
+	it('defines a structured read-only Libri library query schema', () => {
+		const tool = CHAT_TOOL_DEFINITIONS.find(
+			(candidate) => candidate.function?.name === 'query_libri_library'
+		);
+
+		expect(tool).toBeDefined();
+		expect(tool?.function?.parameters.required).toEqual(['action']);
+		const properties = tool?.function?.parameters.properties as Record<string, any>;
+		expect(properties.action.enum).toContain('list_book_categories');
+		expect(properties.action.enum).toContain('list_books_by_category');
+		expect(properties.action.enum).toContain('list_videos');
+	});
+
 	it('is available in global/project contexts but not project-create or calendar contexts', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		expect(toolNames(getToolsForContextType('global'))).toContain('resolve_libri_resource');
+		expect(toolNames(getToolsForContextType('global'))).toContain('query_libri_library');
 		expect(toolNames(getToolsForContextType('project'))).toContain('resolve_libri_resource');
+		expect(toolNames(getToolsForContextType('project'))).toContain('query_libri_library');
 		expect(toolNames(getToolsForContextType('project_create'))).not.toContain(
 			'resolve_libri_resource'
+		);
+		expect(toolNames(getToolsForContextType('project_create'))).not.toContain(
+			'query_libri_library'
 		);
 		expect(toolNames(getToolsForContextType('calendar'))).not.toContain(
 			'resolve_libri_resource'
 		);
+		expect(toolNames(getToolsForContextType('calendar'))).not.toContain('query_libri_library');
 		expect(toolNames(getDefaultToolsForContextType('calendar'))).not.toContain(
 			'resolve_libri_resource'
 		);
@@ -59,21 +78,38 @@ describe('resolve_libri_resource tool surface', () => {
 		expect(toolNames(getGatewaySurfaceForContextType('global'))).toContain(
 			'resolve_libri_resource'
 		);
+		expect(toolNames(getGatewaySurfaceForContextType('global'))).toContain(
+			'query_libri_library'
+		);
 		expect(toolNames(getGatewaySurfaceForContextType('project'))).toContain(
 			'resolve_libri_resource'
+		);
+		expect(toolNames(getGatewaySurfaceForContextType('project'))).toContain(
+			'query_libri_library'
 		);
 		expect(toolNames(getGatewaySurfaceForContextType('project_create'))).not.toContain(
 			'resolve_libri_resource'
 		);
+		expect(toolNames(getGatewaySurfaceForContextType('project_create'))).not.toContain(
+			'query_libri_library'
+		);
 		expect(toolNames(getGatewaySurfaceForContextType('calendar'))).not.toContain(
 			'resolve_libri_resource'
+		);
+		expect(toolNames(getGatewaySurfaceForContextType('calendar'))).not.toContain(
+			'query_libri_library'
 		);
 	});
 
 	it('hides Libri from tool surfaces when the feature flag is disabled', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 		expect(toolNames(getToolsForContextType('global'))).not.toContain('resolve_libri_resource');
+		expect(toolNames(getToolsForContextType('global'))).not.toContain('query_libri_library');
 		expect(toolNames(getGatewaySurfaceForContextType('global'))).not.toContain(
 			'resolve_libri_resource'
+		);
+		expect(toolNames(getGatewaySurfaceForContextType('global'))).not.toContain(
+			'query_libri_library'
 		);
 	});
 
@@ -91,13 +127,25 @@ describe('resolve_libri_resource tool surface', () => {
 			})
 		);
 		expect(registry.byToolName.resolve_libri_resource?.op).toBe('libri.resource.resolve');
+		expect(registry.ops['libri.library.query']).toEqual(
+			expect.objectContaining({
+				op: 'libri.library.query',
+				tool_name: 'query_libri_library',
+				group: 'x',
+				kind: 'read'
+			})
+		);
+		expect(registry.byToolName.query_libri_library?.op).toBe('libri.library.query');
 	});
 
 	it('hides the canonical Libri op from discovery when the feature flag is disabled', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 		resetToolRegistryCache();
 		const registry = getToolRegistry();
 
 		expect(registry.ops['libri.resource.resolve']).toBeUndefined();
+		expect(registry.ops['libri.library.query']).toBeUndefined();
 		expect(registry.byToolName.resolve_libri_resource).toBeUndefined();
+		expect(registry.byToolName.query_libri_library).toBeUndefined();
 	});
 });

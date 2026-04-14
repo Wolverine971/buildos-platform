@@ -412,6 +412,64 @@ Libri may return found, queued, pending, needs_input, configuration_error, resol
 	{
 		type: 'function',
 		function: {
+			name: 'query_libri_library',
+			description: `Query Libri's structured library API for durable library inventory and enriched research data.
+Use this for questions like "search for books about habits", "list genres of books", "top 10 books in sales", "what authors do you have?", or "what YouTube videos have been ingested?"
+This is a read-only Libri query tool. It does not enqueue research; use resolve_libri_resource when a person/author should be resolved and potentially queued for enrichment.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					action: {
+						type: 'string',
+						enum: [
+							'overview',
+							'search',
+							'search_books',
+							'list_book_categories',
+							'list_books_by_category',
+							'list_authors',
+							'get_author',
+							'list_videos',
+							'search_videos'
+						],
+						description: 'The structured Libri library query to run.'
+					},
+					query: {
+						type: 'string',
+						description:
+							'Search text, author name, book title, or video title depending on action.'
+					},
+					category: {
+						type: 'string',
+						description: 'Book category, genre, or domain for list_books_by_category.'
+					},
+					types: {
+						type: 'array',
+						items: {
+							type: 'string',
+							enum: ['book', 'author', 'person', 'youtubeVideo', 'video']
+						},
+						description: 'Optional result types for the search action.'
+					},
+					limit: {
+						type: 'number',
+						description: 'Maximum number of rows to return. Defaults depend on action.'
+					},
+					response_depth: {
+						type: 'string',
+						enum: ['hit_only', 'summary', 'detail'],
+						description:
+							'Use detail when the answer needs related books, category examples, or richer author data.'
+					}
+				},
+				required: ['action']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
 			name: 'web_search',
 			description: `Perform a live web search using the Tavily API for current or external information not present in BuildOS.
 Use this to discover sources or answer broad research questions. If the user provides a specific URL, use web_visit instead.

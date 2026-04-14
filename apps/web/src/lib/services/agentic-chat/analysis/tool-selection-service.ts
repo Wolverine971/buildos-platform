@@ -513,10 +513,12 @@ export class ToolSelectionService {
 			message
 		);
 		const needsLibriPersonResolver = this.needsLibriPersonResolver(message);
+		const needsLibriLibraryQuery = this.needsLibriLibraryQuery(message);
 
 		return names.filter((name) => {
 			if (name === 'web_search' && !needsWebSearch) return false;
 			if (name === 'resolve_libri_resource' && !needsLibriPersonResolver) return false;
+			if (name === 'query_libri_library' && !needsLibriLibraryQuery) return false;
 			if (
 				(name === 'get_buildos_overview' || name === 'get_buildos_usage_guide') &&
 				!needsBuildosDocs
@@ -547,5 +549,25 @@ export class ToolSelectionService {
 		}
 
 		return /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/.test(message) && /\babout\b/i.test(message);
+	}
+
+	private needsLibriLibraryQuery(message: string): boolean {
+		if (!isLibriIntegrationEnabled()) return false;
+
+		const currentInfoPattern =
+			/\b(latest|current|today|recent news|price|prices|schedule|law|laws|legal|weather|stock|score|live|now)\b/i;
+		if (currentInfoPattern.test(message)) return false;
+
+		if (
+			!/\b(libri|library|books?|authors?|genres?|categories|category|youtube|videos?)\b/i.test(
+				message
+			)
+		) {
+			return false;
+		}
+
+		return /\b(search|find|list|show|top|what|which|tell me|have|ingested|category|genre|author|book|youtube|video)\b/i.test(
+			message
+		);
 	}
 }

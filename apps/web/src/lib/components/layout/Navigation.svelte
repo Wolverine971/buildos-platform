@@ -28,7 +28,7 @@
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import { browser, dev } from '$app/environment';
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
-	import type { ChatContextType } from '@buildos/shared-types';
+	import type { ChatContextType, ProjectFocus } from '@buildos/shared-types';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 
 	type Props = {
@@ -64,11 +64,15 @@
 	let navHidden = $state(false);
 
 	const currentPath = $derived($page.url.pathname);
+	const projectDetailMatch = $derived(currentPath.match(/^\/projects\/([^/]+)$/));
+	const projectTaskMatch = $derived(
+		currentPath.match(/^\/projects\/([^/]+)\/tasks\/([^/]+)\/?$/)
+	);
 
 	// Context-aware chat configuration based on current page
 	const chatContextType = $derived.by((): ChatContextType => {
-		// Project detail page: /projects/[id]
-		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
+		// Project detail page or task focus page
+		if ((projectDetailMatch || projectTaskMatch) && $page.data?.project) {
 			return 'project';
 		}
 		// Default: global context
@@ -76,16 +80,16 @@
 	});
 
 	const chatEntityId = $derived.by((): string | undefined => {
-		// Project detail page: return project ID
-		if (currentPath.match(/^\/projects\/([^/]+)$/) && $page.data?.project) {
-			return $page.data.project.id;
+		// Project detail page or task focus page: return project ID
+		if ((projectDetailMatch || projectTaskMatch) && $page.data?.project) {
+			return $page.data.project.id ?? projectDetailMatch?.[1] ?? projectTaskMatch?.[1];
 		}
 		// No entity
 		return undefined;
 	});
 
 	const chatAutoInitProject = $derived.by(() => {
-		if (currentPath.match(/^\/projects\/[^/]+$/) && $page.data?.project) {
+		if (projectDetailMatch && $page.data?.project) {
 			return {
 				projectId: $page.data.project.id,
 				projectName: $page.data.project.name ?? 'Project',
@@ -94,6 +98,34 @@
 		}
 		return null;
 	});
+
+	const chatInitialProjectFocus = $derived.by((): ProjectFocus | null => {
+		if (!projectTaskMatch || !$page.data?.project || !$page.data?.task) {
+			return null;
+		}
+
+		const projectId = $page.data.project.id ?? projectTaskMatch[1];
+		const taskId = $page.data.task.id ?? projectTaskMatch[2];
+		if (!projectId || !taskId) return null;
+
+		return {
+			focusType: 'task',
+			focusEntityId: taskId,
+			focusEntityName: $page.data.task.title ?? 'Untitled Task',
+			projectId,
+			projectName: $page.data.project.name ?? 'Project'
+		};
+	});
+
+	const chatModalContextType = $derived.by((): ChatContextType =>
+		chatInitialProjectFocus ? 'global' : chatContextType
+	);
+	const chatModalEntityId = $derived.by(() =>
+		chatInitialProjectFocus ? undefined : chatEntityId
+	);
+	const chatModalAutoInitProject = $derived.by(() =>
+		chatInitialProjectFocus ? null : chatAutoInitProject
+	);
 
 	const navItems = [
 		{ href: '/', label: 'Dashboard', icon: Home },
@@ -1045,9 +1077,10 @@
 	{#await import('$lib/components/agent/AgentChatModal.svelte') then { default: AgentChatModal }}
 		<AgentChatModal
 			isOpen={showChatModal}
-			contextType={chatContextType}
-			entityId={chatEntityId}
-			autoInitProject={chatAutoInitProject}
+			contextType={chatModalContextType}
+			entityId={chatModalEntityId}
+			autoInitProject={chatModalAutoInitProject}
+			initialProjectFocus={chatInitialProjectFocus}
 			onClose={handleChatClose}
 		/>
 	{/await}

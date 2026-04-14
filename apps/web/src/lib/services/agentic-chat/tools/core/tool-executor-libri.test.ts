@@ -83,4 +83,59 @@ describe('ChatToolExecutor Libri dispatch', () => {
 			})
 		);
 	});
+
+	it('executes query_libri_library through the internal tool path', async () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+		mockEnv.LIBRI_API_BASE_URL = 'https://libri.example';
+		mockEnv.LIBRI_API_KEY = 'libri-secret-key';
+
+		const fetchFn = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						status: 'ok',
+						kind: 'book_categories',
+						categories: [{ name: 'Sales', count: 4 }]
+					}),
+					{
+						status: 200,
+						headers: { 'content-type': 'application/json' }
+					}
+				)
+		) as unknown as typeof fetch;
+
+		const supabase = {
+			auth: {
+				getSession: vi.fn().mockResolvedValue({ data: { session: null } })
+			}
+		} as any;
+		const executor = new ChatToolExecutor(supabase, 'user-1', 'session-1', fetchFn, undefined, {
+			logExecutions: false
+		});
+
+		const result = await executor.execute({
+			id: 'call-libri-query',
+			type: 'function',
+			function: {
+				name: 'query_libri_library',
+				arguments: JSON.stringify({
+					action: 'list_book_categories',
+					response_depth: 'detail'
+				})
+			}
+		} as ChatToolCall);
+
+		expect(result.success).toBe(true);
+		expect(result.result).toEqual(
+			expect.objectContaining({
+				status: 'ok',
+				action: 'list_book_categories',
+				data: expect.objectContaining({
+					kind: 'book_categories'
+				})
+			})
+		);
+		expect(fetchFn).toHaveBeenCalledTimes(1);
+		expect(String(vi.mocked(fetchFn).mock.calls[0][0])).toContain('/api/v1/library/categories');
+	});
 });

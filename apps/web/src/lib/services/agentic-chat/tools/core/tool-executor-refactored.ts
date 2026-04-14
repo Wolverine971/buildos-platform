@@ -42,7 +42,10 @@ import {
 
 import type { WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
 import type { WebVisitArgs } from '$lib/services/agentic-chat/tools/webvisit';
-import type { ResolveLibriResourceArgs } from '$lib/services/agentic-chat/tools/libri';
+import type {
+	QueryLibriLibraryArgs,
+	ResolveLibriResourceArgs
+} from '$lib/services/agentic-chat/tools/libri';
 
 const logger = createLogger('ChatToolExecutor');
 
@@ -301,6 +304,9 @@ export class ChatToolExecutor {
 
 			case 'resolve_libri_resource':
 				return this.externalExecutor.resolveLibriResource(args as ResolveLibriResourceArgs);
+
+			case 'query_libri_library':
+				return this.externalExecutor.queryLibriLibrary(args as QueryLibriLibraryArgs);
 
 			case 'web_search':
 				return this.externalExecutor.webSearch(args as WebSearchArgs);

@@ -662,6 +662,8 @@ Return a JSON object with:
 		const requiredTools: string[] = [];
 		const hasLibriResolver =
 			isLibriIntegrationEnabled() && availableTools.includes('resolve_libri_resource');
+		const hasLibriLibraryQuery =
+			isLibriIntegrationEnabled() && availableTools.includes('query_libri_library');
 
 		// 1. Action keyword to tool pattern mapping
 		const actionPatterns: Record<string, string[]> = {
@@ -702,6 +704,10 @@ Return a JSON object with:
 
 		if (hasLibriResolver && this.shouldUseLibriPersonResolver(message)) {
 			requiredTools.push('resolve_libri_resource');
+		}
+
+		if (hasLibriLibraryQuery && this.shouldUseLibriLibraryQuery(message)) {
+			requiredTools.push('query_libri_library');
 		}
 
 		// Match tools based on entity mentions (even without action keywords)
@@ -755,6 +761,20 @@ Return a JSON object with:
 
 		return (
 			/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/.test(message) && lowerMessage.includes('about')
+		);
+	}
+
+	private shouldUseLibriLibraryQuery(message: string): boolean {
+		const currentInfoPattern =
+			/\b(latest|current|today|recent news|price|prices|schedule|law|laws|legal|weather|stock|score|live|now)\b/i;
+		if (currentInfoPattern.test(message)) return false;
+
+		const libriPattern =
+			/\b(libri|library|books?|authors?|genres?|categories|category|youtube|videos?)\b/i;
+		if (!libriPattern.test(message)) return false;
+
+		return /\b(search|find|list|show|top|what|which|tell me|have|ingested|category|genre|author|book|youtube|video)\b/i.test(
+			message
 		);
 	}
 

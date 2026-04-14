@@ -32,6 +32,7 @@ describe('StrategyAnalyzer', () => {
 
 	beforeEach(() => {
 		vi.unstubAllEnvs();
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 
 		// Setup mock LLM service
 		mockLLMService = {
