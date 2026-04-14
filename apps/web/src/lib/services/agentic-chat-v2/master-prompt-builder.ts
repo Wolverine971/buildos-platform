@@ -7,6 +7,10 @@ import {
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	isLibriIntegrationEnabled,
+	LIBRI_PERSON_RESOLUTION_GUIDANCE
+} from '$lib/services/agentic-chat/tools/libri';
 
 export type MasterPromptContext = {
 	contextType: ChatContextType;
@@ -68,6 +72,10 @@ function formatContextGuidanceTags(params: {
 	return [
 		...(isToolGatewayEnabled() && params.contextType === 'global'
 			? [wrapTag('overview_guidance', OVERVIEW_GUIDANCE)]
+			: []),
+		...(isLibriIntegrationEnabled() &&
+		(params.contextType === 'global' || params.contextType === 'project')
+			? [wrapTag('libri_guidance', LIBRI_PERSON_RESOLUTION_GUIDANCE)]
 			: []),
 		...(params.contextType === 'project_create'
 			? [wrapTag('project_create_workflow', PROJECT_CREATE_WORKFLOW)]

@@ -365,6 +365,53 @@ Use this to tag contacts in profile documents/fragments or ontology entities.`,
 	{
 		type: 'function',
 		function: {
+			name: 'resolve_libri_resource',
+			description: `Resolve a person or author through Libri, the durable library/enrichment system, before using generic web search.
+Use this for stable knowledge questions like "tell me about James Clear", "who is Seth Godin?", or "what does Libri know about this author?"
+This first BuildOS slice supports person/author resolution only. Do not use it for books, YouTube videos, current news, live facts, prices, laws, or schedules; use web_search for current/live web information.
+Libri may return found, queued, pending, needs_input, configuration_error, resolver_unavailable, or error. If queued or pending, do not wait for enrichment.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description: 'Person or author name to resolve in Libri.'
+					},
+					types: {
+						type: 'array',
+						items: {
+							type: 'string',
+							enum: ['person']
+						},
+						description: 'Resource types to resolve. First slice supports only person.'
+					},
+					enqueue_if_missing: {
+						type: 'boolean',
+						description:
+							'Whether Libri should queue person enrichment if no existing resource is found. Defaults to true.'
+					},
+					response_depth: {
+						type: 'string',
+						enum: ['hit_only', 'summary', 'detail'],
+						description: 'Desired Libri response depth. Defaults to summary.'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Optional BuildOS project id for Libri provenance only.'
+					},
+					reason: {
+						type: 'string',
+						description: 'Short reason BuildOS is asking Libri.'
+					}
+				},
+				required: ['query']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
 			name: 'web_search',
 			description: `Perform a live web search using the Tavily API for current or external information not present in BuildOS.
 Use this to discover sources or answer broad research questions. If the user provides a specific URL, use web_visit instead.

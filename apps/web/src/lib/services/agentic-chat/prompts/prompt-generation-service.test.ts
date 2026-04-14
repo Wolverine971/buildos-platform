@@ -11,6 +11,7 @@ import { PromptGenerationService } from './prompt-generation-service';
 
 afterEach(() => {
 	delete mockEnv.AGENTIC_CHAT_TOOL_GATEWAY;
+	delete mockEnv.LIBRI_INTEGRATION_ENABLED;
 });
 
 describe('PromptGenerationService gateway tool instructions', () => {
@@ -79,5 +80,22 @@ describe('PromptGenerationService gateway tool instructions', () => {
 		expect(prompt).not.toContain(
 			'Use tool_search only when the exact op is still unknown after context and skill guidance.'
 		);
+	});
+
+	it('adds Libri guidance only when Libri is enabled', async () => {
+		const service = new PromptGenerationService();
+
+		const disabledPrompt = await service.buildPlannerSystemPrompt({
+			contextType: 'global'
+		});
+		expect(disabledPrompt).not.toContain('## Libri Knowledge Source');
+		expect(disabledPrompt).not.toContain('resolve_libri_resource');
+
+		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+		const enabledPrompt = await service.buildPlannerSystemPrompt({
+			contextType: 'global'
+		});
+		expect(enabledPrompt).toContain('## Libri Knowledge Source');
+		expect(enabledPrompt).toContain('resolve_libri_resource');
 	});
 });

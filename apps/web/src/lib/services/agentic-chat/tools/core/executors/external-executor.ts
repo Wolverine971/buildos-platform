@@ -18,6 +18,11 @@ import {
 } from '$lib/services/agentic-chat/tools/buildos';
 import { performWebSearch, type WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
 import {
+	resolveLibriResource,
+	type ResolveLibriResourceArgs,
+	type LibriResolveToolResult
+} from '$lib/services/agentic-chat/tools/libri';
+import {
 	buildExcerpt,
 	clampMaxChars,
 	performWebVisit,
@@ -58,6 +63,13 @@ export class ExternalExecutor extends BaseExecutor {
 	 */
 	async webSearch(args: WebSearchArgs): Promise<any> {
 		return performWebSearch(args, this.fetchFn);
+	}
+
+	async resolveLibriResource(args: ResolveLibriResourceArgs): Promise<LibriResolveToolResult> {
+		return resolveLibriResource(args, {
+			fetchFn: this.fetchFn,
+			sessionId: this.sessionId
+		});
 	}
 
 	/**

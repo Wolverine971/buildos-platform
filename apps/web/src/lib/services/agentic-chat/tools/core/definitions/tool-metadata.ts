@@ -649,6 +649,17 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		category: 'write'
 	},
+	resolve_libri_resource: {
+		summary: 'Resolve a person or author through Libri before generic web search.',
+		capabilities: [
+			'Calls Libri server-side with BuildOS provenance',
+			'Returns found, queued, pending, needs_input, and structured error statuses',
+			'Does not wait for Libri enrichment jobs'
+		],
+		contexts: ['global', 'project', 'project_audit', 'project_forecast'],
+		timeoutMs: 15000,
+		category: 'read'
+	},
 	web_search: {
 		summary: 'Live web research via Tavily with synthesized answer and cited sources.',
 		capabilities: [

@@ -30,8 +30,9 @@ import type {
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import { StrategyAnalyzer } from './strategy-analyzer';
 import {
-	ALL_TOOLS,
 	extractTools,
+	filterEnabledTools,
+	getAllEnabledTools,
 	resolveToolName,
 	extractToolNamesFromDefinitions,
 	getDefaultToolsForContextType,
@@ -39,6 +40,7 @@ import {
 } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
+import { isLibriIntegrationEnabled } from '$lib/services/agentic-chat/tools/libri';
 import { normalizeContextType } from '../../../../routes/api/agent/stream/utils/context-utils';
 import { createLogger } from '$lib/utils/logger';
 
@@ -75,7 +77,7 @@ export class ToolSelectionService {
 		}
 		const normalized = normalizeContextType(contextType);
 		const defaultTools = getDefaultToolsForContextType(normalized);
-		const pool = defaultTools.length > 0 ? defaultTools : ALL_TOOLS;
+		const pool = defaultTools.length > 0 ? defaultTools : getAllEnabledTools();
 		return this.applyReadOnlyContextFilter(pool, normalized);
 	}
 
@@ -176,8 +178,9 @@ export class ToolSelectionService {
 			plannerContext,
 			serviceContext,
 			lastTurnContext,
-			toolCatalog = ALL_TOOLS
+			toolCatalog: providedToolCatalog
 		} = params;
+		const toolCatalog = providedToolCatalog ?? getAllEnabledTools();
 
 		if (isToolGatewayEnabled()) {
 			const tools = getGatewaySurfaceForContextType(serviceContext.contextType);
@@ -238,7 +241,10 @@ export class ToolSelectionService {
 
 		// STEP 3: Extract names for comparison
 		const defaultToolNames = extractToolNamesFromDefinitions(focusFilteredTools);
-		const readOnlyCatalog = this.applyReadOnlyContextFilter(toolCatalog, normalizedContextType);
+		const readOnlyCatalog = this.applyReadOnlyContextFilter(
+			filterEnabledTools(toolCatalog),
+			normalizedContextType
+		);
 		const toolCatalogNames = new Set(extractToolNamesFromDefinitions(readOnlyCatalog));
 		const defaultSet = new Set(defaultToolNames);
 
@@ -506,9 +512,11 @@ export class ToolSelectionService {
 		const needsBuildosDocs = /\b(buildos|usage|guide|docs|documentation|help|how does)\b/i.test(
 			message
 		);
+		const needsLibriPersonResolver = this.needsLibriPersonResolver(message);
 
 		return names.filter((name) => {
 			if (name === 'web_search' && !needsWebSearch) return false;
+			if (name === 'resolve_libri_resource' && !needsLibriPersonResolver) return false;
 			if (
 				(name === 'get_buildos_overview' || name === 'get_buildos_usage_guide') &&
 				!needsBuildosDocs
@@ -517,5 +525,27 @@ export class ToolSelectionService {
 			}
 			return true;
 		});
+	}
+
+	private needsLibriPersonResolver(message: string): boolean {
+		if (!isLibriIntegrationEnabled()) return false;
+
+		const currentInfoPattern =
+			/\b(latest|current|today|recent|news|price|prices|schedule|law|laws|legal|weather|stock|score|live|now)\b/i;
+		if (currentInfoPattern.test(message)) return false;
+
+		const buildosEntityPattern =
+			/\b(project|projects|task|tasks|goal|goals|plan|plans|document|documents|doc|docs|milestone|milestones|risk|risks|calendar|event|events)\b/i;
+		if (buildosEntityPattern.test(message)) return false;
+
+		if (
+			/\b(tell me about|who is|who's|bio|biography|profile|author|thinker|person)\b/i.test(
+				message
+			)
+		) {
+			return true;
+		}
+
+		return /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/.test(message) && /\babout\b/i.test(message);
 	}
 }

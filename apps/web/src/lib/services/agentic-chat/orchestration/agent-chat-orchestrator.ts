@@ -60,7 +60,7 @@ import { buildDebugContextInfo, isDebugModeEnabled } from '../observability';
 import { ErrorLoggerService } from '../../errorLogger.service';
 import { applyContextShiftToContext, extractContextShift } from '../shared/context-shift';
 import { enrichOntologyUpdateArgs, isOntologyUpdateTool } from '../shared/tool-arg-enrichment';
-import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { getAllEnabledTools } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData, sanitizeLogText } from '$lib/utils/logging-helpers';
 import { dev } from '$app/environment';
@@ -1269,7 +1269,7 @@ export class AgentChatOrchestrator {
 		}
 		const expandedPlannerContext: PlannerContext = {
 			...plannerContext,
-			availableTools: ALL_TOOLS
+			availableTools: getAllEnabledTools()
 		};
 
 		messages.push({

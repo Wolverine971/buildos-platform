@@ -34,6 +34,7 @@ import {
 	formatBriefToolCatalog,
 	resolveToolName
 } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { isLibriIntegrationEnabled } from '$lib/services/agentic-chat/tools/libri';
 import {
 	ProjectCreationAnalyzer,
 	type ClarificationRoundMetadata,
@@ -659,6 +660,8 @@ Return a JSON object with:
 	estimateRequiredTools(message: string, availableTools: string[]): string[] {
 		const lowerMessage = message.toLowerCase();
 		const requiredTools: string[] = [];
+		const hasLibriResolver =
+			isLibriIntegrationEnabled() && availableTools.includes('resolve_libri_resource');
 
 		// 1. Action keyword to tool pattern mapping
 		const actionPatterns: Record<string, string[]> = {
@@ -697,6 +700,10 @@ Return a JSON object with:
 			}
 		}
 
+		if (hasLibriResolver && this.shouldUseLibriPersonResolver(message)) {
+			requiredTools.push('resolve_libri_resource');
+		}
+
 		// Match tools based on entity mentions (even without action keywords)
 		for (const [entity, patterns] of Object.entries(entityPatterns)) {
 			// Use word boundary matching to avoid false positives
@@ -730,6 +737,25 @@ Return a JSON object with:
 
 		// Remove duplicates
 		return [...new Set(requiredTools)];
+	}
+
+	private shouldUseLibriPersonResolver(message: string): boolean {
+		const lowerMessage = message.toLowerCase();
+		const currentInfoPattern =
+			/\b(latest|current|today|recent|news|price|prices|schedule|law|laws|legal|weather|stock|score|live|now)\b/i;
+		if (currentInfoPattern.test(message)) return false;
+
+		const buildosEntityPattern =
+			/\b(project|projects|task|tasks|goal|goals|plan|plans|document|documents|doc|docs|milestone|milestones|risk|risks|calendar|event|events)\b/i;
+		if (buildosEntityPattern.test(message)) return false;
+
+		const personIntentPattern =
+			/\b(tell me about|who is|who's|bio|biography|profile|author|thinker|person)\b/i;
+		if (personIntentPattern.test(message)) return true;
+
+		return (
+			/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/.test(message) && lowerMessage.includes('about')
+		);
 	}
 
 	private normalizeToolSelection(selection: any): ToolSelectionSummary | undefined {

@@ -30,6 +30,10 @@ import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { formatGatewayGuidanceLines } from '$lib/services/agentic-chat/tools/registry/gateway-guidance';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
+import {
+	isLibriIntegrationEnabled,
+	LIBRI_PERSON_RESOLUTION_GUIDANCE
+} from '$lib/services/agentic-chat/tools/libri';
 
 // Import prompt configurations
 import {
@@ -166,6 +170,10 @@ export class PromptGenerationService {
 		sections.push(
 			`## ${PLANNER_PROMPTS.operationalGuidelines.title}\n\n${PLANNER_PROMPTS.operationalGuidelines.content}`
 		);
+
+		if (isLibriIntegrationEnabled()) {
+			sections.push(`## Libri Knowledge Source\n\n${LIBRI_PERSON_RESOLUTION_GUIDANCE}`);
+		}
 
 		if (isToolGatewayEnabled()) {
 			sections.push(`## BuildOS Capabilities\n\n${this.formatBuildOSCapabilitiesMarkdown()}`);

@@ -9,6 +9,13 @@
  */
 
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+
+const mockEnv = vi.hoisted(() => ({}) as Record<string, string | undefined>);
+
+vi.mock('$env/dynamic/private', () => ({
+	env: mockEnv
+}));
+
 import { StrategyAnalyzer } from './strategy-analyzer';
 import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import type { ServiceContext, PlannerContext } from '../shared/types';
@@ -24,6 +31,8 @@ describe('StrategyAnalyzer', () => {
 	let mockPlannerContext: PlannerContext;
 
 	beforeEach(() => {
+		delete mockEnv.LIBRI_INTEGRATION_ENABLED;
+
 		// Setup mock LLM service
 		mockLLMService = {
 			generateText: vi.fn(),
@@ -227,6 +236,55 @@ describe('StrategyAnalyzer', () => {
 				]);
 				expect(complexity).toBeGreaterThanOrEqual(2);
 			});
+		});
+	});
+
+	describe('estimateRequiredTools', () => {
+		const availableTools = [
+			'resolve_libri_resource',
+			'web_search',
+			'list_onto_tasks',
+			'search_onto_projects'
+		];
+
+		it('selects Libri for stable person questions', () => {
+			mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+
+			const tools = analyzer.estimateRequiredTools(
+				'tell me about James Clear',
+				availableTools
+			);
+
+			expect(tools).toContain('resolve_libri_resource');
+			expect(tools).not.toContain('web_search');
+		});
+
+		it('does not select Libri when the feature flag is disabled', () => {
+			const tools = analyzer.estimateRequiredTools(
+				'tell me about James Clear',
+				availableTools
+			);
+
+			expect(tools).not.toContain('resolve_libri_resource');
+		});
+
+		it('does not select Libri for current information requests', () => {
+			const tools = analyzer.estimateRequiredTools(
+				'latest news about James Clear',
+				availableTools
+			);
+
+			expect(tools).not.toContain('resolve_libri_resource');
+		});
+
+		it('does not select Libri for BuildOS project/task questions', () => {
+			const tools = analyzer.estimateRequiredTools(
+				'tell me about my active tasks',
+				availableTools
+			);
+
+			expect(tools).not.toContain('resolve_libri_resource');
+			expect(tools).toContain('list_onto_tasks');
 		});
 	});
 

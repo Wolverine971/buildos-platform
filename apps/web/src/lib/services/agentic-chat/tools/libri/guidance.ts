@@ -1,0 +1,2 @@
+export const LIBRI_PERSON_RESOLUTION_GUIDANCE =
+	'For stable questions about a person, author, or thinker, use `resolve_libri_resource` before generic `web_search`. This first Libri integration slice is person-only. For latest/current/news/live facts, use `web_search` instead. If Libri returns `queued` or `pending`, do not wait for enrichment; answer from available data if present or say Libri enrichment is in progress.';

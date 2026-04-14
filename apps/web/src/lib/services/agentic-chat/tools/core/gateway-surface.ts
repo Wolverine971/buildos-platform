@@ -4,11 +4,13 @@ import {
 	extractToolNamesFromDefinitions,
 	extractTools
 } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { isLibriIntegrationEnabled, isLibriToolName } from '$lib/services/agentic-chat/tools/libri';
 import { GATEWAY_TOOL_DEFINITIONS } from './definitions/gateway';
 
 const GATEWAY_DISCOVERY_TOOL_NAMES = ['skill_load', 'tool_search', 'tool_schema'] as const;
 
 const GLOBAL_DIRECT_TOOL_NAMES = [
+	'resolve_libri_resource',
 	'get_workspace_overview',
 	'get_project_overview',
 	'list_onto_projects',
@@ -23,6 +25,7 @@ const GLOBAL_DIRECT_TOOL_NAMES = [
 ] as const;
 
 const PROJECT_DIRECT_TOOL_NAMES = [
+	'resolve_libri_resource',
 	'get_project_overview',
 	'get_onto_project_details',
 	'get_onto_project_graph',
@@ -74,7 +77,12 @@ const GATEWAY_TOOL_DEFINITION_MAP = new Map(
 );
 
 function resolveGatewayToolDefinition(name: string): ChatToolDefinition | undefined {
+	if (!isGatewayToolEnabled(name)) return undefined;
 	return GATEWAY_TOOL_DEFINITION_MAP.get(name) ?? extractTools([name])[0];
+}
+
+function isGatewayToolEnabled(name: string): boolean {
+	return !isLibriToolName(name) || isLibriIntegrationEnabled();
 }
 
 function resolveGatewayDirectToolNames(contextType: ChatContextType): readonly string[] {
@@ -110,7 +118,7 @@ export function getGatewaySurfaceForContextType(
 	const names = [
 		...extractToolNamesFromDefinitions(getGatewayDiscoveryTools()),
 		...resolveGatewayDirectToolNames(contextType)
-	];
+	].filter(isGatewayToolEnabled);
 	return materializeGatewayTools([], names).tools;
 }
 
@@ -148,6 +156,7 @@ export function materializeGatewayTools(
 	const nextNames = toolNames
 		.map((name) => name.trim())
 		.filter((name) => name.length > 0)
+		.filter(isGatewayToolEnabled)
 		.filter((name) => !currentNames.has(name));
 	if (nextNames.length === 0) {
 		return { tools: currentTools, addedToolNames: [] };

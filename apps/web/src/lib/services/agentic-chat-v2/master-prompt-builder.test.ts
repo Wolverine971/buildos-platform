@@ -12,6 +12,7 @@ import { buildMasterPrompt } from './master-prompt-builder';
 afterEach(() => {
 	delete mockEnv.AGENTIC_CHAT_TOOL_GATEWAY;
 	delete mockEnv.FASTCHAT_COMPACT_TOOL_PROMPT;
+	delete mockEnv.LIBRI_INTEGRATION_ENABLED;
 });
 
 function extractTagBlock(prompt: string, tag: string): string {
@@ -22,6 +23,7 @@ function extractTagBlock(prompt: string, tag: string): string {
 describe('buildMasterPrompt instruction rewrite', () => {
 	it('renders markdown instructions with gateway sections when enabled', () => {
 		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
 
 		const prompt = buildMasterPrompt({
 			contextType: 'global',
@@ -92,12 +94,15 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(contextBlock).toContain('Context type: global.');
 		expect(prompt).not.toContain('<data>');
 		expect(contextBlock).toContain('<overview_guidance>');
+		expect(contextBlock).toContain('<libri_guidance>');
+		expect(contextBlock).toContain('use `resolve_libri_resource` before generic `web_search`');
 		expect(instructionsBlock).not.toContain('<overview_guidance>');
 		expect(contextBlock).toContain('Workspace-wide status -> get_workspace_overview({})');
 	});
 
 	it('omits overview guidance outside global context', () => {
 		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
 
 		const prompt = buildMasterPrompt({
 			contextType: 'project',
@@ -108,7 +113,22 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		const instructionsBlock = extractTagBlock(prompt, 'instructions');
 
 		expect(contextBlock).not.toContain('<overview_guidance>');
+		expect(contextBlock).toContain('<libri_guidance>');
 		expect(instructionsBlock).not.toContain('<overview_guidance>');
+	});
+
+	it('omits Libri guidance when the Libri feature flag is disabled', () => {
+		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+
+		const prompt = buildMasterPrompt({
+			contextType: 'global',
+			projectId: null,
+			entityId: null
+		});
+		const contextBlock = extractTagBlock(prompt, 'context');
+
+		expect(contextBlock).not.toContain('<libri_guidance>');
+		expect(prompt).not.toContain('resolve_libri_resource');
 	});
 
 	it('omits gateway-specific tool sections when gateway mode is disabled', () => {

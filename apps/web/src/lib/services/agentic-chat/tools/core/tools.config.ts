@@ -15,6 +15,7 @@ import {
 	type ToolContextScope,
 	type ToolMetadata
 } from './tool-definitions';
+import { isLibriIntegrationEnabled, isLibriToolName } from '$lib/services/agentic-chat/tools/libri';
 
 export { ENTITY_FIELD_INFO } from './tool-definitions';
 export { CHAT_TOOL_DEFINITIONS as CHAT_TOOLS } from './tool-definitions';
@@ -68,7 +69,7 @@ export function getDefaultToolNamesForContextType(contextType: ChatContextType):
 		}
 	}
 
-	return Array.from(names);
+	return Array.from(names).filter(isToolEnabled);
 }
 
 export function getDefaultToolsForContextType(contextType: ChatContextType): ChatToolDefinition[] {
@@ -160,6 +161,11 @@ export const TOOL_CATEGORIES = {
 		averageTokens: 80,
 		costTier: 'low'
 	},
+	external_knowledge: {
+		tools: ['resolve_libri_resource'],
+		averageTokens: 250,
+		costTier: 'low'
+	},
 	web_research: {
 		tools: ['web_search', 'web_visit'],
 		averageTokens: 700,
@@ -208,6 +214,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'get_buildos_usage_guide'
 	],
 	global: [
+		'resolve_libri_resource',
 		'search_buildos',
 		'search_project',
 		'list_onto_projects',
@@ -233,6 +240,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	],
 	project_create: ['create_onto_project'],
 	project: [
+		'resolve_libri_resource',
 		'search_project',
 		'search_buildos',
 		'list_onto_projects',
@@ -354,15 +362,42 @@ function resolveToolNames(contextType: PlannerContextType, options: GetToolsOpti
 
 	options.additionalTools?.forEach((toolName) => names.add(toolName));
 
+	if (!isLibriContext(contextType) || !isLibriIntegrationEnabled()) {
+		names.delete('resolve_libri_resource');
+	}
+
 	return Array.from(names);
+}
+
+function isLibriContext(contextType: PlannerContextType): boolean {
+	return (
+		contextType === 'global' ||
+		contextType === 'project' ||
+		contextType === 'project_audit' ||
+		contextType === 'project_forecast' ||
+		contextType === 'ontology'
+	);
 }
 
 export function isWriteToolName(toolName: string): boolean {
 	return TOOL_METADATA[toolName]?.category === 'write';
 }
 
+function isToolEnabled(toolName: string): boolean {
+	return !isLibriToolName(toolName) || isLibriIntegrationEnabled();
+}
+
+export function filterEnabledTools(tools: ChatToolDefinition[]): ChatToolDefinition[] {
+	return tools.filter((tool) => isToolEnabled(resolveToolName(tool)));
+}
+
+export function getAllEnabledTools(): ChatToolDefinition[] {
+	return filterEnabledTools(CHAT_TOOL_DEFINITIONS);
+}
+
 export function extractTools(names: string[]): ChatToolDefinition[] {
 	return names
+		.filter(isToolEnabled)
 		.map((name) => TOOL_DEFINITION_MAP.get(name))
 		.filter((tool): tool is ChatToolDefinition => Boolean(tool));
 }
@@ -442,7 +477,7 @@ export const WEB_TOOLS = extractTools(['web_search', 'web_visit']);
 
 export const DEFAULT_TOOLS = getToolsForContextType('global');
 
-export const ALL_TOOLS = [...CHAT_TOOL_DEFINITIONS];
+export const ALL_TOOLS = getAllEnabledTools();
 
 export function getToolCategory(toolName: string): keyof typeof TOOL_CATEGORIES | null {
 	for (const [category, config] of Object.entries(TOOL_CATEGORIES)) {
