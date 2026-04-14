@@ -31,7 +31,7 @@ describe('StrategyAnalyzer', () => {
 	let mockPlannerContext: PlannerContext;
 
 	beforeEach(() => {
-		delete mockEnv.LIBRI_INTEGRATION_ENABLED;
+		vi.unstubAllEnvs();
 
 		// Setup mock LLM service
 		mockLLMService = {
@@ -248,7 +248,7 @@ describe('StrategyAnalyzer', () => {
 		];
 
 		it('selects Libri for stable person questions', () => {
-			mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+			vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 			const tools = analyzer.estimateRequiredTools(
 				'tell me about James Clear',

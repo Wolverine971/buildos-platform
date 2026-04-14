@@ -30,7 +30,7 @@ import type {
 	LLMMessage,
 	ContextUsageSnapshot
 } from '@buildos/shared-types';
-import { ALL_TOOLS } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { getAllEnabledTools } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { ChatCompressionService, CHAT_COMPRESSION_DEFAULTS } from './chat-compression-service';
 import { ChatContextService } from './chat-context-service';
 import { PromptGenerationService } from './agentic-chat/prompts/prompt-generation-service';
@@ -411,12 +411,12 @@ export class AgentContextService {
 		const locationContext = locationResult.content;
 		const locationMetadata = locationResult.metadata ?? {};
 
-		// Step 4: Pass ALL_TOOLS - ToolSelectionService owns default pool logic
+		// Step 4: Pass full enabled catalog - ToolSelectionService owns default pool logic
 		// The orchestrator will call ToolSelectionService.selectTools() which:
 		// 1. Computes default pool from context type
 		// 2. Applies focus filtering
 		// 3. Uses LLM/heuristic selection
-		const availableTools = ALL_TOOLS;
+		const availableTools = getAllEnabledTools();
 
 		// Step 5: Calculate token usage
 		const totalTokens = this.calculateTokens([

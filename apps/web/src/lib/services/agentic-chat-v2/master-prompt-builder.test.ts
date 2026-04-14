@@ -12,7 +12,7 @@ import { buildMasterPrompt } from './master-prompt-builder';
 afterEach(() => {
 	delete mockEnv.AGENTIC_CHAT_TOOL_GATEWAY;
 	delete mockEnv.FASTCHAT_COMPACT_TOOL_PROMPT;
-	delete mockEnv.LIBRI_INTEGRATION_ENABLED;
+	vi.unstubAllEnvs();
 });
 
 function extractTagBlock(prompt: string, tag: string): string {
@@ -23,7 +23,7 @@ function extractTagBlock(prompt: string, tag: string): string {
 describe('buildMasterPrompt instruction rewrite', () => {
 	it('renders markdown instructions with gateway sections when enabled', () => {
 		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		const prompt = buildMasterPrompt({
 			contextType: 'global',
@@ -102,7 +102,7 @@ describe('buildMasterPrompt instruction rewrite', () => {
 
 	it('omits overview guidance outside global context', () => {
 		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		const prompt = buildMasterPrompt({
 			contextType: 'project',

@@ -17,7 +17,7 @@
  *
  * Architecture note:
  * - This service OWNS all default pool logic. Do not determine default tools elsewhere.
- * - agent-context-service.ts should pass ALL_TOOLS and let this service filter.
+ * - agent-context-service.ts should pass the enabled tool catalog and let this service filter.
  */
 
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
@@ -31,7 +31,7 @@ import { ChatStrategy } from '$lib/types/agent-chat-enhancement';
 import { StrategyAnalyzer } from './strategy-analyzer';
 import {
 	extractTools,
-	filterEnabledTools,
+	filterEnabledToolsForContext,
 	getAllEnabledTools,
 	resolveToolName,
 	extractToolNamesFromDefinitions,
@@ -242,7 +242,7 @@ export class ToolSelectionService {
 		// STEP 3: Extract names for comparison
 		const defaultToolNames = extractToolNamesFromDefinitions(focusFilteredTools);
 		const readOnlyCatalog = this.applyReadOnlyContextFilter(
-			filterEnabledTools(toolCatalog),
+			filterEnabledToolsForContext(toolCatalog, normalizedContextType),
 			normalizedContextType
 		);
 		const toolCatalogNames = new Set(extractToolNamesFromDefinitions(readOnlyCatalog));

@@ -69,7 +69,7 @@ export function getDefaultToolNamesForContextType(contextType: ChatContextType):
 		}
 	}
 
-	return Array.from(names).filter(isToolEnabled);
+	return Array.from(names).filter((name) => isToolEnabledForContext(name, contextType));
 }
 
 export function getDefaultToolsForContextType(contextType: ChatContextType): ChatToolDefinition[] {
@@ -369,9 +369,10 @@ function resolveToolNames(contextType: PlannerContextType, options: GetToolsOpti
 	return Array.from(names);
 }
 
-function isLibriContext(contextType: PlannerContextType): boolean {
+function isLibriContext(contextType: ChatContextType): boolean {
 	return (
 		contextType === 'global' ||
+		contextType === 'general' ||
 		contextType === 'project' ||
 		contextType === 'project_audit' ||
 		contextType === 'project_forecast' ||
@@ -387,8 +388,20 @@ function isToolEnabled(toolName: string): boolean {
 	return !isLibriToolName(toolName) || isLibriIntegrationEnabled();
 }
 
+function isToolEnabledForContext(toolName: string, contextType: ChatContextType): boolean {
+	if (!isToolEnabled(toolName)) return false;
+	return !isLibriToolName(toolName) || isLibriContext(contextType);
+}
+
 export function filterEnabledTools(tools: ChatToolDefinition[]): ChatToolDefinition[] {
 	return tools.filter((tool) => isToolEnabled(resolveToolName(tool)));
+}
+
+export function filterEnabledToolsForContext(
+	tools: ChatToolDefinition[],
+	contextType: ChatContextType
+): ChatToolDefinition[] {
+	return tools.filter((tool) => isToolEnabledForContext(resolveToolName(tool), contextType));
 }
 
 export function getAllEnabledTools(): ChatToolDefinition[] {

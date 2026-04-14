@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/core/libri-tool-surface.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mockEnv = vi.hoisted(() => ({}) as Record<string, string | undefined>);
@@ -8,7 +9,7 @@ vi.mock('$env/dynamic/private', () => ({
 
 import { CHAT_TOOL_DEFINITIONS } from './tool-definitions';
 import { getGatewaySurfaceForContextType } from './gateway-surface';
-import { getToolsForContextType } from './tools.config';
+import { getDefaultToolsForContextType, getToolsForContextType } from './tools.config';
 import { getToolRegistry, resetToolRegistryCache } from '../registry/tool-registry';
 
 function toolNames(tools: Array<{ function?: { name?: string } }>): string[] {
@@ -16,7 +17,7 @@ function toolNames(tools: Array<{ function?: { name?: string } }>): string[] {
 }
 
 afterEach(() => {
-	delete mockEnv.LIBRI_INTEGRATION_ENABLED;
+	vi.unstubAllEnvs();
 	resetToolRegistryCache();
 });
 
@@ -34,7 +35,7 @@ describe('resolve_libri_resource tool surface', () => {
 	});
 
 	it('is available in global/project contexts but not project-create or calendar contexts', () => {
-		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		expect(toolNames(getToolsForContextType('global'))).toContain('resolve_libri_resource');
 		expect(toolNames(getToolsForContextType('project'))).toContain('resolve_libri_resource');
@@ -44,10 +45,16 @@ describe('resolve_libri_resource tool surface', () => {
 		expect(toolNames(getToolsForContextType('calendar'))).not.toContain(
 			'resolve_libri_resource'
 		);
+		expect(toolNames(getDefaultToolsForContextType('calendar'))).not.toContain(
+			'resolve_libri_resource'
+		);
+		expect(toolNames(getDefaultToolsForContextType('daily_brief'))).not.toContain(
+			'resolve_libri_resource'
+		);
 	});
 
 	it('is preloaded in global/project gateway surfaces only', () => {
-		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		expect(toolNames(getGatewaySurfaceForContextType('global'))).toContain(
 			'resolve_libri_resource'
@@ -71,7 +78,7 @@ describe('resolve_libri_resource tool surface', () => {
 	});
 
 	it('maps the canonical Libri op to the direct tool', () => {
-		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		resetToolRegistryCache();
 		const registry = getToolRegistry();
 

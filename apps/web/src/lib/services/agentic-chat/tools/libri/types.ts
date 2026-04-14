@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/libri/types.ts
 export type LibriResourceType = 'person';
 
 export type LibriResponseDepth = 'hit_only' | 'summary' | 'detail';

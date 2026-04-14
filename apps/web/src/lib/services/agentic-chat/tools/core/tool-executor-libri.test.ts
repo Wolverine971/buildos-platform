@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-libri.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mockEnv = vi.hoisted(() => ({}) as Record<string, string | undefined>);
@@ -10,16 +11,16 @@ import { ChatToolExecutor } from './tool-executor';
 import type { ChatToolCall } from '@buildos/shared-types';
 
 afterEach(() => {
-	delete mockEnv.LIBRI_INTEGRATION_ENABLED;
 	delete mockEnv.LIBRI_API_BASE_URL;
 	delete mockEnv.LIBRI_API_KEY;
 	delete mockEnv.LIBRI_APP_BASE_URL;
+	vi.unstubAllEnvs();
 	vi.restoreAllMocks();
 });
 
 describe('ChatToolExecutor Libri dispatch', () => {
 	it('executes resolve_libri_resource through the internal tool path', async () => {
-		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		mockEnv.LIBRI_API_BASE_URL = 'https://libri.example';
 		mockEnv.LIBRI_API_KEY = 'libri-secret-key';
 

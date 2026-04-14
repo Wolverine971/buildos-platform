@@ -117,16 +117,16 @@ This should be handled separately from discovery cleanup because permission chan
 ### Phase 1: Safe Functional Fixes
 
 - Fix unsupported agent colors:
-  - `magenta` -> `pink`
-  - `teal` -> `cyan` or `blue`
+    - `magenta` -> `pink`
+    - `teal` -> `cyan` or `blue`
 - Fix bad project-relative references:
-  - `/.claude/skills/twitter.skill.md` -> `.claude/skills/twitter.skill.md`
-  - `/.claude/skills/instagram.skill.md` -> `.claude/skills/instagram.skill.md`
-  - `/.claude/skills/linkedin.skill.md` -> `.claude/skills/linkedin.skill.md`
-  - `/.claude/commands/twitter-warmup.md` -> `.claude/commands/twitter-warmup.md`
+    - `/.claude/skills/twitter.skill.md` -> `.claude/skills/twitter.skill.md`
+    - `/.claude/skills/instagram.skill.md` -> `.claude/skills/instagram.skill.md`
+    - `/.claude/skills/linkedin.skill.md` -> `.claude/skills/linkedin.skill.md`
+    - `/.claude/commands/twitter-warmup.md` -> `.claude/commands/twitter-warmup.md`
 - Fix clearly stale command references:
-  - `/docs/BUGFIX_CHANGELOG.md` -> `/docs/reports/bug-fixes-summary.md`
-  - `/apps/worker/src/jobs/` and `/apps/worker/src/queues/` -> current worker paths.
+    - `/docs/BUGFIX_CHANGELOG.md` -> `/docs/reports/bug-fixes-summary.md`
+    - `/apps/worker/src/jobs/` and `/apps/worker/src/queues/` -> current worker paths.
 - Fix global `seobeast-audit` typo from `user-invokable` to `user-invocable`.
 
 ### Phase 2: Metadata Cleanup
@@ -139,18 +139,18 @@ This should be handled separately from discovery cleanup because permission chan
 ### Phase 3: Skill Layout Migration
 
 - Convert:
-  - `.claude/skills/twitter.skill.md` -> `.claude/skills/twitter/SKILL.md`
-  - `.claude/skills/instagram.skill.md` -> `.claude/skills/instagram/SKILL.md`
-  - `.claude/skills/linkedin.skill.md` -> `.claude/skills/linkedin/SKILL.md`
-  - `.claude/skills/create-skill.md` -> `.claude/skills/create-skill/SKILL.md`
+    - `.claude/skills/twitter.skill.md` -> `.claude/skills/twitter/SKILL.md`
+    - `.claude/skills/instagram.skill.md` -> `.claude/skills/instagram/SKILL.md`
+    - `.claude/skills/linkedin.skill.md` -> `.claude/skills/linkedin/SKILL.md`
+    - `.claude/skills/create-skill.md` -> `.claude/skills/create-skill/SKILL.md`
 - Update command references to invoke the skill names or reference the new paths.
 - Shorten `supabase` description to front-load routing keywords.
 
 ### Phase 4: Stale File Removal
 
 - Decide what to do with `.claude/agents/create_plan.md`:
-  - Remove it if the workflow is no longer used.
-  - Or move it to `.claude/commands/create-plan.md` and modernize references if the workflow is still useful.
+    - Remove it if the workflow is no longer used.
+    - Or move it to `.claude/commands/create-plan.md` and modernize references if the workflow is still useful.
 - Delete `.DS_Store` from `.claude` if desired.
 - Move or disable global `youtube-transcript` if it belongs to another project.
 
@@ -159,10 +159,10 @@ This should be handled separately from discovery cleanup because permission chan
 - Prune stale shell-fragment rules from `.claude/settings.local.json`.
 - Replace broad rules with specific command prefixes used in this repo.
 - Add explicit deny rules for:
-  - `Read(./.env)`
-  - `Read(./.env.*)`
-  - `Read(./**/*secret*)`
-  - `Read(./**/*key*)` if not too noisy for this repo.
+    - `Read(./.env)`
+    - `Read(./.env.*)`
+    - `Read(./**/*secret*)`
+    - `Read(./**/*key*)` if not too noisy for this repo.
 - Consider denying `Bash(curl *)` and using `WebFetch(domain:...)` for controlled web access.
 
 ## Proposed First Fix Batch
@@ -180,19 +180,19 @@ This first batch is intentionally small and should not remove files:
 
 - Added this review doc at `docs/technical/reviews/claude-config-audit-2026-04-13.md`.
 - Fixed invalid agent colors:
-  - `.claude/agents/creator-distribution-strategist.md`: `magenta` -> `pink`
-  - `.claude/agents/growth-activation-architect.md`: `teal` -> `cyan`
+    - `.claude/agents/creator-distribution-strategist.md`: `magenta` -> `pink`
+    - `.claude/agents/growth-activation-architect.md`: `teal` -> `cyan`
 - Migrated project browser automation skills to current skill layout:
-  - `.claude/skills/twitter.skill.md` -> `.claude/skills/twitter/SKILL.md`
-  - `.claude/skills/instagram.skill.md` -> `.claude/skills/instagram/SKILL.md`
-  - `.claude/skills/linkedin.skill.md` -> `.claude/skills/linkedin/SKILL.md`
-  - `.claude/skills/create-skill.md` -> `.claude/skills/create-skill/SKILL.md`
+    - `.claude/skills/twitter.skill.md` -> `.claude/skills/twitter/SKILL.md`
+    - `.claude/skills/instagram.skill.md` -> `.claude/skills/instagram/SKILL.md`
+    - `.claude/skills/linkedin.skill.md` -> `.claude/skills/linkedin/SKILL.md`
+    - `.claude/skills/create-skill.md` -> `.claude/skills/create-skill/SKILL.md`
 - Added frontmatter to the `twitter`, `instagram`, and `linkedin` skills.
 - Shortened `.claude/skills/supabase/SKILL.md` description to avoid routing truncation.
 - Updated root social commands to reference the new skill paths.
 - Fixed stale references:
-  - `/docs/BUGFIX_CHANGELOG.md` -> `/docs/reports/bug-fixes-summary.md`
-  - `/apps/worker/src/jobs/` and `/apps/worker/src/queues/` -> current worker paths.
+    - `/docs/BUGFIX_CHANGELOG.md` -> `/docs/reports/bug-fixes-summary.md`
+    - `/apps/worker/src/jobs/` and `/apps/worker/src/queues/` -> current worker paths.
 - Added minimal frontmatter to root commands. No `allowed-tools` were added.
 - Fixed global `~/.claude/skills/seobeast-audit/SKILL.md`: `user-invokable` -> `user-invocable`.
 

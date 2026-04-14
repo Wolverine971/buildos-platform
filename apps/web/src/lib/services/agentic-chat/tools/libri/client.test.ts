@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/libri/client.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mockEnv = vi.hoisted(() => ({}) as Record<string, string | undefined>);

@@ -11,7 +11,7 @@ import { PromptGenerationService } from './prompt-generation-service';
 
 afterEach(() => {
 	delete mockEnv.AGENTIC_CHAT_TOOL_GATEWAY;
-	delete mockEnv.LIBRI_INTEGRATION_ENABLED;
+	vi.unstubAllEnvs();
 });
 
 describe('PromptGenerationService gateway tool instructions', () => {
@@ -91,11 +91,23 @@ describe('PromptGenerationService gateway tool instructions', () => {
 		expect(disabledPrompt).not.toContain('## Libri Knowledge Source');
 		expect(disabledPrompt).not.toContain('resolve_libri_resource');
 
-		mockEnv.LIBRI_INTEGRATION_ENABLED = 'true';
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		const enabledPrompt = await service.buildPlannerSystemPrompt({
 			contextType: 'global'
 		});
 		expect(enabledPrompt).toContain('## Libri Knowledge Source');
 		expect(enabledPrompt).toContain('resolve_libri_resource');
+	});
+
+	it('does not add Libri guidance in non-Libri contexts', async () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+		const service = new PromptGenerationService();
+
+		const prompt = await service.buildPlannerSystemPrompt({
+			contextType: 'calendar'
+		});
+
+		expect(prompt).not.toContain('## Libri Knowledge Source');
+		expect(prompt).not.toContain('resolve_libri_resource');
 	});
 });

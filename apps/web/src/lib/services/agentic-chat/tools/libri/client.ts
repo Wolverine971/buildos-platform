@@ -1,3 +1,4 @@
+// apps/web/src/lib/services/agentic-chat/tools/libri/client.ts
 import { createHash } from 'node:crypto';
 import { env } from '$env/dynamic/private';
 import type {

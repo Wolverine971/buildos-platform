@@ -55,6 +55,17 @@ const CAPABILITY_SYSTEM_MARKDOWN = `Think in three layers:
 
 Use capabilities to orient yourself. Skills are preloaded only as name-description metadata; load a skill when the workflow matters. Discover tools and inspect exact schemas on demand.`;
 
+function shouldIncludeLibriGuidance(contextType: ChatContextType): boolean {
+	return (
+		contextType === 'global' ||
+		contextType === 'general' ||
+		contextType === 'project' ||
+		contextType === 'project_audit' ||
+		contextType === 'project_forecast' ||
+		contextType === 'ontology'
+	);
+}
+
 export interface PromptGenerationContext {
 	contextType: ChatContextType;
 	ontologyContext?: OntologyContext;
@@ -171,7 +182,7 @@ export class PromptGenerationService {
 			`## ${PLANNER_PROMPTS.operationalGuidelines.title}\n\n${PLANNER_PROMPTS.operationalGuidelines.content}`
 		);
 
-		if (isLibriIntegrationEnabled()) {
+		if (isLibriIntegrationEnabled() && shouldIncludeLibriGuidance(contextType)) {
 			sections.push(`## Libri Knowledge Source\n\n${LIBRI_PERSON_RESOLUTION_GUIDANCE}`);
 		}
 
