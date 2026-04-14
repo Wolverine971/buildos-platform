@@ -14,7 +14,7 @@ const row = (
 	turn_run_id: null,
 	stream_run_id: null,
 	client_turn_id: null,
-	tool_name: 'execute_op',
+	tool_name: 'update_onto_task',
 	tool_category: null,
 	gateway_op: null,
 	help_path: null,
@@ -124,8 +124,10 @@ describe('buildChatToolAnalytics', () => {
 		expect(payload.overview.p95_execution_time_ms).toBe(900);
 		expect(payload.overview.validation_failures).toBe(1);
 
-		const executeOp = payload.by_tool.find((tool) => tool.tool_name === 'execute_op');
-		expect(executeOp).toMatchObject({
+		const taskUpdateTool = payload.by_tool.find(
+			(tool) => tool.tool_name === 'update_onto_task'
+		);
+		expect(taskUpdateTool).toMatchObject({
 			tool_category: 'gateway_execution',
 			total_executions: 2,
 			failed_executions: 1,
@@ -220,7 +222,7 @@ describe('buildChatToolAnalytics', () => {
 		expect(payload.reliability.top_errors[0]).toEqual({
 			error_message: 'Missing required project_id',
 			count: 2,
-			affected_tools: ['execute_op', 'tool_search'],
+			affected_tools: ['tool_search', 'update_onto_task'],
 			last_seen_at: '2026-04-10T12:00:00.000Z'
 		});
 		expect(payload.most_problematic_tools[0].failure_rate).toBe(100);

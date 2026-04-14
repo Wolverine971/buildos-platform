@@ -3,10 +3,6 @@ import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import {
-	isGatewayExecToolName,
-	readGatewayExecInput
-} from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
-import {
 	normalizeProjectCreateArgs,
 	validateProjectCreateArgs
 } from '$lib/services/agentic-chat/tools/core/project-create-args';
@@ -124,9 +120,10 @@ export function validateToolCalls(
 			}
 		}
 
-		const normalizedOp = isGatewayExecToolName(toolName)
-			? validateGatewayExecArgs(args, errors, registry, validationContext)
-			: registry.byToolName[toolName]?.op;
+		const normalizedOp = registry.byToolName[toolName]?.op;
+		if (normalizedOp) {
+			validateDirectOpArgs(normalizedOp, args, errors, validationContext);
+		}
 
 		validateUuidArgs(toolName, args, errors);
 
@@ -269,22 +266,12 @@ function extractExactGatewayDiscoveryOp(
 	args: Record<string, any>,
 	registry: ReturnType<typeof getToolRegistry>
 ): string | null {
-	if (toolName !== 'tool_schema' && toolName !== 'tool_help') {
+	if (toolName !== 'tool_schema') {
 		return null;
 	}
 
 	const rawReference =
-		toolName === 'tool_schema'
-			? typeof args.op === 'string'
-				? args.op
-				: typeof args.path === 'string'
-					? args.path
-					: ''
-			: typeof args.path === 'string'
-				? args.path
-				: typeof args.op === 'string'
-					? args.op
-					: '';
+		typeof args.op === 'string' ? args.op : typeof args.path === 'string' ? args.path : '';
 	if (!rawReference.trim()) {
 		return null;
 	}
@@ -293,52 +280,21 @@ function extractExactGatewayDiscoveryOp(
 	return registry.ops[normalized] ? normalized : null;
 }
 
-function validateGatewayExecArgs(
+function validateDirectOpArgs(
+	normalizedOp: string,
 	args: Record<string, any>,
 	errors: string[],
-	registry: ReturnType<typeof getToolRegistry>,
 	validationContext: GatewayValidationContext
-): string | undefined {
+): void {
 	const addErrorOnce = (message: string) => {
 		if (!errors.includes(message)) {
 			errors.push(message);
 		}
 	};
 
-	const rawOp = typeof args.op === 'string' ? args.op.trim() : '';
-	if (!rawOp) {
-		return undefined;
-	}
-
-	const normalizedOp = normalizeGatewayOpName(rawOp);
-	const registryOp = registry.ops[normalizedOp];
-	if (!registryOp) {
-		addErrorOnce(`Unknown canonical op: ${normalizedOp}`);
-		return normalizedOp;
-	}
-
-	const rawOpArgs = readGatewayExecInput(args);
-	let opArgs = applyGatewayValidationContext(normalizedOp, rawOpArgs, validationContext);
+	let opArgs = applyGatewayValidationContext(normalizedOp, args, validationContext);
 	if (normalizedOp === 'onto.project.create') {
 		opArgs = normalizeProjectCreateArgs(opArgs);
-	}
-	const paramSchema =
-		registryOp.parameters_schema && typeof registryOp.parameters_schema === 'object'
-			? registryOp.parameters_schema
-			: {};
-	const requiredParams = Array.isArray((paramSchema as Record<string, any>).required)
-		? ((paramSchema as Record<string, any>).required as string[])
-		: [];
-
-	for (const required of requiredParams) {
-		const value = getValueByPath(opArgs, required);
-		if (value === undefined || value === null) {
-			addErrorOnce(`Missing required parameter: ${required}`);
-			continue;
-		}
-		if (typeof value === 'string' && value.trim().length === 0) {
-			addErrorOnce(`Missing required parameter: ${required}`);
-		}
 	}
 
 	for (const [key, value] of Object.entries(opArgs)) {
@@ -378,8 +334,6 @@ function validateGatewayExecArgs(
 			addErrorOnce(error);
 		}
 	}
-
-	return normalizedOp;
 }
 
 function applyGatewayValidationContext(

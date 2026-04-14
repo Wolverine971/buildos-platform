@@ -13,7 +13,7 @@ The conversational agent system uses `context_type` to route chat sessions to sp
 ```
 User Request
      ↓
-API Endpoint (/api/agent/stream)
+API Endpoint (/api/agent/v2/stream)
      ↓ Sets context_type + chat_type
 Database (chat_sessions table)
      ↓ Stores both fields
@@ -251,7 +251,7 @@ const stream = this.llmService.streamText({
 });
 ```
 
-### API Endpoint (`/api/agent/stream`)
+### API Endpoint (`/api/agent/v2/stream`)
 
 **Session Creation**:
 
@@ -384,4 +384,4 @@ await supabase.from('chat_sessions').insert({
 - **Database Schema**: `/supabase/migrations/20251028_fix_context_type_constraint.sql`
 - **Type Definitions**: `/packages/shared-types/src/agent.types.ts`
 - **Orchestrator Service**: `/apps/web/src/lib/services/agent-orchestrator.service.ts`
-- **API Endpoint**: `/apps/web/src/routes/api/agent/stream/+server.ts`
+- **API Endpoint**: `/apps/web/src/routes/api/agent/v2/stream/+server.ts`

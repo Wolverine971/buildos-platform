@@ -3,35 +3,35 @@ import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { getLoadedSkillActivity, getRequestedSkillActivity } from './skill-activity';
 
-function buildToolCall(path: string): ChatToolCall {
+function buildSkillLoadCall(skill: string): ChatToolCall {
 	return {
-		id: 'tool_help:1',
+		id: 'skill_load:1',
 		type: 'function',
 		function: {
-			name: 'tool_help',
-			arguments: JSON.stringify({ path })
+			name: 'skill_load',
+			arguments: JSON.stringify({ skill })
 		}
 	} as ChatToolCall;
 }
 
 describe('skill activity helpers', () => {
-	it('detects requested skill tool_help calls using normalized aliases', () => {
-		const event = getRequestedSkillActivity(buildToolCall('calendar.skill'));
+	it('detects requested skill_load calls using registered skill ids', () => {
+		const event = getRequestedSkillActivity(buildSkillLoadCall('calendar_management'));
 		expect(event).toEqual({
 			type: 'skill_activity',
 			action: 'requested',
 			path: 'calendar_management',
-			via: 'tool_help'
+			via: 'skill_load'
 		});
 	});
 
-	it('ignores non-skill tool_help paths', () => {
-		expect(getRequestedSkillActivity(buildToolCall('onto.task.update'))).toBeNull();
+	it('ignores non-skill references', () => {
+		expect(getRequestedSkillActivity(buildSkillLoadCall('onto.task.update'))).toBeNull();
 	});
 
-	it('detects loaded skill responses from tool_help results', () => {
+	it('detects loaded skill responses from skill_load results', () => {
 		const result = {
-			tool_call_id: 'tool_help:1',
+			tool_call_id: 'skill_load:1',
 			success: true,
 			result: {
 				type: 'skill',
@@ -39,23 +39,23 @@ describe('skill activity helpers', () => {
 				name: 'Document Workspace'
 			}
 		} as ChatToolResult;
-		expect(getLoadedSkillActivity(buildToolCall('onto.document.skill'), result)).toEqual({
+		expect(getLoadedSkillActivity(buildSkillLoadCall('document_workspace'), result)).toEqual({
 			type: 'skill_activity',
 			action: 'loaded',
 			path: 'document_workspace',
-			via: 'tool_help'
+			via: 'skill_load'
 		});
 	});
 
-	it('ignores non-skill tool_help results', () => {
+	it('ignores non-skill results', () => {
 		const result = {
-			tool_call_id: 'tool_help:1',
+			tool_call_id: 'skill_load:1',
 			success: true,
 			result: {
 				type: 'directory',
 				path: 'onto.document'
 			}
 		} as ChatToolResult;
-		expect(getLoadedSkillActivity(buildToolCall('onto.document'), result)).toBeNull();
+		expect(getLoadedSkillActivity(buildSkillLoadCall('document_workspace'), result)).toBeNull();
 	});
 });

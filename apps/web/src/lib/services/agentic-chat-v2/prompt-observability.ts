@@ -7,11 +7,8 @@ import type {
 	Database,
 	Json
 } from '@buildos/shared-types';
-import {
-	normalizeGatewayHelpPath,
-	normalizeGatewayOpName
-} from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import { isGatewayExecToolName } from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
+import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { estimateTokensFromText } from './context-usage';
 import { buildPromptCostBreakdown, type PromptCostBreakdown } from './prompt-cost-breakdown';
 import type { FastChatHistoryMessage } from './types';
@@ -298,14 +295,14 @@ export function extractFastChatToolCallMeta(toolCall: ChatToolCall): FastChatToo
 		parsed.args && typeof parsed.args === 'object' && !Array.isArray(parsed.args)
 			? (parsed.args as JsonRecord)
 			: null;
-	const rawPath = typeof argsRecord?.path === 'string' ? argsRecord.path : null;
 	const rawOp = typeof argsRecord?.op === 'string' ? argsRecord.op : null;
+	const schemaOp = toolName === 'tool_schema' && rawOp ? normalizeGatewayOpName(rawOp) : null;
+	const directOp = getToolRegistry().byToolName[toolName]?.op ?? null;
 
 	return {
 		toolName,
-		helpPath: toolName === 'tool_help' && rawPath ? normalizeGatewayHelpPath(rawPath) : null,
-		canonicalOp:
-			isGatewayExecToolName(toolName) && rawOp ? normalizeGatewayOpName(rawOp) : null,
+		helpPath: schemaOp,
+		canonicalOp: directOp ?? schemaOp,
 		args: parsed.args,
 		argsParseError: parsed.error
 	};

@@ -16,7 +16,6 @@ import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
-import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { normalizeTimingMetricSessionReference } from '$lib/services/agentic-chat/shared/timing-metrics';
@@ -36,7 +35,6 @@ import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
 import type { AgentState, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor-refactored';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
-import { isToolGatewayEnabled } from '$lib/services/agentic-chat/tools/registry/gateway-config';
 import { getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -135,7 +133,6 @@ const FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED = parseBooleanFlag(
 	process.env.FASTCHAT_ENABLE_AUTONOMOUS_RECOVERY,
 	false
 );
-const FASTCHAT_OPENROUTER_V2_ENABLED = parseBooleanFlag(process.env.OPENROUTER_V2_ENABLED, false);
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
 	if (!value) return fallback;
@@ -1696,31 +1693,8 @@ function truncateToolTraceText(value: string, maxChars: number): string {
 	return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
 }
 
-function extractGatewayOpFromToolCall(toolCall: ChatToolCall): string | undefined {
-	if (toolCall.function?.name !== 'tool_exec' && toolCall.function?.name !== 'tool_batch') {
-		return undefined;
-	}
-	const rawArgs = toolCall.function.arguments;
-	if (typeof rawArgs !== 'string' || rawArgs.trim().length === 0) return undefined;
-	try {
-		const parsed = JSON.parse(rawArgs);
-		if (toolCall.function.name === 'tool_exec') {
-			return typeof parsed?.op === 'string' ? parsed.op : undefined;
-		}
-		if (toolCall.function.name === 'tool_batch' && Array.isArray(parsed?.ops)) {
-			const firstExec = parsed.ops.find(
-				(entry: unknown) =>
-					entry &&
-					typeof entry === 'object' &&
-					(entry as Record<string, unknown>).type === 'exec' &&
-					typeof (entry as Record<string, unknown>).op === 'string'
-			) as Record<string, unknown> | undefined;
-			return typeof firstExec?.op === 'string' ? firstExec.op : undefined;
-		}
-	} catch {
-		return undefined;
-	}
-	return undefined;
+function extractToolOpFromToolCall(toolCall: ChatToolCall): string | undefined {
+	return extractFastChatToolCallMeta(toolCall).canonicalOp ?? undefined;
 }
 
 function buildPersistedToolTrace(
@@ -1728,7 +1702,7 @@ function buildPersistedToolTrace(
 ): PersistedToolTraceEntry[] {
 	if (!Array.isArray(executions) || executions.length === 0) return [];
 	return executions.slice(0, MAX_PERSISTED_TOOL_TRACE_ITEMS).map(({ toolCall, result }) => {
-		const op = extractGatewayOpFromToolCall(toolCall);
+		const op = extractToolOpFromToolCall(toolCall);
 		const rawError = typeof result.error === 'string' ? result.error : '';
 		const argumentsPreview = previewToolArguments(
 			toolCall.function.arguments,
@@ -1962,7 +1936,7 @@ function buildToolMessageSnapshotsForReconciliation(
 		const summary = toolSummaries[index];
 		const contentPayload = {
 			tool_name: toolCall.function.name,
-			op: extractGatewayOpFromToolCall(toolCall),
+			op: extractToolOpFromToolCall(toolCall),
 			success: result.success,
 			error: result.error,
 			summary: summary?.summary
@@ -2761,18 +2735,12 @@ export const POST: RequestHandler = async ({
 					// User message persistence is already handled later in the route.
 				});
 
-			const llm = FASTCHAT_OPENROUTER_V2_ENABLED
-				? new OpenRouterV2Service({
-						supabase,
-						httpReferer: request.headers.get('referer') ?? undefined,
-						appName: 'BuildOS Agentic Chat V2'
-					})
-				: new SmartLLMService({
-						supabase,
-						httpReferer: request.headers.get('referer') ?? undefined,
-						appName: 'BuildOS Agentic Chat V2'
-					});
-			const gatewayEnabled = isToolGatewayEnabled();
+			const llm = new OpenRouterV2Service({
+				supabase,
+				httpReferer: request.headers.get('referer') ?? undefined,
+				appName: 'BuildOS Agentic Chat V2'
+			});
+			const gatewayEnabled = true;
 			const toolSelectionStartedAtMs = Date.now();
 			const tools = selectFastChatTools({ contextType });
 			toolSelectionMs = Math.max(0, Date.now() - toolSelectionStartedAtMs);
@@ -2885,10 +2853,9 @@ export const POST: RequestHandler = async ({
 						metadata: Object.keys(metadata).length > 0 ? metadata : undefined
 					};
 				});
-			const toolExecutionService =
-				gatewayEnabled && sharedToolExecutor
-					? new ToolExecutionService(sharedToolExecutor, undefined, errorLogger)
-					: undefined;
+			const toolExecutionService = sharedToolExecutor
+				? new ToolExecutionService(sharedToolExecutor, undefined, errorLogger)
+				: undefined;
 			const patchToolCall = (toolCall: ChatToolCall) => {
 				const resp = maybeInjectProjectId(
 					toolCall,
@@ -3183,7 +3150,7 @@ export const POST: RequestHandler = async ({
 				message,
 				signal: request.signal,
 				systemPrompt,
-				maxToolRounds: gatewayEnabled ? Math.max(1, gatewayRoundCap) : undefined,
+				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
 				tools,
 				debugContext: {

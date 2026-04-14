@@ -36,34 +36,8 @@ export const GATEWAY_OP_ALIASES: Record<string, string> = {
 	'onto_projects.doc_structure.path.get': 'onto.document.path.get'
 };
 
-const GATEWAY_HELP_PATH_ALIASES: Record<string, string> = {
-	'onto_projects.doc_structure': 'onto.document.tree',
-	'onto_projects.doc_structure.tree': 'onto.document.tree',
-	'onto_projects.doc_structure.path': 'onto.document.path',
-	'calendar.skill': 'cal.skill',
-	'calendar.skills': 'cal.skill',
-	'cal.skills': 'cal.skill',
-	'task.skill': 'onto.task.skill',
-	'tasks.skill': 'onto.task.skill',
-	'people.skill': 'util.people.skill',
-	'contacts.skill': 'util.people.skill',
-	'profile.skill': 'util.people.skill',
-	'audit.skill': 'workflow.audit.skill',
-	'forecast.skill': 'workflow.forecast.skill',
-	'workflow.audit': 'workflow.audit.skill',
-	'workflow.forecast': 'workflow.forecast.skill'
-};
-
 export function normalizeGatewayOpName(op: string): string {
 	const trimmed = op.trim();
 	if (!trimmed) return '';
 	return GATEWAY_OP_ALIASES[trimmed] ?? trimmed;
-}
-
-export function normalizeGatewayHelpPath(path: string): string {
-	const trimmed = path.trim();
-	if (!trimmed) return '';
-	const alias = GATEWAY_HELP_PATH_ALIASES[trimmed];
-	if (alias) return alias;
-	return normalizeGatewayOpName(trimmed);
 }

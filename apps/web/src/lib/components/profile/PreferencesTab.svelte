@@ -11,7 +11,6 @@
 	These preferences are injected into all AI conversations.
 
 	@see /apps/web/docs/features/preferences/README.md - Full preferences system documentation
-	@see /apps/web/src/lib/services/agent-context-service.ts - Prompt injection implementation (lines 567-684)
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';

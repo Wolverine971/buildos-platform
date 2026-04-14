@@ -1,13 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-arguments.ts
 import type { ChatToolCall } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
-import {
-	PRIMARY_GATEWAY_EXEC_TOOL_NAME,
-	buildGatewayExecPayload,
-	isGatewayExecToolName,
-	readGatewayExecInput
-} from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
 
 const MAX_TOOL_ARG_PARSE_DEPTH = 3;
 const MAX_TOOL_ARG_SEGMENTS = 8;
@@ -60,36 +53,16 @@ export function parseToolArguments(rawArgs: unknown): {
 
 export function normalizeToolCallDefaults(
 	toolCall: ChatToolCall,
-	projectId?: string
+	_projectId?: string
 ): ChatToolCall {
 	const toolName = toolCall.function?.name?.trim() ?? '';
-	if (
-		!isGatewaySchemaToolName(toolName) &&
-		!isGatewayExecToolName(toolName) &&
-		!isGatewaySkillLoadToolName(toolName)
-	) {
+	if (!isGatewaySchemaToolName(toolName) && !isGatewaySkillLoadToolName(toolName)) {
 		return toolCall;
 	}
 
 	const rawArgs = toolCall.function?.arguments;
 	const { args, error } = parseToolArguments(rawArgs);
 	if (!error) {
-		if (toolName === 'tool_help') {
-			const path = typeof args.path === 'string' ? args.path.trim() : '';
-			const normalizedArgs = path.length > 0 ? { ...args, path } : { ...args, path: 'root' };
-			const serializedArgs = JSON.stringify(normalizedArgs);
-			if (toolCall.function.arguments === serializedArgs) {
-				return toolCall;
-			}
-			return {
-				...toolCall,
-				function: {
-					...toolCall.function,
-					arguments: serializedArgs
-				}
-			};
-		}
-
 		if (toolName === 'tool_schema') {
 			const op =
 				typeof args.op === 'string'
@@ -140,21 +113,6 @@ export function normalizeToolCallDefaults(
 			};
 		}
 
-		if (isGatewayExecToolName(toolName)) {
-			const normalizedArgs = injectGatewayExecutionDefaults(args, projectId, toolName);
-			const serializedArgs = JSON.stringify(normalizedArgs);
-			if (toolCall.function.arguments === serializedArgs) {
-				return toolCall;
-			}
-			return {
-				...toolCall,
-				function: {
-					...toolCall.function,
-					arguments: serializedArgs
-				}
-			};
-		}
-
 		return toolCall;
 	}
 
@@ -165,15 +123,6 @@ export function normalizeToolCallDefaults(
 	const fallbackArgs = buildGatewayFallbackArgs(toolName, rawArgs);
 	if (!fallbackArgs) {
 		return toolCall;
-	}
-
-	if (toolName === 'tool_help') {
-		const path = typeof fallbackArgs.path === 'string' ? fallbackArgs.path.trim() : '';
-		if (!path) {
-			fallbackArgs.path = 'root';
-		} else {
-			fallbackArgs.path = path;
-		}
 	}
 
 	if (toolName === 'tool_schema') {
@@ -197,28 +146,6 @@ export function normalizeToolCallDefaults(
 			return toolCall;
 		}
 		fallbackArgs.skill = skill;
-	}
-
-	if (isGatewayExecToolName(toolName)) {
-		const op = typeof fallbackArgs.op === 'string' ? fallbackArgs.op.trim() : '';
-		if (!op) {
-			return toolCall;
-		}
-		const normalizedExecArgs = injectGatewayExecutionDefaults(
-			buildGatewayExecPayload(toolName, {
-				op: normalizeGatewayOpName(op),
-				input: readGatewayExecInput(fallbackArgs),
-				dry_run: fallbackArgs.dry_run,
-				idempotency_key:
-					typeof fallbackArgs.idempotency_key === 'string'
-						? fallbackArgs.idempotency_key
-						: undefined
-			}),
-			projectId,
-			toolName
-		);
-		Object.keys(fallbackArgs).forEach((key) => delete fallbackArgs[key]);
-		Object.assign(fallbackArgs, normalizedExecArgs);
 	}
 
 	const serializedArgs = JSON.stringify(fallbackArgs);
@@ -526,17 +453,6 @@ function recoverToolArgumentObject(raw: string): Record<string, any> | null {
 	return null;
 }
 
-function extractGatewayPathCandidate(raw: string): string | null {
-	const pathPattern =
-		/\b(root|onto(?:\.[a-z0-9_]+)*|cal(?:\.[a-z0-9_]+)*|util(?:\.[a-z0-9_]+)*)\b/i;
-	const match = raw.match(pathPattern);
-	if (!match || !match[1]) {
-		return null;
-	}
-	const candidate = match[1].trim();
-	return candidate.length > 0 ? candidate : null;
-}
-
 function extractGatewayOpCandidate(raw: string): string | null {
 	const opPattern = /\b(?:onto|cal|util)\.[a-z0-9_]+(?:\.[a-z0-9_]+){1,6}\b/i;
 	const match = raw.match(opPattern);
@@ -548,7 +464,7 @@ function extractGatewayOpCandidate(raw: string): string | null {
 }
 
 function isGatewaySchemaToolName(toolName: string): boolean {
-	return toolName === 'tool_help' || toolName === 'tool_schema';
+	return toolName === 'tool_schema';
 }
 
 function isGatewaySkillLoadToolName(toolName: string): boolean {
@@ -558,35 +474,20 @@ function isGatewaySkillLoadToolName(toolName: string): boolean {
 function buildGatewayFallbackArgs(toolName: string, rawArgs: string): Record<string, any> | null {
 	const recoveredObject = recoverToolArgumentObject(rawArgs);
 
-	if (isGatewaySchemaToolName(toolName)) {
-		if (toolName === 'tool_schema') {
-			if (recoveredObject) {
-				const op =
-					typeof recoveredObject.op === 'string'
-						? normalizeGatewayOpName(recoveredObject.op)
-						: typeof recoveredObject.path === 'string'
-							? normalizeGatewayOpName(recoveredObject.path)
-							: '';
-				if (op) {
-					return { ...recoveredObject, op };
-				}
-			}
-			const opCandidate = extractGatewayOpCandidate(rawArgs);
-			return opCandidate ? { op: opCandidate } : null;
-		}
-
-		if (recoveredObject && typeof recoveredObject.path === 'string') {
-			const path = recoveredObject.path.trim();
-			if (path.length > 0) {
-				return { ...recoveredObject, path };
+	if (toolName === 'tool_schema') {
+		if (recoveredObject) {
+			const op =
+				typeof recoveredObject.op === 'string'
+					? normalizeGatewayOpName(recoveredObject.op)
+					: typeof recoveredObject.path === 'string'
+						? normalizeGatewayOpName(recoveredObject.path)
+						: '';
+			if (op) {
+				return { ...recoveredObject, op };
 			}
 		}
-
-		const pathCandidate = extractGatewayPathCandidate(rawArgs);
-		if (pathCandidate) {
-			return { path: pathCandidate };
-		}
-		return null;
+		const opCandidate = extractGatewayOpCandidate(rawArgs);
+		return opCandidate ? { op: opCandidate } : null;
 	}
 
 	if (isGatewaySkillLoadToolName(toolName)) {
@@ -606,76 +507,5 @@ function buildGatewayFallbackArgs(toolName: string, rawArgs: string): Record<str
 		return null;
 	}
 
-	if (!isGatewayExecToolName(toolName)) {
-		return null;
-	}
-
-	if (recoveredObject) {
-		const op =
-			typeof recoveredObject.op === 'string'
-				? normalizeGatewayOpName(recoveredObject.op)
-				: '';
-		const input = readGatewayExecInput(recoveredObject);
-		const fallbackOp = op || extractGatewayOpCandidate(rawArgs) || '';
-		if (fallbackOp) {
-			return buildGatewayExecPayload(toolName, {
-				op: fallbackOp,
-				input,
-				dry_run: recoveredObject.dry_run,
-				idempotency_key:
-					typeof recoveredObject.idempotency_key === 'string'
-						? recoveredObject.idempotency_key
-						: undefined
-			});
-		}
-	}
-
-	const opCandidate = extractGatewayOpCandidate(rawArgs);
-	if (opCandidate) {
-		return buildGatewayExecPayload(toolName, {
-			op: opCandidate,
-			input: {}
-		});
-	}
-
 	return null;
-}
-
-function injectGatewayExecutionDefaults(
-	args: Record<string, any>,
-	projectId?: string,
-	toolName: string = PRIMARY_GATEWAY_EXEC_TOOL_NAME
-): Record<string, any> {
-	const normalizedOp = typeof args.op === 'string' ? normalizeGatewayOpName(args.op) : '';
-	const rawOpArgs = readGatewayExecInput(args);
-	const effectiveProjectId =
-		typeof projectId === 'string' && projectId.trim().length > 0 ? projectId.trim() : null;
-
-	if (!normalizedOp || !effectiveProjectId || 'project_id' in rawOpArgs) {
-		return buildGatewayExecPayload(toolName, {
-			op: normalizedOp || args.op,
-			input: rawOpArgs,
-			dry_run: args.dry_run,
-			idempotency_key:
-				typeof args.idempotency_key === 'string' ? args.idempotency_key : undefined
-		});
-	}
-
-	const schema = getToolRegistry().ops[normalizedOp]?.parameters_schema;
-	const requiresProjectId =
-		Array.isArray((schema as Record<string, any> | undefined)?.required) &&
-		((schema as Record<string, any>).required as string[]).includes('project_id');
-	const shouldInjectProjectId = requiresProjectId || normalizedOp === 'util.project.overview';
-
-	return buildGatewayExecPayload(toolName, {
-		op: normalizedOp,
-		input: shouldInjectProjectId
-			? {
-					...rawOpArgs,
-					project_id: effectiveProjectId
-				}
-			: rawOpArgs,
-		dry_run: args.dry_run,
-		idempotency_key: typeof args.idempotency_key === 'string' ? args.idempotency_key : undefined
-	});
 }

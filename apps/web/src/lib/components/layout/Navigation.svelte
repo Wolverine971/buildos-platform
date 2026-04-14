@@ -117,8 +117,8 @@
 		};
 	});
 
-	const chatModalContextType = $derived.by((): ChatContextType =>
-		chatInitialProjectFocus ? 'global' : chatContextType
+	const chatModalContextType = $derived.by(
+		(): ChatContextType => (chatInitialProjectFocus ? 'global' : chatContextType)
 	);
 	const chatModalEntityId = $derived.by(() =>
 		chatInitialProjectFocus ? undefined : chatEntityId

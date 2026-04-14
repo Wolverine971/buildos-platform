@@ -18,9 +18,9 @@ describe('prompt observability helpers', () => {
 			{
 				type: 'function',
 				function: {
-					name: 'tool_help',
-					description: 'Lookup tool help',
-					parameters: { type: 'object', properties: { path: { type: 'string' } } }
+					name: 'tool_schema',
+					description: 'Lookup tool schema',
+					parameters: { type: 'object', properties: { op: { type: 'string' } } }
 				}
 			}
 		];
@@ -55,7 +55,7 @@ describe('prompt observability helpers', () => {
 		expect(row.messages_sha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(row.rendered_dump_text).toContain('FASTCHAT V2 PROMPT SNAPSHOT');
 		expect(row.rendered_dump_text).toContain('stream-run-1');
-		expect(row.rendered_dump_text).toContain('tool_help');
+		expect(row.rendered_dump_text).toContain('tool_schema');
 		expect(row.message_chars).toBeGreaterThan(0);
 		expect(row.approx_prompt_tokens).toBeGreaterThan(0);
 		expect((row.prompt_sections as Record<string, unknown>).cost_breakdown).toBeDefined();
@@ -128,34 +128,31 @@ describe('prompt observability helpers', () => {
 		);
 	});
 
-	it('extracts canonical tool metadata for gateway calls', () => {
-		const helpCall: ChatToolCall = {
+	it('extracts canonical tool metadata for schema and direct tool calls', () => {
+		const schemaCall: ChatToolCall = {
 			id: 'tool-1',
 			type: 'function',
 			function: {
-				name: 'tool_help',
-				arguments: JSON.stringify({ path: 'calendar.skill', format: 'full' })
+				name: 'tool_schema',
+				arguments: JSON.stringify({ op: 'get_document_tree' })
 			}
 		};
-		const execCall: ChatToolCall = {
+		const directCall: ChatToolCall = {
 			id: 'tool-2',
 			type: 'function',
 			function: {
-				name: 'tool_exec',
-				arguments: JSON.stringify({
-					op: 'get_document_tree',
-					args: { project_id: 'project-1' }
-				})
+				name: 'get_document_tree',
+				arguments: JSON.stringify({ project_id: 'project-1' })
 			}
 		};
 
-		expect(extractFastChatToolCallMeta(helpCall)).toMatchObject({
-			toolName: 'tool_help',
-			helpPath: 'cal.skill',
-			canonicalOp: null
+		expect(extractFastChatToolCallMeta(schemaCall)).toMatchObject({
+			toolName: 'tool_schema',
+			helpPath: 'onto.document.tree.get',
+			canonicalOp: 'onto.document.tree.get'
 		});
-		expect(extractFastChatToolCallMeta(execCall)).toMatchObject({
-			toolName: 'tool_exec',
+		expect(extractFastChatToolCallMeta(directCall)).toMatchObject({
+			toolName: 'get_document_tree',
 			helpPath: null,
 			canonicalOp: 'onto.document.tree.get'
 		});
@@ -166,11 +163,8 @@ describe('prompt observability helpers', () => {
 			id: 'tool-3',
 			type: 'function',
 			function: {
-				name: 'tool_exec',
-				arguments: JSON.stringify({
-					op: 'util.project.overview',
-					args: { query: '9takes' }
-				})
+				name: 'get_project_overview',
+				arguments: JSON.stringify({ query: '9takes' })
 			}
 		};
 		const result: ChatToolResult = {
@@ -181,11 +175,11 @@ describe('prompt observability helpers', () => {
 		};
 
 		expect(buildToolCallEventPayload(toolCall)).toMatchObject({
-			tool_name: 'tool_exec',
+			tool_name: 'get_project_overview',
 			canonical_op: 'util.project.overview'
 		});
 		expect(buildToolResultEventPayload(toolCall, result)).toMatchObject({
-			tool_name: 'tool_exec',
+			tool_name: 'get_project_overview',
 			canonical_op: 'util.project.overview',
 			success: false,
 			error: 'Tool validation failed: Missing required parameter: project_id'

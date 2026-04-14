@@ -247,7 +247,6 @@ Rules from docs:
 
 - Add this spec.
 - Add feature flags:
-    - `OPENROUTER_V2_ENABLED`
     - `OPENROUTER_V2_RESPONSES_ENABLED`
     - `OPENROUTER_V2_EXACTO_TOOLS_ENABLED`
     - `OPENROUTER_V2_TIMEOUT_MS`

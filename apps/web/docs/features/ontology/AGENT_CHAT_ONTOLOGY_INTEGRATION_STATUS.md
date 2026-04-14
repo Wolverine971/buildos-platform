@@ -191,7 +191,7 @@ Tier 3: ONTOLOGY tools (for relationships)
 
 #### 8. API Endpoint Integration ✅
 
-**File:** `/apps/web/src/routes/api/agent/stream/+server.ts`
+**File:** `/apps/web/src/routes/api/agent/v2/stream/+server.ts`
 
 **Already Implemented (from earlier work):**
 
@@ -285,7 +285,7 @@ for await (const event of plannerService.processUserMessage({
 │  - Sends: lastTurnContext, ontologyEntityType               │
 │  - Displays: strategy badges, ontology indicators           │
 └──────────────────────┬──────────────────────────────────────┘
-                       │ HTTP POST /api/agent/stream
+                       │ HTTP POST /api/agent/v2/stream
                        ↓
 ┌─────────────────────────────────────────────────────────────┐
 │              API Endpoint (stream/+server.ts)                │
@@ -513,7 +513,7 @@ Expected:
 
 ### Already Modified (from earlier work)
 
-- `/apps/web/src/routes/api/agent/stream/+server.ts` - Loads ontology, passes to planner
+- `/apps/web/src/routes/api/agent/v2/stream/+server.ts` - Loads ontology, passes to planner
 
 ---
 

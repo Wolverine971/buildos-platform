@@ -1,6 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.ts
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import { isGatewayExecToolName } from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
@@ -182,17 +181,6 @@ export function buildToolValidationRepairInstruction(
 	const gatewayRequiredFieldFailures = hasGatewayIssue
 		? extractGatewayRequiredFieldFailuresFromValidationIssues(issues)
 		: [];
-	const hasGatewayEnvelopeFailure =
-		hasGatewayIssue &&
-		issues.some(
-			(issue) =>
-				isGatewayExecToolName(issue.toolName ?? '') &&
-				issue.errors.some(
-					(error) =>
-						error.includes('Missing required parameter: op') ||
-						error.includes('Missing required parameter: args')
-				)
-		);
 	const hasProjectCreateIssue =
 		gatewayModeActive && issues.some((issue) => issue.op === 'onto.project.create');
 	const hasProjectCreateRelationshipIssue =
@@ -306,11 +294,6 @@ export function buildToolValidationRepairInstruction(
 				`Load exact-op help before retrying: ${exactHelpPaths
 					.map((path) => `tool_schema({ op: "${path}" })`)
 					.join(', ')}.`
-			);
-		}
-		if (hasGatewayEnvelopeFailure) {
-			lines.push(
-				'Never call a write tool with empty arguments. You must include the required fields, or ask one concise clarifying question.'
 			);
 		}
 	}
@@ -439,18 +422,6 @@ export function buildReadLoopRepairInstruction(readOps: string[]): string {
 	].join(' ');
 }
 
-export function buildRootHelpLoopRepairInstruction(fallbackExecuted: boolean): string {
-	const fallbackLine = fallbackExecuted
-		? 'Use the data already fetched, and for status questions prefer get_workspace_overview or get_project_overview instead of more root help.'
-		: 'Do not call tool_help("root") again. For status questions, use get_workspace_overview or get_project_overview; otherwise use tool_search to find the exact tool you actually need.';
-	return [
-		'Repeated tool_help("root") detected. Do not call tool_help("root") again in this turn.',
-		fallbackLine,
-		'Use the returned listing data to continue, or ask one precise clarifying question.',
-		'If you need exact arguments, use tool_schema({ op: "<canonical op>" }) for the specific op you plan to call. Do not browse root again.'
-	].join(' ');
-}
-
 export function buildConsolidatedRepairInstruction(instructions: string[]): string {
 	const unique = Array.from(
 		new Set(
@@ -477,22 +448,15 @@ function collectGatewayWriteIntentOps(toolExecutions: FastToolExecution[]): stri
 		const toolName = execution.toolCall.function?.name?.trim();
 		if (!toolName) continue;
 
-		if (isGatewayExecToolName(toolName)) {
-			const op = getGatewayExecOp(execution);
-			if (op && isWriteLikeOperation(op)) {
-				ops.add(op);
-			}
+		const executedOp = getGatewayExecOp(execution);
+		if (executedOp && isWriteLikeOperation(executedOp)) {
+			ops.add(executedOp);
 			continue;
 		}
 
-		if (toolName === 'tool_schema' || toolName === 'tool_help') {
+		if (toolName === 'tool_schema') {
 			const parsed = parseToolArguments(execution.toolCall.function?.arguments);
-			const rawReference =
-				typeof parsed.args.op === 'string'
-					? parsed.args.op
-					: typeof parsed.args.path === 'string'
-						? parsed.args.path
-						: '';
+			const rawReference = typeof parsed.args.op === 'string' ? parsed.args.op : '';
 			const normalizedOp = rawReference ? normalizeGatewayOpName(rawReference.trim()) : '';
 			if (normalizedOp && isWriteLikeOperation(normalizedOp)) {
 				ops.add(normalizedOp);
@@ -581,21 +545,14 @@ function getWriteOperationName(execution: FastToolExecution): string | null {
 	const toolName = execution.toolCall.function?.name?.trim();
 	if (!toolName) return null;
 
-	if (isGatewayExecToolName(toolName)) {
-		const op = getGatewayExecOp(execution);
-		return op && isWriteLikeOperation(op) ? op : null;
-	}
-
-	return isWriteLikeOperation(toolName) ? toolName : null;
+	const op = getGatewayExecOp(execution) ?? toolName;
+	return isWriteLikeOperation(op) ? op : null;
 }
 
 function didWriteExecutionSucceed(execution: FastToolExecution): boolean {
 	const toolName = execution.toolCall.function?.name?.trim();
 	if (!toolName) return false;
-	if (isGatewayExecToolName(toolName)) {
-		return didGatewayExecSucceed(execution);
-	}
-	return execution.result.success === true;
+	return didGatewayExecSucceed(execution);
 }
 
 const BULK_MUTATION_SUCCESS_CLAIM_PATTERNS = [

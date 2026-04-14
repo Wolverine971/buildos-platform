@@ -2,38 +2,32 @@
 
 # Agentic Chat Tool -> Backend Mapping (Current)
 
-> Last updated: 2026-04-12
+> Last updated: 2026-04-14
 > Scope: Tool behavior in the current web runtime (`/api/agent/v2/stream` + shared tool stack)
 
-## 1. Execution Modes
+## 1. Execution Surface
 
-The runtime has two tool execution modes:
+The runtime exposes one hybrid direct-tool surface:
 
-1. Gateway mode (`AGENTIC_CHAT_TOOL_GATEWAY=true`)
-    - Exposed tools: `skill_load`, `tool_search`, `tool_schema`, plus context-specific direct tools
-    - `gateway-surface.ts` selects the initial direct-tool set for the chat context
-    - `tool_search` and `tool_schema` inspect registry metadata and can materialize additional direct tools
-    - Direct tool calls run canonical ops through `ToolExecutionService`
-2. Direct mode (gateway disabled)
-    - Exposed tools: full named tool set (`list_onto_*`, `create_onto_*`, `web_search`, etc.)
-    - Tool calls are dispatched by `ChatToolExecutor`
+- Exposed tools: `skill_load`, `tool_search`, `tool_schema`, plus context-specific direct tools
+- `gateway-surface.ts` selects the initial direct-tool set for the chat context
+- `tool_search` and `tool_schema` inspect registry metadata and can materialize additional direct tools
+- Direct tool calls run canonical ops through `ToolExecutionService`
+- Domain execution is dispatched by `ChatToolExecutor`
 
 ## 2. Source Files
 
-| Concern                  | File                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| Concern                  | File                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| Tool definitions         | `apps/web/src/lib/services/agentic-chat/tools/core/definitions/*.ts`            |
-| Context tool sets        | `apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts`             |
-| Gateway surface          | `apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts`          |
-| Gateway op registry      | `apps/web/src/lib/services/agentic-chat/tools/registry/tool-registry.ts`        |
-| Tool discovery           | `apps/web/src/lib/services/agentic-chat/tools/registry/tool-search.ts`          |
-| Tool schema lookup       | `apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts`          |
-| Skill loading            | `apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.ts`             |
-| Direct dispatcher        | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts` |
-| Domain executors         | `apps/web/src/lib/services/agentic-chat/tools/core/executors/*.ts`              |
-| Legacy compatibility API | `apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.ts`            |
+| Concern            | File                                                                            |
+| ------------------ | ------------------------------------------------------------------------------- |
+| Tool definitions   | `apps/web/src/lib/services/agentic-chat/tools/core/definitions/*.ts`            |
+| Context tool sets  | `apps/web/src/lib/services/agentic-chat/tools/core/tools.config.ts`             |
+| Tool surface       | `apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts`          |
+| Op registry        | `apps/web/src/lib/services/agentic-chat/tools/registry/tool-registry.ts`        |
+| Tool discovery     | `apps/web/src/lib/services/agentic-chat/tools/registry/tool-search.ts`          |
+| Tool schema lookup | `apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts`          |
+| Skill loading      | `apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.ts`             |
+| Direct dispatcher  | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts` |
+| Domain executors   | `apps/web/src/lib/services/agentic-chat/tools/core/executors/*.ts`              |
 
 ## 3. Canonical Ops Behind Direct Tools
 

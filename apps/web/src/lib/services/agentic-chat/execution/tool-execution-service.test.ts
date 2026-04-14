@@ -409,40 +409,6 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
-		it('should mark tool_batch as failed when any exec op fails', async () => {
-			const toolCall: ChatToolCall = {
-				id: 'call_tool_batch_partial_failure',
-				name: 'tool_batch',
-				arguments: {
-					ops: [
-						{ type: 'exec', op: 'util.web.search', args: { query: 'buildos' } },
-						{ type: 'exec', op: 'util.web.visit', args: {} }
-					]
-				}
-			};
-
-			mockToolExecutor.mockResolvedValueOnce({ results: [] });
-
-			const result = await service.executeTool(toolCall, mockContext, mockToolDefinitions);
-
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('tool_batch completed with 1 failed operation');
-			expect(result.data).toMatchObject({
-				ok: false,
-				summary: {
-					total_ops: 2,
-					succeeded_ops: 1,
-					failed_ops: 1
-				}
-			});
-			expect(mockToolExecutor).toHaveBeenCalledTimes(1);
-			expect(mockToolExecutor).toHaveBeenCalledWith(
-				'web_search',
-				expect.objectContaining({ query: 'buildos' }),
-				mockContext
-			);
-		});
-
 		it('should trim whitespace in tool names', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_trim',

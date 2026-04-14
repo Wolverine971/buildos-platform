@@ -4,8 +4,7 @@ import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import {
 	buildRoundToolPattern,
 	extractGatewayRequiredFieldFailures,
-	extractGatewayRequiredFieldFailuresFromValidationIssues,
-	isRootHelpOnlyRound
+	extractGatewayRequiredFieldFailuresFromValidationIssues
 } from './round-analysis';
 import type { FastToolExecution } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
@@ -39,12 +38,9 @@ function createExecution(params: {
 }
 
 describe('round analysis helpers', () => {
-	it('detects read-only gateway ops and direct write tools in one round pattern', () => {
+	it('detects read-only and write direct tools in one round pattern', () => {
 		const pattern = buildRoundToolPattern([
-			createToolCall('tool_exec', {
-				op: 'onto.task.list',
-				args: { limit: 10 }
-			}),
+			createToolCall('list_onto_tasks', { limit: 10 }),
 			createToolCall('create_onto_task', {
 				project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
 				title: 'Draft chapter outline'
@@ -55,18 +51,6 @@ describe('round analysis helpers', () => {
 			readOps: ['onto.task.list'],
 			hasWriteOps: true
 		});
-	});
-
-	it('recognizes root-help-only rounds and rejects specific help paths', () => {
-		expect(
-			isRootHelpOnlyRound([
-				createToolCall('tool_help', { path: 'root' }),
-				createToolCall('tool_help', { path: '/' })
-			])
-		).toBe(true);
-		expect(isRootHelpOnlyRound([createToolCall('tool_help', { path: 'onto.task' })])).toBe(
-			false
-		);
 	});
 
 	it('aggregates required-field failures from validation issues', () => {
@@ -91,14 +75,11 @@ describe('round analysis helpers', () => {
 		]);
 	});
 
-	it('extracts required-field failures from gateway execution errors', () => {
+	it('extracts required-field failures from direct tool errors', () => {
 		const failures = extractGatewayRequiredFieldFailures([
 			createExecution({
-				name: 'tool_exec',
-				args: {
-					op: 'onto.document.tree.move',
-					args: { project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40' }
-				},
+				name: 'move_document_in_tree',
+				args: { project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40' },
 				success: false,
 				error: 'Missing required parameter: document_id'
 			})

@@ -12,7 +12,7 @@ function buildEvent(action: SkillActivityEvent['action'], path = 'onto.project.c
 		type: 'skill_activity' as const,
 		action,
 		path,
-		via: 'tool_help' as const
+		via: 'skill_load' as const
 	};
 }
 

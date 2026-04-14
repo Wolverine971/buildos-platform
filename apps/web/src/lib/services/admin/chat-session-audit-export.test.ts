@@ -57,7 +57,7 @@ describe('chat-session-audit-export', () => {
 					turn_run_id: 'run-1',
 					stream_run_id: 'stream-1',
 					client_turn_id: 'turn-1',
-					tool_name: 'tool_exec',
+					tool_name: 'get_project_overview',
 					tool_category: 'detail',
 					gateway_op: 'util.project.overview',
 					help_path: null,
@@ -65,7 +65,7 @@ describe('chat-session-audit-export', () => {
 					success: true,
 					execution_time_ms: 32,
 					created_at: '2026-04-03T12:00:12.000Z',
-					arguments: { op: 'util.project.overview', args: { query: '9takes' } },
+					arguments: { query: '9takes' },
 					result: { ok: true }
 				}
 			],
@@ -132,7 +132,7 @@ describe('chat-session-audit-export', () => {
 					model_messages: [
 						{ role: 'user', content: 'What is happening with my project?' }
 					],
-					tool_definitions: [{ name: 'tool_exec' }],
+					tool_definitions: [{ name: 'get_project_overview' }],
 					system_prompt_chars: 4000,
 					message_chars: 120,
 					approx_prompt_tokens: 1030,
@@ -162,7 +162,7 @@ describe('chat-session-audit-export', () => {
 					phase: 'tool',
 					event_type: 'tool_result_received',
 					payload: {
-						tool_name: 'tool_exec',
+						tool_name: 'get_project_overview',
 						canonical_op: 'util.project.overview'
 					},
 					created_at: '2026-04-03T12:00:12.000Z'
@@ -207,9 +207,9 @@ describe('chat-session-audit-export', () => {
 		expect(markdown).toContain('# Chat Session Audit: Test session');
 		expect(markdown).toContain('## Conversation Transcript');
 		expect(markdown).toContain('## Ordered Timeline');
-		expect(markdown).toContain('Tool Execution: tool_exec');
-		expect(markdown).toContain('"tool_name": "tool_exec"');
-		expect(markdown).toContain('"op": "util.project.overview"');
+		expect(markdown).toContain('Tool Execution: get_project_overview');
+		expect(markdown).toContain('"tool_name": "get_project_overview"');
+		expect(markdown).toContain('"gateway_op": "util.project.overview"');
 		expect(markdown).toContain('## Turn Runs');
 		expect(markdown).toContain('FASTCHAT V2 PROMPT SNAPSHOT');
 		expect(markdown).toContain('project.named_status');

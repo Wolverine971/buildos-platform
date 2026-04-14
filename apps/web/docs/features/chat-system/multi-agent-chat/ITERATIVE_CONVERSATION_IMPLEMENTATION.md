@@ -512,7 +512,7 @@ Executor → Planner:
 pnpm dev
 
 # 2. Send complex query via API
-curl -X POST http://localhost:5173/api/agent/stream \
+curl -X POST http://localhost:5173/api/agent/v2/stream \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -577,7 +577,7 @@ curl -X POST http://localhost:5173/api/agent/stream \
 
 ### No Changes Needed
 
-- ✅ `/apps/web/src/routes/api/agent/stream/+server.ts` - Already correct
+- ✅ `/apps/web/src/routes/api/agent/v2/stream/+server.ts` - Already correct
 - ✅ `/apps/web/src/lib/services/agent-executor-service.ts` - DB methods ready for future use
 - ✅ `/apps/web/src/lib/services/agent-context-service.ts` - Working as expected
 

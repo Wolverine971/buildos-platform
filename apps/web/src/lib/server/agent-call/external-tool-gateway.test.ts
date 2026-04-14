@@ -548,7 +548,6 @@ describe('external tool gateway', () => {
 			])
 		);
 		expect(tools.map((tool) => tool.name)).not.toContain('update_onto_task');
-		expect(tools.map((tool) => tool.name)).not.toContain('tool_exec');
 	});
 
 	it('returns only discovery helpers when no scoped direct ops are available', async () => {
@@ -592,7 +591,6 @@ describe('external tool gateway', () => {
 				name: 'list_onto_tasks'
 			}
 		});
-		expect(JSON.stringify(result)).not.toContain('buildos_call');
 	});
 
 	it('returns FORBIDDEN for direct write tools outside the granted scope', async () => {

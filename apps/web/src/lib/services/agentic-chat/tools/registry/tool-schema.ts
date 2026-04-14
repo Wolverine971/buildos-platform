@@ -1,141 +1,128 @@
 // apps/web/src/lib/services/agentic-chat/tools/registry/tool-schema.ts
 import { normalizeGatewayOpName } from './gateway-op-aliases';
-import { getToolHelp } from './tool-help';
+import { getToolRegistry, type RegistryOp } from './tool-registry';
 
 export type ToolSchemaOptions = {
 	include_examples?: boolean;
 	include_schema?: boolean;
 };
 
+type SchemaProperty = {
+	type?: string | string[];
+	description?: string;
+	enum?: unknown[];
+	default?: unknown;
+};
+
 function formatDirectUsage(toolName: string): string {
 	return `${toolName}({ ... })`;
 }
 
-function rewriteToolSchemaString(value: string, toolName: string): string {
-	return value
-		.replace(
-			/execute_op\(\{\s*op:\s*"[^"]+",\s*input:\s*\{ \.\.\. \}\s*\}\)/g,
-			formatDirectUsage(toolName)
-		)
-		.replace(/\bexecute_op\b/g, toolName)
-		.replace(/\btool_exec\b/g, toolName)
-		.replace(/\bbuildos_call\b/g, toolName)
-		.replace(/\binput(?=\s*:\s*\{)/g, 'arguments');
+function getSchemaRequiredArgs(schema: Record<string, any>): string[] {
+	return Array.isArray(schema.required)
+		? schema.required.filter((entry: unknown): entry is string => typeof entry === 'string')
+		: [];
 }
 
-function rewriteExamplePayload(value: unknown, toolName: string): unknown {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) {
-		return value;
-	}
+function formatSchemaArgs(schema: Record<string, any>): Array<Record<string, unknown>> {
+	const properties =
+		schema.properties &&
+		typeof schema.properties === 'object' &&
+		!Array.isArray(schema.properties)
+			? (schema.properties as Record<string, SchemaProperty>)
+			: {};
+	const required = new Set(getSchemaRequiredArgs(schema));
 
-	const record = value as Record<string, unknown>;
-	const executePayload =
-		(record.execute_op as Record<string, unknown> | undefined) ??
-		(record.tool_exec as Record<string, unknown> | undefined) ??
-		(record.buildos_call as Record<string, unknown> | undefined);
-
-	const output: Record<string, unknown> = { ...record };
-	delete output.execute_op;
-	delete output.tool_exec;
-	delete output.buildos_call;
-
-	if (executePayload && typeof executePayload === 'object' && !Array.isArray(executePayload)) {
-		output.tool_call = {
-			name: toolName,
-			arguments:
-				(executePayload.input as Record<string, unknown> | undefined) ??
-				(executePayload.args as Record<string, unknown> | undefined) ??
-				{}
-		};
-	}
-
-	if (Array.isArray(record.sequence)) {
-		output.sequence = record.sequence.map((entry) => {
-			if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return entry;
-			const sequenceRecord = entry as Record<string, unknown>;
-			return {
-				op: sequenceRecord.op,
-				tool_call: {
-					name:
-						typeof sequenceRecord.tool_name === 'string'
-							? sequenceRecord.tool_name
-							: toolName,
-					arguments:
-						(sequenceRecord.input as Record<string, unknown> | undefined) ??
-						(sequenceRecord.args as Record<string, unknown> | undefined) ??
-						{}
-				}
-			};
-		});
-	}
-
-	return output;
+	return Object.entries(properties).map(([name, property]) => ({
+		name,
+		type: Array.isArray(property.type) ? property.type.join('|') : (property.type ?? 'unknown'),
+		required: required.has(name),
+		description: property.description,
+		enum: Array.isArray(property.enum) ? property.enum : undefined,
+		default: property.default
+	}));
 }
 
-function rewriteToolSchemaPayload(
-	value: Record<string, unknown>,
-	toolName: string
-): Record<string, unknown> {
-	const output: Record<string, unknown> = {};
+function buildExampleArguments(schema: Record<string, any>): Record<string, unknown> {
+	const args: Record<string, unknown> = {};
+	const properties =
+		schema.properties &&
+		typeof schema.properties === 'object' &&
+		!Array.isArray(schema.properties)
+			? (schema.properties as Record<string, SchemaProperty>)
+			: {};
 
-	for (const [key, entry] of Object.entries(value)) {
-		if (key === 'usage' && typeof entry === 'string') {
-			output[key] = formatDirectUsage(toolName);
-			continue;
+	for (const name of getSchemaRequiredArgs(schema)) {
+		const property = properties[name];
+		const type = Array.isArray(property?.type) ? property?.type[0] : property?.type;
+		if (Array.isArray(property?.enum) && property.enum.length > 0) {
+			args[name] = property.enum[0];
+		} else if (type === 'array') {
+			args[name] = [];
+		} else if (type === 'boolean') {
+			args[name] = false;
+		} else if (type === 'number' || type === 'integer') {
+			args[name] = 0;
+		} else if (name.endsWith('_id')) {
+			args[name] = `<${name}_uuid>`;
+		} else {
+			args[name] = `<${name}>`;
 		}
-		if (
-			key === 'example_execute_op' ||
-			key === 'example_tool_exec' ||
-			key === 'example_buildos_call'
-		) {
-			output.example_tool_call = rewriteExamplePayload(
-				{ execute_op: entry as Record<string, unknown> },
-				toolName
-			);
-			continue;
-		}
-		if (key === 'examples' && Array.isArray(entry)) {
-			output.examples = entry.map((example) => rewriteExamplePayload(example, toolName));
-			continue;
-		}
-		if (typeof entry === 'string') {
-			output[key] = rewriteToolSchemaString(entry, toolName);
-			continue;
-		}
-		output[key] = entry;
 	}
 
-	output.tool_name = toolName;
-	output.callable_tool = toolName;
-	return output;
+	return args;
+}
+
+function resolveRegistryEntry(reference: string): RegistryOp | undefined {
+	const registry = getToolRegistry();
+	const normalized = normalizeGatewayOpName(reference);
+	return (
+		registry.ops[normalized] ??
+		registry.byToolName[reference] ??
+		registry.byToolName[normalized]
+	);
 }
 
 export function getToolSchema(
 	opReference: string,
 	options: ToolSchemaOptions = {}
 ): Record<string, unknown> {
-	const normalizedOp = normalizeGatewayOpName(opReference.trim());
-	const payload = getToolHelp(normalizedOp, {
-		format: 'full',
-		include_examples: options.include_examples !== false,
-		include_schemas: options.include_schema !== false
-	});
+	const reference = opReference.trim();
+	const entry = resolveRegistryEntry(reference);
 
-	if (payload.type !== 'op') {
+	if (!entry) {
 		return {
 			type: 'not_found',
-			op: normalizedOp,
+			op: normalizeGatewayOpName(reference),
 			message: 'No tool schema found for this op.'
 		};
 	}
 
-	const toolName =
-		typeof payload.tool_name === 'string' && payload.tool_name.trim().length > 0
-			? payload.tool_name.trim()
-			: '';
-
-	return {
-		...rewriteToolSchemaPayload(payload, toolName),
-		type: 'tool_schema'
+	const payload: Record<string, unknown> = {
+		type: 'tool_schema',
+		op: entry.op,
+		tool_name: entry.tool_name,
+		callable_tool: entry.tool_name,
+		summary: entry.description,
+		group: entry.group,
+		kind: entry.kind,
+		entity: entry.entity,
+		action: entry.action,
+		usage: formatDirectUsage(entry.tool_name),
+		required_args: getSchemaRequiredArgs(entry.parameters_schema),
+		args: formatSchemaArgs(entry.parameters_schema)
 	};
+
+	if (options.include_schema !== false) {
+		payload.schema = entry.parameters_schema;
+	}
+
+	if (options.include_examples !== false) {
+		payload.example_tool_call = {
+			name: entry.tool_name,
+			arguments: buildExampleArguments(entry.parameters_schema)
+		};
+	}
+
+	return payload;
 }

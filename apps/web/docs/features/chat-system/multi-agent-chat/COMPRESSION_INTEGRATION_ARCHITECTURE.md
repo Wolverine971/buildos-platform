@@ -33,7 +33,7 @@ The multi-agent system has **three chat history flows**, but only one uses prope
 ```
 Client (conversationHistory)
     ↓
-/api/agent/stream/+server.ts (line 222)
+/api/agent/v2/stream/+server.ts (line 222)
     ↓
 plannerService.processUserMessage({ conversationHistory, ... })
     ↓
@@ -302,7 +302,7 @@ export class AgentPlannerService {
 }
 ```
 
-#### 3. API Endpoint (`/api/agent/stream/+server.ts`)
+#### 3. API Endpoint (`/api/agent/v2/stream/+server.ts`)
 
 **Instantiate ChatCompressionService:**
 
@@ -333,7 +333,7 @@ pnpm run check
 # pnpm test agent-context-service.test.ts
 
 # 3. Manual test with real API
-curl -X POST http://localhost:5173/api/agent/stream \
+curl -X POST http://localhost:5173/api/agent/v2/stream \
   -H "Authorization: Bearer <token>" \
   -d '{
     "message": "Find the marketing project",
@@ -581,7 +581,7 @@ export const DEFAULT_COMPRESSION_CONFIG: {
 pnpm run check
 
 # 2. Test complex query with many turns
-curl -X POST http://localhost:5173/api/agent/stream \
+curl -X POST http://localhost:5173/api/agent/v2/stream \
   -H "Authorization: Bearer <token>" \
   -d '{
     "message": "Find the marketing project and analyze all its tasks",
@@ -624,7 +624,7 @@ psql $DATABASE_URL -c "
 - [ ] Update `AgentPlannerService`:
     - [ ] Add `compressionService` to constructor (optional)
     - [ ] Pass to `AgentContextService`
-- [ ] Update `/api/agent/stream/+server.ts`:
+- [ ] Update `/api/agent/v2/stream/+server.ts`:
     - [ ] Instantiate `ChatCompressionService`
     - [ ] Pass to `AgentPlannerService`
 - [ ] Test:

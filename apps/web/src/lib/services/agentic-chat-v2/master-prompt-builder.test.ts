@@ -1,18 +1,10 @@
 // apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mockEnv = vi.hoisted(() => ({}) as Record<string, string | undefined>);
-
-vi.mock('$env/dynamic/private', () => ({
-	env: mockEnv
-}));
-
 import { buildMasterPrompt } from './master-prompt-builder';
 import { configureLibriRuntimeEnv } from '$lib/services/agentic-chat/tools/libri/config';
 
 afterEach(() => {
-	delete mockEnv.AGENTIC_CHAT_TOOL_GATEWAY;
-	delete mockEnv.FASTCHAT_COMPACT_TOOL_PROMPT;
 	configureLibriRuntimeEnv(null);
 	vi.unstubAllEnvs();
 });
@@ -23,8 +15,7 @@ function extractTagBlock(prompt: string, tag: string): string {
 }
 
 describe('buildMasterPrompt instruction rewrite', () => {
-	it('renders markdown instructions with gateway sections when enabled', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
+	it('renders markdown instructions with canonical gateway/direct tool sections', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		const prompt = buildMasterPrompt({
@@ -52,11 +43,15 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(instructionsBlock).toContain('| `project_creation` |');
 		expect(instructionsBlock).toContain('| `workflow_forecast` |');
 		expect(instructionsBlock).toContain('### Tools');
-		expect(instructionsBlock).toContain('```json');
-		expect(instructionsBlock).toContain('"name": "skill_load"');
-		expect(instructionsBlock).not.toContain('"name": "execute_op"');
-		expect(instructionsBlock).toContain('"name": "get_workspace_overview"');
-		expect(instructionsBlock).toContain('"name": "search_buildos"');
+		expect(instructionsBlock).toContain('Discovery tools:');
+		expect(instructionsBlock).toContain('- skill_load');
+		expect(instructionsBlock).toContain('- tool_search');
+		expect(instructionsBlock).toContain('- tool_schema');
+		expect(instructionsBlock).toContain('Preloaded direct tools:');
+		expect(instructionsBlock).toContain('- get_workspace_overview');
+		expect(instructionsBlock).toContain('- search_buildos');
+		expect(instructionsBlock).not.toContain('```json');
+		expect(instructionsBlock).not.toContain('"parameters"');
 		expect(instructionsBlock).toContain('## Execution Protocol');
 		expect(instructionsBlock).toContain(
 			'If the workflow is multi-step or easy to get wrong, load the relevant skill first.'
@@ -104,7 +99,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('omits overview guidance outside global context', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		const prompt = buildMasterPrompt({
@@ -121,7 +115,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('omits Libri guidance when the Libri feature flag is disabled', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 
 		const prompt = buildMasterPrompt({
@@ -138,7 +131,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('includes Libri in fastchat prompts when server runtime env enables it', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
 		configureLibriRuntimeEnv({
 			LIBRI_INTEGRATION_ENABLED: 'true'
 		});
@@ -152,39 +144,12 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		const contextBlock = extractTagBlock(prompt, 'context');
 
 		expect(instructionsBlock).toContain('| `libri_knowledge` |');
-		expect(instructionsBlock).toContain('"name": "resolve_libri_resource"');
+		expect(instructionsBlock).toContain('- resolve_libri_resource');
 		expect(contextBlock).toContain('<libri_guidance>');
 		expect(contextBlock).toContain('skill_load({ skill: "libri_knowledge" })');
 	});
 
-	it('omits gateway-specific tool sections when gateway mode is disabled', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'false';
-
-		const prompt = buildMasterPrompt({
-			contextType: 'global',
-			projectId: null,
-			entityId: null
-		});
-		const instructionsBlock = extractTagBlock(prompt, 'instructions');
-
-		expect(instructionsBlock).toContain('# BuildOS Agent System Prompt');
-		expect(instructionsBlock).toContain('## Capabilities, Skills, and Tools');
-		expect(instructionsBlock).toContain(
-			'Web research: Search the web, inspect URLs, and pull in current external information when needed.'
-		);
-		expect(instructionsBlock).not.toContain('### Skill Catalog');
-		expect(instructionsBlock).not.toContain('### Tools');
-		expect(instructionsBlock).not.toContain('## Execution Protocol');
-		expect(instructionsBlock).not.toContain(
-			'Use `tool_search` only when the exact op is unknown'
-		);
-		expect(prompt).not.toContain('<overview_guidance>');
-	});
-
-	it('can render compact gateway tool names without duplicating full schemas', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-		mockEnv.FASTCHAT_COMPACT_TOOL_PROMPT = 'true';
-
+	it('renders compact gateway tool names without duplicating full schemas', () => {
 		const prompt = buildMasterPrompt({
 			contextType: 'global',
 			projectId: null,
@@ -203,8 +168,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('falls back project_id to entity_id for project context', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-
 		const prompt = buildMasterPrompt({
 			contextType: 'project',
 			projectId: null,
@@ -215,8 +178,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('nests project scope and project data inside the context block', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-
 		const prompt = buildMasterPrompt({
 			contextType: 'project',
 			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
@@ -254,8 +215,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('adds dedicated project creation workflow guidance in project_create context', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-
 		const prompt = buildMasterPrompt({
 			contextType: 'project_create',
 			projectId: null,
@@ -277,8 +236,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('omits project creation workflow guidance outside project_create context', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-
 		const prompt = buildMasterPrompt({
 			contextType: 'global',
 			projectId: null,
@@ -292,8 +249,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('omits absent scope tags instead of rendering empty or none placeholders', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-
 		const prompt = buildMasterPrompt({
 			contextType: 'global',
 			projectId: null,
@@ -317,8 +272,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('renders focused entity details only when they exist', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-
 		const prompt = buildMasterPrompt({
 			contextType: 'project',
 			projectId: 'project-1',
@@ -380,8 +333,6 @@ describe('buildMasterPrompt instruction rewrite', () => {
 	});
 
 	it('includes recent referents in the context block when provided', () => {
-		mockEnv.AGENTIC_CHAT_TOOL_GATEWAY = 'true';
-
 		const prompt = buildMasterPrompt({
 			contextType: 'global',
 			projectId: null,

@@ -18,13 +18,10 @@ describe('exact-entity-id helpers', () => {
 	});
 
 	it('does not mine referents from schema/search/skill meta-tools', () => {
-		expect(shouldCollectExactEntityReferencesFromToolName('execute_op')).toBe(true);
-		expect(shouldCollectExactEntityReferencesFromToolName('buildos_call')).toBe(true);
-		expect(shouldCollectExactEntityReferencesFromToolName('tool_exec')).toBe(true);
-		expect(shouldCollectExactEntityReferencesFromToolName('tool_batch')).toBe(true);
+		expect(shouldCollectExactEntityReferencesFromToolName('update_onto_task')).toBe(true);
+		expect(shouldCollectExactEntityReferencesFromToolName('create_onto_document')).toBe(true);
 		expect(shouldCollectExactEntityReferencesFromToolName('tool_schema')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('tool_search')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('skill_load')).toBe(false);
-		expect(shouldCollectExactEntityReferencesFromToolName('tool_help')).toBe(false);
 	});
 });

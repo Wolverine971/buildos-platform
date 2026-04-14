@@ -15,7 +15,6 @@ import type {
 	AgentStateItemUpdate,
 	AgentStateUpdate
 } from '$lib/types/agent-chat-enhancement';
-import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { cleanJSONResponse } from '$lib/services/smart-llm/response-parsing';
 import { getOptimalJSONProfile } from '../config/model-selection-config';
@@ -25,14 +24,6 @@ import { sanitizeLogText } from '$lib/utils/logging-helpers';
 import { v4 as uuidv4 } from 'uuid';
 
 const logger = createLogger('AgentStateReconciliation');
-
-function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean {
-	if (!value) return fallback;
-	const normalized = value.trim().toLowerCase();
-	if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-	if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
-	return fallback;
-}
 
 export interface AgentStateMessageSnapshot {
 	role: 'user' | 'assistant' | 'system' | 'tool';
@@ -189,17 +180,11 @@ export class AgentStateReconciliationService {
 	}
 
 	private createLLMService(input: AgentStateReconciliationInput): LLMService {
-		const config = {
+		return new OpenRouterV2Service({
 			supabase: this.supabase,
 			httpReferer: input.httpReferer,
 			appName: 'BuildOS Agentic Chat Reconciliation'
-		};
-
-		if (parseBooleanFlag(process.env.OPENROUTER_V2_ENABLED, false)) {
-			return new OpenRouterV2Service(config);
-		}
-
-		return new SmartLLMService(config);
+		});
 	}
 
 	private buildSystemPrompt(): string {

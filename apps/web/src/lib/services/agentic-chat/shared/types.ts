@@ -236,10 +236,7 @@ export interface AgentChatRequest {
 
 /**
  * Planner context - canonical definition
- * Used by agent-context-service and strategy-analyzer
- *
- * @see agent-context-service.ts - builds this context
- * @see strategy-analyzer.ts - consumes this context
+ * Retained for shared planner-shaped payloads used by older persisted records.
  */
 export interface PlannerContext {
 	/** Instructions for planning and orchestration */

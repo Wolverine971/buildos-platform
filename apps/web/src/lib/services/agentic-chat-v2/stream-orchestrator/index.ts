@@ -11,13 +11,11 @@ import { normalizeFastContextType } from '../prompt-builder';
 import { buildMasterPrompt } from '../master-prompt-builder';
 import { FASTCHAT_LIMITS } from '../limits';
 import {
-	PRIMARY_GATEWAY_EXEC_TOOL_NAME,
-	buildGatewayExecPayload
-} from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
-import {
 	extractGatewayMaterializedToolNames,
 	materializeGatewayTools
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { dev } from '$app/environment';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { sanitizeAssistantFinalText, sanitizeToolPassLeadIn } from './assistant-text-sanitization';
@@ -43,7 +41,6 @@ import {
 	buildGatewayRequiredFieldRepairInstruction,
 	buildProjectCreateNoExecutionRepairInstruction,
 	buildReadLoopRepairInstruction,
-	buildRootHelpLoopRepairInstruction,
 	buildToolValidationRepairInstruction,
 	enforceMutationOutcomeIntegrity,
 	hasGatewayCreateFieldNoProgressFailure,
@@ -53,15 +50,13 @@ import {
 import {
 	buildRoundToolPattern,
 	buildToolRoundFingerprint,
-	didGatewayExecSucceed,
 	extractGatewayExecResultData,
 	extractGatewayRequiredFieldFailures,
 	extractGatewayRequiredFieldFailuresFromValidationIssues,
 	extractUnlinkedDocumentIds,
 	getDocumentTreeRootCount,
 	hasDocumentOrganizationFailureSignal,
-	hasDocumentOrganizationValidationIssue,
-	isRootHelpOnlyRound
+	hasDocumentOrganizationValidationIssue
 } from './round-analysis';
 import { validateToolCalls } from './tool-validation';
 
@@ -147,10 +142,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
 	);
 	const gatewayModeActive =
-		allowedToolNames.has('tool_help') ||
-		allowedToolNames.has('tool_exec') ||
-		allowedToolNames.has(PRIMARY_GATEWAY_EXEC_TOOL_NAME) ||
-		allowedToolNames.has('buildos_call') ||
 		allowedToolNames.has('tool_search') ||
 		allowedToolNames.has('tool_schema') ||
 		allowedToolNames.has('skill_load');
@@ -169,8 +160,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let lastReadOpSetKey: string | null = null;
 	let repeatedReadOpSetCount = 0;
 	let readLoopRepairInjected = false;
-	let rootHelpOnlyRoundCount = 0;
-	let rootHelpRecoveryInjected = false;
 	const gatewayRequiredFieldFailureCounts = new Map<string, number>();
 	let docOrganizationRecoveryEligible = false;
 	let gatewaySchemaRepairInjected = false;
@@ -268,7 +257,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		return maxRequiredFieldFailure;
 	};
 
-	const executeSyntheticGatewayExec = async (
+	const executeSyntheticDirectTool = async (
 		op: string,
 		args: Record<string, any>
 	): Promise<FastToolExecution | null> => {
@@ -280,24 +269,18 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			return null;
 		}
 
-		const execToolName = allowedToolNames.has(PRIMARY_GATEWAY_EXEC_TOOL_NAME)
-			? PRIMARY_GATEWAY_EXEC_TOOL_NAME
-			: allowedToolNames.has('buildos_call')
-				? 'buildos_call'
-				: allowedToolNames.has('tool_exec')
-					? 'tool_exec'
-					: null;
-		if (!execToolName) {
+		const registryEntry = getToolRegistry().ops[normalizeGatewayOpName(op)];
+		const directToolName = registryEntry?.tool_name;
+		if (!directToolName) {
 			return null;
 		}
+		materializeDirectTools([directToolName], 'Autonomous recovery loaded required tool.');
 		const toolCall: ChatToolCall = {
-			id: `auto_gateway_${toolCallsMade}`,
+			id: `auto_tool_${toolCallsMade}`,
 			type: 'function',
 			function: {
-				name: execToolName,
-				arguments: JSON.stringify(
-					buildGatewayExecPayload(execToolName, { op, input: args })
-				)
+				name: directToolName,
+				arguments: JSON.stringify(args)
 			}
 		};
 
@@ -311,7 +294,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		let result: ChatToolResult;
 		try {
-			result = await params.toolExecutor(toolCall);
+			result = await params.toolExecutor(toolCall, tools);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Tool execution failed';
 			result = {
@@ -357,7 +340,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			return false;
 		}
 
-		const treeExecution = await executeSyntheticGatewayExec('onto.document.tree.get', {
+		const treeExecution = await executeSyntheticDirectTool('onto.document.tree.get', {
 			project_id: candidateProjectId,
 			include_documents: true,
 			include_content: false
@@ -367,12 +350,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		}
 
 		const treeResult = extractGatewayExecResultData(treeExecution.result.result);
-		if (!treeResult || treeResult.ok !== true) {
+		if (treeResult && treeResult.ok === false) {
 			return false;
 		}
 
-		const rootCount = getDocumentTreeRootCount(treeResult.result);
-		const unlinkedDocIds = extractUnlinkedDocumentIds(treeResult.result);
+		const documentTree = treeResult ? treeResult.result : treeExecution.result.result;
+		const rootCount = getDocumentTreeRootCount(documentTree);
+		const unlinkedDocIds = extractUnlinkedDocumentIds(documentTree);
 		if (unlinkedDocIds.length === 0) {
 			return false;
 		}
@@ -381,14 +365,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		let failedMoves = 0;
 		for (let index = 0; index < unlinkedDocIds.length; index += 1) {
 			const documentId = unlinkedDocIds[index];
-			const moveExecution = await executeSyntheticGatewayExec('onto.document.tree.move', {
+			const moveExecution = await executeSyntheticDirectTool('onto.document.tree.move', {
 				project_id: candidateProjectId,
 				document_id: documentId,
 				new_position: rootCount + index
 			});
 			if (moveExecution?.result?.success) {
 				const moveResult = extractGatewayExecResultData(moveExecution.result.result);
-				if (moveResult?.ok === true) {
+				if (!moveResult || moveResult.ok === true) {
 					movedCount += 1;
 					continue;
 				}
@@ -411,45 +395,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		finalAssistantText = summary;
 		await onDelta(delta);
 		return true;
-	};
-
-	const attemptRootHelpListingRecovery = async (): Promise<boolean> => {
-		if (
-			!allowAutonomousRecovery ||
-			!gatewayModeActive ||
-			typeof params.toolExecutor !== 'function' ||
-			rootHelpRecoveryInjected
-		) {
-			return false;
-		}
-		rootHelpRecoveryInjected = true;
-
-		const projectListExecution = await executeSyntheticGatewayExec('onto.project.list', {
-			limit: 10
-		});
-		if (toolLimitNotice) {
-			return false;
-		}
-
-		const scopedProjectId =
-			typeof params.projectId === 'string' && isValidUUID(params.projectId)
-				? params.projectId
-				: typeof entityId === 'string' && isValidUUID(entityId)
-					? entityId
-					: undefined;
-
-		const taskListArgs: Record<string, unknown> = {
-			limit: scopedProjectId ? 50 : 25
-		};
-		if (scopedProjectId) {
-			taskListArgs.project_id = scopedProjectId;
-		}
-
-		const taskListExecution = await executeSyntheticGatewayExec('onto.task.list', taskListArgs);
-
-		const projectListSucceeded = didGatewayExecSucceed(projectListExecution);
-		const taskListSucceeded = didGatewayExecSucceed(taskListExecution);
-		return projectListSucceeded || taskListSucceeded;
 	};
 
 	const emitAssistantDelta = async (content: string): Promise<void> => {
@@ -934,12 +879,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			const roundPattern = buildRoundToolPattern(pendingToolCalls);
-			const isRootHelpRound = isRootHelpOnlyRound(pendingToolCalls);
-			if (isRootHelpRound) {
-				rootHelpOnlyRoundCount += 1;
-			} else {
-				rootHelpOnlyRoundCount = 0;
-			}
 
 			if (roundPattern.hasWriteOps) {
 				hasWriteAttempt = true;
@@ -955,23 +894,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					repeatedReadOpSetCount = 1;
 					lastReadOpSetKey = readOpSetKey;
 				}
-			}
-
-			if (
-				gatewayModeActive &&
-				rootHelpOnlyRoundCount >= 2 &&
-				!rootHelpRecoveryInjected &&
-				!toolLimitNotice &&
-				!hasWriteAttempt
-			) {
-				const recovered = await attemptRootHelpListingRecovery();
-				queueRepairInstruction(buildRootHelpLoopRepairInstruction(recovered));
-				readLoopRepairInjected = true;
-				flushRepairInstructions();
-				if (toolLimitNotice) {
-					break;
-				}
-				continue;
 			}
 
 			if (

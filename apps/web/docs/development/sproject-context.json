@@ -145,11 +145,6 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": [
@@ -158,6 +153,11 @@
 				"ProjectInsightRail",
 				"ProjectModalsHost"
 			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
@@ -178,18 +178,6 @@
 			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
 			"type": "page",
 			"components": ["DocumentModal", "GoalEditModal", "PlanEditModal", "MilestoneEditModal"]
-		},
-		{
-			"file": "src/lib/services/agent-context-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["AgentContextService"]
-		},
-		{
-			"file": "src/lib/services/agent-executor-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["AgentExecutorService"]
 		},
 		{
 			"file": "src/lib/services/async-activity-logger.ts",

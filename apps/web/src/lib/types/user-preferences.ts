@@ -7,7 +7,6 @@
  * - ProjectPreferences: Legacy project preference shape (system-managed only; not user-editable UI)
  *
  * @see /apps/web/docs/features/preferences/README.md - Full preferences system documentation
- * @see /apps/web/src/lib/services/agent-context-service.ts - Prompt injection (lines 567-684)
  */
 
 export type CommunicationStyle = 'direct' | 'supportive' | 'socratic';

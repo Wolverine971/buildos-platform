@@ -2,7 +2,7 @@
 import type { RequestHandler } from './$types';
 import type { ChatSessionUpdate } from '@buildos/shared-types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { normalizeContextType } from '../../../../agent/stream/utils/context-utils';
+import { normalizeContextType } from '$lib/services/agentic-chat/shared/context-utils';
 import { queueChatSessionClassification } from '$lib/server/chat-classification.service';
 
 export const POST: RequestHandler = async ({

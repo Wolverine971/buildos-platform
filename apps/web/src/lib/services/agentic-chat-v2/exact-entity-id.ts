@@ -17,5 +17,5 @@ export function shouldCollectExactEntityReferencesFromToolName(
 	toolName: string | undefined
 ): boolean {
 	if (!toolName) return false;
-	return !['tool_help', 'tool_schema', 'tool_search', 'skill_load'].includes(toolName);
+	return !['tool_schema', 'tool_search', 'skill_load'].includes(toolName);
 }

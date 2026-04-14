@@ -53,7 +53,7 @@ describe('entity-resolution helpers', () => {
 		const lastTurnContext: LastTurnContext = {
 			summary: 'Marked two Cadre tasks done.',
 			context_type: 'global',
-			data_accessed: ['execute_op', 'tool_schema'],
+			data_accessed: ['update_onto_task', 'tool_schema'],
 			timestamp: '2026-04-09T22:00:00.000Z',
 			entities: {
 				projects: [
@@ -93,7 +93,7 @@ describe('entity-resolution helpers', () => {
 		const lastTurnContext: LastTurnContext = {
 			summary: 'Retried a plan update.',
 			context_type: 'project',
-			data_accessed: ['tool_schema', 'execute_op'],
+			data_accessed: ['tool_schema', 'update_onto_plan'],
 			timestamp: '2026-04-09T23:31:16.566Z',
 			entities: {
 				projects: [{ id: '<project_id_uuid>', name: 'Placeholder Project' }],

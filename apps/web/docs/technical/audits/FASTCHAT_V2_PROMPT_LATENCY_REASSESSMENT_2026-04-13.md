@@ -230,8 +230,7 @@ Current `master-prompt-builder` includes a large JSON block from `getGatewaySurf
 
 Plan:
 
-1. Add a flag such as `FASTCHAT_COMPACT_TOOL_PROMPT`.
-2. Under the flag, replace the full JSON block with a compact list:
+1. Replace the full JSON block with a compact list:
 
     ```text
     Preloaded direct tools:
@@ -247,8 +246,8 @@ Plan:
     Exact callable schemas are provided in the tool definitions. Use tool_schema for newly discovered write ops.
     ```
 
-3. Keep the actual `tools` payload unchanged.
-4. Replay recent dumps before enabling:
+2. Keep the actual `tools` payload unchanged.
+3. Replay recent dumps before enabling:
     - calendar delete flow
     - project cleanup flow
     - global project overview flow

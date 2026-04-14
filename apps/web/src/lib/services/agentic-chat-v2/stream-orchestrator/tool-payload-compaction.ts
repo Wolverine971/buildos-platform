@@ -1,10 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-payload-compaction.ts
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
-import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import {
-	isGatewayExecToolName,
-	readGatewayExecInput
-} from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
 
 type ToolArgumentParser = (rawArgs: unknown) => { args: Record<string, any>; error?: string };
 
@@ -14,7 +9,7 @@ const MAX_TOOL_LIST_ITEMS = 20;
 export function buildToolPayloadForModel(
 	toolCall: ChatToolCall,
 	result: ChatToolResult,
-	parseToolArguments: ToolArgumentParser
+	_parseToolArguments: ToolArgumentParser
 ): unknown {
 	const basePayload = result.result ?? (result.error ? { error: result.error } : null);
 	if (basePayload === null || basePayload === undefined) {
@@ -22,39 +17,11 @@ export function buildToolPayloadForModel(
 	}
 
 	const toolName = toolCall.function?.name?.trim();
-	if (toolName === 'tool_help' || toolName === 'tool_schema' || toolName === 'skill_load') {
-		return compactToolHelpPayload(basePayload);
+	if (toolName === 'tool_schema' || toolName === 'tool_search' || toolName === 'skill_load') {
+		return compactGatewayMetaPayload(basePayload);
 	}
 
-	if (isGatewayExecToolName(toolName ?? '')) {
-		const parsed = parseToolArguments(toolCall.function?.arguments);
-		const op = typeof parsed.args.op === 'string' ? parsed.args.op.trim() : '';
-		return compactGatewayExecPayload(op, basePayload);
-	}
-
-	if (toolName === 'tool_batch') {
-		return compactGatewayBatchPayload(basePayload);
-	}
-
-	return applyToolPayloadSizeGuard(basePayload);
-}
-
-function compactExampleExecuteOp(payload: unknown): Record<string, any> | undefined {
-	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-		return undefined;
-	}
-
-	const record = payload as Record<string, any>;
-	const compacted: Record<string, any> = { ...record };
-	const input = readGatewayExecInput(record);
-
-	delete compacted.args;
-
-	if (Object.keys(input).length > 0) {
-		compacted.input = input;
-	}
-
-	return compacted;
+	return compactDirectToolPayload(toolName ?? '', basePayload);
 }
 
 function compactExampleToolCall(payload: unknown): Record<string, any> | undefined {
@@ -74,7 +41,7 @@ function compactExampleToolCall(payload: unknown): Record<string, any> | undefin
 	};
 }
 
-function compactToolHelpPayload(payload: unknown): unknown {
+function compactGatewayMetaPayload(payload: unknown): unknown {
 	if (!payload || typeof payload !== 'object') {
 		return payload;
 	}
@@ -120,9 +87,6 @@ function compactToolHelpPayload(payload: unknown): unknown {
 						}
 					: undefined,
 			example_tool_call: compactExampleToolCall(record.example_tool_call),
-			example_execute_op: compactExampleExecuteOp(
-				record.example_execute_op ?? record.example_buildos_call ?? record.example_tool_exec
-			),
 			examples: Array.isArray(record.examples) ? record.examples.slice(0, 4) : []
 		});
 	}
@@ -190,63 +154,18 @@ function compactToolHelpPayload(payload: unknown): unknown {
 	return applyToolPayloadSizeGuard(payload);
 }
 
-function compactGatewayExecPayload(op: string, payload: unknown): unknown {
-	const normalizedOp = normalizeGatewayOpName(op).toLowerCase();
-	if (normalizedOp === 'onto.document.tree.get') {
+function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
+	const normalizedToolName = toolName.trim().toLowerCase();
+	if (normalizedToolName === 'get_document_tree') {
 		return compactDocumentTreeGatewayPayload(payload);
 	}
-	if (normalizedOp === 'onto.document.list' || normalizedOp === 'onto.document.search') {
+	if (
+		normalizedToolName === 'list_onto_documents' ||
+		normalizedToolName === 'search_onto_documents'
+	) {
 		return compactDocumentCollectionGatewayPayload(payload);
 	}
 	return applyToolPayloadSizeGuard(payload);
-}
-
-function compactGatewayBatchPayload(payload: unknown): unknown {
-	if (!payload || typeof payload !== 'object') {
-		return payload;
-	}
-	const record = payload as Record<string, any>;
-	const results = Array.isArray(record.results) ? record.results : [];
-	const compactResults = results.slice(0, MAX_TOOL_LIST_ITEMS).map((entry) => {
-		if (!entry || typeof entry !== 'object') {
-			return entry;
-		}
-		const op =
-			typeof (entry as Record<string, any>).op === 'string'
-				? (entry as Record<string, any>).op
-				: undefined;
-		const compact: Record<string, unknown> = {
-			type:
-				typeof (entry as Record<string, any>).type === 'string'
-					? (entry as Record<string, any>).type
-					: undefined,
-			path:
-				typeof (entry as Record<string, any>).path === 'string'
-					? (entry as Record<string, any>).path
-					: undefined,
-			op,
-			ok: (entry as Record<string, any>).ok
-		};
-		if (typeof (entry as Record<string, any>).error === 'string') {
-			compact.error = (entry as Record<string, any>).error;
-		}
-		if ((entry as Record<string, any>).result !== undefined) {
-			compact.result = op
-				? compactGatewayExecPayload(op, (entry as Record<string, any>).result)
-				: applyToolPayloadSizeGuard((entry as Record<string, any>).result);
-		}
-		return compact;
-	});
-
-	const output: Record<string, unknown> = {
-		ok: record.ok,
-		summary: record.summary,
-		results: compactResults
-	};
-	if (results.length > compactResults.length) {
-		output.results_truncated = results.length - compactResults.length;
-	}
-	return applyToolPayloadSizeGuard(output);
 }
 
 function compactDocumentTreeGatewayPayload(payload: unknown): unknown {

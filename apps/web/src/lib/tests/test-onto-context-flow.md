@@ -496,7 +496,7 @@ update_onto_task({
 
 **Expected Agent Behavior**:
 
-1. **Load Session**: GET /api/agent/stream?session_id=session_123
+1. **Load Session**: GET /api/chat/sessions/session_123?includeVoiceNotes=1
 2. **Restore Context**:
     ```json
     {

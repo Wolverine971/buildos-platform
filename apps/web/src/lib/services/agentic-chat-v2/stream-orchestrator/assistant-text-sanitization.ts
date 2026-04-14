@@ -1,13 +1,9 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization.ts
 const SCRATCHPAD_SENTENCE_PATTERNS = [
-	/\btool_(?:help|exec|batch)\b/i,
 	/\bfunction_call\b/i,
 	/<\s*xai:function_call\b/i,
-	/\bcall\s+tool_(?:help|exec|batch)\b/i,
-	/\btool_help\s*\(/i,
-	/\btool_exec\s*\(/i,
-	/\bexecute_op\s*\(/i,
-	/\bbuildos_call\s*\(/i,
+	/\bcall\s+(?:a\s+)?tool\b/i,
+	/\b[a-z][a-z0-9_]*\s*\(\s*\{?/i,
 	/\b(?:op|input|path|query)\s*[:=]/i,
 	/"(?:op|input|args|path|query)"\s*:/i,
 	/^\s*(?:no\b|no,\s*wait\b|actually\b|correct(?:\s+that)?\b|better\b|to be safe\b|yes\.)/i,

@@ -46,7 +46,7 @@ describe('buildSessionDetailPayload', () => {
 					turn_run_id: 'run-1',
 					stream_run_id: 'stream-1',
 					client_turn_id: 'turn-1',
-					tool_name: 'tool_exec',
+					tool_name: 'get_project_overview',
 					tool_category: 'detail',
 					gateway_op: 'util.project.overview',
 					help_path: null,
@@ -54,7 +54,7 @@ describe('buildSessionDetailPayload', () => {
 					success: true,
 					execution_time_ms: 32,
 					created_at: '2026-04-03T12:00:12.000Z',
-					arguments: { op: 'util.project.overview', args: { query: '9takes' } },
+					arguments: { query: '9takes' },
 					result: { ok: true }
 				}
 			],
@@ -146,7 +146,7 @@ describe('buildSessionDetailPayload', () => {
 					phase: 'tool',
 					event_type: 'tool_result_received',
 					payload: {
-						tool_name: 'tool_exec',
+						tool_name: 'get_project_overview',
 						canonical_op: 'util.project.overview'
 					},
 					created_at: '2026-04-03T12:00:12.000Z'
@@ -202,8 +202,7 @@ describe('buildSessionDetailPayload', () => {
 		expect(payload.turn_runs[0].events[1]?.payload).toMatchObject({
 			tool_result: { ok: true },
 			tool_arguments: {
-				op: 'util.project.overview',
-				args: { query: '9takes' }
+				query: '9takes'
 			},
 			tool_result_source: 'chat_tool_executions'
 		});
@@ -232,11 +231,10 @@ describe('buildSessionDetailPayload', () => {
 			(event) => event.type === 'turn_event' && event.id === 'turn_event:event-2'
 		);
 		expect(toolResultEvent?.payload).toMatchObject({
-			tool_name: 'tool_exec',
+			tool_name: 'get_project_overview',
 			result: { ok: true },
 			arguments: {
-				op: 'util.project.overview',
-				args: { query: '9takes' }
+				query: '9takes'
 			},
 			tool_result_source: 'chat_tool_executions'
 		});

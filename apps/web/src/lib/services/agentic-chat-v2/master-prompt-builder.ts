@@ -1,9 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts
 import type { ChatContextType } from '@buildos/shared-types';
-import {
-	isFastChatCompactToolPromptEnabled,
-	isToolGatewayEnabled
-} from '$lib/services/agentic-chat/tools/registry/gateway-config';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
@@ -70,7 +66,7 @@ function formatContextGuidanceTags(params: {
 	includeDailyBriefGuardrails?: boolean;
 }): string[] {
 	return [
-		...(isToolGatewayEnabled() && params.contextType === 'global'
+		...(params.contextType === 'global'
 			? [wrapTag('overview_guidance', OVERVIEW_GUIDANCE)]
 			: []),
 		...(isLibriIntegrationEnabled() &&
@@ -191,10 +187,6 @@ function formatSkillCatalogForPrompt(): string {
 		.join('\n');
 }
 
-function formatGatewayToolsForPrompt(contextType: ChatContextType): string {
-	return JSON.stringify(getGatewaySurfaceForContextType(contextType), null, 2);
-}
-
 function formatGatewayToolSummaryForPrompt(contextType: ChatContextType): string {
 	const tools = getGatewaySurfaceForContextType(contextType);
 	const discoveryToolNames = new Set(['skill_load', 'tool_search', 'tool_schema']);
@@ -217,7 +209,7 @@ function formatGatewayToolSummaryForPrompt(contextType: ChatContextType): string
 	].join('\n');
 }
 
-function buildInstructionsMarkdown(gatewayEnabled: boolean, contextType: ChatContextType): string {
+function buildInstructionsMarkdown(contextType: ChatContextType): string {
 	const sections: string[] = [
 		'# BuildOS Agent System Prompt',
 		'',
@@ -240,69 +232,63 @@ function buildInstructionsMarkdown(gatewayEnabled: boolean, contextType: ChatCon
 		formatBuildOSCapabilitiesForPrompt()
 	];
 
-	if (gatewayEnabled) {
-		const toolPromptLines = isFastChatCompactToolPromptEnabled()
-			? [formatGatewayToolSummaryForPrompt(contextType)]
-			: ['```json', formatGatewayToolsForPrompt(contextType), '```'];
-
-		sections.push(
-			'',
-			'### Skill Catalog',
-			'',
-			'Use `skill_load` to fetch a skill playbook before executing multi-step or stateful workflows.',
-			'',
-			'| Skill ID | Description |',
-			'|---|---|',
-			formatSkillCatalogForPrompt(),
-			'',
-			'### Tools',
-			'',
-			'The current context already has a small set of direct tools preloaded. Use those first. Use discovery only when the exact direct tool is still missing.',
-			'',
-			...toolPromptLines,
-			'',
-			'## Execution Protocol',
-			'',
-			'This section covers how to use tools safely. It combines the tool discovery workflow with the safety constraints for writes and ID handling.',
-			'',
-			'### Discovery workflow',
-			'',
-			'1. Start with current context, capabilities, and skill metadata to orient before searching.',
-			'2. If the workflow is multi-step or easy to get wrong, load the relevant skill first.',
-			'3. If a preloaded direct tool already fits the job, call it directly.',
-			'4. Use `tool_search` only when the exact op is still unknown after context and skill guidance. Search for the operation you need, not workspace data. Good examples: `{"capability":"overview"}`, `{"entity":"task","kind":"write","query":"update existing task state"}`, and `{"group":"onto","entity":"document","kind":"write","query":"move document in tree"}`.',
-			'5. `tool_search` returns canonical ops plus direct tool names. If a search result is not already loaded, it becomes available as a direct tool for the next response in the same turn.',
-			'6. Use `tool_schema` when an op is new in-turn or any write arguments are uncertain.',
-			'7. After `tool_schema`, call the direct tool by name with concrete arguments. Do not route normal work through a generic executor.',
-			'',
-			'### Direct tool protocol',
-			'',
-			'1. The callable surface is the direct tool name, for example `update_onto_task({ task_id, state_key })` or `get_project_overview({ project_id })`.',
-			'2. `tool_search` and `tool_schema` help you identify the exact tool and exact arguments, but they are not the final action for normal reads and writes.',
-			'3. Put dynamic fields such as `task_id`, `project_id`, `title`, `state_key`, or `parent_id` directly in the tool arguments.',
-			'4. If any required field is missing, do not execute. Ask one concise question or resolve it with a read op first.',
-			'',
-			'### Safe execution rules',
-			'',
-			'- Always pass valid, concrete tool arguments — never guess.',
-			'- Reuse IDs and field values already present in structured context, recent history, or prior tool results. Avoid redundant reads.',
-			'- **Never truncate, abbreviate, or elide IDs.** Pass the full exact UUID for every `*_id` or `entity_id` argument — no `"..."`, prefixes, or short forms.',
-			'- **Never use placeholders.** Do not pass `"__TASK_ID_FROM_ABOVE__"`, `"<task_id_uuid>"`, `"REPLACE_ME"`, `"TBD"`, `"none"`, `"null"`, or `"undefined"` in any `*_id` field.',
-			'- If a required ID is unknown, fetch it first with a read/list/search op — or ask one concise clarifying question. Do not emit a write that depends on a missing ID.',
-			"- Before any update or delete, confirm the entity's exact UUID from current structured context and copy it directly into the args.",
-			'- When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.',
-			'- Do not use tools speculatively. If you do not yet know the schema or required fields, run `tool_schema` first.',
-			'- `tool_search` is for discovering which op/tool to use. Query for operations like `"update existing task state"` or `"move document in tree"`, not workspace entities by name. Use ontology search/list/get ops to find actual projects, tasks, documents, goals, plans, milestones, and risks.',
-			'- Only call `onto.<entity>.get`, `onto.<entity>.update`, or `onto.<entity>.delete` when you have the exact `*_id`.',
-			'',
-			'### Entity resolution order',
-			'',
-			"1. Reuse exact IDs already in structured context, recent history, or prior tool results when the user's follow-up clearly points to one of them.",
-			'2. If the entity is not yet known, search within the current project first when project scope is known.',
-			'3. If project scope is unknown or project search does not resolve the target, search across the workspace.',
-			'4. If search returns multiple plausible matches, ask one concise clarification question before writing.'
-		);
-	}
+	sections.push(
+		'',
+		'### Skill Catalog',
+		'',
+		'Use `skill_load` to fetch a skill playbook before executing multi-step or stateful workflows.',
+		'',
+		'| Skill ID | Description |',
+		'|---|---|',
+		formatSkillCatalogForPrompt(),
+		'',
+		'### Tools',
+		'',
+		'The current context already has a small set of direct tools preloaded. Use those first. Use discovery only when the exact direct tool is still missing.',
+		'',
+		formatGatewayToolSummaryForPrompt(contextType),
+		'',
+		'## Execution Protocol',
+		'',
+		'This section covers how to use tools safely. It combines the tool discovery workflow with the safety constraints for writes and ID handling.',
+		'',
+		'### Discovery workflow',
+		'',
+		'1. Start with current context, capabilities, and skill metadata to orient before searching.',
+		'2. If the workflow is multi-step or easy to get wrong, load the relevant skill first.',
+		'3. If a preloaded direct tool already fits the job, call it directly.',
+		'4. Use `tool_search` only when the exact op is still unknown after context and skill guidance. Search for the operation you need, not workspace data. Good examples: `{"capability":"overview"}`, `{"entity":"task","kind":"write","query":"update existing task state"}`, and `{"group":"onto","entity":"document","kind":"write","query":"move document in tree"}`.',
+		'5. `tool_search` returns canonical ops plus direct tool names. If a search result is not already loaded, it becomes available as a direct tool for the next response in the same turn.',
+		'6. Use `tool_schema` when an op is new in-turn or any write arguments are uncertain.',
+		'7. After `tool_schema`, call the direct tool by name with concrete arguments. Do not route normal work through a generic executor.',
+		'',
+		'### Direct tool protocol',
+		'',
+		'1. The callable surface is the direct tool name, for example `update_onto_task({ task_id, state_key })` or `get_project_overview({ project_id })`.',
+		'2. `tool_search` and `tool_schema` help you identify the exact tool and exact arguments, but they are not the final action for normal reads and writes.',
+		'3. Put dynamic fields such as `task_id`, `project_id`, `title`, `state_key`, or `parent_id` directly in the tool arguments.',
+		'4. If any required field is missing, do not execute. Ask one concise question or resolve it with a read op first.',
+		'',
+		'### Safe execution rules',
+		'',
+		'- Always pass valid, concrete tool arguments — never guess.',
+		'- Reuse IDs and field values already present in structured context, recent history, or prior tool results. Avoid redundant reads.',
+		'- **Never truncate, abbreviate, or elide IDs.** Pass the full exact UUID for every `*_id` or `entity_id` argument — no `"..."`, prefixes, or short forms.',
+		'- **Never use placeholders.** Do not pass `"__TASK_ID_FROM_ABOVE__"`, `"<task_id_uuid>"`, `"REPLACE_ME"`, `"TBD"`, `"none"`, `"null"`, or `"undefined"` in any `*_id` field.',
+		'- If a required ID is unknown, fetch it first with a read/list/search op — or ask one concise clarifying question. Do not emit a write that depends on a missing ID.',
+		"- Before any update or delete, confirm the entity's exact UUID from current structured context and copy it directly into the args.",
+		'- When multiple related changes are needed, batch them in a single turn rather than asking the user to confirm each one.',
+		'- Do not use tools speculatively. If you do not yet know the schema or required fields, run `tool_schema` first.',
+		'- `tool_search` is for discovering which op/tool to use. Query for operations like `"update existing task state"` or `"move document in tree"`, not workspace entities by name. Use ontology search/list/get ops to find actual projects, tasks, documents, goals, plans, milestones, and risks.',
+		'- Only call `onto.<entity>.get`, `onto.<entity>.update`, or `onto.<entity>.delete` when you have the exact `*_id`.',
+		'',
+		'### Entity resolution order',
+		'',
+		"1. Reuse exact IDs already in structured context, recent history, or prior tool results when the user's follow-up clearly points to one of them.",
+		'2. If the entity is not yet known, search within the current project first when project scope is known.',
+		'3. If project scope is unknown or project search does not resolve the target, search across the workspace.',
+		'4. If search returns multiple plausible matches, ask one concise clarification question before writing.'
+	);
 
 	sections.push(
 		'',
@@ -381,13 +367,12 @@ function buildInstructionsMarkdown(gatewayEnabled: boolean, contextType: ChatCon
 }
 
 export function buildMasterPrompt(context: MasterPromptContext): string {
-	const gatewayEnabled = isToolGatewayEnabled();
 	const includeDailyBriefGuardrails =
 		context.contextType === 'daily_brief' || shouldApplyDailyBriefGuardrails(context.data);
 	const effectiveProjectId =
 		context.projectId ??
 		(context.contextType === 'project' ? (context.entityId ?? null) : null);
-	const instructions = buildInstructionsMarkdown(gatewayEnabled, context.contextType);
+	const instructions = buildInstructionsMarkdown(context.contextType);
 	const serializedData = serializeData(context.data);
 
 	const contextBlock = [

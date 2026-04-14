@@ -10,7 +10,7 @@
 
 ## Summary
 
-Created a new **AgentChatModal** component that replaces the existing ChatModal in the Navigation bar. The modal connects to the multi-agent system backend via `/api/agent/stream` and displays agent activity, plan execution, and iterative conversations.
+Created a new **AgentChatModal** component that replaces the existing ChatModal in the Navigation bar. The modal connects to the multi-agent system backend via `/api/agent/v2/stream` and displays agent activity, plan execution, and iterative conversations.
 
 ---
 
@@ -22,7 +22,7 @@ Created a new **AgentChatModal** component that replaces the existing ChatModal 
 
 **Features:**
 
-- ✅ SSE streaming from `/api/agent/stream` endpoint
+- ✅ SSE streaming from `/api/agent/v2/stream` endpoint
 - ✅ Real-time display of agent activity
 - ✅ Shows planner analysis and planning
 - ✅ Displays executor spawning and conversations
@@ -111,7 +111,7 @@ import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 ### 1. User Types Message
 
 ```
-User Input → sendMessage() → POST /api/agent/stream
+User Input → sendMessage() → POST /api/agent/v2/stream
 ```
 
 ### 2. SSE Events Received
@@ -506,7 +506,7 @@ case 'error':
 
 ### No messages received
 
-- Verify `/api/agent/stream` endpoint is running
+- Verify `/api/agent/v2/stream` endpoint is running
 - Check network tab for SSE connection
 - Verify authentication is working
 
@@ -530,7 +530,7 @@ case 'error':
 | ------------------------ | ------ | -------------------------------- |
 | Component created        | ✅     | AgentChatModal.svelte            |
 | Integrated in Navigation | ✅     | Replaces ChatModal               |
-| SSE streaming working    | ✅     | Connects to /api/agent/stream    |
+| SSE streaming working    | ✅     | Connects to /api/agent/v2/stream |
 | Agent activity displayed | ✅     | Analysis, plans, steps           |
 | Plan visualization       | ✅     | Purple cards with step badges    |
 | Executor activity shown  | ✅     | Spawn, tool calls, results       |

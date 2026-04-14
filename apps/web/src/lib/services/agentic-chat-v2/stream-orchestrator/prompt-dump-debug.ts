@@ -7,7 +7,6 @@ import {
 	type PromptCostBreakdown,
 	type PromptSectionCost
 } from '../prompt-cost-breakdown';
-import { isGatewayExecToolName } from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseToolArguments } from './tool-arguments';
@@ -216,21 +215,13 @@ export function appendRuntimeMetadataToPromptDump(
 				const toolName = execution.toolCall.function?.name?.trim() ?? 'unknown';
 				const rawArgs = execution.toolCall.function?.arguments;
 				const parsed = parseToolArguments(execution.toolCall.function?.arguments);
-				const op =
-					isGatewayExecToolName(toolName) && typeof parsed.args.op === 'string'
-						? parsed.args.op
-						: undefined;
 				const success = execution.result.success === true ? 'ok' : 'error';
 				const error =
 					typeof execution.result.error === 'string' &&
 					execution.result.error.trim().length > 0
 						? execution.result.error.trim()
 						: null;
-				lines.push(
-					`${index + 1}. ${toolName}${op ? ` (${op})` : ''} => ${success}${
-						error ? ` | ${error}` : ''
-					}`
-				);
+				lines.push(`${index + 1}. ${toolName} => ${success}${error ? ` | ${error}` : ''}`);
 				lines.push(`   raw_args: ${toSingleLinePreview(rawArgs)}`);
 				if (parsed.error) {
 					lines.push(`   parsed_error: ${parsed.error}`);

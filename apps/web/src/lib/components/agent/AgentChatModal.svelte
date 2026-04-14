@@ -61,8 +61,6 @@
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import { createProjectInvalidation } from '$lib/utils/invalidation';
 	import type { VoiceNote } from '$lib/types/voice-notes';
-	import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-	import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 	import {
 		buildFastChatContextCacheKey,
 		isFastChatContextCacheFresh,
@@ -1848,60 +1846,6 @@
 
 	// Keep schema-discovery calls visible so users can see gateway activity.
 	const HIDDEN_THINKING_TOOLS = new Set<string>();
-	const GATEWAY_OP_TOOL_OVERRIDES: Record<string, string> = (() => {
-		const registry = getToolRegistry();
-		const entries = Object.values(registry.ops).map((op) => [op.op, op.tool_name] as const);
-		return Object.fromEntries(entries);
-	})();
-	const ONTO_ENTITY_PLURALS: Record<string, string> = {
-		project: 'projects',
-		task: 'tasks',
-		goal: 'goals',
-		plan: 'plans',
-		document: 'documents',
-		milestone: 'milestones',
-		risk: 'risks',
-		event: 'events'
-	};
-
-	function toOntologyPlural(entity: string): string {
-		return ONTO_ENTITY_PLURALS[entity] ?? `${entity}s`;
-	}
-
-	function mapGatewayOpToToolName(op: string): string | undefined {
-		const requested = op.trim();
-		if (!requested) return undefined;
-		const normalized = normalizeGatewayOpName(requested);
-		const override = GATEWAY_OP_TOOL_OVERRIDES[normalized];
-		if (override) return override;
-
-		const parts = normalized.split('.');
-		if (parts.length !== 3 || parts[0] !== 'onto') {
-			return undefined;
-		}
-
-		const entity = parts[1];
-		const action = parts[2];
-		if (!entity || !action) return undefined;
-
-		switch (action) {
-			case 'list':
-				return `list_onto_${toOntologyPlural(entity)}`;
-			case 'search':
-				return `search_onto_${toOntologyPlural(entity)}`;
-			case 'get':
-				return `get_onto_${entity}_details`;
-			case 'create':
-				return `create_onto_${entity}`;
-			case 'update':
-				return `update_onto_${entity}`;
-			case 'delete':
-				return `delete_onto_${entity}`;
-			default:
-				return undefined;
-		}
-	}
-
 	function normalizeToolDisplayPayload(
 		toolName: string,
 		argsJson: string | Record<string, any>
@@ -1921,28 +1865,10 @@
 			};
 		}
 
-		if (toolName !== 'tool_exec') {
-			return {
-				hidden: false,
-				toolName,
-				args: argsJson,
-				originalToolName: toolName
-			};
-		}
-
-		const parsed = safeParseArgs(argsJson as string | Record<string, unknown>);
-		const op = typeof parsed.op === 'string' ? parsed.op.trim() : '';
-		const nestedArgs =
-			parsed.args && typeof parsed.args === 'object' && !Array.isArray(parsed.args)
-				? (parsed.args as Record<string, any>)
-				: {};
-		const mappedToolName = op ? mapGatewayOpToToolName(op) : undefined;
-
 		return {
 			hidden: false,
-			toolName: mappedToolName ?? toolName,
-			args: mappedToolName ? nestedArgs : parsed,
-			gatewayOp: op || undefined,
+			toolName,
+			args: argsJson,
 			originalToolName: toolName
 		};
 	}
@@ -2136,48 +2062,6 @@
 		string,
 		(args: any) => { action: string; target?: string }
 	> = {
-		tool_help: (args) => ({
-			action: 'Checking tool guidance',
-			target:
-				typeof args?.path === 'string' && args.path.trim().length > 0
-					? args.path.trim()
-					: 'root'
-		}),
-		tool_batch: (args) => {
-			const ops = Array.isArray(args?.ops) ? args.ops : [];
-			const helpPaths = ops
-				.filter((op: any) => op?.type === 'help' && typeof op.path === 'string')
-				.map((op: any) => op.path as string);
-			const execOps = ops
-				.filter((op: any) => op?.type === 'exec' && typeof op.op === 'string')
-				.map((op: any) => op.op as string);
-
-			if (helpPaths.length > 0 && execOps.length === 0) {
-				return {
-					action: 'Checking tool guidance',
-					target: formatListPreview(helpPaths, 3)
-				};
-			}
-
-			if (helpPaths.length > 0 && execOps.length > 0) {
-				return {
-					action: `Running tool batch (${ops.length} ops)`,
-					target: `help: ${formatListPreview(helpPaths)}`
-				};
-			}
-
-			if (execOps.length > 0) {
-				return {
-					action: `Running tool batch (${ops.length} ops)`,
-					target: `exec: ${formatListPreview(execOps)}`
-				};
-			}
-
-			return {
-				action: 'Running tool batch',
-				target: ops.length > 0 ? `${ops.length} ops` : undefined
-			};
-		},
 		search_ontology: (args) => ({
 			action: 'Searching workspace',
 			target: args?.query || args?.search
@@ -2429,25 +2313,7 @@
 		set_project_calendar: (args) => ({
 			action: 'Updating project calendar',
 			target: resolveEntityName('project', args?.project_id)
-		}),
-		tool_exec: (args) => {
-			const op = typeof args?.op === 'string' ? args.op.trim() : '';
-			const opArgs =
-				args?.args && typeof args.args === 'object' && !Array.isArray(args.args)
-					? (args.args as Record<string, any>)
-					: {};
-			const target =
-				(typeof opArgs.query === 'string' && opArgs.query) ||
-				(typeof opArgs.search === 'string' && opArgs.search) ||
-				(typeof opArgs.title === 'string' && opArgs.title) ||
-				(typeof opArgs.name === 'string' && opArgs.name) ||
-				(typeof opArgs.url === 'string' && opArgs.url) ||
-				undefined;
-			return {
-				action: op ? `Executing ${op}` : 'Executing tool operation',
-				target
-			};
-		}
+		})
 	};
 
 	const TOOL_ACTION_PAST_TENSE: Record<string, string> = {
@@ -2576,11 +2442,6 @@
 
 		if (!formatter) {
 			// Fallback for unknown tools
-			if (toolName === 'tool_exec') {
-				if (status === 'pending') return 'Executing tool operation...';
-				if (status === 'completed') return 'Executed tool operation';
-				return `Tool operation failed${errorSuffix}`;
-			}
 			if (status === 'pending') return `Using tool: ${toolName}`;
 			if (status === 'completed') return `Tool ${toolName} completed`;
 			return `Tool ${toolName} failed${errorSuffix}`;
@@ -2614,11 +2475,6 @@
 		} catch (e) {
 			if (dev) {
 				console.error('[AgentChat] Error parsing tool arguments:', e);
-			}
-			if (toolName === 'tool_exec') {
-				return status === 'failed'
-					? `Tool operation failed${errorSuffix}`
-					: 'Executing tool operation...';
 			}
 			return `Using tool: ${toolName}`;
 		}
@@ -3824,17 +3680,6 @@
 						);
 					}
 					resolvedToolName = rawResultToolName;
-				}
-
-				if (resolvedToolName === 'tool_exec') {
-					const gatewayOp =
-						toolResult?.data && typeof toolResult.data === 'object'
-							? (toolResult.data as Record<string, unknown>).op
-							: undefined;
-					if (typeof gatewayOp === 'string' && gatewayOp.trim()) {
-						resolvedToolName =
-							mapGatewayOpToToolName(gatewayOp.trim()) ?? resolvedToolName;
-					}
 				}
 
 				recordDataMutation(resolvedToolName, resolvedArgs, success, toolResult);

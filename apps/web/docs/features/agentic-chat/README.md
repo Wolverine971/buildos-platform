@@ -2,7 +2,7 @@
 
 # Agentic Chat (Current Implementation)
 
-> Last updated: 2026-04-12
+> Last updated: 2026-04-14
 > Scope: Runtime behavior in `apps/web` (UI + APIs + tools + persistence)
 
 This is the canonical documentation for the chat system currently running in the web app.
@@ -16,11 +16,6 @@ Primary production path:
 - UI: `apps/web/src/lib/components/agent/AgentChatModal.svelte`
 - Stream API: `POST /api/agent/v2/stream`
 - Cancel API: `POST /api/agent/v2/stream/cancel`
-
-Legacy path kept in codebase:
-
-- `POST /api/agent/stream` (planner/executor orchestration stack)
-- `GET /api/agent/stream` (legacy session list/fetch)
 
 The modal currently posts turns to `/api/agent/v2/stream`.
 
@@ -187,23 +182,19 @@ Defaults in `history-composer.ts`:
 
 Tool selection in V2 (`tool-selector.ts`):
 
-- If `AGENTIC_CHAT_TOOL_GATEWAY` is enabled:
-    - returns `skill_load`, `tool_search`, and `tool_schema`
-    - also returns context-specific direct tools, such as `get_project_overview`, `create_onto_task`, and `update_onto_task`
-    - materializes additional direct tools after `tool_search` or `tool_schema` when needed
-- If disabled:
-    - returns context tool set from `tools.config.ts` (write tools included)
-    - calendar tools are filtered by context/message heuristics
+- returns `skill_load`, `tool_search`, and `tool_schema`
+- also returns context-specific direct tools, such as `get_project_overview`, `create_onto_task`, and `update_onto_task`
+- materializes additional direct tools after `tool_search` or `tool_schema` when needed
 
 Tool execution paths:
 
-- Gateway mode: discovery tools inspect skills/tools, and registry-backed direct tools execute the underlying canonical ops.
-- Direct mode: `ChatToolExecutor` dispatches named tools to domain executors.
+- Discovery tools inspect skills/tools.
+- Registry-backed direct tools execute the underlying canonical ops through `ToolExecutionService`.
+- `ChatToolExecutor` dispatches named tools to domain executors.
 
 Provider selection:
 
-- `OPENROUTER_V2_ENABLED=true` -> `OpenRouterV2Service`
-- otherwise -> `SmartLLMService`
+- Agentic chat uses `OpenRouterV2Service`.
 
 ## 8. Persistence Model
 
@@ -229,17 +220,9 @@ Session finalization from modal close:
 
 - `POST /api/chat/sessions/[id]/close` updates context/entity + queues classification when needed.
 
-## 9. Legacy `/api/agent/stream` Status
+## 9. Retired Legacy Route
 
-`/api/agent/stream` remains implemented with the older planner/executor stack (`StreamHandler` + `AgentChatOrchestrator`).
-
-It still provides:
-
-- planner/plan/executor lifecycle events
-- legacy GET session listing/fetch
-- prewarm integration utilities used by that path
-
-Current modal turn streaming is on `/api/agent/v2/stream`, not this legacy route.
+The old planner/executor stream route has been removed from the current codebase. Session restore now uses `GET /api/chat/sessions/[id]`, and current modal turn streaming uses `/api/agent/v2/stream`.
 
 ## 10. Folder Structure (Consolidated)
 

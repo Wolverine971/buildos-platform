@@ -33,10 +33,9 @@ export type PromptEvalScenario = {
 const DEFAULT_FORBIDDEN_ASSISTANT_PATTERNS = [
 	'No, wait',
 	'args need',
-	'tool_exec(',
 	'< xai:function_call',
 	'Correct that.',
-	'Actually, for tool_exec'
+	'raw tool protocol'
 ];
 
 const SCENARIOS: PromptEvalScenario[] = [

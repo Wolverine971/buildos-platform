@@ -417,10 +417,10 @@ type LegacyAgentSSEMessage =
   | { type: 'executor_instructions'; instructions: string };
 
 export type SkillActivityEvent = {
-  type: 'skill_activity';
-  action: 'requested' | 'loaded';
-  path: string;
-  via: 'tool_help' | 'skill_load';
+	type: 'skill_activity';
+	action: 'requested' | 'loaded';
+	path: string;
+	via: 'skill_load';
 };
 
 export interface AgentTimingSummary {

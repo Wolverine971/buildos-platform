@@ -2,7 +2,6 @@
 import type { ChatToolCall } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
-import { isGatewayExecToolName } from '$lib/services/agentic-chat/tools/core/gateway-exec-utils';
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
@@ -42,29 +41,7 @@ export function extractGatewayRequiredFieldFailures(
 	};
 
 	for (const { toolCall, result } of roundExecutions) {
-		const toolName = toolCall.function?.name?.trim();
-		if (!toolName) continue;
-
-		if (isGatewayExecToolName(toolName)) {
-			const parsed = parseToolArguments(toolCall.function?.arguments);
-			addFailure(parsed.args.op, result.error);
-			continue;
-		}
-
-		if (toolName === 'tool_batch') {
-			const payload = result.result;
-			const entries =
-				payload &&
-				typeof payload === 'object' &&
-				Array.isArray((payload as Record<string, any>).results)
-					? ((payload as Record<string, any>).results as Array<Record<string, any>>)
-					: [];
-			for (const entry of entries) {
-				if (!entry || typeof entry !== 'object') continue;
-				if (entry.type !== 'exec') continue;
-				addFailure(entry.op, entry.error);
-			}
-		}
+		addFailure(getGatewayExecOp({ toolCall, result }), result.error);
 	}
 
 	return Array.from(failures.values());
@@ -87,7 +64,6 @@ export function extractGatewayRequiredFieldFailuresFromValidationIssues(
 
 export function hasDocumentOrganizationValidationIssue(issues: ToolValidationIssue[]): boolean {
 	return issues.some((issue) => {
-		if (!isGatewayExecToolName(issue.toolName ?? '')) return false;
 		const op = issue.op ?? '';
 		if (op !== 'onto.document.delete' && op !== 'onto.document.tree.move') return false;
 		return issue.errors.some((error) =>
@@ -104,47 +80,16 @@ export function buildRoundToolPattern(toolCalls: ChatToolCall[]): RoundToolPatte
 		const toolName = toolCall.function?.name?.trim();
 		if (!toolName) continue;
 
-		if (isGatewayExecToolName(toolName)) {
-			const parsed = parseToolArguments(toolCall.function?.arguments);
-			const op = typeof parsed.args.op === 'string' ? parsed.args.op.trim() : '';
-			if (!op) continue;
-			const normalizedOp = normalizeGatewayOpName(op);
-			if (isWriteLikeOperation(normalizedOp)) {
-				hasWriteOps = true;
-			} else {
-				readOps.add(normalizedOp.toLowerCase());
-			}
-			continue;
-		}
+		const registryOp = getToolRegistry().byToolName[toolName]?.op;
+		const operationName = registryOp ?? toolName;
 
-		if (toolName === 'tool_batch') {
-			const parsed = parseToolArguments(toolCall.function?.arguments);
-			const ops = Array.isArray(parsed.args.ops) ? parsed.args.ops : [];
-			for (const entry of ops) {
-				if (!entry || typeof entry !== 'object') continue;
-				if ((entry as Record<string, any>).type !== 'exec') continue;
-				const op =
-					typeof (entry as Record<string, any>).op === 'string'
-						? (entry as Record<string, any>).op.trim()
-						: '';
-				if (!op) continue;
-				const normalizedOp = normalizeGatewayOpName(op);
-				if (isWriteLikeOperation(normalizedOp)) {
-					hasWriteOps = true;
-				} else {
-					readOps.add(normalizedOp.toLowerCase());
-				}
-			}
-			continue;
-		}
-
-		if (isWriteLikeOperation(toolName)) {
+		if (isWriteLikeOperation(operationName)) {
 			hasWriteOps = true;
 			continue;
 		}
 
-		if (isReadLikeOperation(toolName)) {
-			readOps.add(toolName.toLowerCase());
+		if (isReadLikeOperation(operationName)) {
+			readOps.add(operationName.toLowerCase());
 		}
 	}
 
@@ -232,7 +177,6 @@ export function isReadLikeOperation(name: string): boolean {
 	const normalized = name.trim().toLowerCase();
 	if (!normalized) return false;
 	return (
-		normalized === 'tool_help' ||
 		normalized === 'tool_search' ||
 		normalized === 'tool_schema' ||
 		normalized === 'skill_load' ||
@@ -277,26 +221,6 @@ export function isWriteLikeOperation(name: string): boolean {
 	);
 }
 
-export function isRootHelpOnlyRound(toolCalls: ChatToolCall[]): boolean {
-	if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
-		return false;
-	}
-
-	for (const toolCall of toolCalls) {
-		const toolName = toolCall.function?.name?.trim();
-		if (toolName !== 'tool_help') {
-			return false;
-		}
-		const parsed = parseToolArguments(toolCall.function?.arguments);
-		const rawPath = parsed.args.path;
-		if (!isRootHelpPath(rawPath)) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
 export function didGatewayExecSucceed(execution: FastToolExecution | null): boolean {
 	if (!execution || execution.result.success !== true) {
 		return false;
@@ -311,13 +235,8 @@ export function didGatewayExecSucceed(execution: FastToolExecution | null): bool
 export function getGatewayExecOp(execution: FastToolExecution): string | null {
 	const toolName = execution.toolCall.function?.name?.trim();
 	if (!toolName) return null;
-	if (!isGatewayExecToolName(toolName)) {
-		const registryEntry = getToolRegistry().byToolName[toolName];
-		return registryEntry?.op ?? null;
-	}
-	const parsed = parseToolArguments(execution.toolCall.function?.arguments);
-	const op = typeof parsed.args.op === 'string' ? normalizeGatewayOpName(parsed.args.op) : '';
-	return op || null;
+	const registryEntry = getToolRegistry().byToolName[toolName];
+	return registryEntry?.op ?? null;
 }
 
 export function didGatewayOpExecute(toolExecutions: FastToolExecution[], op: string): boolean {
@@ -371,16 +290,6 @@ function collectDocumentTreeNodeIds(nodes: unknown, output: Set<string>): void {
 			collectDocumentTreeNodeIds(children, output);
 		}
 	}
-}
-
-function isRootHelpPath(path: unknown): boolean {
-	if (typeof path !== 'string') {
-		return true;
-	}
-	const normalized = path.trim().toLowerCase();
-	return (
-		normalized.length === 0 || normalized === 'root' || normalized === '/' || normalized === '.'
-	);
 }
 
 function stableStringify(value: unknown): string {

@@ -2,7 +2,7 @@
 /**
  * Tool Registry Builder
  *
- * Generates a stable op-to-tool mapping and metadata index used by tool_help/tool_exec.
+ * Generates a stable op-to-tool mapping and metadata index used by discovery and direct tools.
  */
 
 import type { ChatToolDefinition } from '@buildos/shared-types';

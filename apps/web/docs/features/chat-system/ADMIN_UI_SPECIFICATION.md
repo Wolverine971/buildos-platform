@@ -942,4 +942,4 @@ WHERE created_at >= $startDate;
 
 - **Database Schema:** `supabase/migrations/20251029_create_agent_architecture.sql`
 - **Agent System:** `apps/web/docs/features/chat-system/multi-agent-chat/README.md`
-- **API Endpoints:** `apps/web/src/routes/api/agent/stream/+server.ts`
+- **API Endpoints:** `apps/web/src/routes/api/agent/v2/stream/+server.ts`
