@@ -22,7 +22,7 @@ What should happen:
 3. If essential information is missing, it should ask at most 1-2 focused clarification questions.
 4. If there is enough information, it should create the project with minimal appropriate structure.
 5. The expected execution surface is direct project creation guidance and the exact project creation op:
-    - help path: `onto.project.create`
+    - canonical op: `onto.project.create`
     - tool: `create_onto_project`
 6. After successful creation, chat should shift from `project_create` to `project` context.
 7. Follow-up turns should operate on the new project without making the user restate the project ID.
@@ -34,7 +34,7 @@ Project creation is not yet modeled as a first-class capability/skill pair in th
 So for now, the expected pattern is:
 
 - `project_create` context gives the model the right intent framing
-- the model should use exact project creation help
+- the model should use exact project creation guidance
 - then call `create_onto_project`
 - then continue in `project` context after the context shift
 
@@ -44,7 +44,6 @@ That is the correct behavior for the current system.
 
 Use these settings while testing:
 
-- `AGENTIC_CHAT_TOOL_GATEWAY=true`
 - prompt observability enabled
 - admin chat audit page available
 

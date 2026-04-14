@@ -4,7 +4,7 @@
 
 **Date:** 2026-04-03  
 **Last updated:** 2026-04-12
-**Scope:** `apps/web` agentic chat v2 with emphasis on prompt behavior, direct-tool routing, overview retrieval, and gateway-mode skill usage.
+**Scope:** `apps/web` agentic chat v2 with emphasis on prompt behavior, direct-tool routing, overview retrieval, and skill usage.
 
 For the current hybrid direct-tool acceptance matrix, also use [Agentic Chat Hybrid Tool Surface Prompt Tests](/Users/djwayne/buildos-platform/docs/testing/AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md).
 
@@ -44,7 +44,7 @@ File:
 
 What it covers:
 
-- gateway-mode instructions are present when `AGENTIC_CHAT_TOOL_GATEWAY=true`
+- canonical direct-tool instructions are present
 - capability catalog is injected
 - skill catalog is injected
 - overview guidance is present
@@ -59,8 +59,8 @@ What it covers:
 
 Files:
 
-- `/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/registry/tool-help.test.ts`
 - `/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.test.ts`
+- `/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat/tools/core/tool-schema-compat.test.ts`
 - `/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts`
 
 What it covers:
@@ -69,7 +69,7 @@ What it covers:
 - `tool_search` and `tool_schema` support progressive disclosure
 - gateway mode preloads context-specific direct tools
 - direct-tool schemas stay aligned with canonical registry ops
-- legacy compatibility coverage remains only for compatibility paths
+- direct-tool schemas stay compact and callable by the exact tool names
 
 ### Runtime repair and tool-loop guardrails
 
@@ -79,12 +79,12 @@ File:
 
 What it covers:
 
-- repeated gateway loops terminate cleanly
+- repeated read/discovery loops terminate cleanly
 - repeated validation failures do not keep executing invalid writes
 - exact canonical op schemas are validated before execution
 - tool-call scratchpad leakage is blocked
 - malformed or repeated tool patterns are repaired or stopped
-- mixed-validity tool batches do not poison all sibling calls
+- mixed-validity tool rounds do not poison all sibling calls
 
 ### Workspace / project overview retrieval
 
@@ -122,7 +122,8 @@ From the repo root:
 ```bash
 pnpm -C apps/web exec vitest run \
   src/lib/services/agentic-chat-v2/master-prompt-builder.test.ts \
-  src/lib/services/agentic-chat/tools/registry/tool-help.test.ts \
+  src/lib/services/agentic-chat/tools/skills/skill-load.test.ts \
+  src/lib/services/agentic-chat/tools/core/tool-schema-compat.test.ts \
   src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts \
   src/lib/services/agentic-chat/tools/core/executors/overview-helper.test.ts \
   src/lib/services/agentic-chat/tools/core/executors/utility-executor.overview.test.ts \
@@ -133,7 +134,6 @@ pnpm -C apps/web exec vitest run \
 
 Use these scenarios in the running app with:
 
-- `AGENTIC_CHAT_TOOL_GATEWAY=true`
 - prompt dumps enabled
 - UI tool trace visible, if available
 

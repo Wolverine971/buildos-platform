@@ -185,28 +185,30 @@ The current system has many context types. The simplification target should be:
 ```ts
 type ChatScope = 'global' | 'project' | 'calendar' | 'daily_brief';
 
-type ChatMode =
-  | 'default'
-  | 'create'
-  | 'audit'
-  | 'forecast'
-  | 'brain_dump'
-  | 'recovery';
+type ChatMode = 'default' | 'create' | 'audit' | 'forecast' | 'brain_dump' | 'recovery';
 
 type ChatFocus = {
-  entityType: 'project' | 'task' | 'document' | 'plan' | 'goal' | 'milestone' | 'event' | 'contact';
-  entityId: string;
-  entityName?: string;
+	entityType:
+		| 'project'
+		| 'task'
+		| 'document'
+		| 'plan'
+		| 'goal'
+		| 'milestone'
+		| 'event'
+		| 'contact';
+	entityId: string;
+	entityName?: string;
 };
 
 type TurnContext = {
-  scope: ChatScope;
-  mode: ChatMode;
-  focus?: ChatFocus;
-  workingSet: unknown;
-  memory: ConversationMemory;
-  permissions: PermissionSnapshot;
-  completeness: ContextCompleteness;
+	scope: ChatScope;
+	mode: ChatMode;
+	focus?: ChatFocus;
+	workingSet: unknown;
+	memory: ConversationMemory;
+	permissions: PermissionSnapshot;
+	completeness: ContextCompleteness;
 };
 ```
 
@@ -355,15 +357,15 @@ Rules are not all the same kind of thing. Simplification requires putting each r
 
 ### Rule Placement
 
-| Rule Type | Owner | Example |
-|---|---|---|
-| Global invariant | System prompt and runtime | Never claim a write succeeded unless execution succeeded. |
-| Permission rule | Runtime | Do not mutate a project the user cannot edit. |
-| Workflow rule | Skill | For document rehoming, use the document tree move workflow. |
-| Schema rule | Tool schema | `task_id` is required and must be a full UUID. |
-| Data rule | Context/data model docs | Documents have a tree structure, not ontology edges. |
-| UI rule | Event/UI contract | Emit terminal `done` exactly once. |
-| Recovery rule | Runtime policy | Stop after repeated required-field failures and ask one concise question. |
+| Rule Type        | Owner                     | Example                                                                   |
+| ---------------- | ------------------------- | ------------------------------------------------------------------------- |
+| Global invariant | System prompt and runtime | Never claim a write succeeded unless execution succeeded.                 |
+| Permission rule  | Runtime                   | Do not mutate a project the user cannot edit.                             |
+| Workflow rule    | Skill                     | For document rehoming, use the document tree move workflow.               |
+| Schema rule      | Tool schema               | `task_id` is required and must be a full UUID.                            |
+| Data rule        | Context/data model docs   | Documents have a tree structure, not ontology edges.                      |
+| UI rule          | Event/UI contract         | Emit terminal `done` exactly once.                                        |
+| Recovery rule    | Runtime policy            | Stop after repeated required-field failures and ask one concise question. |
 
 ### Global Guardrails
 
@@ -442,19 +444,12 @@ They should not define the conceptual architecture. They should expose state cha
 The simplification target is an entity/state event model:
 
 ```ts
-type StreamEntity =
-  | 'session'
-  | 'assistant'
-  | 'context'
-  | 'tool'
-  | 'memory'
-  | 'timing'
-  | 'error';
+type StreamEntity = 'session' | 'assistant' | 'context' | 'tool' | 'memory' | 'timing' | 'error';
 
 type StreamEvent = {
-  entity: StreamEntity;
-  state: string;
-  data: unknown;
+	entity: StreamEntity;
+	state: string;
+	data: unknown;
 };
 ```
 
@@ -462,19 +457,19 @@ This avoids growing a new top-level event type for every product feature.
 
 ### Suggested Event Mapping
 
-| Current Event | Simplified Entity | Notes |
-|---|---|---|
-| `session` | `session:ready` | Session is resolved or created. |
-| `agent_state` | `assistant:state` | Thinking, executing, waiting, cancelled. |
-| `context_usage` | `context:usage` | Token budget and compression status. |
-| `text_delta` | `assistant:text_delta` | User-visible assistant stream. |
-| `tool_call` | `tool:called` | Tool intent and args summary. |
-| `tool_result` | `tool:completed` or `tool:failed` | Tool observation. |
-| `context_shift` | `context:shifted` | Scope/focus changed. |
-| `last_turn_context` | `memory:updated` | Continuity payload for next turn. |
-| `timing` | `timing:summary` | Turn latency breakdown. |
-| `error` | `error:terminal` | Terminal failure. |
-| `done` | `assistant:done` | Final turn boundary. |
+| Current Event       | Simplified Entity                 | Notes                                    |
+| ------------------- | --------------------------------- | ---------------------------------------- |
+| `session`           | `session:ready`                   | Session is resolved or created.          |
+| `agent_state`       | `assistant:state`                 | Thinking, executing, waiting, cancelled. |
+| `context_usage`     | `context:usage`                   | Token budget and compression status.     |
+| `text_delta`        | `assistant:text_delta`            | User-visible assistant stream.           |
+| `tool_call`         | `tool:called`                     | Tool intent and args summary.            |
+| `tool_result`       | `tool:completed` or `tool:failed` | Tool observation.                        |
+| `context_shift`     | `context:shifted`                 | Scope/focus changed.                     |
+| `last_turn_context` | `memory:updated`                  | Continuity payload for next turn.        |
+| `timing`            | `timing:summary`                  | Turn latency breakdown.                  |
+| `error`             | `error:terminal`                  | Terminal failure.                        |
+| `done`              | `assistant:done`                  | Final turn boundary.                     |
 
 The UI can still render rich activity, but it should come from a small state vocabulary.
 

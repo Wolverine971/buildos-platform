@@ -11,7 +11,7 @@ Use this document to verify that the OpenClaw-style hybrid surface is working en
 
 - Context-specific direct tools are preloaded.
 - `skill_load`, `tool_search`, and `tool_schema` remain available for progressive disclosure.
-- Normal work executes through direct tools such as `create_onto_task`, not through a generic `execute_op`.
+- Normal work executes through direct tools such as `create_onto_task`, not through a generic catch-all execution tool.
 - The UI, admin timeline, audit export, and prompt dumps clearly show which tool and canonical operation were used.
 
 ## Current Dump Check
@@ -37,22 +37,21 @@ Observed status:
 
 Run these checks on every manual prompt scenario.
 
-| Surface                    | Expected evidence                                                                                     | Failure signal                                                                             |
-| -------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Prompt dump header         | `Tools (...)` includes `skill_load`, `tool_search`, `tool_schema`, plus context-specific direct tools | Only discovery tools are present, or normal context tools are missing                      |
-| Prompt dump header         | No model-facing `execute_op` in the tool list                                                         | `execute_op` appears as a normal callable tool                                             |
-| Prompt dump runtime footer | Actual executions list direct tool names and canonical ops when known                                 | Footer only shows vague gateway/meta execution                                             |
-| Turn events                | `tool_name` is populated for direct tools                                                             | Direct tools disappear from turn event payloads                                            |
-| Turn events                | `canonical_op` is populated for direct tools such as `onto.document.create`                           | `canonical_op` is null for direct-tool calls                                               |
-| `chat_tool_executions`     | `tool_name` and `gateway_op` both identify the call                                                   | `gateway_op` is null for registry-backed direct tools                                      |
-| Admin session timeline     | Title reads like `Tool Execution: create_onto_document (onto.document.create)`                        | Timeline only shows `Tool Execution: create_onto_document` or `Tool Execution: execute_op` |
-| Chat UI                    | User sees clean tool activity, not raw JSON/function-call chatter                                     | Raw schema/protocol leaks into the visible answer                                          |
+| Surface                    | Expected evidence                                                                                     | Failure signal                                                        |
+| -------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Prompt dump header         | `Tools (...)` includes `skill_load`, `tool_search`, `tool_schema`, plus context-specific direct tools | Only discovery tools are present, or normal context tools are missing |
+| Prompt dump header         | No model-facing generic catch-all execution tool in the tool list                                     | A generic execution wrapper appears as a normal callable tool         |
+| Prompt dump runtime footer | Actual executions list direct tool names and canonical ops when known                                 | Footer only shows vague gateway/meta execution                        |
+| Turn events                | `tool_name` is populated for direct tools                                                             | Direct tools disappear from turn event payloads                       |
+| Turn events                | `canonical_op` is populated for direct tools such as `onto.document.create`                           | `canonical_op` is null for direct-tool calls                          |
+| `chat_tool_executions`     | `tool_name` and `gateway_op` both identify the call                                                   | `gateway_op` is null for registry-backed direct tools                 |
+| Admin session timeline     | Title reads like `Tool Execution: create_onto_document (onto.document.create)`                        | Timeline omits the canonical operation label                          |
+| Chat UI                    | User sees clean tool activity, not raw JSON/function-call chatter                                     | Raw schema/protocol leaks into the visible answer                     |
 
 ## Manual Test Setup
 
 Use:
 
-- `AGENTIC_CHAT_TOOL_GATEWAY=true`
 - prompt dumps enabled
 - a clean test project when testing writes
 - admin chat session detail page open after each run
@@ -76,7 +75,7 @@ A prompt passes when:
 - mutations include concrete required arguments,
 - ambiguous mutations ask one concise clarification instead of guessing,
 - discovery tools are used only when the direct tool is missing or the schema is uncertain,
-- `execute_op` is not exposed or used as the normal terminal action,
+- no generic catch-all execution tool is exposed or used as the normal terminal action,
 - UI and admin surfaces show both `tool_name` and canonical operation.
 
 ## Prompt Test Matrix

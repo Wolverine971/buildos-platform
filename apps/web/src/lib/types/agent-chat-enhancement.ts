@@ -330,8 +330,7 @@ export enum ChatStrategy {
 }
 
 /**
- * Result of project creation intent analysis (imported for type safety)
- * Full definition in: services/agentic-chat/analysis/project-creation-analyzer.ts
+ * Result of project creation intent analysis.
  */
 export interface ProjectCreationIntentAnalysis {
 	hasSufficientContext: boolean;

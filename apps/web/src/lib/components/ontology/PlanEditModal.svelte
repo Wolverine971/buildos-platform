@@ -29,6 +29,7 @@
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -135,17 +136,45 @@
 	);
 	const detailsFormId = $derived(`plan-edit-${planId}-details`);
 
-	// Build focus for chat about this plan
-	const entityFocus = $derived.by((): ProjectFocus | null => {
-		if (!plan || !projectId) return null;
-		return {
-			focusType: 'plan',
-			focusEntityId: planId,
-			focusEntityName: plan.name || 'Untitled Plan',
-			projectId: projectId,
-			projectName: plan.project?.name || 'Project'
-		};
-	});
+	function parsePlanDateInput(value: string | null | undefined): Date | null {
+		if (!value) return null;
+		const date = new Date(`${value}T00:00:00`);
+		return Number.isNaN(date.getTime()) ? null : date;
+	}
+
+	function formatPlanDate(value: string | null | undefined, fallback = 'Not set'): string {
+		const date = parsePlanDateInput(value);
+		if (!date) return fallback;
+
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	function formatRecordDate(value: string | null | undefined, fallback = '—'): string {
+		if (!value) return fallback;
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return fallback;
+
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	function formatPlanTypeLabel(value: string | null | undefined): string {
+		if (!value || value === 'plan.default') return 'General plan';
+
+		return value
+			.replace(/^plan\./, '')
+			.split(/[._]/)
+			.filter(Boolean)
+			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+			.join(' ');
+	}
 
 	const dateError = $derived.by(() => {
 		if (startDate && endDate) {
@@ -156,6 +185,53 @@
 			}
 		}
 		return '';
+	});
+
+	const planTypeLabel = $derived.by(() => formatPlanTypeLabel(typeKey || plan?.type_key));
+	const timelineSummary = $derived.by(() => {
+		if (startDate && endDate) {
+			return `${formatPlanDate(startDate)} to ${formatPlanDate(endDate)}`;
+		}
+
+		if (startDate) return `Starts ${formatPlanDate(startDate)}`;
+		if (endDate) return `Ends ${formatPlanDate(endDate)}`;
+		return 'No timeline defined yet';
+	});
+	const timelineMeta = $derived.by(() => {
+		if (dateError) {
+			return {
+				label: 'Date issue',
+				variant: 'error' as SurfaceBadgeVariant
+			};
+		}
+
+		if (stateKey === 'completed') {
+			return {
+				label: 'Completed',
+				variant: 'success' as SurfaceBadgeVariant
+			};
+		}
+
+		if (startDate || endDate) {
+			return {
+				label: 'Scheduled',
+				variant: 'info' as SurfaceBadgeVariant
+			};
+		}
+
+		return null;
+	});
+
+	// Build focus for chat about this plan
+	const entityFocus = $derived.by((): ProjectFocus | null => {
+		if (!plan || !projectId) return null;
+		return {
+			focusType: 'plan',
+			focusEntityId: planId,
+			focusEntityName: plan.name || 'Untitled Plan',
+			projectId: projectId,
+			projectName: plan.project?.name || 'Project'
+		};
 	});
 
 	const formDisabled = $derived(isSaving || isDeleting);
@@ -465,9 +541,6 @@
 												clearly before adjusting execution details.
 											</p>
 										</div>
-										<Badge variant={stateMeta.variant} size="sm"
-											>{stateMeta.label}</Badge
-										>
 									</div>
 								</CardHeader>
 								<CardBody class="space-y-4">
@@ -508,115 +581,22 @@
 										/>
 									</FormField>
 
-									<FormField
-										label="Details"
-										labelFor="plan-details"
-										uppercase={false}
-										showOptional={false}
-									>
-										<Textarea
+									<div class="h-[22rem] sm:h-[26rem] lg:h-[30rem]">
+										<RichMarkdownEditor
 											id="plan-details"
+											label="Details"
 											bind:value={planDetails}
-											enterkeyhint="next"
-											rows={2}
 											placeholder="Execution outline, milestones, runbook..."
 											disabled={formDisabled}
-											size="md"
+											maxLength={50000}
+											size="base"
+											fillHeight={true}
+											helpText="Markdown supported"
+											onSave={handleSave}
+											voiceNoteSource="plan-edit-modal"
+											voiceNoteLinkedEntityType="plan"
+											voiceNoteLinkedEntityId={planId}
 										/>
-									</FormField>
-								</CardBody>
-							</Card>
-
-							<Card variant="default" class="wt-paper">
-								<CardHeader variant="transparent" texture="none">
-									<div
-										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
-									>
-										<div>
-											<div class="flex items-center gap-2">
-												<CalendarRange
-													class="h-4 w-4 text-muted-foreground"
-												/>
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
-												>
-													Execution
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												State and timeline
-											</h3>
-										</div>
-										<p
-											class="text-xs text-muted-foreground sm:max-w-52 sm:text-right"
-										>
-											Keep the schedule and state together so progress is
-											obvious at a glance.
-										</p>
-									</div>
-								</CardHeader>
-								<CardBody class="space-y-4">
-									<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-										<FormField
-											label="State"
-											labelFor="plan-state"
-											uppercase={false}
-											showOptional={false}
-										>
-											<Select
-												id="plan-state"
-												bind:value={stateKey}
-												disabled={formDisabled}
-												size="sm"
-											>
-												{#each PLAN_STATES as state}
-													<option value={state}>
-														{state === 'draft'
-															? 'Draft'
-															: state === 'active'
-																? 'Active'
-																: state === 'completed'
-																	? 'Completed'
-																	: state}
-													</option>
-												{/each}
-											</Select>
-										</FormField>
-
-										<FormField
-											label="Start"
-											labelFor="plan-start"
-											uppercase={false}
-											showOptional={false}
-										>
-											<TextInput
-												id="plan-start"
-												bind:value={startDate}
-												type="date"
-												inputmode="numeric"
-												enterkeyhint="next"
-												disabled={formDisabled}
-												size="sm"
-											/>
-										</FormField>
-
-										<FormField
-											label="End"
-											labelFor="plan-end"
-											error={dateError}
-											uppercase={false}
-											showOptional={false}
-										>
-											<TextInput
-												id="plan-end"
-												bind:value={endDate}
-												type="date"
-												inputmode="numeric"
-												enterkeyhint="done"
-												disabled={formDisabled}
-												size="sm"
-											/>
-										</FormField>
 									</div>
 								</CardBody>
 							</Card>
@@ -640,98 +620,172 @@
 										<p
 											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 										>
-											At a glance
+											Controls
 										</p>
 										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Plan snapshot
+											Plan operations
 										</h3>
 									</div>
-									<Badge variant={stateMeta.variant} size="sm"
-										>{stateMeta.label}</Badge
-									>
 								</div>
 							</CardHeader>
-							<CardBody class="space-y-3">
-								<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
-									<p
-										class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+							<CardBody padding="none">
+								<div class="divide-y divide-border/70">
+									<section
+										class="px-3 py-3 sm:px-4"
+										aria-label="Workflow: {stateMeta.label}"
 									>
-										State
-									</p>
-									<p class="mt-1 text-sm font-semibold text-foreground">
-										{stateMeta.label}
-									</p>
-									<p class="mt-1 text-xs text-muted-foreground">
-										{stateMeta.note}
-									</p>
-								</div>
+										<div class="flex items-center gap-2">
+											<FileText class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Workflow
+											</p>
+										</div>
 
-								<div class="rounded-lg border border-border/70 bg-card p-3">
-									<div class="space-y-2">
-										<p
-											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-										>
-											Timeline
-										</p>
-										<div class="grid grid-cols-1 gap-1.5 text-xs">
-											<div class="flex items-center justify-between gap-2">
-												<span class="text-muted-foreground">Start</span>
-												<span class="text-right text-foreground">
-													{startDate
-														? new Date(
-																startDate + 'T00:00:00'
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: 'Not set'}
-												</span>
+										<div class="mt-2 space-y-2">
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="plan-state"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													State
+												</label>
+												<Select
+													id="plan-state"
+													bind:value={stateKey}
+													disabled={formDisabled}
+													size="sm"
+												>
+													{#each PLAN_STATES as state}
+														<option value={state}>
+															{state === 'draft'
+																? 'Draft'
+																: state === 'active'
+																	? 'Active'
+																	: state === 'completed'
+																		? 'Completed'
+																		: state}
+														</option>
+													{/each}
+												</Select>
 											</div>
-											<div class="flex items-center justify-between gap-2">
-												<span class="text-muted-foreground">End</span>
-												<span class="text-right text-foreground">
-													{endDate
-														? new Date(
-																endDate + 'T00:00:00'
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: 'Not set'}
-												</span>
+
+											<p class="text-xs text-muted-foreground">
+												{stateMeta.note}
+											</p>
+										</div>
+									</section>
+
+									<section
+										class={dateError
+											? 'px-3 py-3 sm:px-4 tx tx-static tx-weak'
+											: 'px-3 py-3 sm:px-4'}
+										aria-label="Timeline: {timelineSummary}"
+									>
+										<div class="flex items-center justify-between gap-2">
+											<div class="flex items-center gap-2">
+												<CalendarRange
+													class="h-4 w-4 text-muted-foreground"
+												/>
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Timeline
+												</p>
 											</div>
-											<div class="flex items-center justify-between gap-2">
+											{#if timelineMeta}
+												<Badge variant={timelineMeta.variant} size="sm"
+													>{timelineMeta.label}</Badge
+												>
+											{/if}
+										</div>
+
+										{#if dateError}
+											<div
+												class="mt-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2"
+											>
+												<p class="text-xs font-semibold text-destructive">
+													{dateError}
+												</p>
+											</div>
+										{/if}
+
+										<div class="mt-2 grid grid-cols-1 gap-2">
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="plan-start"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Start
+												</label>
+												<TextInput
+													id="plan-start"
+													bind:value={startDate}
+													type="date"
+													inputmode="numeric"
+													enterkeyhint="next"
+													disabled={formDisabled}
+													size="sm"
+												/>
+											</div>
+
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="plan-end"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													End
+												</label>
+												<TextInput
+													id="plan-end"
+													bind:value={endDate}
+													type="date"
+													inputmode="numeric"
+													enterkeyhint="done"
+													disabled={formDisabled}
+													size="sm"
+												/>
+											</div>
+										</div>
+									</section>
+
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2">
+											<Clock class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Record
+											</p>
+										</div>
+										<div class="mt-2 space-y-1.5 text-sm">
+											<div class="flex items-center justify-between gap-3">
+												<span class="text-muted-foreground">Type</span>
+												<span class="text-right text-foreground"
+													>{planTypeLabel}</span
+												>
+											</div>
+											<div class="flex items-center justify-between gap-3">
 												<span class="text-muted-foreground">Created</span>
 												<span class="text-right text-foreground">
-													{plan.created_at
-														? new Date(
-																plan.created_at
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: '—'}
+													{formatRecordDate(plan.created_at)}
 												</span>
 											</div>
-											<div class="flex items-center justify-between gap-2">
+											<div class="flex items-center justify-between gap-3">
 												<span class="text-muted-foreground">Updated</span>
 												<span class="text-right text-foreground">
-													{plan.updated_at
-														? new Date(
-																plan.updated_at
-															).toLocaleDateString(undefined, {
-																month: 'short',
-																day: 'numeric',
-																year: 'numeric'
-															})
-														: '—'}
+													{formatRecordDate(plan.updated_at)}
 												</span>
 											</div>
 										</div>
-									</div>
+									</section>
 								</div>
 							</CardBody>
 						</Card>

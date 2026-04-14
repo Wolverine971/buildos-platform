@@ -32,29 +32,29 @@ function createToolDefs(): Array<{
 		{
 			type: 'function',
 			function: {
-				name: 'tool_help',
-				description: 'Help',
+				name: 'tool_schema',
+				description: 'Load a BuildOS tool schema',
 				parameters: {
 					type: 'object',
 					properties: {
-						path: { type: 'string' }
+						op: { type: 'string' }
 					},
-					required: ['path']
+					required: ['op']
 				}
 			}
 		},
 		{
 			type: 'function',
 			function: {
-				name: 'tool_exec',
-				description: 'Exec',
+				name: 'update_onto_task',
+				description: 'Update a task',
 				parameters: {
 					type: 'object',
 					properties: {
-						op: { type: 'string' },
-						args: { type: 'object' }
+						task_id: { type: 'string' },
+						description: { type: 'string' }
 					},
-					required: ['op', 'args']
+					required: ['task_id']
 				}
 			}
 		}
@@ -77,9 +77,9 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 								tool_calls: [
 									{
 										index: 0,
-										id: 'tool_exec:0',
+										id: 'update_onto_task:0',
 										type: 'function',
-										function: { name: 'tool_exec', arguments: '' }
+										function: { name: 'update_onto_task', arguments: '' }
 									}
 								]
 							},
@@ -151,12 +151,11 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 								tool_calls: [
 									{
 										index: 0,
-										id: 'tool_exec:0',
+										id: 'update_onto_task:0',
 										type: 'function',
 										function: {
-											name: 'tool_exec',
-											arguments:
-												'{"op":"onto.task.update","args":{"task_id":"abc"'
+											name: 'update_onto_task',
+											arguments: '{"task_id":"abc","description":"done"'
 										}
 									}
 								]
@@ -199,7 +198,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 		const args = (toolEvent as any)?.tool_call?.function?.arguments;
 		expect(typeof args).toBe('string');
 		expect(args).not.toBe('{}');
-		expect(args).toContain('"op":"onto.task.update"');
+		expect(args).toContain('"task_id":"abc"');
 	});
 
 	it('preserves malformed assistant tool_call args when replaying history to the model', async () => {
@@ -236,7 +235,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 			fetch: fetchMock as unknown as typeof fetch
 		});
 
-		const malformedArgs = '{"op":"onto.task.update","args":{"task_id":"abc"';
+		const malformedArgs = '{"task_id":"abc","description":"done"';
 		const messages = [
 			{ role: 'system', content: 'You are helpful.' },
 			{ role: 'user', content: 'Update that task.' },
@@ -245,10 +244,10 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 				content: '',
 				tool_calls: [
 					{
-						id: 'tool_exec:0',
+						id: 'update_onto_task:0',
 						type: 'function',
 						function: {
-							name: 'tool_exec',
+							name: 'update_onto_task',
 							arguments: malformedArgs
 						}
 					}
@@ -256,7 +255,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 			},
 			{
 				role: 'tool',
-				tool_call_id: 'tool_exec:0',
+				tool_call_id: 'update_onto_task:0',
 				content: JSON.stringify({
 					error: 'Tool validation failed: Invalid JSON in tool arguments'
 				})
@@ -287,7 +286,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 		expect(outboundAssistant).toBeDefined();
 		const outboundArgs = outboundAssistant?.tool_calls?.[0]?.function?.arguments;
 		expect(typeof outboundArgs).toBe('string');
-		expect(outboundArgs).toContain('"op":"onto.task.update"');
+		expect(outboundArgs).toContain('"task_id":"abc"');
 		expect(outboundArgs).not.toBe('{}');
 	});
 
@@ -334,10 +333,10 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 				reasoning_content: '',
 				tool_calls: [
 					{
-						id: 'tool_help:0',
+						id: 'tool_schema:0',
 						type: 'function',
 						function: {
-							name: 'tool_help',
+							name: 'tool_schema',
 							arguments: JSON.stringify({})
 						}
 					}
@@ -345,9 +344,9 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 			},
 			{
 				role: 'tool',
-				tool_call_id: 'tool_help:0',
+				tool_call_id: 'tool_schema:0',
 				content: JSON.stringify({
-					error: 'Tool validation failed: Missing required parameter: path'
+					error: 'Tool validation failed: Missing required parameter: op'
 				})
 			}
 		];

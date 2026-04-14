@@ -50,7 +50,7 @@ High-level outcome:
 - **89/113 files passing**
 - **900 tests passed**, **3 skipped** across passing files
 - Strong pass coverage in:
-    - `src/routes/api/agent/stream/**`
+    - the then-current agent stream route tests
     - most `src/routes/api/onto/**`
     - many `src/lib/services/ontology/**`
     - `agentic-chat-v2` service tests
@@ -99,14 +99,13 @@ High-level outcome:
 - `src/lib/tests/chat/progressive-flow.test.ts`
 - `src/lib/services/ontology/project-graph-builder.test.ts`
 - `src/routes/__tests__/authenticated-pages.test.ts`
-- `src/lib/services/agentic-chat/persistence/agent-persistence-service.test.ts`
-- `src/lib/services/agentic-chat/planning/plan-orchestrator.test.ts`
-- `src/lib/services/agentic-chat/orchestration/agent-chat-orchestrator.test.ts`
-- `src/lib/services/agentic-chat/synthesis/response-synthesizer.test.ts`
-- `src/lib/services/agentic-chat/analysis/strategy-analyzer.test.ts`
 - `src/lib/services/agentic-chat/tools/core/tool-executor.test.ts`
 - `src/lib/utils/__tests__/prompt-audit.test.ts`
 - `src/lib/utils/__tests__/brain-dump-integration-simple.test.ts`
+
+The legacy agentic-chat orchestration, persistence, planning, synthesis, and
+analysis suites were removed with the old route/orchestrator cleanup and are no
+longer part of the active test budget.
 
 ### 2) Worker integration script is broken by config
 
