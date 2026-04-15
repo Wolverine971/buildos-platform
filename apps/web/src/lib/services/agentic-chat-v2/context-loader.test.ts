@@ -49,6 +49,19 @@ function createProjectRpcSupabaseMock(payload: Record<string, unknown>) {
 	return { rpc, from } as any;
 }
 
+function createGlobalRpcSupabaseMock(payload: Record<string, unknown>) {
+	const rpc = vi.fn().mockImplementation((fn: string) => {
+		if (fn === 'load_fastchat_context') {
+			return Promise.resolve({ data: payload, error: null });
+		}
+		throw new Error(`Unexpected RPC in global RPC mock: ${fn}`);
+	});
+	const from = vi.fn().mockImplementation(() => {
+		throw new Error('Unexpected fallback query path for global RPC mock');
+	});
+	return { rpc, from } as any;
+}
+
 function createGlobalFallbackSupabaseMock(config: {
 	actorId?: string;
 	projectSummaries: Array<Record<string, any>>;
@@ -244,6 +257,116 @@ describe('loadFastChatPromptContext daily_brief', () => {
 });
 
 describe('loadFastChatPromptContext global', () => {
+	it('uses the migrated global RPC payload when project intelligence is present', async () => {
+		const supabase = createGlobalRpcSupabaseMock({
+			projects: [
+				{
+					id: 'proj-1',
+					name: 'Project One',
+					state_key: 'active',
+					description: 'Shared project',
+					start_at: null,
+					end_at: null,
+					next_step_short: 'Ship it',
+					updated_at: '2026-02-15T20:00:00.000Z'
+				}
+			],
+			goals: [],
+			milestones: [],
+			plans: [],
+			project_logs: [],
+			project_intelligence: {
+				generated_at: '2026-02-15T20:00:00.000Z',
+				scope: 'global',
+				project_id: null,
+				project_name: null,
+				timezone: 'UTC',
+				windows: {
+					due_soon_days: 7,
+					upcoming_days: 30,
+					recent_changes_days: 7,
+					recent_changes_max_lookback_days: 21
+				},
+				counts: {
+					accessible_projects: 1,
+					projects_returned: 1,
+					overdue_total: 0,
+					due_soon_total: 1,
+					upcoming_total: 0,
+					recent_change_total: 0
+				},
+				overdue_or_due_soon: [
+					{
+						kind: 'task',
+						id: 'task-1',
+						project_id: 'proj-1',
+						project_name: 'Project One',
+						title: 'Finish setup',
+						state_key: 'todo',
+						date_kind: 'due_at',
+						date: '2026-02-16T20:00:00.000Z',
+						bucket: 'due_soon',
+						days_delta: 1,
+						priority: 1,
+						updated_at: '2026-02-15T19:00:00.000Z'
+					}
+				],
+				upcoming_work: [],
+				recent_changes: [],
+				project_summaries: [
+					{
+						project_id: 'proj-1',
+						project_name: 'Project One',
+						state_key: 'active',
+						next_step_short: 'Ship it',
+						updated_at: '2026-02-15T20:00:00.000Z',
+						counts: {
+							overdue: 0,
+							due_soon: 1,
+							upcoming: 0,
+							recent_changes: 0
+						}
+					}
+				],
+				limits: {
+					overdue_or_due_soon: 16,
+					upcoming_work: 16,
+					recent_changes: 16,
+					project_summaries: 8
+				},
+				maybe_more: {
+					overdue_or_due_soon: false,
+					upcoming_work: false,
+					recent_changes: false,
+					project_summaries: false
+				},
+				source: 'load_fastchat_context'
+			}
+		});
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'global'
+		});
+
+		const data = context.data as Record<string, any>;
+		expect(data.context_meta.source).toBe('rpc');
+		expect(
+			data.projects.map((bundle: { project: { id: string } }) => bundle.project.id)
+		).toEqual(['proj-1']);
+		expect(data.project_intelligence).toMatchObject({
+			scope: 'global',
+			source: 'load_fastchat_context',
+			counts: {
+				accessible_projects: 1,
+				due_soon_total: 1
+			}
+		});
+		expect(supabase.rpc).toHaveBeenCalledTimes(1);
+		expect(supabase.from).not.toHaveBeenCalled();
+	});
+
 	it('builds compact portfolio summaries from the fallback loader with per-project limits and no doc_structure', async () => {
 		vi.useFakeTimers();
 		const now = new Date('2026-02-15T20:07:18.308Z');
@@ -559,7 +682,7 @@ describe('loadFastChatPromptContext global', () => {
 		});
 		expect(
 			data.project_intelligence.overdue_or_due_soon.map((item: { id: string }) => item.id)
-		).toEqual(['goal-overdue', 'milestone-overdue', 'goal-due-soon', 'milestone-soon']);
+		).toEqual(['goal-due-soon', 'milestone-soon', 'goal-overdue', 'milestone-overdue']);
 		expect(supabase.rpc.mock.calls.map(([fn]) => fn)).toEqual([
 			'load_fastchat_context',
 			'ensure_actor_for_user',

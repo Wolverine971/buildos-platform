@@ -7,7 +7,8 @@ import {
 	buildLiveContextUsageSnapshot,
 	deriveContextOverheadTokens,
 	estimateConversationTokens,
-	estimateTokensFromText
+	estimateTokensFromText,
+	shouldRenderAsMarkdown
 } from './agent-chat-formatters';
 
 function createMessage(
@@ -107,5 +108,15 @@ describe('agent-chat-formatters', () => {
 			estimateTokensFromText('1234') + estimateTokensFromText('1234')
 		);
 		expect(liveSnapshot.tokenBudget).toBe(DEFAULT_AGENT_CHAT_TOKEN_BUDGET);
+	});
+
+	it('detects GFM pipe tables as markdown content', () => {
+		expect(
+			shouldRenderAsMarkdown(`| Metric | Count |
+
+|---|---:|
+
+| Active Tasks | 24 |`)
+		).toBe(true);
 	});
 });

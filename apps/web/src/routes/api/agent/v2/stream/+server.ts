@@ -2706,6 +2706,8 @@ export const POST: RequestHandler = async ({
 			rawHistoryCount = historyComposition.rawHistoryCount;
 			const historyForModel = historyComposition.historyForModel;
 			historyForModelCount = historyForModel.length;
+			const promptDumpTurnNumber =
+				history.reduce((count, item) => count + (item.role === 'user' ? 1 : 0), 0) + 1;
 			const sessionMetadata = (session.agent_metadata ?? {}) as Record<string, any>;
 			const recentContextShiftHint = readRecentContextShiftHint(sessionMetadata);
 			const bypassContextCacheForShiftHint = shouldBypassContextCacheForShiftHint({
@@ -3207,6 +3209,7 @@ export const POST: RequestHandler = async ({
 					promptVariant: litePromptEnvelope
 						? LITE_PROMPT_VARIANT
 						: FASTCHAT_PROMPT_VARIANT,
+					turnNumber: promptDumpTurnNumber,
 					gatewayEnabled,
 					historyStrategy: historyComposition.strategy,
 					historyCompressed: historyComposition.compressed,

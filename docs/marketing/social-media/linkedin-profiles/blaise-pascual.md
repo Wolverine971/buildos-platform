@@ -4,7 +4,7 @@
 
 **Slug:** blaise-pascual
 **Display Name:** Blaise Pascual
-**Profile URL:** Pending canonical LinkedIn URL capture
+**Profile URL:** https://www.linkedin.com/in/blaise-pascual/
 **Category:** Founder / AI Builder
 **Tier:** 1
 **Strategic Role:** Peer
@@ -12,7 +12,7 @@
 **Connection Level:** 1st
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-04-15
 **Last Engaged:** Never
 **Source of First Discovery:** `linkedin-engagement-targets.md` plus backfill from 2026-03-24 warmup
 
@@ -26,9 +26,9 @@
 
 ## Profile Snapshot
 
-- **Headline:** The Autonomous Founder | USMC Veteran
+- **Headline:** AI Agent Architect & App Developer | USMC Veteran | The Autonomous Founder
 - **About / bio:** Fellow veteran founder building with AI in public
-- **Followers / audience:** Not captured in the warmup
+- **Followers / audience:** 1,085
 - **Role / company:** Solo founder / AI builder
 - **Formats:** Founder text posts and building-in-public commentary
 - **Audience vibe:** Feels like a real builder account, not polished thought leadership
@@ -48,14 +48,16 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                          | Post Link                                     | Action | Status                  | What We Said / Planned                                 | Outcome | Source                        |
-| ---------- | ------- | ---------------------------------------------- | --------------------------------------------- | ------ | ----------------------- | ------------------------------------------------------ | ------- | ----------------------------- |
-| 2026-03-24 | Post    | Dropped out with a 4.0 because AI moved faster | Legacy warmup did not capture direct post URL | Queued | No posting confirmation | Marines-to-builder parallel; shipping beats curriculum | Unknown | 2026-03-24_linkedin-warmup.md |
+| Date       | Surface | Topic                                          | Post Link                                     | Action   | Status                  | What We Said / Planned                                      | Outcome | Source                        |
+| ---------- | ------- | ---------------------------------------------- | --------------------------------------------- | -------- | ----------------------- | ----------------------------------------------------------- | ------- | ----------------------------- |
+| 2026-03-24 | Post    | Dropped out with a 4.0 because AI moved faster | Legacy warmup did not capture direct post URL | Queued   | No posting confirmation | Marines-to-builder parallel; shipping beats curriculum      | Unknown | 2026-03-24_linkedin-warmup.md |
+| 2026-04-15 | Profile | Stale scan — newest post 1 week old            | N/A                                           | Reviewed | N/A                     | No fresh content today; headline and follower count updated | None    | 2026-04-15_linkedin-warmup.md |
 
 ## Open Loops
 
-- Capture canonical profile URL and direct post URL on next review
-- Strong candidate for repeated comments if his posting cadence holds
+- Profile URL captured: https://www.linkedin.com/in/blaise-pascual/
+- Newest post from 2026-04-08: "How a Solo Founder Replaces 50-Person Teams Using a Framework From Flight School" — monitor for next fresh post
+- Strong candidate for repeated comments; posting cadence appears to be roughly weekly
 
 ## Next Best Angles
 

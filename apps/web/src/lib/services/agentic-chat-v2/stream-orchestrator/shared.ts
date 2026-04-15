@@ -14,6 +14,7 @@ export type GatewayRequiredFieldFailure = {
 
 export type FastChatDebugContext = {
 	promptVariant?: string;
+	turnNumber?: number;
 	gatewayEnabled?: boolean;
 	historyStrategy?: string;
 	historyCompressed?: boolean;

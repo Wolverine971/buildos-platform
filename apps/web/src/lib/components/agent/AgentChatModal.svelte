@@ -85,6 +85,7 @@
 		formatSkillActivityContent,
 		upsertSkillActivityEntries
 	} from './agent-chat-skill-activity';
+	import { upsertOperationActivityEntries } from './agent-chat-operation-activity';
 	import {
 		downloadChatSessionAuditMarkdown,
 		fetchChatSessionAuditPayload
@@ -2464,25 +2465,29 @@
 		const errorSuffix = status === 'failed' ? formatErrorSuffix(errorMessage) : '';
 		if (toolName === 'skill_load') {
 			const skillPath = extractSkillPathFromSkillLoadArgs(argsJson);
-			if (skillPath) {
-				if (status === 'pending') {
-					return formatSkillActivityContent({
-						type: 'skill_activity',
-						action: 'requested',
-						path: skillPath,
-						via: 'skill_load'
-					});
-				}
-				if (status === 'completed') {
-					return formatSkillActivityContent({
-						type: 'skill_activity',
-						action: 'loaded',
-						path: skillPath,
-						via: 'skill_load'
-					});
-				}
-				return `Failed to load skill ${skillPath}${errorSuffix}`;
+			if (status === 'pending') {
+				return skillPath
+					? formatSkillActivityContent({
+							type: 'skill_activity',
+							action: 'requested',
+							path: skillPath,
+							via: 'skill_load'
+						})
+					: 'Loading skill';
 			}
+			if (status === 'completed') {
+				return skillPath
+					? formatSkillActivityContent({
+							type: 'skill_activity',
+							action: 'loaded',
+							path: skillPath,
+							via: 'skill_load'
+						})
+					: 'Skill loaded';
+			}
+			return skillPath
+				? `Failed to load skill ${skillPath}${errorSuffix}`
+				: `Failed to load skill${errorSuffix}`;
 		}
 		const formatter = TOOL_DISPLAY_FORMATTERS[toolName];
 
@@ -2598,6 +2603,20 @@
 		updateThinkingBlock(blockId, (block) => ({
 			...block,
 			activities: upsertSkillActivityEntries(block.activities, event)
+		}));
+	}
+
+	function upsertOperationActivityInThinkingBlock(
+		operation: Record<string, unknown>,
+		format: {
+			message: string;
+			activityStatus: ActivityEntry['status'];
+		}
+	) {
+		const blockId = ensureThinkingBlock();
+		updateThinkingBlock(blockId, (block) => ({
+			...block,
+			activities: upsertOperationActivityEntries(block.activities, operation, format)
 		}));
 	}
 
@@ -3765,16 +3784,12 @@
 			case 'operation': {
 				const operationPayload =
 					'operation' in event && event.operation ? event.operation : event;
-				const { message: operationMessage, activityStatus } = formatOperationEvent(
+				const operationFormat = formatOperationEvent(
 					operationPayload as Record<string, any>
 				);
-				addActivityToThinkingBlock(
-					operationMessage,
-					'operation',
-					{
-						operation: operationPayload
-					},
-					activityStatus
+				upsertOperationActivityInThinkingBlock(
+					operationPayload as Record<string, unknown>,
+					operationFormat
 				);
 				break;
 			}

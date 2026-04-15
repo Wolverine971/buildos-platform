@@ -158,29 +158,29 @@
 				<div
 					class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:p-4"
 				>
-					{#if shouldRenderAsMarkdown(message.content)}
+					<div class="flex min-w-0 items-start gap-2 sm:gap-3">
+						<!-- INKPRINT avatar badge -->
 						<div
-							class="{proseClasses} overflow-x-auto break-words [&>*:nth-child(2)]:mt-0"
+							class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink sm:h-9 sm:w-9"
 						>
-							<!-- INKPRINT avatar badge (floated inside bubble for text wrap) -->
-							<div
-								class="float-left mr-2 mb-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink sm:h-9 sm:w-9"
-							>
-								OS
-							</div>
-							{@html renderMarkdown(message.content)}
+							OS
 						</div>
-					{:else}
-						<div class="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-							<!-- INKPRINT avatar badge (floated inside bubble for text wrap) -->
-							<div
-								class="float-left mr-2 mb-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink sm:h-9 sm:w-9"
-							>
-								OS
-							</div>
-							{message.content}
+						<div class="min-w-0 flex-1">
+							{#if shouldRenderAsMarkdown(message.content)}
+								<div
+									class="agent-markdown {proseClasses} overflow-x-auto break-words"
+								>
+									{@html renderMarkdown(message.content)}
+								</div>
+							{:else}
+								<div
+									class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+								>
+									{message.content}
+								</div>
+							{/if}
 						</div>
-					{/if}
+					</div>
 					{#if message.metadata?.interrupted}
 						<div
 							class="mt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
@@ -208,7 +208,7 @@
 						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-amber-600/20 bg-amber-50/50 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-thread tx-weak dark:bg-amber-950/10 sm:max-w-[85%] sm:p-4"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
-							<div class="{proseClasses} overflow-x-auto break-words">
+							<div class="agent-markdown {proseClasses} overflow-x-auto break-words">
 								{@html renderMarkdown(message.content)}
 							</div>
 						{:else}
@@ -365,5 +365,117 @@
 	.user-message-content-collapsed {
 		max-height: calc(10 * 1.625em);
 		overflow: hidden;
+	}
+
+	.agent-markdown {
+		color: hsl(var(--foreground));
+		overflow-wrap: anywhere;
+	}
+
+	.agent-markdown :global(> :first-child) {
+		margin-top: 0;
+	}
+
+	.agent-markdown :global(> :last-child) {
+		margin-bottom: 0;
+	}
+
+	.agent-markdown :global(p) {
+		margin-top: 0.4rem;
+		margin-bottom: 0.4rem;
+	}
+
+	.agent-markdown :global(ul),
+	.agent-markdown :global(ol) {
+		margin-top: 0.5rem;
+		margin-bottom: 0.5rem;
+		padding-left: 1.35rem;
+	}
+
+	.agent-markdown :global(li) {
+		margin-top: 0.18rem;
+		margin-bottom: 0.18rem;
+	}
+
+	.agent-markdown :global(pre) {
+		margin-top: 0.75rem;
+		margin-bottom: 0.75rem;
+		border: 1px solid hsl(var(--border));
+		border-radius: 0.5rem;
+	}
+
+	.agent-markdown :global(pre code) {
+		white-space: pre;
+		overflow-wrap: normal;
+	}
+
+	.agent-markdown :global(table) {
+		width: 100%;
+		min-width: 46rem;
+		margin-top: 0.75rem;
+		margin-bottom: 0.75rem;
+		border-collapse: separate;
+		border-spacing: 0;
+		overflow: hidden;
+		border: 1px solid hsl(var(--border));
+		border-radius: 0.5rem;
+		font-size: 0.8rem;
+		line-height: 1.45;
+		table-layout: auto;
+	}
+
+	.agent-markdown :global(th),
+	.agent-markdown :global(td) {
+		border-right: 1px solid hsl(var(--border));
+		border-bottom: 1px solid hsl(var(--border));
+		min-width: 7rem;
+		padding: 0.65rem 0.9rem;
+		text-align: left;
+		vertical-align: top;
+		white-space: normal;
+	}
+
+	.agent-markdown :global(th:first-child),
+	.agent-markdown :global(td:first-child) {
+		min-width: 14rem;
+	}
+
+	.agent-markdown :global(th:nth-child(2)),
+	.agent-markdown :global(td:nth-child(2)) {
+		min-width: 18rem;
+	}
+
+	.agent-markdown :global(th) {
+		background: hsl(var(--muted) / 0.75);
+		color: hsl(var(--foreground));
+		font-weight: 700;
+	}
+
+	.agent-markdown :global(td) {
+		background: hsl(var(--card) / 0.86);
+		color: hsl(var(--foreground));
+	}
+
+	.agent-markdown :global(tbody tr:nth-child(even) td) {
+		background: hsl(var(--muted) / 0.32);
+	}
+
+	.agent-markdown :global(th:last-child),
+	.agent-markdown :global(td:last-child) {
+		border-right: 0;
+	}
+
+	.agent-markdown :global(tbody tr:last-child td) {
+		border-bottom: 0;
+	}
+
+	.agent-markdown :global(th[align='center']),
+	.agent-markdown :global(td[align='center']) {
+		text-align: center;
+	}
+
+	.agent-markdown :global(th[align='right']),
+	.agent-markdown :global(td[align='right']) {
+		text-align: right;
 	}
 </style>

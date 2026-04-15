@@ -191,6 +191,7 @@ BEGIN
         wc.*,
         CASE
           WHEN wc.kind = 'event' AND wc.date_at >= v_now AND wc.date_at <= (v_now + make_interval(days => v_upcoming_days)) THEN 'upcoming'
+          WHEN wc.kind = 'event' THEN NULL
           WHEN wc.kind = 'task' AND wc.date_kind = 'start_at' AND wc.date_at < v_now THEN NULL
           WHEN wc.date_at < v_now THEN 'overdue'
           WHEN wc.date_at <= (v_now + make_interval(days => v_due_soon_days)) THEN 'due_soon'
@@ -204,6 +205,8 @@ BEGIN
       SELECT *
       FROM bucketed_work
       WHERE bucket IS NOT NULL
+        AND date_at >= TIMESTAMPTZ '2020-01-01'
+        AND date_at < TIMESTAMPTZ '2101-01-01'
     ),
     recent_candidates AS (
       SELECT
@@ -280,14 +283,23 @@ BEGIN
             'upcoming', psc.upcoming,
             'recent_changes', psc.recent_changes
           ) AS counts,
-          (psc.overdue * 4 + psc.due_soon * 3 + psc.upcoming + psc.recent_changes) AS attention_score
+          (LEAST(psc.overdue, 5) + psc.due_soon * 6 + psc.upcoming * 2 + psc.recent_changes) AS attention_score
         FROM project_signal_counts psc
         ORDER BY attention_score DESC, psc.updated_at DESC NULLS LAST
         LIMIT v_project_limit
       ) s
     ),
     overdue_due_soon_json AS (
-      SELECT COALESCE(jsonb_agg((to_jsonb(w) - 'bucket_rank') ORDER BY w.bucket_rank, w.date, w.priority DESC NULLS LAST, w.title), '[]'::jsonb) AS value
+      SELECT COALESCE(jsonb_agg(
+        (to_jsonb(w) - 'bucket_rank')
+        ORDER BY
+          w.bucket_rank,
+          CASE WHEN w.bucket = 'due_soon' THEN w.date END ASC NULLS LAST,
+          CASE WHEN w.bucket = 'overdue' THEN w.date END DESC NULLS LAST,
+          w.priority DESC NULLS LAST,
+          w.updated_at DESC NULLS LAST,
+          w.title
+      ), '[]'::jsonb) AS value
       FROM (
         SELECT
           kind,
@@ -302,10 +314,16 @@ BEGIN
           CEIL(EXTRACT(EPOCH FROM (date_trunc('day', date_at) - date_trunc('day', v_now))) / 86400)::integer AS days_delta,
           priority,
           updated_at,
-          CASE bucket WHEN 'overdue' THEN 0 ELSE 1 END AS bucket_rank
+          CASE bucket WHEN 'due_soon' THEN 0 ELSE 1 END AS bucket_rank
         FROM filtered_work
         WHERE bucket IN ('overdue', 'due_soon')
-        ORDER BY bucket_rank, date_at ASC, priority DESC NULLS LAST, title ASC
+        ORDER BY
+          bucket_rank,
+          CASE WHEN bucket = 'due_soon' THEN date_at END ASC NULLS LAST,
+          CASE WHEN bucket = 'overdue' THEN date_at END DESC NULLS LAST,
+          priority DESC NULLS LAST,
+          updated_at DESC NULLS LAST,
+          title ASC
         LIMIT v_attention_limit
       ) w
     ),

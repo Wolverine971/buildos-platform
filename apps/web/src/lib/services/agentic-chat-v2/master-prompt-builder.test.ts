@@ -233,12 +233,155 @@ describe('buildMasterPrompt instruction rewrite', () => {
 			'<project_id>4cfdbed1-840a-4fe4-9751-77c7884daa70</project_id>'
 		);
 		expect(contextBlock).toContain('<project_name>The Last Ember</project_name>');
-		expect(contextBlock).toContain('"goals": [');
-		expect(contextBlock).toContain('"plans": []');
-		expect(contextBlock).toContain('"tasks": []');
-		expect(contextBlock).toContain('"project": {');
+		expect(contextBlock).toContain('<loaded_context_index>');
+		expect(contextBlock).toContain('Actionable loaded context index (bounded):');
+		expect(contextBlock).toContain('"entity_refs":{"goals"');
+		expect(contextBlock).toContain('"id":"34268cc1-eeda-468c-87d2-3791af8b48ca"');
+		expect(contextBlock).not.toContain('"goals": [');
+		expect(contextBlock).not.toContain('"plans": []');
+		expect(contextBlock).not.toContain('"tasks": []');
 		expect(prompt).not.toContain('<data>');
 		expect(prompt).not.toContain('<json>');
+	});
+
+	it('renders FastChat context as a compact actionable index with timeline ids', () => {
+		const prompt = buildMasterPrompt({
+			contextType: 'global',
+			projectId: null,
+			entityId: null,
+			data: {
+				projects: [
+					{
+						project: {
+							id: 'project-1',
+							name: 'Launch Alpha',
+							state_key: 'active',
+							next_step_short: 'Ship the beta build',
+							updated_at: '2026-04-15T10:00:00Z'
+						},
+						recent_activity: [
+							{
+								entity_type: 'task',
+								entity_id: 'task-1',
+								title: 'Finish onboarding',
+								action: 'updated',
+								updated_at: '2026-04-15T11:00:00Z'
+							}
+						],
+						goals: [],
+						milestones: [],
+						plans: []
+					}
+				],
+				project_intelligence: {
+					generated_at: '2026-04-15T12:00:00Z',
+					scope: 'global',
+					project_id: null,
+					project_name: null,
+					timezone: 'UTC',
+					windows: {
+						due_soon_days: 7,
+						upcoming_days: 30,
+						recent_changes_days: 7,
+						recent_changes_max_lookback_days: 21
+					},
+					counts: {
+						accessible_projects: 1,
+						projects_returned: 1,
+						overdue_total: 0,
+						due_soon_total: 1,
+						upcoming_total: 1,
+						recent_change_total: 1
+					},
+					overdue_or_due_soon: [
+						{
+							kind: 'task',
+							id: 'task-soon',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Send beta invite',
+							state_key: 'todo',
+							date_kind: 'due_at',
+							date: '2026-04-18T12:00:00Z',
+							bucket: 'due_soon',
+							days_delta: 3,
+							priority: 2,
+							updated_at: '2026-04-15T10:00:00Z'
+						}
+					],
+					upcoming_work: [
+						{
+							kind: 'event',
+							id: 'event-1',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Launch review',
+							state_key: 'scheduled',
+							date_kind: 'start_at',
+							date: '2026-04-25T12:00:00Z',
+							bucket: 'upcoming',
+							days_delta: 10,
+							updated_at: '2026-04-15T10:00:00Z'
+						}
+					],
+					recent_changes: [
+						{
+							kind: 'task',
+							id: 'task-1',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Finish onboarding',
+							action: 'updated',
+							changed_at: '2026-04-15T11:00:00Z'
+						}
+					],
+					project_summaries: [
+						{
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							state_key: 'active',
+							next_step_short: 'Ship the beta build',
+							updated_at: '2026-04-15T10:00:00Z',
+							counts: {
+								overdue: 0,
+								due_soon: 1,
+								upcoming: 1,
+								recent_changes: 1
+							}
+						}
+					],
+					limits: {
+						overdue_or_due_soon: 16,
+						upcoming_work: 16,
+						recent_changes: 16,
+						project_summaries: 8
+					},
+					maybe_more: {
+						overdue_or_due_soon: false,
+						upcoming_work: false,
+						recent_changes: false,
+						project_summaries: false
+					},
+					source: 'load_fastchat_context'
+				}
+			}
+		});
+		const contextBlock = extractTagBlock(prompt, 'context');
+
+		expect(contextBlock).toContain('<loaded_context_index>');
+		expect(contextBlock).toContain('Actionable loaded context index (bounded):');
+		expect(contextBlock).toContain('<timeline_recent_activity>');
+		expect(contextBlock).toContain(
+			'2026-04-18: task (task_id: task-soon) "Send beta invite" in Launch Alpha, due soon, todo, in 3 days.'
+		);
+		expect(contextBlock).toContain(
+			'2026-04-25: event (event_id: event-1) "Launch review" in Launch Alpha, scheduled, in 10 days.'
+		);
+		expect(contextBlock).toContain(
+			'2026-04-15: task (task_id: task-1) "Finish onboarding" updated in Launch Alpha.'
+		);
+		expect(contextBlock).not.toContain('"recent_activity": [');
+		expect(contextBlock).not.toContain('"projects": [');
 	});
 
 	it('adds dedicated project creation workflow guidance in project_create context', () => {

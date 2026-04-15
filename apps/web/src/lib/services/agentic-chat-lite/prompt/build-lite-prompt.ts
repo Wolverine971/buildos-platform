@@ -28,6 +28,17 @@ import {
 
 const DISCOVERY_TOOL_NAMES = new Set(['skill_load', 'tool_search', 'tool_schema']);
 const DEFAULT_TIMEZONE = 'UTC';
+const LOADED_CONTEXT_PROJECT_REF_LIMIT = 5;
+const LOADED_CONTEXT_ENTITY_REF_LIMIT = 6;
+const LOADED_CONTEXT_SIGNAL_REF_LIMIT = 4;
+const LOADED_CONTEXT_RECENT_REF_LIMIT = 5;
+const LOADED_CONTEXT_TEXT_MAX_CHARS = 2000;
+const PROMPT_DUE_SOON_SIGNAL_LIMIT = 5;
+const PROMPT_OVERDUE_SIGNAL_LIMIT = 3;
+const PROMPT_UPCOMING_SIGNAL_LIMIT = 6;
+const PROMPT_RECENT_CHANGE_LIMIT = 6;
+const PROMPT_RECENT_OVERDUE_DAYS = 45;
+const PROMPT_STALE_OVERDUE_DAYS = 90;
 
 export const LITE_PROMPT_SECTION_ORDER: LitePromptSectionId[] = [
 	'identity_mission',
@@ -160,7 +171,8 @@ function buildLocationLoadedContextSection(
 		content: [
 			'Loaded scope:',
 			`- ${describeScopeLocation(focus)}`,
-			'- Use exact IDs from the raw context below for reads and writes.',
+			'- The bounded index below is for orientation and exact IDs only; it is not the full cache.',
+			'- Fetch full entity details before non-obvious writes or when the user asks for complete lists.',
 			'- Product surface and stream turn IDs are captured in dump metadata, not as project facts.',
 			'',
 			serializeLoadedContext(data)
@@ -507,6 +519,9 @@ function buildTimelineSummary(
 	const facts: string[] = [];
 	const data = isRecord(input.data) ? input.data : null;
 	const projectIntelligence = extractProjectIntelligence(data);
+	const projectIntelligencePrompt = projectIntelligence
+		? buildProjectIntelligencePromptSections(projectIntelligence)
+		: null;
 
 	if (dataSummary.contextMeta?.generated_at) {
 		facts.push(`Context generated at ${String(dataSummary.contextMeta.generated_at)}.`);
@@ -543,19 +558,19 @@ function buildTimelineSummary(
 		timezone,
 		scope: describeTimelineScope(focus),
 		facts,
-		statusLines: projectIntelligence
-			? buildProjectIntelligenceStatusLines(projectIntelligence)
+		statusLines: projectIntelligencePrompt
+			? projectIntelligencePrompt.statusLines
 			: projectDigest?.statusLines.length
 				? projectDigest.statusLines
 				: facts.slice(0, 4),
-		overdueLines: projectIntelligence
-			? formatWorkSignalLines(projectIntelligence.overdue_or_due_soon)
+		overdueLines: projectIntelligencePrompt
+			? projectIntelligencePrompt.overdueLines
 			: buildOverdueDueSoonLines(projectDigest),
-		upcomingLines: projectIntelligence
-			? formatWorkSignalLines(projectIntelligence.upcoming_work)
+		upcomingLines: projectIntelligencePrompt
+			? projectIntelligencePrompt.upcomingLines
 			: formatTimelineItems(projectDigest?.upcomingItems ?? []),
-		recentChangeLines: projectIntelligence
-			? formatRecentChangeLines(projectIntelligence.recent_changes)
+		recentChangeLines: projectIntelligencePrompt
+			? projectIntelligencePrompt.recentChangeLines
 			: formatTimelineItems(
 					projectDigest?.recentChanges.length
 						? projectDigest.recentChanges
@@ -653,36 +668,272 @@ function defaultRetrievalMap(
 	}
 }
 
-function serializeLoadedContext(data: LitePromptInput['data']): string {
+export function serializeLoadedContext(data: LitePromptInput['data']): string {
 	if (!data) {
-		return 'Loaded context: no structured context payload was loaded for this seed.';
+		return 'Loaded context index: no structured context payload was loaded for this seed.';
 	}
 
 	if (typeof data === 'string') {
 		const trimmed = data.trim();
 		return trimmed
-			? ['Loaded context payload:', '```text', trimmed, '```'].join('\n')
-			: 'Loaded context: empty text payload.';
+			? [
+					'Loaded context text excerpt:',
+					'```text',
+					truncateText(trimmed, LOADED_CONTEXT_TEXT_MAX_CHARS),
+					'```'
+				].join('\n')
+			: 'Loaded context index: empty text payload.';
+	}
+
+	if (!isRecord(data)) {
+		return 'Loaded context index: non-object context payload omitted from the seed prompt.';
 	}
 
 	return [
-		'Loaded context payload (source of truth):',
+		'Actionable loaded context index (bounded):',
 		'```json',
-		JSON.stringify(compactPromptData(data), null, 2),
+		JSON.stringify(buildActionableLoadedContextIndex(data)),
 		'```'
 	].join('\n');
 }
 
-function compactPromptData(data: Record<string, unknown>): Record<string, unknown> {
-	const compacted = cloneJsonRecord(data);
-	if (!('doc_structure' in compacted) || !Array.isArray(compacted.documents)) {
-		return compacted;
+function buildActionableLoadedContextIndex(data: Record<string, unknown>): Record<string, unknown> {
+	const contextMeta = isRecord(data.context_meta) ? data.context_meta : null;
+	const intelligence = extractProjectIntelligence(data);
+	const projectRefs = collectProjectRefs(data);
+	const entityRefs = collectLoadedEntityRefs(data);
+	const linkedEntityRefs = collectLinkedEntityRefs(data);
+
+	return dropNullish({
+		context_meta: contextMeta ? summarizeContextMeta(contextMeta) : null,
+		loaded_counts: summarizeLoadedCounts(data),
+		project_refs: intelligence ? null : projectRefs.slice(0, LOADED_CONTEXT_PROJECT_REF_LIMIT),
+		project_refs_omitted:
+			!intelligence && projectRefs.length > LOADED_CONTEXT_PROJECT_REF_LIMIT
+				? projectRefs.length - LOADED_CONTEXT_PROJECT_REF_LIMIT
+				: 0,
+		project_intelligence: intelligence ? summarizeProjectIntelligenceIndex(intelligence) : null,
+		entity_refs: Object.keys(entityRefs).length > 0 ? entityRefs : null,
+		linked_entity_refs: Object.keys(linkedEntityRefs).length > 0 ? linkedEntityRefs : null,
+		focus_entity: summarizeFocusEntityIndex(data),
+		retrieval_note:
+			'Full cached context is intentionally not pasted. Use direct overview/search tools for complete lists, full entity fields, document bodies, or stale backlog details.'
+	});
+}
+
+function summarizeContextMeta(contextMeta: Record<string, unknown>): Record<string, unknown> {
+	const allowedKeys = [
+		'source',
+		'generated_at',
+		'cache_age_seconds',
+		'project_count',
+		'projects_returned',
+		'project_limit',
+		'includes_doc_structure'
+	];
+	const summary: Record<string, unknown> = {};
+	for (const key of allowedKeys) {
+		if (contextMeta[key] !== undefined && contextMeta[key] !== null) {
+			summary[key] = contextMeta[key];
+		}
+	}
+	return summary;
+}
+
+function summarizeLoadedCounts(data: Record<string, unknown>): Record<string, unknown> {
+	const topLevelArrays: Record<string, number> = {};
+	for (const [key, value] of Object.entries(data)) {
+		if (Array.isArray(value)) topLevelArrays[key] = value.length;
 	}
 
-	compacted.documents = compacted.documents.filter(
-		(doc) => isRecord(doc) && doc.is_unlinked === true
-	);
-	return compacted;
+	const projects = Array.isArray(data.projects) ? data.projects.filter(isRecord) : [];
+	const nestedProjectArrays: Record<string, number> = {};
+	for (const bundle of projects) {
+		for (const key of ['goals', 'milestones', 'plans', 'recent_activity']) {
+			const value = bundle[key];
+			if (Array.isArray(value)) {
+				nestedProjectArrays[key] = (nestedProjectArrays[key] ?? 0) + value.length;
+			}
+		}
+	}
+
+	return dropNullish({
+		top_level_arrays: Object.keys(topLevelArrays).length > 0 ? topLevelArrays : null,
+		project_bundle_arrays:
+			Object.keys(nestedProjectArrays).length > 0 ? nestedProjectArrays : null
+	});
+}
+
+function collectProjectRefs(data: Record<string, unknown>): Array<Record<string, unknown>> {
+	const refs = new Map<string, Record<string, unknown>>();
+	const addRef = (
+		project: Record<string, unknown> | null,
+		bundle?: Record<string, unknown>
+	): void => {
+		if (!project) return;
+		const id = stringValue(project.id);
+		if (!id || refs.has(id)) return;
+		refs.set(
+			id,
+			dropNullish({
+				id,
+				name: stringValue(project.name),
+				state_key: stringValue(project.state_key),
+				next_step_short: truncateText(stringValue(project.next_step_short), 160),
+				updated_at: stringValue(project.updated_at),
+				loaded_counts: bundle ? summarizeBundleCounts(bundle) : undefined
+			})
+		);
+	};
+
+	addRef(isRecord(data.project) ? data.project : null);
+	if (Array.isArray(data.projects)) {
+		for (const bundle of data.projects) {
+			if (!isRecord(bundle)) continue;
+			addRef(isRecord(bundle.project) ? bundle.project : null, bundle);
+		}
+	}
+
+	return Array.from(refs.values());
+}
+
+function summarizeBundleCounts(
+	bundle: Record<string, unknown>
+): Record<string, number> | undefined {
+	const counts: Record<string, number> = {};
+	for (const key of ['goals', 'milestones', 'plans', 'recent_activity']) {
+		const value = bundle[key];
+		if (Array.isArray(value) && value.length > 0) counts[key] = value.length;
+	}
+	return Object.keys(counts).length > 0 ? counts : undefined;
+}
+
+function summarizeProjectIntelligenceIndex(
+	intelligence: FastChatProjectIntelligence
+): Record<string, unknown> {
+	return dropNullish({
+		generated_at: intelligence.generated_at,
+		scope: intelligence.scope,
+		project_id: intelligence.project_id,
+		project_name: intelligence.project_name,
+		counts: dropNullish(intelligence.counts as unknown as Record<string, unknown>),
+		more_available: summarizeTrueFlags(intelligence.maybe_more),
+		attention_projects: intelligence.project_summaries
+			.slice(0, LOADED_CONTEXT_PROJECT_REF_LIMIT)
+			.map((summary) =>
+				dropNullish({
+					project_id: summary.project_id,
+					project_name: summary.project_name,
+					state_key: summary.state_key,
+					next_step_short: truncateText(summary.next_step_short, 120),
+					counts: summary.counts
+				})
+			),
+		selected_refs: {
+			overdue_or_due_soon: selectPromptAttentionSignals(intelligence.overdue_or_due_soon)
+				.slice(0, LOADED_CONTEXT_SIGNAL_REF_LIMIT)
+				.map(summarizeWorkSignalRef),
+			upcoming_work: selectPromptUpcomingSignals(intelligence.upcoming_work)
+				.slice(0, LOADED_CONTEXT_SIGNAL_REF_LIMIT)
+				.map(summarizeWorkSignalRef),
+			recent_changes: dedupeRecentChanges(intelligence.recent_changes)
+				.slice(0, LOADED_CONTEXT_RECENT_REF_LIMIT)
+				.map(summarizeRecentChangeRef)
+		}
+	});
+}
+
+function collectLoadedEntityRefs(
+	data: Record<string, unknown>
+): Record<string, Array<Record<string, unknown>>> {
+	const refs: Record<string, Array<Record<string, unknown>>> = {};
+	for (const key of ['goals', 'milestones', 'plans', 'tasks', 'documents', 'events', 'members']) {
+		const records = recordsForKey(data, key)
+			.slice(0, LOADED_CONTEXT_ENTITY_REF_LIMIT)
+			.map((record) => summarizeEntityRef(record, key));
+		if (records.length > 0) refs[key] = records;
+	}
+	return refs;
+}
+
+function collectLinkedEntityRefs(
+	data: Record<string, unknown>
+): Record<string, Array<Record<string, unknown>>> {
+	const linked = isRecord(data.linked_entities) ? data.linked_entities : null;
+	if (!linked) return {};
+	const refs: Record<string, Array<Record<string, unknown>>> = {};
+	for (const [key, value] of Object.entries(linked)) {
+		if (!Array.isArray(value)) continue;
+		const records = value
+			.filter(isRecord)
+			.slice(0, LOADED_CONTEXT_ENTITY_REF_LIMIT)
+			.map((record) => summarizeEntityRef(record, key));
+		if (records.length > 0) refs[key] = records;
+	}
+	return refs;
+}
+
+function summarizeFocusEntityIndex(data: Record<string, unknown>): Record<string, unknown> | null {
+	const focusType = stringValue(data.focus_entity_type);
+	const focusId = stringValue(data.focus_entity_id);
+	const focusFull = isRecord(data.focus_entity_full) ? data.focus_entity_full : null;
+	if (!focusType && !focusId && !focusFull) return null;
+	return dropNullish({
+		type: focusType,
+		id: focusId ?? stringValue(focusFull?.id),
+		title: focusFull ? titleForRecord(focusFull, focusType ?? 'focus entity') : null,
+		state_key: focusFull ? stringValue(focusFull.state_key) : null
+	});
+}
+
+function summarizeEntityRef(
+	record: Record<string, unknown>,
+	kindFallback: string
+): Record<string, unknown> {
+	const date =
+		stringValue(record.due_at) ??
+		stringValue(record.target_date) ??
+		stringValue(record.start_at) ??
+		stringValue(record.updated_at) ??
+		stringValue(record.created_at);
+	return dropNullish({
+		id: stringValue(record.id) ?? stringValue(record.entity_id),
+		project_id: stringValue(record.project_id),
+		title: truncateText(titleForRecord(record, kindFallback), 160),
+		state_key: stringValue(record.state_key),
+		date,
+		priority: numberValue(record.priority),
+		in_doc_structure:
+			typeof record.in_doc_structure === 'boolean' ? record.in_doc_structure : undefined,
+		is_unlinked: typeof record.is_unlinked === 'boolean' ? record.is_unlinked : undefined
+	});
+}
+
+function summarizeWorkSignalRef(signal: FastChatWorkSignal): Record<string, unknown> {
+	return dropNullish({
+		id: signal.id,
+		kind: signal.kind,
+		project_id: signal.project_id,
+		project_name: signal.project_name,
+		title: truncateText(signal.title, 120),
+		state_key: signal.state_key,
+		date: signal.date,
+		bucket: signal.bucket,
+		days_delta: signal.days_delta,
+		priority: signal.priority
+	});
+}
+
+function summarizeRecentChangeRef(change: FastChatRecentChange): Record<string, unknown> {
+	return dropNullish({
+		id: change.id,
+		kind: change.kind,
+		project_id: change.project_id,
+		project_name: change.project_name,
+		title: truncateText(change.title, 120),
+		action: change.action,
+		changed_at: change.changed_at
+	});
 }
 
 function renderSystemPrompt(sections: LitePromptSection[]): string {
@@ -777,7 +1028,7 @@ function describeTimelineScope(focus: LitePromptFocus): string {
 	return 'workspace timeline across accessible projects';
 }
 
-function extractProjectIntelligence(
+export function extractProjectIntelligence(
 	data: Record<string, unknown> | null
 ): FastChatProjectIntelligence | null {
 	if (!data || !isRecord(data.project_intelligence)) return null;
@@ -786,6 +1037,8 @@ function extractProjectIntelligence(
 	if (!Array.isArray(intelligence.overdue_or_due_soon)) return null;
 	if (!Array.isArray(intelligence.upcoming_work)) return null;
 	if (!Array.isArray(intelligence.recent_changes)) return null;
+	if (!Array.isArray(intelligence.project_summaries)) return null;
+	if (!isRecord(intelligence.maybe_more)) return null;
 	return intelligence;
 }
 
@@ -815,10 +1068,115 @@ function buildProjectIntelligenceStatusLines(intelligence: FastChatProjectIntell
 	}
 
 	if (intelligence.maybe_more.project_summaries) {
-		lines.push('More projects have signals than fit in the seed snapshot.');
+		lines.push('More project summaries exist than fit in the seed snapshot.');
 	}
 
 	return lines;
+}
+
+export function buildProjectIntelligencePromptSections(
+	intelligence: FastChatProjectIntelligence
+): Pick<
+	LitePromptTimelineSummary,
+	'statusLines' | 'overdueLines' | 'upcomingLines' | 'recentChangeLines'
+> {
+	return {
+		statusLines: buildProjectIntelligenceStatusLines(intelligence),
+		overdueLines: formatAttentionWorkLines(intelligence),
+		upcomingLines: formatWorkSignalLines(
+			selectPromptUpcomingSignals(intelligence.upcoming_work),
+			{ includeBucket: false }
+		),
+		recentChangeLines: formatRecentChangeLines(
+			dedupeRecentChanges(intelligence.recent_changes).slice(0, PROMPT_RECENT_CHANGE_LIMIT)
+		)
+	};
+}
+
+function formatAttentionWorkLines(intelligence: FastChatProjectIntelligence): string[] {
+	const selected = selectPromptAttentionSignals(intelligence.overdue_or_due_soon);
+	const lines = formatWorkSignalLines(selected);
+	const badDateCount = intelligence.overdue_or_due_soon.filter(isBadPromptDateSignal).length;
+	const staleOverdueCount = intelligence.overdue_or_due_soon.filter(
+		(signal) =>
+			!isBadPromptDateSignal(signal) &&
+			signal.bucket === 'overdue' &&
+			signal.days_delta < -PROMPT_STALE_OVERDUE_DAYS
+	).length;
+	const hiddenCount = Math.max(
+		intelligence.counts.overdue_total + intelligence.counts.due_soon_total - selected.length,
+		0
+	);
+
+	if (staleOverdueCount > 0 || badDateCount > 0 || hiddenCount > 0) {
+		const notes = [
+			hiddenCount > 0 ? `${hiddenCount} additional overdue/due-soon items not listed` : null,
+			staleOverdueCount > 0 ? `${staleOverdueCount} stale overdue items suppressed` : null,
+			badDateCount > 0 ? `${badDateCount} invalid-date items suppressed` : null
+		].filter(Boolean);
+		lines.push(
+			`Backlog note: ${notes.join('; ')}. Use get_workspace_overview or get_project_overview for the full backlog.`
+		);
+	}
+
+	return lines;
+}
+
+function selectPromptAttentionSignals(signals: FastChatWorkSignal[]): FastChatWorkSignal[] {
+	const valid = signals.filter((signal) => !isBadPromptDateSignal(signal));
+	const dueSoon = valid
+		.filter((signal) => signal.bucket === 'due_soon')
+		.slice(0, PROMPT_DUE_SOON_SIGNAL_LIMIT);
+	const recentOverdue = valid
+		.filter(
+			(signal) =>
+				signal.bucket === 'overdue' && signal.days_delta >= -PROMPT_RECENT_OVERDUE_DAYS
+		)
+		.slice(0, PROMPT_OVERDUE_SIGNAL_LIMIT);
+
+	if (dueSoon.length + recentOverdue.length > 0) {
+		return [...dueSoon, ...recentOverdue];
+	}
+
+	return [];
+}
+
+function selectPromptUpcomingSignals(signals: FastChatWorkSignal[]): FastChatWorkSignal[] {
+	return signals
+		.filter((signal) => !isBadPromptDateSignal(signal))
+		.slice(0, PROMPT_UPCOMING_SIGNAL_LIMIT);
+}
+
+function isBadPromptDateSignal(signal: FastChatWorkSignal): boolean {
+	const date = parseDate(signal.date);
+	if (!date) return true;
+	const year = date.getUTCFullYear();
+	return year < 2020 || year > 2100;
+}
+
+function dedupeRecentChanges(changes: FastChatRecentChange[]): FastChatRecentChange[] {
+	const seen = new Set<string>();
+	const deduped: FastChatRecentChange[] = [];
+	for (const change of changes) {
+		const key = [
+			change.kind,
+			change.id,
+			change.project_id,
+			change.action,
+			change.title ?? ''
+		].join(':');
+		if (seen.has(key)) continue;
+		seen.add(key);
+		deduped.push(change);
+	}
+	return deduped;
+}
+
+function summarizeTrueFlags(
+	flags: FastChatProjectIntelligence['maybe_more']
+): Record<string, boolean> | null {
+	const enabled = Object.fromEntries(Object.entries(flags).filter(([, value]) => value));
+	return Object.keys(enabled).length > 0 ? enabled : null;
 }
 
 function formatSignalRelative(daysDelta: number): string {
@@ -829,7 +1187,11 @@ function formatSignalRelative(daysDelta: number): string {
 	return `${Math.abs(daysDelta)} days ago`;
 }
 
-function formatWorkSignalLines(signals: FastChatWorkSignal[]): string[] {
+function formatWorkSignalLines(
+	signals: FastChatWorkSignal[],
+	options: { includeBucket?: boolean } = {}
+): string[] {
+	const includeBucket = options.includeBucket ?? true;
 	return signals.map((signal) => {
 		const date = parseDate(signal.date);
 		const dateText = date ? formatDate(date) : signal.date;
@@ -840,8 +1202,13 @@ function formatWorkSignalLines(signals: FastChatWorkSignal[]): string[] {
 					? 'Due soon'
 					: 'Upcoming';
 		const project = signal.project_name ? ` in ${signal.project_name}` : '';
-		const state = signal.state_key ? `, ${signal.state_key}` : '';
-		return `${bucketLabel}: ${dateText}: ${signal.kind} "${signal.title}"${project}${state}, ${formatSignalRelative(signal.days_delta)}.`;
+		const idLabel = `${signal.kind}_id`;
+		const details = [
+			includeBucket ? bucketLabel.toLowerCase() : null,
+			signal.state_key,
+			formatSignalRelative(signal.days_delta)
+		].filter(Boolean);
+		return `${dateText}: ${signal.kind} (${idLabel}: ${signal.id}) "${signal.title}"${project}${details.length > 0 ? `, ${details.join(', ')}` : ''}.`;
 	});
 }
 
@@ -851,7 +1218,8 @@ function formatRecentChangeLines(changes: FastChatRecentChange[]): string[] {
 		const dateText = date ? formatDate(date) : change.changed_at;
 		const title = change.title ? `"${change.title}"` : change.kind;
 		const project = change.project_name ? ` in ${change.project_name}` : '';
-		return `${dateText}: ${change.kind} ${title} ${change.action}${project}.`;
+		const idLabel = `${change.kind}_id`;
+		return `${dateText}: ${change.kind} (${idLabel}: ${change.id}) ${title} ${change.action}${project}.`;
 	});
 }
 
@@ -1245,10 +1613,6 @@ function formatNullableLabel(name: string | null, id: string | null): string {
 	return 'none';
 }
 
-function formatInlineList(items: string[]): string {
-	return items.length > 0 ? items.join(', ') : 'none';
-}
-
 function formatBullets(items: string[], fallback: string): string {
 	if (items.length === 0) return `- ${fallback}`;
 	return items.map((item) => `- ${item}`).join('\n');
@@ -1258,8 +1622,10 @@ function mergeList(defaults: string[], overrides?: string[] | null): string[] {
 	return Array.from(new Set([...defaults, ...(overrides ?? [])].filter(Boolean)));
 }
 
-function cloneJsonRecord<T>(value: T): T {
-	return JSON.parse(JSON.stringify(value)) as T;
+function dropNullish(record: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(
+		Object.entries(record).filter(([, value]) => value !== null && value !== undefined)
+	);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

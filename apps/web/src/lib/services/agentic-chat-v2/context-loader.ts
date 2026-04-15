@@ -58,6 +58,8 @@ const PROJECT_INTELLIGENCE_RECENT_CHANGES_MAX_LOOKBACK_DAYS = 21;
 const PROJECT_INTELLIGENCE_GLOBAL_ATTENTION_LIMIT = 16;
 const PROJECT_INTELLIGENCE_PROJECT_ATTENTION_LIMIT = 12;
 const PROJECT_INTELLIGENCE_GLOBAL_PROJECT_LIMIT = 8;
+const PROJECT_INTELLIGENCE_MIN_YEAR = 2020;
+const PROJECT_INTELLIGENCE_MAX_YEAR = 2100;
 const PROJECT_CONTEXT_GOAL_LIMIT = 12;
 const PROJECT_CONTEXT_MILESTONE_LIMIT = 12;
 const PROJECT_CONTEXT_PLAN_LIMIT = 12;
@@ -1403,6 +1405,11 @@ function startOfUtcDayMs(valueMs: number): number {
 	return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
 }
 
+function isSupportedProjectIntelligenceDateMs(valueMs: number): boolean {
+	const year = new Date(valueMs).getUTCFullYear();
+	return year >= PROJECT_INTELLIGENCE_MIN_YEAR && year <= PROJECT_INTELLIGENCE_MAX_YEAR;
+}
+
 function resolveWorkBucket(dateMs: number, nowMs: number): FastChatWorkSignal['bucket'] | null {
 	if (dateMs < nowMs) return 'overdue';
 	if (dateMs <= nowMs + PROJECT_INTELLIGENCE_DUE_SOON_DAYS * DAY_IN_MS) {
@@ -1432,6 +1439,7 @@ function buildWorkCandidate(params: {
 	const projectId = normalizeOptionalText(params.projectId);
 	const dateMs = parseTimestamp(params.date ?? null);
 	if (!id || !projectId || dateMs === null) return null;
+	if (!isSupportedProjectIntelligenceDateMs(dateMs)) return null;
 	const bucket = resolveWorkBucket(dateMs, params.nowMs);
 	if (!bucket) return null;
 
@@ -1457,13 +1465,15 @@ function compareAttentionWork(
 	right: ProjectIntelligenceWorkCandidate
 ): number {
 	const bucketRank: Record<FastChatWorkSignal['bucket'], number> = {
-		overdue: 0,
-		due_soon: 1,
+		due_soon: 0,
+		overdue: 1,
 		upcoming: 2
 	};
 	const bucketDelta = bucketRank[left.bucket] - bucketRank[right.bucket];
 	if (bucketDelta !== 0) return bucketDelta;
-	if (left.dateMs !== right.dateMs) return left.dateMs - right.dateMs;
+	if (left.dateMs !== right.dateMs) {
+		return left.bucket === 'overdue' ? right.dateMs - left.dateMs : left.dateMs - right.dateMs;
+	}
 	const priorityDelta = (right.priority ?? -1) - (left.priority ?? -1);
 	if (priorityDelta !== 0) return priorityDelta;
 	return left.title.localeCompare(right.title);
@@ -1564,14 +1574,14 @@ function buildProjectSignalSummaries(params: {
 		}))
 		.sort((left, right) => {
 			const leftAttention =
-				left.counts.overdue * 4 +
-				left.counts.due_soon * 3 +
-				left.counts.upcoming +
+				Math.min(left.counts.overdue, 5) +
+				left.counts.due_soon * 6 +
+				left.counts.upcoming * 2 +
 				left.counts.recent_changes;
 			const rightAttention =
-				right.counts.overdue * 4 +
-				right.counts.due_soon * 3 +
-				right.counts.upcoming +
+				Math.min(right.counts.overdue, 5) +
+				right.counts.due_soon * 6 +
+				right.counts.upcoming * 2 +
 				right.counts.recent_changes;
 			if (leftAttention !== rightAttention) return rightAttention - leftAttention;
 			return toTimestamp(right.project.updated_at) - toTimestamp(left.project.updated_at);

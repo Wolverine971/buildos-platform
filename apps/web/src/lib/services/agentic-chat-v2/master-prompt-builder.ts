@@ -3,6 +3,11 @@ import type { ChatContextType } from '@buildos/shared-types';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	buildProjectIntelligencePromptSections,
+	extractProjectIntelligence,
+	serializeLoadedContext
+} from '$lib/services/agentic-chat-lite/prompt/build-lite-prompt';
 
 export type MasterPromptContext = {
 	contextType: ChatContextType;
@@ -73,6 +78,9 @@ function formatContextGuidanceTags(params: {
 		...(params.contextType === 'project_create'
 			? [wrapTag('project_create_workflow', PROJECT_CREATE_WORKFLOW)]
 			: []),
+		...(params.contextType === 'project'
+			? [wrapTag('project_analysis_skills', PROJECT_ANALYSIS_SKILL_GUIDANCE)]
+			: []),
 		...(params.entityResolutionHint
 			? [wrapTag('recent_referents', params.entityResolutionHint)]
 			: []),
@@ -85,7 +93,52 @@ function formatContextGuidanceTags(params: {
 function serializeData(data?: Record<string, unknown> | string | null): string | null {
 	if (!data) return null;
 	if (typeof data === 'string') return data;
+	if (shouldUseActionableContextFormatter(data)) {
+		return [
+			wrapTag('loaded_context_index', serializeLoadedContext(data)),
+			formatProjectIntelligenceTimelineBlock(data)
+		]
+			.filter((section): section is string => Boolean(section))
+			.join('\n\n');
+	}
 	return JSON.stringify(compactPromptData(data), null, 2);
+}
+
+function shouldUseActionableContextFormatter(data: Record<string, unknown>): boolean {
+	if (isJsonRecord(data.project_intelligence)) return true;
+	if (isJsonRecord(data.project)) return true;
+	if (Array.isArray(data.projects)) {
+		return data.projects.some((item) => isJsonRecord(item) && isJsonRecord(item.project));
+	}
+	return false;
+}
+
+function formatProjectIntelligenceTimelineBlock(data: Record<string, unknown>): string | null {
+	const intelligence = extractProjectIntelligence(data);
+	if (!intelligence) return null;
+	const sections = buildProjectIntelligencePromptSections(intelligence);
+
+	return wrapTag(
+		'timeline_recent_activity',
+		[
+			'Project status:',
+			formatBullets(sections.statusLines, 'No project status summary was loaded.'),
+			'',
+			'Overdue or due soon:',
+			formatBullets(sections.overdueLines, 'No overdue or near-term due work is loaded.'),
+			'',
+			'Upcoming dated work:',
+			formatBullets(sections.upcomingLines, 'No upcoming dated work is loaded.'),
+			'',
+			'Recent project changes:',
+			formatBullets(sections.recentChangeLines, 'No recent project changes are loaded.')
+		].join('\n')
+	);
+}
+
+function formatBullets(items: string[], fallback: string): string {
+	if (items.length === 0) return `- ${fallback}`;
+	return items.map((item) => `- ${item}`).join('\n');
 }
 
 function cloneJsonRecord<T>(value: T): T {

@@ -74,6 +74,9 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.sections.map((section) => section.id)).toEqual(LITE_PROMPT_SECTION_ORDER);
 		expect(envelope.systemPrompt).toContain('# BuildOS Lite Agentic Chat Prompt');
 		expect(envelope.systemPrompt).toContain('Loaded scope:');
+		expect(envelope.systemPrompt).toContain('Actionable loaded context index (bounded):');
+		expect(envelope.systemPrompt).not.toContain('Loaded context payload');
+		expect(envelope.systemPrompt).not.toContain('"recent_activity": [');
 		expect(envelope.systemPrompt).not.toContain('Product surface: global workspace chat');
 		expect(envelope.systemPrompt).not.toContain(
 			'Conversation position: beginning of chat thread'
@@ -122,10 +125,10 @@ describe('buildLitePromptEnvelope', () => {
 					counts: {
 						accessible_projects: 3,
 						projects_returned: 1,
-						overdue_total: 1,
+						overdue_total: 3,
 						due_soon_total: 1,
 						upcoming_total: 1,
-						recent_change_total: 1
+						recent_change_total: 2
 					},
 					overdue_or_due_soon: [
 						{
@@ -154,6 +157,33 @@ describe('buildLitePromptEnvelope', () => {
 							bucket: 'due_soon',
 							days_delta: 3,
 							updated_at: '2026-04-15T10:00:00Z'
+						},
+						{
+							kind: 'event',
+							id: 'event-bad-date',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Ancient bad calendar artifact',
+							state_key: 'scheduled',
+							date_kind: 'start_at',
+							date: '0003-03-13T00:00:00Z',
+							bucket: 'overdue',
+							days_delta: -738919,
+							updated_at: '2026-04-15T10:00:00Z'
+						},
+						{
+							kind: 'task',
+							id: 'task-stale',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Old backlog cleanup',
+							state_key: 'todo',
+							date_kind: 'due_at',
+							date: '2025-12-01T12:00:00Z',
+							bucket: 'overdue',
+							days_delta: -135,
+							priority: 1,
+							updated_at: '2026-04-15T10:00:00Z'
 						}
 					],
 					upcoming_work: [
@@ -180,6 +210,15 @@ describe('buildLitePromptEnvelope', () => {
 							title: 'Finish onboarding',
 							action: 'updated',
 							changed_at: '2026-04-15T11:00:00Z'
+						},
+						{
+							kind: 'task',
+							id: 'task-1',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Finish onboarding',
+							action: 'updated',
+							changed_at: '2026-04-15T10:00:00Z'
 						}
 					],
 					project_summaries: [
@@ -215,20 +254,54 @@ describe('buildLitePromptEnvelope', () => {
 		});
 
 		expect(envelope.systemPrompt).toContain(
-			'Loaded project intelligence: 1 overdue, 1 due soon, 1 upcoming, 1 recent changes.'
+			'Loaded project intelligence: 3 overdue, 1 due soon, 1 upcoming, 2 recent changes.'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Overdue: 2026-04-14: task "Send beta invite" in Launch Alpha, todo, yesterday.'
+			'2026-04-14: task (task_id: task-overdue) "Send beta invite" in Launch Alpha, overdue, todo, yesterday.'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Due soon: 2026-04-18: milestone "Beta launch" in Launch Alpha, pending, in 3 days.'
+			'2026-04-18: milestone (milestone_id: milestone-soon) "Beta launch" in Launch Alpha, due soon, pending, in 3 days.'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Upcoming: 2026-04-25: event "Launch review" in Launch Alpha, scheduled, in 10 days.'
+			'2026-04-25: event (event_id: event-1) "Launch review" in Launch Alpha, scheduled, in 10 days.'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'2026-04-15: task "Finish onboarding" updated in Launch Alpha.'
+			'2026-04-15: task (task_id: task-1) "Finish onboarding" updated in Launch Alpha.'
 		);
+		expect(envelope.systemPrompt).not.toContain('Ancient bad calendar artifact');
+		expect(envelope.systemPrompt).not.toContain('Old backlog cleanup');
+		expect(envelope.systemPrompt).toContain('stale overdue items suppressed');
+		expect(envelope.systemPrompt).toContain('invalid-date items suppressed');
+		expect(
+			envelope.systemPrompt.match(
+				/2026-04-15: task \(task_id: task-1\) "Finish onboarding" updated in Launch Alpha\./g
+			)
+		).toHaveLength(1);
+	});
+
+	it('ignores incomplete project intelligence payloads instead of throwing', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			now: '2026-04-15T12:00:00Z',
+			data: {
+				projects: [],
+				project_intelligence: {
+					generated_at: '2026-04-15T12:00:00Z',
+					counts: {
+						overdue_total: 1,
+						due_soon_total: 0,
+						upcoming_total: 0,
+						recent_change_total: 0
+					},
+					overdue_or_due_soon: [],
+					upcoming_work: [],
+					recent_changes: []
+				}
+			}
+		});
+
+		expect(envelope.systemPrompt).not.toContain('Loaded project intelligence:');
+		expect(envelope.systemPrompt).toContain('No project timeline or recent activity details');
 	});
 
 	it('renders project entity focus without hiding the focused context slots', () => {
@@ -336,14 +409,23 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain('Loaded data snapshot:');
 		expect(envelope.systemPrompt).toContain('Counts: documents: 2, events: 0');
 		expect(envelope.systemPrompt).not.toContain('Top-level keys:');
-		expect(envelope.systemPrompt).toContain('"focus_entity_type": "task"');
-		expect(loadedContext.documents).toEqual([
+		expect(envelope.systemPrompt).toContain('"focus_entity":');
+		expect(loadedContext.focus_entity).toEqual({
+			type: 'task',
+			id: 'task-1',
+			title: 'Draft proposal'
+		});
+		expect((loadedContext.entity_refs as Record<string, unknown>).documents).toEqual([
+			expect.objectContaining({
+				id: 'doc-linked',
+				title: 'Linked doc'
+			}),
 			expect.objectContaining({
 				id: 'doc-unlinked',
 				title: 'Unlinked doc'
 			})
 		]);
-		expect(loadedContext.linked_entities).toEqual({
+		expect(loadedContext.linked_entity_refs).toEqual({
 			documents: [{ id: 'doc-linked', title: 'Linked doc' }]
 		});
 		expect(envelope.contextInventory.dataSummary.arrayCounts.tasks).toBe(1);

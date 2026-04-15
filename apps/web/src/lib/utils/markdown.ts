@@ -55,7 +55,9 @@ const sanitizeOptions = {
 		h5: ['id'],
 		h6: ['id'],
 		code: ['class'],
-		pre: ['class']
+		pre: ['class'],
+		th: ['align'],
+		td: ['align']
 	},
 	allowedClasses: {
 		code: ['language-*'],
@@ -76,6 +78,134 @@ const sanitizeOptions = {
 	}
 };
 
+function splitMarkdownLines(text: string): string[] {
+	return text.split(/\r\n|\n|\r/);
+}
+
+function splitTableCells(line: string): string[] {
+	let trimmed = line.trim();
+	if (trimmed.startsWith('|')) trimmed = trimmed.slice(1);
+	if (trimmed.endsWith('|')) trimmed = trimmed.slice(0, -1);
+	return trimmed.split('|').map((cell) => cell.trim());
+}
+
+function isPotentialTableRow(line: string): boolean {
+	const trimmed = line.trim();
+	if (!trimmed || !trimmed.includes('|')) return false;
+	return splitTableCells(trimmed).length >= 2;
+}
+
+function isTableDelimiterRow(line: string): boolean {
+	const cells = splitTableCells(line);
+	return cells.length >= 2 && cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s+/g, '')));
+}
+
+function isValidMarkdownTable(rows: string[]): boolean {
+	const headerRow = rows[0];
+	const delimiterRow = rows[1];
+	if (!headerRow || !delimiterRow || !isTableDelimiterRow(delimiterRow)) return false;
+	const headerCellCount = splitTableCells(headerRow).length;
+	const delimiterCellCount = splitTableCells(delimiterRow).length;
+	return headerCellCount >= 2 && headerCellCount === delimiterCellCount;
+}
+
+function getFenceMatch(line: string): { marker: string; length: number } | null {
+	const match = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+	if (!match?.[1]) return null;
+	const marker = match[1].charAt(0);
+	if (!marker) return null;
+	return {
+		marker,
+		length: match[1].length
+	};
+}
+
+function findNextNonBlankLine(lines: string[], startIndex: number): number {
+	for (let index = startIndex; index < lines.length; index += 1) {
+		if (lines[index]?.trim()) return index;
+	}
+	return -1;
+}
+
+/**
+ * LLMs commonly emit valid-looking GFM tables with blank lines between each row.
+ * GFM requires the header, delimiter, and body rows to be contiguous, so collapse
+ * only blank lines that sit inside a confirmed pipe-table block.
+ */
+export function normalizeMarkdownTables(text: string): string {
+	const lines = splitMarkdownLines(text);
+	const normalized: string[] = [];
+	let fence: { marker: string; length: number } | null = null;
+
+	for (let index = 0; index < lines.length; ) {
+		const line = lines[index] ?? '';
+		const fenceMatch = getFenceMatch(line);
+
+		if (fence) {
+			normalized.push(line);
+			if (
+				fenceMatch &&
+				fenceMatch.marker === fence.marker &&
+				fenceMatch.length >= fence.length
+			) {
+				fence = null;
+			}
+			index += 1;
+			continue;
+		}
+
+		if (fenceMatch) {
+			fence = fenceMatch;
+			normalized.push(line);
+			index += 1;
+			continue;
+		}
+
+		if (!isPotentialTableRow(line)) {
+			normalized.push(line);
+			index += 1;
+			continue;
+		}
+
+		const tableRows: string[] = [];
+		let scanIndex = index;
+
+		while (scanIndex < lines.length) {
+			const candidate = lines[scanIndex] ?? '';
+
+			if (isPotentialTableRow(candidate)) {
+				tableRows.push(candidate);
+				scanIndex += 1;
+				continue;
+			}
+
+			if (!candidate.trim()) {
+				const nextNonBlankIndex = findNextNonBlankLine(lines, scanIndex + 1);
+				if (
+					nextNonBlankIndex !== -1 &&
+					isPotentialTableRow(lines[nextNonBlankIndex] ?? '')
+				) {
+					scanIndex += 1;
+					continue;
+				}
+			}
+
+			break;
+		}
+
+		if (isValidMarkdownTable(tableRows)) {
+			normalized.push(...tableRows);
+			index = scanIndex;
+			continue;
+		}
+
+		normalized.push(line);
+		index += 1;
+	}
+
+	return normalized.join('\n');
+}
+
 /**
  * Convert markdown to safe HTML
  */
@@ -84,7 +214,7 @@ export function renderMarkdown(text: string | null | undefined): string {
 
 	try {
 		// Use marked.parse for synchronous operation (async: false is set globally)
-		const html = marked.parse(text.trim()) as string;
+		const html = marked.parse(normalizeMarkdownTables(text.trim())) as string;
 		return sanitizeHtml(html, sanitizeOptions);
 	} catch (error) {
 		console.error('Error rendering markdown:', error);
@@ -191,13 +321,22 @@ export function hasMarkdownFormatting(text: string | null | undefined): boolean 
 		/\*\*.*?\*\*/, // Bold
 		/\*.*?\*/, // Italic
 		/`.*?`/, // Inline code
-		/#+\s/, // Headers
-		/>\s/, // Blockquotes
+		/^\s{0,3}#{1,6}\s+\S/m, // Headers
+		/^\s{0,3}>+\s/m, // Blockquotes
+		/^\s{0,3}(```|~~~)/m, // Fenced code
+		/^\s{0,3}[-*_]{3,}\s*$/m, // Horizontal rules
 		/\[.*?\]\(.*?\)/, // Links
 		/!\[.*?\]\(.*?\)/, // Images
 		/^\s*[-*+]\s/m, // Lists
-		/^\s*\d+\.\s/m // Numbered lists
+		/^\s*\d+\.\s/m, // Numbered lists
+		/^\s*[-*+]\s+\[[ xX]\]\s/m // Task lists
 	];
 
-	return markdownPatterns.some((pattern) => pattern.test(text));
+	if (markdownPatterns.some((pattern) => pattern.test(text))) return true;
+
+	const normalized = normalizeMarkdownTables(text);
+	const lines = splitMarkdownLines(normalized);
+	return lines.some(
+		(line, index) => isPotentialTableRow(line) && isTableDelimiterRow(lines[index + 1] ?? '')
+	);
 }

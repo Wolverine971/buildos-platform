@@ -12,7 +12,7 @@
 **Connection Level:** Follower (DJ already following)
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-04-15
 **Last Engaged:** Never
 **Source of First Discovery:** `linkedin-engagement-targets.md` (Tier 2 Context Engineering Practitioners)
 
@@ -26,10 +26,10 @@
 
 ## Profile Snapshot
 
-- **Headline:** Context Engineering (banner text); builder/founder in the AI reliability space
-- **About / bio:** Practitioner-side voice on how to actually make AI agents usable through context, not more autonomy
-- **Followers / audience:** ~11K
-- **Role / company:** Builder in the context engineering / agent reliability space
+- **Headline:** "we are in an asymmetric war on slop"
+- **About / bio:** Practitioner-side voice on how to actually make AI agents usable through context, not more autonomy. Building HumanLayer (humanlayer.dev) — human-in-the-loop tooling for AI agents. Co-running "AI That Works" unconference with Vaibhav Gupta.
+- **Followers / audience:** 12,392
+- **Role / company:** HumanLayer founder
 - **Formats:** Short observation posts, reposts of thoughtful builder content, occasional longer threads
 - **Audience vibe:** Practitioner-heavy, technical, skeptical of pure hype — very BuildOS-adjacent
 
@@ -48,10 +48,11 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                              | Post Link | Action   | Status | What We Said / Planned                             | Outcome | Source                        |
-| ---------- | ------- | ---------------------------------- | --------- | -------- | ------ | -------------------------------------------------- | ------- | ----------------------------- |
-| 2026-04-07 | Profile | Reposts only in recent scan window | N/A       | Reviewed | Logged | No engageable original posts in last scan          | None    | 2026-04-07_linkedin-warmup.md |
-| 2026-04-08 | Profile | Profile seeding                    | N/A       | Reviewed | Logged | Seeded profile; queue for engagement once he posts | None    | profile-seeding-pass          |
+| Date       | Surface | Topic                                | Post Link | Action   | Status | What We Said / Planned                                                           | Outcome | Source                        |
+| ---------- | ------- | ------------------------------------ | --------- | -------- | ------ | -------------------------------------------------------------------------------- | ------- | ----------------------------- |
+| 2026-04-07 | Profile | Reposts only in recent scan window   | N/A       | Reviewed | Logged | No engageable original posts in last scan                                        | None    | 2026-04-07_linkedin-warmup.md |
+| 2026-04-08 | Profile | Profile seeding                      | N/A       | Reviewed | Logged | Seeded profile; queue for engagement once he posts                               | None    | profile-seeding-pass          |
+| 2026-04-15 | Profile | Stale scan — most recent post 6d old | N/A       | Reviewed | Logged | No fresh content today; slug correction noted (`dexterihorthy` not `dex-horthy`) | None    | 2026-04-15_linkedin-warmup.md |
 
 ## Open Loops
 

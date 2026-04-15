@@ -21,6 +21,32 @@ import { FASTCHAT_PROMPT_VARIANT } from '../prompt-variant';
 
 const MAX_TOOL_ARG_PREVIEW_CHARS = 400;
 
+function countPriorUserTurns(history: FastChatHistoryMessage[]): number {
+	return history.reduce((count, msg) => count + (msg.role === 'user' ? 1 : 0), 0);
+}
+
+function normalizePromptDumpTurnNumber(
+	value: number | undefined,
+	history: FastChatHistoryMessage[]
+): number {
+	if (typeof value === 'number' && Number.isFinite(value) && value >= 1) {
+		return Math.floor(value);
+	}
+
+	return countPriorUserTurns(history) + 1;
+}
+
+function promptVariantFilenameSlug(promptVariant: string): string {
+	if (promptVariant === 'lite_seed_v1') return 'lite';
+	if (promptVariant === FASTCHAT_PROMPT_VARIANT) return 'fastchat';
+
+	const slug = promptVariant
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	return slug || 'unknown';
+}
+
 export function writeInitialPromptDump(params: {
 	dev: boolean;
 	sessionId: string;
@@ -50,7 +76,13 @@ export function writeInitialPromptDump(params: {
 		mkdirSync(dumpDir, { recursive: true });
 		const dumpTimestamp = new Date();
 		const ts = dumpTimestamp.toISOString().replace(/[:.]/g, '-');
-		const dumpPath = join(dumpDir, `fastchat-${ts}.txt`);
+		const promptVariant = params.debugContext?.promptVariant ?? FASTCHAT_PROMPT_VARIANT;
+		const turnNumber = normalizePromptDumpTurnNumber(
+			params.debugContext?.turnNumber,
+			params.history
+		);
+		const variantSlug = promptVariantFilenameSlug(promptVariant);
+		const dumpPath = join(dumpDir, `fb-${ts}-${variantSlug}-turn${turnNumber}.txt`);
 		const toolNames = (params.tools ?? []).map((tool) => tool.function?.name).filter(Boolean);
 		const promptCostBreakdown = buildPromptCostBreakdown({
 			systemPrompt: params.systemPrompt,
@@ -73,7 +105,8 @@ export function writeInitialPromptDump(params: {
 			`Context:   ${params.normalizedContext}`,
 			`Entity ID: ${params.entityId ?? 'none'}`,
 			`Project:   ${params.projectId ?? 'none'}`,
-			`Prompt variant: ${params.debugContext?.promptVariant ?? FASTCHAT_PROMPT_VARIANT}`,
+			`Prompt variant: ${promptVariant}`,
+			`Turn:      ${turnNumber}`,
 			`Tools (${toolNames.length}): ${toolNames.join(', ') || 'none'}`,
 			`History messages: ${params.history.length}`,
 			`Gateway mode: ${params.debugContext?.gatewayEnabled ? 'enabled' : 'disabled'}`,
