@@ -22,6 +22,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import { PLAN_STATES } from '$lib/types/onto';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { normalizeMarkdownInput } from '$lib/utils/markdown-normalization';
 
 	// Hardcoded plan types (templates removed)
 	interface PlanType {
@@ -232,7 +233,7 @@
 			const body = {
 				project_id: projectId,
 				name: name.trim(),
-				plan: planDetails.trim() || null,
+				plan: (normalizeMarkdownInput(planDetails) ?? '').trim() || null,
 				description: description.trim() || null,
 				state_key: stateKey || 'draft',
 				start_date: startDate || null,

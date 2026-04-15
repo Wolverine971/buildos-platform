@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { getGatewaySurfaceForProfile } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { selectFastChatTools } from './tool-selector';
 
 afterEach(() => {
@@ -8,7 +9,7 @@ afterEach(() => {
 });
 
 describe('selectFastChatTools', () => {
-	it('returns the canonical hybrid gateway surface', () => {
+	it('returns a lean global gateway surface with discovery tools', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
 		const tools = selectFastChatTools({ contextType: 'global' });
@@ -19,32 +20,53 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('tool_schema');
 		expect(names).toContain('get_workspace_overview');
 		expect(names).toContain('get_project_overview');
-		expect(names).toContain('resolve_libri_resource');
 		expect(names).toContain('search_buildos');
-		expect(names).toContain('list_onto_tasks');
+		expect(names).toContain('search_onto_projects');
+		expect(names).not.toContain('list_onto_tasks');
+		expect(names).not.toContain('resolve_libri_resource');
 	});
 
-	it('keeps project calendar mapping tools available in project context', () => {
+	it('keeps project context on the basic read profile', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 		const tools = selectFastChatTools({ contextType: 'project' });
 		const names = tools.map((tool) => tool.function?.name).filter(Boolean);
 
-		expect(names).toContain('resolve_libri_resource');
-		expect(names).toContain('get_project_calendar');
-		expect(names).toContain('set_project_calendar');
+		expect(names).toContain('get_project_overview');
+		expect(names).toContain('get_onto_project_details');
+		expect(names).toContain('list_onto_tasks');
+		expect(names).toContain('search_onto_tasks');
+		expect(names).toContain('list_onto_documents');
+		expect(names).not.toContain('create_onto_task');
+		expect(names).not.toContain('update_onto_task');
 	});
 
-	it('does not expose Libri on the project-create or calendar hot path', () => {
+	it('uses the minimal project-create hot path', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
-		const projectCreateNames = selectFastChatTools({ contextType: 'project_create' })
-			.map((tool) => tool.function?.name)
-			.filter(Boolean);
-		const calendarNames = selectFastChatTools({ contextType: 'calendar' })
+
+		const names = selectFastChatTools({ contextType: 'project_create' })
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(projectCreateNames).not.toContain('resolve_libri_resource');
-		expect(calendarNames).not.toContain('resolve_libri_resource');
+		expect(names).toEqual(['skill_load', 'tool_search', 'tool_schema', 'create_onto_project']);
+	});
+
+	it('exposes larger deterministic profiles when requested explicitly', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+
+		const writeNames = selectFastChatTools({
+			contextType: 'project',
+			surfaceProfile: 'project_write'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+		const calendarNames = getGatewaySurfaceForProfile('project_calendar')
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(writeNames).toContain('create_onto_task');
+		expect(writeNames).toContain('update_onto_task');
+		expect(calendarNames).toContain('get_project_calendar');
+		expect(calendarNames).toContain('set_project_calendar');
 	});
 
 	it('does not expose Libri when the feature flag is disabled', () => {

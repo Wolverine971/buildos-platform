@@ -1,8 +1,12 @@
 // apps/web/src/lib/services/agentic-chat-v2/tool-surface-size-report.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	getGatewaySurfaceForContextType,
+	getGatewaySurfaceForProfile
+} from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import {
 	buildCanonicalToolSurfaceSizeReports,
+	buildGatewayProfileToolSurfaceSizeReports,
 	buildToolSurfaceSizeReport,
 	formatToolSurfaceSizeMatrix,
 	formatToolSurfaceSizeReport
@@ -50,5 +54,45 @@ describe('tool surface size report', () => {
 		expect(formatToolSurfaceSizeReport(projectReport!, { maxTools: 3 }).join('\n')).toContain(
 			'... '
 		);
+	});
+
+	it('keeps the largest preloaded provider tool definitions under budget', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
+
+		const projectCreate = buildToolSurfaceSizeReport({
+			profile: 'project_create_minimal',
+			contextType: 'project_create_minimal',
+			tools: getGatewaySurfaceForProfile('project_create_minimal')
+		});
+		const projectWrite = buildToolSurfaceSizeReport({
+			profile: 'project_write',
+			contextType: 'project_write',
+			tools: getGatewaySurfaceForProfile('project_write')
+		});
+
+		const createProject = projectCreate.tools.find(
+			(tool) => tool.name === 'create_onto_project'
+		);
+		const createTask = projectWrite.tools.find((tool) => tool.name === 'create_onto_task');
+
+		expect(createProject?.chars).toBeLessThanOrEqual(5000);
+		expect(createTask?.chars).toBeLessThanOrEqual(2500);
+	});
+
+	it('keeps deterministic preloaded profiles below target payload sizes', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
+
+		const reports = buildGatewayProfileToolSurfaceSizeReports([
+			'project_create_minimal',
+			'project_basic',
+			'project_write'
+		]);
+		const projectCreate = reports.find((report) => report.profile === 'project_create_minimal');
+		const projectBasic = reports.find((report) => report.profile === 'project_basic');
+		const projectWrite = reports.find((report) => report.profile === 'project_write');
+
+		expect(projectCreate?.totalChars).toBeLessThanOrEqual(9000);
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(9000);
+		expect(projectWrite?.totalChars).toBeLessThan(21000);
 	});
 });

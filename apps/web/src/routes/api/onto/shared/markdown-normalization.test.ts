@@ -76,4 +76,14 @@ describe('normalizeMarkdownInput', () => {
 
 		expect(result).toBe(['Top \n', '```txt', '/n', '```', 'Bottom \n'].join('\n'));
 	});
+
+	it('normalizes agent-created plan details with escaped newline markers', () => {
+		const input =
+			'# First Draft Writing Schedule\\n\\n## Objective\\nFinish the draft. /n- Track words\\n\\n## Risks\\nBurnout';
+		const result = normalizeMarkdownInput(input);
+
+		expect(result).toBe(
+			'# First Draft Writing Schedule\n\n## Objective\nFinish the draft. \n- Track words\n\n## Risks\nBurnout'
+		);
+	});
 });

@@ -21,7 +21,7 @@ Project creation playbook for turning a user idea into the smallest valid BuildO
 1. Start from the smallest valid project payload: project { name, type_key }, entities: [], relationships: [].
 2. Infer project.name from the user message when it is reasonably clear. Do not ask for the name if the user already implied it.
 3. Infer project.type_key using the project.{realm}.{domain}[.{variant}] pattern. Pick the simplest accurate classification.
-4. Extract concrete details into project.description and project.props when the user provided them. Do not leave props empty when clear attributes were stated.
+4. Extract concrete details into project.description and project.props when the user provided them. Use `snake_case` props, `is_`/`has_` booleans, `*_count` counts, and `target_*` goals. Do not leave props empty when clear attributes were stated.
 5. If the user stated an outcome, add one goal entity. If the user listed concrete actions, add only those task entities. Add plans or milestones only when the user clearly described phases, workstreams, or date-driven structure.
 6. Always include entities and relationships arrays, even when they are empty.
 7. When you include relationships, each relationship item must use entity refs with temp_id and kind. Valid forms are [ { temp_id, kind }, { temp_id, kind } ] or { from: { temp_id, kind }, to: { temp_id, kind } }.
@@ -66,3 +66,7 @@ Project creation playbook for turning a user idea into the smallest valid BuildO
 
 - Project creation is a minimality exercise. Good first payloads are usually smaller than the model expects.
 - The most common failure is omitting entities and relationships or leaving project fields empty after the user already provided enough context.
+- Software app props can include tech_stack, deployment_target, is_mvp, and target_users.
+- Business launch props can include launch_date, budget, target_customers, and channels.
+- Event props can include venue, guest_count, budget, and key dates.
+- Creative writing props can include genre, audience, target_word_count, and deadline_date.

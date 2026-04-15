@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/tool-schema-compat.test.ts
 import { describe, expect, it } from 'vitest';
+import { getToolSchema } from '../registry/tool-schema';
 import { CHAT_TOOL_DEFINITIONS } from './tool-definitions';
 
 const FORBIDDEN_TOP_LEVEL_KEYS = ['oneOf', 'anyOf', 'allOf', 'not', 'enum'] as const;
@@ -33,5 +34,25 @@ describe('Chat tool schema compatibility', () => {
 		expect(required).toContain('title');
 		expect(required).toContain('description');
 		expect(required).not.toContain('content');
+	});
+
+	it('returns exact create_onto_project schema details through tool_schema', () => {
+		const schema = getToolSchema('onto.project.create', {
+			include_examples: true,
+			include_schema: true
+		}) as Record<string, any>;
+
+		expect(schema.type).toBe('tool_schema');
+		expect(schema.tool_name).toBe('create_onto_project');
+		expect(schema.usage).toBe('create_onto_project({ ... })');
+		expect(schema.required_args).toEqual(['project', 'entities', 'relationships']);
+		expect(schema.schema.required).toEqual(['project', 'entities', 'relationships']);
+		expect(schema.schema.properties.project.required).toEqual(['name', 'type_key']);
+		expect(schema.schema.properties.entities.items.required).toEqual(['temp_id', 'kind']);
+		expect(schema.schema.properties.project.properties.type_key.description).toContain(
+			'Starts with project.'
+		);
+		expect(schema.schema.properties.entities.description).toContain('goal/plan/metric name');
+		expect(schema.example_tool_call.name).toBe('create_onto_project');
 	});
 });

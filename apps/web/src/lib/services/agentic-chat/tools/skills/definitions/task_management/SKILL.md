@@ -71,6 +71,8 @@ Task workflow playbook for deciding when work should become a task and how to ma
 ### Track a real follow-up the user must do later
 
 - Confirm the request is future user work rather than work the agent can complete now.
+- Good create signals: "add a task", "track this", "remind me", a future phone call, meeting, review, approval, or persistent project checklist.
+- Do not create a task for work the agent can do now, such as research, analysis, brainstorming, summarizing, or drafting in the current conversation.
 - If the create shape is unclear, call `tool_schema({ op: "onto.task.create" })`.
 - Then call `create_onto_task({ ... })` with the right parent plan/goal/milestone when that relationship is already clear.
 - Example payload when project context is already known:

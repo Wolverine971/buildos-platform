@@ -8,7 +8,7 @@ vi.mock('$env/dynamic/private', () => ({
 }));
 
 import { CHAT_TOOL_DEFINITIONS } from './tool-definitions';
-import { getGatewaySurfaceForContextType } from './gateway-surface';
+import { getGatewaySurfaceForContextType, materializeGatewayTools } from './gateway-surface';
 import { getDefaultToolsForContextType, getToolsForContextType } from './tools.config';
 import { getToolRegistry, resetToolRegistryCache } from '../registry/tool-registry';
 
@@ -72,19 +72,19 @@ describe('resolve_libri_resource tool surface', () => {
 		);
 	});
 
-	it('is preloaded in global/project gateway surfaces only', () => {
+	it('is not preloaded in lean gateway surfaces but can be materialized when enabled', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 
-		expect(toolNames(getGatewaySurfaceForContextType('global'))).toContain(
+		expect(toolNames(getGatewaySurfaceForContextType('global'))).not.toContain(
 			'resolve_libri_resource'
 		);
-		expect(toolNames(getGatewaySurfaceForContextType('global'))).toContain(
+		expect(toolNames(getGatewaySurfaceForContextType('global'))).not.toContain(
 			'query_libri_library'
 		);
-		expect(toolNames(getGatewaySurfaceForContextType('project'))).toContain(
+		expect(toolNames(getGatewaySurfaceForContextType('project'))).not.toContain(
 			'resolve_libri_resource'
 		);
-		expect(toolNames(getGatewaySurfaceForContextType('project'))).toContain(
+		expect(toolNames(getGatewaySurfaceForContextType('project'))).not.toContain(
 			'query_libri_library'
 		);
 		expect(toolNames(getGatewaySurfaceForContextType('project_create'))).not.toContain(
@@ -99,6 +99,16 @@ describe('resolve_libri_resource tool surface', () => {
 		expect(toolNames(getGatewaySurfaceForContextType('calendar'))).not.toContain(
 			'query_libri_library'
 		);
+
+		const materialized = materializeGatewayTools(getGatewaySurfaceForContextType('global'), [
+			'resolve_libri_resource',
+			'query_libri_library'
+		]);
+
+		expect(materialized.addedToolNames).toEqual([
+			'resolve_libri_resource',
+			'query_libri_library'
+		]);
 	});
 
 	it('hides Libri from tool surfaces when the feature flag is disabled', () => {

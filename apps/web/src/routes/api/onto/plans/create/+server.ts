@@ -49,6 +49,7 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -98,6 +99,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			props && typeof props === 'object' && !Array.isArray(props)
 				? (props as Record<string, unknown>)
 				: {};
+		const normalizedPlan = normalizeMarkdownInput(plan);
 
 		// Get user's actor ID
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -211,13 +213,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			type_key: normalizedTypeKey,
 			name,
 			state_key,
-			plan: plan || null,
+			plan: normalizedPlan || null,
 			description: description || null, // Use dedicated column
 			created_by: actorId,
 			props: {
 				...incomingProps,
 				// Maintain backwards compatibility by also storing in props
-				plan: plan || null,
+				plan: normalizedPlan || null,
 				description: description || null,
 				start_date: start_date || null,
 				end_date: end_date || null

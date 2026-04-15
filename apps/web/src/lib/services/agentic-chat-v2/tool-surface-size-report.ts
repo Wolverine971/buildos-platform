@@ -1,7 +1,12 @@
 // apps/web/src/lib/services/agentic-chat-v2/tool-surface-size-report.ts
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
 import { estimateTokensFromText } from './context-usage';
-import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	GATEWAY_SURFACE_PROFILE_NAMES,
+	getGatewaySurfaceForContextType,
+	getGatewaySurfaceForProfile,
+	type GatewaySurfaceProfileName
+} from '$lib/services/agentic-chat/tools/core/gateway-surface';
 
 export const TOOL_SURFACE_PROFILE_CANONICAL_GATEWAY = 'canonical_gateway' as const;
 
@@ -15,6 +20,10 @@ export const TOOL_SURFACE_REPORT_CONTEXTS: ChatContextType[] = [
 	'ontology',
 	'brain_dump',
 	'daily_brief_update'
+];
+
+export const TOOL_SURFACE_REPORT_PROFILES: GatewaySurfaceProfileName[] = [
+	...GATEWAY_SURFACE_PROFILE_NAMES
 ];
 
 export type ToolDefinitionSize = {
@@ -68,6 +77,18 @@ export function buildCanonicalToolSurfaceSizeReports(
 			profile: TOOL_SURFACE_PROFILE_CANONICAL_GATEWAY,
 			contextType,
 			tools: getGatewaySurfaceForContextType(contextType)
+		})
+	);
+}
+
+export function buildGatewayProfileToolSurfaceSizeReports(
+	profiles: GatewaySurfaceProfileName[] = TOOL_SURFACE_REPORT_PROFILES
+): ToolSurfaceSizeReport[] {
+	return profiles.map((profile) =>
+		buildToolSurfaceSizeReport({
+			profile,
+			contextType: profile,
+			tools: getGatewaySurfaceForProfile(profile)
 		})
 	);
 }

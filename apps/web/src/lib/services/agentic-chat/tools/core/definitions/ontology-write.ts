@@ -19,95 +19,65 @@ export const ONTOLOGY_WRITE_TOOLS = [
 			name: 'create_onto_task',
 			description: `Create a new task in the ontology system.
 Creates a task within a project and optionally assigns it to a plan and collaborators.
-Automatically creates containment edges based on parent inputs (plan/goal/project).
-
-**CRITICAL: When to create tasks vs. when NOT to:**
-
-CREATE a task when:
-- The USER explicitly asks to "add a task", "create a task", "track this", or "remind me to"
-- The work requires HUMAN action (phone calls, meetings, reviews, approvals)
-- The work must happen OUTSIDE this conversation (external results, future actions)
-- The user is building a project plan and wants persistent task tracking
-
-DO NOT create a task when:
-- You (the agent) can help with the work RIGHT NOW in this conversation
-- The request is for research, analysis, brainstorming, or summarizing (just do it)
-- You're about to perform the action yourself (don't create then immediately complete)
-- You want to appear helpful or structured (only create if the user needs to track it)
-- The user is exploring ideas or asking questions (just respond helpfully)
-
-Examples:
-- "Add a task to call the client tomorrow" → CREATE (user must do this later)
-- "Help me brainstorm marketing ideas" → DO NOT CREATE (help them now)
-- "I need to review the design mockups" → CREATE (user action required)
-- "What are my project blockers?" → DO NOT CREATE (just analyze and respond)
-- "Create tasks for the launch checklist" → CREATE (explicit request)
-- "Let's outline the API endpoints" → DO NOT CREATE (collaborative work you can help with)
-- "Remind me to follow up with Sarah" → CREATE (future user action)
-
-Remember: Tasks should represent FUTURE USER WORK, not a log of what you discussed or helped with.`,
+Use when the user explicitly asks to add/track/remind, or when the item is future human work outside this chat.
+Do not create tasks for research, brainstorming, summarizing, or drafting you can do now; do the work instead.
+Always include project_id and a concrete title. Link to parent/plan/goal/milestone only when known. Use assignees only for known project members.
+Load task_management for complex task flows.`,
 			parameters: {
 				type: 'object',
 				additionalProperties: false,
 				properties: {
 					project_id: {
 						type: 'string',
-						description: 'Project UUID (required) - the project this task belongs to'
+						description: 'Project UUID'
 					},
 					title: {
 						type: 'string',
-						description: 'Task title (required)'
+						description: 'Task title'
 					},
 					description: {
 						type: 'string',
-						description: 'Task description (optional)'
+						description: 'Task description'
 					},
 					type_key: {
 						type: 'string',
 						default: 'task.execute',
-						description: `Work mode taxonomy: task.{work_mode}[.{specialization}].
-Modes: execute (action), create (produce), refine (improve), research (investigate), review (evaluate), coordinate (sync), admin (housekeeping), plan (strategize).
-Specializations: task.coordinate.meeting, task.coordinate.standup, task.execute.deploy, task.execute.checklist.
-Default: task.execute`
+						description: 'Task type key. Default task.execute.'
 					},
 					state_key: {
 						type: 'string',
 						default: 'todo',
-						description:
-							'Initial state (default: todo). Valid: todo, in_progress, blocked, done'
+						description: 'Initial state. Valid: todo, in_progress, blocked, done'
 					},
 					priority: {
 						type: 'number',
-						description: 'Priority level (1-5, default: 3). Higher = more important'
+						description: 'Priority 1-5. Default 3.'
 					},
 					assignee_actor_ids: {
 						type: 'array',
-						description:
-							'Optional assignee actor IDs (UUIDs) for active project members only. Prefer assignee_handles unless IDs were just retrieved from project members. Replaces assignment list on create. Max 10.',
+						description: 'Active project member actor UUIDs. Max 10.',
 						items: { type: 'string' }
 					},
 					assignee_handles: {
 						type: 'array',
-						description:
-							'Optional assignee handles like ["@jim", "@dj"]. Handles resolve against active project members by name/email local-part.',
+						description: 'Active project member handles, e.g. @dj.',
 						items: { type: 'string' }
 					},
 					plan_id: {
 						type: 'string',
-						description: 'Optional plan UUID to associate this task with'
+						description: 'Optional plan UUID'
 					},
 					goal_id: {
 						type: 'string',
-						description: 'Optional goal UUID that this task supports'
+						description: 'Optional goal UUID'
 					},
 					supporting_milestone_id: {
 						type: 'string',
-						description: 'Optional milestone UUID this task targets'
+						description: 'Optional milestone UUID'
 					},
 					parent: {
 						type: 'object',
-						description:
-							'Optional parent reference for containment (preferred over plan_id/goal_id)',
+						description: 'Optional primary containment parent',
 						properties: {
 							kind: { type: 'string' },
 							id: { type: 'string' },
@@ -116,7 +86,7 @@ Default: task.execute`
 					},
 					parents: {
 						type: 'array',
-						description: 'Optional multiple containment parents',
+						description: 'Optional containment parents',
 						items: {
 							type: 'object',
 							properties: {
@@ -128,8 +98,7 @@ Default: task.execute`
 					},
 					connections: {
 						type: 'array',
-						description:
-							'Optional relationship connections (use for documents, tasks, risks, or explicit rels)',
+						description: 'Optional semantic or containment links',
 						items: {
 							type: 'object',
 							properties: {
@@ -142,15 +111,15 @@ Default: task.execute`
 					},
 					start_at: {
 						type: 'string',
-						description: 'Optional start date in ISO format (when work should begin)'
+						description: 'ISO start date'
 					},
 					due_at: {
 						type: 'string',
-						description: 'Optional due date in ISO format (YYYY-MM-DDTHH:mm:ssZ)'
+						description: 'ISO due date'
 					},
 					props: {
 						type: 'object',
-						description: 'Additional properties as JSON object'
+						description: 'Additional JSON properties'
 					}
 				},
 				required: ['project_id', 'title']
@@ -753,163 +722,41 @@ IMPORTANT: Do not include documents. Documents are flat and managed only via ont
 		type: 'function',
 		function: {
 			name: 'create_onto_project',
-			description: `Create a new project in the ontology system with full structure.
-
-This is the PRIMARY tool for creating projects. It uses **entities + relationships only**
-to build the project graph:
-- Entities represent goals, plans, tasks, documents, risks, etc.
-- Relationships are directional pairs that drive containment + semantic edges.
-- Context document linkage (document.context.project) is supported.
-- Documents created here (including the context document) are added to the project's doc_structure at root level unless moved later.
-
-**IMPORTANT**: Extract what the user explicitly mentioned. Don't add structure they didn't ask for:
-- Project name from context
-- Appropriate type_key classification using project.{realm}.{domain}[.{variant}]
-- Start date (default to today if not specified)
-- Facets (context, scale, stage) from user intent
-- Props extracted from user's message - CRITICAL!
-
-**Start Simple (CRITICAL):**
-- Most new projects just need: project + 1 goal (if an outcome is stated) + maybe a few tasks (if explicit actions are mentioned)
-- Don't add plans/milestones unless user mentions phases, dates, or workstreams
-- Don't add peripheral entities (risks, documents, metrics, sources) unless explicitly mentioned
-- Simple projects are GOOD - structure grows over time
-
-**Props Extraction (CRITICAL)**:
-1. Use the prop conventions (snake_case, booleans as is_* or has_*)
-2. Extract ALL relevant values from the user's message (e.g., genre, tech_stack, audience, deadlines)
-3. Populate project.props (JSONB) with inferred values plus facets (context/scale/stage) when present
-
-Example: User says "wedding for 150 guests at Grand Hall"
-→ props: { facets: {...}, venue_details: { name: "Grand Hall" }, guest_count: 150, budget: null }
-
-**When to use clarifications array**:
-Only add clarification questions if CRITICAL information is missing that you cannot reasonably infer.
-For example:
-- If user says "create a book project", DON'T ask for project name - infer it's about a book
-- If user says "start a project", DO ask what kind of project
-When using clarifications, still include entities: [] and relationships: [] in the payload.
-
-**Workflow**:
-1. Infer the right type_key from taxonomy (project.creative.book, project.technical.app, etc.)
-2. Extract props from the user's message using prop naming guidance
-3. Fill in ProjectSpec with inferred data AND extracted props
-4. Add clarifications[] only if essential info is missing
-5. Call this tool with the complete spec
-
-**Examples (Start Simple):**
-
-SIMPLE PROJECT (just a goal, no tasks - most common for new projects):
-{
-  "project": { "name": "Learn Spanish", "type_key": "project.education.skill" },
-  "entities": [{ "temp_id": "g1", "kind": "goal", "name": "Conversational fluency" }],
-  "relationships": []
-}
-
-PROJECT WITH TASKS (user mentioned specific actions):
-{
-  "project": { "name": "Product Launch", "type_key": "project.business.product_launch" },
-  "entities": [
-    { "temp_id": "g1", "kind": "goal", "name": "Launch MVP by Q2" },
-    { "temp_id": "t1", "kind": "task", "title": "Schedule kickoff meeting" },
-    { "temp_id": "t2", "kind": "task", "title": "Review vendor proposals" }
-  ],
-  "relationships": [
-    [{ "temp_id": "g1", "kind": "goal" }, { "temp_id": "t1", "kind": "task" }],
-    [{ "temp_id": "g1", "kind": "goal" }, { "temp_id": "t2", "kind": "task" }]
-  ]
-}
-
-PROJECT WITH PHASES (user mentioned workstreams):
-{
-  "project": { "name": "Wedding Planning", "type_key": "project.service.event" },
-  "entities": [
-    { "temp_id": "g1", "kind": "goal", "name": "Perfect wedding day" },
-    { "temp_id": "p1", "kind": "plan", "name": "Venue & Catering" },
-    { "temp_id": "p2", "kind": "plan", "name": "Guest Management" }
-  ],
-  "relationships": [
-    [{ "temp_id": "g1", "kind": "goal" }, { "temp_id": "p1", "kind": "plan" }],
-    [{ "temp_id": "g1", "kind": "goal" }, { "temp_id": "p2", "kind": "plan" }]
-  ]
-}
-
-**ProjectSpec Structure (entities + relationships only)**:
-{
-  project: {
-    name: string (REQUIRED - infer from user message),
-    type_key: string (REQUIRED - classify via project.{realm}.{domain}[.{variant}]),
-    description?: string (infer from user message),
-    state_key?: string (default: "planning", valid: planning|active|completed|cancelled),
-    props?: { facets?: { context?, scale?, stage? } },
-    start_at?: ISO datetime (default to now),
-    end_at?: ISO datetime
-  },
-  entities: [
-    { temp_id: string, kind: "goal|milestone|plan|task|document|risk|metric|source", ... }
-  ],
-  relationships: [
-    [ { temp_id, kind }, { temp_id, kind } ],
-    { from: { temp_id, kind }, to: { temp_id, kind }, rel?, intent? }
-  ],
-  context_document?: { title: string, content: string, props? },
-  clarifications?: [{ key, question, required, choices?, help_text? }],
-  meta?: { model, confidence, suggested_facets } (NOT sent to API)
-}
-
-Relationships are directional: [from, to] treats "from" as the entity being created/updated and "to" as its connection.
-entities + relationships are required even if empty (use [] for no links or clarifications).`,
+			description: `Create a project from a ProjectSpec. Always include project, entities, relationships; use [] when empty.
+Hard rules: project.type_key starts with project. e.g. project.creative.novel. Entity labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri. Milestone needs due_at.
+Infer name/type_key when clear; ask one clarification only if too vague. Start minimal: one goal for an explicit outcome, tasks for explicit actions, plans/milestones only for phases, dates, or workstreams.
+Extract concrete details into description/props. Use temp_id + kind refs for relationships.`,
 			parameters: {
 				type: 'object',
 				properties: {
 					project: {
 						type: 'object',
-						description: 'Project definition (REQUIRED)',
+						description: 'Project definition',
 						properties: {
 							name: {
 								type: 'string',
-								description: 'Project name (REQUIRED - infer from user message)'
+								description: 'Project name'
 							},
 							type_key: {
 								type: 'string',
-								description:
-									'Type classification (REQUIRED). Must use project.{realm}.{domain}[.{variant}] format with 3-4 segments. Realm MUST be one of: creative, technical, business, service, education, personal. Examples: "project.business.product_launch", "project.creative.book", "project.technical.app.mobile". Use the "What does success look like?" test to pick the right realm.'
+								description: 'Starts with project.; e.g. project.creative.novel.'
 							},
 							description: {
 								type: 'string',
-								description:
-									'Project description (optional - infer from user message)'
+								description: 'Project description'
 							},
 							state_key: {
 								type: 'string',
 								description:
-									'Initial state (optional, defaults to "planning"). Valid: planning, active, completed, cancelled.'
+									'Initial state. Valid: planning, active, completed, cancelled.'
 							},
 							props: {
 								type: 'object',
-								description: `CRITICAL: Properties extracted from the user's message.
-
-This object is stored as JSONB and SHOULD contain:
-1. facets (context, scale, stage) - Standard project facets
-2. ALL relevant properties with values from the user's message using prop naming
-
-**Extraction Process**:
-- Use prop naming guidance (snake_case, is_/has_ for booleans, *_count, target_*)
-- For each meaningful attribute the user mentions, add it to props
-- Use intelligent defaults for properties inferable from context
-
-**Examples**:
-- Software app: user says "Next.js app on Vercel, MVP for indie creators" → props: { tech_stack: ["nextjs"], deployment_target: "vercel", is_mvp: true, target_users: "indie creators" }
-- Business launch: user says "product launch in Feb with $75k budget and 500 target customers" → props: { launch_date: "2025-02-01", budget: 75000, target_customers: 500, channels: ["email", "paid_social"] }
-- Event: user says "wedding for 200 guests at Grand Hall" → props: { venue: "Grand Hall", guest_count: 200, budget: null }
-- Creative book: user says "YA sci-fi novel, 80k words, due Sept 1" → props: { genre: "sci-fi", audience: "ya", target_word_count: 80000, deadline_date: "2025-09-01" }
-- Course: user says "live LLM safety course, 8 lessons, 45 minutes each" → props: { topic: "LLM safety", lesson_count: 8, target_duration_minutes: 45, delivery_mode: "live" }
-
-DO NOT leave props empty when information is available in the conversation!`,
+								description: 'Optional JSONB properties from the user message.',
 								properties: {
 									facets: {
 										type: 'object',
-										description: 'Standard facets (always include)',
+										description: 'Optional standard facets',
 										properties: {
 											context: {
 												type: 'string',
@@ -946,11 +793,11 @@ DO NOT leave props empty when information is available in the conversation!`,
 							},
 							start_at: {
 								type: 'string',
-								description: 'Start date in ISO format (optional, default to now)'
+								description: 'ISO start date'
 							},
 							end_at: {
 								type: 'string',
-								description: 'End date in ISO format (optional)'
+								description: 'ISO end date'
 							}
 						},
 						required: ['name', 'type_key']
@@ -959,7 +806,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 						type: 'array',
 						default: [],
 						description:
-							'Required entity list using temp_id + kind. Use entities + relationships only.',
+							'Entity list. Labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri.',
 						items: {
 							type: 'object',
 							properties: {
@@ -1008,7 +855,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 						type: 'array',
 						default: [],
 						description:
-							'Directional connections between entities using temp_id (required even if empty). Each item can be [from, to] or { from, to, rel?, intent? }.',
+							'Required directional temp_id connections. Items can be [from, to] or { from, to, rel?, intent? }.',
 						items: {
 							oneOf: [
 								{
@@ -1056,14 +903,12 @@ DO NOT leave props empty when information is available in the conversation!`,
 					},
 					context_document: {
 						type: 'object',
-						description:
-							'Canonical context document (document.context.project) that will be linked to the project.',
+						description: 'Optional document.context.project linked to the project.',
 						properties: {
 							title: { type: 'string' },
 							content: {
 								type: 'string',
-								description:
-									'Markdown body with the user braindump/overview (stored in content column)'
+								description: 'Markdown body'
 							},
 							type_key: {
 								type: 'string',
@@ -1071,20 +916,18 @@ DO NOT leave props empty when information is available in the conversation!`,
 							},
 							state_key: {
 								type: 'string',
-								description:
-									'Document state (defaults to draft). Valid: draft, in_review, ready, published, archived.'
+								description: 'Document state'
 							},
 							props: {
 								type: 'object',
-								description: 'Additional metadata (e.g., spark notes, tags)'
+								description: 'Additional metadata'
 							}
 						},
 						required: ['title', 'content']
 					},
 					clarifications: {
 						type: 'array',
-						description:
-							'Questions for user if critical info is missing (use sparingly)',
+						description: 'Optional critical missing-info questions',
 						items: {
 							type: 'object',
 							properties: {
@@ -1109,7 +952,7 @@ DO NOT leave props empty when information is available in the conversation!`,
 					},
 					meta: {
 						type: 'object',
-						description: 'Metadata about the generation (optional)',
+						description: 'Generation metadata',
 						properties: {
 							model: { type: 'string' },
 							confidence: { type: 'number', minimum: 0, maximum: 1 },

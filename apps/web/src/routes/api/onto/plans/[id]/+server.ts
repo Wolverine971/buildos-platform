@@ -51,6 +51,7 @@ import {
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { EntityKind } from '$lib/services/ontology/edge-direction';
 import { logOntologyApiError } from '../../shared/error-logging';
+import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 
 // GET /api/onto/plans/[id] - Get a single plan
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -175,6 +176,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			parents,
 			connections
 		} = body;
+		const normalizedPlan = plan !== undefined ? normalizeMarkdownInput(plan) : undefined;
 
 		if (state_key !== undefined && !PLAN_STATES.includes(state_key)) {
 			return ApiResponse.badRequest(`state_key must be one of: ${PLAN_STATES.join(', ')}`);
@@ -330,7 +332,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		if (state_key !== undefined) updateData.state_key = state_key;
 
 		if (plan !== undefined) {
-			updateData.plan = plan || null;
+			updateData.plan = normalizedPlan || null;
 		}
 
 		// Update description in dedicated column
@@ -351,7 +353,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		// Maintain backwards compatibility by also storing in props
 		if (plan !== undefined) {
-			propsUpdate.plan = plan || null;
+			propsUpdate.plan = normalizedPlan || null;
 			hasPropsUpdate = true;
 		}
 		if (description !== undefined) {

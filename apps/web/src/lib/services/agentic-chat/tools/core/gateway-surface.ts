@@ -9,60 +9,49 @@ import { GATEWAY_TOOL_DEFINITIONS } from './definitions/gateway';
 
 const GATEWAY_DISCOVERY_TOOL_NAMES = ['skill_load', 'tool_search', 'tool_schema'] as const;
 
-const GLOBAL_DIRECT_TOOL_NAMES = [
-	'resolve_libri_resource',
-	'query_libri_library',
-	'get_workspace_overview',
-	'get_project_overview',
-	'list_onto_projects',
-	'search_onto_projects',
-	'search_buildos',
-	'list_onto_tasks',
-	'search_onto_tasks',
-	'list_onto_documents',
-	'list_calendar_events',
-	'create_calendar_event',
-	'update_calendar_event'
+export const GATEWAY_SURFACE_PROFILE_NAMES = [
+	'global_basic',
+	'project_basic',
+	'project_write',
+	'project_document',
+	'project_calendar',
+	'project_create_minimal'
 ] as const;
 
-const PROJECT_DIRECT_TOOL_NAMES = [
-	'resolve_libri_resource',
-	'query_libri_library',
+export type GatewaySurfaceProfileName = (typeof GATEWAY_SURFACE_PROFILE_NAMES)[number];
+
+const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
+	'get_workspace_overview',
+	'get_project_overview',
+	'search_onto_projects',
+	'search_buildos'
+] as const;
+
+const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
 	'get_project_overview',
 	'get_onto_project_details',
-	'get_onto_project_graph',
 	'list_onto_tasks',
 	'search_onto_tasks',
-	'get_onto_task_details',
-	'list_onto_goals',
-	'list_onto_plans',
-	'list_onto_milestones',
-	'list_onto_risks',
-	'get_onto_goal_details',
-	'get_onto_plan_details',
-	'get_onto_milestone_details',
-	'get_onto_risk_details',
+	'list_onto_documents'
+] as const;
+
+const PROJECT_WRITE_DIRECT_TOOL_NAMES = [
+	...PROJECT_BASIC_DIRECT_TOOL_NAMES,
 	'create_onto_task',
 	'update_onto_task',
-	'list_onto_documents',
+	'update_onto_document'
+] as const;
+
+const PROJECT_DOCUMENT_DIRECT_TOOL_NAMES = [
+	...PROJECT_BASIC_DIRECT_TOOL_NAMES,
 	'get_onto_document_details',
 	'create_onto_document',
 	'update_onto_document',
 	'get_document_tree',
-	'move_document_in_tree',
-	'get_project_calendar',
-	'set_project_calendar'
+	'move_document_in_tree'
 ] as const;
 
-const PROJECT_CREATE_DIRECT_TOOL_NAMES = [
-	'create_onto_project',
-	'create_onto_goal',
-	'create_onto_plan',
-	'create_onto_task',
-	'create_onto_document'
-] as const;
-
-const CALENDAR_DIRECT_TOOL_NAMES = [
+const PROJECT_CALENDAR_DIRECT_TOOL_NAMES = [
 	'get_project_overview',
 	'list_calendar_events',
 	'get_calendar_event_details',
@@ -71,6 +60,20 @@ const CALENDAR_DIRECT_TOOL_NAMES = [
 	'get_project_calendar',
 	'set_project_calendar'
 ] as const;
+
+const PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES = ['create_onto_project'] as const;
+
+const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
+	GatewaySurfaceProfileName,
+	readonly string[]
+> = {
+	global_basic: GLOBAL_BASIC_DIRECT_TOOL_NAMES,
+	project_basic: PROJECT_BASIC_DIRECT_TOOL_NAMES,
+	project_write: PROJECT_WRITE_DIRECT_TOOL_NAMES,
+	project_document: PROJECT_DOCUMENT_DIRECT_TOOL_NAMES,
+	project_calendar: PROJECT_CALENDAR_DIRECT_TOOL_NAMES,
+	project_create_minimal: PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES
+};
 
 const GATEWAY_TOOL_DEFINITION_MAP = new Map(
 	GATEWAY_TOOL_DEFINITIONS.map((tool) => [tool.function?.name, tool]).filter(
@@ -87,22 +90,30 @@ function isGatewayToolEnabled(name: string): boolean {
 	return !isLibriToolName(name) || isLibriIntegrationEnabled();
 }
 
-function resolveGatewayDirectToolNames(contextType: ChatContextType): readonly string[] {
+export function resolveGatewaySurfaceProfileForContextType(
+	contextType: ChatContextType
+): GatewaySurfaceProfileName {
 	switch (contextType) {
+		case 'calendar':
+			return 'project_calendar';
 		case 'project':
 		case 'ontology':
-			return PROJECT_DIRECT_TOOL_NAMES;
+			return 'project_basic';
 		case 'project_create':
-			return PROJECT_CREATE_DIRECT_TOOL_NAMES;
-		case 'calendar':
-			return CALENDAR_DIRECT_TOOL_NAMES;
+			return 'project_create_minimal';
 		case 'daily_brief':
 		case 'brain_dump':
 		case 'global':
 		case 'general':
 		default:
-			return GLOBAL_DIRECT_TOOL_NAMES;
+			return 'global_basic';
 	}
+}
+
+function resolveGatewayDirectToolNamesForProfile(
+	profileName: GatewaySurfaceProfileName
+): readonly string[] {
+	return GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE[profileName];
 }
 
 function getGatewayDiscoveryTools(): ChatToolDefinition[] {
@@ -114,9 +125,15 @@ function getGatewayDiscoveryTools(): ChatToolDefinition[] {
 export function getGatewaySurfaceForContextType(
 	contextType: ChatContextType
 ): ChatToolDefinition[] {
+	return getGatewaySurfaceForProfile(resolveGatewaySurfaceProfileForContextType(contextType));
+}
+
+export function getGatewaySurfaceForProfile(
+	profileName: GatewaySurfaceProfileName
+): ChatToolDefinition[] {
 	const names = [
 		...extractToolNamesFromDefinitions(getGatewayDiscoveryTools()),
-		...resolveGatewayDirectToolNames(contextType)
+		...resolveGatewayDirectToolNamesForProfile(profileName)
 	].filter(isGatewayToolEnabled);
 	return materializeGatewayTools([], names).tools;
 }

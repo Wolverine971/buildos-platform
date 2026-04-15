@@ -149,7 +149,7 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(prompt).not.toContain('resolve_libri_resource');
 	});
 
-	it('includes Libri catalog and tools when server runtime env enables it', () => {
+	it('includes Libri skill metadata without preloading Libri direct tools', () => {
 		configureLibriRuntimeEnv({
 			LIBRI_INTEGRATION_ENABLED: 'true'
 		});
@@ -163,7 +163,9 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		const contextBlock = extractTagBlock(prompt, 'context');
 
 		expect(instructionsBlock).toContain('| `libri_knowledge` |');
-		expect(instructionsBlock).toContain('- resolve_libri_resource');
+		expect(instructionsBlock).not.toContain('- resolve_libri_resource');
+		expect(instructionsBlock).not.toContain('- query_libri_library');
+		expect(instructionsBlock).toContain('Use `tool_search` only when the exact op is missing');
 		expect(contextBlock).not.toContain('<libri_guidance>');
 		expect(prompt).not.toContain('skill_load({ skill: "libri_knowledge" })');
 	});
@@ -253,6 +255,8 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(contextBlock).toContain(
 			'Always include entities: [] and relationships: [] even when the project starts empty.'
 		);
+		expect(contextBlock).toContain('project.type_key must start with "project."');
+		expect(contextBlock).toContain('goal/plan/metric use name');
 		expect(contextBlock).toContain('Never use raw temp_id strings like ["g1", "t1"].');
 	});
 

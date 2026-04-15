@@ -48,6 +48,7 @@
 	import TaskEditModal from './TaskEditModal.svelte';
 	import DocumentModal from './DocumentModal.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { normalizeMarkdownInput } from '$lib/utils/markdown-normalization';
 
 	type PlanModalProps = Plan['props'] & {
 		description?: string;
@@ -176,6 +177,10 @@
 			.join(' ');
 	}
 
+	function normalizePlanDetails(value: string | null | undefined): string {
+		return normalizeMarkdownInput(value) ?? '';
+	}
+
 	const dateError = $derived.by(() => {
 		if (startDate && endDate) {
 			const start = new Date(startDate);
@@ -257,7 +262,7 @@
 			if (plan) {
 				name = plan.name || '';
 				description = plan.description || plan.props?.description || '';
-				planDetails = plan.plan || plan.props?.plan || '';
+				planDetails = normalizePlanDetails(plan.plan || plan.props?.plan || '');
 				startDate = plan.props?.start_date || '';
 				endDate = plan.props?.end_date || '';
 				stateKey = plan.state_key || 'draft';
@@ -296,7 +301,7 @@
 		try {
 			const requestBody = {
 				name: name.trim(),
-				plan: planDetails.trim() || null,
+				plan: normalizePlanDetails(planDetails).trim() || null,
 				description: description.trim() || null,
 				start_date: startDate || null,
 				end_date: endDate || null,

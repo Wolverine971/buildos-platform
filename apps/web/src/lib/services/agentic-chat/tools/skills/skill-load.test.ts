@@ -46,6 +46,8 @@ describe('skill loading', () => {
 		expect(result.markdown).toContain('## Workflow');
 		expect(result.markdown).toContain('## Related Tools');
 		expect(result.markdown).toContain('`onto.project.create`');
+		expect(result.markdown).toContain('tech_stack');
+		expect(result.markdown).toContain('target_word_count');
 	});
 
 	it('includes concrete task payload examples in the task management skill', () => {
@@ -59,6 +61,7 @@ describe('skill loading', () => {
 		expect(result.markdown).toContain(
 			'Revise chapter 2 dialogue between Elena and Master Thorne'
 		);
+		expect(result.markdown).toContain('Good create signals');
 		expect(result.markdown).toContain("Draft chapter 3: Elena's first magical forging attempt");
 		expect(result.markdown).toContain('task_id: "440c2639-9000-4111-aeea-ee374f8fb925"');
 		expect(result.markdown).toContain('Never emit `update_onto_task({})`.');

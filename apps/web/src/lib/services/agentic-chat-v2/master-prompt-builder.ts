@@ -31,14 +31,15 @@ const PROJECT_ANALYSIS_SKILL_GUIDANCE = `You are in project context. Audit and f
 const PROJECT_CREATE_WORKFLOW = `You are already in project_create context. The default workflow here is:
 1) Prefer the project creation capability, then load skill_load({ skill: "project_creation" }) before the first create call.
 2) Build the smallest valid onto.project.create payload.
-3) Infer project.name and project.type_key from the user's message whenever reasonably possible.
+3) Infer project.name and project.type_key from the user's message whenever reasonably possible. project.type_key must start with "project.", for example project.creative.novel.
 4) Always include entities: [] and relationships: [] even when the project starts empty.
 5) If the user stated an outcome, add one goal. If the user listed concrete actions, add only those task entities. Add plans or milestones only when the user clearly described workstreams, phases, or date-driven structure.
 6) Extract concrete details into project.description and project.props when they were provided.
-7) For goal entities, use dedicated fields like target_date and measurement_criteria instead of burying them only in props. If the user gives a month/day without a year, infer the next plausible future date in the user's locale.
-8) If you include relationships, every relationship item must reference entities with temp_id and kind. Never use raw temp_id strings like ["g1", "t1"].
-9) Use clarifications[] only when critical information cannot be reasonably inferred, and still send the project skeleton.
-10) After creation succeeds, continue inside the created project instead of staying in abstract creation mode.`;
+7) Entity required labels by kind: goal/plan/metric use name; task/milestone/document/risk use title; requirement uses text; source uses uri. Milestones also require due_at.
+8) For goal entities, use dedicated fields like target_date and measurement_criteria instead of burying them only in props. If the user gives a month/day without a year, infer the next plausible future date in the user's locale.
+9) If you include relationships, every relationship item must reference entities with temp_id and kind. Never use raw temp_id strings like ["g1", "t1"].
+10) Use clarifications[] only when critical information cannot be reasonably inferred, and still send the project skeleton.
+11) After creation succeeds, continue inside the created project instead of staying in abstract creation mode.`;
 const DAILY_BRIEF_GUARDRAILS = `When daily-brief context data is present:
 - Prefer acting on entities explicitly mentioned in the brief context.
 - If the user references an out-of-brief entity, proceed only when target identity is clear.

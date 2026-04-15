@@ -580,21 +580,19 @@
 				</Button>
 				-->
 				<!-- Chat about this project button -->
-				<Button
+				<button
 					type="button"
 					onclick={openChatAbout}
-					variant="ghost"
-					size="sm"
-					class="text-muted-foreground hover:text-foreground shrink-0 !p-1.5 sm:!p-2 tx tx-grain tx-weak"
 					disabled={isSaving || !project}
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 					title="Chat about this project"
 				>
 					<img
 						src="/brain-bolt.png"
 						alt="Chat about this project"
-						class="w-6 h-6 sm:w-5 sm:h-5 rounded object-cover"
+						class="w-6 h-6 rounded object-cover"
 					/>
-				</Button>
+				</button>
 				<!-- Inkprint close button -->
 				<button
 					type="button"
