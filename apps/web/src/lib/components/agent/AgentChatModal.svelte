@@ -736,7 +736,6 @@
 		currentAssistantMessageIndex = null;
 		currentThinkingBlockId = null;
 		isStreaming = false;
-		selectedPromptVariant = AGENT_CHAT_DEFAULT_PROMPT_VARIANT;
 		// Reset ontology state
 		lastTurnContext = null;
 		ontologyLoaded = false;
@@ -2091,8 +2090,12 @@
 			action: 'Searching workspace',
 			target: args?.query || args?.search
 		}),
+		search_all_projects: (args) => ({
+			action: 'Searching all projects',
+			target: args?.query || args?.search
+		}),
 		search_buildos: (args) => ({
-			action: 'Searching BuildOS',
+			action: 'Searching all projects',
 			target: args?.query || args?.search
 		}),
 		search_project: (args) => ({
@@ -2125,7 +2128,7 @@
 		}),
 		search_onto_tasks: (args) => ({
 			action: 'Searching tasks',
-			target: args?.query
+			target: args?.query || args?.search
 		}),
 		get_onto_task_details: (args) => ({
 			action: 'Loading task',
@@ -3168,7 +3171,6 @@
 			canUsePromptVariantControls,
 			selectedPromptVariant
 		});
-		selectedPromptVariant = AGENT_CHAT_DEFAULT_PROMPT_VARIANT;
 
 		// Add user message
 		const userMessage: UIMessage = {
@@ -3810,13 +3812,13 @@
 						shift.new_context === 'general' ? 'global' : shift.new_context
 					) as ChatContextType;
 					selectedContextType = normalizedContext;
-					selectedEntityId = shift.entity_id;
+					selectedEntityId = shift.entity_id ?? undefined;
 					selectedContextLabel =
 						shift.entity_name ??
 						CONTEXT_DESCRIPTORS[normalizedContext]?.title ??
 						selectedContextLabel;
 
-					if (shift.entity_id && shift.entity_name) {
+					if (shift.entity_id && shift.entity_name && shift.entity_type !== 'workspace') {
 						cacheEntityName(
 							(shift.entity_type as OntologyEntityKind) ??
 								(isProjectContext(normalizedContext) ? 'project' : 'entity'),
@@ -3840,7 +3842,7 @@
 						currentSession = {
 							...currentSession,
 							context_type: normalizedContext,
-							entity_id: shift.entity_id
+							entity_id: shift.entity_id ?? null
 						};
 					}
 
@@ -4416,13 +4418,11 @@
 							onchange={handlePromptVariantChange}
 						>
 							<option value={AGENT_CHAT_DEFAULT_PROMPT_VARIANT}> FastChat v2 </option>
-							<option value={AGENT_CHAT_LITE_PROMPT_VARIANT}>
-								Lite seed, next turn
-							</option>
+							<option value={AGENT_CHAT_LITE_PROMPT_VARIANT}> Lite seed </option>
 						</select>
 					</div>
 					<p class="text-[0.7rem] leading-snug text-muted-foreground">
-						Lite applies once, then resets to FastChat v2.
+						Selection persists until changed.
 					</p>
 				</div>
 			</div>

@@ -7,6 +7,8 @@
  */
 
 export const GATEWAY_OP_ALIASES: Record<string, string> = {
+	search_buildos: 'x.search.all_projects',
+	'x.search.buildos': 'x.search.all_projects',
 	get_document_tree: 'onto.document.tree.get',
 	move_document_in_tree: 'onto.document.tree.move',
 	get_document_path: 'onto.document.path.get',

@@ -125,6 +125,47 @@ Pass project_id when known. If the user names a project but the ID is unknown, p
 	{
 		type: 'function',
 		function: {
+			name: 'change_chat_context',
+			description: `Change the durable chat context when the latest user request should strategically zoom into one project or zoom out to the workspace.
+
+Use this early in the turn before answering when:
+- The user explicitly asks to zoom, switch, focus, go to a project, or go back to all projects.
+- The current context is global/workspace and the latest request is primarily about one identifiable project, so project tools should be loaded for the rest of the turn.
+- The current context is one project and the latest request is clearly about a different project, and the user appears to be moving focus rather than doing a brief comparison.
+- The user asks about all projects, workspace status, cross-project priorities, or wants to zoom out.
+
+Do not use this for ambiguous project names, one-off comparisons across multiple projects, or brief mentions that can be answered from current context. For project zoom-in, pass project_id if known or project_query if the name needs resolution. Ambiguous or missing project matches return candidates and do not change context.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					target: {
+						type: 'string',
+						enum: ['global', 'project'],
+						description:
+							'Target context. Use global for workspace/all-projects zoom-out. Use project for durable focus on one project.'
+					},
+					project_id: {
+						type: 'string',
+						description: 'Exact project UUID when zooming into a known project.'
+					},
+					project_query: {
+						type: 'string',
+						description:
+							'Project name or phrase to resolve when zooming into a project and project_id is unknown.'
+					},
+					reason: {
+						type: 'string',
+						description:
+							'Brief user-visible reason for the context change, grounded in the latest request.'
+					}
+				},
+				required: ['target']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
 			name: 'search_user_contacts',
 			description: `Search the current user's contact memory by name, relationship, and method metadata.
 Contact method values are redacted by default. Set include_sensitive_values=true only when the user explicitly asks for exact phone/email details and confirm with user_confirmed_sensitive=true.`,

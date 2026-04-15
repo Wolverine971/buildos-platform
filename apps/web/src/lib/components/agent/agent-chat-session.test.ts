@@ -33,7 +33,7 @@ describe('agent-chat-session helpers', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('normalizes and gates prompt variant requests for one-turn admin tests', () => {
+	it('normalizes and gates prompt variant requests for admin test sessions', () => {
 		expect(normalizeAgentChatPromptVariantSelection('lite_seed_v1')).toBe(
 			AGENT_CHAT_LITE_PROMPT_VARIANT
 		);

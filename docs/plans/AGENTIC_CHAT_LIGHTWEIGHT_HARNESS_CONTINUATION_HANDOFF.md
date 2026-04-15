@@ -2,8 +2,8 @@
 
 # Agentic Chat Lightweight Harness Continuation Handoff
 
-Status: Phase 8 prompt dump audit and lite context signal pass complete; live paired scenario runs next
-Date: 2026-04-14
+Status: Strategic context zoom tool implemented; hidden turnProfile router deferred
+Date: 2026-04-15
 Owner: BuildOS Agentic Chat
 
 ## Purpose
@@ -237,7 +237,7 @@ Still intentionally out of scope:
 
 ### 7. Phase 6 dev/admin UI switch and eval capture
 
-Implemented one-turn dev/admin selection and admin/eval visibility:
+Implemented dev/admin prompt variant selection and admin/eval visibility:
 
 ```text
 apps/web/src/lib/components/agent/AgentChatModal.svelte
@@ -252,8 +252,8 @@ Implemented:
 
 - dev/admin-only `Prompt variant` selector in the chat modal
 - normal-user payloads stay untagged and therefore default to `fastchat_prompt_v1`
-- `lite_seed_v1` is sent only when explicitly selected for the next turn
-- selector resets to `fastchat_prompt_v1` after send and on conversation reset
+- `lite_seed_v1` is sent on every turn while the selector is set to lite
+- selector stays sticky across sends and conversation resets until changed
 - user message metadata records `prompt_variant` for the selected lite turn
 - admin session detail prompt snapshots show the prompt variant
 - session audit markdown includes prompt variant on each turn
@@ -264,7 +264,7 @@ Implemented:
 Still intentionally out of scope:
 
 - normal-user access to `lite_seed_v1`
-- sticky prompt variant state across turns or sessions
+- persisted prompt variant state across browser reloads or saved sessions
 - a parallel `/api/agent/lite/stream` route
 
 ### 8. Phase 7 paired eval comparison plumbing
@@ -385,7 +385,8 @@ the harness without checking exact file ownership.
 
 - Do not copy the v2 stream endpoint to create lite.
 - Do not change live chat behavior by default.
-- Do not add a semantic pre-turn router for the first runtime slice.
+- Do not add a hidden semantic pre-turn router before testing the first-class
+  context navigation tool.
 - Do not create a new tool execution framework.
 - Do not remove FastChat v2 prompt until evals show lite matches or beats it.
 - Keep request-level `prompt_variant` as the first runtime selector.
@@ -393,6 +394,47 @@ the harness without checking exact file ownership.
   permanent runtime fork.
 - Keep skill metadata high-level in seed prompts; load full skill files on
   demand.
+
+### 10. Strategic context zoom tool
+
+Status: implemented on 2026-04-15.
+
+Decision:
+
+- Use a first-class `change_chat_context` tool instead of a hidden
+  `turnProfile` builder for the next harness slice.
+- Treat zooming as durable state movement, not a transient per-turn guess.
+- Let the model choose the shift strategically, with tool/schema guidance that
+  makes the rules explicit.
+
+Target behavior:
+
+- zoom out to global/workspace when the user asks for all projects, workspace
+  status, cross-project priorities, or an explicit zoom-out
+- zoom into a project when the latest request is primarily about one
+  identifiable project and project tools should be loaded for the rest of the
+  turn
+- switch project context when the user is clearly moving focus to another
+  resolved project
+- do not shift for ambiguous project names, one-off comparisons, or brief side
+  mentions
+
+Implementation scope:
+
+- add `change_chat_context` as a preloaded global/project direct tool
+- return existing `context_shift` payloads so the UI/session metadata path stays
+  visible
+- allow global context shifts without `entity_id`
+- return `materialized_tools` so the stream loop can load the target context
+  direct-tool profile mid-turn
+- update lite operating strategy so context shifts are sticky and deliberate
+
+Verification:
+
+- `pnpm --filter @buildos/web test -- src/lib/services/agentic-chat-v2/tool-selector.test.ts src/lib/services/agentic-chat/tools/core/executors/utility-executor.overview.test.ts src/routes/api/agent/v2/stream/server.test.ts src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.test.ts src/lib/components/agent/agent-chat-session.test.ts`
+- `NODE_OPTIONS=--max-old-space-size=8192 pnpm --filter @buildos/web exec svelte-check --output machine`
+  still fails on existing repo-wide diagnostics, but no diagnostics match files
+  touched by the context zoom slice.
 
 ## Recommended Review Checklist
 
@@ -423,12 +465,14 @@ Questions to answer in review:
 
 ## Recommended Next Slice
 
-Run and record live lite-vs-v2 eval scenarios.
+Evaluate the first-class context zoom tool before designing any hidden
+per-turn router.
 
 Goal:
 
 ```text
-decide whether lite_seed_v1 improves the agent by comparing matched v2 and lite turns
+prove that context changes can be explicit, sticky, visible, and low-churn
+without a separate pre-turn classifier
 ```
 
 Suggested implementation shape:
@@ -437,41 +481,38 @@ Suggested implementation shape:
 apps/web/src/lib/services/agentic-chat-v2/prompt-eval-runner.ts
 apps/web/src/lib/services/agentic-chat-v2/prompt-eval-scenarios.ts
 apps/web/src/routes/admin/chat/sessions/
+apps/web/src/routes/api/agent/v2/stream/+server.ts
+apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts
 ```
 
 Implementation guidance:
 
-- Use the dev/admin selector to run paired v2 and lite turns.
-- Capture prompt snapshots, turn events, tool executions, timing metrics, and
-  eval assertions for each paired turn.
-- Export the session audit markdown and use the `Prompt Variant Comparison`
-  section as the first decision-note artifact.
-- Keep comparison based on recorded evidence: answer quality, first lane,
-  first tool/op, tool rounds, validation failures, prompt size, and latency.
-- Add or refine eval scenarios only where the existing scenarios do not cover
-  the initial matrix.
-- Do not create `/api/agent/lite/stream` until the paired evidence says the
-  lite prompt deserves more runtime investment.
+- Add eval/prompt-dump scenarios where the user starts global, mentions one
+  project, then follows up with project-specific work.
+- Compare whether `change_chat_context` fires early enough and whether the
+  target context tools materialize without generic discovery churn.
+- Add scenarios for ambiguous project names and multi-project comparison to
+  verify the model does not bounce contexts.
+- Only revisit a hidden `turnProfile` builder if the tool-based approach cannot
+  reliably shift at the right time or produces too many wasted tool rounds.
 
 ## Acceptance For Next Slice
 
-- comparison plumbing exists and renders recorded paired evidence
-- paired v2/lite turns exist for the initial scenario matrix
-- eval results include prompt variant and enough runtime metrics to compare
-- failure cases are tagged by prompt variant
-- a short decision note explains what lite improved, regressed, or left
-  unchanged
-- no default runtime behavior changes
+- global-to-project turns use `change_chat_context` before project-specific work
+- project read tools are available after the context shift in the same turn
+- ambiguous project references return candidates instead of shifting context
+- evals assert lower tool-search churn on project follow-up turns
+- explicit context shifts remain visible through existing `context_shift` events
 
 ## Suggested Tests For Next Slice
 
-Add focused tests around eval comparison plumbing:
+Add focused tests around context navigation:
 
 ```text
-eval target includes prompt variant and prompt size
-scenario summaries can group v2 and lite by scenario
-admin export preserves prompt variant in paired runs
-regression decision note renders missing/failed scenario counts
+change_chat_context emits global context_shift without entity_id
+change_chat_context emits project context_shift only after resolved project match
+context_change materialized_tools load target context direct tools
+project continuation eval avoids redundant tool_search calls
 ```
 
 ## Verification Commands

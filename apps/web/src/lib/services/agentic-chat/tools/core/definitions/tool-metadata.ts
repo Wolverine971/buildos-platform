@@ -13,8 +13,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	// ONTOLOGY READ TOOLS
 	// ============================================
 
-	search_buildos: {
-		summary: 'Primary broad BuildOS search across accessible projects.',
+	search_all_projects: {
+		summary: 'Primary broad search across all accessible projects.',
 		capabilities: [
 			'Returns one typed result shape across core ontology entities',
 			'Best first step when project scope is unknown'
@@ -44,7 +44,11 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	},
 	search_onto_tasks: {
 		summary: 'Keyword search for tasks when the exact project is unknown.',
-		capabilities: ['Matches task titles', 'Optional project/state filters'],
+		capabilities: [
+			'Matches task titles and descriptions',
+			'Supports explicit OR alternatives',
+			'Optional project/state filters'
+		],
 		contexts: ['global', 'project'],
 		category: 'search'
 	},
@@ -131,7 +135,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	search_ontology: {
 		summary: 'Compatibility fuzzy search across ontology entities with snippets.',
 		capabilities: [
-			'Prefer search_buildos or search_project first',
+			'Prefer search_all_projects or search_project first',
+			'Use only for older instructions or compatibility paths',
 			'Accepts project scope and type filters'
 		],
 		contexts: ['global', 'project'],
@@ -549,6 +554,16 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		],
 		contexts: ['base', 'global', 'project'],
 		category: 'read'
+	},
+	change_chat_context: {
+		summary: 'Durably zoom chat context into a resolved project or out to the workspace.',
+		capabilities: [
+			'Emits a visible context_shift event for the UI and session metadata',
+			'Materializes the target context direct-tool profile for the rest of the turn',
+			'Returns candidates instead of shifting when project resolution is ambiguous'
+		],
+		contexts: ['global', 'project'],
+		category: 'utility'
 	},
 	search_user_contacts: {
 		summary: 'Search user-owned contact memory by name, relationship, and method metadata.',

@@ -50,9 +50,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                  | Post Link                                                                 | Action | Status  | What We Said / Planned                                              | Outcome | Source                        |
-| ---------- | ------- | -------------------------------------- | ------------------------------------------------------------------------- | ------ | ------- | ------------------------------------------------------------------- | ------- | ----------------------------- |
-| 2026-04-15 | Post    | VetraFi teammate spotlight — Lia Kieck | https://www.linkedin.com/feed/update/urn:li:activity:7450160258406207488/ | Queued | Pending | Genuine veteran reaction + specific acknowledgment of Lia's profile | Unknown | 2026-04-15_linkedin-warmup.md |
+| Date       | Surface | Topic                                  | Post Link                                                                 | Action  | Status                    | What We Said / Planned                                                                                                                                                           | Outcome | Source                         |
+| ---------- | ------- | -------------------------------------- | ------------------------------------------------------------------------- | ------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------ |
+| 2026-04-15 | Post    | VetraFi teammate spotlight — Lia Kieck | https://www.linkedin.com/feed/update/urn:li:activity:7450160258406207488/ | Drafted | Drafted - Pending Posting | Options: (1) "Army MP → 400K social → fintech. She's built credibility on both sides..." (2) "The best marketing for a veteran-focused product..." (3) "MP background + 400K..." | Pending | 2026-04-15_linkedin-replies.md |
 
 ## Open Loops
 

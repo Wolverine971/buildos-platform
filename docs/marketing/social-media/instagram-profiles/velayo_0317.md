@@ -59,9 +59,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                           | Post Link                                | Action | Status                   | What We Said / Planned                                                                             | Outcome | Source                               |
-| ---------- | ------- | ------------------------------- | ---------------------------------------- | ------ | ------------------------ | -------------------------------------------------------------------------------------------------- | ------- | ------------------------------------ |
-| 2026-04-14 | Post    | Sullivan / Marine Sniper School | https://www.instagram.com/p/DXGSaErDtOD/ | Queued | Pending /instagram-reply | Personal response from Scout Sniper 3/17 perspective — screener, Sullivan, imposter syndrome angle | Pending | 2026-04-14_instagram-warmup-night.md |
+| Date       | Surface | Topic                           | Post Link                                | Action  | Status          | What We Said / Planned                                                                                                                                                   | Outcome | Source                                |
+| ---------- | ------- | ------------------------------- | ---------------------------------------- | ------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ------------------------------------- |
+| 2026-04-14 | Post    | Sullivan / Marine Sniper School | https://www.instagram.com/p/DXGSaErDtOD/ | Drafted | Pending Posting | 3 options: (1) Sullivan correction — "he wasn't wrong" angle, (2) 3/17 connection — ran the other side of the screener, (3) cheerleader on the imposter syndrome finish. | Pending | 2026-04-14_instagram-replies-night.md |
 
 ---
 

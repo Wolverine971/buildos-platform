@@ -152,7 +152,7 @@ export interface SearchOntologyArgs {
 	limit?: number;
 }
 
-export interface SearchBuildosArgs {
+export interface SearchAllProjectsArgs {
 	query: string;
 	types?: string[];
 	limit?: number;
@@ -582,6 +582,13 @@ export interface GetWorkspaceOverviewArgs {
 export interface GetProjectOverviewArgs {
 	project_id?: string;
 	query?: string;
+}
+
+export interface ChangeChatContextArgs {
+	target: 'global' | 'project';
+	project_id?: string;
+	project_query?: string;
+	reason?: string;
 }
 
 export interface GetEntityRelationshipsArgs {

@@ -371,6 +371,89 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('should reject document append updates with empty props and no content', async () => {
+			const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
+			const toolCall: ChatToolCall = {
+				id: 'call_bad_doc_append',
+				name: 'update_onto_document',
+				arguments: {
+					document_id: documentId,
+					update_strategy: 'append',
+					merge_instructions: 'Append under Progress Updates.',
+					props: {}
+				}
+			};
+			const updateDefinition: ChatToolDefinition = {
+				name: 'update_onto_document',
+				description: 'Update ontology document',
+				parameters: {
+					type: 'object',
+					properties: {
+						document_id: { type: 'string' },
+						content: { type: 'string' },
+						update_strategy: { type: 'string' },
+						merge_instructions: { type: 'string' },
+						props: { type: 'object' }
+					},
+					required: ['document_id']
+				}
+			};
+
+			const result = await service.executeTool(toolCall, mockContext, [updateDefinition]);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain(
+				'update_onto_document append requires non-empty content.'
+			);
+			expect(result.error).toContain('No update fields provided for update_onto_document');
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('should allow document append updates with content aliases', async () => {
+			const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
+			const toolCall: ChatToolCall = {
+				id: 'call_good_doc_append',
+				name: 'update_onto_document',
+				arguments: {
+					document_id: documentId,
+					update_strategy: 'append',
+					body: '## Progress Updates\n\n- Chapter 2 complete.',
+					merge_instructions: 'Append under Progress Updates.',
+					props: {}
+				}
+			};
+			const updateDefinition: ChatToolDefinition = {
+				name: 'update_onto_document',
+				description: 'Update ontology document',
+				parameters: {
+					type: 'object',
+					properties: {
+						document_id: { type: 'string' },
+						content: { type: 'string' },
+						update_strategy: { type: 'string' },
+						merge_instructions: { type: 'string' },
+						props: { type: 'object' }
+					},
+					required: ['document_id']
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ ok: true });
+
+			const result = await service.executeTool(toolCall, mockContext, [updateDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'update_onto_document',
+				expect.objectContaining({
+					document_id: documentId,
+					content: '## Progress Updates\n\n- Chapter 2 complete.',
+					update_strategy: 'append'
+				}),
+				mockContext
+			);
+		});
+
 		it('should default include_documents=true for get_document_tree', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_get_tree_defaults',

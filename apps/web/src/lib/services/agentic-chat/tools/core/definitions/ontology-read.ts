@@ -236,8 +236,8 @@ Do not call for plain task metadata updates (title/state/priority) unless docume
 	{
 		type: 'function',
 		function: {
-			name: 'search_buildos',
-			description: `Primary agent search across accessible BuildOS projects. Use this broad search when the project is unknown or the user is asking a cross-project question.
+			name: 'search_all_projects',
+			description: `Primary agent search across all accessible BuildOS projects. Use this broad search when the project is unknown or the user is asking a cross-project question.
 Returns typed ontology matches with snippets so you can quickly shortlist items before loading details.`,
 			parameters: {
 				type: 'object',
@@ -329,13 +329,14 @@ Returns typed ontology matches with snippets so you can quickly shortlist items 
 		function: {
 			name: 'search_onto_tasks',
 			description: `Search tasks across all ontology projects using keywords. Returns concise task matches with project context.
-Use when the user references a task by name or description but the project is unknown.`,
+Use when the user references a task by name or description but the project is unknown. For broader project-scoped discovery across tasks, documents, plans, and goals, prefer search_project.`,
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
-						description: 'Keyword query to match against task titles (required)'
+						description:
+							'Keyword query to match against task titles and descriptions. Explicit OR queries such as "blog OR Instagram" are treated as alternatives.'
 					},
 					project_id: {
 						type: 'string',
@@ -562,8 +563,8 @@ Use get_onto_document_details when full document content is needed.`,
 		type: 'function',
 		function: {
 			name: 'search_ontology',
-			description: `Compatibility search across ontology entities. Prefer search_buildos for broad search and search_project for project-scoped search.
-Returns typed matches with snippets so you can load details with get_onto_* tools.`,
+			description: `Compatibility search across ontology entities. Prefer search_all_projects for broad search and search_project for project-scoped search.
+Use only when older instructions specifically mention search_ontology.`,
 			parameters: {
 				type: 'object',
 				properties: {

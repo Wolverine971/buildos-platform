@@ -2,8 +2,8 @@
 
 # Agentic Chat Lightweight Harness Plan
 
-Status: Phase 6 dev/admin UI switch and eval capture implemented; eval scenario runs next
-Date: 2026-04-14
+Status: Strategic context zoom tool implemented; hidden turnProfile router deferred
+Date: 2026-04-15
 Owner: BuildOS Agentic Chat
 
 Related:
@@ -604,17 +604,17 @@ Work:
 Acceptance:
 
 - normal users stay on v2
-- dev/admin can switch one chat turn or one session to lite
+- dev/admin can switch the current chat session to lite
 - no cross-contamination of prompt variant in snapshots
 
 Implemented:
 
 - Added a dev/admin-only prompt variant selector in `AgentChatModal.svelte`.
 - Kept normal-user payloads untagged so they remain on `fastchat_prompt_v1`.
-- Sends `prompt_variant: "lite_seed_v1"` only when the selector is explicitly
-  set for the next turn.
-- Resets the selector to `fastchat_prompt_v1` after each send and on
-  conversation reset.
+- Sends `prompt_variant: "lite_seed_v1"` on every turn while the selector is
+  set to lite.
+- Keeps the selector sticky across sends and conversation resets until the
+  dev/admin user changes it.
 - Shows prompt variant in admin session prompt snapshot summaries and the
   prompt snapshot metric card.
 - Includes prompt variant in session audit markdown and prompt eval targets.
@@ -622,8 +622,34 @@ Implemented:
 Intentionally still out of scope:
 
 - exposing lite to normal users
-- making lite sticky across sessions
+- persisting the selected variant across browser reloads or saved sessions
 - adding a parallel `/api/agent/lite/stream` route
+
+### Phase 6A: Strategic context zoom tool
+
+Status: implemented on 2026-04-15.
+
+Outcome:
+
+- let the agent deliberately zoom into a project or out to global/workspace
+  context using a visible tool, not a hidden pre-turn classifier.
+
+Work:
+
+- add `change_chat_context` to global/project gateway surfaces
+- emit existing `context_shift` events for durable context changes
+- support global context shifts without an entity id
+- materialize target-context direct tools for the rest of the turn
+- update lite strategy guidance so context changes are sticky, strategic, and
+  ambiguity-aware
+
+Acceptance:
+
+- global-to-project turns can shift first, then continue with project tools
+- global zoom-out clears project focus and does not require `entity_id`
+- ambiguous project matches return candidates and do not change context
+- prompt dumps/evals show lower context/tool-search churn before considering a
+  hidden `turnProfile` builder
 
 ### Phase 7: Evals and migration decision
 

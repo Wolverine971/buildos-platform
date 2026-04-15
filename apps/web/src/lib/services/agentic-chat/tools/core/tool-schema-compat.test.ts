@@ -55,4 +55,16 @@ describe('Chat tool schema compatibility', () => {
 		expect(schema.schema.properties.entities.description).toContain('goal/plan/metric name');
 		expect(schema.example_tool_call.name).toBe('create_onto_project');
 	});
+
+	it('maps legacy search_buildos references to search_all_projects', () => {
+		const schema = getToolSchema('search_buildos', {
+			include_examples: true,
+			include_schema: true
+		}) as Record<string, any>;
+
+		expect(schema.type).toBe('tool_schema');
+		expect(schema.op).toBe('x.search.all_projects');
+		expect(schema.tool_name).toBe('search_all_projects');
+		expect(schema.example_tool_call.name).toBe('search_all_projects');
+	});
 });

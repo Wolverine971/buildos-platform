@@ -376,9 +376,10 @@ export interface FocusEntitySummary {
 
 export interface ContextShiftPayload {
   new_context: ChatContextType;
-  entity_id: string;
-  entity_name: string;
+  entity_id: string | null;
+  entity_name: string | null;
   entity_type:
+    | 'workspace'
     | 'project'
     | 'task'
     | 'plan'
@@ -387,7 +388,7 @@ export interface ContextShiftPayload {
     | 'milestone'
     | 'risk'
     | 'requirement';
-  message: string;
+  message?: string;
 }
 
 // Lightweight context usage snapshot for UI + telemetry

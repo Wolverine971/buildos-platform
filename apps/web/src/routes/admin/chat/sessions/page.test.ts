@@ -122,22 +122,171 @@ function sessionDetailPayload() {
 			user: { id: 'user-1', email: 'admin@example.com', name: 'Admin User' },
 			status: 'active',
 			context_type: 'global',
-			entity_id: null,
+			context_id: null,
 			has_errors: false,
 			created_at: '2026-04-12T12:00:00.000Z',
 			updated_at: '2026-04-12T12:05:00.000Z'
 		},
 		metrics: {
-			messages: 1,
-			tool_calls: 0,
-			llm_calls: 0,
+			messages: 2,
+			tool_calls: 1,
+			llm_calls: 1,
 			total_tokens: 0,
 			total_cost_usd: 0,
 			tool_failures: 0,
 			llm_failures: 0
 		},
-		turn_runs: [],
-		timeline: []
+		messages: [
+			{
+				id: 'message-user-1',
+				role: 'user',
+				content: 'What should I do next?',
+				created_at: '2026-04-12T12:01:00.000Z',
+				total_tokens: 8
+			},
+			{
+				id: 'message-assistant-1',
+				role: 'assistant',
+				content: 'Draft the outline, then schedule the first writing block.',
+				created_at: '2026-04-12T12:02:00.000Z',
+				total_tokens: 18
+			}
+		],
+		tool_executions: [],
+		llm_calls: [],
+		operations: [],
+		timing_metrics: null,
+		turn_runs: [
+			{
+				id: 'turn-run-1',
+				turn_index: 1,
+				stream_run_id: 'stream-1',
+				client_turn_id: 'client-turn-1',
+				status: 'completed',
+				finished_reason: 'stop',
+				context_type: 'global',
+				entity_id: null,
+				project_id: null,
+				gateway_enabled: true,
+				request_message: 'What should I do next?',
+				user_message_id: 'message-user-1',
+				assistant_message_id: 'message-assistant-1',
+				tool_round_count: 1,
+				tool_call_count: 1,
+				validation_failure_count: 0,
+				llm_pass_count: 1,
+				first_lane: 'execute',
+				first_help_path: 'project.search',
+				first_skill_path: null,
+				first_canonical_op: 'project.search',
+				history_strategy: 'recent',
+				history_compressed: false,
+				raw_history_count: 2,
+				history_for_model_count: 2,
+				cache_source: null,
+				cache_age_seconds: 0,
+				request_prewarmed_context: false,
+				started_at: '2026-04-12T12:01:00.000Z',
+				finished_at: '2026-04-12T12:02:00.000Z',
+				prompt_snapshot: null,
+				events: [],
+				eval_runs: []
+			}
+		],
+		timeline: [
+			{
+				id: 'message:message-user-1',
+				timestamp: '2026-04-12T12:01:00.000Z',
+				type: 'message',
+				severity: 'info',
+				title: 'User Message',
+				summary: 'What should I do next?',
+				turn_index: 1,
+				payload: {
+					id: 'message-user-1',
+					role: 'user',
+					content: 'What should I do next?'
+				}
+			},
+			{
+				id: 'turn_event:tool-call-1',
+				timestamp: '2026-04-12T12:01:20.000Z',
+				type: 'turn_event',
+				severity: 'info',
+				title: 'Turn Event: tool_call_emitted',
+				summary: 'op=project.search',
+				turn_index: 1,
+				payload: {
+					id: 'tool-call-1',
+					turn_run_id: 'turn-run-1',
+					stream_run_id: 'stream-1',
+					sequence_index: 1,
+					phase: 'tool_call',
+					event_type: 'tool_call_emitted',
+					tool_call_id: 'call-1',
+					tool_name: 'buildos_gateway',
+					canonical_op: 'project.search',
+					arguments: {
+						query: 'outline'
+					}
+				}
+			},
+			{
+				id: 'turn_event:tool-result-1',
+				timestamp: '2026-04-12T12:01:21.000Z',
+				type: 'turn_event',
+				severity: 'info',
+				title: 'Turn Event: tool_result_received',
+				summary: 'op=project.search',
+				turn_index: 1,
+				payload: {
+					id: 'tool-result-1',
+					turn_run_id: 'turn-run-1',
+					stream_run_id: 'stream-1',
+					sequence_index: 2,
+					phase: 'tool_result',
+					event_type: 'tool_result_received',
+					tool_call_id: 'call-1',
+					tool_name: 'buildos_gateway',
+					canonical_op: 'project.search',
+					success: true,
+					duration_ms: 321,
+					result: {
+						matches: 2
+					},
+					tool_result_source: 'chat_tool_executions',
+					linked_tool_execution: {
+						id: 'tool-execution-1',
+						turn_run_id: 'turn-run-1',
+						stream_run_id: 'stream-1',
+						gateway_op: 'project.search',
+						sequence_index: 1,
+						success: true,
+						execution_time_ms: 321,
+						arguments: {
+							query: 'outline'
+						},
+						result: {
+							matches: 2
+						}
+					}
+				}
+			},
+			{
+				id: 'message:message-assistant-1',
+				timestamp: '2026-04-12T12:02:00.000Z',
+				type: 'message',
+				severity: 'info',
+				title: 'Assistant Message',
+				summary: 'Draft the outline, then schedule the first writing block.',
+				turn_index: 1,
+				payload: {
+					id: 'message-assistant-1',
+					role: 'assistant',
+					content: 'Draft the outline, then schedule the first writing block.'
+				}
+			}
+		]
 	};
 }
 
@@ -238,6 +387,23 @@ describe('/admin/chat/sessions modal URL state', () => {
 		render(ChatSessionsPage);
 
 		expect(await screen.findByText('Cost $0.0142')).toBeInTheDocument();
+	});
+
+	it('renders a chat-style replay with expandable tool call details', async () => {
+		render(ChatSessionsPage);
+
+		await openSessionFromList();
+
+		expect(await screen.findByText('Chat Replay')).toBeInTheDocument();
+		expect(screen.getAllByText('What should I do next?').length).toBeGreaterThan(0);
+		expect(
+			screen.getAllByText('Draft the outline, then schedule the first writing block.').length
+		).toBeGreaterThan(0);
+		expect(screen.getByText('BuildOS activity')).toBeInTheDocument();
+		expect(screen.getAllByText('buildos_gateway').length).toBeGreaterThan(0);
+		expect(screen.getAllByText('project.search').length).toBeGreaterThan(0);
+		expect(screen.getByText('Arguments')).toBeInTheDocument();
+		expect(screen.getByText('Result')).toBeInTheDocument();
 	});
 
 	it('closes a deep-linked session modal and removes the URL parameter', async () => {

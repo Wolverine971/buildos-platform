@@ -49,7 +49,7 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(instructionsBlock).toContain('- tool_schema');
 		expect(instructionsBlock).toContain('Preloaded direct tools:');
 		expect(instructionsBlock).toContain('- get_workspace_overview');
-		expect(instructionsBlock).toContain('- search_buildos');
+		expect(instructionsBlock).toContain('- search_all_projects');
 		expect(instructionsBlock).not.toContain('```json');
 		expect(instructionsBlock).not.toContain('"parameters"');
 		expect(instructionsBlock).toContain('## Execution Protocol');

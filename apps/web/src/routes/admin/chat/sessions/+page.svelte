@@ -108,6 +108,59 @@
 		displayIconType: TimelineType;
 		displayEventId: string;
 	};
+	type ConversationMessageRole = 'user' | 'assistant' | 'tool' | 'system' | 'other';
+	type ConversationMessage = {
+		id: string;
+		role: ConversationMessageRole;
+		roleLabel: string;
+		content: string;
+		timestamp: string;
+		turnIndex: number | null;
+		totalTokens: number;
+		errorMessage: string;
+	};
+	type ConversationToolCall = {
+		id: string;
+		toolName: string;
+		title: string;
+		summary: string;
+		statusLabel: string;
+		success: boolean | null;
+		severity: TimelineSeverity;
+		sourceLabel: string;
+		timestamp: string;
+		completedAt: string | null;
+		duration: unknown;
+		toolCallId: string;
+		canonicalOp: string;
+		resultSource: string;
+		arguments: unknown;
+		result: unknown;
+		error: string;
+		metadata: Record<string, unknown>;
+		linkedToolExecution: Record<string, unknown> | null;
+		linkedToolMessage: Record<string, unknown> | null;
+		rawPayload: Record<string, unknown>;
+		qualityRank: number;
+	};
+	type ConversationTurn = {
+		id: string;
+		turnIndex: number | null;
+		run: SessionTurnRun | null;
+		userMessages: ConversationMessage[];
+		assistantMessages: ConversationMessage[];
+		otherMessages: ConversationMessage[];
+		toolCalls: ConversationToolCall[];
+		llmCalls: TimelineEvent[];
+		promptSnapshots: TimelineEvent[];
+		operations: TimelineEvent[];
+		evalRuns: TimelineEvent[];
+		auditEvents: TimelineEvent[];
+		startedAt: string;
+		finishedAt: string | null;
+		status: string;
+		errors: number;
+	};
 
 	const PAGE_SIZE = 25;
 	const CHAT_SESSION_QUERY_PARAM = 'chat_session_id';
@@ -1232,6 +1285,497 @@
 		};
 	}
 
+	function recordFromUnknown(value: unknown): Record<string, unknown> | null {
+		if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+		return value as Record<string, unknown>;
+	}
+
+	function normalizeConversationRole(value: unknown): ConversationMessageRole {
+		const role = stringValue(value).toLowerCase();
+		if (role === 'user') return 'user';
+		if (role === 'assistant') return 'assistant';
+		if (role === 'tool') return 'tool';
+		if (role === 'system') return 'system';
+		return 'other';
+	}
+
+	function conversationRoleLabel(role: ConversationMessageRole): string {
+		switch (role) {
+			case 'user':
+				return 'You';
+			case 'assistant':
+				return 'BuildOS';
+			case 'tool':
+				return 'Tool';
+			case 'system':
+				return 'System';
+			default:
+				return 'Message';
+		}
+	}
+
+	function messageCreatedAt(message: Record<string, unknown>, fallback: string): string {
+		return stringValue(payloadField(message, 'created_at')) || fallback;
+	}
+
+	function buildConversationMessage(params: {
+		message: Record<string, unknown>;
+		turnIndex: number | null;
+		fallbackTimestamp: string;
+	}): ConversationMessage {
+		const role = normalizeConversationRole(payloadField(params.message, 'role'));
+		const id =
+			stringValue(payloadField(params.message, 'id')) ||
+			`message:${role}:${params.turnIndex ?? 'standalone'}:${messageCreatedAt(
+				params.message,
+				params.fallbackTimestamp
+			)}`;
+		return {
+			id,
+			role,
+			roleLabel: conversationRoleLabel(role),
+			content: stringValue(payloadField(params.message, 'content')),
+			timestamp: messageCreatedAt(params.message, params.fallbackTimestamp),
+			turnIndex: params.turnIndex,
+			totalTokens: toNumericValue(payloadField(params.message, 'total_tokens')) ?? 0,
+			errorMessage: stringValue(payloadField(params.message, 'error_message'))
+		};
+	}
+
+	function messageSortValue(message: Record<string, unknown>, fallback: string): string {
+		return messageCreatedAt(message, fallback) || fallback;
+	}
+
+	function timelineMessageId(event: TimelineEvent): string {
+		return stringValue(payloadField(event.payload ?? {}, 'id'));
+	}
+
+	function createConversationTurn(
+		turnIndex: number | null,
+		run: SessionTurnRun | null,
+		fallbackTimestamp: string
+	): ConversationTurn {
+		return {
+			id: turnIndex === null ? 'standalone' : `turn:${turnIndex}`,
+			turnIndex,
+			run,
+			userMessages: [],
+			assistantMessages: [],
+			otherMessages: [],
+			toolCalls: [],
+			llmCalls: [],
+			promptSnapshots: [],
+			operations: [],
+			evalRuns: [],
+			auditEvents: [],
+			startedAt: run?.started_at ?? fallbackTimestamp,
+			finishedAt: run?.finished_at ?? null,
+			status: run?.status ?? 'recorded',
+			errors: 0
+		};
+	}
+
+	function addMessageToConversationTurn(
+		turn: ConversationTurn,
+		message: ConversationMessage
+	): void {
+		if (message.role === 'user') {
+			turn.userMessages.push(message);
+			return;
+		}
+		if (message.role === 'assistant') {
+			turn.assistantMessages.push(message);
+			return;
+		}
+		turn.otherMessages.push(message);
+	}
+
+	function assignAuditEventToConversationTurn(
+		turn: ConversationTurn,
+		event: TimelineEvent
+	): void {
+		turn.auditEvents.push(event);
+		if (event.severity === 'error') {
+			turn.errors += 1;
+		}
+		switch (event.type) {
+			case 'llm_call':
+				turn.llmCalls.push(event);
+				break;
+			case 'prompt_snapshot':
+				turn.promptSnapshots.push(event);
+				break;
+			case 'operation':
+				turn.operations.push(event);
+				break;
+			case 'eval_run':
+				turn.evalRuns.push(event);
+				break;
+		}
+	}
+
+	function linkedToolExecutionFromPayload(
+		payload: Record<string, unknown>
+	): Record<string, unknown> | null {
+		return recordFromUnknown(payloadField(payload, 'linked_tool_execution'));
+	}
+
+	function linkedToolMessageFromPayload(
+		payload: Record<string, unknown>
+	): Record<string, unknown> | null {
+		return recordFromUnknown(payloadField(payload, 'linked_tool_message'));
+	}
+
+	function firstNonEmptyString(...values: unknown[]): string {
+		for (const value of values) {
+			const text = stringValue(value);
+			if (text) return text;
+		}
+		return '';
+	}
+
+	function toolMetadataFromPayload(params: {
+		event: TimelineEvent;
+		lifecycleState: ToolLifecycleDisplayState;
+		payload: Record<string, unknown>;
+		linkedToolExecution: Record<string, unknown> | null;
+		linkedToolMessage: Record<string, unknown> | null;
+	}): Record<string, unknown> {
+		const { event, lifecycleState, payload, linkedToolExecution, linkedToolMessage } = params;
+		const toolExecutionId =
+			stringValue(payloadField(linkedToolExecution ?? {}, 'id')) ||
+			(event.type === 'tool_execution' ? stringValue(payloadField(payload, 'id')) : '');
+
+		return {
+			event_id: event.id,
+			outcome_event_id: lifecycleState.outcomeEvent?.id ?? null,
+			tool_call_id: stringValue(payloadField(payload, 'tool_call_id')) || null,
+			tool_execution_id: toolExecutionId || null,
+			tool_message_id:
+				stringValue(payloadField(linkedToolMessage ?? {}, 'id')) ||
+				stringValue(payloadField(payload, 'tool_message_id')) ||
+				null,
+			turn_run_id: firstNonEmptyString(
+				payloadField(payload, 'turn_run_id'),
+				payloadField(linkedToolExecution ?? {}, 'turn_run_id')
+			),
+			stream_run_id: firstNonEmptyString(
+				payloadField(payload, 'stream_run_id'),
+				payloadField(linkedToolExecution ?? {}, 'stream_run_id')
+			),
+			client_turn_id: firstNonEmptyString(
+				payloadField(payload, 'client_turn_id'),
+				payloadField(linkedToolExecution ?? {}, 'client_turn_id')
+			),
+			sequence_index:
+				toNumericValue(payloadField(payload, 'sequence_index')) ??
+				toNumericValue(payloadField(payload, 'emitted_sequence_index')) ??
+				toNumericValue(payloadField(linkedToolExecution ?? {}, 'sequence_index')),
+			outcome_sequence_index: toNumericValue(payloadField(payload, 'outcome_sequence_index')),
+			tool_category: firstNonEmptyString(
+				payloadField(payload, 'tool_category'),
+				payloadField(linkedToolExecution ?? {}, 'tool_category')
+			),
+			canonical_op: firstNonEmptyString(
+				payloadField(payload, 'canonical_op'),
+				payloadField(linkedToolExecution ?? {}, 'gateway_op')
+			),
+			help_path: firstNonEmptyString(
+				payloadField(payload, 'help_path'),
+				payloadField(linkedToolExecution ?? {}, 'help_path')
+			),
+			gateway_op: firstNonEmptyString(
+				payloadField(payload, 'gateway_op'),
+				payloadField(linkedToolExecution ?? {}, 'gateway_op')
+			),
+			tool_result_source: stringValue(payloadField(payload, 'tool_result_source')) || null,
+			emitted_at: stringValue(payloadField(payload, 'emitted_at')) || null,
+			outcome_at: stringValue(payloadField(payload, 'outcome_at')) || null
+		};
+	}
+
+	function sourceLabelForToolEvent(
+		event: TimelineEvent,
+		payload: Record<string, unknown>,
+		isMergedToolLifecycle: boolean
+	): string {
+		if (isMergedToolLifecycle) return 'Streamed tool lifecycle';
+		if (event.type === 'tool_execution') {
+			return isTraceToolPayload(payload) ? 'Assistant tool trace' : 'Tool execution row';
+		}
+		return 'Turn event';
+	}
+
+	function toolStatusLabel(success: boolean | null, outcomeEvent: TimelineEvent | null): string {
+		if (success === true) return 'completed';
+		if (success === false) return 'failed';
+		if (outcomeEvent) return 'returned';
+		return 'pending';
+	}
+
+	function toolQualityRank(sourceLabel: string): number {
+		if (sourceLabel === 'Streamed tool lifecycle') return 4;
+		if (sourceLabel === 'Turn event') return 3;
+		if (sourceLabel === 'Tool execution row') return 2;
+		return 1;
+	}
+
+	function conversationToolCallFromEvent(
+		events: TimelineEvent[],
+		eventIndex: number
+	): ConversationToolCall | null {
+		const event = events[eventIndex];
+		if (!event) return null;
+		const lifecycleState = toolLifecycleDisplayState(events, eventIndex);
+		if (lifecycleState.hideEvent) return null;
+
+		const isMergedToolLifecycle =
+			isToolCallEmittedEvent(event) && !!lifecycleState.outcomeEvent;
+		const isStandaloneToolTurnEvent = isToolDetailTurnEvent(event) && !isMergedToolLifecycle;
+		const isToolDisplay =
+			event.type === 'tool_execution' || isMergedToolLifecycle || isStandaloneToolTurnEvent;
+		if (!isToolDisplay) return null;
+
+		const payload = lifecycleState.displayPayload;
+		const linkedToolExecution = linkedToolExecutionFromPayload(payload);
+		const linkedToolMessage = linkedToolMessageFromPayload(payload);
+		const success = toolDisplaySuccess(payload);
+		const sourceLabel = sourceLabelForToolEvent(event, payload, isMergedToolLifecycle);
+		const metadata = toolMetadataFromPayload({
+			event,
+			lifecycleState,
+			payload,
+			linkedToolExecution,
+			linkedToolMessage
+		});
+		const toolCallId = stringValue(payloadField(payload, 'tool_call_id'));
+		const toolExecutionId = stringValue(payloadField(metadata, 'tool_execution_id'));
+		const canonicalOp = firstNonEmptyString(
+			payloadField(payload, 'canonical_op'),
+			payloadField(payload, 'gateway_op'),
+			payloadField(linkedToolExecution ?? {}, 'gateway_op')
+		);
+
+		return {
+			id: toolCallId || toolExecutionId || lifecycleState.displayEventId,
+			toolName: toolDisplayName(payload),
+			title: lifecycleState.displayTitle,
+			summary: lifecycleState.displaySummary,
+			statusLabel: toolStatusLabel(success, lifecycleState.outcomeEvent),
+			success,
+			severity: lifecycleState.displaySeverity,
+			sourceLabel,
+			timestamp:
+				stringValue(payloadField(payload, 'emitted_at')) ||
+				lifecycleState.displayTimestamp ||
+				event.timestamp,
+			completedAt:
+				stringValue(payloadField(payload, 'outcome_at')) ||
+				stringValue(payloadField(linkedToolExecution ?? {}, 'created_at')) ||
+				null,
+			duration: toolDisplayDuration(payload),
+			toolCallId,
+			canonicalOp,
+			resultSource: stringValue(payloadField(payload, 'tool_result_source')),
+			arguments: toolDisplayArguments(payload),
+			result: toolDisplayResult(payload),
+			error: toolDisplayError(payload),
+			metadata,
+			linkedToolExecution,
+			linkedToolMessage,
+			rawPayload: lifecycleState.displayRawPayload,
+			qualityRank: toolQualityRank(sourceLabel)
+		};
+	}
+
+	function toolDedupKey(tool: ConversationToolCall): string {
+		return (
+			tool.toolCallId ||
+			stringValue(payloadField(tool.metadata, 'tool_execution_id')) ||
+			`${tool.toolName}:${payloadField(tool.metadata, 'sequence_index') ?? ''}:${tool.timestamp}`
+		);
+	}
+
+	function buildConversationToolCalls(events: TimelineEvent[]): ConversationToolCall[] {
+		const byKey = new Map<string, ConversationToolCall>();
+		events.forEach((_event, eventIndex) => {
+			const tool = conversationToolCallFromEvent(events, eventIndex);
+			if (!tool) return;
+			const key = toolDedupKey(tool);
+			const existing = byKey.get(key);
+			if (!existing || tool.qualityRank > existing.qualityRank) {
+				byKey.set(key, tool);
+			}
+		});
+
+		return [...byKey.values()].sort((a, b) => {
+			const aSequence = toNumericValue(payloadField(a.metadata, 'sequence_index'));
+			const bSequence = toNumericValue(payloadField(b.metadata, 'sequence_index'));
+			if (aSequence !== null && bSequence !== null && aSequence !== bSequence) {
+				return aSequence - bSequence;
+			}
+			if (a.timestamp !== b.timestamp) return a.timestamp < b.timestamp ? -1 : 1;
+			return a.id.localeCompare(b.id);
+		});
+	}
+
+	function conversationMessageIsLong(message: ConversationMessage): boolean {
+		const content = message.content.trim();
+		return content.length > 900 || content.split(/\r\n|\r|\n/).length > 10;
+	}
+
+	function metadataEntries(record: Record<string, unknown>): Array<[string, unknown]> {
+		return Object.entries(record).filter(([, value]) => {
+			if (value === null || value === undefined || value === '') return false;
+			return true;
+		});
+	}
+
+	function metadataValueLabel(value: unknown): string {
+		if (typeof value === 'boolean') return value ? 'true' : 'false';
+		if (typeof value === 'number') return formatNumber(value);
+		if (typeof value === 'string') return value;
+		return prettyJson(value);
+	}
+
+	const conversationTurns = $derived.by(() => {
+		if (!sessionDetail) return [] as ConversationTurn[];
+
+		const fallbackTimestamp = sessionDetail.session.created_at;
+		const turnRunByIndex = new Map<number, SessionTurnRun>(
+			sessionDetail.turn_runs.map((run) => [run.turn_index, run])
+		);
+		const turnByIndex = new Map<number, ConversationTurn>();
+		let standaloneTurn: ConversationTurn | null = null;
+
+		const ensureTurn = (turnIndex: number | null, run: SessionTurnRun | null = null) => {
+			if (turnIndex === null) {
+				standaloneTurn ??= createConversationTurn(null, null, fallbackTimestamp);
+				return standaloneTurn;
+			}
+			const existing = turnByIndex.get(turnIndex);
+			if (existing) {
+				if (!existing.run && run) {
+					existing.run = run;
+					existing.startedAt = run.started_at;
+					existing.finishedAt = run.finished_at;
+					existing.status = run.status;
+				}
+				return existing;
+			}
+			const next = createConversationTurn(
+				turnIndex,
+				run ?? turnRunByIndex.get(turnIndex) ?? null,
+				fallbackTimestamp
+			);
+			turnByIndex.set(turnIndex, next);
+			return next;
+		};
+
+		for (const run of sessionDetail.turn_runs) {
+			ensureTurn(run.turn_index, run);
+		}
+
+		const messageTurnIndexById = new Map<string, number>();
+		for (const run of sessionDetail.turn_runs) {
+			if (run.user_message_id) messageTurnIndexById.set(run.user_message_id, run.turn_index);
+			if (run.assistant_message_id) {
+				messageTurnIndexById.set(run.assistant_message_id, run.turn_index);
+			}
+		}
+		for (const event of replayTimeline) {
+			if (event.type !== 'message' || event.turn_index === null) continue;
+			const id = timelineMessageId(event);
+			if (id) messageTurnIndexById.set(id, event.turn_index);
+		}
+
+		let fallbackTurnIndex = 0;
+		const sortedMessages = [...(sessionDetail.messages ?? [])]
+			.filter((message): message is Record<string, unknown> => {
+				return !!message && typeof message === 'object' && !Array.isArray(message);
+			})
+			.sort((a, b) =>
+				messageSortValue(a, fallbackTimestamp).localeCompare(
+					messageSortValue(b, fallbackTimestamp)
+				)
+			);
+
+		for (const message of sortedMessages) {
+			const id = stringValue(payloadField(message, 'id'));
+			const role = normalizeConversationRole(payloadField(message, 'role'));
+			const explicitTurnIndex = id ? (messageTurnIndexById.get(id) ?? null) : null;
+			if (role === 'user') {
+				fallbackTurnIndex =
+					explicitTurnIndex ?? Math.max(fallbackTurnIndex + 1, fallbackTurnIndex);
+			} else if (fallbackTurnIndex === 0 && explicitTurnIndex === null) {
+				fallbackTurnIndex = 1;
+			}
+			const turnIndex =
+				explicitTurnIndex ?? (fallbackTurnIndex > 0 ? fallbackTurnIndex : null);
+			const turn = ensureTurn(turnIndex);
+			addMessageToConversationTurn(
+				turn,
+				buildConversationMessage({
+					message,
+					turnIndex,
+					fallbackTimestamp
+				})
+			);
+		}
+
+		for (const event of [...replayTimeline].sort(compareTimelineEvents)) {
+			const turn = ensureTurn(event.turn_index);
+			assignAuditEventToConversationTurn(turn, event);
+		}
+
+		for (const turn of turnByIndex.values()) {
+			if (turn.run?.request_message && turn.userMessages.length === 0) {
+				addMessageToConversationTurn(
+					turn,
+					buildConversationMessage({
+						message: {
+							id: `request:${turn.run.id}`,
+							role: 'user',
+							content: turn.run.request_message,
+							created_at: turn.run.started_at,
+							total_tokens: 0
+						},
+						turnIndex: turn.turnIndex,
+						fallbackTimestamp
+					})
+				);
+			}
+			turn.toolCalls = buildConversationToolCalls(turn.auditEvents);
+			turn.auditEvents.sort(compareTimelineEvents);
+			turn.llmCalls.sort(compareTimelineEvents);
+			turn.promptSnapshots.sort(compareTimelineEvents);
+			turn.operations.sort(compareTimelineEvents);
+			turn.evalRuns.sort(compareTimelineEvents);
+		}
+
+		if (standaloneTurn) {
+			standaloneTurn.toolCalls = buildConversationToolCalls(standaloneTurn.auditEvents);
+			standaloneTurn.auditEvents.sort(compareTimelineEvents);
+		}
+
+		return [
+			...Array.from(turnByIndex.values()).sort((a, b) => {
+				if (a.turnIndex === null && b.turnIndex !== null) return -1;
+				if (a.turnIndex !== null && b.turnIndex === null) return 1;
+				return (a.turnIndex ?? 0) - (b.turnIndex ?? 0);
+			}),
+			...(standaloneTurn ? [standaloneTurn] : [])
+		].filter((turn) => {
+			return (
+				turn.userMessages.length > 0 ||
+				turn.assistantMessages.length > 0 ||
+				turn.otherMessages.length > 0 ||
+				turn.auditEvents.length > 0 ||
+				!!turn.run
+			);
+		});
+	});
+
 	function displayedGroupItemCount(group: TimelineGroup): number {
 		return group.items.reduce((count, _event, index) => {
 			return count + (toolLifecycleDisplayState(group.items, index).hideEvent ? 0 : 1);
@@ -1677,1159 +2221,1141 @@
 							<div
 								class="text-xs font-semibold text-foreground/60 uppercase tracking-wide"
 							>
-								Replay View
+								Conversation Replay
 							</div>
 							<div class="mt-1 text-xs text-muted-foreground">
-								Grouped by session event and turn. Open a turn to inspect the
-								request, prompt snapshot, LLM calls, tool activity, and raw payloads
-								together.
-							</div>
-						</div>
-
-						<div class="rounded-lg border border-border bg-background p-2.5 space-y-2">
-							<div class="flex flex-wrap items-center justify-between gap-2">
-								<div>
-									<div
-										class="text-xs font-semibold text-foreground/60 uppercase tracking-wide"
-									>
-										Replay Filters
-									</div>
-									<div class="mt-1 text-xs text-muted-foreground">
-										Showing {formatNumber(visibleTimeline.length)} of {formatNumber(
-											replayTimeline.length
-										)} events across {formatNumber(
-											visibleTimelineGroups.length
-										)}
-										expandable sections
-									</div>
-								</div>
-								<button
-									type="button"
-									class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-									onclick={resetTimelineFilters}
-								>
-									Reset filters
-								</button>
-							</div>
-							<div class="flex flex-wrap items-center gap-1.5">
-								{#each Object.keys(eventTypeFilters) as rawType}
-									{@const type = rawType as TimelineType}
-									<button
-										type="button"
-										class="px-2 py-1 rounded-full border text-xs font-medium transition-colors {eventTypeFilters[
-											type
-										]
-											? 'border-accent bg-accent/15 text-foreground'
-											: 'border-border bg-card text-foreground/50 hover:text-foreground/70'}"
-										onclick={() => toggleEventType(type)}
-									>
-										{eventTypeLabel(type)}
-									</button>
-								{/each}
-								<button
-									type="button"
-									class="px-2 py-1 rounded-full border text-xs font-medium transition-colors {showOnlyErrors
-										? 'border-red-500/60 bg-red-500/15 text-red-700 dark:text-red-300'
-										: 'border-border bg-card text-foreground/50 hover:text-foreground/70'}"
-									onclick={() => (showOnlyErrors = !showOnlyErrors)}
-								>
-									Errors Only
-								</button>
-							</div>
-							<div class="relative">
-								<Search
-									class="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-								/>
-								<input
-									type="text"
-									bind:value={timelineSearch}
-									placeholder="Search timeline events, payloads, tool names..."
-									class="w-full text-sm pl-8 pr-3 py-1.5 border border-border bg-card rounded-lg shadow-ink-inner focus:ring-2 focus:ring-ring focus:border-accent text-foreground"
-								/>
+								Skim the user and BuildOS messages as chat bubbles. Tool activity is
+								collapsed under each turn, with arguments, results, linked records,
+								and raw payloads available when needed.
 							</div>
 						</div>
 					</div>
 
-					<div class="p-3">
-						{#if visibleTimeline.length === 0}
-							<div class="text-sm text-muted-foreground text-center py-8">
-								No timeline events match the current filters.
+					<div class="p-3 space-y-4">
+						{#if conversationTurns.length === 0}
+							<div
+								class="rounded-lg border border-dashed border-border bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground"
+							>
+								<MessageSquare class="h-8 w-8 mx-auto mb-2 opacity-60" />
+								No conversation messages were recorded for this session.
 							</div>
 						{:else}
-							<div class="space-y-3">
-								{#each visibleTimelineGroups as group}
-									{@const run = group.run}
-									<details
-										class="rounded-xl border border-border bg-background shadow-ink overflow-hidden"
-									>
-										<summary class="cursor-pointer list-none p-3">
+							<section
+								class="rounded-lg border border-border bg-muted p-3 shadow-ink"
+								aria-label="Conversation replay"
+							>
+								<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+									<div>
+										<div class="text-sm font-semibold text-foreground">
+											Chat Replay
+										</div>
+										<div class="text-xs text-muted-foreground">
+											{formatNumber(conversationTurns.length)}
+											{pluralize(conversationTurns.length, 'turn')} ·
+											{formatNumber(sessionDetail.metrics.tool_calls)} tool
+											{pluralize(sessionDetail.metrics.tool_calls, 'call')} ·
+											{formatNumber(sessionDetail.metrics.llm_calls)} LLM
+											{pluralize(sessionDetail.metrics.llm_calls, 'call')}
+										</div>
+									</div>
+									<div class="text-xs text-muted-foreground">
+										Tool calls are collapsed by default
+									</div>
+								</div>
+
+								<div class="space-y-4">
+									{#each conversationTurns as turn}
+										<div class="space-y-2">
 											<div
-												class="flex flex-wrap items-start justify-between gap-3"
+												class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-muted-foreground"
 											>
-												{#if group.kind === 'turn' && run}
-													<div class="min-w-0 flex-1">
-														<div
-															class="flex flex-wrap items-center gap-1.5"
-														>
-															<span
-																class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground/80"
-															>
-																Turn {group.turnIndex}
-															</span>
-															<span
-																class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {statusBadge(
-																	run.status
-																)}"
-															>
-																{run.status}
-															</span>
-															{#if run.first_lane}
-																<span
-																	class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-foreground"
-																>
-																	{run.first_lane}
-																</span>
-															{/if}
-															{#if run.first_canonical_op}
-																<span
-																	class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-background border border-border text-foreground/80"
-																>
-																	op={run.first_canonical_op}
-																</span>
-															{/if}
-															{#if run.validation_failure_count > 0}
-																<span
-																	class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-700 dark:text-red-300"
-																>
-																	{formatNumber(
-																		run.validation_failure_count
-																	)}
-																	validation
-																</span>
-															{/if}
-														</div>
-														<div
-															class="mt-2 text-sm font-semibold text-foreground"
-														>
-															{group.title}
-														</div>
-														<div
-															class="mt-1 text-sm text-foreground/80 line-clamp-2"
-														>
-															{groupRequestPreview(group) ||
-																'(empty request)'}
-														</div>
-														<div
-															class="mt-2 flex flex-wrap gap-1.5 text-xs text-muted-foreground"
-														>
-															<span
-																class="rounded-full bg-muted px-2 py-0.5"
-															>
-																{formatNumber(run.tool_call_count)}
-																{pluralize(
-																	run.tool_call_count,
-																	'tool call'
-																)}
-															</span>
-															<span
-																class="rounded-full bg-muted px-2 py-0.5"
-															>
-																{formatNumber(run.llm_pass_count)} LLM
-																{pluralize(
-																	run.llm_pass_count,
-																	'pass',
-																	'passes'
-																)}
-															</span>
-															<span
-																class="rounded-full bg-muted px-2 py-0.5"
-															>
-																{formatNumber(
-																	displayedGroupItemCount(group)
-																)} visible
-																{pluralize(
-																	displayedGroupItemCount(group),
-																	'event'
-																)}
-															</span>
-															{#if group.counts.errors > 0}
-																<span
-																	class="rounded-full bg-red-500/10 px-2 py-0.5 text-red-700 dark:text-red-300"
-																>
-																	{formatNumber(
-																		group.counts.errors
-																	)}
-																	{pluralize(
-																		group.counts.errors,
-																		'error'
-																	)}
-																</span>
-															{/if}
-														</div>
-													</div>
-												{:else}
-													{@const headerEvent = group.items[0]}
-													{@const HeaderIcon = eventIcon(
-														headerEvent?.type ?? 'session'
-													)}
-													<div class="min-w-0 flex-1">
-														<div
-															class="flex flex-wrap items-center gap-1.5"
-														>
-															<span
-																class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium {eventSeverityClasses(
-																	group.severity
-																)}"
-															>
-																<HeaderIcon class="h-3 w-3" />
-																{eventTypeLabel(
-																	headerEvent?.type ?? 'session'
-																)}
-															</span>
-														</div>
-														<div
-															class="mt-2 text-sm font-semibold text-foreground"
-														>
-															{group.title}
-														</div>
-														<div
-															class="mt-1 text-sm text-foreground/75 line-clamp-2"
-														>
-															{group.summary}
-														</div>
-													</div>
-												{/if}
-												<div class="shrink-0 text-right">
-													<div class="text-xs text-muted-foreground">
-														{formatDateTime(group.timestamp)}
-													</div>
-												</div>
-											</div>
-										</summary>
-
-										<div
-											class="border-t border-border bg-card/40 p-3 space-y-3"
-										>
-											{#if group.kind === 'turn' && run}
-												<div
-													class="rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground"
+												<span
+													class="rounded-full bg-background px-2 py-0.5 text-foreground/80"
 												>
-													<div class="flex flex-wrap gap-x-3 gap-y-1">
-														{#if run.first_skill_path}
-															<span class="break-all">
-																<span class="text-foreground/60"
-																	>First skill:</span
-																>
-																{run.first_skill_path}
-															</span>
-														{/if}
-														{#if run.history_strategy}
-															<span>
-																<span class="text-foreground/60"
-																	>History:</span
-																>
-																{run.history_strategy} / {formatNumber(
-																	run.history_for_model_count
-																)}
-															</span>
-														{/if}
-														{#if run.cache_source}
-															<span>
-																<span class="text-foreground/60"
-																	>Cache:</span
-																>
-																{run.cache_source} / {formatNumber(
-																	run.cache_age_seconds
-																)}s
-															</span>
-														{/if}
-														{#if run.finished_reason}
-															<span>
-																<span class="text-foreground/60"
-																	>Reason:</span
-																>
-																{run.finished_reason}
-															</span>
-														{/if}
-													</div>
-													<div
-														class="mt-1 flex flex-wrap gap-x-3 gap-y-1"
+													{turn.turnIndex === null
+														? 'Session'
+														: `Turn ${turn.turnIndex}`}
+												</span>
+												<span
+													class="rounded-full px-2 py-0.5 {statusBadge(
+														turn.status
+													)}"
+												>
+													{turn.status}
+												</span>
+												<span>{formatDateTime(turn.startedAt)}</span>
+												{#if turn.toolCalls.length > 0}
+													<span
+														class="rounded-full bg-background px-2 py-0.5"
 													>
-														<span>
-															<span class="text-foreground/60"
-																>Started:</span
+														{formatNumber(turn.toolCalls.length)} tool
+														{pluralize(turn.toolCalls.length, 'call')}
+													</span>
+												{/if}
+												{#if turn.llmCalls.length > 0}
+													<span
+														class="rounded-full bg-background px-2 py-0.5"
+													>
+														{formatNumber(turn.llmCalls.length)} LLM
+														{pluralize(turn.llmCalls.length, 'call')}
+													</span>
+												{/if}
+												{#if turn.errors > 0}
+													<span
+														class="rounded-full bg-red-500/10 px-2 py-0.5 text-red-700 dark:text-red-300"
+													>
+														{formatNumber(turn.errors)}
+														{pluralize(turn.errors, 'error')}
+													</span>
+												{/if}
+											</div>
+
+											{#each turn.userMessages as message}
+												<div class="flex justify-end">
+													<div
+														class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%]"
+													>
+														<div
+															class="mb-1 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-accent"
+														>
+															<span>{message.roleLabel}</span>
+															<span
+																class="font-normal normal-case tracking-normal text-accent/60"
 															>
-															{formatDateTime(run.started_at)}
-														</span>
-														{#if run.finished_at}
-															<span>
-																<span class="text-foreground/60"
-																	>Finished:</span
-																>
-																{formatDateTime(run.finished_at)}
+																{formatDateTime(message.timestamp)}
 															</span>
+														</div>
+														{#if conversationMessageIsLong(message)}
+															<details>
+																<summary
+																	class="cursor-pointer list-none space-y-2"
+																>
+																	<div
+																		class="line-clamp-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+																	>
+																		{truncateText(
+																			message.content ||
+																				'(empty message)',
+																			420
+																		)}
+																	</div>
+																	<div
+																		class="text-[11px] font-semibold uppercase tracking-wide text-accent"
+																	>
+																		Expand message
+																	</div>
+																</summary>
+																<div
+																	class="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+																>
+																	{message.content ||
+																		'(empty message)'}
+																</div>
+															</details>
+														{:else}
+															<div
+																class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+															>
+																{message.content ||
+																	'(empty message)'}
+															</div>
+														{/if}
+														{#if message.errorMessage || message.totalTokens > 0}
+															<div
+																class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-foreground/60"
+															>
+																{#if message.totalTokens > 0}
+																	<span>
+																		{formatNumber(
+																			message.totalTokens
+																		)}
+																		tokens
+																	</span>
+																{/if}
+																{#if message.errorMessage}
+																	<span
+																		class="text-red-600 dark:text-red-400"
+																	>
+																		{message.errorMessage}
+																	</span>
+																{/if}
+															</div>
 														{/if}
 													</div>
 												</div>
-											{/if}
+											{/each}
 
-											{#if group.items.length > 0}
-												<div class="relative pl-2">
-													<div
-														class="absolute left-[8px] top-0 bottom-0 w-px bg-border"
-													></div>
-													<div class="space-y-2">
-														{#each group.items as event, eventIndex}
-															{@const lifecycleState =
-																toolLifecycleDisplayState(
-																	group.items,
-																	eventIndex
-																)}
-															{#if !lifecycleState.hideEvent}
-																{@const EventIcon = eventIcon(
-																	lifecycleState.displayIconType
-																)}
-																{@const payload =
-																	lifecycleState.displayPayload}
-																{@const rawPayload =
-																	lifecycleState.displayRawPayload}
-																{@const isMergedToolLifecycle =
-																	isToolCallEmittedEvent(event) &&
-																	!!lifecycleState.outcomeEvent}
-																{@const isToolDisplay =
-																	event.type ===
-																		'tool_execution' ||
-																	isMergedToolLifecycle}
-																{@const isStandaloneToolTurnEvent =
-																	isToolDetailTurnEvent(event) &&
-																	!isMergedToolLifecycle}
-																{@const toolSuccess = isToolDisplay
-																	? toolDisplaySuccess(payload)
-																	: null}
-																{@const toolArguments =
-																	isToolDisplay
-																		? toolDisplayArguments(
-																				payload
-																			)
-																		: undefined}
-																{@const toolResult = isToolDisplay
-																	? toolDisplayResult(payload)
-																	: undefined}
-																{@const toolError = isToolDisplay
-																	? toolDisplayError(payload)
-																	: ''}
-																{@const turnEventToolSuccess =
-																	isStandaloneToolTurnEvent
-																		? toolDisplaySuccess(
-																				payload
-																			)
-																		: null}
-																{@const turnEventToolArguments =
-																	isStandaloneToolTurnEvent
-																		? toolDisplayArguments(
-																				payload
-																			)
-																		: undefined}
-																{@const turnEventToolResult =
-																	isStandaloneToolTurnEvent
-																		? toolDisplayResult(payload)
-																		: undefined}
-																{@const turnEventToolError =
-																	isStandaloneToolTurnEvent
-																		? toolDisplayError(payload)
-																		: ''}
-																{@const turnEventToolResultSource =
-																	isStandaloneToolTurnEvent
-																		? stringValue(
-																				payloadField(
-																					payload,
-																					'tool_result_source'
-																				)
-																			)
-																		: ''}
-																<div class="relative pl-7">
+											{#if turn.toolCalls.length > 0 || turn.llmCalls.length > 0 || turn.promptSnapshots.length > 0 || turn.operations.length > 0}
+												<details
+													class="rounded-lg border border-border bg-card shadow-ink tx tx-thread tx-weak sm:ml-10"
+												>
+													<summary
+														class="cursor-pointer list-none border-b border-border bg-background px-3 py-2"
+													>
+														<div
+															class="flex flex-wrap items-center justify-between gap-2"
+														>
+															<div
+																class="flex min-w-0 items-center gap-2"
+															>
+																<span
+																	class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[10px] font-semibold uppercase text-background"
+																>
+																	OS
+																</span>
+																<div class="min-w-0">
 																	<div
-																		class="absolute left-[2px] top-3.5 h-3 w-3 rounded-full ring-2 ring-card {timelineDotClasses(
-																			lifecycleState.displaySeverity
-																		)}"
-																	></div>
-																	<div
-																		class="rounded-lg border border-border bg-background p-2.5 shadow-ink"
+																		class="text-xs font-semibold uppercase tracking-wide text-foreground"
 																	>
-																		<div
-																			class="flex flex-wrap items-center justify-between gap-2 mb-1.5"
+																		BuildOS activity
+																	</div>
+																	<div
+																		class="text-xs text-muted-foreground"
+																	>
+																		Open to inspect tool calls
+																		and metadata.
+																	</div>
+																</div>
+															</div>
+															<div
+																class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium"
+															>
+																{#if turn.toolCalls.length > 0}
+																	<span
+																		class="rounded-full bg-muted px-2 py-0.5 text-foreground/80"
+																	>
+																		{formatNumber(
+																			turn.toolCalls.length
+																		)}
+																		tool
+																		{pluralize(
+																			turn.toolCalls.length,
+																			'call'
+																		)}
+																	</span>
+																{/if}
+																{#if turn.llmCalls.length > 0}
+																	<span
+																		class="rounded-full bg-muted px-2 py-0.5 text-foreground/80"
+																	>
+																		{formatNumber(
+																			turn.llmCalls.length
+																		)}
+																		LLM
+																	</span>
+																{/if}
+																{#if turn.promptSnapshots.length > 0}
+																	<span
+																		class="rounded-full bg-muted px-2 py-0.5 text-foreground/80"
+																	>
+																		prompt
+																	</span>
+																{/if}
+															</div>
+														</div>
+													</summary>
+
+													<div class="space-y-2 p-3">
+														{#if turn.toolCalls.length > 0}
+															<div class="space-y-2">
+																{#each turn.toolCalls as tool}
+																	<details
+																		class="rounded-lg border border-border bg-background"
+																	>
+																		<summary
+																			class="cursor-pointer list-none px-3 py-2"
 																		>
 																			<div
-																				class="flex items-center gap-2"
-																			>
-																				<span
-																					class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium {eventSeverityClasses(
-																						lifecycleState.displaySeverity
-																					)}"
-																				>
-																					<EventIcon
-																						class="h-3 w-3"
-																					/>
-																					{lifecycleState.displayBadgeLabel}
-																				</span>
-																				{#if event.turn_index}
-																					<span
-																						class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground/70"
-																					>
-																						Turn {event.turn_index}
-																					</span>
-																				{/if}
-																			</div>
-																			<span
-																				class="text-xs text-muted-foreground"
-																			>
-																				{formatDateTime(
-																					lifecycleState.displayTimestamp
-																				)}
-																			</span>
-																		</div>
-
-																		<div
-																			class="text-sm font-semibold text-foreground"
-																		>
-																			{lifecycleState.displayTitle}
-																		</div>
-																		<div
-																			class="text-sm text-foreground/75 mt-1 whitespace-pre-wrap break-words"
-																		>
-																			{lifecycleState.displaySummary}
-																		</div>
-
-																		{#if event.type === 'message'}
-																			<div
-																				class="mt-2 rounded-lg border px-2.5 py-2 text-sm whitespace-pre-wrap break-words {stringValue(
-																					payloadField(
-																						payload,
-																						'role'
-																					)
-																				) === 'user'
-																					? 'bg-accent/8 border-accent/20'
-																					: stringValue(
-																								payloadField(
-																									payload,
-																									'role'
-																								)
-																						  ) ===
-																						  'assistant'
-																						? 'bg-emerald-500/8 border-emerald-500/20'
-																						: 'bg-muted/40 border-border'}"
+																				class="flex flex-wrap items-center justify-between gap-2"
 																			>
 																				<div
-																					class="text-xs text-foreground/60 uppercase tracking-wide font-semibold mb-1"
+																					class="flex min-w-0 items-center gap-2"
 																				>
-																					{stringValue(
-																						payloadField(
-																							payload,
-																							'role'
-																						)
-																					) || 'message'}
-																				</div>
-																				{stringValue(
-																					payloadField(
-																						payload,
-																						'content'
-																					)
-																				) || '(empty)'}
-																			</div>
-																			<div
-																				class="mt-2 flex flex-wrap items-center gap-3 text-xs text-foreground/70"
-																			>
-																				<span>
-																					Tokens: {formatNumber(
-																						Number(
-																							payloadField(
-																								payload,
-																								'total_tokens'
-																							) || 0
-																						)
-																					)}
-																				</span>
-																				{#if payloadField(payload, 'error_message')}
 																					<span
-																						class="text-red-600 dark:text-red-400"
+																						class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border {eventSeverityClasses(
+																							tool.severity
+																						)}"
 																					>
-																						Error: {stringValue(
-																							payloadField(
-																								payload,
-																								'error_message'
-																							)
-																						)}
+																						<Wrench
+																							class="h-3.5 w-3.5"
+																						/>
 																					</span>
-																				{/if}
-																			</div>
-																		{/if}
-
-																		{#if isToolDisplay}
-																			<div
-																				class="mt-2 flex flex-wrap items-center gap-1.5"
-																			>
-																				{#if isTraceToolPayload(payload)}
-																					<span
-																						class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-foreground/70"
-																					>
-																						Trace
-																					</span>
-																				{/if}
-																				{#if toolError}
-																					<span
-																						class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-500/10 text-red-700 dark:text-red-300"
-																					>
-																						Error
-																					</span>
-																				{/if}
-																			</div>
-																			<div
-																				class="mt-2 grid grid-cols-2 gap-1.5 text-xs"
-																			>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
 																					<div
-																						class="text-foreground/60 font-medium"
+																						class="min-w-0"
 																					>
-																						Tool
-																					</div>
-																					<div
-																						class="font-semibold text-foreground break-all"
-																					>
-																						{toolDisplayName(
-																							payload
-																						)}
+																						<div
+																							class="truncate text-sm font-semibold text-foreground"
+																						>
+																							{tool.toolName}
+																						</div>
+																						<div
+																							class="text-xs text-muted-foreground"
+																						>
+																							{tool.summary}
+																						</div>
 																					</div>
 																				</div>
 																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
+																					class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium"
 																				>
-																					<div
-																						class="text-foreground/60 font-medium"
+																					<span
+																						class="rounded-full px-2 py-0.5 {tool.success ===
+																						false
+																							? 'bg-red-500/10 text-red-700 dark:text-red-300'
+																							: tool.success ===
+																								  true
+																								? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+																								: 'bg-muted text-foreground/70'}"
 																					>
-																						Duration
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
+																						{tool.statusLabel}
+																					</span>
+																					<span
+																						class="rounded-full bg-muted px-2 py-0.5 text-foreground/70"
 																					>
 																						{formatDuration(
-																							toolDisplayDuration(
-																								payload
-																							)
+																							tool.duration
 																						)}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
+																					</span>
+																					<span
+																						class="rounded-full bg-muted px-2 py-0.5 text-foreground/70"
 																					>
-																						Success
-																					</div>
-																					<div
-																						class="font-semibold {toolSuccess ===
-																						false
-																							? 'text-red-600 dark:text-red-400'
-																							: toolSuccess ===
-																								  true
-																								? 'text-emerald-600 dark:text-emerald-400'
-																								: 'text-foreground'}"
-																					>
-																						{toolSuccess ===
-																						null
-																							? '-'
-																							: toolSuccess
-																								? 'true'
-																								: 'false'}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Tool Tokens
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{formatNumber(
-																							toolDisplayTokens(
-																								payload
-																							)
-																						)}
-																					</div>
+																						{tool.sourceLabel}
+																					</span>
 																				</div>
 																			</div>
-																			{#if toolError}
+																		</summary>
+																		<div
+																			class="border-t border-border p-3 space-y-2"
+																		>
+																			<div
+																				class="grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2 lg:grid-cols-3"
+																			>
+																				{#each metadataEntries(tool.metadata) as [key, value]}
+																					<div
+																						class="rounded border border-border bg-card px-2 py-1.5"
+																					>
+																						<div
+																							class="font-medium text-foreground/60"
+																						>
+																							{key}
+																						</div>
+																						<div
+																							class="break-all font-semibold text-foreground"
+																						>
+																							{metadataValueLabel(
+																								value
+																							)}
+																						</div>
+																					</div>
+																				{/each}
+																			</div>
+
+																			{#if tool.error}
 																				<div
-																					class="mt-2 text-xs text-red-600 dark:text-red-400"
+																					class="rounded border border-red-500/20 bg-red-500/10 px-2.5 py-2 text-xs text-red-700 dark:text-red-300"
 																				>
-																					{toolError}
+																					{tool.error}
 																				</div>
 																			{/if}
-																			{#if toolArguments !== undefined}
+
+																			{#if tool.arguments !== undefined}
 																				<details
-																					class="mt-2 rounded border border-border bg-card p-2 text-xs"
+																					class="rounded border border-border bg-card p-2 text-xs"
 																				>
 																					<summary
 																						class="cursor-pointer font-medium text-foreground"
 																					>
-																						Tool
 																						Arguments
 																					</summary>
 																					<pre
 																						class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
-																							toolArguments
+																							tool.arguments
 																						)}</pre>
 																				</details>
 																			{/if}
-																			{#if toolResult !== undefined}
+																			{#if tool.result !== undefined}
 																				<details
-																					class="mt-2 rounded border border-border bg-card p-2 text-xs"
+																					class="rounded border border-border bg-card p-2 text-xs"
 																				>
 																					<summary
 																						class="cursor-pointer font-medium text-foreground"
 																					>
-																						Tool Result
+																						Result
 																					</summary>
 																					<pre
 																						class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
-																							toolResult
+																							tool.result
 																						)}</pre>
 																				</details>
 																			{/if}
-																		{/if}
-
-																		{#if event.type === 'llm_call'}
-																			<div
-																				class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs"
-																			>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Variant
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{stringValue(
-																							payloadField(
-																								payload,
-																								'prompt_variant'
-																							) ||
-																								payloadField(
-																									payload,
-																									'snapshot_version'
-																								) ||
-																								'unknown'
-																						)}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Model
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{stringValue(
-																							payloadField(
-																								payload,
-																								'model_used'
-																							)
-																						) || '-'}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Provider
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{stringValue(
-																							payloadField(
-																								payload,
-																								'provider'
-																							)
-																						) || '-'}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Tokens
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{formatNumber(
-																							Number(
-																								payloadField(
-																									payload,
-																									'total_tokens'
-																								) ||
-																									0
-																							)
-																						)}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Cost
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{formatCurrency(
-																							Number(
-																								payloadField(
-																									payload,
-																									'total_cost_usd'
-																								) ||
-																									0
-																							)
-																						)}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Latency
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{formatDuration(
-																							payloadField(
-																								payload,
-																								'response_time_ms'
-																							)
-																						)}
-																					</div>
-																				</div>
-																			</div>
-																		{/if}
-
-																		{#if event.type === 'turn_run'}
-																			<div
-																				class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
-																			>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Lane
-																					</div>
-																					<div
-																						class="font-semibold text-foreground break-all"
-																					>
-																						{stringValue(
-																							payloadField(
-																								payload,
-																								'first_lane'
-																							)
-																						) || '-'}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						First Skill
-																					</div>
-																					<div
-																						class="font-semibold text-foreground break-all"
-																					>
-																						{stringValue(
-																							payloadField(
-																								payload,
-																								'first_skill_path'
-																							)
-																						) || '-'}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						First Op
-																					</div>
-																					<div
-																						class="font-semibold text-foreground break-all"
-																					>
-																						{stringValue(
-																							payloadField(
-																								payload,
-																								'first_canonical_op'
-																							)
-																						) || '-'}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Validation
-																						Failures
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{formatNumber(
-																							Number(
-																								payloadField(
-																									payload,
-																									'validation_failure_count'
-																								) ||
-																									0
-																							)
-																						)}
-																					</div>
-																				</div>
-																			</div>
-																		{/if}
-
-																		{#if event.type === 'prompt_snapshot'}
-																			<div
-																				class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs"
-																			>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Approx
-																						Tokens
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{formatNumber(
-																							Number(
-																								payloadField(
-																									payload,
-																									'approx_prompt_tokens'
-																								) ||
-																									0
-																							)
-																						)}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						System Chars
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{formatNumber(
-																							Number(
-																								payloadField(
-																									payload,
-																									'system_prompt_chars'
-																								) ||
-																									0
-																							)
-																						)}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Message
-																						Chars
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{formatNumber(
-																							Number(
-																								payloadField(
-																									payload,
-																									'message_chars'
-																								) ||
-																									0
-																							)
-																						)}
-																					</div>
-																				</div>
-																			</div>
-																			{#if payloadField(payload, 'rendered_dump_text')}
+																			{#if tool.linkedToolExecution}
 																				<details
-																					class="mt-2 rounded border border-border bg-card p-2 text-xs"
+																					class="rounded border border-border bg-card p-2 text-xs"
 																				>
 																					<summary
 																						class="cursor-pointer font-medium text-foreground"
 																					>
-																						Rendered
-																						Prompt Dump
+																						Linked Tool
+																						Execution
 																					</summary>
 																					<pre
-																						class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{stringValue(
-																							payloadField(
-																								payload,
-																								'rendered_dump_text'
-																							)
+																						class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
+																							tool.linkedToolExecution
 																						)}</pre>
 																				</details>
 																			{/if}
-																		{/if}
+																			{#if tool.linkedToolMessage}
+																				<details
+																					class="rounded border border-border bg-card p-2 text-xs"
+																				>
+																					<summary
+																						class="cursor-pointer font-medium text-foreground"
+																					>
+																						Linked Tool
+																						Message
+																					</summary>
+																					<pre
+																						class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
+																							tool.linkedToolMessage
+																						)}</pre>
+																				</details>
+																			{/if}
+																			<details
+																				class="rounded border border-border bg-card p-2 text-xs"
+																			>
+																				<summary
+																					class="cursor-pointer font-medium text-foreground"
+																				>
+																					Raw Tool Payload
+																				</summary>
+																				<pre
+																					class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
+																						tool.rawPayload
+																					)}</pre>
+																			</details>
+																		</div>
+																	</details>
+																{/each}
+															</div>
+														{:else}
+															<div
+																class="text-xs text-muted-foreground"
+															>
+																No tool calls recorded for this
+																turn.
+															</div>
+														{/if}
 
-																		{#if event.type === 'turn_event'}
-																			{#if isMergedToolLifecycle}
+														{#if turn.llmCalls.length > 0 || turn.promptSnapshots.length > 0 || turn.operations.length > 0 || turn.evalRuns.length > 0}
+															<div
+																class="flex flex-wrap gap-1.5 text-[11px] text-muted-foreground"
+															>
+																{#if turn.llmCalls.length > 0}
+																	<span
+																		class="rounded-full bg-background px-2 py-0.5"
+																	>
+																		{formatNumber(
+																			turn.llmCalls.length
+																		)}
+																		LLM calls
+																	</span>
+																{/if}
+																{#if turn.promptSnapshots.length > 0}
+																	<span
+																		class="rounded-full bg-background px-2 py-0.5"
+																	>
+																		{formatNumber(
+																			turn.promptSnapshots
+																				.length
+																		)}
+																		prompt snapshots
+																	</span>
+																{/if}
+																{#if turn.operations.length > 0}
+																	<span
+																		class="rounded-full bg-background px-2 py-0.5"
+																	>
+																		{formatNumber(
+																			turn.operations.length
+																		)}
+																		operations
+																	</span>
+																{/if}
+																{#if turn.evalRuns.length > 0}
+																	<span
+																		class="rounded-full bg-background px-2 py-0.5"
+																	>
+																		{formatNumber(
+																			turn.evalRuns.length
+																		)}
+																		evals
+																	</span>
+																{/if}
+															</div>
+														{/if}
+													</div>
+												</details>
+											{/if}
+
+											{#each turn.assistantMessages as message}
+												<div class="flex min-w-0 gap-2 sm:gap-3">
+													<div
+														class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-wide text-background shadow-ink sm:h-9 sm:w-9"
+													>
+														OS
+													</div>
+													<div
+														class="max-w-[90%] min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:max-w-[88%]"
+													>
+														<div
+															class="mb-1 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+														>
+															<span>{message.roleLabel}</span>
+															<span
+																class="font-normal normal-case tracking-normal text-muted-foreground/60"
+															>
+																{formatDateTime(message.timestamp)}
+															</span>
+														</div>
+														{#if conversationMessageIsLong(message)}
+															<details>
+																<summary
+																	class="cursor-pointer list-none space-y-2"
+																>
+																	<div
+																		class="line-clamp-4 whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
+																	>
+																		{truncateText(
+																			message.content ||
+																				'(empty message)',
+																			420
+																		)}
+																	</div>
+																	<div
+																		class="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+																	>
+																		Expand message
+																	</div>
+																</summary>
+																<div
+																	class="mt-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
+																>
+																	{message.content ||
+																		'(empty message)'}
+																</div>
+															</details>
+														{:else}
+															<div
+																class="whitespace-pre-wrap break-words [overflow-wrap:anywhere]"
+															>
+																{message.content ||
+																	'(empty message)'}
+															</div>
+														{/if}
+														{#if message.errorMessage || message.totalTokens > 0}
+															<div
+																class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"
+															>
+																{#if message.totalTokens > 0}
+																	<span>
+																		{formatNumber(
+																			message.totalTokens
+																		)}
+																		tokens
+																	</span>
+																{/if}
+																{#if message.errorMessage}
+																	<span
+																		class="text-red-600 dark:text-red-400"
+																	>
+																		{message.errorMessage}
+																	</span>
+																{/if}
+															</div>
+														{/if}
+													</div>
+												</div>
+											{/each}
+
+											{#each turn.otherMessages as message}
+												<div class="flex min-w-0 justify-center">
+													<div
+														class="max-w-[92%] rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground"
+													>
+														<span class="font-semibold text-foreground">
+															{message.roleLabel}:
+														</span>
+														{message.content || '(empty message)'}
+													</div>
+												</div>
+											{/each}
+										</div>
+									{/each}
+								</div>
+							</section>
+						{/if}
+
+						<details class="rounded-lg border border-border bg-background shadow-ink">
+							<summary class="cursor-pointer list-none p-3">
+								<div class="flex flex-wrap items-center justify-between gap-2">
+									<div>
+										<div class="text-sm font-semibold text-foreground">
+											Full Audit Timeline
+										</div>
+										<div class="text-xs text-muted-foreground">
+											{formatNumber(visibleTimeline.length)} of {formatNumber(
+												replayTimeline.length
+											)}
+											events across {formatNumber(
+												visibleTimelineGroups.length
+											)}
+											sections
+										</div>
+									</div>
+									<div class="text-xs text-muted-foreground">
+										Expand for raw events, evals, prompt snapshots, and filters
+									</div>
+								</div>
+							</summary>
+							<div class="border-t border-border p-3 space-y-3">
+								<div
+									class="rounded-lg border border-border bg-card p-2.5 space-y-2"
+								>
+									<div class="flex flex-wrap items-center justify-between gap-2">
+										<div>
+											<div
+												class="text-xs font-semibold text-foreground/60 uppercase tracking-wide"
+											>
+												Timeline Filters
+											</div>
+											<div class="mt-1 text-xs text-muted-foreground">
+												Search the complete audit event stream.
+											</div>
+										</div>
+										<button
+											type="button"
+											class="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+											onclick={resetTimelineFilters}
+										>
+											Reset filters
+										</button>
+									</div>
+									<div class="flex flex-wrap items-center gap-1.5">
+										{#each Object.keys(eventTypeFilters) as rawType}
+											{@const type = rawType as TimelineType}
+											<button
+												type="button"
+												class="px-2 py-1 rounded-full border text-xs font-medium transition-colors {eventTypeFilters[
+													type
+												]
+													? 'border-accent bg-accent/15 text-foreground'
+													: 'border-border bg-background text-foreground/50 hover:text-foreground/70'}"
+												onclick={() => toggleEventType(type)}
+											>
+												{eventTypeLabel(type)}
+											</button>
+										{/each}
+										<button
+											type="button"
+											class="px-2 py-1 rounded-full border text-xs font-medium transition-colors {showOnlyErrors
+												? 'border-red-500/60 bg-red-500/15 text-red-700 dark:text-red-300'
+												: 'border-border bg-background text-foreground/50 hover:text-foreground/70'}"
+											onclick={() => (showOnlyErrors = !showOnlyErrors)}
+										>
+											Errors Only
+										</button>
+									</div>
+									<div class="relative">
+										<Search
+											class="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+										/>
+										<input
+											type="text"
+											bind:value={timelineSearch}
+											placeholder="Search timeline events, payloads, tool names..."
+											class="w-full text-sm pl-8 pr-3 py-1.5 border border-border bg-background rounded-lg shadow-ink-inner focus:ring-2 focus:ring-ring focus:border-accent text-foreground"
+										/>
+									</div>
+								</div>
+
+								{#if visibleTimeline.length === 0}
+									<div class="text-sm text-muted-foreground text-center py-8">
+										No timeline events match the current filters.
+									</div>
+								{:else}
+									<div class="space-y-3">
+										{#each visibleTimelineGroups as group}
+											{@const run = group.run}
+											<details
+												class="rounded-xl border border-border bg-background shadow-ink overflow-hidden"
+											>
+												<summary class="cursor-pointer list-none p-3">
+													<div
+														class="flex flex-wrap items-start justify-between gap-3"
+													>
+														{#if group.kind === 'turn' && run}
+															<div class="min-w-0 flex-1">
+																<div
+																	class="flex flex-wrap items-center gap-1.5"
+																>
+																	<span
+																		class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground/80"
+																	>
+																		Turn {group.turnIndex}
+																	</span>
+																	<span
+																		class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {statusBadge(
+																			run.status
+																		)}"
+																	>
+																		{run.status}
+																	</span>
+																	{#if run.first_lane}
+																		<span
+																			class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-foreground"
+																		>
+																			{run.first_lane}
+																		</span>
+																	{/if}
+																	{#if run.first_canonical_op}
+																		<span
+																			class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-background border border-border text-foreground/80"
+																		>
+																			op={run.first_canonical_op}
+																		</span>
+																	{/if}
+																	{#if run.validation_failure_count > 0}
+																		<span
+																			class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-700 dark:text-red-300"
+																		>
+																			{formatNumber(
+																				run.validation_failure_count
+																			)}
+																			validation
+																		</span>
+																	{/if}
+																</div>
+																<div
+																	class="mt-2 text-sm font-semibold text-foreground"
+																>
+																	{group.title}
+																</div>
+																<div
+																	class="mt-1 text-sm text-foreground/80 line-clamp-2"
+																>
+																	{groupRequestPreview(group) ||
+																		'(empty request)'}
+																</div>
+																<div
+																	class="mt-2 flex flex-wrap gap-1.5 text-xs text-muted-foreground"
+																>
+																	<span
+																		class="rounded-full bg-muted px-2 py-0.5"
+																	>
+																		{formatNumber(
+																			run.tool_call_count
+																		)}
+																		{pluralize(
+																			run.tool_call_count,
+																			'tool call'
+																		)}
+																	</span>
+																	<span
+																		class="rounded-full bg-muted px-2 py-0.5"
+																	>
+																		{formatNumber(
+																			run.llm_pass_count
+																		)} LLM
+																		{pluralize(
+																			run.llm_pass_count,
+																			'pass',
+																			'passes'
+																		)}
+																	</span>
+																	<span
+																		class="rounded-full bg-muted px-2 py-0.5"
+																	>
+																		{formatNumber(
+																			displayedGroupItemCount(
+																				group
+																			)
+																		)} visible
+																		{pluralize(
+																			displayedGroupItemCount(
+																				group
+																			),
+																			'event'
+																		)}
+																	</span>
+																	{#if group.counts.errors > 0}
+																		<span
+																			class="rounded-full bg-red-500/10 px-2 py-0.5 text-red-700 dark:text-red-300"
+																		>
+																			{formatNumber(
+																				group.counts.errors
+																			)}
+																			{pluralize(
+																				group.counts.errors,
+																				'error'
+																			)}
+																		</span>
+																	{/if}
+																</div>
+															</div>
+														{:else}
+															{@const headerEvent = group.items[0]}
+															{@const HeaderIcon = eventIcon(
+																headerEvent?.type ?? 'session'
+															)}
+															<div class="min-w-0 flex-1">
+																<div
+																	class="flex flex-wrap items-center gap-1.5"
+																>
+																	<span
+																		class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium {eventSeverityClasses(
+																			group.severity
+																		)}"
+																	>
+																		<HeaderIcon
+																			class="h-3 w-3"
+																		/>
+																		{eventTypeLabel(
+																			headerEvent?.type ??
+																				'session'
+																		)}
+																	</span>
+																</div>
+																<div
+																	class="mt-2 text-sm font-semibold text-foreground"
+																>
+																	{group.title}
+																</div>
+																<div
+																	class="mt-1 text-sm text-foreground/75 line-clamp-2"
+																>
+																	{group.summary}
+																</div>
+															</div>
+														{/if}
+														<div class="shrink-0 text-right">
+															<div
+																class="text-xs text-muted-foreground"
+															>
+																{formatDateTime(group.timestamp)}
+															</div>
+														</div>
+													</div>
+												</summary>
+
+												<div
+													class="border-t border-border bg-card/40 p-3 space-y-3"
+												>
+													{#if group.kind === 'turn' && run}
+														<div
+															class="rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground"
+														>
+															<div
+																class="flex flex-wrap gap-x-3 gap-y-1"
+															>
+																{#if run.first_skill_path}
+																	<span class="break-all">
+																		<span
+																			class="text-foreground/60"
+																			>First skill:</span
+																		>
+																		{run.first_skill_path}
+																	</span>
+																{/if}
+																{#if run.history_strategy}
+																	<span>
+																		<span
+																			class="text-foreground/60"
+																			>History:</span
+																		>
+																		{run.history_strategy} / {formatNumber(
+																			run.history_for_model_count
+																		)}
+																	</span>
+																{/if}
+																{#if run.cache_source}
+																	<span>
+																		<span
+																			class="text-foreground/60"
+																			>Cache:</span
+																		>
+																		{run.cache_source} / {formatNumber(
+																			run.cache_age_seconds
+																		)}s
+																	</span>
+																{/if}
+																{#if run.finished_reason}
+																	<span>
+																		<span
+																			class="text-foreground/60"
+																			>Reason:</span
+																		>
+																		{run.finished_reason}
+																	</span>
+																{/if}
+															</div>
+															<div
+																class="mt-1 flex flex-wrap gap-x-3 gap-y-1"
+															>
+																<span>
+																	<span class="text-foreground/60"
+																		>Started:</span
+																	>
+																	{formatDateTime(run.started_at)}
+																</span>
+																{#if run.finished_at}
+																	<span>
+																		<span
+																			class="text-foreground/60"
+																			>Finished:</span
+																		>
+																		{formatDateTime(
+																			run.finished_at
+																		)}
+																	</span>
+																{/if}
+															</div>
+														</div>
+													{/if}
+
+													{#if group.items.length > 0}
+														<div class="relative pl-2">
+															<div
+																class="absolute left-[8px] top-0 bottom-0 w-px bg-border"
+															></div>
+															<div class="space-y-2">
+																{#each group.items as event, eventIndex}
+																	{@const lifecycleState =
+																		toolLifecycleDisplayState(
+																			group.items,
+																			eventIndex
+																		)}
+																	{#if !lifecycleState.hideEvent}
+																		{@const EventIcon =
+																			eventIcon(
+																				lifecycleState.displayIconType
+																			)}
+																		{@const payload =
+																			lifecycleState.displayPayload}
+																		{@const rawPayload =
+																			lifecycleState.displayRawPayload}
+																		{@const isMergedToolLifecycle =
+																			isToolCallEmittedEvent(
+																				event
+																			) &&
+																			!!lifecycleState.outcomeEvent}
+																		{@const isToolDisplay =
+																			event.type ===
+																				'tool_execution' ||
+																			isMergedToolLifecycle}
+																		{@const isStandaloneToolTurnEvent =
+																			isToolDetailTurnEvent(
+																				event
+																			) &&
+																			!isMergedToolLifecycle}
+																		{@const toolSuccess =
+																			isToolDisplay
+																				? toolDisplaySuccess(
+																						payload
+																					)
+																				: null}
+																		{@const toolArguments =
+																			isToolDisplay
+																				? toolDisplayArguments(
+																						payload
+																					)
+																				: undefined}
+																		{@const toolResult =
+																			isToolDisplay
+																				? toolDisplayResult(
+																						payload
+																					)
+																				: undefined}
+																		{@const toolError =
+																			isToolDisplay
+																				? toolDisplayError(
+																						payload
+																					)
+																				: ''}
+																		{@const turnEventToolSuccess =
+																			isStandaloneToolTurnEvent
+																				? toolDisplaySuccess(
+																						payload
+																					)
+																				: null}
+																		{@const turnEventToolArguments =
+																			isStandaloneToolTurnEvent
+																				? toolDisplayArguments(
+																						payload
+																					)
+																				: undefined}
+																		{@const turnEventToolResult =
+																			isStandaloneToolTurnEvent
+																				? toolDisplayResult(
+																						payload
+																					)
+																				: undefined}
+																		{@const turnEventToolError =
+																			isStandaloneToolTurnEvent
+																				? toolDisplayError(
+																						payload
+																					)
+																				: ''}
+																		{@const turnEventToolResultSource =
+																			isStandaloneToolTurnEvent
+																				? stringValue(
+																						payloadField(
+																							payload,
+																							'tool_result_source'
+																						)
+																					)
+																				: ''}
+																		<div class="relative pl-7">
+																			<div
+																				class="absolute left-[2px] top-3.5 h-3 w-3 rounded-full ring-2 ring-card {timelineDotClasses(
+																					lifecycleState.displaySeverity
+																				)}"
+																			></div>
+																			<div
+																				class="rounded-lg border border-border bg-background p-2.5 shadow-ink"
+																			>
 																				<div
-																					class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
+																					class="flex flex-wrap items-center justify-between gap-2 mb-1.5"
 																				>
 																					<div
-																						class="rounded border border-border bg-card px-2 py-1.5"
+																						class="flex items-center gap-2"
 																					>
-																						<div
-																							class="text-foreground/60 font-medium"
+																						<span
+																							class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium {eventSeverityClasses(
+																								lifecycleState.displaySeverity
+																							)}"
 																						>
-																							Emitted
-																							Seq
-																						</div>
-																						<div
-																							class="font-semibold text-foreground"
-																						>
-																							{formatNumber(
-																								Number(
-																									payloadField(
-																										payload,
-																										'emitted_sequence_index'
-																									) ||
-																										0
-																								)
-																							)}
-																						</div>
+																							<EventIcon
+																								class="h-3 w-3"
+																							/>
+																							{lifecycleState.displayBadgeLabel}
+																						</span>
+																						{#if event.turn_index}
+																							<span
+																								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground/70"
+																							>
+																								Turn {event.turn_index}
+																							</span>
+																						{/if}
 																					</div>
-																					<div
-																						class="rounded border border-border bg-card px-2 py-1.5"
+																					<span
+																						class="text-xs text-muted-foreground"
 																					>
-																						<div
-																							class="text-foreground/60 font-medium"
-																						>
-																							Returned
-																							Seq
-																						</div>
-																						<div
-																							class="font-semibold text-foreground"
-																						>
-																							{formatNumber(
-																								Number(
-																									payloadField(
-																										payload,
-																										'outcome_sequence_index'
-																									) ||
-																										0
-																								)
-																							)}
-																						</div>
-																					</div>
-																					<div
-																						class="rounded border border-border bg-card px-2 py-1.5"
-																					>
-																						<div
-																							class="text-foreground/60 font-medium"
-																						>
-																							Tool
-																							Call ID
-																						</div>
-																						<div
-																							class="font-semibold text-foreground break-all"
-																						>
-																							{stringValue(
-																								payloadField(
-																									payload,
-																									'tool_call_id'
-																								)
-																							) ||
-																								'-'}
-																						</div>
-																					</div>
-																					<div
-																						class="rounded border border-border bg-card px-2 py-1.5"
-																					>
-																						<div
-																							class="text-foreground/60 font-medium"
-																						>
-																							Result
-																							Source
-																						</div>
-																						<div
-																							class="font-semibold text-foreground break-all"
-																						>
-																							{stringValue(
-																								payloadField(
-																									payload,
-																									'tool_result_source'
-																								)
-																							) ||
-																								'-'}
-																						</div>
-																					</div>
-																				</div>
-																				<div
-																					class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground"
-																				>
-																					<span>
-																						Started: {formatDateTime(
-																							stringValue(
-																								payloadField(
-																									payload,
-																									'emitted_at'
-																								)
-																							)
+																						{formatDateTime(
+																							lifecycleState.displayTimestamp
 																						)}
 																					</span>
-																					{#if payloadField(payload, 'outcome_at')}
+																				</div>
+
+																				<div
+																					class="text-sm font-semibold text-foreground"
+																				>
+																					{lifecycleState.displayTitle}
+																				</div>
+																				<div
+																					class="text-sm text-foreground/75 mt-1 whitespace-pre-wrap break-words"
+																				>
+																					{lifecycleState.displaySummary}
+																				</div>
+
+																				{#if event.type === 'message'}
+																					<div
+																						class="mt-2 rounded-lg border px-2.5 py-2 text-sm whitespace-pre-wrap break-words {stringValue(
+																							payloadField(
+																								payload,
+																								'role'
+																							)
+																						) === 'user'
+																							? 'bg-accent/8 border-accent/20'
+																							: stringValue(
+																										payloadField(
+																											payload,
+																											'role'
+																										)
+																								  ) ===
+																								  'assistant'
+																								? 'bg-emerald-500/8 border-emerald-500/20'
+																								: 'bg-muted/40 border-border'}"
+																					>
+																						<div
+																							class="text-xs text-foreground/60 uppercase tracking-wide font-semibold mb-1"
+																						>
+																							{stringValue(
+																								payloadField(
+																									payload,
+																									'role'
+																								)
+																							) ||
+																								'message'}
+																						</div>
+																						{stringValue(
+																							payloadField(
+																								payload,
+																								'content'
+																							)
+																						) ||
+																							'(empty)'}
+																					</div>
+																					<div
+																						class="mt-2 flex flex-wrap items-center gap-3 text-xs text-foreground/70"
+																					>
 																						<span>
-																							Returned:
-																							{formatDateTime(
-																								stringValue(
+																							Tokens: {formatNumber(
+																								Number(
 																									payloadField(
 																										payload,
-																										'outcome_at'
-																									)
+																										'total_tokens'
+																									) ||
+																										0
 																								)
 																							)}
 																						</span>
-																					{/if}
-																				</div>
-																			{:else}
-																				<div
-																					class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
-																				>
-																					<div
-																						class="rounded border border-border bg-card px-2 py-1.5"
-																					>
-																						<div
-																							class="text-foreground/60 font-medium"
-																						>
-																							Phase
-																						</div>
-																						<div
-																							class="font-semibold text-foreground"
-																						>
-																							{stringValue(
-																								payloadField(
-																									payload,
-																									'phase'
-																								)
-																							) ||
-																								'-'}
-																						</div>
-																					</div>
-																					<div
-																						class="rounded border border-border bg-card px-2 py-1.5"
-																					>
-																						<div
-																							class="text-foreground/60 font-medium"
-																						>
-																							Sequence
-																						</div>
-																						<div
-																							class="font-semibold text-foreground"
-																						>
-																							{formatNumber(
-																								Number(
+																						{#if payloadField(payload, 'error_message')}
+																							<span
+																								class="text-red-600 dark:text-red-400"
+																							>
+																								Error:
+																								{stringValue(
 																									payloadField(
 																										payload,
-																										'sequence_index'
-																									) ||
-																										0
-																								)
-																							)}
-																						</div>
+																										'error_message'
+																									)
+																								)}
+																							</span>
+																						{/if}
 																					</div>
+																				{/if}
+
+																				{#if isToolDisplay}
 																					<div
-																						class="rounded border border-border bg-card px-2 py-1.5"
+																						class="mt-2 flex flex-wrap items-center gap-1.5"
 																					>
-																						<div
-																							class="text-foreground/60 font-medium"
-																						>
-																							Event
-																							Type
-																						</div>
-																						<div
-																							class="font-semibold text-foreground break-all"
-																						>
-																							{stringValue(
-																								payloadField(
-																									payload,
-																									'event_type'
-																								)
-																							) ||
-																								'-'}
-																						</div>
+																						{#if isTraceToolPayload(payload)}
+																							<span
+																								class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-foreground/70"
+																							>
+																								Trace
+																							</span>
+																						{/if}
+																						{#if toolError}
+																							<span
+																								class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-500/10 text-red-700 dark:text-red-300"
+																							>
+																								Error
+																							</span>
+																						{/if}
 																					</div>
 																					<div
-																						class="rounded border border-border bg-card px-2 py-1.5"
-																					>
-																						<div
-																							class="text-foreground/60 font-medium"
-																						>
-																							Stream
-																							Run
-																						</div>
-																						<div
-																							class="font-semibold text-foreground break-all"
-																						>
-																							{stringValue(
-																								payloadField(
-																									payload,
-																									'stream_run_id'
-																								)
-																							) ||
-																								'-'}
-																						</div>
-																					</div>
-																				</div>
-																				{#if isStandaloneToolTurnEvent && (stringValue(payloadField(payload, 'tool_name')) || turnEventToolArguments !== undefined || turnEventToolResult !== undefined || turnEventToolError)}
-																					<div
-																						class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
+																						class="mt-2 grid grid-cols-2 gap-1.5 text-xs"
 																					>
 																						<div
 																							class="rounded border border-border bg-card px-2 py-1.5"
@@ -2845,31 +3371,6 @@
 																								{toolDisplayName(
 																									payload
 																								)}
-																							</div>
-																						</div>
-																						<div
-																							class="rounded border border-border bg-card px-2 py-1.5"
-																						>
-																							<div
-																								class="text-foreground/60 font-medium"
-																							>
-																								Success
-																							</div>
-																							<div
-																								class="font-semibold {turnEventToolSuccess ===
-																								false
-																									? 'text-red-600 dark:text-red-400'
-																									: turnEventToolSuccess ===
-																										  true
-																										? 'text-emerald-600 dark:text-emerald-400'
-																										: 'text-foreground'}"
-																							>
-																								{turnEventToolSuccess ===
-																								null
-																									? '-'
-																									: turnEventToolSuccess
-																										? 'true'
-																										: 'false'}
 																							</div>
 																						</div>
 																						<div
@@ -2896,25 +3397,53 @@
 																							<div
 																								class="text-foreground/60 font-medium"
 																							>
-																								Result
-																								Source
+																								Success
 																							</div>
 																							<div
-																								class="font-semibold text-foreground break-all"
+																								class="font-semibold {toolSuccess ===
+																								false
+																									? 'text-red-600 dark:text-red-400'
+																									: toolSuccess ===
+																										  true
+																										? 'text-emerald-600 dark:text-emerald-400'
+																										: 'text-foreground'}"
 																							>
-																								{turnEventToolResultSource ||
-																									'-'}
+																								{toolSuccess ===
+																								null
+																									? '-'
+																									: toolSuccess
+																										? 'true'
+																										: 'false'}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Tool
+																								Tokens
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{formatNumber(
+																									toolDisplayTokens(
+																										payload
+																									)
+																								)}
 																							</div>
 																						</div>
 																					</div>
-																					{#if turnEventToolError}
+																					{#if toolError}
 																						<div
 																							class="mt-2 text-xs text-red-600 dark:text-red-400"
 																						>
-																							{turnEventToolError}
+																							{toolError}
 																						</div>
 																					{/if}
-																					{#if turnEventToolArguments !== undefined}
+																					{#if toolArguments !== undefined}
 																						<details
 																							class="mt-2 rounded border border-border bg-card p-2 text-xs"
 																						>
@@ -2926,11 +3455,11 @@
 																							</summary>
 																							<pre
 																								class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
-																									turnEventToolArguments
+																									toolArguments
 																								)}</pre>
 																						</details>
 																					{/if}
-																					{#if turnEventToolResult !== undefined}
+																					{#if toolResult !== undefined}
 																						<details
 																							class="mt-2 rounded border border-border bg-card p-2 text-xs"
 																						>
@@ -2942,275 +3471,950 @@
 																							</summary>
 																							<pre
 																								class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
-																									turnEventToolResult
+																									toolResult
 																								)}</pre>
 																						</details>
 																					{/if}
 																				{/if}
-																			{/if}
-																		{/if}
 
-																		{#if event.type === 'eval_run'}
-																			<div
-																				class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
-																			>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
+																				{#if event.type === 'llm_call'}
 																					<div
-																						class="text-foreground/60 font-medium"
+																						class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs"
 																					>
-																						Scenario
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Variant
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{stringValue(
+																									payloadField(
+																										payload,
+																										'prompt_variant'
+																									) ||
+																										payloadField(
+																											payload,
+																											'snapshot_version'
+																										) ||
+																										'unknown'
+																								)}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Model
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{stringValue(
+																									payloadField(
+																										payload,
+																										'model_used'
+																									)
+																								) ||
+																									'-'}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Provider
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{stringValue(
+																									payloadField(
+																										payload,
+																										'provider'
+																									)
+																								) ||
+																									'-'}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Tokens
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{formatNumber(
+																									Number(
+																										payloadField(
+																											payload,
+																											'total_tokens'
+																										) ||
+																											0
+																									)
+																								)}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Cost
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{formatCurrency(
+																									Number(
+																										payloadField(
+																											payload,
+																											'total_cost_usd'
+																										) ||
+																											0
+																									)
+																								)}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Latency
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{formatDuration(
+																									payloadField(
+																										payload,
+																										'response_time_ms'
+																									)
+																								)}
+																							</div>
+																						</div>
 																					</div>
-																					<div
-																						class="font-semibold text-foreground break-all"
-																					>
-																						{stringValue(
-																							payloadField(
-																								payload,
-																								'scenario_slug'
-																							)
-																						) || '-'}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Status
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{stringValue(
-																							payloadField(
-																								payload,
-																								'status'
-																							)
-																						) || '-'}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Passed
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{payloadSummaryAssertionCount(
-																							payload,
-																							'passed'
-																						)}
-																					</div>
-																				</div>
-																				<div
-																					class="rounded border border-border bg-card px-2 py-1.5"
-																				>
-																					<div
-																						class="text-foreground/60 font-medium"
-																					>
-																						Failed
-																					</div>
-																					<div
-																						class="font-semibold text-foreground"
-																					>
-																						{payloadSummaryAssertionCount(
-																							payload,
-																							'failed'
-																						)}
-																					</div>
-																				</div>
-																			</div>
-																		{/if}
-
-																		<div class="mt-2">
-																			<button
-																				type="button"
-																				onclick={() =>
-																					toggleEventExpansion(
-																						lifecycleState.displayEventId
-																					)}
-																				class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-																			>
-																				{#if expandedEventIds.has(lifecycleState.displayEventId)}
-																					<ChevronDown
-																						class="h-3 w-3"
-																					/>
-																					Hide Raw Payload
-																				{:else}
-																					<ChevronRight
-																						class="h-3 w-3"
-																					/>
-																					Show Raw Payload
 																				{/if}
-																			</button>
-																			{#if expandedEventIds.has(lifecycleState.displayEventId)}
-																				<pre
-																					class="mt-2 bg-card border border-border rounded-lg p-3 text-xs text-foreground whitespace-pre-wrap break-words overflow-x-auto">{prettyJson(
-																						rawPayload
-																					)}</pre>
-																			{/if}
-																		</div>
-																	</div>
-																</div>
-															{/if}
-														{/each}
-													</div>
-												</div>
-											{:else}
-												<div class="text-sm text-muted-foreground">
-													No visible timeline events inside this section
-													for the current filters.
-												</div>
-											{/if}
 
-											{#if group.kind === 'turn' && run}
-												<div
-													class="rounded-lg border border-border bg-background p-2.5 space-y-2"
-												>
-													<div
-														class="flex flex-wrap items-center justify-between gap-2"
-													>
-														<div
-															class="text-xs font-medium text-foreground"
-														>
-															Prompt Eval
-														</div>
-														<div
-															class="flex flex-wrap items-center gap-2"
-														>
-															<select
-																class="min-w-[220px] text-xs border border-border bg-card rounded px-2 py-1.5 text-foreground"
-																value={selectedEvalScenarioByTurnId[
-																	run.id
-																] ?? ''}
-																onchange={(event) =>
-																	updateSelectedEvalScenario(
-																		run.id,
-																		(
-																			event.currentTarget as HTMLSelectElement
-																		).value
-																	)}
-																disabled={isLoadingEvalScenarios ||
-																	runningEvalByTurnId[run.id]}
-															>
-																<option value="">
-																	{isLoadingEvalScenarios
-																		? 'Loading scenarios...'
-																		: 'Select scenario'}
-																</option>
-																{#each evalScenarios as scenario}
-																	<option value={scenario.slug}
-																		>{scenario.title}</option
-																	>
-																{/each}
-															</select>
-															<Button
-																variant="secondary"
-																size="sm"
-																class="pressable"
-																disabled={!selectedEvalScenarioByTurnId[
-																	run.id
-																] || runningEvalByTurnId[run.id]}
-																loading={runningEvalByTurnId[
-																	run.id
-																]}
-																onclick={() =>
-																	runPromptEval(run.id)}
-															>
-																Run Eval
-															</Button>
-														</div>
-													</div>
-													{#if evalErrorByTurnId[run.id]}
-														<div
-															class="text-xs text-red-600 dark:text-red-400"
-														>
-															{evalErrorByTurnId[run.id]}
-														</div>
-													{/if}
-													{#if run.eval_runs.length > 0}
-														<div class="space-y-2">
-															{#each run.eval_runs as evalRun}
-																<details
-																	class="rounded border border-border bg-card p-2 text-xs"
-																>
-																	<summary
-																		class="cursor-pointer list-none flex flex-wrap items-center justify-between gap-2"
-																	>
-																		<div class="min-w-0 flex-1">
-																			<div
-																				class="flex flex-wrap items-center gap-1.5"
-																			>
-																				<span
-																					class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-foreground/80"
-																				>
-																					{evalRun.scenario_slug}
-																				</span>
-																				<span
-																					class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium {evalRun.status ===
-																					'passed'
-																						? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-																						: evalRun.status ===
-																							  'failed'
-																							? 'bg-red-500/10 text-red-700 dark:text-red-300'
-																							: 'bg-amber-500/10 text-amber-700 dark:text-amber-300'}"
-																				>
-																					{evalRun.status}
-																				</span>
-																			</div>
-																			<div
-																				class="mt-1 text-xs text-muted-foreground"
-																			>
-																				{formatDateTime(
-																					evalRun.started_at
-																				)} · {stringValue(
-																					evalAssertionCount(
-																						evalRun.summary,
-																						'passed'
-																					)
-																				)} passed · {stringValue(
-																					evalAssertionCount(
-																						evalRun.summary,
-																						'failed'
-																					)
-																				)} failed
+																				{#if event.type === 'turn_run'}
+																					<div
+																						class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
+																					>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Lane
+																							</div>
+																							<div
+																								class="font-semibold text-foreground break-all"
+																							>
+																								{stringValue(
+																									payloadField(
+																										payload,
+																										'first_lane'
+																									)
+																								) ||
+																									'-'}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								First
+																								Skill
+																							</div>
+																							<div
+																								class="font-semibold text-foreground break-all"
+																							>
+																								{stringValue(
+																									payloadField(
+																										payload,
+																										'first_skill_path'
+																									)
+																								) ||
+																									'-'}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								First
+																								Op
+																							</div>
+																							<div
+																								class="font-semibold text-foreground break-all"
+																							>
+																								{stringValue(
+																									payloadField(
+																										payload,
+																										'first_canonical_op'
+																									)
+																								) ||
+																									'-'}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Validation
+																								Failures
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{formatNumber(
+																									Number(
+																										payloadField(
+																											payload,
+																											'validation_failure_count'
+																										) ||
+																											0
+																									)
+																								)}
+																							</div>
+																						</div>
+																					</div>
+																				{/if}
+
+																				{#if event.type === 'prompt_snapshot'}
+																					<div
+																						class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs"
+																					>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Approx
+																								Tokens
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{formatNumber(
+																									Number(
+																										payloadField(
+																											payload,
+																											'approx_prompt_tokens'
+																										) ||
+																											0
+																									)
+																								)}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								System
+																								Chars
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{formatNumber(
+																									Number(
+																										payloadField(
+																											payload,
+																											'system_prompt_chars'
+																										) ||
+																											0
+																									)
+																								)}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Message
+																								Chars
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{formatNumber(
+																									Number(
+																										payloadField(
+																											payload,
+																											'message_chars'
+																										) ||
+																											0
+																									)
+																								)}
+																							</div>
+																						</div>
+																					</div>
+																					{#if payloadField(payload, 'rendered_dump_text')}
+																						<details
+																							class="mt-2 rounded border border-border bg-card p-2 text-xs"
+																						>
+																							<summary
+																								class="cursor-pointer font-medium text-foreground"
+																							>
+																								Rendered
+																								Prompt
+																								Dump
+																							</summary>
+																							<pre
+																								class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{stringValue(
+																									payloadField(
+																										payload,
+																										'rendered_dump_text'
+																									)
+																								)}</pre>
+																						</details>
+																					{/if}
+																				{/if}
+
+																				{#if event.type === 'turn_event'}
+																					{#if isMergedToolLifecycle}
+																						<div
+																							class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
+																						>
+																							<div
+																								class="rounded border border-border bg-card px-2 py-1.5"
+																							>
+																								<div
+																									class="text-foreground/60 font-medium"
+																								>
+																									Emitted
+																									Seq
+																								</div>
+																								<div
+																									class="font-semibold text-foreground"
+																								>
+																									{formatNumber(
+																										Number(
+																											payloadField(
+																												payload,
+																												'emitted_sequence_index'
+																											) ||
+																												0
+																										)
+																									)}
+																								</div>
+																							</div>
+																							<div
+																								class="rounded border border-border bg-card px-2 py-1.5"
+																							>
+																								<div
+																									class="text-foreground/60 font-medium"
+																								>
+																									Returned
+																									Seq
+																								</div>
+																								<div
+																									class="font-semibold text-foreground"
+																								>
+																									{formatNumber(
+																										Number(
+																											payloadField(
+																												payload,
+																												'outcome_sequence_index'
+																											) ||
+																												0
+																										)
+																									)}
+																								</div>
+																							</div>
+																							<div
+																								class="rounded border border-border bg-card px-2 py-1.5"
+																							>
+																								<div
+																									class="text-foreground/60 font-medium"
+																								>
+																									Tool
+																									Call
+																									ID
+																								</div>
+																								<div
+																									class="font-semibold text-foreground break-all"
+																								>
+																									{stringValue(
+																										payloadField(
+																											payload,
+																											'tool_call_id'
+																										)
+																									) ||
+																										'-'}
+																								</div>
+																							</div>
+																							<div
+																								class="rounded border border-border bg-card px-2 py-1.5"
+																							>
+																								<div
+																									class="text-foreground/60 font-medium"
+																								>
+																									Result
+																									Source
+																								</div>
+																								<div
+																									class="font-semibold text-foreground break-all"
+																								>
+																									{stringValue(
+																										payloadField(
+																											payload,
+																											'tool_result_source'
+																										)
+																									) ||
+																										'-'}
+																								</div>
+																							</div>
+																						</div>
+																						<div
+																							class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground"
+																						>
+																							<span>
+																								Started:
+																								{formatDateTime(
+																									stringValue(
+																										payloadField(
+																											payload,
+																											'emitted_at'
+																										)
+																									)
+																								)}
+																							</span>
+																							{#if payloadField(payload, 'outcome_at')}
+																								<span
+																								>
+																									Returned:
+																									{formatDateTime(
+																										stringValue(
+																											payloadField(
+																												payload,
+																												'outcome_at'
+																											)
+																										)
+																									)}
+																								</span>
+																							{/if}
+																						</div>
+																					{:else}
+																						<div
+																							class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
+																						>
+																							<div
+																								class="rounded border border-border bg-card px-2 py-1.5"
+																							>
+																								<div
+																									class="text-foreground/60 font-medium"
+																								>
+																									Phase
+																								</div>
+																								<div
+																									class="font-semibold text-foreground"
+																								>
+																									{stringValue(
+																										payloadField(
+																											payload,
+																											'phase'
+																										)
+																									) ||
+																										'-'}
+																								</div>
+																							</div>
+																							<div
+																								class="rounded border border-border bg-card px-2 py-1.5"
+																							>
+																								<div
+																									class="text-foreground/60 font-medium"
+																								>
+																									Sequence
+																								</div>
+																								<div
+																									class="font-semibold text-foreground"
+																								>
+																									{formatNumber(
+																										Number(
+																											payloadField(
+																												payload,
+																												'sequence_index'
+																											) ||
+																												0
+																										)
+																									)}
+																								</div>
+																							</div>
+																							<div
+																								class="rounded border border-border bg-card px-2 py-1.5"
+																							>
+																								<div
+																									class="text-foreground/60 font-medium"
+																								>
+																									Event
+																									Type
+																								</div>
+																								<div
+																									class="font-semibold text-foreground break-all"
+																								>
+																									{stringValue(
+																										payloadField(
+																											payload,
+																											'event_type'
+																										)
+																									) ||
+																										'-'}
+																								</div>
+																							</div>
+																							<div
+																								class="rounded border border-border bg-card px-2 py-1.5"
+																							>
+																								<div
+																									class="text-foreground/60 font-medium"
+																								>
+																									Stream
+																									Run
+																								</div>
+																								<div
+																									class="font-semibold text-foreground break-all"
+																								>
+																									{stringValue(
+																										payloadField(
+																											payload,
+																											'stream_run_id'
+																										)
+																									) ||
+																										'-'}
+																								</div>
+																							</div>
+																						</div>
+																						{#if isStandaloneToolTurnEvent && (stringValue(payloadField(payload, 'tool_name')) || turnEventToolArguments !== undefined || turnEventToolResult !== undefined || turnEventToolError)}
+																							<div
+																								class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
+																							>
+																								<div
+																									class="rounded border border-border bg-card px-2 py-1.5"
+																								>
+																									<div
+																										class="text-foreground/60 font-medium"
+																									>
+																										Tool
+																									</div>
+																									<div
+																										class="font-semibold text-foreground break-all"
+																									>
+																										{toolDisplayName(
+																											payload
+																										)}
+																									</div>
+																								</div>
+																								<div
+																									class="rounded border border-border bg-card px-2 py-1.5"
+																								>
+																									<div
+																										class="text-foreground/60 font-medium"
+																									>
+																										Success
+																									</div>
+																									<div
+																										class="font-semibold {turnEventToolSuccess ===
+																										false
+																											? 'text-red-600 dark:text-red-400'
+																											: turnEventToolSuccess ===
+																												  true
+																												? 'text-emerald-600 dark:text-emerald-400'
+																												: 'text-foreground'}"
+																									>
+																										{turnEventToolSuccess ===
+																										null
+																											? '-'
+																											: turnEventToolSuccess
+																												? 'true'
+																												: 'false'}
+																									</div>
+																								</div>
+																								<div
+																									class="rounded border border-border bg-card px-2 py-1.5"
+																								>
+																									<div
+																										class="text-foreground/60 font-medium"
+																									>
+																										Duration
+																									</div>
+																									<div
+																										class="font-semibold text-foreground"
+																									>
+																										{formatDuration(
+																											toolDisplayDuration(
+																												payload
+																											)
+																										)}
+																									</div>
+																								</div>
+																								<div
+																									class="rounded border border-border bg-card px-2 py-1.5"
+																								>
+																									<div
+																										class="text-foreground/60 font-medium"
+																									>
+																										Result
+																										Source
+																									</div>
+																									<div
+																										class="font-semibold text-foreground break-all"
+																									>
+																										{turnEventToolResultSource ||
+																											'-'}
+																									</div>
+																								</div>
+																							</div>
+																							{#if turnEventToolError}
+																								<div
+																									class="mt-2 text-xs text-red-600 dark:text-red-400"
+																								>
+																									{turnEventToolError}
+																								</div>
+																							{/if}
+																							{#if turnEventToolArguments !== undefined}
+																								<details
+																									class="mt-2 rounded border border-border bg-card p-2 text-xs"
+																								>
+																									<summary
+																										class="cursor-pointer font-medium text-foreground"
+																									>
+																										Tool
+																										Arguments
+																									</summary>
+																									<pre
+																										class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
+																											turnEventToolArguments
+																										)}</pre>
+																								</details>
+																							{/if}
+																							{#if turnEventToolResult !== undefined}
+																								<details
+																									class="mt-2 rounded border border-border bg-card p-2 text-xs"
+																								>
+																									<summary
+																										class="cursor-pointer font-medium text-foreground"
+																									>
+																										Tool
+																										Result
+																									</summary>
+																									<pre
+																										class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
+																											turnEventToolResult
+																										)}</pre>
+																								</details>
+																							{/if}
+																						{/if}
+																					{/if}
+																				{/if}
+
+																				{#if event.type === 'eval_run'}
+																					<div
+																						class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs"
+																					>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Scenario
+																							</div>
+																							<div
+																								class="font-semibold text-foreground break-all"
+																							>
+																								{stringValue(
+																									payloadField(
+																										payload,
+																										'scenario_slug'
+																									)
+																								) ||
+																									'-'}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Status
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{stringValue(
+																									payloadField(
+																										payload,
+																										'status'
+																									)
+																								) ||
+																									'-'}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Passed
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{payloadSummaryAssertionCount(
+																									payload,
+																									'passed'
+																								)}
+																							</div>
+																						</div>
+																						<div
+																							class="rounded border border-border bg-card px-2 py-1.5"
+																						>
+																							<div
+																								class="text-foreground/60 font-medium"
+																							>
+																								Failed
+																							</div>
+																							<div
+																								class="font-semibold text-foreground"
+																							>
+																								{payloadSummaryAssertionCount(
+																									payload,
+																									'failed'
+																								)}
+																							</div>
+																						</div>
+																					</div>
+																				{/if}
+
+																				<div class="mt-2">
+																					<button
+																						type="button"
+																						onclick={() =>
+																							toggleEventExpansion(
+																								lifecycleState.displayEventId
+																							)}
+																						class="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+																					>
+																						{#if expandedEventIds.has(lifecycleState.displayEventId)}
+																							<ChevronDown
+																								class="h-3 w-3"
+																							/>
+																							Hide Raw
+																							Payload
+																						{:else}
+																							<ChevronRight
+																								class="h-3 w-3"
+																							/>
+																							Show Raw
+																							Payload
+																						{/if}
+																					</button>
+																					{#if expandedEventIds.has(lifecycleState.displayEventId)}
+																						<pre
+																							class="mt-2 bg-card border border-border rounded-lg p-3 text-xs text-foreground whitespace-pre-wrap break-words overflow-x-auto">{prettyJson(
+																								rawPayload
+																							)}</pre>
+																					{/if}
+																				</div>
 																			</div>
 																		</div>
-																	</summary>
-																	<div class="mt-2 space-y-2">
-																		<pre
-																			class="whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground bg-background border border-border rounded p-2">{prettyJson(
-																				evalRun.summary
-																			)}</pre>
-																		{#if evalRun.assertions.length > 0}
-																			<pre
-																				class="whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground bg-background border border-border rounded p-2">{prettyJson(
-																					evalRun.assertions
-																				)}</pre>
-																		{/if}
-																	</div>
-																</details>
-															{/each}
+																	{/if}
+																{/each}
+															</div>
 														</div>
 													{:else}
-														<div class="text-xs text-muted-foreground">
-															No evals recorded for this turn yet.
+														<div class="text-sm text-muted-foreground">
+															No visible timeline events inside this
+															section for the current filters.
+														</div>
+													{/if}
+
+													{#if group.kind === 'turn' && run}
+														<div
+															class="rounded-lg border border-border bg-background p-2.5 space-y-2"
+														>
+															<div
+																class="flex flex-wrap items-center justify-between gap-2"
+															>
+																<div
+																	class="text-xs font-medium text-foreground"
+																>
+																	Prompt Eval
+																</div>
+																<div
+																	class="flex flex-wrap items-center gap-2"
+																>
+																	<select
+																		class="min-w-[220px] text-xs border border-border bg-card rounded px-2 py-1.5 text-foreground"
+																		value={selectedEvalScenarioByTurnId[
+																			run.id
+																		] ?? ''}
+																		onchange={(event) =>
+																			updateSelectedEvalScenario(
+																				run.id,
+																				(
+																					event.currentTarget as HTMLSelectElement
+																				).value
+																			)}
+																		disabled={isLoadingEvalScenarios ||
+																			runningEvalByTurnId[
+																				run.id
+																			]}
+																	>
+																		<option value="">
+																			{isLoadingEvalScenarios
+																				? 'Loading scenarios...'
+																				: 'Select scenario'}
+																		</option>
+																		{#each evalScenarios as scenario}
+																			<option
+																				value={scenario.slug}
+																				>{scenario.title}</option
+																			>
+																		{/each}
+																	</select>
+																	<Button
+																		variant="secondary"
+																		size="sm"
+																		class="pressable"
+																		disabled={!selectedEvalScenarioByTurnId[
+																			run.id
+																		] ||
+																			runningEvalByTurnId[
+																				run.id
+																			]}
+																		loading={runningEvalByTurnId[
+																			run.id
+																		]}
+																		onclick={() =>
+																			runPromptEval(run.id)}
+																	>
+																		Run Eval
+																	</Button>
+																</div>
+															</div>
+															{#if evalErrorByTurnId[run.id]}
+																<div
+																	class="text-xs text-red-600 dark:text-red-400"
+																>
+																	{evalErrorByTurnId[run.id]}
+																</div>
+															{/if}
+															{#if run.eval_runs.length > 0}
+																<div class="space-y-2">
+																	{#each run.eval_runs as evalRun}
+																		<details
+																			class="rounded border border-border bg-card p-2 text-xs"
+																		>
+																			<summary
+																				class="cursor-pointer list-none flex flex-wrap items-center justify-between gap-2"
+																			>
+																				<div
+																					class="min-w-0 flex-1"
+																				>
+																					<div
+																						class="flex flex-wrap items-center gap-1.5"
+																					>
+																						<span
+																							class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-foreground/80"
+																						>
+																							{evalRun.scenario_slug}
+																						</span>
+																						<span
+																							class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium {evalRun.status ===
+																							'passed'
+																								? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+																								: evalRun.status ===
+																									  'failed'
+																									? 'bg-red-500/10 text-red-700 dark:text-red-300'
+																									: 'bg-amber-500/10 text-amber-700 dark:text-amber-300'}"
+																						>
+																							{evalRun.status}
+																						</span>
+																					</div>
+																					<div
+																						class="mt-1 text-xs text-muted-foreground"
+																					>
+																						{formatDateTime(
+																							evalRun.started_at
+																						)} · {stringValue(
+																							evalAssertionCount(
+																								evalRun.summary,
+																								'passed'
+																							)
+																						)} passed · {stringValue(
+																							evalAssertionCount(
+																								evalRun.summary,
+																								'failed'
+																							)
+																						)} failed
+																					</div>
+																				</div>
+																			</summary>
+																			<div
+																				class="mt-2 space-y-2"
+																			>
+																				<pre
+																					class="whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground bg-background border border-border rounded p-2">{prettyJson(
+																						evalRun.summary
+																					)}</pre>
+																				{#if evalRun.assertions.length > 0}
+																					<pre
+																						class="whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground bg-background border border-border rounded p-2">{prettyJson(
+																							evalRun.assertions
+																						)}</pre>
+																				{/if}
+																			</div>
+																		</details>
+																	{/each}
+																</div>
+															{:else}
+																<div
+																	class="text-xs text-muted-foreground"
+																>
+																	No evals recorded for this turn
+																	yet.
+																</div>
+															{/if}
 														</div>
 													{/if}
 												</div>
-											{/if}
-										</div>
-									</details>
-								{/each}
+											</details>
+										{/each}
+									</div>
+								{/if}
 							</div>
-						{/if}
+						</details>
 					</div>
 				</div>
 			{:else}

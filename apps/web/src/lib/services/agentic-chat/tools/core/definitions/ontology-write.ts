@@ -1241,8 +1241,12 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 		type: 'function',
 		function: {
 			name: 'update_onto_document',
-			description: `Update an existing ontology document.
-Use for edits to titles, states, body markdown, or metadata.`,
+			description: [
+				'Update an existing ontology document.',
+				'Use for edits to titles, states, body markdown, or metadata.',
+				'For update_strategy "append" or "merge_llm", include non-empty content/body_markdown/markdown/body/text. merge_instructions alone is not content.',
+				'Append example: update_onto_document({ document_id, content: "## Progress Updates\\n\\n- Chapter 2 complete...", update_strategy: "append", merge_instructions: "Append under Progress Updates; preserve existing sections." })'
+			].join(' '),
 			parameters: {
 				type: 'object',
 				additionalProperties: false,
@@ -1265,7 +1269,8 @@ Use for edits to titles, states, body markdown, or metadata.`,
 					},
 					content: {
 						type: 'string',
-						description: 'Markdown content to store in the content column'
+						description:
+							'Markdown content to store in the content column. Required when update_strategy is append or merge_llm.'
 					},
 					description: {
 						type: 'string',
@@ -1281,7 +1286,7 @@ Use for edits to titles, states, body markdown, or metadata.`,
 					merge_instructions: {
 						type: 'string',
 						description:
-							'Optional guidance when merging content (e.g., keep headers, preserve tables, integrate research notes). Used with append/merge_llm.'
+							'Optional guidance when merging content (e.g., keep headers, preserve tables, integrate research notes). Used with append/merge_llm, but does not replace the required content.'
 					},
 					props: {
 						type: 'object',

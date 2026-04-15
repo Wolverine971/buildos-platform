@@ -224,6 +224,8 @@ function buildOperatingStrategySection(): LitePromptSection {
 		content: [
 			'How to act:',
 			'- Start with the loaded context. If the loaded context is enough, answer without extra tool calls.',
+			'- Treat context zooming as durable state movement. Use change_chat_context early when the latest request should zoom into one resolved project or back out to the workspace.',
+			'- Do not bounce contexts for ambiguous project names, multi-project comparisons, or brief side mentions. Resolve ambiguity first, then shift only when the intended focus is clear.',
 			'- Use direct tools first when they fit. Use discovery tools only when the exact operation or schema is missing.',
 			'- Load a skill when the workflow is multi-step, stateful, or easy to get wrong; do not load full skill playbooks for simple answers.',
 			'- Ask one concise clarification only when the missing detail blocks a safe answer or write.',

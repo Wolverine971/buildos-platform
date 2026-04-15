@@ -156,4 +156,73 @@ describe('repair instruction policy', () => {
 			'I was unable to complete that update because no write call succeeded. Nothing changed yet; I need to retry with the exact ID and valid arguments.'
 		);
 	});
+
+	it('discloses unrepaired failed writes even when other writes succeeded', () => {
+		const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
+		const toolExecutions = [
+			createExecution({
+				name: 'update_onto_task',
+				args: { task_id: '1eb66f88-e68a-4176-a341-fbd2d3fb5f68', state_key: 'in_progress' }
+			}),
+			createExecution({
+				name: 'create_onto_task',
+				args: {
+					project_id: '56bcc3cf-67ae-491f-ace9-6d1c7d4e9bfc',
+					title: 'Revise Chapter 2'
+				}
+			}),
+			createExecution({
+				name: 'update_onto_document',
+				args: {
+					document_id: documentId,
+					update_strategy: 'append',
+					merge_instructions: 'Append under Progress Updates.',
+					props: {}
+				},
+				success: false,
+				error: 'update_onto_document append requires non-empty content.'
+			})
+		];
+
+		const finalText = enforceMutationOutcomeIntegrity('I captured the task updates.', {
+			contextType: 'project',
+			toolExecutions
+		});
+
+		expect(finalText).toContain('I captured the task updates.');
+		expect(finalText).toContain('One write did not complete: document update failed');
+		expect(finalText).toContain('I did not persist that part.');
+	});
+
+	it('does not disclose a failed write when a later retry fixes the same target', () => {
+		const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
+		const toolExecutions = [
+			createExecution({
+				name: 'update_onto_document',
+				args: {
+					document_id: documentId,
+					update_strategy: 'append',
+					merge_instructions: 'Append under Progress Updates.',
+					props: {}
+				},
+				success: false,
+				error: 'update_onto_document append requires non-empty content.'
+			}),
+			createExecution({
+				name: 'update_onto_document',
+				args: {
+					document_id: documentId,
+					update_strategy: 'append',
+					content: '## Progress Updates\n\n- Chapter 2 complete.'
+				}
+			})
+		];
+
+		expect(
+			enforceMutationOutcomeIntegrity('I updated the document.', {
+				contextType: 'project',
+				toolExecutions
+			})
+		).toBe('I updated the document.');
+	});
 });

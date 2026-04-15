@@ -11,11 +11,12 @@
  */
 
 import { BaseExecutor } from './base-executor';
+import { buildSearchFilter } from '$lib/utils/api-helpers';
 import type {
 	ExecutorContext,
 	ListOntoProjectsArgs,
 	SearchOntoProjectsArgs,
-	SearchBuildosArgs,
+	SearchAllProjectsArgs,
 	ListOntoTasksArgs,
 	SearchProjectArgs,
 	SearchOntoTasksArgs,
@@ -72,6 +73,33 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return this.prepareSearchTerm(args.query ?? args.search);
 	}
 
+	private expandBooleanSearchTerms(term: string): string[] {
+		const normalized = term.trim();
+		if (!normalized) return [];
+
+		const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
+		if (!hasExplicitOr) {
+			return [normalized];
+		}
+
+		return Array.from(
+			new Set(
+				normalized
+					.split(/\s+\bOR\b\s+|\s*\|\s*/i)
+					.map((part) => this.prepareSearchTerm(part))
+					.filter(Boolean)
+			)
+		).slice(0, 12);
+	}
+
+	private buildMultiTermSearchFilter(term: string, fields: string[]): string | null {
+		const filters = this.expandBooleanSearchTerms(term)
+			.map((part) => buildSearchFilter(part, fields))
+			.filter((filter): filter is string => Boolean(filter));
+
+		return filters.length > 0 ? filters.join(',') : null;
+	}
+
 	private normalizeAgenticSearchTypes(types?: string[]): string[] | undefined {
 		if (!Array.isArray(types) || types.length === 0) {
 			return undefined;
@@ -109,7 +137,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error(
 				args.scope === 'project'
 					? 'Query is required for search_project'
-					: 'Query is required for search_buildos'
+					: 'Query is required for search_all_projects'
 			);
 		}
 
@@ -686,6 +714,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 		}
 
 		const actorId = await this.getActorId();
+		const searchFilter = this.buildMultiTermSearchFilter(searchTerm, ['title', 'description']);
+		if (!searchFilter) {
+			throw new Error('Search term is required for search_onto_tasks');
+		}
+
 		let query = this.supabase
 			.from('onto_tasks')
 			.select(
@@ -708,7 +741,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.eq('created_by', actorId)
 			.is('deleted_at', null) // Exclude soft-deleted tasks
 			.order('updated_at', { ascending: false })
-			.ilike('title', `%${searchTerm}%`);
+			.or(searchFilter);
 
 		if (args.project_id) {
 			await this.assertProjectOwnership(args.project_id, actorId);
@@ -977,7 +1010,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		};
 	}
 
-	async searchBuildos(args: SearchBuildosArgs): Promise<{
+	async searchAllProjects(args: SearchAllProjectsArgs): Promise<{
 		query: string;
 		search_scope: 'workspace' | 'project';
 		project_id: string | null;

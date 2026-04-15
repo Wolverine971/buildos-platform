@@ -21,17 +21,19 @@ export const GATEWAY_SURFACE_PROFILE_NAMES = [
 export type GatewaySurfaceProfileName = (typeof GATEWAY_SURFACE_PROFILE_NAMES)[number];
 
 const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
+	'change_chat_context',
 	'get_workspace_overview',
 	'get_project_overview',
 	'search_onto_projects',
-	'search_buildos'
+	'search_all_projects'
 ] as const;
 
 const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
+	'change_chat_context',
 	'get_project_overview',
 	'get_onto_project_details',
+	'search_project',
 	'list_onto_tasks',
-	'search_onto_tasks',
 	'list_onto_documents'
 ] as const;
 
@@ -116,6 +118,18 @@ function resolveGatewayDirectToolNamesForProfile(
 	return GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE[profileName];
 }
 
+export function getGatewayDirectToolNamesForProfile(
+	profileName: GatewaySurfaceProfileName
+): string[] {
+	return [...resolveGatewayDirectToolNamesForProfile(profileName)];
+}
+
+export function getGatewayDirectToolNamesForContextType(contextType: ChatContextType): string[] {
+	return getGatewayDirectToolNamesForProfile(
+		resolveGatewaySurfaceProfileForContextType(contextType)
+	);
+}
+
 function getGatewayDiscoveryTools(): ChatToolDefinition[] {
 	return GATEWAY_DISCOVERY_TOOL_NAMES.map((name) => GATEWAY_TOOL_DEFINITION_MAP.get(name)).filter(
 		(tool): tool is ChatToolDefinition => Boolean(tool)
@@ -144,6 +158,15 @@ export function extractGatewayMaterializedToolNames(payload: unknown): string[] 
 	}
 
 	const record = payload as Record<string, unknown>;
+	const materializedTools = Array.isArray(record.materialized_tools)
+		? record.materialized_tools
+				.map((name) => (typeof name === 'string' ? name.trim() : ''))
+				.filter((name): name is string => name.length > 0)
+		: [];
+	if (materializedTools.length > 0) {
+		return materializedTools;
+	}
+
 	const type = typeof record.type === 'string' ? record.type : '';
 	if (type === 'tool_search_results') {
 		const matches = Array.isArray(record.matches) ? record.matches : [];

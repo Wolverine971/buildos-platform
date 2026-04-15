@@ -1,7 +1,10 @@
 // apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getGatewaySurfaceForProfile } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	extractGatewayMaterializedToolNames,
+	getGatewaySurfaceForProfile
+} from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { selectFastChatTools } from './tool-selector';
 
 afterEach(() => {
@@ -18,9 +21,11 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('skill_load');
 		expect(names).toContain('tool_search');
 		expect(names).toContain('tool_schema');
+		expect(names).toContain('change_chat_context');
 		expect(names).toContain('get_workspace_overview');
 		expect(names).toContain('get_project_overview');
-		expect(names).toContain('search_buildos');
+		expect(names).toContain('search_all_projects');
+		expect(names).not.toContain('search_buildos');
 		expect(names).toContain('search_onto_projects');
 		expect(names).not.toContain('list_onto_tasks');
 		expect(names).not.toContain('resolve_libri_resource');
@@ -32,9 +37,11 @@ describe('selectFastChatTools', () => {
 		const names = tools.map((tool) => tool.function?.name).filter(Boolean);
 
 		expect(names).toContain('get_project_overview');
+		expect(names).toContain('change_chat_context');
 		expect(names).toContain('get_onto_project_details');
+		expect(names).toContain('search_project');
 		expect(names).toContain('list_onto_tasks');
-		expect(names).toContain('search_onto_tasks');
+		expect(names).not.toContain('search_onto_tasks');
 		expect(names).toContain('list_onto_documents');
 		expect(names).not.toContain('create_onto_task');
 		expect(names).not.toContain('update_onto_task');
@@ -76,5 +83,14 @@ describe('selectFastChatTools', () => {
 			.filter(Boolean);
 
 		expect(names).not.toContain('resolve_libri_resource');
+	});
+
+	it('recognizes tool materialization returned by context changes', () => {
+		expect(
+			extractGatewayMaterializedToolNames({
+				type: 'context_change',
+				materialized_tools: ['get_project_overview', 'search_project', '']
+			})
+		).toEqual(['get_project_overview', 'search_project']);
 	});
 });

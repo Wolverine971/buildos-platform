@@ -83,13 +83,14 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 		],
 		skillIds: [],
 		directPaths: [
+			'x.search.all_projects',
+			'x.search.project',
 			'onto.project',
 			'onto.goal',
 			'onto.milestone',
 			'onto.risk',
 			'onto.edge',
-			'onto.project.graph',
-			'onto.search'
+			'onto.project.graph'
 		],
 		notes: [
 			'There is not yet a single umbrella graph skill. Use targeted entity help unless the work is clearly task-, planning-, or document-specific.'

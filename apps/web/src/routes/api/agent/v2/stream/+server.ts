@@ -35,7 +35,7 @@ import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
 import type { AgentState, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor-refactored';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
-import { getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
+import { extractTools, getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	AgentStateReconciliationService,
@@ -455,20 +455,33 @@ function isOperationEntityType(
 	return OPERATION_ENTITY_TYPES.includes(value as OperationEventPayload['entity_type']);
 }
 
+function toolDefinitionRequiresProjectId(tool: ChatToolDefinition | undefined): boolean {
+	if (!tool) return false;
+	const params = tool.function?.parameters as
+		| { required?: string[]; properties?: Record<string, unknown> }
+		| undefined;
+	const requiredParams = Array.isArray(params?.required) ? params?.required : [];
+	return requiredParams.includes('project_id');
+}
+
 function getToolsRequiringProjectId(tools: ChatToolDefinition[]): Set<string> {
 	const required = new Set<string>();
 	for (const tool of tools) {
 		const name = tool.function?.name;
 		if (!name) continue;
-		const params = tool.function?.parameters as
-			| { required?: string[]; properties?: Record<string, unknown> }
-			| undefined;
-		const requiredParams = Array.isArray(params?.required) ? params?.required : [];
-		if (requiredParams.includes('project_id')) {
+		if (toolDefinitionRequiresProjectId(tool)) {
 			required.add(name);
 		}
 	}
 	return required;
+}
+
+function toolCallRequiresProjectId(
+	toolName: string,
+	toolsRequiringProjectId: Set<string>
+): boolean {
+	if (toolsRequiringProjectId.has(toolName)) return true;
+	return toolDefinitionRequiresProjectId(extractTools([toolName])[0]);
 }
 
 function maybeInjectProjectId(
@@ -477,7 +490,9 @@ function maybeInjectProjectId(
 	toolsRequiringProjectId: Set<string>
 ): ChatToolCall {
 	if (!projectId) return toolCall;
-	if (!toolsRequiringProjectId.has(toolCall.function.name)) return toolCall;
+	if (!toolCallRequiresProjectId(toolCall.function.name, toolsRequiringProjectId)) {
+		return toolCall;
+	}
 
 	let args: Record<string, unknown> = {};
 	const rawArgs = toolCall.function.arguments;
@@ -1067,6 +1082,7 @@ function emitSkillActivity(
 }
 
 const CONTEXT_SHIFT_ENTITY_TYPES: ContextShiftPayload['entity_type'][] = [
+	'workspace',
 	'project',
 	'task',
 	'plan',
@@ -1112,26 +1128,34 @@ function extractContextShiftPayload(result: ChatToolResult): ContextShiftPayload
 		typeof contextShift.new_context === 'string' ? contextShift.new_context.trim() : '';
 	const rawEntityId =
 		typeof contextShift.entity_id === 'string' ? contextShift.entity_id.trim() : '';
-	if (!rawContext || !rawEntityId) return null;
+	if (!rawContext) return null;
 
 	const normalizedContext = normalizeFastContextType(rawContext as ChatContextType);
+	const isGlobalContext = normalizedContext === 'global' || normalizedContext === 'general';
+	if (!isGlobalContext && !rawEntityId) return null;
 	const entityName =
 		typeof contextShift.entity_name === 'string' && contextShift.entity_name.trim()
 			? contextShift.entity_name.trim()
-			: 'Project';
+			: isGlobalContext
+				? 'Workspace'
+				: 'Project';
 	const entityType =
 		typeof contextShift.entity_type === 'string' &&
 		isContextShiftEntityType(contextShift.entity_type)
 			? contextShift.entity_type
-			: 'project';
+			: isGlobalContext
+				? 'workspace'
+				: 'project';
 	const message =
 		typeof contextShift.message === 'string' && contextShift.message.trim()
 			? contextShift.message.trim()
-			: `Context updated to ${entityName}`;
+			: isGlobalContext
+				? 'Zoomed out to workspace context.'
+				: `Context updated to ${entityName}`;
 
 	return {
 		new_context: normalizedContext,
-		entity_id: rawEntityId,
+		entity_id: rawEntityId || null,
 		entity_name: entityName,
 		entity_type: entityType,
 		message
@@ -1561,7 +1585,11 @@ function buildLastTurnContext(params: {
 		collectLastTurnEntitiesFromValue(entitySource, entities);
 	}
 
-	if (params.contextShift) {
+	if (
+		params.contextShift &&
+		params.contextShift.entity_type !== 'workspace' &&
+		params.contextShift.entity_id
+	) {
 		assignLastTurnEntity(
 			entities,
 			params.contextShift.entity_type,
@@ -3457,8 +3485,13 @@ export const POST: RequestHandler = async ({
 							effectiveContextType = contextShift.new_context;
 							effectiveEntityId = contextShift.entity_id;
 							latestContextShift = contextShift;
-							if (isProjectScopedContext(contextShift.new_context)) {
+							if (
+								isProjectScopedContext(contextShift.new_context) &&
+								contextShift.entity_id
+							) {
 								effectiveProjectIdForTools = contextShift.entity_id;
+							} else {
+								effectiveProjectIdForTools = undefined;
 							}
 							void updateAgentMetadata(
 								supabase,
@@ -3484,7 +3517,10 @@ export const POST: RequestHandler = async ({
 									logFastChatError({
 										error,
 										operationType: 'fastchat_stream_emit_context_shift',
-										projectId: contextShift.entity_id,
+										projectId:
+											contextShift.entity_type === 'project'
+												? (contextShift.entity_id ?? undefined)
+												: undefined,
 										metadata: {
 											sessionId: session.id,
 											contextType: contextShift.new_context,

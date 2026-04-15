@@ -48,11 +48,12 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                | Post Link | Action   | Status | What We Said / Planned                                                           | Outcome | Source                        |
-| ---------- | ------- | ------------------------------------ | --------- | -------- | ------ | -------------------------------------------------------------------------------- | ------- | ----------------------------- |
-| 2026-04-07 | Profile | Reposts only in recent scan window   | N/A       | Reviewed | Logged | No engageable original posts in last scan                                        | None    | 2026-04-07_linkedin-warmup.md |
-| 2026-04-08 | Profile | Profile seeding                      | N/A       | Reviewed | Logged | Seeded profile; queue for engagement once he posts                               | None    | profile-seeding-pass          |
-| 2026-04-15 | Profile | Stale scan — most recent post 6d old | N/A       | Reviewed | Logged | No fresh content today; slug correction noted (`dexterihorthy` not `dex-horthy`) | None    | 2026-04-15_linkedin-warmup.md |
+| Date       | Surface | Topic                                | Post Link | Action   | Status | What We Said / Planned                                                                                     | Outcome | Source                           |
+| ---------- | ------- | ------------------------------------ | --------- | -------- | ------ | ---------------------------------------------------------------------------------------------------------- | ------- | -------------------------------- |
+| 2026-04-07 | Profile | Reposts only in recent scan window   | N/A       | Reviewed | Logged | No engageable original posts in last scan                                                                  | None    | 2026-04-07_linkedin-warmup.md    |
+| 2026-04-08 | Profile | Profile seeding                      | N/A       | Reviewed | Logged | Seeded profile; queue for engagement once he posts                                                         | None    | profile-seeding-pass             |
+| 2026-04-15 | Profile | Stale scan — most recent post 6d old | N/A       | Reviewed | Logged | No fresh content today; slug correction noted (`dexterihorthy` not `dex-horthy`)                           | None    | 2026-04-15_linkedin-warmup.md    |
+| 2026-04-15 | Profile | PM stale scan — 3d repost only       | N/A       | Reviewed | Logged | No new original posts; new intel: ran "AI That Works" unconference with Vaibhav Gupta (Temporal) this week | None    | 2026-04-15_linkedin-warmup-pm.md |
 
 ## Open Loops
 

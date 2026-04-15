@@ -137,6 +137,11 @@ export function enforceMutationOutcomeIntegrity(
 		if (mutationOutcomes.succeeded === 0 && looksLikeMutationSuccessClaim(finalText)) {
 			return buildMutationFailureMessage(mutationOutcomes);
 		}
+
+		const unrepairedFailures = collectUnrepairedFailedWrites(params.toolExecutions);
+		if (unrepairedFailures.length > 0 && !looksLikeWriteFailureDisclosure(finalText)) {
+			return appendWriteFailureDisclosure(finalText, unrepairedFailures);
+		}
 	}
 
 	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
@@ -542,6 +547,71 @@ function summarizeMutationOutcomes(toolExecutions: FastToolExecution[]): Mutatio
 	};
 }
 
+type FailedWriteDisclosure = {
+	op: string;
+	error?: string;
+};
+
+function collectUnrepairedFailedWrites(
+	toolExecutions: FastToolExecution[]
+): FailedWriteDisclosure[] {
+	const failures: FailedWriteDisclosure[] = [];
+
+	for (let index = 0; index < toolExecutions.length; index += 1) {
+		const execution = toolExecutions[index];
+		if (!execution) continue;
+		const writeOp = getWriteOperationName(execution);
+		if (!writeOp || didWriteExecutionSucceed(execution)) continue;
+		if (hasLaterSuccessfulRetry(toolExecutions, index, execution, writeOp)) continue;
+		failures.push({
+			op: writeOp,
+			error: typeof execution.result.error === 'string' ? execution.result.error : undefined
+		});
+	}
+
+	return failures;
+}
+
+function hasLaterSuccessfulRetry(
+	toolExecutions: FastToolExecution[],
+	failedIndex: number,
+	failedExecution: FastToolExecution,
+	failedOp: string
+): boolean {
+	const failedTargetId = getPrimaryMutationTargetId(failedExecution);
+	for (let index = failedIndex + 1; index < toolExecutions.length; index += 1) {
+		const execution = toolExecutions[index];
+		if (!execution) continue;
+		if (getWriteOperationName(execution) !== failedOp) continue;
+		if (!didWriteExecutionSucceed(execution)) continue;
+		if (!failedTargetId) return true;
+		if (getPrimaryMutationTargetId(execution) === failedTargetId) return true;
+	}
+	return false;
+}
+
+function getPrimaryMutationTargetId(execution: FastToolExecution): string | null {
+	const parsed = parseToolArguments(execution.toolCall.function?.arguments);
+	const args = parsed.args;
+	const keys = [
+		'task_id',
+		'goal_id',
+		'plan_id',
+		'document_id',
+		'milestone_id',
+		'risk_id',
+		'entity_id',
+		'edge_id'
+	];
+	for (const key of keys) {
+		const value = args[key];
+		if (typeof value === 'string' && value.trim().length > 0) {
+			return `${key}:${value.trim()}`;
+		}
+	}
+	return null;
+}
+
 function getWriteOperationName(execution: FastToolExecution): string | null {
 	const toolName = execution.toolCall.function?.name?.trim();
 	if (!toolName) return null;
@@ -577,6 +647,51 @@ function looksLikeBulkMutationSuccessClaim(text: string): boolean {
 
 function looksLikeMutationSuccessClaim(text: string): boolean {
 	return MUTATION_SUCCESS_CLAIM_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function looksLikeWriteFailureDisclosure(text: string): boolean {
+	return /\b(?:failed|unable|could not|did not|didn't|not saved|not updated|not created|nothing changed|tool error)\b/i.test(
+		text
+	);
+}
+
+function appendWriteFailureDisclosure(
+	finalText: string,
+	failures: FailedWriteDisclosure[]
+): string {
+	const uniqueFailures = Array.from(
+		new Map(failures.map((failure) => [failure.op, failure])).values()
+	);
+	const labels = uniqueFailures.map((failure) => formatWriteFailureLabel(failure));
+	const subject =
+		uniqueFailures.length === 1 ? 'One write did not complete' : 'Some writes did not complete';
+	const persistedPart = uniqueFailures.length === 1 ? 'that part' : 'those parts';
+	return `${finalText.trim()}\n\n${subject}: ${labels.join('; ')}. I did not persist ${persistedPart}.`;
+}
+
+function formatWriteFailureLabel(failure: FailedWriteDisclosure): string {
+	const label = formatWriteOperationLabel(failure.op);
+	const error = sanitizeFailureReason(failure.error);
+	return error ? `${label} failed (${error})` : `${label} failed`;
+}
+
+function sanitizeFailureReason(error: string | undefined): string {
+	if (!error) return '';
+	const compact = error.replace(/\s+/g, ' ').trim();
+	if (!compact) return '';
+	return compact.length <= 140 ? compact : `${compact.slice(0, 137)}...`;
+}
+
+function formatWriteOperationLabel(op: string): string {
+	const normalized = normalizeGatewayOpName(op);
+	const parts = normalized.split('.');
+	if (parts.length >= 3) {
+		return `${parts[1]} ${parts[2]}`;
+	}
+	return normalized
+		.replace(/^update_onto_/, '')
+		.replace(/^create_onto_/, '')
+		.replace(/_/g, ' ');
 }
 
 function buildMutationFailureMessage(summary: MutationOutcomeSummary): string {

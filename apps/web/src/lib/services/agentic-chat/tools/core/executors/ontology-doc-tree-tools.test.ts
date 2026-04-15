@@ -197,4 +197,25 @@ describe('Ontology document tree tools', () => {
 			})
 		).rejects.toThrow('No active document in this project matches');
 	});
+
+	it('rejects append document updates before PATCH when no content is provided', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await expect(
+			executor.updateOntoDocument(
+				{
+					document_id: '3e9432fb-90e1-4404-a480-c73186b1337d',
+					update_strategy: 'append',
+					merge_instructions: 'Append under Progress Updates.',
+					props: {}
+				},
+				async () => ({ document: { content: '# Existing' } })
+			)
+		).rejects.toThrow('update_onto_document append requires non-empty content.');
+
+		expect(mockFetch).not.toHaveBeenCalledWith(
+			expect.stringContaining('/api/onto/documents/3e9432fb-90e1-4404-a480-c73186b1337d'),
+			expect.objectContaining({ method: 'PATCH' })
+		);
+	});
 });

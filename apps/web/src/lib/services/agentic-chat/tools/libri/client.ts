@@ -139,7 +139,7 @@ function appendQueryParam(url: URL, key: string, value: unknown): void {
 	}
 	if (Array.isArray(value) && value.length > 0) {
 		const items = value.filter(
-			(item): item is string => typeof item === 'string' && item.trim()
+			(item): item is string => typeof item === 'string' && item.trim().length > 0
 		);
 		if (items.length) url.searchParams.set(key, Array.from(new Set(items)).join(','));
 	}

@@ -72,7 +72,7 @@ export function getDefaultToolsForContextType(contextType: ChatContextType): Cha
 export const TOOL_CATEGORIES = {
 	ontology: {
 		tools: [
-			'search_buildos',
+			'search_all_projects',
 			'search_project',
 			'list_onto_tasks',
 			'search_onto_tasks',
@@ -80,7 +80,6 @@ export const TOOL_CATEGORIES = {
 			'search_onto_plans',
 			'search_onto_milestones',
 			'search_onto_risks',
-			'search_ontology',
 			'list_onto_goals',
 			'list_onto_plans',
 			'list_onto_documents',
@@ -145,6 +144,7 @@ export const TOOL_CATEGORIES = {
 			'get_user_profile_overview',
 			'get_workspace_overview',
 			'get_project_overview',
+			'change_chat_context',
 			'search_user_contacts',
 			'upsert_user_contact',
 			'list_user_contact_candidates',
@@ -206,12 +206,12 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'get_buildos_usage_guide'
 	],
 	global: [
+		'change_chat_context',
 		'resolve_libri_resource',
 		'query_libri_library',
-		'search_buildos',
+		'search_all_projects',
 		'search_project',
 		'list_onto_projects',
-		'search_ontology',
 		'search_onto_projects',
 		'list_onto_tasks',
 		'search_onto_tasks',
@@ -233,12 +233,12 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	],
 	project_create: ['create_onto_project'],
 	project: [
+		'change_chat_context',
 		'resolve_libri_resource',
 		'query_libri_library',
 		'search_project',
-		'search_buildos',
+		'search_all_projects',
 		'list_onto_projects',
-		'search_ontology',
 		'search_onto_projects',
 		'list_onto_tasks',
 		'search_onto_tasks',
@@ -405,11 +405,10 @@ export function extractTools(names: string[]): ChatToolDefinition[] {
 }
 
 export const ONTOLOGY_TOOLS = extractTools([
-	'search_buildos',
+	'search_all_projects',
 	'search_project',
 	'list_onto_projects',
 	'search_onto_projects',
-	'search_ontology',
 	'get_onto_project_details',
 	'get_onto_project_graph',
 	'list_onto_tasks',

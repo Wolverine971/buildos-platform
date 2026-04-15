@@ -43,6 +43,11 @@ import { dev } from '$app/environment';
 import { createLogger } from '$lib/utils/logger';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import {
+	getDocumentUpdateContentCandidate,
+	hasMeaningfulUpdateValue,
+	isAppendOrMergeUpdateStrategy
+} from '../shared/update-value-validation';
 
 const logger = createLogger('ToolExecutionService');
 const GATEWAY_TOOL_NAMES = new Set(['skill_load', 'tool_search', 'tool_schema']);
@@ -909,16 +914,22 @@ export class ToolExecutionService implements BaseService {
 
 		const hasUpdateField = Object.entries(args).some(([key, value]) => {
 			if (ignoredKeys.has(key)) return false;
-			if (value === undefined) return false;
-			if (typeof value === 'string') {
-				return value.trim().length > 0;
-			}
-			return true;
+			return hasMeaningfulUpdateValue(value);
 		});
 
 		if (!hasUpdateField) {
 			addErrorOnce(
 				`No update fields provided for ${toolName}. Include at least one field to change.`
+			);
+		}
+
+		if (
+			toolName === 'update_onto_document' &&
+			isAppendOrMergeUpdateStrategy(args.update_strategy) &&
+			!getDocumentUpdateContentCandidate(args)
+		) {
+			addErrorOnce(
+				`update_onto_document ${args.update_strategy} requires non-empty content.`
 			);
 		}
 	}

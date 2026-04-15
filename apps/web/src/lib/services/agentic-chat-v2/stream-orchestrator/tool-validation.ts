@@ -7,6 +7,11 @@ import {
 	validateProjectCreateArgs
 } from '$lib/services/agentic-chat/tools/core/project-create-args';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import {
+	getDocumentUpdateContentCandidate,
+	hasMeaningfulUpdateValue,
+	isAppendOrMergeUpdateStrategy
+} from '$lib/services/agentic-chat/shared/update-value-validation';
 import { parseToolArguments } from './tool-arguments';
 
 const UPDATE_TOOL_PREFIX = 'update_onto_';
@@ -185,17 +190,21 @@ function validateUpdateToolArgs(
 	const ignoredKeys = new Set<string>([idKey, 'update_strategy', 'merge_instructions']);
 	const hasUpdateField = Object.entries(args).some(([key, value]) => {
 		if (ignoredKeys.has(key)) return false;
-		if (value === undefined) return false;
-		if (typeof value === 'string') {
-			return value.trim().length > 0;
-		}
-		return true;
+		return hasMeaningfulUpdateValue(value);
 	});
 
 	if (!hasUpdateField) {
 		errors.push(
 			`No update fields provided for ${opLabel || toolName}. Include at least one field to change.`
 		);
+	}
+
+	if (
+		toolName === 'update_onto_document' &&
+		isAppendOrMergeUpdateStrategy(args.update_strategy) &&
+		!getDocumentUpdateContentCandidate(args)
+	) {
+		errors.push(`update_onto_document ${args.update_strategy} requires non-empty content.`);
 	}
 }
 

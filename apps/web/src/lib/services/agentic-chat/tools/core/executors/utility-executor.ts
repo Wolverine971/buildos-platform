@@ -10,6 +10,7 @@
 
 import { BaseExecutor } from './base-executor';
 import { ENTITY_FIELD_INFO } from '../tools.config';
+import { getGatewayDirectToolNamesForContextType } from '../gateway-surface';
 import { OntologyContextLoader } from '$lib/services/ontology-context-loader';
 import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
 import {
@@ -27,6 +28,7 @@ import {
 import type { OntologyEntityType } from '$lib/types/agent-chat-enhancement';
 import type {
 	ExecutorContext,
+	ChangeChatContextArgs,
 	GetFieldInfoArgs,
 	GetProjectOverviewArgs,
 	GetUserProfileOverviewArgs,
@@ -664,6 +666,118 @@ export class UtilityExecutor extends BaseExecutor {
 			events: related.events,
 			projectLogs: related.projectLogs
 		});
+	}
+
+	async changeChatContext(args: ChangeChatContextArgs): Promise<Record<string, any>> {
+		const target = args.target === 'project' ? 'project' : 'global';
+		const reason = typeof args.reason === 'string' ? args.reason.trim() : '';
+
+		if (target === 'global') {
+			const message = reason || 'Zoomed out to workspace context.';
+			return {
+				type: 'context_change',
+				changed: true,
+				target,
+				context_shift: {
+					new_context: 'global',
+					entity_id: null,
+					entity_name: 'Workspace',
+					entity_type: 'workspace',
+					message
+				},
+				materialized_tools: getGatewayDirectToolNamesForContextType('global'),
+				message
+			};
+		}
+
+		const projectId =
+			typeof args.project_id === 'string' && args.project_id.trim().length > 0
+				? args.project_id.trim()
+				: undefined;
+		const projectQuery =
+			typeof args.project_query === 'string' && args.project_query.trim().length > 0
+				? args.project_query.trim()
+				: undefined;
+
+		if (!projectId && !projectQuery) {
+			return {
+				type: 'context_change',
+				changed: false,
+				target,
+				match: {
+					status: 'missing_project',
+					candidates: []
+				},
+				message: 'Project context changes require project_id or project_query.'
+			};
+		}
+
+		const overview = await this.getProjectOverview({
+			...(projectId ? { project_id: projectId } : {}),
+			...(projectQuery ? { query: projectQuery } : {})
+		});
+		const match =
+			overview.match && typeof overview.match === 'object'
+				? (overview.match as Record<string, unknown>)
+				: null;
+		if (match?.status !== 'resolved' || !overview.project) {
+			return {
+				type: 'context_change',
+				changed: false,
+				target,
+				match: overview.match ?? {
+					status: 'not_found',
+					query: projectQuery ?? projectId ?? '',
+					candidates: []
+				},
+				message:
+					typeof overview.message === 'string'
+						? overview.message
+						: 'Project context was not changed.'
+			};
+		}
+
+		const project = overview.project as Record<string, unknown>;
+		const resolvedProjectId =
+			typeof project.id === 'string' && project.id.trim().length > 0
+				? project.id.trim()
+				: typeof match.project_id === 'string'
+					? match.project_id.trim()
+					: '';
+		if (!resolvedProjectId) {
+			return {
+				type: 'context_change',
+				changed: false,
+				target,
+				match: overview.match ?? null,
+				message: 'Project context was not changed because the resolved project had no id.'
+			};
+		}
+		const projectName =
+			typeof project.name === 'string' && project.name.trim().length > 0
+				? project.name.trim()
+				: 'Project';
+		const message = reason || `Zoomed into ${projectName}.`;
+
+		return {
+			type: 'context_change',
+			changed: true,
+			target,
+			project: {
+				id: resolvedProjectId,
+				name: projectName,
+				state_key: typeof project.state_key === 'string' ? project.state_key : null
+			},
+			context_shift: {
+				new_context: 'project',
+				entity_id: resolvedProjectId,
+				entity_name: projectName,
+				entity_type: 'project',
+				message
+			},
+			materialized_tools: getGatewayDirectToolNamesForContextType('project'),
+			message
+		};
 	}
 
 	// ============================================

@@ -272,6 +272,9 @@ export class ChatToolExecutor {
 			case 'get_project_overview':
 				return this.utilityExecutor.getProjectOverview(args);
 
+			case 'change_chat_context':
+				return this.utilityExecutor.changeChatContext(args);
+
 			case 'search_user_contacts':
 				return this.utilityExecutor.searchUserContacts(args);
 
@@ -347,8 +350,11 @@ export class ChatToolExecutor {
 			case 'search_onto_projects':
 				return this.readExecutor.searchOntoProjects(args);
 
+			case 'search_all_projects':
+				return this.readExecutor.searchAllProjects(args);
+
 			case 'search_buildos':
-				return this.readExecutor.searchBuildos(args);
+				return this.readExecutor.searchAllProjects(args);
 
 			case 'search_project':
 				return this.readExecutor.searchProject(args);

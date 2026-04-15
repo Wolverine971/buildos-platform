@@ -335,4 +335,89 @@ describe('UtilityExecutor overview scoping', () => {
 		});
 		expect(payload.message).toBe('No accessible project matched that project_id.');
 	});
+
+	it('zooms out to global context without project lookup', async () => {
+		const supabase = createOverviewSupabaseMock({ projectSummaries: [] });
+		const executor = createExecutor(supabase);
+
+		const payload = await executor.changeChatContext({
+			target: 'global',
+			reason: 'Review all projects.'
+		});
+
+		expect(payload.changed).toBe(true);
+		expect(payload.context_shift).toMatchObject({
+			new_context: 'global',
+			entity_id: null,
+			entity_name: 'Workspace',
+			entity_type: 'workspace',
+			message: 'Review all projects.'
+		});
+		expect(payload.materialized_tools).toContain('get_workspace_overview');
+		expect(payload.materialized_tools).toContain('search_all_projects');
+	});
+
+	it('zooms into a resolved project and materializes project tools', async () => {
+		const supabase = createOverviewSupabaseMock({
+			projectSummaries: [
+				createProjectSummaryRow({
+					id: 'proj-ember',
+					name: 'The Last Ember',
+					updated_at: '2026-04-15T12:00:00.000Z'
+				})
+			]
+		});
+		const executor = createExecutor(supabase);
+
+		const payload = await executor.changeChatContext({
+			target: 'project',
+			project_query: 'Last Ember'
+		});
+
+		expect(payload.changed).toBe(true);
+		expect(payload.project).toMatchObject({
+			id: 'proj-ember',
+			name: 'The Last Ember'
+		});
+		expect(payload.context_shift).toMatchObject({
+			new_context: 'project',
+			entity_id: 'proj-ember',
+			entity_name: 'The Last Ember',
+			entity_type: 'project'
+		});
+		expect(payload.materialized_tools).toContain('get_project_overview');
+		expect(payload.materialized_tools).toContain('search_project');
+		expect(payload.materialized_tools).toContain('list_onto_tasks');
+	});
+
+	it('does not change context when project resolution is ambiguous', async () => {
+		const supabase = createOverviewSupabaseMock({
+			projectSummaries: [
+				createProjectSummaryRow({
+					id: 'proj-ember-a',
+					name: 'The Last Ember',
+					updated_at: '2026-04-15T12:00:00.000Z'
+				}),
+				createProjectSummaryRow({
+					id: 'proj-ember-b',
+					name: 'Last Ember Archive',
+					updated_at: '2026-04-14T12:00:00.000Z'
+				})
+			]
+		});
+		const executor = createExecutor(supabase);
+
+		const payload = await executor.changeChatContext({
+			target: 'project',
+			project_query: 'Ember'
+		});
+
+		expect(payload.changed).toBe(false);
+		expect(payload.context_shift).toBeUndefined();
+		expect(payload.match).toMatchObject({
+			status: 'ambiguous',
+			query: 'Ember'
+		});
+		expect(payload.match.candidates).toHaveLength(2);
+	});
 });

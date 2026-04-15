@@ -45,6 +45,11 @@ import type {
 import { createLogger } from '$lib/utils/logger';
 import { createEntityReference, parseEntityReferences } from '$lib/utils/entity-reference-parser';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import {
+	getDocumentUpdateContentCandidate,
+	hasMeaningfulUpdateValue,
+	isAppendOrMergeUpdateStrategy
+} from '$lib/services/agentic-chat/shared/update-value-validation';
 import { normalizeProjectCreateArgs, validateProjectCreateArgs } from '../project-create-args';
 
 const logger = createLogger('OntologyWriteExecutor');
@@ -1529,8 +1534,14 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			updateData.description = normalizedArgs.description;
 		// Support both content (new) and body_markdown (legacy) parameters
 		const documentContent = normalizedArgs.content ?? normalizedArgs.body_markdown;
+		const strategy = normalizedArgs.update_strategy ?? 'replace';
+		if (
+			isAppendOrMergeUpdateStrategy(strategy) &&
+			!getDocumentUpdateContentCandidate(normalizedArgs as Record<string, unknown>)
+		) {
+			throw new Error(`update_onto_document ${strategy} requires non-empty content.`);
+		}
 		if (documentContent !== undefined) {
-			const strategy = normalizedArgs.update_strategy ?? 'replace';
 			// Resolve content with strategy, then send as content (API handles backwards compat)
 			const resolvedContent = await this.resolveTextWithStrategy({
 				strategy,
@@ -1553,7 +1564,9 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			// Use content column (API handles backwards compatibility with props.body_markdown)
 			updateData.content = resolvedContent;
 		}
-		if (normalizedArgs.props !== undefined) updateData.props = normalizedArgs.props;
+		if (hasMeaningfulUpdateValue(normalizedArgs.props)) {
+			updateData.props = normalizedArgs.props;
+		}
 
 		if (Object.keys(updateData).length === 0) {
 			throw new Error('No updates provided for ontology document');
