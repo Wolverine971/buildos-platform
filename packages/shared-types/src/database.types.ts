@@ -2375,6 +2375,7 @@ export type Database = {
           message_chars: number
           messages_sha256: string
           model_messages: Json
+          prompt_variant: string
           prompt_sections: Json | null
           rendered_dump_text: string | null
           request_payload: Json | null
@@ -2396,6 +2397,7 @@ export type Database = {
           message_chars: number
           messages_sha256: string
           model_messages?: Json
+          prompt_variant?: string
           prompt_sections?: Json | null
           rendered_dump_text?: string | null
           request_payload?: Json | null
@@ -2417,6 +2419,7 @@ export type Database = {
           message_chars?: number
           messages_sha256?: string
           model_messages?: Json
+          prompt_variant?: string
           prompt_sections?: Json | null
           rendered_dump_text?: string | null
           request_payload?: Json | null

@@ -2,7 +2,7 @@
 
 # Agentic Chat Lightweight Harness Plan
 
-Status: Tightened plan; Phase 1 renderer slice implemented
+Status: Phase 6 dev/admin UI switch and eval capture implemented; eval scenario runs next
 Date: 2026-04-14
 Owner: BuildOS Agentic Chat
 
@@ -413,6 +413,8 @@ Acceptance:
 
 ### Phase 2: Prompt preview harness
 
+Status: backend implemented on 2026-04-14.
+
 Outcome:
 
 - dev/admin can inspect the lite prompt before it is used live
@@ -431,7 +433,22 @@ Acceptance:
 - can preview global, project, and entity prompt shapes
 - no user-facing chat behavior changes
 
+Implemented:
+
+- Added `apps/web/src/lib/services/agentic-chat-lite/preview/`.
+- Added admin-only endpoint:
+  `apps/web/src/routes/api/admin/chat/lite-prompt-preview/+server.ts`.
+- Reuses `loadFastChatPromptContext`, `selectFastChatTools`,
+  `buildLitePromptEnvelope`, `buildMasterPrompt` when requested,
+  `buildPromptCostBreakdown`, and `buildToolSurfaceSizeReport`.
+- Does not call an LLM, mutate data, create chat sessions, or change live chat
+  behavior.
+- Focused tests cover global preview, focused entity preview, optional current
+  v2 comparison, invalid input, unauthenticated access, and non-admin access.
+
 ### Phase 3: Shadow comparison
+
+Status: snapshot-backed comparison implemented on 2026-04-14.
 
 Outcome:
 
@@ -444,12 +461,55 @@ Work:
 - add report output for gaps
 - tag results with `prompt_variant = lite_seed_v1`
 
+Implementation direction:
+
+- Start with a pure comparison service under
+  `apps/web/src/lib/services/agentic-chat-lite/shadow/`.
+- Input should be a `chat_prompt_snapshots` row or an equivalent fixture, so
+  tests can run without database access.
+- Reconstruct `MasterPromptContext` from `prompt_sections`,
+  `request_payload`, and `context_payload`.
+- Render lite with the current canonical selected tools, then compare it against
+  the stored v2 snapshot prompt and stored provider tool definitions.
+- Keep this observability-only. Do not wire lite into `/api/agent/v2/stream`
+  until Phase 4.
+
+Implemented:
+
+- Added `apps/web/src/lib/services/agentic-chat-lite/shadow/`.
+- Added `buildLiteShadowComparison({ promptSnapshot })`.
+- Added `formatLiteShadowComparisonReport(comparison)`.
+- Added admin-only endpoint:
+  `apps/web/src/routes/api/admin/chat/lite-shadow-comparison/+server.ts`.
+- Endpoint accepts `prompt_snapshot_id` or `turn_run_id`, loads the stored
+  `chat_prompt_snapshots` row, and returns structured comparison output plus an
+  optional text report.
+- Comparison output includes:
+    - `prompt_variant = "lite_seed_v1"`
+    - snapshot/version identifiers
+    - reconstructed context scope
+    - v2 and lite cost breakdowns
+    - v2 and lite provider tool surface reports
+    - prompt/provider payload deltas
+    - tool names kept, added, and removed
+    - context keys kept, added, and missing
+    - gaps such as missing `context_payload`
+
+Still out of scope:
+
+- Parsing local `.prompt-dumps` files directly. Phase 3 currently targets
+  database-backed prompt snapshots.
+- Running lite by default or creating a parallel lite stream route. Those remain
+  later rollout/evaluation decisions.
+
 Acceptance:
 
 - can answer "what got removed, moved, or kept"
 - can identify missing global/project/entity context before live testing
 
 ### Phase 4: Runtime prompt variant
+
+Status: implemented on 2026-04-14.
 
 Outcome:
 
@@ -478,6 +538,26 @@ Acceptance:
 - v2 remains default
 - lite can be tested in the same chat infrastructure
 - failures are traceable to prompt variant
+
+Implemented:
+
+- Added guarded request-level `prompt_variant` parsing for `/api/agent/v2/stream`.
+- Kept untagged requests on `fastchat_prompt_v1`.
+- Allowed `lite_seed_v1` only in dev or for users in `admin_users`.
+- Reused the existing context/session/history/tool/runtime stream path.
+- Swapped only prompt construction to `buildLitePromptEnvelope` when the lite
+  variant is selected.
+- Persisted `prompt_variant` in `chat_prompt_snapshots`.
+- Added lite section metadata, context inventory, tools summary, prompt cost,
+  and tool surface report metadata to prompt snapshots.
+- Added lite section breakdowns to local prompt dumps when lite is selected.
+
+Intentionally still out of scope:
+
+- normal-user access to `lite_seed_v1`
+- changing the default v2 prompt
+- adding a parallel `/api/agent/lite/stream` route
+- adding a frontend switch
 
 ### Phase 5: Parallel stream endpoint
 
@@ -508,6 +588,8 @@ Acceptance:
 
 ### Phase 6: UI side-by-side testing
 
+Status: implemented on 2026-04-14.
+
 Outcome:
 
 - selected users can test v2 and lite side by side.
@@ -524,6 +606,24 @@ Acceptance:
 - normal users stay on v2
 - dev/admin can switch one chat turn or one session to lite
 - no cross-contamination of prompt variant in snapshots
+
+Implemented:
+
+- Added a dev/admin-only prompt variant selector in `AgentChatModal.svelte`.
+- Kept normal-user payloads untagged so they remain on `fastchat_prompt_v1`.
+- Sends `prompt_variant: "lite_seed_v1"` only when the selector is explicitly
+  set for the next turn.
+- Resets the selector to `fastchat_prompt_v1` after each send and on
+  conversation reset.
+- Shows prompt variant in admin session prompt snapshot summaries and the
+  prompt snapshot metric card.
+- Includes prompt variant in session audit markdown and prompt eval targets.
+
+Intentionally still out of scope:
+
+- exposing lite to normal users
+- making lite sticky across sessions
+- adding a parallel `/api/agent/lite/stream` route
 
 ### Phase 7: Evals and migration decision
 

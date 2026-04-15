@@ -22,6 +22,7 @@ export type PromptEvalTurnRun = {
 	validation_failure_count?: number | null;
 	prompt_snapshot?: {
 		id?: string | null;
+		prompt_variant?: string | null;
 		approx_prompt_tokens?: number | null;
 		rendered_dump_text?: string | null;
 	} | null;

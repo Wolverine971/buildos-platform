@@ -73,8 +73,12 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(instructionsBlock).toContain('## Agent Behavior');
 		expect(instructionsBlock).toContain('Do not claim actions you did not perform.');
 		expect(instructionsBlock).toContain(
+			'Only say an entity was created, updated, moved, merged, archived, deleted, scheduled, or linked after the corresponding write tool succeeded.'
+		);
+		expect(instructionsBlock).toContain(
 			'If data is missing or a tool fails, state what happened and request the minimum next input or retry.'
 		);
+		expect(instructionsBlock).toContain('I was unable to <requested action>');
 		expect(instructionsBlock).toContain('## Data Rules');
 		expect(instructionsBlock).toContain(
 			'Do not use `onto.project.graph.reorganize` to reorganize documents.'

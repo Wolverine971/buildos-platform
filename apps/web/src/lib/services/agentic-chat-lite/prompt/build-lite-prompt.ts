@@ -5,6 +5,11 @@ import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tool
 import { extractToolNamesFromDefinitions } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
+import type {
+	FastChatProjectIntelligence,
+	FastChatRecentChange,
+	FastChatWorkSignal
+} from '$lib/services/agentic-chat-v2/context-models';
 import {
 	LITE_PROMPT_VARIANT,
 	type LitePromptContextInventory,
@@ -12,9 +17,11 @@ import {
 	type LitePromptEnvelope,
 	type LitePromptFocus,
 	type LitePromptInput,
+	type LitePromptProjectDigest,
 	type LitePromptRetrievalMap,
 	type LitePromptSection,
 	type LitePromptSectionId,
+	type LitePromptTimelineItem,
 	type LitePromptTimelineSummary,
 	type LitePromptToolsSummary
 } from './types';
@@ -38,19 +45,21 @@ type SectionDraft = Omit<LitePromptSection, 'chars' | 'estimatedTokens'>;
 export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvelope {
 	const focus = buildFocus(input);
 	const dataSummary = summarizeData(input.data);
-	const timeline = buildTimelineSummary(input, focus, dataSummary);
+	const projectDigest = buildProjectDigest(input.data, focus, normalizeTime(input.now));
+	const timeline = buildTimelineSummary(input, focus, dataSummary, projectDigest);
 	const retrievalMap = buildRetrievalMap(input.retrievalMap ?? null, focus, dataSummary);
 	const toolsSummary = buildToolsSummary(input.contextType, input.tools ?? null);
 	const contextInventory: LitePromptContextInventory = {
 		focus,
 		dataSummary,
 		timeline,
-		retrievalMap
+		retrievalMap,
+		projectDigest
 	};
 
 	const sections = [
 		buildIdentityMissionSection(),
-		buildFocusPurposeSection(focus),
+		buildFocusPurposeSection(focus, projectDigest),
 		buildLocationLoadedContextSection(focus, input.data),
 		buildTimelineRecentActivitySection(timeline),
 		buildOperatingStrategySection(),
@@ -87,7 +96,29 @@ function buildIdentityMissionSection(): LitePromptSection {
 	});
 }
 
-function buildFocusPurposeSection(focus: LitePromptFocus): LitePromptSection {
+function buildFocusPurposeSection(
+	focus: LitePromptFocus,
+	projectDigest: LitePromptProjectDigest | null
+): LitePromptSection {
+	const focusLines = projectDigest
+		? [
+				`- Project: ${formatNullableLabel(projectDigest.projectName, focus.projectId)}${
+					projectDigest.projectState ? ` (${projectDigest.projectState})` : ''
+				}`,
+				projectDigest.projectDescription
+					? `- Project summary: ${projectDigest.projectDescription}`
+					: null,
+				projectDigest.primaryGoal ? `- Primary goal: ${projectDigest.primaryGoal}` : null,
+				projectDigest.activePlan ? `- Active plan: ${projectDigest.activePlan}` : null,
+				projectDigest.nextStep ? `- Current next step: ${projectDigest.nextStep}` : null,
+				`- Focus entity: ${formatFocusEntity(focus)}`
+			].filter(Boolean)
+		: [
+				`- Context type: ${focus.contextType}`,
+				`- Project: ${formatNullableLabel(focus.projectName, focus.projectId)}`,
+				`- Focus entity: ${formatFocusEntity(focus)}`
+			];
+
 	return makeSection({
 		id: 'focus_purpose',
 		title: 'Current Focus and Purpose',
@@ -103,12 +134,10 @@ function buildFocusPurposeSection(focus: LitePromptFocus): LitePromptSection {
 			focusEntityName: focus.focusEntityName
 		},
 		content: [
-			'What is in focus:',
-			`- Context type: ${focus.contextType}`,
-			`- Project: ${formatNullableLabel(focus.projectName, focus.projectId)}`,
-			`- Focus entity: ${formatFocusEntity(focus)}`,
+			projectDigest ? 'Current project focus:' : 'Current focus:',
+			...focusLines,
 			'',
-			'Why this context exists:',
+			'Use this seed for:',
 			`- ${describePurpose(focus)}`
 		].join('\n')
 	});
@@ -129,10 +158,10 @@ function buildLocationLoadedContextSection(
 			contextType: focus.contextType
 		},
 		content: [
-			'Where the agent is:',
-			`- Product surface: ${focus.productSurface}`,
-			`- Conversation position: ${focus.conversationPosition}`,
-			`- Scope location: ${describeScopeLocation(focus)}`,
+			'Loaded scope:',
+			`- ${describeScopeLocation(focus)}`,
+			'- Use exact IDs from the raw context below for reads and writes.',
+			'- Product surface and stream turn IDs are captured in dump metadata, not as project facts.',
 			'',
 			serializeLoadedContext(data)
 		].join('\n')
@@ -154,13 +183,22 @@ function buildTimelineRecentActivitySection(
 			factCount: timeline.facts.length
 		},
 		content: [
-			'When this chat turn is being seeded:',
+			'Timeline frame:',
 			`- Current time: ${timeline.generatedAt}`,
 			`- Timezone: ${timeline.timezone}`,
-			`- Timeline scope: ${timeline.scope}`,
+			`- Scope: ${timeline.scope}`,
 			'',
-			'Timeline and recent activity facts:',
-			formatBullets(timeline.facts, 'No timeline facts were loaded in the seed context.')
+			'Project status:',
+			formatBullets(timeline.statusLines, 'No project status summary was loaded.'),
+			'',
+			'Overdue or due soon:',
+			formatBullets(timeline.overdueLines, 'No overdue or near-term due work is loaded.'),
+			'',
+			'Upcoming dated work:',
+			formatBullets(timeline.upcomingLines, 'No upcoming dated work is loaded.'),
+			'',
+			'Recent project changes:',
+			formatBullets(timeline.recentChangeLines, 'No recent project changes are loaded.')
 		].join('\n')
 	});
 }
@@ -230,10 +268,13 @@ function buildContextInventoryRetrievalSection(
 	const arrayCountLines = Object.entries(dataSummary.arrayCounts).map(
 		([key, count]) => `${key}: ${count}`
 	);
+	const emptyArrayKeys = Object.entries(dataSummary.arrayCounts)
+		.filter(([, count]) => count === 0)
+		.map(([key]) => key);
 
 	return makeSection({
 		id: 'context_inventory_retrieval',
-		title: 'Context Inventory and Retrieval Map',
+		title: 'Loaded Data and Retrieval Boundaries',
 		kind: 'dynamic',
 		source: 'lite.context_inventory',
 		slots: {
@@ -245,19 +286,19 @@ function buildContextInventoryRetrievalSection(
 			fetchWhenNeeded: retrievalMap.fetchWhenNeeded
 		},
 		content: [
-			'Context inventory:',
-			`- Data kind: ${dataSummary.kind}`,
-			`- Has structured data: ${dataSummary.hasData ? 'yes' : 'no'}`,
-			`- Top-level keys: ${formatInlineList(dataSummary.topLevelKeys)}`,
-			`- Object keys: ${formatInlineList(dataSummary.objectKeys)}`,
-			'- Array counts:',
-			formatBullets(arrayCountLines, 'No top-level arrays were loaded.'),
+			'Loaded data snapshot:',
+			`- Structured context loaded: ${dataSummary.hasData ? 'yes' : 'no'} (${dataSummary.kind}).`,
+			dataSummary.contextMeta
+				? `- Source: ${formatContextSource(dataSummary.contextMeta)}`
+				: '- Source: not specified.',
+			`- Counts: ${arrayCountLines.length > 0 ? arrayCountLines.join(', ') : 'no top-level arrays loaded'}.`,
+			`- Empty loaded sets: ${emptyArrayKeys.length > 0 ? emptyArrayKeys.join(', ') : 'none'}.`,
 			'',
-			'Retrieval map:',
+			'Retrieval boundaries:',
 			'Loaded:',
 			formatBullets(retrievalMap.loaded, 'Nothing explicit was marked as loaded.'),
 			'',
-			'Omitted by default:',
+			'Not preloaded:',
 			formatBullets(retrievalMap.omitted, 'Nothing explicit was marked as omitted.'),
 			'',
 			'Fetch only when needed:',
@@ -363,18 +404,118 @@ function summarizeData(data: LitePromptInput['data']): LitePromptDataSummary {
 	};
 }
 
+function buildProjectDigest(
+	dataInput: LitePromptInput['data'],
+	focus: LitePromptFocus,
+	nowIso: string
+): LitePromptProjectDigest | null {
+	const data = isRecord(dataInput) ? dataInput : null;
+	if (!data) return null;
+
+	const directProject = isRecord(data.project) ? data.project : null;
+	if (!directProject && !isProjectScoped(focus.contextType)) return null;
+	const project = directProject ?? extractProjectRecord(data);
+
+	const now = parseDate(nowIso) ?? new Date();
+	const goals = recordsForKey(data, 'goals');
+	const milestones = recordsForKey(data, 'milestones');
+	const plans = recordsForKey(data, 'plans');
+	const tasks = recordsForKey(data, 'tasks');
+	const documents = recordsForKey(data, 'documents');
+	const events = recordsForKey(data, 'events');
+	const primaryGoal = selectPrimaryGoal(goals);
+	const activePlan = selectActivePlan(plans);
+	const counts = {
+		goals: goals.length,
+		milestones: milestones.length,
+		plans: plans.length,
+		tasks: tasks.length,
+		documents: documents.length,
+		events: events.length,
+		openTasks: tasks.filter(isOpenRecord).length,
+		completedTasks: tasks.filter(isCompletedRecord).length,
+		openMilestones: milestones.filter(isOpenRecord).length
+	};
+	const datedItems = collectDatedWorkItems(data, now);
+	const recentChanges = collectRecentChangeItems(data, now);
+	const overdueItems = datedItems
+		.filter((item) => item.date && parseDate(item.date) && (parseDate(item.date) as Date) < now)
+		.slice(0, 6);
+	const futureItems = datedItems
+		.filter(
+			(item) => item.date && parseDate(item.date) && (parseDate(item.date) as Date) >= now
+		)
+		.slice(0, 8);
+	const dueSoonItems = futureItems.filter((item) => {
+		const date = item.date ? parseDate(item.date) : null;
+		if (!date) return false;
+		return dayDelta(now, date) <= 14;
+	});
+	const projectName = stringValue(project?.name) ?? focus.projectName;
+	const projectState = stringValue(project?.state_key);
+	const projectDescription = truncateText(stringValue(project?.description), 280);
+	const nextStep = truncateText(stringValue(project?.next_step_short), 220);
+	const primaryGoalLine = primaryGoal ? formatDigestEntity(primaryGoal, 'goal') : null;
+	const activePlanLine = activePlan ? formatDigestEntity(activePlan, 'plan') : null;
+	const priorityTasks = tasks
+		.filter(isOpenRecord)
+		.sort(comparePriorityWork(now))
+		.slice(0, 5)
+		.map((task) => formatDigestEntity(task, 'task'));
+
+	const statusLines = [
+		projectName
+			? `${projectName}${projectState ? ` is ${projectState}` : ''}.`
+			: projectState
+				? `Project state: ${projectState}.`
+				: null,
+		projectDescription ? `Project summary: ${projectDescription}` : null,
+		primaryGoalLine ? `Primary goal: ${primaryGoalLine}` : null,
+		activePlanLine ? `Active plan: ${activePlanLine}` : null,
+		nextStep ? `Current next step: ${nextStep}` : null,
+		`Loaded work: ${counts.openTasks} open tasks, ${counts.completedTasks} completed tasks, ${counts.openMilestones} open milestones, ${counts.plans} plans, ${counts.documents} documents, ${counts.events} events.`,
+		priorityTasks.length > 0
+			? `Top open tasks: ${priorityTasks.join('; ')}.`
+			: 'No open tasks are loaded.'
+	].filter(Boolean) as string[];
+
+	return {
+		projectName,
+		projectState,
+		projectDescription,
+		nextStep,
+		primaryGoal: primaryGoalLine,
+		activePlan: activePlanLine,
+		counts,
+		priorityTasks,
+		overdueItems,
+		dueSoonItems,
+		upcomingItems: futureItems,
+		recentChanges,
+		statusLines
+	};
+}
+
 function buildTimelineSummary(
 	input: LitePromptInput,
 	focus: LitePromptFocus,
-	dataSummary: LitePromptDataSummary
+	dataSummary: LitePromptDataSummary,
+	projectDigest: LitePromptProjectDigest | null
 ): LitePromptTimelineSummary {
 	const generatedAt = normalizeTime(input.now);
 	const timezone = input.timezone ?? DEFAULT_TIMEZONE;
 	const facts: string[] = [];
 	const data = isRecord(input.data) ? input.data : null;
+	const projectIntelligence = extractProjectIntelligence(data);
 
 	if (dataSummary.contextMeta?.generated_at) {
 		facts.push(`Context generated at ${String(dataSummary.contextMeta.generated_at)}.`);
+	}
+
+	if (projectIntelligence) {
+		facts.push(
+			`Project intelligence loaded: ${projectIntelligence.counts.overdue_total} overdue, ${projectIntelligence.counts.due_soon_total} due soon, ${projectIntelligence.counts.upcoming_total} upcoming, ${projectIntelligence.counts.recent_change_total} recent changes.`
+		);
 	}
 
 	const eventWindow = data && isRecord(data.events_window) ? data.events_window : null;
@@ -401,7 +542,25 @@ function buildTimelineSummary(
 		generatedAt,
 		timezone,
 		scope: describeTimelineScope(focus),
-		facts
+		facts,
+		statusLines: projectIntelligence
+			? buildProjectIntelligenceStatusLines(projectIntelligence)
+			: projectDigest?.statusLines.length
+				? projectDigest.statusLines
+				: facts.slice(0, 4),
+		overdueLines: projectIntelligence
+			? formatWorkSignalLines(projectIntelligence.overdue_or_due_soon)
+			: buildOverdueDueSoonLines(projectDigest),
+		upcomingLines: projectIntelligence
+			? formatWorkSignalLines(projectIntelligence.upcoming_work)
+			: formatTimelineItems(projectDigest?.upcomingItems ?? []),
+		recentChangeLines: projectIntelligence
+			? formatRecentChangeLines(projectIntelligence.recent_changes)
+			: formatTimelineItems(
+					projectDigest?.recentChanges.length
+						? projectDigest.recentChanges
+						: collectNestedRecentActivityItems(data, generatedAt)
+				)
 	};
 }
 
@@ -618,6 +777,121 @@ function describeTimelineScope(focus: LitePromptFocus): string {
 	return 'workspace timeline across accessible projects';
 }
 
+function extractProjectIntelligence(
+	data: Record<string, unknown> | null
+): FastChatProjectIntelligence | null {
+	if (!data || !isRecord(data.project_intelligence)) return null;
+	const intelligence = data.project_intelligence as unknown as FastChatProjectIntelligence;
+	if (!intelligence.generated_at || !intelligence.counts) return null;
+	if (!Array.isArray(intelligence.overdue_or_due_soon)) return null;
+	if (!Array.isArray(intelligence.upcoming_work)) return null;
+	if (!Array.isArray(intelligence.recent_changes)) return null;
+	return intelligence;
+}
+
+function buildProjectIntelligenceStatusLines(intelligence: FastChatProjectIntelligence): string[] {
+	const lines = [
+		`Loaded project intelligence: ${intelligence.counts.overdue_total} overdue, ${intelligence.counts.due_soon_total} due soon, ${intelligence.counts.upcoming_total} upcoming, ${intelligence.counts.recent_change_total} recent changes.`,
+		intelligence.scope === 'global' &&
+		typeof intelligence.counts.accessible_projects === 'number'
+			? `Workspace scope: ${intelligence.counts.accessible_projects} accessible projects considered.`
+			: intelligence.project_name
+				? `Project scope: ${intelligence.project_name}.`
+				: null
+	].filter(Boolean) as string[];
+
+	for (const summary of intelligence.project_summaries.slice(0, 6)) {
+		const countParts = [
+			summary.counts.overdue > 0 ? `${summary.counts.overdue} overdue` : null,
+			summary.counts.due_soon > 0 ? `${summary.counts.due_soon} due soon` : null,
+			summary.counts.upcoming > 0 ? `${summary.counts.upcoming} upcoming` : null,
+			summary.counts.recent_changes > 0
+				? `${summary.counts.recent_changes} recent changes`
+				: null
+		].filter(Boolean);
+		const counts = countParts.length > 0 ? countParts.join(', ') : 'no active signals loaded';
+		const nextStep = summary.next_step_short ? ` Next step: ${summary.next_step_short}` : '';
+		lines.push(`${summary.project_name}: ${counts}.${nextStep}`);
+	}
+
+	if (intelligence.maybe_more.project_summaries) {
+		lines.push('More projects have signals than fit in the seed snapshot.');
+	}
+
+	return lines;
+}
+
+function formatSignalRelative(daysDelta: number): string {
+	if (daysDelta === 0) return 'today';
+	if (daysDelta === 1) return 'tomorrow';
+	if (daysDelta === -1) return 'yesterday';
+	if (daysDelta > 1) return `in ${daysDelta} days`;
+	return `${Math.abs(daysDelta)} days ago`;
+}
+
+function formatWorkSignalLines(signals: FastChatWorkSignal[]): string[] {
+	return signals.map((signal) => {
+		const date = parseDate(signal.date);
+		const dateText = date ? formatDate(date) : signal.date;
+		const bucketLabel =
+			signal.bucket === 'overdue'
+				? 'Overdue'
+				: signal.bucket === 'due_soon'
+					? 'Due soon'
+					: 'Upcoming';
+		const project = signal.project_name ? ` in ${signal.project_name}` : '';
+		const state = signal.state_key ? `, ${signal.state_key}` : '';
+		return `${bucketLabel}: ${dateText}: ${signal.kind} "${signal.title}"${project}${state}, ${formatSignalRelative(signal.days_delta)}.`;
+	});
+}
+
+function formatRecentChangeLines(changes: FastChatRecentChange[]): string[] {
+	return changes.map((change) => {
+		const date = parseDate(change.changed_at);
+		const dateText = date ? formatDate(date) : change.changed_at;
+		const title = change.title ? `"${change.title}"` : change.kind;
+		const project = change.project_name ? ` in ${change.project_name}` : '';
+		return `${dateText}: ${change.kind} ${title} ${change.action}${project}.`;
+	});
+}
+
+function collectNestedRecentActivityItems(
+	data: Record<string, unknown> | null,
+	nowIso: string
+): LitePromptTimelineItem[] {
+	if (!data || !Array.isArray(data.projects)) return [];
+	const now = parseDate(nowIso) ?? new Date();
+	const items: LitePromptTimelineItem[] = [];
+
+	for (const bundle of data.projects) {
+		if (!isRecord(bundle) || !Array.isArray(bundle.recent_activity)) continue;
+		const project = isRecord(bundle.project) ? bundle.project : null;
+		const projectName = stringValue(project?.name);
+		for (const activity of bundle.recent_activity) {
+			if (!isRecord(activity)) continue;
+			const date = parseDate(activity.updated_at ?? activity.created_at);
+			if (!date) continue;
+			const title = truncateText(titleForRecord(activity, 'activity'), 160) ?? 'activity';
+			items.push({
+				kind: stringValue(activity.entity_type) ?? 'activity',
+				id: stringValue(activity.entity_id) ?? stringValue(activity.id),
+				title: projectName ? `${title} (${projectName})` : title,
+				state: stringValue(activity.action),
+				date: date.toISOString(),
+				relative: describeRelativeDate(now, date)
+			});
+		}
+	}
+
+	return items
+		.sort((left, right) => {
+			const leftDate = parseDate(left.date)?.getTime() ?? 0;
+			const rightDate = parseDate(right.date)?.getTime() ?? 0;
+			return rightDate - leftDate;
+		})
+		.slice(0, 8);
+}
+
 function collectDateFacts(data: Record<string, unknown> | null): string[] {
 	if (!data) return [];
 	const facts: string[] = [];
@@ -667,6 +941,286 @@ function countRecentActivity(data: Record<string, unknown> | null): number {
 		if (!isRecord(projectBundle) || !Array.isArray(projectBundle.recent_activity)) return total;
 		return total + projectBundle.recent_activity.length;
 	}, 0);
+}
+
+function extractProjectRecord(data: Record<string, unknown>): Record<string, unknown> | null {
+	if (isRecord(data.project)) return data.project;
+	const projects = data.projects;
+	if (!Array.isArray(projects)) return null;
+	for (const projectBundle of projects) {
+		if (!isRecord(projectBundle)) continue;
+		if (isRecord(projectBundle.project)) return projectBundle.project;
+	}
+	return null;
+}
+
+function recordsForKey(data: Record<string, unknown>, key: string): Record<string, unknown>[] {
+	const value = data[key];
+	return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function stringValue(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+function numberValue(value: unknown): number | null {
+	if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+	if (typeof value === 'string') {
+		const parsed = Number.parseFloat(value);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+}
+
+function parseDate(value: unknown): Date | null {
+	const text = stringValue(value);
+	if (!text) return null;
+	const date = new Date(text);
+	return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function isCompletedRecord(record: Record<string, unknown>): boolean {
+	if (record.completed_at) return true;
+	const state = stringValue(record.state_key)?.toLowerCase() ?? '';
+	return ['done', 'complete', 'completed', 'closed', 'archived', 'cancelled'].includes(state);
+}
+
+function isOpenRecord(record: Record<string, unknown>): boolean {
+	return !isCompletedRecord(record);
+}
+
+function titleForRecord(record: Record<string, unknown>, fallback: string): string {
+	return (
+		stringValue(record.title) ??
+		stringValue(record.name) ??
+		stringValue(record.summary) ??
+		stringValue(record.id) ??
+		fallback
+	);
+}
+
+function selectPrimaryGoal(goals: Record<string, unknown>[]): Record<string, unknown> | null {
+	return goals.find(isOpenRecord) ?? goals[0] ?? null;
+}
+
+function selectActivePlan(plans: Record<string, unknown>[]): Record<string, unknown> | null {
+	return (
+		plans.find((plan) =>
+			['active', 'in_progress'].includes(stringValue(plan.state_key) ?? '')
+		) ??
+		plans.find(isOpenRecord) ??
+		plans[0] ??
+		null
+	);
+}
+
+function comparePriorityWork(now: Date) {
+	return (left: Record<string, unknown>, right: Record<string, unknown>): number => {
+		const leftPriority = numberValue(left.priority) ?? -1;
+		const rightPriority = numberValue(right.priority) ?? -1;
+		if (leftPriority !== rightPriority) return rightPriority - leftPriority;
+		const leftDue = parseDate(left.due_at);
+		const rightDue = parseDate(right.due_at);
+		if (leftDue && rightDue && leftDue.getTime() !== rightDue.getTime()) {
+			return (
+				Math.abs(leftDue.getTime() - now.getTime()) -
+				Math.abs(rightDue.getTime() - now.getTime())
+			);
+		}
+		if (leftDue && !rightDue) return -1;
+		if (!leftDue && rightDue) return 1;
+		return (stringValue(right.updated_at) ?? '').localeCompare(
+			stringValue(left.updated_at) ?? ''
+		);
+	};
+}
+
+function formatDigestEntity(record: Record<string, unknown>, kind: string): string {
+	const title = truncateText(titleForRecord(record, kind), 140) ?? kind;
+	const state = stringValue(record.state_key);
+	const dueDate = parseDate(
+		record.due_at ?? record.target_date ?? record.end_at ?? record.start_at
+	);
+	const due = dueDate ? `, dated ${formatDate(dueDate)}` : '';
+	const priority = numberValue(record.priority);
+	const priorityText = priority !== null ? `, priority ${priority}` : '';
+	const details = state
+		? [state, priorityText.replace(/^, /, ''), due.replace(/^, /, '')]
+		: [priorityText.replace(/^, /, ''), due.replace(/^, /, '')];
+	const detailText = details.filter(Boolean).join(', ');
+	return `"${title}"${detailText ? ` (${detailText})` : ''}`;
+}
+
+function collectDatedWorkItems(data: Record<string, unknown>, now: Date): LitePromptTimelineItem[] {
+	const specs: Array<[string, string, string[]]> = [
+		['goal', 'goals', ['target_date']],
+		['milestone', 'milestones', ['due_at']],
+		['task', 'tasks', ['due_at', 'start_at']],
+		['event', 'events', ['start_at', 'end_at']],
+		['project', 'project', ['end_at', 'start_at']]
+	];
+	const items: LitePromptTimelineItem[] = [];
+
+	for (const [kind, key, dateKeys] of specs) {
+		const records =
+			key === 'project' && isRecord(data.project) ? [data.project] : recordsForKey(data, key);
+		for (const record of records) {
+			if (!isOpenRecord(record)) continue;
+			const dateValue = dateKeys
+				.map((dateKey) => record[dateKey])
+				.find((value) => parseDate(value));
+			const date = parseDate(dateValue);
+			if (!date) continue;
+			items.push({
+				kind,
+				id: stringValue(record.id),
+				title: truncateText(titleForRecord(record, kind), 160) ?? kind,
+				state: stringValue(record.state_key),
+				date: date.toISOString(),
+				relative: describeRelativeDate(now, date)
+			});
+		}
+	}
+
+	return items.sort((left, right) => {
+		const leftDate = parseDate(left.date)?.getTime() ?? 0;
+		const rightDate = parseDate(right.date)?.getTime() ?? 0;
+		return leftDate - rightDate;
+	});
+}
+
+function collectRecentChangeItems(
+	data: Record<string, unknown>,
+	now: Date
+): LitePromptTimelineItem[] {
+	const items: LitePromptTimelineItem[] = [];
+	const specs: Array<[string, string]> = [
+		['goal', 'goals'],
+		['milestone', 'milestones'],
+		['plan', 'plans'],
+		['task', 'tasks'],
+		['document', 'documents'],
+		['event', 'events']
+	];
+
+	for (const [kind, key] of specs) {
+		for (const record of recordsForKey(data, key)) {
+			const date = parseDate(record.updated_at ?? record.created_at);
+			if (!date) continue;
+			items.push({
+				kind,
+				id: stringValue(record.id),
+				title: truncateText(titleForRecord(record, kind), 160) ?? kind,
+				state: stringValue(record.state_key),
+				date: date.toISOString(),
+				relative: describeRelativeDate(now, date)
+			});
+		}
+	}
+
+	for (const activity of recordsForKey(data, 'recent_activity')) {
+		const date = parseDate(activity.updated_at ?? activity.created_at);
+		if (!date) continue;
+		items.push({
+			kind: stringValue(activity.entity_type) ?? 'activity',
+			id: stringValue(activity.entity_id) ?? stringValue(activity.id),
+			title: truncateText(titleForRecord(activity, 'activity'), 160) ?? 'activity',
+			state: stringValue(activity.action),
+			date: date.toISOString(),
+			relative: describeRelativeDate(now, date)
+		});
+	}
+
+	return items
+		.sort((left, right) => {
+			const leftDate = parseDate(left.date)?.getTime() ?? 0;
+			const rightDate = parseDate(right.date)?.getTime() ?? 0;
+			return rightDate - leftDate;
+		})
+		.slice(0, 8);
+}
+
+function buildOverdueDueSoonLines(projectDigest: LitePromptProjectDigest | null): string[] {
+	if (!projectDigest) return [];
+	const lines: string[] = [];
+	if (projectDigest.overdueItems.length > 0) {
+		lines.push(
+			...formatTimelineItems(projectDigest.overdueItems).map((line) => `Overdue: ${line}`)
+		);
+	} else {
+		lines.push('No overdue tasks, milestones, goals, or events are loaded.');
+	}
+
+	if (projectDigest.dueSoonItems.length > 0) {
+		lines.push(
+			...formatTimelineItems(projectDigest.dueSoonItems).map((line) => `Due soon: ${line}`)
+		);
+	} else {
+		lines.push('No loaded tasks, milestones, goals, or events are due in the next 14 days.');
+	}
+
+	const nextUpcoming = projectDigest.upcomingItems[0];
+	if (nextUpcoming && projectDigest.dueSoonItems.length === 0) {
+		lines.push(`Next scheduled item: ${formatTimelineItem(nextUpcoming)}.`);
+	}
+
+	return lines;
+}
+
+function formatTimelineItems(items: LitePromptTimelineItem[]): string[] {
+	return items.map((item) => `${formatTimelineItem(item)}.`);
+}
+
+function formatTimelineItem(item: LitePromptTimelineItem): string {
+	const date = item.date ? parseDate(item.date) : null;
+	const dateText = date ? formatDate(date) : 'no date';
+	const state = item.state ? `, ${item.state}` : '';
+	const relative = item.relative ? `, ${item.relative}` : '';
+	return `${dateText}: ${item.kind} "${item.title}"${state}${relative}`;
+}
+
+function dayDelta(left: Date, right: Date): number {
+	const msPerDay = 24 * 60 * 60 * 1000;
+	return Math.ceil((startOfUtcDay(right).getTime() - startOfUtcDay(left).getTime()) / msPerDay);
+}
+
+function startOfUtcDay(date: Date): Date {
+	return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function describeRelativeDate(now: Date, date: Date): string {
+	const delta = dayDelta(now, date);
+	if (delta === 0) return 'today';
+	if (delta === 1) return 'tomorrow';
+	if (delta === -1) return 'yesterday';
+	if (delta > 1) return `in ${delta} days`;
+	return `${Math.abs(delta)} days ago`;
+}
+
+function formatDate(date: Date): string {
+	return date.toISOString().slice(0, 10);
+}
+
+function truncateText(value: string | null, maxChars = 240): string | null {
+	if (!value) return null;
+	const normalized = value.replace(/\s+/g, ' ').trim();
+	if (normalized.length <= maxChars) return normalized;
+	return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
+}
+
+function formatContextSource(contextMeta: Record<string, unknown>): string {
+	const source = stringValue(contextMeta.source) ?? 'unknown';
+	const generatedAt = stringValue(contextMeta.generated_at);
+	const cacheAge = numberValue(contextMeta.cache_age_seconds);
+	return [
+		source,
+		generatedAt ? `generated ${generatedAt}` : null,
+		cacheAge !== null ? `cache age ${cacheAge}s` : null
+	]
+		.filter(Boolean)
+		.join(', ');
 }
 
 function normalizeTime(value: Date | string | null | undefined): string {

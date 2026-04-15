@@ -252,7 +252,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				supabase
 					.from('chat_prompt_snapshots')
 					.select(
-						'id, turn_run_id, session_id, user_id, snapshot_version, system_prompt_sha256, messages_sha256, tools_sha256, system_prompt_chars, message_chars, approx_prompt_tokens, created_at'
+						'id, turn_run_id, session_id, user_id, snapshot_version, prompt_variant, system_prompt_sha256, messages_sha256, tools_sha256, system_prompt_chars, message_chars, approx_prompt_tokens, created_at'
 					)
 					.gte('created_at', startIso)
 					.lte('created_at', endIso)

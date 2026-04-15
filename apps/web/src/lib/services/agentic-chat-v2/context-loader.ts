@@ -10,6 +10,10 @@ import type {
 	DailyBriefProjectBrief,
 	EntityContextData,
 	FastChatEventWindow,
+	FastChatProjectIntelligence,
+	FastChatProjectSignalSummary,
+	FastChatRecentChange,
+	FastChatWorkSignal,
 	GlobalContextData,
 	GlobalContextProjectBundle,
 	LightDocument,
@@ -47,6 +51,13 @@ const FASTCHAT_EVENT_WINDOW_PAST_DAYS = 7;
 const FASTCHAT_EVENT_WINDOW_FUTURE_DAYS = 14;
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const CONTEXT_RELEVANCE_DUE_SOON_DAYS = 7;
+const PROJECT_INTELLIGENCE_DUE_SOON_DAYS = 7;
+const PROJECT_INTELLIGENCE_UPCOMING_DAYS = 30;
+const PROJECT_INTELLIGENCE_RECENT_CHANGES_DAYS = 7;
+const PROJECT_INTELLIGENCE_RECENT_CHANGES_MAX_LOOKBACK_DAYS = 21;
+const PROJECT_INTELLIGENCE_GLOBAL_ATTENTION_LIMIT = 16;
+const PROJECT_INTELLIGENCE_PROJECT_ATTENTION_LIMIT = 12;
+const PROJECT_INTELLIGENCE_GLOBAL_PROJECT_LIMIT = 8;
 const PROJECT_CONTEXT_GOAL_LIMIT = 12;
 const PROJECT_CONTEXT_MILESTONE_LIMIT = 12;
 const PROJECT_CONTEXT_PLAN_LIMIT = 12;
@@ -146,6 +157,7 @@ type FastChatContextRpcResponse = {
 	linked_entities?: Record<string, Array<Record<string, unknown>>>;
 	linked_edges?: LinkedEdge[];
 	entity_counts?: FastChatContextEntityCounts | null;
+	project_intelligence?: FastChatProjectIntelligence | null;
 };
 
 type LinkedEntityConfig = {
@@ -646,7 +658,8 @@ const COMPLETED_STATE_KEYS = new Set([
 	'closed',
 	'archived',
 	'cancelled',
-	'canceled'
+	'canceled',
+	'abandoned'
 ]);
 
 function normalizeStateKey(value: string | null | undefined): string {
@@ -929,8 +942,10 @@ function buildProjectContextData(params: {
 	documents: ContextDocumentRow[];
 	events: EventRow[];
 	members: ProjectMemberRow[];
+	projectLogs?: ProjectLogRow[];
 	eventWindow: FastChatEventWindow;
 	entityCounts?: FastChatContextEntityCounts | null;
+	projectIntelligence?: FastChatProjectIntelligence | null;
 }): ProjectContextData {
 	const nowMs = parseTimestamp(params.eventWindow.now_at) ?? Date.now();
 	const rawDocStructure = params.projectRow.doc_structure as DocStructure | null | undefined;
@@ -952,6 +967,7 @@ function buildProjectContextData(params: {
 		linkedDocIds,
 		PROJECT_CONTEXT_DOCUMENT_LIMIT
 	);
+	const mappedProject = mapProject(params.projectRow, { includeDocStructure: false });
 	const fallbackUnlinkedTotal = params.documents.filter(
 		(row) => !linkedDocIds.has(row.id)
 	).length;
@@ -982,7 +998,7 @@ function buildProjectContextData(params: {
 	);
 
 	return {
-		project: mapProject(params.projectRow, { includeDocStructure: false }),
+		project: mappedProject,
 		doc_structure,
 		goals: goalRows.map(mapGoal),
 		milestones: milestoneRows.map(mapMilestone),
@@ -992,6 +1008,20 @@ function buildProjectContextData(params: {
 		events: eventRows.map(mapEvent),
 		events_window: params.eventWindow,
 		members: sortProjectMembers(params.members.map(mapProjectMember)),
+		project_intelligence:
+			params.projectIntelligence ??
+			buildProjectIntelligenceSnapshot({
+				scope: 'project',
+				source: params.source === 'rpc' ? 'load_fastchat_context' : 'fallback',
+				projects: [mappedProject],
+				goals: params.goals,
+				milestones: params.milestones,
+				tasks: params.tasks,
+				events: params.events,
+				logs: params.projectLogs ?? [],
+				projectId: mappedProject.id,
+				projectName: mappedProject.name
+			}),
 		context_meta: {
 			generated_at: new Date().toISOString(),
 			source: params.source,
@@ -1302,6 +1332,454 @@ function buildGlobalContextMeta(params: {
 	};
 }
 
+type ProjectIntelligenceProject = Pick<
+	LightProject,
+	'id' | 'name' | 'state_key' | 'next_step_short' | 'updated_at' | 'start_at' | 'end_at'
+>;
+
+type ProjectIntelligenceGoal = Pick<
+	GoalRow,
+	'id' | 'project_id' | 'name' | 'state_key' | 'target_date' | 'completed_at' | 'updated_at'
+>;
+
+type ProjectIntelligenceMilestone = Pick<
+	MilestoneRow,
+	'id' | 'project_id' | 'title' | 'state_key' | 'due_at' | 'completed_at' | 'updated_at'
+>;
+
+type ProjectIntelligenceTask = Pick<
+	TaskRow,
+	| 'id'
+	| 'project_id'
+	| 'title'
+	| 'state_key'
+	| 'priority'
+	| 'start_at'
+	| 'due_at'
+	| 'completed_at'
+	| 'updated_at'
+>;
+
+type ProjectIntelligenceEvent = Pick<
+	EventRow,
+	'id' | 'project_id' | 'title' | 'state_key' | 'start_at' | 'end_at' | 'updated_at'
+>;
+
+type ProjectIntelligenceWorkCandidate = FastChatWorkSignal & {
+	dateMs: number;
+};
+
+function projectNameLookup(projects: ProjectIntelligenceProject[]): Map<string, string | null> {
+	return new Map(projects.map((project) => [project.id, project.name ?? null]));
+}
+
+function projectLookup(
+	projects: ProjectIntelligenceProject[]
+): Map<string, ProjectIntelligenceProject> {
+	return new Map(projects.map((project) => [project.id, project]));
+}
+
+function normalizeWorkTitle(value: string | null | undefined, fallback: string): string {
+	const trimmed = normalizeOptionalText(value);
+	return trimmed ?? fallback;
+}
+
+function resolveProjectIntelligenceLimit(scope: FastChatProjectIntelligence['scope']): number {
+	return scope === 'global'
+		? PROJECT_INTELLIGENCE_GLOBAL_ATTENTION_LIMIT
+		: PROJECT_INTELLIGENCE_PROJECT_ATTENTION_LIMIT;
+}
+
+function resolveProjectSummaryLimit(scope: FastChatProjectIntelligence['scope']): number {
+	return scope === 'global' ? PROJECT_INTELLIGENCE_GLOBAL_PROJECT_LIMIT : 1;
+}
+
+function daysDeltaFromMs(nowMs: number, targetMs: number): number {
+	return Math.ceil((startOfUtcDayMs(targetMs) - startOfUtcDayMs(nowMs)) / DAY_IN_MS);
+}
+
+function startOfUtcDayMs(valueMs: number): number {
+	const date = new Date(valueMs);
+	return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function resolveWorkBucket(dateMs: number, nowMs: number): FastChatWorkSignal['bucket'] | null {
+	if (dateMs < nowMs) return 'overdue';
+	if (dateMs <= nowMs + PROJECT_INTELLIGENCE_DUE_SOON_DAYS * DAY_IN_MS) {
+		return 'due_soon';
+	}
+	if (dateMs <= nowMs + PROJECT_INTELLIGENCE_UPCOMING_DAYS * DAY_IN_MS) {
+		return 'upcoming';
+	}
+	return null;
+}
+
+function buildWorkCandidate(params: {
+	kind: FastChatWorkSignal['kind'];
+	id: string | null | undefined;
+	projectId: string | null | undefined;
+	projectName: string | null;
+	title: string | null | undefined;
+	stateKey: string | null | undefined;
+	dateKind: FastChatWorkSignal['date_kind'];
+	date: string | null | undefined;
+	priority?: number | null;
+	updatedAt?: string | null;
+	nowMs: number;
+	fallbackTitle: string;
+}): ProjectIntelligenceWorkCandidate | null {
+	const id = normalizeOptionalText(params.id);
+	const projectId = normalizeOptionalText(params.projectId);
+	const dateMs = parseTimestamp(params.date ?? null);
+	if (!id || !projectId || dateMs === null) return null;
+	const bucket = resolveWorkBucket(dateMs, params.nowMs);
+	if (!bucket) return null;
+
+	return {
+		kind: params.kind,
+		id,
+		project_id: projectId,
+		project_name: params.projectName,
+		title: normalizeWorkTitle(params.title, params.fallbackTitle),
+		state_key: params.stateKey ?? null,
+		date_kind: params.dateKind,
+		date: new Date(dateMs).toISOString(),
+		bucket,
+		days_delta: daysDeltaFromMs(params.nowMs, dateMs),
+		priority: params.priority ?? null,
+		updated_at: params.updatedAt ?? null,
+		dateMs
+	};
+}
+
+function compareAttentionWork(
+	left: ProjectIntelligenceWorkCandidate,
+	right: ProjectIntelligenceWorkCandidate
+): number {
+	const bucketRank: Record<FastChatWorkSignal['bucket'], number> = {
+		overdue: 0,
+		due_soon: 1,
+		upcoming: 2
+	};
+	const bucketDelta = bucketRank[left.bucket] - bucketRank[right.bucket];
+	if (bucketDelta !== 0) return bucketDelta;
+	if (left.dateMs !== right.dateMs) return left.dateMs - right.dateMs;
+	const priorityDelta = (right.priority ?? -1) - (left.priority ?? -1);
+	if (priorityDelta !== 0) return priorityDelta;
+	return left.title.localeCompare(right.title);
+}
+
+function compareUpcomingWork(
+	left: ProjectIntelligenceWorkCandidate,
+	right: ProjectIntelligenceWorkCandidate
+): number {
+	if (left.dateMs !== right.dateMs) return left.dateMs - right.dateMs;
+	return left.title.localeCompare(right.title);
+}
+
+function stripWorkCandidate(candidate: ProjectIntelligenceWorkCandidate): FastChatWorkSignal {
+	const { dateMs: _dateMs, ...signal } = candidate;
+	return signal;
+}
+
+function extractProjectLogTitle(row: ProjectLogRow): string | null {
+	return extractTitle(row.after_data) ?? extractTitle(row.before_data);
+}
+
+function buildRecentChanges(params: {
+	logs: ProjectLogRow[];
+	projectNames: Map<string, string | null>;
+	nowMs: number;
+}): FastChatRecentChange[] {
+	const recentCutoffMs = params.nowMs - PROJECT_INTELLIGENCE_RECENT_CHANGES_DAYS * DAY_IN_MS;
+	const fallbackCutoffMs =
+		params.nowMs - PROJECT_INTELLIGENCE_RECENT_CHANGES_MAX_LOOKBACK_DAYS * DAY_IN_MS;
+	const eligible = params.logs
+		.filter((row) => row.action === 'created' || row.action === 'updated')
+		.map((row) => ({ row, changedMs: parseTimestamp(row.created_at) }))
+		.filter(
+			(entry): entry is { row: ProjectLogRow; changedMs: number } =>
+				entry.changedMs !== null && entry.changedMs >= fallbackCutoffMs
+		);
+	const recent = eligible.filter((entry) => entry.changedMs >= recentCutoffMs);
+	const selectedWindow = recent.length > 0 ? recent : eligible;
+
+	return selectedWindow
+		.sort((left, right) => right.changedMs - left.changedMs)
+		.map(({ row, changedMs }) => ({
+			kind: row.entity_type,
+			id: row.entity_id,
+			project_id: row.project_id,
+			project_name: params.projectNames.get(row.project_id) ?? null,
+			title: extractProjectLogTitle(row),
+			action: row.action,
+			changed_at: new Date(changedMs).toISOString()
+		}));
+}
+
+function addProjectCounts(
+	counts: Map<string, FastChatProjectSignalSummary['counts']>,
+	projectId: string
+): FastChatProjectSignalSummary['counts'] {
+	const existing = counts.get(projectId);
+	if (existing) return existing;
+	const created = {
+		overdue: 0,
+		due_soon: 0,
+		upcoming: 0,
+		recent_changes: 0
+	};
+	counts.set(projectId, created);
+	return created;
+}
+
+function buildProjectSignalSummaries(params: {
+	projects: ProjectIntelligenceProject[];
+	work: ProjectIntelligenceWorkCandidate[];
+	recentChanges: FastChatRecentChange[];
+	limit: number;
+}): FastChatProjectSignalSummary[] {
+	const counts = new Map<string, FastChatProjectSignalSummary['counts']>();
+	for (const work of params.work) {
+		const projectCounts = addProjectCounts(counts, work.project_id);
+		if (work.bucket === 'overdue') projectCounts.overdue += 1;
+		else if (work.bucket === 'due_soon') projectCounts.due_soon += 1;
+		else projectCounts.upcoming += 1;
+	}
+	for (const change of params.recentChanges) {
+		addProjectCounts(counts, change.project_id).recent_changes += 1;
+	}
+
+	return params.projects
+		.map((project) => ({
+			project,
+			counts:
+				counts.get(project.id) ??
+				({
+					overdue: 0,
+					due_soon: 0,
+					upcoming: 0,
+					recent_changes: 0
+				} satisfies FastChatProjectSignalSummary['counts'])
+		}))
+		.sort((left, right) => {
+			const leftAttention =
+				left.counts.overdue * 4 +
+				left.counts.due_soon * 3 +
+				left.counts.upcoming +
+				left.counts.recent_changes;
+			const rightAttention =
+				right.counts.overdue * 4 +
+				right.counts.due_soon * 3 +
+				right.counts.upcoming +
+				right.counts.recent_changes;
+			if (leftAttention !== rightAttention) return rightAttention - leftAttention;
+			return toTimestamp(right.project.updated_at) - toTimestamp(left.project.updated_at);
+		})
+		.slice(0, params.limit)
+		.map(({ project, counts }) => ({
+			project_id: project.id,
+			project_name: project.name,
+			state_key: project.state_key ?? null,
+			next_step_short: project.next_step_short ?? null,
+			updated_at: project.updated_at ?? null,
+			counts
+		}));
+}
+
+function normalizeProjectIntelligenceFromPayload(
+	value: unknown
+): FastChatProjectIntelligence | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const record = value as FastChatProjectIntelligence;
+	if (!record.generated_at || !record.scope) return null;
+	return record;
+}
+
+function buildProjectIntelligenceSnapshot(params: {
+	scope: FastChatProjectIntelligence['scope'];
+	source: FastChatProjectIntelligence['source'];
+	projects: ProjectIntelligenceProject[];
+	goals: ProjectIntelligenceGoal[];
+	milestones: ProjectIntelligenceMilestone[];
+	tasks: ProjectIntelligenceTask[];
+	events: ProjectIntelligenceEvent[];
+	logs: ProjectLogRow[];
+	projectId?: string | null;
+	projectName?: string | null;
+	now?: Date;
+}): FastChatProjectIntelligence {
+	const now = params.now ?? new Date();
+	const nowMs = now.getTime();
+	const projectNames = projectNameLookup(params.projects);
+	const projectsById = projectLookup(params.projects);
+	const work: ProjectIntelligenceWorkCandidate[] = [];
+
+	for (const project of params.projects) {
+		if (isCompletedByState(project.state_key)) continue;
+		const dateKind: FastChatWorkSignal['date_kind'] | null = project.end_at
+			? 'end_at'
+			: project.start_at
+				? 'start_at'
+				: null;
+		if (!dateKind) continue;
+		const signal = buildWorkCandidate({
+			kind: 'project',
+			id: project.id,
+			projectId: project.id,
+			projectName: project.name,
+			title: project.name,
+			stateKey: project.state_key,
+			dateKind,
+			date: dateKind === 'end_at' ? project.end_at : project.start_at,
+			updatedAt: project.updated_at,
+			nowMs,
+			fallbackTitle: 'Project'
+		});
+		if (signal) work.push(signal);
+	}
+
+	for (const goal of params.goals) {
+		if (isGoalCompleted(goal as GoalRow)) continue;
+		const signal = buildWorkCandidate({
+			kind: 'goal',
+			id: goal.id,
+			projectId: goal.project_id,
+			projectName: projectNames.get(goal.project_id) ?? null,
+			title: goal.name,
+			stateKey: goal.state_key,
+			dateKind: 'target_date',
+			date: goal.target_date,
+			updatedAt: goal.updated_at,
+			nowMs,
+			fallbackTitle: 'Goal'
+		});
+		if (signal) work.push(signal);
+	}
+
+	for (const milestone of params.milestones) {
+		if (isMilestoneCompleted(milestone as MilestoneRow)) continue;
+		const signal = buildWorkCandidate({
+			kind: 'milestone',
+			id: milestone.id,
+			projectId: milestone.project_id,
+			projectName: projectNames.get(milestone.project_id) ?? null,
+			title: milestone.title,
+			stateKey: milestone.state_key,
+			dateKind: 'due_at',
+			date: milestone.due_at,
+			updatedAt: milestone.updated_at,
+			nowMs,
+			fallbackTitle: 'Milestone'
+		});
+		if (signal) work.push(signal);
+	}
+
+	for (const task of params.tasks) {
+		if (isTaskCompleted(task as TaskRow)) continue;
+		const hasDueAt = Boolean(task.due_at);
+		const date = task.due_at ?? task.start_at;
+		if (!date) continue;
+		const signal = buildWorkCandidate({
+			kind: 'task',
+			id: task.id,
+			projectId: task.project_id,
+			projectName: projectNames.get(task.project_id) ?? null,
+			title: task.title,
+			stateKey: task.state_key,
+			dateKind: hasDueAt ? 'due_at' : 'start_at',
+			date,
+			priority: task.priority,
+			updatedAt: task.updated_at,
+			nowMs,
+			fallbackTitle: 'Task'
+		});
+		if (signal) {
+			if (!hasDueAt && signal.bucket !== 'upcoming') continue;
+			work.push(signal);
+		}
+	}
+
+	for (const event of params.events) {
+		if (isCompletedByState(event.state_key)) continue;
+		const eventProjectId = normalizeOptionalText(event.project_id);
+		if (!eventProjectId) continue;
+		const signal = buildWorkCandidate({
+			kind: 'event',
+			id: event.id,
+			projectId: eventProjectId,
+			projectName: projectNames.get(eventProjectId) ?? null,
+			title: event.title,
+			stateKey: event.state_key,
+			dateKind: 'start_at',
+			date: event.start_at,
+			updatedAt: event.updated_at,
+			nowMs,
+			fallbackTitle: 'Event'
+		});
+		if (signal?.bucket === 'upcoming') work.push(signal);
+	}
+
+	const recentChanges = buildRecentChanges({
+		logs: params.logs.filter((log) => projectsById.has(log.project_id)),
+		projectNames,
+		nowMs
+	});
+	const overdueOrDueSoon = work
+		.filter((item) => item.bucket === 'overdue' || item.bucket === 'due_soon')
+		.sort(compareAttentionWork);
+	const upcomingWork = work
+		.filter((item) => item.bucket === 'upcoming')
+		.sort(compareUpcomingWork);
+	const attentionLimit = resolveProjectIntelligenceLimit(params.scope);
+	const projectSummaryLimit = resolveProjectSummaryLimit(params.scope);
+	const projectSummaries = buildProjectSignalSummaries({
+		projects: params.projects,
+		work,
+		recentChanges,
+		limit: projectSummaryLimit
+	});
+
+	return {
+		generated_at: now.toISOString(),
+		scope: params.scope,
+		project_id: params.projectId ?? null,
+		project_name: params.projectName ?? null,
+		timezone: 'UTC',
+		windows: {
+			due_soon_days: PROJECT_INTELLIGENCE_DUE_SOON_DAYS,
+			upcoming_days: PROJECT_INTELLIGENCE_UPCOMING_DAYS,
+			recent_changes_days: PROJECT_INTELLIGENCE_RECENT_CHANGES_DAYS,
+			recent_changes_max_lookback_days: PROJECT_INTELLIGENCE_RECENT_CHANGES_MAX_LOOKBACK_DAYS
+		},
+		counts: {
+			accessible_projects: params.scope === 'global' ? params.projects.length : undefined,
+			projects_returned: projectSummaries.length,
+			overdue_total: overdueOrDueSoon.filter((item) => item.bucket === 'overdue').length,
+			due_soon_total: overdueOrDueSoon.filter((item) => item.bucket === 'due_soon').length,
+			upcoming_total: upcomingWork.length,
+			recent_change_total: recentChanges.length
+		},
+		overdue_or_due_soon: overdueOrDueSoon.slice(0, attentionLimit).map(stripWorkCandidate),
+		upcoming_work: upcomingWork.slice(0, attentionLimit).map(stripWorkCandidate),
+		recent_changes: recentChanges.slice(0, attentionLimit),
+		project_summaries: projectSummaries,
+		limits: {
+			overdue_or_due_soon: attentionLimit,
+			upcoming_work: attentionLimit,
+			recent_changes: attentionLimit,
+			project_summaries: projectSummaryLimit
+		},
+		maybe_more: {
+			overdue_or_due_soon: overdueOrDueSoon.length > attentionLimit,
+			upcoming_work: upcomingWork.length > attentionLimit,
+			recent_changes: recentChanges.length > attentionLimit,
+			project_summaries: params.projects.length > projectSummaryLimit
+		},
+		source: params.source
+	};
+}
+
 function buildGlobalProjectBundles(params: {
 	projects: LightProject[];
 	recentActivityByProject: Record<string, LightRecentActivity[]>;
@@ -1352,10 +1830,23 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 		)
 		.sort((a, b) => toTimestamp(b.updated_at) - toTimestamp(a.updated_at));
 	const lightProjects = allProjects.slice(0, GLOBAL_CONTEXT_PROJECT_LIMIT);
+	const allProjectIds = allProjects.map((project) => project.id);
 
 	if (allProjects.length === 0) {
 		return {
 			projects: [],
+			project_intelligence:
+				normalizeProjectIntelligenceFromPayload(payload.project_intelligence) ??
+				buildProjectIntelligenceSnapshot({
+					scope: 'global',
+					source: 'load_fastchat_context',
+					projects: [],
+					goals: [],
+					milestones: [],
+					tasks: [],
+					events: [],
+					logs: []
+				}),
 			context_meta: buildGlobalContextMeta({
 				source: 'rpc',
 				projectCount: 0,
@@ -1368,15 +1859,26 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 	const nowMs = Date.now();
 	const goals = asArray<GoalRow & { project_id?: string }>(payload.goals).filter(
 		(row): row is GoalRow & { project_id: string } =>
-			typeof row.project_id === 'string' && projectIds.includes(row.project_id)
+			typeof row.project_id === 'string' && allProjectIds.includes(row.project_id)
 	);
 	const milestones = asArray<MilestoneRow & { project_id?: string }>(payload.milestones).filter(
 		(row): row is MilestoneRow & { project_id: string } =>
-			typeof row.project_id === 'string' && projectIds.includes(row.project_id)
+			typeof row.project_id === 'string' && allProjectIds.includes(row.project_id)
 	);
 	const plans = asArray<PlanRow & { project_id?: string }>(payload.plans).filter(
 		(row): row is PlanRow & { project_id: string } =>
-			typeof row.project_id === 'string' && projectIds.includes(row.project_id)
+			typeof row.project_id === 'string' && allProjectIds.includes(row.project_id)
+	);
+	const tasks = asArray<TaskRow & { project_id?: string }>(payload.tasks).filter(
+		(row): row is TaskRow & { project_id: string } =>
+			typeof row.project_id === 'string' && allProjectIds.includes(row.project_id)
+	);
+	const events = asArray<EventRow & { project_id?: string }>(payload.events).filter(
+		(row): row is EventRow & { project_id: string } =>
+			typeof row.project_id === 'string' && allProjectIds.includes(row.project_id)
+	);
+	const logs = asArray<ProjectLogRow>(payload.project_logs).filter((row) =>
+		allProjectIds.includes(row.project_id)
 	);
 
 	const goalsByProject = limitAndMapByProject({
@@ -1398,7 +1900,7 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 		mapper: mapPlan
 	});
 	const recentActivityByProject = mapRecentActivity({
-		rows: asArray<ProjectLogRow>(payload.project_logs),
+		rows: logs,
 		projectIds,
 		nowMs
 	});
@@ -1411,6 +1913,18 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 			milestonesByProject,
 			plansByProject
 		}),
+		project_intelligence:
+			normalizeProjectIntelligenceFromPayload(payload.project_intelligence) ??
+			buildProjectIntelligenceSnapshot({
+				scope: 'global',
+				source: 'load_fastchat_context',
+				projects: allProjects,
+				goals,
+				milestones,
+				tasks,
+				events,
+				logs
+			}),
 		context_meta: buildGlobalContextMeta({
 			source: 'rpc',
 			projectCount: allProjects.length,
@@ -1436,8 +1950,10 @@ function buildProjectContextFromRpc(
 		documents: asArray<ContextDocumentRow>(payload.documents),
 		events: asArray<EventRow>(payload.events),
 		members: asArray<ProjectMemberRow>(payload.members),
+		projectLogs: asArray<ProjectLogRow>(payload.project_logs),
 		eventWindow,
-		entityCounts: payload.entity_counts
+		entityCounts: payload.entity_counts,
+		projectIntelligence: normalizeProjectIntelligenceFromPayload(payload.project_intelligence)
 	});
 }
 
@@ -1540,6 +2056,16 @@ async function loadGlobalContextData(
 		reportContextLoadError(onError, 'query.global.projects', error, { userId });
 		return {
 			projects: [],
+			project_intelligence: buildProjectIntelligenceSnapshot({
+				scope: 'global',
+				source: 'fallback',
+				projects: [],
+				goals: [],
+				milestones: [],
+				tasks: [],
+				events: [],
+				logs: []
+			}),
 			context_meta: buildGlobalContextMeta({
 				source: 'fallback',
 				projectCount: 0,
@@ -1566,11 +2092,22 @@ async function loadGlobalContextData(
 		}));
 	const lightProjects = allProjects.slice(0, GLOBAL_CONTEXT_PROJECT_LIMIT);
 	const projectIds = lightProjects.map((project) => project.id);
+	const allProjectIds = allProjects.map((project) => project.id);
 	const nowMs = Date.now();
 
-	if (projectIds.length === 0) {
+	if (allProjectIds.length === 0) {
 		return {
 			projects: [],
+			project_intelligence: buildProjectIntelligenceSnapshot({
+				scope: 'global',
+				source: 'fallback',
+				projects: [],
+				goals: [],
+				milestones: [],
+				tasks: [],
+				events: [],
+				logs: []
+			}),
 			context_meta: buildGlobalContextMeta({
 				source: 'fallback',
 				projectCount: allProjects.length,
@@ -1582,35 +2119,59 @@ async function loadGlobalContextData(
 	const oldestActivityIso = new Date(
 		nowMs - GLOBAL_CONTEXT_RECENT_ACTIVITY_MAX_LOOKBACK_DAYS * DAY_IN_MS
 	).toISOString();
+	const upcomingCutoffIso = new Date(
+		nowMs + PROJECT_INTELLIGENCE_UPCOMING_DAYS * DAY_IN_MS
+	).toISOString();
 
-	const [goalsRes, milestonesRes, plansRes, logsRes] = await Promise.all([
+	const [goalsRes, milestonesRes, plansRes, logsRes, tasksRes, eventsRes] = await Promise.all([
 		supabase
 			.from('onto_goals')
 			.select(
 				'id, project_id, name, description, state_key, target_date, completed_at, updated_at'
 			)
-			.in('project_id', projectIds)
+			.in('project_id', allProjectIds)
 			.is('deleted_at', null),
 		supabase
 			.from('onto_milestones')
 			.select(
 				'id, project_id, title, description, state_key, due_at, completed_at, updated_at'
 			)
-			.in('project_id', projectIds)
+			.in('project_id', allProjectIds)
 			.is('deleted_at', null),
 		supabase
 			.from('onto_plans')
 			.select('id, project_id, name, description, state_key, updated_at')
-			.in('project_id', projectIds)
+			.in('project_id', allProjectIds)
 			.is('deleted_at', null),
 		supabase
 			.from('onto_project_logs')
 			.select(
 				'project_id, entity_type, entity_id, action, created_at, after_data, before_data'
 			)
-			.in('project_id', projectIds)
+			.in('project_id', allProjectIds)
 			.gte('created_at', oldestActivityIso)
 			.order('created_at', { ascending: false })
+			.limit(500),
+		supabase
+			.from('onto_tasks')
+			.select(
+				'id, project_id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
+			)
+			.in('project_id', allProjectIds)
+			.is('deleted_at', null)
+			.or(`due_at.not.is.null,start_at.lte.${upcomingCutoffIso}`)
+			.limit(500),
+		supabase
+			.from('onto_events')
+			.select(
+				'id, project_id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
+			)
+			.in('project_id', allProjectIds)
+			.is('deleted_at', null)
+			.gte('start_at', new Date(nowMs).toISOString())
+			.lte('start_at', upcomingCutoffIso)
+			.order('start_at', { ascending: true })
+			.limit(200)
 	]);
 
 	if (goalsRes.error) {
@@ -1639,27 +2200,48 @@ async function loadGlobalContextData(
 			projectCount: projectIds.length
 		});
 	}
+	if (tasksRes.error) {
+		logger.warn('Failed to load global task signals', { error: tasksRes.error });
+		reportContextLoadError(onError, 'query.global.tasks', tasksRes.error, {
+			projectCount: allProjectIds.length
+		});
+	}
+	if (eventsRes.error) {
+		logger.warn('Failed to load global event signals', { error: eventsRes.error });
+		reportContextLoadError(onError, 'query.global.events', eventsRes.error, {
+			projectCount: allProjectIds.length
+		});
+	}
+
+	const goalRows = (goalsRes.data ?? []) as Array<GoalRow & { project_id: string }>;
+	const milestoneRows = (milestonesRes.data ?? []) as Array<
+		MilestoneRow & { project_id: string }
+	>;
+	const planRows = (plansRes.data ?? []) as Array<PlanRow & { project_id: string }>;
+	const logRows = (logsRes.data ?? []) as ProjectLogRow[];
+	const taskRows = (tasksRes.data ?? []) as Array<TaskRow & { project_id: string }>;
+	const eventRows = (eventsRes.data ?? []) as Array<EventRow & { project_id: string }>;
 
 	const goalsByProject = limitAndMapByProject({
-		rows: (goalsRes.data ?? []) as Array<GoalRow & { project_id: string }>,
+		rows: goalRows,
 		projectIds,
 		limitRows: (rows) => limitGlobalGoalsForContext(rows, nowMs),
 		mapper: mapGoal
 	});
 	const milestonesByProject = limitAndMapByProject({
-		rows: (milestonesRes.data ?? []) as Array<MilestoneRow & { project_id: string }>,
+		rows: milestoneRows,
 		projectIds,
 		limitRows: (rows) => limitGlobalMilestonesForContext(rows, nowMs),
 		mapper: mapMilestone
 	});
 	const plansByProject = limitAndMapByProject({
-		rows: (plansRes.data ?? []) as Array<PlanRow & { project_id: string }>,
+		rows: planRows,
 		projectIds,
 		limitRows: (rows) => limitGlobalPlansForContext(rows),
 		mapper: mapPlan
 	});
 	const recentActivityByProject = mapRecentActivity({
-		rows: (logsRes.data ?? []) as ProjectLogRow[],
+		rows: logRows,
 		projectIds,
 		nowMs
 	});
@@ -1671,6 +2253,16 @@ async function loadGlobalContextData(
 			goalsByProject,
 			milestonesByProject,
 			plansByProject
+		}),
+		project_intelligence: buildProjectIntelligenceSnapshot({
+			scope: 'global',
+			source: 'fallback',
+			projects: allProjects,
+			goals: goalRows,
+			milestones: milestoneRows,
+			tasks: taskRows,
+			events: eventRows,
+			logs: logRows
 		}),
 		context_meta: buildGlobalContextMeta({
 			source: 'fallback',
@@ -1707,52 +2299,74 @@ async function loadProjectContextData(
 		return null;
 	}
 
-	const [goalsRes, milestonesRes, plansRes, tasksRes, eventsRes, membersRes, documentsRes] =
-		await Promise.all([
-			supabase
-				.from('onto_goals')
-				.select('id, name, description, state_key, target_date, completed_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			supabase
-				.from('onto_milestones')
-				.select('id, title, description, state_key, due_at, completed_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			supabase
-				.from('onto_plans')
-				.select('id, name, description, state_key, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			supabase
-				.from('onto_tasks')
-				.select(
-					'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null),
-			supabase
-				.from('onto_events')
-				.select(
-					'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
-				)
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-				.gte('start_at', eventWindow.start_at)
-				.lte('start_at', eventWindow.end_at),
-			supabase
-				.from('onto_project_members')
-				.select(
-					'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, name, email)'
-				)
-				.eq('project_id', projectId)
-				.is('removed_at', null),
-			supabase
-				.from('onto_documents')
-				.select('id, title, state_key, created_at, updated_at')
-				.eq('project_id', projectId)
-				.is('deleted_at', null)
-		]);
+	const [
+		goalsRes,
+		milestonesRes,
+		plansRes,
+		tasksRes,
+		eventsRes,
+		membersRes,
+		documentsRes,
+		logsRes
+	] = await Promise.all([
+		supabase
+			.from('onto_goals')
+			.select('id, name, description, state_key, target_date, completed_at, updated_at')
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_milestones')
+			.select('id, title, description, state_key, due_at, completed_at, updated_at')
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_plans')
+			.select('id, name, description, state_key, updated_at')
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_tasks')
+			.select(
+				'id, title, description, state_key, priority, start_at, due_at, completed_at, updated_at'
+			)
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_events')
+			.select(
+				'id, title, description, state_key, start_at, end_at, all_day, location, updated_at'
+			)
+			.eq('project_id', projectId)
+			.is('deleted_at', null)
+			.gte('start_at', eventWindow.start_at)
+			.lte('start_at', eventWindow.end_at),
+		supabase
+			.from('onto_project_members')
+			.select(
+				'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, name, email)'
+			)
+			.eq('project_id', projectId)
+			.is('removed_at', null),
+		supabase
+			.from('onto_documents')
+			.select('id, title, state_key, created_at, updated_at')
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		supabase
+			.from('onto_project_logs')
+			.select(
+				'project_id, entity_type, entity_id, action, created_at, after_data, before_data'
+			)
+			.eq('project_id', projectId)
+			.gte(
+				'created_at',
+				new Date(
+					Date.now() - PROJECT_INTELLIGENCE_RECENT_CHANGES_MAX_LOOKBACK_DAYS * DAY_IN_MS
+				).toISOString()
+			)
+			.order('created_at', { ascending: false })
+			.limit(100)
+	]);
 
 	if (goalsRes.error) {
 		logger.warn('Failed to load project goals', { error: goalsRes.error });
@@ -1790,6 +2404,10 @@ async function loadProjectContextData(
 			projectId
 		});
 	}
+	if (logsRes.error) {
+		logger.warn('Failed to load project logs for fast context', { error: logsRes.error });
+		reportContextLoadError(onError, 'query.project.activity', logsRes.error, { projectId });
+	}
 
 	return buildProjectContextData({
 		source: 'fallback',
@@ -1801,6 +2419,7 @@ async function loadProjectContextData(
 		documents: (documentsRes.data ?? []) as ContextDocumentRow[],
 		events: (eventsRes.data ?? []) as EventRow[],
 		members: (membersRes.data ?? []) as ProjectMemberRow[],
+		projectLogs: (logsRes.data ?? []) as ProjectLogRow[],
 		eventWindow
 	});
 }
@@ -2149,35 +2768,44 @@ export async function loadFastChatPromptContext(
 	}
 
 	const rpcContextType = resolveRpcContextType(contextType, projectFocus);
-	if (rpcContextType && rpcContextType !== 'global') {
+	if (rpcContextType) {
 		const rpcPayload = await loadFastChatContextViaRpc(params);
 		if (rpcPayload) {
-			const projectContext = buildProjectContextFromRpc(rpcPayload, eventWindow);
-			if (projectContext) {
-				const resolvedProjectName =
-					projectContext.project.name ?? baseContext.projectName ?? null;
-				if (focusType && focusEntityId) {
-					const { data, focusEntityName: resolvedFocusName } = buildEntityContextFromRpc({
-						payload: rpcPayload,
-						projectContext,
-						focusType,
-						focusEntityId
-					});
+			if (rpcContextType === 'global') {
+				if (normalizeProjectIntelligenceFromPayload(rpcPayload.project_intelligence)) {
+					const data = buildGlobalContextFromRpc(rpcPayload);
+					return { ...baseContext, data };
+				}
+			} else {
+				const projectContext = buildProjectContextFromRpc(rpcPayload, eventWindow);
+				if (projectContext) {
+					const resolvedProjectName =
+						projectContext.project.name ?? baseContext.projectName ?? null;
+					if (focusType && focusEntityId) {
+						const { data, focusEntityName: resolvedFocusName } =
+							buildEntityContextFromRpc({
+								payload: rpcPayload,
+								projectContext,
+								focusType,
+								focusEntityId
+							});
+						return {
+							...baseContext,
+							projectId,
+							projectName: resolvedProjectName,
+							focusEntityName:
+								resolvedFocusName ?? baseContext.focusEntityName ?? null,
+							data
+						};
+					}
+
 					return {
 						...baseContext,
 						projectId,
 						projectName: resolvedProjectName,
-						focusEntityName: resolvedFocusName ?? baseContext.focusEntityName ?? null,
-						data
+						data: projectContext
 					};
 				}
-
-				return {
-					...baseContext,
-					projectId,
-					projectName: resolvedProjectName,
-					data: projectContext
-				};
 			}
 		}
 	}

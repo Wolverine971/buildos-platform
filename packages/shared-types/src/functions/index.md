@@ -135,8 +135,9 @@ This directory contains SQL definitions for all RPC functions available in the B
 
 ### Dashboard (0 active)
 
-### Chat System (2 active)
+### Chat System (3 active)
 
+- [build_fastchat_project_intelligence](./build_fastchat_project_intelligence.sql) - Build bounded FastChat project intelligence snapshot
 - [increment_chat_session_metrics](./increment_chat_session_metrics.sql) - Increment chat session metrics
 - [load_fastchat_context](./load_fastchat_context.sql) - Load FastChat V2 context payload
 

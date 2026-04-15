@@ -44,7 +44,8 @@ BEGIN
         'goals', '[]'::jsonb,
         'milestones', '[]'::jsonb,
         'plans', '[]'::jsonb,
-        'project_logs', '[]'::jsonb
+        'project_logs', '[]'::jsonb,
+        'project_intelligence', public.build_fastchat_project_intelligence('global', v_user_id, NULL)
       );
     END IF;
 
@@ -70,7 +71,8 @@ BEGIN
         'goals', '[]'::jsonb,
         'milestones', '[]'::jsonb,
         'plans', '[]'::jsonb,
-        'project_logs', '[]'::jsonb
+        'project_logs', '[]'::jsonb,
+        'project_intelligence', public.build_fastchat_project_intelligence('global', v_user_id, NULL)
       );
     END IF;
 
@@ -268,7 +270,8 @@ BEGIN
       'goals', v_goals,
       'milestones', v_milestones,
       'plans', v_plans,
-      'project_logs', v_logs
+      'project_logs', v_logs,
+      'project_intelligence', public.build_fastchat_project_intelligence('global', v_user_id, NULL)
     );
   END IF;
 
@@ -778,7 +781,8 @@ BEGIN
     'focus_entity_type', p_focus_type,
     'focus_entity_id', p_focus_entity_id,
     'linked_entities', v_linked_entities,
-    'linked_edges', v_linked_edges
+    'linked_edges', v_linked_edges,
+    'project_intelligence', public.build_fastchat_project_intelligence('project', v_user_id, p_project_id)
   );
 END;
 $function$;

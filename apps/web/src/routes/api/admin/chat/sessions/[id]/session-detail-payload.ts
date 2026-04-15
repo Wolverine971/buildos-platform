@@ -181,6 +181,7 @@ export interface PromptSnapshotRow {
 	id: string;
 	turn_run_id?: string | null;
 	snapshot_version?: string | null;
+	prompt_variant?: string | null;
 	system_prompt?: string | null;
 	model_messages?: unknown;
 	tool_definitions?: unknown;
@@ -824,18 +825,21 @@ export const buildSessionDetailPayload = ({
 		if (turnRun.prompt_snapshot) {
 			const snapshot = turnRun.prompt_snapshot;
 			const snapshotTimestamp = toIsoOrFallback(snapshot.created_at, turnRun.started_at);
+			const promptVariant =
+				snapshot.prompt_variant ?? snapshot.snapshot_version ?? 'unknown_variant';
 			timeline.push({
 				id: `prompt_snapshot:${snapshot.id}`,
 				timestamp: snapshotTimestamp,
 				type: 'prompt_snapshot',
 				severity: 'info',
 				title: `Prompt Snapshot: Turn ${turnRun.turn_index}`,
-				summary: `${asNumber(snapshot.approx_prompt_tokens)} est tokens • ${asNumber(snapshot.system_prompt_chars)} system chars • ${asNumber(snapshot.message_chars)} message chars`,
+				summary: `${promptVariant} • ${asNumber(snapshot.approx_prompt_tokens)} est tokens • ${asNumber(snapshot.system_prompt_chars)} system chars • ${asNumber(snapshot.message_chars)} message chars`,
 				turn_index: turnRun.turn_index,
 				payload: {
 					id: snapshot.id,
 					turn_run_id: snapshot.turn_run_id,
 					snapshot_version: snapshot.snapshot_version,
+					prompt_variant: snapshot.prompt_variant,
 					approx_prompt_tokens: snapshot.approx_prompt_tokens,
 					system_prompt_chars: snapshot.system_prompt_chars,
 					message_chars: snapshot.message_chars,

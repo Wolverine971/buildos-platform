@@ -67,14 +67,24 @@
 		type FastChatContextCache
 	} from '$lib/services/agentic-chat-v2/context-cache';
 	import {
+		AGENT_CHAT_DEFAULT_PROMPT_VARIANT,
+		AGENT_CHAT_LITE_PROMPT_VARIANT,
 		buildProjectWideFocus,
 		deriveSessionTitle,
 		isProjectContext,
 		loadAgentChatSessionSnapshot,
 		normalizeSessionContextType,
-		prewarmAgentContext
+		normalizeAgentChatPromptVariantSelection,
+		prewarmAgentContext,
+		resolveAgentChatPromptVariantForRequest,
+		type AgentChatPromptVariantSelection
 	} from './agent-chat-session';
-	import { upsertSkillActivityEntries } from './agent-chat-skill-activity';
+	import {
+		buildSkillLoadActivityEvent,
+		extractSkillPathFromSkillLoadArgs,
+		formatSkillActivityContent,
+		upsertSkillActivityEntries
+	} from './agent-chat-skill-activity';
 	import {
 		downloadChatSessionAuditMarkdown,
 		fetchChatSessionAuditPayload
@@ -159,6 +169,9 @@
 	let wasOpen = $state(false);
 	let lastPrewarmKey = $state<string | null>(null);
 	let prewarmedContext = $state<FastChatContextCache | null>(null);
+	let selectedPromptVariant = $state<AgentChatPromptVariantSelection>(
+		AGENT_CHAT_DEFAULT_PROMPT_VARIANT
+	);
 	const ENABLE_V2_PREWARM = true;
 
 	const contextDescriptor = $derived(
@@ -243,6 +256,7 @@
 	let _lastCompletedStreamTiming = $state<ClientStreamTimingState | null>(null);
 
 	const isAdminUser = $derived(Boolean($page.data?.user?.is_admin));
+	const canUsePromptVariantControls = $derived(dev || isAdminUser);
 
 	const adminSessionHref = $derived.by(() => {
 		const sessionId = currentSession?.id;
@@ -469,6 +483,9 @@
 			!agentToAgentMode &&
 			!(isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options'))
 	);
+	const showPromptVariantControls = $derived(
+		canUsePromptVariantControls && shouldShowComposer && Boolean(selectedContextType)
+	);
 
 	const chatComposerVocabularyTerms = $derived(
 		resolvedProjectFocus?.projectName ?? displayContextLabel
@@ -627,6 +644,11 @@
 		return id;
 	}
 
+	function handlePromptVariantChange(event: Event) {
+		const target = event.currentTarget as HTMLSelectElement | null;
+		selectedPromptVariant = normalizeAgentChatPromptVariantSelection(target?.value);
+	}
+
 	function handleContextSelectionNavChange(view: 'primary' | 'project-selection') {
 		contextSelectionView = view;
 	}
@@ -713,6 +735,7 @@
 		currentAssistantMessageIndex = null;
 		currentThinkingBlockId = null;
 		isStreaming = false;
+		selectedPromptVariant = AGENT_CHAT_DEFAULT_PROMPT_VARIANT;
 		// Reset ontology state
 		lastTurnContext = null;
 		ontologyLoaded = false;
@@ -2439,6 +2462,28 @@
 		errorMessage?: string
 	): string {
 		const errorSuffix = status === 'failed' ? formatErrorSuffix(errorMessage) : '';
+		if (toolName === 'skill_load') {
+			const skillPath = extractSkillPathFromSkillLoadArgs(argsJson);
+			if (skillPath) {
+				if (status === 'pending') {
+					return formatSkillActivityContent({
+						type: 'skill_activity',
+						action: 'requested',
+						path: skillPath,
+						via: 'skill_load'
+					});
+				}
+				if (status === 'completed') {
+					return formatSkillActivityContent({
+						type: 'skill_activity',
+						action: 'loaded',
+						path: skillPath,
+						via: 'skill_load'
+					});
+				}
+				return `Failed to load skill ${skillPath}${errorSuffix}`;
+			}
+		}
 		const formatter = TOOL_DISPLAY_FORMATTERS[toolName];
 
 		if (!formatter) {
@@ -2801,6 +2846,10 @@
 			foundToolName = toolName;
 			foundArgs = args;
 			const newContent = formatToolMessage(toolName, args, status, errorMessage);
+			const skillActivity =
+				toolName === 'skill_load' && status === 'completed'
+					? buildSkillLoadActivityEvent('loaded', args)
+					: null;
 
 			const updatedActivity: ActivityEntry = {
 				...activity,
@@ -2812,7 +2861,15 @@
 				metadata: {
 					...activity.metadata,
 					status,
-					...(errorMessage ? { error: errorMessage } : {})
+					...(errorMessage ? { error: errorMessage } : {}),
+					...(skillActivity
+						? {
+								skillActivity,
+								skillPath: skillActivity.path,
+								skillVia: skillActivity.via,
+								skillAction: skillActivity.action
+							}
+						: {})
 				}
 			};
 
@@ -3088,6 +3145,11 @@
 		const now = new Date();
 		const clientTurnId = crypto.randomUUID();
 		const transportStreamRunId = crypto.randomUUID();
+		const promptVariantForTurn = resolveAgentChatPromptVariantForRequest({
+			canUsePromptVariantControls,
+			selectedPromptVariant
+		});
+		selectedPromptVariant = AGENT_CHAT_DEFAULT_PROMPT_VARIANT;
 
 		// Add user message
 		const userMessage: UIMessage = {
@@ -3102,7 +3164,8 @@
 			metadata: {
 				...(activeVoiceNoteGroupId ? { voice_note_group_id: activeVoiceNoteGroupId } : {}),
 				client_turn_id: clientTurnId,
-				stream_run_id: transportStreamRunId
+				stream_run_id: transportStreamRunId,
+				...(promptVariantForTurn ? { prompt_variant: promptVariantForTurn } : {})
 			}
 		};
 
@@ -3191,6 +3254,7 @@
 					stream_run_id: transportStreamRunId,
 					client_turn_id: clientTurnId,
 					voiceNoteGroupId: activeVoiceNoteGroupId,
+					...(promptVariantForTurn ? { prompt_variant: promptVariantForTurn } : {}),
 					prewarmedContext: matchingPrewarmedContext
 				})
 			});
@@ -3571,6 +3635,10 @@
 					displayPayload.args,
 					'pending'
 				);
+				const skillActivity =
+					displayPayload.toolName === 'skill_load'
+						? buildSkillLoadActivityEvent('requested', displayPayload.args)
+						: null;
 
 				const activity: ActivityEntry = {
 					id: crypto.randomUUID(),
@@ -3587,7 +3655,15 @@
 						arguments: displayPayload.args,
 						rawArguments: args,
 						status: 'pending',
-						toolCall: event.tool_call
+						toolCall: event.tool_call,
+						...(skillActivity
+							? {
+									skillActivity,
+									skillPath: skillActivity.path,
+									skillVia: skillActivity.via,
+									skillAction: skillActivity.action
+								}
+							: {})
 					}
 				};
 
@@ -3683,9 +3759,7 @@
 			}
 
 			case 'skill_activity':
-				if (dev) {
-					upsertSkillActivityInThinkingBlock(event);
-				}
+				upsertSkillActivityInThinkingBlock(event);
 				break;
 
 			case 'operation': {
@@ -4307,6 +4381,37 @@
 			</div>
 		</div>
 	{:else}
+		{#if showPromptVariantControls}
+			<div
+				class="border-b border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground tx tx-thread tx-weak sm:px-4"
+			>
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+					<div class="flex flex-wrap items-center gap-2">
+						<label
+							for="agent-chat-prompt-variant"
+							class="font-semibold text-foreground/70"
+						>
+							Prompt variant
+						</label>
+						<select
+							id="agent-chat-prompt-variant"
+							class="h-8 rounded-lg border border-border bg-card px-2 text-xs font-semibold text-foreground shadow-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+							value={selectedPromptVariant}
+							disabled={isStreaming || isSessionBusy}
+							onchange={handlePromptVariantChange}
+						>
+							<option value={AGENT_CHAT_DEFAULT_PROMPT_VARIANT}> FastChat v2 </option>
+							<option value={AGENT_CHAT_LITE_PROMPT_VARIANT}>
+								Lite seed, next turn
+							</option>
+						</select>
+					</div>
+					<p class="text-[0.7rem] leading-snug text-muted-foreground">
+						Lite applies once, then resets to FastChat v2.
+					</p>
+				</div>
+			</div>
+		{/if}
 		<AgentMessageList
 			{messages}
 			{displayContextLabel}

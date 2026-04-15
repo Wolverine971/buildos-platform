@@ -1,6 +1,8 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-eval-runner.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	buildPromptEvalTarget,
+	buildPromptEvalVariantEvidence,
 	evaluateAndPersistPromptEval,
 	loadPromptEvalResultsForTurnRuns,
 	normalizePromptEvalRunnerType
@@ -133,6 +135,7 @@ describe('prompt eval runner', () => {
 				{
 					id: 'snapshot-1',
 					turn_run_id: 'run-1',
+					prompt_variant: 'lite_seed_v1',
 					approx_prompt_tokens: 912,
 					rendered_dump_text: 'FASTCHAT V2 PROMPT SNAPSHOT'
 				}
@@ -190,6 +193,28 @@ describe('prompt eval runner', () => {
 		});
 
 		expect(persisted.result.status).toBe('passed');
+		expect(persisted.target.promptSnapshot?.prompt_variant).toBe('lite_seed_v1');
+		expect(buildPromptEvalTarget(persisted.target).turnRun.prompt_snapshot).toMatchObject({
+			prompt_variant: 'lite_seed_v1',
+			approx_prompt_tokens: 912
+		});
+		expect(
+			buildPromptEvalVariantEvidence({
+				target: persisted.target,
+				evalRun: persisted.evalRun,
+				scenarioTitle: persisted.scenario.title
+			})
+		).toMatchObject({
+			scenarioSlug: 'project.named_status',
+			scenarioTitle: 'Named Project Status Overview',
+			turnRunId: 'run-1',
+			promptVariant: 'lite_seed_v1',
+			promptTokens: 912,
+			evalStatus: 'passed',
+			assertionCounts: {
+				failed: 0
+			}
+		});
 		expect(persisted.evalRun).toMatchObject({
 			turn_run_id: 'run-1',
 			scenario_slug: 'project.named_status',

@@ -4,10 +4,14 @@ import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { VoiceNote } from '$lib/types/voice-notes';
 import {
+	AGENT_CHAT_DEFAULT_PROMPT_VARIANT,
+	AGENT_CHAT_LITE_PROMPT_VARIANT,
 	buildAgentChatSessionSnapshot,
 	deriveSessionTitle,
 	loadAgentChatSessionSnapshot,
-	prewarmAgentContext
+	normalizeAgentChatPromptVariantSelection,
+	prewarmAgentContext,
+	resolveAgentChatPromptVariantForRequest
 } from './agent-chat-session';
 
 function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
@@ -27,6 +31,34 @@ function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
 describe('agent-chat-session helpers', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('normalizes and gates prompt variant requests for one-turn admin tests', () => {
+		expect(normalizeAgentChatPromptVariantSelection('lite_seed_v1')).toBe(
+			AGENT_CHAT_LITE_PROMPT_VARIANT
+		);
+		expect(normalizeAgentChatPromptVariantSelection('unknown')).toBe(
+			AGENT_CHAT_DEFAULT_PROMPT_VARIANT
+		);
+
+		expect(
+			resolveAgentChatPromptVariantForRequest({
+				canUsePromptVariantControls: false,
+				selectedPromptVariant: AGENT_CHAT_LITE_PROMPT_VARIANT
+			})
+		).toBeNull();
+		expect(
+			resolveAgentChatPromptVariantForRequest({
+				canUsePromptVariantControls: true,
+				selectedPromptVariant: AGENT_CHAT_DEFAULT_PROMPT_VARIANT
+			})
+		).toBeNull();
+		expect(
+			resolveAgentChatPromptVariantForRequest({
+				canUsePromptVariantControls: true,
+				selectedPromptVariant: AGENT_CHAT_LITE_PROMPT_VARIANT
+			})
+		).toBe(AGENT_CHAT_LITE_PROMPT_VARIANT);
 	});
 
 	it('deriveSessionTitle prefers a non-placeholder manual title and falls back to auto title', () => {

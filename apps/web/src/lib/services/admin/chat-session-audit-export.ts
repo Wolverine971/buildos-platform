@@ -1,4 +1,13 @@
 // apps/web/src/lib/services/admin/chat-session-audit-export.ts
+import {
+	buildPromptEvalVariantComparison,
+	formatPromptEvalVariantDecisionNote,
+	formatPromptVariantLabel,
+	readPromptEvalAssertionCounts,
+	type PromptEvalVariantEvidence,
+	type PromptEvalVariantScenarioComparison
+} from '../agentic-chat-v2/prompt-eval-comparison';
+
 type AuditRecord = Record<string, unknown>;
 
 export type AuditTimelineType =
@@ -168,6 +177,21 @@ const rawSection = (heading: string, value: unknown, language = 'json'): string[
 
 const metricLine = (label: string, value: unknown): string => `- ${label}: ${stringOrDash(value)}`;
 
+const optionalString = (value: unknown): string | null => {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+};
+
+const optionalNumber = (value: unknown): number | null => {
+	if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+	if (typeof value === 'string') {
+		const parsed = Number.parseFloat(value);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+};
+
 const buildConversationSection = (messages: AuditRecord[]): string[] => {
 	const lines = ['## Conversation Transcript', ''];
 	if (messages.length === 0) {
@@ -224,6 +248,108 @@ const buildTimelineSection = (timeline: AuditTimelineEvent[]): string[] => {
 	return lines;
 };
 
+const buildPromptEvalVariantEvidence = (turnRuns: AuditTurnRun[]): PromptEvalVariantEvidence[] => {
+	const evidence: PromptEvalVariantEvidence[] = [];
+	for (const turnRun of turnRuns) {
+		for (const evalRun of turnRun.eval_runs ?? []) {
+			const promptSnapshot = turnRun.prompt_snapshot ?? {};
+			evidence.push({
+				scenarioSlug: evalRun.scenario_slug,
+				scenarioVersion: evalRun.scenario_version,
+				turnRunId: turnRun.id,
+				evalRunId: evalRun.id,
+				promptVariant:
+					optionalString(promptSnapshot.prompt_variant) ??
+					optionalString(promptSnapshot.snapshot_version),
+				snapshotVersion: optionalString(promptSnapshot.snapshot_version),
+				status: turnRun.status,
+				finishedReason: turnRun.finished_reason,
+				firstLane: turnRun.first_lane,
+				firstCanonicalOp: turnRun.first_canonical_op,
+				firstSkillPath: turnRun.first_skill_path,
+				validationFailureCount: turnRun.validation_failure_count,
+				toolRoundCount: turnRun.tool_round_count,
+				toolCallCount: turnRun.tool_call_count,
+				llmPassCount: turnRun.llm_pass_count,
+				promptTokens: optionalNumber(promptSnapshot.approx_prompt_tokens),
+				evalStatus: evalRun.status,
+				assertionCounts: readPromptEvalAssertionCounts(evalRun.summary),
+				startedAt: evalRun.started_at,
+				completedAt: evalRun.completed_at
+			});
+		}
+	}
+	return evidence;
+};
+
+const verdictLabel = (verdict: PromptEvalVariantScenarioComparison['verdict']): string => {
+	switch (verdict) {
+		case 'lite_better':
+			return 'lite better';
+		case 'lite_worse':
+			return 'lite worse';
+		case 'mixed':
+			return 'mixed';
+		case 'unchanged':
+			return 'unchanged';
+		case 'missing_evidence':
+			return 'missing evidence';
+		default:
+			return verdict;
+	}
+};
+
+const signedMetric = (value: number | null): string | null => {
+	if (value === null) return null;
+	return value > 0 ? `+${value}` : String(value);
+};
+
+const scenarioComparisonLine = (
+	scenario: PromptEvalVariantScenarioComparison,
+	baselineVariant: string,
+	candidateVariant: string
+): string => {
+	const parts = [`- ${scenario.scenarioSlug}: ${verdictLabel(scenario.verdict)}`];
+	if (scenario.missingVariants.length > 0) {
+		parts.push(`missing ${scenario.missingVariants.map(formatPromptVariantLabel).join(', ')}`);
+	}
+	const tokenDelta = signedMetric(scenario.metricDeltas.promptTokens);
+	if (tokenDelta) {
+		parts.push(`prompt tokens ${tokenDelta}`);
+	}
+	parts.push(
+		`${formatPromptVariantLabel(baselineVariant)} eval ${stringOrDash(
+			scenario.baseline?.evalStatus
+		)}`
+	);
+	parts.push(
+		`${formatPromptVariantLabel(candidateVariant)} eval ${stringOrDash(
+			scenario.candidate?.evalStatus
+		)}`
+	);
+	return parts.join('; ');
+};
+
+const buildPromptVariantComparisonSection = (turnRuns: AuditTurnRun[]): string[] => {
+	const evidence = buildPromptEvalVariantEvidence(turnRuns);
+	if (evidence.length === 0) return [];
+
+	const report = buildPromptEvalVariantComparison(evidence);
+	const lines = [
+		'## Prompt Variant Comparison',
+		'',
+		formatPromptEvalVariantDecisionNote(report),
+		''
+	];
+	for (const scenario of report.scenarios) {
+		lines.push(
+			scenarioComparisonLine(scenario, report.baselineVariant, report.candidateVariant)
+		);
+	}
+	lines.push('');
+	return lines;
+};
+
 const buildTurnRunsSection = (turnRuns: AuditTurnRun[]): string[] => {
 	const lines = ['## Turn Runs', ''];
 	if (turnRuns.length === 0) {
@@ -258,6 +384,12 @@ const buildTurnRunsSection = (turnRuns: AuditTurnRun[]): string[] => {
 			metricLine('Cache Source', turnRun.cache_source),
 			metricLine('Cache Age Seconds', turnRun.cache_age_seconds),
 			metricLine('Prewarmed Context', boolLabel(turnRun.request_prewarmed_context)),
+			metricLine(
+				'Prompt Variant',
+				turnRun.prompt_snapshot?.prompt_variant ??
+					turnRun.prompt_snapshot?.snapshot_version ??
+					null
+			),
 			''
 		);
 
@@ -325,6 +457,7 @@ export const buildChatSessionAuditMarkdown = (payload: ChatSessionAuditPayload):
 
 	lines.push(...buildConversationSection(payload.messages));
 	lines.push(...buildTimelineSection(payload.timeline));
+	lines.push(...buildPromptVariantComparisonSection(payload.turn_runs));
 	lines.push(...buildTurnRunsSection(payload.turn_runs));
 	lines.push(...buildRawCollectionsSection(payload));
 

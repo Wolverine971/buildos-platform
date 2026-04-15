@@ -11,6 +11,7 @@ import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registr
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { estimateTokensFromText } from './context-usage';
 import { buildPromptCostBreakdown, type PromptCostBreakdown } from './prompt-cost-breakdown';
+import { FASTCHAT_PROMPT_VARIANT, type FastChatPromptVariant } from './prompt-variant';
 import type { FastChatHistoryMessage } from './types';
 
 export const FASTCHAT_PROMPT_SNAPSHOT_VERSION = 'fastchat_prompt_v1';
@@ -20,6 +21,7 @@ type JsonRecord = Record<string, Json | undefined>;
 export type PromptSnapshotRow = Database['public']['Tables']['chat_prompt_snapshots']['Insert'];
 
 export type PromptSnapshotSections = {
+	prompt_variant?: FastChatPromptVariant | string | null;
 	context_type?: string | null;
 	entity_id?: string | null;
 	project_id?: string | null;
@@ -31,6 +33,10 @@ export type PromptSnapshotSections = {
 	has_conversation_summary?: boolean;
 	data_keys?: string[] | null;
 	cost_breakdown?: Json | null;
+	tool_surface_report?: Json | null;
+	lite_sections?: Json | null;
+	lite_context_inventory?: Json | null;
+	lite_tools_summary?: Json | null;
 };
 
 export type FastChatToolCallMeta = {
@@ -118,9 +124,14 @@ function buildRenderedPromptDump(params: {
 	contextType: string;
 	entityId?: string | null;
 	projectId?: string | null;
+	promptVariant?: FastChatPromptVariant | string | null;
 	systemPrompt: string;
 	modelMessages: FastChatHistoryMessage[];
 	tools?: ChatToolDefinition[];
+	liteSections?: unknown;
+	liteContextInventory?: unknown;
+	liteToolsSummary?: unknown;
+	toolSurfaceReport?: unknown;
 }): string {
 	const toolNames = (params.tools ?? []).map((tool) => tool.function?.name).filter(Boolean);
 	const lines: string[] = [
@@ -131,6 +142,7 @@ function buildRenderedPromptDump(params: {
 		`Context:    ${params.contextType}`,
 		`Entity ID:  ${params.entityId ?? 'none'}`,
 		`Project ID: ${params.projectId ?? 'none'}`,
+		`Prompt variant: ${params.promptVariant ?? FASTCHAT_PROMPT_VARIANT}`,
 		`Tools (${toolNames.length}): ${toolNames.join(', ') || 'none'}`,
 		`Message count: ${params.modelMessages.length}`,
 		`System prompt length: ${params.systemPrompt.length} chars (~${estimateTokensFromText(params.systemPrompt)} tokens)`,
@@ -140,11 +152,40 @@ function buildRenderedPromptDump(params: {
 		'SYSTEM PROMPT',
 		'────────────────────────────────────────',
 		params.systemPrompt,
-		'',
+		''
+	];
+
+	const liteSectionLines = formatLiteSectionDump(params.liteSections);
+	if (liteSectionLines.length > 0) {
+		lines.push(
+			'────────────────────────────────────────',
+			'LITE SECTION BREAKDOWN',
+			'────────────────────────────────────────',
+			...liteSectionLines,
+			''
+		);
+	}
+
+	const liteMetadataLines = formatLiteMetadataDump({
+		contextInventory: params.liteContextInventory,
+		toolsSummary: params.liteToolsSummary,
+		toolSurfaceReport: params.toolSurfaceReport
+	});
+	if (liteMetadataLines.length > 0) {
+		lines.push(
+			'────────────────────────────────────────',
+			'LITE METADATA',
+			'────────────────────────────────────────',
+			...liteMetadataLines,
+			''
+		);
+	}
+
+	lines.push(
 		'────────────────────────────────────────',
 		'MODEL MESSAGES',
 		'────────────────────────────────────────'
-	];
+	);
 
 	params.modelMessages.forEach((entry, index) => {
 		lines.push(`[${index + 1}] role=${entry.role}`);
@@ -161,7 +202,44 @@ function buildRenderedPromptDump(params: {
 	return lines.join('\n');
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function formatLiteSectionDump(sections: unknown): string[] {
+	if (!Array.isArray(sections) || sections.length === 0) return [];
+
+	return sections.map((section, index) => {
+		const record = isRecord(section) ? section : {};
+		const id = typeof record.id === 'string' ? record.id : `section_${index + 1}`;
+		const title = typeof record.title === 'string' ? record.title : id;
+		const kind = typeof record.kind === 'string' ? record.kind : 'unknown';
+		const source = typeof record.source === 'string' ? record.source : 'unknown';
+		const chars = typeof record.chars === 'number' ? record.chars : 0;
+		const tokens = typeof record.estimatedTokens === 'number' ? record.estimatedTokens : 0;
+		return `${index + 1}. ${id} - ${title} [${kind}, ${source}] ${chars} chars (~${tokens} tokens)`;
+	});
+}
+
+function formatJsonPreview(label: string, value: unknown): string[] {
+	if (value === undefined || value === null) return [];
+	return [`${label}:`, stableStringify(value)];
+}
+
+function formatLiteMetadataDump(params: {
+	contextInventory?: unknown;
+	toolsSummary?: unknown;
+	toolSurfaceReport?: unknown;
+}): string[] {
+	return [
+		...formatJsonPreview('Context inventory', params.contextInventory),
+		...formatJsonPreview('Tools summary', params.toolsSummary),
+		...formatJsonPreview('Tool surface report', params.toolSurfaceReport)
+	];
+}
+
 export function buildPromptSnapshotSections(params: {
+	promptVariant?: FastChatPromptVariant | string | null;
 	contextType: string;
 	entityId?: string | null;
 	projectId?: string | null;
@@ -173,8 +251,13 @@ export function buildPromptSnapshotSections(params: {
 	conversationSummary?: string | null;
 	data?: Record<string, unknown> | string | null;
 	promptCostBreakdown?: PromptCostBreakdown | null;
+	toolSurfaceReport?: unknown | null;
+	liteSections?: unknown | null;
+	liteContextInventory?: unknown | null;
+	liteToolsSummary?: unknown | null;
 }): PromptSnapshotSections {
-	return {
+	const sections: PromptSnapshotSections = {
+		prompt_variant: params.promptVariant ?? FASTCHAT_PROMPT_VARIANT,
 		context_type: params.contextType,
 		entity_id: params.entityId ?? null,
 		project_id: params.projectId ?? null,
@@ -192,6 +275,19 @@ export function buildPromptSnapshotSections(params: {
 			? (toJsonValue(params.promptCostBreakdown) as Json)
 			: null
 	};
+	if (params.toolSurfaceReport) {
+		sections.tool_surface_report = toJsonValue(params.toolSurfaceReport) as Json;
+	}
+	if (params.liteSections) {
+		sections.lite_sections = toJsonValue(params.liteSections) as Json;
+	}
+	if (params.liteContextInventory) {
+		sections.lite_context_inventory = toJsonValue(params.liteContextInventory) as Json;
+	}
+	if (params.liteToolsSummary) {
+		sections.lite_tools_summary = toJsonValue(params.liteToolsSummary) as Json;
+	}
+	return sections;
 }
 
 export function buildPromptSnapshotRow(params: {
@@ -202,6 +298,7 @@ export function buildPromptSnapshotRow(params: {
 	contextType: string;
 	entityId?: string | null;
 	projectId?: string | null;
+	promptVariant?: FastChatPromptVariant | string | null;
 	systemPrompt: string;
 	history: FastChatHistoryMessage[];
 	message: string;
@@ -210,6 +307,10 @@ export function buildPromptSnapshotRow(params: {
 	promptSections?: PromptSnapshotSections | null;
 	promptCostBreakdown?: PromptCostBreakdown | null;
 	contextPayload?: Record<string, unknown> | string | null;
+	toolSurfaceReport?: unknown | null;
+	liteSections?: unknown | null;
+	liteContextInventory?: unknown | null;
+	liteToolsSummary?: unknown | null;
 }): PromptSnapshotRow {
 	const modelMessages: FastChatHistoryMessage[] = [
 		{ role: 'system', content: params.systemPrompt },
@@ -234,9 +335,14 @@ export function buildPromptSnapshotRow(params: {
 		contextType: params.contextType,
 		entityId: params.entityId,
 		projectId: params.projectId,
+		promptVariant: params.promptVariant ?? FASTCHAT_PROMPT_VARIANT,
 		systemPrompt: params.systemPrompt,
 		modelMessages,
-		tools: params.tools
+		tools: params.tools,
+		liteSections: params.liteSections,
+		liteContextInventory: params.liteContextInventory,
+		liteToolsSummary: params.liteToolsSummary,
+		toolSurfaceReport: params.toolSurfaceReport
 	});
 	const messageChars = modelMessages.reduce(
 		(sum, entry) => sum + (entry.content?.length ?? 0),
@@ -256,11 +362,16 @@ export function buildPromptSnapshotRow(params: {
 	const promptSectionsWithCost =
 		params.promptSections && Object.keys(params.promptSections).length > 0
 			? ({
+					prompt_variant:
+						params.promptSections.prompt_variant ??
+						params.promptVariant ??
+						FASTCHAT_PROMPT_VARIANT,
 					...params.promptSections,
 					cost_breakdown:
 						params.promptSections.cost_breakdown ?? (toJsonValue(costBreakdown) as Json)
 				} satisfies PromptSnapshotSections)
 			: ({
+					prompt_variant: params.promptVariant ?? FASTCHAT_PROMPT_VARIANT,
 					cost_breakdown: toJsonValue(costBreakdown) as Json
 				} satisfies PromptSnapshotSections);
 	const promptSectionsWithCostJson = toJsonRecord(
@@ -272,6 +383,7 @@ export function buildPromptSnapshotRow(params: {
 		session_id: params.sessionId,
 		user_id: params.userId,
 		snapshot_version: FASTCHAT_PROMPT_SNAPSHOT_VERSION,
+		prompt_variant: params.promptVariant ?? FASTCHAT_PROMPT_VARIANT,
 		system_prompt: params.systemPrompt,
 		model_messages: messagesJson,
 		tool_definitions: toolsJson,

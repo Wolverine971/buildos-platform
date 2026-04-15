@@ -117,6 +117,7 @@ describe('buildSessionDetailPayload', () => {
 					id: 'snapshot-1',
 					turn_run_id: 'run-1',
 					snapshot_version: 'fastchat_prompt_v1',
+					prompt_variant: 'lite_seed_v1',
 					system_prompt_chars: 4000,
 					message_chars: 120,
 					approx_prompt_tokens: 1030,
@@ -223,7 +224,9 @@ describe('buildSessionDetailPayload', () => {
 		expect(turnRunEvent?.summary).toContain('lane=overview');
 
 		const promptEvent = payload.timeline.find((event) => event.type === 'prompt_snapshot');
+		expect(promptEvent?.summary).toContain('lite_seed_v1');
 		expect(promptEvent?.payload).toMatchObject({
+			prompt_variant: 'lite_seed_v1',
 			rendered_dump_text: 'FASTCHAT V2 PROMPT SNAPSHOT'
 		});
 

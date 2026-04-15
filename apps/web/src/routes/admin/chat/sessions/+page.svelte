@@ -1251,7 +1251,7 @@
 		icon={Terminal}
 		showBack={true}
 	>
-		<div slot="actions" class="flex flex-wrap items-center gap-2">
+		{#snippet actions()}
 			<Select
 				bind:value={selectedTimeframe}
 				onchange={(value) => (selectedTimeframe = String(value) as '24h' | '7d' | '30d')}
@@ -1272,7 +1272,7 @@
 			>
 				Refresh
 			</Button>
-		</div>
+		{/snippet}
 	</AdminPageHeader>
 
 	<div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.45fr),minmax(23rem,0.95fr)] gap-3">
@@ -2308,6 +2308,30 @@
 																			<div
 																				class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs"
 																			>
+																				<div
+																					class="rounded border border-border bg-card px-2 py-1.5"
+																				>
+																					<div
+																						class="text-foreground/60 font-medium"
+																					>
+																						Variant
+																					</div>
+																					<div
+																						class="font-semibold text-foreground"
+																					>
+																						{stringValue(
+																							payloadField(
+																								payload,
+																								'prompt_variant'
+																							) ||
+																								payloadField(
+																									payload,
+																									'snapshot_version'
+																								) ||
+																								'unknown'
+																						)}
+																					</div>
+																				</div>
 																				<div
 																					class="rounded border border-border bg-card px-2 py-1.5"
 																				>

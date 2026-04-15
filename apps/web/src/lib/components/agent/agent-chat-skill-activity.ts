@@ -14,8 +14,49 @@ interface UpsertSkillActivityOptions {
 	now?: Date;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readTrimmedString(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+export function extractSkillPathFromSkillLoadArgs(argsJson: unknown): string | null {
+	let args = argsJson;
+	if (typeof argsJson === 'string') {
+		try {
+			args = JSON.parse(argsJson);
+		} catch {
+			return null;
+		}
+	}
+	if (!isRecord(args)) return null;
+	return (
+		readTrimmedString(args.skill) ?? readTrimmedString(args.id) ?? readTrimmedString(args.path)
+	);
+}
+
+export function buildSkillLoadActivityEvent(
+	action: SkillActivityEvent['action'],
+	argsJson: unknown
+): SkillActivityEvent | null {
+	const path = extractSkillPathFromSkillLoadArgs(argsJson);
+	if (!path) return null;
+	return {
+		type: 'skill_activity',
+		action,
+		path,
+		via: 'skill_load'
+	};
+}
+
 export function formatSkillActivityContent(event: SkillActivityEvent): string {
-	return `${event.action === 'requested' ? 'Skill requested' : 'Skill loaded'}: ${event.path}`;
+	return event.action === 'requested'
+		? `Loading skill ${event.path}`
+		: `Skill ${event.path} loaded`;
 }
 
 function buildSkillActivityEntry(
@@ -41,7 +82,34 @@ function getSkillActivityMetadata(activity: ActivityEntry): SkillActivityMetadat
 	const metadata = activity.metadata;
 	if (!metadata || typeof metadata !== 'object') return null;
 	if (typeof metadata.skillPath !== 'string' || typeof metadata.skillVia !== 'string') {
-		return null;
+		const toolName =
+			typeof metadata.toolName === 'string'
+				? metadata.toolName
+				: typeof metadata.originalToolName === 'string'
+					? metadata.originalToolName
+					: null;
+		if (toolName !== 'skill_load') return null;
+		const skillPath = extractSkillPathFromSkillLoadArgs(
+			metadata.arguments ?? metadata.rawArguments
+		);
+		if (!skillPath) return null;
+		const metadataSkillAction =
+			metadata.skillAction === 'loaded' || metadata.skillAction === 'requested'
+				? metadata.skillAction
+				: null;
+		const skillAction =
+			metadata.status === 'completed' ? 'loaded' : (metadataSkillAction ?? 'requested');
+		return {
+			skillActivity: {
+				type: 'skill_activity',
+				action: skillAction,
+				path: skillPath,
+				via: 'skill_load'
+			},
+			skillPath,
+			skillVia: 'skill_load',
+			skillAction
+		};
 	}
 
 	return metadata as SkillActivityMetadata;

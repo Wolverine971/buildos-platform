@@ -71,7 +71,8 @@ export function buildGatewayMutationNoExecutionRepairInstruction(
 	const plannedWriteOps = collectGatewayWriteIntentOps(toolExecutions);
 	const lines = [
 		'You have not completed any write yet.',
-		'Do not stop after schema discovery or failed writes without either retrying correctly or asking a concise blocker question.'
+		'Do not stop after schema discovery or failed writes without either retrying correctly or asking a concise blocker question.',
+		'If you cannot execute the requested write after trying, say "I was unable to <requested action>" and briefly explain what blocked it. Make clear that nothing changed.'
 	];
 
 	if (plannedWriteOps.length > 0) {
@@ -163,8 +164,8 @@ export function enforceMutationOutcomeIntegrity(
 				'onto.project.create'
 			);
 			return attemptedProjectCreate
-				? "I couldn't create the project because the create payload never validated. I need to retry with a complete project payload."
-				: "I haven't created the project yet. I loaded the project creation guidance, but the create call did not run.";
+				? 'I was unable to create the project because the create payload never validated. Nothing changed yet; I need to retry with a complete project payload.'
+				: 'I was unable to create the project because the create call did not run. Nothing changed yet; I only loaded the project creation guidance.';
 		}
 	}
 
@@ -564,9 +565,10 @@ const BULK_MUTATION_SUCCESS_CLAIM_PATTERNS = [
 const MUTATION_SUCCESS_CLAIM_PATTERNS = [
 	/\bmarked(?:\s+\w+){0,4}\s+(?:done|complete|completed)\b/i,
 	/\b(?:i|we)(?:'ve| have)?\s+(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set)\b/i,
-	/\b(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set)\s+successfully\b/i,
-	/\b(?:has|have|was|were)\s+been\s+(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set|marked)\b/i,
-	/\bis\s+now\s+(?:done|complete|completed|updated|scheduled|rescheduled)\b/i
+	/\b(?:i|we)(?:'ve| have)?\s+(?:merged|archived)\b/i,
+	/\b(?:created|updated|deleted|removed|moved|merged|archived|linked|unlinked|scheduled|rescheduled|set)\s+successfully\b/i,
+	/\b(?:has|have|was|were)\s+been\s+(?:created|updated|deleted|removed|moved|merged|archived|linked|unlinked|scheduled|rescheduled|set|marked)\b/i,
+	/\bis\s+now\s+(?:done|complete|completed|updated|merged|archived|scheduled|rescheduled)\b/i
 ];
 
 function looksLikeBulkMutationSuccessClaim(text: string): boolean {
@@ -582,15 +584,15 @@ function buildMutationFailureMessage(summary: MutationOutcomeSummary): string {
 
 	if (summary.succeeded === 0) {
 		if (dominantOp.endsWith('.update') || dominantOp.startsWith('update_')) {
-			return "I couldn't complete that update because no write call succeeded. I need to retry with the exact ID and valid arguments.";
+			return 'I was unable to complete that update because no write call succeeded. Nothing changed yet; I need to retry with the exact ID and valid arguments.';
 		}
 		if (dominantOp.endsWith('.create') || dominantOp.startsWith('create_')) {
-			return "I couldn't create that yet because no write call succeeded. I need to retry with a valid payload.";
+			return 'I was unable to create that because no write call succeeded. Nothing changed yet; I need to retry with a valid payload.';
 		}
 		if (dominantOp.endsWith('.delete') || dominantOp.startsWith('delete_')) {
-			return "I couldn't complete that delete because no write call succeeded. I need to retry after confirming the exact target.";
+			return 'I was unable to complete that delete because no write call succeeded. Nothing changed yet; I need to retry after confirming the exact target.';
 		}
-		return "I couldn't complete that change because no write call succeeded. I need to retry with the exact target and valid arguments.";
+		return 'I was unable to complete that change because no write call succeeded. Nothing changed yet; I need to retry with the exact target and valid arguments.';
 	}
 
 	return 'Some requested changes did not go through. I need to verify the final state before I confirm any updates.';

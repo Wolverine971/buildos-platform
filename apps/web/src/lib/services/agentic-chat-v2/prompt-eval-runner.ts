@@ -16,6 +16,10 @@ import {
 	listPromptEvalScenarios,
 	type PromptEvalScenario
 } from './prompt-eval-scenarios';
+import {
+	readPromptEvalAssertionCounts,
+	type PromptEvalVariantEvidence
+} from './prompt-eval-comparison';
 
 type TurnRunRow = Database['public']['Tables']['chat_turn_runs']['Row'];
 type PromptSnapshotRow = Database['public']['Tables']['chat_prompt_snapshots']['Row'];
@@ -41,6 +45,16 @@ export type PersistedPromptEval = {
 	result: PromptEvalResult;
 	evalRun: ChatPromptEvalRunInsert;
 	assertions: ChatPromptEvalAssertionInsert[];
+};
+
+export type PromptEvalEvidenceRun = {
+	id?: string | null;
+	scenario_slug: string;
+	scenario_version?: string | null;
+	status: string;
+	summary?: unknown;
+	started_at?: string | null;
+	completed_at?: string | null;
 };
 
 function toJson(value: unknown): Json | null {
@@ -144,6 +158,7 @@ export function buildPromptEvalTarget(target: PromptEvalLoadedTarget): PromptEva
 			prompt_snapshot: target.promptSnapshot
 				? {
 						id: target.promptSnapshot.id,
+						prompt_variant: target.promptSnapshot.prompt_variant,
 						approx_prompt_tokens: target.promptSnapshot.approx_prompt_tokens,
 						rendered_dump_text: target.promptSnapshot.rendered_dump_text
 					}
@@ -174,6 +189,39 @@ export function buildPromptEvalTarget(target: PromptEvalLoadedTarget): PromptEva
 			success: tool.success,
 			error_message: tool.error_message
 		}))
+	};
+}
+
+export function buildPromptEvalVariantEvidence(params: {
+	target: PromptEvalLoadedTarget;
+	evalRun: PromptEvalEvidenceRun;
+	scenarioTitle?: string | null;
+}): PromptEvalVariantEvidence {
+	return {
+		scenarioSlug: params.evalRun.scenario_slug,
+		scenarioTitle: params.scenarioTitle ?? null,
+		scenarioVersion: params.evalRun.scenario_version ?? null,
+		turnRunId: params.target.turnRun.id,
+		evalRunId: params.evalRun.id ?? null,
+		promptVariant:
+			params.target.promptSnapshot?.prompt_variant ??
+			params.target.promptSnapshot?.snapshot_version ??
+			null,
+		snapshotVersion: params.target.promptSnapshot?.snapshot_version ?? null,
+		status: params.target.turnRun.status,
+		finishedReason: params.target.turnRun.finished_reason,
+		firstLane: params.target.turnRun.first_lane,
+		firstCanonicalOp: params.target.turnRun.first_canonical_op,
+		firstSkillPath: params.target.turnRun.first_skill_path,
+		validationFailureCount: params.target.turnRun.validation_failure_count,
+		toolRoundCount: params.target.turnRun.tool_round_count,
+		toolCallCount: params.target.turnRun.tool_call_count,
+		llmPassCount: params.target.turnRun.llm_pass_count,
+		promptTokens: params.target.promptSnapshot?.approx_prompt_tokens ?? null,
+		evalStatus: params.evalRun.status,
+		assertionCounts: readPromptEvalAssertionCounts(params.evalRun.summary),
+		startedAt: params.evalRun.started_at ?? null,
+		completedAt: params.evalRun.completed_at ?? null
 	};
 }
 

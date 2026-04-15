@@ -56,6 +56,8 @@ function createGlobalFallbackSupabaseMock(config: {
 	milestones: QueryResult;
 	plans: QueryResult;
 	logs: QueryResult;
+	tasks?: QueryResult;
+	events?: QueryResult;
 }) {
 	const rpc = vi.fn().mockImplementation((fn: string) => {
 		if (fn === 'ensure_actor_for_user') {
@@ -89,9 +91,30 @@ function createGlobalFallbackSupabaseMock(config: {
 		}
 
 		if (table === 'onto_project_logs') {
-			const order = vi.fn().mockResolvedValue(config.logs);
+			const limit = vi.fn().mockResolvedValue(config.logs);
+			const order = vi.fn().mockReturnValue({ limit });
 			const gte = vi.fn().mockReturnValue({ order });
 			const inFn = vi.fn().mockReturnValue({ gte, order });
+			const select = vi.fn().mockReturnValue({ in: inFn });
+			return { select };
+		}
+
+		if (table === 'onto_tasks') {
+			const limit = vi.fn().mockResolvedValue(config.tasks ?? { data: [], error: null });
+			const or = vi.fn().mockReturnValue({ limit });
+			const is = vi.fn().mockReturnValue({ or });
+			const inFn = vi.fn().mockReturnValue({ is });
+			const select = vi.fn().mockReturnValue({ in: inFn });
+			return { select };
+		}
+
+		if (table === 'onto_events') {
+			const limit = vi.fn().mockResolvedValue(config.events ?? { data: [], error: null });
+			const order = vi.fn().mockReturnValue({ limit });
+			const lte = vi.fn().mockReturnValue({ order });
+			const gte = vi.fn().mockReturnValue({ lte });
+			const is = vi.fn().mockReturnValue({ gte });
+			const inFn = vi.fn().mockReturnValue({ is });
 			const select = vi.fn().mockReturnValue({ in: inFn });
 			return { select };
 		}
@@ -523,7 +546,22 @@ describe('loadFastChatPromptContext global', () => {
 		expect(
 			projectOne.recent_activity.map((item: { entity_id: string }) => item.entity_id)
 		).toEqual(['task-1', 'task-2', 'task-3']);
+		expect(data.project_intelligence).toMatchObject({
+			scope: 'global',
+			source: 'fallback',
+			counts: {
+				accessible_projects: 2,
+				overdue_total: 2,
+				due_soon_total: 2,
+				upcoming_total: 2,
+				recent_change_total: 8
+			}
+		});
+		expect(
+			data.project_intelligence.overdue_or_due_soon.map((item: { id: string }) => item.id)
+		).toEqual(['goal-overdue', 'milestone-overdue', 'goal-due-soon', 'milestone-soon']);
 		expect(supabase.rpc.mock.calls.map(([fn]) => fn)).toEqual([
+			'load_fastchat_context',
 			'ensure_actor_for_user',
 			'get_onto_project_summaries_v1'
 		]);

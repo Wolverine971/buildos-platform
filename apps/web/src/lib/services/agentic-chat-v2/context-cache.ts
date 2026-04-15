@@ -3,7 +3,7 @@ import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 
 export const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
-export const FASTCHAT_CONTEXT_CACHE_VERSION = 1;
+export const FASTCHAT_CONTEXT_CACHE_VERSION = 2;
 
 export type FastChatPromptContextSnapshot = {
 	contextType: ChatContextType;

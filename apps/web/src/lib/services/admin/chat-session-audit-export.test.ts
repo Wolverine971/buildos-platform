@@ -121,6 +121,37 @@ describe('chat-session-audit-export', () => {
 					finished_at: '2026-04-03T12:00:21.000Z',
 					created_at: '2026-04-03T12:00:05.000Z',
 					updated_at: '2026-04-03T12:00:21.000Z'
+				},
+				{
+					id: 'run-2',
+					stream_run_id: 'stream-2',
+					client_turn_id: 'turn-2',
+					context_type: 'global',
+					entity_id: 'project-1',
+					project_id: 'project-1',
+					gateway_enabled: true,
+					request_message: 'What is happening with my project?',
+					status: 'completed',
+					finished_reason: 'stop',
+					tool_round_count: 1,
+					tool_call_count: 1,
+					validation_failure_count: 0,
+					llm_pass_count: 1,
+					first_lane: 'overview',
+					first_help_path: null,
+					first_skill_path: null,
+					first_canonical_op: 'util.project.overview',
+					history_strategy: 'raw_history',
+					history_compressed: false,
+					raw_history_count: 0,
+					history_for_model_count: 0,
+					cache_source: 'fresh_load',
+					cache_age_seconds: 0,
+					request_prewarmed_context: false,
+					started_at: '2026-04-03T12:00:25.000Z',
+					finished_at: '2026-04-03T12:00:40.000Z',
+					created_at: '2026-04-03T12:00:25.000Z',
+					updated_at: '2026-04-03T12:00:40.000Z'
 				}
 			],
 			promptSnapshots: [
@@ -128,6 +159,7 @@ describe('chat-session-audit-export', () => {
 					id: 'snapshot-1',
 					turn_run_id: 'run-1',
 					snapshot_version: 'fastchat_prompt_v1',
+					prompt_variant: 'lite_seed_v1',
 					system_prompt: 'System prompt body',
 					model_messages: [
 						{ role: 'user', content: 'What is happening with my project?' }
@@ -138,6 +170,22 @@ describe('chat-session-audit-export', () => {
 					approx_prompt_tokens: 1030,
 					rendered_dump_text: 'FASTCHAT V2 PROMPT SNAPSHOT',
 					created_at: '2026-04-03T12:00:05.500Z'
+				},
+				{
+					id: 'snapshot-2',
+					turn_run_id: 'run-2',
+					snapshot_version: 'fastchat_prompt_v1',
+					prompt_variant: 'fastchat_prompt_v1',
+					system_prompt: 'System prompt body',
+					model_messages: [
+						{ role: 'user', content: 'What is happening with my project?' }
+					],
+					tool_definitions: [{ name: 'get_project_overview' }],
+					system_prompt_chars: 7600,
+					message_chars: 120,
+					approx_prompt_tokens: 1900,
+					rendered_dump_text: 'FASTCHAT V2 PROMPT SNAPSHOT',
+					created_at: '2026-04-03T12:00:25.500Z'
 				}
 			],
 			turnEvents: [
@@ -186,6 +234,24 @@ describe('chat-session-audit-export', () => {
 					completed_at: '2026-04-03T12:01:01.000Z',
 					created_by: 'admin-1',
 					created_at: '2026-04-03T12:01:00.000Z'
+				},
+				{
+					id: 'eval-2',
+					turn_run_id: 'run-2',
+					scenario_slug: 'project.named_status',
+					scenario_version: '1',
+					runner_type: 'admin_manual',
+					status: 'passed',
+					summary: {
+						assertion_counts: {
+							passed: 6,
+							failed: 0
+						}
+					},
+					started_at: '2026-04-03T12:01:10.000Z',
+					completed_at: '2026-04-03T12:01:11.000Z',
+					created_by: 'admin-1',
+					created_at: '2026-04-03T12:01:10.000Z'
 				}
 			],
 			evalAssertions: [
@@ -198,6 +264,16 @@ describe('chat-session-audit-export', () => {
 					actual: 'overview',
 					details: null,
 					created_at: '2026-04-03T12:01:00.500Z'
+				},
+				{
+					id: 'assert-2',
+					eval_run_id: 'eval-2',
+					assertion_key: 'first_lane_matches',
+					status: 'passed',
+					expected: 'overview',
+					actual: 'overview',
+					details: null,
+					created_at: '2026-04-03T12:01:10.500Z'
 				}
 			]
 		});
@@ -210,7 +286,13 @@ describe('chat-session-audit-export', () => {
 		expect(markdown).toContain('Tool Execution: get_project_overview');
 		expect(markdown).toContain('"tool_name": "get_project_overview"');
 		expect(markdown).toContain('"gateway_op": "util.project.overview"');
+		expect(markdown).toContain('## Prompt Variant Comparison');
+		expect(markdown).toContain('1 paired scenario');
+		expect(markdown).toContain('Lite seed vs FastChat v2: better in 1');
+		expect(markdown).toContain('project.named_status: lite better; prompt tokens -870');
 		expect(markdown).toContain('## Turn Runs');
+		expect(markdown).toContain('Prompt Variant: lite_seed_v1');
+		expect(markdown).toContain('Prompt Variant: fastchat_prompt_v1');
 		expect(markdown).toContain('FASTCHAT V2 PROMPT SNAPSHOT');
 		expect(markdown).toContain('project.named_status');
 		expect(markdown).toContain('## Raw Collections');

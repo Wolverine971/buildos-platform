@@ -59,11 +59,40 @@ export type LitePromptDataSummary = {
 	contextMeta?: Record<string, unknown> | null;
 };
 
+export type LitePromptTimelineItem = {
+	kind: string;
+	id: string | null;
+	title: string;
+	state: string | null;
+	date: string | null;
+	relative: string | null;
+};
+
+export type LitePromptProjectDigest = {
+	projectName: string | null;
+	projectState: string | null;
+	projectDescription: string | null;
+	nextStep: string | null;
+	primaryGoal: string | null;
+	activePlan: string | null;
+	counts: Record<string, number>;
+	priorityTasks: string[];
+	overdueItems: LitePromptTimelineItem[];
+	dueSoonItems: LitePromptTimelineItem[];
+	upcomingItems: LitePromptTimelineItem[];
+	recentChanges: LitePromptTimelineItem[];
+	statusLines: string[];
+};
+
 export type LitePromptTimelineSummary = {
 	generatedAt: string;
 	timezone: string;
 	scope: string;
 	facts: string[];
+	statusLines: string[];
+	overdueLines: string[];
+	upcomingLines: string[];
+	recentChangeLines: string[];
 };
 
 export type LitePromptContextInventory = {
@@ -71,6 +100,7 @@ export type LitePromptContextInventory = {
 	dataSummary: LitePromptDataSummary;
 	timeline: LitePromptTimelineSummary;
 	retrievalMap: LitePromptRetrievalMap;
+	projectDigest: LitePromptProjectDigest | null;
 };
 
 export type LitePromptToolsSummary = {

@@ -17,6 +17,7 @@ import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseToolArguments } from './tool-arguments';
 import type { FastChatDebugContext, FastToolExecution, LLMStreamPassMetadata } from './shared';
+import { FASTCHAT_PROMPT_VARIANT } from '../prompt-variant';
 
 const MAX_TOOL_ARG_PREVIEW_CHARS = 400;
 
@@ -72,6 +73,7 @@ export function writeInitialPromptDump(params: {
 			`Context:   ${params.normalizedContext}`,
 			`Entity ID: ${params.entityId ?? 'none'}`,
 			`Project:   ${params.projectId ?? 'none'}`,
+			`Prompt variant: ${params.debugContext?.promptVariant ?? FASTCHAT_PROMPT_VARIANT}`,
 			`Tools (${toolNames.length}): ${toolNames.join(', ') || 'none'}`,
 			`History messages: ${params.history.length}`,
 			`Gateway mode: ${params.debugContext?.gatewayEnabled ? 'enabled' : 'disabled'}`,
@@ -118,6 +120,11 @@ export function writeInitialPromptDump(params: {
 			params.systemPrompt,
 			``,
 			`────────────────────────────────────────`,
+			`END SYSTEM PROMPT (MODEL INPUT ABOVE)`,
+			`────────────────────────────────────────`,
+			``,
+			...formatLitePromptDumpBlock(params.debugContext),
+			`────────────────────────────────────────`,
 			`CONVERSATION HISTORY (${params.history.length} messages)`,
 			`────────────────────────────────────────`,
 			``
@@ -152,6 +159,63 @@ export function writeInitialPromptDump(params: {
 	} catch {
 		return null;
 	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function formatLiteSectionBreakdown(sections: unknown): string[] {
+	if (!Array.isArray(sections) || sections.length === 0) return [];
+
+	return sections.map((section, index) => {
+		const record = isRecord(section) ? section : {};
+		const id = typeof record.id === 'string' ? record.id : `section_${index + 1}`;
+		const title = typeof record.title === 'string' ? record.title : id;
+		const kind = typeof record.kind === 'string' ? record.kind : 'unknown';
+		const source = typeof record.source === 'string' ? record.source : 'unknown';
+		const chars = typeof record.chars === 'number' ? record.chars : 0;
+		const tokens = typeof record.estimatedTokens === 'number' ? record.estimatedTokens : 0;
+		return `${index + 1}. ${id} - ${title} [${kind}, ${source}] ${chars} chars (~${tokens} tokens)`;
+	});
+}
+
+function formatJsonPreview(label: string, value: unknown): string[] {
+	if (value === undefined || value === null) return [];
+	return [`${label}:`, JSON.stringify(value, null, 2)];
+}
+
+function formatLitePromptDumpBlock(debugContext?: FastChatDebugContext): string[] {
+	const liteSectionLines = formatLiteSectionBreakdown(debugContext?.liteSections);
+	const liteMetadataLines = [
+		...formatJsonPreview('Context inventory', debugContext?.liteContextInventory),
+		...formatJsonPreview('Tools summary', debugContext?.liteToolsSummary)
+	];
+	if (liteSectionLines.length === 0 && liteMetadataLines.length === 0) return [];
+
+	const lines: string[] = [
+		`────────────────────────────────────────`,
+		`DUMP-ONLY LITE SECTION BREAKDOWN (NOT SENT TO MODEL)`,
+		`────────────────────────────────────────`
+	];
+	if (liteSectionLines.length > 0) {
+		lines.push(...liteSectionLines);
+	} else {
+		lines.push('No lite section metadata captured.');
+	}
+
+	if (liteMetadataLines.length > 0) {
+		lines.push(
+			``,
+			`────────────────────────────────────────`,
+			`DUMP-ONLY LITE METADATA (NOT SENT TO MODEL)`,
+			`────────────────────────────────────────`,
+			...liteMetadataLines
+		);
+	}
+
+	lines.push(``);
+	return lines;
 }
 
 function formatPromptCostBreakdown(cost: PromptCostBreakdown): string[] {

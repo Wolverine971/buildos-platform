@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-observability.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
+import { LITE_PROMPT_VARIANT } from '$lib/services/agentic-chat-lite/prompt';
 import {
 	buildPromptSnapshotRow,
 	buildPromptSnapshotSections,
@@ -11,6 +12,7 @@ import {
 	FASTCHAT_PROMPT_SNAPSHOT_VERSION
 } from './prompt-observability';
 import { buildPromptCostBreakdown } from './prompt-cost-breakdown';
+import { FASTCHAT_PROMPT_VARIANT } from './prompt-variant';
 
 describe('prompt observability helpers', () => {
 	it('builds a stable prompt snapshot row', () => {
@@ -48,17 +50,102 @@ describe('prompt observability helpers', () => {
 		});
 
 		expect(row.snapshot_version).toBe(FASTCHAT_PROMPT_SNAPSHOT_VERSION);
+		expect(row.prompt_variant).toBe(FASTCHAT_PROMPT_VARIANT);
 		expect(row.system_prompt).toBe('You are BuildOS.');
 		expect(Array.isArray(row.model_messages)).toBe(true);
 		expect(row.tools_sha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(row.system_prompt_sha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(row.messages_sha256).toMatch(/^[a-f0-9]{64}$/);
 		expect(row.rendered_dump_text).toContain('FASTCHAT V2 PROMPT SNAPSHOT');
+		expect(row.rendered_dump_text).toContain('Prompt variant: fastchat_prompt_v1');
 		expect(row.rendered_dump_text).toContain('stream-run-1');
 		expect(row.rendered_dump_text).toContain('tool_schema');
 		expect(row.message_chars).toBeGreaterThan(0);
 		expect(row.approx_prompt_tokens).toBeGreaterThan(0);
 		expect((row.prompt_sections as Record<string, unknown>).cost_breakdown).toBeDefined();
+		expect((row.prompt_sections as Record<string, unknown>).prompt_variant).toBe(
+			FASTCHAT_PROMPT_VARIANT
+		);
+	});
+
+	it('persists lite prompt variant and section metadata in prompt snapshots', () => {
+		const row = buildPromptSnapshotRow({
+			turnRunId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+			sessionId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+			userId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+			streamRunId: 'stream-run-lite',
+			contextType: 'global',
+			promptVariant: LITE_PROMPT_VARIANT,
+			systemPrompt: 'Lite system prompt',
+			history: [],
+			message: 'Use the lite prompt.',
+			requestPayload: { prompt_variant: LITE_PROMPT_VARIANT },
+			promptSections: buildPromptSnapshotSections({
+				contextType: 'global',
+				promptVariant: LITE_PROMPT_VARIANT,
+				data: { projects: [] },
+				liteSections: [
+					{
+						id: 'identity_mission',
+						title: 'Identity and Mission',
+						kind: 'static',
+						source: 'lite.static_frame',
+						content: 'Who: BuildOS',
+						chars: 12,
+						estimatedTokens: 3
+					}
+				],
+				liteContextInventory: {
+					focus: { contextType: 'global' },
+					dataSummary: { topLevelKeys: ['projects'] }
+				},
+				liteToolsSummary: {
+					contextType: 'global',
+					totalTools: 7
+				},
+				toolSurfaceReport: {
+					profile: 'current_request',
+					toolCount: 7
+				}
+			}),
+			contextPayload: { data: { projects: [] } },
+			liteSections: [
+				{
+					id: 'identity_mission',
+					title: 'Identity and Mission',
+					kind: 'static',
+					source: 'lite.static_frame',
+					content: 'Who: BuildOS',
+					chars: 12,
+					estimatedTokens: 3
+				}
+			],
+			liteContextInventory: {
+				focus: { contextType: 'global' },
+				dataSummary: { topLevelKeys: ['projects'] }
+			},
+			liteToolsSummary: {
+				contextType: 'global',
+				totalTools: 7
+			},
+			toolSurfaceReport: {
+				profile: 'current_request',
+				toolCount: 7
+			}
+		});
+
+		const promptSections = row.prompt_sections as Record<string, unknown>;
+
+		expect(row.prompt_variant).toBe(LITE_PROMPT_VARIANT);
+		expect(row.request_payload).toMatchObject({ prompt_variant: LITE_PROMPT_VARIANT });
+		expect(promptSections.prompt_variant).toBe(LITE_PROMPT_VARIANT);
+		expect(promptSections.lite_sections).toBeDefined();
+		expect(promptSections.lite_context_inventory).toBeDefined();
+		expect(promptSections.lite_tools_summary).toBeDefined();
+		expect(promptSections.tool_surface_report).toBeDefined();
+		expect(row.rendered_dump_text).toContain('Prompt variant: lite_seed_v1');
+		expect(row.rendered_dump_text).toContain('LITE SECTION BREAKDOWN');
+		expect(row.rendered_dump_text).toContain('identity_mission - Identity and Mission');
 	});
 
 	it('estimates costs for prompt sections and provider tool definitions', () => {

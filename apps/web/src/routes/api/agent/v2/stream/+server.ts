@@ -54,6 +54,16 @@ import {
 	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
 import {
+	FASTCHAT_PROMPT_VARIANT,
+	isLitePromptVariant,
+	normalizeFastChatPromptVariantRequest
+} from '$lib/services/agentic-chat-v2/prompt-variant';
+import {
+	buildLitePromptEnvelope,
+	LITE_PROMPT_VARIANT,
+	type LitePromptEnvelope
+} from '$lib/services/agentic-chat-lite/prompt';
+import {
 	buildEntityResolutionHint,
 	extractExplicitEntityMentionsFromText
 } from '$lib/services/agentic-chat-v2/entity-resolution';
@@ -70,6 +80,7 @@ import {
 	extractFastChatToolCallMeta
 } from '$lib/services/agentic-chat-v2/prompt-observability';
 import { buildPromptCostBreakdown } from '$lib/services/agentic-chat-v2/prompt-cost-breakdown';
+import { buildToolSurfaceSizeReport } from '$lib/services/agentic-chat-v2/tool-surface-size-report';
 import {
 	getLoadedSkillActivity,
 	getRequestedSkillActivity,
@@ -166,6 +177,22 @@ function isAbortLikeError(error: unknown): boolean {
 async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
 	const body = (await request.json()) as FastAgentStreamRequest;
 	return body;
+}
+
+async function canUseLitePromptVariant(params: {
+	supabase: any;
+	userId: string;
+	dev: boolean;
+}): Promise<boolean> {
+	if (params.dev) return true;
+
+	const { data, error } = await params.supabase
+		.from('admin_users')
+		.select('user_id')
+		.eq('user_id', params.userId)
+		.maybeSingle();
+
+	return !error && Boolean(data);
 }
 
 function waitMs(ms: number): Promise<void> {
@@ -2124,6 +2151,19 @@ export const POST: RequestHandler = async ({
 	if (!message) {
 		return ApiResponse.badRequest('Message is required');
 	}
+	const promptVariantResolution = normalizeFastChatPromptVariantRequest(
+		streamRequest.prompt_variant
+	);
+	if (!promptVariantResolution.ok) {
+		return ApiResponse.badRequest(promptVariantResolution.error);
+	}
+	const promptVariant = promptVariantResolution.promptVariant;
+	if (promptVariantResolution.requiresAdminOrDev) {
+		const allowed = await canUseLitePromptVariant({ supabase, userId, dev });
+		if (!allowed) {
+			return ApiResponse.forbidden('Lite prompt variant requires admin access');
+		}
+	}
 	const clientTurnIdRaw = streamRequest.client_turn_id;
 	const clientTurnId =
 		typeof clientTurnIdRaw === 'string' && clientTurnIdRaw.trim().length > 0
@@ -2847,6 +2887,7 @@ export const POST: RequestHandler = async ({
 			};
 
 			let systemPrompt: string | undefined;
+			let litePromptEnvelope: LitePromptEnvelope | null = null;
 			let contextUsageSnapshot: ContextUsageSnapshot | null = null;
 			let contextCacheAgeSeconds = 0;
 			let promptContext:
@@ -2957,7 +2998,18 @@ export const POST: RequestHandler = async ({
 				promptContext.entityResolutionHint =
 					buildEntityResolutionHint(requestLastTurnContext);
 
-				systemPrompt = buildMasterPrompt(promptContext);
+				if (isLitePromptVariant(promptVariant)) {
+					litePromptEnvelope = buildLitePromptEnvelope({
+						...promptContext,
+						tools,
+						productSurface: FASTCHAT_STREAM_ENDPOINT,
+						conversationPosition: `live stream turn ${streamRunId}`
+					});
+					systemPrompt = litePromptEnvelope.systemPrompt;
+				} else {
+					litePromptEnvelope = null;
+					systemPrompt = buildMasterPrompt(promptContext);
+				}
 
 				const usageSnapshot = buildFastContextUsageSnapshot({
 					systemPrompt,
@@ -2999,6 +3051,11 @@ export const POST: RequestHandler = async ({
 							userMessage: message,
 							tools
 						});
+						const promptToolSurfaceReport = buildToolSurfaceSizeReport({
+							profile: 'current_request',
+							contextType,
+							tools
+						});
 						const promptSnapshotRow = buildPromptSnapshotRow({
 							turnRunId,
 							sessionId: session.id,
@@ -3010,6 +3067,7 @@ export const POST: RequestHandler = async ({
 								promptContext.projectId ??
 								projectFocus?.projectId ??
 								(isProjectScopedContext(contextType) ? (entityId ?? null) : null),
+							promptVariant,
 							systemPrompt,
 							history: historyForModel,
 							message,
@@ -3021,14 +3079,24 @@ export const POST: RequestHandler = async ({
 								context_type: contextType,
 								entity_id: entityId ?? null,
 								project_focus: projectFocus ?? null,
+								prompt_variant: promptVariant,
 								voice_note_group_id: voiceGroupId ?? null
 							},
 							promptSections: buildPromptSnapshotSections({
 								...promptContext,
-								promptCostBreakdown
+								promptVariant,
+								promptCostBreakdown,
+								toolSurfaceReport: promptToolSurfaceReport,
+								liteSections: litePromptEnvelope?.sections ?? null,
+								liteContextInventory: litePromptEnvelope?.contextInventory ?? null,
+								liteToolsSummary: litePromptEnvelope?.toolsSummary ?? null
 							}),
 							promptCostBreakdown,
-							contextPayload: promptContext
+							contextPayload: promptContext,
+							toolSurfaceReport: promptToolSurfaceReport,
+							liteSections: litePromptEnvelope?.sections ?? null,
+							liteContextInventory: litePromptEnvelope?.contextInventory ?? null,
+							liteToolsSummary: litePromptEnvelope?.toolsSummary ?? null
 						});
 						const { error: snapshotError } = await supabase
 							.from('chat_prompt_snapshots')
@@ -3056,6 +3124,7 @@ export const POST: RequestHandler = async ({
 							);
 							recordTurnEvent('prompt', 'prompt_snapshot_created', {
 								prompt_snapshot_id: promptSnapshotId,
+								prompt_variant: promptVariant,
 								system_prompt_chars: promptSnapshotRow.system_prompt_chars,
 								message_chars: promptSnapshotRow.message_chars,
 								approx_prompt_tokens: promptSnapshotRow.approx_prompt_tokens,
@@ -3135,13 +3204,19 @@ export const POST: RequestHandler = async ({
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
 				tools,
 				debugContext: {
+					promptVariant: litePromptEnvelope
+						? LITE_PROMPT_VARIANT
+						: FASTCHAT_PROMPT_VARIANT,
 					gatewayEnabled,
 					historyStrategy: historyComposition.strategy,
 					historyCompressed: historyComposition.compressed,
 					rawHistoryCount: historyComposition.rawHistoryCount,
 					historyForModelCount: historyForModel.length,
 					tailMessagesKept: historyComposition.tailMessagesKept,
-					continuityHintUsed: historyComposition.continuityHintUsed
+					continuityHintUsed: historyComposition.continuityHintUsed,
+					liteSections: litePromptEnvelope?.sections ?? null,
+					liteContextInventory: litePromptEnvelope?.contextInventory ?? null,
+					liteToolsSummary: litePromptEnvelope?.toolsSummary ?? null
 				},
 				toolExecutor: toolExecutionService
 					? async (toolCall, availableToolsForExecution = tools) => {

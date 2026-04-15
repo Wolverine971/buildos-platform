@@ -13,6 +13,7 @@ export type GatewayRequiredFieldFailure = {
 };
 
 export type FastChatDebugContext = {
+	promptVariant?: string;
 	gatewayEnabled?: boolean;
 	historyStrategy?: string;
 	historyCompressed?: boolean;
@@ -20,6 +21,9 @@ export type FastChatDebugContext = {
 	historyForModelCount?: number;
 	tailMessagesKept?: number;
 	continuityHintUsed?: boolean;
+	liteSections?: unknown;
+	liteContextInventory?: unknown;
+	liteToolsSummary?: unknown;
 };
 
 export type LLMStreamPassMetadata = {

@@ -25,6 +25,7 @@ export type FastAgentStreamRequest = {
 	last_turn_context?: LastTurnContext | null;
 	stream_run_id?: string | number;
 	client_turn_id?: string;
+	prompt_variant?: string | null;
 	voiceNoteGroupId?: string;
 	voice_note_group_id?: string;
 	prewarmedContext?: FastChatContextCache | null;

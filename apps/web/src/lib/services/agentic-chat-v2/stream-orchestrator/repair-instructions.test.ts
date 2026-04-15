@@ -63,6 +63,9 @@ describe('repair instruction policy', () => {
 		expect(buildGatewayMutationNoExecutionRepairInstruction(toolExecutions)).toContain(
 			'Write ops already identified: onto.project.create'
 		);
+		expect(buildGatewayMutationNoExecutionRepairInstruction(toolExecutions)).toContain(
+			'I was unable to <requested action>'
+		);
 	});
 
 	it('allows pure clarifying questions after schema-only write discovery', () => {
@@ -123,7 +126,34 @@ describe('repair instruction policy', () => {
 				toolExecutions
 			})
 		).toBe(
-			"I couldn't create that yet because no write call succeeded. I need to retry with a valid payload."
+			'I was unable to create that because no write call succeeded. Nothing changed yet; I need to retry with a valid payload.'
+		);
+	});
+
+	it('blocks fake merge success after only discovering update tools', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'tool_search',
+				args: { query: 'update project state to archive old duplicate', entity: 'project' },
+				result: {
+					type: 'tool_search_results',
+					matches: [
+						{
+							op: 'onto.project.update',
+							tool_name: 'update_onto_project'
+						}
+					]
+				}
+			})
+		];
+
+		expect(
+			enforceMutationOutcomeIntegrity('I merged the Ember projects.', {
+				contextType: 'global',
+				toolExecutions
+			})
+		).toBe(
+			'I was unable to complete that update because no write call succeeded. Nothing changed yet; I need to retry with the exact ID and valid arguments.'
 		);
 	});
 });

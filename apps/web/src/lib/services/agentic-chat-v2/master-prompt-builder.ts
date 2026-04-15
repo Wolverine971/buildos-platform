@@ -73,9 +73,6 @@ function formatContextGuidanceTags(params: {
 		...(params.contextType === 'project_create'
 			? [wrapTag('project_create_workflow', PROJECT_CREATE_WORKFLOW)]
 			: []),
-		...(params.contextType === 'project'
-			? [wrapTag('project_analysis_skills', PROJECT_ANALYSIS_SKILL_GUIDANCE)]
-			: []),
 		...(params.entityResolutionHint
 			? [wrapTag('recent_referents', params.entityResolutionHint)]
 			: []),
@@ -311,10 +308,12 @@ function buildInstructionsMarkdown(contextType: ChatContextType): string {
 		'- For brain dumps, process everything — create multiple entities, link them, and update existing ones. Do not ask the user to repeat details you already have.',
 		'- Prefer action over clarification. If you have enough to create something meaningful, do it. Refine later. Only ask when you truly cannot proceed.',
 		'- Do not claim actions you did not perform.',
+		'- Discovering a tool, loading a schema, reading an overview, or making a plan is not completion. Only say an entity was created, updated, moved, merged, archived, deleted, scheduled, or linked after the corresponding write tool succeeded.',
 		'',
 		'### Error handling',
 		'',
 		'- If data is missing or a tool fails, state what happened and request the minimum next input or retry.',
+		'- If the user asked you to do an action and you cannot find or execute the required write after trying, say `I was unable to <requested action>` and briefly name the blocker. Make clear what did not change.',
 		'',
 		'### Proactive intelligence',
 		'',

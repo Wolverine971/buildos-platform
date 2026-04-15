@@ -106,6 +106,84 @@ export type FastChatEventWindow = {
 	future_days: number;
 };
 
+export type FastChatWorkSignal = {
+	kind: 'task' | 'milestone' | 'goal' | 'event' | 'project';
+	id: string;
+	project_id: string;
+	project_name: string | null;
+	title: string;
+	state_key: string | null;
+	date_kind: 'due_at' | 'target_date' | 'start_at' | 'end_at';
+	date: string;
+	bucket: 'overdue' | 'due_soon' | 'upcoming';
+	days_delta: number;
+	priority?: number | null;
+	updated_at?: string | null;
+};
+
+export type FastChatRecentChange = {
+	kind: string;
+	id: string;
+	project_id: string;
+	project_name: string | null;
+	title: string | null;
+	action: 'created' | 'updated' | string;
+	changed_at: string;
+};
+
+export type FastChatProjectSignalSummary = {
+	project_id: string;
+	project_name: string;
+	state_key: string | null;
+	next_step_short: string | null;
+	updated_at: string | null;
+	counts: {
+		overdue: number;
+		due_soon: number;
+		upcoming: number;
+		recent_changes: number;
+	};
+};
+
+export type FastChatProjectIntelligence = {
+	generated_at: string;
+	scope: 'global' | 'project';
+	project_id: string | null;
+	project_name: string | null;
+	timezone: 'UTC';
+	windows: {
+		due_soon_days: number;
+		upcoming_days: number;
+		recent_changes_days: number;
+		recent_changes_max_lookback_days: number;
+	};
+	counts: {
+		accessible_projects?: number;
+		projects_returned?: number;
+		overdue_total: number;
+		due_soon_total: number;
+		upcoming_total: number;
+		recent_change_total: number;
+	};
+	overdue_or_due_soon: FastChatWorkSignal[];
+	upcoming_work: FastChatWorkSignal[];
+	recent_changes: FastChatRecentChange[];
+	project_summaries: FastChatProjectSignalSummary[];
+	limits: {
+		overdue_or_due_soon: number;
+		upcoming_work: number;
+		recent_changes: number;
+		project_summaries: number;
+	};
+	maybe_more: {
+		overdue_or_due_soon: boolean;
+		upcoming_work: boolean;
+		recent_changes: boolean;
+		project_summaries: boolean;
+	};
+	source: 'load_fastchat_context' | 'fallback';
+};
+
 export type EntityScopeMeta = {
 	returned: number;
 	total_matching: number;
@@ -172,6 +250,7 @@ export type LinkedEdge = {
 
 export type GlobalContextData = {
 	projects: GlobalContextProjectBundle[];
+	project_intelligence?: FastChatProjectIntelligence;
 	context_meta?: {
 		generated_at: string;
 		source: 'rpc' | 'fallback';
@@ -202,6 +281,7 @@ export type ProjectContextData = {
 	events: LightEvent[];
 	events_window: FastChatEventWindow;
 	members: LightProjectMember[];
+	project_intelligence?: FastChatProjectIntelligence;
 	context_meta: ProjectContextMeta;
 };
 

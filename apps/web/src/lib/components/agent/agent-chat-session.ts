@@ -4,7 +4,9 @@ import type { ChatContextType, ChatRole, ChatSession } from '@buildos/shared-typ
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { VoiceNote } from '$lib/types/voice-notes';
 import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
+import { FASTCHAT_PROMPT_VARIANT } from '$lib/services/agentic-chat-v2/prompt-variant';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
+import { LITE_PROMPT_VARIANT } from '$lib/services/agentic-chat-lite/prompt/types';
 import type { UIMessage } from './agent-chat.types';
 
 type LoadedChatMessage = {
@@ -34,6 +36,31 @@ export interface AgentChatSessionSnapshot {
 	projectFocus: ProjectFocus | null;
 	messages: UIMessage[];
 	voiceNotesByGroupId: Record<string, VoiceNote[]>;
+}
+
+export const AGENT_CHAT_DEFAULT_PROMPT_VARIANT = FASTCHAT_PROMPT_VARIANT;
+export const AGENT_CHAT_LITE_PROMPT_VARIANT = LITE_PROMPT_VARIANT;
+
+export type AgentChatPromptVariantSelection =
+	| typeof AGENT_CHAT_DEFAULT_PROMPT_VARIANT
+	| typeof AGENT_CHAT_LITE_PROMPT_VARIANT;
+
+export function normalizeAgentChatPromptVariantSelection(
+	value: unknown
+): AgentChatPromptVariantSelection {
+	return value === AGENT_CHAT_LITE_PROMPT_VARIANT
+		? AGENT_CHAT_LITE_PROMPT_VARIANT
+		: AGENT_CHAT_DEFAULT_PROMPT_VARIANT;
+}
+
+export function resolveAgentChatPromptVariantForRequest(params: {
+	canUsePromptVariantControls: boolean;
+	selectedPromptVariant: AgentChatPromptVariantSelection | null | undefined;
+}): typeof AGENT_CHAT_LITE_PROMPT_VARIANT | null {
+	if (!params.canUsePromptVariantControls) return null;
+	return params.selectedPromptVariant === AGENT_CHAT_LITE_PROMPT_VARIANT
+		? AGENT_CHAT_LITE_PROMPT_VARIANT
+		: null;
 }
 
 const DEFAULT_CHAT_SESSION_TITLES = [

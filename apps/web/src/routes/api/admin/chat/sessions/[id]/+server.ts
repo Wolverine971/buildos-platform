@@ -241,6 +241,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
           id,
           turn_run_id,
           snapshot_version,
+          prompt_variant,
           system_prompt,
           model_messages,
           tool_definitions,

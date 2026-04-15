@@ -73,8 +73,11 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.promptVariant).toBe('lite_seed_v1');
 		expect(envelope.sections.map((section) => section.id)).toEqual(LITE_PROMPT_SECTION_ORDER);
 		expect(envelope.systemPrompt).toContain('# BuildOS Lite Agentic Chat Prompt');
-		expect(envelope.systemPrompt).toContain('Product surface: global workspace chat');
-		expect(envelope.systemPrompt).toContain('Conversation position: beginning of chat thread');
+		expect(envelope.systemPrompt).toContain('Loaded scope:');
+		expect(envelope.systemPrompt).not.toContain('Product surface: global workspace chat');
+		expect(envelope.systemPrompt).not.toContain(
+			'Conversation position: beginning of chat thread'
+		);
 		expect(envelope.systemPrompt).toContain('Workspace and project overviews');
 		expect(envelope.systemPrompt).toContain(
 			'Tool schemas are supplied through model tool definitions'
@@ -90,6 +93,141 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.contextInventory.dataSummary.arrayCounts.projects).toBe(1);
 		expect(envelope.contextInventory.timeline.facts).toContain(
 			'Recent activity items loaded: 1.'
+		);
+		expect(envelope.systemPrompt).toContain('Recent project changes:');
+		expect(envelope.systemPrompt).toContain(
+			'2026-04-14: task "Finish onboarding (Launch Alpha)", updated, today.'
+		);
+		expect(envelope.systemPrompt).not.toContain('No recent project changes are loaded.');
+	});
+
+	it('renders project intelligence signals when prewarm provides them', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			now: '2026-04-15T12:00:00Z',
+			data: {
+				projects: [],
+				project_intelligence: {
+					generated_at: '2026-04-15T12:00:00Z',
+					scope: 'global',
+					project_id: null,
+					project_name: null,
+					timezone: 'UTC',
+					windows: {
+						due_soon_days: 7,
+						upcoming_days: 30,
+						recent_changes_days: 7,
+						recent_changes_max_lookback_days: 21
+					},
+					counts: {
+						accessible_projects: 3,
+						projects_returned: 1,
+						overdue_total: 1,
+						due_soon_total: 1,
+						upcoming_total: 1,
+						recent_change_total: 1
+					},
+					overdue_or_due_soon: [
+						{
+							kind: 'task',
+							id: 'task-overdue',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Send beta invite',
+							state_key: 'todo',
+							date_kind: 'due_at',
+							date: '2026-04-14T12:00:00Z',
+							bucket: 'overdue',
+							days_delta: -1,
+							priority: 2,
+							updated_at: '2026-04-14T10:00:00Z'
+						},
+						{
+							kind: 'milestone',
+							id: 'milestone-soon',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Beta launch',
+							state_key: 'pending',
+							date_kind: 'due_at',
+							date: '2026-04-18T12:00:00Z',
+							bucket: 'due_soon',
+							days_delta: 3,
+							updated_at: '2026-04-15T10:00:00Z'
+						}
+					],
+					upcoming_work: [
+						{
+							kind: 'event',
+							id: 'event-1',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Launch review',
+							state_key: 'scheduled',
+							date_kind: 'start_at',
+							date: '2026-04-25T12:00:00Z',
+							bucket: 'upcoming',
+							days_delta: 10,
+							updated_at: '2026-04-15T10:00:00Z'
+						}
+					],
+					recent_changes: [
+						{
+							kind: 'task',
+							id: 'task-1',
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							title: 'Finish onboarding',
+							action: 'updated',
+							changed_at: '2026-04-15T11:00:00Z'
+						}
+					],
+					project_summaries: [
+						{
+							project_id: 'project-1',
+							project_name: 'Launch Alpha',
+							state_key: 'active',
+							next_step_short: 'Ship the beta build',
+							updated_at: '2026-04-15T10:00:00Z',
+							counts: {
+								overdue: 1,
+								due_soon: 1,
+								upcoming: 1,
+								recent_changes: 1
+							}
+						}
+					],
+					limits: {
+						overdue_or_due_soon: 16,
+						upcoming_work: 16,
+						recent_changes: 16,
+						project_summaries: 8
+					},
+					maybe_more: {
+						overdue_or_due_soon: false,
+						upcoming_work: false,
+						recent_changes: false,
+						project_summaries: false
+					},
+					source: 'load_fastchat_context'
+				}
+			}
+		});
+
+		expect(envelope.systemPrompt).toContain(
+			'Loaded project intelligence: 1 overdue, 1 due soon, 1 upcoming, 1 recent changes.'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'Overdue: 2026-04-14: task "Send beta invite" in Launch Alpha, todo, yesterday.'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'Due soon: 2026-04-18: milestone "Beta launch" in Launch Alpha, pending, in 3 days.'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'Upcoming: 2026-04-25: event "Launch review" in Launch Alpha, scheduled, in 10 days.'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'2026-04-15: task "Finish onboarding" updated in Launch Alpha.'
 		);
 	});
 
@@ -191,6 +329,13 @@ describe('buildLitePromptEnvelope', () => {
 		});
 		const loadedContext = extractLoadedJson(envelope.systemPrompt);
 		expect(envelope.systemPrompt).toContain('Focus entity: task Draft proposal');
+		expect(envelope.systemPrompt).toContain('Launch Alpha is active.');
+		expect(envelope.systemPrompt).toContain(
+			'Due soon: 2026-04-18: task "Draft proposal", active, in 4 days.'
+		);
+		expect(envelope.systemPrompt).toContain('Loaded data snapshot:');
+		expect(envelope.systemPrompt).toContain('Counts: documents: 2, events: 0');
+		expect(envelope.systemPrompt).not.toContain('Top-level keys:');
 		expect(envelope.systemPrompt).toContain('"focus_entity_type": "task"');
 		expect(loadedContext.documents).toEqual([
 			expect.objectContaining({

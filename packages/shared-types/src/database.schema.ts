@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-04-15T01:17:46.053Z
+// Generated on: 2026-04-15T13:46:33.226Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -576,6 +576,7 @@ export type DatabaseSchema = {
 		message_chars: number;
 		messages_sha256: string;
 		model_messages: Json;
+		prompt_variant: string;
 		prompt_sections: Json | null;
 		rendered_dump_text: string | null;
 		request_payload: Json | null;
