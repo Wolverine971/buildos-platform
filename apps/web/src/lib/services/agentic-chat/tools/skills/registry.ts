@@ -1,8 +1,8 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/registry.ts
-import { workflowAuditSkill } from './audit.skill';
+import { projectAuditSkill } from './audit.skill';
 import { calendarSkill } from './calendar.skill';
 import { documentSkill } from './document.skill';
-import { workflowForecastSkill } from './forecast.skill';
+import { projectForecastSkill } from './forecast.skill';
 import { libriSkill } from './libri.skill';
 import { peopleSkill } from './people.skill';
 import { planSkill } from './plan.skill';
@@ -19,8 +19,8 @@ const ALL_SKILLS: SkillDefinition[] = [
 	taskSkill,
 	peopleSkill,
 	libriSkill,
-	workflowAuditSkill,
-	workflowForecastSkill
+	projectAuditSkill,
+	projectForecastSkill
 ];
 
 function isSkillEnabled(skill: SkillDefinition): boolean {

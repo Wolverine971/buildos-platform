@@ -51,7 +51,28 @@ const DEFAULT_CHAT_SESSION_TITLES = [
 ].map((title) => title.toLowerCase());
 
 export function isProjectContext(context: ChatContextType | null | undefined): boolean {
-	return context === 'project' || context === 'project_audit' || context === 'project_forecast';
+	return context === 'project';
+}
+
+export function normalizeSessionContextType(context: string | null | undefined): ChatContextType {
+	switch (context) {
+		case 'general':
+			return 'global';
+		case 'project_audit':
+		case 'project_forecast':
+			return 'project';
+		case 'global':
+		case 'project':
+		case 'calendar':
+		case 'daily_brief':
+		case 'project_create':
+		case 'daily_brief_update':
+		case 'ontology':
+		case 'brain_dump':
+			return context;
+		default:
+			return 'global';
+	}
 }
 
 export function buildProjectWideFocus(
@@ -185,9 +206,7 @@ export function buildAgentChatSessionSnapshot(
 	payload: LoadedChatSessionPayload
 ): AgentChatSessionSnapshot {
 	const { session, messages: loadedMessages, truncated, voiceNotes = [] } = payload;
-	const contextType = (
-		session.context_type === 'general' ? 'global' : session.context_type
-	) as ChatContextType;
+	const contextType = normalizeSessionContextType(session.context_type);
 	const selectedEntityId = session.entity_id || undefined;
 	const selectedContextLabel = deriveSessionTitle(session) || 'Resumed Chat';
 	const metadataFocus = normalizeProjectFocusClient(

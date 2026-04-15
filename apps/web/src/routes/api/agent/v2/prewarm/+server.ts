@@ -26,11 +26,7 @@ function trimOptionalString(value: unknown): string | undefined {
 }
 
 function isProjectContext(contextType: ChatContextType): boolean {
-	return (
-		contextType === 'project' ||
-		contextType === 'project_audit' ||
-		contextType === 'project_forecast'
-	);
+	return contextType === 'project';
 }
 
 async function checkProjectAccess(supabase: any, projectId: string): Promise<boolean> {

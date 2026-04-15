@@ -1312,8 +1312,6 @@
 					<option value="general">General</option>
 					<option value="project">Project</option>
 					<option value="project_create">Project Create</option>
-					<option value="project_audit">Project Audit</option>
-					<option value="project_forecast">Project Forecast</option>
 					<option value="calendar">Calendar</option>
 					<option value="daily_brief">Daily Brief</option>
 					<option value="daily_brief_update">Daily Brief Update</option>
@@ -1496,6 +1494,9 @@
 								</span>
 								<span class="text-xs text-foreground/70">
 									{formatNumber(session.tool_call_count)} tools
+								</span>
+								<span class="text-xs font-semibold text-foreground">
+									Cost {formatCurrency(session.cost_estimate)}
 								</span>
 							</div>
 						</button>

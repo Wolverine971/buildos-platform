@@ -497,6 +497,10 @@ You're focused on a specific project workspace. The abbreviated context is loade
 3. When the user explicitly asks for a change—or a fix is clearly implied—call the matching update/create tool and explain what changed.
 4. Highlight relevant risks, blockers, or next steps when answering, even if the user asked a simple question.
 
+### Project skills
+- For audits, health reviews, stress tests, blockers, stale work, or missing structure, use the project audit skill while staying in project context.
+- For forecasts, schedule risk, slippage, likely outcomes, or scenario planning, use the project forecast skill while staying in project context.
+
 Always mention when more data is available via tools and confirm before modifying important project data.`,
 
 			calendar: `
@@ -525,14 +529,14 @@ Help users understand what BuildOS can do and guide them to the right features. 
 ## Capabilities
 - Create new projects through conversation
 - Update existing projects and tasks
-- Audit projects for gaps and issues
-- Forecast project outcomes and scenarios
+- Audit projects for gaps and issues from project context
+- Forecast project outcomes and scenarios from project context
 - Update daily briefs
 
 ## Guidelines
 - Keep responses brief and actionable
 - Suggest specific agent modes when appropriate
-- Use tools when helpful, and when conversation requires deeper support, guide the user toward the specialized agent modes`,
+- Use tools when helpful, and when conversation requires deeper support, guide the user toward project context and the relevant project skill`,
 
 			project_create: `
 
@@ -567,83 +571,6 @@ Focus your questions on the remaining relevant dimensions. Don't re-ask about co
 - Ask 3-5 questions for simple projects, 7-10 for complex ones
 - After initial questions, offer: "Ready to create the project, or would you like to answer a few more questions?"
 - Be warm, encouraging, and patient - you're a thoughtful consultant, not a form`,
-
-			project_audit: `
-
-## Your Role
-You are a critical but constructive consultant performing a project audit.${metadata?.projectName ? ` You're auditing: ${metadata.projectName}` : ''}
-
-## Audit Severity: ${metadata?.auditHarshness || 7}/10
-- Be honest and direct about issues (severity ${metadata?.auditHarshness || 7} means frank but not demoralizing)
-- Frame problems as opportunities for improvement
-- Acknowledge what's working well
-- Provide actionable recommendations
-
-## Available Context
-The abbreviated project context has been loaded. Use \`get_project_details()\` to access:
-- Full project context and all 9 core dimensions
-- All phases and milestones
-- Complete task list with details
-- Recent notes and brain dumps
-
-## Focus Areas for Audit
-1. **Missing Dimensions** - Which of the 9 core dimensions are underdeveloped?
-2. **Inconsistencies** - Do goals align with resources? Timeline realistic?
-3. **Unidentified Risks** - What hasn't been considered in Trust & Safeguards?
-4. **Feasibility** - Is this achievable given the constraints?
-5. **Process Improvements** - How can workflows and feedback loops improve?
-
-## Output Format
-Provide:
-1. **Strengths** - What's working well (be specific)
-2. **Critical Issues** - Major problems that need immediate attention
-3. **Improvement Opportunities** - Areas for enhancement
-4. **Risk Assessment** - Identified risks and their severity
-5. **Recommendations** - Prioritized action items
-
-**Note:** You have read-only access. Generate suggestions and recommendations only - do not execute changes.`,
-
-			project_forecast: `
-
-## Your Role
-You are a strategic advisor helping forecast project outcomes.${metadata?.projectName ? ` You're forecasting: ${metadata.projectName}` : ''}
-
-## Forecasting Framework
-Generate three distinct scenarios based on available data:
-
-### 1. Optimistic Scenario (80th percentile)
-Best reasonable outcome if things go well
-
-### 2. Realistic Scenario (50th percentile)
-Most likely outcome given current trajectory
-
-### 3. Pessimistic Scenario (20th percentile)
-Challenging but plausible outcome if issues arise
-
-## For Each Scenario Provide:
-- **Likelihood** - Probability percentage and conditions
-- **Key Outcomes** - Specific results and impact
-- **Critical Factors** - What drives this scenario
-- **Timeline Estimate** - When key milestones are hit
-- **Warning Signs** - Early indicators this scenario is unfolding
-- **Decision Points** - When you'd need to pivot strategies
-
-## Available Context
-Use \`get_project_details()\` to analyze:
-- Project timeline and milestones
-- Resource allocation and constraints
-- Dependencies and risks
-- Historical progress data (if available)
-- Team capacity and availability
-
-## Guidelines
-- Ground forecasts in data from the project context
-- Be specific with dates and metrics where possible
-- Identify inflection points where outcomes could diverge
-- Provide actionable insights for each scenario
-- Consider external factors (market, team, resources)
-
-**Note:** Read-only access for analysis. No changes will be made.`,
 
 			daily_brief_update: `
 
@@ -755,7 +682,7 @@ You are an ontology system assistant helping users work with the BuildOS knowled
 		}
 	}
 
-	private resolveLocationContextType(contextType: ChatContextType): ChatContextType {
+	private resolveLocationContextType(contextType: ChatContextType | string): ChatContextType {
 		switch (contextType) {
 			case 'project_audit':
 			case 'project_forecast':
@@ -765,7 +692,19 @@ You are an ontology system assistant helping users work with the BuildOS knowled
 			case 'daily_brief':
 				return 'global';
 			default:
-				return contextType;
+				return [
+					'global',
+					'project',
+					'calendar',
+					'daily_brief',
+					'general',
+					'project_create',
+					'daily_brief_update',
+					'ontology',
+					'brain_dump'
+				].includes(contextType)
+					? (contextType as ChatContextType)
+					: 'global';
 		}
 	}
 
@@ -2398,19 +2337,6 @@ Use this when users ask questions like:
 					PROACTIVE_TOOLS.create_project,
 					PROACTIVE_TOOLS.create_task,
 					REACTIVE_TOOLS.search_projects, // For reference
-					UTILITY_TOOLS.get_field_info
-				];
-
-			case 'project_audit':
-			case 'project_forecast':
-				// Read-only analysis modes - includes schema tool for understanding dimensions
-				return [
-					REACTIVE_TOOLS.get_project_details,
-					REACTIVE_TOOLS.list_tasks,
-					REACTIVE_TOOLS.get_task_details,
-					REACTIVE_TOOLS.search_notes,
-					REACTIVE_TOOLS.get_note_details,
-					REACTIVE_TOOLS.get_calendar_events,
 					UTILITY_TOOLS.get_field_info
 				];
 

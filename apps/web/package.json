@@ -51,6 +51,7 @@
 		"gen:route-docs": "node --import tsx scripts/generate-route-docs.ts",
 		"docs:api": "pnpm run gen:api-docs && pnpm run gen:route-docs",
 		"docs:serve": "vite preview --open /docs/api",
+		"report:agentic-tools": "node --import tsx scripts/report-agentic-tool-surface-sizes.ts",
 		"generate-configs": "node --import tsx scripts/generate-field-configs.ts",
 		"deps:check": "pnpm outdated",
 		"deps:update": "pnpm update --interactive",

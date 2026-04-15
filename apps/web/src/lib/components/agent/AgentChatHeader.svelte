@@ -60,12 +60,7 @@
 		isExportingAudit = false
 	}: Props = $props();
 
-	const isProjectContext = $derived.by(
-		() =>
-			selectedContextType === 'project' ||
-			selectedContextType === 'project_audit' ||
-			selectedContextType === 'project_forecast'
-	);
+	const isProjectContext = $derived.by(() => selectedContextType === 'project');
 
 	// Determine project URL based on context
 	const projectUrl = $derived(projectId ? `/projects/${projectId}` : null);

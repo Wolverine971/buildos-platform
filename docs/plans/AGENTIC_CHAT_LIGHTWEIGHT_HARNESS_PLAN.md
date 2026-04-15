@@ -2,7 +2,7 @@
 
 # Agentic Chat Lightweight Harness Plan
 
-Status: Draft plan
+Status: Tightened plan; Phase 1 renderer slice implemented
 Date: 2026-04-14
 Owner: BuildOS Agentic Chat
 
@@ -15,8 +15,8 @@ Related:
 
 ## Goal
 
-Build a lightweight parallel harness for BuildOS agentic chat so we can simplify
-the seed prompt and context hydration without breaking the existing FastChat v2
+Build a lightweight harness for BuildOS agentic chat so we can simplify the
+seed prompt and context hydration without breaking the existing FastChat v2
 runtime.
 
 The harness should make the prompt construction obvious:
@@ -30,6 +30,48 @@ It should also make the swapped-in dynamic parts visible:
 ```text
 focus, purpose, where, when, loaded context, retrieval map, tools, history summary
 ```
+
+## Post-Cleanup Baseline
+
+The cleanup pass made the current production path canonical:
+
+```text
+UI chat -> /api/agent/v2/stream
+UI prewarm -> /api/agent/v2/prewarm
+UI cancel -> /api/agent/v2/stream/cancel
+LLM provider -> OpenRouterV2Service
+Tool mode -> gateway/direct tool surface
+Tool prompt text -> compact tool summary, with schemas supplied as model tools
+Prompt builder -> agentic-chat-v2/master-prompt-builder.ts
+Context loader -> agentic-chat-v2/context-loader.ts
+Tool selector -> agentic-chat-v2/tool-selector.ts
+Stream loop -> agentic-chat-v2/stream-orchestrator/index.ts
+```
+
+The lite harness should assume that baseline. It should not reintroduce
+OpenRouter-vs-SmartLLM, gateway-on-vs-off, or compact-vs-full-tool-prompt
+branches.
+
+## Prompt Observability Cleanup
+
+Status: implemented before runtime lite wiring.
+
+The prompt dump should make provider tool payloads explicit:
+
+- system prompt text lists tool names only
+- provider tool schemas are sent separately in the model `tools` payload
+- prompt dumps show current request tool count, total tool-definition chars, and
+  per-tool char/token estimates
+- prompt dumps include a context/profile size matrix for the canonical gateway
+  surfaces
+
+This cleanup prevents a misleading read of prompt dumps where schemas appear to
+be missing even though they are sent outside the system prompt. It also gives us
+the data needed to design smaller preloaded tool profiles later.
+
+The context description should avoid low-signal labels like
+`Context type: project.` and instead describe the useful working location and
+scope directly.
 
 ## Practical Assessment
 
@@ -113,9 +155,9 @@ Important existing seams:
 
 | Area                | Current file                                                                         | Use in lightweight harness                                                           |
 | ------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| Prompt construction | `apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts`                 | Replace or wrap first. This is where prompt shape should become visible.             |
+| Prompt construction | `apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts`                 | Compare against first. Do not replace live behavior until lite passes evals.         |
 | Context hydration   | `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`                        | Reuse first. It already loads global, project, and focused entity context.           |
-| Tool selection      | `apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts`                         | Reuse first. Tool surface already varies by context and gateway mode.                |
+| Tool selection      | `apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts`                         | Reuse first. Tool surface is now the canonical gateway/direct surface.               |
 | Stream loop         | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts`             | Reuse first. It already accepts `systemPrompt` and `tools`.                          |
 | Prompt snapshots    | `apps/web/src/lib/services/agentic-chat-v2/prompt-observability.ts`                  | Extend with section-level data and prompt variant.                                   |
 | Local prompt dumps  | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/prompt-dump-debug.ts` | Extend with section breakdown and phase frames.                                      |
@@ -134,18 +176,15 @@ persistence.
 
 ## Recommended Architecture
 
-Create a new prompt harness namespace, but keep the runtime shared at first:
+Create a new prompt harness namespace, but keep the runtime shared at first.
+Keep the first implementation small enough that the complete prompt construction
+root is easy to read:
 
 ```text
 apps/web/src/lib/services/agentic-chat-lite/
+  index.ts
   prompt/
     build-lite-prompt.ts
-    render-prompt-sections.ts
-    static-frame.ts
-    seed-context-section.ts
-    timeline-section.ts
-    capability-tool-section.ts
-    retrieval-map-section.ts
     phase-frame.ts
     types.ts
 ```
@@ -189,7 +228,8 @@ The important design rule:
 The root prompt builder must show the complete section order and all dynamic slots.
 ```
 
-No hidden prompt assembly spread across unrelated files.
+No hidden prompt assembly spread across unrelated files. Section helper
+functions are fine, but the root builder must show the actual section order.
 
 ## Prompt Shape
 
@@ -358,21 +398,26 @@ Work:
 - add `agentic-chat-lite/prompt/`
 - build `buildLitePromptEnvelope`
 - reuse existing `MasterPromptContext` shape where possible
+- include the current canonical tool surface in the envelope
 - add unit tests for global, project, and entity-focused contexts
-- add snapshot tests for rendered section order
+- add tests for rendered section order
 - add token/char section breakdown
+- add an observability-only phase frame builder
 
 Acceptance:
 
 - existing FastChat v2 behavior unchanged
 - lite prompt can be rendered from fixtures without calling an LLM
 - section metadata shows what was static and what was swapped in
+- phase frames can be rendered from a synthetic tool lifecycle event
 
 ### Phase 2: Prompt preview harness
 
 Outcome:
 
 - dev/admin can inspect the lite prompt before it is used live
+- preview output should include the same tool definition size report that prompt
+  dumps now include
 
 Work:
 
@@ -412,23 +457,21 @@ Outcome:
 
 Work:
 
-- add request-level prompt variant, guarded by env/admin check
+- add request-level prompt variant, guarded by admin/server availability checks
 - keep the same stream endpoint and same runtime loop
 - when variant is lite, call `buildLitePromptEnvelope` instead of `buildMasterPrompt`
 - persist prompt variant and section metadata in snapshots
 - extend local prompt dumps with section breakdown
-
-Recommended flag:
-
-```text
-AGENTIC_CHAT_LITE_PROMPT_ENABLED=true
-```
 
 Request-level selector:
 
 ```text
 prompt_variant: "lite_seed_v1"
 ```
+
+Do not add another long-lived runtime fork for the default chat path. If a
+server-side gate is needed for deployment safety, treat it as an availability
+guard for dev/admin testing, not as a second product mode.
 
 Acceptance:
 
@@ -472,7 +515,7 @@ Outcome:
 Work:
 
 - add dev/admin backend selector or query-param override
-- keep environment variable as availability gate, not the only selector
+- keep any server-side availability gate separate from the request-level selector
 - send selected endpoint or `prompt_variant` from `AgentChatModal.svelte`
 - mark visible debug metadata in dev builds only
 
@@ -520,9 +563,9 @@ The smallest useful slice is:
 
 1. Add `agentic-chat-lite/prompt/` with pure prompt rendering.
 2. Add tests with hand-built global/project/entity fixtures.
-3. Add section-level prompt dump/preview output.
+3. Add section metadata that can later feed prompt dump/preview output.
 4. Add phase frame builder as observability-only.
-5. Add request-level `prompt_variant` in v2 endpoint after the renderer is stable.
+5. Stop before changing the live v2 endpoint.
 
 This gives us the root prompt construction place the system is missing while
 keeping the working chat intact.

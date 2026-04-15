@@ -110,8 +110,6 @@ export type AgentChatType =
   | 'general'
   | 'project'
   | 'project_create'    // Creating a new project from scratch
-  | 'project_audit'     // Critical review of project
-  | 'project_forecast'  // Scenario forecasting
   | 'daily_brief_update'; // Daily brief updates
 
 // ============================================================================
@@ -588,8 +586,6 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
     general: true,
     project_create: true,
     project: true,
-    project_audit: false,  // Phase 2
-    project_forecast: false, // Phase 2
     daily_brief_update: false // Phase 2
   },
   show_old_braindump: true,
@@ -652,8 +648,6 @@ export function isAgentChatType(type: string): type is AgentChatType {
     'general',
     'project_create',
     'project',
-    'project_audit',
-    'project_forecast',
     'daily_brief_update'
   ].includes(type);
 }

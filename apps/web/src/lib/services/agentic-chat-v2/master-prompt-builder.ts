@@ -3,10 +3,6 @@ import type { ChatContextType } from '@buildos/shared-types';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
-import {
-	isLibriIntegrationEnabled,
-	LIBRI_PERSON_RESOLUTION_GUIDANCE
-} from '$lib/services/agentic-chat/tools/libri';
 
 export type MasterPromptContext = {
 	contextType: ChatContextType;
@@ -28,6 +24,10 @@ const OVERVIEW_GUIDANCE = `For routine status questions about the workspace or a
 	- Workspace-wide status -> get_workspace_overview({})
 	- Named or in-scope project status -> get_project_overview({ project_id: "<uuid>" }) when the project_id is known, otherwise get_project_overview({ query: "<project name>" })
 	- If structured project context already includes a clear next_step_short or equivalent status summary, answer from that context instead of loading audit skills or repeating project graph reads.`;
+const PROJECT_ANALYSIS_SKILL_GUIDANCE = `You are in project context. Audit and forecast are project skills, not separate context types:
+1) For project audits, health reviews, stress tests, blockers, stale work, missing structure, or gap analysis, load skill_load({ skill: "project_audit" }) before the analysis if the answer is multi-step or evidence-heavy.
+2) For project forecasts, schedule risk, likely outcomes, slippage, scenarios, or "are we on track" questions, load skill_load({ skill: "project_forecast" }) before the analysis if the answer depends on assumptions or multiple project signals.
+3) Keep context_type as project for these workflows. Use the current project_id and project-focused direct tools; do not invent project_audit or project_forecast sessions.`;
 const PROJECT_CREATE_WORKFLOW = `You are already in project_create context. The default workflow here is:
 1) Prefer the project creation capability, then load skill_load({ skill: "project_creation" }) before the first create call.
 2) Build the smallest valid onto.project.create payload.
@@ -69,12 +69,11 @@ function formatContextGuidanceTags(params: {
 		...(params.contextType === 'global'
 			? [wrapTag('overview_guidance', OVERVIEW_GUIDANCE)]
 			: []),
-		...(isLibriIntegrationEnabled() &&
-		(params.contextType === 'global' || params.contextType === 'project')
-			? [wrapTag('libri_guidance', LIBRI_PERSON_RESOLUTION_GUIDANCE)]
-			: []),
 		...(params.contextType === 'project_create'
 			? [wrapTag('project_create_workflow', PROJECT_CREATE_WORKFLOW)]
+			: []),
+		...(params.contextType === 'project'
+			? [wrapTag('project_analysis_skills', PROJECT_ANALYSIS_SKILL_GUIDANCE)]
 			: []),
 		...(params.entityResolutionHint
 			? [wrapTag('recent_referents', params.entityResolutionHint)]
@@ -145,32 +144,28 @@ function buildContextDescription(params: {
 
 	switch (params.contextType) {
 		case 'global':
-			return 'Context type: global. The assistant is working across the workspace, so it should reason across projects and narrow scope only when the user or current data clearly points to one project.';
+			return 'The assistant is working across the workspace, so it should reason across projects and narrow scope only when the user or current data clearly points to one project.';
 		case 'project':
 			if (params.focusEntityType) {
-				return `Context type: project entity focus. The assistant is working inside ${projectLabel} and should prioritize the ${focusLabel}, its linked records, and the surrounding project data.`;
+				return `The assistant is working inside ${projectLabel} and should prioritize the ${focusLabel}, its linked records, and the surrounding project data.`;
 			}
-			return `Context type: project. The assistant is working inside ${projectLabel} and should prioritize that project's entities, relationships, and next steps.`;
+			return `The assistant is working inside ${projectLabel} and should prioritize that project's entities, relationships, and next steps.`;
 		case 'calendar':
-			return 'Context type: calendar. The assistant should prioritize calendar events, scheduling constraints, and project timing implications.';
+			return 'The assistant should prioritize calendar events, scheduling constraints, and project timing implications.';
 		case 'daily_brief':
-			return 'Context type: daily brief. The assistant should use the brief as the primary working set and treat the briefed projects and entities as the default scope.';
+			return 'The assistant should use the brief as the primary working set and treat the briefed projects and entities as the default scope.';
 		case 'general':
-			return 'Context type: general. The assistant can work broadly across the workspace while still using any provided structured data as grounding.';
+			return 'The assistant can work broadly across the workspace while still using any provided structured data as grounding.';
 		case 'project_create':
-			return 'Context type: project creation. The assistant should turn the user request into the smallest valid project structure and avoid inventing extra hierarchy.';
-		case 'project_audit':
-			return `Context type: project audit. The assistant should inspect ${projectLabel} critically, identify meaningful risks or gaps, and ground every claim in the provided context.`;
-		case 'project_forecast':
-			return `Context type: project forecast. The assistant should estimate likely outcomes for ${projectLabel} using the available project evidence and state uncertainty clearly.`;
+			return 'The assistant should turn the user request into the smallest valid project structure and avoid inventing extra hierarchy.';
 		case 'daily_brief_update':
-			return 'Context type: daily brief update. The assistant should focus on adjusting daily brief preferences, rules, or generation behavior.';
+			return 'The assistant should focus on adjusting daily brief preferences, rules, or generation behavior.';
 		case 'ontology':
-			return 'Context type: ontology. The assistant should prioritize ontology-aware reasoning about entities, fields, and relationships.';
+			return 'The assistant should prioritize ontology-aware reasoning about entities, fields, and relationships.';
 		case 'brain_dump':
-			return 'Context type: brain dump. The assistant should capture all user details, organize them into the right entities, and avoid dropping specifics.';
+			return 'The assistant should capture all user details, organize them into the right entities, and avoid dropping specifics.';
 		default:
-			return `Context type: ${params.contextType}. The assistant should treat the provided structured context as the source of truth for scope.`;
+			return 'The assistant should treat the provided structured context as the source of truth for scope.';
 	}
 }
 

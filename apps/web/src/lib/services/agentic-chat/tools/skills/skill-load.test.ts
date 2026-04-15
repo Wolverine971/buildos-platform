@@ -18,6 +18,21 @@ describe('skill loading', () => {
 		expect(skill?.relatedOps).toEqual(['onto.project.create']);
 	});
 
+	it('loads project audit and forecast as project-scoped skills', () => {
+		const audit = getSkillById('project_audit');
+		const forecast = getSkillById('project_forecast');
+
+		expect(audit).toBeDefined();
+		expect(audit?.name).toBe('Project Audit');
+		expect(audit?.legacyPaths).toContain('workflow.audit.skill');
+		expect(audit?.whenToUse.join(' ')).toContain('context type is `project`');
+
+		expect(forecast).toBeDefined();
+		expect(forecast?.name).toBe('Project Forecast');
+		expect(forecast?.legacyPaths).toContain('workflow.forecast.skill');
+		expect(forecast?.whenToUse.join(' ')).toContain('context type is `project`');
+	});
+
 	it('returns a markdown playbook for full skill loads', () => {
 		const result = loadSkill('project_creation', {
 			format: 'full',

@@ -34,6 +34,14 @@ const PROJECT_DIRECT_TOOL_NAMES = [
 	'list_onto_tasks',
 	'search_onto_tasks',
 	'get_onto_task_details',
+	'list_onto_goals',
+	'list_onto_plans',
+	'list_onto_milestones',
+	'list_onto_risks',
+	'get_onto_goal_details',
+	'get_onto_plan_details',
+	'get_onto_milestone_details',
+	'get_onto_risk_details',
 	'create_onto_task',
 	'update_onto_task',
 	'list_onto_documents',
@@ -52,14 +60,6 @@ const PROJECT_CREATE_DIRECT_TOOL_NAMES = [
 	'create_onto_plan',
 	'create_onto_task',
 	'create_onto_document'
-] as const;
-
-const PROJECT_AUDIT_DIRECT_TOOL_NAMES = [
-	...PROJECT_DIRECT_TOOL_NAMES,
-	'list_onto_milestones',
-	'list_onto_risks',
-	'get_onto_milestone_details',
-	'get_onto_risk_details'
 ] as const;
 
 const CALENDAR_DIRECT_TOOL_NAMES = [
@@ -94,9 +94,6 @@ function resolveGatewayDirectToolNames(contextType: ChatContextType): readonly s
 			return PROJECT_DIRECT_TOOL_NAMES;
 		case 'project_create':
 			return PROJECT_CREATE_DIRECT_TOOL_NAMES;
-		case 'project_audit':
-		case 'project_forecast':
-			return PROJECT_AUDIT_DIRECT_TOOL_NAMES;
 		case 'calendar':
 			return CALENDAR_DIRECT_TOOL_NAMES;
 		case 'daily_brief':

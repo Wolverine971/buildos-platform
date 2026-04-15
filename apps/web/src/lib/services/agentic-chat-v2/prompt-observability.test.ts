@@ -108,7 +108,7 @@ describe('prompt observability helpers', () => {
 			'</instructions>',
 			'',
 			'<context>',
-			'<context_description>Context type: project.</context_description>',
+			'<context_description>The assistant is working inside the current project.</context_description>',
 			'{"project":{"id":"project-123","name":"Launch"}}',
 			'</context>'
 		].join('\n');

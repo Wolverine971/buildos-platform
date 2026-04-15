@@ -20,6 +20,7 @@ const SCOPE_HINTS: Partial<Record<ChatContextType, string>> = {
 export function normalizeFastContextType(input?: string): ChatContextType {
 	if (!input) return 'global';
 	if (input === 'general') return 'global';
+	if (input === 'project_audit' || input === 'project_forecast') return 'project';
 	return input as ChatContextType;
 }
 

@@ -71,6 +71,7 @@
 		deriveSessionTitle,
 		isProjectContext,
 		loadAgentChatSessionSnapshot,
+		normalizeSessionContextType,
 		prewarmAgentContext
 	} from './agent-chat-session';
 	import { upsertSkillActivityEntries } from './agent-chat-skill-activity';
@@ -2884,9 +2885,7 @@
 		const sessionId = session.id;
 
 		const contextType =
-			selectedContextType ??
-			(session.context_type as ChatContextType | undefined) ??
-			'global';
+			selectedContextType ?? normalizeSessionContextType(session.context_type);
 		const entityId = selectedEntityId ?? session.entity_id ?? null;
 
 		hasFinalizedSession = true;
@@ -3295,10 +3294,7 @@
 	function hydrateSessionFromEvent(sessionEvent: ChatSession) {
 		currentSession = sessionEvent;
 		const sessionTitle = deriveSessionTitle(sessionEvent);
-		const sessionContextType =
-			(sessionEvent.context_type as ChatContextType | undefined) ?? 'global';
-		const normalizedSessionContext =
-			sessionContextType === 'general' ? 'global' : sessionContextType;
+		const normalizedSessionContext = normalizeSessionContextType(sessionEvent.context_type);
 		if (!selectedContextType) {
 			selectedContextType = normalizedSessionContext;
 			selectedEntityId = sessionEvent.entity_id ?? undefined;

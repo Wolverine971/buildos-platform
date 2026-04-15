@@ -160,18 +160,18 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 		]
 	},
 	{
-		id: 'workflow_audit',
-		path: 'capabilities.workflow_audit',
-		name: 'Workflow audit',
+		id: 'project_audit',
+		path: 'capabilities.project_audit',
+		name: 'Project audit',
 		status: 'available',
 		summary:
-			'Review project health, structure, blockers, stale work, and missing coverage using BuildOS project data.',
+			'Review project health, structure, blockers, stale work, and missing coverage from project context.',
 		whatYouCanDo: [
 			'Audit project structure and execution health',
 			'Identify blockers, stale work, or missing planning layers',
 			'Recommend next cleanup or correction actions'
 		],
-		skillIds: ['workflow_audit'],
+		skillIds: ['project_audit'],
 		directPaths: [
 			'onto.project.graph',
 			'onto.task',
@@ -184,18 +184,18 @@ const ALL_CAPABILITIES: CapabilityDefinition[] = [
 		]
 	},
 	{
-		id: 'workflow_forecast',
-		path: 'capabilities.workflow_forecast',
-		name: 'Workflow forecast',
+		id: 'project_forecast',
+		path: 'capabilities.project_forecast',
+		name: 'Project forecast',
 		status: 'available',
 		summary:
-			'Establish likely schedule outcomes, slippage risk, and the strongest drivers of project uncertainty.',
+			'Establish likely schedule outcomes, slippage risk, and the strongest drivers of project uncertainty from project context.',
 		whatYouCanDo: [
 			'Estimate whether work is on track',
 			'Identify likely slippage and schedule risk',
 			'Connect risks, blocked work, and milestones into a forward-looking view'
 		],
-		skillIds: ['workflow_forecast'],
+		skillIds: ['project_forecast'],
 		directPaths: [
 			'onto.project.graph',
 			'onto.task',

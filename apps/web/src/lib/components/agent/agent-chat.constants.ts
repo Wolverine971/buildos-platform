@@ -26,14 +26,6 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 		title: 'New project flow',
 		subtitle: 'Guide creation of a structured project from a spark of an idea.'
 	},
-	project_audit: {
-		title: 'Project audit',
-		subtitle: 'Stress-test the project for gaps, risks, and clarity.'
-	},
-	project_forecast: {
-		title: 'Project forecast',
-		subtitle: 'Explore timelines, what-ifs, and scenario planning.'
-	},
 	daily_brief_update: {
 		title: 'Daily brief tuning',
 		subtitle: 'Adjust what surfaces in your daily brief and notifications.'
@@ -54,8 +46,6 @@ export const CONTEXT_BADGE_CLASSES: Partial<Record<ChatContextType, string>> = {
 	brain_dump: 'bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300',
 	ontology: 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300',
 	project_create: 'bg-purple-500/10 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300',
-	project_audit: 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300',
-	project_forecast: 'bg-teal-500/10 text-teal-600 dark:bg-teal-500/15 dark:text-teal-300',
 	daily_brief_update: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',
 	daily_brief: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',
 	calendar: 'bg-sky-500/10 text-sky-600 dark:bg-sky-500/15 dark:text-sky-300'

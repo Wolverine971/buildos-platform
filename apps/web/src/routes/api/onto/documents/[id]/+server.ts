@@ -812,11 +812,19 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			document.project_id,
 			'document',
 			documentId,
-			{ title: document.title, state_key: document.state_key, type_key: document.type_key },
+			{
+				title: document.title,
+				description: document.description,
+				state_key: document.state_key,
+				type_key: document.type_key,
+				content_changed: false
+			},
 			{
 				title: updatedDocument.title,
+				description: updatedDocument.description,
 				state_key: updatedDocument.state_key,
-				type_key: updatedDocument.type_key
+				type_key: updatedDocument.type_key,
+				content_changed: document.content !== updatedDocument.content
 			},
 			userId,
 			changeSource,

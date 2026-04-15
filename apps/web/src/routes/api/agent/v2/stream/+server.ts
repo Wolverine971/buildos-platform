@@ -1142,11 +1142,7 @@ function summarizeLastTurnText(text: string, maxLength = 180): string {
 }
 
 function isProjectScopedContext(contextType: ChatContextType): boolean {
-	return (
-		contextType === 'project' ||
-		contextType === 'project_audit' ||
-		contextType === 'project_forecast'
-	);
+	return contextType === 'project';
 }
 
 function isDailyBriefContext(value: unknown): boolean {
@@ -2476,12 +2472,7 @@ export const POST: RequestHandler = async ({
 		const entityId = streamRequest.entity_id?.trim() || projectFocus?.projectId || undefined;
 		const projectIdForLogs =
 			projectFocus?.projectId ??
-			((contextType === 'project' ||
-				contextType === 'project_audit' ||
-				contextType === 'project_forecast') &&
-			typeof entityId === 'string'
-				? entityId
-				: undefined);
+			(contextType === 'project' && typeof entityId === 'string' ? entityId : undefined);
 		const sessionService = createFastChatSessionService(supabase, {
 			errorLogger,
 			endpoint: FASTCHAT_STREAM_ENDPOINT,
@@ -2577,12 +2568,7 @@ export const POST: RequestHandler = async ({
 				}
 			}
 
-			if (
-				(contextType === 'project' ||
-					contextType === 'project_audit' ||
-					contextType === 'project_forecast') &&
-				entityId
-			) {
+			if (contextType === 'project' && entityId) {
 				const accessResult = await checkProjectAccess(supabase, entityId, errorLogger, {
 					userId,
 					endpoint: FASTCHAT_STREAM_ENDPOINT,
@@ -2798,12 +2784,7 @@ export const POST: RequestHandler = async ({
 			let latestContextShift: ContextShiftPayload | null = null;
 			let effectiveProjectIdForTools =
 				projectFocus?.projectId ??
-				((contextType === 'project' ||
-					contextType === 'project_audit' ||
-					contextType === 'project_forecast') &&
-				typeof entityId === 'string'
-					? entityId
-					: undefined);
+				(contextType === 'project' && typeof entityId === 'string' ? entityId : undefined);
 			const toolExecutorInstance =
 				tools.length > 0
 					? new ChatToolExecutor(supabase, userId, session.id, fetch, llm, {

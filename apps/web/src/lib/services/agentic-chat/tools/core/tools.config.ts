@@ -27,14 +27,7 @@ const TOOL_DEFINITION_MAP = new Map(
 	CHAT_TOOL_DEFINITIONS.map((tool) => [tool.function.name, tool])
 );
 
-const TOOL_CONTEXT_SCOPES: ToolContextScope[] = [
-	'base',
-	'global',
-	'project_create',
-	'project',
-	'project_audit',
-	'project_forecast'
-];
+const TOOL_CONTEXT_SCOPES: ToolContextScope[] = ['base', 'global', 'project_create', 'project'];
 
 const TOOL_CONTEXT_SCOPE_SET = new Set<ToolContextScope>(TOOL_CONTEXT_SCOPES);
 
@@ -193,7 +186,6 @@ export const TOOL_CATEGORIES = {
 
 /**
  * Base tool groups shared by multiple contexts.
- * project_audit & project_forecast intentionally mirror project tools for now.
  */
 const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 	base: [
@@ -304,9 +296,7 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'delete_calendar_event',
 		'get_project_calendar',
 		'set_project_calendar'
-	],
-	project_audit: [], // TODO: Add diagnostics/audit-specific tools
-	project_forecast: [] // TODO: Add forecasting/simulation tools
+	]
 };
 
 const CONTEXT_TO_TOOL_GROUPS: Record<PlannerContextType, ToolContextScope[]> = {
@@ -315,8 +305,6 @@ const CONTEXT_TO_TOOL_GROUPS: Record<PlannerContextType, ToolContextScope[]> = {
 	project: ['base', 'project'],
 	calendar: ['base', 'global'],
 	daily_brief: ['base', 'global', 'project'],
-	project_audit: ['base', 'project', 'project_audit'],
-	project_forecast: ['base', 'project', 'project_forecast'],
 	daily_brief_update: ['base'],
 	brain_dump: ['base', 'global'],
 	ontology: ['base', 'project']
@@ -377,8 +365,6 @@ function isLibriContext(contextType: ChatContextType): boolean {
 		contextType === 'global' ||
 		contextType === 'general' ||
 		contextType === 'project' ||
-		contextType === 'project_audit' ||
-		contextType === 'project_forecast' ||
 		contextType === 'ontology'
 	);
 }

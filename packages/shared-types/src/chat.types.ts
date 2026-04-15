@@ -58,8 +58,6 @@ export type ChatContextType =
 	// Agent proactive modes
 	| 'general' // General agent assistant
 	| 'project_create' // Creating new project with guided questions
-	| 'project_audit' // Critical review of project
-	| 'project_forecast' // Scenario forecasting
 	| 'daily_brief_update' // Daily brief preferences
 	// Additional context types
 	| 'ontology' // Ontology system interactions
@@ -77,7 +75,7 @@ export interface SystemPromptMetadata {
 	projectName?: string; // Project name for project-specific modes
 	projectId?: string; // Project ID for context
 	dimensionsCovered?: string[]; // Already covered dimensions (project_create)
-	auditHarshness?: number; // Audit severity 1-10 (project_audit)
+	auditHarshness?: number; // Audit severity 1-10 for project audit skill
 }
 
 // =====================================================

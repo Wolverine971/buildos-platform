@@ -10,8 +10,6 @@ export const VALID_CHAT_CONTEXT_TYPES = [
 	'calendar',
 	'daily_brief',
 	'project_create',
-	'project_audit',
-	'project_forecast',
 	'daily_brief_update',
 	'brain_dump',
 	'ontology'
@@ -24,6 +22,10 @@ export function normalizeContextType(contextType?: ChatContextType | string): Ch
 
 	if (contextType === 'general') {
 		return 'global';
+	}
+
+	if (contextType === 'project_audit' || contextType === 'project_forecast') {
+		return 'project';
 	}
 
 	if ((VALID_CHAT_CONTEXT_TYPES as readonly string[]).includes(contextType)) {

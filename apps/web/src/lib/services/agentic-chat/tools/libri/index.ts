@@ -4,7 +4,6 @@ export {
 	isLibriIntegrationEnabled,
 	isLibriToolName
 } from './config';
-export { LIBRI_PERSON_RESOLUTION_GUIDANCE } from './guidance';
 export type {
 	LibriResourceType,
 	LibriLibraryQueryAction,

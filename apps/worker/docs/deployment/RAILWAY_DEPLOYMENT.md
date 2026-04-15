@@ -211,7 +211,7 @@ After deployment:
 - Ensure Railway is using the configuration files (`railway.toml` or `nixpacks.toml`)
 - **Ensure Root Directory is set to `/` (repository root)**
 - The build command must run from the monorepo root and use Turbo
-- Correct build command: `pnpm install --frozen-lockfile && pnpm turbo build --filter=@buildos/worker`
+- Correct build command: `pnpm install --prod=false --no-frozen-lockfile && pnpm turbo build --filter=@buildos/worker`
 - DO NOT use: `cd apps/worker && pnpm build` (this skips dependency building)
 
 ### Runtime Failures
@@ -245,7 +245,7 @@ After deployment:
 - The worker connects to the same Supabase instance as the web app
 - Email is sent via webhook to the main app (not directly from worker)
 - Health checks help Railway know when to restart the service
-- The `railway.toml` and `nixpacks.toml` in apps/worker configure the build
+- The root `railway.toml` and `nixpacks.toml` files configure the build
 
 ## Generating Webhook Secret
 

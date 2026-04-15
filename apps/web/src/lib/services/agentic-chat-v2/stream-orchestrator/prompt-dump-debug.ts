@@ -7,6 +7,12 @@ import {
 	type PromptCostBreakdown,
 	type PromptSectionCost
 } from '../prompt-cost-breakdown';
+import {
+	buildCanonicalToolSurfaceSizeReports,
+	buildToolSurfaceSizeReport,
+	formatToolSurfaceSizeMatrix,
+	formatToolSurfaceSizeReport
+} from '../tool-surface-size-report';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseToolArguments } from './tool-arguments';
@@ -51,6 +57,12 @@ export function writeInitialPromptDump(params: {
 			userMessage: params.message,
 			tools: params.tools
 		});
+		const currentToolSurfaceReport = buildToolSurfaceSizeReport({
+			profile: 'current_request',
+			contextType: params.normalizedContext,
+			tools: params.tools
+		});
+		const canonicalToolSurfaceReports = buildCanonicalToolSurfaceSizeReports();
 
 		const lines: string[] = [
 			`========================================`,
@@ -78,6 +90,7 @@ export function writeInitialPromptDump(params: {
 			`Continuity hint used: ${params.debugContext?.continuityHintUsed ? 'yes' : 'no'}`,
 			`User message length: ${params.message.length} chars`,
 			`System prompt length: ${params.systemPrompt.length} chars (~${Math.ceil(params.systemPrompt.length / 4)} tokens)`,
+			`Provider tool definitions: ${currentToolSurfaceReport.toolCount} tools, ${currentToolSurfaceReport.totalChars} chars (~${currentToolSurfaceReport.estimatedTokens} tokens)`,
 			`Provider payload estimate: ${promptCostBreakdown.provider_payload_estimate.chars} chars (~${promptCostBreakdown.provider_payload_estimate.est_tokens} tokens)`,
 			`========================================`,
 			``,
@@ -85,6 +98,18 @@ export function writeInitialPromptDump(params: {
 			`PROMPT COST BREAKDOWN (ESTIMATED)`,
 			`────────────────────────────────────────`,
 			...formatPromptCostBreakdown(promptCostBreakdown),
+			``,
+			`────────────────────────────────────────`,
+			`PROVIDER TOOL DEFINITIONS (SENT SEPARATELY)`,
+			`────────────────────────────────────────`,
+			`Tool schemas are sent in the provider tools payload, not embedded in the system prompt text.`,
+			``,
+			...formatToolSurfaceSizeReport(currentToolSurfaceReport),
+			``,
+			`────────────────────────────────────────`,
+			`TOOL SURFACE SIZE REPORT BY CONTEXT/PROFILE`,
+			`────────────────────────────────────────`,
+			...formatToolSurfaceSizeMatrix(canonicalToolSurfaceReports),
 			``,
 			`────────────────────────────────────────`,
 			`SYSTEM PROMPT`,

@@ -619,11 +619,15 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			{
 				title: existingTask.title,
 				state_key: existingTask.state_key,
+				start_at: existingTask.start_at,
+				due_at: existingTask.due_at,
 				props: existingTask.props
 			},
 			{
 				title: updatedTask.title,
 				state_key: updatedTask.state_key,
+				start_at: updatedTask.start_at,
+				due_at: updatedTask.due_at,
 				props: updatedTask.props
 			},
 			session.user.id,
@@ -757,7 +761,9 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		const taskDataForLog = {
 			title: task.title,
 			type_key: task.type_key,
-			state_key: task.state_key
+			state_key: task.state_key,
+			start_at: task.start_at,
+			due_at: task.due_at
 		};
 
 		// Soft delete: set deleted_at timestamp instead of hard delete

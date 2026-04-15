@@ -315,7 +315,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			'task',
 			task.id,
-			{ title: task.title, type_key: task.type_key, state_key: task.state_key },
+			{
+				title: task.title,
+				type_key: task.type_key,
+				state_key: task.state_key,
+				start_at: task.start_at,
+				due_at: task.due_at
+			},
 			user.id,
 			getChangeSourceFromRequest(request),
 			chatSessionId

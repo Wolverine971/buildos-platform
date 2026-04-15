@@ -79,7 +79,7 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 			'Global mode lets users work across all projects and calendar, perfect for high-level planning and cross-project coordination.',
 			'Project mode focuses conversation within one project. Users can ask questions, create tasks, update plans, or request summaries—all scoped to that project context.',
 			'Within project mode, the ProjectFocusSelector lets users narrow to a specific task, goal, plan, or document for deep, focused conversations about that one thing.',
-			'Specialized flows exist for structured workflows: project_create guides turning ideas into projects, project_audit stress-tests for gaps, project_forecast explores timelines.',
+			'Specialized workflows exist as skills: project_create guides turning ideas into projects, while project_audit and project_forecast load inside project context for stress-testing and timeline analysis.',
 			'Focused entity conversations provide a spotlight on individual tasks, goals, plans, or documents—perfect for breaking down work, clarifying scope, or updating status.',
 			'Each mode changes what tools are available and how context loads. Project mode loads project context documents and related entities; focus mode loads the selected entity details and dependencies.',
 			'The focus system prevents context overload: instead of loading an entire project graph, the agent loads only what is relevant to the current conversation scope.'

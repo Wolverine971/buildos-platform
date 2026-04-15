@@ -33,7 +33,7 @@ import {
 
 const logger = createLogger('FastChatContext');
 
-const PROJECT_CONTEXTS = new Set<ChatContextType>(['project', 'project_audit', 'project_forecast']);
+const PROJECT_CONTEXTS = new Set<ChatContextType>(['project']);
 
 const GLOBAL_CONTEXT_PROJECT_LIMIT = 8;
 const GLOBAL_CONTEXT_RECENT_ACTIVITY_LIMIT = 3;

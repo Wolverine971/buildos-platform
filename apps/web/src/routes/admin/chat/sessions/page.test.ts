@@ -104,7 +104,7 @@ const sessionListItem = {
 	tool_call_count: 0,
 	llm_call_count: 0,
 	tool_failure_count: 0,
-	cost_estimate: 0,
+	cost_estimate: 0.0142,
 	has_errors: false,
 	has_agent_state: false,
 	has_context_shift: false,
@@ -232,6 +232,12 @@ describe('/admin/chat/sessions modal URL state', () => {
 		expect(dialog).toBeInTheDocument();
 		expect(window.location.search).toBe(`?chat_session_id=${SESSION_ID}`);
 		expect(fetchChatSessionAuditPayloadMock).toHaveBeenCalledWith(SESSION_ID);
+	});
+
+	it('renders the session cost on each session card', async () => {
+		render(ChatSessionsPage);
+
+		expect(await screen.findByText('Cost $0.0142')).toBeInTheDocument();
 	});
 
 	it('closes a deep-linked session modal and removes the URL parameter', async () => {

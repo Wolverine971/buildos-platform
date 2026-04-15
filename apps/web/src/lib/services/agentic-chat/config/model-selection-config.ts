@@ -49,8 +49,6 @@ export function getOptimalTextProfile(
 
 		// For tool-heavy non-planner operations, vary by context importance
 		switch (contextType) {
-			case 'project_audit':
-			case 'project_forecast':
 			case 'project_create':
 				return 'quality';
 			case 'calendar':
@@ -74,9 +72,6 @@ export function getOptimalTextProfile(
 	// Complex synthesis needs quality
 	if (operationType === 'complex_response') {
 		switch (contextType) {
-			case 'project_audit':
-			case 'project_forecast':
-				return 'quality';
 			default:
 				return 'balanced';
 		}
@@ -84,8 +79,6 @@ export function getOptimalTextProfile(
 
 	// Default based on context
 	switch (contextType) {
-		case 'project_audit':
-		case 'project_forecast':
 		case 'project_create':
 		case 'ontology':
 			return 'quality';
@@ -200,11 +193,6 @@ export function inferOperationType(
 	// Tool-heavy contexts
 	if (hasTools && (contextType.startsWith('project') || contextType === 'ontology')) {
 		return 'tool_heavy';
-	}
-
-	// Reasoning-heavy contexts
-	if (contextType === 'project_audit' || contextType === 'project_forecast') {
-		return 'reasoning_heavy';
 	}
 
 	// Speed-critical contexts

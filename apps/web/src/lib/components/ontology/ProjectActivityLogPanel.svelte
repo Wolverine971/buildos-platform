@@ -13,6 +13,7 @@
 	import { History, ChevronDown, Plus, Pencil, Trash2, LoaderCircle, Clock } from 'lucide-svelte';
 	import { fetchProjectLogs } from '$lib/components/project/project-page-data-controller';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { buildActivityLogSummary } from '$lib/utils/activity-log-summary';
 	import type { ProjectLogEntryWithMeta, ProjectLogEntityType } from '@buildos/shared-types';
 
 	// ============================================================
@@ -41,6 +42,7 @@
 	let hasMore = $state(false);
 	let hasLoaded = $state(false);
 	let error = $state<string | null>(null);
+	let expandedLogId = $state<string | null>(null);
 
 	const INITIAL_LIMIT = 10;
 	const BACKGROUND_REFRESH_MS = 15_000;
@@ -126,6 +128,10 @@
 		}
 	}
 
+	function toggleLogDetails(logId: string) {
+		expandedLogId = expandedLogId === logId ? null : logId;
+	}
+
 	$effect(() => {
 		if (!isExpanded || typeof window === 'undefined') {
 			return;
@@ -199,32 +205,6 @@
 	function formatEntityType(type: string): string {
 		return type.charAt(0).toUpperCase() + type.slice(1);
 	}
-
-	function formatEventLabel(event: string): string {
-		const labels: Record<string, string> = {
-			invite_created: 'invite created',
-			invite_resent: 'invite resent',
-			invite_revoked: 'invite revoked',
-			member_role_updated: 'member role updated',
-			member_removed: 'member removed'
-		};
-
-		return labels[event] || event.replace(/_/g, ' ');
-	}
-
-	function getEventLabel(log: EnrichedLogEntry): string | null {
-		const data = log.after_data ?? log.before_data;
-		if (!data || typeof data !== 'object') {
-			return null;
-		}
-
-		const event = (data as Record<string, unknown>).event;
-		if (!event || typeof event !== 'string') {
-			return null;
-		}
-
-		return formatEventLabel(event);
-	}
 </script>
 
 <div
@@ -291,77 +271,88 @@
 				<div class="text-xs divide-y divide-border/50">
 					{#each logs as log}
 						{@const ActionIcon = getActionIcon(log.action)}
-						{@const isClickable = log.entity_type !== 'edge' && onEntityClick}
-						{@const eventLabel = getEventLabel(log)}
-						{#if isClickable}
+						{@const canOpenEntity =
+							log.entity_type !== 'edge' && Boolean(onEntityClick)}
+						{@const summary = buildActivityLogSummary(log)}
+						<div>
 							<button
 								type="button"
-								class="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 hover:bg-muted cursor-pointer text-left w-full pressable"
-								onclick={() => handleEntityClick(log)}
+								class="flex items-start gap-2 px-3 sm:px-4 py-1.5 sm:py-2 hover:bg-muted cursor-pointer text-left w-full pressable"
+								onclick={() => toggleLogDetails(log.id)}
+								aria-expanded={expandedLogId === log.id}
 							>
-								<span class="shrink-0 {getActionColor(log.action)}">
+								<span class="shrink-0 mt-0.5 {getActionColor(log.action)}">
 									<ActionIcon class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
 								</span>
 								<span
-									class="flex-1 min-w-0 truncate"
+									class="flex-1 min-w-0"
 									title="{log.changed_by_name ||
 										'Someone'} {log.action} {formatEntityType(
 										log.entity_type
-									)}: {log.entity_name || log.entity_id.slice(0, 8)}{eventLabel
-										? ` - ${eventLabel}`
-										: ''}"
+									)}: {log.entity_name ||
+										log.entity_id.slice(0, 8)} - {summary.description}"
 								>
-									<span class="text-foreground font-medium"
-										>{log.changed_by_name || 'Someone'}</span
+									<span class="block truncate">
+										<span class="text-foreground font-medium"
+											>{log.changed_by_name || 'Someone'}</span
+										>
+										<span class="text-muted-foreground"> {log.action} </span>
+										<span class="text-foreground"
+											>{formatEntityType(log.entity_type)}: {log.entity_name ||
+												log.entity_id.slice(0, 8)}</span
+										>
+									</span>
+									<span
+										class="block truncate text-[10px] sm:text-xs text-muted-foreground/70"
 									>
-									<span class="text-muted-foreground"> {log.action} </span>
-									<span class="text-foreground"
-										>{formatEntityType(log.entity_type)}: {log.entity_name ||
-											log.entity_id.slice(0, 8)}</span
-									>
-									{#if eventLabel}<span class="text-muted-foreground/70">
-											- {eventLabel}</span
-										>{/if}
+										{summary.title}
+									</span>
 								</span>
 								<span
-									class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap"
+									class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap mt-0.5"
 								>
 									{formatTimestamp(log.created_at)}
 								</span>
+								<ChevronDown
+									class="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground/60 shrink-0 mt-0.5 transition-transform {expandedLogId ===
+									log.id
+										? 'rotate-180'
+										: ''}"
+								/>
 							</button>
-						{:else}
-							<div class="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2">
-								<span class="shrink-0 {getActionColor(log.action)}">
-									<ActionIcon class="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-								</span>
-								<span
-									class="flex-1 min-w-0 truncate"
-									title="{log.changed_by_name ||
-										'Someone'} {log.action} {formatEntityType(
-										log.entity_type
-									)}: {log.entity_name || log.entity_id.slice(0, 8)}{eventLabel
-										? ` - ${eventLabel}`
-										: ''}"
+							{#if expandedLogId === log.id}
+								<div
+									class="px-8 sm:px-10 pb-2 sm:pb-3 pr-3 sm:pr-4 text-[10px] sm:text-xs text-muted-foreground"
 								>
-									<span class="text-foreground font-medium"
-										>{log.changed_by_name || 'Someone'}</span
-									>
-									<span class="text-muted-foreground"> {log.action} </span>
-									<span class="text-foreground"
-										>{formatEntityType(log.entity_type)}: {log.entity_name ||
-											log.entity_id.slice(0, 8)}</span
-									>
-									{#if eventLabel}<span class="text-muted-foreground/70">
-											- {eventLabel}</span
-										>{/if}
-								</span>
-								<span
-									class="shrink-0 text-[10px] text-muted-foreground/60 tabular-nums whitespace-nowrap"
-								>
-									{formatTimestamp(log.created_at)}
-								</span>
-							</div>
-						{/if}
+									<p class="leading-relaxed">{summary.description}</p>
+									{#if summary.changes.length > 0}
+										<div class="mt-2 space-y-1">
+											{#each summary.changes.slice(0, 5) as change}
+												<div
+													class="grid grid-cols-[6rem_minmax(0,1fr)] gap-2"
+												>
+													<span class="text-muted-foreground/70"
+														>{change.label}</span
+													>
+													<span class="min-w-0 truncate">
+														{change.beforeValue} to {change.afterValue}
+													</span>
+												</div>
+											{/each}
+										</div>
+									{/if}
+									{#if canOpenEntity}
+										<button
+											type="button"
+											class="mt-2 text-[10px] sm:text-xs text-accent hover:text-accent/80 transition-colors pressable"
+											onclick={() => handleEntityClick(log)}
+										>
+											Open {formatEntityType(log.entity_type)}
+										</button>
+									{/if}
+								</div>
+							{/if}
+						</div>
 					{/each}
 				</div>
 

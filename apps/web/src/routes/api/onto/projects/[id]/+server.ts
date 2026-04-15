@@ -587,12 +587,22 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			{
 				name: existingProject.name,
 				state_key: existingProject.state_key,
-				description: existingProject.description
+				description: existingProject.description,
+				start_at: existingProject.start_at,
+				end_at: existingProject.end_at,
+				next_step_short: existingProject.next_step_short,
+				next_step_long: existingProject.next_step_long,
+				props: existingProject.props
 			},
 			{
 				name: updatedProject.name,
 				state_key: updatedProject.state_key,
-				description: updatedProject.description
+				description: updatedProject.description,
+				start_at: updatedProject.start_at,
+				end_at: updatedProject.end_at,
+				next_step_short: updatedProject.next_step_short,
+				next_step_long: updatedProject.next_step_long,
+				props: updatedProject.props
 			},
 			session.user.id,
 			getChangeSourceFromRequest(request),

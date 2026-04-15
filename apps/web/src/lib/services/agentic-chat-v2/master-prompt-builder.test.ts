@@ -41,7 +41,7 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(instructionsBlock).toContain('### Skill Catalog');
 		expect(instructionsBlock).toContain('| Skill ID | Description |');
 		expect(instructionsBlock).toContain('| `project_creation` |');
-		expect(instructionsBlock).toContain('| `workflow_forecast` |');
+		expect(instructionsBlock).toContain('| `project_forecast` |');
 		expect(instructionsBlock).toContain('### Tools');
 		expect(instructionsBlock).toContain('Discovery tools:');
 		expect(instructionsBlock).toContain('- skill_load');
@@ -88,12 +88,12 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(instructionsBlock).not.toContain('<entity_resolution>');
 		expect(instructionsBlock).not.toContain('<tool_discovery>');
 		expect(contextBlock).toContain('<context_description>');
-		expect(contextBlock).toContain('Context type: global.');
+		expect(contextBlock).toContain('The assistant is working across the workspace');
 		expect(prompt).not.toContain('<data>');
 		expect(contextBlock).toContain('<overview_guidance>');
-		expect(contextBlock).toContain('<libri_guidance>');
+		expect(contextBlock).not.toContain('<libri_guidance>');
 		expect(instructionsBlock).toContain('| `libri_knowledge` |');
-		expect(contextBlock).toContain('skill_load({ skill: "libri_knowledge" })');
+		expect(prompt).not.toContain('skill_load({ skill: "libri_knowledge" })');
 		expect(instructionsBlock).not.toContain('<overview_guidance>');
 		expect(contextBlock).toContain('Workspace-wide status -> get_workspace_overview({})');
 	});
@@ -110,11 +110,30 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		const instructionsBlock = extractTagBlock(prompt, 'instructions');
 
 		expect(contextBlock).not.toContain('<overview_guidance>');
-		expect(contextBlock).toContain('<libri_guidance>');
+		expect(contextBlock).not.toContain('<libri_guidance>');
+		expect(instructionsBlock).toContain('| `libri_knowledge` |');
 		expect(instructionsBlock).not.toContain('<overview_guidance>');
 	});
 
-	it('omits Libri guidance when the Libri feature flag is disabled', () => {
+	it('adds project audit and forecast skill guidance in project context', () => {
+		const prompt = buildMasterPrompt({
+			contextType: 'project',
+			projectId: 'project-1',
+			entityId: 'project-1'
+		});
+		const contextBlock = extractTagBlock(prompt, 'context');
+		const instructionsBlock = extractTagBlock(prompt, 'instructions');
+
+		expect(contextBlock).toContain('<project_analysis_skills>');
+		expect(contextBlock).toContain('skill_load({ skill: "project_audit" })');
+		expect(contextBlock).toContain('skill_load({ skill: "project_forecast" })');
+		expect(contextBlock).toContain('Keep context_type as project');
+		expect(instructionsBlock).toContain('| `project_audit` |');
+		expect(instructionsBlock).toContain('| `project_forecast` |');
+		expect(instructionsBlock).not.toContain('<project_analysis_skills>');
+	});
+
+	it('omits Libri catalog and tools when the Libri feature flag is disabled', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 
 		const prompt = buildMasterPrompt({
@@ -130,7 +149,7 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(prompt).not.toContain('resolve_libri_resource');
 	});
 
-	it('includes Libri in fastchat prompts when server runtime env enables it', () => {
+	it('includes Libri catalog and tools when server runtime env enables it', () => {
 		configureLibriRuntimeEnv({
 			LIBRI_INTEGRATION_ENABLED: 'true'
 		});
@@ -145,8 +164,8 @@ describe('buildMasterPrompt instruction rewrite', () => {
 
 		expect(instructionsBlock).toContain('| `libri_knowledge` |');
 		expect(instructionsBlock).toContain('- resolve_libri_resource');
-		expect(contextBlock).toContain('<libri_guidance>');
-		expect(contextBlock).toContain('skill_load({ skill: "libri_knowledge" })');
+		expect(contextBlock).not.toContain('<libri_guidance>');
+		expect(prompt).not.toContain('skill_load({ skill: "libri_knowledge" })');
 	});
 
 	it('renders compact gateway tool names without duplicating full schemas', () => {
@@ -200,7 +219,9 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		});
 		const contextBlock = extractTagBlock(prompt, 'context');
 
-		expect(contextBlock).toContain('Context type: project.');
+		expect(contextBlock).toContain(
+			'The assistant is working inside the project "The Last Ember"'
+		);
 		expect(contextBlock).toContain('<project>');
 		expect(contextBlock).toContain(
 			'<project_id>4cfdbed1-840a-4fe4-9751-77c7884daa70</project_id>'
@@ -283,7 +304,10 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		});
 		const contextBlock = extractTagBlock(prompt, 'context');
 
-		expect(contextBlock).toContain('Context type: project entity focus.');
+		expect(contextBlock).toContain(
+			'The assistant is working inside the project "The Last Ember"'
+		);
+		expect(contextBlock).toContain('prioritize the task "Outline chapter 7"');
 		expect(contextBlock).toContain('<focus_entity>');
 		expect(contextBlock).toContain('<focus_entity_type>task</focus_entity_type>');
 		expect(contextBlock).toContain('<focus_entity_id>task-123</focus_entity_id>');

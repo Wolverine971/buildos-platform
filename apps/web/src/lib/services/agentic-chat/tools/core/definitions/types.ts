@@ -19,13 +19,7 @@ export interface FieldInfo {
 /**
  * Context scopes for tool availability
  */
-export type ToolContextScope =
-	| 'base'
-	| 'global'
-	| 'project_create'
-	| 'project'
-	| 'project_audit'
-	| 'project_forecast';
+export type ToolContextScope = 'base' | 'global' | 'project_create' | 'project';
 
 /**
  * Metadata describing tool capabilities and usage

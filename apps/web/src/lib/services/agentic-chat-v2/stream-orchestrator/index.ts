@@ -658,9 +658,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					? params.projectId
 					: typeof entityId === 'string' &&
 						  isValidUUID(entityId) &&
-						  (normalizedContext === 'project' ||
-								normalizedContext === 'project_audit' ||
-								normalizedContext === 'project_forecast')
+						  normalizedContext === 'project'
 						? entityId
 						: null;
 			const validationIssues = validateToolCalls(pendingToolCalls, tools, {

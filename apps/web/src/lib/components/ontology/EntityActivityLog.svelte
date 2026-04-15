@@ -15,11 +15,12 @@
 	<EntityActivityLog entityType="task" entityId={taskId} />
 -->
 <script lang="ts">
-	import { Plus, Pencil, Trash2, LoaderCircle, History, Clock } from 'lucide-svelte';
+	import { Plus, Pencil, Trash2, LoaderCircle, History, Clock, ChevronDown } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
+	import { buildActivityLogSummary } from '$lib/utils/activity-log-summary';
 	import type { ProjectLogEntityType } from '@buildos/shared-types';
 
 	// ============================================================
@@ -66,6 +67,7 @@
 	let hasMore = $state(false);
 	let hasLoaded = $state(false);
 	let error = $state<string | null>(null);
+	let expandedLogId = $state<string | null>(null);
 
 	const INITIAL_LIMIT = 5; // Smaller limit for sidebar
 
@@ -86,6 +88,7 @@
 			total = 0;
 			hasMore = false;
 			error = null;
+			expandedLogId = null;
 			if (autoLoad) {
 				loadLogs();
 			}
@@ -146,6 +149,10 @@
 		if (!isLoadingMore && hasMore) {
 			loadLogs(logs.length, true);
 		}
+	}
+
+	function toggleLogDetails(logId: string) {
+		expandedLogId = expandedLogId === logId ? null : logId;
 	}
 
 	export function refresh() {
@@ -218,57 +225,6 @@
 				return '';
 		}
 	}
-
-	function getChangeSummary(log: LogEntry): string {
-		// Try to extract a meaningful summary of what changed
-		if (log.action === 'created') {
-			return 'Created';
-		}
-		if (log.action === 'deleted') {
-			return 'Deleted';
-		}
-
-		// For updates, try to summarize what fields changed
-		const before = log.before_data;
-		const after = log.after_data;
-
-		if (!before || !after || typeof before !== 'object' || typeof after !== 'object') {
-			return 'Updated';
-		}
-
-		const changedFields: string[] = [];
-		const importantFields = [
-			'title',
-			'name',
-			'state_key',
-			'priority',
-			'description',
-			'due_at',
-			'start_at'
-		];
-
-		for (const field of importantFields) {
-			if (before[field] !== after[field]) {
-				// Format field name nicely
-				const fieldName = field.replace(/_/g, ' ').replace(/key$/i, '').trim();
-				changedFields.push(fieldName);
-			}
-		}
-
-		if (changedFields.length === 0) {
-			return 'Updated';
-		}
-
-		if (changedFields.length === 1) {
-			return `${changedFields[0]}`;
-		}
-
-		if (changedFields.length === 2) {
-			return `${changedFields[0]}, ${changedFields[1]}`;
-		}
-
-		return `${changedFields[0]} +${changedFields.length - 1}`;
-	}
 </script>
 
 <Card
@@ -311,41 +267,78 @@
 				{#each logs as log}
 					{@const ActionIcon = getActionIcon(log.action)}
 					{@const sourceBadge = getSourceBadge(log.change_source)}
-					<div class="px-3 py-2 hover:bg-muted/30 transition-colors">
-						<div class="flex items-start gap-2">
-							<!-- Action icon -->
-							<span class="shrink-0 mt-0.5 {getActionColor(log.action)}">
-								<ActionIcon class="w-3 h-3" />
-							</span>
+					{@const summary = buildActivityLogSummary(log)}
+					<div>
+						<button
+							type="button"
+							class="w-full px-3 py-2 hover:bg-muted/30 transition-colors text-left pressable"
+							onclick={() => toggleLogDetails(log.id)}
+							aria-expanded={expandedLogId === log.id}
+						>
+							<div class="flex items-start gap-2">
+								<!-- Action icon -->
+								<span class="shrink-0 mt-0.5 {getActionColor(log.action)}">
+									<ActionIcon class="w-3 h-3" />
+								</span>
 
-							<!-- Content -->
-							<div class="flex-1 min-w-0">
-								<div class="flex items-baseline justify-between gap-2">
-									<span class="text-xs font-medium text-foreground truncate">
-										{getChangeSummary(log)}
-									</span>
-									<span
-										class="text-[10px] text-muted-foreground/70 shrink-0 tabular-nums"
-									>
-										{formatTimestamp(log.created_at)}
-									</span>
-								</div>
-								<div class="flex items-center gap-1.5 mt-0.5">
-									{#if log.changed_by_name}
-										<span class="text-[10px] text-muted-foreground truncate">
-											{log.changed_by_name}
+								<!-- Content -->
+								<div class="flex-1 min-w-0">
+									<div class="flex items-baseline justify-between gap-2">
+										<span class="text-xs font-medium text-foreground truncate">
+											{summary.title}
 										</span>
-									{/if}
-									{#if sourceBadge}
 										<span
-											class="text-[10px] px-1 py-0.5 rounded bg-muted/50 text-muted-foreground/70"
+											class="text-[10px] text-muted-foreground/70 shrink-0 tabular-nums"
 										>
-											{sourceBadge}
+											{formatTimestamp(log.created_at)}
 										</span>
-									{/if}
+									</div>
+									<div class="flex items-center gap-1.5 mt-0.5">
+										{#if log.changed_by_name}
+											<span
+												class="text-[10px] text-muted-foreground truncate"
+											>
+												{log.changed_by_name}
+											</span>
+										{/if}
+										{#if sourceBadge}
+											<span
+												class="text-[10px] px-1 py-0.5 rounded bg-muted/50 text-muted-foreground/70"
+											>
+												{sourceBadge}
+											</span>
+										{/if}
+									</div>
 								</div>
+								<ChevronDown
+									class="w-3 h-3 text-muted-foreground/60 shrink-0 mt-0.5 transition-transform {expandedLogId ===
+									log.id
+										? 'rotate-180'
+										: ''}"
+								/>
 							</div>
-						</div>
+						</button>
+						{#if expandedLogId === log.id}
+							<div class="px-8 pb-2 pr-3 text-[10px] text-muted-foreground">
+								<p class="leading-relaxed">{summary.description}</p>
+								{#if summary.changes.length > 0}
+									<div class="mt-2 space-y-1">
+										{#each summary.changes.slice(0, 4) as change}
+											<div
+												class="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2"
+											>
+												<span class="text-muted-foreground/70"
+													>{change.label}</span
+												>
+												<span class="min-w-0 truncate">
+													{change.beforeValue} to {change.afterValue}
+												</span>
+											</div>
+										{/each}
+									</div>
+								{/if}
+							</div>
+						{/if}
 					</div>
 				{/each}
 			</div>
