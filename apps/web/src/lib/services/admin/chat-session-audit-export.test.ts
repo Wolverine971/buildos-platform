@@ -30,6 +30,17 @@ describe('chat-session-audit-export', () => {
 						shifted_at: '2026-04-03T12:00:30.000Z'
 					}
 				},
+				extracted_entities: {
+					libri_candidates: [
+						{
+							entity_type: 'book',
+							display_name: 'Atomic Habits',
+							canonical_query: 'Atomic Habits James Clear'
+						}
+					],
+					extraction_version: 'libri_session_synthesis_v1',
+					extracted_at: '2026-04-03T12:01:00.000Z'
+				},
 				users: {
 					id: 'user-1',
 					email: 'admin@example.com',
@@ -296,6 +307,8 @@ describe('chat-session-audit-export', () => {
 		expect(markdown).toContain('FASTCHAT V2 PROMPT SNAPSHOT');
 		expect(markdown).toContain('project.named_status');
 		expect(markdown).toContain('## Raw Collections');
+		expect(markdown).toContain('#### Extracted Entities');
+		expect(markdown).toContain('Atomic Habits');
 	});
 
 	it('builds a stable markdown filename', () => {
@@ -316,7 +329,8 @@ describe('chat-session-audit-export', () => {
 				created_at: '2026-04-03T12:00:00.000Z',
 				updated_at: '2026-04-03T12:00:00.000Z',
 				last_message_at: null,
-				agent_metadata: {}
+				agent_metadata: {},
+				extracted_entities: null
 			},
 			metrics: {
 				total_tokens: 0,
@@ -357,6 +371,7 @@ describe('chat-session-audit-export', () => {
 				updated_at: '2026-04-03T12:00:00.000Z',
 				last_message_at: null,
 				agent_metadata: {},
+				extracted_entities: null,
 				users: {
 					id: 'user-2',
 					email: 'admin@example.com',

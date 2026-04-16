@@ -50,6 +50,10 @@
 		has_errors: boolean;
 		has_agent_state: boolean;
 		has_context_shift: boolean;
+		has_libri_extraction: boolean;
+		libri_candidate_count: number;
+		libri_handoff_status: string | null;
+		libri_handoff_result_count: number;
 		last_tool_at: string | null;
 		created_at: string;
 		updated_at: string;
@@ -160,6 +164,41 @@
 		finishedAt: string | null;
 		status: string;
 		errors: number;
+	};
+	type LibriCandidateDisplay = {
+		entityType: string;
+		displayName: string;
+		canonicalQuery: string;
+		action: string;
+		relevance: string;
+		confidence: number | null;
+		youtubeVideoId: string;
+		authors: string[];
+		sourceTurns: number[];
+		evidenceSnippets: string[];
+	};
+	type LibriHandoffResultDisplay = {
+		entityType: string;
+		canonicalQuery: string;
+		status: string;
+		resourceKey: string;
+		jobId: string;
+		message: string;
+	};
+	type LibriExtractionDisplay = {
+		candidates: LibriCandidateDisplay[];
+		ignoredCount: number;
+		extractedAt: string;
+		version: string;
+	};
+	type LibriHandoffDisplay = {
+		status: string;
+		attemptedAt: string;
+		idempotencyKey: string;
+		message: string;
+		httpStatus: string;
+		results: LibriHandoffResultDisplay[];
+		raw: Record<string, unknown>;
 	};
 
 	const PAGE_SIZE = 25;
@@ -1638,6 +1677,104 @@
 		return prettyJson(value);
 	}
 
+	function recordArray(value: unknown): Record<string, unknown>[] {
+		if (!Array.isArray(value)) return [];
+		return value.filter((entry): entry is Record<string, unknown> => {
+			return !!entry && typeof entry === 'object' && !Array.isArray(entry);
+		});
+	}
+
+	function stringArray(value: unknown): string[] {
+		if (!Array.isArray(value)) return [];
+		return value.map(stringValue).filter(Boolean);
+	}
+
+	function numberArray(value: unknown): number[] {
+		if (!Array.isArray(value)) return [];
+		return value
+			.map((entry) => toNumericValue(entry))
+			.filter((entry): entry is number => entry !== null);
+	}
+
+	function formatLibriLabel(value: string): string {
+		return value.replaceAll('_', ' ') || '-';
+	}
+
+	function formatConfidence(value: number | null): string {
+		if (value === null) return '-';
+		return `${Math.round(value * 100)}%`;
+	}
+
+	function libriStatusClasses(status: string): string {
+		switch (status) {
+			case 'sent':
+			case 'found':
+			case 'queued':
+				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+			case 'partial':
+			case 'pending':
+			case 'needs_input':
+			case 'not_configured':
+				return 'bg-amber-500/10 text-amber-700 dark:text-amber-300';
+			case 'failed':
+			case 'error':
+				return 'bg-red-500/10 text-red-700 dark:text-red-300';
+			default:
+				return 'bg-muted text-muted-foreground';
+		}
+	}
+
+	function buildLibriExtractionDisplay(value: unknown): LibriExtractionDisplay {
+		const record = recordFromUnknown(value) ?? {};
+		const candidates = recordArray(payloadField(record, 'libri_candidates')).map(
+			(candidate): LibriCandidateDisplay => ({
+				entityType: stringValue(payloadField(candidate, 'entity_type')),
+				displayName: stringValue(payloadField(candidate, 'display_name')),
+				canonicalQuery: stringValue(payloadField(candidate, 'canonical_query')),
+				action: stringValue(payloadField(candidate, 'recommended_action')),
+				relevance: stringValue(payloadField(candidate, 'relevance')),
+				confidence: toNumericValue(payloadField(candidate, 'confidence')),
+				youtubeVideoId: stringValue(payloadField(candidate, 'youtube_video_id')),
+				authors: stringArray(payloadField(candidate, 'authors')),
+				sourceTurns: numberArray(payloadField(candidate, 'source_turn_indices')),
+				evidenceSnippets: stringArray(payloadField(candidate, 'evidence_snippets'))
+			})
+		);
+
+		return {
+			candidates,
+			ignoredCount: recordArray(payloadField(record, 'ignored_candidates')).length,
+			extractedAt: stringValue(payloadField(record, 'extracted_at')),
+			version: stringValue(payloadField(record, 'extraction_version'))
+		};
+	}
+
+	function buildLibriHandoffDisplay(
+		agentMetadata: Record<string, unknown>
+	): LibriHandoffDisplay | null {
+		const raw = recordFromUnknown(payloadField(agentMetadata, 'libri_handoff'));
+		if (!raw) return null;
+
+		return {
+			status: stringValue(payloadField(raw, 'status')) || 'unknown',
+			attemptedAt: stringValue(payloadField(raw, 'attempted_at')),
+			idempotencyKey: stringValue(payloadField(raw, 'idempotency_key')),
+			message: stringValue(payloadField(raw, 'message')),
+			httpStatus: stringValue(payloadField(raw, 'http_status')),
+			results: recordArray(payloadField(raw, 'results')).map(
+				(result): LibriHandoffResultDisplay => ({
+					entityType: stringValue(payloadField(result, 'entity_type')),
+					canonicalQuery: stringValue(payloadField(result, 'canonical_query')),
+					status: stringValue(payloadField(result, 'status')) || 'unknown',
+					resourceKey: stringValue(payloadField(result, 'resource_key')),
+					jobId: stringValue(payloadField(result, 'job_id')),
+					message: stringValue(payloadField(result, 'message'))
+				})
+			),
+			raw
+		};
+	}
+
 	const conversationTurns = $derived.by(() => {
 		if (!sessionDetail) return [] as ConversationTurn[];
 
@@ -2042,6 +2179,18 @@
 								<span class="text-xs font-semibold text-foreground">
 									Cost {formatCurrency(session.cost_estimate)}
 								</span>
+								{#if session.has_libri_extraction || session.libri_handoff_status}
+									<span
+										class="px-1.5 py-0.5 rounded-full text-xs font-medium {libriStatusClasses(
+											session.libri_handoff_status ?? ''
+										)}"
+									>
+										Libri {formatNumber(session.libri_candidate_count)}
+										{#if session.libri_handoff_status}
+											· {session.libri_handoff_status}
+										{/if}
+									</span>
+								{/if}
 							</div>
 						</button>
 					{/each}
@@ -2101,6 +2250,12 @@
 					<span>{detailError}</span>
 				</div>
 			{:else if sessionDetail}
+				{@const libriExtraction = buildLibriExtractionDisplay(
+					sessionDetail.session.extracted_entities
+				)}
+				{@const libriHandoff = buildLibriHandoffDisplay(
+					sessionDetail.session.agent_metadata
+				)}
 				<div class="flex flex-col">
 					<div class="p-3 border-b border-border space-y-3 bg-card">
 						<div class="flex flex-wrap items-start justify-between gap-3">
@@ -2229,6 +2384,218 @@
 								and raw payloads available when needed.
 							</div>
 						</div>
+
+						{#if libriExtraction.candidates.length > 0 || libriExtraction.ignoredCount > 0 || libriHandoff}
+							<section
+								class="rounded-lg border border-border bg-background px-3 py-2"
+								aria-label="Libri entity handoff"
+							>
+								<div class="flex flex-wrap items-start justify-between gap-2">
+									<div>
+										<div
+											class="text-xs font-semibold text-foreground/60 uppercase tracking-wide"
+										>
+											Libri Entity Handoff
+										</div>
+										<div class="mt-1 text-xs text-muted-foreground">
+											{formatNumber(libriExtraction.candidates.length)}
+											{pluralize(
+												libriExtraction.candidates.length,
+												'candidate'
+											)}
+											{#if libriExtraction.ignoredCount > 0}
+												· {formatNumber(libriExtraction.ignoredCount)} ignored
+											{/if}
+											{#if libriExtraction.extractedAt}
+												· extracted {formatDateTime(
+													libriExtraction.extractedAt
+												)}
+											{/if}
+										</div>
+									</div>
+									<div class="flex flex-wrap items-center gap-1.5">
+										{#if libriHandoff}
+											<span
+												class="rounded-full px-2 py-0.5 text-xs font-medium {libriStatusClasses(
+													libriHandoff.status
+												)}"
+											>
+												{libriHandoff.status}
+											</span>
+											{#if libriHandoff.results.length > 0}
+												<span
+													class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground/70"
+												>
+													{formatNumber(libriHandoff.results.length)}
+													{pluralize(
+														libriHandoff.results.length,
+														'result'
+													)}
+												</span>
+											{/if}
+										{:else}
+											<span
+												class="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+											>
+												no handoff status
+											</span>
+										{/if}
+									</div>
+								</div>
+
+								{#if libriHandoff?.message}
+									<div
+										class="mt-2 rounded border border-border bg-card px-2.5 py-2 text-xs text-muted-foreground"
+									>
+										{libriHandoff.message}
+									</div>
+								{/if}
+
+								{#if libriExtraction.candidates.length > 0}
+									<div class="mt-3 grid gap-2 lg:grid-cols-2">
+										{#each libriExtraction.candidates as candidate}
+											<div class="rounded border border-border bg-card p-2">
+												<div
+													class="flex flex-wrap items-start justify-between gap-2"
+												>
+													<div class="min-w-0">
+														<div
+															class="truncate text-sm font-semibold text-foreground"
+														>
+															{candidate.displayName || '(unnamed)'}
+														</div>
+														<div
+															class="mt-0.5 break-words text-xs text-muted-foreground"
+														>
+															{candidate.canonicalQuery || '-'}
+														</div>
+													</div>
+													<div class="flex flex-wrap justify-end gap-1">
+														<span
+															class="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/70"
+														>
+															{formatLibriLabel(candidate.entityType)}
+														</span>
+														<span
+															class="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground/70"
+														>
+															{formatConfidence(candidate.confidence)}
+														</span>
+													</div>
+												</div>
+												<div
+													class="mt-2 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground"
+												>
+													<span
+														class="rounded-full bg-background px-2 py-0.5"
+													>
+														{formatLibriLabel(candidate.action)}
+													</span>
+													<span
+														class="rounded-full bg-background px-2 py-0.5"
+													>
+														{formatLibriLabel(candidate.relevance)}
+													</span>
+													{#if candidate.youtubeVideoId}
+														<span
+															class="rounded-full bg-background px-2 py-0.5"
+														>
+															video {candidate.youtubeVideoId}
+														</span>
+													{/if}
+													{#if candidate.authors.length > 0}
+														<span
+															class="rounded-full bg-background px-2 py-0.5"
+														>
+															by {candidate.authors.join(', ')}
+														</span>
+													{/if}
+													{#if candidate.sourceTurns.length > 0}
+														<span
+															class="rounded-full bg-background px-2 py-0.5"
+														>
+															turns {candidate.sourceTurns.join(', ')}
+														</span>
+													{/if}
+												</div>
+												{#if candidate.evidenceSnippets.length > 0}
+													<div
+														class="mt-2 text-xs italic text-foreground/70 line-clamp-2"
+													>
+														"{candidate.evidenceSnippets[0]}"
+													</div>
+												{/if}
+											</div>
+										{/each}
+									</div>
+								{/if}
+
+								{#if libriHandoff?.results.length}
+									<div class="mt-3 space-y-1.5">
+										<div
+											class="text-xs font-semibold uppercase tracking-wide text-foreground/60"
+										>
+											Libri Results
+										</div>
+										<div class="grid gap-1.5 lg:grid-cols-2">
+											{#each libriHandoff.results as result}
+												<div
+													class="rounded border border-border bg-card px-2.5 py-2 text-xs"
+												>
+													<div
+														class="flex flex-wrap items-center justify-between gap-2"
+													>
+														<div
+															class="min-w-0 truncate font-semibold text-foreground"
+														>
+															{result.canonicalQuery || '-'}
+														</div>
+														<span
+															class="rounded-full px-2 py-0.5 font-medium {libriStatusClasses(
+																result.status
+															)}"
+														>
+															{result.status}
+														</span>
+													</div>
+													<div
+														class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground"
+													>
+														{#if result.resourceKey}
+															<span
+																>resource {result.resourceKey}</span
+															>
+														{/if}
+														{#if result.jobId}
+															<span>job {result.jobId}</span>
+														{/if}
+														{#if result.message}
+															<span>{result.message}</span>
+														{/if}
+													</div>
+												</div>
+											{/each}
+										</div>
+									</div>
+								{/if}
+
+								<details
+									class="mt-3 rounded border border-border bg-card p-2 text-xs"
+								>
+									<summary class="cursor-pointer font-medium text-foreground">
+										Raw Libri Payloads
+									</summary>
+									<pre
+										class="mt-2 whitespace-pre-wrap break-words overflow-x-auto text-xs text-foreground">{prettyJson(
+											{
+												extracted_entities:
+													sessionDetail.session.extracted_entities,
+												libri_handoff: libriHandoff?.raw ?? null
+											}
+										)}</pre>
+								</details>
+							</section>
+						{/if}
 					</div>
 
 					<div class="p-3 space-y-4">

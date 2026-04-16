@@ -11,6 +11,7 @@ import {
 	type ChatDashboardSessionRow
 } from '$lib/server/admin-chat-dashboard-analytics';
 import { getAdminLlmUsageStats } from '$lib/server/admin-llm-usage-analytics';
+import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 import { ApiResponse } from '$lib/utils/api-response';
 
 type Timeframe = '24h' | '7d' | '30d' | '90d' | '365d';
@@ -316,7 +317,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			);
 			costBySession.set(
 				sessionId,
-				(costBySession.get(sessionId) || 0) + numberValue(usage.total_cost_usd)
+				(costBySession.get(sessionId) || 0) + resolveUsageLogCostBreakdown(usage).totalCost
 			);
 		}
 

@@ -2469,6 +2469,7 @@ export type Database = {
           context_type: string
           created_at: string | null
           entity_id: string | null
+          extracted_entities: Json | null
           id: string
           last_classified_at: string | null
           last_message_at: string | null
@@ -2493,6 +2494,7 @@ export type Database = {
           context_type: string
           created_at?: string | null
           entity_id?: string | null
+          extracted_entities?: Json | null
           id?: string
           last_classified_at?: string | null
           last_message_at?: string | null
@@ -2517,6 +2519,7 @@ export type Database = {
           context_type?: string
           created_at?: string | null
           entity_id?: string | null
+          extracted_entities?: Json | null
           id?: string
           last_classified_at?: string | null
           last_message_at?: string | null
@@ -4316,6 +4319,8 @@ export type Database = {
           agent_session_id: string | null
           brain_dump_id: string | null
           brief_id: string | null
+          cache_write_tokens: number
+          cached_prompt_tokens: number
           chat_session_id: string | null
           client_turn_id: string | null
           completion_tokens: number
@@ -4327,8 +4332,11 @@ export type Database = {
           metadata: Json | null
           model_requested: string
           model_used: string
+          openrouter_byok: boolean | null
           openrouter_cache_status: string | null
           openrouter_request_id: string | null
+          openrouter_upstream_inference_cost_usd: number | null
+          openrouter_usage_cost_usd: number | null
           operation_type: string
           output_cost_usd: number
           profile: string | null
@@ -4336,6 +4344,7 @@ export type Database = {
           prompt_tokens: number
           provider: string | null
           rate_limit_remaining: number | null
+          reasoning_tokens: number
           request_completed_at: string
           request_started_at: string
           response_time_ms: number
@@ -4355,6 +4364,8 @@ export type Database = {
           agent_session_id?: string | null
           brain_dump_id?: string | null
           brief_id?: string | null
+          cache_write_tokens?: number
+          cached_prompt_tokens?: number
           chat_session_id?: string | null
           client_turn_id?: string | null
           completion_tokens: number
@@ -4366,8 +4377,11 @@ export type Database = {
           metadata?: Json | null
           model_requested: string
           model_used: string
+          openrouter_byok?: boolean | null
           openrouter_cache_status?: string | null
           openrouter_request_id?: string | null
+          openrouter_upstream_inference_cost_usd?: number | null
+          openrouter_usage_cost_usd?: number | null
           operation_type: string
           output_cost_usd: number
           profile?: string | null
@@ -4375,6 +4389,7 @@ export type Database = {
           prompt_tokens: number
           provider?: string | null
           rate_limit_remaining?: number | null
+          reasoning_tokens?: number
           request_completed_at: string
           request_started_at: string
           response_time_ms: number
@@ -4394,6 +4409,8 @@ export type Database = {
           agent_session_id?: string | null
           brain_dump_id?: string | null
           brief_id?: string | null
+          cache_write_tokens?: number
+          cached_prompt_tokens?: number
           chat_session_id?: string | null
           client_turn_id?: string | null
           completion_tokens?: number
@@ -4405,8 +4422,11 @@ export type Database = {
           metadata?: Json | null
           model_requested?: string
           model_used?: string
+          openrouter_byok?: boolean | null
           openrouter_cache_status?: string | null
           openrouter_request_id?: string | null
+          openrouter_upstream_inference_cost_usd?: number | null
+          openrouter_usage_cost_usd?: number | null
           operation_type?: string
           output_cost_usd?: number
           profile?: string | null
@@ -4414,6 +4434,7 @@ export type Database = {
           prompt_tokens?: number
           provider?: string | null
           rate_limit_remaining?: number | null
+          reasoning_tokens?: number
           request_completed_at?: string
           request_started_at?: string
           response_time_ms?: number

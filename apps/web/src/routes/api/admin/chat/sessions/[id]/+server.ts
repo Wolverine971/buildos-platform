@@ -60,6 +60,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
         updated_at,
         last_message_at,
         agent_metadata,
+        extracted_entities,
         users!chat_sessions_user_id_fkey(id, email, name)
       `
 			)
@@ -152,6 +153,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
           completion_tokens,
           total_tokens,
           total_cost_usd,
+          openrouter_usage_cost_usd,
           response_time_ms,
           request_started_at,
           request_completed_at,

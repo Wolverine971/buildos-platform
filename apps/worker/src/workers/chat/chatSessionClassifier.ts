@@ -14,6 +14,15 @@ import { LegacyJob } from '../shared/jobAdapter';
 import { processSessionActivityAndNextSteps } from './chatSessionActivityProcessor';
 import { processProfileSignals } from './profileSignalProcessor';
 import { processContactSignals } from './contactSignalProcessor';
+import {
+	emptySessionExtractedEntities,
+	sanitizeSessionExtractedEntities,
+	type SessionExtractedEntities
+} from './libriSessionEntities';
+import {
+	handoffLibriSessionEntities,
+	type LibriEntityHandoffStatus
+} from './libriEntityHandoffClient';
 
 /**
  * Response structure from LLM classification
@@ -22,6 +31,7 @@ interface ChatClassificationResponse {
 	title: string; // Max 50 characters, descriptive title
 	topics: string[]; // 3-7 topic keywords
 	summary: string; // 2-3 sentences, max 500 characters
+	extracted_entities?: unknown;
 }
 
 /**
@@ -66,6 +76,7 @@ const CLASSIFICATION_SYSTEM_PROMPT = `You are a chat session analyzer. Your task
 1. A concise, descriptive title (max 50 characters) that captures the main topic/purpose of the conversation
 2. A list of 3-7 topic keywords that represent the subjects discussed
 3. A brief summary (2-3 sentences, max 500 characters) that captures what was discussed and any outcomes
+4. Structured Libri entity extraction for high-confidence people, books, YouTube videos, and YouTube channels discussed in the session
 
 Guidelines:
 - Title should be human-readable (e.g., "Planning vacation to Japan", "Debugging API issues")
@@ -75,37 +86,82 @@ Guidelines:
 - Focus on the user's actual intent and what was accomplished
 - Ignore meta-discussion about the AI or system
 - If the conversation is too short or unclear, use "Quick chat" as the title
+- A single clear user message is enough to extract Libri candidates when the entity evidence is explicit and high confidence
+
+Libri extraction rules:
+- Include a Libri candidate only when the session explicitly discusses a person, author, thinker, creator, public figure, book title/ISBN, YouTube video, or YouTube channel that is useful for the user's durable library.
+- Prefer candidates that were central to the user's request or that the user asked to analyze, add, research, preserve, process, or revisit.
+- Use recommended_action "resolve_or_enqueue" only for clear, high-confidence candidates. Use "search_only" for possibly useful but non-enrichment candidates. Use "ignore" for entities that should not be acted on.
+- Exclude BuildOS project names, task names, internal documents, teammates, private contacts, private personal facts, vague topics, and incidental examples unless they are clearly public Libri resources.
+- Do not invent entities. If evidence is weak, omit the candidate or include it only as an ignored candidate.
+- source_message_ids must use the exact message_id values shown in the prompt. source_turn_indices must use the exact turn_index values shown in the prompt.
+- evidence_snippets must be short excerpts from the prompt content and must not include entire messages.
+- For YouTube URLs, include url and youtube_video_id when available.
+
+Allowed scalar values:
+- entity_type must be exactly one of "person", "book", "youtube_video", or "youtube_channel".
+- relevance must be exactly one of "primary", "supporting", or "incidental".
+- recommended_action must be exactly one of "resolve_or_enqueue", "search_only", or "ignore".
 
 Respond ONLY with valid JSON in this exact format:
 {
-  "title": "Your descriptive title here",
-  "topics": ["topic1", "topic2", "topic3"],
-  "summary": "A 2-3 sentence summary of what was discussed and any outcomes."
+  "title": "Research Atomic Habits",
+  "topics": ["books", "habits", "youtube"],
+  "summary": "The user asked to preserve research targets for James Clear, Atomic Habits, and a YouTube video.",
+  "extracted_entities": {
+    "libri_candidates": [
+      {
+        "entity_type": "book",
+        "display_name": "Atomic Habits",
+        "canonical_query": "Atomic Habits James Clear",
+        "authors": ["James Clear"],
+        "aliases": ["Atomic Habits by James Clear"],
+        "confidence": 0.94,
+        "relevance": "primary",
+        "recommended_action": "resolve_or_enqueue",
+        "user_requested_research": false,
+        "extraction_reason": "The user explicitly mentioned the book as a research target.",
+        "source_message_ids": ["message-id"],
+        "source_turn_indices": [0],
+        "evidence_snippets": ["Atomic Habits"]
+      }
+    ],
+    "ignored_candidates": [
+      {
+        "display_name": "Internal project name",
+        "reason": "Private BuildOS project names should not be handed to Libri.",
+        "evidence_snippets": ["project codename"]
+      }
+    ],
+    "extraction_version": "libri_session_synthesis_v1",
+    "extracted_at": "ISO-8601 timestamp"
+  }
 }`;
 
 /**
  * Build the user prompt with conversation history
  */
+function getPromptMessages(messages: ChatMessage[]): ChatMessage[] {
+	return messages.filter((m) => m.role === 'user' || m.role === 'assistant').slice(0, 30); // Limit to first 30 messages to avoid token limits
+}
+
 function buildUserPrompt(messages: ChatMessage[]): string {
-	// Filter to relevant messages (user and assistant only)
-	const relevantMessages = messages
-		.filter((m) => m.role === 'user' || m.role === 'assistant')
-		.slice(0, 30); // Limit to first 30 messages to avoid token limits
+	const relevantMessages = getPromptMessages(messages);
 
 	if (relevantMessages.length === 0) {
 		return 'No conversation content available.';
 	}
 
 	const conversationText = relevantMessages
-		.map((m) => {
+		.map((m, index) => {
 			const role = m.role === 'user' ? 'User' : 'Assistant';
 			// Truncate very long messages
 			const content = m.content.length > 500 ? m.content.slice(0, 500) + '...' : m.content;
-			return `${role}: ${content}`;
+			return `turn_index=${index}\nmessage_id=${m.id}\nrole=${role}\ncontent: ${content}`;
 		})
 		.join('\n\n');
 
-	return `Analyze this conversation and generate a title and topics:\n\n${conversationText}`;
+	return `Analyze this conversation and generate a title, topics, summary, and Libri entity extraction:\n\n${conversationText}`;
 }
 
 function truncateForFallback(text: string, maxLength: number): string {
@@ -134,8 +190,18 @@ function buildFallbackClassification(messages: ChatMessage[]): ChatClassificatio
 	return {
 		title,
 		topics: ['general'],
-		summary
+		summary,
+		extracted_entities: emptySessionExtractedEntities()
 	};
+}
+
+function hasMeaningfulUserMessage(messages: ChatMessage[]): boolean {
+	return messages.some(
+		(message) =>
+			message.role === 'user' &&
+			typeof message.content === 'string' &&
+			message.content.trim().length > 0
+	);
 }
 
 /**
@@ -156,7 +222,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		const { data: session, error: sessionError } = await supabase
 			.from('chat_sessions')
 			.select(
-				'id, title, auto_title, chat_topics, summary, message_count, status, last_message_at, last_classified_at'
+				'id, title, auto_title, chat_topics, summary, extracted_entities, message_count, status, context_type, entity_id, last_message_at, last_classified_at'
 			)
 			.eq('id', validatedData.sessionId)
 			.eq('user_id', validatedData.userId)
@@ -190,6 +256,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			!!session.chat_topics &&
 			session.chat_topics.length > 0 &&
 			!!session.summary;
+		const hasEntityExtraction = !!session.extracted_entities;
 		const latestMessageAtIso =
 			messages?.length && messages[messages.length - 1]?.created_at
 				? messages[messages.length - 1].created_at
@@ -204,7 +271,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 				: !lastClassifiedAt || !lastMessageAt;
 
 		// Skip if already classified and no new messages since last classification
-		if (hasClassification && !hasNewMessages) {
+		if (hasClassification && hasEntityExtraction && !hasNewMessages) {
 			if (!session.last_classified_at) {
 				const classificationTimestamp = latestMessageAtIso ?? new Date().toISOString();
 				const { error: stampError } = await supabase
@@ -227,27 +294,37 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			return { success: true, skipped: true, reason: 'already_classified' };
 		}
 
-		// If no messages or too few, use default classification
-		if (!messages || messages.length < 2) {
+		const typedMessages = (messages ?? []) as ChatMessage[];
+
+		// If there is no meaningful user content, use default classification.
+		// A single explicit user message still goes through synthesis so Libri entities can be extracted.
+		if (!messages || messages.length === 0 || !hasMeaningfulUserMessage(typedMessages)) {
 			console.log(
-				`⚠️  Session ${validatedData.sessionId} has insufficient messages (${messages?.length || 0})`
+				`⚠️  Session ${validatedData.sessionId} has no meaningful user messages (${messages?.length || 0})`
 			);
 
-			const defaultSummary = 'A brief conversation captured for reference.';
+			const fallbackClassification = buildFallbackClassification(typedMessages);
+			const title = sanitizeTitle(fallbackClassification.title);
+			const topics = sanitizeTopics(fallbackClassification.topics);
+			const summary = sanitizeSummary(fallbackClassification.summary);
+			const extractedEntities = sanitizeSessionExtractedEntities(
+				fallbackClassification.extracted_entities
+			);
 
 			// Update with default values
 			const classificationTimestamp = latestMessageAtIso ?? new Date().toISOString();
 			const updatePayload: Record<string, any> = {
-				auto_title: 'Quick chat',
-				chat_topics: ['general'],
-				summary: defaultSummary,
+				auto_title: title,
+				chat_topics: topics,
+				summary,
+				extracted_entities: extractedEntities,
 				last_classified_at: classificationTimestamp,
 				updated_at: new Date().toISOString()
 			};
 
 			// Promote the auto title if the existing title is just a placeholder
 			if (hasPlaceholderTitle) {
-				updatePayload.title = 'Quick chat';
+				updatePayload.title = title;
 			}
 
 			const { error: updateError } = await supabase
@@ -262,11 +339,12 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			await updateJobStatus(job.id, 'completed', 'chat_classification');
 			return {
 				success: true,
-				title: 'Quick chat',
-				topics: ['general'],
-				summary: defaultSummary,
+				title,
+				topics,
+				summary,
+				extractedEntities,
 				messageCount: messages?.length || 0,
-				reason: 'insufficient_messages'
+				reason: 'no_meaningful_user_messages'
 			};
 		}
 
@@ -275,7 +353,6 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
 			appName: 'BuildOS Chat Classifier'
 		});
-		const typedMessages = messages as ChatMessage[];
 
 		// Build prompt with conversation
 		const userPrompt = buildUserPrompt(typedMessages);
@@ -309,11 +386,20 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		const title = sanitizeTitle(classification.title);
 		const topics = sanitizeTopics(classification.topics);
 		const summary = sanitizeSummary(classification.summary);
+		const promptMessages = getPromptMessages(typedMessages);
+		const extractedEntities = sanitizeSessionExtractedEntities(
+			classification.extracted_entities,
+			{
+				knownMessageIds: new Set(promptMessages.map((message) => message.id)),
+				maxTurnIndex: Math.max(0, promptMessages.length - 1)
+			}
+		);
 
 		console.log(
 			`✅ Classification result${usedFallbackClassification ? ' (fallback)' : ''}: "${title}" with topics: [${topics.join(', ')}]`
 		);
 		console.log(`📝 Summary: ${summary.slice(0, 100)}${summary.length > 100 ? '...' : ''}`);
+		console.log(`📚 Libri candidates: ${extractedEntities.libri_candidates.length} extracted`);
 
 		// Update the chat session with classification results
 		const classificationTimestamp = latestMessageAtIso ?? new Date().toISOString();
@@ -322,6 +408,7 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			auto_title: title,
 			chat_topics: topics,
 			summary: summary,
+			extracted_entities: extractedEntities,
 			last_classified_at: classificationTimestamp,
 			updated_at: new Date().toISOString()
 		};
@@ -339,6 +426,15 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		if (updateError) {
 			throw new Error(`Failed to update session with classification: ${updateError.message}`);
 		}
+
+		const libriHandoffStatus = await processLibriEntityHandoff({
+			sessionId: validatedData.sessionId,
+			userId: validatedData.userId,
+			contextType: session.context_type,
+			projectId: session.context_type === 'project' ? session.entity_id : null,
+			extractedEntities,
+			jobId: job.id
+		});
 
 		// Process activity logging and next steps for project-related sessions
 		// This runs after classification to ensure we have the title/topics context
@@ -461,6 +557,8 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			title,
 			topics,
 			summary,
+			extractedEntities,
+			libriHandoff: libriHandoffStatus,
 			messageCount: messages.length,
 			usedFallbackClassification,
 			activityLogsCreated: activityResult.activityLogsCreated,
@@ -483,6 +581,71 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		});
 		await updateJobStatus(job.id, 'failed', 'chat_classification', error.message);
 		throw error;
+	}
+}
+
+async function processLibriEntityHandoff(params: {
+	sessionId: string;
+	userId: string;
+	contextType: string | null;
+	projectId: string | null;
+	extractedEntities: SessionExtractedEntities;
+	jobId: string;
+}): Promise<LibriEntityHandoffStatus | null> {
+	try {
+		const status = await handoffLibriSessionEntities({
+			sessionId: params.sessionId,
+			contextType: params.contextType,
+			projectId: params.projectId,
+			extractedEntities: params.extractedEntities
+		});
+
+		if (!status) return null;
+
+		const { error } = await (supabase as any).rpc('merge_chat_session_agent_metadata', {
+			p_session_id: params.sessionId,
+			p_patch: {
+				libri_handoff: status
+			}
+		});
+
+		if (error) {
+			console.warn(
+				`⚠️ Failed to store Libri handoff status for session ${params.sessionId}:`,
+				error.message
+			);
+			void logWorkerError(error, {
+				userId: params.userId,
+				tableName: 'chat_sessions',
+				recordId: params.sessionId,
+				operationType: 'chat_libri_handoff_status',
+				severity: 'warning',
+				metadata: {
+					jobId: params.jobId,
+					nonFatal: true
+				}
+			});
+			return status;
+		}
+
+		console.log(
+			`📚 Libri handoff ${status.status} for session ${params.sessionId} (${status.results.length} entities)`
+		);
+		return status;
+	} catch (error) {
+		console.warn(`⚠️ Libri entity handoff failed (non-fatal):`, error);
+		void logWorkerError(error, {
+			userId: params.userId,
+			tableName: 'chat_sessions',
+			recordId: params.sessionId,
+			operationType: 'chat_libri_handoff',
+			severity: 'warning',
+			metadata: {
+				jobId: params.jobId,
+				nonFatal: true
+			}
+		});
+		return null;
 	}
 }
 

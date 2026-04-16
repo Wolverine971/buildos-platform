@@ -9,6 +9,7 @@ type UsageCostRow = {
 	input_cost_usd?: number | string | null;
 	output_cost_usd?: number | string | null;
 	total_cost_usd?: number | string | null;
+	openrouter_usage_cost_usd?: number | string | null;
 	metadata?: unknown;
 };
 
@@ -26,6 +27,14 @@ const objectValue = (value: unknown): Record<string, unknown> =>
 		? (value as Record<string, unknown>)
 		: {};
 
+const hasNumericValue = (value: unknown): boolean => {
+	if (typeof value === 'number') return Number.isFinite(value);
+	if (typeof value === 'string' && value.trim().length > 0) {
+		return Number.isFinite(Number(value));
+	}
+	return false;
+};
+
 export function resolveUsageLogCostBreakdown(row: UsageCostRow): {
 	inputCost: number;
 	outputCost: number;
@@ -38,6 +47,9 @@ export function resolveUsageLogCostBreakdown(row: UsageCostRow): {
 	let inputCost = numberValue(row.input_cost_usd);
 	let outputCost = numberValue(row.output_cost_usd);
 	let totalCost = numberValue(row.total_cost_usd);
+	if (hasNumericValue(row.openrouter_usage_cost_usd)) {
+		totalCost = numberValue(row.openrouter_usage_cost_usd);
+	}
 	let wasEstimated = false;
 
 	const metadata = objectValue(row.metadata);

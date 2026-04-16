@@ -20,6 +20,24 @@ describe('resolveUsageLogCostBreakdown', () => {
 		expect(result.wasEstimated).toBe(false);
 	});
 
+	it('prefers OpenRouter usage cost when available', () => {
+		const result = resolveUsageLogCostBreakdown({
+			model_used: 'x-ai/grok-4.1-fast',
+			model_requested: 'x-ai/grok-4.1-fast',
+			prompt_tokens: 10_000,
+			completion_tokens: 1_000,
+			input_cost_usd: 0.002,
+			output_cost_usd: 0.0005,
+			total_cost_usd: 0.0025,
+			openrouter_usage_cost_usd: 0.0018
+		});
+
+		expect(result.inputCost).toBe(0.002);
+		expect(result.outputCost).toBe(0.0005);
+		expect(result.totalCost).toBe(0.0018);
+		expect(result.wasEstimated).toBe(false);
+	});
+
 	it('recomputes zero-cost provider aliases from the requested model fallback', () => {
 		const result = resolveUsageLogCostBreakdown({
 			model_used: 'qwen/qwen3.5-flash-20260224',

@@ -125,10 +125,24 @@ export interface OpenRouterResponse {
 		total_tokens: number;
 		prompt_tokens_details?: {
 			cached_tokens?: number;
+			cache_write_tokens?: number;
 			audio_tokens?: number;
+			video_tokens?: number;
 		};
 		completion_tokens_details?: {
 			reasoning_tokens?: number;
+			audio_tokens?: number;
+			image_tokens?: number;
+		};
+		cost?: number;
+		is_byok?: boolean;
+		cost_details?: {
+			upstream_inference_cost?: number;
+			upstream_inference_prompt_cost?: number;
+			upstream_inference_completions_cost?: number;
+		};
+		server_tool_use?: {
+			web_search_requests?: number;
 		};
 	};
 	system_fingerprint?: string;

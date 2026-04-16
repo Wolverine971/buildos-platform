@@ -18,7 +18,32 @@ describe('buildSessionDetailPayload', () => {
 				created_at: '2026-04-03T12:00:00.000Z',
 				updated_at: '2026-04-03T12:01:00.000Z',
 				last_message_at: '2026-04-03T12:01:00.000Z',
-				agent_metadata: {},
+				agent_metadata: {
+					libri_handoff: {
+						status: 'sent',
+						results: [
+							{
+								entity_type: 'person',
+								canonical_query: 'James Clear',
+								status: 'found'
+							}
+						]
+					}
+				},
+				extracted_entities: {
+					libri_candidates: [
+						{
+							entity_type: 'person',
+							display_name: 'James Clear',
+							canonical_query: 'James Clear',
+							confidence: 0.96,
+							relevance: 'primary',
+							recommended_action: 'resolve_or_enqueue'
+						}
+					],
+					extraction_version: 'libri_session_synthesis_v1',
+					extracted_at: '2026-04-03T12:01:00.000Z'
+				},
 				users: {
 					id: 'user-1',
 					email: 'admin@example.com',
@@ -212,6 +237,19 @@ describe('buildSessionDetailPayload', () => {
 			id: 'eval-1',
 			scenario_slug: 'project.named_status',
 			status: 'passed'
+		});
+		expect(payload.session.extracted_entities).toMatchObject({
+			libri_candidates: [
+				expect.objectContaining({
+					entity_type: 'person',
+					display_name: 'James Clear'
+				})
+			]
+		});
+		expect(payload.session.agent_metadata).toMatchObject({
+			libri_handoff: {
+				status: 'sent'
+			}
 		});
 
 		const timelineTypes = payload.timeline.map((event) => event.type);

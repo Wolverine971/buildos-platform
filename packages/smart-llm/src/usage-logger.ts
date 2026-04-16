@@ -39,6 +39,12 @@ export type UsageLogParams = {
 	clientTurnId?: string;
 	openrouterRequestId?: string;
 	openrouterCacheStatus?: string;
+	reasoningTokens?: number;
+	cachedPromptTokens?: number;
+	cacheWriteTokens?: number;
+	openrouterUsageCost?: number;
+	openrouterByok?: boolean;
+	openrouterUpstreamInferenceCost?: number;
 	rateLimitRemaining?: number;
 	metadata?: any;
 };
@@ -142,6 +148,15 @@ export class LLMUsageLogger {
 				brief_id: params.briefId,
 				openrouter_request_id: params.openrouterRequestId,
 				openrouter_cache_status: params.openrouterCacheStatus,
+				reasoning_tokens: this.normalizeNumber(params.reasoningTokens),
+				cached_prompt_tokens: this.normalizeNumber(params.cachedPromptTokens),
+				cache_write_tokens: this.normalizeNumber(params.cacheWriteTokens),
+				openrouter_usage_cost_usd: this.normalizeNullableNumber(params.openrouterUsageCost),
+				openrouter_byok:
+					typeof params.openrouterByok === 'boolean' ? params.openrouterByok : null,
+				openrouter_upstream_inference_cost_usd: this.normalizeNullableNumber(
+					params.openrouterUpstreamInferenceCost
+				),
 				rate_limit_remaining: params.rateLimitRemaining,
 				metadata: params.metadata
 			};
@@ -226,6 +241,16 @@ export class LLMUsageLogger {
 			return Number.isFinite(parsed) ? parsed : 0;
 		}
 		return 0;
+	}
+
+	private normalizeNullableNumber(value: unknown): number | null {
+		if (value === undefined || value === null) return null;
+		if (typeof value === 'number' && Number.isFinite(value)) return value;
+		if (typeof value === 'string' && value.trim().length > 0) {
+			const parsed = Number(value);
+			return Number.isFinite(parsed) ? parsed : null;
+		}
+		return null;
 	}
 
 	private normalizeCostValues(params: {

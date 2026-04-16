@@ -138,6 +138,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
         updated_at,
         last_message_at,
         agent_metadata,
+        extracted_entities,
         users!chat_sessions_user_id_fkey(id, email, name)
       `,
 				{ count: 'exact' }
@@ -188,7 +189,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				supabase
 					.from('llm_usage_logs')
 					.select(
-						'chat_session_id, model_requested, model_used, prompt_tokens, completion_tokens, input_cost_usd, output_cost_usd, total_tokens, total_cost_usd, status, error_message, metadata'
+						'chat_session_id, model_requested, model_used, prompt_tokens, completion_tokens, input_cost_usd, output_cost_usd, total_tokens, total_cost_usd, openrouter_usage_cost_usd, status, error_message, metadata'
 					)
 					.in('chat_session_id', sessionIds)
 			]);
@@ -266,6 +267,22 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				session.agent_metadata && typeof session.agent_metadata === 'object'
 					? (session.agent_metadata as Record<string, unknown>)
 					: {};
+			const extractedEntities =
+				session.extracted_entities && typeof session.extracted_entities === 'object'
+					? (session.extracted_entities as Record<string, unknown>)
+					: {};
+			const libriCandidates = Array.isArray(extractedEntities.libri_candidates)
+				? extractedEntities.libri_candidates
+				: [];
+			const libriHandoff =
+				metadata.libri_handoff &&
+				typeof metadata.libri_handoff === 'object' &&
+				!Array.isArray(metadata.libri_handoff)
+					? (metadata.libri_handoff as Record<string, unknown>)
+					: null;
+			const libriHandoffResults = Array.isArray(libriHandoff?.results)
+				? libriHandoff.results
+				: [];
 
 			const messageCount = Number(session.message_count ?? messageAgg?.messageCount ?? 0);
 			const totalTokens = resolveBillableTokenTotal({
@@ -308,6 +325,11 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				has_errors: hasErrors,
 				has_agent_state: Boolean(metadata.agent_state),
 				has_context_shift: Boolean(metadata.fastchat_last_context_shift),
+				has_libri_extraction: libriCandidates.length > 0,
+				libri_candidate_count: libriCandidates.length,
+				libri_handoff_status:
+					typeof libriHandoff?.status === 'string' ? libriHandoff.status : null,
+				libri_handoff_result_count: libriHandoffResults.length,
 				last_tool_at: toolAgg?.lastExecutedAt ?? null,
 				created_at: toIsoOrNow(session.created_at),
 				updated_at: toIsoOrNow(

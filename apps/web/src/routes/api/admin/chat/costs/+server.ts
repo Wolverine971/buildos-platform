@@ -83,6 +83,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				input_cost_usd,
 				output_cost_usd,
 				total_cost_usd,
+				openrouter_usage_cost_usd,
 				request_started_at,
 				request_completed_at,
 				created_at,

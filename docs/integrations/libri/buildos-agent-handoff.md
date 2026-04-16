@@ -6,6 +6,19 @@ Date: 2026-04-13
 Status: Planning handoff for BuildOS-side implementation
 Audience: Agent working in `/Users/djwayne/buildos-platform`
 
+## 2026-04-15 Direction Update
+
+Do not treat this document as approval to add hard-coded Libri turn routing.
+Live chat Libri usage should remain agent-directed through the Libri skill and
+tools. The next integration round is session-close synthesis: add structured
+`extracted_entities` to chat analysis and hand high-confidence people, books,
+and YouTube resources to Libri asynchronously.
+
+See `docs/integrations/libri/session-synthesis-entity-handoff.md` for the
+current next-round plan, and
+`docs/integrations/libri/buildos-hardening-next-milestone.md` for the immediate
+BuildOS hardening milestone before the first live smoke.
+
 ## Vision
 
 BuildOS is the project and progress system. Libri is the library and enrichment
@@ -317,19 +330,21 @@ Later optional tools:
 Do not start with a large Libri tool set. One resolver is enough for the first
 working integration.
 
-## Tool Routing Policy
+## Live Agent Discretion Policy
 
-BuildOS should prefer Libri before generic web search for durable library
-knowledge.
+BuildOS should make Libri available as a durable library knowledge source, but
+live chat should not use a deterministic router that forces Libri calls from
+entity mentions. The agent may choose Libri before generic web search when the
+request is about durable library knowledge and Libri is likely to be useful.
 
-Use `resolve_libri_resource` first when the user asks about:
+The agent may use `resolve_libri_resource` when the user asks about:
 
 - an author or thinker,
 - a book,
 - a YouTube video,
 - a topic that is likely represented in the personal library.
 
-Use `web_search` first when the user asks for:
+The agent should choose `web_search` when the user asks for:
 
 - current or latest information,
 - news,
@@ -338,7 +353,8 @@ Use `web_search` first when the user asks for:
 - facts that are not likely to live in a durable personal library,
 - direct web discovery outside books/videos/people.
 
-Do not auto-enqueue on every passive mention. Auto-enqueue is appropriate when:
+Do not auto-enqueue on every passive mention during live chat. Auto-enqueue is
+appropriate when:
 
 - the user explicitly asks to analyze, add, import, research, or send to Libri,
 - the user asks a question that requires the resource and Libri has no record,
@@ -575,8 +591,10 @@ These decisions answer implementation questions for the first BuildOS agent.
     - A single method in `ExternalExecutor` is acceptable for the first slice.
 
 12. Update prompts/tool selection.
-    - Teach the agent to use Libri before `web_search` for people, books, and
-      YouTube videos.
+    - Teach the agent when Libri is a useful durable library source for people,
+      books, and YouTube videos.
+    - Do not add deterministic turn routing that forces Libri calls from entity
+      mentions.
     - Keep current `web_search` behavior for current/live web facts.
 
 13. Add tests.

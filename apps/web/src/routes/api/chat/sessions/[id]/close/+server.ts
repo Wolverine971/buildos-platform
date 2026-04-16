@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({
 	const { data: session, error: sessionError } = await supabase
 		.from('chat_sessions')
 		.select(
-			'id, user_id, message_count, context_type, entity_id, last_message_at, last_classified_at, auto_title, chat_topics, summary'
+			'id, user_id, message_count, context_type, entity_id, last_message_at, last_classified_at, auto_title, chat_topics, summary, extracted_entities'
 		)
 		.eq('id', sessionId)
 		.eq('user_id', user.id)
@@ -102,6 +102,7 @@ export const POST: RequestHandler = async ({
 		!!session.summary &&
 		Array.isArray(session.chat_topics) &&
 		session.chat_topics.length > 0;
+	const hasEntityExtraction = !!session.extracted_entities;
 	const hasMessageActivity =
 		messageCount > 0 ||
 		recentMessageCount > 0 ||
@@ -111,7 +112,9 @@ export const POST: RequestHandler = async ({
 	let shouldQueueClassification = false;
 
 	if (hasMessageActivity) {
-		if (!lastClassifiedAt && hasClassification) {
+		if (!hasEntityExtraction) {
+			shouldQueueClassification = true;
+		} else if (!lastClassifiedAt && hasClassification) {
 			const classificationTimestamp = inferredLastMessageAt ?? new Date().toISOString();
 			const { error: stampError } = await supabase
 				.from('chat_sessions')

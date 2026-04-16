@@ -103,6 +103,7 @@ export interface ChatSessionAuditPayload {
 		updated_at: string;
 		last_message_at: string | null;
 		agent_metadata: AuditRecord;
+		extracted_entities: unknown;
 	};
 	metrics: {
 		total_tokens: number;
@@ -413,6 +414,7 @@ const buildRawCollectionsSection = (payload: ChatSessionAuditPayload): string[] 
 	lines.push(...rawSection('LLM Calls', payload.llm_calls));
 	lines.push(...rawSection('Operations', payload.operations));
 	lines.push(...rawSection('Timing Metrics', payload.timing_metrics));
+	lines.push(...rawSection('Extracted Entities', payload.session.extracted_entities));
 	lines.push(...rawSection('Agent Metadata', payload.session.agent_metadata));
 	return lines;
 };

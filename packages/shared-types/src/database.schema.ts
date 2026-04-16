@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-04-15T20:02:23.796Z
+// Generated on: 2026-04-16T02:11:14.015Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -601,6 +601,7 @@ export type DatabaseSchema = {
 		context_type: string;
 		created_at: string | null;
 		entity_id: string | null;
+		extracted_entities: Json | null;
 		id: string;
 		last_classified_at: string | null;
 		last_message_at: string | null;
@@ -1055,6 +1056,8 @@ export type DatabaseSchema = {
 		agent_session_id: string | null;
 		brain_dump_id: string | null;
 		brief_id: string | null;
+		cache_write_tokens: number;
+		cached_prompt_tokens: number;
 		chat_session_id: string | null;
 		client_turn_id: string | null;
 		completion_tokens: number;
@@ -1066,8 +1069,11 @@ export type DatabaseSchema = {
 		metadata: Json | null;
 		model_requested: string;
 		model_used: string;
+		openrouter_byok: boolean | null;
 		openrouter_cache_status: string | null;
 		openrouter_request_id: string | null;
+		openrouter_upstream_inference_cost_usd: number | null;
+		openrouter_usage_cost_usd: number | null;
 		operation_type: string;
 		output_cost_usd: number;
 		profile: string | null;
@@ -1075,6 +1081,7 @@ export type DatabaseSchema = {
 		prompt_tokens: number;
 		provider: string | null;
 		rate_limit_remaining: number | null;
+		reasoning_tokens: number;
 		request_completed_at: string;
 		request_started_at: string;
 		response_time_ms: number;

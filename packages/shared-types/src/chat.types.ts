@@ -17,6 +17,45 @@ export type ChatSession = Database['public']['Tables']['chat_sessions']['Row'];
 export type ChatSessionInsert = Database['public']['Tables']['chat_sessions']['Insert'];
 export type ChatSessionUpdate = Database['public']['Tables']['chat_sessions']['Update'];
 
+export type LibriExtractedEntityType =
+	| 'person'
+	| 'book'
+	| 'youtube_video'
+	| 'youtube_channel';
+export type LibriExtractedEntityRelevance = 'primary' | 'supporting' | 'incidental';
+export type LibriExtractedEntityAction = 'resolve_or_enqueue' | 'search_only' | 'ignore';
+
+export interface ExtractedLibriEntity {
+	entity_type: LibriExtractedEntityType;
+	display_name: string;
+	canonical_query: string;
+	url?: string;
+	youtube_video_id?: string;
+	authors?: string[];
+	aliases?: string[];
+	confidence: number;
+	relevance: LibriExtractedEntityRelevance;
+	recommended_action: LibriExtractedEntityAction;
+	user_requested_research: boolean;
+	extraction_reason: string;
+	source_message_ids: string[];
+	source_turn_indices: number[];
+	evidence_snippets: string[];
+}
+
+export interface IgnoredEntityCandidate {
+	display_name: string;
+	reason: string;
+	evidence_snippets?: string[];
+}
+
+export interface SessionExtractedEntities {
+	libri_candidates: ExtractedLibriEntity[];
+	ignored_candidates?: IgnoredEntityCandidate[];
+	extraction_version: 'libri_session_synthesis_v1';
+	extracted_at: string;
+}
+
 export type ChatMessage = Database['public']['Tables']['chat_messages']['Row'];
 export type ChatMessageInsert = Database['public']['Tables']['chat_messages']['Insert'];
 export type ChatMessageUpdate = Database['public']['Tables']['chat_messages']['Update'];

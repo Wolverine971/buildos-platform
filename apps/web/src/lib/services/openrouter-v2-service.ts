@@ -177,6 +177,47 @@ function resolveReasoningTokens(usage: OpenRouterUsage | undefined): number | un
 	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+function resolveCachedPromptTokens(usage: OpenRouterUsage | undefined): number | undefined {
+	const value = usage?.prompt_tokens_details?.cached_tokens;
+	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function resolveCacheWriteTokens(usage: OpenRouterUsage | undefined): number | undefined {
+	const value = usage?.prompt_tokens_details?.cache_write_tokens;
+	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function resolveUsageNumber(value: unknown): number | undefined {
+	return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function buildOpenRouterUsageMetadata(
+	usage: OpenRouterUsage | undefined,
+	costSource?: string
+): Record<string, unknown> {
+	if (!usage) return {};
+
+	const metadata: Record<string, unknown> = {};
+	const assign = (key: string, value: unknown) => {
+		if (value !== undefined) metadata[key] = value;
+	};
+
+	assign('costSource', costSource);
+	assign('openrouterUsageCost', resolveUsageNumber(usage.cost));
+	assign('openrouterByok', typeof usage.is_byok === 'boolean' ? usage.is_byok : undefined);
+	assign('reasoningTokens', resolveReasoningTokens(usage));
+	assign('cachedPromptTokens', resolveCachedPromptTokens(usage));
+	assign('cacheWriteTokens', resolveCacheWriteTokens(usage));
+	if (usage.cost_details && typeof usage.cost_details === 'object') {
+		assign('openrouterCostDetails', usage.cost_details);
+	}
+	if (usage.server_tool_use && typeof usage.server_tool_use === 'object') {
+		assign('openrouterServerToolUse', usage.server_tool_use);
+	}
+
+	return metadata;
+}
+
 function mapUsage(usage: OpenRouterUsage | undefined): TextGenerationUsage | undefined {
 	if (!usage) return undefined;
 	return {
@@ -293,16 +334,54 @@ export class OpenRouterV2Service extends SmartLLMService {
 		fallbackModels: string[] = []
 	) {
 		const modelConfig = this.getModelConfig(model, lane, fallbackModels);
-		const inputCost = modelConfig
+		const estimatedInputCost = modelConfig
 			? ((usage?.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
 			: 0;
-		const outputCost = modelConfig
+		const estimatedOutputCost = modelConfig
 			? ((usage?.completion_tokens || 0) / 1_000_000) * modelConfig.outputCost
 			: 0;
+		const estimatedTotalCost = estimatedInputCost + estimatedOutputCost;
+		const openrouterUsageCost = resolveUsageNumber(usage?.cost);
+		const upstreamPromptCost = resolveUsageNumber(
+			usage?.cost_details?.upstream_inference_prompt_cost
+		);
+		const upstreamCompletionCost = resolveUsageNumber(
+			usage?.cost_details?.upstream_inference_completions_cost
+		);
+
+		if (openrouterUsageCost !== undefined) {
+			if (upstreamPromptCost !== undefined || upstreamCompletionCost !== undefined) {
+				return {
+					inputCost: upstreamPromptCost ?? 0,
+					outputCost: upstreamCompletionCost ?? 0,
+					totalCost: openrouterUsageCost,
+					costSource: 'openrouter_usage'
+				};
+			}
+
+			if (estimatedTotalCost > 0) {
+				const scale = openrouterUsageCost / estimatedTotalCost;
+				return {
+					inputCost: estimatedInputCost * scale,
+					outputCost: estimatedOutputCost * scale,
+					totalCost: openrouterUsageCost,
+					costSource: 'openrouter_usage'
+				};
+			}
+
+			return {
+				inputCost: 0,
+				outputCost: 0,
+				totalCost: openrouterUsageCost,
+				costSource: 'openrouter_usage'
+			};
+		}
+
 		return {
-			inputCost,
-			outputCost,
-			totalCost: inputCost + outputCost
+			inputCost: estimatedInputCost,
+			outputCost: estimatedOutputCost,
+			totalCost: estimatedTotalCost,
+			costSource: modelConfig ? 'model_pricing_estimate' : 'unknown'
 		};
 	}
 
@@ -322,7 +401,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const actualModel = params.response.model || params.requestedModel;
 		const pricing = resolveModelPricingProfile(actualModel, [params.requestedModel]);
 		const modelConfig = pricing?.profile;
-		const { inputCost, outputCost, totalCost } = this.calculateUsageCost(
+		const { inputCost, outputCost, totalCost, costSource } = this.calculateUsageCost(
 			actualModel,
 			params.lane,
 			params.response.usage,
@@ -364,9 +443,21 @@ export class OpenRouterV2Service extends SmartLLMService {
 			clientTurnId: optionsRecord.clientTurnId,
 			openrouterRequestId: params.response.id,
 			openrouterCacheStatus: resolveCacheStatus(params.response.usage),
+			reasoningTokens: resolveReasoningTokens(params.response.usage),
+			cachedPromptTokens: resolveCachedPromptTokens(params.response.usage),
+			cacheWriteTokens: resolveCacheWriteTokens(params.response.usage),
+			openrouterUsageCost: resolveUsageNumber(params.response.usage.cost),
+			openrouterByok:
+				typeof params.response.usage.is_byok === 'boolean'
+					? params.response.usage.is_byok
+					: undefined,
+			openrouterUpstreamInferenceCost: resolveUsageNumber(
+				params.response.usage.cost_details?.upstream_inference_cost
+			),
 			metadata: {
 				...optionsRecord.metadata,
 				...params.metadata,
+				...buildOpenRouterUsageMetadata(params.response.usage, costSource),
 				lane: params.lane,
 				pricingModel: pricing?.modelId ?? null
 			}
@@ -727,12 +818,10 @@ export class OpenRouterV2Service extends SmartLLMService {
 				...routingModelsForStartedStream
 			]);
 			const modelConfig = pricing?.profile;
-			const inputCost = modelConfig
-				? ((usageForLog.prompt_tokens || 0) / 1_000_000) * modelConfig.cost
-				: 0;
-			const outputCost = modelConfig
-				? ((usageForLog.completion_tokens || 0) / 1_000_000) * modelConfig.outputCost
-				: 0;
+			const usageCost = this.calculateUsageCost(actualModel, lane, usageForLog, [
+				requestModelForStartedStream,
+				...routingModelsForStartedStream
+			]);
 			const requestCompletedAt = new Date();
 
 			this.logUsageToDatabase({
@@ -744,9 +833,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 				promptTokens: usageForLog.prompt_tokens || 0,
 				completionTokens: usageForLog.completion_tokens || 0,
 				totalTokens: usageForLog.total_tokens || 0,
-				inputCost,
-				outputCost,
-				totalCost: inputCost + outputCost,
+				inputCost: usageCost.inputCost,
+				outputCost: usageCost.outputCost,
+				totalCost: usageCost.totalCost,
 				responseTimeMs: Math.round(performance.now() - startTime),
 				requestStartedAt,
 				requestCompletedAt,
@@ -765,6 +854,15 @@ export class OpenRouterV2Service extends SmartLLMService {
 				clientTurnId: options.clientTurnId,
 				openrouterRequestId: streamRequestId,
 				openrouterCacheStatus: resolveCacheStatus(usageForLog),
+				reasoningTokens: resolveReasoningTokens(usageForLog),
+				cachedPromptTokens: resolveCachedPromptTokens(usageForLog),
+				cacheWriteTokens: resolveCacheWriteTokens(usageForLog),
+				openrouterUsageCost: resolveUsageNumber(usageForLog.cost),
+				openrouterByok:
+					typeof usageForLog.is_byok === 'boolean' ? usageForLog.is_byok : undefined,
+				openrouterUpstreamInferenceCost: resolveUsageNumber(
+					usageForLog.cost_details?.upstream_inference_cost
+				),
 				metadata: {
 					sessionId: options.sessionId,
 					messageId: options.messageId,
@@ -778,7 +876,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 					modelRequested: requestModelForStartedStream,
 					modelsAttempted: routingModelsForStartedStream,
 					attempts: startedStreamAttempt || 1,
-					pricingModel: pricing?.modelId ?? null
+					pricingModel: pricing?.modelId ?? null,
+					...buildOpenRouterUsageMetadata(usageForLog, usageCost.costSource)
 				}
 			}).catch((error) => console.error('Failed to log OpenRouter V2 usage:', error));
 		};

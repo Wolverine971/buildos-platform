@@ -49,6 +49,7 @@ export interface SessionRow {
 	updated_at?: string | null;
 	last_message_at?: string | null;
 	agent_metadata?: unknown;
+	extracted_entities?: unknown;
 	users?: SessionUserRow | null;
 }
 
@@ -107,6 +108,7 @@ export interface LlmCallRow {
 	completion_tokens?: number | string | null;
 	total_tokens?: number | string | null;
 	total_cost_usd?: number | string | null;
+	openrouter_usage_cost_usd?: number | string | null;
 	response_time_ms?: number | string | null;
 	request_started_at?: string | null;
 	request_completed_at?: string | null;
@@ -548,6 +550,7 @@ export interface SessionDetailPayload {
 		updated_at: string;
 		last_message_at: string | null;
 		agent_metadata: Record<string, unknown>;
+		extracted_entities: unknown;
 	};
 	metrics: {
 		total_tokens: number;
@@ -1232,7 +1235,8 @@ export const buildSessionDetailPayload = ({
 				sessionCreatedAt
 			),
 			last_message_at: sessionRow.last_message_at ?? null,
-			agent_metadata: metadata
+			agent_metadata: metadata,
+			extracted_entities: sessionRow.extracted_entities ?? null
 		},
 		metrics: {
 			total_tokens: totalTokens,

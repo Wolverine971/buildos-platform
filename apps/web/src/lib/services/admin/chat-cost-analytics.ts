@@ -19,6 +19,7 @@ export type ChatCostUsageRow = {
 	input_cost_usd?: number | string | null;
 	output_cost_usd?: number | string | null;
 	total_cost_usd?: number | string | null;
+	openrouter_usage_cost_usd?: number | string | null;
 	request_started_at?: string | null;
 	request_completed_at?: string | null;
 	created_at?: string | null;

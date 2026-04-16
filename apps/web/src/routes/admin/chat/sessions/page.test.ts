@@ -108,6 +108,10 @@ const sessionListItem = {
 	has_errors: false,
 	has_agent_state: false,
 	has_context_shift: false,
+	has_libri_extraction: true,
+	libri_candidate_count: 1,
+	libri_handoff_status: 'sent',
+	libri_handoff_result_count: 1,
 	last_tool_at: null,
 	created_at: '2026-04-12T12:00:00.000Z',
 	updated_at: '2026-04-12T12:05:00.000Z',
@@ -125,7 +129,37 @@ function sessionDetailPayload() {
 			context_id: null,
 			has_errors: false,
 			created_at: '2026-04-12T12:00:00.000Z',
-			updated_at: '2026-04-12T12:05:00.000Z'
+			updated_at: '2026-04-12T12:05:00.000Z',
+			last_message_at: '2026-04-12T12:05:00.000Z',
+			agent_metadata: {
+				libri_handoff: {
+					status: 'sent',
+					results: [
+						{
+							entity_type: 'person',
+							canonical_query: 'James Clear',
+							status: 'found',
+							resource_key: 'person:james-clear'
+						}
+					]
+				}
+			},
+			extracted_entities: {
+				libri_candidates: [
+					{
+						entity_type: 'person',
+						display_name: 'James Clear',
+						canonical_query: 'James Clear',
+						confidence: 0.97,
+						relevance: 'primary',
+						recommended_action: 'resolve_or_enqueue',
+						source_turn_indices: [1],
+						evidence_snippets: ['James Clear']
+					}
+				],
+				extraction_version: 'libri_session_synthesis_v1',
+				extracted_at: '2026-04-12T12:04:00.000Z'
+			}
 		},
 		metrics: {
 			messages: 2,
@@ -387,6 +421,7 @@ describe('/admin/chat/sessions modal URL state', () => {
 		render(ChatSessionsPage);
 
 		expect(await screen.findByText('Cost $0.0142')).toBeInTheDocument();
+		expect(screen.getByText(/Libri 1/)).toBeInTheDocument();
 	});
 
 	it('renders a chat-style replay with expandable tool call details', async () => {
@@ -404,6 +439,8 @@ describe('/admin/chat/sessions modal URL state', () => {
 		expect(screen.getAllByText('project.search').length).toBeGreaterThan(0);
 		expect(screen.getByText('Arguments')).toBeInTheDocument();
 		expect(screen.getByText('Result')).toBeInTheDocument();
+		expect(screen.getByText('Libri Entity Handoff')).toBeInTheDocument();
+		expect(screen.getAllByText('James Clear').length).toBeGreaterThan(0);
 	});
 
 	it('closes a deep-linked session modal and removes the URL parameter', async () => {

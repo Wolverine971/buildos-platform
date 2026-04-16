@@ -262,7 +262,16 @@ describe('OpenRouterV2Service visible text filtering', () => {
 						usage: {
 							prompt_tokens: 100,
 							completion_tokens: 50,
-							total_tokens: 150
+							total_tokens: 150,
+							prompt_tokens_details: {
+								cached_tokens: 25,
+								cache_write_tokens: 4
+							},
+							completion_tokens_details: {
+								reasoning_tokens: 12
+							},
+							cost: 0.000123,
+							is_byok: false
 						}
 					}),
 					{
@@ -300,7 +309,20 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			model_used: 'qwen/qwen3.6-plus',
 			prompt_tokens: 100,
 			completion_tokens: 50,
-			total_tokens: 150
+			total_tokens: 150,
+			total_cost_usd: 0.000123,
+			openrouter_usage_cost_usd: 0.000123,
+			openrouter_byok: false,
+			reasoning_tokens: 12,
+			cached_prompt_tokens: 25,
+			cache_write_tokens: 4,
+			metadata: {
+				costSource: 'openrouter_usage',
+				openrouterUsageCost: 0.000123,
+				reasoningTokens: 12,
+				cachedPromptTokens: 25,
+				cacheWriteTokens: 4
+			}
 		});
 	});
 

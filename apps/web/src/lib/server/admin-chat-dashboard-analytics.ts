@@ -181,6 +181,7 @@ export type ChatDashboardUsageRow = {
 	input_cost_usd?: number | string | null;
 	output_cost_usd?: number | string | null;
 	total_cost_usd?: number | string | null;
+	openrouter_usage_cost_usd?: number | string | null;
 	response_time_ms?: number | string | null;
 	status?: string | null;
 	error_message?: string | null;
@@ -994,7 +995,7 @@ export async function getAdminChatDashboardAnalytics(
 			supabase
 				.from('llm_usage_logs')
 				.select(
-					'id, user_id, chat_session_id, turn_run_id, operation_type, model_used, model_requested, provider, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, response_time_ms, status, error_message, openrouter_cache_status, metadata, created_at, request_started_at'
+					'id, user_id, chat_session_id, turn_run_id, operation_type, model_used, model_requested, provider, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, openrouter_usage_cost_usd, response_time_ms, status, error_message, openrouter_cache_status, metadata, created_at, request_started_at'
 				)
 				.or(chatUsageFilter)
 				.gte('created_at', startIso)
@@ -1006,7 +1007,7 @@ export async function getAdminChatDashboardAnalytics(
 			supabase
 				.from('llm_usage_logs')
 				.select(
-					'id, model_used, model_requested, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, metadata'
+					'id, model_used, model_requested, prompt_tokens, completion_tokens, total_tokens, input_cost_usd, output_cost_usd, total_cost_usd, openrouter_usage_cost_usd, metadata'
 				)
 				.or(chatUsageFilter)
 				.gte('created_at', previousStartIso)
