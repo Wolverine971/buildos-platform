@@ -72,7 +72,39 @@ describe('buildLitePromptEnvelope', () => {
 
 		expect(envelope.promptVariant).toBe('lite_seed_v1');
 		expect(envelope.sections.map((section) => section.id)).toEqual(LITE_PROMPT_SECTION_ORDER);
+		expect(
+			envelope.sections.find((section) => section.id === 'capabilities_skills_tools')?.kind
+		).toBe('static');
+		expect(
+			envelope.sections.find((section) => section.id === 'tool_surface_dynamic')?.kind
+		).toBe('dynamic');
+		const focusHeadingIndex = envelope.systemPrompt.indexOf('## Current Focus and Purpose');
+		const operatingHeadingIndex = envelope.systemPrompt.indexOf('## Operating Strategy');
+		const safetyHeadingIndex = envelope.systemPrompt.indexOf('## Safety and Data Rules');
+		const capabilityHeadingIndex = envelope.systemPrompt.indexOf(
+			'## Capabilities, Skills, and Tools'
+		);
+		const retrievalHeadingIndex = envelope.systemPrompt.indexOf(
+			'## Loaded Data and Retrieval Boundaries'
+		);
+		const toolHeadingIndex = envelope.systemPrompt.indexOf('## Current Tool Surface');
+		expect(focusHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(operatingHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(safetyHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(capabilityHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(retrievalHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(toolHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(operatingHeadingIndex).toBeLessThan(focusHeadingIndex);
+		expect(safetyHeadingIndex).toBeLessThan(focusHeadingIndex);
+		expect(capabilityHeadingIndex).toBeLessThan(focusHeadingIndex);
+		expect(toolHeadingIndex).toBeGreaterThan(retrievalHeadingIndex);
 		expect(envelope.systemPrompt).toContain('# BuildOS Lite Agentic Chat Prompt');
+		expect(envelope.systemPrompt).toContain(
+			'You are a proactive project assistant for BuildOS'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'Think in three layers. They work together in sequence:'
+		);
 		expect(envelope.systemPrompt).toContain('Loaded scope:');
 		expect(envelope.systemPrompt).toContain('Actionable loaded context index (bounded):');
 		expect(envelope.systemPrompt).not.toContain('Loaded context payload');
@@ -433,6 +465,44 @@ describe('buildLitePromptEnvelope', () => {
 			'Event window: 2026-04-07T19:00:00Z to 2026-04-28T19:00:00Z.'
 		);
 		expect(envelope.contextInventory.retrievalMap.omitted).toContain('unrelated projects');
+	});
+
+	it('keeps project_create focused on creation instead of empty project data boilerplate', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project_create',
+			entityId: null,
+			projectId: null,
+			now: '2026-04-16T02:51:48.252Z',
+			data: null
+		});
+
+		expect(envelope.sections.map((section) => section.id)).toEqual([
+			'identity_mission',
+			'operating_strategy',
+			'safety_data_rules',
+			'capabilities_skills_tools',
+			'focus_purpose',
+			'location_loaded_context',
+			'context_inventory_retrieval',
+			'tool_surface_dynamic'
+		]);
+		expect(envelope.systemPrompt).toContain(
+			'The user is trying to create a new BuildOS project right now.'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'Project creation scope:\n- This chat is in project_create mode before a project exists.'
+		);
+		expect(envelope.systemPrompt).toContain('## Project Creation Boundaries');
+		expect(envelope.systemPrompt).toContain(
+			'Turn a rough idea into the smallest valid project structure'
+		);
+		expect(envelope.systemPrompt).not.toContain('## Timeline and Recent Activity');
+		expect(envelope.systemPrompt).not.toContain('Project status:');
+		expect(envelope.systemPrompt).not.toContain('Overdue or due soon:');
+		expect(envelope.systemPrompt).not.toContain('Upcoming dated work:');
+		expect(envelope.systemPrompt).not.toContain('Recent project changes:');
+		expect(envelope.systemPrompt).not.toContain('Loaded data snapshot:');
+		expect(envelope.systemPrompt).not.toContain('Structured context loaded: no (empty).');
 	});
 });
 

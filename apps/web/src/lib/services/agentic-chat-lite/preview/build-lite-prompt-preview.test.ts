@@ -109,13 +109,14 @@ describe('buildLitePromptPreview', () => {
 		expect(preview.current_v2).toBeUndefined();
 		expect(preview.lite.sections.map((section) => section.id)).toEqual([
 			'identity_mission',
+			'operating_strategy',
+			'safety_data_rules',
+			'capabilities_skills_tools',
 			'focus_purpose',
 			'location_loaded_context',
 			'timeline_recent_activity',
-			'operating_strategy',
-			'capabilities_skills_tools',
 			'context_inventory_retrieval',
-			'safety_data_rules'
+			'tool_surface_dynamic'
 		]);
 		expect(preview.lite.system_prompt).toContain('Prompt variant: lite_seed_v1');
 		expect(preview.lite.context_inventory.dataSummary.arrayCounts.projects).toBe(1);

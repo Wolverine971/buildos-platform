@@ -86,4 +86,41 @@ describe('LLMUsageLogger', () => {
 			openrouter_upstream_inference_cost_usd: 0.00027
 		});
 	});
+
+	it('does not estimate a nonzero total when OpenRouter reports a zero native cost', async () => {
+		const insert = vi.fn(async () => ({ error: null }));
+		const logger = new LLMUsageLogger({
+			supabase: {
+				from: vi.fn(() => ({ insert }))
+			} as any
+		});
+
+		await logger.logUsageToDatabase({
+			userId: '11111111-1111-4111-8111-111111111111',
+			operationType: 'agentic_chat_v2_stream',
+			modelRequested: 'x-ai/grok-4.1-fast',
+			modelUsed: 'x-ai/grok-4.1-fast',
+			promptTokens: 1000,
+			completionTokens: 500,
+			totalTokens: 1500,
+			inputCost: 0,
+			outputCost: 0,
+			totalCost: 0,
+			responseTimeMs: 100,
+			requestStartedAt: new Date('2026-04-11T15:36:50.000Z'),
+			requestCompletedAt: new Date('2026-04-11T15:36:55.000Z'),
+			status: 'success',
+			openrouterUsageCost: 0,
+			openrouterByok: true
+		});
+
+		expect(insert).toHaveBeenCalledTimes(1);
+		expect(insert.mock.calls[0]?.[0]).toMatchObject({
+			input_cost_usd: 0,
+			output_cost_usd: 0,
+			total_cost_usd: 0,
+			openrouter_usage_cost_usd: 0,
+			openrouter_byok: true
+		});
+	});
 });

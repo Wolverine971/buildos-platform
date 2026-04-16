@@ -214,6 +214,12 @@
 	let isLoadingDetail = $state(false);
 	let detailError = $state<string | null>(null);
 	let sessionDetail = $state<SessionDetailPayload | null>(null);
+	const libriExtraction = $derived(
+		buildLibriExtractionDisplay(sessionDetail?.session.extracted_entities)
+	);
+	const libriHandoff = $derived(
+		sessionDetail ? buildLibriHandoffDisplay(sessionDetail.session.agent_metadata) : null
+	);
 	let evalScenarios = $state<PromptEvalScenario[]>([]);
 	let isLoadingEvalScenarios = $state(false);
 	let selectedEvalScenarioByTurnId = $state<Record<string, string>>({});
@@ -2250,12 +2256,6 @@
 					<span>{detailError}</span>
 				</div>
 			{:else if sessionDetail}
-				{@const libriExtraction = buildLibriExtractionDisplay(
-					sessionDetail.session.extracted_entities
-				)}
-				{@const libriHandoff = buildLibriHandoffDisplay(
-					sessionDetail.session.agent_metadata
-				)}
 				<div class="flex flex-col">
 					<div class="p-3 border-b border-border space-y-3 bg-card">
 						<div class="flex flex-wrap items-start justify-between gap-3">

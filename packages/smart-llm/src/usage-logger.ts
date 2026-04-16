@@ -110,7 +110,8 @@ export class LLMUsageLogger {
 				completionTokens,
 				inputCost: params.inputCost,
 				outputCost: params.outputCost,
-				totalCost: params.totalCost
+				totalCost: params.totalCost,
+				openrouterUsageCost: params.openrouterUsageCost
 			});
 			const payload = {
 				user_id: sanitizedUserId,
@@ -261,10 +262,19 @@ export class LLMUsageLogger {
 		inputCost: number;
 		outputCost: number;
 		totalCost: number;
+		openrouterUsageCost?: number;
 	}): { inputCost: number; outputCost: number; totalCost: number } {
 		let inputCost = this.normalizeNumber(params.inputCost);
 		let outputCost = this.normalizeNumber(params.outputCost);
 		let totalCost = this.normalizeNumber(params.totalCost);
+		const openrouterUsageCost = this.normalizeNullableNumber(params.openrouterUsageCost);
+		if (openrouterUsageCost !== null) {
+			return {
+				inputCost,
+				outputCost,
+				totalCost: openrouterUsageCost
+			};
+		}
 		const pricing = resolveModelPricingProfile(params.modelUsed, [params.modelRequested]);
 		const profile = pricing?.profile;
 

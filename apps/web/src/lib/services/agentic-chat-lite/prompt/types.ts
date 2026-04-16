@@ -9,13 +9,14 @@ export type LitePromptSectionKind = 'static' | 'dynamic' | 'mixed';
 
 export type LitePromptSectionId =
 	| 'identity_mission'
+	| 'operating_strategy'
+	| 'safety_data_rules'
+	| 'capabilities_skills_tools'
 	| 'focus_purpose'
 	| 'location_loaded_context'
 	| 'timeline_recent_activity'
-	| 'operating_strategy'
-	| 'capabilities_skills_tools'
 	| 'context_inventory_retrieval'
-	| 'safety_data_rules';
+	| 'tool_surface_dynamic';
 
 export type LitePromptSection = {
 	id: LitePromptSectionId;

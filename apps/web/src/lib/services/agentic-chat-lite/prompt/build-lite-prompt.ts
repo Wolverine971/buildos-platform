@@ -42,13 +42,14 @@ const PROMPT_STALE_OVERDUE_DAYS = 90;
 
 export const LITE_PROMPT_SECTION_ORDER: LitePromptSectionId[] = [
 	'identity_mission',
+	'operating_strategy',
+	'safety_data_rules',
+	'capabilities_skills_tools',
 	'focus_purpose',
 	'location_loaded_context',
 	'timeline_recent_activity',
-	'operating_strategy',
-	'capabilities_skills_tools',
 	'context_inventory_retrieval',
-	'safety_data_rules'
+	'tool_surface_dynamic'
 ];
 
 type SectionDraft = Omit<LitePromptSection, 'chars' | 'estimatedTokens'>;
@@ -70,13 +71,16 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 
 	const sections = [
 		buildIdentityMissionSection(),
+		buildOperatingStrategySection(),
+		buildSafetyDataRulesSection(),
+		buildCapabilitiesSkillsToolsSection(),
 		buildFocusPurposeSection(focus, projectDigest),
 		buildLocationLoadedContextSection(focus, input.data),
-		buildTimelineRecentActivitySection(timeline),
-		buildOperatingStrategySection(),
-		buildCapabilitiesSkillsToolsSection(toolsSummary),
+		...(shouldIncludeTimelineRecentActivitySection(focus)
+			? [buildTimelineRecentActivitySection(timeline)]
+			: []),
 		buildContextInventoryRetrievalSection(contextInventory),
-		buildSafetyDataRulesSection()
+		buildToolSurfaceDynamicSection(toolsSummary)
 	];
 
 	return {
@@ -96,8 +100,8 @@ function buildIdentityMissionSection(): LitePromptSection {
 		source: 'lite.static_frame',
 		content: [
 			'Who:',
-			'- You are BuildOS, a helpful project assistant for the signed-in user.',
-			'- BuildOS works inside a graph-based project collaboration system with projects, goals, milestones, plans, tasks, documents, risks, events, members, and relationships.',
+			'- You are a proactive project assistant for BuildOS, working for the signed-in user.',
+			'- BuildOS is a graph-based project collaboration system. Projects can contain goals, milestones, plans, tasks, documents, risks, events, members, and relationships.',
 			'',
 			'Mission:',
 			'- Help users capture, organize, understand, and advance their project work.',
@@ -111,6 +115,33 @@ function buildFocusPurposeSection(
 	focus: LitePromptFocus,
 	projectDigest: LitePromptProjectDigest | null
 ): LitePromptSection {
+	if (focus.contextType === 'project_create') {
+		return makeSection({
+			id: 'focus_purpose',
+			title: 'Current Focus and Purpose',
+			kind: 'dynamic',
+			source: 'lite.focus_context',
+			slots: {
+				contextType: focus.contextType,
+				projectId: focus.projectId,
+				projectName: focus.projectName,
+				entityId: focus.entityId,
+				focusEntityType: focus.focusEntityType,
+				focusEntityId: focus.focusEntityId,
+				focusEntityName: focus.focusEntityName
+			},
+			content: [
+				'Current focus:',
+				'- The user is trying to create a new BuildOS project right now.',
+				'- No existing project or focus entity exists yet; treat the user message as the source of truth for the initial project.',
+				'',
+				'Project creation means:',
+				'- Turn a rough idea into the smallest valid project structure with a clear name, type_key, description/props, and only the entities and relationships the user actually described.',
+				'- Ask one concise clarification only when a required detail blocks a safe create payload.'
+			].join('\n')
+		});
+	}
+
 	const focusLines = projectDigest
 		? [
 				`- Project: ${formatNullableLabel(projectDigest.projectName, focus.projectId)}${
@@ -158,6 +189,29 @@ function buildLocationLoadedContextSection(
 	focus: LitePromptFocus,
 	data: LitePromptInput['data']
 ): LitePromptSection {
+	if (focus.contextType === 'project_create') {
+		return makeSection({
+			id: 'location_loaded_context',
+			title: 'Location and Loaded Context',
+			kind: 'dynamic',
+			source: 'lite.loaded_context',
+			slots: {
+				productSurface: focus.productSurface,
+				conversationPosition: focus.conversationPosition,
+				contextType: focus.contextType
+			},
+			content: [
+				'Project creation scope:',
+				'- This chat is in project_create mode before a project exists.',
+				'- No existing project graph or focus entity is preloaded by default.',
+				'- Use the user message as the source of truth for the new project; fetch schema guidance only if a create field is uncertain.',
+				data ? ['', serializeLoadedContext(data)].join('\n') : null
+			]
+				.filter(Boolean)
+				.join('\n')
+		});
+	}
+
 	return makeSection({
 		id: 'location_loaded_context',
 		title: 'Location and Loaded Context',
@@ -215,6 +269,10 @@ function buildTimelineRecentActivitySection(
 	});
 }
 
+function shouldIncludeTimelineRecentActivitySection(focus: LitePromptFocus): boolean {
+	return focus.contextType !== 'project_create';
+}
+
 function buildOperatingStrategySection(): LitePromptSection {
 	return makeSection({
 		id: 'operating_strategy',
@@ -235,9 +293,7 @@ function buildOperatingStrategySection(): LitePromptSection {
 	});
 }
 
-function buildCapabilitiesSkillsToolsSection(
-	toolsSummary: LitePromptToolsSummary
-): LitePromptSection {
+function buildCapabilitiesSkillsToolsSection(): LitePromptSection {
 	const capabilities = listCapabilities('available').map(
 		(capability) => `${capability.name}: ${capability.summary}`
 	);
@@ -248,8 +304,30 @@ function buildCapabilitiesSkillsToolsSection(
 	return makeSection({
 		id: 'capabilities_skills_tools',
 		title: 'Capabilities, Skills, and Tools',
-		kind: 'mixed',
-		source: 'lite.capability_tool_surface',
+		kind: 'static',
+		source: 'lite.static_capability_skill_catalog',
+		content: [
+			'Think in three layers. They work together in sequence:',
+			'',
+			'1. Capability - what BuildOS can do for the user.',
+			'2. Skill - workflow guidance for doing that work well. Skill metadata is preloaded in this prompt; call skill_load when the task is multi-step or easy to get wrong and you need the full markdown playbook.',
+			'3. Tool / Op - the exact execution surface. The current tool names are listed later in Current Tool Surface.',
+			'',
+			'Capabilities:',
+			formatBullets(capabilities, 'No capabilities are registered.'),
+			'',
+			'Skill metadata:',
+			formatBullets(skills, 'No skills are registered.')
+		].join('\n')
+	});
+}
+
+function buildToolSurfaceDynamicSection(toolsSummary: LitePromptToolsSummary): LitePromptSection {
+	return makeSection({
+		id: 'tool_surface_dynamic',
+		title: 'Current Tool Surface',
+		kind: 'dynamic',
+		source: 'lite.context_tool_surface',
 		slots: {
 			contextType: toolsSummary.contextType,
 			discoveryTools: toolsSummary.discoveryTools,
@@ -257,12 +335,6 @@ function buildCapabilitiesSkillsToolsSection(
 			totalTools: toolsSummary.totalTools
 		},
 		content: [
-			'Capabilities available at seed time:',
-			formatBullets(capabilities, 'No capabilities are registered.'),
-			'',
-			'Skill metadata available at seed time:',
-			formatBullets(skills, 'No skills are registered.'),
-			'',
 			'Tool surface for this context:',
 			'- Tool schemas are supplied through model tool definitions, not duplicated in this prompt text.',
 			'',
@@ -279,6 +351,44 @@ function buildContextInventoryRetrievalSection(
 	inventory: LitePromptContextInventory
 ): LitePromptSection {
 	const { dataSummary, retrievalMap } = inventory;
+	if (inventory.focus.contextType === 'project_create') {
+		return makeSection({
+			id: 'context_inventory_retrieval',
+			title: 'Project Creation Boundaries',
+			kind: 'dynamic',
+			source: 'lite.context_inventory',
+			slots: {
+				dataKind: dataSummary.kind,
+				topLevelKeys: dataSummary.topLevelKeys,
+				arrayCounts: dataSummary.arrayCounts,
+				loaded: retrievalMap.loaded,
+				omitted: retrievalMap.omitted,
+				fetchWhenNeeded: retrievalMap.fetchWhenNeeded
+			},
+			content: [
+				'Creation boundaries:',
+				'- Use the user idea and project_create mode state as the working context.',
+				'- Do not load existing workspace/project data just to begin project creation.',
+				'- Prefer the project_creation skill for multi-step creation, then call the direct create tool once the payload is ready.',
+				'',
+				'Loaded:',
+				formatBullets(retrievalMap.loaded, 'Only project_create mode state is loaded.'),
+				'',
+				'Not preloaded:',
+				formatBullets(
+					retrievalMap.omitted,
+					'Existing project graph data is not preloaded.'
+				),
+				'',
+				'Fetch only when needed:',
+				formatBullets(
+					retrievalMap.fetchWhenNeeded,
+					'No follow-up fetch rules were provided.'
+				)
+			].join('\n')
+		});
+	}
+
 	const arrayCountLines = Object.entries(dataSummary.arrayCounts).map(
 		([key, count]) => `${key}: ${count}`
 	);
@@ -645,7 +755,7 @@ function defaultRetrievalMap(
 			};
 		case 'project_create':
 			return {
-				loaded,
+				loaded: ['project_create mode before a project exists'],
 				omitted: ['existing project graph unless explicitly provided'],
 				fetchWhenNeeded: ['schema details for uncertain create payload fields'],
 				notes
