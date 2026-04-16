@@ -2798,7 +2798,7 @@ export const POST: RequestHandler = async ({
 			});
 			const gatewayEnabled = true;
 			const toolSelectionStartedAtMs = Date.now();
-			const tools = selectFastChatTools({ contextType });
+			const tools = selectFastChatTools({ contextType, latestUserMessage: message });
 			toolSelectionMs = Math.max(0, Date.now() - toolSelectionStartedAtMs);
 			turnRunId = uuidv4();
 			try {

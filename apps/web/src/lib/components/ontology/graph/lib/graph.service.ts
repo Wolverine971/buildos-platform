@@ -812,6 +812,7 @@ export class OntologyGraphService {
 			contains: 'hierarchical',
 			has_plan: 'hierarchical',
 			part_of: 'hierarchical',
+			project_contains: 'hierarchical',
 
 			// Goal support
 			supports_goal: 'goalSupport',
@@ -891,15 +892,25 @@ export class OntologyGraphService {
 		return edges
 			.filter((edge) => edge.src_id && edge.dst_id && edge.src_id !== edge.dst_id)
 			.map((edge) => {
+				const props =
+					typeof edge.props === 'object' && edge.props !== null
+						? (edge.props as Record<string, unknown>)
+						: {};
+				const inferred = props.inferred === true;
 				const weight =
-					typeof edge.props === 'object' &&
-					edge.props !== null &&
-					'weight' in edge.props &&
-					typeof (edge.props as Record<string, unknown>).weight === 'number'
-						? Number((edge.props as Record<string, unknown>).weight)
+					'weight' in props && typeof props.weight === 'number'
+						? Number(props.weight)
 						: undefined;
 
-				const style = this.getEdgeStyle(edge.rel, isDark);
+				const baseStyle = this.getEdgeStyle(edge.rel, isDark);
+				const style = inferred
+					? {
+							color: isDark ? '#71717a' : '#a1a1aa',
+							width: 0.75,
+							lineStyle: 'dotted' as const,
+							arrowShape: 'none'
+						}
+					: baseStyle;
 				const category = this.getEdgeCategory(edge.rel);
 
 				return {
@@ -907,10 +918,11 @@ export class OntologyGraphService {
 						id: edge.id,
 						source: edge.src_id,
 						target: edge.dst_id,
-						label: edge.rel.replace(/_/g, ' '),
+						label: inferred ? 'project link' : edge.rel.replace(/_/g, ' '),
 						relationship: edge.rel,
 						category,
 						strength: weight,
+						inferred,
 						color: style.color,
 						width: style.width,
 						lineStyle: style.lineStyle,

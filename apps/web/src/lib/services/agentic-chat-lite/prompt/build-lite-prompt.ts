@@ -442,10 +442,18 @@ function buildSafetyDataRulesSection(): LitePromptSection {
 		source: 'lite.safety',
 		content: [
 			'- Do not claim a tool ran unless the runtime supplied a successful tool result.',
+			'- Discovering a tool, loading a schema, reading context, or planning is not completion. Only say an entity was created, updated, moved, merged, archived, deleted, scheduled, or linked after the corresponding write tool succeeded.',
+			'- Pre-tool lead-ins are intent only: say what you will attempt, not that it already happened. Do not state the final outcome, success, or persisted update until all tool calls for that turn have completed.',
+			'- If any write fails and no later retry repairs the same target, state what did not persist and keep the partial-success summary precise. When you cannot execute the requested write at all, say "I was unable to <requested action>" and briefly name the blocker so the user knows exactly what did not change.',
+			'- Final responses must match the actual write set: mention every successful write that materially matters, and do not claim task progress, document type, tree placement, or linking when the corresponding tool call did not run or did not succeed.',
+			'- Do not claim a requested document type, tree placement, link, or cross-link unless the successful tool result confirms the actual type or operation.',
+			'- User-visible durable fields (titles, descriptions, document content, project descriptions, props) must contain only final user-visible content. Never let tool-control syntax or argument framing leak into those strings; put control parameters in their own tool arguments, not inside text fields.',
 			'- Do not invent project, task, document, calendar, member, or Libri data that is not in loaded context or tool results.',
 			'- For writes, use exact IDs from context or tool results. If the target is ambiguous, ask before mutating state.',
 			'- Treat permissions, member roles, and access as hard constraints.',
 			'- Preserve document hierarchy rules: documents live in the document tree, not graph edges.',
+			'- Document placement: named research notes, specs, worldbuilding, outlines, or multi-section research go in a dedicated document via create_onto_document, then place it with move_document_in_tree (usually nested under the project context document). Short progress snippets can append to an existing context or progress document.',
+			'- Document append/merge writes require non-empty content. merge_instructions alone is not enough — always include the actual content to persist.',
 			'- When context is incomplete, state the limit and use the narrowest tool that can fill the gap.'
 		].join('\n')
 	});

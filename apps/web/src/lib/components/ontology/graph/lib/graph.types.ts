@@ -91,6 +91,7 @@ export interface CytoscapeEdge {
 		relationship: string;
 		category?: string; // Semantic category for styling
 		strength?: number;
+		inferred?: boolean;
 		color?: string;
 		width?: number;
 		lineStyle?: 'solid' | 'dashed' | 'dotted';
@@ -124,6 +125,9 @@ export interface GraphStats {
 	totalGoals: number;
 	totalMilestones: number;
 	totalRisks: number;
+	totalOutputs?: number;
+	totalDecisions?: number;
+	totalInferredEdges?: number;
 }
 
 export interface OntologyGraphInstance {

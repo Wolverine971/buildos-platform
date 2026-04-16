@@ -1,3 +1,5 @@
+<!-- docs/reports/openrouter-cost-and-prompt-cache-audit-2026-04-16.md -->
+
 # OpenRouter Cost And Prompt Cache Audit
 
 Date: 2026-04-16
@@ -39,20 +41,20 @@ Implementation update: the lite prompt has now been reordered so identity, opera
 
 ## OpenRouter Export Reconciliation
 
-| Export | Requests/rows | Cost | Prompt tokens | Completion tokens | Reasoning tokens |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Detailed export | 4,200 | `$4.972841` | 15,559,313 | 4,645,893 | 3,663,979 |
-| Summary export | 4,209 | `$4.980738` | 15,613,263 | 4,654,012 | 3,670,761 |
-| Delta | 9 | `$0.007898` | 53,950 | 8,119 | 6,782 |
+| Export          | Requests/rows |        Cost | Prompt tokens | Completion tokens | Reasoning tokens |
+| --------------- | ------------: | ----------: | ------------: | ----------------: | ---------------: |
+| Detailed export |         4,200 | `$4.972841` |    15,559,313 |         4,645,893 |        3,663,979 |
+| Summary export  |         4,209 | `$4.980738` |    15,613,263 |         4,654,012 |        3,670,761 |
+| Delta           |             9 | `$0.007898` |        53,950 |             8,119 |            6,782 |
 
 Residual day/model diffs after model-slug normalization:
 
-| Day/model | Summary minus detail |
-| --- | ---: |
-| `2026-04-16 / openai/gpt-4o-mini` | +3 requests, +`$0.002330` |
-| `2026-04-16 / openai/gpt-5-nano` | +1 request, +`$0.001267` |
-| `2026-04-14 / x-ai/grok-4.1-fast` | +1 request, +`$0.002090` |
-| `2026-03-25 / openai/gpt-5-nano` | +2 requests, +`$0.001953` |
+| Day/model                                   |      Summary minus detail |
+| ------------------------------------------- | ------------------------: |
+| `2026-04-16 / openai/gpt-4o-mini`           | +3 requests, +`$0.002330` |
+| `2026-04-16 / openai/gpt-5-nano`            |  +1 request, +`$0.001267` |
+| `2026-04-14 / x-ai/grok-4.1-fast`           |  +1 request, +`$0.002090` |
+| `2026-03-25 / openai/gpt-5-nano`            | +2 requests, +`$0.001953` |
 | `2026-04-01 / google/gemini-2.5-flash-lite` | +2 requests, +`$0.000257` |
 
 Assessment: the exports are aligned for operational reporting. For product billing or analytics, use OpenRouter's exact per-generation `usage.cost` when available and keep the local static-price estimate only as a fallback.
@@ -61,32 +63,32 @@ Assessment: the exports are aligned for operational reporting. For product billi
 
 Cost by API key:
 
-| API key | Rows | Cost |
-| --- | ---: | ---: |
+| API key   |  Rows |        Cost |
+| --------- | ----: | ----------: |
 | `buildos` | 2,528 | `$3.652990` |
-| `libri` | 1,664 | `$1.247994` |
-| `9takes` | 8 | `$0.071857` |
+| `libri`   | 1,664 | `$1.247994` |
+| `9takes`  |     8 | `$0.071857` |
 
 Cost by app:
 
-| App | Cost |
-| --- | ---: |
-| blank / unspecified | `$3.136985` |
+| App                            |        Cost |
+| ------------------------------ | ----------: |
+| blank / unspecified            | `$3.136985` |
 | `BuildOS Next Steps Generator` | `$1.508856` |
-| `library-app` | `$0.245034` |
-| `9takes LLM` | `$0.071857` |
+| `library-app`                  | `$0.245034` |
+| `9takes LLM`                   | `$0.071857` |
 
 Model spend and behavior:
 
-| Model | Cost | Requests | Notable pattern |
-| --- | ---: | ---: | --- |
-| `x-ai/grok-4.1-fast` | `$1.729067` | 699 | 8.72M prompt tokens, 1.19M completion tokens, 927,952 reasoning tokens, 4.08M cached prompt tokens, `$0.612384` cache credit |
-| `openai/gpt-5-nano` | `$0.804752` | 948 | Reasoning-heavy and many capped outputs |
-| `qwen/qwen3.6-plus` | `$0.779257` | 131 | Reasoning-heavy, fewer requests |
-| `openai/gpt-4o-mini` | `$0.441367` | 713 | Moderate cost, broad utility lane |
-| `minimax/minimax-m2.5` | `$0.274788` | 81 | Smaller share |
-| `anthropic/claude-4-sonnet` | `$0.261204` | 56 | Smaller share |
-| `deepseek/deepseek-r1` | `$0.252653` | 100 | Reasoning model spend |
+| Model                       |        Cost | Requests | Notable pattern                                                                                                              |
+| --------------------------- | ----------: | -------: | ---------------------------------------------------------------------------------------------------------------------------- |
+| `x-ai/grok-4.1-fast`        | `$1.729067` |      699 | 8.72M prompt tokens, 1.19M completion tokens, 927,952 reasoning tokens, 4.08M cached prompt tokens, `$0.612384` cache credit |
+| `openai/gpt-5-nano`         | `$0.804752` |      948 | Reasoning-heavy and many capped outputs                                                                                      |
+| `qwen/qwen3.6-plus`         | `$0.779257` |      131 | Reasoning-heavy, fewer requests                                                                                              |
+| `openai/gpt-4o-mini`        | `$0.441367` |      713 | Moderate cost, broad utility lane                                                                                            |
+| `minimax/minimax-m2.5`      | `$0.274788` |       81 | Smaller share                                                                                                                |
+| `anthropic/claude-4-sonnet` | `$0.261204` |       56 | Smaller share                                                                                                                |
+| `deepseek/deepseek-r1`      | `$0.252653` |      100 | Reasoning model spend                                                                                                        |
 
 Other patterns:
 
@@ -122,31 +124,31 @@ Recommendation: keep a dashboard view that compares local stored `openrouter_usa
 
 Prompt sizes from the reviewed fantasy-novel flow:
 
-| File | Variant | Context | Turn | System prompt | Tool definitions | Provider payload |
-| --- | --- | --- | ---: | ---: | ---: | ---: |
-| `fb-2026-04-15T18-46-33-016Z-lite-turn1.txt` | `lite_seed_v1` | `project_create` | 1 | 7,699 chars | 12,457 chars | 20,703 chars |
-| `fb-2026-04-15T18-47-34-159Z-lite-turn2.txt` | `lite_seed_v1` | `project` | 2 | 12,534 chars | 10,724 chars | 25,005 chars |
-| `fb-2026-04-15T18-49-04-573Z-lite-turn3.txt` | `lite_seed_v1` | `project` | 3 | 12,730 chars | 10,724 chars | 26,830 chars |
-| `fb-2026-04-15T18-40-52-008Z-fastchat-turn1.txt` | `fastchat_prompt_v1` | `project_create` | 1 | 14,882 chars | 12,457 chars | 27,886 chars |
-| `fb-2026-04-15T18-41-54-965Z-fastchat-turn2.txt` | `fastchat_prompt_v1` | `project` | 2 | 18,957 chars | 9,102 chars | 29,737 chars |
-| `fb-2026-04-15T18-44-59-904Z-fastchat-turn3.txt` | `fastchat_prompt_v1` | `project` | 3 | 20,342 chars | 10,724 chars | 34,198 chars |
+| File                                             | Variant              | Context          | Turn | System prompt | Tool definitions | Provider payload |
+| ------------------------------------------------ | -------------------- | ---------------- | ---: | ------------: | ---------------: | ---------------: |
+| `fb-2026-04-15T18-46-33-016Z-lite-turn1.txt`     | `lite_seed_v1`       | `project_create` |    1 |   7,699 chars |     12,457 chars |     20,703 chars |
+| `fb-2026-04-15T18-47-34-159Z-lite-turn2.txt`     | `lite_seed_v1`       | `project`        |    2 |  12,534 chars |     10,724 chars |     25,005 chars |
+| `fb-2026-04-15T18-49-04-573Z-lite-turn3.txt`     | `lite_seed_v1`       | `project`        |    3 |  12,730 chars |     10,724 chars |     26,830 chars |
+| `fb-2026-04-15T18-40-52-008Z-fastchat-turn1.txt` | `fastchat_prompt_v1` | `project_create` |    1 |  14,882 chars |     12,457 chars |     27,886 chars |
+| `fb-2026-04-15T18-41-54-965Z-fastchat-turn2.txt` | `fastchat_prompt_v1` | `project`        |    2 |  18,957 chars |      9,102 chars |     29,737 chars |
+| `fb-2026-04-15T18-44-59-904Z-fastchat-turn3.txt` | `fastchat_prompt_v1` | `project`        |    3 |  20,342 chars |     10,724 chars |     34,198 chars |
 
 Lite section totals:
 
-| Turn | Static sections | Dynamic sections | Mixed sections |
-| ---: | ---: | ---: | ---: |
-| Lite turn 1 | 2,176 chars, about 545 tokens | 1,567 chars, about 393 tokens | 3,626 chars, about 907 tokens |
+|        Turn |               Static sections |                Dynamic sections |                Mixed sections |
+| ----------: | ----------------------------: | ------------------------------: | ----------------------------: |
+| Lite turn 1 | 2,176 chars, about 545 tokens |   1,567 chars, about 393 tokens | 3,626 chars, about 907 tokens |
 | Lite turn 2 | 2,176 chars, about 545 tokens | 6,295 chars, about 1,575 tokens | 3,733 chars, about 934 tokens |
 | Lite turn 3 | 2,176 chars, about 545 tokens | 6,491 chars, about 1,623 tokens | 3,733 chars, about 934 tokens |
 
 Actual shared-prefix comparison:
 
-| Pair | Actual shared prefix | Normalized timestamp/UUID prefix | First difference |
-| --- | ---: | ---: | --- |
-| Lite turn 1 to turn 2 | 726 chars, 5.8% of turn 2 system prompt | 726 chars, 6.5% normalized | Context type changes from `project_create` to project focus |
-| Lite turn 2 to turn 3 | 1,710 chars, 13.4% of turn 3 system prompt | 1,747 chars, 15.4% normalized | `context_meta.generated_at`, `cache_age_seconds`, and counts |
-| Fastchat turn 1 to turn 2 | 4,894 chars, 25.8% of turn 2 system prompt | 4,894 chars, 27.6% normalized | Tool surface changes |
-| Fastchat turn 2 to turn 3 | 13,561 chars, 66.6% of turn 3 system prompt | 13,628 chars, 72.2% normalized | Context payload timestamp and counts |
+| Pair                      |                        Actual shared prefix | Normalized timestamp/UUID prefix | First difference                                             |
+| ------------------------- | ------------------------------------------: | -------------------------------: | ------------------------------------------------------------ |
+| Lite turn 1 to turn 2     |     726 chars, 5.8% of turn 2 system prompt |       726 chars, 6.5% normalized | Context type changes from `project_create` to project focus  |
+| Lite turn 2 to turn 3     |  1,710 chars, 13.4% of turn 3 system prompt |    1,747 chars, 15.4% normalized | `context_meta.generated_at`, `cache_age_seconds`, and counts |
+| Fastchat turn 1 to turn 2 |  4,894 chars, 25.8% of turn 2 system prompt |    4,894 chars, 27.6% normalized | Tool surface changes                                         |
+| Fastchat turn 2 to turn 3 | 13,561 chars, 66.6% of turn 3 system prompt |   13,628 chars, 72.2% normalized | Context payload timestamp and counts                         |
 
 Main cache finding: lite is cheaper than fastchat overall, but lite is worse shaped for prefix caching. The prompt starts with stable identity text, then quickly moves into dynamic focus, loaded context, timeline, timestamps, recent changes, and counts. The stable operating strategy, capabilities, skill catalog, and safety rules come after that dynamic block, so they cannot help much with prefix reuse.
 
@@ -270,13 +272,13 @@ This is a natural fit for the future lightweight classifier, but the prompt can 
 
 Grok 4.1 Fast should remain the main executor/tool-calling model for complex project work. The smarter change is routing and reasoning policy:
 
-| Operation | Suggested lane |
-| --- | --- |
-| Tool-heavy project executor | Grok, low or medium reasoning only when needed |
-| Simple direct tool args | Grok minimal/low reasoning or cheaper structured model |
-| Classification/routing | Cheap fast model, no reasoning or minimal reasoning |
-| Title/summary/extraction | Cheap fast model, no reasoning |
-| Final short synthesis after tools | Cheap fast model or Grok minimal |
+| Operation                         | Suggested lane                                         |
+| --------------------------------- | ------------------------------------------------------ |
+| Tool-heavy project executor       | Grok, low or medium reasoning only when needed         |
+| Simple direct tool args           | Grok minimal/low reasoning or cheaper structured model |
+| Classification/routing            | Cheap fast model, no reasoning or minimal reasoning    |
+| Title/summary/extraction          | Cheap fast model, no reasoning                         |
+| Final short synthesis after tools | Cheap fast model or Grok minimal                       |
 
 Do not use `reasoning.exclude` as a cost-control mechanism. It can hide reasoning from the response, but it does not mean the model avoided using or billing reasoning tokens.
 
@@ -304,11 +306,11 @@ Classifier target output should be very small:
 
 ```json
 {
-  "intent": "answer|read|write|document|calendar|project_create|research|unclear",
-  "context_need": "none|loaded_context|overview|search|details",
-  "tool_profile": "none|global_basic|project_basic|project_write|project_document|project_calendar|project_create_minimal",
-  "reasoning": "none|minimal|low|medium",
-  "needs_exact_time": false
+	"intent": "answer|read|write|document|calendar|project_create|research|unclear",
+	"context_need": "none|loaded_context|overview|search|details",
+	"tool_profile": "none|global_basic|project_basic|project_write|project_document|project_calendar|project_create_minimal",
+	"reasoning": "none|minimal|low|medium",
+	"needs_exact_time": false
 }
 ```
 

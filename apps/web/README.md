@@ -1,318 +1,168 @@
 <!-- apps/web/README.md -->
 
-# Build OS - Personal Productivity Operating System
+# @buildos/web
 
-## Lets go
+SvelteKit 2 + Svelte 5 web app for BuildOS. Deployed to Vercel (`nodejs22.x`).
 
-**A comprehensive productivity platform with AI-powered insights, project management, and intelligent task automation.**
+This app hosts the user-facing UI, all REST/SSE API routes, the agentic chat system, brain dump ingestion, ontology-driven project views, dashboard, calendar integration, billing, and marketing pages.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Svelte](https://img.shields.io/badge/Svelte-4A4A55?style=for-the-badge&logo=svelte&logoColor=FF3E00)](https://svelte.dev/)
-[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
-[![Stripe](https://img.shields.io/badge/Stripe-626CD9?style=for-the-badge&logo=Stripe&logoColor=white)](https://stripe.com/)
+> For the monorepo-level overview, see the root [README](../../README.md) and [CLAUDE.md](../../CLAUDE.md).
 
-Build OS transforms how you manage projects and tasks by providing an intelligent, AI-powered productivity operating system. Instead of juggling multiple tools, Build OS provides a unified platform that learns from your work patterns and helps you stay focused on what matters most.
+## Tech Stack
 
-## ✨ Key Features
+- **Framework** — SvelteKit 2 + Svelte 5 (runes only)
+- **Styling** — Tailwind CSS + the [Inkprint](./docs/technical/components/INKPRINT_DESIGN_SYSTEM.md) design system
+- **Data** — Supabase (PostgreSQL + RLS) via `@buildos/supabase-client`
+- **Auth** — Supabase Auth + Google OAuth
+- **LLMs** — `@buildos/smart-llm` (OpenRouter primary, OpenAI/Anthropic fallback, optional Moonshot for Kimi)
+- **Payments** — Stripe, gated by `PRIVATE_ENABLE_STRIPE`
+- **SMS** — `@buildos/twilio-service`
+- **Editor** — TipTap, CodeMirror
+- **Graph** — AntV G6, Cytoscape, XYFlow
+- **Deployment** — Vercel serverless + cron (see `vercel.json`)
 
-🧠 **AI-Powered Brain Dump** - Capture thoughts naturally and let AI organize them into actionable tasks
-📊 **Intelligent Project Management** - Projects with phases, tasks, and AI-generated insights
-📅 **Smart Calendar Integration** - Seamless Google Calendar sync with intelligent scheduling
-📧 **Daily AI Briefs** - Automated summaries of your progress and priorities
-🔄 **Real-time Collaboration** - Live updates and team synchronization
-💰 **Flexible Billing** - 14-day free trial with transparent pricing
+## Quick Start
 
-## 🏗️ Architecture
-
-### Technology Stack
-
-- **Frontend**: SvelteKit 2.16+ with Svelte 5.33+
-- **Database**: Supabase (PostgreSQL) with real-time subscriptions
-- **Authentication**: Supabase Auth with Google OAuth
-- **Payments**: Stripe with comprehensive billing system
-- **AI**: OpenAI integration with local Ollama support
-- **Deployment**: Vercel with serverless functions
-- **Styling**: TailwindCSS with custom design system
-
-### Performance & Scale
-
-- **Current Capacity**: 500-1,000 active users on free tiers
-- **Optimized Capacity**: 20,000-30,000 users with scaling improvements
-- **Response Time**: <200ms average API response
-- **Uptime**: 99.9% target with Vercel and Supabase
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+ and pnpm
-- Supabase account
-- Google Cloud account (for OAuth)
-- Stripe account (optional, for payments)
-
-### Installation
-
-1. **Clone and install dependencies**
-
-    ```bash
-    git clone https://github.com/yourusername/build-os.git
-    cd build-os
-    pnpm install
-    ```
-
-2. **Set up environment variables**
-
-    ```bash
-    cp .env.example .env.local
-    # Fill in your Supabase and Google OAuth credentials
-    ```
-
-3. **Run database migrations**
-    - Open Supabase SQL Editor
-    - Run migrations in `supabase/migrations/` folder in order
-
-4. **Start development server**
-    ```bash
-    pnpm run dev:split  # Runs dev server + type checking
-    ```
-
-Visit `http://localhost:5173` to see your application.
-
-### Development Commands
+From the monorepo root:
 
 ```bash
-# Development
-pnpm run dev          # Start development server
-pnpm run dev:fast     # Start dev server (faster, no type checking)
-pnpm run dev:split    # Run dev server and type checking concurrently
-
-# Code Quality
-pnpm run check        # Run SvelteKit sync and svelte-check
-pnpm run lint         # Run ESLint
-pnpm run lint:fix     # Auto-fix ESLint issues and format
-pnpm run format       # Format code with Prettier
-pnpm run test         # Run tests with Vitest
-
-# Build & Deploy
-pnpm run build        # Build for production
-pnpm run preview      # Preview production build
-pnpm run pre-push     # Full CI pipeline (check, test, lint, build)
+pnpm install
+pnpm dev --filter=web     # http://localhost:5173
 ```
 
-## 💳 Payment System
+Requires Node ≥ 20.19 and pnpm ≥ 9. Copy the root `.env.example` to `.env` first.
 
-### Trial-Based Model
+## Directory Layout
 
-- **14-day free trial** for all new users
-- **No credit card required** to start
-- **7-day grace period** with read-only access after trial
-- **$20/month** for Build OS Pro subscription
-
-### Features Included
-
-✅ **Unlimited projects and tasks**
-✅ **AI-powered brain dump processing**
-✅ **Daily AI-generated briefs**
-✅ **Google Calendar integration**
-✅ **Real-time collaboration**
-✅ **Advanced analytics and insights**
-✅ **Priority email support**
-
-### Revenue Management
-
-- Real-time MRR/ARR tracking
-- Automated dunning for failed payments
-- Invoice generation and management
-- Revenue recognition compliance
-- Customer subscription lifecycle
-
-## 🔧 Configuration
-
-### Environment Variables
-
-#### Required
-
-```env
-# Supabase
-PUBLIC_SUPABASE_URL=your_supabase_url
-PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-PRIVATE_SUPABASE_SERVICE_KEY=your_service_role_key
-
-# Google OAuth
-PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+```
+apps/web/src/
+├── routes/
+│   ├── api/                # ~49 API route groups (REST + SSE)
+│   ├── (public)/           # Public marketing / content pages
+│   └── ...                 # App routes
+├── lib/
+│   ├── components/         # UI components, organized by feature
+│   ├── services/           # Client + shared services (brain dump, chat, calendar, ...)
+│   ├── server/             # Server-only: billing, braindump processing, OCR, ontology...
+│   ├── stores/             # Svelte stores
+│   ├── config/             # Feature configuration
+│   ├── supabase/           # Supabase clients (server + admin)
+│   ├── types/              # App-specific types
+│   ├── ui/                 # Design-system primitives
+│   └── utils/              # Helpers incl. ApiResponse
+├── hooks.server.ts         # Auth, consumption billing guard, server timing
+└── app.html
 ```
 
-#### Optional
+Path aliases: `$components` → `src/lib/components`, `$ui` → `src/lib/ui`, `$utils` → `src/lib/utils`.
 
-```env
-# Stripe (for payments)
-ENABLE_STRIPE=false
-STRIPE_SECRET_KEY=your_stripe_secret_key
-STRIPE_WEBHOOK_SECRET=your_webhook_secret
-PUBLIC_STRIPE_PUBLISHABLE_KEY=your_publishable_key
+## Key Conventions
 
-# AI Features
-OPENAI_API_KEY=your_openai_api_key
+### Svelte 5 runes
 
-# Security
-PRIVATE_CRON_SECRET=your_random_secret
+```svelte
+let count = $state(0);
+let doubled = $derived(count * 2);
+$effect(() => { /* side effect */ });
 ```
 
-### Feature Flags
+Never use the old reactive syntax.
 
-- `ENABLE_STRIPE=false` - Safely deploy without payment processing
-- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_MODE=off|shadow|inject` - Behavioral profile rollout mode (`shadow` is recommended first to run in background without prompt injection)
-- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_TIMEOUT_MS=25` - Max lookup time budget (ms) before behavioral profile loading fails open
-- Graceful degradation when services are unavailable
-- Trial system works independently of payment integration
+### API responses
 
-## 📊 Database Schema
+All JSON endpoints use `ApiResponse` from `$lib/utils/api-response`:
 
-### Core Tables
+```ts
+import { ApiResponse, requireAuth } from '$lib/utils/api-response';
 
-- **users** - User profiles and subscription status
-- **projects** - Project management with phases and context
-- **tasks** - Task tracking with AI-powered automation
-- **brain_dumps** - AI-processed thought capture
-- **daily_briefs** - Automated progress summaries
+const auth = await requireAuth(locals);
+if ('error' in auth) return auth.error;
 
-### Stripe Integration
+return ApiResponse.success(data);
+// or: ApiResponse.badRequest, unauthorized, notFound, databaseError, ...
+```
 
-- **subscription_plans** - Billing plan configuration
-- **customer_subscriptions** - User subscription tracking
-- **payment_methods** - Secure payment information
-- **invoices** - Invoice generation and storage
-- **failed_payments** - Dunning process management
+Protocol endpoints (SSE streams, file downloads, tracking pixels, webhooks) may return raw `Response` objects.
 
-### Trial System
+**Quick drift check:**
 
-- **trial_reminders** - Automated trial notifications
-- **user_notifications** - In-app notification system
+```bash
+# Routes still using raw json() — should only be protocol endpoints
+rg -l "return json\(" src/routes/api --glob '+server.ts'
+```
 
-## 🔒 Security
+### Supabase access
 
-### Authentication & Authorization
+- User-scoped (respects RLS): `locals.supabase` inside endpoints.
+- Admin (service role): `createAdminSupabaseClient()` from `$lib/supabase/admin`.
 
-- **Supabase Auth** with Google OAuth integration
-- **Row Level Security (RLS)** on all database tables
-- **Session management** with automatic token refresh
-- **Protected routes** with authentication middleware
+### Auth & billing flow
 
-### Payment Security
+`hooks.server.ts` per-request:
 
-- **Stripe webhook signature verification**
-- **PCI compliance** through Stripe's secure infrastructure
-- **No local storage** of payment information
-- **Encrypted data transmission** for all financial operations
+1. Builds the Supabase client and exposes `safeGetSession()`.
+2. Runs the consumption billing guard — blocks mutations for frozen accounts with a 402 response.
+3. Instruments `Server-Timing` headers. Enable verbose timing with `PERF_TIMING=true` (and `PERF_LOG_SLOW=true` to log slow requests).
 
-### Data Protection
+### Design system
 
-- **End-to-end encryption** for sensitive data
-- **Regular automated backups** via Supabase
-- **GDPR compliance** with data export capabilities
-- **Audit trails** for all administrative actions
+Current system is **Inkprint** — see [`docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`](./docs/technical/components/INKPRINT_DESIGN_SYSTEM.md). All components must support light + dark modes with the `dark:` prefix.
 
-## 📈 Monitoring & Analytics
+## Scripts
 
-### Performance Monitoring
+```bash
+# Dev
+pnpm dev              # Vite dev server
+pnpm dev:fast         # Skip type checking
+pnpm dev:split        # Dev + svelte-check in parallel (recommended)
 
-- **Error tracking** with Sentry integration
-- **Performance insights** via Vercel Analytics
-- **Database query optimization** monitoring
-- **Real-time uptime tracking**
+# Checks
+pnpm check            # svelte-kit sync + svelte-check
+pnpm lint             # ESLint + guardrail scripts
+pnpm lint:fix         # Lint + Prettier
+pnpm test             # Vitest
+pnpm test:llm         # LLM prompt tests (real API — costs money)
 
-### Business Metrics
+# Build
+pnpm build
+pnpm build:analyze    # Bundle analyzer
 
-- **Trial conversion rates**
-- **Monthly Recurring Revenue (MRR)**
-- **Customer churn analysis**
-- **Feature usage analytics**
-- **Support ticket trends**
+# Pre-push
+pnpm pre-push         # check + test + lint + build:prod
 
-## 🚀 Deployment
+# Generation
+pnpm gen:web          # blog context + sitemap + streamlined project context
+pnpm gen:embeddings
+pnpm gen:api-docs
+```
 
-### Vercel Deployment (Recommended)
+## Feature Flags
 
-1. **Connect GitHub repository** to Vercel
-2. **Configure environment variables** in Vercel dashboard
-3. **Set up custom domain** (optional)
-4. **Enable monitoring** and analytics
-5. **Configure cron jobs** for automated tasks
+Set in env (see root `.env.example`):
 
-### Database Setup
+- `PRIVATE_ENABLE_STRIPE` — enable payment processing (off = graceful degradation, trial system still works).
+- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_MODE` — `off | shadow | inject`. `shadow` runs lookups without injecting into prompts; use it first when rolling out.
+- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_TIMEOUT_MS` — max profile lookup budget in ms before failing open (default 25).
 
-1. **Create Supabase project**
-2. **Run database migrations** in order
-3. **Configure Row Level Security**
-4. **Set up real-time subscriptions**
-5. **Enable database backups**
+## Deployment (Vercel)
 
-### Third-Party Services
+- `vercel.json` defines the build command (`turbo build --force --filter=@buildos/web...`), security headers, long-cache static assets, and cron jobs:
+  - `/api/cron/dunning` — daily 09:00 UTC
+  - `/api/cron/trial-reminders` — daily 10:00 UTC
+  - `/api/cron/billing-ops-monitoring` — daily 11:00 UTC
+  - `/api/cron/welcome-sequence` — hourly
+  - `/api/cron/security-events-retention` — daily 04:30 UTC
+- Adapter: `@sveltejs/adapter-vercel` with `runtime: 'nodejs22.x'`.
 
-- **Google Cloud Console** - OAuth and Calendar API
-- **Stripe Dashboard** - Payment processing setup
-- **Sentry** - Error monitoring (optional)
-- **Upstash** - Redis caching (for scaling)
+## Documentation
 
-## 📚 Documentation
+- [Web docs hub](./docs/README.md)
+- [Navigation index](./docs/NAVIGATION_INDEX.md)
+- [Inkprint design system](./docs/technical/components/INKPRINT_DESIGN_SYSTEM.md)
+- [Features](./docs/features/) — brain dump, agentic chat, calendar, ontology, notifications, onboarding, time blocks, etc.
+- [Technical](./docs/technical/) — architecture, API, testing, deployment, performance
+- [API reference](./docs/technical/api/) — generated via `pnpm docs:api`
 
-### For Developers
+## Contributing
 
-- [**Web Docs Hub**](./docs/README.md) - Web app documentation home
-- [**Navigation Index**](./docs/NAVIGATION_INDEX.md) - Quick links by task
-- [**Technical Docs**](./docs/technical/README.md) - Architecture, API, and testing
-- [**Deployment Checklist**](./docs/technical/deployment/DEPLOYMENT_CHECKLIST.md) - Production deployment guide
-
-### For Users
-
-- [**API Documentation**](./docs/technical/api/README.md) - API reference and endpoints
-- [**Feature Guides**](./docs/features/README.md) - Feature-level documentation
-- [**Onboarding Guide**](./docs/features/onboarding/README.md) - Current onboarding flow
-
-## 🤝 Contributing
-
-Contributions should follow the monorepo workflow and documentation in the root [CLAUDE.md](../../CLAUDE.md).
-
-### Development Workflow
-
-1. **Fork the repository**
-2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
-3. **Make your changes** following our code style
-4. **Run the test suite** (`pnpm run pre-push`)
-5. **Commit your changes** (`git commit -m 'Add amazing feature'`)
-6. **Push to the branch** (`git push origin feature/amazing-feature`)
-7. **Open a Pull Request**
-
-### Code Style
-
-- **TypeScript** for type safety
-- **ESLint + Prettier** for code formatting
-- **Conventional Commits** for commit messages
-- **Component-based architecture** with clear separation of concerns
-
-## 🙋‍♂️ Support
-
-### Community Support
-
-- **GitHub Issues** - Bug reports and feature requests
-- **GitHub Discussions** - Community questions and ideas
-- **Documentation** - Comprehensive guides and references
-
-### Enterprise Support
-
-- **Priority support** for Build OS Pro subscribers
-- **Custom integrations** and enterprise features
-- **Dedicated support channel** for mission-critical deployments
-
-### Contact
-
-- **Email**: support@build-os.com
-- **Website**: https://build-os.com
-- **Status Page**: https://status.build-os.com
-
----
-
-**Built with ❤️ by the Build OS team**
-
-Transform your productivity. Start your free trial today.
+Follow the monorepo workflow. Before pushing: `pnpm pre-push` from the repo root, or `pnpm pre-push` inside `apps/web` for web-only checks. Conventions live in the root [CLAUDE.md](../../CLAUDE.md).

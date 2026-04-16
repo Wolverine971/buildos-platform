@@ -155,4 +155,81 @@ describe('POST /api/onto/documents/create', () => {
 			'actor-1'
 		);
 	});
+
+	it('persists the requested type_key when it matches the document taxonomy', async () => {
+		const { POST } = await import('./+server');
+
+		const request = new Request('http://localhost/api/onto/documents/create', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				project_id: 'project-1',
+				title: 'Magic System Research Notes',
+				type_key: 'document.knowledge.research'
+			})
+		});
+
+		const response = await POST({
+			request,
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		const payload = (await response.json()) as Record<string, any>;
+		expect(payload?.data?.document?.type_key).toBe('document.knowledge.research');
+	});
+
+	it('falls back to document.default when no type_key is supplied', async () => {
+		const { POST } = await import('./+server');
+
+		const request = new Request('http://localhost/api/onto/documents/create', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				project_id: 'project-1',
+				title: 'Untyped Doc'
+			})
+		});
+
+		const response = await POST({
+			request,
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		const payload = (await response.json()) as Record<string, any>;
+		expect(payload?.data?.document?.type_key).toBe('document.default');
+	});
+
+	it('falls back to document.default when type_key is malformed, without rejecting the write', async () => {
+		const { POST } = await import('./+server');
+
+		const request = new Request('http://localhost/api/onto/documents/create', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				project_id: 'project-1',
+				title: 'Malformed Type Doc',
+				type_key: 'Task.default'
+			})
+		});
+
+		const response = await POST({
+			request,
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		const payload = (await response.json()) as Record<string, any>;
+		expect(payload?.data?.document?.type_key).toBe('document.default');
+	});
 });

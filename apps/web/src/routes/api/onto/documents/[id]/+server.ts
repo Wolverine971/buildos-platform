@@ -7,7 +7,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { DOCUMENT_STATES } from '$lib/types/onto';
+import { DOCUMENT_STATES, isValidTypeKey } from '$lib/types/onto';
 import {
 	logUpdateAsync,
 	logDeleteAsync,
@@ -528,8 +528,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		if (typeof type_key === 'string' && type_key.trim()) {
-			updatePayload.type_key = type_key.trim();
-			hasUpdates = true;
+			// Forgiving validation: apply the type if it matches the document
+			// taxonomy, otherwise skip the type change and leave the existing
+			// value untouched. Do not reject the whole update over a bad type.
+			const trimmedTypeKey = type_key.trim();
+			if (isValidTypeKey(trimmedTypeKey, 'document')) {
+				updatePayload.type_key = trimmedTypeKey;
+				hasUpdates = true;
+			}
 		}
 
 		// Handle description column

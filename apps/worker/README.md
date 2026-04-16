@@ -1,403 +1,187 @@
 <!-- apps/worker/README.md -->
 
-# Daily Brief Worker Service
+# @buildos/worker
 
-A background worker service for generating automated daily briefs using a Supabase-based queue system. Built with TypeScript and designed to integrate with your existing SvelteKit + Supabase application.
+Node.js + Express background worker for BuildOS. Deployed to Railway.
 
-## Features
+This service runs three things in the same process:
 
-- 🔄 **Automated Brief Generation**: Schedule daily, weekly, or custom frequency briefs
-- 📋 **Queue Management**: Reliable job processing with retry logic and error handling (Supabase-based)
-- 🔔 **Real-time Notifications**: Notify users when briefs are ready via Supabase Realtime
-- 🚀 **Manual Triggers**: Allow users to manually generate briefs immediately
-- 📊 **Job Monitoring**: Track job status and history
-- ⚡ **Scalable**: Process multiple briefs concurrently
-- 💰 **Cost-effective**: No Redis/external queue service needed
+1. **API server** (`src/index.ts`) — REST endpoints for queueing, inspecting, and cleaning jobs.
+2. **Worker** (`src/worker.ts`) — long-running consumer that pulls jobs off the Supabase-backed queue and dispatches them to per-domain processors.
+3. **Scheduler** (`src/scheduler.ts`) — cron-driven scheduling of recurring work (timezone-aware daily briefs with engagement backoff, daily SMS windows, ontology/chat maintenance, etc.).
 
-## Architecture
+> For the monorepo overview, see the root [README](../../README.md) and [CLAUDE.md](../../CLAUDE.md).
+
+## Tech Stack
+
+- **Runtime** — Node.js ≥ 20 (Railway Nixpacks uses `nodejs_20`)
+- **Web** — Express 4
+- **Queue** — Supabase-backed (no Redis). Atomic claiming via PostgreSQL RPCs (`add_queue_job`, `claim_pending_jobs`, `complete_queue_job`, `fail_queue_job`) using `FOR UPDATE SKIP LOCKED`.
+- **Scheduler** — `node-cron`
+- **Email** — Nodemailer (SMTP) with an optional webhook-based path (`USE_WEBHOOK_EMAIL=true`)
+- **LLMs** — `@buildos/smart-llm`
+- **SMS** — `@buildos/twilio-service`
+
+## Queue Architecture
 
 ```
-SvelteKit App (Vercel) → API Calls → Railway Worker Service
-                                            ↓
-                                    Supabase Queue System
-                                    (Database + Functions)
-                                            ↓
-                                    Background Processing
-                                            ↓
-                                    Real-time Notifications
+Web (Vercel)  ──►  POST /queue/*  ──►  Supabase queue_jobs  ──►  Worker loop
+                                              ▲                        │
+                                              │                        ▼
+                                       Scheduler (cron)         Domain processors
+                                                                (brief, sms, ontology, ...)
+                                                                        │
+                                                                        ▼
+                                                            Supabase Realtime notifications
 ```
 
-## Setup Instructions
+- Jobs are rows in `queue_jobs` with status `pending | processing | completed | failed`.
+- Workers claim jobs via `claim_pending_jobs` (uses `FOR UPDATE SKIP LOCKED`).
+- Stalled jobs (stuck in `processing` longer than `stalledTimeout`, default 5 min) are automatically recovered.
+- Failures retry with exponential backoff.
+- The `JobAdapter` in `src/workers/shared/jobAdapter.ts` bridges the Supabase queue shape to the legacy BullMQ-style processor interface the domain workers still expect.
 
-### 1. Prerequisites
+## Job Types
 
-- Node.js 18+ installed
-- PNPM installed (`npm install -g pnpm`)
-- Railway account
-- Access to your Supabase project
+Registered in `src/worker.ts`:
 
-### 2. Project Setup
+| Job type                           | Processor                                  |
+| ---------------------------------- | ------------------------------------------ |
+| `generate_daily_brief`             | `workers/brief/briefWorker`                |
+| `onboarding_analysis`              | `workers/onboarding/onboardingWorker`      |
+| `send_notification`                | `workers/notification/notificationWorker`  |
+| `project_activity_batch_flush`     | `workers/notification/projectActivityBatchWorker` |
+| `schedule_daily_sms`               | `workers/dailySmsWorker`                   |
+| `send_sms`                         | `workers/smsWorker`                        |
+| `classify_chat_session`            | `workers/chat/chatSessionClassifier`       |
+| `process_onto_braindump`           | `workers/braindump/braindumpProcessor`     |
+| `transcribe_voice_note`            | `workers/voice-notes/voiceNoteTranscriptionWorker` |
+| `extract_onto_asset_ocr`           | `workers/assets/assetOcrWorker`            |
+| `buildos_homework`                 | `workers/homework/homeworkWorker`          |
+| `buildos_tree_agent`               | `workers/tree-agent/treeAgentWorker`       |
+| `build_project_context_snapshot`   | `workers/ontology/projectContextSnapshotWorker` |
+| `generate_project_icon`            | `workers/project-icon/projectIconWorker`   |
+| `sync_calendar`                    | `workers/calendar/calendarSyncWorker`      |
 
-Clone or create the project structure:
+Adding a new job type is documented in [`src/workers/README.md`](./src/workers/README.md).
+
+## HTTP API
+
+Base URL (prod): set via `PUBLIC_RAILWAY_WORKER_URL`. Requests from the web app are authenticated with `PRIVATE_RAILWAY_WORKER_TOKEN`.
+
+| Method | Path                          | Purpose                                   |
+| ------ | ----------------------------- | ----------------------------------------- |
+| GET    | `/health`                     | Healthcheck + queue/scheduler status      |
+| POST   | `/classify/ontology`          | Sync ontology classification (non-queued) |
+| POST   | `/queue/brief`                | Enqueue a daily brief job                 |
+| POST   | `/queue/onboarding`           | Enqueue an onboarding analysis job        |
+| POST   | `/queue/chat/classify`        | Enqueue chat-session classification       |
+| POST   | `/queue/braindump/process`    | Enqueue ontology braindump processing     |
+| GET    | `/jobs/:jobId`                | Inspect a job                             |
+| GET    | `/users/:userId/jobs`         | List a user's jobs                        |
+| GET    | `/queue/stats`                | Queue depth + status counts               |
+| GET    | `/queue/stale-stats`          | Stalled-job statistics                    |
+| POST   | `/queue/cleanup`              | Run stale-job cleanup                     |
+| —      | `/webhooks/*`                 | Provider webhooks (see `src/routes/webhooks`) |
+| —      | `/sms/scheduled`              | Scheduled-SMS management endpoints        |
+| —      | `/email-tracking/*`           | Open/click tracking pixels + redirects    |
+
+## Quick Start
+
+From the monorepo root:
 
 ```bash
-mkdir daily-brief-worker
-cd daily-brief-worker
-
-# Copy all the artifact files into your project
-# Then install dependencies:
 pnpm install
+pnpm dev --filter=worker     # http://localhost:3001
 ```
 
-### 3. Database Migrations
-
-Run these SQL migrations in your Supabase SQL editor:
-
-```sql
--- 1. First run: migrations/002_supabase_queue_system.sql
--- 2. Then run: migrations/003_fix_claim_jobs_return_type.sql
-```
-
-These migrations add:
-
-- Queue job management columns and indexes
-- Atomic job claiming functions
-- Stalled job recovery
-- Job lifecycle management functions
-
-### 4. Environment Configuration
-
-Create a `.env` file:
-
-```bash
-cp .env.example .env
-```
-
-Fill in your environment variables:
+Copy the root `.env.example` to `.env`. Minimum required:
 
 ```env
-# Supabase (REQUIRED)
-PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-PRIVATE_SUPABASE_SERVICE_KEY=your-service-role-key
-
-# Port (optional, Railway will override)
-PORT=3001
+PUBLIC_SUPABASE_URL=
+PRIVATE_SUPABASE_SERVICE_KEY=
+PRIVATE_RAILWAY_WORKER_TOKEN=
+PRIVATE_OPENROUTER_API_KEY=
 ```
 
-### 5. Local Development
+Healthcheck once running:
 
 ```bash
-# Build the project
-pnpm build
-
-# Run in development mode
-pnpm dev
-
-# Test the health endpoint
 curl http://localhost:3001/health
-
-# The response should include queue: 'supabase'
 ```
 
-### 6. Deploy to Railway
+## Scripts
 
-#### Option A: Connect GitHub Repository
-
-1. Push your code to GitHub
-2. Go to [Railway](https://railway.app)
-3. Click "New Project" → "Deploy from GitHub repo"
-4. Select your repository
-5. Add environment variables in Railway dashboard:
-    - `SUPABASE_URL`
-    - `PRIVATE_SUPABASE_SERVICE_KEY`
-
-#### Option B: Railway CLI
+From `apps/worker/`:
 
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
+pnpm dev                # Full process (index.ts): API + worker + scheduler
+pnpm worker             # Worker loop only
+pnpm scheduler          # Scheduler only
+pnpm build              # tsc → dist/
+pnpm start              # node dist/index.js (production entry)
 
-# Login and initialize
-railway login
-railway init
-
-# Add environment variables
-railway variables:set PUBLIC_SUPABASE_URL=your-url
-railway variables:set PRIVATE_SUPABASE_SERVICE_KEY=your-key
-
-# Deploy
-railway up
+pnpm typecheck
+pnpm lint | lint:fix
+pnpm test | test:run | test:watch
+pnpm test:scheduler     # Scheduler-specific suite
+pnpm test:integration
 ```
 
-### 7. Integration with SvelteKit App
+## Deployment (Railway)
 
-Add these API routes to your SvelteKit app:
+Configured at the repo root via `railway.toml` and `nixpacks.toml`:
 
-#### Manual Brief Generation
+- Builder: Nixpacks on `nodejs_20` + `pnpm 9`.
+- Build: `pnpm install --prod=false --no-frozen-lockfile && pnpm turbo build --filter=@buildos/worker`.
+- Start: `node apps/worker/dist/index.js`.
+- Healthcheck: `GET /health` with a 30s timeout.
+- Restart policy: `ON_FAILURE`, up to 3 retries.
 
-```typescript
-// src/routes/api/briefs/generate/+server.ts
-export async function POST({ request, locals }) {
-	const { immediate = false, forceRegenerate = false } = await request.json();
-	const userId = locals.user.id;
+Set the required env vars in the Railway service dashboard — at minimum, Supabase credentials, LLM API keys, `PRIVATE_RAILWAY_WORKER_TOKEN`, and (if using SMS) Twilio credentials.
 
-	const response = await fetch(`${WORKER_SERVICE_URL}/queue/brief`, {
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			userId,
-			forceImmediate: immediate,
-			forceRegenerate
-		})
-	});
+## Tuning
 
-	return response;
-}
-```
+`SupabaseQueue` defaults in `src/lib/supabaseQueue.ts`:
 
-#### User Preferences Management
+- `pollInterval` — 5 000 ms
+- `batchSize` — 5 concurrent jobs
+- `stalledTimeout` — 300 000 ms (5 min)
 
-```typescript
-// src/routes/api/briefs/preferences/+server.ts
-export async function POST({ request, locals }) {
-	const { frequency, dayOfWeek, timeOfDay, timezone } = await request.json();
-	const userId = locals.user.id;
+Per-environment overrides live in `src/config/queueConfig.ts`.
 
-	await supabase.from('user_brief_preferences').upsert({
-		user_id: userId,
-		frequency,
-		day_of_week: dayOfWeek,
-		time_of_day: timeOfDay,
-		timezone,
-		is_active: true
-	});
+## Monitoring
 
-	return json({ success: true });
-}
-```
-
-### 8. Frontend Real-time Notifications
-
-Add to your SvelteKit layout:
-
-```typescript
-// src/app.html or +layout.svelte
-import { supabase } from '$lib/supabase';
-import { onMount } from 'svelte';
-
-onMount(() => {
-	if ($user) {
-		const channel = supabase.channel(`user:${$user.id}`);
-
-		channel
-			.on('broadcast', { event: 'brief_completed' }, (payload) => {
-				// Show success notification
-				showNotification('Your daily brief is ready!', {
-					action: () => goto(`/projects?briefDate=${payload.briefDate}`)
-				});
-			})
-			.on('broadcast', { event: 'brief_failed' }, (payload) => {
-				// Show error notification
-				showNotification('Brief generation failed. Click to retry.', {
-					type: 'error',
-					action: () => retryBrief(payload.jobId)
-				});
-			})
-			.subscribe();
-
-		return () => channel.unsubscribe();
-	}
-});
-```
-
-### 9. Testing the System
-
-#### Test Manual Brief Generation
-
-```bash
-# Test manual brief generation
-curl -X POST http://your-railway-url/queue/brief \
-  -H "Content-Type: application/json" \
-  -d '{"userId": "your-user-id", "forceImmediate": true}'
-
-# Check job status
-curl http://your-railway-url/jobs/job-id
-
-# View queue statistics
-curl http://your-railway-url/queue/stats
-```
-
-#### Test Scheduled Briefs
+Useful SQL for production debugging:
 
 ```sql
--- Add user preference via Supabase
-INSERT INTO user_brief_preferences (user_id, frequency, time_of_day, timezone)
-VALUES ('your-user-id', 'daily', '09:00:00', 'America/New_York');
-```
-
-## API Endpoints
-
-### Worker Service Endpoints
-
-- `GET /health` - Health check with queue stats
-- `POST /queue/brief` - Queue a brief generation job
-- `POST /queue/phases` - Queue phases generation job
-- `POST /queue/onboarding` - Queue onboarding analysis job
-- `GET /jobs/:jobId` - Get job status
-- `GET /users/:userId/jobs` - Get user's jobs
-- `GET /queue/stats` - Get queue statistics
-
-### Request/Response Examples
-
-#### Queue Brief
-
-```json
-// Request
-POST /queue/brief
-{
-  "userId": "user-123",
-  "forceImmediate": true,
-  "briefDate": "2024-01-15"
-}
-
-// Response
-{
-  "success": true,
-  "jobId": "brief-user-123-2024-01-15",
-  "scheduledFor": "2024-01-15T00:00:00Z",
-  "briefDate": "2024-01-15"
-}
-```
-
-## Configuration Options
-
-### User Brief Preferences
-
-```typescript
-interface UserBriefPreference {
-	frequency: 'daily' | 'weekly' | 'custom';
-	day_of_week?: number; // 0-6, for weekly briefs
-	time_of_day: string; // HH:MM:SS format
-	timezone: string; // IANA timezone
-	is_active: boolean;
-}
-```
-
-### Job Options
-
-```typescript
-interface BriefJobData {
-	userId: string;
-	briefDate?: string; // Date in YYYY-MM-DD format
-	timezone?: string; // User's timezone
-	options?: {
-		includeProjects?: string[];
-		excludeProjects?: string[];
-		customTemplate?: string;
-		forceRegenerate?: boolean;
-	};
-}
-```
-
-## Queue System Details
-
-### How It Works
-
-1. **Job Creation**: Jobs are added to `queue_jobs` table with status 'pending'
-2. **Atomic Claiming**: Worker claims jobs using PostgreSQL's `FOR UPDATE SKIP LOCKED`
-3. **Processing**: Jobs are processed with progress tracking
-4. **Completion**: Jobs marked as completed/failed with results
-5. **Retry Logic**: Failed jobs retry with exponential backoff
-6. **Stalled Recovery**: Stuck jobs automatically recovered after 5 minutes
-
-### Monitoring
-
-```sql
--- View queue depth
+-- Queue depth by type over the last hour
 SELECT job_type, status, COUNT(*)
 FROM queue_jobs
 WHERE created_at > NOW() - INTERVAL '1 hour'
 GROUP BY job_type, status;
 
--- View average processing time
+-- Average processing time per type
 SELECT job_type,
-  AVG(EXTRACT(EPOCH FROM (completed_at - started_at))) as avg_seconds
+       AVG(EXTRACT(EPOCH FROM (completed_at - started_at))) AS avg_seconds
 FROM queue_jobs
 WHERE status = 'completed'
 GROUP BY job_type;
 
--- Find failed jobs
-SELECT * FROM queue_jobs
+-- Recent failures
+SELECT id, job_type, error_message, created_at
+FROM queue_jobs
 WHERE status = 'failed'
 ORDER BY created_at DESC
 LIMIT 10;
 ```
 
-## Troubleshooting
+## Documentation
 
-### Common Issues
-
-1. **"structure of query does not match function result type"**
-    - Run migration `003_fix_claim_jobs_return_type.sql`
-
-2. **Jobs stuck in 'pending'**
-    - Check worker is running: `curl /health`
-    - Check for errors in logs
-
-3. **Jobs not being claimed**
-    - Verify database migrations applied
-    - Check Supabase service role key is correct
-
-4. **Notification Issues**
-    - Verify Supabase Realtime is enabled
-    - Check channel subscription in frontend
-
-### Performance Tuning
-
-- Adjust `pollInterval` in worker.ts (default: 5 seconds)
-- Modify `batchSize` for concurrent processing (default: 5)
-- Adjust `stalledTimeout` for job recovery (default: 5 minutes)
-
-## Cost Analysis
-
-### Before (with Redis)
-
-- Railway: ~$5-10/month
-- Upstash Redis: $10-50/month
-- **Total**: $15-60/month
-
-### After (Supabase-only)
-
-- Railway: ~$5-10/month
-- Supabase: Already included
-- **Total**: $5-10/month
-- **Savings**: $10-50/month
-
-## Security Notes
-
-- Service role key is only used in the worker service
-- RLS policies protect user data
-- Queue jobs are user-scoped
-- HTTPS enforced in production
-- No external dependencies (Redis removed)
-
-## Migration from Redis
-
-If migrating from the old Redis-based system:
-
-1. Run database migrations
-2. Update environment variables (remove Redis URLs)
-3. Deploy new code
-4. Old jobs will complete, new jobs use Supabase
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make changes and test locally
-4. Deploy to a staging Railway service
-5. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details
+- [Worker docs hub](./docs/README.md)
+- [Worker jobs & flows](./docs/WORKER_JOBS_AND_FLOWS.md)
+- [Worker structure overview](./docs/WORKER_STRUCTURE_OVERVIEW.md)
+- [Email setup](./docs/EMAIL_SETUP.md)
+- [Quick reference](./docs/QUICK_REFERENCE.md)
+- [Adding a worker](./src/workers/README.md)
+- [Queue system flow (repo root)](../../docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md)

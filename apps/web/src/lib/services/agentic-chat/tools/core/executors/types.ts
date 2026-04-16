@@ -392,8 +392,6 @@ export interface UpdateOntoTaskArgs {
 	project_id?: string;
 	title?: string;
 	description?: string;
-	update_strategy?: 'replace' | 'append' | 'merge_llm';
-	merge_instructions?: string;
 	type_key?: string;
 	state_key?: string;
 	priority?: number;
@@ -470,8 +468,6 @@ export interface UpdateOntoGoalArgs {
 	goal_id: string;
 	name?: string;
 	description?: string;
-	update_strategy?: 'replace' | 'append' | 'merge_llm';
-	merge_instructions?: string;
 	priority?: number;
 	target_date?: string;
 	measurement_criteria?: string;
@@ -483,8 +479,6 @@ export interface UpdateOntoPlanArgs {
 	name?: string;
 	description?: string;
 	plan?: string;
-	update_strategy?: 'replace' | 'append' | 'merge_llm';
-	merge_instructions?: string;
 	start_date?: string;
 	end_date?: string;
 	state_key?: string;

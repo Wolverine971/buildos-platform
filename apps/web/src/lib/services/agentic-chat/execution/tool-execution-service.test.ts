@@ -409,6 +409,11 @@ describe('ToolExecutionService', () => {
 			expect(mockToolExecutor).not.toHaveBeenCalled();
 		});
 
+		// Durable-text markup rejection is covered by:
+		// - stream-orchestrator/tool-validation.test.ts (pre-execution, model feedback)
+		// - ontology-write-executor throws via assertNoDurableTextViolations (pre-DB)
+		// The service layer intentionally does not duplicate this check.
+
 		it('should allow document append updates with content aliases', async () => {
 			const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
 			const toolCall: ChatToolCall = {
@@ -449,6 +454,44 @@ describe('ToolExecutionService', () => {
 					document_id: documentId,
 					content: '## Progress Updates\n\n- Chapter 2 complete.',
 					update_strategy: 'append'
+				}),
+				mockContext
+			);
+		});
+
+		it('should allow normal markdown angle brackets in durable text', async () => {
+			const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
+			const toolCall: ChatToolCall = {
+				id: 'call_good_doc_markup',
+				name: 'update_onto_document',
+				arguments: {
+					document_id: documentId,
+					content: 'Use <aside> for notes and keep x < y as an example.'
+				}
+			};
+			const updateDefinition: ChatToolDefinition = {
+				name: 'update_onto_document',
+				description: 'Update ontology document',
+				parameters: {
+					type: 'object',
+					properties: {
+						document_id: { type: 'string' },
+						content: { type: 'string' }
+					},
+					required: ['document_id']
+				}
+			};
+
+			mockToolExecutor.mockResolvedValueOnce({ ok: true });
+
+			const result = await service.executeTool(toolCall, mockContext, [updateDefinition]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'update_onto_document',
+				expect.objectContaining({
+					document_id: documentId,
+					content: 'Use <aside> for notes and keep x < y as an example.'
 				}),
 				mockContext
 			);

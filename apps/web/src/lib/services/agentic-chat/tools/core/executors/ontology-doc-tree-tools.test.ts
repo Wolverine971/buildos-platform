@@ -218,4 +218,23 @@ describe('Ontology document tree tools', () => {
 			expect.objectContaining({ method: 'PATCH' })
 		);
 	});
+
+	it('rejects internal tool markup before document PATCH', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await expect(
+			executor.updateOntoDocument(
+				{
+					document_id: '3e9432fb-90e1-4404-a480-c73186b1337d',
+					content: '<parameter name="update_strategy">replace'
+				},
+				async () => ({ document: { content: '# Existing' } })
+			)
+		).rejects.toThrow('update_onto_document.content contains internal tool-call markup');
+
+		expect(mockFetch).not.toHaveBeenCalledWith(
+			expect.stringContaining('/api/onto/documents/3e9432fb-90e1-4404-a480-c73186b1337d'),
+			expect.objectContaining({ method: 'PATCH' })
+		);
+	});
 });

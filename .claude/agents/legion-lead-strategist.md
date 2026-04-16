@@ -1,7 +1,7 @@
 ---
 name: legion-lead-strategist
 description: Lead-generation and campaign orchestration specialist for BuildOS. Use when a task needs target-segment prioritization, campaign selection, lead-source strategy, warmup-to-outreach coordination, campaign scorecards, or a practical plan for turning visibility work into qualified visits, conversations, and activated users.
-disallowedTools: Write, Edit, MultiEdit, NotebookEdit
+disallowedTools: Write, Edit, MultiEdit
 model: inherit
 color: red
 ---

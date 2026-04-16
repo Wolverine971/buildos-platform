@@ -1,9 +1,18 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-arguments.ts
 import type { ChatToolCall } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
+import {
+	findDurableTextViolations,
+	isOntologyDurableWriteTool
+} from '$lib/services/agentic-chat/shared/durable-text-validation';
 
 const MAX_TOOL_ARG_PARSE_DEPTH = 3;
 const MAX_TOOL_ARG_SEGMENTS = 8;
+export const REDACTED_DURABLE_TEXT = '[redacted invalid durable text]';
+
+type SanitizeToolCallsForReplayOptions = {
+	redactInvalidDurableText?: boolean;
+};
 
 export type ToolArgumentAnomaly = {
 	kind: 'malformed' | 'recovered';
@@ -225,7 +234,10 @@ export function logToolArgumentAnomaly(params: {
 	console.warn(parts.join('\n'));
 }
 
-export function sanitizeToolCallsForReplay(toolCalls: ChatToolCall[]): ChatToolCall[] {
+export function sanitizeToolCallsForReplay(
+	toolCalls: ChatToolCall[],
+	options: SanitizeToolCallsForReplayOptions = {}
+): ChatToolCall[] {
 	let mutated = false;
 	const sanitized = toolCalls.map((toolCall) => {
 		const fn = toolCall.function;
@@ -234,7 +246,15 @@ export function sanitizeToolCallsForReplay(toolCalls: ChatToolCall[]): ChatToolC
 		}
 
 		const { args } = parseToolArguments(fn.arguments);
-		const serializedArgs = JSON.stringify(args ?? {});
+		let replayArgs = args ?? {};
+		if (options.redactInvalidDurableText && isOntologyDurableWriteTool(fn.name?.trim() ?? '')) {
+			const redactedArgs = redactInvalidDurableTextArgs(replayArgs);
+			if (redactedArgs !== replayArgs) {
+				replayArgs = redactedArgs;
+			}
+		}
+
+		const serializedArgs = JSON.stringify(replayArgs);
 		if (fn.arguments === serializedArgs) {
 			return toolCall;
 		}
@@ -250,6 +270,56 @@ export function sanitizeToolCallsForReplay(toolCalls: ChatToolCall[]): ChatToolC
 	});
 
 	return mutated ? sanitized : toolCalls;
+}
+
+function redactInvalidDurableTextArgs(args: Record<string, any>): Record<string, any> {
+	const redactedArgs = redactInvalidDurableTextValue(args);
+	return redactedArgs === args ? args : (redactedArgs as Record<string, any>);
+}
+
+function redactInvalidDurableTextValue(
+	value: unknown,
+	seen = new WeakMap<object, unknown>()
+): unknown {
+	if (typeof value === 'string') {
+		return findDurableTextViolations(value).length > 0 ? REDACTED_DURABLE_TEXT : value;
+	}
+
+	if (!value || typeof value !== 'object') {
+		return value;
+	}
+
+	const objectValue = value as object;
+	const existing = seen.get(objectValue);
+	if (existing) {
+		return existing;
+	}
+
+	if (Array.isArray(value)) {
+		let mutated = false;
+		const clone: unknown[] = [];
+		seen.set(objectValue, clone);
+		for (const item of value) {
+			const redactedItem = redactInvalidDurableTextValue(item, seen);
+			if (redactedItem !== item) {
+				mutated = true;
+			}
+			clone.push(redactedItem);
+		}
+		return mutated ? clone : value;
+	}
+
+	const clone: Record<string, any> = {};
+	let mutated = false;
+	seen.set(objectValue, clone);
+	for (const [key, nestedValue] of Object.entries(value as Record<string, any>)) {
+		const redactedValue = redactInvalidDurableTextValue(nestedValue, seen);
+		if (redactedValue !== nestedValue) {
+			mutated = true;
+		}
+		clone[key] = redactedValue;
+	}
+	return mutated ? clone : value;
 }
 
 function stripMarkdownCodeFence(raw: string): string {

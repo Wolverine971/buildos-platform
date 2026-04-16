@@ -65,7 +65,14 @@ describe('loadProjectGraphData', () => {
 			onto_projects: { single: { id: 'proj-1', state_key: 'active' } },
 			onto_tasks: [
 				{ id: 'task-1', project_id: 'proj-1', state_key: 'done' },
-				{ id: 'task-2', project_id: 'proj-1', state_key: 'in_progress' }
+				{ id: 'task-2', project_id: 'proj-1', state_key: 'in_progress' },
+				{ id: 'task-3', project_id: 'proj-1', state_key: 'completed' },
+				{
+					id: 'task-4',
+					project_id: 'proj-1',
+					state_key: 'todo',
+					completed_at: '2026-04-16T15:00:00.000Z'
+				}
 			],
 			onto_edges: [
 				{
@@ -82,6 +89,26 @@ describe('loadProjectGraphData', () => {
 					id: 'edge-2',
 					project_id: 'proj-1',
 					src_id: 'task-2',
+					src_kind: 'task',
+					dst_id: 'goal-1',
+					dst_kind: 'goal',
+					rel: 'rel',
+					created_at: '2023-01-01T00:00:00Z'
+				},
+				{
+					id: 'edge-3',
+					project_id: 'proj-1',
+					src_id: 'task-3',
+					src_kind: 'task',
+					dst_id: 'goal-1',
+					dst_kind: 'goal',
+					rel: 'rel',
+					created_at: '2023-01-01T00:00:00Z'
+				},
+				{
+					id: 'edge-4',
+					project_id: 'proj-1',
+					src_id: 'task-4',
 					src_kind: 'task',
 					dst_id: 'goal-1',
 					dst_kind: 'goal',
@@ -125,7 +152,14 @@ describe('loadMultipleProjectGraphs', () => {
 			onto_projects: [{ id: 'proj-1', state_key: 'active' }],
 			onto_tasks: [
 				{ id: 'task-1', project_id: 'proj-1', state_key: 'done' },
-				{ id: 'task-2', project_id: 'proj-1', state_key: 'in_progress' }
+				{ id: 'task-2', project_id: 'proj-1', state_key: 'in_progress' },
+				{ id: 'task-3', project_id: 'proj-1', state_key: 'complete' },
+				{
+					id: 'task-4',
+					project_id: 'proj-1',
+					state_key: 'todo',
+					completed_at: '2026-04-16T15:00:00.000Z'
+				}
 			],
 			onto_edges: [
 				{
@@ -142,6 +176,26 @@ describe('loadMultipleProjectGraphs', () => {
 					id: 'edge-2',
 					project_id: 'proj-1',
 					src_id: 'task-2',
+					src_kind: 'task',
+					dst_id: 'goal-1',
+					dst_kind: 'goal',
+					rel: 'rel',
+					created_at: '2023-01-01T00:00:00Z'
+				},
+				{
+					id: 'edge-3',
+					project_id: 'proj-1',
+					src_id: 'task-3',
+					src_kind: 'task',
+					dst_id: 'goal-1',
+					dst_kind: 'goal',
+					rel: 'rel',
+					created_at: '2023-01-01T00:00:00Z'
+				},
+				{
+					id: 'edge-4',
+					project_id: 'proj-1',
+					src_id: 'task-4',
 					src_kind: 'task',
 					dst_id: 'goal-1',
 					dst_kind: 'goal',

@@ -1,155 +1,95 @@
 ---
-description: Systematically investigate and fix a BuildOS bug with root-cause analysis and verification.
+description: Investigate and fix a BuildOS bug with root-cause analysis and verification.
 argument-hint: "[bug report or affected area]"
-disable-model-invocation: true
 ---
 
-# Fix Bug - BuildOS Platform
+# Fix Bug — BuildOS
 
-You are a senior engineer tasked with systematically investigating and fixing bugs in the BuildOS platform. You understand the Svelte 5 runes system, the turborepo structure, and BuildOS conventions.
+You are a senior engineer fixing a bug in the BuildOS platform (Svelte 5 runes, Turborepo, Supabase-backed queue). Find the root cause, propose the minimum fix, verify it.
 
-## Initial Response
+## If invoked without context
 
-When invoked, respond with:
+Ask for:
+- What's broken (symptom + affected surface: web / worker / shared)
+- Error message or console output, if any
+- Steps to reproduce
 
-```
-🔧 BuildOS Bug Fixer Ready
+Otherwise: start.
 
-I'll systematically investigate and fix this bug. Please describe:
-- The issue you're experiencing
-- Any error messages or console logs
-- Steps to reproduce (if known)
-- Which part of the system (web app, worker, or both)
+## Process
 
-I'll trace the root cause and implement a fix following BuildOS conventions.
-```
+### 1. Triage (fast)
 
-## Investigation Process
+- Identify the affected package (`apps/web`, `apps/worker`, `packages/*`).
+- Check recent commits in that area: `git log --oneline -10 -- apps/[area]`.
+- Grep the error message / stack frame before reading anything.
 
-### Phase 1: Quick Triage (1-2 minutes)
+### 2. Targeted investigation
 
-1. **Parse the bug report** - Identify affected area (web/worker/shared)
-2. **Check obvious places first**:
-    - Error logs in browser console or terminal
-    - Recent commits in affected area: `git log --oneline -10 apps/[area]`
-    - Related TODO/FIXME comments: `rg -n "TODO|FIXME" apps/[area] -g "*.ts" -g "*.svelte"`
+Pick the path that matches the bug — don't read all of these.
 
-### Phase 2: Targeted Investigation
+| Area | Where to look |
+|------|---------------|
+| UI / component | `apps/web/src/lib/components/`, `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` |
+| API route | `apps/web/src/routes/api/`, `apps/web/docs/technical/api/` |
+| Auth / billing gate | `apps/web/src/hooks.server.ts`, `apps/web/src/lib/server/consumption-billing*` |
+| Worker job | `apps/worker/src/workers/[domain]/`, `apps/worker/docs/WORKER_JOBS_AND_FLOWS.md` |
+| Queue plumbing | `apps/worker/src/lib/supabaseQueue.ts`, `docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md` |
+| Schema / DB | `packages/shared-types/src/database.schema.ts` (read this first, it's smaller), `database.types.ts` only if you need RPC shapes |
+| LLM routing | `packages/smart-llm/` |
+| SMS | `packages/twilio-service/`, `apps/worker/src/workers/smsWorker.ts` |
 
-Based on the bug type, check specific locations:
+Common BuildOS traps to check before going deep:
 
-**UI/Component Issues:**
+- Svelte 5 runes: is `$state` / `$derived` / `$effect` used, or old reactive syntax?
+- API response shape: does the route use `ApiResponse` from `$lib/utils/api-response`, or raw `json()`?
+- Supabase client: `locals.supabase` (RLS) vs `createAdminSupabaseClient()` (service role). Mixing these is a frequent source of "works locally, fails in prod".
+- Consumption billing guard: mutations return 402 when account is frozen.
+- Queue job contract: job type registered in `src/worker.ts` and metadata shape declared in `packages/shared-types/src/queue-types.ts`.
 
-- Check `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`
-- For user-facing surfaces, also check `/docs/marketing/brand/BUILDOS_BRAND_ARCHITECTURE.md`
-- Verify Svelte 5 runes usage ($state, $derived, $effect)
-- Verify semantic tokens and automatic theme support
-- Verify responsive design
-- Make sure spacing stays dense and purposeful
-
-**API/Backend Issues:**
-
-- Check `/apps/web/docs/technical/api/` for endpoint documentation
-- Verify `ApiResponse` wrapper usage from `$lib/utils/api-response`
-- Check Supabase access via `locals.supabase`
-
-**Queue/Worker Issues:**
-
-- Check `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`
-- Review `/apps/worker/docs/features/` for job specifications
-- Verify BullMQ job configuration
-
-**Data/Schema Issues:**
-
-- Read `/packages/shared-types/src/database.schema.ts` (primary source)
-- Only check database.types.ts if you need RPC functions (6000+ lines)
-
-### Phase 3: Root Cause Analysis
+### 3. Report root cause
 
 ```markdown
-## Root Cause Found
-
-**Component**: [web/worker/shared]
-**File**: `path/to/file.ts:line`
-**Issue**: [Specific technical issue]
-**Why it happens**: [Clear explanation]
-
-**Fix Classification**:
-
-- [ ] Quick Fix (1-2 line change, same file)
-- [ ] Standard Fix (multiple files, same feature)
-- [ ] Complex Fix (architectural change, multiple features)
+**Component**: web | worker | shared | package:<name>
+**File**: path/to/file.ts:line
+**Cause**: <one sentence on what's actually wrong>
+**Why it slipped through**: <gap in tests / assumption / drift>
+**Size**: quick (1-2 lines) | standard (few files) | structural (architecture touch)
 ```
 
-### Phase 4: Implementation
+### 4. Fix
 
-**For Quick Fixes** - Implement immediately:
+- **Quick fix**: apply directly.
+- **Standard**: propose the diff shape (files + what changes) and wait for confirmation.
+- **Structural**: stop. Suggest `/create-plan` before touching code.
 
-```typescript
-// Show the exact change with context
-// Before:
-let items = state([]); // ❌ Wrong syntax
+Follow BuildOS conventions: runes, semantic tokens with `dark:`, `ApiResponse`, proper types from `@buildos/shared-types`, `pnpm`.
 
-// After:
-let items = $state([]); // ✅ Svelte 5 runes
+### 5. Verify
+
+From the affected app:
+
+```bash
+pnpm lint:fix
+pnpm typecheck
+pnpm test:run -- <nearest test file>
 ```
 
-**For Standard/Complex Fixes** - Present plan first:
+For UI fixes, run the dev server and reproduce the original bug.
 
-```markdown
-## Fix Plan
+State verification results explicitly — don't claim "fixed" from type-check alone.
 
-**Changes Required:**
+### 6. Document (only if material)
 
-1. **File**: `apps/web/src/routes/[route]/+page.svelte`
-    - Fix: [specific change]
-    - Why: [reasoning]
+- If the fix changes documented behavior, update the relevant doc under `apps/[app]/docs/features/[feature]/`.
+- Otherwise the commit message is the record.
 
-2. **File**: `apps/web/src/lib/services/[service].ts`
-    - Fix: [specific change]
-    - Why: [reasoning]
+## Quick-reference paths
 
-**Testing**: How to verify the fix works
-
-Proceed with implementation? (y/n)
-```
-
-### Phase 5: Documentation & Verification
-
-1. **Update relevant docs**:
-    - Feature docs: `/apps/[app]/docs/features/[feature]/`
-    - Update `/docs/reports/bug-fixes-summary.md` if the fix should be recorded
-
-2. **Verification commands**:
-
-    ```bash
-    cd apps/[affected-app]
-    pnpm lint:fix      # Fix formatting
-    pnpm typecheck     # Check types
-    pnpm test:run      # Run tests
-    ```
-
-3. **Manual testing steps**:
-    - Clear, specific steps to verify the fix
-    - Include edge cases
-
-## BuildOS-Specific Checks
-
-Always verify:
-
-- ✅ Using `pnpm` (never npm)
-- ✅ Svelte 5 runes syntax ($state, $derived, $effect)
-- ✅ Semantic tokens with minimal manual `dark:` overrides
-- ✅ Mobile responsiveness
-- ✅ ApiResponse wrapper for API routes
-- ✅ Proper TypeScript types from @buildos/shared-types
-
-## Quick Reference Paths
-
-| Issue Type   | Check These First                                            |
-| ------------ | ------------------------------------------------------------ |
-| UI/Style     | `/apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` |
-| API          | `/apps/web/docs/technical/api/`                              |
-| Database     | `/packages/shared-types/src/database.schema.ts`              |
-| Queue        | `/docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md`           |
-| Architecture | `/docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md`     |
+| Issue type   | First stop |
+|--------------|------------|
+| UI / style   | `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` |
+| API          | `apps/web/docs/technical/api/` |
+| Database     | `packages/shared-types/src/database.schema.ts` |
+| Queue / jobs | `apps/worker/docs/WORKER_JOBS_AND_FLOWS.md` + `docs/architecture/diagrams/QUEUE-SYSTEM-FLOW.md` |
+| Topology     | `docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` |

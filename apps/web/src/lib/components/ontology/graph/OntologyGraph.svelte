@@ -203,6 +203,16 @@
 					width: 3
 				}
 			},
+			// Inferred project links come from project_id, not persisted ontology edges.
+			{
+				selector: 'edge[inferred]',
+				style: {
+					'line-style': 'dotted',
+					'curve-style': 'straight',
+					opacity: 0.55,
+					'target-arrow-shape': 'none'
+				}
+			},
 			// Hover state - accent border, slight scale
 			{
 				selector: 'node.hover',

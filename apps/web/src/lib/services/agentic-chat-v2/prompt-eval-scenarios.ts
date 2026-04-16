@@ -35,7 +35,12 @@ const DEFAULT_FORBIDDEN_ASSISTANT_PATTERNS = [
 	'args need',
 	'< xai:function_call',
 	'Correct that.',
-	'raw tool protocol'
+	'raw tool protocol',
+	'<parameter name=',
+	'</parameter>',
+	'<tool_call',
+	'<function_call',
+	'<arguments>'
 ];
 
 const SCENARIOS: PromptEvalScenario[] = [
@@ -155,6 +160,28 @@ const SCENARIOS: PromptEvalScenario[] = [
 		requiredObservedSkillPaths: ['cal.skill'],
 		requiredObservedOps: ['cal.event.update'],
 		requiredEventTypes: ['skill_loaded', 'done_emitted'],
+		maxValidationFailures: 0,
+		requirePromptSnapshot: true,
+		requireAssistantAnswer: true,
+		requireCompletedStatus: true,
+		forbiddenAssistantPatterns: DEFAULT_FORBIDDEN_ASSISTANT_PATTERNS
+	},
+	{
+		slug: 'project.create.fantasy_novel',
+		version: '1',
+		title: 'Fantasy Novel Project Creation',
+		description:
+			'Seeds the fantasy-novel audit scenario. Verifies that a stated-outcome project creation lands on onto.project.create, does not thrash validation, and never echoes internal tool-call markup into the assistant response.',
+		category: 'workflow',
+		replayRequest: {
+			message:
+				"I'm starting my first fantasy novel, 'The Last Ember'. It's about a young blacksmith named Elena who discovers she can forge magic into metal. Please create a project with a plot summary, and add these seven work items as tasks: outline first three chapters, write character backstory for Elena, design the magic system based on metal and fire, map the world of Aethermoor, research medieval blacksmithing, draft antagonist profile for the Shadow King, and plan a prophecy arc.",
+			contextType: 'project_create'
+		},
+		expectedFirstLane: 'direct_exact_op',
+		expectedFirstOps: ['onto.project.create'],
+		requiredObservedOps: ['onto.project.create'],
+		requiredEventTypes: ['prompt_snapshot_created', 'done_emitted'],
 		maxValidationFailures: 0,
 		requirePromptSnapshot: true,
 		requireAssistantAnswer: true,

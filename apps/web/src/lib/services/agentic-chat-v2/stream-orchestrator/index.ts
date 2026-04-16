@@ -634,7 +634,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				break;
 			}
 
-			const replayToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
+			const replayToolCalls = sanitizeToolCallsForReplay(pendingToolCalls, {
+				redactInvalidDurableText: true
+			});
 			messages.push({
 				role: 'assistant',
 				content: replayAssistantContent,

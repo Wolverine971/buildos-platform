@@ -6,6 +6,13 @@ import type {
 	GraphStats,
 	ViewMode
 } from '$lib/components/ontology/graph/lib/graph.types';
+import {
+	appendGraphScopeFilterParams,
+	buildGraphRequestKey,
+	normalizeGraphScopeFilters,
+	type GraphScopeCounts,
+	type GraphScopeFilters
+} from '$lib/components/ontology/graph/lib/graph.filters';
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -17,6 +24,27 @@ export interface OntologyGraphState {
 	metadata: {
 		viewMode: ViewMode;
 		generatedAt: string;
+		projectId?: string;
+		queryPattern?: string;
+		requestKey?: string;
+		scopeKey?: string;
+		filters?: GraphScopeFilters;
+		scopeCounts?: GraphScopeCounts;
+		projectScope?: {
+			type: 'actor-project-access';
+			actorId: string;
+			projectCount: number;
+			ownedProjectCount: number;
+			memberProjectCount: number;
+		};
+		truncated?: boolean;
+		requestedNodeLimit?: number;
+		originalNodeCount?: number;
+		originalEdgeCount?: number;
+		returnedNodeCount?: number;
+		returnedEdgeCount?: number;
+		omittedNodeCount?: number;
+		omittedEdgeCount?: number;
 	} | null;
 	error: string | null;
 }
@@ -32,23 +60,42 @@ const initialState: OntologyGraphState = {
 
 interface LoadOptions {
 	viewMode?: ViewMode;
+	scopeFilters?: Partial<GraphScopeFilters>;
+	scopeKey?: string | null;
 	force?: boolean;
+}
+
+function buildScopedGraphRequestKey(
+	viewMode: ViewMode,
+	filters: GraphScopeFilters,
+	scopeKey?: string | null
+): string {
+	const baseKey = buildGraphRequestKey(viewMode, filters);
+	return scopeKey ? `${scopeKey}|${baseKey}` : baseKey;
 }
 
 export function createOntologyGraphStore() {
 	const { subscribe, update, set } = writable<OntologyGraphState>(initialState);
 	let controller: AbortController | null = null;
+	let activeRequestKey: string | null = null;
 
 	async function load(options: LoadOptions = {}) {
 		const viewMode = options.viewMode ?? 'full';
+		const scopeFilters = normalizeGraphScopeFilters(options.scopeFilters);
+		const scopeKey = options.scopeKey ?? null;
+		const requestKey = buildScopedGraphRequestKey(viewMode, scopeFilters, scopeKey);
 		let shouldLoad = true;
 
 		update((state) => {
-			if (state.status === 'loading') {
+			if (state.status === 'loading' && activeRequestKey === requestKey) {
 				shouldLoad = false;
 				return state;
 			}
-			if (state.status === 'ready' && !options.force) {
+			if (
+				state.status === 'ready' &&
+				state.metadata?.requestKey === requestKey &&
+				!options.force
+			) {
 				shouldLoad = false;
 				return state;
 			}
@@ -65,10 +112,15 @@ export function createOntologyGraphStore() {
 			controller.abort();
 		}
 		controller = new AbortController();
+		activeRequestKey = requestKey;
 
 		try {
 			const start = typeof performance !== 'undefined' ? performance.now() : 0;
-			const response = await fetch(`/api/onto/graph?viewMode=${viewMode}`, {
+			const params = appendGraphScopeFilterParams(
+				new URLSearchParams({ viewMode }),
+				scopeFilters
+			);
+			const response = await fetch(`/api/onto/graph?${params.toString()}`, {
 				signal: controller.signal,
 				headers: {
 					Accept: 'application/json'
@@ -85,12 +137,16 @@ export function createOntologyGraphStore() {
 					status: 'error',
 					error: message
 				});
+				if (activeRequestKey === requestKey) {
+					activeRequestKey = null;
+				}
 
 				if (typeof window !== 'undefined') {
 					window.dispatchEvent(
 						new CustomEvent('ontology-graph.error', {
 							detail: {
 								viewMode,
+								requestKey,
 								status: response.status,
 								message
 							}
@@ -102,15 +158,25 @@ export function createOntologyGraphStore() {
 			}
 
 			const payload = await response.json();
+			const metadata = {
+				...(payload.data?.metadata ?? {}),
+				viewMode,
+				filters: payload.data?.metadata?.filters ?? scopeFilters,
+				...(scopeKey ? { scopeKey } : {}),
+				requestKey
+			};
 
 			set({
 				status: 'ready',
 				data: payload.data?.source ?? null,
 				graph: payload.data?.graph ?? null,
 				stats: payload.data?.stats ?? null,
-				metadata: payload.data?.metadata ?? null,
+				metadata,
 				error: null
 			});
+			if (activeRequestKey === requestKey) {
+				activeRequestKey = null;
+			}
 
 			if (typeof window !== 'undefined') {
 				const duration =
@@ -119,10 +185,11 @@ export function createOntologyGraphStore() {
 					new CustomEvent('ontology-graph.loaded', {
 						detail: {
 							viewMode,
+							requestKey,
 							nodeCount: payload.data?.graph?.nodes?.length ?? 0,
 							edgeCount: payload.data?.graph?.edges?.length ?? 0,
 							durationMs: duration,
-							metadata: payload.data?.metadata ?? null
+							metadata
 						}
 					})
 				);
@@ -133,6 +200,9 @@ export function createOntologyGraphStore() {
 			}
 
 			console.error('[Ontology Graph Store] Failed to load graph', err);
+			if (activeRequestKey === requestKey) {
+				activeRequestKey = null;
+			}
 			set({
 				...initialState,
 				status: 'error',
@@ -144,6 +214,7 @@ export function createOntologyGraphStore() {
 					new CustomEvent('ontology-graph.error', {
 						detail: {
 							viewMode,
+							requestKey,
 							status: 'network',
 							message: (err as Error)?.message ?? 'Unexpected error'
 						}
@@ -158,6 +229,7 @@ export function createOntologyGraphStore() {
 			controller.abort();
 			controller = null;
 		}
+		activeRequestKey = null;
 		set(initialState);
 	}
 

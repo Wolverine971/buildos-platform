@@ -1003,17 +1003,6 @@ Only updates fields that are provided - omitted fields remain unchanged.`,
 						type: 'string',
 						description: 'New description'
 					},
-					update_strategy: {
-						type: 'string',
-						enum: ['replace', 'append', 'merge_llm'],
-						description:
-							"How to apply description updates: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing description."
-					},
-					merge_instructions: {
-						type: 'string',
-						description:
-							'Optional guidance when merging description text (e.g., keep bullets, integrate notes). Used with append/merge_llm.'
-					},
 					type_key: {
 						type: 'string',
 						description:
@@ -1088,17 +1077,6 @@ Only updates fields that are provided.`,
 						type: 'string',
 						description: 'New description'
 					},
-					update_strategy: {
-						type: 'string',
-						enum: ['replace', 'append', 'merge_llm'],
-						description:
-							"How to apply description updates: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing description."
-					},
-					merge_instructions: {
-						type: 'string',
-						description:
-							'Optional guidance when merging description text (e.g., keep metrics, integrate new notes). Used with append/merge_llm.'
-					},
 					state_key: {
 						type: 'string',
 						description: 'New state (planning, active, completed, cancelled)'
@@ -1143,17 +1121,6 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 					description: {
 						type: 'string',
 						description: 'Goal description'
-					},
-					update_strategy: {
-						type: 'string',
-						enum: ['replace', 'append', 'merge_llm'],
-						description:
-							"How to apply description updates: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing description."
-					},
-					merge_instructions: {
-						type: 'string',
-						description:
-							'Optional guidance when merging description text (e.g., preserve KPIs, integrate new targets). Used with append/merge_llm.'
 					},
 					priority: {
 						type: 'number',
@@ -1203,17 +1170,6 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 						type: 'string',
 						description:
 							'Detailed plan body. Use this for the durable source-of-truth plan: objective, scope, success criteria, timeline, dependencies, risks, and task breakdown.'
-					},
-					update_strategy: {
-						type: 'string',
-						enum: ['replace', 'append', 'merge_llm'],
-						description:
-							"How to apply text updates to description or plan body: 'replace' (default), 'append', or 'merge_llm' to intelligently merge with existing text."
-					},
-					merge_instructions: {
-						type: 'string',
-						description:
-							'Optional guidance when merging description text (e.g., preserve milestones, weave in new scope). Used with append/merge_llm.'
 					},
 					start_date: {
 						type: 'string',

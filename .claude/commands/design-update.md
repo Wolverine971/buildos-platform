@@ -1,7 +1,6 @@
 ---
-description: Apply or review BuildOS UI design updates using the Inkprint system and brand constraints.
+description: Apply or review BuildOS UI updates using the Inkprint design system and brand constraints.
 argument-hint: "[scope/files]"
-disable-model-invocation: true
 ---
 
 # Design & Style Components — BuildOS Inkprint System (Tool-First Work Surfaces)

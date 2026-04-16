@@ -50,6 +50,7 @@ import {
 	hasMeaningfulUpdateValue,
 	isAppendOrMergeUpdateStrategy
 } from '$lib/services/agentic-chat/shared/update-value-validation';
+import { assertNoDurableTextViolations } from '$lib/services/agentic-chat/shared/durable-text-validation';
 import { normalizeProjectCreateArgs, validateProjectCreateArgs } from '../project-create-args';
 
 const logger = createLogger('OntologyWriteExecutor');
@@ -402,6 +403,10 @@ function normalizeEntityDates(
 export class OntologyWriteExecutor extends BaseExecutor {
 	constructor(context: ExecutorContext) {
 		super(context);
+	}
+
+	private assertDurableTextSafe(toolName: string, args: unknown): void {
+		assertNoDurableTextViolations(args, toolName);
 	}
 
 	private async fetchProjectOwnerActorId(projectId: string): Promise<string | null> {
@@ -803,6 +808,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (!Array.isArray(args.relationships)) {
 			throw new Error('create_onto_project requires relationships');
 		}
+		this.assertDurableTextSafe('create_onto_project', args);
 
 		if (args.clarifications?.length) {
 			return {
@@ -890,6 +896,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		task: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('create_onto_task', args);
 		const assigneeResolution = await this.resolveTaskAssigneeActorIds({
 			projectId: args.project_id,
 			assigneeActorIds: args.assignee_actor_ids,
@@ -944,6 +951,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		goal: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('create_onto_goal', args);
 		const payload = {
 			project_id: args.project_id,
 			name: args.name,
@@ -967,6 +975,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		plan: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('create_onto_plan', args);
 		const payload = {
 			project_id: args.project_id,
 			name: args.name,
@@ -996,6 +1005,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		document: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('create_onto_document', args);
 		// Support both content (new) and body_markdown (legacy) parameters
 		const documentContent = args.content ?? args.body_markdown ?? null;
 		const payload = {
@@ -1029,6 +1039,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		milestone: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('create_onto_milestone', args);
 		const payload = {
 			project_id: args.project_id,
 			title: args.title,
@@ -1058,6 +1069,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		risk: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('create_onto_risk', args);
 		const payload = {
 			project_id: args.project_id,
 			title: args.title,
@@ -1168,6 +1180,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		edge: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('create_task_document', args);
 		if (!args.task_id) {
 			throw new Error('task_id is required for create_task_document');
 		}
@@ -1202,6 +1215,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		created: number;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('link_onto_entities', args);
 		const payload = {
 			edges: [
 				{
@@ -1281,6 +1295,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		project: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('update_onto_project', args);
 		const updateData: Record<string, unknown> = {};
 		const stateValue = args.state_key ?? args.state;
 
@@ -1322,8 +1337,8 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		task: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('update_onto_task', args);
 		const updateData: Record<string, unknown> = {};
-		const strategy = args.update_strategy ?? 'replace';
 		let taskDetailsCache: any | null = null;
 		const loadTaskDetails = async () => {
 			if (taskDetailsCache) return taskDetailsCache;
@@ -1332,23 +1347,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		};
 
 		if (args.title !== undefined) updateData.title = args.title;
-		if (args.description !== undefined) {
-			updateData.description = await this.resolveTextWithStrategy({
-				strategy,
-				newContent: args.description ?? '',
-				instructions: args.merge_instructions,
-				entityLabel: `task:${args.task_id}`,
-				existingLoader: async () => {
-					const details = await loadTaskDetails();
-					// Description is now a column, not in props
-					const raw = details?.task?.description;
-					return {
-						text: typeof raw === 'string' ? raw : '',
-						projectId: details?.task?.project_id as string | undefined
-					};
-				}
-			});
-		}
+		if (args.description !== undefined) updateData.description = args.description;
 		if (args.type_key !== undefined) updateData.type_key = args.type_key;
 		if (args.state_key !== undefined) {
 			updateData.state_key = this.normalizeTaskState(args.state_key);
@@ -1400,34 +1399,16 @@ export class OntologyWriteExecutor extends BaseExecutor {
 
 	async updateOntoGoal(
 		args: UpdateOntoGoalArgs,
-		getGoalDetails: (goalId: string) => Promise<any>
+		_getGoalDetails: (goalId: string) => Promise<any>
 	): Promise<{
 		goal: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('update_onto_goal', args);
 		const updateData: Record<string, unknown> = {};
-		const strategy = args.update_strategy ?? 'replace';
 
 		if (args.name !== undefined) updateData.name = args.name;
-		if (args.description !== undefined) {
-			updateData.description = await this.resolveTextWithStrategy({
-				strategy,
-				newContent: args.description ?? '',
-				instructions: args.merge_instructions,
-				entityLabel: `goal:${args.goal_id}`,
-				existingLoader: async () => {
-					const details = await getGoalDetails(args.goal_id);
-					// Description is now a column, fall back to props for backwards compat
-					const raw =
-						details?.goal?.description ??
-						(details?.goal?.props as Record<string, unknown>)?.description;
-					return {
-						text: typeof raw === 'string' ? raw : '',
-						projectId: details?.goal?.project_id as string | undefined
-					};
-				}
-			});
-		}
+		if (args.description !== undefined) updateData.description = args.description;
 		if (args.priority !== undefined) updateData.priority = args.priority;
 		if (args.target_date !== undefined) updateData.target_date = args.target_date;
 		if (args.measurement_criteria !== undefined)
@@ -1451,52 +1432,17 @@ export class OntologyWriteExecutor extends BaseExecutor {
 
 	async updateOntoPlan(
 		args: UpdateOntoPlanArgs,
-		getPlanDetails: (planId: string) => Promise<any>
+		_getPlanDetails: (planId: string) => Promise<any>
 	): Promise<{
 		plan: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('update_onto_plan', args);
 		const updateData: Record<string, unknown> = {};
-		const strategy = args.update_strategy ?? 'replace';
 
 		if (args.name !== undefined) updateData.name = args.name;
-		if (args.description !== undefined) {
-			updateData.description = await this.resolveTextWithStrategy({
-				strategy,
-				newContent: args.description ?? '',
-				instructions: args.merge_instructions,
-				entityLabel: `plan:${args.plan_id}`,
-				existingLoader: async () => {
-					const details = await getPlanDetails(args.plan_id);
-					// Description is now a column, fall back to props for backwards compat
-					const raw =
-						details?.plan?.description ??
-						(details?.plan?.props as Record<string, unknown>)?.description;
-					return {
-						text: typeof raw === 'string' ? raw : '',
-						projectId: details?.plan?.project_id as string | undefined
-					};
-				}
-			});
-		}
-		if (args.plan !== undefined) {
-			updateData.plan = await this.resolveTextWithStrategy({
-				strategy,
-				newContent: args.plan ?? '',
-				instructions: args.merge_instructions,
-				entityLabel: `plan:${args.plan_id}`,
-				existingLoader: async () => {
-					const details = await getPlanDetails(args.plan_id);
-					const raw =
-						details?.plan?.plan ??
-						(details?.plan?.props as Record<string, unknown>)?.plan;
-					return {
-						text: typeof raw === 'string' ? raw : '',
-						projectId: details?.plan?.project_id as string | undefined
-					};
-				}
-			});
-		}
+		if (args.description !== undefined) updateData.description = args.description;
+		if (args.plan !== undefined) updateData.plan = args.plan;
 		if (args.start_date !== undefined) updateData.start_date = args.start_date;
 		if (args.end_date !== undefined) updateData.end_date = args.end_date;
 		if (args.state_key !== undefined) updateData.state_key = args.state_key;
@@ -1524,6 +1470,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		document: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('update_onto_document', args);
 		const normalizedArgs = this.normalizeDocumentUpdateArgs(args);
 		const updateData: Record<string, unknown> = {};
 
@@ -1537,7 +1484,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		const strategy = normalizedArgs.update_strategy ?? 'replace';
 		if (
 			isAppendOrMergeUpdateStrategy(strategy) &&
-			!getDocumentUpdateContentCandidate(normalizedArgs as Record<string, unknown>)
+			!getDocumentUpdateContentCandidate(normalizedArgs as unknown as Record<string, unknown>)
 		) {
 			throw new Error(`update_onto_document ${strategy} requires non-empty content.`);
 		}
@@ -1587,6 +1534,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		milestone: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('update_onto_milestone', args);
 		const updateData: Record<string, unknown> = {};
 
 		if (args.title !== undefined) updateData.title = args.title;
@@ -1614,6 +1562,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		risk: any;
 		message: string;
 	}> {
+		this.assertDurableTextSafe('update_onto_risk', args);
 		const updateData: Record<string, unknown> = {};
 
 		if (args.title !== undefined) updateData.title = args.title;
@@ -1650,6 +1599,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		notified_user_ids: string[];
 		message: string;
 	}> {
+		this.assertDurableTextSafe('tag_onto_entity', args);
 		const projectId = args.project_id?.trim();
 		const entityId = args.entity_id?.trim();
 		if (!projectId) {

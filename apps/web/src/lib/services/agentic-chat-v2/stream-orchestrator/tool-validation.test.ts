@@ -73,4 +73,21 @@ describe('tool validation', () => {
 
 		expect(issues).toEqual([]);
 	});
+
+	it('rejects internal tool markup in durable write text', () => {
+		const issues = validateToolCalls(
+			[
+				createToolCall('update_onto_document', {
+					document_id: documentId,
+					content: '## Progress\n\n</parameter><parameter name="update_strategy">replace'
+				})
+			],
+			[updateDocumentTool]
+		);
+
+		expect(issues).toHaveLength(1);
+		expect(issues[0]?.errors).toContain(
+			'args.content contains internal tool-call markup (parameter_tag). Remove the tool syntax and pass only user-visible content.'
+		);
+	});
 });

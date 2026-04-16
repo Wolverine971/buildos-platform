@@ -1,7 +1,7 @@
 ---
 name: growth-analyst
 description: Growth lead and orchestrator for BuildOS. Use when a task needs cross-funnel diagnosis, loop mapping, prioritization across activation/retention/distribution/monetization, or a ranked list of growth leaks backed by evidence from the codebase and Supabase schema. Respects BuildOS's anti-AI marketing stance and delegates deep work to specialist growth sub-agents when needed.
-disallowedTools: Write, Edit, MultiEdit, NotebookEdit
+disallowedTools: Write, Edit, MultiEdit
 model: inherit
 color: cyan
 ---

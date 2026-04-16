@@ -17,20 +17,33 @@
 		AlertTriangle
 	} from 'lucide-svelte';
 	import type { GraphStats, OntologyGraphInstance, ViewMode } from './lib/graph.types';
+	import {
+		DEFAULT_GRAPH_SCOPE_FILTERS,
+		normalizeGraphScopeFilters,
+		type GraphScopeCounts,
+		type GraphScopeFilterKey,
+		type GraphScopeFilters
+	} from './lib/graph.filters';
 
 	type GraphLibrary = 'cytoscape' | 'svelteflow' | 'g6';
 
 	let {
 		viewMode = $bindable<ViewMode>(),
+		scopeFilters = $bindable<GraphScopeFilters>(DEFAULT_GRAPH_SCOPE_FILTERS),
 		graphInstance,
 		graphLibrary = 'cytoscape' as GraphLibrary,
 		stats,
+		scopeCounts,
+		showScopeControls = true,
 		showStats = true
 	}: {
 		viewMode: ViewMode;
+		scopeFilters?: GraphScopeFilters;
 		graphInstance: OntologyGraphInstance | null;
 		graphLibrary?: GraphLibrary;
 		stats: GraphStats;
+		scopeCounts?: GraphScopeCounts;
+		showScopeControls?: boolean;
 		showStats?: boolean;
 	} = $props();
 
@@ -56,6 +69,7 @@
 	let selectedLayout = $state('cose-bilkent'); // Default to spring layout
 	let selectedFilter = $state('all');
 	let statsExpanded = $state(false);
+	let scopeExpanded = $state(true);
 	let legendExpanded = $state(true);
 
 	const layouts = [
@@ -76,6 +90,82 @@
 		{ value: 'risk', label: 'Risks' }
 	];
 
+	const taskScopeToggles: Array<{
+		key: GraphScopeFilterKey;
+		label: string;
+		description: string;
+	}> = [
+		{
+			key: 'showActiveTasks',
+			label: 'Active tasks',
+			description: 'Show in-progress and blocked tasks.'
+		},
+		{
+			key: 'showScheduledTasks',
+			label: 'Scheduled tasks',
+			description: 'Show tasks with a start or due date.'
+		},
+		{
+			key: 'showBacklogTasks',
+			label: 'Backlog tasks',
+			description: 'Show unscheduled todo/draft tasks.'
+		},
+		{
+			key: 'showDoneTasks',
+			label: 'Done tasks',
+			description: 'Show completed tasks.'
+		}
+	];
+
+	const entityScopeToggles: Array<{
+		key: GraphScopeFilterKey;
+		label: string;
+		description: string;
+	}> = [
+		{
+			key: 'showCompletedPlans',
+			label: 'Completed plans',
+			description: 'Show plans that are already completed.'
+		},
+		{
+			key: 'showAchievedGoals',
+			label: 'Achieved goals',
+			description: 'Show achieved or abandoned goals.'
+		},
+		{
+			key: 'showCompletedMilestones',
+			label: 'Completed milestones',
+			description: 'Show completed milestones.'
+		},
+		{
+			key: 'showClosedRisks',
+			label: 'Closed risks',
+			description: 'Show mitigated or closed risks.'
+		},
+		{
+			key: 'showInactiveProjects',
+			label: 'Inactive projects',
+			description: 'Show completed or cancelled projects.'
+		},
+		{
+			key: 'showArchived',
+			label: 'Archived',
+			description: 'Show archived entities.'
+		}
+	];
+
+	const structureScopeToggles: Array<{
+		key: GraphScopeFilterKey;
+		label: string;
+		description: string;
+	}> = [
+		{
+			key: 'showInferredProjectLinks',
+			label: 'Project links',
+			description: 'Show inferred project ownership links from project_id.'
+		}
+	];
+
 	// Node legend items with colors matching the graph
 	const nodeLegend = [
 		{ icon: FolderKanban, label: 'Project', color: 'text-emerald-500' },
@@ -93,7 +183,8 @@
 		{ color: 'bg-amber-500', label: 'Goals' },
 		{ color: 'bg-orange-500', label: 'Depends' },
 		{ color: 'bg-emerald-500', label: 'Milestone' },
-		{ color: 'bg-blue-500', label: 'Document' }
+		{ color: 'bg-blue-500', label: 'Document' },
+		{ color: 'bg-zinc-400 border-t border-dotted border-zinc-400', label: 'Project FK' }
 	];
 
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -140,6 +231,54 @@
 				);
 			}
 		}
+	}
+
+	function isScopeFilterChecked(key: GraphScopeFilterKey): boolean {
+		return normalizeGraphScopeFilters(scopeFilters)[key];
+	}
+
+	function updateScopeFilter(key: GraphScopeFilterKey, value: boolean) {
+		scopeFilters = {
+			...normalizeGraphScopeFilters(scopeFilters),
+			[key]: value
+		};
+		if (typeof window !== 'undefined') {
+			window.dispatchEvent(
+				new CustomEvent('ontology-graph.interaction', {
+					detail: { type: 'scope_filter', key, value }
+				})
+			);
+		}
+	}
+
+	function formatCount(value: number): string {
+		return new Intl.NumberFormat().format(value);
+	}
+
+	function formatScopeCount(key: GraphScopeFilterKey): string | null {
+		const count = scopeCounts?.[key];
+		if (!count) return null;
+		if (count.returned === count.total) return formatCount(count.total);
+		return `${formatCount(count.returned)}/${formatCount(count.total)}`;
+	}
+
+	function getScopeCountTitle(toggle: { key: GraphScopeFilterKey; description: string }): string {
+		const count = scopeCounts?.[toggle.key];
+		if (!count) return toggle.description;
+
+		const parts = [
+			toggle.description,
+			`${formatCount(count.returned)} shown`,
+			`${formatCount(count.total)} total`
+		];
+		if (count.filteredOut > 0) {
+			parts.push(`${formatCount(count.filteredOut)} hidden by filters`);
+		}
+		if (count.omitted > 0) {
+			parts.push(`${formatCount(count.omitted)} omitted by node limit`);
+		}
+
+		return parts.join('. ');
 	}
 
 	onDestroy(() => {
@@ -282,6 +421,14 @@
 						>
 						<span class="text-violet-600/70 dark:text-violet-400/70">Decisions</span>
 					</div>
+					<div
+						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
+					>
+						<span class="text-lg font-bold text-foreground"
+							>{stats.totalInferredEdges ?? 0}</span
+						>
+						<span class="text-muted-foreground">FK links</span>
+					</div>
 				</div>
 			{/if}
 		</div>
@@ -327,6 +474,131 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- Scope Filters -->
+		{#if showScopeControls}
+			<div class="border border-border rounded-lg overflow-hidden bg-card">
+				<button
+					type="button"
+					class="w-full flex items-center justify-between px-2.5 py-2 text-[0.65rem] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition pressable"
+					onclick={() => (scopeExpanded = !scopeExpanded)}
+					aria-expanded={scopeExpanded}
+				>
+					<span>Scope</span>
+					{#if scopeExpanded}
+						<ChevronDown class="w-3 h-3 shrink-0" />
+					{:else}
+						<ChevronRight class="w-3 h-3 shrink-0" />
+					{/if}
+				</button>
+
+				{#if scopeExpanded}
+					<div class="border-t border-border p-2.5 space-y-2 animate-ink-in">
+						<div>
+							<p
+								class="mb-1 text-[0.62rem] font-bold uppercase tracking-wider text-muted-foreground"
+							>
+								Tasks
+							</p>
+							<div class="grid grid-cols-2 gap-1.5">
+								{#each taskScopeToggles as toggle}
+									<label
+										class="flex min-w-0 items-center gap-1.5 text-[0.65rem] text-muted-foreground hover:text-foreground"
+										title={getScopeCountTitle(toggle)}
+									>
+										<input
+											type="checkbox"
+											checked={isScopeFilterChecked(toggle.key)}
+											onchange={(event) =>
+												updateScopeFilter(
+													toggle.key,
+													event.currentTarget.checked
+												)}
+											class="h-3 w-3 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0"
+										/>
+										<span class="truncate">{toggle.label}</span>
+										{#if formatScopeCount(toggle.key)}
+											<span
+												class="ml-auto shrink-0 font-mono text-[0.58rem] text-muted-foreground/80"
+												>{formatScopeCount(toggle.key)}</span
+											>
+										{/if}
+									</label>
+								{/each}
+							</div>
+						</div>
+
+						<div class="border-t border-border/50 pt-2">
+							<p
+								class="mb-1 text-[0.62rem] font-bold uppercase tracking-wider text-muted-foreground"
+							>
+								Other
+							</p>
+							<div class="grid grid-cols-2 gap-1.5">
+								{#each entityScopeToggles as toggle}
+									<label
+										class="flex min-w-0 items-center gap-1.5 text-[0.65rem] text-muted-foreground hover:text-foreground"
+										title={getScopeCountTitle(toggle)}
+									>
+										<input
+											type="checkbox"
+											checked={isScopeFilterChecked(toggle.key)}
+											onchange={(event) =>
+												updateScopeFilter(
+													toggle.key,
+													event.currentTarget.checked
+												)}
+											class="h-3 w-3 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0"
+										/>
+										<span class="truncate">{toggle.label}</span>
+										{#if formatScopeCount(toggle.key)}
+											<span
+												class="ml-auto shrink-0 font-mono text-[0.58rem] text-muted-foreground/80"
+												>{formatScopeCount(toggle.key)}</span
+											>
+										{/if}
+									</label>
+								{/each}
+							</div>
+						</div>
+
+						<div class="border-t border-border/50 pt-2">
+							<p
+								class="mb-1 text-[0.62rem] font-bold uppercase tracking-wider text-muted-foreground"
+							>
+								Structure
+							</p>
+							<div class="grid grid-cols-2 gap-1.5">
+								{#each structureScopeToggles as toggle}
+									<label
+										class="flex min-w-0 items-center gap-1.5 text-[0.65rem] text-muted-foreground hover:text-foreground"
+										title={getScopeCountTitle(toggle)}
+									>
+										<input
+											type="checkbox"
+											checked={isScopeFilterChecked(toggle.key)}
+											onchange={(event) =>
+												updateScopeFilter(
+													toggle.key,
+													event.currentTarget.checked
+												)}
+											class="h-3 w-3 rounded border-border text-accent focus:ring-accent/50 focus:ring-offset-0"
+										/>
+										<span class="truncate">{toggle.label}</span>
+										{#if formatScopeCount(toggle.key)}
+											<span
+												class="ml-auto shrink-0 font-mono text-[0.58rem] text-muted-foreground/80"
+												>{formatScopeCount(toggle.key)}</span
+											>
+										{/if}
+									</label>
+								{/each}
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Search & Filter Row -->
 		{#if features.search || features.filter}

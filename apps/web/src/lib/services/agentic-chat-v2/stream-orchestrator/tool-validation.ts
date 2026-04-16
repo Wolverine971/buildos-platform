@@ -12,6 +12,11 @@ import {
 	hasMeaningfulUpdateValue,
 	isAppendOrMergeUpdateStrategy
 } from '$lib/services/agentic-chat/shared/update-value-validation';
+import {
+	findDurableTextViolations,
+	formatDurableTextViolations,
+	isOntologyDurableWriteTool
+} from '$lib/services/agentic-chat/shared/durable-text-validation';
 import { parseToolArguments } from './tool-arguments';
 
 const UPDATE_TOOL_PREFIX = 'update_onto_';
@@ -131,6 +136,14 @@ export function validateToolCalls(
 		}
 
 		validateUuidArgs(toolName, args, errors);
+
+		if (isOntologyDurableWriteTool(toolName)) {
+			for (const error of formatDurableTextViolations(findDurableTextViolations(args))) {
+				if (!errors.includes(error)) {
+					errors.push(error);
+				}
+			}
+		}
 
 		if (toolName.startsWith(UPDATE_TOOL_PREFIX)) {
 			validateUpdateToolArgs(toolName, args, errors, normalizedOp);

@@ -147,8 +147,8 @@ export async function buildLitePromptPreview(params: {
 		entityId,
 		input: params.input.project_focus ?? params.input.projectFocus ?? null
 	});
-	const tools = selectFastChatTools({ contextType });
 	const sampleMessage = trimOptionalString(params.input.sample_message) ?? '';
+	const tools = selectFastChatTools({ contextType, latestUserMessage: sampleMessage });
 	const promptContext = await loadFastChatPromptContext({
 		supabase: params.supabase,
 		userId: params.userId,

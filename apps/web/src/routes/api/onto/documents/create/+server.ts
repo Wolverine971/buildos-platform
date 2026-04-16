@@ -33,7 +33,7 @@ import {
 import { addDocumentToTree } from '$lib/services/ontology/doc-structure.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { ParentRef } from '$lib/services/ontology/containment-organizer';
-import type { DocumentState, DocStructure } from '$lib/types/onto';
+import { isValidTypeKey, type DocumentState, type DocStructure } from '$lib/types/onto';
 import { logOntologyApiError } from '../../shared/error-logging';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -52,6 +52,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			title,
 			state_key = 'draft',
+			type_key,
 			body_markdown,
 			content,
 			description,
@@ -79,6 +80,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (hasStateInput && !normalizedState) {
 			return ApiResponse.badRequest(
 				`state_key must be one of: ${DOCUMENT_STATES.join(', ')}`
+			);
+		}
+
+		// Forgiving type_key handling: use the requested value if it matches the
+		// document taxonomy; silently fall back to document.default otherwise so
+		// a malformed type does not reject an otherwise-valid write.
+		const requestedTypeKey =
+			typeof type_key === 'string' && type_key.trim() ? type_key.trim() : null;
+		const normalizedTypeKey =
+			requestedTypeKey && isValidTypeKey(requestedTypeKey, 'document')
+				? requestedTypeKey
+				: null;
+		if (requestedTypeKey && !normalizedTypeKey && dev) {
+			console.warn(
+				`[Document API] Requested type_key "${requestedTypeKey}" did not match document taxonomy; falling back to document.default.`
 			);
 		}
 
@@ -207,7 +223,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.insert({
 				project_id: project_id as string,
 				title: title.trim(),
-				type_key: 'document.default',
+				type_key: normalizedTypeKey ?? 'document.default',
 				state_key: (normalizedState ?? 'draft') as DocumentState,
 				content: normalizedContent,
 				description: normalizedDescription,

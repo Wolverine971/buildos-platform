@@ -34,6 +34,16 @@ import type {
 } from '$lib/types/onto-api';
 import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 
+const COMPLETED_TASK_STATES = new Set(['done', 'complete', 'completed']);
+
+function isCompletedTask(task: OntoTask): boolean {
+	const state = String(task.state_key ?? '').toLowerCase();
+	return (
+		COMPLETED_TASK_STATES.has(state) ||
+		(typeof task.completed_at === 'string' && task.completed_at.length > 0)
+	);
+}
+
 /**
  * Load all ontology data for a single project in parallel.
  * Uses project_id index on all tables for O(1) lookups.
@@ -173,7 +183,7 @@ export async function loadProjectGraphData(
 
 	const filteredTasks =
 		shouldFetch('task') && excludeCompletedTasks
-			? ((tasksResult.data ?? []) as OntoTask[]).filter((task) => task.state_key !== 'done')
+			? ((tasksResult.data ?? []) as OntoTask[]).filter((task) => !isCompletedTask(task))
 			: ((tasksResult.data ?? []) as OntoTask[]);
 
 	const filteredTaskIds = new Set(filteredTasks.map((task) => task.id));
@@ -333,7 +343,7 @@ export async function loadMultipleProjectGraphs(
 
 	const filteredTasks =
 		shouldFetch('task') && excludeCompletedTasks
-			? tasksData.filter((task) => task.state_key !== 'done')
+			? tasksData.filter((task) => !isCompletedTask(task))
 			: tasksData;
 
 	const filteredTaskIds = new Set(filteredTasks.map((task) => task.id));

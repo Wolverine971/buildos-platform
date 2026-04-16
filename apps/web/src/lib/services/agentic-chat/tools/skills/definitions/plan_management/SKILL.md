@@ -86,8 +86,10 @@ BuildOS plan workflow playbook for turning a goal or milestone into a durable ex
 
 - Read the existing plan and tasks before updating. Preserve useful context instead of replacing it blindly.
 - If the plan is just a paragraph, rewrite it into the full anatomy: Objective, Scope, Success Criteria, Context/Rationale, Timeline, Task Breakdown, Dependencies, Owners/Resources, Assumptions/Risks, and Review Cadence.
-- Use `update_onto_plan({ plan_id: "<plan_id>", plan: "<revised detailed plan body>", description: "<short synopsis>", update_strategy: "replace" })` when replacing a weak plan.
-- Use `update_onto_plan({ plan_id: "<plan_id>", plan: "<new facts or changes>", update_strategy: "merge_llm", merge_instructions: "Preserve the current structure, update timeline and dependencies, and keep completed work as context only when it affects remaining execution." })` when the plan is mostly good but stale.
+- `update_onto_plan` replaces fields directly — it does not append or merge server-side.
+- When replacing a weak plan, pass the full revised plan body:
+  `update_onto_plan({ plan_id: "<plan_id>", plan: "<revised detailed plan body>", description: "<short synopsis>" })`
+- When the plan is mostly good but stale, first read the current plan body, compose the merged text yourself (preserve the current structure, update timeline and dependencies, and keep completed work as context only when it affects remaining execution), then write the full merged body back in a single `update_onto_plan` call.
 - After updating the plan body, add, update, or retire tasks so the task graph matches the plan.
 
 ### Turn an unstructured request into a plan and tasks

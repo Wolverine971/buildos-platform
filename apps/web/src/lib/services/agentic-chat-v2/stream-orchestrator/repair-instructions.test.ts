@@ -225,4 +225,77 @@ describe('repair instruction policy', () => {
 			})
 		).toBe('I updated the document.');
 	});
+
+	it('corrects document link claims when no link write succeeded', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'create_onto_document',
+				args: {
+					project_id: '56bcc3cf-67ae-491f-ace9-6d1c7d4e9bfc',
+					title: 'Chapter 2 Notes',
+					description: 'Notes',
+					content: 'Notes'
+				}
+			})
+		];
+
+		const finalText = enforceMutationOutcomeIntegrity(
+			'I created and linked the document to the outline.',
+			{
+				contextType: 'project',
+				toolExecutions
+			}
+		);
+
+		expect(finalText).toContain('I created and linked the document to the outline.');
+		expect(finalText).toContain('Correction: I did not create a document link.');
+	});
+
+	it('does not correct task-to-goal link claims when a document is mentioned in a separate clause', () => {
+		// Regression: the prior whole-answer regex saw "linked" and "document" in
+		// the same response and appended a spurious document-link correction even
+		// though the claim was about tasks being linked to a goal.
+		const toolExecutions = [
+			createExecution({
+				name: 'create_onto_project',
+				args: {
+					title: 'The Last Ember',
+					entities: []
+				},
+				result: {
+					project: { id: '7a04594e-8ebc-4a71-a188-816a696cd25c' }
+				}
+			})
+		];
+
+		const finalText = enforceMutationOutcomeIntegrity(
+			'Created the project with 7 tasks linked to the main goal. I also added an auto-generated context document for the plot summary.',
+			{
+				contextType: 'project',
+				toolExecutions
+			}
+		);
+
+		expect(finalText).not.toContain('Correction: I did not create a document link.');
+	});
+
+	it('allows document placement claims when a tree move succeeded', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'move_document_in_tree',
+				args: {
+					project_id: '56bcc3cf-67ae-491f-ace9-6d1c7d4e9bfc',
+					document_id: '3e9432fb-90e1-4404-a480-c73186b1337d',
+					new_parent_id: 'c9ff9921-7bcb-493f-a8b0-44ef8668f29c'
+				}
+			})
+		];
+
+		expect(
+			enforceMutationOutcomeIntegrity('I moved the document into the research area.', {
+				contextType: 'project',
+				toolExecutions
+			})
+		).toBe('I moved the document into the research area.');
+	});
 });

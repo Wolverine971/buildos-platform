@@ -73,6 +73,12 @@ describe('buildMasterPrompt instruction rewrite', () => {
 		expect(instructionsBlock).toContain('## Agent Behavior');
 		expect(instructionsBlock).toContain('Do not claim actions you did not perform.');
 		expect(instructionsBlock).toContain(
+			'Lead-ins are intent only: say what you will attempt, not that it already happened.'
+		);
+		expect(instructionsBlock).toContain(
+			'After tool calls complete, summarize what actually happened from successful and failed tool results'
+		);
+		expect(instructionsBlock).toContain(
 			'Only say an entity was created, updated, moved, merged, archived, deleted, scheduled, or linked after the corresponding write tool succeeded.'
 		);
 		expect(instructionsBlock).toContain(

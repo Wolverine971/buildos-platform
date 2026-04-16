@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.test.ts
 /**
- * Tests for data update strategies in ChatToolExecutor
+ * Tests for write update behavior in ChatToolExecutor
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -12,7 +12,7 @@ import type { SmartLLMService } from '$lib/services/smart-llm-service';
 // Mock modules
 vi.mock('$lib/services/smart-llm-service');
 
-describe('ChatToolExecutor - Update Strategies', () => {
+describe('ChatToolExecutor - Update Behavior', () => {
 	let toolExecutor: ChatToolExecutor;
 	let mockSupabase: SupabaseClient<Database>;
 	let mockLLMService: SmartLLMService;
@@ -388,8 +388,8 @@ describe('ChatToolExecutor - Update Strategies', () => {
 		});
 	});
 
-	describe('Task Update Strategies', () => {
-		it('should apply append strategy to task descriptions', async () => {
+	describe('Task Updates', () => {
+		it('should directly replace task descriptions and ignore stray strategy args', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call-6',
 				type: 'function',
@@ -406,21 +406,14 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			const result = await toolExecutor.execute(toolCall);
 
 			expect(result.success).toBe(true);
-			// Should fetch existing task
-			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining('/api/onto/tasks/task-123'),
-				expect.any(Object)
-			);
-			// Should update with appended description
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/tasks/task-123'),
 				expect.objectContaining({
 					method: 'PATCH',
-					body: expect.stringContaining(
-						'Existing task description\\n\\nAdditional requirements'
-					)
+					body: expect.stringContaining('"description":"Additional requirements"')
 				})
 			);
+			expect(mockLLMService.generateTextDetailed).not.toHaveBeenCalled();
 		});
 
 		it('should handle missing description field gracefully', async () => {
@@ -542,7 +535,7 @@ describe('ChatToolExecutor - Update Strategies', () => {
 	});
 
 	describe('Edge Cases and Error Handling', () => {
-		it('should not update if no new content is provided', async () => {
+		it('should reject append when no new content is provided', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call-8',
 				type: 'function',
@@ -558,20 +551,11 @@ describe('ChatToolExecutor - Update Strategies', () => {
 
 			const result = await toolExecutor.execute(toolCall);
 
-			expect(result.success).toBe(true);
-			// Should fetch existing content
-			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining('/api/onto/documents/doc-123'),
-				expect.any(Object)
+			expect(result.success).toBe(false);
+			expect(result.error).toContain(
+				'update_onto_document append requires non-empty content.'
 			);
-			// Should preserve existing content when new is empty
-			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining('/api/onto/documents/doc-123'),
-				expect.objectContaining({
-					method: 'PATCH',
-					body: expect.stringContaining('Existing document content')
-				})
-			);
+			expect(mockFetch).not.toHaveBeenCalled();
 		});
 
 		it('should handle fetch errors gracefully', async () => {
@@ -719,8 +703,8 @@ describe('ChatToolExecutor - Update Strategies', () => {
 		});
 	});
 
-	describe('Goals and Plans Update Strategies', () => {
-		it('should apply strategies to goal descriptions', async () => {
+	describe('Goals and Plans Updates', () => {
+		it('should directly replace goal descriptions and ignore stray strategy args', async () => {
 			// Mock goal endpoints
 			mockFetch = vi.fn().mockImplementation((url, options) => {
 				if (
@@ -783,14 +767,13 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				expect.stringContaining('/api/onto/goals/goal-123'),
 				expect.objectContaining({
 					method: 'PATCH',
-					body: expect.stringContaining(
-						'Original goal description\\n\\nAdditional success criteria'
-					)
+					body: expect.stringContaining('"description":"Additional success criteria"')
 				})
 			);
+			expect(mockLLMService.generateTextDetailed).not.toHaveBeenCalled();
 		});
 
-		it('should apply strategies to plan descriptions', async () => {
+		it('should directly replace plan descriptions and ignore stray strategy args', async () => {
 			// Mock plan endpoints
 			mockFetch = vi.fn().mockImplementation((url, options) => {
 				if (
@@ -850,12 +833,14 @@ describe('ChatToolExecutor - Update Strategies', () => {
 			const result = await executor.execute(toolCall);
 
 			expect(result.success).toBe(true);
-			expect(mockLLMService.generateTextDetailed).toHaveBeenCalledWith(
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining('/api/onto/plans/plan-123'),
 				expect.objectContaining({
-					prompt: expect.stringContaining('Original plan outline'),
-					operationType: 'agentic_chat_content_merge'
+					method: 'PATCH',
+					body: expect.stringContaining('"description":"New milestones discovered"')
 				})
 			);
+			expect(mockLLMService.generateTextDetailed).not.toHaveBeenCalled();
 		});
 
 		it('should create plans with a detailed body and concrete type key', async () => {
@@ -988,11 +973,10 @@ describe('ChatToolExecutor - Update Strategies', () => {
 				expect.stringContaining('/api/onto/plans/plan-123'),
 				expect.objectContaining({
 					method: 'PATCH',
-					body: expect.stringContaining(
-						'Existing detailed plan\\n\\nNew timeline and dependency notes'
-					)
+					body: expect.stringContaining('"plan":"New timeline and dependency notes"')
 				})
 			);
+			expect(mockLLMService.generateTextDetailed).not.toHaveBeenCalled();
 		});
 	});
 });

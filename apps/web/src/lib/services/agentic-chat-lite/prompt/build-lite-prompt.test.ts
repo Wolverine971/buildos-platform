@@ -117,6 +117,18 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain(
 			'Tool schemas are supplied through model tool definitions'
 		);
+		expect(envelope.systemPrompt).toContain(
+			'If any write fails and no later retry repairs the same target'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'Pre-tool lead-ins are intent only: say what you will attempt, not that it already happened.'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'User-visible durable fields (titles, descriptions, document content'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'Do not claim a requested document type, tree placement, link, or cross-link'
+		);
 		expect(envelope.systemPrompt).not.toContain('"parameters"');
 		expect(envelope.toolsSummary.discoveryTools).toEqual([
 			'skill_load',

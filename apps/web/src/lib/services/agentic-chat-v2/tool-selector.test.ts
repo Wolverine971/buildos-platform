@@ -72,8 +72,43 @@ describe('selectFastChatTools', () => {
 
 		expect(writeNames).toContain('create_onto_task');
 		expect(writeNames).toContain('update_onto_task');
+		expect(writeNames).toContain('create_onto_document');
 		expect(calendarNames).toContain('get_project_calendar');
 		expect(calendarNames).toContain('set_project_calendar');
+	});
+
+	it('routes common project progress turns to the write profile', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				'Finished Chapter 2 today. Mark the outline task done and add revision work.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toContain('create_onto_task');
+		expect(names).toContain('update_onto_task');
+		expect(names).toContain('create_onto_document');
+		expect(names).toContain('update_onto_document');
+	});
+
+	it('routes document-heavy project turns to the document profile', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				'Capture these research notes in a dedicated document and organize it.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toContain('create_onto_document');
+		expect(names).toContain('update_onto_document');
+		expect(names).toContain('get_document_tree');
+		expect(names).toContain('move_document_in_tree');
 	});
 
 	it('does not expose Libri when the feature flag is disabled', () => {

@@ -854,6 +854,10 @@ export class ToolExecutionService implements BaseService {
 		args: Record<string, any>,
 		errors: string[]
 	): void {
+		// Durable-text markup validation lives in stream-orchestrator/tool-validation
+		// (pre-execution, surfaces to the model) and in ontology-write-executor (last
+		// line before DB). Keeping this layer out avoids duplicate error strings.
+
 		if (toolName.startsWith(ToolExecutionService.UPDATE_TOOL_PREFIX)) {
 			this.validateOntologyUpdateArgs(toolName, args, errors);
 		}

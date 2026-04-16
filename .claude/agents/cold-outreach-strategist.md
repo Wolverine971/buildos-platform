@@ -1,7 +1,7 @@
 ---
 name: cold-outreach-strategist
 description: High-value cold outreach specialist for BuildOS. Use when a task needs cold email strategy, target-specific outreach plans, creator or partner outreach, user research outreach, recruiting outreach, subject line and follow-up design, or a respectful outreach playbook that favors insight over spam.
-disallowedTools: Write, Edit, MultiEdit, NotebookEdit
+disallowedTools: Write, Edit, MultiEdit
 model: inherit
 color: orange
 ---

@@ -1,7 +1,6 @@
 ---
 description: Conduct structured web research with source synthesis and a documented research plan.
 argument-hint: "[research question]"
-disable-model-invocation: true
 ---
 
 # Web Research Agent

@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
 import { streamFastChat } from './stream-orchestrator';
+import { REDACTED_DURABLE_TEXT } from './stream-orchestrator/tool-arguments';
 import type { FastChatHistoryMessage } from './types';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { getToolSchema } from '$lib/services/agentic-chat/tools/registry/tool-schema';
@@ -196,6 +197,78 @@ describe('streamFastChat direct tool orchestration', () => {
 			)
 		).toBe(true);
 		expect(result.finalAssistantText).toBe('Marked the task done.');
+	});
+
+	it('redacts invalid durable text from repair replay before retry', async () => {
+		let streamInvocation = 0;
+		let repairPassMessages: FastChatHistoryMessage[] | undefined;
+		const taskId = '881823a4-e74e-48d2-bf3e-b77db7e47b5f';
+		const invalidDescription =
+			'Chapter 2 notes\n<parameter name="update_strategy">replace</parameter>';
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{ task_id: taskId, description: invalidDescription },
+							'update_onto_task:bad-durable-text'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					repairPassMessages = params.messages as FastChatHistoryMessage[];
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{ task_id: taskId, description: 'Chapter 2 notes' },
+							'update_onto_task:corrected-durable-text'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Updated the task description.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			return {
+				tool_call_id: call.id,
+				result: { ok: true },
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Update the task description.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		const serializedRepairMessages = JSON.stringify(repairPassMessages ?? []);
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(serializedRepairMessages).not.toContain('<parameter');
+		expect(serializedRepairMessages).toContain(REDACTED_DURABLE_TEXT);
+		expect(serializedRepairMessages).toContain(
+			'Tool validation failed: args.description contains internal tool-call markup'
+		);
+		expect(result.finalAssistantText).toBe('Updated the task description.');
 	});
 
 	it('repairs schema-only write success claims by requiring the direct create tool', async () => {

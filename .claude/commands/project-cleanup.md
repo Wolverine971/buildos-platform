@@ -1,254 +1,150 @@
 ---
-description: Audit and clean misplaced BuildOS project documentation and temporary files.
-argument-hint: "[optional scope]"
-disable-model-invocation: true
+description: Audit the BuildOS monorepo for misplaced docs, stale files, and broken references. Produce a prioritized cleanup plan.
+argument-hint: "[optional scope: config | root | docs | thoughts | all]"
 ---
 
-# Project Cleanup Agent - BuildOS Platform
+# Project Cleanup — BuildOS
 
-You are a documentation and configuration cleanup specialist for the BuildOS monorepo. Your job is to audit project organization, identify stale or misplaced files, and propose cleanup actions.
+You are auditing the BuildOS monorepo for organization issues. You do **not** move or delete anything without explicit confirmation. You produce a prioritized report the user can approve line-by-line.
 
-## Initial Response
+## Scope
 
-When invoked, respond with:
+Default is `all`. If the user passes a scope argument, run only that phase.
 
-```
-🧹 BuildOS Project Cleanup Agent
+- `config` — CLAUDE.md + READMEs accuracy
+- `root` — stray files at repo root
+- `docs` — structure + orphans under `docs/` and `apps/*/docs/`
+- `thoughts` — research / ideas hygiene under `thoughts/shared/`
+- `all` — everything, in the order above
 
-Scanning project for organization issues...
+## Phase 1 — Config accuracy
 
-I'll check:
-- Core configuration files (CLAUDE.md, settings)
-- Documentation structure (docs/, thoughts/shared/)
-- Stray files at root level
-- Outdated or conflicting information
+**Inspect** (only these; there is no per-app CLAUDE.md today):
 
-Starting audit...
-```
+- `/CLAUDE.md`
+- `/README.md`
+- `/apps/web/README.md`
+- `/apps/worker/README.md`
 
----
+**For each file, check:**
 
-## Phase 1: Core Configuration Audit
+- Do the referenced paths still exist? (use Glob/Grep before reading)
+- Are tech claims current? (e.g. "BullMQ" → now Supabase queue; "OpenAI primary" → now OpenRouter; job type lists match `apps/worker/src/worker.ts`)
+- Are there conflicting statements across files?
+- Are the scripts listed (`pnpm X`) actually defined in the relevant `package.json`?
 
-### Check these configuration files for accuracy and consistency:
+If you find any path reference that points to a file that doesn't exist, flag it by line number.
 
-**Root Level:**
-- `/CLAUDE.md` - Main AI assistant instructions
-- `/apps/web/CLAUDE.md` - Web app specific instructions
-- `/apps/worker/CLAUDE.md` - Worker service instructions
+**Output:**
 
-**Questions to answer:**
-- Are instructions current and accurate?
-- Are file paths and references still valid?
-- Are deprecated patterns still documented?
-- Are there conflicting instructions between files?
-
-**Output format:**
 ```markdown
-## Configuration File Audit
-
 ### /CLAUDE.md
-- ✅ Up to date | ⚠️ Needs review | ❌ Outdated
-- Issues found: [list]
-- Recommended updates: [list]
-
-### /apps/web/CLAUDE.md
-- [status]
-- Issues: [list]
+Status: ✅ | ⚠️ | ❌
+Broken refs: path:line
+Stale claims: "…"
+Suggested fixes: …
 ```
 
----
+## Phase 2 — Root-level files
 
-## Phase 2: Root Level Cleanup
+**Expected at repo root** (allowed; ignore):
 
-### Scan for files that don't belong at root
+`README.md`, `CLAUDE.md`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `turbo.json`, `nixpacks.toml`, `railway.toml`, `vercel.json`, `.gitignore`, `.env.example`, `.prettier*`, `eslint.config.*`, `tsconfig*.json`, `supabase.openapi*.json`.
 
-**Expected at root:**
-- `README.md` - Project readme
-- `CLAUDE.md` - AI instructions
-- `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`
-- `turbo.json`, `tsconfig.json`
-- `.gitignore`, `.nvmrc`, `.env.example`
-- Standard config files (`.prettierrc`, `eslint.config.js`, etc.)
+**Flag anything else at root** — especially:
 
-**Flag for review/relocation:**
-- Any `.md` files that are NOT `README.md` or `CLAUDE.md`
-- Temporary or scratch files
-- Design docs, specs, or plans (should be in `/docs/` or `/thoughts/`)
-- Audit logs or implementation notes
+- `.md` files other than `README.md` / `CLAUDE.md`
+- Chat session dumps (`chat-session-*.md`)
+- Scratch agent files at root (`growth-agent.md`, etc.)
+- CSV / JSON dumps that aren't version-controlled config
+- PDFs, screenshots
 
-**Output format:**
-```markdown
-## Root Level Files Audit
+**Suggested destinations:**
 
-### ❌ Should Be Relocated
-| File | Suggested Location | Reason |
-|------|-------------------|--------|
-| `design-notes.md` | `/thoughts/shared/ideas/` | Design ideation |
-| `DAILY_BRIEF_AUDIT.md` | `/apps/worker/docs/` | Worker feature doc |
+| Content | Goes to |
+|---------|---------|
+| Design / feature spec | `apps/*/docs/features/[feature]/` or `docs/specs/` |
+| Architecture / cross-cutting design | `docs/architecture/` |
+| Research note | `thoughts/shared/research/YYYY-MM-DD_HH-MM-SS_topic.md` |
+| Exploratory ideas | `thoughts/shared/ideas/` |
+| Worker-specific feature doc | `apps/worker/docs/` |
+| Marketing strategy / campaign | `docs/marketing/` |
+| Raw chat / audit transcripts | `thoughts/shared/scratch/` or delete |
 
-### ⚠️ Needs Review
-- `cron-cleanup.md` - Appears to be temporary notes
+## Phase 3 — Docs structure
 
-### ✅ Properly Placed
-- `README.md`
-- `CLAUDE.md`
-```
+Under `/docs/` and `/apps/*/docs/`:
 
----
+- Find files not linked from any README or index.
+- Find duplicate-topic docs (e.g., multiple `DITHERING_*.md` at the top of `apps/web/docs/technical/`).
+- Find docs that reference deprecated tech (BullMQ, Ollama primary, old pricing copy).
+- Check naming conventions from `docs/DOCUMENTATION_GUIDELINES.md`.
 
-## Phase 3: Documentation Structure Audit
+## Phase 4 — Thoughts hygiene
 
-### Scan `/docs/` directory
+Under `/thoughts/shared/`:
 
-**Check for:**
-- Orphaned documentation (not linked from any index)
-- Duplicate or redundant documents
-- Outdated specs that reference deprecated features
-- Missing cross-references
-- Documents in wrong locations per `/docs/DOCUMENTATION_GUIDELINES.md`
+- Expected subdirectories: `ideas/`, `research/`, `scratch/` (the latter is fine if present).
+- Research docs should use `YYYY-MM-DD_HH-MM-SS_topic-slug.md` naming.
+- Flag research docs with missing frontmatter.
+- Flag idea docs that have been implemented (e.g., referenced feature now exists under `apps/*/docs/features/`).
+- Flag docs older than 90 days with no downstream references — candidates for archive (not delete).
 
-**Key navigation files to verify:**
-- `/docs/README.md` - Main documentation hub
-- `/docs/TASK_INDEX.md` - Task-based navigation
-- `/apps/web/docs/NAVIGATION_INDEX.md` - Web app nav
-- `/apps/web/docs/features/*/README.md` - Feature docs
+## Phase 5 — Cross-reference validation
 
----
+Verify link integrity across all inspected files:
 
-## Phase 4: Thoughts/Research Cleanup
+- Internal markdown links resolve.
+- Referenced paths (`apps/...`, `docs/...`) exist.
+- Updated docs match actual code (e.g. if a doc lists ApiResponse method names, do they exist in `apps/web/src/lib/utils/api-response.ts`?).
 
-### Scan `/thoughts/shared/` directory
+## Phase 6 — Report
 
-**Structure expectations:**
-```
-thoughts/shared/
-├── ideas/          # Exploratory ideas and designs
-├── research/       # Timestamped research docs
-└── [other]/        # Should be categorized
-```
-
-**Check for:**
-- Research docs without proper timestamp format (`YYYY-MM-DD_HH-MM-SS_topic.md`)
-- Missing YAML frontmatter on research docs
-- Stale ideas that were implemented (can be archived)
-- Duplicate research covering same topics
-- Files older than 90 days that may need archival review
-
-**Output format:**
-```markdown
-## Thoughts/Research Audit
-
-### Research Docs Needing Fixes
-| File | Issue |
-|------|-------|
-| `2025-10-06_daily-work-summary.md` | Missing timestamp format |
-
-### Potentially Stale (>90 days)
-- `/thoughts/shared/research/2025-09-27_...` - Consider archiving
-
-### Ideas That May Be Implemented
-- `/thoughts/shared/ideas/chat-spec.md` - Check if superseded by `/apps/web/docs/features/chat-system/`
-```
-
----
-
-## Phase 5: Cross-Reference Validation
-
-### Verify documentation links and references
-
-**Check that:**
-- All internal links in CLAUDE.md files are valid
-- Referenced documentation paths exist
-- Feature documentation matches actual implementation state
-- No broken links to moved/deleted files
-
----
-
-## Phase 6: Generate Cleanup Report
-
-### Create comprehensive report
+Produce one markdown block the user can review:
 
 ```markdown
-# BuildOS Project Cleanup Report
-Generated: [timestamp]
+# BuildOS Cleanup Report — <date>
 
-## Executive Summary
-- Configuration files: [X issues found]
-- Root level cleanup: [X files to relocate]
-- Documentation: [X items need attention]
-- Research/thoughts: [X items for review]
+## Summary
+- Config issues: N
+- Root stragglers: N
+- Doc drift: N
+- Thoughts hygiene: N
 
-## Priority Actions
+## High priority
+1. <action> — <reason>
 
-### High Priority (Do Now)
-1. [Action] - [Reason]
+## Medium priority
+1. …
 
-### Medium Priority (This Week)
-1. [Action] - [Reason]
+## Low priority / archive candidates
+1. …
 
-### Low Priority (When Convenient)
-1. [Action] - [Reason]
+## Suggested moves
+| From | To | Reason |
+|------|----|--------|
 
-## Detailed Findings
-[Include all phase outputs]
-
-## Recommended File Moves
-| Source | Destination | Reason |
-|--------|-------------|--------|
-| `/file.md` | `/docs/path/file.md` | [reason] |
-
-## Files to Delete (With Confirmation)
-| File | Reason | Last Modified |
+## Suggested deletions (needs confirmation)
+| File | Reason | Last modified |
 |------|--------|---------------|
-| `/temp-notes.md` | Superseded by docs | 2025-01-15 |
+
+## Broken references
+| File:line | Bad ref | Fix |
+|-----------|---------|-----|
 ```
 
----
+## Rules
 
-## Execution Mode
+1. **Read before proposing.** Never suggest moving a file without looking at its contents.
+2. **Never move/delete without explicit "yes".** Present the report, wait for the user to pick what to execute.
+3. **Prefer consolidation over deletion.** If two docs cover the same topic, merge rather than drop.
+4. **Preserve historical context.** Dated research captures decisions — archive to `thoughts/shared/archive/<year>/` rather than delete.
+5. **Don't touch `.claude/`** in this command. That's a separate config surface.
 
-When generating cleanup proposals:
+## After the report
 
-1. **READ files before proposing changes** - Understand content before suggesting moves
-2. **Prefer consolidation over deletion** - Merge related docs rather than deleting
-3. **Preserve historical context** - Don't delete research that documents decisions
-4. **Suggest, don't auto-execute** - Present proposals for user approval
-5. **Group related changes** - Batch similar operations together
+End with:
 
----
-
-## After Report Generation
-
-Ask the user:
-
-```markdown
-## Cleanup Report Complete
-
-I found:
-- [X] files that should be relocated
-- [X] configuration updates needed
-- [X] stale documents to review
-
-**Next Steps:**
-1. Would you like me to relocate the misplaced files?
-2. Should I update the configuration files?
-3. Want me to archive the stale research docs?
-
-Select which actions to proceed with, or ask for more details on any finding.
 ```
-
----
-
-## Quick Reference: Proper File Locations
-
-| Content Type | Proper Location |
-|--------------|-----------------|
-| AI Instructions | `CLAUDE.md` (root or app-level) |
-| Feature specs | `/apps/*/docs/features/[feature]/` |
-| Architecture docs | `/docs/architecture/` |
-| Research notes | `/thoughts/shared/research/` (timestamped) |
-| Ideas/exploration | `/thoughts/shared/ideas/` |
-| API documentation | `/apps/web/docs/technical/api/` |
-| Deployment docs | `/docs/operations/` |
-| Random scratch files | DELETE or `/thoughts/shared/scratch/` |
+Which of these would you like me to execute? (e.g. "all high priority", "moves only", "1, 3, 7")
+```

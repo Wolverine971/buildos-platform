@@ -88,7 +88,13 @@
 		<!-- Controls Grid -->
 		<div class="grid gap-4 lg:grid-cols-2">
 			<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
-				<GraphControls bind:viewMode {graphInstance} {graphLibrary} stats={data.stats} />
+				<GraphControls
+					bind:viewMode
+					{graphInstance}
+					{graphLibrary}
+					stats={data.stats}
+					showScopeControls={false}
+				/>
 			</section>
 
 			<section class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">

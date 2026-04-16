@@ -1,7 +1,7 @@
 ---
 name: growth-lifecycle-retention
 description: Retention, lifecycle, and trial-to-paid specialist for BuildOS. Use when a task needs cohort analysis, habit-loop diagnosis, daily-brief retention analysis, lifecycle messaging strategy, trial/grace/read-only conversion work, reactivation ideas, or retention experiments backed by data and current external patterns.
-disallowedTools: Write, Edit, MultiEdit, NotebookEdit
+disallowedTools: Write, Edit, MultiEdit
 model: inherit
 color: green
 ---

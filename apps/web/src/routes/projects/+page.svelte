@@ -20,6 +20,11 @@
 		OntologyGraphInstance,
 		GraphStats
 	} from '$lib/components/ontology/graph/lib/graph.types';
+	import {
+		DEFAULT_GRAPH_SCOPE_FILTERS,
+		buildGraphRequestKey,
+		type GraphScopeFilters
+	} from '$lib/components/ontology/graph/lib/graph.filters';
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
 	import { LoaderCircle, SlidersHorizontal, ChevronDown, ArrowRight } from 'lucide-svelte';
@@ -117,8 +122,13 @@
 		get(page).url.searchParams.get('view') === 'graph' ? 'graph' : 'overview'
 	);
 	let graphViewMode = $state<ViewMode>('projects'); // Default to Projects & Entities
+	let graphScopeFilters = $state<GraphScopeFilters>({ ...DEFAULT_GRAPH_SCOPE_FILTERS });
 	let graphInstance = $state<OntologyGraphInstance | null>(null);
 	let selectedGraphNode = $state<GraphNode | null>(null);
+	const graphScopeKey = $derived(data?.actorId ? `actor:${data.actorId}` : 'actor:unknown');
+	const graphRequestKey = $derived(
+		`${graphScopeKey}|${buildGraphRequestKey(graphViewMode, graphScopeFilters)}`
+	);
 	const graphComponentsReady = $derived(
 		Boolean(GraphControlsComponent && OntologyGraphComponent && NodeDetailsPanelComponent)
 	);
@@ -190,7 +200,7 @@
 			new Set(
 				(projects ?? [])
 					.map((project) => project.state_key)
-					.filter((state): state is string => Boolean(state))
+					.filter((state): state is OntologyProjectSummary['state_key'] => Boolean(state))
 			)
 		).sort()
 	);
@@ -460,7 +470,12 @@
 	}
 
 	function refreshGraph() {
-		graphStore.load({ viewMode: graphViewMode, force: true });
+		graphStore.load({
+			viewMode: graphViewMode,
+			scopeFilters: graphScopeFilters,
+			scopeKey: graphScopeKey,
+			force: true
+		});
 	}
 
 	$effect(() => {
@@ -478,8 +493,20 @@
 
 	$effect(() => {
 		const state = $graphStore;
-		if (activeTab === 'graph' && state.status === 'idle') {
-			graphStore.load({ viewMode: graphViewMode });
+		const loadedRequestKey = state.metadata?.requestKey ?? null;
+		const shouldLoadGraph =
+			isAdmin &&
+			activeTab === 'graph' &&
+			(state.status === 'idle' ||
+				(state.status === 'ready' && loadedRequestKey !== graphRequestKey) ||
+				(state.status === 'error' && loadedRequestKey !== graphRequestKey));
+
+		if (shouldLoadGraph) {
+			graphStore.load({
+				viewMode: graphViewMode,
+				scopeFilters: graphScopeFilters,
+				scopeKey: graphScopeKey
+			});
 		}
 	});
 
@@ -1240,6 +1267,15 @@
 			<!-- Graph view - Admin Only -->
 		{:else if isAdmin}
 			<section class="space-y-4">
+				{#if $graphStore.metadata?.truncated}
+					<div class="wt-paper p-3 text-sm text-muted-foreground tx tx-thread tx-weak">
+						Showing {$graphStore.metadata.returnedNodeCount ??
+							$graphStore.graph?.nodes?.length ??
+							0} of {$graphStore.metadata.originalNodeCount ?? 'many'} nodes. Open an individual
+						project for its complete graph.
+					</div>
+				{/if}
+
 				<div class="wt-paper overflow-hidden touch-none tx tx-frame tx-weak">
 					<div class="relative h-[60vh] sm:h-[70vh] lg:h-[calc(100vh-18rem)]">
 						{#if graphComponentError}
@@ -1309,8 +1345,10 @@
 						{#if GraphControlsComponent}
 							<GraphControlsComponent
 								bind:viewMode={graphViewMode}
+								bind:scopeFilters={graphScopeFilters}
 								{graphInstance}
 								stats={$graphStore.stats ?? emptyGraphStats}
+								scopeCounts={$graphStore.metadata?.scopeCounts}
 							/>
 						{:else}
 							<div class="p-4 text-sm text-muted-foreground">

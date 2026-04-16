@@ -41,6 +41,7 @@ const PROJECT_WRITE_DIRECT_TOOL_NAMES = [
 	...PROJECT_BASIC_DIRECT_TOOL_NAMES,
 	'create_onto_task',
 	'update_onto_task',
+	'create_onto_document',
 	'update_onto_document'
 ] as const;
 

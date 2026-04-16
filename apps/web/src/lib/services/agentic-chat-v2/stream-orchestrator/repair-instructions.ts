@@ -174,6 +174,11 @@ export function enforceMutationOutcomeIntegrity(
 		}
 	}
 
+	const unsupportedClaims = collectUnsupportedDocumentClaims(finalText, params.toolExecutions);
+	if (unsupportedClaims.length > 0 && !looksLikeDocumentClaimCorrection(finalText)) {
+		return appendDocumentClaimCorrection(finalText, unsupportedClaims);
+	}
+
 	return finalText;
 }
 
@@ -502,6 +507,105 @@ function looksLikeActionSuccessClaim(text: string): boolean {
 		looksLikeBulkMutationSuccessClaim(text) ||
 		looksLikeProjectCreateSuccessClaim(text)
 	);
+}
+
+function collectUnsupportedDocumentClaims(
+	finalText: string,
+	toolExecutions: FastToolExecution[]
+): string[] {
+	const corrections: string[] = [];
+
+	if (looksLikeDocumentLinkClaim(finalText) && !hasSuccessfulDocumentLinkWrite(toolExecutions)) {
+		corrections.push('I did not create a document link.');
+	}
+
+	if (
+		looksLikeDocumentPlacementClaim(finalText) &&
+		!hasSuccessfulDocumentPlacementWrite(toolExecutions)
+	) {
+		corrections.push('I did not move or place the document in the tree.');
+	}
+
+	return corrections;
+}
+
+// Require the link/placement verb and the document noun to appear within the
+// same sentence or short clause. A whole-answer match produced false positives
+// when unrelated clauses mentioned "tasks linked to the goal" alongside "context
+// document" elsewhere in the response.
+const DOC_LINK_VERBS = /(?:linked|cross-linked|attached|connected)/i;
+const DOC_PLACEMENT_VERBS = /(?:placed|moved|nested|organized|organised)/i;
+const DOC_NOUN = /(?:doc|document)s?/i;
+const CLAUSE_GAP = /[^.!?\n]{0,80}/;
+
+function hasClauseLevelMatch(text: string, verb: RegExp, noun: RegExp): boolean {
+	const verbThenNoun = new RegExp(
+		`\\b${verb.source}\\b${CLAUSE_GAP.source}\\b${noun.source}\\b`,
+		'i'
+	);
+	const nounThenVerb = new RegExp(
+		`\\b${noun.source}\\b${CLAUSE_GAP.source}\\b${verb.source}\\b`,
+		'i'
+	);
+	return verbThenNoun.test(text) || nounThenVerb.test(text);
+}
+
+function looksLikeDocumentLinkClaim(text: string): boolean {
+	if (
+		/\b(?:not|did not|didn't|was not|wasn't|no)\s+(?:linked|cross-linked|attached|connected)\b/i.test(
+			text
+		)
+	) {
+		return false;
+	}
+	return hasClauseLevelMatch(text, DOC_LINK_VERBS, DOC_NOUN);
+}
+
+function looksLikeDocumentPlacementClaim(text: string): boolean {
+	if (
+		/\b(?:not|did not|didn't|was not|wasn't|no)\s+(?:placed|moved|nested|organized|organised)\b/i.test(
+			text
+		)
+	) {
+		return false;
+	}
+	return hasClauseLevelMatch(text, DOC_PLACEMENT_VERBS, DOC_NOUN);
+}
+
+function hasSuccessfulDocumentLinkWrite(toolExecutions: FastToolExecution[]): boolean {
+	return toolExecutions.some((execution) => {
+		if (!didWriteExecutionSucceed(execution)) return false;
+		const op = getWriteOperationName(execution);
+		return (
+			op === 'link_onto_entities' ||
+			op === 'onto.edge.link' ||
+			op === 'create_task_document' ||
+			op === 'onto.task.docs.create_or_attach'
+		);
+	});
+}
+
+function hasSuccessfulDocumentPlacementWrite(toolExecutions: FastToolExecution[]): boolean {
+	return toolExecutions.some((execution) => {
+		if (!didWriteExecutionSucceed(execution)) return false;
+		const op = getWriteOperationName(execution);
+		if (op === 'move_document_in_tree' || op === 'onto.document.tree.move') return true;
+		if (op !== 'create_onto_document' && op !== 'onto.document.create') return false;
+
+		const parsed = parseToolArguments(execution.toolCall.function?.arguments);
+		const parentId = parsed.args.parent_id;
+		return typeof parentId === 'string' && parentId.trim().length > 0;
+	});
+}
+
+function looksLikeDocumentClaimCorrection(text: string): boolean {
+	return /\b(?:did not|didn't|not linked|not placed|not moved|not organized|not organised|no document link)\b/i.test(
+		text
+	);
+}
+
+function appendDocumentClaimCorrection(finalText: string, corrections: string[]): string {
+	return `${finalText.trim()}\n\nCorrection: ${corrections.join(' ')}`;
 }
 
 function looksLikeProjectCreateSuccessClaim(text: string): boolean {

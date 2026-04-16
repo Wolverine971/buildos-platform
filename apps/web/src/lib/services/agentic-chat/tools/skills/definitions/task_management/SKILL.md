@@ -94,8 +94,8 @@ Task workflow playbook for deciding when work should become a task and how to ma
 - Then call `update_onto_task({ ... })` with the exact task_id and the intended state/assignment changes.
 - Example when the task is already in structured context:
   `update_onto_task({ task_id: "440c2639-9000-4111-aeea-ee374f8fb925", state_key: "done" })`
-- Example when the task needs a richer update:
-  `update_onto_task({ task_id: "440c2639-9000-4111-aeea-ee374f8fb925", description: "Chapter 1 and chapter 2 are complete. Update the outline to reflect the revised chapter 3 beats and continuity fixes.", update_strategy: "append" })`
+- Example when the task needs a richer update. Task fields are direct replacements, so read the current description first if you want to preserve prior detail, then pass the full composed value:
+  `update_onto_task({ task_id: "440c2639-9000-4111-aeea-ee374f8fb925", description: "Chapter 1 and chapter 2 are complete. Update the outline to reflect the revised chapter 3 beats and continuity fixes." })`
 
 ### Guard against empty task writes
 
