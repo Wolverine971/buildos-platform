@@ -15,56 +15,69 @@
 
 Status legend: ⚪ not-started · 🟡 ready (unblocked, awaiting pickup) · 🔵 in-progress · ✅ done · ⏸ blocked · 🔁 recurring
 
-| ID | Work Stream | Tasks | Wave | Primary Type | Status | Doc |
-|----|-------------|-------|------|--------------|--------|-----|
-| WS01 | Public Pages as Distribution Surface | T02, T12, T13, T21, T22, T26, T29, T30, T31 | 1–4 | Code + Content | 🔵 T02 ✅ · T12 🟡 | [WS01](workstreams/WS01-public-pages.md) |
-| WS02 | LLM Citation / GEO Foundations | T01, T04, T05, T06, T07, T08, T20, T28 | 1–ongoing | Research + Code | ⚪ | [WS02](workstreams/WS02-llm-citation-geo.md) |
-| WS03 | Reddit Creator-Wedge Program | T03, T10, T11, T27 | 1–3 + 🔁 | Research + Ops | 🔵 T03 spec drafted | [WS03](workstreams/WS03-reddit-creator-wedge.md) |
-| WS04 | Flagship Content Strategy | T15, T25, T32 | 2 + 🔁 | Writing | ⚪ | [WS04](workstreams/WS04-flagship-content.md) |
-| WS05 | Comparison Pages Hub | T16, T17, T24 | 2 | Writing + Code | ⚪ | [WS05](workstreams/WS05-comparison-pages.md) |
-| WS06 | Developer & Integration Surface | T09, T18, T19 | 1–2 | Writing + Ops | ⚪ | [WS06](workstreams/WS06-developer-integration.md) |
-| WS07 | Site Architecture (how-it-works, changelog) | T14, T23 | 2–3 | Code + Content | ⚪ | [WS07](workstreams/WS07-site-architecture.md) |
-| WS08 | Performance Monitoring | T33 | 4 | Code + Ops | ⚪ | [WS08](workstreams/WS08-performance.md) |
+| ID   | Work Stream                                 | Tasks                                       | Wave      | Primary Type       | Status                         | Doc                                               |
+| ---- | ------------------------------------------- | ------------------------------------------- | --------- | ------------------ | ------------------------------ | ------------------------------------------------- |
+| WS01 | Public Pages as Distribution Surface        | T02, T12, T13, T21, T22, T26, T29, T30, T31 | 1–4       | Code + Content     | 🔵 T02 ✅ · T12 🟡             | [WS01](workstreams/WS01-public-pages.md)          |
+| WS02 | LLM Citation / GEO Foundations              | T01, T04, T05, T06, T07, T08, T20, T28      | 1–ongoing | Research + Code    | ⚪                             | [WS02](workstreams/WS02-llm-citation-geo.md)      |
+| WS03 | Reddit Creator-Wedge Program                | T03, T10, T11, T27                          | 1–3 + 🔁  | Research + Ops     | 🔵 T03 spec drafted            | [WS03](workstreams/WS03-reddit-creator-wedge.md)  |
+| WS04 | Flagship Content Strategy                   | T15, T25, T32                               | 2 + 🔁    | Writing            | ⚪                             | [WS04](workstreams/WS04-flagship-content.md)      |
+| WS05 | Comparison Pages Hub                        | T16, T17, T24                               | 2         | Writing + Code     | ⚪                             | [WS05](workstreams/WS05-comparison-pages.md)      |
+| WS06 | Developer & Integration Surface             | T09, T18, T19                               | 1–2       | Writing + Ops      | ⚪                             | [WS06](workstreams/WS06-developer-integration.md) |
+| WS07 | Site Architecture (how-it-works, changelog) | T14, T23                                    | 2–3       | Code + Content     | ⚪                             | [WS07](workstreams/WS07-site-architecture.md)     |
+| WS08 | Performance Monitoring                      | T33                                         | 4         | Code + Ops         | ⚪                             | [WS08](workstreams/WS08-performance.md)           |
+| WS09 | Anti-Feed Content Cluster                   | T34–T45                                     | 2–3 + 🔁  | Writing + Research | 🔵 T34 ✅ · T35 🟡 · T44 🔁 🔵 | [WS09](workstreams/WS09-anti-feed-cluster.md)     |
 
 ---
 
 ## Task → Work Stream Quick Map
 
-| Task | Title | Work Stream | Status |
-|------|-------|-------------|--------|
-| T01 | LLM citation baseline | WS02 | ⚪ |
-| T02 | End-user publish UX audit | WS01 | ✅ |
-| T03 | Creator-subreddit research | WS03 | 🔵 |
-| T04 | Schema markup gap check | WS02 | ⚪ |
-| T05 | Domain-level GEO baseline | WS02 | ⚪ |
-| T06 | `SoftwareApplication` schema | WS02 | ⚪ |
-| T07 | `FAQPage` schema | WS02 | ⚪ |
-| T08 | `dateModified` accuracy | WS02 | ⚪ |
-| T09 | README overhaul | WS06 | ⚪ |
-| T10 | Reddit karma accumulation | WS03 | 🔁 ⚪ |
-| T11 | Create r/buildos | WS03 | ⚪ |
-| T12 | Public pages Phase 1 UI | WS01 | 🟡 |
-| T13 | "Made with BuildOS" attribution | WS01 | ⚪ |
-| T14 | `/how-it-works` dedicated route | WS07 | ⚪ |
-| T15 | Thinking-environment framework doc | WS04 | ⚪ |
-| T16 | Refresh Notion comparison | WS05 | ⚪ |
-| T17 | New creator-framed comparisons | WS05 | ⚪ |
-| T18 | Integration marketplace inventory | WS06 | ⚪ |
-| T19 | Integration marketplace submissions | WS06 | ⚪ |
-| T20 | Wikipedia/Wikidata entity | WS02 | ⚪ |
-| T21 | Public pages Phase 3 — design | WS01 | ⚪ |
-| T22 | Public pages Phase 4 — clone | WS01 | ⚪ |
-| T23 | Public changelog | WS07 | ⚪ |
-| T24 | `/compare` hub | WS05 | ⚪ |
-| T25 | Second quarterly deep piece | WS04 | ⚪ |
-| T26 | Seed public projects for gallery | WS01 | ⚪ |
-| T27 | Reddit posts begin | WS03 | ⏸ (gated on T10) |
-| T28 | Monthly LLM citation remeasure | WS02 | 🔁 ⚪ |
-| T29 | Public pages Phase 5 — gallery | WS01 | ⚪ |
-| T30 | `/@username` URL migration | WS01 | ⚪ |
-| T31 | Public pages Phase 6 — social layer | WS01 | ⏸ |
-| T32 | Quarterly piece cadence | WS04 | 🔁 ⚪ |
-| T33 | Lighthouse / CWV tooling | WS08 | ⚪ |
+| Task | Title                                                    | Work Stream | Status                  |
+| ---- | -------------------------------------------------------- | ----------- | ----------------------- |
+| T01  | LLM citation baseline                                    | WS02        | ⚪                      |
+| T02  | End-user publish UX audit                                | WS01        | ✅                      |
+| T03  | Creator-subreddit research                               | WS03        | 🔵                      |
+| T04  | Schema markup gap check                                  | WS02        | ⚪                      |
+| T05  | Domain-level GEO baseline                                | WS02        | ⚪                      |
+| T06  | `SoftwareApplication` schema                             | WS02        | ⚪                      |
+| T07  | `FAQPage` schema                                         | WS02        | ⚪                      |
+| T08  | `dateModified` accuracy                                  | WS02        | ⚪                      |
+| T09  | README overhaul                                          | WS06        | ⚪                      |
+| T10  | Reddit karma accumulation                                | WS03        | 🔁 ⚪                   |
+| T11  | Create r/buildos                                         | WS03        | ⚪                      |
+| T12  | Public pages Phase 1 UI                                  | WS01        | 🟡                      |
+| T13  | "Made with BuildOS" attribution                          | WS01        | ⚪                      |
+| T14  | `/how-it-works` dedicated route                          | WS07        | ⚪                      |
+| T15  | Thinking-environment framework doc                       | WS04        | ⚪                      |
+| T16  | Refresh Notion comparison                                | WS05        | ⚪                      |
+| T17  | New creator-framed comparisons                           | WS05        | ⚪                      |
+| T18  | Integration marketplace inventory                        | WS06        | ⚪                      |
+| T19  | Integration marketplace submissions                      | WS06        | ⚪                      |
+| T20  | Wikipedia/Wikidata entity                                | WS02        | ⚪                      |
+| T21  | Public pages Phase 3 — design                            | WS01        | ⚪                      |
+| T22  | Public pages Phase 4 — clone                             | WS01        | ⚪                      |
+| T23  | Public changelog                                         | WS07        | ⚪                      |
+| T24  | `/compare` hub                                           | WS05        | ⚪                      |
+| T25  | Second quarterly deep piece                              | WS04        | ⚪                      |
+| T26  | Seed public projects for gallery                         | WS01        | ⚪                      |
+| T27  | Reddit posts begin                                       | WS03        | ⏸ (gated on T10)       |
+| T28  | Monthly LLM citation remeasure                           | WS02        | 🔁 ⚪                   |
+| T29  | Public pages Phase 5 — gallery                           | WS01        | ⚪                      |
+| T30  | `/@username` URL migration                               | WS01        | ⚪                      |
+| T31  | Public pages Phase 6 — social layer                      | WS01        | ⏸                      |
+| T32  | Quarterly piece cadence                                  | WS04        | 🔁 ⚪                   |
+| T33  | Lighthouse / CWV tooling                                 | WS08        | ⚪                      |
+| T34  | Blog 1 — "Social Media Is Dead…" (interest media)        | WS09        | ✅ 2026-04-17           |
+| T35  | Blog 2 — "You Stopped Choosing What You Think About"     | WS09        | 🟡                      |
+| T36  | Blog 3 — "What a Thinking Environment Actually Is"       | WS09        | ⚪ (reconcile with T15) |
+| T37  | Blog 4 — "Three-Minute Morning That Fixes Your Day"      | WS09        | ⚪                      |
+| T38  | Blog 5 — "Productivity Tools Are Feeds in Disguise"      | WS09        | ⚪                      |
+| T39  | Blog 6 — "The Quiet Half of the Internet"                | WS09        | ⚪                      |
+| T40  | Blog 7 — "AI Will Collapse the Clipping Economy"         | WS09        | ⚪                      |
+| T41  | Blog 8 — "Authenticity Is the Only Moat Left"            | WS09        | ⚪                      |
+| T42  | Blog 9 — "Three Feelings You Don't Have Words For Yet"   | WS09        | ⚪                      |
+| T43  | Blog 10 — "Writing Is Thinking. Scrolling Is Receiving." | WS09        | ⚪                      |
+| T44  | Anti-feed 7–10 day publishing cadence                    | WS09        | 🔁 🔵                   |
+| T45  | Anti-feed receipts library                               | WS09        | ⚪                      |
 
 ---
 
@@ -77,6 +90,7 @@ The big ones:
 - **WS03 T03 → WS03 T10 → WS03 T27.** 3-month karma runway is the critical path; start the clock first.
 - **WS04 T15 → WS03 T27 (first big Reddit post).** Framework doc becomes the artifact Reddit engagement points back to.
 - **WS06 T09 (README) → WS02 citation quality.** Public repo README is a heavily-weighted LLM source; rewriting it compounds every GEO lever.
+- **WS09 → WS02, WS03, WS04.** The anti-feed cluster is a vocabulary-ownership loop: each post is a JSON-LD `Article` asset (WS02), produces 3 social extractions + Reddit share material (WS03 post-T10), and seeds the T15 flagship (WS04). Land T35–T38 before T15 goes public.
 
 ---
 
@@ -99,4 +113,5 @@ Recurring ops (Reddit karma, LLM remeasure, changelog updates, etc.) live in [`R
 
 ## Change Log
 
+- **2026-04-18** — WS09 (Anti-Feed Content Cluster) added. Integrates the anti-feed topic map (`docs/marketing/strategy/anti-feed-content-topic-map.md`) into the execution plan as T34–T45. T34 marked complete (`social-media-is-dead-interest-media.md` published 2026-04-17). T44 cadence (7–10 days) started. Boundary with WS04 (Flagship) documented in WS09.
 - **2026-04-17** — Folder created. Strategy reconciled to "thinking environment for creators" positioning. 8 work streams defined. T02 marked complete (spec drafted 2026-04-16). T03 spec drafted and in execution.

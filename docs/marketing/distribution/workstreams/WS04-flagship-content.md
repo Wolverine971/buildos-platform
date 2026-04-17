@@ -1,6 +1,7 @@
 <!-- docs/marketing/distribution/workstreams/WS04-flagship-content.md -->
 
 ---
+
 id: WS04
 title: Flagship Content Strategy
 wave_span: 2 + recurring
@@ -9,6 +10,7 @@ owner: DJ
 related_tasks: [T15, T25, T32]
 cross_workstreams: [WS02, WS03, WS05]
 last_updated: 2026-04-17
+
 ---
 
 # WS04 — Flagship Content Strategy
@@ -25,11 +27,11 @@ Strategy §Part 5 explicitly says stop writing weekly blog posts. One deep piece
 
 ## Status dashboard
 
-| Task | Title | Type | Wave | Effort | Status | Spec |
-|------|-------|------|------|--------|--------|------|
-| T15 | Thinking-environment framework doc (flagship) | W | 2 | ~1 week | ⚪ | inline below |
-| T25 | Second quarterly deep piece | W | 3 | ~1 week | ⚪ | inline below |
-| T32 | Quarterly cadence (ongoing) | W | recurring | 1 wk/quarter | 🔁 ⚪ | see [RECURRING](../RECURRING.md#quarterly) |
+| Task | Title                                         | Type | Wave      | Effort       | Status | Spec                                       |
+| ---- | --------------------------------------------- | ---- | --------- | ------------ | ------ | ------------------------------------------ |
+| T15  | Thinking-environment framework doc (flagship) | W    | 2         | ~1 week      | ⚪     | inline below                               |
+| T25  | Second quarterly deep piece                   | W    | 3         | ~1 week      | ⚪     | inline below                               |
+| T32  | Quarterly cadence (ongoing)                   | W    | recurring | 1 wk/quarter | 🔁 ⚪  | see [RECURRING](../RECURRING.md#quarterly) |
 
 ## Required reading
 
@@ -42,12 +44,14 @@ Strategy §Part 5 explicitly says stop writing weekly blog posts. One deep piece
 ## Scope
 
 **In scope:**
+
 - One deep piece per quarter, minimum
 - Creator-framed angles; anti-AI show-don't-tell posture; specific numerical claims where possible
 - Cross-publishing: build-os.com + Medium + Substack (canonical = build-os.com)
 - Companion public pages on BuildOS as secondary artifact
 
 **Out of scope:**
+
 - Weekly blog posts (explicitly non-goal in strategy)
 - Comparison pages (WS05)
 - Social-media posts / short-form content (handled by other docs in `docs/marketing/social-media/`)
@@ -68,13 +72,13 @@ Each piece is independent once scoped; the cadence is the work stream.
 
 ## Output artifacts
 
-| Artifact | Location |
-|----------|----------|
-| T15 canonical blog | `apps/web/src/content/blogs/philosophy/thinking-environment-framework.md` (proposed path) |
-| T15 Medium cross-post | external — canonical URL = blog-os.com |
-| T15 Substack cross-post | external |
-| T15 companion public page | BuildOS public URL (post-T12) |
-| T25 canonical blog | `apps/web/src/content/blogs/philosophy/{slug}.md` (TBD topic) |
+| Artifact                  | Location                                                                                  |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| T15 canonical blog        | `apps/web/src/content/blogs/philosophy/thinking-environment-framework.md` (proposed path) |
+| T15 Medium cross-post     | external — canonical URL = blog-os.com                                                    |
+| T15 Substack cross-post   | external                                                                                  |
+| T15 companion public page | BuildOS public URL (post-T12)                                                             |
+| T25 canonical blog        | `apps/web/src/content/blogs/philosophy/{slug}.md` (TBD topic)                             |
 
 ## Task briefs
 
@@ -83,12 +87,14 @@ Each piece is independent once scoped; the cadence is the work stream.
 **Working title:** "How BuildOS Holds a Complex Project Together: The Thinking-Environment Framework."
 
 **Hard constraints (from brand guide + strategy):**
+
 - Do NOT title it "The 9-Dimensional Ontology" or invoke "USMC 5-Paragraph Order for ADHD Founders" — those framings were tried and explicitly discarded
 - Do NOT lead with AI
 - Creator-framed: primary examples should be a book author or YouTuber, not a founder or engineer
 - USMC / DJ-bio detail allowed as one-paragraph origin note inside the piece, never the headline
 
 **Required structural elements:**
+
 - Question-based headers ("What happens when a writer's draft lives in six different places?")
 - Specific numerical claims (real BuildOS user data if available; otherwise concrete observations with honest scope)
 - At least 3 before/after examples showing messy input → structured output
@@ -99,6 +105,7 @@ Each piece is independent once scoped; the cadence is the work stream.
 **Target word count:** 2,500–4,000. Shorter = not flagship.
 
 **Publishing sequence:**
+
 1. Draft → DJ voice review
 2. Publish on build-os.com (canonical)
 3. Cross-post to Medium + Substack (with canonical link)
@@ -115,6 +122,7 @@ Each piece is independent once scoped; the cadence is the work stream.
 ### T25 — Second quarterly deep piece ⚪
 
 **Candidate topics (per strategy §Part 5, ranked):**
+
 1. **"How authors and YouTubers actually structure long-running creative projects — a pattern study."** Pull from real user data; specific numerical claims; show working maps.
 2. **"Why AI chat assistants keep failing creative workflows: the stateless-context problem."** Advances anti-AI show-don't-tell directly.
 3. **"The creator-workflow gap: what breaks between the idea and the shipped thing."** High fan-out potential across every creator sub.

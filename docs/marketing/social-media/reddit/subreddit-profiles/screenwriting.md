@@ -7,6 +7,7 @@ daily_active_estimate: unknown (top-week #1 = 259↑/54💬; big but lower comme
 promo_tolerance: strict
 buildos_fit: medium
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/screenwriting.md
 ---
 
 # r/screenwriting
@@ -29,7 +30,7 @@ From `about/rules.json` on 2026-04-17 (15 rules — below are the most BuildOS-r
 
 **Rule 8 — Don't Post Personal Blogs, Personal Websites, or Unapproved Self-Promotion.**
 
-> We do not allow sharing of personal blogs, portfolio websites, personal business websites or unapproved self promotion. Please keep those links on your own profile. This includes all miscellaneous product sales, fundraising, or donation requests. *exceptions for established community partners only.*
+> We do not allow sharing of personal blogs, portfolio websites, personal business websites or unapproved self promotion. Please keep those links on your own profile. This includes all miscellaneous product sales, fundraising, or donation requests. _exceptions for established community partners only._
 
 **Rule 9 — No Contest, Coverage, Service, Consulting or Product Advertising | No Funnelling or Market Research**
 
@@ -60,14 +61,14 @@ From `about/rules.json` on 2026-04-17 (15 rules — below are the most BuildOS-r
 
 ## Moderation posture
 
-**VERY STRICT and culturally hostile to outsider software.** Active warning signal from the 2026-04-17 scan: the hot-tab post **"Please stop submitting your vibe-coded software & general reminders"** (111↑) is a mod or veteran telling indie software builders to stop promoting in the sub. This is a real cultural line — BuildOS reads *exactly* as the kind of product this post is warning against.
+**VERY STRICT and culturally hostile to outsider software.** Active warning signal from the 2026-04-17 scan: the hot-tab post **"Please stop submitting your vibe-coded software & general reminders"** (111↑) is a mod or veteran telling indie software builders to stop promoting in the sub. This is a real cultural line — BuildOS reads _exactly_ as the kind of product this post is warning against.
 
 - Rule 3: No AI content or AI discussion beyond industry news. Bans the framing.
 - Rule 8: No personal/business websites. Bans the link.
 - Rule 9: No product advertising, no market research. Bans the motive.
 - Rule 10: "This is not a marketplace." Bans the vibe.
 
-The sub *does* reward insiders: "We're professional screenwriters who got sick of Final Draft, so we built our own screenwriting app" got 277↑. Notice the framing: **professional screenwriters first, software second.** That's the only template that works here.
+The sub _does_ reward insiders: "We're professional screenwriters who got sick of Final Draft, so we built our own screenwriting app" got 277↑. Notice the framing: **professional screenwriters first, software second.** That's the only template that works here.
 
 ## Culture & voice
 
@@ -94,7 +95,7 @@ The sub *does* reward insiders: "We're professional screenwriters who got sick o
 
 ## Thread types where BuildOS would be a legit recommendation
 
-**Honest assessment:** BuildOS is not a replacement for Final Draft/Fade In. Where we could *plausibly* fit:
+**Honest assessment:** BuildOS is not a replacement for Final Draft/Fade In. Where we could _plausibly_ fit:
 
 1. **"At what point does organizing your script start hurting your actual writing?"** (18↑ / 11💬 from latest scan) — BuildOS's "structure emerges from the work" framing fits, but screenwriters' default tools already do this. Comment-only, no plug.
 2. **"Screenwriting tools vs just writing"** — philosophical thread. Same — comment as a writer first.
@@ -109,13 +110,13 @@ The sub *does* reward insiders: "We're professional screenwriters who got sick o
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                         | URL                                                          | Why BuildOS is relevant                                                                                                | Upvotes | Comments |
-| ---------- | -------------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| 2026-04-15 | **Please stop submitting your vibe-coded software & general reminders** | [link](https://www.reddit.com/r/screenwriting/comments/1sby3gk/) | **Direct anti-outsider-software signal.** Read this before commenting anywhere in the sub. Cultural canary.             | 111     | 23       |
-| 2026-04-10 | At what point does organizing your script start hurting your actual writing? | [link](https://www.reddit.com/r/screenwriting/comments/1sl2mxz/) | BuildOS's "don't over-structure" instinct aligns. Comment with a screenwriter's-first take, no plug.                    | 18      | 11       |
-| 2026-04-02 | We're professional screenwriters who got sick of Final Draft, so we built our own screenwriting app | [link](https://www.reddit.com/r/screenwriting/comments/1saziw6/) | The *only* template for insider-built tool posts. We cannot write this post without screenwriter credibility.          | 277     | 197      |
-| 2026-04-06 | Screenwriting tools vs just writing                                   | [link](https://www.reddit.com/r/screenwriting/comments/1s74oru/) | Philosophical tool-skeptic thread. Comment as a writer, not a builder.                                                 | 17      | 30       |
-| 2026-03-28 | Page count feels like the wrong way to measure a day's writing. Anyone else? | [link](https://www.reddit.com/r/screenwriting/comments/1ryvce4/) | BuildOS's "structure over metrics" framing fits. Contribute; don't plug.                                               | 6       | 61       |
+| Date       | Thread title                                                                                        | URL                                                              | Why BuildOS is relevant                                                                                       | Upvotes | Comments |
+| ---------- | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-15 | **Please stop submitting your vibe-coded software & general reminders**                             | [link](https://www.reddit.com/r/screenwriting/comments/1sby3gk/) | **Direct anti-outsider-software signal.** Read this before commenting anywhere in the sub. Cultural canary.   | 111     | 23       |
+| 2026-04-10 | At what point does organizing your script start hurting your actual writing?                        | [link](https://www.reddit.com/r/screenwriting/comments/1sl2mxz/) | BuildOS's "don't over-structure" instinct aligns. Comment with a screenwriter's-first take, no plug.          | 18      | 11       |
+| 2026-04-02 | We're professional screenwriters who got sick of Final Draft, so we built our own screenwriting app | [link](https://www.reddit.com/r/screenwriting/comments/1saziw6/) | The _only_ template for insider-built tool posts. We cannot write this post without screenwriter credibility. | 277     | 197      |
+| 2026-04-06 | Screenwriting tools vs just writing                                                                 | [link](https://www.reddit.com/r/screenwriting/comments/1s74oru/) | Philosophical tool-skeptic thread. Comment as a writer, not a builder.                                        | 17      | 30       |
+| 2026-03-28 | Page count feels like the wrong way to measure a day's writing. Anyone else?                        | [link](https://www.reddit.com/r/screenwriting/comments/1ryvce4/) | BuildOS's "structure over metrics" framing fits. Contribute; don't plug.                                      | 6       | 61       |
 
 ## Voice notes for future commenting
 

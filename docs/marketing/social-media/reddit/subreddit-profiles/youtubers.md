@@ -7,6 +7,7 @@ daily_active_estimate: zero (sub is currently CLOSED for renovations as of 2026-
 promo_tolerance: strict
 buildos_fit: de-prioritize
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/youtubers.md
 ---
 
 # r/youtubers
@@ -66,16 +67,16 @@ Monthly Show-Off Thread is the only sanctioned link-sharing surface — but it's
 
 ## Recent real examples
 
-| Date         | Thread title                   | URL                                                          | Why BuildOS is relevant                        | Upvotes | Comments |
-| ------------ | ------------------------------ | ------------------------------------------------------------ | ---------------------------------------------- | ------- | -------- |
-| ongoing      | THIS SUBREDDIT IS CLOSED       | [link](https://www.reddit.com/r/youtubers/comments/1sdoew5/) | Sub is closed. Monitor for reopening.          | 69      | 25       |
+| Date         | Thread title                                                                         | URL                                                          | Why BuildOS is relevant                                                                                              | Upvotes | Comments |
+| ------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| ongoing      | THIS SUBREDDIT IS CLOSED                                                             | [link](https://www.reddit.com/r/youtubers/comments/1sdoew5/) | Sub is closed. Monitor for reopening.                                                                                | 69      | 25       |
 | 2025 archive | How do you organize a project with a lot of clips and questions about file structure | [link](https://www.reddit.com/r/youtubers/comments/1ot3ucu/) | Pre-closure example of the BuildOS-adjacent "too many clips, too many projects" problem that recurs in creator subs. | 5       | 7        |
-| 2025 archive | Advice after successful first video | [link](https://www.reddit.com/r/youtubers/comments/1ovixv3/) | Post-spike confusion — a BuildOS-shaped problem (now what?) that's characteristic of this audience. | 215     | 169      |
+| 2025 archive | Advice after successful first video                                                  | [link](https://www.reddit.com/r/youtubers/comments/1ovixv3/) | Post-spike confusion — a BuildOS-shaped problem (now what?) that's characteristic of this audience.                  | 215     | 169      |
 
 ## Voice notes for future commenting
 
 - **Do not attempt to comment here until/unless the sub reopens.** The Flair gate + one-strike-ban + closure make any attempt wasted effort or catastrophic.
-- When/if it reopens: lead with *"I run a YouTube channel focused on [X]"* — never with founder identity.
+- When/if it reopens: lead with _"I run a YouTube channel focused on [X]"_ — never with founder identity.
 - **Never use phrases like "I found this great tool"** — directly banned by Rule 4.
 
 ## Karma-building strategy for this sub

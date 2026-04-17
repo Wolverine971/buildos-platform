@@ -7,6 +7,7 @@ daily_active_estimate: medium (top-week #1 = 194↑/62💬)
 promo_tolerance: strict
 buildos_fit: medium
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/podcasting.md
 ---
 
 # r/podcasting
@@ -85,7 +86,7 @@ From `about/rules.json` on 2026-04-17:
 
 ## Thread types where BuildOS would be a legit recommendation
 
-1. **Wednesday Product or Service promotional thread** — the *only* sanctioned surface. BuildOS mention with founder disclosure, tied to a specific podcaster workflow (episode planning, guest research tracking, season arcs).
+1. **Wednesday Product or Service promotional thread** — the _only_ sanctioned surface. BuildOS mention with founder disclosure, tied to a specific podcaster workflow (episode planning, guest research tracking, season arcs).
 2. **"Any one-person band and how you juggle?"** — comment-only with empathetic workflow take; no plug in comments outside the weekly thread.
 3. **"What's your workflow for podcast?" / "What does your production pipeline look like?"** — same pattern; do not mention BuildOS outside the Wednesday thread.
 4. **"I think most podcast episodes fail before they even start recording"** — BuildOS's pre-production framing fits. Comment with craft take only.
@@ -93,13 +94,13 @@ From `about/rules.json` on 2026-04-17:
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                  | URL                                                              | Why BuildOS is relevant                                                        | Upvotes | Comments |
-| ---------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------- | -------- |
-| 2026-04-13 | Any one-person band and how you juggle?                                       | [link](https://www.reddit.com/r/podcasting/comments/1slc4y2/)    | Solo-podcaster overwhelm — BuildOS fits. Comment-only outside Wednesday thread. | 27      | 32       |
-| 2026-04-10 | I think most podcast episodes fail before they even start recording           | [link](https://www.reddit.com/r/podcasting/comments/1sg1f3j/)    | Pre-production-planning pain. Our framing fits.                                 | 7       | 16       |
-| 2026-04-12 | what is your workflow for podcast?                                            | [link](https://www.reddit.com/r/podcasting/comments/1s19gyb/)    | Workflow thread. BuildOS plausible with founder disclosure **if in Wed thread**. | 6       | 14       |
-| 2026-04-14 | Ever nail a great moment but your guest never shares the content              | [link](https://www.reddit.com/r/podcasting/comments/1sn2hyv/)    | Guest-workflow frustration — not our fit, but signals sub vibe.                | 10      | 12       |
-| recurring  | Weekly Product or Service promotional thread (Wednesdays)                      | (varies weekly)                                                  | The sanctioned surface for every BuildOS mention in this sub.                  | varies  | varies   |
+| Date       | Thread title                                                        | URL                                                           | Why BuildOS is relevant                                                          | Upvotes | Comments |
+| ---------- | ------------------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-13 | Any one-person band and how you juggle?                             | [link](https://www.reddit.com/r/podcasting/comments/1slc4y2/) | Solo-podcaster overwhelm — BuildOS fits. Comment-only outside Wednesday thread.  | 27      | 32       |
+| 2026-04-10 | I think most podcast episodes fail before they even start recording | [link](https://www.reddit.com/r/podcasting/comments/1sg1f3j/) | Pre-production-planning pain. Our framing fits.                                  | 7       | 16       |
+| 2026-04-12 | what is your workflow for podcast?                                  | [link](https://www.reddit.com/r/podcasting/comments/1s19gyb/) | Workflow thread. BuildOS plausible with founder disclosure **if in Wed thread**. | 6       | 14       |
+| 2026-04-14 | Ever nail a great moment but your guest never shares the content    | [link](https://www.reddit.com/r/podcasting/comments/1sn2hyv/) | Guest-workflow frustration — not our fit, but signals sub vibe.                  | 10      | 12       |
+| recurring  | Weekly Product or Service promotional thread (Wednesdays)           | (varies weekly)                                               | The sanctioned surface for every BuildOS mention in this sub.                    | varies  | varies   |
 
 ## Voice notes for future commenting
 

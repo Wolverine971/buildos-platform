@@ -13,7 +13,7 @@ overrides:
   '@eslint/plugin-kit@<0.3.4': '>=0.3.4'
   linkifyjs@<4.3.2: '>=4.3.2'
   glob@>=10.2.0 <10.5.0: '>=10.5.0'
-  '@sveltejs/kit@<2.49.5': '>=2.49.5'
+  '@sveltejs/kit@<2.57.1': '>=2.57.1'
   vite@<7.3.2: '>=7.3.2'
   ajv@>=8.0.0 <8.18.0: '>=8.18.0'
   axios@<1.13.5: '>=1.13.5'
@@ -25,7 +25,7 @@ overrides:
   jws@4.0.0: 4.0.1
   lodash@<4.18.1: '>=4.18.1'
   markdown-it@<14.1.1: '>=14.1.1'
-  path-to-regexp@>=0.1.0 <0.1.13: 0.1.12
+  path-to-regexp@<0.1.13: '>=0.1.13'
   picomatch@<4.0.4: '>=4.0.4'
   prismjs@<1.30.0: '>=1.30.0'
   qs@<6.15.0: '>=6.15.0'
@@ -42,6 +42,7 @@ overrides:
   minimatch@>=9.0.0 <9.0.7: '>=9.0.7'
   minimatch@>=10.0.0 <10.2.3: '>=10.2.3'
   flatted@<3.4.0: '>=3.4.0'
+  follow-redirects@<1.16.0: '>=1.16.0'
 
 importers:
 
@@ -133,10 +134,10 @@ importers:
         version: 3.6.1
       '@vercel/analytics':
         specifier: ^2.0.1
-        version: 2.0.1(@sveltejs/kit@2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.55.2)
+        version: 2.0.1(@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.55.2)
       '@vercel/speed-insights':
         specifier: ^2.0.0
-        version: 2.0.0(@sveltejs/kit@2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.55.2)
+        version: 2.0.0(@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.55.2)
       '@xyflow/svelte':
         specifier: ^1.5.0
         version: 1.5.0(svelte@5.55.2)
@@ -209,6 +210,9 @@ importers:
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
     devDependencies:
       '@babel/parser':
         specifier: ^7.28.0
@@ -227,10 +231,10 @@ importers:
         version: 9.36.0
       '@sveltejs/adapter-vercel':
         specifier: ^6.3.3
-        version: 6.3.3(@sveltejs/kit@2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(rollup@4.60.1)
+        version: 6.3.3(@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(rollup@4.60.1)
       '@sveltejs/kit':
-        specifier: ^2.57.0
-        version: 2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))
+        specifier: ^2.57.1
+        version: 2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))
       '@sveltejs/vite-plugin-svelte':
         specifier: ^5.0.0
         version: 5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))
@@ -363,9 +367,6 @@ importers:
       yaml:
         specifier: '>=2.8.3'
         version: 2.8.3
-      zod:
-        specifier: ^3.23.0
-        version: 3.25.76
 
   apps/worker:
     dependencies:
@@ -1852,10 +1853,10 @@ packages:
     resolution: {integrity: sha512-jI7jT/XqRyFe9oqKvFcNPQfyNBi3pXqN1iQXa2lmeKT5Vzgr9iSOqJOD3pXf/9Q2Os6SXzqYYm6osRjHYEhkyw==}
     engines: {node: '>=20.0'}
     peerDependencies:
-      '@sveltejs/kit': '>=2.49.5'
+      '@sveltejs/kit': '>=2.57.1'
 
-  '@sveltejs/kit@2.57.0':
-    resolution: {integrity: sha512-TMiqCTy9ZW4KBHvmTgeWU/hF6jcFpeMgR+9ekE06uhhGnbUZ7wpIY6l1Uk4ThRzlWYJnCVfzmtVNaHaDjaSiSg==}
+  '@sveltejs/kit@2.57.1':
+    resolution: {integrity: sha512-VRdSbB96cI1EnRh09CqmnQqP/YJvET5buj8S6k7CxaJqBJD4bw4fRKDjcarAj/eX9k2eHifQfDH8NtOh+ZxxPw==}
     engines: {node: '>=18.13'}
     hasBin: true
     peerDependencies:
@@ -2329,7 +2330,7 @@ packages:
     resolution: {integrity: sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g==}
     peerDependencies:
       '@remix-run/react': ^2
-      '@sveltejs/kit': '>=2.49.5'
+      '@sveltejs/kit': '>=2.57.1'
       next: '>= 13'
       nuxt: '>= 3'
       react: ^18 || ^19 || ^19.0.0-rc
@@ -2362,7 +2363,7 @@ packages:
   '@vercel/speed-insights@2.0.0':
     resolution: {integrity: sha512-jwkNcrTeafWxjmWq4AHBaptSqZiJkYU5adLC9QBSqeim0GcqDMgN5Ievh8OG1rJ6W3A4l1oiP7qr9CWxGuzu3w==}
     peerDependencies:
-      '@sveltejs/kit': '>=2.49.5'
+      '@sveltejs/kit': '>=2.57.1'
       next: '>= 13'
       nuxt: '>= 3'
       react: ^18 || ^19 || ^19.0.0-rc
@@ -3421,8 +3422,8 @@ packages:
   flatted@3.4.2:
     resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
 
-  follow-redirects@1.15.11:
-    resolution: {integrity: sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==}
+  follow-redirects@1.16.0:
+    resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -4349,8 +4350,8 @@ packages:
     resolution: {integrity: sha512-oWyT4gICAu+kaA7QWk/jvCHWarMKNs6pXOGWKDTr7cw4IGcUbW+PeTfbaQiLGheFRpjo6O9J0PmyMfQPjH71oA==}
     engines: {node: 20 || >=22}
 
-  path-to-regexp@0.1.12:
-    resolution: {integrity: sha512-RA1GjUVMnvYFxuqovrEqZoxxW5NUZqbwKtYz/Tt7nXerk0LbLblQmrsgdeOxV5SFHf0UDggjS/bSeOZwt1pmEQ==}
+  path-to-regexp@8.4.2:
+    resolution: {integrity: sha512-qRcuIdP69NPm4qbACK+aDogI5CBDMi1jKe0ry5rSQJz8JVLsC7jV8XpiJjGRLLol3N+R5ihGYcrPLTno6pAdBA==}
 
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
@@ -7130,9 +7131,9 @@ snapshots:
     dependencies:
       acorn: 8.15.0
 
-  '@sveltejs/adapter-vercel@6.3.3(@sveltejs/kit@2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(rollup@4.60.1)':
+  '@sveltejs/adapter-vercel@6.3.3(@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(rollup@4.60.1)':
     dependencies:
-      '@sveltejs/kit': 2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))
+      '@sveltejs/kit': 2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))
       '@vercel/nft': 1.5.0(rollup@4.60.1)
       esbuild: 0.25.10
     transitivePeerDependencies:
@@ -7140,7 +7141,7 @@ snapshots:
       - rollup
       - supports-color
 
-  '@sveltejs/kit@2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))':
+  '@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))':
     dependencies:
       '@standard-schema/spec': 1.0.0
       '@sveltejs/acorn-typescript': 1.0.6(acorn@8.15.0)
@@ -7691,9 +7692,9 @@ snapshots:
 
   '@ungap/structured-clone@1.3.0': {}
 
-  '@vercel/analytics@2.0.1(@sveltejs/kit@2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.55.2)':
+  '@vercel/analytics@2.0.1(@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.55.2)':
     optionalDependencies:
-      '@sveltejs/kit': 2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))
+      '@sveltejs/kit': 2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))
       react: 19.2.3
       svelte: 5.55.2
 
@@ -7716,9 +7717,9 @@ snapshots:
       - rollup
       - supports-color
 
-  '@vercel/speed-insights@2.0.0(@sveltejs/kit@2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.55.2)':
+  '@vercel/speed-insights@2.0.0(@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(react@19.2.3)(svelte@5.55.2)':
     optionalDependencies:
-      '@sveltejs/kit': 2.57.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))
+      '@sveltejs/kit': 2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.44.1)(tsx@4.20.6)(yaml@2.8.3))
       react: 19.2.3
       svelte: 5.55.2
 
@@ -8020,7 +8021,7 @@ snapshots:
 
   axios@1.15.0:
     dependencies:
-      follow-redirects: 1.15.11
+      follow-redirects: 1.16.0
       form-data: 4.0.5
       proxy-from-env: 2.1.0
     transitivePeerDependencies:
@@ -8769,7 +8770,7 @@ snapshots:
       methods: 1.1.2
       on-finished: 2.4.1
       parseurl: 1.3.3
-      path-to-regexp: 0.1.12
+      path-to-regexp: 8.4.2
       proxy-addr: 2.0.7
       qs: 6.15.0
       range-parser: 1.2.1
@@ -8870,7 +8871,7 @@ snapshots:
 
   flatted@3.4.2: {}
 
-  follow-redirects@1.15.11: {}
+  follow-redirects@1.16.0: {}
 
   form-data@4.0.5:
     dependencies:
@@ -9949,7 +9950,7 @@ snapshots:
       lru-cache: 11.2.4
       minipass: 7.1.2
 
-  path-to-regexp@0.1.12: {}
+  path-to-regexp@8.4.2: {}
 
   pathe@2.0.3: {}
 

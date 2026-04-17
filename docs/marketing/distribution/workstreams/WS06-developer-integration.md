@@ -1,6 +1,7 @@
 <!-- docs/marketing/distribution/workstreams/WS06-developer-integration.md -->
 
 ---
+
 id: WS06
 title: Developer & Integration Surface
 wave_span: 1-2
@@ -9,6 +10,7 @@ owner: DJ
 related_tasks: [T09, T18, T19]
 cross_workstreams: [WS02, WS04]
 last_updated: 2026-04-17
+
 ---
 
 # WS06 — Developer & Integration Surface
@@ -25,29 +27,31 @@ Public GitHub README is a heavily-weighted LLM source (studies consistently show
 
 ## Status dashboard
 
-| Task | Title | Type | Wave | Effort | Status | Spec |
-|------|-------|------|------|--------|--------|------|
-| T09 | README overhaul (public repo) | W | 1 | 4 h | ⚪ | inline below |
-| T18 | Integration marketplace inventory | O | 2 | 4 h | ⚪ | inline below |
-| T19 | Integration marketplace submissions (wave 1) | O | 2 | 2 d | ⚪ | inline below |
+| Task | Title                                        | Type | Wave | Effort | Status | Spec         |
+| ---- | -------------------------------------------- | ---- | ---- | ------ | ------ | ------------ |
+| T09  | README overhaul (public repo)                | W    | 1    | 4 h    | ⚪     | inline below |
+| T18  | Integration marketplace inventory            | O    | 2    | 4 h    | ⚪     | inline below |
+| T19  | Integration marketplace submissions (wave 1) | O    | 2    | 2 d    | ⚪     | inline below |
 
 ## Required reading
 
 - [Brand guide](../../brand/brand-guide-1-pager.md) — creator-framed category + voice
 - [Strategy §3.7 + §3.8](../../../../buildos-strat.md) — README rewrite scope + marketplace rationale
 - Current READMEs:
-  - `README.md` (root monorepo)
-  - `apps/web/README.md` (web app)
+    - `README.md` (root monorepo)
+    - `apps/web/README.md` (web app)
 - `.env.example` — canonical integration inventory source of truth
 
 ## Scope
 
 **In scope:**
+
 - Public repo README (monorepo + web)
 - Integration partner directory listings
 - "Works with BuildOS" or "Built on BuildOS" submissions
 
 **Out of scope:**
+
 - Marketing-site /how-it-works page (WS07)
 - API documentation site (separate future work)
 - Public-facing docs portal (separate future work)
@@ -72,12 +76,12 @@ T18 (inventory) ──► T19 (submissions)
 
 ## Output artifacts
 
-| Artifact | Location |
-|----------|----------|
-| New root README | `README.md` |
-| New web README | `apps/web/README.md` |
+| Artifact              | Location                                                  |
+| --------------------- | --------------------------------------------------------- |
+| New root README       | `README.md`                                               |
+| New web README        | `apps/web/README.md`                                      |
 | Integration inventory | `docs/marketing/distribution/integration-marketplaces.md` |
-| Submission tracker | same file, "Submissions Status" section |
+| Submission tracker    | same file, "Submissions Status" section                   |
 
 ## Task briefs
 
@@ -86,6 +90,7 @@ T18 (inventory) ──► T19 (submissions)
 **Goal:** Both READMEs communicate BuildOS's creator-framed category + core promise to anyone landing from a GitHub search or LLM citation.
 
 **Required content (per strategy §3.7):**
+
 - Clear category line ("a thinking environment for people making complex things")
 - Core promise ("turn messy thinking into structured work")
 - Who this is for (creators, builders, anyone living inside long multi-step work)
@@ -96,6 +101,7 @@ T18 (inventory) ──► T19 (submissions)
 - Links: `/how-it-works` (once T14 lands), framework doc (T15), marketing strategy
 
 **Hard constraints:**
+
 - Do NOT lead with "AI" in the opening lines
 - Do NOT use "ontology" in the first 500 words
 - Creator examples in the before/after section (not a founder example)
@@ -108,15 +114,16 @@ T18 (inventory) ──► T19 (submissions)
 **Goal:** A ranked list of every partner marketplace BuildOS should be listed in, with submission requirements for each.
 
 **Action:**
+
 1. Open `.env.example` — list every third-party integration by provider
 2. For each, find the partner's marketplace / directory / "works with" page:
-   - Google: Google Workspace Marketplace, Google Calendar integrations list
-   - Twilio: Twilio Showcase / partner directory
-   - OpenRouter: homepage showcase / integration page
-   - Anthropic: Claude API "built with" list (if they have one)
-   - OpenAI: GPT Store (if applicable), OpenAI community showcases
-   - Moonshot: any directory they run
-   - Stripe: Stripe Partner Directory (if applicable)
+    - Google: Google Workspace Marketplace, Google Calendar integrations list
+    - Twilio: Twilio Showcase / partner directory
+    - OpenRouter: homepage showcase / integration page
+    - Anthropic: Claude API "built with" list (if they have one)
+    - OpenAI: GPT Store (if applicable), OpenAI community showcases
+    - Moonshot: any directory they run
+    - Stripe: Stripe Partner Directory (if applicable)
 3. For each marketplace, capture: submission URL, required assets (logo, screenshots, copy), copy-length constraints, expected review time
 
 **Output:** `docs/marketing/distribution/integration-marketplaces.md` with full inventory.
@@ -128,6 +135,7 @@ T18 (inventory) ──► T19 (submissions)
 **Goal:** Submit to top 5 partner directories from T18.
 
 **Priority ranking criteria:**
+
 1. Audience size of the marketplace
 2. Relevance (a Google Workspace listing reaches more creators than a specialized AI-dev directory)
 3. Submission barrier (some require NDAs or are invite-only — defer those)

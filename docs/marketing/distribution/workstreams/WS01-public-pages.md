@@ -1,6 +1,7 @@
 <!-- docs/marketing/distribution/workstreams/WS01-public-pages.md -->
 
 ---
+
 id: WS01
 title: Public Pages as Distribution Surface
 wave_span: 1-4
@@ -9,6 +10,7 @@ owner: DJ
 related_tasks: [T02, T12, T13, T21, T22, T26, T29, T30, T31]
 cross_workstreams: [WS02, WS04, WS07]
 last_updated: 2026-04-17
+
 ---
 
 # WS01 — Public Pages as Distribution Surface
@@ -25,17 +27,17 @@ Public pages compound across every other channel: SEO surface, LLM citation surf
 
 ## Status dashboard
 
-| Task | Title | Type | Wave | Effort | Status | Spec |
-|------|-------|------|------|--------|--------|------|
-| T02 | End-user publish UX audit | R | 1 | 4 h | ✅ 2026-04-16 | [phase-1-ui-brief.md](../../../../apps/web/docs/features/public-pages/phase-1-ui-brief.md) |
-| T12 | Phase 1 — end-user publish UI | C | 2 | ~13.5 eng days | 🟡 ready | same brief (v3 locked, 9 PRs) |
-| T13 | "Made with BuildOS" attribution verify | C | 2 | 1 h | ⚪ | inline below |
-| T26 | Seed 10–20 public projects for gallery | W | 3 | 2 d | ⚪ | inline below |
-| T21 | Phase 3 — visual design audit | C | 3 | 1 wk | ⚪ | inline below |
-| T22 | Phase 4 — clone-as-template | C | 3 | 1–2 wk | ⚪ | inline below |
-| T29 | Phase 5 — discovery gallery | C | 4 | 2 wk | ⚪ | inline below |
-| T30 | `/@username/project-name` migration | C | 4 | 1 wk | ⚪ | inline below |
-| T31 | Phase 6 — social layer | C | 4+ | multi-wk | ⏸ | inline below |
+| Task | Title                                  | Type | Wave | Effort         | Status        | Spec                                                                                       |
+| ---- | -------------------------------------- | ---- | ---- | -------------- | ------------- | ------------------------------------------------------------------------------------------ |
+| T02  | End-user publish UX audit              | R    | 1    | 4 h            | ✅ 2026-04-16 | [phase-1-ui-brief.md](../../../../apps/web/docs/features/public-pages/phase-1-ui-brief.md) |
+| T12  | Phase 1 — end-user publish UI          | C    | 2    | ~13.5 eng days | 🟡 ready      | same brief (v3 locked, 9 PRs)                                                              |
+| T13  | "Made with BuildOS" attribution verify | C    | 2    | 1 h            | ⚪            | inline below                                                                               |
+| T26  | Seed 10–20 public projects for gallery | W    | 3    | 2 d            | ⚪            | inline below                                                                               |
+| T21  | Phase 3 — visual design audit          | C    | 3    | 1 wk           | ⚪            | inline below                                                                               |
+| T22  | Phase 4 — clone-as-template            | C    | 3    | 1–2 wk         | ⚪            | inline below                                                                               |
+| T29  | Phase 5 — discovery gallery            | C    | 4    | 2 wk           | ⚪            | inline below                                                                               |
+| T30  | `/@username/project-name` migration    | C    | 4    | 1 wk           | ⚪            | inline below                                                                               |
+| T31  | Phase 6 — social layer                 | C    | 4+   | multi-wk       | ⏸            | inline below                                                                               |
 
 ## Required reading
 
@@ -47,12 +49,14 @@ Public pages compound across every other channel: SEO surface, LLM citation surf
 ## Scope
 
 **In scope:**
+
 - Any user-generated artifact (projects, documents, ontology snapshots) as a public URL
 - Discovery + virality mechanics (clone, gallery, attribution)
 - URL design and canonicalization
 - Visual polish of the public-page template
 
 **Out of scope:**
+
 - Marketing site pages (`/how-it-works`, `/changelog`, `/compare`) — see WS05, WS07
 - JSON-LD on marketing pages — see WS02
 - Public repo README — see WS06
@@ -75,13 +79,13 @@ T12 is the gate for everything else. Ship it first.
 
 ## Output artifacts
 
-| Artifact | Location |
-|----------|----------|
-| Phase 1 UI brief (T02 output) | `apps/web/docs/features/public-pages/phase-1-ui-brief.md` |
-| Phase 1 code | distributed across `apps/web/src/lib/components/`, `routes/(public)/p/`, `routes/api/onto/documents/[id]/public-page/` |
-| Phase 3 design audit | `apps/web/docs/features/public-pages/phase-3-design-audit.md` (future) |
-| Phase 4 clone spec | `apps/web/docs/features/public-pages/phase-4-clone-spec.md` (future) |
-| Gallery route | `apps/web/src/routes/(public)/gallery/` (future) |
+| Artifact                      | Location                                                                                                               |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Phase 1 UI brief (T02 output) | `apps/web/docs/features/public-pages/phase-1-ui-brief.md`                                                              |
+| Phase 1 code                  | distributed across `apps/web/src/lib/components/`, `routes/(public)/p/`, `routes/api/onto/documents/[id]/public-page/` |
+| Phase 3 design audit          | `apps/web/docs/features/public-pages/phase-3-design-audit.md` (future)                                                 |
+| Phase 4 clone spec            | `apps/web/docs/features/public-pages/phase-4-clone-spec.md` (future)                                                   |
+| Gallery route                 | `apps/web/src/routes/(public)/gallery/` (future)                                                                       |
 
 ## Task briefs
 
@@ -106,6 +110,7 @@ Spec drafted 2026-04-16. See [phase-1-ui-brief.md](../../../../apps/web/docs/fea
 **Goal:** every public page renders a tasteful "Made with BuildOS" footer linking to the homepage with UTM params (`utm_source=public-page&utm_medium=attribution`).
 
 **Action:**
+
 1. Read `apps/web/src/routes/(public)/p/[slug]/+page.svelte` and `/p/[slugPrefix]/[slugBase]/+page.svelte`
 2. If attribution missing or weak, add per Inkprint design system tokens (no sparkle, no hype, one small line)
 3. Verify link resolves with UTM params
@@ -117,6 +122,7 @@ Spec drafted 2026-04-16. See [phase-1-ui-brief.md](../../../../apps/web/docs/fea
 **Goal:** Public page template looks like a Notion-level shared document and aligns with brand visual direction ("working surface, studio desk, editorial wall") — not a CRM export.
 
 **Action:**
+
 1. Screenshot current public page
 2. Compare against brand guide visual direction
 3. Apply Inkprint tokens; use `design-update` skill
@@ -129,6 +135,7 @@ Spec drafted 2026-04-16. See [phase-1-ui-brief.md](../../../../apps/web/docs/fea
 **Goal:** "Use this as a template" action on public pages. Preserves structure; clears personal data; creates a new authenticated project for the viewer.
 
 **Key UX decisions to capture in spec:**
+
 - What "personal data" means (free-text fields: clear; tag taxonomy: keep; task titles: clear content but keep shape?)
 - How clone count is tracked (per-page counter on `onto_public_pages`?)
 - How to display social proof ("X people used this template") without gaming
@@ -140,6 +147,7 @@ Spec drafted 2026-04-16. See [phase-1-ui-brief.md](../../../../apps/web/docs/fea
 **Goal:** Before the gallery (T29) ships, populate it with real DJ projects worth reading.
 
 **Target mix (creator-framed per brand guide):**
+
 - 1 book project structure (fiction or non-fiction)
 - 1 YouTube-series production plan
 - 1 podcast season plan
@@ -166,6 +174,7 @@ Spec drafted 2026-04-16. See [phase-1-ui-brief.md](../../../../apps/web/docs/fea
 **Goal:** Upgrade canonical URL structure from `/p/{slug}` to `/@username/project-name` for memorability and personal-brand compounding.
 
 **Plan:**
+
 - 301 redirects from old `/p/{slug}` URLs
 - Slug conflict resolution (already has scaffold via `onto_public_page_slug_history`)
 - Username reservation flow

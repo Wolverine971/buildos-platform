@@ -56,6 +56,32 @@ function createDefaultDateRange(): { start: Date; end: Date } {
 	return { start, end };
 }
 
+// Parse an API JSON response and fail loudly on non-JSON / empty bodies.
+// Previous code silently swallowed parse errors with `.catch(() => ({}))`,
+// which then surfaced as a misleading "Failed to …" message and hid the
+// real upstream failure (HTML error pages, truncated bodies, etc.).
+async function parseApiJson<T = { success?: boolean; data?: any; error?: string[] }>(
+	response: Response,
+	operation: string
+): Promise<T> {
+	const text = await response.text();
+	if (!text) {
+		const msg = `[TimeBlocksStore] ${operation}: empty response body (status ${response.status})`;
+		console.error(msg);
+		throw new Error(msg);
+	}
+	try {
+		return JSON.parse(text) as T;
+	} catch (parseError) {
+		console.error(`[TimeBlocksStore] ${operation}: invalid JSON from server`, {
+			status: response.status,
+			snippet: text.slice(0, 200),
+			parseError
+		});
+		throw new Error(`${operation}: server returned non-JSON response`);
+	}
+}
+
 function loadSlotFinderConfig(): SlotFinderConfig {
 	if (!browser) return DEFAULT_SLOT_FINDER_CONFIG;
 
@@ -101,7 +127,7 @@ function createTimeBlocksStore() {
 		const response = await fetch(
 			`/api/time-blocks/blocks?start_date=${rangeStart.toISOString()}&end_date=${rangeEnd.toISOString()}`
 		);
-		const result = await response.json().catch(() => ({}));
+		const result = await parseApiJson(response, 'requestBlocks');
 
 		if (!result?.success) {
 			throw new Error(result?.error?.[0] ?? 'Failed to load time blocks');
@@ -117,7 +143,7 @@ function createTimeBlocksStore() {
 		const response = await fetch(
 			`/api/time-blocks/allocation?start_date=${rangeStart.toISOString()}&end_date=${rangeEnd.toISOString()}`
 		);
-		const result = await response.json().catch(() => ({}));
+		const result = await parseApiJson(response, 'requestAllocation');
 
 		if (!result?.success) {
 			throw new Error(result?.error?.[0] ?? 'Failed to load time allocation');
@@ -269,7 +295,7 @@ function createTimeBlocksStore() {
 					body: JSON.stringify(payload)
 				});
 
-				const result = await response.json().catch(() => ({}));
+				const result = await parseApiJson(response, 'createTimeBlock');
 
 				if (!result?.success) {
 					throw new Error(result?.error?.[0] ?? 'Failed to create time block');
@@ -346,7 +372,7 @@ function createTimeBlocksStore() {
 					method: 'POST'
 				});
 
-				const result = await response.json().catch(() => ({}));
+				const result = await parseApiJson(response, 'regenerateSuggestions');
 
 				if (!result?.success) {
 					throw new Error(result?.error?.[0] ?? 'Failed to refresh suggestions');
@@ -393,7 +419,7 @@ function createTimeBlocksStore() {
 					method: 'DELETE'
 				});
 
-				const result = await response.json().catch(() => ({}));
+				const result = await parseApiJson(response, 'deleteBlock');
 
 				if (!result?.success) {
 					throw new Error(result?.error?.[0] ?? 'Failed to delete time block');
@@ -434,7 +460,7 @@ function createTimeBlocksStore() {
 					body: JSON.stringify(params)
 				});
 
-				const result = await response.json().catch(() => ({}));
+				const result = await parseApiJson(response, 'updateBlock');
 
 				if (!result?.success) {
 					throw new Error(result?.error?.[0] ?? 'Failed to update time block');

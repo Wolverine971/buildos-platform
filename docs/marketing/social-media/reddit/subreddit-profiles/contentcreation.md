@@ -7,6 +7,7 @@ daily_active_estimate: low-to-medium (top-week #1 = 7↑/7💬)
 promo_tolerance: moderate
 buildos_fit: medium
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/contentcreation.md
 ---
 
 # r/contentcreation
@@ -25,7 +26,7 @@ From `about/rules.json` on 2026-04-17:
 
 **Rule 2 — Be Constructive With Your Criticism**
 
-> Telling someone their work sucks is not constructive; tell them how it sucks and what to work on instead. Here's a quick format you can use: "You can work on improving ___ by fixing the ___ . You can do so by ___ ."
+> Telling someone their work sucks is not constructive; tell them how it sucks and what to work on instead. Here's a quick format you can use: "You can work on improving **_ by fixing the _** . You can do so by \_\_\_ ."
 
 **Rule 3 — Don't be Creepy, Rude, or Annoying**
 
@@ -41,7 +42,7 @@ From `about/rules.json` on 2026-04-17:
 
 ## Moderation posture
 
-**MODERATE-LIGHT.** 4 rules, all judgment-based. "No blatant self promo" leaves significant room for framed tool discussion if value-forward. Rule 4's two-acceptable-post-types structure gives a clear template: *question about a specific thing* or *explain a process/tip*.
+**MODERATE-LIGHT.** 4 rules, all judgment-based. "No blatant self promo" leaves significant room for framed tool discussion if value-forward. Rule 4's two-acceptable-post-types structure gives a clear template: _question about a specific thing_ or _explain a process/tip_.
 
 ## Culture & voice
 
@@ -70,13 +71,13 @@ From `about/rules.json` on 2026-04-17:
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                   | URL                                                                  | Why BuildOS is relevant                                                  | Upvotes | Comments |
-| ---------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------- | -------- |
-| 2026-04-15 | What does your AI creative stack actually look like in 2026 and what would you cut if you could | [link](https://www.reddit.com/r/contentcreation/comments/1sn48zi/) | Direct stack-question thread. Founder-disclosed BuildOS mention fits.     | 3       | 5        |
-| 2026-04-14 | Even "Good Prompts" Still Produce Generic AI Content (Here's Why)              | [link](https://www.reddit.com/r/contentcreation/comments/1sl6tjz/)   | Meta thread on AI quality. BuildOS's context-accumulation reply is strong. | 3       | 5        |
-| 2026-04-14 | can AI actually help you create content that stands out, or does it just blend in | [link](https://www.reddit.com/r/contentcreation/comments/1sigtxx/) | Similar meta thread.                                                     | 7       | 7        |
-| 2026-04-13 | Less effort, best results                                                      | [link](https://www.reddit.com/r/contentcreation/comments/1sm8wka/)   | Workflow/efficiency angle.                                               | 3       | 4        |
-| 2026-04-13 | I built an AI content tool for bloggers, here's what surprised me after the first 100 signups | [link](https://www.reddit.com/r/contentcreation/comments/1skgha9/) | Proof that solo-builder posts are tolerated here — precedent.             | 5       | 5        |
+| Date       | Thread title                                                                                    | URL                                                                | Why BuildOS is relevant                                                    | Upvotes | Comments |
+| ---------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-15 | What does your AI creative stack actually look like in 2026 and what would you cut if you could | [link](https://www.reddit.com/r/contentcreation/comments/1sn48zi/) | Direct stack-question thread. Founder-disclosed BuildOS mention fits.      | 3       | 5        |
+| 2026-04-14 | Even "Good Prompts" Still Produce Generic AI Content (Here's Why)                               | [link](https://www.reddit.com/r/contentcreation/comments/1sl6tjz/) | Meta thread on AI quality. BuildOS's context-accumulation reply is strong. | 3       | 5        |
+| 2026-04-14 | can AI actually help you create content that stands out, or does it just blend in               | [link](https://www.reddit.com/r/contentcreation/comments/1sigtxx/) | Similar meta thread.                                                       | 7       | 7        |
+| 2026-04-13 | Less effort, best results                                                                       | [link](https://www.reddit.com/r/contentcreation/comments/1sm8wka/) | Workflow/efficiency angle.                                                 | 3       | 4        |
+| 2026-04-13 | I built an AI content tool for bloggers, here's what surprised me after the first 100 signups   | [link](https://www.reddit.com/r/contentcreation/comments/1skgha9/) | Proof that solo-builder posts are tolerated here — precedent.              | 5       | 5        |
 
 ## Voice notes for future commenting
 
@@ -89,7 +90,7 @@ From `about/rules.json` on 2026-04-17:
 
 **Phase 1 (weeks 1–4):** participate in AI-stack and creative-process threads.
 
-- Answer "what does your stack look like?" with a *specific* set of tools including BuildOS (if genuinely used) with founder disclosure.
+- Answer "what does your stack look like?" with a _specific_ set of tools including BuildOS (if genuinely used) with founder disclosure.
 
 **Phase 2 (months 2–3):** one process-breakdown post.
 

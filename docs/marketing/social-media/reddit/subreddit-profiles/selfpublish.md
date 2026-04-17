@@ -7,6 +7,7 @@ daily_active_estimate: unknown (top-week #1 = 91↑/18💬; sub is active but no
 promo_tolerance: strict
 buildos_fit: high
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/selfpublish.md
 ---
 
 # r/selfpublish
@@ -83,7 +84,7 @@ From sidebar + rules page on 2026-04-17:
 
 ## Thread types where BuildOS would be a legit recommendation
 
-1. **Weekly Self-Promo and Chat Thread** — the only allowed surface. BuildOS mentions must be tied to *how you used it on a real launch*, not feature dumps.
+1. **Weekly Self-Promo and Chat Thread** — the only allowed surface. BuildOS mentions must be tied to _how you used it on a real launch_, not feature dumps.
 2. **"How do you plan a multi-book series?"** — BuildOS is a plausible fit. Wait for the question; don't fish.
 3. **"How do you organize research/marketing/launch plans?"** — same rule. Wait for the question.
 4. **"I finished my first draft — now what?"** — launch-planning pain. BuildOS mention should come framed as "I used it to sequence my launch tasks alongside the manuscript."
@@ -91,13 +92,13 @@ From sidebar + rules page on 2026-04-17:
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                                     | URL                                                          | Why BuildOS is relevant                                                                                                  | Upvotes | Comments |
-| ---------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
-| 2026-04-10 | Was quoted $2k to format my book's interior... for those of you who went cheaper...              | [link](https://www.reddit.com/r/selfpublish/comments/1slu9w9/) | Adjacent, not for mention — but shows the author-as-operator reality BuildOS is designed for.                             | 74      | 226      |
-| 2026-04-14 | Mixed Feelings: D2D Announces Account Fees                                                       | [link](https://www.reddit.com/r/selfpublish/comments/1sm6qsj/) | The "vendor shock" thread pattern. Authors juggle 5–10 service vendors and need one place to track decisions across them. | 46      | 125      |
-| 2026-04-11 | How Do I Find My Target Readers?                                                                 | [link](https://www.reddit.com/r/selfpublish/comments/1sngj4h/) | Launch-planning thread — BuildOS's natural project-structure fit. Do not mention the product here; wait for the right ask. | 8       | 9        |
-| 2026-03-15 | 1000 copies sold! Some unexpected lessons                                                        | [link](https://www.reddit.com/r/selfpublish/comments/1s5ck8j/) | Milestone breakdown — this is the pattern for our eventual launch-recap post (with BuildOS mentioned among our own tools). | 192     | 51       |
-| 2026-04-09 | 270k views on Reddit, 1 sale in 52 days. What am I doing wrong?                                  | [link](https://www.reddit.com/r/selfpublish/comments/1s57ubs/) | The "visibility ≠ conversion" thread. Useful context for our own Reddit strategy; **do not** plug BuildOS.                | 56      | 83       |
+| Date       | Thread title                                                                        | URL                                                            | Why BuildOS is relevant                                                                                                    | Upvotes | Comments |
+| ---------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-10 | Was quoted $2k to format my book's interior... for those of you who went cheaper... | [link](https://www.reddit.com/r/selfpublish/comments/1slu9w9/) | Adjacent, not for mention — but shows the author-as-operator reality BuildOS is designed for.                              | 74      | 226      |
+| 2026-04-14 | Mixed Feelings: D2D Announces Account Fees                                          | [link](https://www.reddit.com/r/selfpublish/comments/1sm6qsj/) | The "vendor shock" thread pattern. Authors juggle 5–10 service vendors and need one place to track decisions across them.  | 46      | 125      |
+| 2026-04-11 | How Do I Find My Target Readers?                                                    | [link](https://www.reddit.com/r/selfpublish/comments/1sngj4h/) | Launch-planning thread — BuildOS's natural project-structure fit. Do not mention the product here; wait for the right ask. | 8       | 9        |
+| 2026-03-15 | 1000 copies sold! Some unexpected lessons                                           | [link](https://www.reddit.com/r/selfpublish/comments/1s5ck8j/) | Milestone breakdown — this is the pattern for our eventual launch-recap post (with BuildOS mentioned among our own tools). | 192     | 51       |
+| 2026-04-09 | 270k views on Reddit, 1 sale in 52 days. What am I doing wrong?                     | [link](https://www.reddit.com/r/selfpublish/comments/1s57ubs/) | The "visibility ≠ conversion" thread. Useful context for our own Reddit strategy; **do not** plug BuildOS.                 | 56      | 83       |
 
 ## Voice notes for future commenting
 
@@ -112,13 +113,13 @@ From sidebar + rules page on 2026-04-17:
 **Phase 1 (weeks 1–6):** comment-only.
 
 - Comment on D2D / KDP / formatting / pricing threads with specific lived-experience takes. These get visibility because the sub hungers for real numbers.
-- Answer "how do I plan my launch?" questions *without mentioning BuildOS* for the first 6 weeks. Build a reputation as a useful commenter.
+- Answer "how do I plan my launch?" questions _without mentioning BuildOS_ for the first 6 weeks. Build a reputation as a useful commenter.
 - Read the weekly self-promo thread but don't participate — watch what's tolerated vs what gets called out as shadow promo.
 
 **Phase 2 (weeks 7–12):** selective self-promo thread participation.
 
 - In the weekly self-promo thread, a short "I'm an indie author also building a launch-planning tool for authors" is fine with founder disclosure. Don't pitch features; just exist.
-- In non-promo threads, you can mention BuildOS *only* if the asker's problem matches. Always founder-disclose and always with a specific example.
+- In non-promo threads, you can mention BuildOS _only_ if the asker's problem matches. Always founder-disclose and always with a specific example.
 
 **Realistic karma timeline:**
 
@@ -133,4 +134,4 @@ From sidebar + rules page on 2026-04-17:
 
 ## Notes log
 
-- 2026-04-17: Initial scan. Subscribers 241K. Rule 1 + 2 + 8 + 10 = the strictest self-promo enforcement pattern on any BuildOS-relevant sub. "We know it when we see it" for shadow promo means the only safe mention is the weekly self-promo thread with founder disclosure. The culture is operator-grade: KDP/D2D drama, vendor pricing reality, launch autopsies. BuildOS's best long-term play is a *used-in-anger* launch recap after we have real author users.
+- 2026-04-17: Initial scan. Subscribers 241K. Rule 1 + 2 + 8 + 10 = the strictest self-promo enforcement pattern on any BuildOS-relevant sub. "We know it when we see it" for shadow promo means the only safe mention is the weekly self-promo thread with founder disclosure. The culture is operator-grade: KDP/D2D drama, vendor pricing reality, launch autopsies. BuildOS's best long-term play is a _used-in-anger_ launch recap after we have real author users.

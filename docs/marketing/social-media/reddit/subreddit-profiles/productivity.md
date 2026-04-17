@@ -7,6 +7,7 @@ daily_active_estimate: very high (top-week #1 = 243↑/64💬; top-month #1 = 17
 promo_tolerance: strict
 buildos_fit: medium
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/productivity.md
 ---
 
 # r/productivity
@@ -33,7 +34,7 @@ From `about/rules.json` on 2026-04-17:
 
 **Rule 3 — No Listicles**
 
-> A listicle is an article presented in the form of a numbered or bullet-pointed list. Example: *Top 10 Things Successful People Do!*
+> A listicle is an article presented in the form of a numbered or bullet-pointed list. Example: _Top 10 Things Successful People Do!_
 
 **Rule 4 — No Isolated Links**
 
@@ -60,10 +61,10 @@ The sub is actively fighting against the exact kind of content BuildOS looks lik
 
 ## Culture & voice
 
-- **Tone of top comments:** lived-experience-first, anti-hustle, increasingly anti-hype. This is a discussion sub about *being* productive, not *tools* for productivity.
+- **Tone of top comments:** lived-experience-first, anti-hustle, increasingly anti-hype. This is a discussion sub about _being_ productive, not _tools_ for productivity.
 - **What gets upvoted:** honest confession ("I'm mentally slow and I don't know why" — 243↑), pattern-recognition posts ("Why do I feel super motivated to fix my life at night, but completely lose it the next day?" — 1,721↑), anti-hustle takes ("We need to stop acting like 'hustle culture' is a good trait" — 108↑), specific experiments ("Replacing My Phone with a Tennis Ball Actually Improved My Focus" — 723↑).
 - **What gets downvoted:** listicles, AI-generated advice, tool plugs, generic "10 habits of successful people" content.
-- Notable: "The most productive people you know, are not doing more. They are protecting specific hours like their life depends on it" (279↑) — BuildOS philosophy adjacent; this sub would hate BuildOS framing but might love BuildOS *thinking*.
+- Notable: "The most productive people you know, are not doing more. They are protecting specific hours like their life depends on it" (279↑) — BuildOS philosophy adjacent; this sub would hate BuildOS framing but might love BuildOS _thinking_.
 
 ## Sub-specific terminology
 
@@ -81,7 +82,7 @@ The sub is actively fighting against the exact kind of content BuildOS looks lik
 
 **Honest answer: none.** Rule 2 forbids recommendations even when asked. Our only presence here is as a careful commenter sharing lived experience — not recommending BuildOS, not even indirectly.
 
-Threads where we can engage as a *thoughtful commenter* (no tool mention):
+Threads where we can engage as a _thoughtful commenter_ (no tool mention):
 
 1. **"How do you handle switching between different projects without losing your train of thought?"** (16↑/25💬) — contribute insight from our own work, no tool mention.
 2. **"Once I stopped using artificial due dates for everything my todo app started feeling completely wrong"** — comment on calendar-vs-project thinking.
@@ -91,19 +92,19 @@ Threads where we can engage as a *thoughtful commenter* (no tool mention):
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                           | URL                                                              | Why BuildOS is relevant (as commenter)                                      | Upvotes | Comments |
-| ---------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------- | ------- | -------- |
-| 2026-03-30 | How do you handle switching between different projects without losing your train of thought? | [link](https://www.reddit.com/r/productivity/comments/1s39y8d/) | BuildOS's exact domain. Comment-only — no product mention, even indirect. | 16      | 25       |
-| 2026-03-27 | I finally admitted that "multitasking" was just me doing 3 things poorly.              | [link](https://www.reddit.com/r/productivity/comments/1scqn3h/)  | Workflow thread; comment from lived experience.                              | 23      | 8        |
-| 2026-04-07 | Once I stopped using artificial due dates for everything my todo app started feeling completely wrong | [link](https://www.reddit.com/r/productivity/comments/1sdau99/) | Our "structure over metrics" frame fits.                                     | 4       | 12       |
-| 2026-04-13 | Do you ever delay replying to emails just because it feels mentally exhausting?        | [link](https://www.reddit.com/r/productivity/comments/1sk6g7w/)  | Adjacent; the "mental inbox" problem BuildOS helps with.                     | 136     | 50       |
-| 2026-03-25 | The most productive people you know, are not doing more. They are protecting specific hours... | [link](https://www.reddit.com/r/productivity/comments/1s5y37e/) | BuildOS-adjacent philosophy; comment agreement, no plug.                     | 279     | 48       |
+| Date       | Thread title                                                                                          | URL                                                             | Why BuildOS is relevant (as commenter)                                    | Upvotes | Comments |
+| ---------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------- | ------- | -------- |
+| 2026-03-30 | How do you handle switching between different projects without losing your train of thought?          | [link](https://www.reddit.com/r/productivity/comments/1s39y8d/) | BuildOS's exact domain. Comment-only — no product mention, even indirect. | 16      | 25       |
+| 2026-03-27 | I finally admitted that "multitasking" was just me doing 3 things poorly.                             | [link](https://www.reddit.com/r/productivity/comments/1scqn3h/) | Workflow thread; comment from lived experience.                           | 23      | 8        |
+| 2026-04-07 | Once I stopped using artificial due dates for everything my todo app started feeling completely wrong | [link](https://www.reddit.com/r/productivity/comments/1sdau99/) | Our "structure over metrics" frame fits.                                  | 4       | 12       |
+| 2026-04-13 | Do you ever delay replying to emails just because it feels mentally exhausting?                       | [link](https://www.reddit.com/r/productivity/comments/1sk6g7w/) | Adjacent; the "mental inbox" problem BuildOS helps with.                  | 136     | 50       |
+| 2026-03-25 | The most productive people you know, are not doing more. They are protecting specific hours...        | [link](https://www.reddit.com/r/productivity/comments/1s5y37e/) | BuildOS-adjacent philosophy; comment agreement, no plug.                  | 279     | 48       |
 
 ## Voice notes for future commenting
 
 - **Never mention BuildOS.** Not even with founder disclosure. Rule 2 = ban.
 - **Never frame anything as AI.** Sidebar + Rule 6 = ban.
-- **Be a practitioner, not a builder.** Share real experience about *being productive*, not about *making productivity software*.
+- **Be a practitioner, not a builder.** Share real experience about _being productive_, not about _making productivity software_.
 - **No listicles.** Rule 3.
 - Plain prose wins. This sub reads like journaling, not marketing.
 
@@ -112,7 +113,7 @@ Threads where we can engage as a *thoughtful commenter* (no tool mention):
 **Phase 1 (ongoing):** comment-only, lived-experience contributions.
 
 - This sub is a cultural-intelligence source and a karma farm for other subs (Reddit karma is unified).
-- Comment on 2–3 threads per week with *honest lived observations* about your own work as a founder/creator. No product, no links.
+- Comment on 2–3 threads per week with _honest lived observations_ about your own work as a founder/creator. No product, no links.
 
 **Phase 2:** never.
 
@@ -121,7 +122,7 @@ Threads where we can engage as a *thoughtful commenter* (no tool mention):
 **Realistic karma timeline:**
 
 - 100 comment karma: ~3–4 weeks (high-engagement sub, easy to earn)
-- Karma gained here is useful for *other* subs with karma requirements, not for promoting here.
+- Karma gained here is useful for _other_ subs with karma requirements, not for promoting here.
 
 **Hard constraints:**
 

@@ -1,10 +1,11 @@
 <!-- apps/web/src/lib/components/admin/EmailHistoryViewerModal.svelte -->
 <script lang="ts">
 	import { Mail, Calendar, User } from 'lucide-svelte';
+	import sanitizeHtml from 'sanitize-html';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let email: {
+	type EmailRecord = {
 		id?: string;
 		to?: string;
 		subject?: string;
@@ -12,10 +13,69 @@
 		html?: string;
 		sent_at?: string;
 		created_at?: string;
-	} | null = null;
+	} | null;
 
-	export let isOpen = false;
-	export let onClose: (() => void) | undefined = undefined;
+	let {
+		email = null,
+		isOpen = $bindable(false),
+		onClose
+	}: {
+		email?: EmailRecord;
+		isOpen?: boolean;
+		onClose?: () => void;
+	} = $props();
+
+	const sanitizeOptions: sanitizeHtml.IOptions = {
+		allowedTags: [
+			'a',
+			'b',
+			'blockquote',
+			'br',
+			'code',
+			'div',
+			'em',
+			'h1',
+			'h2',
+			'h3',
+			'h4',
+			'h5',
+			'h6',
+			'hr',
+			'i',
+			'img',
+			'li',
+			'ol',
+			'p',
+			'pre',
+			's',
+			'small',
+			'span',
+			'strong',
+			'sub',
+			'sup',
+			'table',
+			'tbody',
+			'td',
+			'tfoot',
+			'th',
+			'thead',
+			'tr',
+			'u',
+			'ul'
+		],
+		allowedAttributes: {
+			a: ['href', 'title', 'target', 'rel'],
+			img: ['src', 'alt', 'title', 'width', 'height'],
+			'*': ['style']
+		},
+		allowedSchemes: ['http', 'https', 'mailto'],
+		allowedSchemesByTag: { img: ['http', 'https', 'data', 'cid'] },
+		transformTags: {
+			a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer', target: '_blank' })
+		}
+	};
+
+	const safeEmailHtml = $derived(email?.html ? sanitizeHtml(email.html, sanitizeOptions) : '');
 
 	function closeViewer() {
 		if (onClose) {
@@ -84,9 +144,9 @@
 					class="bg-muted/50 rounded-lg p-4 sm:p-5 md:p-6 border border-border prose dark:prose-invert max-w-none"
 				>
 					{#if email.html}
-						<!-- Render HTML email content safely -->
+						<!-- Render sanitized HTML email content -->
 						<div class="break-words">
-							{@html email.html}
+							{@html safeEmailHtml}
 						</div>
 					{:else if email.body}
 						<!-- Plain text email content -->

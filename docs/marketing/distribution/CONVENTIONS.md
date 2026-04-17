@@ -52,16 +52,17 @@ Then sections:
 
 ## Status Vocabulary
 
-| Glyph | Meaning |
-|-------|---------|
-| ⚪ | Not started |
-| 🟡 | Ready — unblocked, awaiting pickup |
-| 🔵 | In progress |
-| ✅ | Done |
-| ⏸ | Blocked (by another task or external dep) |
-| 🔁 | Recurring (ongoing cadence in `RECURRING.md`) |
+| Glyph | Meaning                                       |
+| ----- | --------------------------------------------- |
+| ⚪    | Not started                                   |
+| 🟡    | Ready — unblocked, awaiting pickup            |
+| 🔵    | In progress                                   |
+| ✅    | Done                                          |
+| ⏸    | Blocked (by another task or external dep)     |
+| 🔁    | Recurring (ongoing cadence in `RECURRING.md`) |
 
 Update status in:
+
 1. The workstream file's status dashboard
 2. The `README.md` task map
 3. Any spec doc or sub-file the task produced
@@ -73,6 +74,7 @@ If you only update one, you've created drift. Update all three.
 ## Cross-Linking Rules
 
 **Every doc must link up and down:**
+
 - Up → strategy source (`buildos-strat.md`) and task list (`buildos-strat-tasks.md`)
 - Sideways → related workstreams
 - Down → output artifacts (specs, deliverables, code files)
@@ -144,6 +146,7 @@ Drift = reality and docs diverge. Three defenses:
 ## When to Create a New Workstream
 
 Only when:
+
 - 3+ new tasks emerge that share scope and dependencies
 - Or an existing workstream grows beyond ~10 tasks and needs a split
 
@@ -154,6 +157,7 @@ Do not create a workstream per task. Do not create one for a single speculative 
 ## Closing & Archival
 
 When a workstream completes:
+
 - Set status to ✅
 - Add a "Closed — YYYY-MM-DD" note at the top
 - Keep the file — historical record

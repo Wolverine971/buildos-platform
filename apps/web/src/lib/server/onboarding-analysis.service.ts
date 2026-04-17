@@ -96,7 +96,16 @@ export async function queueOnboardingAnalysis(params: {
 			return { queued: false, reason: message };
 		}
 
-		const result = await response.json().catch(() => ({}));
+		let result: { jobId?: string } | null = null;
+		try {
+			result = (await response.json()) as { jobId?: string } | null;
+		} catch (parseError) {
+			console.warn(
+				'[Onboarding Analysis] Failed to parse worker success response; falling back to direct queue',
+				parseError
+			);
+			return queueOnboardingAnalysisDirect(params);
+		}
 		return { queued: true, jobId: result?.jobId };
 	} catch (error) {
 		console.warn(

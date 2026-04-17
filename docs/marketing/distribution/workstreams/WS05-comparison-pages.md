@@ -1,6 +1,7 @@
 <!-- docs/marketing/distribution/workstreams/WS05-comparison-pages.md -->
 
 ---
+
 id: WS05
 title: Comparison Pages Hub
 wave_span: 2
@@ -9,6 +10,7 @@ owner: DJ
 related_tasks: [T16, T17, T24]
 cross_workstreams: [WS02, WS04]
 last_updated: 2026-04-17
+
 ---
 
 # WS05 — Comparison Pages Hub
@@ -25,28 +27,30 @@ Comparison pages punch above their weight in LLM citations because models need c
 
 ## Status dashboard
 
-| Task | Title | Type | Wave | Effort | Status | Spec |
-|------|-------|------|------|--------|--------|------|
-| T16 | Refresh Notion comparison (drop ADHD frame) | W | 2 | 1 d | ⚪ | inline below |
-| T17 | Write 2 new creator-framed comparisons | W | 2 | 2 d | ⚪ | inline below |
-| T24 | `/compare` hub page | C + W | 3 | 1 d | ⚪ | inline below |
+| Task | Title                                       | Type  | Wave | Effort | Status | Spec         |
+| ---- | ------------------------------------------- | ----- | ---- | ------ | ------ | ------------ |
+| T16  | Refresh Notion comparison (drop ADHD frame) | W     | 2    | 1 d    | ⚪     | inline below |
+| T17  | Write 2 new creator-framed comparisons      | W     | 2    | 2 d    | ⚪     | inline below |
+| T24  | `/compare` hub page                         | C + W | 3    | 1 d    | ⚪     | inline below |
 
 ## Required reading
 
 - [Brand guide](../../brand/brand-guide-1-pager.md) — voice, honest positioning
 - Existing comparison posts:
-  - `apps/web/src/content/blogs/case-studies/buildos-vs-notion-adhd-minds.md`
-  - `apps/web/src/content/blogs/case-studies/buildos-vs-chatgpt-context-that-compounds.md`
-  - `apps/web/src/content/blogs/case-studies/buildos-vs-monday-thought-organization.md`
+    - `apps/web/src/content/blogs/case-studies/buildos-vs-notion-adhd-minds.md`
+    - `apps/web/src/content/blogs/case-studies/buildos-vs-chatgpt-context-that-compounds.md`
+    - `apps/web/src/content/blogs/case-studies/buildos-vs-monday-thought-organization.md`
 
 ## Scope
 
 **In scope:**
+
 - Refresh / reframe existing comparisons to creator wedge
 - 2 new creator-framed comparisons (Scrivener, Milanote)
 - `/compare` or `/alternatives` hub route with `ItemList` JSON-LD
 
 **Out of scope:**
+
 - Content marketing blog posts that aren't comparisons
 - Feature matrices on the marketing site (separate design decision)
 - Competitor intelligence gathering (separate function)
@@ -73,12 +77,12 @@ T24 (/compare hub) — needs T16 + T17 slugs finalized
 
 ## Output artifacts
 
-| Artifact | Location |
-|----------|----------|
-| Refreshed Notion comparison | `apps/web/src/content/blogs/case-studies/{new-slug}.md` (old slug 301-redirected) |
-| Scrivener comparison | `apps/web/src/content/blogs/case-studies/buildos-vs-scrivener-for-long-form-fiction.md` |
-| Milanote / Workflowy comparison | `apps/web/src/content/blogs/case-studies/buildos-vs-milanote-for-creative-thinking.md` |
-| `/compare` hub route | `apps/web/src/routes/compare/+page.svelte` (proposed) |
+| Artifact                        | Location                                                                                |
+| ------------------------------- | --------------------------------------------------------------------------------------- |
+| Refreshed Notion comparison     | `apps/web/src/content/blogs/case-studies/{new-slug}.md` (old slug 301-redirected)       |
+| Scrivener comparison            | `apps/web/src/content/blogs/case-studies/buildos-vs-scrivener-for-long-form-fiction.md` |
+| Milanote / Workflowy comparison | `apps/web/src/content/blogs/case-studies/buildos-vs-milanote-for-creative-thinking.md`  |
+| `/compare` hub route            | `apps/web/src/routes/compare/+page.svelte` (proposed)                                   |
 
 ## Task briefs
 
@@ -87,12 +91,14 @@ T24 (/compare hub) — needs T16 + T17 slugs finalized
 **Current state:** `buildos-vs-notion-adhd-minds.md` — frames the comparison around ADHD users. Per strategy reconciliation, this is a supporting-affinity frame, not the primary wedge.
 
 **Two options (DJ to decide):**
+
 - **Option A (replace):** Reframe the piece around "authors and YouTubers using Notion" as the main frame. ADHD angle becomes one section, not the headline. Keep old slug 301-redirected.
 - **Option B (split):** Keep an ADHD-framed variant (shorter, more specific) AND add a creator-framed variant. Both exist. Requires editing old piece + writing new.
 
 **Recommend Option A** for simplicity and to avoid diluting the new positioning. Revisit B later if ADHD traffic proves meaningful.
 
 **Hard constraints for the refreshed piece:**
+
 - Include real weaknesses of BuildOS
 - Do not strawman Notion
 - Creator examples in the hero section
@@ -119,6 +125,7 @@ T24 (/compare hub) — needs T16 + T17 slugs finalized
 **Goal:** Single route at `/compare` (or `/alternatives`) that indexes all comparison pages with `ItemList` JSON-LD.
 
 **Structure:**
+
 - Brief intro paragraph ("we compare BuildOS to the tools creators are actually using today")
 - Grouped index: "vs flexible docs" (Notion, Craft), "vs dedicated writing tools" (Scrivener), "vs visual thinking" (Milanote, Workflowy), "vs AI chat" (ChatGPT), "vs project management" (Monday, Motion), etc.
 - Each item links to the full comparison post

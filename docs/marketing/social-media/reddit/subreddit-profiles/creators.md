@@ -7,13 +7,14 @@ daily_active_estimate: low (top-week #1 = 23↑/17💬; sub is quiet)
 promo_tolerance: moderate
 buildos_fit: low-but-relevant
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/creators.md
 ---
 
 # r/creators
 
 ## One-line summary
 
-Tiny (7K subs) general-creator catch-all for bloggers, YouTubers, Instagrammers, TikTokers, Substackers, and software/art/music creators. Permissive self-promo rule: *"You CAN link to your content, but only if you provide equivalent value to the community."* Workflow-focused content gets through when done well.
+Tiny (7K subs) general-creator catch-all for bloggers, YouTubers, Instagrammers, TikTokers, Substackers, and software/art/music creators. Permissive self-promo rule: _"You CAN link to your content, but only if you provide equivalent value to the community."_ Workflow-focused content gets through when done well.
 
 ## Self-promotion rules (verbatim)
 
@@ -41,7 +42,7 @@ From `about/rules.json` on 2026-04-17:
 
 ## Moderation posture
 
-**MODERATE-PERMISSIVE.** Rule 2's "self-promo must be earned" is one of the most creator-friendly rules on Reddit — it *invites* sharing, it just demands value-first. Rule 3 actively asks for context + links. Rule 4 is a low-effort filter.
+**MODERATE-PERMISSIVE.** Rule 2's "self-promo must be earned" is one of the most creator-friendly rules on Reddit — it _invites_ sharing, it just demands value-first. Rule 3 actively asks for context + links. Rule 4 is a low-effort filter.
 
 This is the kind of sub where a well-crafted process post mentioning BuildOS is not only allowed but rewarded.
 
@@ -72,13 +73,13 @@ This is the kind of sub where a well-crafted process post mentioning BuildOS is 
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                          | URL                                                              | Why BuildOS is relevant                                                 | Upvotes | Comments |
-| ---------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- | ------- | -------- |
-| 2026-04-14 | Would creators feel less burned out if algorithms optimized for community fit instead of trend chasing? | [link](https://www.reddit.com/r/creators/comments/1sldnhs/) | Anti-productivity-theater thread. BuildOS's philosophical fit.           | 2       | 1        |
-| 2026-04-13 | How do you build an audience before launching a product?                              | [link](https://www.reddit.com/r/creators/comments/1sl5gzd/)      | Audience-building thread — founder-creator overlap.                     | 2       | 3        |
-| 2026-04-15 | Looking for 10 beta testers - I built a tool that manages your content AND your creator business | [link](https://www.reddit.com/r/creators/comments/1sksv7c/) | Precedent: beta-tester asks tolerated (Rule 2 compliant).                | 1       | 3        |
-| 2026-04-14 | It needs to be said louder (especially in 2026), CREATORS NEED TO INVEST IN EMAIL MARKETING TO DIVERSIFY THEIR INCOME STREAMS | [link](https://www.reddit.com/r/creators/comments/1sl5tbq/) | Hot-take thread format. Template for BuildOS-relevant hot takes.        | 3       | 1        |
-| 2026-04-13 | Does AI Music Actually Help With Engagement?                                          | [link](https://www.reddit.com/r/creators/comments/1sm559x/)      | AI-is-a-tool thread — sub is pragmatic, not anti-AI like r/writing.      | 2       | 3        |
+| Date       | Thread title                                                                                                                  | URL                                                         | Why BuildOS is relevant                                             | Upvotes | Comments |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-14 | Would creators feel less burned out if algorithms optimized for community fit instead of trend chasing?                       | [link](https://www.reddit.com/r/creators/comments/1sldnhs/) | Anti-productivity-theater thread. BuildOS's philosophical fit.      | 2       | 1        |
+| 2026-04-13 | How do you build an audience before launching a product?                                                                      | [link](https://www.reddit.com/r/creators/comments/1sl5gzd/) | Audience-building thread — founder-creator overlap.                 | 2       | 3        |
+| 2026-04-15 | Looking for 10 beta testers - I built a tool that manages your content AND your creator business                              | [link](https://www.reddit.com/r/creators/comments/1sksv7c/) | Precedent: beta-tester asks tolerated (Rule 2 compliant).           | 1       | 3        |
+| 2026-04-14 | It needs to be said louder (especially in 2026), CREATORS NEED TO INVEST IN EMAIL MARKETING TO DIVERSIFY THEIR INCOME STREAMS | [link](https://www.reddit.com/r/creators/comments/1sl5tbq/) | Hot-take thread format. Template for BuildOS-relevant hot takes.    | 3       | 1        |
+| 2026-04-13 | Does AI Music Actually Help With Engagement?                                                                                  | [link](https://www.reddit.com/r/creators/comments/1sm559x/) | AI-is-a-tool thread — sub is pragmatic, not anti-AI like r/writing. | 2       | 3        |
 
 ## Voice notes for future commenting
 

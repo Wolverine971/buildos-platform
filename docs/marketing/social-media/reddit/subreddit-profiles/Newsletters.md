@@ -7,6 +7,7 @@ daily_active_estimate: low (top-week #1 = 12↑/23💬; small sub)
 promo_tolerance: moderate
 buildos_fit: low-but-relevant
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/Newsletters.md
 ---
 
 # r/Newsletters
@@ -63,13 +64,13 @@ From `about/rules.json` on 2026-04-17:
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                          | URL                                                              | Why BuildOS is relevant                                                           | Upvotes | Comments |
-| ---------- | --------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
-| 2026-04-14 | What are some things that frustrate you with current newsletter platforms? | [link](https://www.reddit.com/r/Newsletters/comments/1slppaf/)   | Platform-gap thread. BuildOS lives upstream of platforms — framing fits.           | 4       | 10       |
-| 2026-03-31 | What has improved your newsletter production time the most?          | [link](https://www.reddit.com/r/Newsletters/comments/1s7ir61/)   | Tool-rec thread; plausible BuildOS mention with founder disclosure.                | 4       | 4        |
-| 2026-04-07 | What are your newsletter automation workflows/tools                   | [link](https://www.reddit.com/r/Newsletters/comments/1sh92ho/)   | Workflow-tool thread; plausible mention (founder disclosure required).             | 0       | 4        |
-| 2026-03-26 | What's harder: growing a newsletter or staying consistent with it?   | [link](https://www.reddit.com/r/Newsletters/comments/1rwufy4/)   | Consistency pain — BuildOS-relevant.                                              | 6       | 18       |
-| recurring  | Weekly pinned self-promo thread                                       | (varies)                                                         | Sanctioned promo surface.                                                          | varies  | varies   |
+| Date       | Thread title                                                               | URL                                                            | Why BuildOS is relevant                                                  | Upvotes | Comments |
+| ---------- | -------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------ | ------- | -------- |
+| 2026-04-14 | What are some things that frustrate you with current newsletter platforms? | [link](https://www.reddit.com/r/Newsletters/comments/1slppaf/) | Platform-gap thread. BuildOS lives upstream of platforms — framing fits. | 4       | 10       |
+| 2026-03-31 | What has improved your newsletter production time the most?                | [link](https://www.reddit.com/r/Newsletters/comments/1s7ir61/) | Tool-rec thread; plausible BuildOS mention with founder disclosure.      | 4       | 4        |
+| 2026-04-07 | What are your newsletter automation workflows/tools                        | [link](https://www.reddit.com/r/Newsletters/comments/1sh92ho/) | Workflow-tool thread; plausible mention (founder disclosure required).   | 0       | 4        |
+| 2026-03-26 | What's harder: growing a newsletter or staying consistent with it?         | [link](https://www.reddit.com/r/Newsletters/comments/1rwufy4/) | Consistency pain — BuildOS-relevant.                                     | 6       | 18       |
+| recurring  | Weekly pinned self-promo thread                                            | (varies)                                                       | Sanctioned promo surface.                                                | varies  | varies   |
 
 ## Voice notes for future commenting
 

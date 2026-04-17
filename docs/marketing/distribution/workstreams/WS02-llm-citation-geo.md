@@ -1,6 +1,7 @@
 <!-- docs/marketing/distribution/workstreams/WS02-llm-citation-geo.md -->
 
 ---
+
 id: WS02
 title: LLM Citation / GEO Foundations
 wave_span: 1-ongoing
@@ -9,6 +10,7 @@ owner: DJ
 related_tasks: [T01, T04, T05, T06, T07, T08, T20, T28]
 cross_workstreams: [WS01, WS04, WS06]
 last_updated: 2026-04-17
+
 ---
 
 # WS02 — LLM Citation / GEO Foundations
@@ -25,16 +27,16 @@ Strategy §Part 2 identifies five power-law citation drivers: entity mentions, s
 
 ## Status dashboard
 
-| Task | Title | Type | Wave | Effort | Status | Spec |
-|------|-------|------|------|--------|--------|------|
-| T01 | LLM citation baseline | R | 1 | 2 h | ⚪ | inline below |
-| T04 | Schema markup gap check | R | 1 | 1 h | ⚪ | inline below |
-| T05 | Domain-level GEO baseline | R | 1 | 2 h | ⚪ | inline below |
-| T20 | Wikipedia / Wikidata entity | O | 2 | 3 h | ⚪ | inline below |
-| T06 | `SoftwareApplication` schema on homepage | C | 1 | 1 h | ⚪ | inline below |
-| T07 | `FAQPage` schema on `/help` | C | 1 | 2 h | ⚪ | inline below |
-| T08 | `dateModified` accuracy pass | C | 1 | 1 h | ⚪ | inline below |
-| T28 | Monthly LLM citation remeasure | R | ongoing | 1 h / mo | 🔁 ⚪ | see [RECURRING](../RECURRING.md#monthly) |
+| Task | Title                                    | Type | Wave    | Effort   | Status | Spec                                     |
+| ---- | ---------------------------------------- | ---- | ------- | -------- | ------ | ---------------------------------------- |
+| T01  | LLM citation baseline                    | R    | 1       | 2 h      | ⚪     | inline below                             |
+| T04  | Schema markup gap check                  | R    | 1       | 1 h      | ⚪     | inline below                             |
+| T05  | Domain-level GEO baseline                | R    | 1       | 2 h      | ⚪     | inline below                             |
+| T20  | Wikipedia / Wikidata entity              | O    | 2       | 3 h      | ⚪     | inline below                             |
+| T06  | `SoftwareApplication` schema on homepage | C    | 1       | 1 h      | ⚪     | inline below                             |
+| T07  | `FAQPage` schema on `/help`              | C    | 1       | 2 h      | ⚪     | inline below                             |
+| T08  | `dateModified` accuracy pass             | C    | 1       | 1 h      | ⚪     | inline below                             |
+| T28  | Monthly LLM citation remeasure           | R    | ongoing | 1 h / mo | 🔁 ⚪  | see [RECURRING](../RECURRING.md#monthly) |
 
 ## Required reading
 
@@ -46,12 +48,14 @@ Strategy §Part 2 identifies five power-law citation drivers: entity mentions, s
 ## Scope
 
 **In scope:**
+
 - Measuring LLM citation rate + framing drift
 - JSON-LD schema gaps on marketing site
 - Entity anchoring (Wikipedia, Wikidata, freshness signals)
 - Monthly remeasurement cadence
 
 **Out of scope:**
+
 - JSON-LD on user-generated public pages (part of WS01, already scaffolded)
 - Content creation to boost citations (that's WS04 — content IS the citation lever, but writing strategy lives there)
 - `llms.txt` tuning (already shipped, lower-order — don't rabbit-hole)
@@ -59,6 +63,7 @@ Strategy §Part 2 identifies five power-law citation drivers: entity mentions, s
 ## Current state (2026-04-17)
 
 **Already shipped (do not rebuild):**
+
 - `BlogPosting` + `BreadcrumbList` on blog posts
 - `Blog` schema on blog index
 - `Product` schema on `/pricing`
@@ -68,6 +73,7 @@ Strategy §Part 2 identifies five power-law citation drivers: entity mentions, s
 - `llms.txt` with full site map
 
 **Gaps (this work stream closes):**
+
 - Homepage: no `SoftwareApplication` schema
 - `/help`: no `FAQPage` schema
 - No LLM citation baseline data
@@ -90,15 +96,15 @@ T08 can run any time (low-leverage but cheap)
 
 ## Output artifacts
 
-| Artifact | Location |
-|----------|----------|
-| Baseline results (T01) | `docs/marketing/measurement/llm-citation-baseline-2026-04.md` |
-| Monthly remeasure (T28) | `docs/marketing/measurement/llm-citation-YYYY-MM.md` |
-| Schema gap draft (T04) | `docs/marketing/measurement/schema-gap-2026-04.md` |
-| GEO baseline (T05) | merged into T01 baseline file |
-| `SoftwareApplication` JSON-LD | `apps/web/src/routes/+page.svelte` |
-| `FAQPage` JSON-LD | wherever `/help` renders |
-| Wikidata entity | Wikidata-hosted; link recorded in baseline file |
+| Artifact                      | Location                                                      |
+| ----------------------------- | ------------------------------------------------------------- |
+| Baseline results (T01)        | `docs/marketing/measurement/llm-citation-baseline-2026-04.md` |
+| Monthly remeasure (T28)       | `docs/marketing/measurement/llm-citation-YYYY-MM.md`          |
+| Schema gap draft (T04)        | `docs/marketing/measurement/schema-gap-2026-04.md`            |
+| GEO baseline (T05)            | merged into T01 baseline file                                 |
+| `SoftwareApplication` JSON-LD | `apps/web/src/routes/+page.svelte`                            |
+| `FAQPage` JSON-LD             | wherever `/help` renders                                      |
+| Wikidata entity               | Wikidata-hosted; link recorded in baseline file               |
 
 ## Task briefs
 
@@ -107,6 +113,7 @@ T08 can run any time (low-leverage but cheap)
 **Goal:** Establish the zero-point for BuildOS visibility in ChatGPT, Claude, and Perplexity. Everything downstream (T28, any GEO claim in WS04) is measured against this.
 
 **Prompts to run (all three models):**
+
 1. "What's a good thinking environment for writing a book?"
 2. "What tool helps me turn messy notes into a structured project?"
 3. "Best productivity tool for YouTubers planning a series?"
@@ -115,6 +122,7 @@ T08 can run any time (low-leverage but cheap)
 6. (Supporting affinity, flag separately) "What's a project management tool that works with ADHD?"
 
 **For each prompt × model, record:**
+
 - Does BuildOS appear?
 - Position in the response (top 3, top 10, mentioned, not mentioned)
 - Framing used (does it call us "thinking environment," "ADHD tool," "AI PM tool"?)
@@ -129,6 +137,7 @@ T08 can run any time (low-leverage but cheap)
 **Goal:** Confirm exactly which marketing pages are missing JSON-LD, and draft the blocks so T06/T07 code tasks are paint-by-number.
 
 **Action:**
+
 1. Grep for `application/ld+json` + `schema.org` across `apps/web/src/routes/`
 2. Confirm homepage lacks `SoftwareApplication`
 3. Confirm `/help` lacks `FAQPage`
@@ -144,6 +153,7 @@ T08 can run any time (low-leverage but cheap)
 **Goal:** Establish current state of entity anchors.
 
 **Action:**
+
 1. Wikipedia: does a "BuildOS" article exist? (likely no). If yes, note state. If no, note notability bar.
 2. Wikidata: does an entity exist? (likely no). Note ID if it does.
 3. Google: search "BuildOS" — where do we rank on the brand query? Any SERP features?
@@ -158,6 +168,7 @@ T08 can run any time (low-leverage but cheap)
 **Goal:** Create the entity anchor LLMs need to cite us consistently.
 
 **Action:**
+
 1. Create Wikidata entity first (lower notability bar). Include: name, description, software type, website, founder, founding year.
 2. Evaluate Wikipedia notability realistically — if insufficient coverage in secondary sources, defer Wikipedia until after T15 framework doc lands + any press coverage.
 3. Document decision in baseline file.
@@ -191,6 +202,7 @@ T08 can run any time (low-leverage but cheap)
 **Goal:** Ensure blog frontmatter `lastmod` bumps on every edit, not just publish.
 
 **Action:**
+
 1. Add a pre-commit hook or CI check that flags blog edits without `lastmod` change
 2. Spot-check 5 recently edited posts — is `dateModified` accurate?
 

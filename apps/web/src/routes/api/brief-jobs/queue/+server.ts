@@ -15,7 +15,14 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	}
 
 	try {
-		const body = await request.json().catch(() => ({}));
+		let body: Record<string, unknown> = {};
+		try {
+			const raw = await request.text();
+			body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+		} catch (parseError) {
+			console.warn('[brief-jobs/queue] invalid JSON body', parseError);
+			return ApiResponse.badRequest('Invalid JSON body');
+		}
 		const {
 			scheduledFor,
 			briefDate,
@@ -52,13 +59,20 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 		});
 
 		if (!response.ok) {
-			const error = await response.json().catch(() => ({}));
-			return ApiResponse.error(
-				error?.error || 'Failed to queue brief generation',
-				response.status,
-				undefined,
-				error
-			);
+			const text = await response.text();
+			let error: { error?: string } | string = text;
+			try {
+				error = text ? (JSON.parse(text) as { error?: string }) : {};
+			} catch (parseError) {
+				console.warn(
+					'[brief-jobs/queue] worker returned non-JSON error body',
+					{ status: response.status, snippet: text.slice(0, 200) },
+					parseError
+				);
+			}
+			const message =
+				(typeof error === 'object' && error?.error) || 'Failed to queue brief generation';
+			return ApiResponse.error(message, response.status, undefined, error);
 		}
 
 		const result = await response.json();

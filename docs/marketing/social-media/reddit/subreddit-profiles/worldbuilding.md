@@ -7,6 +7,7 @@ daily_active_estimate: unknown (top-week #1 = 3801↑/543💬; extremely active)
 promo_tolerance: moderate
 buildos_fit: high
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/worldbuilding.md
 ---
 
 # r/worldbuilding
@@ -56,7 +57,7 @@ From `about/rules.json` on 2026-04-17:
 
 ## Moderation posture
 
-**Moderate-to-strict on AI, moderate on promo.** Unlike r/writing or r/selfpublish, Rule 7 *does* allow "non-disruptive advertising" — including for tools — if the post has genuine worldbuilding context and utility. But Rule 5 is brutal: it specifically bans "using AI to organize, edit, present, or rewrite material." That phrase ("organize, edit, present, or rewrite") directly overlaps BuildOS's value prop, which means our language has to dodge it.
+**Moderate-to-strict on AI, moderate on promo.** Unlike r/writing or r/selfpublish, Rule 7 _does_ allow "non-disruptive advertising" — including for tools — if the post has genuine worldbuilding context and utility. But Rule 5 is brutal: it specifically bans "using AI to organize, edit, present, or rewrite material." That phrase ("organize, edit, present, or rewrite") directly overlaps BuildOS's value prop, which means our language has to dodge it.
 
 Top 2 posts of the week when scanned were both aggressive anti-AI takes: "Everyone knows you're using AI" (3,801↑) and "I'd rather read your broken English post than an AI transcribed one" (3,766↑). Top-month includes "I think we need to start being much stricter on how we deal with ai generated posts" (1,462↑). **The sub is in an active anti-AI cultural moment.** Any framing that sounds like "AI organizes your lore" = dead on arrival.
 
@@ -82,20 +83,20 @@ Top 2 posts of the week when scanned were both aggressive anti-AI takes: "Everyo
 ## Thread types where BuildOS would be a legit recommendation
 
 1. **"What tools do y'all use to keep track of your worlds?"** — recurring, and got 19 comments on the latest. BuildOS is a plausible answer alongside World Anvil, Campfire, Obsidian, Notion, Scrivener, Kanka. **Frame around "continuity across a long project," not AI.**
-2. **"My lore keeps contradicting itself"** threads — our exact thesis. This is the golden reply thread. Lead with the *problem* (consistency across sessions), then mention the tool at the end with founder disclosure.
+2. **"My lore keeps contradicting itself"** threads — our exact thesis. This is the golden reply thread. Lead with the _problem_ (consistency across sessions), then mention the tool at the end with founder disclosure.
 3. **"How do you organize characters/nations/timelines?"** — same pattern.
 4. **"Best World Building Software For Collaborative Work?"** — BuildOS fit is weaker (we're not collaborative-first today) but worth noting.
-5. **"I made an app for writing and worldbuilding" (232↑)** demonstrates the sub *does* reward solo creators sharing tools they built — but only with heavy context. Our equivalent post lives months away.
+5. **"I made an app for writing and worldbuilding" (232↑)** demonstrates the sub _does_ reward solo creators sharing tools they built — but only with heavy context. Our equivalent post lives months away.
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                    | URL                                                              | Why BuildOS is relevant                                                                                                  | Upvotes | Comments |
-| ---------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
-| 2026-04-14 | My lore kept contradicting itself until I changed how I organize everything     | [link](https://www.reddit.com/r/worldbuilding/comments/1sjmahf/)  | **Exact BuildOS thesis in the wild.** Reply with a craft-first take on continuity; mention BuildOS only deep in the thread if fit is perfect. | 148     | 27       |
-| 2026-04-13 | What tools do yall use to keep track of your worlds?                            | [link](https://www.reddit.com/r/worldbuilding/comments/1si9gke/)  | Direct tool-rec thread. List 2–3 tools, including BuildOS with founder disclosure. Must include a real worldbuilding use case. | 7       | 19       |
-| 2026-04-12 | What do you use to keep track of everything?                                    | [link](https://www.reddit.com/r/worldbuilding/comments/1smgy0e/)  | Same pattern. Recurring every few weeks.                                                                                  | 6       | 35       |
-| 2026-04-11 | For the writers/Artists, how do you guys keep track of the lore of your characters? | [link](https://www.reddit.com/r/worldbuilding/comments/1sbd9m8/) | Character-continuity thread. BuildOS's project-memory frame fits here.                                                    | 4       | 35       |
-| 2026-03-18 | I made an app for writing and worldbuilding                                     | [link](https://www.reddit.com/r/worldbuilding/comments/1s1cwq5/)  | Proof that sub tolerates solo-dev tool posts when they're DIY and context-rich. Template for our future launch post.      | 232     | 95       |
+| Date       | Thread title                                                                        | URL                                                              | Why BuildOS is relevant                                                                                                                       | Upvotes | Comments |
+| ---------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-14 | My lore kept contradicting itself until I changed how I organize everything         | [link](https://www.reddit.com/r/worldbuilding/comments/1sjmahf/) | **Exact BuildOS thesis in the wild.** Reply with a craft-first take on continuity; mention BuildOS only deep in the thread if fit is perfect. | 148     | 27       |
+| 2026-04-13 | What tools do yall use to keep track of your worlds?                                | [link](https://www.reddit.com/r/worldbuilding/comments/1si9gke/) | Direct tool-rec thread. List 2–3 tools, including BuildOS with founder disclosure. Must include a real worldbuilding use case.                | 7       | 19       |
+| 2026-04-12 | What do you use to keep track of everything?                                        | [link](https://www.reddit.com/r/worldbuilding/comments/1smgy0e/) | Same pattern. Recurring every few weeks.                                                                                                      | 6       | 35       |
+| 2026-04-11 | For the writers/Artists, how do you guys keep track of the lore of your characters? | [link](https://www.reddit.com/r/worldbuilding/comments/1sbd9m8/) | Character-continuity thread. BuildOS's project-memory frame fits here.                                                                        | 4       | 35       |
+| 2026-03-18 | I made an app for writing and worldbuilding                                         | [link](https://www.reddit.com/r/worldbuilding/comments/1s1cwq5/) | Proof that sub tolerates solo-dev tool posts when they're DIY and context-rich. Template for our future launch post.                          | 232     | 95       |
 
 ## Voice notes for future commenting
 
@@ -114,7 +115,7 @@ Top 2 posts of the week when scanned were both aggressive anti-AI takes: "Everyo
 
 **Phase 2 (weeks 5–10):** selective tool thread participation.
 
-- In recurring "what tools" threads, you can mention BuildOS with founder disclosure *if* you also genuinely describe your own worldbuilding project.
+- In recurring "what tools" threads, you can mention BuildOS with founder disclosure _if_ you also genuinely describe your own worldbuilding project.
 - Consider writing a real worldbuilding post of your own (a location, a magic system, whatever you've built) to establish you as a worldbuilder-first, builder-second. This is the trust-earning play.
 
 **Phase 3 (months 3+):** DIY-app post.
@@ -135,4 +136,4 @@ Top 2 posts of the week when scanned were both aggressive anti-AI takes: "Everyo
 
 ## Notes log
 
-- 2026-04-17: Initial scan. Sub is in an active anti-AI cultural moment (top 2 of week = anti-AI posts with 3.8K+ upvotes each). Rule 5's phrasing ("using AI to organize, edit, present, or rewrite") directly overlaps BuildOS's natural language — we have to describe the product in workflow terms, not AI terms, here. The "my lore keeps contradicting itself" thread (148↑) is the *exact* BuildOS thesis and is our highest-leverage engagement pattern. 232↑ DIY-app precedent shows the sub rewards solo creators who ship — that's our long-term play.
+- 2026-04-17: Initial scan. Sub is in an active anti-AI cultural moment (top 2 of week = anti-AI posts with 3.8K+ upvotes each). Rule 5's phrasing ("using AI to organize, edit, present, or rewrite") directly overlaps BuildOS's natural language — we have to describe the product in workflow terms, not AI terms, here. The "my lore keeps contradicting itself" thread (148↑) is the _exact_ BuildOS thesis and is our highest-leverage engagement pattern. 232↑ DIY-app precedent shows the sub rewards solo creators who ship — that's our long-term play.

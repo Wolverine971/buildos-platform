@@ -8,10 +8,10 @@
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
-	let isLoading = false;
-	let error = '';
+	let isLoading = $state(false);
+	let error = $state('');
 
 	async function handleSubscribe() {
 		if (!data.user) {

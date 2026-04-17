@@ -7,6 +7,7 @@ daily_active_estimate: high (top-week #1 = 191↑/71💬)
 promo_tolerance: moderate
 buildos_fit: high
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/solopreneur.md
 ---
 
 # r/solopreneur
@@ -46,7 +47,7 @@ From `about/rules.json` on 2026-04-17:
 
 ## Moderation posture
 
-**MODERATE with active tightening.** Rule 1 explicitly allows straightforward self-promo but forbids disguised promo. The sidebar *encourages* self-promo in IAmA / Q&A / case-study formats. The recent mod post about fighting spammy self-promo means we need to be careful about HOW we promo — the sub's not hostile to it, just to lazy versions of it.
+**MODERATE with active tightening.** Rule 1 explicitly allows straightforward self-promo but forbids disguised promo. The sidebar _encourages_ self-promo in IAmA / Q&A / case-study formats. The recent mod post about fighting spammy self-promo means we need to be careful about HOW we promo — the sub's not hostile to it, just to lazy versions of it.
 
 ## Culture & voice
 
@@ -79,12 +80,12 @@ From `about/rules.json` on 2026-04-17:
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                         | URL                                                              | Why BuildOS is relevant                                                       | Upvotes | Comments |
-| ---------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------- | -------- |
-| 2026-03-31 | How do you keep your projects organised?                                             | [link](https://www.reddit.com/r/solopreneur/comments/1seyk8c/)   | **Literal BuildOS thesis.** Founder-disclosed reply is welcome.                | 16      | 23       |
-| 2026-04-10 | How do you deal with decision fatigue as a solopreneur?                              | [link](https://www.reddit.com/r/solopreneur/comments/1s738gb/)   | Calm-project-home framing fits.                                                | 16      | 34       |
-| 2026-03-28 | whats the one tool you use daily that you think nobody else knows about              | [link](https://www.reddit.com/r/solopreneur/comments/1ryytw4/)   | Recurring tool-share thread.                                                   | 11      | 48       |
-| 2026-04-04 | The 6 systems I wish I had built on day 1 of my solo SaaS instead of month 7        | [link](https://www.reddit.com/r/solopreneur/comments/1s6m4u4/)   | Template for our case-study post.                                              | 31      | 12       |
+| Date       | Thread title                                                                                   | URL                                                            | Why BuildOS is relevant                                                            | Upvotes | Comments |
+| ---------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------- | -------- |
+| 2026-03-31 | How do you keep your projects organised?                                                       | [link](https://www.reddit.com/r/solopreneur/comments/1seyk8c/) | **Literal BuildOS thesis.** Founder-disclosed reply is welcome.                    | 16      | 23       |
+| 2026-04-10 | How do you deal with decision fatigue as a solopreneur?                                        | [link](https://www.reddit.com/r/solopreneur/comments/1s738gb/) | Calm-project-home framing fits.                                                    | 16      | 34       |
+| 2026-03-28 | whats the one tool you use daily that you think nobody else knows about                        | [link](https://www.reddit.com/r/solopreneur/comments/1ryytw4/) | Recurring tool-share thread.                                                       | 11      | 48       |
+| 2026-04-04 | The 6 systems I wish I had built on day 1 of my solo SaaS instead of month 7                   | [link](https://www.reddit.com/r/solopreneur/comments/1s6m4u4/) | Template for our case-study post.                                                  | 31      | 12       |
 | 2026-04-13 | i stopped brainstorming ideas 8 months ago. here's what i do instead that actually makes money | [link](https://www.reddit.com/r/solopreneur/comments/1shg4ii/) | Top-of-week — sub rewards specific process posts. Template for DJ's BuildOS story. | 191     | 71       |
 
 ## Voice notes for future commenting
@@ -92,7 +93,7 @@ From `about/rules.json` on 2026-04-17:
 - **Specific numbers + specific process = sub currency.** Vague advice dies.
 - **Build-in-public tone is native here.** Honest limitations + honest wins.
 - **Founder disclosure** is norm, especially for tool mentions.
-- **Avoid "vibe-coded" framing by accident.** BuildOS is *not* a vibe-coded tool — make sure the polish shows.
+- **Avoid "vibe-coded" framing by accident.** BuildOS is _not_ a vibe-coded tool — make sure the polish shows.
 - **Avoid generic growth-hack hype.** The sub is allergic.
 
 ## Karma-building strategy for this sub

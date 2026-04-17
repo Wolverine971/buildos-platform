@@ -1,6 +1,7 @@
 <!-- docs/marketing/distribution/workstreams/WS07-site-architecture.md -->
 
 ---
+
 id: WS07
 title: Site Architecture — How-It-Works + Changelog
 wave_span: 2-3
@@ -9,6 +10,7 @@ owner: DJ
 related_tasks: [T14, T23]
 cross_workstreams: [WS02, WS04, WS06]
 last_updated: 2026-04-17
+
 ---
 
 # WS07 — Site Architecture (How-It-Works + Changelog)
@@ -25,10 +27,10 @@ Most SaaS sites hide how their product actually works behind hero copy. Be the e
 
 ## Status dashboard
 
-| Task | Title | Type | Wave | Effort | Status | Spec |
-|------|-------|------|------|--------|--------|------|
-| T14 | Promote `/how-it-works` to dedicated route | C + W | 2 | 1 d | ⚪ | inline below |
-| T23 | Public `/changelog` | C + W | 3 | 2 d | ⚪ | inline below |
+| Task | Title                                      | Type  | Wave | Effort | Status | Spec         |
+| ---- | ------------------------------------------ | ----- | ---- | ------ | ------ | ------------ |
+| T14  | Promote `/how-it-works` to dedicated route | C + W | 2    | 1 d    | ⚪     | inline below |
+| T23  | Public `/changelog`                        | C + W | 3    | 2 d    | ⚪     | inline below |
 
 ## Required reading
 
@@ -40,12 +42,14 @@ Most SaaS sites hide how their product actually works behind hero copy. Be the e
 ## Scope
 
 **In scope:**
+
 - Dedicated `/how-it-works` route on marketing site
 - Dedicated `/changelog` route
 - JSON-LD schema on both
 - 301 redirect from old blog URL
 
 **Out of scope:**
+
 - API / developer documentation (not the same as how-it-works for creators)
 - Release notes inside the authenticated app (separate UX)
 - Marketing strategy pages (WS04, WS05)
@@ -67,11 +71,11 @@ Independent. T14 and T23 can ship in either order or in parallel.
 
 ## Output artifacts
 
-| Artifact | Location |
-|----------|----------|
-| `/how-it-works` route | `apps/web/src/routes/(public)/how-it-works/+page.svelte` |
-| Old blog 301 | add to `apps/web/src/hooks.server.ts` or route config |
-| `/changelog` route | `apps/web/src/routes/(public)/changelog/+page.svelte` |
+| Artifact              | Location                                                     |
+| --------------------- | ------------------------------------------------------------ |
+| `/how-it-works` route | `apps/web/src/routes/(public)/how-it-works/+page.svelte`     |
+| Old blog 301          | add to `apps/web/src/hooks.server.ts` or route config        |
+| `/changelog` route    | `apps/web/src/routes/(public)/changelog/+page.svelte`        |
 | Changelog data source | `apps/web/src/content/changelog/` (proposed markdown-driven) |
 
 ## Task briefs
@@ -81,6 +85,7 @@ Independent. T14 and T23 can ship in either order or in parallel.
 **Goal:** Richer layout than a blog post; dedicated URL; improved LLM citation surface.
 
 **Required content (per strategy §3.3):**
+
 - Capture surface: rough note / voice memo / scattered bullets → structured project
 - Working map: how chapters connect to scenes, episodes to research and clips, plans to tasks and milestones
 - Project memory: how context stays attached across sessions
@@ -88,12 +93,14 @@ Independent. T14 and T23 can ship in either order or in parallel.
 - Daily brief generation
 
 **Voice rules:**
+
 - Plain language first, per brand guide
 - Use "ontology" sparingly; only in deeper sections, never hero copy
 - Lead with the workflow, then explain the idea
 - Creator examples in the hero (a writer revising chapters, a YouTuber planning a series), not a developer example
 
 **Technical requirements:**
+
 - `Article` JSON-LD schema
 - Accurate `datePublished` + `dateModified`
 - 301 redirect from `/blogs/getting-started/how-buildos-works` to `/how-it-works`
@@ -108,20 +115,24 @@ Independent. T14 and T23 can ship in either order or in parallel.
 **Goal:** Raw, dated "what shipped this week" list at `/changelog`. Not marketing blog posts. Linear/Vercel format.
 
 **Content model:**
+
 - Markdown files per week in `apps/web/src/content/changelog/YYYY-MM-DD.md`
 - Each entry: date, 3–7 bullets, optional inline screenshots
 - Frontmatter: `title`, `date`, `tags` (feature / fix / infra / content)
 
 **Source driver:**
+
 - The `compound-engineering:changelog` skill is already installed; use it to generate weekly entries from git commits on `main`
 - Light editorial pass each week (strip noise, add user-facing framing)
 
 **Voice:**
+
 - Honest and dry, not hype. Per brand guide: "we are direct but not harsh."
 - User-visible changes first; infra-only changes in a collapsible section or skipped
 - Include real fixes with honest framing ("fixed a bug where X broke if Y")
 
 **Technical requirements:**
+
 - Route rendered from markdown
 - RSS feed for the changelog (low effort, high leverage for devs + LLMs)
 - `Article` JSON-LD per entry; homepage of changelog can have `ItemList`
@@ -129,6 +140,7 @@ Independent. T14 and T23 can ship in either order or in parallel.
 - `dateModified` discipline per entry
 
 **Seeding:**
+
 - Backfill at least the last 4 weeks at launch so the page doesn't look empty
 
 **Done when:** live at `/changelog`; first 4 weeks backfilled; `/changelog` in sitemap; RSS feed live.

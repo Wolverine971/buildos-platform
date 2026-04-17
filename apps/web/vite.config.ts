@@ -1,8 +1,6 @@
 // apps/web/vite.config.ts
 import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { mdsvex } from 'mdsvex';
-import mdsvexConfig from './mdsvex.config.js';
 import { visualizer } from 'rollup-plugin-visualizer';
 import viteCompression from 'vite-plugin-compression';
 
@@ -15,7 +13,6 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		plugins: [
-			mdsvex(mdsvexConfig),
 			sveltekit(),
 			// Gzip compression for production (fallback for older browsers)
 			isProd &&

@@ -40,16 +40,11 @@ function isCrawler(userAgent: string | null): boolean {
 	return CRAWLER_UA_PATTERNS.some((pattern) => lowered.includes(pattern));
 }
 
-function computeDailySalt(): string {
-	// Rotating daily salt — no secret required, just needs to be stable within
-	// a UTC day and different across days. Combined with ip+ua below it's good
-	// enough for 24h dedup without storing raw identifiers.
-	return new Date().toISOString().slice(0, 10);
-}
-
 function hashViewer(ip: string | null, userAgent: string | null): string | null {
 	if (!ip && !userAgent) return null;
-	const salt = computeDailySalt();
+	// Keep this stable so 24h dedup remains correct across UTC midnight.
+	// We only compare the hash within a 24h window before inserting.
+	const salt = 'public-page-view-dedup-v1';
 	return createHash('sha256')
 		.update(`${salt}|${ip ?? ''}|${userAgent ?? ''}`)
 		.digest('hex');

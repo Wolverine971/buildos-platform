@@ -352,9 +352,9 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 		}
 
 		try {
-			// const timeoutPromise = new Promise<never>((_, reject) =>
-			// 	setTimeout(() => reject(new Error('Calendar tokens timeout')), 2500)
-			// );
+			const timeoutPromise = new Promise<never>((_, reject) =>
+				setTimeout(() => reject(new Error('Calendar tokens timeout')), 2500)
+			);
 
 			const tokensPromise = measure('db.calendar_tokens', () =>
 				event.locals.supabase
@@ -366,8 +366,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 					.single()
 			);
 
-			// const { data: tokens, error } = await Promise.race([tokensPromise, timeoutPromise]);
-			const { data: tokens, error } = await Promise.race([tokensPromise]);
+			const { data: tokens, error } = await Promise.race([tokensPromise, timeoutPromise]);
 
 			if (error || !tokens || !tokens.refresh_token) {
 				return null;

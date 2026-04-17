@@ -260,49 +260,26 @@ async function checkProjectAccessFallback(
 	},
 	fallbackReason: 'rpc_failed' | 'exception' = 'rpc_failed'
 ): Promise<{ allowed: boolean; reason: string }> {
-	try {
-		const { data, error } = await supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', projectId)
-			.maybeSingle();
-
-		if (error) {
-			logger.warn('Project access fallback lookup failed', {
-				error,
-				projectId,
-				fallbackReason
-			});
-			if (errorLogger) {
-				void errorLogger.logError(error, {
-					userId: context?.userId,
-					endpoint: context?.endpoint ?? FASTCHAT_STREAM_ENDPOINT,
-					httpMethod: context?.httpMethod ?? FASTCHAT_STREAM_METHOD,
-					operationType: 'fastchat_project_access_fallback',
-					metadata: { projectId, fallbackReason, reason: 'fallback_lookup_failed' }
-				});
-			}
-			return { allowed: false, reason: 'fallback_lookup_failed' };
-		}
-
-		return { allowed: Boolean(data), reason: data ? 'fallback_lookup' : 'denied' };
-	} catch (fallbackError) {
-		logger.warn('Project access fallback lookup exception', {
-			error: fallbackError,
-			projectId,
-			fallbackReason
+	// Security note: this fallback runs only when the authoritative access RPC
+	// (`current_actor_has_project_access`) fails. We intentionally fail closed
+	// rather than approximate the access check with a bare row lookup — an
+	// RLS-visible row does not prove the actor has the required ('read') grant
+	// on the project. Log the failure so we can investigate RPC outages.
+	logger.warn('Project access RPC unavailable; denying by default', {
+		projectId,
+		fallbackReason,
+		userId: context?.userId
+	});
+	if (errorLogger) {
+		void errorLogger.logError(new Error('project_access_rpc_unavailable'), {
+			userId: context?.userId,
+			endpoint: context?.endpoint ?? FASTCHAT_STREAM_ENDPOINT,
+			httpMethod: context?.httpMethod ?? FASTCHAT_STREAM_METHOD,
+			operationType: 'fastchat_project_access_fallback',
+			metadata: { projectId, fallbackReason, reason: 'rpc_unavailable_fail_closed' }
 		});
-		if (errorLogger) {
-			void errorLogger.logError(fallbackError, {
-				userId: context?.userId,
-				endpoint: context?.endpoint ?? FASTCHAT_STREAM_ENDPOINT,
-				httpMethod: context?.httpMethod ?? FASTCHAT_STREAM_METHOD,
-				operationType: 'fastchat_project_access_fallback',
-				metadata: { projectId, fallbackReason, reason: 'fallback_lookup_exception' }
-			});
-		}
-		return { allowed: false, reason: 'fallback_lookup_exception' };
 	}
+	return { allowed: false, reason: 'rpc_unavailable_fail_closed' };
 }
 
 async function checkProjectAccess(

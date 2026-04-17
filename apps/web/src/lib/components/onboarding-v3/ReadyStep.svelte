@@ -244,8 +244,7 @@
 					<Check class="w-4 h-4 shrink-0" />
 					<span>
 						Your public URL is
-						<span class="font-mono font-semibold"
-							>build-os.com/p/{usernameValue}/…</span
+						<span class="font-mono font-semibold">build-os.com/p/{usernameValue}/…</span
 						>
 					</span>
 				</div>

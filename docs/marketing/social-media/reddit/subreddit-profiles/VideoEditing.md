@@ -7,6 +7,7 @@ daily_active_estimate: medium (top-week #1 = 198↑/26💬; smaller comment dens
 promo_tolerance: strict-but-structured
 buildos_fit: medium
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/VideoEditing.md
 ---
 
 # r/VideoEditing
@@ -56,7 +57,7 @@ From `about/rules.json` on 2026-04-17:
 
 ### Critical recurring threads
 
-- **Monthly Developer/Tool creator thread** — *"Building or built a tool? This is where you post"* ([Apr 2026 example](https://www.reddit.com/r/VideoEditing/comments/1s9xqhx/))
+- **Monthly Developer/Tool creator thread** — _"Building or built a tool? This is where you post"_ ([Apr 2026 example](https://www.reddit.com/r/VideoEditing/comments/1s9xqhx/))
 - **Monthly "What software should I use?"** (April 2026: [link](https://www.reddit.com/r/VideoEditing/comments/1s9t1zd/))
 - **Monthly "What hardware should I use?"** ([April 2026 Hardware Thread](https://www.reddit.com/r/VideoEditing/comments/1s9uxbk/))
 - **Monthly Feedback thread**
@@ -98,7 +99,7 @@ Three-bannable-offenses list + no-shortener rule + low-effort-removal discretion
 ## Thread types where BuildOS would be a legit recommendation
 
 1. **Monthly Developer/Tool creator thread** — the single sanctioned surface for BuildOS. Post here once per month at most, with founder disclosure, focused on a specific workflow use case.
-2. **"What software should I use?" monthly thread** — BuildOS is NOT a video editor, but we *could* mention it as a planning/structuring tool that runs upstream of the NLE. Frame carefully.
+2. **"What software should I use?" monthly thread** — BuildOS is NOT a video editor, but we _could_ mention it as a planning/structuring tool that runs upstream of the NLE. Frame carefully.
 3. **"Workflow tips for same day delivery of event"-style threads** — BuildOS relevance is weak here because this is about editing throughput, not planning. Usually skip.
 4. **"2 hours of organising for a 3 min video.. is this normal"** — adjacent thread; comment as a creator who's been there; no plug in a craft thread.
 5. **Friday Free-for-All weekly** — low-stakes place to participate in the community without plugging.
@@ -107,13 +108,13 @@ Three-bannable-offenses list + no-shortener rule + low-effort-removal discretion
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                                         | URL                                                              | Why BuildOS is relevant                                                                                               | Upvotes | Comments |
-| ---------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| 2026-04-02 | April Developer/Tool creator thread. *Building or built a tool? This is where you post*              | [link](https://www.reddit.com/r/VideoEditing/comments/1s9xqhx/)  | **The one sanctioned BuildOS mention surface.** Recurring monthly.                                                     | 2       | 20       |
-| 2026-04-10 | 2 hours of organising for a 3 min video.. is this normal                                             | [link](https://www.reddit.com/r/VideoEditing/comments/1sgg7ys/)  | The organization-tax thread. BuildOS's upstream-planning angle is real here — comment-only, no plug.                  | 18      | 24       |
-| 2026-04-02 | April What Editing Software should I use?                                                            | [link](https://www.reddit.com/r/VideoEditing/comments/1s9t1zd/)  | Recurring monthly. BuildOS isn't editing software — mention only if a specific reply warrants it with clear scope.   | 2       | 27       |
-| 2026-03-26 | taking too long to edit reels - is this normal? how can i speed up the process?                      | [link](https://www.reddit.com/r/VideoEditing/comments/1rxnbzv/)  | Speed/workflow thread. BuildOS as the pre-production structure that reduces editing re-decisions.                    | 1       | 15       |
-| 2026-04-03 | Workflow tips for same day delivery of event                                                         | [link](https://www.reddit.com/r/VideoEditing/comments/1sai9s1/)  | Workflow thread but editing-centric; BuildOS relevance weaker.                                                        | 2       | 6        |
+| Date       | Thread title                                                                            | URL                                                             | Why BuildOS is relevant                                                                                            | Upvotes | Comments |
+| ---------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
+| 2026-04-02 | April Developer/Tool creator thread. _Building or built a tool? This is where you post_ | [link](https://www.reddit.com/r/VideoEditing/comments/1s9xqhx/) | **The one sanctioned BuildOS mention surface.** Recurring monthly.                                                 | 2       | 20       |
+| 2026-04-10 | 2 hours of organising for a 3 min video.. is this normal                                | [link](https://www.reddit.com/r/VideoEditing/comments/1sgg7ys/) | The organization-tax thread. BuildOS's upstream-planning angle is real here — comment-only, no plug.               | 18      | 24       |
+| 2026-04-02 | April What Editing Software should I use?                                               | [link](https://www.reddit.com/r/VideoEditing/comments/1s9t1zd/) | Recurring monthly. BuildOS isn't editing software — mention only if a specific reply warrants it with clear scope. | 2       | 27       |
+| 2026-03-26 | taking too long to edit reels - is this normal? how can i speed up the process?         | [link](https://www.reddit.com/r/VideoEditing/comments/1rxnbzv/) | Speed/workflow thread. BuildOS as the pre-production structure that reduces editing re-decisions.                  | 1       | 15       |
+| 2026-04-03 | Workflow tips for same day delivery of event                                            | [link](https://www.reddit.com/r/VideoEditing/comments/1sai9s1/) | Workflow thread but editing-centric; BuildOS relevance weaker.                                                     | 2       | 6        |
 
 ## Voice notes for future commenting
 

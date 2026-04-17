@@ -7,6 +7,7 @@ daily_active_estimate: high (top-week #1 = 555↑/103💬)
 promo_tolerance: strict
 buildos_fit: medium
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/getdisciplined.md
 ---
 
 # r/getdisciplined
@@ -94,13 +95,13 @@ Comment surfaces (no BuildOS mention, pure lived experience):
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                          | URL                                                                  | Why BuildOS is relevant (as commenter)                                       | Upvotes | Comments |
-| ---------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------- | -------- |
-| 2026-04-13 | Can anyone suggest software to help visualize, plan and organize the steps to long-term goals? | [link](https://www.reddit.com/r/getdisciplined/comments/1slb463/)    | Direct tool question. Still no BuildOS mention — Rule 4 applies.             | 7       | 7        |
-| 2026-03-28 | I spent 3 years chasing productivity systems. None of them fixed my focus.            | [link](https://www.reddit.com/r/getdisciplined/comments/1s36cgo/)    | Anti-system exhaustion thread; comment from lived experience only.            | 5       | 14       |
-| 2026-04-12 | i thought discipline was my problem, but my system was broken                         | [link](https://www.reddit.com/r/getdisciplined/comments/1skbrck/)    | BuildOS-philosophy-adjacent; comment agreement, no plug.                      | 4       | 7        |
-| 2026-04-13 | I realised im lazy so i hacked my environment instead of fighting myself              | [link](https://www.reddit.com/r/getdisciplined/comments/1sjb98v/)    | Environment-design thread; BuildOS-adjacent philosophy.                       | 498     | 40       |
-| 2026-03-31 | Why do most self-improvement apps feel good at first but don't stick long term?       | [link](https://www.reddit.com/r/getdisciplined/comments/1s6ayl5/)    | Churn-of-apps thread; comment as a practitioner who has been there.           | 9       | 36       |
+| Date       | Thread title                                                                                   | URL                                                               | Why BuildOS is relevant (as commenter)                              | Upvotes | Comments |
+| ---------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-13 | Can anyone suggest software to help visualize, plan and organize the steps to long-term goals? | [link](https://www.reddit.com/r/getdisciplined/comments/1slb463/) | Direct tool question. Still no BuildOS mention — Rule 4 applies.    | 7       | 7        |
+| 2026-03-28 | I spent 3 years chasing productivity systems. None of them fixed my focus.                     | [link](https://www.reddit.com/r/getdisciplined/comments/1s36cgo/) | Anti-system exhaustion thread; comment from lived experience only.  | 5       | 14       |
+| 2026-04-12 | i thought discipline was my problem, but my system was broken                                  | [link](https://www.reddit.com/r/getdisciplined/comments/1skbrck/) | BuildOS-philosophy-adjacent; comment agreement, no plug.            | 4       | 7        |
+| 2026-04-13 | I realised im lazy so i hacked my environment instead of fighting myself                       | [link](https://www.reddit.com/r/getdisciplined/comments/1sjb98v/) | Environment-design thread; BuildOS-adjacent philosophy.             | 498     | 40       |
+| 2026-03-31 | Why do most self-improvement apps feel good at first but don't stick long term?                | [link](https://www.reddit.com/r/getdisciplined/comments/1s6ayl5/) | Churn-of-apps thread; comment as a practitioner who has been there. | 9       | 36       |
 
 ## Voice notes for future commenting
 

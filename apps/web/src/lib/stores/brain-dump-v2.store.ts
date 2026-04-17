@@ -781,6 +781,16 @@ function createBrainDumpV2Store(): BrainDumpV2Store {
 
 		// Also cleanup on pagehide (for mobile/bfcache)
 		window.addEventListener('pagehide', handleCleanup);
+
+		// HMR: remove listeners + clear interval on module dispose so reloads
+		// don't stack duplicate handlers on window.
+		if (import.meta.hot) {
+			import.meta.hot.dispose(() => {
+				window.removeEventListener('beforeunload', handleCleanup);
+				window.removeEventListener('pagehide', handleCleanup);
+				handleCleanup();
+			});
+		}
 	}
 
 	// Store actions with domain-specific methods

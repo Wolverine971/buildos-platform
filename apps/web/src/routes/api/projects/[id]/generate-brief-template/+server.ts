@@ -18,7 +18,16 @@ export const POST: RequestHandler = async ({
 		const userId = user.id;
 
 		// Optional parameters from request body
-		const body = await request.json().catch(() => ({}));
+		let body: { templateName?: string; description?: string } = {};
+		const raw = await request.text();
+		if (raw) {
+			try {
+				body = JSON.parse(raw);
+			} catch (parseError) {
+				console.warn('[generate-brief-template] invalid JSON body', parseError);
+				return ApiResponse.badRequest('Invalid JSON body');
+			}
+		}
 		const { templateName, description } = body;
 
 		// Initialize services

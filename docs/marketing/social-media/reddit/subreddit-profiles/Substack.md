@@ -7,6 +7,7 @@ daily_active_estimate: medium (top-week #1 = 84↑/47💬)
 promo_tolerance: moderate
 buildos_fit: high
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/Substack.md
 ---
 
 # r/Substack
@@ -34,6 +35,7 @@ From `about/rules.json` on 2026-04-17:
 ### Sidebar self-promo procedure
 
 > Read our rules on self-promotion carefully:
+>
 > 1. Submit your link as a text post.
 > 2. Include a description of why your post would be interesting to the /r/Substack community.
 > 3. Flair the post as "self-promotion."
@@ -54,7 +56,7 @@ From `about/rules.json` on 2026-04-17:
 - **What gets upvoted:** "Does anyone else use Substack simply because they love writing?" (84↑), "Anyone else feel like writing isn't the actual problem?" (9↑ but hot), platform-critique pieces ("Is Substack getting enshittified?"), specific "what worked for me" breakdowns.
 - **What gets downvoted:** growth hacking, "I used AI to write my newsletter" framing, generic "how do I get subscribers" questions, AI images.
 - Notable anti-AI: "The ai writing thing is trash" (70↑), "I'm so tired of AI images" (41↑).
-- **"Anyone else feel like writing isn't the actual problem?"** (9↑/11💬) — this is BuildOS's *exact* thesis.
+- **"Anyone else feel like writing isn't the actual problem?"** (9↑/11💬) — this is BuildOS's _exact_ thesis.
 
 ## Sub-specific terminology
 
@@ -78,13 +80,13 @@ From `about/rules.json` on 2026-04-17:
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                  | URL                                                           | Why BuildOS is relevant                                                     | Upvotes | Comments |
-| ---------- | ------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------- | ------- | -------- |
-| 2026-04-14 | Anyone else feel like writing isn't the actual problem?        | [link](https://www.reddit.com/r/Substack/comments/1smzro0/)   | **Literal BuildOS thesis.** Reply high-leverage; lead with craft.            | 9       | 11       |
-| 2026-04-13 | Does anyone else use Substack simply because they love writing? | [link](https://www.reddit.com/r/Substack/comments/1slxo0u/) | Permission thread — our audience self-identifies here.                       | 84      | 47       |
-| 2026-04-12 | What's one thing you wish you knew before starting a Substack? | [link](https://www.reddit.com/r/Substack/comments/1smpuoz/) | Recurring; planning + audience-focus framing fits.                           | 11      | 21       |
+| Date       | Thread title                                                          | URL                                                         | Why BuildOS is relevant                                                      | Upvotes | Comments |
+| ---------- | --------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-14 | Anyone else feel like writing isn't the actual problem?               | [link](https://www.reddit.com/r/Substack/comments/1smzro0/) | **Literal BuildOS thesis.** Reply high-leverage; lead with craft.            | 9       | 11       |
+| 2026-04-13 | Does anyone else use Substack simply because they love writing?       | [link](https://www.reddit.com/r/Substack/comments/1slxo0u/) | Permission thread — our audience self-identifies here.                       | 84      | 47       |
+| 2026-04-12 | What's one thing you wish you knew before starting a Substack?        | [link](https://www.reddit.com/r/Substack/comments/1smpuoz/) | Recurring; planning + audience-focus framing fits.                           | 11      | 21       |
 | 2026-04-08 | My friend spends 8-10 hours a day on her Substack but gets 0 traction | [link](https://www.reddit.com/r/Substack/comments/1shyjgt/) | Overwhelm + focus thread. BuildOS's calm-project-home may fit 1 of 10 takes. | 31      | 49       |
-| 2026-04-14 | The ai writing thing is trash                                 | [link](https://www.reddit.com/r/Substack/comments/1sfoxt9/)   | **Cultural canary — do not frame BuildOS as AI here.**                       | 70      | 30       |
+| 2026-04-14 | The ai writing thing is trash                                         | [link](https://www.reddit.com/r/Substack/comments/1sfoxt9/) | **Cultural canary — do not frame BuildOS as AI here.**                       | 70      | 30       |
 
 ## Voice notes for future commenting
 

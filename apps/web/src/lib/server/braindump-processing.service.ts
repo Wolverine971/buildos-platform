@@ -74,7 +74,16 @@ export async function queueBraindumpProcessing(params: {
 			return { queued: false, reason: message };
 		}
 
-		const result = await response.json().catch(() => ({}));
+		let result: { jobId?: string } | null = null;
+		try {
+			result = (await response.json()) as { jobId?: string } | null;
+		} catch (parseError) {
+			console.warn(
+				'[Braindump Processing] Failed to parse worker success response; falling back to direct queue',
+				parseError
+			);
+			return queueBraindumpProcessingDirect(params);
+		}
 		return { queued: true, jobId: result?.jobId };
 	} catch (error) {
 		console.warn(

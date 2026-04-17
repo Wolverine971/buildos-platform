@@ -7,6 +7,7 @@ daily_active_estimate: unknown (Reddit deprecated public active_user_count; top-
 promo_tolerance: strict
 buildos_fit: high
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/writing.md
 ---
 
 # r/writing
@@ -97,21 +98,21 @@ Avoid at all costs: "AI-powered," "AI-first," "agent," "orchestration," "context
 
 ## Thread types where BuildOS would be a legit recommendation
 
-1. **Sunday "Writing Tools, Software, and Hardware" daily discussion thread** — the *only* sanctioned surface for mentioning BuildOS. Founder disclosure + specific creator use case + no links on first mention.
+1. **Sunday "Writing Tools, Software, and Hardware" daily discussion thread** — the _only_ sanctioned surface for mentioning BuildOS. Founder disclosure + specific creator use case + no links on first mention.
 2. **Weekly Critique and Self-Promotion Thread** — the one place for actual self-promo, but mentions here should tie to the craft (not feature dumps).
-3. **"I can't finish anything" / "ADHD + writing" threads** — empathetic reply first; BuildOS only if the asker describes a specific workflow gap BuildOS actually solves (context loss between sessions, scattered notes, scene tracking). Usually *don't* mention the product here.
-4. **"How do you keep track of [scene beats / character arcs / research] across a long book?"** — BuildOS is a plausible answer alongside Scrivener / Obsidian / Plottr / Aeon Timeline, but *only in Sunday tool thread*.
+3. **"I can't finish anything" / "ADHD + writing" threads** — empathetic reply first; BuildOS only if the asker describes a specific workflow gap BuildOS actually solves (context loss between sessions, scattered notes, scene tracking). Usually _don't_ mention the product here.
+4. **"How do you keep track of [scene beats / character arcs / research] across a long book?"** — BuildOS is a plausible answer alongside Scrivener / Obsidian / Plottr / Aeon Timeline, but _only in Sunday tool thread_.
 5. **"Switching from Scrivener / Notion / Plottr"** threads — rare but high-leverage. Same constraint: tool thread only.
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                                                  | URL                                                              | Why BuildOS is relevant                                                                                                       | Upvotes | Comments |
-| ---------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| 2026-04-12 | [Daily Discussion] Writing Tools, Software, and Hardware - April 12, 2026                                      | [link](https://www.reddit.com/r/writing/comments/1sjdxm7/)       | The sanctioned surface. Look for users asking about "drafting," "outlining," "tracking continuity" — recurring themes here.   | 3       | 36       |
-| 2026-04-14 | Recently diagnosed with adhd and realized why I've always struggled to finish anything                        | [link](https://www.reddit.com/r/writing/comments/1sjsdka/)       | Empathy thread; **do not** recommend the product. This is where BuildOS users will find the product themselves if we listen.   | 199     | 37       |
-| 2026-04-11 | Two ideas to help pantser writers not end up with an incomprehensible mess of a first draft at the end!       | [link](https://www.reddit.com/r/writing/comments/1sipjfj/)       | Direct workflow thread — pantsers are BuildOS's natural fit (rough input → structure). Comment-only, craft-first, no plug.    | 101     | 34       |
-| 2026-04-09 | Published my novel 3 months ago and still have 0 sales. Any realistic organic marketing tips for a beginner? | [link](https://www.reddit.com/r/writing/comments/1smxqw2/)       | Adjacent, not for product mention — but reveals the creator-operator pain (build the thing, then face the marketing problem). | 550     | 48       |
-| 2026-04-06 | I now understand why people go on writing retreats or live remotely                                            | [link](https://www.reddit.com/r/writing/comments/1scd2s8/)       | "Context switching kills long projects" thread — exactly the BuildOS thesis. Comment with a craft-first take; no plug.        | 3,298   | 306      |
+| Date       | Thread title                                                                                                 | URL                                                        | Why BuildOS is relevant                                                                                                       | Upvotes | Comments |
+| ---------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-12 | [Daily Discussion] Writing Tools, Software, and Hardware - April 12, 2026                                    | [link](https://www.reddit.com/r/writing/comments/1sjdxm7/) | The sanctioned surface. Look for users asking about "drafting," "outlining," "tracking continuity" — recurring themes here.   | 3       | 36       |
+| 2026-04-14 | Recently diagnosed with adhd and realized why I've always struggled to finish anything                       | [link](https://www.reddit.com/r/writing/comments/1sjsdka/) | Empathy thread; **do not** recommend the product. This is where BuildOS users will find the product themselves if we listen.  | 199     | 37       |
+| 2026-04-11 | Two ideas to help pantser writers not end up with an incomprehensible mess of a first draft at the end!      | [link](https://www.reddit.com/r/writing/comments/1sipjfj/) | Direct workflow thread — pantsers are BuildOS's natural fit (rough input → structure). Comment-only, craft-first, no plug.    | 101     | 34       |
+| 2026-04-09 | Published my novel 3 months ago and still have 0 sales. Any realistic organic marketing tips for a beginner? | [link](https://www.reddit.com/r/writing/comments/1smxqw2/) | Adjacent, not for product mention — but reveals the creator-operator pain (build the thing, then face the marketing problem). | 550     | 48       |
+| 2026-04-06 | I now understand why people go on writing retreats or live remotely                                          | [link](https://www.reddit.com/r/writing/comments/1scd2s8/) | "Context switching kills long projects" thread — exactly the BuildOS thesis. Comment with a craft-first take; no plug.        | 3,298   | 306      |
 
 ## Voice notes for future commenting
 
@@ -119,7 +120,7 @@ Avoid at all costs: "AI-powered," "AI-first," "agent," "orchestration," "context
 - Don't say "thinking environment" yet — it's too category-first for a sub that cares about the work itself. Talk about specific moves ("I keep a scene-beat log per chapter").
 - Use concrete scenes, not abstractions. "My Act 2 collapse was a consistency problem — I couldn't track who knew what by Chapter 12" > "context compounds."
 - **Never use "AI" as a leading noun here.** If you have to disclose, do it deep in a comment, framed as "a tool that turns my voice notes into structured scene logs."
-- When you *do* mention BuildOS: **always** with the founder tag, **always** in the Sunday tool thread, **always** with at least one sentence of honest limitation.
+- When you _do_ mention BuildOS: **always** with the founder tag, **always** in the Sunday tool thread, **always** with at least one sentence of honest limitation.
 
 ## Karma-building strategy for this sub
 
@@ -132,7 +133,7 @@ Avoid at all costs: "AI-powered," "AI-first," "agent," "orchestration," "context
 
 **Phase 2 (weeks 9–12):** start participating in Sunday tool thread.
 
-- Answer *other users' tool questions* with honest recommendations of any tool, including non-BuildOS. Demonstrate that you're not here to plug.
+- Answer _other users' tool questions_ with honest recommendations of any tool, including non-BuildOS. Demonstrate that you're not here to plug.
 - Only after ~8 weeks of genuine participation, one founder-disclosed BuildOS comment per month in Sunday threads, only when the asker's described workflow actually matches BuildOS.
 
 **Realistic karma timeline:**
@@ -149,4 +150,4 @@ Avoid at all costs: "AI-powered," "AI-first," "agent," "orchestration," "context
 
 ## Notes log
 
-- 2026-04-17: Initial scan. Subscribers 3.36M. Sub runs a full weekly daily-discussion schedule (Mon Writer's Block, Tue Brainstorming, Wed General, Thu Writer's Block, Fri Brainstorming, Sat First Page Feedback, **Sun Writing Tools, Software, and Hardware**). The Sunday thread is the *only* sanctioned surface for BuildOS mentions. Rule 4 ("No Generative AI") is active and culturally enforced — AI framing is a fast downvote. ADHD thread ranked 9th on top-week (199↑) — signal that BuildOS's natural audience is here but must not be pitched to.
+- 2026-04-17: Initial scan. Subscribers 3.36M. Sub runs a full weekly daily-discussion schedule (Mon Writer's Block, Tue Brainstorming, Wed General, Thu Writer's Block, Fri Brainstorming, Sat First Page Feedback, **Sun Writing Tools, Software, and Hardware**). The Sunday thread is the _only_ sanctioned surface for BuildOS mentions. Rule 4 ("No Generative AI") is active and culturally enforced — AI framing is a fast downvote. ADHD thread ranked 9th on top-week (199↑) — signal that BuildOS's natural audience is here but must not be pitched to.

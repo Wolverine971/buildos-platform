@@ -7,6 +7,7 @@ daily_active_estimate: high (top-week #1 = 233↑/195💬; huge comment density)
 promo_tolerance: strict
 buildos_fit: high
 last_scanned: 2026-04-17
+path: docs/marketing/social-media/reddit/subreddit-profiles/NewTubers.md
 ---
 
 # r/NewTubers
@@ -23,7 +24,8 @@ From `about/rules.json` on 2026-04-17:
 
 > This is **not** a place to dump your videos and leave! We are a Discussion-first community. We are here to help you learn, not to be your audience.
 > You are only allowed to post links to your content in:
-> - The Weekly *Feedback Friday* and *Self-Introduce Saturday* Megathreads
+>
+> - The Weekly _Feedback Friday_ and _Self-Introduce Saturday_ Megathreads
 > - Critique threads by other users
 >
 > **When asked for a link to your channel you are not allowed to provide it in the comments, you must DM it.**
@@ -31,6 +33,7 @@ From `about/rules.json` on 2026-04-17:
 **Rule 2 — No Advertising**
 
 > **Advertising is not allowed without the prior written authorization of the mod team!**
+>
 > - This applies to any Third-Party services, products, and other materials
 > - This applies to both paid and free products, services, and other materials.
 > - **This includes Market Research**
@@ -50,7 +53,8 @@ From `about/rules.json` on 2026-04-17:
 
 **Rule 7 — Critique Threads**
 
-> Before posting a link to your video in the *Feedback Friday* Megathread or another user's critique thread, please make sure that you are aware of the following rules:
+> Before posting a link to your video in the _Feedback Friday_ Megathread or another user's critique thread, please make sure that you are aware of the following rules:
+>
 > - You must give **meaningful** feedback on at least **TWO (2)** other people **before** posting your own content
 > - The first and second person to comment have **one hour** to provide feedback after posting
 
@@ -121,13 +125,13 @@ This sub is strict but self-documenting. If you follow the weekly-thread workflo
 
 ## Recent real examples (top signal from the 2026-04-17 scan)
 
-| Date       | Thread title                                                                                | URL                                                              | Why BuildOS is relevant                                                                                   | Upvotes | Comments |
-| ---------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| 2026-04-02 | Does anyone else find it 10x easier to "explain" your video out loud than to actually write it down? | [link](https://www.reddit.com/r/NewTubers/comments/1s7iiqe/)     | **Literal BuildOS voice-first thesis in the wild.** High-leverage comment opportunity.                    | 6       | 13       |
-| 2026-04-06 | My content workflow from idea to upload and where the bottlenecks are                       | [link](https://www.reddit.com/r/NewTubers/comments/1s9bb80/)     | Workflow decomposition thread. BuildOS's "structured work from rough input" fits the idea-to-script gap.  | 4       | 8        |
-| 2026-04-14 | People need to stop using AI as a crutch                                                     | [link](https://www.reddit.com/r/NewTubers/comments/1sjt7bq/)     | **Cultural canary.** Top of week (233↑). Read before framing any BuildOS comment — do not lead with AI. | 233     | 195      |
-| 2026-04-11 | Trying to stay consistent make me realize how long editing actually takes                    | [link](https://www.reddit.com/r/NewTubers/comments/1smqmhp/)     | Consistency/cadence pain — BuildOS's calm-project-home framing fits. Empathetic comment, no plug.         | 34      | 9        |
-| 2026-04-13 | What tools are you using to post your content?                                               | [link](https://www.reddit.com/r/NewTubers/comments/1s290kj/)     | Recurring tool thread. Safe surface for founder-disclosed mention when fit is genuine.                    | 2       | 16       |
+| Date       | Thread title                                                                                         | URL                                                          | Why BuildOS is relevant                                                                                  | Upvotes | Comments |
+| ---------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| 2026-04-02 | Does anyone else find it 10x easier to "explain" your video out loud than to actually write it down? | [link](https://www.reddit.com/r/NewTubers/comments/1s7iiqe/) | **Literal BuildOS voice-first thesis in the wild.** High-leverage comment opportunity.                   | 6       | 13       |
+| 2026-04-06 | My content workflow from idea to upload and where the bottlenecks are                                | [link](https://www.reddit.com/r/NewTubers/comments/1s9bb80/) | Workflow decomposition thread. BuildOS's "structured work from rough input" fits the idea-to-script gap. | 4       | 8        |
+| 2026-04-14 | People need to stop using AI as a crutch                                                             | [link](https://www.reddit.com/r/NewTubers/comments/1sjt7bq/) | **Cultural canary.** Top of week (233↑). Read before framing any BuildOS comment — do not lead with AI.  | 233     | 195      |
+| 2026-04-11 | Trying to stay consistent make me realize how long editing actually takes                            | [link](https://www.reddit.com/r/NewTubers/comments/1smqmhp/) | Consistency/cadence pain — BuildOS's calm-project-home framing fits. Empathetic comment, no plug.        | 34      | 9        |
+| 2026-04-13 | What tools are you using to post your content?                                                       | [link](https://www.reddit.com/r/NewTubers/comments/1s290kj/) | Recurring tool thread. Safe surface for founder-disclosed mention when fit is genuine.                   | 2       | 16       |
 
 ## Voice notes for future commenting
 

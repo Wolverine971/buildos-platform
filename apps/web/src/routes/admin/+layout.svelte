@@ -1,15 +1,22 @@
 <!-- apps/web/src/routes/admin/+layout.svelte -->
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import AdminShell from '$lib/components/admin/AdminShell.svelte';
 
-	export let data: {
-		user?: {
-			name?: string | null;
-			email?: string | null;
+	let {
+		data,
+		children
+	}: {
+		data: {
+			user?: {
+				name?: string | null;
+				email?: string | null;
+			};
 		};
-	};
+		children?: Snippet;
+	} = $props();
 </script>
 
 <AdminShell user={data?.user}>
-	<slot />
+	{@render children?.()}
 </AdminShell>
