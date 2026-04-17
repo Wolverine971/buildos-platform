@@ -49,7 +49,9 @@ describe('project-page-data-controller', () => {
 			mockJsonResponse({
 				body: successBody({
 					project: { id: 'project-1', name: 'Project 1' },
-					tasks: [{ id: 'task-1' }]
+					tasks: [{ id: 'task-1' }],
+					events: [{ id: 'event-1' }],
+					public_page_counts: { total: 2, live: 1 }
 				})
 			})
 		);
@@ -58,6 +60,8 @@ describe('project-page-data-controller', () => {
 
 		expect(result.project).toMatchObject({ id: 'project-1' });
 		expect(result.tasks).toHaveLength(1);
+		expect(result.events).toHaveLength(1);
+		expect(result.public_page_counts).toEqual({ total: 2, live: 1 });
 		expect(global.fetch).toHaveBeenCalledWith('/api/onto/projects/project-1/full', undefined);
 	});
 
@@ -77,6 +81,22 @@ describe('project-page-data-controller', () => {
 		await expect(fetchProjectSnapshot('project-1')).rejects.toThrow(
 			'Invalid project snapshot response'
 		);
+	});
+
+	it('fetchProjectSnapshot uses the optimized full project endpoint', async () => {
+		(global.fetch as any).mockImplementation(() =>
+			mockJsonResponse({
+				body: successBody({
+					project: { id: 'project-1', name: 'Project 1' },
+					tasks: []
+				})
+			})
+		);
+
+		const result = await fetchProjectSnapshot('project-1');
+
+		expect(result.project).toMatchObject({ id: 'project-1' });
+		expect(global.fetch).toHaveBeenCalledWith('/api/onto/projects/project-1/full', undefined);
 	});
 
 	it('fetchProjectEvents returns events list', async () => {

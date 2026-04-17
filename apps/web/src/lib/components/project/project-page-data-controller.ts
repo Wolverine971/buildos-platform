@@ -39,6 +39,11 @@ export type ProjectMemberRow = {
 	} | null;
 };
 
+export type ProjectPublicPageCounts = {
+	total: number;
+	live: number;
+};
+
 export type ProjectFullData = {
 	project?: Project;
 	tasks?: Task[];
@@ -48,7 +53,9 @@ export type ProjectFullData = {
 	goals?: Goal[];
 	milestones?: Milestone[];
 	risks?: Risk[];
+	events?: OntoEventWithSync[];
 	context_document?: Document | null;
+	public_page_counts?: ProjectPublicPageCounts;
 };
 
 type JsonRecord = Record<string, unknown>;
@@ -172,7 +179,7 @@ export async function fetchProjectFullData(projectId: string): Promise<ProjectFu
 
 export async function fetchProjectSnapshot(projectId: string): Promise<ProjectFullData> {
 	const data = await requestApiDataRecord(
-		`/api/onto/projects/${projectId}`,
+		`/api/onto/projects/${projectId}/full`,
 		'Failed to refresh data'
 	);
 	if (!isRecord(data.project)) {

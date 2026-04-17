@@ -33,7 +33,7 @@ import type {
 } from '@buildos/shared-types';
 import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
 import type { AgentState, ProjectFocus } from '$lib/types/agent-chat-enhancement';
-import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor-refactored';
+import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
 import { extractTools, getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { v4 as uuidv4 } from 'uuid';
@@ -52,7 +52,6 @@ import {
 	streamFastChat,
 	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
-import { FASTCHAT_PROMPT_VARIANT } from '$lib/services/agentic-chat-v2/prompt-variant';
 import {
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT,
@@ -2220,18 +2219,8 @@ export const POST: RequestHandler = async ({
 	if (!message) {
 		return ApiResponse.badRequest('Message is required');
 	}
-	// Lite is now the only prompt path (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
-	// We still accept the `prompt_variant` input for backwards compatibility, but we reject any
-	// explicit request for a non-lite variant rather than silently downgrading.
-	const requestedPromptVariantRaw =
-		typeof streamRequest.prompt_variant === 'string' ? streamRequest.prompt_variant.trim() : '';
-	if (
-		requestedPromptVariantRaw &&
-		requestedPromptVariantRaw !== LITE_PROMPT_VARIANT &&
-		requestedPromptVariantRaw !== FASTCHAT_PROMPT_VARIANT
-	) {
-		return ApiResponse.badRequest(`Unsupported prompt_variant: ${requestedPromptVariantRaw}`);
-	}
+	// Lite is the only prompt path (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
+	// The request input `prompt_variant` is no longer read; every session is pinned to lite.
 	const promptVariant: LitePromptVariant = LITE_PROMPT_VARIANT;
 	const clientTurnIdRaw = streamRequest.client_turn_id;
 	const clientTurnId =

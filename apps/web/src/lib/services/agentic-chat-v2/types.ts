@@ -25,7 +25,6 @@ export type FastAgentStreamRequest = {
 	last_turn_context?: LastTurnContext | null;
 	stream_run_id?: string | number;
 	client_turn_id?: string;
-	prompt_variant?: string | null;
 	voiceNoteGroupId?: string;
 	voice_note_group_id?: string;
 	prewarmedContext?: FastChatContextCache | null;
@@ -75,7 +74,7 @@ export type FastAgentStreamEvent =
 	| { type: 'timing'; timing: AgentTimingSummary }
 	| {
 			type: 'agent_state';
-			state: 'thinking' | 'executing_plan' | 'waiting_on_user';
+			state: 'thinking' | 'waiting_on_user';
 			details?: string;
 	  }
 	| { type: 'text_delta'; content: string }

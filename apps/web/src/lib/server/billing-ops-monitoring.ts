@@ -138,9 +138,9 @@ export async function fetchBillingOpsMetrics(
 	] = await Promise.all([
 		(supabase as any)
 			.from('billing_accounts')
-			.select('id', { count: 'exact', head: true })
+			.select('id', { count: 'estimated', head: true })
 			.eq('billing_state', 'upgrade_required_frozen'),
-		(supabase as any).from('billing_accounts').select('id', { count: 'exact', head: true }),
+		(supabase as any).from('billing_accounts').select('id', { count: 'estimated', head: true }),
 		(supabase as any)
 			.from('billing_state_transitions')
 			.select('id', { count: 'exact', head: true })
@@ -170,11 +170,11 @@ export async function fetchBillingOpsMetrics(
 			.lte('created_at', windowEnd),
 		(supabase as any)
 			.from('billing_accounts')
-			.select('id', { count: 'exact', head: true })
+			.select('id', { count: 'estimated', head: true })
 			.in('billing_tier', ['pro', 'power']),
 		(supabase as any)
 			.from('billing_accounts')
-			.select('id', { count: 'exact', head: true })
+			.select('id', { count: 'estimated', head: true })
 			.eq('billing_tier', 'power')
 	]);
 

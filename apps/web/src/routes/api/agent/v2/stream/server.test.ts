@@ -33,36 +33,13 @@ function createSupabase({ isAdmin = false } = {}) {
 	};
 }
 
-describe('POST /api/agent/v2/stream prompt variant gate', () => {
-	it('rejects unsupported prompt variants before starting the stream', async () => {
-		const supabase = createSupabase({ isAdmin: false });
-		const response = await POST({
-			request: new Request('http://localhost/api/agent/v2/stream', {
-				method: 'POST',
-				body: JSON.stringify({
-					message: 'Hello',
-					prompt_variant: 'experimental'
-				})
-			}),
-			locals: {
-				supabase,
-				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
-			},
-			fetch: vi.fn()
-		} as any);
-		const payload = await response.json();
-
-		expect(response.status).toBe(400);
-		expect(payload.message).toContain('Unsupported prompt_variant');
-		expect(supabase.from).not.toHaveBeenCalledWith('admin_users');
-	});
-
-	it('accepts the lite prompt variant without consulting the admin gate', async () => {
-		// Lite is now the only prompt path (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
+describe('POST /api/agent/v2/stream', () => {
+	it('ignores the legacy prompt_variant request field and does not consult the admin gate', async () => {
+		// Lite is the only prompt path (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
+		// The legacy `prompt_variant` field is ignored silently; every session runs lite.
 		// There is no admin/dev gate anymore, so the request should not hit `admin_users`.
 		// The endpoint will attempt to start streaming and fail downstream in this minimal
-		// test harness, but the key assertion is that validation does NOT return 400/403
-		// for the lite variant and does NOT query the admin-users table.
+		// test harness, but the key assertion is that validation does NOT query admin-users.
 		const supabase = createSupabase({ isAdmin: false });
 		try {
 			await POST({
@@ -70,7 +47,7 @@ describe('POST /api/agent/v2/stream prompt variant gate', () => {
 					method: 'POST',
 					body: JSON.stringify({
 						message: 'Hello',
-						prompt_variant: 'lite_seed_v1'
+						prompt_variant: 'anything-we-ignore'
 					})
 				}),
 				locals: {
@@ -80,8 +57,7 @@ describe('POST /api/agent/v2/stream prompt variant gate', () => {
 				fetch: vi.fn()
 			} as any);
 		} catch {
-			// downstream streaming machinery is not mocked in this harness; we only
-			// care that the variant gate did not reject the request.
+			// downstream streaming machinery is not mocked in this harness.
 		}
 
 		expect(supabase.from).not.toHaveBeenCalledWith('admin_users');

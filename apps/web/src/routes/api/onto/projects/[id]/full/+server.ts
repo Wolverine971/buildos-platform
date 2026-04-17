@@ -4,8 +4,9 @@
  * OPTIMIZED: Fetch project with all related entities using single RPC
  *
  * This endpoint uses the get_project_full() database function which
- * fetches all project data in a single database round-trip, replacing
- * 13+ separate queries.
+ * fetches core project data in a single database round-trip, replacing
+ * 13+ separate queries. Server-side enrichment adds task metadata, events,
+ * and lightweight public-page counts before returning to the browser.
  *
  * Performance improvement: ~100-300ms faster than the standard endpoint
  *
@@ -16,7 +17,10 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import type { Database } from '@buildos/shared-types';
-import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
+import {
+	decorateMilestonesWithGoals,
+	type GoalMilestoneEdge
+} from '$lib/server/milestone-decorators';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
@@ -24,6 +28,7 @@ import {
 	attachLastChangedByActorToTasks,
 	fetchTaskLastChangedByActorMap
 } from '$lib/server/task-relevance.service';
+import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -39,10 +44,46 @@ interface ProjectFullData {
 	risks: unknown[];
 	metrics: unknown[];
 	context_document: unknown | null;
+	goal_milestone_edges?: GoalMilestoneEdge[] | null;
 }
 
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
+type PublicPageCounts = {
+	total: number;
+	live: number;
+};
+
+async function fetchPublicPageCounts(
+	supabase: App.Locals['supabase'],
+	projectId: string
+): Promise<PublicPageCounts> {
+	const [totalResult, liveResult] = await Promise.all([
+		(supabase as any)
+			.from('onto_public_pages')
+			.select('id', { count: 'exact', head: true })
+			.eq('project_id', projectId)
+			.is('deleted_at', null),
+		(supabase as any)
+			.from('onto_public_pages')
+			.select('id', { count: 'exact', head: true })
+			.eq('project_id', projectId)
+			.eq('public_status', 'live')
+			.is('deleted_at', null)
+	]);
+
+	if (totalResult.error) {
+		throw totalResult.error;
+	}
+	if (liveResult.error) {
+		throw liveResult.error;
+	}
+
+	return {
+		total: totalResult.count ?? 0,
+		live: liveResult.count ?? 0
+	};
+}
 
 const extractErrorMessage = (error: unknown): string => {
 	if (!error) return 'Unknown error';
@@ -142,56 +183,68 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const goals = (data.goals || []) as GoalRow[];
 		const milestones = (data.milestones || []) as MilestoneRow[];
+		const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
+		const taskIds = rawTasks.map((task) => task.id);
+		const goalMilestoneEdges = (data.goal_milestone_edges ?? []) as GoalMilestoneEdge[];
 
-		const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(
-			supabase,
-			goals,
-			milestones
-		);
+		const eventService = new OntoEventSyncService(supabase);
 
-		// Fetch doc_structure separately (RPC may not include it)
-		const { data: projectRow, error: projectError } = await supabase
-			.from('onto_projects')
-			.select('doc_structure')
-			.eq('id', id)
-			.maybeSingle();
+		// Run independent post-RPC fetches in parallel: milestone/goal decoration
+		// (edges already supplied by RPC), task enrichment, events, and public-page counts.
+		const [
+			milestoneDecorateResult,
+			assigneeMapResult,
+			lastChangedByActorMapResult,
+			eventsResult,
+			publicPageCountsResult
+		] = await Promise.all([
+			decorateMilestonesWithGoals(supabase, goals, milestones, goalMilestoneEdges),
+			fetchTaskAssigneesMap({ supabase, taskIds }).catch((assigneeError) => {
+				console.warn(
+					'[Project Full API] Failed to enrich task assignees:',
+					assigneeError
+				);
+				return null;
+			}),
+			fetchTaskLastChangedByActorMap({ supabase, projectId: id, taskIds }).catch(
+				(relevanceError) => {
+					console.warn(
+						'[Project Full API] Failed to enrich task relevance actors:',
+						relevanceError
+					);
+					return null;
+				}
+			),
+			eventService
+				.listProjectEvents(
+					id,
+					{
+						includeDeleted: false
+					},
+					user?.id ?? null
+				)
+				.catch((eventsError) => {
+					console.warn('[Project Full API] Failed to load project events:', eventsError);
+					return [];
+				}),
+			fetchPublicPageCounts(supabase, id).catch((countsError) => {
+				console.warn('[Project Full API] Failed to load public-page counts:', countsError);
+				return { total: 0, live: 0 } satisfies PublicPageCounts;
+			})
+		]);
 
-		if (projectError) {
-			console.error('[Project Full API] Failed to fetch doc_structure:', projectError);
-		}
-		if (projectRow && data.project && typeof data.project === 'object') {
-			(data.project as Record<string, unknown>).doc_structure =
-				projectRow.doc_structure ?? null;
-		}
+		const { milestones: decoratedMilestones } = milestoneDecorateResult;
 
 		const sanitizedProject = sanitizeProjectForClient(data.project as Record<string, unknown>);
-		const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
-		let tasksWithAssignees = rawTasks;
-		const taskIds = rawTasks.map((task) => task.id);
-		try {
-			const assigneeMap = await fetchTaskAssigneesMap({
-				supabase,
-				taskIds
-			});
-			tasksWithAssignees = attachAssigneesToTasks(rawTasks, assigneeMap);
-		} catch (assigneeError) {
-			console.warn('[Project Full API] Failed to enrich task assignees:', assigneeError);
-		}
 
-		try {
-			const lastChangedByActorMap = await fetchTaskLastChangedByActorMap({
-				supabase,
-				projectId: id,
-				taskIds
-			});
+		let tasksWithAssignees = rawTasks;
+		if (assigneeMapResult) {
+			tasksWithAssignees = attachAssigneesToTasks(rawTasks, assigneeMapResult);
+		}
+		if (lastChangedByActorMapResult) {
 			tasksWithAssignees = attachLastChangedByActorToTasks(
 				tasksWithAssignees,
-				lastChangedByActorMap
-			);
-		} catch (relevanceError) {
-			console.warn(
-				'[Project Full API] Failed to enrich task relevance actors:',
-				relevanceError
+				lastChangedByActorMapResult
 			);
 		}
 
@@ -207,7 +260,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			milestones: decoratedMilestones,
 			risks: data.risks || [],
 			metrics: data.metrics || [],
-			context_document: data.context_document
+			context_document: data.context_document,
+			events: eventsResult,
+			public_page_counts: publicPageCountsResult
 		});
 	} catch (err) {
 		console.error('[Project Full API] Unexpected error:', err);

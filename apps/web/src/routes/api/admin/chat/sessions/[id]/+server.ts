@@ -30,13 +30,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		return ApiResponse.unauthorized();
 	}
 
-	const { data: adminUser, error: adminError } = await supabase
-		.from('admin_users')
-		.select('user_id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (adminError || !adminUser) {
+	if (!user.is_admin) {
 		return ApiResponse.forbidden('Admin access required');
 	}
 
@@ -106,7 +100,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
         `
 				)
 				.eq('session_id', sessionId)
-				.order('created_at', { ascending: true }),
+				.order('created_at', { ascending: true })
+				.limit(1000),
 			supabase
 				.from('chat_tool_executions')
 				.select(
@@ -133,7 +128,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
         `
 				)
 				.eq('session_id', sessionId)
-				.order('created_at', { ascending: true }),
+				.order('created_at', { ascending: true })
+				.limit(2000),
 			supabase
 				.from('llm_usage_logs')
 				.select(
@@ -165,7 +161,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
         `
 				)
 				.eq('chat_session_id', sessionId)
-				.order('created_at', { ascending: true }),
+				.order('created_at', { ascending: true })
+				.limit(2000),
 			supabase
 				.from('chat_operations')
 				.select(
@@ -186,7 +183,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
         `
 				)
 				.eq('chat_session_id', sessionId)
-				.order('created_at', { ascending: true }),
+				.order('created_at', { ascending: true })
+				.limit(1000),
 			supabase
 				.from('timing_metrics')
 				.select('*')
@@ -235,7 +233,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
         `
 				)
 				.eq('session_id', sessionId)
-				.order('started_at', { ascending: true }),
+				.order('started_at', { ascending: true })
+				.limit(500),
 			supabase
 				.from('chat_prompt_snapshots')
 				.select(
@@ -261,7 +260,8 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
         `
 				)
 				.eq('session_id', sessionId)
-				.order('created_at', { ascending: true }),
+				.order('created_at', { ascending: true })
+				.limit(500),
 			supabase
 				.from('chat_turn_events')
 				.select(
@@ -278,6 +278,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				)
 				.eq('session_id', sessionId)
 				.order('created_at', { ascending: true })
+				.limit(5000)
 		]);
 
 		if (messageError) throw messageError;

@@ -92,7 +92,8 @@
 		updateProjectMilestoneState,
 		updateProjectNotificationSettings,
 		type OntoEventWithSync,
-		type ProjectNotificationSettings
+		type ProjectNotificationSettings,
+		type ProjectPublicPageCounts
 	} from '$lib/components/project/project-page-data-controller';
 	import {
 		flushPendingImageUploadOpen,
@@ -139,6 +140,23 @@
 		items: Array<unknown>;
 		description?: string;
 	};
+
+	function normalizePublicPageCounts(value: unknown): ProjectPublicPageCounts {
+		if (!value || typeof value !== 'object') {
+			return { total: 0, live: 0 };
+		}
+		const counts = value as Partial<ProjectPublicPageCounts>;
+		return {
+			total:
+				typeof counts.total === 'number' && Number.isFinite(counts.total)
+					? counts.total
+					: 0,
+			live:
+				typeof counts.live === 'number' && Number.isFinite(counts.live)
+					? counts.live
+					: 0
+		};
+	}
 
 	// ============================================================
 	// PROPS & DATA
@@ -220,6 +238,12 @@
 	let contextDocument = $state(
 		data.skeleton ? null : ((data.context_document || null) as Document | null)
 	);
+	let publicPageCounts = $state(
+		data.skeleton
+			? ({ total: 0, live: 0 } satisfies ProjectPublicPageCounts)
+			: normalizePublicPageCounts(data.public_page_counts)
+	);
+	const initialEventsIncluded = !data.skeleton && Array.isArray(data.events);
 
 	// Context for creating milestone from within a goal
 	let milestoneCreateGoalContext = $state<{ goalId: string; goalName: string } | null>(null);
@@ -357,10 +381,11 @@
 			goals = fullData.goals || [];
 			milestones = fullData.milestones || [];
 			risks = fullData.risks || [];
+			events = fullData.events || [];
 			contextDocument = fullData.context_document || null;
+			publicPageCounts = normalizePublicPageCounts(fullData.public_page_counts);
 
 			isHydrating = false;
-			void loadProjectEvents();
 			void ensureProjectMembersLoaded();
 		} catch (err) {
 			console.error('[Project Page] Hydration failed:', err);
@@ -423,7 +448,9 @@
 			// Hydrate full data
 			hydrateFullData();
 		} else {
-			void loadProjectEvents();
+			if (!initialEventsIncluded) {
+				void loadProjectEvents();
+			}
 			void ensureProjectMembersLoaded();
 		}
 	});
@@ -1039,14 +1066,13 @@
 			goals = newData.goals || [];
 			milestones = newData.milestones || [];
 			risks = newData.risks || [];
+			if (newData.events) {
+				events = newData.events;
+			} else {
+				await loadProjectEvents();
+			}
 			contextDocument = newData.context_document || null;
-			await Promise.all([
-				loadProjectEvents(),
-				canOpenCollabModal
-					? ensureProjectNotificationSettingsLoaded({ force: true })
-					: Promise.resolve(),
-				ensureProjectMembersLoaded({ force: true })
-			]);
+			publicPageCounts = normalizePublicPageCounts(newData.public_page_counts);
 
 			if (showSuccessToast) {
 				toastService.success('Data refreshed');
@@ -1054,7 +1080,7 @@
 		} catch (error) {
 			console.error('[Project] Failed to refresh', error);
 			void logOntologyClientError(error, {
-				endpoint: `/api/onto/projects/${project.id}`,
+				endpoint: `/api/onto/projects/${project.id}/full`,
 				method: 'GET',
 				projectId: project.id,
 				entityType: 'project',
@@ -1755,6 +1781,8 @@
 						<PublishedPanel
 							bind:this={publishedPanelRef}
 							projectId={project.id}
+							liveCount={publicPageCounts.live}
+							totalCount={publicPageCounts.total}
 							onOpenDocument={handleOpenDocument}
 						/>
 						{#await import('$lib/components/project/ProjectInsightRail.svelte')}

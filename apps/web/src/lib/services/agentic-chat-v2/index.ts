@@ -5,7 +5,7 @@ export { buildFastContextUsageSnapshot, estimateTokensFromText } from './context
 export { selectFastChatTools } from './tool-selector';
 export * from './context-models';
 export { createFastChatSessionService } from './session-service';
-export { streamFastChat } from './stream-orchestrator';
+export { streamFastChat } from './stream-orchestrator/index';
 export { FASTCHAT_LIMITS } from './limits';
 export { composeFastChatHistory } from './history-composer';
 export * from './prompt-variant';

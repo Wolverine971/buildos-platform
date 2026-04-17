@@ -2,13 +2,7 @@
 <!-- INKPRINT Design System: Thinking block with terminal-like activity log -->
 <script lang="ts">
 	import { ChevronDown, ChevronRight, Loader, Check, X } from 'lucide-svelte';
-	import PlanVisualization from './PlanVisualization.svelte';
-	import type {
-		ActivityEntry,
-		ActivityType,
-		AgentLoopState,
-		ThinkingBlockMessage
-	} from './agent-chat.types';
+	import type { ActivityType, ThinkingBlockMessage } from './agent-chat.types';
 
 	interface Props {
 		block: ThinkingBlockMessage;
@@ -22,17 +16,6 @@
 
 	function toggleExpand() {
 		isExpanded = !isExpanded;
-	}
-
-	// Track collapse state for individual plans
-	let planCollapseStates = $state<Map<string, boolean>>(new Map());
-
-	// Function to toggle individual plan collapse
-	function togglePlanCollapse(activityId: string) {
-		const current = planCollapseStates.get(activityId) ?? false;
-		planCollapseStates.set(activityId, !current);
-		// Force reactivity with new Map
-		planCollapseStates = new Map(planCollapseStates);
 	}
 
 	// Derive if thinking is complete (check for completion phrases in content)
@@ -83,32 +66,10 @@
 	const ACTIVITY_STYLES: Record<ActivityType, { icon: string; color: string; prefix: string }> = {
 		tool_call: { icon: '🔧', color: 'text-blue-600 dark:text-blue-400', prefix: 'TOOL' },
 		tool_result: { icon: '✓', color: 'text-emerald-600 dark:text-emerald-400', prefix: 'TOOL' },
-		plan_created: {
-			icon: '📋',
-			color: 'text-purple-600 dark:text-purple-400',
-			prefix: 'PLAN'
-		},
-		plan_review: { icon: '⚖️', color: 'text-amber-600 dark:text-amber-400', prefix: 'PLAN' },
 		state_change: {
 			icon: '🟢',
 			color: 'text-emerald-600 dark:text-emerald-400',
 			prefix: 'STATE'
-		},
-		step_start: { icon: '➜', color: 'text-amber-600 dark:text-amber-400', prefix: 'STEP' },
-		step_complete: {
-			icon: '✓',
-			color: 'text-emerald-600 dark:text-emerald-400',
-			prefix: 'STEP'
-		},
-		executor_spawned: {
-			icon: '⚙️',
-			color: 'text-teal-600 dark:text-teal-400',
-			prefix: 'EXEC'
-		},
-		executor_result: {
-			icon: '✓',
-			color: 'text-emerald-600 dark:text-emerald-400',
-			prefix: 'EXEC'
 		},
 		context_shift: {
 			icon: '🔄',
@@ -192,52 +153,40 @@
 					</div>
 				{:else}
 					{#each block.activities as activity (activity.id)}
-						{#if activity.activityType === 'plan_created' && activity.metadata?.plan}
-							<!-- Use dedicated plan visualization for plan activities -->
-							<div class="py-1">
-								<PlanVisualization
-									plan={activity.metadata.plan}
-									currentStep={activity.metadata.currentStep}
-									isCollapsed={planCollapseStates.get(activity.id) ?? false}
-									onToggle={() => togglePlanCollapse(activity.id)}
-								/>
-							</div>
-						{:else}
-							{@const style = getActivityStyle(activity.activityType)}
-							<div class="py-0.5">
-								<div class="flex gap-1.5 leading-snug items-center">
-									<!-- Icon -->
-									<span
-										class="shrink-0 pt-0.5 text-[0.65rem] {style.color} sm:pt-0"
-										aria-hidden="true">{style.icon}</span
-									>
+						{@const style = getActivityStyle(activity.activityType)}
+						<div class="py-0.5">
+							<div class="flex gap-1.5 leading-snug items-center">
+								<!-- Icon -->
+								<span
+									class="shrink-0 pt-0.5 text-[0.65rem] {style.color} sm:pt-0"
+									aria-hidden="true">{style.icon}</span
+								>
 
-									<!-- Content -->
-									<span
-										class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-foreground"
-										>{activity.content}</span
-									>
+								<!-- Content -->
+								<span
+									class="min-w-0 flex-1 break-words [overflow-wrap:anywhere] text-foreground"
+									>{activity.content}</span
+								>
 
-									<!-- Status indicator (for tool calls) -->
-									{#if activity.status === 'pending'}
-										<Loader
-											class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
-											aria-label="Loading"
-										/>
-									{:else if activity.status === 'completed'}
-										<Check
-											class="h-2.5 w-2.5 shrink-0 text-emerald-600 dark:text-emerald-400"
-											aria-label="Completed"
-										/>
-									{:else if activity.status === 'failed'}
-										<X
-											class="h-2.5 w-2.5 shrink-0 text-red-600 dark:text-red-400"
-											aria-label="Failed"
-										/>
-									{/if}
-								</div>
+								<!-- Status indicator (for tool calls) -->
+								{#if activity.status === 'pending'}
+									<Loader
+										class="h-2.5 w-2.5 shrink-0 animate-spin text-muted-foreground"
+										aria-label="Loading"
+									/>
+								{:else if activity.status === 'completed'}
+									<Check
+										class="h-2.5 w-2.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+										aria-label="Completed"
+									/>
+								{:else if activity.status === 'failed'}
+									<X
+										class="h-2.5 w-2.5 shrink-0 text-red-600 dark:text-red-400"
+										aria-label="Failed"
+									/>
+								{/if}
 							</div>
-						{/if}
+						</div>
 					{/each}
 				{/if}
 			</div>

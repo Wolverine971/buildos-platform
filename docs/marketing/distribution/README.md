@@ -15,18 +15,18 @@
 
 Status legend: ⚪ not-started · 🟡 ready (unblocked, awaiting pickup) · 🔵 in-progress · ✅ done · ⏸ blocked · 🔁 recurring
 
-| ID   | Work Stream                                 | Tasks                                       | Wave      | Primary Type       | Status                         | Doc                                               |
-| ---- | ------------------------------------------- | ------------------------------------------- | --------- | ------------------ | ------------------------------ | ------------------------------------------------- |
-| WS01 | Public Pages as Distribution Surface        | T02, T12, T13, T21, T22, T26, T29, T30, T31 | 1–4       | Code + Content     | 🔵 T02 ✅ · T12 🟡             | [WS01](workstreams/WS01-public-pages.md)          |
-| WS02 | LLM Citation / GEO Foundations              | T01, T04, T05, T06, T07, T08, T20, T28      | 1–ongoing | Research + Code    | ⚪                             | [WS02](workstreams/WS02-llm-citation-geo.md)      |
-| WS03 | Reddit Creator-Wedge Program                | T03, T10, T11, T27                          | 1–3 + 🔁  | Research + Ops     | 🔵 T03 spec drafted            | [WS03](workstreams/WS03-reddit-creator-wedge.md)  |
-| WS04 | Flagship Content Strategy                   | T15, T25, T32                               | 2 + 🔁    | Writing            | ⚪                             | [WS04](workstreams/WS04-flagship-content.md)      |
-| WS05 | Comparison Pages Hub                        | T16, T17, T24                               | 2         | Writing + Code     | ⚪                             | [WS05](workstreams/WS05-comparison-pages.md)      |
-| WS06 | Developer & Integration Surface             | T09, T18, T19                               | 1–2       | Writing + Ops      | ⚪                             | [WS06](workstreams/WS06-developer-integration.md) |
-| WS07 | Site Architecture (how-it-works, changelog) | T14, T23                                    | 2–3       | Code + Content     | ⚪                             | [WS07](workstreams/WS07-site-architecture.md)     |
-| WS08 | Performance Monitoring                      | T33                                         | 4         | Code + Ops         | ⚪                             | [WS08](workstreams/WS08-performance.md)           |
-| WS09 | Anti-Feed Content Cluster                   | T34–T45                                     | 2–3 + 🔁  | Writing + Research | 🔵 T34 ✅ · T35 🟡 · T44 🔁 🔵 | [WS09](workstreams/WS09-anti-feed-cluster.md)     |
-| WS10 | Short-Form Video (TikTok, counter-positioned) | T46–T51                                   | 2–4 + 🔁  | Writing + Ops      | 🔵 T46 ⚪ · T47 ⚪ · T49 🔁 ⚪ | [WS10](workstreams/WS10-short-form-video.md)      |
+| ID   | Work Stream                                   | Tasks                                       | Wave      | Primary Type       | Status                         | Doc                                               |
+| ---- | --------------------------------------------- | ------------------------------------------- | --------- | ------------------ | ------------------------------ | ------------------------------------------------- |
+| WS01 | Public Pages as Distribution Surface          | T02, T12, T13, T21, T22, T26, T29, T30, T31 | 1–4       | Code + Content     | 🔵 T02 ✅ · T12 🟡             | [WS01](workstreams/WS01-public-pages.md)          |
+| WS02 | LLM Citation / GEO Foundations                | T01, T04, T05, T06, T07, T08, T20, T28      | 1–ongoing | Research + Code    | ⚪                             | [WS02](workstreams/WS02-llm-citation-geo.md)      |
+| WS03 | Reddit Creator-Wedge Program                  | T03, T10, T11, T27                          | 1–3 + 🔁  | Research + Ops     | 🔵 T03 spec drafted            | [WS03](workstreams/WS03-reddit-creator-wedge.md)  |
+| WS04 | Flagship Content Strategy                     | T15, T25, T32                               | 2 + 🔁    | Writing            | ⚪                             | [WS04](workstreams/WS04-flagship-content.md)      |
+| WS05 | Comparison Pages Hub                          | T16, T17, T24                               | 2         | Writing + Code     | ⚪                             | [WS05](workstreams/WS05-comparison-pages.md)      |
+| WS06 | Developer & Integration Surface               | T09, T18, T19                               | 1–2       | Writing + Ops      | ⚪                             | [WS06](workstreams/WS06-developer-integration.md) |
+| WS07 | Site Architecture (how-it-works, changelog)   | T14, T23                                    | 2–3       | Code + Content     | ⚪                             | [WS07](workstreams/WS07-site-architecture.md)     |
+| WS08 | Performance Monitoring                        | T33                                         | 4         | Code + Ops         | ⚪                             | [WS08](workstreams/WS08-performance.md)           |
+| WS09 | Anti-Feed Content Cluster                     | T34–T45                                     | 2–3 + 🔁  | Writing + Research | 🔵 T34 ✅ · T35 🟡 · T44 🔁 🔵 | [WS09](workstreams/WS09-anti-feed-cluster.md)     |
+| WS10 | Short-Form Video (TikTok, counter-positioned) | T46–T51                                     | 2–4 + 🔁  | Writing + Ops      | 🔵 T46 ⚪ · T47 ⚪ · T49 🔁 ⚪ | [WS10](workstreams/WS10-short-form-video.md)      |
 
 ---
 

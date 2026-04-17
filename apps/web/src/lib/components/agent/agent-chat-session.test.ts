@@ -4,14 +4,10 @@ import type { ChatSession } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { VoiceNote } from '$lib/types/voice-notes';
 import {
-	AGENT_CHAT_DEFAULT_PROMPT_VARIANT,
-	AGENT_CHAT_LITE_PROMPT_VARIANT,
 	buildAgentChatSessionSnapshot,
 	deriveSessionTitle,
 	loadAgentChatSessionSnapshot,
-	normalizeAgentChatPromptVariantSelection,
-	prewarmAgentContext,
-	resolveAgentChatPromptVariantForRequest
+	prewarmAgentContext
 } from './agent-chat-session';
 
 function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
@@ -31,34 +27,6 @@ function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
 describe('agent-chat-session helpers', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
-	});
-
-	it('collapses prompt variant helpers to the consolidated lite path', () => {
-		// After the 2026-04-16 lite prompt consolidation, the agentic chat runtime has
-		// a single prompt path. Both exported constants alias LITE_PROMPT_VARIANT, and
-		// the request helper never pins a variant — the server defaults to lite.
-		expect(AGENT_CHAT_LITE_PROMPT_VARIANT).toBe('lite_seed_v1');
-		expect(AGENT_CHAT_DEFAULT_PROMPT_VARIANT).toBe('lite_seed_v1');
-
-		expect(normalizeAgentChatPromptVariantSelection('lite_seed_v1')).toBe(
-			AGENT_CHAT_LITE_PROMPT_VARIANT
-		);
-		expect(normalizeAgentChatPromptVariantSelection('unknown')).toBe(
-			AGENT_CHAT_LITE_PROMPT_VARIANT
-		);
-
-		expect(
-			resolveAgentChatPromptVariantForRequest({
-				canUsePromptVariantControls: false,
-				selectedPromptVariant: AGENT_CHAT_LITE_PROMPT_VARIANT
-			})
-		).toBeNull();
-		expect(
-			resolveAgentChatPromptVariantForRequest({
-				canUsePromptVariantControls: true,
-				selectedPromptVariant: AGENT_CHAT_LITE_PROMPT_VARIANT
-			})
-		).toBeNull();
 	});
 
 	it('deriveSessionTitle prefers a non-placeholder manual title and falls back to auto title', () => {

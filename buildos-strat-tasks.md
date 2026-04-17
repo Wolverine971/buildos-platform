@@ -362,6 +362,57 @@ Parallel cluster play. **Different cadence from WS04 flagship** — 10 posts in 
 
 ---
 
+## WS10 — Short-Form Video (TikTok, Counter-Positioned) (T46–T51)
+
+TikTok as proof, not participation. Every cluster blog gets 2 scripts; every script must pass the counter-positioning rubric. Operational home: [WS10](docs/marketing/distribution/workstreams/WS10-short-form-video.md). Dispatcher: [`anti-feed` skill](.claude/skills/anti-feed/SKILL.md).
+
+**T46. TikTok account setup** `[O]` · 2 hrs · Leverage 3 / Urgency 4 · **⚪**
+
+- Bio, link-in-bio, handle, display name, cover, first pinned video (T47 explainer)
+- Display name: "DJ Wayne" (founder-led). Handle: prefer `@djwayne`, fallback `@buildos`
+- Bio: "thinking environment for people making complex things · read the anti-feed → build-os.com"
+- DJ-only
+- **Done when:** profile live, pinned video set, link-in-bio pointing to cluster or build-os.com
+
+**T47. Backfill TikTok scripts for published cluster posts** `[W]` · 1 d · Leverage 4 / Urgency 4 · **⚪**
+
+- 2 scripts each for T34 + `your-morning-without-the-algorithm.md` = 4 scripts
+- Generated via `anti-feed` skill (menu option 2)
+- First script recorded + pinned as part of T46
+- **Done when:** 4 scripts committed to publish kits, rubric passes, T48 dashboard populated
+
+**T48. TikTok pair per cluster blog** `[W]` · 🔁 · ~1 hr per blog · Leverage 5 / Urgency 4 · **🔁 ⚪**
+
+- 2 scripts per cluster blog (T35–T43): one 30–45s hook-on-vocabulary, one 60–90s explainer
+- Same term-to-own across both scripts (repetition is the compound play)
+- Generated inside the publish kit for each blog
+- Cross-posted to Reels + Shorts unless documented reason not to
+- **Done (per blog) when:** both scripts drafted, rubric passes, both recorded, both posted within 7 days of blog publish, cross-posts verified
+
+**T49. TikTok posting cadence** `[O]` · 🔁 · Leverage 5 / Urgency 4 · **🔁 ⚪ Started 2026-04-17**
+
+- Post both TikToks within 7 days of corresponding blog going live
+- If window missed by >3 days twice in a row, re-plan
+- Tracking: `docs/marketing/social-media/tiktok/posted.md`
+- See [RECURRING §TikTok cadence](docs/marketing/distribution/RECURRING.md#tiktok-cadence-t49)
+
+**T50. Counter-positioning rubric** `[W]` · 2 hrs · Leverage 5 / Urgency 4 · **⚪**
+
+- 6-point rejection rubric every script must pass: founder-led, receipts-first, vocabulary discipline, no clip-farm tactics, chosen-input CTA, calm pacing
+- Expands with examples of pass/fail per rule
+- Referenced from `anti-feed` skill's `tiktok-scripts.md`
+- **Done when:** `docs/marketing/social-media/tiktok/counter-positioning-rubric.md` committed and linked from the skill
+
+**T51. Monthly TikTok qualitative review** `[R]` · 🔁 · 30 min/month · Leverage 3 / Urgency 2 · **🔁 ⚪**
+
+- First Monday of the month (same sitting as T28 LLM remeasure)
+- Qualitative: is vocabulary showing up in comments? Has any TikTok been quoted back by a larger voice?
+- NOT a follower-count review
+- Output: `docs/marketing/measurement/tiktok-review-YYYY-MM.md`
+- Kill criteria: after Q3 2026, if vocabulary-engaged comments <10% AND zero pickup-quotes, reassess
+
+---
+
 ## Dependency Map
 
 Tasks that must complete before others can start:
@@ -377,6 +428,9 @@ T15 (framework doc) ─► all Reddit posts that cite it
 T18 ──────► T19 (inventory before submissions)
 T34 (done) ─► T35 ─► T36 … ─► T43 (7–10 day cadence, T44 wraps all)
 T35 + T36 + T38 should land before T15 goes public (cluster primes the flagship)
+T46 (account setup) ─► T47 (backfill) ─► T48 (per-blog recurring) ─► T49 (cadence)
+T50 (rubric) gates every T47 + T48 script before it ships
+Every T34–T43 blog triggers a T48 row (WS10 is downstream of WS09, not independent)
 ```
 
 ---

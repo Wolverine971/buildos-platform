@@ -34,32 +34,29 @@ async function hasAnyProjects(
 	try {
 		const actorId = await ensureActorId(supabase, userId);
 
-		const { count: memberCount, error: memberError } = await supabase
-			.from('onto_project_members')
-			.select('id', { count: 'exact', head: true })
-			.eq('actor_id', actorId)
-			.is('removed_at', null);
+		const [memberResult, ownedResult] = await Promise.all([
+			supabase
+				.from('onto_project_members')
+				.select('id', { count: 'exact', head: true })
+				.eq('actor_id', actorId)
+				.is('removed_at', null),
+			supabase
+				.from('onto_projects')
+				.select('id', { count: 'exact', head: true })
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
+		]);
 
-		if (!memberError && (memberCount ?? 0) > 0) {
-			return true;
+		if (memberResult.error) {
+			console.warn('[Dashboard] Failed to count project memberships:', memberResult.error);
+		}
+		if (ownedResult.error) {
+			console.warn('[Dashboard] Failed to count owned projects:', ownedResult.error);
 		}
 
-		if (memberError) {
-			console.warn('[Dashboard] Failed to count project memberships:', memberError);
-		}
-
-		const { count: ownedCount, error: ownedError } = await supabase
-			.from('onto_projects')
-			.select('id', { count: 'exact', head: true })
-			.eq('created_by', actorId)
-			.is('deleted_at', null);
-
-		if (ownedError) {
-			console.warn('[Dashboard] Failed to count owned projects:', ownedError);
-			return false;
-		}
-
-		return (ownedCount ?? 0) > 0;
+		if ((memberResult.count ?? 0) > 0) return true;
+		if (memberResult.error && ownedResult.error) return false;
+		return (ownedResult.count ?? 0) > 0;
 	} catch (error) {
 		console.warn('[Dashboard] Failed to preflight project visibility:', error);
 		return false;

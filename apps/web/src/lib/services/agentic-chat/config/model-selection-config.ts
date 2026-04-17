@@ -19,7 +19,6 @@ import { AGENTIC_MODEL_RECOMMENDATIONS } from '@buildos/smart-llm';
 export type AgentOperationType =
 	| 'planner_stream' // Main planner conversation
 	| 'plan_generation' // Creating execution plans
-	| 'plan_review' // Reviewing plan validity
 	| 'executor_task' // Executor agent tasks
 	| 'simple_response' // Simple synthesis
 	| 'complex_response' // Complex multi-step synthesis
@@ -136,7 +135,6 @@ export const MODEL_RECOMMENDATIONS = AGENTIC_MODEL_RECOMMENDATIONS;
 export const TEMPERATURE_BY_OPERATION: Record<AgentOperationType, number> = {
 	planner_stream: 0.4, // Balanced creativity
 	plan_generation: 0.35, // More deterministic
-	plan_review: 0.2, // Very deterministic
 	executor_task: 0.3, // Focused execution
 	simple_response: 0.7, // More creative
 	complex_response: 0.6, // Moderately creative
@@ -152,7 +150,6 @@ export const TEMPERATURE_BY_OPERATION: Record<AgentOperationType, number> = {
 export const MAX_TOKENS_BY_OPERATION: Record<AgentOperationType, number> = {
 	planner_stream: 1800, // Medium conversation
 	plan_generation: 1200, // Structured plan
-	plan_review: 500, // Brief review
 	executor_task: 1500, // Task execution
 	simple_response: 1000, // Simple synthesis
 	complex_response: 2000, // Detailed synthesis

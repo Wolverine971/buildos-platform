@@ -5,6 +5,7 @@ import { PUBLIC_STRIPE_PUBLISHABLE_KEY } from '$env/static/public';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { INVOICE_CONFIG } from '$lib/config/stripe-invoice';
 import { CONSUMPTION_BILLING_LIMITS } from '$lib/server/consumption-billing';
+import { invalidateBillingContextCache } from '$lib/server/billing-context-cache';
 import { ErrorLoggerService } from './errorLogger.service';
 
 // Support legacy and PRIVATE_ env names without breaking existing deploys.
@@ -481,6 +482,8 @@ export class StripeService {
 			);
 		}
 
+		invalidateBillingContextCache(userId);
+
 		return buildResult('upgraded', {
 			subscriptionId,
 			fromPriceId,
@@ -799,6 +802,8 @@ export class StripeService {
 				);
 			}
 		}
+
+		invalidateBillingContextCache(userId);
 	}
 
 	/**
@@ -859,6 +864,7 @@ export class StripeService {
 				`Failed to reset billing_accounts for ${userId} after subscription deletion:`,
 				billingAccountResetError
 			);
+			invalidateBillingContextCache(userId);
 			return;
 		}
 
@@ -873,6 +879,8 @@ export class StripeService {
 				gateResult.error
 			);
 		}
+
+		invalidateBillingContextCache(userId);
 	}
 
 	/**
@@ -962,6 +970,8 @@ export class StripeService {
 					access_restricted_at: null
 				})
 				.eq('id', existingSubscription.user_id);
+
+			invalidateBillingContextCache(existingSubscription.user_id);
 		}
 	}
 
@@ -1008,6 +1018,8 @@ export class StripeService {
 				subscription_status: 'past_due'
 			})
 			.eq('id', subscription.user_id);
+
+		invalidateBillingContextCache(subscription.user_id);
 
 		console.error('Invoice payment failed:', invoice.id);
 	}

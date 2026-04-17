@@ -5,6 +5,7 @@ import { EmailService } from './email-service';
 import { StripeService } from './stripe-service';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { createTrackedInAppNotification } from '$lib/server/tracked-in-app-notification.service';
+import { invalidateBillingContextCache } from '$lib/server/billing-context-cache';
 
 export interface FailedPayment {
 	id: string;
@@ -182,6 +183,8 @@ export class DunningService {
 		if (!result.success) {
 			console.error('Failed to create tracked payment warning notification:', result.error);
 		}
+
+		invalidateBillingContextCache(userId);
 	}
 
 	/**
@@ -196,6 +199,8 @@ export class DunningService {
 				access_restricted_at: new Date().toISOString()
 			})
 			.eq('id', userId);
+
+		invalidateBillingContextCache(userId);
 	}
 
 	/**
@@ -238,6 +243,8 @@ export class DunningService {
 					resolution_type: 'cancelled'
 				})
 				.eq('id', payment.id);
+
+			invalidateBillingContextCache(payment.user_id);
 		} catch (error) {
 			console.error('Error cancelling subscription:', error);
 		}
@@ -322,6 +329,8 @@ export class DunningService {
 				.delete()
 				.eq('user_id', payment.user_id)
 				.eq('type', 'payment_warning');
+
+			invalidateBillingContextCache(payment.user_id);
 		}
 	}
 

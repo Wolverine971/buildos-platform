@@ -26,6 +26,7 @@ interface MockState {
 	smsPreferencesByUserId?: Record<string, Record<string, any>>;
 	calendarTokensByUserId?: Record<string, number>;
 	emailLogsByUserId?: Record<string, Array<Record<string, any>>>;
+	suppressedEmails?: string[];
 }
 
 class QueryBuilderMock implements PromiseLike<any> {
@@ -472,11 +473,22 @@ function createSequenceRow(userId: string) {
 function createMockSupabase(state: MockState) {
 	return {
 		from: (table: string) => new QueryBuilderMock(table, state),
-		rpc: vi.fn(async (fn: string) => {
+		rpc: vi.fn(async (fn: string, args?: Record<string, any>) => {
 			if (fn === 'ensure_actor_for_user') {
 				return state.failRpc
 					? { data: null, error: { message: 'rpc unavailable' } }
 					: { data: state.actorId ?? 'actor-1', error: null };
+			}
+
+			if (fn === 'is_email_suppressed') {
+				const email =
+					typeof args?.p_email === 'string' ? args.p_email.trim().toLowerCase() : '';
+				return {
+					data: state.suppressedEmails?.map((value) => value.toLowerCase()).includes(email)
+						? true
+						: false,
+					error: null
+				};
 			}
 
 			return { data: null, error: null };
@@ -648,6 +660,78 @@ describe('WelcomeSequenceService failure recovery', () => {
 
 		expect(sendEmailMock).toHaveBeenCalledTimes(1);
 		expect(state.welcomeRows['user-1']?.email_1_sent_at).toBe('2026-03-01T10:00:00.050Z');
+	});
+
+	it('cancels a suppressed user at sequence start without sending email_1', async () => {
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'user@example.com',
+					name: 'Alex Builder',
+					created_at: '2026-03-01T10:00:00.000Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'UTC'
+				}
+			},
+			welcomeRows: {},
+			updates: [],
+			failRpc: false,
+			suppressedEmails: ['user@example.com']
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+
+		await expect(
+			service.startSequenceForUser({
+				userId: 'user-1',
+				signupMethod: 'email'
+			})
+		).resolves.toBeUndefined();
+
+		expect(sendEmailMock).not.toHaveBeenCalled();
+		expect(state.welcomeRows['user-1']?.status).toBe('cancelled');
+		expect(state.welcomeRows['user-1']?.completed_at).toEqual(expect.any(String));
+	});
+
+	it('cancels a suppressed active sequence during cron without sending the due step', async () => {
+		const row = createSequenceRow('user-1');
+		row.email_1_sent_at = '2026-03-01T10:01:00.000Z';
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'user@example.com',
+					name: 'Alex Builder',
+					created_at: '2026-03-01T10:00:00.000Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'UTC'
+				}
+			},
+			welcomeRows: {
+				'user-1': row
+			},
+			updates: [],
+			failRpc: false,
+			suppressedEmails: ['USER@example.com']
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+		const result = await service.processDueSequences({
+			now: new Date('2026-03-02T10:30:00.000Z')
+		});
+
+		expect(result.suppressed).toBe(1);
+		expect(result.cancelled).toBe(1);
+		expect(sendEmailMock).not.toHaveBeenCalled();
+		expect(state.welcomeRows['user-1']?.status).toBe('cancelled');
+		expect(state.welcomeRows['user-1']?.email_2_sent_at).toBeNull();
 	});
 
 	it('counts legacy user-owned projects when deciding later welcome steps', async () => {

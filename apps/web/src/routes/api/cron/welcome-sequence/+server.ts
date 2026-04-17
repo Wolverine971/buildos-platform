@@ -52,7 +52,7 @@ export const GET: RequestHandler = async ({ request }) => {
 		await supabase.from('cron_logs').insert({
 			job_name: 'welcome_sequence',
 			status: summary.errors.length > 0 ? 'partial_success' : 'success',
-			message: `Evaluated ${summary.evaluated} welcome sequences, sent ${summary.sent}, skipped ${summary.skipped}, completed ${summary.completed}, cancelled ${summary.cancelled}`,
+			message: `Evaluated ${summary.evaluated} welcome sequences, sent ${summary.sent}, skipped ${summary.skipped}, completed ${summary.completed}, cancelled ${summary.cancelled}, suppressed ${summary.suppressed}`,
 			error_message: summarizedErrors,
 			executed_at: new Date().toISOString()
 		});

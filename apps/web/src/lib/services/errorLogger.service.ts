@@ -28,6 +28,24 @@ const EMPTY_ERROR_SUMMARY: ErrorSummary = {
 	error_trend: 0
 };
 
+const EXPLICIT_ERROR_TYPES = new Set<ErrorType>([
+	'brain_dump_processing',
+	'api_error',
+	'database_error',
+	'validation_error',
+	'llm_error',
+	'tool_execution',
+	'calendar_sync_error',
+	'calendar_delete_error',
+	'calendar_update_error',
+	'email_delivery_failure',
+	'unknown'
+]);
+
+function isExplicitErrorType(value: unknown): value is ErrorType {
+	return typeof value === 'string' && EXPLICIT_ERROR_TYPES.has(value as ErrorType);
+}
+
 export class ErrorLoggerService {
 	private static instances = new WeakMap<SupabaseClient<Database>, ErrorLoggerService>();
 	private supabase: SupabaseClient<Database>;
@@ -304,6 +322,15 @@ export class ErrorLoggerService {
 	private determineErrorType(error: any, context?: ErrorContext): ErrorType {
 		const errorMessage = typeof error === 'string' ? error : error?.message || '';
 		const errorCode = error?.code || '';
+		const explicitErrorType =
+			context?.metadata?.errorType ??
+			context?.metadata?.error_type ??
+			context?.operationPayload?.errorType ??
+			context?.operationPayload?.error_type;
+
+		if (isExplicitErrorType(explicitErrorType)) {
+			return explicitErrorType;
+		}
 
 		if (context?.operationType === 'tool_execution') {
 			return 'tool_execution';

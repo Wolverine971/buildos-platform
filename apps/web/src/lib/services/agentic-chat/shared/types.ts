@@ -15,25 +15,14 @@
 import type {
 	ChatContextType,
 	ChatMessage,
-	ChatToolDefinition,
-	LLMMessage,
 	ChatToolCall,
-	AgentInsert,
-	AgentPlanInsert,
-	AgentChatSessionInsert,
-	AgentChatMessageInsert,
 	ChatSession,
-	Database,
-	Json,
 	ContextUsageSnapshot
 } from '@buildos/shared-types';
 
 import type {
 	LastTurnContext,
 	OntologyContext,
-	ChatStrategy,
-	StrategyAnalysis,
-	ResearchResult,
 	ProjectFocus,
 	OntologyContextScope,
 	ContextCacheHint
@@ -60,15 +49,6 @@ export interface ServiceContext {
 	conversationHistory: ChatMessage[];
 	projectFocus?: ProjectFocus | null;
 	contextScope?: OntologyContextScope;
-}
-
-/**
- * Enhanced service context with additional metadata
- */
-export interface EnhancedServiceContext extends ServiceContext {
-	plannerContext?: PlannerContext;
-	strategyAnalysis?: StrategyAnalysis;
-	currentPlan?: AgentPlan;
 }
 
 // ============================================
@@ -105,83 +85,6 @@ export interface ToolExecutionResult extends ExecutionResult {
 	streamEvents?: StreamEvent[];
 	/** Categorizes the error type for handling by the orchestrator */
 	errorType?: ToolExecutionErrorType;
-}
-
-/**
- * Executor agent result
- */
-export interface ExecutorResult extends ExecutionResult {
-	executorId: string;
-	taskId: string;
-	duration?: number;
-	retryCount?: number;
-}
-
-// ============================================
-// PLANNING & STRATEGY
-// ============================================
-
-/**
- * Plan step definition
- */
-export interface PlanStep {
-	stepNumber: number;
-	type: string;
-	description: string;
-	executorRequired: boolean;
-	tools: string[];
-	dependsOn?: number[];
-	status: 'pending' | 'executing' | 'completed' | 'failed' | 'skipped';
-	result?: any;
-	error?: string;
-	metadata?: Record<string, any>;
-}
-
-export type PlanExecutionMode = 'auto_execute' | 'draft_only' | 'agent_review';
-
-/**
- * Agent Plan structure
- */
-export interface AgentPlan {
-	id: string;
-	sessionId: string;
-	userId: string;
-	plannerAgentId: string;
-	userMessage: string;
-	strategy: ChatStrategy;
-	steps: PlanStep[];
-	status:
-		| 'pending'
-		| 'pending_review'
-		| 'executing'
-		| 'completed'
-		| 'completed_with_errors'
-		| 'failed';
-	createdAt: Date;
-	completedAt?: Date;
-	metadata?: {
-		estimatedDuration?: number;
-		actualDuration?: number;
-		totalTokensUsed?: number;
-		executionMode?: PlanExecutionMode;
-		contextType?: ChatContextType;
-		requestedOutputs?: string[];
-		priorityEntities?: string[];
-		draftSavedAt?: string;
-		review_status?: 'pending_review' | 'changes_requested' | 'approved' | 'rejected';
-		completion_status?: 'completed_with_errors';
-		has_errors?: boolean;
-	};
-}
-
-/**
- * Parameters used when spawning executor agents for a plan step
- */
-export interface ExecutorSpawnParams {
-	plan: AgentPlan;
-	step: PlanStep;
-	plannerContext: PlannerContext;
-	previousStepResults: Map<number, any>;
 }
 
 /**
@@ -232,74 +135,6 @@ export interface AgentChatRequest {
 	timingMetricsId?: string;
 	/** Abort signal to cancel streaming work when the client disconnects */
 	abortSignal?: AbortSignal;
-}
-
-/**
- * Planner context - canonical definition
- * Retained for shared planner-shaped payloads used by older persisted records.
- */
-export interface PlannerContext {
-	/** Instructions for planning and orchestration */
-	systemPrompt: string;
-	/** Last N messages (compressed if needed) */
-	conversationHistory: LLMMessage[];
-	/** Current project/task/calendar context (abbreviated) */
-	locationContext: string;
-	/** Metadata from location context */
-	locationMetadata?: {
-		projectId?: string;
-		projectName?: string;
-		projectDescription?: string;
-		projectStatus?: string;
-		taskCount?: number;
-		goalCount?: number;
-		documentCount?: number;
-		focusedEntityId?: string;
-		focusedEntityType?: string;
-		focusedEntityName?: string;
-		contextDocumentId?: string;
-		[key: string]: unknown;
-	};
-	/** Ontology context if available */
-	ontologyContext?: OntologyContext;
-	/** Context from previous turn */
-	lastTurnContext?: LastTurnContext;
-	/** User preferences and work style */
-	userProfile?: string;
-	/** All tools the planner can use or delegate */
-	availableTools: ChatToolDefinition[];
-	metadata: {
-		sessionId: string;
-		contextType: ChatContextType;
-		entityId?: string;
-		totalTokens: number;
-		hasOntology: boolean;
-		plannerAgentId?: string;
-		planId?: string;
-		/** Current project focus (project + optional entity) */
-		focus?: ProjectFocus | null;
-		/** Ontology scope information */
-		scope?: OntologyContextScope;
-		/** Token usage from compression */
-		compressionUsage?: ContextUsageSnapshot;
-		/** Contact identity ambiguity clarification prompt payload (when relevant). */
-		contactClarification?: {
-			questions: string[];
-			candidateIds: string[];
-		};
-		/** Strategy analysis for this request */
-		strategyAnalysis?: StrategyAnalysis;
-		/** Tool selection metadata */
-		toolSelection?: {
-			mode: 'llm' | 'heuristic' | 'default';
-			defaultToolNames: string[];
-			selectedToolNames: string[];
-			addedTools: string[];
-			removedTools: string[];
-			strategy: StrategyAnalysis['primary_strategy'];
-			confidence: number;
-		};
-	};
 }
 
 // ============================================
@@ -365,7 +200,7 @@ export type StreamEvent =
 	| { type: 'context_usage'; usage: ContextUsageSnapshot }
 	| {
 			type: 'agent_state';
-			state: 'thinking' | 'executing_plan' | 'waiting_on_user';
+			state: 'thinking' | 'waiting_on_user';
 			contextType: ChatContextType;
 			details?: string;
 	  }
@@ -391,24 +226,6 @@ export type StreamEvent =
 			questions: string[];
 			metadata?: ProjectClarificationMetadata;
 			contactMetadata?: Pick<ContactClarificationMetadata, 'candidateIds'>;
-	  }
-	| { type: 'plan_created'; plan: AgentPlan }
-	| {
-			type: 'plan_ready_for_review';
-			plan: AgentPlan;
-			summary?: string;
-			recommendations?: string[];
-	  }
-	| { type: 'step_start'; step: PlanStep }
-	| { type: 'step_complete'; step: PlanStep }
-	| { type: 'executor_spawned'; executorId: string; task: any }
-	| { type: 'executor_result'; executorId: string; result: ExecutorResult }
-	| {
-			type: 'plan_review';
-			plan: AgentPlan;
-			verdict: 'approved' | 'changes_requested' | 'rejected';
-			notes?: string;
-			reviewer?: string;
 	  }
 	| { type: 'text'; content: string }
 	| { type: 'tool_call'; toolCall: ChatToolCall }
@@ -472,49 +289,6 @@ export interface StreamingService extends BaseService {
 }
 
 // ============================================
-// PERSISTENCE TYPES
-// ============================================
-
-export type TimingMetricInsert = Database['public']['Tables']['timing_metrics']['Insert'];
-
-/**
- * Database operation types for persistence service
- */
-export interface PersistenceOperations {
-	// Agent operations
-	// Note: id is optional in insert types - if provided, it will be used; otherwise generated
-	createAgent(data: AgentInsert): Promise<string>;
-	updateAgent(id: string, data: Partial<AgentInsert>): Promise<void>;
-	getAgent(id: string): Promise<AgentInsert | null>;
-
-	// Plan operations
-	// Note: id is optional - if provided, it will be used; otherwise generated
-	createPlan(data: AgentPlanInsert): Promise<string>;
-	updatePlan(id: string, data: Partial<AgentPlanInsert>): Promise<void>;
-	getPlan(id: string): Promise<AgentPlanInsert | null>;
-	updatePlanStep(
-		planId: string,
-		stepNumber: number,
-		stepUpdate: Record<string, any>
-	): Promise<void>;
-
-	// Session operations
-	// Note: id is optional - if provided, it will be used; otherwise generated
-	createChatSession(data: AgentChatSessionInsert): Promise<string>;
-	updateChatSession(id: string, data: Partial<AgentChatSessionInsert>): Promise<void>;
-	getChatSession(id: string): Promise<AgentChatSessionInsert | null>;
-
-	// Message operations
-	// Note: id is optional - if provided, it will be used; otherwise generated
-	saveMessage(data: AgentChatMessageInsert): Promise<string>;
-	getMessages(sessionId: string, limit?: number): Promise<AgentChatMessageInsert[]>;
-
-	// Timing metrics operations
-	createTimingMetric(data: TimingMetricInsert): Promise<string>;
-	updateTimingMetric(id: string, data: Partial<TimingMetricInsert>): Promise<void>;
-}
-
-// ============================================
 // RESULT TYPES (Functional Error Handling)
 // ============================================
 
@@ -575,7 +349,6 @@ export enum ErrorCategory {
  */
 export enum ErrorCode {
 	STRATEGY_ERROR = 'STRATEGY_ERROR',
-	PLAN_EXECUTION_ERROR = 'PLAN_EXECUTION_ERROR',
 	TOOL_EXECUTION_ERROR = 'TOOL_EXECUTION_ERROR',
 	PERSISTENCE_ERROR = 'PERSISTENCE_ERROR',
 	VALIDATION_ERROR = 'VALIDATION_ERROR',
@@ -633,23 +406,6 @@ export class StrategyError extends AgenticChatError {
 			'Unable to determine the best approach for your request.'
 		);
 		this.name = 'StrategyError';
-	}
-}
-
-export class PlanExecutionError extends AgenticChatError {
-	constructor(
-		message: string,
-		details?: Record<string, unknown>,
-		category: ErrorCategory = ErrorCategory.RETRYABLE
-	) {
-		super(
-			message,
-			ErrorCode.PLAN_EXECUTION_ERROR,
-			category,
-			details,
-			'There was an issue executing the plan. Please try again.'
-		);
-		this.name = 'PlanExecutionError';
 	}
 }
 

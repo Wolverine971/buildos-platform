@@ -4,13 +4,7 @@ import type { ChatRole } from '@buildos/shared-types';
 export type ActivityType =
 	| 'tool_call'
 	| 'tool_result'
-	| 'plan_created'
-	| 'plan_review'
 	| 'state_change'
-	| 'step_start'
-	| 'step_complete'
-	| 'executor_spawned'
-	| 'executor_result'
 	| 'context_shift'
 	| 'ontology_loaded'
 	| 'clarification'
@@ -27,7 +21,7 @@ export interface ActivityEntry {
 	metadata?: Record<string, any>;
 }
 
-export type AgentLoopState = 'thinking' | 'executing_plan' | 'waiting_on_user';
+export type AgentLoopState = 'thinking' | 'waiting_on_user';
 
 export interface UIMessage {
 	id: string;
@@ -43,9 +37,6 @@ export interface UIMessage {
 		| 'assistant'
 		| 'activity'
 		| 'thinking_block'
-		| 'plan'
-		| 'step'
-		| 'executor'
 		| 'clarification'
 		| 'agent_peer';
 	data?: any;

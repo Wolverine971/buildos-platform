@@ -276,46 +276,6 @@
 						</span>
 					</div>
 				</div>
-			{:else if message.type === 'plan'}
-				{#if dev}
-					<div
-						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
-					>
-						⚠️ Dev Warning: Legacy plan message
-					</div>
-				{/if}
-				<!-- Legacy plan with INKPRINT styling -->
-				<div class="flex gap-1.5 text-[0.65rem] text-muted-foreground">
-					<div class="w-12 shrink-0 pt-1 font-mono uppercase tracking-[0.1em]">
-						{formatTime(message.timestamp)}
-					</div>
-					<div
-						class="max-w-[75%] rounded-lg border border-border bg-card px-2 py-1.5 text-sm leading-snug text-foreground shadow-ink"
-					>
-						<p
-							class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
-						>
-							Plan
-						</p>
-						<p class="mt-0.5 text-foreground">
-							{message.content}
-						</p>
-						{#if message.data?.steps}
-							<ol class="mt-1 space-y-1 text-sm text-muted-foreground">
-								{#each message.data.steps as step}
-									<li class="flex gap-1.5 leading-tight">
-										<span class="w-3 text-right font-semibold">
-											{step.stepNumber}.
-										</span>
-										<span class="flex-1">
-											{step.description}
-										</span>
-									</li>
-								{/each}
-							</ol>
-						{/if}
-					</div>
-				</div>
 			{:else if message.type === 'activity'}
 				{#if dev}
 					<div

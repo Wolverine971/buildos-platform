@@ -125,3 +125,4 @@ From `about/rules.json` on 2026-04-17:
 ## Notes log
 
 - 2026-04-17: Initial scan. 60K subs, DJ's native peer group, high BuildOS fit. The sub rewards specific process posts with numbers (191↑ top of week is a specific 4-step process). "How do you keep your projects organised?" (16↑/23💬) is BuildOS's literal thesis in the wild. Best Tier 2 sub for us by cultural alignment. Case-study-format post should be our launch template — workshop it here before running in author/creator subs.
+- 2026-04-17 Drafted: Pattern B (broadcasting → conversations switch with 5 specific numbers — 3mo / 4-5 inbound / 5 subs / 5 dms / 8 weeks / 10 conversations / 100 users) on `1sntiuj` "How did you level up distribution...". Mention Level 0. Deliberately avoided the "1 channel deep" angle (saturated by top comments today). Pending posting on burner account. See [`daily-engagement/2026-04-17_reddit-replies.md`](../../daily-engagement/2026-04-17_reddit-replies.md).

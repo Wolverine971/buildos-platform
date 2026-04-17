@@ -57,7 +57,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
                 onboarding_completed_at,
                 last_visit
             `,
-			{ count: 'exact' }
+			{ count: 'estimated' }
 		);
 
 		// Apply filters

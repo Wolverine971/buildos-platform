@@ -10,17 +10,24 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	}
 
 	const userId = user.id;
-	const page = parseInt(url.searchParams.get('page') || '1', 10);
-	const limit = parseInt(url.searchParams.get('limit') || '50', 10);
+	const page = Math.max(parseInt(url.searchParams.get('page') || '1', 10), 1);
+	const rawLimit = parseInt(url.searchParams.get('limit') || '50', 10);
+	const limit = Math.min(Math.max(rawLimit, 1), 100);
 	const startDate = url.searchParams.get('start_date');
 	const endDate = url.searchParams.get('end_date');
 	const search = url.searchParams.get('search')?.trim();
 	const offset = (page - 1) * limit;
 
 	try {
+		// Narrowed select: drop `llm_analysis` (unbounded LLM output, 5–50 KB per brief).
+		// For full analysis, callers should use the single-brief endpoint at `/briefs?brief_id=...`.
+		// `count: 'estimated'` per project convention — list pagination tolerates approximation.
 		let query = supabase
 			.from('ontology_daily_briefs')
-			.select('*', { count: 'exact' })
+			.select(
+				'id, user_id, brief_date, executive_summary, priority_actions, generation_status, generation_error, generation_started_at, generation_completed_at, metadata, created_at, updated_at',
+				{ count: 'estimated' }
+			)
 			.eq('user_id', userId);
 
 		if (startDate) {

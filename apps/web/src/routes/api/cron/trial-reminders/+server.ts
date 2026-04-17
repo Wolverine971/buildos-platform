@@ -28,8 +28,29 @@ export const GET: RequestHandler = async ({ request }) => {
 
 		let sent = 0;
 		const today = new Date();
+		const candidateUsers = users || [];
 
-		for (const user of users || []) {
+		// Pre-fetch all existing reminders for the candidate user set in one query,
+		// then use an in-memory Set to check membership. Replaces a per-user query
+		// inside the loop.
+		const sentReminders = new Set<string>();
+		if (candidateUsers.length > 0) {
+			const { data: existingReminders, error: remindersError } = await supabase
+				.from('trial_reminders')
+				.select('user_id, reminder_type')
+				.in(
+					'user_id',
+					candidateUsers.map((u) => u.id)
+				);
+
+			if (remindersError) throw remindersError;
+
+			for (const row of existingReminders || []) {
+				sentReminders.add(`${row.user_id}|${row.reminder_type}`);
+			}
+		}
+
+		for (const user of candidateUsers) {
 			const trialEnd = new Date(user.trial_ends_at!);
 			const daysUntilEnd = Math.ceil(
 				(trialEnd.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
@@ -51,15 +72,8 @@ export const GET: RequestHandler = async ({ request }) => {
 			}
 
 			if (reminderType) {
-				// Check if we've already sent this reminder
-				const { data: existingReminder } = await supabase
-					.from('trial_reminders')
-					.select('id')
-					.eq('user_id', user.id)
-					.eq('reminder_type', reminderType)
-					.single();
-
-				if (!existingReminder) {
+				const reminderKey = `${user.id}|${reminderType}`;
+				if (!sentReminders.has(reminderKey)) {
 					// Send reminder email (you would integrate with your email service here)
 					console.log(`Sending ${reminderType} reminder to ${user.email}`);
 

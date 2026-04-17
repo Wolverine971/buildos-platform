@@ -31,14 +31,14 @@ The counter-positioning is the whole play. If we do TikTok the way clip-farmed s
 
 ## Status dashboard
 
-| Task | Title | Type | Wave | Effort | Status | Spec |
-| ---- | ----- | ---- | ---- | ------ | ------ | ---- |
-| T46  | TikTok account setup (bio, link-in-bio, cover template, first pin) | O | 2 | 2 hrs | ⚪ | [§T46](#t46--tiktok-account-setup) |
-| T47  | Backfill 2 scripts each for published cluster blogs (T34 + `your-morning-without-the-algorithm`) | W | 2 | 1 d | ⚪ | [§T47](#t47--backfill-scripts-for-published-posts) |
-| T48  | TikTok pair per cluster blog (2 scripts × T35–T43 = 18 scripts) | W | 2-3 | 1 hr/blog | 🔁 | [§T48](#t48--tiktok-pair-per-cluster-blog) |
-| T49  | Posting cadence: 2 TikToks per blog within 7 days of blog publish | O | recurring | ongoing | 🔁 ⚪ | [RECURRING §TikTok cadence](../RECURRING.md#tiktok-cadence-t49) |
-| T50  | Counter-positioning rubric (rejection criteria every script must pass) | W | 2 | 2 hrs | ⚪ | [§T50](#t50--counter-positioning-rubric) |
-| T51  | Monthly qualitative review — is TikTok compounding cluster vocabulary? | R | recurring | 30 min/mo | 🔁 ⚪ | [§T51](#t51--monthly-qualitative-review) |
+| Task | Title                                                                                            | Type | Wave      | Effort    | Status | Spec                                                            |
+| ---- | ------------------------------------------------------------------------------------------------ | ---- | --------- | --------- | ------ | --------------------------------------------------------------- |
+| T46  | TikTok account setup (bio, link-in-bio, cover template, first pin)                               | O    | 2         | 2 hrs     | ⚪     | [§T46](#t46--tiktok-account-setup)                              |
+| T47  | Backfill 2 scripts each for published cluster blogs (T34 + `your-morning-without-the-algorithm`) | W    | 2         | 1 d       | ⚪     | [§T47](#t47--backfill-scripts-for-published-posts)              |
+| T48  | TikTok pair per cluster blog (2 scripts × T35–T43 = 18 scripts)                                  | W    | 2-3       | 1 hr/blog | 🔁     | [§T48](#t48--tiktok-pair-per-cluster-blog)                      |
+| T49  | Posting cadence: 2 TikToks per blog within 7 days of blog publish                                | O    | recurring | ongoing   | 🔁 ⚪  | [RECURRING §TikTok cadence](../RECURRING.md#tiktok-cadence-t49) |
+| T50  | Counter-positioning rubric (rejection criteria every script must pass)                           | W    | 2         | 2 hrs     | ⚪     | [§T50](#t50--counter-positioning-rubric)                        |
+| T51  | Monthly qualitative review — is TikTok compounding cluster vocabulary?                           | R    | recurring | 30 min/mo | 🔁 ⚪  | [§T51](#t51--monthly-qualitative-review)                        |
 
 ## Required reading
 
@@ -104,13 +104,13 @@ T50 (rubric) ──► gates every T47 + T48 script ──► T49 (posting caden
 
 ## Output artifacts
 
-| Artifact | Location |
-| -------- | -------- |
-| Scripts inside publish kits | `docs/marketing/social-media/publish-kits/{date}-{slug}-kit.md` (menu option 2) |
-| Standalone scripts | `docs/marketing/social-media/tiktok/scripts/{YYYY-MM-DD}-{slug}.md` (menu option 3) |
-| Posted-TikTok tracker | `docs/marketing/social-media/tiktok/posted.md` (create on first post — log URL + thesis + blog link) |
-| Monthly review notes | `docs/marketing/measurement/tiktok-review-YYYY-MM.md` (T51) |
-| Rubric doc | `docs/marketing/social-media/tiktok/counter-positioning-rubric.md` (T50) |
+| Artifact                    | Location                                                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Scripts inside publish kits | `docs/marketing/social-media/publish-kits/{date}-{slug}-kit.md` (menu option 2)                      |
+| Standalone scripts          | `docs/marketing/social-media/tiktok/scripts/{YYYY-MM-DD}-{slug}.md` (menu option 3)                  |
+| Posted-TikTok tracker       | `docs/marketing/social-media/tiktok/posted.md` (create on first post — log URL + thesis + blog link) |
+| Monthly review notes        | `docs/marketing/measurement/tiktok-review-YYYY-MM.md` (T51)                                          |
+| Rubric doc                  | `docs/marketing/social-media/tiktok/counter-positioning-rubric.md` (T50)                             |
 
 ## Task briefs
 
@@ -153,17 +153,17 @@ Recurring. Each cluster blog (T35–T43) gets 2 TikTok scripts generated when th
 **Per-blog dashboard row** (appended as blogs ship):
 
 | Blog | Script 1 (30–45s) | Script 2 (60–90s) | Recorded | Posted | Cross-posted (Reels / Shorts) |
-| ---- | ----------------- | ----------------- | -------- | ------ | ---------------------------- |
-| T34  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
-| T35  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
-| T36  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
-| T37  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
-| T38  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
-| T39  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
-| T40  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
-| T41  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
-| T42  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
-| T43  | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ |
+| ---- | ----------------- | ----------------- | -------- | ------ | ----------------------------- |
+| T34  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T35  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T36  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T37  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T38  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T39  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T40  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T41  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T42  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T43  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
 
 Add a **"standalone scripts"** section below once any exist (menu option 3 output).
 

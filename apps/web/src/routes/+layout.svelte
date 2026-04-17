@@ -795,21 +795,31 @@
 	// Handle payment warning dismissal
 	async function handlePaymentWarningDismiss(event: CustomEvent) {
 		const { id } = event.detail;
-		if (!supabase || !id) return;
+		if (!id) return;
+
+		const previousWarnings = billingContext.paymentWarnings;
+		billingContext = {
+			...billingContext,
+			paymentWarnings: previousWarnings.filter((w) => w.id !== id)
+		};
 
 		try {
-			await supabase
-				.from('user_notifications')
-				.update({ dismissed_at: new Date().toISOString() })
-				.eq('id', id);
+			const response = await fetch(
+				`/api/billing/payment-warnings/${encodeURIComponent(String(id))}/dismiss`,
+				{ method: 'POST' }
+			);
 
-			// Remove from local state
-			billingContext = {
-				...billingContext,
-				paymentWarnings: billingContext.paymentWarnings.filter((w) => w.id !== id)
-			};
+			if (!response.ok) {
+				throw new Error('Failed to dismiss payment warning');
+			}
+
+			await invalidate('app:billing');
 		} catch (error) {
 			console.error('Error dismissing payment warning:', error);
+			billingContext = {
+				...billingContext,
+				paymentWarnings: previousWarnings
+			};
 		}
 	}
 </script>

@@ -277,13 +277,15 @@ The 90/10 rule is non-negotiable: **90% value contribution, 10% subtle promotion
 
 ### 🔎 Research + execution surfaces (completed 2026-04-17)
 
-Research Task 1 (subreddit inventory) is complete. Three operational docs drive daily Reddit work:
+Research Task 1 (subreddit inventory) is complete. Five operational docs drive daily Reddit work:
 
-| Surface                                                                                           | Role                                                                                                              |
-| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **[reddit-subreddit-tracker.md](docs/marketing/social-media/reddit/reddit-subreddit-tracker.md)** | Master tracker: all 19 target subs, cadence, last-visited, recurring threads, cultural canaries, AI-hard-ban list |
-| **[subreddit-profiles/INDEX.md](docs/marketing/social-media/reddit/subreddit-profiles/INDEX.md)** | Per-sub profile database: rules verbatim, culture signal, thread types, voice notes, karma-building plans         |
-| **[/reddit-warmup command](.claude/commands/reddit-warmup.md)**                                   | Daily discovery pass — JSON-API-driven scoring, opens Chrome at top threads, updates tracker                      |
+| Surface                                                                                            | Role                                                                                                              |
+| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **[reddit-subreddit-tracker.md](docs/marketing/social-media/reddit/reddit-subreddit-tracker.md)**  | Master tracker: all 19 target subs, cadence, last-visited, recurring threads, cultural canaries, AI-hard-ban list |
+| **[subreddit-profiles/INDEX.md](docs/marketing/social-media/reddit/subreddit-profiles/INDEX.md)**  | Per-sub profile database: rules verbatim, culture signal, thread types, voice notes, karma-building plans         |
+| **[reddit-reply-strategy.md](docs/marketing/social-media/reddit/reddit-reply-strategy.md)** (v0.1) | Voice + angle + decision rails — 95/5 rule, 4-pattern library, 7-question quality gate, founder-disclosure script |
+| **[/reddit-warmup command](.claude/commands/reddit-warmup.md)** (Stage 1)                          | Daily discovery pass — JSON-API-driven scoring, opens Chrome at top threads, updates tracker                      |
+| **[/reddit-reply command](.claude/commands/reddit-reply.md)** (Stage 2)                            | Comment drafting — 2–3 options per thread, Skip Recommendations for gate failures, `Drafted → Posted` reconcile   |
 
 ### Reddit Playbook (Concrete)
 
@@ -386,7 +388,7 @@ _Tier 4 — Supporting affinity (participate authentically; never lead with Buil
 
 1. ~~For each target subreddit, pull: subscriber count, daily active estimate, self-promotion rules (verbatim), and 3–5 recent threads where BuildOS would be a legitimate recommendation.~~ **✅ Completed 2026-04-17** — see tracker + profiles.
 2. Identify the 10 highest-value evergreen threads currently ranking on Google for our target queries. These are threads where a well-placed comment has maximum long-term leverage. (T4 evergreen inventory — seed list lives in the tracker's "Evergreen thread patterns" section.)
-3. Draft comment templates for the 5 most common thread types — templates to be humanized per-instance, never copy-pasted. Voice per brand guide: grounded, clear, relieving, slightly contrarian, no AI hype. **Do this after the first month of manual commenting** — we need real voice data before codifying templates. Output: `docs/marketing/social-media/reddit/reddit-reply-strategy.md` (will unlock the `/reddit-reply` Stage 2 command).
+3. Draft comment templates for the 5 most common thread types — templates to be humanized per-instance, never copy-pasted. Voice per brand guide: grounded, clear, relieving, slightly contrarian, no AI hype. **`reddit-reply-strategy.md` v0.1 shipped 2026-04-17** (initial rails: 95/5 rule, anti-AI vocabulary discipline, 4-pattern library, 7-question quality gate, founder-disclosure script) — this unlocked the `/reddit-reply` Stage 2 command. **v1.0 rewrite is deferred until after ~30 days of real replies** yield voice data; until then the command defaults to Skip when gates are ambiguous.
 4. Identify 3–5 creator-adjacent redditors (authors, YouTubers, podcasters) already active in target subs who would be potential collaborators, early users, or friendly faces. Surface candidates during `/reddit-warmup` runs and log them in the tracker's "Creator-adjacent high-value redditors" section.
 
 ---

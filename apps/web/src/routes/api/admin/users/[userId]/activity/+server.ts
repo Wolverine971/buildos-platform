@@ -142,19 +142,23 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			throw actorError || new Error('Failed to resolve actor');
 		}
 
-		const { data: memberRows, error: memberError } = await supabase
-			.from('onto_project_members')
-			.select('project_id')
-			.eq('actor_id', actorId)
-			.is('removed_at', null);
+		const [
+			{ data: memberRows, error: memberError },
+			{ data: ownedProjects, error: ownedProjectsError }
+		] = await Promise.all([
+			supabase
+				.from('onto_project_members')
+				.select('project_id')
+				.eq('actor_id', actorId)
+				.is('removed_at', null),
+			supabase
+				.from('onto_projects')
+				.select('*')
+				.eq('created_by', actorId)
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+		]);
 		if (memberError) throw memberError;
-
-		const { data: ownedProjects, error: ownedProjectsError } = await supabase
-			.from('onto_projects')
-			.select('*')
-			.eq('created_by', actorId)
-			.is('deleted_at', null)
-			.order('updated_at', { ascending: false });
 		if (ownedProjectsError) throw ownedProjectsError;
 
 		const ownedIds = new Set((ownedProjects || []).map((project) => project.id));
@@ -205,9 +209,10 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				: Promise.resolve({ data: [], error: null }),
 			supabase
 				.from('ontology_daily_briefs')
-				.select('*')
+				.select('id, actor_id, brief_date, created_at')
 				.eq('actor_id', actorId)
-				.order('created_at', { ascending: false }),
+				.order('created_at', { ascending: false })
+				.limit(100),
 			projectIds.length
 				? supabase
 						.from('onto_project_logs')
@@ -220,15 +225,18 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				: Promise.resolve({ data: [], error: null }),
 			supabase
 				.from('task_calendar_events')
-				.select('*')
+				.select('id, user_id, event_title, event_start, created_at')
 				.eq('user_id', userId)
-				.order('created_at', { ascending: false }),
+				.order('created_at', { ascending: false })
+				.limit(100),
 			supabase
 				.from('chat_sessions')
 				.select(
 					'id, title, auto_title, summary, status, context_type, entity_id, message_count, tool_call_count, total_tokens_used, created_at, updated_at, last_message_at'
 				)
 				.eq('user_id', userId)
+				.order('updated_at', { ascending: false })
+				.limit(100)
 		]);
 
 		if (tasksResult.error) throw tasksResult.error;

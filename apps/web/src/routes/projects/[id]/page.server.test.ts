@@ -13,22 +13,43 @@ import { load } from './+page.server';
 
 const PROJECT_ID = '11111111-1111-4111-8111-111111111111';
 
+type BundleAccess = {
+	can_edit?: boolean;
+	can_admin?: boolean;
+	can_invite?: boolean;
+	can_view_logs?: boolean;
+	is_owner?: boolean;
+	is_authenticated?: boolean;
+};
+
 type HarnessOptions = {
 	userId?: string | null;
-	skeletonData?: Record<string, unknown> | null;
-	skeletonError?: { message: string } | null;
-	writeAccess?: boolean;
-	adminAccess?: boolean;
-	memberCount?: number;
-	ownerCount?: number;
+	bundleData?: Record<string, unknown> | null;
+	bundleError?: { message: string } | null;
+	access?: BundleAccess;
 };
+
+function buildDefaultAccess(userId: string | null | undefined): BundleAccess {
+	return {
+		can_edit: false,
+		can_admin: false,
+		can_invite: false,
+		can_view_logs: false,
+		is_owner: false,
+		is_authenticated: Boolean(userId)
+	};
+}
 
 function createHarness(options: HarnessOptions = {}) {
 	const operations: string[] = [];
 	const timingLabels: string[] = [];
 
-	const skeletonData =
-		options.skeletonData === undefined
+	const userId = options.userId === undefined ? 'user-1' : options.userId;
+	const accessDefaults = buildDefaultAccess(userId);
+	const access = { ...accessDefaults, ...(options.access ?? {}) };
+
+	const bundleData =
+		options.bundleData === undefined
 			? {
 					id: PROJECT_ID,
 					name: 'Project 1',
@@ -45,77 +66,27 @@ function createHarness(options: HarnessOptions = {}) {
 					plan_count: 4,
 					milestone_count: 5,
 					risk_count: 6,
-					image_count: 7
+					image_count: 7,
+					access
 				}
-			: options.skeletonData;
-	const writeAccess = options.writeAccess ?? false;
-	const adminAccess = options.adminAccess ?? false;
-	const memberCount = options.memberCount ?? 0;
-	const ownerCount = options.ownerCount ?? 0;
-
-	const ownerQuery: {
-		select?: ReturnType<typeof vi.fn>;
-		eq?: ReturnType<typeof vi.fn>;
-		is?: ReturnType<typeof vi.fn>;
-	} = {};
-	const memberQuery: {
-		select?: ReturnType<typeof vi.fn>;
-		eq?: ReturnType<typeof vi.fn>;
-		is?: ReturnType<typeof vi.fn>;
-	} = {};
+			: options.bundleData;
 
 	const from = vi.fn((table: string) => {
 		operations.push(`from:${table}`);
-
-		if (table === 'onto_projects') {
-			const chain: Record<string, any> = {};
-			chain.select = vi.fn(() => chain);
-			chain.eq = vi.fn(() => chain);
-			chain.is = vi.fn().mockResolvedValue({ count: ownerCount, error: null });
-			ownerQuery.select = chain.select;
-			ownerQuery.eq = chain.eq;
-			ownerQuery.is = chain.is;
-			return chain;
-		}
-
-		if (table === 'onto_project_members') {
-			const chain: Record<string, any> = {};
-			chain.select = vi.fn(() => chain);
-			chain.eq = vi.fn(() => chain);
-			chain.is = vi.fn().mockResolvedValue({ count: memberCount, error: null });
-			memberQuery.select = chain.select;
-			memberQuery.eq = chain.eq;
-			memberQuery.is = chain.is;
-			return chain;
-		}
-
 		throw new Error(`Unexpected table requested: ${table}`);
 	});
 
-	const rpc = vi.fn((fn: string, args: { p_required_access?: 'read' | 'write' | 'admin' }) => {
-		if (fn === 'get_project_skeleton') {
-			operations.push('rpc:get_project_skeleton');
+	const rpc = vi.fn((fn: string) => {
+		if (fn === 'get_project_skeleton_with_access') {
+			operations.push('rpc:get_project_skeleton_with_access');
 			return Promise.resolve({
-				data: skeletonData,
-				error: options.skeletonError ?? null
+				data: bundleData,
+				error: options.bundleError ?? null
 			});
 		}
-
-		if (fn === 'current_actor_has_project_access') {
-			operations.push(`rpc:current_actor_has_project_access:${args.p_required_access}`);
-			if (args.p_required_access === 'write') {
-				return Promise.resolve({ data: writeAccess, error: null });
-			}
-			if (args.p_required_access === 'admin') {
-				return Promise.resolve({ data: adminAccess, error: null });
-			}
-			return Promise.resolve({ data: false, error: null });
-		}
-
 		throw new Error(`Unexpected RPC requested: ${fn}`);
 	});
 
-	const userId = options.userId === undefined ? 'user-1' : options.userId;
 	const safeGetSession = vi
 		.fn()
 		.mockResolvedValue(
@@ -141,8 +112,7 @@ function createHarness(options: HarnessOptions = {}) {
 		operations,
 		timingLabels,
 		from,
-		memberQuery,
-		ownerQuery
+		rpc
 	};
 }
 
@@ -152,11 +122,16 @@ describe('projects/[id] +page.server load', () => {
 		ensureActorIdMock.mockResolvedValue('actor-1');
 	});
 
-	it('owner access returns full owner/admin privileges', async () => {
+	it('owner access returns full owner/admin privileges from the RPC bundle', async () => {
 		const { event, operations, from } = createHarness({
-			writeAccess: true,
-			adminAccess: true,
-			ownerCount: 1
+			access: {
+				can_edit: true,
+				can_admin: true,
+				can_invite: true,
+				can_view_logs: true,
+				is_owner: true,
+				is_authenticated: true
+			}
 		});
 
 		const result = await load(event);
@@ -169,16 +144,22 @@ describe('projects/[id] +page.server load', () => {
 			isOwner: true,
 			isAuthenticated: true
 		});
-		expect(operations).not.toContain('from:onto_project_members');
-		expect(from).toHaveBeenCalledWith('onto_projects');
+		// New hot path: exactly one DB round-trip.
+		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
+		expect(from).not.toHaveBeenCalled();
+		expect(ensureActorIdMock).not.toHaveBeenCalled();
 	});
 
 	it('editor access keeps invite/log visibility without admin', async () => {
-		const { event, operations } = createHarness({
-			writeAccess: true,
-			adminAccess: false,
-			memberCount: 1,
-			ownerCount: 0
+		const { event } = createHarness({
+			access: {
+				can_edit: true,
+				can_admin: false,
+				can_invite: true,
+				can_view_logs: true,
+				is_owner: false,
+				is_authenticated: true
+			}
 		});
 
 		const result = await load(event);
@@ -191,15 +172,18 @@ describe('projects/[id] +page.server load', () => {
 			isOwner: false,
 			isAuthenticated: true
 		});
-		expect(operations).toContain('from:onto_project_members');
 	});
 
 	it('viewer access remains read-only but can view logs', async () => {
 		const { event } = createHarness({
-			writeAccess: false,
-			adminAccess: false,
-			memberCount: 1,
-			ownerCount: 0
+			access: {
+				can_edit: false,
+				can_admin: false,
+				can_invite: false,
+				can_view_logs: true,
+				is_owner: false,
+				is_authenticated: true
+			}
 		});
 
 		const result = await load(event);
@@ -214,10 +198,8 @@ describe('projects/[id] +page.server load', () => {
 		});
 	});
 
-	it('anonymous requests return skeleton data without access fan-out queries', async () => {
-		const { event, operations, from } = createHarness({
-			userId: null
-		});
+	it('anonymous requests return skeleton data without any fan-out queries', async () => {
+		const { event, operations, from } = createHarness({ userId: null });
 
 		const result = await load(event);
 
@@ -230,47 +212,33 @@ describe('projects/[id] +page.server load', () => {
 			isOwner: false,
 			isAuthenticated: false
 		});
-		expect(operations).toEqual(['rpc:get_project_skeleton']);
+		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
 		expect(from).not.toHaveBeenCalled();
 		expect(ensureActorIdMock).not.toHaveBeenCalled();
 	});
 
-	it('not-found short-circuits before access fan-out queries', async () => {
-		const { event, operations } = createHarness({
-			skeletonData: null
-		});
+	it('not-found short-circuits to a 404', async () => {
+		const { event, operations } = createHarness({ bundleData: null });
 
 		await expect(load(event)).rejects.toMatchObject({ status: 404 });
-		expect(operations).toContain('rpc:get_project_skeleton');
-		expect(operations.some((op) => op.startsWith('rpc:current_actor_has_project_access'))).toBe(
-			false
-		);
-		expect(operations).not.toContain('from:onto_projects');
-		expect(operations).not.toContain('from:onto_project_members');
+		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
 	});
 
-	it('calls skeleton RPC before access resolution and emits timing labels', async () => {
-		const { event, operations, timingLabels } = createHarness({
-			writeAccess: true,
-			adminAccess: false,
-			memberCount: 1
+	it('emits the combined timing label', async () => {
+		const { event, timingLabels } = createHarness({
+			access: {
+				can_edit: true,
+				can_admin: false,
+				can_invite: true,
+				can_view_logs: true,
+				is_owner: false,
+				is_authenticated: true
+			}
 		});
 
 		await load(event);
 
-		const skeletonIndex = operations.indexOf('rpc:get_project_skeleton');
-		const firstAccessIndex = operations.findIndex(
-			(op) =>
-				op.startsWith('rpc:current_actor_has_project_access') ||
-				op === 'from:onto_projects' ||
-				op === 'from:onto_project_members'
-		);
-
-		expect(skeletonIndex).toBeGreaterThanOrEqual(0);
-		expect(firstAccessIndex).toBeGreaterThan(skeletonIndex);
-		expect(timingLabels).toEqual(
-			expect.arrayContaining(['db.project_skeleton', 'db.project_access.resolve'])
-		);
+		expect(timingLabels).toContain('db.project_skeleton_with_access');
 	});
 
 	it('rejects invalid project ids before making API calls', async () => {

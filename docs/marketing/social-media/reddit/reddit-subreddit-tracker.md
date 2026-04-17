@@ -13,6 +13,7 @@
 **Related Docs:**
 
 - [Subreddit Profiles Index](./subreddit-profiles/INDEX.md) — One-file-per-sub detailed profiles
+- [Reddit Reply Strategy](./reddit-reply-strategy.md) — Voice + angle + decision rails for Stage 2 comment drafting (v0.1)
 - [Brand Guide](../../brand/brand-guide-1-pager.md) — Non-negotiable voice + terms
 - [Creator Wedge Strategy](../../strategy/thinking-environment-creator-strategy.md)
 - [Anti-AI Positioning](../../strategy/anti-ai-show-dont-tell-strategy.md)
@@ -213,9 +214,10 @@ _To be populated during warmup scans. Expected overlaps:_
 
 ## Scan History
 
-| Date       | Subs Scanned | Notes                                                                                                                                                                                                           |
-| ---------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-04-17 | 20           | Initial research pass. Data via Reddit JSON API (about/rules/top-week/top-month/new/hot + per-sub search queries). Synthesized per-sub profiles with rules verbatim, culture signal, and thread-type inventory. |
+| Date       | Subs Scanned | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-04-17 | 20           | Initial research pass. Data via Reddit JSON API (about/rules/top-week/top-month/new/hot + per-sub search queries). Synthesized per-sub profiles with rules verbatim, culture signal, and thread-type inventory.                                                                                                                                                                                                                                                            |
+| 2026-04-17 | 5            | First daily engagement scan (`/reddit-warmup`). Subs: r/solopreneur, r/Substack, r/NewTubers, r/worldbuilding, r/writing. Thesis-exact threads surfaced in r/Substack (`1smzro0`) and r/worldbuilding (`1sjmahf`). No live sanctioned-surface BuildOS mention opportunity today (Fri). Next sanctioned: r/writing Sunday Tool Thread (2026-04-19). Top-of-week anti-AI posts present in r/worldbuilding, r/NewTubers, r/Substack — voice must stay strictly non-AI-framed. |
 
 ---
 

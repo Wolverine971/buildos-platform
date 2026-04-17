@@ -21,18 +21,18 @@ The modal currently posts turns to `/api/agent/v2/stream`.
 
 ## 2. Code Map
 
-| Layer                | Primary file(s)                                                                 | Responsibility                                                            |
-| -------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Chat UI              | `apps/web/src/lib/components/agent/AgentChatModal.svelte`                       | Sends requests, processes SSE, renders thinking/tool activity             |
-| V2 API               | `apps/web/src/routes/api/agent/v2/stream/+server.ts`                            | Auth, access checks, session lifecycle, context loading, SSE, persistence |
-| V2 cancel channel    | `apps/web/src/routes/api/agent/v2/stream/cancel/+server.ts`                     | Records stop/supersede reason keyed by `stream_run_id`                    |
-| V2 context           | `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`                   | Loads global/project/entity/daily brief prompt context                    |
-| V2 history           | `apps/web/src/lib/services/agentic-chat-v2/history-composer.ts`                 | Last-N history + compression strategy                                     |
-| V2 streaming loop    | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.ts`              | LLM streaming + tool loop + limits                                        |
-| Tool dispatch        | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts` | Maps tool names to domain executors                                       |
-| Gateway surface      | `apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts`          | Builds the discovery-tool plus direct-tool surface for gateway mode       |
-| Gateway execution    | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts`    | Executes discovery tools and registry-backed direct tools in gateway mode |
-| Session service (V2) | `apps/web/src/lib/services/agentic-chat-v2/session-service.ts`                  | Resolve/create session, load/persist messages, update stats               |
+| Layer                | Primary file(s)                                                              | Responsibility                                                            |
+| -------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Chat UI              | `apps/web/src/lib/components/agent/AgentChatModal.svelte`                    | Sends requests, processes SSE, renders thinking/tool activity             |
+| V2 API               | `apps/web/src/routes/api/agent/v2/stream/+server.ts`                         | Auth, access checks, session lifecycle, context loading, SSE, persistence |
+| V2 cancel channel    | `apps/web/src/routes/api/agent/v2/stream/cancel/+server.ts`                  | Records stop/supersede reason keyed by `stream_run_id`                    |
+| V2 context           | `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`                | Loads global/project/entity/daily brief prompt context                    |
+| V2 history           | `apps/web/src/lib/services/agentic-chat-v2/history-composer.ts`              | Last-N history + compression strategy                                     |
+| V2 streaming loop    | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts`     | LLM streaming + tool loop + limits                                        |
+| Tool dispatch        | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts`         | Maps tool names to domain executors                                       |
+| Gateway surface      | `apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts`       | Builds the discovery-tool plus direct-tool surface for gateway mode       |
+| Gateway execution    | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts` | Executes discovery tools and registry-backed direct tools in gateway mode |
+| Session service (V2) | `apps/web/src/lib/services/agentic-chat-v2/session-service.ts`               | Resolve/create session, load/persist messages, update stats               |
 
 Related APIs used by the modal:
 
@@ -137,8 +137,9 @@ Events sent by `/api/agent/v2/stream`:
 
 Notes:
 
-- UI still handles additional event types (`operation`, `entity_patch`, planner/plan events) for compatibility with legacy path.
+- UI also handles `operation` events for tool-side operation announcements.
 - Current V2 route defines operation helpers but does not actively emit `operation` events.
+- The legacy planner/executor events (`plan_created`, `plan_ready_for_review`, `plan_review`, `step_start`, `step_complete`, `executor_spawned`, `executor_result`, `entity_patch`) were removed from both server and UI on 2026-04-17 — see `docs/specs/agentic-chat-cruft-removal-2026-04-17.md`.
 - The modal consumes `context_usage` to surface lightweight header warnings when the active context is near the token budget or over it.
 - The modal also records client-perceived stream timings (first event, first text, done, close) and can compare them with the server `timing` summary in dev tooling.
 

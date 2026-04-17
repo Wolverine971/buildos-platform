@@ -28,7 +28,6 @@
 		ChatContextType,
 		ChatRole,
 		AgentSSEMessage,
-		AgentPlan,
 		ContextUsageSnapshot,
 		AgentTimingSummary,
 		SkillActivityEvent
@@ -205,8 +204,6 @@
 	let activeClientTurnId = $state<string | null>(null);
 	let inputValue = $state('');
 	let error = $state<string | null>(null);
-	// Track current plan for potential future UI enhancements
-	let currentPlan = $state<AgentPlan | null>(null);
 	let currentActivity = $state<string>('');
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
@@ -361,7 +358,6 @@
 
 	const AGENT_STATE_MESSAGES: Record<AgentLoopState, string> = {
 		thinking: 'BuildOS is thinking...',
-		executing_plan: 'BuildOS is executing...',
 		waiting_on_user: 'Waiting on your direction...'
 	};
 
@@ -666,7 +662,6 @@
 
 		messages = [];
 		currentSession = null;
-		currentPlan = null;
 		currentActivity = '';
 		inputValue = '';
 		error = null;
@@ -1670,8 +1665,6 @@
 		return resolveEntityName(kind, id, name);
 	}
 
-	// Keep schema-discovery calls visible so users can see gateway activity.
-	const HIDDEN_THINKING_TOOLS = new Set<string>();
 	function normalizeToolDisplayPayload(
 		toolName: string,
 		argsJson: string | Record<string, any>
@@ -1682,15 +1675,6 @@
 		gatewayOp?: string;
 		originalToolName: string;
 	} {
-		if (HIDDEN_THINKING_TOOLS.has(toolName)) {
-			return {
-				hidden: true,
-				toolName,
-				args: argsJson,
-				originalToolName: toolName
-			};
-		}
-
 		return {
 			hidden: false,
 			toolName,
@@ -2463,59 +2447,6 @@
 		}));
 	}
 
-	// Update plan step status in thinking block
-	function updatePlanStepStatus(
-		stepNumber: number | undefined,
-		status: string,
-		stepUpdate?: { error?: string; result?: any }
-	) {
-		if (!stepNumber || !currentPlan || !currentThinkingBlockId) return;
-
-		const stepPatch: Record<string, any> = { status };
-		if (stepUpdate?.error !== undefined) {
-			stepPatch.error = stepUpdate.error;
-		}
-		if (stepUpdate?.result !== undefined) {
-			stepPatch.result = stepUpdate.result;
-		}
-
-		updateThinkingBlock(currentThinkingBlockId, (block) => {
-			// Find the plan activity
-			const updatedActivities = block.activities.map((activity) => {
-				if (
-					activity.activityType === 'plan_created' &&
-					activity.metadata?.plan?.id === currentPlan?.id
-				) {
-					// Non-null assertion safe: we just verified metadata.plan.id exists above
-					const existingMetadata = activity.metadata!;
-					// Update the plan steps with new status
-					const updatedPlan = {
-						...existingMetadata.plan,
-						steps: existingMetadata.plan.steps.map((step: any) =>
-							step.stepNumber === stepNumber ? { ...step, ...stepPatch } : step
-						)
-					};
-
-					return {
-						...activity,
-						metadata: {
-							...existingMetadata,
-							plan: updatedPlan,
-							currentStep:
-								status === 'executing' ? stepNumber : existingMetadata.currentStep
-						}
-					};
-				}
-				return activity;
-			});
-
-			return {
-				...block,
-				activities: updatedActivities
-			};
-		});
-	}
-
 	// Data mutation tools that should trigger toasts
 	const DATA_MUTATION_TOOLS = new Set([
 		'create_onto_project',
@@ -3013,7 +2944,6 @@
 		currentActivity = 'Analyzing request...';
 		updateThinkingBlockState('thinking', 'BuildOS is processing your request...');
 
-		currentPlan = null;
 		// NOTE: Do NOT reset lastTurnContext here - it should be preserved and sent with the next request
 		// for conversation continuity. The server will generate fresh context after each turn.
 
@@ -3264,9 +3194,6 @@
 					case 'waiting_on_user':
 						currentActivity = 'Waiting on your direction...';
 						break;
-					case 'executing_plan':
-						currentActivity = event.details ?? 'Executing plan...';
-						break;
 					case 'thinking':
 					default:
 						currentActivity = event.details ?? 'Analyzing request...';
@@ -3296,119 +3223,6 @@
 						'waiting_on_user',
 						'Waiting on your clarifications to continue...'
 					);
-				}
-				break;
-			}
-
-			case 'plan_created':
-				// Plan created with steps - enrich metadata for visualization
-				currentPlan = event.plan;
-				currentActivity = `Executing plan with ${event.plan?.steps?.length || 0} steps...`;
-				updateThinkingBlockState('executing_plan', currentActivity);
-
-				// Extract rich metadata for enhanced visualization
-				const enrichedMetadata = {
-					plan: event.plan,
-					stepCount: event.plan?.steps?.length || 0,
-					totalTools: event.plan?.steps
-						? [...new Set(event.plan.steps.flatMap((s) => s.tools || []))].length
-						: 0,
-					hasExecutors: event.plan?.steps?.some((s) => s.executorRequired),
-					estimatedDuration: event.plan?.metadata?.estimatedDuration,
-					hasDependencies: event.plan?.steps?.some(
-						(s) => s.dependsOn && s.dependsOn.length > 0
-					),
-					currentStep: null // Will be updated as steps execute
-				};
-
-				addActivityToThinkingBlock(
-					`Plan created with ${event.plan?.steps?.length || 0} steps`,
-					'plan_created',
-					enrichedMetadata
-				);
-				addPlanStatusAssistantMessage(
-					`I drafted a plan with ${event.plan?.steps?.length || 0} steps and will start executing it.`
-				);
-				break;
-			case 'plan_ready_for_review': {
-				currentPlan = event.plan;
-				const summary =
-					event.summary ||
-					'Plan drafted and waiting for your approval. Reply with any changes or say "run it".';
-
-				// Extract rich metadata for enhanced visualization
-				const reviewMetadata = {
-					plan: event.plan,
-					stepCount: event.plan?.steps?.length || 0,
-					totalTools: event.plan?.steps
-						? [...new Set(event.plan.steps.flatMap((s) => s.tools || []))].length
-						: 0,
-					hasExecutors: event.plan?.steps?.some((s) => s.executorRequired),
-					estimatedDuration: event.plan?.metadata?.estimatedDuration,
-					hasDependencies: event.plan?.steps?.some(
-						(s) => s.dependsOn && s.dependsOn.length > 0
-					),
-					summary,
-					currentStep: null
-				};
-
-				addActivityToThinkingBlock(
-					`Plan ready for review: ${event.plan?.steps?.length || 0} steps`,
-					'plan_created',
-					reviewMetadata
-				);
-				addActivityToThinkingBlock(summary, 'general');
-				addPlanStatusAssistantMessage(
-					`I drafted a ${event.plan?.steps?.length || 0}-step plan. Review it and say "run it" or suggest changes.`
-				);
-				currentActivity = 'Waiting on your feedback about the plan...';
-				updateThinkingBlockState('waiting_on_user', summary);
-				break;
-			}
-
-			case 'step_start':
-				// Starting a plan step - update visualization
-				currentActivity = `Step ${event.step?.stepNumber}: ${event.step?.description}`;
-				updatePlanStepStatus(event.step?.stepNumber, 'executing');
-				addActivityToThinkingBlock(`Starting: ${event.step?.description}`, 'step_start', {
-					stepNumber: event.step?.stepNumber,
-					description: event.step?.description,
-					planId: currentPlan?.id
-				});
-				break;
-
-			case 'executor_spawned':
-				// Executor agent spawned
-				currentActivity = `Executor working on task...`;
-				updateThinkingBlockState('executing_plan', currentActivity);
-				addActivityToThinkingBlock(
-					`Executor started for: ${event.task?.description}`,
-					'executor_spawned',
-					{
-						task: event.task
-					}
-				);
-				break;
-			case 'plan_review': {
-				const verdictCopy =
-					event.verdict === 'approved'
-						? 'Plan approved'
-						: event.verdict === 'changes_requested'
-							? 'Plan needs changes'
-							: 'Plan rejected';
-				const noteCopy = event.notes ? ` · ${event.notes}` : '';
-				addActivityToThinkingBlock(`${verdictCopy}${noteCopy}`, 'plan_review', {
-					verdict: event.verdict,
-					notes: event.notes
-				});
-				currentActivity =
-					event.verdict === 'approved'
-						? 'Executing approved plan...'
-						: 'Waiting on plan revisions...';
-				if (event.verdict === 'approved') {
-					updateThinkingBlockState('executing_plan', currentActivity);
-				} else {
-					updateThinkingBlockState('waiting_on_user', currentActivity);
 				}
 				break;
 			}
@@ -3532,13 +3346,6 @@
 					pendingToolResults.delete(resultToolCallId);
 					break;
 				}
-				if (
-					!resultToolCallId &&
-					rawResultToolName &&
-					HIDDEN_THINKING_TOOLS.has(rawResultToolName)
-				) {
-					break;
-				}
 
 				if (resultToolCallId) {
 					// Update the matching activity status
@@ -3592,15 +3399,6 @@
 				break;
 			}
 
-			case 'entity_patch': {
-				if (dev) {
-					console.debug('[AgentChat] entity_patch received', event);
-				}
-				addActivityToThinkingBlock('State updated', 'operation', {
-					patch: (event as { patch?: unknown }).patch
-				});
-				break;
-			}
 			case 'context_shift': {
 				const shift = event.context_shift;
 				if (shift) {
@@ -3652,69 +3450,6 @@
 				break;
 			}
 
-			case 'executor_result':
-				// Executor finished - update step status if failed
-				if (event.result && !event.result.success && event.result.stepNumber) {
-					updatePlanStepStatus(event.result.stepNumber, 'failed');
-				}
-				addActivityToThinkingBlock(
-					event.result?.success ? 'Executor completed successfully' : 'Executor failed',
-					'executor_result',
-					{
-						result: event.result,
-						planId: currentPlan?.id
-					}
-				);
-				break;
-
-			case 'step_complete':
-				// Step completed - update visualization
-				const stepStatus = event.step?.status ?? 'completed';
-				const stepNumber = event.step?.stepNumber;
-				const stepLabel = stepNumber ? `Step ${stepNumber}` : 'Step';
-				const stepError = event.step?.error;
-				const stepErrorSummary = formatErrorMessage(stepError, 200);
-				updatePlanStepStatus(stepNumber, stepStatus, {
-					error: stepError,
-					result: event.step?.result
-				});
-				if (stepStatus === 'failed') {
-					addActivityToThinkingBlock(
-						`${stepLabel} failed${stepErrorSummary ? `: ${stepErrorSummary}` : ''}`,
-						'step_complete',
-						{
-							stepNumber,
-							error: stepError,
-							planId: currentPlan?.id,
-							status: stepStatus
-						},
-						'failed'
-					);
-				} else if (stepStatus === 'skipped') {
-					addActivityToThinkingBlock(
-						`${stepLabel} skipped${stepErrorSummary ? `: ${stepErrorSummary}` : ''}`,
-						'step_complete',
-						{
-							stepNumber,
-							error: stepError,
-							planId: currentPlan?.id,
-							status: stepStatus
-						}
-					);
-				} else {
-					addActivityToThinkingBlock(
-						`${stepLabel} complete`,
-						'step_complete',
-						{
-							stepNumber,
-							result: event.step?.result,
-							planId: currentPlan?.id,
-							status: stepStatus
-						},
-						'completed'
-					);
-				}
-				break;
 			case 'done':
 				// All done - clear activity and re-enable input
 				currentActivity = '';
@@ -3767,19 +3502,6 @@
 		addActivityToThinkingBlock(`${action}: ${details}`, 'context_shift', {
 			focus
 		});
-	}
-
-	function addPlanStatusAssistantMessage(content: string) {
-		if (!content?.trim()) return;
-		const planStatusMessage: UIMessage = {
-			id: crypto.randomUUID(),
-			type: 'assistant',
-			role: 'assistant' as ChatRole,
-			content,
-			timestamp: new Date(),
-			created_at: new Date().toISOString()
-		};
-		messages = [...messages, planStatusMessage];
 	}
 
 	function addClarifyingQuestionsMessage(questions: unknown) {

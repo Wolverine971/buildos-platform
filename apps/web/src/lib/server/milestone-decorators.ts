@@ -6,7 +6,7 @@ import { withComputedMilestoneState } from '$lib/utils/milestone-state';
 
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
-type GoalMilestoneEdge = Pick<
+export type GoalMilestoneEdge = Pick<
 	Database['public']['Tables']['onto_edges']['Row'],
 	'src_id' | 'dst_id' | 'created_at'
 >;
@@ -37,14 +37,17 @@ function buildGoalMapping(edges: GoalMilestoneEdge[]): Map<string, string> {
 export async function decorateMilestonesWithGoals(
 	supabase: SupabaseClient<Database>,
 	goals: GoalRow[] | null | undefined,
-	milestones: MilestoneRow[] | null | undefined
+	milestones: MilestoneRow[] | null | undefined,
+	precomputedEdges?: GoalMilestoneEdge[] | null
 ): Promise<{ milestones: DecoratedMilestone[]; edges: GoalMilestoneEdge[] }> {
 	const goalIds = (goals ?? []).map((g) => g.id).filter(Boolean);
 	const milestoneIds = (milestones ?? []).map((m) => m.id).filter(Boolean);
 
 	let edges: GoalMilestoneEdge[] = [];
 
-	if (goalIds.length > 0 && milestoneIds.length > 0) {
+	if (precomputedEdges) {
+		edges = precomputedEdges;
+	} else if (goalIds.length > 0 && milestoneIds.length > 0) {
 		const { data: edgeData, error: edgeError } = await supabase
 			.from('onto_edges')
 			.select('src_id, dst_id, created_at')

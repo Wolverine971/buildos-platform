@@ -4,7 +4,11 @@ import { OnboardingProgressService } from '$lib/services/onboardingProgress.serv
 import { StripeService } from '$lib/services/stripe-service';
 import { checkAndRegisterWebhookIfNeeded } from '$lib/services/calendar-webhook-check';
 import { fetchBillingContext } from '$lib/server/billing-context';
-import type { BillingContextPayload } from '$lib/server/billing-context';
+import {
+	getCachedBillingContext,
+	setCachedBillingContext,
+	type CachedBillingContext
+} from '$lib/server/billing-context-cache';
 
 const clampProgress = (progress?: number | null) => {
 	if (typeof progress !== 'number' || Number.isNaN(progress)) {
@@ -14,7 +18,7 @@ const clampProgress = (progress?: number | null) => {
 	return Math.max(0, Math.min(100, progress));
 };
 
-type BillingContext = BillingContextPayload & { loading: boolean };
+type BillingContext = CachedBillingContext;
 
 const createEmptyBillingContext = (loading: boolean): BillingContext => ({
 	subscription: null,
@@ -32,12 +36,10 @@ type CacheEntry<T> = {
 
 const PENDING_INVITES_TTL_MS = 20_000;
 const ONBOARDING_PROGRESS_TTL_MS = 60_000;
-const BILLING_CONTEXT_TTL_MS = 20_000;
 const WEBHOOK_CHECK_TTL_MS = 5 * 60_000;
 
 const pendingInvitesCache = new Map<string, CacheEntry<unknown[]>>();
 const onboardingProgressCache = new Map<string, CacheEntry<number>>();
-const billingContextCache = new Map<string, CacheEntry<BillingContext>>();
 const webhookCheckThrottle = new Map<string, number>();
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string, nowMs: number): T | null {
@@ -69,6 +71,7 @@ export const load: LayoutServerLoad = async ({
 	depends
 }) => {
 	depends('app:auth');
+	depends('app:billing');
 
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		serverTiming ? serverTiming.measure(name, fn) : fn();
@@ -164,8 +167,7 @@ export const load: LayoutServerLoad = async ({
 
 		shouldLoadBillingContext
 			? measure('db.billing_context', async () => {
-					const cacheKey = user.id;
-					const cached = getCached(billingContextCache, cacheKey, nowMs);
+					const cached = getCachedBillingContext(user.id, nowMs);
 					if (cached) return cached;
 
 					try {
@@ -185,13 +187,7 @@ export const load: LayoutServerLoad = async ({
 							consumptionGate: context?.consumptionGate ?? null,
 							loading: false
 						};
-						setCached(
-							billingContextCache,
-							cacheKey,
-							normalizedContext,
-							BILLING_CONTEXT_TTL_MS,
-							nowMs
-						);
+						setCachedBillingContext(user.id, normalizedContext, nowMs);
 						return normalizedContext;
 					} catch (error) {
 						console.error('Failed to load billing context:', error);

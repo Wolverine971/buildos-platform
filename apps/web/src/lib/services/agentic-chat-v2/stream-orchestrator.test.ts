@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
-import { streamFastChat } from './stream-orchestrator';
+import { streamFastChat } from './stream-orchestrator/index';
 import { REDACTED_DURABLE_TEXT } from './stream-orchestrator/tool-arguments';
 import type { FastChatHistoryMessage } from './types';
 import { materializeGatewayTools } from '$lib/services/agentic-chat/tools/core/gateway-surface';

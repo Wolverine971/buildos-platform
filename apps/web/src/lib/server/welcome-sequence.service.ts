@@ -90,6 +90,7 @@ interface WelcomeSequenceRunResult {
 	skipped: number;
 	completed: number;
 	cancelled: number;
+	suppressed: number;
 	errors: Array<{ userId: string; error: string }>;
 }
 
@@ -165,6 +166,11 @@ export class WelcomeSequenceService {
 			return;
 		}
 
+		if (await this.isEmailSuppressedForLifecycle(state.email)) {
+			await this.cancelSequenceForSuppression(input.userId, new Date().toISOString());
+			return;
+		}
+
 		const hydratedRow = await this.hydrateSentStepsFromEmailLogs(row);
 
 		const progress = toProgress(hydratedRow);
@@ -201,6 +207,7 @@ export class WelcomeSequenceService {
 			skipped: 0,
 			completed: 0,
 			cancelled: 0,
+			suppressed: 0,
 			errors: []
 		};
 
@@ -230,6 +237,13 @@ export class WelcomeSequenceService {
 						last_evaluated_at: now.toISOString()
 					});
 					result.cancelled += 1;
+					continue;
+				}
+
+				if (await this.isEmailSuppressedForLifecycle(state.email)) {
+					await this.cancelSequenceForSuppression(row.user_id, now.toISOString());
+					result.cancelled += 1;
+					result.suppressed += 1;
 					continue;
 				}
 
@@ -465,6 +479,35 @@ export class WelcomeSequenceService {
 				error
 			});
 		}
+	}
+
+	private async isEmailSuppressedForLifecycle(email: string): Promise<boolean> {
+		const normalizedEmail = email.trim().toLowerCase();
+		if (!normalizedEmail) {
+			return true;
+		}
+
+		const { data, error } = await (this.supabase as any).rpc('is_email_suppressed', {
+			p_email: normalizedEmail,
+			p_scope: 'lifecycle'
+		});
+
+		if (error) {
+			throw new Error(`Failed to check email suppression: ${error.message}`);
+		}
+
+		return data === true;
+	}
+
+	private async cancelSequenceForSuppression(
+		userId: string,
+		cancelledAt: string
+	): Promise<void> {
+		await this.updateSequenceRow(userId, {
+			status: 'cancelled',
+			completed_at: cancelledAt,
+			last_evaluated_at: cancelledAt
+		});
 	}
 
 	private async claimStep(

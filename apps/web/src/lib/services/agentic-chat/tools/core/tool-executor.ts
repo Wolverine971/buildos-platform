@@ -1,10 +1,681 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts
 /**
- * Compatibility wrapper for the refactored ChatToolExecutor.
+ * Chat Tool Executor
  *
- * The original monolithic executor (2k+ LOC) has been replaced by
- * domain-specific executors under ./executors. Keep the same import
- * path so existing code continues to work.
+ * Thin orchestrator that delegates to domain-specific executors.
+ * This replaces the original 2,075 LOC monolithic tool-executor.ts.
+ *
+ * Architecture:
+ * - ChatToolExecutor: Orchestration, logging, dispatch
+ * - OntologyReadExecutor: list_*, search_*, get_* tools
+ * - OntologyWriteExecutor: create_*, update_*, delete_* tools
+ * - UtilityExecutor: profile/contact/relationship utility tools
+ * - ExternalExecutor: web_search, web_visit, buildos docs (4 tools)
+ *
+ * Benefits:
+ * - Each executor ~200-400 LOC (was 2,075 LOC total)
+ * - Clear single responsibility per executor
+ * - Easy to test each domain independently
+ * - Easy to add new tool categories
  */
 
-export { ChatToolExecutor } from './tool-executor-refactored';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TypedSupabaseClient } from '@buildos/supabase-client';
+import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
+import { getToolCategory } from './tools.config';
+import { SmartLLMService } from '$lib/services/smart-llm-service';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { normalizeToolError } from '$lib/services/agentic-chat/shared/error-utils';
+import { createLogger } from '$lib/utils/logger';
+import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { sanitizeLogData } from '$lib/utils/logging-helpers';
+
+import {
+	OntologyReadExecutor,
+	OntologyWriteExecutor,
+	UtilityExecutor,
+	ExternalExecutor,
+	CalendarExecutor,
+	type ExecutorContext
+} from './executors';
+
+import type { WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
+import type { WebVisitArgs } from '$lib/services/agentic-chat/tools/webvisit';
+import type {
+	QueryLibriLibraryArgs,
+	ResolveLibriResourceArgs
+} from '$lib/services/agentic-chat/tools/libri';
+
+const logger = createLogger('ChatToolExecutor');
+
+/**
+ * Chat Tool Executor - Orchestration Layer
+ *
+ * Responsibilities:
+ * - Tool call dispatch to appropriate executor
+ * - Execution logging
+ * - Error handling and normalization
+ * - Stream event extraction
+ */
+export class ChatToolExecutor {
+	private sessionId?: string;
+	private fetchFn: typeof fetch;
+	private llmService?: SmartLLMService;
+	private errorLogger: ErrorLoggerService;
+	private logExecutions: boolean;
+
+	// Cached values
+	private _actorId?: string;
+	private _adminSupabase?: TypedSupabaseClient;
+
+	// Domain executors (lazy initialized)
+	private _readExecutor?: OntologyReadExecutor;
+	private _writeExecutor?: OntologyWriteExecutor;
+	private _utilityExecutor?: UtilityExecutor;
+	private _externalExecutor?: ExternalExecutor;
+	private _calendarExecutor?: CalendarExecutor;
+
+	constructor(
+		private supabase: SupabaseClient,
+		private userId: string,
+		sessionId?: string,
+		fetchFn?: typeof fetch,
+		llmService?: SmartLLMService,
+		options?: { logExecutions?: boolean }
+	) {
+		this.sessionId = sessionId;
+		this.fetchFn = fetchFn || fetch;
+		this.llmService = llmService;
+		this.errorLogger = ErrorLoggerService.getInstance(supabase as any);
+		this.logExecutions = options?.logExecutions ?? true;
+	}
+
+	setSessionId(sessionId: string): void {
+		this.sessionId = sessionId;
+	}
+
+	// ============================================
+	// EXECUTOR ACCESS (LAZY)
+	// ============================================
+
+	private getExecutorContext(): ExecutorContext {
+		return {
+			supabase: this.supabase,
+			userId: this.userId,
+			sessionId: this.sessionId,
+			fetchFn: this.fetchFn,
+			llmService: this.llmService,
+			getActorId: () => this.getActorId(),
+			getAdminSupabase: () => this.getAdminSupabase(),
+			getAuthHeaders: () => this.getAuthHeaders()
+		};
+	}
+
+	private get readExecutor(): OntologyReadExecutor {
+		if (!this._readExecutor) {
+			this._readExecutor = new OntologyReadExecutor(this.getExecutorContext());
+		}
+		return this._readExecutor;
+	}
+
+	private get writeExecutor(): OntologyWriteExecutor {
+		if (!this._writeExecutor) {
+			this._writeExecutor = new OntologyWriteExecutor(this.getExecutorContext());
+		}
+		return this._writeExecutor;
+	}
+
+	private get utilityExecutor(): UtilityExecutor {
+		if (!this._utilityExecutor) {
+			this._utilityExecutor = new UtilityExecutor(this.getExecutorContext());
+		}
+		return this._utilityExecutor;
+	}
+
+	private get externalExecutor(): ExternalExecutor {
+		if (!this._externalExecutor) {
+			this._externalExecutor = new ExternalExecutor(this.getExecutorContext());
+		}
+		return this._externalExecutor;
+	}
+
+	private get calendarExecutor(): CalendarExecutor {
+		if (!this._calendarExecutor) {
+			this._calendarExecutor = new CalendarExecutor(this.getExecutorContext());
+		}
+		return this._calendarExecutor;
+	}
+
+	// ============================================
+	// SHARED INFRASTRUCTURE
+	// ============================================
+
+	private async getActorId(): Promise<string> {
+		if (!this._actorId) {
+			this._actorId = await ensureActorId(this.supabase as any, this.userId);
+		}
+		return this._actorId;
+	}
+
+	private getAdminSupabase(): TypedSupabaseClient {
+		if (!this._adminSupabase) {
+			this._adminSupabase = createAdminSupabaseClient();
+		}
+		return this._adminSupabase;
+	}
+
+	private async getAuthHeaders(): Promise<HeadersInit> {
+		const {
+			data: { session }
+		} = await this.supabase.auth.getSession();
+
+		return {
+			'Content-Type': 'application/json',
+			Authorization: session?.access_token ? `Bearer ${session.access_token}` : ''
+		};
+	}
+
+	// ============================================
+	// MAIN EXECUTION
+	// ============================================
+
+	async execute(toolCall: ChatToolCall): Promise<ChatToolResult> {
+		const startTime = Date.now();
+		const rawArgs = toolCall.function.arguments || '{}';
+		const toolName = toolCall.function.name;
+		let args: Record<string, any> = {};
+
+		try {
+			try {
+				args = rawArgs ? JSON.parse(rawArgs) : {};
+			} catch (error) {
+				const parseMessage = error instanceof Error ? error.message : String(error);
+				const errorMessage = normalizeToolError(
+					new Error(`Invalid JSON in tool arguments: ${parseMessage}`),
+					toolName
+				);
+				const duration = Date.now() - startTime;
+				await this.logToolExecution(toolCall, null, duration, false, errorMessage, {});
+
+				return {
+					tool_call_id: toolCall.id,
+					result: null,
+					success: false,
+					error: errorMessage
+				};
+			}
+
+			const result = await this.dispatchTool(toolName, args);
+
+			const duration = Date.now() - startTime;
+			const { payload, streamEvents, tokensConsumed } = this.extractStreamEvents(result);
+			await this.logToolExecution(
+				toolCall,
+				payload,
+				duration,
+				true,
+				undefined,
+				args,
+				tokensConsumed
+			);
+
+			return {
+				tool_call_id: toolCall.id,
+				result: payload,
+				success: true,
+				duration_ms: duration,
+				stream_events: streamEvents
+			};
+		} catch (error: any) {
+			const duration = Date.now() - startTime;
+			let errorMessage = error?.message || 'Tool execution failed';
+			const toolName = toolCall.function.name;
+
+			errorMessage = normalizeToolError(error, toolName);
+
+			await this.logToolExecution(toolCall, null, duration, false, errorMessage, args);
+
+			logger.error('[ChatToolExecutor] Tool execution failed', {
+				tool: toolName,
+				error: errorMessage,
+				duration_ms: duration
+			});
+
+			return {
+				tool_call_id: toolCall.id,
+				result: null,
+				success: false,
+				error: errorMessage
+			};
+		}
+	}
+
+	// ============================================
+	// TOOL DISPATCH
+	// ============================================
+
+	private async dispatchTool(toolName: string, args: any): Promise<any> {
+		switch (toolName) {
+			// ==================
+			// UTILITY TOOLS
+			// ==================
+			case 'get_field_info':
+				return this.utilityExecutor.getFieldInfo(args);
+
+			case 'get_user_profile_overview':
+				return this.utilityExecutor.getUserProfileOverview(args);
+
+			case 'get_workspace_overview':
+				return this.utilityExecutor.getWorkspaceOverview(args);
+
+			case 'get_project_overview':
+				return this.utilityExecutor.getProjectOverview(args);
+
+			case 'change_chat_context':
+				return this.utilityExecutor.changeChatContext(args);
+
+			case 'search_user_contacts':
+				return this.utilityExecutor.searchUserContacts(args);
+
+			case 'upsert_user_contact':
+				return this.utilityExecutor.upsertUserContact(args);
+
+			case 'list_user_contact_candidates':
+				return this.utilityExecutor.listUserContactCandidates(args);
+
+			case 'resolve_user_contact_candidate':
+				return this.utilityExecutor.resolveUserContactCandidate(args);
+
+			case 'link_user_contact':
+				return this.utilityExecutor.linkUserContact(args);
+
+			case 'get_entity_relationships':
+				return this.utilityExecutor.getEntityRelationships(args);
+
+			case 'get_linked_entities':
+				return this.utilityExecutor.getLinkedEntities(args);
+
+			// ==================
+			// EXTERNAL TOOLS
+			// ==================
+			case 'get_buildos_overview':
+				return this.externalExecutor.getBuildosOverview();
+
+			case 'get_buildos_usage_guide':
+				return this.externalExecutor.getBuildosUsageGuide();
+
+			case 'resolve_libri_resource':
+				return this.externalExecutor.resolveLibriResource(args as ResolveLibriResourceArgs);
+
+			case 'query_libri_library':
+				return this.externalExecutor.queryLibriLibrary(args as QueryLibriLibraryArgs);
+
+			case 'web_search':
+				return this.externalExecutor.webSearch(args as WebSearchArgs);
+
+			case 'web_visit':
+				return this.externalExecutor.webVisit(args as WebVisitArgs);
+
+			// ==================
+			// CALENDAR TOOLS
+			// ==================
+			case 'list_calendar_events':
+				return this.calendarExecutor.listCalendarEvents(args);
+
+			case 'get_calendar_event_details':
+				return this.calendarExecutor.getCalendarEventDetails(args);
+
+			case 'create_calendar_event':
+				return this.calendarExecutor.createCalendarEvent(args);
+
+			case 'update_calendar_event':
+				return this.calendarExecutor.updateCalendarEvent(args);
+
+			case 'delete_calendar_event':
+				return this.calendarExecutor.deleteCalendarEvent(args);
+
+			case 'get_project_calendar':
+				return this.calendarExecutor.getProjectCalendar(args);
+
+			case 'set_project_calendar':
+				return this.calendarExecutor.setProjectCalendar(args);
+
+			// ==================
+			// ONTOLOGY READ TOOLS
+			// ==================
+			case 'list_onto_projects':
+				return this.readExecutor.listOntoProjects(args);
+
+			case 'search_onto_projects':
+				return this.readExecutor.searchOntoProjects(args);
+
+			case 'search_all_projects':
+				return this.readExecutor.searchAllProjects(args);
+
+			case 'search_buildos':
+				return this.readExecutor.searchAllProjects(args);
+
+			case 'search_project':
+				return this.readExecutor.searchProject(args);
+
+			case 'list_onto_tasks':
+				return this.readExecutor.listOntoTasks(args);
+
+			case 'search_onto_tasks':
+				return this.readExecutor.searchOntoTasks(args);
+
+			case 'search_onto_goals':
+				return this.readExecutor.searchOntoGoals(args);
+
+			case 'search_onto_plans':
+				return this.readExecutor.searchOntoPlans(args);
+
+			case 'list_onto_plans':
+				return this.readExecutor.listOntoPlans(args);
+
+			case 'list_onto_goals':
+				return this.readExecutor.listOntoGoals(args);
+
+			case 'list_onto_documents':
+				return this.readExecutor.listOntoDocuments(args);
+
+			case 'list_onto_milestones':
+				return this.readExecutor.listOntoMilestones(args);
+
+			case 'list_onto_risks':
+				return this.readExecutor.listOntoRisks(args);
+
+			case 'search_onto_documents':
+				return this.readExecutor.searchOntoDocuments(args);
+
+			case 'search_onto_milestones':
+				return this.readExecutor.searchOntoMilestones(args);
+
+			case 'search_onto_risks':
+				return this.readExecutor.searchOntoRisks(args);
+
+			case 'search_ontology':
+				return this.readExecutor.searchOntology(args);
+
+			case 'get_onto_project_details':
+				return this.readExecutor.getOntoProjectDetails(args);
+
+			case 'get_onto_project_graph':
+				return this.readExecutor.getOntoProjectGraph(args);
+
+			case 'get_onto_task_details':
+				return this.readExecutor.getOntoTaskDetails(args);
+
+			case 'get_onto_goal_details':
+				return this.readExecutor.getOntoGoalDetails(args);
+
+			case 'get_onto_plan_details':
+				return this.readExecutor.getOntoPlanDetails(args);
+
+			case 'get_onto_document_details':
+				return this.readExecutor.getOntoDocumentDetails(args);
+
+			case 'get_onto_milestone_details':
+				return this.readExecutor.getOntoMilestoneDetails(args);
+
+			case 'get_onto_risk_details':
+				return this.readExecutor.getOntoRiskDetails(args);
+
+			case 'list_task_documents':
+				return this.readExecutor.listTaskDocuments(args);
+
+			case 'get_document_tree':
+				return this.readExecutor.getDocumentTree(args);
+
+			case 'get_document_path':
+				return this.readExecutor.getDocumentPath(args);
+
+			// ==================
+			// ONTOLOGY WRITE TOOLS
+			// ==================
+			case 'create_onto_project':
+				return this.writeExecutor.createOntoProject(args);
+
+			case 'create_onto_task':
+				return this.writeExecutor.createOntoTask(args);
+
+			case 'create_onto_goal':
+				return this.writeExecutor.createOntoGoal(args);
+
+			case 'create_onto_plan':
+				return this.writeExecutor.createOntoPlan(args);
+
+			case 'create_onto_document':
+				return this.writeExecutor.createOntoDocument(args);
+
+			case 'create_onto_milestone':
+				return this.writeExecutor.createOntoMilestone(args);
+
+			case 'create_onto_risk':
+				return this.writeExecutor.createOntoRisk(args);
+
+			case 'move_document_in_tree':
+				return this.writeExecutor.moveDocumentInTree(args);
+
+			case 'create_task_document':
+				return this.writeExecutor.createTaskDocument(args);
+
+			case 'link_onto_entities':
+				return this.writeExecutor.linkOntoEntities(args);
+
+			case 'unlink_onto_edge':
+				return this.writeExecutor.unlinkOntoEdge(args);
+
+			case 'reorganize_onto_project_graph':
+				return this.writeExecutor.reorganizeOntoProjectGraph(args);
+
+			case 'update_onto_project':
+				return this.writeExecutor.updateOntoProject(args);
+
+			case 'update_onto_task':
+				return this.writeExecutor.updateOntoTask(args, (taskId) =>
+					this.readExecutor.getOntoTaskDetails({ task_id: taskId })
+				);
+
+			case 'update_onto_goal':
+				return this.writeExecutor.updateOntoGoal(args, (goalId) =>
+					this.readExecutor.getOntoGoalDetails({ goal_id: goalId })
+				);
+
+			case 'update_onto_plan':
+				return this.writeExecutor.updateOntoPlan(args, (planId) =>
+					this.readExecutor.getOntoPlanDetails({ plan_id: planId })
+				);
+
+			case 'update_onto_document':
+				return this.writeExecutor.updateOntoDocument(args, (documentId) =>
+					this.readExecutor.getOntoDocumentDetails({ document_id: documentId })
+				);
+
+			case 'update_onto_milestone':
+				return this.writeExecutor.updateOntoMilestone(args);
+
+			case 'update_onto_risk':
+				return this.writeExecutor.updateOntoRisk(args);
+
+			case 'tag_onto_entity':
+				return this.writeExecutor.tagOntoEntity(args);
+
+			case 'delete_onto_task':
+				return this.writeExecutor.deleteOntoTask(args);
+
+			case 'delete_onto_goal':
+				return this.writeExecutor.deleteOntoGoal(args);
+
+			case 'delete_onto_plan':
+				return this.writeExecutor.deleteOntoPlan(args);
+
+			case 'delete_onto_document':
+				return this.writeExecutor.deleteOntoDocument(args);
+
+			case 'delete_onto_milestone':
+				return this.writeExecutor.deleteOntoMilestone(args);
+
+			case 'delete_onto_risk':
+				return this.writeExecutor.deleteOntoRisk(args);
+
+			case 'delete_onto_project':
+				return this.writeExecutor.deleteOntoProject(args);
+
+			// ==================
+			// UNKNOWN
+			// ==================
+			default:
+				throw new Error(`Unknown tool: ${toolName}`);
+		}
+	}
+
+	// ============================================
+	// HELPERS
+	// ============================================
+
+	private extractStreamEvents(result: any): {
+		payload: any;
+		streamEvents?: any[];
+		tokensConsumed?: number;
+	} {
+		if (!result || typeof result !== 'object') {
+			return { payload: result };
+		}
+
+		const maybe = result as Record<string, any>;
+		const events = Array.isArray(maybe._stream_events) ? maybe._stream_events : undefined;
+
+		// Extract tokens from various possible locations
+		const tokensConsumed = this.extractTokensFromResult(maybe);
+
+		const payload = Array.isArray(result) ? [...(result as any[])] : { ...maybe };
+		if (!Array.isArray(payload)) {
+			delete (payload as Record<string, any>)._stream_events;
+			delete (payload as Record<string, any>)._tokens_used;
+			delete (payload as Record<string, any>)._tokens_consumed;
+			delete (payload as Record<string, any>).tokens_used;
+			delete (payload as Record<string, any>).usage;
+		}
+		return { payload, streamEvents: events, tokensConsumed };
+	}
+
+	/**
+	 * Extract token count from tool result metadata
+	 * Checks various possible locations where tokens might be stored
+	 */
+	private extractTokensFromResult(result: Record<string, any>): number | undefined {
+		const candidates: Array<number | undefined> = [
+			result._tokens_used,
+			result._tokens_consumed,
+			result.tokens_used,
+			result.tokens_consumed,
+			result.usage?.total_tokens,
+			result.usage?.totalTokens,
+			result.metadata?.tokens_used,
+			result.metadata?.tokensUsed
+		];
+
+		for (const value of candidates) {
+			if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+				return value;
+			}
+		}
+
+		return undefined;
+	}
+
+	private async logToolExecution(
+		toolCall: ChatToolCall,
+		result: any,
+		duration: number,
+		success: boolean,
+		errorMessage?: string,
+		parsedArgs?: Record<string, any>,
+		tokensConsumed?: number
+	): Promise<void> {
+		if (!this.logExecutions) return;
+
+		if (!this.sessionId) {
+			logger.warn('Tool execution log skipped: session_id not set', {
+				toolName: toolCall.function.name
+			});
+			return;
+		}
+
+		const category = getToolCategory(toolCall.function.name);
+		const argumentsPayload = parsedArgs ?? this.safeParseArguments(toolCall.function.arguments);
+		const sanitizedArgs = sanitizeLogData(argumentsPayload);
+
+		try {
+			const { error: insertError } = await this.supabase.from('chat_tool_executions').insert({
+				session_id: this.sessionId,
+				tool_name: toolCall.function.name,
+				tool_category: category,
+				arguments: argumentsPayload,
+				result: success ? result : null,
+				execution_time_ms: duration,
+				tokens_consumed: tokensConsumed ?? null,
+				success,
+				error_message: errorMessage ?? null
+			});
+
+			if (insertError) {
+				logger.error('[ChatToolExecutor] Failed to log tool execution (DB error)', {
+					toolName: toolCall.function.name,
+					sessionId: this.sessionId,
+					error: insertError.message,
+					code: insertError.code,
+					hint: insertError.hint
+				});
+				void this.errorLogger.logError(insertError, {
+					userId: this.userId,
+					operationType: 'tool_execution_log',
+					tableName: 'chat_tool_executions',
+					recordId: this.sessionId,
+					metadata: {
+						toolName: toolCall.function.name,
+						sessionId: this.sessionId,
+						success,
+						args: sanitizedArgs
+					}
+				});
+			}
+		} catch (error) {
+			logger.error('[ChatToolExecutor] Failed to log tool execution (exception)', {
+				toolName: toolCall.function.name,
+				sessionId: this.sessionId,
+				error: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined
+			});
+			void this.errorLogger.logError(error, {
+				userId: this.userId,
+				operationType: 'tool_execution_log',
+				tableName: 'chat_tool_executions',
+				recordId: this.sessionId,
+				metadata: {
+					toolName: toolCall.function.name,
+					sessionId: this.sessionId,
+					success,
+					args: sanitizedArgs
+				}
+			});
+		}
+	}
+
+	private safeParseArguments(rawArguments?: string): Record<string, any> {
+		if (!rawArguments) {
+			return {};
+		}
+
+		try {
+			return JSON.parse(rawArguments);
+		} catch (error) {
+			logger.warn('[ChatToolExecutor] Failed to parse tool arguments for logging', {
+				error: error instanceof Error ? error.message : String(error)
+			});
+			return {};
+		}
+	}
+}

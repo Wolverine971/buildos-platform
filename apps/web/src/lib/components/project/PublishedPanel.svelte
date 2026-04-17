@@ -39,18 +39,28 @@
 	interface Props {
 		projectId: string;
 		expanded?: boolean;
+		liveCount?: number;
+		totalCount?: number;
 		onOpenDocument?: (documentId: string) => void;
 	}
 
-	let { projectId, expanded = true, onOpenDocument }: Props = $props();
+	let {
+		projectId,
+		expanded,
+		liveCount: initialLiveCount = 0,
+		totalCount: initialTotalCount = 0,
+		onOpenDocument
+	}: Props = $props();
 
 	let pages = $state<PublicPageRow[]>([]);
 	let loading = $state(false);
 	let loaded = $state(false);
 	let error = $state<string | null>(null);
-	let isExpanded = $state(expanded);
+	let isExpanded = $state(expanded ?? initialLiveCount > 0);
 
 	const liveCount = $derived(pages.filter((p) => p.public_status === 'live').length);
+	const displayedLiveCount = $derived(loaded ? liveCount : initialLiveCount);
+	const displayedTotalCount = $derived(loaded ? pages.length : initialTotalCount);
 
 	async function fetchPages() {
 		loading = true;
@@ -72,16 +82,23 @@
 	}
 
 	onMount(() => {
-		void fetchPages();
+		if (isExpanded) {
+			void fetchPages();
+		}
 	});
 
 	// Expose a refresh entry point for the parent page to call after publish/unpublish.
 	export function refresh() {
-		void fetchPages();
+		if (isExpanded || loaded) {
+			void fetchPages();
+		}
 	}
 
 	function toggleExpanded() {
 		isExpanded = !isExpanded;
+		if (isExpanded && !loaded && !loading) {
+			void fetchPages();
+		}
 	}
 
 	async function handleCopyLink(row: PublicPageRow) {
@@ -120,7 +137,9 @@
 
 <section
 	class="rounded-lg border border-border bg-card shadow-ink overflow-hidden"
-	aria-label="Published public pages"
+	aria-label={displayedTotalCount > 0
+		? `Published public pages (${displayedTotalCount})`
+		: 'Published public pages'}
 >
 	<button
 		type="button"
@@ -131,11 +150,11 @@
 		<div class="flex items-center gap-2 min-w-0">
 			<Globe class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
 			<span class="text-sm font-semibold text-foreground">Published</span>
-			{#if loaded && liveCount > 0}
+			{#if displayedLiveCount > 0}
 				<span
 					class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold"
 				>
-					{liveCount}
+					{displayedLiveCount}
 				</span>
 			{/if}
 		</div>

@@ -1,9 +1,23 @@
 <!-- docs/marketing/social-media/viral-short-form-video-strategy.md -->
 
-# Viral Short-Form Video Strategy - BuildOS
+> **⚠ SUPERSEDED — 2026-04-17.** This doc was written in January 2025, before BuildOS pivoted from ADHD-led positioning to "thinking environment for people making complex things." It is preserved for history but should **not** guide new short-form video work.
+>
+> **Current short-form video strategy lives in:**
+>
+> - [WS10 — Short-Form Video (TikTok, counter-positioned)](distribution/workstreams/WS10-short-form-video.md) — execution, T46–T51
+> - [Anti-feed content topic map](strategy/anti-feed-content-topic-map.md) — ranked blogs + TikTok angles per post
+> - [`anti-feed` skill](../../.claude/skills/anti-feed/SKILL.md) — dispatcher for drafting blogs, publish kits, and TikTok scripts
+> - [Brand guide](brand/brand-guide-1-pager.md) — authoritative voice + audience order (authors/YouTubers first, ADHD is supporting affinity only)
+>
+> **Why superseded:** ADHD-led hooks, "serial productivity-app abandoners," "POV: your ADHD brain" framing, and "validation hook" patterns below are OFF-STRATEGY per the current brand guide. Leading with AI / ADHD in the hook is explicitly rejected. Use WS10's counter-positioning rubric for all new scripts.
+
+---
+
+# Viral Short-Form Video Strategy - BuildOS (archived)
 
 **Last Updated:** January 2025
 **Purpose:** Strategic framework for creating scroll-stopping short-form video content that resonates with ADHD/neurodivergent audience
+**Status:** Superseded by WS10 (2026-04-17)
 
 ---
 

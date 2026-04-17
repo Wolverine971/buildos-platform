@@ -9,9 +9,13 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 
 	try {
+		// Narrowed select: drop `context_snapshot` (JSONB of project state at generation time,
+		// never read by any web caller) from list view. Detail endpoint at `/[id]` still returns `*`.
 		const { data, error } = await supabase
 			.from('project_brief_templates')
-			.select('*')
+			.select(
+				'id, name, description, template_content, variables, is_default, in_use, project_id, user_id, generated_by, generation_model, metadata, created_at, updated_at'
+			)
 			.order('created_at', { ascending: false });
 
 		if (error) throw error;

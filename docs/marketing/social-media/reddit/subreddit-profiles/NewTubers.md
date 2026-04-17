@@ -174,3 +174,4 @@ This sub is strict but self-documenting. If you follow the weekly-thread workflo
 ## Notes log
 
 - 2026-04-17: Initial scan. 667K subs, discussion-first culture, strict but self-documenting rules. The **mod-approval path for product posts** (Rule 2) is a rare green-light that exists almost nowhere else on Reddit. Top-week "Does anyone else find it 10x easier to 'explain' your video out loud than to actually write it down?" is an exact BuildOS thesis thread — document as evergreen engagement pattern for T4. Top-month anti-AI post (231↑) means we lead with workflow language, never AI.
+- 2026-04-17 Drafted: Pattern C (genuine craft question + niche-vs-budget split) on `1so0fl2` "If your channel is very niche...". Mention Level 0. First sub-appearance — leaning on Pattern C per the strategy's fresh-sub default. Pending posting on burner account. See [`daily-engagement/2026-04-17_reddit-replies.md`](../../daily-engagement/2026-04-17_reddit-replies.md).

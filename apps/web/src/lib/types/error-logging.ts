@@ -10,6 +10,7 @@ export type ErrorType =
 	| 'calendar_sync_error'
 	| 'calendar_delete_error'
 	| 'calendar_update_error'
+	| 'email_delivery_failure'
 	| 'unknown';
 
 export interface ErrorSummary {

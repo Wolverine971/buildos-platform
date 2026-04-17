@@ -51,7 +51,7 @@ That makes changes harder to reason about and raises the odds of subtle regressi
 - Future helper modules
   Gateway recovery routines and any remaining loop-local policy extraction.
 
-The legacy import path remains `../stream-orchestrator.ts`, which is now a thin re-export shim.
+Importers point directly at `./stream-orchestrator/index` via the barrel in `agentic-chat-v2/index.ts`.
 
 ## Refactor Phases
 

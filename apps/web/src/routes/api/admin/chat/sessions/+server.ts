@@ -94,13 +94,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		return ApiResponse.unauthorized();
 	}
 
-	const { data: adminUser, error: adminError } = await supabase
-		.from('admin_users')
-		.select('user_id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (adminError || !adminUser) {
+	if (!user.is_admin) {
 		return ApiResponse.forbidden('Admin access required');
 	}
 

@@ -399,12 +399,17 @@ Once T3 is done, the research outputs directly feed a warmup command that mirror
 5. Surface top 5–7 for Stage 2
 6. Update `Last Visited` on tracker
 
-**Stage 2 — `/reddit-reply`:**
+**Stage 2 — `/reddit-reply`:** _(built 2026-04-17; see `.claude/commands/reddit-reply.md`)_
 
-1. Load Stage 1 doc
-2. For each prioritized thread, draft 2–3 comment options per the 90/10 rule
-3. Reply-crafting rules live in a future `reddit-reply-strategy.md` (to be written after first month of manual commenting yields real voice data)
-4. Flag which comments include a BuildOS mention (max 1–2 per day, always founder-disclosed)
+1. Load Stage 1 doc + `docs/marketing/social-media/reddit/reddit-reply-strategy.md` + per-sub profiles for every queued sub
+2. Re-read each thread (top comments may have drifted since Stage 1 scored it)
+3. Classify engagement via the strategy's 4-pattern library (A: validation + lived detail, B: specific process, C: craft question back, D: sanctioned founder mention)
+4. Draft 2–3 comment options per thread, each with a different pattern where possible
+5. Run every draft through the 7-question quality gate; flag Skip Recommendations for any thread where gates fail
+6. Enforce sub-specific rules: AI-hard-ban vocabulary, sanctioned-surface gating, comment-only-forever subs, founder-disclosure-in-first-five-words, link hygiene
+7. Append a `Drafted` entry to each sub profile's `Notes log`; reconcile to `Posted` on user confirmation
+
+**Strategy doc status:** v0.1 is in place (initial framing grounded in brand guide + anti-AI positioning + per-sub profiles + cross-platform voice memory). v1.0 rewrite is scheduled after ~30 days of real reply data. Until then the command defaults to Skip when quality gates are ambiguous.
 
 ### What the research output must enable
 

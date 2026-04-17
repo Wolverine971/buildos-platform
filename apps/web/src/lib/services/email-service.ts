@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 
 import { dev } from '$app/environment';
+import { env } from '$env/dynamic/private';
 import { PUBLIC_APP_URL } from '$env/static/public';
 
 import {
@@ -70,18 +71,35 @@ export class EmailService {
 			: null;
 		const sender = getSenderByType(senderType);
 		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
+		const isLifecycleEmail = this.isLifecycleEmail(data.metadata);
+		const unsubscribeUrl =
+			isLifecycleEmail && trackingId
+				? `${baseUrl}/api/email-tracking/${trackingId}/unsubscribe`
+				: null;
+		const sendMetadata = unsubscribeUrl
+			? {
+					...data.metadata,
+					unsubscribe_url: unsubscribeUrl
+				}
+			: data.metadata;
 		const trackingPixel = trackingId
 			? `<img src="${baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`
 			: '';
 
 		const transporter = createGmailTransporter(senderType);
-		const textBody = data.body;
+		const textBody = this.composeTextBody(data.body, unsubscribeUrl);
 		const htmlBody = this.composeHtmlBody({
 			subject: data.subject,
 			html: data.html,
 			textBody,
 			trackingPixel,
-			trackingId
+			trackingId,
+			unsubscribeUrl
+		});
+		const replyTo = data.replyTo ?? (isLifecycleEmail ? sender.email : undefined);
+		const headers = this.buildLifecycleHeaders({
+			sender,
+			unsubscribeUrl
 		});
 
 		try {
@@ -93,7 +111,8 @@ export class EmailService {
 				html: htmlBody,
 				cc: data.cc?.join(','),
 				bcc: data.bcc?.join(','),
-				replyTo: data.replyTo
+				replyTo,
+				headers
 			});
 
 			try {
@@ -107,7 +126,7 @@ export class EmailService {
 					trackingId,
 					emailId: data.emailId,
 					createdBy: data.createdBy,
-					metadata: data.metadata,
+					metadata: sendMetadata,
 					sender
 				});
 
@@ -117,12 +136,12 @@ export class EmailService {
 					body: textBody,
 					cc: data.cc,
 					bcc: data.bcc,
-					reply_to: data.replyTo,
+					reply_to: replyTo,
 					status: 'sent',
 					sent_at: sentAt,
 					user_id: data.userId ?? null,
 					metadata: {
-						...data.metadata,
+						...sendMetadata,
 						message_id: info.messageId,
 						sender_type: senderType,
 						tracking_id: trackingId,
@@ -189,17 +208,27 @@ export class EmailService {
 				body: textBody,
 				cc: data.cc,
 				bcc: data.bcc,
-				reply_to: data.replyTo,
+				reply_to: replyTo,
 				status: 'failed',
 				error_message: errorMessage,
 				sent_at: sentAt,
 				user_id: data.userId ?? null,
 				metadata: {
-					...data.metadata,
+					...sendMetadata,
 					tracking_id: trackingId,
 					sender_type: senderType,
 					user_id: data.userId ?? null
 				}
+			});
+
+			await this.notifyEmailDeliveryFailure({
+				errorMessage,
+				recipientEmail: data.to,
+				subject: data.subject,
+				senderType,
+				userId: data.userId ?? null,
+				trackingId,
+				metadata: sendMetadata
 			});
 
 			return {
@@ -214,19 +243,21 @@ export class EmailService {
 		html,
 		textBody,
 		trackingPixel,
-		trackingId
+		trackingId,
+		unsubscribeUrl
 	}: {
 		subject: string;
 		html?: string;
 		textBody: string;
 		trackingPixel: string;
 		trackingId: string | null;
+		unsubscribeUrl: string | null;
 	}): string {
 		if (html) {
 			// Rewrite links for click tracking if tracking is enabled
-			let processedHtml = html;
+			let processedHtml = this.appendLifecycleHtmlFooter(html, unsubscribeUrl);
 			if (trackingId) {
-				processedHtml = this.rewriteLinksForTracking(html, trackingId);
+				processedHtml = this.rewriteLinksForTracking(processedHtml, trackingId);
 			}
 			// Avoid injecting a duplicate tracking pixel when caller-provided HTML already includes it.
 			if (trackingPixel && trackingId && this.hasTrackingPixel(processedHtml, trackingId)) {
@@ -243,6 +274,21 @@ export class EmailService {
 			content,
 			trackingPixel
 		});
+	}
+
+	private composeTextBody(textBody: string, unsubscribeUrl: string | null): string {
+		if (!unsubscribeUrl) {
+			return textBody;
+		}
+
+		if (textBody.includes(unsubscribeUrl)) {
+			return textBody;
+		}
+
+		return `${textBody.trimEnd()}
+
+You can opt out of these BuildOS emails here:
+${unsubscribeUrl}`;
 	}
 
 	private rewriteLinksForTracking(html: string, trackingId: string): string {
@@ -278,6 +324,26 @@ export class EmailService {
 		return `${html}${trackingPixel}`;
 	}
 
+	private appendLifecycleHtmlFooter(html: string, unsubscribeUrl: string | null): string {
+		if (!unsubscribeUrl || html.includes(unsubscribeUrl)) {
+			return html;
+		}
+
+		const footer = `
+			<hr style="border: 0; border-top: 1px solid #E5E0DA; margin: 28px 0 16px;" />
+			<p style="font-size: 12px; line-height: 1.5; color: #6B625C;">
+				You can opt out of these BuildOS emails
+				<a href="${this.escapeHtml(unsubscribeUrl)}" style="color: #6B625C;">here</a>.
+			</p>
+		`;
+
+		if (html.includes('</body>')) {
+			return html.replace('</body>', `${footer}</body>`);
+		}
+
+		return `${html}${footer}`;
+	}
+
 	private extractTrackingIdFromMetadata(metadata?: Record<string, any>): string | null {
 		if (!metadata || typeof metadata !== 'object') {
 			return null;
@@ -306,7 +372,135 @@ export class EmailService {
 	}
 
 	private hasTrackingPixel(html: string, trackingId: string): boolean {
-		return html.includes(`/api/email-tracking/${trackingId}`);
+		const escapedTrackingId = trackingId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		return new RegExp(
+			`<img\\s+[^>]*src=["'][^"']*/api/email-tracking/${escapedTrackingId}(?:["'?/])`,
+			'i'
+		).test(html);
+	}
+
+	private isLifecycleEmail(metadata?: Record<string, any>): boolean {
+		return (
+			metadata?.campaign_type === 'lifecycle' ||
+			metadata?.category === 'welcome_sequence' ||
+			metadata?.campaign === 'welcome-sequence'
+		);
+	}
+
+	private buildLifecycleHeaders({
+		sender,
+		unsubscribeUrl
+	}: {
+		sender: EmailSender;
+		unsubscribeUrl: string | null;
+	}): Record<string, string> | undefined {
+		if (!unsubscribeUrl) {
+			return undefined;
+		}
+
+		return {
+			'List-ID': 'BuildOS <emails.build-os.com>',
+			'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:${sender.email}?subject=unsubscribe>`,
+			'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+		};
+	}
+
+	private escapeHtml(value: string): string {
+		return value
+			.replaceAll('&', '&amp;')
+			.replaceAll('<', '&lt;')
+			.replaceAll('>', '&gt;')
+			.replaceAll('"', '&quot;')
+			.replaceAll("'", '&#39;');
+	}
+
+	private async notifyEmailDeliveryFailure({
+		errorMessage,
+		recipientEmail,
+		subject,
+		senderType,
+		userId,
+		trackingId,
+		metadata
+	}: {
+		errorMessage: string;
+		recipientEmail: string;
+		subject: string;
+		senderType: SenderType;
+		userId: string | null;
+		trackingId: string | null;
+		metadata?: Record<string, any>;
+	}): Promise<void> {
+		const webhookUrl = env.PRIVATE_ALERTS_SLACK_WEBHOOK_URL;
+		if (!webhookUrl) {
+			return;
+		}
+
+		try {
+			const response = await fetch(webhookUrl, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					text: `BuildOS email delivery failure: ${subject}`,
+					blocks: [
+						{
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: '*BuildOS email delivery failure*'
+							}
+						},
+						{
+							type: 'section',
+							fields: [
+								{
+									type: 'mrkdwn',
+									text: `*Recipient*\n${recipientEmail}`
+								},
+								{
+									type: 'mrkdwn',
+									text: `*Sender*\n${senderType}`
+								},
+								{
+									type: 'mrkdwn',
+									text: `*Subject*\n${subject}`
+								},
+								{
+									type: 'mrkdwn',
+									text: `*Campaign*\n${metadata?.campaign ?? 'unknown'}`
+								},
+								{
+									type: 'mrkdwn',
+									text: `*User ID*\n${userId ?? 'unknown'}`
+								},
+								{
+									type: 'mrkdwn',
+									text: `*Tracking ID*\n${trackingId ?? 'none'}`
+								}
+							]
+						},
+						{
+							type: 'section',
+							text: {
+								type: 'mrkdwn',
+								text: `*Error*\n${errorMessage.slice(0, 1500)}`
+							}
+						}
+					]
+				})
+			});
+
+			if (!response.ok) {
+				console.error('Failed to send email delivery failure alert:', {
+					status: response.status,
+					statusText: response.statusText
+				});
+			}
+		} catch (alertError) {
+			console.error('Failed to send email delivery failure alert:', alertError);
+		}
 	}
 
 	private async logRichEmailData({

@@ -437,22 +437,12 @@ export type AgentSSEEvent =
 	| { type: 'focus_changed'; focus: ProjectFocus }
 	| {
 			type: 'agent_state';
-			state: 'thinking' | 'executing_plan' | 'waiting_on_user';
+			state: 'thinking' | 'waiting_on_user';
 			contextType: ChatContextType;
 			details?: string;
 	  }
 	| { type: 'clarifying_questions'; questions: string[] }
-	| { type: 'executor_instructions'; instructions: string }
 	| { type: 'ontology_loaded'; summary: string }
-	| { type: 'plan_created'; plan: any }
-	| { type: 'plan_ready_for_review'; plan: any; summary?: string; recommendations?: string[] }
-	| {
-			type: 'plan_review';
-			plan: any;
-			verdict: 'approved' | 'changes_requested' | 'rejected';
-			notes?: string;
-			reviewer?: string;
-	  }
 	| { type: 'text'; content: string }
 	| { type: 'tool_call'; tool_call: any }
 	| { type: 'tool_result'; result: any }
