@@ -281,19 +281,36 @@
 	}
 </script>
 
-<div class="space-y-4 sm:space-y-6">
+<div class="space-y-4 sm:space-y-5">
+	<!-- Tab Header -->
+	<div class="flex items-start gap-3">
+		<div
+			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
+		>
+			<Bell class="w-5 h-5 text-accent-foreground" />
+		</div>
+		<div class="flex-1 min-w-0">
+			<h2 class="text-lg sm:text-xl font-bold text-foreground">Brief Settings</h2>
+			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+				Configure when and how you receive daily briefs.
+			</p>
+		</div>
+	</div>
+
 	<!-- Brief Preferences -->
 	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="p-4 sm:p-6 border-b border-border">
+		<div class="px-4 sm:px-5 py-3 border-b border-border">
 			<div
 				class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0"
 			>
-				<div class="flex-1">
-					<h3 class="text-base sm:text-lg font-medium text-foreground flex items-center">
-						<Bell class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-accent" />
+				<div class="flex-1 min-w-0">
+					<h3
+						class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
+					>
+						<Bell class="w-4 h-4 text-accent" />
 						Brief Preferences
 					</h3>
-					<p class="text-xs sm:text-sm text-muted-foreground mt-1">
+					<p class="text-xs text-muted-foreground mt-0.5">
 						Configure when you receive briefs
 					</p>
 				</div>
@@ -343,35 +360,33 @@
 			</div>
 		</div>
 
-		<div class="p-4 sm:p-6">
+		<div class="p-4 sm:p-5">
 			{#if briefPreferencesState.isLoading}
 				<div class="text-center py-8">
 					<div
 						class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
 					></div>
-					<p class="text-sm sm:text-base text-muted-foreground mt-4">
-						Loading preferences...
-					</p>
+					<p class="text-sm text-muted-foreground mt-4">Loading preferences...</p>
 				</div>
 			{:else if briefPreferencesState.error}
 				<div class="text-center py-8">
-					<CircleAlert class="w-12 h-12 text-red-500 mx-auto mb-4" />
-					<p class="text-sm sm:text-base text-muted-foreground mb-4">
+					<CircleAlert class="w-10 h-10 text-red-500 mx-auto mb-3" />
+					<p class="text-sm text-muted-foreground mb-4">
 						Failed to load brief preferences
 					</p>
 					<Button
 						onclick={loadBriefPreferences}
 						variant="primary"
 						size="sm"
+						icon={RefreshCw}
 						class="shadow-ink pressable"
 					>
-						<RefreshCw class="w-4 h-4 mr-2" />
 						Retry
 					</Button>
 				</div>
 			{:else if !editingBriefPreferences && briefPreferences}
 				<!-- Display Mode -->
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 					<div>
 						<p class="block text-sm font-medium text-foreground mb-2">Frequency</p>
 						<div
@@ -434,8 +449,8 @@
 				</div>
 			{:else if editingBriefPreferences}
 				<!-- Edit Mode -->
-				<div class="space-y-4 sm:space-y-6">
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+				<div class="space-y-4">
+					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<FormField label="Frequency" labelFor="brief-frequency">
 							<Select
 								id="brief-frequency"
@@ -525,16 +540,16 @@
 
 	<!-- Scheduled Briefs -->
 	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="p-4 sm:p-6 border-b border-border">
+		<div class="px-4 sm:px-5 py-3 border-b border-border">
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-				<div class="flex-1">
-					<h3 class="text-base sm:text-lg font-medium text-foreground flex items-center">
-						<Calendar class="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-emerald-500" />
+				<div class="flex-1 min-w-0">
+					<h3
+						class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
+					>
+						<Calendar class="w-4 h-4 text-emerald-500" />
 						Scheduled Briefs
 					</h3>
-					<p class="text-xs sm:text-sm text-muted-foreground mt-1">
-						Upcoming and recent jobs
-					</p>
+					<p class="text-xs text-muted-foreground mt-0.5">Upcoming and recent jobs</p>
 				</div>
 				<div class="flex items-center gap-2">
 					<Button
@@ -549,17 +564,17 @@
 					</Button>
 					<a
 						href="/projects?tab=briefs"
-						class="inline-flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-lg hover:bg-accent/10 transition-colors pressable"
+						class="inline-flex items-center px-3 py-1.5 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-lg hover:bg-accent/10 transition-colors pressable"
 					>
-						<span class="hidden sm:inline">View All Briefs</span>
-						<span class="sm:hidden">View All</span>
-						<ExternalLink class="w-3 h-3 sm:w-4 sm:h-4 ml-1 sm:ml-2" />
+						<span class="hidden sm:inline">View All</span>
+						<span class="sm:hidden">All</span>
+						<ExternalLink class="w-3.5 h-3.5 ml-1" />
 					</a>
 				</div>
 			</div>
 		</div>
 
-		<div class="p-4 sm:p-6">
+		<div class="p-4 sm:p-5">
 			{#if briefPreferencesState.isLoading}
 				<div class="text-center py-8">
 					<div
@@ -570,27 +585,23 @@
 					</p>
 				</div>
 			{:else if briefPreferencesState.jobs.length === 0}
-				<div class="text-center py-8 tx tx-bloom tx-weak rounded-lg p-6">
-					<Calendar class="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-					<p class="text-sm sm:text-base text-muted-foreground mb-4">
-						No scheduled briefs found
-					</p>
-					<p class="text-xs sm:text-sm text-muted-foreground/70">
+				<div class="text-center py-8 tx tx-bloom tx-weak rounded-lg">
+					<Calendar class="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+					<p class="text-sm text-muted-foreground mb-1">No scheduled briefs found</p>
+					<p class="text-xs text-muted-foreground/70">
 						Enable brief preferences above to start scheduling
 					</p>
 				</div>
 			{:else}
-				<div class="space-y-3 sm:space-y-4">
+				<div class="space-y-2">
 					<!-- Upcoming Briefs -->
 					{#each getUpcomingJobs() as job}
 						<div
-							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-accent/10 border border-accent/30 rounded-lg tx tx-grain tx-weak"
+							class="flex items-center justify-between gap-3 p-3 bg-accent/10 border border-accent/30 rounded-lg tx tx-grain tx-weak"
 							transition:slide
 						>
-							<div class="flex items-center gap-2 sm:gap-3 min-w-0">
-								<div class="flex-shrink-0">
-									<Clock class="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
-								</div>
+							<div class="flex items-center gap-2.5 min-w-0">
+								<Clock class="w-4 h-4 text-accent flex-shrink-0" />
 								<div class="min-w-0">
 									<p
 										class="text-xs sm:text-sm font-medium text-foreground truncate"
@@ -602,9 +613,9 @@
 									</p>
 								</div>
 							</div>
-							<div class="flex items-center gap-2 ml-6 sm:ml-0">
+							<div class="flex items-center gap-2 flex-shrink-0">
 								<span
-									class={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${formatJobStatus(job.status).color}`}
+									class={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${formatJobStatus(job.status).color}`}
 								>
 									{formatJobStatus(job.status).text}
 								</span>
@@ -626,13 +637,11 @@
 					<!-- Recent Briefs -->
 					{#each getRecentJobs() as job}
 						<div
-							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-muted border border-border rounded-lg"
+							class="flex items-center justify-between gap-3 p-3 bg-muted border border-border rounded-lg"
 							transition:slide
 						>
-							<div class="flex items-center gap-2 sm:gap-3 min-w-0">
-								<div class="flex-shrink-0">
-									<Calendar class="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
-								</div>
+							<div class="flex items-center gap-2.5 min-w-0">
+								<Calendar class="w-4 h-4 text-muted-foreground flex-shrink-0" />
 								<div class="min-w-0">
 									<p
 										class="text-xs sm:text-sm font-medium text-foreground truncate"
@@ -644,9 +653,9 @@
 									</p>
 								</div>
 							</div>
-							<div class="flex items-center gap-2 ml-6 sm:ml-0">
+							<div class="flex items-center gap-2 flex-shrink-0">
 								<span
-									class={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${formatJobStatus(job.status).color}`}
+									class={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${formatJobStatus(job.status).color}`}
 								>
 									{formatJobStatus(job.status).text}
 								</span>

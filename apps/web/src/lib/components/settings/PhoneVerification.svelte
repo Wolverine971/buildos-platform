@@ -135,12 +135,14 @@
 
 				<div class="flex gap-2">
 					<TextInput
-							type="tel"
-							id="phone"
-							value={phoneNumber}
-							oninput={(e) =>
-								handlePhoneInput((e.currentTarget as HTMLInputElement | null)?.value ?? '')}
-							placeholder="(555) 123-4567"
+						type="tel"
+						id="phone"
+						value={phoneNumber}
+						oninput={(e) =>
+							handlePhoneInput(
+								(e.currentTarget as HTMLInputElement | null)?.value ?? ''
+							)}
+						placeholder="(555) 123-4567"
 						disabled={isLoading}
 						class="flex-1"
 						autocomplete="tel"
@@ -176,10 +178,10 @@
 				<div class="flex gap-2">
 					<TextInput
 						type="text"
-							id="code"
-							bind:value={verificationCode}
-							placeholder="123456"
-							maxlength={6}
+						id="code"
+						bind:value={verificationCode}
+						placeholder="123456"
+						maxlength={6}
 						disabled={isVerifying}
 						class="flex-1 font-mono text-lg text-center"
 						autocomplete="one-time-code"

@@ -2,32 +2,47 @@
 layout: docs
 title: Getting Started
 slug: getting-started
-summary: Your first ten minutes in BuildOS — sign up, capture a project, and see how the pieces fit together.
+summary: Your first ten minutes in BuildOS — sign up, talk through a project, and see the pieces fit together.
 icon: Zap
 order: 1
 lastUpdated: 2026-04-17
+path: apps/web/src/content/docs/getting-started.md
 ---
 
-BuildOS turns messy thinking into structured work. You dump what's in your head, the system organizes it into an ontology of projects, tasks, plans, and documents, and an in-app agent helps you execute. These docs walk through each piece.
+BuildOS is a thinking environment for people making complex things. You talk through messy work — a book, a launch, a channel, a build — and it becomes a project with memory. No forms. No blank templates. No stitching notes, docs, tasks, and chat threads back together by hand.
 
-## The shape of a first session
+This page gets you to your first project in about ten minutes.
 
-1. **Sign up.** Email or Google. The 14-day trial starts immediately.
-2. **Onboarding v3** asks what you're trying to accomplish, what's at stake, and how you want briefs delivered. Keep it honest — BuildOS uses it to tune tone.
-3. **Capture your first project.** Describe the work in plain language — voice or text. Don't structure it. Don't worry about forms. Talk it out.
-4. **Review what BuildOS created.** You'll see the project, a context document, initial tasks, and an optional plan. Everything is editable.
-5. **Connect Google Calendar.** This turns tasks into schedulable time blocks and powers the calendar side of the agent.
+## What actually happens
 
-From there, BuildOS is yours to shape. Most users settle into a rhythm of brain-dumping between sessions, checking a daily brief, and using the agent to unblock.
+1. **Sign up.** Email or Google. A 14-day trial starts immediately.
+2. **Tell BuildOS what matters.** Onboarding asks what you're trying to accomplish, what's at stake, and where you want to hear from it. Keep it honest — it tunes the voice you get back.
+3. **Talk through a project.** Open the chat or the capture surface and describe the work in plain language. Voice or text. Don't structure it.
+4. **Review what BuildOS built.** A project, a context document, tasks, and sometimes a plan — all linked, all editable.
+5. **Connect Google Calendar.** Optional but recommended. Turns tasks into schedulable time blocks and lets the agent see your availability.
+
+After that, BuildOS settles into a rhythm: dump the messy version between sessions, check the daily brief, and use the agent to un-stick whatever stalled.
 
 ## Think in projects
 
-A project is the root container. Everything else — tasks, plans, documents, goals, risks — hangs off a project. When you start a new session, frame it as a project. Even loose ideas ("I want to start writing again") benefit from being scoped as a project early, because the ontology and the agent are more useful when they have a project to reason about.
+A project is the root. Goals, milestones, plans, tasks, documents, risks, events, and people live inside it. Even loose ideas — _"I want to start writing again"_ — are worth framing as a project on day one. The project is what remembers across sessions.
+
+## A first session worth giving the product
+
+The richer your first capture, the richer the project memory. Good first sessions usually include:
+
+- **The outcome you're after.** One honest sentence.
+- **Where you are now.** What's working, what isn't.
+- **Rough shape.** Phases or chapters, even if they shift later.
+- **Blockers.** Time, skills, decisions, people.
+- **Constraints and resources.** Deadlines, tools, collaborators.
+
+Fragmentary is fine. Contradictions are fine. BuildOS resolves what it can and asks before guessing.
 
 ## Where to go next
 
-- [The BuildOS Ontology](/docs/ontology) — the entities that make BuildOS work.
-- [Brain Dump & Voice Notes](/docs/brain-dump) — the main capture flow.
-- [Agentic Chat](/docs/agentic-chat) — the in-app agent.
+- [The BuildOS Ontology](/docs/ontology) — the pieces BuildOS structures your work into.
+- [Brain Dump & Voice Notes](/docs/brain-dump) — how messy thinking becomes structured work.
+- [Agentic Chat](/docs/agentic-chat) — the in-app agent that operates on your projects.
 
-If you already have an account, head to [onboarding](/onboarding) to revisit your intent and notification preferences.
+If you already have an account, [onboarding](/onboarding) is the place to revisit intent and notification preferences.

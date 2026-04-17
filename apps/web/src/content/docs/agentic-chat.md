@@ -2,100 +2,94 @@
 layout: docs
 title: Agentic Chat
 slug: agentic-chat
-summary: The in-app agent that reads, writes, searches, and schedules across your ontology.
+summary: A collaborator that knows your projects — can audit, forecast, plan, schedule, and write back into the graph.
 icon: MessageSquare
 order: 4
 lastUpdated: 2026-04-17
+path: apps/web/src/content/docs/agentic-chat.md
 ---
 
-Agentic chat is the primary interaction surface in BuildOS. It's an agent that has tools — not a chatbot. It can read your projects, tasks, documents, and calendar; create and update entities; and search the web when it needs context. It's context-aware, so what it does depends on where you are when you open it.
+Agentic chat is your working companion inside BuildOS. Unlike a stateless chatbot, it already knows your projects, your tasks, your documents, and (if you've connected it) your calendar. It can read anything in the graph, write into it with your approval, pull in web research, and coordinate across projects.
+
+It's context-aware. Where you open it shapes what it focuses on.
 
 ## Where to find it
 
-- **Nav icon.** The default entry point. Opens the chat modal with a context picker.
-- **Brief card on the dashboard.** Opens the brief-scoped chat — split-pane on desktop, bottom-sheet on mobile — with the brief already loaded.
-- **Inside an entity.** Documents and milestones have their own chat entry that scopes the conversation to that entity.
-- **Pre-chat picker.** Before your first message, the context selection screen shows what context will apply and lets you switch.
+- **Nav icon.** The default entry point — opens with a context picker.
+- **Dashboard brief card.** Opens split-pane on desktop, bottom-sheet on mobile, with today's brief already loaded.
+- **Inside a document or milestone.** Scopes the conversation to that entity.
+- **Before your first message.** A context selection screen confirms what the agent will look at, and lets you change it.
 
-## The 8 contexts
+## What it actually does
 
-The agent operates in a context mode. The mode decides which tools are available and how the agent frames the conversation. Modes auto-switch based on where you are.
+Think about it as a collaborator with capabilities, not a tool catalog.
 
-| Context | Purpose | When it activates |
-| --- | --- | --- |
-| `global` | Cross-project or workspace-wide work | Default from the nav on a non-entity page |
-| `project` | Updates and insights for a single project | Open on a project detail page |
-| `ontology` | Cross-ontology work using the full tool catalog | Power-user mode |
-| `calendar` | Schedule coordination, availability | From calendar surfaces |
-| `daily_brief` | Act on a generated brief | From the dashboard brief card |
-| `daily_brief_update` | Tune brief cadence and notifications | From brief settings |
-| `project_create` | Guided new-project creation | From the "new project" flow |
-| `general` | Legacy fallback | Shouldn't appear — `global` replaces it |
+### Understands your work
 
-## What the agent can do
+- **Workspace and project overviews** — status snapshots without stitching reads together by hand.
+- **Search across projects, tasks, documents, and goals** — find anything without leaving chat.
+- **Entity deep-dives** — pull the full state of a specific task, project, or document.
 
-**Reads**
+### Structures and advances work
 
-- List and search projects, tasks, documents, goals.
-- Get details on a specific task or project.
-- List your calendar events.
-- Pull workspace and user-profile overviews.
-- Look up schema info for a field (`get_field_info`).
+- **Project creation** — turn a loose idea into a valid project with the smallest structure that fits.
+- **Planning and task structuring** — break outcomes into plans, refine what exists, connect tasks to goals and milestones.
+- **Document workspace management** — create, update, place, and reorganize docs without breaking hierarchy rules.
+- **Risks, goals, milestones** — update, close, re-scope with the changes reviewed before they land.
 
-**Writes**
+### Thinks about the project with you
 
-- Create tasks, projects, and documents.
-- Update tasks and projects.
-- Create calendar events.
+- **Project audit** — health check: blockers, stale work, missing coverage, structural gaps.
+- **Project forecast** — schedule outcomes, slippage risk, the biggest drivers of uncertainty.
 
-**Discovery**
+### Coordinates execution
 
-- `skill_load`, `tool_search`, `tool_schema` — the agent can introspect and load additional skills mid-conversation.
+- **Calendar management** — check availability, schedule or reschedule, cancel, map project calendars.
+- **Web research** — search the web, fetch specific URLs, pull external context into the project.
+- **People context** — use profile and contact records when personalization matters.
 
-**Web**
+Anything the agent writes is approved first and shows up in the rest of the product just like something you made yourself.
 
-- `websearch` via Tavily for live research.
-- `webvisit` to fetch and parse a specific URL.
+## Prompts worth trying
 
-Every entity the agent writes is typed and indexed, so it shows up in search, briefs, and the rest of the product exactly like anything you created yourself.
-
-## Try these prompts
-
-**Global**
+**From the nav (workspace-wide)**
 
 - "What should I work on today?"
-- "Summarize what happened across all my projects this week."
-- "Which projects have stalled in the last 10 days?"
+- "What's happened across my projects this week?"
+- "Which projects have stalled in the last ten days?"
 - "Find tasks that are blocked and tell me why."
 
-**Project-scoped**
+**Inside a project**
 
-- "What's blocking this project?"
+- "What's blocking this one?"
+- "Audit this project — where are the gaps?"
 - "Draft a plan for launching by March."
 - "Which tasks are overdue and why?"
+- "Are we on track? Show me the risk."
 - "Update the context doc with what I learned yesterday."
 
-**Calendar**
+**With calendar connected**
 
-- "Find me 2 hours tomorrow for focus work."
-- "Schedule the top 3 tasks from this project this week."
+- "Find me two hours tomorrow for focus work."
+- "Schedule the top three tasks from this project this week."
+- "Cancel today's placeholder and reschedule for Thursday morning."
 
-**Brief**
+**From a brief**
 
 - "Turn today's priorities into calendar blocks."
 - "Explain why this task is on today's brief."
 
-**Project create**
+**Starting a new project**
 
 - "Help me scope a new book project."
-- "I want to launch a newsletter — break that into phases."
+- "I want to launch a newsletter. Break that into phases."
 
-## A note on the architecture
+## A note on judgment
 
-There are three agentic-chat services in the codebase (`agentic-chat`, `agentic-chat-v2`, `agentic-chat-lite`). Only **v2** is user-facing. The others are library and shadow-testing infrastructure that you shouldn't have to think about.
+The agent tries to act fast, but it doesn't pretend to know things it doesn't. If the target is ambiguous — two projects with similar names, a task it can't resolve — it asks one concise question before it writes. If a write fails, it says what didn't change instead of faking success. That's the behavior you want from a collaborator.
 
 ## Next
 
 - [Calendar & Time Blocks](/docs/calendar)
 - [Daily Briefs](/docs/daily-briefs)
-- [Connect External Agents](/docs/connect-agents) — extend the same capabilities to Claude Code and OpenClaw
+- [Connect External Agents](/docs/connect-agents) — extend the same capabilities to Claude Code or OpenClaw.

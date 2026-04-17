@@ -3,10 +3,7 @@
 	import { ArrowLeft, ArrowRight } from 'lucide-svelte';
 	import type { DocSectionMeta } from '$lib/utils/docs';
 
-	let {
-		prev,
-		next
-	}: { prev: DocSectionMeta | null; next: DocSectionMeta | null } = $props();
+	let { prev, next }: { prev: DocSectionMeta | null; next: DocSectionMeta | null } = $props();
 </script>
 
 <nav aria-label="Docs pagination" class="grid grid-cols-1 sm:grid-cols-2 gap-3">

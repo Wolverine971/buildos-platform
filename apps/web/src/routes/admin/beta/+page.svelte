@@ -506,48 +506,48 @@
 	<AdminPageHeader
 		title="Beta Program Management"
 		description="Manage beta signups, members, and email communications"
-			icon={UserCheck}
-			backHref="/admin"
-			backLabel="Dashboard"
-		>
-			{#snippet actions()}
-				<div class="flex items-center space-x-4">
-					<div class="text-sm text-muted-foreground">
-						{totalItems} total {activeTab === 'emails'
-							? 'emails'
-							: activeTab === 'dataview'
-								? 'signups'
-								: activeTab}
-					</div>
-					{#if activeTab === 'dataview'}
-						<Button
-							onclick={exportToCSV}
-							variant="primary"
-							size="md"
-							icon={Download}
-							iconPosition="left"
-							class="bg-green-600 hover:bg-green-700"
-							title="Export to CSV"
-						>
-							<span class="hidden lg:inline">Export CSV</span>
-						</Button>
-					{/if}
-					{#if activeTab !== 'emails'}
-						<Button
-							onclick={loadData}
-							disabled={isLoading}
-							variant="primary"
-							size="md"
-							loading={isLoading}
-							icon={RefreshCw}
-							iconPosition="left"
-						>
-							<span class="hidden lg:inline">Refresh</span>
-						</Button>
-					{/if}
+		icon={UserCheck}
+		backHref="/admin"
+		backLabel="Dashboard"
+	>
+		{#snippet actions()}
+			<div class="flex items-center space-x-4">
+				<div class="text-sm text-muted-foreground">
+					{totalItems} total {activeTab === 'emails'
+						? 'emails'
+						: activeTab === 'dataview'
+							? 'signups'
+							: activeTab}
 				</div>
-			{/snippet}
-		</AdminPageHeader>
+				{#if activeTab === 'dataview'}
+					<Button
+						onclick={exportToCSV}
+						variant="primary"
+						size="md"
+						icon={Download}
+						iconPosition="left"
+						class="bg-green-600 hover:bg-green-700"
+						title="Export to CSV"
+					>
+						<span class="hidden lg:inline">Export CSV</span>
+					</Button>
+				{/if}
+				{#if activeTab !== 'emails'}
+					<Button
+						onclick={loadData}
+						disabled={isLoading}
+						variant="primary"
+						size="md"
+						loading={isLoading}
+						icon={RefreshCw}
+						iconPosition="left"
+					>
+						<span class="hidden lg:inline">Refresh</span>
+					</Button>
+				{/if}
+			</div>
+		{/snippet}
+	</AdminPageHeader>
 
 	<!-- Tabs - Mobile Responsive -->
 	<div class="border-b border-border mb-4">
@@ -1314,11 +1314,11 @@
 					<!-- Member Tier Filter -->
 					<div>
 						<div class="block text-sm font-medium text-foreground mb-1">Tier</div>
-							<Select
-								bind:value={memberFilters.tier}
-								onchange={(value) => (memberFilters.tier = String(value))}
-								size="md"
-							>
+						<Select
+							bind:value={memberFilters.tier}
+							onchange={(value) => (memberFilters.tier = String(value))}
+							size="md"
+						>
 							<option value="all">All Tiers</option>
 							<option value="founder">Founder</option>
 							<option value="early">Early</option>

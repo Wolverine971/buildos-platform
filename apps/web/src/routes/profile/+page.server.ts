@@ -1,6 +1,5 @@
 // apps/web/src/routes/profile/+page.server.ts
 import { redirect, fail, Actions, type RequestEvent } from '@sveltejs/kit';
-import { OnboardingProgressService } from '$lib/services/onboardingProgress.service';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
 import { PRIVATE_GOOGLE_CLIENT_ID } from '$env/static/private';
@@ -86,11 +85,13 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		throw redirect(303, '/auth/login');
 	}
 
-	// Initialize services
-	const progressService = new OnboardingProgressService(supabase);
+	const stripeEnabled = StripeService.isEnabled();
 
-	// Load core profile data (not calendar data - that's loaded lazily)
-	const [userContext, _progressData, projectTemplates, userData] = await Promise.all([
+	// Load core profile data (not calendar data - that's loaded lazily).
+	// Progress is computed inline from userContext below, so we don't need to
+	// fetch it via OnboardingProgressService (would duplicate the user_context
+	// query).
+	const [userContext, projectTemplates, userData, subscription] = await Promise.all([
 		// Get user context
 		supabase
 			.from('user_context')
@@ -103,9 +104,6 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 				}
 				return data;
 			}),
-
-		// Get detailed progress data using updated service
-		progressService.getOnboardingProgress(user.id),
 
 		// Get project brief templates (system + user's own)
 		supabase
@@ -134,7 +132,31 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 					return { onboarding_completed_at: null, is_admin: false };
 				}
 				return data || { onboarding_completed_at: null, is_admin: false };
-			})
+			}),
+
+		// Get active subscription (only when Stripe is enabled)
+		stripeEnabled
+			? (
+					supabase.from('customer_subscriptions').select(
+						`
+						*,
+						subscription_plans (
+							name,
+							description,
+							price,
+							currency,
+							interval,
+							interval_count
+						)
+					`
+					) as any
+				)
+					.eq('user_id', user.id)
+					.order('created_at', { ascending: false })
+					.limit(1)
+					.maybeSingle()
+					.then(({ data }: { data: any }) => data ?? null)
+			: Promise.resolve(null)
 	]);
 
 	// Check if coming from completed onboarding
@@ -143,47 +165,20 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 	// Get active tab from URL params
 	const activeTab = url.searchParams.get('tab') || 'account';
 
-	// Get subscription data if Stripe is enabled
-	let subscription = null;
+	// Fetch recent invoices once we have the subscription id.
 	let subscriptionDetails: SubscriptionDetails | null = null;
-	const stripeEnabled = StripeService.isEnabled();
-	if (stripeEnabled) {
-		const { data: subData } = await (
-			supabase.from('customer_subscriptions').select(
-				`
-				*,
-				subscription_plans (
-					name,
-					description,
-					price,
-					currency,
-					interval,
-					interval_count
-				)
-			`
-			) as any
-		)
-			.eq('user_id', user.id)
+	if (subscription) {
+		const { data: invoices } = await supabase
+			.from('invoices')
+			.select('*')
+			.eq('subscription_id', subscription.id as string)
 			.order('created_at', { ascending: false })
-			.limit(1)
-			.single();
+			.limit(10);
 
-		subscription = subData;
-
-		// Get payment history
-		if (subscription) {
-			const { data: invoices } = await supabase
-				.from('invoices')
-				.select('*')
-				.eq('subscription_id', subscription.id as string)
-				.order('created_at', { ascending: false })
-				.limit(10);
-
-			subscriptionDetails = {
-				subscription: subscription as SubscriptionDetails['subscription'],
-				invoices: (invoices || []) as SubscriptionDetails['invoices']
-			};
-		}
+		subscriptionDetails = {
+			subscription: subscription as SubscriptionDetails['subscription'],
+			invoices: (invoices || []) as SubscriptionDetails['invoices']
+		};
 	}
 
 	// Onboarding completion is derived from users.onboarding_completed_at.

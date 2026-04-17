@@ -20,20 +20,14 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 
 	try {
-		// Fetch timezone from users table (centralized source of truth)
-		const { data: userData } = await supabase
-			.from('users')
-			.select('timezone')
-			.eq('id', user.id)
-			.single();
+		// Fetch timezone (centralized in users table) and brief preferences in
+		// parallel — the two queries are independent.
+		const [{ data: userData }, { data: preferences, error }] = await Promise.all([
+			supabase.from('users').select('timezone').eq('id', user.id).single(),
+			supabase.from('user_brief_preferences').select('*').eq('user_id', user.id).maybeSingle()
+		]);
 
-		const { data: preferences, error } = await supabase
-			.from('user_brief_preferences')
-			.select('*')
-			.eq('user_id', user.id)
-			.single();
-
-		if (error && error.code !== 'PGRST116') {
+		if (error) {
 			throw error;
 		}
 

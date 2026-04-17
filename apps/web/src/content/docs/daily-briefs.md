@@ -2,53 +2,54 @@
 layout: docs
 title: Daily Briefs
 slug: daily-briefs
-summary: AI-generated briefs delivered by email, SMS, and in-app — with a chat that acts on them.
+summary: Short, project-aware briefs delivered where you already are — with a chat that can act on them.
 icon: Mail
 order: 7
 lastUpdated: 2026-04-17
+path: apps/web/src/content/docs/daily-briefs.md
 ---
 
-A brief is a short, AI-generated synthesis of your current state — what's happening in your projects, what to focus on, what's blocked, and what's changed since last time. Briefs are how BuildOS shows up when you aren't inside the app.
+A brief is a short read on where your work actually stands — what's moving, what's blocked, what changed since last time, and what deserves your attention today. It's how BuildOS shows up when you aren't inside the app.
 
 ## Types
 
-- **Individual project briefs.** Deep-dive updates scoped to one project.
-- **Master daily briefs.** A comprehensive rollup across every active project, with the day's priorities and strategic alignment.
+- **Per-project briefs.** Deep-dive updates scoped to a single project.
+- **Daily master briefs.** A rollup across every active project, with today's priorities and the thread that connects them.
 
 ## Delivery
 
 - **In-app.** Always available on the [Briefs](/briefs) page, with an analytics tab for generation stats, delivery success, and engagement.
 - **Email.** Delivered to the address on your account at your scheduled time.
-- **SMS.** Opt in from profile preferences. Powered by Twilio.
+- **SMS.** Opt in from profile preferences.
 
-Pick whichever combination fits. You can turn channels on and off per brief type.
+Mix and match. You can turn channels on and off per brief type.
 
 ## What a brief contains
 
-Each brief is generated from your ontology and includes:
+Briefs are generated from your project graph, not a generic summary. Each one typically includes:
 
-- **Project status** — current progress and milestone updates.
+- **Project status** — real progress, not a restated task list.
 - **Priority actions** — what to focus on today or this week.
-- **Blockers and challenges** — items that need a decision.
-- **Recent context** — insights from the latest capture sessions.
-- **Strategic alignment** — how active projects ladder to your goals.
+- **Blockers and open questions** — items that need a decision.
+- **Recent context** — insights pulled from the latest dumps and updates.
+- **Strategic alignment** — how active projects ladder into the goals you named.
 
-## Chat from a brief
+## Act on it in chat
 
-Tap a brief card on the dashboard and the agent opens in `daily_brief` context with the brief pre-loaded. Try:
+Tap a brief card on the dashboard and the agent opens with the brief loaded. Useful prompts:
 
-- "Turn today's priorities into calendar blocks."
-- "Explain why this task is on today's brief."
-- "What did I ship this week across all projects?"
-- "Pick three tasks I should finish before Friday."
+- _"Turn today's priorities into calendar blocks."_
+- _"Explain why this task is on today's brief."_
+- _"What did I actually ship this week across all projects?"_
+- _"Pick three things I should finish before Friday."_
 
-Anything the agent creates from a brief chat — calendar events, new tasks, updated documents — is written back into your ontology.
+Anything the agent creates from a brief chat — events, new tasks, document updates — is written back into your project graph.
 
-## Cadence and engagement backoff
+## Cadence and honest pacing
 
-Briefs adapt. If you stop engaging, BuildOS dials back delivery instead of spamming you. You can override this in brief settings at any time. The `daily_brief_update` agent context exists specifically for tuning cadence and notifications without leaving chat.
+Briefs adapt. If you stop opening them, BuildOS dials back delivery instead of piling up more of them. You can override this any time in brief settings. You can also tune brief cadence and notification preferences through the agent in a conversation — _"send briefs every other weekday"_ is a perfectly fine thing to ask for.
 
 ## Next
 
-- [Notifications](/docs/notifications) — where briefs live alongside other channels.
+- [Notifications](/docs/notifications) — where briefs live alongside the other channels.
 - [Agentic Chat](/docs/agentic-chat)

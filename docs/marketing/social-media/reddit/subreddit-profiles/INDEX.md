@@ -9,6 +9,7 @@
 **Related Docs:**
 
 - **[Subreddit Tracker](../reddit-subreddit-tracker.md)** — Live tracking with last visited dates, aggregate stats, recurring-thread inventory
+- **[Reddit Reply Strategy](../reddit-reply-strategy.md)** — Voice + angle + decision rails for Stage 2 comment drafting (v0.1)
 - **[Research Spec](../reddit-subreddit-research-spec.md)** — The source task spec (T3) that produced these profiles
 - **[Brand Guide](../../../brand/brand-guide-1-pager.md)** — Non-negotiable voice + terms
 - **[Creator Wedge Strategy](../../../strategy/thinking-environment-creator-strategy.md)** — Authors + YouTubers primary audience
@@ -248,10 +249,12 @@ And this body structure (with the spec-required sections):
 - **[buildos-strat-tasks.md T3](/buildos-strat-tasks.md)** — T3: this task's definition of done
 - **[Reddit Subreddit Tracker](../reddit-subreddit-tracker.md)** — Live tracker with scan history and recurring-thread inventory
 
-### Workflows (future)
+### Workflows
 
-- **`/reddit-warmup`** (Stage 1) — to be built; will consume this INDEX + the tracker to surface the day's prioritized threads.
-- **`/reddit-reply`** (Stage 2) — to be built; will draft founder-disclosed replies per the 90/10 rule.
+- **`/reddit-warmup`** (Stage 1) — Daily thread-sourcing pass. Consumes this INDEX + the tracker, scores threads via the JSON API, surfaces top 5–7 for human review. See `.claude/commands/reddit-warmup.md`.
+- **`/reddit-reply`** (Stage 2) — Comment-drafting pass. Loads the Stage 1 output + `reddit-reply-strategy.md` + per-sub profiles, drafts 2–3 options per thread using the 4-pattern library, and runs every draft through a 7-question quality gate. See `.claude/commands/reddit-reply.md`.
+
+Each Stage 2 draft appends a `Drafted` entry to the relevant sub profile's `Notes log`; on user confirmation the entry is updated to `Posted` with the exact text. Strategy is v0.1 — pre-voice-data; expect v1.0 after ~30 days of real replies.
 
 ---
 

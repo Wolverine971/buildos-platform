@@ -21,12 +21,22 @@
 
 	interface Props {
 		userId: string;
+		// Optional shared SMS preferences from parent. When provided, we skip
+		// the initial direct fetch and stay in sync with the parent's row.
+		smsPreferences?: any;
+		smsPreferencesLoading?: boolean;
+		onSmsPreferencesRefresh?: () => void | Promise<void>;
 	}
 
-	let { userId }: Props = $props();
+	let {
+		userId,
+		smsPreferences = undefined,
+		smsPreferencesLoading = false,
+		onSmsPreferencesRefresh
+	}: Props = $props();
 
 	let preferences = $state<any>(null);
-	let isLoading = $state(true);
+	let isLoading = $state(smsPreferences === undefined);
 	let isSaving = $state(false);
 
 	// Preference settings
@@ -41,29 +51,49 @@
 	let timezone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 	onMount(async () => {
-		await loadPreferences();
+		if (smsPreferences === undefined) {
+			await loadPreferences();
+		}
 	});
+
+	// When the parent provides smsPreferences as a prop, hydrate our form
+	// state from it and stay in sync as it refreshes.
+	$effect(() => {
+		if (smsPreferences !== undefined) {
+			applyPreferences(smsPreferences);
+			isLoading = Boolean(smsPreferencesLoading) && !smsPreferences;
+		}
+	});
+
+	function applyPreferences(prefs: any) {
+		preferences = prefs;
+		if (!prefs) return;
+		eventRemindersEnabled = prefs.event_reminders_enabled || false;
+		eventReminderLeadTime = prefs.event_reminder_lead_time_minutes || 15;
+		morningKickoffEnabled = prefs.morning_kickoff_enabled || false;
+		morningKickoffTime = prefs.morning_kickoff_time || '08:00';
+		eveningRecapEnabled = prefs.evening_recap_enabled || false;
+		urgentAlerts = prefs.urgent_alerts !== false; // Default to true
+		quietHoursStart = prefs.quiet_hours_start || '22:00';
+		quietHoursEnd = prefs.quiet_hours_end || '08:00';
+		timezone = prefs.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+	}
 
 	async function loadPreferences() {
 		isLoading = true;
 		const result = await smsService.getSMSPreferences(userId);
-
 		if (result.success && result.data?.preferences) {
-			preferences = result.data.preferences;
-
-			// Update state with loaded preferences
-			eventRemindersEnabled = preferences.event_reminders_enabled || false;
-			eventReminderLeadTime = preferences.event_reminder_lead_time_minutes || 15;
-			morningKickoffEnabled = preferences.morning_kickoff_enabled || false;
-			morningKickoffTime = preferences.morning_kickoff_time || '08:00';
-			eveningRecapEnabled = preferences.evening_recap_enabled || false;
-			urgentAlerts = preferences.urgent_alerts !== false; // Default to true
-			quietHoursStart = preferences.quiet_hours_start || '22:00';
-			quietHoursEnd = preferences.quiet_hours_end || '08:00';
-			timezone = preferences.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+			applyPreferences(result.data.preferences);
 		}
-
 		isLoading = false;
+	}
+
+	async function refreshPreferences() {
+		if (onSmsPreferencesRefresh) {
+			await onSmsPreferencesRefresh();
+		} else {
+			await loadPreferences();
+		}
 	}
 
 	async function savePreferences() {
@@ -83,7 +113,7 @@
 
 		if (result.success) {
 			toastService.success('SMS preferences saved successfully');
-			await loadPreferences(); // Reload to get latest data
+			await refreshPreferences();
 		} else {
 			toastService.error(result.errors?.[0] || 'Failed to save preferences');
 		}
@@ -104,7 +134,7 @@
 
 		if (result.success) {
 			toastService.info('You have been opted out of SMS notifications');
-			await loadPreferences();
+			await refreshPreferences();
 		} else {
 			toastService.error('Failed to opt out');
 		}
@@ -137,7 +167,7 @@
 			</div>
 			<div class="p-4">
 				{#if !isPhoneVerified}
-					<PhoneVerification />
+					<PhoneVerification onVerified={refreshPreferences} />
 				{:else}
 					<div class="space-y-3">
 						<div

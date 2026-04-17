@@ -194,17 +194,17 @@
 	}
 </script>
 
-<div class="space-y-6">
-	<!-- Header -->
-	<div class="flex items-start gap-3 sm:gap-4">
+<div class="space-y-4 sm:space-y-5">
+	<!-- Tab Header -->
+	<div class="flex items-start gap-3">
 		<div
-			class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-accent shadow-ink flex-shrink-0"
+			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
 		>
-			<Sparkles class="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
+			<Sparkles class="w-5 h-5 text-accent-foreground" />
 		</div>
 		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-2xl font-bold text-foreground">AI Preferences</h2>
-			<p class="text-xs sm:text-base text-muted-foreground mt-1">
+			<h2 class="text-lg sm:text-xl font-bold text-foreground">AI Preferences</h2>
+			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
 				Control how BuildOS communicates and plans with you.
 			</p>
 		</div>
@@ -216,32 +216,34 @@
 		</div>
 	{:else}
 		<!-- Communication Style -->
-		<div class="bg-card border border-border rounded-xl p-5 shadow-ink tx tx-frame tx-weak">
-			<div class="flex items-center gap-2 mb-3">
-				<MessageCircle class="w-4 h-4 text-accent" />
-				<h3 class="text-base sm:text-lg font-semibold text-foreground">
+		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+			<div class="px-4 sm:px-5 py-3 border-b border-border">
+				<h3
+					class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
+				>
+					<MessageCircle class="w-4 h-4 text-accent" />
 					Communication style
 				</h3>
+				<p class="text-xs text-muted-foreground mt-0.5">
+					Set the tone for chat responses, brief summaries, and planning guidance.
+				</p>
 			</div>
-			<p class="text-sm text-muted-foreground mb-4">
-				Set the tone for chat responses, brief summaries, and planning guidance.
-			</p>
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3">
 				{#each communicationOptions as option}
 					{@const isSelected = communicationStyle === option.id}
 					<button
 						type="button"
 						onclick={() => (communicationStyle = option.id)}
 						disabled={isDisabled}
-						class="text-left p-4 rounded-xl border transition-all duration-200 pressable {isSelected
+						class="text-left p-3 rounded-lg border transition-all duration-200 pressable {isSelected
 							? 'border-accent bg-accent/5 shadow-ink'
 							: 'border-border bg-card hover:border-accent/50 hover:shadow-ink'} {isDisabled
 							? 'opacity-60 cursor-not-allowed'
 							: ''}"
 						aria-pressed={isSelected}
 					>
-						<h4 class="font-semibold text-foreground mb-1">{option.title}</h4>
-						<p class="text-sm text-muted-foreground leading-relaxed">
+						<h4 class="text-sm font-semibold text-foreground mb-1">{option.title}</h4>
+						<p class="text-xs text-muted-foreground leading-relaxed">
 							{option.description}
 						</p>
 					</button>
@@ -250,30 +252,34 @@
 		</div>
 
 		<!-- Proactivity -->
-		<div class="bg-card border border-border rounded-xl p-5 shadow-ink tx tx-frame tx-weak">
-			<div class="flex items-center gap-2 mb-3">
-				<Zap class="w-4 h-4 text-accent" />
-				<h3 class="text-base sm:text-lg font-semibold text-foreground">Proactivity</h3>
+		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+			<div class="px-4 sm:px-5 py-3 border-b border-border">
+				<h3
+					class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
+				>
+					<Zap class="w-4 h-4 text-accent" />
+					Proactivity
+				</h3>
+				<p class="text-xs text-muted-foreground mt-0.5">
+					Decide how much BuildOS should push beyond what you ask.
+				</p>
 			</div>
-			<p class="text-sm text-muted-foreground mb-4">
-				Decide how much BuildOS should push beyond what you ask.
-			</p>
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3">
 				{#each proactivityOptions as option}
 					{@const isSelected = proactivityLevel === option.id}
 					<button
 						type="button"
 						onclick={() => (proactivityLevel = option.id)}
 						disabled={isDisabled}
-						class="text-left p-4 rounded-xl border transition-all duration-200 pressable {isSelected
+						class="text-left p-3 rounded-lg border transition-all duration-200 pressable {isSelected
 							? 'border-accent bg-accent/5 shadow-ink'
 							: 'border-border bg-card hover:border-accent/50 hover:shadow-ink'} {isDisabled
 							? 'opacity-60 cursor-not-allowed'
 							: ''}"
 						aria-pressed={isSelected}
 					>
-						<h4 class="font-semibold text-foreground mb-1">{option.title}</h4>
-						<p class="text-sm text-muted-foreground leading-relaxed">
+						<h4 class="text-sm font-semibold text-foreground mb-1">{option.title}</h4>
+						<p class="text-xs text-muted-foreground leading-relaxed">
 							{option.description}
 						</p>
 					</button>
@@ -282,30 +288,34 @@
 		</div>
 
 		<!-- Response Length -->
-		<div class="bg-card border border-border rounded-xl p-5 shadow-ink tx tx-frame tx-weak">
-			<div class="flex items-center gap-2 mb-3">
-				<AlignLeft class="w-4 h-4 text-accent" />
-				<h3 class="text-base sm:text-lg font-semibold text-foreground">Response length</h3>
+		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+			<div class="px-4 sm:px-5 py-3 border-b border-border">
+				<h3
+					class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
+				>
+					<AlignLeft class="w-4 h-4 text-accent" />
+					Response length
+				</h3>
+				<p class="text-xs text-muted-foreground mt-0.5">
+					Choose how detailed responses should be by default.
+				</p>
 			</div>
-			<p class="text-sm text-muted-foreground mb-4">
-				Choose how detailed responses should be by default.
-			</p>
-			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3">
 				{#each responseLengthOptions as option}
 					{@const isSelected = responseLength === option.id}
 					<button
 						type="button"
 						onclick={() => (responseLength = option.id)}
 						disabled={isDisabled}
-						class="text-left p-4 rounded-xl border transition-all duration-200 pressable {isSelected
+						class="text-left p-3 rounded-lg border transition-all duration-200 pressable {isSelected
 							? 'border-accent bg-accent/5 shadow-ink'
 							: 'border-border bg-card hover:border-accent/50 hover:shadow-ink'} {isDisabled
 							? 'opacity-60 cursor-not-allowed'
 							: ''}"
 						aria-pressed={isSelected}
 					>
-						<h4 class="font-semibold text-foreground mb-1">{option.title}</h4>
-						<p class="text-sm text-muted-foreground leading-relaxed">
+						<h4 class="text-sm font-semibold text-foreground mb-1">{option.title}</h4>
+						<p class="text-xs text-muted-foreground leading-relaxed">
 							{option.description}
 						</p>
 					</button>
@@ -314,16 +324,18 @@
 		</div>
 
 		<!-- Working Context -->
-		<div class="bg-card border border-border rounded-xl p-5 shadow-ink tx tx-frame tx-weak">
-			<h3 class="text-base sm:text-lg font-semibold text-foreground mb-2">Working context</h3>
-			<p class="text-sm text-muted-foreground mb-4">
-				Optional details that help BuildOS tailor examples and recommendations.
-			</p>
-			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+			<div class="px-4 sm:px-5 py-3 border-b border-border">
+				<h3 class="text-sm sm:text-base font-semibold text-foreground">Working context</h3>
+				<p class="text-xs text-muted-foreground mt-0.5">
+					Optional details that help BuildOS tailor examples and recommendations.
+				</p>
+			</div>
+			<div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
 				<div>
 					<label
 						for="primary-role"
-						class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2"
+						class="block text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
 					>
 						Your role
 					</label>
@@ -337,7 +349,7 @@
 				<div>
 					<label
 						for="domain-context"
-						class="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2"
+						class="block text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
 					>
 						Your domain
 					</label>
@@ -354,11 +366,11 @@
 		<div class="flex justify-end">
 			<Button
 				variant="primary"
-				size="lg"
+				size="md"
 				onclick={savePreferences}
 				loading={isSaving}
 				disabled={isDisabled}
-				class="shadow-ink pressable min-w-[200px]"
+				class="shadow-ink pressable"
 			>
 				{#if isSaving}
 					Saving...

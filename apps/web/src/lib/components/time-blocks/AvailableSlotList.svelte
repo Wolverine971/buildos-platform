@@ -32,12 +32,12 @@
 
 		// Convert to array and sort by date
 		return Array.from(grouped.entries())
-				.sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-				.map(([dateKey, slots]) => ({
-					dateKey,
-					date: slots[0]?.dayDate ?? new Date(dateKey),
-					slots
-				}));
+			.sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+			.map(([dateKey, slots]) => ({
+				dateKey,
+				date: slots[0]?.dayDate ?? new Date(dateKey),
+				slots
+			}));
 	});
 
 	function formatDayHeader(date: Date): string {

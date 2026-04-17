@@ -287,14 +287,29 @@
 	}
 </script>
 
-<div class="space-y-6">
+<div class="space-y-4 sm:space-y-5">
+	<!-- Tab Header -->
+	<div class="flex items-start gap-3">
+		<div
+			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
+		>
+			<User class="w-5 h-5 text-accent-foreground" />
+		</div>
+		<div class="flex-1 min-w-0">
+			<h2 class="text-lg sm:text-xl font-bold text-foreground">Account</h2>
+			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+				Manage your profile, password, and public URL.
+			</p>
+		</div>
+	</div>
+
 	<!-- Success Message -->
 	{#if successMessage}
 		<div
-			class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 shadow-ink tx tx-grain tx-weak"
+			class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 shadow-ink tx tx-grain tx-weak"
 		>
-			<div class="flex items-center space-x-2">
-				<CircleCheck class="w-5 h-5 text-emerald-500" />
+			<div class="flex items-center gap-2">
+				<CircleCheck class="w-4 h-4 text-emerald-500" />
 				<p class="text-sm text-foreground">{successMessage}</p>
 			</div>
 		</div>
@@ -303,10 +318,10 @@
 	<!-- Error Messages -->
 	{#if errors.length > 0}
 		<div
-			class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 shadow-ink tx tx-static tx-weak"
+			class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 shadow-ink tx tx-static tx-weak"
 		>
-			<div class="flex items-start space-x-2">
-				<TriangleAlert class="w-5 h-5 text-red-500 mt-0.5" />
+			<div class="flex items-start gap-2">
+				<TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
 				<div class="text-sm text-foreground">
 					{#each errors as error}
 						<p>{error}</p>
@@ -320,64 +335,64 @@
 	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
 		<div class="border-b border-border">
 			<nav
-				class="flex overflow-x-auto px-4 sm:px-6 -mb-px scrollbar-hide"
+				class="flex overflow-x-auto px-3 sm:px-5 -mb-px scrollbar-hide"
 				aria-label="Account sections"
 			>
 				<Button
 					onclick={() => switchSection('profile')}
 					disabled={loading}
 					variant="ghost"
-					size="md"
-					class="py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0
+					size="sm"
+					class="py-2.5 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0
 					{activeSection === 'profile'
 						? 'border-accent text-accent'
 						: 'border-transparent text-muted-foreground hover:text-foreground'}"
 					icon={User}
 				>
-					<span class="hidden sm:inline">Profile Information</span>
+					<span class="hidden sm:inline">Profile</span>
 					<span class="sm:hidden">Profile</span>
 				</Button>
 				<Button
 					onclick={() => switchSection('password')}
 					disabled={loading}
 					variant="ghost"
-					size="md"
-					class="py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-4 sm:ml-8
+					size="sm"
+					class="py-2.5 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-3 sm:ml-5
 					{activeSection === 'password'
 						? 'border-accent text-accent'
 						: 'border-transparent text-muted-foreground hover:text-foreground'}"
 					icon={Lock}
 				>
-					<span class="hidden sm:inline">Change Password</span>
+					<span class="hidden sm:inline">Password</span>
 					<span class="sm:hidden">Password</span>
 				</Button>
 				<Button
 					onclick={() => switchSection('danger')}
 					disabled={loading}
 					variant="ghost"
-					size="md"
-					class="py-3 sm:py-4 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-4 sm:ml-8
+					size="sm"
+					class="py-2.5 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-3 sm:ml-5
 					{activeSection === 'danger'
 						? 'border-red-500 text-red-500'
 						: 'border-transparent text-muted-foreground hover:text-foreground'}"
 					icon={Trash2}
 				>
-					<span class="hidden sm:inline">Delete Account</span>
+					<span class="hidden sm:inline">Delete</span>
 					<span class="sm:hidden">Delete</span>
 				</Button>
 			</nav>
 		</div>
 
 		<!-- Section Content -->
-		<div class="p-4 sm:p-6">
+		<div class="p-4 sm:p-5">
 			<!-- Profile Section -->
 			{#if activeSection === 'profile'}
-				<div class="space-y-4 sm:space-y-6">
+				<div class="space-y-4">
 					<div>
-						<h3 class="text-base sm:text-lg font-semibold text-foreground mb-1">
+						<h3 class="text-sm sm:text-base font-semibold text-foreground mb-0.5">
 							Profile Information
 						</h3>
-						<p class="text-sm text-muted-foreground">Update your account information</p>
+						<p class="text-xs text-muted-foreground">Update your account information</p>
 					</div>
 
 					<div class="space-y-4">
@@ -417,18 +432,18 @@
 							onclick={updateProfile}
 							disabled={loading}
 							variant="primary"
-							size="md"
+							size="sm"
 							{loading}
-							class="w-full sm:w-auto shadow-ink pressable"
+							class="shadow-ink pressable"
 						>
 							{loading ? 'Updating...' : 'Update Profile'}
 						</Button>
 					</div>
 
 					<!-- Public URL / Username -->
-					<div class="mt-6 border-t border-border pt-5">
+					<div class="mt-4 border-t border-border pt-4">
 						<h4 class="text-sm font-semibold text-foreground">Your public URL</h4>
-						<p class="mt-1 text-xs text-muted-foreground leading-relaxed">
+						<p class="mt-0.5 text-xs text-muted-foreground leading-relaxed">
 							When you publish a project doc, the link uses your username as the first
 							segment:
 							<span class="font-mono text-foreground"
@@ -488,12 +503,12 @@
 
 			<!-- Password Section -->
 			{#if activeSection === 'password'}
-				<div class="space-y-4 sm:space-y-6">
+				<div class="space-y-4">
 					<div>
-						<h3 class="text-base sm:text-lg font-semibold text-foreground mb-1">
+						<h3 class="text-sm sm:text-base font-semibold text-foreground mb-0.5">
 							Change Password
 						</h3>
-						<p class="text-sm text-muted-foreground">
+						<p class="text-xs text-muted-foreground">
 							Update your password to keep your account secure
 						</p>
 					</div>
@@ -597,9 +612,9 @@
 							onclick={updatePassword}
 							disabled={loading}
 							variant="primary"
-							size="md"
+							size="sm"
 							{loading}
-							class="w-full sm:w-auto shadow-ink pressable"
+							class="shadow-ink pressable"
 						>
 							{loading ? 'Updating...' : 'Update Password'}
 						</Button>
@@ -609,57 +624,49 @@
 
 			<!-- Danger Zone Section -->
 			{#if activeSection === 'danger'}
-				<div class="space-y-4 sm:space-y-6">
-					<div
-						class="bg-red-500/10 border border-red-500/30 rounded-xl p-4 sm:p-6 tx tx-static tx-weak"
-					>
-						<div class="flex items-center gap-3 mb-4 sm:mb-6">
-							<Trash2 class="w-5 h-5 text-red-500" />
-							<h3 class="text-base sm:text-lg font-semibold text-foreground">
-								Delete Account
-							</h3>
-						</div>
+				<div
+					class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 sm:p-5 tx tx-static tx-weak"
+				>
+					<div class="flex items-center gap-2 mb-3">
+						<Trash2 class="w-4 h-4 text-red-500" />
+						<h3 class="text-sm sm:text-base font-semibold text-foreground">
+							Delete Account
+						</h3>
+					</div>
 
-						<div class="space-y-4">
-							<div class="bg-card rounded-lg p-4 border border-red-500/30">
-								<div class="flex items-start space-x-3">
-									<TriangleAlert
-										class="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0"
-									/>
-									<div class="text-sm">
-										<p class="text-foreground font-medium mb-2">
-											This action cannot be undone
-										</p>
-										<p class="text-muted-foreground">
-											Deleting your account will permanently remove all your
-											data, including:
-										</p>
-										<ul
-											class="list-disc list-inside mt-2 text-muted-foreground space-y-1"
-										>
-											<li>All projects and tasks</li>
-											<li>Daily briefs and captured project context</li>
-											<li>Calendar integration settings</li>
-											<li>Subscription and billing data</li>
-										</ul>
-									</div>
-								</div>
+					<div class="bg-card rounded-lg p-3 border border-red-500/30">
+						<div class="flex items-start gap-2.5">
+							<TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+							<div class="text-xs sm:text-sm">
+								<p class="text-foreground font-medium mb-1">
+									This action cannot be undone
+								</p>
+								<p class="text-muted-foreground">
+									Deleting your account permanently removes:
+								</p>
+								<ul
+									class="list-disc list-inside mt-1 text-muted-foreground space-y-0.5"
+								>
+									<li>All projects and tasks</li>
+									<li>Daily briefs and project context</li>
+									<li>Calendar integration settings</li>
+									<li>Subscription and billing data</li>
+								</ul>
 							</div>
 						</div>
+					</div>
 
-						<div class="flex justify-end mt-4 sm:mt-6">
-							<Button
-								onclick={() => (showDeleteConfirmation = true)}
-								disabled={loading}
-								variant="outline"
-								size="md"
-								class="text-red-500 hover:text-white hover:bg-red-600 border-red-500 w-full sm:w-auto shadow-ink pressable"
-								icon={Trash2}
-							>
-								<span class="hidden sm:inline">Delete My Account</span>
-								<span class="sm:hidden">Delete Account</span>
-							</Button>
-						</div>
+					<div class="flex justify-end mt-4">
+						<Button
+							onclick={() => (showDeleteConfirmation = true)}
+							disabled={loading}
+							variant="outline"
+							size="sm"
+							class="text-red-500 hover:text-white hover:bg-red-600 border-red-500 shadow-ink pressable"
+							icon={Trash2}
+						>
+							Delete My Account
+						</Button>
 					</div>
 				</div>
 			{/if}

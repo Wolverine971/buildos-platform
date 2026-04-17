@@ -244,12 +244,14 @@
 							Phone Number
 						</label>
 						<TextInput
-								id="phone-number"
-								bind:value={phoneNumber}
-								oninput={(e) =>
-									handlePhoneInput((e.currentTarget as HTMLInputElement | null)?.value ?? '')}
-								onkeypress={handleKeyPress}
-								type="tel"
+							id="phone-number"
+							bind:value={phoneNumber}
+							oninput={(e) =>
+								handlePhoneInput(
+									(e.currentTarget as HTMLInputElement | null)?.value ?? ''
+								)}
+							onkeypress={handleKeyPress}
+							type="tel"
 							inputmode="tel"
 							enterkeyhint="send"
 							placeholder="(555) 123-4567"
@@ -316,10 +318,10 @@
 							Enter the 6-digit code sent to {phoneNumber}
 						</p>
 						<TextInput
-								id="verification-code"
-								bind:value={verificationCode}
-								onkeypress={handleKeyPress}
-								type="text"
+							id="verification-code"
+							bind:value={verificationCode}
+							onkeypress={handleKeyPress}
+							type="text"
 							inputmode="numeric"
 							enterkeyhint="done"
 							pattern="[0-9]*"

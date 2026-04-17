@@ -25,9 +25,21 @@
 
 	interface Props {
 		userId: string;
+		// Optional shared SMS preferences from parent. When provided, we skip
+		// our own /api/sms/preferences fetch. Parent is expected to pass an
+		// `onSmsPreferencesRefresh` callback so children can trigger a reload
+		// after saves that affect the row (e.g. phone verification).
+		smsPreferences?: any;
+		smsPreferencesLoading?: boolean;
+		onSmsPreferencesRefresh?: () => void | Promise<void>;
 	}
 
-	let { userId }: Props = $props();
+	let {
+		userId,
+		smsPreferences = undefined,
+		smsPreferencesLoading = false,
+		onSmsPreferencesRefresh
+	}: Props = $props();
 
 	let preferences = $state<UserNotificationPreferences | null>(null);
 	let isLoading = $state(true);
@@ -66,31 +78,27 @@
 		isIOSDevice = /iPad|iPhone|iPod/.test(userAgent) || isTouchMac;
 		isIOSPWAContext = isInstalledPWA();
 
-		await Promise.all([
-			loadPreferences(),
-			loadDailyBriefPreferences(),
-			checkPushSubscriptionStatus()
-		]);
+		await Promise.all([loadPreferences(), checkPushSubscriptionStatus()]);
 	});
 
-	async function loadDailyBriefPreferences() {
-		try {
-			await notificationPreferencesStore.load();
-			const state = $notificationPreferencesStore;
-			if (state.preferences) {
-				dailyBriefEmailEnabled = state.preferences.should_email_daily_brief;
-				dailyBriefSmsEnabled = state.preferences.should_sms_daily_brief;
-				dailyBriefPrefsLoaded = true;
-			}
-		} catch (error) {
-			console.error('Failed to load daily brief notification preferences:', error);
+	// Keep phone verification state in sync with the shared SMS prefs prop so
+	// changes in a sibling (e.g. SMSPreferences) propagate without re-fetching.
+	$effect(() => {
+		if (smsPreferences !== undefined) {
+			phoneVerified = smsPreferences?.phone_verified || false;
+			phoneNumber = smsPreferences?.phone_number || null;
 		}
-	}
+	});
 
 	async function loadPreferences() {
 		isLoading = true;
 		loadError = null;
 		try {
+			// Single Supabase hit covers both the full preferences form state
+			// and the daily-brief toggle state consumed by BriefsTab et al.
+			// Previously we also called notificationPreferencesStore.load(),
+			// which issued a duplicate /api/notification-preferences request
+			// for the same row.
 			const prefs = await notificationPreferencesService.get();
 
 			if (prefs) {
@@ -104,13 +112,29 @@
 				quietHoursEnabled = prefs.quiet_hours_enabled;
 				quietHoursStart = prefs.quiet_hours_start;
 				quietHoursEnd = prefs.quiet_hours_end;
+
+				// Seed the daily-brief store from the same record so other
+				// consumers don't re-fetch.
+				notificationPreferencesStore.hydrate({
+					should_email_daily_brief: prefs.should_email_daily_brief,
+					should_sms_daily_brief: prefs.should_sms_daily_brief,
+					updated_at: prefs.updated_at
+				});
+				dailyBriefEmailEnabled = Boolean(prefs.should_email_daily_brief);
+				dailyBriefSmsEnabled = Boolean(prefs.should_sms_daily_brief);
+				dailyBriefPrefsLoaded = true;
 			}
 
-			// Check phone verification status
-			const smsPrefs = await smsService.getSMSPreferences(userId);
-			if (smsPrefs.success && smsPrefs.data?.preferences) {
-				phoneVerified = smsPrefs.data.preferences.phone_verified || false;
-				phoneNumber = smsPrefs.data.preferences.phone_number || null;
+			// Phone verification status — the parent passes `smsPreferences`
+			// as a prop and the $effect above keeps phoneVerified / phoneNumber
+			// in sync. When rendered standalone (no parent prop), fall back to
+			// a direct fetch.
+			if (smsPreferences === undefined) {
+				const smsPrefs = await smsService.getSMSPreferences(userId);
+				if (smsPrefs.success && smsPrefs.data?.preferences) {
+					phoneVerified = smsPrefs.data.preferences.phone_verified || false;
+					phoneNumber = smsPrefs.data.preferences.phone_number || null;
+				}
 			}
 		} catch (error) {
 			console.error('Failed to load notification preferences:', error);
@@ -134,8 +158,8 @@
 			toastService.error(
 				error instanceof Error ? error.message : 'Failed to save preferences'
 			);
-			// Reload to reset state
-			await loadDailyBriefPreferences();
+			// Reload full preferences to reset state
+			await loadPreferences();
 		}
 	}
 
@@ -186,8 +210,13 @@
 	}
 
 	async function handlePhoneVerified() {
-		// Reload preferences to get updated phone status
-		await loadPreferences();
+		// Reload preferences to get updated phone status. When a parent owns
+		// the SMS prefs row, trigger its refresh instead of our own fetch.
+		if (onSmsPreferencesRefresh) {
+			await onSmsPreferencesRefresh();
+		} else {
+			await loadPreferences();
+		}
 		// Enable SMS now that phone is verified
 		smsEnabled = true;
 		toastService.success('Phone verified! SMS notifications enabled.');

@@ -27,6 +27,91 @@ pic: 'interest-media-manifesto'
 path: apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md
 ---
 
+<!--
+
+DRAFT NOTES — FOR AUTHOR REFERENCE (not rendered)
+
+
+ROLE IN THE CLUSTER:
+
+Post #2 of the anti-feed/thinking-environment topic cluster. This is the
+CATEGORY-NAMING MANIFESTO. Its job is to claim the term "interest media" with
+a precise, citable definition so every future post in the cluster can
+reference it without redefining.
+
+- Post #1 (your-morning-without-the-algorithm): felt experience + Devin's
+  receipts + the two BuildOS rituals. Tactical. Conversion-forward.
+- Post #2 (this one): category-naming manifesto. Philosophical. Positioning
+  work, not conversion work.
+- Post #3 (what-a-thinking-environment-actually-is): defines the protagonist
+  with the same precision this post defines the antagonist.
+
+STRUCTURE:
+
+1. "The word was wrong" — hook on the naming problem, not the felt
+   experience. Different entry point from post #1.
+2. The three eras of the web — Web 1.0 (chosen) → social web (graph-bounded)
+   → interest media (algorithm + paid importance). Establishes a historical
+   arc.
+3. Why the old word stopped working — social graph is now a minor input;
+   Discord/group chats are where the social web migrated. Quotes Devin
+   directly.
+4. The word we need — precise definition of "interest media." Not Devin's
+   in-passing use, but a proper definitional passage future posts can cite.
+5. Importance as a product — the core original insight. What's distributed
+   isn't content, it's pre-decided importance. Trust arbitrage.
+6. This goes beyond streamers — extends past Devin's clipping focus to news,
+   launches, opinion formation, AI content. Broadens the audience beyond
+   creator-econ readers.
+7. The stakes — when you don't have the word, you can't see the trade.
+   "The frame decides the thought."
+8. What replaces it — three moves: migrate to the quiet half, reduce
+   exposure to the loud half, build a surface where the arrow reverses.
+9. The adjacent layer — BuildOS tie-in. Softer than post #1. "You need
+   something like it."
+10. Use the word — action CTA that costs nothing: swap "social media" for
+    "interest media" in your own speech. Category-building through
+    repetition.
+
+DELIBERATE CHOICES:
+
+- Opens with a question the reader can literally answer out loud. Makes them
+  complicit in the argument before the argument is made.
+- Defines "interest media" precisely enough that the definition is citable.
+  If this post ranks, the definition becomes the definition.
+- The "importance as a product" framing is the original intellectual
+  contribution beyond Devin's work. It's the part other writers could cite
+  back.
+- Credits Devin twice, in-body and in outro. Category-owning requires good
+  citation-network hygiene — you want him to notice and quote back.
+- Published 2026-04-17, one day after post #1 and Devin's video. Tight
+  sequencing so the cluster reads as a sustained argument, not a one-off
+  reaction.
+- Softer BuildOS CTA than post #1. This one is positioning work.
+
+THINGS TO CONSIDER BEFORE PUBLISHING:
+
+- Title punches but is also combative. Alternates:
+  * "You're Not on Social Media. You're on Interest Media."
+  * "The Wrong Name for the Internet We Live On"
+  * "Interest Media: The Word We Didn't Have Yet"
+- Consider amplifying post on X by tagging Devin Nash. Category-owning is
+  partly citation-network building — you want him to know you extended his
+  frame.
+- The "three eras of the web" framing is strong enough to stand alone as a
+  social carousel. Instagram/LinkedIn extraction worth doing.
+- "Importance as a product" is the most quotable line. Pull it as the social
+  hook when seeding distribution.
+
+RELATED DOCS:
+
+- Topic map: docs/marketing/strategy/anti-feed-content-topic-map.md
+- Work stream: docs/marketing/distribution/workstreams/WS09-anti-feed-cluster.md
+- Source transcript: youtube-transcripts/2026-04-16-exposing-the-new-manufactured-viral-content-economy.md
+- Sibling post #1: apps/web/src/content/blogs/philosophy/your-morning-without-the-algorithm.md
+- Sibling post #3: apps/web/src/content/blogs/philosophy/what-a-thinking-environment-actually-is.md
+-->
+
 ## The word was wrong
 
 When's the last time you were actually social on social media?

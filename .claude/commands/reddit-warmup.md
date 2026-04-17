@@ -11,7 +11,7 @@ You are running a daily Reddit engagement scan for BuildOS. Your job in **Stage 
 **This command runs in TWO STAGES:**
 
 1. **Stage 1 (This Command):** Discover threads from the tracker's prioritized subs using Reddit's JSON API. Score them. Output the daily engagement doc. Open the top 5–7 in Chrome for human review. Update the tracker's `Last Visited` column.
-2. **Stage 2 (Separate, Later):** `/reddit-reply` — craft comments per the 90/10 playbook. **Not built yet** — per the research spec, Stage 2 depends on `docs/marketing/social-media/reddit/reddit-reply-strategy.md`, which is written after a month of manual commenting yields real voice data.
+2. **Stage 2 (Separate):** `/reddit-reply` — reads this command's output, loads the reply strategy + per-sub profiles, runs every draft through the 7-question quality gate, and produces a replies doc with skip recommendations. Voice rails live in `docs/marketing/social-media/reddit/reddit-reply-strategy.md` (v0.1 — pre-voice-data; gets rewritten after ~30 days of real replies).
 
 ---
 
@@ -270,7 +270,7 @@ Use this format. **Update the doc as you work — don't batch.**
 
 **Created:** [timestamp]
 **Stage 1 Completed:** [timestamp]
-**Stage 2 Status:** Pending — `reddit-reply-strategy.md` not yet written (see research spec §Stage 2)
+**Stage 2 Status:** Ready for `/reddit-reply`. Voice rails live in `docs/marketing/social-media/reddit/reddit-reply-strategy.md` (v0.1). Invoke `/reddit-reply` to draft 2–3 options per thread with the 7-question quality gate applied; default is Skip when gates are ambiguous.
 ```
 
 ---
@@ -329,16 +329,16 @@ Reddit Warmup Stage 1 complete for [date].
 ## Chrome Tabs Opened: [count]
 
 ## Stage 2 Status
-Not yet available. `reddit-reply-strategy.md` needs to be written after
-a month of manual commenting yields real voice data (per research spec).
-For now, review the opened threads and reply manually in the browser,
-following each sub's profile's `Voice notes for future commenting`.
+`/reddit-reply` is available. It reads this doc, loads
+reddit-reply-strategy.md v0.1 + per-sub profiles, drafts 2–3 options per
+thread, and runs every draft through a 7-question quality gate.
+Strategy is pre-voice-data — expect v1.0 after ~30 days of real replies.
 
 Full daily doc: docs/marketing/social-media/daily-engagement/YYYY-MM-DD_reddit-warmup.md
 Tracker updated: docs/marketing/social-media/reddit/reddit-subreddit-tracker.md
 ```
 
-Do **not** auto-launch Stage 2 — it doesn't exist yet.
+Do **not** auto-launch Stage 2. DJ invokes `/reddit-reply` when ready.
 
 ---
 
@@ -386,6 +386,6 @@ Every thread you surface must respect these, or the recommendation is invalid:
 
 ---
 
-_This command is Stage 1 only. Stage 2 (`/reddit-reply`) will be built after the first month of manual commenting produces voice data for the reply-strategy doc._
+_This command is Stage 1 only. Stage 2 (`/reddit-reply`) is a separate command that reads this output, loads `reddit-reply-strategy.md`, and produces drafted comments with a 7-question quality gate applied to each._
 
 _Last Updated: 2026-04-17_

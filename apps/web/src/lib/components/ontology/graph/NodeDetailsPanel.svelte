@@ -97,32 +97,32 @@
 			texture: 'tx tx-grain tx-weak',
 			label: 'Task'
 		},
-			document: {
-				icon: FileText,
-				color: 'text-sky-600 dark:text-sky-400',
+		document: {
+			icon: FileText,
+			color: 'text-sky-600 dark:text-sky-400',
 			bgColor: 'bg-sky-50 dark:bg-sky-950/50',
 			borderColor: 'border-sky-200 dark:border-sky-800',
-				texture: 'tx tx-frame tx-weak',
-				label: 'Document'
-			},
-			note: {
-				icon: FileText,
-				color: 'text-sky-600 dark:text-sky-400',
-				bgColor: 'bg-sky-50 dark:bg-sky-950/50',
-				borderColor: 'border-sky-200 dark:border-sky-800',
-				texture: 'tx tx-frame tx-weak',
-				label: 'Note'
-			},
-			event: {
-				icon: CalendarDays,
-				color: 'text-violet-600 dark:text-violet-400',
-				bgColor: 'bg-violet-50 dark:bg-violet-950/50',
-				borderColor: 'border-violet-200 dark:border-violet-800',
-				texture: 'tx tx-thread tx-weak',
-				label: 'Event'
-			},
-			risk: {
-				icon: AlertTriangle,
+			texture: 'tx tx-frame tx-weak',
+			label: 'Document'
+		},
+		note: {
+			icon: FileText,
+			color: 'text-sky-600 dark:text-sky-400',
+			bgColor: 'bg-sky-50 dark:bg-sky-950/50',
+			borderColor: 'border-sky-200 dark:border-sky-800',
+			texture: 'tx tx-frame tx-weak',
+			label: 'Note'
+		},
+		event: {
+			icon: CalendarDays,
+			color: 'text-violet-600 dark:text-violet-400',
+			bgColor: 'bg-violet-50 dark:bg-violet-950/50',
+			borderColor: 'border-violet-200 dark:border-violet-800',
+			texture: 'tx tx-thread tx-weak',
+			label: 'Event'
+		},
+		risk: {
+			icon: AlertTriangle,
 			color: 'text-red-600 dark:text-red-400',
 			bgColor: 'bg-red-50 dark:bg-red-950/50',
 			borderColor: 'border-red-200 dark:border-red-800',

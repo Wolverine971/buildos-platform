@@ -984,9 +984,9 @@
 						>
 							Project
 						</h3>
-							<button
-								onclick={() => openProject(detail?.project?.id ?? null)}
-								class="w-full rounded-lg border border-border bg-card p-2.5 text-left hover:border-accent/50 hover:bg-muted/50 transition-colors shadow-ink pressable"
+						<button
+							onclick={() => openProject(detail?.project?.id ?? null)}
+							class="w-full rounded-lg border border-border bg-card p-2.5 text-left hover:border-accent/50 hover:bg-muted/50 transition-colors shadow-ink pressable"
 						>
 							<div class="flex items-center gap-2">
 								<FolderOpen class="h-4 w-4 shrink-0 text-accent" />
@@ -1026,44 +1026,44 @@
 					</div>
 				{/if}
 
-					<!-- Actions -->
-					<div class="flex flex-wrap gap-2 pt-2 border-t border-border">
-						{#if selectedItem?.item_type === 'task'}
-							<Button
-								variant="primary"
-								size="sm"
-								onclick={openTaskEditor}
-								disabled={!selectedItem?.task_id || !selectedItem?.project_id}
-							>
-								Edit Task
-							</Button>
+				<!-- Actions -->
+				<div class="flex flex-wrap gap-2 pt-2 border-t border-border">
+					{#if selectedItem?.item_type === 'task'}
 						<Button
-								variant="ghost"
-								size="sm"
-								onclick={() =>
-									openTaskPage(
-										selectedItem?.task_id ?? null,
-										selectedItem?.project_id ?? null
-									)}
-							>
-								Full Page
+							variant="primary"
+							size="sm"
+							onclick={openTaskEditor}
+							disabled={!selectedItem?.task_id || !selectedItem?.project_id}
+						>
+							Edit Task
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={() =>
+								openTaskPage(
+									selectedItem?.task_id ?? null,
+									selectedItem?.project_id ?? null
+								)}
+						>
+							Full Page
 						</Button>
 					{:else}
 						<Button
-								variant="primary"
-								size="sm"
-								onclick={openEventEditor}
-								disabled={!selectedItem?.event_id || !selectedItem?.project_id}
-							>
-								Edit Event
-							</Button>
-						{/if}
-						{#if !detail.project && selectedItem?.project_id}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => openProject(selectedItem?.project_id ?? null)}
-							>
+							variant="primary"
+							size="sm"
+							onclick={openEventEditor}
+							disabled={!selectedItem?.event_id || !selectedItem?.project_id}
+						>
+							Edit Event
+						</Button>
+					{/if}
+					{#if !detail.project && selectedItem?.project_id}
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={() => openProject(selectedItem?.project_id ?? null)}
+						>
 							Open Project
 						</Button>
 					{/if}

@@ -112,13 +112,13 @@
 			<div class="flex items-center justify-between">
 				<span class="text-sm font-medium text-foreground">Email Preview</span>
 				<div class="flex items-center space-x-2">
-						<Button
-							onclick={() => {
-								const newWindow = window.open('', '_blank');
-								if (!newWindow) return;
-								newWindow.document.write(emailHTML);
-								newWindow.document.close();
-							}}
+					<Button
+						onclick={() => {
+							const newWindow = window.open('', '_blank');
+							if (!newWindow) return;
+							newWindow.document.write(emailHTML);
+							newWindow.document.close();
+						}}
 						variant="ghost"
 						size="sm"
 						class="!text-blue-600 dark:!text-blue-400 hover:!text-blue-800 dark:hover:!text-blue-300"

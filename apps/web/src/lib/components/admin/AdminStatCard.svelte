@@ -166,7 +166,9 @@
 				{/if}
 				<div class="flex items-baseline gap-2">
 					<span class={changeClasses}>
-						{resolvedDirection === 'down' && typeof displayChange === 'number' ? '-' : ''}
+						{resolvedDirection === 'down' && typeof displayChange === 'number'
+							? '-'
+							: ''}
 						{resolvedDirection === 'up' && typeof displayChange === 'number' ? '+' : ''}
 						{changeText}
 					</span>

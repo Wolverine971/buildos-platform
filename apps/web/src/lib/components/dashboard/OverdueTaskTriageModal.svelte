@@ -280,11 +280,11 @@
 		batchIndex: number;
 		task: OverdueTask;
 		taskIndex: number;
-		} | null {
-			for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
-				const batch = batches[batchIndex];
-				if (!batch) continue;
-				const tasks = (batch?.tasks ?? []) as OverdueTask[];
+	} | null {
+		for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+			const batch = batches[batchIndex];
+			if (!batch) continue;
+			const tasks = (batch?.tasks ?? []) as OverdueTask[];
 			const taskIndex = tasks.findIndex((task) => task.id === taskId);
 			if (taskIndex >= 0) {
 				const task = tasks[taskIndex];

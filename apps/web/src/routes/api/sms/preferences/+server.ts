@@ -29,18 +29,12 @@ export const GET: RequestHandler = async ({ locals: { supabase, safeGetSession }
 	}
 
 	try {
-		// Fetch timezone from users table (centralized source of truth)
-		const { data: userData } = await supabase
-			.from('users')
-			.select('timezone')
-			.eq('id', user.id)
-			.single();
-
-		const { data: preferences, error } = await supabase
-			.from('user_sms_preferences')
-			.select('*')
-			.eq('user_id', user.id)
-			.maybeSingle();
+		// Fetch timezone (centralized in users table) and SMS preferences in
+		// parallel — the two queries are independent.
+		const [{ data: userData }, { data: preferences, error }] = await Promise.all([
+			supabase.from('users').select('timezone').eq('id', user.id).single(),
+			supabase.from('user_sms_preferences').select('*').eq('user_id', user.id).maybeSingle()
+		]);
 
 		if (error) {
 			console.error('Error fetching SMS preferences:', error);

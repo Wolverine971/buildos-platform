@@ -264,14 +264,13 @@
 		<!-- Success Banner -->
 		{#if showOnboardingComplete}
 			<div
-				class="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg shadow-ink tx tx-grain tx-weak"
+				class="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg shadow-ink tx tx-grain tx-weak"
 				transition:slide
 			>
-				<div class="flex items-center">
-					<CircleCheck class="w-5 h-5 text-emerald-500 mr-3" />
-					<p class="text-foreground font-medium">
-						Setup complete! BuildOS is now personalized to your workflow and
-						preferences.
+				<div class="flex items-center gap-2">
+					<CircleCheck class="w-4 h-4 text-emerald-500 flex-shrink-0" />
+					<p class="text-sm text-foreground font-medium">
+						Setup complete! BuildOS is now personalized to your workflow.
 					</p>
 				</div>
 			</div>
@@ -279,13 +278,15 @@
 
 		{#if saveSuccess}
 			<div
-				class="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg shadow-ink tx tx-grain tx-weak"
+				class="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg shadow-ink tx tx-grain tx-weak"
 				transition:slide
 			>
-				<div class="flex items-center justify-between">
-					<div class="flex items-center">
-						<CircleCheck class="w-5 h-5 text-emerald-500 mr-3" />
-						<p class="text-foreground font-medium">Changes saved successfully!</p>
+				<div class="flex items-center justify-between gap-2">
+					<div class="flex items-center gap-2">
+						<CircleCheck class="w-4 h-4 text-emerald-500" />
+						<p class="text-sm text-foreground font-medium">
+							Changes saved successfully.
+						</p>
 					</div>
 					<Button
 						onclick={() => (saveSuccess = false)}
@@ -300,13 +301,13 @@
 
 		{#if saveError}
 			<div
-				class="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg shadow-ink tx tx-static tx-weak"
+				class="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg shadow-ink tx tx-static tx-weak"
 				transition:slide
 			>
-				<div class="flex items-center justify-between">
-					<div class="flex items-center">
-						<AlertCircle class="w-5 h-5 text-red-500 mr-3" />
-						<p class="text-foreground font-medium">
+				<div class="flex items-center justify-between gap-2">
+					<div class="flex items-center gap-2">
+						<AlertCircle class="w-4 h-4 text-red-500" />
+						<p class="text-sm text-foreground font-medium">
 							{errorMessage || 'An error occurred'}
 						</p>
 					</div>
@@ -323,65 +324,61 @@
 
 		<!-- Profile Header -->
 		<div
-			class="bg-card rounded-lg shadow-ink border border-border p-4 sm:p-6 mb-4 sm:mb-6 tx tx-frame tx-weak"
+			class="bg-card rounded-lg shadow-ink border border-border p-3 sm:p-4 mb-4 tx tx-frame tx-weak"
 		>
-			<div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-				<div class="flex items-center space-x-3 sm:space-x-4">
+			<div class="flex items-center justify-between gap-3">
+				<div class="flex items-center gap-3 min-w-0">
 					<div
-						class="w-12 h-12 sm:w-16 sm:h-16 bg-accent rounded-full flex items-center justify-center flex-shrink-0 shadow-ink"
+						class="w-10 h-10 sm:w-12 sm:h-12 bg-accent rounded-full flex items-center justify-center flex-shrink-0 shadow-ink"
 					>
-						<User class="w-6 h-6 sm:w-8 sm:h-8 text-accent-foreground" />
+						<User class="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
 					</div>
 					<div class="min-w-0">
-						<h1 class="text-lg sm:text-2xl font-bold text-foreground truncate">
+						<h1 class="text-base sm:text-lg font-bold text-foreground truncate">
 							{data.user?.user_metadata?.name || 'Your Profile'}
 						</h1>
-						<p
-							class="text-sm sm:text-base text-muted-foreground flex items-center mt-1 truncate"
+						<div
+							class="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5"
 						>
-							<Mail class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0" />
-							<span class="truncate">{data.user?.email}</span>
-						</p>
-						{#if data.userContext?.created_at}
-							<p
-								class="text-xs sm:text-sm text-muted-foreground flex items-center mt-1"
-							>
-								<Calendar
-									class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 flex-shrink-0"
-								/>
-								Member since {new Date(
-									data.userContext.created_at
-								).toLocaleDateString()}
-							</p>
-						{/if}
+							<span class="flex items-center gap-1 min-w-0">
+								<Mail class="w-3 h-3 flex-shrink-0" />
+								<span class="truncate">{data.user?.email}</span>
+							</span>
+							{#if data.userContext?.created_at}
+								<span class="flex items-center gap-1">
+									<Calendar class="w-3 h-3 flex-shrink-0" />
+									Member since {new Date(
+										data.userContext.created_at
+									).toLocaleDateString()}
+								</span>
+							{/if}
+						</div>
 					</div>
 				</div>
 
-				<div class="flex items-center">
-					{#if !data.userContext || !data.completedOnboarding || progressData.missingRequiredFields?.length > 0}
-						<Button
-							onclick={() => goto('/onboarding')}
-							variant="primary"
-							size="sm"
-							class="bg-accent hover:bg-accent/90 shadow-ink pressable w-full sm:w-auto text-xs sm:text-sm"
-						>
-							{#if progressData.missingRequiredFields?.length > 0}
-								<AlertCircle class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-								<span class="hidden sm:inline">Complete Onboarding</span>
-								<span class="sm:hidden">Complete Setup</span>
-							{:else}
-								<Sparkles class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-								<span class="hidden sm:inline">Start Onboarding</span>
-								<span class="sm:hidden">Get Started</span>
-							{/if}
-						</Button>
-					{/if}
-				</div>
+				{#if !data.userContext || !data.completedOnboarding || progressData.missingRequiredFields?.length > 0}
+					<Button
+						onclick={() => goto('/onboarding')}
+						variant="primary"
+						size="sm"
+						class="bg-accent hover:bg-accent/90 shadow-ink pressable flex-shrink-0"
+					>
+						{#if progressData.missingRequiredFields?.length > 0}
+							<AlertCircle class="w-3.5 h-3.5 mr-1" />
+							<span class="hidden sm:inline">Complete Onboarding</span>
+							<span class="sm:hidden">Setup</span>
+						{:else}
+							<Sparkles class="w-3.5 h-3.5 mr-1" />
+							<span class="hidden sm:inline">Start Onboarding</span>
+							<span class="sm:hidden">Start</span>
+						{/if}
+					</Button>
+				{/if}
 			</div>
 		</div>
 
 		<!-- Tab Navigation -->
-		<div class="bg-card rounded-lg shadow-ink border border-border mb-4 sm:mb-6">
+		<div class="bg-card rounded-lg shadow-ink border border-border mb-4 sm:mb-5">
 			<TabNav
 				tabs={profileTabs}
 				{activeTab}
@@ -422,47 +419,52 @@
 			<AgentKeysTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
 		{:else if activeTab === 'billing' && data.stripeEnabled}
 			<!-- Billing/Subscription Tab -->
-			<div class="space-y-4 sm:space-y-6">
+			<div class="space-y-4 sm:space-y-5">
+				<!-- Tab Header -->
+				<div class="flex items-start gap-3">
+					<div
+						class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
+					>
+						<CreditCard class="w-5 h-5 text-accent-foreground" />
+					</div>
+					<div class="flex-1 min-w-0">
+						<h2 class="text-lg sm:text-xl font-bold text-foreground">Billing</h2>
+						<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+							Manage your subscription and payment history.
+						</p>
+					</div>
+				</div>
+
 				{#if data.subscriptionDetails?.subscription}
 					<!-- Active Subscription -->
 					<div
 						class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak"
 					>
-						<div class="p-4 sm:p-6">
-							<div
-								class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6"
+						<div class="px-4 sm:px-5 py-3 border-b border-border">
+							<h3
+								class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
 							>
-								<div class="flex items-center gap-3">
-									<div class="p-2 bg-emerald-500/10 rounded-lg flex-shrink-0">
-										<CircleCheck
-											class="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500"
-										/>
-									</div>
-									<div>
-										<h2
-											class="text-lg sm:text-xl font-semibold text-foreground"
-										>
-											{data.subscriptionDetails.subscription
-												.subscription_plans?.name || 'Pro Plan'}
-										</h2>
-										<p class="text-xs sm:text-sm text-muted-foreground mt-1">
-											Active subscription
-										</p>
-									</div>
-								</div>
+								<CircleCheck class="w-4 h-4 text-emerald-500" />
+								{data.subscriptionDetails.subscription.subscription_plans?.name ||
+									'Pro Plan'}
+							</h3>
+							<p class="text-xs text-muted-foreground mt-0.5">Active subscription</p>
+						</div>
 
-									<div class="text-left sm:text-right">
-										<p class="text-xl sm:text-2xl font-bold text-foreground">
-											${(
-												(data.subscriptionDetails.subscription.subscription_plans
-													?.price_cents ?? 0) / 100
-											).toFixed(2)}
-										<span class="text-sm font-normal text-muted-foreground"
+						<div class="p-4 sm:p-5 space-y-4">
+							<div class="flex items-baseline justify-between gap-3 flex-wrap">
+								<div>
+									<p class="text-2xl font-bold text-foreground">
+										${(
+											(data.subscriptionDetails.subscription
+												.subscription_plans?.price_cents ?? 0) / 100
+										).toFixed(2)}<span
+											class="text-sm font-normal text-muted-foreground"
 											>/{data.subscriptionDetails.subscription
 												.subscription_plans?.billing_interval}</span
 										>
 									</p>
-									<p class="text-xs text-muted-foreground mt-1">
+									<p class="text-xs text-muted-foreground mt-0.5">
 										Next billing: {data.subscriptionDetails.subscription
 											.current_period_end
 											? new Date(
@@ -473,59 +475,61 @@
 								</div>
 							</div>
 
-							<div class="border-t border-border pt-4">
-								<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-									<div>
-										<p class="text-sm font-medium text-foreground mb-1">
-											Status
-										</p>
-										<p class="text-sm text-muted-foreground capitalize">
-											{data.subscriptionDetails.subscription.status}
-										</p>
-									</div>
-									<div>
-										<p class="text-sm font-medium text-foreground mb-1">
-											Member since
-										</p>
-										<p class="text-sm text-muted-foreground">
-											{data.subscriptionDetails.subscription.created_at
-												? new Date(
-														data.subscriptionDetails.subscription.created_at
-													).toLocaleDateString()
-												: 'N/A'}
-										</p>
-									</div>
+							<div class="grid grid-cols-2 gap-4 pt-3 border-t border-border">
+								<div>
+									<p
+										class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5"
+									>
+										Status
+									</p>
+									<p class="text-sm text-foreground capitalize">
+										{data.subscriptionDetails.subscription.status}
+									</p>
 								</div>
-
-								<div class="mt-4 sm:mt-6">
-									<form method="POST" action="/api/stripe/portal" use:enhance>
-										<Button
-											type="submit"
-											variant="secondary"
-											size="sm"
-											class="sm:size-md w-full sm:w-auto shadow-ink pressable"
-											icon={Settings}
-										>
-											Manage Subscription
-										</Button>
-									</form>
+								<div>
+									<p
+										class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5"
+									>
+										Member Since
+									</p>
+									<p class="text-sm text-foreground">
+										{data.subscriptionDetails.subscription.created_at
+											? new Date(
+													data.subscriptionDetails.subscription.created_at
+												).toLocaleDateString()
+											: 'N/A'}
+									</p>
 								</div>
 							</div>
+
+							<form method="POST" action="/api/stripe/portal" use:enhance>
+								<Button
+									type="submit"
+									variant="secondary"
+									size="sm"
+									class="shadow-ink pressable"
+									icon={Settings}
+								>
+									Manage Subscription
+								</Button>
+							</form>
 						</div>
 					</div>
 
-					<!-- Invoice Settings Info -->
-					<div class="bg-muted rounded-lg p-3 sm:p-4 mt-4 border border-border">
-						<h4 class="text-sm font-medium text-foreground mb-2">
+					<!-- Invoice Info -->
+					<div class="bg-muted rounded-lg p-3 border border-border">
+						<p
+							class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1"
+						>
 							Invoice Information
-						</h4>
-						<div class="text-xs sm:text-sm text-muted-foreground space-y-1">
-							<p>• Invoices are automatically sent to your email</p>
-							<p>
+						</p>
+						<ul class="text-xs text-muted-foreground space-y-0.5">
+							<li>• Invoices are emailed automatically</li>
+							<li>
 								• Tax ID and business details can be updated in the billing portal
-							</p>
-							<p>• All invoices include applicable taxes</p>
-						</div>
+							</li>
+							<li>• All invoices include applicable taxes</li>
+						</ul>
 					</div>
 
 					<!-- Payment History -->
@@ -533,63 +537,57 @@
 						<div
 							class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak"
 						>
-							<div class="p-4 sm:p-6">
-								<h3
-									class="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4"
-								>
+							<div class="px-4 sm:px-5 py-3 border-b border-border">
+								<h3 class="text-sm sm:text-base font-semibold text-foreground">
 									Payment History
 								</h3>
-								<div class="space-y-3">
-									{#each data.subscriptionDetails.invoices as invoice}
-										<div
-											class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 py-3 border-b border-border last:border-0"
-										>
-											<div>
-												<p
-													class="text-sm sm:text-base font-medium text-foreground"
-												>
-													${(invoice.amount_paid / 100).toFixed(2)}
-												</p>
-												<p class="text-xs sm:text-sm text-muted-foreground">
-													{invoice.created_at
-														? new Date(
-																invoice.created_at
-															).toLocaleDateString()
-														: 'N/A'}
-												</p>
-											</div>
-											<div class="text-left sm:text-right">
-												<p
-													class="text-xs sm:text-sm font-medium capitalize text-foreground"
-												>
-													{invoice.status}
-												</p>
-												{#if invoice.invoice_pdf}
-													<a
-														href={invoice.invoice_pdf}
-														target="_blank"
-														rel="noopener noreferrer"
-														class="text-sm text-accent hover:text-accent/80 transition-colors"
-													>
-														Download PDF
-													</a>
-												{:else if invoice.stripe_invoice_id}
-													<Button
-														onclick={() =>
-															downloadInvoice(
-																invoice.stripe_invoice_id
-															)}
-														variant="ghost"
-														size="sm"
-														class="text-sm text-accent hover:text-accent/80"
-													>
-														Generate PDF
-													</Button>
-												{/if}
-											</div>
+							</div>
+							<div class="divide-y divide-border">
+								{#each data.subscriptionDetails.invoices as invoice}
+									<div
+										class="flex items-center justify-between gap-3 px-4 sm:px-5 py-2.5"
+									>
+										<div class="min-w-0">
+											<p class="text-sm font-medium text-foreground">
+												${(invoice.amount_paid / 100).toFixed(2)}
+											</p>
+											<p class="text-xs text-muted-foreground">
+												{invoice.created_at
+													? new Date(
+															invoice.created_at
+														).toLocaleDateString()
+													: 'N/A'}
+											</p>
 										</div>
-									{/each}
-								</div>
+										<div class="text-right flex-shrink-0">
+											<p
+												class="text-xs font-medium capitalize text-foreground"
+											>
+												{invoice.status}
+											</p>
+											{#if invoice.invoice_pdf}
+												<a
+													href={invoice.invoice_pdf}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="text-xs text-accent hover:text-accent/80 transition-colors"
+												>
+													Download PDF
+												</a>
+											{:else if invoice.stripe_invoice_id}
+												<Button
+													onclick={() =>
+														downloadInvoice(invoice.stripe_invoice_id)}
+													variant="ghost"
+													size="sm"
+													class="text-xs text-accent hover:text-accent/80 py-0"
+												>
+													Generate PDF
+												</Button>
+											{/if}
+										</div>
+									</div>
+								{/each}
 							</div>
 						</div>
 					{/if}
@@ -598,48 +596,49 @@
 					<div
 						class="bg-card rounded-lg shadow-ink border border-border tx tx-bloom tx-weak"
 					>
-						<div class="p-6 text-center">
+						<div class="p-5 sm:p-6 text-center">
 							<div class="max-w-md mx-auto">
 								<div
-									class="p-3 bg-accent/10 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center"
+									class="p-2.5 bg-accent/10 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center"
 								>
-									<Sparkles class="w-8 h-8 text-accent" />
+									<Sparkles class="w-6 h-6 text-accent" />
 								</div>
-								<h2 class="text-2xl font-bold text-foreground mb-2">
+								<h3 class="text-lg sm:text-xl font-bold text-foreground mb-1">
 									Upgrade to Pro
-								</h2>
-								<p class="text-muted-foreground mb-6">
-									Unlock all features and take your productivity to the next level
+								</h3>
+								<p class="text-sm text-muted-foreground mb-5">
+									Unlock all features and take your productivity to the next
+									level.
 								</p>
-								<div class="space-y-3 text-left max-w-sm mx-auto mb-6">
-									<div class="flex items-start">
+								<div class="space-y-2 text-left max-w-sm mx-auto mb-5">
+									<div class="flex items-start gap-2">
 										<CircleCheck
-											class="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0"
+											class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0"
 										/>
 										<p class="text-sm text-foreground">
 											Google Calendar integration for automatic task
 											scheduling
 										</p>
 									</div>
-									<div class="flex items-start">
+									<div class="flex items-start gap-2">
 										<CircleCheck
-											class="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0"
+											class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0"
 										/>
 										<p class="text-sm text-foreground">
 											AI-powered daily briefs to keep you on track
 										</p>
 									</div>
-									<div class="flex items-start">
+									<div class="flex items-start gap-2">
 										<CircleCheck
-											class="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0"
+											class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0"
 										/>
 										<p class="text-sm text-foreground">
 											Advanced project phases and timeline management
 										</p>
 									</div>
-									<div class="flex items-start">
+									<div class="flex items-start gap-2">
 										<CircleCheck
-											class="w-5 h-5 text-emerald-500 mr-3 mt-0.5 flex-shrink-0"
+											class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0"
 										/>
 										<p class="text-sm text-foreground">
 											Priority support and early access to new features
@@ -648,10 +647,10 @@
 								</div>
 								<a
 									href="/pricing"
-									class="inline-flex items-center px-6 py-3 bg-accent hover:bg-accent/90 text-accent-foreground font-medium rounded-lg shadow-ink pressable transition-all duration-200"
+									class="inline-flex items-center px-5 py-2.5 bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-sm rounded-lg shadow-ink pressable transition-all duration-200"
 								>
-									<Rocket class="w-5 h-5 mr-2" />
-									Get Started - $20/month
+									<Rocket class="w-4 h-4 mr-2" />
+									Get Started — $20/month
 								</a>
 							</div>
 						</div>

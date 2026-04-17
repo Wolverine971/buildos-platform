@@ -721,11 +721,11 @@
 				</p>
 			</button>
 		{:else if scratchpad}
-				<RichMarkdownEditor
-					bind:value={scratchpadContent}
-					onDocChange={() => {
-						lastScratchpadEdit = Date.now();
-					}}
+			<RichMarkdownEditor
+				bind:value={scratchpadContent}
+				onDocChange={() => {
+					lastScratchpadEdit = Date.now();
+				}}
 				placeholder="Write your notes here... Use markdown for formatting. Press mic to dictate."
 				rows={16}
 				maxLength={50000}

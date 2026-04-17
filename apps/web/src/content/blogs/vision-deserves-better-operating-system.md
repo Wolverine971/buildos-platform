@@ -101,7 +101,7 @@ For anyone who has ever felt their vision **dissolve in the friction between thi
 
 ## The Shift
 
-We're not building a productivity app. We're building **the operating system for ambitious thought**.
+We're not building a productivity app. We're building a **thinking environment** for people making complex things.
 
 A place where:
 
@@ -141,18 +141,18 @@ That research that could change how we think? Scattered across tools that don't 
 
 **The bottleneck isn't your ambition. It's the friction between your vision and your ability to hold it all together.**
 
-## Build Your Empire
+## Stop Shrinking to Fit Your Tools
 
 This is the shift:
 
 Stop treating your work like tasks to manage.
-Start treating it like a **living system to orchestrate**.
+Start treating it like a **living system to hold together**.
 
 Stop fighting your tools to maintain context.
-Start **demanding tools that preserve it automatically**.
+Start **using tools that preserve it automatically**.
 
 Stop shrinking your ambition to fit your systems.
-Start **building systems worthy of your ambition**.
+Start **building infrastructure worthy of what you're trying to make**.
 
 Your vision is too big for sticky notes.
 Your ideas are too interconnected for folders.
@@ -160,80 +160,42 @@ Your impact is too important for tools that make you choose between thinking and
 
 **BuildOS isn't for everyone.**
 
-It's for the builders. The architects. The visionaries who see the whole system and just need help **holding it together** while they bring it to life.
+It's for the people making complex things — the founders, creators, and operators who see the whole system and just need help **holding it together** while they bring it to life.
 
-If that's you, **welcome home**.
+If that's you, you're in the right place.
 
-Your empire deserves better infrastructure.
+Your vision deserves better infrastructure than a pile of tabs.
 
 Let's build it.
 
 ---
 
-**BuildOS: The operating system for ambitious thought.**
+**BuildOS is a thinking environment for people making complex things.**
 
-_Turn your grand vision into a working system. [Get started free →](/auth/register)_
-
----
-
-## Who This Is For
-
-### The Founder-Architect
-
-Early-stage founders juggling strategy, fundraising, hiring, and product. Your vision is sprawling, stored across 40 docs, 12 tools, and 3 group chats. You lose the "why" behind decisions.
-
-**BuildOS becomes your living brain**, turning chaos into structured execution and traceable rationale.
-
-### The Creator-Strategist
-
-YouTubers, writers, game devs, agency owners managing long arcs and collaborators. You can't keep narrative, tasks, and collaborators aligned across creative projects.
-
-**BuildOS keeps the creative through-line alive**, with every idea, draft, and decision captured in context.
-
-### The Polymath Builder
-
-Indie hackers, designer-engineer hybrids, consultants with multiple projects. Context-switching kills flow. Ideas fragment between Figma, Notion, and Slack.
-
-**BuildOS acts as the context mesh**: one place where all projects evolve with preserved memory.
-
-### The Vision Collective
-
-Small teams working on ambitious social or technical problems. Institutional memory decays. No shared rationale chain for decisions.
-
-**BuildOS is the continuity layer**: a collective brain that never forgets how ideas evolved.
-
-## The Core Workflow
-
-### 1. Dump Your Brain
-
-Capture everything: ideas, links, meeting notes, voice memos. No structure required.
-
-### 2. BuildOS Organizes It for You
-
-It parses the chaos into Projects, Contexts, and Threads. You see dependencies, rationales, and next steps.
-
-### 3. Collaborate with Memory
-
-Everyone sees not just _what_ to do, but _why_. The project has living memory. You move faster without losing coherence.
+_Turn messy thinking into structured work. [Get started free →](/auth/register)_
 
 ---
 
-## What Makes BuildOS Different
+## Who this actually serves
 
-### Notion = Canvas for Pages
+**Founders** juggling strategy, fundraising, hiring, and product across 40 docs and 12 tools. You're not disorganized. You're past what a single human working memory can hold.
 
-**BuildOS = Operating System for Evolving Context**
+**Creators** — writers, YouTubers, game devs, agency owners — managing long arcs and collaborators. The narrative, the tasks, and the people it takes to ship all live in different apps right now.
 
-### Notion = Manual Linking
+**Polymaths** — indie hackers, designer-engineer hybrids, consultants with multiple projects. Context-switching kills flow. Ideas fragment between Figma, Notion, and Slack every time you move.
 
-**BuildOS = Automatic Context Graph**
+**Small teams** on ambitious problems where institutional memory decays faster than it accumulates. Nobody remembers why you made the call you made.
 
-### Notion = Database of Notes
+In every case, the shape of the problem is the same: **too much context for the tools to hold, and too little continuity between sessions.**
 
-**BuildOS = Memory of Intent, Decisions, and Next Moves**
+## The core loop
+
+1. **Dump what's on your mind.** Voice or text. Meeting notes, late-night ideas, half-formed arguments. No structure required.
+2. **BuildOS turns it into structure.** Messy input gets parsed into projects, tasks, and connected context. No manual filing.
+3. **The project remembers.** Every brain dump adds to the project's memory. When you come back — in a day or in a month — the project already knows where you left off.
+
+That's the whole mechanic. The structure isn't there because you built it. It's there because you kept talking to the same project.
 
 ---
 
-_Your vision is too big for traditional productivity tools. BuildOS is purpose-built infrastructure for empire builders._
-
-_[Start building →](/auth/register)_
+_Your vision deserves better infrastructure than a pile of tabs. [Start building →](/auth/register)_

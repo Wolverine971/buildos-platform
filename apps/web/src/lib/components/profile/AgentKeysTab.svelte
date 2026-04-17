@@ -619,77 +619,78 @@
 	}
 </script>
 
-<div class="space-y-4">
-	<!-- Header -->
-	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="p-4 sm:p-6">
-			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h2 class="text-lg font-semibold text-foreground">Agent Keys</h2>
-					<p class="text-sm text-muted-foreground mt-1">
-						Manage API keys for external agents like OpenClaw to access your BuildOS
-						data. Full secret keys are shown only when generated or rotated.
-					</p>
-				</div>
-				<div class="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						icon={RefreshCw}
-						onclick={loadCallers}
-						disabled={loading}
-					>
-						Refresh
-					</Button>
-					<Button variant="primary" size="sm" icon={Plus} onclick={openGenerateModal}>
-						Generate Key
-					</Button>
-				</div>
-			</div>
-
-			{#if buildosAgent}
-				<div
-					class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-border bg-muted/30 px-3 py-2"
-				>
-					<div class="flex items-center gap-2 text-sm text-muted-foreground">
-						<span class="font-medium text-foreground">Your agent handle:</span>
-						<code class="text-xs">{buildosAgent.handle}</code>
-					</div>
-					<Button
-						variant="ghost"
-						size="sm"
-						icon={copiedId === 'callee-handle' ? CircleCheck : Copy}
-						onclick={() =>
-								copyToClipboard(
-									'callee-handle',
-									buildosAgent!.handle,
-									'Agent handle copied'
-								)}
-					>
-						{copiedId === 'callee-handle' ? 'Copied' : 'Copy'}
-					</Button>
-				</div>
-			{/if}
+<div class="space-y-4 sm:space-y-5">
+	<!-- Tab Header -->
+	<div class="flex items-start gap-3">
+		<div
+			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
+		>
+			<Key class="w-5 h-5 text-accent-foreground" />
+		</div>
+		<div class="flex-1 min-w-0">
+			<h2 class="text-lg sm:text-xl font-bold text-foreground">Agent Keys</h2>
+			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+				Manage API keys for external agents (like OpenClaw) to access your BuildOS data.
+			</p>
+		</div>
+		<div class="flex items-center gap-2 flex-shrink-0">
+			<Button
+				variant="outline"
+				size="sm"
+				icon={RefreshCw}
+				onclick={loadCallers}
+				disabled={loading}
+			>
+				Refresh
+			</Button>
+			<Button variant="primary" size="sm" icon={Plus} onclick={openGenerateModal}>
+				Generate
+			</Button>
 		</div>
 	</div>
 
+	<!-- Agent Handle -->
+	{#if buildosAgent}
+		<div
+			class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-border bg-muted/40 px-3 py-2"
+		>
+			<div class="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+				<span class="font-medium text-foreground flex-shrink-0">Your agent handle:</span>
+				<code class="text-xs truncate">{buildosAgent.handle}</code>
+			</div>
+			<Button
+				variant="ghost"
+				size="sm"
+				icon={copiedId === 'callee-handle' ? CircleCheck : Copy}
+				onclick={() =>
+					copyToClipboard('callee-handle', buildosAgent!.handle, 'Agent handle copied')}
+			>
+				{copiedId === 'callee-handle' ? 'Copied' : 'Copy'}
+			</Button>
+		</div>
+	{/if}
+
 	<!-- Registered Callers -->
 	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="p-4 sm:p-6 space-y-4">
-			<div class="flex items-center justify-between">
-				<h3 class="text-base font-semibold text-foreground">Registered Keys</h3>
-				<Badge variant="info">
-					{callers.length} key{callers.length === 1 ? '' : 's'}
-				</Badge>
-			</div>
+		<div
+			class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border"
+		>
+			<h3 class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
+				<Key class="w-4 h-4 text-accent" />
+				Registered Keys
+			</h3>
+			<Badge variant="info">
+				{callers.length} key{callers.length === 1 ? '' : 's'}
+			</Badge>
+		</div>
 
+		<div class="p-4 sm:p-5 space-y-3">
 			<div
-				class="rounded-lg border border-border bg-muted/20 p-3 text-sm text-muted-foreground"
+				class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
 			>
 				<span class="font-medium text-foreground">Need the full key?</span>
-				For security, BuildOS stores only a hash after creation. Generate a new key, or use Edit
-				/ Rotate on an existing key, then copy the full BuildOS Agent Key from the confirmation
-				modal.
+				For security, BuildOS stores only a hash. Generate a new key or use Edit/Rotate, then
+				copy the full BuildOS Agent Key from the confirmation modal.
 			</div>
 
 			{#if loading}
@@ -706,9 +707,9 @@
 					</p>
 				</div>
 			{:else}
-				<div class="space-y-3">
+				<div class="space-y-2">
 					{#each callers as caller (caller.id)}
-						<div class="rounded-lg border border-border bg-muted/20 p-4">
+						<div class="rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
 							<div
 								class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 							>
@@ -848,7 +849,7 @@
 			<div class="pt-2 border-t border-border">
 				<a
 					href="/integrations"
-					class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-accent transition-colors"
+					class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors"
 				>
 					Integration docs
 					<ExternalLink class="w-3.5 h-3.5" />
@@ -1126,9 +1127,9 @@
 							icon={copiedId === 'latest-token' ? CircleCheck : Copy}
 							onclick={() =>
 								copyToClipboard(
-										'latest-token',
-										latestProvisioned!.credentials.bearer_token,
-										'Key copied'
+									'latest-token',
+									latestProvisioned!.credentials.bearer_token,
+									'Key copied'
 								)}
 						>
 							{copiedId === 'latest-token' ? 'Key Copied' : 'Copy Key'}
@@ -1154,11 +1155,11 @@
 								icon={copiedId === 'agent-prompt-placeholder' ? CircleCheck : Copy}
 								onclick={() =>
 									copyToClipboard(
-											'agent-prompt-placeholder',
-											agentConnectionPromptForProvisioned(
-												latestProvisioned!,
-												false
-											),
+										'agent-prompt-placeholder',
+										agentConnectionPromptForProvisioned(
+											latestProvisioned!,
+											false
+										),
 										'Agent prompt copied'
 									)}
 							>
@@ -1172,11 +1173,11 @@
 								icon={copiedId === 'agent-prompt-with-key' ? CircleCheck : Copy}
 								onclick={() =>
 									copyToClipboard(
-											'agent-prompt-with-key',
-											agentConnectionPromptForProvisioned(
-												latestProvisioned!,
-												true
-											),
+										'agent-prompt-with-key',
+										agentConnectionPromptForProvisioned(
+											latestProvisioned!,
+											true
+										),
 										'Agent prompt with key copied'
 									)}
 							>
@@ -1201,9 +1202,9 @@
 							icon={copiedId === 'env-snippet' ? CircleCheck : Copy}
 							onclick={() =>
 								copyToClipboard(
-										'env-snippet',
-										openClawEnvSnippet(latestProvisioned!),
-										'Configuration copied'
+									'env-snippet',
+									openClawEnvSnippet(latestProvisioned!),
+									'Configuration copied'
 								)}
 						>
 							{copiedId === 'env-snippet' ? 'Copied' : 'Copy'}
@@ -1227,9 +1228,9 @@
 								icon={copiedId === 'bootstrap-url' ? CircleCheck : Copy}
 								onclick={() =>
 									copyToClipboard(
-											'bootstrap-url',
-											openClawBootstrapUrl(latestProvisioned!) ?? '',
-											'Setup URL copied'
+										'bootstrap-url',
+										openClawBootstrapUrl(latestProvisioned!) ?? '',
+										'Setup URL copied'
 									)}
 							>
 								{copiedId === 'bootstrap-url' ? 'Copied' : 'Copy'}
@@ -1258,9 +1259,9 @@
 								icon={copiedId === 'bootstrap-prompt' ? CircleCheck : Copy}
 								onclick={() =>
 									copyToClipboard(
-											'bootstrap-prompt',
-											openClawBootstrapPrompt(latestProvisioned!) ?? '',
-											'OpenClaw prompt copied'
+										'bootstrap-prompt',
+										openClawBootstrapPrompt(latestProvisioned!) ?? '',
+										'OpenClaw prompt copied'
 									)}
 							>
 								{copiedId === 'bootstrap-prompt' ? 'Copied' : 'Copy'}

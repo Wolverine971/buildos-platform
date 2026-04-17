@@ -101,7 +101,9 @@
 	$effect(() => {
 		if (form?.calendarData) {
 			calendarData = form.calendarData;
-			calendarPreferences = normalizeCalendarPreferences(form.calendarData.calendarPreferences);
+			calendarPreferences = normalizeCalendarPreferences(
+				form.calendarData.calendarPreferences
+			);
 		}
 	});
 
@@ -505,34 +507,47 @@
 	}
 </script>
 
-<div class="space-y-6">
+<div class="space-y-4 sm:space-y-5">
+	<!-- Tab Header -->
+	<div class="flex items-start gap-3">
+		<div
+			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
+		>
+			<Calendar class="w-5 h-5 text-accent-foreground" />
+		</div>
+		<div class="flex-1 min-w-0">
+			<h2 class="text-lg sm:text-xl font-bold text-foreground">Calendar</h2>
+			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+				Connect Google Calendar and configure scheduling preferences.
+			</p>
+		</div>
+	</div>
+
 	{#if loadingCalendar}
 		<div class="text-center py-12">
 			<LoaderCircle class="w-8 h-8 animate-spin text-accent mx-auto mb-4" />
-			<p class="text-muted-foreground">Loading calendar settings...</p>
+			<p class="text-sm text-muted-foreground">Loading calendar settings...</p>
 		</div>
 	{:else if calendarData}
 		<!-- Google Calendar Integration -->
 		<div
 			class="bg-card rounded-lg shadow-ink border border-border overflow-hidden tx tx-frame tx-weak"
 		>
-			<div class="p-4 sm:p-6 border-b border-border">
-				<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-					<div class="flex items-center space-x-3">
-						<div class="p-2 bg-accent/20 rounded-lg flex-shrink-0">
-							<Calendar class="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
-						</div>
+			<div class="px-4 sm:px-5 py-3 border-b border-border">
+				<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+					<div class="flex items-center gap-2.5 min-w-0">
+						<Calendar class="w-4 h-4 text-accent flex-shrink-0" />
 						<div class="min-w-0">
-							<h2 class="text-base sm:text-xl font-semibold text-foreground truncate">
+							<h3 class="text-sm sm:text-base font-semibold text-foreground truncate">
 								{#if calendarConnected}
 									{calendarData.calendarStatus?.google_email ||
 										'Calendar Connected'}
 								{:else}
 									Google Calendar
 								{/if}
-							</h2>
+							</h3>
 							{#if !calendarConnected}
-								<p class="text-xs sm:text-sm text-muted-foreground mt-1">
+								<p class="text-xs text-muted-foreground mt-0.5">
 									Connect to schedule tasks automatically
 								</p>
 							{/if}
@@ -540,100 +555,103 @@
 					</div>
 
 					{#if calendarConnected}
-						<div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-							<div class="text-left sm:text-right">
-								<div class="flex items-center space-x-2">
-									<CircleCheck class="w-4 h-4 text-emerald-500" />
-									<p class="text-sm font-medium text-emerald-600">Connected</p>
-								</div>
+						<div class="flex items-center gap-2 flex-wrap">
+							<div class="flex items-center gap-1.5 text-xs">
+								<CircleCheck class="w-3.5 h-3.5 text-emerald-500" />
+								<span class="font-medium text-emerald-600">Connected</span>
 								{#if calendarData.calendarStatus?.lastSync}
-									<p class="text-xs text-muted-foreground">
-										Last sync: {formatLastSync(
+									<span class="text-muted-foreground">
+										· Last sync {formatLastSync(
 											calendarData.calendarStatus.lastSync
 										)}
-									</p>
+									</span>
 								{/if}
 							</div>
 
-							<div class="flex items-center gap-2">
-								<Button
-									onclick={refreshCalendarData}
-									disabled={refreshingCalendar}
-									variant="ghost"
-									size="sm"
-									title="Refresh calendar data"
-									icon={RefreshCw}
-									loading={refreshingCalendar}
-								></Button>
+							<Button
+								onclick={refreshCalendarData}
+								disabled={refreshingCalendar}
+								variant="ghost"
+								size="sm"
+								title="Refresh calendar data"
+								icon={RefreshCw}
+								loading={refreshingCalendar}
+							></Button>
 
-								<Button
-									onclick={handleDisconnectClick}
-									variant="danger"
-									size="sm"
-									class="sm:size-md"
-									icon={Unlink}
-									disabled={checkingDependencies || disconnecting}
-									loading={checkingDependencies || disconnecting}
-								>
-									<span class="hidden sm:inline">Disconnect</span>
-									<span class="sm:hidden">Disconnect</span>
-								</Button>
-							</div>
+							<Button
+								onclick={handleDisconnectClick}
+								variant="danger"
+								size="sm"
+								icon={Unlink}
+								disabled={checkingDependencies || disconnecting}
+								loading={checkingDependencies || disconnecting}
+							>
+								Disconnect
+							</Button>
 						</div>
 					{:else}
 						<Button
 							onclick={connectCalendar}
 							variant="primary"
-							size="md"
+							size="sm"
 							icon={Link}
-							class="w-full sm:w-auto shadow-ink pressable"
+							class="shadow-ink pressable"
 						>
-							<span class="hidden sm:inline">Connect Calendar</span>
-							<span class="sm:hidden">Connect</span>
+							Connect Calendar
 						</Button>
 					{/if}
 				</div>
 			</div>
 
 			<!-- Features List -->
-			<div class="p-4 sm:p-6 bg-muted">
-				<h3 class="text-sm font-medium text-foreground mb-3">Calendar Features:</h3>
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-					<div class="flex items-start space-x-2">
-						<CircleCheck class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-						<div>
-							<p class="text-sm font-medium text-foreground">
+			<div class="p-4 sm:p-5 bg-muted/50">
+				<p
+					class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-2"
+				>
+					Calendar Features
+				</p>
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+					<div class="flex items-start gap-2">
+						<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+						<div class="min-w-0">
+							<p class="text-xs sm:text-sm font-medium text-foreground">
 								Automatic Task Scheduling
 							</p>
 							<p class="text-xs text-muted-foreground">
-								Schedule tasks in project phases directly to your calendar
+								Schedule tasks directly to your calendar
 							</p>
 						</div>
 					</div>
-					<div class="flex items-start space-x-2">
-						<CircleCheck class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-						<div>
-							<p class="text-sm font-medium text-foreground">Smart Time Slots</p>
+					<div class="flex items-start gap-2">
+						<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+						<div class="min-w-0">
+							<p class="text-xs sm:text-sm font-medium text-foreground">
+								Smart Time Slots
+							</p>
 							<p class="text-xs text-muted-foreground">
-								Find available time slots based on your preferences
+								Find slots based on your preferences
 							</p>
 						</div>
 					</div>
-					<div class="flex items-start space-x-2">
-						<CircleCheck class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-						<div>
-							<p class="text-sm font-medium text-foreground">Two-way Sync</p>
+					<div class="flex items-start gap-2">
+						<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+						<div class="min-w-0">
+							<p class="text-xs sm:text-sm font-medium text-foreground">
+								Two-way Sync
+							</p>
 							<p class="text-xs text-muted-foreground">
-								Keep tasks and calendar events in sync automatically
+								Tasks and calendar events stay in sync
 							</p>
 						</div>
 					</div>
-					<div class="flex items-start space-x-2">
-						<CircleCheck class="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
-						<div>
-							<p class="text-sm font-medium text-foreground">Holiday Awareness</p>
+					<div class="flex items-start gap-2">
+						<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+						<div class="min-w-0">
+							<p class="text-xs sm:text-sm font-medium text-foreground">
+								Holiday Awareness
+							</p>
 							<p class="text-xs text-muted-foreground">
-								Automatically avoid scheduling on holidays
+								Avoid scheduling on holidays
 							</p>
 						</div>
 					</div>
@@ -644,14 +662,14 @@
 		<!-- Calendar Preferences -->
 		{#if calendarConnected && calendarPreferences}
 			<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-				<div class="p-4 sm:p-6 border-b border-border">
-					<h2
-						class="text-base sm:text-xl font-semibold text-foreground flex items-center"
+				<div class="px-4 sm:px-5 py-3 border-b border-border">
+					<h3
+						class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
 					>
-						<Clock class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-accent" />
+						<Clock class="w-4 h-4 text-accent" />
 						Calendar Preferences
-					</h2>
-					<p class="text-xs sm:text-sm text-muted-foreground mt-1">
+					</h3>
+					<p class="text-xs text-muted-foreground mt-0.5">
 						Customize how tasks are scheduled
 					</p>
 				</div>
@@ -669,9 +687,9 @@
 						};
 					}}
 				>
-					<div class="p-4 sm:p-6 space-y-4 sm:space-y-6">
+					<div class="p-4 sm:p-5 space-y-4">
 						<!-- Working Hours -->
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<FormField
 								label="Work Start Time"
 								labelFor="workStartTime"
@@ -729,7 +747,7 @@
 						</fieldset>
 
 						<!-- Task Duration Settings -->
-						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 							<FormField
 								label="Default Duration (minutes)"
 								labelFor="defaultTaskDuration"
@@ -784,7 +802,7 @@
 						</div>
 
 						<!-- Location Settings -->
-						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+						<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 							<FormField
 								required
 								size="md"
@@ -811,10 +829,10 @@
 								<TextInput
 									id="holidayCountryCode"
 									type="text"
-										name="holiday_country_code"
-										value={calendarPreferences.holiday_country_code}
-										placeholder="US"
-										maxlength={2}
+									name="holiday_country_code"
+									value={calendarPreferences.holiday_country_code}
+									placeholder="US"
+									maxlength={2}
 									class="uppercase"
 									size="md"
 								/>
@@ -864,15 +882,15 @@
 						</div>
 
 						<!-- Save Button -->
-						<div class="flex justify-end pt-4 border-t border-border">
+						<div class="flex justify-end pt-3 border-t border-border">
 							<Button
 								type="submit"
 								disabled={isSavingCalendar}
 								loading={isSavingCalendar}
 								variant="primary"
-								size="md"
+								size="sm"
 								icon={Save}
-								class="w-full sm:w-auto shadow-ink pressable"
+								class="shadow-ink pressable"
 							>
 								{isSavingCalendar ? 'Saving...' : 'Save Preferences'}
 							</Button>
@@ -884,34 +902,32 @@
 			<!-- Scheduled Tasks Preview -->
 			{#if calendarData.scheduledTasks && calendarData.scheduledTasks.length > 0}
 				<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-					<div class="p-4 sm:p-6 border-b border-border">
-						<h2
-							class="text-base sm:text-xl font-semibold text-foreground flex items-center"
+					<div class="px-4 sm:px-5 py-3 border-b border-border">
+						<h3
+							class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
 						>
-							<CalendarCheck class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-emerald-500" />
+							<CalendarCheck class="w-4 h-4 text-emerald-500" />
 							Scheduled Tasks
-						</h2>
-						<p class="text-xs sm:text-sm text-muted-foreground mt-1">
-							Tasks on your calendar
-						</p>
+						</h3>
+						<p class="text-xs text-muted-foreground mt-0.5">Tasks on your calendar</p>
 					</div>
 
 					<div class="divide-y divide-border">
 						{#each calendarData.scheduledTasks.slice(0, 10) as task}
-							<div class="p-4 hover:bg-muted transition-colors">
-								<div class="flex items-center justify-between">
-									<div class="flex-1">
-										<h4 class="font-medium text-foreground">
+							<div class="px-4 sm:px-5 py-3 hover:bg-muted/60 transition-colors">
+								<div class="flex items-center justify-between gap-3">
+									<div class="flex-1 min-w-0">
+										<h4 class="text-sm font-medium text-foreground truncate">
 											{task.title}
 										</h4>
 										{#if task.project}
-											<p class="text-sm text-muted-foreground">
+											<p class="text-xs text-muted-foreground truncate">
 												{task.project.name}
 											</p>
 										{/if}
 										{#if task.task_calendar_events?.[0]}
 											<p
-												class="text-xs text-muted-foreground mt-1 flex items-center"
+												class="text-xs text-muted-foreground mt-0.5 flex items-center"
 											>
 												<Timer class="w-3 h-3 mr-1" />
 												{formatEventDate(
@@ -925,10 +941,9 @@
 											href={task.task_calendar_events[0].event_link}
 											target="_blank"
 											rel="noopener noreferrer"
-											class="ml-4 p-2 text-muted-foreground hover:text-foreground
-                                            rounded-lg hover:bg-muted transition-colors pressable"
+											class="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors pressable flex-shrink-0"
 										>
-											<ChevronRight class="w-5 h-5" />
+											<ChevronRight class="w-4 h-4" />
 										</a>
 									{/if}
 								</div>
@@ -937,9 +952,11 @@
 					</div>
 
 					{#if calendarData.scheduledTasks.length > 10}
-						<div class="p-4 bg-muted text-center">
-							<p class="text-sm text-muted-foreground">
-								And {calendarData.scheduledTasks.length - 10} more scheduled tasks...
+						<div
+							class="px-4 sm:px-5 py-2 bg-muted/50 text-center border-t border-border"
+						>
+							<p class="text-xs text-muted-foreground">
+								And {calendarData.scheduledTasks.length - 10} more scheduled tasks
 							</p>
 						</div>
 					{/if}
@@ -949,34 +966,34 @@
 			<!-- Calendar Intelligence Section -->
 			{#if calendarConnected}
 				<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-					<div class="p-4 sm:p-6 border-b border-border">
-						<h2
-							class="text-base sm:text-xl font-semibold text-foreground flex items-center"
+					<div class="px-4 sm:px-5 py-3 border-b border-border">
+						<h3
+							class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
 						>
-							<Brain class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-purple-500" />
+							<Brain class="w-4 h-4 text-purple-500" />
 							Calendar Intelligence
-						</h2>
-						<p class="text-xs sm:text-sm text-muted-foreground mt-1">
+						</h3>
+						<p class="text-xs text-muted-foreground mt-0.5">
 							Discover projects from calendar
 						</p>
 					</div>
 
-					<div class="p-4 sm:p-6">
+					<div class="p-4 sm:p-5">
 						<!-- Analysis Button -->
 						<div
-							class="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 sm:p-4 tx tx-grain tx-weak"
+							class="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 tx tx-grain tx-weak"
 						>
 							<div
-								class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+								class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
 							>
-								<div class="flex-1">
+								<div class="flex-1 min-w-0">
 									<h4
-										class="font-medium text-foreground flex items-center text-sm sm:text-base"
+										class="text-sm font-semibold text-foreground flex items-center gap-1.5"
 									>
-										<Sparkles class="w-4 h-4 mr-2 text-purple-500" />
+										<Sparkles class="w-4 h-4 text-purple-500" />
 										Analyze Your Calendar
 									</h4>
-									<p class="text-xs sm:text-sm text-muted-foreground mt-1">
+									<p class="text-xs text-muted-foreground mt-0.5">
 										Find projects in your calendar
 									</p>
 								</div>
@@ -987,76 +1004,75 @@
 									disabled={analysisInProgress}
 									loading={analysisInProgress}
 									icon={Brain}
-									class="w-full sm:w-auto flex-shrink-0 shadow-ink pressable"
+									class="flex-shrink-0 shadow-ink pressable"
 								>
 									{analysisInProgress ? 'Analyzing...' : 'Analyze'}
 								</Button>
 							</div>
 
-							<!-- Last Analysis Info -->
 							{#if calendarAnalysisHistory.length > 0}
 								{@const lastAnalysis = calendarAnalysisHistory[0]}
-								<div class="mt-3 text-sm text-muted-foreground">
-									Last analyzed: {formatRelativeTime(lastAnalysis.completed_at)}
-									• {lastAnalysis.projects_created} projects created
+								<div class="mt-2 text-xs text-muted-foreground">
+									Last analyzed {formatRelativeTime(lastAnalysis.completed_at)}
+									· {lastAnalysis.projects_created} projects created
 								</div>
 							{/if}
 						</div>
 
 						<!-- Calendar Projects -->
 						{#if calendarProjects.length > 0}
-							<div class="mt-6">
-								<h4 class="font-medium text-foreground mb-3 flex items-center">
-									<FolderOpen class="w-4 h-4 mr-2 text-muted-foreground" />
-									Projects from Calendar ({calendarProjects.length})
-								</h4>
+							<div class="mt-4">
+								<div class="flex items-center justify-between mb-2">
+									<h4
+										class="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"
+									>
+										<FolderOpen class="w-3.5 h-3.5" />
+										From Calendar ({calendarProjects.length})
+									</h4>
+								</div>
 								<div class="space-y-2">
 									{#each calendarProjects.slice(0, 5) as project}
 										<a
 											href="/projects/{project.id}"
 											class="block p-3 bg-card border border-border rounded-lg hover:shadow-ink transition-all hover:border-purple-500/50 pressable"
 										>
-											<div class="flex items-center justify-between">
-												<div class="flex-1">
-													<h5 class="font-medium text-foreground">
+											<div class="flex items-center justify-between gap-3">
+												<div class="flex-1 min-w-0">
+													<h5
+														class="text-sm font-semibold text-foreground truncate"
+													>
 														{project.name}
 													</h5>
 													{#if project.description}
 														<p
-															class="text-sm text-muted-foreground line-clamp-1"
+															class="text-xs text-muted-foreground line-clamp-1"
 														>
 															{project.description}
 														</p>
 													{/if}
-													<p class="text-xs text-muted-foreground mt-1">
+													<p
+														class="text-xs text-muted-foreground/80 mt-0.5"
+													>
 														Created {formatRelativeTime(
 															project.created_at
 														)}
 														{#if project.task_count > 0}
-															• {project.task_count} task{project.task_count !==
+															· {project.task_count} task{project.task_count !==
 															1
 																? 's'
 																: ''}
 														{/if}
 													</p>
 												</div>
-												<div class="flex items-center space-x-2">
-													<span
-														class="inline-flex items-center px-2 py-1 text-xs font-medium bg-muted text-muted-foreground rounded-md border border-border"
-													>
-														<Calendar class="w-3 h-3 mr-1" />
-														From Calendar
-													</span>
-													<ExternalLink
-														class="w-4 h-4 text-muted-foreground"
-													/>
-												</div>
+												<ExternalLink
+													class="w-4 h-4 text-muted-foreground flex-shrink-0"
+												/>
 											</div>
 										</a>
 									{/each}
 
 									{#if calendarProjects.length > 5}
-										<div class="text-center pt-2">
+										<div class="text-center pt-1">
 											<Button
 												variant="ghost"
 												size="sm"
@@ -1076,8 +1092,8 @@
 		{/if}
 	{:else}
 		<div class="text-center py-12 tx tx-bloom tx-weak rounded-lg">
-			<CircleAlert class="w-12 h-12 text-red-500 mx-auto mb-4" />
-			<p class="text-muted-foreground mb-4">
+			<CircleAlert class="w-10 h-10 text-red-500 mx-auto mb-3" />
+			<p class="text-sm text-muted-foreground mb-4">
 				Failed to load calendar settings. Please try again.
 			</p>
 			<Button

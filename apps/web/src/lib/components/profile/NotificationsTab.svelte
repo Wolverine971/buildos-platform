@@ -13,18 +13,20 @@
 
 	let { userId }: Props = $props();
 
-	// SMS Preferences State
+	// Shared SMS preferences — fetched once here and passed down to children.
+	// Previously NotificationsTab, NotificationPreferences, and SMSPreferences
+	// each fetched this row independently on mount.
 	let smsPreferences = $state<any>(null);
-	let loadingPreferences = $state(true);
-	let userTimezone = $state('UTC');
+	let loadingSmsPreferences = $state(true);
+	let userTimezone = $derived(smsPreferences?.timezone || 'UTC');
 
 	onMount(() => {
-		loadSMSPreferences();
+		loadSmsPreferences();
 	});
 
-	async function loadSMSPreferences() {
+	async function loadSmsPreferences() {
 		try {
-			loadingPreferences = true;
+			loadingSmsPreferences = true;
 			const response = await fetch('/api/sms/preferences');
 			const result = await response.json();
 
@@ -32,45 +34,52 @@
 				throw new Error(result?.error?.[0] || 'Failed to load preferences');
 			}
 
-			smsPreferences = result.data?.preferences;
-
-			// Set state from preferences
-			userTimezone = smsPreferences?.timezone || 'UTC';
+			smsPreferences = result.data?.preferences ?? null;
 		} catch (error) {
 			console.error('Error loading SMS preferences:', error);
 			toastService.error('Failed to load notification preferences');
 		} finally {
-			loadingPreferences = false;
+			loadingSmsPreferences = false;
 		}
 	}
 </script>
 
-<div class="space-y-4 sm:space-y-6">
-	<!-- Header -->
-	<div class="flex items-start gap-3 sm:gap-4">
+<div class="space-y-4 sm:space-y-5">
+	<!-- Tab Header -->
+	<div class="flex items-start gap-3">
 		<div
-			class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-accent shadow-ink flex-shrink-0"
+			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
 		>
-			<Bell class="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
+			<Bell class="w-5 h-5 text-accent-foreground" />
 		</div>
 		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-2xl font-bold text-foreground">Notification Settings</h2>
-			<p class="text-xs sm:text-base text-muted-foreground mt-1">
-				Manage how you receive notifications
+			<h2 class="text-lg sm:text-xl font-bold text-foreground">Notifications</h2>
+			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+				Manage how you receive notifications across email, SMS, push, and in-app.
 			</p>
 		</div>
 	</div>
 
 	<!-- Notification Preferences Component -->
-	<NotificationPreferences {userId} />
+	<NotificationPreferences
+		{userId}
+		{smsPreferences}
+		smsPreferencesLoading={loadingSmsPreferences}
+		onSmsPreferencesRefresh={loadSmsPreferences}
+	/>
 
 	<!-- SMS Preferences Component (includes all SMS notification settings) -->
-	<SMSPreferences {userId} />
+	<SMSPreferences
+		{userId}
+		{smsPreferences}
+		smsPreferencesLoading={loadingSmsPreferences}
+		onSmsPreferencesRefresh={loadSmsPreferences}
+	/>
 
 	<!-- Scheduled Messages List -->
-	{#if !loadingPreferences && smsPreferences?.event_reminders_enabled}
+	{#if !loadingSmsPreferences && smsPreferences?.event_reminders_enabled}
 		<div
-			class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-4 sm:p-6"
+			class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-4 sm:p-5"
 		>
 			<ScheduledSMSList timezone={userTimezone} />
 		</div>

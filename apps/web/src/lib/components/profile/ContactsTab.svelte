@@ -325,25 +325,29 @@
 		action: 'create_new' | 'upsert_existing';
 		normalized_input: ContactImportNormalizedInput;
 		matched_contact_id?: string;
-		}> {
-			if (!importPreview) return [];
-			return importPreview.rows.flatMap((row) => {
-				if (
-					row.status !== 'ready' ||
-					(row.action !== 'create_new' && row.action !== 'upsert_existing') ||
-					!row.normalized_input
-				) {
-					return [];
-				}
+	}> {
+		if (!importPreview) return [];
+		return importPreview.rows.flatMap((row) => {
+			if (
+				row.status !== 'ready' ||
+				(row.action !== 'create_new' && row.action !== 'upsert_existing') ||
+				!row.normalized_input
+			) {
+				return [];
+			}
 
-				return [{
+			return [
+				{
 					row_number: row.row_number,
 					action: row.action,
 					normalized_input: row.normalized_input as ContactImportNormalizedInput,
-					...(row.matched_contact_id ? { matched_contact_id: row.matched_contact_id } : {})
-				}];
-			});
-		}
+					...(row.matched_contact_id
+						? { matched_contact_id: row.matched_contact_id }
+						: {})
+				}
+			];
+		});
+	}
 
 	async function commitImport() {
 		if (!importPreview || importCommitLoading) return;
@@ -378,25 +382,30 @@
 	}
 </script>
 
-<div class="space-y-4 sm:space-y-6">
-	<div class="flex items-start gap-3 sm:gap-4">
+<div class="space-y-4 sm:space-y-5">
+	<!-- Tab Header -->
+	<div class="flex items-start gap-3">
 		<div
-			class="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-accent shadow-ink flex-shrink-0"
+			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
 		>
-			<Users class="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
+			<Users class="w-5 h-5 text-accent-foreground" />
 		</div>
 		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-2xl font-bold text-foreground">Contacts</h2>
-			<p class="text-xs sm:text-base text-muted-foreground mt-1">
+			<h2 class="text-lg sm:text-xl font-bold text-foreground">Contacts</h2>
+			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
 				Manage your personal contact memory. Sensitive values stay masked by default.
 			</p>
 		</div>
 		<Button variant="outline" size="sm" onclick={loadContacts} icon={RefreshCw}>Refresh</Button>
 	</div>
 
-	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-4 sm:p-6">
-		<div class="flex items-center justify-between gap-3 mb-4">
-			<h3 class="text-base sm:text-lg font-semibold text-foreground">
+	<!-- Add/Edit Contact -->
+	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+		<div
+			class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border"
+		>
+			<h3 class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
+				<Pencil class="w-4 h-4 text-accent" />
 				{editingContactId ? 'Edit Contact' : 'Add Contact'}
 			</h3>
 			{#if editingContactId}
@@ -404,7 +413,7 @@
 			{/if}
 		</div>
 
-		<form class="space-y-3" onsubmit={submitContactForm}>
+		<form class="p-4 sm:p-5 space-y-3" onsubmit={submitContactForm}>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
 				<TextInput
 					bind:value={formState.display_name}
@@ -452,151 +461,172 @@
 		</form>
 	</div>
 
-	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-4 sm:p-6">
-		<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-			<h3 class="text-base sm:text-lg font-semibold text-foreground">Bulk Upload (CSV)</h3>
+	<!-- Bulk Upload -->
+	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+		<div
+			class="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border"
+		>
+			<h3 class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
+				<Upload class="w-4 h-4 text-accent" />
+				Bulk Upload (CSV)
+			</h3>
 			<Button variant="outline" size="sm" onclick={downloadCsvTemplate} icon={Download}>
 				Download template
 			</Button>
 		</div>
 
-		<div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 items-center">
-			<input
-				type="file"
-				accept=".csv,text/csv"
-				onchange={handleFileSelection}
-				class="text-sm"
-			/>
-			<Button
-				variant="outline"
-				size="sm"
-				icon={Upload}
-				disabled={!selectedFile}
-				loading={importPreviewLoading}
-				onclick={previewImport}
-			>
-				Preview import
-			</Button>
-			<Button
-				variant="primary"
-				size="sm"
-				icon={FileText}
-				disabled={!importPreview || getReadyRowsForCommit().length === 0}
-				loading={importCommitLoading}
-				onclick={commitImport}
-			>
-				Confirm import
-			</Button>
-		</div>
-
-		{#if importWarning}
-			<p class="text-xs text-destructive mt-3">{importWarning}</p>
-		{/if}
-
-		{#if importPreview}
-			<div class="mt-4 space-y-3">
-				<p class="text-sm text-muted-foreground">
-					Rows: {importPreview.summary.total} · Ready: {importPreview.summary.ready} · Skipped:
-					{importPreview.summary.skipped} · Errors: {importPreview.summary.errors}
-				</p>
-				<div class="max-h-64 overflow-auto border border-border rounded-md">
-					<table class="w-full text-sm">
-						<thead class="bg-muted/60 text-left">
-							<tr>
-								<th class="px-3 py-2">Row</th>
-								<th class="px-3 py-2">Contact</th>
-								<th class="px-3 py-2">Methods (masked)</th>
-								<th class="px-3 py-2">Status</th>
-								<th class="px-3 py-2">Action</th>
-								<th class="px-3 py-2">Reason</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each importPreview.rows as row (`import-preview-${row.row_number}`)}
-								<tr class="border-t border-border">
-									<td class="px-3 py-2">{row.row_number}</td>
-									<td class="px-3 py-2">
-										{row.normalized_input?.display_name ?? 'Unknown'}
-									</td>
-									<td class="px-3 py-2 text-muted-foreground">
-										{formatPreviewMethods(row)}
-									</td>
-									<td class="px-3 py-2">{row.status}</td>
-									<td class="px-3 py-2">{row.action}</td>
-									<td class="px-3 py-2 text-muted-foreground">
-										{row.reason ??
-											(row.matched_contact_name
-												? `Matched ${row.matched_contact_name}`
-												: 'Ready')}
-									</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
+		<div class="p-4 sm:p-5">
+			<div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 items-center">
+				<input
+					type="file"
+					accept=".csv,text/csv"
+					onchange={handleFileSelection}
+					class="text-sm"
+				/>
+				<Button
+					variant="outline"
+					size="sm"
+					icon={Upload}
+					disabled={!selectedFile}
+					loading={importPreviewLoading}
+					onclick={previewImport}
+				>
+					Preview import
+				</Button>
+				<Button
+					variant="primary"
+					size="sm"
+					icon={FileText}
+					disabled={!importPreview || getReadyRowsForCommit().length === 0}
+					loading={importCommitLoading}
+					onclick={commitImport}
+				>
+					Confirm import
+				</Button>
 			</div>
-		{/if}
 
-		{#if importCommitResult}
-			<p class="text-sm text-muted-foreground mt-3">
-				Imported: {importCommitResult.summary.imported} · Failed: {importCommitResult
-					.summary.failed}
-			</p>
-		{/if}
+			{#if importWarning}
+				<p class="text-xs text-destructive mt-3">{importWarning}</p>
+			{/if}
+
+			{#if importPreview}
+				<div class="mt-4 space-y-3">
+					<p class="text-sm text-muted-foreground">
+						Rows: {importPreview.summary.total} · Ready: {importPreview.summary.ready} ·
+						Skipped:
+						{importPreview.summary.skipped} · Errors: {importPreview.summary.errors}
+					</p>
+					<div class="max-h-64 overflow-auto border border-border rounded-md">
+						<table class="w-full text-sm">
+							<thead class="bg-muted/60 text-left">
+								<tr>
+									<th class="px-3 py-2">Row</th>
+									<th class="px-3 py-2">Contact</th>
+									<th class="px-3 py-2">Methods (masked)</th>
+									<th class="px-3 py-2">Status</th>
+									<th class="px-3 py-2">Action</th>
+									<th class="px-3 py-2">Reason</th>
+								</tr>
+							</thead>
+							<tbody>
+								{#each importPreview.rows as row (`import-preview-${row.row_number}`)}
+									<tr class="border-t border-border">
+										<td class="px-3 py-2">{row.row_number}</td>
+										<td class="px-3 py-2">
+											{row.normalized_input?.display_name ?? 'Unknown'}
+										</td>
+										<td class="px-3 py-2 text-muted-foreground">
+											{formatPreviewMethods(row)}
+										</td>
+										<td class="px-3 py-2">{row.status}</td>
+										<td class="px-3 py-2">{row.action}</td>
+										<td class="px-3 py-2 text-muted-foreground">
+											{row.reason ??
+												(row.matched_contact_name
+													? `Matched ${row.matched_contact_name}`
+													: 'Ready')}
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			{/if}
+
+			{#if importCommitResult}
+				<p class="text-sm text-muted-foreground mt-3">
+					Imported: {importCommitResult.summary.imported} · Failed: {importCommitResult
+						.summary.failed}
+				</p>
+			{/if}
+		</div>
 	</div>
 
-	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-4 sm:p-6">
-		<div class="flex items-center justify-between gap-3 mb-4">
-			<h3 class="text-base sm:text-lg font-semibold text-foreground">Saved Contacts</h3>
+	<!-- Saved Contacts -->
+	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
+		<div
+			class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border"
+		>
+			<h3 class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
+				<Users class="w-4 h-4 text-accent" />
+				Saved Contacts
+			</h3>
 			<p class="text-xs text-muted-foreground">{contacts.length} total</p>
 		</div>
 
-		{#if loadingContacts}
-			<p class="text-sm text-muted-foreground">Loading contacts...</p>
-		{:else if contacts.length === 0}
-			<p class="text-sm text-muted-foreground">
-				No contacts yet. Add one manually or upload a CSV file.
-			</p>
-		{:else}
-			<div class="space-y-3">
-				{#each contacts as contact (contact.id)}
-					<div class="border border-border rounded-md p-3">
-						<div class="flex flex-wrap items-start justify-between gap-3">
-							<div class="min-w-0">
-								<p class="font-semibold text-foreground">{contact.display_name}</p>
-								<p class="text-xs text-muted-foreground mt-1">
-									{contact.relationship_label || 'No relationship'} · {contact.organization ||
-										'No org'}
-								</p>
-								<p class="text-xs text-muted-foreground mt-1">
-									{formatMethods(contact)}
-								</p>
-								<p class="text-xs text-muted-foreground mt-1">
-									Last updated: {formatLastUpdated(contact.updated_at)}
-								</p>
-							</div>
-							<div class="flex items-center gap-2">
-								<Button
-									variant="ghost"
-									size="sm"
-									icon={Pencil}
-									onclick={() => startEdit(contact)}
-								>
-									Edit
-								</Button>
-								<Button
-									variant="danger"
-									size="sm"
-									icon={Trash2}
-									onclick={() => archiveContact(contact.id)}
-								>
-									Archive
-								</Button>
+		<div class="p-4 sm:p-5">
+			{#if loadingContacts}
+				<p class="text-sm text-muted-foreground">Loading contacts...</p>
+			{:else if contacts.length === 0}
+				<p class="text-sm text-muted-foreground">
+					No contacts yet. Add one manually or upload a CSV file.
+				</p>
+			{:else}
+				<div class="space-y-2">
+					{#each contacts as contact (contact.id)}
+						<div
+							class="border border-border rounded-md p-3 hover:border-accent/50 transition-colors"
+						>
+							<div class="flex flex-wrap items-start justify-between gap-3">
+								<div class="min-w-0">
+									<p class="font-semibold text-sm text-foreground">
+										{contact.display_name}
+									</p>
+									<p class="text-xs text-muted-foreground mt-0.5">
+										{contact.relationship_label || 'No relationship'} · {contact.organization ||
+											'No org'}
+									</p>
+									<p class="text-xs text-muted-foreground mt-0.5">
+										{formatMethods(contact)}
+									</p>
+									<p class="text-xs text-muted-foreground/70 mt-0.5">
+										Updated {formatLastUpdated(contact.updated_at)}
+									</p>
+								</div>
+								<div class="flex items-center gap-1.5">
+									<Button
+										variant="ghost"
+										size="sm"
+										icon={Pencil}
+										onclick={() => startEdit(contact)}
+									>
+										Edit
+									</Button>
+									<Button
+										variant="danger"
+										size="sm"
+										icon={Trash2}
+										onclick={() => archiveContact(contact.id)}
+									>
+										Archive
+									</Button>
+								</div>
 							</div>
 						</div>
-					</div>
-				{/each}
-			</div>
-		{/if}
+					{/each}
+				</div>
+			{/if}
+		</div>
 	</div>
 </div>

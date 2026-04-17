@@ -2,62 +2,68 @@
 layout: docs
 title: Brain Dump & Voice Notes
 slug: brain-dump
-summary: Capture messy thinking in text or voice; BuildOS structures it into your ontology.
+summary: Talk through the messy version of your work. BuildOS turns it into structured projects with memory.
 icon: Brain
 order: 3
 lastUpdated: 2026-04-17
+path: apps/web/src/content/docs/brain-dump.md
 ---
 
-A brain dump is the heart of BuildOS. You talk or type the messy version of what you're working on, and the system turns it into projects, tasks, plans, and documents — always with a review step before anything is written.
+A brain dump is the shortest path from _"I've got this thing in my head"_ to a project you can actually work on. You describe the work in plain language — voice or text — and BuildOS turns it into a project with a context document, tasks, a plan if one fits, and goals or risks if you named any.
 
-## Two flavors
+Nothing gets written without your approval. Every planned change is previewed; you can edit, drop, or accept before anything lands.
 
-- **Brain Dump** — the full capture flow. Pairs with ontology-aware AI that can create or update an entire project, its plans, tasks, and context document in one pass. Use this when you have a lot to say.
-- **Voice Notes** — a lighter-weight capture surface at [`/voice-notes`](/voice-notes). Record a thought, get a transcript, and optionally send it to brain-dump processing. Use this when you just want to offload an idea without the full flow.
+## Two paths in
 
-Both paths end in the same place: entities written into your ontology.
+- **Brain Dump.** The full capture flow. Best when you've got a lot to say — a new project, a long update, a research-heavy session. It can create or update an entire project, its plan, tasks, and context document in one pass.
+- **Voice Notes.** A lighter-weight surface at [`/voice-notes`](/voice-notes). Record a thought, get a transcript, and send it to a brain dump only if you want the structuring. Use it when you just need to offload something before it disappears.
 
-## What gets created
+Both end in the same place: structured entities in your project graph.
 
-A brain dump no longer produces a free-form blob. It writes into the ontology:
+## What actually gets written
 
-- **A project** (new or existing).
-- A **context document** (`document.context.project`) — the markdown narrative for the project.
-- **Tasks** with appropriate type keys (`task.execute`, `task.research`, etc.).
-- A **plan** when the description implies phasing.
-- **Goals**, **risks**, or **requirements** when the description warrants them.
+Dumps don't produce a free-form blob. They write into the graph:
 
-You see every planned operation before it runs and can approve, edit, or discard.
+- **A project** — new, or the existing one you're adding to.
+- **A context document** — the project's markdown narrative.
+- **Tasks** with semantic type keys (`task.execute`, `task.research`, and so on).
+- **A plan** when the shape of the work implies phasing.
+- **Goals**, **risks**, or **milestones** when you named them.
 
-## How to get the most out of a brain dump
+You see every planned write before it runs. Approve, edit, or discard.
 
-Talk like you're briefing a thoughtful colleague. Include:
+## What to say
 
-- **What you're trying to do.** The goal in plain language.
-- **Where you are right now.** Current state, what's working, what isn't.
-- **Any phases or milestones.** Rough shape is enough.
-- **Blockers.** What's in your way.
-- **Anyone or anything you depend on.** People, tools, constraints.
+Talk like you're briefing a thoughtful collaborator who has never seen your work before. Useful ingredients:
 
-Fragmented is fine. Contradictions are fine. The AI resolves them during processing and surfaces anything ambiguous.
+- **The outcome.** What you're trying to produce.
+- **Where you are now.** What's done, what isn't, what's unclear.
+- **Rough phases.** Even a two-word sketch.
+- **Blockers.** Time, skills, decisions, people.
+- **Constraints and resources.** Deadlines, tools, collaborators.
 
-## Example: a fitness project
+Fragmentary is fine. Contradictions are fine. BuildOS resolves what it can and asks before guessing.
 
-> "I want to start a fitness project. My goal is to lose 20 pounds and build muscle over the next 6 months. Right now I'm completely out of shape and haven't worked out in 2 years. I think I need to start with basic cardio and bodyweight exercises, then gradually add weight training. My biggest blockers are time management and staying motivated. I have a gym membership but prefer working out at home initially…"
+## A real example
 
-That's enough to produce:
+> "I want to start a fitness project. Goal: lose twenty pounds and build muscle over the next six months. I've been out of shape for two years. I think I need basic cardio and bodyweight work first, then progressive weight training. Biggest blockers are time and staying motivated. I have a gym membership but I'd rather start at home."
 
-- A project with a context document summarizing goals and state.
-- A phased plan (Month 1: cardio/bodyweight → Month 2–3: intro to weights → Month 4–6: progressive lifts).
-- Tasks like "pick 3 home workouts," "schedule first gym visit," "find motivation system."
-- A goal: "Lose 20 lbs and build muscle in 6 months."
-- A risk: "Time management and motivation lapse."
+What BuildOS proposes from that:
 
-You review everything before it saves.
+- A **project** with a context document summarizing the goal and the starting state.
+- A **phased plan**: Month 1 cardio and bodyweight → Months 2–3 intro to lifts → Months 4–6 progressive lifting.
+- **Tasks** like _"pick three home workouts,"_ _"schedule first gym visit,"_ _"decide on a motivation system."_
+- A **goal**: _"Lose 20 lbs and build muscle in 6 months."_
+- A **risk**: _"Time and motivation drift."_
 
-## Brain dump vs. agentic chat
+You review the whole thing before any of it saves.
 
-Brain dump is for creating and enriching. Agentic chat is for operating on what already exists — asking, updating, planning, scheduling. They're complementary: dump to capture, chat to execute.
+## Brain dump vs. the agent
+
+- **Dump** to get structure on a blank page or to refresh a stale project.
+- **[Agent chat](/docs/agentic-chat)** to operate on what exists — ask, update, plan, schedule.
+
+They work together: dump captures the raw material, chat does the ongoing work.
 
 ## Next
 

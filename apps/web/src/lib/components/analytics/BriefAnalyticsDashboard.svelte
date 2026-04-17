@@ -313,12 +313,12 @@
 										<div class="w-full bg-muted rounded-full h-1.5 mt-1">
 											<div
 												class="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
-													style="width: {getProgressBarWidth(
-														project.brief_count,
-														analytics.engagement_metrics
-															.most_active_projects[0]?.brief_count ?? 1
-													)}%"
-												></div>
+												style="width: {getProgressBarWidth(
+													project.brief_count,
+													analytics.engagement_metrics
+														.most_active_projects[0]?.brief_count ?? 1
+												)}%"
+											></div>
 										</div>
 									</div>
 									<span
@@ -366,12 +366,12 @@
 										<div class="w-full bg-muted rounded-full h-1.5 mt-1">
 											<div
 												class="bg-purple-600 h-1.5 rounded-full transition-all duration-500"
-													style="width: {getProgressBarWidth(
-														goal.brief_count,
-														analytics.engagement_metrics
-															.most_active_goals[0]?.brief_count ?? 1
-													)}%"
-												></div>
+												style="width: {getProgressBarWidth(
+													goal.brief_count,
+													analytics.engagement_metrics
+														.most_active_goals[0]?.brief_count ?? 1
+												)}%"
+											></div>
 										</div>
 									</div>
 									<span
@@ -555,10 +555,11 @@
 									<div
 										class="w-1 h-1 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"
 									></div>
-										<span class="text-xs text-foreground">
-											Most active: {analytics.engagement_metrics
-												.most_active_projects[0]?.project_name ?? 'Unknown project'} 🚀
-										</span>
+									<span class="text-xs text-foreground">
+										Most active: {analytics.engagement_metrics
+											.most_active_projects[0]?.project_name ??
+											'Unknown project'} 🚀
+									</span>
 								</li>
 							{/if}
 						</ul>

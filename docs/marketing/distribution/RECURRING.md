@@ -65,11 +65,43 @@ Once T03 tracker + profiles exist, the daily Reddit work becomes a command run l
 2. If the most recent cluster post is >14 days old, flag as **at-risk** and block 2 hours on this week's calendar to draft.
 3. If the 10-day window has been missed by >3 days twice in a row, stop. Re-read [WS09 §T44](workstreams/WS09-anti-feed-cluster.md#t44--710-day-publishing-cadence--) and re-plan.
 
-**Social extraction reminder:** every published cluster post needs 3 extractions drafted within 48 hours (Twitter thread, LinkedIn post, Instagram carousel). Log them in the appropriate platform tracker.
+**Social extraction reminder:** every published cluster post needs **5 extractions** drafted within 48 hours — Twitter thread, LinkedIn post, Instagram carousel, and **2 TikTok scripts** (30–45s + 60–90s, see [TikTok cadence](#tiktok-cadence-t49) below). All five live in a single publish kit generated via the [`anti-feed` skill](../../../.claude/skills/anti-feed/SKILL.md) (menu option 2). Log them in the appropriate platform tracker.
+
+### TikTok cadence (T49)
+
+**Workstream:** [WS10](workstreams/WS10-short-form-video.md)
+**Cadence:** 2 TikTok scripts **per cluster blog**, recorded + posted within **7 days** of the blog going live
+**Started:** 2026-04-17 (T34 + `your-morning-without-the-algorithm` backfill due via T47)
+**Why tight window:** the TikTok pair is the vocabulary amplifier for the blog — each script repeats the term-to-own ≥2×. Delay breaks the repetition that makes the cluster compound.
+**Counter-positioning:** every script must pass the [WS10 rejection rubric](workstreams/WS10-short-form-video.md#t50--counter-positioning-rubric). Founder-led, receipts-first, chosen-input CTA, no clip-farm tactics, no trend audio.
+
+**Weekly check (paired with the Monday content-freshness sweep):**
+
+1. For each ✅ cluster blog: are both TikToks recorded AND posted? If the blog is <7 days old, still 🔵 is fine. If >7 days, flag as **overdue**.
+2. Are any cross-posts to Reels + Shorts missing? Default policy: cross-post unless there's a documented reason not to.
+3. Check `docs/marketing/social-media/tiktok/posted.md` for the running log. Verify it's current.
+
+**If the 7-day window is missed by >3 days twice in a row,** stop. Re-read [WS10 §T49](workstreams/WS10-short-form-video.md#t49--posting-cadence) and re-plan. The counter-positioning collapses if the execution is inconsistent.
 
 ---
 
 ## Monthly
+
+### TikTok qualitative review (T51)
+
+**Workstream:** [WS10](workstreams/WS10-short-form-video.md)
+**Time:** 30 min
+**Day:** First Monday of the month (same sitting as LLM remeasure)
+**What to do:**
+
+1. List every TikTok posted this month, with its blog link + term-to-own
+2. For each: did any comment engage the vocabulary? (e.g. someone says "interest media" back to you)
+3. Did any TikTok drive a measurable link click / newsletter signup / blog read?
+4. Did any TikTok get picked up by a larger creator or journalist with a term-to-own quote?
+5. Vocabulary-engaged comment ratio (target >30% by month 3; >10% by month 1)
+
+**Output:** `docs/marketing/measurement/tiktok-review-YYYY-MM.md`
+**Kill criteria:** after 3 months (Q3 2026 checkpoint), if vocabulary engagement is <10% AND zero pickup-quotes, reassess whether TikTok is the right surface. Do NOT kill early for low follower count.
 
 ### LLM citation remeasure (T28)
 

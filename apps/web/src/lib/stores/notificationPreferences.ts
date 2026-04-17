@@ -64,6 +64,23 @@ function createNotificationPreferencesStore() {
 			}
 		},
 
+		// Seed the store from a preferences record the caller already has in
+		// hand. Avoids a redundant fetch when a sibling component has already
+		// loaded the full user_notification_preferences row.
+		hydrate(prefs: Partial<DailyBriefNotificationPreferences> | null | undefined) {
+			if (!prefs) return;
+			update((state) => ({
+				...state,
+				preferences: {
+					should_email_daily_brief: Boolean(prefs.should_email_daily_brief),
+					should_sms_daily_brief: Boolean(prefs.should_sms_daily_brief),
+					updated_at: prefs.updated_at
+				},
+				isLoading: false,
+				error: null
+			}));
+		},
+
 		// Save daily brief notification preferences
 		async save(preferences: Partial<DailyBriefNotificationPreferences>) {
 			update((state) => ({ ...state, isSaving: true, error: null }));

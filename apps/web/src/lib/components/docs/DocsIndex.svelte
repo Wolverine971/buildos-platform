@@ -12,6 +12,11 @@
 		Plug,
 		BookOpen,
 		ArrowRight,
+		Network,
+		ClipboardList,
+		CalendarClock,
+		Sparkles,
+		Puzzle,
 		type Icon as IconType
 	} from 'lucide-svelte';
 	import type { DocSectionMeta } from '$lib/utils/docs';
@@ -30,12 +35,106 @@
 		Plug,
 		BookOpen
 	};
+
+	type CapabilityGroup = {
+		title: string;
+		icon: typeof IconType;
+		items: string[];
+	};
+
+	const CAPABILITY_GROUPS: CapabilityGroup[] = [
+		{
+			title: 'Capture',
+			icon: Brain,
+			items: [
+				'Project creation from a plain-language description',
+				'Brain dumps and voice notes that write into the graph',
+				'Assets (files, images with OCR) attached to the work'
+			]
+		},
+		{
+			title: 'Organize',
+			icon: Network,
+			items: [
+				'Project graph: goals, milestones, plans, tasks, documents, risks, events, members',
+				'Planning and task structuring from outcomes down to dependencies',
+				'Document workspace with project and task-level hierarchy'
+			]
+		},
+		{
+			title: 'Execute',
+			icon: CalendarClock,
+			items: [
+				'Calendar management — availability, scheduling, rescheduling',
+				'Daily briefs by in-app, email, and SMS',
+				'Notifications across in-app, push, email, and SMS'
+			]
+		},
+		{
+			title: 'Think',
+			icon: Sparkles,
+			items: [
+				'Project audit — health, blockers, coverage gaps',
+				'Project forecast — trajectory, slippage, assumptions',
+				'Web research and URL inspection when external context is needed'
+			]
+		},
+		{
+			title: 'Extend',
+			icon: Puzzle,
+			items: [
+				'External agents — Claude Code, OpenClaw, or a custom client via JSON-RPC',
+				'Per-key scope: read-only or read-write, project-scoped, op-whitelisted',
+				'People and profile context for personalization and relationships'
+			]
+		}
+	];
+
+	type SectionGroup = {
+		title: string;
+		description: string;
+		slugs: string[];
+	};
+
+	const SECTION_GROUPS: SectionGroup[] = [
+		{
+			title: 'Start here',
+			description: 'What BuildOS is, and the model you work with every day.',
+			slugs: ['getting-started', 'ontology']
+		},
+		{
+			title: 'Everyday workflows',
+			description: 'Capture work, move it forward, and let BuildOS keep you in the loop.',
+			slugs: [
+				'brain-dump',
+				'agentic-chat',
+				'projects-tasks-plans',
+				'calendar',
+				'daily-briefs',
+				'notifications'
+			]
+		},
+		{
+			title: 'Extend & reference',
+			description:
+				'Plug external agents into your ontology and find the rest when you need it.',
+			slugs: ['connect-agents', 'reference']
+		}
+	];
+
+	function sectionsFor(group: SectionGroup): DocSectionMeta[] {
+		const bySlug = new Map(sections.map((section) => [section.slug, section]));
+		return group.slugs
+			.map((slug) => bySlug.get(slug))
+			.filter((section): section is DocSectionMeta => Boolean(section));
+	}
 </script>
 
-<header class="mb-8 sm:mb-10">
-	<div class="flex items-center gap-3 mb-4">
+<!-- Hero -->
+<header class="mb-10 sm:mb-12">
+	<div class="flex items-start gap-4 mb-5">
 		<div
-			class="rounded-lg border border-border bg-card shadow-ink w-12 h-12 flex items-center justify-center"
+			class="flex-shrink-0 rounded-lg border border-border bg-card shadow-ink w-12 h-12 flex items-center justify-center"
 		>
 			<video
 				src="/onboarding-assets/animations/brain-bolt-electric.mp4"
@@ -47,55 +146,127 @@
 				aria-label="BuildOS Icon"
 			></video>
 		</div>
-		<div>
-			<p class="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+		<div class="min-w-0">
+			<p class="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-1">
 				BuildOS Docs
 			</p>
-			<h1 class="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-				Your guide to thinking in BuildOS
+			<h1
+				class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight"
+			>
+				A thinking environment for people making complex things.
 			</h1>
 		</div>
 	</div>
-	<p class="text-base text-muted-foreground max-w-2xl">
-		BuildOS is a thinking environment for people making complex things. Dump messy thinking,
-		let the ontology organize it, and let the agent help you execute. These docs walk through
-		every piece.
-	</p>
+
+	<div class="max-w-3xl space-y-3 text-base text-muted-foreground leading-relaxed">
+		<p>
+			BuildOS is a <strong class="text-foreground"
+				>graph-based project collaboration system</strong
+			>. Every project is a connected graph of goals, milestones, plans, tasks, documents,
+			risks, events, and the people involved — one coherent model, not a stack of loose tools.
+		</p>
+		<p>
+			You capture work in plain language. BuildOS structures it into that graph and an in-app
+			agent helps you operate on it — auditing health, forecasting risk, scheduling, searching
+			the web, and writing back into your projects. External agents like Claude Code can do
+			the same through a scoped JSON-RPC gateway.
+		</p>
+	</div>
 </header>
 
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-	{#each sections as section}
-		{@const Icon = ICONS[section.icon] ?? BookOpen}
-		<a
-			href={'/docs/' + section.slug}
-			class="group flex flex-col h-full bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper p-4 sm:p-5"
+<!-- What BuildOS can do -->
+<section class="mb-10 sm:mb-12" aria-labelledby="capabilities-heading">
+	<div class="flex items-baseline justify-between mb-4">
+		<h2
+			id="capabilities-heading"
+			class="text-sm font-semibold uppercase tracking-wider text-muted-foreground"
 		>
-			<div class="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-				<span
-					class="inline-flex items-center justify-center w-6 h-6 rounded bg-muted text-foreground"
-				>
-					<Icon class="w-3.5 h-3.5" />
-				</span>
-				<span class="uppercase tracking-wider text-[10px]">
-					{String(section.order).padStart(2, '0')}
-				</span>
+			What BuildOS can do
+		</h2>
+		<span class="text-xs text-muted-foreground/70">Capability surface</span>
+	</div>
+
+	<div class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-5 sm:p-6">
+		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+			{#each CAPABILITY_GROUPS as group}
+				{@const GroupIcon = group.icon}
+				<div>
+					<div class="flex items-center gap-2 mb-2">
+						<span
+							class="inline-flex items-center justify-center w-6 h-6 rounded bg-accent/10 text-accent"
+						>
+							<GroupIcon class="w-3.5 h-3.5" />
+						</span>
+						<h3 class="text-sm font-semibold text-foreground">{group.title}</h3>
+					</div>
+					<ul class="space-y-1.5">
+						{#each group.items as item}
+							<li class="flex gap-2 text-xs text-muted-foreground leading-relaxed">
+								<span
+									class="text-accent/60 flex-shrink-0 select-none"
+									aria-hidden="true">•</span
+								>
+								<span>{item}</span>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/each}
+		</div>
+	</div>
+</section>
+
+<!-- Sections, grouped -->
+<section aria-labelledby="sections-heading">
+	<h2
+		id="sections-heading"
+		class="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4"
+	>
+		Read the docs
+	</h2>
+
+	<div class="space-y-6">
+		{#each SECTION_GROUPS as group}
+			<div>
+				<div class="flex items-baseline justify-between mb-2">
+					<h3 class="text-base font-semibold text-foreground">{group.title}</h3>
+					<span class="text-xs text-muted-foreground hidden sm:block">
+						{group.description}
+					</span>
+				</div>
+				<p class="text-xs text-muted-foreground mb-3 sm:hidden">{group.description}</p>
+
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+					{#each sectionsFor(group) as section}
+						{@const Icon = ICONS[section.icon] ?? BookOpen}
+						<a
+							href={'/docs/' + section.slug}
+							class="group flex items-start gap-3 bg-card border border-border rounded-lg hover:shadow-ink hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak p-3.5"
+						>
+							<span
+								class="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded bg-muted text-foreground group-hover:bg-accent/10 group-hover:text-accent transition-colors"
+							>
+								<Icon class="w-4 h-4" />
+							</span>
+							<span class="min-w-0 flex-1">
+								<span
+									class="block text-sm font-semibold text-foreground group-hover:text-accent transition-colors truncate"
+								>
+									{section.title}
+								</span>
+								<span
+									class="block text-xs text-muted-foreground leading-snug line-clamp-2 mt-0.5"
+								>
+									{section.summary}
+								</span>
+							</span>
+							<ArrowRight
+								class="w-3.5 h-3.5 text-muted-foreground/50 flex-shrink-0 mt-1 group-hover:text-accent group-hover:translate-x-0.5 transition-all"
+							/>
+						</a>
+					{/each}
+				</div>
 			</div>
-
-			<h2
-				class="text-base font-semibold text-foreground mb-1.5 group-hover:text-accent transition-colors"
-			>
-				{section.title}
-			</h2>
-
-			<p class="text-sm text-muted-foreground leading-relaxed flex-1">
-				{section.summary}
-			</p>
-
-			<span
-				class="mt-3 inline-flex items-center gap-1 text-xs text-accent font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-			>
-				Read <ArrowRight class="w-3 h-3" />
-			</span>
-		</a>
-	{/each}
-</div>
+		{/each}
+	</div>
+</section>

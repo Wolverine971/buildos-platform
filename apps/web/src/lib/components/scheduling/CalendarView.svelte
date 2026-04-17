@@ -409,13 +409,13 @@
 				<!-- Time column -->
 				<div class="bg-muted/50">
 					<div class="h-10 border-b border-border"></div>
-						{#each Array(parseInt(workingHours.work_end_time.split(':')[0] ?? '17') - parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) as _, i}
-							<div
-								class="h-16 px-1.5 py-1 text-[10px] text-muted-foreground border-b border-border tabular-nums"
-							>
-								{parseInt(workingHours.work_start_time.split(':')[0] ?? '9') + i}:00
-							</div>
-						{/each}
+					{#each Array(parseInt(workingHours.work_end_time.split(':')[0] ?? '17') - parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) as _, i}
+						<div
+							class="h-16 px-1.5 py-1 text-[10px] text-muted-foreground border-b border-border tabular-nums"
+						>
+							{parseInt(workingHours.work_start_time.split(':')[0] ?? '9') + i}:00
+						</div>
+					{/each}
 				</div>
 
 				<!-- Day columns -->
@@ -438,11 +438,13 @@
 							</div>
 						</div>
 						<div
-								class="relative"
-								style="height: {(parseInt(workingHours.work_end_time.split(':')[0] ?? '17') -
-									parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) *
-									64}px"
-							>
+							class="relative"
+							style="height: {(parseInt(
+								workingHours.work_end_time.split(':')[0] ?? '17'
+							) -
+								parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) *
+								64}px"
+						>
 							{#each Array.from(eventColumns.entries()) as [columnIndex, eventsInColumn]}
 								{#each eventsInColumn as event}
 									{@const left = (columnIndex / columnCount) * 100}

@@ -1899,7 +1899,9 @@
 		const finalStandaloneTurn = standaloneTurn as ConversationTurn | null;
 
 		if (finalStandaloneTurn) {
-			finalStandaloneTurn.toolCalls = buildConversationToolCalls(finalStandaloneTurn.auditEvents);
+			finalStandaloneTurn.toolCalls = buildConversationToolCalls(
+				finalStandaloneTurn.auditEvents
+			);
 			finalStandaloneTurn.auditEvents.sort(compareTimelineEvents);
 		}
 

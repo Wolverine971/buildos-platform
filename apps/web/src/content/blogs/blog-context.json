@@ -962,6 +962,36 @@
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/social-media-is-dead-interest-media.md"
 				},
+				"what-a-thinking-environment-actually-is": {
+					"title": "What a Thinking Environment Actually Is",
+					"description": "Not a productivity tool. Not a note app. Not an AI assistant. A thinking environment is a specific category with specific properties — the surface where you author your own mind. Here's a precise definition and the five properties that define the category.",
+					"author": "DJ Wayne",
+					"date": "2026-04-18",
+					"lastmod": "2026-04-18",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"thinking-environment",
+						"anti-feed",
+						"interest-media",
+						"brain-dump",
+						"context-engineering",
+						"productivity",
+						"personal-knowledge-management",
+						"AI-philosophy",
+						"commonplace-book",
+						"zettelkasten",
+						"build-os"
+					],
+					"readingTime": 11,
+					"excerpt": "A thinking environment isn't a productivity tool, a note app, or an AI assistant. It's a specific category with specific properties — the surface where you author your own mind, where context persists, and where what you gave it yesterday shapes what you get today. Commonplace books and Zettelkastens were analog versions. The digital version is about to matter more than anyone expects.",
+					"pic": "thinking-environment-defined",
+					"path": "apps/web/src/content/blogs/philosophy/what-a-thinking-environment-actually-is.md",
+					"slug": "what-a-thinking-environment-actually-is",
+					"category": "philosophy",
+					"filePath": "src/content/blogs/philosophy/what-a-thinking-environment-actually-is.md"
+				},
 				"your-morning-without-the-algorithm": {
 					"title": "You're Not Choosing What You Think About Anymore",
 					"description": "The clipping economy broke the public internet. A thinking environment is the only way back to your own mind — a brain dump as the anti-feed, a daily brief as your morning without the algorithm.",
@@ -1459,7 +1489,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-04-17T17:42:13.451Z",
-	"totalPosts": 58,
+	"generatedAt": "2026-04-17T19:44:29.314Z",
+	"totalPosts": 59,
 	"totalCategories": 6
 }

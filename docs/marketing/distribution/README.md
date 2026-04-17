@@ -26,6 +26,7 @@ Status legend: ⚪ not-started · 🟡 ready (unblocked, awaiting pickup) · �
 | WS07 | Site Architecture (how-it-works, changelog) | T14, T23                                    | 2–3       | Code + Content     | ⚪                             | [WS07](workstreams/WS07-site-architecture.md)     |
 | WS08 | Performance Monitoring                      | T33                                         | 4         | Code + Ops         | ⚪                             | [WS08](workstreams/WS08-performance.md)           |
 | WS09 | Anti-Feed Content Cluster                   | T34–T45                                     | 2–3 + 🔁  | Writing + Research | 🔵 T34 ✅ · T35 🟡 · T44 🔁 🔵 | [WS09](workstreams/WS09-anti-feed-cluster.md)     |
+| WS10 | Short-Form Video (TikTok, counter-positioned) | T46–T51                                   | 2–4 + 🔁  | Writing + Ops      | 🔵 T46 ⚪ · T47 ⚪ · T49 🔁 ⚪ | [WS10](workstreams/WS10-short-form-video.md)      |
 
 ---
 
@@ -78,6 +79,12 @@ Status legend: ⚪ not-started · 🟡 ready (unblocked, awaiting pickup) · �
 | T43  | Blog 10 — "Writing Is Thinking. Scrolling Is Receiving." | WS09        | ⚪                      |
 | T44  | Anti-feed 7–10 day publishing cadence                    | WS09        | 🔁 🔵                   |
 | T45  | Anti-feed receipts library                               | WS09        | ⚪                      |
+| T46  | TikTok account setup                                     | WS10        | ⚪                      |
+| T47  | Backfill TikTok scripts for published cluster posts      | WS10        | ⚪                      |
+| T48  | TikTok pair per cluster blog (2 scripts × T35–T43)       | WS10        | 🔁 ⚪                   |
+| T49  | TikTok posting cadence (7 days post-blog)                | WS10        | 🔁 ⚪                   |
+| T50  | Counter-positioning rubric                               | WS10        | ⚪                      |
+| T51  | Monthly TikTok qualitative review                        | WS10        | 🔁 ⚪                   |
 
 ---
 
@@ -90,7 +97,8 @@ The big ones:
 - **WS03 T03 → WS03 T10 → WS03 T27.** 3-month karma runway is the critical path; start the clock first.
 - **WS04 T15 → WS03 T27 (first big Reddit post).** Framework doc becomes the artifact Reddit engagement points back to.
 - **WS06 T09 (README) → WS02 citation quality.** Public repo README is a heavily-weighted LLM source; rewriting it compounds every GEO lever.
-- **WS09 → WS02, WS03, WS04.** The anti-feed cluster is a vocabulary-ownership loop: each post is a JSON-LD `Article` asset (WS02), produces 3 social extractions + Reddit share material (WS03 post-T10), and seeds the T15 flagship (WS04). Land T35–T38 before T15 goes public.
+- **WS09 → WS02, WS03, WS04, WS10.** The anti-feed cluster is a vocabulary-ownership loop: each post is a JSON-LD `Article` asset (WS02), produces 5 social extractions + Reddit share material (WS03 post-T10), seeds the T15 flagship (WS04), and triggers a 2-script TikTok pair (WS10). Land T35–T38 before T15 goes public.
+- **WS10 → WS09.** Every cluster blog triggers a T48 row. WS10 does not invent content — it extracts and amplifies cluster vocabulary. The dispatcher skill (`.claude/skills/anti-feed/`) generates both lanes from one kit.
 
 ---
 
@@ -113,5 +121,6 @@ Recurring ops (Reddit karma, LLM remeasure, changelog updates, etc.) live in [`R
 
 ## Change Log
 
+- **2026-04-19** — WS10 (Short-Form Video, TikTok counter-positioned) added. T46–T51 defined. Extends anti-feed cluster's social extractions from 3 → 5 (added 2 TikTok scripts per blog). New dispatcher skill at `.claude/skills/anti-feed/` handles the full cluster workflow — draft blog, build publish kit, standalone TikTok, capture receipts, show status. Topic map updated with "TikTok angle" column. RECURRING.md adds T49 weekly check + T51 monthly review. Stale `viral-short-form-video-strategy.md` marked superseded.
 - **2026-04-18** — WS09 (Anti-Feed Content Cluster) added. Integrates the anti-feed topic map (`docs/marketing/strategy/anti-feed-content-topic-map.md`) into the execution plan as T34–T45. T34 marked complete (`social-media-is-dead-interest-media.md` published 2026-04-17). T44 cadence (7–10 days) started. Boundary with WS04 (Flagship) documented in WS09.
 - **2026-04-17** — Folder created. Strategy reconciled to "thinking environment for creators" positioning. 8 work streams defined. T02 marked complete (spec drafted 2026-04-16). T03 spec drafted and in execution.

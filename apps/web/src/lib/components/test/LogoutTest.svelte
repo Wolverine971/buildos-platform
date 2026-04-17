@@ -24,10 +24,10 @@
 		try {
 			await logout('/auth/login?message=Logged out successfully');
 			testResults = [...testResults, 'Standard logout completed'];
-			} catch (error) {
-				testResults = [...testResults, `Error: ${getErrorMessage(error)}`];
-				isLoggingOut = false;
-			}
+		} catch (error) {
+			testResults = [...testResults, `Error: ${getErrorMessage(error)}`];
+			isLoggingOut = false;
+		}
 	}
 
 	async function checkAuthState() {
@@ -43,9 +43,9 @@
 				...testResults,
 				`Client Supabase: ${session ? 'Logged in' : 'Logged out'} (User: ${session?.user?.email || 'none'})`
 			];
-			} catch (error) {
-				testResults = [...testResults, `Client check error: ${getErrorMessage(error)}`];
-			}
+		} catch (error) {
+			testResults = [...testResults, `Client check error: ${getErrorMessage(error)}`];
+		}
 
 		// Check server state via API
 		try {
@@ -62,9 +62,9 @@
 				...testResults,
 				`Server API: ${data.authenticated ? 'Logged in' : 'Logged out'} (User: ${data.userId || 'none'})`
 			];
-			} catch (error) {
-				testResults = [...testResults, `Server check error: ${getErrorMessage(error)}`];
-			}
+		} catch (error) {
+			testResults = [...testResults, `Server check error: ${getErrorMessage(error)}`];
+		}
 
 		// Check page data (server-rendered state)
 		testResults = [
@@ -100,9 +100,9 @@
 			if (response.redirected) {
 				testResults = [...testResults, `Redirect to: ${response.url}`];
 			}
-			} catch (error) {
-				testResults = [...testResults, `Manual clear error: ${getErrorMessage(error)}`];
-			}
+		} catch (error) {
+			testResults = [...testResults, `Manual clear error: ${getErrorMessage(error)}`];
+		}
 	}
 
 	async function forceRefresh() {
@@ -111,9 +111,9 @@
 		try {
 			await forceAuthRefresh();
 			testResults = [...testResults, 'Auth refresh completed'];
-			} catch (error) {
-				testResults = [...testResults, `Refresh error: ${getErrorMessage(error)}`];
-			}
+		} catch (error) {
+			testResults = [...testResults, `Refresh error: ${getErrorMessage(error)}`];
+		}
 	}
 
 	async function checkCookies() {

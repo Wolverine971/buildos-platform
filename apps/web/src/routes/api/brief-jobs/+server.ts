@@ -15,10 +15,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 100);
 		const offset = parseInt(url.searchParams.get('offset') || '0');
 
-		// Build query
+		// Build query. No count mode — the Brief Settings UI only renders
+		// returned rows; tracking an exact count would force Postgres to run
+		// a second COUNT(*) on queue_jobs for every poll.
 		let query = supabase
 			.from('queue_jobs')
-			.select('*', { count: 'exact' })
+			.select('*')
 			.eq('user_id', user.id)
 			.eq('job_type', jobType as any)
 			.order('created_at', { ascending: false });
@@ -32,7 +34,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// Apply pagination
 		query = query.range(offset, offset + limit - 1);
 
-		const { data: jobs, error, count } = await query;
+		const { data: jobs, error } = await query;
 
 		if (error) {
 			throw error;
@@ -40,10 +42,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		return ApiResponse.success({
 			jobs: jobs || [],
-			total: count || 0,
 			limit,
 			offset,
-			hasMore: (count || 0) > offset + limit
+			hasMore: (jobs?.length ?? 0) === limit
 		});
 	} catch (error) {
 		console.error('Error fetching brief jobs:', error);

@@ -2,13 +2,14 @@
 layout: docs
 title: Reference & Help
 slug: reference
-summary: FAQ, contact, feedback, and other places to go when you need more.
+summary: FAQ, contact, feedback, and other places to go when the docs don't cover it.
 icon: BookOpen
 order: 10
 lastUpdated: 2026-04-17
+path: apps/web/src/content/docs/reference.md
 ---
 
-When you've read everything on this site and still need something, these are the places to go.
+The docs are meant to cover the working surfaces. When you need something more specific, these are the places to go.
 
 ## Inside BuildOS
 
@@ -19,9 +20,9 @@ When you've read everything on this site and still need something, these are the
 ## Talk to us
 
 - **[Contact](/contact)** — general support and partnership inquiries.
-- **[Feedback](/feedback)** — feature requests, bug reports, and product ideas. Read.
+- **[Feedback](/feedback)** — feature requests, bug reports, and product ideas. It's read.
 
-## Related docs
+## Related reading
 
 - [Getting Started](/docs/getting-started)
 - [The BuildOS Ontology](/docs/ontology)
