@@ -91,6 +91,9 @@ function createPrivateConfigProbeResponse(event: RequestEvent): Response | null 
 	);
 }
 
+// Never throws / never rejects. Callers can safely `void logHookError(...)` —
+// a failure inside the error-logging pipeline itself lands on the console
+// instead of creating an unhandledRejection that would crash the process.
 function logHookError(
 	event: RequestEvent,
 	error: unknown,
@@ -102,69 +105,39 @@ function logHookError(
 		metadata?: Record<string, unknown>;
 	} = {}
 ): Promise<void> {
-	return logServerError({
-		error,
-		endpoint: event.url.pathname,
-		method: event.request.method,
-		operation,
-		userId: options.userId ?? event.locals.user?.id,
-		projectId: options.projectId,
-		requestId: getRequestIdFromHeaders(event.request.headers),
-		severity: options.severity,
-		metadata: {
-			routeId: event.route.id ?? null,
-			params: event.params,
-			...(options.metadata ?? {})
-		}
-	});
+	try {
+		return logServerError({
+			error,
+			endpoint: event.url.pathname,
+			method: event.request.method,
+			operation,
+			userId: options.userId ?? event.locals.user?.id,
+			projectId: options.projectId,
+			requestId: getRequestIdFromHeaders(event.request.headers),
+			severity: options.severity,
+			metadata: {
+				routeId: event.route.id ?? null,
+				params: event.params,
+				...(options.metadata ?? {})
+			}
+		}).catch((logError) => {
+			console.error(
+				`[hooks.server] error-logger failed while reporting ${operation}`,
+				logError,
+				'original error:',
+				error
+			);
+		});
+	} catch (logError) {
+		console.error(
+			`[hooks.server] error-logger threw synchronously while reporting ${operation}`,
+			logError,
+			'original error:',
+			error
+		);
+		return Promise.resolve();
+	}
 }
-
-// Rate limiting handle
-// const handleRateLimit: Handle = async ({ event, resolve }) => {
-// 	const path = event.url.pathname;
-// 	const method = event.request.method;
-
-// 	// Skip rate limiting for static assets
-// 	if (
-// 		path.startsWith('/_app/') ||
-// 		path.startsWith('/static/') ||
-// 		path === '/favicon.ico' ||
-// 		path === '/robots.txt' ||
-// 		path === '/sitemap.xml'
-// 	) {
-// 		return resolve(event);
-// 	}
-
-// 	// Apply different rate limits based on the route
-// 	let rateLimitResponse;
-
-// 	// Auth endpoints - strict limits
-// 	if (path.startsWith('/api/auth/') || path.startsWith('/auth/')) {
-// 		rateLimitResponse = await rateLimits.auth(event);
-// 	}
-// 	// AI endpoints - very strict limits
-// 	else if (
-// 		path.includes('/generate') ||
-// 		path.includes('/synthesis') ||
-// 		path.includes('/briefs/generate')
-// 	) {
-// 		rateLimitResponse = await rateLimits.ai(event);
-// 	}
-// 	// Write operations - moderate limits
-// 	else if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-// 		rateLimitResponse = await rateLimits.write(event);
-// 	}
-// 	// Read operations - generous limits
-// 	else {
-// 		rateLimitResponse = await rateLimits.read(event);
-// 	}
-
-// 	if (rateLimitResponse && rateLimitResponse.status === 429) {
-// 		return rateLimitResponse;
-// 	}
-
-// 	return resolve(event);
-// };
 
 // Main handle for Supabase and session management
 const handleSupabase: Handle = async ({ event, resolve }) => {

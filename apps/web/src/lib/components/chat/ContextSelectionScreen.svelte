@@ -15,7 +15,6 @@
 		FolderOpen,
 		ChevronRight,
 		LoaderCircle,
-		PenLine,
 		Search,
 		X
 	} from 'lucide-svelte';
@@ -153,10 +152,6 @@
 		onSelect?.({ contextType: 'project_create', label: 'Project setup' });
 	}
 
-	function selectBraindump() {
-		onSelect?.({ contextType: 'brain_dump', label: 'Quick capture' });
-	}
-
 	function goToProjectSelection() {
 		selectedView = 'project-selection';
 	}
@@ -217,7 +212,6 @@
 	const primaryChatCardClasses = `${optionCardBaseClasses} tx tx-frame tx-weak hover:border-accent/40`;
 	const projectChatCardClasses = `${optionCardBaseClasses} tx tx-thread tx-weak hover:border-accent/40`;
 	const setupCardClasses = `${optionCardBaseClasses} tx tx-strip tx-weak hover:border-accent/30`;
-	const captureCardClasses = `${optionCardBaseClasses} tx tx-bloom tx-weak hover:border-accent/30`;
 	const projectListItemClasses =
 		'group flex flex-col rounded-lg border border-border bg-card p-3 text-left shadow-ink tx tx-frame tx-weak pressable transition-colors duration-150 hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-3';
 	const optionIconClasses =
@@ -247,8 +241,7 @@
 						Choose a working context
 					</h2>
 					<p class="text-xs text-muted-foreground sm:text-sm">
-						Start in general chat, work inside a project, or use a lighter setup or
-						capture flow.
+						Start in general chat, work inside a project, or create a new project.
 					</p>
 				{/if}
 			</div>
@@ -395,10 +388,10 @@
 					<div class="space-y-2">
 						<div class="flex items-center justify-between gap-3">
 							<p class="micro-label">SECONDARY</p>
-							<p class="text-xs text-muted-foreground">Setup or capture</p>
+							<p class="text-xs text-muted-foreground">Project setup</p>
 						</div>
 						<div
-							class={`grid gap-2 sm:gap-3 ${dev ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
+							class={`grid gap-2 sm:gap-3 ${dev ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}
 						>
 							<button onclick={selectProjectCreate} class={setupCardClasses}>
 								<div class="flex items-start gap-3">
@@ -416,29 +409,6 @@
 											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
 										>
 											Create structure first, then move into focused work.
-										</p>
-									</div>
-									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
-								</div>
-							</button>
-
-							<button onclick={selectBraindump} class={captureCardClasses}>
-								<div class="flex items-start gap-3">
-									<div class={optionIconClasses}>
-										<PenLine class="h-4 w-4 sm:h-5 sm:w-5" />
-									</div>
-									<div class="min-w-0 flex-1">
-										<p class="micro-label mb-1">QUICK CAPTURE</p>
-										<h3
-											class="text-sm font-semibold text-foreground sm:text-base"
-										>
-											Capture loose notes
-										</h3>
-										<p
-											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
-										>
-											Drop in rough notes when you want speed more than
-											conversation.
 										</p>
 									</div>
 									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />

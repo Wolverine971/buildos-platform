@@ -28,10 +28,6 @@
 	// Notification system integration
 	import NotificationStackManager from '$lib/components/notifications/NotificationStackManager.svelte';
 	import {
-		initBrainDumpNotificationBridge,
-		cleanupBrainDumpNotificationBridge
-	} from '$lib/services/brain-dump-notification.bridge';
-	import {
 		initCalendarAnalysisNotificationBridge,
 		cleanupCalendarAnalysisNotificationBridge
 	} from '$lib/services/calendar-analysis-notification.bridge';
@@ -43,7 +39,6 @@
 		initTimeBlockNotificationBridge,
 		destroyTimeBlockNotificationBridge
 	} from '$lib/services/time-block-notification.bridge';
-	import { backgroundJobs } from '$lib/stores/backgroundJobs';
 	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
 
 	// Vercel Analytics & Speed Insights
@@ -65,7 +60,6 @@
 	let ToastContainer = $state<any>(undefined);
 	let toastService = $state<any>(undefined);
 	let PaymentWarning = $state<any>(undefined);
-	let BackgroundJobIndicator = $state<any>(undefined);
 
 	// PERFORMANCE: Memoize route calculations to prevent unnecessary recalculations
 	let currentRouteId = $state('');
@@ -316,23 +310,20 @@
 				import('$lib/stores/toast.store'),
 				import('$lib/components/onboarding/OnboardingModal.svelte'),
 				import('$lib/components/ui/ToastContainer.svelte'),
-				import('$lib/components/notifications/PaymentWarning.svelte'),
-				import('$lib/components/BackgroundJobIndicator.svelte')
+				import('$lib/components/notifications/PaymentWarning.svelte')
 			]);
 
 			const [
 				toastServiceModule,
 				onboardingModalModule,
 				toastContainerModule,
-				paymentWarningModule,
-				backgroundJobIndicatorModule
+				paymentWarningModule
 			] = (await Promise.race([loadPromise, timeoutPromise])) as any;
 
 			toastService = toastServiceModule.toastService;
 			OnboardingModal = onboardingModalModule.default;
 			ToastContainer = toastContainerModule.default;
 			PaymentWarning = paymentWarningModule.default;
-			BackgroundJobIndicator = backgroundJobIndicatorModule.default;
 
 			// Use untrack for state updates to prevent triggering effects
 			untrack(() => {
@@ -621,7 +612,6 @@
 		installPromptCleanup = setupInstallPrompt();
 
 		// Initialize notification bridges
-		initBrainDumpNotificationBridge();
 		initCalendarAnalysisNotificationBridge();
 		initProjectSynthesisNotificationBridge();
 		initTimeBlockNotificationBridge();
@@ -703,12 +693,10 @@
 			}
 
 			// FIXED: Destroy stores to prevent subscription leaks
-			backgroundJobs.destroy();
 			destroyTimeBlockNotificationBridge();
 			timeBlocksStore.destroy?.();
 
 			// Cleanup notification bridges
-			cleanupBrainDumpNotificationBridge();
 			cleanupCalendarAnalysisNotificationBridge();
 			cleanupProjectSynthesisNotificationBridge();
 
@@ -919,11 +907,6 @@
 		>
 			<ToastContainer />
 		</div>
-	{/if}
-
-	<!-- Background Job Status Indicator -->
-	{#if BackgroundJobIndicator}
-		<BackgroundJobIndicator />
 	{/if}
 
 	<!-- Notification System -->

@@ -5,7 +5,7 @@ import type { SearchResult } from '$lib/types/search';
 
 interface LoadMoreRequest {
 	query: string;
-	type: 'braindump' | 'project' | 'task';
+	type: 'project' | 'task';
 	offset?: number;
 	userId?: string; // Optional since we'll get from session
 }
@@ -33,10 +33,8 @@ export const POST: RequestHandler = async ({ request, locals }): Promise<Respons
 			return ApiResponse.badRequest('Search query is required');
 		}
 
-		if (!data.type || !['braindump', 'project', 'task'].includes(data.type)) {
-			return ApiResponse.badRequest(
-				'Valid search type is required (braindump, project, or task)'
-			);
+		if (!data.type || !['project', 'task'].includes(data.type)) {
+			return ApiResponse.badRequest('Valid search type is required (project or task)');
 		}
 
 		const trimmedQuery = data.query.trim();

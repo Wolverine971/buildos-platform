@@ -11,7 +11,6 @@ export const VALID_CHAT_CONTEXT_TYPES = [
 	'daily_brief',
 	'project_create',
 	'daily_brief_update',
-	'brain_dump',
 	'ontology'
 ] as const;
 

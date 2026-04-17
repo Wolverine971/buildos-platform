@@ -12,7 +12,7 @@ import {
 	sanitizeJsonb,
 	isPastDate
 } from './validation-utils';
-import type { ParsedOperation, TableName } from '$lib/types/brain-dump';
+import type { ParsedOperation, TableName } from '$lib/types/operations';
 
 export class OperationValidator {
 	/**
@@ -263,7 +263,7 @@ export class OperationValidator {
 		// ONLY allow tables that:
 		// 1. Have validation schemas defined
 		// 2. Are safe for user operations
-		// 3. Match the TableName type from brain-dump types
+		// 3. Match the shared operation TableName type
 		const validTables: TableName[] = ['projects', 'tasks', 'notes', 'project_questions'];
 		return validTables.includes(table as TableName);
 	}

@@ -18,7 +18,6 @@ export const TOOL_SURFACE_REPORT_CONTEXTS: ChatContextType[] = [
 	'daily_brief',
 	'general',
 	'ontology',
-	'brain_dump',
 	'daily_brief_update'
 ];
 

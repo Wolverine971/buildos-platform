@@ -1,3 +1,5 @@
+<!-- buildos-strat.md -->
+
 # BuildOS Distribution Strategy: Agent Handoff Document
 
 **Purpose:** Research and action plan for BuildOS's distribution strategy in the post-SEO era. This document briefs an agent working inside the BuildOS codebase and marketing surface on where we're going, why, and what to build/research next.
@@ -7,6 +9,7 @@
 **Status:** Strategy defined, research validated, partially implemented. See inline `[STATUS: ...]` tags for current codebase state.
 
 **Required reading before executing any task in this doc:**
+
 - `docs/marketing/brand/brand-guide-1-pager.md` — category, audience order, voice, terms to use/avoid
 - `docs/marketing/strategy/buildos-marketing-strategy-2026.md` — master strategy
 - `docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md` — anti-AI positioning thesis
@@ -14,6 +17,7 @@
 - `docs/marketing/strategy/buildos-guerrilla-content-doctrine.md` — solo-founder content doctrine
 
 **Positioning guardrails (non-negotiable):**
+
 - Category: **thinking environment for people making complex things**
 - Primary wedge: **authors + YouTubers.** Expand to podcasters, newsletter operators, course creators, founder-creators.
 - ADHD, founders, indie builders are **supporting affinity lanes, not the main category.**
@@ -35,6 +39,7 @@ BuildOS cannot win by playing the old SEO game. We need a different strategy.
 We've moved from the **monopoly aggregator era** (Google routes all intent via algorithmic relevance + link authority) to the **trust-routing era** (intent flows through people, communities, and AI models that humans trust as proxies for truth).
 
 Implications:
+
 - The unit of trust shifted from domain to person/community.
 - Aggregators that matter now aggregate humans, not pages (TikTok, Reddit, Substack, YouTube, LLMs).
 - Discovery is adversarial against AI-generated content; all successful channels have some trust-based defense layer.
@@ -95,6 +100,7 @@ Each item is tagged with current codebase status. Re-audit before implementation
 **[STATUS: ~60–70% built. Backend scaffold exists — missing end-user UI, clone/template, gallery, marketing pages that showcase.]**
 
 Existing infrastructure (don't rebuild):
+
 - Public page routes at `apps/web/src/routes/(public)/p/[slug]/` and `/p/[slugPrefix]/[slugBase]/`
 - Database: `onto_public_pages` table, `onto_public_page_slug_history`, `onto_public_page_review_attempts`
 - Publish flow API: `/api/onto/documents/[id]/public-page/{prepare,confirm,live-sync}`
@@ -125,6 +131,7 @@ The model: Notion, Figma Community, Linear changelog, GitHub READMEs, Vercel dep
 **[STATUS: Mostly done. Audit for gaps, don't rebuild from scratch.]**
 
 Already shipped:
+
 - Shared `SEOHead` component with title, description, canonical, og:, twitter:, robots control
 - `BlogPosting` + `BreadcrumbList` schema on blog posts
 - `Blog` schema on blog index
@@ -136,6 +143,7 @@ Already shipped:
 - `datePublished` / `dateModified` sourced from blog frontmatter
 
 Gaps to close (P1, one afternoon of work):
+
 - Add `SoftwareApplication` schema to homepage `/+page.svelte`
 - Add `FAQPage` schema to `/help` (and wherever FAQ content lives)
 - Keep `dateModified` accurate when blog content is updated (not just initial publish)
@@ -186,6 +194,7 @@ Working title: **"How BuildOS Holds a Complex Project Together: The Thinking-Env
 Not: "The 9-Dimensional Ontology." Not: "USMC 5-Paragraph Order for ADHD Founders." Those frames were tried and discarded. The DJ-USMC backstory can appear as a one-paragraph origin note inside the piece, not as the headline.
 
 Publish as:
+
 - A long-form post on build-os.com (Article schema, accurate `dateModified`)
 - A Medium / Substack cross-post
 - A post to r/writing and r/ProductManagement (following Reddit rules in Part 4)
@@ -224,6 +233,7 @@ This gets cited by LLMs when people ask "how do thinking environments / creator 
 BuildOS integrates with Google Calendar, Twilio, various AI APIs (OpenRouter, Anthropic, OpenAI, Moonshot). Each of those ecosystems has a marketplace or "works with" directory. Being listed is free, tedious, and almost nobody does it.
 
 Tasks:
+
 - Inventory every integration BuildOS has today (start with `packages/` and env var list in `.env.example`)
 - For each, find the partner's marketplace / directory / "built on" page
 - Submit listings with creator-framed copy, screenshots, and links
@@ -236,12 +246,12 @@ Before building, research and produce a brief on each:
 2. **Top 20 creator + productivity subreddits** ranked by (active daily users × promotional-tolerance score). Creator-first list (r/writing, r/selfpublish, r/youtubers, r/NewTubers, r/podcasting, r/Substack, r/contentcreation, r/creators, r/worldbuilding for fiction, r/screenwriting, r/solopreneur for creator-founders); cross-cutting (r/productivity, r/getdisciplined, r/ObsidianMD, r/Notion for displaced users). Include each sub's rules verbatim.
 3. **Competitor public-page strategies.** How do Notion, Linear, Coda, Craft, Obsidian Publish, Figma Community, Scrivener's community handle public sharing? What makes theirs work? Screenshot and annotate.
 4. **LLM citation baseline.** Ask ChatGPT, Claude, and Perplexity the following prompts and record which brands get mentioned, in what position, with what framing. Re-run monthly to track progress:
-   - "What's a good thinking environment for writing a book?"
-   - "What tool helps me turn messy notes into a structured project?"
-   - "Best productivity tool for YouTubers planning a series?"
-   - "Alternative to Notion for long-running creative work?"
-   - "How do I keep context across sessions when I'm making a complex thing?"
-   - (Supporting affinity, run separately) "What's a project management tool that works with ADHD?"
+    - "What's a good thinking environment for writing a book?"
+    - "What tool helps me turn messy notes into a structured project?"
+    - "Best productivity tool for YouTubers planning a series?"
+    - "Alternative to Notion for long-running creative work?"
+    - "How do I keep context across sessions when I'm making a complex thing?"
+    - (Supporting affinity, run separately) "What's a project management tool that works with ADHD?"
 5. **Schema markup gap check.** Homepage lacks `SoftwareApplication`; `/help` lacks `FAQPage`. Confirm and draft the missing JSON-LD blocks.
 6. **Domain-level GEO baseline.** Current ranking for "BuildOS" branded queries, current citation rate in AI answers, current state of Wikipedia / Wikidata entity (we likely have none; creating one is a lever).
 
@@ -258,71 +268,126 @@ Before building, research and produce a brief on each:
 ## Part 4: Reddit Strategy for BuildOS
 
 Reddit is the single highest-ROI non-product distribution channel for BuildOS in 2026. Three reasons:
+
 - Reddit appears in ~97% of product-review Google queries (dual SEO visibility)
 - Reddit is a top training data source for LLMs (citation visibility)
 - Creator-focused subreddits are where our primary audience (authors, YouTubers, podcasters) actually works out loud
 
 The 90/10 rule is non-negotiable: **90% value contribution, 10% subtle promotion.** Violate this and get banned in under a month — this happens to 80%+ of SaaS companies attempting Reddit.
 
+### 🔎 Research + execution surfaces (completed 2026-04-17)
+
+Research Task 1 (subreddit inventory) is complete. Three operational docs drive daily Reddit work:
+
+| Surface                                                                                           | Role                                                                                                              |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **[reddit-subreddit-tracker.md](docs/marketing/social-media/reddit/reddit-subreddit-tracker.md)** | Master tracker: all 19 target subs, cadence, last-visited, recurring threads, cultural canaries, AI-hard-ban list |
+| **[subreddit-profiles/INDEX.md](docs/marketing/social-media/reddit/subreddit-profiles/INDEX.md)** | Per-sub profile database: rules verbatim, culture signal, thread types, voice notes, karma-building plans         |
+| **[/reddit-warmup command](.claude/commands/reddit-warmup.md)**                                   | Daily discovery pass — JSON-API-driven scoring, opens Chrome at top threads, updates tracker                      |
+
 ### Reddit Playbook (Concrete)
 
 **Account hygiene.**
+
 - Use a real-sounding username, not `buildos_founder` or anything branded.
 - Build karma for 3+ months before posting anything promotional. Comments only during this period.
 - Target ~500 comment karma in relevant subs before first post.
 - Always disclose founder relationship when mentioning BuildOS. Transparency is protective — getting caught being stealthy is the fast track to a ban.
+- Several target subs have **AutoMod karma/age gates** (r/podcasting: 5 karma + 7-day account; r/getdisciplined: 200 karma + 30-day account to post). Per-sub gates are in each profile file.
 
-**Target subreddits (creator-first, research and validate each):**
+**Target subreddits (19 total — updated 2026-04-17 from research).**
 
-*Primary (authors):*
-- r/writing (very large, strict rules, high value)
-- r/selfpublish
-- r/worldbuilding (fiction-heavy)
-- r/screenwriting
+_Tier 1 — Primary Creator Subs · Authors (high-fit):_
 
-*Primary (YouTubers):*
-- r/YouTubers (self-promo limited)
-- r/NewTubers
-- r/VideoEditing (adjacent)
+- r/writing — 3.36M subs, strict, **Sunday Tool thread = only sanctioned surface**
+- r/selfpublish — 241K, strict, Weekly Self-Promo thread only
+- r/worldbuilding — 1.88M, moderate, "my lore keeps contradicting itself" = exact BuildOS thesis
+- r/screenwriting — 1.76M, strict, **culturally hostile to outsider software** — medium fit only
 
-*Secondary (other creators):*
-- r/podcasting
-- r/Substack
-- r/Newsletter
-- r/contentcreation
-- r/creators
-- r/solopreneur (creator-founder overlap)
+_Tier 1 — Primary Creator Subs · YouTubers:_
 
-*Cross-cutting (productivity / tool-switchers):*
-- r/productivity
-- r/getdisciplined
-- r/Notion (displaced users)
-- r/ObsidianMD (same)
+- ~~r/YouTubers~~ — **sub is currently CLOSED for renovations; de-prioritize until reopened**
+- r/NewTubers — 668K, strict, has **formal mod-approval path for product posts** (highest-EV Reddit negotiation route)
+- r/VideoEditing — 505K, strict-but-structured, **Monthly Developer/Tool creator thread** = sanctioned surface
 
-*Supporting affinity (participate authentically, don't lead with BuildOS):*
-- r/ADHD
-- r/ExperiencedDevs (dev-adjacent creators)
+_Tier 2 — Secondary creators:_
+
+- r/podcasting — 180K, strict, **Wednesday 7am ET Product or Service thread** = sanctioned surface (Rule 11 permabans market research)
+- r/Substack — 47K, moderate, "writing isn't the actual problem" thesis threads
+- r/Newsletters (plural — _the spec's `r/Newsletter` singular is not the active sub_) — 12K, moderate, low-but-relevant
+- r/contentcreation — 23K, moderate, "AI creative stack" threads are our fit
+- r/creators — 7K, moderate, Rule 2 "self-promo must be earned" is permissive
+- r/solopreneur — 60K, moderate, **DJ's native peer group + BuildOS-thesis threads recur**
+
+_Tier 3 — Cross-cutting (productivity / tool-switchers):_
+
+- r/productivity — 4.17M, strict, **Rule 2 bans even asked-for recommendations — karma-farm only**
+- r/getdisciplined — 2.14M, strict, Rule 4 permabans link-posting; 200-karma + 30-day post gate
+- r/Notion — 453K, strict, **fortnightly (not weekly) Self-promo & Showcase thread**; migration threads are our sweet spot
+- r/ObsidianMD — 310K, strict, switching-cost-locked audience — only useful with genuine Obsidian-user cred
+
+_Tier 4 — Supporting affinity (participate authentically; never lead with BuildOS):_
+
+- r/ADHD — 2.21M, **Rule 8 absolute permaban on any promotion — comment-only, never mention product**
+- r/ExperiencedDevs — 382K, 3+ YOE gate, BuildOS off-topic but DJ can engage as senior engineer
 
 **Comment targets (the gold):**
-- "What tool do you use for [drafting / outlining / organizing research / tracking scenes]?" threads → honest mention with one specific creator use case and founder disclosure.
-- "I can't stick with any productivity tool" threads → empathetic response, mention BuildOS only if genuinely relevant to what they described.
-- "What's an alternative to Notion for [book writing / YouTube series / podcast production]?" threads → BuildOS mention only if it's genuinely the best fit.
+
+- "What tool do you use for [drafting / outlining / organizing research / tracking scenes]?" threads → honest mention with one specific creator use case and founder disclosure — **only in that sub's sanctioned surface** (each profile lists it).
+- "I can't stick with any productivity tool" / "my system broke" threads → empathetic response, lived experience first. Mention BuildOS only if the asker's described problem matches, and only in a sanctioned surface.
+- "Alternative to [Notion / Scrivener / Final Draft] that doesn't lean into AI" → **our positioning sweet spot**, but mention surface constraints apply (e.g. r/Notion fortnightly thread only).
+- "Does anyone else find it 10x easier to 'explain' out loud than write it down?" (r/NewTubers pattern) → literal voice-first thesis thread.
+- "My lore keeps contradicting itself until I changed how I organize everything" (r/worldbuilding pattern) → literal continuity thesis.
 
 **Post targets (after karma built):**
-- "I built a thinking environment for long-running creative projects — here's the framework" (in r/writing or r/YouTubers, following their self-promotion rules)
-- "How I structure a multi-month project without losing context between sessions" (r/productivity, r/Substack)
-- "Show HN / Show r/SaaS: BuildOS — thinking environment for people making complex things" with honest limitations and open asks for feedback
 
-**Own our subreddit.** Create r/buildos before anyone else does. Low effort, prevents squatting, gives users a home, gets indexed by Google.
+- "I built a thinking environment for long-running creative projects — here's the framework" — target r/solopreneur (case-study format, sidebar-sanctioned) first, r/worldbuilding (Rule 7 allows non-disruptive ads with context) second, r/NewTubers via the mod-approval path third.
+- "How I structure a multi-month project without losing context between sessions" — r/Substack self-promotion-flair post; r/solopreneur case study.
+- "Show HN / Show r/SaaS: BuildOS — thinking environment for people making complex things" with honest limitations and open asks for feedback.
+
+**Sanctioned surfaces with cadence (the only places to mention BuildOS):**
+
+| Sub             | Thread                                              | Cadence        |
+| --------------- | --------------------------------------------------- | -------------- |
+| r/writing       | Sunday Writing Tools, Software, and Hardware        | weekly         |
+| r/selfpublish   | Weekly Self-Promo and Chat Thread                   | weekly         |
+| r/NewTubers     | Feedback Friday / mod-approval path for posts       | weekly + gated |
+| r/VideoEditing  | Monthly Developer/Tool creator thread               | monthly        |
+| r/podcasting    | Wednesday 7am ET Product or Service thread          | weekly         |
+| r/Substack      | Self-promotion-flaired text posts                   | on demand      |
+| r/Newsletters   | Weekly pinned self-promo thread                     | weekly         |
+| r/Notion        | **Fortnightly** Self-promo & Showcase thread        | bi-weekly      |
+| r/worldbuilding | Non-disruptive ads with context (Rule 7 allows)     | on demand      |
+| r/solopreneur   | IAmA / Q&A / case-study format (sidebar-sanctioned) | on demand      |
+
+**AI-framing hard-ban subs** — never lead with "AI" in these. Workflow / thinking-environment / project-home framing only:
+
+- r/writing (Rule 4 calls generative AI "slop")
+- r/selfpublish (Rule 2 will ban AI-written posts)
+- r/worldbuilding (Rule 5 bans "using AI to organize, edit, present, or rewrite")
+- r/screenwriting (Rule 3 bans AI content and discussion)
+- r/NewTubers (Rule 5 treats AI-written posts as spam)
+- r/productivity (sidebar: "no LLM generation of any kind")
+- r/getdisciplined (Rule 5)
+- r/ObsidianMD (Rule 4: "vibe-coded or otherwise" = ban)
+
+**Cultural canaries** — high-upvote mod/community posts that draw anti-promo lines. Read the tracker's `Cultural canaries (read before commenting)` section before any engagement. Representative examples:
+
+- r/ObsidianMD: "If your first post is to promote your app, you will be banned" (1,360↑)
+- r/productivity: "NO ADVERTISING IS ALLOWED OF ANY KIND" pinned mod post (239↑)
+- r/screenwriting: "Please stop submitting your vibe-coded software" (111↑)
+- r/worldbuilding: top 2 of week both anti-AI (3,801↑ + 3,766↑)
+
+**Own our subreddit.** Create r/buildos before anyone else does. Low effort, prevents squatting, gives users a home, gets indexed by Google. (Task T11.)
 
 **The 1Password model.** Treat Reddit as a core support + retention channel, not just acquisition. Answer user questions in public. Reduces support ticket volume while building a self-sustaining community. This is the long-term move.
 
 ### Reddit Research Tasks for the Agent
 
-1. For each target subreddit, pull: subscriber count, daily active estimate, self-promotion rules (verbatim), and 3–5 recent threads where BuildOS would be a legitimate recommendation.
-2. Identify the 10 highest-value evergreen threads currently ranking on Google for our target queries. These are threads where a well-placed comment has maximum long-term leverage.
-3. Draft comment templates for the 5 most common thread types — templates to be humanized per-instance, never copy-pasted. Voice per brand guide: grounded, clear, relieving, slightly contrarian, no AI hype.
-4. Identify 3–5 creator-adjacent redditors (authors, YouTubers, podcasters) already active in target subs who would be potential collaborators, early users, or friendly faces.
+1. ~~For each target subreddit, pull: subscriber count, daily active estimate, self-promotion rules (verbatim), and 3–5 recent threads where BuildOS would be a legitimate recommendation.~~ **✅ Completed 2026-04-17** — see tracker + profiles.
+2. Identify the 10 highest-value evergreen threads currently ranking on Google for our target queries. These are threads where a well-placed comment has maximum long-term leverage. (T4 evergreen inventory — seed list lives in the tracker's "Evergreen thread patterns" section.)
+3. Draft comment templates for the 5 most common thread types — templates to be humanized per-instance, never copy-pasted. Voice per brand guide: grounded, clear, relieving, slightly contrarian, no AI hype. **Do this after the first month of manual commenting** — we need real voice data before codifying templates. Output: `docs/marketing/social-media/reddit/reddit-reply-strategy.md` (will unlock the `/reddit-reply` Stage 2 command).
+4. Identify 3–5 creator-adjacent redditors (authors, YouTubers, podcasters) already active in target subs who would be potential collaborators, early users, or friendly faces. Surface candidates during `/reddit-warmup` runs and log them in the tracker's "Creator-adjacent high-value redditors" section.
 
 ---
 
@@ -338,12 +403,27 @@ Stop writing weekly blog posts. Write one genuinely excellent 2,500–4,000 word
 - Has a shareable public BuildOS page as a companion artifact (link back to canonical blog)
 
 **Candidate topics (ranked):**
+
 1. **The BuildOS thinking-environment framework** (see 3.5). The flagship piece. Creator-framed, not ADHD-framed.
 2. **"How authors and YouTubers actually structure long-running creative projects — a pattern study."** Pull from real user data; specific numerical claims; show the working maps.
 3. **"Why AI chat assistants keep failing creative workflows: the stateless-context problem."** Directly advances the anti-AI show-don't-tell thesis.
 4. **"The creator-workflow gap: what breaks between the idea and the shipped thing."** High fan-out potential across every creator sub.
 
 Supporting affinity content (ADHD, founders, indie builders) can live in blog or social, but **not as the flagship piece.**
+
+### Part 5.5: Parallel cluster play — the Anti-Feed content loop
+
+On top of the quarterly flagship, there's a **parallel cluster track** running at a tighter cadence — 10 posts in ~3 months at 7–10-day intervals. The goal is different: language / niche ownership, not intellectual-moat depth.
+
+- **Canonical topic map:** [`docs/marketing/strategy/anti-feed-content-topic-map.md`](docs/marketing/strategy/anti-feed-content-topic-map.md)
+- **Execution:** [WS09 — Anti-Feed Content Cluster](docs/marketing/distribution/workstreams/WS09-anti-feed-cluster.md) (T34–T45 in `buildos-strat-tasks.md`)
+- **Cadence:** [RECURRING §Anti-feed publishing cadence](docs/marketing/distribution/RECURRING.md#anti-feed-publishing-cadence-t44)
+- **First post shipped:** [`social-media-is-dead-interest-media.md`](apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md) (2026-04-17, T34)
+- **Cluster opener (adjacent):** [`your-morning-without-the-algorithm.md`](apps/web/src/content/blogs/philosophy/your-morning-without-the-algorithm.md)
+
+**Boundary with the flagship (WS04):** the quarterly piece is research-heavy, 2,500–4,000 words, canonical across Medium + Substack. The cluster posts are 1,200–2,000 words, opinionated, vocabulary-forward, build-os.com primary. The cluster should land 2–3 posts before the flagship publishes (T35, T36 or its T15-satisfied equivalent, and T38) so the flagship compresses vocabulary the reader already recognizes.
+
+**Vocabulary to own:** "thinking environment," "anti-feed," "interest media," "chosen input," "direction of the arrow," "synthetic public internet," "context sovereignty" — see topic map §Terms to own.
 
 ---
 
@@ -370,6 +450,7 @@ Supporting affinity content (ADHD, founders, indie builders) can live in blog or
 Adjusted to reflect what's already shipped vs. what needs work.
 
 **First 30 days (foundations + measurement baseline):**
+
 - Research tasks in section 3 (all of them)
 - Add `SoftwareApplication` schema to homepage; `FAQPage` to `/help`
 - LLM citation baseline measurement — establish the monthly cadence
@@ -378,6 +459,7 @@ Adjusted to reflect what's already shipped vs. what needs work.
 - Public pages Phase 1 scope locked (end-user publish UI)
 
 **Days 30–90:**
+
 - Public pages Phase 1 ships (end-user publish UI)
 - Public pages Phase 2 ships ("Made with BuildOS" attribution verified on all public pages)
 - Dedicated `/how-it-works` page published
@@ -387,6 +469,7 @@ Adjusted to reflect what's already shipped vs. what needs work.
 - 3+ months of Reddit karma accumulated
 
 **Days 90–180:**
+
 - Public pages Phase 3 (visual design audit) + Phase 4 (clone-as-template)
 - Public changelog live at `/changelog`
 - First quarterly deep piece published (beyond the framework doc)
@@ -394,6 +477,7 @@ Adjusted to reflect what's already shipped vs. what needs work.
 - Wikipedia / Wikidata entity created
 
 **Days 180+:**
+
 - Public pages Phase 5 (discovery gallery, seeded with DJ's projects)
 - Quarterly deep pieces continue
 - Reddit presence sustained

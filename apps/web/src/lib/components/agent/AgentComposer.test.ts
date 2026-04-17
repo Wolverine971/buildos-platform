@@ -33,16 +33,15 @@ describe('AgentComposer', () => {
 		expect(textbox).toHaveAttribute('rows', '1');
 	});
 
-	it('uses braindump sizing and disables input when requested', () => {
+	it('disables input when requested', () => {
 		render(AgentComposer, {
 			props: createProps({
-				mode: 'braindump',
 				disabled: true
 			})
 		});
 
-		const textbox = screen.getByPlaceholderText('Capture whatever is on your mind...');
-		expect(textbox).toHaveAttribute('rows', '8');
+		const textbox = screen.getByPlaceholderText('Ask about project apollo...');
+		expect(textbox).toHaveAttribute('rows', '1');
 		expect(textbox).toBeDisabled();
 		expect(screen.getAllByRole('button', { name: /send message/i })[0]).toBeDisabled();
 	});

@@ -105,7 +105,6 @@ export function normalizeSessionContextType(context: string | null | undefined):
 		case 'project_create':
 		case 'daily_brief_update':
 		case 'ontology':
-		case 'brain_dump':
 			return context;
 		default:
 			return 'global';

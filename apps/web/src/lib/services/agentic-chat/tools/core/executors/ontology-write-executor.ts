@@ -312,7 +312,7 @@ function buildContextDocumentSpec(
 	}
 
 	const meta = (args.meta ?? {}) as Record<string, unknown>;
-	const braindump = extractMetaString(meta, 'braindump');
+	const spark = extractMetaString(meta, 'spark') ?? extractMetaString(meta, 'source_notes');
 	const summary =
 		extractMetaString(meta, 'summary') ??
 		(args.project.description ? args.project.description.trim() : '');
@@ -336,8 +336,8 @@ function buildContextDocumentSpec(
 		`# ${args.project.name} Context Document`,
 		'## Vision & Summary',
 		summary || 'Not provided yet.',
-		'## Braindump / Spark',
-		braindump || 'Not provided yet.',
+		'## Source Notes / Spark',
+		spark || 'Not provided yet.',
 		'## Initial Goals',
 		goalsSection || 'No goals captured yet.',
 		'## Initial Tasks / Threads',
@@ -353,7 +353,7 @@ function buildContextDocumentSpec(
 		props: {
 			source: 'agent_project_creation',
 			generated_at: new Date().toISOString(),
-			braindump: braindump || undefined
+			source_notes: spark || undefined
 		}
 	};
 }

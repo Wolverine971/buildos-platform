@@ -487,7 +487,9 @@ async function processBrainDumpWithStreaming({
 					const { OperationsExecutor } = await import(
 						'$lib/utils/operations/operations-executor'
 					);
-					const executor = new OperationsExecutor(supabase);
+					const executor = new OperationsExecutor(supabase, {
+						statusReporter: statusService
+					});
 
 					// Execute all operations
 					executionResult = await executor.executeOperations({

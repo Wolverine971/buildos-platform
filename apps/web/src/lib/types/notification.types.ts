@@ -12,7 +12,8 @@ import type {
 	TimeBlockSuggestionsState,
 	TimeBlockType
 } from '@buildos/shared-types';
-import type { BrainDumpParseResult, ParsedOperation } from './brain-dump';
+import type { BrainDumpParseResult } from './brain-dump';
+import type { ParsedOperation } from './operations';
 import type { SynthesisOptions } from './synthesis';
 import type { TaskComparison } from '$lib/types';
 

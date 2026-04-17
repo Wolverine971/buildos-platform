@@ -8,7 +8,7 @@ import {
 	type CalendarSuggestionInput,
 	type CalendarSuggestionEventPatterns,
 	type CalendarSuggestionTask
-} from '$lib/services/ontology/braindump-to-ontology-adapter';
+} from '$lib/services/ontology/calendar-suggestion-to-ontology-adapter';
 import type { Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ErrorLoggerService } from './errorLogger.service';

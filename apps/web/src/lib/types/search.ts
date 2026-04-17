@@ -1,13 +1,12 @@
 // apps/web/src/lib/types/search.ts
 
 // Enum type definitions matching your database
-export type BrainDumpStatus = 'pending' | 'parsed' | 'saved' | 'parsed_and_deleted';
 export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived';
 export type TaskStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
 export type PriorityLevel = 'low' | 'medium' | 'high';
 
 export interface SearchResult {
-	item_type: 'braindump' | 'project' | 'task';
+	item_type: 'project' | 'task';
 	item_id: string;
 	title: string;
 	description: string;
@@ -23,7 +22,6 @@ export interface SearchResult {
 }
 
 export interface GroupedSearchResults {
-	braindumps: SearchResult[];
 	projects: SearchResult[];
 	tasks: SearchResult[];
 }
@@ -34,7 +32,6 @@ export interface SearchState {
 	isLoading: boolean;
 	error: string | null;
 	hasMore: {
-		braindumps: boolean;
 		projects: boolean;
 		tasks: boolean;
 	};

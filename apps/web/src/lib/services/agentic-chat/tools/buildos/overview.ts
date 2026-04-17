@@ -18,8 +18,8 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 		summary:
 			'BuildOS is positioned as an AI-powered productivity platform for ADHD minds that turns unstructured thoughts into structured execution plans.',
 		highlights: [
-			'Core innovation is the Brain Dump System that lets users stream thoughts which the AI converts into projects, tasks, and narrative context.',
-			'The ecosystem pillars include brain dump processing, daily briefs, phase generation, calendar sync, and multi-channel notifications.',
+			'Core innovation is agentic capture that lets users stream thoughts which the AI converts into projects, tasks, and narrative context.',
+			'The ecosystem pillars include agentic chat, daily briefs, phase generation, calendar sync, and multi-channel notifications.',
 			'Product direction emphasizes LLM planners that stay grounded in ontology data via curated tool calls.'
 		],
 		references: [AGENTIC_WORKFLOW_REFERENCE]
@@ -40,7 +40,7 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 		summary:
 			'Documentation is organized by feature verticals so LLM agents can quickly discover domain-specific specs.',
 		highlights: [
-			'Brain Dump, Calendar, Notifications, Admin Dashboard, Onboarding (v1/v2), Project Export, Phase Generation, and Time Blocks all have dedicated folders with entry-point READMEs.',
+			'Agentic Chat, Calendar, Notifications, Admin Dashboard, Onboarding, Project Export, Phase Generation, and Time Blocks all have dedicated folders with entry-point READMEs.',
 			'Each feature doc links to implementation guides (services, components, routes) ensuring the chat agent knows where to pull deeper context.',
 			'Calendar integration covers OAuth, bidirectional sync, project-level calendars, and conflict detection; onboarding guides highlight the intro flow and integrations handoff.'
 		],
@@ -53,7 +53,7 @@ const OVERVIEW_SECTIONS: BuildosDocSection[] = [
 		highlights: [
 			'Classification uses `type_key` strings (e.g., project.creative.book, task.execute, document.spec) plus three facets (context, scale, stage) to route UI and filtering.',
 			'Documents are organized in a hierarchical tree stored on each project (`doc_structure`); document containment is not modeled with edges.',
-			'Context documents capture the narrative "why" of a project—the story from brain dumps that persists as work evolves, giving AI agents rich background when planning.',
+			'Context documents capture the narrative "why" of a project: the story from user conversations and source notes that persists as work evolves, giving AI agents rich background when planning.',
 			'The graph structure creates relationships: tasks belong to plans, plans support goals, everything ties to project context. This web lets agents understand dependencies, priorities, and the bigger picture.',
 			'Props live in JSONB and are inferred from conversation; the schema is flexible and grows with the project. State machines are handled in the app layer.',
 			'Type taxonomy is documented in ontology specs; projects remain flexible—users can add custom fields, change states, and adapt the structure to their workflow.'

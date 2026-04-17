@@ -1,7 +1,7 @@
-// apps/web/src/lib/services/ontology/braindump-to-ontology-adapter.ts
+// apps/web/src/lib/services/ontology/calendar-suggestion-to-ontology-adapter.ts
 
 import type { ProjectSpec, TaskState } from '$lib/types/onto';
-import type { ParsedOperation } from '$lib/types/operations';
+import type { Database } from '@buildos/shared-types';
 
 /**
  * Type key taxonomy source-of-truth:
@@ -109,15 +109,6 @@ const TASK_TYPE_INFERENCE: Array<{ pattern: RegExp; typeKey: string }> = [
 	{ pattern: /\bemail\b|\binvoice\b|\bpaperwork\b|\badmin\b/, typeKey: 'task.admin' }
 ];
 
-const LEGACY_TASK_STATE_MAP: Record<string, TaskState> = {
-	backlog: 'todo',
-	todo: 'todo',
-	in_progress: 'in_progress',
-	blocked: 'blocked',
-	done: 'done',
-	completed: 'done'
-};
-
 const LEGACY_PRIORITY_MAP: Record<string, number> = {
 	low: 2,
 	medium: 3,
@@ -125,14 +116,15 @@ const LEGACY_PRIORITY_MAP: Record<string, number> = {
 	urgent: 5
 };
 
-// ==========================================
-// EXPORTED HELPERS (for use in calendar-analysis.service.ts)
-// ==========================================
+const CALENDAR_TASK_STATE_MAP: Record<string, TaskState> = {
+	backlog: 'todo',
+	todo: 'todo',
+	in_progress: 'in_progress',
+	done: 'done',
+	blocked: 'blocked'
+};
 
-/**
- * Infer project type_key from name and context
- */
-export function inferProjectTypeKey(name: string, context?: string): string {
+function inferProjectTypeKey(name: string, context?: string): string {
 	const searchText = `${name} ${context || ''}`.toLowerCase();
 
 	for (const { pattern, typeKey } of PROJECT_TYPE_INFERENCE) {
@@ -163,10 +155,7 @@ function inferRealm(text: string): Realm {
 	return (sorted[0]?.[0] as Realm) || 'business';
 }
 
-/**
- * Infer task type_key from title
- */
-export function inferTaskTypeKey(title: string): string {
+function inferTaskTypeKey(title: string): string {
 	const lowerTitle = title.toLowerCase();
 
 	for (const { pattern, typeKey } of TASK_TYPE_INFERENCE) {
@@ -176,12 +165,7 @@ export function inferTaskTypeKey(title: string): string {
 	return 'task.execute';
 }
 
-export function normalizeTaskState(data: Record<string, unknown>): TaskState | undefined {
-	const raw = `${data.state_key ?? data.status ?? ''}`.trim().toLowerCase();
-	return raw ? LEGACY_TASK_STATE_MAP[raw] : undefined;
-}
-
-export function normalizePriority(value: unknown): number | undefined {
+function normalizePriority(value: unknown): number | undefined {
 	if (typeof value === 'number' && value >= 1 && value <= 5) return value;
 	if (typeof value === 'string') {
 		const mapped = LEGACY_PRIORITY_MAP[value.toLowerCase()];
@@ -190,7 +174,7 @@ export function normalizePriority(value: unknown): number | undefined {
 	return undefined;
 }
 
-export function normalizeDueAt(value?: string): string | undefined {
+function normalizeDueAt(value?: string): string | undefined {
 	if (!value) return undefined;
 	const trimmed = value.trim();
 	if (!trimmed) return undefined;
@@ -206,19 +190,7 @@ export function normalizeDueAt(value?: string): string | undefined {
 	return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
-export function normalizeProjectState(
-	value?: string
-): 'planning' | 'active' | 'completed' | 'cancelled' | undefined {
-	const raw = value?.trim().toLowerCase();
-	if (!raw) return undefined;
-	if (raw === 'planning') return 'planning';
-	if (raw === 'active' || raw === 'paused') return 'active';
-	if (raw === 'completed' || raw === 'complete') return 'completed';
-	if (raw === 'cancelled' || raw === 'archived') return 'cancelled';
-	return undefined;
-}
-
-export function inferContextFacet(
+function inferContextFacet(
 	text: string
 ):
 	| 'personal'
@@ -267,10 +239,7 @@ export function inferContextFacet(
 	return 'personal';
 }
 
-/**
- * Infer project scale from task count
- */
-export function inferScale(taskCount: number): 'micro' | 'small' | 'medium' | 'large' | 'epic' {
+function inferScale(taskCount: number): 'micro' | 'small' | 'medium' | 'large' | 'epic' {
 	if (taskCount <= 3) return 'micro';
 	if (taskCount <= 8) return 'small';
 	if (taskCount <= 20) return 'medium';
@@ -278,43 +247,119 @@ export function inferScale(taskCount: number): 'micro' | 'small' | 'medium' | 'l
 	return 'epic';
 }
 
-/**
- * Convert legacy ParsedOperation[] to ProjectSpec
- */
-export function convertBrainDumpToProjectSpec(
-	operations: ParsedOperation[],
-	originalText: string,
-	options?: {
-		projectSummary?: string;
-		projectContext?: string;
+type CalendarProjectSuggestionRow =
+	Database['public']['Tables']['calendar_project_suggestions']['Row'];
+
+export interface CalendarSuggestionTask {
+	title: string;
+	description?: string;
+	details?: string;
+	status?: 'backlog' | 'in_progress' | 'done' | 'blocked';
+	state_key?: 'todo' | 'in_progress' | 'done' | 'blocked';
+	priority?: 'low' | 'medium' | 'high' | 'urgent' | number;
+	task_type?: 'one_off' | 'recurring';
+	type_key?: string;
+	duration_minutes?: number;
+	start_date?: string;
+	due_at?: string;
+	recurrence_pattern?:
+		| 'daily'
+		| 'weekdays'
+		| 'weekly'
+		| 'biweekly'
+		| 'monthly'
+		| 'quarterly'
+		| 'yearly';
+	recurrence_ends?: string;
+	recurrence_rrule?: string;
+	event_id?: string;
+	tags?: string[];
+}
+
+export interface CalendarSuggestionEventPatterns {
+	start_date?: string;
+	end_date?: string | null;
+	tags?: string[];
+}
+
+export type CalendarSuggestionInput = Omit<
+	CalendarProjectSuggestionRow,
+	'suggested_tasks' | 'event_patterns'
+> & {
+	suggested_tasks?: CalendarSuggestionTask[] | null;
+	event_patterns?: CalendarSuggestionEventPatterns | null;
+};
+
+export function convertCalendarSuggestionToProjectSpec(
+	suggestion: CalendarSuggestionInput,
+	overrides?: {
+		name?: string;
+		description?: string;
+		context?: string;
+		includeTasks?: boolean;
+		/** Key format: `${suggestion.id}-${taskIndex}` */
+		taskSelections?: Record<string, boolean>;
+		taskModifications?: Record<number, any>;
 	}
 ): ProjectSpec {
-	// Find project operation
-	const projectOp = operations.find(
-		(op) => op.operation === 'create' && op.table === 'projects' && op.enabled
-	);
-
-	if (!projectOp) {
-		throw new Error('No project creation operation found');
+	const eventPatterns = suggestion.event_patterns ?? {};
+	const detectedKeywords = suggestion.detected_keywords ?? [];
+	const keywordsText = detectedKeywords.join(' ');
+	const name = (
+		overrides?.name ||
+		suggestion.user_modified_name ||
+		suggestion.suggested_name ||
+		''
+	).trim();
+	if (!name) {
+		throw new Error('Project name is required for calendar suggestions');
 	}
+	const description =
+		overrides?.description ||
+		suggestion.user_modified_description ||
+		suggestion.suggested_description ||
+		undefined;
+	const context =
+		overrides?.context ||
+		suggestion.user_modified_context ||
+		suggestion.suggested_context ||
+		undefined;
+	const searchText = `${description ?? ''} ${context ?? ''} ${keywordsText}`.toLowerCase();
+	const contextText = `${name} ${searchText}`.toLowerCase();
+	const tags = Array.isArray(eventPatterns?.tags) ? eventPatterns.tags : [];
+	const sourceMetadata = {
+		analysis_id: suggestion.analysis_id,
+		suggestion_id: suggestion.id,
+		calendar_event_ids: suggestion.calendar_event_ids,
+		calendar_ids: suggestion.calendar_ids ?? undefined,
+		event_count: suggestion.event_count ?? undefined,
+		confidence: suggestion.confidence_score,
+		detected_keywords: detectedKeywords.length ? detectedKeywords : undefined,
+		ai_reasoning: suggestion.ai_reasoning ?? undefined,
+		suggested_priority: suggestion.suggested_priority ?? undefined
+	};
 
-	// Find task operations
-	const taskOps = operations.filter(
-		(op) => op.operation === 'create' && op.table === 'tasks' && op.enabled
-	);
+	const rawTasks = Array.isArray(suggestion.suggested_tasks) ? suggestion.suggested_tasks : [];
 
-	const projectName = projectOp.data?.name?.trim();
-	if (!projectName) {
-		throw new Error('Project name is required but was empty');
-	}
-	const projectDescription = projectOp.data?.description || options?.projectSummary;
-	const projectContext = projectOp.data?.context || options?.projectContext || originalText;
-	const trimmedContext = `${projectContext ?? ''}`.trim();
-	const planName = taskOps.length > 0 ? 'Initial Plan' : undefined;
+	const tasks = rawTasks
+		.map((task, index) => {
+			const taskKey = `${suggestion.id}-${index}`;
+			if (overrides?.taskSelections && overrides.taskSelections[taskKey] === false) {
+				return null;
+			}
+			const modifiedTask = overrides?.taskModifications?.[index]
+				? { ...task, ...overrides.taskModifications[index] }
+				: task;
+			return modifiedTask;
+		})
+		.filter(Boolean) as CalendarSuggestionTask[];
+
+	const includeTasks = overrides?.includeTasks !== false && tasks.length > 0;
+	const taskCount = includeTasks ? tasks.length : 0;
+	const planName = includeTasks ? 'Calendar-Based Plan' : undefined;
 
 	const entities: ProjectSpec['entities'] = [];
 	const relationships: ProjectSpec['relationships'] = [];
-
 	let planTempId: string | undefined;
 
 	if (planName) {
@@ -324,68 +369,76 @@ export function convertBrainDumpToProjectSpec(
 			kind: 'plan',
 			name: planName,
 			type_key: 'plan.phase',
-			state_key: 'draft'
+			state_key: 'active'
 		});
 	}
 
-	const taskEntities = taskOps.map((taskOp, index) => {
-		const tempId = `task-${index + 1}`;
-		const title = taskOp.data?.title || taskOp.data?.name || 'Untitled Task';
-		const entity = {
-			temp_id: tempId,
-			kind: 'task' as const,
-			title,
-			type_key: inferTaskTypeKey(title),
-			state_key: normalizeTaskState(taskOp.data ?? {}) ?? 'todo',
-			priority: normalizePriority(taskOp.data?.priority),
-			due_at: normalizeDueAt(
-				taskOp.data?.due_at || taskOp.data?.due_date || taskOp.data?.start_date
-			),
-			props: {
-				...(taskOp.data?.props || {})
-			}
-		};
-		return entity;
-	});
+	if (includeTasks) {
+		tasks.forEach((task, index) => {
+			const title = task.title?.trim() || 'Untitled Task';
+			const tempId = `task-${index + 1}`;
+			const stateKey = (task.state_key ?? task.status ?? 'backlog').toString().toLowerCase();
+			entities.push({
+				temp_id: tempId,
+				kind: 'task',
+				title,
+				type_key: task.type_key?.trim() || inferTaskTypeKey(title),
+				state_key: CALENDAR_TASK_STATE_MAP[stateKey] ?? 'todo',
+				priority: normalizePriority(task.priority) ?? 3,
+				due_at: normalizeDueAt(task.due_at ?? task.start_date),
+				props: {
+					description: task.description,
+					details: task.details,
+					calendar_event_id: task.event_id,
+					task_type: task.task_type,
+					task_state_key: task.state_key,
+					task_type_key: task.type_key,
+					start_date: task.start_date,
+					due_at: task.due_at,
+					duration_minutes: task.duration_minutes,
+					recurrence_pattern: task.recurrence_pattern,
+					recurrence_ends: task.recurrence_ends,
+					recurrence_rrule: task.recurrence_rrule,
+					tags: task.tags
+				}
+			});
 
-	for (const taskEntity of taskEntities) {
-		entities.push(taskEntity);
-		if (planTempId) {
-			relationships.push([
-				{ temp_id: planTempId, kind: 'plan' },
-				{ temp_id: taskEntity.temp_id, kind: 'task' }
-			]);
-		}
+			if (planTempId) {
+				relationships.push([
+					{ temp_id: planTempId, kind: 'plan' },
+					{ temp_id: tempId, kind: 'task' }
+				]);
+			}
+		});
 	}
 
-	// Build ProjectSpec
 	const spec: ProjectSpec = {
 		project: {
-			name: projectName,
-			description: projectDescription,
-			type_key: inferProjectTypeKey(projectName, projectContext),
-			state_key:
-				normalizeProjectState(projectOp.data?.state_key || projectOp.data?.status) ??
-				'planning',
+			name,
+			description,
+			type_key: inferProjectTypeKey(name, searchText),
+			state_key: 'active',
+			start_at: normalizeDueAt(eventPatterns?.start_date),
+			end_at: normalizeDueAt(eventPatterns?.end_date ?? undefined),
 			props: {
 				facets: {
-					context: inferContextFacet(`${projectName} ${projectContext}`),
-					scale: inferScale(taskOps.length),
+					context: inferContextFacet(contextText),
+					scale: inferScale(taskCount),
 					stage: 'planning'
 				},
-				// Preserve any additional props from brain dump
-				...(projectOp.data?.props || {})
+				source: 'calendar_analysis',
+				source_metadata: sourceMetadata,
+				tags
 			}
 		},
 
-		// Store the brain dump as a context document (only if we have content)
-		...(trimmedContext
+		...(context
 			? {
 					context_document: {
 						title: 'Project Context',
 						type_key: 'document.context.project',
 						state_key: 'draft',
-						body_markdown: trimmedContext
+						body_markdown: context
 					}
 				}
 			: {}),

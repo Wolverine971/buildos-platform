@@ -83,7 +83,6 @@ export function getOptimalTextProfile(
 		case 'ontology':
 			return 'quality';
 		case 'calendar':
-		case 'brain_dump':
 			return 'balanced';
 		case 'global':
 		case 'general':

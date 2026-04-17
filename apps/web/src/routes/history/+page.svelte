@@ -2,7 +2,7 @@
 <!--
   History Page - INKPRINT Design System
 
-  Unified history view showing both braindumps and chat sessions.
+  Unified history view showing both captures and chat sessions.
   Users can view, filter, and resume previous conversations.
 
   PERFORMANCE (Dec 2024):
@@ -26,7 +26,6 @@
 		MessageSquare,
 		ChevronRight,
 		X,
-		Brain,
 		MessagesSquare,
 		Sparkles
 	} from 'lucide-svelte';
@@ -124,20 +123,23 @@
 	let statusFilter = $state<string>(data.filters.status || '');
 	let typeFilter = $state<'all' | 'braindumps' | 'chats'>(data.filters.typeFilter || 'all');
 	let isAgentModalOpen = $state(false);
-	let selectedBraindumpForChat = $state<OntoBraindump | null>(null);
 	let selectedChatSessionId = $state<string | null>(null);
 	let chatClassificationState = $state<Record<string, 'loading' | 'queued' | 'error'>>({});
+
+	function getBraindumpChatSessionId(item: HistoryItem): string | null {
+		if (item.type !== 'braindump') return null;
+		return ((item.originalData as OntoBraindump)?.chat_session_id as string | null) ?? null;
+	}
 
 	// Open modal if we have a selectedItem from streamed data
 	$effect(() => {
 		if (resolvedData?.selectedItem && browser) {
 			if (resolvedData.selectedItem.type === 'braindump') {
-				selectedBraindumpForChat = resolvedData.selectedItem.originalData as OntoBraindump;
-				selectedChatSessionId = null;
-				isAgentModalOpen = true;
+				const chatSessionId = getBraindumpChatSessionId(resolvedData.selectedItem);
+				selectedChatSessionId = chatSessionId;
+				isAgentModalOpen = Boolean(chatSessionId);
 			} else if (resolvedData.selectedItem.type === 'chat_session') {
 				selectedChatSessionId = resolvedData.selectedItem.id;
-				selectedBraindumpForChat = null;
 				isAgentModalOpen = true;
 			}
 		}
@@ -197,7 +199,7 @@
 	}
 
 	function getTypeIcon(type: HistoryItem['type']) {
-		return type === 'chat_session' ? MessagesSquare : Brain;
+		return type === 'chat_session' ? MessagesSquare : Lightbulb;
 	}
 
 	function getTypeColor(type: HistoryItem['type']) {
@@ -251,13 +253,11 @@
 
 	function openItem(item: HistoryItem) {
 		if (item.type === 'braindump') {
-			selectedBraindumpForChat = item.originalData as OntoBraindump;
-			selectedChatSessionId = null;
+			selectedChatSessionId = getBraindumpChatSessionId(item);
 		} else {
 			selectedChatSessionId = item.id;
-			selectedBraindumpForChat = null;
 		}
-		isAgentModalOpen = true;
+		isAgentModalOpen = Boolean(selectedChatSessionId);
 		// Update URL to reflect selection
 		const params = new URLSearchParams($page.url.searchParams);
 		params.set('id', item.id);
@@ -267,7 +267,6 @@
 
 	function closeAgentModal(summary?: DataMutationSummary) {
 		isAgentModalOpen = false;
-		selectedBraindumpForChat = null;
 		selectedChatSessionId = null;
 		// Remove selection from URL
 		const params = new URLSearchParams($page.url.searchParams);
@@ -319,7 +318,7 @@
 
 <svelte:head>
 	<title>History | BuildOS</title>
-	<meta name="description" content="View and explore your braindumps and chat conversations" />
+	<meta name="description" content="View and explore your captures and chat conversations" />
 </svelte:head>
 
 <div class="min-h-screen bg-background rounded-md">
@@ -340,7 +339,7 @@
 						{/if}
 					</div>
 					<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-						Your braindumps and chat conversations
+						Your captures and chat conversations
 					</p>
 				</div>
 			</div>
@@ -363,12 +362,12 @@
 				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
 			>
 				<div class="flex items-center gap-1 sm:gap-2">
-					<Brain class="h-3 w-3 sm:h-5 sm:w-5 text-purple-500 hidden sm:block" />
+					<Lightbulb class="h-3 w-3 sm:h-5 sm:w-5 text-purple-500 hidden sm:block" />
 					<span class="text-base sm:text-2xl font-bold text-purple-500">
 						{stats.totalBraindumps}
 					</span>
 				</div>
-				<div class="text-[9px] sm:text-sm text-muted-foreground">Dumps</div>
+				<div class="text-[9px] sm:text-sm text-muted-foreground">Captures</div>
 			</div>
 			<div
 				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
@@ -412,9 +411,9 @@
 					? 'text-foreground'
 					: 'text-muted-foreground hover:text-foreground'}"
 			>
-				<Brain class="h-3 w-3 sm:h-4 sm:w-4" />
-				<span class="hidden sm:inline">Braindumps</span>
-				<span class="sm:hidden">Dumps</span>
+				<Lightbulb class="h-3 w-3 sm:h-4 sm:w-4" />
+				<span class="hidden sm:inline">Captures</span>
+				<span class="sm:hidden">Captures</span>
 				<span
 					class="rounded-full bg-purple-500/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-purple-600 dark:text-purple-400"
 				>
@@ -515,13 +514,13 @@
 				<h3 class="mb-2 text-lg font-medium text-foreground">No history found</h3>
 				<p class="mb-4 text-center text-sm text-muted-foreground">
 					{#if typeFilter === 'braindumps'}
-						You haven't captured any braindumps yet.<br />
-						Use the Braindump context in agent chat to get started.
+						You haven't captured any notes yet.<br />
+						Start a conversation with BuildOS to get started.
 					{:else if typeFilter === 'chats'}
 						You haven't had any chat sessions yet.<br />
 						Start a conversation with BuildOS to see it here.
 					{:else}
-						Your braindumps and chat sessions will appear here.
+						Your captures and chat sessions will appear here.
 					{/if}
 				</p>
 			</div>
@@ -548,7 +547,7 @@
 							>
 								<TypeIcon class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
 								<span class="hidden sm:inline"
-									>{item.type === 'chat_session' ? 'Chat' : 'Braindump'}</span
+									>{item.type === 'chat_session' ? 'Chat' : 'Capture'}</span
 								>
 							</span>
 							<div class="flex items-center gap-1 sm:gap-2">
@@ -663,17 +662,7 @@
 	</div>
 </div>
 
-<!-- Agent Chat Modal for braindumps -->
-{#if isAgentModalOpen && selectedBraindumpForChat}
-	<AgentChatModal
-		isOpen={isAgentModalOpen}
-		contextType="brain_dump"
-		onClose={closeAgentModal}
-		initialBraindump={selectedBraindumpForChat}
-	/>
-{/if}
-
-<!-- Agent Chat Modal for chat sessions - need to pass session ID -->
+<!-- Agent Chat Modal for chat sessions -->
 {#if isAgentModalOpen && selectedChatSessionId}
 	<AgentChatModal
 		isOpen={isAgentModalOpen}

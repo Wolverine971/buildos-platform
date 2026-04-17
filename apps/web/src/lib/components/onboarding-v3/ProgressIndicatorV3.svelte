@@ -7,7 +7,7 @@
 
 	let { currentStep, totalSteps }: Props = $props();
 
-	const stepLabels = ['Intent', 'Brain Dump', 'Notifications', 'Ready'];
+	const stepLabels = ['Intent', 'Project Capture', 'Notifications', 'Ready'];
 
 	const progress = $derived(Math.round((currentStep / (totalSteps - 1)) * 100));
 </script>

@@ -1,10 +1,10 @@
-// apps/web/src/lib/services/ontology/braindump-to-ontology-adapter.calendar-suggestion.test.ts
+// apps/web/src/lib/services/ontology/calendar-suggestion-to-ontology-adapter.test.ts
 import { describe, expect, it } from 'vitest';
 
 import {
 	convertCalendarSuggestionToProjectSpec,
 	type CalendarSuggestionInput
-} from './braindump-to-ontology-adapter';
+} from './calendar-suggestion-to-ontology-adapter';
 
 function buildSuggestion(
 	overrides: Partial<CalendarSuggestionInput> = {}

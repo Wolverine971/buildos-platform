@@ -1,7 +1,7 @@
 // apps/web/src/routes/api/braindumps/generate/+server.ts
 import type { RequestHandler } from './$types';
 import { BrainDumpProcessor } from '$lib/utils/braindump-processor';
-import { OperationsExecutor } from '$utils/operations-executor';
+import { OperationsExecutor } from '$lib/utils/operations/operations-executor';
 import { ApiResponse, parseRequestBody } from '$lib/utils/api-response';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import type { LLMMetadata } from '$lib/types/error-logging';

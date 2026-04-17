@@ -15,7 +15,8 @@ import type { LLMMetadata } from '$lib/types/error-logging';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 
-import { OperationsExecutor, OperationValidator } from './operations-executor';
+import { OperationsExecutor } from './operations/operations-executor';
+import { OperationValidator } from './operations/operation-validator';
 import { TaskTimeSlotFinder } from '$lib/services/task-time-slot-finder';
 import type {
 	ParsedOperation,
@@ -64,10 +65,12 @@ export class BrainDumpProcessor {
 			supabase
 		});
 		this.promptTemplateService = new PromptTemplateService(supabase);
-		this.operationsExecutor = new OperationsExecutor(supabase);
 		this.operationValidator = new OperationValidator();
 		this.taskTimeSlotFinder = new TaskTimeSlotFinder(supabase);
 		this.statusService = new BrainDumpStatusService(supabase);
+		this.operationsExecutor = new OperationsExecutor(supabase, {
+			statusReporter: this.statusService
+		});
 		this.projectDataFetcher = new ProjectDataFetcher(supabase);
 	}
 

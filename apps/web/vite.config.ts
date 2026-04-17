@@ -11,6 +11,14 @@ export default defineConfig(({ mode }) => {
 	// Keep dep pre-bundles stable in local dev unless explicitly forced.
 	const forceOptimizeDeps = process.env.VITE_FORCE_OPTIMIZE_DEPS === 'true';
 
+	// Extra dev-server hostnames (comma-separated). Use when tunneling through
+	// ngrok/cloudflared with a specific subdomain that isn't covered by the
+	// wildcard entries below (ngrok-free.app, ngrok.io).
+	const extraAllowedHosts = (process.env.VITE_DEV_ALLOWED_HOSTS ?? '')
+		.split(',')
+		.map((h) => h.trim())
+		.filter(Boolean);
+
 	return {
 		plugins: [
 			sveltekit(),
@@ -65,9 +73,9 @@ export default defineConfig(({ mode }) => {
 
 			allowedHosts: [
 				'localhost',
-				'6c4ed622c3b6.ngrok-free.app', // Your specific ngrok subdomain
-				'.ngrok-free.app', // Or allow all ngrok-free.app subdomains
-				'.ngrok.io' // If using paid ngrok
+				'.ngrok-free.app', // All ngrok-free.app subdomains
+				'.ngrok.io', // Paid ngrok
+				...extraAllowedHosts // VITE_DEV_ALLOWED_HOSTS (comma-separated)
 			]
 		},
 

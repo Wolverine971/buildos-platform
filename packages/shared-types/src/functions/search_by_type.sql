@@ -10,63 +10,7 @@ DECLARE
 BEGIN
     normalized_query := lower(unaccent(trim(search_query)));
     
-    IF search_type = 'braindump' THEN
-        RETURN QUERY
-        SELECT 
-            bd.id as item_id,
-            bd.title::text as title,
-            COALESCE(LEFT(bd.ai_summary, 200), LEFT(bd.content, 200))::text as description,
-            bd.tags as tags,
-            bd.status::text as status,
-            bd.project_id as project_id,
-            bd.created_at,
-            bd.updated_at,
-            (
-                COALESCE(similarity(bd.title, normalized_query) * 3, 0) +
-                COALESCE(similarity(bd.content, normalized_query) * 2, 0) +
-                COALESCE(similarity(bd.ai_summary, normalized_query) * 2, 0) +
-                COALESCE(similarity(bd.ai_insights, normalized_query) * 1.5, 0) +
-                CASE WHEN bd.tags @> ARRAY[normalized_query] THEN 2 ELSE 0 END +
-                CASE bd.status::text
-                    WHEN 'pending' THEN 0.3
-                    WHEN 'parsed' THEN 0.5
-                    WHEN 'saved' THEN 0.5
-                    WHEN 'parsed_and_deleted' THEN -0.5
-                    ELSE 0
-                END +
-                CASE 
-                    WHEN bd.created_at > NOW() - INTERVAL '7 days' THEN 0.5
-                    WHEN bd.created_at > NOW() - INTERVAL '30 days' THEN 0.2
-                    ELSE 0
-                END
-            ) as relevance_score,
-            false as is_completed,
-            CASE WHEN bd.status = 'parsed_and_deleted' THEN true ELSE false END as is_deleted,
-            ARRAY_REMOVE(ARRAY[
-                CASE WHEN bd.title ILIKE '%' || normalized_query || '%' THEN 'title' END,
-                CASE WHEN bd.content ILIKE '%' || normalized_query || '%' THEN 'content' END,
-                CASE WHEN bd.ai_summary ILIKE '%' || normalized_query || '%' THEN 'summary' END,
-                CASE WHEN bd.ai_insights ILIKE '%' || normalized_query || '%' THEN 'insights' END,
-                CASE WHEN bd.tags @> ARRAY[normalized_query] THEN 'tags' END
-            ], NULL) as matched_fields
-        FROM brain_dumps bd
-        WHERE 
-            bd.user_id = current_user_id
-            AND (
-                bd.title ILIKE '%' || normalized_query || '%'
-                OR bd.content ILIKE '%' || normalized_query || '%'
-                OR bd.ai_summary ILIKE '%' || normalized_query || '%'
-                OR bd.ai_insights ILIKE '%' || normalized_query || '%'
-                OR bd.tags @> ARRAY[normalized_query]
-                OR similarity(bd.title, normalized_query) > 0.2
-                OR similarity(bd.content, normalized_query) > 0.2
-                OR similarity(bd.ai_summary, normalized_query) > 0.2
-            )
-        ORDER BY relevance_score DESC, bd.created_at DESC
-        OFFSET page_offset
-        LIMIT page_limit;
-        
-    ELSIF search_type = 'project' THEN
+    IF search_type = 'project' THEN
         RETURN QUERY
         SELECT 
             p.id as item_id,

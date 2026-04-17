@@ -12,8 +12,8 @@ export interface OnboardingV3SeedData {
 	projectsCreated: number;
 	tasksCreated: number;
 	goalsCreated: number;
-	braindumpWordCount?: number;
-	braindumpUsedVoice?: boolean;
+	captureWordCount?: number;
+	captureUsedVoice?: boolean;
 	timeSpentSeconds?: number;
 	stepsSkipped?: string[];
 	smsEnabled: boolean;
@@ -124,11 +124,11 @@ function buildDimensionsFromOnboarding(
 		dims.autonomy_comfort = 0.5;
 	}
 
-	// Seed from brain dump behavior
-	if (data.braindumpWordCount != null) {
-		if (data.braindumpWordCount > 200) {
+	// Seed from project capture behavior
+	if (data.captureWordCount != null) {
+		if (data.captureWordCount > 200) {
 			dims.information_appetite = Math.max(dims.information_appetite as number, 0.6);
-		} else if (data.braindumpWordCount < 50 && data.braindumpWordCount > 0) {
+		} else if (data.captureWordCount < 50 && data.captureWordCount > 0) {
 			dims.information_appetite = Math.min(dims.information_appetite as number, 0.3);
 		}
 	}
@@ -157,8 +157,8 @@ function buildOnboardingSeed(data: OnboardingV3SeedData): Json {
 	return {
 		intent: data.intent,
 		stakes: data.stakes,
-		braindump_word_count: data.braindumpWordCount ?? 0,
-		braindump_used_voice: data.braindumpUsedVoice ?? false,
+		capture_word_count: data.captureWordCount ?? 0,
+		capture_used_voice: data.captureUsedVoice ?? false,
 		projects_created: data.projectsCreated,
 		tasks_created: data.tasksCreated,
 		goals_created: data.goalsCreated,
@@ -172,7 +172,7 @@ function buildOnboardingSeed(data: OnboardingV3SeedData): Json {
 
 function buildFeaturesUsed(data: OnboardingV3SeedData): string[] {
 	const features = ['onboarding'];
-	if (data.projectsCreated > 0) features.push('braindump');
+	if (data.projectsCreated > 0) features.push('agent_chat');
 	if (data.smsEnabled) features.push('sms');
 	if (data.emailEnabled) features.push('daily_brief');
 	return features;
@@ -199,7 +199,7 @@ function buildInitialAgentInstructions(data: OnboardingV3SeedData): string {
 		unstuck:
 			'- Keep it simple. One thing at a time.\n- Do NOT present multi-step plans — offer single actions.\n- Ask "What is the most important thing on your plate right now?"\n- Be encouraging. Small wins matter.\n- If they go quiet, simplify further.',
 		explore:
-			'- Show them what BuildOS can do through doing, not explaining.\n- Suggest a quick brain dump if they have not tried one.\n- Keep things light and low-commitment.'
+			'- Show them what BuildOS can do through doing, not explaining.\n- Suggest a quick chat if they have not tried one.\n- Keep things light and low-commitment.'
 	};
 
 	const projectContext =

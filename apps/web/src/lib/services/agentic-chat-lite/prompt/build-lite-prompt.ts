@@ -859,7 +859,6 @@ function defaultRetrievalMap(
 		case 'global':
 		case 'general':
 		case 'daily_brief':
-		case 'brain_dump':
 			return {
 				loaded,
 				omitted: [
@@ -1259,8 +1258,6 @@ function defaultProductSurface(contextType: ChatContextType): string {
 			return 'daily brief chat';
 		case 'ontology':
 			return 'ontology entity chat';
-		case 'brain_dump':
-			return 'brain dump capture chat';
 		default:
 			return 'BuildOS agentic chat';
 	}
@@ -1283,8 +1280,6 @@ function describePurpose(focus: LitePromptFocus): string {
 			return 'Seed an assistant for adjusting daily brief preferences, rules, or generation behavior.';
 		case 'ontology':
 			return 'Seed an ontology-aware assistant that can reason about entities, fields, and relationships.';
-		case 'brain_dump':
-			return 'Seed a capture assistant that can preserve details and organize them into the right project entities.';
 		default:
 			return 'Seed the assistant with enough landscape context to respond safely to the next user message.';
 	}

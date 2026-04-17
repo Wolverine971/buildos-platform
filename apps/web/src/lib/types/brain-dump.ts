@@ -5,111 +5,24 @@
 // ==========================================
 import type { ProjectWithRelations } from '$lib/types/project';
 import type { BrainDump } from '.';
+import type { ExecutionResult, GeneratedProjectQuestion, ParsedOperation } from './operations';
 import type { Database } from '@buildos/shared-types';
 
 type ProjectQuestionRow = Database['public']['Tables']['project_questions']['Row'];
 
+export type {
+	ExecutionResult,
+	GeneratedProjectQuestion,
+	NoteOperation,
+	OperationType,
+	ParsedOperation,
+	ProjectOperation,
+	TableName,
+	TaskOperation
+} from './operations';
+
 export type DisplayedBrainDumpQuestion = Pick<ProjectQuestionRow, 'id' | 'question'> &
 	Partial<Omit<ProjectQuestionRow, 'id' | 'question'>>;
-
-export type TableName =
-	| 'projects'
-	| 'tasks'
-	| 'notes'
-	| 'phases'
-	| 'project_context'
-	| 'project_notes'
-	| 'brain_dumps'
-	| 'daily_briefs'
-	| 'project_questions';
-export type OperationType = 'create' | 'update' | 'delete';
-
-export interface ParsedOperation {
-	id: string;
-	table: TableName;
-	operation: OperationType;
-	data: {
-		// Project references - only ONE should be present
-		project_id?: string; // Direct UUID for existing projects
-		project_ref?: string; // Reference to project being created in same batch
-
-		// Standard fields
-		[key: string]: any;
-	};
-	ref?: string; // This operation's reference (for new items)
-	searchQuery?: string;
-	conditions?: Record<string, any>; // For update operations
-	enabled: boolean;
-	error?: string;
-	reasoning?: string;
-	result?: Record<string, any>;
-}
-
-// Add specific types for clarity
-export interface ProjectOperation extends ParsedOperation {
-	table: 'projects';
-	operation: 'create' | 'update';
-	ref?: string; // Required for create operations
-	data: {
-		name: string;
-		slug: string;
-		description?: string;
-		context?: string;
-		executive_summary?: string;
-		status?: 'active' | 'paused' | 'completed' | 'archived';
-		tags?: string[];
-		start_date?: string;
-		end_date?: string;
-		// Never has project_id or project_ref
-	};
-}
-
-export interface TaskOperation extends ParsedOperation {
-	table: 'tasks';
-	operation: 'create' | 'update';
-	data: {
-		// Exactly ONE of these must be present for creates
-		project_id?: string; // For existing projects
-		project_ref?: string; // For new projects (will be resolved)
-
-		// Task fields
-		title: string;
-		description?: string;
-		details?: string;
-		priority?: 'low' | 'medium' | 'high';
-		status?: 'backlog' | 'in_progress' | 'done' | 'blocked';
-		task_type?: 'one_off' | 'recurring';
-		duration_minutes?: number;
-		start_date?: string;
-		recurrence_pattern?:
-			| 'daily'
-			| 'weekdays'
-			| 'weekly'
-			| 'biweekly'
-			| 'monthly'
-			| 'quarterly'
-			| 'yearly';
-		recurrence_ends?: string;
-		dependencies?: string[];
-		parent_task_id?: string;
-	};
-}
-
-export interface NoteOperation extends ParsedOperation {
-	table: 'notes';
-	operation: 'create' | 'update';
-	data: {
-		// Optional project reference
-		project_id?: string; // For existing projects
-		project_ref?: string; // For new projects (will be resolved)
-
-		// Note fields
-		title?: string;
-		content: string;
-		category?: string;
-		tags?: string[];
-	};
-}
 
 export interface BrainDumpParseResult {
 	// Core fields
@@ -160,18 +73,7 @@ export interface BrainDumpParseResult {
 	>;
 
 	// New questions generated based on the braindump
-	projectQuestions?: Array<{
-		question: string;
-		category: string;
-		priority: string;
-		context?: string;
-		expectedOutcome?: string;
-		triggers?: {
-			braindumpMention?: string;
-			gapIdentified?: string;
-			projectState?: string;
-		};
-	}>;
+	projectQuestions?: GeneratedProjectQuestion[];
 
 	// Context result for dual processing
 	contextResult?: ProjectContextResult | null;
@@ -283,18 +185,6 @@ export interface PreparatoryAnalysisResult {
 		/** Explanation for any skip recommendations */
 		reason: string;
 	};
-}
-
-export interface ExecutionResult {
-	successful: ParsedOperation[];
-	failed: Array<ParsedOperation & { error: string }>;
-	results?: Array<{
-		id: string;
-		table: TableName;
-		operationType: OperationType;
-		[key: string]: any; // Other fields from the created/updated record
-	}>;
-	error?: string;
 }
 
 // Types for dual processing

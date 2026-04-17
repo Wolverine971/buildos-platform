@@ -30,10 +30,6 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 		title: 'Daily brief tuning',
 		subtitle: 'Adjust what surfaces in your daily brief and notifications.'
 	},
-	brain_dump: {
-		title: 'Braindump',
-		subtitle: 'Capture raw thoughts, then save or explore with AI.'
-	},
 	ontology: {
 		title: 'Ontology',
 		subtitle: 'Work with the ontology system (projects, tasks, docs, goals).'
@@ -43,7 +39,6 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 export const CONTEXT_BADGE_CLASSES: Partial<Record<ChatContextType, string>> = {
 	global: 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300',
 	project: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300',
-	brain_dump: 'bg-violet-500/10 text-violet-600 dark:bg-violet-500/15 dark:text-violet-300',
 	ontology: 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300',
 	project_create: 'bg-purple-500/10 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300',
 	daily_brief_update: 'bg-rose-500/10 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300',

@@ -56,7 +56,6 @@ export const POST: RequestHandler = async ({ request, locals }): Promise<Respons
 
 		// Check if there are more results available for each category
 		const hasMore = {
-			braindumps: results.filter((r) => r.item_type === 'braindump').length >= 5,
 			projects: results.filter((r) => r.item_type === 'project').length >= 5,
 			tasks: results.filter((r) => r.item_type === 'task').length >= 5
 		};

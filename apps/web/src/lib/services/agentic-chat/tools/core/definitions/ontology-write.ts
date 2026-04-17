@@ -266,7 +266,7 @@ Documents are organized in a hierarchical tree structure. Use parent_id to place
 						type: 'string',
 						default: 'document.default',
 						description: `Document type taxonomy (required): document.{family}[.{variant}]
-Families: context (project/brief), knowledge (research/brain_dump), notes (meeting_notes/rfc), spec (product/technical), reference (handbook/sop), intake (client/project).
+Families: context (project/brief), knowledge (research), notes (meeting_notes/rfc), spec (product/technical), reference (handbook/sop), intake (client/project).
 Examples: document.context.project, document.knowledge.research, document.spec.technical`
 					},
 					state_key: {

@@ -36,8 +36,6 @@ const ALLOWED_MUTATION_PREFIXES_WHEN_FROZEN = [
 const AI_MUTATION_PREFIXES_WHEN_FROZEN = [
 	'/api/agent/',
 	'/api/agentic-chat/',
-	'/api/braindumps/generate',
-	'/api/braindumps/stream',
 	'/api/chat/',
 	'/api/daily-briefs/generate',
 	'/api/tree-agent/',
@@ -48,7 +46,6 @@ const WORKSPACE_MUTATION_PREFIXES_WHEN_FROZEN = [
 	'/api/onto/',
 	'/api/projects/',
 	'/api/tasks/',
-	'/api/braindumps/',
 	'/api/daily-briefs/',
 	'/api/brief-templates/',
 	'/api/project-briefs/',

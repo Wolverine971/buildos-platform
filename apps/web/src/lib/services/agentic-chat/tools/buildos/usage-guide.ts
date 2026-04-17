@@ -14,22 +14,22 @@ const USAGE_SECTIONS: BuildosDocSection[] = [
 	{
 		title: '1. Onboard & Prime the Workspace',
 		summary:
-			'Start with the guided onboarding flow to explain core concepts, run a sample brain dump, and connect integrations.',
+			'Start with the guided onboarding flow to explain core concepts, create a sample project, and connect integrations.',
 		highlights: [
-			'The onboarding feature walks users through BuildOS pillars, gives them a safe space to try the brain dump composer, and points them at priority integrations such as Google Calendar.',
+			'The onboarding feature walks users through BuildOS pillars, gives them a safe space to try agent chat, and points them at priority integrations such as Google Calendar.',
 			'Use onboarding prompts to gather intent (personal vs. client work, focus areas) so future ontology projects inherit the right facets.',
 			'Remind users to follow `/apps/web/docs/README.md` navigation if they want deeper implementation context after onboarding.'
 		],
 		references: [ONBOARDING_REFERENCE, FEATURES_INDEX_REFERENCE]
 	},
 	{
-		title: '2. Capture Thoughts via Brain Dumps',
+		title: '2. Capture Thoughts via Agent Chat',
 		summary:
 			'Encourage users to describe anything that is cluttering their mind—BuildOS is optimized for ADHD stream-of-consciousness capture.',
 		highlights: [
-			'Brain dumps fuel the system’s core innovation: unstructured text is parsed into candidate projects, tasks, and context.',
-			'The platform can run dual processing modes (long-form plus quick capture) and phase-based task grouping, so nudge users to be verbose.',
-			'If the user references braindump-derived context later, the agent should look for the auto-generated context document linked on the project.'
+			'Agent chat can turn unstructured text into candidate projects, tasks, goals, plans, and context.',
+			'Nudge users to be verbose when they want the agent to infer structure from rough notes.',
+			'If the user references earlier captured context later, the agent should look for the generated context document or the related chat session linked on the project.'
 		],
 		references: [AGENTIC_WORKFLOW_REFERENCE, FEATURES_INDEX_REFERENCE]
 	},
@@ -107,7 +107,7 @@ export const getBuildosUsageGuide: BuildosDocGenerator = () => ({
 	sections: USAGE_SECTIONS,
 	recommendedQuestions: [
 		'Can you walk me through how to capture a chaotic week inside BuildOS?',
-		'How do I go from a braindump to a structured project with linked tasks?',
+		'How do I go from rough notes to a structured project with linked tasks?',
 		'What should I tell a user who needs to reconnect Google Calendar or supply missing project details?'
 	],
 	followUpActions: [

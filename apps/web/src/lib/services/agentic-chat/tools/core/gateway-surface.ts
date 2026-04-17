@@ -121,7 +121,6 @@ export function resolveGatewaySurfaceProfileForContextType(
 		case 'project_create':
 			return 'project_create_minimal';
 		case 'daily_brief':
-		case 'brain_dump':
 		case 'global':
 		case 'general':
 		default:

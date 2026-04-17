@@ -34,7 +34,6 @@ const TOOL_CONTEXT_SCOPE_SET = new Set<ToolContextScope>(TOOL_CONTEXT_SCOPES);
 const TOOL_CONTEXT_ALIASES: Partial<Record<ChatContextType, ToolContextScope[]>> = {
 	ontology: ['project'],
 	calendar: ['global'],
-	brain_dump: ['global'],
 	daily_brief: ['global'],
 	daily_brief_update: ['base']
 };
@@ -306,7 +305,6 @@ const CONTEXT_TO_TOOL_GROUPS: Record<PlannerContextType, ToolContextScope[]> = {
 	calendar: ['base', 'global'],
 	daily_brief: ['base', 'global', 'project'],
 	daily_brief_update: ['base'],
-	brain_dump: ['base', 'global'],
 	ontology: ['base', 'project']
 };
 

@@ -2,20 +2,21 @@
 // Comprehensive type definitions for your SvelteKit + Supabase project
 
 import type { ApiResponse as SharedApiResponse, Database } from '@buildos/shared-types';
-import type { ParsedOperation } from './brain-dump';
+import type { ParsedOperation } from './operations';
 import type { Task, ProjectWithRelations } from './project';
 import type { UserContext } from './user-context';
 
-// Re-export brain dump types
+// Re-export operation types used by brain dump and non-brain-dump flows
 export type {
-	BrainDumpOptions,
-	BrainDumpParseResult,
-	ParsedOperation,
 	ExecutionResult,
-	CompletedBrainDump,
-	TableName,
-	OperationType
-} from './brain-dump';
+	GeneratedProjectQuestion,
+	OperationType,
+	ParsedOperation,
+	TableName
+} from './operations';
+
+// Re-export brain dump types
+export type { BrainDumpOptions, BrainDumpParseResult, CompletedBrainDump } from './brain-dump';
 
 // ==========================================
 // BASE DATABASE TYPES & INTERFACES

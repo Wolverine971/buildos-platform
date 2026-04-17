@@ -28,7 +28,7 @@ import type {
 	StepsProgress
 } from '$lib/types/notification.types';
 import type { SynthesisOptions } from '$lib/types/synthesis';
-import type { ParsedOperation } from '$lib/types/brain-dump';
+import type { ParsedOperation } from '$lib/types/operations';
 import { requireApiData } from '$lib/utils/api-client-helpers';
 
 // ============================================================================

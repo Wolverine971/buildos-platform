@@ -4,7 +4,6 @@
 		MessagesSquare,
 		FolderOpen,
 		FolderPlus,
-		PenLine,
 		Calendar,
 		LoaderCircle,
 		Sparkles,
@@ -37,9 +36,9 @@
 			}
 		) => void;
 		onCalendarAnalyzed?: (completed: boolean) => void;
-		/** V3: tailor brain dump prompt based on user intent */
+		/** V3: tailor capture prompt based on user intent */
 		intent?: OnboardingIntent;
-		/** V3: allow skipping the brain dump (for "explore" users) */
+		/** V3: allow skipping the project capture step (for "explore" users) */
 		isSkippable?: boolean;
 	}
 
@@ -54,7 +53,7 @@
 	}: Props = $props();
 
 	// V3 intent-aware prompt configuration
-	const v3Prompts = $derived(intent ? ONBOARDING_V3_CONFIG.brainDumpPrompts[intent] : null);
+	const v3Prompts = $derived(intent ? ONBOARDING_V3_CONFIG.capturePrompts[intent] : null);
 
 	// Calendar connection state
 	let hasCalendarConnected = $state(false);
@@ -279,15 +278,15 @@
 			Where to Find It
 		</h3>
 		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
-			Look for the <strong class="text-foreground">Brain Dump & Chat</strong> button in the top
-			navigation bar. Open it anytime to work with your AI assistant.
+			Look for the <strong class="text-foreground">Ask AI</strong> button in the top navigation
+			bar. Open it anytime to work with your AI assistant.
 		</p>
 
 		<!-- Screenshot: Where to find the chat -->
 		<div class="mb-4 bg-muted rounded-lg overflow-hidden border border-border">
 			<img
 				src="/onboarding-assets/screenshots/agentic-chat-select.webp"
-				alt="Arrow pointing to the Brain Dump & Chat button in the navigation bar"
+				alt="Arrow pointing to the Ask AI button in the navigation bar"
 				loading="lazy"
 				class="w-full"
 			/>
@@ -296,7 +295,7 @@
 		<!-- Chat modes heading -->
 		<h3 class="font-semibold mb-2 flex items-center gap-2 text-foreground text-sm">
 			<Sparkles class="w-4 h-4 text-accent" />
-			Four Ways to Work
+			Three Ways to Work
 		</h3>
 		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
 			When you open the chat, you choose how you want to work. Each mode tailors the assistant
@@ -307,7 +306,7 @@
 		<div class="mb-3 bg-muted rounded-lg overflow-hidden border border-border">
 			<img
 				src="/onboarding-assets/screenshots/agentic-chat-options.webp"
-				alt="The four chat mode options: General Chat, Project Chat, Start a Project, and Brain Dump"
+				alt="Chat mode options for general chat, project chat, and project setup"
 				loading="lazy"
 				class="w-full"
 			/>
@@ -382,21 +381,6 @@
 					</div>
 				</div>
 			</div>
-			<div class="flex gap-2.5 items-start">
-				<div
-					class="w-5 h-5 rounded bg-violet-500/10 flex items-center justify-center flex-shrink-0 mt-0.5"
-				>
-					<PenLine class="w-3 h-3 text-violet-600 dark:text-violet-400" />
-				</div>
-				<div>
-					<strong class="text-foreground">Brain Dump</strong>
-					<p class="text-muted-foreground leading-snug mt-0.5">
-						Just drop a note and go. No back-and-forth, no agent response — think of it
-						like quick note-taking. Capture a thought, save a link, log a meeting recap,
-						or jot down something before you forget it.
-					</p>
-				</div>
-			</div>
 		</div>
 
 		<!-- Voice transcription hint -->
@@ -407,7 +391,7 @@
 			</h3>
 			<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
 				Use the <strong class="text-foreground">voice button</strong> in any chat to talk instead
-				of type. It's faster for brain dumps, project updates, and when you're on the go.
+				of type. It's faster for rough notes, project updates, and when you're on the go.
 			</p>
 			<div class="bg-muted rounded-lg overflow-hidden border border-border">
 				<img

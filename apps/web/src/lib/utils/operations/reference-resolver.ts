@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type { ReferenceInfo } from './types';
 import { isValidUUID } from './validation-utils';
-import type { ParsedOperation } from '$lib/types/brain-dump';
+import type { ParsedOperation } from '$lib/types/operations';
 
 export class ReferenceResolver {
 	private actorIdByUser = new Map<string, string>();

@@ -12,7 +12,6 @@
 		isSendDisabled: boolean;
 		allowSendWhileStreaming?: boolean;
 		displayContextLabel: string;
-		mode?: 'chat' | 'braindump';
 		disabled?: boolean;
 		vocabularyTerms?: string;
 		voiceInputRef: TextareaWithVoiceComponent | null;
@@ -37,7 +36,6 @@
 		isSendDisabled,
 		allowSendWhileStreaming = false,
 		displayContextLabel,
-		mode = 'chat',
 		disabled = false,
 		vocabularyTerms = '',
 		voiceInputRef = $bindable(),
@@ -57,15 +55,12 @@
 	}: Props = $props();
 
 	const placeholder = $derived.by(() => {
-		if (mode === 'braindump') {
-			return 'Capture whatever is on your mind...';
-		}
 		const label = displayContextLabel.trim().toLowerCase();
 		return label ? `Ask about ${label}...` : 'Ask BuildOS anything...';
 	});
 
-	const initialRows = $derived(mode === 'braindump' ? 8 : 1);
-	const maxRows = $derived(mode === 'braindump' ? 18 : 6);
+	const initialRows = 1;
+	const maxRows = 6;
 	const isVoiceBlocked = $derived(isStreaming || disabled);
 	const composerHint = $derived.by(() => {
 		if (disabled) return 'Loading...';
@@ -81,10 +76,7 @@
 </script>
 
 <!-- INKPRINT form with compact spacing and Grain texture for active input workspace -->
-<form
-	onsubmit={handleSubmit}
-	class={`tx tx-grain tx-weak rounded-lg ${mode === 'braindump' ? 'h-full' : ''}`}
->
+<form onsubmit={handleSubmit} class="tx tx-grain tx-weak rounded-lg">
 	<TextareaWithVoice
 		bind:this={voiceInputRef}
 		bind:value={inputValue}
@@ -100,9 +92,7 @@
 		{onVoiceNoteSegmentSaved}
 		{onVoiceNoteSegmentError}
 		class="w-full"
-		containerClass={`rounded-lg border border-border bg-card shadow-ink focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/30 transition-all ${
-			mode === 'braindump' ? 'h-full' : ''
-		}`}
+		containerClass="rounded-lg border border-border bg-card shadow-ink focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/30 transition-all"
 		textareaClass="border-none bg-transparent px-3 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-4 sm:py-3"
 		{placeholder}
 		autoResize

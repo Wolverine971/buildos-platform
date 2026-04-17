@@ -1,3 +1,4 @@
+<!-- thoughts/shared/research/2026-04-16_claude-config-assessment.md -->
 # Claude Internal Config Assessment
 
 **Date:** 2026-04-16

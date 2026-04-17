@@ -4,27 +4,54 @@ import type { ActivityType } from '../activityLogger';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
 import type {
-	ParsedOperation,
-	TableName,
 	ExecutionResult,
-	BrainDumpParseResult
-} from '$lib/types/brain-dump';
+	GeneratedProjectQuestion,
+	ParsedOperation,
+	TableName
+} from '$lib/types/operations';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { OperationValidator } from './operation-validator';
 import { ReferenceResolver } from './reference-resolver';
 import { generateSlug } from './validation-utils';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
-import { BrainDumpStatusService } from '$lib/services/braindump-status.service';
 import { validateTaskDateAgainstProject } from '../dateValidation';
 import { normalizeMarkdownHeadings } from '../markdown-nesting';
 import { seedProjectNextSteps } from '$lib/services/next-step-seeding.service';
 import { TaskEventSyncService } from '$lib/services/ontology/task-event-sync.service';
 
+interface OperationStatusSnapshot {
+	title: string;
+	operations: ParsedOperation[];
+	summary: string;
+	insights: string;
+	tags: string[];
+	metadata: {
+		totalOperations: number;
+		tableBreakdown: Record<string, number>;
+		processingTime: number;
+		timestamp: string;
+	};
+}
+
+export interface OperationStatusReporter {
+	updateToParsed(
+		brainDumpId: string,
+		userId: string,
+		parseResult: OperationStatusSnapshot
+	): Promise<unknown>;
+	markAsFailed(brainDumpId: string, userId: string, error: unknown): Promise<unknown>;
+}
+
+const noopStatusReporter: OperationStatusReporter = {
+	async updateToParsed() {},
+	async markAsFailed() {}
+};
+
 export class OperationsExecutor {
 	private supabase: SupabaseClient<Database>;
 	private activityLogger: ActivityLogger;
 	private errorLogger: ErrorLoggerService;
-	private statusService: BrainDumpStatusService;
+	private statusReporter: OperationStatusReporter;
 	private validator: OperationValidator;
 	private referenceResolver: ReferenceResolver;
 	private llmService: SmartLLMService | null = null;
@@ -32,11 +59,14 @@ export class OperationsExecutor {
 	private newProjectId: string | null = null; // Track newly created project ID
 	private currentActorId: string | null = null;
 
-	constructor(supabase: SupabaseClient<Database>) {
+	constructor(
+		supabase: SupabaseClient<Database>,
+		options: { statusReporter?: OperationStatusReporter } = {}
+	) {
 		this.supabase = supabase;
 		this.activityLogger = new ActivityLogger(supabase);
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
-		this.statusService = new BrainDumpStatusService(supabase);
+		this.statusReporter = options.statusReporter ?? noopStatusReporter;
 		this.validator = new OperationValidator();
 		this.referenceResolver = new ReferenceResolver(supabase);
 	}
@@ -385,7 +415,7 @@ export class OperationsExecutor {
 		operations: ParsedOperation[];
 		userId: string;
 		brainDumpId?: string;
-		projectQuestions?: BrainDumpParseResult['projectQuestions'];
+		projectQuestions?: GeneratedProjectQuestion[];
 	}): Promise<ExecutionResult> {
 		// Handle both old and new signatures for backward compatibility
 		const successful: ParsedOperation[] = [];
@@ -1013,7 +1043,7 @@ export class OperationsExecutor {
 		brainDumpId,
 		userId
 	}: {
-		projectQuestions: BrainDumpParseResult['projectQuestions'];
+		projectQuestions: GeneratedProjectQuestion[] | undefined;
 		projectId: string;
 		brainDumpId?: string;
 		userId: string;
@@ -1224,7 +1254,7 @@ export class OperationsExecutor {
 	): Promise<void> {
 		try {
 			// Update status to processing using the service
-			await this.statusService.updateToParsed(brainDumpId, userId, {
+			await this.statusReporter.updateToParsed(brainDumpId, userId, {
 				title: 'Processing brain dump',
 				operations: [],
 				summary: 'Extracting key information...',
@@ -1272,7 +1302,7 @@ export class OperationsExecutor {
 			console.error('Failed to process brain dump:', error);
 
 			// Update status to failed using the service
-			await this.statusService.markAsFailed(brainDumpId, userId, error);
+			await this.statusReporter.markAsFailed(brainDumpId, userId, error);
 		}
 	}
 

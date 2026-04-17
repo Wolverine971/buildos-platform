@@ -62,7 +62,6 @@ import {
 	fetchTaskAssigneesMap,
 	notifyTaskAssignmentAdded,
 	parseAssigneeActorIds,
-	syncTaskAssignees,
 	validateAssigneesAreProjectEligible
 } from '$lib/server/task-assignment.service';
 import {
@@ -480,30 +479,74 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.props = nextProps;
 		}
 
-		// Update the task
-		const { data: updatedTask, error: updateError } = await supabase
-			.from('onto_tasks')
-			.update(updateData)
-			.eq('id', params.id)
-			.select('*')
-			.single();
+		// Atomic update: task row + assignee sync happen in a single RPC
+		// transaction so a partial failure cannot leave the task metadata and
+		// its assignee set in divergent states. See migration
+		// 20260430000002_onto_task_update_atomic.sql for the contract.
+		// Build the JSONB payload — only include keys explicitly touched by
+		// this request so the RPC's case-by-case merge can skip the rest.
+		const atomicUpdatePayload: Record<string, unknown> = {
+			updated_at: new Date().toISOString()
+		};
+		for (const key of [
+			'title',
+			'description',
+			'priority',
+			'type_key',
+			'state_key',
+			'start_at',
+			'due_at',
+			'completed_at',
+			'props'
+		] as const) {
+			if (key in updateData) {
+				atomicUpdatePayload[key] = (updateData as Record<string, unknown>)[key];
+			}
+		}
 
-		if (updateError) {
-			console.error('Error updating task:', updateError);
+		const { data: atomicResult, error: atomicError } = await supabase.rpc(
+			'onto_task_update_atomic' as any,
+			{
+				p_task_id: params.id,
+				p_updates: atomicUpdatePayload,
+				p_sync_assignees: hasAssigneeInput,
+				p_assignee_actor_ids: hasAssigneeInput ? assigneeActorIds : null,
+				p_assigned_by_actor_id: hasAssigneeInput ? actorId : null,
+				p_source: 'manual'
+			} as any
+		);
+
+		if (atomicError || !atomicResult) {
+			console.error('Error updating task atomically:', atomicError);
 			await logOntologyApiError({
 				supabase,
-				error: updateError,
+				error: atomicError ?? new Error('onto_task_update_atomic returned no data'),
 				endpoint: `/api/onto/tasks/${params.id}`,
 				method: 'PATCH',
 				userId: session.user.id,
 				projectId: existingTask.project_id,
 				entityType: 'task',
 				entityId: params.id,
-				operation: 'task_update',
+				operation: 'task_update_atomic',
 				tableName: 'onto_tasks'
 			});
-			return ApiResponse.databaseError(updateError);
+			// Postgres raises a clean access_denied / task_not_found that we can
+			// surface. Otherwise fall back to databaseError.
+			const message = atomicError?.message ?? '';
+			if (message.includes('task_not_found')) {
+				return ApiResponse.notFound('Task');
+			}
+			if (message.includes('access_denied')) {
+				return ApiResponse.forbidden('Access denied');
+			}
+			return ApiResponse.databaseError(
+				atomicError ?? new Error('onto_task_update_atomic returned no data')
+			);
 		}
+
+		const updatedTask = (atomicResult as { task: any }).task;
+		const addedActorIds = ((atomicResult as { added_actor_ids?: string[] }).added_actor_ids ??
+			[]) as string[];
 
 		const hasContainmentInput =
 			hasPlanInput ||
@@ -575,14 +618,9 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		let assignmentRecipientUserIds: string[] = [];
 
 		if (hasAssigneeInput) {
-			const { addedActorIds } = await syncTaskAssignees({
-				supabase,
-				projectId: existingTask.project_id,
-				taskId: params.id,
-				assigneeActorIds,
-				assignedByActorId: actorId
-			});
-
+			// Assignees were already synced inside onto_task_update_atomic above;
+			// `addedActorIds` came back with the RPC result. Notifications stay
+			// outside the transaction because they fan out via external channels.
 			const { recipientUserIds } = await notifyTaskAssignmentAdded({
 				supabase,
 				projectId: existingTask.project_id,

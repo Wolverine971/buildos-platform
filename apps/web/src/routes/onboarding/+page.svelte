@@ -16,9 +16,19 @@
 	// --- Session state persistence (survives OAuth redirects) ---
 	const SESSION_KEY = 'buildos_onboarding_state';
 
+	type OnboardingV3State = {
+		intent: OnboardingIntent | null;
+		stakes: OnboardingStakes | null;
+		projectsCreated: number;
+		tasksCreated: number;
+		goalsCreated: number;
+		smsEnabled: boolean;
+		emailEnabled: boolean;
+	};
+
 	type SavedOnboardingState = {
 		currentStep: number;
-		v3Data: typeof v3Data;
+		v3Data: OnboardingV3State;
 		savedAt: number;
 	};
 
@@ -70,7 +80,7 @@
 	const savedSession = loadStateFromSession();
 
 	let currentStep = $state(savedSession?.currentStep ?? 0);
-	let v3Data = $state(
+	let v3Data = $state<OnboardingV3State>(
 		savedSession?.v3Data ?? {
 			intent: null as OnboardingIntent | null,
 			stakes: null as OnboardingStakes | null,
@@ -138,7 +148,7 @@
 		goToStep(1);
 	}
 
-	// Step 1: Brain Dump / Projects
+	// Step 1: Project capture
 	function handleProjectsCreated(projectIds: string[], ontologyCounts?: OntologyCounts) {
 		v3Data.projectsCreated = projectIds.length;
 		if (ontologyCounts) {
@@ -151,7 +161,7 @@
 		// Tracked for analytics but doesn't affect flow
 	}
 
-	function handleBrainDumpDone() {
+	function handleProjectCaptureDone() {
 		goToStep(2);
 	}
 
@@ -182,7 +192,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<!-- Progress indicator: show on steps 1 and 2 (brain dump and notifications) -->
+	<!-- Progress indicator: show on steps 1 and 2 (project capture and notifications) -->
 	{#if currentStep === 1 || currentStep === 2}
 		<div class="pt-6 px-4">
 			<ProgressIndicatorV3 {currentStep} {totalSteps} />
@@ -199,7 +209,7 @@
 	{:else if currentStep === 1}
 		<ProjectsCaptureStep
 			userContext={data.userContext}
-			onNext={handleBrainDumpDone}
+			onNext={handleProjectCaptureDone}
 			onBack={goBack}
 			onProjectsCreated={handleProjectsCreated}
 			onCalendarAnalyzed={handleCalendarAnalyzed}

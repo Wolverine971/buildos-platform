@@ -126,7 +126,7 @@ export const ONBOARDING_V2_CONFIG = {
 			icon: '📅',
 			aiGuidance:
 				'User needs help with planning. Break down large goals into phases and tasks, provide structure and milestones.',
-			suggestedFeatures: ['phase_generation', 'milestone_tracking', 'brain_dump']
+			suggestedFeatures: ['phase_generation', 'milestone_tracking', 'agent_chat']
 		},
 		{
 			id: 'accountability',
@@ -147,7 +147,7 @@ export const ONBOARDING_V2_CONFIG = {
 			icon: '📝',
 			aiGuidance:
 				'User has information scattered across tools. Help consolidate, organize, and create a single source of truth.',
-			suggestedFeatures: ['brain_dump', 'note_organization', 'search', 'tagging']
+			suggestedFeatures: ['agent_chat', 'note_organization', 'search', 'tagging']
 		},
 		{
 			id: 'overwhelm',
@@ -208,7 +208,6 @@ export const ONBOARDING_V2_CONFIG = {
 			agenticChatSelect: '/onboarding-assets/screenshots/agentic-chat-select.png',
 			agenticChatOptions: '/onboarding-assets/screenshots/agentic-chat-options.png',
 			agenticChatVoice: '/onboarding-assets/screenshots/agentic-chat-voice-transcription.png',
-			brainDumpExample: '/onboarding-assets/screenshots/PLACEHOLDER_brain_dump_example.png',
 			calendarAnalysisBefore:
 				'/onboarding-assets/screenshots/PLACEHOLDER_calendar_analysis_before.png',
 			calendarAnalysisAfter:
@@ -216,10 +215,6 @@ export const ONBOARDING_V2_CONFIG = {
 			smsNotification:
 				'/onboarding-assets/screenshots/PLACEHOLDER_sms_notification_example.png',
 			// Flexibility step assets
-			braindumpUpdateTask:
-				'/onboarding-assets/screenshots/PLACEHOLDER_braindump_update_task.png',
-			braindumpReschedule:
-				'/onboarding-assets/screenshots/PLACEHOLDER_braindump_reschedule.png',
 			phaseGenerationModal:
 				'/onboarding-assets/screenshots/PLACEHOLDER_phase_generation_modal.png',
 			phaseRegenerationBeforeAfter:
@@ -241,8 +236,7 @@ export const ONBOARDING_V2_CONFIG = {
 		videos: {
 			calendarAnalysisDemo:
 				'/onboarding-assets/videos/PLACEHOLDER_calendar_analysis_demo.mp4',
-			smsNotificationDemo: '/onboarding-assets/videos/PLACEHOLDER_sms_notification_demo.mp4',
-			brainDumpGuided: '/onboarding-assets/videos/PLACEHOLDER_brain_dump_guided_demo.mp4'
+			smsNotificationDemo: '/onboarding-assets/videos/PLACEHOLDER_sms_notification_demo.mp4'
 		}
 	},
 
@@ -268,7 +262,12 @@ export const ONBOARDING_V3_CONFIG = {
 			skippable: false,
 			title: 'What Brings You Here?'
 		},
-		brain_dump: { id: 'brain_dump', order: 1, skippable: true, title: 'Brain Dump' },
+		project_capture: {
+			id: 'project_capture',
+			order: 1,
+			skippable: true,
+			title: 'Project Capture'
+		},
 		notifications: { id: 'notifications', order: 2, skippable: true, title: 'Notifications' },
 		ready: { id: 'ready', order: 3, skippable: false, title: "You're Ready" }
 	},
@@ -314,7 +313,7 @@ export const ONBOARDING_V3_CONFIG = {
 		}
 	],
 
-	brainDumpPrompts: {
+	capturePrompts: {
 		organize: {
 			heading: 'Tell us about the projects you need organized',
 			placeholder:
@@ -333,7 +332,7 @@ export const ONBOARDING_V3_CONFIG = {
 		explore: {
 			heading: "Got anything you're working on?",
 			placeholder:
-				'If you have something in mind, tell us about it. If not, no worries — you can always brain dump later...'
+				'If you have something in mind, tell us about it. If not, no worries — you can always start with chat later...'
 		}
 	},
 

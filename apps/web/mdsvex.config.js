@@ -1,9 +1,14 @@
 // apps/web/mdsvex.config.js
+import { fileURLToPath } from 'node:url';
 import { defineMDSveXConfig as defineConfig } from 'mdsvex';
 import rehypeSlug from 'rehype-slug';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import remarkGfm from 'remark-gfm';
 import remarkToc from 'remark-toc';
+
+const blogLayoutPath = fileURLToPath(
+	new URL('./src/lib/components/blogs/BlogLayout.svelte', import.meta.url)
+);
 
 const config = defineConfig({
 	extensions: ['.svelte.md', '.md', '.svx'],
@@ -24,7 +29,7 @@ const config = defineConfig({
 		]
 	],
 	layout: {
-		_: './src/lib/components/blogs/BlogLayout.svelte'
+		_: blogLayoutPath
 	}
 });
 

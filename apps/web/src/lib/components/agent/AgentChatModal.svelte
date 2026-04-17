@@ -93,22 +93,12 @@
 		initialAction?: ProjectAction;
 	}
 
-	interface InitialBraindump {
-		id: string;
-		content: string;
-		title: string | null;
-		topics: string[] | null;
-		summary: string | null;
-		status: string;
-	}
-
 	interface Props {
 		isOpen?: boolean;
 		contextType?: ChatContextType;
 		entityId?: string;
 		onClose?: (summary?: DataMutationSummary) => void;
 		autoInitProject?: AutoInitProjectConfig | null;
-		initialBraindump?: InitialBraindump | null;
 		initialChatSessionId?: string | null;
 		initialProjectFocus?: ProjectFocus | null;
 		embedded?: boolean;
@@ -147,7 +137,6 @@
 		entityId: _initialEntityId,
 		onClose,
 		autoInitProject = null,
-		initialBraindump = null,
 		initialChatSessionId = null,
 		initialProjectFocus = null,
 		embedded = false
@@ -404,13 +393,6 @@
 	// When user clicks send while recording, we stop recording and auto-send after transcription
 	let pendingSendAfterTranscription = $state(false);
 
-	// Braindump context state
-	type BraindumpMode = 'input' | 'options' | 'chat';
-	let braindumpMode = $state<BraindumpMode>('input');
-	let pendingBraindumpContent = $state('');
-	let isSavingBraindump = $state(false);
-	let braindumpSaveError = $state<string | null>(null);
-
 	// Session resumption state
 	let isLoadingSession = $state(false);
 	let isPreparingSession = $state(false);
@@ -427,9 +409,6 @@
 		if (isPreparingSession) return 'Preparing session';
 		return null;
 	});
-
-	// Helper to check if we're in braindump context
-	const isBraindumpContext = $derived(selectedContextType === 'brain_dump');
 
 	// Controls whether the context selection screen is visible (keeps state alive for back nav)
 	let showContextSelection = $state(true);
@@ -453,9 +432,6 @@
 		if (!isSessionBusy || messages.length > 0) return false;
 		if (showContextSelection || showProjectActionSelector) return false;
 		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
-		if (isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options')) {
-			return false;
-		}
 		return true;
 	});
 
@@ -463,17 +439,11 @@
 		if (!sessionLoadError || isSessionBusy || messages.length > 0) return false;
 		if (showContextSelection || showProjectActionSelector) return false;
 		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
-		if (isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options')) {
-			return false;
-		}
 		return true;
 	});
 
 	const shouldShowComposer = $derived(
-		!showContextSelection &&
-			!showProjectActionSelector &&
-			!agentToAgentMode &&
-			!(isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options'))
+		!showContextSelection && !showProjectActionSelector && !agentToAgentMode
 	);
 
 	const chatComposerVocabularyTerms = $derived(
@@ -484,7 +454,6 @@
 		if (!selectedContextType || !isOpen || currentSession?.id) return false;
 		if (showContextSelection || showProjectActionSelector) return false;
 		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
-		if (isBraindumpContext && braindumpMode !== 'chat') return false;
 		return true;
 	});
 
@@ -576,19 +545,6 @@
 	function handleBackNavigation() {
 		if (isStreaming) return;
 		stopVoiceInput();
-
-		// Handle braindump modes
-		if (isBraindumpContext && braindumpMode === 'options') {
-			cancelBraindumpOptions();
-			return;
-		}
-		if (isBraindumpContext && braindumpMode === 'chat') {
-			// From chat mode back to input mode (reset conversation)
-			braindumpMode = 'input';
-			messages = [];
-			inputValue = '';
-			return;
-		}
 
 		// Handle back based on current view state
 		if (showContextSelection && contextSelectionView !== 'primary') {
@@ -736,11 +692,6 @@
 		showFocusSelector = false;
 		showProjectActionSelector = false;
 		agentLoopActive = false;
-		// Reset braindump state
-		braindumpMode = 'input';
-		pendingBraindumpContent = '';
-		isSavingBraindump = false;
-		braindumpSaveError = null;
 		agentMessageLoading = false;
 		agentTurnBudget = 5;
 		agentTurnsRemaining = 5;
@@ -760,99 +711,6 @@
 			agentProjectsError = null;
 			agentProjectsLoading = false;
 		}
-	}
-
-	// Braindump handlers
-	function handleBraindumpSubmit() {
-		const trimmed = inputValue.trim();
-		if (
-			!trimmed ||
-			isVoiceRecording ||
-			isVoiceInitializing ||
-			isVoiceStopping ||
-			isVoiceTranscribing
-		) {
-			return;
-		}
-
-		pendingBraindumpContent = trimmed;
-		braindumpMode = 'options';
-	}
-
-	async function saveBraindump() {
-		if (!pendingBraindumpContent.trim() || isSavingBraindump) return;
-
-		isSavingBraindump = true;
-		braindumpSaveError = null;
-
-		try {
-			const response = await fetch('/api/onto/braindumps', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					content: pendingBraindumpContent,
-					metadata: {
-						source: 'agent_chat_modal',
-						voice_recorded: voiceRecordingDuration > 0
-					}
-				})
-			});
-
-			const result = await response.json();
-
-			if (!response.ok || !result.success) {
-				throw new Error(result.error || 'Failed to save braindump');
-			}
-
-			// Success - show toast and close modal
-			toastService.success('Brain dump saved');
-			pendingBraindumpContent = '';
-			inputValue = '';
-			braindumpMode = 'input';
-
-			// Close the modal after successful save
-			if (onClose) {
-				onClose();
-			}
-		} catch (err: any) {
-			console.error('Failed to save braindump:', err);
-			braindumpSaveError = err.message || 'Failed to save braindump';
-		} finally {
-			isSavingBraindump = false;
-		}
-	}
-
-	function chatAboutBraindump() {
-		// Transition to chat mode with the braindump as the first message
-		braindumpMode = 'chat';
-
-		// Add a system context message explaining this is a braindump exploration
-		const systemNote: UIMessage = {
-			id: crypto.randomUUID(),
-			type: 'activity',
-			role: 'assistant' as ChatRole,
-			content:
-				"Starting braindump exploration. I'll help you clarify and organize your thoughts.",
-			timestamp: new Date(),
-			created_at: new Date().toISOString()
-		};
-		messages = [systemNote];
-
-		// Set the input to the braindump content and send it
-		inputValue = pendingBraindumpContent;
-		pendingBraindumpContent = '';
-
-		// Use setTrackedTimeout to ensure state updates before sending
-		setTrackedTimeout(() => {
-			sendMessage();
-		}, 0);
-	}
-
-	function cancelBraindumpOptions() {
-		braindumpMode = 'input';
-		// Keep the content in the input for editing
-		inputValue = pendingBraindumpContent;
-		pendingBraindumpContent = '';
 	}
 
 	function handleContextSelect(selection: ContextSelectionDetail) {
@@ -1340,45 +1198,6 @@
 		if (prewarmedContext.key !== activeKey || !isFastChatContextCacheFresh(prewarmedContext)) {
 			prewarmedContext = null;
 		}
-	});
-
-	// Handle initialBraindump prop - when opening from history to explore an existing braindump
-	$effect(() => {
-		if (!isOpen || !initialBraindump) return;
-
-		// Only initialize once per open
-		if (wasOpen && selectedContextType === 'brain_dump' && braindumpMode === 'chat') {
-			return; // Already initialized
-		}
-
-		// Reset and set up for braindump exploration
-		resetConversation({ preserveContext: false });
-		selectedContextType = 'brain_dump';
-		selectedContextLabel = initialBraindump.title || 'Braindump Exploration';
-		showContextSelection = false;
-		showProjectActionSelector = false;
-		braindumpMode = 'chat';
-
-		// Add a system context message explaining this is a braindump exploration
-		const systemNote: UIMessage = {
-			id: crypto.randomUUID(),
-			type: 'activity',
-			role: 'assistant' as ChatRole,
-			content: initialBraindump.summary
-				? `Exploring your braindump: "${initialBraindump.title || 'Untitled'}"\n\n**Summary:** ${initialBraindump.summary}\n\nWhat would you like to explore or discuss about these thoughts?`
-				: "Resuming braindump exploration. I'll help you clarify and organize your thoughts.",
-			timestamp: new Date(),
-			created_at: new Date().toISOString()
-		};
-		messages = [systemNote];
-
-		// Set the input to the braindump content and send it as the first message
-		inputValue = initialBraindump.content;
-
-		// Use setTrackedTimeout to ensure state updates before sending
-		setTrackedTimeout(() => {
-			sendMessage();
-		}, 0);
 	});
 
 	// Handle initialProjectFocus prop - when opening chat focused on a specific ontology entity
@@ -4417,7 +4236,6 @@
 			{isSendDisabled}
 			allowSendWhileStreaming={isTouchDevice}
 			{displayContextLabel}
-			mode="chat"
 			disabled={isSessionBusy}
 			vocabularyTerms={chatComposerVocabularyTerms}
 			onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
@@ -4538,123 +4356,6 @@
 							onGoalChange={(value) => (agentGoal = value)}
 							onTurnBudgetChange={updateAgentTurnBudget}
 						/>
-					{:else if isBraindumpContext && braindumpMode === 'input'}
-						<!-- BRAINDUMP INPUT MODE - Simplified view with just textarea -->
-						<div class="flex flex-1 flex-col min-h-0 p-4 sm:p-6">
-							<div class="mb-4 text-center">
-								<h2 class="text-lg font-semibold text-foreground">
-									Capture your thoughts
-								</h2>
-								<p class="text-sm text-muted-foreground">
-									Type or record whatever's on your mind. No structure needed.
-								</p>
-							</div>
-							<div class="flex-1 min-h-0 overflow-hidden">
-								<AgentComposer
-									bind:voiceInputRef
-									bind:inputValue
-									bind:isVoiceRecording
-									bind:isVoiceInitializing
-									bind:isVoiceStopping
-									bind:isVoiceTranscribing
-									bind:voiceErrorMessage
-									bind:voiceRecordingDuration
-									bind:voiceSupportsLiveTranscript
-									mode="braindump"
-									disabled={isSessionBusy}
-									isStreaming={false}
-									isSendDisabled={!inputValue.trim() ||
-										isVoiceRecording ||
-										isVoiceInitializing ||
-										isVoiceStopping ||
-										isVoiceTranscribing}
-									displayContextLabel="your braindump"
-									vocabularyTerms="braindump"
-									onKeyDownHandler={(e) => {
-										if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-											e.preventDefault();
-											handleBraindumpSubmit();
-										}
-									}}
-									onSend={handleBraindumpSubmit}
-								/>
-							</div>
-							<!-- Desktop keyboard shortcut hint (hidden on mobile) -->
-							<p
-								class="mt-2 hidden text-center text-xs text-muted-foreground md:block"
-							>
-								Press Cmd/Ctrl + Enter to continue
-							</p>
-						</div>
-					{:else if isBraindumpContext && braindumpMode === 'options'}
-						<!-- BRAINDUMP OPTIONS MODE - Choose save or chat -->
-						<div class="flex flex-1 flex-col min-h-0 p-4 sm:p-6">
-							<div class="mb-6 text-center">
-								<h2 class="text-lg font-semibold text-foreground">
-									What would you like to do?
-								</h2>
-								<p class="text-sm text-muted-foreground">
-									You can save this braindump for later or explore it with AI now.
-								</p>
-							</div>
-
-							<!-- Preview of braindump content -->
-							<div
-								class="mb-6 rounded-lg border border-border bg-muted/50 p-4 max-h-48 overflow-y-auto"
-							>
-								<p
-									class="text-xs uppercase tracking-wide text-muted-foreground mb-2"
-								>
-									Your braindump
-								</p>
-								<p class="text-sm text-foreground whitespace-pre-wrap">
-									{pendingBraindumpContent}
-								</p>
-							</div>
-
-							{#if braindumpSaveError}
-								<div
-									class="mb-4 rounded-lg border border-red-600/30 bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/20 dark:text-red-400"
-									role="alert"
-								>
-									{braindumpSaveError}
-								</div>
-							{/if}
-
-							<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
-								<button
-									type="button"
-									class="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-									disabled={isSavingBraindump}
-									onclick={saveBraindump}
-								>
-									{#if isSavingBraindump}
-										<span
-											class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-										></span>
-										Saving...
-									{:else}
-										Save braindump
-									{/if}
-								</button>
-								<button
-									type="button"
-									class="inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
-									disabled={isSavingBraindump}
-									onclick={chatAboutBraindump}
-								>
-									Chat about this
-								</button>
-							</div>
-
-							<button
-								type="button"
-								class="mt-4 text-sm text-muted-foreground hover:text-foreground transition"
-								onclick={cancelBraindumpOptions}
-							>
-								← Edit braindump
-							</button>
-						</div>
 					{:else}
 						{@render chatConversationPane(
 							shouldShowSessionLoadingState,
