@@ -484,7 +484,9 @@ function createMockSupabase(state: MockState) {
 				const email =
 					typeof args?.p_email === 'string' ? args.p_email.trim().toLowerCase() : '';
 				return {
-					data: state.suppressedEmails?.map((value) => value.toLowerCase()).includes(email)
+					data: state.suppressedEmails
+						?.map((value) => value.toLowerCase())
+						.includes(email)
 						? true
 						: false,
 					error: null

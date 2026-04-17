@@ -151,10 +151,7 @@
 				typeof counts.total === 'number' && Number.isFinite(counts.total)
 					? counts.total
 					: 0,
-			live:
-				typeof counts.live === 'number' && Number.isFinite(counts.live)
-					? counts.live
-					: 0
+			live: typeof counts.live === 'number' && Number.isFinite(counts.live) ? counts.live : 0
 		};
 	}
 

@@ -530,14 +530,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				operation: 'task_update_atomic',
 				tableName: 'onto_tasks'
 			});
-			// Postgres raises a clean access_denied / task_not_found that we can
-			// surface. Otherwise fall back to databaseError.
+			// Postgres raises a clean access_denied / task_not_found / invalid_state_key
+			// that we can surface. Otherwise fall back to databaseError.
 			const message = atomicError?.message ?? '';
 			if (message.includes('task_not_found')) {
 				return ApiResponse.notFound('Task');
 			}
 			if (message.includes('access_denied')) {
 				return ApiResponse.forbidden('Access denied');
+			}
+			if (message.includes('invalid_state_key')) {
+				return ApiResponse.badRequest(message);
 			}
 			return ApiResponse.databaseError(
 				atomicError ?? new Error('onto_task_update_atomic returned no data')

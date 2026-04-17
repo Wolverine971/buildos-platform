@@ -499,10 +499,7 @@ export class WelcomeSequenceService {
 		return data === true;
 	}
 
-	private async cancelSequenceForSuppression(
-		userId: string,
-		cancelledAt: string
-	): Promise<void> {
+	private async cancelSequenceForSuppression(userId: string, cancelledAt: string): Promise<void> {
 		await this.updateSequenceRow(userId, {
 			status: 'cancelled',
 			completed_at: cancelledAt,

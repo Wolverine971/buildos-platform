@@ -85,9 +85,7 @@ async function handleUnsubscribe({
 			return unsubscribeResponse();
 		}
 
-		const recipients = Array.isArray(email.email_recipients)
-			? email.email_recipients
-			: [];
+		const recipients = Array.isArray(email.email_recipients) ? email.email_recipients : [];
 		const now = new Date().toISOString();
 
 		for (const recipient of recipients) {

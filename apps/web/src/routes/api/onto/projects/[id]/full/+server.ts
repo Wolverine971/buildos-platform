@@ -200,10 +200,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		] = await Promise.all([
 			decorateMilestonesWithGoals(supabase, goals, milestones, goalMilestoneEdges),
 			fetchTaskAssigneesMap({ supabase, taskIds }).catch((assigneeError) => {
-				console.warn(
-					'[Project Full API] Failed to enrich task assignees:',
-					assigneeError
-				);
+				console.warn('[Project Full API] Failed to enrich task assignees:', assigneeError);
 				return null;
 			}),
 			fetchTaskLastChangedByActorMap({ supabase, projectId: id, taskIds }).catch(
