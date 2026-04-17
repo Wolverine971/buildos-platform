@@ -197,6 +197,11 @@ export interface BriefAnalytics {
 			project_name: string;
 			brief_count: number;
 		}>;
+		most_active_goals: Array<{
+			goal_id: string;
+			goal_name: string;
+			brief_count: number;
+		}>;
 	};
 	template_usage: {
 		most_used_project_template: string;

@@ -1896,9 +1896,11 @@
 			turn.evalRuns.sort(compareTimelineEvents);
 		}
 
-		if (standaloneTurn) {
-			standaloneTurn.toolCalls = buildConversationToolCalls(standaloneTurn.auditEvents);
-			standaloneTurn.auditEvents.sort(compareTimelineEvents);
+		const finalStandaloneTurn = standaloneTurn as ConversationTurn | null;
+
+		if (finalStandaloneTurn) {
+			finalStandaloneTurn.toolCalls = buildConversationToolCalls(finalStandaloneTurn.auditEvents);
+			finalStandaloneTurn.auditEvents.sort(compareTimelineEvents);
 		}
 
 		return [
@@ -1907,7 +1909,7 @@
 				if (a.turnIndex !== null && b.turnIndex === null) return 1;
 				return (a.turnIndex ?? 0) - (b.turnIndex ?? 0);
 			}),
-			...(standaloneTurn ? [standaloneTurn] : [])
+			...(finalStandaloneTurn ? [finalStandaloneTurn] : [])
 		].filter((turn) => {
 			return (
 				turn.userMessages.length > 0 ||

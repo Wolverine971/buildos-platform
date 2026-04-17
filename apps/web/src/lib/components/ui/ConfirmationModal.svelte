@@ -19,6 +19,7 @@
 		content?: Snippet;
 		details?: Snippet;
 		footer?: Snippet;
+		children?: Snippet;
 		// Svelte 5 callback props (preferred)
 		onconfirm?: () => void;
 		oncancel?: () => void;
@@ -36,6 +37,7 @@
 		content,
 		details,
 		footer,
+		children,
 		onconfirm,
 		oncancel
 	}: Props = $props();
@@ -108,6 +110,10 @@
 					<!-- Main Content Snippet -->
 					{#if content}
 						{@render content()}
+					{:else if children}
+						<p class="text-sm text-muted-foreground">
+							{@render children()}
+						</p>
 					{:else}
 						<p class="text-sm text-muted-foreground">
 							Are you sure you want to proceed with this action?

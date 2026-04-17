@@ -10,11 +10,15 @@
 	let {
 		isOpen = $bindable(false),
 		calendarData = null as CalendarDependencies['breakdown'] | null,
-		loading = false
+		loading = false,
+		onconfirm,
+		oncancel
 	}: {
 		isOpen?: boolean;
 		calendarData?: CalendarDependencies['breakdown'] | null;
 		loading?: boolean;
+		onconfirm?: (event: { action: 'keep' | 'remove' }) => void;
+		oncancel?: () => void;
 	} = $props();
 
 	// State
@@ -28,11 +32,13 @@
 			return;
 		}
 
+		onconfirm?.({ action: selectedAction });
 		dispatch('confirm', { action: selectedAction });
 	}
 
 	function handleCancel() {
 		selectedAction = 'keep'; // Reset to default
+		oncancel?.();
 		dispatch('cancel');
 	}
 

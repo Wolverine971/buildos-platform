@@ -6,6 +6,14 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { getRetargetingValidationMessage } from '$lib/server/retargeting-pilot.errors';
 import { RetargetingPilotService } from '$lib/server/retargeting-pilot.service';
 import { RETARGETING_REPLY_STATUSES } from '$lib/server/retargeting-pilot.logic';
+import type { RetargetingReplyStatus } from '$lib/server/retargeting-pilot.logic';
+
+function isRetargetingReplyStatus(value: unknown): value is RetargetingReplyStatus {
+	return (
+		typeof value === 'string' &&
+		RETARGETING_REPLY_STATUSES.includes(value as RetargetingReplyStatus)
+	);
+}
 
 export const PATCH: RequestHandler = async ({ params, request, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -24,10 +32,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals: { safeGet
 	try {
 		const replyStatus = body?.reply_status;
 
-		if (
-			typeof replyStatus !== 'undefined' &&
-			!RETARGETING_REPLY_STATUSES.includes(replyStatus)
-		) {
+		if (typeof replyStatus !== 'undefined' && !isRetargetingReplyStatus(replyStatus)) {
 			return ApiResponse.badRequest('reply_status is invalid');
 		}
 

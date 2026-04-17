@@ -88,11 +88,20 @@
 		'Saturday'
 	];
 
+	// Ensure required string fields bound to form inputs always have a value.
+	// The Select component has a fallback `value = $bindable('')`, and Svelte 5
+	// forbids `bind:value={undefined}` against a prop with a fallback.
+	function normalizeCalendarPreferences(prefs: any) {
+		if (!prefs) return prefs;
+		if (!prefs.timezone) prefs.timezone = 'America/New_York';
+		return prefs;
+	}
+
 	// Handle calendar data from form actions
 	$effect(() => {
 		if (form?.calendarData) {
 			calendarData = form.calendarData;
-			calendarPreferences = form.calendarData.calendarPreferences;
+			calendarPreferences = normalizeCalendarPreferences(form.calendarData.calendarPreferences);
 		}
 	});
 
@@ -205,7 +214,7 @@
 			}
 
 			calendarData = result;
-			calendarPreferences = result.calendarPreferences;
+			calendarPreferences = normalizeCalendarPreferences(result.calendarPreferences);
 
 			// Also load analysis history if connected
 			if (result.calendarStatus?.isConnected) {
@@ -244,7 +253,7 @@
 			}
 
 			calendarData = result;
-			calendarPreferences = result.calendarPreferences;
+			calendarPreferences = normalizeCalendarPreferences(result.calendarPreferences);
 		} catch (error) {
 			console.error('Error refreshing calendar settings:', error);
 			onerror?.({ message: 'Error refreshing calendar settings' });
@@ -802,10 +811,10 @@
 								<TextInput
 									id="holidayCountryCode"
 									type="text"
-									name="holiday_country_code"
-									value={calendarPreferences.holiday_country_code}
-									placeholder="US"
-									maxlength="2"
+										name="holiday_country_code"
+										value={calendarPreferences.holiday_country_code}
+										placeholder="US"
+										maxlength={2}
 									class="uppercase"
 									size="md"
 								/>

@@ -63,7 +63,7 @@
 	onclick={handleClick}
 	onkeydown={(e) => e.key === 'Enter' && handleClick()}
 	role="button"
-	tabindex="0"
+	tabindex={0}
 >
 	<!-- Card Header -->
 	<CardHeader variant="default">

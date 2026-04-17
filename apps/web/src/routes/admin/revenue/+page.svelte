@@ -28,6 +28,12 @@
 	let selectedYear = $state(new Date().getFullYear());
 	let selectedMonth = $state(new Date().getMonth() + 1);
 
+	type DeferredRevenueBreakdownItem = {
+		period: string;
+		amount: number;
+		count: number;
+	};
+
 	// Revenue data
 	let revenueData = $state({
 		recognized: {
@@ -40,7 +46,7 @@
 			total: 0,
 			next_month: 0,
 			next_quarter: 0,
-			breakdown: []
+			breakdown: [] as DeferredRevenueBreakdownItem[]
 		},
 		prorations: {
 			upgrades: 0,

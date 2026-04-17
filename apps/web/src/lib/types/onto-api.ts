@@ -65,6 +65,8 @@ export interface OntoProject {
 	type_key: string;
 	state_key: string;
 	props: Record<string, unknown> | null;
+	start_at?: string | null;
+	end_at?: string | null;
 	facet_context?: string | null;
 	facet_scale?: string | null;
 	facet_stage?: string | null;

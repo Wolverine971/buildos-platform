@@ -25,7 +25,6 @@ export const TRIAL_CONFIG = {
 		canEditProjects: false,
 		canCreateTasks: false,
 		canEditTasks: false,
-		canUseBrainDump: false,
 		canGenerateBriefs: false,
 		canSyncCalendar: false,
 		canInviteMembers: false

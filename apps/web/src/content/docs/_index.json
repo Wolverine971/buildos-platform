@@ -1,0 +1,74 @@
+{
+	"sections": [
+		{
+			"slug": "getting-started",
+			"title": "Getting Started",
+			"summary": "Your first ten minutes in BuildOS — sign up, capture a project, and see how the pieces fit together.",
+			"icon": "Zap",
+			"order": 1
+		},
+		{
+			"slug": "ontology",
+			"title": "The BuildOS Ontology",
+			"summary": "Projects, tasks, plans, documents, goals — the semantic model behind everything in BuildOS.",
+			"icon": "Layers",
+			"order": 2
+		},
+		{
+			"slug": "brain-dump",
+			"title": "Brain Dump & Voice Notes",
+			"summary": "Capture messy thinking in text or voice; BuildOS structures it into your ontology.",
+			"icon": "Brain",
+			"order": 3
+		},
+		{
+			"slug": "agentic-chat",
+			"title": "Agentic Chat",
+			"summary": "The in-app agent that reads, writes, searches, and schedules across your ontology.",
+			"icon": "MessageSquare",
+			"order": 4
+		},
+		{
+			"slug": "projects-tasks-plans",
+			"title": "Projects, Tasks & Plans",
+			"summary": "Organize work into projects with tasks, plans, documents, and goals.",
+			"icon": "FolderOpen",
+			"order": 5
+		},
+		{
+			"slug": "calendar",
+			"title": "Calendar & Time Blocks",
+			"summary": "Turn tasks into scheduled work with Google Calendar and the time-blocks surface.",
+			"icon": "Calendar",
+			"order": 6
+		},
+		{
+			"slug": "daily-briefs",
+			"title": "Daily Briefs",
+			"summary": "AI-generated briefs delivered by email, SMS, and in-app — with a chat that acts on them.",
+			"icon": "Mail",
+			"order": 7
+		},
+		{
+			"slug": "notifications",
+			"title": "Notifications",
+			"summary": "Multi-channel notifications: in-app, push, email, and SMS.",
+			"icon": "Bell",
+			"order": 8
+		},
+		{
+			"slug": "connect-agents",
+			"title": "Connect External Agents",
+			"summary": "Let Claude Code, OpenClaw, or a custom agent read and write to your BuildOS ontology.",
+			"icon": "Plug",
+			"order": 9
+		},
+		{
+			"slug": "reference",
+			"title": "Reference & Help",
+			"summary": "FAQ, contact, feedback, and other places to go when you need more.",
+			"icon": "BookOpen",
+			"order": 10
+		}
+	]
+}

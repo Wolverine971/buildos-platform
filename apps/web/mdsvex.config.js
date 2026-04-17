@@ -9,6 +9,9 @@ import remarkToc from 'remark-toc';
 const blogLayoutPath = fileURLToPath(
 	new URL('./src/lib/components/blogs/BlogLayout.svelte', import.meta.url)
 );
+const docsLayoutPath = fileURLToPath(
+	new URL('./src/lib/components/docs/DocsContentLayout.svelte', import.meta.url)
+);
 
 const config = defineConfig({
 	extensions: ['.svelte.md', '.md', '.svx'],
@@ -29,6 +32,7 @@ const config = defineConfig({
 		]
 	],
 	layout: {
+		docs: docsLayoutPath,
 		_: blogLayoutPath
 	}
 });

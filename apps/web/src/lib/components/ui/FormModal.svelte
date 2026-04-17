@@ -234,6 +234,17 @@
 		formData[field] = tags;
 	}
 
+	function getEventValue(event: Event): string {
+		const target = event.currentTarget as HTMLInputElement | HTMLTextAreaElement | null;
+		return target?.value ?? '';
+	}
+
+	function getNumberEventValue(event: Event): string | number {
+		const target = event.currentTarget as HTMLInputElement | null;
+		if (!target) return '';
+		return Number.isNaN(target.valueAsNumber) ? target.value : target.valueAsNumber;
+	}
+
 	function handleDateTimeChange(field: string, event: Event) {
 		const input = event.target as HTMLInputElement;
 		const value = input.value;
@@ -465,27 +476,24 @@
 									/>
 								{:else}
 									<!-- Regular textarea -->
-									<Textarea
-										id={`field-${field}`}
-										value={formData[field] || ''}
-										oninput={(e) => handleFieldChange(field, e.detail)}
-										rows={config.rows || 3}
-										disabled={loading}
+										<Textarea
+											id={`field-${field}`}
+											value={formData[field] || ''}
+											oninput={(e) =>
+												handleFieldChange(field, getEventValue(e))}
+											rows={config.rows || 3}
+											disabled={loading}
 										placeholder={config.placeholder || ''}
 										size="md"
 									/>
 								{/if}
 							{:else if config.type === 'select'}
 								<Select
-									id={`field-${field}`}
-									value={formData[field] || ''}
-									onchange={(e) =>
-										handleFieldChange(
-											field,
-											e.detail || (e.target as HTMLSelectElement)?.value
-										)}
-									disabled={loading}
-									size="md"
+										id={`field-${field}`}
+										value={formData[field] || ''}
+										onchange={(value) => handleFieldChange(field, value)}
+										disabled={loading}
+										size="md"
 								>
 									<option value="">Select {config.label}</option>
 									{#each config.options || [] as option}
@@ -503,12 +511,13 @@
 								</Select>
 							{:else if config.type === 'date'}
 								<TextInput
-									id={`field-${field}`}
-									type="date"
-									value={getFieldValue(field)}
-									oninput={(e) => handleFieldChange(field, e.detail)}
-									disabled={loading}
-									size="md"
+										id={`field-${field}`}
+										type="date"
+										value={getFieldValue(field)}
+										oninput={(e) =>
+											handleFieldChange(field, getEventValue(e))}
+										disabled={loading}
+										size="md"
 								/>
 							{:else if config.type === 'datetime' || config.type === 'datetime-local'}
 								<TextInput
@@ -523,14 +532,10 @@
 								<TextInput
 									id={`field-${field}`}
 									type="number"
-									value={getFieldValue(field)}
-									oninput={(e) => {
-										const target = e.target as HTMLInputElement | null;
-										handleFieldChange(
-											field,
-											e.detail || target?.valueAsNumber || target?.value
-										);
-									}}
+										value={getFieldValue(field)}
+										oninput={(e) => {
+											handleFieldChange(field, getNumberEventValue(e));
+										}}
 									min={config.min}
 									max={config.max}
 									disabled={loading}
@@ -570,22 +575,23 @@
 								</div>
 							{:else if config.type === 'tags'}
 								<TextInput
-									id={`field-${field}`}
-									type="text"
-									value={getFieldValue(field)}
-									oninput={(e) => handleTagsInput(field, e.detail)}
-									disabled={loading}
-									placeholder={config.placeholder ||
+										id={`field-${field}`}
+										type="text"
+										value={getFieldValue(field)}
+										oninput={(e) => handleTagsInput(field, getEventValue(e))}
+										disabled={loading}
+										placeholder={config.placeholder ||
 										'Enter tags separated by commas'}
 									size="md"
 								/>
 							{:else}
 								<TextInput
-									id={`field-${field}`}
-									type="text"
-									value={getFieldValue(field)}
-									oninput={(e) => handleFieldChange(field, e.detail)}
-									disabled={loading}
+										id={`field-${field}`}
+										type="text"
+										value={getFieldValue(field)}
+										oninput={(e) =>
+											handleFieldChange(field, getEventValue(e))}
+										disabled={loading}
 									placeholder={config.placeholder || ''}
 									size="md"
 								/>

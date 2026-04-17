@@ -5,12 +5,14 @@
 	import {
 		SvelteFlow,
 		Controls,
-		Background,
-		MiniMap,
-		Position,
-		type NodeTypes,
-		type EdgeTypes
-	} from '@xyflow/svelte';
+			Background,
+			BackgroundVariant,
+			MiniMap,
+			Position,
+			type NodeTypes,
+			type EdgeTypes,
+			type Node as FlowNode
+		} from '@xyflow/svelte';
 	import '@xyflow/svelte/dist/style.css';
 	import dagre from '@dagrejs/dagre';
 
@@ -151,15 +153,15 @@
 	});
 
 	// Handle node selection
-	function onNodeClick(event: CustomEvent<{ node: SvelteFlowNode }>) {
-		const node = event.detail.node;
-		selectedNode = {
-			id: node.id,
-			label: node.data.label,
-			type: node.data.type as GraphNode['type'],
-			metadata: node.data.metadata as Record<string, unknown> | undefined
-		};
-	}
+		function onNodeClick({ node }: { node: FlowNode }) {
+			const nodeData = node.data as Partial<SvelteFlowNode['data']>;
+			selectedNode = {
+				id: node.id,
+				label: typeof nodeData.label === 'string' ? nodeData.label : node.id,
+				type: (typeof nodeData.type === 'string' ? nodeData.type : 'project') as GraphNode['type'],
+				metadata: nodeData.metadata as Record<string, unknown> | undefined
+			};
+		}
 
 	// Handle background click to deselect
 	function onPaneClick() {
@@ -167,9 +169,10 @@
 	}
 
 	// MiniMap node color function
-	function getMinimapNodeColor(node: SvelteFlowNode): string {
-		return node.data.color ?? '#6b7280';
-	}
+		function getMinimapNodeColor(node: FlowNode): string {
+			const nodeData = node.data as Partial<SvelteFlowNode['data']>;
+			return nodeData.color ?? '#6b7280';
+		}
 </script>
 
 <div class="svelte-flow-container w-full h-full">
@@ -186,10 +189,10 @@
 			type: 'smoothstep',
 			style: 'stroke-width: 2px;'
 		}}
-		on:nodeclick={onNodeClick}
-		on:paneclick={onPaneClick}
-	>
-		<Background variant="dots" gap={20} size={1} />
+			onnodeclick={onNodeClick}
+			onpaneclick={onPaneClick}
+		>
+			<Background variant={BackgroundVariant.Dots} gap={20} size={1} />
 		<Controls position="bottom-left" />
 		<MiniMap
 			position="bottom-right"

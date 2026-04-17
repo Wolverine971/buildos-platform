@@ -451,12 +451,12 @@
 									</div>
 								</div>
 
-								<div class="text-left sm:text-right">
-									<p class="text-xl sm:text-2xl font-bold text-foreground">
-										${(
-											data.subscriptionDetails.subscription.subscription_plans
-												?.price_cents / 100
-										).toFixed(2)}
+									<div class="text-left sm:text-right">
+										<p class="text-xl sm:text-2xl font-bold text-foreground">
+											${(
+												(data.subscriptionDetails.subscription.subscription_plans
+													?.price_cents ?? 0) / 100
+											).toFixed(2)}
 										<span class="text-sm font-normal text-muted-foreground"
 											>/{data.subscriptionDetails.subscription
 												.subscription_plans?.billing_interval}</span

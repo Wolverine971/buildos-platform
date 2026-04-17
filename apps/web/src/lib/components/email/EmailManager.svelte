@@ -347,10 +347,10 @@
 
 				<!-- Status Filter -->
 				<FormField label="Status" labelFor="mobile-status-filter">
-					<Select
-						bind:value={statusFilter}
-						onchange={(e) => (statusFilter = e)}
-						size="md"
+						<Select
+							bind:value={statusFilter}
+							onchange={(value) => (statusFilter = String(value))}
+							size="md"
 						placeholder="All Status"
 						id="mobile-status-filter"
 					>
@@ -365,10 +365,10 @@
 
 				<!-- Sort -->
 				<FormField label="Sort By" labelFor="mobile-sort-by">
-					<Select
-						bind:value={sortBy}
-						onchange={(e) => (sortBy = e)}
-						size="md"
+						<Select
+							bind:value={sortBy}
+							onchange={(value) => (sortBy = String(value))}
+							size="md"
 						placeholder="Date Created"
 						id="mobile-sort-by"
 					>
@@ -399,12 +399,12 @@
 
 				<!-- Status Filter -->
 				<div>
-					<Select
-						bind:value={statusFilter}
-						size="md"
-						placeholder="All Status"
-						onchange={(e) => (statusFilter = e)}
-					>
+						<Select
+							bind:value={statusFilter}
+							size="md"
+							placeholder="All Status"
+							onchange={(value) => (statusFilter = String(value))}
+						>
 						<option value="all">All Status</option>
 						<option value="draft">Draft</option>
 						<option value="scheduled">Scheduled</option>
@@ -416,12 +416,12 @@
 
 				<!-- Sort -->
 				<div>
-					<Select
-						bind:value={sortBy}
-						size="md"
-						placeholder="Date Created"
-						onchange={(e) => (sortBy = e)}
-					>
+						<Select
+							bind:value={sortBy}
+							size="md"
+							placeholder="Date Created"
+							onchange={(value) => (sortBy = String(value))}
+						>
 						<option value="created_at">Date Created</option>
 						<option value="subject">Subject</option>
 						<option value="status">Status</option>
@@ -711,9 +711,8 @@
 		</div>
 	{:else if activeView === 'compose'}
 		<EmailComposer on:saved={handleEmailSaved} on:sent={handleEmailSent} />
-	{:else if activeView === 'edit'}
+		{:else if activeView === 'edit'}
 		<EmailComposer
-			emailId={selectedEmail?.id}
 			initialEmail={selectedEmail}
 			on:saved={handleEmailSaved}
 			on:sent={handleEmailSent}

@@ -1,25 +1,11 @@
 <!-- apps/web/src/lib/components/admin/AdminSidebar.svelte -->
 <script module lang="ts">
-	import type { ComponentType } from 'svelte';
-
-	type AdminNavIcon = ComponentType;
-
-	export type AdminNavItem = {
-		title: string;
-		href: string;
-		icon: AdminNavIcon;
-		description?: string;
-		badge?: string;
-		children?: AdminNavItem[];
-	};
-
-	export type AdminNavGroup = {
-		title: string;
-		items: AdminNavItem[];
-	};
+	export type { AdminNavGroup, AdminNavItem } from './adminNav.types';
 </script>
 
 <script lang="ts">
+	import type { AdminNavGroup, AdminNavItem } from './adminNav.types';
+
 	interface Props {
 		groups: AdminNavGroup[];
 		pathname: string;

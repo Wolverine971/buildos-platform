@@ -366,12 +366,12 @@
 
 						<div class="flex items-center space-x-2">
 							<div class="text-sm font-medium text-foreground">Filter:</div>
-							<Select
-								bind:value={selectedFilter}
-								size="md"
-								class="text-xs sm:text-sm"
-								onchange={(e) => (selectedFilter = e)}
-							>
+								<Select
+									bind:value={selectedFilter}
+									size="md"
+									class="text-xs sm:text-sm"
+									onchange={(value) => (selectedFilter = String(value))}
+								>
 								<option value="all">All Images</option>
 								<option value="email">This Email</option>
 								<option value="shared">Shared</option>

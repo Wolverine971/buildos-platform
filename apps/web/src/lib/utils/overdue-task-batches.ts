@@ -93,32 +93,32 @@ export function buildOverdueProjectBatches(tasks: OverdueTask[]): OverdueProject
 		else byProject.set(task.project_id, [task]);
 	}
 
-	return sortOverdueProjectBatches(
-		Array.from(byProject.entries())
-			.map(([, projectTasks]) => {
-				const firstTask = projectTasks[0];
-				if (!firstTask) return null;
+	const batches: OverdueProjectBatch[] = [];
 
-				const sortedTasks = sortBatchTasks(projectTasks);
-				const assignedTasks = sortedTasks.filter((task) => task.is_assigned_to_me);
+	for (const projectTasks of byProject.values()) {
+		const firstTask = projectTasks[0];
+		if (!firstTask) continue;
 
-				return {
-					project_id: firstTask.project_id,
-					project_name: firstTask.project_name,
-					project_state_key: firstTask.project_state_key,
-					project_is_shared: firstTask.project_is_shared,
-					project_is_collaborative: firstTask.project_is_collaborative,
-					lane: resolveBatchLane(sortedTasks),
-					overdue_count: sortedTasks.length,
-					assigned_to_me_count: assignedTasks.length,
-					oldest_due_at: oldestDue(sortedTasks),
-					oldest_assigned_due_at: oldestDue(assignedTasks),
-					project_updated_at: firstTask.project_updated_at,
-					tasks: sortedTasks
-				} satisfies OverdueProjectBatch;
-			})
-			.filter((batch): batch is OverdueProjectBatch => Boolean(batch))
-	);
+		const sortedTasks = sortBatchTasks(projectTasks);
+		const assignedTasks = sortedTasks.filter((task) => task.is_assigned_to_me);
+
+		batches.push({
+			project_id: firstTask.project_id,
+			project_name: firstTask.project_name,
+			project_state_key: firstTask.project_state_key,
+			project_is_shared: firstTask.project_is_shared,
+			project_is_collaborative: firstTask.project_is_collaborative,
+			lane: resolveBatchLane(sortedTasks),
+			overdue_count: sortedTasks.length,
+			assigned_to_me_count: assignedTasks.length,
+			oldest_due_at: oldestDue(sortedTasks),
+			oldest_assigned_due_at: oldestDue(assignedTasks),
+			project_updated_at: firstTask.project_updated_at,
+			tasks: sortedTasks
+		});
+	}
+
+	return sortOverdueProjectBatches(batches);
 }
 
 export function sortOverdueProjectBatches(batches: OverdueProjectBatch[]): OverdueProjectBatch[] {

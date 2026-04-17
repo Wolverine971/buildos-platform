@@ -264,7 +264,7 @@ export class VoiceRecordingService {
 				const shouldTranscribeAudio =
 					audioBlob && audioBlob.size > MIN_TRANSCRIBE_BYTES && canSyncTranscribe;
 
-				if (shouldTranscribeAudio && this.transcriptionService) {
+				if (shouldTranscribeAudio && client.transcriptionService) {
 					console.log('Transcribing audio file...', {
 						blobSize: audioBlob!.size,
 						hasLiveTranscript: !!capturedLiveTranscript,

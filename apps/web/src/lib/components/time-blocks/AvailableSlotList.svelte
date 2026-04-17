@@ -18,7 +18,7 @@
 		const grouped = new Map<string, AvailableSlot[]>();
 
 		availableSlots.forEach((slot) => {
-			const dateKey = slot.dayDate.toISOString().split('T')[0];
+			const dateKey = slot.dayDate.toISOString().slice(0, 10);
 			if (!grouped.has(dateKey)) {
 				grouped.set(dateKey, []);
 			}
@@ -32,12 +32,12 @@
 
 		// Convert to array and sort by date
 		return Array.from(grouped.entries())
-			.sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-			.map(([dateKey, slots]) => ({
-				dateKey,
-				date: slots[0].dayDate,
-				slots
-			}));
+				.sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+				.map(([dateKey, slots]) => ({
+					dateKey,
+					date: slots[0]?.dayDate ?? new Date(dateKey),
+					slots
+				}));
 	});
 
 	function formatDayHeader(date: Date): string {

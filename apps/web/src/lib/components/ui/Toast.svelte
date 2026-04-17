@@ -100,13 +100,17 @@
 
 	// Touch gesture handlers for swipe-to-dismiss
 	function handleTouchStart(e: TouchEvent) {
-		startX = e.touches[0].clientX;
+		const touch = e.touches[0];
+		if (!touch) return;
+		startX = touch.clientX;
 		isDragging = true;
 	}
 
 	function handleTouchMove(e: TouchEvent) {
 		if (!isDragging) return;
-		const currentX = e.touches[0].clientX;
+		const touch = e.touches[0];
+		if (!touch) return;
+		const currentX = touch.clientX;
 		const diff = currentX - startX;
 		// Only allow swiping right (positive direction) to dismiss
 		translateX = Math.max(0, diff);

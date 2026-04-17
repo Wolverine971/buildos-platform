@@ -325,22 +325,25 @@
 		action: 'create_new' | 'upsert_existing';
 		normalized_input: ContactImportNormalizedInput;
 		matched_contact_id?: string;
-	}> {
-		if (!importPreview) return [];
-		return importPreview.rows
-			.filter(
-				(row) =>
-					row.status === 'ready' &&
-					(row.action === 'create_new' || row.action === 'upsert_existing') &&
-					row.normalized_input
-			)
-			.map((row) => ({
-				row_number: row.row_number,
-				action: row.action,
-				normalized_input: row.normalized_input as ContactImportNormalizedInput,
-				...(row.matched_contact_id ? { matched_contact_id: row.matched_contact_id } : {})
-			}));
-	}
+		}> {
+			if (!importPreview) return [];
+			return importPreview.rows.flatMap((row) => {
+				if (
+					row.status !== 'ready' ||
+					(row.action !== 'create_new' && row.action !== 'upsert_existing') ||
+					!row.normalized_input
+				) {
+					return [];
+				}
+
+				return [{
+					row_number: row.row_number,
+					action: row.action,
+					normalized_input: row.normalized_input as ContactImportNormalizedInput,
+					...(row.matched_contact_id ? { matched_contact_id: row.matched_contact_id } : {})
+				}];
+			});
+		}
 
 	async function commitImport() {
 		if (!importPreview || importCommitLoading) return;

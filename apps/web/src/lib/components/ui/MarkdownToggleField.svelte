@@ -11,6 +11,11 @@
 	import Textarea from './Textarea.svelte';
 	import Button from './Button.svelte';
 
+	type TextareaHandle = {
+		focus: (options?: FocusOptions) => void;
+		setSelectionRange: (start: number, end: number) => void;
+	};
+
 	interface Props {
 		value?: string;
 		onUpdate: (newValue: string) => void;
@@ -38,7 +43,7 @@
 	}: Props = $props();
 
 	let isEditMode = $state(false);
-	let textareaElement = $state<HTMLTextAreaElement | null>(null);
+	let textareaElement = $state<TextareaHandle | null>(null);
 	let internalValue = $state(value);
 
 	// Sync internal value when prop changes
@@ -57,10 +62,7 @@
 				textareaElement?.focus();
 				// Set cursor to end of text
 				if (textareaElement) {
-					textareaElement.setSelectionRange(
-						textareaElement.value.length,
-						textareaElement.value.length
-					);
+					textareaElement.setSelectionRange(internalValue.length, internalValue.length);
 				}
 			}, 10);
 		}

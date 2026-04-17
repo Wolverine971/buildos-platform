@@ -24,7 +24,8 @@
 		Globe
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import AdminSidebar, { type AdminNavGroup } from '$lib/components/admin/AdminSidebar.svelte';
+	import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
+	import type { AdminNavGroup } from '$lib/components/admin/adminNav.types';
 	import { CHAT_ADMIN_NAV_ITEMS, CHAT_ADMIN_ROOT } from '$lib/components/admin/adminRoutes';
 
 	let {

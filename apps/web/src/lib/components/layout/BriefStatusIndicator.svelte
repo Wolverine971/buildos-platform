@@ -104,6 +104,7 @@
 
 		try {
 			const [year, month, day] = dateStr.split('-').map(Number);
+			if (!year || !month || !day) return dateStr;
 			const briefDateObj = new Date(year, month - 1, day);
 
 			const today = new Date();

@@ -1,14 +1,16 @@
 <!-- apps/web/src/lib/components/admin/AdminStatCard.svelte -->
 <script lang="ts">
-	import type { ComponentType } from 'svelte';
+	import type { ComponentType, Snippet } from 'svelte';
 	import { TrendingUp, TrendingDown } from 'lucide-svelte';
 	import { twMerge } from 'tailwind-merge';
 	import AdminCard from './AdminCard.svelte';
 
 	type Direction = 'up' | 'down' | 'neutral';
+	type Padding = 'xs' | 'md' | 'lg';
 
 	let {
-		label,
+		label = '',
+		title = '',
 		value,
 		icon = null,
 		tone = 'default',
@@ -16,11 +18,17 @@
 		change = null,
 		changeLabel = 'vs last period',
 		changeDirection = undefined,
+		trend = undefined,
+		trendValue = undefined,
+		subtitle = '',
+		iconColor = undefined,
 		footnote = '',
 		compact = false,
-		ultraCompact = false
+		ultraCompact = false,
+		children
 	}: {
-		label: string;
+		label?: string;
+		title?: string;
 		value: string | number;
 		icon?: ComponentType | null;
 		tone?: 'default' | 'muted' | 'brand' | 'success' | 'danger' | 'warning' | 'info';
@@ -28,33 +36,45 @@
 		change?: number | string | null;
 		changeLabel?: string;
 		changeDirection?: Direction;
+		trend?: Direction;
+		trendValue?: number | string | null;
+		subtitle?: string;
+		iconColor?: string;
 		footnote?: string;
 		compact?: boolean;
 		ultraCompact?: boolean;
+		children?: Snippet;
 	} = $props();
+
+	let displayLabel = $derived(label || title);
+	let displayFootnote = $derived(footnote || subtitle);
+	let displayChange = $derived(change ?? trendValue);
+	let displayChangeDirection = $derived(changeDirection ?? trend);
 
 	let formattedValue = $derived(
 		typeof value === 'number' ? new Intl.NumberFormat().format(value) : (value ?? '—')
 	);
 
 	let resolvedDirection = $derived.by((): Direction => {
-		if (changeDirection) return changeDirection;
-		if (typeof change === 'number') {
-			if (change > 0) return 'up';
-			if (change < 0) return 'down';
+		if (displayChangeDirection) return displayChangeDirection;
+		if (typeof displayChange === 'number') {
+			if (displayChange > 0) return 'up';
+			if (displayChange < 0) return 'down';
 		}
 		return 'neutral';
 	});
 
 	let changeText = $derived.by(() => {
-		if (change === null || change === undefined || change === '') return null;
+		if (displayChange === null || displayChange === undefined || displayChange === '') {
+			return null;
+		}
 
-		if (typeof change === 'number') {
-			const numeric = Math.abs(change);
+		if (typeof displayChange === 'number') {
+			const numeric = Math.abs(displayChange);
 			return `${numeric % 1 === 0 ? numeric.toFixed(0) : numeric.toFixed(1)}%`;
 		}
 
-		return change;
+		return displayChange;
 	});
 
 	let changeClasses = $derived.by(() => {
@@ -86,12 +106,12 @@
 	let iconWrapperClasses = $derived(
 		ultraCompact
 			? 'flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground'
-			: `flex ${compact ? 'h-10 w-10' : 'h-11 w-11'} items-center justify-center rounded-xl bg-muted text-muted-foreground`
+			: `flex ${compact ? 'h-10 w-10' : 'h-11 w-11'} items-center justify-center rounded-xl bg-muted text-muted-foreground ${iconColor ? `text-${iconColor}-600` : ''}`
 	);
 
 	let iconSize = $derived(ultraCompact ? 'h-3.5 w-3.5' : compact ? 'h-5 w-5' : 'h-6 w-6');
 
-	let padding = $derived(ultraCompact ? 'xs' : compact ? 'md' : 'lg');
+	let padding = $derived.by((): Padding => (ultraCompact ? 'xs' : compact ? 'md' : 'lg'));
 </script>
 
 <AdminCard {tone} {padding} class="h-full">
@@ -105,23 +125,23 @@
 				</span>
 			{/if}
 			<div class="flex-1 min-w-0">
-				<p class={labelClasses}>{label}</p>
+				<p class={labelClasses}>{displayLabel}</p>
 				<p class={valueClasses}>
 					{formattedValue}{suffix}
 				</p>
 			</div>
-			{#if footnote}
+			{#if displayFootnote}
 				<p
 					class="text-[10px] text-muted-foreground shrink-0 max-w-[80px] text-right truncate"
 				>
-					{footnote}
+					{displayFootnote}
 				</p>
 			{/if}
 		</div>
 	{:else}
 		<div class="flex items-start justify-between gap-4">
 			<div class={compact ? 'space-y-1.5' : 'space-y-2'}>
-				<p class={labelClasses}>{label}</p>
+				<p class={labelClasses}>{displayLabel}</p>
 				<p class={valueClasses}>
 					{formattedValue}{suffix}
 				</p>
@@ -146,8 +166,8 @@
 				{/if}
 				<div class="flex items-baseline gap-2">
 					<span class={changeClasses}>
-						{resolvedDirection === 'down' && typeof change === 'number' ? '-' : ''}
-						{resolvedDirection === 'up' && typeof change === 'number' ? '+' : ''}
+						{resolvedDirection === 'down' && typeof displayChange === 'number' ? '-' : ''}
+						{resolvedDirection === 'up' && typeof displayChange === 'number' ? '+' : ''}
 						{changeText}
 					</span>
 					{#if changeLabel}
@@ -157,10 +177,14 @@
 			</div>
 		{/if}
 
-		{#if footnote}
+		{#if displayFootnote}
 			<p class={`${compact ? 'mt-3' : 'mt-4'} text-sm text-muted-foreground`}>
-				{footnote}
+				{displayFootnote}
 			</p>
+		{/if}
+
+		{#if children}
+			{@render children()}
 		{/if}
 	{/if}
 </AdminCard>

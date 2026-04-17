@@ -9,6 +9,7 @@
 		labelFor = '',
 		error = '',
 		hint = '',
+		size = 'md',
 		required = false,
 		showOptional = true,
 		uppercase = true,
@@ -19,6 +20,7 @@
 		labelFor?: string;
 		error?: string;
 		hint?: string;
+		size?: 'sm' | 'md' | 'lg';
 		required?: boolean;
 		showOptional?: boolean;
 		uppercase?: boolean;
@@ -27,12 +29,16 @@
 	} = $props();
 
 	// Consistent spacing on 8px grid
-	let containerClasses = $derived(['space-y-2', className].filter(Boolean).join(' '));
+	let containerClasses = $derived(
+		[size === 'sm' ? 'space-y-1.5' : 'space-y-2', className].filter(Boolean).join(' ')
+	);
 
 	// Consistent label styling
 	let labelClasses = $derived(
 		[
 			'block text-sm font-semibold',
+			size === 'sm' && 'text-xs',
+			size === 'lg' && 'text-base',
 			uppercase && 'uppercase tracking-wider',
 			'text-foreground',
 			'mb-2'

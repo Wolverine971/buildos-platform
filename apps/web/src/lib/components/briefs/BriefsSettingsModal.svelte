@@ -41,9 +41,11 @@
 		frequency: 'daily',
 		day_of_week: 1,
 		time_of_day: '09:00:00',
-		timezone: 'UTC',
 		is_active: true
 	});
+	let timezoneValue = $state(
+		typeof user?.timezone === 'string' && user.timezone.length > 0 ? user.timezone : 'UTC'
+	);
 
 	// For the time input, we need to handle HH:MM format
 	let timeInputValue = $state('09:00');
@@ -103,14 +105,18 @@
 
 	// Sync store preferences to local state
 	$effect(() => {
-		if (briefPreferencesState.preferences) {
-			briefPreferences = briefPreferencesState.preferences;
-			if (!isEditing) {
-				briefPreferencesForm = { ...briefPreferences };
-				timeInputValue = convertTimeToHHMM(briefPreferences.time_of_day);
+			if (briefPreferencesState.preferences) {
+				briefPreferences = briefPreferencesState.preferences;
+				if (!isEditing) {
+					briefPreferencesForm = { ...briefPreferences };
+					timeInputValue = convertTimeToHHMM(briefPreferences.time_of_day);
+					timezoneValue =
+						typeof user?.timezone === 'string' && user.timezone.length > 0
+							? user.timezone
+							: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+				}
 			}
-		}
-	});
+		});
 
 	// Handle store errors
 	$effect(() => {
@@ -321,13 +327,13 @@
 						</div>
 					</div>
 
-					<div>
-						<p class="block text-xs font-medium text-muted-foreground mb-1">Timezone</p>
-						<div class="px-3 py-2 bg-muted rounded-lg text-sm text-foreground">
-							{TIMEZONE_OPTIONS.find((tz) => tz.value === briefPreferences?.timezone)
-								?.label || briefPreferences?.timezone}
-						</div>
-					</div>
+							<div>
+								<p class="block text-xs font-medium text-muted-foreground mb-1">Timezone</p>
+								<div class="px-3 py-2 bg-muted rounded-lg text-sm text-foreground">
+									{TIMEZONE_OPTIONS.find((tz) => tz.value === timezoneValue)?.label ||
+										timezoneValue}
+								</div>
+							</div>
 
 					<div class="md:col-span-2">
 						<p class="block text-xs font-medium text-muted-foreground mb-1">Status</p>
@@ -394,12 +400,16 @@
 				<div class="space-y-3 sm:space-y-4">
 					<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 						<FormField label="Frequency" labelFor="brief-frequency">
-							<Select
-								id="brief-frequency"
-								bind:value={briefPreferencesForm.frequency}
-								onchange={(e) => (briefPreferencesForm.frequency = e)}
-								size="md"
-							>
+								<Select
+									id="brief-frequency"
+									bind:value={briefPreferencesForm.frequency}
+									onchange={(value) => {
+										if (value === 'daily' || value === 'weekly') {
+											briefPreferencesForm.frequency = value;
+										}
+									}}
+									size="md"
+								>
 								<option value="daily">Daily</option>
 								<option value="weekly">Weekly</option>
 							</Select>
@@ -407,12 +417,15 @@
 
 						{#if briefPreferencesForm.frequency === 'weekly'}
 							<FormField label="Day of Week" labelFor="brief-day-of-week">
-								<Select
-									id="brief-day-of-week"
-									bind:value={briefPreferencesForm.day_of_week}
-									onchange={(e) => (briefPreferencesForm.day_of_week = e)}
-									size="md"
-								>
+									<Select
+										id="brief-day-of-week"
+										bind:value={briefPreferencesForm.day_of_week}
+										onchange={(value) => {
+											briefPreferencesForm.day_of_week =
+												typeof value === 'number' ? value : Number(value);
+										}}
+										size="md"
+									>
 									{#each DAY_OPTIONS as day}
 										<option value={day.value}>{day.label}</option>
 									{/each}
@@ -429,13 +442,13 @@
 							/>
 						</FormField>
 
-						<FormField label="Timezone" labelFor="briefTimezone" size="md">
-							<Select
-								id="briefTimezone"
-								bind:value={briefPreferencesForm.timezone}
-								onchange={(e) => (briefPreferencesForm.timezone = e)}
-								size="md"
-							>
+							<FormField label="Timezone" labelFor="briefTimezone" size="md">
+								<Select
+									id="briefTimezone"
+									bind:value={timezoneValue}
+									onchange={(value) => (timezoneValue = String(value))}
+									size="md"
+								>
 								{#each TIMEZONE_OPTIONS as tz}
 									<option value={tz.value}>{tz.label}</option>
 								{/each}
@@ -542,10 +555,9 @@
 											)?.label} at {convertTimeToHHMM(
 										briefPreferencesForm.time_of_day
 									)}
-									({TIMEZONE_OPTIONS.find(
-										(tz) => tz.value === briefPreferencesForm.timezone
-									)?.label})
-								</p>
+										({TIMEZONE_OPTIONS.find((tz) => tz.value === timezoneValue)?.label ||
+											timezoneValue})
+									</p>
 							</div>
 						</div>
 					{/if}

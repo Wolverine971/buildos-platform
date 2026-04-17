@@ -323,26 +323,28 @@
 	<AdminPageHeader
 		title="User Management"
 		description="Manage user accounts and view detailed activity"
-		icon={Users}
-		backHref="/admin"
-		backLabel="Dashboard"
-	>
-		<div slot="actions" class="flex items-center gap-3">
-			<div class="text-sm text-muted-foreground">
-				{totalUsers} total users
-			</div>
-			<Button
-				onclick={loadUsers}
-				disabled={isLoading}
-				variant="primary"
-				size="sm"
-				icon={RefreshCw}
-				class={isLoading ? '[&_svg]:animate-spin' : ''}
-			>
-				Refresh
-			</Button>
-		</div>
-	</AdminPageHeader>
+			icon={Users}
+			backHref="/admin"
+			backLabel="Dashboard"
+		>
+			{#snippet actions()}
+				<div class="flex items-center gap-3">
+					<div class="text-sm text-muted-foreground">
+						{totalUsers} total users
+					</div>
+					<Button
+						onclick={loadUsers}
+						disabled={isLoading}
+						variant="primary"
+						size="sm"
+						icon={RefreshCw}
+						class={isLoading ? '[&_svg]:animate-spin' : ''}
+					>
+						Refresh
+					</Button>
+				</div>
+			{/snippet}
+		</AdminPageHeader>
 
 	<!-- Filters and Search -->
 	<div class="admin-panel p-4">

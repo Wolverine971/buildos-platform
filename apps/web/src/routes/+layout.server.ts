@@ -4,6 +4,7 @@ import { OnboardingProgressService } from '$lib/services/onboardingProgress.serv
 import { StripeService } from '$lib/services/stripe-service';
 import { checkAndRegisterWebhookIfNeeded } from '$lib/services/calendar-webhook-check';
 import { fetchBillingContext } from '$lib/server/billing-context';
+import type { BillingContextPayload } from '$lib/server/billing-context';
 
 const clampProgress = (progress?: number | null) => {
 	if (typeof progress !== 'number' || Number.isNaN(progress)) {
@@ -13,7 +14,9 @@ const clampProgress = (progress?: number | null) => {
 	return Math.max(0, Math.min(100, progress));
 };
 
-const createEmptyBillingContext = (loading: boolean) => ({
+type BillingContext = BillingContextPayload & { loading: boolean };
+
+const createEmptyBillingContext = (loading: boolean): BillingContext => ({
 	subscription: null,
 	trialStatus: null,
 	paymentWarnings: [],
@@ -22,7 +25,6 @@ const createEmptyBillingContext = (loading: boolean) => ({
 	loading
 });
 
-type BillingContext = ReturnType<typeof createEmptyBillingContext>;
 type CacheEntry<T> = {
 	expiresAt: number;
 	value: T;

@@ -113,16 +113,19 @@ export function extractExplicitEntityMentionsFromText(text: string): ExplicitEnt
 
 		for (const match of line.matchAll(ENTITY_CHIP_REGEX)) {
 			const [, entityType, id, name] = match;
+			if (!entityType || !id || !name) continue;
 			pushMention(mentions, entityType as RecentEntityType, id, name);
 		}
 
 		for (const match of line.matchAll(PROJECT_ID_REGEX)) {
 			const [, name, id] = match;
+			if (!name || !id) continue;
 			pushMention(mentions, 'project', id, name);
 		}
 
 		for (const match of line.matchAll(NAMED_UUID_REGEX)) {
 			const [, name, id] = match;
+			if (!name || !id) continue;
 			pushMention(mentions, inferEntityTypeFromLine(line), id, name);
 		}
 	}

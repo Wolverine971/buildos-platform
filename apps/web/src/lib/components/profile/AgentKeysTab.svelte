@@ -660,11 +660,11 @@
 						size="sm"
 						icon={copiedId === 'callee-handle' ? CircleCheck : Copy}
 						onclick={() =>
-							copyToClipboard(
-								'callee-handle',
-								buildosAgent.handle,
-								'Agent handle copied'
-							)}
+								copyToClipboard(
+									'callee-handle',
+									buildosAgent!.handle,
+									'Agent handle copied'
+								)}
 					>
 						{copiedId === 'callee-handle' ? 'Copied' : 'Copy'}
 					</Button>
@@ -1126,9 +1126,9 @@
 							icon={copiedId === 'latest-token' ? CircleCheck : Copy}
 							onclick={() =>
 								copyToClipboard(
-									'latest-token',
-									latestProvisioned.credentials.bearer_token,
-									'Key copied'
+										'latest-token',
+										latestProvisioned!.credentials.bearer_token,
+										'Key copied'
 								)}
 						>
 							{copiedId === 'latest-token' ? 'Key Copied' : 'Copy Key'}
@@ -1154,11 +1154,11 @@
 								icon={copiedId === 'agent-prompt-placeholder' ? CircleCheck : Copy}
 								onclick={() =>
 									copyToClipboard(
-										'agent-prompt-placeholder',
-										agentConnectionPromptForProvisioned(
-											latestProvisioned,
-											false
-										),
+											'agent-prompt-placeholder',
+											agentConnectionPromptForProvisioned(
+												latestProvisioned!,
+												false
+											),
 										'Agent prompt copied'
 									)}
 							>
@@ -1172,11 +1172,11 @@
 								icon={copiedId === 'agent-prompt-with-key' ? CircleCheck : Copy}
 								onclick={() =>
 									copyToClipboard(
-										'agent-prompt-with-key',
-										agentConnectionPromptForProvisioned(
-											latestProvisioned,
-											true
-										),
+											'agent-prompt-with-key',
+											agentConnectionPromptForProvisioned(
+												latestProvisioned!,
+												true
+											),
 										'Agent prompt with key copied'
 									)}
 							>
@@ -1201,9 +1201,9 @@
 							icon={copiedId === 'env-snippet' ? CircleCheck : Copy}
 							onclick={() =>
 								copyToClipboard(
-									'env-snippet',
-									openClawEnvSnippet(latestProvisioned),
-									'Configuration copied'
+										'env-snippet',
+										openClawEnvSnippet(latestProvisioned!),
+										'Configuration copied'
 								)}
 						>
 							{copiedId === 'env-snippet' ? 'Copied' : 'Copy'}
@@ -1227,9 +1227,9 @@
 								icon={copiedId === 'bootstrap-url' ? CircleCheck : Copy}
 								onclick={() =>
 									copyToClipboard(
-										'bootstrap-url',
-										openClawBootstrapUrl(latestProvisioned) ?? '',
-										'Setup URL copied'
+											'bootstrap-url',
+											openClawBootstrapUrl(latestProvisioned!) ?? '',
+											'Setup URL copied'
 									)}
 							>
 								{copiedId === 'bootstrap-url' ? 'Copied' : 'Copy'}
@@ -1258,9 +1258,9 @@
 								icon={copiedId === 'bootstrap-prompt' ? CircleCheck : Copy}
 								onclick={() =>
 									copyToClipboard(
-										'bootstrap-prompt',
-										openClawBootstrapPrompt(latestProvisioned) ?? '',
-										'OpenClaw prompt copied'
+											'bootstrap-prompt',
+											openClawBootstrapPrompt(latestProvisioned!) ?? '',
+											'OpenClaw prompt copied'
 									)}
 							>
 								{copiedId === 'bootstrap-prompt' ? 'Copied' : 'Copy'}

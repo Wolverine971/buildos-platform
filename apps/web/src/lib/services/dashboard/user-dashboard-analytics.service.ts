@@ -360,7 +360,6 @@ function toContextLabel(
 		global: 'Chat session in global context',
 		general: 'Chat session in assistant context',
 		calendar: 'Chat session about calendar',
-		brain_dump: 'Chat session about captured context',
 		ontology: 'Chat session about ontology',
 		daily_brief_update: 'Chat session about daily brief updates'
 	};

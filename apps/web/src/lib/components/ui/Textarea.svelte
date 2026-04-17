@@ -3,7 +3,7 @@
 	import type { HTMLTextareaAttributes } from 'svelte/elements';
 	import { twMerge } from 'tailwind-merge';
 
-	type TextareaSize = 'sm' | 'md' | 'lg';
+	type TextareaSize = 'sm' | 'base' | 'md' | 'lg';
 
 	// Svelte 5 runes: Use $props() with rest syntax
 	let {
@@ -45,6 +45,7 @@
 	// Size classes with consistent padding and minimum 16px font for mobile
 	const sizeClasses = {
 		sm: 'px-3 py-2 text-base sm:text-sm min-h-[44px]',
+		base: 'px-4 py-2.5 text-base min-h-[44px]',
 		md: 'px-4 py-2.5 text-base min-h-[44px]',
 		lg: 'px-4 py-3 text-lg min-h-[46px]'
 	};

@@ -46,7 +46,7 @@
 
 	// Svelte 5 runes: Use $props() with rest syntax instead of export let and $$restProps
 	interface SelectProps {
-		value?: string | number;
+		value?: string | number | null;
 		size?: SelectSizeProp;
 		error?: boolean;
 		required?: boolean;

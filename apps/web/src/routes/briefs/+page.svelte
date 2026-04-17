@@ -488,7 +488,7 @@
 					return;
 			}
 
-			const startDateString = startDate.toISOString().split('T')[0];
+			const startDateString = startDate.toISOString().slice(0, 10);
 			filtered = filtered.filter((brief) => brief.brief_date >= startDateString);
 		}
 
@@ -502,7 +502,7 @@
 		} else {
 			date.setDate(date.getDate() + 1);
 		}
-		const newDate = date.toISOString().split('T')[0];
+		const newDate = date.toISOString().slice(0, 10);
 
 		currentDate = newDate;
 		activeBriefId = null;
@@ -671,9 +671,9 @@
 	// Show project briefs from streaming data ONLY while actively generating
 	let displayProjectBriefs = $derived(
 		isToday &&
-			currentStreamingData?.projectBriefs?.length > 0 &&
+			(currentStreamingData?.projectBriefs?.length ?? 0) > 0 &&
 			currentStreamingStatus?.isGenerating
-			? currentStreamingData.projectBriefs
+			? (currentStreamingData?.projectBriefs ?? projectBriefs)
 			: projectBriefs
 	);
 </script>

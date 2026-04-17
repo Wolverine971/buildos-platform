@@ -4,16 +4,24 @@
 	import type { Snippet } from 'svelte';
 	import { twMerge } from 'tailwind-merge';
 
-	type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
-	type BadgeSize = 'sm' | 'md' | 'lg';
+	type BadgeVariant =
+		| 'default'
+		| 'secondary'
+		| 'success'
+		| 'warning'
+		| 'error'
+		| 'info'
+		| 'accent';
+	type BadgeSize = 'xs' | 'sm' | 'md' | 'lg';
 	type BadgeTexture = 'none' | 'grain' | 'static' | 'thread';
 
-	interface Props extends HTMLAttributes<HTMLSpanElement> {
+	interface Props extends Omit<HTMLAttributes<HTMLSpanElement>, 'class'> {
 		variant?: BadgeVariant;
 		size?: BadgeSize;
 		texture?: BadgeTexture;
 		icon?: Snippet;
 		children?: Snippet;
+		class?: string;
 	}
 
 	let {
@@ -29,6 +37,7 @@
 	// Inkprint badge variants - clean, semantic colors
 	const variantClasses: Record<BadgeVariant, string> = {
 		default: 'bg-muted text-muted-foreground border border-border',
+		secondary: 'bg-muted text-muted-foreground border border-border',
 		success:
 			'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800',
 		warning:
@@ -40,6 +49,7 @@
 
 	// Inkprint: Badges are small elements - use rounded-md (0.375rem) consistently
 	const sizeClasses: Record<BadgeSize, string> = {
+		xs: 'px-1.5 py-0.5 text-[0.65rem] rounded-md',
 		sm: 'px-2 py-0.5 text-xs rounded-md',
 		md: 'px-2.5 py-1 text-xs rounded-md',
 		lg: 'px-3 py-1.5 text-sm rounded-md' // Changed from rounded-lg for consistency

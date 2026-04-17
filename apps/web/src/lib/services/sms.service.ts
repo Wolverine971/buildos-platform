@@ -240,6 +240,11 @@ export class SMSService extends ApiService {
 		userId: string,
 		preferences: Partial<{
 			phone_number: string;
+			event_reminders_enabled: boolean;
+			event_reminder_lead_time_minutes: number;
+			morning_kickoff_enabled: boolean;
+			morning_kickoff_time: string;
+			evening_recap_enabled: boolean;
 			urgent_alerts: boolean;
 			quiet_hours_start: string;
 			quiet_hours_end: string;

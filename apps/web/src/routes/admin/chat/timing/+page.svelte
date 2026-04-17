@@ -228,38 +228,44 @@
 	<!-- Header -->
 	<AdminPageHeader
 		title="Timing Metrics"
-		description="End-to-end latency analysis for agentic chat"
-		icon={Clock}
-		showBack={true}
-	>
-		<div slot="actions" class="flex flex-wrap items-center gap-3">
-			<!-- Timeframe -->
-			<Select
-				bind:value={selectedTimeframe}
-				onchange={(value) => (selectedTimeframe = String(value))}
-				size="md"
-				placeholder="Last 7 Days"
-				aria-label="Select time range"
-			>
-				<option value="24h">Last 24 Hours</option>
-				<option value="7d">Last 7 Days</option>
-				<option value="30d">Last 30 Days</option>
-			</Select>
+			description="End-to-end latency analysis for agentic chat"
+			icon={Clock}
+			showBack={true}
+		>
+			{#snippet actions()}
+				<div class="flex flex-wrap items-center gap-3">
+					<!-- Timeframe -->
+					<Select
+						bind:value={selectedTimeframe}
+						onchange={(value) => {
+							if (value === '24h' || value === '7d' || value === '30d') {
+								selectedTimeframe = value;
+							}
+						}}
+						size="md"
+						placeholder="Last 7 Days"
+						aria-label="Select time range"
+					>
+						<option value="24h">Last 24 Hours</option>
+						<option value="7d">Last 7 Days</option>
+						<option value="30d">Last 30 Days</option>
+					</Select>
 
-			<!-- Refresh -->
-			<Button
-				onclick={loadTimingData}
-				disabled={isLoading}
-				variant="secondary"
-				size="sm"
-				icon={RefreshCw}
-				loading={isLoading}
-				class="pressable"
-			>
-				Refresh
-			</Button>
-		</div>
-	</AdminPageHeader>
+					<!-- Refresh -->
+					<Button
+						onclick={loadTimingData}
+						disabled={isLoading}
+						variant="secondary"
+						size="sm"
+						icon={RefreshCw}
+						loading={isLoading}
+						class="pressable"
+					>
+						Refresh
+					</Button>
+				</div>
+			{/snippet}
+		</AdminPageHeader>
 
 	<!-- Filters -->
 	<div class="bg-card border border-border rounded-lg p-4 shadow-ink mb-6">
